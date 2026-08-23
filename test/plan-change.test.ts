@@ -21,7 +21,11 @@ import { stripComments } from './helpers/source-text';
  */
 
 const stripe = {
-  update: vi.fn(async (_id: string, _params: Record<string, unknown>, _options?: Record<string, unknown>) => ({ id: 'sub_1' })),
+  // latest_invoice is what the ledger binds activation to, so the mock has to
+  // be able to carry it -- in both the expanded and unexpanded Stripe shapes.
+  update: vi.fn(async (_id: string, _params: Record<string, unknown>, _options?: Record<string, unknown>) => (
+    { id: 'sub_1' } as { id: string; latest_invoice?: unknown }
+  )),
 };
 const events: Array<Record<string, unknown>> = [];
 const rpcCalls: Array<{ name: string; args: Record<string, unknown> }> = [];
@@ -47,9 +51,34 @@ vi.mock('@/lib/billing/stripe-plan-prices', () => ({
   }),
 }));
 
+const UNIT_AMOUNTS: Record<string, number> = {
+  solo_monthly: 3900, solo_annual: 42000, growth_monthly: 12900,
+  growth_annual: 118800, scale_monthly: 32900, scale_annual: 358800,
+};
+
 function price(planCode: string, billingInterval: string, priceId: string) {
-  return { priceId, planCode, billingInterval, catalogVersion: '2026-08-18-preview' };
+  return {
+    priceId,
+    productId: `prod_${planCode}`,
+    planCode,
+    billingInterval,
+    catalogVersion: '2026-08-18-preview',
+    unitAmountCents: UNIT_AMOUNTS[`${planCode}_${billingInterval}`],
+  };
 }
+
+// assertConfiguredStripeBillingMode compares three things: the configured mode,
+// the secret key's own prefix, and the mode of the subscription being changed.
+// All three are test mode here.
+process.env.LGQ_STRIPE_BILLING_LIVEMODE = '0';
+process.env.STRIPE_SECRET_KEY = 'sk_test_harnesskey123';
+
+/** The owner seam. The real recorder needs auth.uid(); this one just answers. */
+const recordConsent = vi.fn(async () => ({ acceptanceId: ACCEPTANCE_ID } as never));
+const OWNER = { supabase: null, accountId: 'acct_1', userId: 'user_1' } as never;
+const ACCEPTANCE_ID = '90000000-0000-4000-8000-000000000009';
+const OPERATION_PK = 'a0000000-0000-4000-8000-00000000000a';
+const CLAIM_TOKEN = 'b0000000-0000-4000-8000-00000000000b';
 
 const {
   BASE_PLAN_SUBSCRIPTION_PLAN_CHANGE_FLAG,
@@ -60,18 +89,48 @@ const {
 
 type Row = Record<string, unknown> | null;
 
-function adminWith(row: Row) {
-  const chain = {
-    select: () => chain,
-    eq: () => chain,
-    order: () => chain,
-    limit: () => chain,
-    maybeSingle: async () => ({ data: row, error: null }),
+/**
+ * The admin client the plan-change path uses. Two reads share it: the
+ * subscription row, and the plan-change ledger's bound acceptance -- so the
+ * table name decides which row comes back, and the ledger answers empty unless a
+ * test says otherwise.
+ */
+function adminWith(row: Row, options: {
+  boundAcceptance?: Row;
+  claim?: Record<string, unknown> | null;
+  claimError?: { message: string } | null;
+  acceptError?: { message: string } | null;
+} = {}) {
+  const make = (data: Row) => {
+    const chain = {
+      select: () => chain,
+      eq: () => chain,
+      order: () => chain,
+      limit: () => chain,
+      maybeSingle: async () => ({ data, error: null }),
+    };
+    return chain;
   };
   return {
-    from: () => chain,
+    from: (table: string) => make(
+      table === 'billing_subscription_plan_change_operations'
+        ? (options.boundAcceptance ?? null)
+        : row,
+    ),
     rpc: async (name: string, args: Record<string, unknown>) => {
       rpcCalls.push({ name, args });
+      if (name === 'claim_stripe_billing_subscription_plan_change') {
+        if (options.claimError) return { data: null, error: options.claimError };
+        return {
+          data: options.claim === undefined
+            ? { claim_status: 'claimed', operation_pk: OPERATION_PK, operation_state: 'submitted', claim_token: CLAIM_TOKEN }
+            : options.claim,
+          error: null,
+        };
+      }
+      if (name === 'mark_stripe_billing_subscription_plan_change_accepted') {
+        return { data: true, error: options.acceptError ?? null };
+      }
       return { data: true, error: null };
     },
   } as never;
@@ -98,6 +157,9 @@ beforeEach(() => {
   // conditional on a flag that is 0 in every deployed environment today.
   process.env[BASE_PLAN_SUBSCRIPTION_PLAN_CHANGE_FLAG] = '1';
   stripe.update.mockClear();
+  stripe.update.mockReset();
+  stripe.update.mockResolvedValue({ id: 'sub_1', latest_invoice: 'in_default123' });
+  recordConsent.mockClear();
   cancelAtPeriodEnd.mockClear();
   events.length = 0;
   rpcCalls.length = 0;
@@ -107,7 +169,7 @@ beforeEach(() => {
 describe('an upgrade on the same billing cycle', () => {
   it('sends the new price AND the new metadata in one call', async () => {
     // The whole point. Either alone is a defect; together they are the contract.
-    const result = await changeBasePlan({
+    const result = await changeBasePlan({ owner: OWNER, recordConsent,
       admin: adminWith(GROWTH_MONTHLY), accountId: 'acct_1',
       targetPlanCode: 'scale', targetBillingInterval: 'monthly',
     });
@@ -123,7 +185,7 @@ describe('an upgrade on the same billing cycle', () => {
   });
 
   it('invoices the difference now, because it activates on payment', async () => {
-    await changeBasePlan({
+    await changeBasePlan({ owner: OWNER, recordConsent,
       admin: adminWith(GROWTH_MONTHLY), accountId: 'acct_1',
       targetPlanCode: 'scale', targetBillingInterval: 'monthly',
     });
@@ -132,7 +194,7 @@ describe('an upgrade on the same billing cycle', () => {
   });
 
   it('records the intent BEFORE calling Stripe', async () => {
-    await changeBasePlan({
+    await changeBasePlan({ owner: OWNER, recordConsent,
       admin: adminWith(GROWTH_MONTHLY), accountId: 'acct_1',
       targetPlanCode: 'scale', targetBillingInterval: 'monthly',
     });
@@ -143,7 +205,7 @@ describe('an upgrade on the same billing cycle', () => {
   it('refuses when the subscription has no Stripe line item', async () => {
     // Falling back to items[0] would be wrong for any subscription that ever
     // gains a second line, and it would move money.
-    const result = await changeBasePlan({
+    const result = await changeBasePlan({ owner: OWNER, recordConsent,
       admin: adminWith({ ...GROWTH_MONTHLY, provider_subscription_item_id: null }),
       accountId: 'acct_1', targetPlanCode: 'scale', targetBillingInterval: 'monthly',
     });
@@ -153,7 +215,7 @@ describe('an upgrade on the same billing cycle', () => {
 
   it('tells somebody a decline is not worth retrying blindly', async () => {
     stripe.update.mockRejectedValueOnce(Object.assign(new Error('nope'), { code: 'card_declined' }));
-    const result = await changeBasePlan({
+    const result = await changeBasePlan({ owner: OWNER, recordConsent,
       admin: adminWith(GROWTH_MONTHLY), accountId: 'acct_1',
       targetPlanCode: 'scale', targetBillingInterval: 'monthly',
     });
@@ -208,7 +270,7 @@ describe('the metadata guard that never guarded anything', () => {
 
 describe('changes that wait for renewal', () => {
   it('schedules a downgrade instead of applying it now', async () => {
-    const result = await changeBasePlan({
+    const result = await changeBasePlan({ owner: OWNER, recordConsent,
       admin: adminWith(GROWTH_MONTHLY), accountId: 'acct_1',
       targetPlanCode: 'solo', targetBillingInterval: 'monthly',
     });
@@ -228,7 +290,7 @@ describe('changes that wait for renewal', () => {
     // The rule that is easy to get wrong: growth->scale is immediate on the same
     // cycle, and NOT immediate if it also moves monthly->annual, because
     // otherwise an annual subscriber could escape their term by bundling the two.
-    const result = await changeBasePlan({
+    const result = await changeBasePlan({ owner: OWNER, recordConsent,
       admin: adminWith(GROWTH_MONTHLY), accountId: 'acct_1',
       targetPlanCode: 'scale', targetBillingInterval: 'annual',
     });
@@ -241,7 +303,7 @@ describe('changes that wait for renewal', () => {
     // "nothing scheduled" while still reporting success -- a scheduled downgrade
     // that silently never happens. Cancelling already ends the plan at period
     // end and drops the workspace to Flex, which IS this transition.
-    const result = await changeBasePlan({
+    const result = await changeBasePlan({ owner: OWNER, recordConsent,
       admin: adminWith(GROWTH_MONTHLY), accountId: 'acct_1',
       targetPlanCode: 'flex', targetBillingInterval: 'none',
     });
@@ -277,6 +339,7 @@ describe('the options a workspace is offered', () => {
   const subscription = {
     providerSubscriptionId: 'sub_1',
     providerSubscriptionItemId: 'si_1',
+    livemode: false,
     planCode: 'growth' as const,
     billingInterval: 'monthly' as const,
     status: 'active',
@@ -385,5 +448,164 @@ describe('the panel says what just happened to the money', () => {
     // early -- so a note rendered only in the main branch would be dropped on
     // the way through by the very change that produced it.
     expect(PANEL.match(/\{successNote\}/g) ?? []).toHaveLength(2);
+  });
+});
+
+/**
+ * The durable ledger row, and the order it has to be written in.
+ *
+ * Everything here exists because the webhook can arrive before
+ * `subscriptions.update()` returns. A row written after the Stripe call leaves
+ * the projector meeting an event with no operation to bind, which dead-letters
+ * it -- the original bug from the other side.
+ */
+describe('the plan-change operation ledger', () => {
+  const rowFor = (name: string) => rpcCalls.find((call) => call.name === name);
+
+  it('claims the operation BEFORE Stripe, and names it in the metadata', async () => {
+    let rpcsWhenStripeRan = -1;
+    stripe.update.mockImplementationOnce(async () => {
+      rpcsWhenStripeRan = rpcCalls.filter(
+        (c) => c.name === 'claim_stripe_billing_subscription_plan_change',
+      ).length;
+      return { id: 'sub_1', latest_invoice: 'in_proration123' };
+    });
+
+    const result = await changeBasePlan({
+      owner: OWNER, recordConsent,
+      admin: adminWith(GROWTH_MONTHLY), accountId: 'acct_1',
+      targetPlanCode: 'scale', targetBillingInterval: 'monthly',
+    });
+    expect(result.ok).toBe(true);
+
+    // Order, not merely presence.
+    expect(rpcsWhenStripeRan, 'the row must exist before the Stripe call').toBe(1);
+
+    const claim = rowFor('claim_stripe_billing_subscription_plan_change');
+    const operationId = claim?.args.p_operation_id;
+    expect(typeof operationId).toBe('string');
+
+    // The projector binds an event to its operation through this metadata key.
+    // Without it every event keeps resolving to the ORIGINAL checkout operation,
+    // which still holds the old price, so the binding refuses and the change
+    // never projects.
+    const [, params] = stripe.update.mock.calls[0];
+    const metadata = (params as { metadata: Record<string, string> }).metadata;
+    expect(metadata.lgq_operation_id).toBe(operationId);
+    expect(metadata.lgq_plan_code).toBe('scale');
+    expect(metadata.lgq_catalog_version).toBe('2026-08-18-preview');
+
+    // ...and the idempotency key the claim recorded is the one Stripe was sent.
+    const [, , options] = stripe.update.mock.calls[0];
+    expect((options as { idempotencyKey: string }).idempotencyKey)
+      .toBe(claim?.args.p_stripe_idempotency_key);
+  });
+
+  it('records the exact proration invoice, because activation binds to it', async () => {
+    stripe.update.mockResolvedValueOnce({ id: 'sub_1', latest_invoice: { id: 'in_proration456' } });
+    await changeBasePlan({
+      owner: OWNER, recordConsent,
+      admin: adminWith(GROWTH_MONTHLY), accountId: 'acct_1',
+      targetPlanCode: 'scale', targetBillingInterval: 'monthly',
+    });
+    // Expanded and unexpanded latest_invoice both reach here depending on the
+    // API version; both must resolve to the id.
+    expect(rowFor('mark_stripe_billing_subscription_plan_change_accepted')?.args.p_proration_invoice_id)
+      .toBe('in_proration456');
+  });
+
+  it('never reports activation from Stripe merely accepting the change', async () => {
+    // always_invoice with the default payment_behavior of allow_incomplete
+    // leaves the proration invoice open when collection fails, and does NOT
+    // throw. So the ledger may only reach provider_accepted here; only the
+    // projector, seeing that invoice paid, may activate.
+    await changeBasePlan({
+      owner: OWNER, recordConsent,
+      admin: adminWith(GROWTH_MONTHLY), accountId: 'acct_1',
+      targetPlanCode: 'scale', targetBillingInterval: 'monthly',
+    });
+    expect(rowFor('mark_stripe_billing_subscription_plan_change_accepted')).toBeDefined();
+    expect(rpcCalls.some((c) => c.name.includes('activated'))).toBe(false);
+  });
+
+  it('separates a Stripe that answered from a Stripe that did not', async () => {
+    // A response means Stripe decided and the change did not apply -> abandon.
+    stripe.update.mockRejectedValueOnce(Object.assign(new Error('no'), { statusCode: 402 }));
+    await changeBasePlan({
+      owner: OWNER, recordConsent,
+      admin: adminWith(GROWTH_MONTHLY), accountId: 'acct_1',
+      targetPlanCode: 'scale', targetBillingInterval: 'monthly',
+    });
+    expect(rowFor('abandon_stripe_billing_subscription_plan_change')).toBeDefined();
+    expect(rowFor('mark_stripe_billing_subscription_plan_change_indeterminate')).toBeUndefined();
+
+    rpcCalls.length = 0;
+    // No response means nobody knows whether it applied. That is exactly what
+    // 'indeterminate' is for, and it is reconciliation-only because a blind
+    // retry could apply the change twice.
+    stripe.update.mockRejectedValueOnce(new Error('socket hang up'));
+    await changeBasePlan({
+      owner: OWNER, recordConsent,
+      admin: adminWith(GROWTH_MONTHLY), accountId: 'acct_1',
+      targetPlanCode: 'scale', targetBillingInterval: 'monthly',
+    });
+    expect(rowFor('mark_stripe_billing_subscription_plan_change_indeterminate')).toBeDefined();
+    expect(rowFor('abandon_stripe_billing_subscription_plan_change')).toBeUndefined();
+  });
+
+  it('reuses the acceptance already bound to a retried operation', async () => {
+    // Consent evidence is single-use. Minting a fresh acceptance for a retry of
+    // the same operation makes the claim's replay branch see a different
+    // acceptance id and report a conflict the customer cannot act on.
+    const admin = adminWith(GROWTH_MONTHLY, {
+      boundAcceptance: {
+        recurring_consent_acceptance_id: ACCEPTANCE_ID,
+        plan_code: 'scale',
+        billing_interval: 'monthly',
+        purpose: 'base_plan_plan_change',
+      },
+      claim: {
+        claim_status: 'replay', operation_pk: OPERATION_PK,
+        operation_state: 'submitted', claim_token: CLAIM_TOKEN,
+      },
+    });
+    const result = await changeBasePlan({
+      owner: OWNER, recordConsent, admin, accountId: 'acct_1',
+      targetPlanCode: 'scale', targetBillingInterval: 'monthly',
+    });
+    expect(result.ok).toBe(true);
+    expect(recordConsent, 'a bound acceptance must not be re-minted').not.toHaveBeenCalled();
+    expect(rowFor('claim_stripe_billing_subscription_plan_change')?.args.p_recurring_consent_acceptance_id)
+      .toBe(ACCEPTANCE_ID);
+  });
+
+  it('will not send a second subscriptions.update for a resolved operation', async () => {
+    // Anything past 'submitted' has already been applied, abandoned or is
+    // indeterminate. Re-sending would apply the change twice and prorate twice.
+    // The token is deliberately NON-null. A resolved row cannot really carry
+    // one -- the state shape CHECK forbids it -- but if the only thing stopping
+    // a second send were the missing token, this guard would be decoration and
+    // any future RPC change that returned a token would silently re-charge.
+    for (const claim_status of ['activated', 'provider_accepted', 'abandoned', 'indeterminate']) {
+      stripe.update.mockClear();
+      const admin = adminWith(GROWTH_MONTHLY, {
+        claim: { claim_status, operation_pk: OPERATION_PK, operation_state: claim_status, claim_token: CLAIM_TOKEN },
+      });
+      await changeBasePlan({
+        owner: OWNER, recordConsent, admin, accountId: 'acct_1',
+        targetPlanCode: 'scale', targetBillingInterval: 'monthly',
+      });
+      expect(stripe.update, `${claim_status} must not re-send`).not.toHaveBeenCalled();
+    }
+  });
+
+  it('does not call Stripe at all when the claim is refused', async () => {
+    const admin = adminWith(GROWTH_MONTHLY, { claimError: { message: 'a plan change requires an active paid workspace' } });
+    const result = await changeBasePlan({
+      owner: OWNER, recordConsent, admin, accountId: 'acct_1',
+      targetPlanCode: 'scale', targetBillingInterval: 'monthly',
+    });
+    expect(result.ok).toBe(false);
+    expect(stripe.update).not.toHaveBeenCalled();
   });
 });

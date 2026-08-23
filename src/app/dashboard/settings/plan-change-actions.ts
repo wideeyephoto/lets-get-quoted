@@ -32,7 +32,8 @@ export async function changeBasePlanAction(
   const target = parseTarget(planCode, billingInterval);
   if (!target) return { ok: false, error: 'That is not a plan we can move you to.' };
 
-  const { accountId, userId, userEmail } = await requireOwnerContext();
+  const owner = await requireOwnerContext();
+  const { accountId, userId, userEmail } = owner;
   const admin = createAdminClient();
 
   // An upgrade charges a proration, so the limit is tighter than a read would
@@ -46,6 +47,9 @@ export async function changeBasePlanAction(
 
   const result = await changeBasePlan({
     admin,
+    // The consent recorder runs as the signed-in owner, never the service role:
+    // the acceptance records auth.uid() and has to name a human.
+    owner: { supabase: owner.supabase, accountId, userId },
     accountId,
     targetPlanCode: target.planCode,
     targetBillingInterval: target.billingInterval,

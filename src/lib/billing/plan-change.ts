@@ -8,7 +8,16 @@ import { recordAccountEvent } from '@/lib/account-events';
 import { BILLING_PLAN_IDS, BILLING_PLANS, PRICING_CATALOG_VERSION, formatUsdFromCents, resolveBillingPlanId, type BillingPlanId, type BillingCycle } from '@/lib/billing/catalog';
 import type { AllowancePeriodWindow } from '@/lib/billing/entitlement-catalog';
 import { decidePlanTransition, type PlanTransitionDecision, type WorkspacePlanSelection } from '@/lib/billing/plan-transition';
-import { SUBSCRIPTION_CHECKOUT_METADATA_KEYS } from '@/lib/billing/stripe-billing-subscription-checkout';
+import { assertConfiguredStripeBillingMode, SUBSCRIPTION_CHECKOUT_METADATA_KEYS } from '@/lib/billing/stripe-billing-subscription-checkout';
+import {
+  BASE_PLAN_RECURRING_CONSENT_TEXT_SHA256,
+  BASE_PLAN_RECURRING_CONSENT_VERSION,
+} from '@/lib/billing/subscription-consent';
+import {
+  recordBasePlanPlanChangeConsentForOwner,
+  type SubscriptionConsentOwnerContext,
+} from '@/lib/billing/subscription-consent-acceptance';
+import { TERMS_VERSION } from '@/lib/terms';
 import { cancelBasePlanSubscriptionAtPeriodEnd } from '@/lib/billing/subscription-cancellation';
 import { loadVerifiedStripePlanPrices } from '@/lib/billing/stripe-plan-prices';
 import { getStripeClient } from '@/lib/stripe';
@@ -100,6 +109,8 @@ const CHANGEABLE_STATUSES = new Set(['trialing', 'active', 'past_due']);
 export type ChangeableSubscription = Readonly<{
   providerSubscriptionId: string;
   providerSubscriptionItemId: string | null;
+  /** The mode the subscription itself lives in, not the mode this process is configured for. */
+  livemode: boolean;
   planCode: BillingPlanId;
   billingInterval: 'none' | BillingCycle;
   status: string;
@@ -154,6 +165,102 @@ export function buildPlanChangeIdempotencyKey(input: {
 }
 
 /**
+ * The operation id a plan change is claimed under.
+ *
+ * Derived from the SAME inputs as the idempotency key above, and for the same
+ * reason: the ledger row, the Stripe idempotency key and the subscription
+ * metadata all have to name one request, and deriving them separately is how
+ * they drift. The state token is what makes solo -> growth -> solo work; see
+ * the note on the key.
+ *
+ * The checkout rail takes its operation id from the rendered form instead. That
+ * suits a flow where the customer leaves for Stripe and may come back; a plan
+ * change is a single server round trip, so deriving it here removes a field the
+ * client could disagree with.
+ */
+export function buildPlanChangeOperationId(input: {
+  workspaceId: string;
+  providerSubscriptionId: string;
+  targetPlanCode: string;
+  targetBillingInterval: string;
+  stateToken?: string | null;
+}): string {
+  const workspaceId = String(input.workspaceId ?? '').trim();
+  const subscriptionId = String(input.providerSubscriptionId ?? '').trim();
+  if (!workspaceId || !subscriptionId) {
+    throw new Error('A workspace and a provider subscription id are required to change a plan.');
+  }
+  const digest = createHash('sha256')
+    .update([
+      'base_plan_change_operation',
+      workspaceId,
+      subscriptionId,
+      input.targetPlanCode,
+      input.targetBillingInterval,
+      input.stateToken ?? '',
+    ].join('\0'))
+    .digest('hex');
+  // Readable prefix, bounded length, no control characters -- the ledger's
+  // operation_id CHECK allows 1..200 and refuses [[:cntrl:]].
+  return `planchange:${workspaceId}:${input.targetPlanCode}:${input.targetBillingInterval}:${digest.slice(0, 32)}`;
+}
+
+/**
+ * The acceptance already bound to this operation, when there is one.
+ *
+ * WHY THIS EXISTS AT ALL. Consent evidence is single-use: the ledger holds
+ * `billing_plan_change_consent_single_use_unique` on the acceptance id, and the
+ * claim RPC's replay branch compares `recurring_consent_acceptance_id` against
+ * the stored row. So recording a FRESH acceptance for a retry of the same
+ * operation turns an otherwise-idempotent replay into
+ * 'operation ID was already claimed with different immutable plan-change input'.
+ * The first attempt would have gone through and the retry would report a
+ * conflict the customer cannot act on.
+ *
+ * Reads only the exact account-bound row, and returns null rather than guessing
+ * if anything about it disagrees -- a mismatched row means a different request
+ * wearing a used operation id, and the claim RPC should be the one to say so.
+ */
+async function loadBoundPlanChangeAcceptance(
+  admin: SupabaseClient,
+  input: { accountId: string; operationId: string; planCode: PaidPlanCode; billingInterval: BillingCycle },
+): Promise<string | null> {
+  const { data, error } = await admin
+    .from('billing_subscription_plan_change_operations')
+    .select('recurring_consent_acceptance_id, plan_code, billing_interval, purpose')
+    .eq('account_id', input.accountId)
+    .eq('operation_id', input.operationId)
+    .maybeSingle();
+  if (error) throw new Error(`Unable to read this plan change's operation: ${error.message}`);
+  if (!data) return null;
+  if (
+    data.purpose !== 'base_plan_plan_change'
+    || data.plan_code !== input.planCode
+    || data.billing_interval !== input.billingInterval
+  ) {
+    return null;
+  }
+  const acceptanceId = data.recurring_consent_acceptance_id;
+  return typeof acceptanceId === 'string' && acceptanceId ? acceptanceId : null;
+}
+
+/**
+ * The proration invoice Stripe named, or null when it invoiced nothing.
+ *
+ * `latest_invoice` is a string when unexpanded and an object when expanded, and
+ * both shapes reach here depending on the API version's defaults. Anything else
+ * is treated as "no invoice" rather than coerced: the projector binds activation
+ * to this exact id, so a wrong one is worse than a missing one.
+ */
+function prorationInvoiceIdOf(subscription: unknown): string | null {
+  const latest = (subscription as { latest_invoice?: unknown } | null)?.latest_invoice;
+  const id = typeof latest === 'string'
+    ? latest
+    : (latest as { id?: unknown } | null)?.id;
+  return typeof id === 'string' && /^in_[A-Za-z0-9]{8,}$/.test(id) ? id : null;
+}
+
+/**
  * The workspace's current subscription, or null when there is nothing to change.
  *
  * `billing_subscriptions` is granted to service_role, so the caller passes an
@@ -168,7 +275,7 @@ export async function loadChangeableSubscription(
     // One string literal on purpose: supabase-js infers the row type from this
     // argument statically, and a concatenated expression collapses it to
     // GenericStringError so every field read below becomes a type error.
-    .select('provider_subscription_id, provider_subscription_item_id, plan_code, billing_interval, status, current_period_start, current_period_end, pending_plan_code, pending_billing_interval, pending_effective_at, updated_at')
+    .select('provider_subscription_id, provider_subscription_item_id, livemode, plan_code, billing_interval, status, current_period_start, current_period_end, pending_plan_code, pending_billing_interval, pending_effective_at, updated_at')
     .eq('account_id', accountId)
     .order('updated_at', { ascending: false })
     .limit(1)
@@ -183,6 +290,7 @@ export async function loadChangeableSubscription(
     providerSubscriptionItemId: data.provider_subscription_item_id
       ? String(data.provider_subscription_item_id)
       : null,
+    livemode: data.livemode === true,
     planCode: resolveBillingPlanId(String(data.plan_code)),
     billingInterval: (data.billing_interval ?? 'none') as 'none' | BillingCycle,
     status: String(data.status),
@@ -228,7 +336,11 @@ export type PlanChangeResult =
  * row versus the Stripe request, and there is no operation row. See the gate.
  */
 
-function planChangeMetadata(target: { planCode: PaidPlanCode; billingInterval: BillingCycle }): Record<string, string> {
+function planChangeMetadata(target: {
+  planCode: PaidPlanCode;
+  billingInterval: BillingCycle;
+  operationId: string;
+}): Record<string, string> {
   // Stripe MERGES metadata on update, so only the keys that move are sent. The
   // workspace id, terms version and recurring-consent evidence set at checkout
   // are preserved untouched -- rewriting them here would risk losing the
@@ -237,6 +349,11 @@ function planChangeMetadata(target: { planCode: PaidPlanCode; billingInterval: B
     [SUBSCRIPTION_CHECKOUT_METADATA_KEYS.planCode]: target.planCode,
     [SUBSCRIPTION_CHECKOUT_METADATA_KEYS.billingInterval]: target.billingInterval,
     [SUBSCRIPTION_CHECKOUT_METADATA_KEYS.catalogVersion]: PRICING_CATALOG_VERSION,
+    // The projector binds an event to its operation through THIS key. Without
+    // it every event for this subscription keeps resolving to the ORIGINAL
+    // checkout operation, which still holds the old price -- so the binding
+    // refuses and the change never projects.
+    [SUBSCRIPTION_CHECKOUT_METADATA_KEYS.operationId]: target.operationId,
   };
 }
 
@@ -273,10 +390,19 @@ function allowancePeriod(subscription: ChangeableSubscription, nowMs: number):
  */
 export async function changeBasePlan(input: {
   admin: SupabaseClient;
+  /**
+   * The owner's OWN session client, not the admin one. The plan-change consent
+   * recorder is granted to `authenticated` and reads `auth.uid()` itself, so it
+   * cannot be called with the service role -- and that is the point: the
+   * acceptance has to name a human.
+   */
+  owner: SubscriptionConsentOwnerContext;
   accountId: string;
   targetPlanCode: BillingPlanId;
   targetBillingInterval: 'none' | BillingCycle;
   actorEmail?: string | null;
+  /** Seam for tests; the real recorder is the default. */
+  recordConsent?: typeof recordBasePlanPlanChangeConsentForOwner;
 }): Promise<PlanChangeResult> {
   // ONE gate, here, ahead of the read -- and the condition is exact rather than
   // convenient. Targeting Flex IS the cancellation path: `pending_plan_code`'s
@@ -327,15 +453,22 @@ export async function changeBasePlan(input: {
     return scheduleAtRenewal({ ...input, subscription, decision });
   }
 
-  return activateAfterPayment({ ...input, subscription, decision });
+  return activateAfterPayment({
+    ...input,
+    subscription,
+    decision,
+    recordConsent: input.recordConsent ?? recordBasePlanPlanChangeConsentForOwner,
+  });
 }
 
 async function activateAfterPayment(input: {
   admin: SupabaseClient;
+  owner: SubscriptionConsentOwnerContext;
   accountId: string;
   actorEmail?: string | null;
   subscription: ChangeableSubscription;
   decision: Extract<PlanTransitionDecision, { kind: 'activate_after_payment' }>;
+  recordConsent: typeof recordBasePlanPlanChangeConsentForOwner;
 }): Promise<PlanChangeResult> {
   const { subscription, decision } = input;
   const target = decision.target;
@@ -352,6 +485,15 @@ async function activateAfterPayment(input: {
     return { ok: false, error: 'This subscription is missing its Stripe line item, so it cannot be changed here.' };
   }
 
+  // The mode comes from the SUBSCRIPTION, then is checked against the mode this
+  // process is configured for. Reading it from the environment alone would let a
+  // test-mode deployment aim a live subscription id at a test key.
+  try {
+    assertConfiguredStripeBillingMode(subscription.livemode);
+  } catch {
+    return { ok: false, error: 'Plan changes are not configured for this environment. Nothing was charged.' };
+  }
+
   const prices = await loadVerifiedStripePlanPrices();
   const verified = prices[`${planCode}_${billingInterval}` as const];
   if (!verified) {
@@ -363,7 +505,86 @@ async function activateAfterPayment(input: {
   // the catalog. There is nothing left for a local guard to compare: the two
   // sides of the old assertion were built from the same lookup key and the same
   // imported catalog version.
-  const metadata = planChangeMetadata({ planCode, billingInterval });
+  const identity = {
+    workspaceId: input.accountId,
+    providerSubscriptionId: subscription.providerSubscriptionId,
+    targetPlanCode: planCode,
+    targetBillingInterval: billingInterval,
+    stateToken: subscription.updatedAt,
+  } as const;
+  const operationId = buildPlanChangeOperationId(identity);
+  const idempotencyKey = buildPlanChangeIdempotencyKey(identity);
+
+  // Consent first, because the claim refuses without a matching acceptance --
+  // and reuse the bound one on a retry, or the replay branch sees a different
+  // acceptance id and reports a conflict the customer cannot act on.
+  let acceptanceId: string | null;
+  try {
+    acceptanceId = await loadBoundPlanChangeAcceptance(input.admin, {
+      accountId: input.accountId, operationId, planCode, billingInterval,
+    });
+  } catch {
+    return { ok: false, error: 'We could not verify this plan change. Nothing was charged. Please try again.' };
+  }
+  if (!acceptanceId) {
+    try {
+      const acceptance = await input.recordConsent(input.owner, {
+        operationId, planCode, billingInterval, accepted: true,
+      });
+      acceptanceId = acceptance.acceptanceId;
+    } catch (error) {
+      console.error('plan-change consent was refused:', error instanceof Error ? error.message : error);
+      return { ok: false, error: 'We could not record your agreement to the new recurring charge. Nothing was charged.' };
+    }
+  }
+
+  // The durable row goes in BEFORE the Stripe call. The webhook can arrive
+  // before subscriptions.update() returns, and a row written afterwards leaves
+  // the projector meeting an event with no operation to bind, which dead-letters
+  // it. An orphaned row from a Stripe call that never happened is harmless:
+  // nothing reads it, and the idempotency key makes a retry find the same row.
+  const claim = await input.admin.rpc('claim_stripe_billing_subscription_plan_change', {
+    p_account_id: input.accountId,
+    p_operation_id: operationId,
+    p_plan_code: planCode,
+    p_billing_interval: billingInterval,
+    p_catalog_version: PRICING_CATALOG_VERSION,
+    p_livemode: subscription.livemode,
+    p_provider_subscription_id: subscription.providerSubscriptionId,
+    p_provider_subscription_item_id: subscription.providerSubscriptionItemId,
+    p_stripe_price_id: verified.priceId,
+    p_stripe_product_id: verified.productId,
+    p_currency: 'usd',
+    p_unit_amount_cents: verified.unitAmountCents,
+    p_terms_version: TERMS_VERSION,
+    p_recurring_consent_version: BASE_PLAN_RECURRING_CONSENT_VERSION,
+    p_recurring_consent_text_sha256: BASE_PLAN_RECURRING_CONSENT_TEXT_SHA256,
+    p_recurring_consent_acceptance_id: acceptanceId,
+    p_stripe_idempotency_key: idempotencyKey,
+    p_request_fingerprint: createHash('sha256').update(idempotencyKey).digest('hex'),
+  });
+  if (claim.error) {
+    console.error('plan-change claim was refused:', claim.error.message);
+    return { ok: false, error: 'We could not start this plan change. Nothing was charged.' };
+  }
+  const claimed = Array.isArray(claim.data) ? claim.data[0] : claim.data;
+  const claimStatus = typeof claimed?.claim_status === 'string' ? claimed.claim_status : null;
+  const operationPk = typeof claimed?.operation_pk === 'string' ? claimed.operation_pk : null;
+  const claimToken = typeof claimed?.claim_token === 'string' ? claimed.claim_token : null;
+  if (!operationPk || (claimStatus !== 'claimed' && claimStatus !== 'replay')) {
+    // Every other status is a row that has already left 'submitted': the change
+    // was applied, abandoned, or is indeterminate. None of them may be re-sent
+    // to Stripe, because a second subscriptions.update applies it twice.
+    if (claimStatus === 'activated' || claimStatus === 'provider_accepted') {
+      return { ok: true, kind: 'activated', planCode, billingInterval };
+    }
+    return { ok: false, error: 'This plan change is already in progress. Reload the page to see where it got to.' };
+  }
+  if (!claimToken) {
+    // 'submitted' with no token cannot happen -- the state shape CHECK requires
+    // one -- so this is a contract break rather than a race.
+    return { ok: false, error: 'This plan change could not be claimed. Nothing was charged.' };
+  }
 
   await recordAccountEvent({
     accountId: input.accountId,
@@ -375,13 +596,15 @@ async function activateAfterPayment(input: {
       to_plan_code: planCode,
       billing_interval: billingInterval,
       provider_subscription_id: subscription.providerSubscriptionId,
+      operation_id: operationId,
       mode: 'activate_after_payment',
     },
   });
 
+  let updated: unknown;
   try {
     const stripe = getStripeClient();
-    await stripe.subscriptions.update(
+    updated = await stripe.subscriptions.update(
       subscription.providerSubscriptionId,
       {
         items: [{ id: subscription.providerSubscriptionItemId, price: verified.priceId }],
@@ -389,24 +612,48 @@ async function activateAfterPayment(input: {
         // difference now, which is what makes the upgrade activate on payment
         // rather than at renewal.
         proration_behavior: 'always_invoice',
-        metadata,
+        metadata: planChangeMetadata({ planCode, billingInterval, operationId }),
       },
-      {
-        idempotencyKey: buildPlanChangeIdempotencyKey({
-          workspaceId: input.accountId,
-          providerSubscriptionId: subscription.providerSubscriptionId,
-          targetPlanCode: planCode,
-          targetBillingInterval: billingInterval,
-          stateToken: subscription.updatedAt,
-        }),
-      },
+      { idempotencyKey },
     );
-    // Deliberately not written back to billing_subscriptions. The projector owns
-    // that row and customer.subscription.updated carries this same state.
-    return { ok: true, kind: 'activated', planCode, billingInterval };
   } catch (error) {
-    return { ok: false, error: describeStripeFailure(error, subscription.providerSubscriptionId, 'upgrade') };
+    // A response means Stripe decided; no response means nobody knows. Only the
+    // second is 'indeterminate', and that state is reconciliation-only precisely
+    // because a blind retry could apply the change twice.
+    const decided = typeof (error as { statusCode?: unknown } | null)?.statusCode === 'number';
+    const reason = describeStripeFailure(error, subscription.providerSubscriptionId, 'upgrade');
+    await input.admin.rpc(
+      decided
+        ? 'abandon_stripe_billing_subscription_plan_change'
+        : 'mark_stripe_billing_subscription_plan_change_indeterminate',
+      { p_operation_pk: operationPk, p_claim_token: claimToken, p_last_error: reason.slice(0, 2000) },
+    );
+    return { ok: false, error: reason };
   }
+
+  // Stripe accepted the price change. That is COMMITMENT, not payment:
+  // always_invoice with the default payment_behavior of allow_incomplete leaves
+  // the proration invoice `open` when collection fails, and does not throw. Only
+  // the projector, seeing this exact invoice paid, may activate.
+  const { error: acceptError } = await input.admin.rpc(
+    'mark_stripe_billing_subscription_plan_change_accepted',
+    {
+      p_operation_pk: operationPk,
+      p_claim_token: claimToken,
+      p_proration_invoice_id: prorationInvoiceIdOf(updated),
+    },
+  );
+  if (acceptError) {
+    // The change IS applied at Stripe. Reporting failure here would invite a
+    // retry that applies it again, so this is logged and still reported as
+    // success: the ledger row is recoverable by reconciliation, a double
+    // proration is not.
+    console.error('plan change applied but its ledger row did not record acceptance:', acceptError.message);
+  }
+
+  // Deliberately not written back to billing_subscriptions. The projector owns
+  // that row and customer.subscription.updated carries this same state.
+  return { ok: true, kind: 'activated', planCode, billingInterval };
 }
 
 async function scheduleAtRenewal(input: {

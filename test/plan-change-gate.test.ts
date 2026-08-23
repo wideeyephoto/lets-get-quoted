@@ -42,6 +42,10 @@ vi.mock('@/lib/account-events', () => ({
   recordAccountEvent: vi.fn(async (input: Record<string, unknown>) => { accountEvents.push(input); }),
 }));
 
+/** The plan-change consent recorder runs as the signed-in owner, so the gate
+ * tests need one even though the flag refuses before it is ever used. */
+const OWNER = { supabase: null, accountId: 'acct_1', userId: 'user_1' } as never;
+
 const {
   BASE_PLAN_SUBSCRIPTION_PLAN_CHANGE_FLAG: FLAG,
   PLAN_CHANGE_DISABLED_MESSAGE,
@@ -59,6 +63,7 @@ const exploding = new Proxy({}, {
 
 const upgrade = () => changeBasePlan({
   admin: exploding,
+  owner: OWNER,
   accountId: '00000000-0000-0000-0000-000000000001',
   targetPlanCode: 'growth',
   targetBillingInterval: 'monthly',
@@ -130,6 +135,7 @@ describe('the paths deliberately NOT gated, so nobody gates them later', () => {
     // returns PLAN_CHANGE_DISABLED_MESSAGE without ever touching the client.
     await expect(changeBasePlan({
       admin: exploding,
+      owner: OWNER,
       accountId: '00000000-0000-0000-0000-000000000001',
       targetPlanCode: 'flex',
       targetBillingInterval: 'none',
