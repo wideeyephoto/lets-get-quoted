@@ -1,8 +1,12 @@
 # Plan change — what is actually required
 
-**Date:** 2026-08-23 (revised, second pass)<br>
-**Status:** contained, not built. The panel is withheld AND the operation is
-gated (`LGQ_BASE_PLAN_SUBSCRIPTION_PLAN_CHANGE_ENABLED`, default 0).<br>
+**Date:** 2026-08-23 (revised, third pass)<br>
+**Status:** contained, and the SQL foundation is built. The panel is withheld AND
+the operation is gated (`LGQ_BASE_PLAN_SUBSCRIPTION_PLAN_CHANGE_ENABLED`,
+default 0). Consent recorder, ledger and claim RPC are **applied and inert** —
+`20260823200000`, `20260823210000`, `20260823220000`. Nothing calls any of them.
+Still to come: the transition RPCs, the projector/binding patches, the
+TypeScript write path, credit grants, and the end-to-end test. See Sequencing.<br>
 **Read this before writing any code.** The first version of this note was wrong
 in ways that would have taken money before provisioning.
 
@@ -46,10 +50,15 @@ definition.
 
 ---
 
-## The central unsolved problem: a plan change has no Checkout Session
+## The central problem: a plan change has no Checkout Session
 
-This is the thing to solve first, because the shape of everything else follows
-from it. Verified in the live projector body:
+**DECIDED — the third option below, with a separate ledger.** Kept in full
+because the two rejected options are the ones that look attractive on a second
+reading, and traps 1–3 still constrain the projector patch that has not been
+written yet.
+
+This is the thing everything else follows from. Verified in the live projector
+body:
 
 - `'checkout_session_id'` is in the required key set of the projection payload.
 - `or v_checkout_session_id is null or v_checkout_session_id !~
