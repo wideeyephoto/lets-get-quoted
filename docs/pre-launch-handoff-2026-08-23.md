@@ -18,6 +18,22 @@ exposed secret. The problems were all in the lifecycle *around* the sale.
 
 ---
 
+## Where the plan-change rail actually stands
+
+**See [plan-change-handoff-2026-08-23-evening.md](plan-change-handoff-2026-08-23-evening.md).**
+It opens with a blocking decision that must be resolved before any more SQL is
+written, and it supersedes the section below on Item 2.
+
+The short version: the SQL foundation is built and applied, and then the
+projector turned out to do its own operation lookup against
+`billing_subscription_checkout_operations` (`v_operation` on 30 lines, three
+UPDATEs writing back). A plan-change operation in a separate table is never
+found. Either the projector becomes table-agnostic, or plan-change operations
+move into the checkout table — and that choice decides whether three applied
+migrations survive.
+
+---
+
 ## The one thing left
 
 ### Item 2 — a self-serve plan change charged the card and could not project
