@@ -309,6 +309,12 @@ describe('the wiring, as source', () => {
     };
     walk('src/app');
     expect(callers.sort()).toEqual([
+      'src/app/dashboard/clients/[id]/page.tsx',
+      'src/app/dashboard/clients/actions.ts',
+      'src/app/dashboard/clients/page.tsx',
+      'src/app/dashboard/jobs/[id]/page.tsx',
+      'src/app/dashboard/jobs/actions.ts',
+      'src/app/dashboard/jobs/page.tsx',
       'src/app/dashboard/leads/[leadId]/page.tsx',
       'src/app/dashboard/leads/actions.ts',
       'src/app/dashboard/leads/page.tsx',

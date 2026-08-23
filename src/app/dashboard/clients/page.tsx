@@ -1,5 +1,5 @@
 import { cookies } from 'next/headers';
-import { requireOwnerContext } from '@/lib/auth';
+import { requireOfficeContext } from '@/lib/auth';
 import { listClientsWithStats } from '@/lib/clients';
 import { clientPins } from '@/lib/client-map';
 import { CLIENTS_VIEW_COOKIE, normalizeClientsView } from '@/lib/dashboard-views';
@@ -13,13 +13,13 @@ import ClientsScreen from './ClientsScreen';
 export const metadata = { title: 'Clients' };
 
 /**
- * The customer book, for a signed-in owner.
+ * The customer book, for a signed-in owner or office user with clients.read.
  *
  * The read only — the screen itself is in ClientsScreen so the logged-out demo
  * renders the same one.
  */
 export default async function ClientsPage({ searchParams }: { searchParams: { created?: string; existing?: string; add?: string; merged?: string; dismissed?: string; dismissError?: string } }) {
-  const { supabase, accountId, accountTimeZone } = await requireOwnerContext();
+  const { supabase, accountId, accountTimeZone } = await requireOfficeContext('clients.read');
   const todayKey = todayIn(accountTimeZone);
   // One query for the whole book's coordinates, not one per customer.
   const [clients, pinsByClient, dismissed] = await Promise.all([

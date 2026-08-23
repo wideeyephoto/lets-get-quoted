@@ -1,4 +1,4 @@
-import { requireOwnerContext } from '@/lib/auth';
+import { requireOfficeContext } from '@/lib/auth';
 import AddressAutocomplete from '@/components/address-autocomplete';
 import ScheduledDatePicker from '@/components/scheduled-date-picker';
 import TimeSlotSelect from '@/components/time-slot-select';
@@ -134,7 +134,7 @@ export default async function JobsPage({
 }: {
   searchParams: { status?: string; new?: string; owing?: string };
 }) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('jobs.read', 'clients.read');
 
   const [allJobs, leads] = await Promise.all([
     listJobs(supabase, accountId),

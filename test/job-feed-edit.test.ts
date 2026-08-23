@@ -55,8 +55,8 @@ describe('only an update somebody typed can be rewritten', () => {
     expect(editBlock).toContain(".eq('id', eventId)");
   });
 
-  it('reads the owner’s own session rather than trusting an id', () => {
-    expect(editBlock).toContain('await requireOwnerContext()');
+  it('reads the session rather than trusting an id', () => {
+    expect(editBlock).toMatch(/await require(Owner|Office)Context\(/);
   });
 
   it('will not save an update with nothing in the title', () => {

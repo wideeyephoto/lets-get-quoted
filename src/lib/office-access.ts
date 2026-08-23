@@ -66,13 +66,16 @@ export const OFFICE_ROUTES: readonly OfficeRoute[] = Object.freeze([
     label: 'Leads',
     requires: Object.freeze(['leads.read']),
   }),
-  // Clients and jobs belong here the day their pages ask requireOfficeContext.
-  // Clients was audited on 2026-08-21 and REFUSED -- its detail page states
-  // "$0.00 paid" as a fact because payments is owner-only, and mergeClientsAction
-  // deletes rows whose re-pointing RLS silently refused. Jobs is unaudited.
-  // When jobs lands it needs BOTH jobs.read and clients.read: jobs name a client
-  // on nearly every row, so a jobs screen without clients.read is a list of work
-  // for nobody.
+  Object.freeze({
+    href: '/dashboard/clients',
+    label: 'Clients',
+    requires: Object.freeze(['clients.read']),
+  }),
+  Object.freeze({
+    href: '/dashboard/jobs',
+    label: 'Jobs',
+    requires: Object.freeze(['jobs.read', 'clients.read']),
+  }),
 ]);
 
 /** Where an office user goes when they hold nothing. */

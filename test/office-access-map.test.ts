@@ -44,6 +44,8 @@ describe('what an office user may open', () => {
     // with no way for the person to know why.
     expect(OFFICE_ROUTES.map((r) => r.href)).toEqual([
       '/dashboard/leads',
+      '/dashboard/clients',
+      '/dashboard/jobs',
     ]);
   });
 
@@ -119,12 +121,13 @@ describe('deciding whether this person may open this path', () => {
     expect(officeCanOpen('/dashboard/leads/9', all)).toBe(true);
   });
 
-  it('refuses a route that is not on the list, however much is held', () => {
-    // Clients and jobs were on this list before their pages were converted, and
-    // holding their capabilities still opens nothing -- the allowlist decides,
-    // not the capability set. That is the whole point of it being a list.
-    expect(officeCanOpen('/dashboard/clients', all)).toBe(false);
-    expect(officeCanOpen('/dashboard/jobs', all)).toBe(false);
+  it('refuses a route when missing required capabilities', () => {
+    // Clients requires clients.read, jobs requires jobs.read AND clients.read.
+    expect(officeCanOpen('/dashboard/clients', ['leads.read'])).toBe(false);
+    expect(officeCanOpen('/dashboard/jobs', ['leads.read'])).toBe(false);
+    expect(officeCanOpen('/dashboard/jobs', ['jobs.read'])).toBe(false);
+    expect(officeCanOpen('/dashboard/clients', all)).toBe(true);
+    expect(officeCanOpen('/dashboard/jobs', all)).toBe(true);
   });
 
   it('needs EVERY capability a route names, not just one', () => {
@@ -157,14 +160,13 @@ describe('deciding whether this person may open this path', () => {
 describe('where an office user lands', () => {
   it('goes to their first permitted page', () => {
     expect(officeLandingPath(['leads.read', 'clients.read'])).toBe('/dashboard/leads');
+    expect(officeLandingPath(['clients.read'])).toBe('/dashboard/clients');
+    expect(officeLandingPath(['jobs.read', 'clients.read'])).toBe('/dashboard/clients');
   });
 
   it('never sends somebody to a page that would bounce them back', () => {
-    // The redirect loop this list exists to prevent: holding clients.read opens
-    // nothing, because that page still asks requireOwnerContext. Landing there
-    // would return them to /office-access, which would send them there again.
-    expect(officeLandingPath(['clients.read'])).toBe('/office-access');
-    expect(officeLandingPath(['jobs.read', 'clients.read'])).toBe('/office-access');
+    // Holding only jobs.read opens nothing because jobs also requires clients.read
+    expect(officeLandingPath(['jobs.read'])).toBe('/office-access');
   });
 
   it('goes to the holding page when they hold nothing that opens anything', () => {

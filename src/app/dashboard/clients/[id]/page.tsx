@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { requireOwnerContext } from '@/lib/auth';
+import { requireOfficeContext } from '@/lib/auth';
 import { getClient, getClientStatement } from '@/lib/clients';
 import { formatMoney, type JobStatus } from '@/lib/jobs';
 import { formatPhoneDashes } from '@/lib/phone';
@@ -23,7 +23,7 @@ function formatDate(value: string): string {
 }
 
 export default async function ClientDetailPage({ params }: { params: { id: string } }) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId, role } = await requireOfficeContext('clients.read');
   const client = await getClient(supabase, accountId, params.id);
 
   if (!client) {
@@ -56,7 +56,7 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
   const jobs = jobRows ?? [];
   const leads = leadRows ?? [];
   const totalValue = jobs.reduce((sum, job) => sum + (Number(job.quoted_amount) || 0), 0);
-  const statement = await getClientStatement(supabase, accountId, client.id);
+  const statement = role === 'owner' ? await getClientStatement(supabase, accountId, client.id) : null;
   const boundUpdate = updateClientAction.bind(null, client.id);
 
   return (
@@ -83,8 +83,12 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
           <div className="job-command-facts" aria-label="Client facts">
             <span><strong>{jobs.length}</strong> job{jobs.length === 1 ? '' : 's'}</span>
             <span><strong>{formatMoney(totalValue)}</strong> lifetime value</span>
-            <span><strong>{formatMoney(statement.totalPaid)}</strong> paid</span>
-            {statement.outstanding > 0 ? <span className="fact-outstanding"><strong>{formatMoney(statement.outstanding)}</strong> outstanding</span> : null}
+            {statement ? (
+              <>
+                <span><strong>{formatMoney(statement.totalPaid)}</strong> paid</span>
+                {statement.outstanding > 0 ? <span className="fact-outstanding"><strong>{formatMoney(statement.outstanding)}</strong> outstanding</span> : null}
+              </>
+            ) : null}
             {client.address ? <span>{client.address}</span> : null}
           </div>
           <div className="actions workspace-actions">
@@ -104,7 +108,7 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
               <a className="btn secondary" href={`mailto:${client.email}`}>✉️ Email</a>
             ) : null}
             <Link href="/dashboard/clients" className="btn secondary">Back to clients</Link>
-            {jobs.length > 0 ? <Link href={`/dashboard/clients/${client.id}/statement`} className="btn secondary">View statement →</Link> : null}
+            {statement && jobs.length > 0 ? <Link href={`/dashboard/clients/${client.id}/statement`} className="btn secondary">View statement →</Link> : null}
           </div>
         </div>
       </section>

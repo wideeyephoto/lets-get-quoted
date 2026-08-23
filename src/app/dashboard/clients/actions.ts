@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { requireOwnerContext } from '@/lib/auth';
+import { requireOfficeContext, requireOwnerContext } from '@/lib/auth';
 import { normalizeUsPhone } from '@/lib/phone';
 import { updateClient } from '@/lib/clients';
 import { duplicateMemberKey, mergedFields } from '@/lib/client-duplicates';
@@ -55,7 +55,7 @@ function sanitizeSources(raw: unknown, width: number): ColumnSources {
 // rule-based match first, then AI, then a positional fallback — and always
 // returns a preview so the owner can confirm before anything is written.
 export async function analyzeClientImport(text: string): Promise<ClientImportPreview> {
-  await requireOwnerContext();
+  await requireOfficeContext('clients.write');
   const trimmed = (text ?? '').trim();
   if (!trimmed) return { ok: false, error: 'empty' };
 
@@ -91,7 +91,7 @@ export async function previewClientImport(
   sources: ColumnSources,
   hasHeader: boolean,
 ): Promise<{ sampleRows: ParsedClientRow[]; totalRows: number }> {
-  await requireOwnerContext();
+  await requireOfficeContext('clients.write');
   const grid = parseTable((text ?? '').trim());
   const width = grid.reduce((max, r) => Math.max(max, r.length), 0);
   const rows = applyMapping(grid, { hasHeader, sources: sanitizeSources(sources, width) });
@@ -105,7 +105,7 @@ export async function commitClientImport(
   sources: ColumnSources,
   hasHeader: boolean,
 ): Promise<{ imported: number; duplicates: number; skipped: number; error?: 'norows' }> {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('clients.write');
   const grid = parseTable((text ?? '').trim());
   const width = grid.reduce((max, r) => Math.max(max, r.length), 0);
   const rows = applyMapping(grid, { hasHeader, sources: sanitizeSources(sources, width) }).slice(0, MAX_IMPORT_ROWS);
@@ -141,7 +141,7 @@ function normalizedPhone(value: FormDataEntryValue | null): string | null {
 }
 
 export async function updateClientAction(clientId: string, formData: FormData) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('clients.write');
 
   await updateClient(supabase, accountId, clientId, {
     name: (formData.get('name') ?? '').toString().trim() || 'Client',
@@ -166,7 +166,7 @@ export async function updateClientAction(clientId: string, formData: FormData) {
 // profile rather than creating a second copy, because two half-filled records
 // for the same person is exactly what a customer list is supposed to prevent.
 export async function createClientAction(formData: FormData) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('clients.write');
 
   const name = String(formData.get('name') ?? '').trim().slice(0, 160);
   if (!name) throw new Error('A customer needs a name.');
@@ -321,7 +321,7 @@ export async function mergeClientsAction(formData: FormData): Promise<void> {
  * back. See duplicateMemberKey.
  */
 export async function dismissDuplicateGroupAction(formData: FormData): Promise<void> {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('clients.write');
 
   const memberIds = formData
     .getAll('duplicateId')

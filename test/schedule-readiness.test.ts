@@ -235,10 +235,10 @@ describe('the duration is editable in place', () => {
     expect(PANEL).not.toContain('Not set — add one');
   });
 
-  it('the action is owner-scoped and filters on the account as well as the id', () => {
+  it('the action is account-scoped and filters on the account as well as the id', () => {
     const fn = ACTIONS.slice(ACTIONS.indexOf('export async function setJobEstimatedHoursAction'));
     const body = fn.slice(0, fn.indexOf('\nexport '));
-    expect(body).toContain('await requireOwnerContext()');
+    expect(body).toMatch(/await require(Owner|Office)Context\(/);
     expect(body).toContain(".eq('account_id', accountId)");
   });
 

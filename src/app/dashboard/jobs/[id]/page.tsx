@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { createAdminClient, requireOwnerContext } from '@/lib/auth';
+import { createAdminClient, requireOfficeContext } from '@/lib/auth';
 import ArrivalPanel from '@/components/arrival-panel';
 import { arrivalSettingsFromAccount, describeArrivalOutcome, formatArrivalWindow, DEFAULT_ARRIVAL_TEMPLATE } from '@/lib/arrival';
 import { getActiveTracking } from '@/lib/job-tracking';
@@ -137,7 +137,7 @@ export default async function JobDetailPage({
   params: { id: string };
   searchParams: { tab?: string; clientToken?: string; edit?: string; open?: string; delivery?: string; arrival?: string; sms?: string };
 }) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId, role } = await requireOfficeContext('jobs.read', 'clients.read');
 
   const job = await getJob(supabase, accountId, params.id);
 
@@ -154,7 +154,7 @@ export default async function JobDetailPage({
     );
   }
 
-  const costs = await listCosts(supabase, accountId, job.id);
+  const costs = role === 'owner' ? await listCosts(supabase, accountId, job.id) : [];
   const margin = computeMargin(job, costs);
   const changeOrders = await listChangeOrders(supabase, accountId, job.id);
   const [selections, selectionTemplates, lastSelectionSent] = await Promise.all([
@@ -179,12 +179,12 @@ export default async function JobDetailPage({
   const confidence = costConfidence(
     costs.map((cost) => ({ amount: Number(cost.amount) || 0, burdenAmount: Number(cost.burden_amount) || 0, source: cost.cost_source })),
   );
-  const marginWarning = marginVerdict({
+  const marginWarning = role === 'owner' ? marginVerdict({
     revenue: margin.revenue,
     totalCost: margin.totalCost,
     minMarginPct: await getMinMarginPct(supabase, accountId),
     evidencedPct: confidence.evidencedPct,
-  });
+  }) : null;
   // Computed over the whole list, not just at entry: the duplicate worth
   // catching is usually the one saved last week.
   const duplicates = duplicateCostIds(
@@ -1738,166 +1738,170 @@ export default async function JobDetailPage({
           selections board and the expenses list get the width the fluid shell
           now has to give them. */}
       <section id="job-costs" className="workspace-grid">
-            <details className="panel workspace-section-card workspace-details job-action-details" open={searchParams.open === 'costs'}>
-              <summary className="workspace-details-summary job-action-summary">
-                <div className="section-heading workspace-section-heading compact-heading">
-                  <p className="eyebrow">Expenses</p>
-                  <h2>Job expenses</h2>
-                </div>
-                <span className="workspace-details-copy">Log materials, labor, subcontractors, receipts, and other costs.</span>
-              </summary>
-
-              <div className="cost-add-row" style={{ marginBottom: '0.9rem' }}>
-                <ModalDialog triggerClassName="btn secondary" triggerLabel="+ Add expense" title="Add expense">
-                  <form action={boundCreateCost} className="cost-form">
-                    <JobExpenseFields crew={crew} onReadReceipt={readReceiptAction} />
-                    <div style={{ marginTop: '0.8rem' }}>
-                      <SaveButton pendingLabel="Adding…" savedLabel="Added ✓">+ Add expense</SaveButton>
-                    </div>
-                    <CloseOnSuccess />
-                  </form>
-                </ModalDialog>
+        {role === 'owner' ? (
+          <details className="panel workspace-section-card workspace-details job-action-details" open={searchParams.open === 'costs'}>
+            <summary className="workspace-details-summary job-action-summary">
+              <div className="section-heading workspace-section-heading compact-heading">
+                <p className="eyebrow">Expenses</p>
+                <h2>Job expenses</h2>
               </div>
+              <span className="workspace-details-copy">Log materials, labor, subcontractors, receipts, and other costs.</span>
+            </summary>
 
-              {costs.length === 0 ? (
-                <p className="empty-state">No expenses logged yet.</p>
-              ) : (
-                <div className="cost-list">
-                  {costs.map((cost) => (
-                    <div key={cost.id} className="cost-item">
-                      <div className="cost-item-main">
-                        <span className="cost-item-desc">
-                          {COST_TYPE_ICON[cost.type]} {cost.description}
+            <div className="cost-add-row" style={{ marginBottom: '0.9rem' }}>
+              <ModalDialog triggerClassName="btn secondary" triggerLabel="+ Add expense" title="Add expense">
+                <form action={boundCreateCost} className="cost-form">
+                  <JobExpenseFields crew={crew} onReadReceipt={readReceiptAction} />
+                  <div style={{ marginTop: '0.8rem' }}>
+                    <SaveButton pendingLabel="Adding…" savedLabel="Added ✓">+ Add expense</SaveButton>
+                  </div>
+                  <CloseOnSuccess />
+                </form>
+              </ModalDialog>
+            </div>
+
+            {costs.length === 0 ? (
+              <p className="empty-state">No expenses logged yet.</p>
+            ) : (
+              <div className="cost-list">
+                {costs.map((cost) => (
+                  <div key={cost.id} className="cost-item">
+                    <div className="cost-item-main">
+                      <span className="cost-item-desc">
+                        {COST_TYPE_ICON[cost.type]} {cost.description}
+                      </span>
+                      <span className="cost-item-sub">
+                        {cost.type === 'labor'
+                          ? `${cost.hours} hrs × ${formatMoney(Number(cost.rate))}/hr${cost.crew_name ? ` · ${cost.crew_name}` : ''}${cost.supplier ? ` · ${cost.supplier}` : ''}`
+                          : cost.supplier || cost.category}
+                        {cost.cost_source !== 'unspecified' ? ` · ${COST_SOURCE_LABEL[cost.cost_source]}` : ''}
+                      </span>
+                      {/* A warning, never a block. A contractor really can buy
+                          the same $47 of PVC twice in a week, and refusing the
+                          second one just teaches them to type $47.01. */}
+                      {duplicates.has(cost.id) ? (
+                        <span className="cost-item-duplicate">
+                          Possible duplicate — {describeDuplicate(duplicates.get(cost.id)!)}
                         </span>
-                        <span className="cost-item-sub">
-                          {cost.type === 'labor'
-                            ? `${cost.hours} hrs × ${formatMoney(Number(cost.rate))}/hr${cost.crew_name ? ` · ${cost.crew_name}` : ''}${cost.supplier ? ` · ${cost.supplier}` : ''}`
-                            : cost.supplier || cost.category}
-                          {cost.cost_source !== 'unspecified' ? ` · ${COST_SOURCE_LABEL[cost.cost_source]}` : ''}
-                        </span>
-                        {/* A warning, never a block. A contractor really can buy
-                            the same $47 of PVC twice in a week, and refusing the
-                            second one just teaches them to type $47.01. */}
-                        {duplicates.has(cost.id) ? (
-                          <span className="cost-item-duplicate">
-                            Possible duplicate — {describeDuplicate(duplicates.get(cost.id)!)}
-                          </span>
-                        ) : null}
-                      </div>
-                      <div className="cost-item-actions">
-                        <span className="cost-item-amount">−{formatMoney(Number(cost.amount))}</span>
-                        <form action={deleteCostAction.bind(null, job.id, cost.id)}>
-                          <button type="submit" className="icon-btn">
-                            ✕
-                          </button>
-                        </form>
-                      </div>
+                      ) : null}
                     </div>
-                  ))}
-                </div>
-              )}
-            </details>
-
-            {/* Open by default once the work is done: that is the moment a
-                warranty is worth starting, and the moment it gets forgotten. */}
-            <details className="panel workspace-section-card workspace-details job-action-details" open={job.status === 'complete' && warranties.length === 0}>
-              <summary className="workspace-details-summary job-action-summary">
-                <div className="section-heading workspace-section-heading compact-heading">
-                  <p className="eyebrow">After the work</p>
-                  <h2>Warranty</h2>
-                </div>
-                <span className="workspace-details-copy">
-                  {warranties.length === 0
-                    ? 'What you stand behind, and for how long.'
-                    : `${warranties.length} warranty${warranties.length === 1 ? '' : ' records'} on this job${
-                        warrantyClaims.length > 0 ? ` · ${warrantyClaims.length} customer request${warrantyClaims.length === 1 ? '' : 's'}` : ''
-                      }.`}
-                </span>
-              </summary>
-              <WarrantyPanel jobId={job.id} warranties={warranties} claims={warrantyClaims} defaultMonths={defaultWarrantyMonths} />
-            </details>
-
-            {changeOrders.length > 0 ? (
-              <details id="change-orders" className="panel workspace-section-card workspace-details job-action-details" open={changeOrderTotals(changeOrders).unsent > 0}>
-                <summary className="workspace-details-summary job-action-summary">
-                  <div className="section-heading workspace-section-heading compact-heading">
-                    <p className="eyebrow">Extra work</p>
-                    <h2>Change orders</h2>
+                    <div className="cost-item-actions">
+                      <span className="cost-item-amount">−{formatMoney(Number(cost.amount))}</span>
+                      <form action={deleteCostAction.bind(null, job.id, cost.id)}>
+                        <button type="submit" className="icon-btn">
+                          ✕
+                        </button>
+                      </form>
+                    </div>
                   </div>
-                  <span className="workspace-details-copy">
-                    {(() => {
-                      const totals = changeOrderTotals(changeOrders);
-                      // The unsent figure leads because it's the actionable one:
-                      // work the crew documented that nobody has billed for.
-                      if (totals.unsent > 0) return `${formatMoney(totals.unsent)} written up and not sent yet.`;
-                      if (totals.awaiting > 0) return `${formatMoney(totals.awaiting)} waiting on the customer.`;
-                      if (totals.approved > 0) return `${formatMoney(totals.approved)} approved and added to this job.`;
-                      return 'Extra work found on site.';
-                    })()}
-                  </span>
-                </summary>
-                <ChangeOrderPanel jobId={job.id} orders={changeOrders} />
-              </details>
-            ) : null}
-
-            <details className="panel workspace-section-card workspace-details job-action-details">
-              <summary className="workspace-details-summary job-action-summary">
-                <div className="section-heading workspace-section-heading compact-heading">
-                  <p className="eyebrow">Profitability</p>
-                  <h2>ROI</h2>
-                </div>
-                <span className="workspace-details-copy">Track profit against the quoted job amount as costs come in.</span>
-              </summary>
-              <div className="margin-card">
-                <div className="margin-row">
-                  <span>Revenue</span>
-                  <span>{formatMoney(margin.revenue)}</span>
-                </div>
-                <div className="margin-row sub">
-                  <span>Materials</span>
-                  <span>−{formatMoney(margin.materialsCost)}</span>
-                </div>
-                <div className="margin-row sub">
-                  <span>Labor</span>
-                  <span>−{formatMoney(margin.laborCost)}</span>
-                </div>
-                {/* Burden is shown on its own line rather than hidden inside
-                    "Labor". A contractor seeing $300 where they paid $240 needs
-                    to know the difference is taxes and comp, not an error. */}
-                {margin.laborBurden > 0 ? (
-                  <div className="margin-row sub muted">
-                    <span>&nbsp;&nbsp;of which taxes &amp; insurance</span>
-                    <span>−{formatMoney(margin.laborBurden)}</span>
-                  </div>
-                ) : null}
-                <div className="margin-row sub">
-                  <span>Other</span>
-                  <span>−{formatMoney(margin.otherCost)}</span>
-                </div>
-                <div className="margin-row bold">
-                  <span>Profit</span>
-                  <span>{formatMoney(margin.profit)}</span>
-                </div>
-                <div className={`margin-badge ${marginTier(margin.margin)}`}>
-                  <div className="label">ROI</div>
-                  <div className="value">{formatPercent(margin.margin)}</div>
-                </div>
+                ))}
               </div>
-              {marginWarning?.message ? (
-                <p className={`margin-alert${marginWarning.losing ? ' is-loss' : ''}`}>{marginWarning.message}</p>
+            )}
+          </details>
+        ) : null}
+
+        {/* Open by default once the work is done: that is the moment a
+            warranty is worth starting, and the moment it gets forgotten. */}
+        <details className="panel workspace-section-card workspace-details job-action-details" open={job.status === 'complete' && warranties.length === 0}>
+          <summary className="workspace-details-summary job-action-summary">
+            <div className="section-heading workspace-section-heading compact-heading">
+              <p className="eyebrow">After the work</p>
+              <h2>Warranty</h2>
+            </div>
+            <span className="workspace-details-copy">
+              {warranties.length === 0
+                ? 'What you stand behind, and for how long.'
+                : `${warranties.length} warranty${warranties.length === 1 ? '' : ' records'} on this job${
+                    warrantyClaims.length > 0 ? ` · ${warrantyClaims.length} customer request${warrantyClaims.length === 1 ? '' : 's'}` : ''
+                  }.`}
+            </span>
+          </summary>
+          <WarrantyPanel jobId={job.id} warranties={warranties} claims={warrantyClaims} defaultMonths={defaultWarrantyMonths} />
+        </details>
+
+        {changeOrders.length > 0 ? (
+          <details id="change-orders" className="panel workspace-section-card workspace-details job-action-details" open={changeOrderTotals(changeOrders).unsent > 0}>
+            <summary className="workspace-details-summary job-action-summary">
+              <div className="section-heading workspace-section-heading compact-heading">
+                <p className="eyebrow">Extra work</p>
+                <h2>Change orders</h2>
+              </div>
+              <span className="workspace-details-copy">
+                {(() => {
+                  const totals = changeOrderTotals(changeOrders);
+                  // The unsent figure leads because it's the actionable one:
+                  // work the crew documented that nobody has billed for.
+                  if (totals.unsent > 0) return `${formatMoney(totals.unsent)} written up and not sent yet.`;
+                  if (totals.awaiting > 0) return `${formatMoney(totals.awaiting)} waiting on the customer.`;
+                  if (totals.approved > 0) return `${formatMoney(totals.approved)} approved and added to this job.`;
+                  return 'Extra work found on site.';
+                })()}
+              </span>
+            </summary>
+            <ChangeOrderPanel jobId={job.id} orders={changeOrders} />
+          </details>
+        ) : null}
+
+        {role === 'owner' ? (
+          <details className="panel workspace-section-card workspace-details job-action-details">
+            <summary className="workspace-details-summary job-action-summary">
+              <div className="section-heading workspace-section-heading compact-heading">
+                <p className="eyebrow">Profitability</p>
+                <h2>ROI</h2>
+              </div>
+              <span className="workspace-details-copy">Track profit against the quoted job amount as costs come in.</span>
+            </summary>
+            <div className="margin-card">
+              <div className="margin-row">
+                <span>Revenue</span>
+                <span>{formatMoney(margin.revenue)}</span>
+              </div>
+              <div className="margin-row sub">
+                <span>Materials</span>
+                <span>−{formatMoney(margin.materialsCost)}</span>
+              </div>
+              <div className="margin-row sub">
+                <span>Labor</span>
+                <span>−{formatMoney(margin.laborCost)}</span>
+              </div>
+              {/* Burden is shown on its own line rather than hidden inside
+                  "Labor". A contractor seeing $300 where they paid $240 needs
+                  to know the difference is taxes and comp, not an error. */}
+              {margin.laborBurden > 0 ? (
+                <div className="margin-row sub muted">
+                  <span>&nbsp;&nbsp;of which taxes &amp; insurance</span>
+                  <span>−{formatMoney(margin.laborBurden)}</span>
+                </div>
               ) : null}
-              <p className="margin-note">
-                Revenue is the job&apos;s quoted amount. ROI updates live as you log costs.
-                {confidence.total > 0 ? (
-                  <>
-                    {' '}
-                    {Math.round(confidence.evidencedPct * 100)}% of the cost here is backed by a receipt, an invoice or
-                    the time clock.
-                  </>
-                ) : null}
-              </p>
-            </details>
-        </section>
+              <div className="margin-row sub">
+                <span>Other</span>
+                <span>−{formatMoney(margin.otherCost)}</span>
+              </div>
+              <div className="margin-row bold">
+                <span>Profit</span>
+                <span>{formatMoney(margin.profit)}</span>
+              </div>
+              <div className={`margin-badge ${marginTier(margin.margin)}`}>
+                <div className="label">ROI</div>
+                <div className="value">{formatPercent(margin.margin)}</div>
+              </div>
+            </div>
+            {marginWarning?.message ? (
+              <p className={`margin-alert${marginWarning.losing ? ' is-loss' : ''}`}>{marginWarning.message}</p>
+            ) : null}
+            <p className="margin-note">
+              Revenue is the job&apos;s quoted amount. ROI updates live as you log costs.
+              {confidence.total > 0 ? (
+                <>
+                  {' '}
+                  {Math.round(confidence.evidencedPct * 100)}% of the cost here is backed by a receipt, an invoice or
+                  the time clock.
+                </>
+              ) : null}
+            </p>
+          </details>
+        ) : null}
+      </section>
 
     </main>
     </ScrollTopOnSaveProvider>

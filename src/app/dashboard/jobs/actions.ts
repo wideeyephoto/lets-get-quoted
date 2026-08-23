@@ -15,7 +15,7 @@ import { listServices } from '@/lib/services';
 import { normalizeCostSource } from '@/lib/cost-truth';
 import { readReceipt, type ReceiptRead } from '@/lib/receipt-ocr';
 import { redirect } from 'next/navigation';
-import { createAdminClient, requireOwnerContext } from '@/lib/auth';
+import { createAdminClient, requireOfficeContext, requireOwnerContext } from '@/lib/auth';
 import { loadBusinessName } from '@/lib/business-name';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { AiDraftsExhaustedError } from '@/lib/ai-model-call';
@@ -94,7 +94,7 @@ function parseJobStatus(value: unknown): JobStatus | null {
 }
 
 export async function createJobAction(formData: FormData) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('jobs.write', 'clients.write');
   const clientPhone = optionalText(formData.get('clientPhone'));
   const sendClientText = formData.get('sendClientText') === 'on';
   const normalizedClientPhone = clientPhone ? normalizeUsPhone(clientPhone) : null;
@@ -214,7 +214,7 @@ export async function createJobAction(formData: FormData) {
 }
 
 export async function updateJobAction(jobId: string, formData: FormData) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('jobs.write');
   const clientFeedAccessEnabled = formData.get('clientFeedAccess') === 'on';
 
   const updatedJob = await updateJob(supabase, accountId, jobId, {
@@ -304,7 +304,7 @@ export async function updateJobAction(jobId: string, formData: FormData) {
  * the job rather than duplicating it.
  */
 export async function markJobStartedAction(jobId: string) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('jobs.write');
   const job = await getJob(supabase, accountId, jobId);
   if (!job) throw new Error('Job not found for this account.');
   if (job.status === 'archived') throw new Error('This job is archived.');
@@ -357,7 +357,7 @@ export async function markJobStartedAction(jobId: string) {
  * thing that didn't happen is worse than removing it.
  */
 export async function undoJobStartedAction(jobId: string, eventId: string) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('jobs.write');
   const job = await getJob(supabase, accountId, jobId);
   if (!job) throw new Error('Job not found for this account.');
 
@@ -396,7 +396,7 @@ export async function undoJobStartedAction(jobId: string, eventId: string) {
 }
 
 export async function markJobCompleteAction(jobId: string, formData?: FormData) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('jobs.write');
   const job = await getJob(supabase, accountId, jobId);
   if (!job) throw new Error('Job not found for this account.');
 
@@ -484,7 +484,7 @@ export async function markJobCompleteAction(jobId: string, formData?: FormData) 
 }
 
 export async function undoJobCompleteAction(jobId: string, eventId: string) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('jobs.write');
   const job = await getJob(supabase, accountId, jobId);
   if (!job) throw new Error('Job not found for this account.');
 
@@ -522,7 +522,7 @@ export async function undoJobCompleteAction(jobId: string, eventId: string) {
 }
 
 export async function scheduleJobAction(jobId: string, formData: FormData) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('jobs.write');
   const scheduledFor = optionalText(formData.get('scheduledFor'));
 
   if (!scheduledFor) redirect('/dashboard/schedule#unscheduled-jobs');
@@ -566,7 +566,7 @@ export async function scheduleJobAction(jobId: string, formData: FormData) {
 }
 
 export async function removeJobScheduleAction(jobId: string) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('jobs.write');
   const job = await getJob(supabase, accountId, jobId);
   if (!job) throw new Error('Job not found for this account.');
 
@@ -586,7 +586,7 @@ export async function removeJobScheduleAction(jobId: string) {
 }
 
 export async function sendClientScheduleOptionsAction(jobId: string, formData: FormData) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('jobs.write');
   const job = await getJob(supabase, accountId, jobId);
   if (!job) throw new Error('Job not found for this account.');
 
@@ -614,7 +614,7 @@ export async function sendClientScheduleOptionsAction(jobId: string, formData: F
 }
 
 export async function deleteJobAction(jobId: string) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('jobs.write');
 
   await deleteJob(supabase, accountId, jobId);
 
@@ -625,7 +625,7 @@ export async function deleteJobAction(jobId: string) {
 // `notify` (bound per submit button) controls whether newly-assigned crew get
 // an assignment text. The assignment itself always saves; only the SMS is gated.
 export async function updateJobCrewAction(jobId: string, notify: boolean, formData: FormData) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('jobs.write');
 
   const crewIds = formData.getAll('crewIds').map(String);
   const { added } = await setJobCrewAssignments(supabase, accountId, jobId, crewIds);
@@ -707,7 +707,7 @@ export async function setJobEstimatedHoursAction(
   jobId: string,
   hours: number | null,
 ): Promise<{ ok: boolean; message: string }> {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('jobs.write');
 
   // Rejected rather than clamped. A negative or absurd duration is a typo, and
   // silently turning 200 into 24 would put a number on the calendar nobody
@@ -737,7 +737,7 @@ export async function setJobEstimatedHoursAction(
 // assign popover — unlike updateJobCrewAction, this doesn't replace the
 // whole assignment set, it just flips one crew member on one job.
 export async function toggleJobCrewAction(jobId: string, crewId: string, notify = true): Promise<{ assigned: boolean }> {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('jobs.write');
 
   const { assigned } = await toggleJobCrewAssignment(supabase, accountId, jobId, crewId);
 
@@ -792,7 +792,7 @@ export async function toggleJobCrewAction(jobId: string, crewId: string, notify 
 }
 
 export async function textCrewJobDateAction(jobId: string) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('jobs.write');
   const [job, businessName, crewMembers, assignedCrewIds] = await Promise.all([
     getJob(supabase, accountId, jobId),
     loadBusinessName(supabase, accountId),
@@ -929,7 +929,7 @@ export async function createCostAction(jobId: string, formData: FormData) {
 }
 
 export async function createManualJobFeedAction(jobId: string, formData: FormData) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('jobs.write');
 
   const title = (formData.get('title') ?? '').toString().trim() || 'Job update';
   const body = optionalText(formData.get('body'));
@@ -989,7 +989,7 @@ export async function createManualJobFeedAction(jobId: string, formData: FormDat
  * quote whose total moves underneath them.
  */
 export async function editJobFeedUpdateAction(jobId: string, eventId: string, formData: FormData) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('jobs.write');
 
   const title = (formData.get('title') ?? '').toString().trim().slice(0, 120);
   if (!title) throw new Error('An update needs a title.');
@@ -1044,7 +1044,7 @@ export async function editJobFeedUpdateAction(jobId: string, eventId: string, fo
 }
 
 export async function createClientJobLinkAction(jobId: string) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('jobs.write', 'clients.read');
   const job = await getJob(supabase, accountId, jobId);
   if (!job) throw new Error('Job not found for this account.');
 
@@ -1075,7 +1075,7 @@ export async function createClientJobLinkAction(jobId: string) {
 }
 
 export async function revokeClientJobLinkAction(jobId: string) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('jobs.write');
 
   await revokeClientJobAccess(supabase, accountId, jobId);
   await createJobFeedEvent(supabase, accountId, jobId, {
@@ -1125,7 +1125,7 @@ export async function saveQuoteItemsAction(
   items: QuoteItem[],
   options?: { revision?: boolean },
 ): Promise<{ ok: boolean; total: number; message?: string; needsRevision?: boolean }> {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('jobs.write');
   try {
     const before = await getJob(supabase, accountId, jobId);
     const previousTotal = Number(before?.quoted_amount) || 0;
@@ -1196,7 +1196,7 @@ export async function saveQuoteItemsAndNotifyAction(
   jobId: string,
   items: QuoteItem[],
 ): Promise<QuoteNotifyResult> {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('jobs.write');
 
   const before = await getJob(supabase, accountId, jobId);
   if (!before) return { ok: false, total: 0, delivery: 'none', message: 'Job not found for this account.' };
@@ -1359,7 +1359,7 @@ export async function reviewQuoteAction(
   jobId: string,
   lines: { id: string; label: string; amount: number; kind: 'base' | 'addon' | 'subscription'; selected: boolean }[],
 ): Promise<{ ok: true; findings: QuoteFinding[]; aiRan: boolean } | { ok: false; message: string }> {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('jobs.write');
   if (!(await checkRateLimit(createAdminClient(), `quote-guard:${accountId}`, 30, 3600))) {
     return { ok: false, message: 'That is a lot of reviews in an hour — give it a few minutes.' };
   }
@@ -1425,7 +1425,7 @@ export async function draftQuoteAction(jobId: string): Promise<
   | { ok: true; draft: SerializedDraft }
   | { ok: false; reason: 'no-scope' | 'unavailable' | 'busy' | 'exhausted'; message: string }
 > {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('jobs.write');
 
   // 20 drafts an hour per account. Generous for a person, and a ceiling on what
   // a stuck retry loop can spend.
@@ -1632,7 +1632,7 @@ async function reviewAlreadyRequested(supabase: SupabaseClient, accountId: strin
 // message instead of throwing so the button can report exactly what happened —
 // texted, emailed, or why it couldn't send.
 export async function requestJobReviewAction(jobId: string): Promise<{ ok: boolean; message: string }> {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('jobs.write');
   const job = await getJob(supabase, accountId, jobId);
   const result = await deliverJobReviewRequest(supabase, accountId, job);
   if (result.ok) revalidatePath(`/dashboard/jobs/${jobId}`);
@@ -1671,7 +1671,7 @@ export async function requestJobReviewAction(jobId: string): Promise<{ ok: boole
 // -- Job checklist / punch list (owner side) --------------------------------
 
 export async function addJobTaskAction(jobId: string, formData: FormData) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('jobs.write');
   const title = (formData.get('title') ?? '').toString().trim();
   if (!title) return;
   const job = await getJob(supabase, accountId, jobId);
@@ -1681,13 +1681,13 @@ export async function addJobTaskAction(jobId: string, formData: FormData) {
 }
 
 export async function setJobTaskDoneAction(jobId: string, taskId: string, done: boolean) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('jobs.write');
   await setJobTaskDone(supabase, accountId, taskId, done, 'Owner');
   revalidatePath(`/dashboard/jobs/${jobId}`);
 }
 
 export async function deleteJobTaskAction(jobId: string, taskId: string) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('jobs.write');
   await deleteJobTask(supabase, accountId, taskId);
   revalidatePath(`/dashboard/jobs/${jobId}`);
 }
