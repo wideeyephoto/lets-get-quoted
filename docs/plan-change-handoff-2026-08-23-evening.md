@@ -39,9 +39,9 @@ binding does its own lookup with its own `%rowtype`, and refuses on
 
 ### What landed
 
-`migrations/20260823235000_plan_change_projection_table_agnostic.sql` — **written
-and verified, NOT APPLIED** (applying is blocked by the classifier in this
-directory; it needs an explicit go-ahead).
+`migrations/20260823235000_plan_change_projection_table_agnostic.sql` —
+**APPLIED to production 2026-08-23**, and re-run afterwards as a clean no-op with
+byte-identical bodies and ACLs on all four projection functions.
 
 - Binding pair DROP+CREATEd to add an `operation_purpose` OUT column — a
   `create or replace` cannot change a return type. The TypeScript caller needs it:
@@ -57,9 +57,13 @@ directory; it needs an explicit go-ahead).
 - `20260823120000`'s entitlement escape re-pointed at the carrier, so it is live
   rather than dead.
 
-Verify with `npm run verify:plan-change-agnostic`: it dry-runs the migration
-against the installed bodies and rolls back, then breaks each guarded property in
-turn and requires the migration to refuse itself. 17/17 at time of writing.
+Verify with `npm run verify:plan-change-agnostic`. It picks its phase from the
+installed state: **before** the migration is applied it dry-runs and then breaks
+each guarded property in turn, requiring the migration to refuse itself (17/17
+when this landed); **after**, it dry-runs and asserts the live bodies instead
+(28/28). The two are exclusive because the projector patch short-circuits on an
+already-patched body, so post-apply eight mutants can never be reached — a run
+that reported those as failures would just teach the next reader to ignore red.
 
 **One regression this caught in my own patch:** relaxing the null-Session refusal
 for plan changes relaxed it contract-wide, which would have let a *checkout*
@@ -141,6 +145,7 @@ are read. See the top of this file.
 | `20260823210000` | `billing_subscription_plan_change_operations` | Inert; zero rows |
 | `20260823220000` | `claim_stripe_billing_subscription_plan_change` | Inert; nothing calls it |
 | `20260823230000` | Transition RPCs + protection trigger | Inert; nothing calls them |
+| `20260823235000` | Projector + binding read either ledger | Inert; no plan-change row can exist yet |
 
 Everything except `20260823190000` is dark. The panel is withheld at the render
 site AND the operation is gated by
@@ -285,7 +290,7 @@ npm run inspect:cron-health
 ## Sequencing from here
 
 1. ~~Resolve the A/B fork above.~~ **Done — A.**
-2. ~~Projector patches.~~ **Done, in `20260823235000`. Still needs APPLYING.**
+2. ~~Projector patches.~~ **Done and APPLIED** (`20260823235000`).
 3. TypeScript. Two halves, and the read half is now the smaller one:
    **(a) read path** — thread the binding's new `operation_purpose` through
    `subscription-event-projector.ts`, and skip `loadExactSession` entirely when
@@ -306,7 +311,6 @@ npm run inspect:cron-health
 6. End-to-end projection test in test mode. **This gates the flag**, not the
    migrations and not a design note.
 
-**Ceiling:** steps 3–5 are code. Step 2 is written but needs an explicit
-go-ahead to apply. Step 6 and the flag flips need a real
+**Ceiling:** steps 3–5 are code. Step 6 and the flag flips need a real
 test-mode Stripe purchase and a Vercel redeploy — `vercel-env-is-baked-at-build`
 means a Production flag does nothing until one happens.

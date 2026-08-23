@@ -13,14 +13,25 @@
  * and a source patch's whole risk is that the installed body drifted from what
  * the patch expects, which only the real body can tell you.
  *
- * TWO PHASES.
- *   1. DRY RUN. Strip the file's own begin;/commit;, wrap it, run it, inspect,
- *      ROLLBACK. DDL and CREATE OR REPLACE FUNCTION are transactional, so this
- *      exercises every postcondition against live bodies and leaves no trace.
- *   2. MUTATION. Break one guarded property at a time and require the migration
- *      to refuse itself. A postcondition that passes its own mutant is
- *      decoration -- and an unreachable guard is invisible to every other kind
- *      of test, because killing it changes no behaviour.
+ * PHASES, and which ones apply depends on whether the migration has landed.
+ *   1. DRY RUN, always. Strip the file's own begin;/commit;, wrap it, run it,
+ *      inspect, ROLLBACK. DDL and CREATE OR REPLACE FUNCTION are transactional,
+ *      so this exercises every postcondition against live bodies and leaves no
+ *      trace.
+ *   2. MUTATION, only BEFORE the migration is applied. Break one guarded
+ *      property at a time and require the migration to refuse itself. A
+ *      postcondition that passes its own mutant is decoration -- and an
+ *      unreachable guard is invisible to every other kind of test, because
+ *      killing it changes no behaviour.
+ *   3. LIVE STATE, only AFTER. Assert the installed bodies actually carry the
+ *      change and that the checkout rail kept every clause it must keep.
+ *
+ * WHY 2 AND 3 ARE EXCLUSIVE. The projector patch short-circuits on a body that
+ * already contains `v_operation_source`, so once applied, a mutant that breaks
+ * the patch text is never reached and "survives" -- eight of them do. Reporting
+ * that as failure would train the next reader to ignore a red run, which is the
+ * same rot as a guard that never bites, only inverted. So the phase is chosen
+ * from the installed state and says which one it ran.
  *
  * Needles below use String.raw. A backslash-n in the SQL source written as a
  * plain template literal becomes a real newline, matches nothing, and every
@@ -182,12 +193,30 @@ await client.connect();
 const q = (sql, params) => client.query(sql, params);
 
 let failures = 0;
+let ranMutants = false;
 const check = (ok, name, detail = '') => {
   if (!ok) failures += 1;
   console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? ` -- ${detail}` : ''}`);
 };
 
+const bodyOf = async (proname) => (await q(
+  `select replace(pg_get_functiondef(p.oid), E'\r\n', E'\n') as d
+     from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public' and p.prokind = 'f' and p.proname = $1`,
+  [proname],
+)).rows[0]?.d ?? '';
+
 try {
+  const APPLIED = (await bodyOf('project_stripe_billing_subscription_event_v1_unchecked'))
+    .includes('v_operation_source');
+  console.log(
+    APPLIED
+      ? '20260823235000 IS APPLIED — running the dry run and the live-state assertions.\n'
+        + 'The mutation phase is skipped on purpose: the projector patch short-circuits\n'
+        + 'on an already-patched body, so its mutants can never be reached.\n'
+      : '20260823235000 is NOT applied — running the dry run and the full mutation phase.\n',
+  );
+
   // ---- Phase 1: the migration itself, against the installed bodies. --------
   await q('begin');
   let ran = false;
@@ -252,32 +281,114 @@ try {
   await q('rollback');
   console.log('  (rolled back — database unchanged)\n');
 
-  // ---- Phase 2: every guard must kill its mutant. --------------------------
-  for (const [name, find, replace] of MUTANTS) {
-    const hits = body.split(find).length - 1;
-    if (hits !== 1) {
-      check(false, `mutant target is unique: ${name}`, `matched ${hits}x, expected 1`);
-      continue;
+  ranMutants = !APPLIED;
+  if (!APPLIED) {
+    // ---- Phase 2: every guard must kill its mutant. ------------------------
+    for (const [name, find, replace] of MUTANTS) {
+      const hits = body.split(find).length - 1;
+      if (hits !== 1) {
+        check(false, `mutant target is unique: ${name}`, `matched ${hits}x, expected 1`);
+        continue;
+      }
+      await q('begin');
+      let lived = false;
+      try {
+        await q("set local lock_timeout = '5s'");
+        await q(body.replace(find, replace));
+        lived = true;
+      } catch {
+        // Refused, which is the point.
+      }
+      await q('rollback');
+      check(!lived, `refused: ${name}`);
     }
-    await q('begin');
-    let lived = false;
-    try {
-      await q("set local lock_timeout = '5s'");
-      await q(body.replace(find, replace));
-      lived = true;
-    } catch {
-      // Refused, which is the point.
+  } else {
+    // ---- Phase 3: the installed bodies carry the change, and only it. ------
+    // Each mutant above has a counterpart here, so the properties stay covered
+    // once the migration has landed and the mutants can no longer reach.
+    const projector = await bodyOf('project_stripe_billing_subscription_event_v1_unchecked');
+    const wrapper = await bodyOf('project_stripe_billing_subscription_event');
+    const binding = await bodyOf('resolve_stripe_billing_subscription_projection_binding_v1_unche');
+
+    for (const [ok, name] of [
+      [projector.includes('billing_subscription_plan_change_operations'),
+        'the projector reads the plan-change ledger'],
+      [binding.includes('billing_subscription_plan_change_operations'),
+        'the binding reads the plan-change ledger'],
+      [!wrapper.includes("'checkout_session_id' is null"),
+        'the wrapper no longer demands a Checkout Session'],
+      [projector.includes('v_invoice_id is not distinct from v_plan_change.proration_invoice_id'),
+        'activation is bound to the recorded proration invoice'],
+      [projector.includes('v_plan_change.proration_invoice_id is not null'),
+        'a plan change with no proration invoice cannot activate'],
+      [projector.includes("v_operation_source = 'plan_change' and v_operation.state = 'provider_accepted'"),
+        'a plan change activates only out of provider_accepted'],
+      [(projector.match(/returning \* into v_plan_change/g) || []).length === 3,
+        'all three operation write-backs are forked'],
+      [(projector.match(/'operation_source', v_operation_source/g) || []).length === 2,
+        'both subscription breadcrumb sites are labelled'],
+      [projector.includes("v_operation.purpose is distinct from 'base_plan_plan_change'"),
+        'the entitlement escape reads the carrier'],
+      [!projector.includes("and o.purpose = 'base_plan_plan_change'"),
+        'the dead entitlement subquery is gone'],
+      [projector.includes("or (v_operation_source = 'checkout' and v_checkout_session_id is null)"),
+        'the checkout rail still requires a Checkout Session id'],
+      [projector.includes("or (v_operation_source = 'plan_change' and v_checkout_session_id is not null)"),
+        'a plan change may not carry a Checkout Session'],
+      [binding.includes('v_operation.checkout_expires_at is null'),
+        'the checkout rail still requires a Checkout expiry'],
+      [binding.includes('v_operation.stripe_price_id is distinct from p_provider_price_id'),
+        'the binding still pins the operation price'],
+      [binding.includes('v_subscription.account_id is distinct from p_account_id'),
+        'the binding still pins the workspace'],
+      [projector.includes('v_operation.unit_amount_cents is distinct from v_unit_amount_cents'),
+        'the projector still pins the operation amount'],
+      [projector.includes('v_operation.recurring_consent_acceptance_id is distinct from'),
+        'the projector still pins consent'],
+      [binding.includes('Stripe Billing operation id resolves in two ledgers'),
+        'an operation id in both ledgers is refused'],
+    ]) check(ok, name);
+
+    const acl = await q(
+      `select p.proname,
+              has_function_privilege('anon', p.oid, 'EXECUTE') as anon,
+              has_function_privilege('authenticated', p.oid, 'EXECUTE') as authed,
+              has_function_privilege('service_role', p.oid, 'EXECUTE') as svc
+         from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+        where n.nspname = 'public' and p.prokind = 'f'
+          and p.proname in (
+            'resolve_stripe_billing_subscription_projection_binding',
+            'resolve_stripe_billing_subscription_projection_binding_v1_unche',
+            'project_stripe_billing_subscription_event',
+            'project_stripe_billing_subscription_event_v1_unchecked')
+        order by p.proname`,
+    );
+    check(acl.rows.length === 4, 'all four projection functions exist', `found ${acl.rows.length}`);
+    for (const r of acl.rows) {
+      // The wrappers are what service_role calls; the unchecked pair must not be
+      // reachable by anyone but the definer.
+      const isWrapper = !r.proname.endsWith('unche') && !r.proname.endsWith('unchecked');
+      check(
+        r.anon === false && r.authed === false && r.svc === isWrapper,
+        `grants on ${r.proname}`,
+        `anon=${r.anon} authenticated=${r.authed} service_role=${r.svc}`,
+      );
     }
-    await q('rollback');
-    check(!lived, `refused: ${name}`);
   }
 } finally {
   await client.end();
 }
 
-console.log(
-  failures === 0
-    ? '\nAll checks passed. The migration is clean against the installed bodies and every postcondition bites.'
-    : `\n${failures} check(s) failed.`,
-);
+if (failures === 0) {
+  console.log(
+    ranMutants
+      ? '\nAll checks passed. The migration is clean against the installed bodies,'
+        + ' and every postcondition refused its own mutant.'
+      : '\nAll checks passed. The migration re-runs clean and the installed bodies carry'
+        + ' the change.\nThe mutation phase did NOT run — see the header for why, and run this'
+        + ' against a\ndatabase without 20260823235000 to exercise it.',
+  );
+} else {
+  console.log(`\n${failures} check(s) failed.`);
+}
 process.exit(failures === 0 ? 0 : 1);
