@@ -55,28 +55,48 @@ describe('the reason it had to be withheld', () => {
   });
 
   it('still has no Stripe subscription write outside the base-plan modules', () => {
-    // The search that established there is no cancel path. If a new write site
-    // appears, it must be checked against this finding rather than assumed safe.
-    const roots = [join(process.cwd(), 'src', 'lib'), join(process.cwd(), 'src', 'app')];
+    /**
+     * The search that established there is no cancel path.
+     *
+     * WIDER THAN ITS FIRST VERSION, which walked only src/lib and src/app and
+     * matched only `stripe.subscriptions.(cancel|update)(`. An adversarial pass
+     * pointed out it was blind to src/components, src/emails, `.create(`, and
+     * any aliased handle — so a guard whose whole job is "no new subscription
+     * write appeared" could have missed one four ways. It now walks all of src/
+     * and scripts/ and matches any `.subscriptions.<verb>(` regardless of what
+     * the client is called.
+     */
     const files: string[] = [];
     const walk = (dir: string) => {
       for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        if (entry.name === 'node_modules' || entry.name === '.next') continue;
         const path = join(dir, entry.name);
         if (entry.isDirectory()) walk(path);
-        else if (/\.tsx?$/.test(entry.name)) files.push(path);
+        else if (/\.(tsx?|mjs)$/.test(entry.name)) files.push(path);
       }
     };
-    for (const root of roots) walk(root);
+    walk(join(process.cwd(), 'src'));
+    walk(join(process.cwd(), 'scripts'));
 
-    const writers = files.filter((file) => /stripe\.subscriptions\.(cancel|update)\(/.test(readFileSync(file, 'utf8')));
+    const WRITE = /\.subscriptions\.(cancel|update|create|del)\s*\(/;
+    const writers = files.filter((file) => WRITE.test(readFileSync(file, 'utf8')));
     const allowed = ['plan-change.ts', 'plan-change-worker.ts', 'subscription-cancellation.ts'];
     const unexpected = writers.filter((file) => !allowed.some((name) => file.endsWith(name)));
 
     expect(writers.length, 'no subscription writes found at all; the search broke').toBeGreaterThan(0);
     expect(
       unexpected.map((f) => f.replace(process.cwd(), '.')),
-      'a new Stripe subscription write appeared: does it cancel top-up subscriptions?',
+      'a new Stripe subscription write appeared: can it cancel a top-up subscription?',
     ).toEqual([]);
+  });
+
+  it('records the subscription id, which is what a future cancel needs', () => {
+    // Correcting my own earlier claim that a crew seat lands somewhere the
+    // product has no handle on. The projector DOES store
+    // stripe_subscription_id on workspace_purchased_capacity, specifically so a
+    // cancel is possible later. What is missing is the Stripe Customer id, which
+    // is what a billing-portal session would need instead.
+    expect(src('lib', 'billing', 'top-up-event-projector.ts')).toContain('stripe_subscription_id');
   });
 
   it('still cancels only the base plan on account deletion', () => {

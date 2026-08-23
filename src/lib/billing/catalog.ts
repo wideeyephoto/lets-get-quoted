@@ -419,7 +419,9 @@ export const TOP_UPS_WITHHELD: Readonly<Partial<Record<TopUpId, string>>> = Obje
     + 'cancel path, no remove-seat control, no admin action, and account '
     + 'deletion cancels the base plan and leaves this one billing. a contractor '
     + 'who adds two seats and loses those crew next month has a card dispute as '
-    + 'their only lever. withheld until a cancel exists, not because the '
+    + 'their only self-serve lever - an operator can still cancel it by hand in '
+    + 'the Stripe dashboard, and capacity-lifecycle-worker honours that within '
+    + 'the hour. withheld until a cancel exists in the PRODUCT, not because the '
     + 'purchase is broken - it works, which is the problem',
 });
 

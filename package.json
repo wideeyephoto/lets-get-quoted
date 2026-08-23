@@ -48,6 +48,7 @@
     "check:schema:order": "node scripts/check-schema-order.mjs",
     "test:pg17:office-read-grant": "node scripts/verify-office-read-grant.mjs",
     "test:pg17:plan-change": "node scripts/verify-plan-change-projection-patch.mjs",
+    "test:pg17:cancel-to-flex": "node scripts/verify-cancelled-returns-to-flex.mjs",
     "verify:tenant-isolation": "node scripts/verify-tenant-isolation.mjs",
     "inspect:cron-health": "node scripts/inspect-cron-health.mjs",
     "inspect:live-top-ups": "node scripts/inspect-live-top-up-prices.mjs"
