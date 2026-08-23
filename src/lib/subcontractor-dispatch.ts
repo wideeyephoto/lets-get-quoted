@@ -20,7 +20,9 @@ import { createHash, createHmac, randomBytes, timingSafeEqual } from 'crypto';
 
 export const REQUEST_STATUSES = [
   'draft',
+  'queued',
   'sent',
+  'delivery_failed',
   'viewed',
   'partially_responded',
   'claimed',
@@ -32,7 +34,9 @@ export type RequestStatus = (typeof REQUEST_STATUSES)[number];
 
 export const REQUEST_STATUS_LABEL: Record<RequestStatus, string> = {
   draft: 'Draft',
+  queued: 'Queued',
   sent: 'Sent',
+  delivery_failed: 'Delivery failed',
   viewed: 'Viewed',
   partially_responded: 'Partially responded',
   claimed: 'Claimed',
@@ -48,7 +52,9 @@ export const REQUEST_STATUS_LABEL: Record<RequestStatus, string> = {
  */
 export const REQUEST_STATUS_TONE: Record<RequestStatus, 'ok' | 'warn' | 'alert' | 'muted' | 'info'> = {
   draft: 'muted',
+  queued: 'info',
   sent: 'info',
+  delivery_failed: 'alert',
   viewed: 'info',
   partially_responded: 'warn',
   claimed: 'ok',
@@ -89,6 +95,7 @@ export const LIVE_OFFER_STATUSES: readonly OfferStatus[] = ['queued', 'sent', 'd
 
 /** Request states an acceptance may still be applied to. */
 export const CLAIMABLE_REQUEST_STATUSES: readonly RequestStatus[] = [
+  'queued',
   'sent',
   'viewed',
   'partially_responded',
@@ -136,6 +143,7 @@ export type DispatchRequest = {
   claimedOfferId: string | null;
   claimedCrewId: string | null;
   claimedAt: string | null;
+  queuedAt: string | null;
   sentAt: string | null;
   createdAt: string;
 };
@@ -172,7 +180,7 @@ export function requestDisplayStatus(
 ): RequestStatus {
   // Terminal states stay put. A claimed request does not become "expired"
   // because its original deadline has since passed — somebody took the job.
-  if (request.status === 'claimed' || request.status === 'cancelled' || request.status === 'draft') {
+  if (request.status === 'claimed' || request.status === 'cancelled' || request.status === 'draft' || request.status === 'delivery_failed') {
     return request.status;
   }
 
@@ -183,12 +191,14 @@ export function requestDisplayStatus(
   if (offers.some((offer) => offer.status === 'viewed' || offer.viewedAt)) return 'viewed';
   // 'reopened' outranks 'sent' only until somebody looks — after that, what
   // matters is that it is being read, not that it is second time around.
-  return request.status === 'reopened' ? 'reopened' : 'sent';
+  if (request.status === 'reopened' || request.status === 'queued') return request.status;
+  return 'sent';
 }
 
 export type RequestProgress = {
   recipients: number;
-  sent: number;
+  queued: number;
+  carrierAccepted: number;
   delivered: number;
   failed: number;
   viewed: number;
@@ -203,7 +213,7 @@ export type RequestProgress = {
 
 export function requestProgress(
   request: Pick<DispatchRequest, 'status' | 'expiresAt'>,
-  offers: Pick<DispatchOffer, 'status' | 'viewedAt' | 'backup'>[],
+  offers: Pick<DispatchOffer, 'status' | 'sentAt' | 'deliveredAt' | 'viewedAt' | 'backup'>[],
   now: Date = new Date(),
 ): RequestProgress {
   const count = (status: OfferStatus) => offers.filter((offer) => offer.status === status).length;
@@ -213,11 +223,11 @@ export function requestProgress(
 
   return {
     recipients: offers.length,
-    // "Sent" means it left the building, whatever happened to it afterwards —
-    // an owner counting how many people were asked should not see the number
-    // drop when one of them opens the link.
-    sent: offers.filter((offer) => offer.status !== 'queued').length,
-    delivered: offers.filter((offer) => offer.status === 'delivered' || offer.status === 'viewed').length,
+    queued: count('queued'),
+    // A task entering the durable queue is not a carrier send. sentAt is set
+    // only from provider acceptance; richer business states retain that fact.
+    carrierAccepted: offers.filter((offer) => Boolean(offer.sentAt) || ['sent', 'delivered', 'viewed', 'accepted', 'declined', 'covered'].includes(offer.status)).length,
+    delivered: offers.filter((offer) => Boolean(offer.deliveredAt) || offer.status === 'delivered' || offer.status === 'viewed').length,
     failed: count('failed'),
     viewed: offers.filter((offer) => offer.viewedAt !== null || offer.status === 'viewed').length,
     declined: count('declined'),

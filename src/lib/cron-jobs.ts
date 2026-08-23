@@ -31,6 +31,41 @@ export type CronJobSpec = {
 
 export const CRON_JOBS: CronJobSpec[] = [
   {
+    job: 'overage-period-close',
+    label: 'Overage period close',
+    schedule: '17 * * * *',
+    importance: 'money',
+    consequence: 'Ended billing periods are never frozen into a settlement, so authorized extra usage is incurred and can never be billed for.',
+  },
+  {
+    job: 'overage-settlement',
+    label: 'Overage settlement',
+    schedule: '37 * * * *',
+    importance: 'money',
+    consequence: 'Frozen settlements never reach Stripe, so extra usage a contractor authorized and used is never charged.',
+  },
+  {
+    job: 'voice-retention',
+    label: 'AI Voice history retention',
+    schedule: '43 5 * * *',
+    importance: 'customer',
+    consequence: 'Expired caller transcripts and receipt payloads stop being deleted after their promised 30-to-90-day history window.',
+  },
+  {
+    job: 'sms-inbound-actions',
+    label: 'Inbound SMS action recovery',
+    schedule: '* * * * *',
+    importance: 'customer',
+    consequence: 'Authenticated replies that crashed after receipt ingest stop resuming their booking, reschedule, confirmation, or dispatch action.',
+  },
+  {
+    job: 'sms-delivery',
+    label: 'SMS delivery queue',
+    schedule: '* * * * *',
+    importance: 'customer',
+    consequence: 'Queued account alerts, dispatch messages, and approved contractor texts stop reaching recipients.',
+  },
+  {
     job: 'legacy-quick-stop-late-refunds',
     label: 'Legacy Quick Stop late refunds',
     schedule: '*/5 * * * *',
@@ -43,6 +78,13 @@ export const CRON_JOBS: CronJobSpec[] = [
     schedule: '*/5 * * * *',
     importance: 'money',
     consequence: 'Signed connected-account Checkout success events stop marking direct payments paid and reconciled.',
+  },
+  {
+    job: 'top-up-projection',
+    label: 'Top-up projection',
+    schedule: '*/5 * * * *',
+    importance: 'money',
+    consequence: 'Paid top-up purchases stop becoming usage credit, so a workspace is charged and receives nothing.',
   },
   {
     job: 'direct-payment-settlement',
@@ -64,6 +106,38 @@ export const CRON_JOBS: CronJobSpec[] = [
     schedule: '*/15 * * * *',
     importance: 'money',
     consequence: 'Paid contractors stop receiving their anchored monthly usage allowances after renewal.',
+  },
+  {
+    // The only worker here with no LGQ_*_ENABLED gate, on purpose. A scheduled
+    // plan change was written by a customer action that already told them a
+    // date; a flag that quietly stopped this would turn every one of those into
+    // a promise nothing keeps. The others can be dark because nothing has been
+    // promised while they are off.
+    job: 'plan-change-apply',
+    label: 'Scheduled plan changes',
+    schedule: '*/15 * * * *',
+    importance: 'money',
+    consequence: 'Downgrades and billing-cycle switches never take effect, so contractors keep paying the old price after the date they were given.',
+  },
+  {
+    // Separate from the reset above on purpose: that one grants the four
+    // canonical resources and hard-codes success as exactly four. Voice riding
+    // along would put every paid workspace's other credits at risk.
+    // Every fifteen minutes rather than hourly: until this runs, a payment
+    // that has been refunded once cannot be refunded again, and a contractor
+    // trying to return the rest of a deposit is simply refused.
+    job: 'refund-reconciliation',
+    label: 'Refund reconciliation',
+    schedule: '*/15 * * * *',
+    importance: 'money',
+    consequence: 'A payment refunded once can never be refunded again, and money owed back cannot be sent.',
+  },
+  {
+    job: 'voice-allowance',
+    label: 'AI Voice minute allowances',
+    schedule: '*/15 * * * *',
+    importance: 'money',
+    consequence: 'Workspaces with AI Voice stop receiving their monthly minutes, and every call is answered unbilled or refused.',
   },
   {
     job: 'dunning',
@@ -165,6 +239,39 @@ export const CRON_JOBS: CronJobSpec[] = [
     importance: 'housekeeping',
     consequence: 'Addresses without coordinates stay unmapped, degrading routing and drive times over time.',
   },
+  {
+    job: 'capacity-lifecycle',
+    label: 'Purchased capacity lifecycle',
+    schedule: '37 * * * *',
+    // Money, not housekeeping, the moment a capacity SKU is sellable: this is
+    // the only thing that stops a cancelled subscription from granting seats and
+    // storage for ever. While every capacity SKU is withheld it has no rows to
+    // sweep, and the importance is stated for the world it is being built for.
+    importance: 'money',
+    consequence: 'Cancelled capacity subscriptions keep granting seats and storage, and lapsed ones are never marked past due.',
+  },
+  {
+    job: 'storage-usage-sweep',
+    label: 'Storage usage sweep',
+    schedule: '17 * * * *',
+    // Housekeeping rather than money while the storage SKU is withheld and
+    // enforcement is dark. It becomes money the day either goes live: a stalled
+    // sweep freezes every workspace's measurement, so uploads are then admitted
+    // or refused against a number that stopped moving.
+    importance: 'housekeeping',
+    consequence: 'Workspace storage measurements freeze, so Plan & usage shows a stale figure and the upload cap is enforced against it.',
+  },
+  {
+    job: 'usage-reservation-expiry',
+    label: 'Usage reservation expiry',
+    schedule: '*/15 * * * *',
+    // Money, and the quiet kind. Credits held by a reservation that died
+    // mid-request are subtracted from a workspace's balance and never given
+    // back, because available = granted - consumed - reserved - revoked. Nothing
+    // errors; the balance is simply wrong and stays wrong.
+    importance: 'money',
+    consequence: 'Credits held by requests that died mid-flight are never released, so a workspace permanently loses balance it paid for.',
+  },
 ];
 
 export function cronJob(job: string): CronJobSpec | undefined {
@@ -178,12 +285,13 @@ const DAY = 24 * HOUR;
 /**
  * How often the expression fires, in milliseconds.
  *
- * Handles the four shapes this schedule actually uses and returns null for
+ * Handles the five shapes this schedule actually uses and returns null for
  * anything else, rather than guessing. A general cron parser would be a lot of
  * code to support expressions nobody has written, and — worse — a subtly wrong
  * one produces a confident "overdue" badge on a healthy job, which is the fastest
  * way to teach staff to ignore this page.
  *
+ *   * * * * *                   every minute
  *   asterisk-slash-N * * * *   every N minutes
  *   0 * * * *                  hourly
  *   0 H * * *                  daily
@@ -194,6 +302,8 @@ export function expectedIntervalMs(schedule: string): number | null {
   if (parts.length !== 5) return null;
   const [minute, hour, dom, month, dow] = parts;
   if (dom !== '*' || month !== '*') return null;
+
+  if (minute === '*' && hour === '*' && dow === '*') return MINUTE;
 
   const everyNMinutes = /^\*\/(\d+)$/.exec(minute);
   if (everyNMinutes && hour === '*' && dow === '*') {
@@ -289,6 +399,7 @@ export function scheduleInWords(schedule: string): string {
   const parts = schedule.trim().split(/\s+/);
   if (parts.length !== 5) return schedule;
   const [minute, hour, , , dow] = parts;
+  if (minute === '*' && hour === '*' && dow === '*') return 'Every minute';
   const everyN = /^\*\/(\d+)$/.exec(minute);
   if (everyN && hour === '*') return `Every ${everyN[1]} minutes`;
   // Everything below reads the minute as a single literal, so anything else —

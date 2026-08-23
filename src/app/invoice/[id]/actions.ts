@@ -56,7 +56,13 @@ export async function payInvoiceAction(invoiceId: string) {
   const admin = createAdminClient();
   const { data: paymentRows } = await admin
     .from('payments')
-    .select('id, amount, status, invoice_id, refunded_amount')
+    // async_payment_pending_at is REQUIRED, not optional detail. invoicePayState
+    // distinguishes a bank transfer in flight from an abandoned checkout with
+    // it, and both look like `status = 'processing'` without it. Omitting it
+    // here made this action unable to reach its own `processing` branch, so it
+    // and the page disagreed about the same invoice while reading the same
+    // function.
+    .select('id, amount, status, invoice_id, refunded_amount, async_payment_pending_at')
     .eq('account_id', invoice.account_id)
     .eq('invoice_id', invoiceId);
 

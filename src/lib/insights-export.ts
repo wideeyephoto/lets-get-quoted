@@ -12,6 +12,7 @@
 
 import PDFDocument from 'pdfkit';
 import { gridToCsv } from '@/lib/import-formats';
+import { formatUsdExact } from '@/lib/money-format';
 import { AUDIENCE_DEFS } from '@/lib/campaign-audiences';
 import type { Delta, Insights } from '@/lib/insights';
 import type { InsightsKpis, Kpi } from '@/lib/insights-metrics';
@@ -28,10 +29,18 @@ function money2(value: number): string {
   return (Math.round(value * 100) / 100).toFixed(2);
 }
 
-// Readable "$1,200" for the PDF, which is for glancing, not summing. Matches the
-// invoice PDF's own money style.
+/**
+ * To the cent. This comment used to say the PDF was "for glancing, not summing",
+ * and its own tables disprove it: Revenue by service prints every slice through
+ * this AND the Total beneath them, and the revenue trend prints each point beside
+ * a Period total in its heading. An exhaustive breakdown whose rows are each
+ * rounded does not add up to the total printed under them.
+ *
+ * It also cited the invoice PDF's style, which no longer rounds either -- that
+ * document goes to a customer and had the same defect.
+ */
 function moneyLabel(value: number): string {
-  return '$' + Math.round(value).toLocaleString('en-US');
+  return formatUsdExact(value);
 }
 
 // A delta as a signed string with its unit, or an em-dash when there's no honest
@@ -156,7 +165,7 @@ export function buildInsightsCsv(insights: Insights, meta: InsightsExportMeta): 
   // Marketing performance
   const mkt = insights.marketingPerformance;
   section('Marketing performance', 'Opens, clicks, replies and revenue are not tracked');
-  rows.push(['Sent on', 'Channel', 'Audience', 'Recipients', 'Emails sent', 'Texts sent', 'Failed', 'Skipped']);
+  rows.push(['Sent on', 'Channel', 'Audience', 'Recipients', 'Emails sent', 'Texts queued', 'Failed', 'Skipped']);
   for (const c of mkt.campaigns) {
     rows.push([
       exportDate(c.sentAt),
@@ -164,7 +173,7 @@ export function buildInsightsCsv(insights: Insights, meta: InsightsExportMeta): 
       audienceLabel(c.audience),
       String(c.recipients),
       String(c.emailSent),
-      String(c.smsSent),
+      String(c.smsQueued),
       String(c.failed),
       String(c.skipped),
     ]);

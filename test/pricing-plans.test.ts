@@ -13,6 +13,7 @@ import {
   planCrossover,
   type PlanId,
 } from '@/app/pricing/pricing-catalog';
+import { TOP_UPS } from '@/lib/billing/catalog';
 
 function plan(id: PlanId) {
   const match = PLANS.find((candidate) => candidate.id === id);
@@ -28,7 +29,7 @@ function comparisonRow(label: string) {
 
 describe('the contractor pricing catalog', () => {
   it('pins the exact base prices and LGQ platform fees', () => {
-    expect(PRICING_CATALOG_VERSION).toBe('2026-08-15-preview');
+    expect(PRICING_CATALOG_VERSION).toBe('2026-08-18-preview');
     expect(
       PLANS.map(({ id, monthly, annualMonthly, paymentFeePct }) => ({
         id,
@@ -58,15 +59,52 @@ describe('the contractor pricing catalog', () => {
       fullScaleDuoMonthly: 1_099,
     });
 
+    // THE APPROVED PRICE BOOK, pinned at the source. Withholding a sale is not
+    // forgetting a price: these are decided and correct, and losing them would
+    // make each launch a re-decision rather than a flag flip.
+    expect(Object.values(TOP_UPS).map((t) => [t.label, t.priceCents, t.recurring])).toEqual([
+      ['Flex: 250 text-credit top-up', 1_200, false],
+      ['1,000 text credits', 4_200, false],
+      ['5,000 marketing emails', 1_700, false],
+      ['100 AI Intake credits', 1_500, false],
+      ['250 AI writing drafts', 1_900, false],
+      ['100 GB storage', 1_500, true],
+      ['Office user', 1_500, true],
+      ['Crew user', 500, true],
+      // One SKU per plan, because the published price differs by plan and one
+      // `priceCents` cannot hold three. Scale is absent: it includes voice.
+      ['AI Voice Receptionist (Flex)', 6_900, true],
+      ['AI Voice Receptionist (Solo)', 5_900, true],
+      ['AI Voice Receptionist (Growth)', 5_500, true],
+      ['100 AI-connected minutes', 3_500, false],
+    ]);
+
+    // WHAT THE PUBLIC PAGE QUOTES is a smaller list than the price book, and
+    // deliberately so -- the six checkout will actually sell, priced, then the
+    // six it refuses, unpriced and last. See pricing-add-ons-are-buyable for
+    // why that separation exists rather than what it currently is.
+    //
+    // Crew user crossed the line on 2026-08-20 and crossed back on 2026-08-23.
+    // It is the only RECURRING sku here, and nothing in the product can cancel a
+    // top-up subscription -- every Stripe subscription write resolves through
+    // billing_subscriptions, which a crew seat never enters. So it reads 'Coming
+    // soon' with the rest until a cancel path exists. The '/month' note below
+    // stays relevant for whenever it returns: the others are one-off balances,
+    // and a reader who takes $5 for a one-time charge has been misled by the very
+    // list meant to inform them.
     expect(ADD_ONS.map(({ label, price }) => [label, price])).toEqual([
       ['Flex: 250 text-credit top-up', '$12'],
       ['1,000 text credits', '$42'],
       ['5,000 marketing emails', '$17'],
       ['100 AI Intake credits', '$15'],
       ['250 AI writing drafts', '$19'],
-      ['100 GB storage', '$15/month'],
-      ['Office user', '$15/month'],
-      ['Crew user', '$5/month'],
+      ['100 GB storage', 'Coming soon'],
+      ['Office user', 'Coming soon'],
+      ['Crew user', 'Coming soon'],
+      ['AI Voice Receptionist (Flex)', 'Coming soon'],
+      ['AI Voice Receptionist (Solo)', 'Coming soon'],
+      ['AI Voice Receptionist (Growth)', 'Coming soon'],
+      ['100 AI-connected minutes', 'Coming soon'],
     ]);
   });
 
@@ -95,45 +133,50 @@ describe('the contractor pricing catalog', () => {
   it('uses office and phone requirements to find the lowest eligible plan', () => {
     expect(annualPlanEstimate(plan('flex'), 'annual', 40_000, false, 2, false)).toBeNull();
     expect(annualPlanEstimate(plan('flex'), 'annual', 40_000, false, 1, true)).toBeNull();
-    expect(annualPlanEstimate(plan('solo'), 'annual', 250_000, false, 2, true)).toBe(1_850);
+    // Solo grants two office seats, so a second user costs nothing extra. Kept
+    // alongside the three-user case so the add-on arithmetic stays covered for
+    // Solo -- moving this to 1,670 on its own would have deleted it.
+    expect(annualPlanEstimate(plan('solo'), 'annual', 250_000, false, 2, true)).toBe(1_670);
+    expect(annualPlanEstimate(plan('solo'), 'annual', 250_000, false, 3, true)).toBe(1_850);
     expect(annualPlanEstimate(plan('growth'), 'annual', 600_000, false, 6, true)).toBe(2_868);
   });
 
-  it('keeps Scale core team and monthly capacity aligned with Growth', () => {
+  it('shows Scale beating Growth on every metered row of the public table', () => {
+    // The public table used to repeat Growth's numbers in the Scale column, and
+    // a feature bullet said so out loud: "Growth-level team, messaging, AI Intake,
+    // and storage capacity". Catalog 2026-08-18-preview separates them, so the
+    // customer-facing copy has to move with it or the page undersells the plan.
     const growth = plan('growth');
     const scale = plan('scale');
 
-    expect({
-      officeUsers: scale.officeUsers,
-      crewUsers: scale.crewUsers,
-      textCredits: scale.textCredits,
-      messagingSummary: scale.messagingSummary,
-    }).toEqual({
-      officeUsers: growth.officeUsers,
-      crewUsers: growth.crewUsers,
-      textCredits: growth.textCredits,
-      messagingSummary: growth.messagingSummary,
-    });
+    expect(scale.officeUsers).toBeGreaterThan(growth.officeUsers);
+    expect(scale.crewUsers).toBeGreaterThan(growth.crewUsers);
+    expect(scale.textCredits).toBe('3,000/month');
+    expect(scale.messagingSummary).toBe('3,000 text credits/month · shared LGQ number');
 
-    for (const label of [
-      'Office / admin users',
-      'Crew-only users',
-      'Custom-domain connections',
-      'Business number',
-      'Basic call forwarding & voicemail',
-      'Text credits',
-      'Marketing email sends',
-      'Transactional emails',
-      'AI Intake credits',
-      'AI writing drafts',
-      'File & photo storage',
-      'QuickBooks Online',
-    ]) {
+    for (const [label, expected] of [
+      ['Office / admin users', '15'],
+      ['Crew-only users', '50'],
+      ['Text credits', '3,000/month'],
+      ['Marketing email sends', '5,000/month'],
+      ['AI Intake credits', '1,000/month'],
+      ['AI writing drafts', '500/month'],
+      ['File & photo storage', '250 GB'],
+      ['Basic call forwarding & voicemail', '200 min/month'],
+    ] as const) {
       const [, , , growthValue, scaleValue] = comparisonRow(label);
-      expect(scaleValue, `${label} should match Growth`).toBe(growthValue);
+      expect(scaleValue, `${label} Scale column`).toBe(expected);
+      expect(scaleValue, `${label} must not repeat Growth`).not.toBe(growthValue);
     }
 
-    expect(scale.features).toContain('Growth-level team, messaging, AI Intake, and storage capacity');
+    // Genuinely shared, and it should stay that way: one legal business.
+    for (const label of ['Custom-domain connections', 'QuickBooks Online'] as const) {
+      const [, , , growthValue, scaleValue] = comparisonRow(label);
+      expect(scaleValue).toBe(growthValue);
+    }
+
+    expect(scale.features).not.toContain('Growth-level team, messaging, AI Intake, and storage capacity');
+    expect(scale.features).toContain('15 office users + 50 crew users');
   });
 
   it('states that Flex starter usage never automatically refills', () => {

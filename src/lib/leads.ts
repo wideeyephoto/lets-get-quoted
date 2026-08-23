@@ -4,7 +4,7 @@ import { findOrCreateClientId } from '@/lib/clients';
 import { normalizeClientChannelPreference } from '@/lib/client-channel';
 import { applyTestRecordFilter, type TestRecordOptions } from '@/lib/test-records';
 
-export type LeadSource = 'website_form' | 'missed_call' | 'manual' | 'referral';
+export type LeadSource = 'website_form' | 'missed_call' | 'manual' | 'referral' | 'ai_voice';
 export type LeadStatus = 'new' | 'contacted' | 'quoted' | 'won' | 'lost';
 
 export type LeadScore = 'hot' | 'warm' | 'low';
@@ -253,6 +253,7 @@ export type Lead = {
   message: string | null;
   photo_paths: string[];
   source_page: string | null;
+  source_voice_event_id?: string | null;
   converted_job: string | null;
   client_id: string | null;
   triage: LeadTriage | null;
@@ -274,6 +275,8 @@ export type LeadInput = {
   message?: string | null;
   photoPaths?: string[];
   sourcePage?: string | null;
+  /** Stable receipt identity used only by the AI Voice settlement replay. */
+  sourceVoiceEventId?: string | null;
   triage?: LeadTriage | null;
 };
 
@@ -281,6 +284,7 @@ export function formatLeadSource(source: LeadSource): string {
   if (source === 'website_form') return 'Website form';
   if (source === 'missed_call') return 'Missed call';
   if (source === 'referral') return 'Referral';
+  if (source === 'ai_voice') return 'AI receptionist';
   return 'Manual';
 }
 
@@ -366,28 +370,65 @@ export async function createLead(
   accountId: string,
   input: LeadInput
 ): Promise<Lead> {
-  const { data, error } = await supabase
-    .from('leads')
-    .insert({
-      account_id: accountId,
-      source: input.source ?? 'website_form',
-      status: 'new',
-      name: input.name.trim(),
-      phone: input.phone?.trim() || null,
-      email: input.email?.trim().toLowerCase() || null,
-      address: input.address?.trim() || null,
-      project_type: input.projectType?.trim() || null,
-      estimated_hours: input.estimatedHours ?? null,
-      message: input.message?.trim() || null,
-      photo_paths: input.photoPaths ?? [],
-      source_page: input.sourcePage?.trim() || null,
-      triage: input.triage ?? null,
-    })
-    .select('*')
-    .single();
+  const values = {
+    account_id: accountId,
+    source: input.source ?? 'website_form',
+    status: 'new',
+    name: input.name.trim(),
+    phone: input.phone?.trim() || null,
+    email: input.email?.trim().toLowerCase() || null,
+    address: input.address?.trim() || null,
+    project_type: input.projectType?.trim() || null,
+    estimated_hours: input.estimatedHours ?? null,
+    message: input.message?.trim() || null,
+    photo_paths: input.photoPaths ?? [],
+    source_page: input.sourcePage?.trim() || null,
+    triage: input.triage ?? null,
+    ...(input.sourceVoiceEventId
+      ? { source_voice_event_id: input.sourceVoiceEventId }
+      : {}),
+  };
+  let lead: Lead;
+  if (input.sourceVoiceEventId) {
+    // Receipt work can be replayed after either a worker failure or a lost HTTP
+    // response. Conflict-do-nothing is essential here: an ordinary UPSERT
+    // would put a lead that staff already progressed back into `new` and replace
+    // the caller's original intake fields on a late provider retry.
+    let result: { data: unknown; error: unknown };
+    try {
+      result = await supabase
+        .from('leads')
+        .upsert(values, {
+          onConflict: 'source_voice_event_id',
+          ignoreDuplicates: true,
+        })
+        .select('*')
+        .maybeSingle();
+    } catch (error) {
+      return recoverExistingVoiceLead(
+        supabase, accountId, input.sourceVoiceEventId, error,
+      );
+    }
 
-  if (error || !data) throw error ?? new Error('Unable to create lead.');
-  const lead = data as Lead;
+    if (result.error || !result.data) {
+      return recoverExistingVoiceLead(
+        supabase,
+        accountId,
+        input.sourceVoiceEventId,
+        result.error ?? new Error('Unable to create voice lead.'),
+      );
+    }
+    lead = result.data as Lead;
+  } else {
+    // Every ordinary form/manual lead keeps the original insert-only behavior.
+    const { data, error } = await supabase
+      .from('leads')
+      .insert(values)
+      .select('*')
+      .single();
+    if (error || !data) throw error ?? new Error('Unable to create lead.');
+    lead = data as Lead;
+  }
 
   // Link (or create) the unified client profile from intake. Best-effort — a
   // failure must never fail lead creation; the lead just stays unlinked.
@@ -426,6 +467,35 @@ export async function createLead(
   }
 
   return lead;
+}
+
+/**
+ * Resolve an ambiguous/conflicting AI Voice insert without mutating its winner.
+ *
+ * The service client reads by both immutable event id and owning account. If no
+ * winner exists, the original insert/transport error is preserved so the inbox
+ * processor retries. Returning here deliberately skips client-link/geocoding:
+ * those best-effort enrichments must not modify a progressed existing lead.
+ */
+async function recoverExistingVoiceLead(
+  supabase: SupabaseClient,
+  accountId: string,
+  voiceEventId: string,
+  originalError: unknown,
+): Promise<Lead> {
+  try {
+    const { data, error } = await supabase
+      .from('leads')
+      .select('*')
+      .eq('source_voice_event_id', voiceEventId)
+      .eq('account_id', accountId)
+      .maybeSingle();
+    if (!error && data) return data as Lead;
+  } catch {
+    // Preserve the causal insert/transport failure below. A later receipt retry
+    // repeats this exact lookup after the ambiguous write has become visible.
+  }
+  throw originalError;
 }
 
 // Backfill coordinates for existing leads that have an address but no lat/lng

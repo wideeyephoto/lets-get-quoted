@@ -1,5 +1,6 @@
 import { randomUUID } from 'crypto';
 import { createAdminClient } from '@/lib/auth';
+import { assertStorageCapacity } from '@/lib/billing/storage-usage';
 
 const CREW_PHOTOS_BUCKET = 'crew-photos';
 const MAX_PHOTO_BYTES = 4 * 1024 * 1024;
@@ -29,6 +30,7 @@ export function validateCrewPhotoFile(file: File) {
 
 export async function uploadCrewPhoto(accountId: string, crewId: string, file: File): Promise<string> {
   validateCrewPhotoFile(file);
+  await assertStorageCapacity(createAdminClient(), accountId, file.size);
   await ensureCrewPhotosBucket();
 
   const extension = file.type.split('/')[1] === 'jpeg' ? 'jpg' : file.type.split('/')[1];

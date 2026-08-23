@@ -219,7 +219,15 @@ describe('drawing is the default and typing is a real alternative', () => {
     expect(accept).toContain('role="radiogroup"');
     expect(accept).toContain('Draw my signature');
     expect(accept).toContain('Type my name');
-    expect(accept).toContain('aria-checked={signMethod === ');
+    // `aria-checked` used to be written out here. It now comes from
+    // useRadioGroup, along with the arrow-key handling and roving tabindex that
+    // this assertion was always really about -- the tabs carried the radiogroup
+    // role and announced "1 of 2" while no key press did anything, so the
+    // keyboard alternative was announced and not actually operable. Asserting
+    // the hook is the stronger claim; see radio-group-keyboard.test.ts.
+    expect(accept).toContain('use-radio-group');
+    expect(accept).toContain("getSignProps('drawn')");
+    expect(accept).toContain("getSignProps('typed')");
   });
 
   it('does not make somebody type a name the job already knows', () => {

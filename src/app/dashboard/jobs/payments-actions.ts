@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { parsePaymentAmount, paymentAmountError } from '@/lib/money-input';
 import { headers } from 'next/headers';
 import { requireOwnerContext } from '@/lib/auth';
 import { loadBusinessName } from '@/lib/business-name';
@@ -43,7 +44,12 @@ async function ensureJobInvoice(supabase: Awaited<ReturnType<typeof requireOwner
 export async function createDepositRequestAction(jobId: string, formData: FormData) {
   const { supabase, accountId } = await requireOwnerContext();
 
-  const amount = Number(formData.get('amount'));
+  // Number() here was the defect: NaN <= 0 is false, so every unreadable amount
+  // passed the guard in createDepositRequest and reached a NOT NULL numeric
+  // column as null. See money-input.ts.
+  const parsedAmount = parsePaymentAmount(formData.get('amount'));
+  if (!parsedAmount.ok) throw new Error(paymentAmountError(parsedAmount.reason));
+  const amount = parsedAmount.amount;
   const label = (formData.get('label') ?? '').toString().trim() || 'Deposit';
   const kind = (formData.get('kind') as PaymentKind) || 'deposit';
   const invoice = await ensureJobInvoice(supabase, accountId, jobId);
@@ -169,6 +175,29 @@ export async function markPaymentPaidManuallyAction(jobId: string, paymentId: st
 }
 
 export async function retryPaymentAction(paymentId: string) {
+  /**
+   * PROVE THE CALLER OWNS IT. Every other action in this file opens with
+   * requireOwnerContext; this one opened with headers().
+   *
+   * Being precise about what that did and did not mean, because the difference
+   * decides how alarmed to be. retryPayment() builds its own admin client and
+   * reads the row with getPublicPayment, which is unscoped by account -- so
+   * nothing anywhere on the path checked who was asking. But what it returns is
+   * a Stripe Checkout URL for that payment, and /pay/[id] hands the same URL to
+   * anyone holding the id, deliberately, because the homeowner paying it has no
+   * account at all. So this was NOT a privilege escalation: it granted what the
+   * public page already grants.
+   *
+   * It is still wrong. This is the contractor's dashboard control, its siblings
+   * all establish an account first, and an action that touches a payment row
+   * without knowing whose it is has no way to refuse the day it is asked to do
+   * something the public page would not. Scoped through the SESSION client, so
+   * RLS is a second opinion rather than the guard being trusted alone.
+   */
+  const { supabase, accountId } = await requireOwnerContext();
+  const payment = await getPaymentDetails(supabase, accountId, paymentId);
+  if (!payment) throw new Error('Payment not found for this account.');
+
   const h = headers();
   const proto = h.get('x-forwarded-proto') ?? 'http';
   const host = h.get('host');

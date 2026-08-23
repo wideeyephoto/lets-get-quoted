@@ -1,79 +1,250 @@
-import { describe, it, expect } from 'vitest';
-import { pickInboundAccount, type InboundRouteCandidate } from '@/lib/messages';
+import { readFileSync } from 'node:fs';
+import { describe, expect, it } from 'vitest';
+import {
+  enqueueInboundReply,
+  extractInboundWebhook,
+  extractStatusWebhook,
+  inboundReplyIdempotencyKey,
+  parseSmsWebhookBody,
+  webhookBodySha256,
+} from '@/lib/sms-webhook-ingress';
 
-// Getting a customer's reply to the right contractor.
-//
-// Everyone sends from one shared platform number, so an inbound text carries
-// the customer's number and nothing that says who it is for. The failure is not
-// cosmetic: a message delivered to the wrong account is a stranger reading what
-// somebody wrote about their house, and neither of them ever finds out.
-
-function candidate(over: Partial<InboundRouteCandidate> & { accountId: string }): InboundRouteCandidate {
-  return { lastMessageAt: null, consentUpdatedAt: null, ...over };
-}
-
-describe('pickInboundAccount', () => {
-  it('lets the number it was sent to settle it outright', () => {
-    // Not a signal to weigh — an answer. Nothing below can overrule it.
-    const picked = pickInboundAccount(
-      [
-        candidate({ accountId: 'talking-to-them', lastMessageAt: '2026-08-04T10:00:00Z' }),
-        candidate({ accountId: 'owns-the-number', consentUpdatedAt: '2020-01-01T00:00:00Z' }),
-      ],
-      'owns-the-number',
+describe('provider-neutral SMS webhook parsing', () => {
+  it('reads compatibility form fields without losing ordered media values', () => {
+    const raw = new URLSearchParams({
+      MessageSid: 'SM-form-1',
+      From: '+12485550101',
+      To: '+12485550102',
+      Body: 'photo attached',
+      NumMedia: '2',
+      MediaUrl0: 'https://carrier.test/one',
+      MediaUrl1: 'https://carrier.test/two',
+    }).toString();
+    const inbound = extractInboundWebhook(
+      parseSmsWebhookBody(raw, 'application/x-www-form-urlencoded; charset=utf-8'),
     );
-    expect(picked).toBe('owns-the-number');
+    expect(inbound).toMatchObject({
+      providerEventId: 'SM-form-1',
+      receiptKey: 'SM-form-1',
+      fromNumber: '+12485550101',
+      toNumber: '+12485550102',
+      body: 'photo attached',
+      keyword: 'other',
+      mediaUrls: ['https://carrier.test/one', 'https://carrier.test/two'],
+    });
   });
 
-  it('prefers who they were last actually talking to', () => {
-    // THE BUG. sms_consent.updated_at is written by creating a job or requesting
-    // a payment — not by talking to anybody. Contractor A texts a homeowner;
-    // contractor B, who also knows them, creates a job for them the next day;
-    // the homeowner replies to A and B receives it.
-    const picked = pickInboundAccount([
-      candidate({ accountId: 'A-texted-them', lastMessageAt: '2026-08-03T09:00:00Z', consentUpdatedAt: '2026-07-01T00:00:00Z' }),
-      candidate({ accountId: 'B-made-a-job', consentUpdatedAt: '2026-08-04T09:00:00Z' }),
-    ]);
-    expect(picked).toBe('A-texted-them');
+  it('reads nested SignalWire-style JSON without normalizing the signed bytes', () => {
+    const raw = JSON.stringify({
+      id: 'outer-event-id',
+      params: {
+        message: {
+          message_id: 'relay-message-1',
+          from: '+12485550101',
+          to: '+12485550102',
+          body: 'STOP please',
+          media: ['https://carrier.test/photo'],
+        },
+      },
+    });
+    const inbound = extractInboundWebhook(parseSmsWebhookBody(raw, 'application/json'));
+    expect(inbound).toEqual({
+      providerEventId: 'relay-message-1',
+      receiptKey: 'relay-message-1',
+      fromNumber: '+12485550101',
+      toNumber: '+12485550102',
+      body: 'STOP please',
+      mediaUrls: ['https://carrier.test/photo'],
+      keyword: 'stop',
+      providerHandledKeyword: false,
+    });
+    expect(webhookBodySha256(raw)).toMatch(/^[0-9a-f]{64}$/);
   });
 
-  it('takes the most recent conversation when several are talking to them', () => {
-    const picked = pickInboundAccount([
-      candidate({ accountId: 'older', lastMessageAt: '2026-08-01T09:00:00Z' }),
-      candidate({ accountId: 'newest', lastMessageAt: '2026-08-04T08:30:00Z' }),
-      candidate({ accountId: 'middle', lastMessageAt: '2026-08-02T09:00:00Z' }),
-    ]);
-    expect(picked).toBe('newest');
+  it('makes each status transition a provider-scoped logical receipt', () => {
+    const status = extractStatusWebhook({
+      message_id: 'relay-message-1',
+      state: 'undelivered',
+      reason: '30034',
+    });
+    expect(status).toEqual({
+      providerEventId: 'relay-message-1',
+      providerStatus: 'undelivered',
+      providerErrorCode: '30034',
+      receiptKey: 'relay-message-1:undelivered:30034',
+    });
   });
 
-  it('falls back to consent only when nobody has ever messaged them', () => {
-    // A first-ever inbound from a number one contractor has consent for. There
-    // is no conversation to belong to, so consent is the only signal there is.
-    const picked = pickInboundAccount([
-      candidate({ accountId: 'old-consent', consentUpdatedAt: '2026-01-01T00:00:00Z' }),
-      candidate({ accountId: 'new-consent', consentUpdatedAt: '2026-08-01T00:00:00Z' }),
-    ]);
-    expect(picked).toBe('new-consent');
+  it('refuses bodies without a provider ID or both routing numbers', () => {
+    expect(extractInboundWebhook({ From: '+12485550101', Body: 'hello' })).toBeNull();
+    expect(extractStatusWebhook({ MessageStatus: 'delivered' })).toBeNull();
   });
 
-  it('never invents a recipient', () => {
-    // Better no thread than somebody else's thread.
-    expect(pickInboundAccount([])).toBeNull();
-    expect(pickInboundAccount([candidate({ accountId: 'knows-nothing' })])).toBeNull();
-    expect(pickInboundAccount([], null)).toBeNull();
+  it('rejects an unaudited content type instead of guessing how to parse it', () => {
+    expect(() => parseSmsWebhookBody('anything', 'multipart/form-data')).toThrow(/Unsupported/);
   });
 
-  it('routes on the number even when nothing else is known at all', () => {
-    // The state every account is in until numbers are provisioned — and the
-    // reason the To check comes first rather than last.
-    expect(pickInboundAccount([], 'owns-the-number')).toBe('owns-the-number');
+  it('derives stable provider-scoped reply idempotency keys', () => {
+    const key = inboundReplyIdempotencyKey('signalwire', 'relay-message-1', 'offer');
+    expect(key).toBe(inboundReplyIdempotencyKey('signalwire', 'relay-message-1', 'offer'));
+    expect(key).toMatch(/^inbound-reply:signalwire:offer:[0-9a-f]{64}$/);
+    expect(key).not.toBe(inboundReplyIdempotencyKey('twilio', 'relay-message-1', 'offer'));
+    expect(key).not.toBe(inboundReplyIdempotencyKey('signalwire', 'relay-message-2', 'offer'));
+    expect(key).not.toBe(inboundReplyIdempotencyKey('signalwire', 'relay-message-1', 'reschedule'));
   });
 
-  it('ignores an account with only a consent row once anyone is talking', () => {
-    const picked = pickInboundAccount([
-      candidate({ accountId: 'consent-only', consentUpdatedAt: '2026-08-04T23:59:00Z' }),
-      candidate({ accountId: 'talking', lastMessageAt: '2026-07-01T09:00:00Z' }),
-    ]);
-    expect(picked).toBe('talking');
+  it('enqueues replies with the exact authenticated sender and audience scope', async () => {
+    const calls: Array<{ name: string; args: Record<string, unknown> }> = [];
+    const admin = {
+      rpc: async (name: string, args: Record<string, unknown>) => {
+        calls.push({ name, args });
+        return {
+          data: [{
+            sms_event_id: '33333333-3333-4333-8333-333333333333',
+            task_state: 'queued',
+            created: true,
+          }],
+          error: null,
+        };
+      },
+    };
+    const cases = [
+      ['contractor_dedicated', 'customer_message'],
+      ['lgq_dispatch', 'crew_message'],
+      ['lgq_shared', 'owner_alert'],
+    ] as const;
+    for (const [senderPurpose, billingCategory] of cases) {
+      const providerEventId = `relay-${senderPurpose}`;
+      await enqueueInboundReply(admin as never, {
+        provider: 'signalwire',
+        providerEventId,
+        accountId: '11111111-1111-4111-8111-111111111111',
+        senderNumberId: '22222222-2222-4222-8222-222222222222',
+        senderPurpose,
+        phoneNumber: '+12485550101',
+        body: 'Your appointment is confirmed.',
+        kind: 'appointment_confirmation',
+      });
+      const call = calls.at(-1);
+      expect(call?.name).toBe('enqueue_sms_delivery');
+      expect(call?.args).toMatchObject({
+        p_account_id: '11111111-1111-4111-8111-111111111111',
+        p_sender_number_id: '22222222-2222-4222-8222-222222222222',
+        p_sender_purpose: senderPurpose,
+        p_billing_category: billingCategory,
+        p_context: 'automation',
+        p_event_type: 'inbound_appointment_reply',
+      });
+      expect(call?.args.p_idempotency_key).toBe(
+        inboundReplyIdempotencyKey('signalwire', providerEventId, 'appointment_confirmation'),
+      );
+    }
+  });
+});
+
+describe('strict tenant routing contract', () => {
+  const messages = readFileSync(new URL('../src/lib/messages.ts', import.meta.url), 'utf8');
+  const inboundRoute = readFileSync(new URL('../src/app/api/sms/inbound/route.ts', import.meta.url), 'utf8');
+  const actionWorker = readFileSync(new URL('../src/lib/sms-inbound-action-worker.ts', import.meta.url), 'utf8');
+
+  it('has no conversation-recency or consent-recency tenant fallback', () => {
+    const resolver = messages.slice(
+      messages.indexOf('export async function resolveAccountForInbound'),
+      messages.indexOf('export async function logInboundMessage'),
+    );
+    expect(resolver).not.toContain('lastMessageAt');
+    expect(resolver).not.toContain('consentUpdatedAt');
+    expect(resolver).not.toContain("from('sms_messages')");
+    expect(resolver).not.toContain("from('sms_consent')");
+  });
+
+  it('dispatches ordinary replies only through the receipt-keyed durable action worker', () => {
+    expect(inboundRoute).toContain('processSmsInboundActionReceipt(ingress.receiptId, admin)');
+    expect(inboundRoute).not.toContain('resolveOfferReply(');
+    expect(inboundRoute).not.toContain('resolveRescheduleReply(');
+    expect(inboundRoute).not.toContain('confirmUpcomingAppointment(');
+  });
+
+  it('queues ordinary replies on the exact authenticated sender and returns empty TwiML', () => {
+    expect(actionWorker).toContain('senderNumberId: claim.senderNumberId');
+    expect(actionWorker).toContain('senderPurpose: claim.senderPurpose');
+    expect(actionWorker).toContain('providerEventId: claim.providerEventId');
+    expect(actionWorker).toContain('enqueueInboundReply(admin');
+    expect(inboundRoute).not.toMatch(/return\s+twiml\(/);
+  });
+
+  it('resumes duplicate receipts instead of treating them as successfully processed', () => {
+    expect(inboundRoute).toContain('loadInboundReceiptDisposition(admin, ingress.receiptId)');
+    expect(inboundRoute).toContain("effectiveDisposition !== 'routed'");
+    expect(inboundRoute).toContain("actionStatus === 'busy'");
+    expect(inboundRoute).toContain('if (data !== true) return emptyTwiml()');
+  });
+
+  it('keeps synchronous carrier egress to named, individually gated exceptions', () => {
+    // A <Message> verb in a webhook response asks the carrier to send a text
+    // synchronously, outside the durable outbox and its retry and audit
+    // machinery. Every such site must be deliberate.
+    //
+    // This guard was once `toHaveLength(1)`. A bare count is the wrong shape: it
+    // says nothing about WHERE the verb is, so deleting a gated site and adding
+    // an ungated one keeps it green. Resolve each verb to its enclosing function
+    // instead, and make each named exception prove its own gates.
+    const EXCEPTIONS = ['minimumComplianceKeywordTwiml', 'sharedNoticeTwiml'];
+
+    const enclosingFunction = (index: number): string => {
+      const declarations = [
+        ...inboundRoute.slice(0, index).matchAll(/(?:async\s+)?function\s+([A-Za-z0-9_]+)\s*\(/g),
+      ];
+      return declarations.at(-1)?.[1] ?? '(top level)';
+    };
+    const sites = [...inboundRoute.matchAll(/<Message>/g)].map((m) => enclosingFunction(m.index ?? 0));
+
+    // Named, and nothing else: an unlisted site fails by name, and an extra verb
+    // smuggled into a listed function fails on the count.
+    for (const site of sites) {
+      expect(EXCEPTIONS, `unnamed synchronous carrier egress in ${site}()`).toContain(site);
+    }
+    expect(sites).toHaveLength(EXCEPTIONS.length);
+    expect([...new Set(sites)].sort()).toEqual([...EXCEPTIONS].sort());
+
+    // Each exception gates its OWN egress. A Message verb is an outbound text,
+    // so it answers to the kill switch, canary allow-list and lane gates like
+    // the durable worker; and it is claimed atomically against the receipt, so
+    // a provider retry cannot ask the carrier to send the same text twice.
+    for (const name of EXCEPTIONS) {
+      const start = inboundRoute.indexOf(`function ${name}(`);
+      expect(start, `${name}() not found in the route`).toBeGreaterThan(-1);
+      const next = inboundRoute.slice(start + 1).search(/\n(?:export\s+)?(?:async\s+)?function\s/);
+      const body = inboundRoute.slice(start, next === -1 ? undefined : start + 1 + next);
+      expect(body, `${name}() does not check lane suppression`).toContain('outboundSmsLaneSuppression(');
+      expect(body, `${name}() does not claim its egress atomically`).toMatch(/rpc\('record_sms_[a-z_]+reply/);
+      expect(body, `${name}() does not hash the body it claims`)
+        .toContain("createHash('sha256').update(responseBody, 'utf8')");
+    }
+
+    expect(inboundRoute).toContain('function minimumComplianceKeywordTwiml(');
+    expect(inboundRoute).toContain("'stop', brand, ingress.accountId, ingress.senderPurpose");
+    expect(inboundRoute).toContain("'start', brand, ingress.accountId, ingress.senderPurpose");
+    expect(inboundRoute).toContain("'help', brand, ingress.accountId, ingress.senderPurpose");
+    expect(inboundRoute).toContain('outboundSmsLaneSuppression(accountId, senderPurpose)');
+    expect(inboundRoute).toContain("rpc('record_sms_compliance_reply_result'");
+    expect(inboundRoute).toContain('p_webhook_receipt_id: webhookReceiptId');
+    expect(inboundRoute).toContain("createHash('sha256').update(responseBody, 'utf8')");
+    expect(inboundRoute).toContain("admin, ingress.receiptId, 'start'");
+    expect(inboundRoute).toContain("admin, ingress.receiptId, 'help'");
+    expect(inboundRoute).not.toContain("binding,\n        'keyword_start'");
+    expect(inboundRoute).not.toContain("binding,\n        'keyword_help'");
+  });
+});
+
+describe('reply transcript ownership', () => {
+  const offerData = readFileSync(new URL('../src/lib/estimate-offers-data.ts', import.meta.url), 'utf8');
+  const rescheduleData = readFileSync(new URL('../src/lib/reschedule-offers-data.ts', import.meta.url), 'utf8');
+
+  it('does not manufacture optimistic outbound transcript rows in reply resolvers', () => {
+    for (const source of [offerData, rescheduleData]) {
+      expect(source).not.toContain('logOutboundMessage');
+      expect(source).not.toContain("from('sms_messages')");
+    }
   });
 });

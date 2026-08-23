@@ -142,9 +142,10 @@ export async function sendSelectionRequest(
   const url = `${APP_ORIGIN}/client/jobs/${token}`;
 
   let channel: 'sms' | 'email';
+  let smsEventId: string | null = null;
   try {
     if (canText && contact.phone) {
-      const providerId = await sendSelectionRequestSms({
+      smsEventId = await sendSelectionRequestSms({
         phone: contact.phone,
         accountId,
         message: selectionRequestText({
@@ -154,11 +155,15 @@ export async function sendSelectionRequest(
           overdue: Boolean(options.overdue),
           url,
         }),
+        // The persisted portal token is the identity of this deliberate send.
+        // A later resend mints a new token (and therefore a new message intent),
+        // while retries inside this action resolve to the same durable event.
+        idempotencyKey: `selection-request:${jobId}:${token}`,
       });
       // null means the number opted out between the consent read and the send.
       // Reporting that as a successful text is how a contractor comes to believe
       // a customer was told something they were not.
-      if (providerId === null) return { ok: false, reason: 'opted_out' };
+      if (smsEventId === null) return { ok: false, reason: 'opted_out' };
       channel = 'sms';
     } else {
       await sendSelectionRequestEmail({
@@ -178,12 +183,18 @@ export async function sendSelectionRequest(
 
   await createJobFeedEvent(admin, accountId, jobId, {
     kind: 'selection_requested',
-    title: channel === 'sms' ? 'Choices texted to the customer' : 'Choices emailed to the customer',
-    body: `${sendable.length} ${sendable.length === 1 ? 'choice' : 'choices'} sent to ${contact.clientName}${
+    title: channel === 'sms' ? 'Choices queued for the customer' : 'Choices emailed to the customer',
+    body: `${sendable.length} ${sendable.length === 1 ? 'choice' : 'choices'} ${channel === 'sms' ? 'queued for' : 'sent to'} ${contact.clientName}${
       options.overdue ? ' (past the date we needed them)' : ''
     }.`,
     visibility: 'internal',
-    meta: { channel, count: sendable.length, overdue: Boolean(options.overdue) },
+    meta: {
+      channel,
+      count: sendable.length,
+      overdue: Boolean(options.overdue),
+      delivery_state: channel === 'sms' ? 'queued' : 'sent',
+      sms_event_id: smsEventId,
+    },
   }).catch(() => {});
 
   return { ok: true, channel, count: sendable.length };

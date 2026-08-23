@@ -14,6 +14,8 @@ import {
   annualPlanEstimate,
   annualPlanCost,
   planCrossover,
+  VOICE_PURCHASABLE,
+  VOICE_PLANNED_PRICE_LABEL,
   type BillingCycle,
   type PlanId,
   type PricingPlan,
@@ -27,19 +29,19 @@ const CARD_FEATURES: Record<PlanId, readonly string[]> = {
     'Custom domain + QuickBooks Online',
   ],
   solo: [
-    'Your own voice/text business number',
+    'Your own business number coming soon',
     '500 text + 250 AI Intake credits/month',
     'Custom domain + QuickBooks Online',
   ],
   growth: [
     '5 office users + 10 crew users',
     '1,500 text + 500 AI Intake credits/month',
-    'AI Voice Receptionist available',
+    'AI Voice Receptionist coming soon',
   ],
   scale: [
     '0.1% LGQ platform fee',
-    'AI Voice Receptionist included',
-    '3 simultaneous AI calls + advanced routing',
+    'AI Voice Receptionist coming soon',
+    'At launch: 3 simultaneous AI calls + advanced routing',
   ],
 };
 
@@ -66,7 +68,7 @@ const SCENARIOS: readonly {
     planId: 'solo',
     revenue: 250_000,
     title: 'Owner-operator electrician',
-    description: 'Gets a dedicated number and a much lower platform fee.',
+    description: 'Gets a much lower platform fee, and their own number when it launches.',
   },
   {
     planId: 'growth',
@@ -85,8 +87,8 @@ const SCENARIOS: readonly {
 const COMPARISON_HIGHLIGHTS = [
   { value: '1.25% → 0.1%', label: 'Choose a plan with the fee that fits' },
   { value: '1 → 5', label: 'Office seats expand on Growth' },
-  { value: 'Solo+', label: 'Dedicated business number' },
-  { value: 'Included', label: 'AI Voice Receptionist arrives with Scale' },
+  { value: 'Coming soon', label: 'Dedicated business number, planned for Solo and up' },
+  { value: 'Coming soon', label: 'AI Voice Receptionist is not available yet' },
 ] as const;
 
 const COMPETITORS = [
@@ -96,7 +98,7 @@ const COMPETITORS = [
     monthly: '$129 + 0.25%',
     annual: '$99 + 0.25%',
     users: '5 office + 10 crew',
-    phone: 'Dedicated number; AI Voice Receptionist +$55',
+    phone: 'Dedicated number and AI Voice Receptionist both coming soon',
     href: '#plans',
   },
   {
@@ -172,22 +174,19 @@ function getPlan(planId: PlanId): PricingPlan {
 
 function voiceDescription(plan: PricingPlan): string {
   const allowance = `${plan.voiceMinutes} AI-connected minutes`;
+  // The minutes are the plan shape and are safe to show. The PRICE is not, while
+  // nothing can be bought: "Included" on Scale would be the strongest false
+  // claim on the page, because it reads as something already paid for.
+  if (!VOICE_PURCHASABLE) return `At launch · ${allowance}`;
   return plan.id === 'scale'
     ? `Included · ${allowance}`
     : `$${VOICE_MONTHLY_BY_PLAN[plan.id]}/month · ${allowance}`;
 }
 
-function signupHref(
-  plan: PlanId,
-  billing: BillingCycle,
-  includeVoice: boolean,
-): string {
-  const options = [
-    `plan=${plan}`,
-    `billing=${billing}`,
-    includeVoice ? 'voice=1' : '',
-  ].filter(Boolean);
-  return `${APP_SIGNUP_URL}&${options.join('&')}`;
+function signupHref(plan: PlanId, billing: BillingCycle): string {
+  // No voice parameter. It would have carried an intent to buy something that
+  // cannot be provisioned, leaving the far side to guess what to do with it.
+  return `${APP_SIGNUP_URL}&${[`plan=${plan}`, `billing=${billing}`].join('&')}`;
 }
 
 function InfoBubble({ label, children }: { label: string; children: ReactNode }) {
@@ -203,10 +202,10 @@ function AIVoiceReceptionistInfoBubble() {
   return (
     <InfoBubble label="AI Voice Receptionist">
       <p>
-        Answers calls on your business number, gathers job details, and routes the caller using your rules. It is an
-        optional add-on for Flex, Solo, and Growth and is included on Scale.
+        AI Voice Receptionist will answer calls on your business number, gather the job details, and route the caller
+        using your rules. It is in build and cannot be bought yet, and no plan includes it today.
       </p>
-      <a href="#receptionist">See AI Voice Receptionist plans and minutes →</a>
+      <a href="#receptionist">See the planned AI Voice Receptionist allowances →</a>
     </InfoBubble>
   );
 }
@@ -215,8 +214,8 @@ function MessagingInfoBubble() {
   return (
     <InfoBubble label="2-Way Messaging">
       <p>
-        Keeps customer texts and your replies together in one inbox. Flex uses a shared LGQ texting number; paid
-        plans include a dedicated business number. Outgoing messages use plan text credits.
+        Keeps customer texts and your replies together in one inbox. Every plan texts from a shared LGQ number
+        today; your own business number is planned for Solo and up. Outgoing messages use plan text credits.
       </p>
       <Link href="/demo/messages">Open the messaging demo →</Link>
     </InfoBubble>
@@ -225,7 +224,6 @@ function MessagingInfoBubble() {
 
 export default function PricingExperience() {
   const [billing, setBilling] = useState<BillingCycle>('annual');
-  const [includeVoice, setIncludeVoice] = useState(false);
   const [volume, setVolume] = useState(40_000);
   const [spotlightPlan, setSpotlightPlan] = useState<PlanId | null>(null);
   const [activeSection, setActiveSection] = useState<string>('plans');
@@ -241,11 +239,11 @@ export default function PricingExperience() {
 
   const recommendation = useMemo(() => PLANS.map((plan) => ({
     plan,
-    annualCost: annualPlanEstimate(plan, billing, volume, includeVoice, officeUsers, needsDedicatedNumber),
+    annualCost: annualPlanEstimate(plan, billing, volume, VOICE_PURCHASABLE, officeUsers, needsDedicatedNumber),
   })).filter((result): result is typeof result & { annualCost: number } => result.annualCost !== null)
-    .sort((a, b) => a.annualCost - b.annualCost)[0], [billing, includeVoice, needsDedicatedNumber, officeUsers, volume]);
+    .sort((a, b) => a.annualCost - b.annualCost)[0], [billing, needsDedicatedNumber, officeUsers, volume]);
 
-  const scaleCrossover = planCrossover(getPlan('growth'), getPlan('scale'), billing, includeVoice);
+  const scaleCrossover = planCrossover(getPlan('growth'), getPlan('scale'), billing, VOICE_PURCHASABLE);
   const markCalculatorUsed = () => { setHasUsedCalculator(true); setStickyDismissed(false); };
 
   useEffect(() => {
@@ -366,7 +364,7 @@ export default function PricingExperience() {
             <li><span>Jobs come in</span><strong>1.25%</strong><small>eligible payments</small></li>
             <li><span>Business grows</span><strong>Your call</strong><small>upgrade when ready</small></li>
           </ol>
-          <a className={styles.seasonalButton} href={signupHref('flex', billing, includeVoice)}>
+          <a className={styles.seasonalButton} href={signupHref('flex', billing)}>
             Start with Flex
           </a>
         </aside>
@@ -446,7 +444,7 @@ export default function PricingExperience() {
                 {plan.id === 'scale' ? (
                   <p className={styles.scaleBreakpoint}>
                     <span>Base-plan price crossover</span>
-                    <strong>Usually lowest-cost above {money(scaleCrossover)}/year collected{includeVoice ? ' with AI Voice Receptionist' : ''}.</strong>
+                    <strong>Usually lowest-cost above {money(scaleCrossover)}/year collected.</strong>
                   </p>
                 ) : null}
 
@@ -468,9 +466,9 @@ export default function PricingExperience() {
                   </ul>
 
                   <div className={styles.selectedOptions}>
-                    <div data-active={includeVoice || plan.id === 'scale'}>
+                    <div data-active={VOICE_PURCHASABLE && plan.id === 'scale'}>
                       <div className={styles.optionLabel}><b>AI Voice Receptionist</b><AIVoiceReceptionistInfoBubble /></div>
-                      <span>{plan.id === 'scale' || includeVoice ? voiceDescription(plan) : 'Optional add-on'}</span>
+                      <span>{VOICE_PURCHASABLE ? (plan.id === 'scale' ? voiceDescription(plan) : 'Optional add-on') : 'Coming soon'}</span>
                     </div>
                     <div data-active="true">
                       <div className={styles.optionLabel}><b>2-Way Messaging</b><MessagingInfoBubble /></div>
@@ -479,7 +477,7 @@ export default function PricingExperience() {
                   </div>
                 </div>
 
-                <a className={plan.id === 'flex' ? styles.seasonalButton : plan.featured || isSpotlighted ? styles.primaryButton : styles.planButton} href={signupHref(plan.id, billing, includeVoice)}>
+                <a className={plan.id === 'flex' ? styles.seasonalButton : plan.featured || isSpotlighted ? styles.primaryButton : styles.planButton} href={signupHref(plan.id, billing)}>
                   {plan.id === 'flex' ? 'Start with Flex' : `Choose ${plan.name}`}
                 </a>
 
@@ -498,16 +496,11 @@ export default function PricingExperience() {
             <strong>Add the tools you need now.</strong>
           </div>
           <div className={styles.quickOptionGroup}>
-            <button
-              type="button"
-              className={includeVoice ? styles.quickOptionSelected : undefined}
-              aria-pressed={includeVoice}
-              onClick={() => setIncludeVoice((selected) => !selected)}
-            >
+            <div className={styles.includedOptionBody}>
               <span className={styles.quickIcon} aria-hidden="true">AI</span>
-              <span><strong>{includeVoice ? 'AI Voice Receptionist added' : 'Add AI Voice Receptionist'}</strong><small>From $55/mo · included on Scale</small></span>
-              <b aria-hidden="true">{includeVoice ? '✓' : '+'}</b>
-            </button>
+              <span><strong>AI Voice Receptionist</strong><small>{VOICE_PLANNED_PRICE_LABEL}</small></span>
+              <b>Coming soon</b>
+            </div>
             <a className={styles.quickLearnMore} href="#receptionist">What AI Voice Receptionist includes →</a>
           </div>
           <div className={`${styles.quickOptionGroup} ${styles.includedOption}`}>
@@ -569,15 +562,12 @@ export default function PricingExperience() {
           </div>
           <div className={styles.calculatorOptionRow}>
             <span>Include call coverage?</span>
-            <button type="button" aria-pressed={includeVoice} onClick={() => { setIncludeVoice((selected) => !selected); markCalculatorUsed(); }}>
-              {includeVoice ? '✓ AI Voice Receptionist included' : '+ Add AI Voice Receptionist'}
-            </button>
+
           </div>
         </div>
         <PricingCalculator
           billing={billing}
           volume={volume}
-          includeVoice={includeVoice}
           officeUsers={officeUsers}
           needsDedicatedNumber={needsDedicatedNumber}
           onBillingChange={(value) => { setBilling(value); markCalculatorUsed(); }}
@@ -590,24 +580,25 @@ export default function PricingExperience() {
       <section className={styles.voiceSection} id="receptionist">
         <div className={styles.voiceStory}>
           <div>
-            <p className={styles.sectionEyebrow}>Never miss the next good job</p>
-            <h2>Your phone keeps working when you can’t answer.</h2>
+            <p className={styles.sectionEyebrow}>Coming soon · not yet available</p>
+            <h2>Your phone will keep working when you can’t answer.</h2>
             <p>
-              AI Voice Receptionist answers, gathers the job details, and routes the caller using your rules—even
-              after hours.
+              AI Voice Receptionist will answer, gather the job details, and route the caller using your rules—even
+              after hours. It is in build and cannot be bought yet.
             </p>
             <div className={styles.voiceProof}>
-              <strong>Safe at the limit</strong>
-              <span>The active call finishes, then new callers follow forwarding or voicemail.</span>
+              <strong>{VOICE_PLANNED_PRICE_LABEL}</strong>
+              <span>Nothing to buy today, and no plan includes it yet. Minutes below are the planned allowances.</span>
             </div>
             <button type="button" className={styles.mobileDisclosureButton} aria-expanded={showMobileVoicePlans} aria-controls="voice-plan-details" onClick={() => setShowMobileVoicePlans((shown) => !shown)}>
               {showMobileVoicePlans ? 'Hide plan minutes' : 'Compare plan minutes'}
             </button>
           </div>
-          <ol className={styles.callFlow} aria-label="How AI Voice Receptionist handles a call">
+          <ol className={styles.callFlow} aria-label="How AI Voice Receptionist will handle a call">
             <li><span>01</span><div><strong>Answer</strong><small>A professional greeting, every time.</small></div></li>
             <li><span>02</span><div><strong>Qualify</strong><small>Capture the job, urgency, and location.</small></div></li>
             <li><span>03</span><div><strong>Route</strong><small>Transfer or follow your fallback rule.</small></div></li>
+            <li><span>04</span><div><strong>Planned</strong><small>None of this is live yet.</small></div></li>
           </ol>
         </div>
 
@@ -618,13 +609,15 @@ export default function PricingExperience() {
                 <span>{plan.name}</span>
                 <strong>{voiceDescription(plan)}</strong>
                 <p>{plan.voiceConcurrentCalls} simultaneous AI {plan.voiceConcurrentCalls === 1 ? 'call' : 'calls'}</p>
-                <small>{plan.id === 'scale' ? 'Advanced routing · 90-day history' : 'Standard routing · 30-day history'}</small>
+                <small>{plan.id === 'scale' ? 'Advanced routing · 90-day history' : 'Standard routing · 30-day history'}{VOICE_PURCHASABLE ? '' : ' · planned'}</small>
               </article>
             ))}
           </div>
           <p className={styles.sectionFinePrint}>
-            AI-connected minutes are separate from text and AI Intake credits. Ringing, failed calls, blocked spam, and
-            time after a completed transfer do not use AI minutes. Extra usage requires your approval and spending cap.
+            AI Voice Receptionist is not available yet, and no plan currently includes it. The allowances shown are the
+            planned launch figures and may change before release. At launch, AI-connected minutes will be separate from
+            text and AI Intake credits; ringing, failed calls, blocked spam, and time after a completed transfer will
+            not use AI minutes, and extra usage will be a top-up you choose to buy.
           </p>
         </div>
       </section>
@@ -680,7 +673,11 @@ export default function PricingExperience() {
             </summary>
             <div className={styles.addOnList}>
               {ADD_ONS.map((item) => (
-                <div key={item.label}><span><strong>{item.label}</strong><small>{item.eligibility}</small></span><b>{item.price}</b></div>
+                <div key={item.label}>
+                  <span><strong>{item.label}</strong><small>{item.eligibility}</small></span>
+                  {/* Gold ink reads as a price. A thing you cannot buy must not. */}
+                  <b data-soon={item.available ? undefined : 'true'}>{item.price}</b>
+                </div>
               ))}
             </div>
           </details>
@@ -715,7 +712,11 @@ export default function PricingExperience() {
 
       <section className={styles.promiseSection}>
         <div><strong>Unlimited core work</strong><span>Leads, clients, quotes, jobs, invoices, and standard forms.</span></div>
-        <div><strong>No unapproved overages</strong><span>Top up once or deliberately enable a spending cap.</span></div>
+        {/* "never an automatic charge" was false from 2026-08-22, when the
+            opt-in overage switch shipped. The promise worth making is the one
+            that is actually true and is enforced in code: off by default, and
+            capped by a number the contractor picks. */}
+        <div><strong>No surprise overages</strong><span>Extra usage is off unless you switch it on and set your own spending limit.</span></div>
         <div><strong>No lost website leads</strong><span>When AI Intake ends, LGQ switches to the normal quote form.</span></div>
         <div><strong>Bring your books</strong><span>One QuickBooks Online connection is included on every plan.</span></div>
       </section>
@@ -752,7 +753,7 @@ export default function PricingExperience() {
           <h2>Keep costs light when work slows. Keep the same system when it takes off.</h2>
           <p>Flex starts at $0/month plus 1.25% on eligible payments. Upgrade only when the math or your team says it is time.</p>
           <div className={styles.heroActions}>
-            <a className={styles.seasonalButton} href={signupHref('flex', billing, includeVoice)}>Start with Flex</a>
+            <a className={styles.seasonalButton} href={signupHref('flex', billing)}>Start with Flex</a>
             <Link className={styles.secondaryButton} href="/contact">Talk to a real person</Link>
           </div>
         </div>
@@ -771,7 +772,7 @@ export default function PricingExperience() {
         <aside className={styles.mobileRecommendation} data-plan={recommendation.plan.id} aria-label="Current plan recommendation">
           <button type="button" className={styles.mobileRecommendationDismiss} aria-label="Dismiss recommendation" onClick={() => setStickyDismissed(true)}>×</button>
           <div><span>Your current best fit</span><strong>{recommendation.plan.name} · {money(recommendation.annualCost / 12)}/mo effective</strong></div>
-          <a href={signupHref(recommendation.plan.id, billing, includeVoice)}>{recommendation.plan.id === 'flex' ? 'Start Flex' : `Choose ${recommendation.plan.name}`}</a>
+          <a href={signupHref(recommendation.plan.id, billing)}>{recommendation.plan.id === 'flex' ? 'Start Flex' : `Choose ${recommendation.plan.name}`}</a>
         </aside>
       ) : null}
     </>

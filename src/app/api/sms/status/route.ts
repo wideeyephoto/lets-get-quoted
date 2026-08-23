@@ -1,6 +1,13 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/auth';
 import { hasSignatureHeader, SIMULATED_PROVIDER_ID, validateWebhookSignature } from '@/lib/sms-provider';
+import {
+  applyStatusWebhook,
+  extractStatusWebhook,
+  parseSmsWebhookBody,
+  recordInvalidWebhook,
+  type ParsedStatusWebhook,
+} from '@/lib/sms-webhook-ingress';
 import { logWebhookFailure } from '@/lib/webhook-failures';
 
 export const runtime = 'nodejs';
@@ -10,63 +17,67 @@ export async function POST(request: Request) {
     await logWebhookFailure({ source: 'sms_status', errorMessage: 'Missing provider signature header' });
     return NextResponse.json({ error: 'Invalid signature.' }, { status: 403 });
   }
-  const data = await request.formData();
-  const check = validateWebhookSignature(request, data);
+
+  const rawBody = await request.clone().text();
+  const check = validateWebhookSignature(request, rawBody);
   if (!check.ok) {
     await logWebhookFailure({
       source: 'sms_status',
-      referenceId: String(data.get('MessageSid') || '') || null,
+      referenceId: null,
       errorMessage: `Signature validation failed: ${check.reason}`,
     });
     return NextResponse.json({ error: 'Invalid signature.' }, { status: 403 });
   }
-  const providerId = String(data.get('MessageSid') || '');
-  const providerStatus = String(data.get('MessageStatus') || '');
 
-  // The provider id every suppressed send writes — which since the off switch
-  // moved to sendProviderMessage is any sender, not just dispatch. provider_id
-  // carries no unique constraint, so a callback that happened to arrive with
-  // that MessageSid would mark EVERY simulated row in the database as failed in
-  // one statement. The sentinel was argued safe on the grounds that no real SID
-  // looks like that; nothing enforced it. Now something does.
-  if (providerId === SIMULATED_PROVIDER_ID) return new NextResponse(null, { status: 204 });
-
-  // Providers retry status callbacks that come back as an error, and a retry
-  // here would just repeat the same update — harmless, but the failure still
-  // needs to be visible on the Command Center, so it's logged rather than
-  // left to disappear into a retry that happens to succeed the second time.
+  const contentType = request.headers.get('content-type');
+  const admin = createAdminClient();
+  let status: ParsedStatusWebhook | null = null;
   try {
-    if (providerId && ['failed', 'undelivered'].includes(providerStatus)) {
-      const reason = String(data.get('ErrorMessage') || data.get('ErrorCode') || providerStatus);
-      const { data: updated, error } = await createAdminClient()
-        .from('sms_events')
-        .update({ status: 'failed', error_reason: reason })
-        .eq('provider_id', providerId)
-        .select('id');
-      if (error) throw new Error(error.message);
+    status = extractStatusWebhook(parseSmsWebhookBody(rawBody, contentType));
+  } catch (error) {
+    console.error('SMS status payload parse failed:', error);
+  }
 
-      // The provider just told us a text did not arrive, and there was no row to
-      // say so on. Only the payment and crew senders write sms_events; the other
-      // ~30 send functions in lib/sms.ts do not, so their delivery failures
-      // updated zero rows and vanished — which is exactly why the Failed texts
-      // card looks healthy. Recording it as a webhook failure is not where this
-      // belongs long-term, but it is visible, and silence was the bug.
-      if (!updated || updated.length === 0) {
-        await logWebhookFailure({
-          source: 'sms_status',
-          eventType: providerStatus,
-          referenceId: providerId,
-          errorMessage: `Delivery failure with no sms_events row to record it on: ${reason}`,
-        });
-      }
+  if (!status) {
+    try {
+      await recordInvalidWebhook(admin, {
+        provider: check.provider,
+        kind: 'status',
+        rawBody,
+        contentType,
+        requestUrl: request.url,
+      });
+      return new NextResponse(null, { status: 204 });
+    } catch (error) {
+      await logWebhookFailure({
+        source: 'sms_status',
+        referenceId: null,
+        errorMessage: error instanceof Error ? error.message : String(error),
+      });
+      return NextResponse.json({ error: 'Receipt unavailable.' }, { status: 503 });
     }
-  } catch (err) {
-    console.error('SMS status webhook handler threw:', err);
+  }
+
+  if (status.providerEventId === SIMULATED_PROVIDER_ID) {
+    return new NextResponse(null, { status: 204 });
+  }
+
+  try {
+    await applyStatusWebhook(admin, {
+      ...status,
+      provider: check.provider,
+      rawBody,
+      contentType,
+      requestUrl: request.url,
+    });
+  } catch (error) {
+    console.error('SMS status webhook handler threw:', error);
     await logWebhookFailure({
       source: 'sms_status',
-      referenceId: providerId || null,
-      errorMessage: err instanceof Error ? err.message : String(err),
+      referenceId: status.providerEventId,
+      errorMessage: error instanceof Error ? error.message : String(error),
     });
+    return NextResponse.json({ error: 'Receipt unavailable.' }, { status: 503 });
   }
   return new NextResponse(null, { status: 204 });
 }

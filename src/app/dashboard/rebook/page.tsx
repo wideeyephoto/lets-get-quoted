@@ -30,12 +30,12 @@ export default async function RebookPage({
 
   const flash = searchParams.flash ?? null;
   const flashText =
-    flash === 'sent-sms'
-      ? 'Booking link texted. It also shows in your Messages inbox.'
+    flash === 'queued-sms'
+      ? 'Booking-link text queued. Delivery status will appear in Messages.'
       : flash === 'sent-email'
         ? 'Booking link emailed.'
         : flash === 'batch'
-          ? `Sent ${searchParams.sent ?? 0} booking link${Number(searchParams.sent) === 1 ? '' : 's'}.${Number(searchParams.skipped) > 0 ? ` ${searchParams.skipped} skipped (no contact).` : ''}${Number(searchParams.failed) > 0 ? ` ${searchParams.failed} failed.` : ''}`
+          ? `Accepted ${searchParams.sent ?? 0} booking link${Number(searchParams.sent) === 1 ? '' : 's'} for delivery.${Number(searchParams.skipped) > 0 ? ` ${searchParams.skipped} skipped (no contact).` : ''}${Number(searchParams.failed) > 0 ? ` ${searchParams.failed} failed.` : ''}`
           : null;
 
   return (

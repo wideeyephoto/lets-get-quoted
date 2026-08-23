@@ -1,6 +1,11 @@
 import Link from 'next/link';
 import { createAdminClient } from '@/lib/auth';
-import { formatMoney } from '@/lib/jobs';
+// EXACT, not the rounding formatMoney. Every figure on this page is a debt or a
+// receipt somebody reconciles against their own bank statement, and the invoice
+// page one click away has always shown cents -- so a rounded balance here meant
+// two different numbers for one debt on consecutive screens, the first of them
+// on a button that says Pay.
+import { formatMoneyExact as formatMoney } from '@/lib/jobs';
 import { resolvePortalAccess } from '@/lib/client-portal';
 import { loadPortal } from '@/lib/client-portal-data';
 import { ContractorBrandBar, ContractorBrandFoot } from '@/components/contractor-brand';

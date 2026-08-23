@@ -38,6 +38,7 @@ const CATALOGUE = stripJs(read('src', 'app', 'dashboard', 'automations', 'Outgoi
 const SHELL = read('src', 'components', 'app-shell.tsx');
 const SHELL_CODE = stripJs(SHELL);
 const MODAL = read('src', 'components', 'modal-dialog.tsx');
+const MODAL_STACK = read('src', 'components', 'modal-stack.ts');
 const CSS = stripCss(read('src', 'app', 'globals.css'));
 
 /* ===========================================================================
@@ -539,13 +540,15 @@ describe('the inbox signs texts with the same name as everything else', () => {
 });
 
 describe('a modal traps focus by making everything else inert', () => {
-  it('marks the body’s other children, so the portal survives', () => {
-    expect(MODAL).toContain("!el.classList.contains('app-modal-backdrop')");
-    expect(MODAL).toContain("inerted.forEach((el) => el.toggleAttribute('inert', true))");
-    expect(MODAL).toContain("inerted.forEach((el) => el.toggleAttribute('inert', false))");
+  it('registers its portal with the shared stack that inerts every non-top body child', () => {
+    expect(MODAL).toContain('modalStackFor(document).register');
+    expect(MODAL_STACK).toContain('for (const child of Array.from(documentRef.body.children))');
+    expect(MODAL_STACK).toContain("element.toggleAttribute('inert', true)");
+    expect(MODAL_STACK).toContain("element.setAttribute('aria-hidden', 'true')");
   });
 
   it('runs once the portal exists, which defaultOpen would otherwise miss', () => {
-    expect(MODAL).toContain('}, [open, mounted]);');
+    expect(MODAL).toContain('if (!open || !mounted) return');
+    expect(MODAL).toContain('}, [open, mounted, close, dialogId]);');
   });
 });

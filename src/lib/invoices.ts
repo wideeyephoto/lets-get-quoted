@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createAdminClient } from '@/lib/auth';
 import { getJob } from '@/lib/jobs';
+import { CONNECT_CHARGE_COLUMNS } from '@/lib/stripe';
 
 export type InvoiceStatus = 'draft' | 'sent' | 'signed' | 'paid' | 'void';
 
@@ -58,12 +59,12 @@ export type InvoiceItem = {
   sort_order: number;
 };
 
-export function formatMoney(n: number): string {
-  // Kept in step with the copy in @/lib/jobs — the sign goes outside the currency
-  // symbol, so a credit reads "-$120" rather than "$-120".
-  const rounded = Math.round(n) || 0;
-  return (rounded < 0 ? '-$' : '$') + Math.abs(rounded).toLocaleString();
-}
+// formatMoney used to live here: a THIRD whole-dollar formatter, kept "in step
+// with the copy in @/lib/jobs" by hand. It had exactly one caller -- the
+// contractor's invoice detail page -- and that page renders line items over a
+// Subtotal/Discount/Tax/Total block for the same invoice the customer receives to
+// the cent. So it was removed rather than fixed. money-format.ts holds the one
+// implementation, and its header says why there is only one.
 
 // The next unused INV- number for an account.
 //
@@ -365,7 +366,12 @@ export async function addInvoiceItem(
     throw new Error(expectedJobId === undefined ? 'Invoice not found for this account.' : 'Invoice not found for this job.');
   }
 
-  if (input.amount <= 0) {
+  // Finiteness first, for the reason payments.ts now carries in full: **NaN <= 0
+  // is false**, so an unparseable amount passed this guard, supabase-js turned
+  // NaN into null, and it hit `invoice_items.amount`, which is numeric NOT NULL.
+  // `refundPayment` and the milestone blockers already tested the safe way; this
+  // and createDepositRequest were the two that did not.
+  if (!Number.isFinite(input.amount) || input.amount <= 0) {
     throw new Error('Line item amount must be greater than 0.');
   }
 
@@ -461,7 +467,14 @@ export async function deleteInvoice(
 
 export type PublicInvoiceRecord = Invoice & {
   job: { client_name: string; ref: string } | null;
-  account: { business_name: string } | null;
+  // Structural match for ConnectChargeable, so the public page can hand this
+  // straight to canCreateConnectCharge instead of re-stating the rule.
+  account: {
+    business_name: string;
+    stripe_connect_id?: string | null;
+    connect_onboarded?: boolean | null;
+    payouts_restricted_at?: string | null;
+  } | null;
 };
 
 // Public read — the client signing an invoice has no user session, so this
@@ -474,7 +487,17 @@ export async function getPublicInvoice(
 
   const { data: invoice, error } = await admin
     .from('invoices')
-    .select('*, job:jobs(client_name, ref), account:accounts(business_name)')
+    // The chargeability columns travel with the invoice because the public page
+    // needs them: a contractor who cannot receive money must not be offered a
+    // Pay button, and this page did not load any of it at all.
+    //
+    // Interpolated from CONNECT_CHARGE_COLUMNS rather than spelled out, because
+    // spelling it out is how this went wrong. The page fetched connect_onboarded
+    // alone and asked only that -- two thirds of canCreateConnectCharge -- so an
+    // account staff had restricted still read as payable. A select written by
+    // hand can silently under-fetch the very columns the predicate needs, and
+    // the predicate then fails open on the fields it cannot see.
+    .select(`*, job:jobs(client_name, ref), account:accounts(business_name, ${CONNECT_CHARGE_COLUMNS})`)
     .eq('id', invoiceId)
     .maybeSingle();
 

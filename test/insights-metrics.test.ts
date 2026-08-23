@@ -541,7 +541,7 @@ describe('buildMarketingPerformance', () => {
       sentAt: '2026-06-01T00:00:00Z',
       recipients: 100,
       emailSent: 95,
-      smsSent: 0,
+      smsQueued: 0,
       failed: 3,
       skipped: 2,
     });

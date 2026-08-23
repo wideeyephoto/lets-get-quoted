@@ -267,6 +267,7 @@ export async function notifyMovedClientsAction(formData: FormData) {
       clientName: job.client_name,
       windowLabel: window.label,
       accountId,
+      idempotencyKey: `arrival-window:${job.id}:${job.scheduled_for}:${job.scheduled_time ?? 'none'}`,
     });
     await createJobFeedEvent(supabase, accountId, job.id, {
       kind: 'job_update',

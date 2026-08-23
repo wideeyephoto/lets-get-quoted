@@ -123,10 +123,16 @@ export async function sendEstimateOfferAction(
   const businessName = (account?.business_name as string) || "Let's Get Quoted";
   const message = composeOfferMessage(businessName, body);
 
+  let smsEventId: string;
   try {
-    await sendEstimateOfferSms({ accountId, toPhone: phone, message });
+    smsEventId = await sendEstimateOfferSms({
+      accountId,
+      toPhone: phone,
+      message,
+      idempotencyKey: `estimate-offer:${offerId}`,
+    });
   } catch (error) {
-    // The text never left. Drop the record so the slot is released AND this lead
+    // No durable queue intent exists. Drop the record so the slot is released AND this lead
     // can be offered again — a provider hiccup must not burn the one ask we get.
     await deleteOffer(supabase, accountId, offerId);
     console.error('Estimate offer send failed:', error instanceof Error ? error.message : error);
@@ -136,13 +142,13 @@ export async function sendEstimateOfferAction(
   await recordAccountEvent({
     accountId,
     kind: 'automation_toggled',
-    summary: `Offered ${lead.name || 'a lead'} an estimate slot on ${dateKey}, held ${hold} min`,
+    summary: `Queued an estimate-slot offer for ${lead.name || 'a lead'} on ${dateKey}, held ${hold} min`,
     actorEmail: userEmail,
-    meta: { source: 'estimate_offer', offer_id: offerId, lead_id: leadId, hold_minutes: hold },
+    meta: { source: 'estimate_offer', offer_id: offerId, lead_id: leadId, hold_minutes: hold, sms_event_id: smsEventId },
   });
 
   revalidatePlan();
-  return { ok: true, message: `Sent. ${lead.name || 'They'} have ${hold} minutes to reply — the slot is yours until then.` };
+  return { ok: true, message: `Queued. ${lead.name || 'They'} have ${hold} minutes to reply once it arrives — the slot is yours until then.` };
 }
 
 export async function releaseEstimateOfferAction(

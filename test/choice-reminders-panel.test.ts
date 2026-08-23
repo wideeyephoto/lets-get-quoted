@@ -49,7 +49,9 @@ describe('the Choice reminders card', () => {
     // The Review requests card carried a checkbox writing the same column as the
     // switch above it, rendered from a stale value, and turning the switch off
     // then pressing Save turned the automation back on. One boolean, one control.
-    expect(AUTOMATIONS_PAGE).toMatch(/toggle=\{\{ on: selectionRemindersEnabled, action: toggleAutomationAction\.bind\(null, 'selections'\) \}\}/);
+    expect(AUTOMATIONS_PAGE).toMatch(
+      /toggle=\{\{ on: selectionRemindersEnabled, action: toggleAutomationAction\.bind\(null, 'selections'\), enableBlocked: !customerTextingReady/,
+    );
     expect(PANEL_CODE).not.toMatch(/type="checkbox"/);
     expect(PANEL_CODE).not.toMatch(/role="switch"/);
     // The panel receives `enabled` to render state, and never writes it — the

@@ -235,8 +235,14 @@ describe('the sweep sends', () => {
     await run(due());
     expect(feedEvents).toHaveLength(1);
     expect(feedEvents[0].kind).toBe('selection_requested');
-    expect(feedEvents[0].title).toBe('Choice reminder texted');
-    expect(feedEvents[0].meta).toMatchObject({ channel: 'sms', count: 2, reminder: true, stages: [0] });
+    expect(feedEvents[0].title).toBe('Choice reminder queued');
+    expect(feedEvents[0].meta).toMatchObject({
+      channel: 'sms',
+      count: 2,
+      reminder: true,
+      stages: [0],
+      delivery_state: 'queued',
+    });
   });
 
   it('the second reminder two days later, and not the day between', async () => {

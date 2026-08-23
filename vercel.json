@@ -65,7 +65,23 @@
       "schedule": "*/15 * * * *"
     },
     {
+      "path": "/api/cron/plan-change-apply",
+      "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/cron/refund-reconciliation",
+      "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/cron/voice-allowance",
+      "schedule": "*/15 * * * *"
+    },
+    {
       "path": "/api/cron/connected-payment-projection",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/top-up-projection",
       "schedule": "*/5 * * * *"
     },
     {
@@ -75,6 +91,38 @@
     {
       "path": "/api/cron/legacy-quick-stop-late-refunds",
       "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/storage-usage-sweep",
+      "schedule": "17 * * * *"
+    },
+    {
+      "path": "/api/cron/capacity-lifecycle",
+      "schedule": "37 * * * *"
+    },
+    {
+      "path": "/api/cron/usage-reservation-expiry",
+      "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/cron/sms-delivery",
+      "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/cron/sms-inbound-actions",
+      "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/cron/voice-retention",
+      "schedule": "43 5 * * *"
+    },
+    {
+      "path": "/api/cron/overage-period-close",
+      "schedule": "17 * * * *"
+    },
+    {
+      "path": "/api/cron/overage-settlement",
+      "schedule": "37 * * * *"
     }
   ]
 }

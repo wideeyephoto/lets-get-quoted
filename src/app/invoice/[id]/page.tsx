@@ -2,6 +2,8 @@ import { createAdminClient } from '@/lib/auth';
 import { formatMoneyExact } from '@/lib/jobs';
 import { computeInvoiceTotals, getPublicInvoice } from '@/lib/invoices';
 import { invoicePayState, type InvoicePayment } from '@/lib/invoice-pay';
+import { CHECKOUT_BLOCK_NOTE } from '@/lib/payment-banner';
+import { canCreateConnectCharge } from '@/lib/stripe';
 import { loadContractorBrand } from '@/lib/contractor-brand';
 import { ContractorBrandBar, ContractorBrandFoot } from '@/components/contractor-brand';
 import { payInvoiceAction, signInvoiceAction } from './actions';
@@ -48,7 +50,7 @@ export default async function PublicInvoicePage({ params }: { params: { id: stri
   // settled by money that was never against it.
   const { data: paymentRows } = await admin
     .from('payments')
-    .select('id, amount, status, invoice_id, refunded_amount')
+    .select('id, amount, status, invoice_id, refunded_amount, async_payment_pending_at')
     .eq('account_id', invoice.account_id)
     .eq('invoice_id', invoice.id);
   const pay = invoicePayState(invoice, totals.total, (paymentRows ?? []) as InvoicePayment[]);
@@ -84,15 +86,37 @@ export default async function PublicInvoicePage({ params }: { params: { id: stri
             ) : null}
           </div>
 
-          {pay.state === 'payable' ? (
+          {pay.state === 'payable' && !canCreateConnectCharge(invoice.account) ? (
+            /* The contractor cannot receive money, so there is nothing useful
+               this button can do. It asked `!connect_onboarded` -- two thirds of
+               the rule -- so an account staff had restricted still got a live
+               "Pay $4,237.50". Pressing it does not throw here, which is why it
+               went unnoticed: payInvoiceAction inserts a `requested` payment and
+               redirects to /pay/[id], which then says the contractor is not set
+               up. So the cost was a stray payment row and an answer given one
+               page too late.
+
+               The predicate is the one createCheckoutSessionForPayment enforces,
+               and the sentence is the one /pay/[id] renders, both imported
+               rather than restated. Two money surfaces describing one situation
+               in two ways is how somebody decides the product is unreliable
+               rather than the contractor. */
+            <div className="payment-banner muted">
+              <p>{CHECKOUT_BLOCK_NOTE.contractor_unavailable}</p>
+            </div>
+          ) : pay.state === 'payable' ? (
             <form action={boundPayInvoice} className="actions workspace-actions">
               <button type="submit" className="btn primary">Pay {formatMoney(pay.due)}</button>
             </form>
           ) : pay.state === 'processing' ? (
             <div className="payment-banner">
+              {/* Only reached for a genuinely in-flight transfer now.
+                  invoicePayState requires async_payment_pending_at, so an
+                  abandoned checkout is `payable` and gets the button back. */}
               <p>
-                A payment for this invoice is processing. Bank transfers take a few business days to clear — you&apos;ll
-                be confirmed once it settles.
+                Your bank transfer is on its way. Bank transfers (ACH) take a few business days to clear,
+                and you&apos;ll be confirmed once it settles. There&apos;s nothing more to do — please
+                don&apos;t pay again.
               </p>
             </div>
           ) : pay.state === 'settled' ? (

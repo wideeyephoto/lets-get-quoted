@@ -1,5 +1,6 @@
 import { randomUUID } from 'crypto';
 import { createAdminClient } from '@/lib/auth';
+import { assertStorageCapacity } from '@/lib/billing/storage-usage';
 
 /**
  * Storing and serving a certificate of insurance.
@@ -43,6 +44,7 @@ export async function uploadInsuranceProof(accountId: string, file: File): Promi
   const extension = ALLOWED_TYPES.get(file.type);
   if (!extension) throw new Error('Upload a PDF or a photo (JPG, PNG, WebP or HEIC) of your certificate.');
   if (file.size > MAX_BYTES) throw new Error('That file is over 10 MB. A scan or a photo of the certificate is plenty.');
+  await assertStorageCapacity(createAdminClient(), accountId, file.size);
   await ensureBucket();
 
   const path = `${accountId}/${randomUUID()}.${extension}`;

@@ -1,5 +1,6 @@
 import { randomUUID } from 'crypto';
 import { createAdminClient } from '@/lib/auth';
+import { assertStorageCapacity } from '@/lib/billing/storage-usage';
 
 const LEAD_PHOTOS_BUCKET = 'lead-photos';
 const MAX_PHOTO_BYTES = 6 * 1024 * 1024;
@@ -18,9 +19,42 @@ async function ensureLeadPhotosBucket() {
   if (error && !error.message.toLowerCase().includes('already exists')) throw error;
 }
 
-export async function uploadLeadPhoto(accountId: string, file: File): Promise<string> {
+/**
+ * WHO IS UPLOADING. Required, not defaulted, because getting it wrong is silent
+ * and expensive in one direction.
+ *
+ * `workspace` is the contractor or their staff adding a photo to a lead from the
+ * dashboard. The storage allowance applies: it is their file, their workspace,
+ * their bill.
+ *
+ * `public_visitor` is a HOMEOWNER attaching photos to a quote request on the
+ * contractor's public site or Quick Stop booking form. The allowance must NOT
+ * apply. This bucket is the one upload path in the app whose caller is usually
+ * not the customer being billed, and the public lead intake treats ANY upload
+ * failure as a failed submission -- it deletes the partial upload and returns a
+ * 500 (api/public/leads/route.ts) -- so enforcing here would silently destroy
+ * inbound work: the homeowner sees "unable to send your request right now" and
+ * the contractor never learns the enquiry existed. A storage cap that costs a
+ * contractor their leads is worse than one that costs us disk.
+ *
+ * The bytes still count either way. The sweep measures the bucket, not the code
+ * path that filled it, so a workspace still sees and pays for these.
+ *
+ * No default value on purpose: a new call site has to say which it is, and a
+ * default would quietly make the next public path enforce.
+ */
+export type LeadPhotoUploader = 'workspace' | 'public_visitor';
+
+export async function uploadLeadPhoto(
+  accountId: string,
+  file: File,
+  uploader: LeadPhotoUploader,
+): Promise<string> {
   if (!ALLOWED_TYPES.has(file.type)) throw new Error('Photos must be JPG, PNG, WebP, or AVIF.');
   if (file.size > MAX_PHOTO_BYTES) throw new Error('Each photo must be 6 MB or smaller.');
+  if (uploader === 'workspace') {
+    await assertStorageCapacity(createAdminClient(), accountId, file.size);
+  }
   await ensureLeadPhotosBucket();
 
   const extension = file.type.split('/')[1] === 'jpeg' ? 'jpg' : file.type.split('/')[1];

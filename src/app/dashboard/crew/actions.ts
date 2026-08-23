@@ -417,14 +417,15 @@ export async function assignCrewToJobAction(crewId: string, formData: FormData) 
         address: job.address,
         scheduledFor: job.scheduled_for,
         scheduledTime: job.scheduled_time,
+        idempotencyKey: `crew-assignment:${jobId}:${member.id}`,
       });
-      // Record the notification (only on a real send) so the schedule's "Crew
-      // Notified" status is consistent no matter which surface assigned the crew.
-      if (result?.status === 'sent') {
+      // Record that durable delivery work exists. Carrier callbacks, not this
+      // enqueue boundary, own the eventual sent/delivered claim.
+      if (result?.status === 'queued') {
         await createJobFeedEvent(supabase, accountId, jobId, {
           kind: 'job_update',
-          title: 'Crew assignment text sent',
-          body: `Texted ${member.name} about their assignment to ${job.ref}.`,
+          title: 'Crew assignment text queued',
+          body: `Queued a text to ${member.name} about their assignment to ${job.ref}.`,
           visibility: 'internal',
         });
       }

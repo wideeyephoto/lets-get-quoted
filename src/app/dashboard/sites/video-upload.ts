@@ -270,7 +270,7 @@ export async function uploadSiteVideo(file: File, budget: VideoBudget = 'band'):
   // file the browser plays perfectly well.
   const playbackWarning = videoPlaybackWarning({ codec, decode: outcome });
 
-  const signed = await createSiteVideoUploadAction(file.name, file.type);
+  const signed = await createSiteVideoUploadAction(file.name, file.type, file.size);
   const { error } = await supabase.storage
     .from(signed.bucket)
     // cacheControl matches every other upload path in the app (job photos, lead

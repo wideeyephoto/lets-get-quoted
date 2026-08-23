@@ -207,7 +207,12 @@ export async function markEnRouteQuickStopAction(requestId: string) {
     .maybeSingle();
   if (!claimed) throw new Error('You can only start “en route” from a confirmed Quick Stop.');
   await logQuickStopEvent(supabase, accountId, requestId, { actor: 'contractor', from: 'confirmed', to: 'en_route' });
-  if (req.client_phone) await sendQuickStopStatusSms({ accountId, toPhone: req.client_phone, message: 'Your Quick Stop technician is on the way.' });
+  if (req.client_phone) await sendQuickStopStatusSms({
+    accountId,
+    toPhone: req.client_phone,
+    message: 'Your Quick Stop technician is on the way.',
+    idempotencyKey: `quick-stop:${requestId}:en-route`,
+  });
   revalidatePath('/dashboard/quick-stops');
 }
 
@@ -237,7 +242,12 @@ export async function markArrivedQuickStopAction(requestId: string, formData: Fo
     .maybeSingle();
   if (!claimed) throw new Error('This Quick Stop can’t be marked arrived.');
   await logQuickStopEvent(supabase, accountId, requestId, { actor: 'contractor', from: req.status, to: 'arrived', meta: { lat: Number.isFinite(lat) ? lat : null, lng: Number.isFinite(lng) ? lng : null } });
-  if (req.client_phone) await sendQuickStopStatusSms({ accountId, toPhone: req.client_phone, message: 'Your technician has arrived.' });
+  if (req.client_phone) await sendQuickStopStatusSms({
+    accountId,
+    toPhone: req.client_phone,
+    message: 'Your technician has arrived.',
+    idempotencyKey: `quick-stop:${requestId}:arrived`,
+  });
   revalidatePath('/dashboard/quick-stops');
 }
 
@@ -308,7 +318,12 @@ export async function proposeRevisedWindowQuickStopAction(requestId: string, for
     .in('status', ['confirmed', 'en_route']);
   await logQuickStopEvent(supabase, accountId, requestId, { actor: 'contractor', meta: { proposedWindow: { d, st, en } } });
   if (req.client_phone) {
-    await sendQuickStopStatusSms({ accountId, toPhone: req.client_phone, message: `Your contractor proposed a new arrival window: ${d}, ${st}–${en}. Accept or decline here: ${APP_ORIGIN}/quick-stop/${requestId}.` });
+    await sendQuickStopStatusSms({
+      accountId,
+      toPhone: req.client_phone,
+      message: `Your contractor proposed a new arrival window: ${d}, ${st}–${en}. Accept or decline here: ${APP_ORIGIN}/quick-stop/${requestId}.`,
+      idempotencyKey: `quick-stop:${requestId}:window:${d}:${st}:${en}`,
+    });
   }
   revalidatePath('/dashboard/quick-stops');
 }
@@ -336,7 +351,12 @@ export async function proposeDiagnosticConversionAction(requestId: string, formD
   await logQuickStopEvent(supabase, accountId, requestId, { actor: 'contractor', meta: { diagnosticProposedCents: totalCents } });
   if (req.client_phone) {
     const totalLabel = `$${(totalCents / 100).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
-    await sendQuickStopStatusSms({ accountId, toPhone: req.client_phone, message: `Your contractor suggests a diagnostic visit (${totalLabel} total; your Quick Stop fee applies as a deposit). Review & approve here: ${APP_ORIGIN}/quick-stop/${requestId}.` });
+    await sendQuickStopStatusSms({
+      accountId,
+      toPhone: req.client_phone,
+      message: `Your contractor suggests a diagnostic visit (${totalLabel} total; your Quick Stop fee applies as a deposit). Review & approve here: ${APP_ORIGIN}/quick-stop/${requestId}.`,
+      idempotencyKey: `quick-stop:${requestId}:diagnostic:${totalCents}`,
+    });
   }
   revalidatePath('/dashboard/quick-stops');
 }

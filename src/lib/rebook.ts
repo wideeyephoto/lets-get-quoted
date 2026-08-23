@@ -115,7 +115,17 @@ async function deliverRebookInvite(
 
   let channel: 'sms' | 'email';
   if (canText && phone) {
-    await sendRebookInviteSms({ phone, businessName, clientName: firstName(client.name), url: bookingUrl, accountId });
+    // A crash after enqueue but before the cooldown stamp may retry the batch.
+    // The per-client/day key keeps that recovery at-most-once without blocking
+    // a legitimate invite after the cooldown.
+    await sendRebookInviteSms({
+      phone,
+      businessName,
+      clientName: firstName(client.name),
+      url: bookingUrl,
+      accountId,
+      idempotencyKey: `rebook:${client.id}:${new Date().toISOString().slice(0, 10)}`,
+    });
     channel = 'sms';
   } else if (client.email && mailingAddress && !(await isEmailSuppressed(supabase, accountId, client.email))) {
     // Requires a mailing address: a marketing email must carry a physical postal

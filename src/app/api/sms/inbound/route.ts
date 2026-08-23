@@ -1,38 +1,202 @@
 import { NextResponse } from 'next/server';
+import { createHash } from 'node:crypto';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { APP_ORIGIN } from '@/lib/app-origin';
 import { createAdminClient } from '@/lib/auth';
-import { normalizeUsPhone } from '@/lib/phone';
-import { hasSignatureHeader, validateWebhookSignature } from '@/lib/sms-provider';
-import { logInboundMessage } from '@/lib/messages';
-import { confirmUpcomingAppointment } from '@/lib/reminders';
-import { resolveOfferReply } from '@/lib/estimate-offers-data';
-import { resolveRescheduleReply } from '@/lib/reschedule-offers-data';
+import {
+  hasSignatureHeader,
+  outboundSmsLaneSuppression,
+  validateWebhookSignature,
+} from '@/lib/sms-provider';
+import {
+  extractInboundWebhook,
+  ingestInboundWebhook,
+  loadInboundReceiptDisposition,
+  parseSmsWebhookBody,
+  recordInvalidWebhook,
+  type InboundIngressResult,
+  type ParsedInboundWebhook,
+} from '@/lib/sms-webhook-ingress';
+import { processSmsInboundActionReceipt } from '@/lib/sms-inbound-action-worker';
 import { logWebhookFailure } from '@/lib/webhook-failures';
 
 export const runtime = 'nodejs';
 
-const OPT_OUT = new Set(['STOP', 'STOPALL', 'UNSUBSCRIBE', 'CANCEL', 'END', 'QUIT']);
-const OPT_IN = new Set(['START', 'UNSTOP']);
-// Reply keywords that confirm an upcoming appointment (from the reminder text).
-const CONFIRM = new Set(['C', 'CONFIRM', 'CONFIRMED', 'YES']);
-
-// Escape XML metacharacters so a DB-sourced name/business/label (interpolated
-// below) can't malform the reply markup with a stray &, <, or >.
 function escapeXml(value: string): string {
   return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
 }
 
-function twiml(message?: string) {
-  const body = message ? `<Message>${escapeXml(message)}</Message>` : '';
-  return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response>${body}</Response>`, { headers: { 'Content-Type': 'text/xml' } });
+const EMPTY_TWIML = '<?xml version="1.0" encoding="UTF-8"?><Response></Response>';
+
+function emptyTwiml(status = 200) {
+  return new NextResponse(EMPTY_TWIML, {
+    status,
+    headers: { 'Content-Type': 'text/xml' },
+  });
 }
 
-// Rejections answer in the provider's own language too. A JSON error body to
-// something that only speaks TwiML/cXML is not wrong so much as unreadable in
-// the one log the operator will actually be looking at.
+type SynchronousComplianceKeyword = 'stop' | 'start' | 'help';
+
+/**
+ * The only synchronous carrier egress left in the callback route.
+ *
+ * Compliance acknowledgements cannot use the ordinary durable outbox: STOP is
+ * intentionally blocked by its consent gates, while first-ever START and HELP
+ * may not have customer-scope consent. The authenticated receipt and
+ * sender-scoped keyword preference are committed before this response is built,
+ * and ordinary/intent replies never use it. A receipt-keyed audit row makes the
+ * synchronous exception explicit; webhook retries return empty TwiML so they do
+ * not ask the carrier to send the acknowledgement twice.
+ */
+async function minimumComplianceKeywordTwiml(
+  admin: SupabaseClient,
+  webhookReceiptId: string,
+  keyword: SynchronousComplianceKeyword,
+  brand: string,
+  accountId: string | null,
+  senderPurpose: InboundIngressResult['senderPurpose'],
+): Promise<NextResponse> {
+  // A carrier reply verb asks the carrier to send a text and is therefore subject
+  // to the same unconditional test/Preview/kill switch, account canary, and
+  // purpose release gates as the durable worker. An unknown shared-number
+  // association cannot prove canary membership and is suppressed while a
+  // canary allow-list is active.
+  const message = keyword === 'stop'
+    ? `${brand}: You are unsubscribed and will no longer receive texts from this number. Reply START to resume.`
+    : keyword === 'start'
+      ? `${brand}: You are re-subscribed to texts from this number. Reply STOP to opt out.`
+      : `${brand} support: hello@letsgetquoted.com. Reply STOP to opt out. Message and data rates may apply.`;
+  const twiml = `<?xml version="1.0" encoding="UTF-8"?><Response><Message>${escapeXml(message)}</Message></Response>`;
+  const suppressed = outboundSmsLaneSuppression(accountId, senderPurpose) !== null;
+  const responseBody = suppressed ? EMPTY_TWIML : twiml;
+  const { data, error } = await admin.rpc('record_sms_compliance_reply_result', {
+    p_webhook_receipt_id: webhookReceiptId,
+    p_keyword: keyword,
+    p_egress_result: suppressed ? 'suppressed' : 'twiml',
+    p_response_body_sha256: createHash('sha256').update(responseBody, 'utf8').digest('hex'),
+  });
+  if (error) {
+    throw new Error(`SMS compliance reply audit failed${error?.code ? ` (${error.code})` : ''}.`);
+  }
+  // The RPC is an atomic claim: only the request that inserted the immutable
+  // receipt result may return the carrier Message verb. A concurrent request or a
+  // later provider retry receives empty TwiML.
+  if (data !== true) return emptyTwiml();
+  return new NextResponse(
+    responseBody,
+    { status: 200, headers: { 'Content-Type': 'text/xml' } },
+  );
+}
+
+/**
+ * The courtesy answer for LGQ's OWN numbers.
+ *
+ * WHAT PROBLEM THIS SOLVES. The shared number sends account alerts to the
+ * contractor and nothing else. Replying to it used to produce total silence: a
+ * consented owner's message was filed for review, and an unrecognised sender's
+ * went nowhere. Texting a business number and getting nothing back is worse
+ * than either a monitored inbox or an honest automated answer.
+ *
+ * WHY THE COPY SAYS NOTHING ABOUT BUYING A NUMBER. The registered campaign is
+ * LOW_VOLUME_MIXED / CUSTOMER_CARE + ACCOUNT_NOTIFICATION, and its TCR
+ * description states that no MARKETING is carried. A reply promoting a paid
+ * dedicated number would be marketing on a campaign that declares it sends
+ * none -- a mismatch on a carrier-audited field. The text states a capability
+ * limit and points at the dashboard; the dashboard is free to sell, because the
+ * dashboard is not a carrier-governed surface.
+ *
+ * ONE SEGMENT, AND THE CHARACTER SET IS LOAD-BEARING. Every reply is billed per
+ * segment. Plain ASCII stays in GSM-7 where a segment is 160 characters; a
+ * single non-GSM-7 character -- an em dash, a curly apostrophe -- silently
+ * promotes the WHOLE message to UCS-2, where a segment is 70. The first draft
+ * of this string used an em dash and cost three segments instead of one. Keep it
+ * ASCII, and keep it short; the test beside this asserts both.
+ *
+ * NEVER FOR A DEDICATED NUMBER. A contractor's own number is a real two-way
+ * conversation with their customer; auto-answering it on their behalf would be
+ * putting words in their mouth. The database function enforces this too.
+ */
+const SHARED_NOTICE_LANES = new Set(['lgq_shared', 'lgq_dispatch']);
+
+export function sharedNoticeText(brand: string): string {
+  return `${brand}: Alerts only, replies not monitored. Open your dashboard: ${APP_ORIGIN}/dashboard Reply STOP to opt out.`;
+}
+
+/**
+ * Answer with the notice, or empty TwiML if anything says no.
+ *
+ * Mirrors minimumComplianceKeywordTwiml's shape deliberately: the same lane
+ * suppression check, and an atomic claim so a provider retry cannot text the
+ * same person twice. It is a SEPARATE audit table because a courtesy reply is
+ * not a compliance acknowledgement -- see the migration for why conflating them
+ * would weaken the compliance invariant.
+ */
+async function sharedNoticeTwiml(
+  admin: SupabaseClient,
+  ingress: InboundIngressResult,
+  brand: string,
+): Promise<NextResponse> {
+  if (!ingress.senderPurpose || !SHARED_NOTICE_LANES.has(ingress.senderPurpose)) {
+    return emptyTwiml();
+  }
+  const twiml = `<?xml version="1.0" encoding="UTF-8"?><Response><Message>${escapeXml(sharedNoticeText(brand))}</Message></Response>`;
+  // A carrier Message verb is an outbound text. It answers to the same kill
+  // switch, canary allow-list and lane gates as the durable worker -- otherwise
+  // a "dark" deployment would still be texting people.
+  const suppressed = outboundSmsLaneSuppression(ingress.accountId, ingress.senderPurpose) !== null;
+  const responseBody = suppressed ? EMPTY_TWIML : twiml;
+
+  let claimed = false;
+  try {
+    const { data, error } = await admin.rpc('record_sms_shared_notice_reply', {
+      p_webhook_receipt_id: ingress.receiptId,
+      p_egress_result: suppressed ? 'suppressed' : 'twiml',
+      p_response_body_sha256: createHash('sha256').update(responseBody, 'utf8').digest('hex'),
+    });
+    if (error) throw new Error(error.message);
+    claimed = data === true;
+  } catch (error) {
+    // A courtesy reply is not worth failing the webhook over. The receipt is
+    // already durable; staying silent loses a nicety, while a 5xx here would
+    // ask the carrier to redeliver a message we have already stored.
+    await logWebhookFailure({
+      source: 'sms_inbound',
+      errorMessage: `Shared-number notice reply not recorded: ${error instanceof Error ? error.message : String(error)}`,
+    });
+    return emptyTwiml();
+  }
+
+  if (!claimed || suppressed) return emptyTwiml();
+  return new NextResponse(responseBody, { status: 200, headers: { 'Content-Type': 'text/xml' } });
+}
+
 function rejected() {
-  return new NextResponse('<?xml version="1.0" encoding="UTF-8"?><Response/>', {
-    status: 403,
-    headers: { 'Content-Type': 'text/xml' },
+  return emptyTwiml(403);
+}
+
+async function senderName(admin: SupabaseClient, accountId: string | null): Promise<string> {
+  if (!accountId) return "Let's Get Quoted";
+  const { data } = await admin
+    .from('accounts')
+    .select('business_name')
+    .eq('id', accountId)
+    .maybeSingle();
+  const value = String(data?.business_name ?? '').trim();
+  return value && value !== 'My Business' ? value : "Let's Get Quoted";
+}
+
+type ReplyBinding = Readonly<{
+  accountId: string;
+  senderNumberId: string;
+  senderPurpose: NonNullable<InboundIngressResult['senderPurpose']>;
+}>;
+
+function exactReplyBinding(ingress: InboundIngressResult): ReplyBinding | null {
+  if (!ingress.accountId || !ingress.senderNumberId || !ingress.senderPurpose) return null;
+  return Object.freeze({
+    accountId: ingress.accountId,
+    senderNumberId: ingress.senderNumberId,
+    senderPurpose: ingress.senderPurpose,
   });
 }
 
@@ -41,143 +205,114 @@ export async function POST(request: Request) {
     await logWebhookFailure({ source: 'sms_inbound', errorMessage: 'Missing provider signature header' });
     return rejected();
   }
-  const data = await request.formData();
-  const check = validateWebhookSignature(request, data);
+
+  const rawBody = await request.clone().text();
+  const check = validateWebhookSignature(request, rawBody);
   if (!check.ok) {
-    // The REASON is logged, not just the fact. `secret-not-configured` means a
-    // provider console was pointed here before its signing key was deployed —
-    // a five-second fix when the log says so, and a long silent outage when the
-    // log only says "invalid signature".
     await logWebhookFailure({
       source: 'sms_inbound',
-      referenceId: String(data.get('MessageSid') || '') || null,
+      referenceId: null,
       errorMessage: `Signature validation failed: ${check.reason}`,
     });
     return rejected();
   }
-  // A signature-verified request that then throws mid-dispatch still has to
-  // come back as valid, empty markup — never an error status — or the provider
-  // will retry the whole webhook and a customer could get a duplicate
-  // auto-reply. Same reasoning as the individual try/catches below, just
-  // covering the rest of the body too.
+
+  const contentType = request.headers.get('content-type');
+  const admin = createAdminClient();
+  let inbound: ParsedInboundWebhook | null = null;
   try {
-    return await dispatchInboundSms(data);
-  } catch (err) {
-    console.error('Inbound SMS webhook handler threw:', err);
-    await logWebhookFailure({
-      source: 'sms_inbound',
-      referenceId: String(data.get('MessageSid') || '') || null,
-      errorMessage: err instanceof Error ? err.message : String(err),
-    });
-    return twiml();
-  }
-}
-
-async function dispatchInboundSms(data: FormData): Promise<NextResponse> {
-  const phone = normalizeUsPhone(String(data.get('From') || ''));
-  // The number they texted. On one shared platform number this tells us nothing
-  // yet, but it is the ONLY signal that identifies a contractor exactly, so it
-  // is read and passed down rather than left for later — see the routing in
-  // resolveAccountForInbound.
-  const toNumber = String(data.get('To') || '').trim() || null;
-  const rawBody = String(data.get('Body') || '').trim();
-  const keyword = rawBody.toUpperCase().split(/\s+/)[0];
-  // Advanced Opt-Out is a Twilio Messaging Service feature: when it answers a
-  // STOP itself it tells us so here, and we must not send a second reply.
-  // SignalWire has no counterpart, so on SignalWire this is always absent and
-  // the keyword replies below are the only ones the customer gets — which is
-  // the correct behavior either way, not a fallback.
-  const providerOptOutType = String(data.get('OptOutType') || '').toUpperCase();
-
-  // Photos. Providers send NumMedia plus MediaUrl0..N, and this webhook ignored
-  // all of it — so a homeowner sending a picture of a leaking valve produced a
-  // message with no indication anything was attached.
-  //
-  // Capped at 10 rather than trusting NumMedia, which arrives as form data on a
-  // public endpoint and would otherwise size a loop. Ten is Twilio's per-message
-  // maximum; SignalWire's is eight, so the cap stays correct for both.
-  const mediaCount = Math.min(Math.max(0, Number(data.get('NumMedia')) || 0), 10);
-  const mediaUrls: string[] = [];
-  for (let index = 0; index < mediaCount; index += 1) {
-    const url = String(data.get(`MediaUrl${index}`) || '').trim();
-    if (url.startsWith('https://')) mediaUrls.push(url);
+    const payload = parseSmsWebhookBody(rawBody, contentType);
+    inbound = extractInboundWebhook(payload);
+  } catch (error) {
+    console.error('Inbound SMS payload parse failed:', error);
   }
 
-  // Store every real inbound message (not the opt-out/opt-in keywords) into the
-  // two-way inbox. Best-effort: never let a logging failure break the webhook,
-  // or the provider would retry and the customer could get a duplicate
-  // auto-reply.
-  //
-  // A picture with no caption is still a message — hence the body OR media test,
-  // where it used to require a body and dropped photo-only texts entirely.
-  if (phone && (rawBody || mediaUrls.length > 0) && !OPT_OUT.has(keyword) && !OPT_IN.has(keyword) && keyword !== 'HELP') {
+  if (!inbound) {
     try {
-      await logInboundMessage(createAdminClient(), {
-        phone,
-        body: rawBody,
-        providerId: String(data.get('MessageSid') || '') || null,
-        mediaUrls,
-        toNumber,
+      await recordInvalidWebhook(admin, {
+        provider: check.provider,
+        kind: 'inbound',
+        rawBody,
+        contentType,
+        requestUrl: request.url,
       });
     } catch (error) {
-      console.error('Failed to log inbound SMS:', error instanceof Error ? error.message : error);
+      await logWebhookFailure({
+        source: 'sms_inbound',
+        referenceId: null,
+        errorMessage: error instanceof Error ? error.message : String(error),
+      });
+      return emptyTwiml(503);
     }
+    return emptyTwiml();
   }
 
-  // An outstanding estimate offer answers first.
-  //
-  // It shares the word YES with appointment confirmation below, and it has to
-  // win: an offer is a question we asked this person minutes ago about a slot we
-  // are actively holding for them, so their "yes" is far more likely to mean
-  // that than to mean "confirm the appointment I already have". Opt-out and HELP
-  // keywords are excluded so STOP can never be read as an answer.
-  if (phone && rawBody && !OPT_OUT.has(keyword) && !OPT_IN.has(keyword) && keyword !== 'HELP') {
-    const outcome = await resolveOfferReply(phone, rawBody);
-    if (outcome.handled) return twiml(outcome.reply ?? undefined);
+  try {
+    const ingress = await ingestInboundWebhook(admin, {
+      ...inbound,
+      provider: check.provider,
+      rawBody,
+      contentType,
+      requestUrl: request.url,
+    });
 
-    // Then an outstanding "can we move you" — same argument, one step weaker.
-    // It also shares YES with appointment confirmation, and it has to win for
-    // the same reason: we asked this person a direct question and are waiting on
-    // the answer. It sits BELOW estimate offers because an estimate offer holds
-    // a slot on a clock, so if somehow both are open, the one with a deadline
-    // gets the yes.
-    //
-    // Ordering matters against CONFIRM below in the other direction too: read as
-    // a confirmation, a "yes" meant for this would tell the customer their
-    // ORIGINAL appointment is confirmed — the exact opposite of what they just
-    // agreed to, and they would not find out until nobody turned up.
-    const moved = await resolveRescheduleReply(phone, rawBody);
-    if (moved.handled) return twiml(moved.reply ?? undefined);
-  }
-
-  // Appointment confirmation: "C"/"confirm"/"yes" marks the client's upcoming
-  // scheduled job confirmed and replies. If there's nothing to confirm, fall
-  // through — the text was already logged as an ordinary inbound message.
-  if (phone && CONFIRM.has(keyword)) {
-    try {
-      const result = await confirmUpcomingAppointment(createAdminClient(), phone, toNumber);
-      if (result.confirmed && result.job) {
-        const greeting = result.job.clientFirst ? `Thanks ${result.job.clientFirst}` : 'Thanks';
-        return twiml(`${greeting} — your appointment ${result.job.whenLabel} with ${result.job.businessName} is confirmed. See you then!`);
-      }
-    } catch (error) {
-      console.error('Appointment confirmation failed:', error instanceof Error ? error.message : error);
+    // `review` still means no human action is taken -- but on LGQ's own lanes it
+    // is precisely the unroutable-reply case, the one with no other answer. The
+    // notice is the only thing that changes; nothing is routed or applied.
+    if (ingress.disposition === 'review') {
+      return await sharedNoticeTwiml(admin, ingress, await senderName(admin, ingress.accountId));
     }
-  }
+    const effectiveDisposition = ingress.disposition === 'duplicate'
+      ? await loadInboundReceiptDisposition(admin, ingress.receiptId)
+      : ingress.disposition;
+    // The provider already answered this one; a second Message verb would
+    // double-text the sender.
+    if (inbound.providerHandledKeyword) return emptyTwiml();
 
-  if (phone && (OPT_OUT.has(keyword) || OPT_IN.has(keyword))) {
-    const optedOut = OPT_OUT.has(keyword);
-    await createAdminClient().from('sms_consent').update({
-      status: optedOut ? 'opted_out' : 'opted_in',
-      opted_out_at: optedOut ? new Date().toISOString() : null,
-      updated_at: new Date().toISOString(),
-    }).eq('phone_number', phone);
-  }
+    const brand = await senderName(admin, ingress.accountId);
+    const binding = exactReplyBinding(ingress);
+    if (effectiveDisposition === 'keyword_stop') {
+      return await minimumComplianceKeywordTwiml(
+        admin, ingress.receiptId, 'stop', brand, ingress.accountId, ingress.senderPurpose,
+      );
+    }
+    if (effectiveDisposition === 'keyword_start') {
+      return await minimumComplianceKeywordTwiml(
+        admin, ingress.receiptId, 'start', brand, ingress.accountId, ingress.senderPurpose,
+      );
+    }
+    if (effectiveDisposition === 'keyword_help') {
+      return await minimumComplianceKeywordTwiml(
+        admin, ingress.receiptId, 'help', brand, ingress.accountId, ingress.senderPurpose,
+      );
+    }
 
-  // The provider already sent its own keyword response — don't send a second.
-  if (providerOptOutType) return twiml();
-  if (OPT_OUT.has(keyword)) return twiml('Let\'s Get Quoted: You are unsubscribed and will no longer receive texts. Reply START to resume.');
-  if (OPT_IN.has(keyword)) return twiml('Let\'s Get Quoted: You are re-subscribed and will receive texts again. Reply STOP to opt out.');
-  if (keyword === 'HELP') return twiml('Let\'s Get Quoted support: hello@letsgetquoted.com. Reply STOP to opt out. Message and data rates may apply.');
-  return twiml();
+    // Unbound or unrouted on a platform lane: still answer. This is the ordinary
+    // "someone replied to an alert" path.
+    if (!binding || effectiveDisposition !== 'routed') {
+      return await sharedNoticeTwiml(admin, ingress, brand);
+    }
+    const actionStatus = await processSmsInboundActionReceipt(ingress.receiptId, admin);
+    if (actionStatus === 'busy' || actionStatus === 'deferred'
+        || (actionStatus === 'missing' && ingress.disposition !== 'duplicate')) {
+      // The receipt is durable, but no worker currently owns a retryable action.
+      // A non-2xx response asks the carrier to deliver the same receipt again;
+      // receipt dedupe then resumes the same task rather than applying twice.
+      //
+      // Deliberately BEFORE the notice: a redelivery must find no notice claim,
+      // or the retry would be answered while its action is still unfinished.
+      return emptyTwiml(503);
+    }
+    // Routed and applied. The action ran; the notice tells the sender where the
+    // result actually lives, because this number will not carry a conversation.
+    return await sharedNoticeTwiml(admin, ingress, brand);
+  } catch (error) {
+    console.error('Inbound SMS webhook handler threw:', error);
+    await logWebhookFailure({
+      source: 'sms_inbound',
+      referenceId: inbound.providerEventId,
+      errorMessage: error instanceof Error ? error.message : String(error),
+    });
+    return emptyTwiml(503);
+  }
 }

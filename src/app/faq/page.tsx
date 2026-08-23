@@ -38,7 +38,7 @@ const FAQ_GROUPS: FaqGroup[] = [
       {
         id: 'contract-or-cancel',
         q: 'Is there a contract or anything to cancel?',
-        a: 'There is no contract. Paid-plan downgrades and cancellations take effect at renewal; Flex has no monthly base price. You can delete your account anytime, subject to payment and record-retention obligations.',
+        a: 'There is no contract, and cancelling is something you do yourself: Settings, then Plan & usage, then Cancel plan. Nothing to email and nobody to talk to. It takes effect at renewal rather than cutting you off mid-period — the plan stays open through the end of the period you have already paid for, and after that the workspace moves to Flex, which has no monthly base price and so has nothing to cancel. Paid-plan downgrades work the same way. You can delete your account anytime, subject to payment and record-retention obligations.',
       },
       {
         // Grounded in lib/payments.ts, which creates every refund with

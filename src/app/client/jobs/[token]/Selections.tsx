@@ -1,12 +1,17 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import { formatUsdExact } from '@/lib/money-format';
 import type { ClientSelection } from '@/lib/selections';
 import { askAboutSelectionAction, chooseSelectionAction } from './selection-actions';
 
-function money(n: number): string {
-  return n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
-}
+/**
+ * TO THE CENT. Allowances and option prices are numeric dollars entered at
+ * step="0.01", so cents are ordinary here, and this is the screen where a
+ * homeowner picks the option that changes what they owe. Rounding an allowance
+ * up and an option down can make an upgrade look free.
+ */
+const money = formatUsdExact;
 
 function formatChosenAt(value: string | null): string {
   if (!value) return '';

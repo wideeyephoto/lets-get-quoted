@@ -1,6 +1,6 @@
 /* GENERATED — do not edit. Source: src/app/globals.css
    Run: node scripts/build-css-subset.mjs
-   source-sha256: 2a167715404fee38
+   source-sha256: e4cc477b73fbca68
 
    globals.css with the rules that can only match inside /dashboard, /admin and
    /demo removed. Every route except those three imports this file; they import
@@ -3217,6 +3217,45 @@ h3 {
 .automation-link-arrow { color: var(--mute-g260); }
 .automation-link:hover .automation-link-arrow { color: var(--accent-ink); }
 .schedule-automation-row { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; margin-top: 0.75rem; }
+
+/* Platform fee tier card (Settings -> Payments). */
+.fee-tier-card { border: 1px solid var(--edge-t09); border-radius: 0.85rem; background: rgba(var(--tint), 0.025); padding: 1.1rem 1.15rem; }
+.fee-tier-head { display: flex; align-items: center; gap: 0.9rem; }
+.fee-tier-rate { font-size: 2rem; font-weight: 800; letter-spacing: -0.02em; color: var(--gold-ink); font-variant-numeric: tabular-nums; line-height: 1; }
+.fee-tier-meta { display: flex; flex-direction: column; gap: 0.12rem; }
+.fee-tier-meta strong { font-size: 0.95rem; }
+.fee-tier-meta span { font-size: 0.82rem; color: var(--mute-g270); }
+.fee-tier-bar { height: 8px; border-radius: 999px; background: rgba(var(--tint), 0.08); margin: 0.9rem 0 0.6rem; overflow: hidden; }
+.fee-tier-bar span { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--accent, #ff7a21), var(--accent-2, #ffd166)); }
+/* TONE — one attribute, five values, and a WORD beside every one of them.
+   General, not plan-usage-specific; it lives here because this is its first
+   consumer.
+
+   WHY IT IS NOT `.tone-good` LIKE .cfeed-item. That precedent hard-codes its
+   tints as raw rgba() literals (see the .cfeed-item.tone-* rules further down),
+   which have no light-theme value at all — they were authored against the dark
+   canvas and simply carry over. Deriving the tint and the edge from the ink with
+   color-mix means both themes come out of the SAME token, so a tone that reads
+   on the canvas reads on the sheet without a second set of numbers to keep in
+   step. color-mix is already load-bearing in this file.
+
+   WHY THE INK IS NEVER BODY COPY. --warn resolves to #8a5300 on light and
+   #ffd591 on dark; the first is fine as text on white and the second is fine on
+   the canvas, but neither survives being used for both. So the ink dresses the
+   LABEL and the edge, and the sentence underneath stays var(--text). The label
+   is also the accessibility contract: colour alone is not a status, so every
+   consumer of this renders a word. */
+[data-tone] {
+  --tone-ink: var(--mute-g270);
+  --tone-tint: color-mix(in srgb, var(--tone-ink) 10%, transparent);
+  --tone-edge: color-mix(in srgb, var(--tone-ink) 34%, transparent);
+}
+/* Same specificity as [data-tone] above, so these must stay after it. */
+[data-tone='healthy'] { --tone-ink: var(--good); }
+[data-tone='info'] { --tone-ink: var(--info); }
+[data-tone='warn'] { --tone-ink: var(--warn); }
+[data-tone='danger'] { --tone-ink: var(--bad); }
+[data-tone='neutral'] { --tone-ink: var(--mute-g270); }
 
 /* Blocked-off (time-off) day on the schedule calendar. */
 .calendar-cell.blocked { position: relative; background: repeating-linear-gradient(135deg, rgba(255, 122, 33, 0.06) 0 7px, transparent 7px 15px); }
@@ -16638,4 +16677,84 @@ select optgroup {
   /* Full width, because a save button that is 40% of a phone's width sitting
      under a form that is 100% of it reads as an afterthought. */
   .msg-setup-submit { width: 100%; }
+}
+
+/* ── Office access holding page ──────────────────────────────────────────────
+   Scoped under .office-access, same rule as every card in this sheet. */
+.office-access { display: grid; place-items: center; min-height: 70vh; padding: 2rem 1.2rem; }
+.office-access .office-access-card {
+  max-width: 34rem;
+  padding: 2rem 1.8rem;
+  border-radius: 20px;
+  border: 1px solid var(--edge-t14);
+  background: rgba(var(--tint), 0.03);
+}
+.office-access .office-access-eyebrow {
+  margin: 0 0 0.5rem; font-size: 0.78rem; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--mute-t50);
+}
+.office-access h1 { margin: 0 0 0.9rem; font-size: 1.5rem; line-height: 1.3; color: var(--text); }
+.office-access p { margin: 0 0 0.9rem; font-size: 0.95rem; line-height: 1.6; color: var(--mute-t60); }
+.office-access .office-access-note { font-size: 0.86rem; color: var(--mute-t50); }
+.office-access .office-access-actions {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 0.8rem; margin-top: 1.4rem;
+}
+.office-access .office-access-signout {
+  padding: 0.5rem 0.9rem; border-radius: 10px; border: 1px solid var(--edge-t14);
+  background: transparent; color: var(--mute-t60); font: inherit; font-size: 0.88rem; cursor: pointer;
+}
+#settings-panel-plan .workspace-section-heading h2 {
+  font-size: clamp(1.15rem, 1.9vw, 1.5rem);
+  line-height: 1.2;
+}
+#settings-panel-plan .workspace-section-heading { margin-bottom: 0.75rem; }
+#settings-panel-plan .workspace-section-heading .eyebrow { font-size: 0.58rem; }
+#settings-panel-plan .panel.workspace-section-card { padding: 1.05rem 1.15rem; }
+#settings-panel-plan .workspace-section-card + .workspace-section-card { margin-top: 0.75rem; }
+@media (max-width: 640px) {
+  #settings-panel-plan .panel.workspace-section-card { padding: 0.9rem 0.95rem; }
+}
+
+/* One accent per decision area. The narrow top rule makes each section easy to
+   relocate while scrolling; the soft wash carries the same identity inward. */
+:root[data-theme] #settings-panel-plan > .panel.workspace-section-card {
+  --plan-card-accent: var(--ink-orange-8);
+  position: relative;
+  overflow: clip;
+  border-color: color-mix(in srgb, var(--plan-card-accent) 34%, transparent);
+  background-image: linear-gradient(140deg, color-mix(in srgb, var(--plan-card-accent) 9%, transparent), transparent 45%);
+  box-shadow:
+    inset 0 1px color-mix(in srgb, var(--plan-card-accent) 12%, transparent),
+    0 18px 42px -38px color-mix(in srgb, var(--plan-card-accent) 72%, transparent);
+}
+#settings-panel-plan > .panel.workspace-section-card::before {
+  content: '';
+  position: absolute;
+  inset: 0 1.15rem auto;
+  height: 2px;
+  border-radius: 0 0 999px 999px;
+  background: linear-gradient(90deg, var(--plan-card-accent), transparent 82%);
+  opacity: 0.78;
+}
+#settings-panel-plan > .panel.workspace-section-card .eyebrow,
+#settings-panel-plan > .panel.workspace-section-card .workspace-section-ic {
+  color: var(--plan-card-accent);
+  stroke: var(--plan-card-accent);
+}
+
+#settings-panel-plan #plan-at-a-glance { --plan-card-accent: var(--info); }
+#settings-panel-plan #current-plan { --plan-card-accent: var(--ink-orange-8); }
+#settings-panel-plan #usage-balances { --plan-card-accent: var(--good); }
+#settings-panel-plan #workspace-storage { --plan-card-accent: var(--ink-violet-1); }
+#settings-panel-plan #overage { --plan-card-accent: var(--warn); }
+#settings-panel-plan #buy-credits { --plan-card-accent: var(--ink-green-7); }
+#settings-panel-plan #included-limits { --plan-card-accent: var(--ink-blue-2); }
+
+/* The top-up disclosure itself is now the link target. A deep link can open it
+   directly instead of landing on a closed wrapper that needs a second click. */
+#settings-panel-plan details#buy-credits > summary { min-height: 2.5rem; }
+
+@media (max-width: 640px) {
+  .settings-shell::before { inset-inline: 0; height: 38rem; }
+  #settings-panel-plan > .panel.workspace-section-card::before { inset-inline: 0.95rem; }
 }

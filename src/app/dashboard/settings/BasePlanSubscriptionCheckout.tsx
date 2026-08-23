@@ -23,11 +23,17 @@ type PaidPlanCode = 'solo' | 'growth' | 'scale';
 const INITIAL_STATE: BasePlanSubscriptionCheckoutActionState | null = null;
 const PAID_PLANS = ['solo', 'growth', 'scale'] as const;
 
-function SubscribeButton() {
+function SubscribeButton({ frozen }: { frozen: boolean }) {
   const { pending } = useFormStatus();
+  // `frozen` covers the window this button was previously live in: after the
+  // action returns a checkout URL, the browser is already navigating to Stripe,
+  // and `pending` has gone back to false. A second click in that window claims a
+  // second subscription intent nobody will ever pay. The top-up card next door
+  // has guarded this since it was written; this one never did.
+  const busy = pending || frozen;
   return (
-    <button className="btn primary" type="submit" disabled={pending} aria-busy={pending}>
-      {pending ? 'Opening secure checkout…' : 'Continue to secure checkout'}
+    <button className="btn primary" type="submit" disabled={busy} aria-busy={busy}>
+      {busy ? 'Opening secure checkout…' : 'Continue to secure checkout'}
     </button>
   );
 }
@@ -56,9 +62,20 @@ function newBrowserOperationId(): string | null {
   return `base-plan-subscription:${globalThis.crypto.randomUUID().toLowerCase()}`;
 }
 
-export default function BasePlanSubscriptionCheckout() {
-  const [planCode, setPlanCode] = useState<PaidPlanCode>('solo');
-  const [billingInterval, setBillingInterval] = useState<BillingCycle>('monthly');
+export default function BasePlanSubscriptionCheckout({
+  initialPlanCode = null,
+  initialBillingInterval = null,
+  embedded = false,
+}: {
+  // Where the visitor said, on /pricing, which plan they wanted. Only ever a
+  // pre-selection: the controls stay live, and consent is still reset on every
+  // change below, so arriving here pre-filled buys nothing on its own.
+  initialPlanCode?: PaidPlanCode | null;
+  initialBillingInterval?: BillingCycle | null;
+  embedded?: boolean;
+} = {}) {
+  const [planCode, setPlanCode] = useState<PaidPlanCode>(initialPlanCode ?? 'solo');
+  const [billingInterval, setBillingInterval] = useState<BillingCycle>(initialBillingInterval ?? 'monthly');
   const [operationId, setOperationId] = useState<string | null>(null);
   const [consentAccepted, setConsentAccepted] = useState(false);
   const [clientRedirectError, setClientRedirectError] = useState(false);
@@ -81,17 +98,26 @@ export default function BasePlanSubscriptionCheckout() {
   }, [state]);
 
   return (
-    <section className="panel workspace-section-card" id="choose-paid-plan">
-      <div className="section-heading workspace-section-heading compact-heading">
-        <p className="eyebrow">Ready for more</p>
-        <h2>Start your first paid plan</h2>
-      </div>
-      <p className="workspace-details-copy plan-usage-intro">
-        Choose the plan and billing schedule that fit today. The amount below comes from LGQ&apos;s
-        current catalog; this form never sends an amount or Stripe Price ID from your browser.
-      </p>
+    <div
+      className={embedded ? 'plan-usage-embedded-checkout' : 'panel workspace-section-card'}
+    >
+      <details
+        className="workspace-fold"
+        id="choose-paid-plan"
+        open={Boolean(initialPlanCode || initialBillingInterval)}
+      >
+        <summary>
+          <span className="section-heading workspace-section-heading compact-heading">
+            <span className="eyebrow">Plans</span>
+            <span className="workspace-fold-title">Review paid plans</span>
+          </span>
+          <em className="workspace-fold-note neutral">Optional</em>
+        </summary>
+        <p className="workspace-details-copy plan-usage-intro">
+          Choose a plan and billing schedule, then review the exact recurring terms before checkout.
+        </p>
 
-      <form action={formAction} className="base-plan-checkout-form">
+        <form action={formAction} className="base-plan-checkout-form">
         <input type="hidden" name="operationId" value={operationId ?? ''} />
         <input
           type="hidden"
@@ -161,7 +187,7 @@ export default function BasePlanSubscriptionCheckout() {
         </div>
 
         <div className="base-plan-checkout-actions">
-          {operationId ? <SubscribeButton /> : (
+          {operationId ? <SubscribeButton frozen={Boolean(state?.ok) && !clientRedirectError} /> : (
             <button className="btn primary" type="button" disabled>Preparing secure checkout…</button>
           )}
           <span>Stripe securely collects your payment details. Nothing is charged on this page.</span>
@@ -170,7 +196,11 @@ export default function BasePlanSubscriptionCheckout() {
         {state && !state.ok ? (
           <p className="plan-usage-note warning" role="alert">{state.message}</p>
         ) : null}
-        {state?.ok ? (
+        {/* Not shown once the URL has failed verification. Both used to render,
+            so the moment something went wrong with a subscription the screen
+            said "Opening Stripe's secure checkout…" directly above "the checkout
+            link could not be verified — contact support". */}
+        {state?.ok && !clientRedirectError ? (
           <p className="plan-usage-note" role="status">Opening Stripe&apos;s secure checkout…</p>
         ) : null}
         {clientRedirectError ? (
@@ -179,7 +209,8 @@ export default function BasePlanSubscriptionCheckout() {
             contact support so we can reconcile the existing checkout safely.
           </p>
         ) : null}
-      </form>
-    </section>
+        </form>
+      </details>
+    </div>
   );
 }

@@ -1,10 +1,11 @@
 import { randomInt } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/auth';
-import { isLeadVerificationConfigured, leadVerificationToken } from '@/lib/lead-verification';
+import { leadVerificationToken } from '@/lib/lead-verification';
+import { loadLeadPhoneVerificationReadiness } from '@/lib/lead-phone-verification-readiness';
 import { normalizeUsPhone } from '@/lib/phone';
 import { getSiteContent } from '@/lib/site-content';
-import { isSmsConfigured, sendVerificationCodeSms } from '@/lib/sms';
+import { sendVerificationCodeSms } from '@/lib/sms';
 import { checkRateLimitStrict, clientIpFrom } from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
@@ -40,7 +41,7 @@ export async function POST(request: NextRequest) {
 
   const { data: site } = await admin
     .from('sites')
-    .select('id, company_name, content')
+    .select('id, account_id, company_name, content')
     .eq('id', siteId)
     .eq('published', true)
     .maybeSingle();
@@ -51,17 +52,33 @@ export async function POST(request: NextRequest) {
   // Token() throws when it is missing, and it is called after the text goes out
   // — so without this the visitor would receive a real code and then a 500,
   // having been charged a message segment for a token that was never minted.
-  if (!filters.phoneVerification || !isSmsConfigured() || !isLeadVerificationConfigured()) {
+  if (!filters.phoneVerification) {
     // Verification is off (or texting isn't set up) — tell the client to
     // proceed without it rather than dead-ending the visitor. The submission
     // itself records that the check could not run; see the lead route.
     return NextResponse.json({ skipped: true });
   }
 
+  // Verification is contractor-branded homeowner traffic. If this site's
+  // workspace cannot actually leave the durable queue before this code's
+  // expiry, skip the check instead of dead-ending the homeowner.
+  const accountId = typeof site.account_id === 'string' ? site.account_id : '';
+  const messaging = await loadLeadPhoneVerificationReadiness(accountId, admin);
+  if (messaging.kind !== 'ready') {
+    return NextResponse.json({ skipped: true, reason: messaging.reason });
+  }
+
   const code = String(randomInt(100000, 1000000));
   const expiresAt = Date.now() + CODE_TTL_MS;
   try {
-    await sendVerificationCodeSms({ phone, businessName: site.company_name || 'your contractor', code });
+    await sendVerificationCodeSms({
+      accountId,
+      senderNumberId: messaging.senderId,
+      phone,
+      businessName: site.company_name || 'your contractor',
+      code,
+      idempotencyKey: `lead-verification:${siteId}:${code}:${expiresAt}`,
+    });
   } catch (error) {
     console.error('Verification SMS failed:', error);
     return NextResponse.json({ error: 'Could not text that number — double-check it and try again.' }, { status: 502 });

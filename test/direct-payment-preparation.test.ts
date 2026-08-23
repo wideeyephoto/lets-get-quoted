@@ -3,6 +3,8 @@ import { join } from 'node:path';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { stripComments } from './helpers/source-text';
+
 vi.mock('@/lib/auth', () => ({
   createAdminClient: () => {
     throw new Error('unit tests inject the preparation store');
@@ -37,7 +39,7 @@ function validRow(overrides: Record<string, unknown> = {}) {
     merchant_account_id: 'acct_merchant123',
     livemode: false,
     plan_code: 'growth',
-    catalog_version: '2026-08-15-preview',
+    catalog_version: '2026-08-18-preview',
     fee_rate_bps: 25,
     fee_rate: '0.0025',
     gross_amount_cents: '10800',
@@ -93,7 +95,7 @@ describe('service-only direct payment preparation adapter', () => {
       reconciliationStatus: 'pending',
       feeSnapshot: {
         planCode: 'growth',
-        catalogVersion: '2026-08-15-preview',
+        catalogVersion: '2026-08-18-preview',
         feeRateBps: 25,
         feeRate: 0.0025,
         grossAmountCents: 10_800,
@@ -164,9 +166,20 @@ describe('service-only direct payment preparation adapter', () => {
     const adapter = join(process.cwd(), 'src', 'lib', 'billing', 'direct-payment-preparation.ts');
     const activeFiles = sourceFiles(join(process.cwd(), 'src')).filter((file) => file !== adapter);
     activeFiles.push(join(process.cwd(), '.env.example'), join(process.cwd(), 'vercel.json'));
+    // A silent zero passes every assertion below it. The walk is the thing most
+    // likely to break, and its failure looks exactly like success.
+    expect(activeFiles.length).toBeGreaterThan(1_000);
 
     for (const file of activeFiles) {
-      const source = readFileSync(file, 'utf8');
+      // stripComments, because a comment NAMING this adapter is not a reference
+      // to it. catalog.ts documents the three guards that refuse a stale
+      // currentness row -- one of which is this RPC -- and read raw, the prose
+      // explaining a hazard reads as wiring it up.
+      //
+      // The read site is the right place to fix this, not the assertion: the
+      // thing being guarded is that no active route CALLS the dark adapter, and
+      // that is still fully enforced below.
+      const source = stripComments(readFileSync(file, 'utf8'));
       expect(source).not.toContain('direct-payment-preparation');
       expect(source).not.toContain('prepare_one_off_direct_invoice_payment');
       expect(source).not.toContain('DIRECT_PAYMENT_PREPARATION');

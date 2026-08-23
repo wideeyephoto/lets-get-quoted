@@ -1,5 +1,14 @@
+import { randomUUID } from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { normalizeUsPhone } from '@/lib/phone';
+import {
+  beginMarketingEmailUsage,
+  commitMarketingEmailUsage,
+  marketingEmailMode,
+  releaseMarketingEmailUsage,
+  type MarketingEmailLease,
+} from '@/lib/billing/marketing-email-usage';
+import { releaseUsageOverage, type UsageOverageHold } from '@/lib/billing/usage-overage';
 import { listClientsWithStats } from '@/lib/clients';
 import { sendCampaignSms } from '@/lib/sms';
 import { sendCampaignEmail } from '@/lib/email';
@@ -34,6 +43,7 @@ const DAY = 24 * 60 * 60 * 1000;
 // `emailReady` means the client has an email that has NOT unsubscribed (marketing
 // opt-out), mirroring how SMS gates on consent.
 export type CampaignRecipient = {
+  id: string;
   name: string | null;
   phone: string | null;
   email: string | null;
@@ -76,6 +86,7 @@ export async function loadRecipients(supabase: SupabaseClient, accountId: string
     const emailSuppressed = hasEmail && suppressed.has((email as string).trim().toLowerCase());
     const emailUndeliverable = hasEmail && !isMailable(email);
     return {
+      id: client.id,
       name: client.name,
       phone,
       email,
@@ -143,7 +154,7 @@ function chunk<T>(items: T[], size: number): T[][] {
 export type CampaignSendResult = {
   recipientCount: number;
   emailSent: number;
-  smsSent: number;
+  smsQueued: number;
   failed: number;
   skipped: number;
 };
@@ -165,9 +176,49 @@ export async function sendCampaign(
     .slice(0, MAX_RECIPIENTS);
 
   let emailSent = 0;
-  let smsSent = 0;
+  let smsQueued = 0;
   let failed = 0;
   let skipped = 0;
+
+  // This UUID is both the durable history identity and the namespace for every
+  // text in the run. A retry inside this invocation can therefore return the
+  // existing queue event instead of creating a second carrier send.
+  const runId = randomUUID();
+  const initialRow = {
+    id: runId,
+    account_id: accountId,
+    channel: input.channel,
+    audience: input.audience,
+    subject: wantEmail ? input.subject : null,
+    body: input.body,
+    recipient_count: targets.length,
+    email_sent: 0,
+    // Legacy column name: for SMS this is queue acceptance, never carrier sent.
+    sms_sent: 0,
+    failed_count: 0,
+    skipped_count: 0,
+  };
+
+  let { error: historyError } = await supabase
+    .from('campaigns')
+    .insert((input.beatId ? { ...initialRow, beat_id: input.beatId } : initialRow) as typeof initialRow);
+  if (historyError && input.beatId) {
+    console.error('Campaign insert with beat_id failed, retrying without:', historyError.message);
+    ({ error: historyError } = await supabase.from('campaigns').insert(initialRow));
+  }
+  if (historyError) {
+    throw new Error('Campaign history could not be created, so no messages were queued.');
+  }
+
+  // Metering is dark by default. The service-role client is built only when the
+  // meter is on, and imported lazily so a disabled meter changes neither this
+  // module's import graph nor what a campaign send costs.
+  const meterMode = marketingEmailMode();
+  let ledger: SupabaseClient | null = null;
+  if (meterMode !== 'off') {
+    const { createAdminClient } = await import('@/lib/auth');
+    ledger = createAdminClient();
+  }
 
   for (const batch of chunk(targets, BATCH_SIZE)) {
     await Promise.all(
@@ -181,19 +232,54 @@ export async function sendCampaign(
           return;
         }
         if (canEmail) {
-          try {
-            await sendCampaignEmail({
-              recipientEmail: recipient.email as string,
-              businessName: input.businessName,
-              subject: personalize(input.subject, recipient),
-              body: personalize(input.body, recipient),
-              accountId,
-              mailingAddress: input.mailingAddress,
-            });
-            emailSent++;
-          } catch (error) {
-            failed++;
-            console.error('Campaign email failed:', error instanceof Error ? error.message : error);
+          // Hold a credit before the send, spend it once the provider accepts,
+          // give it back on anything else. One reservation per recipient because
+          // commit_usage_reservation has no unit count -- see
+          // lib/billing/marketing-email-usage.ts.
+          let lease: MarketingEmailLease | null = null;
+          let heldOverage: UsageOverageHold | null = null;
+          let mayEmail = true;
+          if (ledger) {
+            const decision = await beginMarketingEmailUsage(
+              ledger,
+              { accountId, sendKey: `${runId}:${recipient.email as string}` },
+              { mode: meterMode },
+            );
+            if (decision.outcome === 'refused') {
+              // Counted as a failure so the shortfall appears in the result the
+              // contractor is shown. Silently skipping would report a campaign
+              // as fully sent when part of it never went.
+              mayEmail = false;
+              failed++;
+            } else if (decision.outcome === 'allowed') {
+              lease = decision.lease;
+            } else if (decision.outcome === 'allowed_overage') {
+              // Charged against the workspace's own overage cap rather than its
+              // allowance. Nothing is held in the credit ledger, so the only
+              // thing to undo is the accrual, if the send then fails.
+              heldOverage = decision.overage;
+            }
+          }
+          if (mayEmail) {
+            try {
+              await sendCampaignEmail({
+                recipientEmail: recipient.email as string,
+                businessName: input.businessName,
+                subject: personalize(input.subject, recipient),
+                body: personalize(input.body, recipient),
+                accountId,
+                mailingAddress: input.mailingAddress,
+              });
+              emailSent++;
+              if (ledger && lease) await commitMarketingEmailUsage(ledger, lease);
+            } catch (error) {
+              failed++;
+              console.error('Campaign email failed:', error instanceof Error ? error.message : error);
+              if (ledger && lease) await releaseMarketingEmailUsage(ledger, lease, 'send_failed');
+              if (ledger && heldOverage) {
+                await releaseUsageOverage(ledger, { accountId, ...heldOverage });
+              }
+            }
           }
         }
         if (canSms) {
@@ -203,8 +289,9 @@ export async function sendCampaign(
               businessName: input.businessName,
               body: personalize(input.body, recipient),
               accountId,
+              idempotencyKey: `campaign:${runId}:${recipient.id}:sms`,
             });
-            smsSent++;
+            smsQueued++;
           } catch (error) {
             failed++;
             console.error('Campaign SMS failed:', error instanceof Error ? error.message : error);
@@ -214,34 +301,27 @@ export async function sendCampaign(
     );
   }
 
-  const row = {
-    account_id: accountId,
-    channel: input.channel,
-    audience: input.audience,
-    subject: wantEmail ? input.subject : null,
-    body: input.body,
-    recipient_count: targets.length,
+  const outcome = {
     email_sent: emailSent,
-    sms_sent: smsSent,
+    // See initialRow: the physical name is retained for compatibility while
+    // every producer/domain/UI surface calls this queue acceptance.
+    sms_sent: smsQueued,
     failed_count: failed,
     skipped_count: skipped,
   };
-
-  // The messages are already gone by the time we get here, so the history row
-  // must not be all-or-nothing. On a database without the beat_id migration the
-  // insert fails on the unknown column and we would lose the record of a send
-  // that really happened — write it again without the topic instead.
-  const { error } = await supabase
+  const { error: outcomeError } = await supabase
     .from('campaigns')
-    // Widened deliberately: the inferred literal type is built from this same
-    // object, so adding a key conditionally reads as an excess property.
-    .insert((input.beatId ? { ...row, beat_id: input.beatId } : row) as typeof row);
-  if (error && input.beatId) {
-    console.error('Campaign insert with beat_id failed, retrying without:', error.message);
-    await supabase.from('campaigns').insert(row);
+    .update(outcome)
+    .eq('account_id', accountId)
+    .eq('id', runId);
+  if (outcomeError) {
+    // Delivery intents already exist and must never be replayed merely because
+    // a reporting projection failed. The zeroed pre-created row remains an
+    // operator-visible reconciliation target.
+    console.error(`Campaign ${runId} outcome projection failed:`, outcomeError.message);
   }
 
-  return { recipientCount: targets.length, emailSent, smsSent, failed, skipped };
+  return { recipientCount: targets.length, emailSent, smsQueued, failed, skipped };
 }
 
 // Past campaigns, newest first. Defensive: an un-migrated DB (no campaigns

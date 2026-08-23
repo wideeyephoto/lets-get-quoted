@@ -1,5 +1,6 @@
 import { randomUUID } from 'crypto';
 import { createAdminClient } from '@/lib/auth';
+import { assertStorageCapacity } from '@/lib/billing/storage-usage';
 import { ALLOWED_VIDEO_TYPES, MAX_VIDEO_BYTES } from '@/lib/video-source';
 
 // Storage for contractor-uploaded website videos.
@@ -60,10 +61,23 @@ export async function createSignedVideoUpload(
   accountId: string,
   fileName: string,
   contentType: string,
+  sizeBytes: number,
 ): Promise<SignedVideoUpload> {
   if (!VIDEO_TYPES.has(contentType)) {
     throw new Error('Upload an MP4, MOV, WebM, or OGV video.');
   }
+
+  // THE ONE UPLOAD WHOSE SIZE WE HAVE TO BE TOLD. Every other path weighs the
+  // file on the server; this one never sees it, so the browser reports the size
+  // and the allowance is checked before the signed URL is minted.
+  //
+  // A client could understate it. That is worth naming and worth accepting: the
+  // bucket's own fileSizeLimit still caps what can physically be written, and
+  // the next sweep measures what actually landed rather than what was claimed.
+  // A storage allowance is a billing boundary, and the honest cost of not
+  // routing videos through a server action is that this number is a claim until
+  // the sweep confirms it.
+  await assertStorageCapacity(createAdminClient(), accountId, sizeBytes);
 
   await ensureSiteVideosBucket();
 

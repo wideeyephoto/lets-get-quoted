@@ -28,16 +28,16 @@ const lines = (await readFile(resolve(ROOT, 'schema.sql'), 'utf8')).split(/\r?\n
 
 const createdAt = new Map();
 lines.forEach((line, i) => {
-  const m = line.match(/^\s*create table (?:if not exists )?([a-z_][a-z0-9_]*)/i);
+  const m = line.match(/^\s*create table (?:if not exists )?(?:public\.)?([a-z_][a-z0-9_]*)/i);
   if (m && !createdAt.has(m[1])) createdAt.set(m[1], i + 1);
 });
 
 let currentTable = null;
 const problems = [];
 lines.forEach((line, i) => {
-  const create = line.match(/^\s*create table (?:if not exists )?([a-z_][a-z0-9_]*)/i);
+  const create = line.match(/^\s*create table (?:if not exists )?(?:public\.)?([a-z_][a-z0-9_]*)/i);
   if (create) currentTable = create[1];
-  const alter = line.match(/^\s*alter table ([a-z_][a-z0-9_]*)/i);
+  const alter = line.match(/^\s*alter table (?:public\.)?([a-z_][a-z0-9_]*)/i);
   if (alter) currentTable = alter[1];
 
   for (const m of line.matchAll(/references\s+(?:public\.)?([a-z_][a-z0-9_]*)\s*\(/gi)) {

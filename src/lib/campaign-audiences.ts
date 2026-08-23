@@ -23,6 +23,7 @@ export type Campaign = {
   body: string;
   recipient_count: number;
   email_sent: number;
+  /** Legacy storage name. This is SMS queue acceptance, not carrier sent. */
   sms_sent: number;
   failed_count: number;
   skipped_count: number;

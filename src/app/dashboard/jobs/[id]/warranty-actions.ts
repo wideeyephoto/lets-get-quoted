@@ -116,8 +116,12 @@ export async function deleteWarrantyAction(jobId: string, warrantyId: string) {
 export async function recordServiceAction(jobId: string, warrantyId: string, formData: FormData) {
   const { supabase, accountId } = await requireOwnerContext();
   const servicedOn = String(formData.get('servicedOn') ?? '').trim() || todayKey();
-  await recordService(supabase, accountId, warrantyId, servicedOn);
+  // The result was discarded, so a service that recorded nothing looked
+  // identical to one that did. Surfaced rather than swallowed: the whole point
+  // of the row is that the next reminder fires on time.
+  const result = await recordService(supabase, accountId, warrantyId, servicedOn);
   revalidatePath(`/dashboard/jobs/${jobId}`);
+  if (!result.ok) throw new Error('That service could not be recorded — the warranty may have been changed or removed. Reload the job.');
 }
 
 export async function updateClaimAction(jobId: string, claimId: string, status: ClaimStatus, note?: string) {

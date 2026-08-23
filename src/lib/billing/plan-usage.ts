@@ -30,9 +30,13 @@ export const PLAN_USAGE_RESOURCES = [
 
 export type PlanUsageResourceCode = (typeof PLAN_USAGE_RESOURCES)[number]['code'];
 export type WorkspacePlanCode = BillingPlanId | 'enterprise';
-export type WorkspaceBillingInterval = 'none' | 'monthly' | 'annual';
-export type WorkspaceBillingStatus = 'free' | 'trialing' | 'active' | 'past_due' | 'paused' | 'canceled';
-export type WorkspaceEntitlementState = 'active' | 'grace' | 'restricted' | 'archived';
+// DERIVED, not restated. Each of these had a hand-written twin of the runtime
+// list further down, so widening one and forgetting the other was a two-line
+// edit away -- and that is exactly how billing_status came to accept six values
+// while the database wrote eight. Now the guard and the type are the same list.
+export type WorkspaceBillingInterval = (typeof BILLING_INTERVALS)[number];
+export type WorkspaceBillingStatus = (typeof BILLING_STATUSES)[number];
+export type WorkspaceEntitlementState = (typeof ENTITLEMENT_STATES)[number];
 
 export type PlanUsageLimits = {
   officeUsers: number | null;
@@ -102,7 +106,17 @@ type BalanceRow = {
 
 const PLAN_CODES = ['flex', 'solo', 'growth', 'scale', 'enterprise'] as const;
 const BILLING_INTERVALS = ['none', 'monthly', 'annual'] as const;
-const BILLING_STATUSES = ['free', 'trialing', 'active', 'past_due', 'paused', 'canceled'] as const;
+// EVERY VALUE workspace_entitlements_billing_status_check ALLOWS. A status this
+// list does not know is not a corrupt row -- it collapses the whole plan read to
+// `unavailable`, which tells a customer "refresh in a moment" about a value that
+// is valid, stable, and will still be there tomorrow. 20260816060000 widened the
+// constraint to admit 'incomplete' and 'unpaid' and this list did not follow, so
+// the two states where a subscriber most needs to be told what is wrong were the
+// two that showed them nothing at all. plan-usage-status-drift.test.ts reads the
+// constraint out of the migrations and holds these equal.
+const BILLING_STATUSES = [
+  'free', 'incomplete', 'trialing', 'active', 'past_due', 'unpaid', 'paused', 'canceled',
+] as const;
 const ENTITLEMENT_STATES = ['active', 'grace', 'restricted', 'archived'] as const;
 
 function memberOf<const T extends readonly string[]>(values: T, value: unknown): value is T[number] {

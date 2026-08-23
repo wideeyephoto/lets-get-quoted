@@ -2,7 +2,11 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { AUTOMATION_COLUMNS } from '@/lib/automations';
-import { CATALOGUE_SENDERS, SMS_CATALOGUE } from '@/lib/sms-catalogue';
+import {
+  CATALOGUE_SENDERS,
+  SMS_CATALOGUE,
+  senderLaneForAudience,
+} from '@/lib/sms-catalogue';
 
 const read = (...parts: string[]) => readFileSync(join(process.cwd(), ...parts), 'utf8');
 const SMS = read('src', 'lib', 'sms.ts');
@@ -73,6 +77,13 @@ describe('every catalogue entry', () => {
         `${entry.id} points at "${entry.control.key}", which is not an automation`,
       ).toBe(true);
     }
+  });
+
+  it('labels the three isolated sender lanes without treating every text as contractor traffic', () => {
+    expect(senderLaneForAudience('customer')).toBe('contractor_dedicated');
+    expect(senderLaneForAudience('lead')).toBe('contractor_dedicated');
+    expect(senderLaneForAudience('owner')).toBe('lgq_shared');
+    expect(senderLaneForAudience('crew')).toBe('lgq_dispatch');
   });
 
   /**

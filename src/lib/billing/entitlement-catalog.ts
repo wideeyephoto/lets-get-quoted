@@ -75,6 +75,20 @@ export function workspaceEntitlementCatalogSnapshot(
       voice_history_days: plan.voice.historyDays,
       voice_included_minutes: plan.voice.includedInBasePlan ? plan.voice.includedMinutes : 0,
     }),
+    // WRITE-ONLY. Nothing reads any of these.
+    //
+    // Verified exhaustively on 2026-08-19: shared_lgq_texting_number,
+    // voice_included and voice_advanced_routing each appear exactly once in the
+    // whole of src -- on the line below that builds them. `feature_flags` is
+    // persisted by the subscription projector and typed by the event projector,
+    // and the property access `featureFlags.` occurs nowhere at all.
+    //
+    // Said plainly here because the danger is not the field, it is reading the
+    // field as evidence. A snapshot listing four capability flags looks like
+    // enforcement to anyone auditing it, and none of them gates anything.
+    // voice_advanced_routing has nothing to gate until AI Voice exists, which is
+    // why this is left in place rather than dropped -- see 2.3 in
+    // docs/entitlement-gap-roadmap-2026-08-19.md.
     featureFlags: Object.freeze({
       quickbooks: plan.quickBooksConnections > 0,
       shared_lgq_texting_number: plan.sharedLgqTextingNumber,

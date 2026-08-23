@@ -4,6 +4,7 @@ import { useState } from 'react';
 import SaveButton from '@/components/save-button';
 import ModalDialog from '@/components/modal-dialog';
 import { CloseOnSuccess } from '@/components/modal-dialog';
+import PersistentMessageIntent from './PersistentMessageIntent';
 
 // Starting a conversation with somebody who hasn't texted first.
 //
@@ -11,30 +12,41 @@ import { CloseOnSuccess } from '@/components/modal-dialog';
 // quotes, reminders, arrival — but there was no way to just message a customer
 // you already have, which is what a contractor does twenty times a day.
 //
-// Picking from the contacts we already know beats typing a number: the numbers
-// on file are the ones with consent behind them, and a typo sends a stranger a
-// text signed with the contractor's business name.
+// Picking from the current consent ledger beats typing a number: a lead/job
+// phone is not permission, and a typo could send a stranger a contractor-
+// branded text. The server rechecks consent atomically at enqueue time.
 
 type Contact = { phone: string; name: string };
 
 export default function ComposeMessage({
   contacts,
   action,
+  fallbackIntentId,
+  intentStorageKey,
+  resetToken,
 }: {
   contacts: Contact[];
   action: (formData: FormData) => void | Promise<void>;
+  fallbackIntentId: string;
+  intentStorageKey: string;
+  resetToken?: string | null;
 }) {
   const [phone, setPhone] = useState('');
 
   return (
     <ModalDialog triggerLabel="New message" triggerClassName="btn primary" title="New message">
       <form action={action} className="cash-bill-form">
+        <PersistentMessageIntent
+          storageKey={intentStorageKey}
+          fallbackId={fallbackIntentId}
+          resetToken={resetToken}
+        />
         <p className="cash-bill-form-head">Text a customer</p>
 
         {contacts.length > 0 ? (
           <label className="cash-bill-field wide">
             <span>Who</span>
-            <select value={phone} onChange={(event) => setPhone(event.target.value)}>
+            <select name="phone" value={phone} onChange={(event) => setPhone(event.target.value)} required>
               <option value="">Pick a customer…</option>
               {contacts.map((contact) => (
                 <option key={contact.phone} value={contact.phone}>
@@ -43,25 +55,13 @@ export default function ComposeMessage({
               ))}
             </select>
           </label>
-        ) : null}
-
-        <label className="cash-bill-field wide">
-          <span>{contacts.length > 0 ? 'Or type a number' : 'Mobile number'}</span>
-          <input
-            name="phone"
-            type="tel"
-            inputMode="tel"
-            value={phone}
-            onChange={(event) => setPhone(event.target.value)}
-            placeholder="(248) 555-0100"
-            required
-          />
-          {/* Said before they send, not after it bounces. */}
-          <small className="cash-bill-note">
-            Only text people who gave you their number. Anyone who has replied STOP can&rsquo;t be
-            messaged until they text START.
-          </small>
-        </label>
+        ) : (
+          <p className="cash-bill-note" role="status">
+            No contacts currently have recorded SMS consent. Capture consent through the customer workflow,
+            or have the customer send your business a message. If they previously opted out, they must text
+            START before you can reply.
+          </p>
+        )}
 
         <label className="cash-bill-field wide">
           <span>Message</span>
@@ -69,7 +69,14 @@ export default function ComposeMessage({
         </label>
 
         <div className="cash-bill-form-actions">
-          <SaveButton className="btn primary" pendingLabel="Sending…">Send text</SaveButton>
+          <SaveButton
+            className="btn primary"
+            pendingLabel="Queueing…"
+            savedLabel="Queued ✓"
+            disabled={contacts.length === 0}
+          >
+            Send text
+          </SaveButton>
           <CloseOnSuccess />
         </div>
       </form>

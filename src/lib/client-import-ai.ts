@@ -1,4 +1,5 @@
 import type { ColumnMapping, ColumnSources } from '@/lib/client-import';
+import { callModel } from '@/lib/ai-model-call';
 
 // AI column mapping for the client importer. When a file's columns don't match
 // by name (any headings, any order, any language, split first/last or
@@ -60,17 +61,13 @@ export async function aiDetectColumns(grid: string[][]): Promise<ColumnMapping |
     'Output nothing except the JSON object.';
 
   try {
-    const response = await fetch('https://api.openai.com/v1/responses', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        temperature: 0,
-        instructions,
-        input: `Columns: ${width}. Sample rows:\n${tableText}\n\nReturn the mapping json only.`,
-        text: { format: { type: 'json_object' } },
-      }),
-    });
+    const response = await callModel({
+      model: 'gpt-4o-mini',
+      temperature: 0,
+      instructions,
+      input: `Columns: ${width}. Sample rows:\n${tableText}\n\nReturn the mapping json only.`,
+      text: { format: { type: 'json_object' } },
+    }, { accountId: null, kind: 'import_assist' });
     if (!response.ok) throw new Error(`OpenAI request failed: ${response.status}`);
 
     const payload = await response.json();

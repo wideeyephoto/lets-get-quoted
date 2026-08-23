@@ -11,6 +11,7 @@
 // the whole point of a check before an irreversible send is that a human looks.
 
 import type { CampaignFinding } from '@/lib/campaign-guard';
+import { callModel } from '@/lib/ai-model-call';
 
 export type CampaignReadContext = {
   trade: string | null;
@@ -128,20 +129,16 @@ export async function readCampaign(context: CampaignReadContext): Promise<Campai
   if (!apiKey || !context.body.trim()) return [];
 
   try {
-    const response = await fetch('https://api.openai.com/v1/responses', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({
-        model: 'gpt-4o',
-        // Low but not zero, matching Quote Guard: noticing that a message never
-        // says why it is arriving in October is exactly the kind of leap greedy
-        // decoding skips, and that leap is the whole feature.
-        temperature: 0.2,
-        instructions: INSTRUCTIONS,
-        input: buildCampaignReadInput(context),
-        text: { format: { type: 'json_object' } },
-      }),
-    });
+    const response = await callModel({
+      model: 'gpt-4o',
+      // Low but not zero, matching Quote Guard: noticing that a message never
+      // says why it is arriving in October is exactly the kind of leap greedy
+      // decoding skips, and that leap is the whole feature.
+      temperature: 0.2,
+      instructions: INSTRUCTIONS,
+      input: buildCampaignReadInput(context),
+      text: { format: { type: 'json_object' } },
+    }, { accountId: null, kind: 'guard' });
     if (!response.ok) throw new Error(`OpenAI request failed: ${response.status}`);
     return toGapFindings(JSON.parse(extractOutputText(await response.json())));
   } catch (error) {

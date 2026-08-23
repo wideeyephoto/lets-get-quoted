@@ -49,11 +49,11 @@ export function summarizeRequests(entries: RequestWithOffers[], now: Date = new 
 
   for (const entry of entries) {
     const status = requestDisplayStatus(entry.request, entry.offers, now);
-    if (status === 'sent' || status === 'viewed' || status === 'partially_responded' || status === 'reopened') open += 1;
+    if (status === 'queued' || status === 'sent' || status === 'viewed' || status === 'partially_responded' || status === 'reopened') open += 1;
     if (entry.request.status === 'claimed' && (entry.request.claimedAt ?? '') >= monthStart) filled += 1;
 
     for (const offer of entry.offers) {
-      if (offer.status === 'queued') continue;
+      if (!offer.sentAt && !['sent', 'delivered', 'viewed', 'accepted', 'declined', 'covered'].includes(offer.status)) continue;
       answerable += 1;
       if (offer.respondedAt) {
         answered += 1;
@@ -201,7 +201,10 @@ export default function JobRequests({
 
                 <p className={styles.requestCounts}>
                   <span>
-                    <strong>{progress.sent}</strong> offers sent
+                    <strong>{progress.queued}</strong> queued
+                  </span>
+                  <span>
+                    <strong>{progress.carrierAccepted}</strong> carrier accepted
                   </span>
                   <span>
                     <strong>{progress.viewed}</strong> viewed

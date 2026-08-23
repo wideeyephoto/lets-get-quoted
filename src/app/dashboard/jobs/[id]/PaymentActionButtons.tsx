@@ -91,6 +91,27 @@ export default function PaymentActionButtons({
     // remaining cents (avoids a rounding mismatch with Stripe).
     const isFull = Math.round(value * 100) >= Math.round(remaining * 100);
 
+    /**
+     * The only irreversible action on this row, and the only one that did not
+     * ask.
+     *
+     * Mark paid, mark failed and cancel all confirm, and all three are
+     * administrative -- they move a status somebody can move back. Refund sends
+     * real money out of the contractor's balance and Stripe will not return it.
+     *
+     * It was also the easiest to fire by accident: openRefund pre-fills the FULL
+     * remaining balance, so the default action behind one click was a complete
+     * refund of the payment. The prefill is worth keeping -- a full refund is
+     * genuinely the common case -- which is exactly why the amount has to be
+     * said out loud before it goes.
+     */
+    const confirmed = window.confirm(
+      isFull
+        ? `Refund the full remaining ${formatUsd(remaining)} to your customer? This cannot be undone.`
+        : `Refund ${formatUsd(value)} of ${formatUsd(remaining)} to your customer? This cannot be undone.`,
+    );
+    if (!confirmed) return;
+
     setLoading('refund');
     setError(null);
     try {
@@ -122,10 +143,48 @@ export default function PaymentActionButtons({
   const handleRetry = async () => {
     setLoading('retry');
     setError(null);
+
+    /**
+     * Opened BEFORE the await, and navigated afterwards.
+     *
+     * `window.open` is only reliably allowed inside the task a user gesture
+     * started. This ran it after `await onRetry(...)`, by which point the gesture
+     * is long over and every mainstream browser's popup blocker is entitled to
+     * refuse -- which it does silently, returning null. The old code ignored the
+     * return value, so a blocked retry looked exactly like a working one: the
+     * spinner stopped, no tab appeared, no error was shown, and the contractor
+     * had no way to tell whether the link had been created.
+     *
+     * Opening a blank tab first keeps it inside the gesture. If the blocker
+     * still refuses, `popup` is null and we say so rather than pretending.
+     */
+    const popup = window.open('', '_blank');
+    /**
+     * `noopener` is the usual way to sever this and cannot be used here: it makes
+     * window.open return null, and the whole point is to hold the reference and
+     * navigate it after the await.
+     *
+     * So the link is cut by hand instead. Without it the Stripe checkout tab
+     * keeps a `window.opener` handle on the dashboard and could navigate it --
+     * reverse tabnabbing. Stripe is not the threat; the habit is, and
+     * src/lib/templates/SocialLinks.tsx already carries the same note about the
+     * same vector.
+     */
+    if (popup) popup.opener = null;
+
     try {
       const url = await onRetry(paymentId);
-      window.open(url, '_blank');
+      if (popup) {
+        popup.location.href = url;
+      } else {
+        // No tab to put it in. Navigating this one is better than losing the
+        // link entirely -- the checkout is already created either way.
+        window.location.href = url;
+      }
     } catch (err) {
+      // A tab opened for a link that never arrived has to be cleaned up, or the
+      // contractor is left staring at a blank page wondering what it is.
+      popup?.close();
       setError(err instanceof Error ? err.message : 'Failed to retry payment');
     } finally {
       setLoading(null);

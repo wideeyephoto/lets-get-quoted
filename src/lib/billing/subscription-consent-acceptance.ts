@@ -115,7 +115,21 @@ export type RecordBasePlanSubscriptionConsentInput = Readonly<{
  * an action's provider-error boundary while preserving the database's own
  * auth.uid(), membership, Flex, Terms, amount, and artifact checks.
  */
-export async function recordBasePlanSubscriptionConsentForOwner(
+/**
+ * The two recorders differ only in which RPC they call.
+ *
+ * `record_base_plan_recurring_consent` writes `purpose = 'base_plan_subscription'`
+ * and demands the workspace be on active Flex;
+ * `record_base_plan_plan_change_consent` writes `base_plan_plan_change` and
+ * demands the inverse -- an active PAID workspace. Both pin the identical
+ * artifact: same Terms version, same consent version, same text digest, same
+ * canonical amounts. That is not a coincidence to be tidied away later; the
+ * plan-change ledger's 13-column consent FK and the checkout table's own
+ * hash CHECK both require exactly this artifact, so a divergence here fails
+ * closed at the claim rather than silently accepting weaker evidence.
+ */
+async function recordConsentVia(
+  rpc: 'record_base_plan_recurring_consent' | 'record_base_plan_plan_change_consent',
   owner: SubscriptionConsentOwnerContext,
   input: RecordBasePlanSubscriptionConsentInput,
 ): Promise<AuthenticatedSubscriptionConsentEvidence> {
@@ -129,7 +143,7 @@ export async function recordBasePlanSubscriptionConsentForOwner(
   const unitAmountCents = basePriceCents(BILLING_PLANS[planCode], billingInterval);
   const { supabase, accountId, userId } = owner;
 
-  const { data, error } = await supabase.rpc('record_base_plan_recurring_consent', {
+  const { data, error } = await supabase.rpc(rpc, {
     p_account_id: accountId,
     p_operation_id: operationId,
     p_plan_code: planCode,
@@ -192,6 +206,28 @@ export async function recordBasePlanSubscriptionConsentForOwner(
       'artifact hash',
     ) as typeof BASE_PLAN_RECURRING_CONSENT_TEXT_SHA256,
   });
+}
+
+export async function recordBasePlanSubscriptionConsentForOwner(
+  owner: SubscriptionConsentOwnerContext,
+  input: RecordBasePlanSubscriptionConsentInput,
+): Promise<AuthenticatedSubscriptionConsentEvidence> {
+  return recordConsentVia('record_base_plan_recurring_consent', owner, input);
+}
+
+/**
+ * Consent for a plan change, recorded before the operation is claimed.
+ *
+ * The acceptance is single-use and bound to the exact operation id, plan,
+ * interval and amount, so it must be minted against the SAME operation id the
+ * claim will use or `claim_stripe_billing_subscription_plan_change` refuses with
+ * 'matching authenticated plan-change consent evidence was not found'.
+ */
+export async function recordBasePlanPlanChangeConsentForOwner(
+  owner: SubscriptionConsentOwnerContext,
+  input: RecordBasePlanSubscriptionConsentInput,
+): Promise<AuthenticatedSubscriptionConsentEvidence> {
+  return recordConsentVia('record_base_plan_plan_change_consent', owner, input);
 }
 
 export async function recordAuthenticatedBasePlanSubscriptionConsent(

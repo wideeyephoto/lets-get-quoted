@@ -93,7 +93,7 @@ export async function runLateArrivalSweep(now = new Date()): Promise<LateSweepSu
 
 // -- Morning-of confirmation --------------------------------------------------
 
-export type MorningSweepSummary = { accounts: number; sent: number; skipped: number };
+export type MorningSweepSummary = { accounts: number; queued: number; skipped: number };
 
 /**
  * Tell today's customers their window, before anybody sets off.
@@ -118,9 +118,9 @@ export async function runMorningConfirmationSweep(now = new Date()): Promise<Mor
     .eq('arrival_morning_confirmation', true)
     .neq('arrival_updates_enabled', false);
 
-  if (error || !accounts?.length) return { accounts: 0, sent: 0, skipped: 0 };
+  if (error || !accounts?.length) return { accounts: 0, queued: 0, skipped: 0 };
 
-  let sent = 0;
+  let queued = 0;
   let skipped = 0;
 
   for (const account of accounts) {
@@ -189,12 +189,15 @@ export async function runMorningConfirmationSweep(now = new Date()): Promise<Mor
         accountId: account.id as string,
         phone: job.client_phone as string,
         message,
+        // The pre-send stamp prevents ordinary reruns; this database key also
+        // closes concurrent sweep and retry races at the durable queue.
+        idempotencyKey: `arrival-morning:${job.id}:${today}`,
       });
-      if (outcome.status === 'sent') sent += 1; else skipped += 1;
+      if (outcome.status === 'queued') queued += 1; else skipped += 1;
     }
   }
 
-  return { accounts: accounts.length, sent, skipped };
+  return { accounts: accounts.length, queued, skipped };
 }
 
 /**

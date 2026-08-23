@@ -1,6 +1,13 @@
 import Link from 'next/link';
 import { requireOwnerContext } from '@/lib/auth';
-import { getInvoiceWithItems, computeInvoiceTotals, formatMoney, type InvoiceStatus } from '@/lib/invoices';
+import { getInvoiceWithItems, computeInvoiceTotals, type InvoiceStatus } from '@/lib/invoices';
+import { formatMoneyExact } from '@/lib/jobs';
+
+// To the cent. This page shows line items above a Subtotal/Discount/Tax/Total
+// block -- a column a person is meant to add up -- for an invoice the customer
+// receives, and pays, to the cent. It rounded, so the contractor and the
+// customer were reading two different totals for one invoice.
+const formatMoney = formatMoneyExact;
 import {
   addInvoiceItemAction,
   deleteInvoiceAction,

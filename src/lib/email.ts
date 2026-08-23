@@ -4,7 +4,22 @@ import { generateInvoiceHtml } from '@/emails/InvoiceEmail';
 import { generateInvoicePdf } from '@/emails/InvoicePdf';
 import { computeInvoiceTotals, type Invoice, type InvoiceItem } from './invoices';
 import type { Lead } from './leads';
-import { formatMoney } from './jobs';
+/**
+ * BOTH, on purpose, and the difference is whether one person is asked to act on
+ * the figure.
+ *
+ * formatMoneyExact for anything naming a single transaction -- the quote a
+ * homeowner approves, the payment request they are sent, the invoice total. Two
+ * of those are the amount actually charged, and the rest are the same number the
+ * customer is looking at on their own screen: an owner alert reading $4,238 for a
+ * quote the customer received as $4,237.50 is two people holding two numbers for
+ * one debt.
+ *
+ * formatMoney (rounding) survives for the DAILY DIGEST alone, where the figures
+ * are day totals beside their counts -- "3 · $1,240" -- and nobody reconciles
+ * them against anything. That is the case formatUsdRounded documents as its own.
+ */
+import { formatMoney, formatMoneyExact } from './jobs';
 import { buildUnsubscribePageUrl, buildUnsubscribeOneClickUrl } from './email-suppression';
 import { APP_ORIGIN } from './app-origin';
 import { contractorFrom, renderBrandedEmail, type EmailBrand } from '@/emails/brand';
@@ -227,7 +242,7 @@ export async function sendClientQuoteEmail(input: SendClientQuoteEmailInput): Pr
   }
 
   const brand = await brandFor(input);
-  const paragraphs = [formatMoney(input.quotedAmount)];
+  const paragraphs = [formatMoneyExact(input.quotedAmount)];
   if (input.includesScheduleOptions) paragraphs.push('You can also pick a start date right on your quote page.');
   paragraphs.push('Review the full details and approve your quote online — no login needed.');
 
@@ -237,7 +252,7 @@ export async function sendClientQuoteEmail(input: SendClientQuoteEmailInput): Pr
     subject: `Your quote ${input.jobRef} from ${input.businessName}`,
     html: renderBrandedEmail({
       brand,
-      preheader: `${formatMoney(input.quotedAmount)} · quote ${input.jobRef}`,
+      preheader: `${formatMoneyExact(input.quotedAmount)} · quote ${input.jobRef}`,
       eyebrow: 'Your quote',
       heading: `${input.clientName}, here is your quote`,
       paragraphs,
@@ -255,6 +270,69 @@ export async function sendClientQuoteEmail(input: SendClientQuoteEmailInput): Pr
     throw new Error(result.error.message);
   }
   console.log(`Client quote email sent: ${input.jobRef}`);
+}
+
+/**
+ * The office invitation, sent to the person being invited.
+ *
+ * Until this existed the action minted a link and handed it to the OWNER to
+ * pass on themselves, which meant the one thing standing between an employee
+ * and their account was a copy-paste into some other app.
+ *
+ * THROWS WHEN IT CANNOT SEND, deliberately, exactly like sendClientQuoteEmail
+ * above: this is a primary delivery channel and its outcome is reported on
+ * screen. The caller catches, and the screen says whether the email went. What
+ * it must never do is report a send that did not happen -- the invitation is
+ * real either way, and the owner needs to know whether to pass the link on by
+ * hand.
+ *
+ * The link is the whole secret. It is shown once, the database keeps only its
+ * hash, and it is not logged here -- the log line below names the recipient and
+ * nothing else, which is the same rule the action's audit entry follows.
+ */
+export async function sendOfficeInvitationEmail(input: {
+  accountId: string | null;
+  businessName: string;
+  recipientEmail: string;
+  inviteUrl: string;
+}): Promise<void> {
+  if (!process.env.RESEND_API_KEY) {
+    throw new Error('Email provider is not configured.');
+  }
+
+  const brand = await brandFor(input);
+
+  const result = await resend.emails.send({
+    from: contractorFrom(brand.businessName),
+    to: input.recipientEmail,
+    subject: `${brand.businessName} added you to their team`,
+    html: renderBrandedEmail({
+      brand,
+      preheader: `Set up your access to ${brand.businessName}`,
+      eyebrow: 'Team invitation',
+      heading: `You have been added to ${brand.businessName}`,
+      paragraphs: [
+        'Use the button below to set up your sign-in. You will get your own login —'
+        + ' you never need the owner’s password, and they never see yours.',
+        // Said plainly because the alternative is somebody sitting on a dead
+        // link wondering whether they did something wrong.
+        'This invitation expires, so open it soon. If it has lapsed, ask them to send another.',
+      ],
+      cta: { label: 'Set up your access', url: input.inviteUrl },
+    }),
+    reply_to: replyAddress(brand),
+    tags: [
+      { name: 'kind', value: 'office_invitation' },
+      ...(input.accountId ? [{ name: 'account_id', value: input.accountId }] : []),
+    ],
+  });
+
+  if (result.error) {
+    console.error('Failed to send office invitation email:', result.error);
+    throw new Error(result.error.message);
+  }
+  // The recipient, never the link: it is the credential.
+  console.log(`Office invitation email sent to ${input.recipientEmail}`);
 }
 
 // Generic contractor-facing alert email (payout paused, chargeback opened,
@@ -342,11 +420,11 @@ export async function sendQuoteSentConfirmationEmail(input: {
     recipientEmail: input.recipientEmail,
     businessName: input.businessName,
     subject: delivered
-      ? `Quote sent to ${input.clientName} — ${formatMoney(input.quotedAmount)}`
+      ? `Quote sent to ${input.clientName} — ${formatMoneyExact(input.quotedAmount)}`
       : `Quote for ${input.clientName} couldn't be sent`,
     heading: delivered ? `Your quote is with ${input.clientName}` : `No way to reach ${input.clientName}`,
     bodyLines: [
-      `Job ${input.jobRef} · ${formatMoney(input.quotedAmount)}`,
+      `Job ${input.jobRef} · ${formatMoneyExact(input.quotedAmount)}`,
       describeDelivery(input.channel, input.sentTo),
       delivered
         ? 'You’ll be notified when they open it or approve it.'
@@ -375,11 +453,11 @@ export async function sendPaymentRequestedConfirmationEmail(input: {
     recipientEmail: input.recipientEmail,
     businessName: input.businessName,
     subject: delivered
-      ? `Payment request sent to ${input.clientName} — ${formatMoney(input.amount)}`
+      ? `Payment request sent to ${input.clientName} — ${formatMoneyExact(input.amount)}`
       : `Payment request for ${input.clientName} is waiting to be sent`,
     heading: delivered ? `${input.clientName} has your payment request` : `${input.clientName} hasn’t been asked yet`,
     bodyLines: [
-      `${input.label} · ${formatMoney(input.amount)}`,
+      `${input.label} · ${formatMoneyExact(input.amount)}`,
       delivered
         ? describeDelivery(input.channel, input.sentTo)
         : 'The request is on the job, but nothing was sent to them — you didn’t choose to text it.',
@@ -401,13 +479,19 @@ export async function sendReviewRequestConfirmationEmail(input: {
   sentTo: string | null;
   jobUrl: string;
 }): Promise<void> {
+  const smsQueued = input.channel === 'sms';
   await sendContractorAlertEmail({
     accountId: input.accountId,
     recipientEmail: input.recipientEmail,
     businessName: input.businessName,
-    subject: `Review request sent to ${input.clientName}`,
+    subject: `Review request ${smsQueued ? 'queued for' : 'sent to'} ${input.clientName}`,
     heading: `You asked ${input.clientName} for a review`,
-    bodyLines: [`Job ${input.jobRef}`, describeDelivery(input.channel, input.sentTo)],
+    bodyLines: [
+      `Job ${input.jobRef}`,
+      smsQueued
+        ? `Text queued for ${input.sentTo ?? input.clientName}; delivery status will appear in Messages.`
+        : describeDelivery(input.channel, input.sentTo),
+    ],
     ctaLabel: 'Open the job',
     ctaUrl: input.jobUrl,
     tone: 'info',
@@ -430,13 +514,13 @@ export async function sendReminderRunSummaryEmail(input: {
     accountId: input.accountId,
     recipientEmail: input.recipientEmail,
     businessName: input.businessName,
-    subject: `${input.sentCount} appointment ${plural} sent for tomorrow`,
-    heading: `Tomorrow’s customers have been reminded`,
+    subject: `${input.sentCount} appointment ${plural} accepted for tomorrow`,
+    heading: `Tomorrow’s reminders are queued or emailed`,
     bodyLines: [
-      `${input.sentCount} ${plural} went out.`,
+      `${input.sentCount} ${plural} were accepted for delivery.`,
       input.failedCount > 0
-        ? `${input.failedCount} couldn’t be delivered — those customers haven’t heard from you.`
-        : 'Everyone booked for tomorrow was reached.',
+        ? `${input.failedCount} couldn’t be queued or emailed.`
+        : 'Every eligible reminder was queued or emailed.',
     ],
     ctaLabel: 'Open your schedule',
     ctaUrl: input.dashboardUrl,
@@ -465,7 +549,7 @@ export async function sendInvoiceSentConfirmationEmail(input: {
       : `Invoice ${input.invoiceRef} couldn't be sent`,
     heading: delivered ? `${input.clientName} has invoice ${input.invoiceRef}` : `No way to reach ${input.clientName}`,
     bodyLines: [
-      `${input.invoiceRef} · ${formatMoney(input.total)}`,
+      `${input.invoiceRef} · ${formatMoneyExact(input.total)}`,
       describeDelivery(input.channel, input.sentTo),
       delivered
         ? 'They can review, sign and pay from the link in their email.'

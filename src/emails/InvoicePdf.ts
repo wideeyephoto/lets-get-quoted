@@ -1,4 +1,5 @@
 import PDFDocument from 'pdfkit';
+import { formatUsdExact } from '@/lib/money-format';
 
 const PAGE_MARGIN = 50;
 const PAGE_WIDTH = 612; // US Letter, points
@@ -28,7 +29,19 @@ export function generateInvoicePdf(params: {
     amount: number;
   }>;
 }): Promise<Buffer> {
-  const formatMoney = (n: number) => '$' + Math.round(n).toLocaleString();
+  // TO THE CENT. This rounded to whole dollars, on a document whose whole job is
+  // to add up: Description/Amount rows above Subtotal -> Tax -> Total. Four
+  // $438.50 items printed as four $439s over a subtotal of $1,754, and the Total
+  // is the figure the card is actually charged -- invoice/[id]/actions.ts charges
+  // round2(total - paid), so the number here could differ from the statement by
+  // up to fifty cents.
+  //
+  // The hosted invoice page has always been exact, and says why in as many words
+  // ("an invoice has to add up on the page"). So one invoice was being stated
+  // three ways: exact on the page, rounded in this document, and rounded again in
+  // the PDF attached to it. money-format.ts is dependency-free precisely so a
+  // renderer like this one can use it.
+  const formatMoney = formatUsdExact;
   const subtotal = params.subtotal ?? params.total;
   const discountAmount = params.discountAmount ?? 0;
   const taxAmount = params.taxAmount ?? 0;

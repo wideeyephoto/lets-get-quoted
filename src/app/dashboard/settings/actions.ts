@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { createAdminClient, requireOwnerContext } from '@/lib/auth';
+import { cancelSubscriptionForAccountDeletion, loadCancellableSubscription } from '@/lib/billing/subscription-cancellation';
 import { updateSite } from '@/lib/sites';
 import {
   DEFAULT_PORTAL_NAV_LABEL,
@@ -18,7 +19,14 @@ import { sendTestDigest } from '@/lib/daily-digest';
 import { backfillAccount, syncAccount } from '@/lib/quickbooks/sync';
 import { deleteInsuranceProof, isInsuranceFile, uploadInsuranceProof } from '@/lib/insurance-storage';
 import { normalizeEstimatePosture } from '@/lib/estimate-posture';
-import { AUTOMATION_COLUMNS, AUTOMATION_LABELS, isAutomationKey, type AutomationKey } from '@/lib/automations';
+import {
+  AUTOMATION_COLUMNS,
+  AUTOMATION_LABELS,
+  automationRequiresDedicatedMessaging,
+  isAutomationKey,
+  type AutomationKey,
+} from '@/lib/automations';
+import { requireActiveDedicatedMessagingSender } from '@/lib/messaging-number-provisioning';
 import { recordAccountEvent } from '@/lib/account-events';
 import { ARRIVAL_WINDOW_CHOICES, DEFAULT_WINDOW_MINUTES } from '@/lib/arrival';
 import {
@@ -305,6 +313,12 @@ export async function updateScheduleDayHoursAction(formData: FormData) {
 export async function toggleAutomationAction(key: AutomationKey, next: boolean) {
   const { supabase, accountId } = await requireOwnerContext();
   if (!isAutomationKey(key)) throw new Error('Unknown automation.');
+  // Turning off must always remain possible. Turning on an automation that can
+  // originate customer SMS requires the same exact inventory evidence as a
+  // manual send; a feature flag is not proof that the workspace has a sender.
+  if (next && automationRequiresDedicatedMessaging(key)) {
+    await requireActiveDedicatedMessagingSender(accountId);
+  }
   const { error } = await supabase
     .from('accounts')
     .update({ [AUTOMATION_COLUMNS[key]]: next })
@@ -322,6 +336,7 @@ export async function toggleAutomationAction(key: AutomationKey, next: boolean) 
   });
 
   revalidatePath('/dashboard/settings');
+  revalidatePath('/dashboard/automations');
   revalidatePath('/dashboard');
 }
 
@@ -330,6 +345,10 @@ export async function toggleAutomationAction(key: AutomationKey, next: boolean) 
 // and the daily digest. Each still has its own card to tune or turn back off.
 export async function enableRecommendedAutomationsAction() {
   const { supabase, accountId } = await requireOwnerContext();
+  // Three of the four recommended switches originate customer texts. Without
+  // a prepared/on split in the current schema, reject the whole atomic preset
+  // rather than claiming those automations are active while delivery is dark.
+  await requireActiveDedicatedMessagingSender(accountId);
   const { error } = await supabase
     .from('accounts')
     .update({
@@ -341,6 +360,7 @@ export async function enableRecommendedAutomationsAction() {
     .eq('id', accountId);
   if (error) throw new Error(error.message);
   revalidatePath('/dashboard/settings');
+  revalidatePath('/dashboard/automations');
   revalidatePath('/dashboard');
 }
 
@@ -912,11 +932,45 @@ export async function deleteAccountAction() {
   const { supabase, accountId, userId } = await requireOwnerContext();
   const admin = createAdminClient();
 
-  // NOTE: SaaS billing subscriptions aren't created yet (stripe_customer_id /
-  // subscription_status are dormant). When paid plans land, cancel the Stripe
-  // subscription here before deleting so a deleted account stops being billed.
+  // THE DELETE GOES FIRST, BECAUSE IT CAN FAIL.
+  //
+  // Twenty-four tables hold a RESTRICT foreign key to `accounts` -- `payments`
+  // among them, so ANY workspace that has ever taken a customer payment is
+  // undeletable, not just subscribers. This used to cancel Stripe first and then
+  // hit that wall: the contractor's plan was really gone, mid-period and
+  // unrefunded, they still had the account, and they could not resubscribe.
+  // Every retry did it again.
+  //
+  // billing_subscriptions.account_id is ON DELETE CASCADE, so the subscription
+  // is read HERE, before the delete can destroy it. Reading it costs nothing if
+  // the delete then fails, and it is the only way to still have the id to cancel
+  // with once the row is gone.
+  const subscription = await loadCancellableSubscription(admin, accountId).catch(() => null);
+
   const { error: accountError } = await admin.from('accounts').delete().eq('id', accountId);
-  if (accountError) throw new Error(accountError.message);
+  if (accountError) {
+    // 23503 is foreign_key_violation. Nothing has been cancelled and nothing
+    // deleted, so this is recoverable -- but say what actually happened rather
+    // than surfacing a raw Postgres message about a constraint name.
+    if (accountError.code === '23503') {
+      throw new Error(
+        'This workspace has billing or messaging history that has to be kept, so it cannot be '
+        + 'deleted automatically. Your plan has NOT been cancelled and nothing has been removed. '
+        + 'Contact support and we will close it out by hand.',
+      );
+    }
+    throw new Error(accountError.message);
+  }
+
+  // The delete committed, so the subscription row is gone with it. Cancel using
+  // what was read above.
+  //
+  // Immediate, not at period end: there is nothing left for a later cancellation
+  // to be projected onto. Best-effort by contract -- a Stripe failure must not
+  // trap somebody in an account they asked to delete, and a leaked subscription
+  // is recoverable by an operator where a blocked deletion is not. It logs the
+  // subscription id loudly when it cannot.
+  await cancelSubscriptionForAccountDeletion({ admin, accountId, preloaded: subscription });
 
   // Only remove the auth user (which frees its phone/email for reuse) if this
   // was their ONLY account — otherwise deleting the user would cascade their

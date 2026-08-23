@@ -10,6 +10,7 @@
 // no use for them, and the cheapest way to not leak something is to not send it.
 
 import type { QuoteFinding } from '@/lib/quote-guard';
+import { callModel } from '@/lib/ai-model-call';
 
 export type OmissionContext = {
   trade: string | null;
@@ -127,19 +128,15 @@ export async function findOmissions(context: OmissionContext): Promise<QuoteFind
   const input = buildOmissionInput(context);
 
   try {
-    const response = await fetch('https://api.openai.com/v1/responses', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({
-        model: 'gpt-4o',
-        // Low but not zero: noticing an unstated dependency is exactly the kind
-        // of leap greedy decoding skips, and that leap is the whole feature.
-        temperature: 0.2,
-        instructions: INSTRUCTIONS,
-        input,
-        text: { format: { type: 'json_object' } },
-      }),
-    });
+    const response = await callModel({
+      model: 'gpt-4o',
+      // Low but not zero: noticing an unstated dependency is exactly the kind
+      // of leap greedy decoding skips, and that leap is the whole feature.
+      temperature: 0.2,
+      instructions: INSTRUCTIONS,
+      input,
+      text: { format: { type: 'json_object' } },
+    }, { accountId: null, kind: 'guard' });
     if (!response.ok) throw new Error(`OpenAI request failed: ${response.status}`);
     return toOmissionFindings(JSON.parse(extractOutputText(await response.json())));
   } catch (error) {

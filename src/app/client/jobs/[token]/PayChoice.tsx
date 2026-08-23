@@ -1,6 +1,7 @@
 'use client';
 
 import SaveButton from '@/components/save-button';
+import { useRadioGroup } from '@/components/use-radio-group';
 import { useQuoteDeck } from './QuoteDeck';
 
 /**
@@ -54,6 +55,16 @@ export default function PayChoice({
 }) {
   const { payMode, setPayMode } = useQuoteDeck();
 
+  // The markup below has claimed to be a radio group since it was written, and
+  // until now nothing handled a key press: a screen reader announced "radio, 1
+  // of 2", the arrow key that implies did nothing, and Tab walked through both
+  // options instead of into the group. See useRadioGroup for the contract.
+  const { getOptionProps } = useRadioGroup({
+    options: ['full', 'plan'] as const,
+    value: payMode,
+    onChange: setPayMode,
+  });
+
   // A full payment already at checkout means the choice has been made and
   // re-offering it would start a second one.
   if (payInFullInFlight) {
@@ -71,10 +82,8 @@ export default function PayChoice({
           <div className="pay-choice-grid" role="radiogroup" aria-label="How you would like to pay">
             <button
               type="button"
-              role="radio"
-              aria-checked={payMode === 'full'}
+              {...getOptionProps('full')}
               className={`pay-option${payMode === 'full' ? ' is-chosen' : ''}`}
-              onClick={() => setPayMode('full')}
             >
               <span className="pay-option-head">
                 <strong>Pay in full</strong>
@@ -86,10 +95,8 @@ export default function PayChoice({
 
             <button
               type="button"
-              role="radio"
-              aria-checked={payMode === 'plan'}
+              {...getOptionProps('plan')}
               className={`pay-option${payMode === 'plan' ? ' is-chosen' : ''}`}
-              onClick={() => setPayMode('plan')}
             >
               <span className="pay-option-head">
                 <strong>Pay over time</strong>

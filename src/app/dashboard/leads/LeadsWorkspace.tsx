@@ -132,6 +132,7 @@ export default function LeadsWorkspace({
   initialLeadId,
   basePath = '/dashboard',
   readOnly = false,
+  ownerControls = true,
 }: {
   leads: LeadViewItem[];
   /** Open on this lead. The demo gives each lead its own shareable URL. */
@@ -158,6 +159,16 @@ export default function LeadsWorkspace({
    * pickers stop trying to write a cookie nobody is signed in to own.
    */
   readOnly?: boolean;
+  /**
+   * Whether to render the controls only an OWNER can actually run.
+   *
+   * Defaults TRUE so every existing caller is unchanged, and the one surface
+   * that admits office users opts out explicitly. What it hides is not a
+   * matter of taste: each one either reaches a table RLS does not cover, or
+   * sends a text, or opens a page still guarded by requireOwnerContext. A
+   * control certain to fail is worse than a control that is absent.
+   */
+  ownerControls?: boolean;
 }) {
   const [view, setView] = useState<LeadsView>(initialView);
   /**
@@ -354,11 +365,11 @@ export default function LeadsWorkspace({
         </div>
       ) : null}
 
-      {view === 'board' && <LeadBoardView leads={leads} run={run} />}
-      {view === 'inbox' && <LeadPriorityView leads={leads} snoozed={snoozedLeads} run={run} />}
+      {view === 'board' && <LeadBoardView leads={leads} run={run} ownerControls={ownerControls} />}
+      {view === 'inbox' && <LeadPriorityView leads={leads} snoozed={snoozedLeads} run={run} ownerControls={ownerControls} />}
       {view === 'table' && <LeadTableView leads={leads} run={run} />}
-      {view === 'split' && <SplitView leads={leads} run={run} openRequest={pinRequest} />}
-      {view === 'focus' && <LeadFocusView leads={leads} run={run} onSelect={onFocusSelect} openRequest={pinRequest} details={details} initialLeadId={initialLeadId} basePath={basePath} />}
+      {view === 'split' && <SplitView leads={leads} run={run} openRequest={pinRequest} ownerControls={ownerControls} />}
+      {view === 'focus' && <LeadFocusView leads={leads} run={run} onSelect={onFocusSelect} openRequest={pinRequest} details={details} initialLeadId={initialLeadId} basePath={basePath} ownerControls={ownerControls} />}
 
       <ScoreLegend />
     </div>
@@ -370,11 +381,13 @@ function SplitView({
   leads,
   run,
   openRequest,
+  ownerControls,
 }: {
   leads: LeadViewItem[];
   run: (fn: () => Promise<unknown>) => void;
   /** A pin on the map asking for a lead; the nonce lets the same one repeat. */
   openRequest?: { id: string; nonce: number } | null;
+  ownerControls: boolean;
 }) {
   const [selectedId, setSelectedId] = useState<string | null>(leads[0]?.id ?? null);
   const selected = leads.find((l) => l.id === selectedId) ?? leads[0] ?? null;
@@ -493,7 +506,11 @@ function SplitView({
             {selected.status !== 'contacted' && selected.status !== 'won' && (
               <button type="button" className="btn secondary" onClick={() => run(() => updateLeadStatusAction(selected.id, 'contacted'))}>Mark contacted</button>
             )}
+            {/* Mark won hands the service role to applyQuoteAcceptance, which
+                writes job_feed -- a table RLS does not cover. Owner only. */}
+            {ownerControls ? (
             <button type="button" className="btn secondary" onClick={() => run(() => updateLeadStatusAction(selected.id, 'won'))}>Mark won</button>
+            ) : null}
             <button type="button" className="btn ghost" onClick={() => run(() => snoozeLeadAction(selected.id, 3))}>Snooze 3d</button>
             <button type="button" className="btn ghost" onClick={() => run(() => archiveLeadAction(selected.id, true))}>Archive</button>
             <Link className="btn primary" href={`/dashboard/leads/${selected.id}`}>Open full lead →</Link>

@@ -15,7 +15,6 @@ jobs:
       SUPABASE_SERVICE_ROLE_KEY: placeholder
       STRIPE_SECRET_KEY: sk_test_placeholder
       STRIPE_WEBHOOK_SECRET: whsec_placeholder
-      NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: pk_test_placeholder
       RESEND_API_KEY: placeholder
       NEXT_PUBLIC_APP_URL: http://localhost:3010
       NEXT_PUBLIC_ROOT_DOMAIN: letsgetquoted.com

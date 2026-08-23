@@ -188,11 +188,11 @@ describe('buildChangeOrderInput', () => {
   it('says "JSON" in the input, not only the instructions', () => {
     // The Responses API 400s without it, that 400 is caught, and the drafter
     // then fails silently on every change order. Same trap as quote-guard-ai.
-    expect(buildChangeOrderInput({ trade: 'Roofing', jobScope: 'Re-roof', fieldNote: 'Rot found', photos: [], services: [] })).toMatch(/json/i);
+    expect(buildChangeOrderInput({ accountId: 'acct', trade: 'Roofing', jobScope: 'Re-roof', fieldNote: 'Rot found', photos: [], services: [] })).toMatch(/json/i);
   });
 
   it('sends the original job so the model does not re-sell it', () => {
-    const built = buildChangeOrderInput({ trade: null, jobScope: 'Full re-roof', fieldNote: 'Rot', photos: [], services: [] });
+    const built = buildChangeOrderInput({ accountId: 'acct', trade: null, jobScope: 'Full re-roof', fieldNote: 'Rot', photos: [], services: [] });
     expect(built).toContain('THE JOB ALREADY SOLD');
     expect(built).toContain('Full re-roof');
   });

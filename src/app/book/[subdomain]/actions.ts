@@ -480,7 +480,7 @@ export async function submitQuickStopRequestAction(formData: FormData): Promise<
     const photoPaths: string[] = [];
     for (const file of files.slice(0, 6)) {
       try {
-        photoPaths.push(await uploadLeadPhoto(site.account_id, file));
+        photoPaths.push(await uploadLeadPhoto(site.account_id, file, 'public_visitor'));
       } catch (error) {
         console.error('Quick Stop photo upload failed:', error instanceof Error ? error.message : error);
       }

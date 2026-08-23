@@ -5,6 +5,7 @@ import type Stripe from 'stripe';
 import {
   PRICING_CATALOG_VERSION,
 } from '@/lib/billing/catalog';
+import { TOP_UP_SUBSCRIPTION_PURPOSE } from '@/lib/billing/top-up-purchase';
 import {
   planCreditGrants,
   workspaceEntitlementCatalogSnapshot,
@@ -77,6 +78,47 @@ function fail(
   retryable = false,
 ): never {
   throw new StripeSubscriptionProjectionProviderError(code, retryable);
+}
+
+/**
+ * This subscription belongs to another rail and must not be projected here.
+ *
+ * A SENTINEL, NOT A FAILURE CODE, deliberately. Every
+ * StripeSubscriptionProjectionProviderError ends as a dead letter or a retry,
+ * and this outcome is neither -- it is a correct, terminal "not mine". Making it
+ * a distinct type means the projector's catch can route it without a
+ * failure-code string comparison, and means no existing handler can mistake it
+ * for a contract violation.
+ */
+export class ForeignSubscriptionRailError extends Error {
+  override readonly name = 'ForeignSubscriptionRailError';
+
+  constructor(readonly rail: 'purchased_capacity') {
+    super('Stripe subscription belongs to another LGQ rail.');
+  }
+}
+
+/**
+ * Is this subscription one a capacity top-up created?
+ *
+ * Read from `metadata`, which the top-up Checkout attaches through
+ * subscription_data.metadata -- the parameter that actually writes metadata onto
+ * the Subscription, as opposed to Session metadata, which does not propagate.
+ * The discriminator is `lgq_purpose`: base-plan subscriptions carry
+ * `lgq_billing_purpose` and never this key, so a positive match cannot
+ * misclassify a plan.
+ *
+ * Checked BEFORE normalizeSubscription, because normalization is exactly what
+ * rejects these -- its metadata key-set equality is the line that turns a
+ * perfectly ordinary capacity renewal into a terminal
+ * provider_object_contract_mismatch.
+ */
+function foreignRailOf(rawSubscription: unknown): 'purchased_capacity' | null {
+  if (!rawSubscription || typeof rawSubscription !== 'object') return null;
+  const metadata = (rawSubscription as { metadata?: unknown }).metadata;
+  if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) return null;
+  const purpose = (metadata as Record<string, unknown>).lgq_purpose;
+  return purpose === TOP_UP_SUBSCRIPTION_PURPOSE ? 'purchased_capacity' : null;
 }
 
 type StripeProviderDependencies = Readonly<{
@@ -440,7 +482,7 @@ function allowanceWindow(
 
 function paymentEvidence(
   context: StripeSubscriptionProviderContext,
-  session: Stripe.Checkout.Session,
+  session: Stripe.Checkout.Session | null,
 ): StripeSubscriptionProjection['payment_evidence_kind'] {
   if (
     context.providerObjectType === 'invoice'
@@ -449,7 +491,16 @@ function paymentEvidence(
   ) {
     return 'invoice_paid';
   }
-  if (context.providerObjectType === 'subscription' && session.payment_status === 'paid') {
+  // No Session, no `checkout_session_paid`. The projector refuses that
+  // combination outright, so producing it here would dead-letter the event
+  // rather than quietly over-claim -- but the honest answer is 'none' either
+  // way, and a plan change is paid for by its proration invoice, never by a
+  // Session.
+  if (
+    session !== null
+    && context.providerObjectType === 'subscription'
+    && session.payment_status === 'paid'
+  ) {
     return 'checkout_session_paid';
   }
   return 'none';
@@ -504,6 +555,14 @@ async function retrieveProviderContext(
   } catch {
     return fail('provider_object_retrieve_failed', true);
   }
+
+  // BEFORE normalization, which is the step that would reject this. A capacity
+  // subscription is a perfectly valid object that simply is not ours to project;
+  // letting it reach normalizeSubscription turns it into a terminal
+  // provider_object_contract_mismatch on the first attempt.
+  const foreignRail = foreignRailOf(rawSubscription);
+  if (foreignRail) throw new ForeignSubscriptionRailError(foreignRail);
+
   const context = normalizeSubscription(rawSubscription, claim, invoiceContext);
 
   try {
@@ -518,7 +577,15 @@ async function loadExactSession(
   context: StripeSubscriptionProviderContext,
   binding: StripeSubscriptionProjectionBinding,
   dependencies: StripeProviderDependencies,
-): Promise<Stripe.Checkout.Session> {
+): Promise<Stripe.Checkout.Session | null> {
+  // A plan change is a subscriptions.update. It has no Checkout Session, and the
+  // recovery path below is actively WRONG for it: listing this subscription's
+  // Sessions finds the original checkout, which carries the OLD price, fails
+  // every contract comparison, and reports `checkout_session_ambiguous` -- a
+  // dead letter describing a problem that does not exist. Branch on the purpose,
+  // not on the null: an unrecovered `indeterminate` checkout also has no Session
+  // id and DOES want the recovery below.
+  if (binding.operationPurpose === 'base_plan_plan_change') return null;
   if (binding.checkoutSessionId) {
     let session: unknown;
     try {
@@ -627,7 +694,7 @@ async function buildVerifiedProjection(
     event_object_id: context.providerObjectId,
     workspace_id: binding.workspaceId,
     operation_id: binding.operationId,
-    checkout_session_id: session.id,
+    checkout_session_id: session?.id ?? null,
     customer_id: context.customerId,
     subscription_id: context.subscriptionId,
     subscription_item_id: context.subscriptionItemId,

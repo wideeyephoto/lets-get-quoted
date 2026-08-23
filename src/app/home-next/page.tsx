@@ -1005,7 +1005,7 @@ export default function HomeNextPage({ searchParams }: { searchParams: { frame?:
           body="Launch the site, connect the work and give your growing business one place to run."
           primary={{ label: 'Create my account', href: APP_SIGNUP_URL }}
           secondary={null}
-          note="No card required · Plans start at $0/month · Cancel anytime"
+          note="No card required · Plans start at $0/month · Cancel anytime from Settings"
         />
 
         <SiteFooter />

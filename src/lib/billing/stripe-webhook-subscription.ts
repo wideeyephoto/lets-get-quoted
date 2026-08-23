@@ -1,3 +1,9 @@
+import {
+  CONNECTED_PAYMENT_EVENT_TYPES,
+  PLATFORM_SUBSCRIPTION_EVENT_TYPES,
+  PLATFORM_TOP_UP_EVENT_TYPES,
+} from '@/lib/billing/stripe-event-inbox';
+
 /**
  * The event types the platform webhook route dispatches on, and therefore the
  * subscription a Stripe endpoint must carry for that route to function.
@@ -73,4 +79,118 @@ export function missingLiveWebhookEvents(
 ): RequiredLiveWebhookEvent[] {
   const has = new Set(subscribed);
   return REQUIRED_LIVE_WEBHOOK_EVENTS.filter((event) => !has.has(event));
+}
+
+
+/**
+ * THE OTHER THREE ENDPOINTS, which had no declaration at all.
+ *
+ * REQUIRED_LIVE_WEBHOOK_EVENTS above covers the legacy platform route and
+ * nothing else. Three more Stripe endpoints have landed since -- platform
+ * subscriptions, platform top-ups, and events on connected accounts -- and each
+ * one repeats the failure mode that module exists to catch: a handler is
+ * silently dead unless the endpoint is subscribed to the event that reaches it,
+ * and no test can see that, because tests call handlers directly and never
+ * consult Stripe's configuration.
+ *
+ * That is not hypothetical here. The legacy endpoint went live subscribed to
+ * seven of the eleven events its route dispatches on, and the four it omitted
+ * were the only ones that could ever settle an ACH payment or close a dispute.
+ * See LIVE_WEBHOOK_EVENTS_BEFORE_2026_08_17_FIX.
+ *
+ * `required` is what the endpoint must be subscribed to. `projected` is the
+ * subset something in this codebase actually acts on today. They are different
+ * numbers on purpose, and the difference is the point: an event that is required
+ * but not projected is durably received and waiting for a projector, not
+ * handled. Nineteen of the connected endpoint's twenty are in exactly that
+ * state, and nothing would otherwise say so out loud.
+ */
+export type StripeWebhookEndpoint = Readonly<{
+  /** The route path, for an operator configuring Stripe. */
+  path: string;
+  /** The inbox scope the route declares for itself. Never inferred. */
+  scope: 'legacy_platform' | 'platform_subscription' | 'platform_top_up' | 'connected_payment';
+  /** Which Stripe account the endpoint lives on. */
+  account: 'platform' | 'connect';
+  /** Env var that turns the route on. Off means 404 before anything is read. */
+  flag: string | null;
+  /** Env var holding this endpoint's own signing secret. Never shared. */
+  secret: string;
+  /** What Stripe must be subscribed to for the route to receive its work. */
+  required: readonly string[];
+  /** Of `required`, what something actually projects today. */
+  projected: readonly string[];
+}>;
+
+export const STRIPE_WEBHOOK_ENDPOINTS: readonly StripeWebhookEndpoint[] = Object.freeze([
+  Object.freeze({
+    path: '/api/stripe/webhook',
+    scope: 'legacy_platform',
+    account: 'platform',
+    // No flag: this one has been live since before the flag convention.
+    flag: null,
+    secret: 'STRIPE_WEBHOOK_SECRET',
+    required: REQUIRED_LIVE_WEBHOOK_EVENTS,
+    // Every one of them dispatches to a handler in the route itself.
+    projected: REQUIRED_LIVE_WEBHOOK_EVENTS,
+  }),
+  Object.freeze({
+    path: '/api/stripe/billing/webhook',
+    scope: 'platform_subscription',
+    account: 'platform',
+    flag: 'LGQ_STRIPE_BILLING_WEBHOOK_ENABLED',
+    secret: 'STRIPE_BILLING_WEBHOOK_SECRET',
+    required: PLATFORM_SUBSCRIPTION_EVENT_TYPES,
+    // subscription-event-projector.ts claims all eighteen.
+    projected: PLATFORM_SUBSCRIPTION_EVENT_TYPES,
+  }),
+  Object.freeze({
+    path: '/api/stripe/top-ups/webhook',
+    scope: 'platform_top_up',
+    account: 'platform',
+    flag: 'LGQ_STRIPE_TOP_UP_WEBHOOK_ENABLED',
+    secret: 'STRIPE_TOP_UP_WEBHOOK_SECRET',
+    required: PLATFORM_TOP_UP_EVENT_TYPES,
+    // top-up-event-projector.ts gives all four an outcome: fulfilled, expired,
+    // payment_failed, or awaiting_async_payment.
+    projected: PLATFORM_TOP_UP_EVENT_TYPES,
+  }),
+  Object.freeze({
+    path: '/api/stripe/connected-payments/webhook',
+    scope: 'connected_payment',
+    account: 'connect',
+    flag: 'LGQ_STRIPE_CONNECTED_PAYMENT_WEBHOOK_ENABLED',
+    secret: 'STRIPE_CONNECTED_PAYMENT_WEBHOOK_SECRET',
+    required: CONNECTED_PAYMENT_EVENT_TYPES,
+    /**
+     * ONE OF TWENTY. claim_next_due_stripe_connected_payment_event selects
+     * `event_type = 'checkout.session.completed'` and nothing else, so every
+     * other connected event is durably received and then sits at
+     * processing_status 'received' with no worker that will ever claim it.
+     *
+     * That is the designed state, not a bug -- the receipt is the point, and a
+     * projector must correlate the connected-account object before changing any
+     * payment state. But it is a state somebody has to be able to see, because
+     * the inbox looks identical whether an event is queued or abandoned.
+     */
+    projected: Object.freeze(['checkout.session.completed']),
+  }),
+]);
+
+/** Required events an endpoint's actual Stripe subscription does not cover. */
+export function missingEventsForEndpoint(
+  endpoint: StripeWebhookEndpoint,
+  subscribed: readonly string[],
+): string[] {
+  const has = new Set(subscribed);
+  return endpoint.required.filter((event) => !has.has(event));
+}
+
+/**
+ * Received durably, projected by nothing. Not an error -- a backlog, and the
+ * one number that says how much of an endpoint is still receipt-only.
+ */
+export function receivedOnlyEvents(endpoint: StripeWebhookEndpoint): string[] {
+  const projected = new Set(endpoint.projected);
+  return endpoint.required.filter((event) => !projected.has(event));
 }

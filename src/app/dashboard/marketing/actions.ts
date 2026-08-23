@@ -84,6 +84,7 @@ export async function draftMarketingAction(
   const zone = climateZoneForState(stateFromAddress((account?.mailing_address as string | null) ?? site?.service_area ?? null));
 
   const draft = await draftMarketing({
+    accountId,
     beat,
     channel,
     businessName: pickBusinessName(site, account, 'your business'),
@@ -289,7 +290,8 @@ export async function sendCampaignAction(formData: FormData) {
   revalidatePath('/dashboard/marketing');
   revalidatePath('/dashboard/marketing/campaigns');
   const params = new URLSearchParams({
-    sent: String(result.emailSent + result.smsSent),
+    emailSent: String(result.emailSent),
+    smsQueued: String(result.smsQueued),
     recipients: String(result.recipientCount),
     skipped: String(result.skipped),
     failed: String(result.failed),

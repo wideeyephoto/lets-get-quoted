@@ -1,7 +1,10 @@
 import { createAdminClient } from '@/lib/auth';
+import { resolveFeeBasisCents } from '@/lib/billing/fee-basis';
+import { getWorkspaceFeeRate } from '@/lib/billing/workspace-fee-rate';
 import { pickBusinessName } from '@/lib/business-name';
 import { getJob } from '@/lib/jobs';
-import { getStripeClient, computeFeeRate, computePlatformFee, computePlatformFeeCents, toCents, fromCents, canCreateConnectCharge } from '@/lib/stripe';
+import { QUICK_STOP_PAYABLE_COLUMNS, quickStopOfferAllowsPayment } from '@/lib/quick-stop';
+import { getStripeClient, computePlatformFee, toCents, fromCents, canCreateConnectCharge } from '@/lib/stripe';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type Stripe from 'stripe';
 import { sendPaymentSmsEvent } from '@/lib/sms';
@@ -33,8 +36,25 @@ export type Payment = {
   status: PaymentStatus;
   platform_fee: number | null;
   fee_rate: number | null;
+  fee_basis_amount: number | string | null;
   stripe_checkout_session: string | null;
   stripe_payment_intent: string | null;
+  /**
+   * Set when Stripe confirms a completed Checkout Session whose money is still
+   * moving -- ACH and other delayed methods.
+   *
+   * ADVISORY, AND MUST BE READ AFTER `status`, NEVER INSTEAD OF IT. It is
+   * cleared best-effort on settle and on failure, and deliberately carries no
+   * CHECK constraint: seventeen sites transition a payment to a terminal status,
+   * and a constraint would turn one missed clear into a webhook that throws
+   * after Stripe has already taken the money. A stale value on a settled row is
+   * expected. See migrations 20260821000000 and 20260821001000.
+   *
+   * Exists because `status` alone cannot answer the only question the pay page
+   * needs answered: 'processing' is set when a Checkout Session is CREATED, so
+   * it means both "the bank is clearing it" and "they closed the tab".
+   */
+  async_payment_pending_at?: string | null;
   homeowner_phone: string | null;
   sms_consent: boolean;
   sms_consent_at: string | null;
@@ -191,6 +211,45 @@ async function requireLegacyDestinationPaymentRail(
 // Sum of paid amounts in the trailing 365 days — the basis for the fee bracket.
 // Uses the admin client since this is a trusted server-side calculation, not a
 // user-scoped read.
+/** PostgREST's default ceiling. A read that ignores it is silently truncated. */
+export const TRAILING_VOLUME_PAGE_SIZE = 1_000;
+/** 500k payments in a year. Far past any real contractor; a runaway guard only. */
+const TRAILING_VOLUME_MAX_PAGES = 500;
+
+/**
+ * Sum a filtered payments query across pages.
+ *
+ * WHY THIS IS NOT ONE SELECT. Supabase caps a response at 1,000 rows by default
+ * and says nothing when it truncates -- you get 1,000 rows and no error. This
+ * function feeds the platform-fee bracket, and the bracket runs the wrong way:
+ * LESS counted volume means a HIGHER fee. So a contractor busy enough to pass
+ * 1,000 payments in a year would have had the excess silently dropped and been
+ * charged a higher rate on every transaction, permanently, with the overcharge
+ * growing as they grew.
+ */
+async function sumPaged(
+  build: () => { range: (from: number, to: number) => PromiseLike<{
+    data: Array<Record<string, unknown>> | null;
+    error: unknown;
+  }> },
+  keep: (row: Record<string, unknown>) => boolean,
+): Promise<{ total: number; error: unknown }> {
+  let total = 0;
+  for (let page = 0; page < TRAILING_VOLUME_MAX_PAGES; page += 1) {
+    const from = page * TRAILING_VOLUME_PAGE_SIZE;
+    const { data, error } = await build().range(from, from + TRAILING_VOLUME_PAGE_SIZE - 1);
+    if (error) return { total: 0, error };
+    const rows = data ?? [];
+    for (const row of rows) if (keep(row)) total += Number(row.amount);
+    // A short page is the end. A full one might not be, so ask again.
+    if (rows.length < TRAILING_VOLUME_PAGE_SIZE) return { total, error: null };
+  }
+  // Never silently. Reaching here means the number below is too low, and too
+  // low is the direction that overcharges.
+  console.error('trailing volume hit the page ceiling; the fee bracket may be wrong');
+  return { total, error: null };
+}
+
 export async function getTrailingVolume(accountId: string): Promise<number> {
   const admin = createAdminClient();
   const since = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString();
@@ -201,31 +260,24 @@ export async function getTrailingVolume(accountId: string): Promise<number> {
   // mark large "cash" payments to inflate volume and drop their real platform fee.
   // Defensive: if `imported` isn't migrated yet, fall back but still require a
   // stripe_payment_intent.
-  const { data, error } = await admin
+  const query = (columns: string) => () => admin
     .from('payments')
-    .select('amount, imported, stripe_payment_intent')
+    .select(columns)
     .is('test_marker', null)
     .eq('account_id', accountId)
     .eq('status', 'paid')
     .not('stripe_payment_intent', 'is', null)
-    .gte('paid_at', since);
+    .gte('paid_at', since) as never;
 
-  if (error) {
-    const fallback = await admin
-      .from('payments')
-      .select('amount, stripe_payment_intent')
-      .is('test_marker', null)
-      .eq('account_id', accountId)
-      .eq('status', 'paid')
-      .not('stripe_payment_intent', 'is', null)
-      .gte('paid_at', since);
-    if (fallback.error) throw fallback.error;
-    return (fallback.data ?? []).reduce((sum, row) => sum + Number(row.amount), 0);
-  }
+  const primary = await sumPaged(
+    query('amount, imported, stripe_payment_intent'),
+    (row) => !(row as { imported?: boolean }).imported,
+  );
+  if (!primary.error) return primary.total;
 
-  return (data ?? [])
-    .filter((row) => !(row as { imported?: boolean }).imported)
-    .reduce((sum, row) => sum + Number(row.amount), 0);
+  const fallback = await sumPaged(query('amount, stripe_payment_intent'), () => true);
+  if (fallback.error) throw fallback.error;
+  return fallback.total;
 }
 
 // Quote the fee rate/amount that would apply if this payment were completed
@@ -235,9 +287,25 @@ export async function getTrailingVolume(accountId: string): Promise<number> {
 // the persisted values are the source of truth (the locked-in rate for that
 // specific Stripe session), so callers should prefer those when present and
 // only fall back to this quote.
+/**
+ * The fee a specific payment would be charged, basis and all.
+ *
+ * getQuotedFee below takes only an amount, so it cannot know whether that amount
+ * carries sales tax -- and quoting the gross-based number while the charge takes
+ * the subtotal-based one would put a different figure on the pay page than on
+ * the card. This is what the pay page uses; getQuotedFee stays for the callers
+ * that genuinely have no invoice behind them.
+ */
+export async function quoteFeeForPayment(
+  payment: { id?: string | null; account_id: string; amount: number | string; invoice_id?: string | null },
+): Promise<{ feeRate: number; platformFee: number }> {
+  const { feeRate } = await getWorkspaceFeeRate(payment.account_id);
+  const basis = await resolveFeeBasisCents(createAdminClient(), payment);
+  return { feeRate, platformFee: fromCents(Math.round(basis.basisCents * feeRate)) };
+}
+
 export async function getQuotedFee(accountId: string, amount: number): Promise<{ feeRate: number; platformFee: number }> {
-  const trailingVolume = await getTrailingVolume(accountId);
-  const feeRate = computeFeeRate(trailingVolume);
+  const { feeRate } = await getWorkspaceFeeRate(accountId);
   const platformFee = computePlatformFee(amount, feeRate);
   return { feeRate, platformFee };
 }
@@ -270,7 +338,13 @@ export async function createDepositRequest(
     throw new Error('Job not found for this account.');
   }
 
-  if (input.amount <= 0) {
+  // `Number.isFinite` first, and that ordering is the point. This guard was
+  // `input.amount <= 0` alone, and **NaN <= 0 is false** -- so an unparseable
+  // amount passed it, then supabase-js serialised NaN to null onto a
+  // `numeric NOT NULL` column and Postgres raised the error instead, opaquely.
+  // Callers parse properly now (see money-input.ts); this is the boundary that
+  // must hold whether or not they remember to.
+  if (!Number.isFinite(input.amount) || input.amount <= 0) {
     throw new Error('Payment amount must be greater than 0.');
   }
 
@@ -392,6 +466,43 @@ export async function createCheckoutSessionForPayment(paymentId: string, origin:
     throw new Error(LEGACY_DESTINATION_PAYMENT_RAIL_ERROR);
   }
 
+  /**
+   * THE WEBHOOK RACE, closed at the one place a second charge could be created.
+   *
+   * `processing` is allowed through below because it usually means an abandoned
+   * checkout, and resuming one is the whole point. But it ALSO covers the few
+   * seconds between Stripe redirecting a successful payer and
+   * checkout.session.completed landing -- and in that window every surface
+   * reasonably treats the payment as unpaid and offers to start it again.
+   *
+   * Every route to a second charge passes through this function, so asking
+   * Stripe here settles it for all of them at once: the pay page, the invoice
+   * page, the customer portal and the contractor's own Retry button.
+   *
+   * Only in the ambiguous case -- `processing` with a session recorded -- so the
+   * ordinary first payment adds no round trip. And it FAILS OPEN: if Stripe
+   * cannot be reached, the checkout proceeds exactly as it did before this
+   * existed. Refusing on a network blip would block a payment somebody is
+   * standing there trying to make, which is the worse of the two.
+   */
+  if (payment.status === 'processing' && payment.stripe_checkout_session) {
+    try {
+      const priorSession = await getStripeClient().checkout.sessions.retrieve(
+        payment.stripe_checkout_session,
+      );
+      if (priorSession.payment_status === 'paid') {
+        throw new Error('This payment has already been completed.');
+      }
+    } catch (error) {
+      // Rethrow our own refusal; swallow anything Stripe threw.
+      if (error instanceof Error && error.message === 'This payment has already been completed.') throw error;
+      console.error(
+        `Could not confirm prior checkout session for ${paymentId}:`,
+        error instanceof Error ? error.message : error,
+      );
+    }
+  }
+
   // "processing" means a checkout session was started but not necessarily
   // completed (e.g. the homeowner abandoned it) — allow retrying with a fresh
   // session. Only "paid"/"refunded" are truly terminal.
@@ -407,14 +518,15 @@ export async function createCheckoutSessionForPayment(paymentId: string, origin:
     const guardAdmin = createAdminClient();
     const { data: es } = await guardAdmin
       .from('extra_stop_requests')
-      .select('status, payment_deadline_at')
+      .select(QUICK_STOP_PAYABLE_COLUMNS)
       .eq('payment_id', paymentId)
       .maybeSingle();
-    if (es) {
-      const lapsed = es.payment_deadline_at != null && new Date(es.payment_deadline_at as string).getTime() < Date.now();
-      if (es.status !== 'awaiting_customer_payment' || lapsed) {
-        throw new Error('This Quick Stop offer has expired.');
-      }
+    // The rule itself is in quick-stop.ts, unchanged in behaviour, because the
+    // public pay page has to ask the identical question before it offers a
+    // button. Written out twice it would have drifted, which is exactly what
+    // happened to the Connect chargeability check at this same boundary.
+    if (!quickStopOfferAllowsPayment(es)) {
+      throw new Error('This Quick Stop offer has expired.');
     }
   }
 
@@ -473,9 +585,28 @@ export async function createCheckoutSessionForPayment(paymentId: string, origin:
     }
   }
 
-  const trailingVolume = await getTrailingVolume(payment.account_id);
-  const feeRate = computeFeeRate(trailingVolume);
-  const platformFee = computePlatformFee(payment.amount, feeRate);
+  // The rate follows the plan, not trailing volume -- which is what /pricing
+  // sells and what the quote on the pay page has already shown this payer.
+  const { feeRate } = await getWorkspaceFeeRate(payment.account_id);
+  // ...and it applies to the discount-adjusted service subtotal, not the gross.
+  // Sales tax is not ours to take a percentage of, and the pricing page says so.
+  //
+  // A basis already on the row WINS, and this is load-bearing rather than an
+  // optimisation. payments.fee_basis_amount is immutable once assigned -- the
+  // trigger raises 22000 for every role, ungated by charge_model -- and this
+  // function re-runs whenever the previous Checkout Session is no longer 'open',
+  // which an expired one is not. resolveFeeBasisCents depends on sibling
+  // payments and on the invoice's current line items, so a retry can legitimately
+  // compute a different number: on a three-way split, 333.33 then 333.34. That
+  // second write would be REFUSED and the payment could never be paid again.
+  // Locking it to the first value also matches what the row already means for
+  // fee_rate -- the rate that specific checkout was quoted at.
+  const persistedBasis = payment.fee_basis_amount == null ? null : Number(payment.fee_basis_amount);
+  const feeBasis = Number.isFinite(persistedBasis) && persistedBasis !== null
+    ? { basisCents: toCents(persistedBasis), grossCents: toCents(payment.amount), source: 'persisted' as const }
+    : await resolveFeeBasisCents(admin, payment);
+  const platformFeeCents = Math.round(feeBasis.basisCents * feeRate);
+  const platformFee = fromCents(platformFeeCents);
 
   // A payment-plan DEPOSIT must also SAVE the card for the later off-session
   // installment charges. Attach a platform customer and set setup_future_usage
@@ -515,7 +646,7 @@ export async function createCheckoutSessionForPayment(paymentId: string, origin:
     ],
     payment_intent_data: {
       // Bill the exact fee cents (not a dollar round-trip) — same value, no drift.
-      application_fee_amount: computePlatformFeeCents(payment.amount, feeRate),
+      application_fee_amount: platformFeeCents,
       transfer_data: { destination: payment.account.stripe_connect_id },
       // PaymentIntent metadata snapshots onto the Charge. Dashboard-issued
       // refunds therefore retain the payment id needed by charge.refunded.
@@ -578,6 +709,9 @@ export async function createCheckoutSessionForPayment(paymentId: string, origin:
       stripe_checkout_session: session.id,
       platform_fee: platformFee,
       fee_rate: feeRate,
+      // What the fee was actually taken on. Immutable once assigned, and
+      // payments_platform_fee_check enforces platform_fee <= this.
+      fee_basis_amount: fromCents(feeBasis.basisCents),
     })
     .eq('id', paymentId);
   if (currentRail.chargeModelColumnPresent) persistSession = persistSession.eq('charge_model', 'destination');

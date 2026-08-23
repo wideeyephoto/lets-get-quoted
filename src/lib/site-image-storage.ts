@@ -1,5 +1,6 @@
 import { randomUUID } from 'crypto';
 import { createAdminClient } from '@/lib/auth';
+import { assertStorageCapacity } from '@/lib/billing/storage-usage';
 import type { SiteImage } from '@/lib/site-images';
 
 const SITE_IMAGES_BUCKET = 'site-images';
@@ -70,6 +71,7 @@ export async function uploadSiteImage(accountId: string, file: File): Promise<Si
     throw new Error('Images must be 10 MB or smaller.');
   }
 
+  await assertStorageCapacity(createAdminClient(), accountId, file.size);
   await ensureSiteImagesBucket();
 
   const extension = file.name.split('.').pop()?.toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg';
@@ -114,6 +116,12 @@ export async function importJobPhotoAsSiteImage(accountId: string, jobPhotoPath:
   if (downloadError || !fileData) {
     throw downloadError ?? new Error('Unable to import this job photo.');
   }
+
+  // An import is a COPY, not a move -- the job photo stays where it is -- so it
+  // costs the workspace the file's size a second time. Checked after the
+  // download because that is the first moment the size is known, and before the
+  // upload so the second copy is never written.
+  await assertStorageCapacity(admin, accountId, fileData.size);
 
   const extension = jobPhotoPath.split('.').pop()?.toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg';
   const safeName = alt

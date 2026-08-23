@@ -29,6 +29,12 @@ export type InvoicePayment = {
   /** Which invoice this payment was raised against; null for ad-hoc requests. */
   invoice_id: string | null;
   refunded_amount?: number | null;
+  /**
+   * Set only when Stripe has confirmed a completed Checkout Session whose money
+   * is still moving. Absent means `processing` is a checkout that was STARTED,
+   * which is not the same thing at all — see below.
+   */
+  async_payment_pending_at?: string | null;
 };
 
 /**
@@ -63,21 +69,60 @@ export function invoicePayState(
   // customer has the link anyway, they must not be able to pay a figure the
   // contractor is mid-way through editing.
   if (invoice.status === 'draft') return { state: 'unavailable', due, paid, reason: 'draft' };
-  if (invoice.status === 'void') return { state: 'unavailable', due, paid, reason: 'void' };
+  /**
+   * A VOID INVOICE IS NOT OWED, and it used to return the full amount.
+   *
+   * `due` above is total - paid. A full refund sets the payment to `refunded`
+   * and the invoice to `void` (payments.ts:884, :910-912, and again in the
+   * Stripe webhook) -- and `paidTowardInvoice` counts only `paid`, so the
+   * refunded payment drops out entirely, paid falls to 0 and due becomes the
+   * whole original total.
+   *
+   * The portal headline sums `due` across every invoice it loads, void
+   * included, so a fully refunded homeowner opened their branded link and read
+   * "Balance due $4,237.50" with no invoice listed beneath it and no way to pay.
+   */
+  if (invoice.status === 'void') return { state: 'unavailable', due: 0, paid, reason: 'void' };
 
   if (due <= 0) return { state: 'settled', due: 0, paid };
   if ((Number(total) || 0) <= 0) return { state: 'unavailable', due, paid, reason: 'zero' };
 
   // A bank transfer sits in `processing` for days. Offering "Pay" over the top of
   // one is how a homeowner pays the same invoice twice.
-  const inFlight = invoicePayments.find((payment) => payment.status === 'processing');
+  //
+  // BUT `processing` DOES NOT MEAN THAT ON ITS OWN. It is written when a Checkout
+  // Session is CREATED, so it equally means "opened Stripe and closed the tab" --
+  // and that reading is far the more common of the two. Treating those the same
+  // told a homeowner their transfer was clearing when nothing had happened, AND
+  // withheld the Pay button, so the invoice they had just tried to pay became
+  // unpayable from the link. Until Stripe expires the abandoned session and the
+  // expired webhook moves the row to `failed`, which is its DEFAULT 24 HOURS,
+  // because no expires_at is set on these sessions.
+  //
+  // async_payment_pending_at is written only by checkout.session.completed with
+  // the payment still unpaid, which is the ACH case and cannot be reached by
+  // abandonment. So it is the difference between the two, and an abandoned
+  // checkout now falls through to `payable` -- which the server already allows,
+  // since createCheckoutSessionForPayment accepts `processing` precisely so an
+  // abandoned checkout can be resumed.
+  const inFlight = invoicePayments.find(
+    (payment) => payment.status === 'processing' && Boolean(payment.async_payment_pending_at),
+  );
   if (inFlight) return { state: 'processing', due, paid, paymentId: inFlight.id };
 
   // Reuse an open request for the right amount rather than minting a second one.
   // Two live payment links for one invoice is two ways to pay it and one of them
   // is wrong the moment a part-payment lands.
+  //
+  // `processing` BELONGS IN THIS LIST, and only became safe to include once the
+  // in-flight test above stopped matching every one of them. Anything reaching
+  // here in `processing` is an abandoned checkout: the row already exists, the
+  // server will happily open a fresh Session against it, and leaving it out
+  // would mint a SECOND payment row for the same invoice -- which is precisely
+  // the failure the paragraph above is about.
   const open = invoicePayments.find(
-    (payment) => (payment.status === 'requested' || payment.status === 'failed') && round2(Number(payment.amount) || 0) === due,
+    (payment) => (payment.status === 'requested' || payment.status === 'failed' || payment.status === 'processing')
+      && round2(Number(payment.amount) || 0) === due,
   );
   return { state: 'payable', due, paid, paymentId: open?.id ?? null };
 }

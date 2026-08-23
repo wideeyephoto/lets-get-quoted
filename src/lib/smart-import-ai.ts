@@ -1,4 +1,5 @@
 import type { ImportField, SmartMapping, FieldSources } from '@/lib/smart-import';
+import { callModel } from '@/lib/ai-model-call';
 
 // Generic AI column mapper (the entity-agnostic version of client-import-ai).
 // The model only ever sees the header + a handful of sample rows and returns a
@@ -59,17 +60,13 @@ export async function aiDetectGenericColumns(
     'Output nothing except the JSON object.';
 
   try {
-    const response = await fetch('https://api.openai.com/v1/responses', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        temperature: 0,
-        instructions,
-        input: `Columns: ${width}. Sample rows:\n${tableText}\n\nReturn the mapping json only.`,
-        text: { format: { type: 'json_object' } },
-      }),
-    });
+    const response = await callModel({
+      model: 'gpt-4o-mini',
+      temperature: 0,
+      instructions,
+      input: `Columns: ${width}. Sample rows:\n${tableText}\n\nReturn the mapping json only.`,
+      text: { format: { type: 'json_object' } },
+    }, { accountId: null, kind: 'import_assist' });
     if (!response.ok) throw new Error(`OpenAI request failed: ${response.status}`);
 
     const payload = await response.json();

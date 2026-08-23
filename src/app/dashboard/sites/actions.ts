@@ -6,6 +6,7 @@ import { deleteSiteImage, importJobPhotoAsSiteImage, uploadSiteImage } from '@/l
 import { createSignedVideoUpload, deleteSiteVideo, siteVideoStoragePath, type SignedVideoUpload } from '@/lib/site-video-storage';
 import { createJobPhotoUrls } from '@/lib/job-photo-storage';
 import type { Site } from '@/lib/sites';
+import { callModel } from '@/lib/ai-model-call';
 import { SERVICE_ICON_GLYPHS } from '@/lib/templates/service-icons.data';
 import { normalizeDomain, verifyDomain } from '@/lib/domains';
 import { geocodeArea } from '@/lib/geocode';
@@ -344,20 +345,13 @@ export async function generateSiteTextAction(
     'Generate the example website text described above. Respond with json only.';
 
   try {
-    const response = await fetch('https://api.openai.com/v1/responses', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        temperature: 1.1,
-        instructions,
-        input,
-        text: { format: { type: 'json_object' } },
-      }),
-    });
+    const response = await callModel({
+      model: 'gpt-4o-mini',
+      temperature: 1.1,
+      instructions,
+      input,
+      text: { format: { type: 'json_object' } },
+    }, { accountId, kind: 'site_copy' });
 
     if (!response.ok) throw new Error(`OpenAI request failed: ${response.status}`);
     const payload = await response.json();
@@ -599,9 +593,22 @@ export async function uploadSiteImageAction(formData: FormData) {
 // 4.5 MB and the smallest real phone clip is bigger than that. The server hands
 // back a signed URL scoped to this account's folder and the browser uploads
 // straight to storage.
-export async function createSiteVideoUploadAction(fileName: string, contentType: string): Promise<SignedVideoUpload> {
+export async function createSiteVideoUploadAction(
+  fileName: string,
+  contentType: string,
+  sizeBytes: number,
+): Promise<SignedVideoUpload> {
   const { accountId } = await requireOwnerContext();
-  return createSignedVideoUpload(accountId, String(fileName || 'video'), String(contentType || ''));
+  // Coerced rather than trusted: this is the one upload whose size the server is
+  // told instead of measuring. A missing or nonsense value becomes 0, which
+  // checks the allowance against what is already stored rather than skipping it.
+  const claimedBytes = Number.isFinite(sizeBytes) && sizeBytes > 0 ? Math.floor(sizeBytes) : 0;
+  return createSignedVideoUpload(
+    accountId,
+    String(fileName || 'video'),
+    String(contentType || ''),
+    claimedBytes,
+  );
 }
 
 // Best-effort cleanup when an owner removes a video from the page. A failure

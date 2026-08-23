@@ -2,6 +2,13 @@
 
 import { Suspense, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { safeNextPath } from '@/lib/app-origin';
+import {
+  PLAN_INTENT_BILLING_PARAM,
+  PLAN_INTENT_PLAN_PARAM,
+  parsePlanIntent,
+  welcomePathWithPlanIntent,
+} from '@/lib/plan-intent';
 import { sendMagicLinkAction } from './actions';
 import { normalizeUsPhone } from '@/lib/phone';
 import { supabase } from '@/lib/supabase';
@@ -67,6 +74,26 @@ function MicrosoftIcon() {
 function LoginInner() {
   const searchParams = useSearchParams();
   const isSignup = searchParams.get('intent') === 'signup';
+  // Where to land afterwards. Only ever a path on this site: `safeNextPath`
+  // rejects anything that could leave it, and every sign-in route below runs
+  // the same value through the same function on the server before using it.
+  //
+  // This exists because an office invitation sends an anonymous visitor here and
+  // needs them back at the link afterwards. Before it, all three paths pinned
+  // /dashboard and the destination was silently dropped.
+  //
+  // A visitor arriving from /pricing carries plan= and billing= rather than
+  // next=. They are folded into this same rail instead of getting one of their
+  // own, so there stays exactly one parameter deciding where a signed-in session
+  // lands. An explicit next= always wins: it means somebody was already being
+  // sent somewhere specific, which is not ours to override.
+  const planIntent = parsePlanIntent(
+    searchParams.get(PLAN_INTENT_PLAN_PARAM),
+    searchParams.get(PLAN_INTENT_BILLING_PARAM),
+  );
+  const nextPath = safeNextPath(
+    searchParams.get('next') ?? (planIntent ? welcomePathWithPlanIntent(planIntent) : null),
+  );
   const [step, setStep] = useState<'request' | 'verify'>('request');
   const [identifier, setIdentifier] = useState('');
   const [normalizedPhone, setNormalizedPhone] = useState('');
@@ -78,7 +105,7 @@ function LoginInner() {
     try {
       // Where to land after sign-in, as a path. The host is the server's own —
       // it stopped taking one from here on purpose (see lib/app-origin).
-      await sendMagicLinkAction(value, '/dashboard');
+      await sendMagicLinkAction(value, nextPath);
       setMessage('Check your inbox for the magic-link sign-in email.');
       setIdentifier('');
     } catch (error) {
@@ -161,7 +188,7 @@ function LoginInner() {
         return;
       }
       // Cookies are set on the response — a full navigation carries them.
-      window.location.assign('/dashboard');
+      window.location.assign(nextPath);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'That code could not be verified.');
       setLoading(false);
@@ -189,7 +216,7 @@ function LoginInner() {
     setMessage('');
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
-      options: { redirectTo: `${window.location.origin}/auth/callback?next=/dashboard` },
+      options: { redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}` },
     });
     if (error) setMessage(error.message);
   }

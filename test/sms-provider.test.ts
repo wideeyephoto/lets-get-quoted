@@ -1,4 +1,4 @@
-import { describe, expect, it, afterEach, vi } from 'vitest';
+import { describe, expect, it, afterEach, beforeEach, vi } from 'vitest';
 import { createHmac } from 'crypto';
 import { readFileSync, readdirSync, statSync } from 'fs';
 import { join } from 'path';
@@ -7,6 +7,7 @@ import {
   configuredSmsProviders,
   hasSignatureHeader,
   isSmsProviderConfigured,
+  outboundSmsLaneSuppression,
   outboundSmsSuppression,
   parseSendResponse,
   sendProviderMessage,
@@ -46,7 +47,7 @@ function useSignalWire(overrides: Record<string, string> = {}) {
   vi.stubEnv('SIGNALWIRE_API_TOKEN', 'signalwire-token');
   vi.stubEnv('SIGNALWIRE_FROM_NUMBER', '+15550002222');
   vi.stubEnv('SIGNALWIRE_NUMBER_GROUP_ID', '');
-  vi.stubEnv('SIGNALWIRE_SIGNING_KEY', '');
+  vi.stubEnv('SIGNALWIRE_SIGNING_KEY', 'signalwire-signing-key');
   for (const [key, value] of Object.entries(overrides)) vi.stubEnv(key, value);
 }
 
@@ -58,6 +59,15 @@ function noProviders() {
   vi.stubEnv('SIGNALWIRE_SPACE_URL', '');
   vi.stubEnv('SIGNALWIRE_PROJECT_ID', '');
   vi.stubEnv('SIGNALWIRE_API_TOKEN', '');
+  vi.stubEnv('SIGNALWIRE_SIGNING_KEY', '');
+}
+
+function useTrustedCallbackOrigin(
+  origin = 'https://letsgetquoted.com',
+  root = 'letsgetquoted.com',
+) {
+  vi.stubEnv('NEXT_PUBLIC_APP_URL', origin);
+  vi.stubEnv('NEXT_PUBLIC_ROOT_DOMAIN', root);
 }
 
 describe('the suite cannot text anybody', () => {
@@ -126,7 +136,7 @@ describe('the outbound off switch', () => {
   it('still throws when there is no provider at all, which is the local case', async () => {
     noProviders();
     expect(outboundSmsSuppression()).toBe('not-configured');
-    await expect(sendProviderMessage('+15551230000', 'hi')).rejects.toThrow(/not configured/i);
+    await expect(sendProviderMessage('+15551230000', 'hi', { accountId: null, category: 'customer_message' })).rejects.toThrow(/not configured/i);
   });
 
   /**
@@ -159,7 +169,7 @@ describe('the outbound off switch', () => {
       live();
       apply();
       const spy = vi.spyOn(globalThis, 'fetch');
-      await expect(sendProviderMessage('+15551230000', 'hi')).resolves.toBe(SIMULATED_PROVIDER_ID);
+      await expect(sendProviderMessage('+15551230000', 'hi', { accountId: null, category: 'customer_message' })).resolves.toBe(SIMULATED_PROVIDER_ID);
       expect(spy).not.toHaveBeenCalled();
       expect(isLiveMessagingEnvironment()).toBe(false);
       spy.mockRestore();
@@ -179,7 +189,7 @@ describe('the outbound off switch', () => {
     expect(isLiveMessagingEnvironment()).toBe(true);
     // The suite's own socket guard is what stops it here — proof that the
     // suppression, not the absence of an opportunity, is doing the work above.
-    await expect(sendProviderMessage('+15551230000', 'hi')).rejects.toThrow(/Blocked/);
+    await expect(sendProviderMessage('+15551230000', 'hi', { accountId: null, category: 'customer_message' })).rejects.toThrow(/Blocked/);
   });
 });
 
@@ -242,11 +252,29 @@ describe('which provider is selected', () => {
     expect(smsProviderConfig()).toBeNull();
   });
 
-  it('ignores an unrecognized tiebreaker and falls back to inference', () => {
+  it('fails closed on an unrecognized tiebreaker instead of using the incumbent', () => {
     noProviders();
     useTwilio();
     vi.stubEnv('LGQ_SMS_PROVIDER', 'plivo');
-    expect(smsProviderConfig()?.id).toBe('twilio');
+    expect(smsProviderConfig()).toBeNull();
+    expect(smsProviderSummary()).toMatchObject({
+      active: null,
+      requestedButUnconfigured: 'plivo',
+    });
+  });
+
+  it('opens no provider socket when the selector is invalid', async () => {
+    noProviders();
+    useTwilio();
+    vi.stubEnv('LGQ_SMS_PROVIDER', 'signalwir');
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+
+    await expect(sendProviderMessage(
+      '+15551234567',
+      'This must not leave.',
+      { accountId: '11111111-1111-4111-8111-111111111111', category: 'owner_alert' },
+    )).rejects.toThrow('SMS provider is not configured');
+    expect(fetchSpy).not.toHaveBeenCalled();
   });
 });
 
@@ -330,6 +358,49 @@ describe('buildSendRequest', () => {
     expect(request.body.get('From')).toBeNull();
   });
 
+  it('applies the same global, canary, and purpose gates to every egress lane', () => {
+    useTwilio();
+    vi.stubEnv('VITEST', '');
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('VERCEL_ENV', 'production');
+    vi.stubEnv('LGQ_DISABLE_OUTBOUND_SMS', '');
+    vi.stubEnv('LGQ_SMS_SHARED_ENABLED', '1');
+    vi.stubEnv('LGQ_SMS_CANARY_ACCOUNT_IDS', '');
+    expect(outboundSmsLaneSuppression(
+      '11111111-1111-4111-8111-111111111111', 'lgq_shared',
+    )).toBeNull();
+
+    vi.stubEnv('LGQ_SMS_CANARY_ACCOUNT_IDS', '22222222-2222-4222-8222-222222222222');
+    expect(outboundSmsLaneSuppression(
+      '11111111-1111-4111-8111-111111111111', 'lgq_shared',
+    )).toBe('canary-account-not-enabled');
+    expect(outboundSmsLaneSuppression(null, 'lgq_shared')).toBe('canary-account-not-enabled');
+
+    vi.stubEnv('LGQ_SMS_CANARY_ACCOUNT_IDS', '');
+    vi.stubEnv('LGQ_SMS_SHARED_ENABLED', '');
+    expect(outboundSmsLaneSuppression(
+      '11111111-1111-4111-8111-111111111111', 'lgq_shared',
+    )).toBe('sender-purpose-not-enabled');
+
+    vi.stubEnv('LGQ_DISABLE_OUTBOUND_SMS', '1');
+    expect(outboundSmsLaneSuppression(
+      '11111111-1111-4111-8111-111111111111', 'lgq_shared',
+    )).toBe('switched-off');
+  });
+
+  it('uses an inventory-selected From number instead of the environment pool', () => {
+    noProviders();
+    useTwilio({ TWILIO_MESSAGING_SERVICE_SID: 'MG22222222222222222222222222222222' });
+    const request = buildSendRequest(
+      smsProviderConfig()!,
+      '+15551234567',
+      'x',
+      '+15559990000',
+    );
+    expect(request.body.get('From')).toBe('+15559990000');
+    expect(request.body.get('MessagingServiceSid')).toBeNull();
+  });
+
   it('accepts a SignalWire number group in the same parameter', () => {
     noProviders();
     useSignalWire({ SIGNALWIRE_NUMBER_GROUP_ID: '3fa85f64-5717-4562-b3fc-2c963f66afa6' });
@@ -349,6 +420,17 @@ describe('buildSendRequest', () => {
    */
   it('omits the delivery callback when the origin is not https', () => {
     vi.stubEnv('NEXT_PUBLIC_APP_URL', 'http://localhost:3010');
+    expect(buildSendRequest(twilio(), '+15551234567', 'x').body.get('StatusCallback')).toBeNull();
+  });
+
+  it.each([
+    'https://user:password@letsgetquoted.com',
+    'https://letsgetquoted.com/unexpected/path',
+    'https://letsgetquoted.com?next=https://attacker.example',
+    'https://letsgetquoted.com#fragment',
+    'not a URL',
+  ])('omits the delivery callback for a non-origin application URL: %s', (url) => {
+    vi.stubEnv('NEXT_PUBLIC_APP_URL', url);
     expect(buildSendRequest(twilio(), '+15551234567', 'x').body.get('StatusCallback')).toBeNull();
   });
 });
@@ -411,6 +493,8 @@ describe('parseSendResponse', () => {
 describe('inbound signature validation', () => {
   const URL_UNDER_TEST = 'https://letsgetquoted.com/api/sms/inbound';
 
+  beforeEach(() => useTrustedCallbackOrigin());
+
   function signedWith(secret: string, fields: Record<string, string>, url = URL_UNDER_TEST): string {
     const payload = Object.entries(fields)
       .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
@@ -439,7 +523,7 @@ describe('inbound signature validation', () => {
     noProviders();
     useSignalWire();
     const request = new Request(URL_UNDER_TEST, {
-      headers: { 'x-signalwire-signature': signedWith('signalwire-token', FIELDS) },
+      headers: { 'x-signalwire-signature': signedWith('signalwire-signing-key', FIELDS) },
     });
     expect(validateWebhookSignature(request, formOf(FIELDS))).toEqual({ ok: true, provider: 'signalwire' });
   });
@@ -496,7 +580,7 @@ describe('inbound signature validation', () => {
     useSignalWire();
     const request = new Request(URL_UNDER_TEST, {
       headers: {
-        'x-signalwire-signature': signedWith('signalwire-token', FIELDS),
+        'x-signalwire-signature': signedWith('signalwire-signing-key', FIELDS),
         'x-twilio-signature': 'nonsense',
       },
     });
@@ -515,22 +599,58 @@ describe('inbound signature validation', () => {
     });
   });
 
-  /**
-   * The provider signs the URL it was configured with — the public one. Behind
-   * a proxy, request.url is the internal address, so the forwarded headers are
-   * the only way back to the string that was actually signed.
-   */
-  it('reconstructs the public URL from forwarded headers', () => {
+  it('uses the trusted origin and query while ignoring forwarded authority', () => {
     noProviders();
     useTwilio();
-    const request = new Request('http://10.0.0.7:3000/api/sms/inbound', {
+    const publicUrl = `${URL_UNDER_TEST}?job=job-7&attempt=2`;
+    const request = new Request('http://10.0.0.7:3000/api/sms/inbound?job=job-7&attempt=2', {
       headers: {
-        'x-twilio-signature': signedWith('twilio-secret', FIELDS),
-        'x-forwarded-proto': 'https',
-        'x-forwarded-host': 'letsgetquoted.com',
+        'x-twilio-signature': signedWith('twilio-secret', FIELDS, publicUrl),
+        'x-forwarded-proto': 'http',
+        'x-forwarded-host': 'attacker.example:8443',
       },
     });
     expect(validateWebhookSignature(request, formOf(FIELDS))).toEqual({ ok: true, provider: 'twilio' });
+
+    const attackerSigned = new Request(request.url, {
+      headers: {
+        'x-twilio-signature': signedWith(
+          'twilio-secret', FIELDS, 'http://attacker.example:8443/api/sms/inbound?job=job-7&attempt=2',
+        ),
+        'x-forwarded-proto': 'http',
+        'x-forwarded-host': 'attacker.example:8443',
+      },
+    });
+    expect(validateWebhookSignature(attackerSigned, formOf(FIELDS))).toEqual({
+      ok: false,
+      reason: 'mismatch',
+    });
+  });
+
+  it('fails closed without an explicit trusted callback origin', () => {
+    noProviders();
+    useTwilio();
+    vi.stubEnv('NEXT_PUBLIC_APP_URL', '');
+    const request = new Request(URL_UNDER_TEST, {
+      headers: { 'x-twilio-signature': signedWith('twilio-secret', FIELDS) },
+    });
+    expect(validateWebhookSignature(request, formOf(FIELDS))).toEqual({
+      ok: false,
+      reason: 'mismatch',
+    });
+  });
+
+  it('rejects a valid signature for a non-callback route', () => {
+    noProviders();
+    useTwilio();
+    const url = 'https://letsgetquoted.com/api/not-a-provider-callback';
+    const request = new Request(url, {
+      headers: { 'x-twilio-signature': signedWith('twilio-secret', FIELDS, url) },
+    });
+    expect(validateWebhookSignature(request, formOf(FIELDS))).toEqual({
+      ok: false,
+      reason: 'mismatch',
+    });
   });
 
   it('accepts the port-bearing spelling of the same URL', () => {
@@ -539,6 +659,101 @@ describe('inbound signature validation', () => {
     const signature = signedWith('twilio-secret', FIELDS, 'https://letsgetquoted.com:443/api/sms/inbound');
     const request = new Request(URL_UNDER_TEST, { headers: { 'x-twilio-signature': signature } });
     expect(validateWebhookSignature(request, formOf(FIELDS))).toEqual({ ok: true, provider: 'twilio' });
+  });
+
+  it('verifies SignalWire JSON using the exact raw body and hex digest', () => {
+    noProviders();
+    vi.stubEnv('SIGNALWIRE_SIGNING_KEY', 'PSKtest1234567890abcdef');
+    useTrustedCallbackOrigin('https://example.ngrok.io', 'example.ngrok.io');
+    const rawBody = '{"event":"call.state","params":{"call_id":"abc-123","state":"answered"}}';
+    const request = new Request('https://example.ngrok.io/api/voice/ai', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-signalwire-signature': 'd63049869496e2814148956d651aaf27a7d294ab',
+      },
+      body: rawBody,
+    });
+    expect(validateWebhookSignature(request, rawBody)).toEqual({ ok: true, provider: 'signalwire' });
+    expect(validateWebhookSignature(request, rawBody.replace('answered', 'ringing'))).toEqual({
+      ok: false,
+      reason: 'mismatch',
+    });
+  });
+
+  it('accepts SignalWire JSON signed over the equivalent explicit :443 URL', () => {
+    noProviders();
+    vi.stubEnv('SIGNALWIRE_SIGNING_KEY', 'signalwire-signing-key');
+    const rawBody = '{"event":"message.received"}';
+    const signedUrl = 'https://letsgetquoted.com:443/api/sms/inbound';
+    const signature = createHmac('sha1', 'signalwire-signing-key')
+      .update(signedUrl + rawBody)
+      .digest('hex');
+    const request = new Request(URL_UNDER_TEST, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-signalwire-signature': signature,
+      },
+      body: rawBody,
+    });
+    expect(validateWebhookSignature(request, rawBody)).toEqual({
+      ok: true, provider: 'signalwire',
+    });
+  });
+
+  it('verifies the compatibility bodySHA256 form without reserializing JSON', () => {
+    noProviders();
+    vi.stubEnv('SIGNALWIRE_SIGNING_KEY', 'PSKtest1234567890abcdef');
+    useTrustedCallbackOrigin('https://example.ngrok.io', 'example.ngrok.io');
+    const rawBody = '{"event":"call.state"}';
+    const url = 'https://example.ngrok.io/api/voice/ai?bodySHA256='
+      + '69f3cbfc18e386ef8236cb7008cd5a54b7fed637a8cb3373b5a1591d7f0fd5f4';
+    const request = new Request(url, {
+      headers: { 'x-signalwire-signature': 's7+MLqcXJ4eim5oaQvCSddwhnHg=' },
+    });
+    expect(validateWebhookSignature(request, rawBody)).toEqual({ ok: true, provider: 'signalwire' });
+    expect(validateWebhookSignature(request, '{"event":"different"}')).toEqual({
+      ok: false,
+      reason: 'mismatch',
+    });
+  });
+
+  it('rejects a URL-only compatibility signature when JSON has no bodySHA256 binding', () => {
+    noProviders();
+    vi.stubEnv('SIGNALWIRE_SIGNING_KEY', 'signalwire-signing-key');
+    useTrustedCallbackOrigin('https://app.example.com', 'example.com');
+    const rawBody = '{"event":"message.received","body":"original"}';
+    const url = 'https://app.example.com/api/sms/inbound';
+    const signature = createHmac('sha1', 'signalwire-signing-key')
+      .update(url)
+      .digest('base64');
+    const request = new Request(url, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-signalwire-signature': signature,
+      },
+      body: rawBody,
+    });
+
+    expect(validateWebhookSignature(request, rawBody)).toEqual({
+      ok: false,
+      reason: 'mismatch',
+    });
+  });
+
+  it('can authenticate SignalWire inbound with only the standalone signing key', () => {
+    noProviders();
+    vi.stubEnv('SIGNALWIRE_SIGNING_KEY', 'standalone-signing-key');
+    const request = new Request(URL_UNDER_TEST, {
+      headers: { 'x-signalwire-signature': signedWith('standalone-signing-key', FIELDS) },
+    });
+    expect(smsProviderConfig()).toBeNull();
+    expect(validateWebhookSignature(request, formOf(FIELDS))).toEqual({
+      ok: true,
+      provider: 'signalwire',
+    });
   });
 });
 
@@ -582,9 +797,11 @@ describe('the provider surface stays in one file', () => {
     expect(SMS).not.toContain('MessagingServiceSid');
   });
 
-  it('routes every send through the one egress function', () => {
+  it('keeps domain producers on the durable queue instead of provider egress', () => {
     expect(SMS).not.toContain('sendTwilioMessage');
-    expect(SMS).toContain('sendProviderMessage');
+    expect(SMS).not.toContain('sendProviderMessage');
+    expect(SMS).toContain('enqueueSmsDelivery');
+    expect(SMS).toContain('queueAccountSms');
   });
 
   it('names a provider host in exactly one file under src/', () => {
@@ -646,7 +863,10 @@ describe('webhook_failures.source', () => {
     const allowed = [...match![1].matchAll(/'([^']+)'/g)].map((m) => m[1]);
 
     const union = read('src', 'lib', 'webhook-failures.ts');
-    const declared = [...union.matchAll(/^\s*\|?\s*'([a-z_]+)'$/gm)].map((m) => m[1]);
+    // The `;?` is load-bearing: the union's LAST member ends in a semicolon, so
+    // without it this guard silently drops the newest value -- the one most
+    // likely to be missing from the CHECK constraint.
+    const declared = [...union.matchAll(/^\s*\|?\s*'([a-z_]+)';?$/gm)].map((m) => m[1]);
     expect(declared.length).toBeGreaterThan(0);
     for (const value of declared) expect(allowed, `${value} is not in the CHECK constraint`).toContain(value);
   });

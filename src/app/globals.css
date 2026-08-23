@@ -3052,7 +3052,16 @@ h3 {
    the tab bar — which is sticky at 0.6rem — parks straight on top of its
    heading. The anchor works and looks like it didn't. */
 .settings-tabpanel > section[id],
-.settings-tabpanel > details[id] { scroll-margin-top: calc(var(--appbar-h) + 5.2rem); }
+.settings-tabpanel > details[id],
+.settings-tabpanel details[id] { scroll-margin-top: calc(var(--appbar-h) + 5.2rem); }
+
+/* The child combinator above is deliberate -- it stops a nested id inheriting a
+   margin meant for a top-level card. But #platform-fee IS nested: it is a <div>
+   inside the plan facts <dl>, several levels down, and it is a linked anchor.
+   So it never matched anything and the deep link parked under the sticky bar.
+   Named explicitly rather than loosening the selector, which would give every
+   nested id in every settings tab a 5.2rem gap it does not want. */
+.settings-tabpanel #platform-fee { scroll-margin-top: calc(var(--appbar-h) + 5.2rem); }
 
 .settings-tabnav {
   position: sticky;
@@ -4332,18 +4341,359 @@ h3 {
 .plan-usage-limit-list dd { margin: 0.22rem 0 0; color: var(--text); font-weight: 750; font-variant-numeric: tabular-nums; }
 .plan-usage-disclosure,
 .plan-usage-intro { margin: 0.9rem 0 0; }
+/* TONE — one attribute, five values, and a WORD beside every one of them.
+   General, not plan-usage-specific; it lives here because this is its first
+   consumer.
+
+   WHY IT IS NOT `.tone-good` LIKE .cfeed-item. That precedent hard-codes its
+   tints as raw rgba() literals (see the .cfeed-item.tone-* rules further down),
+   which have no light-theme value at all — they were authored against the dark
+   canvas and simply carry over. Deriving the tint and the edge from the ink with
+   color-mix means both themes come out of the SAME token, so a tone that reads
+   on the canvas reads on the sheet without a second set of numbers to keep in
+   step. color-mix is already load-bearing in this file.
+
+   WHY THE INK IS NEVER BODY COPY. --warn resolves to #8a5300 on light and
+   #ffd591 on dark; the first is fine as text on white and the second is fine on
+   the canvas, but neither survives being used for both. So the ink dresses the
+   LABEL and the edge, and the sentence underneath stays var(--text). The label
+   is also the accessibility contract: colour alone is not a status, so every
+   consumer of this renders a word. */
+[data-tone] {
+  --tone-ink: var(--mute-g270);
+  --tone-tint: color-mix(in srgb, var(--tone-ink) 10%, transparent);
+  --tone-edge: color-mix(in srgb, var(--tone-ink) 34%, transparent);
+}
+/* Same specificity as [data-tone] above, so these must stay after it. */
+[data-tone='healthy'] { --tone-ink: var(--good); }
+[data-tone='info'] { --tone-ink: var(--info); }
+[data-tone='warn'] { --tone-ink: var(--warn); }
+[data-tone='danger'] { --tone-ink: var(--bad); }
+[data-tone='neutral'] { --tone-ink: var(--mute-g270); }
+
+/* The word itself. Carries a dot as well, but the dot is decorative — remove the
+   text and this stops being a status. */
+.tone-status {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  color: var(--tone-ink);
+  font-size: 0.78rem;
+  font-weight: 750;
+  letter-spacing: 0.01em;
+}
+.tone-status::before {
+  content: '';
+  flex: none;
+  align-self: center;
+  width: 0.42rem;
+  height: 0.42rem;
+  border-radius: 999px;
+  background: currentColor;
+}
+
 .plan-usage-note,
 .plan-usage-unavailable {
   margin: 0.85rem 0 0;
   padding: 0.8rem 0.9rem;
-  border: 1px solid var(--cedge-amber-6);
+  border: 1px solid var(--tone-edge);
   border-radius: 0.7rem;
-  color: var(--gold-ink);
-  background: rgba(255, 209, 102, 0.08);
+  color: var(--text);
+  /* background-COLOR, not the shorthand. `:root[data-theme='light'] .panel`
+     ends in `background: #ffffff`, and any shorthand here would be the same
+     hazard one level down for anything that later wears both. */
+  background-color: var(--tone-tint);
   line-height: 1.45;
 }
-.plan-usage-note.warning { border-color: var(--cedge-orange-8); color: var(--accent-ink); background: rgba(255, 122, 33, 0.08); }
-.plan-usage-unavailable { display: grid; gap: 0.22rem; }
+/* Defaults, so markup that has not been given a data-tone yet still resolves to
+   something meaningful rather than to the neutral grey fallback. A note is
+   advisory; a failed lookup is not. They shared one amber, which is why
+   "Plan details are unavailable" and "your workspace is pinned to an older
+   catalog" arrived looking like the same class of thing. */
+/* At-a-glance. The grid, the card, the label and the value are all reused from
+   .workspace-metric-* -- FinanceReports already uses them on this same page, and
+   their 3-2-1 responsive steps were tuned after three columns on a phone made
+   the whole app pan sideways. Nothing new here but the status line's spacing. */
+.plan-usage-glance .tone-status { margin: 0.4rem 0 0; }
+
+/* CAPACITY: used against entitled, one row per dimension a workspace can
+   actually consume. Shares the storage meter's track and fill rather than
+   growing a second bar with its own tokens. */
+.plan-usage-capacity-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.7rem;
+  margin: 1rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+@media (max-width: 640px) {
+  .plan-usage-capacity-grid { grid-template-columns: minmax(0, 1fr); }
+}
+.plan-usage-capacity {
+  min-width: 0;
+  display: grid;
+  gap: 0.3rem;
+  padding: 0.85rem;
+  border: 1px solid var(--tone-edge);
+  border-radius: 0.72rem;
+  background-color: var(--tone-tint);
+}
+/* THE FILL AGREES WITH THE WORD, wherever a tone is in scope.
+   Without this the fill has three states (green / warn / red) while the status
+   word has five, so "1 of 1 used - At plan limit" drew a FULL bar in the healthy
+   green: the colour said fine, the length said full, and the word said neither.
+   Driving it from --tone-ink means a fill can never disagree with the label
+   printed underneath it, in either theme. */
+.plan-usage-capacity .plan-usage-storage-meter-fill,
+.plan-usage-balance[data-tone] .plan-usage-storage-meter-fill { background: var(--tone-ink); }
+
+.plan-usage-capacity-label { color: var(--mute-g270); font-size: 0.78rem; font-weight: 700; }
+.plan-usage-capacity-figure { color: var(--text); font-size: 1.02rem; font-variant-numeric: tabular-nums; }
+.plan-usage-capacity .plan-usage-storage-meter { margin-top: 0.1rem; }
+.plan-usage-capacity .tone-status { margin: 0.1rem 0 0; }
+
+.plan-usage-limit-details { margin-top: 1rem; }
+.plan-usage-limit-details > summary {
+  cursor: pointer;
+  color: var(--mute-g270);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+.plan-usage-limit-details[open] > summary { margin-bottom: 0.2rem; }
+
+/* Not scoped to #overage, unlike .usage-fineprint, because the storage card and
+   the accrual card both need it and an id-scoped rule reaches neither. */
+.plan-usage-fineprint {
+  margin: 0.5rem 0 0;
+  color: var(--mute-t50);
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.plan-usage-note { --tone-ink: var(--info); }
+.plan-usage-note.warning { --tone-ink: var(--warn); }
+
+/* Heading on the left, its action on the right, wrapping to two rows on a
+   narrow screen rather than squeezing the heading. */
+.workspace-section-headrow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+  flex-wrap: wrap;
+}
+.workspace-section-action { flex: none; }
+
+/* A glyph beside each section heading, as the mockup has. inline-flex on the
+   h2 rather than absolute positioning, so a heading that wraps to two lines
+   keeps the icon on the first one instead of floating beside the second. */
+
+.workspace-section-ic {
+  /* INLINE, not a flex child. Making the h2 inline-flex to align the glyph let
+     the status line that follows the heading ride up beside it instead of
+     sitting under it -- caught only by looking at the rendered page. The
+     heading keeps whatever display it had; only the glyph is styled. */
+  display: inline-block;
+  width: 1.05em;
+  height: 1.05em;
+  margin-right: 0.5rem;
+  vertical-align: -0.16em;
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.85;
+}
+
+/* AT A GLANCE, as one bar rather than separate cards.
+   Repeated bordered cards with display-sized numbers made the top of this tab
+   heavier than the plan it describes. This is the mockup's shape: one surface,
+   hairline dividers, an icon per cell, and type small enough that the sections
+   below stay the point. The status line stays -- a tone is never allowed to
+   carry meaning without a word beside it, and that rule outranks the layout. */
+.plan-glancebar {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 1rem 0 0;
+  border: 1px solid var(--rule-t12);
+  border-radius: 0.9rem;
+  background: rgba(var(--tint), 0.025);
+  overflow: hidden;
+}
+.plan-glancebar-cell {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  min-width: 0;
+  padding: 0.85rem 0.95rem;
+  border-left: 1px solid var(--rule-t12);
+}
+.plan-glancebar-cell:first-child { border-left: 0; }
+.plan-glancebar-ic {
+  width: 1.05rem;
+  height: 1.05rem;
+  flex: none;
+  margin-top: 0.15rem;
+  fill: none;
+  stroke: var(--mute-i56);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.plan-glancebar-text { min-width: 0; }
+.plan-glancebar-label {
+  display: block;
+  color: var(--mute-i56);
+  font-size: 0.6rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.plan-glancebar-value {
+  display: block;
+  margin-top: 0.18rem;
+  color: var(--text);
+  font-family: var(--font-display);
+  font-size: clamp(0.98rem, 1.5vw, 1.2rem);
+  font-weight: 800;
+  line-height: 1.15;
+}
+.plan-glancebar .tone-status { margin: 0.3rem 0 0; font-size: 0.72rem; }
+@media (max-width: 900px) {
+  .plan-glancebar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .plan-glancebar-cell:nth-child(odd) { border-left: 0; }
+  .plan-glancebar-cell:nth-child(n + 3) { border-top: 1px solid var(--rule-t12); }
+}
+@media (max-width: 480px) {
+  .plan-glancebar { grid-template-columns: minmax(0, 1fr); }
+  .plan-glancebar-cell { border-left: 0; }
+  .plan-glancebar-cell + .plan-glancebar-cell { border-top: 1px solid var(--rule-t12); }
+}
+
+/* THE HERO. Orange-edged and tinted so it reads as the one thing on the page
+   asking for a decision, without shouting: it is advice, not a warning. */
+.plan-fit-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem 1.4rem;
+  flex-wrap: wrap;
+  margin: 0 0 1rem;
+  padding: 1rem 1.15rem;
+  border: 1px solid var(--cedge-orange-24);
+  border-radius: 1rem;
+  background: rgba(255, 138, 61, 0.07);
+}
+.plan-fit-banner-body { min-width: min(100%, 22rem); flex: 1 1 22rem; }
+.plan-fit-banner-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  margin: 0;
+  color: var(--text);
+  font-family: var(--font-display);
+  font-size: clamp(1.05rem, 1.8vw, 1.35rem);
+  font-weight: 800;
+  line-height: 1.25;
+}
+.plan-fit-banner-ic {
+  width: 1.25rem;
+  height: 1.25rem;
+  flex: none;
+  margin-top: 0.15rem;
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.plan-fit-banner-working { margin-top: 0.5rem; }
+.plan-fit-banner-working > summary {
+  color: var(--mute-t50);
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+.plan-fit-banner-working > p {
+  margin: 0.5rem 0 0;
+  color: var(--mute-t50);
+  font-size: 0.82rem;
+  line-height: 1.55;
+}
+.plan-fit-banner-actions { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+
+/* PLAN FIT: which plan is cheapest at which volume. A ladder, so the current
+   plan has to be findable at a glance without colour carrying the meaning --
+   the row says "your plan" in words as well. */
+.plan-usage-ladder {
+  display: grid;
+  gap: 0.4rem;
+  margin: 1rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+.plan-usage-ladder li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.8rem;
+  flex-wrap: wrap;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--rule-t12);
+  border-radius: 0.6rem;
+}
+.plan-usage-ladder li[data-current] {
+  border-color: var(--cedge-orange-24);
+  background: rgba(255, 138, 61, 0.06);
+}
+.plan-usage-ladder-plan { color: var(--text); font-weight: 800; }
+.plan-usage-ladder-plan em { color: var(--mute-t50); font-style: normal; font-weight: 700; }
+.plan-usage-ladder-band { color: var(--mute-t50); font-size: 0.85rem; }
+
+/* EXTRA USAGE, the one control on this page that raises what somebody can be
+   charged. The consent block and the action row reuse .base-plan-checkout-*,
+   which already solve exactly this layout; only the money field is new. */
+.plan-usage-overage-control {
+  display: grid;
+  gap: 0.9rem;
+  margin: 1rem 0 0;
+}
+.plan-usage-overage-amount { display: grid; gap: 0.35rem; }
+.plan-usage-overage-amount > span:first-child {
+  color: var(--mute-i56);
+  font-size: 0.66rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.plan-usage-overage-input {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  width: min(100%, 13rem);
+  padding: 0.5rem 0.7rem;
+  border: 1px solid var(--rule-t12);
+  border-radius: 0.6rem;
+  background: rgba(var(--tint), 0.025);
+}
+.plan-usage-overage-input > span[aria-hidden] { color: var(--mute-t50); font-weight: 800; }
+.plan-usage-overage-input input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+.plan-usage-overage-input input:focus-visible { outline: none; }
+/* The ring goes on the wrapper, because the input has no border of its own --
+   focusing it otherwise showed nothing at all. */
+.plan-usage-overage-input:focus-within { border-color: var(--cedge-orange-24); }
+.plan-usage-unavailable { --tone-ink: var(--mute-g270); display: grid; gap: 0.22rem; }
+.plan-usage-unavailable strong { color: var(--text); }
 .plan-usage-unavailable span { color: rgba(var(--ink-rgb), 0.72); font-size: 0.86rem; }
 .plan-usage-balance-grid {
   display: grid;
@@ -4355,6 +4705,15 @@ h3 {
 .plan-usage-balance > span { color: var(--mute-g270); font-size: 0.78rem; font-weight: 700; }
 .plan-usage-balance > strong { color: var(--text); font-size: 1.12rem; font-variant-numeric: tabular-nums; }
 .plan-usage-balance > small { color: rgba(var(--ink-rgb), 0.62); line-height: 1.35; }
+.plan-usage-storage-figure { display: flex; align-items: baseline; gap: 0.4rem; margin-top: 1rem; }
+.plan-usage-storage-figure > strong { color: var(--text); font-size: 1.5rem; font-variant-numeric: tabular-nums; }
+.plan-usage-storage-figure > span { color: rgba(var(--ink-rgb), 0.72); font-size: 0.9rem; }
+.plan-usage-storage-meter { height: 0.6rem; margin-top: 0.5rem; border-radius: 999px; background: rgba(var(--ink-rgb), 0.09); overflow: hidden; }
+/* Themed tokens, not raw hex: each of these carries a separate light-theme
+   value, and a fill hard-coded for dark would vanish on the light one. */
+.plan-usage-storage-meter-fill { height: 100%; border-radius: 999px; background: var(--ink-green-13); transition: width 0.2s ease; }
+.plan-usage-storage-meter-fill.nearly { background: var(--warn); }
+.plan-usage-storage-meter-fill.over { background: var(--ink-red-3); }
 .plan-usage-limit-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; margin: 0.8rem 0 0; }
 .plan-usage-limit-list > div { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; padding: 0.72rem 0.2rem; border-bottom: 1px solid var(--rule-t08); }
 .plan-usage-limit-list > div:nth-child(odd) { margin-right: 1rem; }
@@ -10866,6 +11225,15 @@ button.inbox-thread-item {
    ink; the paragraph only carries it. */
 .inbox-bubble p { margin: 0; overflow-wrap: anywhere; color: inherit; }
 
+.inbox-bubble-status {
+  display: block;
+  margin-top: 0.28rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  opacity: 0.82;
+}
+
 .inbox-bubble-inbound {
   background: rgba(var(--tint), 0.09);
   border: 1px solid var(--edge-t10);
@@ -15167,6 +15535,9 @@ a.ropsrow-fact:hover { text-decoration: underline; }
 .statement-total-box strong { font-size: 1.3rem; color: #101a28; }
 .statement-total-box strong.pos { color: #15803d; }
 .statement-total-box strong.due { color: #b91c1c; }
+/* Overpaid. Not green -- money is owed BACK, which is not "settled". */
+.statement-total-box strong.credit { color: #b45309; }
+.statement-credit-note { display: block; margin-top: 0.25rem; font-size: 0.7rem; color: #b45309; }
 
 .statement-section-title { margin: 1.6rem 0 0.5rem; font-size: 0.95rem; color: #101a28; }
 .statement-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
@@ -34639,4 +35010,516 @@ a.sms-cat-switch:focus-visible { outline: 2px solid var(--accent); outline-offse
   font-size: 0.72rem;
   font-weight: 650;
   white-space: nowrap;
+}
+
+/* ── AI receptionist ─────────────────────────────────────────────────────────
+   Fourth card in this shape, and scoped under .voice-card for the same reason
+   the missed-call and portal cards are: `voice-field` and `voice-label` are
+   exactly the kind of generic names that collide silently in a 10k-line sheet,
+   and a collision here would be discovered by a contractor rather than by us. */
+.voice-card {
+  padding: 1.05rem 1.1rem;
+  border-radius: 20px;
+  border: 1px solid var(--edge-t14);
+  background: rgba(var(--tint), 0.03);
+}
+.voice-card .voice-unsold {
+  margin: 0 0 1rem;
+  padding: 0.7rem 0.85rem;
+  border-radius: 12px;
+  background: rgba(var(--tint), 0.06);
+  font-size: 0.86rem;
+  line-height: 1.5;
+  color: var(--mute-t60);
+}
+.voice-card .voice-field { display: grid; gap: 0.35rem; margin-bottom: 1.05rem; }
+.voice-card .voice-label { font-size: 0.9rem; font-weight: 600; color: var(--text); }
+.voice-card .voice-field small { font-size: 0.8rem; line-height: 1.5; color: var(--mute-t50); }
+.voice-card .voice-field input[type='tel'],
+.voice-card .voice-field textarea {
+  width: 100%;
+  padding: 0.55rem 0.7rem;
+  border-radius: 10px;
+  border: 1px solid var(--edge-t14);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}
+.voice-card .voice-field textarea { resize: vertical; min-height: 4.5rem; }
+
+.voice-card .voice-choices { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.voice-card .voice-choices button {
+  padding: 0.4rem 0.8rem;
+  border-radius: 999px;
+  border: 1px solid var(--edge-t14);
+  background: transparent;
+  color: var(--mute-t60);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.voice-card .voice-choices button[aria-pressed='true'] {
+  border-color: transparent;
+  background: rgba(var(--tint), 0.14);
+  color: var(--text);
+  font-weight: 600;
+}
+
+.voice-card .voice-hours { display: grid; gap: 0.45rem; margin-bottom: 1.05rem; }
+.voice-card .voice-hours-row {
+  display: grid;
+  grid-template-columns: 6.5rem 1fr auto 1fr auto;
+  align-items: center;
+  gap: 0.5rem;
+}
+.voice-card .voice-hours-row label { font-size: 0.86rem; color: var(--mute-t60); }
+.voice-card .voice-hours-row input[type='time'] {
+  padding: 0.4rem 0.55rem;
+  border-radius: 9px;
+  border: 1px solid var(--edge-t14);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.85rem;
+}
+.voice-card .voice-hours-row span { font-size: 0.8rem; color: var(--mute-t50); }
+.voice-card .voice-clear {
+  padding: 0.32rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid var(--edge-t14);
+  background: transparent;
+  color: var(--mute-t50);
+  font: inherit;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.voice-card .voice-check { display: grid; grid-template-columns: auto 1fr; gap: 0.55rem; align-items: start; }
+.voice-card .voice-check span { font-size: 0.83rem; line-height: 1.5; color: var(--mute-t60); }
+.voice-card .voice-recording-toggle {
+  justify-self: start;
+  margin-top: 0.6rem;
+  padding: 0.45rem 0.9rem;
+  border-radius: 10px;
+  border: 1px solid var(--edge-t14);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.86rem;
+  cursor: pointer;
+}
+.voice-card .voice-recording-toggle:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.voice-card .voice-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.7rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--edge-t14);
+}
+.voice-card .voice-foot-note { flex: 1 1 12rem; font-size: 0.82rem; line-height: 1.45; color: var(--ink-orange-1); }
+.voice-card .voice-save { font-size: 0.82rem; color: var(--mute-t50); }
+.voice-card .voice-save-saved { color: var(--ink-green-1, var(--mute-t60)); }
+.voice-card .voice-save-error { color: var(--ink-orange-1); }
+.voice-card .voice-submit {
+  padding: 0.5rem 1rem;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: rgba(var(--tint), 0.16);
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+  font-size: 0.88rem;
+  cursor: pointer;
+}
+.voice-card .voice-submit:disabled { opacity: 0.5; cursor: progress; }
+
+@media (max-width: 640px) {
+  .voice-card .voice-hours-row { grid-template-columns: 1fr 1fr; }
+  .voice-card .voice-hours-row label { grid-column: 1 / -1; }
+  .voice-card .voice-hours-row span { display: none; }
+}
+
+/* Call history, inside the receptionist card. Scoped under .voice-history for
+   the same reason everything else on this card is. */
+.voice-history-empty { margin: 1rem 0 0; font-size: 0.85rem; line-height: 1.55; color: var(--mute-t50); }
+.voice-history { margin-top: 1.2rem; padding-top: 1rem; border-top: 1px solid var(--edge-t14); }
+.voice-history .voice-history-totals { display: flex; flex-wrap: wrap; gap: 1.4rem; margin-bottom: 1rem; }
+.voice-history .voice-history-totals div { display: grid; gap: 0.1rem; }
+.voice-history .voice-history-totals strong { font-size: 1.35rem; font-weight: 700; color: var(--text); }
+.voice-history .voice-history-totals span { font-size: 0.78rem; color: var(--mute-t50); }
+.voice-history .voice-history-unmetered strong { color: var(--ink-orange-1); }
+.voice-history .voice-history-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.7rem; }
+.voice-history .voice-history-list li {
+  padding: 0.75rem 0.85rem;
+  border-radius: 14px;
+  border: 1px solid var(--edge-t14);
+  background: var(--surface);
+}
+.voice-history .voice-history-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.5rem; }
+.voice-history .voice-history-head strong { font-size: 0.92rem; color: var(--text); }
+.voice-history .voice-history-when { font-size: 0.8rem; color: var(--mute-t50); }
+.voice-history .voice-history-summary { margin: 0.4rem 0 0.55rem; font-size: 0.85rem; line-height: 1.5; color: var(--mute-t60); }
+.voice-history .voice-history-meta { display: flex; flex-wrap: wrap; gap: 0.75rem; font-size: 0.79rem; color: var(--mute-t50); }
+.voice-history .voice-history-meta a { color: inherit; text-decoration: underline; }
+.voice-history .voice-history-meta [data-settlement='overage'] { color: var(--ink-orange-1); }
+.voice-history .voice-history-meta [data-settlement='unmetered'],
+.voice-history .voice-history-meta [data-settlement='unbillable'] { color: var(--ink-orange-1); font-weight: 600; }
+
+/* ── Office access holding page ──────────────────────────────────────────────
+   Scoped under .office-access, same rule as every card in this sheet. */
+.office-access { display: grid; place-items: center; min-height: 70vh; padding: 2rem 1.2rem; }
+.office-access .office-access-card {
+  max-width: 34rem;
+  padding: 2rem 1.8rem;
+  border-radius: 20px;
+  border: 1px solid var(--edge-t14);
+  background: rgba(var(--tint), 0.03);
+}
+.office-access .office-access-eyebrow {
+  margin: 0 0 0.5rem; font-size: 0.78rem; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--mute-t50);
+}
+.office-access h1 { margin: 0 0 0.9rem; font-size: 1.5rem; line-height: 1.3; color: var(--text); }
+.office-access p { margin: 0 0 0.9rem; font-size: 0.95rem; line-height: 1.6; color: var(--mute-t60); }
+.office-access .office-access-note { font-size: 0.86rem; color: var(--mute-t50); }
+.office-access .office-access-actions {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 0.8rem; margin-top: 1.4rem;
+}
+.office-access .office-access-signout {
+  padding: 0.5rem 0.9rem; border-radius: 10px; border: 1px solid var(--edge-t14);
+  background: transparent; color: var(--mute-t60); font: inherit; font-size: 0.88rem; cursor: pointer;
+}
+
+/* ── Office team ─────────────────────────────────────────────────────────────
+   Scoped under .office-team for the reason every card in this sheet is. */
+.office-team .office-team-state {
+  margin: 0 0 1.1rem; font-size: 0.88rem; line-height: 1.55; color: var(--mute-t60);
+}
+.office-team .office-team-seats {
+  display: flex; align-items: baseline; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem;
+}
+.office-team .office-team-seats strong { font-size: 1.5rem; font-weight: 700; color: var(--text); }
+.office-team .office-team-seats span { font-size: 0.86rem; color: var(--mute-t60); }
+.office-team .office-team-seats small { font-size: 0.78rem; color: var(--mute-t50); }
+.office-team .office-team-subhead {
+  margin: 1.2rem 0 0.5rem; font-size: 0.78rem; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--mute-t50);
+}
+.office-team .office-team-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.4rem; }
+.office-team .office-team-list li {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 0.6rem;
+  padding: 0.6rem 0.8rem; border-radius: 12px;
+  border: 1px solid var(--edge-t14); background: var(--surface);
+  font-size: 0.88rem; color: var(--text);
+}
+.office-team .office-team-list li > span:first-child { flex: 1 1 12rem; }
+.office-team .office-team-role { font-size: 0.78rem; color: var(--mute-t50); }
+.office-team .office-team-role[data-status='expired'] { color: var(--ink-orange-1); }
+.office-team .office-team-list button {
+  padding: 0.3rem 0.6rem; border-radius: 999px; border: 1px solid var(--edge-t14);
+  background: transparent; color: var(--mute-t60); font: inherit; font-size: 0.78rem; cursor: pointer;
+}
+.office-team .office-team-invite { display: grid; gap: 0.35rem; margin-top: 1.2rem; }
+.office-team .office-team-invite label { font-size: 0.9rem; font-weight: 600; color: var(--text); }
+.office-team .office-team-invite-row { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.office-team .office-team-invite-row input {
+  flex: 1 1 14rem; padding: 0.55rem 0.7rem; border-radius: 10px;
+  border: 1px solid var(--edge-t14); background: var(--surface); color: var(--text); font: inherit;
+}
+.office-team .office-team-invite-row button {
+  padding: 0.55rem 1rem; border-radius: 10px; border: 1px solid transparent;
+  background: rgba(var(--tint), 0.16); color: var(--text); font: inherit; font-weight: 600; cursor: pointer;
+}
+.office-team .office-team-invite-row button:disabled { opacity: 0.5; cursor: not-allowed; }
+.office-team .office-team-invite small { font-size: 0.8rem; color: var(--mute-t50); }
+.office-team .office-team-link {
+  margin-top: 1.1rem; padding: 0.9rem 1rem; border-radius: 14px;
+  border: 1px solid var(--edge-t14); background: rgba(var(--tint), 0.06);
+}
+.office-team .office-team-link p { margin: 0 0 0.6rem; font-size: 0.86rem; line-height: 1.55; color: var(--mute-t60); }
+.office-team .office-team-link code {
+  display: block; overflow-wrap: anywhere; margin-bottom: 0.6rem;
+  font-size: 0.8rem; color: var(--text);
+}
+.office-team .office-team-link button {
+  padding: 0.4rem 0.8rem; border-radius: 10px; border: 1px solid var(--edge-t14);
+  background: transparent; color: var(--text); font: inherit; font-size: 0.84rem; cursor: pointer;
+}
+.office-team .office-team-problem { margin: 0.9rem 0 0; font-size: 0.84rem; color: var(--ink-orange-1); }
+
+/* ── Extra usage (overage) ───────────────────────────────────────────────────
+   Scoped under #overage, which is a panel/workspace-section-card like its
+   neighbours -- only the three elements unique to it are styled here. */
+#overage .usage-overage-total { display: flex; align-items: baseline; gap: 0.5rem; margin: 0 0 0.5rem; }
+#overage .usage-overage-total strong { font-size: 1.6rem; font-weight: 700; color: var(--text); }
+#overage .usage-overage-total span { font-size: 0.86rem; color: var(--mute-t50); }
+#overage .usage-overage-atcap {
+  margin: 0 0 0.8rem; padding: 0.6rem 0.75rem; border-radius: 10px;
+  background: rgba(var(--tint), 0.08); color: var(--ink-orange-1);
+  font-size: 0.86rem; line-height: 1.5;
+}
+#overage .usage-overage-lines { list-style: none; margin: 0.6rem 0 0.8rem; padding: 0; display: grid; gap: 0.35rem; }
+#overage .usage-overage-lines li {
+  display: grid; grid-template-columns: 1fr auto auto; gap: 0.9rem; align-items: baseline;
+  font-size: 0.88rem; color: var(--text);
+}
+#overage .usage-overage-lines li > span:nth-child(2) { color: var(--mute-t50); font-size: 0.82rem; }
+/* The per-unit rate the authorization text promises is published. Quieter
+   than the unit count it follows, but legible -- it is the number a
+   contractor checks the arithmetic against. */
+#overage .usage-overage-lines .usage-overage-rate { color: var(--mute-t50); font-size: 0.78rem; }
+#overage .usage-overage-lines li > span:last-child { font-variant-numeric: tabular-nums; }
+#overage .usage-muted { margin: 0 0 0.6rem; font-size: 0.88rem; line-height: 1.55; color: var(--mute-t60); }
+#overage .usage-fineprint { margin: 0; font-size: 0.8rem; line-height: 1.5; color: var(--mute-t50); }
+
+/* A section that folds. The summary keeps the eyebrow, the glyph and the
+   heading, so a shut section still says what it is -- and carries a note when
+   something inside needs attention, because a disclosure that hides a warning
+   is a disclosure that hides the only line that mattered. */
+.workspace-fold > summary {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  flex-wrap: wrap;
+  cursor: pointer;
+  list-style: none;
+}
+.workspace-fold > summary::-webkit-details-marker { display: none; }
+.workspace-fold > summary::after {
+  content: '';
+  width: 0.55rem;
+  height: 0.55rem;
+  margin-left: auto;
+  border-right: 2px solid var(--mute-i56);
+  border-bottom: 2px solid var(--mute-i56);
+  transform: rotate(45deg) translate(-0.1rem, -0.1rem);
+  transition: transform .15s ease;
+}
+.workspace-fold[open] > summary::after { transform: rotate(-135deg) translate(-0.1rem, -0.1rem); }
+.workspace-fold > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 0.4rem; }
+.workspace-fold-title { display: block; }
+.workspace-fold-note { color: var(--warn); font-size: 0.78rem; font-style: normal; font-weight: 800; }
+.workspace-fold-note.neutral { color: var(--mute-t60); }
+
+/* ---------------------------------------------------------------------------
+   PLAN & USAGE DENSITY, scoped to this panel only.
+   The mockup fits this whole tab in about 1,050px; the same content in the
+   app-wide heading scale and card padding ran to 2,820px, which is why it read
+   as a different page even with every element present. Everything here is
+   inside #settings-panel-plan, so Payments, Business and the rest keep the
+   sizes they have -- the consistency worry and the mockup are not actually in
+   conflict once the rule is scoped.
+   --------------------------------------------------------------------------- */
+#settings-panel-plan .workspace-fold-title { font-size: clamp(1.15rem, 1.9vw, 1.5rem); font-family: var(--font-display); font-weight: 800; color: var(--text); line-height: 1.2; }
+#settings-panel-plan .workspace-section-heading h2 {
+  font-size: clamp(1.15rem, 1.9vw, 1.5rem);
+  line-height: 1.2;
+}
+#settings-panel-plan .workspace-section-heading { margin-bottom: 0.75rem; }
+#settings-panel-plan .workspace-section-heading .eyebrow { font-size: 0.58rem; }
+#settings-panel-plan .workspace-section-ic { stroke-width: 1.7; }
+#settings-panel-plan .panel.workspace-section-card { padding: 1.05rem 1.15rem; }
+#settings-panel-plan .workspace-section-card + .workspace-section-card { margin-top: 0.75rem; }
+#settings-panel-plan .plan-usage-plan-card { padding: 0.85rem 0.95rem; }
+#settings-panel-plan .plan-usage-plan-facts > div { padding: 0.55rem 0.7rem; }
+#settings-panel-plan .plan-usage-balance,
+#settings-panel-plan .plan-usage-capacity-grid > li { padding: 0.6rem 0.75rem; }
+#settings-panel-plan .plan-glancebar-cell { padding: 0.7rem 0.85rem; }
+#settings-panel-plan .plan-fit-banner { padding: 0.85rem 1rem; margin-bottom: 0.75rem; }
+@media (max-width: 640px) {
+  #settings-panel-plan .panel.workspace-section-card { padding: 0.9rem 0.95rem; }
+}
+
+/* ---------------------------------------------------------------------------
+   ACCOUNT / PLAN COLOR SYSTEM.
+
+   The active tab and hero already carried the brand orange, but every surface
+   below them resolved to the same navy card with the same grey edge. The page
+   was therefore colourful at the top and visually flat everywhere a decision
+   was made. These accents identify sections by purpose while leaving copy,
+   forms, checkout behavior and status semantics unchanged.
+
+   Theme-aware ink tokens supply every accent. They deliberately become darker
+   on the light theme, so borders and glyphs do not wash out on white.
+   --------------------------------------------------------------------------- */
+.settings-shell {
+  position: relative;
+  isolation: isolate;
+}
+
+/* Settings is a destination, not a marketing page. Keep its identity and
+   account context, but let the selected task enter the first viewport. */
+.settings-shell > .settings-hero {
+  grid-template-columns: minmax(0, 1fr);
+  padding: 1.35rem 1.55rem;
+}
+.settings-shell > .settings-hero .workspace-title {
+  margin: 0.3rem 0 0.35rem;
+  max-width: none;
+  font-size: clamp(1.85rem, 3vw, 2.45rem);
+}
+.settings-shell > .settings-hero .workspace-lead {
+  max-width: 68ch;
+  font-size: 0.94rem;
+  line-height: 1.55;
+}
+.settings-shell > .settings-hero .account-created-note { margin-top: 0.55rem; }
+.settings-shell::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset: -1.5rem 0 auto;
+  height: min(52rem, 78vh);
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 8% 9%, rgba(255, 122, 33, 0.18), transparent 34%),
+    radial-gradient(circle at 92% 16%, color-mix(in srgb, var(--ink-violet-1) 15%, transparent), transparent 38%),
+    radial-gradient(circle at 52% 58%, color-mix(in srgb, var(--info) 10%, transparent), transparent 42%);
+  filter: saturate(1.12);
+}
+
+:root[data-theme] .settings-shell > .workspace-hero {
+  border-color: color-mix(in srgb, var(--ink-orange-8) 34%, transparent);
+  background:
+    radial-gradient(circle at 88% 12%, color-mix(in srgb, var(--ink-violet-1) 13%, transparent), transparent 34%),
+    linear-gradient(145deg, rgba(255, 122, 33, 0.16), transparent 42%),
+    var(--bg-elevated);
+  box-shadow:
+    inset 0 1px color-mix(in srgb, var(--ink-orange-8) 15%, transparent),
+    0 22px 55px -42px color-mix(in srgb, var(--ink-orange-8) 75%, transparent);
+}
+
+.settings-shell .settings-tabnav {
+  border-color: color-mix(in srgb, var(--ink-violet-1) 24%, var(--line));
+  background:
+    linear-gradient(100deg, rgba(255, 122, 33, 0.06), color-mix(in srgb, var(--ink-violet-1) 7%, transparent)),
+    rgba(9, 18, 30, 0.86);
+  box-shadow: 0 16px 40px -32px color-mix(in srgb, var(--ink-violet-1) 72%, transparent);
+}
+
+/* One accent per decision area. The narrow top rule makes each section easy to
+   relocate while scrolling; the soft wash carries the same identity inward. */
+:root[data-theme] #settings-panel-plan > .panel.workspace-section-card {
+  --plan-card-accent: var(--ink-orange-8);
+  position: relative;
+  overflow: clip;
+  border-color: color-mix(in srgb, var(--plan-card-accent) 34%, transparent);
+  background-image: linear-gradient(140deg, color-mix(in srgb, var(--plan-card-accent) 9%, transparent), transparent 45%);
+  box-shadow:
+    inset 0 1px color-mix(in srgb, var(--plan-card-accent) 12%, transparent),
+    0 18px 42px -38px color-mix(in srgb, var(--plan-card-accent) 72%, transparent);
+}
+#settings-panel-plan > .panel.workspace-section-card::before {
+  content: '';
+  position: absolute;
+  inset: 0 1.15rem auto;
+  height: 2px;
+  border-radius: 0 0 999px 999px;
+  background: linear-gradient(90deg, var(--plan-card-accent), transparent 82%);
+  opacity: 0.78;
+}
+#settings-panel-plan > .panel.workspace-section-card .eyebrow,
+#settings-panel-plan > .panel.workspace-section-card .workspace-section-ic {
+  color: var(--plan-card-accent);
+  stroke: var(--plan-card-accent);
+}
+
+#settings-panel-plan #plan-at-a-glance { --plan-card-accent: var(--info); }
+#settings-panel-plan #current-plan { --plan-card-accent: var(--ink-orange-8); }
+#settings-panel-plan #usage-balances { --plan-card-accent: var(--good); }
+#settings-panel-plan #workspace-storage { --plan-card-accent: var(--ink-violet-1); }
+#settings-panel-plan #overage { --plan-card-accent: var(--warn); }
+#settings-panel-plan #buy-credits { --plan-card-accent: var(--ink-green-7); }
+#settings-panel-plan #included-limits { --plan-card-accent: var(--ink-blue-2); }
+
+/* One decision surface: the recommendation and paid-plan controls now live
+   inside the current-plan card instead of becoming two more orange cards. */
+#settings-panel-plan #current-plan .plan-fit-banner {
+  margin: 0.9rem 0 0;
+  padding: 0.72rem 0.8rem;
+  border-radius: 0.75rem;
+}
+#settings-panel-plan #current-plan .plan-fit-banner-head {
+  font-size: 0.94rem;
+  line-height: 1.35;
+}
+#settings-panel-plan #current-plan .plan-fit-banner-actions .btn { padding-block: 0.5rem; }
+#settings-panel-plan .plan-usage-embedded-checkout {
+  margin-top: 0.7rem;
+  padding-top: 0.7rem;
+  border-top: 1px solid var(--rule-t12);
+}
+#settings-panel-plan .plan-glance-details { margin-top: 0.65rem; }
+
+/* Balances are the overview. Storage, spending controls and plan capacity are
+   compact rows inside the same card, so the page reads as one usage system. */
+#settings-panel-plan .plan-usage-limit-stack {
+  display: grid;
+  gap: 0.55rem;
+  margin-top: 0.85rem;
+  padding-top: 0.8rem;
+  border-top: 1px solid var(--rule-t12);
+}
+#settings-panel-plan .plan-usage-limit-row {
+  --limit-row-accent: var(--info);
+  padding: 0.68rem 0.78rem;
+  border: 1px solid color-mix(in srgb, var(--limit-row-accent) 27%, var(--rule-t12));
+  border-radius: 0.75rem;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--limit-row-accent) 6%, transparent), transparent 62%);
+}
+#settings-panel-plan .plan-usage-limit-row#workspace-storage { --limit-row-accent: var(--ink-violet-1); }
+#settings-panel-plan .plan-usage-limit-row#overage { --limit-row-accent: var(--warn); }
+#settings-panel-plan .plan-usage-limit-row#included-limits { --limit-row-accent: var(--ink-blue-2); }
+#settings-panel-plan .plan-usage-credit-row { --limit-row-accent: var(--good); }
+#settings-panel-plan .plan-usage-limit-row .eyebrow,
+#settings-panel-plan .plan-usage-limit-row .workspace-section-ic {
+  color: var(--limit-row-accent);
+  stroke: var(--limit-row-accent);
+}
+#settings-panel-plan .plan-usage-limit-row > summary .workspace-section-heading { margin-bottom: 0; }
+#settings-panel-plan .plan-usage-limit-row[open] > summary { margin-bottom: 0.7rem; }
+#settings-panel-plan .plan-usage-limit-summary {
+  flex: 1 1 22rem;
+  text-align: right;
+  line-height: 1.45;
+}
+@media (max-width: 700px) {
+  #settings-panel-plan .plan-usage-limit-summary {
+    flex-basis: 100%;
+    text-align: left;
+  }
+}
+
+/* The top-up disclosure itself is now the link target. A deep link can open it
+   directly instead of landing on a closed wrapper that needs a second click. */
+#settings-panel-plan details#buy-credits > summary { min-height: 2.5rem; }
+
+/* The glance bar is still one compact component, but each fact now has its own
+   tint and top keyline. That supplies pop without returning to four bulky cards. */
+#settings-panel-plan .plan-glancebar-cell {
+  --glance-accent: var(--ink-orange-8);
+  background-image: linear-gradient(145deg, color-mix(in srgb, var(--glance-accent) 9%, transparent), transparent 64%);
+  box-shadow: inset 0 2px color-mix(in srgb, var(--glance-accent) 72%, transparent);
+}
+#settings-panel-plan .plan-glancebar-cell:nth-child(2) { --glance-accent: var(--ink-violet-1); }
+#settings-panel-plan .plan-glancebar-cell:nth-child(3) { --glance-accent: var(--warn); }
+#settings-panel-plan .plan-glancebar-ic { stroke: var(--glance-accent); opacity: 0.95; }
+
+/* Balances and purchasable packs are the most repeated shapes on the page.
+   Alternating keylines make them scannable without adding labels or clutter. */
+#settings-panel-plan .plan-usage-balance {
+  --balance-accent: var(--good);
+  border-color: color-mix(in srgb, var(--balance-accent) 26%, var(--rule-t08));
+  background-image: linear-gradient(145deg, color-mix(in srgb, var(--balance-accent) 7%, transparent), transparent 58%);
+}
+#settings-panel-plan .plan-usage-balance:nth-child(4n + 2) { --balance-accent: var(--info); }
+#settings-panel-plan .plan-usage-balance:nth-child(4n + 3) { --balance-accent: var(--ink-violet-1); }
+#settings-panel-plan .plan-usage-balance:nth-child(4n + 4) { --balance-accent: var(--warn); }
+
+@media (max-width: 640px) {
+  .settings-shell::before { inset-inline: 0; height: 38rem; }
+  #settings-panel-plan > .panel.workspace-section-card::before { inset-inline: 0.95rem; }
 }

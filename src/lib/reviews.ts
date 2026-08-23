@@ -288,10 +288,18 @@ export async function sendReviewReminder(
   }
 
   let channel: 'sms' | 'email';
+  let smsEventId: string | null = null;
   try {
     if (route.channel === 'sms' && normalizedPhone) {
       await recordSmsConsent(accountId, normalizedPhone, 'review_request');
-      await sendReviewRequestSms({ phone: normalizedPhone, businessName, clientName: clientFirstName, reviewUrl: linkUrl, accountId });
+      smsEventId = await sendReviewRequestSms({
+        phone: normalizedPhone,
+        businessName,
+        clientName: clientFirstName,
+        reviewUrl: linkUrl,
+        accountId,
+        idempotencyKey: `review-reminder:${id}:${row.remindersSent + 1}`,
+      });
       channel = 'sms';
     } else if (route.channel === 'email' && row.clientEmail) {
       const { data: addressRow } = await supabase.from('accounts').select('mailing_address').eq('id', accountId).maybeSingle();
@@ -315,8 +323,9 @@ export async function sendReviewReminder(
     return { ok: false, message: reason };
   }
 
-  // Counted only after the send actually succeeded. Incrementing first would
-  // burn one of three reminders on a Twilio outage.
+  // Queue acceptance owns this reminder ordinal. Keeping the counter as the
+  // one-ask lock prevents a worker retry or an indeterminate provider response
+  // from producing a second ask; sms_events owns delivery truth.
   const sent = row.remindersSent + 1;
   await supabase
     .from('review_invites')
@@ -328,10 +337,16 @@ export async function sendReviewReminder(
     try {
       await createJobFeedEvent(supabase, accountId, row.jobId, {
         kind: 'review_requested',
-        title: channel === 'sms' ? 'Review reminder texted' : 'Review reminder emailed',
+        title: channel === 'sms' ? 'Review reminder queued' : 'Review reminder emailed',
         body: `Reminder ${sent} of ${MAX_REMINDERS} for the same review link.`,
         visibility: 'internal',
-        meta: { review_request: true, reminder: true, channel },
+        meta: {
+          review_request: true,
+          reminder: true,
+          channel,
+          delivery_state: channel === 'sms' ? 'queued' : 'sent',
+          sms_event_id: smsEventId,
+        },
       });
     } catch (error) {
       console.error('Review reminder feed event failed:', error instanceof Error ? error.message : error);
@@ -342,7 +357,7 @@ export async function sendReviewReminder(
     ok: true,
     message:
       channel === 'sms'
-        ? `Reminder ${sent} of ${MAX_REMINDERS} texted to ${row.clientName ?? 'the customer'}.`
+        ? `Reminder ${sent} of ${MAX_REMINDERS} queued for ${row.clientName ?? 'the customer'}.`
         : `Reminder ${sent} of ${MAX_REMINDERS} emailed to ${row.clientName ?? 'the customer'}.`,
   };
 }

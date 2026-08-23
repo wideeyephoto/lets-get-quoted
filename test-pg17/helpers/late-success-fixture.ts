@@ -2,12 +2,22 @@ import { createHash, randomUUID } from 'node:crypto';
 
 import type { Client } from 'pg';
 
+import { PRICING_CATALOG_VERSION } from '@/lib/billing/catalog';
+
 const AMOUNT_CENTS = 10_000;
 const FEE_BASIS_CENTS = 10_000;
 const FEE_CENTS = 125;
 const FEE_RATE_BPS = 125;
 const FEE_RATE = '0.0125';
-const CATALOG_VERSION = '2026-08-15-preview';
+
+// Taken from the catalog, not hardcoded. This was pinned to '2026-08-15-preview'
+// and 20260818120000 moved the catalog to '2026-08-18-preview' -- rewriting
+// initialize_workspace_pricing() along with ten other function bodies -- so
+// every fixture account then initialized a version this file did not expect and
+// all ten tests died at setup with "did not initialize the expected Flex
+// entitlement", before reaching a single race assertion. Reading the constant
+// means the next catalog bump cannot silently disarm this suite again.
+const CATALOG_VERSION = PRICING_CATALOG_VERSION;
 
 export const SETTLE_RPC_SQL = `select * from
   public.settle_direct_checkout_late_success_task(

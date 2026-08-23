@@ -232,10 +232,16 @@ export async function sendRescheduleOfferAction(
   const businessName = (account?.business_name as string) || "Let's Get Quoted";
   const message = composeRescheduleMessage(businessName, body);
 
+  let smsEventId: string;
   try {
-    await sendEstimateOfferSms({ accountId, toPhone: phone, message });
+    smsEventId = await sendEstimateOfferSms({
+      accountId,
+      toPhone: phone,
+      message,
+      idempotencyKey: `reschedule-offer:${offerId}`,
+    });
   } catch (error) {
-    // The text never left. Drop the record so this job can be asked about again
+    // No durable queue intent exists. Drop the record so this job can be asked about again
     // — a provider hiccup must not lock a customer out of being offered a move.
     await deleteRescheduleOffer(supabase, accountId, offerId);
     console.error('Reschedule offer send failed:', error instanceof Error ? error.message : error);
@@ -245,9 +251,9 @@ export async function sendRescheduleOfferAction(
   await recordAccountEvent({
     accountId,
     kind: 'automation_toggled',
-    summary: `Asked ${job.client_name || 'a customer'} to move ${job.ref ?? 'a job'} from ${fromDate} to ${toDate} for ${discountPercent}% off`,
+    summary: `Queued a request for ${job.client_name || 'a customer'} to move ${job.ref ?? 'a job'} from ${fromDate} to ${toDate} for ${discountPercent}% off`,
     actorEmail: userEmail,
-    meta: { source: 'reschedule_offer', offer_id: offerId, job_id: jobId, from_date: fromDate, to_date: toDate, discount_percent: discountPercent },
+    meta: { source: 'reschedule_offer', offer_id: offerId, job_id: jobId, from_date: fromDate, to_date: toDate, discount_percent: discountPercent, sms_event_id: smsEventId },
   });
 
   revalidatePlan();
@@ -255,7 +261,7 @@ export async function sendRescheduleOfferAction(
   // still on today and today's route still has to include it.
   return {
     ok: true,
-    message: `Sent. Nothing moves until they reply — ${job.client_name || 'they'} are still on today's route for now.`,
+    message: `Queued. Nothing moves until they reply — ${job.client_name || 'they'} are still on today's route for now.`,
   };
 }
 

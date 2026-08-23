@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 // revise, duplicate handling, delivery recording, what lands in the timeline —
 // is asserted deterministically rather than by staring at a live account.
 
-const smsOutcome = { value: { status: 'sent', sid: 'SM123' } as { status: string; sid?: string; error?: string } };
+const smsOutcome = { value: { status: 'queued', eventId: 'event-123' } as { status: string; eventId?: string; error?: string } };
 const sentMessages: string[] = [];
 // `visibility` belongs here: createJobFeedEvent takes it, these tests assert on
 // it, and leaving it off the fixture type meant every one of those assertions
@@ -106,7 +106,7 @@ function fakeDb(options: { active?: Row | null; account?: Row } = {}) {
 beforeEach(() => {
   sentMessages.length = 0;
   feedEvents.length = 0;
-  smsOutcome.value = { status: 'sent', sid: 'SM123' };
+  smsOutcome.value = { status: 'queued', eventId: 'event-123' };
 });
 
 describe('starting a trip', () => {
@@ -127,8 +127,8 @@ describe('starting a trip', () => {
     expect(sentMessages[0]).toContain('Danny');
 
     const receipt = db.writes.find((w) => w.table === 'job_tracking' && 'sms_status' in w.values);
-    expect(receipt?.values.sms_status).toBe('sent');
-    expect(receipt?.values.sms_sid).toBe('SM123');
+    expect(receipt?.values.sms_status).toBe('queued');
+    expect(receipt?.values.sms_sid).toBe('event-123');
   });
 
   it('writes a timeline entry that says whether the customer was reached', async () => {
@@ -137,7 +137,7 @@ describe('starting a trip', () => {
       permissions: PERMS, etaMinutes: 30, shareLocation: false, techLoc: null,
     });
     expect(feedEvents[0].title).toBe('On the way');
-    expect(feedEvents[0].body).toContain('Customer texted.');
+    expect(feedEvents[0].body).toContain('Customer text queued for delivery.');
     expect(feedEvents[0].visibility).toBe('internal');
   });
 

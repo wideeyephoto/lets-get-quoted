@@ -1,3 +1,5 @@
+import { readFileSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   invoicePayState,
@@ -65,9 +67,38 @@ describe('what the invoice page offers', () => {
 
   // A bank transfer sits in `processing` for days. Offering "Pay" over the top
   // of one is how somebody pays the same invoice twice.
-  it('waits while a payment is with the bank', () => {
-    const state = invoicePayState({ status: 'sent' }, 4200, [payment({ id: 'ach', status: 'processing' })]);
+  it('waits while a payment is genuinely with the bank', () => {
+    const state = invoicePayState({ status: 'sent' }, 4200, [
+      payment({ id: 'ach', status: 'processing', async_payment_pending_at: '2026-08-21T00:00:00.000Z' }),
+    ]);
     expect(state).toMatchObject({ state: 'processing', paymentId: 'ach' });
+  });
+
+  it('does not mistake an abandoned checkout for a bank transfer', () => {
+    // `processing` is written when a Checkout Session is CREATED, so it equally
+    // means "opened Stripe and closed the tab" -- which is the commoner reading.
+    // This assertion used to expect 'processing' for exactly this row, which is
+    // how the invoice told a homeowner their transfer was clearing when nothing
+    // had happened, and withheld the Pay button so they could not correct it.
+    //
+    // For up to 24 hours: no expires_at is set on these sessions, so the
+    // expired webhook that moves the row to `failed` fires on Stripe's default.
+    const state = invoicePayState({ status: 'sent' }, 4200, [
+      payment({ id: 'abandoned', status: 'processing', amount: 4200 }),
+    ]);
+    expect(state).toMatchObject({ state: 'payable' });
+  });
+
+  it('resumes the abandoned request rather than minting a second one', () => {
+    // The row already exists and the server will open a fresh Session against
+    // it -- createCheckoutSessionForPayment accepts `processing` for this exact
+    // reason. Leaving `processing` out of the reuse list would create a SECOND
+    // payment row for one invoice, which is two ways to pay it and one of them
+    // goes wrong the moment a part-payment lands.
+    const state = invoicePayState({ status: 'sent' }, 4200, [
+      payment({ id: 'abandoned', status: 'processing', amount: 4200 }),
+    ]);
+    expect(state).toMatchObject({ state: 'payable', paymentId: 'abandoned' });
   });
 
   it('reuses an open request for the same amount rather than minting a second', () => {
@@ -112,5 +143,59 @@ describe('what the invoice page offers', () => {
   it('does not drift on cents', () => {
     const state = invoicePayState({ status: 'sent' }, 100.1, [payment({ amount: 33.37 })]);
     expect(state.due).toBe(66.73);
+  });
+});
+
+describe('every caller feeds invoicePayState the column it decides on', () => {
+  /**
+   * invoicePayState tells a bank transfer in flight apart from an abandoned
+   * checkout using `async_payment_pending_at`. Both are `status = 'processing'`,
+   * so a caller that does not SELECT the column silently gets the abandoned
+   * reading for every payment.
+   *
+   * That is not hypothetical. When the distinction was introduced, the invoice
+   * page's query was updated and payInvoiceAction's was not -- so the action
+   * could never reach its own `processing` branch, and the page and the action
+   * disagreed about the same invoice while calling the same function. The portal
+   * had the same gap.
+   *
+   * Checked as a set, because the failure is a NEW caller being added without
+   * it, and nothing else would notice.
+   */
+  const CALLERS = [
+    'src/app/invoice/[id]/page.tsx',
+    'src/app/invoice/[id]/actions.ts',
+    'src/lib/client-portal-data.ts',
+  ] as const;
+
+  for (const file of CALLERS) {
+    it(`${file.split('/').slice(-2).join('/')} selects async_payment_pending_at`, () => {
+      const source = readFileSync(join(process.cwd(), file), 'utf8');
+      expect(source).toContain('invoicePayState');
+      const selects = source.match(/\.select\('[^']*'\)/g) ?? [];
+      const paymentSelect = selects.find((s) => s.includes('refunded_amount'));
+      expect(paymentSelect, 'no payments select found').toBeDefined();
+      expect(paymentSelect).toContain('async_payment_pending_at');
+    });
+  }
+
+  it('finds every caller there is, so the list cannot go stale', () => {
+    // If invoicePayState grows a caller outside this list, this fails rather
+    // than the new caller silently getting the wrong reading.
+    const roots = ['src/app', 'src/lib'];
+    const found: string[] = [];
+    const walk = (dir: string) => {
+      for (const entry of readdirSync(join(process.cwd(), dir), { withFileTypes: true })) {
+        const rel = `${dir}/${entry.name}`;
+        if (entry.isDirectory()) walk(rel);
+        else if (/\.tsx?$/.test(entry.name)) {
+          const source = readFileSync(join(process.cwd(), rel), 'utf8');
+          // The definition itself, and re-export sites, are not callers.
+          if (source.includes('invoicePayState(') && !rel.endsWith('invoice-pay.ts')) found.push(rel);
+        }
+      }
+    };
+    for (const root of roots) walk(root);
+    expect(found.sort()).toEqual([...CALLERS].sort());
   });
 });

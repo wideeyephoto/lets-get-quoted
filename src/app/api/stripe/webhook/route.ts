@@ -311,6 +311,13 @@ async function markPaymentPaid(
       status: 'paid',
       paid_at: new Date().toISOString(),
       stripe_payment_intent: stripePaymentIntent,
+      // The bank transfer has landed, so it is no longer in flight. Cleared in
+      // the same UPDATE as the status it belongs to, rather than afterwards: a
+      // second write could fail on its own and leave /pay/[id] telling a
+      // homeowner their settled payment is still clearing. Advisory either way
+      // -- readers check `status` first -- which is exactly why this column
+      // carries no CHECK constraint. See migration 20260821001000.
+      async_payment_pending_at: null,
     })
     .eq('id', paymentId);
   if (rail.chargeModelColumnPresent) transition = transition.eq('charge_model', 'destination');
@@ -434,6 +441,11 @@ async function markLegacyPaymentFailed(
     .from('payments')
     .update({
       status: 'failed',
+      // The bank debit bounced, so nothing is in flight any more. Same reasoning
+      // as the settle path: cleared in the same UPDATE as the status, so a
+      // homeowner is never shown "your transfer is clearing" over a payment that
+      // has already failed and needs paying again.
+      async_payment_pending_at: null,
       ...(writesPaymentIntent
         ? { stripe_payment_intent: match.stripePaymentIntent }
         : {}),
@@ -652,6 +664,45 @@ async function dispatchStripeEvent(
             quickStop: () => confirmQuickStopPayment(admin, paymentId),
           },
         });
+      }
+    } else if (paymentId && session.payment_status === 'unpaid' && session.payment_intent) {
+      // THE CASE THIS FILE USED TO DROP ON THE FLOOR.
+      //
+      // A delayed payment method -- ACH above all -- completes the Checkout
+      // Session with the money still moving: `completed` fires with
+      // payment_status 'unpaid', and the settle handler above only runs on
+      // 'paid'. So nothing was recorded, and the row sat at 'processing' with no
+      // PaymentIntent: byte for byte identical to a homeowner who opened Stripe
+      // and closed the tab.
+      //
+      // /pay/[id] then told both of them "This payment is processing. Bank
+      // transfers can take a few business days to clear -- you'll be confirmed
+      // once it settles," and rendered the Pay button underneath. The abandoned
+      // one believes they have paid and has not; the in-flight one is invited to
+      // pay a second time.
+      //
+      // An abandoned session never reaches this event at all -- it expires and
+      // fires checkout.session.expired -- so `completed` with 'unpaid' really
+      // does mean in flight. The payment_intent test is belt and braces: it is
+      // the object that will later succeed or fail, and without one there is
+      // nothing actually moving to report.
+      //
+      // Best-effort and deliberately unguarded by the CAS the settle path uses.
+      // This writes no status and decides no money; the worst case if it loses a
+      // race is the page falling back to offering the Pay button, which is where
+      // it already was.
+      const { error: pendingError } = await admin
+        .from('payments')
+        .update({ async_payment_pending_at: new Date().toISOString() })
+        .eq('id', paymentId)
+        .in('status', ['requested', 'processing', 'failed']);
+      if (pendingError) {
+        // Logged, never thrown. Failing the webhook here would make Stripe retry
+        // a delivery that has nothing left to do, and the page's fallback is the
+        // behavior that shipped for months.
+        console.error(
+          `Could not record async payment pending for ${paymentId}: ${pendingError.message}`,
+        );
       }
     }
   }

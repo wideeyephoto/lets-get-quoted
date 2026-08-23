@@ -208,7 +208,7 @@ export async function sendRequestAction(requestId: string, formData: FormData) {
 
   const result = await sendSubcontractorRequest(supabase, accountId, requestId, { crewIds, messageBody });
   revalidateDispatch(result.request.jobId);
-  redirect(`/dashboard/crew/requests/${requestId}?sent=${result.sent}`);
+  redirect(`/dashboard/crew/requests/${requestId}?queued=${result.queued}`);
 }
 
 export async function cancelRequestAction(requestId: string) {

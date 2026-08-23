@@ -24,7 +24,39 @@ import { createAdminClient } from '@/lib/auth';
  * The column is free text with no check constraint, so adding a kind needs no
  * migration. The history page renders `summary` as written.
  */
-export type AccountEventKind = 'automation_toggled' | 'automation_settings_changed';
+/**
+ * `kind` is free text in the database, so this union is the only thing keeping
+ * the audit trail's vocabulary closed. Widen it deliberately; a typo'd kind
+ * writes happily and then never matches anything anybody filters on.
+ */
+export type AccountEventKind =
+  | 'automation_toggled'
+  | 'automation_settings_changed'
+  | 'ai_voice_settings_updated'
+  | 'ai_voice_recording_changed'
+  | 'ai_voice_route_verified'
+  | 'office_invitation_sent'
+  | 'office_invitation_revoked'
+  | 'office_access_removed'
+  // The plan a visitor chose on /pricing before they had an account. Recorded at
+  // first run because it is the only moment it is still in hand: paid checkout
+  // is dark, so there is nothing to charge yet, and without a row here the
+  // answer to "which plan did people come here for" is thrown away.
+  | 'plan_intent_recorded'
+  // Written BEFORE the Stripe call, so the request survives a crash mid-flight.
+  // The OUTCOME is the projector's to record, not this one's.
+  | 'subscription_cancellation_requested'
+  | 'subscription_cancellation_revoked'
+  | 'plan_change_requested'
+  | 'plan_change_scheduled'
+  | 'plan_change_cancelled'
+  | 'plan_change_applied'
+  // The owner turning extra usage on or off, or moving their spending limit.
+  // The BINDING record is the append-only row in workspace_overage_authorizations,
+  // which carries the digest of the words they agreed to; this is the same fact
+  // in the human-readable activity feed, written only when something actually
+  // changed so the two cannot disagree about how many times it did.
+  | 'overage_authorization_changed';
 
 export async function recordAccountEvent(input: {
   accountId: string;

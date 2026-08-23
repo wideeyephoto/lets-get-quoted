@@ -1,13 +1,19 @@
 import Link from 'next/link';
-import { AUDIENCE_LABEL, SMS_CATALOGUE, type SmsCatalogueEntry } from '@/lib/sms-catalogue';
+import {
+  AUDIENCE_LABEL,
+  SENDER_LANE_LABEL,
+  SMS_CATALOGUE,
+  senderLaneForAudience,
+  type SmsCatalogueEntry,
+} from '@/lib/sms-catalogue';
 import { automationAnchorFor } from '@/lib/nav-helpers';
 
 /**
  * Every text this app can send, as the customer will see it.
  *
- * WHY IT EXISTS. A contractor's number sends thirty-odd different messages under
- * their name and there was nowhere to read them. The only way to find out what
- * an automation says was to switch it on and wait for it to reach a customer.
+ * WHY IT EXISTS. The product sends through contractor, LGQ alert, and LGQ
+ * dispatch lanes, and there was nowhere to read those messages together. The
+ * only way to inspect an automation was to wait for it to reach somebody.
  *
  * Three columns, because three things decide whether an owner is happy for a
  * message to go out: when it fires, what it says, and whether they can stop it.
@@ -61,7 +67,7 @@ export default function OutgoingTextCatalogue() {
         <summary className="workspace-details-summary">
           <span className="btn secondary">Every text we send · {SMS_CATALOGUE.length}</span>
           <span className="workspace-details-copy">
-            The real wording of every message that leaves under your name.
+            The real wording and sender lane for every outgoing message.
           </span>
         </summary>
 
@@ -87,6 +93,7 @@ export default function OutgoingTextCatalogue() {
                 <strong>{entry.title}</strong>
                 <span>{entry.trigger}</span>
                 <span className={`sms-cat-who is-${entry.audience}`}>To: {AUDIENCE_LABEL[entry.audience]}</span>
+                <span className="sms-cat-who">From: {SENDER_LANE_LABEL[senderLaneForAudience(entry.audience)]}</span>
               </div>
 
               <div className="sms-cat-msg" role="cell">
@@ -109,9 +116,9 @@ export default function OutgoingTextCatalogue() {
         </div>
 
         <p className="sms-cat-foot">
-          Every message to a customer carries <strong>Reply STOP to opt out</strong>, and a STOP is honoured
-          for good — the one exception is the verification code, which expires in ten minutes and is the
-          only text nobody can be subscribed to.
+          Every automated message to a customer carries <strong>Reply STOP to opt out</strong>, and a STOP is
+          honoured for good. The verification code and a contractor&rsquo;s manual reply are the two narrow
+          conversational exceptions; neither enrolls somebody in an automated subscription.
         </p>
       </details>
     </section>

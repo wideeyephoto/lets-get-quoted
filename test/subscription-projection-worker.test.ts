@@ -93,6 +93,7 @@ const CONTEXT: StripeSubscriptionProviderContext = Object.freeze({
 const BINDING: StripeSubscriptionProjectionBinding = Object.freeze({
   operationPk: OPERATION_PK,
   operationState: 'checkout_created',
+  operationPurpose: 'base_plan_subscription',
   workspaceId: WORKSPACE_ID,
   operationId: CONTEXT.operationId,
   checkoutSessionId: 'cs_test_checkout123',
@@ -256,6 +257,7 @@ describe('dark Stripe Billing subscription projection worker', () => {
       resolveBinding: vi.fn(),
       project: vi.fn(),
       fail,
+      ignoreForeignRail: vi.fn(),
     } satisfies StripeBillingSubscriptionProjectionStore;
     const resolver = {
       loadProviderContext: vi.fn(),
@@ -297,6 +299,7 @@ describe('dark Stripe Billing subscription projection worker', () => {
       resolveBinding,
       project,
       fail: vi.fn(),
+      ignoreForeignRail: vi.fn(),
     } satisfies StripeBillingSubscriptionProjectionStore;
     const resolver = {
       loadProviderContext: vi.fn().mockResolvedValue(CONTEXT),

@@ -177,18 +177,45 @@ export async function getClientStatement(supabase: SupabaseClient, accountId: st
   if (jobIds.length > 0) {
     const { data } = await supabase
       .from('payments')
-      .select('id, job_id, label, kind, amount, status, paid_at, requested_at')
+      // refunded_amount was NOT selected, so a refund was invisible here and the
+      // statement told the customer they had paid money that had gone back to
+      // them.
+      .select('id, job_id, label, kind, amount, refunded_amount, status, paid_at, requested_at')
       .eq('account_id', accountId)
       .in('job_id', jobIds)
       .order('requested_at', { ascending: false });
     payments = data ?? [];
   }
 
+  /**
+   * Priority-visit fees are booked as a payment on the JOB, and they do not pay
+   * for the job.
+   *
+   * `/pay/[id]` tells the homeowner in as many words that the fee "is not taken
+   * off the cost of the job", and then this credited it against the quote
+   * anyway. The discriminator is the link, not the shape: quick-stop-payments
+   * creates an ordinary `kind: 'deposit'` row and records its id on
+   * `extra_stop_requests.payment_id`. Filtering on `invoice_id` instead would
+   * have dropped genuine deposits, which do not all carry one.
+   */
+  const feePaymentIds = new Set<string>();
+  if (payments.length > 0) {
+    const { data: feeRows } = await supabase
+      .from('extra_stop_requests')
+      .select('payment_id')
+      .eq('account_id', accountId)
+      .not('payment_id', 'is', null);
+    for (const row of feeRows ?? []) feePaymentIds.add(String((row as { payment_id: unknown }).payment_id));
+  }
+
   const paidByJob = new Map<string, number>();
   for (const payment of payments) {
-    if (payment.status === 'paid') {
+    if (payment.status === 'paid' && !feePaymentIds.has(String(payment.id))) {
       const key = payment.job_id as string;
-      paidByJob.set(key, (paidByJob.get(key) ?? 0) + (Number(payment.amount) || 0));
+      // Net of refunds. What the customer has actually paid is what they sent
+      // minus what came back.
+      const net = (Number(payment.amount) || 0) - (Number(payment.refunded_amount) || 0);
+      paidByJob.set(key, (paidByJob.get(key) ?? 0) + net);
     }
   }
   const refById = new Map(jobs.map((job) => [job.id as string, job.ref as string]));

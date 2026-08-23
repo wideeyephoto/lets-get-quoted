@@ -112,6 +112,7 @@ function request(overrides: Partial<DispatchRequest> = {}): DispatchRequest {
     claimedOfferId: null,
     claimedCrewId: null,
     claimedAt: null,
+    queuedAt: '2026-08-13T08:59:00.000Z',
     sentAt: '2026-08-13T09:00:00.000Z',
     createdAt: '2026-08-13T09:00:00.000Z',
     ...overrides,
@@ -464,19 +465,20 @@ describe('request status', () => {
     expect(requestDisplayStatus(request({ status: 'draft' }), [], NOW)).toBe('draft');
   });
 
-  it('counts what happened without letting a view undo a send', () => {
+  it('separates queue acceptance from carrier acceptance and later outcomes', () => {
     const progress = requestProgress(
       request(),
       [
         offer({ id: 'a', status: 'viewed', viewedAt: '2026-08-13T09:10:00Z' }),
         offer({ id: 'b', status: 'declined' }),
-        offer({ id: 'c', status: 'failed' }),
-        offer({ id: 'd', status: 'queued' }),
+        offer({ id: 'c', status: 'failed', sentAt: null }),
+        offer({ id: 'd', status: 'queued', sentAt: null }),
       ],
       NOW,
     );
     expect(progress.recipients).toBe(4);
-    expect(progress.sent).toBe(3);
+    expect(progress.queued).toBe(1);
+    expect(progress.carrierAccepted).toBe(2);
     expect(progress.viewed).toBe(1);
     expect(progress.declined).toBe(1);
     expect(progress.failed).toBe(1);

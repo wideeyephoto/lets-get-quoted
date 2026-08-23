@@ -186,7 +186,12 @@ export async function resolveQuickStopCancellation(
         : opts.kind === 'contractor_cancel'
           ? `Your Quick Stop was canceled by the contractor. ${refundLabel}`
           : `Your Quick Stop has been canceled. ${refundLabel}`;
-    await sendQuickStopStatusSms({ accountId, toPhone: req.client_phone, message });
+    await sendQuickStopStatusSms({
+      accountId,
+      toPhone: req.client_phone,
+      message,
+      idempotencyKey: `quick-stop:${requestId}:refund:${status}`,
+    });
   }
   try {
     const ownerEmail = await getAccountOwnerEmail(admin, accountId);

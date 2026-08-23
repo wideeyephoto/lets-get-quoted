@@ -9,6 +9,10 @@ import {
   type ConnectedPaymentProjectionWorkerBatchResult,
 } from '@/lib/billing/connected-payment-projection-worker';
 import {
+  runTopUpProjectionBatch,
+  type TopUpProjectionWorkerBatchResult,
+} from '@/lib/billing/top-up-projection-worker';
+import {
   runDirectPaymentSettlementBatch,
   type RunDirectPaymentSettlementBatchResult,
 } from '@/lib/billing/direct-payment-settlement-worker';
@@ -23,6 +27,19 @@ import {
   runStripeBillingSubscriptionProjectionBatch,
   type StripeSubscriptionProjectionWorkerBatchResult,
 } from '@/lib/billing/subscription-projection-worker';
+import {
+  runWorkspaceStorageUsageSweep,
+  type StorageUsageSweepResult,
+} from '@/lib/billing/storage-usage-sweep-worker';
+import {
+  runPurchasedCapacityLifecycleSweep,
+  type CapacityLifecycleSweepResult,
+} from '@/lib/billing/capacity-lifecycle-worker';
+import {
+  runUsageReservationExpirySweep,
+  USAGE_RESERVATION_EXPIRY_BATCH_SIZE,
+  type UsageReservationExpiryResult,
+} from '@/lib/billing/usage-reservation-expiry-worker';
 
 /**
  * DARK scheduler boundary for the durable billing workers.
@@ -38,18 +55,27 @@ export const STRIPE_SUBSCRIPTION_PROJECTION_WORKER_FLAG =
   'LGQ_STRIPE_SUBSCRIPTION_PROJECTION_WORKER_ENABLED';
 export const STRIPE_CONNECTED_PAYMENT_PROJECTION_WORKER_FLAG =
   'LGQ_STRIPE_CONNECTED_PAYMENT_PROJECTION_WORKER_ENABLED';
+export const STRIPE_TOP_UP_PROJECTION_WORKER_FLAG =
+  'LGQ_STRIPE_TOP_UP_PROJECTION_WORKER_ENABLED';
 export const PAID_PLAN_ALLOWANCE_RESET_WORKER_FLAG =
   'LGQ_PAID_PLAN_ALLOWANCE_RESET_WORKER_ENABLED';
 export const DIRECT_PAYMENT_SETTLEMENT_WORKER_FLAG =
   'LGQ_DIRECT_PAYMENT_SETTLEMENT_WORKER_ENABLED';
 export const LEGACY_QUICK_STOP_LATE_REFUND_WORKER_FLAG =
   'LGQ_LEGACY_QUICK_STOP_LATE_REFUND_WORKER_ENABLED';
+export const WORKSPACE_STORAGE_USAGE_SWEEP_WORKER_FLAG =
+  'LGQ_WORKSPACE_STORAGE_USAGE_SWEEP_ENABLED';
+export const PURCHASED_CAPACITY_LIFECYCLE_WORKER_FLAG =
+  'LGQ_PURCHASED_CAPACITY_LIFECYCLE_ENABLED';
+export const USAGE_RESERVATION_EXPIRY_WORKER_FLAG =
+  'LGQ_USAGE_RESERVATION_EXPIRY_ENABLED';
 
 // Request input never controls these bounds. Increasing either value requires
 // a reviewed deploy, so a query string cannot turn one scheduler call into an
 // unbounded provider or database loop.
 export const STRIPE_SUBSCRIPTION_PROJECTION_BATCH_SIZE = 10;
 export const STRIPE_CONNECTED_PAYMENT_PROJECTION_BATCH_SIZE = 10;
+export const STRIPE_TOP_UP_PROJECTION_BATCH_SIZE = 10;
 export const PAID_PLAN_ALLOWANCE_RESET_BATCH_SIZE = 10;
 export const DIRECT_PAYMENT_SETTLEMENT_BATCH_SIZE = 10;
 export const LEGACY_QUICK_STOP_LATE_REFUND_BATCH_SIZE = 10;
@@ -68,6 +94,12 @@ export function stripeConnectedPaymentProjectionWorkerEnabled(
   return env[STRIPE_CONNECTED_PAYMENT_PROJECTION_WORKER_FLAG] === '1';
 }
 
+export function stripeTopUpProjectionWorkerEnabled(
+  env: ServerEnvironment = process.env,
+): boolean {
+  return env[STRIPE_TOP_UP_PROJECTION_WORKER_FLAG] === '1';
+}
+
 export function paidPlanAllowanceResetWorkerEnabled(
   env: ServerEnvironment = process.env,
 ): boolean {
@@ -84,6 +116,24 @@ export function legacyQuickStopLateRefundWorkerEnabled(
   env: ServerEnvironment = process.env,
 ): boolean {
   return env[LEGACY_QUICK_STOP_LATE_REFUND_WORKER_FLAG] === '1';
+}
+
+export function workspaceStorageUsageSweepWorkerEnabled(
+  env: ServerEnvironment = process.env,
+): boolean {
+  return env[WORKSPACE_STORAGE_USAGE_SWEEP_WORKER_FLAG] === '1';
+}
+
+export function purchasedCapacityLifecycleWorkerEnabled(
+  env: ServerEnvironment = process.env,
+): boolean {
+  return env[PURCHASED_CAPACITY_LIFECYCLE_WORKER_FLAG] === '1';
+}
+
+export function usageReservationExpiryWorkerEnabled(
+  env: ServerEnvironment = process.env,
+): boolean {
+  return env[USAGE_RESERVATION_EXPIRY_WORKER_FLAG] === '1';
 }
 
 export type StripeSubscriptionProjectionCronSummary = Readonly<{
@@ -118,6 +168,11 @@ export function summarizeStripeSubscriptionProjectionBatch(
         processed += 1;
         break;
       case 'ignored':
+      // A subscription belonging to the purchased-capacity rail. Counted with
+      // the other ignores rather than given its own key: an operator reading a
+      // heartbeat wants "not projected, not a problem", and a new counter would
+      // change the summary shape every consumer already asserts on.
+      case 'ignored_foreign_rail':
         ignored += 1;
         break;
       case 'replay_processed':
@@ -332,6 +387,136 @@ ConnectedPaymentProjectionCronSummary
   }
 }
 
+export type TopUpProjectionCronSummary = Readonly<{
+  requested: number;
+  selected: number;
+  claimed: number;
+  dead_lettered_without_provider: number;
+  granted: number;
+  already_granted: number;
+  awaiting_async_payment: number;
+  not_granted: number;
+  replayed: number;
+  in_progress: number;
+  retryable_failures: number;
+  terminal_failures: number;
+  worker_errors: number;
+  claim_errors: number;
+  failures: number;
+}>;
+
+/**
+ * Collapse workspace, Session and credit-lot identifiers before cron_runs sees
+ * them, and count the outcomes an operator actually needs to act on.
+ *
+ * `not_granted` is the one to watch. It counts paid Sessions this projector
+ * deliberately did not turn into credit — a withheld SKU, or a recurring
+ * capacity SKU whose fulfillment does not exist yet. Those are not failures, so
+ * they must not inflate `failures` and page someone; they are money taken that
+ * somebody still has to answer for, so they must not be invisible either.
+ */
+export function summarizeTopUpProjectionBatch(
+  result: TopUpProjectionWorkerBatchResult,
+  topLevelWorkerErrors = 0,
+): TopUpProjectionCronSummary {
+  let granted = 0;
+  let alreadyGranted = 0;
+  let awaitingAsyncPayment = 0;
+  let notGranted = 0;
+  let replayed = 0;
+  let inProgress = 0;
+  let retryableFailures = 0;
+  let terminalFailures = 0;
+  let itemWorkerErrors = 0;
+
+  for (const item of result.results) {
+    switch (item.status) {
+      case 'projected':
+        switch (item.projectionResult) {
+          // Capacity counts as granted alongside credit. They are different
+          // ledgers but the same fact for an operator reading this: money was
+          // taken and the workspace received what it paid for.
+          case 'top_up_credits_granted':
+          case 'top_up_capacity_granted':
+            granted += 1;
+            break;
+          case 'top_up_credits_already_granted':
+          case 'top_up_capacity_already_granted':
+            alreadyGranted += 1;
+            break;
+          case 'top_up_awaiting_async_payment':
+            awaitingAsyncPayment += 1;
+            break;
+          case 'top_up_fulfillment_withheld':
+          case 'top_up_capacity_fulfillment_deferred':
+            notGranted += 1;
+            break;
+          default:
+            // top_up_payment_failed, top_up_checkout_expired and
+            // top_up_not_a_purchase are ordinary terminal outcomes with nothing
+            // owed to anyone, so they need no counter of their own.
+            break;
+        }
+        break;
+      case 'replay_processed':
+      case 'replay_ignored':
+        replayed += 1;
+        break;
+      case 'in_progress':
+        inProgress += 1;
+        break;
+      case 'failed_retryable':
+        retryableFailures += 1;
+        break;
+      case 'failed_terminal':
+        terminalFailures += 1;
+        break;
+      case 'worker_error':
+        itemWorkerErrors += 1;
+        break;
+    }
+  }
+
+  const workerErrors = itemWorkerErrors + topLevelWorkerErrors;
+  const claimErrors = result.status === 'claim_failed' ? 1 : 0;
+  const failures = retryableFailures + terminalFailures + workerErrors + claimErrors;
+  return Object.freeze({
+    requested: result.requestedBatchSize,
+    selected: result.selectedCount,
+    claimed: result.claimedCount,
+    dead_lettered_without_provider: result.selectedCount - result.claimedCount,
+    granted,
+    already_granted: alreadyGranted,
+    awaiting_async_payment: awaitingAsyncPayment,
+    not_granted: notGranted,
+    replayed,
+    in_progress: inProgress,
+    retryable_failures: retryableFailures,
+    terminal_failures: terminalFailures,
+    worker_errors: workerErrors,
+    claim_errors: claimErrors,
+    failures,
+  });
+}
+
+export async function runTopUpProjectionCronBatch(): Promise<TopUpProjectionCronSummary> {
+  try {
+    const result = await runTopUpProjectionBatch(STRIPE_TOP_UP_PROJECTION_BATCH_SIZE);
+    return summarizeTopUpProjectionBatch(result);
+  } catch {
+    // Initialization/configuration exceptions are reduced to one count. Never
+    // let a provider, workspace, event, or database error string reach cron_runs.
+    return summarizeTopUpProjectionBatch({
+      status: 'completed',
+      requestedBatchSize: STRIPE_TOP_UP_PROJECTION_BATCH_SIZE,
+      selectedCount: 0,
+      claimedCount: 0,
+      results: [],
+      errorCode: null,
+    }, 1);
+  }
+}
+
 export async function runPaidPlanAllowanceResetCronBatch(): Promise<
 PaidPlanAllowanceResetCronSummary
 > {
@@ -353,6 +538,7 @@ export type DirectPaymentSettlementCronSummary = Readonly<{
   terminal_failures: number;
   sms_indeterminate: number;
   feed_recorded: number;
+  sms_queued: number;
   sms_sent: number;
   sms_skipped_no_consent: number;
   sms_skipped_opted_out: number;
@@ -373,6 +559,7 @@ export function summarizeDirectPaymentSettlementBatch(
   let terminalFailures = 0;
   let smsIndeterminate = 0;
   let feedRecorded = 0;
+  let smsQueued = 0;
   let smsSent = 0;
   let smsSkippedNoConsent = 0;
   let smsSkippedOptedOut = 0;
@@ -399,6 +586,9 @@ export function summarizeDirectPaymentSettlementBatch(
 
     if (outcome.feedStatus === 'recorded') feedRecorded += 1;
     switch (outcome.smsStatus) {
+      case 'queued':
+        smsQueued += 1;
+        break;
       case 'sent':
         smsSent += 1;
         break;
@@ -428,6 +618,7 @@ export function summarizeDirectPaymentSettlementBatch(
     terminal_failures: terminalFailures,
     sms_indeterminate: smsIndeterminate,
     feed_recorded: feedRecorded,
+    sms_queued: smsQueued,
     sms_sent: smsSent,
     sms_skipped_no_consent: smsSkippedNoConsent,
     sms_skipped_opted_out: smsSkippedOptedOut,
@@ -539,4 +730,139 @@ LegacyQuickStopLateRefundCronSummary
       1,
     );
   }
+}
+
+export type WorkspaceStorageUsageSweepCronSummary = Readonly<{
+  status: StorageUsageSweepResult['status'];
+  workspaces_measured: number;
+  workspaces_zeroed: number;
+  bytes_total: number;
+}>;
+
+/**
+ * No batch size and no failure list, unlike every other summary here. The sweep
+ * is one transaction over every workspace, so there is nothing partial to report
+ * -- it either recomputed all of them or none of them.
+ */
+export function summarizeWorkspaceStorageUsageSweep(
+  result: StorageUsageSweepResult,
+): WorkspaceStorageUsageSweepCronSummary {
+  if (result.status === 'failed') {
+    return Object.freeze({
+      status: 'failed' as const,
+      workspaces_measured: 0,
+      workspaces_zeroed: 0,
+      bytes_total: 0,
+    });
+  }
+  return Object.freeze({
+    status: result.status,
+    workspaces_measured: result.workspacesMeasured,
+    workspaces_zeroed: result.workspacesZeroed,
+    bytes_total: result.bytesTotal,
+  });
+}
+
+export async function runWorkspaceStorageUsageSweepCron(): Promise<
+WorkspaceStorageUsageSweepCronSummary
+> {
+  return summarizeWorkspaceStorageUsageSweep(await runWorkspaceStorageUsageSweep());
+}
+
+export type PurchasedCapacityLifecycleCronSummary = Readonly<{
+  status: CapacityLifecycleSweepResult['status'];
+  examined: number;
+  canceled: number;
+  changed: number;
+  unchanged: number;
+  unmapped: number;
+  missing: number;
+  provider_errors: number;
+  failures: number;
+}>;
+
+/**
+ * `unmapped` and `missing` are the two to watch, and neither is a failure.
+ *
+ * `unmapped` counts subscriptions whose Stripe status this app does not
+ * translate — a status Stripe added since. Nothing was written for them, which
+ * is correct and also means they are invisible unless counted here.
+ *
+ * `missing` counts subscriptions Stripe no longer has. Those are deliberately
+ * NOT treated as cancellations: canceled is terminal in the ledger, and a 404
+ * from a transient fault would destroy entitlement no later sweep could restore.
+ */
+export function summarizePurchasedCapacityLifecycleSweep(
+  result: CapacityLifecycleSweepResult,
+): PurchasedCapacityLifecycleCronSummary {
+  if (result.status === 'failed') {
+    return Object.freeze({
+      status: 'failed' as const,
+      examined: 0,
+      canceled: 0,
+      changed: 0,
+      unchanged: 0,
+      unmapped: 0,
+      missing: 0,
+      provider_errors: 0,
+      failures: 1,
+    });
+  }
+  return Object.freeze({
+    status: result.status,
+    examined: result.examined,
+    canceled: result.canceled,
+    changed: result.changed,
+    unchanged: result.unchanged,
+    unmapped: result.unmapped,
+    missing: result.missing,
+    provider_errors: result.providerErrors,
+    failures: result.providerErrors,
+  });
+}
+
+export async function runPurchasedCapacityLifecycleCron(): Promise<
+PurchasedCapacityLifecycleCronSummary
+> {
+  return summarizePurchasedCapacityLifecycleSweep(await runPurchasedCapacityLifecycleSweep());
+}
+
+export type UsageReservationExpiryCronSummary = Readonly<{
+  status: UsageReservationExpiryResult['status'];
+  expired: number;
+  saturated: boolean;
+  batch_size: number;
+}>;
+
+/**
+ * `expired: 0` is the healthy steady state here, not a sign nothing ran.
+ *
+ * Almost every request either commits or releases its own reservation, so this
+ * sweep exists for the ones that could not -- a crashed process cannot run its
+ * own finally block. A non-zero count means requests are dying mid-flight, and a
+ * saturated batch means enough of them are that one run cannot keep up.
+ */
+export function summarizeUsageReservationExpirySweep(
+  result: UsageReservationExpiryResult,
+): UsageReservationExpiryCronSummary {
+  if (result.status === 'failed') {
+    return Object.freeze({
+      status: 'failed' as const,
+      expired: 0,
+      saturated: false,
+      batch_size: USAGE_RESERVATION_EXPIRY_BATCH_SIZE,
+    });
+  }
+  return Object.freeze({
+    status: result.status,
+    expired: result.expired,
+    saturated: result.saturated,
+    batch_size: USAGE_RESERVATION_EXPIRY_BATCH_SIZE,
+  });
+}
+
+export async function runUsageReservationExpiryCron(): Promise<
+UsageReservationExpiryCronSummary
+> {
+  return summarizeUsageReservationExpirySweep(await runUsageReservationExpirySweep());
 }

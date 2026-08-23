@@ -166,6 +166,17 @@ export type DirectCheckoutLateSuccessOperatorResolutionResult = Readonly<{
   paymentId: string;
   taskId: string;
   paidOperationPk: string;
+  /**
+   * Whether live evidence has moved since this resolution was written.
+   *
+   * `null` means the RPC does not report it -- only the settle path does.
+   *
+   * `true` on an `already_settled` replay is not an error. The settlement
+   * stands and the hold still blocks refund release, but a paid fact has
+   * appeared that the stored resolution does not cover, so the replay is
+   * describing a past that is no longer the whole truth.
+   */
+  evidenceMoved: boolean | null;
 }>;
 
 export interface DirectCheckoutLateSuccessOperatorResolutionStore {
@@ -484,6 +495,24 @@ function parseMutationResult(
     throw new Error('Operator-resolution result identity changed.');
   }
 
+  // Only the settle RPC reports this. Demand a real boolean there rather than
+  // coercing: a column that went missing would otherwise read as `false`,
+  // meaning "evidence has not moved", which is the dangerous direction to be
+  // wrong in.
+  const rawEvidenceMoved = row.evidence_moved;
+  let evidenceMoved: boolean | null;
+  if (expectedKind === 'settle') {
+    if (typeof rawEvidenceMoved !== 'boolean') {
+      throw new Error('Operator-resolution settle result is missing its moved-evidence flag.');
+    }
+    evidenceMoved = rawEvidenceMoved;
+  } else {
+    if (rawEvidenceMoved !== undefined) {
+      throw new Error('Operator-resolution retain-hold result reported a moved-evidence flag.');
+    }
+    evidenceMoved = null;
+  }
+
   return Object.freeze({
     schema: DIRECT_CHECKOUT_LATE_SUCCESS_OPERATOR_RESOLUTION_SCHEMA,
     resolutionId: requiredUuid(row.resolution_id, 'operator-resolution result ID'),
@@ -492,6 +521,7 @@ function parseMutationResult(
     paymentId,
     taskId,
     paidOperationPk,
+    evidenceMoved,
   });
 }
 

@@ -58,7 +58,8 @@ describe('the registry and vercel.json agree', () => {
 });
 
 describe('reading a cron expression', () => {
-  it('handles the four shapes this schedule uses', () => {
+  it('handles the five shapes this schedule uses', () => {
+    expect(expectedIntervalMs('* * * * *')).toBe(MINUTE);
     expect(expectedIntervalMs('*/15 * * * *')).toBe(15 * MINUTE);
     expect(expectedIntervalMs('0 * * * *')).toBe(HOUR);
     expect(expectedIntervalMs('0 13 * * *')).toBe(DAY);
@@ -73,7 +74,7 @@ describe('reading a cron expression', () => {
   // no overdue check. Guessing would put a confident red badge on a healthy job,
   // which is the fastest way to teach staff to ignore the page.
   it('declines anything it does not genuinely understand', () => {
-    for (const odd of ['', '* * * * *', '0 13 1 * *', '0 13 * 6 *', '15,45 * * * *', '0 9-17 * * *', 'nonsense'])
+    for (const odd of ['', '0 13 1 * *', '0 13 * 6 *', '15,45 * * * *', '0 9-17 * * *', 'nonsense'])
       expect(expectedIntervalMs(odd)).toBeNull();
   });
 

@@ -1,6 +1,11 @@
 import type { ReactNode } from 'react';
 import Link from 'next/link';
-import { requireOwnerContext } from '@/lib/auth';
+import { createAdminClient, requireOwnerContext } from '@/lib/auth';
+import { aiVoiceEnabled } from '@/lib/voice/admission';
+import { loadVoiceCallHistory } from '@/lib/voice/call-history';
+import { loadVoiceEntitlement } from '@/lib/voice/entitlement';
+import { loadDedicatedMessagingReadiness } from '@/lib/messaging-number-provisioning';
+import { loadVoiceRouteReadiness } from '@/lib/voice/route-readiness';
 import { pickBusinessName } from '@/lib/business-name';
 import { listAccountEvents } from '@/lib/account-events';
 import SaveButton from '@/components/save-button';
@@ -11,6 +16,8 @@ import ChoiceRemindersSection from '../settings/ChoiceRemindersSection';
 import ClientPortalSection from '../settings/ClientPortalSection';
 import IntakeContentSection from '../settings/IntakeContentSection';
 import MissedCallSection from '../settings/MissedCallSection';
+import AiReceptionistSection from '../settings/AiReceptionistSection';
+import VoiceCallHistorySection from '../settings/VoiceCallHistorySection';
 import ReviewRequestSection from '../settings/ReviewRequestSection';
 import IntakePreviewModal from '../sites/IntakePreviewModal';
 import OpenAnchoredCard from './OpenAnchoredCard';
@@ -117,7 +124,14 @@ function AutomationCard({
   title: string;
   subtitle: string;
   status?: AutomationStatus;
-  toggle?: { on: boolean; action: (next: boolean) => Promise<void>; onLabel?: string; offLabel?: string };
+  toggle?: {
+    on: boolean;
+    action: (next: boolean) => Promise<void>;
+    onLabel?: string;
+    offLabel?: string;
+    enableBlocked?: boolean;
+    blockedReason?: string;
+  };
   // Cards sharing a group name behave as one accordion — opening any of them
   // closes the rest. Native <details name>, the same mechanism the schedule
   // popovers use; browsers without support simply allow several open, which is
@@ -133,7 +147,15 @@ function AutomationCard({
           <span className="automation-sub">{subtitle}</span>
         </span>
         {toggle ? (
-          <AutomationSwitch label={title} on={toggle.on} action={toggle.action} onLabel={toggle.onLabel} offLabel={toggle.offLabel} />
+          <AutomationSwitch
+            label={title}
+            on={toggle.on}
+            action={toggle.action}
+            onLabel={toggle.onLabel}
+            offLabel={toggle.offLabel}
+            enableBlocked={toggle.enableBlocked}
+            blockedReason={toggle.blockedReason}
+          />
         ) : status ? (
           <span className={`automation-status ${status.tone}`}>{status.label}</span>
         ) : null}
@@ -146,6 +168,51 @@ function AutomationCard({
 
 export default async function AutomationsPage() {
   const { supabase, accountId } = await requireOwnerContext();
+  const aiVoice = aiVoiceEnabled();
+  const admin = createAdminClient();
+  const messagingReadinessPromise = loadDedicatedMessagingReadiness(accountId, admin);
+  const voiceRouteReadinessPromise = aiVoice
+    ? loadVoiceRouteReadiness(admin, accountId)
+    : Promise.resolve(null);
+
+  // READ SEPARATELY AND TOLERANTLY, for the reason the Settings page spells out
+  // beside its own extra read: a `.single()` naming a column or table that does
+  // not exist yet fails the whole query and takes the page down with it. Both of
+  // these land ahead of their migrations, so an unapplied migration must degrade
+  // to "not configured" rather than to a blank Automations tab.
+  const [voiceRead, voiceEntitlement] = aiVoice
+    ? await Promise.all([
+      supabase
+        .from('voice_settings')
+        .select('status, answer_mode, greeting, transfer_number, business_hours')
+        .eq('account_id', accountId)
+        .maybeSingle(),
+      // This uses the internal recurring-capacity ledger as well as the
+      // base-plan flag. `voice_concurrent_calls` by itself is only a capacity
+      // description and is present even for plans that do not include the
+      // product.
+      loadVoiceEntitlement(admin, accountId),
+    ])
+    : [null, null] as const;
+  // voice_calls lands ahead of its migration on an environment that has not
+  // applied it. The reader degrades an unreadable history to an empty one. The
+  // entitlement window is also enforced in the query so a daily purge cannot
+  // expose a call for the hours between expiry and its next run.
+  const voiceHistory = aiVoice
+    ? await loadVoiceCallHistory(supabase, accountId, {
+      limit: 20,
+      historyDays: voiceEntitlement?.historyDays,
+    })
+    : null;
+  const voiceSettings = voiceRead?.error ? null : (voiceRead?.data ?? null) as Record<string, unknown> | null;
+  const voiceSettingsAvailable = Boolean(voiceRead && !voiceRead.error);
+  if (voiceRead?.error) console.error('voice settings read failed:', voiceRead.error);
+  const messagingReadiness = await messagingReadinessPromise;
+  const voiceRouteReadiness = await voiceRouteReadinessPromise;
+  const customerTextingReady = messagingReadiness.kind === 'ready';
+  const customerTextingBlockReason = messagingReadiness.kind === 'unavailable'
+    ? 'We could not verify your customer-texting number right now. Try again or contact support.'
+    : 'An approved, active dedicated number is required before this automation can text customers.';
 
   const [{ data: account }, { data: site }] = await Promise.all([
     supabase.from('accounts').select('business_name, timezone, connect_onboarded, call_textback_enabled, call_forward_number, call_tracking_number, arrival_updates_enabled, arrival_location_policy, arrival_window_minutes, arrival_morning_confirmation, arrival_clock_travel, time_clock_mode, workday_start, workday_end, job_buffer_minutes, schedule_day_hours').eq('id', accountId).single(),
@@ -330,6 +397,19 @@ export default async function AutomationsPage() {
     .eq('id', accountId)
     .maybeSingle();
   const callTrackingVerifiedAt = (callVerified?.call_tracking_verified_at as string | null) ?? null;
+  const voiceConfiguredStatus = (voiceSettings?.status as 'off' | 'active' | 'paused') ?? 'off';
+  const voiceEntitlementAvailable = voiceEntitlement?.available === true;
+  const voiceRouteState = voiceRouteReadiness?.kind === 'ready'
+    ? 'ready' as const
+    : voiceRouteReadiness?.kind === 'not_ready'
+      ? voiceRouteReadiness.reason
+      : 'unavailable' as const;
+  const voiceRouteReady = voiceRouteState === 'ready';
+  const voiceActivationReady = voiceSettingsAvailable
+    && voiceEntitlementAvailable
+    && voiceEntitlement?.enabled === true
+    && (voiceEntitlement.concurrentCalls ?? 0) > 0
+    && voiceRouteReady;
 
   // Defensive read: pre-migration the column is absent, and the reminders
   // default on for the same reason the sweep does — a needed-by date the
@@ -372,13 +452,29 @@ export default async function AutomationsPage() {
       </section>
 
       <div className="automation-list">
+        {!customerTextingReady ? (
+          <div className="automation-prereq" role="status">
+            <span aria-hidden="true">📱</span>
+            <span>
+              <strong>Customer texting is not ready.</strong> SMS automations cannot be turned on, and
+              any already-configured SMS automation cannot deliver texts, until this workspace has an
+              approved, active dedicated number.{' '}
+              <Link href="/dashboard/messages?setup=1#texting-setup">Open Texting setup &rarr;</Link>
+            </span>
+          </div>
+        ) : null}
         {!allEssentialsOn ? (
           <form action={enableRecommendedAutomationsAction} className="automation-recommend">
             <div className="automation-recommend-copy">
               <strong>Turn on the essentials in one click</strong>
               <span>Enables review asks, quote follow-ups, appointment reminders, and your daily digest with sensible defaults. Tune or turn any off below.</span>
             </div>
-            <SaveButton>Turn on recommended</SaveButton>
+            <SaveButton
+              disabled={!customerTextingReady}
+              title={!customerTextingReady ? customerTextingBlockReason : undefined}
+            >
+              {customerTextingReady ? 'Turn on recommended' : 'Texting setup required'}
+            </SaveButton>
           </form>
         ) : null}
         <p className="automation-group">Booking &amp; intake</p>
@@ -473,6 +569,11 @@ export default async function AutomationsPage() {
               leadFilters={businessBasics.leadFilters}
               emailField={businessBasics.estimateRanges.emailField}
               hasCities={businessBasics.serviceAreas.cities.some((city) => city.trim())}
+              // The list itself, and the mute that turns a flag into silence.
+              // The service-area gate names both, because a filter the owner
+              // cannot see is indistinguishable from a quiet week.
+              cities={businessBasics.serviceAreas.cities.map((city) => city.trim()).filter(Boolean)}
+              muteLowQualityLeads={muteLowQualityLeads}
               smartIntakeOn={smartIntakeOn}
               preview={<IntakePreviewModal site={site as Site} compact />}
             />
@@ -526,7 +627,45 @@ export default async function AutomationsPage() {
           </Link>
         </AutomationCard>
 
-        <AutomationCard group="booking-intake" id="missed-call" title="Missed-call text-back" subtitle="Auto-text callers you miss" toggle={{ on: callTextbackEnabled, action: toggleAutomationAction.bind(null, 'missed-call') }}>
+        {aiVoice ? (
+          <AutomationCard
+            group="booking-intake"
+            id="ai-receptionist"
+            title="AI receptionist"
+            subtitle="Answers the calls you can’t"
+            /* No `toggle`. The card would give this a second on/off beside the
+               section's own three-state control, and two controls for one
+               setting means one of them is always about to be wrong — the
+               lesson the missed-call card below already carries. */
+            status={{
+              label: !voiceSettingsAvailable ? 'Unavailable'
+                : voiceConfiguredStatus === 'active' && !voiceActivationReady ? 'Configured — not answering'
+                  : voiceConfiguredStatus === 'active' ? 'Answering'
+                    : voiceConfiguredStatus === 'paused' ? 'Paused' : 'Off',
+              tone: voiceConfiguredStatus === 'active' && voiceActivationReady ? 'on'
+                : voiceConfiguredStatus === 'off' ? 'off' : 'neutral',
+            }}
+          >
+            <AiReceptionistSection
+              status={voiceConfiguredStatus}
+              answerMode={(voiceSettings?.answer_mode as 'always' | 'after_hours') ?? 'after_hours'}
+              greeting={(voiceSettings?.greeting as string | null) ?? ''}
+              transferNumber={(voiceSettings?.transfer_number as string | null) ?? ''}
+              businessHours={(voiceSettings?.business_hours ?? {}) as Record<string, [string, string] | null>}
+              timezone={accountTimeZone}
+              entitled={voiceEntitlement?.enabled ?? false}
+              entitlementAvailable={voiceEntitlementAvailable}
+              settingsAvailable={voiceSettingsAvailable}
+              routeState={voiceRouteState}
+              concurrentCalls={voiceEntitlement?.concurrentCalls ?? 0}
+            />
+            {voiceHistory ? (
+              <VoiceCallHistorySection history={voiceHistory} timezone={accountTimeZone} />
+            ) : null}
+          </AutomationCard>
+        ) : null}
+
+        <AutomationCard group="booking-intake" id="missed-call" title="Missed-call text-back" subtitle="Auto-text callers you miss" toggle={{ on: callTextbackEnabled, action: toggleAutomationAction.bind(null, 'missed-call'), enableBlocked: !customerTextingReady, blockedReason: customerTextingBlockReason, offLabel: customerTextingReady ? 'Off' : 'Setup required' }}>
           <MissedCallSection
             enabled={callTextbackEnabled}
             businessName={businessName}
@@ -537,7 +676,7 @@ export default async function AutomationsPage() {
         </AutomationCard>
 
         <p className="automation-group">Customer follow-through</p>
-        <AutomationCard group="follow-through" id="reviews" title="Review requests" subtitle="Auto-ask after a completed job" toggle={{ on: autoReviewRequest, action: toggleAutomationAction.bind(null, 'reviews') }}>
+        <AutomationCard group="follow-through" id="reviews" title="Review requests" subtitle="Auto-ask after a completed job" toggle={{ on: autoReviewRequest, action: toggleAutomationAction.bind(null, 'reviews'), enableBlocked: !customerTextingReady, blockedReason: customerTextingBlockReason, offLabel: customerTextingReady ? 'Off' : 'Setup required' }}>
           <ReviewRequestSection
             enabled={autoReviewRequest}
             businessName={businessName}
@@ -558,7 +697,7 @@ export default async function AutomationsPage() {
             The switch in the header is still the only enablement
             control; this form owns the schedule and nothing else, the
             same split appointment reminders uses. */}
-        <AutomationCard group="follow-through" id="followups" title="Automatic quote follow-ups" subtitle="Chase quotes nobody has answered" toggle={{ on: quoteFollowupsEnabled, action: toggleAutomationAction.bind(null, 'followups'), offLabel: 'Turn on' }}>
+        <AutomationCard group="follow-through" id="followups" title="Automatic quote follow-ups" subtitle="Chase quotes nobody has answered" toggle={{ on: quoteFollowupsEnabled, action: toggleAutomationAction.bind(null, 'followups'), enableBlocked: !customerTextingReady, blockedReason: customerTextingBlockReason, offLabel: customerTextingReady ? 'Turn on' : 'Setup required' }}>
           <div className={`followup-card${quoteFollowupsEnabled ? '' : ' is-paused'}`}>
             {/* NOT A WARNING. Off used to render in alarm orange, which
                 is the color this app uses for something going wrong —
@@ -567,7 +706,9 @@ export default async function AutomationsPage() {
                 happen if you turned it on. */}
             <p className="followup-state">
               {quoteFollowupsEnabled
-                ? `On — a quote that goes quiet is chased on ${followupTiming}, so you never have to remember which ones did.`
+                ? customerTextingReady
+                  ? `On — a quote that goes quiet is chased on ${followupTiming}, so you never have to remember which ones did.`
+                  : 'Configured, but customer texts are blocked until your dedicated number is ready.'
                 : 'Off. Nobody is chased, so a quote nobody answers stays that way until you follow up yourself.'}
             </p>
 
@@ -768,12 +909,14 @@ export default async function AutomationsPage() {
           id="reminders"
           title="Appointment reminders"
           subtitle="Automatically remind clients before scheduled jobs"
-          toggle={{ on: appointmentRemindersEnabled, action: toggleAutomationAction.bind(null, 'reminders') }}
+          toggle={{ on: appointmentRemindersEnabled, action: toggleAutomationAction.bind(null, 'reminders'), enableBlocked: !customerTextingReady, blockedReason: customerTextingBlockReason, offLabel: customerTextingReady ? 'Off' : 'Setup required' }}
         >
           <div className={`followup-card${appointmentRemindersEnabled ? '' : ' is-paused'}`}>
             <p className="followup-state">
               {appointmentRemindersEnabled
-                ? `Active — clients are reminded ${reminderTiming}.`
+                ? customerTextingReady
+                  ? `Active — clients are reminded ${reminderTiming}.`
+                  : 'Configured, but customer texts are blocked until your dedicated number is ready.'
                 : 'Off — nobody is reminded, so a forgotten appointment stays forgotten.'}
             </p>
 
@@ -878,7 +1021,7 @@ export default async function AutomationsPage() {
           id="arrival"
           title="Arrival updates"
           subtitle="Let customers know when you&rsquo;re on the way"
-          toggle={{ on: arrivalSettings.enabled, action: toggleAutomationAction.bind(null, 'arrival') }}
+          toggle={{ on: arrivalSettings.enabled, action: toggleAutomationAction.bind(null, 'arrival'), enableBlocked: !customerTextingReady, blockedReason: customerTextingBlockReason, offLabel: customerTextingReady ? 'Off' : 'Setup required' }}
           status={{ label: `${arrivalSettings.windowMinutes}-min window`, tone: 'neutral' }}
         >
           <p className="workspace-details-copy" style={{ marginTop: 0, marginBottom: '1rem' }}>
@@ -911,7 +1054,7 @@ export default async function AutomationsPage() {
           id="selections"
           title="Choice reminders"
           subtitle="Follow up when clients have selections waiting"
-          toggle={{ on: selectionRemindersEnabled, action: toggleAutomationAction.bind(null, 'selections') }}
+          toggle={{ on: selectionRemindersEnabled, action: toggleAutomationAction.bind(null, 'selections'), enableBlocked: !customerTextingReady, blockedReason: customerTextingBlockReason, offLabel: customerTextingReady ? 'Off' : 'Setup required' }}
         >
           <ChoiceRemindersSection
             enabled={selectionRemindersEnabled}

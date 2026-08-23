@@ -8,6 +8,7 @@
 // Everything it produces is a draft. Nothing here sends.
 
 import type { Beat, Channel, ClimateZone } from '@/lib/marketing-calendar';
+import { callModel } from '@/lib/ai-model-call';
 
 export type MarketingDraft = {
   subject: string;
@@ -30,6 +31,8 @@ export type MarketingDraft = {
 };
 
 export type DraftInput = {
+  /** Whose AI-writing balance this draft is charged to. */
+  accountId: string;
   beat: Beat;
   channel: Channel;
   businessName: string;
@@ -160,20 +163,16 @@ export async function draftMarketing(input: DraftInput): Promise<MarketingDraft 
   if (!apiKey) return null;
 
   try {
-    const response = await fetch('https://api.openai.com/v1/responses', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({
-        model: 'gpt-4o',
-        // Higher than the money-adjacent features: this is prose, and the
-        // failure mode of greedy decoding here is something that reads like
-        // every other contractor's newsletter.
-        temperature: 0.6,
-        instructions: INSTRUCTIONS,
-        input: buildMarketingInput(input),
-        text: { format: { type: 'json_object' } },
-      }),
-    });
+    const response = await callModel({
+      model: 'gpt-4o',
+      // Higher than the money-adjacent features: this is prose, and the
+      // failure mode of greedy decoding here is something that reads like
+      // every other contractor's newsletter.
+      temperature: 0.6,
+      instructions: INSTRUCTIONS,
+      input: buildMarketingInput(input),
+      text: { format: { type: 'json_object' } },
+    }, { accountId: input.accountId, kind: 'marketing_draft' });
     if (!response.ok) throw new Error(`OpenAI request failed: ${response.status}`);
     return normalizeMarketingDraft(JSON.parse(extractOutputText(await response.json())), input.year);
   } catch (error) {

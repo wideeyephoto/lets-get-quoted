@@ -39,7 +39,7 @@ const flexEntitlement = {
   billing_interval: 'none',
   billing_status: 'free',
   entitlement_state: 'active',
-  catalog_version: '2026-08-15-preview',
+  catalog_version: '2026-08-18-preview',
   platform_fee_bps: 125,
   period_end: null,
   next_allowance_reset_at: null,

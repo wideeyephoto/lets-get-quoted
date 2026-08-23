@@ -31,6 +31,16 @@ type LeadActionDeckProps = {
   markContacted: () => Promise<void>;
   undoConvert: () => Promise<void>;
   setLayoutAction: (layout: LayoutKey) => Promise<void>;
+  /**
+   * Whether to render the two buttons only an OWNER can run.
+   *
+   * Not the whole deck: reopening, marking contacted and marking LOST are all
+   * one UPDATE on the lead row, which office_can() governs. Mark WON is not --
+   * updateLeadStatusAction's won branch hands the service role to
+   * applyQuoteAcceptance, which writes job_feed and moves the job -- and undoing
+   * a conversion unwinds that same work.
+   */
+  ownerControls: boolean;
 };
 
 // The single source of truth for a lead's action hierarchy. Renders both
@@ -57,6 +67,7 @@ export default function LeadActionDeck({
   markContacted,
   undoConvert,
   setLayoutAction,
+  ownerControls,
 }: LeadActionDeckProps) {
   const [layout, setLayout] = useState<LayoutKey>(initialLayout);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -129,7 +140,7 @@ export default function LeadActionDeck({
     ) : stage === 'scheduled' ? (
       <Link className="btn secondary" href="#availability-snapshot">Review scheduled estimate</Link>
     ) : stage === 'converted' ? (
-      <UndoQuoteButton action={undoConvert} />
+      ownerControls ? <UndoQuoteButton action={undoConvert} /> : null
     ) : null;
 
   /* "Book the visit before this lead cools off" on a lead that arrived eleven
@@ -160,7 +171,7 @@ export default function LeadActionDeck({
       ) : status === 'contacted' || status === 'quoted' ? (
         <LogContactControl leadId={leadId} />
       ) : null}
-      {status !== 'won' ? <form action={markWon}><SaveButton className="btn ghost">Mark won</SaveButton></form> : null}
+      {ownerControls && status !== 'won' ? <form action={markWon}><SaveButton className="btn ghost">Mark won</SaveButton></form> : null}
       {status !== 'lost' ? <form action={markLost}><SaveButton className="btn ghost">Mark lost</SaveButton></form> : null}
       {status === 'won' || status === 'lost' ? <form action={markContacted}><SaveButton className="btn ghost">Reopen</SaveButton></form> : null}
     </>

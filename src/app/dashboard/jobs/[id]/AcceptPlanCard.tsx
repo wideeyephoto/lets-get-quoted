@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import SaveButton from '@/components/save-button';
+import { useRadioGroup } from '@/components/use-radio-group';
 import type { QuoteItem } from '@/lib/jobs';
 
 const FREQ_LABEL: Record<string, string> = { weekly: '/wk', biweekly: '/2wk', monthly: '/mo' };
@@ -26,6 +27,13 @@ export default function AcceptPlanCard({
   today: string;
 }) {
   const [mode, setMode] = useState<'cycle' | 'prepay'>('cycle');
+  // Two amounts that differ by the whole term's discount, chosen with a
+  // radiogroup that had no keyboard handling at all. See useRadioGroup.
+  const { getOptionProps: getModeProps } = useRadioGroup({
+    options: ['cycle', 'prepay'] as const,
+    value: mode,
+    onChange: setMode,
+  });
   const [autoCharge, setAutoCharge] = useState(false);
 
   const term = item.termCycles && item.termCycles > 0 ? item.termCycles : 0;
@@ -56,11 +64,11 @@ export default function AcceptPlanCard({
 
       {term > 0 ? (
         <div className="accept-plan-modes" role="radiogroup" aria-label="How they're paying">
-          <button type="button" role="radio" aria-checked={mode === 'cycle'} className={mode === 'cycle' ? 'on' : ''} onClick={() => setMode('cycle')}>
+          <button type="button" {...getModeProps('cycle')} className={mode === 'cycle' ? 'on' : ''}>
             <strong>{money(item.amount)} each visit</strong>
             <small>Billed on the plan&apos;s cadence.</small>
           </button>
-          <button type="button" role="radio" aria-checked={mode === 'prepay'} className={mode === 'prepay' ? 'on' : ''} onClick={() => setMode('prepay')}>
+          <button type="button" {...getModeProps('prepay')} className={mode === 'prepay' ? 'on' : ''}>
             <strong>{money(prepaidTotal)} up front</strong>
             <small>{discount > 0 ? `Whole term, ${discount}% off.` : 'Whole term in one payment.'}</small>
           </button>

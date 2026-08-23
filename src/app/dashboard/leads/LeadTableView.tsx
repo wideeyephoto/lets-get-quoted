@@ -40,6 +40,10 @@ const TABLE_FILTERS_VERSION = 2;
 type SortKey = TableColumnId;
 type SortDir = 'asc' | 'desc';
 
+// No ownerControls prop, and that is a statement rather than an omission: this
+// view has nothing an office user cannot run. Its bulk actions are Mark
+// contacted, Snooze and Archive -- each one update on the lead row -- and its
+// only links go to the lead detail page, which admits them.
 export default function LeadTableView({ leads, run }: { leads: LeadViewItem[]; run: (fn: () => Promise<unknown>) => void }) {
   const router = useRouter();
   const [columns, setColumns] = useState<TableColumnId[]>(DEFAULT_COLUMNS);

@@ -132,7 +132,12 @@ export async function approveDiagnosticConversionAction(requestId: string) {
 
   if (paymentId && req.client_phone) {
     const label = `$${(additional / 100).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
-    await sendQuickStopStatusSms({ accountId: req.account_id, toPhone: req.client_phone, message: `Thanks for approving the diagnostic visit. Pay the additional ${label} here: ${APP_ORIGIN}/pay/${paymentId}.` });
+    await sendQuickStopStatusSms({
+      accountId: req.account_id,
+      toPhone: req.client_phone,
+      message: `Thanks for approving the diagnostic visit. Pay the additional ${label} here: ${APP_ORIGIN}/pay/${paymentId}.`,
+      idempotencyKey: `quick-stop:${requestId}:diagnostic-approved:${paymentId}`,
+    });
   }
   redirect(`/quick-stop/${requestId}?done=diag_approved`);
 }

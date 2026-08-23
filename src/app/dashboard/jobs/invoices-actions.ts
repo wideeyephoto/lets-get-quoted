@@ -1,6 +1,7 @@
 'use server';
 
 import { redirect } from 'next/navigation';
+import { parsePaymentAmount, paymentAmountError } from '@/lib/money-input';
 import { revalidatePath } from 'next/cache';
 import { headers } from 'next/headers';
 import { requireOwnerContext } from '@/lib/auth';
@@ -44,7 +45,12 @@ export async function addInvoiceItemAction(jobId: string, invoiceId: string, for
   const { supabase, accountId } = await requireOwnerContext();
 
   const description = (formData.get('description') ?? '').toString().trim() || 'Line item';
-  const amount = Number(formData.get('amount'));
+  // Parsed, not coerced. A dollar sign or a decimal comma makes Number() return
+  // NaN, which slips past an "amount <= 0" guard -- NaN <= 0 is false -- and
+  // lands on invoice_items.amount, which is numeric NOT NULL.
+  const parsedAmount = parsePaymentAmount(formData.get('amount'));
+  if (!parsedAmount.ok) throw new Error(paymentAmountError(parsedAmount.reason));
+  const amount = parsedAmount.amount;
 
   await addInvoiceItem(supabase, accountId, invoiceId, { description, amount }, jobId);
 

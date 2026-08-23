@@ -6,6 +6,7 @@ import type { PaidBillingPlanId } from '@/lib/billing/stripe-billing-subscriptio
 import type { PlatformSubscriptionEventType } from '@/lib/billing/stripe-event-inbox';
 import {
   createStripeBillingSubscriptionProjectionResolver,
+  ForeignSubscriptionRailError,
   StripeSubscriptionProjectionProviderError,
 } from '@/lib/billing/stripe-billing-subscription-events';
 
@@ -94,9 +95,32 @@ export type StripeSubscriptionProviderContext = Readonly<{
   invoiceStatus: 'draft' | 'open' | 'paid' | 'uncollectible' | 'void' | null;
 }>;
 
+/**
+ * Which ledger the operation came from, and therefore which rules apply to it.
+ *
+ * `base_plan_plan_change` operations live in
+ * `billing_subscription_plan_change_operations`, have no Checkout Session and no
+ * Checkout expiry, and carry their own state vocabulary. Everything downstream
+ * that would otherwise reach for a Session has to branch on this rather than
+ * infer it from a null, because a null Session is also what an unrecovered
+ * `indeterminate` checkout looks like -- and those two need opposite handling.
+ */
+export type StripeSubscriptionOperationPurpose =
+  | 'base_plan_subscription'
+  | 'base_plan_plan_change';
+
 export type StripeSubscriptionProjectionBinding = Readonly<{
   operationPk: string;
-  operationState: 'checkout_created' | 'indeterminate' | 'activated' | 'expired' | 'canceled';
+  /**
+   * The two ledgers do NOT share a state vocabulary. 'activated' and
+   * 'indeterminate' are the only tokens both use, and 'indeterminate' means a
+   * lost Checkout response on one and a lost subscriptions.update response on
+   * the other. Always read it together with `operationPurpose`.
+   */
+  operationState:
+    | 'checkout_created' | 'indeterminate' | 'activated' | 'expired' | 'canceled'
+    | 'submitted' | 'provider_accepted' | 'abandoned';
+  operationPurpose: StripeSubscriptionOperationPurpose;
   workspaceId: string;
   operationId: string;
   checkoutSessionId: string | null;
@@ -112,7 +136,8 @@ export type StripeSubscriptionProjectionBinding = Readonly<{
   recurringConsentVersion: string;
   recurringConsentTextSha256: string;
   recurringConsentAcceptanceId: string;
-  checkoutExpiresAt: string;
+  /** Null for a plan change: a `subscriptions.update` has no Session to expire. */
+  checkoutExpiresAt: string | null;
 }>;
 
 export type StripeSubscriptionProjection = Readonly<{
@@ -123,7 +148,12 @@ export type StripeSubscriptionProjection = Readonly<{
   event_object_id: string;
   workspace_id: string;
   operation_id: string;
-  checkout_session_id: string;
+  /**
+   * Null for a plan change. The SQL contract still requires the KEY -- its
+   * exact-schema check uses `?&`, which a JSON null satisfies -- so this may be
+   * null but must never be omitted.
+   */
+  checkout_session_id: string | null;
   customer_id: string;
   subscription_id: string;
   subscription_item_id: string;
@@ -189,6 +219,11 @@ export interface StripeBillingSubscriptionProjectionStore {
     errorCode: string;
     retryable: boolean;
     nextAttemptAt: string | null;
+  }): Promise<void>;
+  /** Record a claimed event as belonging to another rail. Never a failure. */
+  ignoreForeignRail(input: {
+    billingEventId: string;
+    claimToken: string;
   }): Promise<void>;
 }
 
@@ -269,12 +304,35 @@ const PLATFORM_EVENT_TYPES = new Set<PlatformSubscriptionEventType>([
   'invoice.voided',
 ]);
 
-const OPERATION_STATES = new Set<StripeSubscriptionProjectionBinding['operationState']>([
-  'checkout_created',
-  'indeterminate',
-  'activated',
-  'expired',
-  'canceled',
+/**
+ * One accept-list per ledger, mirroring what the SQL binding will bind. Merging
+ * them into one set would let a checkout operation present a plan-change state
+ * and the reverse, which is precisely the confusion the two tables exist to
+ * prevent.
+ */
+const OPERATION_STATES: Readonly<Record<
+  StripeSubscriptionOperationPurpose,
+  ReadonlySet<StripeSubscriptionProjectionBinding['operationState']>
+>> = Object.freeze({
+  base_plan_subscription: new Set([
+    'checkout_created',
+    'indeterminate',
+    'activated',
+    'expired',
+    'canceled',
+  ] as const),
+  base_plan_plan_change: new Set([
+    'submitted',
+    'provider_accepted',
+    'activated',
+    'indeterminate',
+    'abandoned',
+  ] as const),
+});
+
+const OPERATION_PURPOSES = new Set<StripeSubscriptionOperationPurpose>([
+  'base_plan_subscription',
+  'base_plan_plan_change',
 ]);
 
 function parseClaim(value: unknown): StripeSubscriptionProjectorClaim {
@@ -312,11 +370,18 @@ function parseClaim(value: unknown): StripeSubscriptionProjectorClaim {
 
 function parseBinding(value: unknown): StripeSubscriptionProjectionBinding {
   const row = rowRecord(value, 'Stripe subscription projection binding RPC');
+  const operationPurpose = requiredString(
+    row.operation_purpose,
+    'operation purpose',
+  ) as StripeSubscriptionOperationPurpose;
+  if (!OPERATION_PURPOSES.has(operationPurpose)) {
+    throw new Error('Stripe subscription operation purpose is invalid.');
+  }
   const operationState = requiredString(
     row.operation_state,
     'operation state',
   ) as StripeSubscriptionProjectionBinding['operationState'];
-  if (!OPERATION_STATES.has(operationState)) {
+  if (!OPERATION_STATES[operationPurpose].has(operationState)) {
     throw new Error('Stripe subscription Checkout operation state is invalid.');
   }
   const planCode = requiredString(row.plan_code, 'plan code') as PaidBillingPlanId;
@@ -330,9 +395,23 @@ function parseBinding(value: unknown): StripeSubscriptionProjectionBinding {
   const sessionId = row.checkout_session_id == null
     ? null
     : requiredString(row.checkout_session_id, 'Checkout Session ID', CHECKOUT_SESSION_ID_PATTERN);
+  const expiresAt = row.checkout_expires_at == null
+    ? null
+    : requiredIsoTimestamp(row.checkout_expires_at, 'Checkout expiry');
+  // Mirrors the SQL binding's two refusals rather than trusting them. A plan
+  // change that arrived carrying a Session would send the Session-shaped path
+  // down a rail that has no Session to verify against, and a checkout with no
+  // expiry cannot be matched against its own Session at all.
+  if (operationPurpose === 'base_plan_plan_change' && (sessionId !== null || expiresAt !== null)) {
+    throw new Error('Stripe subscription plan-change operation cannot carry a Checkout Session.');
+  }
+  if (operationPurpose === 'base_plan_subscription' && expiresAt === null) {
+    throw new Error('Stripe subscription Checkout operation is missing its Checkout expiry.');
+  }
   return Object.freeze({
     operationPk: requiredUuid(row.operation_pk, 'operation primary key'),
     operationState,
+    operationPurpose,
     workspaceId: requiredUuid(row.workspace_id, 'workspace ID'),
     operationId: requiredString(row.operation_id, 'operation ID'),
     checkoutSessionId: sessionId,
@@ -358,7 +437,7 @@ function parseBinding(value: unknown): StripeSubscriptionProjectionBinding {
       row.recurring_consent_acceptance_id,
       'recurring consent acceptance ID',
     ),
-    checkoutExpiresAt: requiredIsoTimestamp(row.checkout_expires_at, 'Checkout expiry'),
+    checkoutExpiresAt: expiresAt,
   });
 }
 
@@ -451,11 +530,27 @@ implements StripeBillingSubscriptionProjectionStore {
     if (error) throw rpcFailure('Unable to record Stripe subscription projection failure', error);
     if (data !== true) throw new Error('Stripe subscription projection failure RPC was not acknowledged.');
   }
+
+  async ignoreForeignRail(input: {
+    billingEventId: string;
+    claimToken: string;
+  }): Promise<void> {
+    const { data, error } = await this.admin.rpc('ignore_foreign_stripe_billing_subscription_event', {
+      p_billing_event_id: requiredUuid(input.billingEventId, 'billing event ID'),
+      p_claim_token: requiredUuid(input.claimToken, 'claim token'),
+    });
+    if (error) throw rpcFailure('Unable to record a foreign Stripe subscription event', error);
+    if (data !== 'subscription_not_our_rail') {
+      throw new Error('Foreign Stripe subscription ignore RPC was not acknowledged.');
+    }
+  }
 }
 
 export type ProjectStripeBillingSubscriptionEventResult =
   | Readonly<{
-    status: 'in_progress' | 'replay_processed' | 'replay_ignored' | 'failed_terminal';
+    status: 'in_progress' | 'replay_processed' | 'replay_ignored' | 'failed_terminal'
+      // Another rail owns this subscription. Terminal, and not a failure.
+      | 'ignored_foreign_rail';
     billingEventId: string;
   }>
   | (StripeSubscriptionProjectResult & Readonly<{ billingEventId: string }> )
@@ -533,6 +628,19 @@ export async function projectStripeBillingSubscriptionEvent(
     });
     return Object.freeze({ ...result, billingEventId: claim.billingEventId });
   } catch (error) {
+    // Another rail's subscription. Not a failure and not a retry: recorded as
+    // ignored so the event is accounted for, and left for the purchased-capacity
+    // lifecycle sweep, which reads Stripe directly rather than these events.
+    if (error instanceof ForeignSubscriptionRailError) {
+      await dependencies.store.ignoreForeignRail({
+        billingEventId: claim.billingEventId,
+        claimToken,
+      });
+      return Object.freeze({
+        status: 'ignored_foreign_rail' as const,
+        billingEventId: claim.billingEventId,
+      });
+    }
     const failure = fixedFailure(error);
     const now = dependencies.now();
     const nextAttemptAt = failure.retryable ? retryAt(now, claim.attemptCount) : null;

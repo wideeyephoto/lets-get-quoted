@@ -31,7 +31,7 @@ export const metadata = { title: 'Campaigns — Live Demo' };
 export default async function DemoCampaignsPage({
   searchParams,
 }: {
-  searchParams: { sent?: string; recipients?: string; skipped?: string; failed?: string; test?: string; draft?: string };
+  searchParams: { emailSent?: string; smsQueued?: string; recipients?: string; skipped?: string; failed?: string; test?: string; draft?: string };
 }) {
   const [recipients, campaigns, listHealth, view] = await Promise.all([
     loadRecipients(demoSupabase, DEMO_ACCOUNT_ID),

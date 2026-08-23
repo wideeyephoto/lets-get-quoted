@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { cookies } from 'next/headers';
-import { requireOwnerContext } from '@/lib/auth';
+import { createAdminClient, requireOfficeContext } from '@/lib/auth';
 import AddressAutocomplete from '@/components/address-autocomplete';
 import { expireStaleLeads, formatDuration, formatElapsedTime, formatLeadSource, getAverageRequestResponseMs, getLeadLostAfterDays, getLeadTriage, isLeadSnoozed, LEAD_FLAG_LABELS, LEAD_LOST_AFTER_CHOICES, LEAD_LOST_NEVER, leadLostAfterLabel, LEADS_VIEW_COOKIE, listLeads, normalizeLeadsView } from '@/lib/leads';
 import { estimateRangeLabel, leadCityLabel, leadScoreLabel, leadStageLabel } from '@/lib/lead-detail-labels';
@@ -18,12 +18,30 @@ export const metadata = { title: 'Leads' };
 
 
 export default async function LeadsPage({ searchParams }: { searchParams: { add?: string } }) {
-  const { supabase, accountId } = await requireOwnerContext();
+  // Reading the board is leads.read. Every write it offers asks for itself.
+  const { supabase, accountId, role } = await requireOfficeContext('leads.read');
+
   // Read the window BEFORE expiring, and hand it over, so the number shown in
   // the selector is provably the one that just ran — not a second read that
   // could disagree with it.
-  const leadLostAfterDays = await getLeadLostAfterDays(supabase, accountId);
-  await expireStaleLeads(supabase, accountId, leadLostAfterDays);
+  //
+  // Read with the SERVICE ROLE, not the session client. `accounts` is
+  // owner-only (acc_read is is_owner(id)), so an office user's read returns
+  // nothing and this falls back to the DEFAULT window -- which would then be
+  // printed as this workspace's setting and used to warn which leads are about
+  // to close. A number the owner never chose, shown as theirs. Scoped to the
+  // account the membership already proved, and how long a business keeps a lead
+  // open is not a secret from the person working it.
+  const leadLostAfterDays = await getLeadLostAfterDays(createAdminClient(), accountId);
+
+  // OWNERS ONLY, and not merely for permissions. This is housekeeping that runs
+  // ON VIEW: it marks leads lost by the account's own policy. Run for an office
+  // user it would either be refused by RLS -- expireStaleLeads throws, so the
+  // page would 500 for anybody holding only leads.read -- or, for somebody
+  // holding leads.write, silently rewrite lead statuses on a schedule they
+  // cannot see and did not set. Leads still expire the moment the owner opens
+  // this page, which is exactly when they did before.
+  if (role === 'owner') await expireStaleLeads(supabase, accountId, leadLostAfterDays);
   const allLeads = await listLeads(supabase, accountId);
 
   // One clock for the whole page. Called per lead it would drift across the
@@ -146,7 +164,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: { add?
             stage — without the title contradicting the navigation. */}
         <div className="section-heading workspace-section-heading"><p className="eyebrow">Work pipeline</p><h1>Leads</h1></div>
         {leads.length === 0 ? <p className="empty-state">No leads yet. Website requests will appear here — or <Link href="/dashboard/leads?add=1#add-lead">add a lead manually</Link>.</p> : (
-          <LeadsWorkspace leads={viewLeads} snoozedLeads={snoozedViewLeads} initialView={initialView} mapView={mapView} mapTheme={mapTheme} mapPins={mapPins} />
+          <LeadsWorkspace leads={viewLeads} snoozedLeads={snoozedViewLeads} initialView={initialView} mapView={mapView} mapTheme={mapTheme} mapPins={mapPins} ownerControls={role === 'owner'} />
         )}
       </section>
 
@@ -163,6 +181,10 @@ export default async function LeadsPage({ searchParams }: { searchParams: { add?
             </small>
           </summary>
           <div className={styles.adminBody}>
+        {/* The account's own setting, so owner-only: setLeadLostAfterDaysAction
+            still requires an owner and office users hold no settings.write.
+            Rendering it would be a control that fails on save. */}
+        {role === 'owner' ? (
         <form action={setLeadLostAfterDaysAction} className={styles.lostAfter}>
           <label htmlFor="leadLostAfterDays" className={styles.lostAfterLabel}>
             Mark a lead <strong>Lost</strong> after
@@ -184,6 +206,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: { add?
               : `Counted from when the lead arrived. Only leads still New, Contacted or Quoted are touched, and changing this doesn’t reopen anything already marked lost.`}
           </p>
         </form>
+        ) : null}
 
         {setAside.length > 0 ? (
           <details className="workspace-details">
@@ -212,10 +235,16 @@ export default async function LeadsPage({ searchParams }: { searchParams: { add?
                         because this is the one list where a lead has already
                         been judged not worth keeping. Everything else archives
                         or snoozes, which is why this drawer could only grow. */}
+                    {/* OWNER ONLY -- and not because deleting a lead exceeds
+                        leads.write, which covers DELETE. deleteLeadAction also
+                        removes the lead's photos with the SERVICE ROLE, which is
+                        outside anything RLS protects. */}
+                    {role === 'owner' ? (
                     <DeleteLeadButton
                       action={deleteLeadAction.bind(null, lead.id)}
                       name={lead.name || 'this request'}
                     />
+                    ) : null}
                   </div>
                 </div>
               ))}
@@ -251,6 +280,12 @@ export default async function LeadsPage({ searchParams }: { searchParams: { add?
         </div>
       </div>
 
+      {/* OWNER ONLY, and not because of leads.write. createLeadAction uploads
+          any attached photo with the SERVICE ROLE -- and creates the storage
+          bucket on first use -- so it writes outside the three tables RLS
+          protects. Gating this on leads.write would render a form to an office
+          user that fails the moment they submit it. */}
+      {role === 'owner' ? (
       <section className="panel workspace-section-card">
         <details id="add-lead" className="workspace-details" open={shouldAutoOpenCreate(leads.length, searchParams.add)}>
           <summary className="workspace-details-summary">
@@ -296,6 +331,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: { add?
           </form>
         </details>
       </section>
+      ) : null}
     </main>
   );
 }

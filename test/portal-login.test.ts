@@ -72,9 +72,9 @@ describe('it still refuses to say whether anybody matched', () => {
   it('honours an SMS opt-out, and says nothing different when it does', () => {
     const sms = read('src', 'lib', 'sms.ts');
     const fn = sms.slice(sms.indexOf('export async function sendClientPortalLinkSms'));
-    expect(fn.slice(0, 600)).toContain('isPhoneOptedOut');
+    expect(fn.slice(0, 900)).toContain('isPhoneOptedOut');
     // Never throws: an exception escaping would leak the match through a 500.
-    expect(fn.slice(0, 600)).toContain('catch');
+    expect(fn.slice(0, 900)).toContain('catch');
   });
 });
 

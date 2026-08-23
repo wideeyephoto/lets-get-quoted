@@ -1,7 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import { isSectionNew, markNavSeen, parseNavSeen, resolveTabForHash, shouldAutoOpenCreate, settingsTabEvent, SETTINGS_TAB_EVENT } from '@/lib/nav-helpers';
 
-// Mirrors the real settings tab config (id + the section ids each tab owns).
+// An ILLUSTRATIVE fixture for the pure resolver -- not a mirror of the real tab
+// config, which carries conditional anchors this list has never had. It said
+// "mirrors" and did not, which invites someone to trust it as the record of
+// what is linkable. The two lists that genuinely have to agree are the page's
+// anchors array and the ids its sections render; test/plan-usage-anchors.test.ts
+// holds those against each other.
 const TABS = [
   { id: 'account' },
   { id: 'plan', anchors: ['current-plan', 'platform-fee', 'usage-balances', 'included-limits'] },

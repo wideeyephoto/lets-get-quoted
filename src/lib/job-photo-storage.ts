@@ -1,5 +1,6 @@
 import { randomUUID } from 'crypto';
 import { createAdminClient } from '@/lib/auth';
+import { assertStorageCapacity } from '@/lib/billing/storage-usage';
 
 const JOB_PHOTOS_BUCKET = 'job-photos';
 const MAX_PHOTO_BYTES = 6 * 1024 * 1024;
@@ -51,6 +52,9 @@ export function ownedPhotoPaths(accountId: string, values: FormDataEntryValue[])
 export async function uploadJobPhoto(accountId: string, file: File): Promise<string> {
   if (!ALLOWED_TYPES.has(file.type)) throw new Error('Photos must be JPG, PNG, WebP, or AVIF.');
   if (file.size > MAX_PHOTO_BYTES) throw new Error('Each photo must be 6 MB or smaller.');
+  // The per-file cap above is about one photo; this is about the workspace. It
+  // runs before the bucket is touched so a refused upload writes nothing.
+  await assertStorageCapacity(createAdminClient(), accountId, file.size);
   await ensureJobPhotosBucket();
 
   const extension = file.type.split('/')[1] === 'jpeg' ? 'jpg' : file.type.split('/')[1];

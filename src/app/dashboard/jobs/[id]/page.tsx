@@ -40,6 +40,7 @@ import { listJobTasks, taskProgress } from '@/lib/job-tasks';
 import { createJobPhotoLinks } from '@/lib/job-photo-storage';
 import { isLegacyDestinationPayment, listPayments } from '@/lib/payments';
 import { computeInvoiceTotals, getInvoiceWithItems, listInvoices, selectPrimaryInvoice } from '@/lib/invoices';
+import { paidTowardInvoice, paymentsForInvoice } from '@/lib/invoice-pay';
 import { loadBusinessName } from '@/lib/business-name';
 import PaymentPreview from './PaymentPreview';
 import { createLinkedFeedItems, getActiveClientAccessCount, listJobFeed, sortJobFeed, type JobFeedEvent } from '@/lib/job-feed';
@@ -246,8 +247,15 @@ export default async function JobDetailPage({
     listSubcontractorReviews(supabase, accountId, { jobId: job.id }),
   ]);
   const jobInvoice = selectPrimaryInvoice(invoices);
+  // The SAME arithmetic the customer's /invoice/[id] uses, rather than a
+  // second hand-rolled copy of it. This reduce filtered to status 'paid' and
+  // summed the gross, subtracting no refunded_amount -- so after a partial
+  // refund the contractor's screen read Balance $0 while that same customer
+  // was still being offered a live Pay button for the difference. This number
+  // also prefills the collect-payment box and feeds PaymentPreview, which the
+  // comment further down calls THE INVOICE AS THE CLIENT WILL SEE IT.
   const invoicePaidTotal = jobInvoice
-    ? payments.filter((payment) => payment.invoice_id === jobInvoice.id && payment.status === 'paid').reduce((sum, payment) => sum + Number(payment.amount), 0)
+    ? paidTowardInvoice(paymentsForInvoice(payments, jobInvoice.id))
     : 0;
   const invoiceDisplayTotal = jobInvoice ? Math.max(Number(jobInvoice.total), Number(job.quoted_amount)) : Number(job.quoted_amount);
   const invoiceBalance = jobInvoice ? Math.max(0, invoiceDisplayTotal - invoicePaidTotal) : null;

@@ -43,9 +43,9 @@ describe('billing entitlement catalog compiler', () => {
       billingInterval: 'annual',
       platformFeeBps: 10,
       featureLimits: {
-        office_users: 5,
-        crew_users: 10,
-        storage_gb: 100,
+        office_users: 15,
+        crew_users: 50,
+        storage_gb: 250,
         voice_concurrent_calls: 3,
         voice_history_days: 90,
         voice_included_minutes: 100,
@@ -87,7 +87,15 @@ describe('billing entitlement catalog compiler', () => {
       { resourceCode: 'ai_intake_threads', units: 250, cadence: 'one_time' },
       { resourceCode: 'ai_writing_drafts', units: 200, cadence: 'one_time' },
     ]);
-    expect(planUpgradeCreditDeltas('growth', 'scale')).toEqual([]);
+    // Growth -> Scale used to grant NOTHING, because Scale's allowances were a
+    // field-for-field copy of Growth's while costing 2.55x. Catalog
+    // 2026-08-18-preview separates them, so the upgrade now carries real credit.
+    expect(planUpgradeCreditDeltas('growth', 'scale')).toEqual([
+      { resourceCode: 'text_segments', units: 1_500, cadence: 'one_time' },
+      { resourceCode: 'marketing_email_sends', units: 2_500, cadence: 'one_time' },
+      { resourceCode: 'ai_intake_threads', units: 500, cadence: 'one_time' },
+      { resourceCode: 'ai_writing_drafts', units: 250, cadence: 'one_time' },
+    ]);
     expect(planUpgradeCreditDeltas('growth', 'solo')).toEqual([]);
   });
 

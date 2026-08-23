@@ -21,8 +21,10 @@ export type WebhookSource =
   | 'sms_inbound'
   | 'sms_status'
   | 'sms_voice'
+  | 'ai_voice'
   | 'twilio_inbound'
-  | 'twilio_status';
+  | 'twilio_status'
+  | 'sms_registry';
 
 export interface WebhookFailureInput {
   source: WebhookSource;

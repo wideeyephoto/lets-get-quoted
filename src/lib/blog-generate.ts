@@ -1,4 +1,5 @@
 import 'server-only';
+import { callModel } from '@/lib/ai-model-call';
 
 // Shared server-side blog drafter. Used by the builder's "Generate a draft"
 // action AND the biweekly cron, so it takes plain site fields (no auth context)
@@ -93,17 +94,13 @@ export async function draftBlogPost(input: {
       : 'Choose a seasonally useful, on-trade topic a homeowner in this area would search for. ') +
     'Respond with json only.';
 
-  const response = await fetch('https://api.openai.com/v1/responses', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify({
-      model: 'gpt-4o-mini',
-      temperature: 1,
-      instructions,
-      input: userInput,
-      text: { format: { type: 'json_object' } },
-    }),
-  });
+  const response = await callModel({
+    model: 'gpt-4o-mini',
+    temperature: 1,
+    instructions,
+    input: userInput,
+    text: { format: { type: 'json_object' } },
+  }, { accountId: null, kind: 'platform_content' });
 
   if (!response.ok) throw new Error(`OpenAI request failed: ${response.status}`);
   const payload = await response.json();

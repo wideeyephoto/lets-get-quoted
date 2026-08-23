@@ -98,7 +98,10 @@ export default function SubcontractorPanel({
       ) : (
         <p className={styles.jobPanelStats}>
           <span>
-            <strong>{progress.sent}</strong> offers sent
+            <strong>{progress.queued}</strong> queued
+          </span>
+          <span>
+            <strong>{progress.carrierAccepted}</strong> carrier accepted
           </span>
           <span>
             <strong>{progress.viewed}</strong> viewed

@@ -36,8 +36,10 @@ describe('the message is the real message', () => {
     // No hand-written copy of the sentence anywhere in the component.
     expect(PREVIEW).not.toContain('Pay securely:');
     expect(PREVIEW).not.toContain('requested a');
-    // And it renders money with the app's own formatter, not a second one.
-    expect(PREVIEW).toContain('const money = formatMoney;');
+    // And it renders money with the app's own formatter, not a second one --
+    // the EXACT one, because this previews a message whose figure becomes the
+    // amount charged, and it used to alias the rounding formatter.
+    expect(PREVIEW).toContain('const money = formatMoneyExact;');
   });
 
   it('shows the words a homeowner will actually read', () => {

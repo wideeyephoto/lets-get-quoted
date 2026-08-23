@@ -22,6 +22,9 @@ export default function DemoLeadsFocus({
       details={details}
       // Keeps the pane's links inside the demo — see DemoJobsFocus.
       basePath="/demo"
+      // The demo shows the whole product, so every control renders. Its actions
+      // are swallowed below rather than gated, and its links stay under /demo.
+      ownerControls
       initialLeadId={initialLeadId}
       // Every action in the pane routes through this. Swallowing them is what
       // makes the demo read-only without disabling controls one at a time —

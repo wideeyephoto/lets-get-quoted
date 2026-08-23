@@ -64,6 +64,21 @@ describe('smsSegments', () => {
     expect(smsSegments('x'.repeat(100))).toBe(1);
     expect(smsSegments('x'.repeat(130))).toBe(2);
   });
+
+  it('sees the emoji that triples the price', () => {
+    // The composer used to divide by 160 regardless of alphabet, so a body one
+    // emoji away from UCS-2 was warned about at a third of what it bills. A
+    // contractor sending this to two hundred people was told one thing and
+    // charged another.
+    expect(smsSegments('x'.repeat(100))).toBe(1);
+    expect(smsSegments(`${'x'.repeat(100)}\u{1F44D}`)).toBe(3);
+  });
+
+  it('does not punish an accented customer name', () => {
+    // The other half of getting the alphabet right: these ARE in GSM-7, and
+    // treating them as UCS-2 would over-warn on perfectly ordinary messages.
+    expect(smsSegments(`Hi Renée, ${'x'.repeat(90)}`)).toBe(1);
+  });
 });
 
 describe('checkCampaign', () => {

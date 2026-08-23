@@ -217,6 +217,9 @@ describe('dark legacy Quick Stop payment reconciliation migration', () => {
       join(process.cwd(), 'src', 'app', 'api', 'cron', 'legacy-quick-stop-late-refunds', 'route.ts'),
     ]);
     const active = sourceFiles(join(process.cwd(), 'src')).filter((file) => !allowed.has(file));
+    // A silent zero passes every assertion below it. The walk is the thing
+    // most likely to break, and its failure looks exactly like success.
+    expect(active.length).toBeGreaterThan(1_000);
     for (const file of active) {
       const source = readFileSync(file, 'utf8');
       expect(source).not.toContain('legacy-quick-stop-payment-store');

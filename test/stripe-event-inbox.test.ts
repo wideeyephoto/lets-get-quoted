@@ -211,7 +211,11 @@ describe('dark Stripe event inbox', () => {
     expect(mocks.insert).not.toHaveBeenCalled();
   });
 
-  it('hard-disables top-up ingestion until a durable operation proves purpose', async () => {
+  it('admits only the three real endpoint scopes, before verifying anything', async () => {
+    // This once read "hard-disables top-up ingestion". It never did: the scope
+    // it passes has never existed, so it only ever proved that an unrecognised
+    // endpoint scope is refused. platform_top_up became a real scope in
+    // 20260818170000 and now ingests; the guard below is the actual contract.
     const mocks = dependencies(stripeEvent());
 
     await expect(ingestStripeEventInboxDelivery({

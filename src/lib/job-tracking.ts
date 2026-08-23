@@ -287,13 +287,14 @@ export async function updateTechPosition(
 export async function recordSmsOutcome(
   admin: SupabaseClient,
   trackingId: string,
-  outcome: { status: SmsStatus; sid?: string | null; error?: string | null },
+  outcome: { status: SmsStatus; eventId?: string | null; error?: string | null },
 ): Promise<void> {
   await admin
     .from('job_tracking')
     .update({
       sms_status: outcome.status,
-      sms_sid: outcome.sid ?? null,
+      // Legacy column name; queued sends store the durable sms_events UUID.
+      sms_sid: outcome.eventId ?? null,
       sms_error: outcome.error ? outcome.error.slice(0, 300) : null,
       updated_at: new Date().toISOString(),
     })

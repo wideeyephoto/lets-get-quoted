@@ -171,7 +171,14 @@ export async function createJobAction(formData: FormData) {
     if (route.channel === 'sms' && normalizedClientPhone) {
       try {
         await recordSmsConsent(accountId, normalizedClientPhone, 'client_job_dashboard');
-        await sendClientJobDashboardSms({ phone: normalizedClientPhone, businessName, jobRef: job.ref, token, accountId });
+        await sendClientJobDashboardSms({
+          phone: normalizedClientPhone,
+          businessName,
+          jobRef: job.ref,
+          token,
+          accountId,
+          idempotencyKey: `client-job-dashboard:${job.id}:job-create`,
+        });
         delivery = 'sms';
       } catch (err) {
         console.error(`Client link SMS failed for job ${job.id}:`, err);
@@ -643,7 +650,7 @@ export async function updateJobCrewAction(jobId: string, notify: boolean, formDa
         });
       }
 
-      let sentCount = 0;
+      let queuedCount = 0;
       for (const member of newlyAssigned) {
         try {
           const result = await sendCrewAssignmentSms({
@@ -657,21 +664,19 @@ export async function updateJobCrewAction(jobId: string, notify: boolean, formDa
             address: job.address,
             scheduledFor: job.scheduled_for,
             scheduledTime: job.scheduled_time,
+            idempotencyKey: `crew-assignment:${jobId}:${member.id}`,
           });
-          if (result?.status === 'sent') sentCount += 1;
+          if (result?.status === 'queued') queuedCount += 1;
         } catch (error) {
           console.error(`Crew assignment SMS failed for crew ${member.id} on job ${jobId}:`, error);
         }
       }
 
-      // Only mark the crew notified when a text ACTUALLY went out — deliverCrewSms
-      // returns a status (opted_out / failed) instead of throwing, so the status
-      // must not flip to "notified" when nothing was delivered.
-      if (sentCount > 0) {
+      if (queuedCount > 0) {
         await createJobFeedEvent(supabase, accountId, jobId, {
           kind: 'job_update',
-          title: 'Crew assignment text sent',
-          body: `Texted ${sentCount} crew ${sentCount === 1 ? 'member' : 'members'} about their assignment to ${job.ref}.`,
+          title: 'Crew assignment texts queued',
+          body: `Queued ${queuedCount} crew assignment ${queuedCount === 1 ? 'text' : 'texts'} for ${job.ref}.`,
           visibility: 'internal',
         });
       }
@@ -762,14 +767,13 @@ export async function toggleJobCrewAction(jobId: string, crewId: string, notify 
           address: job.address,
           scheduledFor: job.scheduled_for,
           scheduledTime: job.scheduled_time,
+          idempotencyKey: `crew-assignment:${jobId}:${member.id}`,
         });
-        // Only mark notified on a real send — opted_out / failed come back as a
-        // status (not a throw), so the catch below can't gate this.
-        if (result?.status === 'sent') {
+        if (result?.status === 'queued') {
           await createJobFeedEvent(supabase, accountId, jobId, {
             kind: 'job_update',
-            title: 'Crew assignment text sent',
-            body: `Texted ${member.name} about their assignment to ${job.ref}.`,
+            title: 'Crew assignment text queued',
+            body: `Queued a text to ${member.name} about their assignment to ${job.ref}.`,
             visibility: 'internal',
           });
         }
@@ -815,6 +819,7 @@ export async function textCrewJobDateAction(jobId: string) {
         address: job.address,
         scheduledFor: job.scheduled_for,
         scheduledTime: job.scheduled_time,
+        idempotencyKey: `crew-schedule:${jobId}:${member.id}:${job.scheduled_for}:${job.scheduled_time ?? 'none'}`,
       });
     } catch (error) {
       console.error(`Crew date SMS failed for crew ${member.id} on job ${jobId}:`, error);
@@ -823,8 +828,8 @@ export async function textCrewJobDateAction(jobId: string) {
 
   await createJobFeedEvent(supabase, accountId, jobId, {
     kind: 'job_update',
-    title: 'Crew date text sent',
-    body: `Texted ${assignedCrew.length} crew ${assignedCrew.length === 1 ? 'member' : 'members'} the scheduled date for ${job.ref}.`,
+    title: 'Crew date texts queued',
+    body: `Queued ${assignedCrew.length} crew schedule ${assignedCrew.length === 1 ? 'text' : 'texts'} for ${job.ref}.`,
     visibility: 'internal',
     meta: { crew_count: assignedCrew.length, scheduled_for: job.scheduled_for, scheduled_time: job.scheduled_time },
   });
@@ -930,7 +935,7 @@ export async function createManualJobFeedAction(jobId: string, formData: FormDat
   const notifyClientSms = formData.get('notifyClientSms') === 'on';
   const visibility = formData.get('visibility') === 'client' || notifyClientSms ? 'client' : 'internal';
 
-  await createJobFeedEvent(supabase, accountId, jobId, {
+  const feedEvent = await createJobFeedEvent(supabase, accountId, jobId, {
     kind: 'job_update',
     title,
     body,
@@ -955,6 +960,7 @@ export async function createManualJobFeedAction(jobId: string, formData: FormDat
         title,
         body,
         accountId,
+        idempotencyKey: `job-update:${feedEvent.id}`,
       });
     }
   }
@@ -1277,6 +1283,7 @@ export async function saveQuoteItemsAndNotifyAction(
         total: totalLabel,
         direction,
         accountId,
+        idempotencyKey: `quote-updated:${jobId}:${token}`,
       });
     } catch (error) {
       console.error(`Quote update SMS failed for job ${jobId}:`, error);
@@ -1537,10 +1544,18 @@ async function deliverJobReviewRequest(
 
   let channel: 'sms' | 'email';
   let sentTo: string;
+  let smsEventId: string | null = null;
   try {
     if (canText && normalizedPhone) {
       await recordSmsConsent(accountId, normalizedPhone, 'review_request');
-      await sendReviewRequestSms({ phone: normalizedPhone, businessName, clientName: clientFirstName, reviewUrl: linkUrl, accountId });
+      smsEventId = await sendReviewRequestSms({
+        phone: normalizedPhone,
+        businessName,
+        clientName: clientFirstName,
+        reviewUrl: linkUrl,
+        accountId,
+        idempotencyKey: `review-request:${job.id}`,
+      });
       channel = 'sms';
       sentTo = normalizedPhone;
     } else if (route.channel === 'email' && job.client_email) {
@@ -1570,15 +1585,21 @@ async function deliverJobReviewRequest(
 
   await createJobFeedEvent(supabase, accountId, job.id, {
     kind: 'review_requested',
-    title: channel === 'sms' ? 'Review request texted' : 'Review request emailed',
-    body: `Asked ${job.client_name} for a Google review.`,
+    title: channel === 'sms' ? 'Review request queued' : 'Review request emailed',
+    body: `${channel === 'sms' ? 'Queued a Google review request for' : 'Asked'} ${job.client_name}${channel === 'sms' ? '' : ' for a Google review'}.`,
     visibility: 'internal',
-    meta: { review_request: true, channel, to: sentTo },
+    meta: {
+      review_request: true,
+      channel,
+      to: sentTo,
+      delivery_state: channel === 'sms' ? 'queued' : 'sent',
+      sms_event_id: smsEventId,
+    },
   });
 
   return {
     ok: true,
-    message: channel === 'sms' ? `Texted ${job.client_name} a review link.` : `Emailed ${job.client_name} a review link.`,
+    message: channel === 'sms' ? `Queued a review link for ${job.client_name}.` : `Emailed ${job.client_name} a review link.`,
   };
 }
 

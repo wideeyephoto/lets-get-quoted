@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { APP_ORIGIN } from '@/lib/app-origin';
 import { createAdminClient } from '@/lib/auth';
 import { HONEYPOT_FIELD } from '@/components/honeypot-field';
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -6,10 +7,11 @@ import { sendLeadNotificationEmail } from '@/lib/email';
 import { classifyEmail } from '@/lib/email-quality';
 import { createLead, getLeadTriage, LEAD_PRUNE_FLAGS, type Lead, type LeadTriage } from '@/lib/leads';
 import { deleteLeadPhotos, uploadLeadPhoto } from '@/lib/lead-photo-storage';
-import { isLeadVerificationConfigured, isLeadVerificationValid } from '@/lib/lead-verification';
+import { isLeadVerificationValid } from '@/lib/lead-verification';
+import { loadLeadPhoneVerificationReadiness } from '@/lib/lead-phone-verification-readiness';
 import { normalizeUsPhone } from '@/lib/phone';
 import { getSiteContent, isFullyBookedActive } from '@/lib/site-content';
-import { isSmsConfigured, sendOwnerHighValueLeadSms } from '@/lib/sms';
+import { sendOwnerHighValueLeadSms } from '@/lib/sms';
 import { checkRateLimit, clientIpFrom } from '@/lib/rate-limit';
 import { serviceAreaVerdict } from '@/lib/service-area-match';
 
@@ -41,7 +43,12 @@ async function notifyOwner(
     if (alert.muteLow && lead.triage?.score === 'low') return;
 
     const estimate = lead.triage?.estimate ?? null;
-    const dashboardUrl = `${request.nextUrl.origin}/dashboard/leads/${lead.id}`;
+    // APP_ORIGIN, never request.nextUrl.origin. This request arrives on the
+    // TENANT's public marketing host (thisisit.letsgetquoted.com), which does
+    // not serve /dashboard — so deriving the link from the request produced a
+    // dead URL in both the owner's alert text and the lead email. booking.ts
+    // has always used APP_ORIGIN for the identical link; this was the outlier.
+    const dashboardUrl = `${APP_ORIGIN}/dashboard/leads/${lead.id}`;
 
     const { data: owner } = await admin.from('memberships').select('user_id').eq('account_id', site.account_id).eq('role', 'owner').limit(1).maybeSingle();
     if (owner?.user_id) {
@@ -71,6 +78,7 @@ async function notifyOwner(
         leadName: lead.name ?? '',
         estimate,
         dashboardUrl,
+        idempotencyKey: `owner-high-value-lead:${lead.id}`,
       });
     }
   } catch (error) {
@@ -231,8 +239,12 @@ export async function POST(request: NextRequest) {
   // goes through, because rejecting real customers over our own configuration
   // is worse, but it is flagged as unchecked rather than silently unflagged.
   if (filters.phoneVerification && text(data, 'wizard', 4) === '1') {
-    if (!isSmsConfigured() || !isLeadVerificationConfigured()) {
-      console.error('Phone verification is enabled but unavailable — no SMS provider or no verification secret.');
+    const verificationReadiness = await loadLeadPhoneVerificationReadiness(
+      site.account_id,
+      admin,
+    );
+    if (verificationReadiness.kind !== 'ready') {
+      console.error(`Phone verification is enabled but unavailable: ${verificationReadiness.reason}.`);
       flags.push('phone_verification_unavailable');
     } else {
       const verified = normalizedPhone !== null && isLeadVerificationValid(
@@ -307,7 +319,7 @@ export async function POST(request: NextRequest) {
   const photos = data.getAll('photos').filter((item): item is File => item instanceof File && item.size > 0).slice(0, 6);
   const photoPaths: string[] = [];
   try {
-    for (const photo of photos) photoPaths.push(await uploadLeadPhoto(site.account_id, photo));
+    for (const photo of photos) photoPaths.push(await uploadLeadPhoto(site.account_id, photo, 'public_visitor'));
     const lead = await createLead(admin, site.account_id, {
       name,
       phone,

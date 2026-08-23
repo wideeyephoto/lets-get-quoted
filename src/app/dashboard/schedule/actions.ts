@@ -164,6 +164,7 @@ export async function confirmBookingRequestAction(jobId: string, choice: 'first'
       // A customer who offered two times and gets "confirmed for" the one they
       // did not expect needs the text to name it, or they turn up on Tuesday.
       message: confirmedSmsBody(businessName, requestedWhenLabel(dateKey, time, endTime)),
+      idempotencyKey: `booking-decision:${jobId}:confirmed`,
     });
   }
 
@@ -214,6 +215,7 @@ export async function declineBookingRequestAction(jobId: string) {
           ? requestedWhenLabel(job.booking_alt_date, job.booking_alt_time ?? null, job.booking_alt_end_time ?? null)
           : null,
       ),
+      idempotencyKey: `booking-decision:${jobId}:declined`,
     });
   }
 

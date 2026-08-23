@@ -4,6 +4,11 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type Stripe from 'stripe';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+// Pure, unmocked, and free of side effects at import: the rail rule the page
+// renders lives in these two rather than inline in the page any more.
+import { paymentBannerMessage } from '@/lib/payment-banner';
+import { resolvePaymentView } from '@/lib/payment-view';
+
 const mocks = vi.hoisted(() => ({
   admin: null as unknown,
   event: null as unknown,
@@ -242,6 +247,10 @@ function checkoutRaceAdmin(
       is: vi.fn(() => q),
       not: vi.fn(() => q),
       gte: vi.fn(() => q),
+      // Real PostgREST returns a thenable builder from .range(), and
+      // getTrailingVolume pages with it now -- a read without one is silently
+      // capped at 1,000 rows.
+      range: vi.fn(() => q),
       maybeSingle: vi.fn(async () => response),
       then: (resolve: (value: DbResponse) => unknown, reject: (reason: unknown) => unknown) =>
         Promise.resolve(response).then(resolve, reject),
@@ -274,6 +283,13 @@ function checkoutRaceAdmin(
       }
       if (table === 'sites') return { select: vi.fn(() => query({ data: { company_name: 'Guard Contractor' }, error: null })) };
       if (table === 'extra_stop_requests') return { select: vi.fn(() => query({ data: null, error: null })) };
+      // The fee rate follows the plan now, not trailing volume. Flex is 125 bps,
+      // which is the same 1.25% the old bracket table charged at tier 1 -- so the
+      // expected application_fee_amount in these tests is unchanged, and THIS row
+      // is what now produces it. A green 125 is not evidence the rail is untouched.
+      if (table === 'workspace_entitlements') {
+        return { select: vi.fn(() => query({ data: { plan_code: 'flex', platform_fee_bps: 125 }, error: null })) };
+      }
       throw new Error(`unexpected table ${table}`);
     }),
   };
@@ -1040,10 +1056,29 @@ describe('contractor and homeowner surfaces do not advertise the legacy rail for
   const read = (...parts: string[]) => readFileSync(join(process.cwd(), ...parts), 'utf8');
 
   it('gates public Checkout and shows a plain unavailable message', () => {
+    // The page hands the rail to resolvePaymentView as `payableRail` and renders
+    // the banner it names; `directCheckoutUnavailable` was a second, inline
+    // re-derivation of the same rule and is gone. What must stay true is that a
+    // direct row gets the unavailable message and no button, whatever its open
+    // status happens to be.
     const page = read('src', 'app', 'pay', '[id]', 'page.tsx');
-    expect(page).toContain('legacyDestinationPayment');
-    expect(page).toContain('directCheckoutUnavailable');
-    expect(page).toContain('Online checkout cannot be started or retried from this link.');
+    expect(page).toContain('payableRail: legacyDestinationPayment');
+
+    for (const status of ['requested', 'processing', 'failed']) {
+      const view = resolvePaymentView({
+        status,
+        moneyInFlight: false,
+        returnedFromCheckout: false,
+        cancelledCheckout: false,
+        payableRail: false,
+        refunded: 0,
+      });
+      expect(view.banner, status).toBe('unavailable_here');
+      expect(view.canPay, status).toBe(false);
+    }
+
+    expect(paymentBannerMessage('unavailable_here', 0, String)?.body)
+      .toContain('Online checkout cannot be started or retried from this link.');
   });
 
   it('gates row actions, timeline cancel, copy-link, and retry-SMS controls', () => {

@@ -10,8 +10,11 @@
 // something different on a photo of a wall than on a photo of a roof.
 
 import { reconcileDraft, type PriceBookEntry, type QuoteDraft, type RawDraft } from '@/lib/quote-draft';
+import { callModel } from '@/lib/ai-model-call';
 
 export type ChangeOrderDraftContext = {
+  /** Whose AI-writing balance this draft is charged to. */
+  accountId: string;
   trade: string | null;
   /** The original job, so the model doesn't re-quote work already sold. */
   jobScope: string;
@@ -90,17 +93,13 @@ export async function draftChangeOrder(context: ChangeOrderDraftContext): Promis
   }
 
   try {
-    const response = await fetch('https://api.openai.com/v1/responses', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({
-        model: 'gpt-4o',
-        temperature: 0.2,
-        instructions: INSTRUCTIONS,
-        input: [{ role: 'user', content }],
-        text: { format: { type: 'json_object' } },
-      }),
-    });
+    const response = await callModel({
+      model: 'gpt-4o',
+      temperature: 0.2,
+      instructions: INSTRUCTIONS,
+      input: [{ role: 'user', content }],
+      text: { format: { type: 'json_object' } },
+    }, { accountId: context.accountId, kind: 'change_order_draft' });
     if (!response.ok) throw new Error(`OpenAI request failed: ${response.status}`);
 
     const raw = JSON.parse(extractOutputText(await response.json())) as RawDraft & { title?: unknown; scope?: unknown };

@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useRef, useState, useTransition, type ReactNode } from 'react';
 import type { SiteEstimateRangesContent, SiteLeadFiltersContent } from '@/lib/site-content';
 import { intakeQuality, groupStatus } from '@/lib/intake-quality';
@@ -29,6 +30,10 @@ type Props = {
   leadFilters: SiteLeadFiltersContent;
   emailField: SiteEstimateRangesContent['emailField'];
   hasCities: boolean;
+  /** The list itself, so the owner can see what is actually filtering them. */
+  cities: string[];
+  /** On by default. It is what turns a flag into silence. */
+  muteLowQualityLeads: boolean;
   /** Smart Intake off means the classic form is running and none of this applies. */
   smartIntakeOn: boolean;
   /** The real preview modal's trigger, rendered into the right column. */
@@ -69,6 +74,8 @@ export default function IntakeContentSection({
   leadFilters: initialFilters,
   emailField: initialEmailField,
   hasCities,
+  cities,
+  muteLowQualityLeads,
   smartIntakeOn,
   preview,
 }: Props) {
@@ -215,15 +222,62 @@ export default function IntakeContentSection({
               title="Ask “when do you need this done?”"
               hint="ASAP jobs rank Hot; “just researching” sinks to the bottom."
             />
+            {/* WHY THIS ROW SAYS SO MUCH MORE THAN THE OTHERS.
+
+                It used to read "flags leads outside your list", which is true and
+                reads as cosmetic. It is not. In the intake route a prune flag makes
+                high-value impossible BY CONSTRUCTION, forces the score to low, and
+                the low-quality mute then suppresses the owner alert entirely:
+
+                  const isHighValue = !hasPruneFlag && ...
+                  score: hasPruneFlag ? 'low' : ...
+                  if (alert.muteLow && score === 'low') return;
+
+                So a large job from a town this list omits arrives with no alert and
+                no text. It is never lost — it lands on the leads board like anything
+                else — but nobody is told.
+
+                And the list is not something the owner wrote. It is generated at
+                site creation and reads like website copy, which is exactly where it
+                lives. Naming the towns here is the point: a filter you cannot see is
+                indistinguishable from a quiet week. */}
             <Row
               checked={filters.serviceAreaGate}
               onChange={(next) => patchFilters({ serviceAreaGate: next })}
               title="Check the visitor’s service area"
               hint={
                 hasCities
-                  ? 'Asks for their town or city and flags leads outside your list.'
+                  ? (muteLowQualityLeads
+                    ? 'Asks for their town. Leads from anywhere else get no alert.'
+                    : 'Asks for their town and flags leads from anywhere else.')
                   : 'Add cities to “Cities you serve” in the website builder to activate this.'
               }
+              detail={hasCities ? (
+                <div className="iq-effect">
+                  {/* .iq-effect is a grid with its own gap, and .iq-effect-head
+                      styles a <strong> child — so this matches the block below
+                      rather than carrying inline margins that fight the grid. */}
+                  <div className="iq-effect-head">
+                    <strong>
+                      {muteLowQualityLeads
+                        ? 'These towns decide who reaches you'
+                        : 'Leads are checked against these towns'}
+                    </strong>
+                  </div>
+                  <p style={{ margin: 0 }}>{cities.join(', ')}</p>
+                  {muteLowQualityLeads ? (
+                    <p style={{ margin: 0 }}>
+                      A lead from any other town still lands in your leads board, but it
+                      <strong> will not alert you</strong> — not even if it is a big job.
+                      Add every town you would take work in, or untick
+                      “Don’t interrupt me for low-quality leads” above.
+                    </p>
+                  ) : null}
+                  <p style={{ margin: 0 }}>
+                    <Link href="/dashboard/sites">Edit the list in the website builder →</Link>
+                  </p>
+                </div>
+              ) : undefined}
             />
             <Row
               checked={filters.phoneVerification}

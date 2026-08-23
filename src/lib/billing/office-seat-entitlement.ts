@@ -15,7 +15,21 @@ export type OfficeMembership = Readonly<{
   id: string;
   account_id: string;
   user_id: string;
-  role: 'owner';
+  /**
+   * `office`, not `owner`, since 20260819090100. The original foundation made an
+   * office user a second `owner` row, which collided with the partial unique
+   * index `memberships_one_owner_per_user_idx`: an invitee who owned any
+   * workspace could never be added, and one who owned none was handed their
+   * employer's workspace as their own. `scripts/verify-office-seat-collision.mjs`
+   * demonstrates both against a real PostgreSQL 17.
+   *
+   * `owner` is still in the union because the RPC is idempotent: handed someone
+   * who already owns this workspace, it returns that existing row rather than
+   * failing, since an owner already has office access. So a caller can receive
+   * an owner row here, and narrowing this to `office` alone would be a lie the
+   * runtime guard below would then have to enforce by rejecting a valid answer.
+   */
+  role: 'office' | 'owner';
   created_at: string;
 }>;
 
@@ -117,7 +131,7 @@ function isOfficeMembership(value: unknown): value is OfficeMembership {
   return typeof row.id === 'string'
     && typeof row.account_id === 'string'
     && typeof row.user_id === 'string'
-    && row.role === 'owner'
+    && (row.role === 'office' || row.role === 'owner')
     && typeof row.created_at === 'string';
 }
 

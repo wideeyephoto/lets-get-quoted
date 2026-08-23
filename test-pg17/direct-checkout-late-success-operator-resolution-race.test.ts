@@ -2,6 +2,8 @@ import { randomUUID } from 'node:crypto';
 
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 
+import { PRICING_CATALOG_VERSION } from '@/lib/billing/catalog';
+
 import {
   closeDisposablePg17Clients,
   disposablePg17ApplicationNames,
@@ -146,7 +148,13 @@ async function prepareCurrentExpiration(
       recovered_from: null,
       payment_intent_id: null,
       fee_plan_code: 'flex',
-      fee_catalog_version: '2026-08-15-preview',
+      // From the catalog, not a literal. This was the SECOND hardcoded copy of
+      // '2026-08-15-preview'; fixing only the fixture's left this one, and the
+      // projector correctly rejected the mismatch against live 2026-08-18
+      // evidence as expiration_payment_evidence_conflict -- BEFORE taking the
+      // session mutex, which is why no lock wait ever happened either. One
+      // stale literal, two failing tests, neither of them about the race.
+      fee_catalog_version: PRICING_CATALOG_VERSION,
       fee_rate_bps: 125,
       fee_basis_amount_cents: 10_000,
       application_fee_cents: 125,
@@ -173,11 +181,20 @@ async function insertCurrentSuccess(
   suffix: string,
 ): Promise<string> {
   const eventId = randomUUID();
+  const providerEventId = `evt_success_${suffix}_${fixture.token}`;
+  // billing_events_stripe_identity_format_check is ^evt_[A-Za-z0-9_]{8,}$ --
+  // no hyphens, matching real Stripe IDs. A suffix of 'after-expiration' once
+  // produced an id the table refused, and the insert failed inside a race the
+  // test was mid-way through, so it surfaced as `expected false to be true`
+  // rather than as a bad identifier. Fail here, where the name is visible.
+  if (!/^evt_[A-Za-z0-9_]{8,}$/.test(providerEventId)) {
+    throw new Error(`Fixture built an invalid Stripe event id: ${providerEventId}`);
+  }
   await insertReceivedEvent(client, {
     id: eventId,
     accountId: fixture.accountId,
     stripeAccountId: fixture.stripeAccountId,
-    providerEventId: `evt_success_${suffix}_${fixture.token}`,
+    providerEventId,
     eventType: 'checkout.session.completed',
     checkoutSessionId: fixture.currentSessionId,
     providerCreatedAt: race.providerCreatedAt,
@@ -385,11 +402,19 @@ describe('direct Checkout late-success operator resolution on disposable PG17', 
 
     const applied = row(await pg().b.query(SETTLE_RPC_SQL, parameters));
     const replay = row(await pg().b.query(SETTLE_RPC_SQL, parameters));
-    expect(applied).toMatchObject({ applied: true, result_code: 'settled' });
+    expect(applied).toMatchObject({
+      applied: true,
+      result_code: 'settled',
+      evidence_moved: false,
+    });
+    // The baseline that gives the moved-evidence assertion in the next test its
+    // meaning: nothing has changed here, so the replay has to say nothing has
+    // changed. A flag hardwired to true would pass there and fail here.
     expect(replay).toMatchObject({
       applied: false,
       result_code: 'already_settled',
       resolution_id: applied.resolution_id,
+      evidence_moved: false,
     });
   });
 
@@ -445,7 +470,20 @@ describe('direct Checkout late-success operator resolution on disposable PG17', 
       reasonCode: 'additional_paid_truth_present',
     });
     expect(changedPlan.taskSetSha256).not.toBe(plan.taskSetSha256);
-    await expectSqlState(pg().control.query(SETTLE_RPC_SQL, parameters), '22000');
+    // This demanded 22000 before, and the RPC never raised it -- the replay
+    // branch returns before the freshly computed fingerprints are ever
+    // compared. Raising was the smaller fix and was rejected on purpose:
+    // already_settled exists so an honest retry gets an identical answer, and
+    // failing a retry on a rail carrying real payments trades a reporting gap
+    // for an availability one. The hold still blocks refund release either way.
+    // What it must no longer do is describe a stale resolution as current.
+    // See 20260818234500.
+    const staleReplay = row(await pg().control.query(SETTLE_RPC_SQL, parameters));
+    expect(staleReplay).toMatchObject({
+      applied: false,
+      result_code: 'already_settled',
+      evidence_moved: true,
+    });
 
     await expectSqlState(
       pg().control.query(
@@ -496,10 +534,18 @@ describe('direct Checkout late-success operator resolution on disposable PG17', 
       if (completion) await completion;
     }
 
+    // confirm_one_off_direct_checkout_presentation, not
+    // can_present_one_off_direct_checkout_session. The latter never existed --
+    // two call sites, zero definitions, introduced by fb5b7d57 alongside these
+    // tests, so this assertion has never once run. Despite the `confirm_` name
+    // the existing function performs no INSERT, UPDATE or DELETE: it is the
+    // locking read gate the application itself calls via confirmPresentation(),
+    // and its own comment says "false means the Session must remain
+    // undisclosed" -- exactly what is being asserted here.
     const state = row(await pg().control.query(
       `select o.state, o.provider_object_id,
               p.stripe_checkout_session, p.late_checkout_success_task_pk,
-              public.can_present_one_off_direct_checkout_session(o.id, $2)
+              public.confirm_one_off_direct_checkout_presentation(o.id, $2)
                 as can_present,
               public.direct_checkout_late_success_has_active_hold(p.id)
                 as active_hold
@@ -549,7 +595,7 @@ describe('direct Checkout late-success operator resolution on disposable PG17', 
 
     const fenced = row(await pg().control.query(
       `select
-         public.can_present_one_off_direct_checkout_session($1, $2)
+         public.confirm_one_off_direct_checkout_presentation($1, $2)
            as can_present,
          public.direct_checkout_late_success_has_active_hold($3)
            as active_hold,
@@ -594,10 +640,33 @@ describe('direct Checkout late-success operator resolution on disposable PG17', 
     expect(expirationOutcome.ok).toBe(true);
     if (!expirationOutcome.ok) throw expirationOutcome.error;
     const projected = row(expirationOutcome.result);
+    // Two columns share the name `processing_status`, and this assertion
+    // originally read the wrong one. The RPC's OUT column carries the WORKFLOW
+    // DISPOSITION, whose vocabulary is exactly {processed,
+    // manual_reconciliation} -- parseProjectResult in
+    // src/lib/billing/connected-checkout-expiration-projector.ts throws on
+    // anything else, so a returned 'failed' could never have reached
+    // production. The durable inbox column on billing_events is what carries
+    // 'failed'. One statement in 20260816094500 (~1054-1070) writes both,
+    // deliberately. Assert each where it actually lives.
     expect(projected).toMatchObject({
-      processing_status: 'failed',
+      processing_status: 'manual_reconciliation',
       error_code: 'expiration_success_event_conflict',
       projection_applied: false,
+    });
+    const durableExpiration = row(await pg().control.query(
+      `select e.processing_status, e.last_error, e.projection_applied,
+              e.next_attempt_at
+         from public.billing_events e where e.id = $1`,
+      [race.eventId],
+    ));
+    // next_attempt_at null is the load-bearing half: this is terminal and
+    // waits for a human, not for a retry.
+    expect(durableExpiration).toMatchObject({
+      processing_status: 'failed',
+      last_error: 'expiration_success_event_conflict',
+      projection_applied: null,
+      next_attempt_at: null,
     });
   });
 
@@ -622,7 +691,7 @@ describe('direct Checkout late-success operator resolution on disposable PG17', 
         pg().b,
         fixture,
         race,
-        'after-expiration',
+        'after_expiration',
       ));
       const wait = await waitForApplicationLock(
         pg().control,

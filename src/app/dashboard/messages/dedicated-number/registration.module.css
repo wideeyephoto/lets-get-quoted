@@ -1,0 +1,34 @@
+.shell { max-width: 980px; padding-bottom: 4rem; }
+.header { margin-bottom: 1.25rem; }
+.header h1 { margin: .25rem 0 .45rem; font-size: clamp(1.65rem, 4vw, 2.4rem); }
+.header p { color: var(--muted); max-width: 70ch; line-height: 1.6; }
+.back { color: var(--muted); font-size: .86rem; }
+.back:hover { color: var(--text); }
+.eyebrow { color: var(--accent) !important; text-transform: uppercase; font-size: .72rem; font-weight: 800; letter-spacing: .14em; margin-top: 1rem; }
+.banner { padding: .8rem 1rem; border-radius: .7rem; border: 1px solid; margin: 0 0 1rem; }
+.success { border-color: rgba(52, 211, 153, .4); background: rgba(52, 211, 153, .1); }
+.error { border-color: rgba(248, 113, 113, .4); background: rgba(248, 113, 113, .1); }
+.statusCard, .card { border: 1px solid var(--edge-t12); background: rgba(var(--tint), .035); border-radius: .9rem; padding: 1.1rem 1.2rem; }
+.statusCard { display: flex; flex-direction: column; gap: .25rem; margin-bottom: 1rem; }
+.statusCard span, .statusCard small, .note { color: var(--muted); font-size: .82rem; }
+.statusCard strong { color: var(--accent-2); font-size: 1.1rem; }
+.statusCard p { margin: .35rem 0 0; }
+.form { display: grid; gap: 1rem; }
+.card h2 { margin: 0 0 .85rem; font-size: 1.15rem; }
+.card > label { display: flex; flex-direction: column; gap: .35rem; margin-bottom: .85rem; }
+.grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .8rem; }
+.grid label { display: flex; flex-direction: column; gap: .35rem; }
+.form label > span { font-size: .82rem; font-weight: 700; color: var(--muted); }
+.form input:not([type='checkbox']), .form select, .form textarea {
+  width: 100%; border: 1px solid var(--edge-t14); border-radius: .55rem;
+  background: rgba(var(--tint), .05); color: var(--text); padding: .65rem .72rem;
+  font: inherit;
+}
+.form textarea { resize: vertical; line-height: 1.45; }
+.form input:focus, .form select:focus, .form textarea:focus { outline: 2px solid rgba(255, 122, 33, .45); outline-offset: 1px; }
+.note { line-height: 1.5; margin: .75rem 0 0; }
+.attestation { display: grid !important; grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: .65rem !important; }
+.attestation input { margin-top: .2rem; }
+.attestation span { line-height: 1.5; color: var(--text) !important; font-weight: 500 !important; }
+.card ol { color: var(--muted); line-height: 1.6; padding-left: 1.25rem; }
+@media (max-width: 680px) { .grid { grid-template-columns: 1fr; } }

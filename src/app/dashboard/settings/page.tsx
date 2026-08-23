@@ -1,5 +1,8 @@
 import Link from 'next/link';
-import { requireOwnerContext } from '@/lib/auth';
+import { createAdminClient, requireOwnerContext } from '@/lib/auth';
+import { loadOfficeTeam } from '@/lib/office-team';
+import { loadOverageSummary } from '@/lib/billing/overage-summary';
+import { overageSelfServeEnabled } from '@/lib/billing/overage-authorization';
 import { pickBusinessName } from '@/lib/business-name';
 import { DEFAULT_BURDEN_PCT, DEFAULT_MIN_MARGIN_PCT } from '@/lib/cost-truth';
 import { connectStripeAction, disconnectStripeAction } from '../stripe-actions';
@@ -27,13 +30,27 @@ import { displayPhone } from '@/lib/phone';
 import { getSiteContent } from '@/lib/site-content';
 import { googleReviewUrl } from '@/lib/review-routing';
 import { loadWorkspacePlanUsage, planUsageDashboardEnabled } from '@/lib/billing/plan-usage';
+import { formatStorageBytes, loadWorkspaceStorageState } from '@/lib/billing/storage-usage';
+import { buildWorkspaceCapacity, loadCrewSeatsUsed } from '@/lib/billing/capacity-usage';
+import { loadWorkspaceCreditLots } from '@/lib/billing/credit-lots';
+import { NO_PURCHASED_SEATS, loadPurchasedSeats } from '@/lib/billing/purchased-seats';
 import { basePlanSubscriptionCheckoutEnabled } from '@/lib/billing/base-plan-subscription-entrypoint';
+import { basePlanSubscriptionPlanChangeEnabled } from '@/lib/billing/plan-change';
+import { loadChangeableSubscription, planChangeOptions } from '@/lib/billing/plan-change';
+import { parsePlanIntent } from '@/lib/plan-intent';
+import { BILLING_PLANS, resolveBillingPlanId } from '@/lib/billing/catalog';
+import {
+  basePlanSubscriptionCancellationEnabled,
+  loadCancellableSubscription,
+} from '@/lib/billing/subscription-cancellation';
 import {
   loadMerchantOnboardingSurfaceForOwner,
   stripeMerchantOnboardingV2Enabled,
 } from '@/lib/billing/merchant-onboarding-entrypoint';
+import { topUpPurchaseEnabled } from '@/lib/billing/top-up-purchase-entrypoint';
 import { PUBLIC_PRICING_SUMMARY } from '@/lib/pricing';
 import PlanUsageSection from './PlanUsageSection';
+import OfficeTeamSection from './OfficeTeamSection';
 import MerchantOnboardingSection from './MerchantOnboardingSection';
 
 export const metadata = { title: 'Account' };
@@ -45,14 +62,24 @@ function formatDate(value: string): string {
 export default async function SettingsPage({
   searchParams,
 }: {
-  searchParams: { year?: string; quickbooks?: string; merchant_onboarding?: string };
+  searchParams: {
+    year?: string;
+    quickbooks?: string;
+    merchant_onboarding?: string;
+    top_up_checkout?: string;
+    // Carried from /pricing through signup. Pre-selects the paid-plan checkout
+    // below rather than making someone re-answer a question they already did.
+    plan?: string;
+    billing?: string;
+  };
 }) {
   const { supabase, accountId } = await requireOwnerContext();
   const pricingDashboardEnabled = planUsageDashboardEnabled();
   const subscriptionCheckoutEnabled = basePlanSubscriptionCheckoutEnabled();
+  const topUpPurchaseCheckoutEnabled = topUpPurchaseEnabled();
   const merchantOnboardingEnabled = stripeMerchantOnboardingV2Enabled();
 
-  const [{ data: userData }, { data: identityData }, { data: account }, { data: site }, { count: pendingPaymentsCount }, planUsage, merchantOnboarding] =
+  const [{ data: userData }, { data: identityData }, { data: account }, { data: site }, { count: pendingPaymentsCount }, planUsage, merchantOnboarding, storageState, purchasedSeats] =
     await Promise.all([
       supabase.auth.getUser(),
       supabase.auth.getUserIdentities(),
@@ -85,7 +112,144 @@ export default async function SettingsPage({
       merchantOnboardingEnabled
         ? loadMerchantOnboardingSurfaceForOwner({ accountId })
         : Promise.resolve(null),
+      // The ONE read on this page that does not go through the owner's session
+      // client. The effective limit is the plan allowance plus purchased
+      // capacity, and workspace_purchased_capacity is deliberately service-role
+      // only -- owners see the effect, not the ledger. accountId is already
+      // authenticated by requireOwnerContext above and is passed explicitly, so
+      // the widened client never widens the scope.
+      pricingDashboardEnabled
+        ? loadWorkspaceStorageState(createAdminClient(), accountId)
+        : Promise.resolve(null),
+      // Same posture and the same reason as the storage read above: the ledger
+      // behind a purchased seat is service-role only, and the owner is shown its
+      // effect rather than its rows. Reads to zero on failure, which is exactly
+      // the plan-allowance-only behavior that shipped before it existed.
+      pricingDashboardEnabled
+        ? loadPurchasedSeats(createAdminClient(), accountId)
+        : Promise.resolve(NO_PURCHASED_SEATS),
     ]);
+
+  // Its own read, and tolerant of the migrations not being applied. Everything
+  // it touches -- office_invitations, and memberships filtered to office --
+  // lands ahead of its migration on any environment that has not run it, and
+  // loadOfficeTeam already degrades an unreadable team to an empty one rather
+  // than throwing. A Settings page that 500s because one card cannot load is a
+  // worse failure than a card that says nobody is here.
+  const officeTeam = await loadOfficeTeam(createAdminClient(), accountId);
+
+  // Only offered when there is genuinely something to cancel. Same failure
+  // posture as the cards above: a subscription read that falls over must not
+  // take the whole Settings page with it, and the absence of the panel is the
+  // safe direction -- nobody is shown a cancel button that cannot work.
+  const cancellable = basePlanSubscriptionCancellationEnabled()
+    ? await loadCancellableSubscription(createAdminClient(), accountId)
+      .then((subscription) => (subscription
+        ? {
+          planName: BILLING_PLANS[resolveBillingPlanId(subscription.planCode)].name,
+          currentPeriodEnd: subscription.currentPeriodEnd,
+          alreadyScheduled: subscription.cancelAtPeriodEnd,
+        }
+        : null))
+      .catch(() => null)
+    : null;
+
+  /**
+   * Withheld 2026-08-23 because the rail could not record a plan change at all;
+   * un-hardcoded 2026-08-23 once it could.
+   *
+   * WHAT IT WAS PROTECTING AGAINST. `changeBasePlan` calls
+   * `stripe.subscriptions.update` with `proration_behavior: 'always_invoice'`,
+   * so the difference is taken immediately -- and then every event for that
+   * subscription failed to project, permanently, leaving the workspace on the
+   * OLD plan's limits, allowances and platform fee while paying the new price.
+   * Nothing self-healed, because the only thing that could repair the
+   * entitlement was the projector that was refusing it.
+   *
+   * WHY IT IS NO LONGER A CONSTANT. All of it landed: `20260823200000` gives a
+   * plan change its own consent recorder, `20260823210000`-`230000` its own
+   * ledger and transitions, `20260823235000` teaches the projector and the
+   * binding to read that ledger, and `20260823235500` makes an upgrade hand over
+   * the new plan's full allowance. The write path claims its row before calling
+   * Stripe and records the proration invoice activation binds to.
+   *
+   * So there is no longer a second, hidden reason to keep the surface off, and
+   * two independent switches would mean turning the rail on required a code
+   * change AND an env change -- which is how a flag ends up looking enabled while
+   * the feature is invisible. ONE control now:
+   * LGQ_BASE_PLAN_SUBSCRIPTION_PLAN_CHANGE_ENABLED, absent in every environment,
+   * which also gates the operation itself inside `changeBasePlan`.
+   *
+   * The end-to-end projection test in test mode is what should gate turning that
+   * flag on -- not a migration, and not a design note.
+   */
+  const PLAN_CHANGE_PANEL_WITHHELD = !basePlanSubscriptionPlanChangeEnabled();
+
+  const planChange = PLAN_CHANGE_PANEL_WITHHELD ? null : await loadChangeableSubscription(createAdminClient(), accountId)
+    .then((subscription) => (subscription && subscription.planCode !== 'flex'
+      ? {
+        currentPlanCode: subscription.planCode,
+        currentBillingInterval: subscription.billingInterval,
+        currentPeriodEnd: subscription.currentPeriodEnd,
+        pendingPlanCode: subscription.pendingPlanCode,
+        pendingEffectiveAt: subscription.pendingEffectiveAt,
+        options: planChangeOptions(subscription),
+      }
+      : null))
+    .catch(() => null);
+
+  // Through the SESSION client: every overage table is owner-read and
+  // service-role-write, because an owner who could write their own settings row
+  // could raise their own cap without leaving evidence. Reading it with the
+  // admin client would work and would quietly remove the check that matters.
+  // Its own read, and error-tolerant, like the two above it.
+  const overage = pricingDashboardEnabled ? await loadOverageSummary(supabase, accountId) : null;
+
+  // A SECOND flag, on top of the one that revealed this tab. Showing somebody
+  // what they are spending and letting them authorize more spending are
+  // different decisions with different blast radii, and the read half shipped
+  // first deliberately. This only decides whether the control RENDERS -- the
+  // operation checks the same flag itself, because a gate that lives only where
+  // a button is drawn turns out to gate the button.
+  const overageSelfServe = pricingDashboardEnabled && overageSelfServeEnabled();
+
+  // OCCUPANCY, to sit beside the entitlement. Through the owner's session client
+  // for the same reason the overage read is: crew_owner already scopes it, and
+  // widening the client would remove the check rather than satisfy it.
+  const crewSeatsUsed = pricingDashboardEnabled
+    ? await loadCrewSeatsUsed(supabase, accountId).catch(() => null)
+    : null;
+
+  // The lots behind the balances, so a refreshing allowance can be shown
+  // against its own denominator rather than against every credit the account
+  // has ever been granted. Session client: usage_credit_lots_owner_read is the
+  // boundary, and only the columns granted to `authenticated` are selected.
+  // Its own `unavailable`, so a refusal here falls back to the balance view
+  // rather than emptying the card.
+  const creditLots = pricingDashboardEnabled
+    ? await loadWorkspaceCreditLots(supabase, accountId).catch(() => ({ kind: 'unavailable' as const }))
+    : null;
+
+  const capacity = pricingDashboardEnabled && planUsage
+    ? buildWorkspaceCapacity(
+      planUsage.plan.kind === 'ready' ? planUsage.plan.limits : null,
+      purchasedSeats,
+      {
+        // loadOfficeTeam degrades an unreadable team to seatsUsed: 0, and a
+        // readable workspace ALWAYS has at least the owner in a seat. So zero
+        // here means the read failed, not that the office is empty -- and
+        // "0 of 2 used" would invent an emptiness that cannot exist.
+        officeSeatsUsed: officeTeam.seatsUsed > 0 ? officeTeam.seatsUsed : null,
+        crewSeatsUsed,
+        // Connected means VERIFIED. A domain saved but never verified serves
+        // nothing, so counting it would show a contractor a slot consumed by
+        // something that is not working.
+        customDomainsUsed: site ? (site.custom_domain && site.custom_domain_verified_at ? 1 : 0) : null,
+      },
+      storageState,
+      formatStorageBytes,
+    )
+    : null;
 
   const providers = (identityData?.identities ?? []).map((identity) => identity.provider);
   const businessName = pickBusinessName(site, account);
@@ -191,6 +355,18 @@ export default async function SettingsPage({
     && planUsage.plan.billingStatus === 'free'
     && planUsage.plan.entitlementState === 'active';
 
+  // Add-ons need no first-subscription eligibility: every plan including Flex
+  // may buy credits. Only an active entitlement and the dark switch gate it,
+  // and which SKUs appear is the catalog's answer, not this page's.
+  const showTopUpPurchase = topUpPurchaseCheckoutEnabled
+    && planUsage?.plan.kind === 'ready'
+    && planUsage.plan.entitlementState === 'active';
+  const topUpCheckoutStatus = searchParams.top_up_checkout === 'success'
+    ? 'success' as const
+    : searchParams.top_up_checkout === 'canceled'
+      ? 'canceled' as const
+      : null;
+
   // "Is my account actually set up?" — the one thing the Business tab could not
   // answer without opening all eight of its forms.
   const setup = businessSetup({
@@ -214,8 +390,8 @@ export default async function SettingsPage({
   // /dashboard/reports now, where somebody is actually asking for them.
 
   return (
-    <main className="wide-shell workspace-shell">
-      <section className="workspace-hero panel">
+    <main className="wide-shell workspace-shell settings-shell">
+      <section className="workspace-hero settings-hero panel">
         <div className="workspace-hero-copy">
           <div className="workspace-eyebrow-row">
             <p className="eyebrow">Account</p>
@@ -303,20 +479,61 @@ export default async function SettingsPage({
               </>
             ),
           },
+          {
+            id: 'team',
+            label: 'Team',
+            anchors: ['office-team'],
+            content: (
+              <section id="office-team" className="settings-card">
+                <h2>Office team</h2>
+                <OfficeTeamSection team={officeTeam} />
+              </section>
+            ),
+          },
           ...(pricingDashboardEnabled && planUsage ? [{
             id: 'plan',
             label: 'Plan & usage',
             anchors: [
+              'plan-at-a-glance',
               'current-plan',
               'platform-fee',
+              // Rendered only for a workspace on the CURRENT catalog -- a pinned
+              // one is billed at prices the ladder does not know. Listed
+              // unconditionally anyway: an anchor for a section that is absent
+              // costs a reader nothing, while a section with no anchor is one
+              // they cannot link to at all.
+              'plan-fit',
               ...(showSubscriptionCheckout ? ['choose-paid-plan'] : []),
+              ...(planChange ? ['change-plan'] : []),
+              ...(cancellable ? ['cancel-plan'] : []),
               'usage-balances',
+              ...(storageState ? ['workspace-storage'] : []),
+              // OverageCard renders whenever `overage` is non-null -- in BOTH
+              // its branches, so the id is always in the DOM when the card is.
+              // It was missing here, which is not a cosmetic gap: a hash this
+              // list does not know resolves to no tab at all, so
+              // /dashboard/settings#overage left the reader on Account with the
+              // card sitting inside a hidden panel. Guarded now by
+              // test/plan-usage-anchors.test.ts.
+              ...(overage ? ['overage'] : []),
+              ...(showTopUpPurchase ? ['buy-credits'] : []),
               'included-limits',
             ],
             content: (
               <PlanUsageSection
+                cancellable={cancellable}
+                planChange={planChange}
+                planIntent={parsePlanIntent(searchParams.plan ?? null, searchParams.billing ?? null)}
                 data={planUsage}
+                storage={storageState}
+                purchasedSeats={purchasedSeats}
+                capacity={capacity}
+                lots={creditLots}
+                overage={overage}
+                overageSelfServe={overageSelfServe}
                 showSubscriptionCheckout={showSubscriptionCheckout}
+                showTopUpPurchase={showTopUpPurchase}
+                topUpCheckoutStatus={topUpCheckoutStatus}
               />
             ),
           }] : []),

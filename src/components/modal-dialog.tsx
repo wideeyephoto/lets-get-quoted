@@ -1,7 +1,9 @@
 'use client';
 
-import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { createPortal, useFormStatus } from 'react-dom';
+
+import { modalStackFor } from '@/components/modal-stack';
 
 // The app's modal: a trigger button, a portaled dialog, Escape and backdrop to
 // close, and a way for a Server Action form inside it to close it on success.
@@ -74,77 +76,66 @@ export default function ModalDialog({
 }: ModalDialogProps) {
   const [open, setOpen] = useState(defaultOpen);
   const [mounted, setMounted] = useState(false);
+  const [topmost, setTopmost] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const backdropRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
+  const dialogId = useId();
   const close = useCallback(() => setOpen(false), []);
 
   useEffect(() => setMounted(true), []);
 
   useEffect(() => {
-    if (!open) return;
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setOpen(false);
-    };
-    document.addEventListener('keydown', onKey);
-    // Prevent the page behind the modal from scrolling.
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-
-    /**
-     * ...and from being reached, which is a different thing.
-     *
-     * The dialog is `aria-modal`, but that is a promise to assistive tech about
-     * what is behind it, not an instruction to the browser — Tab still walked
-     * out of "New message" and into the inbox behind the backdrop, where every
-     * conversation link and the whole nav rail were operable through the scrim.
-     * `inert` on the body's other children is what actually holds, and doing it
-     * per sibling rather than on <body> is what leaves the portal — a child of
-     * <body> itself — alive.
-     *
-     * Captured as a list rather than re-queried on close: a Server Action can
-     * revalidate the page underneath while the dialog is open, and the set of
-     * body children is not guaranteed to be the same one we marked.
-     *
-     * Every backdrop is spared, not just this one, so a dialog opened from
-     * inside another does not silence its parent.
-     */
-    const inerted = Array.from(document.body.children).filter(
-      (el): el is HTMLElement => el instanceof HTMLElement && !el.classList.contains('app-modal-backdrop'),
-    );
-    inerted.forEach((el) => el.toggleAttribute('inert', true));
-
-    closeRef.current?.focus();
-    return () => {
-      document.removeEventListener('keydown', onKey);
-      document.body.style.overflow = previousOverflow;
-      inerted.forEach((el) => el.toggleAttribute('inert', false));
-    };
+    if (!open || !mounted) return;
+    const backdrop = backdropRef.current;
+    if (!backdrop) return;
+    return modalStackFor(document).register({
+      id: dialogId,
+      backdrop,
+      trigger: triggerRef.current,
+      requestClose: close,
+      focusInitial: () => closeRef.current?.focus(),
+      setTopmost,
+    });
     // `mounted` too: the portal only exists after it flips, and with
-    // defaultOpen the dialog is already open by then — without it, the one
-    // modal that opens on load would be the one that never inerted anything.
-  }, [open, mounted]);
+    // defaultOpen the dialog is already open by then.
+  }, [open, mounted, close, dialogId]);
 
   return (
     <>
-      <button type="button" className={triggerClassName} onClick={() => setOpen(true)}>
+      <button
+        ref={triggerRef}
+        type="button"
+        className={triggerClassName}
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        aria-controls={dialogId}
+        onClick={() => setOpen(true)}
+      >
         {triggerLabel}
       </button>
 
       {mounted && open
         ? createPortal(
             <div
-              // Still carries app-modal-backdrop, because the inert sweep above
-              // identifies backdrops by that class — a modifier that replaced it
-              // would silence this dialog's own portal.
+              ref={backdropRef}
               className={`app-modal-backdrop${obscureBackdrop ? ' is-private' : ''}`}
               role="presentation"
               onClick={(event) => {
-                if (event.target === event.currentTarget) setOpen(false);
+                if (event.target === event.currentTarget && modalStackFor(document).isTopmost(dialogId)) close();
               }}
             >
-              <div className="app-modal" role="dialog" aria-modal="true" aria-label={title}>
+              <div
+                id={dialogId}
+                className="app-modal"
+                role="dialog"
+                aria-modal={topmost ? 'true' : undefined}
+                aria-hidden={topmost ? undefined : true}
+                aria-label={title}
+              >
                 <div className="app-modal-head">
                   <h2>{title}</h2>
-                  <button ref={closeRef} type="button" className="icon-btn" aria-label="Close" onClick={() => setOpen(false)}>
+                  <button ref={closeRef} type="button" className="icon-btn" aria-label="Close" onClick={close}>
                     ✕
                   </button>
                 </div>

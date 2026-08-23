@@ -336,6 +336,7 @@ async function deliverChoiceReminder(
   const clientName = job.client_name || 'there';
 
   let channel: 'sms' | 'email';
+  let smsEventId: string | null = null;
   try {
     // A fresh link each time — tokens are stored hashed and cannot be recovered,
     // and older ones keep working.
@@ -359,8 +360,13 @@ async function deliverChoiceReminder(
       // the consent read above, and the one that catches a STOP that landed
       // between the two. Treated as a skip and not as a send, which the old code
       // did not do: it stamped the row regardless of what came back.
-      const providerId = await sendSelectionRequestSms({ phone, accountId, message });
-      if (providerId === null) {
+      smsEventId = await sendSelectionRequestSms({
+        phone,
+        accountId,
+        message,
+        idempotencyKey: `choice-reminder:${job.id}:${send.sendOn}:${send.selectionId ?? 'job'}`,
+      });
+      if (smsEventId === null) {
         await finish({ status: 'skipped', failure_reason: 'opted_out' });
         return 'skipped';
       }
@@ -385,14 +391,17 @@ async function deliverChoiceReminder(
     return 'failed';
   }
 
+  // selection_reminders predates the durable queue and only permits `sent` as
+  // its terminal success state. Keep that value as the one-ask lock, but never
+  // present queue acceptance as carrier delivery. sms_events is authoritative.
   await finish({ status: 'sent', channel, sent_at: now.toISOString() });
 
   // The job's own history, alongside the copy of the text that
   // sendSelectionRequestSms already mirrored into the Messages inbox.
   await createJobFeedEvent(admin, accountId, job.id, {
     kind: 'selection_requested',
-    title: channel === 'sms' ? 'Choice reminder texted' : 'Choice reminder emailed',
-    body: `Reminded ${clientName} about ${send.titles.length} ${
+    title: channel === 'sms' ? 'Choice reminder queued' : 'Choice reminder emailed',
+    body: `${channel === 'sms' ? 'Queued a reminder for' : 'Reminded'} ${clientName} about ${send.titles.length} ${
       send.titles.length === 1 ? 'choice' : 'choices'
     }${
       send.daysPastNeededBy > 0
@@ -407,6 +416,8 @@ async function deliverChoiceReminder(
       stages: send.claims.map((claim) => claim.stage),
       needed_by: send.claims.map((claim) => claim.neededBy),
       selection_ids: send.selectionIds,
+      delivery_state: channel === 'sms' ? 'queued' : 'sent',
+      sms_event_id: channel === 'sms' ? smsEventId : null,
     },
   }).catch(() => {});
 

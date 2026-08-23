@@ -16,10 +16,6 @@ function formatDate(value: string): string {
   return new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
-function campaignSent(campaign: Campaign): number {
-  return campaign.email_sent + campaign.sms_sent;
-}
-
 /**
  * What you've already sent — and a way to send it again.
  *
@@ -69,9 +65,11 @@ export default function CampaignHistory({
                   </span>
                 </div>
                 <div className="campaign-history-stats">
-                  <span className="campaign-stat"><strong>{campaignSent(campaign)}</strong> sent</span>
-                  {campaign.email_sent > 0 && campaign.sms_sent > 0 ? (
-                    <span className="muted">{campaign.email_sent} email · {campaign.sms_sent} text</span>
+                  {campaign.email_sent > 0 ? (
+                    <span className="campaign-stat"><strong>{campaign.email_sent}</strong> email sent</span>
+                  ) : null}
+                  {campaign.sms_sent > 0 ? (
+                    <span className="campaign-stat"><strong>{campaign.sms_sent}</strong> {campaign.sms_sent === 1 ? 'text' : 'texts'} queued</span>
                   ) : null}
                   {campaign.skipped_count > 0 ? <span className="muted">{campaign.skipped_count} skipped</span> : null}
                   {campaign.failed_count > 0 ? <span className="campaign-stat-fail">{campaign.failed_count} failed</span> : null}

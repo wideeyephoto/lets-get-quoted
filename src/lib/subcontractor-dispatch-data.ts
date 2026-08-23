@@ -62,11 +62,11 @@ const APP_ORIGIN = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').
 const REQUEST_COLUMNS =
   'id, account_id, job_id, status, work_description, service_date, window_start, window_end, general_location, ' +
   'pay_amount, pay_kind, required_trade, required_skills, requires_license, requires_insurance, expires_at, ' +
-  'selection_mode, document_paths, message_body, claimed_offer_id, claimed_crew_id, claimed_at, sent_at, ' +
+  'selection_mode, document_paths, message_body, claimed_offer_id, claimed_crew_id, claimed_at, queued_at, sent_at, ' +
   'cancelled_at, reopened_at, created_at, updated_at';
 
 const OFFER_COLUMNS =
-  'id, account_id, request_id, crew_id, status, phone, body, provider_id, error_reason, distance_miles, ' +
+  'id, account_id, request_id, crew_id, status, phone, body, provider_id, sms_event_id, error_reason, distance_miles, ' +
   'match_reason, queued_at, sent_at, delivered_at, viewed_at, responded_at, decline_reason, question, backup, won, created_at';
 
 // -- shaping -------------------------------------------------------------------
@@ -101,12 +101,13 @@ export function shapeRequest(row: Row): DispatchRequest {
     claimedOfferId: (row.claimed_offer_id as string | null) ?? null,
     claimedCrewId: (row.claimed_crew_id as string | null) ?? null,
     claimedAt: (row.claimed_at as string | null) ?? null,
+    queuedAt: (row.queued_at as string | null) ?? null,
     sentAt: (row.sent_at as string | null) ?? null,
     createdAt: row.created_at as string,
   };
 }
 
-export function shapeOffer(row: Row): DispatchOffer & { won: boolean; providerId: string | null; errorReason: string | null } {
+export function shapeOffer(row: Row): DispatchOffer & { won: boolean; providerId: string | null; smsEventId: string | null; errorReason: string | null } {
   return {
     id: row.id as string,
     requestId: row.request_id as string,
@@ -125,6 +126,7 @@ export function shapeOffer(row: Row): DispatchOffer & { won: boolean; providerId
     backup: row.backup === true,
     won: row.won === true,
     providerId: (row.provider_id as string | null) ?? null,
+    smsEventId: (row.sms_event_id as string | null) ?? null,
     errorReason: (row.error_reason as string | null) ?? null,
   };
 }
@@ -600,7 +602,7 @@ export async function getActiveRequestForJob(
 
 export type SendResult = {
   request: DispatchRequest;
-  sent: number;
+  queued: number;
   failed: number;
   simulated: boolean;
   skipped: Array<{ name: string; reason: string }>;
@@ -612,7 +614,7 @@ export type SendResult = {
  * THE ORDER MATTERS AND IT IS THIS:
  *
  *   1. Every recipient gets a ROW with their own token, all still 'queued'.
- *   2. The request is marked sent.
+ *   2. The request is marked queued.
  *   3. Only then does anything leave the building.
  *
  * Rows before texts, because the link in the text has to already resolve to
@@ -644,7 +646,7 @@ export async function sendSubcontractorRequest(
     .is('deleted_at', null);
 
   const crew = (crewRows ?? []) as unknown as Row[];
-  const alreadyOffered = new Set(existing.offers.map((offer) => offer.crewId));
+  const offerByCrew = new Map(existing.offers.map((offer) => [offer.crewId, offer]));
   const skipped: Array<{ name: string; reason: string }> = [];
 
   // No business name is read here on purpose: the message was composed in the
@@ -652,13 +654,37 @@ export async function sendSubcontractorRequest(
   // function sends what they approved, verbatim.
   const origin = input.origin ?? APP_ORIGIN;
 
-  type Pending = { crewId: string; name: string; phone: string; token: string; tokenHash: string; body: string };
+  type Pending = {
+    crewId: string;
+    name: string;
+    phone: string;
+    body: string;
+    /** Present when retrying an offer row whose durable SMS event was never linked. */
+    offerId?: string;
+    tokenHash?: string;
+  };
   const pending: Pending[] = [];
 
   for (const member of crew) {
     const name = (member.name as string) ?? 'Subcontractor';
-    if (alreadyOffered.has(member.id as string)) {
-      skipped.push({ name, reason: 'Already has an offer for this request' });
+    const existingOffer = offerByCrew.get(member.id as string);
+    if (existingOffer) {
+      const canRepairQueueLink = !existingOffer.smsEventId && (existingOffer.status === 'queued' || existingOffer.status === 'failed');
+      if (!canRepairQueueLink) {
+        skipped.push({ name, reason: 'Already has an offer for this request' });
+        continue;
+      }
+      // A process can die after queueAccountSms commits but before the returned
+      // event id is attached to this offer. Re-run the same stable message key
+      // against the stored phone/body, then repair that link. Never mint a new
+      // token or silently abandon a durable event in that recovery window.
+      pending.push({
+        crewId: existingOffer.crewId,
+        name,
+        phone: existingOffer.phone,
+        body: existingOffer.body,
+        offerId: existingOffer.id,
+      });
       continue;
     }
     const phone = normalizeUsPhone((member.phone as string) ?? '') ?? '';
@@ -671,7 +697,6 @@ export async function sendSubcontractorRequest(
       crewId: member.id as string,
       name,
       phone,
-      token,
       tokenHash,
       body: personalizeOfferMessage(input.messageBody, offerLink(token, origin)),
     });
@@ -685,38 +710,47 @@ export async function sendSubcontractorRequest(
     );
   }
 
-  const { data: inserted, error: insertError } = await supabase
-    .from('subcontractor_offers')
-    .insert(
-      pending.map((entry) => ({
-        account_id: accountId,
-        request_id: requestId,
-        crew_id: entry.crewId,
-        token_hash: entry.tokenHash,
-        status: 'queued',
-        phone: entry.phone,
-        body: entry.body,
-      })),
-    )
-    .select('id, crew_id');
+  const newOffers = pending.filter((entry) => !entry.offerId);
+  const { data: inserted, error: insertError } = newOffers.length > 0
+    ? await supabase
+      .from('subcontractor_offers')
+      .insert(
+        newOffers.map((entry) => ({
+          account_id: accountId,
+          request_id: requestId,
+          crew_id: entry.crewId,
+          token_hash: entry.tokenHash!,
+          status: 'queued',
+          phone: entry.phone,
+          body: entry.body,
+        })),
+      )
+      .select('id, crew_id')
+    : { data: [], error: null };
   if (insertError) throw insertError;
 
-  const offerIdByCrew = new Map(((inserted ?? []) as unknown as Row[]).map((row) => [row.crew_id as string, row.id as string]));
+  const offerIdByCrew = new Map<string, string>(
+    pending.flatMap((entry) => entry.offerId ? [[entry.crewId, entry.offerId] as const] : []),
+  );
+  for (const row of ((inserted ?? []) as unknown as Row[])) {
+    offerIdByCrew.set(row.crew_id as string, row.id as string);
+  }
 
-  // The request is 'sent' the moment the offers exist, before a single text has
-  // gone out. If the provider is down, the offers are still real, the links
-  // still work, and the owner can re-send — a request stuck at 'draft' with
-  // five live links under it would be a lie in the other direction.
+  // Offer rows exist before delivery work. The request is queued here; only a
+  // later provider-acceptance fact may project it to sent.
   const nowIso = new Date().toISOString();
-  const { data: updated } = await supabase
+  const { data: updated, error: requestQueueError } = await supabase
     .from('subcontractor_requests')
-    .update({ status: 'sent', sent_at: existing.request.sentAt ?? nowIso, message_body: input.messageBody, updated_at: nowIso })
+    .update({ status: 'queued', queued_at: existing.request.queuedAt ?? nowIso, sent_at: null, message_body: input.messageBody, updated_at: nowIso })
     .eq('account_id', accountId)
     .eq('id', requestId)
     .select(REQUEST_COLUMNS)
     .maybeSingle();
+  if (requestQueueError || !updated) {
+    throw requestQueueError ?? new Error('Unable to mark that subcontractor request queued.');
+  }
 
-  let sent = 0;
+  let queued = 0;
   let failed = 0;
   let simulated = false;
 
@@ -729,37 +763,60 @@ export async function sendSubcontractorRequest(
       phone: entry.phone,
       eventType: 'sub_offer',
       body: entry.body,
+      idempotencyKey: `subcontractor:${offerId}:offer`,
     });
     if (result.status === 'simulated') simulated = true;
 
-    const delivered = result.status === 'sent' || result.status === 'simulated';
-    if (delivered) sent += 1;
-    else failed += 1;
+    const accepted = result.status === 'queued';
+    if (accepted) queued += 1;
+    else if (result.status !== 'simulated') failed += 1;
 
-    await supabase
+    const admin = createAdminClient();
+    const { data: linkedOffer, error: linkError } = await admin
       .from('subcontractor_offers')
       .update({
-        status: delivered ? 'sent' : 'failed',
-        sent_at: delivered ? new Date().toISOString() : null,
-        provider_id: result.providerId,
+        status: result.status === 'queued' || result.status === 'simulated' ? 'queued' : 'failed',
+        sent_at: null,
+        provider_id: null,
+        sms_event_id: result.smsEventId,
         error_reason:
           result.status === 'simulated'
             ? 'Simulated: this environment has no messaging provider, so nothing was delivered.'
             : result.status === 'opted_out'
               ? 'This number has replied STOP and cannot be texted.'
-              : result.error ?? null,
+              : accepted ? null : result.error ?? null,
         updated_at: new Date().toISOString(),
       })
       .eq('account_id', accountId)
-      .eq('id', offerId);
+      .eq('request_id', requestId)
+      .eq('crew_id', entry.crewId)
+      .eq('id', offerId)
+      .select('id')
+      .maybeSingle();
+    if (linkError || !linkedOffer) {
+      // This is an integrity failure, not a carrier delivery failure. Surface it
+      // so the caller can retry: the stable key above will return the same event
+      // and this recovery path will attach it without sending a second text.
+      throw linkError ?? new Error('Queued subcontractor SMS could not be linked to its offer.');
+    }
   }
 
-  const request = updated ? shapeRequest(updated as unknown as Row) : existing.request;
+  const finalStatus: RequestStatus = queued > 0 || simulated ? 'queued' : 'delivery_failed';
+  const { data: projected } = await supabase
+    .from('subcontractor_requests')
+    .update({ status: finalStatus, updated_at: new Date().toISOString() })
+    .eq('account_id', accountId)
+    .eq('id', requestId)
+    .select(REQUEST_COLUMNS)
+    .maybeSingle();
+  const request = projected
+    ? shapeRequest(projected as unknown as Row)
+    : updated ? shapeRequest(updated as unknown as Row) : existing.request;
 
   await createJobFeedEvent(supabase, accountId, request.jobId, {
-    kind: 'sub_request_sent',
-    title: `Subcontractor offers sent to ${pending.length} ${pending.length === 1 ? 'firm' : 'firms'}`,
-    body: `${request.workDescription} · ${formatPay(request.payAmount, request.payKind)} · first qualified acceptance wins.`,
+    kind: 'sub_request_queued',
+    title: `Subcontractor offer texts queued for ${queued} ${queued === 1 ? 'firm' : 'firms'}`,
+    body: `${pending.length} ${pending.length === 1 ? 'offer was' : 'offers were'} created · ${failed} failed before queue acceptance · ${request.workDescription} · ${formatPay(request.payAmount, request.payKind)}.`,
     visibility: 'internal',
     amount: request.payAmount,
     sourceTable: 'subcontractor_requests',
@@ -767,7 +824,7 @@ export async function sendSubcontractorRequest(
     actionUrl: `/dashboard/crew/requests/${request.id}`,
   }).catch((error) => console.error('Sub request feed event failed:', error));
 
-  return { request, sent, failed, simulated, skipped };
+  return { request, queued, failed, simulated, skipped };
 }
 
 export async function cancelSubcontractorRequest(
@@ -820,6 +877,7 @@ export async function cancelSubcontractorRequest(
       phone: offer.phone,
       eventType: 'sub_offer_cancelled',
       body: subcontractorCancelledText({ businessName: business, workDescription: existing.request.workDescription }),
+      idempotencyKey: `subcontractor:${offer.id}:cancelled`,
     });
   }
 }
@@ -1367,6 +1425,7 @@ async function notifyAfterClaim(
         whenLabel: scheduleLabel(request),
         link: offerLink(winnerToken),
       }),
+      idempotencyKey: `subcontractor:${winnerOfferId}:won`,
     });
   }
 
@@ -1386,6 +1445,7 @@ async function notifyAfterClaim(
         workDescription: request.workDescription,
         location: request.generalLocation,
       }),
+      idempotencyKey: `subcontractor:${row.id as string}:covered`,
     });
   }
 }

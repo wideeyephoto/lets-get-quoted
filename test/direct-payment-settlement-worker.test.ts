@@ -74,24 +74,22 @@ function harness(overrides: Partial<DirectPaymentSettlementStore> = {}) {
     stageSms: vi.fn(async () => {
       order.push('stage');
       return {
-        status: 'dispatch' as const,
+        status: 'queued' as const,
         smsEventId: '80000000-0000-4000-8000-000000000008',
-        phoneNumber: ENVELOPE.phoneNumber,
+        phoneNumber: null,
       };
     }),
-    completeSms: vi.fn(async () => { order.push('complete'); }),
     fail: vi.fn(async () => failure('failed_retryable')),
     ...overrides,
   };
   const messenger: DirectPaymentSettlementMessenger = {
     resolveEnvelope: vi.fn(async () => { order.push('resolve'); return ENVELOPE; }),
-    send: vi.fn(async () => { order.push('send'); return 'SM_provider_123'; }),
   };
   return { store, messenger, order };
 }
 
 describe('dark direct payment settlement worker', () => {
-  it('durably records feed before staging and sending one receipt text', async () => {
+  it('durably records the financial feed before handing one receipt to the generic queue', async () => {
     const test = harness();
     await expect(runDirectPaymentSettlementBatch(1, test.store, test.messenger))
       .resolves.toEqual({
@@ -100,19 +98,14 @@ describe('dark direct payment settlement worker', () => {
           taskId: CLAIM.taskId,
           status: 'completed',
           feedStatus: 'recorded',
-          smsStatus: 'sent',
+          smsStatus: 'queued',
         }],
       });
-    expect(test.order).toEqual(['feed', 'resolve', 'stage', 'send', 'complete']);
-    expect(test.store.completeSms).toHaveBeenCalledWith({
-      claim: CLAIM,
-      smsEventId: '80000000-0000-4000-8000-000000000008',
-      providerId: 'SM_provider_123',
-    });
+    expect(test.order).toEqual(['feed', 'resolve', 'stage']);
     expect(test.store.fail).not.toHaveBeenCalled();
   });
 
-  it('records a no-consent outcome without provider egress', async () => {
+  it('records a no-consent outcome without creating a queue entry', async () => {
     const test = harness({
       stageSms: vi.fn(async () => ({
         status: 'skipped_no_consent' as const,
@@ -120,17 +113,19 @@ describe('dark direct payment settlement worker', () => {
         phoneNumber: null,
       })),
     });
-    test.messenger.resolveEnvelope = vi.fn(async () => ({ phoneNumber: null, body: null }));
+    test.messenger.resolveEnvelope = vi.fn(async () => ({
+      phoneNumber: null,
+      body: null,
+    }));
 
     await expect(runDirectPaymentSettlementBatch(1, test.store, test.messenger))
       .resolves.toMatchObject({
         outcomes: [{ status: 'completed', smsStatus: 'skipped_no_consent' }],
       });
-    expect(test.messenger.send).not.toHaveBeenCalled();
-    expect(test.store.completeSms).not.toHaveBeenCalled();
+    expect(test.store.stageSms).toHaveBeenCalledOnce();
   });
 
-  it('retries a pre-egress feed failure and never resolves or sends SMS', async () => {
+  it('retries a feed failure before resolving or enqueueing SMS', async () => {
     const test = harness({
       recordFeed: vi.fn(async () => {
         throw new DirectPaymentSettlementRpcError('40001');
@@ -145,54 +140,10 @@ describe('dark direct payment settlement worker', () => {
       retryable: true,
     });
     expect(test.messenger.resolveEnvelope).not.toHaveBeenCalled();
-    expect(test.messenger.send).not.toHaveBeenCalled();
+    expect(test.store.stageSms).not.toHaveBeenCalled();
   });
 
-  it('marks any provider-call uncertainty indeterminate and never sends twice', async () => {
-    const test = harness({
-      fail: vi.fn(async () => failure('sms_indeterminate')),
-    });
-    test.messenger.send = vi.fn(async () => {
-      throw new TypeError('ambiguous network result containing customer data');
-    });
-
-    await expect(runDirectPaymentSettlementBatch(1, test.store, test.messenger))
-      .resolves.toMatchObject({
-        outcomes: [{
-          status: 'sms_indeterminate',
-          feedStatus: 'recorded',
-          smsStatus: 'indeterminate',
-        }],
-      });
-    expect(test.messenger.send).toHaveBeenCalledTimes(1);
-    expect(test.store.fail).toHaveBeenCalledWith({
-      claim: CLAIM,
-      errorCode: 'sms_provider_result_unknown',
-      retryable: false,
-    });
-    expect(JSON.stringify(vi.mocked(test.store.fail).mock.calls))
-      .not.toContain('customer data');
-  });
-
-  it('never resends when provider success cannot be finalized', async () => {
-    const test = harness({
-      completeSms: vi.fn(async () => {
-        throw new DirectPaymentSettlementRpcError('PGRST000');
-      }),
-      fail: vi.fn(async () => failure('sms_indeterminate')),
-    });
-
-    await expect(runDirectPaymentSettlementBatch(1, test.store, test.messenger))
-      .resolves.toMatchObject({ outcomes: [{ status: 'sms_indeterminate' }] });
-    expect(test.messenger.send).toHaveBeenCalledTimes(1);
-    expect(test.store.fail).toHaveBeenCalledWith({
-      claim: CLAIM,
-      errorCode: 'sms_completion_result_unknown',
-      retryable: false,
-    });
-  });
-
-  it('honors a database-detected stale pending SMS without provider egress', async () => {
+  it('honors a database-detected historical unknown without any carrier API', async () => {
     const test = harness({
       stageSms: vi.fn(async () => ({
         status: 'indeterminate' as const,
@@ -203,8 +154,22 @@ describe('dark direct payment settlement worker', () => {
 
     await expect(runDirectPaymentSettlementBatch(1, test.store, test.messenger))
       .resolves.toMatchObject({ outcomes: [{ status: 'sms_indeterminate' }] });
-    expect(test.messenger.send).not.toHaveBeenCalled();
-    expect(test.store.completeSms).not.toHaveBeenCalled();
+  });
+
+  it('treats a previously finalized staged event as complete without replaying provider egress', async () => {
+    const test = harness({
+      stageSms: vi.fn(async () => ({
+        status: 'already_sent' as const,
+        smsEventId: '80000000-0000-4000-8000-000000000008',
+        phoneNumber: null,
+      })),
+    });
+
+    await expect(runDirectPaymentSettlementBatch(1, test.store, test.messenger))
+      .resolves.toMatchObject({
+        outcomes: [{ status: 'completed', feedStatus: 'recorded', smsStatus: 'sent' }],
+      });
+    expect(test.store.fail).not.toHaveBeenCalled();
   });
 
   it('claims one task at a time and rejects unsafe bounds', async () => {
@@ -264,12 +229,16 @@ describe('dark direct payment settlement worker', () => {
     const ambiguousRpc = vi.fn(async () => ({
       error: null,
       data: [
-        { dispatch_status: 'dispatch', sms_event_id: CLAIM.taskId, phone_number: '+12485550123' },
-        { dispatch_status: 'dispatch', sms_event_id: CLAIM.jobId, phone_number: '+12485550123' },
+        { dispatch_status: 'queued', sms_event_id: CLAIM.taskId, phone_number: null },
+        { dispatch_status: 'queued', sms_event_id: CLAIM.jobId, phone_number: null },
       ],
     }));
     const ambiguous = new SupabaseDirectPaymentSettlementStore({ rpc: ambiguousRpc } as never);
     await expect(ambiguous.stageSms(CLAIM, ENVELOPE)).rejects.toThrow(/sms_stage_invalid/);
+    expect(ambiguousRpc).toHaveBeenCalledWith(
+      'enqueue_direct_payment_settlement_sms',
+      expect.objectContaining({ p_task_id: CLAIM.taskId, p_claim_token: CLAIM.claimToken }),
+    );
   });
 
   it('stays server-only, exact-gated, and disconnected from special job/payment transitions', () => {
@@ -290,6 +259,9 @@ describe('dark direct payment settlement worker', () => {
     const activeFiles = sourceFiles(join(process.cwd(), 'src')).filter(
       (file) => file !== worker && file !== schedulerBoundary,
     );
+    // A silent zero passes every assertion below it. The walk is the thing
+    // most likely to break, and its failure looks exactly like success.
+    expect(activeFiles.length).toBeGreaterThan(1_000);
     activeFiles.push(join(process.cwd(), '.env.example'), join(process.cwd(), 'vercel.json'));
 
     for (const file of activeFiles) {
@@ -306,6 +278,11 @@ describe('dark direct payment settlement worker', () => {
 
     const source = readFileSync(worker, 'utf8');
     expect(source.startsWith("import 'server-only';")).toBe(true);
+    expect(source).toContain('enqueue_direct_payment_settlement_sms');
+    expect(source).not.toContain('sendProviderMessage');
+    expect(source).not.toContain("from '@/lib/sms-provider'");
+    expect(source).not.toContain('LGQ_SMS_CONTRACTOR_MESSAGING_ENABLED');
+    expect(source).not.toContain('smsCanaryAccounts');
     const imports = source.split('\n').filter((line) => line.startsWith('import '));
     for (const forbiddenImport of [
       '@/lib/payment-plans',

@@ -154,6 +154,9 @@ describe('dark service-only legacy payoff-owner binding adapter', () => {
     const activeFiles = sourceFiles(join(process.cwd(), 'src')).filter(
       (file) => file !== adapter,
     );
+    // A silent zero passes every assertion below it. The walk is the thing
+    // most likely to break, and its failure looks exactly like success.
+    expect(activeFiles.length).toBeGreaterThan(1_000);
     activeFiles.push(join(process.cwd(), '.env.example'), join(process.cwd(), 'vercel.json'));
 
     for (const file of activeFiles) {

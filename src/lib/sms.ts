@@ -41,10 +41,13 @@ import {
 import {
   isSmsProviderConfigured,
   outboundSmsSuppression,
-  sendProviderMessage,
-  SIMULATED_PROVIDER_ID,
-  smsProviderConfig,
 } from '@/lib/sms-provider';
+import {
+  enqueueSmsDelivery,
+  type SmsDeliveryContext,
+  type SmsSenderPurpose,
+} from '@/lib/sms-delivery';
+import type { SmsBillingCategory } from '@/lib/sms-billing-policy';
 import type { PaymentSmsEvent } from '@/lib/sms-templates';
 
 export type { PaymentSmsEvent };
@@ -73,6 +76,73 @@ function scheduleLink(token: string) {
 function clientJobLink(token: string) {
   const origin = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
   return `${origin}/client/jobs/${token}`;
+}
+
+type QueueAccountSmsInput = Readonly<{
+  accountId: string;
+  phone: string;
+  body: string;
+  messageKind: string;
+  category: SmsBillingCategory;
+  context?: SmsDeliveryContext;
+  eventType?: string;
+  idempotencyKey?: string;
+  paymentId?: string;
+  crewId?: string;
+  senderPurpose?: SmsSenderPurpose;
+  senderNumberId?: string;
+}>;
+
+const SMS_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+/** Queue an account-scoped text and return its durable event id. */
+async function queueAccountSms(input: QueueAccountSmsInput): Promise<string> {
+  const phoneNumber = normalizeUsPhone(input.phone) ?? input.phone.trim();
+  const queued = await enqueueSmsDelivery({
+    accountId: input.accountId,
+    phoneNumber,
+    body: input.body,
+    messageKind: input.messageKind,
+    billingCategory: input.category,
+    context: input.context ?? 'customer',
+    eventType: input.eventType,
+    idempotencyKey: input.idempotencyKey,
+    paymentId: input.paymentId,
+    crewId: input.crewId,
+    senderPurpose: input.senderPurpose,
+    senderNumberId: input.senderNumberId,
+  });
+  return queued.eventId;
+}
+
+async function queueAuthorizedInboxMessage(input: {
+  accountId: string;
+  phone: string;
+  body: string;
+  idempotencyKey: string;
+  requireExistingThread: boolean;
+}): Promise<string> {
+  const admin = createAdminClient();
+  const { data, error } = await admin.rpc('enqueue_authorized_inbox_message', {
+    p_account_id: input.accountId,
+    p_phone_number: input.phone,
+    p_body: input.body,
+    p_idempotency_key: input.idempotencyKey,
+    p_require_existing_thread: input.requireExistingThread,
+  });
+  if (error) {
+    if (error.code === 'P5110') throw new Error('This is not an existing message thread. Start a new conversation instead.');
+    if (error.code === 'P5111') throw new Error('This contact does not have current SMS consent.');
+    if (error.code === 'P5112') throw new Error('This contact does not have customer-scoped SMS consent. Record consent through a customer workflow before texting them.');
+    throw new Error(`Inbox message enqueue failed (${error.code || 'unknown'}).`);
+  }
+  const result = Array.isArray(data) ? data[0] : data;
+  if (!result || typeof result !== 'object' || Array.isArray(result)
+      || typeof result.sms_event_id !== 'string' || !SMS_UUID.test(result.sms_event_id)
+      || typeof result.task_state !== 'string' || typeof result.created !== 'boolean') {
+    throw new Error('Inbox message enqueue returned an invalid result.');
+  }
+  return result.sms_event_id.toLowerCase();
 }
 
 /**
@@ -126,14 +196,22 @@ export async function sendOwnerHighValueLeadSms(input: {
   leadName: string;
   estimate: { min: number; max: number } | null;
   dashboardUrl: string;
+  idempotencyKey: string;
 }): Promise<void> {
   try {
-    if (!smsProviderConfig()) return;
     const to = normalizeUsPhone(input.alertPhone);
     if (!to) return;
     if (await isPhoneOptedOut(input.accountId, to)) return;
     const body = ownerHighValueLeadText(input);
-    await sendProviderMessage(to, body);
+    await queueAccountSms({
+      accountId: input.accountId,
+      phone: to,
+      body,
+      messageKind: 'owner-high-value-lead',
+      category: 'owner_alert',
+      context: 'owner',
+      idempotencyKey: input.idempotencyKey,
+    });
   } catch (error) {
     console.error('Owner high-value lead SMS failed:', error instanceof Error ? error.message : error);
   }
@@ -150,10 +228,16 @@ export async function sendEstimateOfferSms(input: {
   accountId: string;
   toPhone: string;
   message: string;
+  idempotencyKey?: string;
 }): Promise<string> {
-  const providerId = await sendProviderMessage(input.toPhone, input.message);
-  await logOutboundToInbox(input.accountId, input.toPhone, input.message, providerId);
-  return providerId;
+  return queueAccountSms({
+    accountId: input.accountId,
+    phone: input.toPhone,
+    body: input.message,
+    messageKind: 'estimate-offer',
+    category: 'customer_message',
+    idempotencyKey: input.idempotencyKey,
+  });
 }
 
 // Booking confirmed / declined by the contractor → customer.
@@ -171,11 +255,18 @@ export async function sendBookingDecisionSms(input: {
   accountId: string;
   toPhone: string;
   message: string;
+  idempotencyKey: string;
 }): Promise<void> {
   try {
     if (await isPhoneOptedOut(input.accountId, input.toPhone)) return;
-    const providerId = await sendProviderMessage(input.toPhone, withOptOut(input.message));
-    await logOutboundToInbox(input.accountId, input.toPhone, input.message, providerId);
+    await queueAccountSms({
+      accountId: input.accountId,
+      phone: input.toPhone,
+      body: withOptOut(input.message),
+      messageKind: 'booking-decision',
+      category: 'customer_message',
+      idempotencyKey: input.idempotencyKey,
+    });
   } catch (error) {
     console.error('Booking decision SMS failed:', error instanceof Error ? error.message : error);
   }
@@ -204,8 +295,17 @@ export async function sendClientPortalLinkSms(input: {
 }): Promise<void> {
   try {
     if (await isPhoneOptedOut(input.accountId, input.toPhone)) return;
-    const providerId = await sendProviderMessage(input.toPhone, withOptOut(input.message));
-    await logOutboundToInbox(input.accountId, input.toPhone, input.message, providerId);
+    // The recipient is requesting this exact text from the public portal.
+    // Establish an insert-only ledger row before enqueue; a prior/concurrent
+    // STOP still wins and the worker rechecks it at egress.
+    if (!(await ensureSmsConsentBaseline(input.accountId, input.toPhone, 'portal_link_request'))) return;
+    await queueAccountSms({
+      accountId: input.accountId,
+      phone: input.toPhone,
+      body: withOptOut(input.message),
+      messageKind: 'portal-link',
+      category: 'customer_message',
+    });
   } catch (error) {
     console.error('Portal link SMS failed:', error instanceof Error ? error.message : error);
   }
@@ -222,13 +322,21 @@ export async function sendOwnerEstimateAcceptedSms(input: {
   accountId: string;
   alertPhone: string;
   message: string;
+  idempotencyKey: string;
 }): Promise<void> {
   try {
-    if (!smsProviderConfig()) return;
     const to = normalizeUsPhone(input.alertPhone);
     if (!to) return;
     if (await isPhoneOptedOut(input.accountId, to)) return;
-    await sendProviderMessage(to, withOptOut(input.message));
+    await queueAccountSms({
+      accountId: input.accountId,
+      phone: to,
+      body: withOptOut(input.message),
+      messageKind: 'owner-estimate-accepted',
+      category: 'owner_alert',
+      context: 'owner',
+      idempotencyKey: input.idempotencyKey,
+    });
   } catch (error) {
     console.error('Owner estimate-offer alert SMS failed:', error instanceof Error ? error.message : error);
   }
@@ -245,14 +353,20 @@ export async function sendQuickStopOfferSms(input: {
   feeLabel: string;
   payUrl: string;
   minutes: number;
+  idempotencyKey: string;
 }): Promise<void> {
   try {
-    if (!smsProviderConfig()) return;
     const to = normalizeUsPhone(input.toPhone);
     if (!to || (await isPhoneOptedOut(input.accountId, to))) return;
     const body = quickStopOfferText(input);
-    const sid = await sendProviderMessage(to, body);
-    await logOutboundToInbox(input.accountId, to, body, sid);
+    await queueAccountSms({
+      accountId: input.accountId,
+      phone: to,
+      body,
+      messageKind: 'quick-stop-offer',
+      category: 'payment_message',
+      idempotencyKey: input.idempotencyKey,
+    });
   } catch (error) {
     console.error('Quick Stop offer SMS failed:', error instanceof Error ? error.message : error);
   }
@@ -265,14 +379,20 @@ export async function sendQuickStopConfirmedSms(input: {
   businessName: string;
   whenLabel: string;
   statusUrl?: string;
+  idempotencyKey: string;
 }): Promise<void> {
   try {
-    if (!smsProviderConfig()) return;
     const to = normalizeUsPhone(input.toPhone);
     if (!to || (await isPhoneOptedOut(input.accountId, to))) return;
     const body = quickStopConfirmedText(input);
-    const sid = await sendProviderMessage(to, body);
-    await logOutboundToInbox(input.accountId, to, body, sid);
+    await queueAccountSms({
+      accountId: input.accountId,
+      phone: to,
+      body,
+      messageKind: 'quick-stop-confirmed',
+      category: 'payment_message',
+      idempotencyKey: input.idempotencyKey,
+    });
   } catch (error) {
     console.error('Quick Stop confirmed SMS failed:', error instanceof Error ? error.message : error);
   }
@@ -284,62 +404,88 @@ export async function sendQuickStopStatusSms(input: {
   accountId: string;
   toPhone: string;
   message: string;
+  idempotencyKey: string;
 }): Promise<void> {
   try {
-    if (!smsProviderConfig()) return;
     const to = normalizeUsPhone(input.toPhone);
     if (!to || (await isPhoneOptedOut(input.accountId, to))) return;
     const body = withOptOut(input.message);
-    const sid = await sendProviderMessage(to, body);
-    await logOutboundToInbox(input.accountId, to, body, sid);
+    await queueAccountSms({
+      accountId: input.accountId,
+      phone: to,
+      body,
+      messageKind: 'quick-stop-status',
+      category: 'payment_message',
+      idempotencyKey: input.idempotencyKey,
+    });
   } catch (error) {
     console.error('Quick Stop status SMS failed:', error instanceof Error ? error.message : error);
   }
 }
 
-// Mirror an outbound customer text into the two-way inbox so threads are
-// complete (system texts + their replies in one place). Best-effort and
-// account-scoped; crew/verification texts are intentionally NOT logged (not a
-// customer conversation). Callers pass accountId when the text is customer-facing.
-async function logOutboundToInbox(accountId: string, phone: string, body: string, providerId?: string | null): Promise<void> {
-  try {
-    const normalized = normalizeUsPhone(phone) ?? phone.trim();
-    await createAdminClient().from('sms_messages').insert({
-      account_id: accountId,
-      phone_number: normalized,
-      direction: 'outbound',
-      body,
-      provider_id: providerId ?? null,
-    });
-  } catch (error) {
-    console.error('Inbox outbound log failed:', error instanceof Error ? error.message : error);
-  }
-}
-
 export async function recordSmsConsent(accountId: string, phone: string, source = 'payment_request') {
+  const normalized = normalizeUsPhone(phone);
+  if (!normalized) throw new Error('A valid US phone number is required to record SMS consent.');
   const admin = createAdminClient();
+  const now = new Date().toISOString();
+  // Keep the STOP guard in the write itself. A read followed by an upsert has
+  // a race where an inbound STOP can land between the two statements and then
+  // be overwritten back to opted_in.
+  const { data: updated, error: updateError } = await admin
+    .from('sms_consent')
+    .update({
+      status: 'opted_in',
+      source,
+      consented_at: now,
+      opted_out_at: null,
+      updated_at: now,
+    })
+    .eq('account_id', accountId)
+    .eq('phone_number', normalized)
+    .neq('status', 'opted_out')
+    .select('id');
+  if (updateError) throw updateError;
+  if (updated && updated.length > 0) return;
+
   const { data: existing, error: lookupError } = await admin
     .from('sms_consent')
     .select('status')
     .eq('account_id', accountId)
-    .eq('phone_number', phone)
+    .eq('phone_number', normalized)
     .maybeSingle();
   if (lookupError) throw lookupError;
   if (existing?.status === 'opted_out') {
     throw new Error('This homeowner opted out of texts. They must text START before receiving another message.');
   }
+  if (existing) return;
 
-  const now = new Date().toISOString();
-  const { error } = await admin.from('sms_consent').upsert({
+  const { error: insertError } = await admin.from('sms_consent').insert({
     account_id: accountId,
-    phone_number: phone,
+    phone_number: normalized,
     status: 'opted_in',
     source,
     consented_at: now,
-    opted_out_at: null,
     updated_at: now,
-  }, { onConflict: 'account_id,phone_number' });
-  if (error) throw error;
+  });
+  if (!insertError) return;
+
+  // A unique conflict means START/STOP or another consent writer won the
+  // insert race. Re-read once and honor the state that actually won; never
+  // retry with an upsert that could erase STOP.
+  if (insertError.code === '23505') {
+    const { data: raced, error: racedReadError } = await admin
+      .from('sms_consent')
+      .select('status')
+      .eq('account_id', accountId)
+      .eq('phone_number', normalized)
+      .maybeSingle();
+    if (racedReadError) throw racedReadError;
+    if (raced?.status === 'opted_out') {
+      throw new Error('This homeowner opted out of texts. They must text START before receiving another message.');
+    }
+    if (raced?.status === 'opted_in') return;
+  }
+  throw insertError;
 }
 
 // True if this account has recorded an opt-out (STOP) for the phone. Consent
@@ -362,23 +508,69 @@ export async function isPhoneOptedOut(accountId: string, phone: string): Promise
   return data?.status === 'opted_out';
 }
 
-// Records a baseline opted-in consent row the first time we see a crew phone,
-// so a later STOP has a row to flip (the inbound handler only UPDATEs existing
-// rows). Insert-if-absent: never overwrites an existing row — so a prior
-// opt-out is preserved and this never re-opts-in — and never throws.
-export async function ensureSmsConsentBaseline(accountId: string, phone: string, source = 'crew_added'): Promise<void> {
+// Manual compose is different from replying to an inbound message: the app
+// must already have affirmative, current consent and may not manufacture it
+// merely because an owner typed a phone number. Read failures fail closed.
+export async function hasCurrentSmsConsent(accountId: string, phone: string): Promise<boolean> {
   const normalized = normalizeUsPhone(phone);
-  if (!normalized) return; // can't track an unparseable number
+  if (!normalized) return false;
   const admin = createAdminClient();
-  const now = new Date().toISOString();
-  await admin.from('sms_consent').upsert({
-    account_id: accountId,
-    phone_number: normalized,
-    status: 'opted_in',
-    source,
-    consented_at: now,
-    updated_at: now,
-  }, { onConflict: 'account_id,phone_number', ignoreDuplicates: true });
+  const [baseResult, scopeResult] = await Promise.all([
+    admin
+      .from('sms_consent')
+      .select('status,consented_at,opted_out_at')
+      .eq('account_id', accountId)
+      .eq('phone_number', normalized)
+      .maybeSingle(),
+    admin
+      .from('sms_consent_scopes')
+      .select('consent_scope')
+      .eq('account_id', accountId)
+      .eq('phone_number', normalized)
+      .eq('consent_scope', 'customer')
+      .maybeSingle(),
+  ]);
+  if (baseResult.error || scopeResult.error) {
+    console.error(
+      `Current customer SMS consent check failed for ${normalized}; refusing manual compose:`,
+      baseResult.error?.message ?? scopeResult.error?.message,
+    );
+    return false;
+  }
+  const base = baseResult.data;
+  return scopeResult.data?.consent_scope === 'customer'
+    && base?.status === 'opted_in'
+    && Boolean(base.consented_at)
+    && !base.opted_out_at;
+}
+
+// Atomically establishes the approved audience scope for an insert-if-absent
+// baseline. The DB boundary never overwrites STOP and still adds customer scope
+// when a portal/call request shares a phone with an older crew/owner row.
+// Storage failures throw so callers about to enqueue fail honestly; legacy
+// best-effort setup callers explicitly catch where that is acceptable.
+export type SmsConsentBaselineSource =
+  | 'crew_added'
+  | 'subcontractor_added'
+  | 'portal_link_request'
+  | 'missed_call_text_back';
+
+export async function ensureSmsConsentBaseline(
+  accountId: string,
+  phone: string,
+  source: SmsConsentBaselineSource = 'crew_added',
+): Promise<boolean> {
+  const normalized = normalizeUsPhone(phone);
+  if (!normalized) return false; // can't track an unparseable number
+  const admin = createAdminClient();
+  const { data, error } = await admin.rpc('ensure_sms_consent_baseline_scope', {
+    p_account_id: accountId,
+    p_phone_number: normalized,
+    p_source: source,
+  });
+  if (error) throw error;
+  if (typeof data !== 'boolean') throw new Error('SMS consent baseline returned an invalid result.');
+  return data;
 }
 
 export type OwnerConsentOutcome = 'recorded' | 'suppressed' | 'failed';
@@ -467,43 +659,39 @@ export async function recordOwnerSmsConsent(
   }
 }
 
-// Sends a crew-directed text through the consent ledger: an opted-out number is
-// skipped (and logged as opted_out); otherwise a pending sms_events row is
-// written, the text is sent, and the row is marked sent/failed. The number is
-// normalized to match how consent/STOP rows are stored.
+// Sends a crew-directed text through the consent ledger. An opted-out number is
+// skipped; otherwise the atomic enqueue RPC creates both sms_events and its
+// delivery task. Producers never write orphan ledger rows for preflight skips.
 async function deliverCrewSms(params: {
   accountId: string;
   crewId: string;
   phone: string;
   eventType: CrewSmsEvent;
   body: string;
-}): Promise<{ status: 'sent' | 'opted_out' | 'failed' }> {
-  const admin = createAdminClient();
+  idempotencyKey: string;
+}): Promise<{ status: 'queued' | 'opted_out' | 'failed'; eventId?: string }> {
   const normalized = normalizeUsPhone(params.phone) ?? params.phone.trim();
 
-  const base = {
-    account_id: params.accountId,
-    crew_id: params.crewId,
-    context: 'crew',
-    event_type: params.eventType,
-    phone_number: normalized,
-    body: params.body,
-  };
-
   if (await isPhoneOptedOut(params.accountId, normalized)) {
-    await admin.from('sms_events').insert({ ...base, status: 'opted_out' });
     return { status: 'opted_out' };
   }
 
-  const { data: event } = await admin.from('sms_events').insert({ ...base, status: 'pending' }).select('id').single();
-
   try {
-    const providerId = await sendProviderMessage(normalized, params.body);
-    if (event) await admin.from('sms_events').update({ status: 'sent', provider_id: providerId, sent_at: new Date().toISOString() }).eq('id', event.id);
-    return { status: 'sent' };
+    const eventId = await queueAccountSms({
+      accountId: params.accountId,
+      phone: normalized,
+      body: params.body,
+      messageKind: params.eventType === 'crew_assigned' ? 'crew-assignment' : 'crew-scheduled',
+      category: 'crew_message',
+      context: 'crew',
+      eventType: params.eventType,
+      crewId: params.crewId,
+      senderPurpose: 'lgq_dispatch',
+      idempotencyKey: params.idempotencyKey,
+    });
+    return { status: 'queued', eventId };
   } catch (sendError) {
     const reason = sendError instanceof Error ? sendError.message : 'SMS delivery failed.';
-    if (event) await admin.from('sms_events').update({ status: 'failed', error_reason: reason }).eq('id', event.id);
     console.error(`Crew SMS ${params.eventType} failed for crew ${params.crewId}:`, reason);
     return { status: 'failed' };
   }
@@ -559,8 +747,9 @@ export function isLiveMessagingEnvironment(): boolean {
 }
 
 export type SubcontractorSmsResult = {
-  status: 'sent' | 'failed' | 'opted_out' | 'simulated';
-  providerId: string | null;
+  status: 'queued' | 'failed' | 'opted_out' | 'simulated';
+  /** Durable local event identity. Carrier provider_id arrives asynchronously. */
+  smsEventId: string | null;
   error?: string;
 };
 
@@ -583,29 +772,13 @@ export async function sendSubcontractorSms(params: {
   phone: string;
   eventType: SubcontractorSmsEvent;
   body: string;
+  /** Stable identity of the domain notification, for crash-safe queue retries. */
+  idempotencyKey: string;
 }): Promise<SubcontractorSmsResult> {
-  const admin = createAdminClient();
   const normalized = normalizeUsPhone(params.phone) ?? params.phone.trim();
-  const base = {
-    account_id: params.accountId,
-    crew_id: params.crewId,
-    context: 'subcontractor',
-    event_type: params.eventType,
-    phone_number: normalized,
-    body: params.body,
-  };
-
-  const record = async (values: Record<string, unknown>) => {
-    try {
-      await admin.from('sms_events').insert({ ...base, ...values });
-    } catch (error) {
-      console.error('Subcontractor SMS ledger write failed:', error instanceof Error ? error.message : error);
-    }
-  };
 
   if (await isPhoneOptedOut(params.accountId, normalized)) {
-    await record({ status: 'opted_out' });
-    return { status: 'opted_out', providerId: null };
+    return { status: 'opted_out', smsEventId: null };
   }
 
   // sendProviderMessage now refuses to reach a carrier in any of these
@@ -614,23 +787,29 @@ export async function sendSubcontractorSms(params: {
   // caller needs a distinct STATUS — the dashboard prints "simulated" from it
   // — and because there is no reason to compose a request nobody will send.
   if (!isLiveMessagingEnvironment()) {
-    // Recorded as sent with an unmistakable provider id. The row is the honest
-    // account of what happened: the message was composed, addressed and would
-    // have gone — and 'simulated' is not a message id anybody will mistake for
-    // a Twilio SID while reading the ledger.
-    await record({ status: 'sent', provider_id: SIMULATED_PROVIDER_ID, sent_at: new Date().toISOString() });
-    return { status: 'simulated', providerId: SIMULATED_PROVIDER_ID };
+    // Simulation is a domain result, not carrier evidence. In particular it
+    // must not manufacture a `sent` sms_events row without a delivery task.
+    return { status: 'simulated', smsEventId: null };
   }
 
   try {
-    const providerId = await sendProviderMessage(normalized, params.body);
-    await record({ status: 'sent', provider_id: providerId, sent_at: new Date().toISOString() });
-    return { status: providerId === SIMULATED_PROVIDER_ID ? 'simulated' : 'sent', providerId };
+    const smsEventId = await queueAccountSms({
+      accountId: params.accountId,
+      phone: normalized,
+      body: params.body,
+      messageKind: params.eventType.replace(/_/g, '-'),
+      category: 'crew_message',
+      context: 'subcontractor',
+      eventType: params.eventType,
+      crewId: params.crewId,
+      senderPurpose: 'lgq_dispatch',
+      idempotencyKey: params.idempotencyKey,
+    });
+    return { status: 'queued', smsEventId };
   } catch (error) {
     const reason = error instanceof Error ? error.message : 'SMS delivery failed.';
-    await record({ status: 'failed', error_reason: reason });
     console.error(`Subcontractor SMS ${params.eventType} failed for crew ${params.crewId}:`, reason);
-    return { status: 'failed', providerId: null, error: reason };
+    return { status: 'failed', smsEventId: null, error: reason };
   }
 }
 
@@ -644,51 +823,46 @@ export async function sendPaymentSmsEvent(paymentId: string, eventType: PaymentS
   if (error || !data) throw error ?? new Error('Payment not found for SMS.');
   const payment = data as unknown as SmsPayment;
   if (!payment.sms_consent || !payment.homeowner_phone) return { status: 'skipped' as const };
+  const phoneNumber = normalizeUsPhone(payment.homeowner_phone);
+  if (!phoneNumber) return { status: 'failed' as const, error: 'SMS destination is invalid.' };
 
-  const { data: consent } = await admin.from('sms_consent').select('status').eq('account_id', payment.account_id).eq('phone_number', payment.homeowner_phone).maybeSingle();
+  const { data: consent } = await admin.from('sms_consent').select('status').eq('account_id', payment.account_id).eq('phone_number', phoneNumber).maybeSingle();
   // The site's name before the account's, and never the placeholder.
   const contractor = await loadBusinessName(admin, payment.account_id);
   const body = messageFor(payment, eventType, contractor);
   if (consent?.status === 'opted_out') {
-    await admin.from('sms_events').upsert({ account_id: payment.account_id, payment_id: payment.id, event_type: eventType, phone_number: payment.homeowner_phone, status: 'opted_out', body }, { onConflict: 'payment_id,event_type', ignoreDuplicates: true });
     return { status: 'opted_out' as const };
   }
 
-  const { data: event, error: eventError } = await admin.from('sms_events').insert({
-    account_id: payment.account_id,
-    payment_id: payment.id,
-    event_type: eventType,
-    phone_number: payment.homeowner_phone,
-    status: 'pending',
-    body,
-  }).select('id').single();
-  if (eventError) {
-    if (eventError.code === '23505') return { status: 'duplicate' as const };
-    throw eventError;
-  }
-
   try {
-    const providerId = await sendProviderMessage(payment.homeowner_phone, body);
-    await admin.from('sms_events').update({ status: 'sent', provider_id: providerId, sent_at: new Date().toISOString() }).eq('id', event.id);
-    await logOutboundToInbox(payment.account_id, payment.homeowner_phone, body, providerId);
-    return { status: 'sent' as const };
+    const queued = await enqueueSmsDelivery({
+      accountId: payment.account_id,
+      phoneNumber,
+      body,
+      messageKind: eventType.replace(/_/g, '-'),
+      billingCategory: 'payment_message',
+      senderPurpose: 'contractor_dedicated',
+      context: 'payment',
+      eventType,
+      idempotencyKey: `payment:${payment.id}:${eventType}`,
+      paymentId: payment.id,
+    }, admin);
+    return {
+      status: queued.created ? 'queued' as const : 'duplicate' as const,
+      eventId: queued.eventId,
+      deliveryState: queued.state,
+    };
   } catch (sendError) {
     const reason = sendError instanceof Error ? sendError.message : 'SMS delivery failed.';
-    await admin.from('sms_events').update({ status: 'failed', error_reason: reason }).eq('id', event.id);
-    console.error(`SMS ${eventType} failed for payment ${payment.id}:`, reason);
+    console.error(`SMS ${eventType} could not be queued for payment ${payment.id}:`, reason);
     return { status: 'failed' as const, error: reason };
   }
 }
 
 export async function retryFailedPaymentSmsEvent(paymentId: string, eventType: PaymentSmsEvent) {
-  const admin = createAdminClient();
-  const { error } = await admin
-    .from('sms_events')
-    .delete()
-    .eq('payment_id', paymentId)
-    .eq('event_type', eventType)
-    .eq('status', 'failed');
-  if (error) throw error;
+  // Delivery history is immutable. Reusing the business key returns the exact
+  // existing event; a terminal or indeterminate task belongs in operator
+  // review instead of being deleted and blindly sent again.
   return sendPaymentSmsEvent(paymentId, eventType);
 }
 
@@ -707,9 +881,10 @@ export async function sendCrewAssignmentSms(params: {
   address: string | null;
   scheduledFor: string | null;
   scheduledTime?: string | null;
+  idempotencyKey: string;
 }) {
   const body = crewAssignmentText(params);
-  return deliverCrewSms({ accountId: params.accountId, crewId: params.crewId, phone: params.phone, eventType: 'crew_assigned', body });
+  return deliverCrewSms({ accountId: params.accountId, crewId: params.crewId, phone: params.phone, eventType: 'crew_assigned', body, idempotencyKey: params.idempotencyKey });
 }
 
 export async function sendCrewScheduleSelectedSms(params: {
@@ -723,9 +898,10 @@ export async function sendCrewScheduleSelectedSms(params: {
   address: string | null;
   scheduledFor: string;
   scheduledTime?: string | null;
+  idempotencyKey: string;
 }) {
   const body = crewScheduleSelectedText(params);
-  return deliverCrewSms({ accountId: params.accountId, crewId: params.crewId, phone: params.phone, eventType: 'crew_scheduled', body });
+  return deliverCrewSms({ accountId: params.accountId, crewId: params.crewId, phone: params.phone, eventType: 'crew_scheduled', body, idempotencyKey: params.idempotencyKey });
 }
 
 export async function sendJobUpdateSms(params: {
@@ -734,12 +910,18 @@ export async function sendJobUpdateSms(params: {
   jobRef: string;
   title: string;
   body: string | null;
-  accountId?: string;
+  accountId: string;
+  idempotencyKey: string;
 }) {
   const message = jobUpdateText(params);
-  const providerId = await sendProviderMessage(params.phone, message);
-  if (params.accountId) await logOutboundToInbox(params.accountId, params.phone, message, providerId);
-  return providerId;
+  return queueAccountSms({
+    accountId: params.accountId,
+    phone: params.phone,
+    body: message,
+    messageKind: 'job-update',
+    category: 'customer_message',
+    idempotencyKey: params.idempotencyKey,
+  });
 }
 
 export async function sendClientJobDashboardSms(params: {
@@ -748,12 +930,18 @@ export async function sendClientJobDashboardSms(params: {
   jobRef: string;
   token: string;
   includesScheduleOptions?: boolean;
-  accountId?: string;
+  accountId: string;
+  idempotencyKey: string;
 }) {
   const message = clientJobDashboardText({ ...params, link: clientJobLink(params.token) });
-  const providerId = await sendProviderMessage(params.phone, message);
-  if (params.accountId) await logOutboundToInbox(params.accountId, params.phone, message, providerId);
-  return providerId;
+  return queueAccountSms({
+    accountId: params.accountId,
+    phone: params.phone,
+    body: message,
+    messageKind: 'client-job-dashboard',
+    category: 'customer_message',
+    idempotencyKey: params.idempotencyKey,
+  });
 }
 
 /**
@@ -770,12 +958,18 @@ export async function sendQuoteUpdatedSms(params: {
   token: string;
   total?: string | null;
   direction?: 'up' | 'down' | 'same';
-  accountId?: string;
+  accountId: string;
+  idempotencyKey: string;
 }) {
   const message = quoteUpdatedText({ ...params, link: clientJobLink(params.token) });
-  const providerId = await sendProviderMessage(params.phone, message);
-  if (params.accountId) await logOutboundToInbox(params.accountId, params.phone, message, providerId);
-  return providerId;
+  return queueAccountSms({
+    accountId: params.accountId,
+    phone: params.phone,
+    body: message,
+    messageKind: 'quote-updated',
+    category: 'customer_message',
+    idempotencyKey: params.idempotencyKey,
+  });
 }
 
 // Whether an SMS provider is configured — features that depend on texting
@@ -785,9 +979,32 @@ export function isSmsConfigured(): boolean {
 }
 
 // One-time code for verifying a lead's phone number before intake submits.
-export async function sendVerificationCodeSms(params: { phone: string; businessName: string; code: string }) {
+// Although the visitor has not become a lead yet, the public site belongs to a
+// real workspace. Pin this traffic to that contractor's active dedicated
+// sender and durable queue; it must never borrow LGQ's shared Campaign.
+export async function sendVerificationCodeSms(params: {
+  accountId: string;
+  senderNumberId: string;
+  phone: string;
+  businessName: string;
+  code: string;
+  idempotencyKey: string;
+}) {
   const message = verificationCodeText(params);
-  return sendProviderMessage(params.phone, message);
+  // Entering the code request is affirmative consent for this transactional
+  // message. recordSmsConsent preserves an existing STOP and fails closed.
+  await recordSmsConsent(params.accountId, params.phone, 'lead_verification_request');
+  return queueAccountSms({
+    accountId: params.accountId,
+    phone: params.phone,
+    body: message,
+    messageKind: 'lead-verification',
+    category: 'verification',
+    context: 'customer',
+    senderPurpose: 'contractor_dedicated',
+    senderNumberId: params.senderNumberId,
+    idempotencyKey: params.idempotencyKey,
+  });
 }
 
 // One-tap polite decline for a lead that isn't a fit — closing the loop in one
@@ -797,12 +1014,18 @@ export async function sendLeadDeclineSms(params: {
   businessName: string;
   leadName: string;
   reason: string;
-  accountId?: string;
+  accountId: string;
+  idempotencyKey: string;
 }) {
   const message = leadDeclineText(params);
-  const providerId = await sendProviderMessage(params.phone, message);
-  if (params.accountId) await logOutboundToInbox(params.accountId, params.phone, message, providerId);
-  return providerId;
+  return queueAccountSms({
+    accountId: params.accountId,
+    phone: params.phone,
+    body: message,
+    messageKind: 'lead-decline',
+    category: 'customer_message',
+    idempotencyKey: params.idempotencyKey,
+  });
 }
 
 export async function sendLeadQuoteVisitSms(params: {
@@ -812,12 +1035,18 @@ export async function sendLeadQuoteVisitSms(params: {
   address: string | null;
   scheduledFor: string;
   scheduledTime: string;
-  accountId?: string;
+  accountId: string;
+  idempotencyKey: string;
 }) {
   const message = leadQuoteVisitText(params);
-  const providerId = await sendProviderMessage(params.phone, message);
-  if (params.accountId) await logOutboundToInbox(params.accountId, params.phone, message, providerId);
-  return providerId;
+  return queueAccountSms({
+    accountId: params.accountId,
+    phone: params.phone,
+    body: message,
+    messageKind: 'lead-quote-visit',
+    category: 'customer_message',
+    idempotencyKey: params.idempotencyKey,
+  });
 }
 
 export async function sendLeadQuoteVisitOptionsSms(params: {
@@ -826,12 +1055,18 @@ export async function sendLeadQuoteVisitOptionsSms(params: {
   leadName: string;
   address: string | null;
   options: Array<{ date: string; time: string | null }>;
-  accountId?: string;
+  accountId: string;
+  idempotencyKey: string;
 }) {
   const message = leadQuoteVisitOptionsText(params);
-  const providerId = await sendProviderMessage(params.phone, message);
-  if (params.accountId) await logOutboundToInbox(params.accountId, params.phone, message, providerId);
-  return providerId;
+  return queueAccountSms({
+    accountId: params.accountId,
+    phone: params.phone,
+    body: message,
+    messageKind: 'lead-quote-visit-options',
+    category: 'customer_message',
+    idempotencyKey: params.idempotencyKey,
+  });
 }
 
 export async function sendSchedulingOptionsSms(params: {
@@ -840,19 +1075,49 @@ export async function sendSchedulingOptionsSms(params: {
   jobRef: string;
   clientName: string;
   token: string;
-  accountId?: string;
+  accountId: string;
+  idempotencyKey?: string;
 }) {
   const message = schedulingOptionsText({ ...params, link: scheduleLink(params.token) });
-  const providerId = await sendProviderMessage(params.phone, message);
-  if (params.accountId) await logOutboundToInbox(params.accountId, params.phone, message, providerId);
-  return providerId;
+  return queueAccountSms({
+    accountId: params.accountId,
+    phone: params.phone,
+    body: message,
+    messageKind: 'scheduling-options',
+    category: 'customer_message',
+    idempotencyKey: params.idempotencyKey,
+  });
 }
 
 // A free-form contractor reply from the two-way inbox. Prefixed with the
 // business name so the client knows who's texting from the shared number.
 // Returns the provider message id for the message log. Caller checks opt-out.
-export async function sendInboxReplySms(params: { phone: string; businessName: string; body: string }): Promise<string> {
-  return sendProviderMessage(params.phone, inboxReplyText(params));
+//
+// accountId is REQUIRED here, unlike most helpers in this file, and this is the
+// first caller of the text-credit meter. Both for the same reason: it is the one
+// outbound message whose billing is not in question. A contractor typing a reply
+// to their own customer is unambiguously their workspace's own text -- it is not
+// a self-alert, not a payment message, and not a lead-verification code, which
+// are the three categories with distinct billing policy. See 1.2 in
+// docs/entitlement-gap-roadmap-2026-08-19.md.
+export async function sendInboxReplySms(params: {
+  phone: string;
+  businessName: string;
+  body: string;
+  accountId: string;
+  idempotencyKey: string;
+  /** Replies require an existing durable thread; compose intentionally does not. */
+  requireExistingThread: boolean;
+}): Promise<string> {
+  const phone = normalizeUsPhone(params.phone);
+  if (!phone) throw new Error('Inbox message destination must be a valid US phone number.');
+  return queueAuthorizedInboxMessage({
+    accountId: params.accountId,
+    phone,
+    body: inboxReplyText(params),
+    idempotencyKey: params.idempotencyKey,
+    requireExistingThread: params.requireExistingThread,
+  });
 }
 
 // Gentle nudge on a quote the client hasn't approved yet. Sent by the follow-up
@@ -862,7 +1127,8 @@ export async function sendQuoteFollowupSms(params: {
   businessName: string;
   clientName: string;
   url: string;
-  accountId?: string;
+  accountId: string;
+  idempotencyKey?: string;
 }) {
   // Shared with the settings preview so the contractor is shown the message
   // their client actually receives.
@@ -871,9 +1137,15 @@ export async function sendQuoteFollowupSms(params: {
     clientName: params.clientName,
     url: params.url,
   });
-  const providerId = await sendProviderMessage(params.phone, message);
-  if (params.accountId) await logOutboundToInbox(params.accountId, params.phone, message, providerId);
-  return providerId;
+  return queueAccountSms({
+    accountId: params.accountId,
+    phone: params.phone,
+    body: message,
+    messageKind: 'quote-followup',
+    category: 'customer_message',
+    context: 'automation',
+    idempotencyKey: params.idempotencyKey,
+  });
 }
 
 // "Book again" nudge to a past customer — turns a finished job into the next
@@ -883,12 +1155,18 @@ export async function sendRebookInviteSms(params: {
   businessName: string;
   clientName: string;
   url: string;
-  accountId?: string;
+  accountId: string;
+  idempotencyKey?: string;
 }) {
   const message = rebookInviteText(params);
-  const providerId = await sendProviderMessage(params.phone, message);
-  if (params.accountId) await logOutboundToInbox(params.accountId, params.phone, message, providerId);
-  return providerId;
+  return queueAccountSms({
+    accountId: params.accountId,
+    phone: params.phone,
+    body: message,
+    messageKind: 'rebook-invite',
+    category: 'customer_message',
+    idempotencyKey: params.idempotencyKey,
+  });
 }
 
 // Day-before reminder for a scheduled job — cuts no-shows. Sent by the reminders
@@ -900,16 +1178,23 @@ export async function sendAppointmentReminderSms(params: {
   clientName: string;
   whenLabel: string;
   address: string | null;
-  accountId?: string;
+  accountId: string;
+  idempotencyKey?: string;
 }) {
   // Composed by appointmentReminderText, not here. It was written inline — the
   // one message in this family without a builder — so the settings preview was
   // a hand-typed copy beside it, and it had already drifted: no "Let's Get
   // Quoted:" prefix, no address clause. Now the card renders this exact string.
   const message = appointmentReminderText(params);
-  const providerId = await sendProviderMessage(params.phone, message);
-  if (params.accountId) await logOutboundToInbox(params.accountId, params.phone, message, providerId);
-  return providerId;
+  return queueAccountSms({
+    accountId: params.accountId,
+    phone: params.phone,
+    body: message,
+    messageKind: 'appointment-reminder',
+    category: 'customer_message',
+    context: 'automation',
+    idempotencyKey: params.idempotencyKey,
+  });
 }
 
 /**
@@ -929,16 +1214,22 @@ export async function sendArrivalSms(params: {
   accountId: string;
   phone: string | null;
   message: string;
-}): Promise<{ status: 'sent' | 'failed' | 'no_phone' | 'opted_out' | 'not_configured'; sid?: string; error?: string }> {
+  idempotencyKey: string;
+}): Promise<{ status: 'queued' | 'failed' | 'no_phone' | 'opted_out'; eventId?: string; error?: string }> {
   if (!params.phone) return { status: 'no_phone' };
   const to = normalizeUsPhone(params.phone);
   if (!to) return { status: 'no_phone' };
-  if (!smsProviderConfig()) return { status: 'not_configured' };
   if (await isPhoneOptedOut(params.accountId, to)) return { status: 'opted_out' };
   try {
-    const sid = await sendProviderMessage(to, params.message);
-    await logOutboundToInbox(params.accountId, to, params.message, sid);
-    return { status: 'sent', sid };
+    const eventId = await queueAccountSms({
+      accountId: params.accountId,
+      phone: to,
+      body: params.message,
+      messageKind: 'arrival',
+      category: 'customer_message',
+      idempotencyKey: params.idempotencyKey,
+    });
+    return { status: 'queued', eventId };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error('Arrival SMS failed:', message);
@@ -955,27 +1246,48 @@ export async function sendArrivalTimeChangedSms(params: {
   clientName: string;
   /** A RANGE, not a single time — see arrivalWindow(). "7:10 AM to 9:10 AM". */
   windowLabel: string;
-  accountId?: string;
+  accountId: string;
+  idempotencyKey: string;
 }) {
   // A window rather than a time on purpose: one slow job turns a promised
   // "8:07 AM" into a text that was wrong the moment it was sent.
   const message = arrivalTimeChangedText(params);
-  const providerId = await sendProviderMessage(params.phone, message);
-  if (params.accountId) await logOutboundToInbox(params.accountId, params.phone, message, providerId);
-  return providerId;
+  return queueAccountSms({
+    accountId: params.accountId,
+    phone: params.phone,
+    body: message,
+    messageKind: 'arrival-time-changed',
+    category: 'customer_message',
+    idempotencyKey: params.idempotencyKey,
+  });
 }
 
 // Auto text-back after a missed call. The caller reached out first, so a single
 // reply is solicited; still honors opt-out + STOP, and mirrors to the inbox so
 // the owner can reply. Returns null when the number is opted out.
-export async function sendMissedCallTextBack(params: { accountId: string; phone: string; businessName: string }): Promise<string | null> {
+export async function sendMissedCallTextBack(params: {
+  accountId: string;
+  phone: string;
+  businessName: string;
+  idempotencyKey?: string;
+}): Promise<string | null> {
   if (await isPhoneOptedOut(params.accountId, params.phone)) return null;
   // Shared with the settings preview, so the words an owner reads there are the
   // words their caller gets. See lib/missed-call.
   const message = missedCallTextBack(params.businessName);
-  const providerId = await sendProviderMessage(params.phone, message);
-  await logOutboundToInbox(params.accountId, params.phone, message, providerId);
-  return providerId;
+  // The call itself is the recipient initiating contact. Preserve any STOP
+  // with insert-only consent and do it before enqueue so the worker sees a
+  // complete ledger rather than cancelling an otherwise solicited reply.
+  if (!(await ensureSmsConsentBaseline(params.accountId, params.phone, 'missed_call_text_back'))) return null;
+  return queueAccountSms({
+    accountId: params.accountId,
+    phone: params.phone,
+    body: message,
+    messageKind: 'missed-call',
+    category: 'customer_message',
+    context: 'automation',
+    idempotencyKey: params.idempotencyKey,
+  });
 }
 
 /**
@@ -991,11 +1303,17 @@ export async function sendSelectionRequestSms(params: {
   phone: string;
   accountId: string;
   message: string;
+  idempotencyKey?: string;
 }): Promise<string | null> {
   if (await isPhoneOptedOut(params.accountId, params.phone)) return null;
-  const providerId = await sendProviderMessage(params.phone, params.message);
-  await logOutboundToInbox(params.accountId, params.phone, params.message, providerId);
-  return providerId;
+  return queueAccountSms({
+    accountId: params.accountId,
+    phone: params.phone,
+    body: params.message,
+    messageKind: 'selection-request',
+    category: 'customer_message',
+    idempotencyKey: params.idempotencyKey,
+  });
 }
 
 // Sends a client the link to save a card for automatic billing on a recurring
@@ -1005,12 +1323,19 @@ export async function sendCardSetupSms(params: {
   phone: string;
   businessName: string;
   url: string;
-  accountId?: string;
+  accountId: string;
+  /** Explicit resend actions intentionally use a fresh one-off identity. */
+  idempotencyKey?: string;
 }) {
   const message = cardSetupText(params);
-  const providerId = await sendProviderMessage(params.phone, message);
-  if (params.accountId) await logOutboundToInbox(params.accountId, params.phone, message, providerId);
-  return providerId;
+  return queueAccountSms({
+    accountId: params.accountId,
+    phone: params.phone,
+    body: message,
+    messageKind: 'card-setup',
+    category: 'payment_message',
+    idempotencyKey: params.idempotencyKey,
+  });
 }
 
 // Dunning: the saved card was declined on a recurring charge. Ask the client to
@@ -1019,12 +1344,19 @@ export async function sendCardUpdateSms(params: {
   phone: string;
   businessName: string;
   url: string;
-  accountId?: string;
+  accountId: string;
+  idempotencyKey?: string;
 }) {
   const message = cardUpdateText(params);
-  const providerId = await sendProviderMessage(params.phone, message);
-  if (params.accountId) await logOutboundToInbox(params.accountId, params.phone, message, providerId);
-  return providerId;
+  return queueAccountSms({
+    accountId: params.accountId,
+    phone: params.phone,
+    body: message,
+    messageKind: 'card-update',
+    category: 'payment_message',
+    context: 'automation',
+    idempotencyKey: params.idempotencyKey,
+  });
 }
 
 // One-off broadcast to a past client (a seasonal offer, a "we're booking now"
@@ -1036,12 +1368,18 @@ export async function sendCampaignSms(params: {
   phone: string;
   businessName: string;
   body: string;
-  accountId?: string;
+  accountId: string;
+  idempotencyKey: string;
 }) {
   const message = campaignText(params);
-  const providerId = await sendProviderMessage(params.phone, message);
-  if (params.accountId) await logOutboundToInbox(params.accountId, params.phone, message, providerId);
-  return providerId;
+  return queueAccountSms({
+    accountId: params.accountId,
+    phone: params.phone,
+    body: message,
+    messageKind: 'campaign',
+    category: 'customer_message',
+    idempotencyKey: params.idempotencyKey,
+  });
 }
 
 // Post-job ask for a Google review — the loop that turns a finished job back
@@ -1053,7 +1391,8 @@ export async function sendReviewRequestSms(params: {
   businessName: string;
   clientName: string;
   reviewUrl: string;
-  accountId?: string;
+  accountId: string;
+  idempotencyKey?: string;
 }) {
   // Ask everyone the same way. "If we earned it" reads as a nudge that only
   // happy customers should bother, which is the same selective solicitation
@@ -1066,7 +1405,12 @@ export async function sendReviewRequestSms(params: {
     clientName: params.clientName,
     reviewUrl: params.reviewUrl,
   });
-  const providerId = await sendProviderMessage(params.phone, message);
-  if (params.accountId) await logOutboundToInbox(params.accountId, params.phone, message, providerId);
-  return providerId;
+  return queueAccountSms({
+    accountId: params.accountId,
+    phone: params.phone,
+    body: message,
+    messageKind: 'review-request',
+    category: 'customer_message',
+    idempotencyKey: params.idempotencyKey,
+  });
 }

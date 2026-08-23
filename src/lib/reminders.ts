@@ -3,7 +3,6 @@ import { createAdminClient } from '@/lib/auth';
 import { normalizeUsPhone } from '@/lib/phone';
 import { formatJobSchedule } from '@/lib/jobs';
 import { createJobFeedEvent } from '@/lib/job-feed';
-import { resolveAccountForInbound } from '@/lib/messages';
 import { sendAppointmentReminderSms } from '@/lib/sms';
 import { getAccountOwnerEmail, sendAppointmentReminderEmail, sendReminderRunSummaryEmail } from '@/lib/email';
 import { wantsConfirmation } from '@/lib/confirmation-prefs';
@@ -134,8 +133,17 @@ export async function sendJobAppointmentReminder(
   const whenLabel = formatJobSchedule(job.scheduled_for, job.scheduled_time);
 
   let channel: 'sms' | 'email';
+  let smsEventId: string | null = null;
   if (canText && phone) {
-    await sendAppointmentReminderSms({ phone, businessName, clientName: firstName, whenLabel, address: job.address, accountId: job.account_id });
+    smsEventId = await sendAppointmentReminderSms({
+      phone,
+      businessName,
+      clientName: firstName,
+      whenLabel,
+      address: job.address,
+      accountId: job.account_id,
+      idempotencyKey: `appointment-reminder:${job.id}:${job.scheduled_for}:${job.scheduled_time ?? 'none'}`,
+    });
     channel = 'sms';
   } else {
     await sendAppointmentReminderEmail({ recipientEmail: email as string, businessName, clientName: firstName, whenLabel, address: job.address, jobRef: job.ref, accountId: job.account_id });
@@ -144,10 +152,17 @@ export async function sendJobAppointmentReminder(
 
   await createJobFeedEvent(admin, job.account_id, job.id, {
     kind: 'appointment_reminder',
-    title: channel === 'sms' ? 'Appointment reminder texted' : 'Appointment reminder emailed',
-    body: `Reminded ${job.client_name} their appointment is coming up ${whenLabel}.`,
+    title: channel === 'sms' ? 'Appointment reminder queued' : 'Appointment reminder emailed',
+    body: `${channel === 'sms' ? 'Queued a reminder for' : 'Reminded'} ${job.client_name} that their appointment is coming up ${whenLabel}.`,
     visibility: 'internal',
-    meta: { channel, scheduled_for: job.scheduled_for, scheduled_time: job.scheduled_time ?? null, manual: Boolean(options.force) },
+    meta: {
+      channel,
+      scheduled_for: job.scheduled_for,
+      scheduled_time: job.scheduled_time ?? null,
+      manual: Boolean(options.force),
+      delivery_state: channel === 'sms' ? 'queued' : 'sent',
+      sms_event_id: smsEventId,
+    },
   });
 
   return { sent: true, channel };
@@ -283,20 +298,13 @@ export type ConfirmResult = {
 };
 
 // A client texted "C" (or "confirm"/"yes") — find their most imminent upcoming
-// scheduled job for the account that texted them and mark it confirmed. Returns
-// confirmed:false (a no-op) when there's nothing to confirm, so the caller just
-// treats the text as an ordinary inbound message.
+// scheduled job inside the account already resolved from the authenticated To
+// number. Returns confirmed:false when there is nothing to confirm.
 export async function confirmUpcomingAppointment(
   admin: SupabaseClient,
+  accountId: string,
   phone: string,
-  toNumber?: string | null,
 ): Promise<ConfirmResult> {
-  // Same routing as the inbox, and for the same reason: confirming the wrong
-  // contractor's appointment is worse than mis-filing a message, because a job
-  // gets marked confirmed for somebody who never heard from this customer.
-  const accountId = await resolveAccountForInbound(admin, phone, toNumber);
-  if (!accountId) return { confirmed: false };
-
   const today = new Date().toISOString().slice(0, 10);
   const { data: jobs } = await admin
     .from('jobs')

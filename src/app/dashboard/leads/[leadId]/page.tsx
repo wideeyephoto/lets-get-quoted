@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { notFound } from 'next/navigation';
-import { requireOwnerContext } from '@/lib/auth';
+import { requireOfficeContext } from '@/lib/auth';
 import PhotoGallery from '@/components/photo-gallery';
 import LeadRadiusMap from '@/components/lead-radius-map';
 import { createLeadPhotoLinks } from '@/lib/lead-photo-storage';
@@ -108,14 +108,27 @@ function nextScheduledJobLabel(jobs: ScheduledJobOccurrence<Job>[]) {
 }
 
 export default async function LeadDetailPage({ params, searchParams }: { params: { leadId: string }; searchParams: { edit?: string; details?: string; availabilityStart?: string; quoteStartStart?: string; added?: string } }) {
-  const { supabase, accountId } = await requireOwnerContext();
+  // Reading one lead is leads.read. Every write this page offers asks for
+  // itself, and the whole action panel is owner-only -- see the aside below.
+  const { supabase, accountId, role } = await requireOfficeContext('leads.read');
+  const ownerControls = role === 'owner';
   await expireStaleLeads(supabase, accountId);
   const [lead, jobs, leads, { data: account }, { data: site }] = await Promise.all([
     getLead(supabase, accountId, params.leadId),
     listJobs(supabase, accountId, undefined, { includeLeadQuotes: true }),
     listLeads(supabase, accountId),
-    supabase.from('accounts').select('schedule_day_hours, business_name, stripe_connect_id, connect_onboarded, booking_weekdays').eq('id', accountId).maybeSingle(),
-    supabase.from('sites').select('company_name').eq('account_id', accountId).maybeSingle(),
+    // OWNER ONLY, and skipped rather than left to fail. `accounts` is
+    // owner-only (acc_read is is_owner(id)) and `sites` likewise, so for an
+    // office user these are two round trips that return nothing. Everything
+    // they feed -- the quote's business name, the Stripe gate, the scheduling
+    // day length -- lives in the action panel, which an office user does not
+    // get. Asking anyway would spend the queries to populate hidden UI.
+    ownerControls
+      ? supabase.from('accounts').select('schedule_day_hours, business_name, stripe_connect_id, connect_onboarded, booking_weekdays').eq('id', accountId).maybeSingle()
+      : Promise.resolve({ data: null }),
+    ownerControls
+      ? supabase.from('sites').select('company_name').eq('account_id', accountId).maybeSingle()
+      : Promise.resolve({ data: null }),
   ]);
   if (!lead) notFound();
 
@@ -305,6 +318,7 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
             declinedReason={triage.declinedReason ?? null}
             leadName={lead.name ?? ''}
             businessName={quoteBusinessName}
+            ownerControls={ownerControls}
             overdueLabel={overdueLabel}
             markWon={markLeadWon}
             markLost={markLeadLost}
@@ -501,6 +515,14 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
       ) : null}
 
       <div className={styles.detailGrid}>
+        {/* THE WHOLE PANEL IS OWNER-ONLY, which is why it is one gate rather
+            than several. It holds exactly two things and an office user can run
+            neither: booking the estimate texts the homeowner and records their
+            SMS consent with the service role, and building the quote ends in
+            sendQuoteAction, which needs quotes.write -- a capability nobody
+            holds. What is left of the page is the lead itself, which is the
+            part somebody answering the phone actually needs. */}
+        {ownerControls ? (
         <aside className={styles.actionPanel}>
           {/* ONE OF THESE TWO IS OPEN, NEVER BOTH.
               Scheduling the estimate and building the quote are the two halves
@@ -649,6 +671,7 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
             </details>
           ) : null}
         </aside>
+        ) : null}
       </div>
     </main>
     </ScrollTopOnSaveProvider>

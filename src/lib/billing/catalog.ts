@@ -7,7 +7,45 @@
  * page and the payment engine cannot drift through floating-point constants.
  */
 
-export const PRICING_CATALOG_VERSION = '2026-08-15-preview' as const;
+/**
+ * BUMPING THIS IS A DATA MIGRATION, NOT A CONSTANT CHANGE.
+ *
+ * `catalog_version` does two structurally different jobs, and they need
+ * opposite handling. Changing this line without doing the second one has
+ * already taken a workspace's ability to collect money once.
+ *
+ * EVIDENCE -- "the version this agreement was signed under". Lives on
+ * `billing_subscription_checkout_operations`, `billing_subscription_consent_acceptances`,
+ * `billing_subscriptions`, and in the Stripe-side subscription, Session and
+ * Price metadata. It is immutable -- an enabled trigger raises 22000 on any
+ * attempt to change it -- and it must stay READABLE at its own version. So when
+ * this constant moves, the READERS must widen. Migration 20260818120000 did
+ * exactly that for three database CHECKs, and deliberately said why:
+ * "Historical evidence must stay interpretable at the version it was written
+ * under."
+ *
+ * CURRENTNESS -- "this row carries catalog X's limits and fee right now". Lives
+ * on `workspace_entitlements.catalog_version` and `payments.fee_catalog_version`.
+ * Live guards compare it to a LITERAL, so it must equal the current catalog.
+ * When this constant moves, these ROWS must move -- widening their readers
+ * would be wrong.
+ *
+ * WHAT WENT WRONG ON 2026-08-18. The bump widened the evidence checks and did
+ * not move the currentness rows. One `workspace_entitlements` row stayed on
+ * `2026-08-15-preview`, and three live functions refuse on that column:
+ * `claim_one_off_direct_checkout_operation`,
+ * `prepare_one_off_direct_invoice_payment`, and
+ * `require_direct_checkout_entitlement_snapshot` (reached from two enabled
+ * triggers on `billing_payment_operations`). The only paid workspace could not
+ * take a card payment from its own customers by any route.
+ *
+ * ALSO NOTE: a bump is NOT required for an allowance change. `20260820150000`
+ * and `20260821010000` both changed included capacity under this same version,
+ * on purpose, and wrote down why: "The version identifies the price book, and
+ * no price changes here." Bump this only when the PRICE BOOK changes, and when
+ * you do, move the currentness rows in the same migration.
+ */
+export const PRICING_CATALOG_VERSION = '2026-08-18-preview' as const;
 
 export const BILLING_PLAN_IDS = ['flex', 'solo', 'growth', 'scale'] as const;
 export type BillingPlanId = (typeof BILLING_PLAN_IDS)[number];
@@ -89,10 +127,16 @@ export const BILLING_PLANS: Readonly<Record<BillingPlanId, BillingPlanDefinition
     platformFeeBps: 50,
     allowances: {
       cadence: 'monthly',
-      officeUsers: 1,
+      // Two, not one. The owner occupies an office seat, so a one-seat plan
+      // can never invite anybody -- Solo's buyer is an owner-operator whose
+      // partner does the books. Granted in SQL by 20260821010000; the
+      // projector recomputes feature_limits from its own table and refuses
+      // the whole projection when the two disagree, so this line alone would
+      // dead-letter every Solo activation.
+      officeUsers: 2,
       crewUsers: 2,
       customDomainConnections: 1,
-      dedicatedBusinessNumbers: 1,
+      dedicatedBusinessNumbers: 0,
       textCredits: 500,
       marketingEmailSends: 500,
       aiIntakeCredits: 250,
@@ -122,7 +166,7 @@ export const BILLING_PLANS: Readonly<Record<BillingPlanId, BillingPlanDefinition
       officeUsers: 5,
       crewUsers: 10,
       customDomainConnections: 1,
-      dedicatedBusinessNumbers: 1,
+      dedicatedBusinessNumbers: 0,
       textCredits: 1_500,
       marketingEmailSends: 2_500,
       aiIntakeCredits: 500,
@@ -149,16 +193,16 @@ export const BILLING_PLANS: Readonly<Record<BillingPlanId, BillingPlanDefinition
     platformFeeBps: 10,
     allowances: {
       cadence: 'monthly',
-      officeUsers: 5,
-      crewUsers: 10,
+      officeUsers: 15,
+      crewUsers: 50,
       customDomainConnections: 1,
-      dedicatedBusinessNumbers: 1,
-      textCredits: 1_500,
-      marketingEmailSends: 2_500,
-      aiIntakeCredits: 500,
-      aiWritingDrafts: 250,
-      storageGb: 100,
-      forwardingMinutes: 100,
+      dedicatedBusinessNumbers: 0,
+      textCredits: 3_000,
+      marketingEmailSends: 5_000,
+      aiIntakeCredits: 1_000,
+      aiWritingDrafts: 500,
+      storageGb: 250,
+      forwardingMinutes: 200,
     },
     voice: {
       monthlyPriceCents: 0,
@@ -181,7 +225,11 @@ export type TopUpId =
   | 'ai_writing_250'
   | 'storage_100gb'
   | 'office_user'
-  | 'crew_user';
+  | 'crew_user'
+  | 'voice_minutes_100'
+  | 'ai_voice_flex'
+  | 'ai_voice_solo'
+  | 'ai_voice_growth';
 
 export type TopUpDefinition = {
   id: TopUpId;
@@ -196,7 +244,8 @@ export type TopUpDefinition = {
     | 'ai_writing_drafts'
     | 'storage_gb'
     | 'office_users'
-    | 'crew_users';
+    | 'crew_users'
+    | 'voice_minutes';
   units: number;
   eligiblePlans: readonly BillingPlanId[];
   eligibilityLabel: string;
@@ -291,7 +340,133 @@ export const TOP_UPS: Readonly<Record<TopUpId, TopUpDefinition>> = {
     eligiblePlans: ['solo', 'growth', 'scale'],
     eligibilityLabel: 'Solo+',
   },
+  /**
+   * The AI Voice add-on, as THREE SKUs rather than one.
+   *
+   * The published price differs by plan -- $69 Flex, $59 Solo, $55 Growth -- and
+   * every mechanism downstream assumes one price per SKU: `priceCents` is a
+   * single number, the Stripe seeder mints one Price per entry, and
+   * `billing_top_up_purchase_operations` binds each top-up id to exactly one
+   * `unit_amount_cents` in a CHECK constraint. A single `ai_voice` entry made
+   * that constraint unsatisfiable for two of the three plans, and the migration
+   * test said so before any of this could reach a database.
+   *
+   * Scale is absent on purpose: it includes voice in its base plan, so there is
+   * nothing to sell it.
+   */
+  ai_voice_flex: {
+    id: 'ai_voice_flex',
+    label: 'AI Voice Receptionist (Flex)',
+    priceCents: 6_900,
+    recurring: true,
+    fulfillment: 'recurring_capacity',
+    resourceCode: 'voice_minutes',
+    units: 100,
+    eligiblePlans: ['flex'],
+    eligibilityLabel: 'Flex',
+  },
+  ai_voice_solo: {
+    id: 'ai_voice_solo',
+    label: 'AI Voice Receptionist (Solo)',
+    priceCents: 5_900,
+    recurring: true,
+    fulfillment: 'recurring_capacity',
+    resourceCode: 'voice_minutes',
+    units: 100,
+    eligiblePlans: ['solo'],
+    eligibilityLabel: 'Solo',
+  },
+  ai_voice_growth: {
+    id: 'ai_voice_growth',
+    label: 'AI Voice Receptionist (Growth)',
+    priceCents: 5_500,
+    recurring: true,
+    fulfillment: 'recurring_capacity',
+    resourceCode: 'voice_minutes',
+    // Growth's published allowance is 200 minutes, not 100.
+    units: 200,
+    eligiblePlans: ['growth'],
+    eligibilityLabel: 'Growth',
+  },
+  voice_minutes_100: {
+    id: 'voice_minutes_100',
+    label: '100 AI-connected minutes',
+    priceCents: 3_500,
+    recurring: false,
+    fulfillment: 'usage_credit',
+    resourceCode: 'voice_minutes',
+    units: 100,
+    eligiblePlans: BILLING_PLAN_IDS,
+    eligibilityLabel: 'All plans',
+  },
 } as const;
+
+/**
+ * Published SKUs that must not be sold yet, and why.
+ *
+ * They stay in TOP_UPS because the price book is settled and the appendix
+ * publishes them. What is withheld is the sale, not the price. Keeping the
+ * reason next to the catalog means the seeder and the purchase path cannot
+ * disagree about which SKUs are live -- and a reader is told why rather than
+ * finding a SKU quietly missing from a list.
+ */
+/** One reason, three SKUs. Repeating it would let two of them drift. */
+const AI_VOICE_WITHHELD =
+  'the whole call rail is built and dark - admission, agent, receipt, settlement, '
+  + 'lead, configuration, history, and since 20260819190000 the monthly allowance '
+  + 'grant itself. What is left is not a missing mechanism but four switches '
+  + 'nobody has thrown: no live Price exists, no number is pointed at the route, '
+  + 'the allowance worker is off, and with the meter dark nothing would spend '
+  + 'what it granted - so a subscriber would be charged monthly for minutes that '
+  + 'arrive nowhere and buy nothing';
+
+export const TOP_UPS_WITHHELD: Readonly<Partial<Record<TopUpId, string>>> = Object.freeze({
+  storage_100gb:
+    'the whole rail works - payment writes the capacity ledger, the lifecycle '
+    + 'sweep follows the subscription, and the storage limit has added purchased '
+    + 'units since 20260819000000. What is left is two switches nobody has '
+    + 'thrown: no live recurring Price exists, and LGQ_STORAGE_CAP_ENFORCED is '
+    + 'off, so headroom bought today changes nothing a workspace can feel',
+  office_user:
+    'the seat rail is complete - invitation, acceptance, removal, last-owner '
+    + 'protection, reaching the workspace - and since 20260819250000 a purchased '
+    + 'seat actually raises the limit, which it did not before. THE PERMISSIONS '
+    + 'HALF IS NO LONGER THE BLOCKER: thirteen capabilities are enabled, and '
+    + 'since 20260821 an office user lands on the leads board and can read, '
+    + 'triage and edit a lead. What remains is one switch and one gap. No live '
+    + 'recurring Price exists. And leads is the only one of the three tables the '
+    + 'database supports that any page reaches: clients and jobs were both '
+    + 'audited and refused, clients because its detail page states "$0.00 paid" '
+    + 'as a fact when payments is owner-only, jobs because its detail page '
+    + 'builds an admin client while rendering and reads two dozen owner-only '
+    + 'tables. So the seat buys a lead queue today, not a back office',
+  ai_voice_flex: AI_VOICE_WITHHELD,
+  ai_voice_solo: AI_VOICE_WITHHELD,
+  ai_voice_growth: AI_VOICE_WITHHELD,
+  voice_minutes_100:
+    'the ledger accepts voice_minutes and the top-up path would grant them '
+    + 'correctly, but with the meter dark nothing ever spends them - selling 100 '
+    + 'minutes today takes $35 for a balance that cannot be drawn down',
+  crew_user:
+    'the only RECURRING sku here, and nothing in the product can stop it. '
+    + 'buying one opens a Stripe subscription - top-up-purchase sets '
+    + "mode: sku.recurring ? 'subscription' : 'payment' - and every Stripe "
+    + 'subscription write in the codebase (two in plan-change, three in '
+    + 'subscription-cancellation) resolves its target through '
+    + 'billing_subscriptions, which holds the BASE PLAN only. so there is no '
+    + 'cancel path, no remove-seat control, no admin action, and account '
+    + 'deletion cancels the base plan and leaves this one billing. a contractor '
+    + 'who adds two seats and loses those crew next month has a card dispute as '
+    + 'their only self-serve lever - an operator can still cancel it by hand in '
+    + 'the Stripe dashboard, and capacity-lifecycle-worker honours that within '
+    + 'the hour. withheld until a cancel exists in the PRODUCT, not because the '
+    + 'purchase is broken - it works, which is the problem',
+});
+
+/** SKUs that may be sold today. */
+export const SELLABLE_TOP_UP_IDS = Object.freeze(
+  (Object.keys(TOP_UPS) as TopUpId[]).filter((id) => !(id in TOP_UPS_WITHHELD)),
+);
 
 export const ENTERPRISE_PRICING = {
   startingMonthlyCents: 79_900,
@@ -344,4 +519,52 @@ export function annualizedBasePriceCents(plan: BillingPlanDefinition | BillingPl
 export function formatUsdFromCents(cents: number): string {
   const dollars = cents / 100;
   return dollars % 1 === 0 ? `$${dollars.toLocaleString('en-US')}` : `$${dollars.toFixed(2)}`;
+}
+
+/**
+ * What one top-up actually gives you, and for how long.
+ *
+ * WHY THIS EXISTS. The dashboard's buy card wrote this line by hand as
+ * `${units} ${resourceCode.replace(/_/g, ' ')} · one-time · never expires`,
+ * which was true for every SKU on sale on the day it was written -- all five
+ * were one-time credit packs. `crew_user` went on sale on 2026-08-20 and is
+ * `recurring: true`, so that same line began telling a contractor that a $5 A
+ * MONTH subscription was a one-time purchase that never expires. Two false
+ * statements about a recurring charge, on the button that starts it.
+ *
+ * A hardcoded cadence is only ever correct by coincidence. This reads the SKU.
+ */
+
+/** Singular and plural, because "1 crew users" is what deriving it produced. */
+const RESOURCE_NOUNS: Readonly<Record<TopUpDefinition['resourceCode'], readonly [string, string]>> =
+  Object.freeze({
+    text_segments: ['text credit', 'text credits'],
+    marketing_email_sends: ['marketing email', 'marketing emails'],
+    ai_intake_threads: ['AI Intake credit', 'AI Intake credits'],
+    ai_writing_drafts: ['AI writing draft', 'AI writing drafts'],
+    storage_gb: ['GB of storage', 'GB of storage'],
+    // "Seat" rather than "user": you are buying the allowance, not the person,
+    // and the settings screen that spends it is headed Team.
+    office_users: ['office seat', 'office seats'],
+    crew_users: ['crew seat', 'crew seats'],
+    voice_minutes: ['voice minute', 'voice minutes'],
+  });
+
+export function describeTopUpUnits(sku: TopUpDefinition): string {
+  const [singular, plural] = RESOURCE_NOUNS[sku.resourceCode];
+  return `${sku.units.toLocaleString('en-US')} ${sku.units === 1 ? singular : plural}`;
+}
+
+/**
+ * The cadence, said the way somebody deciding whether to click would say it.
+ *
+ * Recurring SKUs name the price again on purpose. The card already shows the
+ * amount once, and an amount without a period beside it reads as a total --
+ * which is exactly the misreading that makes a monthly charge feel like a
+ * surprise the second month.
+ */
+export function describeTopUpCadence(sku: TopUpDefinition): string {
+  return sku.recurring
+    ? `${formatUsdFromCents(sku.priceCents)}/month · renews until you cancel`
+    : 'one-time · never expires';
 }

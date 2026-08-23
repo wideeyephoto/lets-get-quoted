@@ -14,7 +14,7 @@ export async function sendRebookInviteAction(clientId: string, days: number) {
   const params = new URLSearchParams({ days: String(cleanDays(days)) });
   try {
     const channel = await sendRebookInvite(supabase, accountId, clientId);
-    params.set('flash', `sent-${channel}`);
+    params.set('flash', channel === 'sms' ? 'queued-sms' : 'sent-email');
   } catch (error) {
     params.set('flash', 'error');
     params.set('msg', error instanceof Error ? error.message : 'Could not send the invite.');
