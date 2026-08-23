@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { parsePaymentAmount, paymentAmountError } from '@/lib/money-input';
 import { headers } from 'next/headers';
-import { requireOwnerContext } from '@/lib/auth';
+import { requireOfficeContext } from '@/lib/auth';
 import { loadBusinessName } from '@/lib/business-name';
 import { getJob } from '@/lib/jobs';
 import {
@@ -30,7 +30,7 @@ import { wantsConfirmation } from '@/lib/confirmation-prefs';
 import { sendPaymentRequestedConfirmationEmail } from '@/lib/email';
 import { recordSmsConsent, retryFailedPaymentSmsEvent, sendPaymentSmsEvent } from '@/lib/sms';
 
-async function ensureJobInvoice(supabase: Awaited<ReturnType<typeof requireOwnerContext>>['supabase'], accountId: string, jobId: string) {
+async function ensureJobInvoice(supabase: Awaited<ReturnType<typeof requireOfficeContext>>['supabase'], accountId: string, jobId: string) {
   const invoices = await listInvoices(supabase, accountId, jobId);
   const invoice = selectPrimaryInvoice(invoices) ?? await createInvoice(supabase, accountId, jobId, 'draft');
   const job = await getJob(supabase, accountId, jobId);
@@ -42,7 +42,7 @@ async function ensureJobInvoice(supabase: Awaited<ReturnType<typeof requireOwner
 }
 
 export async function createDepositRequestAction(jobId: string, formData: FormData) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('payments.collect');
 
   // Number() here was the defect: NaN <= 0 is false, so every unreadable amount
   // passed the guard in createDepositRequest and reached a NOT NULL numeric
@@ -131,7 +131,7 @@ export async function createDepositRequestAction(jobId: string, formData: FormDa
 }
 
 export async function refundPaymentAction(jobId: string, paymentId: string, amount?: number) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('payments.refund');
 
   await refundPayment(supabase, accountId, paymentId, amount);
 
@@ -143,7 +143,7 @@ export async function refundPaymentAction(jobId: string, paymentId: string, amou
 }
 
 export async function markPaymentFailedAction(jobId: string, paymentId: string) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('payments.collect');
 
   await markPaymentFailed(supabase, accountId, paymentId);
 
@@ -152,7 +152,7 @@ export async function markPaymentFailedAction(jobId: string, paymentId: string) 
 
 // Record a cash/check payment collected outside Stripe.
 export async function markPaymentPaidManuallyAction(jobId: string, paymentId: string, method: string) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('payments.collect');
   const safeMethod = (['cash', 'check', 'other'].includes(method) ? method : 'cash');
   const payment = await getPaymentDetails(supabase, accountId, paymentId);
   if (!payment || payment.job_id !== jobId) throw new Error('Payment not found for this job.');
@@ -175,26 +175,7 @@ export async function markPaymentPaidManuallyAction(jobId: string, paymentId: st
 }
 
 export async function retryPaymentAction(paymentId: string) {
-  /**
-   * PROVE THE CALLER OWNS IT. Every other action in this file opens with
-   * requireOwnerContext; this one opened with headers().
-   *
-   * Being precise about what that did and did not mean, because the difference
-   * decides how alarmed to be. retryPayment() builds its own admin client and
-   * reads the row with getPublicPayment, which is unscoped by account -- so
-   * nothing anywhere on the path checked who was asking. But what it returns is
-   * a Stripe Checkout URL for that payment, and /pay/[id] hands the same URL to
-   * anyone holding the id, deliberately, because the homeowner paying it has no
-   * account at all. So this was NOT a privilege escalation: it granted what the
-   * public page already grants.
-   *
-   * It is still wrong. This is the contractor's dashboard control, its siblings
-   * all establish an account first, and an action that touches a payment row
-   * without knowing whose it is has no way to refuse the day it is asked to do
-   * something the public page would not. Scoped through the SESSION client, so
-   * RLS is a second opinion rather than the guard being trusted alone.
-   */
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('payments.collect');
   const payment = await getPaymentDetails(supabase, accountId, paymentId);
   if (!payment) throw new Error('Payment not found for this account.');
 
@@ -209,7 +190,7 @@ export async function retryPaymentAction(paymentId: string) {
 }
 
 export async function retryPaymentTextAction(jobId: string, paymentId: string) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('payments.collect');
   const payment = await getPaymentDetails(supabase, accountId, paymentId);
   if (!payment || payment.job_id !== jobId) throw new Error('Payment not found for this job.');
   // This text contains /pay/:id, whose active Checkout implementation is the
@@ -222,7 +203,7 @@ export async function retryPaymentTextAction(jobId: string, paymentId: string) {
 }
 
 export async function cancelPaymentRequestAction(jobId: string, paymentId: string) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('payments.collect');
   const payment = await getPaymentDetails(supabase, accountId, paymentId);
   if (!payment || payment.job_id !== jobId) throw new Error('Payment not found for this job.');
 

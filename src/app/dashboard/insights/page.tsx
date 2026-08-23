@@ -1,4 +1,4 @@
-import { createAdminClient, requireOwnerContext } from '@/lib/auth';
+import { createAdminClient, requireOfficeContext } from '@/lib/auth';
 import { buildInsights, resolvePeriod } from '@/lib/insights';
 import { buildFillScheduleCopy, TEMPLATES } from '@/lib/campaign-templates';
 import type { CampaignDraft } from '@/lib/marketing-draft-data';
@@ -22,7 +22,7 @@ export default async function InsightsPage({
 }: {
   searchParams: { window?: string; from?: string; to?: string; compare?: string };
 }) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('reports.read');
   const period = resolvePeriod(searchParams);
   const showDelta = searchParams.compare === 'prev';
 

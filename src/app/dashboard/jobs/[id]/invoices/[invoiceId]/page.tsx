@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { requireOwnerContext } from '@/lib/auth';
+import { requireOfficeContext } from '@/lib/auth';
 import { getInvoiceWithItems, computeInvoiceTotals, type InvoiceStatus } from '@/lib/invoices';
 import { formatMoneyExact } from '@/lib/jobs';
 
@@ -33,7 +33,7 @@ export default async function InvoiceDetailPage({
 }: {
   params: { id: string; invoiceId: string };
 }) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('invoices.read');
 
   const result = await getInvoiceWithItems(supabase, accountId, params.invoiceId, params.id);
 

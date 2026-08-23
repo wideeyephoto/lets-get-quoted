@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { requireOwnerContext } from '@/lib/auth';
+import { requireOfficeContext } from '@/lib/auth';
 import { getAvailableTaxYears, buildProfitAndLoss, buildScheduleCWorksheet, build1099PrepList } from '@/lib/tax-reports';
 import FinanceReports from '../settings/FinanceReports';
 
@@ -14,7 +14,7 @@ export const metadata = { title: 'Financial reports' };
  * a page people open to change a phone number.
  */
 export default async function ReportsPage({ searchParams }: { searchParams: { year?: string } }) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('reports.read');
 
   const availableYears = await getAvailableTaxYears(supabase, accountId);
   const requestedYear = searchParams.year ? parseInt(searchParams.year, 10) : NaN;

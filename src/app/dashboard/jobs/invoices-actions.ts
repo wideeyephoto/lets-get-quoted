@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation';
 import { parsePaymentAmount, paymentAmountError } from '@/lib/money-input';
 import { revalidatePath } from 'next/cache';
 import { headers } from 'next/headers';
-import { requireOwnerContext } from '@/lib/auth';
+import { requireOfficeContext } from '@/lib/auth';
 import { loadBusinessName } from '@/lib/business-name';
 import { createJobFeedEvent } from '@/lib/job-feed';
 import {
@@ -21,7 +21,7 @@ import { getJob } from '@/lib/jobs';
 import { sendInvoiceEmail, sendInvoiceSentConfirmationEmail, type SentChannel } from '@/lib/email';
 
 export async function createInvoiceAction(jobId: string, formData: FormData) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('invoices.write');
 
   const status = (formData.get('status') as InvoiceStatus) || 'draft';
   const invoice = await createInvoice(supabase, accountId, jobId, status);
@@ -42,7 +42,7 @@ export async function createInvoiceAction(jobId: string, formData: FormData) {
 }
 
 export async function addInvoiceItemAction(jobId: string, invoiceId: string, formData: FormData) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('invoices.write');
 
   const description = (formData.get('description') ?? '').toString().trim() || 'Line item';
   // Parsed, not coerced. A dollar sign or a decimal comma makes Number() return
@@ -58,7 +58,7 @@ export async function addInvoiceItemAction(jobId: string, invoiceId: string, for
 }
 
 export async function updateInvoiceChargesAction(jobId: string, invoiceId: string, formData: FormData) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('invoices.write');
 
   const discountPercent = Number(formData.get('discountPercent'));
   const taxRate = Number(formData.get('taxRate'));
@@ -72,7 +72,7 @@ export async function updateInvoiceChargesAction(jobId: string, invoiceId: strin
 }
 
 export async function deleteInvoiceItemAction(jobId: string, invoiceId: string, itemId: string) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('invoices.write');
 
   await deleteInvoiceItem(supabase, accountId, jobId, invoiceId, itemId);
 
@@ -80,7 +80,7 @@ export async function deleteInvoiceItemAction(jobId: string, invoiceId: string, 
 }
 
 export async function updateInvoiceStatusAction(jobId: string, invoiceId: string, formData: FormData) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('invoices.write');
 
   const status = (formData.get('status') as InvoiceStatus) || 'draft';
   // Reject a forged nested route before any email, status, or feed side effect.
@@ -174,7 +174,7 @@ export async function updateInvoiceStatusAction(jobId: string, invoiceId: string
 }
 
 export async function deleteInvoiceAction(jobId: string, invoiceId: string) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('invoices.write');
 
   const invoiceData = await getInvoiceWithItems(supabase, accountId, invoiceId, jobId);
   if (!invoiceData) throw new Error('Invoice not found for this job.');
@@ -187,7 +187,7 @@ export async function deleteInvoiceAction(jobId: string, invoiceId: string) {
 }
 
 export async function cancelInvoiceAction(jobId: string, invoiceId: string) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('invoices.write');
   const invoiceData = await getInvoiceWithItems(supabase, accountId, invoiceId, jobId);
   if (!invoiceData) throw new Error('Invoice not found for this job.');
   const { invoice } = invoiceData;

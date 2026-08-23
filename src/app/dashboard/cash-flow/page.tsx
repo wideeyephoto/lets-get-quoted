@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { requireOwnerContext } from '@/lib/auth';
+import { requireOfficeContext } from '@/lib/auth';
 import { todayDateKey } from '@/lib/recurring';
 import { loadCashForecastSources, loadPreviousSnapshot, MAX_HORIZON_DAYS } from '@/lib/cash-forecast-data';
 import { compareForecast } from '@/lib/cash-accuracy';
@@ -24,7 +24,7 @@ const PERIOD_WORD: Record<string, string> = {
 };
 
 export default async function CashFlowPage({ searchParams }: { searchParams: { window?: string } }) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('reports.read');
 
   const selected = WINDOWS.find((option) => option.key === searchParams.window) ?? WINDOWS[0];
   const todayKey = todayDateKey();
