@@ -45,6 +45,37 @@ You have an authenticated browser for **Vercel** and **Stripe** only.
 - Do not report a step as done unless you saw it succeed. If you could not check
   something, say that you could not check it.
 
+## CORRECTION 2026-08-23 — the panel needs THREE things, not one
+
+The first run of this prompt stopped correctly at step 4: no Change plan panel.
+The cause was a gate I had not accounted for, and my earlier claim that
+`LGQ_BASE_PLAN_SUBSCRIPTION_PLAN_CHANGE_ENABLED` is "the single control" was
+wrong. It controls whether the plan-change DATA loads. The panel renders inside
+the **Plan & usage tab**, and that whole tab is conditional on a different flag:
+
+
+
+So all three must hold, and the deployment must have been BUILT after them:
+
+1. `LGQ_PRICING_DASHBOARD_ENABLED = 1` in Preview — without it the page shows
+   "The plan-and-usage dashboard is not enabled in this environment yet", which
+   is exactly what the first run saw.
+2. `LGQ_BASE_PLAN_SUBSCRIPTION_PLAN_CHANGE_ENABLED = 1` in Preview.
+3. A rebuild after both.
+
+The first run reported `LGQ_PRICING_DASHBOARD_ENABLED` as already present in
+Preview, yet the app said otherwise — so either its value is not exactly `1`, or
+the deployment predates it. Step 2 is what settles that, and the first run did
+not do the comparison it asks for: it reported "Built and deployed 2026-08-23"
+with no time, so the timing was never checked.
+
+Also: the plan-change flag was created **Sensitive**, which this prompt asked it
+not to be. A Sensitive variable cannot be read back, so its value can no longer
+be confirmed by looking — only by observing the app after a rebuild. Deleting and
+re-adding it non-Sensitive is the way to make it checkable again.
+
+---
+
 ## Step 1 — Does the flag actually exist in Preview?
 
 Open the Vercel project that serves `app.letsgetquoted.com` → **Settings →
