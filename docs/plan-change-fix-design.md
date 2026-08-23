@@ -193,6 +193,21 @@ production database because Preview deployments write there.
    `purpose` CHECK widened, granted to `authenticated` only with the `anon`
    revoke asserted. Inert: nothing calls it.
 
+### Done since
+
+4. ~~The ledger.~~ **Applied** — `e9a5c61a`, migration `20260823210000`.
+   `billing_subscription_plan_change_operations`, separate from the checkout
+   table for the three reasons in that commit. Consent pinned twice: the same
+   13-column FK the checkout rail uses, plus an `(acceptance_id, purpose)` FK
+   the checkout rail cannot express — a gap created by widening the acceptances
+   purpose CHECK. `anon` revoke asserted, and proved by mutation.
+5. ~~The claim RPC.~~ **Applied** — `59ba346a`, migration `20260823220000`.
+   Lock order copied from the first-checkout claim so the two serialize rather
+   than deadlock. Subscription lookup filtered on the
+   `one_live_per_account` status list, which is what makes it provably
+   single-row. `cancel_at_period_end` now read. Proved behaviourally against
+   production in a rolled-back transaction.
+
 ### Still to build, in order
 
 4. **Decide the Checkout-Session question above.** Traps 1–3 must have an answer
@@ -205,13 +220,13 @@ production database because Preview deployments write there.
    widening the checkout CHECKs, avoids `one_pending_per_account` locking a
    workspace out of further changes, and avoids the consent single-use unique
    colliding across rails.
-5. The claim RPC, `SECURITY DEFINER`, `service_role` only, with the `anon`
-   revoke asserted. Lock order must match the first-checkout claim exactly —
-   accounts `for update` → entitlements → subscriptions → customers →
-   acceptance → operation — or the two deadlock. Its subscription lookup must
-   filter on the status list of
-   `billing_subscriptions_one_live_per_account`, because that partial unique
-   index excludes `canceled` and a workspace that resubscribed holds two rows.
+5a. **The transition RPCs.** `submitted → provider_accepted` carrying the
+   `proration_invoice_id` read off the `subscriptions.update` response;
+   `→ indeterminate` when the Stripe outcome is unknown; `→ abandoned` on a
+   permanent failure. Each compare-and-set on `claim_token`. Note that
+   `always_invoice` does **not** throw on a declined proration —
+   `payment_behavior` defaults to `allow_incomplete` — so the caller must read
+   `latest_invoice` rather than assume a rejection.
 6. Projector/binding patches. Payment evidence must be bound to the **specific
    proration invoice id** captured from the `subscriptions.update` response, and
    the `checkout_session_paid` re-tightening must key on
