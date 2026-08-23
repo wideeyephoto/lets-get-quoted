@@ -1,4 +1,4 @@
-import { requireOwnerContext } from '@/lib/auth';
+import { requireOfficeContext } from '@/lib/auth';
 import { bookingAvailabilityFromAccount, TIMEZONE_OPTIONS } from '@/lib/booking-availability';
 import { listUpcomingBlocks } from '@/lib/availability-blocks';
 import { getAvailableBookingDays } from '@/lib/booking';
@@ -13,7 +13,7 @@ export const metadata = { title: 'Booking requests' };
 // of the schedule page, which meant reading the settings without being able to
 // see what they produced.
 export default async function BookingSetupPage() {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('schedule.write');
 
   const [{ data: account }, { data: site }] = await Promise.all([
     supabase

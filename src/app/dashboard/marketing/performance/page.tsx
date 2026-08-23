@@ -1,4 +1,4 @@
-import { requireOwnerContext } from '@/lib/auth';
+import { requireOfficeContext } from '@/lib/auth';
 import { listCampaigns } from '@/lib/campaigns';
 import { loadBlogWorkspace } from '@/lib/site-blog';
 import { countStates, todayKeyOf } from '@/lib/marketing-status';
@@ -19,7 +19,7 @@ export const metadata = { title: 'Marketing performance' };
  * The screen itself is in PerformanceScreen so the demo renders the same one.
  */
 export default async function MarketingPerformancePage() {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('settings.write');
   const today = todayKeyOf();
 
   const [campaigns, blogData] = await Promise.all([

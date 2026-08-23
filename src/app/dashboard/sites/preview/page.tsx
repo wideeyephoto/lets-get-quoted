@@ -1,4 +1,4 @@
-import { requireOwnerContext } from '@/lib/auth';
+import { requireOfficeContext } from '@/lib/auth';
 import { getSiteGallery } from '@/lib/site-images';
 import { getOrCreateSite, withPublicContact } from '@/lib/sites';
 import { getTemplate } from '@/lib/templates';
@@ -8,7 +8,7 @@ export const metadata = { title: 'Website preview' };
 export const dynamic = 'force-dynamic';
 
 export default async function SitePreviewPage() {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('settings.write');
   const site = await getOrCreateSite(supabase, accountId);
   const Template = getTemplate(site.template);
 

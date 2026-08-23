@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { requireOwnerContext } from '@/lib/auth';
+import { requireOfficeContext } from '@/lib/auth';
 import { loadBlogWorkspace } from '@/lib/site-blog';
 import MarketingNav from '../../MarketingNav';
 import PostEditor from './PostEditor';
@@ -16,7 +16,7 @@ export const metadata = { title: 'Edit post' };
  * listing, and a post is a document — it deserves a page.
  */
 export default async function BlogPostPage({ params }: { params: { id: string } }) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('settings.write');
   const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'letsgetquoted.com';
   const blog = await loadBlogWorkspace(supabase, accountId, rootDomain);
 

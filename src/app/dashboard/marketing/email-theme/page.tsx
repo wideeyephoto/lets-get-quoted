@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { requireOwnerContext } from '@/lib/auth';
+import { requireOfficeContext } from '@/lib/auth';
 import { pickBusinessName } from '@/lib/business-name';
 import EmailThemeSection from '../EmailThemeSection';
 import MarketingNav from '../MarketingNav';
@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Email appearance' };
 
 export default async function MarketingEmailThemePage() {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('settings.write');
   const [{ data: site }, { data: account }] = await Promise.all([
     supabase
       .from('sites')

@@ -1,4 +1,4 @@
-import { requireOwnerContext } from '@/lib/auth';
+import { requireOfficeContext } from '@/lib/auth';
 import {
   AUDIENCE_DEFS,
   listCampaigns,
@@ -35,7 +35,7 @@ export default async function CampaignsPage({
 }: {
   searchParams: { emailSent?: string; smsQueued?: string; recipients?: string; skipped?: string; failed?: string; test?: string; draft?: string };
 }) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('settings.write');
 
   const [recipients, campaigns, listHealth, { data: accountRow }, { data: siteRow }, view] = await Promise.all([
     loadRecipients(supabase, accountId),

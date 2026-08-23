@@ -1,4 +1,4 @@
-import { requireOwnerContext } from '@/lib/auth';
+import { requireOfficeContext } from '@/lib/auth';
 import { loadBlogWorkspace } from '@/lib/site-blog';
 import type { PostState } from '@/lib/marketing-status';
 import BlogScreen from './BlogScreen';
@@ -27,7 +27,7 @@ export default async function MarketingBlogPage({
   // The legacy ?post=<id> shape is forwarded to the post's own route by the
   // middleware, before anything here renders — see the note there for why it
   // cannot be a redirect() from inside this component.
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('settings.write');
   const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'letsgetquoted.com';
   const blog = await loadBlogWorkspace(supabase, accountId, rootDomain);
 

@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { requireOwnerContext, createAdminClient } from '@/lib/auth';
+import { requireOfficeContext, createAdminClient } from '@/lib/auth';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { draftBlogPost } from '@/lib/blog-generate';
 import { uploadSiteImage } from '@/lib/site-image-storage';
@@ -25,7 +25,7 @@ function revalidateBlog() {
 const MAX_POSTS = 60;
 
 export async function createBlogPostAction(): Promise<SiteBlogPost[]> {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('settings.write');
   const posts = await saveBlogPosts(supabase, accountId, (current) => {
     if (current.length >= MAX_POSTS) throw new Error(`You can keep up to ${MAX_POSTS} posts.`);
     const post: SiteBlogPost = {
@@ -55,7 +55,7 @@ export type BlogPostEdit = {
 };
 
 export async function updateBlogPostAction(postId: string, edit: BlogPostEdit): Promise<SiteBlogPost[]> {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('settings.write');
 
   const posts = await saveBlogPosts(supabase, accountId, (current) =>
     current.map((post) => {
@@ -97,14 +97,14 @@ export async function updateBlogPostAction(postId: string, edit: BlogPostEdit): 
 }
 
 export async function deleteBlogPostAction(postId: string): Promise<SiteBlogPost[]> {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('settings.write');
   const posts = await saveBlogPosts(supabase, accountId, (current) => current.filter((post) => post.id !== postId));
   revalidateBlog();
   return posts;
 }
 
 export async function setBlogReminderAction(weeks: number): Promise<void> {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('settings.write');
   const allowed = [0, 2, 4, 8].includes(weeks) ? weeks : 0;
   await saveBlogPosts(supabase, accountId, (current) => current, { reminderWeeks: allowed });
   revalidateBlog();
@@ -118,7 +118,7 @@ export async function setBlogReminderAction(weeks: number): Promise<void> {
  * after it has already been paid for.
  */
 export async function generateBlogPostAction(topic?: string): Promise<{ ok: true; posts: SiteBlogPost[]; title: string } | { ok: false; message: string }> {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('settings.write');
   if (!(await checkRateLimit(createAdminClient(), `blog-draft:${accountId}`, 20, 3600))) {
     return { ok: false, message: 'That is a lot of posts in an hour — give it a few minutes.' };
   }
@@ -179,7 +179,7 @@ export async function generateBlogPostAction(topic?: string): Promise<{ ok: true
 
 /** Cover photo upload. Same bucket and same limits as the builder's uploads. */
 export async function uploadBlogCoverAction(postId: string, formData: FormData): Promise<SiteBlogPost[]> {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('settings.write');
   const file = formData.get('image');
   if (!(file instanceof File) || file.size === 0) throw new Error('Choose an image to upload.');
 

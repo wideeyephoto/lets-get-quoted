@@ -343,7 +343,13 @@ describe('the wiring, as source', () => {
       'src/app/dashboard/leads/actions.ts',
       'src/app/dashboard/leads/page.tsx',
       'src/app/dashboard/marketing/actions.ts',
+      'src/app/dashboard/marketing/blog/[id]/page.tsx',
+      'src/app/dashboard/marketing/blog/actions.ts',
+      'src/app/dashboard/marketing/blog/page.tsx',
+      'src/app/dashboard/marketing/campaigns/page.tsx',
+      'src/app/dashboard/marketing/email-theme/page.tsx',
       'src/app/dashboard/marketing/page.tsx',
+      'src/app/dashboard/marketing/performance/page.tsx',
       'src/app/dashboard/messages/actions.ts',
       'src/app/dashboard/messages/page.tsx',
       'src/app/dashboard/quick-stops/actions.ts',
@@ -356,6 +362,7 @@ describe('the wiring, as source', () => {
       'src/app/dashboard/reviews/actions.ts',
       'src/app/dashboard/reviews/page.tsx',
       'src/app/dashboard/schedule/actions.ts',
+      'src/app/dashboard/schedule/booking/page.tsx',
       'src/app/dashboard/schedule/page.tsx',
       'src/app/dashboard/schedule/plan/actions.ts',
       'src/app/dashboard/schedule/plan/offer-actions.ts',
@@ -370,6 +377,7 @@ describe('the wiring, as source', () => {
       'src/app/dashboard/settings/page.tsx',
       'src/app/dashboard/sites/actions.ts',
       'src/app/dashboard/sites/page.tsx',
+      'src/app/dashboard/sites/preview/page.tsx',
     ]);
   });
 
