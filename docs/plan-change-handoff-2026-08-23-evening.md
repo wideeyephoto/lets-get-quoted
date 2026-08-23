@@ -1,5 +1,12 @@
 # Plan-change rail — handoff
 
+> **SUPERSEDED 2026-08-23 night — see .**
+>
+> This describes a rail that was blocked. It no longer is: a real sandbox
+> upgrade has since been charged, projected, and granted the full new
+> allowance. Kept for the reasoning, not the status.
+
+
 **Branch:** `main`, clean<br>
 **Gates:** schema ×2, typecheck, lint, test (9859), build — all 0<br>
 **Blocking decision:** RESOLVED 2026-08-23 — **option A**, by the user
