@@ -936,7 +936,60 @@ export async function updateJob(
   });
 }
 
+/**
+ * Payment states that must survive their job, because money moved or is moving.
+ *
+ * `requested` is deliberately absent: it is an unpaid ask, and converting a lead
+ * to a quote can create one, so blocking on it would make correcting a quote
+ * impossible in the ordinary case. `canceled` is a withdrawn ask. Everything
+ * else is a real event in the contractor's books.
+ */
+const PAYMENT_STATES_BLOCKING_JOB_DELETE = [
+  'processing', 'paid', 'failed', 'refunded', 'disputed',
+] as const;
+
+/**
+ * Delete a job, unless money is attached to it.
+ *
+ * WHY THIS GUARD EXISTS. `payments.job_id` is ON DELETE **CASCADE**, and it is
+ * one of twenty-three tables that cascade off `jobs`. So a bare delete here took
+ * the payment rows with it, along with their invoices — while Stripe carried on
+ * holding the money. The row vanished from the customer portal, from Insights and
+ * from the Schedule C worksheet, with nothing logged.
+ *
+ * That was reachable from an ORDINARY action, not just the danger zone. The
+ * "Edit & resend quote" button on a lead calls unconvertLeadFromJob, which calls
+ * this — and its confirmation names "costs, invoices or schedule requests" while
+ * never mentioning payments. A contractor correcting a price after taking a
+ * deposit destroyed the deposit record and was told their line items were safe.
+ *
+ * The guard lives HERE rather than at the three call sites so the next caller
+ * inherits it. Deliberately mirrors skipNextVisitAction, which already refuses to
+ * delete a billed recurring visit; that precedent blocks on any payment at all,
+ * and this one allows the two states where no money ever moved.
+ */
 export async function deleteJob(supabase: SupabaseClient, accountId: string, jobId: string): Promise<void> {
+  const { data: blocking, error: paymentError } = await supabase
+    .from('payments')
+    .select('status')
+    .eq('account_id', accountId)
+    .eq('job_id', jobId)
+    .in('status', PAYMENT_STATES_BLOCKING_JOB_DELETE as unknown as string[])
+    .limit(1);
+
+  // FAIL CLOSED. If the payment ledger cannot be read we do not know whether
+  // money is attached, and the cascade is irreversible. Refusing costs an edit;
+  // guessing costs a payment record that cannot be recovered.
+  if (paymentError) {
+    throw new Error('We could not check this job for payments, so it was not deleted. Try again in a moment.');
+  }
+  if ((blocking ?? []).length > 0) {
+    throw new Error(
+      'This job has a payment on it, so it cannot be deleted — the payment record would go with it. '
+      + 'Void or refund the payment first, then try again.',
+    );
+  }
+
   const { error } = await supabase.from('jobs').delete().eq('account_id', accountId).eq('id', jobId);
 
   if (error) {
