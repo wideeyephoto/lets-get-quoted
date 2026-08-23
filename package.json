@@ -51,7 +51,8 @@
     "test:pg17:cancel-to-flex": "node scripts/verify-cancelled-returns-to-flex.mjs",
     "verify:tenant-isolation": "node scripts/verify-tenant-isolation.mjs",
     "inspect:cron-health": "node scripts/inspect-cron-health.mjs",
-    "inspect:live-top-ups": "node scripts/inspect-live-top-up-prices.mjs"
+    "inspect:live-top-ups": "node scripts/inspect-live-top-up-prices.mjs",
+    "verify:plan-change-agnostic": "node scripts/verify-plan-change-table-agnostic.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.5.0",

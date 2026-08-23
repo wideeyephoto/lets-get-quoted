@@ -1,17 +1,82 @@
 # Plan-change rail — handoff
 
-**Branch:** `main`, clean, pushed through `1d0e6e5f`<br>
+**Branch:** `main`, clean<br>
 **Gates:** schema ×2, typecheck, lint, test (9842), build — all 0<br>
-**Blocking decision:** one, and it is at the top on purpose
+**Blocking decision:** RESOLVED 2026-08-23 — **option A**, by the user
 
 ---
 
-## READ THIS FIRST: the fork that has to be resolved before any more SQL
+## RESOLVED: the fork, and what checking it changed
 
-The SQL foundation is built and applied, and then I found the thing that
-invalidates the approach it was built on. **Do not write the projector patch
-until this is decided**, because the answer determines whether three applied
-migrations survive.
+**Decided A** (make the projector table-agnostic). B was the standing
+recommendation and it does not survive contact with the live catalogue. The
+section below is kept because the *reasoning* was wrong in a way worth keeping,
+not because the question is still open.
+
+**What B's write-up missed.** The checkout table gives a plan change no legal
+pre-activation state:
+
+| state | why a plan change cannot sit there |
+|---|---|
+| `checkout_created` | `state_shape_check` demands a non-null `provider_object_id`, and `provider_mode_check` then demands it match `^cs_(test\|live)_`. A `subscriptions.update` produces no Session. |
+| `indeterminate` | demands a fabricated `last_error`, and freezes entitlements |
+| `activated` | provisions the new plan before the proration invoice is paid — the field contract already listed below as false |
+| `submitted` | not in either function's accept list |
+
+Both usable states also sit inside `billing_subscription_checkout_one_pending_per_account`,
+a live partial `UNIQUE(account_id)` — so one unresolved plan change would lock a
+workspace out of every further plan change *and* every new checkout, with nothing
+sweeping it. And the `v_was_activated` gate encloses grace, restriction and
+cancel-to-Flex either way, so B never saved the projector rework it claimed to.
+`20260823210000`'s header made this argument before the fork was reopened; two of
+its three reasons check out (the consent one is weak — the consent rail fits
+either option).
+
+**Also wrong in the write-up above:** the coupling is TWO functions, not one. The
+binding does its own lookup with its own `%rowtype`, and refuses on
+`checkout_expires_at is null` besides. And `v_operation` appears on 40 lines, not
+30.
+
+### What landed
+
+`migrations/20260823235000_plan_change_projection_table_agnostic.sql` — **written
+and verified, NOT APPLIED** (applying is blocked by the classifier in this
+directory; it needs an explicit go-ahead).
+
+- Binding pair DROP+CREATEd to add an `operation_purpose` OUT column — a
+  `create or replace` cannot change a return type. The TypeScript caller needs it:
+  `loadExactSession` falls back to listing a subscription's Sessions when the
+  binding carries none, and for a plan change that finds the *original* checkout
+  at the *old* price and dies `checkout_session_ambiguous`.
+- Projector source-patched at 11 anchors, each asserted to match exactly once.
+  `v_operation` becomes a carrier populated from either ledger; all 40 read sites
+  are untouched; the four state comparisons and three write-backs are forked.
+- Activation binds to the exact `proration_invoice_id`, and only out of
+  `provider_accepted` — the only legal predecessor of `activated` in the ledger's
+  trigger.
+- `20260823120000`'s entitlement escape re-pointed at the carrier, so it is live
+  rather than dead.
+
+Verify with `npm run verify:plan-change-agnostic`: it dry-runs the migration
+against the installed bodies and rolls back, then breaks each guarded property in
+turn and requires the migration to refuse itself. 17/17 at time of writing.
+
+**One regression this caught in my own patch:** relaxing the null-Session refusal
+for plan changes relaxed it contract-wide, which would have let a *checkout*
+operation activate with a null Session — and the activation UPDATE then writes
+`provider_object_id = null` over a live paid row's recorded Session id, which the
+state-shape CHECK permits. The narrowing is restated per-source now, and mutant
+#4 exists to keep it there.
+
+**Open, deliberately:** a plan change accepted with a NULL `proration_invoice_id`
+has no invoice to bind to and never activates. `20260823230000` says to treat that
+as "nothing to collect, never as collected", and the two readings differ on
+whether such a change may provision with no paid invoice at all. The safe reading
+is implemented. Deciding the other way is a product call.
+
+---
+
+## The original write-up of the fork, for the record
 
 `project_stripe_billing_subscription_event_v1_unchecked` does **its own**
 operation lookup, independent of the binding function:
@@ -61,8 +126,9 @@ cancel-to-Flex (traps 1 and 2). Those then have to be solved inside the projecto
 than on `v_was_activated`.
 
 **My recommendation was B**, on the grounds that blast radius dominates: a
-stalled billing rail is worse than an awkward state machine. It was not accepted
-or rejected before this handoff was written, so it is genuinely open.
+stalled billing rail is worse than an awkward state machine. **Rejected** — blast
+radius points the other way once the state-shape CHECK and the one-pending index
+are read. See the top of this file.
 
 ---
 
@@ -159,6 +225,17 @@ Worth knowing, because the ratio matters when weighing any analysis in this area
   which is a better fact, and the claim RPC now uses it.
 - **The field contract saying `state: 'activated'`.** Would have provisioned the
   new plan before the proration was paid.
+- **"Option B: the projector works unchanged."** It has no legal pre-activation
+  state, needs three CHECK relaxations on the live money table, inherits a
+  cross-rail lockout, and still needs the entitlement-gate rework it claimed to
+  save. Added 2026-08-23 after the fork was decided the other way.
+- **"Only the projector does its own lookup."** The binding does too, with its
+  own `%rowtype` and its own `checkout_expires_at is null` refusal.
+- **`20260823230000`'s header: "the transition RPCs are the only way a row moves,
+  and the trigger is what stops anything ELSE moving it."** The trigger constrains
+  *what* changes and *which* transitions are legal — not *who* writes. The
+  projector updates the ledger directly, which is what makes option A work at
+  all. Read the trigger, not the sentence above it.
 
 ---
 
@@ -207,16 +284,21 @@ npm run inspect:cron-health
 
 ## Sequencing from here
 
-1. **Resolve the A/B fork above.** Nothing else should be written first.
-2. Projector patches: re-point the entitlement escape; accept a NULL
-   `checkout_session_id` for a plan-change operation; re-tighten
-   `checkout_session_paid` on `v_checkout_session_id is null` **not** only on
-   purpose; bind payment evidence to the proration invoice id.
-3. TypeScript write path — row before the Stripe call, new `lgq_operation_id` in
+1. ~~Resolve the A/B fork above.~~ **Done — A.**
+2. ~~Projector patches.~~ **Done, in `20260823235000`. Still needs APPLYING.**
+3. TypeScript. Two halves, and the read half is now the smaller one:
+   **(a) read path** — thread the binding's new `operation_purpose` through
+   `subscription-event-projector.ts`, and skip `loadExactSession` entirely when
+   it is `base_plan_plan_change` (see the note at the top: the fallback finds the
+   original checkout and fails ambiguous). Send `checkout_session_id: null` in
+   the projection for those. Safe to write now: nothing can produce a
+   plan-change binding until the write path exists.
+   **(b) write path** — row before the Stripe call, new `lgq_operation_id` in
    the subscription metadata without dropping the other keys, consent capture in
    `ChangePlanPanel` reusing `base-plan-checkout-consent` /
    `base-plan-checkout-affirmation` (a new class forces a `globals-lite.css`
-   rebuild).
+   rebuild). The consent recorder is already there and already pins the exact
+   version, hash, terms and amounts the ledger's 13-column FK demands.
 4. `always_invoice` does **not** throw on a declined proration —
    `payment_behavior` defaults to `allow_incomplete`. Read `latest_invoice`.
 5. Grant the prorated credit lots. `proratedPlanUpgradeCreditDeltas` computes
@@ -224,6 +306,7 @@ npm run inspect:cron-health
 6. End-to-end projection test in test mode. **This gates the flag**, not the
    migrations and not a design note.
 
-**Ceiling:** steps 2–5 are code and SQL. Step 6 and the flag flips need a real
+**Ceiling:** steps 3–5 are code. Step 2 is written but needs an explicit
+go-ahead to apply. Step 6 and the flag flips need a real
 test-mode Stripe purchase and a Vercel redeploy — `vercel-env-is-baked-at-build`
 means a Production flag does nothing until one happens.
