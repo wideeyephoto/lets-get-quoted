@@ -1,7 +1,7 @@
 # Plan-change rail — handoff
 
 **Branch:** `main`, clean<br>
-**Gates:** schema ×2, typecheck, lint, test (9846), build — all 0<br>
+**Gates:** schema ×2, typecheck, lint, test (9858), build — all 0<br>
 **Blocking decision:** RESOLVED 2026-08-23 — **option A**, by the user
 
 ---
@@ -309,19 +309,51 @@ npm run inspect:cron-health
    and the plan change calls neither `listCheckoutSessions` nor
    `retrieveCheckoutSession` while the indeterminate checkout still calls both.
    All five source mutations were killed.
-   **(b) write path** — row before the Stripe call, new `lgq_operation_id` in
-   the subscription metadata without dropping the other keys, consent capture in
-   `ChangePlanPanel` reusing `base-plan-checkout-consent` /
-   `base-plan-checkout-affirmation` (a new class forces a `globals-lite.css`
-   rebuild). The consent recorder is already there and already pins the exact
-   version, hash, terms and amounts the ledger's 13-column FK demands.
-4. `always_invoice` does **not** throw on a declined proration —
-   `payment_behavior` defaults to `allow_incomplete`. Read `latest_invoice`.
-5. Grant the prorated credit lots. `proratedPlanUpgradeCreditDeltas` computes
-   them and nothing reads the result.
+   **(b) write path** — ~~done~~. `changeBasePlan` now records consent as the
+   signed-in owner, claims the ledger row, calls Stripe, then records
+   `provider_accepted` with the proration invoice id. Order is the point: the row
+   lands BEFORE the Stripe call, because the webhook can overtake the response. A
+   Stripe error carrying a `statusCode` means Stripe decided and the change did
+   not apply → `abandon`; no status means nobody knows → `indeterminate`, which
+   is reconciliation-only. `lgq_operation_id` rides in the subscription metadata,
+   which is what stops every event binding to the original checkout at the old
+   price. `livemode` comes from the subscription row and is then checked against
+   the configured mode, so a test-mode deployment cannot aim a live subscription
+   id at a test key.
+
+   **Consent is a real tick, not a server-side assumption.** The first cut minted
+   the acceptance unconditionally — evidence of an agreement nobody saw. The
+   guard now sits at the one site that mints, and compares the RENDERED version
+   and text digest rather than a boolean, so a stale tab cannot authorise today's
+   price under a disclosure it never displayed. A retry whose operation already
+   carries an acceptance is not asked again: consent is single-use, and demanding
+   a fresh tick would strand an otherwise idempotent replay. `ChangePlanPanel`
+   renders the disclosure and disables confirm until it is ticked, reusing
+   `.base-plan-checkout-consent` and `.base-plan-checkout-affirmation` — two
+   components on that same page already use them, so no `globals-lite.css`
+   rebuild.
+
+   Eight source mutations killed. **Watch for tests that start passing for the
+   wrong reason**: two here were being stopped at the consent step rather than by
+   the guard under test, and one earlier by a missing claim token rather than by
+   the status check it was named for.
+
+4. ~~`always_invoice` does not throw on a declined proration.~~ Handled: the
+   ledger records `provider_accepted` plus `latest_invoice`, and only the
+   projector may move it to `activated`.
+5. Grant the prorated credit lots. **Still open, and it is a decision, not
+   plumbing.** `proratedPlanUpgradeCreditDeltas` is called by
+   `decidePlanTransition`, which returns `creditGrants` -- and `plan-change.ts`
+   reads only `kind` and `target`, so the value is computed and dropped. But the
+   grant itself happens in SQL, in the projector’s `v_should_grant` block, which
+   grants the new plan’s FULL monthly lots. For a mid-cycle upgrade that is a
+   month of credits the customer did not pay a month for. Fixing it means
+   another projector source patch AND deciding which is right: full allowance on
+   upgrade, or the prorated delta. Do not let the TypeScript-shaped half of this
+   suggest it is a TypeScript-shaped fix.
 6. End-to-end projection test in test mode. **This gates the flag**, not the
    migrations and not a design note.
 
-**Ceiling:** steps 3–5 are code. Step 6 and the flag flips need a real
+**Ceiling:** step 5 is code plus one decision. Step 6 and the flag flips need a real
 test-mode Stripe purchase and a Vercel redeploy — `vercel-env-is-baked-at-build`
 means a Production flag does nothing until one happens.
