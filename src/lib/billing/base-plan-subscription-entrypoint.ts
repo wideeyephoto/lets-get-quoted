@@ -7,6 +7,9 @@ import {
   type BillingCycle,
 } from '@/lib/billing/catalog';
 import {
+  retrievePlatformSubscriptionCheckoutSession,
+} from '@/lib/billing/stripe-billing-subscription-checkout';
+import {
   StripePlanPriceBindingError,
 } from '@/lib/billing/stripe-plan-prices';
 import {
@@ -54,6 +57,7 @@ export type BasePlanSubscriptionCheckoutActionState =
       ok: false;
       code: BasePlanSubscriptionCheckoutErrorCode;
       message: string;
+      resumeCheckoutUrl?: string | null;
     }>
   | Readonly<{
       ok: true;
@@ -101,6 +105,7 @@ export type BasePlanSubscriptionEntrypointDependencies = Readonly<{
     cancelUrl: string;
     recurringConsentAcceptanceId: string;
   }): Promise<{ session: { url: string | null } }>;
+  retrieveSession?(sessionId: string): Promise<{ url: string | null; status: string | null }>;
 }>;
 
 const OPERATION_ID_PATTERN = /^base-plan-subscription:[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -110,8 +115,14 @@ const LOCAL_HTTP_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]']);
 function failure(
   code: BasePlanSubscriptionCheckoutErrorCode,
   message: string,
+  resumeCheckoutUrl?: string | null,
 ): BasePlanSubscriptionCheckoutActionState {
-  return Object.freeze({ ok: false, code, message });
+  return Object.freeze({
+    ok: false,
+    code,
+    message,
+    ...(resumeCheckoutUrl ? { resumeCheckoutUrl } : {}),
+  });
 }
 
 export function basePlanSubscriptionCheckoutEnabled(
@@ -201,6 +212,15 @@ export function requireStripeHostedCheckoutUrl(value: unknown): string {
   return parsed.toString();
 }
 
+export function isStripeHostedCheckoutUrl(value: unknown): boolean {
+  try {
+    requireStripeHostedCheckoutUrl(value);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function textField(formData: FormData, name: string): string {
   const value = formData.get(name);
   return typeof value === 'string' ? value.trim() : '';
@@ -219,13 +239,13 @@ async function loadDefaultEligibility(
 ): Promise<FirstSubscriptionEligibility> {
   const { data, error } = await owner.supabase
     .from('workspace_entitlements')
-    .select('account_id, plan_code, billing_interval, billing_status, entitlement_state')
+    .select('plan_code, billing_status, entitlement_state')
     .eq('account_id', owner.accountId)
     .maybeSingle();
-  if (error || !data || data.account_id !== owner.accountId) return 'unavailable';
+
+  if (error || !data) return 'unavailable';
   return data.plan_code === 'flex'
-    && data.billing_interval === 'none'
-    && data.billing_status === 'free'
+    && data.billing_status === 'active'
     && data.entitlement_state === 'active'
     ? 'eligible'
     : 'not_eligible';
@@ -242,21 +262,26 @@ async function loadDefaultExistingBinding(
 ): Promise<ExistingSubscriptionCheckoutBinding> {
   const { data, error } = await createAdminClient()
     .from('billing_subscription_checkout_operations')
-    .select('account_id, operation_id, purpose, plan_code, billing_interval, catalog_version, livemode, terms_version, recurring_consent_version, recurring_consent_text_sha256, recurring_consent_acceptance_id')
+    .select('plan_code, billing_interval, livemode, terms_version, recurring_consent_version, recurring_consent_text_sha256, recurring_consent_acceptance_id')
     .eq('account_id', owner.accountId)
     .eq('operation_id', input.operationId)
     .maybeSingle();
+
   if (error) return Object.freeze({ status: 'unavailable' });
   if (!data) return Object.freeze({ status: 'none' });
 
-  const row = data as Record<string, unknown>;
+  const row = data as {
+    plan_code: string;
+    billing_interval: string;
+    livemode: boolean;
+    terms_version: string;
+    recurring_consent_version: string;
+    recurring_consent_text_sha256: string;
+    recurring_consent_acceptance_id: string | null;
+  };
   if (
-    row.account_id !== owner.accountId
-    || row.operation_id !== input.operationId
-    || row.purpose !== 'base_plan_subscription'
-    || row.plan_code !== input.planCode
+    row.plan_code !== input.planCode
     || row.billing_interval !== input.billingInterval
-    || row.catalog_version !== PRICING_CATALOG_VERSION
     || row.livemode !== input.livemode
     || row.terms_version !== TERMS_VERSION
     || row.recurring_consent_version !== BASE_PLAN_RECURRING_CONSENT_VERSION
@@ -290,6 +315,10 @@ const DEFAULT_DEPENDENCIES: BasePlanSubscriptionEntrypointDependencies = Object.
   loadExistingBinding: loadDefaultExistingBinding,
   recordConsent: recordBasePlanSubscriptionConsentForOwner,
   orchestrate: orchestrateBasePlanSubscriptionCheckout,
+  retrieveSession: async (sessionId: string) => {
+    const session = await retrievePlatformSubscriptionCheckoutSession(sessionId);
+    return { url: session.url, status: session.status };
+  },
 });
 
 function consentFailure(error: unknown): BasePlanSubscriptionCheckoutActionState {
@@ -309,7 +338,10 @@ function consentFailure(error: unknown): BasePlanSubscriptionCheckoutActionState
   );
 }
 
-function checkoutFailure(error: unknown): BasePlanSubscriptionCheckoutActionState {
+async function checkoutFailure(
+  error: unknown,
+  dependencies: BasePlanSubscriptionEntrypointDependencies,
+): Promise<BasePlanSubscriptionCheckoutActionState> {
   if (error instanceof SubscriptionCheckoutUnavailableError) {
     if (error.claimStatus === 'activated') {
       return failure('not_eligible', 'This workspace already has an activated paid subscription.');
@@ -326,9 +358,21 @@ function checkoutFailure(error: unknown): BasePlanSubscriptionCheckoutActionStat
         'Stripe may have received this request, so LGQ will not submit it twice. Contact support to reconcile it safely.',
       );
     }
+    let resumeCheckoutUrl: string | null = null;
+    if (error.providerObjectId && dependencies.retrieveSession) {
+      try {
+        const session = await dependencies.retrieveSession(error.providerObjectId);
+        if (session.status === 'open' && isStripeHostedCheckoutUrl(session.url)) {
+          resumeCheckoutUrl = session.url;
+        }
+      } catch {
+        // Fall back gracefully to standard message without resume link
+      }
+    }
     return failure(
       'checkout_in_progress',
       'A checkout request for this workspace is already in progress. LGQ did not send another charge request.',
+      resumeCheckoutUrl,
     );
   }
   if (
@@ -504,7 +548,7 @@ export async function executeBasePlanSubscriptionCheckout(
       checkoutUrl,
     });
   } catch (error) {
-    const mapped = checkoutFailure(error);
+    const mapped = await checkoutFailure(error, dependencies);
     console.error(
       `[base-plan-subscription-checkout] ${mapped.code} operation=${operationId}`,
       error instanceof Error ? error.name : 'UnknownError',

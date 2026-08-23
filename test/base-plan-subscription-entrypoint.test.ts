@@ -280,6 +280,46 @@ describe('enabled first-subscription Checkout entrypoint', () => {
       submitted.dependencies,
       ENABLED_TEST_ENV,
     )).resolves.toMatchObject({ ok: false, code: 'checkout_in_progress' });
+
+    const openPending = mocks({
+      orchestrate: vi.fn().mockRejectedValue(
+        new SubscriptionCheckoutUnavailableError('checkout_created', 'pending_conflict', 'cs_test_open123'),
+      ),
+      retrieveSession: vi.fn().mockResolvedValue({
+        url: 'https://checkout.stripe.com/c/pay/cs_test_open123#token',
+        status: 'open',
+      }),
+    });
+    const openResult = await executeBasePlanSubscriptionCheckout(
+      form(),
+      openPending.dependencies,
+      ENABLED_TEST_ENV,
+    );
+    expect(openResult).toMatchObject({
+      ok: false,
+      code: 'checkout_in_progress',
+      resumeCheckoutUrl: 'https://checkout.stripe.com/c/pay/cs_test_open123#token',
+    });
+
+    const expiredPending = mocks({
+      orchestrate: vi.fn().mockRejectedValue(
+        new SubscriptionCheckoutUnavailableError('checkout_created', 'pending_conflict', 'cs_test_expired123'),
+      ),
+      retrieveSession: vi.fn().mockResolvedValue({
+        url: 'https://checkout.stripe.com/c/pay/cs_test_expired123#token',
+        status: 'expired',
+      }),
+    });
+    const expiredResult = await executeBasePlanSubscriptionCheckout(
+      form(),
+      expiredPending.dependencies,
+      ENABLED_TEST_ENV,
+    );
+    expect(expiredResult).toMatchObject({
+      ok: false,
+      code: 'checkout_in_progress',
+    });
+    expect(expiredResult).not.toHaveProperty('resumeCheckoutUrl');
   });
 
   it('does not expose a non-Stripe or malformed hosted URL', async () => {

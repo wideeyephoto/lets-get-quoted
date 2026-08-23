@@ -66,6 +66,8 @@ export default function BasePlanSubscriptionCheckout({
   initialPlanCode = null,
   initialBillingInterval = null,
   embedded = false,
+  activeCheckoutUrl = null,
+  activeCheckoutPlanName = null,
 }: {
   // Where the visitor said, on /pricing, which plan they wanted. Only ever a
   // pre-selection: the controls stay live, and consent is still reset on every
@@ -73,6 +75,8 @@ export default function BasePlanSubscriptionCheckout({
   initialPlanCode?: PaidPlanCode | null;
   initialBillingInterval?: BillingCycle | null;
   embedded?: boolean;
+  activeCheckoutUrl?: string | null;
+  activeCheckoutPlanName?: string | null;
 } = {}) {
   const [planCode, setPlanCode] = useState<PaidPlanCode>(initialPlanCode ?? 'solo');
   const [billingInterval, setBillingInterval] = useState<BillingCycle>(initialBillingInterval ?? 'monthly');
@@ -104,7 +108,7 @@ export default function BasePlanSubscriptionCheckout({
       <details
         className="workspace-fold"
         id="choose-paid-plan"
-        open={Boolean(initialPlanCode || initialBillingInterval)}
+        open={Boolean(initialPlanCode || initialBillingInterval || activeCheckoutUrl)}
       >
         <summary>
           <span className="section-heading workspace-section-heading compact-heading">
@@ -116,6 +120,23 @@ export default function BasePlanSubscriptionCheckout({
         <p className="workspace-details-copy plan-usage-intro">
           Choose a plan and billing schedule, then review the exact recurring terms before checkout.
         </p>
+
+        {activeCheckoutUrl && (!state || state.ok) ? (
+          <div className="plan-usage-note info" style={{ marginBottom: '1.25rem' }}>
+            <p>
+              A checkout session is already open{activeCheckoutPlanName ? ` for ${activeCheckoutPlanName}` : ''}.
+            </p>
+            <div style={{ marginTop: '0.65rem' }}>
+              <a
+                href={activeCheckoutUrl}
+                className="btn primary compact"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', textDecoration: 'none' }}
+              >
+                Resume open checkout →
+              </a>
+            </div>
+          </div>
+        ) : null}
 
         <form action={formAction} className="base-plan-checkout-form">
         <input type="hidden" name="operationId" value={operationId ?? ''} />
@@ -194,7 +215,20 @@ export default function BasePlanSubscriptionCheckout({
         </div>
 
         {state && !state.ok ? (
-          <p className="plan-usage-note warning" role="alert">{state.message}</p>
+          <div className="plan-usage-note warning" role="alert">
+            <p>{state.message}</p>
+            {state.resumeCheckoutUrl ? (
+              <div style={{ marginTop: '0.65rem' }}>
+                <a
+                  href={state.resumeCheckoutUrl}
+                  className="btn primary compact"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', textDecoration: 'none' }}
+                >
+                  Resume open checkout →
+                </a>
+              </div>
+            ) : null}
+          </div>
         ) : null}
         {/* Not shown once the URL has failed verification. Both used to render,
             so the moment something went wrong with a subscription the screen

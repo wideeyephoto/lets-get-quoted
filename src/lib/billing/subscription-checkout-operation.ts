@@ -309,7 +309,12 @@ export type BasePlanSubscriptionCheckoutResult = Readonly<{
 export class SubscriptionCheckoutUnavailableError extends Error {
   override readonly name = 'SubscriptionCheckoutUnavailableError';
 
-  constructor(readonly operationState: string, readonly claimStatus: string) {
+  constructor(
+    readonly operationState: string,
+    readonly claimStatus: string,
+    readonly providerObjectId?: string | null,
+    readonly checkoutExpiresAt?: number | null,
+  ) {
     super(`Subscription Checkout is ${operationState}; no new Stripe request was sent.`);
   }
 }
@@ -419,7 +424,12 @@ export async function orchestrateBasePlanSubscriptionCheckout(
   });
 
   if (claim.status !== 'replay' && (claim.status !== 'claimed' || !claim.claimToken)) {
-    throw new SubscriptionCheckoutUnavailableError(claim.operationState, claim.status);
+    throw new SubscriptionCheckoutUnavailableError(
+      claim.operationState,
+      claim.status,
+      claim.providerObjectId,
+      claim.checkoutExpiresAt,
+    );
   }
 
   const claimToken = claim.status === 'claimed' ? claim.claimToken : null;
