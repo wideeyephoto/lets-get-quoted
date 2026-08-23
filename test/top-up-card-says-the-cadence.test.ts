@@ -151,12 +151,29 @@ describe('the public site does not promise a cadence the price book contradicts'
   });
 
   it('keeps the promise the wording was actually there to make', () => {
-    // The point of those sentences is that LGQ never bills past the plan on its
-    // own. Fixing the cadence must not quietly drop that.
+    /**
+     * THE PROMISE CHANGED, SO THIS GUARD HAD TO.
+     *
+     * It used to pin 'No unapproved overages' and 'There is no automatic
+     * overage', on the reasoning that "LGQ never bills past the plan on its
+     * own". That was true when written on 2026-08-19. The opt-in overage switch
+     * shipped on 2026-08-22 — panel, consent, accrual, and a cron writing real
+     * Stripe invoiceItems — and this test then spent three days REQUIRING the
+     * pricing page to deny a live billing feature.
+     *
+     * A copy guard that pins a sentence outlives the fact the sentence asserted.
+     * So this now pins the property that is still true and still worth
+     * protecting: nothing bills past the plan unless the contractor switches it
+     * on AND sets their own limit. See pricing-copy-matches-what-ships.test.ts,
+     * which keys the same rule on whether the mechanism exists in the tree.
+     */
     const copy = publicCopy();
-    expect(copy).toContain('No unapproved overages');
-    expect(copy).toContain('There is no automatic overage');
+    expect(copy).toContain('No surprise overages');
+    expect(copy).toMatch(/switch it on/i);
+    expect(copy).toMatch(/spending limit|limit you set|limit I set/i);
     expect(copy).toContain('at a price you see before you pay');
+    // And it must NOT go back to denying the mechanism outright.
+    expect(copy).not.toContain('There is no automatic overage');
   });
 
   it('still calls the Flex starter balances one-time, because they are', () => {

@@ -712,7 +712,11 @@ export default function PricingExperience() {
 
       <section className={styles.promiseSection}>
         <div><strong>Unlimited core work</strong><span>Leads, clients, quotes, jobs, invoices, and standard forms.</span></div>
-        <div><strong>No unapproved overages</strong><span>Extra capacity is a top-up you choose to buy, never an automatic charge.</span></div>
+        {/* "never an automatic charge" was false from 2026-08-22, when the
+            opt-in overage switch shipped. The promise worth making is the one
+            that is actually true and is enforced in code: off by default, and
+            capped by a number the contractor picks. */}
+        <div><strong>No surprise overages</strong><span>Extra usage is off unless you switch it on and set your own spending limit.</span></div>
         <div><strong>No lost website leads</strong><span>When AI Intake ends, LGQ switches to the normal quote form.</span></div>
         <div><strong>Bring your books</strong><span>One QuickBooks Online connection is included on every plan.</span></div>
       </section>

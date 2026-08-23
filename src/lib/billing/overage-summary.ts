@@ -181,6 +181,24 @@ export function formatOverageTotal(millicents: number): string {
 }
 
 /**
+ * A PER-UNIT rate, for the surface that has to publish it.
+ *
+ * The authorization text a contractor ticks says they are charged "at the
+ * published per-unit rates" — and the rates lived only in OVERAGE_RATE_MILLICENTS
+ * and appeared on no page. `rateMillicents` was already computed for every line
+ * "so the arithmetic is checkable" and then dropped on the floor by the renderer.
+ *
+ * Rates are small: 340 millicents is $0.0034, which formatOverage would round to
+ * $0.00. So this keeps four decimal places and trims the trailing zeros rather
+ * than reusing the total formatter.
+ */
+export function formatOverageRate(millicents: number): string {
+  const dollars = millicents / 100_000;
+  const fixed = dollars.toFixed(4).replace(/0+$/, '').replace(/\.$/, '');
+  return `$${fixed}`;
+}
+
+/**
  * What is left before the meters start refusing.
  *
  * Returns null when no cap applies, which is not the same as "unlimited": with

@@ -35266,6 +35266,10 @@ a.sms-cat-switch:focus-visible { outline: 2px solid var(--accent); outline-offse
   font-size: 0.88rem; color: var(--text);
 }
 #overage .usage-overage-lines li > span:nth-child(2) { color: var(--mute-t50); font-size: 0.82rem; }
+/* The per-unit rate the authorization text promises is published. Quieter
+   than the unit count it follows, but legible -- it is the number a
+   contractor checks the arithmetic against. */
+#overage .usage-overage-lines .usage-overage-rate { color: var(--mute-t50); font-size: 0.78rem; }
 #overage .usage-overage-lines li > span:last-child { font-variant-numeric: tabular-nums; }
 #overage .usage-muted { margin: 0 0 0.6rem; font-size: 0.88rem; line-height: 1.55; color: var(--mute-t60); }
 #overage .usage-fineprint { margin: 0; font-size: 0.8rem; line-height: 1.5; color: var(--mute-t50); }

@@ -210,10 +210,13 @@ export const COMPARISON_ROWS = [
   ['Simultaneous AI Voice Receptionist calls', 'At launch: 1', 'At launch: 1', 'At launch: 1', 'At launch: 3'],
   ['AI Voice Receptionist routing', 'At launch: Standard', 'At launch: Standard', 'At launch: Standard', 'At launch: Advanced'],
   ['AI Voice Receptionist call history', 'At launch: 30 days', 'At launch: 30 days', 'At launch: 30 days', 'At launch: 90 days'],
-  // Every plan answers this the same way, and that is the honest row. The Scale
-  // column used to promise "enabled overages with a spending cap", which is a
-  // mechanism that does not exist anywhere in the product -- see the FAQ below.
-  ['Usage beyond included limits', 'Approved top-ups', 'Approved top-ups', 'Approved top-ups', 'Approved top-ups'],
+  // Every plan answers this the same way, and that is still the honest row --
+  // but the answer changed. This comment used to say a spending-capped overage
+  // was "a mechanism that does not exist anywhere in the product". It shipped on
+  // 2026-08-22 (dde0d95f): OverageAuthorizationPanel turns it on, and the
+  // overage-settlement cron writes real Stripe invoiceItems. The copy denied a
+  // live feature for three days.
+  ['Usage beyond included limits', 'Top-ups, or opt-in extra usage with a limit you set', 'Top-ups, or opt-in extra usage with a limit you set', 'Top-ups, or opt-in extra usage with a limit you set', 'Top-ups, or opt-in extra usage with a limit you set'],
   ['Free onboarding + quick tour', 'Included', 'Included', 'Included', 'Included'],
 ] as const;
 
@@ -280,7 +283,7 @@ export const PRICING_FAQS = [
   },
   {
     q: 'Can LGQ charge an overage automatically?',
-    a: 'No. There is no automatic overage and no setting that turns one on, so nothing can bill past your plan without you buying it. Extra capacity is a top-up you choose — some one-time, some monthly — at a price you see before you pay.',
+    a: 'Only if you switch it on and set a spending limit yourself. Extra usage is off by default, and with it off nothing can bill past your plan — sends and drafts are refused instead. If you do switch it on, you agree to the per-unit rates shown at the time and set a hard limit; nothing is ever charged beyond that limit, and you can lower it or switch it off whenever you like. The other way to add capacity is a top-up you buy outright, at a price you see before you pay.',
   },
   {
     q: 'When will I get my own business number?',

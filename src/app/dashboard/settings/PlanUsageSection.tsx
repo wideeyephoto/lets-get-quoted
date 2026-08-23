@@ -16,6 +16,7 @@ import {
 import {
   describeOverageResource,
   formatOverageTotal,
+  formatOverageRate,
   remainingCapMillicents,
   type OverageSummary,
 } from '@/lib/billing/overage-summary';
@@ -687,7 +688,17 @@ function OverageCard({ overage, selfServe }: { overage: OverageSummary; selfServ
           {overage.lines.map((line) => (
             <li key={line.resourceCode}>
               <span>{describeOverageResource(line.resourceCode)}</span>
-              <span>{line.units.toLocaleString('en-US')}</span>
+              {/* THE RATE, because the authorization text says charges are
+                  "at the published per-unit rates" and no page published
+                  them. rateMillicents was already computed here and thrown
+                  away. A consent that references a number the customer
+                  cannot see is the shape of a chargeback. */}
+              <span>
+                {line.units.toLocaleString('en-US')}
+                {line.rateMillicents === null ? null : (
+                  <span className="usage-overage-rate"> x {formatOverageRate(line.rateMillicents)}</span>
+                )}
+              </span>
               <span>{formatOverageTotal(line.millicents)}</span>
             </li>
           ))}
