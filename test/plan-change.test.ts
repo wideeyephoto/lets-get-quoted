@@ -499,6 +499,14 @@ describe('the plan-change operation ledger', () => {
     const metadata = (params as { metadata: Record<string, string> }).metadata;
     expect(metadata.lgq_operation_id).toBe(operationId);
     expect(metadata.lgq_plan_code).toBe('scale');
+    // The acceptance MOVES with the operation. A plan change mints its own
+    // single-use consent, and the projector compares the binding's acceptance
+    // id against this key. Leaving the original checkout's id here made every
+    // event fail provider_object_contract_mismatch -- terminally, after the
+    // card had already been charged. Observed live on 2026-08-23.
+    expect(metadata.lgq_recurring_consent_acceptance_id).toBe(ACCEPTANCE_ID);
+    expect(metadata.lgq_recurring_consent_acceptance_id)
+      .toBe(claim?.args.p_recurring_consent_acceptance_id);
     expect(metadata.lgq_catalog_version).toBe('2026-08-18-preview');
 
     // ...and the idempotency key the claim recorded is the one Stripe was sent.

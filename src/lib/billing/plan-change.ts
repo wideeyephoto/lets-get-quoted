@@ -347,6 +347,7 @@ function planChangeMetadata(target: {
   planCode: PaidPlanCode;
   billingInterval: BillingCycle;
   operationId: string;
+  recurringConsentAcceptanceId: string;
 }): Record<string, string> {
   // Stripe MERGES metadata on update, so only the keys that move are sent. The
   // workspace id, terms version and recurring-consent evidence set at checkout
@@ -361,6 +362,14 @@ function planChangeMetadata(target: {
     // checkout operation, which still holds the old price -- so the binding
     // refuses and the change never projects.
     [SUBSCRIPTION_CHECKOUT_METADATA_KEYS.operationId]: target.operationId,
+    // The acceptance MOVES with the operation. A plan change mints its own
+    // single-use consent, and the projector compares the binding's acceptance
+    // id against this key -- so leaving the original checkout's id here makes
+    // every event fail provider_object_contract_mismatch, terminally. The
+    // version and text digest are the same pinned artifact either way, so they
+    // are the keys that genuinely do not move.
+    [SUBSCRIPTION_CHECKOUT_METADATA_KEYS.recurringConsentAcceptanceId]:
+      target.recurringConsentAcceptanceId,
   };
 }
 
@@ -643,7 +652,10 @@ async function activateAfterPayment(input: {
         // difference now, which is what makes the upgrade activate on payment
         // rather than at renewal.
         proration_behavior: 'always_invoice',
-        metadata: planChangeMetadata({ planCode, billingInterval, operationId }),
+        metadata: planChangeMetadata({
+          planCode, billingInterval, operationId,
+          recurringConsentAcceptanceId: acceptanceId,
+        }),
         // The projector now ACTIVATES a change whose proration invoice id is
         // null, on the reading that Stripe invoiced nothing so nothing is owed.
         // That is only safe while null cannot also mean 'the response did not
