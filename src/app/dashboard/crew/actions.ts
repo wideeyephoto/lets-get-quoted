@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { resolveCrewBurdenPct } from '@/lib/cost-truth-data';
 import { cookies } from 'next/headers';
-import { createAdminClient, requireOwnerContext } from '@/lib/auth';
+import { createAdminClient, requireOfficeContext, requireOwnerContext } from '@/lib/auth';
 import { loadBusinessName } from '@/lib/business-name';
 import { LABOR_SETTINGS_COOKIE, normalizeLaborSettings, roundHours } from '@/lib/labor-settings';
 import { normalizePayType } from '@/lib/pay-types';
@@ -115,7 +115,7 @@ export async function createCrewAction(_previous: CreateCrewState, formData: For
   }
 
   try {
-    const { supabase, accountId } = await requireOwnerContext();
+    const { supabase, accountId } = await requireOfficeContext('crew.write');
 
     const photo = formData.get('photo');
     // Checked BEFORE the insert rather than after: validateCrewPhotoFile throws,
@@ -193,7 +193,7 @@ export async function createCrewAction(_previous: CreateCrewState, formData: For
 }
 
 export async function updateCrewAction(crewId: string, formData: FormData) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('crew.write');
 
   const name = (formData.get('name') ?? '').toString().trim();
   const phone = (formData.get('phone') ?? '').toString().trim();
@@ -235,7 +235,7 @@ export async function updateCrewAction(crewId: string, formData: FormData) {
 }
 
 export async function updateCrewPhotoAction(crewId: string, formData: FormData) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('crew.write');
   const photo = formData.get('photo');
 
   // No file attached (e.g. the picker was dismissed) — do nothing instead of
@@ -268,7 +268,7 @@ export async function setCrewActiveAction(
   // Keep the established auth/account redirects out of the error-state catch:
   // Next implements redirect() as a thrown sentinel, and swallowing it would
   // strand a signed-out or suspended owner on this form instead of navigating.
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('crew.write');
 
   try {
     await setCrewActiveForSeatGate(supabase, createAdminClient, accountId, crewId, active);
@@ -290,7 +290,7 @@ export async function setCrewActiveAction(
 }
 
 export async function deleteArchivedCrewAction(crewId: string) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('crew.write');
 
   // Someone who has been paid can't be deleted. Their payment records are the
   // answer to "did we pay them for that week", and deleting the person would
@@ -329,7 +329,7 @@ export async function deleteArchivedCrewAction(crewId: string) {
 // meant an owner could invite a person and watch them open a competitor's job
 // list. The account rides in the callback URL and becomes the remembered choice.
 export async function inviteCrewAction(crewId: string) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('crew.write');
 
   const { data: member } = await supabase
     .from('crew')
@@ -364,7 +364,7 @@ export async function inviteCrewAction(crewId: string) {
  * records, not a permission.
  */
 export async function revokeCrewAccessAction(crewId: string) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('crew.write');
 
   const { data: member } = await supabase
     .from('crew')
@@ -391,7 +391,7 @@ export async function assignCrewToJobAction(crewId: string, formData: FormData) 
   if (!jobId) throw new Error('Choose a job before assigning crew.');
   const notify = formData.get('notify') !== null;
 
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('crew.write');
   const [job, crewMembers, existingCrewIds] = await Promise.all([
     getJob(supabase, accountId, jobId),
     listCrew(supabase, accountId, { activeOnly: true }),
@@ -445,7 +445,7 @@ export async function assignCrewToJobAction(crewId: string, formData: FormData) 
 // identical in every way that matters: server-computed amount (hours × rate,
 // never a client-supplied total) and a crew snapshot taken at insert.
 export async function addLaborEntryAction(formData: FormData) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('crew.write');
 
   const jobId = optionalText(formData.get('jobId'));
   if (!jobId) throw new Error('Choose a job to log this labor against.');
@@ -502,7 +502,7 @@ export async function addLaborEntryAction(formData: FormData) {
 // so the difference between a clocked end time and a guessed one stays visible
 // afterwards.
 export async function closeOpenShiftAction(entryId: string, formData: FormData) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('crew.write');
 
   const entry = await getTimeEntry(supabase, accountId, entryId);
   if (!entry) throw new Error('That shift no longer exists.');
@@ -541,7 +541,7 @@ export async function closeOpenShiftAction(entryId: string, formData: FormData) 
 // one with no hours on it. Scoped to type='labor' so this can never be used to
 // delete a material cost or anything else attached to a job.
 export async function deleteLaborEntryAction(entryId: string) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('crew.write');
 
   // Hours that are part of an approved or paid period stay put. The `locked`
   // flag only ever guarded the pay record; the cost row underneath it was

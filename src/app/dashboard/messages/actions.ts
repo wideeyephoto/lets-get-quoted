@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { requireOwnerContext } from '@/lib/auth';
+import { requireOfficeContext, requireOwnerContext } from '@/lib/auth';
 import { normalizeUsPhone } from '@/lib/phone';
 import {
   hasCurrentSmsConsent,
@@ -26,7 +26,7 @@ function messageIntent(formData: FormData): string {
 }
 
 export async function sendReplyAction(phone: string, formData: FormData) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('messages.send');
   const body = (formData.get('body') ?? '').toString().trim();
   const intentId = messageIntent(formData);
   const normalized = normalizeUsPhone(phone);
@@ -168,7 +168,7 @@ export async function saveOwnerAlertsAction(
 }
 
 export async function createTemplateAction(formData: FormData) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('messages.send');
   const title = (formData.get('title') ?? '').toString().trim();
   const body = (formData.get('body') ?? '').toString().trim();
   if (!title || !body) throw new Error('Give the reply a label and some text.');
@@ -177,7 +177,7 @@ export async function createTemplateAction(formData: FormData) {
 }
 
 export async function deleteTemplateAction(templateId: string) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('messages.send');
   await deleteMessageTemplate(supabase, accountId, templateId);
   revalidatePath('/dashboard/messages');
 }
@@ -195,7 +195,7 @@ export async function deleteTemplateAction(templateId: string) {
  * other outbound path uses.
  */
 export async function startConversationAction(formData: FormData) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('messages.send');
   const rawPhone = (formData.get('phone') ?? '').toString().trim();
   const body = (formData.get('body') ?? '').toString().trim();
   const intentId = messageIntent(formData);
@@ -232,7 +232,7 @@ export async function startConversationAction(formData: FormData) {
 
 /** Opening a thread is what marks it read — see markThreadRead on why "as of now". */
 export async function markThreadReadAction(phone: string, readThrough?: string) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('messages.read');
   const normalized = normalizeUsPhone(phone) ?? phone;
   const updated = await markThreadRead(supabase, accountId, normalized, readThrough);
   revalidatePath('/dashboard/messages');
@@ -254,7 +254,7 @@ export async function markThreadReadAction(phone: string, readThrough?: string) 
  * a second one.
  */
 export async function addPhoneAsClientAction(phone: string, formData: FormData) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('clients.write');
   const normalized = normalizeUsPhone(phone) ?? phone;
   const name = (formData.get('name') ?? '').toString().trim().slice(0, 160);
   if (!name) throw new Error('Give them a name so the thread has somebody on it.');

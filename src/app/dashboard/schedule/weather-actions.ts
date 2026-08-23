@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { requireOwnerContext } from '@/lib/auth';
+import { requireOfficeContext } from '@/lib/auth';
 import { draftCustomerMessage, RISK_LABEL, type Assessment } from '@/lib/weather';
 import { jobsAtRisk, weatherSettings } from '@/lib/weather-data';
 
@@ -28,7 +28,7 @@ export type WeatherRiskView = {
  * never moves anybody's appointment on its own.
  */
 export async function weatherRisksAction(): Promise<{ enabled: boolean; profile: string; risks: WeatherRiskView[] }> {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('jobs.read');
   const { enabled, sensitivity } = await weatherSettings(supabase, accountId);
   if (!enabled) return { enabled: false, profile: sensitivity.label, risks: [] };
 
@@ -82,7 +82,7 @@ export async function weatherRisksAction(): Promise<{ enabled: boolean; profile:
  * location is not something to spend on every page load.
  */
 export async function updateWeatherSettingsAction(formData: FormData) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('schedule.write');
   const profile = String(formData.get('weatherProfile') ?? '').trim();
   await supabase
     .from('accounts')

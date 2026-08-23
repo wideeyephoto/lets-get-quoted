@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { requireOwnerContext } from '@/lib/auth';
+import { requireOfficeContext } from '@/lib/auth';
 import { sendReviewReminder, setReviewRemindersStopped, setReviewResolved } from '@/lib/reviews';
 import type { ReviewActionState } from '@/lib/review-activity';
 
@@ -10,8 +10,8 @@ import type { ReviewActionState } from '@/lib/review-activity';
  *
  * THREE THINGS ARE TRUE OF ALL OF THEM.
  *
- * 1. `requireOwnerContext()` first, always. It returns the supabase client
- *    bound to the signed-in owner's account, and every function below passes
+ * 1. `requireOfficeContext()` first, always. It returns the supabase client
+ *    bound to the signed-in user's account, and every function below passes
  *    that accountId down to a query that filters on it. The `id` in the form
  *    body came from a browser and is not evidence of anything.
  *
@@ -38,7 +38,7 @@ export async function remindReviewAction(
   _prev: ReviewActionState,
   formData: FormData,
 ): Promise<ReviewActionState> {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('jobs.write');
   const id = idOf(formData);
   if (!id) return { status: 'error', message: 'Missing review request.' };
 
@@ -52,7 +52,7 @@ export async function setResolvedAction(
   _prev: ReviewActionState,
   formData: FormData,
 ): Promise<ReviewActionState> {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('jobs.write');
   const id = idOf(formData);
   if (!id) return { status: 'error', message: 'Missing review request.' };
 
@@ -77,7 +77,7 @@ export async function setRemindersStoppedAction(
   _prev: ReviewActionState,
   formData: FormData,
 ): Promise<ReviewActionState> {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('jobs.write');
   const id = idOf(formData);
   if (!id) return { status: 'error', message: 'Missing review request.' };
 

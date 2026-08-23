@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import SaveButton from '@/components/save-button';
 import ConfirmActionButton from '@/app/dashboard/jobs/[id]/ConfirmActionButton';
-import { requireOwnerContext } from '@/lib/auth';
+import { requireOfficeContext } from '@/lib/auth';
 import { loadBusinessName } from '@/lib/business-name';
 import { coordOf } from '@/lib/distance';
 import { getJob } from '@/lib/jobs';
@@ -70,7 +70,7 @@ export default async function SubcontractorRequestPage({
   params: { id: string };
   searchParams: { queued?: string };
 }) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('crew.read');
   const detail = await getSubcontractorRequest(supabase, accountId, params.id);
   if (!detail) notFound();
 

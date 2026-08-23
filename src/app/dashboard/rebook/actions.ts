@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { requireOwnerContext } from '@/lib/auth';
+import { requireOfficeContext } from '@/lib/auth';
 import { sendRebookInvite, sendAllRebookInvites, REBOOK_DAY_OPTIONS, DEFAULT_REBOOK_DAYS } from '@/lib/rebook';
 
 function cleanDays(value: number): number {
@@ -10,7 +10,7 @@ function cleanDays(value: number): number {
 }
 
 export async function sendRebookInviteAction(clientId: string, days: number) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('jobs.write', 'clients.write');
   const params = new URLSearchParams({ days: String(cleanDays(days)) });
   try {
     const channel = await sendRebookInvite(supabase, accountId, clientId);
@@ -24,7 +24,7 @@ export async function sendRebookInviteAction(clientId: string, days: number) {
 }
 
 export async function sendAllRebookInvitesAction(days: number) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('jobs.write', 'clients.write');
   const clean = cleanDays(days);
   const params = new URLSearchParams({ days: String(clean) });
   try {

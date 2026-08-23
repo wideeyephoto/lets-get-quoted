@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { requireOwnerContext } from '@/lib/auth';
+import { requireOfficeContext } from '@/lib/auth';
 import { createService, updateService, setServiceActive, deleteService } from '@/lib/services';
 
 function num(value: FormDataEntryValue | null): number {
@@ -23,7 +23,7 @@ function optionalCost(value: FormDataEntryValue | null): number | null {
 }
 
 export async function createServiceAction(formData: FormData) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('jobs.write');
   const name = String(formData.get('name') ?? '').trim();
   if (!name) throw new Error('Give the service a name.');
 
@@ -39,7 +39,7 @@ export async function createServiceAction(formData: FormData) {
 }
 
 export async function updateServiceAction(serviceId: string, formData: FormData) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('jobs.write');
   const name = String(formData.get('name') ?? '').trim();
   if (!name) throw new Error('Give the service a name.');
 
@@ -55,13 +55,13 @@ export async function updateServiceAction(serviceId: string, formData: FormData)
 }
 
 export async function setServiceActiveAction(serviceId: string, active: boolean) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('jobs.write');
   await setServiceActive(supabase, accountId, serviceId, active);
   revalidatePath('/dashboard/services');
 }
 
 export async function deleteServiceAction(serviceId: string) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('jobs.write');
   await deleteService(supabase, accountId, serviceId);
   revalidatePath('/dashboard/services');
 }

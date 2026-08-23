@@ -1,4 +1,4 @@
-import { requireOwnerContext } from '@/lib/auth';
+import { requireOfficeContext } from '@/lib/auth';
 import { listRebookCandidates, resolveRebookContext, REBOOK_DAY_OPTIONS, DEFAULT_REBOOK_DAYS } from '@/lib/rebook';
 import RebookScreen from './RebookScreen';
 
@@ -15,7 +15,7 @@ export default async function RebookPage({
 }: {
   searchParams: { days?: string; flash?: string; msg?: string; sent?: string; skipped?: string; failed?: string };
 }) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('jobs.read', 'clients.read');
 
   const requested = Number(searchParams.days);
   const days = REBOOK_DAY_OPTIONS.includes(requested) ? requested : DEFAULT_REBOOK_DAYS;

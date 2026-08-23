@@ -1,5 +1,5 @@
 import { cookies } from 'next/headers';
-import { requireOwnerContext } from '@/lib/auth';
+import { requireOfficeContext } from '@/lib/auth';
 import { formatMoneyExact } from '@/lib/jobs';
 import { todayDateKey } from '@/lib/recurring';
 import { shortDate } from '@/lib/recurring-display';
@@ -55,7 +55,7 @@ export default async function RecurringPage({
 }: {
   searchParams: { flash?: string; job?: string; on?: string; then?: string; plan?: string };
 }) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('jobs.read', 'clients.read');
   const mode = normalizeRecurringView(cookies().get(RECURRING_VIEW_COOKIE)?.value);
   const today = todayDateKey();
 

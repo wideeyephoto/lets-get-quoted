@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { requireOwnerContext } from '@/lib/auth';
+import { requireOfficeContext } from '@/lib/auth';
 import { getJob } from '@/lib/jobs';
 import { ensureSmsConsentBaseline } from '@/lib/sms';
 import { saveCrewStartAddress } from '@/lib/crew';
@@ -58,7 +58,7 @@ export async function createSubcontractorAction(
   if (problem) return { status: 'error', message: problem };
 
   try {
-    const { supabase, accountId } = await requireOwnerContext();
+    const { supabase, accountId } = await requireOfficeContext('crew.write');
     const { data, error } = await supabase
       .from('crew')
       .insert({ account_id: accountId, ...subcontractorColumns(values) })
@@ -106,7 +106,7 @@ export async function updateSubcontractorAction(crewId: string, formData: FormDa
   const problem = subcontractorProblem(values);
   if (problem) throw new Error(problem);
 
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('crew.write');
   const { error } = await supabase
     .from('crew')
     .update(subcontractorColumns(values))
@@ -138,7 +138,7 @@ function parseSkills(value: FormDataEntryValue | null): string[] {
  * owner can come back to.
  */
 export async function createRequestAction(formData: FormData) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('crew.write', 'jobs.write');
 
   const jobId = (formData.get('jobId') ?? '').toString().trim();
   const input = {
@@ -159,7 +159,7 @@ export async function createRequestAction(formData: FormData) {
   const problem = requestDraftProblem({ ...input, expiresAt: expiresAt.toISOString() });
   if (problem) throw new Error(problem);
 
-  // The job has to belong to this account. requireOwnerContext gives us a
+  // The job has to belong to this account. requireOfficeContext gives us a
   // session client and RLS would refuse the insert anyway, but failing here
   // gives the owner a sentence instead of a foreign key violation.
   const job = await getJob(supabase, accountId, jobId);
@@ -197,7 +197,7 @@ export async function createRequestAction(formData: FormData) {
  * mis-click costs an owner their reputation with a firm they need.
  */
 export async function sendRequestAction(requestId: string, formData: FormData) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('crew.write');
 
   const messageBody = (formData.get('messageBody') ?? '').toString();
   const messageProblem = offerMessageProblem(messageBody);
@@ -212,7 +212,7 @@ export async function sendRequestAction(requestId: string, formData: FormData) {
 }
 
 export async function cancelRequestAction(requestId: string) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('crew.write');
   const existing = await getSubcontractorRequest(supabase, accountId, requestId);
   await cancelSubcontractorRequest(supabase, accountId, requestId);
   revalidateDispatch(existing?.request.jobId ?? null);
@@ -220,7 +220,7 @@ export async function cancelRequestAction(requestId: string) {
 }
 
 export async function reopenRequestAction(requestId: string, formData: FormData) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('crew.write');
   const raw = (formData.get('expiresAt') ?? '').toString();
   const expiresAt = new Date(raw);
   if (Number.isNaN(expiresAt.getTime())) throw new Error('Pick a new expiration before reopening.');
@@ -231,7 +231,7 @@ export async function reopenRequestAction(requestId: string, formData: FormData)
 }
 
 export async function chooseSubcontractorAction(requestId: string, offerId: string) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('crew.write');
   const result = await chooseSubcontractor(supabase, accountId, requestId, offerId);
   if (result.status === 'already_claimed') throw new Error('This job has already been claimed.');
   const existing = await getSubcontractorRequest(supabase, accountId, requestId);
@@ -242,7 +242,7 @@ export async function chooseSubcontractorAction(requestId: string, offerId: stri
 // -- the private review --------------------------------------------------------------
 
 export async function saveSubcontractorReviewAction(jobId: string, crewId: string, formData: FormData) {
-  const { supabase, accountId, userEmail } = await requireOwnerContext();
+  const { supabase, accountId, userEmail } = await requireOfficeContext('crew.write');
 
   const score = (key: string) => Number((formData.get(key) ?? '').toString()) || 0;
   await saveSubcontractorReview(

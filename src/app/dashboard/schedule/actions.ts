@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { requireOwnerContext } from '@/lib/auth';
+import { requireOfficeContext } from '@/lib/auth';
 import { createAvailabilityBlock, createRecurringAvailabilityBlocks, deleteAvailabilityBlock, type RepeatFrequency } from '@/lib/availability-blocks';
 import { confirmedSmsBody, declinedSmsBody, requestedWhenLabel } from '@/lib/booking-requests';
 import { isMissingColumnError } from '@/lib/jobs';
@@ -10,7 +10,7 @@ import { sendBookingDecisionSms } from '@/lib/sms';
 // Block off a day / date range as busy — it drops out of online booking and shows
 // blocked on the calendar.
 export async function addAvailabilityBlockAction(formData: FormData) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('schedule.write');
   const startDate = String(formData.get('startDate') ?? '').trim();
   const endDate = String(formData.get('endDate') ?? '').trim();
   const reason = String(formData.get('reason') ?? '').trim();
@@ -23,7 +23,7 @@ export async function addAvailabilityBlockAction(formData: FormData) {
 // down as individual blocks (see the lib), so nothing else has to learn a new
 // shape of data.
 export async function addRecurringBlockAction(formData: FormData) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('schedule.write');
   const startDate = String(formData.get('startDate') ?? '').trim();
   const raw = String(formData.get('frequency') ?? 'weekly');
   const frequency: RepeatFrequency = raw === 'biweekly' || raw === 'monthly' ? raw : 'weekly';
@@ -35,7 +35,7 @@ export async function addRecurringBlockAction(formData: FormData) {
 }
 
 export async function removeAvailabilityBlockAction(id: string) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('schedule.write');
   await deleteAvailabilityBlock(supabase, accountId, id);
   revalidatePath('/dashboard/schedule');
   revalidatePath('/dashboard/schedule/booking');
@@ -44,7 +44,7 @@ export async function removeAvailabilityBlockAction(id: string) {
 // Remove every block sharing a reason — how you undo a repeat in one go, since
 // a repeat is laid down as one block per date.
 export async function removeBlocksByReasonAction(reason: string) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('schedule.write');
   const trimmed = reason.trim();
   // An empty reason is the default for quick blocks, so matching on it would
   // wipe every unlabelled day at once.
@@ -57,7 +57,7 @@ export async function removeBlocksByReasonAction(reason: string) {
 // The master switch for the public booking page. Applied on its own rather than
 // through the save bar: pausing is urgent, and it shouldn't need a second click.
 export async function setBookingEnabledAction(enabled: boolean) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('schedule.write');
   const { error } = await supabase.from('accounts').update({ booking_enabled: enabled }).eq('id', accountId);
   if (error) throw new Error(error.message);
   revalidatePath('/dashboard/schedule');
@@ -97,7 +97,7 @@ const DECISION_COLUMNS =
  * asked for once with them and once without.
  */
 async function readBookingDecisionRow(
-  supabase: Awaited<ReturnType<typeof requireOwnerContext>>['supabase'],
+  supabase: Awaited<ReturnType<typeof requireOfficeContext>>['supabase'],
   accountId: string,
   jobId: string,
 ): Promise<BookingDecisionRow | null> {
@@ -122,7 +122,7 @@ async function readBookingDecisionRow(
  * second tab cannot confirm twice and send the customer two texts.
  */
 export async function confirmBookingRequestAction(jobId: string, choice: 'first' | 'alt' = 'first') {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('schedule.write');
 
   const job = await readBookingDecisionRow(supabase, accountId, jobId);
   if (!job?.booking_requested_date) return;
@@ -181,7 +181,7 @@ export async function confirmBookingRequestAction(jobId: string, choice: 'first'
  * vanishes leaves no way to explain a text the customer already received.
  */
 export async function declineBookingRequestAction(jobId: string) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('schedule.write');
 
   const job = await readBookingDecisionRow(supabase, accountId, jobId);
   if (!job?.booking_requested_date) return;

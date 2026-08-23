@@ -46,6 +46,13 @@ describe('what an office user may open', () => {
       '/dashboard/leads',
       '/dashboard/clients',
       '/dashboard/jobs',
+      '/dashboard/schedule',
+      '/dashboard/messages',
+      '/dashboard/crew',
+      '/dashboard/recurring',
+      '/dashboard/services',
+      '/dashboard/reviews',
+      '/dashboard/rebook',
     ]);
   });
 
@@ -102,7 +109,6 @@ describe('matching a path to a route', () => {
     for (const path of [
       '/dashboard',
       '/dashboard/settings',
-      '/dashboard/crew',
       '/dashboard/payroll',
       '/dashboard/cash-flow',
       '/dashboard/insights',
@@ -165,8 +171,8 @@ describe('where an office user lands', () => {
   });
 
   it('never sends somebody to a page that would bounce them back', () => {
-    // Holding only jobs.read opens nothing because jobs also requires clients.read
-    expect(officeLandingPath(['jobs.read'])).toBe('/office-access');
+    // Holding only schedule.write opens nothing because schedule also requires jobs.read
+    expect(officeLandingPath(['schedule.write'])).toBe('/office-access');
   });
 
   it('goes to the holding page when they hold nothing that opens anything', () => {

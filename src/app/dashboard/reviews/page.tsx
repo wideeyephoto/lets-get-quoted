@@ -1,4 +1,4 @@
-import { requireOwnerContext } from '@/lib/auth';
+import { requireOfficeContext } from '@/lib/auth';
 import { getReviewActivityRow, loadReviewActivity } from '@/lib/reviews';
 import { buildActivityView } from '@/lib/review-activity';
 import { googleReviewUrl } from '@/lib/review-routing';
@@ -25,7 +25,7 @@ export default async function ReviewsPage({
 }: {
   searchParams: Record<string, string | string[] | undefined>;
 }) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('jobs.read');
 
   const [rows, { data: account }, { data: site }] = await Promise.all([
     loadReviewActivity(supabase, accountId),

@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { requireOwnerContext } from '@/lib/auth';
+import { requireOfficeContext } from '@/lib/auth';
 import { listCrew } from '@/lib/crew';
 import { getDayPlanPrefs } from '@/lib/day-plan-prefs';
 import { coordOf, type LatLng } from '@/lib/distance';
@@ -89,7 +89,7 @@ export default async function PlanDayPage({
     geocoded?: string;
   };
 }) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('jobs.read', 'schedule.write');
 
   const crew = await listCrew(supabase, accountId, { activeOnly: true });
   const crewId = searchParams.crew && crew.some((member) => member.id === searchParams.crew) ? searchParams.crew : null;

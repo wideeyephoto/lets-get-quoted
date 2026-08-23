@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { requireOwnerContext } from '@/lib/auth';
+import { requireOfficeContext } from '@/lib/auth';
 import { recordAccountEvent } from '@/lib/account-events';
 import { normalizeUsPhone } from '@/lib/phone';
 import { isPhoneOptedOut, recordSmsConsent, sendEstimateOfferSms } from '@/lib/sms';
@@ -43,7 +43,7 @@ export async function sendEstimateOfferAction(
   _previous: OfferActionState,
   formData: FormData,
 ): Promise<OfferActionState> {
-  const { supabase, accountId, userEmail } = await requireOwnerContext();
+  const { supabase, accountId, userEmail } = await requireOfficeContext('schedule.write');
 
   const leadId = String(formData.get('leadId') ?? '').trim();
   const dateKey = String(formData.get('dateKey') ?? '').trim();
@@ -155,7 +155,7 @@ export async function releaseEstimateOfferAction(
   _previous: OfferActionState,
   formData: FormData,
 ): Promise<OfferActionState> {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('schedule.write');
   const offerId = String(formData.get('offerId') ?? '').trim();
   if (!offerId) return fail('Nothing to release.');
 

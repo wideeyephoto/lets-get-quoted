@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import SaveButton from '@/components/save-button';
-import { requireOwnerContext } from '@/lib/auth';
+import { requireOfficeContext } from '@/lib/auth';
 import { listJobs } from '@/lib/jobs';
 import { loadSubcontractors, todayIn } from '@/lib/subcontractor-dispatch-data';
 import {
@@ -47,7 +47,7 @@ export default async function NewSubcontractorRequestPage({
 }: {
   searchParams: { job?: string };
 }) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('crew.write');
   const [jobs, subs] = await Promise.all([
     listJobs(supabase, accountId),
     loadSubcontractors(supabase, accountId, { today: todayIn(null), includeArchived: true }),

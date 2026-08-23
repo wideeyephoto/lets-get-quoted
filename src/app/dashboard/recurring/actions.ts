@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { createAdminClient, requireOwnerContext } from '@/lib/auth';
+import { createAdminClient, requireOfficeContext, requireOwnerContext } from '@/lib/auth';
 import {
   advanceDate,
   createRecurringPlan,
@@ -26,7 +26,7 @@ const FREQUENCIES: RecurringFrequency[] = ['weekly', 'biweekly', 'monthly'];
 const APP_ORIGIN = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
 
 export async function createRecurringPlanAction(formData: FormData) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('jobs.write', 'clients.write');
 
   const title = String(formData.get('title') ?? '').trim();
   const scope = String(formData.get('scope') ?? '').trim();
@@ -93,14 +93,14 @@ export async function createRecurringPlanAction(formData: FormData) {
 }
 
 export async function runPlanNowAction(planId: string) {
-  const { accountId } = await requireOwnerContext();
+  const { accountId } = await requireOfficeContext('jobs.write');
   const { outcome, jobId } = await runRecurringPlanNow(accountId, planId);
   revalidatePath('/dashboard/recurring');
   redirect(`/dashboard/recurring?flash=ran-${outcome}&job=${jobId}`);
 }
 
 export async function setPlanActiveAction(planId: string, active: boolean) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('jobs.write');
   await setRecurringPlanActive(supabase, accountId, planId, active);
   // Pausing removes upcoming visits and resuming puts them back, so the calendar
   // this changed has to be re-rendered too.
@@ -110,7 +110,7 @@ export async function setPlanActiveAction(planId: string, active: boolean) {
 }
 
 export async function deletePlanAction(planId: string) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('jobs.write');
   const { visitsRemoved } = await deleteRecurringPlan(supabase, accountId, planId);
   revalidatePath('/dashboard/recurring');
   revalidatePath('/dashboard/schedule');
@@ -132,7 +132,7 @@ export async function deletePlanAction(planId: string) {
  * point the honest action is Create the next visit early, not a skip.
  */
 export async function skipNextVisitAction(planId: string) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('jobs.write');
   const plan = await getRecurringPlan(supabase, accountId, planId);
   if (!plan) throw new Error('Plan not found.');
   if (!plan.active) throw new Error('This plan is paused, so there is no next visit to skip. Resume it first.');
@@ -201,7 +201,7 @@ function shortDay(dateKey: string): string {
  * manual reminder replaces the automatic one instead of doubling it.
  */
 export async function remindNextVisitAction(planId: string) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('jobs.write');
   const plan = await getRecurringPlan(supabase, accountId, planId);
   if (!plan) throw new Error('Plan not found.');
 
@@ -246,7 +246,7 @@ export async function remindNextVisitAction(planId: string) {
  * link is a message about it, and the flash says which one didn't happen.
  */
 export async function setPlanAutopayAction(planId: string, autoCharge: boolean) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('jobs.write');
   const plan = await setRecurringPlanAutopay(supabase, accountId, planId, autoCharge);
 
   let flash = autoCharge ? 'autopay-on' : 'autopay-off';
@@ -266,7 +266,7 @@ export async function setPlanAutopayAction(planId: string, autoCharge: boolean) 
 }
 
 export async function resendCardLinkAction(planId: string) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('jobs.write');
   try {
     await sendCardLink(supabase, accountId, planId);
     revalidatePath('/dashboard/recurring');
@@ -281,7 +281,7 @@ export async function resendCardLinkAction(planId: string) {
 // client — email when there's an address, and text when they're SMS opted-in.
 // Best-effort per channel, but throws if neither channel could be used.
 async function sendCardLink(
-  supabase: Awaited<ReturnType<typeof requireOwnerContext>>['supabase'],
+  supabase: Awaited<ReturnType<typeof requireOfficeContext>>['supabase'],
   accountId: string,
   planId: string,
 ): Promise<void> {
@@ -337,7 +337,7 @@ async function sendCardLink(
  * an agreed figure, not whatever the plan later says.
  */
 export async function updatePlanAction(planId: string, formData: FormData) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('jobs.write');
   const plan = await getRecurringPlan(supabase, accountId, planId);
   if (!plan) throw new Error('Plan not found.');
 

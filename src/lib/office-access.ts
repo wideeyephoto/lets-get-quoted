@@ -76,6 +76,41 @@ export const OFFICE_ROUTES: readonly OfficeRoute[] = Object.freeze([
     label: 'Jobs',
     requires: Object.freeze(['jobs.read', 'clients.read']),
   }),
+  Object.freeze({
+    href: '/dashboard/schedule',
+    label: 'Schedule',
+    requires: Object.freeze(['jobs.read', 'schedule.write']),
+  }),
+  Object.freeze({
+    href: '/dashboard/messages',
+    label: 'Messages',
+    requires: Object.freeze(['messages.read']),
+  }),
+  Object.freeze({
+    href: '/dashboard/crew',
+    label: 'Crew',
+    requires: Object.freeze(['crew.read']),
+  }),
+  Object.freeze({
+    href: '/dashboard/recurring',
+    label: 'Recurring',
+    requires: Object.freeze(['jobs.read', 'clients.read']),
+  }),
+  Object.freeze({
+    href: '/dashboard/services',
+    label: 'Services',
+    requires: Object.freeze(['jobs.read']),
+  }),
+  Object.freeze({
+    href: '/dashboard/reviews',
+    label: 'Reviews',
+    requires: Object.freeze(['jobs.read']),
+  }),
+  Object.freeze({
+    href: '/dashboard/rebook',
+    label: 'Rebook',
+    requires: Object.freeze(['jobs.read', 'clients.read']),
+  }),
 ]);
 
 /** Where an office user goes when they hold nothing. */

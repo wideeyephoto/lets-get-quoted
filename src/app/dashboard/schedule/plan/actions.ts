@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { requireOwnerContext } from '@/lib/auth';
+import { requireOfficeContext } from '@/lib/auth';
 import { createJobFeedEvent } from '@/lib/job-feed';
 import { backfillJobCoordinates, updateJobSchedule } from '@/lib/jobs';
 import { normalizeUsPhone } from '@/lib/phone';
@@ -40,7 +40,7 @@ function planUrl(dateKey: string, crewId: string | null, extra?: Record<string, 
 // Postgres would do this more cleanly in one transaction, which needs an RPC and
 // a migration; this keeps the guarantee without a schema change.
 export async function applyDayPlanAction(formData: FormData) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('schedule.write');
   const dateKey = String(formData.get('dateKey') ?? '').trim();
   const crewId = String(formData.get('crewId') ?? '').trim() || null;
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) redirect('/dashboard/schedule');
@@ -148,7 +148,7 @@ export async function applyDayPlanAction(formData: FormData) {
 // just added to. If it doesn't resolve we still save it, and the page lists it
 // under "can't be routed yet" with the same nudge a job with a bad address gets.
 export async function addRouteStopAction(formData: FormData) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('schedule.write');
   const dateKey = String(formData.get('dateKey') ?? '').trim();
   const crewId = String(formData.get('crewId') ?? '').trim() || null;
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) redirect('/dashboard/schedule');
@@ -205,7 +205,7 @@ export async function addRouteStopAction(formData: FormData) {
 }
 
 export async function deleteRouteStopAction(formData: FormData) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('schedule.write');
   const dateKey = String(formData.get('dateKey') ?? '').trim();
   const stopId = String(formData.get('stopId') ?? '').trim();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey) || !stopId) redirect('/dashboard/schedule');
@@ -222,7 +222,7 @@ export async function deleteRouteStopAction(formData: FormData) {
 // fact — and it reads the times back out of the database so the message can never
 // disagree with the calendar.
 export async function notifyMovedClientsAction(formData: FormData) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('schedule.write');
   const dateKey = String(formData.get('dateKey') ?? '').trim();
   const crewId = String(formData.get('crewId') ?? '').trim() || null;
   const jobIds = String(formData.get('jobIds') ?? '')
@@ -287,7 +287,7 @@ export async function notifyMovedClientsAction(formData: FormData) {
 // every load; this keeps it available on demand, where the contractor asked for it
 // and can see the result.
 export async function geocodeDayAction(formData: FormData) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('schedule.write');
   const dateKey = String(formData.get('dateKey') ?? '').trim();
   const crewId = String(formData.get('crewId') ?? '').trim() || null;
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) redirect('/dashboard/schedule');
@@ -307,7 +307,7 @@ export async function geocodeDayAction(formData: FormData) {
  * — that still only reaches the calendar when Save schedule is pressed.
  */
 export async function setPreferredLastAction(dateKey: string, crewId: string | null, stopId: string | null) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('schedule.write');
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) throw new Error('That day isn\u2019t a real date.');
 
   await savePreferredLast(supabase, accountId, dateKey, crewId || null, stopId || null);

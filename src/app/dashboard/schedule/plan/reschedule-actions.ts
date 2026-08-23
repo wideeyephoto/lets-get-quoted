@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { requireOwnerContext } from '@/lib/auth';
+import { requireOfficeContext } from '@/lib/auth';
 import { recordAccountEvent } from '@/lib/account-events';
 import { normalizeUsPhone } from '@/lib/phone';
 import { isPhoneOptedOut, recordSmsConsent, sendEstimateOfferSms } from '@/lib/sms';
@@ -48,7 +48,7 @@ export async function suggestRescheduleDaysAction(input: {
   jobId: string;
   fromDate: string;
 }): Promise<SuggestDaysResult> {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('schedule.write');
 
   const { data: job, error } = await supabase
     .from('jobs')
@@ -143,7 +143,7 @@ export async function sendRescheduleOfferAction(
   _previous: RescheduleActionState,
   formData: FormData,
 ): Promise<RescheduleActionState> {
-  const { supabase, accountId, userEmail } = await requireOwnerContext();
+  const { supabase, accountId, userEmail } = await requireOfficeContext('schedule.write');
 
   const jobId = String(formData.get('jobId') ?? '').trim();
   const fromDate = String(formData.get('fromDate') ?? '').trim();
@@ -269,7 +269,7 @@ export async function withdrawRescheduleOfferAction(
   _previous: RescheduleActionState,
   formData: FormData,
 ): Promise<RescheduleActionState> {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('schedule.write');
   const offerId = String(formData.get('offerId') ?? '').trim();
   if (!offerId) return fail('Nothing to withdraw.');
 

@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { randomUUID } from 'node:crypto';
-import { requireOwnerContext } from '@/lib/auth';
+import { requireOfficeContext } from '@/lib/auth';
 import { formatMoney } from '@/lib/jobs';
 import { fullDate } from '@/lib/recurring-display';
 import { conversationPreview, groupByDay, groupRuns, initialsFor, messageContext } from '@/lib/message-context';
@@ -77,7 +77,7 @@ export default async function MessagesPage({
 }: {
   searchParams: { thread?: string; q?: string; filter?: string; setup?: string; sent?: string; queued?: string };
 }) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('messages.read');
   // Built ONCE and shared. Both loadConversations and this page need it, and
   // letting each build its own meant six table reads per inbox load.
   const identities = await buildContactIdentityMap(supabase, accountId);

@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { cookies } from 'next/headers';
-import { requireOwnerContext } from '@/lib/auth';
+import { requireOfficeContext } from '@/lib/auth';
 import { listCrew, listCrewAssignmentsForJobs } from '@/lib/crew';
 import { fieldAppDetail, fieldAppState } from '@/lib/crew-invite';
 import { arrivalPermissionsFromCrew } from '@/lib/arrival';
@@ -109,7 +109,7 @@ export default async function CrewLaborPage({
     add?: string;
   };
 }) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('crew.read');
   const tab = normalizeTab(searchParams.tab);
   // Pay periods are cut in the CONTRACTOR's zone, not the server's — on Vercel
   // the server is UTC, which put every Saturday evening of an Eastern shop into

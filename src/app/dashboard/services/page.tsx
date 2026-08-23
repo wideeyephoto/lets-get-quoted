@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { requireOwnerContext } from '@/lib/auth';
+import { requireOfficeContext } from '@/lib/auth';
 import { listServices, SERVICE_UNITS, type Service } from '@/lib/services';
 import { formatUnitPrice, glyphsForServices, priceBookStats, unitSuffix } from '@/lib/price-book';
 import ServiceIcon from '@/lib/templates/ServiceIcon';
@@ -11,7 +11,7 @@ import { createServiceAction, updateServiceAction, setServiceActiveAction, delet
 export const metadata = { title: 'Price book' };
 
 export default async function ServicesPage({ searchParams }: { searchParams: { status?: string } }) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('jobs.read');
   const services = await listServices(supabase, accountId);
 
   const active = services.filter((s) => s.active);
