@@ -1,38 +1,43 @@
 # Pre-Launch Audit — 2026-08-22
 
-**Method:** seven independent audits run in parallel, each dimension’s findings then
-attacked by a separate skeptic instructed to REFUTE and to default to “does not
-survive” when uncertain. 42 raw findings → **36 confirmed, 6 refuted**. 15 agents,
+**Method:** seven independent audits run in parallel, each dimension's findings then
+attacked by a separate skeptic instructed to REFUTE and to default to "does not
+survive" when uncertain. 42 raw findings → **36 confirmed, 6 refuted**. 15 agents,
 ~34 minutes.
 
 ## What was re-verified by hand before this was committed
 
-Agent output is not evidence. These were re-read or re-run directly:
+Agent output is not evidence. These twelve load-bearing claims were re-read or
+re-run directly against the repo and production:
 
-| Claim | Verified |
+| Claim | Verified against |
 |---|---|
-|  is ON DELETE CASCADE | yes —  |
-|  has no dependency guard | yes —  |
-| “Edit & resend quote” reaches it, and its dialog never says “payments” | yes —  |
-| Resubscribe requires all four of flex/none/free/active | yes —  |
-|  excludes  | yes —  |
-| Plan-change panel is not flag-gated | yes —  |
-| Binding refuses a changed price | yes — live  |
-|  | yes —  |
-| accounts FKs: 83 cascade / 24 restrict / 5 set null | yes — query |
-|  is UPDATE with  NULL | yes —  |
-|  is FOR ALL | yes —  |
-| 61 of 144 public tables are RLS-with-no-policy | yes — query |
+| `payments_job_id_fkey` is ON DELETE CASCADE | `pg_constraint` on the live database |
+| `deleteJob` has no dependency guard | `src/lib/jobs.ts:939` |
+| "Edit & resend quote" reaches it, and its dialog never says "payments" | `src/app/dashboard/leads/[leadId]/UndoQuoteButton.tsx:22-31` |
+| Resubscribe requires all four of flex / none / free / active | `src/lib/billing/base-plan-subscription-entrypoint.ts:226` |
+| `CHANGEABLE_STATUSES` excludes `canceled` | `src/lib/billing/plan-change.ts:50` |
+| The plan-change panel is not flag-gated | `src/app/dashboard/settings/page.tsx:156` |
+| The projection binding refuses a changed price | live `pg_get_functiondef` |
+| `proration_behavior: 'always_invoice'` | `src/lib/billing/plan-change.ts:322` |
+| `accounts` FKs: 83 cascade / 24 restrict / 5 set null | query |
+| `acc_write` is UPDATE with `with_check` NULL | `pg_policies` |
+| `sms_consent_all` is FOR ALL | `pg_policies` |
+| 61 of 144 public tables are RLS-with-no-policy | query |
 
 **One citation was wrong** and is corrected here: the undo-convert button lives at
-{ is a shell keyword, not .
-Treat other file:line references as good but not infallible — open the file.
+`src/app/dashboard/leads/[leadId]/LeadActionDeck.tsx`, not `leads/LeadActionDeck.tsx`.
+Treat the other file:line references as good but not infallible — open the file
+before acting on one.
 
-**Nothing below was executed.** No job deleted, no plan changed, no account deleted,
-no Stripe call made, no page rendered. Consequences are derived from the live FK
-catalog, live function bodies and source. See “What this audit could NOT check”.
+**Nothing below was executed.** No job was deleted, no plan changed, no account
+deleted, no Stripe call made, no page rendered. Every destructive consequence is
+derived from the live FK catalog, live SQL function bodies and source — not from
+an observed failure. The "What this audit could NOT check" section near the end is
+the most important part after the findings themselves.
 
 ---
+
 # Pre-launch briefing — Let's Get Quoted
 
 **Date:** 2026-08-22 · **Scope:** what breaks for the *first* real paying contractor · **Method:** seven audits, every finding attacked by a skeptic; refuted items excluded. All file:line and query evidence below was re-read or re-run during this synthesis.
