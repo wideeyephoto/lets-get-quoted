@@ -131,6 +131,16 @@ export const OFFICE_ROUTES: readonly OfficeRoute[] = Object.freeze([
     label: 'Settings',
     requires: Object.freeze(['settings.write']),
   }),
+  Object.freeze({
+    href: '/dashboard/automations',
+    label: 'Automations',
+    requires: Object.freeze(['settings.write']),
+  }),
+  Object.freeze({
+    href: '/dashboard/sites',
+    label: 'Website',
+    requires: Object.freeze(['settings.write']),
+  }),
 ]);
 
 /** Where an office user goes when they hold nothing. */

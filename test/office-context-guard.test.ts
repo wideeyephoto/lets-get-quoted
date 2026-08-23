@@ -309,6 +309,7 @@ describe('the wiring, as source', () => {
     };
     walk('src/app');
     expect(callers.sort()).toEqual([
+      'src/app/dashboard/automations/page.tsx',
       'src/app/dashboard/cash-flow/actions.ts',
       'src/app/dashboard/cash-flow/page.tsx',
       'src/app/dashboard/clients/[id]/page.tsx',
@@ -358,6 +359,8 @@ describe('the wiring, as source', () => {
       'src/app/dashboard/settings/actions.ts',
       'src/app/dashboard/settings/office-team-actions.ts',
       'src/app/dashboard/settings/page.tsx',
+      'src/app/dashboard/sites/actions.ts',
+      'src/app/dashboard/sites/page.tsx',
     ]);
   });
 

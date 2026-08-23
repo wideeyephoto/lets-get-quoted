@@ -1,4 +1,4 @@
-import { requireOwnerContext } from '@/lib/auth';
+import { requireOfficeContext } from '@/lib/auth';
 import { listUploadedSiteImages } from '@/lib/site-image-storage';
 import { getOrCreateSite } from '@/lib/sites';
 import { templateFontVars } from '@/lib/templates/fonts';
@@ -24,7 +24,7 @@ export const metadata = {
 // the Google Business Profile the review ask needs is set on that card and
 // nowhere else.
 export default async function SitesPage({ searchParams }: { searchParams?: { built?: string; open?: string } }) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('settings.write');
   const justBuilt = searchParams?.built === '1';
 
   // Get or create site

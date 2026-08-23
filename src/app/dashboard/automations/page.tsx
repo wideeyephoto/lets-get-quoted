@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import Link from 'next/link';
-import { createAdminClient, requireOwnerContext } from '@/lib/auth';
+import { createAdminClient, requireOfficeContext } from '@/lib/auth';
 import { aiVoiceEnabled } from '@/lib/voice/admission';
 import { loadVoiceCallHistory } from '@/lib/voice/call-history';
 import { loadVoiceEntitlement } from '@/lib/voice/entitlement';
@@ -167,7 +167,7 @@ function AutomationCard({
 }
 
 export default async function AutomationsPage() {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('settings.write');
   const aiVoice = aiVoiceEnabled();
   const admin = createAdminClient();
   const messagingReadinessPromise = loadDedicatedMessagingReadiness(accountId, admin);

@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { createAdminClient, requireOwnerContext } from '@/lib/auth';
+import { createAdminClient, requireOfficeContext } from '@/lib/auth';
 import { deleteSiteImage, importJobPhotoAsSiteImage, uploadSiteImage } from '@/lib/site-image-storage';
 import { createSignedVideoUpload, deleteSiteVideo, siteVideoStoragePath, type SignedVideoUpload } from '@/lib/site-video-storage';
 import { createJobPhotoUrls } from '@/lib/job-photo-storage';
@@ -26,7 +26,7 @@ import {
 } from '@/lib/sites';
 
 export async function getOrCreateSiteAction() {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('settings.write');
   const site = await getOrCreateSite(supabase, accountId);
   return site;
 }
@@ -46,7 +46,7 @@ function unreviewedGeneratedMessage(sections: string[], action: string): string 
 }
 
 export async function updateSiteAction(updates: SiteEditableInput) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('settings.write');
 
   // Get current site
   const { data: sites } = await supabase
@@ -124,7 +124,7 @@ export async function updateSiteAction(updates: SiteEditableInput) {
 }
 
 export async function publishSiteAction(published: boolean) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('settings.write');
 
   const { data: sites } = await supabase
     .from('sites')
@@ -157,7 +157,7 @@ export async function publishSiteAction(published: boolean) {
 }
 
 export async function checkSubdomainAvailableAction(subdomain: string): Promise<boolean> {
-  const { accountId } = await requireOwnerContext();
+  const { accountId } = await requireOfficeContext('settings.write');
   const { data } = await createAdminClient()
     .from('sites')
     .select('account_id')
@@ -249,7 +249,7 @@ function extractOutputText(payload: unknown): string {
 export async function generateSiteTextAction(
   options?: { trade?: string; companyName?: string; serviceArea?: string; zip?: string },
 ): Promise<GeneratedSiteText> {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('settings.write');
 
   const { data: sites } = await supabase
     .from('sites')
@@ -450,7 +450,7 @@ export async function generateSiteTextAction(
 // SEO fields and leaves everything else untouched, so manual edits elsewhere are
 // preserved.
 export async function regenerateSeoCopyAction(variantOffset: number): Promise<{ seo_title: string; seo_description: string }> {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('settings.write');
 
   const { data: sites } = await supabase
     .from('sites')
@@ -474,7 +474,7 @@ export async function regenerateSeoCopyAction(variantOffset: number): Promise<{ 
 // set. Returns render-ready fields + attribution; the client applies them while
 // preserving the owner's uploaded photos. Never throws.
 export async function regenerateStockImagesAction(nonce: number): Promise<StockImageResult> {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('settings.write');
 
   const { data: sites } = await supabase
     .from('sites')
@@ -510,7 +510,7 @@ export async function pickBlogCover(query: string): Promise<string> {
 }
 
 export async function generateBlogPostAction(topic?: string): Promise<GeneratedBlogPost & { coverImage: string }> {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('settings.write');
 
   const { data: sites } = await supabase
     .from('sites')
@@ -540,7 +540,7 @@ export async function generateBlogPostAction(topic?: string): Promise<GeneratedB
 // (owner only), returns a `configured` flag so the UI can distinguish "no key"
 // from "no results", and never throws.
 export async function searchPexelsAction(query: string, orientation?: ImageOrientation): Promise<PexelsSearchResult> {
-  await requireOwnerContext();
+  await requireOfficeContext('settings.write');
   const configured = isPexelsConfigured();
   const trimmed = (query || '').trim().slice(0, 100);
   if (!configured || !trimmed) return { configured, photos: [] };
@@ -564,7 +564,7 @@ export async function searchPexelsAction(query: string, orientation?: ImageOrien
 }
 
 export async function verifyCustomDomainAction(domainValue: string) {
-  const { accountId } = await requireOwnerContext();
+  const { accountId } = await requireOfficeContext('settings.write');
   const domain = normalizeDomain(domainValue);
   const verification = await verifyDomain(domain);
   if (!verification.verified) return verification;
@@ -579,7 +579,7 @@ export async function verifyCustomDomainAction(domainValue: string) {
 }
 
 export async function uploadSiteImageAction(formData: FormData) {
-  const { accountId } = await requireOwnerContext();
+  const { accountId } = await requireOfficeContext('settings.write');
   const file = formData.get('image');
 
   if (!(file instanceof File) || file.size === 0) {
@@ -598,7 +598,7 @@ export async function createSiteVideoUploadAction(
   contentType: string,
   sizeBytes: number,
 ): Promise<SignedVideoUpload> {
-  const { accountId } = await requireOwnerContext();
+  const { accountId } = await requireOfficeContext('settings.write');
   // Coerced rather than trusted: this is the one upload whose size the server is
   // told instead of measuring. A missing or nonsense value becomes 0, which
   // checks the allowance against what is already stored rather than skipping it.
@@ -615,7 +615,7 @@ export async function createSiteVideoUploadAction(
 // here leaves an orphaned file, which is far better than refusing to let them
 // take a video down — so the caller ignores the result.
 export async function deleteSiteVideoAction(url: string) {
-  const { accountId } = await requireOwnerContext();
+  const { accountId } = await requireOfficeContext('settings.write');
   const path = siteVideoStoragePath(String(url || ''), accountId);
   if (!path) return;
   await deleteSiteVideo(accountId, path);
@@ -628,7 +628,7 @@ export type JobPhotoImportOption = {
 };
 
 export async function listCompletedJobPhotoOptionsAction(): Promise<JobPhotoImportOption[]> {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('settings.write');
   const { data, error } = await supabase
     .from('jobs')
     .select('ref, client_name, scope, photo_paths')
@@ -652,11 +652,11 @@ export async function listCompletedJobPhotoOptionsAction(): Promise<JobPhotoImpo
 }
 
 export async function importJobPhotoToSiteImageAction(path: string, label: string) {
-  const { accountId } = await requireOwnerContext();
+  const { accountId } = await requireOfficeContext('settings.write');
   return importJobPhotoAsSiteImage(accountId, path, label || 'Completed job photo');
 }
 
 export async function deleteSiteImageAction(storagePath: string) {
-  const { accountId } = await requireOwnerContext();
+  const { accountId } = await requireOfficeContext('settings.write');
   await deleteSiteImage(accountId, storagePath);
 }
