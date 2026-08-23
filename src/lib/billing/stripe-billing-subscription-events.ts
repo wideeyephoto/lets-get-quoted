@@ -482,7 +482,7 @@ function allowanceWindow(
 
 function paymentEvidence(
   context: StripeSubscriptionProviderContext,
-  session: Stripe.Checkout.Session,
+  session: Stripe.Checkout.Session | null,
 ): StripeSubscriptionProjection['payment_evidence_kind'] {
   if (
     context.providerObjectType === 'invoice'
@@ -491,7 +491,16 @@ function paymentEvidence(
   ) {
     return 'invoice_paid';
   }
-  if (context.providerObjectType === 'subscription' && session.payment_status === 'paid') {
+  // No Session, no `checkout_session_paid`. The projector refuses that
+  // combination outright, so producing it here would dead-letter the event
+  // rather than quietly over-claim -- but the honest answer is 'none' either
+  // way, and a plan change is paid for by its proration invoice, never by a
+  // Session.
+  if (
+    session !== null
+    && context.providerObjectType === 'subscription'
+    && session.payment_status === 'paid'
+  ) {
     return 'checkout_session_paid';
   }
   return 'none';
@@ -568,7 +577,15 @@ async function loadExactSession(
   context: StripeSubscriptionProviderContext,
   binding: StripeSubscriptionProjectionBinding,
   dependencies: StripeProviderDependencies,
-): Promise<Stripe.Checkout.Session> {
+): Promise<Stripe.Checkout.Session | null> {
+  // A plan change is a subscriptions.update. It has no Checkout Session, and the
+  // recovery path below is actively WRONG for it: listing this subscription's
+  // Sessions finds the original checkout, which carries the OLD price, fails
+  // every contract comparison, and reports `checkout_session_ambiguous` -- a
+  // dead letter describing a problem that does not exist. Branch on the purpose,
+  // not on the null: an unrecovered `indeterminate` checkout also has no Session
+  // id and DOES want the recovery below.
+  if (binding.operationPurpose === 'base_plan_plan_change') return null;
   if (binding.checkoutSessionId) {
     let session: unknown;
     try {
@@ -677,7 +694,7 @@ async function buildVerifiedProjection(
     event_object_id: context.providerObjectId,
     workspace_id: binding.workspaceId,
     operation_id: binding.operationId,
-    checkout_session_id: session.id,
+    checkout_session_id: session?.id ?? null,
     customer_id: context.customerId,
     subscription_id: context.subscriptionId,
     subscription_item_id: context.subscriptionItemId,

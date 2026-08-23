@@ -93,6 +93,7 @@ const CONTEXT: StripeSubscriptionProviderContext = Object.freeze({
 const BINDING: StripeSubscriptionProjectionBinding = Object.freeze({
   operationPk: OPERATION_PK,
   operationState: 'checkout_created',
+  operationPurpose: 'base_plan_subscription',
   workspaceId: WORKSPACE_ID,
   operationId: CONTEXT.operationId,
   checkoutSessionId: 'cs_test_checkout123',

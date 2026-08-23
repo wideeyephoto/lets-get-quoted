@@ -1,7 +1,7 @@
 # Plan-change rail — handoff
 
 **Branch:** `main`, clean<br>
-**Gates:** schema ×2, typecheck, lint, test (9842), build — all 0<br>
+**Gates:** schema ×2, typecheck, lint, test (9846), build — all 0<br>
 **Blocking decision:** RESOLVED 2026-08-23 — **option A**, by the user
 
 ---
@@ -291,13 +291,24 @@ npm run inspect:cron-health
 
 1. ~~Resolve the A/B fork above.~~ **Done — A.**
 2. ~~Projector patches.~~ **Done and APPLIED** (`20260823235000`).
-3. TypeScript. Two halves, and the read half is now the smaller one:
-   **(a) read path** — thread the binding's new `operation_purpose` through
-   `subscription-event-projector.ts`, and skip `loadExactSession` entirely when
-   it is `base_plan_plan_change` (see the note at the top: the fallback finds the
-   original checkout and fails ambiguous). Send `checkout_session_id: null` in
-   the projection for those. Safe to write now: nothing can produce a
-   plan-change binding until the write path exists.
+3. TypeScript.
+   **(a) read path** — ~~done~~. `operation_purpose` is threaded through
+   `StripeSubscriptionProjectionBinding`; `loadExactSession` returns null for a
+   plan change **branching on the purpose, not on the null** (an unrecovered
+   `indeterminate` checkout also has no Session id and DOES want the recovery
+   path); `paymentEvidence` can no longer return `checkout_session_paid` without
+   a Session; the projection sends `checkout_session_id: null`. `parseBinding`
+   now keys the state accept-list off the purpose — the two ledgers share only
+   `activated` and `indeterminate`, and merging the lists would let either row
+   present the other's state — and mirrors the SQL's two cross-refusals rather
+   than trusting them.
+
+   That parser had **no row-level coverage at all** before this; it does now, via
+   `SupabaseStripeBillingSubscriptionProjectionStore` with a mocked `rpc`. The
+   headline test asserts the contrast directly: same null `checkoutSessionId`,
+   and the plan change calls neither `listCheckoutSessions` nor
+   `retrieveCheckoutSession` while the indeterminate checkout still calls both.
+   All five source mutations were killed.
    **(b) write path** — row before the Stripe call, new `lgq_operation_id` in
    the subscription metadata without dropping the other keys, consent capture in
    `ChangePlanPanel` reusing `base-plan-checkout-consent` /
