@@ -44,9 +44,12 @@ describe('the plan-change panel', () => {
 });
 
 describe('the reason it is withheld is still true', () => {
-  const planChange = readFileSync(
+  // stripComments: the operation gate landed on 2026-08-23 and its comment
+  // NAMES the operations table in order to explain why no row is written yet.
+  // Read raw, the prose explaining the absence reads as the presence.
+  const planChange = stripComments(readFileSync(
     join(process.cwd(), 'src', 'lib', 'billing', 'plan-change.ts'), 'utf8',
-  );
+  ));
 
   it('still charges immediately', () => {
     // If this ever became proration_behavior: 'none' the urgency changes, but

@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { stripComments } from './helpers/source-text';
 
 /**
  * Moving between paid plans, which the product had no surface for at all: the
@@ -51,7 +52,7 @@ function price(planCode: string, billingInterval: string, priceId: string) {
 }
 
 const {
-  assertMetadataMatchesPrice,
+  BASE_PLAN_SUBSCRIPTION_PLAN_CHANGE_FLAG,
   buildPlanChangeIdempotencyKey,
   changeBasePlan,
   planChangeOptions,
@@ -91,6 +92,11 @@ const GROWTH_MONTHLY = {
 };
 
 beforeEach(() => {
+  // The rail is gated off by default and these tests are about what the
+  // operation DOES once it is allowed to run. Turning it on explicitly here
+  // rather than in a setup file keeps that visible: every assertion below is
+  // conditional on a flag that is 0 in every deployed environment today.
+  process.env[BASE_PLAN_SUBSCRIPTION_PLAN_CHANGE_FLAG] = '1';
   stripe.update.mockClear();
   cancelAtPeriodEnd.mockClear();
   events.length = 0;
@@ -155,29 +161,48 @@ describe('an upgrade on the same billing cycle', () => {
   });
 });
 
-describe('the metadata guard', () => {
-  it('throws rather than letting a mismatched pair reach Stripe', () => {
-    // Throwing, not returning ok:false: this condition means the CODE is wrong,
-    // and by the time Stripe has invoiced the proration the money has moved and
-    // the projection failure is terminal.
-    expect(() => assertMetadataMatchesPrice(
-      { lgq_plan_code: 'growth', lgq_billing_interval: 'monthly', lgq_catalog_version: '2026-08-18-preview' },
-      { planCode: 'scale', billingInterval: 'monthly', catalogVersion: '2026-08-18-preview' },
-    )).toThrow(/provider_price_contract_mismatch/);
+describe('the metadata guard that never guarded anything', () => {
+  // stripComments, or this fails against the comment that explains the
+  // deletion -- a comment naming a removed symbol reads exactly like the
+  // symbol. Three tests in this repo have hit that; the helper exists for it.
+  const source = stripComments(readFileSync(
+    join(process.cwd(), 'src', 'lib', 'billing', 'plan-change.ts'), 'utf8',
+  ));
+
+  it('is gone, and has not come back', () => {
+    // assertMetadataMatchesPrice compared metadata built by
+    // planChangeMetadata(target) against prices[`${planCode}_${billingInterval}`].
+    // The resolver copies planCode and billingInterval off the definition found
+    // by that same key, and both catalogVersions are the one imported
+    // PRICING_CATALOG_VERSION binding. Three comparisons of a value with
+    // itself; the throw could not fire.
+    expect(source).not.toContain('assertMetadataMatchesPrice');
   });
 
-  it('catches a stale catalog version too', () => {
-    expect(() => assertMetadataMatchesPrice(
-      { lgq_plan_code: 'scale', lgq_billing_interval: 'monthly', lgq_catalog_version: '2026-08-15-preview' },
-      { planCode: 'scale', billingInterval: 'monthly', catalogVersion: '2026-08-18-preview' },
-    )).toThrow();
+  it('no longer has the file header resting its safety argument on it', () => {
+    // RAW here, not stripped -- this assertion is ABOUT the prose. The header is
+    // what made a dead guard worse than no guard: it told the next reader the
+    // coupling could not be broken by accident, and named a function that could
+    // not detect it being broken.
+    const raw = readFileSync(
+      join(process.cwd(), 'src', 'lib', 'billing', 'plan-change.ts'), 'utf8',
+    );
+    const header = raw.slice(0, raw.indexOf('export type PaidPlanCode'));
+    expect(header).not.toMatch(/exists so that cannot be done by accident/);
+    // The replacement has to NAME the check that does read Stripe, or the next
+    // reader finds a deletion with no successor and re-adds the dead one.
+    expect(header).toContain('validatePrice');
   });
 
-  it('passes a matched pair', () => {
-    expect(() => assertMetadataMatchesPrice(
-      { lgq_plan_code: 'scale', lgq_billing_interval: 'annual', lgq_catalog_version: '2026-08-18-preview' },
-      { planCode: 'scale', billingInterval: 'annual', catalogVersion: '2026-08-18-preview' },
-    )).not.toThrow();
+  it('names the check that does read Stripe, so the contract is still stated', () => {
+    // loadVerifiedStripePlanPrices -> validatePrice compares the live Price's
+    // own metadata to the catalog and fails price_contract_mismatch, so a
+    // disagreeing Price never reaches this file. Deleting the dead guard is not
+    // a loosening, and this pins the reason.
+    const prices = readFileSync(
+      join(process.cwd(), 'src', 'lib', 'billing', 'stripe-plan-prices.ts'), 'utf8',
+    );
+    expect(prices).toContain('price_contract_mismatch');
   });
 });
 

@@ -35,7 +35,31 @@ import { getStripeClient } from '@/lib/stripe';
  * SAME call. Change the price alone and Stripe invoices the customer for the
  * proration immediately, then every resulting event dead-letters: they have paid
  * for Growth and the product still says Solo, with no retry that can ever fix it.
- * `assertMetadataMatchesPrice` below exists so that cannot be done by accident.
+ * What actually enforces that is `validatePrice` inside
+ * `loadVerifiedStripePlanPrices`, which compares the real Stripe Price's own
+ * metadata against the catalog and throws `price_contract_mismatch` before any
+ * Price reaches this file. There used to be an `assertMetadataMatchesPrice`
+ * here claiming that role; it compared three values that the lookup key and a
+ * shared import had already forced equal, so it could not fire. See the gate
+ * note below for why a guard that cannot fire is worse than no guard.
+ *
+ * WHY THIS IS GATED. The rail underneath it does not exist yet. A plan change
+ * has to write its own `billing_subscription_checkout_operations` row with
+ * purpose `base_plan_plan_change` before calling Stripe, or the binding looks
+ * up the original checkout -- still holding the OLD price -- and every event
+ * for the subscription dead-letters after the card has been charged. Writing
+ * that row needs SQL that is not built: table writes are revoked from
+ * service_role, `record_base_plan_recurring_consent` refuses any workspace that
+ * is not on active Flex, and `claim_stripe_billing_subscription_checkout`
+ * refuses one with existing subscription history (`0A000`, whose message names
+ * this very flow as future work).
+ *
+ * The panel was withheld at the render site on 2026-08-23, which hides the
+ * button. It does not close the path: `ChangePlanPanel.tsx` is still imported
+ * by `PlanUsageSection.tsx`, so `plan-change-actions.ts` is still compiled and
+ * its server-action IDs are still POST-able by any authenticated owner. That is
+ * the same shape as the cancellation gate that did not bite -- gate the
+ * OPERATION, not the button -- so the check lives here.
  *
  * The policy lives in `plan-transition.ts` and is not re-derived here. Capacity
  * upgrades on the same interval activate after payment; downgrades and any
@@ -45,6 +69,30 @@ import { getStripeClient } from '@/lib/stripe';
  */
 
 export type PaidPlanCode = Exclude<BillingPlanId, 'flex'>;
+
+export const BASE_PLAN_SUBSCRIPTION_PLAN_CHANGE_FLAG =
+  'LGQ_BASE_PLAN_SUBSCRIPTION_PLAN_CHANGE_ENABLED' as const;
+
+type ServerEnvironment = Record<string, string | undefined>;
+
+export function basePlanSubscriptionPlanChangeEnabled(
+  env: ServerEnvironment = process.env,
+): boolean {
+  return env[BASE_PLAN_SUBSCRIPTION_PLAN_CHANGE_FLAG] === '1';
+}
+
+/**
+ * ONE STRING, because the gate bites on two paths -- the immediate upgrade and
+ * the paid change scheduled for renewal -- and a paraphrase is how two refusals
+ * start meaning different things. Same lesson as CANCELLATION_DISABLED_MESSAGE.
+ *
+ * It says "moving between paid plans" rather than "changing your plan" because
+ * the one plan change that still works with the flag off is moving to Flex,
+ * which is cancelling, and telling that customer their change is switched off
+ * would be false.
+ */
+export const PLAN_CHANGE_DISABLED_MESSAGE =
+  'Moving between paid plans is not switched on yet. Contact support and we will move you by hand.';
 
 /** Statuses where a plan change is a coherent request. */
 const CHANGEABLE_STATUSES = new Set(['trialing', 'active', 'past_due']);
@@ -154,34 +202,31 @@ export type PlanChangeResult =
   | Readonly<{ ok: false; error: string }>;
 
 /**
- * The guard that makes the metadata/price coupling unforgeable.
+ * WHERE THE METADATA/PRICE GUARD WENT.
  *
- * Called immediately before the Stripe write with what is about to be sent. If
- * the metadata and the Price ever disagree, this throws rather than letting the
- * request reach Stripe -- because once Stripe has invoiced the proration, the
- * money has moved and the projection failure is terminal.
+ * `assertMetadataMatchesPrice` used to sit here, called immediately before the
+ * Stripe write, and the file header rested its whole safety argument on it. It
+ * compared three values against themselves. `metadata` is built by
+ * `planChangeMetadata(target)`; `price` is `prices[`${planCode}_${billingInterval}`]`,
+ * whose `planCode` and `billingInterval` the resolver copies off the definition
+ * found by that same key, and whose `catalogVersion` is the same imported
+ * `PRICING_CATALOG_VERSION` binding the metadata uses. Three comparisons, all
+ * of a value with itself. The throw was unreachable.
+ *
+ * Its unit tests passed hand-built disagreeing pairs, so they proved the
+ * function worked while proving nothing about the call site -- a guard vouching
+ * for a claim that had never been true.
+ *
+ * The real check is upstream and does read Stripe: `validatePrice` in
+ * `stripe-plan-prices.ts` compares the live Price's own metadata to the catalog
+ * and fails `price_contract_mismatch`, so `loadVerifiedStripePlanPrices` throws
+ * before a disagreeing Price can reach this file. Deleting the dead guard is
+ * not a loosening; keeping it was the risk, because the header cited it as the
+ * reason the coupling could not be broken by accident.
+ *
+ * The guard this file actually needs cannot be written yet: it is the operation
+ * row versus the Stripe request, and there is no operation row. See the gate.
  */
-export function assertMetadataMatchesPrice(
-  metadata: Readonly<Record<string, string>>,
-  price: Readonly<{ planCode: string; billingInterval: string; catalogVersion: string }>,
-): void {
-  const declaredPlan = metadata[SUBSCRIPTION_CHECKOUT_METADATA_KEYS.planCode];
-  const declaredInterval = metadata[SUBSCRIPTION_CHECKOUT_METADATA_KEYS.billingInterval];
-  const declaredCatalog = metadata[SUBSCRIPTION_CHECKOUT_METADATA_KEYS.catalogVersion];
-  if (
-    declaredPlan !== price.planCode
-    || declaredInterval !== price.billingInterval
-    || declaredCatalog !== price.catalogVersion
-  ) {
-    throw new Error(
-      'Refusing to change a subscription whose metadata would disagree with its Price: '
-      + `metadata says ${declaredPlan}/${declaredInterval}/${declaredCatalog}, `
-      + `Price says ${price.planCode}/${price.billingInterval}/${price.catalogVersion}. `
-      + 'The projector would dead-letter every event for this subscription with '
-      + 'provider_price_contract_mismatch after the customer had already been charged.',
-    );
-  }
-}
 
 function planChangeMetadata(target: { planCode: PaidPlanCode; billingInterval: BillingCycle }): Record<string, string> {
   // Stripe MERGES metadata on update, so only the keys that move are sent. The
@@ -223,8 +268,8 @@ function allowancePeriod(subscription: ChangeableSubscription, nowMs: number):
  * Move a workspace to a different plan or billing cycle.
  *
  * Never throws for an ordinary refusal -- a plan change failing must not 500 the
- * settings page. It DOES throw from `assertMetadataMatchesPrice`, deliberately,
- * because that condition means the code is wrong rather than the request.
+ * settings page. It can still reject if the database read itself fails, which
+ * is a broken dependency rather than a refused request.
  */
 export async function changeBasePlan(input: {
   admin: SupabaseClient;
@@ -233,6 +278,28 @@ export async function changeBasePlan(input: {
   targetBillingInterval: 'none' | BillingCycle;
   actorEmail?: string | null;
 }): Promise<PlanChangeResult> {
+  // ONE gate, here, ahead of the read -- and the condition is exact rather than
+  // convenient. Targeting Flex IS the cancellation path: `pending_plan_code`'s
+  // CHECK admits only paid codes, so scheduleAtRenewal hands a Flex target
+  // straight to cancelBasePlanSubscriptionAtPeriodEnd, which has its own flag
+  // and a rail that works today. It must stay reachable with this flag off, or
+  // a paying customer is trapped by a switch about a feature they are not
+  // using. Every other target is a paid move, and no paid move can be honoured.
+  //
+  // WHY NOT ALSO INSIDE activateAfterPayment AND scheduleAtRenewal. Because
+  // those checks could never fire. Both are private, both are reached only for
+  // a paid target, and this line has already refused every paid target when the
+  // flag is off -- so a second and third copy would be three guards of which
+  // two are unreachable. That is the shape deleted from this same file above,
+  // and re-adding it in the commit that removes it would be absurd. The
+  // protection against this line drifting out of step with "is a paid move" is
+  // a test, not a decorative copy: plan-change-gate.test.ts pins both that a
+  // Flex target still reaches the cancellation rail and that changeBasePlan has
+  // exactly one caller.
+  if (input.targetPlanCode !== 'flex' && !basePlanSubscriptionPlanChangeEnabled()) {
+    return { ok: false, error: PLAN_CHANGE_DISABLED_MESSAGE };
+  }
+
   const subscription = await loadChangeableSubscription(input.admin, input.accountId);
   if (!subscription) {
     return { ok: false, error: 'There is no active subscription on this workspace to change.' };
@@ -291,10 +358,12 @@ async function activateAfterPayment(input: {
     return { ok: false, error: 'That plan is not currently available for purchase.' };
   }
 
+  // `verified` came from loadVerifiedStripePlanPrices, which retrieves the real
+  // Price and fails price_contract_mismatch if its own metadata disagrees with
+  // the catalog. There is nothing left for a local guard to compare: the two
+  // sides of the old assertion were built from the same lookup key and the same
+  // imported catalog version.
   const metadata = planChangeMetadata({ planCode, billingInterval });
-  // Throws rather than returning: this is a code defect, not a user error, and
-  // proceeding would move money before failing.
-  assertMetadataMatchesPrice(metadata, verified);
 
   await recordAccountEvent({
     accountId: input.accountId,

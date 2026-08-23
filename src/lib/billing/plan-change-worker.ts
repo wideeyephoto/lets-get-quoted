@@ -4,7 +4,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { recordAccountEvent } from '@/lib/account-events';
 import { PRICING_CATALOG_VERSION } from '@/lib/billing/catalog';
-import { buildPlanChangeIdempotencyKey } from '@/lib/billing/plan-change';
+import { basePlanSubscriptionPlanChangeEnabled, buildPlanChangeIdempotencyKey } from '@/lib/billing/plan-change';
 import { SUBSCRIPTION_CHECKOUT_METADATA_KEYS } from '@/lib/billing/stripe-billing-subscription-checkout';
 import { loadVerifiedStripePlanPrices } from '@/lib/billing/stripe-plan-prices';
 import { getStripeClient } from '@/lib/stripe';
@@ -32,6 +32,7 @@ export type PlanChangeApplySummary = Readonly<{
   failures: number;
   skipped_no_item: number;
   skipped_unpriceable: number;
+  skipped_disabled: number;
 }>;
 
 type DueRow = Readonly<{
@@ -72,12 +73,26 @@ export async function applyDuePlanChanges(input: {
   let failures = 0;
   let skippedNoItem = 0;
   let skippedUnpriceable = 0;
+  let skippedDisabled = 0;
 
   // Loaded once for the batch rather than per row: it re-retrieves every Price
   // from Stripe and the contract is identical for all of them.
   const prices = rows.length > 0 ? await loadVerifiedStripePlanPrices() : null;
 
   for (const row of rows) {
+    // A SKIP, never a failure and never a clear. The row stays pending, so a
+    // change scheduled while the flag was on is applied the moment it goes back
+    // on rather than being silently dropped -- and `skipped_disabled` in the
+    // cron summary is how you can tell waiting rows from an idle worker.
+    //
+    // This worker is broken in the same way the interactive path is: it moves
+    // the price with no operation row behind it, so the renewal event meets a
+    // binding that still resolves the original checkout and dead-letters. The
+    // difference is that nobody is watching at 3am on a renewal boundary.
+    if (!basePlanSubscriptionPlanChangeEnabled()) {
+      skippedDisabled += 1;
+      continue;
+    }
     if (!row.provider_subscription_item_id) {
       // Cannot point a line item at a new Price without its id, and taking
       // items[0] would be wrong for any subscription that ever gains a second.
@@ -164,5 +179,6 @@ export async function applyDuePlanChanges(input: {
     failures,
     skipped_no_item: skippedNoItem,
     skipped_unpriceable: skippedUnpriceable,
+    skipped_disabled: skippedDisabled,
   });
 }
