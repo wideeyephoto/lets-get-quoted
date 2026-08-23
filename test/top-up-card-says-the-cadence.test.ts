@@ -145,9 +145,30 @@ describe('the public site does not promise a cadence the price book contradicts'
     .join('\n');
 
   it('says nothing is a one-time top-up while a recurring one is on sale', () => {
-    const anyRecurringSellable = sellable().some((sku) => sku.recurring);
-    expect(anyRecurringSellable, 'no recurring SKU is sellable; this guard is asleep').toBe(true);
-    expect(publicCopy()).not.toContain('one-time top-up');
+    /**
+     * DORMANT ON PURPOSE, AND IT RE-ARMS ITSELF.
+     *
+     * This used to assert `anyRecurringSellable === true` as a guard-is-awake
+     * check, which was right while crew_user was on sale. crew_user was withheld
+     * on 2026-08-23 because nothing in the product can cancel a top-up
+     * subscription, so no recurring SKU is sellable and the copy rule genuinely
+     * does not apply.
+     *
+     * Asserting the premise would now fail for the correct reason; deleting the
+     * test would lose the rule. So it is a CONDITIONAL invariant: the moment any
+     * recurring SKU becomes sellable again the copy check binds, without anybody
+     * remembering to re-enable it.
+     */
+    const recurringOnSale = sellable().filter((sku) => sku.recurring);
+    if (recurringOnSale.length === 0) {
+      // Say it out loud, so a dormant guard is never mistaken for a passing one.
+      expect(sellable().length, 'nothing is sellable at all; that is a different bug').toBeGreaterThan(0);
+      return;
+    }
+    expect(
+      publicCopy(),
+      `${recurringOnSale.map((s) => s.id).join(', ')} is on sale, so the copy must not call top-ups one-time`,
+    ).not.toContain('one-time top-up');
   });
 
   it('keeps the promise the wording was actually there to make', () => {

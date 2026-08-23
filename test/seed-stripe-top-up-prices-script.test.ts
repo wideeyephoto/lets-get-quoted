@@ -61,13 +61,19 @@ describe('the top-up SKU seeder', () => {
       // Every one is priced, published and unsellable, and this list is the
       // single place that decides which -- so it is pinned rather than derived.
       //
-      // crew_user left this list on 2026-08-20. It is the first capacity SKU to
-      // do so, and it went because the rail underneath it closed: 20260819010000
-      // fills the ledger on payment, the capacity lifecycle sweep empties it on
-      // lapse, and `workspace_purchased_capacity_units` counts only `active` and
-      // `past_due` -- all three verified against production before the edit, not
-      // read off a comment. What was actually left was a live Stripe Price.
-      'ai_voice_flex', 'ai_voice_growth', 'ai_voice_solo',
+      // crew_user left this list on 2026-08-20 and came back on 2026-08-23.
+      // Everything the 2026-08-20 note says is still true: 20260819010000 fills
+      // the ledger on payment, the lifecycle sweep empties it on lapse, and
+      // `workspace_purchased_capacity_units` counts only `active` and `past_due`.
+      // Those were FULFILMENT blockers and they are closed.
+      //
+      // What was never on that list is CANCELLATION. crew_user is the only
+      // recurring SKU here, buying one opens a Stripe subscription, and no code
+      // in the product can end it -- every subscription write resolves through
+      // billing_subscriptions, which a top-up subscription never enters. 'Empties
+      // on lapse' is the tell: something reclaims capacity WHEN it lapses, and
+      // nothing lets the contractor make it lapse.
+      'ai_voice_flex', 'ai_voice_growth', 'ai_voice_solo', 'crew_user',
       'office_user', 'storage_100gb', 'voice_minutes_100',
     ]);
     // Both remain in the price book; what is withheld is the sale.

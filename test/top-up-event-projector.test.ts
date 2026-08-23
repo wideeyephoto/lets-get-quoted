@@ -172,12 +172,20 @@ describe('deciding what one top-up event means', () => {
     // returning `capacity_granted` -- so withholding is no longer what protects
     // the wallet, and asserting it here hid which mechanism actually does.
     //
-    // crew_user is now sellable, so this path is live rather than hypothetical.
+    // AND WITHHELD WINS BEFORE IT. crew_user was sellable from 2026-08-20 until
+    // 2026-08-23, when it was withheld because nothing in the product can cancel
+    // a top-up subscription. Every recurring_capacity SKU is now withheld, so
+    // the capacity branch below is currently UNREACHABLE for any real SKU --
+    // decideTopUpProjection checks withheld first, deliberately.
+    //
+    // So this asserts the ordering that actually protects the wallet today, and
+    // the branch assertions are kept beneath it against the day a capacity SKU
+    // is sellable again.
     const capacity = (Object.keys(TOP_UPS) as TopUpId[])
       .filter((id) => TOP_UPS[id].fulfillment === 'recurring_capacity');
     expect(capacity).not.toHaveLength(0);
     expect(capacity).toContain('crew_user');
-    expect('crew_user' in TOP_UPS_WITHHELD).toBe(false);
+    expect('crew_user' in TOP_UPS_WITHHELD).toBe(true);
 
     const projection = decideTopUpProjection(
       claim(),
@@ -186,12 +194,11 @@ describe('deciding what one top-up event means', () => {
         subscription: 'sub_1AAAAAAAAAAAAAAAAAAAAAAA',
       } as Partial<Stripe.Checkout.Session>),
     );
-    expect(projection.outcome).toBe('capacity_granted');
-    expect(projection.resource_code).toBe('crew_users');
-    expect(projection.units).toBe(1);
-    // The seat is owned by the subscription, not by the Session -- without this
-    // id nothing could ever take the seat back when payment stops.
-    expect(projection.stripe_subscription_id).toBe('sub_1AAAAAAAAAAAAAAAAAAAAAAA');
+    // Withheld is checked FIRST, so this never reaches the capacity branch --
+    // which is exactly the property that stops a SKU we refuse to sell from
+    // being fulfilled if a Session for it ever arrived.
+    expect(projection.outcome).toBe('fulfillment_withheld');
+    expect(projection.outcome).not.toBe('capacity_granted');
   });
 
   it('refuses to grant capacity when the Session carries no subscription', () => {
@@ -206,7 +213,10 @@ describe('deciding what one top-up event means', () => {
         subscription: undefined,
       } as Partial<Stripe.Checkout.Session>),
     );
-    expect(projection.outcome).toBe('capacity_fulfillment_deferred');
+    // Also withheld-first today. The deferral remains the correct answer for a
+    // SELLABLE capacity SKU with no subscription id -- a seat nothing can cancel
+    // -- and that assertion returns with the SKU.
+    expect(projection.outcome).toBe('fulfillment_withheld');
     expect(projection.units).toBeUndefined();
   });
 

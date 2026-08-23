@@ -239,12 +239,45 @@ describe('the SKU is sellable, and every reason it was not is closed', () => {
    * rather than delete the block, it now pins the three things that had to
    * become true, each of which was read out of production before this edit.
    */
-  it('lets crew_user be bought', () => {
-    expect(TOP_UPS_WITHHELD).not.toHaveProperty('crew_user');
-    expect(SELLABLE_TOP_UP_IDS).toContain('crew_user');
-    // Guards the guard: an assertion that the list merely CONTAINS something
-    // would still pass if withholding broke open and everything became sellable.
-    expect(SELLABLE_TOP_UP_IDS).toHaveLength(6);
+  /**
+   * AND IT FLIPPED BACK, for a reason that was never on the original list.
+   *
+   * The block above enumerates what had to become true before crew_user could
+   * be sold, and every item is about FULFILMENT: the ledger gained a filler
+   * (20260819010000, fills on payment) and an emptier (the capacity lifecycle
+   * sweep, empties on lapse). All of that is still true. None of it was wrong.
+   *
+   * What the list never contained was CANCELLATION. crew_user is the only
+   * recurring SKU in the catalog — top-up-purchase.ts opens a Stripe
+   * subscription for it via `mode: sku.recurring ? 'subscription' : 'payment'` —
+   * and no code in the product can end one. Every Stripe subscription write
+   * resolves its target through `billing_subscriptions`, which holds the base
+   * plan only: two writes in plan-change, three in subscription-cancellation.
+   * There is no remove-seat control, no admin action, and account deletion
+   * cancels the base plan while leaving this one billing.
+   *
+   * "Empties on lapse" is the tell in hindsight. Something reclaims the capacity
+   * WHEN the subscription lapses; nothing lets the contractor make it lapse.
+   *
+   * So the lesson the comment above draws — that a withheld reason is a claim
+   * about the code and goes stale silently — has a mirror image it did not
+   * anticipate. A SELLABLE decision rests on an enumeration of blockers, and an
+   * enumeration can be incomplete from the day it is written. Nothing went
+   * stale here. The list was short.
+   */
+  it('withholds crew_user again, because nothing can cancel it', () => {
+    expect(TOP_UPS_WITHHELD).toHaveProperty('crew_user');
+    expect(SELLABLE_TOP_UP_IDS).not.toContain('crew_user');
+    // Guards the guard: a bare "does not contain" would still pass if
+    // withholding broke open the other way and nothing were sellable.
+    expect(SELLABLE_TOP_UP_IDS).toHaveLength(5);
+  });
+
+  it('keeps the fulfilment reasons closed, because they genuinely are', () => {
+    // Re-enabling this is a cancel-path problem, not a ledger problem. Whoever
+    // picks it up should not re-litigate what the block above already settled.
+    expect(TOP_UPS_WITHHELD.crew_user).toMatch(/cancel/i);
+    expect(TOP_UPS_WITHHELD.crew_user).not.toMatch(/filler|emptier|ledger/i);
   });
 
   it('still withholds the other two capacity SKUs, each for its own reason', () => {

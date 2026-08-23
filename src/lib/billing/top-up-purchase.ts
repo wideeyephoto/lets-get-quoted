@@ -166,9 +166,17 @@ export const TOP_UP_SUBSCRIPTION_PURPOSE = 'top_up' as const;
 /**
  * Session parameters for one top-up purchase.
  *
- * Storage is the only recurring SKU among those sellable today, so mode is
- * derived from the SKU rather than assumed. Getting that backwards would bill a
- * one-time credit pack every month forever, which a test pins.
+ * Mode is derived from the SKU rather than assumed. Getting it backwards would
+ * bill a one-time credit pack every month forever, which a test pins.
+ *
+ * This used to say "storage is the only recurring SKU among those sellable
+ * today", which was wrong in both directions at once: storage_100gb has been
+ * WITHHELD throughout, and crew_user was sellable and recurring from 2026-08-20.
+ * As of 2026-08-23 NOTHING recurring is sellable — crew_user was withheld
+ * because no code in the product can cancel a top-up subscription — so the
+ * `subscription` branch below is currently unreachable for any real SKU. It
+ * stays because the derivation, not the SKU list, is the thing that must be
+ * right when one returns.
  */
 export function buildTopUpCheckoutParams(
   request: TopUpCheckoutRequest,
