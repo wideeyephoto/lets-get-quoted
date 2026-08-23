@@ -95,10 +95,18 @@ export default function OfficeTeamSection({ team }: { team: OfficeTeam }) {
 
   return (
     <div className="office-team">
+      {/* THIS PARAGRAPH SAID AN INVITATION GRANTED NOTHING.
+          It granted read, write and DELETE on clients and jobs as well as leads,
+          because RLS honours the capability table and the dashboard is not the
+          boundary — the anon key ships to the browser, so an office user's own
+          session token reaches PostgREST directly. Migration 20260823140000 took
+          the clients and jobs capabilities back, because neither page works for
+          an office user anyway. What is left is real, and is what this now
+          describes. Say what the seat grants; do not round it to zero. */}
       <p className="office-team-state">
-        Office users can be invited and will be connected to your business.{' '}
-        <strong>They can&apos;t open anything yet</strong> — what they&apos;re allowed to see is
-        still being built, so for now an invitation connects an account and nothing more.
+        An office user gets your <strong>leads board</strong>: they can see every lead,
+        reply, triage and edit it. That is the whole of it for now — they cannot open
+        clients, jobs, invoices or payments, and they cannot see billing or settings.
       </p>
 
       <div className="office-team-seats">
