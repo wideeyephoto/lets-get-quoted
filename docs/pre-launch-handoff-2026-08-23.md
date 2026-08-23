@@ -31,36 +31,43 @@ While it was live it called
 card is charged immediately — and then every event for that subscription fails
 to project, permanently.
 
-**The SQL half is done and applied** (`ea92ed3d`, migration `20260823120000`),
-verified 13/13 on a real PostgreSQL 17. It is **inert**: nothing writes the new
-`base_plan_plan_change` purpose yet, so both relaxations evaluate exactly as
-before.
+**The operation is now gated too** (`78a87549`).
+`LGQ_BASE_PLAN_SUBSCRIPTION_PLAN_CHANGE_ENABLED`, default 0, checked in
+`changeBasePlan` ahead of the subscription read. Withholding the panel hid the
+button and not the endpoint: `ChangePlanPanel` is still imported by
+`PlanUsageSection`, so `plan-change-actions.ts` is still compiled and its
+server-action IDs are still POST-able by any authenticated owner. Same shape as
+the cancellation flag that did not bite. Targeting Flex and
+`clearScheduledPlanChange` stay ungated on purpose; the renewal worker skips due
+rows and leaves them pending.
 
-**What remains is the TypeScript half.** The full design, field contract and the
-ordering trap are in
-[plan-change-fix-design.md](plan-change-fix-design.md). The short version:
+**"What remains is the TypeScript half" was wrong**, and
+[plan-change-fix-design.md](plan-change-fix-design.md) has been rewritten. There
+is no TypeScript-only path: writes to
+`billing_subscription_checkout_operations` are revoked from `service_role`, and
+both functions that could record a consent acceptance are hard-gated to an
+active Flex workspace — `claim_stripe_billing_subscription_checkout` raises
+`0A000` "existing subscription history requires the future plan-change flow".
 
-1. Capture fresh recurring consent in `ChangePlanPanel`, mirroring
-   `BasePlanSubscriptionCheckout`. Not optional — `recurring_consent_acceptance_id`
-   is NOT NULL and UNIQUE, so the schema makes consent single-use, and the
-   customer is agreeing to a *different* recurring amount.
-2. **Write the operation row BEFORE calling Stripe.** A webhook can arrive before
-   `subscriptions.update()` returns; a row written afterwards leaves the projector
-   meeting an event with no operation to bind, which dead-letters it — the same
-   bug from the other side. Writing first and letting Stripe fail leaves an
-   orphaned row that is harmless.
-3. Put the new `lgq_operation_id` in the subscription metadata, or the binding
-   looks up the original checkout.
-4. `assertMetadataMatchesPrice` is vacuous — all three comparisons are a value
-   against itself. Dead guard, not an open hole (the real check is upstream), but
-   the file's header rests its safety argument on it.
+Worse, the earlier field contract said `state: 'activated'`, which would have
+opened the projector's entitlement gate on the first
+`customer.subscription.updated` — provisioning the new plan **before** the
+proration was paid. The obvious alternative, `'indeterminate'`, freezes grace,
+restriction and cancel-to-Flex for the whole window. **The real blocker is that
+the projector requires a `checkout_session_id` and a `subscriptions.update` has
+none.** That question decides the whole shape and is not yet answered; see the
+note.
 
-**The end-to-end test is what should gate turning the panel back on** — not the
+`assertMetadataMatchesPrice` was the one item that could be closed alone, and it
+is: deleted in `78a87549`. It compared three values the lookup key and a shared
+import had already forced equal, and its unit tests passed hand-built
+disagreeing pairs — proving the function worked while proving nothing about the
+call site. The check that does read Stripe is `validatePrice` inside
+`loadVerifiedStripePlanPrices`.
+
+**The end-to-end test is what should gate turning the flag on** — not the
 migration and not the design note. The PG17 harness covers the text edit only and
 says so.
-
-Until then the safest state is a gated panel and upgrades by hand. There are no
-real customers, so that costs nothing.
 
 ---
 
@@ -139,6 +146,27 @@ export PATH="$PWD/node_modules/@embedded-postgres/windows-x64/native/bin:$PATH"
 read production, and drive the authenticated Chrome browser for Vercel.
 
 **Never:** type an API token or signing key into a form field.
+
+---
+
+## Found 2026-08-23, unrelated to plan change, not yet fixed
+
+**The one paid subscription in production will terminally dead-letter its next
+renewal.** Read from the Stripe API: `sub_1U5hxLPqTgiW6iRM2f12RKn0` carries
+`lgq_catalog_version: "2026-08-15-preview"`, while `PRICING_CATALOG_VERSION` is
+`"2026-08-18-preview"`. `exactMetadata` demands exact equality, returns null,
+and reaches `fail('provider_object_contract_mismatch')` — `fail` defaults
+`retryable = false`, so it lands `failed_terminal` on attempt 1. The renewal on
+2026-09-18 will not project.
+
+The catalog bump moved the code and did not move the metadata already written on
+live subscriptions. Anything that bumps `PRICING_CATALOG_VERSION` again needs a
+backfill of Stripe-side metadata, or the same thing happens to every subscription
+sold before the bump.
+
+That row is a *sandbox rehearsal*, not a customer — every id carries the
+`PqTgiW6iRM` suffix of `acct_1TtDcSPqTgiW6iRM`, and Preview writes to the
+production database. So it costs nothing today. It would not have, later.
 
 ---
 
