@@ -18,6 +18,7 @@ import { redirect } from 'next/navigation';
 import { createAdminClient, requireOwnerContext } from '@/lib/auth';
 import { loadBusinessName } from '@/lib/business-name';
 import { checkRateLimit } from '@/lib/rate-limit';
+import { AiDraftsExhaustedError } from '@/lib/ai-model-call';
 import { draftQuote, loadDraftContext } from '@/lib/quote-draft-ai';
 import { draftConfidenceNote, draftToQuoteItems, draftTotal, type SerializedDraft } from '@/lib/quote-draft';
 import {
@@ -1422,7 +1423,7 @@ export async function reviewQuoteAction(
 
 export async function draftQuoteAction(jobId: string): Promise<
   | { ok: true; draft: SerializedDraft }
-  | { ok: false; reason: 'no-scope' | 'unavailable' | 'busy'; message: string }
+  | { ok: false; reason: 'no-scope' | 'unavailable' | 'busy' | 'exhausted'; message: string }
 > {
   const { supabase, accountId } = await requireOwnerContext();
 
@@ -1443,7 +1444,15 @@ export async function draftQuoteAction(jobId: string): Promise<
     };
   }
 
-  const draft = await draftQuote(context);
+  let draft = null;
+  try {
+    draft = await draftQuote(context);
+  } catch (error) {
+    if (error instanceof AiDraftsExhaustedError) {
+      return { ok: false, reason: 'exhausted', message: error.message };
+    }
+    return { ok: false, reason: 'unavailable', message: 'Could not draft a quote just now. Try again in a moment.' };
+  }
   if (!draft) {
     return { ok: false, reason: 'unavailable', message: 'Could not draft a quote just now. Try again in a moment.' };
   }

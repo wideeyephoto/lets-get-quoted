@@ -10,7 +10,7 @@
 // something different on a photo of a wall than on a photo of a roof.
 
 import { reconcileDraft, type PriceBookEntry, type QuoteDraft, type RawDraft } from '@/lib/quote-draft';
-import { callModel } from '@/lib/ai-model-call';
+import { callModel, AiDraftsExhaustedError } from '@/lib/ai-model-call';
 
 export type ChangeOrderDraftContext = {
   /** Whose AI-writing balance this draft is charged to. */
@@ -111,6 +111,7 @@ export async function draftChangeOrder(context: ChangeOrderDraftContext): Promis
       scope: String(raw?.scope ?? '').trim().slice(0, 2000),
     };
   } catch (error) {
+    if (error instanceof AiDraftsExhaustedError) throw error;
     console.error('Change order draft failed:', error instanceof Error ? error.message : error);
     return null;
   }

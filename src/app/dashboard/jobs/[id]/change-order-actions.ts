@@ -8,6 +8,7 @@ import { listServices } from '@/lib/services';
 import { getSiteContent } from '@/lib/site-content';
 import { createJobFeedEvent } from '@/lib/job-feed';
 import { draftChangeOrder } from '@/lib/change-order-ai';
+import { AiDraftsExhaustedError } from '@/lib/ai-model-call';
 import { draftConfidenceNote, draftToQuoteItems, type SerializedDraft } from '@/lib/quote-draft';
 import { marginImpact, changeOrderTotal, type MarginImpact } from '@/lib/change-orders';
 import {
@@ -68,20 +69,28 @@ export async function draftChangeOrderAction(
     }
   }
 
-  const draft = await draftChangeOrder({
-    accountId,
-    trade: getSiteContent(site?.content as Record<string, unknown> | null).trade.trim() || null,
-    jobScope: job.scope ?? '',
-    fieldNote: order.fieldNote,
-    photos,
-    services: services.map((service) => ({
-      id: service.id,
-      name: service.name,
-      unitPrice: Number(service.unit_price) || 0,
-      unit: service.unit,
-      description: service.description,
-    })),
-  });
+  let draft = null;
+  try {
+    draft = await draftChangeOrder({
+      accountId,
+      trade: getSiteContent(site?.content as Record<string, unknown> | null).trade.trim() || null,
+      jobScope: job.scope ?? '',
+      fieldNote: order.fieldNote,
+      photos,
+      services: services.map((service) => ({
+        id: service.id,
+        name: service.name,
+        unitPrice: Number(service.unit_price) || 0,
+        unit: service.unit,
+        description: service.description,
+      })),
+    });
+  } catch (error) {
+    if (error instanceof AiDraftsExhaustedError) {
+      return { ok: false, message: error.message };
+    }
+    return { ok: false, message: 'Could not draft that just now. Try again in a moment.' };
+  }
   if (!draft) return { ok: false, message: 'Could not draft that just now. Try again in a moment.' };
 
   return {

@@ -2,7 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { listServices } from '@/lib/services';
 import { parseQuoteItems } from '@/lib/jobs';
 import { getSiteContent } from '@/lib/site-content';
-import { callModel } from '@/lib/ai-model-call';
+import { callModel, AiDraftsExhaustedError } from '@/lib/ai-model-call';
 import {
   formatPriceBook, formatQuoteHistory, reconcileDraft, MAX_DRAFT_LINES, MAX_HISTORY_JOBS,
   type HistoricalQuote, type PriceBookEntry, type QuoteDraft, type RawDraft,
@@ -162,6 +162,7 @@ export async function draftQuote(context: DraftContext): Promise<QuoteDraft | nu
     const raw = JSON.parse(extractOutputText(await response.json())) as RawDraft;
     return reconcileDraft(raw, context.services);
   } catch (error) {
+    if (error instanceof AiDraftsExhaustedError) throw error;
     console.error('Quote draft failed:', error instanceof Error ? error.message : error);
     return null;
   }

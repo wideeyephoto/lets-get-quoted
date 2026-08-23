@@ -12,6 +12,7 @@ import { pickBlogCover } from '@/app/dashboard/sites/actions';
 // buildCalendarView — see lib/marketing-calendar-data.
 import { BEATS, climateZoneForState, stateFromAddress, type Channel } from '@/lib/marketing-calendar';
 import { draftMarketing, type MarketingDraft } from '@/lib/marketing-draft';
+import { AiDraftsExhaustedError } from '@/lib/ai-model-call';
 import { campaignDraftForBeat, type CampaignDraft } from '@/lib/marketing-draft-data';
 import { sendCampaign } from '@/lib/campaigns';
 import { type CampaignAudience, type CampaignChannel } from '@/lib/campaign-audiences';
@@ -83,17 +84,28 @@ export async function draftMarketingAction(
   const content = getSiteContent(site?.content as Record<string, unknown> | null);
   const zone = climateZoneForState(stateFromAddress((account?.mailing_address as string | null) ?? site?.service_area ?? null));
 
-  const draft = await draftMarketing({
-    accountId,
-    beat,
-    channel,
-    businessName: pickBusinessName(site, account, 'your business'),
-    trade: content.trade.trim() || null,
-    zone,
-    monthName: new Date().toLocaleString('en-US', { month: 'long' }),
-    year: new Date().getFullYear(),
-    serviceArea: (site?.service_area as string | null) ?? null,
-  });
+  let draft = null;
+  try {
+    draft = await draftMarketing({
+      accountId,
+      beat,
+      channel,
+      businessName: pickBusinessName(site, account, 'your business'),
+      trade: content.trade.trim() || null,
+      zone,
+      monthName: new Date().toLocaleString('en-US', { month: 'long' }),
+      year: new Date().getFullYear(),
+      serviceArea: (site?.service_area as string | null) ?? null,
+    });
+  } catch (error) {
+    if (error instanceof AiDraftsExhaustedError) {
+      return { ok: false, message: error.message };
+    }
+    return {
+      ok: false,
+      message: 'Could not draft that just now — either the writer is unavailable, or what came back read like junk mail and was thrown out. Try again.',
+    };
+  }
 
   if (!draft) {
     return {

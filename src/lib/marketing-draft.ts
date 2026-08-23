@@ -8,7 +8,7 @@
 // Everything it produces is a draft. Nothing here sends.
 
 import type { Beat, Channel, ClimateZone } from '@/lib/marketing-calendar';
-import { callModel } from '@/lib/ai-model-call';
+import { callModel, AiDraftsExhaustedError } from '@/lib/ai-model-call';
 
 export type MarketingDraft = {
   subject: string;
@@ -176,6 +176,7 @@ export async function draftMarketing(input: DraftInput): Promise<MarketingDraft 
     if (!response.ok) throw new Error(`OpenAI request failed: ${response.status}`);
     return normalizeMarketingDraft(JSON.parse(extractOutputText(await response.json())), input.year);
   } catch (error) {
+    if (error instanceof AiDraftsExhaustedError) throw error;
     console.error('Marketing draft failed:', error instanceof Error ? error.message : error);
     return null;
   }
