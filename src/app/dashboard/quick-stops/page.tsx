@@ -1,4 +1,4 @@
-import { requireOwnerContext, createAdminClient } from '@/lib/auth';
+import { requireOfficeContext, createAdminClient } from '@/lib/auth';
 import { listQuickStopRequests } from '@/lib/quick-stop-requests';
 import { sweepQuickStopOffers } from '@/lib/quick-stop-sweep';
 import { quickStopSettingsFromAccount, QUICK_STOP_SETTINGS_COLUMNS, QUICK_STOP_TERMINAL_STATUSES } from '@/lib/quick-stop';
@@ -71,7 +71,7 @@ export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Quick Stops' };
 
 export default async function QuickStopsPage({ searchParams }: { searchParams: { tab?: string } }) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('schedule.write');
 
   // Lazy expiry so the queue is current even between cron runs (releases lapsed
   // payment holds, closes unanswered requests). Best-effort — never blocks render.

@@ -59,6 +59,7 @@ describe('what an office user may open', () => {
       '/dashboard/settings',
       '/dashboard/automations',
       '/dashboard/sites',
+      '/dashboard/quick-stops',
     ]);
   });
 

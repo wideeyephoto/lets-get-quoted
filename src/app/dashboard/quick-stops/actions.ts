@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { requireOwnerContext, createAdminClient } from '@/lib/auth';
+import { requireOfficeContext, createAdminClient } from '@/lib/auth';
 import { createJob } from '@/lib/jobs';
 import { sendQuickStopStatusSms } from '@/lib/sms';
 import { resolveQuickStopCancellation } from '@/lib/quick-stop-refunds';
@@ -22,7 +22,7 @@ const DAY_OCCUPYING = ['contractor_offer_sent', 'awaiting_customer_payment', 'co
 
 // Contractor declines a request outright. Terminal.
 export async function declineQuickStopAction(requestId: string, formData: FormData) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('schedule.write');
   const request = await getQuickStopRequest(supabase, accountId, requestId);
   if (!request) throw new Error('Request not found.');
   const reason = (formData.get('reason') ?? '').toString().trim() || null;
@@ -43,7 +43,7 @@ export async function declineQuickStopAction(requestId: string, formData: FormDa
 
 // Contractor asks the customer for more information before deciding.
 export async function requestMoreInfoQuickStopAction(requestId: string, formData: FormData) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('schedule.write');
   const request = await getQuickStopRequest(supabase, accountId, requestId);
   if (!request) throw new Error('Request not found.');
   const note = (formData.get('note') ?? '').toString().trim() || null;
@@ -68,7 +68,7 @@ export async function requestMoreInfoQuickStopAction(requestId: string, formData
 // an unconfirmed Quick Stop) and is what the payment attaches to. Payment link +
 // customer SMS + the transition to awaiting_customer_payment are added in M5.
 export async function createQuickStopOfferAction(requestId: string, formData: FormData) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('schedule.write');
   const request = await getQuickStopRequest(supabase, accountId, requestId);
   if (!request) throw new Error('Request not found.');
   if (!OFFERABLE.includes(request.status)) throw new Error('This request can no longer be offered.');
@@ -193,7 +193,7 @@ export async function createQuickStopOfferAction(requestId: string, formData: Fo
 
 // Contractor is heading over. Notifies the customer.
 export async function markEnRouteQuickStopAction(requestId: string) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('schedule.write');
   const req = await getQuickStopRequest(supabase, accountId, requestId);
   if (!req) throw new Error('Request not found.');
   const nowIso = new Date().toISOString();
@@ -220,7 +220,7 @@ export async function markEnRouteQuickStopAction(requestId: string) {
 // location. Notifies the customer. The window can't be silently extended: this
 // is the honest arrival marker used by the no-show logic.
 export async function markArrivedQuickStopAction(requestId: string, formData: FormData) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('schedule.write');
   const req = await getQuickStopRequest(supabase, accountId, requestId);
   if (!req) throw new Error('Request not found.');
   const lat = Number(formData.get('lat'));
@@ -253,7 +253,7 @@ export async function markArrivedQuickStopAction(requestId: string, formData: Fo
 
 // Visit done → completes the Quick Stop and its job.
 export async function completeQuickStopAction(requestId: string) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('schedule.write');
   const req = await getQuickStopRequest(supabase, accountId, requestId);
   if (!req) throw new Error('Request not found.');
   const nowIso = new Date().toISOString();
@@ -274,7 +274,7 @@ export async function completeQuickStopAction(requestId: string) {
 
 // Contractor cancels a confirmed Quick Stop → full refund to the customer.
 export async function cancelQuickStopByContractorAction(requestId: string, formData: FormData) {
-  const { accountId } = await requireOwnerContext();
+  const { accountId } = await requireOfficeContext('schedule.write');
   const reason = (formData.get('reason') ?? '').toString().trim() || null;
   await resolveQuickStopCancellation(createAdminClient(), accountId, requestId, { kind: 'contractor_cancel', reason });
   revalidatePath('/dashboard/quick-stops');
@@ -291,7 +291,7 @@ const APP_ORIGIN = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').
 // takes effect once the customer accepts (no silent extension). Validated the
 // same way as the original offer window.
 export async function proposeRevisedWindowQuickStopAction(requestId: string, formData: FormData) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('schedule.write');
   const req = await getQuickStopRequest(supabase, accountId, requestId);
   if (!req) throw new Error('Request not found.');
   if (!['confirmed', 'en_route'].includes(req.status)) throw new Error('You can only propose a new window on a confirmed Quick Stop.');
@@ -332,7 +332,7 @@ export async function proposeRevisedWindowQuickStopAction(requestId: string, for
 // customer must approve applying the Quick Stop fee as a deposit + any extra
 // charge before it takes effect (the contractor can't convert unilaterally).
 export async function proposeDiagnosticConversionAction(requestId: string, formData: FormData) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('schedule.write');
   const req = await getQuickStopRequest(supabase, accountId, requestId);
   if (!req) throw new Error('Request not found.');
   if (!['confirmed', 'en_route', 'arrived'].includes(req.status)) throw new Error('You can only convert a live Quick Stop.');
@@ -381,7 +381,7 @@ function zoneNumber(form: FormData, field: string, max: number): number {
 }
 
 export async function addQuickStopAreaAction(formData: FormData) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('schedule.write');
 
   const place = String(formData.get('place') ?? '').trim();
   if (!place) throw new Error('Type a city or ZIP code.');
@@ -422,7 +422,7 @@ export async function addQuickStopAreaAction(formData: FormData) {
 
 /** Change how far a saved area is worth driving, without re-finding the place. */
 export async function updateQuickStopAreaDetourAction(id: string, formData: FormData) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('schedule.write');
   const maxDetourMiles = zoneNumber(formData, 'maxDetourMiles', 500);
 
   const { error } = await supabase
@@ -436,7 +436,7 @@ export async function updateQuickStopAreaDetourAction(id: string, formData: Form
 }
 
 export async function deleteQuickStopZoneAction(id: string) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('schedule.write');
   const { error } = await supabase
     .from('quick_stop_priority_zones')
     .delete()

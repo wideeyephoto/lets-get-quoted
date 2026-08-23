@@ -141,6 +141,11 @@ export const OFFICE_ROUTES: readonly OfficeRoute[] = Object.freeze([
     label: 'Website',
     requires: Object.freeze(['settings.write']),
   }),
+  Object.freeze({
+    href: '/dashboard/quick-stops',
+    label: 'Quick Stops',
+    requires: Object.freeze(['schedule.write', 'jobs.read']),
+  }),
 ]);
 
 /** Where an office user goes when they hold nothing. */
