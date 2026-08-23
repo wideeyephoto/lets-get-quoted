@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { createAdminClient, requireOwnerContext } from '@/lib/auth';
+import { createAdminClient, requireOfficeContext, requireOwnerContext } from '@/lib/auth';
 import { cancelSubscriptionForAccountDeletion, loadCancellableSubscription } from '@/lib/billing/subscription-cancellation';
 import { updateSite } from '@/lib/sites';
 import {
@@ -76,7 +76,7 @@ function parseScheduleDayHours(value: FormDataEntryValue | null): number {
 // fields the Website Builder Setup tab edits — so this and the builder always
 // mirror. Company name is a column; trade + ZIP live in the content JSON.
 export async function updateBusinessBasicsAction(formData: FormData) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('settings.write');
   const { data: site } = await supabase
     .from('sites')
     .select('id, company_name, content')
@@ -103,7 +103,7 @@ export async function updateBusinessBasicsAction(formData: FormData) {
  * time costs the business, and the margin below which the owner wants telling.
  */
 export async function setJobCostingAction(input: { burdenPct: number; minMarginPct: number }) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('settings.write');
   // Clamped here rather than trusted from the client: a server action is a
   // public endpoint, so "the caller" is not the form.
   const pct = (value: unknown, max: number): number => {
@@ -151,7 +151,7 @@ export async function updateIntakeContentAction(input: {
   formHeading?: string;
   emailRequired?: boolean;
 }) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('settings.write');
   const { data: site } = await supabase
     .from('sites')
     .select('id, content')
@@ -200,7 +200,7 @@ export async function updateIntakeContentAction(input: {
  * because a setting was toggled is a change to their site they didn't make.
  */
 export async function toggleClientPortalAction(next: boolean) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('settings.write');
   const { error } = await supabase
     .from('accounts')
     .update({ client_portal_enabled: next })
@@ -246,7 +246,7 @@ export async function toggleClientPortalAction(next: boolean) {
  * other site-content actions on this page.
  */
 export async function updatePortalLinkAction(input: { navEnabled: boolean; navLabel: string }) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('settings.write');
   const { data: site } = await supabase
     .from('sites')
     .select('id, content')
@@ -282,7 +282,7 @@ export async function updatePortalLinkAction(input: { navEnabled: boolean; navLa
 }
 
 export async function updateScheduleDayHoursAction(formData: FormData) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('settings.write');
   const scheduleDayHours = parseScheduleDayHours(formData.get('scheduleDayHours'));
   const workdayStart = normalizeWorkdayTime(formData.get('workdayStart'), DEFAULT_WORKDAY_START);
   const workdayEnd = normalizeWorkdayTime(formData.get('workdayEnd'), DEFAULT_WORKDAY_END);
@@ -311,7 +311,7 @@ export async function updateScheduleDayHoursAction(formData: FormData) {
 // that automation's own column, so it can never clobber the rest of the card's
 // settings the way re-submitting a partial form would.
 export async function toggleAutomationAction(key: AutomationKey, next: boolean) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('settings.write');
   if (!isAutomationKey(key)) throw new Error('Unknown automation.');
   // Turning off must always remain possible. Turning on an automation that can
   // originate customer SMS requires the same exact inventory evidence as a
@@ -344,7 +344,7 @@ export async function toggleAutomationAction(key: AutomationKey, next: boolean) 
 // with no configuration — review asks, quote follow-ups, appointment reminders,
 // and the daily digest. Each still has its own card to tune or turn back off.
 export async function enableRecommendedAutomationsAction() {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('settings.write');
   // Three of the four recommended switches originate customer texts. Without
   // a prepared/on split in the current schema, reject the whole atomic preset
   // rather than claiming those automations are active while delivery is dark.
@@ -377,7 +377,7 @@ export async function enableRecommendedAutomationsAction() {
  * prevent.
  */
 export async function updateMissedCallNumbersAction(input: { forward: string; tracking: string }) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('settings.write');
   const forward = normalizeUsPhone(String(input.forward ?? '')) || null;
   const tracking = normalizeUsPhone(String(input.tracking ?? '')) || null;
 
@@ -410,7 +410,7 @@ export async function updateMissedCallNumbersAction(input: { forward: string; tr
  * would put the switch straight back on the next save.
  */
 export async function setReviewFeedbackPageAction(next: boolean) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('settings.write');
   const { error } = await supabase
     .from('accounts')
     .update({ review_feedback_page_enabled: next })
@@ -435,7 +435,7 @@ export async function setReviewFeedbackPageAction(next: boolean) {
  * columns whose inputs this form actually renders.
  */
 export async function updateIntakeSettingsAction(formData: FormData) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('settings.write');
   const estimatePosture = normalizeEstimatePosture(formData.get('estimatePosture'));
   const thresholdRaw = Number(formData.get('highValueLeadAmount'));
   const highValueLeadAmount = Number.isFinite(thresholdRaw) && thresholdRaw > 0 ? Math.round(thresholdRaw) : null;
@@ -457,7 +457,7 @@ export async function updateIntakeSettingsAction(formData: FormData) {
 }
 
 export async function updateBookingAvailabilityAction(formData: FormData) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('settings.write');
   const timezone = normalizeTimezone(formData.get('timezone'));
   const weekdays = normalizeBookingWeekdays(formData.getAll('bookingWeekday').map(String));
   const windowTimes = normalizeBookingWindowTimes(formData.getAll('bookingWindow').map(String));
@@ -506,7 +506,7 @@ export async function updateBookingAvailabilityAction(formData: FormData) {
 // it a column-shaped row) so the same clamps/guards used everywhere apply here,
 // then writes the account columns. Fees arrive in dollars, stored in cents.
 export async function updateQuickStopSettingsAction(formData: FormData) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('settings.write');
 
   const s = quickStopSettingsFromAccount({
     extra_stop_enabled: formData.get('quickStopEnabled') === 'on',
@@ -591,7 +591,7 @@ export async function updateQuickStopSettingsAction(formData: FormData) {
 }
 
 export async function updateDepositSettingsAction(formData: FormData) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('settings.write');
   const depositOnApproval = formData.get('depositOnApproval') === 'on';
   const percentRaw = Number(formData.get('depositPercent'));
   const depositPercent = Number.isFinite(percentRaw) ? Math.min(100, Math.max(1, Math.round(percentRaw * 100) / 100)) : 25;
@@ -624,7 +624,7 @@ export async function updateDepositSettingsAction(formData: FormData) {
 // only the fallback, which is what keeps every existing account exactly where
 // it was until somebody fills the new field in.
 export async function updateBusinessAddressesAction(formData: FormData) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('settings.write');
   // The fields are autocompletes now, which yield one line. Older values were
   // typed into a textarea and can carry newlines; collapse them so the footer
   // renders on one line and the geocoder gets a clean single-line query.
@@ -666,7 +666,7 @@ export async function updateBusinessAddressesAction(formData: FormData) {
  * now, and this form owns the schedule instead.
  */
 export async function updateReminderSettingsAction(formData: FormData) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('settings.write');
 
   const { error } = await supabase
     .from('accounts')
@@ -695,7 +695,7 @@ export async function updateReminderSettingsAction(formData: FormData) {
  * so this proves the actual message, not a rehearsal of it.
  */
 export async function sendReminderTestAction() {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('settings.write');
   const admin = createAdminClient();
 
   const ownerEmail = await getAccountOwnerEmail(admin, accountId);
@@ -735,7 +735,7 @@ export async function sendReminderTestAction() {
  * owner meant.
  */
 export async function updateFollowupSettingsAction(formData: FormData) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('settings.write');
 
   const days = ['followupDay1', 'followupDay2', 'followupDay3']
     .map((field) => formData.get(field))
@@ -775,7 +775,7 @@ export async function updateFollowupSettingsAction(formData: FormData) {
 export async function updateChoiceReminderSettingsAction(
   formData: FormData,
 ): Promise<{ ok: boolean; message?: string }> {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('settings.write');
 
   const offsets = ['choiceOffset1', 'choiceOffset2', 'choiceOffset3']
     .map((field) => formData.get(field))
@@ -835,7 +835,7 @@ export async function updateChoiceReminderSettingsAction(
  * contractor their customers are getting something they are not.
  */
 export async function sendChoiceReminderTestAction(): Promise<{ ok: boolean; message: string }> {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('settings.write');
   const admin = createAdminClient();
 
   const ownerEmail = await getAccountOwnerEmail(admin, accountId);
@@ -882,7 +882,7 @@ export async function sendChoiceReminderTestAction(): Promise<{ ok: boolean; mes
  * proves the actual message rather than a rehearsal of it.
  */
 export async function sendFollowupTestAction() {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('settings.write');
   const admin = createAdminClient();
 
   const ownerEmail = await getAccountOwnerEmail(admin, accountId);
@@ -918,7 +918,7 @@ export async function sendFollowupTestAction() {
 // it looks like without waiting for the cron. Throws (surfacing the reason) if
 // there's no email on file or the send fails.
 export async function sendTestDigestAction() {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('settings.write');
   const result = await sendTestDigest(supabase, accountId);
   if (!result.ok) throw new Error(result.message);
   revalidatePath('/dashboard/settings');
@@ -1002,7 +1002,7 @@ const QUICK_STOP_TOGGLE_SOURCE: Record<string, string> = {
 };
 
 export async function setQuickStopEnabledAction(enabled: boolean, source = 'plan_my_day') {
-  const { supabase, accountId, userEmail } = await requireOwnerContext();
+  const { supabase, accountId, userEmail } = await requireOfficeContext('settings.write');
 
   const { error } = await supabase.from('accounts').update({ extra_stop_enabled: enabled }).eq('id', accountId);
   if (error) throw new Error(error.message);
@@ -1040,7 +1040,7 @@ export async function setQuickStopEnabledAction(enabled: boolean, source = 'plan
  * account into nonsense.
  */
 export async function updateArrivalWindowAction(minutes: number): Promise<void> {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('settings.write');
 
   const chosen = (ARRIVAL_WINDOW_CHOICES as readonly number[]).includes(Math.round(minutes))
     ? Math.round(minutes)
@@ -1060,7 +1060,7 @@ export async function updateArrivalWindowAction(minutes: number): Promise<void> 
 // decisions about different things — one is a send, one is job costing — and
 // putting them beside the window width made a simple screen look complicated.
 export async function updateArrivalExtrasAction(formData: FormData) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('settings.write');
 
   const { error } = await supabase
     .from('accounts')
@@ -1086,7 +1086,7 @@ export async function updateArrivalExtrasAction(formData: FormData) {
  * sales tax — and none of those deserve an error page.
  */
 export async function syncQuickBooksAction() {
-  const { accountId } = await requireOwnerContext();
+  const { accountId } = await requireOfficeContext('settings.write');
   const summary = await syncAccount(accountId);
   revalidatePath('/dashboard/settings');
   redirect(`/dashboard/settings?quickbooks=${summary.ok ? 'synced' : 'sync-failed'}#quickbooks`);
@@ -1104,7 +1104,7 @@ export async function syncQuickBooksAction() {
  * take it back out.
  */
 export async function backfillQuickBooksAction() {
-  const { accountId } = await requireOwnerContext();
+  const { accountId } = await requireOfficeContext('settings.write');
   const summary = await backfillAccount(accountId);
   revalidatePath('/dashboard/settings');
   redirect(`/dashboard/settings?quickbooks=${summary.ok ? 'synced' : 'sync-failed'}#quickbooks`);
@@ -1118,7 +1118,7 @@ export async function backfillQuickBooksAction() {
  * leave a current certificate that stops going out on the old date.
  */
 export async function updateInsuranceAction(formData: FormData) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('settings.write');
 
   const text = (key: string, max: number): string | null => {
     const value = (formData.get(key) ?? '').toString().trim();
@@ -1166,7 +1166,7 @@ export async function updateInsuranceAction(formData: FormData) {
 
 /** Take the certificate down. Quotes stop carrying it immediately. */
 export async function removeInsuranceAction() {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('settings.write');
   const { data } = await supabase.from('accounts').select('insurance_path').eq('id', accountId).maybeSingle();
   await deleteInsuranceProof(accountId, (data as { insurance_path?: string | null } | null)?.insurance_path ?? null);
   await supabase
@@ -1190,7 +1190,7 @@ export async function removeInsuranceAction() {
  * server-side at the moment of the write — see lib/quote-options.
  */
 export async function setClientQuoteChangesAction(next: boolean) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('settings.write');
 
   const { error } = await supabase
     .from('accounts')

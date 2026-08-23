@@ -56,6 +56,7 @@ describe('what an office user may open', () => {
       '/dashboard/cash-flow',
       '/dashboard/reports',
       '/dashboard/insights',
+      '/dashboard/settings',
     ]);
   });
 
@@ -111,10 +112,10 @@ describe('matching a path to a route', () => {
   it('returns null for everything not on the list', () => {
     for (const path of [
       '/dashboard',
-      '/dashboard/settings',
       '/dashboard/payroll',
       '/dashboard/sites',
       '/dashboard/automations',
+      '/dashboard/integrations',
     ]) {
       expect(officeRouteFor(path), path).toBeNull();
     }
@@ -153,9 +154,9 @@ describe('deciding whether this person may open this path', () => {
 
   it('refuses a path that is not on the list even to somebody holding everything', () => {
     // The map is an allowlist, not a filter over capabilities. Holding every
-    // capability in the catalog still does not open Settings.
-    expect(officeCanOpen('/dashboard/settings', OFFICE_CAPABILITY_KEYS)).toBe(false);
+    // capability in the catalog still does not open unmapped pages.
     expect(officeCanOpen('/dashboard/payroll', OFFICE_CAPABILITY_KEYS)).toBe(false);
+    expect(officeCanOpen('/dashboard/integrations', OFFICE_CAPABILITY_KEYS)).toBe(false);
   });
 
   it('refuses everything to somebody holding nothing', () => {

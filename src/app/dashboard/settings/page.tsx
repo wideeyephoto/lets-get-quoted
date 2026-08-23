@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { createAdminClient, requireOwnerContext } from '@/lib/auth';
+import { createAdminClient, requireOfficeContext } from '@/lib/auth';
 import { loadOfficeTeam } from '@/lib/office-team';
 import { loadOverageSummary } from '@/lib/billing/overage-summary';
 import { overageSelfServeEnabled } from '@/lib/billing/overage-authorization';
@@ -73,7 +73,7 @@ export default async function SettingsPage({
     billing?: string;
   };
 }) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('settings.write');
   const pricingDashboardEnabled = planUsageDashboardEnabled();
   const subscriptionCheckoutEnabled = basePlanSubscriptionCheckoutEnabled();
   const topUpPurchaseCheckoutEnabled = topUpPurchaseEnabled();

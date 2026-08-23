@@ -112,7 +112,7 @@ describe('the action and the page keep the token to themselves', () => {
   it('goes through the session client, so the RPC checks the caller', () => {
     const actions = read('src', 'app', 'dashboard', 'settings', 'office-team-actions.ts');
     expect(actions).not.toContain('createAdminClient');
-    expect(actions).toContain('requireOwnerContext');
+    expect(actions).toContain('requireOfficeContext');
   });
 
   it('hashes on the server before anything reaches the database', () => {

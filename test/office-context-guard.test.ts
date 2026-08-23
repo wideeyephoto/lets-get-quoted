@@ -355,6 +355,9 @@ describe('the wiring, as source', () => {
       'src/app/dashboard/schedule/weather-actions.ts',
       'src/app/dashboard/services/actions.ts',
       'src/app/dashboard/services/page.tsx',
+      'src/app/dashboard/settings/actions.ts',
+      'src/app/dashboard/settings/office-team-actions.ts',
+      'src/app/dashboard/settings/page.tsx',
     ]);
   });
 

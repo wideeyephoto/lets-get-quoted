@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 
-import { requireOwnerContext } from '@/lib/auth';
+import { requireOfficeContext } from '@/lib/auth';
 import { recordAccountEvent } from '@/lib/account-events';
 import { APP_ORIGIN } from '@/lib/app-origin';
 import { pickBusinessName } from '@/lib/business-name';
@@ -17,10 +17,10 @@ import {
 /**
  * Inviting and un-inviting office users.
  *
- * THROUGH THE SESSION CLIENT, so the RPCs' own owner checks run against the
+ * THROUGH THE SESSION CLIENT, so the RPCs' own checks run against the
  * caller rather than against the service role. `create_office_invitation` and
- * `revoke_office_invitation` each verify ownership themselves; using the admin
- * client here would bypass that and leave `requireOwnerContext` as the only
+ * `revoke_office_invitation` each verify permissions themselves; using the admin
+ * client here would bypass that and leave `requireOfficeContext` as the only
  * thing between a public endpoint and somebody else's team.
  *
  * THE LINK IS RETURNED, NOT EMAILED. Sending it would mean a template, a
@@ -103,7 +103,7 @@ function readable(error: { code?: string; message?: string; details?: unknown })
     );
   }
   if (raw.includes('office_seat_forbidden')) {
-    return 'Only the owner of this business can manage office users.';
+    return 'Only the owner or an authorized office manager of this business can manage office users.';
   }
   if (raw.includes('office_seat_entitlement_unavailable')) {
     return ('Your plan\'s office-user limit could not be read, so nothing was sent. Try again shortly.');
@@ -117,7 +117,7 @@ function readable(error: { code?: string; message?: string; details?: unknown })
 }
 
 export async function inviteOfficeUserAction(input: { email: string }): Promise<InviteResult> {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('team.manage');
 
   const email = String(input?.email ?? '').trim().toLowerCase();
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) || email.length > 320) {
@@ -184,7 +184,7 @@ export async function inviteOfficeUserAction(input: { email: string }): Promise<
 export async function revokeOfficeInvitationAction(
   input: { invitationId: string },
 ): Promise<{ ok: true; revoked: boolean } | { ok: false; message: string }> {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('team.manage');
 
   const { data, error } = await supabase.rpc('revoke_office_invitation', {
     p_invitation_id: String(input?.invitationId ?? ''),
@@ -220,7 +220,7 @@ export async function revokeOfficeInvitationAction(
 export async function removeOfficeUserAction(
   input: { userId: string },
 ): Promise<{ ok: true; removed: boolean } | { ok: false; message: string }> {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('team.manage');
 
   const { data, error } = await supabase.rpc('remove_office_user', {
     p_account_id: accountId,
