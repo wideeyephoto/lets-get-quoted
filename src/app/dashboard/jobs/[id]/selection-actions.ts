@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { createAdminClient, requireOwnerContext } from '@/lib/auth';
+import { createAdminClient, requireOfficeContext, requireOwnerContext } from '@/lib/auth';
 import { sendSelectionRequest } from '@/lib/selection-notify';
 import {
   addOption,
@@ -24,7 +24,7 @@ function num(value: FormDataEntryValue | null): number {
 }
 
 export async function createSelectionAction(jobId: string, formData: FormData) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('jobs.write');
   await createSelection(supabase, accountId, jobId, {
     title: String(formData.get('title') ?? ''),
     description: String(formData.get('description') ?? ''),
@@ -39,7 +39,7 @@ export async function createSelectionAction(jobId: string, formData: FormData) {
 }
 
 export async function updateSelectionAction(jobId: string, selectionId: string, formData: FormData): Promise<{ ok: boolean; message?: string }> {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('jobs.write');
   const result = await updateSelection(supabase, accountId, selectionId, {
     title: String(formData.get('title') ?? ''),
     description: String(formData.get('description') ?? ''),
@@ -51,7 +51,7 @@ export async function updateSelectionAction(jobId: string, selectionId: string, 
 }
 
 export async function addSelectionOptionAction(jobId: string, selectionId: string, formData: FormData) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('jobs.write');
 
   // A photo is most of the decision. Nobody picks a tile from a product code —
   // the code is what settles the argument afterwards, the picture is what makes
@@ -89,7 +89,7 @@ export async function addSelectionOptionAction(jobId: string, selectionId: strin
  * defence-in-depth against a direct POST rather than something an owner sees.
  */
 export async function deleteSelectionOptionAction(jobId: string, optionId: string): Promise<void> {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('jobs.write');
   const result = await deleteOption(supabase, accountId, optionId);
   if (!result.ok) {
     console.error(`Selection option delete refused (${optionId}): ${result.message}`);
@@ -100,7 +100,7 @@ export async function deleteSelectionOptionAction(jobId: string, optionId: strin
 
 /** Fix a typo'd product code or a price that came back different. */
 export async function updateSelectionOptionAction(jobId: string, optionId: string, formData: FormData): Promise<void> {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('jobs.write');
   const result = await updateOption(supabase, accountId, optionId, {
     name: String(formData.get('name') ?? ''),
     reference: String(formData.get('reference') ?? ''),
@@ -121,7 +121,7 @@ export async function updateSelectionOptionAction(jobId: string, optionId: strin
  * never happened.
  */
 export async function reopenSelectionAction(jobId: string, selectionId: string): Promise<void> {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('jobs.write');
   const result = await reopenSelection(supabase, accountId, selectionId, 'Reopened by the contractor');
   if (!result.ok) {
     console.error(`Selection reopen refused (${selectionId}): ${result.message}`);
@@ -139,7 +139,7 @@ export async function reopenSelectionAction(jobId: string, selectionId: string):
  * only the contractor can make.
  */
 export async function sendSelectionsAction(jobId: string): Promise<{ ok: boolean; message: string }> {
-  const { accountId } = await requireOwnerContext();
+  const { accountId } = await requireOfficeContext('jobs.write');
   const outcome = await sendSelectionRequest(createAdminClient(), accountId, jobId);
   revalidatePath(`/dashboard/jobs/${jobId}`);
 
@@ -168,7 +168,7 @@ export async function sendSelectionsAction(jobId: string): Promise<{ ok: boolean
 
 /** Save this board so the next job of the same kind starts with it. */
 export async function saveSelectionTemplateAction(jobId: string, formData: FormData): Promise<{ ok: boolean; message: string }> {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('jobs.write');
   const name = String(formData.get('templateName') ?? '');
   const result = await saveBoardAsTemplate(supabase, accountId, jobId, name);
   if (!result.ok) return { ok: false, message: result.message ?? 'Could not save that template.' };
@@ -178,7 +178,7 @@ export async function saveSelectionTemplateAction(jobId: string, formData: FormD
 
 /** Add a saved board to this job. Adds to what's here; never replaces it. */
 export async function applySelectionTemplateAction(jobId: string, templateId: string): Promise<{ ok: boolean; message: string }> {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('jobs.write');
   const result = await applyTemplate(supabase, accountId, jobId, templateId);
   if (!result.ok) return { ok: false, message: result.message ?? 'Could not add that template.' };
   revalidatePath(`/dashboard/jobs/${jobId}`);
@@ -189,19 +189,19 @@ export async function applySelectionTemplateAction(jobId: string, templateId: st
 }
 
 export async function deleteSelectionTemplateAction(jobId: string, templateId: string): Promise<void> {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('jobs.write');
   await deleteSelectionTemplate(supabase, accountId, templateId);
   revalidatePath(`/dashboard/jobs/${jobId}`);
 }
 
 export async function moveSelectionAction(jobId: string, selectionId: string, direction: 'up' | 'down'): Promise<void> {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('jobs.write');
   await moveSelection(supabase, accountId, jobId, selectionId, direction);
   revalidatePath(`/dashboard/jobs/${jobId}`);
 }
 
 export async function cancelSelectionAction(jobId: string, selectionId: string) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('jobs.write');
   await setSelectionStatus(supabase, accountId, selectionId, 'cancelled');
   revalidatePath(`/dashboard/jobs/${jobId}`);
 }

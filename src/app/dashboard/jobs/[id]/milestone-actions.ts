@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { requireOwnerContext } from '@/lib/auth';
+import { requireOfficeContext, requireOwnerContext } from '@/lib/auth';
 import { getJob } from '@/lib/jobs';
 import { createJobTask } from '@/lib/job-tasks';
 import { addInvoiceItem, createInvoice, listInvoices, selectPrimaryInvoice } from '@/lib/invoices';
@@ -15,9 +15,9 @@ import {
 } from '@/lib/milestones-data';
 import { MILESTONE_PRESETS, presetAmounts, type MilestoneKind, type PhotoPhase } from '@/lib/milestones';
 
-// Owner-side actions for Proof-to-Pay milestones. Everything that decides
+// Actions for Proof-to-Pay milestones. Everything that decides
 // whether money can be asked for lives in lib/milestones-data; this layer is
-// auth, form parsing and telling the owner what happened.
+// auth, form parsing and telling the contractor what happened.
 
 type ActionResult = { ok: true } | { ok: false; message: string };
 
@@ -26,7 +26,7 @@ function fail(error: unknown, fallback: string): ActionResult {
 }
 
 export async function createMilestoneAction(jobId: string, formData: FormData): Promise<ActionResult> {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('jobs.write');
   try {
     await createMilestone(supabase, accountId, jobId, {
       title: String(formData.get('title') ?? '').trim() || 'Milestone',
@@ -52,7 +52,7 @@ export async function createMilestoneAction(jobId: string, formData: FormData): 
  * doubling them up.
  */
 export async function seedMilestonesAction(jobId: string): Promise<ActionResult> {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('jobs.write');
   try {
     const { count } = await supabase
       .from('job_milestones')
@@ -86,7 +86,7 @@ export async function seedMilestonesAction(jobId: string): Promise<ActionResult>
 }
 
 export async function updateMilestoneAction(jobId: string, milestoneId: string, formData: FormData): Promise<ActionResult> {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('jobs.write');
   try {
     await updateMilestone(supabase, accountId, milestoneId, {
       title: String(formData.get('title') ?? '').trim(),
@@ -104,7 +104,7 @@ export async function updateMilestoneAction(jobId: string, milestoneId: string, 
 }
 
 export async function deleteMilestoneAction(jobId: string, milestoneId: string): Promise<ActionResult> {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('jobs.write');
   try {
     await deleteMilestone(supabase, accountId, milestoneId);
     revalidatePath(`/dashboard/jobs/${jobId}`);
@@ -116,7 +116,7 @@ export async function deleteMilestoneAction(jobId: string, milestoneId: string):
 
 /** Add a checklist item that counts as proof for this milestone. */
 export async function addMilestoneTaskAction(jobId: string, milestoneId: string, formData: FormData): Promise<ActionResult> {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('jobs.write');
   try {
     const title = String(formData.get('title') ?? '').trim();
     if (!title) return { ok: false, message: 'Give the checklist item a name.' };
@@ -130,7 +130,7 @@ export async function addMilestoneTaskAction(jobId: string, milestoneId: string,
 }
 
 export async function attachMilestonePhotoAction(jobId: string, milestoneId: string, formData: FormData): Promise<ActionResult> {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('jobs.write');
   try {
     const phase = String(formData.get('phase') ?? 'after') as PhotoPhase;
     if (phase !== 'before' && phase !== 'after') return { ok: false, message: 'Choose before or after.' };
@@ -151,7 +151,7 @@ export async function attachMilestonePhotoAction(jobId: string, milestoneId: str
 }
 
 export async function removeMilestonePhotoAction(jobId: string, photoId: string): Promise<ActionResult> {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('jobs.write');
   try {
     await deleteMilestonePhoto(supabase, accountId, photoId);
     revalidatePath(`/dashboard/jobs/${jobId}`);

@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { requireOwnerContext } from '@/lib/auth';
+import { requireOfficeContext } from '@/lib/auth';
 import { createJobFeedEvent } from '@/lib/job-feed';
 import { todayKey } from '@/lib/warranties';
 import { createWarranty, deleteWarranty, recordService, updateClaim, updateWarranty } from '@/lib/warranties-data';
@@ -23,7 +23,7 @@ function num(value: FormDataEntryValue | null): number | null {
  * which is exactly how a two-year-old customer ends up phoning somebody else.
  */
 export async function createWarrantyAction(jobId: string, formData: FormData) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('jobs.write');
 
   const title = String(formData.get('title') ?? '').trim();
   const startsOn = String(formData.get('startsOn') ?? '').trim() || todayKey();
@@ -66,7 +66,7 @@ export async function createWarrantyAction(jobId: string, formData: FormData) {
  * because it went home in a folder that went in a drawer.
  */
 export async function addWarrantyDocumentAction(jobId: string, warrantyId: string, formData: FormData) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('jobs.write');
 
   const { data: existing } = await supabase
     .from('warranties')
@@ -97,7 +97,7 @@ export async function addWarrantyDocumentAction(jobId: string, warrantyId: strin
 }
 
 export async function updateWarrantyAction(jobId: string, warrantyId: string, formData: FormData) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('jobs.write');
   await updateWarranty(supabase, accountId, warrantyId, {
     title: String(formData.get('title') ?? ''),
     covers: String(formData.get('covers') ?? ''),
@@ -108,13 +108,13 @@ export async function updateWarrantyAction(jobId: string, warrantyId: string, fo
 }
 
 export async function deleteWarrantyAction(jobId: string, warrantyId: string) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('jobs.write');
   await deleteWarranty(supabase, accountId, warrantyId);
   revalidatePath(`/dashboard/jobs/${jobId}`);
 }
 
 export async function recordServiceAction(jobId: string, warrantyId: string, formData: FormData) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('jobs.write');
   const servicedOn = String(formData.get('servicedOn') ?? '').trim() || todayKey();
   // The result was discarded, so a service that recorded nothing looked
   // identical to one that did. Surfaced rather than swallowed: the whole point
@@ -125,7 +125,7 @@ export async function recordServiceAction(jobId: string, warrantyId: string, for
 }
 
 export async function updateClaimAction(jobId: string, claimId: string, status: ClaimStatus, note?: string) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('jobs.write');
   const result = await updateClaim(supabase, accountId, claimId, { status, resolutionNote: note ?? null });
   revalidatePath(`/dashboard/jobs/${jobId}`);
   return result;

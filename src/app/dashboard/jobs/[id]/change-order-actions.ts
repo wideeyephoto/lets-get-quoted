@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { createAdminClient, requireOwnerContext } from '@/lib/auth';
+import { createAdminClient, requireOfficeContext, requireOwnerContext } from '@/lib/auth';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { getJob, listCosts, computeMargin, formatMoney, type QuoteItem } from '@/lib/jobs';
 import { listServices } from '@/lib/services';
@@ -32,7 +32,7 @@ export async function draftChangeOrderAction(
   jobId: string,
   changeOrderId: string,
 ): Promise<{ ok: true; draft: SerializedDraft & { title: string; scope: string } } | { ok: false; message: string }> {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('jobs.write');
   if (!(await checkRateLimit(createAdminClient(), `co-draft:${accountId}`, 30, 3600))) {
     return { ok: false, message: 'That is a lot of drafts in an hour — give it a few minutes.' };
   }
@@ -115,7 +115,7 @@ export async function saveChangeOrderAction(
   changeOrderId: string,
   input: { title: string; scope: string; items: QuoteItem[]; estimatedCost: number | null },
 ): Promise<{ ok: boolean; message?: string; amount?: number }> {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('jobs.write');
   const result = await updateChangeOrder(supabase, accountId, changeOrderId, input);
   if (!result.ok) return result;
   revalidatePath(`/dashboard/jobs/${jobId}`);
@@ -130,7 +130,7 @@ export async function saveChangeOrderAction(
  * where it can be missed and then argued about.
  */
 export async function sendChangeOrderAction(jobId: string, changeOrderId: string): Promise<{ ok: boolean; blockers?: string[] }> {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('jobs.write');
   const result = await sendChangeOrder(supabase, accountId, changeOrderId);
   if (!result.ok || !result.order) return { ok: false, blockers: result.blockers };
 
@@ -153,7 +153,7 @@ export async function sendChangeOrderAction(jobId: string, changeOrderId: string
 }
 
 export async function voidChangeOrderAction(jobId: string, changeOrderId: string): Promise<{ ok: boolean; message?: string }> {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('jobs.write');
   const result = await voidChangeOrder(supabase, accountId, changeOrderId);
   if (result.ok) revalidatePath(`/dashboard/jobs/${jobId}`);
   return result;
@@ -245,9 +245,9 @@ export async function changeOrderImpactAction(jobId: string, addedRevenue: numbe
   return marginImpact({ jobRevenue: margin.revenue, jobCost: margin.totalCost, addedRevenue, addedCost });
 }
 
-/** Owner-facing summary line for the job page header. */
+/** Summary line for the job page header. */
 export async function changeOrderSummary(jobId: string): Promise<string | null> {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('jobs.read');
   const orders = await listChangeOrders(supabase, accountId, jobId);
   const unsent = orders.filter((order) => order.status === 'draft');
   if (unsent.length === 0) return null;

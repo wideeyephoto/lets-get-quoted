@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { requireOwnerContext } from '@/lib/auth';
+import { requireOfficeContext } from '@/lib/auth';
 import { pickBusinessName } from '@/lib/business-name';
 import { getJob, parseQuoteItems, formatMoney } from '@/lib/jobs';
 import { formatPhoneDashes } from '@/lib/phone';
@@ -8,7 +8,7 @@ import PrintButton from '@/components/print-button';
 export const metadata = { title: 'Quote' };
 
 export default async function QuotePrintPage({ params }: { params: { id: string } }) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('jobs.read', 'clients.read');
   const job = await getJob(supabase, accountId, params.id);
 
   if (!job) {

@@ -2,8 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { requireOwnerContext } from '@/lib/auth';
-import { createAdminClient } from '@/lib/auth';
+import { createAdminClient, requireOfficeContext } from '@/lib/auth';
 import { MAX_ETA_MINUTES, MIN_ETA_MINUTES, type ArrivalStatus } from '@/lib/arrival';
 import { applyArrivalStatus, sendArrival } from '@/lib/arrival-send';
 
@@ -101,7 +100,7 @@ export async function setArrivalStatusOwnerTo(returnTo: string | null, jobId: st
 }
 
 async function ownerActor(): Promise<{ accountId: string; businessName: string }> {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('jobs.write');
   const [{ data: site }, { data: account }] = await Promise.all([
     supabase.from('sites').select('company_name').eq('account_id', accountId).limit(1).maybeSingle(),
     supabase.from('accounts').select('business_name').eq('id', accountId).maybeSingle(),
