@@ -149,24 +149,56 @@ read production, and drive the authenticated Chrome browser for Vercel.
 
 ---
 
-## Found 2026-08-23, unrelated to plan change, not yet fixed
+## The catalog-version bump, 2026-08-18 — half fixed today
 
-**The one paid subscription in production will terminally dead-letter its next
-renewal.** Read from the Stripe API: `sub_1U5hxLPqTgiW6iRM2f12RKn0` carries
-`lgq_catalog_version: "2026-08-15-preview"`, while `PRICING_CATALOG_VERSION` is
-`"2026-08-18-preview"`. `exactMetadata` demands exact equality, returns null,
-and reaches `fail('provider_object_contract_mismatch')` — `fail` defaults
-`retryable = false`, so it lands `failed_terminal` on attempt 1. The renewal on
-2026-09-18 will not project.
+### FIXED: the only paid workspace could not collect a card payment
 
-The catalog bump moved the code and did not move the metadata already written on
-live subscriptions. Anything that bumps `PRICING_CATALOG_VERSION` again needs a
-backfill of Stripe-side metadata, or the same thing happens to every subscription
-sold before the bump.
+`9cd072de`, migration `20260823190000`, **applied and verified in production**.
 
-That row is a *sandbox rehearsal*, not a customer — every id carries the
-`PqTgiW6iRM` suffix of `acct_1TtDcSPqTgiW6iRM`, and Preview writes to the
-production database. So it costs nothing today. It would not have, later.
+`workspace_entitlements` for `7caf66e2` still carried
+`catalog_version = '2026-08-15-preview'`, and three live functions refuse on
+exactly that column with `55000` — `claim_one_off_direct_checkout_operation`,
+`prepare_one_off_direct_invoice_payment`, and
+`require_direct_checkout_entitlement_snapshot`, the last reached from two
+**enabled** triggers on `billing_payment_operations`. That workspace could not
+take money from its own customers by any route. Never observed: its four
+`payments` rows all have a NULL `fee_catalog_version`, so the direct rail had
+never been tried there.
+
+It was not a relabel — the row carried the old *limits* too, `office_users: 1`
+and `dedicated_business_numbers: 1`, having missed both `20260820150000` and
+`20260821010000`. `20260819040000` was meant to sweep it forward and skipped it:
+its guard matched an eight-key `feature_limits` map and the row has ten.
+
+**The distinction that matters, now documented at `PRICING_CATALOG_VERSION`
+itself and guarded by `test/catalog-version-is-a-data-migration.test.ts`:**
+
+| kind | where | rule when the constant moves |
+|---|---|---|
+| **EVIDENCE** — the version an agreement was signed under | operations, consent acceptances, `billing_subscriptions`, Stripe metadata | immutable; **widen the readers** |
+| **CURRENTNESS** — "this row carries catalog X's limits and fee now" | `workspace_entitlements.catalog_version`, `payments.fee_catalog_version` | **move the rows**; never widen |
+
+The 2026-08-18 bump did the first and not the second. Bumping the constant is a
+data migration, and a bump is **not** required for an allowance change —
+`20260820150000` and `20260821010000` both changed capacity under the same
+version deliberately.
+
+### STILL OPEN: that subscription's renewal will not project
+
+`sub_1U5hxLPqTgiW6iRM2f12RKn0` carries `lgq_catalog_version: "2026-08-15-preview"`
+in its Stripe metadata, and so does its Price and its original Checkout Session.
+`exactMetadata` and the SQL projector both demand the current version, so the
+2026-09-18 renewal lands `failed_terminal` on attempt 1.
+
+Fixing it means widening the EVIDENCE readers in TypeScript *and* SQL, and the
+harder part: the operation row immutably records the **old** Price ID, so
+`loadVerifiedPrice` refuses whichever Price set the environment is bound to —
+new set → id mismatch, old set → `validatePrice` rejects the Price's own stale
+metadata. Both Price sets exist in the sandbox account and are pairwise
+identical in amount.
+
+That row is a *sandbox rehearsal*, not a customer (`PqTgiW6iRM` suffix; Preview
+writes the production database), so it costs nothing today.
 
 ---
 
