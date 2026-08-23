@@ -10,7 +10,7 @@
 
 A seven-dimension adversarial audit ran on 2026-08-22 —
 [pre-launch-audit-2026-08-22.md](pre-launch-audit-2026-08-22.md) — producing nine
-must-fix items. **Eight are done. One remains.**
+must-fix items. **Eight are done. The ninth is contained but not finished.**
 
 Two dimensions came back clean and are worth stating: no cross-tenant data leak
 (a ~70-table sweep found every discrepancy in the *denial* direction) and no
@@ -20,9 +20,13 @@ exposed secret. The problems were all in the lifecycle *around* the sale.
 
 ## The one thing left
 
-### Item 2 — a self-serve plan change charges the card and cannot project
+### Item 2 — a self-serve plan change charged the card and could not project
 
-`ChangePlanPanel` is **live, ungated, and broken**. It calls
+`ChangePlanPanel` is now **WITHHELD** — `PLAN_CHANGE_PANEL_WITHHELD` in
+`settings/page.tsx` — so it can no longer charge for a change it cannot record.
+Upgrades are handled by hand until the build below lands.
+
+While it was live it called
 `stripe.subscriptions.update` with `proration_behavior: 'always_invoice'`, so the
 card is charged immediately — and then every event for that subscription fails
 to project, permanently.

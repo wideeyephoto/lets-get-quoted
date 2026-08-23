@@ -153,12 +153,38 @@ export default async function SettingsPage({
       .catch(() => null)
     : null;
 
-  // Not flag-gated, unlike the cancel panel above. A paying customer with no way
-  // to change plan had no self-serve route to give us more money at all, and
-  // both seat top-ups are withheld -- so this ships on. Same failure posture as
-  // its neighbours: an unreadable subscription degrades to no panel rather than
-  // taking the whole Settings page down.
-  const planChange = await loadChangeableSubscription(createAdminClient(), accountId)
+  /**
+   * WITHHELD 2026-08-23. It shipped ungated, and it charges a card for a change
+   * it cannot record.
+   *
+   * changeBasePlan calls stripe.subscriptions.update with
+   * proration_behavior: 'always_invoice', so the difference is taken
+   * immediately. Then every event for that subscription fails to project,
+   * permanently, and the workspace keeps the OLD plan's limits, allowances and
+   * platform fee while paying the new price. Nothing self-heals, because the
+   * only thing that could repair the entitlement is the projector that is
+   * refusing.
+   *
+   * Migration 20260823120000 cleared two of the refusals and is applied. The
+   * rest is not a small job: a plan change needs its own consent acceptance
+   * (recurring_consent_acceptance_id is NOT NULL and UNIQUE, so consent is
+   * single-use by construction), and BOTH functions that would record one --
+   * record_base_plan_recurring_consent and
+   * claim_stripe_billing_subscription_checkout -- are hard-gated to an active
+   * FLEX workspace with the purpose pinned to 'base_plan_subscription'. A plan
+   * change is neither. Two more function patches and a third CHECK.
+   *
+   * So the panel comes off until that lands. Upgrades are handled by hand;
+   * there are no real customers, so this costs nothing today and removes a live
+   * way to take money and deliver nothing.
+   *
+   * Turning it back on is deleting this constant, and the end-to-end projection
+   * test in docs/plan-change-fix-design.md is what should gate that -- not the
+   * migration, and not the design note.
+   */
+  const PLAN_CHANGE_PANEL_WITHHELD = true;
+
+  const planChange = PLAN_CHANGE_PANEL_WITHHELD ? null : await loadChangeableSubscription(createAdminClient(), accountId)
     .then((subscription) => (subscription && subscription.planCode !== 'flex'
       ? {
         currentPlanCode: subscription.planCode,

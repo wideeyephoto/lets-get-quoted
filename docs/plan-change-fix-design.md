@@ -2,7 +2,8 @@
 
 **Date:** 2026-08-23<br>
 **Status:** SQL half applied (`ea92ed3d`, migration `20260823120000`) and inert. TypeScript half not started.<br>
-**Until this lands:** `ChangePlanPanel` is live, ungated, charges the card immediately, and cannot project.
+**Panel:** WITHHELD 2026-08-23 (`PLAN_CHANGE_PANEL_WITHHELD`), so it can no longer charge a card for a change it cannot record.<br>
+**Until this lands:** upgrades are handled by hand.
 
 ---
 
@@ -38,6 +39,30 @@ Three refusals, not one. All confirmed against live function bodies:
 ---
 
 ## The remaining build
+
+### 0. Two more refusals, found 2026-08-23 while starting step 1
+
+The consent capture is not "mirror the checkout". BOTH functions that could
+record an acceptance refuse a plan change outright:
+
+- `record_base_plan_recurring_consent` raises
+  *"first-subscription consent requires an active Flex workspace"* unless the
+  entitlement is flex/none/free/active, and hardcodes
+  `purpose = 'base_plan_subscription'`.
+- `claim_stripe_billing_subscription_checkout` carries the same two gates.
+- `billing_subscription_consent_acceptances_purpose_check` pins the purpose to
+  `base_plan_subscription` as well.
+
+A plan change happens on a PAID workspace, so it fails the Flex gate by
+definition. That is two more function patches and a third CHECK widening, on top
+of the two already applied — six SQL surfaces for one feature.
+
+**The panel was withheld on 2026-08-23 rather than half-built.** See
+`PLAN_CHANGE_PANEL_WITHHELD` in `src/app/dashboard/settings/page.tsx`. Turning
+it back on is deleting that constant, and the end-to-end test below is what
+should gate it.
+
+---
 
 ### 1. Capture fresh recurring consent
 
