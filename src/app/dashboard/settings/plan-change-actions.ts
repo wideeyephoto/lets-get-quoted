@@ -4,7 +4,12 @@ import { revalidatePath } from 'next/cache';
 
 import { createAdminClient, requireOwnerContext } from '@/lib/auth';
 import { BILLING_PLAN_IDS, type BillingCycle, type BillingPlanId } from '@/lib/billing/catalog';
-import { changeBasePlan, clearScheduledPlanChange, type PlanChangeResult } from '@/lib/billing/plan-change';
+import {
+  changeBasePlan,
+  clearScheduledPlanChange,
+  type PlanChangeAffirmation,
+  type PlanChangeResult,
+} from '@/lib/billing/plan-change';
 import { checkRateLimitStrict } from '@/lib/rate-limit';
 
 export type PlanChangeActionState = PlanChangeResult | null;
@@ -28,6 +33,7 @@ function parseTarget(planCode: unknown, billingInterval: unknown):
 export async function changeBasePlanAction(
   planCode: string,
   billingInterval: string,
+  affirmation?: PlanChangeAffirmation | null,
 ): Promise<PlanChangeActionState> {
   const target = parseTarget(planCode, billingInterval);
   if (!target) return { ok: false, error: 'That is not a plan we can move you to.' };
@@ -54,6 +60,10 @@ export async function changeBasePlanAction(
     targetPlanCode: target.planCode,
     targetBillingInterval: target.billingInterval,
     actorEmail: userEmail,
+    // Forwarded verbatim, never reconstructed here. The rendered disclosure's
+    // version and digest are what plan-change.ts compares, so inventing them
+    // server-side would authorise the charge on the customer's behalf.
+    affirmation: affirmation ?? null,
   });
 
   if (result.ok) revalidatePath('/dashboard/settings');

@@ -3,6 +3,11 @@
 import { useState, useTransition } from 'react';
 
 import { BILLING_PLANS, type BillingCycle, type BillingPlanId } from '@/lib/billing/catalog';
+import {
+  BASE_PLAN_RECURRING_CONSENT_TEXT,
+  BASE_PLAN_RECURRING_CONSENT_TEXT_SHA256,
+  BASE_PLAN_RECURRING_CONSENT_VERSION,
+} from '@/lib/billing/subscription-consent';
 
 import {
   cancelScheduledPlanChangeAction,
@@ -52,6 +57,9 @@ export default function ChangePlanPanel({
 }) {
   const [state, setState] = useState<PlanChangeActionState>(null);
   const [confirming, setConfirming] = useState<PlanOption | null>(null);
+  // Reset per confirmation, never sticky: a tick made for one plan must not
+  // carry over to the next one the customer opens.
+  const [consentAccepted, setConsentAccepted] = useState(false);
   const [pending, startTransition] = useTransition();
 
   const asDate = (value: string | null): string | null => {
@@ -101,9 +109,26 @@ export default function ChangePlanPanel({
   );
 
   const run = (option: PlanOption) => startTransition(async () => {
-    const result = await changeBasePlanAction(option.planCode, option.billingInterval);
+    // Only an immediate change mints consent, so only it sends an affirmation.
+    // The VERSION and DIGEST are the ones this component rendered; the server
+    // compares them rather than trusting the boolean, so a stale tab cannot
+    // authorise today's price under a disclosure it never showed.
+    const result = await changeBasePlanAction(
+      option.planCode,
+      option.billingInterval,
+      option.effect === 'immediate'
+        ? {
+          accepted: consentAccepted,
+          consentVersion: BASE_PLAN_RECURRING_CONSENT_VERSION,
+          consentTextSha256: BASE_PLAN_RECURRING_CONSENT_TEXT_SHA256,
+        }
+        : null,
+    );
     setState(result);
-    if (result?.ok) setConfirming(null);
+    if (result?.ok) {
+      setConfirming(null);
+      setConsentAccepted(false);
+    }
   });
 
   const clear = () => startTransition(async () => setState(await cancelScheduledPlanChangeAction()));
@@ -163,12 +188,31 @@ export default function ChangePlanPanel({
                       : 'Takes effect at your renewal. Nothing is charged today.'}
                 </p>
               </div>
+              {isConfirming && option.effect === 'immediate' ? (
+                // Markup deliberately the checkout's. A new class here would mean a
+                // globals-lite.css rebuild, and this IS the same disclosure --
+                // same version, same digest, same authorization.
+                <div className="base-plan-checkout-consent">
+                  <strong>Recurring billing authorization</strong>
+                  {BASE_PLAN_RECURRING_CONSENT_TEXT.split('\n\n').map((paragraph) => (
+                    <p key={paragraph}>{paragraph}</p>
+                  ))}
+                  <label className="base-plan-checkout-affirmation">
+                    <input
+                      type="checkbox"
+                      checked={consentAccepted}
+                      onChange={(event) => setConsentAccepted(event.target.checked)}
+                    />
+                    <span>I have read this disclosure and authorize the recurring charges described above.</span>
+                  </label>
+                </div>
+              ) : null}
               {isConfirming ? (
                 <div className="button-row">
                   <button
                     className="btn"
                     type="button"
-                    disabled={pending}
+                    disabled={pending || (option.effect === 'immediate' && !consentAccepted)}
                     aria-busy={pending}
                     onClick={() => run(option)}
                   >
@@ -176,12 +220,12 @@ export default function ChangePlanPanel({
                       ? 'Working…'
                       : option.effect === 'immediate' ? `Upgrade and pay now` : `Schedule for renewal`}
                   </button>
-                  <button className="btn subtle" type="button" disabled={pending} onClick={() => setConfirming(null)}>
+                  <button className="btn subtle" type="button" disabled={pending} onClick={() => { setConfirming(null); setConsentAccepted(false); }}>
                     Not now
                   </button>
                 </div>
               ) : (
-                <button className="btn subtle" type="button" onClick={() => setConfirming(option)}>
+                <button className="btn subtle" type="button" onClick={() => { setConfirming(option); setConsentAccepted(false); }}>
                   {option.effect === 'immediate' ? 'Upgrade' : 'Switch at renewal'}
                 </button>
               )}

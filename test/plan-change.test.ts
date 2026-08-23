@@ -78,6 +78,12 @@ const recordConsent = vi.fn(async () => ({ acceptanceId: ACCEPTANCE_ID } as neve
 const OWNER = { supabase: null, accountId: 'acct_1', userId: 'user_1' } as never;
 const ACCEPTANCE_ID = '90000000-0000-4000-8000-000000000009';
 const OPERATION_PK = 'a0000000-0000-4000-8000-00000000000a';
+/** The disclosure the panel renders, ticked. Minting refuses without it. */
+const AFFIRMED = {
+  accepted: true,
+  consentVersion: 'base-plan-recurring-2026-08-16',
+  consentTextSha256: 'f39aeedb379d397f941d3c5fc48357703b4cc97148d8b1bb3c2f55b04e449c75',
+};
 const CLAIM_TOKEN = 'b0000000-0000-4000-8000-00000000000b';
 
 const {
@@ -169,7 +175,7 @@ beforeEach(() => {
 describe('an upgrade on the same billing cycle', () => {
   it('sends the new price AND the new metadata in one call', async () => {
     // The whole point. Either alone is a defect; together they are the contract.
-    const result = await changeBasePlan({ owner: OWNER, recordConsent,
+    const result = await changeBasePlan({ owner: OWNER, recordConsent, affirmation: AFFIRMED,
       admin: adminWith(GROWTH_MONTHLY), accountId: 'acct_1',
       targetPlanCode: 'scale', targetBillingInterval: 'monthly',
     });
@@ -185,7 +191,7 @@ describe('an upgrade on the same billing cycle', () => {
   });
 
   it('invoices the difference now, because it activates on payment', async () => {
-    await changeBasePlan({ owner: OWNER, recordConsent,
+    await changeBasePlan({ owner: OWNER, recordConsent, affirmation: AFFIRMED,
       admin: adminWith(GROWTH_MONTHLY), accountId: 'acct_1',
       targetPlanCode: 'scale', targetBillingInterval: 'monthly',
     });
@@ -194,7 +200,7 @@ describe('an upgrade on the same billing cycle', () => {
   });
 
   it('records the intent BEFORE calling Stripe', async () => {
-    await changeBasePlan({ owner: OWNER, recordConsent,
+    await changeBasePlan({ owner: OWNER, recordConsent, affirmation: AFFIRMED,
       admin: adminWith(GROWTH_MONTHLY), accountId: 'acct_1',
       targetPlanCode: 'scale', targetBillingInterval: 'monthly',
     });
@@ -205,7 +211,7 @@ describe('an upgrade on the same billing cycle', () => {
   it('refuses when the subscription has no Stripe line item', async () => {
     // Falling back to items[0] would be wrong for any subscription that ever
     // gains a second line, and it would move money.
-    const result = await changeBasePlan({ owner: OWNER, recordConsent,
+    const result = await changeBasePlan({ owner: OWNER, recordConsent, affirmation: AFFIRMED,
       admin: adminWith({ ...GROWTH_MONTHLY, provider_subscription_item_id: null }),
       accountId: 'acct_1', targetPlanCode: 'scale', targetBillingInterval: 'monthly',
     });
@@ -215,7 +221,7 @@ describe('an upgrade on the same billing cycle', () => {
 
   it('tells somebody a decline is not worth retrying blindly', async () => {
     stripe.update.mockRejectedValueOnce(Object.assign(new Error('nope'), { code: 'card_declined' }));
-    const result = await changeBasePlan({ owner: OWNER, recordConsent,
+    const result = await changeBasePlan({ owner: OWNER, recordConsent, affirmation: AFFIRMED,
       admin: adminWith(GROWTH_MONTHLY), accountId: 'acct_1',
       targetPlanCode: 'scale', targetBillingInterval: 'monthly',
     });
@@ -270,7 +276,7 @@ describe('the metadata guard that never guarded anything', () => {
 
 describe('changes that wait for renewal', () => {
   it('schedules a downgrade instead of applying it now', async () => {
-    const result = await changeBasePlan({ owner: OWNER, recordConsent,
+    const result = await changeBasePlan({ owner: OWNER, recordConsent, affirmation: AFFIRMED,
       admin: adminWith(GROWTH_MONTHLY), accountId: 'acct_1',
       targetPlanCode: 'solo', targetBillingInterval: 'monthly',
     });
@@ -290,7 +296,7 @@ describe('changes that wait for renewal', () => {
     // The rule that is easy to get wrong: growth->scale is immediate on the same
     // cycle, and NOT immediate if it also moves monthly->annual, because
     // otherwise an annual subscriber could escape their term by bundling the two.
-    const result = await changeBasePlan({ owner: OWNER, recordConsent,
+    const result = await changeBasePlan({ owner: OWNER, recordConsent, affirmation: AFFIRMED,
       admin: adminWith(GROWTH_MONTHLY), accountId: 'acct_1',
       targetPlanCode: 'scale', targetBillingInterval: 'annual',
     });
@@ -303,7 +309,7 @@ describe('changes that wait for renewal', () => {
     // "nothing scheduled" while still reporting success -- a scheduled downgrade
     // that silently never happens. Cancelling already ends the plan at period
     // end and drops the workspace to Flex, which IS this transition.
-    const result = await changeBasePlan({ owner: OWNER, recordConsent,
+    const result = await changeBasePlan({ owner: OWNER, recordConsent, affirmation: AFFIRMED,
       admin: adminWith(GROWTH_MONTHLY), accountId: 'acct_1',
       targetPlanCode: 'flex', targetBillingInterval: 'none',
     });
@@ -472,7 +478,7 @@ describe('the plan-change operation ledger', () => {
     });
 
     const result = await changeBasePlan({
-      owner: OWNER, recordConsent,
+      owner: OWNER, recordConsent, affirmation: AFFIRMED,
       admin: adminWith(GROWTH_MONTHLY), accountId: 'acct_1',
       targetPlanCode: 'scale', targetBillingInterval: 'monthly',
     });
@@ -504,7 +510,7 @@ describe('the plan-change operation ledger', () => {
   it('records the exact proration invoice, because activation binds to it', async () => {
     stripe.update.mockResolvedValueOnce({ id: 'sub_1', latest_invoice: { id: 'in_proration456' } });
     await changeBasePlan({
-      owner: OWNER, recordConsent,
+      owner: OWNER, recordConsent, affirmation: AFFIRMED,
       admin: adminWith(GROWTH_MONTHLY), accountId: 'acct_1',
       targetPlanCode: 'scale', targetBillingInterval: 'monthly',
     });
@@ -520,7 +526,7 @@ describe('the plan-change operation ledger', () => {
     // throw. So the ledger may only reach provider_accepted here; only the
     // projector, seeing that invoice paid, may activate.
     await changeBasePlan({
-      owner: OWNER, recordConsent,
+      owner: OWNER, recordConsent, affirmation: AFFIRMED,
       admin: adminWith(GROWTH_MONTHLY), accountId: 'acct_1',
       targetPlanCode: 'scale', targetBillingInterval: 'monthly',
     });
@@ -532,7 +538,7 @@ describe('the plan-change operation ledger', () => {
     // A response means Stripe decided and the change did not apply -> abandon.
     stripe.update.mockRejectedValueOnce(Object.assign(new Error('no'), { statusCode: 402 }));
     await changeBasePlan({
-      owner: OWNER, recordConsent,
+      owner: OWNER, recordConsent, affirmation: AFFIRMED,
       admin: adminWith(GROWTH_MONTHLY), accountId: 'acct_1',
       targetPlanCode: 'scale', targetBillingInterval: 'monthly',
     });
@@ -545,7 +551,7 @@ describe('the plan-change operation ledger', () => {
     // retry could apply the change twice.
     stripe.update.mockRejectedValueOnce(new Error('socket hang up'));
     await changeBasePlan({
-      owner: OWNER, recordConsent,
+      owner: OWNER, recordConsent, affirmation: AFFIRMED,
       admin: adminWith(GROWTH_MONTHLY), accountId: 'acct_1',
       targetPlanCode: 'scale', targetBillingInterval: 'monthly',
     });
@@ -592,7 +598,7 @@ describe('the plan-change operation ledger', () => {
         claim: { claim_status, operation_pk: OPERATION_PK, operation_state: claim_status, claim_token: CLAIM_TOKEN },
       });
       await changeBasePlan({
-        owner: OWNER, recordConsent, admin, accountId: 'acct_1',
+        owner: OWNER, recordConsent, affirmation: AFFIRMED, admin, accountId: 'acct_1',
         targetPlanCode: 'scale', targetBillingInterval: 'monthly',
       });
       expect(stripe.update, `${claim_status} must not re-send`).not.toHaveBeenCalled();
@@ -602,10 +608,78 @@ describe('the plan-change operation ledger', () => {
   it('does not call Stripe at all when the claim is refused', async () => {
     const admin = adminWith(GROWTH_MONTHLY, { claimError: { message: 'a plan change requires an active paid workspace' } });
     const result = await changeBasePlan({
-      owner: OWNER, recordConsent, admin, accountId: 'acct_1',
+      owner: OWNER, recordConsent, affirmation: AFFIRMED, admin, accountId: 'acct_1',
       targetPlanCode: 'scale', targetBillingInterval: 'monthly',
     });
     expect(result.ok).toBe(false);
     expect(stripe.update).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * The consent trail only evidences something if a human saw the disclosure.
+ *
+ * The server used to mint an acceptance unconditionally, which would have
+ * recorded a specific human agreeing to a specific recurring amount they were
+ * never shown. The guard sits at the one site that mints consent, so it cannot
+ * become one of the unreachable copies this file has already had to delete once.
+ */
+describe('the recurring billing authorization', () => {
+  const affirmed = {
+    accepted: true,
+    consentVersion: 'base-plan-recurring-2026-08-16',
+    consentTextSha256: 'f39aeedb379d397f941d3c5fc48357703b4cc97148d8b1bb3c2f55b04e449c75',
+  };
+
+  const upgrade = (affirmation: unknown) => changeBasePlan({
+    owner: OWNER, recordConsent,
+    admin: adminWith(GROWTH_MONTHLY), accountId: 'acct_1',
+    targetPlanCode: 'scale', targetBillingInterval: 'monthly',
+    affirmation: affirmation as never,
+  });
+
+  it('charges nothing without it', async () => {
+    for (const missing of [
+      null,
+      undefined,
+      { ...affirmed, accepted: false },
+      // A stale tab: ticked, but against a disclosure that is no longer current.
+      { ...affirmed, consentVersion: 'base-plan-recurring-2026-01-01' },
+      { ...affirmed, consentTextSha256: '0'.repeat(64) },
+    ]) {
+      stripe.update.mockClear();
+      recordConsent.mockClear();
+      const result = await upgrade(missing);
+      expect(result.ok, JSON.stringify(missing)).toBe(false);
+      expect(recordConsent, 'no acceptance may be minted').not.toHaveBeenCalled();
+      expect(stripe.update, 'and no card may be charged').not.toHaveBeenCalled();
+    }
+  });
+
+  it('proceeds once the exact rendered artifact comes back', async () => {
+    const result = await upgrade(affirmed);
+    expect(result.ok).toBe(true);
+    expect(recordConsent).toHaveBeenCalledTimes(1);
+    expect(stripe.update).toHaveBeenCalledTimes(1);
+  });
+
+  it('is not demanded again for an operation that already has an acceptance', async () => {
+    // The row already carries single-use evidence from the first attempt.
+    // Demanding a fresh tick would strand a retry that is otherwise idempotent.
+    const admin = adminWith(GROWTH_MONTHLY, {
+      boundAcceptance: {
+        recurring_consent_acceptance_id: ACCEPTANCE_ID,
+        plan_code: 'scale',
+        billing_interval: 'monthly',
+        purpose: 'base_plan_plan_change',
+      },
+    });
+    const result = await changeBasePlan({
+      owner: OWNER, recordConsent, admin, accountId: 'acct_1',
+      targetPlanCode: 'scale', targetBillingInterval: 'monthly',
+      affirmation: null,
+    });
+    expect(result.ok).toBe(true);
+    expect(recordConsent).not.toHaveBeenCalled();
   });
 });

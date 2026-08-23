@@ -303,6 +303,13 @@ export async function loadChangeableSubscription(
   });
 }
 
+/** The recurring-billing disclosure the customer was shown, and ticked. */
+export type PlanChangeAffirmation = Readonly<{
+  accepted: boolean;
+  consentVersion: string;
+  consentTextSha256: string;
+}>;
+
 export type PlanChangeResult =
   | Readonly<{ ok: true; kind: 'no_change'; planCode: BillingPlanId }>
   | Readonly<{ ok: true; kind: 'activated'; planCode: PaidPlanCode; billingInterval: BillingCycle }>
@@ -401,6 +408,15 @@ export async function changeBasePlan(input: {
   targetPlanCode: BillingPlanId;
   targetBillingInterval: 'none' | BillingCycle;
   actorEmail?: string | null;
+  /**
+   * What the customer actually ticked, carried from the rendered panel.
+   *
+   * Required only where consent is MINTED -- an immediate prorated upgrade --
+   * and checked there rather than here, so the guard sits at the one site that
+   * can reach it and cannot become unreachable. Recording an acceptance the
+   * human never saw would make the whole consent trail evidence of nothing.
+   */
+  affirmation?: PlanChangeAffirmation | null;
   /** Seam for tests; the real recorder is the default. */
   recordConsent?: typeof recordBasePlanPlanChangeConsentForOwner;
 }): Promise<PlanChangeResult> {
@@ -468,6 +484,7 @@ async function activateAfterPayment(input: {
   actorEmail?: string | null;
   subscription: ChangeableSubscription;
   decision: Extract<PlanTransitionDecision, { kind: 'activate_after_payment' }>;
+  affirmation?: PlanChangeAffirmation | null;
   recordConsent: typeof recordBasePlanPlanChangeConsentForOwner;
 }): Promise<PlanChangeResult> {
   const { subscription, decision } = input;
@@ -527,6 +544,20 @@ async function activateAfterPayment(input: {
     return { ok: false, error: 'We could not verify this plan change. Nothing was charged. Please try again.' };
   }
   if (!acceptanceId) {
+    // Mint only against the artifact the customer was actually shown. Comparing
+    // the RENDERED version and digest -- not just a boolean -- is what stops a
+    // stale tab authorising today's price under last month's disclosure.
+    const affirmation = input.affirmation;
+    if (
+      affirmation?.accepted !== true
+      || affirmation.consentVersion !== BASE_PLAN_RECURRING_CONSENT_VERSION
+      || affirmation.consentTextSha256 !== BASE_PLAN_RECURRING_CONSENT_TEXT_SHA256
+    ) {
+      return {
+        ok: false,
+        error: 'Please read and accept the recurring billing authorization before upgrading.',
+      };
+    }
     try {
       const acceptance = await input.recordConsent(input.owner, {
         operationId, planCode, billingInterval, accepted: true,
