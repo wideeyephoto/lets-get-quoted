@@ -217,6 +217,28 @@ production database because Preview deployments write there.
    single-row. `cancel_at_period_end` now read. Proved behaviourally against
    production in a rolled-back transaction.
 
+### A consequence of the separate ledger that must not be forgotten
+
+**`20260823120000`'s two relaxations are dead code under this design.** Verified
+in the live bodies today:
+
+```
+projector :583   from public.billing_subscription_checkout_operations o
+          :586     and o.purpose = 'base_plan_plan_change'
+binding   :84     and v_operation.purpose is distinct from 'base_plan_plan_change'
+```
+
+Both read `billing_subscription_checkout_operations`. No row there can ever carry
+`base_plan_plan_change` — `claim_stripe_billing_subscription_checkout` hardcodes
+`base_plan_subscription`, and the plan-change purpose now lives in
+`billing_subscription_plan_change_operations`. So those clauses are not "inert
+until something writes the purpose", as the handoff says; they can never fire at
+all.
+
+The projector patch must re-point both at the new ledger. Leaving them as-is
+would leave two clauses that read as protection and provide none — and a future
+reader would reasonably conclude the plan-change path was already handled.
+
 ### Still to build, in order
 
 4. **Decide the Checkout-Session question above.** Traps 1–3 must have an answer
@@ -236,10 +258,25 @@ production database because Preview deployments write there.
    `always_invoice` does **not** throw on a declined proration —
    `payment_behavior` defaults to `allow_incomplete` — so the caller must read
    `latest_invoice` rather than assume a rejection.
-6. Projector/binding patches. Payment evidence must be bound to the **specific
-   proration invoice id** captured from the `subscriptions.update` response, and
-   the `checkout_session_paid` re-tightening must key on
-   `v_checkout_session_id is null`, not only on operation purpose.
+6. **Projector/binding patches — the riskiest step, and the last SQL.** Four
+   things, in one migration:
+   - re-point `20260823120000`'s two relaxations at
+     `billing_subscription_plan_change_operations` (see above — they are dead
+     where they stand);
+   - resolve a plan-change operation from the new ledger when the event's
+     `lgq_operation_id` names one;
+   - allow a NULL `checkout_session_id` for a plan-change operation, and
+     re-tighten `checkout_session_paid` on `v_checkout_session_id is null`
+     rather than only on purpose, or the SQL accepts
+     `{session: null, evidence: checkout_session_paid}` on a subscription event
+     and grants the plan before any money moves;
+   - bind payment evidence to the ledger's `proration_invoice_id`, not to any
+     paid invoice on the subscription.
+
+   Every edit is a source patch against a body that every subscription event in
+   the product flows through. Anchor each on exactly one match, normalise CRLF,
+   filter `prokind = 'f'`, and dry-run against production with a rollback before
+   applying. `pg_catalog.coalesce` does not exist — use bare `coalesce`.
 7. The TypeScript write path: operation row **before** the Stripe call, the new
    `lgq_operation_id` in the subscription metadata without dropping the other
    keys, and fresh consent captured in `ChangePlanPanel` mirroring
