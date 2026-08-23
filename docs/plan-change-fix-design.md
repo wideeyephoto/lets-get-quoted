@@ -103,6 +103,20 @@ Evidence has to be bound to a specific invoice id captured from the
 
 ---
 
+## One claim from the adversarial pass that is FALSE
+
+It was briefly written into this note as a defect, so it is recorded here rather
+than quietly deleted. **"Annual subscribers have no immediate upgrade; the
+immediate rail only serves monthly → monthly" is wrong.** `plan-transition.ts`
+gates on `isCapacityUpgrade && (current.planCode === 'flex' ||
+!changesBillingInterval)`, so annual Solo → annual Growth is
+`activate_after_payment` like any other same-interval tier move. What waits for
+renewal is a change of *interval*, which is the rule that stops an annual
+subscriber escaping their paid term by bundling a tier move with a switch to
+monthly.
+
+---
+
 ## Confirmed defects in the current code, independent of the above
 
 - **`always_invoice` does not throw on a declined proration.**
@@ -116,9 +130,14 @@ Evidence has to be bound to a specific invoice id captured from the
   `billing_subscription_checkout_idempotency_key_unique (livemode,
   stripe_idempotency_key)` — a full unique index. A retry after a failed change
   reuses the same key and hits a raw `23505`. The key needs the operation id in it.
-- **Annual subscribers have no immediate upgrade at all.** Any billing-cycle
-  change is `schedule_at_renewal` by policy, so the immediate rail only ever
-  serves monthly → monthly. Worth stating in the UI rather than discovering.
+- **Prorated credit grants are computed and thrown away.**
+  `decidePlanTransition` returns `creditGrants` from
+  `proratedPlanUpgradeCreditDeltas` for a mid-cycle upgrade, and nothing outside
+  `plan-transition.ts` and its own test ever reads the field. So an upgrade moves
+  `feature_limits` and `plan_code` but tops up no credit lots until the next
+  allowance reset — the customer pays the new price and waits up to a month for
+  the new plan's allowances. Decide whether that is the intended product before
+  building on top of it.
 - **`past_due` and `trialing` workspaces are offered the upgrade** by
   `CHANGEABLE_STATUSES`, and any new claim RPC modelled on the existing one will
   refuse them — after consent has already been minted and permanently recorded.
