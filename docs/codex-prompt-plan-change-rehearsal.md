@@ -1,5 +1,26 @@
 # Codex prompt — plan-change rehearsal, phase 1
 
+## SUPERSEDED 2026-08-23 — read this first
+
+The blocker below is **fixed**. `subscription-rehearsal` was merged up to `main`
+(tip `439b45e9`); its tree SHA is byte-identical to `main`'s, so the Preview
+deployment behind the Stripe webhook now carries the whole plan-change rail.
+
+That merge came back "clean 3-way, 0 conflicts", which in this repo is normally
+the warning sign rather than the reassurance — stranded branches here are mostly
+rebased twins, and a clean merge is how real content goes missing. It is correct
+this time, and independently so: all four of the branch's substantive commits
+were already on `main` by patch-id, the other two were a TEMPORARY logging commit
+and its own revert, and `git diff main...subscription-rehearsal` was empty
+beforehand. The branch had nothing unique to drop.
+
+**Steps 1–3 below are still worth running if phase 1 never happened** — the flag
+is the open question. Step 4 is obsolete. Go to
+`codex-prompt-plan-change-rehearsal-phase2.md`, which folds the flag check in as
+its own step 1.
+
+---
+
 Copy everything below the line.
 
 ---
@@ -105,7 +126,7 @@ on the commit SHA you report.
 
 ---
 
-## Why it stops there (context for the human, not for Codex)
+## Why it originally stopped there (superseded, kept for the reasoning)
 
 The sandbox webhook points at the `subscription-rehearsal` branch preview, and
 that branch is **319 commits behind `main`** — every commit of the plan-change
