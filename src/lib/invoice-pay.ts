@@ -69,7 +69,20 @@ export function invoicePayState(
   // customer has the link anyway, they must not be able to pay a figure the
   // contractor is mid-way through editing.
   if (invoice.status === 'draft') return { state: 'unavailable', due, paid, reason: 'draft' };
-  if (invoice.status === 'void') return { state: 'unavailable', due, paid, reason: 'void' };
+  /**
+   * A VOID INVOICE IS NOT OWED, and it used to return the full amount.
+   *
+   * `due` above is total - paid. A full refund sets the payment to `refunded`
+   * and the invoice to `void` (payments.ts:884, :910-912, and again in the
+   * Stripe webhook) -- and `paidTowardInvoice` counts only `paid`, so the
+   * refunded payment drops out entirely, paid falls to 0 and due becomes the
+   * whole original total.
+   *
+   * The portal headline sums `due` across every invoice it loads, void
+   * included, so a fully refunded homeowner opened their branded link and read
+   * "Balance due $4,237.50" with no invoice listed beneath it and no way to pay.
+   */
+  if (invoice.status === 'void') return { state: 'unavailable', due: 0, paid, reason: 'void' };
 
   if (due <= 0) return { state: 'settled', due: 0, paid };
   if ((Number(total) || 0) <= 0) return { state: 'unavailable', due, paid, reason: 'zero' };
