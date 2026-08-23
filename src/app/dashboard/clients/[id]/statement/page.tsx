@@ -2,7 +2,11 @@ import Link from 'next/link';
 import { requireOwnerContext } from '@/lib/auth';
 import { pickBusinessName } from '@/lib/business-name';
 import { getClient, getClientStatement } from '@/lib/clients';
-import { formatMoney } from '@/lib/jobs';
+// formatMoneyExact, not formatMoney. The latter documents itself as rounding
+// to whole dollars and says to use this one for anything a customer pays --
+// three $438.50 jobs printed as three $439 rows over a $1,316 total, and the
+// customer is holding the paper.
+import { formatMoneyExact } from '@/lib/jobs';
 import { formatPhoneDashes } from '@/lib/phone';
 import PrintButton from './PrintButton';
 
@@ -98,15 +102,23 @@ export default async function ClientStatementPage({ params }: { params: { id: st
         <section className="statement-totals">
           <div className="statement-total-box">
             <span>Agreed</span>
-            <strong>{formatMoney(statement.totalQuoted)}</strong>
+            <strong>{formatMoneyExact(statement.totalQuoted)}</strong>
           </div>
           <div className="statement-total-box">
             <span>Paid</span>
-            <strong className="pos">{formatMoney(statement.totalPaid)}</strong>
+            <strong className="pos">{formatMoneyExact(statement.totalPaid)}</strong>
           </div>
           <div className="statement-total-box">
             <span>Balance</span>
-            <strong className={statement.outstanding > 0 ? 'due' : 'pos'}>{formatMoney(statement.outstanding)}</strong>
+            {/* A NEGATIVE balance is not good news styled green. It means the
+                customer has paid more than the agreed amount -- usually sales
+                tax pushing Paid above Agreed -- and they are owed money, which
+                is a different conversation from "nothing due". Only exactly
+                zero is settled. */}
+            <strong className={statement.outstanding > 0 ? 'due' : statement.outstanding < 0 ? 'credit' : 'pos'}>
+              {formatMoneyExact(statement.outstanding)}
+            </strong>
+            {statement.outstanding < 0 ? <span className="statement-credit-note">Credit owed to customer</span> : null}
           </div>
         </section>
 
@@ -120,18 +132,18 @@ export default async function ClientStatementPage({ params }: { params: { id: st
               <tr key={job.id}>
                 <td>{job.ref}</td>
                 <td>{fmtDate(job.date)}</td>
-                <td className="num">{formatMoney(job.quoted)}</td>
-                <td className="num">{formatMoney(job.paid)}</td>
-                <td className="num">{formatMoney(job.balance)}</td>
+                <td className="num">{formatMoneyExact(job.quoted)}</td>
+                <td className="num">{formatMoneyExact(job.paid)}</td>
+                <td className="num">{formatMoneyExact(job.balance)}</td>
               </tr>
             ))}
           </tbody>
           <tfoot>
             <tr>
               <td colSpan={2}>Total</td>
-              <td className="num">{formatMoney(statement.totalQuoted)}</td>
-              <td className="num">{formatMoney(statement.totalPaid)}</td>
-              <td className="num">{formatMoney(statement.outstanding)}</td>
+              <td className="num">{formatMoneyExact(statement.totalQuoted)}</td>
+              <td className="num">{formatMoneyExact(statement.totalPaid)}</td>
+              <td className="num">{formatMoneyExact(statement.outstanding)}</td>
             </tr>
           </tfoot>
         </table>
@@ -150,7 +162,7 @@ export default async function ClientStatementPage({ params }: { params: { id: st
                     <td>{payment.jobRef}</td>
                     <td>{payment.label || KIND_LABEL[payment.kind] || payment.kind}</td>
                     <td>{STATUS_LABEL[payment.status] || payment.status}</td>
-                    <td className="num">{formatMoney(payment.amount)}</td>
+                    <td className="num">{formatMoneyExact(payment.amount)}</td>
                   </tr>
                 ))}
               </tbody>

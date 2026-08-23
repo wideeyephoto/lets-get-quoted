@@ -1,6 +1,6 @@
 /* GENERATED — do not edit. Source: src/app/globals.css
    Run: node scripts/build-css-subset.mjs
-   source-sha256: 7d9b2b19ffbdd2e8
+   source-sha256: b1127d233077fd31
 
    globals.css with the rules that can only match inside /dashboard, /admin and
    /demo removed. Every route except those three imports this file; they import

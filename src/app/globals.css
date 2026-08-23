@@ -15535,6 +15535,9 @@ a.ropsrow-fact:hover { text-decoration: underline; }
 .statement-total-box strong { font-size: 1.3rem; color: #101a28; }
 .statement-total-box strong.pos { color: #15803d; }
 .statement-total-box strong.due { color: #b91c1c; }
+/* Overpaid. Not green -- money is owed BACK, which is not "settled". */
+.statement-total-box strong.credit { color: #b45309; }
+.statement-credit-note { display: block; margin-top: 0.25rem; font-size: 0.7rem; color: #b45309; }
 
 .statement-section-title { margin: 1.6rem 0 0.5rem; font-size: 0.95rem; color: #101a28; }
 .statement-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }

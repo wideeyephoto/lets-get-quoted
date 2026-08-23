@@ -53,6 +53,20 @@ const CUSTOMER_MONEY_SURFACES = [
   // What lands in the customer's inbox, and what they keep.
   'src/emails/InvoiceEmail.tsx',
   'src/emails/InvoicePdf.ts',
+  /**
+   * AND WHAT THE CONTRACTOR PRINTS AND HANDS THEM.
+   *
+   * This one was missed because the list grew by asking "what does the customer
+   * load?" — and this page loads for the OWNER, behind auth, under
+   * /dashboard. It has a print button, and the paper goes to the customer to
+   * settle up from. It imported the rounding formatMoney for every box, every
+   * job row, the table total and every payment, so three $438.50 jobs printed
+   * as three $439 rows over a $1,316 total.
+   *
+   * The rule was never about who fetches the URL. It is about who reads the
+   * number and acts on it.
+   */
+  'src/app/dashboard/clients/[id]/statement/page.tsx',
 ] as const;
 
 /**
