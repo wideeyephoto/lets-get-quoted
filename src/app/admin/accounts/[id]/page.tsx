@@ -591,6 +591,11 @@ const ERROR_MESSAGES: Record<string, string> = {
   reason_required: 'Enter a reason of at least four characters.',
   update_failed: 'The account could not be updated. Try again.',
   partial_signout: 'Some account members were blocked, but at least one update failed. Review the audit entry before retrying.',
+  // The delete used to fire without reading its error and redirect deleted=1,
+  // so a GDPR erasure was reported as done while every row of personal data
+  // remained. These two say what actually happened.
+  delete_blocked: 'This account has billing or messaging history that cannot be removed automatically — 24 tables hold it under a RESTRICT key, including payments. NOTHING was deleted and no privacy request was scrubbed. Close it out by hand.',
+  delete_failed: 'The account could not be deleted. Nothing was removed and no privacy request was scrubbed. Check the server log and try again.',
 };
 
 function PaymentStatusPill({ status }: { status: string | null }) {

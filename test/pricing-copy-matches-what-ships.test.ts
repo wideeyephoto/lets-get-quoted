@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { OVERAGE_RATE_MILLICENTS } from '../src/lib/billing/usage-overage';
 import { OVERAGE_AUTHORIZATION_TEXT } from '../src/lib/billing/overage-consent';
 import { formatOverageRate } from '../src/lib/billing/overage-summary';
+import { stripComments } from './helpers/source-text';
 
 /**
  * The pre-sale promise has to describe the product that exists.
@@ -19,21 +20,8 @@ import { formatOverageRate } from '../src/lib/billing/overage-summary';
  * copy guard that only greps for wording goes stale the same way the copy did.
  */
 
-/**
- * COPY WITH THE PROSE REMOVED.
- *
- * The first version of this file failed against its own explanatory comments —
- * the ones quoting the false sentences to explain why they were removed. That is
- * the same trap `customer-money-is-exact.test.ts` documents at length, in this
- * repo, for exactly this reason: a comment about a claim reads identically to
- * the claim. Block comments go whole, including JSX `{/* … *\/}`.
- */
-const stripComments = (source: string) => source
-  .replace(/\/\*[\s\S]*?\*\//g, '')
-  .split(/\r?\n/)
-  .filter((line) => !line.trim().startsWith('//'))
-  .join('\n');
-
+// Prose stripped, or this file fails against its own comments quoting the false
+// sentences it exists to forbid. See test/helpers/source-text.ts.
 const read = (...parts: string[]) => stripComments(readFileSync(join(process.cwd(), ...parts), 'utf8'));
 const pricingCatalog = read('src', 'app', 'pricing', 'pricing-catalog.ts');
 const pricingExperience = read('src', 'app', 'pricing', 'PricingExperience.tsx');

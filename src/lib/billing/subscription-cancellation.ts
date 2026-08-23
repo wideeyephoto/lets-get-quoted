@@ -359,12 +359,32 @@ export async function resumeBasePlanSubscription(input: {
 export async function cancelSubscriptionForAccountDeletion(input: {
   admin: SupabaseClient;
   accountId: string;
+  /**
+   * The subscription as it was read BEFORE the account row was deleted.
+   *
+   * The deletion now runs first, because it can fail: twenty-four tables hold a
+   * RESTRICT foreign key to `accounts`, `payments` among them, so any workspace
+   * that has ever taken a customer payment cannot be deleted at all. Cancelling
+   * first meant a contractor lost their plan mid-period to a delete that was
+   * always going to fail.
+   *
+   * But `billing_subscriptions.account_id` is ON DELETE CASCADE, so once the
+   * delete commits there is no local row left to read and this would find
+   * nothing to cancel — leaking a live subscription that keeps charging. So the
+   * caller reads it beforehand and hands it in. Pass `undefined` to keep the
+   * original load-it-here behaviour.
+   */
+  preloaded?: CancellableSubscription | null;
 }): Promise<{ canceled: boolean; subscriptionId: string | null; error: string | null }> {
   let subscription: CancellableSubscription | null = null;
-  try {
-    subscription = await loadCancellableSubscription(input.admin, input.accountId);
-  } catch (error) {
-    return { canceled: false, subscriptionId: null, error: error instanceof Error ? error.message : 'read failed' };
+  if (input.preloaded !== undefined) {
+    subscription = input.preloaded;
+  } else {
+    try {
+      subscription = await loadCancellableSubscription(input.admin, input.accountId);
+    } catch (error) {
+      return { canceled: false, subscriptionId: null, error: error instanceof Error ? error.message : 'read failed' };
+    }
   }
   if (!subscription) return { canceled: false, subscriptionId: null, error: null };
 

@@ -395,6 +395,30 @@ export async function deleteAccountAction(accountId: string, formData: FormData)
   // typed, and it may quote the very personal data the request was about, so it
   // goes while the record of the request stays. Everything that makes the log
   // useful later (kind, status, who resolved it, when) is structured and kept.
+  // THE DELETE GOES FIRST, AND ITS ERROR IS READ.
+  //
+  // This used to scrub the privacy request, write an `account_delete` audit
+  // line, and then fire the delete WITHOUT DESTRUCTURING ITS ERROR before
+  // redirecting `deleted=1`. Twenty-four tables hold a RESTRICT foreign key to
+  // `accounts` -- `payments` among them -- so for any workspace that has taken a
+  // customer payment the delete always failed. A GDPR erasure was reported as
+  // done, the audit log said it had happened, the free-text record of what the
+  // customer actually asked for was destroyed, and every row of their personal
+  // data was still there. Silence on the most consequential write in the
+  // product.
+  //
+  // So: delete, check, and only then scrub and log. If it fails, nothing has
+  // been touched and the operator is told.
+  const { error: deleteError } = await admin.from('accounts').delete().eq('id', accountId);
+  if (deleteError) {
+    console.error('account hard delete failed:', deleteError);
+    // backTo returns never, so nothing after this runs.
+    backTo(accountId, deleteError.code === '23503' ? 'error=delete_blocked' : 'error=delete_failed');
+  }
+
+  // Everything below is after a CONFIRMED delete. `details` is free text a staff
+  // member typed and may quote the very personal data the request was about, so
+  // it goes while the structured record of the request stays.
   const { error: scrubError } = await admin
     .from('privacy_requests')
     .update({ details: null })
@@ -402,7 +426,6 @@ export async function deleteAccountAction(accountId: string, formData: FormData)
   if (scrubError) console.error('privacy request scrub failed:', scrubError);
 
   await logAdminAction(admin, ctx, { action: 'account_delete', accountId, targetType: 'account', targetId: accountId, meta: { accountNumber: expected } });
-  await admin.from('accounts').delete().eq('id', accountId);
 
   for (const userId of ownerIds) {
     try {
