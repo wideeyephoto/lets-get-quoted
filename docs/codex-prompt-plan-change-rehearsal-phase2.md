@@ -53,7 +53,10 @@ The cause was a gate I had not accounted for, and my earlier claim that
 wrong. It controls whether the plan-change DATA loads. The panel renders inside
 the **Plan & usage tab**, and that whole tab is conditional on a different flag:
 
-
+```
+...(pricingDashboardEnabled && planUsage ? [{ id: 'plan', label: 'Plan & usage' ...
+planUsageDashboardEnabled() === (env.LGQ_PRICING_DASHBOARD_ENABLED === '1')
+```
 
 So all three must hold, and the deployment must have been BUILT after them:
 
