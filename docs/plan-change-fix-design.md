@@ -185,15 +185,54 @@ production database because Preview deployments write there.
 1. ~~Gate the operation.~~ **Done** — `78a87549`. The panel was already withheld
    at the render site; the gate closes the server action, which stays POST-able
    because `ChangePlanPanel` is still compiled into the bundle.
-2. **Decide the Checkout-Session question above.** No migration should be
-   written until traps 1–3 have an answer, because the answer determines the
+2. ~~Fix the catalog-version outage.~~ **Done and applied** — `9cd072de`,
+   migration `20260823190000`. That turned out to be a live inability to collect
+   card payments, not a September renewal problem. See the handoff.
+3. ~~Consent rail.~~ **Done and applied** — `56d707cd`, migration
+   `20260823200000`. `record_base_plan_plan_change_consent`, the acceptances
+   `purpose` CHECK widened, granted to `authenticated` only with the `anon`
+   revoke asserted. Inert: nothing calls it.
+
+### Still to build, in order
+
+4. **Decide the Checkout-Session question above.** Traps 1–3 must have an answer
+   before the ledger migration is written, because the answer determines the
    operation row's state, its columns, and how many function bodies get patched.
-3. Fix the catalog-version dead-letter separately.
-4. Then: acceptances purpose CHECK, a plan-change consent recorder, a
-   plan-change claim RPC, the projector/binding patches, the TypeScript write
-   path, and the end-to-end test.
-5. The end-to-end projection test in test mode is what gates the flag — not the
+   The current intent is a **separate ledger table**
+   (`billing_subscription_plan_change_operations`) rather than widening the
+   checkout table — the Stripe *events* cannot be routed elsewhere, since they
+   arrive on the same subscription object, but the *ledger* can. That avoids
+   widening the checkout CHECKs, avoids `one_pending_per_account` locking a
+   workspace out of further changes, and avoids the consent single-use unique
+   colliding across rails.
+5. The claim RPC, `SECURITY DEFINER`, `service_role` only, with the `anon`
+   revoke asserted. Lock order must match the first-checkout claim exactly —
+   accounts `for update` → entitlements → subscriptions → customers →
+   acceptance → operation — or the two deadlock. Its subscription lookup must
+   filter on the status list of
+   `billing_subscriptions_one_live_per_account`, because that partial unique
+   index excludes `canceled` and a workspace that resubscribed holds two rows.
+6. Projector/binding patches. Payment evidence must be bound to the **specific
+   proration invoice id** captured from the `subscriptions.update` response, and
+   the `checkout_session_paid` re-tightening must key on
+   `v_checkout_session_id is null`, not only on operation purpose.
+7. The TypeScript write path: operation row **before** the Stripe call, the new
+   `lgq_operation_id` in the subscription metadata without dropping the other
+   keys, and fresh consent captured in `ChangePlanPanel` mirroring
+   `BasePlanSubscriptionCheckout`'s three hidden fields. Reuse
+   `base-plan-checkout-consent` / `base-plan-checkout-affirmation` rather than
+   inventing a class, or `globals.css` changes and `globals-lite.css` must be
+   regenerated.
+8. Grant the prorated credit lots. `proratedPlanUpgradeCreditDeltas` already
+   computes them and nothing reads the result, so today an upgrade moves limits
+   and the customer waits up to a month for the allowances they just paid for.
+9. The end-to-end projection test in test mode is what gates the flag — not the
    migration, and not this note.
+
+**A ceiling worth stating:** steps 4–8 are code and SQL and can be finished from
+here. Step 9 and the flag flips cannot — they need a real test-mode Stripe
+purchase and Vercel environment changes, and `vercel-env-is-baked-at-build`
+means a Production flag does nothing until a redeploy.
 
 **A note on writing the migration when you get there:** `pg_catalog.coalesce`
 does not exist. `COALESCE`, `NULLIF`, `LEAST` and `GREATEST` are SQL constructs,
