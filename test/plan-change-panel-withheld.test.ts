@@ -27,9 +27,15 @@ const page = stripComments(readFileSync(
 ));
 
 describe('the plan-change panel', () => {
-  it('is withheld', () => {
+  it('is withheld by the flag, and by nothing else', () => {
+    // ONE control. Two independent switches would mean turning the rail on took
+    // a code change AND an env change, which is how a flag ends up reading as
+    // enabled while the feature stays invisible.
     expect(page).toContain('PLAN_CHANGE_PANEL_WITHHELD');
-    expect(page).toMatch(/const PLAN_CHANGE_PANEL_WITHHELD = true;/);
+    expect(page).toContain('const PLAN_CHANGE_PANEL_WITHHELD = !basePlanSubscriptionPlanChangeEnabled();');
+    expect(page, 'no hard-coded withholding may survive').not.toMatch(
+      /const PLAN_CHANGE_PANEL_WITHHELD = (true|false);/,
+    );
   });
 
   it('short-circuits before the subscription is even read', () => {
@@ -86,12 +92,13 @@ describe('what the panel is now waiting on', () => {
     expect(planChange).not.toContain("state = 'activated'");
   });
 
-  it('is withheld on the flag and the end-to-end test, not on missing plumbing', () => {
+  it('is gated on the flag and the end-to-end test, not on missing plumbing', () => {
     // What is actually left: LGQ_BASE_PLAN_SUBSCRIPTION_PLAN_CHANGE_ENABLED is
     // absent in every environment, and no plan change has been projected end to
     // end in test mode. Both need a real Stripe purchase and a redeploy, which
     // is why the panel stays off even though the rail is built.
     expect(planChange).toContain('BASE_PLAN_SUBSCRIPTION_PLAN_CHANGE_FLAG');
-    expect(page).toMatch(/const PLAN_CHANGE_PANEL_WITHHELD = true;/);
+    // The flag is absent in every environment, so this is still off everywhere.
+    expect(page).toContain('basePlanSubscriptionPlanChangeEnabled');
   });
 });

@@ -35,6 +35,7 @@ import { buildWorkspaceCapacity, loadCrewSeatsUsed } from '@/lib/billing/capacit
 import { loadWorkspaceCreditLots } from '@/lib/billing/credit-lots';
 import { NO_PURCHASED_SEATS, loadPurchasedSeats } from '@/lib/billing/purchased-seats';
 import { basePlanSubscriptionCheckoutEnabled } from '@/lib/billing/base-plan-subscription-entrypoint';
+import { basePlanSubscriptionPlanChangeEnabled } from '@/lib/billing/plan-change';
 import { loadChangeableSubscription, planChangeOptions } from '@/lib/billing/plan-change';
 import { parsePlanIntent } from '@/lib/plan-intent';
 import { BILLING_PLANS, resolveBillingPlanId } from '@/lib/billing/catalog';
@@ -154,35 +155,35 @@ export default async function SettingsPage({
     : null;
 
   /**
-   * WITHHELD 2026-08-23. It shipped ungated, and it charges a card for a change
-   * it cannot record.
+   * Withheld 2026-08-23 because the rail could not record a plan change at all;
+   * un-hardcoded 2026-08-23 once it could.
    *
-   * changeBasePlan calls stripe.subscriptions.update with
-   * proration_behavior: 'always_invoice', so the difference is taken
-   * immediately. Then every event for that subscription fails to project,
-   * permanently, and the workspace keeps the OLD plan's limits, allowances and
-   * platform fee while paying the new price. Nothing self-heals, because the
-   * only thing that could repair the entitlement is the projector that is
-   * refusing.
+   * WHAT IT WAS PROTECTING AGAINST. `changeBasePlan` calls
+   * `stripe.subscriptions.update` with `proration_behavior: 'always_invoice'`,
+   * so the difference is taken immediately -- and then every event for that
+   * subscription failed to project, permanently, leaving the workspace on the
+   * OLD plan's limits, allowances and platform fee while paying the new price.
+   * Nothing self-healed, because the only thing that could repair the
+   * entitlement was the projector that was refusing it.
    *
-   * Migration 20260823120000 cleared two of the refusals and is applied. The
-   * rest is not a small job: a plan change needs its own consent acceptance
-   * (recurring_consent_acceptance_id is NOT NULL and UNIQUE, so consent is
-   * single-use by construction), and BOTH functions that would record one --
-   * record_base_plan_recurring_consent and
-   * claim_stripe_billing_subscription_checkout -- are hard-gated to an active
-   * FLEX workspace with the purpose pinned to 'base_plan_subscription'. A plan
-   * change is neither. Two more function patches and a third CHECK.
+   * WHY IT IS NO LONGER A CONSTANT. All of it landed: `20260823200000` gives a
+   * plan change its own consent recorder, `20260823210000`-`230000` its own
+   * ledger and transitions, `20260823235000` teaches the projector and the
+   * binding to read that ledger, and `20260823235500` makes an upgrade hand over
+   * the new plan's full allowance. The write path claims its row before calling
+   * Stripe and records the proration invoice activation binds to.
    *
-   * So the panel comes off until that lands. Upgrades are handled by hand;
-   * there are no real customers, so this costs nothing today and removes a live
-   * way to take money and deliver nothing.
+   * So there is no longer a second, hidden reason to keep the surface off, and
+   * two independent switches would mean turning the rail on required a code
+   * change AND an env change -- which is how a flag ends up looking enabled while
+   * the feature is invisible. ONE control now:
+   * LGQ_BASE_PLAN_SUBSCRIPTION_PLAN_CHANGE_ENABLED, absent in every environment,
+   * which also gates the operation itself inside `changeBasePlan`.
    *
-   * Turning it back on is deleting this constant, and the end-to-end projection
-   * test in docs/plan-change-fix-design.md is what should gate that -- not the
-   * migration, and not the design note.
+   * The end-to-end projection test in test mode is what should gate turning that
+   * flag on -- not a migration, and not a design note.
    */
-  const PLAN_CHANGE_PANEL_WITHHELD = true;
+  const PLAN_CHANGE_PANEL_WITHHELD = !basePlanSubscriptionPlanChangeEnabled();
 
   const planChange = PLAN_CHANGE_PANEL_WITHHELD ? null : await loadChangeableSubscription(createAdminClient(), accountId)
     .then((subscription) => (subscription && subscription.planCode !== 'flex'
