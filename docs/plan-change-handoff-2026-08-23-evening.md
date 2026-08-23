@@ -1,6 +1,6 @@
 # Plan-change rail — handoff
 
-> **SUPERSEDED 2026-08-23 night — see .**
+> **SUPERSEDED 2026-08-23 night — see `handoff-2026-08-23-night.md`.**
 >
 > This describes a rail that was blocked. It no longer is: a real sandbox
 > upgrade has since been charged, projected, and granted the full new
