@@ -1,7 +1,7 @@
 # Plan-change rail — handoff
 
 **Branch:** `main`, clean<br>
-**Gates:** schema ×2, typecheck, lint, test (9858), build — all 0<br>
+**Gates:** schema ×2, typecheck, lint, test (9859), build — all 0<br>
 **Blocking decision:** RESOLVED 2026-08-23 — **option A**, by the user
 
 ---
@@ -341,19 +341,38 @@ npm run inspect:cron-health
 4. ~~`always_invoice` does not throw on a declined proration.~~ Handled: the
    ledger records `provider_accepted` plus `latest_invoice`, and only the
    projector may move it to `activated`.
-5. Grant the prorated credit lots. **Still open, and it is a decision, not
-   plumbing.** `proratedPlanUpgradeCreditDeltas` is called by
-   `decidePlanTransition`, which returns `creditGrants` -- and `plan-change.ts`
-   reads only `kind` and `target`, so the value is computed and dropped. But the
-   grant itself happens in SQL, in the projector’s `v_should_grant` block, which
-   grants the new plan’s FULL monthly lots. For a mid-cycle upgrade that is a
-   month of credits the customer did not pay a month for. Fixing it means
-   another projector source patch AND deciding which is right: full allowance on
-   upgrade, or the prorated delta. Do not let the TypeScript-shaped half of this
-   suggest it is a TypeScript-shaped fix.
+5. ~~Grant the prorated credit lots.~~ **Decided: FULL allowance — and it was
+   worse than "not prorated".** `v_should_grant`'s last clause is
+   `v_allowance_start >= next_allowance_reset_at`, and a mid-cycle upgrade does
+   not move the billing period, so all three disjuncts were false and the
+   contractor got **nothing**. They paid the proration, moved to the new plan's
+   limits and platform fee, and kept sending texts against the old plan's
+   segments until renewal. The one thing they upgraded for was the one thing
+   they did not get.
+
+   It could not be switched on alone. The lot idempotency key was identical for
+   both plans inside one period, so the insert would hit `on conflict do nothing`
+   and the verification read beneath it would find the old plan's `granted_units`
+   where the loop now expects the new plan's — raising 22000 and dead-lettering
+   every event for that subscription. `20260823235500` moves the grant and both
+   key sites together.
+
+   Policy: the new plan's FULL monthly lots, added on top of whatever is left,
+   with no clawback. Self-limiting by construction — the new disjunct compares
+   against `v_entitlement.plan_code` read BEFORE the entitlement update, so a
+   second event for the same change finds them equal and cannot re-grant.
+
+   Same migration: a change Stripe never invoiced now activates instead of
+   stranding the contractor until renewal, but only while no invoice on that
+   subscription is open or uncollectible. The TypeScript half is
+   `expand: ['latest_invoice']` — without it a null id could mean "the response
+   omitted it" rather than "nothing was owed", and the projector would provision
+   a plan nobody paid for.
+
 6. End-to-end projection test in test mode. **This gates the flag**, not the
    migrations and not a design note.
 
-**Ceiling:** step 5 is code plus one decision. Step 6 and the flag flips need a real
+**Ceiling:** `20260823235500` is written and verified but NOT APPLIED. Step 6 and
+the flag flips need a real
 test-mode Stripe purchase and a Vercel redeploy — `vercel-env-is-baked-at-build`
 means a Production flag does nothing until one happens.

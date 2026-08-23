@@ -644,6 +644,13 @@ async function activateAfterPayment(input: {
         // rather than at renewal.
         proration_behavior: 'always_invoice',
         metadata: planChangeMetadata({ planCode, billingInterval, operationId }),
+        // The projector now ACTIVATES a change whose proration invoice id is
+        // null, on the reading that Stripe invoiced nothing so nothing is owed.
+        // That is only safe while null cannot also mean 'the response did not
+        // include it' -- unexpanded, latest_invoice is a bare id string on some
+        // API versions and absent on others. Expanding it makes the absence
+        // mean what the projector assumes it means.
+        expand: ['latest_invoice'],
       },
       { idempotencyKey },
     );

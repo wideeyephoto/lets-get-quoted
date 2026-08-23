@@ -507,6 +507,20 @@ describe('the plan-change operation ledger', () => {
       .toBe(claim?.args.p_stripe_idempotency_key);
   });
 
+  it('expands latest_invoice, so a null id means Stripe invoiced nothing', async () => {
+    // The projector activates a change whose proration invoice is null, on the
+    // reading that nothing was owed. Unexpanded, latest_invoice is a bare id on
+    // some API versions and absent on others -- so without this, 'the response
+    // omitted it' would provision a plan nobody paid for.
+    await changeBasePlan({
+      owner: OWNER, recordConsent, affirmation: AFFIRMED,
+      admin: adminWith(GROWTH_MONTHLY), accountId: 'acct_1',
+      targetPlanCode: 'scale', targetBillingInterval: 'monthly',
+    });
+    const [, params] = stripe.update.mock.calls[0];
+    expect((params as { expand?: string[] }).expand).toContain('latest_invoice');
+  });
+
   it('records the exact proration invoice, because activation binds to it', async () => {
     stripe.update.mockResolvedValueOnce({ id: 'sub_1', latest_invoice: { id: 'in_proration456' } });
     await changeBasePlan({
