@@ -15,6 +15,7 @@ import {
   reviewQuickStopSections,
   type SectionReview,
 } from '@/lib/quick-stop-sections';
+import QuickStopCustomerPreviewModal from './QuickStopCustomerPreviewModal';
 
 export type QuickStopSettingsRow = Parameters<typeof quickStopSettingsFromAccount>[0];
 export type RefundTierValues = {
@@ -38,6 +39,85 @@ const SECTIONS: Array<{ key: SectionKey; num: number; title: string; blurb: stri
   { key: 'terms', num: 5, title: 'Deadlines & refunds', blurb: 'How long each side has to respond, and what a cancellation returns.' },
 ];
 
+type TradePreset = {
+  id: string;
+  icon: string;
+  name: string;
+  tagline: string;
+  categories: string;
+  maxVisitMinutes: number;
+  maxDetourMiles: number;
+  maxDetourMinutes: number;
+  minFeeDollars: number;
+  maxFeeDollars: number;
+  daysAhead: number;
+  earliestTime: string;
+  latestEnd: string;
+};
+
+const TRADE_PRESETS: TradePreset[] = [
+  {
+    id: 'plumbing',
+    icon: '🔧',
+    name: 'Plumbing',
+    tagline: 'Leaks, clogs, valves & fixtures',
+    categories: 'leak repair, running toilet, faucet replacement, drain backup, pipe burst, garbage disposal fix, shutoff valve replacement',
+    maxVisitMinutes: 45,
+    maxDetourMiles: 10,
+    maxDetourMinutes: 20,
+    minFeeDollars: 95,
+    maxFeeDollars: 225,
+    daysAhead: 1,
+    earliestTime: '08:00',
+    latestEnd: '19:00',
+  },
+  {
+    id: 'electrical',
+    icon: '⚡',
+    name: 'Electrical',
+    tagline: 'Breakers, outlets & switches',
+    categories: 'tripped breaker, outlet replacement, switch repair, flickering lights, smoke detector, ceiling fan swap, GFCI reset',
+    maxVisitMinutes: 30,
+    maxDetourMiles: 8,
+    maxDetourMinutes: 15,
+    minFeeDollars: 120,
+    maxFeeDollars: 250,
+    daysAhead: 1,
+    earliestTime: '08:00',
+    latestEnd: '18:00',
+  },
+  {
+    id: 'hvac',
+    icon: '❄️',
+    name: 'HVAC',
+    tagline: 'AC reset, filters & thermostats',
+    categories: 'AC not cooling, furnace reset, thermostat replacement, blower check, capacitor swap, AC drain line clear',
+    maxVisitMinutes: 60,
+    maxDetourMiles: 15,
+    maxDetourMinutes: 25,
+    minFeeDollars: 150,
+    maxFeeDollars: 300,
+    daysAhead: 1,
+    earliestTime: '07:30',
+    latestEnd: '20:00',
+  },
+  {
+    id: 'handyman',
+    icon: '🔨',
+    name: 'Handyman',
+    tagline: 'Quick repairs & adjustments',
+    categories: 'door adjustment, drywall patch, door lock swap, cabinet hinge fix, weatherstripping, curtain/blind repair, trim fix',
+    maxVisitMinutes: 30,
+    maxDetourMiles: 6,
+    maxDetourMinutes: 15,
+    minFeeDollars: 75,
+    maxFeeDollars: 175,
+    daysAhead: 1,
+    earliestTime: '08:00',
+    latestEnd: '18:00',
+  },
+];
+
 export default function QuickStopConfigurator({
   quickStop,
   refundTiers,
@@ -57,11 +137,15 @@ export default function QuickStopConfigurator({
   const s = quickStopSettingsFromAccount(quickStop);
   const t = refundTiers;
 
-  // One drawer at a time — same rule as the booking setup page. All five open
-  // was a wall of thirty controls with no way to skim what the page covers.
-  const [openSection, setOpenSection] = useState<SectionKey | null>('when');
-  const isOpen = (key: SectionKey) => openSection === key;
+  // Multi-drawer expansion supported while defaulting to opening the first drawer.
+  const [openSections, setOpenSections] = useState<Set<SectionKey>>(new Set(['when']));
+  const isOpen = (key: SectionKey) => openSections.has(key);
   const refs = useRef<Partial<Record<SectionKey, HTMLElement | null>>>({});
+  const [previewOpen, setPreviewOpen] = useState(false);
+
+  // Live calculator test amount
+  const defaultFeeD = Math.round((centsToDollars(s.minFeeCents) + centsToDollars(s.maxFeeCents)) / 2) || 125;
+  const [calculatorFee, setCalculatorFee] = useState<number>(defaultFeeD);
 
   // The five refund tiers are the one group of inputs held in state rather than
   // left uncontrolled. Everything else on this form is a number you either mean
@@ -147,11 +231,53 @@ export default function QuickStopConfigurator({
   // browser paints. (Same reasoning as BookingSetup.)
   function toggleSection(key: SectionKey) {
     const before = refs.current[key]?.getBoundingClientRect().top;
-    flushSync(() => setOpenSection((current) => (current === key ? null : key)));
+    flushSync(() => {
+      setOpenSections((prev) => {
+        const next = new Set(prev);
+        if (next.has(key)) next.delete(key);
+        else next.add(key);
+        return next;
+      });
+    });
     const after = refs.current[key]?.getBoundingClientRect().top;
     if (before !== undefined && after !== undefined && Math.abs(after - before) > 1) {
       window.scrollBy(0, after - before);
     }
+  }
+
+  function expandAll() {
+    setOpenSections(new Set(SECTIONS.map((sec) => sec.key)));
+  }
+
+  function collapseAll() {
+    setOpenSections(new Set());
+  }
+
+  function applyPreset(preset: TradePreset) {
+    const form = document.querySelector<HTMLFormElement>('.bset-form');
+    if (!form) return;
+
+    const setInputValue = (name: string, value: string | number) => {
+      const el = form.elements.namedItem(name) as HTMLInputElement | HTMLSelectElement | null;
+      if (el) {
+        el.value = String(value);
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+        el.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+    };
+
+    setInputValue('quickStopCategories', preset.categories);
+    setInputValue('quickStopMaxVisitMinutes', preset.maxVisitMinutes);
+    setInputValue('quickStopMaxDetourMiles', preset.maxDetourMiles);
+    setInputValue('quickStopMaxDetourMinutes', preset.maxDetourMinutes);
+    setInputValue('quickStopMinFee', preset.minFeeDollars);
+    setInputValue('quickStopMaxFee', preset.maxFeeDollars);
+    setInputValue('quickStopDaysAhead', preset.daysAhead);
+    setInputValue('quickStopEarliest', preset.earliestTime);
+    setInputValue('quickStopLatestEnd', preset.latestEnd);
+
+    setCalculatorFee(Math.round((preset.minFeeDollars + preset.maxFeeDollars) / 2));
+    expandAll();
   }
 
   // After the hooks, never before them — an early return above the useState
@@ -162,8 +288,19 @@ export default function QuickStopConfigurator({
   return (
     <section className="panel workspace-section-card" id="quick-stop-setup">
       <div className="section-heading workspace-section-heading compact-heading">
-        <p className="eyebrow">Setup</p>
-        <h2>How Quick Stops work for you</h2>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', flexWrap: 'wrap', gap: '0.5rem' }}>
+          <div>
+            <p className="eyebrow" style={{ margin: 0 }}>Setup</p>
+            <h2 style={{ margin: 0 }}>How Quick Stops work for you</h2>
+          </div>
+          <button
+            type="button"
+            className="btn secondary qs-preview-trigger"
+            onClick={() => setPreviewOpen(true)}
+          >
+            👁 Preview Customer Experience
+          </button>
+        </div>
       </div>
 
       <p className="workspace-details-copy" style={{ marginTop: 0 }}>
@@ -182,6 +319,36 @@ export default function QuickStopConfigurator({
         as tacking one onto the end.
       </p>
 
+      {/* 1-Click Quick Start Trade Presets */}
+      <div className="qs-presets-strip">
+        <div className="qs-presets-header">
+          <div>
+            <p className="qs-presets-title">⚡ 1-Click Quick-Start Trade Presets</p>
+            <p className="qs-presets-hint">Click a trade below to load recommended categories, detour radii, and fee bands instantly:</p>
+          </div>
+        </div>
+        <div className="qs-presets-grid">
+          {TRADE_PRESETS.map((preset) => (
+            <button
+              key={preset.id}
+              type="button"
+              className="qs-preset-btn"
+              onClick={() => applyPreset(preset)}
+              title={`Load ${preset.name} settings`}
+            >
+              <div className="qs-preset-btn-top">
+                <span>{preset.icon}</span>
+                <span>{preset.name}</span>
+              </div>
+              <span className="qs-preset-btn-sub">{preset.tagline}</span>
+              <span style={{ fontSize: '0.72rem', color: '#ff9b54', fontWeight: 600, marginTop: '0.2rem' }}>
+                ${preset.minFeeDollars}–${preset.maxFeeDollars} fee · {preset.maxDetourMiles} mi max
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+
       {!stripeConnected ? (
         <div className="automation-prereq" style={{ marginBottom: '0.9rem' }}>
           <span aria-hidden="true">💳</span>
@@ -191,6 +358,29 @@ export default function QuickStopConfigurator({
           </span>
         </div>
       ) : null}
+
+      <div className="qs-section-toolbar">
+        <span style={{ fontSize: '0.84rem', color: 'var(--muted)', fontWeight: 600 }}>5 Setup Sections</span>
+        <div className="qs-toolbar-actions">
+          <button type="button" className="qs-toolbar-btn" onClick={expandAll}>
+            Expand all
+          </button>
+          <button type="button" className="qs-toolbar-btn" onClick={collapseAll}>
+            Collapse all
+          </button>
+        </div>
+      </div>
+
+      <QuickStopCustomerPreviewModal
+        isOpen={previewOpen}
+        onClose={() => setPreviewOpen(false)}
+        businessName="Your Business"
+        minFeeDollars={centsToDollars(s.minFeeCents)}
+        maxFeeDollars={centsToDollars(s.maxFeeCents)}
+        earliestTime={s.earliestTime}
+        latestEnd={s.latestEnd}
+        categories={s.categories}
+      />
 
       <form action={updateQuickStopSettingsAction} className="bset-form">
         {/* No on/off here. This page already says whether Quick Stop is live —
@@ -408,6 +598,52 @@ export default function QuickStopConfigurator({
                         maxLabel="Highest fee you’ll charge"
                         hint="You still set the exact fee on every request — this is the band you can set it within. A 10% platform fee applies to the visit fee; work is invoiced separately."
                       />
+                    </div>
+
+                    {/* Live Take-Home & Net Fee Calculator Card */}
+                    <div className="field full">
+                      <div className="qs-calculator-card">
+                        <div className="qs-calculator-header">
+                          <h4>💰 Live Take-Home &amp; Fee Breakdown</h4>
+                          <span className="qs-calc-badge">Direct Deposit via Stripe</span>
+                        </div>
+                        <div style={{ marginBottom: '0.85rem' }}>
+                          <label htmlFor="qs-calc-input" style={{ fontSize: '0.82rem', color: 'var(--muted)', display: 'block', marginBottom: '0.35rem' }}>
+                            Test sample visit fee: <strong>${calculatorFee}</strong>
+                          </label>
+                          <input
+                            id="qs-calc-input"
+                            type="range"
+                            min={Math.max(25, centsToDollars(s.minFeeCents) || 25)}
+                            max={Math.max(centsToDollars(s.maxFeeCents) || 250, 100)}
+                            step={5}
+                            value={calculatorFee}
+                            onChange={(e) => setCalculatorFee(Number(e.target.value))}
+                            style={{ width: '100%' }}
+                          />
+                        </div>
+                        <div className="qs-calculator-table">
+                          <div className="qs-calc-row">
+                            <span>Homeowner Pays (Priority Visit Fee):</span>
+                            <strong>${calculatorFee}.00</strong>
+                          </div>
+                          <div className="qs-calc-row fee">
+                            <span>10% LGQ Platform Fee:</span>
+                            <span>-${(calculatorFee * 0.10).toFixed(2)}</span>
+                          </div>
+                          <div className="qs-calc-row fee">
+                            <span>Est. Stripe Processing (2.9% + 30¢):</span>
+                            <span>-${(calculatorFee * 0.029 + 0.30).toFixed(2)}</span>
+                          </div>
+                          <div className="qs-calc-row net">
+                            <span>Net Payout to Your Bank:</span>
+                            <strong>${Math.max(0, calculatorFee - (calculatorFee * 0.10) - (calculatorFee * 0.029 + 0.30)).toFixed(2)}</strong>
+                          </div>
+                        </div>
+                        <p className="qs-calc-note">
+                          ✨ <strong>Paid out on booking clearance:</strong> You get paid before turning the ignition. Any repair, labor, or parts work performed during the visit is invoiced separately at your normal plan rate.
+                        </p>
+                      </div>
                     </div>
 
                     <div className="field">
