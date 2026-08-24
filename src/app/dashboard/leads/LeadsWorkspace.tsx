@@ -18,6 +18,8 @@ import LeadSmoothieView from './LeadSmoothieView';
 import LeadPriorityView from './LeadPriorityView';
 import LeadBoardView from './LeadBoardView';
 import LeadTableView from './LeadTableView';
+import QuickAddLeadModal from './QuickAddLeadModal';
+import { supabase } from '@/lib/supabase';
 import styles from './leads.module.css';
 
 // Display-ready lead shape, built server-side in page.tsx so this client
@@ -171,6 +173,7 @@ export default function LeadsWorkspace({
   ownerControls?: boolean;
 }) {
   const [view, setView] = useState<LeadsView>(initialView);
+  const [quickAddOpen, setQuickAddOpen] = useState(false);
   /**
    * Whether the map panel is open.
    *
@@ -206,6 +209,49 @@ export default function LeadsWorkspace({
     () => scopePinsToFilter(mapPins, 'lead', visibleLeadIds, true),
     [mapPins, visibleLeadIds],
   );
+
+  // Global 'N' shortcut to open quick lead creation modal
+  useEffect(() => {
+    const onGlobalKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'n' || e.key === 'N') {
+        const target = e.target as HTMLElement | null;
+        const isFormInput =
+          target instanceof HTMLInputElement ||
+          target instanceof HTMLTextAreaElement ||
+          target instanceof HTMLSelectElement ||
+          target?.isContentEditable;
+        if (!isFormInput && !e.metaKey && !e.ctrlKey && !e.altKey) {
+          e.preventDefault();
+          setQuickAddOpen(true);
+        }
+      }
+    };
+    window.addEventListener('keydown', onGlobalKeyDown);
+    return () => window.removeEventListener('keydown', onGlobalKeyDown);
+  }, []);
+
+  // Real-time intake updates via Supabase Realtime channel
+  useEffect(() => {
+    if (readOnly) return;
+    try {
+      const channel = supabase
+        .channel('leads-realtime-feed')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'leads' },
+          () => {
+            router.refresh();
+          },
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    } catch (err) {
+      console.warn('Leads realtime subscription error:', err);
+    }
+  }, [router, readOnly]);
 
   function run(fn: () => Promise<unknown>) {
     // The one chokepoint every lead action goes through. Swallowed rather than
@@ -317,8 +363,10 @@ export default function LeadsWorkspace({
           mapPins={leadPins}
           mapTheme={effectiveMapTheme}
           gear={gear}
+          onOpenQuickAdd={() => setQuickAddOpen(true)}
         />
         <ScoreLegend />
+        <QuickAddLeadModal open={quickAddOpen} onClose={() => setQuickAddOpen(false)} />
       </div>
     );
   }
@@ -367,11 +415,12 @@ export default function LeadsWorkspace({
 
       {view === 'board' && <LeadBoardView leads={leads} run={run} ownerControls={ownerControls} />}
       {view === 'inbox' && <LeadPriorityView leads={leads} snoozed={snoozedLeads} run={run} ownerControls={ownerControls} />}
-      {view === 'table' && <LeadTableView leads={leads} run={run} />}
+      {view === 'table' && <LeadTableView leads={leads} run={run} onOpenQuickAdd={() => setQuickAddOpen(true)} />}
       {view === 'split' && <SplitView leads={leads} run={run} openRequest={pinRequest} ownerControls={ownerControls} />}
       {view === 'focus' && <LeadFocusView leads={leads} run={run} onSelect={onFocusSelect} openRequest={pinRequest} details={details} initialLeadId={initialLeadId} basePath={basePath} ownerControls={ownerControls} />}
 
       <ScoreLegend />
+      <QuickAddLeadModal open={quickAddOpen} onClose={() => setQuickAddOpen(false)} />
     </div>
   );
 }

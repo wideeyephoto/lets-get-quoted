@@ -73,6 +73,7 @@ export default function LeadSmoothieView({
   mapPins = [],
   mapTheme = 'dark',
   gear,
+  onOpenQuickAdd,
 }: {
   leads: LeadViewItem[];
   run: (fn: () => Promise<unknown>) => void;
@@ -86,6 +87,7 @@ export default function LeadSmoothieView({
   mapTheme?: 'dark' | 'light';
   /** The view/settings gear, so it sits in this view's own toolbar. */
   gear?: ReactNode;
+  onOpenQuickAdd?: () => void;
 }) {
   const base = basePath;
 
@@ -314,6 +316,11 @@ export default function LeadSmoothieView({
           className={styles.addLead}
           href="#add-lead"
           onClick={(event) => {
+            if (onOpenQuickAdd) {
+              event.preventDefault();
+              onOpenQuickAdd();
+              return;
+            }
             const target = document.getElementById('add-lead');
             if (!(target instanceof HTMLDetailsElement)) return;
             event.preventDefault();
@@ -349,9 +356,45 @@ export default function LeadSmoothieView({
           </div>
 
           {shown.length === 0 ? (
-            <p className={styles.emptyQueue}>
-              No leads match that. <button type="button" className={styles.clearBtn} onClick={() => { setQuery(''); setStage('open'); }}>Clear the filters</button>
-            </p>
+            <div className={styles.emptyQueue}>
+              {query.trim() && stage !== 'open' ? (
+                <p style={{ margin: 0 }}>
+                  No leads found in <strong>{queueStageLabel(stage)}</strong> matching &ldquo;{query}&rdquo;.
+                  {' '}
+                  <button type="button" className={styles.clearBtn} onClick={() => setStage('open')}>
+                    Search all open leads
+                  </button>
+                  {' · '}
+                  <button type="button" className={styles.clearBtn} onClick={() => setQuery('')}>
+                    Clear search
+                  </button>
+                </p>
+              ) : query.trim() ? (
+                <p style={{ margin: 0 }}>
+                  No leads matching &ldquo;{query}&rdquo;.
+                  {' '}
+                  <button type="button" className={styles.clearBtn} onClick={() => setQuery('')}>
+                    Clear search
+                  </button>
+                </p>
+              ) : stage !== 'open' ? (
+                <p style={{ margin: 0 }}>
+                  No leads currently in <strong>{queueStageLabel(stage)}</strong>.
+                  {' '}
+                  <button type="button" className={styles.clearBtn} onClick={() => setStage('open')}>
+                    Show all open leads
+                  </button>
+                </p>
+              ) : (
+                <p style={{ margin: 0 }}>
+                  No leads match that.
+                  {' '}
+                  <button type="button" className={styles.clearBtn} onClick={() => { setQuery(''); setStage('open'); }}>
+                    Clear the filters
+                  </button>
+                </p>
+              )}
+            </div>
           ) : (
             // eslint-disable-next-line jsx-a11y/no-noninteractive-element-to-interactive-role
             <ul className={styles.rows} onKeyDown={onQueueKeyDown}>

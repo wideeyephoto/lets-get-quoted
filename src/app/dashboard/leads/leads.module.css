@@ -782,3 +782,83 @@
    looking at. */
 .quoteRestored { margin: 0; padding: .55rem .75rem; border: 1px solid rgba(127, 224, 178, .34); border-radius: 10px; background: rgba(127, 224, 178, .07); font-size: .8rem; line-height: 1.5; color: var(--mute-t58); }
 .quoteRestored strong { display: block; color: var(--good); font-size: .84rem; font-weight: 800; }
+
+/* Quick Add Lead Modal dialog & overlay */
+.modalBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(5, 8, 16, 0.8);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  display: grid;
+  place-items: center;
+  z-index: 9999;
+  padding: 1.25rem;
+  overflow-y: auto;
+  animation: fadeIn 0.18s ease-out;
+}
+
+.modalContent {
+  position: relative;
+  width: 100%;
+  max-width: 620px;
+  background: var(--bg-2, #0e1526);
+  border: 1px solid var(--cedge-orange-66, rgba(255, 122, 33, 0.35));
+  border-radius: 18px;
+  padding: 1.75rem;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.7), 0 0 32px rgba(255, 122, 33, 0.08);
+  margin: auto;
+  animation: scaleIn 0.18s ease-out;
+}
+
+.modalHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.35rem;
+  padding-bottom: 0.9rem;
+  border-bottom: 1px solid var(--edge-t10, rgba(255, 255, 255, 0.08));
+}
+
+.modalClose {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid var(--edge-t14, rgba(255, 255, 255, 0.12));
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--mute-t62, rgba(255, 255, 255, 0.65));
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.modalClose:hover,
+.modalClose:focus-visible {
+  border-color: var(--edge-t35, rgba(255, 255, 255, 0.35));
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text, #fff);
+  outline: none;
+}
+
+.modalActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.96) translateY(-8px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+

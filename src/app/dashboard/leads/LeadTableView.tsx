@@ -44,7 +44,15 @@ type SortDir = 'asc' | 'desc';
 // view has nothing an office user cannot run. Its bulk actions are Mark
 // contacted, Snooze and Archive -- each one update on the lead row -- and its
 // only links go to the lead detail page, which admits them.
-export default function LeadTableView({ leads, run }: { leads: LeadViewItem[]; run: (fn: () => Promise<unknown>) => void }) {
+export default function LeadTableView({
+  leads,
+  run,
+  onOpenQuickAdd,
+}: {
+  leads: LeadViewItem[];
+  run: (fn: () => Promise<unknown>) => void;
+  onOpenQuickAdd?: () => void;
+}) {
   const router = useRouter();
   const [columns, setColumns] = useState<TableColumnId[]>(DEFAULT_COLUMNS);
   const [query, setQuery] = useState('');
@@ -184,6 +192,20 @@ export default function LeadTableView({ leads, run }: { leads: LeadViewItem[]; r
     URL.revokeObjectURL(url);
   }
 
+  function exportSelectedCsv() {
+    const selectedRows = shown.filter((lead) => selected.has(lead.id));
+    if (selectedRows.length === 0) return;
+    const headers = visibleColumns.map((column) => column.label);
+    const rows = selectedRows.map((lead) => visibleColumns.map((column) => cellText(lead, column.id)));
+    const blob = new Blob([toCsv(headers, rows)], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = csvFilename(`selected-${new Date().toISOString().slice(0, 10)}`);
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
   // The whole row opens the lead. An 18px "Open →" was the only way in.
   function openLead(id: string, event: React.MouseEvent | React.KeyboardEvent) {
     const target = event.target as HTMLElement;
@@ -273,6 +295,12 @@ export default function LeadTableView({ leads, run }: { leads: LeadViewItem[]; r
           Export CSV
         </button>
 
+        {onOpenQuickAdd && (
+          <button type="button" className={styles.toolBtn} onClick={onOpenQuickAdd}>
+            + Add lead
+          </button>
+        )}
+
         <span className={styles.count} role="status">
           {shown.length === leads.length ? `${leads.length} leads` : `${shown.length} of ${leads.length} leads`}
         </span>
@@ -284,11 +312,17 @@ export default function LeadTableView({ leads, run }: { leads: LeadViewItem[]; r
           <button type="button" className={styles.bulkBtn} onClick={() => bulk((id) => updateLeadStatusAction(id, 'contacted'), 'Mark contacted')}>
             Mark contacted
           </button>
+          <button type="button" className={styles.bulkBtn} onClick={() => bulk((id) => updateLeadStatusAction(id, 'won'), 'Mark won')}>
+            Mark won
+          </button>
           <button type="button" className={styles.bulkBtn} onClick={() => bulk((id) => snoozeLeadAction(id, 3), 'Snooze for 3 days')}>
             Snooze 3 days
           </button>
           <button type="button" className={styles.bulkBtn} onClick={() => bulk((id) => archiveLeadAction(id, true), 'Archive')}>
             Archive
+          </button>
+          <button type="button" className={styles.bulkBtn} onClick={exportSelectedCsv}>
+            Export selected ({liveSelection.length})
           </button>
           <button type="button" className={styles.bulkClear} onClick={() => setSelected(new Set())}>
             Clear selection
@@ -368,7 +402,39 @@ export default function LeadTableView({ leads, run }: { leads: LeadViewItem[]; r
             ))}
           </tbody>
         </table>
-        {shown.length === 0 ? <p className={styles.noMatch}>No leads match that. Clear the search or the filters.</p> : null}
+        {shown.length === 0 ? (
+          <p className={styles.noMatch}>
+            {query.trim() && stage !== 'open' ? (
+              <>
+                No leads found in <strong>{queueStageLabel(stage)}</strong> matching &ldquo;{query}&rdquo;.
+                {' '}
+                <button type="button" className={styles.bulkClear} onClick={() => setStage('open')}>
+                  Search all open leads
+                </button>
+                {' · '}
+                <button type="button" className={styles.bulkClear} onClick={() => { setQuery(''); setStage('open'); setHeat('all'); }}>
+                  Reset filters
+                </button>
+              </>
+            ) : query.trim() ? (
+              <>
+                No leads matching &ldquo;{query}&rdquo;.
+                {' '}
+                <button type="button" className={styles.bulkClear} onClick={() => setQuery('')}>
+                  Clear search
+                </button>
+              </>
+            ) : (
+              <>
+                No leads match the current filters.
+                {' '}
+                <button type="button" className={styles.bulkClear} onClick={() => { setQuery(''); setStage('open'); setHeat('all'); }}>
+                  Reset filters
+                </button>
+              </>
+            )}
+          </p>
+        ) : null}
       </div>
 
       {/* --- phones: the same rows as compact cards, same filters and sort --- */}
@@ -399,7 +465,39 @@ export default function LeadTableView({ leads, run }: { leads: LeadViewItem[]; r
             </li>
           );
         })}
-        {shown.length === 0 ? <li className={styles.noMatch}>No leads match that.</li> : null}
+        {shown.length === 0 ? (
+          <li className={styles.noMatch}>
+            {query.trim() && stage !== 'open' ? (
+              <>
+                No leads found in <strong>{queueStageLabel(stage)}</strong> matching &ldquo;{query}&rdquo;.
+                {' '}
+                <button type="button" className={styles.bulkClear} onClick={() => setStage('open')}>
+                  Search all open leads
+                </button>
+                {' · '}
+                <button type="button" className={styles.bulkClear} onClick={() => { setQuery(''); setStage('open'); setHeat('all'); }}>
+                  Reset filters
+                </button>
+              </>
+            ) : query.trim() ? (
+              <>
+                No leads matching &ldquo;{query}&rdquo;.
+                {' '}
+                <button type="button" className={styles.bulkClear} onClick={() => setQuery('')}>
+                  Clear search
+                </button>
+              </>
+            ) : (
+              <>
+                No leads match the current filters.
+                {' '}
+                <button type="button" className={styles.bulkClear} onClick={() => { setQuery(''); setStage('open'); setHeat('all'); }}>
+                  Reset filters
+                </button>
+              </>
+            )}
+          </li>
+        ) : null}
       </ul>
     </div>
   );

@@ -48,15 +48,6 @@ export const QUEUE_STAGES: { id: QueueStatus; label: string; short: string }[] =
   { id: 'lost', label: 'Lost', short: 'Lost' },
 ];
 
-const STAGE_LABEL: Record<QueueStatus, string> = QUEUE_STAGES.reduce(
-  (map, stage) => ({ ...map, [stage.id]: stage.label }),
-  {} as Record<QueueStatus, string>,
-);
-
-export function queueStageLabel(status: QueueStatus): string {
-  return STAGE_LABEL[status] ?? status;
-}
-
 /**
  * Pipeline filters plus the two operational groups people actually use.
  *
@@ -67,6 +58,21 @@ export function queueStageLabel(status: QueueStatus): string {
  * jobs rather than the default queue's job.
  */
 export type StageFilter = QueueStatus | 'open' | 'closed' | 'all';
+
+const STAGE_LABEL: Record<StageFilter, string> = {
+  new: 'Needs response',
+  contacted: 'Contacted',
+  quoted: 'Quote sent',
+  won: 'Won',
+  lost: 'Lost',
+  open: 'Open leads',
+  closed: 'Closed leads',
+  all: 'All leads',
+};
+
+export function queueStageLabel(status: StageFilter): string {
+  return STAGE_LABEL[status] ?? status;
+}
 
 /**
  * How many leads sit in each stage, plus the total.
