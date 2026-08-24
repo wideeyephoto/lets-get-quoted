@@ -1,7 +1,14 @@
 import 'server-only';
 
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { createAdminClient } from '@/lib/auth';
-import { BILLING_PLANS, parseBillingPlanId, type BillingPlanId } from '@/lib/billing/catalog';
+import {
+  BILLING_PLANS,
+  parseBillingPlanId,
+  QUICK_STOP_PLATFORM_FEE_BPS,
+  QUICK_STOP_PLATFORM_FEE_RATE,
+  type BillingPlanId,
+} from '@/lib/billing/catalog';
 
 /**
  * The platform fee rate a workspace is actually on.
@@ -43,6 +50,14 @@ export type WorkspaceFeeRate = Readonly<{
   /** The same rate as a decimal, which is the shape the destination rail stores and bills in. */
   feeRate: number;
   source: 'entitlement' | 'default';
+}>;
+
+export type PaymentFeeRate = Readonly<{
+  planCode: BillingPlanId;
+  feeRateBps: number;
+  /** The same rate as a decimal, which is the shape the destination rail stores and bills in. */
+  feeRate: number;
+  source: 'entitlement' | 'default' | 'quick_stop';
 }>;
 
 /** No entitlement row is not an error, and Flex is what an unclassified workspace is on. */
@@ -100,3 +115,56 @@ export async function getWorkspaceFeeRate(accountId: string): Promise<WorkspaceF
 
   return rateFor(planCode, 'entitlement');
 }
+
+/**
+ * Checks whether a payment is the priority visit fee for a Quick Stop.
+ * Quick Stop priority fees are created as deposits linked to `extra_stop_requests`.
+ */
+export async function isQuickStopPayment(
+  admin: SupabaseClient,
+  payment: { id?: string | null; kind?: string | null },
+): Promise<boolean> {
+  if (!payment.id) return false;
+  if (payment.kind && payment.kind !== 'deposit') return false;
+
+  const { data, error } = await admin
+    .from('extra_stop_requests')
+    .select('id')
+    .eq('payment_id', payment.id)
+    .maybeSingle();
+
+  if (error || !data) return false;
+  return true;
+}
+
+/**
+ * Resolves the platform fee rate for a specific payment.
+ *
+ * Quick Stop priority visit fees are charged a dedicated 10% platform fee
+ * (QUICK_STOP_PLATFORM_FEE_BPS = 1000). All subsequent service work invoices
+ * and standard payments follow the workspace's plan rate (0.10% – 1.25%).
+ */
+export async function resolvePaymentFeeRate(
+  admin: SupabaseClient,
+  payment: { id?: string | null; account_id: string; kind?: string | null },
+): Promise<PaymentFeeRate> {
+  const isQuickStop = await isQuickStopPayment(admin, payment);
+  if (isQuickStop) {
+    let planCode: BillingPlanId = DEFAULT_PLAN;
+    try {
+      const workspaceRate = await getWorkspaceFeeRate(payment.account_id);
+      planCode = workspaceRate.planCode;
+    } catch {
+      planCode = DEFAULT_PLAN;
+    }
+    return Object.freeze({
+      planCode,
+      feeRateBps: QUICK_STOP_PLATFORM_FEE_BPS,
+      feeRate: QUICK_STOP_PLATFORM_FEE_RATE,
+      source: 'quick_stop',
+    });
+  }
+
+  return getWorkspaceFeeRate(payment.account_id);
+}
+

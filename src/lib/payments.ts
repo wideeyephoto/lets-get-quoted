@@ -1,6 +1,6 @@
 import { createAdminClient } from '@/lib/auth';
 import { resolveFeeBasisCents } from '@/lib/billing/fee-basis';
-import { getWorkspaceFeeRate } from '@/lib/billing/workspace-fee-rate';
+import { getWorkspaceFeeRate, resolvePaymentFeeRate } from '@/lib/billing/workspace-fee-rate';
 import { pickBusinessName } from '@/lib/business-name';
 import { getJob } from '@/lib/jobs';
 import { QUICK_STOP_PAYABLE_COLUMNS, quickStopOfferAllowsPayment } from '@/lib/quick-stop';
@@ -297,9 +297,10 @@ export async function getTrailingVolume(accountId: string): Promise<number> {
  * that genuinely have no invoice behind them.
  */
 export async function quoteFeeForPayment(
-  payment: { id?: string | null; account_id: string; amount: number | string; invoice_id?: string | null },
+  payment: { id?: string | null; account_id: string; amount: number | string; invoice_id?: string | null; kind?: string | null },
 ): Promise<{ feeRate: number; platformFee: number }> {
-  const { feeRate } = await getWorkspaceFeeRate(payment.account_id);
+  const admin = createAdminClient();
+  const { feeRate } = await resolvePaymentFeeRate(admin, payment);
   const basis = await resolveFeeBasisCents(createAdminClient(), payment);
   return { feeRate, platformFee: fromCents(Math.round(basis.basisCents * feeRate)) };
 }
@@ -587,7 +588,8 @@ export async function createCheckoutSessionForPayment(paymentId: string, origin:
 
   // The rate follows the plan, not trailing volume -- which is what /pricing
   // sells and what the quote on the pay page has already shown this payer.
-  const { feeRate } = await getWorkspaceFeeRate(payment.account_id);
+  // Quick Stop priority visit fees carry the dedicated 10% platform fee.
+  const { feeRate } = await resolvePaymentFeeRate(admin, payment);
   // ...and it applies to the discount-adjusted service subtotal, not the gross.
   // Sales tax is not ours to take a percentage of, and the pricing page says so.
   //

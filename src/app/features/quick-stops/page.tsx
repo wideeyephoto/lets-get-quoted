@@ -189,7 +189,7 @@ const FAQ: { q: string; a: string }[] = [
   },
   {
     q: 'What does a Quick Stop cost me?',
-    a: `Nothing to offer one. You set the priority visit fee the homeowner pays, anywhere in the $${minFee} to $${maxFee} band, and you pay the same platform fee you pay on any other job — only on money you actually collect, plus Stripe's ${STRIPE_PROCESSING_NOTE}.`,
+    a: `Nothing to offer one. You set the priority visit fee the homeowner pays, anywhere in the $${minFee} to $${maxFee} band. Quick Stop priority visit fees carry a 10% platform fee on collected amounts, plus Stripe's ${STRIPE_PROCESSING_NOTE} — and you only pay when you actually get paid. Any subsequent service invoices you send for the repair follow your plan's standard platform fee rate.`,
   },
   {
     q: 'What if the homeowner cancels, or I can’t make it?',

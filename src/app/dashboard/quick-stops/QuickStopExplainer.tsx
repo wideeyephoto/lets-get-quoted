@@ -160,7 +160,8 @@ export default function QuickStopExplainer({
             a multiplication, not a projection, and nothing here says anyone will ask.{' '}
             {hasRange
               ? `$${typicalFee} is the middle of the $${minFeeDollars}–$${maxFeeDollars} band you set, and you name the fee on every single request.`
-              : 'You name the fee on every single request.'}
+              : 'You name the fee on every single request.'}{' '}
+            Priority visit fees carry a 10% platform fee; work invoiced during the visit is billed at your standard plan rate.
           </p>
         </aside>
       </section>

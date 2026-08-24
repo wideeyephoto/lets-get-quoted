@@ -492,6 +492,15 @@ export function platformFeeCents(eligibleSubtotalCents: number, plan: BillingPla
   return Math.round(Math.max(0, eligibleSubtotalCents) * definition.platformFeeBps / 10_000);
 }
 
+/**
+ * Platform fee for Quick Stop priority visit reservation fees.
+ * Applies specifically to the detour visit reservation fee (10%), while
+ * subsequent service invoices are billed under the contractor's standard plan rate.
+ */
+export const QUICK_STOP_PLATFORM_FEE_BPS = 1_000 as const;
+export const QUICK_STOP_PLATFORM_FEE_RATE = 0.10 as const;
+
+
 export function basePriceCents(plan: BillingPlanDefinition | BillingPlanId, billing: BillingCycle): number {
   const definition = typeof plan === 'string' ? BILLING_PLANS[plan] : plan;
   return billing === 'annual' ? definition.annualPriceCents : definition.monthlyPriceCents;

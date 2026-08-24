@@ -406,7 +406,7 @@ export default function QuickStopConfigurator({
                         format={formatMoneyValue}
                         minLabel="Lowest fee you’ll accept"
                         maxLabel="Highest fee you’ll charge"
-                        hint="You still set the exact fee on every request — this is the band you can set it within."
+                        hint="You still set the exact fee on every request — this is the band you can set it within. A 10% platform fee applies to the visit fee; work is invoiced separately."
                       />
                     </div>
 
