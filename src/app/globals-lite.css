@@ -1,6 +1,6 @@
 /* GENERATED — do not edit. Source: src/app/globals.css
    Run: node scripts/build-css-subset.mjs
-   source-sha256: 7fd6aa66b2b0ff56
+   source-sha256: 9ea13497a0887e1f
 
    globals.css with the rules that can only match inside /dashboard, /admin and
    /demo removed. Every route except those three imports this file; they import
@@ -3256,6 +3256,17 @@ h3 {
 [data-tone='warn'] { --tone-ink: var(--warn); }
 [data-tone='danger'] { --tone-ink: var(--bad); }
 [data-tone='neutral'] { --tone-ink: var(--mute-g270); }
+
+@keyframes planFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
 
 .plan-change-subtitle {
   font-size: 0.8125rem;

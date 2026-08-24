@@ -38,6 +38,7 @@ import TopUpPurchaseCheckout from './TopUpPurchaseCheckout';
 import PurchasedCapacityList from './PurchasedCapacityList';
 import SettingsHashLink from './SettingsHashLink';
 import ProcessingVolumeRoiCalculator from './ProcessingVolumeRoiCalculator';
+import PlanSubnav from './PlanSubnav';
 
 function formatDate(value: string): string {
   return new Date(value).toLocaleDateString('en-US', {
@@ -909,452 +910,397 @@ export default function PlanUsageSection({
 
   return (
     <>
-      {/* AT A GLANCE — three tiles, not the mockup's four.
-          "Estimated this month" is absent on purpose: no upcoming-invoice read
-          exists anywhere in this codebase, so the figure would exclude proration,
-          tax, discounts and credits, and basePriceCents is a per-YEAR number for
-          an annual subscriber. "Best opportunity" is absent for the same class of
-          reason -- the remedies it would rank are withheld SKUs with no live
-          Price. Both come back when there is something true to put in them.
+      <PlanSubnav planName={data.plan.kind === 'ready' ? data.plan.planName : 'Plan'} />
 
-          .workspace-metric-grid is reused rather than invented: FinanceReports
-          already uses it on this very page, and its 3-2-1 responsive steps are
-          already tuned. */}
-      <section className="panel workspace-section-card" id="plan-at-a-glance">
-        <div className="section-heading workspace-section-heading compact-heading">
-          <p className="eyebrow">At a glance</p>
-          <h2>Plan &amp; usage</h2>
-        </div>
-        <div className="plan-glancebar">
-          <GlanceCell icon="plan" label="Current plan" value={data.plan.kind === 'ready' ? data.plan.planName : 'Unavailable'}>
-            <StatusLine tone={tone}>{planStatusWord(data.plan)}</StatusLine>
-          </GlanceCell>
-          <GlanceCell icon="event" label="Next event" value={event ? formatDate(event.at) : 'None scheduled'}>
-            <StatusLine tone="neutral">
-              {event
-                ? event.label
-                : data.plan.kind === 'ready' && data.plan.billingInterval === 'none'
-                  ? 'Nothing renews and nothing expires'
-                  : 'Nothing is scheduled'}
-            </StatusLine>
-          </GlanceCell>
-          <GlanceCell icon="projected" label="Projected this period" value={forecastValueWord(forecast)}>
-            <StatusLine tone="neutral">{forecastStatusWord(forecast, data.plan)}</StatusLine>
-          </GlanceCell>
-        </div>
-        {forecast.millicents !== null ? (
-          <details className="plan-usage-limit-details plan-glance-details">
-            <summary>About projected cost</summary>
-            <p className="plan-usage-fineprint">
-              A projection, not a bill. Excludes tax, proration, discounts and account credits.
-              The LGQ platform fee is taken from the payments you collect, not billed here.
-            </p>
-          </details>
-        ) : null}
-
-        <nav className="plan-jumpbar" aria-label="Plan page quick navigation">
-          <SettingsHashLink href="#current-plan" className="plan-jump-pill">
-            <SectionIcon name="plan" /> Plan
-          </SettingsHashLink>
-          <SettingsHashLink href="#usage-balances" className="plan-jump-pill">
-            <SectionIcon name="credits" /> Usage &amp; Limits
-          </SettingsHashLink>
-          <SettingsHashLink href="#workspace-storage" className="plan-jump-pill">
-            <SectionIcon name="storage" /> Storage
-          </SettingsHashLink>
-          <SettingsHashLink href="#included-limits" className="plan-jump-pill">
-            <SectionIcon name="capacity" /> Team
-          </SettingsHashLink>
-          {planChange ? (
-            <SettingsHashLink href="#change-plan" className="plan-jump-pill">
-              <span>⚡ Plan Options</span>
-            </SettingsHashLink>
-          ) : null}
-          {showTopUpPurchase ? (
-            <SettingsHashLink href="#buy-credits" className="plan-jump-pill highlight">
-              <span>🛒 Add-ons</span>
-            </SettingsHashLink>
-          ) : null}
-        </nav>
-      </section>
-
-      <section className="panel workspace-section-card" id="current-plan">
-        <div className="section-heading workspace-section-heading compact-heading">
-          <p className="eyebrow">Current plan</p>
-          <h2><SectionIcon name="plan" />Your LGQ plan</h2>
-          <StatusLine tone={tone}>{planStatusWord(data.plan)}</StatusLine>
-        </div>
-
-        {data.plan.kind === 'ready' ? (
-          <>
-            <div className="plan-usage-plan-card">
-              <div className="plan-usage-plan-name">
-                <span>{data.plan.planName}</span>
-                <strong>{planPrice(data.plan)}</strong>
-              </div>
-              <dl className="plan-usage-plan-facts">
-                <div id="platform-fee">
-                  <dt>LGQ platform fee</dt>
-                  <dd>{platformFeeLabel(data.plan.platformFeeBps)}</dd>
-                </div>
-                <div>
-                  <dt>Billing status</dt>
-                  <dd>{billingStatusLabel(data.plan.billingStatus)}</dd>
-                </div>
-                <div>
-                  <dt>Usage schedule</dt>
-                  <dd>
-                    {data.plan.billingInterval === 'none'
-                      ? 'One-time starter balances'
-                      : data.plan.nextAllowanceResetAt
-                        ? `Resets ${formatDate(data.plan.nextAllowanceResetAt)}`
-                        // The projector nulls this deliberately whenever billing
-                        // is not being collected. "Unavailable" claimed a lookup
-                        // had failed; nothing had failed, there is simply no
-                        // reset scheduled, and the status above says why.
-                        : 'No reset scheduled'}
-                  </dd>
-                </div>
-              </dl>
-            </div>
-            <details className="plan-usage-limit-details plan-usage-fee-details">
-              <summary>How fees work</summary>
-              <p className="workspace-details-copy plan-usage-disclosure">
-                The LGQ fee applies to the eligible service subtotal collected through LGQ. Stripe processing
-                and payment-infrastructure costs are separate and paid directly by the contractor.
+      {/* SUBVIEW 1: USAGE & BALANCES */}
+      <div className="plan-subview-panel active" data-subview="usage" role="tabpanel">
+        <section className="panel workspace-section-card" id="plan-at-a-glance">
+          <div className="section-heading workspace-section-heading compact-heading">
+            <p className="eyebrow">At a glance</p>
+            <h2>Plan &amp; usage</h2>
+          </div>
+          <div className="plan-glancebar">
+            <GlanceCell icon="plan" label="Current plan" value={data.plan.kind === 'ready' ? data.plan.planName : 'Unavailable'}>
+              <StatusLine tone={tone}>{planStatusWord(data.plan)}</StatusLine>
+            </GlanceCell>
+            <GlanceCell icon="event" label="Next event" value={event ? formatDate(event.at) : 'None scheduled'}>
+              <StatusLine tone="neutral">
+                {event
+                  ? event.label
+                  : data.plan.kind === 'ready' && data.plan.billingInterval === 'none'
+                    ? 'Nothing renews and nothing expires'
+                    : 'Nothing is scheduled'}
+              </StatusLine>
+            </GlanceCell>
+            <GlanceCell icon="projected" label="Projected this period" value={forecastValueWord(forecast)}>
+              <StatusLine tone="neutral">{forecastStatusWord(forecast, data.plan)}</StatusLine>
+            </GlanceCell>
+          </div>
+          {forecast.millicents !== null ? (
+            <details className="plan-usage-limit-details plan-glance-details">
+              <summary>About projected cost</summary>
+              <p className="plan-usage-fineprint">
+                A projection, not a bill. Excludes tax, proration, discounts and account credits.
+                The LGQ platform fee is taken from the payments you collect, not billed here.
               </p>
             </details>
+          ) : null}
 
-            {data.plan.planCode !== 'flex' && data.plan.platformFeeBps < 125 ? (
-              <ProcessingVolumeRoiCalculator
-                planName={data.plan.planName}
-                platformFeeBps={data.plan.platformFeeBps}
-              />
+          <nav className="plan-jumpbar" aria-label="Plan page quick navigation">
+            <SettingsHashLink href="#current-plan" className="plan-jump-pill">
+              <SectionIcon name="plan" /> Plan
+            </SettingsHashLink>
+            <SettingsHashLink href="#usage-balances" className="plan-jump-pill">
+              <SectionIcon name="credits" /> Usage &amp; Limits
+            </SettingsHashLink>
+            <SettingsHashLink href="#workspace-storage" className="plan-jump-pill">
+              <SectionIcon name="storage" /> Storage
+            </SettingsHashLink>
+            <SettingsHashLink href="#included-limits" className="plan-jump-pill">
+              <SectionIcon name="capacity" /> Team
+            </SettingsHashLink>
+            {planChange ? (
+              <SettingsHashLink href="#change-plan" className="plan-jump-pill">
+                <span>⚡ Plan Options</span>
+              </SettingsHashLink>
             ) : null}
+            {showTopUpPurchase ? (
+              <SettingsHashLink href="#buy-credits" className="plan-jump-pill highlight">
+                <span>🛒 Add-ons</span>
+              </SettingsHashLink>
+            ) : null}
+          </nav>
+        </section>
 
-            {data.plan.billingInterval === 'monthly' && data.plan.planCode !== 'flex' ? (
-              <div className="plan-usage-annual-upsell">
-                <SettingsHashLink href="#change-plan" className="plan-usage-annual-link">
-                  <span className="plan-usage-annual-tag">SAVE 10%–20%</span>
-                  <span>Switch to Annual prepaid to save on software bills &rarr;</span>
-                </SettingsHashLink>
-              </div>
+        <section className="panel workspace-section-card" id="usage-balances">
+          <div className="workspace-section-headrow">
+            <div className="section-heading workspace-section-heading compact-heading">
+              <p className="eyebrow">Available now</p>
+              <h2><SectionIcon name="credits" />Usage &amp; limits</h2>
+            </div>
+            {showTopUpPurchase ? (
+              <SettingsHashLink className="btn workspace-section-action" href="#buy-credits">
+                Add credits
+              </SettingsHashLink>
             ) : null}
-            {!data.plan.usesCurrentCatalog ? (
-              <p className="plan-usage-note" role="status">
-                This workspace is pinned to pricing catalog {data.plan.catalogVersion}. Its saved entitlement
-                and fee are shown here; current public catalog prices are not substituted.
-              </p>
-            ) : null}
-            {collectionNote(data.plan.billingStatus) ? (
-              <p className="plan-usage-note warning" role="status">
-                {collectionNote(data.plan.billingStatus)}
-              </p>
-            ) : data.plan.entitlementState !== 'active' ? (
-              <p className="plan-usage-note warning" role="status">
-                This workspace is currently {data.plan.entitlementState}. Contact support if that does not look right.
-              </p>
-            ) : null}
-            {nextBand && data.plan.planCode !== 'enterprise' ? (
-              <PlanFitBanner
-                planCode={data.plan.planCode}
-                nextPlanName={nextBand.planName}
-                thresholdLabel={`about $${ladderBandDollars(nextBand.fromAnnualBasisCents).toLocaleString('en-US')} a month`}
-                ctaHref={planFitCtaHref}
-                workingOut={describeCrossover(data.plan.planCode, nextBand.planCode, ladderCycle)}
-              />
-            ) : null}
-            {canStartFirstSubscription && showSubscriptionCheckout ? (
-              <BasePlanSubscriptionCheckout
-                embedded
-                initialPlanCode={planIntent?.planCode ?? null}
-                initialBillingInterval={planIntent?.billingInterval ?? null}
-              />
-            ) : null}
-            {ladder ? (
-              <details className="plan-usage-limit-details plan-usage-plan-fit-details" id="plan-fit">
-                <summary>Compare plan breakpoints</summary>
-                <ul className="plan-usage-ladder">
-                  {ladder.map((band) => (
-                    <li key={band.planCode} data-current={band.isCurrent ? 'true' : undefined}>
-                      <span className="plan-usage-ladder-plan">
-                        {band.planName}
-                        {band.isCurrent ? <em> — your plan</em> : null}
-                      </span>
-                      <span className="plan-usage-ladder-band">{describeBand(band)}</span>
-                    </li>
+          </div>
+          <div className="plan-usage-limit-stack" role="group" aria-label="Credits, storage, extra usage, and plan capacity">
+            <details className="plan-usage-limit-row workspace-fold plan-usage-credit-row" open={creditNeedsAttention}>
+              <summary>
+                <span className="section-heading workspace-section-heading compact-heading">
+                  <span className="eyebrow">Communications &amp; AI</span>
+                  <span className="workspace-fold-title"><SectionIcon name="credits" />Credit balances</span>
+                </span>
+                <em className={`workspace-fold-note${creditNeedsAttention ? '' : ' neutral'} plan-usage-limit-summary`}>
+                  {creditSummary}
+                </em>
+              </summary>
+              {lots?.kind === 'ready' ? (
+                <div className="plan-usage-balance-grid">
+                  {lots.resources.map((resource) => (
+                    <CreditBalance key={resource.resourceCode} resource={resource} />
                   ))}
-                </ul>
-                <p className="plan-usage-fineprint">
-                  Compared on {ladderCycle === 'annual' ? 'annual' : 'monthly'} billing using the
-                  service subtotal the LGQ fee applies to. Tax, tips, refunds, Stripe processing,
-                  add-ons, and extra seats are excluded.
+                </div>
+              ) : data.balances.kind === 'ready' ? (
+                <div className="plan-usage-balance-grid">
+                  {data.balances.balances.map((balance) => (
+                    <article className="plan-usage-balance" key={balance.resourceCode}>
+                      <span>{balance.label}</span>
+                      <strong>
+                        {balance.availableUnits === null
+                          ? 'Not issued'
+                          : `${balance.availableUnits.toLocaleString('en-US')} available`}
+                      </strong>
+                      <small>{balanceNote(balance)}</small>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <div className="plan-usage-unavailable" role="status">
+                  <strong>Balances could not be loaded.</strong>
+                  <span>No missing balance has been shown as zero.</span>
+                </div>
+              )}
+              <details className="plan-usage-limit-details plan-usage-credit-details">
+                <summary>How these balances work</summary>
+                <p className="workspace-details-copy plan-usage-intro">
+                  Plan credits refresh each period. Purchased credits and starter balances are counted separately,
+                  never expire, and are used only after refreshing credits run out.
                 </p>
               </details>
-            ) : null}
-          </>
-        ) : (
-          <div className="plan-usage-unavailable" role="status">
-            <strong>Plan details are unavailable right now.</strong>
-            <span>Nothing has been guessed or changed. Refresh in a moment, or contact support if this continues.</span>
-          </div>
-        )}
-      </section>
+            </details>
 
-      {planChange ? (
-        <ChangePlanPanel
-          currentPlanCode={planChange.currentPlanCode}
-          currentBillingInterval={planChange.currentBillingInterval}
-          currentPeriodEnd={planChange.currentPeriodEnd}
-          pendingPlanCode={planChange.pendingPlanCode}
-          pendingEffectiveAt={planChange.pendingEffectiveAt}
-          options={planChange.options}
-        />
-      ) : null}
-
-      {cancellable ? (
-        <CancelSubscriptionPanel
-          planName={cancellable.planName}
-          currentPeriodEnd={cancellable.currentPeriodEnd}
-          alreadyScheduled={cancellable.alreadyScheduled}
-        />
-      ) : null}
-
-      <section className="panel workspace-section-card" id="usage-balances">
-        <div className="workspace-section-headrow">
-          <div className="section-heading workspace-section-heading compact-heading">
-            <p className="eyebrow">Available now</p>
-            <h2><SectionIcon name="credits" />Usage &amp; limits</h2>
-          </div>
-          {/* The mockup puts "Add credits" here, and it is the one header action
-              on this tab with somewhere real to go. Its two neighbours in the
-              mockup -- "View all balances" and "Costs & billing" -- have no
-              destination in this product, and a header action that scrolls
-              nowhere is the same defect as the banner's null CTA.
-
-              Rendered only when the top-up surface is, so the link can never
-              point at a section that is not on the page. */}
-          {showTopUpPurchase ? (
-            <SettingsHashLink className="btn workspace-section-action" href="#buy-credits">
-              Add credits
-            </SettingsHashLink>
-          ) : null}
-        </div>
-        <div className="plan-usage-limit-stack" role="group" aria-label="Credits, storage, extra usage, and plan capacity">
-          <details className="plan-usage-limit-row workspace-fold plan-usage-credit-row" open={creditNeedsAttention}>
-            <summary>
-              <span className="section-heading workspace-section-heading compact-heading">
-                <span className="eyebrow">Communications &amp; AI</span>
-                <span className="workspace-fold-title"><SectionIcon name="credits" />Credit balances</span>
-              </span>
-              <em className={`workspace-fold-note${creditNeedsAttention ? '' : ' neutral'} plan-usage-limit-summary`}>
-                {creditSummary}
-              </em>
-            </summary>
-        {/* THE SENTENCE THAT USED TO LIVE HERE HAS BEEN RETIRED ON PURPOSE.
-            It read: "Plan-period credits and purchased credits can share one
-            balance, so this is not presented as a monthly usage chart." That was
-            true of the BALANCE VIEW, which sums every lot an account has ever
-            been granted and cannot tell the two apart. It stopped being true of
-            this surface when credit-lots.ts started reading the lots themselves.
-
-            The meter now measures ONLY the open, expiring window, so a top-up can
-            no longer push it past 100% -- that is the failure the old sentence was
-            protecting against, and it is now handled by arithmetic rather than by
-            declining to draw. Credits that never expire are stated beside it as
-            their own number and are never folded into the denominator. */}
-        {lots?.kind === 'ready' ? (
-          <div className="plan-usage-balance-grid">
-            {lots.resources.map((resource) => (
-              <CreditBalance key={resource.resourceCode} resource={resource} />
-            ))}
-          </div>
-        ) : data.balances.kind === 'ready' ? (
-          <div className="plan-usage-balance-grid">
-            {data.balances.balances.map((balance) => (
-              <article className="plan-usage-balance" key={balance.resourceCode}>
-                <span>{balance.label}</span>
-                <strong>
-                  {balance.availableUnits === null
-                    ? 'Not issued'
-                    : `${balance.availableUnits.toLocaleString('en-US')} available`}
-                </strong>
-                <small>{balanceNote(balance)}</small>
-              </article>
-            ))}
-          </div>
-        ) : (
-          <div className="plan-usage-unavailable" role="status">
-            <strong>Balances could not be loaded.</strong>
-            <span>No missing balance has been shown as zero.</span>
-          </div>
-        )}
-        <details className="plan-usage-limit-details plan-usage-credit-details">
-          <summary>How these balances work</summary>
-          <p className="workspace-details-copy plan-usage-intro">
-            Plan credits refresh each period. Purchased credits and starter balances are counted separately,
-            never expire, and are used only after refreshing credits run out.
-          </p>
-        </details>
-          </details>
-
-      {storageState.kind !== 'hidden' ? (
-          <details
-            className="plan-usage-limit-row workspace-fold"
-            id="workspace-storage"
-            open={storageState.kind !== 'measured' || storageState.over || storageState.nearly}
-          >
-            <summary>
-              <span className="section-heading workspace-section-heading compact-heading">
-                <span className="eyebrow">Files &amp; photos</span>
-                <span className="workspace-fold-title"><SectionIcon name="storage" />Storage</span>
-              </span>
-              <em className={`workspace-fold-note${storageState.kind === 'measured' && !storageState.over && !storageState.nearly ? ' neutral' : ''}`}>
-                {storageState.kind === 'measured'
-                  ? `${formatStorageBytes(storageState.bytesUsed)} of ${formatStorageBytes(storageState.limitBytes)}`
-                  : 'Needs attention'}
-              </em>
-            </summary>
-
-          {storageState.kind === 'measured' ? (
-            <>
-              <div className="plan-usage-storage-figure">
-                <strong>{formatStorageBytes(storageState.bytesUsed)}</strong>
-                <span>of {formatStorageBytes(storageState.limitBytes)} used</span>
-              </div>
-              <div
-                className="plan-usage-storage-meter"
-                role="img"
-                aria-label={`${storageState.percent}% of the storage allowance used`}
+            {storageState.kind !== 'hidden' ? (
+              <details
+                className="plan-usage-limit-row workspace-fold"
+                id="workspace-storage"
+                open={storageState.kind !== 'measured' || storageState.over || storageState.nearly}
               >
-                <div
-                  className={`plan-usage-storage-meter-fill${storageState.over ? ' over' : storageState.nearly ? ' nearly' : ''}`}
-                  style={{ width: `${Math.max(storageState.percent, 2)}%` }}
+                <summary>
+                  <span className="section-heading workspace-section-heading compact-heading">
+                    <span className="eyebrow">Files &amp; photos</span>
+                    <span className="workspace-fold-title"><SectionIcon name="storage" />Storage</span>
+                  </span>
+                  <em className={`workspace-fold-note${storageState.kind === 'measured' && !storageState.over && !storageState.nearly ? ' neutral' : ''}`}>
+                    {storageState.kind === 'measured'
+                      ? `${formatStorageBytes(storageState.bytesUsed)} of ${formatStorageBytes(storageState.limitBytes)}`
+                      : 'Needs attention'}
+                  </em>
+                </summary>
+
+                {storageState.kind === 'measured' ? (
+                  <>
+                    <div className="plan-usage-storage-figure">
+                      <strong>{formatStorageBytes(storageState.bytesUsed)}</strong>
+                      <span>of {formatStorageBytes(storageState.limitBytes)} used</span>
+                    </div>
+                    <div
+                      className="plan-usage-storage-meter"
+                      role="img"
+                      aria-label={`${storageState.percent}% of the storage allowance used`}
+                    >
+                      <div
+                        className={`plan-usage-storage-meter-fill${storageState.over ? ' over' : storageState.nearly ? ' nearly' : ''}`}
+                        style={{ width: `${Math.max(storageState.percent, 2)}%` }}
+                      />
+                    </div>
+                    <div className="plan-usage-storage-categories">
+                      <span className="plan-usage-storage-chip">📸 Job &amp; Lead Photos</span>
+                      <span className="plan-usage-storage-chip">🌐 Website Images &amp; Video</span>
+                      <span className="plan-usage-storage-chip">📄 Insurance &amp; Documents</span>
+                    </div>
+                    <p className="workspace-details-copy plan-usage-intro">
+                      {storageState.objectCount === null
+                        ? 'Job photos, lead photos, crew photos, website images and video, and insurance certificates.'
+                        : `${storageState.objectCount.toLocaleString('en-US')} ${storageState.objectCount === 1 ? 'file' : 'files'} across job photos, lead photos, crew photos, website images and video, and insurance certificates.`}
+                    </p>
+                    {storageState.measuredAt ? (
+                      <p className="plan-usage-fineprint">Measured {formatDate(storageState.measuredAt)}.</p>
+                    ) : null}
+                    {storageState.over ? (
+                      <p className="plan-usage-note warning" role="status">
+                        This workspace is over its storage allowance. Nothing has been deleted and nothing will be.
+                        Remove files you no longer need to make room for new uploads.
+                      </p>
+                    ) : storageState.nearly ? (
+                      <p className="plan-usage-note" role="status">
+                        Storage is nearly full. Once it is full, new uploads are refused until room is made — existing
+                        files are never removed.
+                      </p>
+                    ) : (
+                      <StatusLine tone="healthy">Room to spare</StatusLine>
+                    )}
+                  </>
+                ) : storageState.kind === 'unmeasured' ? (
+                  <div className="plan-usage-unavailable" role="status">
+                    <strong>Storage has not been measured yet.</strong>
+                    <span>
+                      {storageState.limitBytes === null
+                        ? 'This workspace is not showing a storage allowance either. Nothing has been shown as zero.'
+                        : `This workspace includes ${formatStorageBytes(storageState.limitBytes)}. The amount in use is measured on a schedule and has not run for this workspace yet.`}
+                    </span>
+                  </div>
+                ) : (
+                  <div className="plan-usage-unavailable" role="status">
+                    <strong>{formatStorageBytes(storageState.bytesUsed)} stored.</strong>
+                    <span>No storage allowance was returned for this workspace, so none has been guessed.</span>
+                  </div>
+                )}
+              </details>
+            ) : null}
+
+            {overage ? <OverageCard overage={overage} selfServe={overageSelfServe} /> : null}
+
+            {data.plan.kind === 'ready' && limits.length > 0 ? (
+              <details
+                className="plan-usage-limit-row workspace-fold"
+                id="included-limits"
+                open={capacityNeedsAttention}
+              >
+                <summary>
+                  <span className="section-heading workspace-section-heading compact-heading">
+                    <span className="eyebrow">Plan capacity</span>
+                    <span className="workspace-fold-title"><SectionIcon name="capacity" />What you are using</span>
+                  </span>
+                  {capacitySummaryNote ? <em className="workspace-fold-note">{capacitySummaryNote}</em> : null}
+                </summary>
+
+                {capacity && capacity.rows.length > 0 ? (
+                  <ul className="plan-usage-capacity-grid">
+                    {capacity.rows.map((row) => (
+                      <CapacityMeter key={row.key} row={row} />
+                    ))}
+                  </ul>
+                ) : null}
+
+                <details className="plan-usage-limit-details">
+                  <summary>Everything included with {data.plan.planName}</summary>
+                  <dl className="plan-usage-limit-list">
+                    {limits.map((row) => (
+                      <div key={row.label}>
+                        <dt>{row.label}</dt>
+                        <dd>{row.value}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                </details>
+
+                {purchasedCapacitySubscriptions.length > 0 ? (
+                  <PurchasedCapacityList subscriptions={purchasedCapacitySubscriptions} />
+                ) : null}
+              </details>
+            ) : null}
+          </div>
+        </section>
+
+        {data.plan.kind === 'ready' && showTopUpPurchase ? (
+          <TopUpPurchaseCheckout
+            planCode={data.plan.planCode}
+            returnStatus={topUpCheckoutStatus}
+          />
+        ) : null}
+      </div>
+
+      {/* SUBVIEW 2: PLAN & SUBSCRIPTION */}
+      <div className="plan-subview-panel" data-subview="plan" role="tabpanel">
+        <section className="panel workspace-section-card" id="current-plan">
+          <div className="section-heading workspace-section-heading compact-heading">
+            <p className="eyebrow">Current plan</p>
+            <h2><SectionIcon name="plan" />Your LGQ plan</h2>
+            <StatusLine tone={tone}>{planStatusWord(data.plan)}</StatusLine>
+          </div>
+
+          {data.plan.kind === 'ready' ? (
+            <>
+              <div className="plan-usage-plan-card">
+                <div className="plan-usage-plan-name">
+                  <span>{data.plan.planName}</span>
+                  <strong>{planPrice(data.plan)}</strong>
+                </div>
+                <dl className="plan-usage-plan-facts">
+                  <div id="platform-fee">
+                    <dt>LGQ platform fee</dt>
+                    <dd>{platformFeeLabel(data.plan.platformFeeBps)}</dd>
+                  </div>
+                  <div>
+                    <dt>Billing status</dt>
+                    <dd>{billingStatusLabel(data.plan.billingStatus)}</dd>
+                  </div>
+                  <div>
+                    <dt>Usage schedule</dt>
+                    <dd>
+                      {data.plan.billingInterval === 'none'
+                        ? 'One-time starter balances'
+                        : data.plan.nextAllowanceResetAt
+                          ? `Resets ${formatDate(data.plan.nextAllowanceResetAt)}`
+                          : 'No reset scheduled'}
+                    </dd>
+                  </div>
+                </dl>
+              </div>
+              <details className="plan-usage-limit-details plan-usage-fee-details">
+                <summary>How fees work</summary>
+                <p className="workspace-details-copy plan-usage-disclosure">
+                  The LGQ fee applies to the eligible service subtotal collected through LGQ. Stripe processing
+                  and payment-infrastructure costs are separate and paid directly by the contractor.
+                </p>
+              </details>
+
+              {data.plan.planCode !== 'flex' && data.plan.platformFeeBps < 125 ? (
+                <ProcessingVolumeRoiCalculator
+                  planName={data.plan.planName}
+                  platformFeeBps={data.plan.platformFeeBps}
                 />
-              </div>
-              <div className="plan-usage-storage-categories">
-                <span className="plan-usage-storage-chip">📸 Job &amp; Lead Photos</span>
-                <span className="plan-usage-storage-chip">🌐 Website Images &amp; Video</span>
-                <span className="plan-usage-storage-chip">📄 Insurance &amp; Documents</span>
-              </div>
-              <p className="workspace-details-copy plan-usage-intro">
-                {storageState.objectCount === null
-                  ? 'Job photos, lead photos, crew photos, website images and video, and insurance certificates.'
-                  : `${storageState.objectCount.toLocaleString('en-US')} ${storageState.objectCount === 1 ? 'file' : 'files'} across job photos, lead photos, crew photos, website images and video, and insurance certificates.`}
-              </p>
-              {/* This sentence used to end "or add storage", and there is nothing to add:
-                  storage_100gb is withheld and has no live Price, so it is never rendered in
-                  the buy card. It reaches a contractor at the exact moment uploads start being
-                  refused, which is the worst possible moment to name a remedy that does not
-                  exist. Say only what they can actually do. */}
-              {/* The one real freshness timestamp on this page, and it arrived in
-                  props and was thrown away. Stated as a plain date with a neutral
-                  tone and no staleness threshold: how old the measurement is
-                  depends on a sweep flag the contractor does not hold, so warning
-                  them about it would blame them for our schedule. */}
-              {storageState.measuredAt ? (
-                <p className="plan-usage-fineprint">Measured {formatDate(storageState.measuredAt)}.</p>
               ) : null}
-              {storageState.over ? (
-                <p className="plan-usage-note warning" role="status">
-                  This workspace is over its storage allowance. Nothing has been deleted and nothing will be.
-                  Remove files you no longer need to make room for new uploads.
-                </p>
-              ) : storageState.nearly ? (
+
+              {data.plan.billingInterval === 'monthly' && data.plan.planCode !== 'flex' ? (
+                <div className="plan-usage-annual-upsell">
+                  <SettingsHashLink href="#change-plan" className="plan-usage-annual-link">
+                    <span className="plan-usage-annual-tag">SAVE 10%–20%</span>
+                    <span>Switch to Annual prepaid to save on software bills &rarr;</span>
+                  </SettingsHashLink>
+                </div>
+              ) : null}
+              {!data.plan.usesCurrentCatalog ? (
                 <p className="plan-usage-note" role="status">
-                  Storage is nearly full. Once it is full, new uploads are refused until room is made — existing
-                  files are never removed.
+                  This workspace is pinned to pricing catalog {data.plan.catalogVersion}. Its saved entitlement
+                  and fee are shown here; current public catalog prices are not substituted.
                 </p>
-              ) : (
-                // Healthy got `null` before, so a card at 12% said nothing at all
-                // and read as though a sentence had failed to load.
-                <StatusLine tone="healthy">Room to spare</StatusLine>
-              )}
+              ) : null}
+              {collectionNote(data.plan.billingStatus) ? (
+                <p className="plan-usage-note warning" role="status">
+                  {collectionNote(data.plan.billingStatus)}
+                </p>
+              ) : data.plan.entitlementState !== 'active' ? (
+                <p className="plan-usage-note warning" role="status">
+                  This workspace is currently {data.plan.entitlementState}. Contact support if that does not look right.
+                </p>
+              ) : null}
+              {nextBand && data.plan.planCode !== 'enterprise' ? (
+                <PlanFitBanner
+                  planCode={data.plan.planCode}
+                  nextPlanName={nextBand.planName}
+                  thresholdLabel={`about $${ladderBandDollars(nextBand.fromAnnualBasisCents).toLocaleString('en-US')} a month`}
+                  ctaHref={planFitCtaHref}
+                  workingOut={describeCrossover(data.plan.planCode, nextBand.planCode, ladderCycle)}
+                />
+              ) : null}
+              {canStartFirstSubscription && showSubscriptionCheckout ? (
+                <BasePlanSubscriptionCheckout
+                  embedded
+                  initialPlanCode={planIntent?.planCode ?? null}
+                  initialBillingInterval={planIntent?.billingInterval ?? null}
+                />
+              ) : null}
+              {ladder ? (
+                <details className="plan-usage-limit-details plan-usage-plan-fit-details" id="plan-fit">
+                  <summary>Compare plan breakpoints</summary>
+                  <ul className="plan-usage-ladder">
+                    {ladder.map((band) => (
+                      <li key={band.planCode} data-current={band.isCurrent ? 'true' : undefined}>
+                        <span className="plan-usage-ladder-plan">
+                          {band.planName}
+                          {band.isCurrent ? <em> — your plan</em> : null}
+                        </span>
+                        <span className="plan-usage-ladder-band">{describeBand(band)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="plan-usage-fineprint">
+                    Compared on {ladderCycle === 'annual' ? 'annual' : 'monthly'} billing using the
+                    service subtotal the LGQ fee applies to. Tax, tips, refunds, Stripe processing,
+                    add-ons, and extra seats are excluded.
+                  </p>
+                </details>
+              ) : null}
             </>
-          ) : storageState.kind === 'unmeasured' ? (
-            <div className="plan-usage-unavailable" role="status">
-              <strong>Storage has not been measured yet.</strong>
-              <span>
-                {storageState.limitBytes === null
-                  ? 'This workspace is not showing a storage allowance either. Nothing has been shown as zero.'
-                  : `This workspace includes ${formatStorageBytes(storageState.limitBytes)}. The amount in use is measured on a schedule and has not run for this workspace yet.`}
-              </span>
-            </div>
           ) : (
             <div className="plan-usage-unavailable" role="status">
-              <strong>{formatStorageBytes(storageState.bytesUsed)} stored.</strong>
-              <span>No storage allowance was returned for this workspace, so none has been guessed.</span>
+              <strong>Plan details are unavailable right now.</strong>
+              <span>Nothing has been guessed or changed. Refresh in a moment, or contact support if this continues.</span>
             </div>
           )}
-          </details>
-      ) : null}
+        </section>
 
-      {/* After storage, before buying more: a contractor reading "you have run
-          up $2.84 extra" should meet the top-up offer next, not before. */}
-      {overage ? <OverageCard overage={overage} selfServe={overageSelfServe} /> : null}
+        {planChange ? (
+          <ChangePlanPanel
+            currentPlanCode={planChange.currentPlanCode}
+            currentBillingInterval={planChange.currentBillingInterval}
+            currentPeriodEnd={planChange.currentPeriodEnd}
+            pendingPlanCode={planChange.pendingPlanCode}
+            pendingEffectiveAt={planChange.pendingEffectiveAt}
+            options={planChange.options}
+          />
+        ) : null}
 
-      {data.plan.kind === 'ready' && limits.length > 0 ? (
-          <details
-            className="plan-usage-limit-row workspace-fold"
-            id="included-limits"
-            open={capacityNeedsAttention}
-          >
-          {/* COLLAPSED, as the mockup has it -- but never when something is wrong.
-              A disclosure that hides "you are over your limit" is a disclosure
-              that hides the one line somebody needed. Open by default whenever a
-              row is over or near its limit; `at_limit` alone does NOT force it
-              open, because Flex grants one office seat and the owner occupies
-              it, so every Flex workspace is permanently at that limit and
-              forcing it open would mean it is never collapsed for anybody. The
-              summary carries the count either way, so the signal survives being
-              shut. */}
-            <summary>
-              <span className="section-heading workspace-section-heading compact-heading">
-                <span className="eyebrow">Plan capacity</span>
-                <span className="workspace-fold-title"><SectionIcon name="capacity" />What you are using</span>
-              </span>
-              {capacitySummaryNote ? <em className="workspace-fold-note">{capacitySummaryNote}</em> : null}
-            </summary>
-
-          {/* Occupancy first, entitlement second. "Office users: 2" never told a
-              contractor whether they could invite anybody; "1 of 2 used" does.
-              The rows here are only the dimensions a workspace can actually
-              consume -- see the note in capacity-usage.ts about why dedicated
-              numbers and AI Voice are not among them. */}
-          {capacity && capacity.rows.length > 0 ? (
-            <ul className="plan-usage-capacity-grid">
-              {capacity.rows.map((row) => (
-                <CapacityMeter key={row.key} row={row} />
-              ))}
-            </ul>
-          ) : null}
-
-          <details className="plan-usage-limit-details">
-            <summary>Everything included with {data.plan.planName}</summary>
-            <dl className="plan-usage-limit-list">
-              {limits.map((row) => (
-                <div key={row.label}>
-                  <dt>{row.label}</dt>
-                  <dd>{row.value}</dd>
-                </div>
-              ))}
-            </dl>
-          </details>
-
-          {purchasedCapacitySubscriptions.length > 0 ? (
-            <PurchasedCapacityList subscriptions={purchasedCapacitySubscriptions} />
-          ) : null}
-          </details>
-      ) : null}
-        </div>
-      </section>
-
-      {data.plan.kind === 'ready' && showTopUpPurchase ? (
-        <TopUpPurchaseCheckout
-          planCode={data.plan.planCode}
-          returnStatus={topUpCheckoutStatus}
-        />
-      ) : null}
+        {cancellable ? (
+          <CancelSubscriptionPanel
+            planName={cancellable.planName}
+            currentPeriodEnd={cancellable.currentPeriodEnd}
+            alreadyScheduled={cancellable.alreadyScheduled}
+          />
+        ) : null}
+      </div>
     </>
   );
 }

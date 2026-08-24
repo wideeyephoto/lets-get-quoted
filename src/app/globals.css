@@ -4801,6 +4801,110 @@ h3 {
 }
 
 /* ==========================================================================
+   Plan Sub-Navigation Tabs (Model A)
+   ========================================================================== */
+
+.plan-subnav-bar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  margin: 0 0 1.25rem;
+  padding: 0.35rem;
+  border-radius: 9999px;
+  background: rgba(var(--tint), 0.04);
+  border: 1px solid var(--rule-t12);
+  backdrop-filter: blur(12px);
+  width: fit-content;
+  max-width: 100%;
+}
+
+.plan-subnav-pillgroup {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.plan-subnav-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1.15rem;
+  border-radius: 9999px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: rgba(var(--ink-rgb), 0.72);
+  font-family: var(--font-display);
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  text-decoration: none;
+}
+
+.plan-subnav-pill:hover {
+  color: var(--text);
+  background: rgba(var(--tint), 0.05);
+}
+
+.plan-subnav-pill.active {
+  color: #ffffff;
+  background: rgba(var(--tint), 0.12);
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 4px 14px -2px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.plan-subnav-ic {
+  width: 1.05rem;
+  height: 1.05rem;
+  flex: none;
+  stroke-width: 2;
+}
+
+.plan-subnav-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem 0.5rem;
+  border-radius: 9999px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.plan-subnav-badge.live {
+  background: rgba(16, 185, 129, 0.18);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.plan-subnav-badge.tier {
+  background: rgba(255, 138, 61, 0.18);
+  color: var(--accent);
+  border: 1px solid var(--cedge-orange-24);
+}
+
+.plan-subview-panel {
+  display: none;
+}
+
+.plan-subview-panel.active {
+  display: block;
+  animation: planFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes planFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ==========================================================================
    Plan Navigation Jump Bar
    ========================================================================== */
 
@@ -4950,8 +5054,8 @@ h3 {
 .plan-roi-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 18px;
-  height: 18px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
   background: #10b981;
   border: 2px solid #ffffff;
