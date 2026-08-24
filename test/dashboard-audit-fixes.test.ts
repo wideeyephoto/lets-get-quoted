@@ -77,5 +77,22 @@ describe('dashboard audit repairs', () => {
     expect(css).toContain('.review-mode-card.is-selected');
     expect(css).toContain('.review-phone-status-bar');
   });
+
+  it('provides structured cards, feature highlights, and compliance containers for messages#texting-setup', () => {
+    const setup = read('src', 'app', 'dashboard', 'messages', 'MessagingSetup.tsx');
+    const form = read('src', 'app', 'dashboard', 'messages', 'OwnerAlertsForm.tsx');
+    const css = read('src', 'app', 'globals.css');
+
+    expect(setup).toContain('msg-setup-card');
+    expect(setup).toContain('msg-setup-section-head');
+    expect(setup).toContain('msg-setup-features');
+    expect(setup).toContain('Two-way SMS inbox');
+    expect(form).toContain('msg-setup-compliance-card');
+    expect(form).toContain('msg-setup-toggle-card');
+    expect(css).toContain('.app-modal:has(.msg-setup-sections)');
+    expect(css).toContain('.msg-setup-card');
+    expect(css).toContain('.msg-setup-compliance-card');
+  });
 });
+
 

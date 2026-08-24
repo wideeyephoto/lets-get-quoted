@@ -950,10 +950,10 @@
 .forge[data-mode='light'] { --c-bg: #ebe7dc; --c-ink: #151514; --c-muted: #68645b; --c-line: #c9c3b5; --c-deep: #17140f; --c-on-deep: #f3f0e7; }
 .forge[data-mode='light'] .forgeHeader, .forge[data-mode='light'] .forgeHero { color: #f3f0e7; }
 .forge .kicker { font-family: var(--font-mono); font-size: .7rem; font-weight: 500; letter-spacing: .18em; }
-.forgeHeader { position: absolute; z-index: 3; inset: 0 0 auto; background: linear-gradient(180deg, rgba(10,10,9,.72), rgba(10,10,9,.3) 70%, transparent); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; min-height: 84px; padding: 0 4vw; border-bottom: 1px solid rgba(255,255,255,.16); }
+.forgeHeader { position: absolute; z-index: 3; inset: 0 0 auto; background: linear-gradient(180deg, rgba(10,10,9,.78), rgba(10,10,9,.32) 70%, transparent); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; min-height: 84px; padding: 0 4vw; border-bottom: 1px solid rgba(255,255,255,.16); }
 .forgeHeaderActions { display: inline-flex; align-items: center; gap: 1rem; justify-self: end; }
-.forgeHeaderCta { display: inline-flex; align-items: center; gap: .4rem; padding: .55rem 1.1rem; border-radius: var(--theme-radius, 8px); background: var(--theme-accent); color: var(--theme-on-accent, #111); font-weight: 700; font-size: .9rem; text-decoration: none; white-space: nowrap; transition: filter .18s; }
-.forgeHeaderCta:hover { filter: brightness(1.07); }
+.forgeHeaderCta { display: inline-flex; align-items: center; gap: .4rem; padding: .55rem 1.1rem; border-radius: var(--theme-radius, 8px); background: var(--theme-accent); color: var(--theme-on-accent, #111); font-weight: 700; font-size: .9rem; text-decoration: none; white-space: nowrap; box-shadow: 0 4px 12px -4px color-mix(in srgb, var(--theme-accent) 60%, transparent); transition: transform .18s ease, filter .18s ease, box-shadow .18s ease; }
+.forgeHeaderCta:hover { transform: translateY(-1px); filter: brightness(1.07); box-shadow: 0 8px 20px -6px color-mix(in srgb, var(--theme-accent) 80%, transparent); }
 /* Wordmark renders as the owner typed it (no forced case) in their chosen brand
    font, defaulting to Forge's body face. --brand-font is set on the root only
    when the owner picks one. */
@@ -974,13 +974,14 @@
    Transform-only so it can't trigger the throttled-iframe opacity stall. */
 @keyframes heroKenBurns { from { transform: scale(1.03); } to { transform: scale(1.12); } }
 @media (prefers-reduced-motion: reduce) { .heroImage, .guildHeroFrame > img { animation: none; } }
-.forgeScrim { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(10,10,9,.94) 0%, rgba(10,10,9,.55) 50%, rgba(10,10,9,.1) 100%), linear-gradient(0deg, rgba(10,10,9,.55), transparent 50%), repeating-linear-gradient(90deg, rgba(243,240,231,.045) 0 1px, transparent 1px 88px); }
+.forgeScrim { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(10,10,9,.94) 0%, rgba(10,10,9,.58) 52%, rgba(10,10,9,.16) 100%), linear-gradient(0deg, rgba(10,10,9,.65) 0%, rgba(10,10,9,.2) 50%, transparent 100%), repeating-linear-gradient(90deg, rgba(243,240,231,.035) 0 1px, transparent 1px 88px); }
 .forgeHeroCopy { position: relative; z-index: 1; width: min(830px, 82vw); }
 .forgeHeroCopy h1 { max-width: 11ch; margin-bottom: 1.25rem; font-family: var(--theme-display); font-size: clamp(3.35rem, 9vw, 7.5rem); font-weight: 900; line-height: .95; letter-spacing: -.01em; text-transform: uppercase; }
-.heroText { max-width: 36rem; margin-bottom: 2rem; color: rgba(255,255,255,.82); font-size: 1.25rem; line-height: 1.55; }
+.heroText { max-width: 36rem; margin-bottom: 2rem; color: rgba(255,255,255,.86); font-size: 1.25rem; line-height: 1.55; }
 .forgeIndex { position: absolute; z-index: 1; right: 4vw; bottom: 5vh; font-family: var(--font-mono); font-size: .78rem; font-weight: 500; letter-spacing: .1em; color: rgba(255,255,255,.6); }
 .forgeTrust { display: grid; grid-template-columns: repeat(3, 1fr); padding: 0 4vw; border-block: 1px solid var(--c-line); }
-.forgeTrust > div { position: relative; min-height: 124px; display: flex; flex-direction: column; justify-content: center; gap: .45rem; padding: 2.25rem 2vw 1.75rem; border-right: 1px solid var(--c-line); }
+.forgeTrust > div { position: relative; min-height: 124px; display: flex; flex-direction: column; justify-content: center; gap: .45rem; padding: 2.25rem 2vw 1.75rem; border-right: 1px solid var(--c-line); transition: background .2s ease, border-color .2s ease; }
+.forgeTrust > div:hover { background: color-mix(in srgb, currentColor 3%, transparent); }
 .forgeTrust > div::before { content: ''; position: absolute; top: 1.5rem; left: 2vw; width: 16px; height: 2px; background: var(--theme-accent); }
 .forgeTrust > div:last-child { border-right: 0; }
 .forgeTrust span { font-family: var(--font-mono); color: var(--c-muted); font-size: .68rem; letter-spacing: .12em; text-transform: uppercase; }
@@ -993,7 +994,8 @@
 .sectionNumber { font-family: var(--font-mono); color: var(--theme-accent); font-weight: 500; font-size: 1.05rem; letter-spacing: .05em; }
 .forgeWork { padding: clamp(4rem, 8vw, 8rem) 5vw; background: var(--c-deep); color: var(--c-on-deep); }
 .forgeGallery { display: grid; grid-template-columns: 1.4fr .8fr; gap: 1rem; margin-top: 3rem; }
-.forgeGallery figure { margin: 0; overflow: hidden; }
+.forgeGallery figure { margin: 0; overflow: hidden; border-radius: 2px; box-shadow: 0 16px 36px -18px rgba(0,0,0,.6); transition: transform .3s ease, box-shadow .3s ease; }
+.forgeGallery figure:hover { transform: translateY(-2px); box-shadow: 0 24px 48px -18px rgba(0,0,0,.75); }
 .forgeGallery figure:not(.forgeGalleryLead) img { aspect-ratio: 16 / 10; }
 .forgeGalleryLead { grid-row: span 2; }
 .forgeGallery img { width: 100%; height: 100%; min-height: 240px; object-fit: cover; transition: transform .6s cubic-bezier(.2,.7,.2,1); }
@@ -1045,7 +1047,7 @@
 .heroFormOrCall { display: inline-flex; align-items: center; justify-content: center; gap: .3rem; min-height: 44px; margin-top: .1rem; font-size: .8rem; font-weight: 700; color: #17140f; text-decoration: none; }
 .heroFormOrCall strong { text-decoration: underline; text-decoration-color: var(--theme-accent); text-underline-offset: 2px; }
 .guild .heroQuickForm { border: 1px solid rgba(0,0,0,.10); }
-.guildHeader { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: clamp(1rem, 3vw, 2rem); min-height: 100px; padding: 0 5vw; border-bottom: 1px solid var(--c-line); }
+.guildHeader { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: clamp(1rem, 3vw, 2rem); min-height: 100px; padding: 0 5vw; border-bottom: 1px solid var(--c-line); background: color-mix(in srgb, var(--c-bg) 94%, transparent); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
 .guildBrand { display: flex; align-items: center; gap: .9rem; min-width: 0; }
 /* Only the name/license wrapper stacks — NOT the per-word spans WordmarkName
    emits inside it (a bare `span` selector stacked every word onto its own line). */
@@ -1054,47 +1056,20 @@
    centered nav) rather than clipping — the full business name still shows. */
 .guildBrand strong { display: block; min-width: 0; overflow-wrap: break-word; line-height: 1.12; font-family: var(--brand-font, var(--theme-display)); font-size: 1.35rem; font-weight: 600; letter-spacing: -.01em; }
 .guildBrand small { font-family: var(--font-mono); margin-top: .2rem; color: var(--c-muted); font-size: .64rem; letter-spacing: .1em; text-transform: uppercase; }
-/* Sized like the other templates' header CTAs (vistaMenu, coatHeaderCta,
-   careBtn) rather than as bare underlined text, which is what it used to be.
-   Two reasons it had to change:
-
-   Six of the seven button styles an owner can pick — outline, ring, glow,
-   gloss, double, sweep — draw a border or a ring around this whole element.
-   With no horizontal or top padding, that box closed right onto the words and
-   "Instant Estimate" sat wedged inside its own outline.
-
-   And the tap target was about 24px tall (text plus .35rem), well under the
-   44px minimum, on what is the primary call to action in the header.
-
-   The bottom padding stays tighter than the top so the default underline still
-   sits close to the text instead of floating away from it. */
-.guildQuote { justify-self: end; display: inline-flex; align-items: center; justify-content: center; min-height: 44px; white-space: nowrap; padding: .55rem 1.15rem .4rem; border-bottom: 2px solid var(--theme-accent); font-weight: 700; letter-spacing: .02em; transition: color .2s ease; }
-.guildQuote:hover { color: var(--theme-accent); }
+.guildQuote { justify-self: end; display: inline-flex; align-items: center; justify-content: center; min-height: 44px; white-space: nowrap; padding: .55rem 1.15rem .4rem; border-bottom: 2px solid var(--theme-accent); font-weight: 700; letter-spacing: .02em; transition: color .2s ease, transform .2s ease; }
+.guildQuote:hover { color: var(--theme-accent); transform: translateY(-1px); }
 .guildHero { min-height: 700px; display: grid; grid-template-columns: .95fr 1.05fr; gap: clamp(1.5rem, 4vw, 3.5rem); align-items: stretch; padding-right: 4vw; }
 .guildHeroCopy { display: flex; flex-direction: column; justify-content: center; padding: 6vw 0 6vw 6vw; }
 .guildHeroCopy h1 { margin-bottom: 1.5rem; font-family: var(--theme-display); font-size: clamp(3rem, 6vw, 5.75rem); font-weight: 500; line-height: .99; letter-spacing: -.015em; }
-/* Hero collage: a big main photo on the left with two stacked accent photos on
-   the right, and BOTH badges floated back over the main photo (top-left + bottom-
-   left) — where the soft-glass / outline / accent badge styles are designed to
-   sit, layered on the image. Earlier the tiles were absolutely positioned with
-   negative offsets (top:-1.5rem, right:-1rem) that poked above/right of the hero
-   and overlapped the header; a brief pass moved the badges into their own grid
-   cells, which contained them but stripped the styling (a frosted badge over the
-   dark page reads as flat gray).
-   The photos are a fixed-height grid (so the tiles always line up into a clean
-   rectangle) and align-self:center floats the whole block in the vertical middle
-   of the hero, clearing the floating glass header above and Services below. The
-   badges are absolute WITHIN this box (positive offsets only, capped width) so
-   they stay over the left photo and never overhang the header again. */
 .guildHeroMedia { position: relative; display: grid; grid-template-columns: 1.5fr 1fr; grid-template-rows: 1fr 1fr; grid-template-areas: 'p1 p3' 'p1 p2'; gap: clamp(.6rem, 1.4vw, 1rem); align-self: center; align-items: stretch; height: min(560px, 68vh); }
-.guildHeroFrame { grid-area: p1; position: relative; border-radius: 16px; overflow: hidden; box-shadow: 0 40px 90px -50px rgba(45,34,22,.45); }
+.guildHeroFrame { grid-area: p1; position: relative; border-radius: 16px; overflow: hidden; box-shadow: 0 40px 90px -50px rgba(45,34,22,.45), inset 0 0 0 1px rgba(255,255,255,.15); }
 .guildHeroFrame > img { width: 100%; height: 100%; object-fit: cover; animation: heroKenBurns 27s ease-in-out infinite alternate; }
 /* Bottom-right accent photo. */
-.guildHeroInset { grid-area: p2; position: relative; margin: 0; border-radius: 12px; overflow: hidden; border: 6px solid var(--c-surface); box-shadow: 0 30px 60px -30px rgba(45,34,22,.5); }
+.guildHeroInset { grid-area: p2; position: relative; margin: 0; border-radius: 12px; overflow: hidden; border: 6px solid var(--c-surface); box-shadow: 0 30px 60px -30px rgba(45,34,22,.5), inset 0 0 0 1px rgba(255,255,255,.12); }
 .guildHeroInset img { display: block; width: 100%; height: 100%; object-fit: cover; transition: transform .6s cubic-bezier(.22, .61, .36, 1); }
 .guildHeroInset:hover img { transform: scale(1.06); }
 /* Top-right accent photo. */
-.guildHeroInsetTop { grid-area: p3; position: relative; margin: 0; border-radius: 12px; overflow: hidden; border: 6px solid var(--c-surface); box-shadow: 0 26px 54px -28px rgba(45,34,22,.5); }
+.guildHeroInsetTop { grid-area: p3; position: relative; margin: 0; border-radius: 12px; overflow: hidden; border: 6px solid var(--c-surface); box-shadow: 0 26px 54px -28px rgba(45,34,22,.5), inset 0 0 0 1px rgba(255,255,255,.12); }
 .guildHeroInsetTop img { display: block; width: 100%; height: 100%; object-fit: cover; transition: transform .6s cubic-bezier(.22, .61, .36, 1); }
 .guildHeroInsetTop:hover img { transform: scale(1.06); }
 /* Second badge — bottom-left, floated over the main photo. */
@@ -1191,11 +1166,11 @@
    normal flow (padding, not absolute top/bottom %), so a tall headline + intake
    form pushes the card taller rather than overflowing under the sticky header. */
 .vistaHero { position: relative; min-height: min(860px, calc(100svh - 88px)); margin: 1vw 1.5vw 0; border-radius: 14px; overflow: hidden; background: color-mix(in srgb, var(--c-deep) 88%, #ffffff 7%); color: var(--c-on-deep); display: flex; flex-direction: column; justify-content: flex-end; }
-.vistaHero::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(8,10,8,.12) 0%, transparent 32%, rgba(8,10,8,.72) 100%), linear-gradient(90deg, rgba(8,10,8,.5), transparent 62%); }
+.vistaHero::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(8,10,8,.2) 0%, transparent 28%, rgba(8,10,8,.84) 100%), linear-gradient(90deg, rgba(8,10,8,.65) 0%, rgba(8,10,8,.32) 55%, transparent 100%); }
 .vistaHeroCopy { position: relative; z-index: 1; width: 100%; max-width: 840px; padding: clamp(2rem, 5vh, 3.5rem) 4vw clamp(2rem, 5vh, 4rem) clamp(1.5rem, 4vw, 4rem); display: flex; flex-direction: column; }
-.vistaHeroCopy .kicker { align-self: flex-start; margin-bottom: 1.4rem; padding: .42rem .85rem; border: 1px solid color-mix(in srgb, var(--c-on-deep) 40%, transparent); border-radius: 999px; color: var(--c-on-deep); }
+.vistaHeroCopy .kicker { align-self: flex-start; margin-bottom: 1.4rem; padding: .42rem .85rem; border: 1px solid color-mix(in srgb, var(--c-on-deep) 40%, transparent); border-radius: 999px; color: var(--c-on-deep); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
 .vistaHeroCopy h1 { margin-bottom: 1.35rem; font-family: var(--theme-display); font-size: clamp(2.9rem, 7.6vw, 7rem); line-height: .92; letter-spacing: -.02em; text-transform: uppercase; }
-.vistaHeroCopy > p:last-child { max-width: 34rem; font-size: 1.12rem; line-height: 1.55; color: color-mix(in srgb, var(--c-on-deep) 86%, transparent); }
+.vistaHeroCopy > p:last-child { max-width: 34rem; font-size: 1.12rem; line-height: 1.55; color: color-mix(in srgb, var(--c-on-deep) 88%, transparent); }
 /* Oversized outlined wordmark bleeding behind the hero copy for editorial pop. */
 .vistaBigType { position: absolute; z-index: -1; left: 0; bottom: -.05em; margin: 0; font-family: var(--theme-display); font-weight: 800; font-size: clamp(4rem, 17vw, 14rem); line-height: .78; text-transform: uppercase; letter-spacing: -.03em; color: transparent; -webkit-text-stroke: 1.5px color-mix(in srgb, var(--c-on-deep) 16%, transparent); white-space: nowrap; pointer-events: none; }
 .vistaScroll { position: absolute; z-index: 1; right: 3vw; bottom: 4vh; display: inline-flex; align-items: center; gap: .45rem; font-size: .76rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--c-on-deep); }
@@ -1212,7 +1187,8 @@
 .vistaWorkHeading { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 2rem; padding-bottom: 1rem; border-bottom: 1px solid color-mix(in srgb, currentColor 14%, transparent); }
 .vistaWorkHeading span { font-size: .8rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: color-mix(in srgb, currentColor 70%, transparent); }
 .vistaGallery { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.25rem; }
-.vistaGallery figure { margin: 0; overflow: hidden; border-radius: 10px; }
+.vistaGallery figure { margin: 0; overflow: hidden; border-radius: 10px; box-shadow: 0 20px 44px -22px rgba(0,0,0,.35); transition: transform .3s cubic-bezier(.16, 1, 0.3, 1), box-shadow .3s ease; }
+.vistaGallery figure:hover { transform: translateY(-3px); box-shadow: 0 28px 56px -20px rgba(0,0,0,.5); }
 .vistaWide { grid-column: 1 / -1; }
 .vistaGallery img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; transition: transform .6s cubic-bezier(.2,.7,.2,1); }
 .vistaWide img { aspect-ratio: 16 / 8; }
@@ -1343,7 +1319,8 @@
 .careHeroCopy h1 { font-family: var(--theme-display); font-weight: 700; font-size: clamp(2.4rem, 5.2vw, 4.1rem); line-height: 1.07; letter-spacing: -.02em; color: var(--c-ink); margin: 0 0 1.1rem; text-wrap: balance; overflow-wrap: anywhere; }
 .careHeroText { font-size: clamp(1rem, 1.4vw, 1.15rem); line-height: 1.6; color: var(--c-muted); margin: 0 0 1.5rem; max-width: 50ch; }
 .careHeroCards { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.6rem; }
-.careMiniCard { padding: .8rem 1.1rem; border-radius: 12px; background: var(--c-surface); box-shadow: 0 16px 34px -22px rgba(51,61,71,.34); border: 1px solid var(--c-line); }
+.careMiniCard { padding: .8rem 1.1rem; border-radius: 12px; background: var(--c-surface); box-shadow: 0 16px 34px -22px rgba(51,61,71,.34); border: 1px solid var(--c-line); transition: transform .2s ease, box-shadow .2s ease; }
+.careMiniCard:hover { transform: translateY(-2px); box-shadow: 0 20px 40px -20px rgba(51,61,71,.45); }
 .careMiniCard strong { display: block; font-size: .92rem; font-weight: 700; color: var(--c-ink); }
 .careMiniCard small { font-size: .76rem; color: var(--c-muted); }
 .careHeroActions { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
@@ -1367,7 +1344,7 @@
 
 .careWhy { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(2rem, 5vw, 4rem); align-items: center; padding: clamp(3rem, 7vw, 6rem) clamp(1.25rem, 5vw, 4rem); }
 .careWhyMedia { position: relative; display: flex; justify-content: center; align-items: center; }
-.careWhyCard { padding: clamp(1.5rem, 3vw, 2.5rem); border-radius: 18px; background: var(--c-surface); }
+.careWhyCard { padding: clamp(1.5rem, 3vw, 2.5rem); border-radius: 18px; background: var(--c-surface); border: 1px solid var(--c-line); box-shadow: 0 20px 45px -25px rgba(0,0,0,.12); }
 .careWhyCard h2 { font-family: var(--theme-display); font-weight: 700; font-size: clamp(1.7rem, 3.4vw, 2.5rem); line-height: 1.12; color: var(--c-ink); margin: 0 0 1.2rem; }
 .careCheckList { display: grid; gap: .85rem; margin: 0; padding: 0; list-style: none; }
 .careCheckList li { display: flex; align-items: flex-start; gap: .7rem; font-size: .98rem; font-weight: 500; color: #4a5560; }
@@ -1378,7 +1355,8 @@
 .careWorksHead h2 { font-family: var(--theme-display); font-weight: 700; font-size: clamp(1.9rem, 4vw, 3rem); line-height: 1.08; margin: 0; color: var(--c-on-deep); }
 .careWorksGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr)); gap: 1.25rem; }
 .careWorksGrid figure { margin: 0; }
-.careWorksGrid img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 14px; box-shadow: 0 24px 44px -24px rgba(0,0,0,.4); }
+.careWorksGrid img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 14px; box-shadow: 0 24px 44px -24px rgba(0,0,0,.4); transition: transform .3s ease, box-shadow .3s ease; }
+.careWorksGrid figure:hover img { transform: translateY(-4px); box-shadow: 0 32px 56px -20px rgba(0,0,0,.5); }
 .careWorksGrid figcaption { margin-top: .8rem; font-weight: 700; font-size: .95rem; text-align: center; color: var(--c-on-deep); }
 
 /* The Project showcase band for every theme other than Care (which has its own
@@ -1637,7 +1615,7 @@
   --fx-ink: var(--c-ink); --fx-muted: var(--c-muted); --fx-surface: var(--c-surface);
   background: var(--c-bg); color: var(--c-ink); font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
 }
-.fixitHeader { position: sticky; top: 0; z-index: 30; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 1.5rem; padding: .85rem clamp(1.25rem, 4vw, 3.5rem); background: color-mix(in srgb, var(--c-bg) 95%, transparent); backdrop-filter: blur(10px); border-bottom: 1px solid var(--c-line); }
+.fixitHeader { position: sticky; top: 0; z-index: 30; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 1.5rem; padding: .85rem clamp(1.25rem, 4vw, 3.5rem); background: color-mix(in srgb, var(--c-bg) 95%, transparent); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); border-bottom: 1px solid var(--c-line); }
 .fixitBrand { display: inline-flex; align-items: center; gap: .5rem; font-size: 1.15rem; color: var(--fx-ink); }
 .fixitHeaderActions { display: inline-flex; align-items: center; gap: 1rem; }
 .fixitHeaderCta { display: inline-flex; align-items: center; gap: .4rem; padding: .6rem 1.15rem; border-radius: var(--theme-radius, 8px); background: var(--theme-accent); color: var(--theme-on-accent, #fff); font-weight: 700; font-size: .92rem; text-decoration: none; white-space: nowrap; transition: filter .18s; }
@@ -1660,7 +1638,8 @@
 .fixitHeroMedia { position: relative; min-height: 420px; }
 .fixitHeroShape { position: absolute; z-index: 0; top: 3%; right: 4%; width: 66%; height: 84%; background: var(--theme-accent); clip-path: polygon(18% 0, 100% 8%, 82% 100%, 0 92%); }
 .fixitHeroImg { position: relative; z-index: 1; display: block; width: min(400px, 84%); margin: 0 auto; aspect-ratio: 3 / 4; object-fit: cover; border-radius: 6px; animation: fixitFloat 7s ease-in-out infinite; }
-.fixitHeroCard { position: absolute; z-index: 2; right: 0; top: 34%; display: flex; align-items: center; gap: .6rem; padding: .7rem 1rem; border-radius: 12px; background: var(--c-surface); border: 1px solid var(--c-line); box-shadow: 0 22px 44px -22px rgba(0,0,0,.32); }
+.fixitHeroCard { position: absolute; z-index: 2; right: 0; top: 34%; display: flex; align-items: center; gap: .6rem; padding: .7rem 1rem; border-radius: 12px; background: var(--c-surface); border: 1px solid var(--c-line); box-shadow: 0 22px 44px -22px rgba(0,0,0,.32); transition: transform .25s ease, box-shadow .25s ease; }
+.fixitHeroCard:hover { transform: translateY(-2px); box-shadow: 0 28px 50px -20px rgba(0,0,0,.45); }
 .fixitHeroCardIcon { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 999px; background: color-mix(in srgb, var(--theme-accent) 14%, transparent); color: var(--theme-accent); font-size: 1.3rem; line-height: 1; }
 /* Surface + ink are a contrasting pair in every scheme, so the card reads on
    any ground. The subtitle is its own block so title/subtitle never run
@@ -1729,7 +1708,7 @@
   --rn-navy: var(--c-deep); --rn-ink: var(--c-ink); --rn-muted: var(--c-muted); --rn-surface: var(--c-surface);
   background: var(--c-bg); color: var(--c-ink); font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
 }
-.renoHeader { position: sticky; top: 0; z-index: 30; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 1.5rem; padding: .8rem clamp(1.25rem, 4vw, 3.5rem); background: color-mix(in srgb, var(--c-bg) 96%, transparent); backdrop-filter: blur(10px); border-bottom: 3px solid var(--theme-accent); }
+.renoHeader { position: sticky; top: 0; z-index: 30; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 1.5rem; padding: .8rem clamp(1.25rem, 4vw, 3.5rem); background: color-mix(in srgb, var(--c-bg) 96%, transparent); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); border-bottom: 3px solid var(--theme-accent); }
 .renoBrand { display: inline-flex; align-items: center; gap: .55rem; font-size: 1.2rem; color: var(--rn-ink); }
 .renoHeaderActions { display: inline-flex; align-items: center; gap: 1rem; }
 .renoHeaderCta { display: inline-flex; align-items: center; gap: .4rem; padding: .6rem 1.15rem; border-radius: var(--theme-radius, 8px); background: var(--theme-accent); color: var(--theme-on-accent, #fff); font-weight: 700; font-size: .92rem; text-decoration: none; white-space: nowrap; transition: filter .18s; }
@@ -1738,7 +1717,7 @@
 .renoHex { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; width: 34px; height: 34px; clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); background: var(--theme-accent); color: var(--rn-navy); font-size: .9rem; }
 .renoHeader .navLinks { text-transform: uppercase; letter-spacing: .04em; font-size: .82rem; font-weight: 700; }
 .renoHeaderPhone { justify-self: end; display: inline-flex; align-items: center; gap: .5rem; font-weight: 800; font-size: .95rem; color: var(--rn-ink); white-space: nowrap; }
-.renoHero { position: relative; display: grid; grid-template-columns: 1.05fr .95fr; align-items: stretch; background: var(--rn-navy); color: var(--c-on-deep); }
+.renoHero { position: relative; display: grid; grid-template-columns: 1.05fr .95fr; align-items: stretch; background: repeating-linear-gradient(0deg, rgba(255,255,255,.018) 0 1px, transparent 1px 36px), repeating-linear-gradient(90deg, rgba(255,255,255,.018) 0 1px, transparent 1px 36px), var(--rn-navy); color: var(--c-on-deep); }
 .renoHeroCopy { position: relative; z-index: 1; max-width: 620px; align-self: center; padding: clamp(2.5rem, 6vw, 5rem) clamp(1.25rem, 5vw, 4rem); }
 .renoEyebrow { margin: 0 0 1rem; font-size: .8rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--theme-accent); }
 .renoHeroCopy h1 { font-family: var(--theme-display); font-weight: 800; font-size: clamp(2.6rem, 5.8vw, 4.6rem); line-height: 1.02; letter-spacing: -.03em; margin: 0 0 1.2rem; text-wrap: balance; overflow-wrap: anywhere; }
@@ -1748,7 +1727,8 @@
 .renoHeroCall strong { text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--theme-accent); }
 .renoHeroMedia { position: relative; min-height: 380px; }
 .renoHeroImg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; clip-path: polygon(14% 0, 100% 0, 100% 100%, 0 100%); }
-.renoHexBadge { position: absolute; z-index: 2; left: 4%; bottom: 10%; display: inline-flex; align-items: center; justify-content: center; width: 64px; height: 64px; clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); background: var(--theme-accent); color: var(--rn-navy); font-size: 1.5rem; }
+.renoHexBadge { position: absolute; z-index: 2; left: 4%; bottom: 10%; display: inline-flex; align-items: center; justify-content: center; width: 64px; height: 64px; clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); background: var(--theme-accent); color: var(--rn-navy); font-size: 1.5rem; box-shadow: 0 20px 40px -16px rgba(0,0,0,.6); transition: transform .3s ease; }
+.renoHexBadge:hover { transform: scale(1.08) rotate(4deg); }
 /* Second, hollow hex drifting at a different parallax speed for depth. */
 .renoHexGhost { position: absolute; z-index: 2; right: 6%; top: 12%; width: 46px; height: 46px; clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); background: color-mix(in srgb, var(--theme-accent) 34%, transparent); }
 .renoBtn { display: inline-flex; align-items: center; gap: .45rem; min-height: 50px; padding: .8rem 1.6rem; background: var(--theme-accent); color: var(--theme-on-accent, #1b2431); font-weight: 800; font-size: .9rem; letter-spacing: .03em; text-transform: uppercase; box-shadow: 0 16px 30px -14px color-mix(in srgb, var(--theme-accent) 70%, transparent); transition: transform .2s ease, filter .2s ease; }
@@ -1787,7 +1767,7 @@
   .renoHeroMedia { order: -1; min-height: 300px; }
   .renoHeroImg { clip-path: none; }
   /* Copy overlays the hero image as a translucent navy text box. */
-  .renoHeroCopy { position: relative; z-index: 3; margin: -2.75rem 1rem 0; padding: 1.4rem 1.2rem 1.5rem; border-radius: 12px; background: rgba(15,20,28,.68); backdrop-filter: blur(8px); box-shadow: 0 24px 48px -26px rgba(0,0,0,.55); }
+  .renoHeroCopy { position: relative; z-index: 3; margin: -2.75rem 1rem 0; padding: 1.4rem 1.2rem 1.5rem; border-radius: 12px; background: rgba(15,20,28,.68); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); box-shadow: 0 24px 48px -26px rgba(0,0,0,.55); }
   .renoHeader { grid-template-columns: auto 1fr; }
   .renoHeader .navLinks { display: none; }
 }
@@ -1806,7 +1786,7 @@
 }
 /* CTA edge block header: no right padding — the booking CTA is a full-height
    accent block fused to the right edge; lowercase wordmark for contrast. */
-.shineHeader { position: sticky; top: 0; z-index: 30; display: grid; grid-template-columns: auto 1fr auto; align-items: stretch; gap: 1.5rem; padding: 0 0 0 clamp(1.25rem, 4vw, 3.5rem); background: linear-gradient(180deg, color-mix(in srgb, var(--c-deep) 97%, transparent), color-mix(in srgb, var(--c-deep) 88%, transparent)); backdrop-filter: blur(12px); border-bottom: 1px solid color-mix(in srgb, var(--c-on-deep) 8%, transparent); box-shadow: 0 1px 0 color-mix(in srgb, var(--theme-accent) 24%, transparent), 0 14px 34px -24px rgba(0,0,0,.7); color: var(--c-on-deep); }
+.shineHeader { position: sticky; top: 0; z-index: 30; display: grid; grid-template-columns: auto 1fr auto; align-items: stretch; gap: 1.5rem; padding: 0 0 0 clamp(1.25rem, 4vw, 3.5rem); background: linear-gradient(180deg, color-mix(in srgb, var(--c-deep) 97%, transparent), color-mix(in srgb, var(--c-deep) 88%, transparent)); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); border-bottom: 1px solid color-mix(in srgb, var(--c-on-deep) 8%, transparent); box-shadow: 0 1px 0 color-mix(in srgb, var(--theme-accent) 24%, transparent), 0 14px 34px -24px rgba(0,0,0,.7); color: var(--c-on-deep); }
 .shineBrand { display: inline-flex; align-items: center; gap: .6rem; padding-block: .7rem; font-size: 1.2rem; color: var(--c-on-deep); }
 .shineBrand strong { font-family: var(--brand-font, var(--theme-display)); font-weight: 800; letter-spacing: -.03em; color: var(--c-on-deep); }
 .shineBrandMark { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 10px; background: linear-gradient(135deg, var(--theme-accent), color-mix(in srgb, var(--theme-accent) 45%, #7cc4ff)); color: var(--theme-on-accent, #0f1b2d); font-size: 1rem; box-shadow: 0 8px 20px -8px color-mix(in srgb, var(--theme-accent) 75%, transparent); transition: transform .25s cubic-bezier(.34, 1.56, .64, 1); }
@@ -1855,7 +1835,8 @@
    share a bottom edge, and the columns share left/right edges — a true, snug
    grid (both columns total photo + gap + badge, so the outline stays square). */
 .shineHeroMedia { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: auto 1fr auto; grid-template-areas: 'p1 b1' 'p1 p2' 'b2 p2'; gap: clamp(.6rem, 1.4vw, 1rem); align-items: start; }
-.shinePhotoCard { position: relative; margin: 0; border-radius: 20px; overflow: hidden; background: color-mix(in srgb, var(--c-deep) 85%, #ffffff 8%); box-shadow: 0 40px 80px -34px rgba(0,0,0,.6); }
+.shinePhotoCard { position: relative; margin: 0; border-radius: 20px; overflow: hidden; background: color-mix(in srgb, var(--c-deep) 85%, #ffffff 8%); box-shadow: 0 40px 80px -34px rgba(0,0,0,.6), inset 0 0 0 1px rgba(255,255,255,.14); transition: transform .3s ease, box-shadow .3s ease; }
+.shinePhotoCard:hover { transform: translateY(-3px); box-shadow: 0 48px 90px -30px rgba(0,0,0,.7), inset 0 0 0 1px rgba(255,255,255,.2); }
 /* Framed photos: accent border on the main shot, white on the second. */
 .shinePhotoMain { grid-area: p1; align-self: start; border: 4px solid color-mix(in srgb, var(--theme-accent) 85%, #fff); aspect-ratio: 3 / 3.9; }
 .shinePhotoSide { grid-area: p2; align-self: end; border: 4px solid color-mix(in srgb, var(--c-on-deep) 92%, transparent); aspect-ratio: 3 / 3.9; }

@@ -1,6 +1,6 @@
 /* GENERATED — do not edit. Source: src/app/globals.css
    Run: node scripts/build-css-subset.mjs
-   source-sha256: a449e2fb85606819
+   source-sha256: 0c32df9e63a938bf
 
    globals.css with the rules that can only match inside /dashboard, /admin and
    /demo removed. Every route except those three imports this file; they import
@@ -16749,10 +16749,72 @@ select optgroup {
  * only one, which is what keeps this readable for anybody who cannot separate
  * the greens from the ambers.
  */
-.msg-setup-chip.is-ready { border-color: rgba(46, 160, 87, 0.45); background: rgba(46, 160, 87, 0.13); }
+.msg-setup-chip.is-ready { border-color: rgba(46, 160, 87, 0.45); background: rgba(46, 160, 87, 0.13); color: #4ade80; }
 .msg-setup-chip.is-pending { border-color: var(--edge-t24); }
-.msg-setup-chip.is-attention { border-color: rgba(214, 138, 30, 0.5); background: rgba(214, 138, 30, 0.14); }
+.msg-setup-chip.is-attention { border-color: rgba(214, 138, 30, 0.5); background: rgba(214, 138, 30, 0.14); color: #fbbf24; }
 .msg-setup-chip.is-unknown { border-color: var(--edge-t24); background: rgba(var(--tint), 0.03); color: var(--muted); }
+.msg-setup-section-badge.is-alert {
+  background: rgba(249, 115, 22, 0.15);
+  color: #f97316;
+  border: 1px solid rgba(249, 115, 22, 0.3);
+}
+.msg-setup-section-badge.is-messaging {
+  background: rgba(56, 189, 248, 0.15);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.3);
+}
+.msg-setup-status-pill.is-ready {
+  border-color: rgba(46, 160, 87, 0.45);
+  background: rgba(46, 160, 87, 0.14);
+  color: #4ade80;
+}
+.msg-setup-status-pill.is-pending {
+  border-color: var(--edge-t24);
+  background: rgba(var(--tint), 0.05);
+  color: inherit;
+}
+.msg-setup-status-pill.is-attention {
+  border-color: rgba(214, 138, 30, 0.5);
+  background: rgba(214, 138, 30, 0.15);
+  color: #fbbf24;
+}
+.msg-setup-status-pill.is-unknown {
+  border-color: var(--edge-t24);
+  background: rgba(var(--tint), 0.03);
+  color: var(--muted);
+}
+
+.msg-setup-beta-box,
+.msg-setup-action-box {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  padding: 0.85rem;
+  border: 1px solid var(--edge-t14);
+  border-radius: 10px;
+  background: rgba(var(--tint), 0.03);
+}
+.msg-setup-number-val {
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: #4ade80;
+}
+.msg-setup-number-badge {
+  font-size: 0.72rem;
+  font-weight: 650;
+  color: #4ade80;
+}
+.msg-setup-banner.is-recorded {
+  border: 1px solid rgba(46, 160, 87, 0.35);
+  background: rgba(46, 160, 87, 0.1);
+  color: #4ade80;
+}
+.msg-setup-banner.is-warning,
+.msg-setup-banner.is-stopped {
+  border: 1px solid rgba(214, 138, 30, 0.4);
+  background: rgba(214, 138, 30, 0.12);
+}
 /* rgb(var(--ink-rgb)) and NOT var(--ink). There is no --ink in this file — only
    --ink-rgb, the triple — and `var()` on an undeclared property is not a
    fallback to something sensible, it is an invalid substitution that computes

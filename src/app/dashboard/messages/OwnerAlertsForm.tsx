@@ -71,29 +71,41 @@ export default function OwnerAlertsForm({
       <fieldset disabled={disabled}>
         <legend className="sr-only">Your Let&rsquo;s Get Quoted notifications</legend>
 
-        <div className="field full">
-          <label htmlFor="alertPhone">Your mobile number</label>
-          <input
-            id="alertPhone"
-            name="alertPhone"
-            type="tel"
-            inputMode="tel"
-            autoComplete="tel"
-            placeholder="(248) 555-0100"
-            defaultValue={phone ?? ''}
-            aria-describedby="alertPhone-hint"
-            aria-invalid={errorFor('phone') ? true : undefined}
-          />
+        <div className="field full msg-setup-phone-field">
+          <label htmlFor="alertPhone">YOUR MOBILE NUMBER</label>
+          <div className="msg-setup-input-wrap">
+            <span className="msg-setup-input-icon" aria-hidden="true">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+              </svg>
+            </span>
+            <input
+              id="alertPhone"
+              name="alertPhone"
+              type="tel"
+              inputMode="tel"
+              autoComplete="tel"
+              placeholder="(248) 555-0100"
+              defaultValue={phone ?? ''}
+              aria-describedby="alertPhone-hint"
+              aria-invalid={errorFor('phone') ? true : undefined}
+            />
+          </div>
           <small className="field-hint" id="alertPhone-hint">
             Yours, not a customer&rsquo;s. This is the only number we text about your own account.
           </small>
           {errorFor('phone') ? <p className="field-error" role="alert">{errorFor('phone')}</p> : null}
         </div>
 
-        <label className="checkbox-row" htmlFor="alertsEnabled">
-          <input id="alertsEnabled" name="alertsEnabled" type="checkbox" defaultChecked={enabled} />
-          <span>Text me when a high-value lead comes in</span>
-        </label>
+        <div className="msg-setup-toggle-card">
+          <label className="checkbox-row" htmlFor="alertsEnabled">
+            <input id="alertsEnabled" name="alertsEnabled" type="checkbox" defaultChecked={enabled} />
+            <span className="msg-setup-toggle-text">
+              <b>Text me when a high-value lead comes in</b>
+              <small>Instant notification when a homeowner submits a quote request or accepts an estimate</small>
+            </span>
+          </label>
+        </div>
 
         {/**
          * THE CHECKBOX STARTS EMPTY. ALWAYS. NO EXCEPTION FOR "already agreed".
@@ -115,45 +127,62 @@ export default function OwnerAlertsForm({
          * typed here, so what a carrier sees in the screenshot, what the ledger
          * records a version for, and what the tests assert are one string.
          */}
-        <label className="checkbox-row msg-setup-consent" htmlFor="alertsConsent">
-          <input
-            id="alertsConsent"
-            name="alertsConsent"
-            type="checkbox"
-            defaultChecked={false}
-            aria-describedby="alertsConsent-terms"
-            aria-invalid={errorFor('consent') ? true : undefined}
-          />
-          <span>{OWNER_SMS_CONSENT_LABEL}</span>
-        </label>
-        <p className="msg-setup-terms" id="alertsConsent-terms">
-          {OWNER_SMS_DISCLOSURE_LEAD}
-          <Link href={OWNER_SMS_TERMS_HREF}>{OWNER_SMS_TERMS_LABEL}</Link>
-          {OWNER_SMS_DISCLOSURE_JOIN}
-          <Link href={OWNER_SMS_PRIVACY_HREF}>{OWNER_SMS_PRIVACY_LABEL}</Link>
-          {OWNER_SMS_DISCLOSURE_TAIL}
-        </p>
-        {errorFor('consent') ? <p className="field-error" role="alert">{errorFor('consent')}</p> : null}
+        <div className="msg-setup-compliance-card">
+          <div className="msg-setup-compliance-head">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+            </svg>
+            <span>Carrier 10DLC Messaging Consent</span>
+          </div>
+          <label className="checkbox-row msg-setup-consent" htmlFor="alertsConsent">
+            <input
+              id="alertsConsent"
+              name="alertsConsent"
+              type="checkbox"
+              defaultChecked={false}
+              aria-describedby="alertsConsent-terms"
+              aria-invalid={errorFor('consent') ? true : undefined}
+            />
+            <span>{OWNER_SMS_CONSENT_LABEL}</span>
+          </label>
+          <p className="msg-setup-terms" id="alertsConsent-terms">
+            {OWNER_SMS_DISCLOSURE_LEAD}
+            <Link href={OWNER_SMS_TERMS_HREF}>{OWNER_SMS_TERMS_LABEL}</Link>
+            {OWNER_SMS_DISCLOSURE_JOIN}
+            <Link href={OWNER_SMS_PRIVACY_HREF}>{OWNER_SMS_PRIVACY_LABEL}</Link>
+            {OWNER_SMS_DISCLOSURE_TAIL}
+          </p>
+          {errorFor('consent') ? <p className="field-error" role="alert">{errorFor('consent')}</p> : null}
+        </div>
 
         {/* WHERE THEY STAND TODAY, said plainly. "Stopped" is the one worth
             printing: it is why their phone is quiet, and nothing else on the
             page would tell them. */}
         {consent === 'opted_out' ? (
-          <p className="msg-setup-note is-attention" role="status">
-            You replied STOP from this number, so nothing is being texted to you. Text START to{' '}
-            <b>the same number our alerts came from</b> to turn them back on — we cannot do it from here.
-          </p>
+          <div className="msg-setup-banner is-stopped" role="status">
+            <span className="msg-setup-banner-icon" aria-hidden="true">⚠️</span>
+            <p className="msg-setup-note is-attention">
+              You replied STOP from this number, so nothing is being texted to you. Text START to{' '}
+              <b>the same number our alerts came from</b> to turn them back on — we cannot do it from here.
+            </p>
+          </div>
         ) : consentIsStale ? (
           // Agreed, but to wording we have replaced. Saying "consent recorded"
           // would be true and useless — it is the reason the box is empty.
-          <p className="msg-setup-note is-attention" role="status">
-            Our texting disclosure has changed since you last agreed. Read it above and tick the box to keep
-            these texts coming.
-          </p>
+          <div className="msg-setup-banner is-warning" role="status">
+            <span className="msg-setup-banner-icon" aria-hidden="true">ℹ️</span>
+            <p className="msg-setup-note is-attention">
+              Our texting disclosure has changed since you last agreed. Read it above and tick the box to keep
+              these texts coming.
+            </p>
+          </div>
         ) : consentIsCurrent && consentedAt ? (
-          <p className="msg-setup-note">
-            Consent recorded {new Date(consentedAt).toLocaleDateString('en-US', { dateStyle: 'medium' })}.
-          </p>
+          <div className="msg-setup-banner is-recorded">
+            <span className="msg-setup-banner-icon" aria-hidden="true">✓</span>
+            <p className="msg-setup-note">
+              Consent recorded {new Date(consentedAt).toLocaleDateString('en-US', { dateStyle: 'medium' })}.
+            </p>
+          </div>
         ) : null}
 
         {errorFor('form') ? <p className="field-error" role="alert">{errorFor('form')}</p> : null}
@@ -174,3 +203,4 @@ export default function OwnerAlertsForm({
     </form>
   );
 }
+

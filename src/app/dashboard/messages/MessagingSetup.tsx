@@ -51,6 +51,12 @@ export default function MessagingSetup({ setup, openOnLoad }: { setup: Setup; op
         obscureBackdrop
         triggerLabel={
           <>
+            <span className="msg-setup-icon" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+              </svg>
+            </span>
+
             <span className="msg-setup-copy">
               <b>Texting setup</b>
               <small>Your alerts and customer texting number</small>
@@ -77,8 +83,21 @@ export default function MessagingSetup({ setup, openOnLoad }: { setup: Setup; op
         }
       >
         <div className="msg-setup-sections">
-          <section className="msg-setup-section">
-            <h3>Your Let&rsquo;s Get Quoted notifications</h3>
+          <section className="msg-setup-section msg-setup-card">
+            <div className="msg-setup-section-head">
+              <div className="msg-setup-section-badge is-alert" aria-hidden="true">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                  <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                </svg>
+              </div>
+              <div className="msg-setup-section-titles">
+                <h3>Your Let&rsquo;s Get Quoted notifications</h3>
+                <span className="msg-setup-subhead">Instant SMS alerts sent to you</span>
+              </div>
+              <span className={`msg-setup-status-pill is-${alerts.tone}`}>{alerts.label}</span>
+            </div>
+
             {/* The four traffic types, named, and in the same order as the
                 consent label and the registered campaign. This used to say "a
                 high-value lead landing, a homeowner accepting an estimate",
@@ -95,6 +114,7 @@ export default function MessagingSetup({ setup, openOnLoad }: { setup: Setup; op
               messaging becomes available only after your business is carrier-approved and its dedicated
               number is active.
             </p>
+
             <OwnerAlertsForm
               phone={setup.alerts.kind === 'ok' ? setup.alerts.phone : null}
               enabled={setup.alerts.kind === 'ok' ? setup.alerts.enabled : false}
@@ -110,64 +130,116 @@ export default function MessagingSetup({ setup, openOnLoad }: { setup: Setup; op
               sent in a contractor's name. Carrier approval and an active,
               dedicated sender are the boundary for contractor-to-homeowner
               messages. */}
-          <section className="msg-setup-section">
-            <h3>Your customer texting number</h3>
+          <section className="msg-setup-section msg-setup-card">
+            <div className="msg-setup-section-head">
+              <div className="msg-setup-section-badge is-messaging" aria-hidden="true">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                </svg>
+              </div>
+              <div className="msg-setup-section-titles">
+                <h3>Your customer texting number</h3>
+                <span className="msg-setup-subhead">Dedicated 2-way homeowner messaging</span>
+              </div>
+              <span className={`msg-setup-status-pill is-${registration.tone}`}>{registration.label}</span>
+            </div>
+
             <p className="msg-setup-lead">
               Let&rsquo;s Get Quoted&rsquo;s shared numbers are reserved for LGQ account, billing, support, and
               platform notifications. Messages sent in your business name to homeowners stay unavailable until
               your business is vetted, carrier-approved, and its dedicated two-way number is active.
             </p>
 
-            <p className={`msg-setup-status is-${registration.tone}`}>
-              <span className="msg-setup-status-label">Registration</span>
-              <b>{registration.label}</b>
-            </p>
-            {registration.detail ? <p className="msg-setup-note">{registration.detail}</p> : null}
+            <div className="msg-setup-features">
+              <div className="msg-setup-feature-item">
+                <span className="msg-setup-feature-icon" aria-hidden="true">💬</span>
+                <div>
+                  <strong>Two-way SMS inbox</strong>
+                  <span>Message homeowners and quote leads directly from your LGQ dashboard</span>
+                </div>
+              </div>
+              <div className="msg-setup-feature-item">
+                <span className="msg-setup-feature-icon" aria-hidden="true">📱</span>
+                <div>
+                  <strong>Dedicated local number</strong>
+                  <span>Protect your personal phone number with a separate business caller ID</span>
+                </div>
+              </div>
+              <div className="msg-setup-feature-item">
+                <span className="msg-setup-feature-icon" aria-hidden="true">🛡️</span>
+                <div>
+                  <strong>Managed 10DLC registration</strong>
+                  <span>Carrier vetting, anti-spam registration, and high deliverability</span>
+                </div>
+              </div>
+            </div>
 
-            {/**
-             * NO BUTTON HERE, AND THAT IS THE FEATURE.
-             *
-             * The obvious thing to ship is a "Start registration" button, and
-             * it would do nothing — the provider has not confirmed the process
-             * for registering businesses underneath our account, so there is no
-             * submission to make. A button that opens a form nobody can file is
-             * a worse answer than a sentence saying not yet.
-             *
-             * When the states below become reachable each gets exactly one
-             * contextual action — Continue, Fix issue, or Manage — and it goes
-             * here.
-             */}
-            {setup.registration.kind === 'ok' && setup.registration.status === 'not_started' ? (
-              <>
-                <p className="msg-setup-note">
-                  We are accepting a small number of vetted businesses into a private beta. Applying does not
-                  purchase a number, change your plan, or add a charge.
+            <div className="msg-setup-registration-box">
+              <p className={`msg-setup-status is-${registration.tone}`}>
+                <span className="msg-setup-status-label">Registration</span>
+                <b>{registration.label}</b>
+              </p>
+              {registration.detail ? <p className="msg-setup-note">{registration.detail}</p> : null}
+
+              {/**
+               * NO BUTTON HERE, AND THAT IS THE FEATURE.
+               *
+               * The obvious thing to ship is a "Start registration" button, and
+               * it would do nothing — the provider has not confirmed the process
+               * for registering businesses underneath our account, so there is no
+               * submission to make. A button that opens a form nobody can file is
+               * a worse answer than a sentence saying not yet.
+               *
+               * When the states below become reachable each gets exactly one
+               * contextual action — Continue, Fix issue, or Manage — and it goes
+               * here.
+               */}
+              {setup.registration.kind === 'ok' && setup.registration.status === 'not_started' ? (
+                <div className="msg-setup-beta-box">
+                  <p className="msg-setup-note">
+                    We are accepting a small number of vetted businesses into a private beta. Applying does not
+                    purchase a number, change your plan, or add a charge.
+                  </p>
+                  <p>
+                    <Link className="btn primary msg-setup-apply-btn" href="/dashboard/messages/dedicated-number">
+                      Apply for the private beta <span>›</span>
+                    </Link>
+                  </p>
+                </div>
+              ) : null}
+
+              {setup.registration.kind === 'ok' && ['action_required', 'rejected'].includes(setup.registration.status) ? (
+                <p>
+                  <Link className="btn secondary msg-setup-apply-btn" href="/dashboard/messages/dedicated-number">
+                    Review application status <span>›</span>
+                  </Link>
                 </p>
-                <p><Link className="btn secondary" href="/dashboard/messages/dedicated-number">Apply for the private beta</Link></p>
-              </>
-            ) : null}
+              ) : null}
 
-            {setup.registration.kind === 'ok' && ['action_required', 'rejected'].includes(setup.registration.status) ? (
-              <p><Link className="btn secondary" href="/dashboard/messages/dedicated-number">Review application status</Link></p>
-            ) : null}
+              {setup.registration.kind === 'ok' && ['submitted', 'in_review', 'approved'].includes(setup.registration.status) ? (
+                <p>
+                  <Link className="btn secondary msg-setup-apply-btn" href="/dashboard/messages/dedicated-number">
+                    View application status <span>›</span>
+                  </Link>
+                </p>
+              ) : null}
 
-            {setup.registration.kind === 'ok' && ['submitted', 'in_review', 'approved'].includes(setup.registration.status) ? (
-              <p><Link className="btn secondary" href="/dashboard/messages/dedicated-number">View application status</Link></p>
-            ) : null}
+              {setup.registration.kind === 'ok' && setup.registration.assignedNumber ? (
+                <div className="msg-setup-assigned-number">
+                  <p className="msg-setup-status is-ready">
+                    <span className="msg-setup-status-label">Your number</span>
+                    <b>{setup.registration.assignedNumber}</b>
+                  </p>
+                </div>
+              ) : null}
 
-            {setup.registration.kind === 'ok' && setup.registration.assignedNumber ? (
-              <p className="msg-setup-status is-ready">
-                <span className="msg-setup-status-label">Your number</span>
-                <b>{setup.registration.assignedNumber}</b>
-              </p>
-            ) : null}
-
-            {setup.registration.kind === 'unavailable' ? (
-              <p className="msg-setup-note is-attention">
-                We could not check your registration just now, so this is not a statement that you have
-                none. Reload in a moment.
-              </p>
-            ) : null}
+              {setup.registration.kind === 'unavailable' ? (
+                <p className="msg-setup-note is-attention">
+                  We could not check your registration just now, so this is not a statement that you have
+                  none. Reload in a moment.
+                </p>
+              ) : null}
+            </div>
           </section>
         </div>
       </ModalDialog>
@@ -183,3 +255,4 @@ function Chip({ prefix, label, tone }: { prefix: string; label: string; tone: st
     </span>
   );
 }
+
