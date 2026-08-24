@@ -20949,28 +20949,24 @@ button.plan-badge.warn.is-action:focus-visible { outline: 2px solid rgba(255, 12
   .sched-queue-col .sched-rows > * { flex: 0 0 auto; }
 }
 
-@media (min-width: 1024px) and (max-width: 1279.98px) {
-  .sched-row { grid-template-columns: auto minmax(0, 1fr); align-items: start; }
-  .sched-row-go,
-  .sched-row-actions { grid-column: 2; justify-self: start; }
-}
-
-/* ---- one job per row, and one action on it -------------------------------
-   The card was a name that linked AWAY to the job page, a detail line, a crew
-   picker, two <details> popovers and their forms — about 480px each once
-   opened. Six facts, one target, one primary. */
-.sched-rows { display: flex; flex-direction: column; gap: 0.4rem; margin: 0; padding: 0; list-style: none; }
+.sched-rows { display: flex; flex-direction: column; gap: 0.5rem; margin: 0; padding: 0; list-style: none; }
 
 .sched-row {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 0.55rem;
-  padding: 0.5rem 0.55rem;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 0.6rem 0.65rem;
+  padding: 0.75rem 0.8rem;
   border: 1px solid var(--edge-t10);
   border-left: 3px solid var(--cap-open);
-  border-radius: 11px;
+  border-radius: 12px;
   background: rgba(var(--tint), 0.03);
+}
+
+.sched-row .schedule-drag-handle {
+  grid-column: 1;
+  grid-row: 1;
+  margin-top: 0.1rem;
 }
 /* Approval state is a word on the row as well — see .sched-row-flag. The edge
    is the same hue the calendar gives an unapproved chip, so a row and its
@@ -20980,8 +20976,10 @@ button.plan-badge.warn.is-action:focus-visible { outline: 2px solid rgba(255, 12
 
 /* The whole row is the control. */
 .sched-row-open {
+  grid-column: 2;
+  grid-row: 1;
   display: grid;
-  gap: 0.12rem;
+  gap: 0.25rem;
   min-width: 0;
   min-height: 44px;
   padding: 0.1rem 0;
@@ -21025,6 +21023,30 @@ button.plan-badge.warn.is-action:focus-visible { outline: 2px solid rgba(255, 12
 .sched-row-missing { color: var(--mute-i62); font-style: italic; }
 .sched-row-state { color: var(--gold-ink); font-size: 0.7rem; font-weight: 700; }
 
+.sched-row-go,
+.sched-row-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+  width: 100%;
+  margin-top: 0.2rem;
+}
+
+.sched-row-actions > * {
+  flex: 1 1 calc(50% - 0.25rem);
+  min-width: 0;
+  justify-content: center;
+  text-align: center;
+}
+
+.sched-row > .sched-row-go {
+  width: 100%;
+  justify-content: center;
+  text-align: center;
+}
+
 .sched-row-go { min-height: 44px; padding: 0 0.75rem; font-size: 0.82rem; white-space: nowrap; }
 
 /* Came in today. Gold rather than grey: the queue is ordered by readiness
@@ -21058,17 +21080,11 @@ button.plan-badge.warn.is-action:focus-visible { outline: 2px solid rgba(255, 12
   letter-spacing: 0.02em;
 }
 
-/* An unapproved row gets two actions rather than one. Column on a narrow rail
-   so neither is squeezed to an ellipsis; they are 44px each either way. */
-.sched-row-actions { display: flex; flex-wrap: wrap; gap: 0.35rem; align-items: center; }
 .sched-row-tentative {
   min-height: 44px;
   padding: 0 0.6rem;
   font-size: 0.76rem;
   white-space: nowrap;
-}
-@media (max-width: 420px) {
-  .sched-row-actions { flex-direction: column; align-items: stretch; }
 }
 
 /* The outstanding list under the confirmation. Quiet, because none of it blocks
