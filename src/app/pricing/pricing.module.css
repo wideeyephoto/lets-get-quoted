@@ -3113,3 +3113,124 @@
   font-size: 0.72rem;
 }
 
+.plansSection,
+.calculatorSection,
+.compareSection,
+.faqSection,
+.seasonalFeature {
+  scroll-margin-top: 4.5rem;
+}
+
+.comparisonTable thead th:first-child,
+.comparisonTable tbody th {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: var(--bg-elevated, #16181e);
+  box-shadow: 2px 0 6px rgba(0, 0, 0, 0.22);
+}
+
+.comparisonTable thead th:first-child {
+  z-index: 3;
+}
+
+.comparisonTable tbody tr:hover td,
+.comparisonTable tbody tr:hover th {
+  background: rgba(var(--tint), 0.04);
+}
+
+.secondaryActions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.35rem;
+}
+
+.shareEstimateButton {
+  background: transparent;
+  border: 1px solid var(--edge-t15);
+  border-radius: 999px;
+  color: var(--gold-ink);
+  font-size: 0.68rem;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0.3rem 0.75rem;
+  transition: opacity 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.shareEstimateButton:hover {
+  background: rgba(var(--tint), 0.06);
+  border-color: var(--gold-ink);
+}
+
+.feeSavingsBadge {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  margin-top: 0.45rem;
+  padding: 0.45rem 0.65rem;
+  border-radius: 0.55rem;
+  background: rgba(82, 217, 172, 0.08);
+  border: 1px solid rgba(82, 217, 172, 0.3);
+}
+
+.feeSavingsBadge span {
+  color: #52d9ac;
+  font-size: 0.6rem;
+  font-weight: 850;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.feeSavingsBadge strong {
+  color: var(--text);
+  font-size: 0.68rem;
+}
+
+.faqSearchWrapper {
+  position: relative;
+  max-width: 36rem;
+  margin: 1.5rem auto 1.2rem;
+}
+
+.faqSearchInput {
+  width: 100%;
+  padding: 0.7rem 1.1rem;
+  border-radius: 999px;
+  border: 1px solid var(--edge-t20);
+  background: rgba(var(--tint), 0.04);
+  color: var(--text);
+  font-size: 0.8rem;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.faqSearchInput:focus {
+  border-color: var(--gold-ink);
+  box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.15);
+}
+
+.faqSearchCount {
+  position: absolute;
+  right: 1.1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  pointer-events: none;
+}
+
+.faqEmptySearch {
+  text-align: center;
+  padding: 2.5rem 1rem;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.faqEmptySearch p {
+  margin: 0 0 1rem;
+}
+
+

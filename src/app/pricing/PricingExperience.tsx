@@ -205,6 +205,7 @@ export default function PricingExperience() {
   const [stickyDismissed, setStickyDismissed] = useState(false);
   const [showSeasonalRhythm, setShowSeasonalRhythm] = useState(false);
   const [showMobileScenarios, setShowMobileScenarios] = useState(false);
+  const [faqSearch, setFaqSearch] = useState('');
 
   const recommendation = useMemo(() => PLANS.map((plan) => ({
     plan,
@@ -212,8 +213,36 @@ export default function PricingExperience() {
   })).filter((result): result is typeof result & { annualCost: number } => result.annualCost !== null)
     .sort((a, b) => a.annualCost - b.annualCost)[0], [billing, officeUsers, volume]);
 
+  const filteredFaqs = useMemo(() => {
+    const term = faqSearch.trim().toLowerCase();
+    if (!term) return PRICING_FAQS;
+    return PRICING_FAQS.filter((faq) =>
+      faq.q.toLowerCase().includes(term) || faq.a.toLowerCase().includes(term)
+    );
+  }, [faqSearch]);
+
   const scaleCrossover = planCrossover(getPlan('growth'), getPlan('scale'), billing, VOICE_PURCHASABLE);
   const markCalculatorUsed = () => { setHasUsedCalculator(true); setStickyDismissed(false); };
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const urlVolume = Number(params.get('volume'));
+    const urlBilling = params.get('billing');
+    const urlUsers = Number(params.get('users'));
+
+    if (Number.isFinite(urlVolume) && urlVolume > 0) {
+      setVolume(Math.min(3_000_000, urlVolume));
+      setHasUsedCalculator(true);
+    }
+    if (urlBilling === 'monthly' || urlBilling === 'annual') {
+      setBilling(urlBilling);
+    }
+    if (Number.isFinite(urlUsers) && urlUsers >= 1) {
+      setOfficeUsers(Math.min(25, Math.max(1, Math.round(urlUsers))));
+      setHasUsedCalculator(true);
+    }
+  }, []);
 
   useEffect(() => {
     const sections = SECTION_IDS.map((id) => document.getElementById(id)).filter(
@@ -774,26 +803,55 @@ export default function PricingExperience() {
             Ask a real person
           </Link>
         </div>
-        <div id="pricing-faqs" className={`${styles.faqGrid}${showAllFaqs ? ` ${styles.faqGridExpanded}` : ''}`}>
-          {PRICING_FAQS.map((item) => (
-            <details key={item.q} className={styles.faqItem}>
-              <summary>
-                {item.q}
-                <span aria-hidden="true">+</span>
-              </summary>
-              <p>{item.a}</p>
-            </details>
-          ))}
+        <div className={styles.faqSearchWrapper}>
+          <input
+            id="pricing-faq-search"
+            type="search"
+            placeholder="Search FAQs (e.g. QuickBooks, Stripe, overage, top-ups, guarantee)..."
+            value={faqSearch}
+            onChange={(e) => setFaqSearch(e.target.value)}
+            className={styles.faqSearchInput}
+            aria-label="Filter frequently asked questions"
+          />
+          {faqSearch ? (
+            <span className={styles.faqSearchCount}>
+              {filteredFaqs.length} {filteredFaqs.length === 1 ? 'question' : 'questions'} found
+            </span>
+          ) : null}
         </div>
-        <button
-          type="button"
-          className={styles.faqMoreButton}
-          aria-expanded={showAllFaqs}
-          aria-controls="pricing-faqs"
-          onClick={() => setShowAllFaqs((shown) => !shown)}
-        >
-          {showAllFaqs ? 'Show fewer questions' : `Show ${Math.max(0, PRICING_FAQS.length - 6)} more questions`}
-        </button>
+
+        {filteredFaqs.length > 0 ? (
+          <div id="pricing-faqs" className={`${styles.faqGrid}${showAllFaqs || faqSearch ? ` ${styles.faqGridExpanded}` : ''}`}>
+            {filteredFaqs.map((item) => (
+              <details key={item.q} className={styles.faqItem} open={faqSearch.length > 0 ? true : undefined}>
+                <summary>
+                  {item.q}
+                  <span aria-hidden="true">+</span>
+                </summary>
+                <p>{item.a}</p>
+              </details>
+            ))}
+          </div>
+        ) : (
+          <div className={styles.faqEmptySearch}>
+            <p>No questions found matching &ldquo;{faqSearch}&rdquo;.</p>
+            <Link className={styles.secondaryButton} href="/contact">
+              Ask our team directly →
+            </Link>
+          </div>
+        )}
+
+        {!faqSearch && (
+          <button
+            type="button"
+            className={styles.faqMoreButton}
+            aria-expanded={showAllFaqs}
+            aria-controls="pricing-faqs"
+            onClick={() => setShowAllFaqs((shown) => !shown)}
+          >
+            {showAllFaqs ? 'Show fewer questions' : `Show ${Math.max(0, PRICING_FAQS.length - 6)} more questions`}
+          </button>
+        )}
       </section>
 
       <section className={styles.finalCta}>

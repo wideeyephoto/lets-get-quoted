@@ -87,6 +87,23 @@ export default function PricingCalculator({
   const extraSeats = Math.max(0, (officeUsers || 1) - winnerPlan.officeUsers);
   const extraSeatsAnnual = extraSeats * OFFICE_USER_ADD_ON_MONTHLY * 12;
   const extraSeatsMonthly = extraSeatsAnnual / 12;
+  const [copiedLink, setCopiedLink] = useState(false);
+  const handleCopyLink = () => {
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.set('volume', String(volume));
+      url.searchParams.set('billing', billing);
+      url.searchParams.set('users', String(officeUsers));
+      navigator.clipboard.writeText(url.toString()).then(() => {
+        setCopiedLink(true);
+        setTimeout(() => setCopiedLink(false), 2200);
+      });
+    }
+  };
+
+  const flexFeeAnnual = volume * 0.0125;
+  const winnerFeeAnnual = volume * (winnerPlan.paymentFeePct / 100);
+  const feeSavingsVsFlex = flexFeeAnnual - winnerFeeAnnual;
 
   return (
     <div className={styles.calculatorShell}>
@@ -254,6 +271,12 @@ export default function PricingCalculator({
                 <strong>{money(extraSeatsMonthly)}/mo</strong>
               </div>
             ) : null}
+            {feeSavingsVsFlex > 0 && winner.plan.id !== 'flex' ? (
+              <div className={styles.feeSavingsBadge}>
+                <span>Platform fee advantage:</span>
+                <strong>Saves {money(feeSavingsVsFlex)}/yr vs 1.25% starter rate</strong>
+              </div>
+            ) : null}
           </div>
 
           <span className={styles.answerStripe}>Stripe processing is paid separately.</span>
@@ -262,7 +285,17 @@ export default function PricingCalculator({
             <a className={styles.calculatorCta} href={signupHref(winner.plan.id, billing)}>
               {winner.plan.id === 'flex' ? 'Start with Flex' : `Choose ${winner.plan.name}`}
             </a>
-            <a href="#plans">Compare plan details</a>
+            <div className={styles.secondaryActions}>
+              <a href="#plans">Compare plan details</a>
+              <button
+                type="button"
+                onClick={handleCopyLink}
+                className={styles.shareEstimateButton}
+                title="Copy shareable link for this calculation"
+              >
+                {copiedLink ? '✓ Link copied!' : '🔗 Share estimate'}
+              </button>
+            </div>
           </div>
         </div>
       </div>
