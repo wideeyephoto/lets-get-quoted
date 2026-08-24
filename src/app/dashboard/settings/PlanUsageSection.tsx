@@ -464,6 +464,57 @@ function forecastStatusWord(forecast: PeriodForecast, plan: WorkspacePlanRead): 
 }
 
 
+function ResourceIcon({ label }: { label: string }) {
+  const norm = label.toLowerCase();
+  if (norm.includes('text') || norm.includes('sms')) {
+    return (
+      <svg viewBox="0 0 24 24" className="plan-usage-resource-ic" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+      </svg>
+    );
+  }
+  if (norm.includes('email') || norm.includes('mail')) {
+    return (
+      <svg viewBox="0 0 24 24" className="plan-usage-resource-ic" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <rect width="20" height="16" x="2" y="4" rx="2" /><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+      </svg>
+    );
+  }
+  if (norm.includes('intake') || norm.includes('thread')) {
+    return (
+      <svg viewBox="0 0 24 24" className="plan-usage-resource-ic" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
+      </svg>
+    );
+  }
+  if (norm.includes('draft') || norm.includes('writing')) {
+    return (
+      <svg viewBox="0 0 24 24" className="plan-usage-resource-ic" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" /><path d="m15 5 4 4" />
+      </svg>
+    );
+  }
+  if (norm.includes('office') || norm.includes('user')) {
+    return (
+      <svg viewBox="0 0 24 24" className="plan-usage-resource-ic" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <rect width="20" height="14" x="2" y="7" rx="2" ry="2" /><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+      </svg>
+    );
+  }
+  if (norm.includes('crew')) {
+    return (
+      <svg viewBox="0 0 24 24" className="plan-usage-resource-ic" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
+      </svg>
+    );
+  }
+  return (
+    <svg viewBox="0 0 24 24" className="plan-usage-resource-ic" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" />
+    </svg>
+  );
+}
+
 /**
  * One credit resource, with a meter ONLY where a meter can be honest.
  *
@@ -483,7 +534,15 @@ function CreditBalance({ resource }: { resource: CreditLotSplit }) {
 
   return (
     <article className="plan-usage-balance" data-tone={tone}>
-      <span>{resource.label}</span>
+      <div className="plan-usage-resource-header">
+        <div className="plan-usage-resource-title">
+          <ResourceIcon label={resource.label} />
+          <span>{resource.label}</span>
+        </div>
+        <SettingsHashLink href="#buy-credits" className="plan-usage-refill-chip" aria-label={`Refill ${resource.label}`}>
+          + Refill
+        </SettingsHashLink>
+      </div>
       <strong>
         {hasWindow
           ? `${resource.periodRemaining!.toLocaleString('en-US')} of ${resource.periodGranted!.toLocaleString('en-US')} left`
@@ -552,7 +611,10 @@ function CapacityMeter({ row }: { row: CapacityRow }) {
   const tone = CAPACITY_TONE[row.verdict];
   return (
     <li className="plan-usage-capacity" data-tone={tone}>
-      <span className="plan-usage-capacity-label">{row.label}</span>
+      <div className="plan-usage-resource-title">
+        <ResourceIcon label={row.label} />
+        <span className="plan-usage-capacity-label">{row.label}</span>
+      </div>
       <strong className="plan-usage-capacity-figure">{row.detail}</strong>
       {/* No bar when the count could not be read or no limit is known. An empty
           track reads as "you have used none of it", which is the single most
@@ -927,6 +989,27 @@ export default function PlanUsageSection({
                 and payment-infrastructure costs are separate and paid directly by the contractor.
               </p>
             </details>
+
+            {data.plan.planCode !== 'flex' && data.plan.platformFeeBps < 125 ? (
+              <div className="plan-usage-roi-callout">
+                <svg viewBox="0 0 24 24" className="plan-usage-roi-ic" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
+                </svg>
+                <div className="plan-usage-roi-text">
+                  <strong>{data.plan.planName} saves you ${((125 - data.plan.platformFeeBps) / 10).toFixed(2)} per $1,000 processed</strong>
+                  <span>Your {platformFeeLabel(data.plan.platformFeeBps)} platform fee saves {((125 - data.plan.platformFeeBps) / 100).toFixed(2)}% in software fees on every collected invoice compared to Flex (1.25%).</span>
+                </div>
+              </div>
+            ) : null}
+
+            {data.plan.billingInterval === 'monthly' && data.plan.planCode !== 'flex' ? (
+              <div className="plan-usage-annual-upsell">
+                <SettingsHashLink href="#change-plan" className="plan-usage-annual-link">
+                  <span className="plan-usage-annual-tag">SAVE 10%–20%</span>
+                  <span>Switch to Annual prepaid to save on software bills &rarr;</span>
+                </SettingsHashLink>
+              </div>
+            ) : null}
             {!data.plan.usesCurrentCatalog ? (
               <p className="plan-usage-note" role="status">
                 This workspace is pinned to pricing catalog {data.plan.catalogVersion}. Its saved entitlement
@@ -1118,6 +1201,11 @@ export default function PlanUsageSection({
                   className={`plan-usage-storage-meter-fill${storageState.over ? ' over' : storageState.nearly ? ' nearly' : ''}`}
                   style={{ width: `${Math.max(storageState.percent, 2)}%` }}
                 />
+              </div>
+              <div className="plan-usage-storage-categories">
+                <span className="plan-usage-storage-chip">📸 Job &amp; Lead Photos</span>
+                <span className="plan-usage-storage-chip">🌐 Website Images &amp; Video</span>
+                <span className="plan-usage-storage-chip">📄 Insurance &amp; Documents</span>
               </div>
               <p className="workspace-details-copy plan-usage-intro">
                 {storageState.objectCount === null
