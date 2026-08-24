@@ -381,12 +381,13 @@ export default function PricingCalculator({
           type="button"
           className={styles.competitorToggleBtn}
           aria-expanded={showCompetitorComparison}
+          aria-controls="pricing-competitor-compare"
           onClick={() => setShowCompetitorComparison((s) => !s)}
         >
           <span>{showCompetitorComparison ? '▼ Hide side-by-side competitor comparison' : '▶ Compare LGQ vs Jobber & Housecall Pro at this volume'}</span>
         </button>
         {showCompetitorComparison ? (
-          <div className={styles.competitorCompareCard}>
+          <div id="pricing-competitor-compare" className={styles.competitorCompareCard}>
             <div className={styles.competitorCompareGrid}>
               <div className={styles.competitorColLgq}>
                 <span className={styles.competitorBadge}>Let’s Get Quoted ({winner.plan.name})</span>

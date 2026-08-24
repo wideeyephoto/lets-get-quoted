@@ -802,6 +802,17 @@ export default function QuickStopConfigurator({
           <SaveButton onlyWhenChanged>Save Quick Stop settings</SaveButton>
         </div>
       </form>
+
+      <QuickStopCustomerPreviewModal
+        isOpen={previewOpen}
+        onClose={() => setPreviewOpen(false)}
+        businessName="Your Business"
+        minFeeDollars={centsToDollars(s.minFeeCents)}
+        maxFeeDollars={centsToDollars(s.maxFeeCents)}
+        earliestTime={s.earliestTime}
+        latestEnd={s.latestEnd}
+        categories={s.categories}
+      />
     </section>
   );
 }
