@@ -9,6 +9,7 @@ import { useAppShell } from './app-shell-provider';
 import { NavIcon } from './nav-icons';
 import ActionIcon from './action-icon';
 import ThemeFab from './theme-fab';
+import { SmartSearch } from './smart-search';
 import { supabase } from '@/lib/supabase';
 import { isOwnChromeRoute } from '@/lib/marketing-chrome';
 import { APP_LOGIN_URL, APP_SIGNUP_URL } from '@/components/marketing/links';
@@ -910,6 +911,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
               word because a bare plus could add anything. */}
           {isLoggedIn ? (
             <>
+              <SmartSearch variant="mobile" />
               <Link
                 href="/dashboard/schedule/plan"
                 className={`mobilebar-plan${pathname.startsWith('/dashboard/schedule/plan') ? ' active' : ''}`}
@@ -961,6 +963,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
 
           <div className="sidenav-lead">
             {businessName ? <p className="sidenav-bizname" title={businessName}>{businessName}</p> : null}
+            <SmartSearch variant="rail" />
             {/* The two things a contractor starts the day with, on one row.
                 Plan my day is the wider of the two because it carries three
                 words; "+ New" only ever says one, so it takes what it needs and

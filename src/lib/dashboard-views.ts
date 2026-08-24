@@ -96,6 +96,16 @@ export function normalizeJobsView(value: unknown): JobsView {
   return JOBS_VIEWS.includes(value as JobsView) ? (value as JobsView) : DEFAULT_JOBS_VIEW;
 }
 
+// Layout style for the individual Job Details page (/dashboard/jobs/[id])
+export const JOB_DETAIL_LAYOUT_COOKIE = 'lgq_job_detail_layout';
+export type JobDetailLayout = 'tabs' | 'classic';
+export const JOB_DETAIL_LAYOUTS: JobDetailLayout[] = ['tabs', 'classic'];
+export const DEFAULT_JOB_DETAIL_LAYOUT: JobDetailLayout = 'tabs';
+
+export function normalizeJobDetailLayout(value: unknown): JobDetailLayout {
+  return value === 'classic' ? 'classic' : 'tabs';
+}
+
 // Which Clients layout the owner last used.
 // List / Cards / Table / Focus all answer "show me my customers" and order by
 // name or money. Follow-up orders by silence, which is a different question.

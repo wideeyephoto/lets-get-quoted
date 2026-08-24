@@ -120,6 +120,9 @@ import CompleteJobButton from './CompleteJobButton';
 import JobActionMenu from './JobActionMenu';
 import JobScheduleFields from './JobScheduleFields';
 import StartJobButton from './StartJobButton';
+import { cookies } from 'next/headers';
+import { JOB_DETAIL_LAYOUT_COOKIE, normalizeJobDetailLayout } from '@/lib/dashboard-views';
+import JobDetailWorkspace, { type JobDetailTab, type TabBadges } from './JobDetailWorkspace';
 import ClientChannelField from './ClientChannelField';
 import {
   CLIENT_CHANNEL_LABEL,
@@ -135,8 +138,12 @@ export default async function JobDetailPage({
   searchParams,
 }: {
   params: { id: string };
-  searchParams: { tab?: string; clientToken?: string; edit?: string; open?: string; delivery?: string; arrival?: string; sms?: string };
+  searchParams: { tab?: string; view?: string; clientToken?: string; edit?: string; open?: string; delivery?: string; arrival?: string; sms?: string };
 }) {
+  const cookieStore = cookies();
+  const layoutCookie = cookieStore.get(JOB_DETAIL_LAYOUT_COOKIE)?.value;
+  const layout = normalizeJobDetailLayout(searchParams.view || layoutCookie);
+
   const { supabase, accountId, role } = await requireOfficeContext('jobs.read', 'clients.read');
 
   const job = await getJob(supabase, accountId, params.id);
@@ -749,262 +756,213 @@ export default async function JobDetailPage({
 
       </section>
 
-      {/* THE WAY AROUND A LONG RECORD.
-          Quote, stages, punch list, feed, payment, scheduling, expenses,
-          selections, warranty and ROI make a page nobody can hold in their
-          head, and on a phone reaching the money meant scrolling past all of
-          it. Plain anchors, so it works before any JavaScript has run and on a
-          job page opened in a van with one bar. */}
-      <nav className="job-subnav" aria-label="Jump to a section">
-        <a href="#job-top">Overview</a>
-        <a href="#checklist">Work</a>
-        {/* Only ever a link, never a badge that exists to be decorative: the
-            count appears when the job is actually stopped on somebody else. */}
-        <a href="#selections">
-          Choices
-          {selectionStatus.waiting > 0 ? (
-            <span className={`job-subnav-count${selectionStatus.overdue > 0 ? ' is-overdue' : ''}`}>{selectionStatus.waiting}</span>
-          ) : null}
-        </a>
-        <a href="#quote-breakdown">Quote</a>
-        <a href="#job-feed">Feed</a>
-        <a href="#request-payment">Money</a>
-        <a href="#job-details">More</a>
-      </nav>
+      {(() => {
+        let initialTab: JobDetailTab = 'overview';
+        if (searchParams.tab === 'financials' || searchParams.tab === 'execution' || searchParams.tab === 'selections' || searchParams.tab === 'settings' || searchParams.tab === 'overview') {
+          initialTab = searchParams.tab;
+        } else if (searchParams.open === 'payment' || searchParams.open === 'costs' || searchParams.open === 'warranty') {
+          initialTab = 'financials';
+        } else if (searchParams.open === 'scheduling' || searchParams.edit === 'client') {
+          initialTab = 'settings';
+        } else if (searchParams.open === 'checklist') {
+          initialTab = 'execution';
+        } else if (searchParams.open === 'update') {
+          initialTab = 'overview';
+        }
 
-      {/* Arrival. Only on a job with a date — "on my way" to something
-          unscheduled is a message with no visit behind it. Sits high on the
-          page because on the day itself it is the only thing on this screen
-          anybody needs. */}
-      {job.scheduled_for && job.status !== 'complete' && job.status !== 'archived' ? (
-        <>
-          {arrivalFlash ? (
-            <p className={`payment-banner ${arrivalFlash.error ? 'warning' : 'success'}`}>{arrivalFlash.text}</p>
-          ) : null}
-          <ArrivalPanel
-            surface="dashboard"
-            job={{
-              id: job.id,
-              clientName: job.client_name,
-              address: job.address,
-              scheduleLabel: formatJobSchedule(job.scheduled_for, job.scheduled_time),
-              jobType: job.scope ? job.scope.split('\n')[0].slice(0, 60) : null,
-              hasPhone: Boolean(job.client_phone),
-              // Sent from a desk, so there's no "here" to measure from — the
-              // GPS suggestion is a field-app affordance only.
-              lat: null,
-              lng: null,
-            }}
-            trip={arrivalTrip}
-            business={jobBusinessName}
-            crewName={arrivalTrip?.sentBy || jobBusinessName}
-            template={arrivalSettings.messageTemplate || DEFAULT_ARRIVAL_TEMPLATE}
-            timeZone={arrivalSettings.timeZone}
-            windowStyle={arrivalSettings.windowStyle}
-            windowMinutes={arrivalSettings.windowMinutes}
-            defaultMinutes={arrivalSettings.defaultMinutes}
-            // Sending from a desk: the office's coordinates are not the tech's,
-            // so there is nothing honest to put on a map from here.
-            canShareLocation={false}
-            shareDefaultsOn={false}
-            canReschedule
-            canSend
-            sendAction={sendArrivalOwnerAction.bind(null, job.id)}
-            statusAction={setArrivalStatusOwnerAction.bind(null, job.id)}
-          />
-        </>
-      ) : null}
+        const tabBadges: TabBadges = {
+          feedCount: displayedFeed.length,
+          remainingLabel: money.remainingCents > 0 ? formatMoneyExact(money.remainingCents / 100) : undefined,
+          tasksDone: taskStats.done,
+          tasksTotal: taskStats.total,
+          selectionsWaiting: selectionStatus.waiting,
+          selectionsOverdue: selectionStatus.overdue,
+          scheduledLabel: job.scheduled_for ? formatJobSchedule(job.scheduled_for, job.scheduled_time) : null,
+        };
 
-      {/* Proof-to-Pay. Directly under the quote, because stages are how the
-          quote gets collected — and above the checklist, because the checklist
-          is now partly evidence for these. */}
-      {/* Collapsed until this job actually has stages. On a small job the empty
-          state is a paragraph of pitch, and it sat between the arrival panel
-          and the quote on every job whether or not staged payments made any
-          sense for it. */}
-      <details id="milestones" className="panel workspace-section-card job-section-collapsible" open={milestoneViews.length > 0}>
-        <summary className="workspace-details-summary job-action-summary">
-          <div className="section-heading workspace-section-heading compact-heading">
-            <p className="eyebrow">Getting paid</p>
-            <h2>Stages &amp; proof</h2>
-          </div>
-          <span className="workspace-details-copy">
-            {milestoneViews.length > 0
-              ? `${milestoneViews.length} stage${milestoneViews.length === 1 ? '' : 's'} on this job.`
-              : 'Get paid as each part is finished, with the proof attached.'}
-          </span>
-        </summary>
-        <Milestones
-          entries={milestoneViews}
-          quotedAmount={Number(job.quoted_amount) || 0}
-          clientPhone={job.client_phone}
-          suggestSplit={suggestStages}
-          actions={{
-            seed: seedMilestonesAction.bind(null, job.id),
-            create: createMilestoneAction.bind(null, job.id),
-            update: updateMilestoneAction.bind(null, job.id),
-            remove: deleteMilestoneAction.bind(null, job.id),
-            addTask: addMilestoneTaskAction.bind(null, job.id),
-            attachPhoto: attachMilestonePhotoAction.bind(null, job.id),
-            removePhoto: removeMilestonePhotoAction.bind(null, job.id),
-            requestPayment: requestMilestonePaymentAction.bind(null, job.id),
-          }}
-        />
-      </details>
-
-      <section id="quote-breakdown" className="panel workspace-section-card">
-        {/* The heading is the heading. Print moved down into QuoteBuilder's
-            toolbar to sit with the other two things you can do to a quote —
-            it was the only one of the three up here, which made it look like
-            the section's primary action rather than the one you reach for
-            last. */}
-        <div className="section-heading workspace-section-heading">
-          <div>
-            <p className="eyebrow">Quote</p>
-            <h2>Quote breakdown</h2>
-          </div>
-        </div>
-        {/* Three sentences became one. The two it lost — that the total updates
-            itself, and what an empty list means — were explaining machinery
-            above a quote nobody had written yet. */}
-        <p className="workspace-details-copy" style={{ marginTop: '0.4rem', marginBottom: '0.9rem' }}>
-          Itemize the work, add optional upgrades, or leave this empty for one quoted amount.
-        </p>
-        <QuoteBuilder
-          action={boundSaveQuoteItems}
-          notifyAction={saveQuoteItemsAndNotifyAction.bind(null, job.id)}
-          autosaveKey={job.id}
-          draftAction={draftQuoteAction.bind(null, job.id)}
-          reviewAction={reviewQuoteAction.bind(null, job.id)}
-          printHref={`/dashboard/jobs/${job.id}/quote`}
-          initialItems={quoteItems}
-          quotedAmount={Number(job.quoted_amount) || 0}
-          services={priceBook}
-          approved={job.status !== 'new_lead'}
-          approvedTotal={Number(job.quoted_amount) || 0}
-          clientLabel={job.client_name}
-          changeOrderHref={changeOrderHref}
-        />
-      </section>
-
-      {/* Recurring plans on this quote that nobody has started yet. The client
-          can accept these from their own quote page; this is the same decision
-          for the far more common case where they said yes on the phone. */}
-      {pendingPlans.length > 0 ? (
-        <section id="recurring-plans" className="panel workspace-section-card">
-          <div className="section-heading workspace-section-heading compact-heading">
-            <p className="eyebrow">Recurring</p>
-            <h2>{pendingPlans.length === 1 ? 'Plan on this quote' : 'Plans on this quote'}</h2>
-          </div>
-          <p className="workspace-details-copy" style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
-            Not started yet. Accept one here when the client agrees in person or over the phone — you pick the day
-            it starts, and it repeats on the cadence already quoted.
-          </p>
-          <div className="accept-plan-list">
-            {pendingPlans.map((item) => (
-              <AcceptPlanCard key={item.id} item={item} today={todayKey} action={acceptSubscriptionAction.bind(null, job.id)} />
-            ))}
-          </div>
-        </section>
-      ) : null}
-
-      {/* Collapsed while it is empty. An untouched punch list is a heading, a
-          paragraph of explanation and an empty state — three screenfuls of
-          nothing between the quote and the feed on a phone. It opens the moment
-          it has anything in it. */}
-      <details id="checklist" className="panel workspace-section-card job-section-collapsible" open={jobTasks.length > 0}>
-        <summary className="workspace-details-summary job-action-summary">
-          <div className="section-heading workspace-section-heading compact-heading">
-            <p className="eyebrow">Checklist</p>
-            <h2>Punch list{taskStats.total > 0 ? ` · ${taskStats.done}/${taskStats.total} done` : ''}</h2>
-          </div>
-          <span className="workspace-details-copy">
-            {jobTasks.length > 0 ? 'What your crew ticks off from the field app.' : 'Nothing on it yet.'}
-          </span>
-        </summary>
-        <p className="workspace-details-copy" style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
-          Build the punch list for this job. Your crew can tick items off from the field app, and you&apos;ll see who did what.
-        </p>
-        {jobTasks.length > 0 ? (
+        const arrivalBlock = job.scheduled_for && job.status !== 'complete' && job.status !== 'archived' ? (
           <>
-            {taskStats.total > 0 ? (
-              <div className="task-progress" aria-hidden="true"><div className="task-progress-fill" style={{ width: `${taskStats.pct}%` }} /></div>
+            {arrivalFlash ? (
+              <p className={`payment-banner ${arrivalFlash.error ? 'warning' : 'success'}`}>{arrivalFlash.text}</p>
             ) : null}
-            <div className="task-list">
-              {jobTasks.map((task) => (
-                <div className={`task-row${task.done ? ' is-done' : ''}`} key={task.id}>
-                  <form action={setJobTaskDoneAction.bind(null, job.id, task.id, !task.done)}>
-                    <button type="submit" className="task-check" aria-label={task.done ? 'Mark not done' : 'Mark done'}>{task.done ? '✓' : ''}</button>
-                  </form>
-                  <div className="task-row-main">
-                    <span className="task-title">{task.title}</span>
-                    {task.done && task.done_by ? <span className="task-done-by">Done by {task.done_by}</span> : null}
-                  </div>
-                  <form action={deleteJobTaskAction.bind(null, job.id, task.id)}>
-                    <button type="submit" className="task-delete" aria-label="Delete task">×</button>
-                  </form>
-                </div>
+            <ArrivalPanel
+              surface="dashboard"
+              job={{
+                id: job.id,
+                clientName: job.client_name,
+                address: job.address,
+                scheduleLabel: formatJobSchedule(job.scheduled_for, job.scheduled_time),
+                jobType: job.scope ? job.scope.split('\n')[0].slice(0, 60) : null,
+                hasPhone: Boolean(job.client_phone),
+                lat: null,
+                lng: null,
+              }}
+              trip={arrivalTrip}
+              business={jobBusinessName}
+              crewName={arrivalTrip?.sentBy || jobBusinessName}
+              template={arrivalSettings.messageTemplate || DEFAULT_ARRIVAL_TEMPLATE}
+              timeZone={arrivalSettings.timeZone}
+              windowStyle={arrivalSettings.windowStyle}
+              windowMinutes={arrivalSettings.windowMinutes}
+              defaultMinutes={arrivalSettings.defaultMinutes}
+              canShareLocation={false}
+              shareDefaultsOn={false}
+              canReschedule
+              canSend
+              sendAction={sendArrivalOwnerAction.bind(null, job.id)}
+              statusAction={setArrivalStatusOwnerAction.bind(null, job.id)}
+            />
+          </>
+        ) : null;
+
+        const milestonesBlock = (
+          <details id="milestones" className="panel workspace-section-card job-section-collapsible" open={milestoneViews.length > 0}>
+            <summary className="workspace-details-summary job-action-summary">
+              <div className="section-heading workspace-section-heading compact-heading">
+                <p className="eyebrow">Getting paid</p>
+                <h2>Stages &amp; proof</h2>
+              </div>
+              <span className="workspace-details-copy">
+                {milestoneViews.length > 0
+                  ? `${milestoneViews.length} stage${milestoneViews.length === 1 ? '' : 's'} on this job.`
+                  : 'Get paid as each part is finished, with the proof attached.'}
+              </span>
+            </summary>
+            <Milestones
+              entries={milestoneViews}
+              quotedAmount={Number(job.quoted_amount) || 0}
+              clientPhone={job.client_phone}
+              suggestSplit={suggestStages}
+              actions={{
+                seed: seedMilestonesAction.bind(null, job.id),
+                create: createMilestoneAction.bind(null, job.id),
+                update: updateMilestoneAction.bind(null, job.id),
+                remove: deleteMilestoneAction.bind(null, job.id),
+                addTask: addMilestoneTaskAction.bind(null, job.id),
+                attachPhoto: attachMilestonePhotoAction.bind(null, job.id),
+                removePhoto: removeMilestonePhotoAction.bind(null, job.id),
+                requestPayment: requestMilestonePaymentAction.bind(null, job.id),
+              }}
+            />
+          </details>
+        );
+
+        const quoteBreakdownBlock = (
+          <section id="quote-breakdown" className="panel workspace-section-card">
+            <div className="section-heading workspace-section-heading">
+              <div>
+                <p className="eyebrow">Quote</p>
+                <h2>Quote breakdown</h2>
+              </div>
+            </div>
+            <p className="workspace-details-copy" style={{ marginTop: '0.4rem', marginBottom: '0.9rem' }}>
+              Itemize the work, add optional upgrades, or leave this empty for one quoted amount.
+            </p>
+            <QuoteBuilder
+              action={boundSaveQuoteItems}
+              notifyAction={saveQuoteItemsAndNotifyAction.bind(null, job.id)}
+              autosaveKey={job.id}
+              draftAction={draftQuoteAction.bind(null, job.id)}
+              reviewAction={reviewQuoteAction.bind(null, job.id)}
+              printHref={`/dashboard/jobs/${job.id}/quote`}
+              initialItems={quoteItems}
+              quotedAmount={Number(job.quoted_amount) || 0}
+              services={priceBook}
+              approved={job.status !== 'new_lead'}
+              approvedTotal={Number(job.quoted_amount) || 0}
+              clientLabel={job.client_name}
+              changeOrderHref={changeOrderHref}
+            />
+          </section>
+        );
+
+        const recurringPlansBlock = pendingPlans.length > 0 ? (
+          <section id="recurring-plans" className="panel workspace-section-card">
+            <div className="section-heading workspace-section-heading compact-heading">
+              <p className="eyebrow">Recurring</p>
+              <h2>{pendingPlans.length === 1 ? 'Plan on this quote' : 'Plans on this quote'}</h2>
+            </div>
+            <p className="workspace-details-copy" style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
+              Not started yet. Accept one here when the client agrees in person or over the phone — you pick the day
+              it starts, and it repeats on the cadence already quoted.
+            </p>
+            <div className="accept-plan-list">
+              {pendingPlans.map((item) => (
+                <AcceptPlanCard key={item.id} item={item} today={todayKey} action={acceptSubscriptionAction.bind(null, job.id)} />
               ))}
             </div>
-          </>
-        ) : (
-          <p className="empty-state">No checklist items yet. Add the first below.</p>
-        )}
-        <TaskAddForm action={addJobTaskAction.bind(null, job.id)} />
-      </details>
+          </section>
+        ) : null;
 
-      {/* THE CUSTOMER'S HALF OF THE WORK, out of the bottom of the page.
-          This sat inside #job-costs — the grid of expenses, margin and ROI —
-          below the scheduling panel, three screens past anything anybody opens
-          this page for. Selections are not a cost record: they are the list of
-          decisions the JOB is stopped on, and a job stalled on a tile choice
-          looks exactly like a job that is going fine until you scroll to the
-          end of it.
+        const punchListBlock = (
+          <details id="checklist" className="panel workspace-section-card job-section-collapsible" open={jobTasks.length > 0}>
+            <summary className="workspace-details-summary job-action-summary">
+              <div className="section-heading workspace-section-heading compact-heading">
+                <p className="eyebrow">Checklist</p>
+                <h2>Punch list{taskStats.total > 0 ? ` · ${taskStats.done}/${taskStats.total} done` : ''}</h2>
+              </div>
+              <span className="workspace-details-copy">
+                {jobTasks.length > 0 ? 'What your crew ticks off from the field app.' : 'Nothing on it yet.'}
+              </span>
+            </summary>
+            <p className="workspace-details-copy" style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
+              Build the punch list for this job. Your crew can tick items off from the field app, and you&apos;ll see who did what.
+            </p>
+            {jobTasks.length > 0 ? (
+              <>
+                {taskStats.total > 0 ? (
+                  <div className="task-progress" aria-hidden="true"><div className="task-progress-fill" style={{ width: `${taskStats.pct}%` }} /></div>
+                ) : null}
+                <div className="task-list">
+                  {jobTasks.map((task) => (
+                    <div className={`task-row${task.done ? ' is-done' : ''}`} key={task.id}>
+                      <form action={setJobTaskDoneAction.bind(null, job.id, task.id, !task.done)}>
+                        <button type="submit" className="task-check" aria-label={task.done ? 'Mark not done' : 'Mark done'}>{task.done ? '✓' : ''}</button>
+                      </form>
+                      <div className="task-row-main">
+                        <span className="task-title">{task.title}</span>
+                        {task.done && task.done_by ? <span className="task-done-by">Done by {task.done_by}</span> : null}
+                      </div>
+                      <form action={deleteJobTaskAction.bind(null, job.id, task.id)}>
+                        <button type="submit" className="task-delete" aria-label="Delete task">×</button>
+                      </form>
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <p className="empty-state">No checklist items yet. Add the first below.</p>
+            )}
+            <TaskAddForm action={addJobTaskAction.bind(null, job.id)} />
+          </details>
+        );
 
-          So it sits with the punch list, which is the other answer to "what is
-          outstanding", and above the feed, because a choice nobody has made is
-          the thing the next feed entry is waiting for.
+        const selectionsBlock = (
+          <details
+            id="selections"
+            className="panel workspace-section-card workspace-details job-action-details"
+            open={selectionStatus.waiting > 0}
+          >
+            <summary className="workspace-details-summary job-action-summary">
+              <div className="section-heading workspace-section-heading compact-heading">
+                <p className="eyebrow">Selections</p>
+                <h2>
+                  Colors, materials &amp; fixtures
+                  {selections.length > 0 ? ` · ${selections.length - selectionStatus.waiting}/${selections.length} chosen` : ''}
+                </h2>
+              </div>
+              <span className={`workspace-details-copy${selectionStatus.overdue > 0 ? ' is-overdue' : ''}`}>
+                {selectionStatus.label || 'What the customer has to choose, and what it costs.'}
+              </span>
+            </summary>
+            <SelectionBoard jobId={job.id} selections={selections} templates={selectionTemplates} photos={selectionPhotos} lastSentAt={lastSelectionSent} />
+          </details>
+        );
 
-          Open whenever anything is waiting, not only when something is late —
-          the point of asking early is to stop it becoming late. And it keeps
-          its id, because the completion preflight links here. */}
-      <details
-        id="selections"
-        className="panel workspace-section-card workspace-details job-action-details"
-        open={selectionStatus.waiting > 0}
-      >
-        <summary className="workspace-details-summary job-action-summary">
-          <div className="section-heading workspace-section-heading compact-heading">
-            <p className="eyebrow">Selections</p>
-            <h2>
-              Colors, materials &amp; fixtures
-              {/* The same shape the punch list uses two sections up, so two
-                  lists of outstanding work read the same way. */}
-              {selections.length > 0 ? ` · ${selections.length - selectionStatus.waiting}/${selections.length} chosen` : ''}
-            </h2>
-          </div>
-          <span className={`workspace-details-copy${selectionStatus.overdue > 0 ? ' is-overdue' : ''}`}>
-            {selectionStatus.label || 'What the customer has to choose, and what it costs.'}
-          </span>
-        </summary>
-        <SelectionBoard jobId={job.id} selections={selections} templates={selectionTemplates} photos={selectionPhotos} lastSentAt={lastSelectionSent} />
-      </details>
-
-      <section id="job-feed" className="panel workspace-section-card job-feed-command-panel">
+        const feedBlock = (
+          <section id="job-feed" className="panel workspace-section-card job-feed-command-panel">
             <div className="section-heading workspace-section-heading">
               <p className="eyebrow">Job feed</p>
-              {/* THE DOOR, BESIDE THE THING IT OPENS.
-                  This was a card at the foot of the feed with a heading, a
-                  paragraph and a status line, under a feed whose every row
-                  already carries an "In Job Feed" badge. What it was for is one
-                  link: the same feed as the customer sees it. Whether the page
-                  has been shared is still said once, in the pipeline step at
-                  the top — see buildPipelineChecklist.
-
-                  The form sits BESIDE the h2 rather than inside it. Minting is
-                  a write, so it has to be a submit rather than an anchor, and a
-                  <form> is flow content — invalid inside a heading, where the
-                  browser would close the h2 around it. */}
               <div className="job-feed-title-row">
                 <h2>Job Feed</h2>
                 {clientViewHref ? (
@@ -1096,13 +1054,6 @@ export default async function JobDetailPage({
                                 Cancel
                               </ConfirmActionButton>
                             ) : null}
-                            {/* EDIT, BESIDE UNDO — and only on an update
-                                somebody typed. Everything else in this feed is
-                                a record of something that happened, and the
-                                action enforces that with a where clause rather
-                                than trusting this condition. A <details> so it
-                                costs nothing until it is wanted, and it takes
-                                the full row when open (the badge row wraps). */}
                             {event.kind === 'job_update' ? (
                               <details className="feed-edit">
                                 <summary className="feed-undo-btn">Edit</summary>
@@ -1170,17 +1121,18 @@ export default async function JobDetailPage({
                 })}
               </div>
             )}
+          </section>
+        );
 
-      </section>
-
-      <details id="request-payment" className="panel workspace-section-card workspace-details job-action-details" open={searchParams.open === 'payment'}>
-          <summary className="workspace-details-summary job-action-summary">
-            <div className="section-heading workspace-section-heading compact-heading">
-            <p className="eyebrow">Invoice &amp; payment</p>
-            <h2>Send an invoice or payment link to {job.client_name}</h2>
-            </div>
-            <span className="workspace-details-copy">Payment links are tied to this job&apos;s invoice.</span>
-          </summary>
+        const paymentInvoiceBlock = (
+          <details id="request-payment" className="panel workspace-section-card workspace-details job-action-details" open={searchParams.open === 'payment' || layout === 'tabs'}>
+            <summary className="workspace-details-summary job-action-summary">
+              <div className="section-heading workspace-section-heading compact-heading">
+                <p className="eyebrow">Invoice &amp; payment</p>
+                <h2>Send an invoice or payment link to {job.client_name}</h2>
+              </div>
+              <span className="workspace-details-copy">Payment links are tied to this job&apos;s invoice.</span>
+            </summary>
             {!stripeOnboarded ? (
               <div className="payment-banner warning">
                 <p>
@@ -1273,10 +1225,6 @@ export default async function JobDetailPage({
                   <input id="pay-label" name="label" placeholder="Optional payment note" />
                 </div>
               </div>
-              {/* The deal, stated where the ask is typed. The server refuses an
-                  over-request without this box ticked — see the guardrail in
-                  createDepositRequestAction — so the checkbox is the sentence
-                  somebody has to agree to, not a nicety. */}
               <div className="payment-approved-line">
                 <span>
                   Approved <strong>{formatMoneyExact(money.approvedCents / 100)}</strong> · already asked for{' '}
@@ -1298,10 +1246,6 @@ export default async function JobDetailPage({
                   <span>Text the secure payment link and automatic payment updates. The homeowner agreed to transactional texts; message and data rates may apply. Reply STOP to opt out.</span>
                 </label>
               </div>
-              {/* THE BUTTON THAT ASKS FOR MONEY GETS A PREVIEW, like the one
-                  that sends a quote already has. Everything this form does
-                  happens on somebody else's phone, and until now the first time
-                  anyone read the message was after it had gone. */}
               <div className="payment-send-row">
                 <SaveButton pendingLabel="Creating…" savedLabel="Created ✓">Send invoice/payment link</SaveButton>
                 <PaymentPreview
@@ -1396,16 +1340,18 @@ export default async function JobDetailPage({
                 ))}
               </div>
             )}
-        </details>
+          </details>
+        );
 
-      <details id="job-details" className="panel workspace-section-card workspace-details job-action-details" open={searchParams.edit === 'client'}>
-          <summary className="workspace-details-summary job-action-summary">
-            <div className="section-heading workspace-section-heading compact-heading">
-            <p className="eyebrow">Overview</p>
-            <h2>Job details</h2>
-            </div>
-            <span className="workspace-details-copy">Edit client info, schedule, crew, photos, and job settings.</span>
-          </summary>
+        const jobDetailsAndCrewBlock = (
+          <details id="job-details" className="panel workspace-section-card workspace-details job-action-details" open={searchParams.edit === 'client' || layout === 'tabs'}>
+            <summary className="workspace-details-summary job-action-summary">
+              <div className="section-heading workspace-section-heading compact-heading">
+                <p className="eyebrow">Overview</p>
+                <h2>Job details &amp; settings</h2>
+              </div>
+              <span className="workspace-details-copy">Edit client info, schedule, crew, photos, and job settings.</span>
+            </summary>
             <form action={boundUpdateJob} className="form-grid">
               <div className="field">
                 <label htmlFor="clientName">Client name</label>
@@ -1419,17 +1365,6 @@ export default async function JobDetailPage({
                 <label htmlFor="clientEmail">Client email</label>
                 <input id="clientEmail" name="clientEmail" type="email" defaultValue={job.client_email ?? ''} placeholder="client@example.com" />
               </div>
-              {/* THE CONTRACTOR'S HALF OF CONSENT, with somewhere to live at last.
-                  It was asked once, as a checkbox on the quote form, and never
-                  written down — so an owner who deliberately unticked it got the
-                  customer texted anyway by the next automation that found a phone
-                  number. Set here it governs every automatic message on this job:
-                  choice reminders, the morning-of confirmation, the review ask.
-                  The customer's own STOP reply is separate and still outranks it. */}
-              {/* Two switches, the same ones the quote form uses. It was a
-                  <select> whose options were sentences — "Text, or email if
-                  there's no mobile" — for a setting that is really two
-                  independent yes/nos. See components/channel-toggles. */}
               <ClientChannelField
                 initial={clientChannelPreference}
                 phone={job.client_phone}
@@ -1444,15 +1379,6 @@ export default async function JobDetailPage({
                 <label htmlFor="scope">Job Description</label>
                 <textarea id="scope" name="scope" defaultValue={job.scope ?? ''} />
               </div>
-              {/* NOT "STATUS". The badge at the top of this page says
-                  "Scheduled", this select said "In progress", and the button
-                  beside them said "Job started" — three vocabularies over the
-                  same job, none of them wrong on its own terms, and no way to
-                  tell which one was lying.
-                  There is one status, it is derived, and it is the badge in the
-                  hero (JOB_STAGE_LABEL). This field is the stored record state
-                  the derivation reads FROM, so it says so and names what the
-                  job currently resolves to. */}
               <div className="field">
                 <label htmlFor="status">Record state</label>
                 <select id="status" name="status" defaultValue={job.status}>
@@ -1500,14 +1426,6 @@ export default async function JobDetailPage({
                     { label: '40 hrs', value: '40' },
                   ]}
                 />
-                {/* WHAT THIS NOTE USED TO SAY WAS HALF WRONG.
-                    "Used for labor cost and margin — not for how many days this
-                    blocks." The first clause is true and the second was true
-                    only of the SPAN: the end date decides which days, but the
-                    hours decide how much of each of them, because every reader
-                    of the calendar divides one by the other. An owner doing
-                    three hours a day at one site was being told the number that
-                    expresses it had nothing to do with the calendar. */}
                 <p className="job-meta">
                   Labor cost and margin — and, across a date range, how much of each day the job takes.
                   The last day is what decides which days.
@@ -1538,10 +1456,6 @@ export default async function JobDetailPage({
               </div>
             </form>
 
-            {/* WHO IS DOING THIS WORK — both answers, under one heading.
-                Assigning your own crew and asking a subcontractor to cover it
-                are the two ways this question gets settled, and splitting them
-                across two screens is how a job ends up double-manned. */}
             <div className="workspace-section-divider">
               <div className="section-heading workspace-section-heading">
                 <p className="eyebrow">Crew</p>
@@ -1590,8 +1504,6 @@ export default async function JobDetailPage({
               />
             </div>
 
-            {/* Only once the work is finished. Scoring somebody's cleanliness
-                halfway through is an opinion, not a record. */}
             {job.status === 'complete' ? (
               <SubcontractorReview
                 jobId={job.id}
@@ -1628,118 +1540,79 @@ export default async function JobDetailPage({
               </p>
               <DeleteJobButton action={boundDeleteJob} />
             </div>
-        </details>
+          </details>
+        );
 
-      {/* SCHEDULING IS NOT A TEXT MESSAGE.
-          This card was titled "Send 3 Start Dates" and held one form: a mobile
-          number, three options, a consent checkbox. That is a fine way to book
-          a job and it is not the only way — it is not even the common one for a
-          contractor whose customers do not text, or whose start date was agreed
-          on the phone before the quote went out. For them the entire pipeline
-          step named "Schedule the work" pointed at a form they could not use,
-          and the way to put a date on a job was buried inside "edit client
-          details", three sections down, under a heading about the customer.
-
-          So the section is named for the outcome and leads with the route that
-          always works. Texting options is still here, one press away, demoted
-          from "the scheduling card" to "or let them pick" — which is what it
-          is. The SMS half also stops pretending when there is no mobile on
-          file, instead of offering an empty phone field and a consent box for a
-          text that cannot be sent. */}
-      <details id="job-scheduling" className="panel workspace-section-card workspace-details job-action-details" open={searchParams.open === 'scheduling'}>
-        <summary className="workspace-details-summary job-action-summary">
-          <div className="section-heading workspace-section-heading compact-heading">
-            <p className="eyebrow">Scheduling</p>
-            <h2>Set the start date</h2>
-          </div>
-          <span className="workspace-details-copy">Put it on the calendar yourself, or text the client dates to choose from.</span>
-        </summary>
-        <p className="workspace-card-copy">
-          {job.scheduled_for
-            ? `Booked for ${formatJobSchedule(job.scheduled_for, job.scheduled_time, job.scheduled_until)}. Saving a new date moves it.`
-            : 'Nobody is booked in yet. Pick the day you plan to be there — the client sees it on their job feed.'}
-        </p>
-        <form action={boundScheduleJob} className="form-grid">
-          <JobScheduleFields
-            scheduledFor={job.scheduled_for ?? ''}
-            scheduledTime={job.scheduled_time?.slice(0, 5) ?? ''}
-            scheduledUntil={job.scheduled_until ?? ''}
-            estimatedHours={Number(job.estimated_hours) || null}
-            capacityHours={scheduleDayHours}
-          />
-        </form>
-
-        <details className="job-schedule-alt">
-          <summary>Or let the client pick from 3 dates</summary>
-          {clientCanBeTexted ? (
-            <>
-              <p className="workspace-card-copy">They choose one or ask for different times with a note. Whichever they pick lands on the calendar automatically.</p>
-              <form action={boundSendScheduleOptions} className="form-grid">
-                <div className="field full">
-                  <label htmlFor="scheduleClientPhone">Client mobile</label>
-                  <input id="scheduleClientPhone" name="scheduleClientPhone" type="tel" defaultValue={job.client_phone ?? ''} placeholder="(248) 555-0117" />
-                </div>
-                {[1, 2, 3].map((optionNumber) => (
-                  <div className="schedule-option-grid field full" key={optionNumber}>
-                    <div>
-                      <label htmlFor={`scheduleDate${optionNumber}`}>Option {optionNumber} date</label>
-                      <ScheduledDatePicker id={`scheduleDate${optionNumber}`} name={`scheduleDate${optionNumber}`} />
-                    </div>
-                    <div>
-                      <label htmlFor={`scheduleTime${optionNumber}`}>Option {optionNumber} time</label>
-                      <TimeSlotSelect id={`scheduleTime${optionNumber}`} name={`scheduleTime${optionNumber}`} />
-                    </div>
-                  </div>
-                ))}
-                <div className="field full">
-                  <label className="sms-consent-check">
-                    <input name="scheduleSmsConsent" type="checkbox" required />
-                    <span>The client agreed to receive transactional scheduling texts. Message and data rates may apply. Reply STOP to opt out.</span>
-                  </label>
-                </div>
-                <div className="field full">
-                  <SaveButton pendingLabel="Sending..." savedLabel="Sent">Text 3 start dates</SaveButton>
-                </div>
-              </form>
-            </>
-          ) : (
+        const schedulingBlock = (
+          <details id="job-scheduling" className="panel workspace-section-card workspace-details job-action-details" open={searchParams.open === 'scheduling' || layout === 'tabs'}>
+            <summary className="workspace-details-summary job-action-summary">
+              <div className="section-heading workspace-section-heading compact-heading">
+                <p className="eyebrow">Scheduling</p>
+                <h2>Set the start date</h2>
+              </div>
+              <span className="workspace-details-copy">Put it on the calendar yourself, or text the client dates to choose from.</span>
+            </summary>
             <p className="workspace-card-copy">
-              {job.client_phone
-                ? `${job.client_name} is set to ${CLIENT_CHANNEL_LABEL[clientChannelPreference].toLowerCase()}, so scheduling texts are off for this job. Change it in Job details, or use the date picker above.`
-                : `No mobile on file for ${job.client_name}, so there's nowhere to text options. Add one in Job details, or use the date picker above.`}
+              {job.scheduled_for
+                ? `Booked for ${formatJobSchedule(job.scheduled_for, job.scheduled_time, job.scheduled_until)}. Saving a new date moves it.`
+                : 'Nobody is booked in yet. Pick the day you plan to be there — the client sees it on their job feed.'}
             </p>
-          )}
-        </details>
-      </details>
+            <form action={boundScheduleJob} className="form-grid">
+              <JobScheduleFields
+                scheduledFor={job.scheduled_for ?? ''}
+                scheduledTime={job.scheduled_time?.slice(0, 5) ?? ''}
+                scheduledUntil={job.scheduled_until ?? ''}
+                estimatedHours={Number(job.estimated_hours) || null}
+                capacityHours={scheduleDayHours}
+              />
+            </form>
 
-      {/* ONE COLUMN, NOT TWO.
-          These five sections used to sit in a `detail-grid` — a 2fr column
-          holding Job expenses alone, and a 1fr column holding Selections,
-          Warranty, Change orders and ROI. The column with four cards got a
-          third of the width, so its headings wrapped to three and four lines
-          and it ran 456px tall beside a 130px card, leaving a ragged 327px of
-          nothing under Job expenses (391px before the shell went fluid).
+            <details className="job-schedule-alt">
+              <summary>Or let the client pick from 3 dates</summary>
+              {clientCanBeTexted ? (
+                <>
+                  <p className="workspace-card-copy">They choose one or ask for different times with a note. Whichever they pick lands on the calendar automatically.</p>
+                  <form action={boundSendScheduleOptions} className="form-grid">
+                    <div className="field full">
+                      <label htmlFor="scheduleClientPhone">Client mobile</label>
+                      <input id="scheduleClientPhone" name="scheduleClientPhone" type="tel" defaultValue={job.client_phone ?? ''} placeholder="(248) 555-0117" />
+                    </div>
+                    {[1, 2, 3].map((optionNumber) => (
+                      <div className="schedule-option-grid field full" key={optionNumber}>
+                        <div>
+                          <label htmlFor={`scheduleDate${optionNumber}`}>Option {optionNumber} date</label>
+                          <ScheduledDatePicker id={`scheduleDate${optionNumber}`} name={`scheduleDate${optionNumber}`} />
+                        </div>
+                        <div>
+                          <label htmlFor={`scheduleTime${optionNumber}`}>Option {optionNumber} time</label>
+                          <TimeSlotSelect id={`scheduleTime${optionNumber}`} name={`scheduleTime${optionNumber}`} />
+                        </div>
+                      </div>
+                    ))}
+                    <div className="field full">
+                      <label className="sms-consent-check">
+                        <input name="scheduleSmsConsent" type="checkbox" required />
+                        <span>The client agreed to receive transactional scheduling texts. Message and data rates may apply. Reply STOP to opt out.</span>
+                      </label>
+                    </div>
+                    <div className="field full">
+                      <SaveButton pendingLabel="Sending..." savedLabel="Sent">Text 3 start dates</SaveButton>
+                    </div>
+                  </form>
+                </>
+              ) : (
+                <p className="workspace-card-copy">
+                  {job.client_phone
+                    ? `${job.client_name} is set to ${CLIENT_CHANNEL_LABEL[clientChannelPreference].toLowerCase()}, so scheduling texts are off for this job. Change it in Job details, or use the date picker above.`
+                    : `No mobile on file for ${job.client_name}, so there's nowhere to text options. Add one in Job details, or use the date picker above.`}
+                </p>
+              )}
+            </details>
+          </details>
+        );
 
-          Balancing the two columns does not hold: every card here is a
-          `<details>` the owner opens and closes independently, and Change
-          orders only exists on some jobs. Any distribution that lines up while
-          they are all shut goes ragged the moment one is opened.
-
-          The ROI card carried `sticky-card` to ride along beside the expenses
-          you are logging, which is a good idea that never worked: it was the
-          LAST child of its column, so it had no track below it to slide along.
-          Measured — scrolled 900px past a tall expenses list and its offset
-          inside its own column did not move by a pixel. Nothing is lost by
-          dropping it.
-
-          So: one card per row, the full width of the shell, the same as the
-          two sections above. Bottoms cannot misalign when there is one column,
-          it does not care how many cards there are or which are open, and the
-          selections board and the expenses list get the width the fluid shell
-          now has to give them. */}
-      <section id="job-costs" className="workspace-grid">
-        {role === 'owner' ? (
-          <details className="panel workspace-section-card workspace-details job-action-details" open={searchParams.open === 'costs'}>
+        const expensesBlock = role === 'owner' ? (
+          <details className="panel workspace-section-card workspace-details job-action-details" open={searchParams.open === 'costs' || layout === 'tabs'}>
             <summary className="workspace-details-summary job-action-summary">
               <div className="section-heading workspace-section-heading compact-heading">
                 <p className="eyebrow">Expenses</p>
@@ -1749,7 +1622,7 @@ export default async function JobDetailPage({
             </summary>
 
             <div className="cost-add-row" style={{ marginBottom: '0.9rem' }}>
-              <ModalDialog triggerClassName="btn secondary" triggerLabel="+ Add expense" title="Add expense">
+              <ModalDialog triggerClassName="btn secondary" triggerLabel="+ Add expense" title="Add expense" defaultOpen={searchParams.open === 'costs'}>
                 <form action={boundCreateCost} className="cost-form">
                   <JobExpenseFields crew={crew} onReadReceipt={readReceiptAction} />
                   <div style={{ marginTop: '0.8rem' }}>
@@ -1776,9 +1649,6 @@ export default async function JobDetailPage({
                           : cost.supplier || cost.category}
                         {cost.cost_source !== 'unspecified' ? ` · ${COST_SOURCE_LABEL[cost.cost_source]}` : ''}
                       </span>
-                      {/* A warning, never a block. A contractor really can buy
-                          the same $47 of PVC twice in a week, and refusing the
-                          second one just teaches them to type $47.01. */}
                       {duplicates.has(cost.id) ? (
                         <span className="cost-item-duplicate">
                           Possible duplicate — {describeDuplicate(duplicates.get(cost.id)!)}
@@ -1798,29 +1668,29 @@ export default async function JobDetailPage({
               </div>
             )}
           </details>
-        ) : null}
+        ) : null;
 
-        {/* Open by default once the work is done: that is the moment a
-            warranty is worth starting, and the moment it gets forgotten. */}
-        <details className="panel workspace-section-card workspace-details job-action-details" open={job.status === 'complete' && warranties.length === 0}>
-          <summary className="workspace-details-summary job-action-summary">
-            <div className="section-heading workspace-section-heading compact-heading">
-              <p className="eyebrow">After the work</p>
-              <h2>Warranty</h2>
-            </div>
-            <span className="workspace-details-copy">
-              {warranties.length === 0
-                ? 'What you stand behind, and for how long.'
-                : `${warranties.length} warranty${warranties.length === 1 ? '' : ' records'} on this job${
-                    warrantyClaims.length > 0 ? ` · ${warrantyClaims.length} customer request${warrantyClaims.length === 1 ? '' : 's'}` : ''
-                  }.`}
-            </span>
-          </summary>
-          <WarrantyPanel jobId={job.id} warranties={warranties} claims={warrantyClaims} defaultMonths={defaultWarrantyMonths} />
-        </details>
+        const warrantyBlock = (
+          <details className="panel workspace-section-card workspace-details job-action-details" open={(job.status === 'complete' && warranties.length === 0) || searchParams.open === 'warranty'}>
+            <summary className="workspace-details-summary job-action-summary">
+              <div className="section-heading workspace-section-heading compact-heading">
+                <p className="eyebrow">After the work</p>
+                <h2>Warranty</h2>
+              </div>
+              <span className="workspace-details-copy">
+                {warranties.length === 0
+                  ? 'What you stand behind, and for how long.'
+                  : `${warranties.length} warranty${warranties.length === 1 ? '' : ' records'} on this job${
+                      warrantyClaims.length > 0 ? ` · ${warrantyClaims.length} customer request${warrantyClaims.length === 1 ? '' : 's'}` : ''
+                    }.`}
+              </span>
+            </summary>
+            <WarrantyPanel jobId={job.id} warranties={warranties} claims={warrantyClaims} defaultMonths={defaultWarrantyMonths} />
+          </details>
+        );
 
-        {changeOrders.length > 0 ? (
-          <details id="change-orders" className="panel workspace-section-card workspace-details job-action-details" open={changeOrderTotals(changeOrders).unsent > 0}>
+        const changeOrdersBlock = changeOrders.length > 0 ? (
+          <details id="change-orders" className="panel workspace-section-card workspace-details job-action-details" open={changeOrderTotals(changeOrders).unsent > 0 || layout === 'tabs'}>
             <summary className="workspace-details-summary job-action-summary">
               <div className="section-heading workspace-section-heading compact-heading">
                 <p className="eyebrow">Extra work</p>
@@ -1829,8 +1699,6 @@ export default async function JobDetailPage({
               <span className="workspace-details-copy">
                 {(() => {
                   const totals = changeOrderTotals(changeOrders);
-                  // The unsent figure leads because it's the actionable one:
-                  // work the crew documented that nobody has billed for.
                   if (totals.unsent > 0) return `${formatMoney(totals.unsent)} written up and not sent yet.`;
                   if (totals.awaiting > 0) return `${formatMoney(totals.awaiting)} waiting on the customer.`;
                   if (totals.approved > 0) return `${formatMoney(totals.approved)} approved and added to this job.`;
@@ -1840,10 +1708,10 @@ export default async function JobDetailPage({
             </summary>
             <ChangeOrderPanel jobId={job.id} orders={changeOrders} />
           </details>
-        ) : null}
+        ) : null;
 
-        {role === 'owner' ? (
-          <details className="panel workspace-section-card workspace-details job-action-details">
+        const roiBlock = role === 'owner' ? (
+          <details className="panel workspace-section-card workspace-details job-action-details" open={layout === 'tabs'}>
             <summary className="workspace-details-summary job-action-summary">
               <div className="section-heading workspace-section-heading compact-heading">
                 <p className="eyebrow">Profitability</p>
@@ -1864,9 +1732,6 @@ export default async function JobDetailPage({
                 <span>Labor</span>
                 <span>−{formatMoney(margin.laborCost)}</span>
               </div>
-              {/* Burden is shown on its own line rather than hidden inside
-                  "Labor". A contractor seeing $300 where they paid $240 needs
-                  to know the difference is taxes and comp, not an error. */}
               {margin.laborBurden > 0 ? (
                 <div className="margin-row sub muted">
                   <span>&nbsp;&nbsp;of which taxes &amp; insurance</span>
@@ -1900,8 +1765,130 @@ export default async function JobDetailPage({
               ) : null}
             </p>
           </details>
-        ) : null}
-      </section>
+        ) : null;
+
+        const overviewPane = (
+          <>
+            {arrivalBlock}
+            {feedBlock}
+          </>
+        );
+
+        const financialsPane = (
+          <>
+            <div className="job-financial-overview-grid">
+              <div className="job-financial-metric-card">
+                <span className="metric-label">Quoted / Approved</span>
+                <span className="metric-val">{formatMoneyExact(money.approvedCents / 100)}</span>
+              </div>
+              <div className="job-financial-metric-card">
+                <span className="metric-label">Collected</span>
+                <span className="metric-val" style={{ color: 'var(--good, #22c55e)' }}>{formatMoneyExact(money.paidCents / 100)}</span>
+              </div>
+              <div className="job-financial-metric-card">
+                <span className="metric-label">Remaining Due</span>
+                <span className="metric-val" style={{ color: money.remainingCents > 0 ? 'var(--accent, #ff7a21)' : 'var(--muted, #94a3b8)' }}>{formatMoneyExact(money.remainingCents / 100)}</span>
+              </div>
+              {role === 'owner' ? (
+                <div className="job-financial-metric-card">
+                  <span className="metric-label">Net Profit ({formatPercent(margin.margin)} ROI)</span>
+                  <span className="metric-val" style={{ color: margin.profit >= 0 ? 'var(--good, #22c55e)' : 'var(--bad, #ef4444)' }}>{formatMoney(margin.profit)}</span>
+                </div>
+              ) : null}
+            </div>
+            {quoteBreakdownBlock}
+            {recurringPlansBlock}
+            {paymentInvoiceBlock}
+            {expensesBlock}
+            {changeOrdersBlock}
+            {roiBlock}
+          </>
+        );
+
+        const executionPane = (
+          <>
+            {milestonesBlock}
+            {punchListBlock}
+            <div className="panel workspace-section-card">
+              <div className="section-heading workspace-section-heading">
+                <p className="eyebrow">Attachments</p>
+                <h2>Job photos</h2>
+              </div>
+              <PhotoGallery
+                entityId={job.id}
+                entityField="jobId"
+                uploadUrl="/api/job-photos"
+                initialPhotos={jobPhotos}
+                emptyLabel="No photos yet. Add progress shots or before/after photos."
+                uploadLabel="+ Add job photos"
+                helperText="The first photo is the default image. Drag photos to reorder them."
+                coverMode
+                reorderEnabled
+              />
+            </div>
+          </>
+        );
+
+        const selectionsPane = selectionsBlock;
+
+        const settingsPane = (
+          <>
+            {schedulingBlock}
+            {jobDetailsAndCrewBlock}
+            {warrantyBlock}
+          </>
+        );
+
+        const classicContent = (
+          <>
+            <nav className="job-subnav" aria-label="Jump to a section">
+              <a href="#job-top">Overview</a>
+              <a href="#checklist">Work</a>
+              <a href="#selections">
+                Choices
+                {selectionStatus.waiting > 0 ? (
+                  <span className={`job-subnav-count${selectionStatus.overdue > 0 ? ' is-overdue' : ''}`}>{selectionStatus.waiting}</span>
+                ) : null}
+              </a>
+              <a href="#quote-breakdown">Quote</a>
+              <a href="#job-feed">Feed</a>
+              <a href="#request-payment">Money</a>
+              <a href="#job-details">More</a>
+            </nav>
+            {arrivalBlock}
+            {milestonesBlock}
+            {quoteBreakdownBlock}
+            {recurringPlansBlock}
+            {punchListBlock}
+            {selectionsBlock}
+            {feedBlock}
+            {paymentInvoiceBlock}
+            {jobDetailsAndCrewBlock}
+            {schedulingBlock}
+            <section id="job-costs" className="workspace-grid">
+              {expensesBlock}
+              {warrantyBlock}
+              {changeOrdersBlock}
+              {roiBlock}
+            </section>
+          </>
+        );
+
+        return (
+          <JobDetailWorkspace
+            jobId={job.id}
+            layout={layout}
+            initialTab={initialTab}
+            badges={tabBadges}
+            overviewPane={overviewPane}
+            financialsPane={financialsPane}
+            executionPane={executionPane}
+            selectionsPane={selectionsPane}
+            settingsPane={settingsPane}
+            classicContent={classicContent}
+          />
+        );
+      })()}
 
     </main>
     </ScrollTopOnSaveProvider>

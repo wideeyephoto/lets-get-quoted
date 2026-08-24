@@ -10753,6 +10753,205 @@ a.job-actions-item:focus-visible { background: rgba(var(--tint), 0.07); }
    phone there are TWO bars to clear, the app's fixed one and this subnav
    sitting under it. 3.75rem is the subnav's own height plus a gap; --appbar-h
    is whatever is pinned above it. */
+/* ── Job Details Workspace & Tabbed Layout ───────────────────────────────── */
+.job-workspace-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  width: 100%;
+}
+
+.job-layout-bar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  margin-top: -0.25rem;
+  margin-bottom: 0.15rem;
+}
+
+.job-layout-toggle-group {
+  display: inline-flex;
+  padding: 0.25rem;
+  border-radius: 999px;
+  background: var(--bg-2, rgba(255, 255, 255, 0.04));
+  border: 1px solid var(--edge-t12, rgba(255, 255, 255, 0.08));
+  gap: 0.25rem;
+}
+
+.job-layout-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.85rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--muted, #94a3b8);
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.job-layout-toggle-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+.job-layout-toggle-btn:hover {
+  color: var(--text, #f8fafc);
+  background: rgba(var(--tint), 0.06);
+}
+
+.job-layout-toggle-btn.is-active {
+  background: var(--bg-3, #1e293b);
+  border-color: var(--edge-t14, rgba(255, 255, 255, 0.12));
+  color: var(--text, #f8fafc);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+.job-workspace-tabs {
+  position: sticky;
+  top: var(--appbar-h, 0px);
+  z-index: 10;
+  display: flex;
+  gap: 0.35rem;
+  padding: 0.4rem;
+  border-radius: 16px;
+  border: 1px solid var(--edge-t12, rgba(255, 255, 255, 0.08));
+  background: rgba(var(--panel-rgb, 15, 23, 42), 0.94);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  overflow-x: auto;
+  scrollbar-width: none;
+  box-shadow: 0 8px 24px -6px rgba(0, 0, 0, 0.35);
+}
+
+.job-workspace-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.job-workspace-tab {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.55rem 1rem;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--muted, #94a3b8);
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.job-workspace-tab:hover {
+  color: var(--text, #f8fafc);
+  background: rgba(var(--tint), 0.05);
+}
+
+.job-workspace-tab.is-active {
+  background: var(--bg-3, rgba(255, 255, 255, 0.09));
+  border-color: var(--edge-t14, rgba(255, 255, 255, 0.14));
+  color: var(--text, #f8fafc);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.job-tab-icon {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.job-tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  background: rgba(var(--tint), 0.12);
+  color: var(--text, #f8fafc);
+}
+
+.job-tab-badge.is-warning {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+}
+
+.job-tab-badge.is-danger {
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+}
+
+.job-tab-badge.is-muted {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--muted, #94a3b8);
+  font-weight: 600;
+}
+
+.job-tab-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  animation: jobTabFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes jobTabFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.job-classic-workspace {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.job-financial-overview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.85rem;
+  margin-bottom: 0.5rem;
+}
+
+.job-financial-metric-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.9rem 1.1rem;
+  border-radius: 14px;
+  background: var(--bg-2, rgba(255, 255, 255, 0.03));
+  border: 1px solid var(--edge-t12, rgba(255, 255, 255, 0.08));
+}
+
+.job-financial-metric-card .metric-label {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted, #94a3b8);
+}
+
+.job-financial-metric-card .metric-val {
+  font-size: 1.35rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--text, #f8fafc);
+}
+
 #job-top,
 .job-section-collapsible,
 #quote-breakdown,

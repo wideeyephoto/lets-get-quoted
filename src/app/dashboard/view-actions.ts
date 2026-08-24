@@ -2,9 +2,15 @@
 
 import { cookies } from 'next/headers';
 import { requireOwnerContext } from '@/lib/auth';
-import { CALENDAR_VIEW_COOKIE, CALENDAR_WEEKEND_COOKIE, CLIENTS_VIEW_COOKIE, CREW_ROSTER_VIEW_COOKIE, CREW_SKIN_COOKIE, CREW_THEME_COOKIE, CREW_VIEW_COOKIE, JOBS_VIEW_COOKIE, MAP_THEME_COOKIE, RECURRING_VIEW_COOKIE, mapViewCookie, normalizeCalendarView, normalizeClientsView, normalizeCrewSkin, normalizeCrewView, normalizeJobsView, normalizeMapTheme, normalizeCrewTheme, normalizeMapView, normalizeRecurringView, normalizeRosterView, serializeWeekendDays, type CalendarView, type ClientsView, type CrewSkin, type CrewView, type JobsView, type MapSurface, type MapTheme, type MapView, type RecurringView, type RosterView, type WeekendDays } from '@/lib/dashboard-views';
+import { CALENDAR_VIEW_COOKIE, CALENDAR_WEEKEND_COOKIE, CLIENTS_VIEW_COOKIE, CREW_ROSTER_VIEW_COOKIE, CREW_SKIN_COOKIE, CREW_THEME_COOKIE, CREW_VIEW_COOKIE, JOB_DETAIL_LAYOUT_COOKIE, JOBS_VIEW_COOKIE, MAP_THEME_COOKIE, RECURRING_VIEW_COOKIE, mapViewCookie, normalizeCalendarView, normalizeClientsView, normalizeCrewSkin, normalizeCrewView, normalizeJobDetailLayout, normalizeJobsView, normalizeMapTheme, normalizeCrewTheme, normalizeMapView, normalizeRecurringView, normalizeRosterView, serializeWeekendDays, type CalendarView, type ClientsView, type CrewSkin, type CrewView, type JobDetailLayout, type JobsView, type MapSurface, type MapTheme, type MapView, type RecurringView, type RosterView, type WeekendDays } from '@/lib/dashboard-views';
 
 const YEAR = 60 * 60 * 24 * 365;
+
+// Remember the owner's chosen Job Details layout (Tabs / Classic).
+export async function setJobDetailLayoutAction(layout: JobDetailLayout) {
+  await requireOwnerContext();
+  cookies().set(JOB_DETAIL_LAYOUT_COOKIE, normalizeJobDetailLayout(layout), { path: '/', maxAge: YEAR, sameSite: 'lax' });
+}
 
 // Remember whether the map is shown — PER PAGE (leads / jobs / schedule each
 // keep their own cookie), toggled from that page's view gear.
