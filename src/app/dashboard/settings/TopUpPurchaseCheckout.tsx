@@ -79,6 +79,57 @@ function offeredTopUps(planCode: PlanCode): TopUpDefinition[] {
 // which produced "1 crew users". Both halves of the line now come from the
 // catalog, which is the only thing that knows whether a SKU recurs.
 
+function TopUpIcon({ id }: { id: string }) {
+  if (id.startsWith('text')) {
+    return (
+      <svg className="plan-usage-resource-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+      </svg>
+    );
+  }
+  if (id.startsWith('marketing_email')) {
+    return (
+      <svg className="plan-usage-resource-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+        <polyline points="22,6 12,13 2,6" />
+      </svg>
+    );
+  }
+  if (id.startsWith('ai_intake')) {
+    return (
+      <svg className="plan-usage-resource-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+      </svg>
+    );
+  }
+  if (id.startsWith('ai_drafts')) {
+    return (
+      <svg className="plan-usage-resource-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+        <polyline points="14 2 14 8 20 8" />
+        <line x1="16" y1="13" x2="8" y2="13" />
+        <line x1="16" y1="17" x2="8" y2="17" />
+        <polyline points="10 9 9 9 8 9" />
+      </svg>
+    );
+  }
+  if (id.startsWith('crew_user') || id.startsWith('office_user')) {
+    return (
+      <svg className="plan-usage-resource-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+        <circle cx="9" cy="7" r="4" />
+        <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+      </svg>
+    );
+  }
+  return (
+    <svg className="plan-usage-resource-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+    </svg>
+  );
+}
+
 export default function TopUpPurchaseCheckout({
   planCode,
   returnStatus = null,
@@ -131,18 +182,18 @@ export default function TopUpPurchaseCheckout({
       id="buy-credits"
       open={returnStatus !== null}
     >
-        <summary>
-          <span className="section-heading workspace-section-heading compact-heading">
-            <span className="eyebrow">Add-ons</span>
-            <span className="workspace-fold-title">{hasRecurring ? 'Add credits or capacity' : 'Add credits'}</span>
-          </span>
-          <em className="workspace-fold-note neutral">View options</em>
-        </summary>
-        <p className="workspace-details-copy plan-usage-intro">
-          {hasCredits ? 'Purchased credits never expire. ' : ''}
-          {hasRecurring ? 'Monthly add-ons renew until canceled. ' : ''}
-          Prices and eligibility are verified again at secure checkout.
-        </p>
+      <summary>
+        <span className="section-heading workspace-section-heading compact-heading">
+          <span className="eyebrow">Add-ons</span>
+          <span className="workspace-fold-title">{hasRecurring ? 'Add credits or capacity' : 'Add credits'}</span>
+        </span>
+        <em className="workspace-fold-note neutral">View options</em>
+      </summary>
+      <p className="workspace-details-copy plan-usage-intro">
+        {hasCredits ? 'Purchased credits never expire. ' : ''}
+        {hasRecurring ? 'Monthly add-ons renew until canceled. ' : ''}
+        Prices and eligibility are verified again at secure checkout.
+      </p>
 
       {returnStatus === 'success' ? (
         <p className="plan-usage-note" role="status">
@@ -158,9 +209,22 @@ export default function TopUpPurchaseCheckout({
 
       <div className="plan-usage-balance-grid">
         {offered.map((sku) => (
-          <article className="plan-usage-balance" key={sku.id}>
-            <span>{sku.label}</span>
-            <strong>{formatUsdFromCents(sku.priceCents)}</strong>
+          <article className="plan-usage-balance plan-topup-card" key={sku.id}>
+            <div className="plan-topup-card-header">
+              <div className="plan-topup-title-row">
+                <TopUpIcon id={sku.id} />
+                <span>{sku.label}</span>
+              </div>
+              {sku.recurring ? (
+                <span className="plan-topup-badge recurring">MONTHLY ADD-ON</span>
+              ) : (
+                <span className="plan-topup-badge onetime">ONE-TIME PACK</span>
+              )}
+            </div>
+            <div className="plan-topup-price-row">
+              <strong>{formatUsdFromCents(sku.priceCents)}</strong>
+              {sku.recurring ? <span className="plan-topup-interval">/ mo</span> : null}
+            </div>
             <small>{describeTopUpUnits(sku)} · {describeTopUpCadence(sku)}</small>
             <form action={formAction}>
               <input type="hidden" name="topUpId" value={sku.id} />
@@ -184,11 +248,15 @@ export default function TopUpPurchaseCheckout({
         ))}
       </div>
 
-      <p className="workspace-details-copy plan-usage-intro">
-        Stripe securely collects your payment details. Nothing is charged on this page.
-      </p>
+      <div className="plan-topup-security-badge">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+          <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+        </svg>
+        <span>Stripe 256-bit Encrypted Checkout • Instant Provisioning • Zero Card Data Stored on LGQ</span>
+      </div>
 
-        <div aria-live="polite">
+      <div aria-live="polite">
         {state && !state.ok ? (
           <p className="plan-usage-note warning" role="alert">{state.message}</p>
         ) : null}
@@ -201,7 +269,7 @@ export default function TopUpPurchaseCheckout({
             contact support so we can reconcile the existing checkout safely.
           </p>
         ) : null}
-        </div>
+      </div>
     </details>
   );
 }

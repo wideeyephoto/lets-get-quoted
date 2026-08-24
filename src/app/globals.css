@@ -5344,6 +5344,446 @@ h3 {
   }
 }
 
+/* ==========================================================================
+   Top-Up Cards & Add-ons Grid
+   ========================================================================== */
+
+.plan-topup-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  border: 1px solid var(--rule-t12);
+  border-radius: 1.125rem;
+  background: linear-gradient(180deg, rgba(var(--tint), 0.035) 0%, rgba(var(--tint), 0.01) 100%);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  padding: 1.25rem 1.35rem;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 4px 18px -2px rgba(0, 0, 0, 0.18);
+}
+
+.plan-topup-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(255, 138, 61, 0.4);
+  box-shadow: 0 10px 28px -4px rgba(255, 138, 61, 0.18);
+}
+
+.plan-topup-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.plan-topup-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: var(--mute-g270);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.plan-topup-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 0.15rem 0.45rem;
+  border-radius: 9999px;
+  letter-spacing: 0.03em;
+}
+
+.plan-topup-badge.onetime {
+  background: rgba(16, 185, 129, 0.12);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.28);
+}
+
+.plan-topup-badge.recurring {
+  background: rgba(99, 102, 241, 0.12);
+  color: #818cf8;
+  border: 1px solid rgba(99, 102, 241, 0.28);
+}
+
+.plan-topup-price-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  margin: 0.25rem 0;
+}
+
+.plan-topup-price-row strong {
+  font-size: 1.45rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  letter-spacing: -0.02em;
+}
+
+.plan-topup-interval {
+  font-size: 0.88rem;
+  color: rgba(var(--ink-rgb), 0.72);
+  font-weight: 600;
+}
+
+.plan-topup-security-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin: 1.5rem 0 0.5rem;
+  padding: 0.65rem 1rem;
+  border-radius: 0.75rem;
+  background: rgba(var(--tint), 0.02);
+  border: 1px solid var(--rule-t08);
+  font-size: 0.78rem;
+  color: var(--mute-g270);
+  text-align: center;
+}
+
+.plan-topup-security-badge svg {
+  flex: none;
+  stroke: #10b981;
+}
+
+/* ==========================================================================
+   Active Add-On Subscriptions
+   ========================================================================== */
+
+.plan-usage-capacity-addons {
+  margin-top: 1.85rem;
+  padding-top: 1.35rem;
+  border-top: 1px solid var(--rule-t08);
+}
+
+.plan-addon-heading-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.85rem;
+}
+
+.plan-addon-heading {
+  font-size: 0.98rem;
+  font-weight: 800;
+  color: var(--text);
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.plan-addon-subscription-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.plan-addon-subscription-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding: 1.1rem 1.35rem;
+  background: linear-gradient(180deg, rgba(var(--tint), 0.04) 0%, rgba(var(--tint), 0.015) 100%);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-radius: 1rem;
+  border: 1px solid var(--rule-t12);
+  box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.15);
+  transition: all 0.15s ease;
+}
+
+.plan-addon-subscription-card:hover {
+  border-color: rgba(var(--ink-rgb), 0.18);
+  box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.22);
+}
+
+.plan-addon-subscription-title {
+  font-weight: 800;
+  font-size: 0.98rem;
+  color: var(--text);
+}
+
+.plan-addon-subscription-meta {
+  font-size: 0.82rem;
+  margin-top: 0.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.plan-addon-status-pill {
+  font-weight: 700;
+  font-size: 0.78rem;
+}
+
+.plan-addon-status-pill.active {
+  color: #10b981;
+}
+
+.plan-addon-status-pill.canceling {
+  color: #f59e0b;
+}
+
+.plan-addon-status-pill.past-due {
+  color: #ef4444;
+}
+
+.plan-addon-error {
+  font-size: 0.82rem;
+  color: #ef4444;
+  margin-top: 0.35rem;
+  font-weight: 600;
+}
+
+.plan-addon-button-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.plan-addon-confirm-btn {
+  font-size: 0.82rem;
+  padding: 0.45rem 0.85rem;
+  color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.plan-addon-keep-btn {
+  font-size: 0.82rem;
+  padding: 0.45rem 0.85rem;
+}
+
+.plan-addon-cancel-btn {
+  font-size: 0.82rem;
+  padding: 0.45rem 0.85rem;
+}
+
+/* ==========================================================================
+   Cancel Plan Panel
+   ========================================================================== */
+
+.plan-cancel-panel {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--rule-t12);
+  border-radius: 1.25rem;
+  background: linear-gradient(180deg, rgba(var(--tint), 0.025) 0%, rgba(var(--tint), 0.008) 100%);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 8px 32px -4px rgba(0, 0, 0, 0.25);
+}
+
+.plan-cancel-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.25rem;
+}
+
+.plan-cancel-header-icon-wrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 0.625rem;
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(245, 158, 11, 0.12) 100%);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  color: #f87171;
+  box-shadow: 0 0 16px rgba(239, 68, 68, 0.2);
+}
+
+.plan-cancel-header-icon-wrap.amber {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.2) 0%, rgba(217, 119, 6, 0.15) 100%);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  color: #fbbf24;
+  box-shadow: 0 0 16px rgba(245, 158, 11, 0.25);
+}
+
+.plan-cancel-status-banner {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.08) 0%, rgba(245, 158, 11, 0.02) 100%);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  border-radius: 1rem;
+  padding: 1.25rem;
+  margin: 0.75rem 0 1.25rem;
+}
+
+.plan-cancel-status-main {
+  font-size: 0.94rem;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0 0 0.5rem;
+}
+
+.plan-cancel-status-sub {
+  font-size: 0.82rem;
+  color: rgba(var(--ink-rgb), 0.75);
+  line-height: 1.45;
+  margin: 0;
+}
+
+.plan-cancel-restore-btn {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #ffffff;
+  border: none;
+  font-weight: 700;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.3);
+  padding: 0.65rem 1.25rem;
+}
+
+.plan-cancel-info-box {
+  background: rgba(var(--tint), 0.025);
+  border: 1px solid var(--rule-t10);
+  border-radius: 1rem;
+  padding: 1.15rem 1.25rem;
+  margin: 0.75rem 0 1.25rem;
+}
+
+.plan-cancel-info-lead {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0 0 0.45rem;
+}
+
+.plan-cancel-info-details {
+  font-size: 0.82rem;
+  color: rgba(var(--ink-rgb), 0.72);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.plan-cancel-confirm-drawer {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.06) 0%, rgba(239, 68, 68, 0.01) 100%);
+  border: 1px solid rgba(239, 68, 68, 0.28);
+  border-radius: 1rem;
+  padding: 1.25rem;
+  margin-top: 1rem;
+}
+
+.plan-cancel-confirm-prompt {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0 0 0.85rem;
+}
+
+.plan-cancel-button-row {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.plan-cancel-confirm-action {
+  color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.35);
+  font-weight: 700;
+}
+
+.plan-cancel-confirm-action:hover {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: #ef4444;
+}
+
+.plan-cancel-keep-action {
+  font-weight: 700;
+}
+
+.plan-cancel-init-btn {
+  font-size: 0.84rem;
+  padding: 0.5rem 1rem;
+  color: rgba(var(--ink-rgb), 0.65);
+}
+
+.plan-cancel-init-btn:hover {
+  color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+/* ==========================================================================
+   Plan Breakpoints Ladder & Comparison
+   ========================================================================== */
+
+.plan-usage-plan-fit-details {
+  margin-top: 1.25rem;
+  border-radius: 1rem;
+  border: 1px solid var(--rule-t10);
+  background: rgba(var(--tint), 0.02);
+  padding: 0.75rem 1.15rem;
+}
+
+.plan-usage-ladder {
+  list-style: none;
+  padding: 0;
+  margin: 0.85rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.plan-usage-ladder li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding: 0.75rem 1rem;
+  border-radius: 0.75rem;
+  border: 1px solid var(--rule-t08);
+  background: rgba(var(--tint), 0.02);
+  font-size: 0.84rem;
+  transition: all 0.15s ease;
+}
+
+.plan-usage-ladder li[data-current="true"] {
+  border-color: rgba(16, 185, 129, 0.4);
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(16, 185, 129, 0.02) 100%);
+  box-shadow: 0 0 16px rgba(16, 185, 129, 0.15);
+}
+
+.plan-usage-ladder-plan {
+  font-weight: 700;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.plan-usage-ladder-plan em {
+  font-style: normal;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.14);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  padding: 0.12rem 0.45rem;
+  border-radius: 9999px;
+  letter-spacing: 0.03em;
+}
+
+.plan-usage-ladder-band {
+  font-weight: 600;
+  color: rgba(var(--ink-rgb), 0.78);
+  font-variant-numeric: tabular-nums;
+}
+
+.plan-usage-fineprint {
+  font-size: 0.76rem;
+  color: var(--mute-g270);
+  line-height: 1.45;
+  margin: 0.5rem 0 0;
+}
+
 /* Compact "log out" footer folded into the sign-in methods card. */
 .signout-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--rule-t08); }
 

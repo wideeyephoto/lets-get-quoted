@@ -49,11 +49,14 @@ export default function PurchasedCapacityList({
   };
 
   return (
-    <div className="plan-usage-capacity-addons" style={{ marginTop: '1.75rem' }}>
-      <h4 style={{ fontSize: '0.98rem', fontWeight: 800, marginBottom: '0.85rem', color: 'var(--text)', letterSpacing: '-0.01em' }}>
-        Active Add-On Subscriptions
-      </h4>
-      <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+    <div className="plan-usage-capacity-addons">
+      <div className="plan-addon-heading-row">
+        <svg className="plan-usage-resource-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+        </svg>
+        <h4 className="plan-addon-heading">Active Add-On Subscriptions</h4>
+      </div>
+      <ul className="plan-addon-subscription-list">
         {subscriptions.map((sub) => {
           const isCancelled = sub.canceledAt !== null || confirmedIds.has(sub.stripeSubscriptionId);
           const state = states[sub.stripeSubscriptionId];
@@ -63,48 +66,35 @@ export default function PurchasedCapacityList({
           return (
             <li
               key={sub.stripeSubscriptionId}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: '1rem',
-                flexWrap: 'wrap',
-                padding: '1rem 1.25rem',
-                background: 'linear-gradient(180deg, rgba(var(--tint), 0.04) 0%, rgba(var(--tint), 0.015) 100%)',
-                backdropFilter: 'blur(12px)',
-                borderRadius: '1rem',
-                border: '1px solid var(--rule-t12)',
-                boxShadow: '0 4px 16px -2px rgba(0, 0, 0, 0.15)',
-              }}
+              className={`plan-addon-subscription-card ${isCancelled ? 'is-canceling' : ''}`}
             >
-              <div>
-                <div style={{ fontWeight: 800, fontSize: '0.96rem', color: 'var(--text)' }}>
+              <div className="plan-addon-subscription-info">
+                <div className="plan-addon-subscription-title">
                   {skuName(sub.topUpId)} &mdash; {formatUsdFromCents(sub.unitAmountCents)}/mo
                 </div>
-                <div style={{ fontSize: '0.82rem', color: 'var(--mute-t50)', marginTop: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <div className="plan-addon-subscription-meta">
                   {sub.status === 'past_due' ? (
-                    <span style={{ color: 'var(--danger)', fontWeight: 700 }}>● Payment past due</span>
+                    <span className="plan-addon-status-pill past-due">● Payment past due</span>
                   ) : isCancelled ? (
-                    <span style={{ color: 'var(--warn)', fontWeight: 700 }}>● Cancels at period end{renewDate ? ` (${renewDate})` : ''}</span>
+                    <span className="plan-addon-status-pill canceling">● Cancels at period end{renewDate ? ` (${renewDate})` : ''}</span>
                   ) : (
-                    <span style={{ color: 'var(--ink-green-13)', fontWeight: 700 }}>● {renewDate ? `Renews on ${renewDate}` : 'Active'}</span>
+                    <span className="plan-addon-status-pill active">● {renewDate ? `Renews on ${renewDate}` : 'Active'}</span>
                   )}
                 </div>
                 {state?.ok === false ? (
-                  <div style={{ fontSize: '0.82rem', color: 'var(--danger)', marginTop: '0.35rem', fontWeight: 600 }}>
+                  <div className="plan-addon-error">
                     {state.error}
                   </div>
                 ) : null}
               </div>
 
-              <div>
+              <div className="plan-addon-subscription-actions">
                 {!isCancelled && (
                   isConfirming ? (
-                    <div style={{ display: 'flex', gap: '0.6rem' }}>
+                    <div className="plan-addon-button-row">
                       <button
                         type="button"
-                        className="btn"
-                        style={{ fontSize: '0.82rem', padding: '0.45rem 0.85rem' }}
+                        className="btn subtle plan-addon-confirm-btn"
                         disabled={pending}
                         onClick={() => runCancel(sub.stripeSubscriptionId)}
                       >
@@ -112,8 +102,7 @@ export default function PurchasedCapacityList({
                       </button>
                       <button
                         type="button"
-                        className="btn subtle"
-                        style={{ fontSize: '0.82rem', padding: '0.45rem 0.85rem' }}
+                        className="btn plan-addon-keep-btn"
                         disabled={pending}
                         onClick={() => setCancelingId(null)}
                       >
@@ -123,8 +112,7 @@ export default function PurchasedCapacityList({
                   ) : (
                     <button
                       type="button"
-                      className="btn subtle"
-                      style={{ fontSize: '0.82rem', padding: '0.45rem 0.85rem' }}
+                      className="btn subtle plan-addon-cancel-btn"
                       onClick={() => setCancelingId(sub.stripeSubscriptionId)}
                     >
                       Cancel renewal
