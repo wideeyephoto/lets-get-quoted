@@ -844,16 +844,17 @@
 @media (prefers-reduced-motion: reduce) { .financing .financingApply { transition: none; } .financing .financingApply:hover { transform: none; } }
 
 /* Sticky mobile call / quote bar (toggleable) */
-.stickyCallBar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 60; display: flex; gap: .5rem; padding: .55rem .7rem calc(.55rem + env(safe-area-inset-bottom, 0px)); background: #16130e; border-top: 1px solid rgba(255,255,255,.14); box-shadow: 0 -10px 26px -14px rgba(0,0,0,.65); }
-.stickyCallBar a { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: .45rem; min-height: 48px; border-radius: var(--theme-radius, 6px); font-weight: 800; font-size: .92rem; }
-.stickyCallBar .stickyCall { background: var(--theme-accent); color: var(--theme-on-accent, #14110b); }
-.stickyCallBar .stickyQuote { background: transparent; color: #f4f1e8; border: 1.5px solid rgba(244,241,232,.4); }
+.stickyCallBar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 60; display: flex; gap: .6rem; padding: .65rem .85rem calc(.65rem + env(safe-area-inset-bottom, 0px)); background: rgba(20, 18, 16, .88); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); border-top: 1px solid rgba(255,255,255,.14); box-shadow: 0 -12px 30px -10px rgba(0,0,0,.7); }
+.stickyCallBar a { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: .45rem; min-height: 48px; border-radius: var(--theme-radius, 8px); font-weight: 800; font-size: .94rem; text-decoration: none; transition: transform .15s ease, filter .15s ease; }
+.stickyCallBar a:active { transform: scale(.97); }
+.stickyCallBar .stickyCall { background: var(--theme-accent); color: var(--theme-on-accent, #14110b); box-shadow: 0 4px 14px -3px color-mix(in srgb, var(--theme-accent) 60%, transparent); }
+.stickyCallBar .stickyQuote { background: rgba(255,255,255,.1); color: #f4f1e8; border: 1.5px solid rgba(244,241,232,.45); backdrop-filter: blur(8px); }
 .stickyCallBar svg { width: 17px; height: 17px; }
 @media (min-width: 768px) { .stickyCallBar { display: none; } }
 /* Reserve room so the fixed bar never covers footer content. Tracks the bar's
-   real height (min-height 48px + 1.1rem padding + border) plus the device
+   real height (min-height 48px + 1.3rem padding + border) plus the device
    safe-area inset, rather than a hard value that falls short on notched phones. */
-@media (max-width: 767px) { .site:has(.stickyCallBar) { padding-bottom: calc(50px + 1.1rem + env(safe-area-inset-bottom, 0px)); } }
+@media (max-width: 767px) { .site:has(.stickyCallBar) { padding-bottom: calc(52px + 1.3rem + env(safe-area-inset-bottom, 0px)); } }
 
 /* Cookie consent — SiteAnalytics.tsx. Sits above the sticky call bar (60) and
    the message button (55) on purpose: it is asked once, it should be answered
@@ -1028,6 +1029,28 @@
 .forge .testimonialCard { border-radius: 0; border-color: var(--c-line); }
 .forge .showcaseGrid figure { border-radius: 0; }
 .forge .serviceAreaChip { border-radius: 0; }
+.forge .heroQuickForm {
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--c-deep) 96%, #ffffff 4%);
+  color: var(--c-on-deep);
+  border: 1px solid color-mix(in srgb, var(--c-on-deep) 16%, transparent);
+  box-shadow: 0 24px 50px -20px rgba(0,0,0,.7);
+}
+.forge .heroQuickForm .heroFormTitle { color: var(--c-on-deep); font-family: var(--theme-display); text-transform: uppercase; letter-spacing: .02em; }
+.forge .heroQuickForm .heroFormNote { color: color-mix(in srgb, var(--c-on-deep) 70%, transparent); font-family: var(--font-mono); font-size: .7rem; }
+.forge .heroQuickForm input, .forge .heroQuickForm select, .forge .heroQuickForm textarea {
+  background: color-mix(in srgb, var(--c-deep) 75%, #000 25%);
+  color: var(--c-on-deep);
+  border-color: color-mix(in srgb, var(--c-on-deep) 20%, transparent);
+  border-radius: 4px;
+}
+.forge .heroQuickForm .heroFormChip {
+  background: color-mix(in srgb, var(--c-deep) 80%, #000 20%);
+  color: var(--c-on-deep);
+  border-color: color-mix(in srgb, var(--c-on-deep) 22%, transparent);
+  border-radius: 4px;
+}
+.forge .heroQuickForm .heroFieldLabel { color: color-mix(in srgb, var(--c-on-deep) 75%, transparent); font-family: var(--font-mono); }
 
 /* Guild */
 /* Guild on the --c-* scheme tokens. Cream body (--c-bg), warm hairlines
@@ -1046,7 +1069,16 @@
 .guild[data-mode='dark'] .guildQuote:hover, .guild[data-mode='dark'] .textLink:hover { color: color-mix(in srgb, var(--theme-accent) 60%, #ffffff); }
 .heroFormOrCall { display: inline-flex; align-items: center; justify-content: center; gap: .3rem; min-height: 44px; margin-top: .1rem; font-size: .8rem; font-weight: 700; color: #17140f; text-decoration: none; }
 .heroFormOrCall strong { text-decoration: underline; text-decoration-color: var(--theme-accent); text-underline-offset: 2px; }
-.guild .heroQuickForm { border: 1px solid rgba(0,0,0,.10); }
+.guild .heroQuickForm {
+  border-radius: 12px;
+  background: var(--c-surface);
+  color: var(--c-ink);
+  border: 1px solid var(--c-line);
+  box-shadow: 0 24px 50px -22px rgba(0,0,0,.25), inset 0 0 0 1px rgba(255,255,255,.6);
+}
+.guild[data-mode='dark'] .heroQuickForm {
+  box-shadow: 0 24px 50px -22px rgba(0,0,0,.6), inset 0 0 0 1px rgba(255,255,255,.08);
+}
 .guildHeader { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: clamp(1rem, 3vw, 2rem); min-height: 100px; padding: 0 5vw; border-bottom: 1px solid var(--c-line); background: color-mix(in srgb, var(--c-bg) 94%, transparent); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
 .guildBrand { display: flex; align-items: center; gap: .9rem; min-width: 0; }
 /* Only the name/license wrapper stacks — NOT the per-word spans WordmarkName
@@ -1218,6 +1250,28 @@
 .vista .statItem { padding: 1.5rem 1.4rem; border: 1px solid color-mix(in srgb, currentColor 14%, transparent); border-radius: 10px; }
 .vista .statLabel { font-weight: 800; letter-spacing: .05em; }
 .vista .faqItem, .vista .testimonialCard, .vista .showcaseGrid figure { border-radius: 10px; }
+.vista .heroQuickForm {
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--c-deep) 94%, #fff 6%);
+  color: var(--c-on-deep);
+  border: 1px solid color-mix(in srgb, var(--c-on-deep) 15%, transparent);
+  box-shadow: 0 26px 54px -22px rgba(0,0,0,.6);
+}
+.vista .heroQuickForm .heroFormTitle { color: var(--c-on-deep); text-transform: uppercase; letter-spacing: .02em; }
+.vista .heroQuickForm .heroFormNote { color: color-mix(in srgb, var(--c-on-deep) 70%, transparent); }
+.vista .heroQuickForm input, .vista .heroQuickForm select, .vista .heroQuickForm textarea {
+  background: color-mix(in srgb, var(--c-deep) 80%, #000 20%);
+  color: var(--c-on-deep);
+  border-color: color-mix(in srgb, var(--c-on-deep) 18%, transparent);
+  border-radius: 8px;
+}
+.vista .heroQuickForm .heroFormChip {
+  background: color-mix(in srgb, var(--c-deep) 85%, #000 15%);
+  color: var(--c-on-deep);
+  border-color: color-mix(in srgb, var(--c-on-deep) 20%, transparent);
+  border-radius: 6px;
+}
+.vista .heroQuickForm .heroFieldLabel { color: color-mix(in srgb, var(--c-on-deep) 75%, transparent); }
 
 @media (max-width: 820px) {
   .navLinks { display: none; }
@@ -1446,6 +1500,23 @@
 .handy .extraSection:nth-of-type(even) { background: linear-gradient(180deg, var(--c-bg), var(--c-surface) 16%, var(--c-surface) 84%, var(--c-bg)); }
 .handy .extraSectionHeader h2 { font-family: var(--theme-display); font-weight: 700; font-size: clamp(1.9rem, 4vw, 3rem); line-height: 1.1; color: var(--c-ink); }
 .handy .serviceCard { background: var(--c-surface); border: 1px solid var(--c-line); border-radius: 16px; box-shadow: 0 22px 46px -30px rgba(51,61,71,.35); }
+.handy .heroQuickForm {
+  border-radius: 18px;
+  background: var(--c-surface);
+  color: var(--c-ink);
+  border: 1px solid var(--c-line);
+  box-shadow: 0 26px 54px -24px rgba(51,61,71,.35);
+}
+.handy .heroQuickForm input, .handy .heroQuickForm select, .handy .heroQuickForm textarea {
+  border-radius: 12px;
+  border-color: var(--c-line);
+  background: color-mix(in srgb, var(--c-surface) 92%, #000 8%);
+  color: var(--c-ink);
+}
+.handy .heroQuickForm .heroFormChip {
+  border-radius: 10px;
+  border-color: var(--c-line);
+}
 .handy .serviceCard:hover { border-color: color-mix(in srgb, var(--theme-accent) 40%, transparent); box-shadow: 0 26px 52px -26px color-mix(in srgb, var(--theme-accent) 42%, transparent); }
 .handy .serviceCard h3 { color: var(--c-ink); }
 .handy .serviceCard p { color: var(--c-muted); }
@@ -1564,6 +1635,28 @@
 .coat .statValue { color: var(--coat-ink); }
 .coat .statItem { background: var(--coat-surface); border-radius: 16px; padding: 1.4rem 1rem; }
 .coat .processNum { background: color-mix(in srgb, var(--theme-accent) 14%, transparent); color: var(--theme-accent); }
+.coat .heroQuickForm {
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--coat-maroon, var(--c-deep)) 92%, #000 8%);
+  color: var(--c-on-deep);
+  border: 1px solid color-mix(in srgb, var(--theme-accent) 40%, transparent);
+  box-shadow: 0 28px 56px -22px rgba(0,0,0,.7);
+}
+.coat .heroQuickForm .heroFormTitle { color: var(--c-on-deep); font-family: var(--theme-display); font-weight: 800; }
+.coat .heroQuickForm .heroFormNote { color: color-mix(in srgb, var(--c-on-deep) 72%, transparent); }
+.coat .heroQuickForm input, .coat .heroQuickForm select, .coat .heroQuickForm textarea {
+  background: color-mix(in srgb, var(--coat-maroon, var(--c-deep)) 75%, #000 25%);
+  color: var(--c-on-deep);
+  border-color: color-mix(in srgb, var(--c-on-deep) 18%, transparent);
+  border-radius: 10px;
+}
+.coat .heroQuickForm .heroFormChip {
+  background: color-mix(in srgb, var(--coat-maroon, var(--c-deep)) 82%, #000 18%);
+  color: var(--c-on-deep);
+  border-color: color-mix(in srgb, var(--c-on-deep) 22%, transparent);
+  border-radius: 8px;
+}
+.coat .heroQuickForm .heroFieldLabel { color: color-mix(in srgb, var(--c-on-deep) 75%, transparent); }
 @media (max-width: 900px) {
   .coatHero, .coatContact { grid-template-columns: 1fr; }
   .coatHeroMedia { order: -1; max-width: 440px; margin-inline: auto; }
@@ -1676,6 +1769,25 @@
 .fixit .statValue { color: var(--fx-ink); }
 .fixit .statItem { background: var(--fx-surface); border-radius: 14px; padding: 1.4rem 1rem; }
 .fixit .processNum { background: color-mix(in srgb, var(--theme-accent) 14%, transparent); color: var(--theme-accent); }
+.fixit .heroQuickForm {
+  border-radius: 14px;
+  background: var(--c-surface);
+  color: var(--fx-ink);
+  border: 1px solid var(--c-line);
+  box-shadow: 0 24px 50px -22px rgba(43,43,48,.28);
+}
+.fixit .heroQuickForm .heroFormTitle { color: var(--fx-ink); font-family: var(--theme-display); font-weight: 800; }
+.fixit .heroQuickForm .heroFormNote { color: var(--fx-muted); }
+.fixit .heroQuickForm input, .fixit .heroQuickForm select, .fixit .heroQuickForm textarea {
+  border-radius: 8px;
+  border-color: var(--c-line);
+  background: color-mix(in srgb, var(--c-surface) 92%, #000 8%);
+  color: var(--fx-ink);
+}
+.fixit .heroQuickForm .heroFormChip {
+  border-radius: 8px;
+  border-color: var(--c-line);
+}
 .fixitHeroCopy > * { animation: fixitRise .7s cubic-bezier(.22, .61, .36, 1) both; }
 .fixitHeroCopy > *:nth-child(1) { animation-delay: .05s; }
 .fixitHeroCopy > *:nth-child(2) { animation-delay: .13s; }
@@ -1755,6 +1867,28 @@
 .reno .statValue { color: var(--c-on-deep); }
 .reno .statLabel { color: color-mix(in srgb, var(--c-on-deep) 70%, transparent); }
 .reno .processNum { clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); border-radius: 0; background: var(--theme-accent); color: var(--rn-navy); }
+.reno .heroQuickForm {
+  border-radius: 6px;
+  background: repeating-linear-gradient(0deg, rgba(255,255,255,.015) 0 1px, transparent 1px 24px), repeating-linear-gradient(90deg, rgba(255,255,255,.015) 0 1px, transparent 1px 24px), var(--c-deep);
+  color: var(--c-on-deep);
+  border: 1px solid color-mix(in srgb, var(--theme-accent) 40%, transparent);
+  box-shadow: 0 24px 50px -22px rgba(0,0,0,.65);
+}
+.reno .heroQuickForm .heroFormTitle { color: var(--c-on-deep); }
+.reno .heroQuickForm .heroFormNote { color: color-mix(in srgb, var(--c-on-deep) 70%, transparent); }
+.reno .heroQuickForm input, .reno .heroQuickForm select, .reno .heroQuickForm textarea {
+  background: color-mix(in srgb, var(--c-deep) 75%, #000 25%);
+  color: var(--c-on-deep);
+  border-color: color-mix(in srgb, var(--c-on-deep) 20%, transparent);
+  border-radius: 4px;
+}
+.reno .heroQuickForm .heroFormChip {
+  background: color-mix(in srgb, var(--c-deep) 85%, #000 15%);
+  color: var(--c-on-deep);
+  border-color: color-mix(in srgb, var(--c-on-deep) 22%, transparent);
+  border-radius: 4px;
+}
+.reno .heroQuickForm .heroFieldLabel { color: color-mix(in srgb, var(--c-on-deep) 75%, transparent); }
 .renoHeroCopy > * { animation: renoRise .7s cubic-bezier(.22, .61, .36, 1) both; }
 .renoHeroCopy > *:nth-child(1) { animation-delay: .05s; }
 .renoHeroCopy > *:nth-child(2) { animation-delay: .13s; }
@@ -1821,7 +1955,33 @@
 .shineHeroText { font-size: clamp(1rem, 1.4vw, 1.16rem); line-height: 1.6; color: color-mix(in srgb, var(--c-on-deep) 78%, transparent); margin: 0 0 1.7rem; max-width: 46ch; }
 /* The hero CTA is the smart-intake HeroQuickForm card (see .heroQuickForm);
    center it in the stacked mobile layout. */
-.shineHeroCopy .heroQuickForm { margin-top: 1.25rem; margin-bottom: 1.5rem; text-align: left; }
+.shineHeroCopy .heroQuickForm {
+  margin-top: 1.25rem;
+  margin-bottom: 1.5rem;
+  text-align: left;
+  border-radius: 16px;
+  background: linear-gradient(145deg, color-mix(in srgb, var(--c-deep) 96%, transparent), color-mix(in srgb, var(--c-deep) 88%, transparent));
+  color: var(--c-on-deep);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  border: 1px solid color-mix(in srgb, var(--c-on-deep) 16%, transparent);
+  box-shadow: 0 30px 60px -24px rgba(0,0,0,.65), inset 0 0 0 1px rgba(255,255,255,.1);
+}
+.shineHeroCopy .heroQuickForm .heroFormTitle { color: var(--c-on-deep); }
+.shineHeroCopy .heroQuickForm .heroFormNote { color: color-mix(in srgb, var(--c-on-deep) 70%, transparent); }
+.shineHeroCopy .heroQuickForm input, .shineHeroCopy .heroQuickForm select, .shineHeroCopy .heroQuickForm textarea {
+  background: color-mix(in srgb, var(--c-deep) 80%, #000 20%);
+  color: var(--c-on-deep);
+  border-color: color-mix(in srgb, var(--c-on-deep) 20%, transparent);
+  border-radius: 10px;
+}
+.shineHeroCopy .heroQuickForm .heroFormChip {
+  background: color-mix(in srgb, var(--c-deep) 85%, #000 15%);
+  color: var(--c-on-deep);
+  border-color: color-mix(in srgb, var(--c-on-deep) 22%, transparent);
+  border-radius: 8px;
+}
+.shineHeroCopy .heroQuickForm .heroFieldLabel { color: color-mix(in srgb, var(--c-on-deep) 75%, transparent); }
 .shineBtn { display: inline-flex; align-items: center; gap: .45rem; min-height: 50px; padding: .8rem 1.6rem; border-radius: 999px; background: var(--theme-accent); color: var(--theme-on-accent, #0f1b2d); font-weight: 700; font-size: .96rem; box-shadow: 0 16px 30px -14px color-mix(in srgb, var(--theme-accent) 55%, transparent); transition: transform .2s ease, filter .2s ease; }
 .shineBtn:hover { transform: translateY(-2px); filter: brightness(1.04); }
 .shineBtnGhost { display: inline-flex; align-items: center; gap: .45rem; min-height: 50px; padding: .8rem 1.4rem; border-radius: 999px; border: 1.5px solid color-mix(in srgb, var(--c-on-deep) 50%, transparent); color: var(--c-on-deep); font-weight: 700; font-size: .96rem; transition: background .2s ease, border-color .2s ease; }
