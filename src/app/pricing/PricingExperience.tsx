@@ -321,11 +321,17 @@ export default function PricingExperience() {
               <a className={styles.primaryButton} href="#plans">Find my fit</a>
               <a className={styles.secondaryButton} href="#calculator">Run my numbers</a>
             </div>
-            <ul className={styles.heroProof} aria-label="Pricing highlights">
-              <li>QuickBooks on every plan</li>
-              <li>Free onboarding</li>
-              <li>No forced upgrades</li>
-            </ul>
+            <div className={styles.heroSubMeta}>
+              <ul className={styles.heroProof} aria-label="Pricing highlights">
+                <li>QuickBooks on every plan</li>
+                <li>Free onboarding</li>
+                <li>No forced upgrades</li>
+              </ul>
+              <a className={styles.seasonalHeroLink} href="#seasonal-flex">
+                <span aria-hidden="true">01</span>
+                Seasonal contractor? See why Flex fits →
+              </a>
+            </div>
           </div>
 
           <aside className={styles.heroBoard} aria-label="How LGQ pricing grows with a contractor">
@@ -414,7 +420,7 @@ export default function PricingExperience() {
           <div className={styles.fitFinderHeader}>
             <div>
               <span className={styles.miniEyebrow}>Quick fit finder · 30-second match</span>
-              <strong>Find your contractor tier instantly</strong>
+              <strong className={styles.fitFinderTitle}>Find your contractor tier instantly</strong>
             </div>
             <div className={styles.fitFinderModes} role="group" aria-label="Fit finder mode">
               <button
@@ -453,25 +459,26 @@ export default function PricingExperience() {
                       setHasUsedCalculator(true);
                     }}
                   >
-                    <strong>{item.trade}</strong>
-                    <span>{item.desc}</span>
-                    <small>Sets {money(item.volume)}/yr · {item.users} office</small>
+                    <strong className={styles.tradePresetName}>{item.trade}</strong>
+                    <span className={styles.tradePresetDesc}>{item.desc}</span>
+                    <small className={styles.tradePresetMeta}>Sets {money(item.volume)}/yr · {item.users} office</small>
                   </button>
                 );
               })}
             </div>
           ) : (
-            <div role="group" aria-label="Business stage">
+            <div className={styles.stagePresetGrid} role="group" aria-label="Business stage">
               {PLANS.map((plan) => (
                 <button
                   type="button"
                   key={plan.id}
                   data-plan={plan.id}
+                  className={`${styles.stagePresetBtn}${spotlightPlan === plan.id ? ` ${styles.stagePresetActive}` : ''}`}
                   aria-pressed={spotlightPlan === plan.id}
                   onClick={() => setSpotlightPlan((selected) => (selected === plan.id ? null : plan.id))}
                 >
-                  <span>{PLAN_STAGES[plan.id].number}</span>
-                  {PLAN_STAGES[plan.id].label}
+                  <span className={styles.stageNumber}>{PLAN_STAGES[plan.id].number}</span>
+                  <span className={styles.stageLabel}>{PLAN_STAGES[plan.id].label}</span>
                 </button>
               ))}
             </div>

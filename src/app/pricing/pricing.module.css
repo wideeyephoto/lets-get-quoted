@@ -18,7 +18,7 @@
 
 .hero {
   position: relative;
-  padding: clamp(2.5rem, 7vw, 5.5rem) 0 1.5rem;
+  padding: clamp(2rem, 5vw, 4rem) 0 1.2rem;
 }
 
 .hero::before {
@@ -28,8 +28,9 @@
   inset: 1rem -5vw 0;
   border-radius: 3rem;
   background:
-    linear-gradient(135deg, rgba(255, 122, 33, 0.09), transparent 42%),
-    radial-gradient(circle at 80% 20%, rgba(90, 220, 190, 0.08), transparent 35%);
+    linear-gradient(135deg, rgba(255, 122, 33, 0.07), transparent 42%),
+    radial-gradient(circle at 80% 20%, rgba(90, 220, 190, 0.06), transparent 35%);
+  pointer-events: none;
 }
 
 .heroGrid {
@@ -80,13 +81,15 @@
   min-height: 3rem;
   align-items: center;
   justify-content: center;
-  padding: 0.78rem 1.15rem;
+  padding: 0.78rem 1.25rem;
   border: 1px solid transparent;
   border-radius: 0.85rem;
   font-size: 0.92rem;
   font-weight: 800;
   line-height: 1.15;
   text-align: center;
+  text-decoration: none;
+  cursor: pointer;
   transition: transform 160ms ease, border-color 160ms ease, background 160ms ease, box-shadow 160ms ease;
 }
 
@@ -135,18 +138,25 @@
   outline-offset: 3px;
 }
 
+.heroSubMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  margin-top: 1.25rem;
+}
+
 .heroProof {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.6rem;
-  margin: 1.4rem 0 0;
+  gap: 0.5rem;
+  margin: 0;
   padding: 0;
   list-style: none;
 }
 
 .heroProof li {
   margin: 0;
-  padding: 0.48rem 0.7rem;
+  padding: 0.42rem 0.75rem;
   border: 1px solid var(--edge-t12);
   border-radius: 999px;
   background: rgba(var(--tint), 0.035);
@@ -298,11 +308,11 @@
 .compareSection,
 .faqSection,
 .finalCta {
-  margin-top: 1rem;
-  padding: clamp(1.25rem, 3.5vw, 2.2rem);
-  border: 1px solid var(--edge-t10);
-  border-radius: clamp(1.4rem, 3vw, 2rem);
-  background: rgba(var(--tint), 0.024);
+  margin-top: clamp(2rem, 4.5vw, 3.8rem);
+  padding: clamp(1.5rem, 3.5vw, 2.5rem) 0;
+  border: none;
+  border-top: 1px solid var(--edge-t10);
+  background: transparent;
 }
 
 .sectionHeading,
@@ -1020,37 +1030,7 @@
 .promiseSection strong { color: var(--text); font-size: 0.75rem; }
 .promiseSection span { margin-top: 0.3rem; color: var(--muted); font-size: 0.66rem; line-height: 1.45; }
 
-.faqGrid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.6rem;
-  margin-top: 1.1rem;
-}
 
-.faqItem {
-  border: 1px solid var(--edge-t10);
-  border-radius: 0.8rem;
-  background: var(--bg-elevated);
-}
-
-.faqItem summary {
-  display: flex;
-  min-height: 3.5rem;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 0.8rem;
-  color: var(--text);
-  font-size: 0.75rem;
-  font-weight: 800;
-  cursor: pointer;
-  list-style: none;
-}
-
-.faqItem summary::-webkit-details-marker { display: none; }
-.faqItem summary span { color: var(--gold-ink); font-size: 1rem; transition: transform 160ms ease; }
-.faqItem[open] summary span { transform: rotate(45deg); }
-.faqItem p { margin: 0; padding: 0 0.8rem 0.9rem; font-size: 0.72rem; }
 
 .finalCta {
   overflow: hidden;
@@ -1603,80 +1583,188 @@
 }
 
 .fitFinder {
-  display: grid;
-  grid-template-columns: minmax(11rem, 0.58fr) minmax(0, 1.42fr);
-  gap: 1rem;
-  align-items: center;
-  margin-top: 1.6rem;
-  padding: 0.75rem;
-  border-block: 1px solid var(--edge-t10);
-}
-
-.fitFinder > div:first-child {
-  padding-inline: 0.25rem;
-}
-
-.fitFinder > div:first-child span,
-.fitFinder > div:first-child strong {
-  display: block;
-}
-
-.fitFinder > div:first-child .miniEyebrow {
-  margin-bottom: 0.3rem;
-  font-size: 0.62rem;
-}
-
-.fitFinder > div:first-child strong {
-  color: var(--text);
-  font-size: 0.9rem;
-}
-
-.fitFinder > div:last-child {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.4rem;
-}
-
-.fitFinder button {
-  --plan-color: #79a8ff;
   display: flex;
-  min-height: 3rem;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.55rem;
-  border: 1px solid var(--edge-t10);
-  border-radius: 0.75rem;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 1.5rem;
+  padding: 1.25rem 1.4rem;
+  border: 1px solid var(--edge-t12);
+  border-radius: 1.25rem;
   background: rgba(var(--tint), 0.02);
-  color: var(--muted);
-  font-size: 0.7rem;
+}
+
+.fitFinderHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.fitFinderTitle {
+  display: block;
+  color: var(--text);
+  font-size: 0.92rem;
   font-weight: 800;
+}
+
+.fitFinderModes {
+  display: inline-flex;
+  padding: 0.25rem;
+  background: rgba(var(--tint), 0.04);
+  border: 1px solid var(--edge-t12);
+  border-radius: 999px;
+  gap: 0.25rem;
+}
+
+.fitModeBtn,
+.fitModeActive {
+  padding: 0.4rem 0.85rem;
+  border-radius: 999px;
+  border: none;
+  font-size: 0.72rem;
+  font-weight: 750;
   cursor: pointer;
+  background: transparent;
+  color: var(--muted);
+  transition: all 0.15s ease;
+}
+
+.fitModeActive {
+  background: var(--bg-elevated);
+  color: var(--gold-ink);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+}
+
+.tradePresetGrid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.tradePresetCard {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  padding: 0.85rem 0.9rem;
+  border-radius: 0.85rem;
+  border: 1px solid var(--edge-t12);
+  background: rgba(var(--tint), 0.025);
+  cursor: pointer;
+  min-height: 5.8rem;
+  height: auto;
   transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
 }
 
-.fitFinder button[data-plan='solo'] { --plan-color: #ffd166; }
-.fitFinder button[data-plan='growth'] { --plan-color: #ff8a3d; }
-.fitFinder button[data-plan='scale'] { --plan-color: #52d9ac; }
+.tradePresetCard:hover {
+  background: rgba(var(--tint), 0.06);
+  border-color: var(--gold-ink);
+  transform: translateY(-2px);
+}
 
-.fitFinder button span {
+.tradePresetActive {
+  border-color: var(--gold-ink);
+  background: rgba(212, 175, 55, 0.08);
+  box-shadow: 0 0 0 1px var(--gold-ink);
+}
+
+.tradePresetName {
+  display: block;
+  color: var(--text);
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.tradePresetDesc {
+  display: block;
+  margin-top: 0.35rem;
+  color: var(--muted);
+  font-size: 0.68rem;
+  line-height: 1.35;
+  width: auto;
+  height: auto;
+  border: none;
+  background: transparent;
+}
+
+.tradePresetMeta {
+  display: block;
+  margin-top: auto;
+  padding-top: 0.45rem;
+  color: var(--gold-ink);
+  font-size: 0.62rem;
+  font-weight: 750;
+}
+
+.stagePresetGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.stagePresetBtn {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.75rem 0.9rem;
+  border-radius: 0.85rem;
+  border: 1px solid var(--edge-t12);
+  background: rgba(var(--tint), 0.025);
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 750;
+  cursor: pointer;
+  transition: all 0.16s ease;
+}
+
+.stagePresetBtn:hover,
+.stagePresetActive {
+  border-color: var(--gold-ink);
+  background: rgba(212, 175, 55, 0.08);
+  color: var(--text);
+  transform: translateY(-1px);
+}
+
+.stageNumber {
   display: grid;
   width: 1.65rem;
   height: 1.65rem;
-  flex: 0 0 auto;
   place-items: center;
-  border: 1px solid color-mix(in srgb, var(--plan-color) 45%, transparent);
   border-radius: 50%;
-  color: var(--plan-color);
+  background: rgba(var(--tint), 0.06);
+  border: 1px solid var(--edge-t14);
+  color: var(--gold-ink);
   font-family: var(--font-display);
-  font-size: 0.58rem;
+  font-size: 0.62rem;
+  font-weight: 850;
+  flex-shrink: 0;
 }
 
-.fitFinder button:hover,
-.fitFinder button[aria-pressed='true'] {
-  border-color: color-mix(in srgb, var(--plan-color) 56%, transparent);
-  background: color-mix(in srgb, var(--plan-color) 9%, transparent);
-  color: var(--text);
-  transform: translateY(-1px);
+.stageLabel {
+  font-size: 0.74rem;
+}
+
+@media (max-width: 1100px) {
+  .tradePresetGrid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .stagePresetGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 700px) {
+  .tradePresetGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .tradePresetGrid,
+  .stagePresetGrid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .planGrid {
@@ -3320,104 +3408,7 @@
   }
 }
 
-.fitFinderHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  flex-wrap: wrap;
-}
 
-.fitFinderModes {
-  display: inline-flex;
-  padding: 0.2rem;
-  background: rgba(var(--tint), 0.04);
-  border: 1px solid var(--edge-t12);
-  border-radius: 999px;
-  gap: 0.2rem;
-}
-
-.fitModeBtn,
-.fitModeActive {
-  padding: 0.35rem 0.75rem;
-  border-radius: 999px;
-  border: none;
-  font-size: 0.66rem;
-  font-weight: 750;
-  cursor: pointer;
-  background: transparent;
-  color: var(--muted);
-  transition: all 0.15s ease;
-}
-
-.fitModeActive {
-  background: var(--bg-elevated);
-  color: var(--gold-ink);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
-}
-
-.tradePresetGrid {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 0.6rem;
-  margin-top: 0.8rem;
-}
-
-.tradePresetCard {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  text-align: left;
-  padding: 0.75rem;
-  border-radius: 0.75rem;
-  border: 1px solid var(--edge-t12);
-  background: rgba(var(--tint), 0.025);
-  cursor: pointer;
-  transition: all 0.18s ease;
-}
-
-.tradePresetCard:hover {
-  background: rgba(var(--tint), 0.06);
-  border-color: var(--gold-ink);
-  transform: translateY(-2px);
-}
-
-.tradePresetActive {
-  border-color: var(--gold-ink);
-  background: rgba(212, 175, 55, 0.08);
-  box-shadow: 0 0 0 1px var(--gold-ink);
-}
-
-.tradePresetCard strong {
-  color: var(--text);
-  font-size: 0.72rem;
-}
-
-.tradePresetCard span {
-  margin-top: 0.25rem;
-  color: var(--muted);
-  font-size: 0.62rem;
-  line-height: 1.35;
-}
-
-.tradePresetCard small {
-  margin-top: 0.4rem;
-  color: var(--gold-ink);
-  font-size: 0.58rem;
-  font-weight: 700;
-}
-
-@media (max-width: 1000px) {
-  .tradePresetGrid {
-    grid-template-columns: repeat(3, 1fr);
-  }
-}
-
-@media (max-width: 600px) {
-  .tradePresetGrid {
-    grid-template-columns: 1fr;
-  }
-}
 
 .categoryTabs {
   display: flex;
