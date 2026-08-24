@@ -23,9 +23,10 @@ export const metadata = {
 // the dashboard — Automations → Review requests points at `reviews`, because
 // the Google Business Profile the review ask needs is set on that card and
 // nowhere else.
-export default async function SitesPage({ searchParams }: { searchParams?: { built?: string; open?: string } }) {
+export default async function SitesPage({ searchParams }: { searchParams?: Promise<{ built?: string; open?: string }> | { built?: string; open?: string } }) {
+  const params = searchParams ? await Promise.resolve(searchParams) : undefined;
   const { supabase, accountId } = await requireOfficeContext('settings.write');
-  const justBuilt = searchParams?.built === '1';
+  const justBuilt = params?.built === '1';
 
   // Get or create site
   const site = await getOrCreateSite(supabase, accountId);
@@ -42,7 +43,7 @@ export default async function SitesPage({ searchParams }: { searchParams?: { bui
         site={site}
         uploadedImages={uploadedImages}
         justBuilt={justBuilt}
-        openTarget={searchParams?.open ?? null}
+        openTarget={params?.open ?? null}
       />
     </div>
   );

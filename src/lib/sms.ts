@@ -18,6 +18,7 @@ import {
   leadQuoteVisitText,
   missedCallTextBack,
   ownerHighValueLeadText,
+  ownerVerificationCodeText,
   paymentText,
   quickStopConfirmedText,
   quickStopOfferText,
@@ -216,6 +217,30 @@ export async function sendOwnerHighValueLeadSms(input: {
     console.error('Owner high-value lead SMS failed:', error instanceof Error ? error.message : error);
   }
 }
+
+/**
+ * Sends a one-time 6-digit verification code to the contractor's alert phone number.
+ */
+export async function sendOwnerPhoneVerificationSms(input: {
+  accountId: string;
+  phone: string;
+  code: string;
+  idempotencyKey?: string;
+}): Promise<string> {
+  const to = normalizeUsPhone(input.phone);
+  if (!to) throw new Error('Invalid phone number.');
+  const body = ownerVerificationCodeText({ code: input.code });
+  return queueAccountSms({
+    accountId: input.accountId,
+    phone: to,
+    body,
+    messageKind: 'owner-phone-verification',
+    category: 'verification',
+    context: 'owner',
+    idempotencyKey: input.idempotencyKey ?? `owner-verify:${input.accountId}:${to}:${Date.now()}`,
+  });
+}
+
 
 // The one text that asks a lead whether they want the gap in today's route.
 //

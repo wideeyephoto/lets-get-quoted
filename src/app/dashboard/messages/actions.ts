@@ -8,7 +8,13 @@ import {
   hasCurrentSmsConsent,
   recordOwnerSmsConsent,
   sendInboxReplySms,
+  sendOwnerPhoneVerificationSms,
 } from '@/lib/sms';
+import {
+  generateOwnerVerificationCode,
+  ownerPhoneVerificationToken,
+  isOwnerPhoneVerificationValid,
+} from '@/lib/owner-phone-verification';
 import { loadBusinessName } from '@/lib/business-name';
 import { markThreadRead } from '@/lib/messages';
 import { createMessageTemplate, deleteMessageTemplate } from '@/lib/message-templates';
@@ -16,6 +22,7 @@ import { loadOwnerAlerts, validateOwnerAlerts } from '@/lib/owner-sms';
 import { OWNER_SMS_DISCLOSURE_VERSION } from '@/lib/owner-sms-disclosure';
 import type { OwnerAlertsState } from '@/lib/owner-sms-state';
 import { requireActiveDedicatedMessagingSender } from '@/lib/messaging-number-provisioning';
+
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -84,6 +91,40 @@ export async function sendReplyAction(phone: string, formData: FormData) {
  * somebody who already texted STOP is not silently opted back in by pressing
  * Save. Only START from their handset can restore that state.
  */
+export type SendVerificationCodeResult =
+  | { status: 'sent'; token: string; expiresAt: number; phone: string }
+  | { status: 'error'; message: string };
+
+/**
+ * Sends a 6-digit OTP SMS verification code to confirm ownership of the contractor's mobile number.
+ */
+export async function sendOwnerPhoneVerificationCodeAction(
+  phone: string,
+): Promise<SendVerificationCodeResult> {
+  const normalized = normalizeUsPhone(phone);
+  if (!normalized) {
+    return { status: 'error', message: 'Enter a valid 10-digit US mobile number.' };
+  }
+
+  try {
+    const { accountId } = await requireOwnerContext();
+    const code = generateOwnerVerificationCode();
+    const expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes
+    const token = ownerPhoneVerificationToken(accountId, normalized, code, expiresAt);
+
+    await sendOwnerPhoneVerificationSms({
+      accountId,
+      phone: normalized,
+      code,
+    });
+
+    return { status: 'sent', token, expiresAt, phone: normalized };
+  } catch (err) {
+    console.error('Failed to send owner verification code:', err);
+    return { status: 'error', message: 'Could not send verification text. Please try again.' };
+  }
+}
+
 export async function saveOwnerAlertsAction(
   _previous: OwnerAlertsState,
   formData: FormData,
@@ -112,6 +153,27 @@ export async function saveOwnerAlertsAction(
     }
 
     const normalized = phone.trim() ? normalizeUsPhone(phone.trim()) : null;
+
+    // If verification token and code are provided, validate them before saving
+    const verificationCode = (formData.get('verificationCode') ?? '').toString().trim();
+    const verificationToken = (formData.get('verificationToken') ?? '').toString().trim();
+    const verificationExpiresAt = Number(formData.get('verificationExpiresAt') ?? 0);
+
+    if (normalized && verificationCode && verificationToken) {
+      const isValid = isOwnerPhoneVerificationValid(
+        accountId,
+        normalized,
+        verificationCode,
+        verificationExpiresAt,
+        verificationToken,
+      );
+      if (!isValid) {
+        return {
+          status: 'error',
+          errors: [{ field: 'phone', message: 'The 6-digit verification code is invalid or has expired. Request a new code to verify.' }],
+        };
+      }
+    }
 
     const { error } = await supabase
       .from('accounts')

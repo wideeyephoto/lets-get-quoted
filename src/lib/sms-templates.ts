@@ -64,6 +64,11 @@ export function ownerHighValueLeadText(input: {
   return `🔥 High-value lead for ${input.businessName}: ${input.leadName || 'New request'}${range}. Respond fast: ${input.dashboardUrl} — Reply STOP to opt out.`;
 }
 
+export function ownerVerificationCodeText(input: { code: string }): string {
+  return `Your Let’s Get Quoted verification code is ${input.code}. Enter this code in your Texting Setup to verify your mobile number. Reply STOP to opt out.`;
+}
+
+
 // -- Quick Stop --------------------------------------------------------------
 
 export function quickStopOfferText(input: {

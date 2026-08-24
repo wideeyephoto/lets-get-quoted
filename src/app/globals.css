@@ -37504,12 +37504,35 @@ a.sms-cat-switch:focus-visible { outline: 2px solid var(--accent); outline-offse
   color: var(--muted);
 }
 
+.msg-setup-phone-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+}
+
 .msg-setup-phone-field label {
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.04em;
   color: var(--muted);
-  margin-bottom: 0.35rem;
+  margin-bottom: 0;
+}
+
+.msg-setup-verified-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.72rem;
+  font-weight: 650;
+  color: #4ade80;
+}
+
+.msg-setup-unverified-badge {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--muted);
 }
 
 .msg-setup-input-wrap {
@@ -37531,9 +37554,96 @@ a.sms-cat-switch:focus-visible { outline: 2px solid var(--accent); outline-offse
 
 .msg-setup-input-wrap input {
   padding-left: 2.3rem;
+  padding-right: 6.5rem;
   font-weight: 600;
   font-size: 0.92rem;
   letter-spacing: 0.02em;
+}
+
+.msg-setup-verify-trigger {
+  position: absolute;
+  right: 0.4rem;
+  padding: 0.3rem 0.65rem;
+  border: 1px solid var(--edge-t20);
+  border-radius: 8px;
+  background: rgba(var(--tint), 0.08);
+  font-size: 0.74rem;
+  font-weight: 650;
+  color: var(--accent);
+  cursor: pointer;
+  transition: background 0.16s ease, border-color 0.16s ease;
+}
+.msg-setup-verify-trigger:hover:not(:disabled) {
+  background: rgba(var(--accent-rgb), 0.15);
+  border-color: rgba(var(--accent-rgb), 0.35);
+}
+.msg-setup-verify-trigger:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.msg-setup-otp-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid rgba(var(--accent-rgb), 0.3);
+  border-radius: 10px;
+  background: rgba(var(--accent-rgb), 0.06);
+  animation: app-modal-fade 0.2s ease-out;
+}
+
+.msg-setup-otp-head {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.msg-setup-otp-title {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.msg-setup-otp-sub {
+  font-size: 0.74rem;
+  line-height: 1.35;
+  color: var(--muted);
+}
+.msg-setup-otp-sub b {
+  color: inherit;
+  font-weight: 650;
+}
+
+.msg-setup-otp-row {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.msg-setup-otp-input {
+  width: 140px;
+  padding: 0.45rem 0.65rem;
+  border: 1px solid var(--edge-t24);
+  border-radius: 8px;
+  background: var(--bg-2);
+  font-family: monospace, monospace;
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: 0.25em;
+  text-align: center;
+}
+.msg-setup-otp-input:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.msg-setup-otp-ready-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.75rem;
+  font-weight: 650;
+  color: #4ade80;
 }
 
 .msg-setup-toggle-card {
@@ -37547,6 +37657,7 @@ a.sms-cat-switch:focus-visible { outline: 2px solid var(--accent); outline-offse
   border-color: var(--edge-t24);
   background: rgba(var(--tint), 0.04);
 }
+
 
 .msg-setup-toggle-text {
   display: flex;

@@ -1,9 +1,10 @@
 'use client';
 
 import Link from 'next/link';
+import { useState, useEffect } from 'react';
 import { useFormState } from 'react-dom';
 import SaveButton from '@/components/save-button';
-import { saveOwnerAlertsAction } from './actions';
+import { saveOwnerAlertsAction, sendOwnerPhoneVerificationCodeAction } from './actions';
 // The idle state comes from the pure module, not from the action file: a
 // 'use server' file may only export async functions, and lib/owner-sms imports
 // the service-role client.
@@ -23,7 +24,7 @@ import {
 } from '@/lib/owner-sms-disclosure';
 
 /**
- * Section A of the setup dialog: the owner's own number, and their consent.
+ * Section A of the setup dialog: the owner's own number, 2FA verification, and consent.
  *
  * DELIBERATELY NOT A CLOSE-ON-SUCCESS FORM. Every other modal form in the app
  * drops in <CloseOnSuccess/> and shuts on the pending true→false edge. This one
@@ -58,6 +59,38 @@ export default function OwnerAlertsForm({
   const errors = state.status === 'error' ? state.errors : [];
   const errorFor = (field: 'phone' | 'consent' | 'form') => errors.find((one) => one.field === field)?.message ?? null;
 
+  const [currentPhone, setCurrentPhone] = useState(phone ?? '');
+  const [otpState, setOtpState] = useState<'idle' | 'sending' | 'sent' | 'verified'>('idle');
+  const [verificationData, setVerificationData] = useState<{ token: string; expiresAt: number; phone: string } | null>(null);
+  const [otpCode, setOtpCode] = useState('');
+  const [otpError, setOtpError] = useState<string | null>(null);
+  const [countdown, setCountdown] = useState(0);
+
+  useEffect(() => {
+    if (countdown <= 0) return;
+    const timer = setInterval(() => setCountdown((c) => Math.max(0, c - 1)), 1000);
+    return () => clearInterval(timer);
+  }, [countdown]);
+
+  const isStoredPhone = Boolean(phone && currentPhone.trim() === phone);
+  const phoneHasChanged = Boolean(currentPhone.trim() && currentPhone.trim() !== (phone ?? ''));
+
+  async function handleSendVerification() {
+    if (!currentPhone.trim() || disabled) return;
+    setOtpState('sending');
+    setOtpError(null);
+
+    const result = await sendOwnerPhoneVerificationCodeAction(currentPhone.trim());
+    if (result.status === 'sent') {
+      setVerificationData({ token: result.token, expiresAt: result.expiresAt, phone: result.phone });
+      setOtpState('sent');
+      setCountdown(60);
+    } else {
+      setOtpState('idle');
+      setOtpError(result.message);
+    }
+  }
+
   /**
    * Whether the ledger already holds an acceptance of the CURRENT wording.
    *
@@ -71,8 +104,26 @@ export default function OwnerAlertsForm({
       <fieldset disabled={disabled}>
         <legend className="sr-only">Your Let&rsquo;s Get Quoted notifications</legend>
 
+        {/* Hidden inputs for OTP binding */}
+        <input type="hidden" name="verificationCode" value={otpCode} />
+        <input type="hidden" name="verificationToken" value={verificationData?.token ?? ''} />
+        <input type="hidden" name="verificationExpiresAt" value={verificationData?.expiresAt ?? ''} />
+
         <div className="field full msg-setup-phone-field">
-          <label htmlFor="alertPhone">YOUR MOBILE NUMBER</label>
+          <div className="msg-setup-phone-header">
+            <label htmlFor="alertPhone">YOUR MOBILE NUMBER</label>
+            {isStoredPhone || otpState === 'verified' ? (
+              <span className="msg-setup-verified-badge" title="Phone verified via 2FA">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+                Verified number
+              </span>
+            ) : phoneHasChanged ? (
+              <span className="msg-setup-unverified-badge">2FA verification available</span>
+            ) : null}
+          </div>
+
           <div className="msg-setup-input-wrap">
             <span className="msg-setup-input-icon" aria-hidden="true">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -87,15 +138,74 @@ export default function OwnerAlertsForm({
               autoComplete="tel"
               placeholder="(248) 555-0100"
               defaultValue={phone ?? ''}
+              value={currentPhone}
+              onChange={(e) => {
+                setCurrentPhone(e.target.value);
+                if (otpState === 'verified') setOtpState('idle');
+              }}
               aria-describedby="alertPhone-hint"
               aria-invalid={errorFor('phone') ? true : undefined}
             />
+
+            {phoneHasChanged && otpState !== 'verified' ? (
+              <button
+                type="button"
+                className="msg-setup-verify-trigger"
+                disabled={otpState === 'sending' || countdown > 0}
+                onClick={handleSendVerification}
+              >
+                {otpState === 'sending'
+                  ? 'Sending…'
+                  : otpState === 'sent'
+                  ? countdown > 0
+                    ? `Resend (${countdown}s)`
+                    : 'Resend code'
+                  : 'Verify number'}
+              </button>
+            ) : null}
           </div>
+
           <small className="field-hint" id="alertPhone-hint">
             Yours, not a customer&rsquo;s. This is the only number we text about your own account.
           </small>
           {errorFor('phone') ? <p className="field-error" role="alert">{errorFor('phone')}</p> : null}
+          {otpError ? <p className="field-error" role="alert">{otpError}</p> : null}
         </div>
+
+        {/* 6-Digit Verification Code Prompt */}
+        {otpState === 'sent' ? (
+          <div className="msg-setup-otp-card">
+            <div className="msg-setup-otp-head">
+              <span className="msg-setup-otp-title">Enter 6-digit confirmation code</span>
+              <span className="msg-setup-otp-sub">
+                We texted a verification code to <b>{verificationData?.phone || currentPhone}</b>
+              </span>
+            </div>
+            <div className="msg-setup-otp-row">
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={6}
+                placeholder="123456"
+                className="msg-setup-otp-input"
+                value={otpCode}
+                onChange={(e) => {
+                  const digits = e.target.value.replace(/\D/g, '').slice(0, 6);
+                  setOtpCode(digits);
+                  if (digits.length === 6) {
+                    setOtpState('verified');
+                    setOtpError(null);
+                  }
+                }}
+                autoFocus
+              />
+              {otpCode.length === 6 ? (
+                <span className="msg-setup-otp-ready-badge">✓ Code entered</span>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
 
         <div className="msg-setup-toggle-card">
           <label className="checkbox-row" htmlFor="alertsEnabled">
@@ -203,4 +313,5 @@ export default function OwnerAlertsForm({
     </form>
   );
 }
+
 
