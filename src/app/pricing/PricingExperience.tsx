@@ -313,10 +313,6 @@ export default function PricingExperience() {
               One system for seasonal work—from your first side job to a high-volume crew—with pricing that gets more
               efficient at every stage.
             </p>
-            <a className={styles.seasonalHeroLink} href="#seasonal-flex">
-              <span aria-hidden="true">01</span>
-              Seasonal contractor? See why Flex fits →
-            </a>
             <div className={styles.heroActions}>
               <a className={styles.primaryButton} href="#plans">Find my fit</a>
               <a className={styles.secondaryButton} href="#calculator">Run my numbers</a>
