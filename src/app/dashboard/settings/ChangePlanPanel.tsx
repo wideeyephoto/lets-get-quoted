@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react';
 
-import { BILLING_PLANS, type BillingCycle, type BillingPlanId } from '@/lib/billing/catalog';
+import { BILLING_PLANS, formatUsdFromCents, type BillingCycle, type BillingPlanId } from '@/lib/billing/catalog';
 import {
   BASE_PLAN_RECURRING_CONSENT_TEXT,
   BASE_PLAN_RECURRING_CONSENT_TEXT_SHA256,
@@ -40,6 +40,42 @@ type PlanOption = Readonly<{
   priceLabel: string;
 }>;
 
+const TIERS: readonly BillingPlanId[] = ['flex', 'solo', 'growth', 'scale'];
+
+const TIER_FEATURES: Record<BillingPlanId, readonly string[]> = {
+  flex: [
+    '1.50% platform fee',
+    '1 Office + 2 Crew seats included',
+    'Shared 2-way messaging',
+    'Free custom SEO website',
+  ],
+  solo: [
+    '1.00% lower platform fee',
+    '1 Office + 3 Crew seats included',
+    '500 texts + 250 AI credits/mo',
+    'Custom domain & SEO website',
+  ],
+  growth: [
+    '0.25% low platform fee',
+    '5 Office + 10 Crew seats included',
+    '1,500 texts + 500 AI credits/mo',
+    'Team dispatch & scheduling',
+  ],
+  scale: [
+    '0.10% lowest platform fee',
+    '15 Office + 50 Crew seats included',
+    '3,000 texts + 1,000 AI credits/mo',
+    '250 GB photo & file storage',
+  ],
+};
+
+const TIER_SUBTITLES: Record<BillingPlanId, string> = {
+  flex: 'Seasonal & starting out',
+  solo: 'Owner-operator',
+  growth: 'Growing team',
+  scale: 'High volume & multi-crew',
+};
+
 export default function ChangePlanPanel({
   currentPlanCode,
   currentBillingInterval,
@@ -55,6 +91,9 @@ export default function ChangePlanPanel({
   pendingEffectiveAt: string | null;
   options: readonly PlanOption[];
 }) {
+  const [selectedCycle, setSelectedCycle] = useState<BillingCycle>(
+    currentBillingInterval === 'annual' ? 'annual' : 'monthly',
+  );
   const [state, setState] = useState<PlanChangeActionState>(null);
   const [confirming, setConfirming] = useState<PlanOption | null>(null);
   // Reset per confirmation, never sticky: a tick made for one plan must not
@@ -181,7 +220,7 @@ export default function ChangePlanPanel({
 
   return (
     <section className="panel workspace-section-card plan-change-panel" id="change-plan">
-      <div className="workspace-section-headrow">
+      <div className="workspace-section-headrow plan-change-top-header">
         <div className="section-heading workspace-section-heading compact-heading">
           <p className="eyebrow">Subscription tier</p>
           <div className="plan-change-title-row">
@@ -192,6 +231,33 @@ export default function ChangePlanPanel({
             </div>
             <h3>Change your plan</h3>
           </div>
+        </div>
+
+        <div className="plan-change-cycle-toggle-wrap" role="group" aria-label="Billing cycle selector">
+          <button
+            type="button"
+            className={`plan-change-cycle-btn ${selectedCycle === 'monthly' ? 'is-active' : ''}`}
+            aria-pressed={selectedCycle === 'monthly'}
+            onClick={() => {
+              setSelectedCycle('monthly');
+              setConfirming(null);
+              setConsentAccepted(false);
+            }}
+          >
+            Monthly
+          </button>
+          <button
+            type="button"
+            className={`plan-change-cycle-btn ${selectedCycle === 'annual' ? 'is-active' : ''}`}
+            aria-pressed={selectedCycle === 'annual'}
+            onClick={() => {
+              setSelectedCycle('annual');
+              setConfirming(null);
+              setConsentAccepted(false);
+            }}
+          >
+            Annual <span className="plan-change-cycle-save-badge">SAVE 20%</span>
+          </button>
         </div>
       </div>
 
@@ -208,28 +274,64 @@ export default function ChangePlanPanel({
       {error ? <p className="form-error" role="alert">{error}</p> : null}
 
       <div className="plan-change-grid" role="list">
-        {options.map((option) => {
-          const isConfirming = confirming?.planCode === option.planCode
-            && confirming?.billingInterval === option.billingInterval;
-          const isAnnual = option.billingInterval === 'annual';
-          const isImmediate = option.effect === 'immediate';
+        {TIERS.map((tierCode) => {
+          const plan = BILLING_PLANS[tierCode];
+          const targetInterval: 'none' | BillingCycle = tierCode === 'flex' ? 'none' : selectedCycle;
+          const isCurrent = currentPlanCode === tierCode
+            && (tierCode === 'flex' ? true : currentBillingInterval === selectedCycle);
+
+          // Find the transition option from server calculations
+          const option = isCurrent
+            ? null
+            : options.find(
+              (opt) => opt.planCode === tierCode && opt.billingInterval === targetInterval,
+            ) ?? null;
+
+          const isConfirming = Boolean(
+            option
+            && confirming?.planCode === option.planCode
+            && confirming?.billingInterval === option.billingInterval,
+          );
+          const isImmediate = option?.effect === 'immediate';
+          const isAnnual = selectedCycle === 'annual' && tierCode !== 'flex';
+
+          // Price labels
+          const monthlyEquiv = tierCode === 'flex'
+            ? 0
+            : selectedCycle === 'annual'
+              ? Math.round(plan.annualPriceCents / 12 / 100)
+              : Math.round(plan.monthlyPriceCents / 100);
+
+          const fullPriceSubtitle = tierCode === 'flex'
+            ? 'No monthly subscription'
+            : selectedCycle === 'annual'
+              ? `${formatUsdFromCents(plan.annualPriceCents)}/yr prepaid`
+              : 'Billed monthly';
 
           return (
             <div
-              key={`${option.planCode}_${option.billingInterval}`}
-              className={`plan-change-card ${isConfirming ? 'is-confirming' : ''} ${isImmediate ? 'is-immediate' : 'is-renewal'}`}
+              key={tierCode}
+              className={`plan-change-card ${isCurrent ? 'is-current' : ''} ${isConfirming ? 'is-confirming' : ''} ${isImmediate ? 'is-immediate' : 'is-renewal'} ${tierCode === 'growth' ? 'is-featured' : ''}`}
               role="listitem"
             >
+              {tierCode === 'growth' ? (
+                <div className="plan-change-featured-ribbon">Most Popular</div>
+              ) : null}
+
               <div className="plan-change-card-top">
                 <div className="plan-change-card-heading">
                   <div className="plan-change-name-row">
-                    <h4 className="plan-change-plan-name">{option.label}</h4>
+                    <h4 className="plan-change-plan-name">{plan.name}</h4>
                     {isAnnual ? (
                       <span className="plan-change-tag-annual">SAVE 20%</span>
                     ) : null}
                   </div>
                   <div className="plan-change-effect-pill-wrap">
-                    {isImmediate ? (
+                    {isCurrent ? (
+                      <span className="plan-change-effect-badge current">
+                        ✓ Current Plan
+                      </span>
+                    ) : isImmediate ? (
                       <span className="plan-change-effect-badge instant">
                         <span className="plan-change-pulse-dot" aria-hidden="true" /> Instant Upgrade
                       </span>
@@ -241,18 +343,36 @@ export default function ChangePlanPanel({
                   </div>
                 </div>
 
+                <p className="plan-change-tier-subtitle">{TIER_SUBTITLES[tierCode]}</p>
+
                 <div className="plan-change-price-box">
                   <div className="plan-change-price-main">
-                    <span className="plan-change-price-val">{option.priceLabel}</span>
+                    <span className="plan-change-price-currency">$</span>
+                    <span className="plan-change-price-val">{monthlyEquiv}</span>
+                    <span className="plan-change-price-interval">/mo</span>
                   </div>
+                  <span className="plan-change-price-sub">{fullPriceSubtitle}</span>
                 </div>
 
+                <ul className="plan-change-perks-list">
+                  {TIER_FEATURES[tierCode].map((perk) => (
+                    <li key={perk}>
+                      <svg className="plan-change-perk-check" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                      <span>{perk}</span>
+                    </li>
+                  ))}
+                </ul>
+
                 <p className="plan-change-timing-note">
-                  {isImmediate
-                    ? 'Takes effect now. You are charged the difference for the rest of this period.'
-                    : renewsOn
-                      ? `Takes effect ${renewsOn}, at your renewal. Nothing is charged today.`
-                      : 'Takes effect at your renewal. Nothing is charged today.'}
+                  {isCurrent
+                    ? 'Your current active tier and billing cycle.'
+                    : isImmediate
+                      ? 'Takes effect now. You are charged the difference for the rest of this period.'
+                      : renewsOn
+                        ? `Takes effect ${renewsOn}, at your renewal. Nothing is charged today.`
+                        : 'Takes effect at your renewal. Nothing is charged today.'}
                 </p>
               </div>
 
@@ -276,7 +396,15 @@ export default function ChangePlanPanel({
               ) : null}
 
               <div className="plan-change-action-row">
-                {isConfirming ? (
+                {isCurrent ? (
+                  <button
+                    className="btn subtle plan-change-current-btn"
+                    type="button"
+                    disabled
+                  >
+                    Active Plan
+                  </button>
+                ) : isConfirming && option ? (
                   <div className="button-row plan-change-button-row">
                     <button
                       className="btn primary plan-change-confirm-btn"
@@ -298,13 +426,21 @@ export default function ChangePlanPanel({
                       Not now
                     </button>
                   </div>
-                ) : (
+                ) : option ? (
                   <button
                     className={`btn ${isImmediate ? 'primary' : 'subtle'} plan-change-trigger-btn`}
                     type="button"
                     onClick={() => { setConfirming(option); setConsentAccepted(false); }}
                   >
                     {isImmediate ? 'Upgrade now \u2192' : 'Switch at renewal \u2192'}
+                  </button>
+                ) : (
+                  <button
+                    className="btn subtle plan-change-trigger-btn"
+                    type="button"
+                    disabled
+                  >
+                    Unavailable
                   </button>
                 )}
               </div>
