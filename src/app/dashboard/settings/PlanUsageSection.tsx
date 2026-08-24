@@ -37,6 +37,7 @@ import { planLadder, type PlanBand } from '@/lib/billing/plan-crossover';
 import TopUpPurchaseCheckout from './TopUpPurchaseCheckout';
 import PurchasedCapacityList from './PurchasedCapacityList';
 import SettingsHashLink from './SettingsHashLink';
+import ProcessingVolumeRoiCalculator from './ProcessingVolumeRoiCalculator';
 
 function formatDate(value: string): string {
   return new Date(value).toLocaleDateString('en-US', {
@@ -536,6 +537,7 @@ function CreditBalance({ resource }: { resource: CreditLotSplit }) {
     <article className="plan-usage-balance" data-tone={tone}>
       <div className="plan-usage-resource-header">
         <div className="plan-usage-resource-title">
+          <span className={`plan-usage-status-dot ${tone}`} aria-hidden="true" />
           <ResourceIcon label={resource.label} />
           <span>{resource.label}</span>
         </div>
@@ -566,7 +568,7 @@ function CreditBalance({ resource }: { resource: CreditLotSplit }) {
               two opposite meanings, on one screen. The aria-label said "used"
               throughout and was the half that was right. */}
           <div
-            className="plan-usage-storage-meter-fill"
+            className={`plan-usage-storage-meter-fill${resource.percentUsed !== null && resource.percentUsed >= 90 ? ' nearly' : ''}`}
             style={{ width: `${Math.max(resource.percentUsed ?? 0, 2)}%` }}
           />
         </div>
@@ -609,11 +611,19 @@ const CAPACITY_TONE: Readonly<Record<CapacityRow['verdict'], Tone>> = {
  */
 function CapacityMeter({ row }: { row: CapacityRow }) {
   const tone = CAPACITY_TONE[row.verdict];
+  const isCrew = row.key === 'crew_users';
   return (
     <li className="plan-usage-capacity" data-tone={tone}>
-      <div className="plan-usage-resource-title">
-        <ResourceIcon label={row.label} />
-        <span className="plan-usage-capacity-label">{row.label}</span>
+      <div className="plan-usage-resource-header">
+        <div className="plan-usage-resource-title">
+          <ResourceIcon label={row.label} />
+          <span className="plan-usage-capacity-label">{row.label}</span>
+        </div>
+        {isCrew ? (
+          <SettingsHashLink href="#buy-credits" className="plan-usage-refill-chip" aria-label="Add extra crew seat">
+            + Add Seat ($5/mo)
+          </SettingsHashLink>
+        ) : null}
       </div>
       <strong className="plan-usage-capacity-figure">{row.detail}</strong>
       {/* No bar when the count could not be read or no limit is known. An empty
@@ -941,6 +951,31 @@ export default function PlanUsageSection({
             </p>
           </details>
         ) : null}
+
+        <nav className="plan-jumpbar" aria-label="Plan page quick navigation">
+          <SettingsHashLink href="#current-plan" className="plan-jump-pill">
+            <SectionIcon name="plan" /> Plan
+          </SettingsHashLink>
+          <SettingsHashLink href="#usage-balances" className="plan-jump-pill">
+            <SectionIcon name="credits" /> Usage &amp; Limits
+          </SettingsHashLink>
+          <SettingsHashLink href="#workspace-storage" className="plan-jump-pill">
+            <SectionIcon name="storage" /> Storage
+          </SettingsHashLink>
+          <SettingsHashLink href="#included-limits" className="plan-jump-pill">
+            <SectionIcon name="capacity" /> Team
+          </SettingsHashLink>
+          {planChange ? (
+            <SettingsHashLink href="#change-plan" className="plan-jump-pill">
+              <span>⚡ Plan Options</span>
+            </SettingsHashLink>
+          ) : null}
+          {showTopUpPurchase ? (
+            <SettingsHashLink href="#buy-credits" className="plan-jump-pill highlight">
+              <span>🛒 Add-ons</span>
+            </SettingsHashLink>
+          ) : null}
+        </nav>
       </section>
 
       <section className="panel workspace-section-card" id="current-plan">
@@ -991,15 +1026,10 @@ export default function PlanUsageSection({
             </details>
 
             {data.plan.planCode !== 'flex' && data.plan.platformFeeBps < 125 ? (
-              <div className="plan-usage-roi-callout">
-                <svg viewBox="0 0 24 24" className="plan-usage-roi-ic" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
-                </svg>
-                <div className="plan-usage-roi-text">
-                  <strong>{data.plan.planName} saves you ${((125 - data.plan.platformFeeBps) / 10).toFixed(2)} per $1,000 processed</strong>
-                  <span>Your {platformFeeLabel(data.plan.platformFeeBps)} platform fee saves {((125 - data.plan.platformFeeBps) / 100).toFixed(2)}% in software fees on every collected invoice compared to Flex (1.25%).</span>
-                </div>
-              </div>
+              <ProcessingVolumeRoiCalculator
+                planName={data.plan.planName}
+                platformFeeBps={data.plan.platformFeeBps}
+              />
             ) : null}
 
             {data.plan.billingInterval === 'monthly' && data.plan.planCode !== 'flex' ? (
