@@ -48,4 +48,20 @@ describe('dashboard audit repairs', () => {
     expect(payroll).toContain("href: '/dashboard/crew?tab=hours'");
     expect(payroll).not.toContain("href: '/dashboard/crew?tab=pay'");
   });
+
+  it('uses US English labor copy in the jobs smoothie preview', () => {
+    const smoothie = read('src', 'app', 'dashboard', 'jobs', 'JobSmoothieView.tsx');
+    expect(smoothie).toContain("'No labor estimate on this job yet.'");
+    expect(smoothie).toContain('hrs of labor.');
+    expect(smoothie).not.toContain('labour');
+  });
+
+  it('keeps mobile tab strip on a single horizontal line and stacks action buttons', () => {
+    const focusCss = read('src', 'app', 'dashboard', 'focus.module.css');
+    const smoothieCss = read('src', 'app', 'dashboard', 'smoothie.module.css');
+
+    expect(focusCss).toContain('flex-wrap: nowrap;');
+    expect(focusCss).toContain('overflow-x: auto;');
+    expect(smoothieCss).toContain('.commsRow > * { flex: 1 1 100%;');
+  });
 });

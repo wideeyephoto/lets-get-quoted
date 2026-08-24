@@ -622,6 +622,7 @@
 
 @media (max-width: 560px) {
   .recordHeadLayout { flex-direction: column; gap: 0.6rem; }
+  .commsRow > * { flex: 1 1 100%; justify-content: center; }
 }
 
 /* --- Clients ---------------------------------------------------------------

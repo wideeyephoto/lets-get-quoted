@@ -480,7 +480,7 @@ export default function JobSmoothieView({
               {/* 4 — what you actually do with a job */}
               <div className={styles.comms}>
                 <p className={styles.commsNote}>
-                  {selected.estimatedHours ? `Estimated ${selected.estimatedHours} hrs of labour.` : 'No labour estimate on this job yet.'}
+                  {selected.estimatedHours ? `Estimated ${selected.estimatedHours} hrs of labor.` : 'No labor estimate on this job yet.'}
                 </p>
                 <div className={styles.commsRow}>
                   <Link className="action-btn action-btn--lead" href={`${base}/jobs/${selected.id}`}>
