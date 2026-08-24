@@ -98,16 +98,18 @@ export default function OwnerAlertsForm({
    */
   const consentIsCurrent = consent === 'opted_in' && !needsOwnerSmsConsent(consentVersion);
   const consentIsStale = consent === 'opted_in' && needsOwnerSmsConsent(consentVersion);
+  const isAlreadyOptedIn = consentIsCurrent && !phoneHasChanged;
 
   return (
     <form action={action} className="msg-setup-form" noValidate>
       <fieldset disabled={disabled}>
         <legend className="sr-only">Your Let&rsquo;s Get Quoted notifications</legend>
 
-        {/* Hidden inputs for OTP binding */}
+        {/* Hidden inputs for OTP binding & existing consent */}
         <input type="hidden" name="verificationCode" value={otpCode} />
         <input type="hidden" name="verificationToken" value={verificationData?.token ?? ''} />
         <input type="hidden" name="verificationExpiresAt" value={verificationData?.expiresAt ?? ''} />
+        {isAlreadyOptedIn ? <input type="hidden" name="alertsConsent" value="on" /> : null}
 
         <div className="field full msg-setup-phone-field">
           <div className="msg-setup-phone-header">
@@ -218,52 +220,39 @@ export default function OwnerAlertsForm({
         </div>
 
         {/**
-         * THE CHECKBOX STARTS EMPTY. ALWAYS. NO EXCEPTION FOR "already agreed".
-         *
-         * It used to be pre-ticked for anyone with an existing opted-in row, on
-         * the reasonable-sounding grounds that the box reflects stored state.
-         * It does not: it is the act of agreeing, and a pre-ticked box is the
-         * canonical example of what does not count as consent — to the FCC, to
-         * the carriers reviewing this campaign, and in the screenshot that goes
-         * with the submission. Reflecting the stored state is what the sentence
-         * underneath is for.
-         *
-         * It also means every save is a fresh affirmative act against the
-         * wording currently on screen, which is what makes the version stamp in
-         * the ledger mean anything. Somebody who agreed to the old sentence has
-         * to read this one and tick it again.
-         *
-         * Both strings come from lib/owner-sms-disclosure rather than being
-         * typed here, so what a carrier sees in the screenshot, what the ledger
-         * records a version for, and what the tests assert are one string.
+         * The compliance card is presented whenever consent needs to be captured
+         * (new setup, changed number, or stale disclosure version). If consent is already
+         * current on this number, the card is hidden and the recorded status banner is shown.
          */}
-        <div className="msg-setup-compliance-card">
-          <div className="msg-setup-compliance-head">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-            </svg>
-            <span>Carrier 10DLC Messaging Consent</span>
+        {!isAlreadyOptedIn ? (
+          <div className="msg-setup-compliance-card">
+            <div className="msg-setup-compliance-head">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+              </svg>
+              <span>Carrier 10DLC Messaging Consent</span>
+            </div>
+            <label className="checkbox-row msg-setup-consent" htmlFor="alertsConsent">
+              <input
+                id="alertsConsent"
+                name="alertsConsent"
+                type="checkbox"
+                defaultChecked={false}
+                aria-describedby="alertsConsent-terms"
+                aria-invalid={errorFor('consent') ? true : undefined}
+              />
+              <span>{OWNER_SMS_CONSENT_LABEL}</span>
+            </label>
+            <p className="msg-setup-terms" id="alertsConsent-terms">
+              {OWNER_SMS_DISCLOSURE_LEAD}
+              <Link href={OWNER_SMS_TERMS_HREF}>{OWNER_SMS_TERMS_LABEL}</Link>
+              {OWNER_SMS_DISCLOSURE_JOIN}
+              <Link href={OWNER_SMS_PRIVACY_HREF}>{OWNER_SMS_PRIVACY_LABEL}</Link>
+              {OWNER_SMS_DISCLOSURE_TAIL}
+            </p>
+            {errorFor('consent') ? <p className="field-error" role="alert">{errorFor('consent')}</p> : null}
           </div>
-          <label className="checkbox-row msg-setup-consent" htmlFor="alertsConsent">
-            <input
-              id="alertsConsent"
-              name="alertsConsent"
-              type="checkbox"
-              defaultChecked={false}
-              aria-describedby="alertsConsent-terms"
-              aria-invalid={errorFor('consent') ? true : undefined}
-            />
-            <span>{OWNER_SMS_CONSENT_LABEL}</span>
-          </label>
-          <p className="msg-setup-terms" id="alertsConsent-terms">
-            {OWNER_SMS_DISCLOSURE_LEAD}
-            <Link href={OWNER_SMS_TERMS_HREF}>{OWNER_SMS_TERMS_LABEL}</Link>
-            {OWNER_SMS_DISCLOSURE_JOIN}
-            <Link href={OWNER_SMS_PRIVACY_HREF}>{OWNER_SMS_PRIVACY_LABEL}</Link>
-            {OWNER_SMS_DISCLOSURE_TAIL}
-          </p>
-          {errorFor('consent') ? <p className="field-error" role="alert">{errorFor('consent')}</p> : null}
-        </div>
+        ) : null}
 
         {/* WHERE THEY STAND TODAY, said plainly. "Stopped" is the one worth
             printing: it is why their phone is quiet, and nothing else on the
@@ -286,7 +275,7 @@ export default function OwnerAlertsForm({
               these texts coming.
             </p>
           </div>
-        ) : consentIsCurrent && consentedAt ? (
+        ) : isAlreadyOptedIn && consentedAt ? (
           <div className="msg-setup-banner is-recorded">
             <span className="msg-setup-banner-icon" aria-hidden="true">✓</span>
             <p className="msg-setup-note">
@@ -294,6 +283,7 @@ export default function OwnerAlertsForm({
             </p>
           </div>
         ) : null}
+
 
         {errorFor('form') ? <p className="field-error" role="alert">{errorFor('form')}</p> : null}
         {state.status === 'saved' ? <p className="msg-setup-note is-ready" role="status">{state.message}</p> : null}

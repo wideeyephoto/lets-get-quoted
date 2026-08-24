@@ -93,6 +93,15 @@ describe('dashboard audit repairs', () => {
     expect(css).toContain('.msg-setup-card');
     expect(css).toContain('.msg-setup-compliance-card');
   });
+
+  it('hides the Carrier 10DLC Messaging Consent section when the owner is already opted in', () => {
+    const form = read('src', 'app', 'dashboard', 'messages', 'OwnerAlertsForm.tsx');
+    expect(form).toContain('const isAlreadyOptedIn = consentIsCurrent && !phoneHasChanged;');
+    expect(form).toContain('!isAlreadyOptedIn ? (');
+    expect(form).toContain('msg-setup-compliance-card');
+    expect(form).toContain('isAlreadyOptedIn ? <input type="hidden" name="alertsConsent" value="on" /> : null');
+  });
 });
+
 
 
