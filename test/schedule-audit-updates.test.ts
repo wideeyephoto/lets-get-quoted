@@ -66,6 +66,6 @@ describe('schedule dashboard audit enhancements', () => {
   it('keeps unscheduled queue cards in clean 2-column grid with actions stacked under details', () => {
     const css = read('src', 'app', 'globals.css');
     expect(css).toContain('.sched-row {\n  display: grid;\n  grid-template-columns: auto minmax(0, 1fr);');
-    expect(css).toContain('.sched-row-actions {\n  grid-column: 2;');
+    expect(css).toContain('.sched-row-go,\n.sched-row-actions {\n  grid-column: 1 / -1;');
   });
 });

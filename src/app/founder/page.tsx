@@ -11,7 +11,7 @@ import {
   MarketingCta,
   PriceZeroDial,
 } from '@/components/marketing';
-import { FLEX_PRICE, PUBLIC_PRICING_SUMMARY, STRIPE_PROCESSING_NOTE } from '@/lib/pricing';
+import { PUBLIC_PRICING_SUMMARY, STRIPE_PROCESSING_NOTE } from '@/lib/pricing';
 import styles from './founder.module.css';
 
 export const metadata: Metadata = {
@@ -111,7 +111,7 @@ const FLOW: { step: string; body: string }[] = [
   },
   {
     step: 'Payment',
-    body: 'You invoice from the same record. They pay by card, and the job closes where it started.',
+    body: 'You invoice from the same record. They pay by card or ACH bank transfer, and the job closes where it started.',
   },
 ];
 
@@ -143,7 +143,7 @@ const PRINCIPLES: { title: string; body: string }[] = [
   },
   {
     title: 'Small contractors should not receive a stripped-down product.',
-    body: 'The one-truck business gets the same quoting, scheduling, payments, client portal and follow-up as the operator running four crews. I am not building a smaller version of the product for the people who can least afford the gaps in it.',
+    body: 'The one-truck business gets the same quoting, scheduling, payments, client portal and website builder as a multi-crew operation. I am not building a smaller version of the product for the people who can least afford the gaps in it.',
   },
 ];
 
@@ -181,7 +181,18 @@ export default function FounderPage() {
             the same PublicHeaderLayout the homepage and /features mount. */}
         <section className={styles.portraitHero} aria-labelledby="founder-title">
           <div className={styles.portraitCopy}>
-            <p className="eyebrow">A note from Brett, founder</p>
+            <div className={styles.eyebrowRow}>
+              <div className={styles.founderMiniAvatar} aria-hidden="true">
+                <Image
+                  src="/founder/brett-workshop.jpg"
+                  alt=""
+                  width={44}
+                  height={44}
+                  className={styles.avatarImg}
+                />
+              </div>
+              <p className="eyebrow">A note from Brett, founder</p>
+            </div>
             <h1 id="founder-title" className={styles.title}>
               I built Let’s Get Quoted so a one-truck business can look—and run—like{' '}
               <em>a much bigger company.</em>
@@ -340,8 +351,7 @@ export default function FounderPage() {
                 more included capacity and lower the LGQ platform fee as the business grows.
               </p>
               <p className={styles.zeroNote}>
-                Flex applies a {FLEX_PRICE.platformFee} LGQ platform fee to eligible customer
-                payments. {PUBLIC_PRICING_SUMMARY} Card processing ({STRIPE_PROCESSING_NOTE}) is
+                {PUBLIC_PRICING_SUMMARY} Card processing ({STRIPE_PROCESSING_NOTE}) is
                 separate and goes to Stripe.
               </p>
               <Link href="/pricing" className={styles.pricingLink}>

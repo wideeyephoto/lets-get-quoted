@@ -21011,22 +21011,24 @@ button.plan-badge.warn.is-action:focus-visible { outline: 2px solid rgba(255, 12
   .sched-queue-col .sched-rows > * { flex: 0 0 auto; }
 }
 
-/* ---- one job per row, and one action on it -------------------------------
-   The card was a name that linked AWAY to the job page, a detail line, a crew
-   picker, two <details> popovers and their forms — about 480px each once
-   opened. Six facts, one target, one primary. */
-.sched-rows { display: flex; flex-direction: column; gap: 0.4rem; margin: 0; padding: 0; list-style: none; }
+.sched-rows { display: flex; flex-direction: column; gap: 0.5rem; margin: 0; padding: 0; list-style: none; }
 
 .sched-row {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   align-items: start;
-  gap: 0.45rem 0.55rem;
-  padding: 0.6rem 0.65rem;
+  gap: 0.6rem 0.65rem;
+  padding: 0.75rem 0.8rem;
   border: 1px solid var(--edge-t10);
   border-left: 3px solid var(--cap-open);
-  border-radius: 11px;
+  border-radius: 12px;
   background: rgba(var(--tint), 0.03);
+}
+
+.sched-row .schedule-drag-handle {
+  grid-column: 1;
+  grid-row: 1;
+  margin-top: 0.1rem;
 }
 /* Approval state is a word on the row as well — see .sched-row-flag. The edge
    is the same hue the calendar gives an unapproved chip, so a row and its
@@ -21036,8 +21038,10 @@ button.plan-badge.warn.is-action:focus-visible { outline: 2px solid rgba(255, 12
 
 /* The whole row is the control. */
 .sched-row-open {
+  grid-column: 2;
+  grid-row: 1;
   display: grid;
-  gap: 0.18rem;
+  gap: 0.25rem;
   min-width: 0;
   min-height: 44px;
   padding: 0.1rem 0;
@@ -21082,20 +21086,31 @@ button.plan-badge.warn.is-action:focus-visible { outline: 2px solid rgba(255, 12
 .sched-row-missing { color: var(--mute-i62); font-style: italic; }
 .sched-row-state { color: var(--gold-ink); font-size: 0.7rem; font-weight: 700; }
 
-.sched-row-go {
-  min-height: 40px;
-  padding: 0 0.75rem;
-  font-size: 0.82rem;
-  white-space: nowrap;
-  grid-column: 2;
-  justify-self: stretch;
-  width: 100%;
-  margin-top: 0.25rem;
-  display: inline-flex;
+.sched-row-go,
+.sched-row-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
   align-items: center;
+  width: 100%;
+  margin-top: 0.2rem;
+}
+
+.sched-row-actions > * {
+  flex: 1 1 calc(50% - 0.25rem);
+  min-width: 0;
   justify-content: center;
   text-align: center;
 }
+
+.sched-row > .sched-row-go {
+  width: 100%;
+  justify-content: center;
+  text-align: center;
+}
+
+.sched-row-go { min-height: 44px; padding: 0 0.75rem; font-size: 0.82rem; white-space: nowrap; }
 
 /* Came in today. Gold rather than grey: the queue is ordered by readiness
    rather than by age, so this is the only thing saying a row is new. */
@@ -21130,32 +21145,11 @@ button.plan-badge.warn.is-action:focus-visible { outline: 2px solid rgba(255, 12
   white-space: nowrap;
 }
 
-/* An unapproved row gets two actions rather than one. Column on a narrow rail
-   so neither is squeezed to an ellipsis; they are 44px each either way. */
-.sched-row-actions {
-  grid-column: 2;
-  justify-self: stretch;
-  width: 100%;
-  margin-top: 0.25rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  align-items: stretch;
-}
-.sched-row-actions .sched-row-go {
-  margin-top: 0;
-  width: 100%;
-}
 .sched-row-tentative {
-  min-height: 38px;
+  min-height: 44px;
   padding: 0 0.6rem;
   font-size: 0.76rem;
   white-space: nowrap;
-  width: 100%;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
 }
 
 /* The outstanding list under the confirmation. Quiet, because none of it blocks
@@ -22546,6 +22540,8 @@ button.plan-badge.warn.is-action:focus-visible { outline: 2px solid rgba(255, 12
 
 .bset-head-cta { display: inline-flex; align-items: center; gap: 0.45rem; white-space: nowrap; }
 .bset-head-cta svg { width: 0.9rem; height: 0.9rem; }
+.bset-head-actions { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.bset-head-cta.copied { border-color: var(--ink-green-7, #34c77b); color: var(--ink-green-2, #34c77b); background: rgba(52, 199, 123, 0.12); }
 
 /* --- master switch --- */
 .bset-master {
@@ -23015,8 +23011,40 @@ button.plan-badge.warn.is-action:focus-visible { outline: 2px solid rgba(255, 12
 .bset-workhours small { font-size: 0.7rem; color: var(--muted, var(--muted-2)); text-transform: uppercase; letter-spacing: 0.05em; }
 .bset-workhours strong { font-size: 0.88rem; font-weight: 700; }
 .bset-workhours em { font-size: 0.76rem; font-style: normal; color: var(--muted, var(--muted-2)); }
+.bset-workhours-actions { display: flex; align-items: center; gap: 0.65rem; flex-wrap: wrap; }
+.bset-workhours-quickedit {
+  padding: 0.25rem 0.6rem;
+  border: 1px solid var(--bset-line);
+  border-radius: 8px;
+  background: var(--bset-card);
+  color: var(--text, #e8eef6);
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 650;
+  cursor: pointer;
+  transition: border-color 0.16s ease, background 0.16s ease;
+}
+.bset-workhours-quickedit:hover { border-color: var(--bset-accent-ink); color: var(--bset-accent-ink); }
 .bset-workhours a { flex: none; color: var(--bset-accent-ink); font-size: 0.8rem; font-weight: 700; text-decoration: none; }
 .bset-workhours a:hover { text-decoration: underline; }
+
+.bset-workhours-form {
+  margin-top: 0.75rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--bset-line-strong);
+  border-radius: 12px;
+  background: var(--bset-inner);
+  display: grid;
+  gap: 0.75rem;
+}
+.bset-workhours-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: 0.75rem;
+}
+.bset-workhours-fields label { display: grid; gap: 0.25rem; }
+.bset-workhours-fields span { font-size: 0.74rem; font-weight: 650; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted, var(--muted-2)); }
+.bset-workhours-form-actions { display: flex; align-items: center; gap: 0.5rem; }
 
 /* --- arrival windows --- */
 .bset-windows {
@@ -23458,6 +23486,304 @@ button.plan-badge.warn.is-action:focus-visible { outline: 2px solid rgba(255, 12
 
 .bset-empty { margin: 1rem 0 0; font-size: 0.86rem; color: var(--muted, var(--muted-2)); }
 .bset-error { margin: 0.75rem 0 0; font-size: 0.84rem; color: var(--bad); }
+
+.bset-timeoff-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.bset-timeoff-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.bset-view-toggle {
+  display: inline-flex;
+  padding: 0.18rem;
+  border: 1px solid var(--bset-line);
+  border-radius: 10px;
+  background: var(--bset-inner);
+}
+
+.bset-view-btn {
+  padding: 0.35rem 0.7rem;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--muted, var(--muted-2));
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 650;
+  cursor: pointer;
+  transition: background 0.16s ease, color 0.16s ease;
+}
+
+.bset-view-btn.on {
+  background: var(--bset-card);
+  color: var(--text, #e8eef6);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+.bset-cal {
+  margin-top: 0.9rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--bset-line);
+  border-radius: 14px;
+  background: var(--bset-inner);
+  display: grid;
+  gap: 0.75rem;
+}
+
+.bset-cal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.bset-cal-title {
+  font-size: 0.96rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.bset-cal-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.bset-cal-navbtn {
+  width: 1.8rem;
+  height: 1.8rem;
+  border: 1px solid var(--bset-line);
+  border-radius: 8px;
+  background: var(--bset-card);
+  color: var(--text, #e8eef6);
+  font-size: 1rem;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.bset-cal-navbtn:hover {
+  border-color: var(--bset-line-strong);
+}
+
+.bset-cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.35rem;
+}
+
+.bset-cal-dow {
+  font-size: 0.65rem;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  color: var(--muted, var(--muted-2));
+  text-align: center;
+  padding: 0.2rem 0;
+}
+
+.bset-cal-cell {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.6rem;
+  padding: 0.35rem 0.2rem;
+  border: 1px solid var(--bset-line);
+  border-radius: 10px;
+  background: var(--bset-card);
+  color: var(--text, #e8eef6);
+  font: inherit;
+  font-size: 0.84rem;
+  font-weight: 650;
+  cursor: pointer;
+  transition: border-color 0.16s ease, background 0.16s ease, transform 0.16s ease;
+}
+
+.bset-cal-cell.empty {
+  border: 0;
+  background: transparent;
+  cursor: default;
+}
+
+.bset-cal-cell:hover:not(.empty):not(:disabled) {
+  border-color: var(--bset-line-strong);
+  transform: translateY(-1px);
+}
+
+.bset-cal-cell.is-today {
+  border-color: var(--bset-accent-ink);
+}
+
+.bset-cal-cell.is-blocked {
+  border-color: var(--cedge-amber-11);
+  background: rgba(255, 176, 32, 0.12);
+  color: var(--ink-amber-1);
+}
+
+.bset-cal-cell.is-past {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.bset-cal-pill {
+  font-size: 0.58rem;
+  font-weight: 750;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  line-height: 1;
+  margin-top: 0.15rem;
+  color: var(--ink-amber-1);
+}
+
+.bset-cal-legend {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  margin-top: 0.25rem;
+  font-size: 0.76rem;
+  color: var(--muted, var(--muted-2));
+}
+
+.bset-cal-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.bset-cal-dot {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+}
+
+.bset-cal-dot.open {
+  background: var(--bset-line-strong);
+}
+
+.bset-cal-dot.blocked {
+  background: var(--ink-amber-1);
+}
+
+/* Modal styles for QR / Share */
+.bset-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  background: rgba(0, 0, 0, 0.75);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+
+.bset-modal-card {
+  width: 100%;
+  max-width: 28rem;
+  padding: 1.5rem;
+  border: 1px solid var(--bset-line-strong);
+  border-radius: 20px;
+  background: var(--bset-card, #0a1421);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.7);
+  display: grid;
+  gap: 1.25rem;
+}
+
+.bset-modal-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.bset-modal-head h3 {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.bset-modal-head p {
+  margin: 0.3rem 0 0;
+  font-size: 0.84rem;
+  color: var(--muted, var(--muted-2));
+  line-height: 1.4;
+}
+
+.bset-modal-close {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid var(--bset-line);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted, var(--muted-2));
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+.bset-modal-close:hover {
+  border-color: var(--bset-line-strong);
+  color: var(--text, #e8eef6);
+}
+
+.bset-qr-display {
+  display: grid;
+  justify-items: center;
+  gap: 0.6rem;
+  padding: 1.25rem;
+  border: 1px solid var(--bset-line);
+  border-radius: 16px;
+  background: #ffffff;
+  color: #10131a;
+}
+
+.bset-qr-frame {
+  display: grid;
+  place-items: center;
+}
+
+.bset-qr-hint {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 650;
+  color: #556579;
+}
+
+.bset-qr-input-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.bset-qr-url {
+  flex: 1;
+  min-width: 0;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--bset-line);
+  border-radius: 10px;
+  background: var(--bset-inner);
+  color: var(--text, #e8eef6);
+  font: inherit;
+  font-size: 0.82rem;
+}
+
+.bset-modal-foot {
+  display: flex;
+  justify-content: flex-end;
+}
 
 /* --- right rail --- */
 .bset-rail { display: grid; gap: 1rem; min-width: 0; position: sticky; top: 1rem; }
