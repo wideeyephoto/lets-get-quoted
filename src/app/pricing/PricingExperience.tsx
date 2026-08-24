@@ -247,7 +247,6 @@ export default function PricingExperience() {
   const [stickyDismissed, setStickyDismissed] = useState(false);
   const [showSeasonalRhythm, setShowSeasonalRhythm] = useState(false);
   const [showMobileScenarios, setShowMobileScenarios] = useState(false);
-  const [faqSearch, setFaqSearch] = useState('');
   const [comparisonCategory, setComparisonCategory] = useState<ComparisonCategory>('all');
   const [fitMode, setFitMode] = useState<'stage' | 'trade'>('trade');
 
@@ -261,14 +260,6 @@ export default function PricingExperience() {
     annualCost: annualPlanEstimate(plan, billing, volume, VOICE_PURCHASABLE, officeUsers, false),
   })).filter((result): result is typeof result & { annualCost: number } => result.annualCost !== null)
     .sort((a, b) => a.annualCost - b.annualCost)[0], [billing, officeUsers, volume]);
-
-  const filteredFaqs = useMemo(() => {
-    const term = faqSearch.trim().toLowerCase();
-    if (!term) return PRICING_FAQS;
-    return PRICING_FAQS.filter((faq) =>
-      faq.q.toLowerCase().includes(term) || faq.a.toLowerCase().includes(term)
-    );
-  }, [faqSearch]);
 
   const scaleCrossover = planCrossover(getPlan('growth'), getPlan('scale'), billing, VOICE_PURCHASABLE);
   const markCalculatorUsed = () => { setHasUsedCalculator(true); setStickyDismissed(false); };
@@ -938,45 +929,20 @@ export default function PricingExperience() {
             Ask a real person
           </Link>
         </div>
-        <div className={styles.faqSearchWrapper}>
-          <input
-            id="pricing-faq-search"
-            type="search"
-            placeholder="Search FAQs (e.g. QuickBooks, Stripe, overage, top-ups, guarantee)..."
-            value={faqSearch}
-            onChange={(e) => setFaqSearch(e.target.value)}
-            className={styles.faqSearchInput}
-            aria-label="Filter frequently asked questions"
-          />
-          {faqSearch ? (
-            <span className={styles.faqSearchCount}>
-              {filteredFaqs.length} {filteredFaqs.length === 1 ? 'question' : 'questions'} found
-            </span>
-          ) : null}
-        </div>
 
-        {filteredFaqs.length > 0 ? (
-          <div id="pricing-faqs" className={`${styles.faqGrid}${showAllFaqs || faqSearch ? ` ${styles.faqGridExpanded}` : ''}`}>
-            {filteredFaqs.map((item) => (
-              <details key={item.q} className={styles.faqItem} open={faqSearch.length > 0 ? true : undefined}>
+        <div className={styles.faqContent}>
+          <div id="pricing-faqs" className={`${styles.faqGrid}${showAllFaqs ? ` ${styles.faqGridExpanded}` : ''}`}>
+            {(showAllFaqs ? PRICING_FAQS : PRICING_FAQS.slice(0, 6)).map((item) => (
+              <details key={item.q} className={styles.faqItem}>
                 <summary>
-                  {item.q}
-                  <span aria-hidden="true">+</span>
+                  <span>{item.q}</span>
+                  <span className={styles.faqToggleIcon} aria-hidden="true">+</span>
                 </summary>
                 <p>{item.a}</p>
               </details>
             ))}
           </div>
-        ) : (
-          <div className={styles.faqEmptySearch}>
-            <p>No questions found matching &ldquo;{faqSearch}&rdquo;.</p>
-            <Link className={styles.secondaryButton} href="/contact">
-              Ask our team directly →
-            </Link>
-          </div>
-        )}
 
-        {!faqSearch && (
           <button
             type="button"
             className={styles.faqMoreButton}
@@ -984,9 +950,9 @@ export default function PricingExperience() {
             aria-controls="pricing-faqs"
             onClick={() => setShowAllFaqs((shown) => !shown)}
           >
-            {showAllFaqs ? 'Show fewer questions' : `Show ${Math.max(0, PRICING_FAQS.length - 6)} more questions`}
+            {showAllFaqs ? 'Show fewer questions' : `Show all ${PRICING_FAQS.length} questions`}
           </button>
-        )}
+        </div>
       </section>
 
       <section className={styles.finalCta}>
