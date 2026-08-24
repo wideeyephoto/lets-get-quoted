@@ -4422,8 +4422,8 @@ h3 {
 .plan-usage-capacity-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.7rem;
-  margin: 1rem 0 0;
+  gap: 0.85rem;
+  margin: 1.15rem 0 0;
   padding: 0;
   list-style: none;
 }
@@ -4433,11 +4433,18 @@ h3 {
 .plan-usage-capacity {
   min-width: 0;
   display: grid;
-  gap: 0.3rem;
-  padding: 0.85rem;
+  gap: 0.45rem;
+  padding: 1.1rem;
   border: 1px solid var(--tone-edge);
-  border-radius: 0.72rem;
-  background-color: var(--tone-tint);
+  border-radius: 1rem;
+  background: linear-gradient(180deg, var(--tone-tint) 0%, rgba(var(--tint), 0.015) 100%);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.plan-usage-capacity:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 /* THE FILL AGREES WITH THE WORD, wherever a tone is in scope.
    Without this the fill has three states (green / warn / red) while the status
@@ -4448,27 +4455,43 @@ h3 {
 .plan-usage-capacity .plan-usage-storage-meter-fill,
 .plan-usage-balance[data-tone] .plan-usage-storage-meter-fill { background: var(--tone-ink); }
 
-.plan-usage-capacity-label { color: var(--mute-g270); font-size: 0.78rem; font-weight: 700; }
-.plan-usage-capacity-figure { color: var(--text); font-size: 1.02rem; font-variant-numeric: tabular-nums; }
-.plan-usage-capacity .plan-usage-storage-meter { margin-top: 0.1rem; }
-.plan-usage-capacity .tone-status { margin: 0.1rem 0 0; }
+.plan-usage-capacity-label {
+  color: var(--mute-g270);
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.plan-usage-capacity-figure {
+  color: var(--text);
+  font-size: 1.18rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+.plan-usage-capacity .plan-usage-storage-meter { margin-top: 0.25rem; }
+.plan-usage-capacity .tone-status { margin: 0.2rem 0 0; }
 
-.plan-usage-limit-details { margin-top: 1rem; }
+.plan-usage-limit-details { margin-top: 1.15rem; }
 .plan-usage-limit-details > summary {
   cursor: pointer;
   color: var(--mute-g270);
-  font-size: 0.82rem;
+  font-size: 0.84rem;
   font-weight: 700;
+  transition: color 0.15s ease;
 }
-.plan-usage-limit-details[open] > summary { margin-bottom: 0.2rem; }
+.plan-usage-limit-details > summary:hover {
+  color: var(--text);
+}
+.plan-usage-limit-details[open] > summary { margin-bottom: 0.35rem; }
 
 /* Not scoped to #overage, unlike .usage-fineprint, because the storage card and
    the accrual card both need it and an id-scoped rule reaches neither. */
 .plan-usage-fineprint {
-  margin: 0.5rem 0 0;
+  margin: 0.6rem 0 0;
   color: var(--mute-t50);
-  font-size: 0.8rem;
-  line-height: 1.5;
+  font-size: 0.82rem;
+  line-height: 1.55;
 }
 
 .plan-usage-note { --tone-ink: var(--info); }
@@ -4495,16 +4518,16 @@ h3 {
      sitting under it -- caught only by looking at the rendered page. The
      heading keeps whatever display it had; only the glyph is styled. */
   display: inline-block;
-  width: 1.05em;
-  height: 1.05em;
-  margin-right: 0.5rem;
-  vertical-align: -0.16em;
+  width: 1.15em;
+  height: 1.15em;
+  margin-right: 0.55rem;
+  vertical-align: -0.18em;
   fill: none;
   stroke: var(--accent);
-  stroke-width: 1.5;
+  stroke-width: 1.75;
   stroke-linecap: round;
   stroke-linejoin: round;
-  opacity: 0.85;
+  opacity: 0.92;
 }
 
 /* AT A GLANCE, as one bar rather than separate cards.
@@ -4516,51 +4539,58 @@ h3 {
 .plan-glancebar {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  margin: 1rem 0 0;
+  margin: 1.15rem 0 0;
   border: 1px solid var(--rule-t12);
-  border-radius: 0.9rem;
-  background: rgba(var(--tint), 0.025);
+  border-radius: 1.1rem;
+  background: linear-gradient(180deg, rgba(var(--tint), 0.04) 0%, rgba(var(--tint), 0.015) 100%);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.08);
   overflow: hidden;
 }
 .plan-glancebar-cell {
   display: flex;
   align-items: flex-start;
-  gap: 0.6rem;
+  gap: 0.75rem;
   min-width: 0;
-  padding: 0.85rem 0.95rem;
+  padding: 1rem 1.25rem;
   border-left: 1px solid var(--rule-t12);
+  transition: background 0.2s ease;
+}
+.plan-glancebar-cell:hover {
+  background: rgba(var(--tint), 0.035);
 }
 .plan-glancebar-cell:first-child { border-left: 0; }
 .plan-glancebar-ic {
-  width: 1.05rem;
-  height: 1.05rem;
+  width: 1.15rem;
+  height: 1.15rem;
   flex: none;
-  margin-top: 0.15rem;
+  margin-top: 0.18rem;
   fill: none;
-  stroke: var(--mute-i56);
-  stroke-width: 1.6;
+  stroke: var(--accent);
+  stroke-width: 1.75;
   stroke-linecap: round;
   stroke-linejoin: round;
+  opacity: 0.88;
 }
 .plan-glancebar-text { min-width: 0; }
 .plan-glancebar-label {
   display: block;
   color: var(--mute-i56);
-  font-size: 0.6rem;
+  font-size: 0.64rem;
   font-weight: 900;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.09em;
   text-transform: uppercase;
 }
 .plan-glancebar-value {
   display: block;
-  margin-top: 0.18rem;
+  margin-top: 0.22rem;
   color: var(--text);
   font-family: var(--font-display);
-  font-size: clamp(0.98rem, 1.5vw, 1.2rem);
+  font-size: clamp(1.02rem, 1.6vw, 1.28rem);
   font-weight: 800;
-  line-height: 1.15;
+  line-height: 1.2;
 }
-.plan-glancebar .tone-status { margin: 0.3rem 0 0; font-size: 0.72rem; }
+.plan-glancebar .tone-status { margin: 0.35rem 0 0; font-size: 0.75rem; }
 @media (max-width: 900px) {
   .plan-glancebar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .plan-glancebar-cell:nth-child(odd) { border-left: 0; }
@@ -4578,58 +4608,64 @@ h3 {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem 1.4rem;
+  gap: 1.1rem 1.5rem;
   flex-wrap: wrap;
-  margin: 0 0 1rem;
-  padding: 1rem 1.15rem;
+  margin: 0 0 1.25rem;
+  padding: 1.15rem 1.35rem;
   border: 1px solid var(--cedge-orange-24);
-  border-radius: 1rem;
-  background: rgba(255, 138, 61, 0.07);
+  border-radius: 1.15rem;
+  background: linear-gradient(135deg, rgba(255, 138, 61, 0.11) 0%, rgba(255, 184, 77, 0.035) 100%);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 8px 28px -4px rgba(255, 138, 61, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 .plan-fit-banner-body { min-width: min(100%, 22rem); flex: 1 1 22rem; }
 .plan-fit-banner-head {
   display: flex;
   align-items: flex-start;
-  gap: 0.6rem;
+  gap: 0.65rem;
   margin: 0;
   color: var(--text);
   font-family: var(--font-display);
-  font-size: clamp(1.05rem, 1.8vw, 1.35rem);
+  font-size: clamp(1.08rem, 1.8vw, 1.38rem);
   font-weight: 800;
-  line-height: 1.25;
+  line-height: 1.28;
 }
 .plan-fit-banner-ic {
-  width: 1.25rem;
-  height: 1.25rem;
+  width: 1.35rem;
+  height: 1.35rem;
   flex: none;
   margin-top: 0.15rem;
   fill: none;
   stroke: var(--accent);
-  stroke-width: 1.6;
+  stroke-width: 1.75;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
-.plan-fit-banner-working { margin-top: 0.5rem; }
+.plan-fit-banner-working { margin-top: 0.55rem; }
 .plan-fit-banner-working > summary {
   color: var(--mute-t50);
-  font-size: 0.82rem;
+  font-size: 0.84rem;
   cursor: pointer;
+  transition: color 0.15s ease;
+}
+.plan-fit-banner-working > summary:hover {
+  color: var(--text);
 }
 .plan-fit-banner-working > p {
-  margin: 0.5rem 0 0;
+  margin: 0.55rem 0 0;
   color: var(--mute-t50);
-  font-size: 0.82rem;
-  line-height: 1.55;
+  font-size: 0.84rem;
+  line-height: 1.58;
 }
-.plan-fit-banner-actions { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+.plan-fit-banner-actions { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
 
 /* PLAN FIT: which plan is cheapest at which volume. A ladder, so the current
    plan has to be findable at a glance without colour carrying the meaning --
    the row says "your plan" in words as well. */
 .plan-usage-ladder {
   display: grid;
-  gap: 0.4rem;
-  margin: 1rem 0 0;
+  gap: 0.5rem;
+  margin: 1.15rem 0 0;
   padding: 0;
   list-style: none;
 }
@@ -4637,45 +4673,49 @@ h3 {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 0.8rem;
+  gap: 0.85rem;
   flex-wrap: wrap;
-  padding: 0.6rem 0.75rem;
+  padding: 0.75rem 0.95rem;
   border: 1px solid var(--rule-t12);
-  border-radius: 0.6rem;
+  border-radius: 0.75rem;
+  background: rgba(var(--tint), 0.02);
+  transition: background 0.15s ease, border-color 0.15s ease;
 }
 .plan-usage-ladder li[data-current] {
   border-color: var(--cedge-orange-24);
-  background: rgba(255, 138, 61, 0.06);
+  background: rgba(255, 138, 61, 0.08);
+  box-shadow: 0 0 16px -2px rgba(255, 138, 61, 0.15);
 }
 .plan-usage-ladder-plan { color: var(--text); font-weight: 800; }
 .plan-usage-ladder-plan em { color: var(--mute-t50); font-style: normal; font-weight: 700; }
-.plan-usage-ladder-band { color: var(--mute-t50); font-size: 0.85rem; }
+.plan-usage-ladder-band { color: var(--mute-t50); font-size: 0.88rem; }
 
 /* EXTRA USAGE, the one control on this page that raises what somebody can be
    charged. The consent block and the action row reuse .base-plan-checkout-*,
    which already solve exactly this layout; only the money field is new. */
 .plan-usage-overage-control {
   display: grid;
-  gap: 0.9rem;
-  margin: 1rem 0 0;
+  gap: 1rem;
+  margin: 1.15rem 0 0;
 }
-.plan-usage-overage-amount { display: grid; gap: 0.35rem; }
+.plan-usage-overage-amount { display: grid; gap: 0.4rem; }
 .plan-usage-overage-amount > span:first-child {
   color: var(--mute-i56);
-  font-size: 0.66rem;
+  font-size: 0.68rem;
   font-weight: 900;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.09em;
   text-transform: uppercase;
 }
 .plan-usage-overage-input {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
-  width: min(100%, 13rem);
-  padding: 0.5rem 0.7rem;
+  gap: 0.4rem;
+  width: min(100%, 14rem);
+  padding: 0.6rem 0.85rem;
   border: 1px solid var(--rule-t12);
-  border-radius: 0.6rem;
-  background: rgba(var(--tint), 0.025);
+  border-radius: 0.75rem;
+  background: rgba(var(--tint), 0.03);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 .plan-usage-overage-input > span[aria-hidden] { color: var(--mute-t50); font-weight: 800; }
 .plan-usage-overage-input input {
@@ -4685,66 +4725,146 @@ h3 {
   background: none;
   color: var(--text);
   font-family: var(--font-display);
-  font-size: 1.05rem;
+  font-size: 1.12rem;
   font-weight: 800;
 }
 .plan-usage-overage-input input:focus-visible { outline: none; }
 /* The ring goes on the wrapper, because the input has no border of its own --
    focusing it otherwise showed nothing at all. */
-.plan-usage-overage-input:focus-within { border-color: var(--cedge-orange-24); }
-.plan-usage-unavailable { --tone-ink: var(--mute-g270); display: grid; gap: 0.22rem; }
+.plan-usage-overage-input:focus-within {
+  border-color: var(--cedge-orange-24);
+  box-shadow: 0 0 0 3px rgba(255, 138, 61, 0.15);
+}
+.plan-usage-unavailable { --tone-ink: var(--mute-g270); display: grid; gap: 0.25rem; }
 .plan-usage-unavailable strong { color: var(--text); }
-.plan-usage-unavailable span { color: rgba(var(--ink-rgb), 0.72); font-size: 0.86rem; }
+.plan-usage-unavailable span { color: rgba(var(--ink-rgb), 0.72); font-size: 0.88rem; }
 .plan-usage-balance-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.7rem;
-  margin-top: 1rem;
+  gap: 0.85rem;
+  margin-top: 1.15rem;
 }
-.plan-usage-balance { display: grid; gap: 0.26rem; }
-.plan-usage-balance > span { color: var(--mute-g270); font-size: 0.78rem; font-weight: 700; }
-.plan-usage-balance > strong { color: var(--text); font-size: 1.12rem; font-variant-numeric: tabular-nums; }
-.plan-usage-balance > small { color: rgba(var(--ink-rgb), 0.62); line-height: 1.35; }
-.plan-usage-storage-figure { display: flex; align-items: baseline; gap: 0.4rem; margin-top: 1rem; }
-.plan-usage-storage-figure > strong { color: var(--text); font-size: 1.5rem; font-variant-numeric: tabular-nums; }
-.plan-usage-storage-figure > span { color: rgba(var(--ink-rgb), 0.72); font-size: 0.9rem; }
-.plan-usage-storage-meter { height: 0.6rem; margin-top: 0.5rem; border-radius: 999px; background: rgba(var(--ink-rgb), 0.09); overflow: hidden; }
+.plan-usage-balance {
+  display: grid;
+  gap: 0.35rem;
+  padding: 1.1rem;
+  border: 1px solid var(--rule-t12);
+  border-radius: 1rem;
+  background: linear-gradient(180deg, rgba(var(--tint), 0.035) 0%, rgba(var(--tint), 0.01) 100%);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.plan-usage-balance:hover {
+  transform: translateY(-2px);
+  border-color: rgba(var(--ink-rgb), 0.18);
+  box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+.plan-usage-balance > span {
+  color: var(--mute-g270);
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.plan-usage-balance > strong {
+  color: var(--text);
+  font-size: 1.25rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+.plan-usage-balance > small {
+  color: rgba(var(--ink-rgb), 0.68);
+  line-height: 1.45;
+  font-size: 0.84rem;
+}
+.plan-usage-balance form {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  margin-top: 0.65rem;
+}
+.plan-usage-balance form .btn {
+  width: 100%;
+  justify-content: center;
+  font-size: 0.84rem;
+  padding: 0.55rem 0.95rem;
+  font-weight: 700;
+  border-radius: 0.65rem;
+}
+.plan-usage-storage-figure {
+  display: flex;
+  align-items: baseline;
+  gap: 0.45rem;
+  margin-top: 1.15rem;
+}
+.plan-usage-storage-figure > strong {
+  color: var(--text);
+  font-size: 1.65rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+.plan-usage-storage-figure > span { color: rgba(var(--ink-rgb), 0.74); font-size: 0.94rem; }
+.plan-usage-storage-meter {
+  height: 0.68rem;
+  margin-top: 0.6rem;
+  border-radius: 999px;
+  background: rgba(var(--ink-rgb), 0.08);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.2);
+  overflow: hidden;
+}
 /* Themed tokens, not raw hex: each of these carries a separate light-theme
    value, and a fill hard-coded for dark would vanish on the light one. */
-.plan-usage-storage-meter-fill { height: 100%; border-radius: 999px; background: var(--ink-green-13); transition: width 0.2s ease; }
-.plan-usage-storage-meter-fill.nearly { background: var(--warn); }
-.plan-usage-storage-meter-fill.over { background: var(--ink-red-3); }
-.plan-usage-limit-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; margin: 0.8rem 0 0; }
-.plan-usage-limit-list > div { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; padding: 0.72rem 0.2rem; border-bottom: 1px solid var(--rule-t08); }
-.plan-usage-limit-list > div:nth-child(odd) { margin-right: 1rem; }
+.plan-usage-storage-meter-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #10b981 0%, #059669 100%);
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.4);
+  transition: width 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.plan-usage-storage-meter-fill.nearly {
+  background: linear-gradient(90deg, #f59e0b 0%, #d97706 100%);
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.4);
+}
+.plan-usage-storage-meter-fill.over {
+  background: linear-gradient(90deg, #ef4444 0%, #dc2626 100%);
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.4);
+}
+.plan-usage-limit-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; margin: 0.95rem 0 0; }
+.plan-usage-limit-list > div { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; padding: 0.8rem 0.25rem; border-bottom: 1px solid var(--rule-t08); }
+.plan-usage-limit-list > div:nth-child(odd) { margin-right: 1.15rem; }
 .plan-usage-limit-list dd { text-align: right; }
-.base-plan-checkout-form { display: grid; gap: 1rem; margin-top: 1rem; }
+.base-plan-checkout-form { display: grid; gap: 1.15rem; margin-top: 1.15rem; }
 .base-plan-checkout-choice { margin-top: 0; }
 .base-plan-checkout-price {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: baseline;
-  gap: 0.3rem 1rem;
-  padding: 1rem;
+  gap: 0.35rem 1rem;
+  padding: 1.15rem;
   border: 1px solid var(--cedge-orange-7);
-  border-radius: 0.8rem;
-  background: linear-gradient(145deg, rgba(255, 122, 33, 0.12), rgba(255, 209, 102, 0.06));
+  border-radius: 1rem;
+  background: linear-gradient(145deg, rgba(255, 122, 33, 0.14), rgba(255, 209, 102, 0.07));
+  box-shadow: 0 4px 20px -2px rgba(255, 122, 33, 0.12);
 }
-.base-plan-checkout-price > span { color: var(--text); font-weight: 800; }
-.base-plan-checkout-price > strong { color: var(--gold-ink); text-align: right; font-variant-numeric: tabular-nums; }
-.base-plan-checkout-price > small { grid-column: 1 / -1; color: rgba(var(--ink-rgb), 0.68); }
+.base-plan-checkout-price > span { color: var(--text); font-weight: 800; font-size: 1.05rem; }
+.base-plan-checkout-price > strong { color: var(--gold-ink); text-align: right; font-variant-numeric: tabular-nums; font-size: 1.25rem; }
+.base-plan-checkout-price > small { grid-column: 1 / -1; color: rgba(var(--ink-rgb), 0.72); font-size: 0.86rem; }
 .base-plan-checkout-consent {
-  padding: 1rem;
+  padding: 1.15rem;
   border: 1px solid var(--rule-t12);
-  border-radius: 0.8rem;
-  background: rgba(var(--tint), 0.025);
+  border-radius: 1rem;
+  background: rgba(var(--tint), 0.03);
+  backdrop-filter: blur(12px);
 }
 .base-plan-checkout-consent > strong { color: var(--text); }
-.base-plan-checkout-consent > p { margin: 0.65rem 0 0; color: rgba(var(--ink-rgb), 0.76); font-size: 0.84rem; line-height: 1.55; }
-.base-plan-checkout-affirmation { display: flex; align-items: flex-start; gap: 0.7rem; margin-top: 0.9rem; color: var(--text); font-weight: 700; line-height: 1.45; cursor: pointer; }
-.base-plan-checkout-affirmation input { flex: 0 0 auto; width: 1.1rem; height: 1.1rem; margin-top: 0.15rem; accent-color: var(--accent); }
-.base-plan-checkout-actions { display: flex; align-items: center; gap: 0.8rem 1rem; flex-wrap: wrap; }
-.base-plan-checkout-actions > span { color: rgba(var(--ink-rgb), 0.66); font-size: 0.8rem; line-height: 1.4; }
+.base-plan-checkout-consent > p { margin: 0.7rem 0 0; color: rgba(var(--ink-rgb), 0.78); font-size: 0.86rem; line-height: 1.58; }
+.base-plan-checkout-affirmation { display: flex; align-items: flex-start; gap: 0.75rem; margin-top: 1rem; color: var(--text); font-weight: 700; line-height: 1.48; cursor: pointer; }
+.base-plan-checkout-affirmation input { flex: 0 0 auto; width: 1.15rem; height: 1.15rem; margin-top: 0.15rem; accent-color: var(--accent); }
+.base-plan-checkout-actions { display: flex; align-items: center; gap: 0.85rem 1.15rem; flex-wrap: wrap; }
+.base-plan-checkout-actions > span { color: rgba(var(--ink-rgb), 0.7); font-size: 0.82rem; line-height: 1.45; }
 @media (max-width: 680px) {
   .plan-usage-plan-facts,
   .plan-usage-balance-grid,
