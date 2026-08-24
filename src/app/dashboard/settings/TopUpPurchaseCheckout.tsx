@@ -113,7 +113,7 @@ function TopUpIcon({ id }: { id: string }) {
       </svg>
     );
   }
-  if (id.startsWith('crew_user') || id.startsWith('office_user')) {
+  if (id.startsWith('crew_user')) {
     return (
       <svg className="plan-usage-resource-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
