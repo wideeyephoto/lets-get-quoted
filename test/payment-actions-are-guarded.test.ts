@@ -54,7 +54,7 @@ describe('every exported action in payments-actions.ts proves who is asking', ()
   for (const { name } of bodies) {
     it(`${name} establishes an account before touching a payment`, () => {
       const body = bodies.find((b) => b.name === name)!.body;
-      expect(body, `${name} runs no guard`).toContain('requireOwnerContext()');
+      expect(body, `${name} runs no guard`).toMatch(/require(Owner|Office)Context\(/);
     });
   }
 

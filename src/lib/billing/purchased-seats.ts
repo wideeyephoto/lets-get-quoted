@@ -81,3 +81,48 @@ export async function loadPurchasedSeats(
   return Object.freeze({ crewUsers, officeUsers });
 }
 
+export type ActivePurchasedCapacitySubscription = Readonly<{
+  id: string;
+  topUpId: string;
+  resourceCode: string;
+  units: number;
+  unitAmountCents: number;
+  stripeSubscriptionId: string;
+  status: string;
+  currentPeriodEnd: string | null;
+  canceledAt: string | null;
+}>;
+
+/**
+ * Load active recurring capacity subscriptions for the workspace.
+ */
+export async function loadActivePurchasedCapacitySubscriptions(
+  admin: SupabaseClient,
+  accountId: string,
+): Promise<ActivePurchasedCapacitySubscription[]> {
+  const { data, error } = await admin
+    .from('workspace_purchased_capacity')
+    .select('id, top_up_id, resource_code, units, unit_amount_cents, stripe_subscription_id, status, current_period_end, canceled_at')
+    .eq('account_id', accountId)
+    .in('status', ['active', 'past_due'])
+    .order('created_at', { ascending: true });
+
+  if (error) {
+    console.error(`purchased capacity subscriptions read failed for ${accountId}:`, error.message);
+    return [];
+  }
+
+  return (data ?? []).map((row) => Object.freeze({
+    id: String(row.id),
+    topUpId: String(row.top_up_id),
+    resourceCode: String(row.resource_code),
+    units: Number(row.units),
+    unitAmountCents: Number(row.unit_amount_cents),
+    stripeSubscriptionId: String(row.stripe_subscription_id),
+    status: String(row.status),
+    currentPeriodEnd: row.current_period_end ? String(row.current_period_end) : null,
+    canceledAt: row.canceled_at ? String(row.canceled_at) : null,
+  }));
+}
+
+

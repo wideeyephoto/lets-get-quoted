@@ -161,8 +161,8 @@ describe('every control is either real or visibly disabled with a reason', () =>
     for (const action of ['remindReviewAction', 'setResolvedAction', 'setRemindersStoppedAction']) {
       expect(ACTIONS, action).toContain(`export async function ${action}`);
     }
-    // One requireOwnerContext per action, no exceptions.
-    expect(ACTIONS.match(/await requireOwnerContext\(\)/g)).toHaveLength(3);
+    // One requireOwnerContext/requireOfficeContext per action, no exceptions.
+    expect(ACTIONS.match(/await require(?:Owner|Office)Context\(/g)).toHaveLength(3);
   });
 
   it('and every write is scoped by account_id as well as by id', () => {
@@ -418,9 +418,11 @@ describe('the logged-out demo', () => {
    11. Auth and URL safety
    ======================================================================== */
 describe('the page itself', () => {
-  it('is owner-scoped before it reads anything', () => {
-    expect(PAGE).toContain('await requireOwnerContext()');
-    expect(PAGE.indexOf('requireOwnerContext')).toBeLessThan(PAGE.indexOf('loadReviewActivity'));
+  it('is owner/office-scoped before it reads anything', () => {
+    expect(PAGE).toMatch(/await require(?:Owner|Office)Context\(/);
+    const guardIndex = PAGE.search(/require(?:Owner|Office)Context/);
+    expect(guardIndex).toBeGreaterThan(-1);
+    expect(guardIndex).toBeLessThan(PAGE.indexOf('loadReviewActivity'));
   });
 
   it('looks the drawer row up against the account, not straight out of the URL', () => {

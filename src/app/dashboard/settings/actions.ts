@@ -942,10 +942,20 @@ export async function deleteAccountAction() {
   // Every retry did it again.
   //
   // billing_subscriptions.account_id is ON DELETE CASCADE, so the subscription
-  // is read HERE, before the delete can destroy it. Reading it costs nothing if
-  // the delete then fails, and it is the only way to still have the id to cancel
-  // with once the row is gone.
-  const subscription = await loadCancellableSubscription(admin, accountId).catch(() => null);
+  // and any active purchased capacity subscriptions are read HERE, before the
+  // delete can destroy them. Reading them costs nothing if the delete then fails,
+  // and it is the only way to still have the ids to cancel with once the rows are gone.
+  const [subscription, capacitySubscriptionIds] = await Promise.all([
+    loadCancellableSubscription(admin, accountId).catch(() => null),
+    (async () => {
+      const { data } = await admin
+        .from('workspace_purchased_capacity')
+        .select('stripe_subscription_id')
+        .eq('account_id', accountId)
+        .in('status', ['active', 'past_due']);
+      return (data ?? []).map((r) => String(r.stripe_subscription_id)).filter(Boolean);
+    })().catch(() => [] as string[]),
+  ]);
 
   const { error: accountError } = await admin.from('accounts').delete().eq('id', accountId);
   if (accountError) {
@@ -962,7 +972,7 @@ export async function deleteAccountAction() {
     throw new Error(accountError.message);
   }
 
-  // The delete committed, so the subscription row is gone with it. Cancel using
+  // The delete committed, so the subscription rows are gone with it. Cancel using
   // what was read above.
   //
   // Immediate, not at period end: there is nothing left for a later cancellation
@@ -970,7 +980,12 @@ export async function deleteAccountAction() {
   // trap somebody in an account they asked to delete, and a leaked subscription
   // is recoverable by an operator where a blocked deletion is not. It logs the
   // subscription id loudly when it cannot.
-  await cancelSubscriptionForAccountDeletion({ admin, accountId, preloaded: subscription });
+  await cancelSubscriptionForAccountDeletion({
+    admin,
+    accountId,
+    preloaded: subscription,
+    preloadedCapacitySubscriptions: capacitySubscriptionIds,
+  });
 
   // Only remove the auth user (which frees its phone/email for reuse) if this
   // was their ONLY account — otherwise deleting the user would cascade their

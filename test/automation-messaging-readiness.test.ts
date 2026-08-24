@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   requireOwnerContext: vi.fn(),
+  requireOfficeContext: vi.fn(),
   requireActiveDedicatedMessagingSender: vi.fn(),
   recordAccountEvent: vi.fn(),
   revalidatePath: vi.fn(),
@@ -9,6 +10,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('@/lib/auth', () => ({
   requireOwnerContext: (...args: unknown[]) => mocks.requireOwnerContext(...args),
+  requireOfficeContext: (...args: unknown[]) => mocks.requireOfficeContext(...args),
   createAdminClient: () => ({}),
 }));
 vi.mock('@/lib/messaging-number-provisioning', () => ({
@@ -39,6 +41,7 @@ beforeEach(() => {
   eq.mockResolvedValue({ error: null });
   getUser.mockResolvedValue({ data: { user: { email: 'owner@example.com' } } });
   mocks.requireOwnerContext.mockResolvedValue({ supabase, accountId: ACCOUNT_ID });
+  mocks.requireOfficeContext.mockResolvedValue({ supabase, accountId: ACCOUNT_ID });
   mocks.requireActiveDedicatedMessagingSender.mockResolvedValue({
     kind: 'ready',
     senderId: '22222222-2222-4222-8222-222222222222',

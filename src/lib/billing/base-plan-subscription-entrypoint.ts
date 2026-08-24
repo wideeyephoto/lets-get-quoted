@@ -3,7 +3,6 @@ import 'server-only';
 import { APP_ORIGIN } from '@/lib/app-origin';
 import { createAdminClient, requireOwnerContext } from '@/lib/auth';
 import {
-  PRICING_CATALOG_VERSION,
   type BillingCycle,
 } from '@/lib/billing/catalog';
 import {

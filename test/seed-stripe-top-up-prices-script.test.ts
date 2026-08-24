@@ -73,7 +73,7 @@ describe('the top-up SKU seeder', () => {
       // billing_subscriptions, which a top-up subscription never enters. 'Empties
       // on lapse' is the tell: something reclaims capacity WHEN it lapses, and
       // nothing lets the contractor make it lapse.
-      'ai_voice_flex', 'ai_voice_growth', 'ai_voice_solo', 'crew_user',
+      'ai_voice_flex', 'ai_voice_growth', 'ai_voice_solo',
       'office_user', 'storage_100gb', 'voice_minutes_100',
     ]);
     // Both remain in the price book; what is withheld is the sale.

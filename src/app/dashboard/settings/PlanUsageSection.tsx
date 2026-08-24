@@ -12,6 +12,7 @@ import {
   NO_PURCHASED_SEATS,
   describeSeatLimit,
   type PurchasedSeats,
+  type ActivePurchasedCapacitySubscription,
 } from '@/lib/billing/purchased-seats';
 import {
   describeOverageResource,
@@ -34,6 +35,7 @@ import ChangePlanPanel from './ChangePlanPanel';
 import { BILLING_PLANS, type BillingCycle, type BillingPlanId } from '@/lib/billing/catalog';
 import { planLadder, type PlanBand } from '@/lib/billing/plan-crossover';
 import TopUpPurchaseCheckout from './TopUpPurchaseCheckout';
+import PurchasedCapacityList from './PurchasedCapacityList';
 import SettingsHashLink from './SettingsHashLink';
 
 function formatDate(value: string): string {
@@ -720,6 +722,7 @@ export default function PlanUsageSection({
   data,
   storage = null,
   purchasedSeats = NO_PURCHASED_SEATS,
+  purchasedCapacitySubscriptions = [],
   showSubscriptionCheckout = false,
   showTopUpPurchase = false,
   cancellable = null,
@@ -734,6 +737,7 @@ export default function PlanUsageSection({
   data: WorkspacePlanUsage;
   storage?: WorkspaceStorageState | null;
   purchasedSeats?: PurchasedSeats;
+  purchasedCapacitySubscriptions?: ActivePurchasedCapacitySubscription[];
   showSubscriptionCheckout?: boolean;
   showTopUpPurchase?: boolean;
   topUpCheckoutStatus?: 'success' | 'canceled' | null;
@@ -1218,6 +1222,10 @@ export default function PlanUsageSection({
               ))}
             </dl>
           </details>
+
+          {purchasedCapacitySubscriptions.length > 0 ? (
+            <PurchasedCapacityList subscriptions={purchasedCapacitySubscriptions} />
+          ) : null}
           </details>
       ) : null}
         </div>

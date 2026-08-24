@@ -447,20 +447,6 @@ export const TOP_UPS_WITHHELD: Readonly<Partial<Record<TopUpId, string>>> = Obje
     'the ledger accepts voice_minutes and the top-up path would grant them '
     + 'correctly, but with the meter dark nothing ever spends them - selling 100 '
     + 'minutes today takes $35 for a balance that cannot be drawn down',
-  crew_user:
-    'the only RECURRING sku here, and nothing in the product can stop it. '
-    + 'buying one opens a Stripe subscription - top-up-purchase sets '
-    + "mode: sku.recurring ? 'subscription' : 'payment' - and every Stripe "
-    + 'subscription write in the codebase (two in plan-change, three in '
-    + 'subscription-cancellation) resolves its target through '
-    + 'billing_subscriptions, which holds the BASE PLAN only. so there is no '
-    + 'cancel path, no remove-seat control, no admin action, and account '
-    + 'deletion cancels the base plan and leaves this one billing. a contractor '
-    + 'who adds two seats and loses those crew next month has a card dispute as '
-    + 'their only self-serve lever - an operator can still cancel it by hand in '
-    + 'the Stripe dashboard, and capacity-lifecycle-worker honours that within '
-    + 'the hour. withheld until a cancel exists in the PRODUCT, not because the '
-    + 'purchase is broken - it works, which is the problem',
 });
 
 /** SKUs that may be sold today. */

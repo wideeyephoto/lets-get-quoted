@@ -342,6 +342,104 @@ export async function resumeBasePlanSubscription(input: {
 }
 
 /**
+ * Schedule cancellation of a recurring purchased capacity add-on (e.g. extra crew seat) at period end.
+ */
+export type CancellableCapacitySubscription = Readonly<{
+  id: string;
+  topUpId: string;
+  resourceCode: string;
+  units: number;
+  stripeSubscriptionId: string;
+  status: string;
+  currentPeriodEnd: string | null;
+}>;
+
+export async function loadCancellableCapacitySubscription(
+  admin: SupabaseClient,
+  accountId: string,
+  stripeSubscriptionId: string,
+): Promise<CancellableCapacitySubscription | null> {
+  const { data, error } = await admin
+    .from('workspace_purchased_capacity')
+    .select('id, top_up_id, resource_code, units, stripe_subscription_id, status, current_period_end')
+    .eq('account_id', accountId)
+    .eq('stripe_subscription_id', stripeSubscriptionId)
+    .in('status', ['active', 'past_due'])
+    .maybeSingle();
+
+  if (error) throw new Error(`Unable to read purchased capacity subscription: ${error.message}`);
+  if (!data?.stripe_subscription_id) return null;
+
+  return Object.freeze({
+    id: String(data.id),
+    topUpId: String(data.top_up_id),
+    resourceCode: String(data.resource_code),
+    units: Number(data.units),
+    stripeSubscriptionId: String(data.stripe_subscription_id),
+    status: String(data.status),
+    currentPeriodEnd: data.current_period_end ? String(data.current_period_end) : null,
+  });
+}
+
+export async function cancelPurchasedCapacitySubscriptionAtPeriodEnd(input: {
+  admin: SupabaseClient;
+  accountId: string;
+  stripeSubscriptionId: string;
+  actorEmail?: string | null;
+}): Promise<CancellationResult> {
+  const capacity = await loadCancellableCapacitySubscription(
+    input.admin,
+    input.accountId,
+    input.stripeSubscriptionId,
+  );
+  if (!capacity) {
+    return { ok: false, error: 'There is no active purchased capacity subscription on this workspace to cancel.' };
+  }
+
+  await recordAccountEvent({
+    accountId: input.accountId,
+    kind: 'purchased_capacity_cancellation_requested',
+    summary: `Requested cancellation of ${capacity.topUpId} (${capacity.units} units) at the end of the current period`,
+    actorEmail: input.actorEmail ?? null,
+    meta: {
+      top_up_id: capacity.topUpId,
+      units: capacity.units,
+      provider_subscription_id: capacity.stripeSubscriptionId,
+      mode: 'at_period_end',
+    },
+  });
+
+  try {
+    const stripe = getStripeClient();
+    const updated = await stripe.subscriptions.update(
+      capacity.stripeSubscriptionId,
+      { cancel_at_period_end: true },
+      {
+        idempotencyKey: buildSubscriptionCancellationIdempotencyKey({
+          workspaceId: input.accountId,
+          providerSubscriptionId: capacity.stripeSubscriptionId,
+          mode: 'at_period_end',
+        }),
+      },
+    );
+    return {
+      ok: true,
+      alreadyScheduled: false,
+      currentPeriodEnd: updated.cancel_at
+        ? new Date(updated.cancel_at * 1000).toISOString()
+        : capacity.currentPeriodEnd,
+    };
+  } catch (error) {
+    const failure = describeStripeFailure(error, 'cancel');
+    console.error(
+      `cancelPurchasedCapacitySubscriptionAtPeriodEnd failed (${failure.permanent ? 'PERMANENT' : 'transient'}) for ${capacity.stripeSubscriptionId}:`,
+      error instanceof Error ? error.message : error,
+    );
+    return { ok: false, error: failure.message };
+  }
+}
+
+/**
  * Stop billing immediately, for account deletion.
  *
  * Separate from the customer-facing path on purpose. deleteAccountAction removes
@@ -375,7 +473,13 @@ export async function cancelSubscriptionForAccountDeletion(input: {
    * original load-it-here behaviour.
    */
   preloaded?: CancellableSubscription | null;
-}): Promise<{ canceled: boolean; subscriptionId: string | null; error: string | null }> {
+  preloadedCapacitySubscriptions?: readonly string[] | null;
+}): Promise<{
+  canceled: boolean;
+  subscriptionId: string | null;
+  capacityCanceledCount: number;
+  error: string | null;
+}> {
   let subscription: CancellableSubscription | null = null;
   if (input.preloaded !== undefined) {
     subscription = input.preloaded;
@@ -383,28 +487,76 @@ export async function cancelSubscriptionForAccountDeletion(input: {
     try {
       subscription = await loadCancellableSubscription(input.admin, input.accountId);
     } catch (error) {
-      return { canceled: false, subscriptionId: null, error: error instanceof Error ? error.message : 'read failed' };
+      return { canceled: false, subscriptionId: null, capacityCanceledCount: 0, error: error instanceof Error ? error.message : 'read failed' };
     }
   }
-  if (!subscription) return { canceled: false, subscriptionId: null, error: null };
 
-  try {
-    const stripe = getStripeClient();
-    await stripe.subscriptions.cancel(subscription.providerSubscriptionId, {
-      idempotencyKey: buildSubscriptionCancellationIdempotencyKey({
-        workspaceId: input.accountId,
-        providerSubscriptionId: subscription.providerSubscriptionId,
-        mode: 'immediate',
-      }),
-    } as never);
-    return { canceled: true, subscriptionId: subscription.providerSubscriptionId, error: null };
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'unknown Stripe error';
-    // Loud, and with the id in it: this is the line an operator needs to find
-    // the still-billing subscription whose local row no longer exists.
-    console.error(
-      `ACCOUNT DELETED WITH A LIVE STRIPE SUBSCRIPTION. Cancel ${subscription.providerSubscriptionId} by hand. ${message}`,
-    );
-    return { canceled: false, subscriptionId: subscription.providerSubscriptionId, error: message };
+  let capacitySubscriptionIds: string[] = [];
+  if (input.preloadedCapacitySubscriptions !== undefined && input.preloadedCapacitySubscriptions !== null) {
+    capacitySubscriptionIds = [...input.preloadedCapacitySubscriptions];
+  } else {
+    try {
+      const { data: capacityRows } = await input.admin
+        .from('workspace_purchased_capacity')
+        .select('stripe_subscription_id')
+        .eq('account_id', input.accountId)
+        .in('status', ['active', 'past_due']);
+      capacitySubscriptionIds = (capacityRows ?? [])
+        .map((row) => String(row.stripe_subscription_id))
+        .filter(Boolean);
+    } catch (error) {
+      console.error(`Failed to read purchased capacity subscriptions for account ${input.accountId}:`, error);
+    }
   }
+
+  const stripe = getStripeClient();
+  let baseCanceled = false;
+  let baseError: string | null = null;
+
+  if (subscription) {
+    try {
+      await stripe.subscriptions.cancel(subscription.providerSubscriptionId, {
+        idempotencyKey: buildSubscriptionCancellationIdempotencyKey({
+          workspaceId: input.accountId,
+          providerSubscriptionId: subscription.providerSubscriptionId,
+          mode: 'immediate',
+        }),
+      } as never);
+      baseCanceled = true;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'unknown Stripe error';
+      // Loud, and with the id in it: this is the line an operator needs to find
+      // the still-billing subscription whose local row no longer exists.
+      console.error(
+        `ACCOUNT DELETED WITH A LIVE STRIPE SUBSCRIPTION. Cancel ${subscription.providerSubscriptionId} by hand. ${message}`,
+      );
+      baseError = message;
+    }
+  }
+
+  let capacityCanceledCount = 0;
+  for (const capSubId of capacitySubscriptionIds) {
+    try {
+      await stripe.subscriptions.cancel(capSubId, {
+        idempotencyKey: buildSubscriptionCancellationIdempotencyKey({
+          workspaceId: input.accountId,
+          providerSubscriptionId: capSubId,
+          mode: 'immediate',
+        }),
+      } as never);
+      capacityCanceledCount += 1;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'unknown Stripe error';
+      console.error(
+        `ACCOUNT DELETED WITH A LIVE CAPACITY STRIPE SUBSCRIPTION. Cancel ${capSubId} by hand. ${message}`,
+      );
+    }
+  }
+
+  return {
+    canceled: baseCanceled,
+    subscriptionId: subscription?.providerSubscriptionId ?? null,
+    capacityCanceledCount,
+    error: baseError,
+  };
 }

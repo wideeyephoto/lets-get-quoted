@@ -51,6 +51,7 @@ export type AccountEventKind =
   | 'plan_change_scheduled'
   | 'plan_change_cancelled'
   | 'plan_change_applied'
+  | 'purchased_capacity_cancellation_requested'
   // The owner turning extra usage on or off, or moving their spending limit.
   // The BINDING record is the append-only row in workspace_overage_authorizations,
   // which carries the digest of the words they agreed to; this is the same fact

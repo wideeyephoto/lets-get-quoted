@@ -33,7 +33,11 @@ import { loadWorkspacePlanUsage, planUsageDashboardEnabled } from '@/lib/billing
 import { formatStorageBytes, loadWorkspaceStorageState } from '@/lib/billing/storage-usage';
 import { buildWorkspaceCapacity, loadCrewSeatsUsed } from '@/lib/billing/capacity-usage';
 import { loadWorkspaceCreditLots } from '@/lib/billing/credit-lots';
-import { NO_PURCHASED_SEATS, loadPurchasedSeats } from '@/lib/billing/purchased-seats';
+import {
+  NO_PURCHASED_SEATS,
+  loadPurchasedSeats,
+  loadActivePurchasedCapacitySubscriptions,
+} from '@/lib/billing/purchased-seats';
 import { basePlanSubscriptionCheckoutEnabled } from '@/lib/billing/base-plan-subscription-entrypoint';
 import { basePlanSubscriptionPlanChangeEnabled } from '@/lib/billing/plan-change';
 import { loadChangeableSubscription, planChangeOptions } from '@/lib/billing/plan-change';
@@ -79,7 +83,7 @@ export default async function SettingsPage({
   const topUpPurchaseCheckoutEnabled = topUpPurchaseEnabled();
   const merchantOnboardingEnabled = stripeMerchantOnboardingV2Enabled();
 
-  const [{ data: userData }, { data: identityData }, { data: account }, { data: site }, { count: pendingPaymentsCount }, planUsage, merchantOnboarding, storageState, purchasedSeats] =
+  const [{ data: userData }, { data: identityData }, { data: account }, { data: site }, { count: pendingPaymentsCount }, planUsage, merchantOnboarding, storageState, purchasedSeats, purchasedCapacitySubscriptions] =
     await Promise.all([
       supabase.auth.getUser(),
       supabase.auth.getUserIdentities(),
@@ -128,6 +132,9 @@ export default async function SettingsPage({
       pricingDashboardEnabled
         ? loadPurchasedSeats(createAdminClient(), accountId)
         : Promise.resolve(NO_PURCHASED_SEATS),
+      pricingDashboardEnabled
+        ? loadActivePurchasedCapacitySubscriptions(createAdminClient(), accountId)
+        : Promise.resolve([]),
     ]);
 
   // Its own read, and tolerant of the migrations not being applied. Everything
@@ -527,6 +534,7 @@ export default async function SettingsPage({
                 data={planUsage}
                 storage={storageState}
                 purchasedSeats={purchasedSeats}
+                purchasedCapacitySubscriptions={purchasedCapacitySubscriptions}
                 capacity={capacity}
                 lots={creditLots}
                 overage={overage}

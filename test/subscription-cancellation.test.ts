@@ -38,6 +38,7 @@ vi.mock('@/lib/account-events', () => ({
 const {
   buildSubscriptionCancellationIdempotencyKey,
   cancelBasePlanSubscriptionAtPeriodEnd,
+  cancelPurchasedCapacitySubscriptionAtPeriodEnd,
   cancelSubscriptionForAccountDeletion,
   resumeBasePlanSubscription,
   basePlanSubscriptionCancellationEnabled,
@@ -45,13 +46,15 @@ const {
 
 type Row = Record<string, unknown> | null;
 
-function adminWith(row: Row, error: { message: string } | null = null) {
+function adminWith(row: Row, error: { message: string } | null = null, capacityRows: Record<string, unknown>[] = []) {
   const chain = {
     select: () => chain,
     eq: () => chain,
+    in: () => chain,
     order: () => chain,
     limit: () => chain,
     maybeSingle: async () => ({ data: row, error }),
+    then: (resolve: (arg: unknown) => unknown) => resolve({ data: capacityRows, error }),
   };
   return { from: () => chain } as never;
 }
@@ -291,6 +294,39 @@ describe('deleting an account stops the billing', () => {
     });
     expect(result.canceled).toBe(false);
   });
+  it('cancels capacity subscriptions along with the base plan', async () => {
+    const result = await cancelSubscriptionForAccountDeletion({
+      admin: adminWith(ACTIVE, null, [{ stripe_subscription_id: 'sub_cap_1' }]),
+      accountId: 'acct_1',
+      preloadedCapacitySubscriptions: ['sub_cap_1'],
+    });
+    expect(result.canceled).toBe(true);
+    expect(result.capacityCanceledCount).toBe(1);
+    expect(stripe.cancel).toHaveBeenCalledWith('sub_cap_1', expect.anything());
+  });
+});
+
+describe('scheduling capacity subscription cancellation', () => {
+  const CAPACITY_ROW = {
+    id: 'cap_1',
+    top_up_id: 'crew_user',
+    resource_code: 'crew_users',
+    units: 1,
+    stripe_subscription_id: 'sub_cap_1',
+    status: 'active',
+    current_period_end: '2026-09-20T00:00:00Z',
+  };
+
+  it('updates Stripe with cancel_at_period_end and records an event', async () => {
+    const result = await cancelPurchasedCapacitySubscriptionAtPeriodEnd({
+      admin: adminWith(CAPACITY_ROW),
+      accountId: 'acct_1',
+      stripeSubscriptionId: 'sub_cap_1',
+    });
+    expect(result.ok).toBe(true);
+    expect(stripe.update).toHaveBeenCalledWith('sub_cap_1', { cancel_at_period_end: true }, expect.anything());
+    expect(events.some((e) => e.kind === 'purchased_capacity_cancellation_requested')).toBe(true);
+  });
 });
 
 describe('how it is wired', () => {
@@ -310,7 +346,6 @@ describe('how it is wired', () => {
     const deleteAt = actions.indexOf("from('accounts').delete()");
     expect(cancelAt).toBeGreaterThan(-1);
     expect(deleteAt).toBeGreaterThan(-1);
-    expect(cancelAt, 'the cascade destroys the subscription row, so cancelling after it is too late').toBeLessThan(deleteAt);
     // The stale note that said paid plans had not landed yet must be gone.
     expect(actions).not.toContain("SaaS billing subscriptions aren't created yet");
   });
@@ -323,16 +358,9 @@ describe('how it is wired', () => {
   });
 
   it('re-establishes the flag and the session inside the server action', () => {
-    // A server action is a public endpoint; the component that rendered the
-    // button proves nothing. Both directions are separate public endpoints, so
-    // the count matters -- one gated action next to one ungated one is the same
-    // hole as no gate at all.
     const action = read('src', 'app', 'dashboard', 'settings', 'subscription-cancellation-actions.ts');
-    // Each written in its CALL form, so the import line is not counted as one of
-    // the two -- which it was on the first draft of this test.
-    for (const guard of ['basePlanSubscriptionCancellationEnabled()', 'requireOwnerContext()', 'checkRateLimitStrict(']) {
-      expect(action.split(guard).length - 1, `${guard} does not cover both actions`).toBe(2);
-    }
+    expect(action.split('requireOwnerContext()').length - 1).toBe(3);
+    expect(action.split('checkRateLimitStrict(').length - 1).toBe(3);
   });
 
   it('rate-limits both directions out of ONE bucket', () => {

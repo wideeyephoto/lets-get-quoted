@@ -265,19 +265,10 @@ describe('the SKU is sellable, and every reason it was not is closed', () => {
    * enumeration can be incomplete from the day it is written. Nothing went
    * stale here. The list was short.
    */
-  it('withholds crew_user again, because nothing can cancel it', () => {
-    expect(TOP_UPS_WITHHELD).toHaveProperty('crew_user');
-    expect(SELLABLE_TOP_UP_IDS).not.toContain('crew_user');
-    // Guards the guard: a bare "does not contain" would still pass if
-    // withholding broke open the other way and nothing were sellable.
-    expect(SELLABLE_TOP_UP_IDS).toHaveLength(5);
-  });
-
-  it('keeps the fulfilment reasons closed, because they genuinely are', () => {
-    // Re-enabling this is a cancel-path problem, not a ledger problem. Whoever
-    // picks it up should not re-litigate what the block above already settled.
-    expect(TOP_UPS_WITHHELD.crew_user).toMatch(/cancel/i);
-    expect(TOP_UPS_WITHHELD.crew_user).not.toMatch(/filler|emptier|ledger/i);
+  it('makes crew_user sellable once the cancel path and account deletion cleanup exist', () => {
+    expect(TOP_UPS_WITHHELD).not.toHaveProperty('crew_user');
+    expect(SELLABLE_TOP_UP_IDS).toContain('crew_user');
+    expect(SELLABLE_TOP_UP_IDS).toHaveLength(6);
   });
 
   it('still withholds the other two capacity SKUs, each for its own reason', () => {

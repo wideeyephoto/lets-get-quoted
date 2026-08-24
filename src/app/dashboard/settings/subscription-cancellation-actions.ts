@@ -85,3 +85,34 @@ export async function resumeBasePlanSubscriptionAction(): Promise<ResumeSubscrip
   if (result.ok) revalidatePath('/dashboard/settings');
   return result;
 }
+
+/**
+ * Cancel a recurring purchased capacity add-on (e.g. extra crew seat) for the signed-in owner.
+ */
+export async function cancelPurchasedCapacitySubscriptionAction(
+  stripeSubscriptionId: string,
+): Promise<CancelSubscriptionActionState> {
+  const cleanId = String(stripeSubscriptionId ?? '').trim();
+  if (!cleanId || !cleanId.startsWith('sub_')) {
+    return { ok: false, error: 'A valid subscription ID is required.' };
+  }
+
+  const { accountId, userId, userEmail } = await requireOwnerContext();
+  const admin = createAdminClient();
+
+  const allowed = await checkRateLimitStrict(admin, `capacity-cancel:${userId}`, 6, 10 * 60);
+  if (!allowed) {
+    return { ok: false, error: 'Too many attempts just now. Wait a few minutes and try again.' };
+  }
+
+  const { cancelPurchasedCapacitySubscriptionAtPeriodEnd } = await import('@/lib/billing/subscription-cancellation');
+  const result = await cancelPurchasedCapacitySubscriptionAtPeriodEnd({
+    admin,
+    accountId,
+    stripeSubscriptionId: cleanId,
+    actorEmail: userEmail,
+  });
+
+  if (result.ok) revalidatePath('/dashboard/settings');
+  return result;
+}

@@ -135,14 +135,15 @@ describe('what this migration deliberately does not do', () => {
     // fulfilment was never the problem, CANCELLATION was, and nothing in the
     // product can end a top-up subscription. So there is no exception now, and
     // the rule is the plain one -- no recurring_capacity SKU is sellable.
-    const capacitySkus = Object.values(TOP_UPS)
-      .filter((sku) => sku.fulfillment === 'recurring_capacity')
+    const withheldCapacitySkus = Object.values(TOP_UPS)
+      .filter((sku) => sku.fulfillment === 'recurring_capacity' && sku.id !== 'crew_user')
       .map((sku) => sku.id);
-    expect(capacitySkus.length).toBeGreaterThan(0);
-    for (const id of capacitySkus) {
-      expect(TOP_UPS_WITHHELD, `${id} is a capacity SKU and must not be sellable`).toHaveProperty(id);
+    expect(withheldCapacitySkus.length).toBeGreaterThan(0);
+    for (const id of withheldCapacitySkus) {
+      expect(TOP_UPS_WITHHELD, `${id} is a withheld capacity SKU`).toHaveProperty(id);
       expect(SELLABLE_TOP_UP_IDS).not.toContain(id);
     }
+    expect(SELLABLE_TOP_UP_IDS).toContain('crew_user');
   });
 
   it('says so in the file, so the next reader is not surprised', () => {

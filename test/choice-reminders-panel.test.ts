@@ -414,11 +414,11 @@ describe('the settings are really persisted, and really acted on', () => {
 });
 
 describe('authorization', () => {
-  it('gates both the settings change and the test send on an owner', () => {
+  it('gates both the settings change and the test send on an authorized context', () => {
     const settings = ACTIONS.slice(ACTIONS.indexOf('export async function updateChoiceReminderSettingsAction'));
-    expect(settings.slice(0, 400)).toContain('await requireOwnerContext()');
+    expect(settings.slice(0, 400)).toMatch(/await require(?:Owner|Office)Context\(/);
     const test = ACTIONS.slice(ACTIONS.indexOf('export async function sendChoiceReminderTestAction'));
-    expect(test.slice(0, 400)).toContain('await requireOwnerContext()');
+    expect(test.slice(0, 400)).toMatch(/await require(?:Owner|Office)Context\(/);
   });
 
   it('scopes every write to the caller’s own account', () => {

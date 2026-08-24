@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { createAdminClient, requireOfficeContext, requireOwnerContext } from '@/lib/auth';
+import { createAdminClient, requireOfficeContext } from '@/lib/auth';
 import { sendSelectionRequest } from '@/lib/selection-notify';
 import {
   addOption,

@@ -35,11 +35,13 @@ describe('crew-seat server action flow', () => {
 
   it('keeps a reactivation refusal out of the opaque Server Action error boundary', () => {
     const actionStart = ACTIONS.indexOf('export async function setCrewActiveAction(');
-    const ownerContext = ACTIONS.indexOf('await requireOwnerContext()', actionStart);
+    const actionSlice = ACTIONS.slice(actionStart);
+    const contextOffset = actionSlice.search(/await require(?:Owner|Office)Context\(/);
+    const ownerContext = actionStart + contextOffset;
     const mutationTry = ACTIONS.indexOf('try {', ownerContext);
 
     expect(actionStart).toBeGreaterThan(-1);
-    // requireOwnerContext redirects by throwing a Next sentinel. It must stay
+    // requireOfficeContext redirects by throwing a Next sentinel. It must stay
     // outside the catch that turns an entitlement refusal into form state.
     expect(ownerContext).toBeGreaterThan(actionStart);
     expect(ownerContext).toBeLessThan(mutationTry);
