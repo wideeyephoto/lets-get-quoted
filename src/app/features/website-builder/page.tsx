@@ -3,6 +3,7 @@ import Link from 'next/link';
 import FeatureDetailLayout from '@/components/marketing/feature-detail-layout';
 import ExampleFrame from '@/components/marketing/example-frame';
 import ExampleSiteShowcase from '@/components/marketing/example-site-showcase';
+import SiteCustomizerSandbox from '@/components/marketing/SiteCustomizerSandbox';
 import HeroThemeCycler from './HeroThemeCycler';
 import { TRADES } from '@/lib/trades';
 import { PUBLIC_PRICING_SUMMARY } from '@/lib/pricing';
@@ -480,6 +481,10 @@ export default function WebsiteBuilderPage() {
           The company, request and estimate are examples. The domain configuration shown
           is real.
         </p>
+      </section>
+
+      <section className="section-block" style={{ margin: '48px 0' }}>
+        <SiteCustomizerSandbox />
       </section>
 
       {/* ------------------------------------------------------------------

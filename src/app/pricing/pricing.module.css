@@ -3498,6 +3498,64 @@
   background: rgba(var(--tint), 0.03);
 }
 
+.competitorHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.85rem;
+  flex-wrap: wrap;
+}
+
+.competitorNav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.competitorTab {
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid var(--edge-t15);
+  background: rgba(var(--tint), 0.04);
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.competitorTab:hover {
+  border-color: var(--edge-t30);
+  color: var(--text);
+}
+
+.competitorTabActive {
+  background: #ff6a24;
+  border-color: #ff6a24;
+  color: #ffffff !important;
+  font-weight: 800;
+}
+
+.competitorLeadSliderRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin: 0.75rem 0;
+  padding: 0.6rem 0.85rem;
+  border-radius: 0.5rem;
+  background: rgba(255, 106, 36, 0.08);
+  border: 1px solid rgba(255, 106, 36, 0.2);
+  font-size: 0.72rem;
+  flex-wrap: wrap;
+}
+
+.competitorLeadSliderRow input[type='range'] {
+  flex: 1;
+  min-width: 140px;
+}
+
 .competitorCompareGrid {
   display: grid;
   grid-template-columns: 1.2fr 1fr 1fr;

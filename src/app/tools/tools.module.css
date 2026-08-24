@@ -1,0 +1,671 @@
+/* Tools Hub & Interactive Utilities Styling */
+
+.page {
+  min-height: 100vh;
+  background: var(--bg, #06131f);
+  color: var(--text, #f7f5ef);
+  font-family: var(--font-body, system-ui, sans-serif);
+}
+
+.hero {
+  padding: clamp(60px, 8vw, 100px) 24px 40px;
+  max-width: 1100px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.kicker {
+  display: inline-block;
+  color: #ff6a24;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 14px;
+}
+
+.headline {
+  font-size: clamp(32px, 4.5vw, 54px);
+  font-weight: 850;
+  letter-spacing: -1.5px;
+  line-height: 1.1;
+  margin: 0 0 20px;
+  color: #f5f0e7;
+}
+
+.headline em {
+  color: #ff6a24;
+  font-style: normal;
+}
+
+.subhead {
+  font-size: clamp(16px, 2vw, 19px);
+  line-height: 1.6;
+  color: #a7bcc8;
+  max-width: 760px;
+  margin: 0 auto 36px;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 24px 80px;
+}
+
+/* Tools Grid */
+.toolsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: 28px;
+  margin-top: 20px;
+}
+
+.toolCard {
+  background: linear-gradient(180deg, #0c202d 0%, #07131d 100%);
+  border: 1px solid rgba(174, 199, 211, 0.2);
+  border-radius: 18px;
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+  text-decoration: none;
+  color: inherit;
+}
+
+.toolCard:hover {
+  transform: translateY(-4px);
+  border-color: rgba(255, 106, 36, 0.5);
+  box-shadow: 0 24px 50px rgba(0, 0, 0, 0.5), 0 0 25px rgba(255, 106, 36, 0.15);
+}
+
+.toolCardHeader {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.toolIcon {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  background: rgba(255, 106, 36, 0.12);
+  border: 1px solid rgba(255, 106, 36, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  flex-shrink: 0;
+}
+
+.toolIconMint {
+  background: rgba(80, 227, 189, 0.12);
+  border-color: rgba(80, 227, 189, 0.3);
+}
+
+.toolTitle {
+  font-size: 22px;
+  font-weight: 800;
+  color: #f5f0e7;
+  margin: 0 0 6px;
+  letter-spacing: -0.5px;
+}
+
+.toolBadge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #50e3bd;
+}
+
+.toolDesc {
+  font-size: 14px;
+  line-height: 1.6;
+  color: #a7bcc8;
+  margin: 0 0 24px;
+}
+
+.toolFeatures {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.toolFeatures li {
+  font-size: 13px;
+  color: #d1e2eb;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.toolFeatures li span {
+  color: #50e3bd;
+  font-weight: 900;
+}
+
+.toolLink {
+  font-size: 14px;
+  font-weight: 800;
+  color: #ff6a24;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: auto;
+}
+
+/* Calculator Wrapper */
+.calcCard {
+  background: linear-gradient(180deg, #0c202d 0%, #07131d 100%);
+  border: 1px solid rgba(174, 199, 211, 0.2);
+  border-radius: 20px;
+  padding: clamp(24px, 4vw, 44px);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+  margin-bottom: 48px;
+}
+
+.calcGrid {
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: 40px;
+  align-items: start;
+}
+
+/* Presets Bar */
+.presetsRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 28px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid rgba(174, 199, 211, 0.15);
+}
+
+.presetsLabel {
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #8fa6b5;
+  margin-right: 4px;
+}
+
+.presetBtn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(174, 199, 211, 0.2);
+  color: #d1e2eb;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.presetBtn:hover {
+  background: rgba(255, 106, 36, 0.15);
+  border-color: #ff6a24;
+  color: #ffffff;
+}
+
+/* Form Controls */
+.formSection {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.inputGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.inputHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.inputLabel {
+  font-size: 13px;
+  font-weight: 750;
+  color: #f5f0e7;
+}
+
+.inputValueDisplay {
+  font-size: 15px;
+  font-weight: 850;
+  color: #ff6a24;
+  font-family: monospace;
+}
+
+.slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  border-radius: 4px;
+  background: #152c3c;
+  outline: none;
+}
+
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #ff6a24;
+  cursor: pointer;
+  box-shadow: 0 0 10px rgba(255, 106, 36, 0.5);
+  transition: transform 0.15s;
+}
+
+.slider::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+
+.sliderTicks {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #7b94a5;
+}
+
+.numberInput {
+  background: #102430;
+  border: 1px solid rgba(174, 199, 211, 0.25);
+  border-radius: 8px;
+  color: #f5f0e7;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 10px 14px;
+  outline: none;
+  width: 100%;
+}
+
+.numberInput:focus {
+  border-color: #ff6a24;
+}
+
+/* Results Card */
+.resultsBox {
+  background: #081722;
+  border: 1px solid rgba(80, 227, 189, 0.25);
+  border-radius: 16px;
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
+}
+
+.rateDisplay {
+  text-align: center;
+  padding: 20px 16px;
+  background: rgba(80, 227, 189, 0.06);
+  border-radius: 12px;
+  border: 1px solid rgba(80, 227, 189, 0.2);
+}
+
+.rateLabel {
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: #50e3bd;
+  display: block;
+  margin-bottom: 6px;
+}
+
+.rateNumber {
+  font-size: 42px;
+  font-weight: 900;
+  color: #f5f0e7;
+  line-height: 1;
+}
+
+.ratePer {
+  font-size: 16px;
+  color: #8fa6b5;
+  font-weight: 700;
+}
+
+.metricRows {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.metricCard {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(174, 199, 211, 0.12);
+  border-radius: 10px;
+  padding: 14px;
+}
+
+.metricCardLabel {
+  font-size: 11px;
+  color: #8fa6b5;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.metricCardVal {
+  font-size: 18px;
+  font-weight: 800;
+  color: #f5f0e7;
+}
+
+/* Margin Distribution Bar */
+.distBarWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.distBarLabel {
+  font-size: 12px;
+  font-weight: 750;
+  color: #a7bcc8;
+}
+
+.distBar {
+  height: 12px;
+  border-radius: 6px;
+  background: #142a3a;
+  display: flex;
+  overflow: hidden;
+}
+
+.distLabor {
+  background: #4a90e2;
+  height: 100%;
+}
+
+.distOverhead {
+  background: #f5a623;
+  height: 100%;
+}
+
+.distProfit {
+  background: #50e3bd;
+  height: 100%;
+}
+
+.distLegend {
+  display: flex;
+  gap: 12px;
+  font-size: 11px;
+  color: #8fa6b5;
+}
+
+.distLegendItem {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.distDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.dotLabor { background: #4a90e2; }
+.dotOverhead { background: #f5a623; }
+.dotProfit { background: #50e3bd; }
+
+/* Callout Box */
+.calloutCta {
+  margin-top: 10px;
+  background: linear-gradient(135deg, rgba(255, 106, 36, 0.12), rgba(255, 106, 36, 0.04));
+  border: 1px solid rgba(255, 106, 36, 0.3);
+  border-radius: 12px;
+  padding: 16px;
+  text-align: center;
+}
+
+.calloutTitle {
+  font-size: 14px;
+  font-weight: 800;
+  color: #f5f0e7;
+  margin: 0 0 6px;
+}
+
+.calloutText {
+  font-size: 12px;
+  color: #a7bcc8;
+  margin: 0 0 12px;
+  line-height: 1.4;
+}
+
+.calloutBtn {
+  background: #ff6a24;
+  color: #ffffff;
+  padding: 10px 18px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 800;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: transform 0.2s, background 0.2s;
+}
+
+.calloutBtn:hover {
+  background: #ff7d3e;
+  transform: translateY(-1px);
+}
+
+/* Estimate Generator Styling */
+.estimateSheet {
+  background: #ffffff;
+  color: #171d24;
+  border-radius: 14px;
+  padding: clamp(24px, 4vw, 40px);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+.estimateTopRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+  padding-bottom: 24px;
+  border-bottom: 2px solid #e1e7ec;
+  margin-bottom: 24px;
+}
+
+.estimateDocTitle {
+  font-size: 28px;
+  font-weight: 900;
+  color: #0c202d;
+  margin: 0 0 4px;
+  letter-spacing: -1px;
+}
+
+.estimateFieldText {
+  border: 1px dashed #c0ced6;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 14px;
+  color: #171d24;
+  background: #fafbfc;
+  outline: none;
+}
+
+.estimateFieldText:focus {
+  border-color: #ff6a24;
+  background: #ffffff;
+}
+
+.estimateTable {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 24px 0;
+}
+
+.estimateTable th {
+  text-align: left;
+  padding: 10px 12px;
+  background: #f0f4f7;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: #4a5c68;
+  border-bottom: 2px solid #d4dfe6;
+}
+
+.estimateTable td {
+  padding: 12px;
+  border-bottom: 1px solid #e1e7ec;
+  font-size: 14px;
+}
+
+.itemDescInput {
+  width: 100%;
+  border: 1px solid #d4dfe6;
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 14px;
+}
+
+.itemNumInput {
+  width: 90px;
+  border: 1px solid #d4dfe6;
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 14px;
+}
+
+.actionBtnRow {
+  display: flex;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.addLineBtn {
+  background: #f0f4f7;
+  border: 1px solid #c0ced6;
+  color: #0c202d;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.addLineBtn:hover {
+  background: #e1e7ec;
+}
+
+.estimateTotals {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 20px;
+}
+
+.totalsBox {
+  width: 300px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.totalLine {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+  color: #4a5c68;
+}
+
+.totalGrand {
+  font-size: 18px;
+  font-weight: 900;
+  color: #0c202d;
+  border-top: 2px solid #0c202d;
+  padding-top: 8px;
+}
+
+.printActions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 32px;
+}
+
+.printBtn {
+  background: #0c202d;
+  color: #ffffff;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-weight: 800;
+  font-size: 14px;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.printBtn:hover {
+  background: #17364a;
+}
+
+@media (max-width: 860px) {
+  .calcGrid {
+    grid-template-columns: 1fr;
+    gap: 28px;
+  }
+
+  .metricRows {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toolCard, .slider::-webkit-slider-thumb, .calloutBtn {
+    transition: none;
+  }
+  .toolCard:hover, .calloutBtn:hover {
+    transform: none;
+  }
+}
+
+@media print {
+  .page {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+  .hero, .printActions {
+    display: none !important;
+  }
+  .container {
+    padding: 0 !important;
+    max-width: 100% !important;
+  }
+  .estimateSheet {
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+  }
+  .itemDescInput, .itemNumInput, .estimateFieldText {
+    border: none !important;
+    background: transparent !important;
+    padding: 0 !important;
+  }
+}

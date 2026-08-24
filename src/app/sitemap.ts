@@ -2,6 +2,7 @@ import type { MetadataRoute } from 'next';
 import { marketingOrigin } from '@/lib/tenant-host';
 import { TRADES } from '@/lib/trades';
 import { ARTICLES } from '@/lib/resources';
+import { COMPARISONS } from '@/app/compare/compare-data';
 
 export const dynamic = 'force-dynamic';
 
@@ -60,7 +61,7 @@ const FEATURE_SLUGS = [
  * The articles keep their own datePublished (and dateModified once one is
  * edited), because those are genuinely per-URL.
  */
-const MARKETING_REVISED = '2026-08-14';
+const MARKETING_REVISED = '2026-08-24';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const origin = marketingOrigin(process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'letsgetquoted.com');
@@ -78,6 +79,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     })),
     { url: `${origin}/how-it-works`, lastModified, changeFrequency: 'monthly', priority: 0.7 },
     { url: `${origin}/for`, lastModified, changeFrequency: 'monthly', priority: 0.7 },
+    { url: `${origin}/compare`, lastModified, changeFrequency: 'monthly', priority: 0.7 },
+    ...Object.keys(COMPARISONS).map((slug) => ({
+      url: `${origin}/compare/${slug}`,
+      lastModified,
+      changeFrequency: 'monthly' as const,
+      priority: 0.7,
+    })),
+    { url: `${origin}/tools`, lastModified, changeFrequency: 'monthly', priority: 0.8 },
+    { url: `${origin}/tools/hourly-rate-calculator`, lastModified, changeFrequency: 'monthly', priority: 0.8 },
+    { url: `${origin}/tools/estimate-generator`, lastModified, changeFrequency: 'monthly', priority: 0.8 },
+    { url: `${origin}/tools/leakage-calculator`, lastModified, changeFrequency: 'monthly', priority: 0.8 },
     { url: `${origin}/faq`, lastModified, changeFrequency: 'monthly', priority: 0.6 },
     { url: `${origin}/security`, lastModified, changeFrequency: 'yearly', priority: 0.5 },
     { url: `${origin}/resources`, lastModified, changeFrequency: 'weekly', priority: 0.6 },

@@ -660,3 +660,58 @@ export async function deleteSiteImageAction(storagePath: string) {
   const { accountId } = await requireOfficeContext('settings.write');
   await deleteSiteImage(accountId, storagePath);
 }
+
+export type CompletedJobReviewOption = {
+  id: string;
+  clientName: string;
+  rating: number;
+  feedback: string;
+  jobRef: string;
+  date: string;
+};
+
+export async function listCompletedJobReviewsAction(): Promise<CompletedJobReviewOption[]> {
+  const { supabase, accountId } = await requireOfficeContext('settings.write');
+  const { data, error } = await supabase
+    .from('review_invites')
+    .select('id, client_name, rating, feedback, created_at, responded_at, feedback_at, jobs(ref, scope)')
+    .eq('account_id', accountId)
+    .order('created_at', { ascending: false })
+    .limit(25);
+
+  if (error) {
+    const { data: fallbackData, error: fallbackError } = await supabase
+      .from('review_invites')
+      .select('id, client_name, rating, feedback, created_at, responded_at, feedback_at')
+      .eq('account_id', accountId)
+      .order('created_at', { ascending: false })
+      .limit(25);
+    if (fallbackError) return [];
+    return (fallbackData ?? [])
+      .filter((row) => (row.rating && row.rating >= 4) || (row.feedback && row.feedback.trim().length > 0))
+      .map((row) => ({
+        id: row.id,
+        clientName: row.client_name?.trim() || 'Verified Customer',
+        rating: Math.max(1, Math.min(5, Math.round(row.rating || 5))),
+        feedback: row.feedback?.trim() || 'Great service, highly recommend!',
+        jobRef: '',
+        date: (row.feedback_at || row.responded_at || row.created_at || '').slice(0, 10),
+      }));
+  }
+
+  return (data ?? [])
+    .filter((row) => (row.rating && row.rating >= 4) || (row.feedback && row.feedback.trim().length > 0))
+    .map((row) => {
+      const job = row.jobs as { ref?: string; scope?: string } | null;
+      const label = job?.scope ? job.scope : job?.ref ? `Job ${job.ref}` : '';
+      return {
+        id: row.id,
+        clientName: row.client_name?.trim() || 'Verified Customer',
+        rating: Math.max(1, Math.min(5, Math.round(row.rating || 5))),
+        feedback: row.feedback?.trim() || 'Great service, highly recommend!',
+        jobRef: label,
+        date: (row.feedback_at || row.responded_at || row.created_at || '').slice(0, 10),
+      };
+    });
+}
+

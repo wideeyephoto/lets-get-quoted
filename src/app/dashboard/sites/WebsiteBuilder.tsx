@@ -10,7 +10,7 @@ import { getSiteContent, getTradeGlyphOptions, getUnreviewedGeneratedSections, g
 import { generatePrivacyPolicy, generateTermsOfService } from '@/lib/legal/legal-copy';
 import { AVAILABLE_TEMPLATES } from '@/lib/templates/types';
 import ServiceIcon, { SERVICE_ICON_KEYS } from '@/lib/templates/ServiceIcon';
-import { checkSubdomainAvailableAction, generateSiteTextAction, importJobPhotoToSiteImageAction, listCompletedJobPhotoOptionsAction, publishSiteAction, regenerateSeoCopyAction, regenerateStockImagesAction, updateSiteAction, uploadSiteImageAction, verifyCustomDomainAction, type JobPhotoImportOption } from './actions';
+import { checkSubdomainAvailableAction, generateSiteTextAction, importJobPhotoToSiteImageAction, listCompletedJobPhotoOptionsAction, listCompletedJobReviewsAction, publishSiteAction, regenerateSeoCopyAction, regenerateStockImagesAction, updateSiteAction, uploadSiteImageAction, verifyCustomDomainAction, type JobPhotoImportOption, type CompletedJobReviewOption } from './actions';
 import { SEO_TITLE_MAX as SEO_TITLE_LIMIT, SEO_DESC_MAX as SEO_DESC_LIMIT } from '@/lib/seo/seo-copy';
 import { parseVerificationToken, verificationTokenProblem } from '@/lib/seo/search-console';
 // Shared with the first-run seed (lib/site-seed) so "Generate" here and the
@@ -31,6 +31,7 @@ import ChatButtonField from './ChatButtonField';
 import AnalyticsField from './AnalyticsField';
 import ThemeIcon from './ThemeIcon';
 import VideoStudio from './VideoStudio';
+import AiLogoCreatorModal from './AiLogoCreatorModal';
 import styles from './SiteEditor.module.css';
 
 type BuilderTab = 'business' | 'page' | 'design' | 'publish';
@@ -255,6 +256,9 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, just
   const [siteImages, setSiteImages] = useState(uploadedImages);
   const [jobPhotoOptions, setJobPhotoOptions] = useState<JobPhotoImportOption[]>([]);
   const [jobPhotosLoaded, setJobPhotosLoaded] = useState(false);
+  const [internalReviewOptions, setInternalReviewOptions] = useState<CompletedJobReviewOption[]>([]);
+  const [internalReviewsLoaded, setInternalReviewsLoaded] = useState(false);
+  const [isLoadingInternalReviews, setIsLoadingInternalReviews] = useState(false);
   // Seeded rather than set in an effect: a deep link that switched tabs after
   // the first paint would show the Setup tab for a frame and then jump.
   const deepLink = openTarget ? OPEN_TARGETS[openTarget] ?? null : null;
@@ -307,6 +311,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, just
   // Briefly highlights a Design-tab field jumped to from the preview (e.g. the
   // hero badge control).
   const [flashField, setFlashField] = useState<string | null>(null);
+  const [showLogoStudio, setShowLogoStudio] = useState(false);
   // Session undo/redo over `site` snapshots (works across saves — undoing to a
   // pre-save state marks the builder dirty so Save can persist the recovery).
   // Rapid keystrokes coalesce into one entry: a snapshot is only pushed when an
@@ -1120,6 +1125,45 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, just
     updateSiteContent({ testimonials });
   }, [updateSiteContent]);
 
+  const loadInternalReviews = useCallback(() => {
+    setIsLoadingInternalReviews(true);
+    startTransition(async () => {
+      try {
+        const reviews = await listCompletedJobReviewsAction();
+        setInternalReviewOptions(reviews);
+        setInternalReviewsLoaded(true);
+        if (reviews.length === 0) {
+          setMessage({ type: 'success', text: 'No verified job reviews found yet. When customers rate your completed jobs on Let’s Get Quoted, they will appear here.' });
+        }
+      } catch (error) {
+        setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Unable to load job reviews.' });
+      } finally {
+        setIsLoadingInternalReviews(false);
+      }
+    });
+  }, []);
+
+  const importInternalReview = useCallback((rev: CompletedJobReviewOption) => {
+    const id = createContentId('rev');
+    const newTestimonial: SiteTestimonialItem = {
+      id,
+      author: rev.clientName,
+      text: rev.feedback,
+      rating: rev.rating,
+      label: rev.jobRef || 'Verified Homeowner',
+      imageUrl: '',
+      imageAlt: '',
+      generated: undefined,
+    };
+    updateTestimonials({
+      ...siteContent.testimonials,
+      enabled: true,
+      items: [newTestimonial, ...siteContent.testimonials.items],
+    });
+    setInternalReviewOptions((current) => current.filter((item) => item.id !== rev.id));
+    setMessage({ type: 'success', text: `Imported review from ${rev.clientName}.` });
+  }, [siteContent.testimonials, updateTestimonials]);
+
   // Edit one review in place. Rewriting the WORDS or the customer's name is the
   // owner taking authorship of the quote, so it clears the `generated` flag —
   // which is also how they get past the publish gate without a button that just
@@ -1199,6 +1243,34 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, just
         : side === 'before'
           ? { ...pair, beforeUrl: image.url, beforeAlt: image.alt || pair.beforeAlt || 'Before' }
           : { ...pair, afterUrl: image.url, afterAlt: image.alt || pair.afterAlt || 'After' }),
+    });
+  }, [siteContent.beforeAfter, updateBeforeAfter]);
+
+  const importJobPhotoToBeforeAfter = useCallback((photo: JobPhotoImportOption, side: 'before' | 'after') => {
+    startTransition(async () => {
+      try {
+        const image = await importJobPhotoToSiteImageAction(photo.path, photo.label);
+        setSiteImages((current) => [image, ...current]);
+        const existing = siteContent.beforeAfter.items[0];
+        const id = existing?.id || createContentId('ba');
+        const updatedItem = existing
+          ? {
+              ...existing,
+              ...(side === 'before' ? { beforeUrl: image.url, beforeAlt: image.alt } : { afterUrl: image.url, afterAlt: image.alt }),
+            }
+          : {
+              id,
+              beforeUrl: side === 'before' ? image.url : '',
+              beforeAlt: side === 'before' ? image.alt : '',
+              afterUrl: side === 'after' ? image.url : '',
+              afterAlt: side === 'after' ? image.alt : '',
+              label: '',
+            };
+        updateBeforeAfter({ ...siteContent.beforeAfter, enabled: true, items: [updatedItem] });
+        setMessage({ type: 'success', text: `Job photo imported as ${side} photo.` });
+      } catch (error) {
+        setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Unable to import this job photo.' });
+      }
     });
   }, [siteContent.beforeAfter, updateBeforeAfter]);
 
@@ -1994,7 +2066,10 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, just
                         })()}
                     <hr className={styles.logoDivider} />
                     <div className={styles.imageSlotActions}>
-                      <button type="button" className={styles.secondaryAction} onClick={() => openPicker('your logo', 'logo')}>{site.logo_url ? 'Replace photo' : 'Add your own logo'}</button>
+                      <button type="button" className={`${styles.secondaryAction} btn primary`} onClick={() => setShowLogoStudio(true)} style={{ background: '#2563eb', color: '#ffffff', border: 'none', fontWeight: 700 }}>
+                        ✨ AI Logo Studio
+                      </button>
+                      <button type="button" className={styles.secondaryAction} onClick={() => openPicker('your logo', 'logo')}>{site.logo_url ? 'Replace photo' : 'Upload custom file'}</button>
                       {site.logo_url && <button type="button" className={styles.secondaryAction} onClick={() => handleChange('logo_url', null)}>Remove</button>}
                     </div>
                     <div className={styles.formColumns}>
@@ -2185,6 +2260,25 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, just
                       </div>
                     );
                   })()}
+                  <div className={styles.jobPhotoImport}>
+                    <div><strong>Completed job photos</strong><small>Import completed job photos directly into your before/after slider.</small></div>
+                    <button type="button" onClick={loadJobPhotoOptions} disabled={isPending}>{jobPhotosLoaded ? 'Refresh job photos' : 'Load job photos'}</button>
+                  </div>
+                  {jobPhotosLoaded && (
+                    jobPhotoOptions.length > 0 ? (
+                      <div className={styles.compactImageGrid}>
+                        {jobPhotoOptions.map((photo) => (
+                          <div key={photo.path} className={styles.compactImageTile}>
+                            <img src={photo.url} alt={photo.label} />
+                            <div style={{ display: 'flex', gap: '4px', marginTop: '4px' }}>
+                              <button type="button" onClick={() => importJobPhotoToBeforeAfter(photo, 'before')} disabled={isPending} style={{ flex: 1, padding: '2px 4px', fontSize: '0.75rem' }}>+ Before</button>
+                              <button type="button" onClick={() => importJobPhotoToBeforeAfter(photo, 'after')} disabled={isPending} style={{ flex: 1, padding: '2px 4px', fontSize: '0.75rem' }}>+ After</button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : <p className={styles.emptyHelper}>Completed jobs with photos will appear here.</p>
+                  )}
                 </SectionCard>
 
                 {videoCards.map((card, cardIndex) => (
@@ -2333,6 +2427,37 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, just
                       </div>
                     )}
                   </div>
+                  <div className={styles.jobPhotoImport}>
+                    <div>
+                      <strong>Verified Let&apos;s Get Quoted reviews</strong>
+                      <small>1-click import homeowner ratings and feedback from your completed jobs.</small>
+                    </div>
+                    <button type="button" onClick={loadInternalReviews} disabled={isLoadingInternalReviews || isPending}>
+                      {internalReviewsLoaded ? 'Refresh job reviews' : 'Load job reviews'}
+                    </button>
+                  </div>
+                  {internalReviewsLoaded && (
+                    internalReviewOptions.length > 0 ? (
+                      <div className={styles.stackList}>
+                        {internalReviewOptions.map((rev) => (
+                          <div key={rev.id} className={styles.stackItem}>
+                            <div className={styles.itemHeader}>
+                              <div className={styles.itemTitleBtn}>
+                                <strong>{rev.clientName} ({'★'.repeat(rev.rating)})</strong>
+                                <small>{rev.jobRef ? `${rev.jobRef} · ` : ''}{rev.date}</small>
+                                <p style={{ margin: '4px 0 0', fontSize: '0.88rem', color: 'inherit' }}>&ldquo;{rev.feedback}&rdquo;</p>
+                              </div>
+                              <div className={styles.itemActions}>
+                                <button type="button" className={styles.itemSaveBtn} onClick={() => importInternalReview(rev)}>
+                                  + Import to site
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : <p className={styles.emptyHelper}>No additional verified job reviews available to import.</p>
+                  )}
                   <div className={styles.contentSubhead}><strong>Display style</strong><small>How your reviews are laid out on the page.</small></div>
                   <div className={styles.footerPicker} role="group" aria-label="Review display style">
                     {([
@@ -2866,6 +2991,18 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, just
           }}
         />
       )}
+
+      <AiLogoCreatorModal
+        open={showLogoStudio}
+        onClose={() => setShowLogoStudio(false)}
+        businessName={site.company_name}
+        trade={siteContent.trade}
+        accentColor={site.accent_override}
+        onSelectLogo={(_svg, dataUri) => {
+          handleChange('logo_url', dataUri);
+          updateSiteContent({ logoStyle: 'transparent' });
+        }}
+      />
 
       {(() => {
         // Resolved from the live list, not captured when it opened: deleting the

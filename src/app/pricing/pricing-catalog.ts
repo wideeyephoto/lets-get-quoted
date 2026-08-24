@@ -299,3 +299,70 @@ export function planCrossover(
   if (feeDifference <= 0) return Number.POSITIVE_INFINITY;
   return Math.max(0, (annualFixedCost(higher, billing, includeVoice) - annualFixedCost(lower, billing, includeVoice)) / feeDifference);
 }
+
+export type CompetitorBenchmark = {
+  id: string;
+  name: string;
+  category: string;
+  monthlyBase: number;
+  perUserMonthly: number;
+  includedUsers: number;
+  leadFeeAvg: number;
+  notes: string;
+};
+
+export const COMPETITOR_BENCHMARKS: readonly CompetitorBenchmark[] = [
+  {
+    id: 'jobber',
+    name: 'Jobber (Connect / Grow)',
+    category: 'Legacy Field Software',
+    monthlyBase: 169,
+    perUserMonthly: 29,
+    includedUsers: 1,
+    leadFeeAvg: 0,
+    notes: '$169/mo base + $29/mo per extra seat. Subscription billed every month even in slow seasons.',
+  },
+  {
+    id: 'housecall',
+    name: 'Housecall Pro (Essential)',
+    category: 'Legacy Field Software',
+    monthlyBase: 189,
+    perUserMonthly: 35,
+    includedUsers: 1,
+    leadFeeAvg: 0,
+    notes: '$189/mo base + $35/mo per extra user. Marketing, AI and SMS tools sold as separate add-ons.',
+  },
+  {
+    id: 'servicetitan',
+    name: 'ServiceTitan',
+    category: 'Enterprise HVAC & Plumbing',
+    monthlyBase: 350,
+    perUserMonthly: 125,
+    includedUsers: 1,
+    leadFeeAvg: 0,
+    notes: 'High per-technician monthly cost ($250–$400+/mo) plus thousands in required upfront implementation.',
+  },
+  {
+    id: 'leadbrokers',
+    name: 'Angi / Thumbtack Shared Leads',
+    category: 'Shared Lead Brokers',
+    monthlyBase: 0,
+    perUserMonthly: 0,
+    includedUsers: 1,
+    leadFeeAvg: 75,
+    notes: 'You pay $50–$120 for shared leads sent simultaneously to 4–5 other contractors.',
+  },
+] as const;
+
+export function estimateCompetitorAnnualCost(
+  competitor: CompetitorBenchmark,
+  officeUsers: number,
+  monthlyLeads: number = 0,
+): number {
+  const users = Math.max(1, officeUsers);
+  const extraUsers = Math.max(0, users - competitor.includedUsers);
+  const annualSoftware = (competitor.monthlyBase + extraUsers * competitor.perUserMonthly) * 12;
+  const annualLeads = Math.max(0, monthlyLeads) * competitor.leadFeeAvg * 12;
+  return annualSoftware + annualLeads;
+}
+

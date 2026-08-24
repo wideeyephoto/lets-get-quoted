@@ -41,15 +41,16 @@ describe('Jobs Workspace Enhancements', () => {
       const query = 'Ford';
 
       const filtered = jobs.filter(
-        (j) => (stage === 'all' || j.status === stage) && matchesQuery(j, query),
+        (j) => ((stage as StageFilter) === 'all' || j.status === stage) && matchesQuery(j, query),
       );
 
       expect(filtered.length).toBe(0);
       expect(jobStageLabel(stage)).toBe('In progress');
 
       // Searching "Ford" across all jobs should find 1
+      const allStage: StageFilter = 'all';
       const allMatches = jobs.filter(
-        (j) => ('all' === 'all' || j.status === 'all') && matchesQuery(j, query),
+        (j) => ((allStage as StageFilter) === 'all' || (j.status as StageFilter) === allStage) && matchesQuery(j, query),
       );
       expect(allMatches.length).toBe(1);
       expect(allMatches[0].clientName).toBe('Ford Prefect');

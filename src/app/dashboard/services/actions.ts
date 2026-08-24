@@ -2,7 +2,8 @@
 
 import { revalidatePath } from 'next/cache';
 import { requireOfficeContext } from '@/lib/auth';
-import { createService, updateService, setServiceActive, deleteService } from '@/lib/services';
+import { createService, updateService, setServiceActive, deleteService, listServices } from '@/lib/services';
+import { getStarterCatalogByTrade } from '@/lib/trade-catalogs';
 
 function num(value: FormDataEntryValue | null): number {
   const n = Number(value);
@@ -63,5 +64,28 @@ export async function setServiceActiveAction(serviceId: string, active: boolean)
 export async function deleteServiceAction(serviceId: string) {
   const { supabase, accountId } = await requireOfficeContext('jobs.write');
   await deleteService(supabase, accountId, serviceId);
+  revalidatePath('/dashboard/services');
+}
+
+export async function loadTradeStarterCatalogAction(formData: FormData) {
+  const { supabase, accountId } = await requireOfficeContext('jobs.write');
+  const tradeId = String(formData.get('tradeId') ?? '').trim();
+  const catalog = getStarterCatalogByTrade(tradeId);
+  if (!catalog) throw new Error('Selected trade starter catalog not found.');
+
+  const existingServices = await listServices(supabase, accountId);
+  const existingNames = new Set(existingServices.map((s) => s.name.trim().toLowerCase()));
+
+  for (const item of catalog.items) {
+    if (existingNames.has(item.name.trim().toLowerCase())) continue;
+    await createService(supabase, accountId, {
+      name: item.name,
+      description: item.description,
+      unitPrice: item.unitPrice,
+      unitCost: item.unitCost,
+      unit: item.unit,
+    });
+  }
+
   revalidatePath('/dashboard/services');
 }

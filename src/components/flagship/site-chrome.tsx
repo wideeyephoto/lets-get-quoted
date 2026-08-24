@@ -7,6 +7,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { FOOTER_LEGAL, FOOTER_PRIMARY } from '@/components/marketing/footer-nav';
+import MarketingAiAssistant from '@/components/marketing/MarketingAiAssistant';
 import styles from './flagship.module.css';
 
 /**
@@ -363,6 +364,7 @@ export function SiteFooter() {
         </p>
         <span>© 2026 Let’s Get Quoted</span>
       </footer>
+      {!signedIn && <MarketingAiAssistant />}
     </>
   );
 }

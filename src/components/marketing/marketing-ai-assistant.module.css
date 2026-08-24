@@ -1,0 +1,391 @@
+/* Marketing AI Assistant Widget Styling */
+
+.floatingWrapper {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 999;
+  font-family: var(--font-body, system-ui, -apple-system, sans-serif);
+}
+
+.floatingTrigger {
+  background: linear-gradient(135deg, #0c202d 0%, #153245 100%);
+  border: 1px solid rgba(80, 227, 189, 0.35);
+  border-radius: 999px;
+  padding: 10px 18px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #f5f0e7;
+  font-size: 13px;
+  font-weight: 750;
+  cursor: pointer;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5), 0 0 15px rgba(80, 227, 189, 0.2);
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s, border-color 0.2s;
+  user-select: none;
+}
+
+.floatingTrigger:hover {
+  transform: translateY(-2px) scale(1.02);
+  border-color: #50e3bd;
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.6), 0 0 22px rgba(80, 227, 189, 0.35);
+}
+
+.sparkleIcon {
+  font-size: 16px;
+  animation: pulseSparkle 2s infinite ease-in-out;
+}
+
+@keyframes pulseSparkle {
+  0%, 100% { transform: scale(1); opacity: 0.9; }
+  50% { transform: scale(1.2); opacity: 1; }
+}
+
+.triggerText {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+  line-height: 1.2;
+}
+
+.triggerTitle {
+  font-size: 13px;
+  font-weight: 800;
+  color: #f5f0e7;
+}
+
+.triggerSub {
+  font-size: 10px;
+  color: #50e3bd;
+  font-weight: 700;
+}
+
+/* Chat Drawer Window */
+.drawer {
+  position: absolute;
+  bottom: 60px;
+  right: 0;
+  width: min(390px, calc(100vw - 32px));
+  height: min(580px, calc(100vh - 120px));
+  background: radial-gradient(circle at 10% 10%, rgba(255, 106, 36, 0.08), transparent 45%),
+              radial-gradient(circle at 90% 90%, rgba(80, 227, 189, 0.06), transparent 50%),
+              linear-gradient(180deg, #0b1a24 0%, #06111a 100%);
+  border: 1px solid rgba(174, 199, 211, 0.25);
+  border-radius: 20px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: drawerSlideUp 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes drawerSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Drawer Header */
+.drawerHeader {
+  padding: 16px 18px;
+  background: rgba(7, 19, 29, 0.8);
+  border-bottom: 1px solid rgba(174, 199, 211, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: #ff6a24;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.botInfo {
+  display: flex;
+  flex-direction: column;
+}
+
+.botName {
+  font-size: 14px;
+  font-weight: 800;
+  color: #f5f0e7;
+}
+
+.botStatus {
+  font-size: 10px;
+  color: #50e3bd;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.statusDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #50e3bd;
+  box-shadow: 0 0 6px #50e3bd;
+}
+
+.closeBtn {
+  background: none;
+  border: none;
+  color: #8fa6b5;
+  font-size: 18px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: color 0.2s, background 0.2s;
+}
+
+.closeBtn:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* Chat Body */
+.chatBody {
+  flex: 1;
+  padding: 16px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.messageBubble {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(174, 199, 211, 0.15);
+  border-radius: 14px;
+  padding: 14px 16px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #d1e2eb;
+}
+
+.messageBubble strong {
+  color: #f5f0e7;
+}
+
+.quickPillsSection {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.quickPillsLabel {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #8fa6b5;
+}
+
+.pillList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pillBtn {
+  background: #081722;
+  border: 1px solid rgba(174, 199, 211, 0.2);
+  border-radius: 10px;
+  padding: 10px 12px;
+  text-align: left;
+  color: #f5f0e7;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.pillBtn:hover {
+  background: rgba(255, 106, 36, 0.12);
+  border-color: #ff6a24;
+  color: #ffffff;
+  transform: translateX(2px);
+}
+
+.pillArrow {
+  color: #ff6a24;
+  font-weight: 800;
+}
+
+/* Plan Recommender Box inside Chat */
+.planBox {
+  background: rgba(7, 19, 29, 0.85);
+  border: 1px solid rgba(80, 227, 189, 0.3);
+  border-radius: 12px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.planBoxLabel {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: #50e3bd;
+}
+
+.planInputRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.planSlider {
+  flex: 1;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  background: #173244;
+  border-radius: 2px;
+  outline: none;
+}
+
+.planSlider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #50e3bd;
+  cursor: pointer;
+}
+
+.planVolDisplay {
+  font-family: monospace;
+  font-size: 13px;
+  font-weight: 800;
+  color: #f5f0e7;
+  min-width: 65px;
+  text-align: right;
+}
+
+.planRecBadge {
+  background: rgba(80, 227, 189, 0.15);
+  border: 1px solid #50e3bd;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 12px;
+  color: #d1f4eb;
+  line-height: 1.4;
+}
+
+.planRecBadge strong {
+  color: #50e3bd;
+}
+
+/* Chat Footer & Input */
+.drawerFooter {
+  padding: 12px 16px;
+  background: rgba(6, 17, 26, 0.95);
+  border-top: 1px solid rgba(174, 199, 211, 0.15);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.inputForm {
+  display: flex;
+  gap: 8px;
+}
+
+.textInput {
+  flex: 1;
+  background: #0d2230;
+  border: 1px solid rgba(174, 199, 211, 0.25);
+  border-radius: 8px;
+  padding: 8px 12px;
+  color: #f5f0e7;
+  font-size: 12px;
+  outline: none;
+}
+
+.textInput:focus {
+  border-color: #ff6a24;
+}
+
+.sendBtn {
+  background: #ff6a24;
+  border: none;
+  border-radius: 8px;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 8px 14px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.sendBtn:hover {
+  background: #ff7d3e;
+}
+
+.drawerCtaBtn {
+  background: #50e3bd;
+  color: #06111a;
+  border-radius: 8px;
+  padding: 10px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 850;
+  text-decoration: none;
+  transition: transform 0.2s, background 0.2s;
+}
+
+.drawerCtaBtn:hover {
+  background: #68f0cb;
+  transform: translateY(-1px);
+}
+
+@media (max-width: 600px) {
+  .floatingWrapper {
+    bottom: 74px; /* Positioned above mobile bottom CTA bar */
+    right: 16px;
+  }
+
+  .drawer {
+    width: calc(100vw - 32px);
+    right: 0;
+    bottom: 54px;
+    height: 480px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .floatingTrigger, .drawer, .sparkleIcon, .pillBtn, .drawerCtaBtn {
+    transition: none;
+    animation: none;
+  }
+  .floatingTrigger:hover, .pillBtn:hover, .drawerCtaBtn:hover {
+    transform: none;
+  }
+}

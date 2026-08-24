@@ -505,6 +505,15 @@ export default async function PublicPaymentPage({
                     Pay {formatMoney(payment.amount)}
                   </button>
                 </form>
+                <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', fontSize: '0.78rem', color: 'var(--muted)' }}>
+                    <span>Accepted methods:</span>
+                    <strong style={{ color: 'var(--text)' }}>Apple Pay · Google Pay · Visa · Mastercard · Amex{offerAch ? ' · ACH Bank Transfer' : ''}</strong>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.74rem', color: 'var(--accent)' }}>
+                    <span aria-hidden="true">🔒</span> Secured by Stripe · 256-bit bank-grade encryption
+                  </div>
+                </div>
                 {offerAch ? (
                   <p className="payment-fee-note" style={{ fontSize: '0.875rem', color: 'var(--muted)', marginTop: '0.5rem' }}>
                     Pay by <strong>card</strong> or <strong>bank transfer (ACH)</strong> at checkout. Card is instant; a bank
@@ -513,6 +522,24 @@ export default async function PublicPaymentPage({
                 ) : null}
               </>
             )
+          ) : payment.status === 'paid' || paymentView.banner === 'paid' || paymentView.banner === 'settling' ? (
+            <div style={{ marginTop: '1.25rem', padding: '1.25rem', borderRadius: '12px', background: 'rgba(var(--tint), 0.04)', border: '1px solid var(--line)' }}>
+              <p style={{ margin: 0, fontWeight: 850, color: 'var(--text)', fontSize: '15px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ color: 'var(--accent)' }}>✓</span> Payment Complete
+              </p>
+              <p style={{ margin: '6px 0 12px', fontSize: '13px', color: 'var(--muted)', lineHeight: 1.45 }}>
+                Thank you for your payment to <strong>{businessName}</strong>. A receipt has been emailed to you.
+              </p>
+              <a
+                href={`https://www.google.com/search?q=${encodeURIComponent(businessName + ' reviews')}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn secondary"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 750, textDecoration: 'none', padding: '8px 16px', borderRadius: '6px' }}
+              >
+                <span style={{ color: 'var(--accent)' }}>★★★★★</span> Rate Your Experience on Google &rarr;
+              </a>
+            </div>
           ) : null}
         </div>
 

@@ -12,6 +12,9 @@ import { getPlanAccountSettings, listDayJobs } from '@/lib/route-plan-day';
 import { geocodeAddress } from '@/lib/geocode';
 import { isRouteStopId, normalizeManualKind, rememberPlace, routeStopUuid } from '@/lib/route-stops';
 import { savePreferredLast } from '@/lib/day-plan-prefs';
+import { listCrew, listJobIdsForCrew } from '@/lib/crew';
+import { loadBusinessName } from '@/lib/business-name';
+import { buildCrewMorningBriefingSms, type CrewBriefingStop } from '@/lib/crew-briefing';
 
 // The plan page is force-dynamic, but Next still serves a route's last RSC
 // payload from the client router cache on navigation — so a server action that
@@ -312,4 +315,75 @@ export async function setPreferredLastAction(dateKey: string, crewId: string | n
 
   await savePreferredLast(supabase, accountId, dateKey, crewId || null, stopId || null);
   revalidatePlan();
+}
+
+export async function sendCrewMorningBriefingAction(formData: FormData) {
+  const { supabase, accountId } = await requireOfficeContext('schedule.write');
+  const dateKey = String(formData.get('dateKey') ?? '').trim();
+  const crewId = String(formData.get('crewId') ?? '').trim() || null;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) redirect('/dashboard/schedule');
+
+  const settings = await getPlanAccountSettings(supabase, accountId);
+  const businessName = await loadBusinessName(supabase, accountId);
+  const { jobs } = await listDayJobs(supabase, accountId, dateKey, crewId, {
+    workDayHours: settings.scheduleDayHours,
+    workingWeekdays: settings.workingWeekdays,
+  });
+
+  const crew = await listCrew(supabase, accountId, { activeOnly: true });
+  const targets = crewId ? crew.filter((c) => c.id === crewId) : crew;
+
+  let briefedCount = 0;
+  for (const member of targets) {
+    if (!member.phone) continue;
+    const phone = normalizeUsPhone(member.phone);
+    if (!phone) continue;
+
+    // Filter jobs assigned to this crew member
+    let memberJobs = jobs;
+    if (crew.length > 1) {
+      const assignedIds: string[] = await listJobIdsForCrew(supabase, accountId, member.id).catch(() => [] as string[]);
+      if (assignedIds.length > 0) {
+        memberJobs = jobs.filter((j) => assignedIds.includes(j.id));
+      }
+    }
+    if (memberJobs.length === 0) continue;
+
+    const stops: CrewBriefingStop[] = memberJobs.map((j) => ({
+      jobRef: `JOB-${j.id.slice(0, 6).toUpperCase()}`,
+      clientName: j.client_name,
+      address: j.address || '',
+      phone: j.client_phone,
+      scheduledTime: j.scheduled_time,
+      lat: j.lat,
+      lng: j.lng,
+    }));
+
+    const text = buildCrewMorningBriefingSms({
+      crewName: member.name,
+      businessName,
+      date: dateKey,
+      stops,
+      portalUrl: 'https://letsgetquoted.com/field',
+    });
+
+    const { enqueueSmsDelivery } = await import('@/lib/sms-delivery');
+    await enqueueSmsDelivery({
+      accountId,
+      phoneNumber: phone,
+      body: text,
+      messageKind: 'crew-briefing',
+      context: 'crew',
+      eventType: 'crew_briefing',
+      crewId: member.id,
+      senderPurpose: 'lgq_dispatch',
+      billingCategory: 'crew_message',
+      idempotencyKey: `crew-briefing:${member.id}:${dateKey}`,
+    });
+
+    briefedCount += 1;
+  }
+
+  revalidatePlan();
+  redirect(planUrl(dateKey, crewId, { briefed: String(briefedCount) }));
 }

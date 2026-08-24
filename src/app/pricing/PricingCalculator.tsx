@@ -6,6 +6,8 @@ import {
   PLANS,
   VOICE_PURCHASABLE,
   OFFICE_USER_ADD_ON_MONTHLY,
+  COMPETITOR_BENCHMARKS,
+  estimateCompetitorAnnualCost,
   annualPlanEstimate,
   annualFixedCost,
   planCrossover,
@@ -104,7 +106,9 @@ export default function PricingCalculator({
   const flexFeeAnnual = volume * 0.0125;
   const winnerFeeAnnual = volume * (winnerPlan.paymentFeePct / 100);
   const feeSavingsVsFlex = flexFeeAnnual - winnerFeeAnnual;
-  const [showCompetitorComparison, setShowCompetitorComparison] = useState(false);
+  const [showCompetitorComparison, setShowCompetitorComparison] = useState(true);
+  const [selectedCompetitorId, setSelectedCompetitorId] = useState('jobber');
+  const [monthlyPurchasedLeads, setMonthlyPurchasedLeads] = useState(10);
 
   return (
     <div className={styles.calculatorShell}>
@@ -384,34 +388,93 @@ export default function PricingCalculator({
           aria-controls="pricing-competitor-compare"
           onClick={() => setShowCompetitorComparison((s) => !s)}
         >
-          <span>{showCompetitorComparison ? '▼ Hide side-by-side competitor comparison' : '▶ Compare LGQ vs Jobber & Housecall Pro at this volume'}</span>
+          <span>{showCompetitorComparison ? '▼ Hide side-by-side competitor comparison' : '▶ Compare LGQ vs Jobber, Housecall Pro & Lead Brokers at this volume'}</span>
         </button>
         {showCompetitorComparison ? (
           <div id="pricing-competitor-compare" className={styles.competitorCompareCard}>
-            <div className={styles.competitorCompareGrid}>
-              <div className={styles.competitorColLgq}>
-                <span className={styles.competitorBadge}>Let’s Get Quoted ({winner.plan.name})</span>
-                <strong>{money(winner.annualCost)}/yr total</strong>
-                <p>Includes software base + {winnerPlan.paymentFeePct}% platform fee + {winnerPlan.officeUsers} office seats + QuickBooks sync</p>
-              </div>
-              <div className={styles.competitorCol}>
-                <span>Jobber (Connect)</span>
-                <strong>$1,788/yr base</strong>
-                <p>5 users ($149/mo annual) · Phone receptionist is +$29/mo ($348/yr) · Payment processing separate</p>
-              </div>
-              <div className={styles.competitorCol}>
-                <span>Housecall Pro (Essentials)</span>
-                <strong>$1,788/yr base</strong>
-                <p>5 users ($149/mo annual) · CSR AI sold separately · Payment processing separate</p>
+            <div className={styles.competitorHeader}>
+              <span className={styles.controlLabel}>Select comparison benchmark:</span>
+              <div className={styles.competitorNav} role="tablist" aria-label="Competitor benchmarks">
+                {COMPETITOR_BENCHMARKS.map((comp) => {
+                  const isActive = selectedCompetitorId === comp.id;
+                  return (
+                    <button
+                      key={comp.id}
+                      type="button"
+                      className={`${styles.competitorTab} ${isActive ? styles.competitorTabActive : ''}`}
+                      onClick={() => setSelectedCompetitorId(comp.id)}
+                      role="tab"
+                      aria-selected={isActive}
+                    >
+                      {comp.name}
+                    </button>
+                  );
+                })}
               </div>
             </div>
-            <p className={styles.competitorSummaryNote}>
-              {winner.annualCost < 1788 ? (
-                <>💡 <strong>Save approximately {money(1788 - winner.annualCost)}/year</strong> on your base software subscription while keeping 2-way messaging and QuickBooks Online included.</>
-              ) : (
-                <>💡 <strong>Scale without per-seat surprises:</strong> LGQ includes 15 office users + 50 crew users with a 0.10% platform fee, whereas legacy FSMs add steep per-seat monthly charges.</>
-              )}
-            </p>
+
+            {selectedCompetitorId === 'leadbrokers' ? (
+              <div className={styles.competitorLeadSliderRow}>
+                <span>Estimate shared leads bought per month: <strong>{monthlyPurchasedLeads} leads/mo</strong> (@ ~$75/lead)</span>
+                <input
+                  type="range"
+                  min="0"
+                  max="50"
+                  step="5"
+                  value={monthlyPurchasedLeads}
+                  onChange={(e) => setMonthlyPurchasedLeads(Number(e.target.value))}
+                  aria-label="Monthly shared leads purchased from brokers"
+                />
+                <strong>{money(monthlyPurchasedLeads * 75 * 12)}/yr spent</strong>
+              </div>
+            ) : null}
+
+            {(() => {
+              const activeCompetitor = COMPETITOR_BENCHMARKS.find((c) => c.id === selectedCompetitorId) ?? COMPETITOR_BENCHMARKS[0];
+              const competitorCost = estimateCompetitorAnnualCost(
+                activeCompetitor,
+                officeUsers,
+                activeCompetitor.id === 'leadbrokers' ? monthlyPurchasedLeads : 0,
+              );
+              const lgqCost = winner.annualCost ?? 0;
+              const savings = Math.max(0, competitorCost - lgqCost);
+
+              return (
+                <>
+                  <div className={styles.competitorCompareGrid}>
+                    <div className={styles.competitorColLgq}>
+                      <span className={styles.competitorBadge}>Let’s Get Quoted ({winner.plan.name})</span>
+                      <strong>{money(lgqCost)}/yr total</strong>
+                      <p>
+                        Software base + {winnerPlan.paymentFeePct}% platform fee + {winnerPlan.officeUsers} office seats + QuickBooks sync + free website
+                      </p>
+                    </div>
+                    <div className={styles.competitorCol}>
+                      <span>{activeCompetitor.name}</span>
+                      <strong>{money(competitorCost)}/yr total</strong>
+                      <p>{activeCompetitor.notes}</p>
+                    </div>
+                    <div className={styles.competitorCol}>
+                      <span>Structural Difference</span>
+                      <strong style={{ color: '#52d9ac' }}>{savings > 0 ? `+${money(savings)}/yr kept` : 'Included team scale'}</strong>
+                      <p>
+                        {winnerPlan.id === 'flex'
+                          ? 'Zero fixed subscription. In slow months with $0 collected, your software bill is $0.'
+                          : 'Predictable pricing without per-seat surprises as your crews grow.'}
+                      </p>
+                    </div>
+                  </div>
+                  <p className={styles.competitorSummaryNote}>
+                    💡 <strong>{activeCompetitor.name} comparison:</strong>{' '}
+                    {savings > 0 ? (
+                      <>You keep an estimated <strong>{money(savings)}/year</strong> in your pocket compared to {activeCompetitor.name}, with no surprise monthly charges during slow seasons.</>
+                    ) : (
+                      <>With Let’s Get Quoted {winner.plan.name}, you get built-in AI intake, automated 2-way texting, and QuickBooks sync included without stacking third-party add-on fees.</>
+                    )}
+                  </p>
+                </>
+              );
+            })()}
           </div>
         ) : null}
       </div>

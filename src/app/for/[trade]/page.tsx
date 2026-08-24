@@ -9,6 +9,7 @@ import { titleWithBrand } from '@/lib/seo/marketing-seo';
 import { breadcrumbJsonLd, HOME_CRUMB } from '@/lib/seo/breadcrumbs';
 import { cspNonce } from '@/lib/csp-nonce';
 import SiteFooter from '@/components/site-footer';
+import TradeRoiCalculator from './TradeRoiCalculator';
 
 export function generateStaticParams() {
   return TRADES.map((trade) => ({ trade: trade.slug }));
@@ -90,6 +91,8 @@ export default function TradePage({ params }: { params: { trade: string } }) {
           ))}
         </div>
       </section>
+
+      <TradeRoiCalculator trade={trade} />
 
       <section className="section-block">
         <div className="section-heading">

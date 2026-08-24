@@ -129,6 +129,8 @@ const MARKETING_PATHS = [
   '/how-it-works',
   '/for',
   '/pricing',
+  '/compare',
+  '/tools',
   '/faq',
   '/security',
   '/resources',

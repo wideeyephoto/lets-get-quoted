@@ -132,6 +132,28 @@ describe('buildLocalBusinessJsonLd', () => {
   it('is null without a business name', () => {
     expect(buildLocalBusinessJsonLd(site({ company_name: '' }))).toBeNull();
   });
+
+  it('includes hasOfferCatalog when services are enabled with titles', () => {
+    const data = buildLocalBusinessJsonLd(site({
+      content: {
+        services: {
+          enabled: true,
+          items: [
+            { id: '1', icon: 'spark', title: 'Drain Cleaning', description: 'Clears clogged drains' },
+            { id: '2', icon: 'spark', title: 'Pipe Repair', description: 'Fixes leaking pipes' },
+          ],
+        },
+      },
+    }))!;
+    expect(data.hasOfferCatalog).toEqual({
+      '@type': 'OfferCatalog',
+      name: 'BrokePipes Services',
+      itemListElement: [
+        { '@type': 'Offer', itemOffered: { '@type': 'Service', name: 'Drain Cleaning' } },
+        { '@type': 'Offer', itemOffered: { '@type': 'Service', name: 'Pipe Repair' } },
+      ],
+    });
+  });
 });
 
 describe('preferLocalSeoTitle', () => {

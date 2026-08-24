@@ -10,6 +10,7 @@ import {
   type Warranty,
 } from '@/lib/warranties';
 import type { WarrantyClaim } from '@/lib/warranties-data';
+import { buildEquipmentStickerHtml } from '@/lib/equipment-qr';
 import { addWarrantyDocumentAction, createWarrantyAction, deleteWarrantyAction, recordServiceAction } from './warranty-actions';
 
 /**
@@ -94,6 +95,32 @@ export default function WarrantyPanel({
                     Attach
                   </SaveButton>
                 </form>
+
+                <details className="workspace-details warranty-qr-details" style={{ marginTop: '0.6rem' }}>
+                  <summary className="workspace-details-summary">
+                    <span className="btn secondary">🏷️ Printable Equipment QR Sticker</span>
+                  </summary>
+                  <div style={{ marginTop: '0.75rem', padding: '0.9rem', background: '#fff', border: '1px solid #cbd5e1', borderRadius: '8px' }}>
+                    <p style={{ fontSize: '0.85rem', color: '#64748b', margin: '0 0 0.6rem' }}>
+                      Affix this sticker label onto the installed equipment. Anyone scanning the QR code with their mobile phone instantly opens the unit&apos;s maintenance record and service specs.
+                    </p>
+                    <div
+                      dangerouslySetInnerHTML={{
+                        __html: buildEquipmentStickerHtml({
+                          id: warranty.id,
+                          jobId,
+                          name: warranty.title,
+                          brand: '',
+                          installedOn: warranty.startsOn,
+                          filterSpecs: warranty.maintenanceNotes || null,
+                          businessName: "Let's Get Quoted",
+                          servicePhone: 'Service & Support',
+                          portalUrl: `https://letsgetquoted.com/portal/view/${jobId}#warranty-${warranty.id}`,
+                        }),
+                      }}
+                    />
+                  </div>
+                </details>
 
                 {own.length > 0 ? (
                   <ul className="warranty-claims">

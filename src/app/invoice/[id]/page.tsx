@@ -4,6 +4,8 @@ import { computeInvoiceTotals, getPublicInvoice } from '@/lib/invoices';
 import { invoicePayState, type InvoicePayment } from '@/lib/invoice-pay';
 import { CHECKOUT_BLOCK_NOTE } from '@/lib/payment-banner';
 import { canCreateConnectCharge } from '@/lib/stripe';
+import { isFinancingEligible, buildFinancingBadgeCopy } from '@/lib/financing';
+import { calculateQuotePriceLock } from '@/lib/quote-expiration';
 import { loadContractorBrand } from '@/lib/contractor-brand';
 import { ContractorBrandBar, ContractorBrandFoot } from '@/components/contractor-brand';
 import { payInvoiceAction, signInvoiceAction } from './actions';
@@ -82,6 +84,16 @@ export default async function PublicInvoicePage({ params }: { params: { id: stri
             {pay.paid > 0 ? (
               <span className="payment-amount-sub">
                 {formatMoney(pay.paid)} of {formatMoney(totals.total)} already paid
+              </span>
+            ) : null}
+            {isFinancingEligible(totals.total) && pay.state !== 'settled' ? (
+              <span className="payment-financing-badge" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.85rem', color: 'var(--text-muted, #64748b)', marginTop: '0.4rem', fontWeight: 500 }}>
+                💳 {buildFinancingBadgeCopy(totals.total)}
+              </span>
+            ) : null}
+            {pay.state !== 'settled' && !isSigned ? (
+              <span className="payment-price-lock-badge" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.8rem', color: 'var(--text-muted, #64748b)', marginTop: '0.35rem' }}>
+                {calculateQuotePriceLock(invoice.created_at || new Date()).badgeText}
               </span>
             ) : null}
           </div>

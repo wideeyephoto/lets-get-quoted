@@ -35,6 +35,7 @@ import SiteAnalytics from './SiteAnalytics';
 import SitePexelsAttribution from './SitePexelsAttribution';
 import { hasAnalytics } from '@/lib/analytics';
 import StatCounters from './StatCounters';
+import SiteServiceAreaMatcher from './SiteServiceAreaMatcher';
 import styles from './themes.module.css';
 
 type SiteContentSectionsProps = {
@@ -263,6 +264,7 @@ export default function SiteContentSections({ site, galleryImages = [] }: SiteCo
             <li key={`${city}-${index}`} className={styles.serviceAreaChip}>{city}</li>
           ))}
         </ul>
+        <SiteServiceAreaMatcher cities={serviceAreas.cities} serviceArea={site.service_area} companyName={site.company_name} />
       </section>
     ),
     stats: stats && <StatCounters title={stats.title} items={stats.items} photo={getSlotImage(site.content, 'stats', site.hero_url || STOCK_SITE_IMAGES[2].url)} />,

@@ -28,7 +28,7 @@ import DayPlanner from './DayPlanner';
 import type { StopArrivalProps } from './StopArrival';
 import PlanDayControls from './PlanDayControls';
 import EstimateOffers, { type OfferSuggestionView, type OfferView } from './EstimateOffers';
-import { geocodeDayAction, notifyMovedClientsAction } from './actions';
+import { geocodeDayAction, notifyMovedClientsAction, sendCrewMorningBriefingAction } from './actions';
 import { sendArrivalOwnerTo, setArrivalStatusOwnerTo } from '@/app/dashboard/jobs/[id]/arrival-actions';
 import { createAdminClient } from '@/lib/auth';
 import { arrivalSettingsFromAccount, formatArrivalWindow, DEFAULT_ARRIVAL_TEMPLATE } from '@/lib/arrival';
@@ -87,6 +87,7 @@ export default async function PlanDayPage({
     failed?: string;
     stranded?: string;
     geocoded?: string;
+    briefed?: string;
   };
 }) {
   const { supabase, accountId } = await requireOfficeContext('jobs.read', 'schedule.write');
@@ -407,10 +408,24 @@ export default async function PlanDayPage({
             </Link>
           </div>
           <PlanDayControls dateKey={dateKey} crewId={crewId} crew={crew.map((m) => ({ id: m.id, name: m.name }))} />
+          {routable.length > 0 ? (
+            <form action={sendCrewMorningBriefingAction} style={{ display: 'inline-block' }}>
+              <input type="hidden" name="dateKey" value={dateKey} />
+              {crewId ? <input type="hidden" name="crewId" value={crewId} /> : null}
+              <button type="submit" className="btn ghost" title="Text daily run-sheet with Google Maps routes to scheduled crew">
+                📱 Brief crew
+              </button>
+            </form>
+          ) : null}
           <Link href="/dashboard/schedule" className="btn ghost plan-back">Back to calendar</Link>
         </div>
       </header>
 
+      {searchParams.briefed !== undefined ? (
+        <p className="plan-flash good">
+          Sent morning dispatch briefing SMS with Google Maps routes to {searchParams.briefed} crew {searchParams.briefed === '1' ? 'member' : 'members'}.
+        </p>
+      ) : null}
       {blockedReason ? (
         <p className="plan-flash warn">
           You&apos;ve marked this day off — {blockedReason}. Planning it anyway is fine; just checking you meant this day.

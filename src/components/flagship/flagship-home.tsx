@@ -12,6 +12,7 @@ import { HOME_FAQS } from '@/lib/home-faqs';
 import { PLAN_PRICE_OPTIONS, STRIPE_PROCESSING_NOTE } from '@/lib/pricing';
 import styles from './flagship.module.css';
 import LaunchBanner from '@/components/marketing/launch-banner';
+import TradeWebsiteGenerator from '@/components/marketing/TradeWebsiteGenerator';
 
 const TradeOrbit = dynamic(() => import('./trade-orbit'), { ssr: true });
 const CommandCenterDeck = dynamic(() => import('@/components/command-center-deck'), { ssr: true });
@@ -669,6 +670,8 @@ export default function FlagshipHome() {
           </span>
         ))}
       </section>
+
+      <TradeWebsiteGenerator />
 
       <section className="flagships" id="flagships" data-track>
         <Glare />

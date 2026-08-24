@@ -248,6 +248,28 @@ export function buildLocalBusinessJsonLd(site: Site): Record<string, unknown> | 
   // wrong-box paste would produce if the URL weren't host-checked first.
   const sameAs = content.socials.map((s) => s.url);
 
+  const serviceOffers = content.services.enabled
+    ? content.services.items
+        .map((item) => trimmed(item.title))
+        .filter(Boolean)
+        .slice(0, 15)
+        .map((title) => ({
+          '@type': 'Offer',
+          itemOffered: {
+            '@type': 'Service',
+            name: title,
+          },
+        }))
+    : [];
+
+  const hasOfferCatalog = serviceOffers.length > 0
+    ? {
+        '@type': 'OfferCatalog',
+        name: `${name} Services`,
+        itemListElement: serviceOffers,
+      }
+    : null;
+
   return {
     '@context': 'https://schema.org',
     '@type': type,
@@ -259,6 +281,7 @@ export function buildLocalBusinessJsonLd(site: Site): Record<string, unknown> | 
     ...(address ? { address } : {}),
     ...(areaServed ? { areaServed } : {}),
     ...(openingHours.length > 0 ? { openingHoursSpecification: openingHours } : {}),
+    ...(hasOfferCatalog ? { hasOfferCatalog } : {}),
     ...(description ? { description } : {}),
     ...(sameAs.length > 0 ? { sameAs } : {}),
   };

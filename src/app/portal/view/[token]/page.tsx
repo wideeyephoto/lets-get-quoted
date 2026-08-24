@@ -8,6 +8,7 @@ import { createAdminClient } from '@/lib/auth';
 import { formatMoneyExact as formatMoney } from '@/lib/jobs';
 import { resolvePortalAccess } from '@/lib/client-portal';
 import { loadPortal } from '@/lib/client-portal-data';
+import { generateReferralCode, buildReferralShareText } from '@/lib/referrals';
 import { ContractorBrandBar, ContractorBrandFoot } from '@/components/contractor-brand';
 
 export const dynamic = 'force-dynamic';
@@ -54,6 +55,10 @@ export default async function PortalViewPage({ params }: { params: { token: stri
 
   const firstName = portal.clientName.trim().split(/\s+/)[0] || 'there';
   const { brand } = portal;
+  const referralCode = generateReferralCode(portal.clientName);
+  const shareUrl = brand.siteUrl ? `${brand.siteUrl}?ref=${referralCode}` : `https://letsgetquoted.com?ref=${referralCode}`;
+  const shareText = buildReferralShareText({ referrerName: firstName, businessName: portal.businessName, shareUrl });
+
   // Bills still wanting money, newest first. Separated from the rest because
   // this is the reason somebody opens a portal — a page that leads with work
   // history makes them hunt for the thing they came to settle.
@@ -161,9 +166,20 @@ export default async function PortalViewPage({ params }: { params: { token: stri
                     <p className="client-warranty-excludes"><strong>Not covered:</strong> {warranty.excludes}</p>
                   ) : null}
                   {warranty.maintenanceNotes ? (
-                    <p className="client-warranty-maintenance"><strong>Looking after it:</strong> {warranty.maintenanceNotes}</p>
+                    <p className="client-warranty-maintenance"><strong>Maintenance specs:</strong> {warranty.maintenanceNotes}</p>
                   ) : null}
                   {warranty.serviceDueLabel ? <p className="client-warranty-service">{warranty.serviceDueLabel}</p> : null}
+                  {brand.phone ? (
+                    <div style={{ marginTop: '0.6rem' }}>
+                      <a
+                        href={`sms:${brand.phone.replace(/[^0-9+]/g, '')}?&body=${encodeURIComponent(`Hi ${portal.businessName}, I'd like to schedule routine maintenance for my ${warranty.title}.`)}`}
+                        className="btn secondary"
+                        style={{ fontSize: '0.8rem', padding: '0.35rem 0.65rem' }}
+                      >
+                        🔧 Request Routine Service
+                      </a>
+                    </div>
+                  ) : null}
                 </article>
               ))}
             </div>
@@ -248,6 +264,34 @@ export default async function PortalViewPage({ params }: { params: { token: stri
             ) : null}
           </section>
         ) : null}
+
+        <section className="panel workspace-section-card referral-share-card">
+          <div className="section-heading workspace-section-heading compact-heading">
+            <p className="eyebrow">Rewards</p>
+            <h2>Refer a friend or neighbor</h2>
+          </div>
+          <p className="workspace-lead" style={{ fontSize: '0.95rem', marginBottom: '0.9rem' }}>
+            Give a neighbor <strong>$50 off</strong> their first service with {portal.businessName}, and receive a <strong>$50 credit</strong> on your next project when they book!
+          </p>
+          <div className="referral-code-box" style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.65rem 0.9rem', background: 'var(--surface-subtle, rgba(0,0,0,0.03))', borderRadius: '8px', border: '1px solid var(--border-color, rgba(0,0,0,0.08))', marginBottom: '0.9rem' }}>
+            <span style={{ fontSize: '0.85rem', color: 'var(--text-muted, #64748b)' }}>Your Promo Code:</span>
+            <code style={{ fontSize: '1rem', fontWeight: 700, letterSpacing: '0.05em' }}>{referralCode}</code>
+          </div>
+          <div className="actions workspace-actions" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+            <a
+              className="btn primary"
+              href={`sms:?&body=${encodeURIComponent(shareText)}`}
+            >
+              💬 Text to a neighbor
+            </a>
+            <a
+              className="btn secondary"
+              href={`mailto:?subject=${encodeURIComponent(`$50 off with ${portal.businessName}`)}&body=${encodeURIComponent(shareText)}`}
+            >
+              ✉️ Email link
+            </a>
+          </div>
+        </section>
 
         <p className="portal-foot">
           This page only shows your own records with {portal.businessName}. Don&apos;t forward the link — anyone who has

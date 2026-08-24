@@ -5,6 +5,13 @@
 
 export type TradePain = { title: string; body: string };
 
+export type TradeEconomics = {
+  avgTicket: number;
+  typicalMonthlyVolume: number;
+  typicalJobsPerMonth: number;
+  quickStopMonthlyBonus: number;
+};
+
 export type Trade = {
   slug: string;
   name: string; // plural, headline case — "Landscapers"
@@ -16,16 +23,8 @@ export type Trade = {
   templateIds: string[];
   metaTitle: string;
   metaDescription: string;
-  /**
-   * Who hands over the money, for the "you only pay when a ___ pays you" line
-   * the template repeats three times. Defaults to "homeowner", which is right
-   * for the forty-six trades that work on houses and wrong for the three that
-   * do not — a home inspector is hired by a buyer who does not own the place
-   * yet, and nobody moving house or getting their car detailed is a homeowner
-   * in the sentence. The metaDescriptions on those three already said "client"
-   * and "customer"; the visible page was the part still saying homeowner.
-   */
   payer?: string;
+  economics?: TradeEconomics;
 };
 
 export const TRADES: Trade[] = [
@@ -985,3 +984,66 @@ export const FEATURED_TRADE_SLUGS = [
 export const FEATURED_TRADES: Trade[] = FEATURED_TRADE_SLUGS
   .map(getTrade)
   .filter((trade): trade is Trade => Boolean(trade));
+
+const HIGH_TICKET_TRADES = new Set([
+  'roofers',
+  'remodelers',
+  'general-contractors',
+  'solar-installers',
+  'pool-builders',
+  'custom-home-builders',
+  'siding-contractors',
+  'deck-builders',
+  'kitchen-bath',
+  'framing-contractors',
+  'excavation',
+]);
+
+const MID_TICKET_TRADES = new Set([
+  'hvac',
+  'electricians',
+  'plumbers',
+  'painters',
+  'flooring',
+  'concrete',
+  'fencing',
+  'masonry',
+  'tree-service',
+  'landscapers',
+  'asphalt-paving',
+  'epoxy-flooring',
+  'drywall-contractors',
+  'cabinet-makers',
+  'insulation',
+  'water-damage-restoration',
+]);
+
+export function getTradeEconomics(trade: Trade): TradeEconomics {
+  if (trade.economics) return trade.economics;
+
+  if (HIGH_TICKET_TRADES.has(trade.slug)) {
+    return {
+      avgTicket: 11500,
+      typicalMonthlyVolume: 46000,
+      typicalJobsPerMonth: 4,
+      quickStopMonthlyBonus: 3200,
+    };
+  }
+
+  if (MID_TICKET_TRADES.has(trade.slug)) {
+    return {
+      avgTicket: 1850,
+      typicalMonthlyVolume: 28000,
+      typicalJobsPerMonth: 15,
+      quickStopMonthlyBonus: 2400,
+    };
+  }
+
+  // Standard / Service / Maintenance trades
+  return {
+    avgTicket: 420,
+    typicalMonthlyVolume: 16000,
+    typicalJobsPerMonth: 38,
+    quickStopMonthlyBonus: 1600,
+  };
+}

@@ -8,7 +8,7 @@ import styles from './SiteEditor.module.css';
 // link straight into that provider's DNS editor. Steps/labels/URLs verified
 // against GoDaddy + Squarespace help docs (2026); "Other" is the generic path.
 
-type Provider = {
+export type Provider = {
   id: string;
   name: string;
   // Deep link into the provider's DNS editor. GoDaddy embeds the domain;
@@ -21,7 +21,7 @@ type Provider = {
   apex: string;
 };
 
-const PROVIDERS: Provider[] = [
+export const PROVIDERS: Provider[] = [
   {
     id: 'godaddy',
     name: 'GoDaddy',
@@ -57,6 +57,44 @@ const PROVIDERS: Provider[] = [
       'Come back here and click “Verify DNS”. DNS can take 24–48 hours.',
     ],
     apex: 'For a bare root domain, add an ALIAS record instead: Type ALIAS, Name @, Data domains.letsgetquoted.com (turn DNSSEC off first and delete any existing apex A records). Or add a Domain Forwarding rule from @ to https://www.yourdomain.com as a 301.',
+  },
+  {
+    id: 'cloudflare',
+    name: 'Cloudflare',
+    dnsUrl: () => 'https://dash.cloudflare.com/',
+    openLabel: 'Open Cloudflare Dashboard ↗',
+    hostLabel: 'Name',
+    valueLabel: 'Target',
+    steps: [
+      'Click “Open Cloudflare Dashboard” above and choose your domain zone.',
+      'Go to DNS → Records and click “Add record”.',
+      'Set Type to CNAME.',
+      'In Name, enter the host below (e.g. www).',
+      'In Target, paste the value below.',
+      'IMPORTANT: Set Proxy status to “DNS only” (Grey cloud) initially so SSL verification completes directly.',
+      'Leave TTL at Auto and click Save.',
+      'Come back here and click “Verify DNS”. Changes propagate in minutes.',
+    ],
+    apex: 'Cloudflare supports CNAME flattening at the root domain (@). You can add a CNAME record with Name: @ and Target: domains.letsgetquoted.com with Proxy status set to DNS only.',
+  },
+  {
+    id: 'namecheap',
+    name: 'Namecheap',
+    dnsUrl: () => 'https://ap.www.namecheap.com/domains/domainlist/',
+    openLabel: 'Open Namecheap Domain List ↗',
+    hostLabel: 'Host',
+    valueLabel: 'Value',
+    steps: [
+      'Click “Open Namecheap Domain List” and click “Manage” next to your domain.',
+      'Select the “Advanced DNS” tab.',
+      'In the Host Records section, click “Add New Record”.',
+      'Set Type to CNAME Record.',
+      'In Host, enter the prefix shown below (e.g. www).',
+      'In Value, paste the target below.',
+      'Set TTL to Automatic and click the green checkmark to save.',
+      'Come back here and click “Verify DNS”.',
+    ],
+    apex: 'Under Advanced DNS, add a URL Redirect Record with Host: @ and Value: https://www.yourdomain.com (Redirect Type: Permanent 301), and the www CNAME record will serve your site.',
   },
   {
     id: 'other',

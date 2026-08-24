@@ -2,21 +2,43 @@ import Link from 'next/link';
 import { requireOfficeContext } from '@/lib/auth';
 import { listServices, SERVICE_UNITS, type Service } from '@/lib/services';
 import { formatUnitPrice, glyphsForServices, priceBookStats, unitSuffix } from '@/lib/price-book';
+import { listTradeStarterCatalogs } from '@/lib/trade-catalogs';
 import ServiceIcon from '@/lib/templates/ServiceIcon';
 import PriceBookStats from '@/components/price-book-stats';
 import SaveButton from '@/components/save-button';
 import ConfirmActionButton from '@/app/dashboard/jobs/[id]/ConfirmActionButton';
-import { createServiceAction, updateServiceAction, setServiceActiveAction, deleteServiceAction } from './actions';
+import {
+  createServiceAction,
+  updateServiceAction,
+  setServiceActiveAction,
+  deleteServiceAction,
+  loadTradeStarterCatalogAction,
+} from './actions';
 
 export const metadata = { title: 'Price book' };
 
-export default async function ServicesPage({ searchParams }: { searchParams: { status?: string } }) {
+export default async function ServicesPage({
+  searchParams,
+}: {
+  searchParams: { status?: string; q?: string };
+}) {
   const { supabase, accountId } = await requireOfficeContext('jobs.read');
   const services = await listServices(supabase, accountId);
+  const starterCatalogs = listTradeStarterCatalogs();
 
   const active = services.filter((s) => s.active);
   const filter = searchParams.status === 'archived' ? 'archived' : 'active';
-  const visible = services.filter((s) => (filter === 'archived' ? !s.active : s.active));
+  const query = (searchParams.q ?? '').trim().toLowerCase();
+
+  const baseVisible = services.filter((s) => (filter === 'archived' ? !s.active : s.active));
+  const visible = query
+    ? baseVisible.filter(
+        (s) =>
+          s.name.toLowerCase().includes(query) ||
+          (s.description && s.description.toLowerCase().includes(query))
+      )
+    : baseVisible;
+
   // Icons are resolved for the whole book at once so an unmatched service inherits
   // the trade its neighbours imply rather than a generic mark.
   const glyphs = glyphsForServices(visible.map((s) => s.name));
@@ -32,14 +54,68 @@ export default async function ServicesPage({ searchParams }: { searchParams: { s
             Save the services you sell once, and drop them into quotes and recurring plans with a tap — no more
             retyping prices. You can always tweak the amount per job.
           </p>
-          {/* No "Import services" here. Bringing a price list over from another
-              tool is a setup job you do once; it belongs with the rest of the
-              migration in Account → Import & migrate, not on the page you open
-              every week to change a price. The route still exists and is linked
-              from both migration entry points. */}
+          <div className="workspace-inline-row" style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
+            <Link href="/dashboard/services/import" className="btn secondary">
+              📥 Import CSV / Excel file
+            </Link>
+          </div>
         </div>
         {stats ? <PriceBookStats stats={stats} /> : null}
       </section>
+
+      {services.length === 0 ? (
+        <section className="panel workspace-section-card starter-catalogs-card">
+          <div className="section-heading workspace-section-heading">
+            <p className="eyebrow">Quick Start</p>
+            <h2>Load a 1-tap trade starter pack</h2>
+          </div>
+          <p className="workspace-lead" style={{ fontSize: '0.95rem', marginBottom: '1.25rem' }}>
+            Start with industry-standard services, market rates, and healthy profit margins for your trade. You can customize every price and description anytime.
+          </p>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+              gap: '1rem',
+            }}
+          >
+            {starterCatalogs.map((cat) => (
+              <div
+                key={cat.id}
+                style={{
+                  padding: '1.1rem',
+                  border: '1px solid var(--border-color, rgba(0,0,0,0.08))',
+                  borderRadius: '10px',
+                  background: 'var(--surface-subtle, rgba(0,0,0,0.02))',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between',
+                  gap: '0.75rem',
+                }}
+              >
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem' }}>
+                    <span style={{ fontSize: '1.35rem' }}>{cat.icon}</span>
+                    <strong style={{ fontSize: '1.05rem' }}>{cat.name}</strong>
+                  </div>
+                  <p style={{ fontSize: '0.85rem', color: 'var(--text-muted, #64748b)', margin: 0, lineHeight: 1.4 }}>
+                    {cat.description}
+                  </p>
+                  <small style={{ display: 'block', marginTop: '0.5rem', color: 'var(--text-muted, #64748b)' }}>
+                    Includes {cat.items.length} pre-costed items
+                  </small>
+                </div>
+                <form action={loadTradeStarterCatalogAction}>
+                  <input type="hidden" name="tradeId" value={cat.id} />
+                  <SaveButton pendingLabel="Loading…" savedLabel="Loaded ✓" className="btn primary">
+                    Load {cat.name} Pack
+                  </SaveButton>
+                </form>
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       <section className="panel workspace-section-card">
         <div className="section-heading workspace-section-heading compact-heading">
@@ -48,14 +124,22 @@ export default async function ServicesPage({ searchParams }: { searchParams: { s
 
         {services.length > 0 ? (
           <div className="status-tabs workspace-status-tabs">
-            <Link href="/dashboard/services" className={`status-tab${filter === 'active' ? ' active' : ''}`}>Active ({active.length})</Link>
-            <Link href="/dashboard/services?status=archived" className={`status-tab${filter === 'archived' ? ' active' : ''}`}>Archived ({services.length - active.length})</Link>
+            <Link href="/dashboard/services" className={`status-tab${filter === 'active' ? ' active' : ''}`}>
+              Active ({active.length})
+            </Link>
+            <Link href="/dashboard/services?status=archived" className={`status-tab${filter === 'archived' ? ' active' : ''}`}>
+              Archived ({services.length - active.length})
+            </Link>
           </div>
         ) : null}
 
-        {visible.length === 0 ? (
+        {visible.length === 0 && services.length > 0 ? (
           <p className="empty-state">
-            {filter === 'archived' ? 'No archived services.' : 'No services yet. Add your first one below — say “Gutter cleaning · $180”.'}
+            {query ? `No services matching “${query}”.` : filter === 'archived' ? 'No archived services.' : 'No active services.'}
+          </p>
+        ) : visible.length === 0 ? (
+          <p className="empty-state">
+            No services yet. Choose a starter pack above or add your first custom service below.
           </p>
         ) : (
           <div className="service-list">
@@ -105,9 +189,56 @@ export default async function ServicesPage({ searchParams }: { searchParams: { s
         )}
       </section>
 
+      {services.length > 0 ? (
+        <details className="panel workspace-section-card workspace-details">
+          <summary className="workspace-details-summary">
+            <span className="btn secondary">⚡ Add Trade Starter Packs</span>
+            <span className="workspace-details-copy">Add more pre-built trade services without overwriting existing ones.</span>
+          </summary>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
+              gap: '1rem',
+              marginTop: '1rem',
+            }}
+          >
+            {starterCatalogs.map((cat) => (
+              <div
+                key={cat.id}
+                style={{
+                  padding: '1rem',
+                  border: '1px solid var(--border-color, rgba(0,0,0,0.08))',
+                  borderRadius: '8px',
+                  background: 'var(--surface-subtle, rgba(0,0,0,0.02))',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between',
+                  gap: '0.5rem',
+                }}
+              >
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.25rem' }}>
+                    <span>{cat.icon}</span>
+                    <strong>{cat.name}</strong>
+                  </div>
+                  <small style={{ color: 'var(--text-muted, #64748b)' }}>{cat.items.length} items</small>
+                </div>
+                <form action={loadTradeStarterCatalogAction}>
+                  <input type="hidden" name="tradeId" value={cat.id} />
+                  <SaveButton pendingLabel="Loading…" savedLabel="Loaded ✓" className="btn secondary">
+                    + Load {cat.name}
+                  </SaveButton>
+                </form>
+              </div>
+            ))}
+          </div>
+        </details>
+      ) : null}
+
       <details className="panel workspace-section-card workspace-details" open={services.length === 0}>
         <summary className="workspace-details-summary">
-          <span className="btn primary">+ Add a service</span>
+          <span className="btn primary">+ Add a custom service</span>
           <span className="workspace-details-copy">Reusable in quotes and recurring plans.</span>
         </summary>
         <form action={createServiceAction} className="service-form" style={{ marginTop: '1rem' }}>

@@ -2,6 +2,8 @@ import type { Metadata } from 'next';
 import FeatureDetailLayout from '@/components/marketing/feature-detail-layout';
 import SampleIntake from './sample-intake';
 import ExampleFrame from '@/components/marketing/example-frame';
+import AiIntakeSandbox from '@/components/marketing/AiIntakeSandbox';
+import SmsQuoteSimulator from '@/components/marketing/SmsQuoteSimulator';
 import { TRADES } from '@/lib/trades';
 import { FEATURE_PRICING_NOTE } from '@/lib/pricing';
 import { TIER_LABEL } from '@/lib/lead-priority';
@@ -301,6 +303,12 @@ export default function AIIntakePage() {
           week you find you disagree with them.
         </p>
       </section>
+
+      <section className="section-block" style={{ margin: '48px 0' }}>
+        <SmsQuoteSimulator />
+      </section>
+
+      <AiIntakeSandbox />
 
       {/* <details> rather than a script: it works before hydration, it is in the
           tab order for free, and the browser's own find-in-page opens it. No
