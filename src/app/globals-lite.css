@@ -1,6 +1,6 @@
 /* GENERATED — do not edit. Source: src/app/globals.css
    Run: node scripts/build-css-subset.mjs
-   source-sha256: d23dac19433ac207
+   source-sha256: 2d127c17f20bab6b
 
    globals.css with the rules that can only match inside /dashboard, /admin and
    /demo removed. Every route except those three imports this file; they import
@@ -5637,6 +5637,8 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
 }
 
 .workspace-hero {
+  position: relative;
+  z-index: 25;
   display: grid;
   grid-template-columns: minmax(0, 1.3fr) minmax(320px, 0.9fr);
   gap: 1.25rem;
@@ -5662,6 +5664,7 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
 }
 .job-money-strip.is-over { border-color: var(--cedge-red-6); }
 .job-money-strip.is-over > div:last-child dd { color: var(--bad); }
+.job-actions-menu.is-open { z-index: 35; }
 .job-actions-menu.is-open .job-actions-trigger svg { transform: rotate(180deg); }
 /* The entries that are whole controls rather than links — the expense modal,
    start, complete. They bring their own button, so this only spaces them. */

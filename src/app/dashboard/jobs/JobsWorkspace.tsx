@@ -1,8 +1,9 @@
 'use client';
 
-import { useCallback, useMemo, useState, useTransition, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useState, useTransition, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabase';
 import type { JobStatus } from '@/lib/jobs';
 import type { QueueSort, StageFilter } from '@/lib/job-queue';
 import { setJobsViewAction, setMapThemeAction, setMapViewAction } from '@/app/dashboard/view-actions';
@@ -157,6 +158,54 @@ export default function JobsWorkspace({
   }, []);
   const [pending, startTransition] = useTransition();
   const router = useRouter();
+
+  // Global 'J' shortcut to open new job drawer / form
+  useEffect(() => {
+    const onGlobalKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'j' || e.key === 'J') {
+        const target = e.target as HTMLElement | null;
+        const isFormInput =
+          target instanceof HTMLInputElement ||
+          target instanceof HTMLTextAreaElement ||
+          target instanceof HTMLSelectElement ||
+          target?.isContentEditable;
+        if (!isFormInput && !e.metaKey && !e.ctrlKey && !e.altKey) {
+          const newJobEl = document.getElementById('new-job');
+          if (newJobEl instanceof HTMLDetailsElement) {
+            e.preventDefault();
+            newJobEl.open = true;
+            newJobEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            newJobEl.querySelector<HTMLInputElement>('input[name="clientName"], input[name="clientPhone"]')?.focus({ preventScroll: true });
+          }
+        }
+      }
+    };
+    window.addEventListener('keydown', onGlobalKeyDown);
+    return () => window.removeEventListener('keydown', onGlobalKeyDown);
+  }, []);
+
+  // Real-time job status updates via Supabase Realtime channel
+  useEffect(() => {
+    if (readOnly) return;
+    try {
+      const channel = supabase
+        .channel('jobs-realtime-feed')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'jobs' },
+          () => {
+            router.refresh();
+          },
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    } catch (err) {
+      console.warn('Jobs realtime subscription error:', err);
+    }
+  }, [router, readOnly]);
 
   // Local layout state, so the demo's pickers work without a cookie to write.
   const [localMapView, setLocalMapView] = useState<MapView>(mapView);

@@ -20,14 +20,15 @@ export const JOB_STAGES: { id: JobStatus; label: string }[] = [
   { id: 'archived', label: 'Archived' },
 ];
 
-const STAGE_LABEL: Record<JobStatus, string> = {
+const STAGE_LABEL: Record<StageFilter, string> = {
+  all: 'All jobs',
   new_lead: 'New request',
   in_progress: 'In progress',
   complete: 'Complete',
   archived: 'Archived',
 };
 
-export function jobStageLabel(status: JobStatus): string {
+export function jobStageLabel(status: StageFilter): string {
   return STAGE_LABEL[status] ?? status;
 }
 

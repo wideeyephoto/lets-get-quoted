@@ -9951,6 +9951,8 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
 }
 
 .workspace-hero {
+  position: relative;
+  z-index: 25;
   display: grid;
   grid-template-columns: minmax(0, 1.3fr) minmax(320px, 0.9fr);
   gap: 1.25rem;
@@ -10058,6 +10060,7 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
    same weight. Four buttons of equal weight is the same as no recommendation.
    The stage picks one (primaryJobAction); everything else lives in here. */
 .job-actions-menu { position: relative; display: inline-flex; }
+.job-actions-menu.is-open { z-index: 35; }
 .job-actions-trigger {
   display: inline-flex;
   align-items: center;

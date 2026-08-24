@@ -312,12 +312,35 @@ export default function JobSmoothieView({
           </div>
 
           {shown.length === 0 ? (
-            <p className={styles.emptyQueue}>
-              No jobs match that.{' '}
-              <button type="button" className={styles.clearBtn} onClick={() => { setQuery(''); setStage('all'); }}>
-                Clear the filters
-              </button>
-            </p>
+            <div className={styles.emptyQueue}>
+              {query.trim() && stage !== 'all' ? (
+                <p style={{ margin: 0 }}>
+                  No jobs found in <strong>{jobStageLabel(stage)}</strong> matching &ldquo;{query}&rdquo;.
+                  {' '}
+                  <button type="button" className={styles.clearBtn} onClick={() => setStage('all')}>
+                    Search all jobs
+                  </button>
+                  {' · '}
+                  <button type="button" className={styles.clearBtn} onClick={() => { setQuery(''); setStage('all'); }}>
+                    Reset filters
+                  </button>
+                </p>
+              ) : query.trim() ? (
+                <p style={{ margin: 0 }}>
+                  No jobs matching &ldquo;{query}&rdquo;.{' '}
+                  <button type="button" className={styles.clearBtn} onClick={() => setQuery('')}>
+                    Clear search
+                  </button>
+                </p>
+              ) : (
+                <p style={{ margin: 0 }}>
+                  No jobs currently in <strong>{jobStageLabel(stage)}</strong>.{' '}
+                  <button type="button" className={styles.clearBtn} onClick={() => setStage('all')}>
+                    Show all jobs
+                  </button>
+                </p>
+              )}
+            </div>
           ) : (
             // eslint-disable-next-line jsx-a11y/no-noninteractive-element-to-interactive-role
             <ul className={styles.rows} onKeyDown={onQueueKeyDown}>
