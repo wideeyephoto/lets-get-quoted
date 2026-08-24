@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRef, useState, type ChangeEvent } from 'react';
 import { readImportFile } from '@/lib/read-import-file';
 import type { SmartImportPreview, CommitResult, FieldSources, MappedRow } from '@/lib/smart-import';
+import { AiSparkleButton } from '@/components/ai';
 
 type Ready = Extract<SmartImportPreview, { ok: true }>;
 
@@ -257,9 +258,9 @@ export default function SmartImport({ fields, noun, analyze, runPreview, commit,
         </div>
         {error ? <div className="field full"><p className="payment-banner muted">{error}</p></div> : null}
         <div className="field full">
-          <button type="button" className="btn primary" onClick={analyzeNow} disabled={busy}>
-            {busy ? 'Reading…' : 'Analyze & preview'}
-          </button>
+          <AiSparkleButton onClick={analyzeNow} loading={busy} loadingLabel="Analyzing with AI...">
+            Analyze & preview
+          </AiSparkleButton>
         </div>
       </div>
     </section>

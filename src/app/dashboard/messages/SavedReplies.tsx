@@ -1,7 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useTransition } from 'react';
 import SaveButton from '@/components/save-button';
+import { suggestSmartRepliesAction } from './actions';
+import { AiRefineChips } from '@/components/ai';
 
 /**
  * Saved replies, inside the composer instead of underneath the page.
@@ -24,6 +26,7 @@ export default function SavedReplies({
   templates,
   starters = [],
   targetId,
+  threadPhone,
   createAction,
   deleteAction,
   canInsert = true,
@@ -37,6 +40,7 @@ export default function SavedReplies({
    */
   starters?: Template[];
   targetId: string;
+  threadPhone?: string;
   createAction: (formData: FormData) => void | Promise<void>;
   deleteAction: (templateId: string) => void | Promise<void>;
   /**
@@ -51,6 +55,8 @@ export default function SavedReplies({
   canInsert?: boolean;
 }) {
   const [managing, setManaging] = useState(false);
+  const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
+  const [loadingAi, startAiTransition] = useTransition();
 
   // Writing straight to the DOM node rather than lifting the textarea into
   // state: the composer is an uncontrolled Server Action form, and making it
@@ -63,9 +69,37 @@ export default function SavedReplies({
     el.setSelectionRange(el.value.length, el.value.length);
   }
 
+  function fetchSmartReplies() {
+    if (!threadPhone) return;
+    startAiTransition(async () => {
+      const res = await suggestSmartRepliesAction(threadPhone);
+      if (res.ok) setAiSuggestions(res.suggestions);
+    });
+  }
+
   return (
     <div className="inbox-saved">
+      {aiSuggestions.length > 0 && canInsert ? (
+        <div style={{ marginBottom: '0.4rem' }}>
+          <AiRefineChips
+            options={aiSuggestions}
+            onSelect={(opt) => apply(typeof opt === 'string' ? opt : opt.label)}
+          />
+        </div>
+      ) : null}
       <div className="quick-replies" aria-label="Saved replies">
+        {canInsert && threadPhone ? (
+          <button
+            type="button"
+            className="quick-reply-chip"
+            style={{ borderColor: 'rgba(255,170,50,0.5)', color: '#ffd166', background: 'rgba(255,170,50,0.1)' }}
+            onClick={fetchSmartReplies}
+            disabled={loadingAi}
+          >
+            <span aria-hidden="true">✦</span>
+            {loadingAi ? ' Suggesting…' : ' Smart reply'}
+          </button>
+        ) : null}
         {canInsert
           ? starters.map((starter) => (
               <button

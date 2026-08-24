@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react';
 import { formatUsdExact } from '@/lib/money-format';
 import type { QuoteItem } from '@/lib/jobs';
 import type { SerializedDraft } from '@/lib/quote-draft';
+import { AiSparkleButton, AiDiffCard } from '@/components/ai';
 import {
   CHANGE_ORDER_STATUS_LABEL,
   changeOrderTotal,
@@ -169,43 +170,28 @@ export default function ChangeOrderPanel({ jobId, orders }: { jobId: string; ord
 
             {editable ? (
               <>
-                <div className="change-order-actions">
-                  <button type="button" className="btn secondary" onClick={() => writeUp(order)} disabled={busy}>
-                    {busy ? 'Reading…' : '✨ Write it up'}
-                  </button>
-                  <small>Reads the note and the photos, then prices the lines from your price book.</small>
+                <div className="change-order-actions" style={{ alignItems: 'center', gap: '0.75rem' }}>
+                  <AiSparkleButton onClick={() => writeUp(order)} loading={busy} loadingLabel="Analyzing site notes & photos...">
+                    AI Write-Up
+                  </AiSparkleButton>
+                  <small>Reads the note and photos, then itemizes & prices the lines from your price book.</small>
                 </div>
 
                 {draft ? (
-                  <div className="change-order-draft">
-                    <strong>{draft.title}</strong>
-                    <p>{draft.scope}</p>
-                    <ul>
-                      {draft.items.map((line) => (
-                        <li key={line.id}>
-                          <span>{line.label}</span>
-                          <span>{money(line.amount)}</span>
-                        </li>
-                      ))}
-                    </ul>
-                    {draft.assumptions.length > 0 ? (
-                      <p className="change-order-assumptions">
-                        <strong>It assumed:</strong> {draft.assumptions.join(' ')}
-                      </p>
-                    ) : null}
-                    <div className="change-order-actions">
-                      <button type="button" className="btn primary" onClick={() => applyDraft(order)}>
-                        Use this
-                      </button>
-                      <button
-                        type="button"
-                        className="btn ghost"
-                        onClick={() => setDrafts((c) => { const n = { ...c }; delete n[order.id]; return n; })}
-                      >
-                        Discard
-                      </button>
-                    </div>
-                  </div>
+                  <AiDiffCard
+                    title={draft.title || 'Proposed Change Order'}
+                    description={draft.scope}
+                    items={draft.items.map((line) => ({
+                      id: line.id,
+                      type: 'addition',
+                      label: line.label,
+                      amount: line.amount,
+                    }))}
+                    applyLabel="Apply to Change Order"
+                    discardLabel="Discard"
+                    onApply={() => applyDraft(order)}
+                    onDiscard={() => setDrafts((c) => { const n = { ...c }; delete n[order.id]; return n; })}
+                  />
                 ) : null}
 
                 <div className="change-order-fields">

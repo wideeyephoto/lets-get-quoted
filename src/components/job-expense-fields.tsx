@@ -87,13 +87,25 @@ export default function JobExpenseFields({ crew, onReadReceipt }: JobExpenseFiel
   return (
     <>
       {!isLabor ? (
-        <div className="field full receipt-scan">
-          <label htmlFor="receipt-photo">Scan a receipt</label>
+        <div className="field full receipt-scan" style={{ padding: '0.75rem', background: 'rgba(var(--tint), 0.03)', borderRadius: '8px', border: '1px solid var(--line)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
+            <div>
+              <label htmlFor="receipt-photo" style={{ fontWeight: 650, display: 'block' }}>Scan Receipt or Invoice Photo</label>
+              <small className="field-hint" style={{ margin: 0 }}>Auto-extracts supplier, item breakdown, tax, and totals.</small>
+            </div>
+            <label htmlFor="receipt-photo" style={{ cursor: 'pointer' }}>
+              <span className="btn secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', pointerEvents: scan.state === 'reading' ? 'none' : 'auto' }}>
+                <span style={{ color: '#ffd166' }}>✦</span>
+                <span>{scan.state === 'reading' ? 'Analyzing Receipt…' : 'Take Photo / Upload'}</span>
+              </span>
+            </label>
+          </div>
           <input
             id="receipt-photo"
             type="file"
             accept="image/*"
             capture="environment"
+            style={{ display: 'none' }}
             disabled={scan.state === 'reading'}
             onChange={(event) => {
               const file = event.currentTarget.files?.[0];
@@ -101,14 +113,13 @@ export default function JobExpenseFields({ crew, onReadReceipt }: JobExpenseFiel
               event.currentTarget.value = '';
             }}
           />
-          {/* Says what it did and what it didn't. Filling a form silently from a
-              photo is how a misread total ends up in somebody's books unchecked. */}
-          {scan.state === 'reading' ? <small className="field-hint">Reading…</small> : null}
-          {scan.state === 'error' ? <small className="field-hint is-error">{scan.message}</small> : null}
-          {verdict ? <small className={`field-hint${verdict.tone === 'ok' ? '' : ' is-error'}`}>{verdict.message}</small> : null}
-          {scan.state !== 'done' && scan.state !== 'reading' ? (
-            <small className="field-hint">Fills in the supplier and total. You check them, then save.</small>
+          {scan.state === 'reading' ? (
+            <div style={{ marginTop: '0.5rem', padding: '0.5rem', background: 'rgba(255,170,50,0.1)', borderRadius: '6px', fontSize: '0.85rem', color: '#ffd166' }}>
+              ✨ Reading receipt details with AI vision…
+            </div>
           ) : null}
+          {scan.state === 'error' ? <small className="field-hint is-error" style={{ display: 'block', marginTop: '0.35rem' }}>{scan.message}</small> : null}
+          {verdict ? <small className={`field-hint${verdict.tone === 'ok' ? '' : ' is-error'}`} style={{ display: 'block', marginTop: '0.35rem' }}>{verdict.message}</small> : null}
         </div>
       ) : null}
 

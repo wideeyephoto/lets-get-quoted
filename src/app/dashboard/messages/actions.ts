@@ -338,3 +338,75 @@ export async function addPhoneAsClientAction(phone: string, formData: FormData) 
   revalidatePath('/dashboard/clients');
   redirect(`/dashboard/messages?thread=${encodeURIComponent(normalized)}`);
 }
+
+/**
+ * Generates 3 smart contextual reply chips for the active SMS conversation.
+ */
+export async function suggestSmartRepliesAction(phone: string): Promise<{ ok: true; suggestions: string[] } | { ok: false; message: string }> {
+  const { supabase, accountId } = await requireOfficeContext('messages.send');
+  const normalized = normalizeUsPhone(phone) ?? phone;
+  if (!normalized) return { ok: false, message: 'Invalid phone number.' };
+
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) return { ok: false, message: 'AI generation is not configured.' };
+
+  const { data: messages } = await supabase
+    .from('sms_messages')
+    .select('direction, body, created_at')
+    .eq('account_id', accountId)
+    .eq('phone_number', normalized)
+    .order('created_at', { ascending: false })
+    .limit(5);
+
+  if (!messages || messages.length === 0) {
+    return {
+      ok: true,
+      suggestions: [
+        'Hi! How can we help you today?',
+        'Thanks for reaching out! What type of work do you need done?',
+        'Hi there! Are you looking for a quote?',
+      ],
+    };
+  }
+
+  const threadContext = messages
+    .reverse()
+    .map((m) => `${m.direction === 'inbound' ? 'Customer' : 'Contractor'}: ${m.body}`)
+    .join('\n');
+
+  const instructions = [
+    'You are a smart SMS assistant for a home services contractor.',
+    'Given the recent SMS conversation history, produce EXACTLY 3 short, natural, helpful suggested replies that the contractor can send with one tap.',
+    'Keep each reply concise (under 120 characters).',
+    'Return STRICT JSON only: {"suggestions": ["<reply 1>", "<reply 2>", "<reply 3>"]}',
+  ].join('\n');
+
+  try {
+    const { callModel } = await import('@/lib/ai-model-call');
+    const response = await callModel({
+      model: 'gpt-4o-mini',
+      temperature: 0.5,
+      instructions,
+      input: `CONVERSATION:\n${threadContext}`,
+      text: { format: { type: 'json_object' } },
+    }, { accountId, kind: 'marketing_draft' });
+
+    if (!response.ok) throw new Error(`Model error: ${response.status}`);
+    const payload = await response.json();
+    const rawText = typeof payload?.output_text === 'string' ? payload.output_text : JSON.stringify(payload);
+    const parsed = JSON.parse(rawText) as { suggestions?: string[] };
+    const suggestions = (parsed.suggestions ?? []).filter((s) => typeof s === 'string' && s.trim().length > 0).slice(0, 3);
+
+    return {
+      ok: true,
+      suggestions: suggestions.length > 0 ? suggestions : [
+        'Got it, thank you!',
+        'We will look into this and get back to you shortly.',
+        'Sounds good, see you then!',
+      ],
+    };
+  } catch (error) {
+    return { ok: false, message: error instanceof Error ? error.message : 'Could not generate smart replies.' };
+  }
+}
+

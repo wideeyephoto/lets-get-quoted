@@ -8,7 +8,14 @@ import {
   hasBlockingFinding,
   type CampaignFinding,
 } from '@/lib/campaign-guard';
-import { previewCampaignEmailAction, readCampaignAction, sendCampaignAction, sendTestEmailAction } from './actions';
+import { AiSparkleButton, AiRefineChips } from '@/components/ai';
+import {
+  draftMarketingCampaignAction,
+  previewCampaignEmailAction,
+  readCampaignAction,
+  sendCampaignAction,
+  sendTestEmailAction,
+} from './actions';
 
 type Reach = { total: number; email: number; sms: number; either: number; missingContact: number; optedOut: number; excluded: number };
 
@@ -79,8 +86,31 @@ export default function CampaignComposer({
   const [preview, setPreview] = useState<string | null>(null);
   const [checking, startChecking] = useTransition();
   const [previewing, startPreviewing] = useTransition();
+  const [generatedOptions, setGeneratedOptions] = useState<string[]>([]);
+  const [draftingAi, startDraftingAi] = useTransition();
 
-  const subjectOptions = initial?.subjectOptions ?? [];
+  const subjectOptions = (generatedOptions.length > 0 ? generatedOptions : initial?.subjectOptions) ?? [];
+
+  const CAMPAIGN_PRESET_TOPICS = [
+    'Spring Project Booking',
+    'Pre-Winter Freeze Prep',
+    '1-Year Anniversary Check-In',
+    '10% Loyalty Special',
+    'Referral Thank-You',
+  ] as const;
+
+  function generateWithAi(topic?: string) {
+    startDraftingAi(async () => {
+      const res = await draftMarketingCampaignAction({ channel, topic });
+      if (res.ok) {
+        setSubject(res.draft.subject);
+        setGeneratedOptions(res.draft.subjectOptions ?? []);
+        setBody(res.draft.body.join('\n\n'));
+      } else {
+        window.alert(res.message);
+      }
+    });
+  }
 
   useEffect(() => {
     onDirtyChange?.(subject.trim() !== '' || body.trim() !== '');
@@ -234,6 +264,31 @@ export default function CampaignComposer({
         </div>
       </div>
 
+      <div style={{ marginBottom: '1.25rem', padding: '0.85rem', background: 'rgba(var(--tint), 0.03)', borderRadius: '10px', border: '1px solid var(--line)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
+          <div>
+            <strong style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--text)' }}>
+              <span style={{ color: '#ffd166' }}>✦</span>
+              <span>Draft Campaign with AI</span>
+            </strong>
+            <p style={{ fontSize: '0.8rem', color: 'var(--muted)', margin: '0.2rem 0 0 0' }}>
+              Pick a seasonal topic to generate tailored subject lines and high-converting copy.
+            </p>
+          </div>
+          <AiSparkleButton
+            onClick={() => generateWithAi()}
+            loading={draftingAi}
+            loadingLabel="Drafting campaign..."
+          >
+            Draft Campaign
+          </AiSparkleButton>
+        </div>
+        <AiRefineChips
+          options={CAMPAIGN_PRESET_TOPICS}
+          onSelect={(opt) => generateWithAi(typeof opt === 'string' ? opt : opt.label)}
+        />
+      </div>
+
       {wantEmail ? (
         <div className="field">
           <label htmlFor="campaign-subject">Email subject</label>
@@ -304,9 +359,9 @@ export default function CampaignComposer({
                 ? 'Nothing flagged'
                 : `${findings.length} thing${findings.length === 1 ? '' : 's'} to look at`}
             </strong>
-            <button type="button" className="btn ghost" onClick={runRead} disabled={checking}>
-              {checking ? 'Reading…' : aiFindings ? 'Read it again' : 'Have AI read it'}
-            </button>
+            <AiSparkleButton onClick={runRead} loading={checking} loadingLabel="Checking..." style={{ minHeight: '34px', padding: '0.2rem 0.75rem' }}>
+              {aiFindings ? 'Re-Audit Copy' : 'Audit with AI'}
+            </AiSparkleButton>
           </div>
 
           {findings.length === 0 && aiFindings === null ? (

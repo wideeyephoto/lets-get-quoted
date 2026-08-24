@@ -449,6 +449,7 @@ export default async function MessagesPage({
                   templates={templates}
                   starters={starterRepliesFor(activeName)}
                   targetId="reply-body"
+                  threadPhone={activePhone}
                   createAction={createTemplateAction}
                   deleteAction={deleteTemplateAction}
                   canInsert={customerMessagingReady && knownThread}

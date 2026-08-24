@@ -1421,7 +1421,7 @@ export async function reviewQuoteAction(
   return { ok: true, findings: mergeFindings(deterministic, ai), aiRan: Boolean(process.env.OPENAI_API_KEY) && Boolean(scope) };
 }
 
-export async function draftQuoteAction(jobId: string): Promise<
+export async function draftQuoteAction(jobId: string, refinement?: string): Promise<
   | { ok: true; draft: SerializedDraft }
   | { ok: false; reason: 'no-scope' | 'unavailable' | 'busy' | 'exhausted'; message: string }
 > {
@@ -1434,7 +1434,7 @@ export async function draftQuoteAction(jobId: string): Promise<
     return { ok: false, reason: 'busy', message: 'That is a lot of drafts in an hour — give it a few minutes.' };
   }
 
-  const context = await loadDraftContext(supabase, accountId, jobId);
+  const context = await loadDraftContext(supabase, accountId, jobId, refinement);
   if (!context) return { ok: false, reason: 'unavailable', message: 'That job could not be found.' };
   if (!context.scope) {
     return {

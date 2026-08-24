@@ -184,12 +184,13 @@ export function CommandCenterBoard({
               className={styles.allClearToggleBtn}
               onClick={() => setShowAllClear((v) => !v)}
               aria-expanded={showAllClear}
+              aria-controls="admin-verified-clear-list"
             >
               {showAllClear ? 'Collapse ↑' : 'Expand ↓'}
             </button>
           </div>
           {showAllClear ? (
-            <ul className={styles.allClearGrid}>
+            <ul id="admin-verified-clear-list" className={styles.allClearGrid}>
               {quiet.map((card) => (
                 <li key={card.key}>
                   <span className={styles.allClearIconWrap} aria-hidden="true">✓</span>

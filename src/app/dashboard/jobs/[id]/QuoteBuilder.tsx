@@ -4,6 +4,8 @@ import { useEffect, useRef, useState, useTransition } from 'react';
 import type { QuoteItem, QuoteItemKind, QuoteSubscriptionFrequency } from '@/lib/jobs';
 import type { DraftSource, SerializedDraft } from '@/lib/quote-draft';
 import { guardSummary, type FindingSource, type QuoteFinding } from '@/lib/quote-guard';
+import { AiRefineChips } from '@/components/ai';
+import { QUICK_QUOTE_REFINE_CHIPS } from '@/lib/quote-draft-ai';
 
 type Row = QuoteItem;
 
@@ -102,9 +104,9 @@ export default function QuoteBuilder({
   printHref?: string;
   // AI drafting, where a job's scope exists to draft from. Absent on the lead
   // form, which has no saved job yet.
-  draftAction?: () => Promise<
-    { ok: true; draft: SerializedDraft } | { ok: false; reason: string; message: string }
-  >;
+  draftAction?: (
+    refinement?: string,
+  ) => Promise<{ ok: true; draft: SerializedDraft } | { ok: false; reason: string; message: string }>;
   // Reads the quote as it stands right now. Saves nothing — so it can be run
   // over unsaved edits, which is the only moment it's actually useful.
   reviewAction?: (
@@ -357,13 +359,13 @@ export default function QuoteBuilder({
   // Fetch a draft and hold it for review. Deliberately never writes into `rows`
   // on its own: a quote is a number somebody sends to a customer, and it should
   // only ever get there because a person put it there.
-  async function runDraft() {
+  async function runDraft(refinement?: string) {
     if (!draftAction) return;
     setDrafting(true);
     setDraftError(null);
     setDraft(null);
     try {
-      const result = await draftAction();
+      const result = await draftAction(refinement);
       if (result.ok) setDraft(result.draft);
       else setDraftError(result.message);
     } catch {
@@ -567,7 +569,7 @@ export default function QuoteBuilder({
               <button
                 type="button"
                 className="quote-tool"
-                onClick={runDraft}
+                onClick={() => runDraft()}
                 disabled={drafting}
                 title="Builds line items from this job’s scope, priced from your price book. You review everything before it goes anywhere."
               >
@@ -616,6 +618,7 @@ export default function QuoteBuilder({
           hasRows={rows.length > 0}
           onApply={applyDraft}
           onDiscard={() => setDraft(null)}
+          onRefine={runDraft}
         />
       ) : null}
 
@@ -1052,11 +1055,13 @@ function DraftReview({
   hasRows,
   onApply,
   onDiscard,
+  onRefine,
 }: {
   draft: SerializedDraft;
   hasRows: boolean;
   onApply: (mode: 'append' | 'replace') => void;
   onDiscard: () => void;
+  onRefine?: (refinement: string) => void;
 }) {
   // Nothing to price. Say what's missing instead of showing an empty quote,
   // which would read as "this job is worth nothing".
@@ -1117,6 +1122,18 @@ function DraftReview({
           <ul>
             {draft.assumptions.map((assumption) => <li key={assumption}>{assumption}</li>)}
           </ul>
+        </div>
+      ) : null}
+
+      {onRefine ? (
+        <div style={{ marginTop: '0.75rem', marginBottom: '0.5rem' }}>
+          <p style={{ fontSize: '0.75rem', fontWeight: 650, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.04em', margin: '0 0 0.25rem 0' }}>
+            Refine this draft
+          </p>
+          <AiRefineChips
+            options={QUICK_QUOTE_REFINE_CHIPS}
+            onSelect={(opt) => onRefine(typeof opt === 'string' ? opt : opt.label)}
+          />
         </div>
       ) : null}
 

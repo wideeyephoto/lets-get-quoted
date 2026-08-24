@@ -8,9 +8,7 @@ import { checkRateLimit } from '@/lib/rate-limit';
 import { getSiteContent, mergeSiteContent, slugifyBlogTitle } from '@/lib/site-content';
 import { draftBlogPost } from '@/lib/blog-generate';
 import { pickBlogCover } from '@/app/dashboard/sites/actions';
-// planCalendar, the zone helpers and the recipient/beat readers moved out with
-// buildCalendarView — see lib/marketing-calendar-data.
-import { BEATS, climateZoneForState, stateFromAddress, type Channel } from '@/lib/marketing-calendar';
+import { BEATS, climateZoneForState, stateFromAddress, type Channel, type ClimateZone, type Beat } from '@/lib/marketing-calendar';
 import { draftMarketing, type MarketingDraft } from '@/lib/marketing-draft';
 import { AiDraftsExhaustedError } from '@/lib/ai-model-call';
 import { campaignDraftForBeat, type CampaignDraft } from '@/lib/marketing-draft-data';
@@ -386,6 +384,65 @@ export async function readCampaignAction(input: {
     monthName: new Date().toLocaleString('en-US', { month: 'long' }),
   });
 }
+
+/**
+ * Drafts an entire marketing campaign using AI based on the contractor's trade, season, and topic.
+ */
+export async function draftMarketingCampaignAction(input: {
+  channel: 'email' | 'sms' | 'both';
+  topic?: string;
+}): Promise<{ ok: true; draft: MarketingDraft } | { ok: false; message: string }> {
+  const { supabase, accountId } = await requireOfficeContext('settings.write');
+  const allowed = await checkRateLimit(createAdminClient(), `marketing-draft:${accountId}`, 20, 3600);
+  if (!allowed) return { ok: false, message: 'Too many marketing drafts generated recently. Please wait a few minutes.' };
+
+  const [siteRes, accountRes] = await Promise.all([
+    supabase.from('sites').select('content, company_name, service_area').eq('account_id', accountId).maybeSingle(),
+    supabase.from('accounts').select('billing_address, business_name').eq('id', accountId).maybeSingle(),
+  ]);
+
+  const content = getSiteContent(siteRes.data?.content as Record<string, unknown> | null);
+  const trade = content.trade.trim() || null;
+  const businessName = siteRes.data?.company_name || accountRes.data?.business_name || 'Our Company';
+  const state = stateFromAddress(accountRes.data?.billing_address ?? null);
+  const zone: ClimateZone = state ? climateZoneForState(state) : 'temperate';
+  const now = new Date();
+  const monthName = now.toLocaleString('en-US', { month: 'long' });
+
+  const customBeat: Beat = {
+    id: 'custom',
+    title: input.topic || 'Seasonal Service & Check-In',
+    whyNow: 'Timely seasonal touchpoint to keep customers engaged.',
+    trades: ['general'],
+    channels: ['email'],
+    audience: 'everyone',
+    monthsByZone: { [zone]: [now.getMonth() + 1] },
+  };
+
+  try {
+    const draft = await draftMarketing({
+      accountId,
+      beat: customBeat,
+      channel: 'email',
+      businessName,
+      trade,
+      zone,
+      monthName,
+      year: now.getFullYear(),
+      serviceArea: siteRes.data?.service_area ?? null,
+    });
+
+    if (!draft) return { ok: false, message: 'Could not generate a draft campaign.' };
+    return { ok: true, draft };
+  } catch (error) {
+    if (error instanceof AiDraftsExhaustedError) {
+      return { ok: false, message: error.message };
+    }
+    return { ok: false, message: error instanceof Error ? error.message : 'Failed to generate campaign draft.' };
+  }
+}
+
+
 
 // checkCampaign() and rankFindings() are NOT re-exported here. A 'use server'
 // module may only export async functions, and both are pure — the composer

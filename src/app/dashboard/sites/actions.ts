@@ -715,3 +715,96 @@ export async function listCompletedJobReviewsAction(): Promise<CompletedJobRevie
     });
 }
 
+/**
+ * Regenerates copy for a single section (hero, services, faqs, or testimonials).
+ */
+export async function regenerateSectionCopyAction(
+  section: 'hero' | 'services' | 'faqs' | 'testimonials',
+  options: { companyName?: string; trade?: string; serviceArea?: string; zip?: string } = {},
+): Promise<{ ok: true; data: Record<string, unknown> } | { ok: false; message: string }> {
+  const { accountId } = await requireOfficeContext('sites.write');
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) return { ok: false, message: 'AI generation is not configured.' };
+
+  const companyName = options.companyName || 'this local business';
+  const trade = options.trade || 'home services contractor';
+  const location = options.serviceArea || options.zip || '';
+
+  const instructions = [
+    `You write high-converting, professional website copy for a local ${trade} business named "${companyName}".`,
+    location ? `They serve the ${location} area.` : '',
+    `Generate content ONLY for the "${section}" section.`,
+    'Return STRICT JSON only, matching the exact format specified below.',
+    section === 'hero'
+      ? '{"headline":"<punchy headline under 70 chars>","tagline":"<1-2 sentences under 160 chars>"}'
+      : section === 'services'
+      ? '{"services":[{"title":"<service title under 40 chars>","description":"<concrete benefit under 130 chars>","icon":"wrench"}]}'
+      : section === 'faqs'
+      ? '{"faqs":[{"question":"<real homeowner question>","answer":"<helpful answer under 300 chars>"}]}'
+      : '{"testimonials":[{"author":"<first name and last initial>","text":"<realistic 1-2 sentence review>","rating":5,"label":"<neighborhood or job type>"}]}',
+  ].filter(Boolean).join('\n');
+
+  try {
+    const response = await callModel({
+      model: 'gpt-4o-mini',
+      temperature: 0.8,
+      instructions,
+      input: `Generate ${section} section content for ${companyName} (${trade}).`,
+      text: { format: { type: 'json_object' } },
+    }, { accountId, kind: 'site_copy' });
+
+    if (!response.ok) throw new Error(`Model request failed: ${response.status}`);
+    const payload = await response.json();
+    const data = JSON.parse(extractOutputText(payload)) as Record<string, unknown>;
+    return { ok: true, data };
+  } catch (error) {
+    return { ok: false, message: error instanceof Error ? error.message : 'Could not generate section copy.' };
+  }
+}
+
+/**
+ * Generates local SEO metadata and geo-targeted keywords.
+ */
+export async function optimizeSiteSeoAction(
+  options: { companyName?: string; trade?: string; serviceArea?: string; zip?: string } = {},
+): Promise<{ ok: true; seo: { title: string; description: string; keywords: string[] } } | { ok: false; message: string }> {
+  const { accountId } = await requireOfficeContext('sites.write');
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) return { ok: false, message: 'AI generation is not configured.' };
+
+  const companyName = options.companyName || 'Local Contractor';
+  const trade = options.trade || 'Contractor';
+  const location = options.serviceArea || options.zip || '';
+
+  const instructions = [
+    `You are an expert in Local SEO for home services contractors.`,
+    `Optimize SEO title, meta description, and top high-intent search keywords for "${companyName}", a ${trade} serving ${location || 'their local area'}.`,
+    'Return STRICT JSON only:',
+    '{"title":"<under 60 chars title>","description":"<under 160 chars meta description with call to action>","keywords":["<keyword 1>","<keyword 2>","<keyword 3>","<keyword 4>","<keyword 5>"]}',
+  ].join('\n');
+
+  try {
+    const response = await callModel({
+      model: 'gpt-4o-mini',
+      temperature: 0.4,
+      instructions,
+      input: `Generate SEO package for ${companyName} (${trade}) in ${location}.`,
+      text: { format: { type: 'json_object' } },
+    }, { accountId, kind: 'site_copy' });
+
+    if (!response.ok) throw new Error(`Model request failed: ${response.status}`);
+    const payload = await response.json();
+    const parsed = JSON.parse(extractOutputText(payload)) as { title?: string; description?: string; keywords?: string[] };
+
+    return {
+      ok: true,
+      seo: {
+        title: parsed.title || `${companyName} | ${trade}`,
+        description: parsed.description || `Professional ${trade} services by ${companyName}. Contact us today for a free quote!`,
+        keywords: Array.isArray(parsed.keywords) ? parsed.keywords.map(String) : [],
+      },
+    };
+  } catch (error) {
+    return { ok: false, message: error instanceof Error ? error.message : 'Could not generate SEO optimization.' };
+  }
+}

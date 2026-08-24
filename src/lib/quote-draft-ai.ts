@@ -23,7 +23,16 @@ export type DraftContext = {
   estimatedHours: number | null;
   services: PriceBookEntry[];
   history: HistoricalQuote[];
+  refinement?: string | null;
 };
+
+export const QUICK_QUOTE_REFINE_CHIPS = [
+  'Add demo & cleanup',
+  'Itemize materials & labor',
+  'Add 10% safety margin',
+  'Include permits & inspection',
+  'Break out into base + add-on',
+] as const;
 
 /**
  * Everything the drafter needs, in one place.
@@ -36,6 +45,7 @@ export async function loadDraftContext(
   supabase: SupabaseClient,
   accountId: string,
   jobId: string,
+  refinement?: string | null,
 ): Promise<DraftContext | null> {
   const { data: job } = await supabase
     .from('jobs')
@@ -82,6 +92,7 @@ export async function loadDraftContext(
       description: service.description,
     })),
     history,
+    refinement: refinement?.trim() || null,
   };
 }
 
@@ -144,6 +155,7 @@ export async function draftQuote(context: DraftContext): Promise<QuoteDraft | nu
   const input = [
     `JOB TO QUOTE:\n${context.scope.slice(0, 2000)}`,
     context.estimatedHours ? `The contractor estimates about ${context.estimatedHours} hours of work.` : '',
+    context.refinement ? `CONTRACTOR REFINEMENT INSTRUCTION:\n${context.refinement}` : '',
     'Draft the quote as JSON.',
   ].filter(Boolean).join('\n\n');
 
