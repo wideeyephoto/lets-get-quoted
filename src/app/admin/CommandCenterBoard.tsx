@@ -9,17 +9,9 @@ export type BoardCard = {
   key: string;
   title: string;
   content: ReactNode;
-  /**
-   * Rows the card can actually show. Zero sends it to the All-clear strip
-   * instead of the grid — thirteen cards of which ten read "no problems" is a
-   * board where the three that matter are the hardest things on it to find.
-   */
   rows: number;
-  /** The strip's one line for a quiet card: what the check covers, or why it is empty. */
   quietNote: string;
-  /** Where the strip entry leads, for the checks that have somewhere to go. */
   quietHref?: string;
-  /** False means the source query failed; this card must not read as clear. */
   available?: boolean;
 };
 
@@ -27,11 +19,6 @@ function storageKeyFor(role: string, staffKey: string): string {
   return `admin_command_center_order:${role}:${staffKey.toLowerCase()}`;
 }
 
-// Merge whatever order was persisted against the card set this render
-// actually has: drop any leftover key the board no longer renders, then
-// append any card the board renders that localStorage doesn't know about yet
-// (a newly added signal) at the end — so a future card never silently
-// disappears just because it postdates someone's saved layout.
 function reconcileOrder(stored: string[], defaultOrder: string[], knownKeys: Set<string>): string[] {
   const seen = new Set<string>();
   const ordered: string[] = [];
@@ -43,12 +30,20 @@ function reconcileOrder(stored: string[], defaultOrder: string[], knownKeys: Set
   return ordered;
 }
 
-export function CommandCenterBoard({ role, staffKey, cards, defaultOrder }: { role: string; staffKey: string; cards: BoardCard[]; defaultOrder: string[] }) {
-  // Seeded with the server-computed default so the first client render
-  // matches SSR output exactly — localStorage only gets consulted a moment
-  // later, after mount, avoiding a hydration mismatch.
+export function CommandCenterBoard({
+  role,
+  staffKey,
+  cards,
+  defaultOrder,
+}: {
+  role: string;
+  staffKey: string;
+  cards: BoardCard[];
+  defaultOrder: string[];
+}) {
   const [order, setOrder] = useState<string[]>(defaultOrder);
   const [customizing, setCustomizing] = useState(false);
+  const [showAllClear, setShowAllClear] = useState(true);
 
   useEffect(() => {
     const knownKeys = new Set(cards.map((c) => c.key));
@@ -67,16 +62,13 @@ export function CommandCenterBoard({ role, staffKey, cards, defaultOrder }: { ro
     try {
       window.localStorage.setItem(storageKeyFor(role, staffKey), JSON.stringify(next));
     } catch {
-      // Private-browsing / quota — order still applies for this render, just won't survive a reload.
+      // Best-effort storage
     }
   }
 
   const byKey = new Map(cards.map((c) => [c.key, c]));
   const ordered = order.map((k) => byKey.get(k)).filter((c): c is BoardCard => Boolean(c));
 
-  // The split that does the organizing: what needs attention gets a card, what
-  // is clear gets a line. Quiet cards keep their slot in `order`, so a card
-  // that lights up tomorrow comes back exactly where this staff member put it.
   const unavailable = ordered.filter((c) => c.available === false);
   const active = ordered.filter((c) => c.available !== false && c.rows > 0);
   const quiet = ordered.filter((c) => c.available !== false && c.rows === 0);
@@ -89,21 +81,33 @@ export function CommandCenterBoard({ role, staffKey, cards, defaultOrder }: { ro
   return (
     <div>
       <div className={styles.boardHead}>
-        <p className={styles.boardCount}>
+        <div className={styles.boardCountRow}>
           {active.length > 0 ? (
-            <>
-              <strong>{active.length}</strong> {active.length === 1 ? 'card needs' : 'cards need'} attention
-            </>
+            <span className={`${styles.statusBadge} ${styles.attention}`}>
+              <span className={`${styles.pulseDot} ${styles.bad}`} aria-hidden="true" />
+              <strong>{active.length}</strong> {active.length === 1 ? 'card needs attention' : 'cards need attention'}
+            </span>
           ) : (
-            <strong>Nothing needs attention</strong>
+            <span className={`${styles.statusBadge} ${styles.clear}`}>
+              <span className={`${styles.pulseDot} ${styles.good}`} aria-hidden="true" />
+              <strong>All systems operational</strong>
+            </span>
           )}
-          {quiet.length > 0 ? <> · {quiet.length} clear</> : null}
-          {unavailable.length > 0 ? <> · {unavailable.length} unavailable</> : null}
-        </p>
+          {quiet.length > 0 ? (
+            <span className={`${styles.statusBadge} ${styles.clear}`}>
+              ✓ {quiet.length} checks clear
+            </span>
+          ) : null}
+          {unavailable.length > 0 ? (
+            <span className={`${styles.statusBadge} ${styles.unavailable}`}>
+              ! {unavailable.length} unavailable
+            </span>
+          ) : null}
+        </div>
         <div className={styles.boardActions}>
           {customizing ? (
             <button type="button" className="btn secondary" onClick={() => persist(defaultOrder)}>
-              Reset to default
+              Reset layout
             </button>
           ) : null}
           <button type="button" className="btn secondary" onClick={() => setCustomizing((v) => !v)}>
@@ -121,10 +125,22 @@ export function CommandCenterBoard({ role, staffKey, cards, defaultOrder }: { ro
             >
               {customizing ? (
                 <div className={styles.moveBtns}>
-                  <button type="button" className={styles.moveBtn} disabled={i === 0} onClick={() => move(card.key, -1)} aria-label={`Move ${card.title} earlier`}>
+                  <button
+                    type="button"
+                    className={styles.moveBtn}
+                    disabled={i === 0}
+                    onClick={() => move(card.key, -1)}
+                    aria-label={`Move ${card.title} earlier`}
+                  >
                     ←
                   </button>
-                  <button type="button" className={styles.moveBtn} disabled={i === active.length - 1} onClick={() => move(card.key, 1)} aria-label={`Move ${card.title} later`}>
+                  <button
+                    type="button"
+                    className={styles.moveBtn}
+                    disabled={i === active.length - 1}
+                    onClick={() => move(card.key, 1)}
+                    aria-label={`Move ${card.title} later`}
+                  >
                     →
                   </button>
                 </div>
@@ -137,46 +153,62 @@ export function CommandCenterBoard({ role, staffKey, cards, defaultOrder }: { ro
 
       {unavailable.length > 0 ? (
         <section className={`${styles.panel} ${styles.dataUnavailable}`} aria-labelledby="unavailable-signals-title">
-          <h2 className={styles.panelTitle} id="unavailable-signals-title">Data unavailable ({unavailable.length})</h2>
+          <h2 className={styles.panelTitle} id="unavailable-signals-title">
+            <span className={`${styles.pulseDot} ${styles.warn}`} aria-hidden="true" />
+            Data unavailable ({unavailable.length})
+          </h2>
           <p className={styles.muted}>These checks could not complete. They are excluded from All clear until their data sources recover.</p>
           <ul className={styles.allClearGrid}>
             {unavailable.map((card) => (
               <li key={card.key}>
-                <span className={styles.unavailableMark} aria-hidden="true">!</span>
-                <span className={styles.allClearName}>{card.title}</span>
-                <span className={styles.allClearNote}>Could not verify this signal. Retry by refreshing the page.</span>
+                <span className={styles.unavailableMarkWrap} aria-hidden="true">!</span>
+                <div>
+                  <span className={styles.allClearName}>{card.title}</span>
+                  <div className={styles.allClearNote}>Could not verify this signal. Retry by refreshing the page.</div>
+                </div>
               </li>
             ))}
           </ul>
         </section>
       ) : null}
 
-      {/* Not a footnote. It is the record that these checks ran and came back
-          clean, and it keeps every caveat a quiet card was carrying — "no case
-          is within 48 hours of its SLA" means much less without the count of
-          cases that have no SLA to be near. */}
       {quiet.length > 0 ? (
         <section className={`${styles.panel} ${styles.allClear}`}>
-          <h2 className={styles.panelTitle}>All clear ({quiet.length})</h2>
-          <ul className={styles.allClearGrid}>
-            {quiet.map((card) => (
-              <li key={card.key}>
-                <span className={styles.allClearTick} aria-hidden="true">
-                  ✓
-                </span>
-                <span className={styles.allClearName}>
-                  {card.quietHref ? (
-                    <Link href={card.quietHref} className={styles.rowLink}>
-                      {card.title}
-                    </Link>
-                  ) : (
-                    card.title
-                  )}
-                </span>
-                <span className={styles.allClearNote}>{card.quietNote}</span>
-              </li>
-            ))}
-          </ul>
+          <div className={styles.allClearHead}>
+            <h2 className={styles.panelTitle} style={{ margin: 0 }}>
+              <span className={`${styles.pulseDot} ${styles.good}`} aria-hidden="true" />
+              Verified Clear Checks ({quiet.length})
+            </h2>
+            <button
+              type="button"
+              className={styles.allClearToggleBtn}
+              onClick={() => setShowAllClear((v) => !v)}
+              aria-expanded={showAllClear}
+            >
+              {showAllClear ? 'Collapse ↑' : 'Expand ↓'}
+            </button>
+          </div>
+          {showAllClear ? (
+            <ul className={styles.allClearGrid}>
+              {quiet.map((card) => (
+                <li key={card.key}>
+                  <span className={styles.allClearIconWrap} aria-hidden="true">✓</span>
+                  <div>
+                    <span className={styles.allClearName}>
+                      {card.quietHref ? (
+                        <Link href={card.quietHref} className={styles.rowLink}>
+                          {card.title}
+                        </Link>
+                      ) : (
+                        card.title
+                      )}
+                    </span>
+                    <div className={styles.allClearNote}>{card.quietNote}</div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          ) : null}
         </section>
       ) : null}
     </div>

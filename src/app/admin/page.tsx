@@ -33,7 +33,8 @@ const RANGE_TABS: { key: DateRange; label: string }[] = [
 ];
 
 function usd(dollars: number): string {
-  return `$${dollars.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+  const isWhole = dollars % 1 === 0;
+  return `$${dollars.toLocaleString('en-US', { minimumFractionDigits: isWhole ? 0 : 2, maximumFractionDigits: 2 })}`;
 }
 function fmtMetric(m: CommandCenterMetric): string {
   if (!m.available) return '—';
@@ -46,8 +47,8 @@ function trendClass(m: CommandCenterMetric): 'good' | 'bad' | 'flat' {
 function trendLabel(m: CommandCenterMetric): string {
   if (!m.available) return 'Data unavailable';
   if (m.deltaPct === null) return 'No prior-period data';
-  const sign = m.deltaPct > 0 ? '+' : '';
-  return `${sign}${m.deltaPct.toFixed(0)}% vs. prior period`;
+  const sign = m.deltaPct > 0 ? '↑ +' : m.deltaPct < 0 ? '↓ ' : '';
+  return `${sign}${Math.abs(m.deltaPct).toFixed(0)}% vs. prior period`;
 }
 function cap(s: string): string {
   return s.length ? s.charAt(0).toUpperCase() + s.slice(1) : s;
@@ -55,6 +56,13 @@ function cap(s: string): string {
 function roleLabel(role: string): string {
   return role.split('_').map(cap).join(' ');
 }
+
+const METRIC_ACCENT: Record<string, 'amber' | 'emerald' | 'indigo' | 'rose'> = {
+  newAccounts: 'amber',
+  paymentsProcessed: 'emerald',
+  platformFees: 'indigo',
+  refunds: 'rose',
+};
 
 /**
  * Where each headline number opens, carrying the range it was counted over.
@@ -429,8 +437,10 @@ export default async function AdminCommandCenterPage({ searchParams }: { searchP
     <>
       <header className={styles.pageHead}>
         <p className={styles.eyebrow}>Staff console</p>
-        <h1 className={styles.title}>Command Center</h1>
-        <p className={styles.lead}>Exceptions and open work across every account. Verified clear checks collapse at the bottom; unavailable checks remain visible. The rest is ordered for the {roleLabel(role)} role, and you can reorder it for how you work.</p>
+        <div className={styles.titleRow}>
+          <h1 className={styles.title}>Command Center</h1>
+        </div>
+        <p className={styles.lead}>Exceptions and open work across every account. Verified clear checks collapse below. Ordered for the {roleLabel(role)} role.</p>
       </header>
 
       <div className={styles.filterGroup}>
@@ -442,12 +452,6 @@ export default async function AdminCommandCenterPage({ searchParams }: { searchP
         </nav>
       </div>
 
-      {/* Every metric that has rows behind it now opens them, carrying the
-          range so the destination covers the same window the number does.
-          "Platform fees" is the one that stays inert: it is a sum of money
-          rather than a set of records, and its working — gross charged minus
-          fees returned — is on the Money page it would otherwise link to,
-          which the Refunds card already reaches. */}
       <section className={styles.metricsRow}>
         {data.metrics.map((m) => (
           <StatCard
@@ -456,6 +460,7 @@ export default async function AdminCommandCenterPage({ searchParams }: { searchP
             label={m.label}
             href={metricHref(m.key, range)}
             drill={METRIC_DRILL[m.key]}
+            accent={METRIC_ACCENT[m.key] || 'neutral'}
             tone={!m.available ? 'warn' : undefined}
           >
             <span className={`${styles.metricTrend} ${styles[trendClass(m)]}`}>{trendLabel(m)}</span>

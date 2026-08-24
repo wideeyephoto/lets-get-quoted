@@ -27,16 +27,12 @@ function saveRecent(term: string) {
     const rest = loadRecent().filter((v) => v.toLowerCase() !== trimmed.toLowerCase());
     window.localStorage.setItem(RECENT_KEY, JSON.stringify([trimmed, ...rest].slice(0, RECENT_MAX)));
   } catch {
-    // Best-effort convenience only — a full or blocked localStorage is fine to ignore.
+    // Best-effort convenience only
   }
 }
 
 type ListItem = { href: string; label: string; sub?: string | null; term: string };
 
-// Sidebar quick-search: debounced live lookup across every entity type, with
-// keyboard navigation and localStorage recent searches. The full grouped
-// results page (/admin/search) is the "see all" destination for a query this
-// box can't fully show in a dropdown.
 export default function SearchBox() {
   const router = useRouter();
   const [query, setQuery] = useState('');
@@ -47,6 +43,7 @@ export default function SearchBox() {
   const [unavailable, setUnavailable] = useState(false);
   const [highlight, setHighlight] = useState(-1);
   const containerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const requestId = useRef(0);
   const listboxId = useId();
 
@@ -58,6 +55,19 @@ export default function SearchBox() {
     }
     document.addEventListener('mousedown', onOutsideClick);
     return () => document.removeEventListener('mousedown', onOutsideClick);
+  }, []);
+
+  // Global keyboard shortcut to focus search with Cmd+K or Ctrl+K or '/'
+  useEffect(() => {
+    function onGlobalKey(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        inputRef.current?.focus();
+        setOpen(true);
+      }
+    }
+    window.addEventListener('keydown', onGlobalKey);
+    return () => window.removeEventListener('keydown', onGlobalKey);
   }, []);
 
   useEffect(() => {
@@ -137,11 +147,16 @@ export default function SearchBox() {
 
   return (
     <div className={styles.searchBox} ref={containerRef}>
+      <svg className={styles.searchIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <circle cx="11" cy="11" r="8" />
+        <path d="m21 21-4.3-4.3" />
+      </svg>
       <input
+        ref={inputRef}
         className={styles.searchBoxInput}
         type="search"
         value={query}
-        placeholder="Search…"
+        placeholder="Quick search…"
         onChange={(e) => {
           setQuery(e.target.value);
           setOpen(true);
@@ -156,9 +171,10 @@ export default function SearchBox() {
         aria-controls={listboxId}
         aria-activedescendant={highlight >= 0 ? `${listboxId}-option-${highlight}` : undefined}
       />
+      <span className={styles.searchKbd} aria-hidden="true">⌘K</span>
       {open && (list.length > 0 || loading || unavailable) ? (
         <div className={styles.searchDropdown} id={listboxId} role="listbox" aria-label="Search suggestions">
-          {showingRecent ? <p className={styles.searchDropdownLabel}>Recent</p> : null}
+          {showingRecent ? <p className={styles.searchDropdownLabel}>Recent Searches</p> : null}
           {!list.length && loading ? <p className={styles.searchDropdownEmpty}>Searching…</p> : null}
           {!loading && unavailable ? <p className={styles.searchDropdownEmpty} role="status">Search is unavailable. Press Enter to try the full search page.</p> : null}
           {list.map((item, i) => (
