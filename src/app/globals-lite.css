@@ -1,6 +1,6 @@
 /* GENERATED — do not edit. Source: src/app/globals.css
    Run: node scripts/build-css-subset.mjs
-   source-sha256: c57c415197e4abfa
+   source-sha256: 5ac7310f654a8e60
 
    globals.css with the rules that can only match inside /dashboard, /admin and
    /demo removed. Every route except those three imports this file; they import
@@ -3256,6 +3256,32 @@ h3 {
 [data-tone='warn'] { --tone-ink: var(--warn); }
 [data-tone='danger'] { --tone-ink: var(--bad); }
 [data-tone='neutral'] { --tone-ink: var(--mute-g270); }
+
+.plan-change-subtitle {
+  font-size: 0.8125rem;
+  color: var(--mute-g270);
+  margin-top: 0.125rem;
+}
+
+.plan-change-card.is-immediate {
+  border-color: rgba(16, 185, 129, 0.2);
+}
+
+.plan-change-card.is-immediate:hover {
+  border-color: rgba(16, 185, 129, 0.45);
+  box-shadow: 0 12px 32px -4px rgba(16, 185, 129, 0.15);
+}
+
+.plan-change-card.is-confirming {
+  border-color: rgba(16, 185, 129, 0.6) !important;
+  background: linear-gradient(180deg, rgba(16, 185, 129, 0.06) 0%, rgba(16, 185, 129, 0.015) 100%);
+  box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.3), 0 12px 36px -4px rgba(16, 185, 129, 0.2);
+}
+
+@keyframes pulse-badge {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.85); }
+}
 
 /* Blocked-off (time-off) day on the schedule calendar. */
 .calendar-cell.blocked { position: relative; background: repeating-linear-gradient(135deg, rgba(255, 122, 33, 0.06) 0 7px, transparent 7px 15px); }

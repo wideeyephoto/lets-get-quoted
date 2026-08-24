@@ -136,21 +136,43 @@ export default function ChangePlanPanel({
   if (pendingPlanCode) {
     const pendingName = BILLING_PLANS[pendingPlanCode as BillingPlanId]?.name ?? pendingPlanCode;
     return (
-      <section className="panel workspace-section-card" id="change-plan">
-        <div className="section-heading workspace-section-heading compact-heading">
-          <h3>Plan change scheduled</h3>
+      <section className="panel workspace-section-card plan-change-panel" id="change-plan">
+        <div className="workspace-section-headrow">
+          <div className="section-heading workspace-section-heading compact-heading">
+            <p className="eyebrow">Scheduled change</p>
+            <div className="plan-change-title-row">
+              <div className="plan-change-header-icon-wrap" aria-hidden="true">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                  <line x1="16" y1="2" x2="16" y2="6" />
+                  <line x1="8" y1="2" x2="8" y2="6" />
+                  <line x1="3" y1="10" x2="21" y2="10" />
+                </svg>
+              </div>
+              <h3>Plan change scheduled</h3>
+            </div>
+          </div>
         </div>
-        <p>
-          {scheduledFor
-            ? `You stay on ${currentName} until ${scheduledFor}, then move to ${pendingName}. Nothing changes before then.`
-            : `You stay on ${currentName} until your renewal, then move to ${pendingName}.`}
-        </p>
+
+        <div className="plan-change-scheduled-banner">
+          <div className="plan-change-scheduled-flow">
+            <span className="plan-change-step current">{currentName}</span>
+            <span className="plan-change-arrow" aria-hidden="true">&rarr;</span>
+            <span className="plan-change-step target">{pendingName}</span>
+          </div>
+          <p className="plan-change-scheduled-desc">
+            {scheduledFor
+              ? `You stay on ${currentName} until ${scheduledFor}, then move to ${pendingName}. Nothing changes before then.`
+              : `You stay on ${currentName} until your renewal, then move to ${pendingName}.`}
+          </p>
+        </div>
+
         <p className="muted-note">
           Changed your mind? Cancelling this keeps you on {currentName} and nothing is charged differently.
         </p>
         {successNote}
         {error ? <p className="form-error" role="alert">{error}</p> : null}
-        <button className="btn subtle" type="button" disabled={pending} aria-busy={pending} onClick={clear}>
+        <button className="btn subtle plan-change-stay-btn" type="button" disabled={pending} aria-busy={pending} onClick={clear}>
           {pending ? 'Cancelling…' : `Stay on ${currentName}`}
         </button>
       </section>
@@ -158,46 +180,91 @@ export default function ChangePlanPanel({
   }
 
   return (
-    <section className="panel workspace-section-card" id="change-plan">
-      <div className="section-heading workspace-section-heading compact-heading">
-        <h3>Change your plan</h3>
+    <section className="panel workspace-section-card plan-change-panel" id="change-plan">
+      <div className="workspace-section-headrow">
+        <div className="section-heading workspace-section-heading compact-heading">
+          <p className="eyebrow">Subscription tier</p>
+          <div className="plan-change-title-row">
+            <div className="plan-change-header-icon-wrap" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+              </svg>
+            </div>
+            <h3>Change your plan</h3>
+          </div>
+        </div>
       </div>
-      <p>
-        {renewsOn
-          ? `You are on ${currentName}, renewing ${renewsOn}.`
-          : `You are on ${currentName}.`}
-      </p>
+
+      <div className="plan-change-current-bar">
+        <span className="plan-change-current-status-dot" aria-hidden="true" />
+        <span>
+          {renewsOn
+            ? `You are on ${currentName}, renewing ${renewsOn}.`
+            : `You are on ${currentName}.`}
+        </span>
+      </div>
 
       {successNote}
       {error ? <p className="form-error" role="alert">{error}</p> : null}
 
-      <ul className="plan-change-options">
+      <div className="plan-change-grid" role="list">
         {options.map((option) => {
           const isConfirming = confirming?.planCode === option.planCode
             && confirming?.billingInterval === option.billingInterval;
+          const isAnnual = option.billingInterval === 'annual';
+          const isImmediate = option.effect === 'immediate';
+
           return (
-            <li key={`${option.planCode}_${option.billingInterval}`}>
-              <div>
-                <strong>{option.label}</strong>
-                <span className="muted-note"> {option.priceLabel}</span>
-                <p className="muted-note">
-                  {option.effect === 'immediate'
+            <div
+              key={`${option.planCode}_${option.billingInterval}`}
+              className={`plan-change-card ${isConfirming ? 'is-confirming' : ''} ${isImmediate ? 'is-immediate' : 'is-renewal'}`}
+              role="listitem"
+            >
+              <div className="plan-change-card-top">
+                <div className="plan-change-card-heading">
+                  <div className="plan-change-name-row">
+                    <h4 className="plan-change-plan-name">{option.label}</h4>
+                    {isAnnual ? (
+                      <span className="plan-change-tag-annual">SAVE 20%</span>
+                    ) : null}
+                  </div>
+                  <div className="plan-change-effect-pill-wrap">
+                    {isImmediate ? (
+                      <span className="plan-change-effect-badge instant">
+                        <span className="plan-change-pulse-dot" aria-hidden="true" /> Instant Upgrade
+                      </span>
+                    ) : (
+                      <span className="plan-change-effect-badge renewal">
+                        📅 At Renewal
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="plan-change-price-box">
+                  <div className="plan-change-price-main">
+                    <span className="plan-change-price-val">{option.priceLabel}</span>
+                  </div>
+                </div>
+
+                <p className="plan-change-timing-note">
+                  {isImmediate
                     ? 'Takes effect now. You are charged the difference for the rest of this period.'
                     : renewsOn
                       ? `Takes effect ${renewsOn}, at your renewal. Nothing is charged today.`
                       : 'Takes effect at your renewal. Nothing is charged today.'}
                 </p>
               </div>
-              {isConfirming && option.effect === 'immediate' ? (
-                // Markup deliberately the checkout's. A new class here would mean a
-                // globals-lite.css rebuild, and this IS the same disclosure --
-                // same version, same digest, same authorization.
-                <div className="base-plan-checkout-consent">
-                  <strong>Recurring billing authorization</strong>
-                  {BASE_PLAN_RECURRING_CONSENT_TEXT.split('\n\n').map((paragraph) => (
-                    <p key={paragraph}>{paragraph}</p>
-                  ))}
-                  <label className="base-plan-checkout-affirmation">
+
+              {isConfirming && isImmediate ? (
+                <div className="base-plan-checkout-consent plan-change-consent-card">
+                  <strong className="plan-change-consent-title">Recurring billing authorization</strong>
+                  <div className="plan-change-consent-text">
+                    {BASE_PLAN_RECURRING_CONSENT_TEXT.split('\n\n').map((paragraph) => (
+                      <p key={paragraph}>{paragraph}</p>
+                    ))}
+                  </div>
+                  <label className="base-plan-checkout-affirmation plan-change-affirmation">
                     <input
                       type="checkbox"
                       checked={consentAccepted}
@@ -207,32 +274,44 @@ export default function ChangePlanPanel({
                   </label>
                 </div>
               ) : null}
-              {isConfirming ? (
-                <div className="button-row">
+
+              <div className="plan-change-action-row">
+                {isConfirming ? (
+                  <div className="button-row plan-change-button-row">
+                    <button
+                      className="btn primary plan-change-confirm-btn"
+                      type="button"
+                      disabled={pending || (isImmediate && !consentAccepted)}
+                      aria-busy={pending}
+                      onClick={() => run(option)}
+                    >
+                      {pending
+                        ? 'Working…'
+                        : isImmediate ? `Upgrade and pay now` : `Schedule for renewal`}
+                    </button>
+                    <button
+                      className="btn subtle plan-change-cancel-btn"
+                      type="button"
+                      disabled={pending}
+                      onClick={() => { setConfirming(null); setConsentAccepted(false); }}
+                    >
+                      Not now
+                    </button>
+                  </div>
+                ) : (
                   <button
-                    className="btn"
+                    className={`btn ${isImmediate ? 'primary' : 'subtle'} plan-change-trigger-btn`}
                     type="button"
-                    disabled={pending || (option.effect === 'immediate' && !consentAccepted)}
-                    aria-busy={pending}
-                    onClick={() => run(option)}
+                    onClick={() => { setConfirming(option); setConsentAccepted(false); }}
                   >
-                    {pending
-                      ? 'Working…'
-                      : option.effect === 'immediate' ? `Upgrade and pay now` : `Schedule for renewal`}
+                    {isImmediate ? 'Upgrade now \u2192' : 'Switch at renewal \u2192'}
                   </button>
-                  <button className="btn subtle" type="button" disabled={pending} onClick={() => { setConfirming(null); setConsentAccepted(false); }}>
-                    Not now
-                  </button>
-                </div>
-              ) : (
-                <button className="btn subtle" type="button" onClick={() => { setConfirming(option); setConsentAccepted(false); }}>
-                  {option.effect === 'immediate' ? 'Upgrade' : 'Switch at renewal'}
-                </button>
-              )}
-            </li>
+                )}
+              </div>
+            </div>
           );
         })}
-      </ul>
+      </div>
     </section>
   );
 }

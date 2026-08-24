@@ -5001,6 +5001,349 @@ h3 {
   .base-plan-checkout-price > small { grid-column: auto; }
 }
 
+/* ==========================================================================
+   Change Plan Modernized Panel & Cards
+   ========================================================================== */
+
+.plan-change-panel {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--rule-t12);
+  border-radius: 1.25rem;
+  background: linear-gradient(180deg, rgba(var(--tint), 0.025) 0%, rgba(var(--tint), 0.008) 100%);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 8px 32px -4px rgba(0, 0, 0, 0.25);
+}
+
+.plan-change-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.25rem;
+}
+
+.plan-change-header-icon-wrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 0.625rem;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.2) 0%, rgba(168, 85, 247, 0.15) 100%);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  color: #a5b4fc;
+  box-shadow: 0 0 16px rgba(99, 102, 241, 0.25);
+}
+
+.plan-change-subtitle {
+  font-size: 0.8125rem;
+  color: var(--mute-g270);
+  margin-top: 0.125rem;
+}
+
+.plan-change-current-bar {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.45rem 0.95rem;
+  border-radius: 9999px;
+  background: rgba(var(--tint), 0.04);
+  border: 1px solid var(--rule-t12);
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0.75rem 0 1.25rem;
+}
+
+.plan-change-current-status-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 9999px;
+  background: #10b981;
+  box-shadow: 0 0 8px #10b981;
+}
+
+/* Scheduled Transition Banner */
+.plan-change-scheduled-banner {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.08) 0%, rgba(245, 158, 11, 0.02) 100%);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  border-radius: 1rem;
+  padding: 1.25rem;
+  margin: 0.75rem 0 1.25rem;
+}
+
+.plan-change-scheduled-flow {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+  font-weight: 800;
+  font-size: 1.05rem;
+}
+
+.plan-change-step.current {
+  color: var(--mute-g270);
+}
+
+.plan-change-arrow {
+  color: #f59e0b;
+  font-size: 1.15rem;
+}
+
+.plan-change-step.target {
+  color: #fbbf24;
+}
+
+.plan-change-scheduled-desc {
+  font-size: 0.88rem;
+  color: var(--text);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.plan-change-stay-btn {
+  margin-top: 1rem;
+}
+
+/* Plan Change Grid */
+.plan-change-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.25rem;
+  margin-top: 1.25rem;
+}
+
+.plan-change-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  border: 1px solid var(--rule-t12);
+  border-radius: 1.125rem;
+  background: linear-gradient(180deg, rgba(var(--tint), 0.035) 0%, rgba(var(--tint), 0.01) 100%);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  padding: 1.5rem;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.2);
+  position: relative;
+}
+
+.plan-change-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(99, 102, 241, 0.4);
+  box-shadow: 0 12px 32px -4px rgba(0, 0, 0, 0.35);
+}
+
+.plan-change-card.is-immediate {
+  border-color: rgba(16, 185, 129, 0.2);
+}
+
+.plan-change-card.is-immediate:hover {
+  border-color: rgba(16, 185, 129, 0.45);
+  box-shadow: 0 12px 32px -4px rgba(16, 185, 129, 0.15);
+}
+
+.plan-change-card.is-confirming {
+  border-color: rgba(16, 185, 129, 0.6) !important;
+  background: linear-gradient(180deg, rgba(16, 185, 129, 0.06) 0%, rgba(16, 185, 129, 0.015) 100%);
+  box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.3), 0 12px 36px -4px rgba(16, 185, 129, 0.2);
+}
+
+.plan-change-card-top {
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+}
+
+.plan-change-card-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.plan-change-name-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.plan-change-plan-name {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--text);
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.plan-change-tag-annual {
+  display: inline-block;
+  font-size: 0.6875rem;
+  font-weight: 800;
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  padding: 0.125rem 0.5rem;
+  border-radius: 9999px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.plan-change-effect-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.22rem 0.65rem;
+  border-radius: 9999px;
+  letter-spacing: 0.02em;
+}
+
+.plan-change-effect-badge.instant {
+  background: rgba(16, 185, 129, 0.12);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.28);
+}
+
+.plan-change-effect-badge.renewal {
+  background: rgba(99, 102, 241, 0.12);
+  color: #818cf8;
+  border: 1px solid rgba(99, 102, 241, 0.28);
+}
+
+.plan-change-pulse-dot {
+  width: 0.375rem;
+  height: 0.375rem;
+  border-radius: 9999px;
+  background: #10b981;
+  box-shadow: 0 0 6px #10b981;
+  animation: pulse-badge 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse-badge {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.85); }
+}
+
+.plan-change-price-box {
+  margin: 0.25rem 0 0.5rem;
+}
+
+.plan-change-price-val {
+  font-size: 1.25rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  letter-spacing: -0.01em;
+}
+
+.plan-change-timing-note {
+  font-size: 0.82rem;
+  color: rgba(var(--ink-rgb), 0.72);
+  line-height: 1.45;
+  margin: 0;
+}
+
+/* Consent Drawer inside Card */
+.plan-change-consent-card {
+  margin-top: 1rem;
+  padding: 0.875rem;
+  border-radius: 0.75rem;
+  background: rgba(var(--tint), 0.03);
+  border: 1px solid var(--rule-t12);
+  font-size: 0.75rem;
+}
+
+.plan-change-consent-title {
+  display: block;
+  font-size: 0.82rem;
+  color: var(--text);
+  margin-bottom: 0.375rem;
+}
+
+.plan-change-consent-text {
+  max-height: 120px;
+  overflow-y: auto;
+  font-size: 0.75rem;
+  color: rgba(var(--ink-rgb), 0.72);
+  line-height: 1.4;
+  margin-bottom: 0.75rem;
+  padding-right: 0.375rem;
+}
+
+.plan-change-consent-text p {
+  margin-bottom: 0.5rem;
+}
+
+.plan-change-affirmation {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.plan-change-action-row {
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--rule-t12);
+}
+
+.plan-change-trigger-btn {
+  width: 100%;
+  justify-content: center;
+  font-weight: 700;
+  padding: 0.65rem 1.15rem;
+  border-radius: 0.65rem;
+  font-size: 0.88rem;
+  transition: all 0.15s ease;
+}
+
+.plan-change-trigger-btn.primary {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #ffffff;
+  border: none;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.3);
+}
+
+.plan-change-trigger-btn.primary:hover {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.45);
+  transform: translateY(-1px);
+}
+
+.plan-change-button-row {
+  display: flex;
+  gap: 0.625rem;
+  width: 100%;
+}
+
+.plan-change-confirm-btn {
+  flex: 1;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #ffffff;
+  border: none;
+  font-weight: 700;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.3);
+}
+
+.plan-change-cancel-btn {
+  flex: 0 0 auto;
+}
+
+@media (max-width: 680px) {
+  .plan-change-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* Compact "log out" footer folded into the sign-in methods card. */
 .signout-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--rule-t08); }
 
