@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Fragment, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { APP_SIGNUP_URL } from '@/components/marketing/links';
 import PricingCalculator from './PricingCalculator';
 import {
@@ -10,12 +10,10 @@ import {
   ENTERPRISE,
   PLANS,
   PRICING_FAQS,
-  VOICE_MONTHLY_BY_PLAN,
   annualPlanEstimate,
   annualPlanCost,
   planCrossover,
   VOICE_PURCHASABLE,
-  VOICE_PLANNED_PRICE_LABEL,
   type BillingCycle,
   type PlanId,
   type PricingPlan,
@@ -29,19 +27,19 @@ const CARD_FEATURES: Record<PlanId, readonly string[]> = {
     'Custom domain + QuickBooks Online',
   ],
   solo: [
-    'Your own business number coming soon',
+    '2-Way customer text messaging',
     '500 text + 250 AI Intake credits/month',
     'Custom domain + QuickBooks Online',
   ],
   growth: [
     '5 office users + 10 crew users',
     '1,500 text + 500 AI Intake credits/month',
-    'AI Voice Receptionist coming soon',
+    'Team dispatch & scheduling',
   ],
   scale: [
-    '0.1% LGQ platform fee',
-    'AI Voice Receptionist coming soon',
-    'At launch: 3 simultaneous AI calls + advanced routing',
+    '0.1% lowest LGQ platform fee',
+    '15 office users + 50 crew users',
+    '3,000 text credits + 250 GB storage',
   ],
 };
 
@@ -68,7 +66,7 @@ const SCENARIOS: readonly {
     planId: 'solo',
     revenue: 250_000,
     title: 'Owner-operator electrician',
-    description: 'Gets a much lower platform fee, and their own number when it launches.',
+    description: 'Gets a much lower platform fee and expanded messaging capacity.',
   },
   {
     planId: 'growth',
@@ -86,9 +84,9 @@ const SCENARIOS: readonly {
 
 const COMPARISON_HIGHLIGHTS = [
   { value: '1.25% → 0.1%', label: 'Choose a plan with the fee that fits' },
-  { value: '1 → 5', label: 'Office seats expand on Growth' },
-  { value: 'Coming soon', label: 'Dedicated business number, planned for Solo and up' },
-  { value: 'Coming soon', label: 'AI Voice Receptionist is not available yet' },
+  { value: '1 → 15', label: 'Office seats scale with your team' },
+  { value: '100%', label: 'QuickBooks Online connection included on every plan' },
+  { value: 'Unlimited', label: 'Core records: leads, quotes, jobs & invoices' },
 ] as const;
 
 const COMPETITORS = [
@@ -98,7 +96,7 @@ const COMPETITORS = [
     monthly: '$129 + 0.25%',
     annual: '$99 + 0.25%',
     users: '5 office + 10 crew',
-    phone: 'Dedicated number and AI Voice Receptionist both coming soon',
+    phone: '2-way messaging and shared business line included',
     href: '#plans',
   },
   {
@@ -139,12 +137,11 @@ const COMPETITORS = [
   },
 ] as const;
 
-const SECTION_IDS = ['plans', 'calculator', 'receptionist', 'compare', 'questions'] as const;
+const SECTION_IDS = ['plans', 'calculator', 'compare', 'questions'] as const;
 
 const NAV_ITEMS = [
   { id: 'plans', label: 'Plans', mobileLabel: 'Plans' },
   { id: 'calculator', label: 'Cost calculator', mobileLabel: 'Calculator' },
-  { id: 'receptionist', label: 'AI Voice Receptionist', mobileLabel: 'AI Voice' },
   { id: 'compare', label: 'Compare', mobileLabel: 'Compare' },
   { id: 'questions', label: 'Questions', mobileLabel: 'FAQ' },
 ] as const;
@@ -172,14 +169,6 @@ function getPlan(planId: PlanId): PricingPlan {
   return plan;
 }
 
-function voiceDescription(plan: PricingPlan): string {
-  const allowance = `${plan.voiceMinutes} AI-connected minutes`;
-  if (!VOICE_PURCHASABLE) return `At launch · ${allowance}`;
-  return plan.id === 'scale'
-    ? `Included · ${allowance}`
-    : `$${VOICE_MONTHLY_BY_PLAN[plan.id]}/month · ${allowance}`;
-}
-
 function signupHref(plan: PlanId, billing: BillingCycle): string {
   return `${APP_SIGNUP_URL}&${[`plan=${plan}`, `billing=${billing}`].join('&')}`;
 }
@@ -193,24 +182,11 @@ function InfoBubble({ label, children }: { label: string; children: ReactNode })
   );
 }
 
-function AIVoiceReceptionistInfoBubble() {
-  return (
-    <InfoBubble label="AI Voice Receptionist">
-      <p>
-        AI Voice Receptionist will answer calls on your business number, gather the job details, and route the caller
-        using your rules. It is in build and cannot be bought yet, and no plan includes it today.
-      </p>
-      <a href="#receptionist">See the planned AI Voice Receptionist allowances →</a>
-    </InfoBubble>
-  );
-}
-
 function MessagingInfoBubble() {
   return (
     <InfoBubble label="2-Way Messaging">
       <p>
-        Keeps customer texts and your replies together in one inbox. Every plan texts from a shared LGQ number
-        today; your own business number is planned for Solo and up. Outgoing messages use plan text credits.
+        Keeps customer texts and your replies together in one inbox. Outgoing messages use plan text credits.
       </p>
       <Link href="/demo/messages">Open the messaging demo →</Link>
     </InfoBubble>
@@ -225,18 +201,16 @@ export default function PricingExperience() {
   const [expandedMobilePlan, setExpandedMobilePlan] = useState<PlanId | null>(null);
   const [showAllFaqs, setShowAllFaqs] = useState(false);
   const [officeUsers, setOfficeUsers] = useState(1);
-  const [needsDedicatedNumber, setNeedsDedicatedNumber] = useState(false);
   const [hasUsedCalculator, setHasUsedCalculator] = useState(false);
   const [stickyDismissed, setStickyDismissed] = useState(false);
   const [showSeasonalRhythm, setShowSeasonalRhythm] = useState(false);
   const [showMobileScenarios, setShowMobileScenarios] = useState(false);
-  const [showMobileVoicePlans, setShowMobileVoicePlans] = useState(false);
 
   const recommendation = useMemo(() => PLANS.map((plan) => ({
     plan,
-    annualCost: annualPlanEstimate(plan, billing, volume, VOICE_PURCHASABLE, officeUsers, needsDedicatedNumber),
+    annualCost: annualPlanEstimate(plan, billing, volume, VOICE_PURCHASABLE, officeUsers, false),
   })).filter((result): result is typeof result & { annualCost: number } => result.annualCost !== null)
-    .sort((a, b) => a.annualCost - b.annualCost)[0], [billing, needsDedicatedNumber, officeUsers, volume]);
+    .sort((a, b) => a.annualCost - b.annualCost)[0], [billing, officeUsers, volume]);
 
   const scaleCrossover = planCrossover(getPlan('growth'), getPlan('scale'), billing, VOICE_PURCHASABLE);
   const markCalculatorUsed = () => { setHasUsedCalculator(true); setStickyDismissed(false); };
@@ -501,25 +475,12 @@ export default function PricingExperience() {
                   </ul>
 
                   <div className={styles.selectedOptions}>
-                    <div data-active={VOICE_PURCHASABLE && plan.id === 'scale'}>
-                      <div className={styles.optionLabel}>
-                        <b>AI Voice Receptionist</b>
-                        <AIVoiceReceptionistInfoBubble />
-                      </div>
-                      <span>
-                        {VOICE_PURCHASABLE
-                          ? plan.id === 'scale'
-                            ? voiceDescription(plan)
-                            : 'Optional add-on'
-                          : 'Coming soon'}
-                      </span>
-                    </div>
                     <div data-active="true">
                       <div className={styles.optionLabel}>
                         <b>2-Way Messaging</b>
                         <MessagingInfoBubble />
                       </div>
-                      <span>Included at launch · {plan.messagingSummary}</span>
+                      <span>Included · {plan.messagingSummary}</span>
                     </div>
                   </div>
                 </div>
@@ -552,33 +513,33 @@ export default function PricingExperience() {
 
         <div className={styles.quickOptions} aria-label="Fine-tune plan options">
           <div className={styles.quickOptionsIntro}>
-            <span className={styles.miniEyebrow}>Fine-tune your plan</span>
-            <strong>Add the tools you need now.</strong>
-          </div>
-          <div className={styles.quickOptionGroup}>
-            <div className={styles.includedOptionBody}>
-              <span className={styles.quickIcon} aria-hidden="true">AI</span>
-              <span>
-                <strong>AI Voice Receptionist</strong>
-                <small>{VOICE_PLANNED_PRICE_LABEL}</small>
-              </span>
-              <b>Coming soon</b>
-            </div>
-            <a className={styles.quickLearnMore} href="#receptionist">
-              What AI Voice Receptionist includes →
-            </a>
+            <span className={styles.miniEyebrow}>Included on every plan</span>
+            <strong>Tools ready to run on day one.</strong>
           </div>
           <div className={`${styles.quickOptionGroup} ${styles.includedOption}`}>
             <div className={styles.includedOptionBody}>
               <span className={styles.quickIcon} aria-hidden="true">2W</span>
               <span>
-                <strong>2-Way Messaging</strong>
-                <small>Included at launch on every plan · carrier registration pending</small>
+                <strong>2-Way Customer Messaging</strong>
+                <small>Keep customer texts and replies organized in one team inbox</small>
               </span>
               <b>Included</b>
             </div>
             <Link className={styles.quickLearnMore} href="/demo/messages">
               See the messaging demo →
+            </Link>
+          </div>
+          <div className={`${styles.quickOptionGroup} ${styles.includedOption}`}>
+            <div className={styles.includedOptionBody}>
+              <span className={styles.quickIcon} aria-hidden="true">QB</span>
+              <span>
+                <strong>QuickBooks Online Integration</strong>
+                <small>1-click sync for invoices, customer records, and payment reconciliation</small>
+              </span>
+              <b>Included</b>
+            </div>
+            <Link className={styles.quickLearnMore} href="/features/back-office">
+              Learn about QuickBooks sync →
             </Link>
           </div>
         </div>
@@ -638,17 +599,13 @@ export default function PricingExperience() {
           <div>
             <p className={styles.sectionEyebrow}>Run your real numbers</p>
             <h2>Find the point where your plan should change.</h2>
-            <p>The math responds instantly to payment volume, billing cadence, and live AI calls.</p>
-          </div>
-          <div className={styles.calculatorOptionRow}>
-            <span>Include call coverage?</span>
+            <p>The math responds instantly to payment volume and billing cadence.</p>
           </div>
         </div>
         <PricingCalculator
           billing={billing}
           volume={volume}
           officeUsers={officeUsers}
-          needsDedicatedNumber={needsDedicatedNumber}
           onBillingChange={(value) => {
             setBilling(value);
             markCalculatorUsed();
@@ -661,91 +618,7 @@ export default function PricingExperience() {
             setOfficeUsers(Math.min(25, Math.max(1, Math.round(value || 1))));
             markCalculatorUsed();
           }}
-          onDedicatedNumberChange={(value) => {
-            setNeedsDedicatedNumber(value);
-            markCalculatorUsed();
-          }}
         />
-      </section>
-
-      <section className={styles.voiceSection} id="receptionist">
-        <div className={styles.voiceStory}>
-          <div>
-            <p className={styles.sectionEyebrow}>Coming soon · not yet available</p>
-            <h2>Your phone will keep working when you can’t answer.</h2>
-            <p>
-              AI Voice Receptionist will answer, gather the job details, and route the caller using your rules—even
-              after hours. It is in build and cannot be bought yet.
-            </p>
-            <div className={styles.voiceProof}>
-              <strong>{VOICE_PLANNED_PRICE_LABEL}</strong>
-              <span>Nothing to buy today, and no plan includes it yet. Minutes below are the planned allowances.</span>
-            </div>
-            <button
-              type="button"
-              className={styles.mobileDisclosureButton}
-              aria-expanded={showMobileVoicePlans}
-              aria-controls="voice-plan-details"
-              onClick={() => setShowMobileVoicePlans((shown) => !shown)}
-            >
-              {showMobileVoicePlans ? 'Hide plan minutes' : 'Compare plan minutes'}
-            </button>
-          </div>
-          <ol className={styles.callFlow} aria-label="How AI Voice Receptionist will handle a call">
-            <li>
-              <span>01</span>
-              <div>
-                <strong>Answer</strong>
-                <small>A professional greeting, every time.</small>
-              </div>
-            </li>
-            <li>
-              <span>02</span>
-              <div>
-                <strong>Qualify</strong>
-                <small>Capture the job, urgency, and location.</small>
-              </div>
-            </li>
-            <li>
-              <span>03</span>
-              <div>
-                <strong>Route</strong>
-                <small>Transfer or follow your fallback rule.</small>
-              </div>
-            </li>
-            <li>
-              <span>04</span>
-              <div>
-                <strong>Planned</strong>
-                <small>None of this is live yet.</small>
-              </div>
-            </li>
-          </ol>
-        </div>
-
-        <div id="voice-plan-details" className={styles.voicePlanDetails} data-mobile-expanded={showMobileVoicePlans}>
-          <div className={styles.voiceGrid}>
-            {PLANS.map((plan) => (
-              <article key={plan.id} data-plan={plan.id}>
-                <span>{plan.name}</span>
-                <strong>{voiceDescription(plan)}</strong>
-                <p>
-                  {plan.voiceConcurrentCalls} simultaneous AI {plan.voiceConcurrentCalls === 1 ? 'call' : 'calls'}
-                </p>
-                <small>
-                  {plan.id === 'scale' ? 'Advanced routing · 90-day history' : 'Standard routing · 30-day history'}
-                  {VOICE_PURCHASABLE ? '' : ' · planned'}
-                </small>
-              </article>
-            ))}
-          </div>
-          <p className={styles.sectionFinePrint}>
-            AI Voice Receptionist is not available yet, and no plan currently includes it. The allowances shown are the
-            planned launch figures and may change before release. At launch, AI-connected minutes will be separate from
-            text and AI Intake credits; ringing, failed calls, blocked spam, and time after a completed transfer will
-            not use AI minutes, and extra usage will be a top-up you choose to buy.
-          </p>
-        </div>
       </section>
 
       <section className={styles.compareSection} id="compare">
@@ -809,7 +682,7 @@ export default function PricingExperience() {
           <details className={styles.disclosure}>
             <summary>
               <span>
-                <strong>Optional top-ups</strong>
+                <strong>Optional capacity top-ups</strong>
                 <small>Margin-safe, opt-in capacity</small>
               </span>
               <b aria-hidden="true">+</b>
@@ -821,7 +694,7 @@ export default function PricingExperience() {
                     <strong>{item.label}</strong>
                     <small>{item.eligibility}</small>
                   </span>
-                  <b data-soon={item.available ? undefined : 'true'}>{item.price}</b>
+                  <b>{item.price}</b>
                 </div>
               ))}
             </div>
@@ -845,7 +718,7 @@ export default function PricingExperience() {
                     <th>Monthly</th>
                     <th>Annual equivalent</th>
                     <th>Users</th>
-                    <th>Phone / AI</th>
+                    <th>Phone / Messaging</th>
                   </tr>
                 </thead>
                 <tbody>

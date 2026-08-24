@@ -20,11 +20,9 @@ type Props = {
   billing: BillingCycle;
   volume: number;
   officeUsers: number;
-  needsDedicatedNumber: boolean;
   onBillingChange: (value: BillingCycle) => void;
   onVolumeChange: (value: number) => void;
   onOfficeUsersChange: (value: number) => void;
-  onDedicatedNumberChange: (value: boolean) => void;
 };
 
 const LABELS: Record<PlanId, string> = { flex: 'Flex', solo: 'Solo', growth: 'Growth', scale: 'Scale' };
@@ -48,11 +46,9 @@ export default function PricingCalculator({
   billing,
   volume,
   officeUsers,
-  needsDedicatedNumber,
   onBillingChange,
   onVolumeChange,
   onOfficeUsersChange,
-  onDedicatedNumberChange,
 }: Props) {
   const [volumeCadence, setVolumeCadence] = useState<BillingCycle>('annual');
   const divisor = volumeCadence === 'monthly' ? 12 : 1;
@@ -60,8 +56,8 @@ export default function PricingCalculator({
 
   const results = useMemo(() => PLANS.map((plan) => ({
     plan,
-    annualCost: annualPlanEstimate(plan, billing, volume, VOICE_PURCHASABLE, officeUsers, needsDedicatedNumber),
-  })), [billing, needsDedicatedNumber, officeUsers, volume]);
+    annualCost: annualPlanEstimate(plan, billing, volume, VOICE_PURCHASABLE, officeUsers, false),
+  })), [billing, officeUsers, volume]);
 
   const eligible = results.filter((result): result is typeof result & { annualCost: number } => result.annualCost !== null);
   const ranking = rankPlanCosts(results.map(({ plan, annualCost }) => ({ planId: plan.id, annualCost })));
@@ -127,18 +123,13 @@ export default function PricingCalculator({
         </label>
 
         <div>
-          <span className={styles.controlLabel}>Dedicated business number (at launch)</span>
-          <button
-            className={styles.requirementToggle}
-            type="button"
-            aria-pressed={needsDedicatedNumber}
-            onClick={() => onDedicatedNumberChange(!needsDedicatedNumber)}
-          >
-            {needsDedicatedNumber ? 'Required' : 'Not required'}
-          </button>
+          <span className={styles.controlLabel}>2-Way Customer Messaging</span>
+          <div className={styles.requirementToggle} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', background: 'rgba(82, 217, 172, 0.08)', borderColor: 'rgba(82, 217, 172, 0.4)' }}>
+            Included on all plans
+          </div>
         </div>
         <p className={styles.requirementsHint}>
-          Flex supports one office user and a shared texting number. Extra office users on Solo+ are $15/month.
+          Flex supports 1 office user + 2 crew users. Extra office users on Solo+ are $15/month.
         </p>
       </div>
 

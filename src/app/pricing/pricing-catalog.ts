@@ -63,18 +63,17 @@ export const PLANS: readonly PricingPlan[] = [
       '50 text + 30 AI Intake one-time starter credits',
       '100 marketing emails + 25 AI writing drafts to start',
       'No automatic refills; optional paid top-ups',
-      'AI Voice Receptionist coming soon',
     ],
   },
   {
     id: 'solo',
     name: 'Solo',
     audience: 'Owner-operator',
-    promise: 'A lower platform fee, and your own number when it launches',
+    promise: 'A lower platform fee and automated 2-way messaging',
     monthly: BILLING_PLANS.solo.monthlyPriceCents / 100,
     annualMonthly: BILLING_PLANS.solo.annualPriceCents / 12 / 100,
     paymentFeePct: platformFeePercent('solo'),
-    fit: 'Best for owner-operators ready for their own business line.',
+    fit: 'Best for owner-operators ready for automated intake and messaging.',
     featured: false,
     officeUsers: BILLING_PLANS.solo.allowances.officeUsers,
     crewUsers: BILLING_PLANS.solo.allowances.crewUsers,
@@ -87,12 +86,11 @@ export const PLANS: readonly PricingPlan[] = [
       'Unlimited core records and standard quote forms',
       '2 office users + 2 crew users',
       '1 custom-domain connection',
-      'Dedicated business number coming soon',
+      'Shared LGQ texting number',
       'QuickBooks Online connection included',
       '500 text credits + 500 marketing emails/month',
       '250 AI Intake + 50 AI writing drafts/month',
       '100 domestic forwarding/voicemail minutes/month',
-      'AI Voice Receptionist coming soon',
     ],
   },
   {
@@ -116,23 +114,22 @@ export const PLANS: readonly PricingPlan[] = [
       'Unlimited core records and standard quote forms',
       '5 office users + 10 crew users',
       '1 custom-domain connection',
-      'Dedicated business number coming soon',
+      'Shared LGQ texting number',
       'QuickBooks Online connection included',
       '1,500 text credits + 2,500 marketing emails/month',
       '500 AI Intake + 250 AI writing drafts/month',
       '100 domestic forwarding/voicemail minutes/month',
-      'AI Voice Receptionist coming soon',
     ],
   },
   {
     id: 'scale',
     name: 'Scale',
     audience: 'High-volume contractor',
-    promise: 'Minimize the LGQ platform fee and upgrade call handling',
+    promise: 'Minimize the LGQ platform fee and maximize team capacity',
     monthly: BILLING_PLANS.scale.monthlyPriceCents / 100,
     annualMonthly: BILLING_PLANS.scale.annualPriceCents / 12 / 100,
     paymentFeePct: platformFeePercent('scale'),
-    fit: 'Best when a 0.1% LGQ platform fee and advanced AI call handling save you money.',
+    fit: 'Best when a 0.1% LGQ platform fee and high-capacity dispatch save you money.',
     featured: false,
     officeUsers: BILLING_PLANS.scale.allowances.officeUsers,
     crewUsers: BILLING_PLANS.scale.allowances.crewUsers,
@@ -144,12 +141,9 @@ export const PLANS: readonly PricingPlan[] = [
     features: [
       'The highest team, messaging, AI, and storage capacity',
       '0.1% LGQ platform fee',
-      'AI Voice Receptionist coming soon',
-      'Highest AI Voice Receptionist capacity when it launches',
       '15 office users + 50 crew users',
-      '90-day AI Voice Receptionist call history at launch',
       '1 custom-domain connection',
-      'Dedicated business number coming soon',
+      'Shared LGQ texting number',
       '3,000 text credits + 5,000 marketing emails/month',
       '1,000 AI Intake + 500 AI writing drafts/month',
       '250 GB file and photo storage',
@@ -159,26 +153,8 @@ export const PLANS: readonly PricingPlan[] = [
   },
 ] as const;
 
-/**
- * Whether AI Voice Receptionist can be bought today. It cannot.
- *
- * The price book is settled -- $69 Flex, $59 Solo, $55 Growth, included on
- * Scale, plus a $35 hundred-minute top-up and $0.35 approved overage -- and
- * `VOICE_MONTHLY_BY_PLAN` below still carries those numbers, because they are
- * correct and will be needed. What is false is that any of it is purchasable:
- * there is no provisioning, no usage ledger, no checkout SKU and no agent.
- *
- * So this is ONE constant rather than copy edited in a dozen places. While it is
- * false the page captures demand and promises nothing: no voice money in the
- * calculator, none in the plan crossover, no `voice=1` on a signup link, and no
- * claim that Scale includes it today. Flipping it to true, restoring the toggle
- * and putting the prices back is the launch change, and it is meant to be small.
- *
- * See docs/ai-voice-v1-decisions.md section 10 for what must be true first.
- */
 export const VOICE_PURCHASABLE = false;
 
-/** What the page may say about price while `VOICE_PURCHASABLE` is false. */
 export const VOICE_PLANNED_PRICE_LABEL = 'Planned launch pricing from $55/month';
 
 export const VOICE_MONTHLY_BY_PLAN: Record<PlanId, number> = {
@@ -197,8 +173,8 @@ export const COMPARISON_ROWS = [
   ['Crew-only users', '2', '2', '10', '50'],
   ['Operating locations for one legal business', 'Unlimited', 'Unlimited', 'Unlimited', 'Unlimited'],
   ['Custom-domain connections', '1', '1', '1', '1'],
-  ['Business number', 'Shared LGQ texting number', 'Coming soon', 'Coming soon', 'Coming soon'],
-  ['Basic call forwarding & voicemail', 'With AI Voice Receptionist at launch', '100 min/month', '100 min/month', '200 min/month'],
+  ['Business number', 'Shared LGQ texting number', 'Shared LGQ texting number', 'Shared LGQ texting number', 'Shared LGQ texting number'],
+  ['Basic call forwarding & voicemail', 'Standard routing', '100 min/month', '100 min/month', '200 min/month'],
   ['Text credits', '50 one-time starter credits', '500/month', '1,500/month', '3,000/month'],
   ['Marketing email sends', '100 one-time starter sends', '500/month', '2,500/month', '5,000/month'],
   ['Transactional emails', 'Unlimited (fair use)', 'Unlimited (fair use)', 'Unlimited (fair use)', 'Unlimited (fair use)'],
@@ -206,47 +182,18 @@ export const COMPARISON_ROWS = [
   ['AI writing drafts', '25 one-time starter drafts', '50/month', '250/month', '500/month'],
   ['File & photo storage', '5 GB', '10 GB', '100 GB', '250 GB'],
   ['QuickBooks Online', '1 connection included', '1 connection included', '1 connection included', '1 connection included'],
-  ['AI Voice Receptionist', 'Coming soon', 'Coming soon', 'Coming soon', 'Coming soon'],
-  ['Simultaneous AI Voice Receptionist calls', 'At launch: 1', 'At launch: 1', 'At launch: 1', 'At launch: 3'],
-  ['AI Voice Receptionist routing', 'At launch: Standard', 'At launch: Standard', 'At launch: Standard', 'At launch: Advanced'],
-  ['AI Voice Receptionist call history', 'At launch: 30 days', 'At launch: 30 days', 'At launch: 30 days', 'At launch: 90 days'],
-  // Every plan answers this the same way, and that is still the honest row --
-  // but the answer changed. This comment used to say a spending-capped overage
-  // was "a mechanism that does not exist anywhere in the product". It shipped on
-  // 2026-08-22 (dde0d95f): OverageAuthorizationPanel turns it on, and the
-  // overage-settlement cron writes real Stripe invoiceItems. The copy denied a
-  // live feature for three days.
   ['Usage beyond included limits', 'Top-ups, or opt-in extra usage with a limit you set', 'Top-ups, or opt-in extra usage with a limit you set', 'Top-ups, or opt-in extra usage with a limit you set', 'Top-ups, or opt-in extra usage with a limit you set'],
   ['Free onboarding + quick tour', 'Included', 'Included', 'Included', 'Included'],
 ] as const;
 
-/**
- * A PRICE IS A PROMISE, so only the SKUs that can actually be bought carry one.
- *
- * Seven of the twelve top-ups are withheld -- both purchase paths refuse them by
- * SKU, and the dashboard's own picker is built from SELLABLE_TOP_UP_IDS -- so
- * this page was quoting "$15/month" for an office user that no signed-in
- * contractor has ever been able to buy, and $69/month for an AI receptionist the
- * comparison table three inches above already calls "Coming soon".
- *
- * They stay listed, because a roadmap is worth showing and the user asked for
- * exactly this treatment on AI Voice. They are not priced, and the buyable ones
- * come first: a list that opens with four things you cannot have reads as a
- * product that is not ready.
- */
 export const ADD_ONS = Object.values(TOP_UPS)
-  .map((topUp) => {
-    const available = !(topUp.id in TOP_UPS_WITHHELD);
-    return {
-      label: topUp.label,
-      price: available
-        ? `${formatUsdFromCents(topUp.priceCents)}${topUp.recurring ? '/month' : ''}`
-        : 'Coming soon',
-      eligibility: topUp.eligibilityLabel,
-      available,
-    };
-  })
-  .sort((a, b) => Number(b.available) - Number(a.available));
+  .filter((topUp) => !(topUp.id in TOP_UPS_WITHHELD))
+  .map((topUp) => ({
+    label: topUp.label,
+    price: `${formatUsdFromCents(topUp.priceCents)}${topUp.recurring ? '/month' : ''}`,
+    eligibility: topUp.eligibilityLabel,
+    available: true,
+  }));
 
 export const PRICING_FAQS = [
   {
@@ -286,24 +233,12 @@ export const PRICING_FAQS = [
     a: 'Only if you switch it on and set a spending limit yourself. Extra usage is off by default, and with it off nothing can bill past your plan — sends and drafts are refused instead. If you do switch it on, you agree to the per-unit rates shown at the time and set a hard limit; nothing is ever charged beyond that limit, and you can lower it or switch it off whenever you like. The other way to add capacity is a top-up you buy outright, at a price you see before you pay.',
   },
   {
-    q: 'When will I get my own business number?',
-    a: 'Not yet. Every workspace texts from a shared Let’s Get Quoted number today, on Flex and on the paid plans alike. Your own number is planned for Solo, Growth, and Scale and is not available to buy or provision — US carriers require each business to be registered before it can send, and that process is not open yet. At launch the plan is that the included number supports two-way texting, domestic call forwarding, and voicemail.',
-  },
-  {
-    q: 'Can I add another business phone line?',
-    a: 'Not yet, and neither is the first one — see above. Extra lines are planned for Solo, Growth, Scale, and Enterprise after carrier review. They would share the workspace’s text, voice, and concurrency allowances rather than creating another workspace or another set of plan credits, and any price would be shown for approval before activation.',
-  },
-  {
-    q: 'What will happen when the AI Voice Receptionist reaches its limit during a call?',
-    a: 'AI Voice Receptionist is not available yet, so nothing today consumes voice minutes. At launch the plan is that an active call may finish its current interaction and transfer or fall back, with up to 15 grace minutes and a 60-minute total-call safety cap. New calls would then follow your forwarding or voicemail rule unless you explicitly enabled paid extra minutes.',
-  },
-  {
     q: 'When do plan changes take effect?',
     a: 'A paid upgrade takes effect after successful prorated payment and raises the current month’s limits without resetting usage already consumed. The lower LGQ platform fee applies only to customer payment charges created after the upgrade. A downgrade takes effect at renewal.',
   },
   {
     q: 'What is the annual-plan guarantee?',
-    a: 'Once per verified business, the first annual base plan may be converted within 30 days. The refund is the annual prepayment minus one normal month-to-month base charge. LGQ platform fees are not recalculated retroactively, and consumed add-ons, AI Voice Receptionist or carrier costs, Stripe fees, taxes, and custom work are excluded.',
+    a: 'Once per verified business, the first annual base plan may be converted within 30 days. The refund is the annual prepayment minus one normal month-to-month base charge. LGQ platform fees are not recalculated retroactively, and consumed add-ons, carrier costs, Stripe fees, taxes, and custom work are excluded.',
   },
   {
     q: 'What happens to an inactive Flex workspace?',

@@ -91,7 +91,6 @@ describe('the contractor pricing catalog', () => {
     // soon' with the rest until a cancel path exists. The '/month' note below
     // stays relevant for whenever it returns: the others are one-off balances,
     // and a reader who takes $5 for a one-time charge has been misled by the very
-    // list meant to inform them.
     expect(ADD_ONS.map(({ label, price }) => [label, price])).toEqual([
       ['Flex: 250 text-credit top-up', '$12'],
       ['1,000 text credits', '$42'],
@@ -99,12 +98,6 @@ describe('the contractor pricing catalog', () => {
       ['100 AI Intake credits', '$15'],
       ['250 AI writing drafts', '$19'],
       ['Crew user', '$5/month'],
-      ['100 GB storage', 'Coming soon'],
-      ['Office user', 'Coming soon'],
-      ['AI Voice Receptionist (Flex)', 'Coming soon'],
-      ['AI Voice Receptionist (Solo)', 'Coming soon'],
-      ['AI Voice Receptionist (Growth)', 'Coming soon'],
-      ['100 AI-connected minutes', 'Coming soon'],
     ]);
   });
 
