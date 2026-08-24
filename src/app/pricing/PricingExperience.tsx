@@ -50,6 +50,49 @@ const PLAN_STAGES: Record<PlanId, { label: string; shortLabel: string; number: s
   scale: { label: 'High volume', shortLabel: 'Scale', number: '04', persona: 'Roofing · Multi-Truck · GC' },
 };
 
+const TRADE_PRESETS = [
+  { trade: '⚡ Electrical & Plumbing', volume: 250_000, users: 2, plan: 'growth' as PlanId, desc: 'Owner + 1 Office, steady invoices' },
+  { trade: '🌿 Landscaping & Lawn', volume: 140_000, users: 1, plan: 'solo' as PlanId, desc: 'Solo operator with crew in field' },
+  { trade: '🏠 Roofing & Siding', volume: 850_000, users: 5, plan: 'growth' as PlanId, desc: 'High ticket size, team dispatch' },
+  { trade: '🔨 Handyman & Painting', volume: 45_000, users: 1, plan: 'flex' as PlanId, desc: 'Starting out / zero monthly base' },
+  { trade: '🏗️ General Contractor', volume: 1_800_000, users: 8, plan: 'scale' as PlanId, desc: 'High volume, lowest 0.1% fee' },
+] as const;
+
+const COMPARISON_CATEGORIES = [
+  { id: 'all', label: 'All features (19)' },
+  { id: 'fees', label: 'Fees & Seats (5)' },
+  { id: 'core', label: 'Leads & Quotes (5)' },
+  { id: 'comms', label: 'Messaging & Phone (5)' },
+  { id: 'ai', label: 'AI, Storage & QBO (4)' },
+] as const;
+
+type ComparisonCategory = (typeof COMPARISON_CATEGORIES)[number]['id'];
+
+const ROW_CATEGORY_MAP: Record<string, ComparisonCategory> = {
+  'LGQ platform fee': 'fees',
+  'Office / admin users': 'fees',
+  'Crew-only users': 'fees',
+  'Operating locations for one legal business': 'fees',
+  'Usage beyond included limits': 'fees',
+
+  'Leads, clients, quotes, jobs & invoices': 'core',
+  'Standard quote-form submissions': 'core',
+  'Lead capture after AI limit': 'core',
+  'Custom-domain connections': 'core',
+  'Free onboarding + quick tour': 'core',
+
+  'Business number': 'comms',
+  'Basic call forwarding & voicemail': 'comms',
+  'Text credits': 'comms',
+  'Marketing email sends': 'comms',
+  'Transactional emails': 'comms',
+
+  'AI Intake credits': 'ai',
+  'AI writing drafts': 'ai',
+  'File & photo storage': 'ai',
+  'QuickBooks Online': 'ai',
+};
+
 const SCENARIOS: readonly {
   planId: PlanId;
   revenue: number;
@@ -206,6 +249,13 @@ export default function PricingExperience() {
   const [showSeasonalRhythm, setShowSeasonalRhythm] = useState(false);
   const [showMobileScenarios, setShowMobileScenarios] = useState(false);
   const [faqSearch, setFaqSearch] = useState('');
+  const [comparisonCategory, setComparisonCategory] = useState<ComparisonCategory>('all');
+  const [fitMode, setFitMode] = useState<'stage' | 'trade'>('trade');
+
+  const filteredComparisonRows = useMemo(() => {
+    if (comparisonCategory === 'all') return COMPARISON_ROWS;
+    return COMPARISON_ROWS.filter(([label]) => ROW_CATEGORY_MAP[label] === comparisonCategory);
+  }, [comparisonCategory]);
 
   const recommendation = useMemo(() => PLANS.map((plan) => ({
     plan,
@@ -404,24 +454,71 @@ export default function PricingExperience() {
         </aside>
 
         <div className={styles.fitFinder}>
-          <div>
-            <span className={styles.miniEyebrow}>Quick fit finder</span>
-            <strong>Which sounds most like you?</strong>
-          </div>
-          <div role="group" aria-label="Business stage">
-            {PLANS.map((plan) => (
+          <div className={styles.fitFinderHeader}>
+            <div>
+              <span className={styles.miniEyebrow}>Quick fit finder · 30-second match</span>
+              <strong>Find your contractor tier instantly</strong>
+            </div>
+            <div className={styles.fitFinderModes} role="group" aria-label="Fit finder mode">
               <button
                 type="button"
-                key={plan.id}
-                data-plan={plan.id}
-                aria-pressed={spotlightPlan === plan.id}
-                onClick={() => setSpotlightPlan((selected) => (selected === plan.id ? null : plan.id))}
+                className={fitMode === 'trade' ? styles.fitModeActive : styles.fitModeBtn}
+                aria-pressed={fitMode === 'trade'}
+                onClick={() => setFitMode('trade')}
               >
-                <span>{PLAN_STAGES[plan.id].number}</span>
-                {PLAN_STAGES[plan.id].label}
+                By Trade Preset
               </button>
-            ))}
+              <button
+                type="button"
+                className={fitMode === 'stage' ? styles.fitModeActive : styles.fitModeBtn}
+                aria-pressed={fitMode === 'stage'}
+                onClick={() => setFitMode('stage')}
+              >
+                By Business Stage
+              </button>
+            </div>
           </div>
+
+          {fitMode === 'trade' ? (
+            <div className={styles.tradePresetGrid} role="group" aria-label="Contractor trade presets">
+              {TRADE_PRESETS.map((item) => {
+                const isActive = spotlightPlan === item.plan && volume === item.volume;
+                return (
+                  <button
+                    type="button"
+                    key={item.trade}
+                    className={`${styles.tradePresetCard}${isActive ? ` ${styles.tradePresetActive}` : ''}`}
+                    aria-pressed={isActive}
+                    onClick={() => {
+                      setSpotlightPlan(item.plan);
+                      setVolume(item.volume);
+                      setOfficeUsers(item.users);
+                      setHasUsedCalculator(true);
+                    }}
+                  >
+                    <strong>{item.trade}</strong>
+                    <span>{item.desc}</span>
+                    <small>Sets {money(item.volume)}/yr · {item.users} office</small>
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <div role="group" aria-label="Business stage">
+              {PLANS.map((plan) => (
+                <button
+                  type="button"
+                  key={plan.id}
+                  data-plan={plan.id}
+                  aria-pressed={spotlightPlan === plan.id}
+                  onClick={() => setSpotlightPlan((selected) => (selected === plan.id ? null : plan.id))}
+                >
+                  <span>{PLAN_STAGES[plan.id].number}</span>
+                  {PLAN_STAGES[plan.id].label}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className={styles.planGrid}>
@@ -573,6 +670,37 @@ export default function PricingExperience() {
           </div>
         </div>
 
+        <div className={styles.trustStrip} aria-label="LGQ Guarantees and Security">
+          <div className={styles.trustItem}>
+            <span className={styles.trustIcon} aria-hidden="true">🛡️</span>
+            <div>
+              <strong>30-Day Guarantee</strong>
+              <p>Risk-free refund on prepaid annual base plans.</p>
+            </div>
+          </div>
+          <div className={styles.trustItem}>
+            <span className={styles.trustIcon} aria-hidden="true">⚡</span>
+            <div>
+              <strong>Zero Setup Fees</strong>
+              <p>Self-guided onboarding & quick tour included.</p>
+            </div>
+          </div>
+          <div className={styles.trustItem}>
+            <span className={styles.trustIcon} aria-hidden="true">🔒</span>
+            <div>
+              <strong>Stripe Certified</strong>
+              <p>256-bit bank-grade encryption with direct deposit.</p>
+            </div>
+          </div>
+          <div className={styles.trustItem}>
+            <span className={styles.trustIcon} aria-hidden="true">🤝</span>
+            <div>
+              <strong>QuickBooks Sync</strong>
+              <p>1-Click ledger connection included on every plan.</p>
+            </div>
+          </div>
+        </div>
+
         <div className={styles.enterpriseStrip}>
           <div>
             <p className={styles.sectionEyebrow}>Multiple companies or custom operations</p>
@@ -679,6 +807,20 @@ export default function PricingExperience() {
             </span>
             <b aria-hidden="true">+</b>
           </summary>
+          <div className={styles.categoryTabs} role="tablist" aria-label="Feature categories">
+            {COMPARISON_CATEGORIES.map((cat) => (
+              <button
+                key={cat.id}
+                type="button"
+                role="tab"
+                aria-selected={comparisonCategory === cat.id}
+                className={comparisonCategory === cat.id ? styles.categoryTabActive : styles.categoryTab}
+                onClick={() => setComparisonCategory(cat.id)}
+              >
+                {cat.label}
+              </button>
+            ))}
+          </div>
           <p className={styles.tableHint}>Swipe horizontally to compare all plans →</p>
           <div className={styles.tableScroll} tabIndex={0}>
             <table className={styles.comparisonTable}>
@@ -694,7 +836,7 @@ export default function PricingExperience() {
                 </tr>
               </thead>
               <tbody>
-                {COMPARISON_ROWS.map(([label, ...values]) => (
+                {filteredComparisonRows.map(([label, ...values]) => (
                   <tr key={label}>
                     <th scope="row">{label}</th>
                     {values.map((value, index) => (

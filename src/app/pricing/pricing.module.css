@@ -3233,4 +3233,324 @@
   margin: 0 0 1rem;
 }
 
+.trustStrip {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+  margin: 1.2rem 0;
+  padding: 1.2rem;
+  border: 1px solid var(--edge-t12);
+  border-radius: 1rem;
+  background: rgba(var(--tint), 0.02);
+}
+
+.trustItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.trustIcon {
+  font-size: 1.4rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.trustItem strong {
+  display: block;
+  color: var(--text);
+  font-size: 0.76rem;
+}
+
+.trustItem p {
+  margin: 0.2rem 0 0;
+  color: var(--muted);
+  font-size: 0.66rem;
+  line-height: 1.4;
+}
+
+@media (max-width: 900px) {
+  .trustStrip {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 540px) {
+  .trustStrip {
+    grid-template-columns: 1fr;
+  }
+}
+
+.fitFinderHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.fitFinderModes {
+  display: inline-flex;
+  padding: 0.2rem;
+  background: rgba(var(--tint), 0.04);
+  border: 1px solid var(--edge-t12);
+  border-radius: 999px;
+  gap: 0.2rem;
+}
+
+.fitModeBtn,
+.fitModeActive {
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  border: none;
+  font-size: 0.66rem;
+  font-weight: 750;
+  cursor: pointer;
+  background: transparent;
+  color: var(--muted);
+  transition: all 0.15s ease;
+}
+
+.fitModeActive {
+  background: var(--bg-elevated);
+  color: var(--gold-ink);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+}
+
+.tradePresetGrid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0.6rem;
+  margin-top: 0.8rem;
+}
+
+.tradePresetCard {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  padding: 0.75rem;
+  border-radius: 0.75rem;
+  border: 1px solid var(--edge-t12);
+  background: rgba(var(--tint), 0.025);
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.tradePresetCard:hover {
+  background: rgba(var(--tint), 0.06);
+  border-color: var(--gold-ink);
+  transform: translateY(-2px);
+}
+
+.tradePresetActive {
+  border-color: var(--gold-ink);
+  background: rgba(212, 175, 55, 0.08);
+  box-shadow: 0 0 0 1px var(--gold-ink);
+}
+
+.tradePresetCard strong {
+  color: var(--text);
+  font-size: 0.72rem;
+}
+
+.tradePresetCard span {
+  margin-top: 0.25rem;
+  color: var(--muted);
+  font-size: 0.62rem;
+  line-height: 1.35;
+}
+
+.tradePresetCard small {
+  margin-top: 0.4rem;
+  color: var(--gold-ink);
+  font-size: 0.58rem;
+  font-weight: 700;
+}
+
+@media (max-width: 1000px) {
+  .tradePresetGrid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .tradePresetGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.categoryTabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin: 0.8rem 0 0.6rem;
+  padding: 0 0.5rem;
+}
+
+.categoryTab,
+.categoryTabActive {
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid var(--edge-t12);
+  background: rgba(var(--tint), 0.03);
+  color: var(--muted);
+  font-size: 0.66rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.categoryTab:hover {
+  background: rgba(var(--tint), 0.06);
+  color: var(--text);
+}
+
+.categoryTabActive {
+  background: var(--gold-ink);
+  border-color: var(--gold-ink);
+  color: #111;
+  font-weight: 800;
+}
+
+.sliderBubbleTrack {
+  position: relative;
+  width: 100%;
+  height: 1.8rem;
+  margin-top: 0.4rem;
+}
+
+.sliderBubble {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  padding: 0.22rem 0.55rem;
+  border-radius: 0.45rem;
+  background: var(--gold-ink);
+  color: #111;
+  font-size: 0.68rem;
+  font-weight: 850;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  pointer-events: none;
+  transition: left 0.05s ease-out;
+}
+
+.sliderBubble::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 4px solid var(--gold-ink);
+}
+
+.competitorCompareWidget {
+  margin-top: 1rem;
+}
+
+.competitorToggleBtn {
+  width: 100%;
+  padding: 0.65rem 1rem;
+  border-radius: 0.75rem;
+  border: 1px dashed var(--edge-t18);
+  background: rgba(var(--tint), 0.02);
+  color: var(--gold-ink);
+  font-size: 0.72rem;
+  font-weight: 750;
+  cursor: pointer;
+  text-align: center;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.competitorToggleBtn:hover {
+  background: rgba(var(--tint), 0.05);
+  border-color: var(--gold-ink);
+}
+
+.competitorCompareCard {
+  margin-top: 0.75rem;
+  padding: 1rem;
+  border-radius: 0.85rem;
+  border: 1px solid var(--edge-t12);
+  background: rgba(var(--tint), 0.03);
+}
+
+.competitorCompareGrid {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.competitorColLgq,
+.competitorCol {
+  padding: 0.75rem;
+  border-radius: 0.65rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.competitorColLgq {
+  border: 1px solid rgba(82, 217, 172, 0.35);
+  background: rgba(82, 217, 172, 0.07);
+}
+
+.competitorCol {
+  border: 1px solid var(--edge-t08);
+  background: rgba(var(--tint), 0.02);
+}
+
+.competitorBadge {
+  color: #52d9ac;
+  font-size: 0.64rem;
+  font-weight: 850;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.competitorCol span {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.competitorColLgq strong {
+  color: #52d9ac;
+  font-size: 0.92rem;
+}
+
+.competitorCol strong {
+  color: var(--text);
+  font-size: 0.82rem;
+}
+
+.competitorColLgq p,
+.competitorCol p {
+  margin: 0.2rem 0 0;
+  color: var(--muted);
+  font-size: 0.62rem;
+  line-height: 1.35;
+}
+
+.competitorSummaryNote {
+  margin: 0.75rem 0 0;
+  padding: 0.55rem 0.75rem;
+  border-radius: 0.5rem;
+  background: rgba(212, 175, 55, 0.08);
+  border: 1px solid rgba(212, 175, 55, 0.25);
+  color: var(--text);
+  font-size: 0.68rem;
+  line-height: 1.4;
+}
+
+@media (max-width: 768px) {
+  .competitorCompareGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+
 

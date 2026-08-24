@@ -104,6 +104,7 @@ export default function PricingCalculator({
   const flexFeeAnnual = volume * 0.0125;
   const winnerFeeAnnual = volume * (winnerPlan.paymentFeePct / 100);
   const feeSavingsVsFlex = flexFeeAnnual - winnerFeeAnnual;
+  const [showCompetitorComparison, setShowCompetitorComparison] = useState(false);
 
   return (
     <div className={styles.calculatorShell}>
@@ -201,6 +202,15 @@ export default function PricingCalculator({
                 </strong>
               </button>
             ))}
+          </div>
+
+          <div className={styles.sliderBubbleTrack}>
+            <span
+              className={styles.sliderBubble}
+              style={{ left: `calc(${Math.min(100, Math.max(0, (displayedVolume / (MAX_VOLUME / divisor)) * 100))}% + (${10 - Math.min(100, Math.max(0, (displayedVolume / (MAX_VOLUME / divisor)) * 100)) * 0.2}px))` }}
+            >
+              {money(displayedVolume)}{volumeCadence === 'monthly' ? '/mo' : ''}
+            </span>
           </div>
 
           <input
@@ -364,6 +374,45 @@ export default function PricingCalculator({
             </li>
           ))}
         </ol>
+      </div>
+
+      <div className={styles.competitorCompareWidget}>
+        <button
+          type="button"
+          className={styles.competitorToggleBtn}
+          aria-expanded={showCompetitorComparison}
+          onClick={() => setShowCompetitorComparison((s) => !s)}
+        >
+          <span>{showCompetitorComparison ? '▼ Hide side-by-side competitor comparison' : '▶ Compare LGQ vs Jobber & Housecall Pro at this volume'}</span>
+        </button>
+        {showCompetitorComparison ? (
+          <div className={styles.competitorCompareCard}>
+            <div className={styles.competitorCompareGrid}>
+              <div className={styles.competitorColLgq}>
+                <span className={styles.competitorBadge}>Let’s Get Quoted ({winner.plan.name})</span>
+                <strong>{money(winner.annualCost)}/yr total</strong>
+                <p>Includes software base + {winnerPlan.paymentFeePct}% platform fee + {winnerPlan.officeUsers} office seats + QuickBooks sync</p>
+              </div>
+              <div className={styles.competitorCol}>
+                <span>Jobber (Connect)</span>
+                <strong>$1,788/yr base</strong>
+                <p>5 users ($149/mo annual) · Phone receptionist is +$29/mo ($348/yr) · Payment processing separate</p>
+              </div>
+              <div className={styles.competitorCol}>
+                <span>Housecall Pro (Essentials)</span>
+                <strong>$1,788/yr base</strong>
+                <p>5 users ($149/mo annual) · CSR AI sold separately · Payment processing separate</p>
+              </div>
+            </div>
+            <p className={styles.competitorSummaryNote}>
+              {winner.annualCost < 1788 ? (
+                <>💡 <strong>Save approximately {money(1788 - winner.annualCost)}/year</strong> on your base software subscription while keeping 2-way messaging and QuickBooks Online included.</>
+              ) : (
+                <>💡 <strong>Scale without per-seat surprises:</strong> LGQ includes 15 office users + 50 crew users with a 0.10% platform fee, whereas legacy FSMs add steep per-seat monthly charges.</>
+              )}
+            </p>
+          </div>
+        ) : null}
       </div>
 
       <p className={styles.calculatorFinePrint}>
