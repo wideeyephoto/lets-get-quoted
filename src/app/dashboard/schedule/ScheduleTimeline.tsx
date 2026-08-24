@@ -697,6 +697,11 @@ export default function ScheduleTimeline({
                       <strong className="sched-tl-job-name">
                         {job.confirmed ? <span className="calendar-confirm-tick" title="Confirmed by client">✓</span> : null}
                         {job.short_name}
+                        {meta && meta.dayCount > 1 ? (
+                          <span className="sched-tl-job-cont" title={`Day ${meta.dayIndex + 1} of ${meta.dayCount}`}>
+                            {' '}(d{meta.dayIndex + 1}/{meta.dayCount})
+                          </span>
+                        ) : null}
                       </strong>
                       {/* Everything below is hidden by CSS on a short block —
                           see [data-size] in globals.css. It stays in the DOM so

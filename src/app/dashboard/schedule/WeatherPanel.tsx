@@ -45,14 +45,15 @@ export default function WeatherPanel({
    */
   justEnabled?: boolean;
 }) {
-  const [state, setState] = useState<{ checked: boolean; risks: WeatherRiskView[] }>({ checked: false, risks: [] });
+  const [state, setState] = useState<{ checked: boolean; risks: WeatherRiskView[]; checkedAt?: string }>({ checked: false, risks: [] });
   const [copied, setCopied] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   function check() {
     startTransition(async () => {
       const result = await weatherRisksAction();
-      setState({ checked: true, risks: result.risks });
+      const timeStr = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+      setState({ checked: true, risks: result.risks, checkedAt: timeStr });
     });
   }
 
@@ -114,6 +115,14 @@ export default function WeatherPanel({
       <div className="section-heading workspace-section-heading compact-heading">
         <p className="eyebrow">Weather · {profile}</p>
         <h2>Days that look wrong</h2>
+        {state.checked ? (
+          <div className="weather-checked-bar">
+            <small className="weather-checked-time">Checked {state.checkedAt ? `at ${state.checkedAt}` : 'just now'}</small>
+            <button type="button" className="btn ghost compact-btn" onClick={check} disabled={pending}>
+              {pending ? 'Re-checking…' : 'Re-check'}
+            </button>
+          </div>
+        ) : null}
       </div>
 
       {!state.checked ? (

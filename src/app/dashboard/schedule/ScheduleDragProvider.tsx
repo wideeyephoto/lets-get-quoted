@@ -102,6 +102,23 @@ export default function ScheduleDragProvider({ children, unavailable = {} }: { c
   const cancelArm = useCallback(() => setArmedJob(null), []);
   const cancelAim = useCallback(() => setAimedSlot(null), []);
 
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        if (pendingDrop) {
+          setPendingDrop(null);
+          setDropTime('');
+        } else if (aimedSlot) {
+          setAimedSlot(null);
+        } else if (armedJob) {
+          setArmedJob(null);
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [pendingDrop, aimedSlot, armedJob]);
+
   /**
    * Point at an empty hour, then pick the job.
    *
@@ -328,7 +345,7 @@ export default function ScheduleDragProvider({ children, unavailable = {} }: { c
       {armedJob && !pendingDrop ? (
         <div className="schedule-armed-toast" role="status" aria-live="polite">
           <span><strong>{armedJob.jobName}</strong> — pick a date on the calendar</span>
-          <button type="button" onClick={cancelArm}>Cancel</button>
+          <button type="button" onClick={cancelArm}>Cancel <kbd className="sched-esc-hint">Esc</kbd></button>
         </div>
       ) : null}
 
@@ -338,7 +355,7 @@ export default function ScheduleDragProvider({ children, unavailable = {} }: { c
       {aimedSlot && !pendingDrop ? (
         <div className="schedule-armed-toast" role="status" aria-live="polite">
           <span><strong>{aimedSlot.label}</strong> — pick a job to put here</span>
-          <button type="button" onClick={cancelAim}>Cancel</button>
+          <button type="button" onClick={cancelAim}>Cancel <kbd className="sched-esc-hint">Esc</kbd></button>
         </div>
       ) : null}
 

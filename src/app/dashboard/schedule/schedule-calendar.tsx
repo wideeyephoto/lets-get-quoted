@@ -467,9 +467,13 @@ export default function ScheduleCalendar({
   // fallback below is a DEFAULT, not a restriction: Month stays in the menu and
   // choosing it deliberately is respected.
   const [viewWasChosen, setViewWasChosen] = useState(false);
+  const [viewAnnouncement, setViewAnnouncement] = useState('');
+
   const setCalendarView = (next: CalendarView) => {
     setViewWasChosen(true);
     setCalendarViewState(next);
+    const opt = VIEW_OPTIONS.find((item) => item.id === next);
+    if (opt) setViewAnnouncement(`Switched to ${opt.label} view: ${opt.hint}`);
     if (readOnly) return;
     startTransition(async () => { await setCalendarViewAction(next); });
   };
@@ -1078,6 +1082,9 @@ export default function ScheduleCalendar({
 
   return (
     <>
+      <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+        {viewAnnouncement}
+      </div>
       {/* Month nav and view switcher share one row — and now they FIT on one,
           which they did not before. Measured on this account at 1920, 1440,
           1366 and 1024: 85px tall at every one of them, because the nav (304px)

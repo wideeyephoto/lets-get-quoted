@@ -187,6 +187,12 @@ export default function ScheduleMap({
               not crowded, missing. This is the part of clustering that matters
               at a contractor's scale: tens of pins on a territory. */}
           <PinMap pins={pins} theme={mapTheme} spreadOverlap />
+          {pins.length === 0 ? (
+            <div className="schedule-map-empty-overlay">
+              <p>No mapped addresses for active jobs in {monthLabel}.</p>
+              <small>Scheduled jobs with street addresses will pin their locations here automatically.</small>
+            </div>
+          ) : null}
         </div>
       ) : (
         <div className="sched-map-list" id="sched-map-panel" role="tabpanel" aria-labelledby="sched-map-tab-list">

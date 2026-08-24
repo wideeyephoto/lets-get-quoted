@@ -71,6 +71,21 @@ const CAPACITY = [
   { key: 'over', label: 'Overbooked' },
 ] as const;
 
+const STATUS_DESCRIPTIONS: Record<string, string> = {
+  new_lead: 'Estimate drafted or sent to client, awaiting customer acceptance',
+  in_progress: 'Job accepted, scheduled on calendar, and assigned',
+  complete: 'Work finished and ready for invoicing or payment',
+  archived: 'Archived or cancelled job',
+};
+
+const CAPACITY_DESCRIPTIONS: Record<string, string> = {
+  open: 'Full working capacity available for new bookings',
+  light: 'Up to half of target daily hours booked',
+  busy: 'Half to full target daily hours booked',
+  full: 'Daily working hours capacity reached',
+  over: 'Exceeds daily working hours limit',
+};
+
 export default function CalendarLegend({
   variant = 'status',
   showUnknown = false,
@@ -87,13 +102,13 @@ export default function CalendarLegend({
     return (
       <div className="calendar-legend" role="group" aria-label="What the day colors mean">
         {CAPACITY.map((band) => (
-          <span className="calendar-legend-item" key={band.key}>
+          <span className="calendar-legend-item" key={band.key} title={CAPACITY_DESCRIPTIONS[band.key]}>
             <span className="calendar-legend-dot" data-load={band.key} aria-hidden="true" />
             {band.label}
           </span>
         ))}
         {showUnknown ? (
-          <span className="calendar-legend-item" key="unknown">
+          <span className="calendar-legend-item" key="unknown" title="Jobs booked on this day without an estimated duration">
             <span className="calendar-legend-dot" data-load="unknown" aria-hidden="true" />
             Duration needed
           </span>
@@ -105,7 +120,7 @@ export default function CalendarLegend({
   return (
     <div className="calendar-legend" role="group" aria-label="What the calendar colors mean">
       {STATUSES.map((status) => (
-        <span className="calendar-legend-item" key={status.key}>
+        <span className="calendar-legend-item" key={status.key} title={STATUS_DESCRIPTIONS[status.key]}>
           <span className={`calendar-legend-dot calendar-job-status-${status.key}`} aria-hidden="true" />
           {/* The mark is in the caption as well as on the chips, or it is a
               private code. */}
@@ -113,7 +128,7 @@ export default function CalendarLegend({
           {status.label}
         </span>
       ))}
-      <span className="calendar-legend-item">
+      <span className="calendar-legend-item" title="Projected recurring plan visit needing final date confirmation">
         <span className="calendar-legend-dot calendar-legend-dot-planned" aria-hidden="true" />
         Recurring, not booked yet
       </span>

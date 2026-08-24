@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState, type TouchEvent } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { formatJobTime } from '@/lib/jobs';
@@ -116,6 +116,7 @@ export default function ScheduleMobileAgenda({
   // the page on a screen with no jobs on it.
   const [view, setView] = useState<MobileView>('agenda');
   const [selected, setSelected] = useState(initialDayKey);
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
 
   const monthKey = useMemo(() => {
     const first = weeks.flat().find(Boolean);
@@ -180,8 +181,32 @@ export default function ScheduleMobileAgenda({
     router.push(`/dashboard/schedule?month=${nextMonth}`);
   }
 
+  const handleTouchStart = (event: TouchEvent) => {
+    const touch = event.touches[0];
+    if (touch) touchStartRef.current = { x: touch.clientX, y: touch.clientY };
+  };
+
+  const handleTouchEnd = (event: TouchEvent) => {
+    if (!touchStartRef.current) return;
+    const touch = event.changedTouches[0];
+    if (touch) {
+      const deltaX = touch.clientX - touchStartRef.current.x;
+      const deltaY = touch.clientY - touchStartRef.current.y;
+      if (Math.abs(deltaX) > 48 && Math.abs(deltaX) > Math.abs(deltaY) * 1.5) {
+        if (deltaX < 0) {
+          if (view === 'month') goToMonth(1);
+          else goToDay(shiftDateKey(selected, 1));
+        } else {
+          if (view === 'month') goToMonth(-1);
+          else goToDay(shiftDateKey(selected, -1));
+        }
+      }
+    }
+    touchStartRef.current = null;
+  };
+
   return (
-    <div className="sched-mobile">
+    <div className="sched-mobile" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
       <div className="sched-mobile-bar">
         <div className="sched-tabs" role="tablist" aria-label="Schedule view">
           <button
