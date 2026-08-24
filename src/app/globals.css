@@ -4542,9 +4542,8 @@ h3 {
   margin: 1.15rem 0 0;
   border: 1px solid var(--rule-t12);
   border-radius: 1.1rem;
-  background: linear-gradient(180deg, rgba(var(--tint), 0.04) 0%, rgba(var(--tint), 0.015) 100%);
-  backdrop-filter: blur(16px);
-  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  background: rgba(var(--tint), 0.025);
+  box-shadow: 0 2px 10px -2px rgba(0, 0, 0, 0.2);
   overflow: hidden;
 }
 .plan-glancebar-cell {
@@ -4750,15 +4749,14 @@ h3 {
   padding: 1.1rem;
   border: 1px solid var(--rule-t12);
   border-radius: 1rem;
-  background: linear-gradient(180deg, rgba(var(--tint), 0.035) 0%, rgba(var(--tint), 0.01) 100%);
-  backdrop-filter: blur(12px);
-  box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  background: rgba(var(--tint), 0.025);
+  box-shadow: 0 2px 10px -2px rgba(0, 0, 0, 0.15);
   transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease, box-shadow 0.2s ease;
 }
 .plan-usage-balance:hover {
   transform: translateY(-2px);
   border-color: rgba(var(--ink-rgb), 0.18);
-  box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  box-shadow: 0 6px 20px -4px rgba(0, 0, 0, 0.25);
 }
 .plan-usage-resource-header {
   display: flex;
@@ -5008,7 +5006,6 @@ h3 {
   border-radius: 0.85rem;
   border: 1px solid rgba(16, 185, 129, 0.25);
   background: linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(5, 150, 105, 0.02) 100%);
-  backdrop-filter: blur(8px);
 }
 
 .plan-usage-roi-callout.interactive {
@@ -5020,7 +5017,6 @@ h3 {
   border-radius: 1rem;
   border: 1px solid rgba(16, 185, 129, 0.25);
   background: linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(5, 150, 105, 0.02) 100%);
-  backdrop-filter: blur(8px);
 }
 
 .plan-roi-top-row {
@@ -36713,8 +36709,7 @@ a.sms-cat-switch:focus-visible { outline: 2px solid var(--accent); outline-offse
 :root[data-theme] #settings-panel-plan > .panel.workspace-section-card {
   position: relative;
   border-color: var(--rule-t12);
-  background: rgba(var(--tint), 0.02);
-  backdrop-filter: blur(12px);
+  background: var(--bg-elevated);
   box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.25);
 }
 

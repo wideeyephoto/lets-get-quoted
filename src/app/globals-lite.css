@@ -1,6 +1,6 @@
 /* GENERATED — do not edit. Source: src/app/globals.css
    Run: node scripts/build-css-subset.mjs
-   source-sha256: 418f1abf02746ce3
+   source-sha256: ef07fb40456c2be3
 
    globals.css with the rules that can only match inside /dashboard, /admin and
    /demo removed. Every route except those three imports this file; they import
@@ -16755,8 +16755,7 @@ select optgroup {
 :root[data-theme] #settings-panel-plan > .panel.workspace-section-card {
   position: relative;
   border-color: var(--rule-t12);
-  background: rgba(var(--tint), 0.02);
-  backdrop-filter: blur(12px);
+  background: var(--bg-elevated);
   box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.25);
 }
 
