@@ -22,24 +22,32 @@ import styles from './pricing.module.css';
 
 const CARD_FEATURES: Record<PlanId, readonly string[]> = {
   flex: [
-    '$0 monthly base software bill',
-    'Unlimited leads, quotes, jobs, and invoices',
-    'Custom domain + QuickBooks Online',
+    'Unlimited leads, quotes, jobs & invoices',
+    '1 Office user + 2 Crew users included',
+    '2-Way customer messaging on shared line',
+    'Custom domain + SEO website included',
+    '1 QuickBooks Online sync included',
   ],
   solo: [
-    '2-Way customer text messaging',
-    '500 text + 250 AI Intake credits/month',
-    'Custom domain + QuickBooks Online',
+    '0.50% lower LGQ platform fee',
+    '500 text credits + 250 AI Intake credits/mo',
+    '2-Way customer text messaging included',
+    'Custom domain + SEO website included',
+    '1 QuickBooks Online sync included',
   ],
   growth: [
-    '5 office users + 10 crew users',
-    '1,500 text + 500 AI Intake credits/month',
-    'Team dispatch & scheduling',
+    '5 Office users + 10 Crew users included',
+    '0.25% platform fee (save on every invoice)',
+    '1,500 text credits + 500 AI Intake credits/mo',
+    'Team dispatch & central scheduling',
+    '1 QuickBooks Online sync included',
   ],
   scale: [
-    '0.1% lowest LGQ platform fee',
-    '15 office users + 50 crew users',
-    '3,000 text credits + 250 GB storage',
+    '0.10% lowest LGQ platform fee',
+    '15 Office users + 50 Crew users included',
+    '3,000 text credits + 1,000 AI Intake credits/mo',
+    '250 GB photo and job file storage',
+    '1 QuickBooks Online sync included',
   ],
 };
 
@@ -225,16 +233,7 @@ function InfoBubble({ label, children }: { label: string; children: ReactNode })
   );
 }
 
-function MessagingInfoBubble() {
-  return (
-    <InfoBubble label="2-Way Messaging">
-      <p>
-        Keeps customer texts and your replies together in one inbox. Outgoing messages use plan text credits.
-      </p>
-      <Link href="/demo/messages">Open the messaging demo →</Link>
-    </InfoBubble>
-  );
-}
+
 
 export default function PricingExperience() {
   const [billing, setBilling] = useState<BillingCycle>('annual');
@@ -420,39 +419,6 @@ export default function PricingExperience() {
           </div>
         </div>
 
-        <aside className={styles.seasonalFeature} id="seasonal-flex">
-          <div className={styles.seasonalCopy}>
-            <p className={styles.sectionEyebrow}>Seasonal contractor? This is your plan.</p>
-            <h3>Flex stays light when work slows down.</h3>
-            <p>
-              There is no monthly base subscription. Pay the 1.25% LGQ platform fee only on eligible payments you actually
-              collect, then move up when the math or your team makes sense.
-            </p>
-            <button
-              type="button"
-              className={styles.mobileDisclosureButton}
-              aria-expanded={showSeasonalRhythm}
-              aria-controls="seasonal-rhythm"
-              onClick={() => setShowSeasonalRhythm((shown) => !shown)}
-            >
-              {showSeasonalRhythm ? 'Hide seasonal cost rhythm' : 'See the seasonal cost rhythm'}
-            </button>
-          </div>
-          <ol
-            id="seasonal-rhythm"
-            className={styles.seasonalRhythm}
-            data-mobile-expanded={showSeasonalRhythm}
-            aria-label="How Flex follows a seasonal business"
-          >
-            <li><span>Quiet months</span><strong>$0</strong><small>monthly base</small></li>
-            <li><span>Jobs come in</span><strong>1.25%</strong><small>eligible payments</small></li>
-            <li><span>Business grows</span><strong>Your call</strong><small>upgrade when ready</small></li>
-          </ol>
-          <a className={styles.seasonalButton} href={signupHref('flex', billing)}>
-            Start with Flex
-          </a>
-        </aside>
-
         <div className={styles.fitFinder}>
           <div className={styles.fitFinderHeader}>
             <div>
@@ -596,19 +562,12 @@ export default function PricingExperience() {
                 <div className={styles.planHighlights} id={`plan-highlights-${plan.id}`}>
                   <ul className={styles.cardFeatures}>
                     {CARD_FEATURES[plan.id].map((feature) => (
-                      <li key={feature}>{feature}</li>
+                      <li key={feature}>
+                        <span className={styles.featureCheckmark} aria-hidden="true">✓</span>
+                        <span>{feature}</span>
+                      </li>
                     ))}
                   </ul>
-
-                  <div className={styles.selectedOptions}>
-                    <div data-active="true">
-                      <div className={styles.optionLabel}>
-                        <b>2-Way Messaging</b>
-                        <MessagingInfoBubble />
-                      </div>
-                      <span>Included · {plan.messagingSummary}</span>
-                    </div>
-                  </div>
                 </div>
 
                 <a
@@ -621,7 +580,8 @@ export default function PricingExperience() {
                   }
                   href={signupHref(plan.id, billing)}
                 >
-                  {plan.id === 'flex' ? 'Start with Flex' : `Choose ${plan.name}`}
+                  <span>{plan.id === 'flex' ? 'Start with Flex' : `Choose ${plan.name}`}</span>
+                  <span className={styles.btnArrow} aria-hidden="true">→</span>
                 </a>
 
                 <details className={styles.cardDetails}>
@@ -636,6 +596,39 @@ export default function PricingExperience() {
             );
           })}
         </div>
+
+        <aside className={styles.seasonalFeature} id="seasonal-flex">
+          <div className={styles.seasonalCopy}>
+            <p className={styles.sectionEyebrow}>Seasonal contractor? This is your plan.</p>
+            <h3>Flex stays light when work slows down.</h3>
+            <p>
+              There is no monthly base subscription. Pay the 1.25% LGQ platform fee only on eligible payments you actually
+              collect, then move up when the math or your team makes sense.
+            </p>
+            <button
+              type="button"
+              className={styles.mobileDisclosureButton}
+              aria-expanded={showSeasonalRhythm}
+              aria-controls="seasonal-rhythm"
+              onClick={() => setShowSeasonalRhythm((shown) => !shown)}
+            >
+              {showSeasonalRhythm ? 'Hide seasonal cost rhythm' : 'See the seasonal cost rhythm'}
+            </button>
+          </div>
+          <ol
+            id="seasonal-rhythm"
+            className={styles.seasonalRhythm}
+            data-mobile-expanded={showSeasonalRhythm}
+            aria-label="How Flex follows a seasonal business"
+          >
+            <li><span>Quiet months</span><strong>$0</strong><small>monthly base</small></li>
+            <li><span>Jobs come in</span><strong>1.25%</strong><small>eligible payments</small></li>
+            <li><span>Business grows</span><strong>Your call</strong><small>upgrade when ready</small></li>
+          </ol>
+          <a className={styles.seasonalButton} href={signupHref('flex', billing)}>
+            Start with Flex
+          </a>
+        </aside>
 
         <div className={styles.quickOptions} aria-label="Fine-tune plan options">
           <div className={styles.quickOptionsIntro}>

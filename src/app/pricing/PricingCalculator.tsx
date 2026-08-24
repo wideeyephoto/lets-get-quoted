@@ -139,17 +139,10 @@ export default function PricingCalculator({
             onChange={(event) => onOfficeUsersChange(Number(event.target.value))}
           />
         </label>
-
-        <div>
-          <span className={styles.controlLabel}>2-Way Customer Messaging</span>
-          <div className={styles.requirementToggle} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', background: 'rgba(82, 217, 172, 0.08)', borderColor: 'rgba(82, 217, 172, 0.4)' }}>
-            Included on all plans
-          </div>
-        </div>
-        <p className={styles.requirementsHint}>
-          Flex supports 1 office user + 2 crew users. Extra office users on Solo+ are $15/month.
-        </p>
       </div>
+      <p className={styles.requirementsHint}>
+        Flex includes 1 office user + 2 crew users. Extra office users on Solo+ are $15/month.
+      </p>
 
       <div className={styles.calculatorLead}>
         <div className={styles.volumeControl}>
@@ -381,12 +374,13 @@ export default function PricingCalculator({
           type="button"
           className={styles.competitorToggleBtn}
           aria-expanded={showCompetitorComparison}
+          aria-controls="pricing-competitor-card"
           onClick={() => setShowCompetitorComparison((s) => !s)}
         >
           <span>{showCompetitorComparison ? '▼ Hide side-by-side competitor comparison' : '▶ Compare LGQ vs Jobber & Housecall Pro at this volume'}</span>
         </button>
         {showCompetitorComparison ? (
-          <div className={styles.competitorCompareCard}>
+          <div className={styles.competitorCompareCard} id="pricing-competitor-card">
             <div className={styles.competitorCompareGrid}>
               <div className={styles.competitorColLgq}>
                 <span className={styles.competitorBadge}>Let’s Get Quoted ({winner.plan.name})</span>
