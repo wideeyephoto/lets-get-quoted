@@ -31,7 +31,7 @@ const WINDOW_LENGTHS: { minutes: number; label: string; note: string; recommende
   { minutes: 360, label: '6 hours', note: 'The most flexibility for a changing route.' },
 ];
 import type { AvailabilityBlock } from '@/lib/availability-blocks';
-import { updateBookingAvailabilityAction } from '../../settings/actions';
+import { updateBookingAvailabilityAction, updateScheduleDayHoursAction } from '../../settings/actions';
 import {
   addAvailabilityBlockAction,
   addRecurringBlockAction,
@@ -142,7 +142,21 @@ export default function BookingSetup({
   const [mobilePreviewOpen, setMobilePreviewOpen] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [savedAt, setSavedAt] = useState<number | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [qrOpen, setQrOpen] = useState(false);
+  const [quickHoursOpen, setQuickHoursOpen] = useState(false);
+  const [quickHoursError, setQuickHoursError] = useState<string | null>(null);
   const sectionRefs = useRef<Partial<Record<SectionKey, HTMLElement | null>>>({});
+
+  function copyBookingLink() {
+    if (!bookingUrl) return;
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(bookingUrl).then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2200);
+      }).catch(() => {});
+    }
+  }
 
   // Compare against what the server sent, so "unsaved" means genuinely
   // different — not merely "touched and put back".
@@ -376,15 +390,37 @@ export default function BookingSetup({
           </h1>
           <p>Customers request a preferred arrival window. You confirm the final time.</p>
         </div>
-        {bookingUrl ? (
-          <a className="btn secondary bset-head-cta" href={bookingUrl} target="_blank" rel="noopener noreferrer">
-            View booking page <Icon name="external" />
-          </a>
-        ) : (
-          <Link className="btn secondary bset-head-cta" href="/dashboard/sites">
-            Publish your website <Icon name="external" />
-          </Link>
-        )}
+        <div className="bset-head-actions">
+          {bookingUrl ? (
+            <>
+              <button
+                type="button"
+                className={`btn secondary bset-head-cta${copied ? ' copied' : ''}`}
+                onClick={copyBookingLink}
+                title="Copy public booking link"
+              >
+                <Icon name={copied ? 'check' : 'copy'} />
+                {copied ? 'Link copied!' : 'Copy link'}
+              </button>
+              <button
+                type="button"
+                className="btn secondary bset-head-cta"
+                onClick={() => setQrOpen(true)}
+                title="View QR code and share snippet"
+              >
+                <Icon name="qr" />
+                QR code
+              </button>
+              <a className="btn secondary bset-head-cta" href={bookingUrl} target="_blank" rel="noopener noreferrer">
+                View booking page <Icon name="external" />
+              </a>
+            </>
+          ) : (
+            <Link className="btn secondary bset-head-cta" href="/dashboard/sites">
+              Publish your website <Icon name="external" />
+            </Link>
+          )}
+        </div>
       </header>
 
       {/* The switch says what the owner chose; the status says whether those
@@ -553,8 +589,52 @@ export default function BookingSetup({
                       <strong>{formatWindowClock(workdayStart)} – {formatWindowClock(workdayEnd)}</strong>
                       <em>Arrival windows must fit inside these hours.</em>
                     </span>
-                    <Link href="/dashboard/schedule/settings">Edit working hours</Link>
+                    <div className="bset-workhours-actions">
+                      <button
+                        type="button"
+                        className="bset-workhours-quickedit"
+                        onClick={() => setQuickHoursOpen((o) => !o)}
+                      >
+                        {quickHoursOpen ? 'Close' : 'Quick edit'}
+                      </button>
+                      <Link href="/dashboard/schedule/settings">Edit working hours</Link>
+                    </div>
                   </div>
+                  {quickHoursOpen && (
+                    <form
+                      className="bset-workhours-form"
+                      action={(data) => {
+                        startTransition(async () => {
+                          try {
+                            await updateScheduleDayHoursAction(data);
+                            setQuickHoursOpen(false);
+                            setQuickHoursError(null);
+                            router.refresh();
+                          } catch (e) {
+                            setQuickHoursError(e instanceof Error ? e.message : 'Could not save working hours.');
+                          }
+                        });
+                      }}
+                    >
+                      <div className="bset-workhours-fields">
+                        <label>
+                          <span>Workday starts</span>
+                          <input name="workdayStart" type="time" defaultValue={workdayStart.slice(0, 5)} required />
+                        </label>
+                        <label>
+                          <span>Workday ends</span>
+                          <input name="workdayEnd" type="time" defaultValue={workdayEnd.slice(0, 5)} required />
+                        </label>
+                        <input type="hidden" name="scheduleDayHours" value="8" />
+                        <input type="hidden" name="jobBufferMinutes" value="0" />
+                      </div>
+                      <div className="bset-workhours-form-actions">
+                        <button type="submit" className="btn primary" disabled={pending}>{pending ? 'Saving…' : 'Save hours'}</button>
+                        <button type="button" className="btn secondary" onClick={() => setQuickHoursOpen(false)}>Cancel</button>
+                      </div>
+                      {quickHoursError && <p className="bset-error">{quickHoursError}</p>}
+                    </form>
+                  )}
                 </div>
 
                 <div className="bset-divider" />
@@ -987,6 +1067,8 @@ export default function BookingSetup({
       {!dirty && savedAt && !saveError && (
         <p className="bset-saved" aria-live="polite"><Icon name="checkCircle" /> Schedule saved</p>
       )}
+
+      {qrOpen && bookingUrl && <QrModal url={bookingUrl} onClose={() => setQrOpen(false)} />}
     </main>
   );
 }
@@ -1093,12 +1175,123 @@ function AddWindow({ existing, disabled, onAdd }: { existing: string[]; disabled
   );
 }
 
+// --- time off calendar component ------------------------------------------
+
+function MonthCalendar({
+  blocks,
+  todayKey,
+  onToggleDate,
+  disabled,
+}: {
+  blocks: AvailabilityBlock[];
+  todayKey: string;
+  onToggleDate: (dateKey: string) => void;
+  disabled?: boolean;
+}) {
+  const [currentMonth, setCurrentMonth] = useState(() => {
+    const d = new Date(`${todayKey}T00:00:00`);
+    return new Date(d.getFullYear(), d.getMonth(), 1);
+  });
+
+  const year = currentMonth.getFullYear();
+  const month = currentMonth.getMonth();
+  const monthTitle = currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+  const firstDayOfWeek = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+  const blockedMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const b of blocks) {
+      let cur = b.start_date;
+      const end = b.end_date;
+      const reason = (b.reason ?? '').trim() || 'Blocked off';
+      while (cur <= end) {
+        map.set(cur, reason);
+        cur = addDays(cur, 1);
+      }
+    }
+    return map;
+  }, [blocks]);
+
+  const cells: (string | null)[] = [];
+  for (let i = 0; i < firstDayOfWeek; i++) {
+    cells.push(null);
+  }
+  for (let d = 1; d <= daysInMonth; d++) {
+    cells.push(`${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`);
+  }
+
+  return (
+    <div className="bset-cal">
+      <div className="bset-cal-head">
+        <strong className="bset-cal-title">{monthTitle}</strong>
+        <div className="bset-cal-nav">
+          <button
+            type="button"
+            className="bset-cal-navbtn"
+            onClick={() => setCurrentMonth(new Date(year, month - 1, 1))}
+            aria-label="Previous month"
+          >
+            ‹
+          </button>
+          <button
+            type="button"
+            className="bset-cal-navbtn"
+            onClick={() => setCurrentMonth(new Date(year, month + 1, 1))}
+            aria-label="Next month"
+          >
+            ›
+          </button>
+        </div>
+      </div>
+
+      <div className="bset-cal-grid">
+        {WEEKDAY_LABELS.map((w) => (
+          <span key={w} className="bset-cal-dow">{w.toUpperCase()}</span>
+        ))}
+        {cells.map((dateKey, index) => {
+          if (!dateKey) {
+            return <span key={`blank-${index}`} className="bset-cal-cell empty" aria-hidden="true" />;
+          }
+          const isBlocked = blockedMap.has(dateKey);
+          const reason = blockedMap.get(dateKey);
+          const isToday = dateKey === todayKey;
+          const isPast = dateKey < todayKey;
+          const dayNum = Number(dateKey.slice(8));
+
+          return (
+            <button
+              type="button"
+              key={dateKey}
+              className={`bset-cal-cell${isBlocked ? ' is-blocked' : ''}${isToday ? ' is-today' : ''}${isPast ? ' is-past' : ''}`}
+              disabled={disabled || isPast}
+              onClick={() => onToggleDate(dateKey)}
+              title={isBlocked ? `${dateKey}: ${reason} (Click to unblock)` : `${dateKey} (Click to block)`}
+              aria-label={`${dateKey}${isBlocked ? `, ${reason}, click to unblock` : ', open, click to block'}`}
+            >
+              <span className="bset-cal-num">{dayNum}</span>
+              {isBlocked ? <span className="bset-cal-pill">Blocked</span> : null}
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="bset-cal-legend">
+        <span className="bset-cal-legend-item"><span className="bset-cal-dot open" /> Available</span>
+        <span className="bset-cal-legend-item"><span className="bset-cal-dot blocked" /> Blocked date (click to toggle)</span>
+      </div>
+    </div>
+  );
+}
+
 // --- time off --------------------------------------------------------------
 
 function TimeOff({ blocks, todayKey }: { blocks: AvailabilityBlock[]; todayKey: string }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [choosing, setChoosing] = useState(false);
+  const [viewMode, setViewMode] = useState<'calendar' | 'list'>('calendar');
   const [menuFor, setMenuFor] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -1136,6 +1329,23 @@ function TimeOff({ blocks, todayKey }: { blocks: AvailabilityBlock[]; todayKey: 
     });
   }
 
+  function handleToggleCalendarDate(dateKey: string) {
+    const existing = blocks.find((b) => dateKey >= b.start_date && dateKey <= b.end_date);
+    if (existing) {
+      startTransition(async () => {
+        try {
+          await removeAvailabilityBlockAction(existing.id);
+          setError(null);
+          router.refresh();
+        } catch (e) {
+          setError(e instanceof Error ? e.message : 'Could not unblock that date.');
+        }
+      });
+    } else {
+      quickBlock(dateKey, dateKey, '');
+    }
+  }
+
   // The coming Saturday and Sunday. On a Saturday that means today+tomorrow,
   // not the weekend six days away.
   function thisWeekend(): [string, string] {
@@ -1147,13 +1357,31 @@ function TimeOff({ blocks, todayKey }: { blocks: AvailabilityBlock[]; todayKey: 
 
   return (
     <>
-      <div className="bset-timeoff-actions">
-        <button type="button" className="btn primary bset-addblock" onClick={() => setChoosing((c) => !c)} disabled={pending}>
-          <Icon name="calendar" /> Choose dates
-        </button>
-        <button type="button" className="bset-quick" onClick={() => quickBlock(todayKey, todayKey, '')} disabled={pending}>Block today</button>
-        <button type="button" className="bset-quick" onClick={() => quickBlock(addDays(todayKey, 1), addDays(todayKey, 1), '')} disabled={pending}>Block tomorrow</button>
-        <button type="button" className="bset-quick" onClick={() => { const [s, e] = thisWeekend(); quickBlock(s, e, ''); }} disabled={pending}>Block this weekend</button>
+      <div className="bset-timeoff-toolbar">
+        <div className="bset-timeoff-actions">
+          <button type="button" className="btn primary bset-addblock" onClick={() => setChoosing((c) => !c)} disabled={pending}>
+            <Icon name="calendar" /> Choose dates
+          </button>
+          <button type="button" className="bset-quick" onClick={() => quickBlock(todayKey, todayKey, '')} disabled={pending}>Block today</button>
+          <button type="button" className="bset-quick" onClick={() => quickBlock(addDays(todayKey, 1), addDays(todayKey, 1), '')} disabled={pending}>Block tomorrow</button>
+          <button type="button" className="bset-quick" onClick={() => { const [s, e] = thisWeekend(); quickBlock(s, e, ''); }} disabled={pending}>Block this weekend</button>
+        </div>
+        <div className="bset-view-toggle" role="group" aria-label="Time off display view">
+          <button
+            type="button"
+            className={`bset-view-btn${viewMode === 'calendar' ? ' on' : ''}`}
+            onClick={() => setViewMode('calendar')}
+          >
+            Calendar
+          </button>
+          <button
+            type="button"
+            className={`bset-view-btn${viewMode === 'list' ? ' on' : ''}`}
+            onClick={() => setViewMode('list')}
+          >
+            List ({blocks.length})
+          </button>
+        </div>
       </div>
 
       {choosing && (
@@ -1179,10 +1407,19 @@ function TimeOff({ blocks, todayKey }: { blocks: AvailabilityBlock[]; todayKey: 
 
       {error && <p className="bset-error">{error}</p>}
 
+      {viewMode === 'calendar' && (
+        <MonthCalendar
+          blocks={blocks}
+          todayKey={todayKey}
+          onToggleDate={handleToggleCalendarDate}
+          disabled={pending}
+        />
+      )}
+
       {blocks.length === 0 ? (
         <p className="bset-empty">No days blocked off. Your booking page is offering every open day.</p>
       ) : (
-        <ul className="bset-blocks">
+        <ul className="bset-blocks" style={{ display: viewMode === 'calendar' ? 'none' : undefined }}>
           {blocks.map((block) => {
             const reason = (block.reason ?? '').trim();
             const seriesCount = reason ? byReason.get(reason) ?? 0 : 0;
@@ -1296,5 +1533,92 @@ function RecurringCard({ todayKey }: { todayKey: string }) {
         {message && <p className="bset-recurring-msg" aria-live="polite">{message}</p>}
       </div>
     </section>
+  );
+}
+
+// --- QR code & share modal -------------------------------------------------
+
+function QrModal({ url, onClose }: { url: string; onClose: () => void }) {
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [onClose]);
+
+  function copy() {
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(url).then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2200);
+      }).catch(() => {});
+    }
+  }
+
+  return (
+    <div className="bset-modal-backdrop" onClick={onClose} role="dialog" aria-modal="true" aria-labelledby="qr-modal-title">
+      <div className="bset-modal-card" onClick={(e) => e.stopPropagation()}>
+        <header className="bset-modal-head">
+          <div>
+            <h3 id="qr-modal-title">Online booking link &amp; QR code</h3>
+            <p>Customers can book directly through this link or by scanning the QR code.</p>
+          </div>
+          <button type="button" className="bset-modal-close" onClick={onClose} aria-label="Close modal">
+            ✕
+          </button>
+        </header>
+
+        <div className="bset-qr-display">
+          <div className="bset-qr-frame" aria-hidden="true">
+            {/* Clean, high-contrast SVG representation of the QR code */}
+            <svg viewBox="0 0 160 160" width="160" height="160" fill="currentColor">
+              {/* Top-Left Position Square */}
+              <rect x="10" y="10" width="45" height="45" rx="8" fill="none" stroke="currentColor" strokeWidth="8" />
+              <rect x="22" y="22" width="21" height="21" rx="4" fill="currentColor" />
+              {/* Top-Right Position Square */}
+              <rect x="105" y="10" width="45" height="45" rx="8" fill="none" stroke="currentColor" strokeWidth="8" />
+              <rect x="117" y="22" width="21" height="21" rx="4" fill="currentColor" />
+              {/* Bottom-Left Position Square */}
+              <rect x="10" y="105" width="45" height="45" rx="8" fill="none" stroke="currentColor" strokeWidth="8" />
+              <rect x="22" y="117" width="21" height="21" rx="4" fill="currentColor" />
+              {/* Decorative data pattern bits */}
+              <rect x="65" y="15" width="12" height="12" rx="2" fill="currentColor" />
+              <rect x="83" y="15" width="12" height="12" rx="2" fill="currentColor" />
+              <rect x="65" y="35" width="12" height="12" rx="2" fill="currentColor" />
+              <rect x="83" y="45" width="12" height="12" rx="2" fill="currentColor" />
+              <rect x="15" y="65" width="12" height="12" rx="2" fill="currentColor" />
+              <rect x="35" y="75" width="12" height="12" rx="2" fill="currentColor" />
+              <rect x="65" y="65" width="30" height="30" rx="6" fill="var(--bset-accent, #ff7a29)" />
+              <rect x="105" y="65" width="12" height="12" rx="2" fill="currentColor" />
+              <rect x="130" y="75" width="12" height="12" rx="2" fill="currentColor" />
+              <rect x="65" y="105" width="12" height="12" rx="2" fill="currentColor" />
+              <rect x="83" y="115" width="12" height="12" rx="2" fill="currentColor" />
+              <rect x="105" y="105" width="12" height="12" rx="2" fill="currentColor" />
+              <rect x="130" y="115" width="12" height="12" rx="2" fill="currentColor" />
+              <rect x="65" y="135" width="25" height="12" rx="2" fill="currentColor" />
+              <rect x="105" y="135" width="35" height="12" rx="2" fill="currentColor" />
+            </svg>
+          </div>
+          <p className="bset-qr-hint">Scan with any smartphone camera to test.</p>
+        </div>
+
+        <div className="bset-qr-input-row">
+          <input type="text" readOnly value={url} aria-label="Direct booking URL" className="bset-qr-url" />
+          <button type="button" className="btn primary" onClick={copy}>
+            <Icon name={copied ? 'check' : 'copy'} />
+            {copied ? 'Copied!' : 'Copy link'}
+          </button>
+        </div>
+
+        <div className="bset-modal-foot">
+          <button type="button" className="btn secondary" onClick={onClose}>
+            Done
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }

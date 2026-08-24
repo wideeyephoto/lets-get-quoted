@@ -69,4 +69,16 @@ describe('booking request setup explains rules in owner language', () => {
     expect(recurringUse).toBeGreaterThan(timeOff);
     expect(recurringUse).toBeLessThan(recurringDefinition);
   });
+
+  it('provides 1-click booking link copy, QR code share modal, and in-context working hours quick edit', () => {
+    expect(SETUP).toContain('copyBookingLink');
+    expect(SETUP).toContain('Copy link');
+    expect(SETUP).toContain('QrModal');
+    expect(SETUP).toContain('Quick edit');
+    expect(SETUP).toContain('MonthCalendar');
+    expect(SETUP).toContain('bset-view-toggle');
+    expect(CSS).toContain('.bset-head-actions');
+    expect(CSS).toContain('.bset-cal');
+    expect(CSS).toContain('.bset-modal-card');
+  });
 });

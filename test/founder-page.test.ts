@@ -313,10 +313,10 @@ describe('metadata', () => {
    8. Responsive and reduced motion
    ======================================================================== */
 describe('it works on a phone', () => {
-  it('collapses the hero to one column and turns the photo fade 90°', () => {
+  it('collapses the hero to one column and displays the portrait visibly without masking', () => {
     const mobile = CSS.slice(CSS.indexOf('@media (max-width: 860px)'));
     expect(mobile).toContain('grid-template-columns: minmax(0, 1fr)');
-    expect(mobile).toContain('mask-image: linear-gradient(180deg');
+    expect(mobile).toContain('mask-image: none');
     // The portrait must not keep a 30rem min-height on a phone.
     expect(mobile).toContain('min-height: 0');
   });
