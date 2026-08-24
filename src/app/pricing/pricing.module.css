@@ -3631,6 +3631,17 @@
   }
 }
 
+/* ---- Rendering performance: defer off-screen paint on long scroll ---------- */
+.scenarioSection,
+.calculatorSection,
+.comparisonSection,
+.faqSection,
+.closingSection {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 600px;
+}
+
+
 
 
 

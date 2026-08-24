@@ -1,6 +1,6 @@
 /* GENERATED — do not edit. Source: src/app/globals.css
    Run: node scripts/build-css-subset.mjs
-   source-sha256: 2d127c17f20bab6b
+   source-sha256: a449e2fb85606819
 
    globals.css with the rules that can only match inside /dashboard, /admin and
    /demo removed. Every route except those three imports this file; they import
@@ -3165,16 +3165,66 @@ h3 {
 .missed-card .missed-status.is-error { border-color: var(--cedge-orange-9); background: rgba(255, 122, 33, 0.09); }
 .missed-card .missed-status.is-error .missed-dot { background: var(--ink-orange-1); }
 .missed-card .missed-status.is-error strong { color: var(--ink-orange-1); }
-.review-card.is-paused .review-preview { opacity: 0.45; }
-.review-card.is-paused .review-state { color: var(--ink-orange-1); }
-.review-card .review-switch.is-on .review-switch-track { background: rgba(163, 230, 53, 0.45); }
-.review-card .review-switch.is-on .review-switch-knob { transform: translateX(1.1rem); background: var(--ink-lime-1); }
-.review-card .review-prereq.is-ok {
-  border-color: var(--cedge-green-7);
-  background: rgba(163, 230, 53, 0.07);
-  color: var(--mute-t60);
+
+.review-card.is-paused .review-preview {
+  opacity: 0.65;
 }
-.review-card .review-prereq.is-ok strong { color: var(--text); }
+
+.review-state-banner.is-active {
+  border-color: rgba(79, 211, 154, 0.35);
+  background: rgba(79, 211, 154, 0.08);
+}
+
+.review-state-banner.is-paused {
+  border-color: rgba(255, 122, 33, 0.3);
+  background: rgba(255, 122, 33, 0.07);
+}
+
+.review-state-banner.is-active .review-state-heading {
+  color: var(--good);
+}
+
+.review-state-banner.is-paused .review-state-heading {
+  color: var(--warn);
+}
+
+.review-mode-card.is-selected {
+  border-color: rgba(79, 211, 154, 0.45);
+  background: rgba(79, 211, 154, 0.08);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+}
+
+.review-mode-card.is-selected .review-mode-radio {
+  border-color: var(--good);
+}
+
+.review-mode-card.is-selected .review-mode-radio-dot {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.review-prereq.is-ok {
+  border-color: rgba(79, 211, 154, 0.3);
+  background: rgba(79, 211, 154, 0.06);
+}
+
+.review-prereq.is-warning {
+  border-color: var(--cedge-amber-5, rgba(255, 209, 102, 0.3));
+  background: rgba(255, 209, 102, 0.08);
+}
+
+.review-prereq.is-ok .review-prereq-icon {
+  background: rgba(79, 211, 154, 0.2);
+  color: var(--good);
+}
+
+.review-save-saved {
+  color: var(--good);
+}
+
+.review-save-error {
+  color: var(--warn);
+}
 .followup-card.is-paused .followup-preview { opacity: 0.45; }
 /* OFF IS NOT A WARNING.
    This used to render the paused line in --ink-orange-1, the colour this app

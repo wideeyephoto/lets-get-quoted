@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState, useTransition, type CSSProper
 import type { Site, TemplateType } from '@/lib/sites';
 import type { SiteImage } from '@/lib/site-images';
 import { getSiteGallery, STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getSiteContent, getTradeGlyphOptions, getUnreviewedGeneratedSections, glyphForContent, mergeSiteContent, COLOR_SCHEMES, HEADER_STYLES,
+import { getSiteContent, getTradeGlyphOptions, getUnreviewedGeneratedSections, glyphForContent, mergeSiteContent, COLOR_SCHEMES, getColorScheme, HEADER_STYLES,
   MENU_BUTTON_STYLES,
   BLOG_STYLES, BUTTON_STYLES, HEADER_BUTTON_STYLES, WORDMARK_STYLES, HERO_BADGE_PRESETS, HERO_BADGE_STYLES, IMAGE_SLOT_LABELS, MAX_EXTRA_HERO_IMAGES, PROJECT_SHOWCASE_STYLES, MAX_PROJECT_SHOWCASE_ITEMS, DEFAULT_PROJECT_SHOWCASE_PLACEHOLDERS, DEFAULT_PROJECT_SHOWCASE_EYEBROW, DEFAULT_PROJECT_SHOWCASE_TITLE, STOCK_PROJECT_SHOWCASE_EYEBROW, STOCK_PROJECT_SHOWCASE_TITLE, VIDEO_SECTION_STYLES, videoStyleCapacity, videoSectionKey, MAX_VIDEO_SECTIONS, DEFAULT_VIDEOS_NAV_LABEL, type NormalizedSiteContent, type SiteProjectShowcaseContent, type SiteVideoSectionContent, type SiteBlogContent, type SiteAnnouncementContent, type SiteBeforeAfterContent, type SiteServicesContent, type SiteHowItWorksContent, type SiteFaqContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteShowcaseItem, type SiteStatItem, type SiteStatsContent, type SiteTestimonialItem, type SiteStickyCallBarContent, type SiteChatButtonContent, type SiteAnalyticsContent, type SiteTestimonialsContent, type SiteTrustBadgesContent, type SiteWhyUsContent, type SiteLegalContent } from '@/lib/site-content';
 import { generatePrivacyPolicy, generateTermsOfService } from '@/lib/legal/legal-copy';
@@ -1699,27 +1699,73 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, just
                     </div>
                   </div>
 
-                  <div className={styles.formField}>
-                    <span>Accent color</span>
-                    <div className={styles.colorControl}><input type="color" value={site.accent_override || '#ff7a21'} onChange={(event) => handleChange('accent_override', event.target.value)} /><input value={site.accent_override || '#ff7a21'} onChange={(event) => handleChange('accent_override', event.target.value)} /></div>
-                    <div className={styles.accentSwatches} role="group" aria-label="Preset accent colors">
-                      {ACCENT_PRESETS.map((preset) => {
-                        const selected = (site.accent_override || '').toLowerCase() === preset.hex.toLowerCase();
-                        return (
-                          <button
-                            key={preset.hex}
-                            type="button"
-                            className={`${styles.accentSwatch}${selected ? ` ${styles.accentSwatchActive}` : ''}`}
-                            style={{ background: preset.hex }}
-                            onClick={() => handleChange('accent_override', preset.hex)}
-                            title={preset.name}
-                            aria-label={`${preset.name}${selected ? ' (selected)' : ''}`}
-                            aria-pressed={selected}
+                  {(() => {
+                    const currentTemplateConfig = AVAILABLE_TEMPLATES.find((t) => t.id === site.template) || AVAILABLE_TEMPLATES[0];
+                    const activeScheme = getColorScheme(siteContent.colorScheme);
+                    const schemeDefaultAccent = activeScheme?.accent || currentTemplateConfig?.accent || '#f0b429';
+                    const hasCustomAccent = Boolean(site.accent_override && site.accent_override.trim() && site.accent_override.toLowerCase() !== schemeDefaultAccent.toLowerCase());
+                    const effectiveAccent = site.accent_override || schemeDefaultAccent;
+
+                    return (
+                      <div className={styles.formField}>
+                        <div className={styles.accentHeaderRow}>
+                          <div className={styles.accentStatusRow}>
+                            <span>Accent color</span>
+                            <span className={styles.accentStatusBadge} data-custom={hasCustomAccent}>
+                              <span className={styles.accentDot} style={{ background: effectiveAccent }} />
+                              {hasCustomAccent ? 'Custom override' : 'Matching scheme'}
+                            </span>
+                          </div>
+                          {hasCustomAccent && (
+                            <button
+                              type="button"
+                              className={styles.accentResetBtn}
+                              onClick={() => handleChange('accent_override', null)}
+                              title="Reset accent color to match the selected color scheme"
+                            >
+                              Use scheme default
+                            </button>
+                          )}
+                        </div>
+                        <div className={styles.colorControl}>
+                          <input
+                            type="color"
+                            value={effectiveAccent}
+                            onChange={(event) => handleChange('accent_override', event.target.value)}
+                            aria-label="Custom accent color picker"
                           />
-                        );
-                      })}
-                    </div>
-                  </div>
+                          <input
+                            value={site.accent_override || ''}
+                            placeholder={`Scheme default: ${schemeDefaultAccent}`}
+                            onChange={(event) => handleChange('accent_override', event.target.value || null)}
+                            aria-label="Custom accent hex value"
+                          />
+                        </div>
+                        <div className={styles.accentSwatches} role="group" aria-label="Preset accent colors">
+                          {ACCENT_PRESETS.map((preset) => {
+                            const selected = (site.accent_override || '').toLowerCase() === preset.hex.toLowerCase();
+                            return (
+                              <button
+                                key={preset.hex}
+                                type="button"
+                                className={`${styles.accentSwatch}${selected ? ` ${styles.accentSwatchActive}` : ''}`}
+                                style={{ background: preset.hex }}
+                                onClick={() => handleChange('accent_override', preset.hex)}
+                                title={preset.name}
+                                aria-label={`${preset.name}${selected ? ' (selected)' : ''}`}
+                                aria-pressed={selected}
+                              />
+                            );
+                          })}
+                        </div>
+                        <small className={styles.fieldHint}>
+                          {hasCustomAccent
+                            ? 'Custom accent is active and colors buttons, badges, and highlights independently of the brand color scheme.'
+                            : `Using ${activeScheme ? `${activeScheme.label.split(' — ')[0]} scheme` : `${currentTemplateConfig.name} theme`} default accent (${schemeDefaultAccent}). Tap any swatch or color picker to set an independent custom override.`}
+                        </small>
+                      </div>
+                    );
+                  })()}
 
                 </SectionCard>
 

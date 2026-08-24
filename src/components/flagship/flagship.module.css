@@ -7798,3 +7798,13 @@
   .root :global(.hero-thread-sim) { padding: 0; }
 }
 
+/* ---- Rendering performance: defer off-screen paint on long scroll ---------- */
+.root :global(.suite-section),
+.root :global(.stories-section),
+.root :global(.faq-band),
+.root :global(.closing-band) {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 600px;
+}
+
+

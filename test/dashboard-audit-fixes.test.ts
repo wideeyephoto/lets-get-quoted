@@ -64,4 +64,18 @@ describe('dashboard audit repairs', () => {
     expect(focusCss).toContain('overflow-x: auto;');
     expect(smoothieCss).toContain('.commsRow > * { flex: 1 1 100%;');
   });
+
+  it('provides structured destination mode selection and verified profile status for automations#reviews', () => {
+    const section = read('src', 'app', 'dashboard', 'settings', 'ReviewRequestSection.tsx');
+    const css = read('src', 'app', 'globals.css');
+
+    expect(section).toContain('role="radiogroup" aria-label="Review Destination Mode"');
+    expect(section).toContain('review-badge-recommended');
+    expect(section).toContain('Google Policy Compliant');
+    expect(section).toContain('review-phone-status-bar');
+    expect(css).toContain('.review-state-banner.is-active');
+    expect(css).toContain('.review-mode-card.is-selected');
+    expect(css).toContain('.review-phone-status-bar');
+  });
 });
+

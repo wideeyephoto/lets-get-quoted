@@ -102,30 +102,43 @@ export async function middleware(request: NextRequest) {
 
   let response = applyCsp(NextResponse.next({ request: { headers: requestHeaders } }));
 
-  const supabase = createServerClient(
-    normalizeSupabaseUrl(process.env.NEXT_PUBLIC_SUPABASE_URL),
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '',
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
-          cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value)
-          );
-          response = applyCsp(NextResponse.next({ request: { headers: requestHeaders } }));
-          cookiesToSet.forEach(({ name, value, options }) =>
-            response.cookies.set(name, value, options)
-          );
-        },
-      },
-    }
+  // FAST PATH: If there is no Supabase auth token cookie in the request, the user
+  // cannot be signed in. We can skip the blocking network call to Supabase Auth
+  // on public marketing pages and immediately bounce unauthenticated dashboard
+  // requests, saving 150-300ms of TTFB on every public request.
+  const hasAuthCookie = request.cookies.getAll().some(
+    (cookie) => cookie.name.startsWith('sb-') && cookie.name.includes('-auth-token')
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  let user: { id: string } | null = null;
+
+  if (hasAuthCookie) {
+    const supabase = createServerClient(
+      normalizeSupabaseUrl(process.env.NEXT_PUBLIC_SUPABASE_URL),
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '',
+      {
+        cookies: {
+          getAll() {
+            return request.cookies.getAll();
+          },
+          setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
+            cookiesToSet.forEach(({ name, value }) =>
+              request.cookies.set(name, value)
+            );
+            response = applyCsp(NextResponse.next({ request: { headers: requestHeaders } }));
+            cookiesToSet.forEach(({ name, value, options }) =>
+              response.cookies.set(name, value, options)
+            );
+          },
+        },
+      }
+    );
+
+    const {
+      data: { user: authUser },
+    } = await supabase.auth.getUser();
+    user = authUser;
+  }
 
   // A signed-in contractor who lands on the marketing homepage wants their
   // workspace, not the sales page — send them straight to the dashboard so the

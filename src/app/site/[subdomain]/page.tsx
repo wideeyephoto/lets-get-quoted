@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
+import { cache } from 'react';
 import { createAdminClient } from '@/lib/auth';
 import { getSiteGallery } from '@/lib/site-images';
 import { getPublicSiteBySubdomain } from '@/lib/sites';
@@ -16,8 +17,12 @@ type PublicSitePageProps = {
   params: { subdomain: string };
 };
 
+const loadPublicSite = cache(async (subdomain: string) => {
+  return getPublicSiteBySubdomain(createAdminClient(), subdomain);
+});
+
 export default async function PublicSitePage({ params }: PublicSitePageProps) {
-  const site = await getPublicSiteBySubdomain(createAdminClient(), params.subdomain);
+  const site = await loadPublicSite(params.subdomain);
   if (!site) notFound();
 
   const Template = getTemplate(site.template);
@@ -32,7 +37,7 @@ export default async function PublicSitePage({ params }: PublicSitePageProps) {
 }
 
 export async function generateMetadata({ params }: PublicSitePageProps): Promise<Metadata> {
-  const site = await getPublicSiteBySubdomain(createAdminClient(), params.subdomain);
+  const site = await loadPublicSite(params.subdomain);
   if (!site) return { title: 'Site not found', robots: { index: false, follow: false } };
 
   const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'letsgetquoted.com';

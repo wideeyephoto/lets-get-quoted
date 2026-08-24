@@ -53,8 +53,8 @@ export default function ReviewRequestSection({
   // The server wins once a revalidation lands.
   useEffect(() => { setFeedback(feedbackPage); }, [feedbackPage]);
 
-  function toggleFeedbackPage() {
-    const next = !feedback;
+  function handleSelectFeedbackMode(next: boolean) {
+    if (next === feedback && save !== 'error') return;
     setFeedback(next);
     setSave('saving');
     startSaving(async () => {
@@ -65,8 +65,7 @@ export default function ReviewRequestSection({
         savedTimer.current = setTimeout(() => setSave('idle'), 2400);
       } catch {
         // Put it back. A switch left showing the new state after a failed save
-        // tells a contractor their customers are being sent somewhere they
-        // aren't.
+        // tells a contractor their customers are being sent somewhere they aren't.
         setFeedback(!next);
         setSave('error');
       }
@@ -74,86 +73,148 @@ export default function ReviewRequestSection({
   }
 
   // The link the customer actually taps, for the setting as it stands right now.
-  // Switching the feedback page on or off visibly changes it, which is the whole
-  // difference between the two settings said in one line instead of a paragraph.
   const shownUrl = feedback ? feedbackUrl : googleUrl ?? '[your Google review link]';
 
   return (
     <div className={`review-card${enabled ? '' : ' is-paused'}`}>
-      <p className="review-state">
-        {enabled
-          ? 'Marking a job complete asks the client for a review — texted if they have a mobile on file, emailed otherwise. Once per job.'
-          : 'Paused — completing a job sends nothing. You can still ask by hand from any completed job.'}
-      </p>
+      <div className={`review-state-banner ${enabled ? 'is-active' : 'is-paused'}`}>
+        <span className="review-state-indicator" aria-hidden="true">
+          {enabled ? '⚡' : '⏸️'}
+        </span>
+        <div className="review-state-text">
+          <strong className="review-state-heading">{enabled ? 'Auto-Ask Active' : 'Automation Paused'}</strong>
+          <span className="review-state-desc">
+            {enabled
+              ? 'Marking a job complete sends an automatic review request (SMS to mobile, email fallback). Sent once per job.'
+              : 'Paused — completing a job will not send automatic review asks. You can still send manual requests from any job.'}
+          </span>
+        </div>
+      </div>
 
       <div className="review-grid">
         <div className="review-settings">
-          <button
-            type="button"
-            role="switch"
-            aria-checked={feedback}
-            className={`review-switch${feedback ? ' is-on' : ''}`}
-            onClick={toggleFeedbackPage}
-          >
-            <span className="review-switch-track" aria-hidden="true">
-              <span className="review-switch-knob" />
+          <div className="review-section-header">
+            <h4 className="review-section-title">Review Destination Mode</h4>
+            <span className={`review-save review-save-${save}`} aria-live="polite">
+              {save === 'saving' ? 'Saving…' : save === 'saved' ? '✓ Saved' : save === 'error' ? 'Couldn’t save' : ''}
             </span>
-            <span>Ask how it went first</span>
-          </button>
-          <p className="review-choice-note">
-            {feedback
-              ? 'Clients land on a short page where they rate the job, then choose to review you publicly, send you a private note, or both.'
-              : 'Clients go straight to your Google review form, with no stop in between.'}
-          </p>
-
-          <p className="review-policy">
-            Either way, every client is offered the public review link. Screening by rating — sending only happy
-            clients to Google — is against Google&apos;s review policy and puts your Business Profile at risk, so
-            letsgetquoted.com doesn&apos;t do it.
-          </p>
-
-          {/* One destination for both states: the Customer reviews card in the
-              website builder, which is where googlePlaceId is actually set. */}
-          <div className={`review-prereq${googleUrl ? ' is-ok' : ''}`}>
-            <span aria-hidden="true">{googleUrl ? '✓' : '🔗'}</span>
-            {googleUrl ? (
-              <span>
-                Pointing at <strong>{googleName || 'your Google Business Profile'}</strong> —{' '}
-                <Link href="/dashboard/sites?open=reviews">change it in the Website builder</Link>.
-              </span>
-            ) : (
-              <span>
-                Reviews need a Google Business Profile to point to —{' '}
-                <Link href="/dashboard/sites?open=reviews">connect yours in the Website builder</Link> so the ask has
-                somewhere to go.
-              </span>
-            )}
           </div>
-        </div>
 
-        <div className="review-preview">
-          <p className="eyebrow">What the client sees</p>
-          <p className="review-lede">The text that goes out when you mark a job complete.</p>
+          <div className="review-mode-options" role="radiogroup" aria-label="Review Destination Mode">
+            <button
+              type="button"
+              role="radio"
+              aria-checked={feedback}
+              className={`review-mode-card ${feedback ? 'is-selected' : ''}`}
+              onClick={() => handleSelectFeedbackMode(true)}
+            >
+              <div className="review-mode-card-header">
+                <span className="review-mode-radio" aria-hidden="true">
+                  <span className="review-mode-radio-dot" />
+                </span>
+                <span className="review-mode-label">2-Step Feedback Page</span>
+                <span className="review-badge-recommended">Recommended</span>
+              </div>
+              <p className="review-mode-desc">
+                Clients rate the job first. Happy clients are guided to leave a Google review; private feedback is saved for your team.
+              </p>
+            </button>
 
-          <div className="review-phone">
-            <div className="review-phone-head">
-              <span className="review-phone-avatar" aria-hidden="true">
-                {businessName.slice(0, 2).toUpperCase()}
-              </span>
-              <strong>{businessName}</strong>
-            </div>
-            <div className="review-phone-body">
-              {/* Rendered from the sender's own function, so it can't drift from
-                  what gets sent. The old hand-written preview had already. */}
-              <p className="review-bubble">
-                {reviewRequestText({ businessName, clientName: 'Sarah', reviewUrl: shownUrl })}
+            <button
+              type="button"
+              role="radio"
+              aria-checked={!feedback}
+              className={`review-mode-card ${!feedback ? 'is-selected' : ''}`}
+              onClick={() => handleSelectFeedbackMode(false)}
+            >
+              <div className="review-mode-card-header">
+                <span className="review-mode-radio" aria-hidden="true">
+                  <span className="review-mode-radio-dot" />
+                </span>
+                <span className="review-mode-label">Direct to Google Review</span>
+                <span className="review-badge-direct">Direct Link</span>
+              </div>
+              <p className="review-mode-desc">
+                Clients go straight into your official Google review submission form without an intermediate step.
+              </p>
+            </button>
+          </div>
+
+          <div className="review-policy-box">
+            <span className="review-policy-icon" aria-hidden="true">🛡️</span>
+            <div>
+              <strong className="review-policy-heading">Google Policy Compliant</strong>
+              <p className="review-policy-copy">
+                Every client is offered the public Google review link. We never gate or screen reviews by rating, protecting your Google Business Profile from penalties.
               </p>
             </div>
           </div>
 
-          <div className="review-tags">
-            <span className="review-tag">Once per job</span>
-            <span className="review-tag">Emailed when there&apos;s no mobile</span>
+          <div className={`review-prereq ${googleUrl ? 'is-ok' : 'is-warning'}`}>
+            <span className="review-prereq-icon" aria-hidden="true">{googleUrl ? '✓' : '🔗'}</span>
+            <div className="review-prereq-content">
+              {googleUrl ? (
+                <>
+                  <span className="review-prereq-title">Google Profile Linked</span>
+                  <span className="review-prereq-desc">
+                    Pointing at <strong>{googleName || 'your Google Business Profile'}</strong> —{' '}
+                    <Link href="/dashboard/sites?open=reviews" className="review-link">
+                      Change in Website Builder →
+                    </Link>
+                  </span>
+                </>
+              ) : (
+                <>
+                  <span className="review-prereq-title">Google Profile Required</span>
+                  <span className="review-prereq-desc">
+                    Connect your Google Business Profile so reviews have a verified destination.{' '}
+                    <Link href="/dashboard/sites?open=reviews" className="review-link">
+                      Connect Profile in Website Builder →
+                    </Link>
+                  </span>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="review-preview">
+          <div className="review-preview-header">
+            <span className="eyebrow">Interactive Live Preview</span>
+            <span className="review-preview-pill">SMS Simulation</span>
+          </div>
+          <p className="review-lede">Real-time preview of the automated text sent upon job completion.</p>
+
+          <div className="review-phone">
+            <div className="review-phone-status-bar" aria-hidden="true">
+              <span>9:41</span>
+              <span className="review-phone-notch" />
+              <span>5G 100%</span>
+            </div>
+
+            <div className="review-phone-head">
+              <span className="review-phone-avatar" aria-hidden="true">
+                {businessName ? businessName.slice(0, 2).toUpperCase() : 'LG'}
+              </span>
+              <div className="review-phone-meta">
+                <strong>{businessName || 'Your Business'}</strong>
+                <span className="review-phone-verified">✓ Verified Business</span>
+              </div>
+            </div>
+
+            <div className="review-phone-body">
+              <div className="review-phone-timestamp">Today • 2:15 PM</div>
+              <p className="review-bubble">
+                {reviewRequestText({ businessName: businessName || 'Your Business', clientName: 'Sarah', reviewUrl: shownUrl })}
+              </p>
+              <div className="review-bubble-status">Delivered</div>
+            </div>
+          </div>
+
+          <div className="review-tags" aria-label="Automation delivery details">
+            <span className="review-tag">⚡ Once per completed job</span>
+            <span className="review-tag">📱 SMS to client mobile</span>
+            <span className="review-tag">✉️ Email fallback</span>
           </div>
         </div>
       </div>
@@ -161,8 +222,8 @@ export default function ReviewRequestSection({
       <div className="review-foot">
         <span className="review-foot-note">
           {enabled
-            ? 'You can also send the ask by hand from any completed job.'
-            : 'Nothing is sent automatically while this is off.'}
+            ? 'Automatic asks run on job completion. You can also send manual requests from any job record.'
+            : 'Nothing is sent automatically while paused. You can still send manual requests from completed jobs.'}
         </span>
         <span className={`review-save review-save-${save}`} aria-live="polite">
           {save === 'saving' ? 'Saving…' : save === 'saved' ? '✓ Saved' : save === 'error' ? 'Couldn’t save' : ''}

@@ -2,16 +2,19 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import Link from 'next/link';
 import { SiteFooter, SiteHeader } from './site-chrome';
-import TradeOrbit from './trade-orbit';
-import CommandCenterDeck, { COMMAND_CENTER_SCREENS } from '@/components/command-center-deck';
+import { COMMAND_CENTER_SCREENS } from '@/components/command-center-deck';
 import HeroShowcase from './hero-showcase';
 import { HOME_FAQS } from '@/lib/home-faqs';
 import { PLAN_PRICE_OPTIONS, STRIPE_PROCESSING_NOTE } from '@/lib/pricing';
 import styles from './flagship.module.css';
 import LaunchBanner from '@/components/marketing/launch-banner';
+
+const TradeOrbit = dynamic(() => import('./trade-orbit'), { ssr: true });
+const CommandCenterDeck = dynamic(() => import('@/components/command-center-deck'), { ssr: true });
 
 /* The URL and the words both come from site-chrome, which is where the header,
    the phone bar and the closing band already read them. This page used to

@@ -330,6 +330,14 @@ a.blogGenerateBtn { display: block; text-align: center; text-decoration: none; l
 .accentSwatch:hover { transform: translateY(-1px); border-color: var(--edge-t50); }
 .accentSwatchActive { border-color: #fff; box-shadow: 0 0 0 2px #ff7a21; }
 
+.accentHeaderRow { display: flex; align-items: center; justify-content: space-between; gap: .5rem; margin-bottom: .35rem; }
+.accentStatusRow { display: flex; align-items: center; gap: .45rem; }
+.accentStatusBadge { display: inline-flex; align-items: center; gap: .35rem; font-size: .72rem; font-weight: 700; padding: .15rem .5rem; border-radius: 999px; background: rgba(255,255,255,.06); color: var(--muted-2, #8a8f98); border: 1px solid var(--edge-t12); }
+.accentStatusBadge[data-custom='true'] { background: rgba(255,122,33,.12); color: var(--gold-ink, #f59e0b); border-color: rgba(255,122,33,.3); }
+.accentDot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; }
+.accentResetBtn { font-size: .72rem; font-weight: 700; padding: .2rem .55rem; border-radius: 6px; background: transparent; border: 1px solid var(--edge-t18); color: var(--muted, #8a8f98); cursor: pointer; transition: color .15s ease, border-color .15s ease, background .15s ease; }
+.accentResetBtn:hover { color: var(--text, #fff); border-color: var(--edge-t50); background: rgba(255,255,255,.04); }
+
 /* Full color-scheme picker — each chip previews the scheme's page, deep ground, and accent. */
 .schemeSwatches { display: flex; flex-wrap: wrap; gap: .6rem; margin-top: .25rem; }
 .schemeSwatch { display: flex; flex-direction: column; align-items: center; gap: .35rem; width: 72px; padding: 0; background: none; border: 0; cursor: pointer; color: inherit; }

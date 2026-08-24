@@ -417,6 +417,7 @@ export async function setReviewFeedbackPageAction(next: boolean) {
     .eq('id', accountId);
   if (error) throw new Error('Could not save review settings.');
   revalidatePath('/dashboard/settings');
+  revalidatePath('/dashboard/automations');
 }
 
 /**

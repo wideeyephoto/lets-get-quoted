@@ -6,6 +6,7 @@ import type { ReactNode } from 'react';
 import { AppShell } from '@/components/app-shell';
 import { AppShellProvider } from '@/components/app-shell-provider';
 import ThemeSync from '@/components/theme-sync';
+import SpeculationRules from '@/components/speculation-rules';
 import { parseThemeChoice, resolveTheme, THEME_COOKIE, THEME_SYSTEM_COOKIE } from '@/lib/theme';
 /**
  * THE BASE SHEET, NOT THE WHOLE ONE.
@@ -143,6 +144,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         {/* A contractor's public site is not themed by the owner's preference,
             so it must not be corrected towards the visitor's device either. */}
         {isStandaloneSite ? null : <ThemeSync />}
+        <SpeculationRules />
         <AppShellProvider>
           <AppShell forceStandaloneSite={isStandaloneSite}>{children}</AppShell>
         </AppShellProvider>

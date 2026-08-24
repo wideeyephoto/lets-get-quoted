@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
+import { cache } from 'react';
 import { createAdminClient } from '@/lib/auth';
 import { getSiteGallery } from '@/lib/site-images';
 import { getPublicSiteByCustomDomain } from '@/lib/sites';
@@ -14,9 +15,9 @@ export const dynamic = 'force-dynamic';
 
 type Props = { params: { domain: string } };
 
-async function loadSite(domain: string) {
+const loadSite = cache(async (domain: string) => {
   return getPublicSiteByCustomDomain(createAdminClient(), decodeURIComponent(domain).toLowerCase());
-}
+});
 
 export default async function CustomDomainSitePage({ params }: Props) {
   const site = await loadSite(params.domain);
