@@ -29,6 +29,17 @@ export default function QuickStopCustomerPreviewModal({
 
   const typicalFee = Math.round((minFeeDollars + maxFeeDollars) / 2) || 95;
   const sampleCategory = categories[0] || 'Kitchen faucet leak';
+  const formatTime = (t: string) => {
+    if (!t) return '';
+    const [h, m] = t.split(':').map(Number);
+    if (isNaN(h)) return t;
+    const period = h >= 12 ? 'PM' : 'AM';
+    const hour12 = h % 12 || 12;
+    return `${hour12}:${String(m || 0).padStart(2, '0')} ${period}`;
+  };
+  const arrivalWindow = earliestTime && latestEnd
+    ? `${formatTime(earliestTime)} – ${formatTime(latestEnd)}`
+    : '3:15 PM – 4:45 PM';
 
   return (
     <div className="qs-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="qs-preview-title" onClick={onClose}>
@@ -88,7 +99,7 @@ export default function QuickStopCustomerPreviewModal({
 
                 <div className="qs-bubble incoming">
                   <p>
-                    Hi Sarah, we&apos;re currently on route nearby for a job and can fit in your <strong>{sampleCategory}</strong> today between <strong>3:15 PM – 4:45 PM</strong>.
+                    Hi Sarah, we&apos;re currently on route nearby for a job and can fit in your <strong>{sampleCategory}</strong> today between <strong>{arrivalWindow}</strong>.
                   </p>
                   <p style={{ marginTop: '0.5rem' }}>
                     Tap below to lock in this priority arrival window with a <strong>${typicalFee}</strong> priority visit fee:
@@ -128,7 +139,7 @@ export default function QuickStopCustomerPreviewModal({
                   </div>
                   <div className="qs-pay-row">
                     <span>Proposed Window</span>
-                    <strong>Today · 3:15 PM – 4:45 PM</strong>
+                    <strong>Today · {arrivalWindow}</strong>
                   </div>
                   <div className="qs-pay-row">
                     <span>Reason</span>
@@ -164,7 +175,7 @@ export default function QuickStopCustomerPreviewModal({
                 <div className="qs-pay-card">
                   <div className="qs-pay-row">
                     <span>Arrival Window</span>
-                    <strong>Today, 3:15 – 4:45 PM</strong>
+                    <strong>Today, {arrivalWindow}</strong>
                   </div>
                   <div className="qs-pay-row">
                     <span>Status</span>
