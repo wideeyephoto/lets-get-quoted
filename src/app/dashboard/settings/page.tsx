@@ -486,7 +486,7 @@ export default async function SettingsPage({
               </>
             ),
           },
-          {
+          ...(!pricingDashboardEnabled || !planUsage ? [{
             id: 'team',
             label: 'Team',
             anchors: ['office-team'],
@@ -496,7 +496,7 @@ export default async function SettingsPage({
                 <OfficeTeamSection team={officeTeam} />
               </section>
             ),
-          },
+          }] : []),
           ...(pricingDashboardEnabled && planUsage ? [{
             id: 'plan',
             label: 'Plan & usage',
@@ -525,9 +525,11 @@ export default async function SettingsPage({
               ...(overage ? ['overage'] : []),
               ...(showTopUpPurchase ? ['buy-credits'] : []),
               'included-limits',
+              'office-team',
             ],
             content: (
               <PlanUsageSection
+                officeTeam={officeTeam}
                 cancellable={cancellable}
                 planChange={planChange}
                 planIntent={parsePlanIntent(searchParams.plan ?? null, searchParams.billing ?? null)}

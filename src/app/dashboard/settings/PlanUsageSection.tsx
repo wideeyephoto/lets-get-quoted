@@ -39,6 +39,8 @@ import PurchasedCapacityList from './PurchasedCapacityList';
 import SettingsHashLink from './SettingsHashLink';
 import ProcessingVolumeRoiCalculator from './ProcessingVolumeRoiCalculator';
 import PlanSubnav from './PlanSubnav';
+import type { OfficeTeam } from '@/lib/office-team';
+import OfficeTeamSection from './OfficeTeamSection';
 
 function formatDate(value: string): string {
   return new Date(value).toLocaleDateString('en-US', {
@@ -805,9 +807,11 @@ export default function PlanUsageSection({
   planIntent = null,
   capacity = null,
   lots = null,
+  officeTeam = null,
   overageSelfServe = false,
 }: {
   data: WorkspacePlanUsage;
+  officeTeam?: OfficeTeam | null;
   storage?: WorkspaceStorageState | null;
   purchasedSeats?: PurchasedSeats;
   purchasedCapacitySubscriptions?: ActivePurchasedCapacitySubscription[];
@@ -1131,6 +1135,18 @@ export default function PlanUsageSection({
                       <CapacityMeter key={row.key} row={row} />
                     ))}
                   </ul>
+                ) : null}
+
+                {officeTeam ? (
+                  <div id="office-team" className="plan-usage-office-team-section">
+                    <div className="plan-usage-office-team-header">
+                      <h3>Office staff &amp; dashboard invitations</h3>
+                      <p className="plan-usage-fineprint">
+                        Invite staff to access your leads board, view incoming requests, and manage day-to-day operations.
+                      </p>
+                    </div>
+                    <OfficeTeamSection team={officeTeam} />
+                  </div>
                 ) : null}
 
                 <details className="plan-usage-limit-details">

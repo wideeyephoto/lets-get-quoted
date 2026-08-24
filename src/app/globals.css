@@ -4904,6 +4904,25 @@ h3 {
   }
 }
 
+.plan-usage-office-team-section {
+  margin: 1.25rem 0 0.5rem;
+  padding: 1.15rem 1.25rem;
+  border-radius: 1rem;
+  background: rgba(var(--tint), 0.025);
+  border: 1px solid var(--rule-t12);
+}
+
+.plan-usage-office-team-header {
+  margin-bottom: 1rem;
+}
+
+.plan-usage-office-team-header h3 {
+  margin: 0 0 0.25rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
 /* ==========================================================================
    Plan Navigation Jump Bar
    ========================================================================== */

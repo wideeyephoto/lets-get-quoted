@@ -31,6 +31,8 @@ export default function PlanSubnav({
         hash === '#workspace-storage' ||
         hash === '#buy-credits' ||
         hash === '#included-limits' ||
+        hash === '#team' ||
+        hash === '#office-team' ||
         hash === '#overage' ||
         hash === '#plan-at-a-glance' ||
         hash === '#plan'
