@@ -10,8 +10,6 @@ import { createHmac, timingSafeEqual, randomInt } from 'crypto';
  */
 function verificationSecret(): string {
   return (
-    process.env.LGQ_OWNER_VERIFICATION_SECRET ||
-    process.env.LGQ_LEAD_VERIFICATION_SECRET ||
     process.env.SUPABASE_SERVICE_ROLE_KEY ||
     process.env.TWILIO_AUTH_TOKEN ||
     'lgq-owner-phone-verification-fallback-key'
