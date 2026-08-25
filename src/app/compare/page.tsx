@@ -7,14 +7,14 @@ import { COMPARISONS } from './compare-data';
 import styles from './compare.module.css';
 
 export const metadata: Metadata = {
-  title: 'Compare Contractor Software & Alternatives',
+  title: 'Compare Contractor Software & Alternatives · Let’s Get Quoted',
   description:
-    'Compare Let’s Get Quoted with legacy contractor tools like Jobber, Housecall Pro, and Angi shared leads. See transparent pricing and feature breakdowns.',
+    'Compare Let’s Get Quoted with legacy contractor tools like Jobber, Housecall Pro, ServiceTitan, Angi, and Thumbtack. See transparent pricing and feature breakdowns.',
   alternates: { canonical: 'https://letsgetquoted.com/compare' },
   openGraph: {
     title: 'Compare Contractor Software Alternatives · Let’s Get Quoted',
     description:
-      'Compare Let’s Get Quoted vs Jobber, Housecall Pro, and Angi. Start at $0/month with free contractor websites and built-in AI intake.',
+      'Compare Let’s Get Quoted vs Jobber, Housecall Pro, ServiceTitan, and Angi. Start at $0/month with free contractor websites and built-in AI intake.',
     url: 'https://letsgetquoted.com/compare',
     type: 'website',
   },
@@ -28,7 +28,7 @@ export default function CompareHubPage() {
     '@type': 'WebPage',
     name: 'Compare Contractor Software Alternatives · Let’s Get Quoted',
     description:
-      'Side-by-side comparison of Let’s Get Quoted against Jobber, Housecall Pro, and Angi shared leads.',
+      'Side-by-side comparison of Let’s Get Quoted against Jobber, Housecall Pro, ServiceTitan, Angi, and Thumbtack.',
     url: 'https://letsgetquoted.com/compare',
   };
 
@@ -48,7 +48,7 @@ export default function CompareHubPage() {
             The contractor software built for <em>your profits</em>, not subscription bloat.
           </h1>
           <p className={styles.subhead}>
-            Legacy platforms charge \$150–\$350 every single month whether you book jobs or not—and still make you buy
+            Legacy platforms charge \$150–\$1,000+ every month whether you book jobs or not—and still make you buy
             websites and pay for shared leads. See how Let’s Get Quoted compares.
           </p>
 
@@ -66,6 +66,7 @@ export default function CompareHubPage() {
         <section className={styles.hubGrid} aria-label="Competitor comparison directory">
           {Object.values(COMPARISONS).map((comp) => (
             <article key={comp.slug} className={styles.hubCard}>
+              <div className={styles.hubCardBadge}>✦ {comp.badge}</div>
               <h2 className={styles.hubCardTitle}>LGQ vs. {comp.name}</h2>
               <div className={styles.hubCardPrice}>{comp.basePricing.competitor}</div>
               <p className={styles.hubCardBody}>{comp.summary}</p>
@@ -78,10 +79,11 @@ export default function CompareHubPage() {
 
         {/* Closing CTA */}
         <section className={styles.ctaBand}>
+          <span className={styles.badge}>Performance-Aligned Pricing</span>
           <h2>Ready to keep more money on every job?</h2>
           <p>
             Join contractors who replaced multiple monthly software bills with one unified platform. Free website,
-            smart lead intake, and fast payments.
+            smart lead intake, and fast payments starting at $0/month.
           </p>
           <Link href={APP_SIGNUP_URL} className={styles.btnPrimary}>
             Create Your Account in 2 Minutes &rarr;

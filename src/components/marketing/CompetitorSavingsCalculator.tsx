@@ -33,26 +33,60 @@ export default function CompetitorSavingsCalculator({
 
   const team = TEAM_SIZES.find((t) => t.id === selectedTeam) ?? TEAM_SIZES[1];
 
-  // Jobber pricing model:
-  // 1 user: Core ($49/mo) or Connect ($169/mo). Most switchers want 2-way text & QuickBooks ($169/mo)
-  // 3 users: Connect ($169/mo)
-  // 7 users: Grow ($349/mo)
-  // 15 users: Grow ($349/mo)
-  let jobberBaseMonthly = 169;
-  if (team.users === 1) jobberBaseMonthly = 49;
-  else if (team.users <= 5) jobberBaseMonthly = 169;
-  else jobberBaseMonthly = 349;
+  const lowerName = competitorName.toLowerCase();
+  const isHousecall = lowerName.includes('housecall');
+  const isServiceTitan = lowerName.includes('servicetitan');
+  const isLeadBroker = lowerName.includes('angi') || lowerName.includes('thumbtack') || lowerName.includes('lead');
 
-  const websiteHostingMonthly = includeWebsiteCost ? 35 : 0; // Wix/Squarespace/Webflow average
-  const jobberTotalMonthly = jobberBaseMonthly + websiteHostingMonthly;
-  const jobberAnnualTotal = jobberTotalMonthly * 12;
+  let competitorBaseMonthly = 169;
+  let tierLabel = 'Connect';
 
-  // LGQ pricing model:
-  // Flex is $0/mo base for any team size!
-  // Or Growth is $99/mo for up to 5 office users + 15 crew
-  const _lgqFlexMonthly = 0;
+  if (isServiceTitan) {
+    if (team.users === 1) competitorBaseMonthly = 398;
+    else if (team.users <= 3) competitorBaseMonthly = 796;
+    else if (team.users <= 7) competitorBaseMonthly = 1490;
+    else competitorBaseMonthly = 2985;
+    tierLabel = 'Enterprise Tech License';
+  } else if (isHousecall) {
+    if (team.users === 1) {
+      competitorBaseMonthly = 65;
+      tierLabel = 'Basic (1 user)';
+    } else if (team.users <= 5) {
+      competitorBaseMonthly = 169;
+      tierLabel = 'Essentials (1-5 users)';
+    } else if (team.users <= 8) {
+      competitorBaseMonthly = 299;
+      tierLabel = 'Max Plan';
+    } else {
+      competitorBaseMonthly = 299 + (team.users - 8) * 35;
+      tierLabel = 'Max + Extra Seats';
+    }
+  } else if (isLeadBroker) {
+    if (team.users === 1) competitorBaseMonthly = 450;
+    else if (team.users <= 3) competitorBaseMonthly = 950;
+    else if (team.users <= 7) competitorBaseMonthly = 1800;
+    else competitorBaseMonthly = 3500;
+    tierLabel = 'Shared Lead Budget';
+  } else {
+    // Jobber
+    if (team.users === 1) {
+      competitorBaseMonthly = 49;
+      tierLabel = 'Core (1 user)';
+    } else if (team.users <= 5) {
+      competitorBaseMonthly = 169;
+      tierLabel = 'Connect';
+    } else {
+      competitorBaseMonthly = 349;
+      tierLabel = 'Grow';
+    }
+  }
+
+  const websiteHostingMonthly = includeWebsiteCost ? (isHousecall ? 49 : 35) : 0;
+  const competitorTotalMonthly = competitorBaseMonthly + websiteHostingMonthly;
+  const competitorAnnualTotal = competitorTotalMonthly * 12;
+
   const lgqFlexAnnual = 0;
-  const annualSavingsOnFlex = jobberAnnualTotal - lgqFlexAnnual;
+  const annualSavingsOnFlex = competitorAnnualTotal - lgqFlexAnnual;
 
   return (
     <section
@@ -67,8 +101,11 @@ export default function CompetitorSavingsCalculator({
             See how much you save switching from <em>{competitorName}</em>.
           </h2>
           <p className={styles.subtitle}>
-            Jobber bills your credit card fixed subscription fees every 30 days and doesn&apos;t include a website.
-            See your exact annual savings with Let&apos;s Get Quoted.
+            {isLeadBroker
+              ? `${competitorName} charges you expensive per-lead fees and auto-bills your card. Calculate how much you save by owning your direct website leads.`
+              : isServiceTitan
+              ? `ServiceTitan charges steep per-tech licensing and thousands in setup fees. See your savings with Let’s Get Quoted.`
+              : `${competitorName} bills your credit card fixed monthly subscriptions and doesn't include a website. See your exact annual savings with Let's Get Quoted.`}
           </p>
         </div>
 
@@ -107,11 +144,11 @@ export default function CompetitorSavingsCalculator({
                   className={styles.checkbox}
                 />
                 <span className={styles.toggleText}>
-                  Include separate website fee (Wix/Squarespace/WordPress at ~$35/mo)
+                  Include separate website hosting fee (Wix/Squarespace/WordPress at ~$35/mo)
                 </span>
               </label>
               <p className={styles.toggleHint}>
-                Jobber does not build or host contractor websites. LGQ includes your custom SEO site for free.
+                {competitorName} does not include a custom trade website. LGQ includes your custom SEO site for free.
               </p>
             </div>
           </div>
@@ -122,17 +159,19 @@ export default function CompetitorSavingsCalculator({
             <div className={styles.compColumn}>
               <div className={styles.colHeader}>
                 <span className={styles.colBadgeComp}>{competitorName} Total</span>
-                <span className={styles.colSub}>Fixed recurring software bill</span>
+                <span className={styles.colSub}>
+                  {isLeadBroker ? 'Monthly lead spend & fees' : 'Fixed recurring software bill'}
+                </span>
               </div>
 
               <div className={styles.priceDisplay}>
                 <div className={styles.monthlyAmount}>
                   <span className={styles.currency}>$</span>
-                  <span className={styles.number}>{jobberTotalMonthly}</span>
+                  <span className={styles.number}>{competitorTotalMonthly}</span>
                   <span className={styles.period}>/ month</span>
                 </div>
                 <div className={styles.annualAmount}>
-                  <strong>${jobberAnnualTotal.toLocaleString()}</strong> billed per year
+                  <strong>${competitorAnnualTotal.toLocaleString()}</strong> billed per year
                 </div>
               </div>
 
@@ -140,15 +179,14 @@ export default function CompetitorSavingsCalculator({
                 <li>
                   <span className={styles.iconRed}>✗</span>
                   <span>
-                    {competitorName} Base ({team.users === 1 ? 'Core' : team.users <= 5 ? 'Connect' : 'Grow'}):{' '}
-                    <strong>${jobberBaseMonthly}/mo</strong>
+                    {competitorName} ({tierLabel}): <strong>${competitorBaseMonthly}/mo</strong>
                   </span>
                 </li>
                 <li>
                   <span className={styles.iconRed}>✗</span>
                   <span>
                     {includeWebsiteCost ? (
-                      <>Separate Website Hosting: <strong>+$35/mo</strong></>
+                      <>Separate Website Hosting: <strong>+${websiteHostingMonthly}/mo</strong></>
                     ) : (
                       <>No Website Included (build on 3rd party)</>
                     )}
@@ -156,7 +194,11 @@ export default function CompetitorSavingsCalculator({
                 </li>
                 <li>
                   <span className={styles.iconRed}>✗</span>
-                  <span>Billed 100% even during slow winter months</span>
+                  <span>
+                    {isLeadBroker
+                      ? 'Shared leads with 3-6 other competitors'
+                      : 'Billed 100% even during slow winter months'}
+                  </span>
                 </li>
               </ul>
             </div>
@@ -214,7 +256,7 @@ export default function CompetitorSavingsCalculator({
                   +${annualSavingsOnFlex.toLocaleString()} / year
                 </div>
                 <div className={styles.savingsSub}>
-                  Keep your hard-earned profits instead of paying fixed SaaS subscriptions.
+                  Keep your hard-earned profits instead of paying recurring subscription bills.
                 </div>
               </div>
             </div>

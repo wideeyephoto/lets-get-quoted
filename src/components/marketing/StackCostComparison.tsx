@@ -6,14 +6,6 @@ type StackItem = {
   note: string;
 };
 
-const LEGACY_STACK: readonly StackItem[] = [
-  { label: 'Jobber Connect Plan (Up to 5 Users)', cost: '$169 / mo', note: 'Scheduling & basic quoting' },
-  { label: 'Custom Website (Wix / Squarespace / WP)', cost: '$35 / mo', note: 'Hosting, domain & templates' },
-  { label: 'Review Collection Tool (NiceJob / Podium)', cost: '$99 / mo', note: 'Google review routing' },
-  { label: 'Dedicated 2-Way Texting Service', cost: '$30 / mo', note: 'Customer SMS communication' },
-  { label: 'Lead Intake & Form Builder (Typeform)', cost: '$25 / mo', note: 'Basic online booking form' },
-];
-
 const LGQ_STACK: readonly StackItem[] = [
   { label: 'Full Back Office CRM & Scheduling', cost: 'INCLUDED', note: 'Jobs, crew dispatch, calendar & map' },
   { label: 'Custom SEO Contractor Website', cost: 'INCLUDED', note: '20+ trade themes + custom domain' },
@@ -21,6 +13,62 @@ const LGQ_STACK: readonly StackItem[] = [
   { label: '2-Way SMS & Dedicated Business Line', cost: 'INCLUDED', note: 'Integrated customer chat feeds' },
   { label: '24/7 AI Smart Intake & Scorer', cost: 'INCLUDED', note: 'Instant scoping & hot lead triage' },
 ];
+
+function getCompetitorStack(name: string): { items: readonly StackItem[]; totalMonthly: string; totalAnnual: string } {
+  const lower = name.toLowerCase();
+  if (lower.includes('housecall')) {
+    return {
+      items: [
+        { label: 'Housecall Pro Essentials Plan', cost: '$169 / mo', note: 'Base CRM & mobile dispatch' },
+        { label: 'Website Builder Add-on', cost: '$49 / mo', note: 'Separate recurring website fee' },
+        { label: 'Automated Marketing Add-on', cost: '$49 / mo', note: 'Postcard & email follow-ups' },
+        { label: '2-Way Text Messaging Line', cost: '$30 / mo', note: 'Customer communication add-on' },
+        { label: 'Online Booking Add-on', cost: '$25 / mo', note: 'Website scheduling widget' },
+      ],
+      totalMonthly: '$322 / month',
+      totalAnnual: '$3,864.00 billed every single year',
+    };
+  }
+
+  if (lower.includes('servicetitan')) {
+    return {
+      items: [
+        { label: 'ServiceTitan Base Technician Licenses', cost: '$450 / mo', note: 'Core enterprise dispatch' },
+        { label: 'Enterprise Setup & Onboarding (Amortized)', cost: '$250 / mo', note: 'Mandatory $3,000 setup fee' },
+        { label: 'Marketing Pro & Review Module', cost: '$250 / mo', note: 'Email & review automation' },
+        { label: 'Custom Marketing Website (Agency)', cost: '$100 / mo', note: 'External hosting & maintenance' },
+      ],
+      totalMonthly: '$1,050 / month',
+      totalAnnual: '$12,600.00 billed every single year',
+    };
+  }
+
+  if (lower.includes('angi') || lower.includes('thumbtack') || lower.includes('lead')) {
+    return {
+      items: [
+        { label: 'Monthly Shared Lead Retainers', cost: '$650 / mo', note: '8–12 shared directory inquiries' },
+        { label: 'Directory Profile & Placement Fees', cost: '$50 / mo', note: 'Monthly profile maintenance' },
+        { label: 'Separate Contractor Website (Wix/WP)', cost: '$35 / mo', note: 'Third-party website hosting' },
+        { label: 'Separate Invoicing & Quoting Tool', cost: '$49 / mo', note: 'External software to run jobs' },
+      ],
+      totalMonthly: '$784 / month',
+      totalAnnual: '$9,408.00 billed every single year',
+    };
+  }
+
+  // Default: Jobber
+  return {
+    items: [
+      { label: 'Jobber Connect Plan (Up to 5 Users)', cost: '$169 / mo', note: 'Scheduling & basic quoting' },
+      { label: 'Custom Website (Wix / Squarespace / WP)', cost: '$35 / mo', note: 'Hosting, domain & templates' },
+      { label: 'Review Collection Tool (NiceJob / Podium)', cost: '$99 / mo', note: 'Google review routing' },
+      { label: 'Dedicated 2-Way Texting Service', cost: '$30 / mo', note: 'Customer SMS communication' },
+      { label: 'Lead Intake & Form Builder (Typeform)', cost: '$25 / mo', note: 'Basic online booking form' },
+    ],
+    totalMonthly: '$358 / month',
+    totalAnnual: '$4,296.00 billed every single year',
+  };
+}
 
 export type StackCostComparisonProps = {
   competitorName?: string;
@@ -31,6 +79,8 @@ export default function StackCostComparison({
   competitorName = 'Jobber',
   className,
 }: StackCostComparisonProps) {
+  const competitorStack = getCompetitorStack(competitorName);
+
   return (
     <section className={[styles.section, className].filter(Boolean).join(' ')} aria-label="Tool stack comparison">
       <div className={styles.container}>
@@ -40,8 +90,8 @@ export default function StackCostComparison({
             The Fragmented {competitorName} Stack vs. <em>The Unified Platform</em>
           </h2>
           <p className={styles.subtitle}>
-            Most contractors using {competitorName} pay for 4 to 5 separate tools because {competitorName} doesn&apos;t include a
-            website, AI intake, or review routing. Here is what you actually pay:
+            Most contractors using {competitorName} pay for multiple separate tools because {competitorName} doesn&apos;t include a
+            website, AI intake, or full review routing. Here is what you actually pay:
           </p>
         </div>
 
@@ -49,13 +99,13 @@ export default function StackCostComparison({
           {/* Legacy Fragmented Stack */}
           <div className={styles.stackCardComp}>
             <div className={styles.cardHeader}>
-              <div className={styles.badgeComp}>Fragmented 5-App Stack</div>
+              <div className={styles.badgeComp}>Fragmented Multi-App Stack</div>
               <h3 className={styles.cardTitle}>{competitorName} + Add-on Subscriptions</h3>
-              <p className={styles.cardSub}>5 logins, duplicate data entry, and broken sync</p>
+              <p className={styles.cardSub}>Multiple logins, duplicate data entry, and broken sync</p>
             </div>
 
             <ul className={styles.stackList}>
-              {LEGACY_STACK.map((item) => (
+              {competitorStack.items.map((item) => (
                 <li key={item.label} className={styles.stackItemComp}>
                   <div className={styles.itemMain}>
                     <span className={styles.itemIconComp}>✗</span>
@@ -71,8 +121,8 @@ export default function StackCostComparison({
 
             <div className={styles.totalBoxComp}>
               <div className={styles.totalLabel}>Total Software Overhead</div>
-              <div className={styles.totalAmountComp}>$358 / month</div>
-              <div className={styles.totalAnnualComp}>$4,296.00 billed every single year</div>
+              <div className={styles.totalAmountComp}>{competitorStack.totalMonthly}</div>
+              <div className={styles.totalAnnualComp}>{competitorStack.totalAnnual}</div>
             </div>
           </div>
 
