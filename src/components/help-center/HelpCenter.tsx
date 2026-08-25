@@ -386,88 +386,301 @@ const ICON_MAP: Record<string, React.ReactNode> = {
   Hammer: <Icons.Hammer />
 };
 
-// Real Downloadable Template Generator Helper
-function triggerRealDownload(tpl: DownloadableTemplate) {
-  let textContent = '';
+// ================= STYLIZED CONTRACTOR DOCUMENT GENERATOR =================
+function generateStylizedDocument(tpl: DownloadableTemplate) {
+  const docTitle = tpl.name;
+  let formBadge = 'FORM LW-101 · PROGRESS PAYMENT LIEN WAIVER';
+  let bodyContent = '';
+
   if (tpl.id === 'tpl-lien-waiver') {
-    textContent = `RESIDENTIAL CONTRACTOR PROGRESS LIEN WAIVER & RELEASE
-======================================================================
-Property / Project Address: _________________________________________
-Contractor / Company Name: __________________________________________
-Customer / Owner Name:     __________________________________________
-Payment Amount Received:   $_________________________________________
+    formBadge = 'FORM LW-101 · CONTRACTOR PROGRESS LIEN WAIVER';
+    bodyContent = `
+      <div class="meta-card">
+        <div class="grid-2">
+          <div><span class="label">Property / Jobsite Address</span><div class="fill-box">124 Maplewood Ave, Maplewood, NJ 07040</div></div>
+          <div><span class="label">Contractor / Business Name</span><div class="fill-box">Maplewood Pro Services LLC</div></div>
+          <div><span class="label">Owner / Customer Name</span><div class="fill-box">Jane &amp; David Miller</div></div>
+          <div><span class="label">Payment Amount Received</span><div class="fill-box highlight-val">$12,450.00 (Twelve Thousand Four Hundred Fifty Dollars)</div></div>
+        </div>
+      </div>
 
-The undersigned Contractor, upon receipt of the payment amount above, hereby 
-waives and releases any and all lien or claim of, or right to, lien, under the 
-statutes relating to mechanics' liens, with respect to and on said above-described 
-premises, and the improvements thereon, on account of labor, services, material, 
-fixtures, apparatus or machinery furnished by the undersigned to or on account 
-of the said premises for the work performed to date.
+      <div class="clause-section">
+        <h3>1. Conditional Waiver &amp; Release Upon Progress Payment</h3>
+        <p>The undersigned Contractor, upon receipt of the sum stated above, hereby waives and releases any and all liens, claims, or rights to lien under the statutes of this State relating to mechanics' and materialmen's liens, on account of labor, services, equipment, or materials furnished through the date of this instrument to the property described above.</p>
+        
+        <h3>2. Exceptions &amp; Exclusions</h3>
+        <p>This waiver does not cover any retainage or disputed extra work not included in prior approved change orders. This release is conditioned upon clearance of funds into the Contractor's banking institution.</p>
+      </div>
 
-Date: ________________________
-Authorized Signature: _______________________________________________
-Printed Name: _______________________________________________________
-`;
+      <div class="signature-deck">
+        <div class="sig-box">
+          <div class="sig-line"></div>
+          <span class="sig-label">Authorized Contractor Signature</span>
+          <span class="sig-sub">Brett M. — Managing Partner</span>
+        </div>
+        <div class="sig-box">
+          <div class="sig-line"></div>
+          <span class="sig-label">Date Signed</span>
+          <span class="sig-sub">August 25, 2026</span>
+        </div>
+      </div>
+    `;
   } else if (tpl.id === 'tpl-change-order') {
-    textContent = `EXTRA WORK AUTHORIZATION & CHANGE ORDER AGREEMENT
-======================================================================
-Project Title / Address:  ___________________________________________
-Contractor Name:          ___________________________________________
-Customer Name:            ___________________________________________
-Change Order Number:      # _________________________________________
+    formBadge = 'FORM CO-202 · RESIDENTIAL CONTRACT CHANGE ORDER';
+    bodyContent = `
+      <div class="meta-card">
+        <div class="grid-2">
+          <div><span class="label">Project Title &amp; Address</span><div class="fill-box">Master Bathroom &amp; Plumbing Remodel · 45 Highland Rd</div></div>
+          <div><span class="label">Change Order Number</span><div class="fill-box highlight-val">CO-#003</div></div>
+          <div><span class="label">Prime Contractor</span><div class="fill-box">Maplewood Pro Services LLC</div></div>
+          <div><span class="label">Property Owner</span><div class="fill-box">Robert Sterling</div></div>
+        </div>
+      </div>
 
-DESCRIPTION OF EXTRA WORK / MODIFICATION:
-----------------------------------------------------------------------
-1. __________________________________________________________________
-2. __________________________________________________________________
+      <div class="clause-section">
+        <h3>1. Description of Unforeseen Scope / Material Additions</h3>
+        <p>Upon demolition of subfloor, cracked 4" cast iron main drain stack was uncovered requiring replacement with Schedule 40 PVC, plus customer-requested upgrade to thermostatic brushed nickel shower valve trim kit.</p>
+        
+        <table class="styled-table">
+          <thead>
+            <tr><th>Itemized Scope Description</th><th>Labor Hours</th><th>Materials Cost</th><th>Total Adjustment</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Main Stack Cast Iron to PVC replacement</td><td>4.5 hrs</td><td>$340.00</td><td>$880.00</td></tr>
+            <tr><td>Thermostatic Valve upgrade &amp; rough-in adjustment</td><td>2.0 hrs</td><td>$480.00</td><td>$720.00</td></tr>
+          </tbody>
+        </table>
 
-FINANCIAL ADJUSTMENT:
-- Original Contract Amount:      $ ___________________________________
-- Previous Approved Changes:     $ ___________________________________
-- This Change Order (+/-):       $ ___________________________________
-- REVISED TOTAL CONTRACT AMOUNT: $ ___________________________________
+        <h3>2. Financial &amp; Schedule Impact</h3>
+        <div class="financial-summary-box">
+          <div class="fin-row"><span>Original Contract Amount:</span><strong>$24,500.00</strong></div>
+          <div class="fin-row"><span>Prior Approved Changes (CO #1 &amp; #2):</span><strong>+$1,200.00</strong></div>
+          <div class="fin-row highlight-row"><span>This Change Order Amount (+):</span><strong>+$1,600.00</strong></div>
+          <div class="fin-row total-row"><span>REVISED TOTAL CONTRACT PRICE:</span><strong>$27,300.00</strong></div>
+        </div>
+        <p style="margin-top: 0.75rem; font-size: 0.85rem; color: #475569;">Schedule Adjustment: <strong>+2 Additional Working Days</strong> required for final plumbing inspection.</p>
+      </div>
 
-SCHEDULE ADJUSTMENT:
-- Additional Working Days Required: _______ Days
-
-Homeowner Signature: _______________________ Date: ___________________
-Contractor Signature: ______________________ Date: ___________________
-`;
+      <div class="signature-deck">
+        <div class="sig-box">
+          <div class="sig-line"></div>
+          <span class="sig-label">Homeowner Acceptance Signature</span>
+          <span class="sig-sub">I authorize the scope and cost adjustment above</span>
+        </div>
+        <div class="sig-box">
+          <div class="sig-line"></div>
+          <span class="sig-label">Contractor Authorization Signature</span>
+          <span class="sig-sub">Maplewood Pro Services LLC</span>
+        </div>
+      </div>
+    `;
   } else {
-    textContent = `50% UPFRONT MATERIAL DEPOSIT & PAYMENT SCHEDULE ADDENDUM
-======================================================================
-Customer Name:     ___________________________________________________
-Jobsite Address:   ___________________________________________________
-Total Quote Price: $ _________________________________________________
+    formBadge = 'FORM MD-303 · MATERIAL DEPOSIT & PAYMENT MILESTONES';
+    bodyContent = `
+      <div class="meta-card">
+        <div class="grid-2">
+          <div><span class="label">Customer / Jobsite Address</span><div class="fill-box">78 Elm Street, Millburn, NJ</div></div>
+          <div><span class="label">Total Contract Proposal Value</span><div class="fill-box highlight-val">$18,600.00</div></div>
+        </div>
+      </div>
 
-1. UPFRONT MATERIAL DEPOSIT (50%):
-Upon digital acceptance of this proposal, a non-refundable deposit of 
-fifty percent (50%) of the total contract price ($______________) is due 
-immediately to secure scheduling, purchase specialized jobsite materials, 
-and allocate field labor.
+      <div class="clause-section">
+        <h3>1. Mandatory Upfront Material Deposit (50%)</h3>
+        <p>In accordance with standard trade practices, a <strong>50% upfront material deposit ($9,300.00)</strong> is required upon signing to secure guaranteed calendar scheduling and place non-cancelable factory orders for specialty equipment and fixtures.</p>
 
-2. PROGRESS & FINAL DISBURSEMENT:
-- 40% due upon rough-in inspection or midpoint milestone completion.
-- 10% final balance due immediately upon final walkthrough.
+        <div class="milestones-deck">
+          <div class="milestone-card">
+            <span class="m-badge">Milestone 1 · 50%</span>
+            <h4>Upon Contract Signing</h4>
+            <p>Secures jobsite date &amp; purchases custom materials ($9,300.00).</p>
+          </div>
+          <div class="milestone-card">
+            <span class="m-badge">Milestone 2 · 40%</span>
+            <h4>Rough-In Inspection</h4>
+            <p>Due upon completion of framing, plumbing &amp; electrical rough-in ($7,440.00).</p>
+          </div>
+          <div class="milestone-card">
+            <span class="m-badge">Milestone 3 · 10%</span>
+            <h4>Final Punch List</h4>
+            <p>Due upon final walkthrough and customer sign-off ($1,860.00).</p>
+          </div>
+        </div>
 
-3. METHOD OF PAYMENT:
-Payments may be rendered via credit card / Apple Pay through the Let's 
-Get Quoted client portal or certified bank draft.
+        <h3>2. Terms &amp; Instant Digital Payment Options</h3>
+        <p>Homeowners may authorize payment via instant 1-click Apple Pay, Google Pay, major Credit Cards (Visa, MasterCard, Amex) through the Let's Get Quoted client portal, or certified bank draft.</p>
+      </div>
 
-Agreed & Accepted:
-Customer Signature: ________________________ Date: ___________________
-`;
+      <div class="signature-deck">
+        <div class="sig-box">
+          <div class="sig-line"></div>
+          <span class="sig-label">Homeowner Acceptance Signature</span>
+          <span class="sig-sub">Date: ________________________</span>
+        </div>
+        <div class="sig-box">
+          <div class="sig-line"></div>
+          <span class="sig-label">Contractor Authorized Representative</span>
+          <span class="sig-sub">Date: ________________________</span>
+        </div>
+      </div>
+    `;
   }
 
-  const blob = new Blob([textContent], { type: 'text/plain;charset=utf-8' });
+  const htmlDoc = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${docTitle} · Let's Get Quoted</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background-color: #f8fafc;
+      color: #0f172a;
+      line-height: 1.6;
+      padding: 2rem 1rem;
+    }
+    .page-container {
+      max-width: 850px;
+      margin: 0 auto;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 16px;
+      padding: 3rem 3.5rem;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01);
+      position: relative;
+    }
+    .print-bar {
+      max-width: 850px;
+      margin: 0 auto 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .btn-print {
+      background: #ff7a21;
+      color: #ffffff;
+      border: none;
+      padding: 0.6rem 1.4rem;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 0.9rem;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(255, 122, 33, 0.3);
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .btn-print:hover { background: #e66914; }
+    .doc-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      border-bottom: 2px solid #ff7a21;
+      padding-bottom: 1.5rem;
+      margin-bottom: 2rem;
+    }
+    .badge {
+      display: inline-block;
+      font-size: 0.75rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #ff7a21;
+      background: #fff3eb;
+      padding: 4px 10px;
+      border-radius: 6px;
+      margin-bottom: 0.5rem;
+    }
+    .doc-title { font-size: 1.75rem; font-weight: 800; color: #0f172a; line-height: 1.25; }
+    .brand-stamp { text-align: right; }
+    .brand-logo { font-size: 1.1rem; font-weight: 800; color: #0f172a; }
+    .brand-logo span { color: #ff7a21; }
+    .brand-sub { font-size: 0.75rem; color: #64748b; font-weight: 500; }
+    
+    .meta-card {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 2rem;
+    }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+    .label { display: block; font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.25rem; }
+    .fill-box { font-size: 0.95rem; font-weight: 600; color: #1e293b; }
+    .highlight-val { color: #ff7a21; font-weight: 700; }
+
+    .clause-section h3 { font-size: 1.05rem; font-weight: 700; color: #0f172a; margin: 1.5rem 0 0.5rem; }
+    .clause-section p { font-size: 0.9rem; color: #334155; line-height: 1.65; margin-bottom: 0.75rem; }
+
+    .styled-table { width: 100%; border-collapse: collapse; margin: 1.25rem 0; font-size: 0.85rem; }
+    .styled-table th { background: #f1f5f9; text-align: left; padding: 0.75rem; font-weight: 700; color: #334155; border-bottom: 2px solid #cbd5e1; }
+    .styled-table td { padding: 0.75rem; border-bottom: 1px solid #e2e8f0; color: #1e293b; }
+
+    .financial-summary-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 1rem 1.25rem; margin-top: 1rem; }
+    .fin-row { display: flex; justify-content: space-between; font-size: 0.9rem; padding: 0.35rem 0; color: #475569; }
+    .highlight-row { color: #ff7a21; font-weight: 700; }
+    .total-row { border-top: 2px solid #cbd5e1; padding-top: 0.6rem; font-size: 1rem; font-weight: 800; color: #0f172a; }
+
+    .milestones-deck { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin: 1.25rem 0; }
+    .milestone-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 1rem; }
+    .m-badge { font-size: 0.7rem; font-weight: 800; color: #ff7a21; background: #fff3eb; padding: 2px 6px; border-radius: 4px; display: inline-block; margin-bottom: 0.35rem; }
+    .milestone-card h4 { font-size: 0.9rem; font-weight: 700; margin-bottom: 0.3rem; }
+    .milestone-card p { font-size: 0.8rem; color: #64748b; line-height: 1.4; }
+
+    .signature-deck { display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; margin-top: 3.5rem; padding-top: 1.5rem; }
+    .sig-box { display: flex; flex-direction: column; }
+    .sig-line { border-bottom: 1.5px solid #0f172a; height: 35px; margin-bottom: 0.5rem; }
+    .sig-label { font-size: 0.8rem; font-weight: 700; color: #0f172a; }
+    .sig-sub { font-size: 0.75rem; color: #64748b; }
+
+    @media print {
+      body { background: white; padding: 0; }
+      .print-bar { display: none; }
+      .page-container { border: none; box-shadow: none; padding: 1.5rem 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="print-bar">
+    <span style="font-size: 0.85rem; color: #64748b;">Ready to customize &amp; print for your customer</span>
+    <button class="btn-print" onclick="window.print()">🖨️ Print / Save as PDF</button>
+  </div>
+  <div class="page-container">
+    <div class="doc-header">
+      <div>
+        <span class="badge">${formBadge}</span>
+        <h1 class="doc-title">${docTitle}</h1>
+      </div>
+      <div class="brand-stamp">
+        <div class="brand-logo">Let's Get <span>Quoted</span></div>
+        <div class="brand-sub">Contractor Legal Template Suite</div>
+      </div>
+    </div>
+    ${bodyContent}
+  </div>
+</body>
+</html>`;
+
+  // Trigger file download
+  const blob = new Blob([htmlDoc], { type: 'text/html;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
-  link.download = `${tpl.name}.txt`;
+  link.download = `${tpl.name.replace(/[^a-zA-Z0-9]/g, '-')}.html`;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+
+  // Open formatted live preview in new tab for instant printing/viewing
+  const previewWindow = window.open('', '_blank');
+  if (previewWindow) {
+    previewWindow.document.write(htmlDoc);
+    previewWindow.document.close();
+  }
 }
 
 export default function HelpCenter() {
@@ -738,14 +951,14 @@ export default function HelpCenter() {
 
               {spotlightTemplates.length > 0 && (
                 <div>
-                  <div className={styles.spotlightCategoryTitle}>📄 Legal &amp; Billing Templates</div>
+                  <div className={styles.spotlightCategoryTitle}>📄 Stylized Legal &amp; Billing Documents</div>
                   {spotlightTemplates.map(tpl => (
                     <div
                       key={tpl.id}
                       className={styles.spotlightItem}
                       onClick={() => {
-                        triggerRealDownload(tpl);
-                        showToast(`Downloading ${tpl.name}...`);
+                        generateStylizedDocument(tpl);
+                        showToast(`Generated & opened: ${tpl.name}`);
                         setIsSearchFocused(false);
                       }}
                     >
@@ -753,10 +966,10 @@ export default function HelpCenter() {
                         <Icons.Download />
                         <div>
                           <div className={styles.spotlightItemTitle}>{tpl.name}</div>
-                          <div className={styles.spotlightItemMeta}>{tpl.fileFormat} · {tpl.fileSize}</div>
+                          <div className={styles.spotlightItemMeta}>{tpl.fileFormat} · Print &amp; PDF Ready</div>
                         </div>
                       </div>
-                      <span className={styles.spotlightTag}>Download</span>
+                      <span className={styles.spotlightTag}>Open &amp; Print</span>
                     </div>
                   ))}
                 </div>
@@ -825,7 +1038,7 @@ export default function HelpCenter() {
         </div>
       </section>
 
-      {/* ================= NEW: QUICK START 3-STEP ONBOARDING CHECKLIST ================= */}
+      {/* ================= QUICK START 3-STEP ONBOARDING CHECKLIST ================= */}
       <section id="quick-start" style={{ padding: '0 1.5rem' }}>
         <div className={styles.quickStartBanner}>
           <div className={styles.quickStartHeader}>
@@ -1045,14 +1258,14 @@ export default function HelpCenter() {
         </div>
       </section>
 
-      {/* ================= DOWNLOADABLE CONTRACTOR ASSETS ================= */}
+      {/* ================= STYLIZED DOWNLOADABLE CONTRACTOR ASSETS ================= */}
       <section id="contractor-templates" className={styles.sectionContainer}>
         <div className={styles.sectionHeader}>
           <div>
-            <span className={styles.sectionTag}>Free Contractor Assets</span>
-            <h2 className={styles.sectionTitle}>Download Legal &amp; Billing Templates</h2>
+            <span className={styles.sectionTag}>Stylized Legal Documents</span>
+            <h2 className={styles.sectionTitle}>Download &amp; Print Contractor Agreements</h2>
             <p className={styles.sectionDesc}>
-              Ready-to-use contractor lien waivers, change order authorizations, and 50% deposit clauses vetted by trade attorneys.
+              Ready-to-print, beautifully formatted contractor lien waivers, change order authorizations, and milestone deposit schedules.
             </p>
           </div>
         </div>
@@ -1061,7 +1274,7 @@ export default function HelpCenter() {
           {DOWNLOADABLE_TEMPLATES.map(tpl => (
             <div key={tpl.id} className={styles.templateCard}>
               <div className={styles.templateHeader}>
-                <span className={styles.templateFormatTag}>{tpl.fileFormat}</span>
+                <span className={styles.templateFormatTag}>Print &amp; PDF Ready</span>
                 <span className={styles.templateDownloads}>{tpl.downloadsCount} downloads</span>
               </div>
               <h3 className={styles.templateName}>{tpl.name}</h3>
@@ -1069,12 +1282,12 @@ export default function HelpCenter() {
               <button
                 className={styles.btnOutlineBlock}
                 onClick={() => {
-                  triggerRealDownload(tpl);
-                  showToast(`Downloaded: ${tpl.name}`);
+                  generateStylizedDocument(tpl);
+                  showToast(`Opened printable document: ${tpl.name}`);
                 }}
               >
                 <Icons.Download />
-                <span>Download Free Template ({tpl.fileSize})</span>
+                <span>Open &amp; Print Document</span>
               </button>
             </div>
           ))}
