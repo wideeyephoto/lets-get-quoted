@@ -13,11 +13,9 @@ type FaqItem = {
   ctaHref?: string;
 };
 
-type Message = {
-  id: string;
-  role: 'user' | 'assistant';
-  text: string;
-  title?: string;
+type CustomAnswer = {
+  question: string;
+  answer: string;
   ctaText?: string;
   ctaHref?: string;
 };
@@ -67,19 +65,13 @@ const KNOWLEDGE_BASE: FaqItem[] = [
 
 export default function MarketingAiAssistant() {
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [expandedFaqId, setExpandedFaqId] = useState<string | null>(null);
+  const [customAnswer, setCustomAnswer] = useState<CustomAnswer | null>(null);
   const [query, setQuery] = useState('');
   const [monthlyVolume, setMonthlyVolume] = useState<number>(20000);
   const drawerRef = useRef<HTMLDivElement>(null);
-  const chatBodyRef = useRef<HTMLDivElement>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  // Auto-scroll to bottom when messages update
-  useEffect(() => {
-    if (messages.length > 0 && messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
-    }
-  }, [messages]);
+  const faqRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const customAnswerRef = useRef<HTMLDivElement>(null);
 
   // Close on Escape key
   useEffect(() => {
@@ -115,25 +107,19 @@ export default function MarketingAiAssistant() {
     };
   }, [monthlyVolume]);
 
-  const handleSelectFaq = (faq: FaqItem) => {
-    const userMsg: Message = {
-      id: `user-${Date.now()}`,
-      role: 'user',
-      text: faq.title,
-    };
-    const botMsg: Message = {
-      id: `assistant-${Date.now() + 1}`,
-      role: 'assistant',
-      title: faq.title,
-      text: faq.answer,
-      ctaText: faq.ctaText,
-      ctaHref: faq.ctaHref,
-    };
-    setMessages((prev) => [...prev, userMsg, botMsg]);
-  };
+  const handleToggleFaq = (faqId: string) => {
+    const nextId = expandedFaqId === faqId ? null : faqId;
+    setExpandedFaqId(nextId);
+    setCustomAnswer(null);
 
-  const handleClearChat = () => {
-    setMessages([]);
+    if (nextId) {
+      setTimeout(() => {
+        const el = faqRefs.current[nextId];
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+      }, 50);
+    }
   };
 
   const handleSearchSubmit = (e: React.FormEvent) => {
@@ -165,31 +151,31 @@ export default function MarketingAiAssistant() {
       }
     }
 
-    const userMsg: Message = {
-      id: `user-${Date.now()}`,
-      role: 'user',
-      text: clean,
-    };
-
-    const botMsg: Message = match
-      ? {
-          id: `assistant-${Date.now() + 1}`,
-          role: 'assistant',
-          title: match.title,
-          text: match.answer,
-          ctaText: match.ctaText,
-          ctaHref: match.ctaHref,
+    if (match) {
+      setExpandedFaqId(match.id);
+      setCustomAnswer(null);
+      setTimeout(() => {
+        const el = faqRefs.current[match!.id];
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
-      : {
-          id: `assistant-${Date.now() + 1}`,
-          role: 'assistant',
-          title: `Answer for "${clean}"`,
-          text: 'Let’s Get Quoted gives trade contractors a free custom website, 24/7 AI lead qualification, instant quotes with deposits, and complete scheduling starting at $0/mo. All plans include QuickBooks sync and Stripe payouts.',
-          ctaText: 'Start Free on Flex',
-          ctaHref: SIGNUP_URL,
-        };
+      }, 50);
+    } else {
+      setExpandedFaqId(null);
+      setCustomAnswer({
+        question: clean,
+        answer:
+          'Let’s Get Quoted gives trade contractors a free custom website, 24/7 AI lead qualification, instant quotes with deposits, and complete scheduling starting at $0/mo. All plans include QuickBooks sync and Stripe payouts.',
+        ctaText: 'Start Free on Flex',
+        ctaHref: SIGNUP_URL,
+      });
+      setTimeout(() => {
+        if (customAnswerRef.current) {
+          customAnswerRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+      }, 50);
+    }
 
-    setMessages((prev) => [...prev, userMsg, botMsg]);
     setQuery('');
   };
 
@@ -233,41 +219,32 @@ export default function MarketingAiAssistant() {
                 </span>
               </div>
             </div>
-            <div className={styles.headerActions}>
-              {messages.length > 0 && (
-                <button
-                  type="button"
-                  onClick={handleClearChat}
-                  className={styles.resetBtn}
-                  title="Reset conversation"
-                  aria-label="Reset conversation"
-                >
-                  ↺ Clear
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={() => setIsOpen(false)}
-                className={styles.closeBtn}
-                aria-label="Close Assistant"
-              >
-                ✕
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => setIsOpen(false)}
+              className={styles.closeBtn}
+              aria-label="Close Assistant"
+            >
+              ✕
+            </button>
           </div>
 
           {/* Body */}
-          <div ref={chatBodyRef} className={styles.chatBody}>
+          <div className={styles.chatBody}>
             <div className={styles.messageBubble}>
-              👋 Hi! I can help you choose the right plan, explain how to switch from Jobber or Housecall Pro, or show
-              you how our <strong>$0/mo Flex plan</strong> works.
+              👋 Hi! Ask anything about plans, switching, or integrations. Tap any question below to see instant answers:
             </div>
 
             {/* Interactive Plan Matcher */}
             <div className={styles.planBox}>
-              <span className={styles.planBoxLabel}>🧮 Interactive Plan Matcher</span>
+              <div className={styles.planBoxHeader}>
+                <span className={styles.planBoxLabel}>🧮 Plan Matcher</span>
+                <span className={styles.planBadgeMini}>
+                  <strong>{planRecommendation.name}</strong> (${(monthlyVolume / 1000).toFixed(0)}k/mo)
+                </span>
+              </div>
               <div className={styles.planInputRow}>
-                <span style={{ fontSize: 12, color: '#a7bcc8' }}>Monthly Card Volume:</span>
+                <span className={styles.planVolLabel}>Volume:</span>
                 <input
                   type="range"
                   min={2000}
@@ -282,73 +259,70 @@ export default function MarketingAiAssistant() {
               </div>
               <div className={styles.planRecBadge}>
                 Recommended: <strong>{planRecommendation.name} Plan</strong> ({planRecommendation.price})
-                <div style={{ fontSize: 11, marginTop: 4, color: '#a7bcc8' }}>{planRecommendation.reason}</div>
+                <div className={styles.planRecReason}>{planRecommendation.reason}</div>
               </div>
             </div>
 
-            {/* If no questions asked yet, show prominent starter list */}
-            {messages.length === 0 && (
-              <div className={styles.quickPillsSection}>
-                <span className={styles.quickPillsLabel}>Common Contractor Questions</span>
-                <div className={styles.pillList}>
-                  {KNOWLEDGE_BASE.map((faq) => (
-                    <button
+            {/* In-Place Accordion Questions */}
+            <div className={styles.quickPillsSection}>
+              <span className={styles.quickPillsLabel}>Common Contractor Questions</span>
+              <div className={styles.accordionList}>
+                {KNOWLEDGE_BASE.map((faq) => {
+                  const isExpanded = expandedFaqId === faq.id;
+                  return (
+                    <div
                       key={faq.id}
-                      type="button"
-                      onClick={() => handleSelectFaq(faq)}
-                      className={styles.pillBtn}
+                      ref={(el) => {
+                        faqRefs.current[faq.id] = el;
+                      }}
+                      className={`${styles.accordionCard} ${isExpanded ? styles.accordionCardOpen : ''}`}
                     >
-                      <span>{faq.title}</span>
-                      <span className={styles.pillArrow}>&rarr;</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
+                      <button
+                        type="button"
+                        onClick={() => handleToggleFaq(faq.id)}
+                        className={styles.accordionHeader}
+                        aria-expanded={isExpanded}
+                      >
+                        <span>{faq.title}</span>
+                        <span className={`${styles.accordionArrow} ${isExpanded ? styles.accordionArrowOpen : ''}`}>
+                          &rarr;
+                        </span>
+                      </button>
 
-            {/* Active Conversation Messages */}
-            {messages.map((msg) =>
-              msg.role === 'user' ? (
-                <div key={msg.id} className={styles.userBubble}>
-                  {msg.text}
-                </div>
-              ) : (
-                <div key={msg.id} className={styles.assistantBubble}>
-                  {msg.title && <div className={styles.assistantBubbleTitle}>{msg.title}</div>}
-                  <p className={styles.assistantBubbleText}>{msg.text}</p>
-                  {msg.ctaText && msg.ctaHref && (
-                    <div>
-                      <Link href={msg.ctaHref} className={styles.assistantBubbleCta}>
-                        {msg.ctaText} &rarr;
-                      </Link>
+                      {isExpanded && (
+                        <div className={styles.accordionBody}>
+                          <p className={styles.accordionAnswerText}>{faq.answer}</p>
+                          {faq.ctaText && faq.ctaHref && (
+                            <div>
+                              <Link href={faq.ctaHref} className={styles.accordionCta}>
+                                {faq.ctaText} &rarr;
+                              </Link>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-              )
-            )}
+                  );
+                })}
+              </div>
+            </div>
 
-            {/* Suggestion Follow-up Chips when conversation has started */}
-            {messages.length > 0 && (
-              <div className={styles.quickChipsSection}>
-                <span className={styles.quickChipsLabel}>Ask another question:</span>
-                <div className={styles.quickChipsRow}>
-                  {KNOWLEDGE_BASE.map((faq) => (
-                    <button
-                      key={faq.id}
-                      type="button"
-                      onClick={() => handleSelectFaq(faq)}
-                      className={styles.quickChip}
-                    >
-                      <span>{faq.title}</span>
-                      <span className={styles.quickChipArrow}>&rarr;</span>
-                    </button>
-                  ))}
+            {/* Custom Search Answer Display */}
+            {customAnswer && (
+              <div ref={customAnswerRef} className={styles.customResultCard}>
+                <div className={styles.customResultTitle}>
+                  <span>✦ Answer for &ldquo;{customAnswer.question}&rdquo;</span>
                 </div>
+                <p className={styles.customResultText}>{customAnswer.answer}</p>
+                {customAnswer.ctaText && customAnswer.ctaHref && (
+                  <div>
+                    <Link href={customAnswer.ctaHref} className={styles.accordionCta}>
+                      {customAnswer.ctaText} &rarr;
+                    </Link>
+                  </div>
+                )}
               </div>
             )}
-
-            {/* Anchor for auto-scroll */}
-            <div ref={messagesEndRef} style={{ height: 1, minHeight: 1 }} />
           </div>
 
           {/* Footer Input + Conversion Link */}

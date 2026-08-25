@@ -172,99 +172,124 @@
   scroll-behavior: smooth;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
 }
 
 .messageBubble {
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(174, 199, 211, 0.15);
-  border-radius: 14px;
-  padding: 14px 16px;
+  border-radius: 12px;
+  padding: 12px 14px;
   font-size: 13px;
   line-height: 1.5;
   color: #d1e2eb;
 }
 
 .messageBubble strong {
-  color: #f5f0e7;
-}
-
-/* User & Assistant Chat Bubbles */
-.userBubble {
-  align-self: flex-end;
-  background: linear-gradient(135deg, #18384d 0%, #1f465f 100%);
-  border: 1px solid rgba(80, 227, 189, 0.4);
-  border-radius: 14px 14px 2px 14px;
-  padding: 10px 14px;
-  font-size: 13px;
-  font-weight: 700;
-  color: #ffffff;
-  max-width: 85%;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-  animation: messageFadeIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-.assistantBubble {
-  align-self: flex-start;
-  background: rgba(14, 30, 42, 0.95);
-  border: 1px solid rgba(80, 227, 189, 0.35);
-  border-radius: 14px 14px 14px 2px;
-  padding: 14px 16px;
-  font-size: 13px;
-  line-height: 1.5;
-  color: #d1e2eb;
-  width: 100%;
-  box-sizing: border-box;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
-  animation: messageFadeIn 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-.assistantBubbleTitle {
-  font-weight: 800;
   color: #50e3bd;
-  margin-bottom: 6px;
-  font-size: 13px;
 }
 
-.assistantBubbleText {
-  margin: 0;
-  font-size: 13px;
-  line-height: 1.5;
-  color: #d1e2eb;
+/* Plan Recommender Box inside Chat */
+.planBox {
+  background: rgba(7, 19, 29, 0.9);
+  border: 1px solid rgba(80, 227, 189, 0.3);
+  border-radius: 12px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
-.assistantBubbleCta {
-  margin-top: 10px;
-  display: inline-block;
-  background: rgba(255, 106, 36, 0.12);
-  border: 1px solid rgba(255, 106, 36, 0.35);
-  border-radius: 6px;
-  padding: 6px 12px;
-  color: #ff8547;
+.planBoxHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.planBoxLabel {
+  font-size: 11px;
   font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #50e3bd;
+}
+
+.planBadgeMini {
+  font-size: 11px;
+  color: #f5f0e7;
+  background: rgba(80, 227, 189, 0.15);
+  border: 1px solid rgba(80, 227, 189, 0.4);
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.planBadgeMini strong {
+  color: #50e3bd;
+}
+
+.planInputRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.planVolLabel {
   font-size: 12px;
-  text-decoration: none;
-  transition: all 0.2s ease;
+  color: #a7bcc8;
+  white-space: nowrap;
 }
 
-.assistantBubbleCta:hover {
-  background: rgba(255, 106, 36, 0.25);
-  border-color: #ff6a24;
-  color: #ffffff;
-  transform: translateX(2px);
+.planSlider {
+  flex: 1;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  background: #173244;
+  border-radius: 2px;
+  outline: none;
 }
 
-@keyframes messageFadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+.planSlider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #50e3bd;
+  cursor: pointer;
+  box-shadow: 0 0 8px rgba(80, 227, 189, 0.6);
 }
 
+.planVolDisplay {
+  font-family: monospace;
+  font-size: 13px;
+  font-weight: 800;
+  color: #f5f0e7;
+  min-width: 60px;
+  text-align: right;
+}
+
+.planRecBadge {
+  background: rgba(80, 227, 189, 0.12);
+  border: 1px solid rgba(80, 227, 189, 0.35);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 12px;
+  color: #d1f4eb;
+  line-height: 1.4;
+}
+
+.planRecBadge strong {
+  color: #50e3bd;
+}
+
+.planRecReason {
+  font-size: 11px;
+  margin-top: 2px;
+  color: #a7bcc8;
+}
+
+/* Accordion FAQ Section */
 .quickPillsSection {
   display: flex;
   flex-direction: column;
@@ -279,125 +304,141 @@
   color: #8fa6b5;
 }
 
-.pillList {
+.accordionList {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
 
-.pillBtn {
+.accordionCard {
   background: #081722;
   border: 1px solid rgba(174, 199, 211, 0.2);
   border-radius: 10px;
+  overflow: hidden;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.accordionCard:hover {
+  border-color: rgba(255, 106, 36, 0.45);
+}
+
+.accordionCardOpen {
+  background: rgba(10, 24, 34, 0.95);
+  border-color: #50e3bd;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4), 0 0 12px rgba(80, 227, 189, 0.15);
+}
+
+.accordionHeader {
+  width: 100%;
   padding: 10px 12px;
   text-align: left;
   color: #f5f0e7;
   font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.pillBtn:hover {
-  background: rgba(255, 106, 36, 0.12);
-  border-color: #ff6a24;
-  color: #ffffff;
-  transform: translateX(2px);
-}
-
-.pillArrow {
-  color: #ff6a24;
-  font-weight: 800;
-}
-
-/* Quick Suggestion Chips (Follow-up questions) */
-.quickChipsSection {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-top: 4px;
-  padding-top: 8px;
-  border-top: 1px dashed rgba(174, 199, 211, 0.15);
-}
-
-.quickChipsLabel {
-  font-size: 11px;
-  font-weight: 800;
-  color: #8fa6b5;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.quickChipsRow {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.quickChip {
-  background: #081722;
-  border: 1px solid rgba(174, 199, 211, 0.2);
-  border-radius: 8px;
-  padding: 8px 10px;
-  color: #d1e2eb;
-  font-size: 12px;
-  font-weight: 650;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  text-align: left;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.quickChip:hover {
-  background: rgba(255, 106, 36, 0.12);
-  border-color: #ff6a24;
-  color: #ffffff;
-  transform: translateX(2px);
-}
-
-.quickChipArrow {
-  color: #ff6a24;
-  font-weight: 800;
-}
-
-.headerActions {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.resetBtn {
-  background: transparent;
-  border: 1px solid rgba(174, 199, 211, 0.2);
-  color: #8fa6b5;
-  font-size: 11px;
   font-weight: 750;
   cursor: pointer;
-  padding: 4px 8px;
+  background: none;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  transition: color 0.2s;
+}
+
+.accordionHeader:hover {
+  color: #ffffff;
+}
+
+.accordionCardOpen .accordionHeader {
+  color: #50e3bd;
+}
+
+.accordionArrow {
+  color: #ff6a24;
+  font-size: 13px;
+  font-weight: 900;
+  transition: transform 0.2s ease, color 0.2s ease;
+  flex-shrink: 0;
+}
+
+.accordionArrowOpen {
+  transform: rotate(90deg);
+  color: #50e3bd;
+}
+
+.accordionBody {
+  padding: 0 12px 12px 12px;
+  border-top: 1px solid rgba(80, 227, 189, 0.15);
+  margin-top: 2px;
+  padding-top: 10px;
+  animation: answerReveal 0.22s ease-out;
+}
+
+@keyframes answerReveal {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.accordionAnswerText {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: #d1e2eb;
+}
+
+.accordionCta {
+  margin-top: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(255, 106, 36, 0.15);
+  border: 1px solid rgba(255, 106, 36, 0.4);
   border-radius: 6px;
+  padding: 6px 12px;
+  color: #ff8547;
+  font-weight: 800;
+  font-size: 11.5px;
+  text-decoration: none;
   transition: all 0.2s ease;
 }
 
-.resetBtn:hover {
-  color: #50e3bd;
-  border-color: rgba(80, 227, 189, 0.4);
-  background: rgba(80, 227, 189, 0.08);
+.accordionCta:hover {
+  background: #ff6a24;
+  color: #ffffff;
+  transform: translateX(2px);
 }
 
-/* Plan Recommender Box inside Chat */
-.planBox {
-  background: rgba(7, 19, 29, 0.85);
-  border: 1px solid rgba(80, 227, 189, 0.3);
-  border-radius: 12px;
-  padding: 14px;
+/* Custom Search Result Box */
+.customResultCard {
+  background: rgba(12, 28, 40, 0.95);
+  border: 1px solid rgba(80, 227, 189, 0.45);
+  border-radius: 10px;
+  padding: 12px 14px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  animation: answerReveal 0.25s ease-out;
+}
+
+.customResultTitle {
+  font-size: 12px;
+  font-weight: 800;
+  color: #50e3bd;
+  margin-bottom: 6px;
   display: flex;
-  flex-direction: column;
-  gap: 10px;
+  align-items: center;
+  gap: 6px;
+}
+
+.customResultText {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: #d1e2eb;
 }
 
 .planBoxLabel {
