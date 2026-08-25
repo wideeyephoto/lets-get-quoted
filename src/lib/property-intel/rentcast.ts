@@ -82,10 +82,13 @@ export async function fetchRentCastProperty(
         'X-Api-Key': apiKey,
         Accept: 'application/json',
       },
+      signal: AbortSignal.timeout(6000),
     });
 
     if (!res.ok) {
-      if (res.status !== 404) {
+      if (res.status === 429) {
+        console.warn('[RentCast API] Rate limit reached (status 429). Skipping enrichment for this request.');
+      } else if (res.status !== 404) {
         console.warn(`[RentCast API] request returned status ${res.status}: ${res.statusText}`);
       }
       return null;

@@ -3,10 +3,11 @@
 import Link from 'next/link';
 import type { JobDetailDto } from '@/lib/job-detail';
 import type { JobViewItem } from './JobsWorkspace';
+import { PropertyDossierCard } from '@/components/property-intel/PropertyDossierCard';
 import styles from '../focus.module.css';
 
 /**
- * The five detail panels of a job, and the tab strip that names them.
+ * The six detail panels of a job, and the tab strip that names them.
  *
  * Lifted out of FocusView unchanged so Smoothie renders the SAME panels rather
  * than a second set that drifts. The only addition is `headingLevel`: Focus
@@ -16,6 +17,7 @@ import styles from '../focus.module.css';
 
 export const JOB_TABS = [
   { id: 'overview', label: 'Overview' },
+  { id: 'property', label: 'Property & Roof' },
   { id: 'timeline', label: 'Timeline' },
   { id: 'checklist', label: 'Checklist' },
   { id: 'photos', label: 'Photos' },
@@ -102,6 +104,18 @@ export default function JobDetailTabs({
             </ul>
           )}
         </section>
+      </div>
+    );
+  }
+
+  if (tab === 'property') {
+    return (
+      <div style={{ maxWidth: '720px' }}>
+        {detail.address ? (
+          <PropertyDossierCard address={detail.address} />
+        ) : (
+          <p className={styles.muted}>No address on file for this job to fetch property intelligence.</p>
+        )}
       </div>
     );
   }

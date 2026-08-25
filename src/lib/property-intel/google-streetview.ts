@@ -38,7 +38,9 @@ export async function checkStreetViewAvailability(
     metaUrl.searchParams.set('key', apiKey);
     metaUrl.searchParams.set('solution_id', GMP_SOLUTION_ID);
 
-    const res = await fetch(metaUrl.toString());
+    const res = await fetch(metaUrl.toString(), {
+      signal: AbortSignal.timeout(5000),
+    });
     if (!res.ok) {
       return { available: false, imageUrl: null };
     }

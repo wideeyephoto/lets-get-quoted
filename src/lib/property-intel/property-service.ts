@@ -9,11 +9,37 @@ export type PropertyLocationInput =
   | { address: string; lat?: number; lng?: number }
   | { address?: string; lat: number; lng: number };
 
+// In-memory LRU/TTL cache to avoid redundant API billing within the same server instance
+type CachedEntry = {
+  data: PropertyIntelligence;
+  expiresAt: number;
+};
+
+const PROPERTY_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
+const MAX_CACHE_ENTRIES = 500;
+const memoryCache = new Map<string, CachedEntry>();
+
+function normalizeAddressKey(address: string): string {
+  return address.toLowerCase().replace(/[^a-z0-9]/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function getCacheKey(address: string, lat?: number, lng?: number): string {
+  if (address) {
+    return `addr:${normalizeAddressKey(address)}`;
+  }
+  if (lat != null && lng != null) {
+    return `geo:${lat.toFixed(5)},${lng.toFixed(5)}`;
+  }
+  return '';
+}
+
 /**
  * Fetches comprehensive property intelligence:
  * 1. Google Solar (Roof geometry, pitch, squares, sunshine hours)
  * 2. Google Street View & Satellite (Front-of-house and top-down ortho visual)
  * 3. RentCast (Year built, interior sq ft, lot size, beds/baths, stories, mechanicals)
+ *
+ * Results are cached in-memory for 1 hour to prevent redundant Google/RentCast billing.
  */
 export async function getPropertyIntelligence(
   input: PropertyLocationInput
@@ -21,6 +47,15 @@ export async function getPropertyIntelligence(
   let lat = input.lat;
   let lng = input.lng;
   const address = (input.address ?? '').trim();
+
+  const cacheKey = getCacheKey(address, lat, lng);
+  if (cacheKey && memoryCache.has(cacheKey)) {
+    const entry = memoryCache.get(cacheKey)!;
+    if (Date.now() < entry.expiresAt) {
+      return entry.data;
+    }
+    memoryCache.delete(cacheKey);
+  }
 
   // If coordinates are not provided, geocode the address
   if (lat == null || lng == null) {
@@ -43,7 +78,7 @@ export async function getPropertyIntelligence(
     fetchRentCastProperty({ address, lat, lng }),
   ]);
 
-  return {
+  const result: PropertyIntelligence = {
     address,
     lat,
     lng,
@@ -54,6 +89,21 @@ export async function getPropertyIntelligence(
     hasSolarCoverage: Boolean(roof),
     hasSpecs: Boolean(specs),
   };
+
+  // Cache result if valid key
+  if (cacheKey) {
+    if (memoryCache.size >= MAX_CACHE_ENTRIES) {
+      // Evict oldest entry
+      const firstKey = memoryCache.keys().next().value;
+      if (firstKey) memoryCache.delete(firstKey);
+    }
+    memoryCache.set(cacheKey, {
+      data: result,
+      expiresAt: Date.now() + PROPERTY_CACHE_TTL_MS,
+    });
+  }
+
+  return result;
 }
 
 /**

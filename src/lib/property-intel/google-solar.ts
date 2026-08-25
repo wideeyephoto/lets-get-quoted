@@ -74,6 +74,7 @@ export async function fetchSolarBuildingInsights(
       headers: {
         'X-Goog-Maps-Solution-ID': GMP_SOLUTION_ID,
       },
+      signal: AbortSignal.timeout(6000),
     });
 
     if (res.status === 404) {
