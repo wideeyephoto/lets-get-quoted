@@ -99,6 +99,37 @@ export default function OverageAuthorizationPanel({
         {OVERAGE_AUTHORIZATION_TEXT.split('\n\n').map((paragraph) => (
           <p key={paragraph}>{paragraph}</p>
         ))}
+
+        <div style={{ margin: '14px 0', padding: '12px', background: 'rgba(255, 255, 255, 0.04)', borderRadius: '8px', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
+          <strong style={{ display: 'block', fontSize: '0.85rem', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.04em', opacity: 0.85 }}>
+            Published Per-Unit Rates
+          </strong>
+          <table style={{ width: '100%', fontSize: '0.875rem', borderCollapse: 'collapse' }}>
+            <tbody>
+              <tr style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>
+                <td style={{ padding: '6px 0', color: 'var(--text-secondary, #94a3b8)' }}>Text message segment</td>
+                <td style={{ padding: '6px 0', textAlign: 'right', fontWeight: 600 }}>4.8¢ / msg</td>
+              </tr>
+              <tr style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>
+                <td style={{ padding: '6px 0', color: 'var(--text-secondary, #94a3b8)' }}>Marketing email send</td>
+                <td style={{ padding: '6px 0', textAlign: 'right', fontWeight: 600 }}>0.34¢ / email</td>
+              </tr>
+              <tr style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>
+                <td style={{ padding: '6px 0', color: 'var(--text-secondary, #94a3b8)' }}>AI writing draft</td>
+                <td style={{ padding: '6px 0', textAlign: 'right', fontWeight: 600 }}>7.6¢ / draft</td>
+              </tr>
+              <tr style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>
+                <td style={{ padding: '6px 0', color: 'var(--text-secondary, #94a3b8)' }}>AI Intake classified lead</td>
+                <td style={{ padding: '6px 0', textAlign: 'right', fontWeight: 600 }}>15.0¢ / thread</td>
+              </tr>
+              <tr>
+                <td style={{ padding: '6px 0', color: 'var(--text-secondary, #94a3b8)' }}>AI Voice receptionist minute</td>
+                <td style={{ padding: '6px 0', textAlign: 'right', fontWeight: 600 }}>35.0¢ / min</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
         <label className="base-plan-checkout-affirmation">
           <input
             type="checkbox"

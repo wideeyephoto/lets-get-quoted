@@ -808,3 +808,19 @@ export async function optimizeSiteSeoAction(
     return { ok: false, message: error instanceof Error ? error.message : 'Could not generate SEO optimization.' };
   }
 }
+
+export async function syncCompletedJobsToSiteAction() {
+  const { accountId, supabase } = await requireOfficeContext('settings.write');
+  const { syncCompletedJobsToSite } = await import('@/lib/site-sync');
+  const result = await syncCompletedJobsToSite(supabase, accountId);
+  revalidatePath('/dashboard/sites');
+  return result;
+}
+
+export async function syncClientReviewsToSiteAction() {
+  const { accountId, supabase } = await requireOfficeContext('settings.write');
+  const { syncClientReviewsToSite } = await import('@/lib/site-sync');
+  const result = await syncClientReviewsToSite(supabase, accountId);
+  revalidatePath('/dashboard/sites');
+  return result;
+}

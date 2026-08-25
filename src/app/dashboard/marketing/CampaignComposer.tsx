@@ -92,11 +92,13 @@ export default function CampaignComposer({
   const subjectOptions = (generatedOptions.length > 0 ? generatedOptions : initial?.subjectOptions) ?? [];
 
   const CAMPAIGN_PRESET_TOPICS = [
+    'Cold Lead Revival',
     'Spring Project Booking',
+    'Post-Project 6-Month Checkup',
     'Pre-Winter Freeze Prep',
     '1-Year Anniversary Check-In',
     '10% Loyalty Special',
-    'Referral Thank-You',
+    'Referral & Review Thank-You',
   ] as const;
 
   function generateWithAi(topic?: string) {

@@ -1531,15 +1531,17 @@ export default async function JobDetailPage({
               />
             </div>
 
-            <div className="workspace-danger-zone">
-              <p className="eyebrow danger-eyebrow">
-                Danger zone
-              </p>
-              <p className="job-meta workspace-danger-copy">
-                Deleting a job permanently removes it and all of its logged costs.
-              </p>
-              <DeleteJobButton action={boundDeleteJob} />
-            </div>
+            {role === 'owner' ? (
+              <div className="workspace-danger-zone">
+                <p className="eyebrow danger-eyebrow">
+                  Danger zone
+                </p>
+                <p className="job-meta workspace-danger-copy">
+                  Deleting a job permanently removes it and all of its logged costs.
+                </p>
+                <DeleteJobButton action={boundDeleteJob} />
+              </div>
+            ) : null}
           </details>
         );
 

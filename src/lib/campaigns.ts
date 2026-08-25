@@ -51,6 +51,7 @@ export type CampaignRecipient = {
   emailReady: boolean;
   jobCount: number;
   lastJobAt: string | null;
+  isLead?: boolean;
   /** Has a phone number on file at all — not the same as `smsReady` (needs consent too). */
   hasPhone: boolean;
   /** Has an email on file at all — not the same as `emailReady` (needs to be deliverable and not suppressed too). */
@@ -74,12 +75,20 @@ async function loadOptedInPhones(supabase: SupabaseClient, accountId: string): P
 }
 
 export async function loadRecipients(supabase: SupabaseClient, accountId: string): Promise<CampaignRecipient[]> {
-  const [clients, optedIn, suppressed] = await Promise.all([
+  const [clients, optedIn, suppressed, { data: leads }] = await Promise.all([
     listClientsWithStats(supabase, accountId),
     loadOptedInPhones(supabase, accountId),
     loadSuppressedEmails(supabase, accountId),
+    supabase
+      .from('leads')
+      .select('id, name, phone, email, status, converted_job, created_at')
+      .eq('account_id', accountId)
+      .is('converted_job', null)
+      .order('created_at', { ascending: false })
+      .limit(200),
   ]);
-  return clients.map((client) => {
+
+  const clientList: CampaignRecipient[] = clients.map((client) => {
     const phone = client.phone ? normalizeUsPhone(client.phone) : null;
     const email = client.email;
     const hasEmail = Boolean(email);
@@ -91,23 +100,52 @@ export async function loadRecipients(supabase: SupabaseClient, accountId: string
       phone,
       email,
       smsReady: Boolean(phone && optedIn.has(phone)),
-      // Three gates, and the third is new: an address that cannot deliver, or
-      // is a placeholder someone typed to get past a required field, must not
-      // go into a BULK send. A campaign is where junk addresses do their real
-      // damage — a hundred at once is a bounce spike, and a bounce spike is
-      // what mailbox providers act on. Judged at send time rather than trusted
-      // from intake, so addresses collected before the intake check, imported
-      // from another CRM, or typed straight into a client record are all
-      // covered by the same rule.
       emailReady: hasEmail && !emailSuppressed && !emailUndeliverable,
       jobCount: client.jobCount,
       lastJobAt: client.lastJobAt,
+      isLead: false,
       hasPhone: Boolean(phone),
       hasEmail,
       emailSuppressed,
       emailUndeliverable,
     };
   });
+
+  const existingEmails = new Set(clientList.map((c) => (c.email || '').trim().toLowerCase()).filter(Boolean));
+  const existingPhones = new Set(clientList.map((c) => c.phone).filter(Boolean));
+
+  const leadList: CampaignRecipient[] = (leads || [])
+    .filter((lead) => {
+      const p = lead.phone ? normalizeUsPhone(lead.phone) : null;
+      const e = (lead.email || '').trim().toLowerCase();
+      if (e && existingEmails.has(e)) return false;
+      if (p && existingPhones.has(p)) return false;
+      return Boolean(p || e);
+    })
+    .map((lead) => {
+      const phone = lead.phone ? normalizeUsPhone(lead.phone) : null;
+      const email = lead.email;
+      const hasEmail = Boolean(email);
+      const emailSuppressed = hasEmail && suppressed.has((email as string).trim().toLowerCase());
+      const emailUndeliverable = hasEmail && !isMailable(email);
+      return {
+        id: `lead_${lead.id}`,
+        name: lead.name,
+        phone,
+        email,
+        smsReady: Boolean(phone && optedIn.has(phone)),
+        emailReady: hasEmail && !emailSuppressed && !emailUndeliverable,
+        jobCount: 0,
+        lastJobAt: null,
+        isLead: true,
+        hasPhone: Boolean(phone),
+        hasEmail,
+        emailSuppressed,
+        emailUndeliverable,
+      };
+    });
+
+  return [...clientList, ...leadList];
 }
 
 export type Reach = {

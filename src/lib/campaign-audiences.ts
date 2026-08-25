@@ -7,7 +7,7 @@
 // or a database; it is safe on either side.
 
 export type CampaignChannel = 'email' | 'sms' | 'both';
-export type CampaignAudience = 'all' | 'past' | 'repeat' | 'lapsed';
+export type CampaignAudience = 'all' | 'past' | 'repeat' | 'lapsed' | 'leads' | 'high_value';
 
 // A customer with no job in this many days is "lapsed" — the segment worth a
 // "we're booking again / here's an offer" nudge.
@@ -40,20 +40,24 @@ export const AUDIENCE_DEFS: { id: CampaignAudience; label: string; hint: string 
   { id: 'past', label: 'Past customers', hint: 'Everyone who booked at least one job' },
   { id: 'repeat', label: 'Repeat customers', hint: 'Two or more jobs — your best fans' },
   { id: 'lapsed', label: 'Lapsed customers', hint: `Booked before, but nothing in ${LAPSED_DAYS}+ days` },
-  { id: 'all', label: 'Everyone', hint: 'Every client in your list' },
+  { id: 'all', label: 'Everyone', hint: 'Every contact, client and lead in your list' },
 ];
 
 export function matchesAudience(
-  recipient: { jobCount: number; lastJobAt: string | null },
+  recipient: { jobCount: number; lastJobAt: string | null; isLead?: boolean },
   audience: CampaignAudience,
   now: number,
 ): boolean {
   switch (audience) {
     case 'all':
       return true;
+    case 'leads':
+      return Boolean(recipient.isLead || recipient.jobCount === 0);
     case 'past':
       return recipient.jobCount >= 1;
     case 'repeat':
+      return recipient.jobCount >= 2;
+    case 'high_value':
       return recipient.jobCount >= 2;
     case 'lapsed':
       if (recipient.jobCount < 1) return false;

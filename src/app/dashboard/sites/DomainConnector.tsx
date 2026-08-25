@@ -117,14 +117,21 @@ export default function DomainConnector({ domain, target }: { domain: string | n
   const [copied, setCopied] = useState<string | null>(null);
 
   const provider = PROVIDERS.find((item) => item.id === providerId) || PROVIDERS[0];
-  const rootDomain = (domain || '').trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '').replace(/^www\./, '');
+  const cleanedDomain = (domain || '').trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+  const parts = cleanedDomain.split('.');
+  const isApex = parts.length === 2 && !cleanedDomain.startsWith('www.');
+  const hostValue = isApex ? '@' : (parts.length > 2 ? parts[0] : 'www');
+  const rootDomain = isApex ? cleanedDomain : (parts.length > 2 ? parts.slice(1).join('.') : cleanedDomain);
   const openUrl = provider.dnsUrl(rootDomain);
 
-  const record = [
-    { key: 'type', label: 'Type', value: 'CNAME' },
-    { key: 'host', label: provider.hostLabel, value: 'www' },
-    { key: 'value', label: provider.valueLabel, value: target },
-  ];
+  const records = isApex
+    ? [
+        { key: 'a-record', type: 'A', hostLabel: provider.hostLabel, host: '@', valueLabel: provider.valueLabel, value: '76.76.21.21', note: 'Points root apex domain' },
+        { key: 'cname-www', type: 'CNAME', hostLabel: provider.hostLabel, host: 'www', valueLabel: provider.valueLabel, value: target, note: 'Points www subdomain' },
+      ]
+    : [
+        { key: 'cname', type: 'CNAME', hostLabel: provider.hostLabel, host: hostValue, valueLabel: provider.valueLabel, value: target, note: `Points ${cleanedDomain || 'your custom domain'}` },
+      ];
 
   const copy = (key: string, value: string) => {
     void navigator.clipboard?.writeText(value).then(() => {
@@ -137,7 +144,7 @@ export default function DomainConnector({ domain, target }: { domain: string | n
     <div className={styles.connector}>
       <div className={styles.connectorHead}>
         <strong>Connect your domain</strong>
-        <small>Pick where you bought your domain for step-by-step setup.</small>
+        <small>Step-by-step DNS and automatic SSL configuration.</small>
       </div>
 
       <div className={styles.connectorProviders} role="group" aria-label="Domain provider">
@@ -156,18 +163,31 @@ export default function DomainConnector({ domain, target }: { domain: string | n
 
       {openUrl && (
         <a className={styles.connectorOpen} href={openUrl} target="_blank" rel="noopener noreferrer">
-          {provider.openLabel}
+          {provider.openLabel || `Open ${provider.name} DNS settings ↗`}
         </a>
       )}
 
       <div className={styles.connectorRecord}>
-        {record.map((row) => (
-          <div key={row.key} className={styles.connectorRow}>
-            <span className={styles.connectorRowLabel}>{row.label}</span>
-            <code className={styles.connectorRowValue}>{row.value}</code>
-            <button type="button" className={styles.connectorCopy} onClick={() => copy(row.key, row.value)} aria-label={`Copy ${row.label}`}>
-              {copied === row.key ? 'Copied' : 'Copy'}
-            </button>
+        {records.map((row) => (
+          <div key={row.key} style={{ marginBottom: records.length > 1 ? '12px' : '0' }}>
+            <div className={styles.connectorRow}>
+              <span className={styles.connectorRowLabel}>Type</span>
+              <code className={styles.connectorRowValue}>{row.type}</code>
+            </div>
+            <div className={styles.connectorRow}>
+              <span className={styles.connectorRowLabel}>{row.hostLabel}</span>
+              <code className={styles.connectorRowValue}>{row.host}</code>
+              <button type="button" className={styles.connectorCopy} onClick={() => copy(`${row.key}-host`, row.host)} aria-label={`Copy ${row.hostLabel}`}>
+                {copied === `${row.key}-host` ? 'Copied' : 'Copy'}
+              </button>
+            </div>
+            <div className={styles.connectorRow}>
+              <span className={styles.connectorRowLabel}>{row.valueLabel}</span>
+              <code className={styles.connectorRowValue}>{row.value}</code>
+              <button type="button" className={styles.connectorCopy} onClick={() => copy(`${row.key}-val`, row.value)} aria-label={`Copy ${row.valueLabel}`}>
+                {copied === `${row.key}-val` ? 'Copied' : 'Copy'}
+              </button>
+            </div>
           </div>
         ))}
       </div>
@@ -177,11 +197,12 @@ export default function DomainConnector({ domain, target }: { domain: string | n
       </ol>
 
       <details className={styles.connectorApex}>
-        <summary>Using your root domain (no “www”)?</summary>
-        <p>{provider.apex}</p>
+        <summary>Automatic HTTPS / SSL Certificate</summary>
+        <p>Once your DNS records point to our edge, an SSL certificate is automatically issued within minutes of clicking “Verify DNS”. No manual cert installation required.</p>
       </details>
 
       <p className={styles.connectorNote}>If your domain’s nameservers point to another service (e.g. Cloudflare), add this record there instead — records added at your registrar won’t apply.</p>
     </div>
   );
 }
+

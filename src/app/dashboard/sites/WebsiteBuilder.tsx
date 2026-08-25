@@ -10,7 +10,7 @@ import { getSiteContent, getTradeGlyphOptions, getUnreviewedGeneratedSections, g
 import { generatePrivacyPolicy, generateTermsOfService } from '@/lib/legal/legal-copy';
 import { AVAILABLE_TEMPLATES } from '@/lib/templates/types';
 import ServiceIcon, { SERVICE_ICON_KEYS } from '@/lib/templates/ServiceIcon';
-import { checkSubdomainAvailableAction, generateSiteTextAction, importJobPhotoToSiteImageAction, listCompletedJobPhotoOptionsAction, listCompletedJobReviewsAction, publishSiteAction, regenerateSeoCopyAction, regenerateStockImagesAction, updateSiteAction, uploadSiteImageAction, verifyCustomDomainAction, type JobPhotoImportOption, type CompletedJobReviewOption } from './actions';
+import { checkSubdomainAvailableAction, generateSiteTextAction, importJobPhotoToSiteImageAction, listCompletedJobPhotoOptionsAction, listCompletedJobReviewsAction, publishSiteAction, regenerateSeoCopyAction, regenerateStockImagesAction, syncClientReviewsToSiteAction, syncCompletedJobsToSiteAction, updateSiteAction, uploadSiteImageAction, verifyCustomDomainAction, type JobPhotoImportOption, type CompletedJobReviewOption } from './actions';
 import { SEO_TITLE_MAX as SEO_TITLE_LIMIT, SEO_DESC_MAX as SEO_DESC_LIMIT } from '@/lib/seo/seo-copy';
 import { parseVerificationToken, verificationTokenProblem } from '@/lib/seo/search-console';
 // Shared with the first-run seed (lib/site-seed) so "Generate" here and the
@@ -1143,6 +1143,37 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, just
     });
   }, []);
 
+  const autoSyncCompletedJobs = useCallback(() => {
+    startTransition(async () => {
+      try {
+        const res = await syncCompletedJobsToSiteAction();
+        if (res.addedItems > 0) {
+          setMessage({ type: 'success', text: `Auto-synced ${res.addedItems} project photo(s) from completed jobs into your portfolio.` });
+        } else {
+          setMessage({ type: 'success', text: 'Portfolio is already up to date with completed jobs.' });
+        }
+      } catch (error) {
+        setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Unable to sync completed jobs.' });
+      }
+    });
+  }, []);
+
+  const autoSyncClientReviews = useCallback(() => {
+    startTransition(async () => {
+      try {
+        const res = await syncClientReviewsToSiteAction();
+        if (res.addedTestimonials > 0) {
+          setMessage({ type: 'success', text: `Auto-synced ${res.addedTestimonials} verified client review(s) to your testimonials section.` });
+        } else {
+          setMessage({ type: 'success', text: 'Testimonials are already up to date with verified reviews.' });
+        }
+      } catch (error) {
+        setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Unable to sync client reviews.' });
+      }
+    });
+  }, []);
+
+
   const importInternalReview = useCallback((rev: CompletedJobReviewOption) => {
     const id = createContentId('rev');
     const newTestimonial: SiteTestimonialItem = {
@@ -2203,10 +2234,12 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, just
                       ))}
                     </div>
                   )}
-                  {siteContent.showcase.items.length < 9 && <button type="button" className={styles.secondaryAction} onClick={() => setPicker({ label: 'a showcase photo', kind: 'showcase', scItemId: null })}>Add photo</button>}
                   <div className={styles.jobPhotoImport}>
-                    <div><strong>Completed job photos</strong><small>Import private job photos into public site images for the showcase.</small></div>
-                    <button type="button" onClick={loadJobPhotoOptions} disabled={isPending}>{jobPhotosLoaded ? 'Refresh job photos' : 'Load job photos'}</button>
+                    <div><strong>Completed job photos</strong><small>Sync real finished projects and milestone photos into your showcase.</small></div>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button type="button" onClick={autoSyncCompletedJobs} disabled={isPending}>⚡ Auto-sync portfolio</button>
+                      <button type="button" onClick={loadJobPhotoOptions} disabled={isPending}>{jobPhotosLoaded ? 'Refresh' : 'Pick photos'}</button>
+                    </div>
                   </div>
                   {jobPhotosLoaded && (
                     jobPhotoOptions.length > 0 ? (
@@ -2430,11 +2463,14 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, just
                   <div className={styles.jobPhotoImport}>
                     <div>
                       <strong>Verified Let&apos;s Get Quoted reviews</strong>
-                      <small>1-click import homeowner ratings and feedback from your completed jobs.</small>
+                      <small>Sync homeowner ratings and feedback from completed jobs into your testimonials.</small>
                     </div>
-                    <button type="button" onClick={loadInternalReviews} disabled={isLoadingInternalReviews || isPending}>
-                      {internalReviewsLoaded ? 'Refresh job reviews' : 'Load job reviews'}
-                    </button>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button type="button" onClick={autoSyncClientReviews} disabled={isLoadingInternalReviews || isPending}>⚡ Auto-sync reviews</button>
+                      <button type="button" onClick={loadInternalReviews} disabled={isLoadingInternalReviews || isPending}>
+                        {internalReviewsLoaded ? 'Refresh' : 'Pick reviews'}
+                      </button>
+                    </div>
                   </div>
                   {internalReviewsLoaded && (
                     internalReviewOptions.length > 0 ? (
