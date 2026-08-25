@@ -1,7 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import Link from 'next/link';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   KNOWLEDGE_BASE,
   FAQS,
@@ -9,7 +8,8 @@ import {
   VIDEO_PLAYBOOKS,
   DOWNLOADABLE_TEMPLATES,
   Article,
-  VideoPlaybook
+  VideoPlaybook,
+  DownloadableTemplate
 } from './help-center-data';
 import styles from './HelpCenter.module.css';
 
@@ -307,6 +307,17 @@ const Icons = {
       }
     />
   ),
+  Copy: () => (
+    <Icon
+      d={
+        <>
+          <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
+          <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
+        </>
+      }
+      className={styles.iconXs}
+    />
+  ),
   Wrench: () => (
     <Icon
       d={
@@ -375,16 +386,104 @@ const ICON_MAP: Record<string, React.ReactNode> = {
   Hammer: <Icons.Hammer />
 };
 
+// Real Downloadable Template Generator Helper
+function triggerRealDownload(tpl: DownloadableTemplate) {
+  let textContent = '';
+  if (tpl.id === 'tpl-lien-waiver') {
+    textContent = `RESIDENTIAL CONTRACTOR PROGRESS LIEN WAIVER & RELEASE
+======================================================================
+Property / Project Address: _________________________________________
+Contractor / Company Name: __________________________________________
+Customer / Owner Name:     __________________________________________
+Payment Amount Received:   $_________________________________________
+
+The undersigned Contractor, upon receipt of the payment amount above, hereby 
+waives and releases any and all lien or claim of, or right to, lien, under the 
+statutes relating to mechanics' liens, with respect to and on said above-described 
+premises, and the improvements thereon, on account of labor, services, material, 
+fixtures, apparatus or machinery furnished by the undersigned to or on account 
+of the said premises for the work performed to date.
+
+Date: ________________________
+Authorized Signature: _______________________________________________
+Printed Name: _______________________________________________________
+`;
+  } else if (tpl.id === 'tpl-change-order') {
+    textContent = `EXTRA WORK AUTHORIZATION & CHANGE ORDER AGREEMENT
+======================================================================
+Project Title / Address:  ___________________________________________
+Contractor Name:          ___________________________________________
+Customer Name:            ___________________________________________
+Change Order Number:      # _________________________________________
+
+DESCRIPTION OF EXTRA WORK / MODIFICATION:
+----------------------------------------------------------------------
+1. __________________________________________________________________
+2. __________________________________________________________________
+
+FINANCIAL ADJUSTMENT:
+- Original Contract Amount:      $ ___________________________________
+- Previous Approved Changes:     $ ___________________________________
+- This Change Order (+/-):       $ ___________________________________
+- REVISED TOTAL CONTRACT AMOUNT: $ ___________________________________
+
+SCHEDULE ADJUSTMENT:
+- Additional Working Days Required: _______ Days
+
+Homeowner Signature: _______________________ Date: ___________________
+Contractor Signature: ______________________ Date: ___________________
+`;
+  } else {
+    textContent = `50% UPFRONT MATERIAL DEPOSIT & PAYMENT SCHEDULE ADDENDUM
+======================================================================
+Customer Name:     ___________________________________________________
+Jobsite Address:   ___________________________________________________
+Total Quote Price: $ _________________________________________________
+
+1. UPFRONT MATERIAL DEPOSIT (50%):
+Upon digital acceptance of this proposal, a non-refundable deposit of 
+fifty percent (50%) of the total contract price ($______________) is due 
+immediately to secure scheduling, purchase specialized jobsite materials, 
+and allocate field labor.
+
+2. PROGRESS & FINAL DISBURSEMENT:
+- 40% due upon rough-in inspection or midpoint milestone completion.
+- 10% final balance due immediately upon final walkthrough.
+
+3. METHOD OF PAYMENT:
+Payments may be rendered via credit card / Apple Pay through the Let's 
+Get Quoted client portal or certified bank draft.
+
+Agreed & Accepted:
+Customer Signature: ________________________ Date: ___________________
+`;
+  }
+
+  const blob = new Blob([textContent], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `${tpl.name}.txt`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
 export default function HelpCenter() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTopic, setSelectedTopic] = useState('all');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
 
   const [activeTrade, setActiveTrade] = useState('plumbing');
   const [activeArticle, setActiveArticle] = useState<Article | null>(null);
   const [activeVideo, setActiveVideo] = useState<VideoPlaybook | null>(null);
   const [isTicketDrawerOpen, setIsTicketDrawerOpen] = useState(false);
   const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
+
+  // Quick Start Checklist State
+  const [completedSteps, setCompletedSteps] = useState<Record<number, boolean>>({});
 
   const [ticketSubject, setTicketSubject] = useState('');
   const [ticketDeflection, setTicketDeflection] = useState<string | null>(null);
@@ -393,19 +492,36 @@ export default function HelpCenter() {
   const [activeFaq, setActiveFaq] = useState<number | null>(0);
   const [faqFeedback, setFaqFeedback] = useState<Record<number, boolean>>({});
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [copiedRecord, setCopiedRecord] = useState<string | null>(null);
+
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3500);
   };
 
+  const copyToClipboard = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedRecord(label);
+    showToast(`Copied ${label} to clipboard!`);
+    setTimeout(() => setCopiedRecord(null), 2500);
+  };
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // ⌘K or Ctrl+K focuses search
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+        setIsSearchFocused(true);
+      }
       if (e.key === 'Escape') {
         setIsTicketDrawerOpen(false);
         setIsStatusModalOpen(false);
         setActiveArticle(null);
         setActiveVideo(null);
+        setIsSearchFocused(false);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -444,6 +560,29 @@ export default function HelpCenter() {
     return matchesTopic && (catMatch || artMatch);
   });
 
+  // Spotlight matches across all content
+  const spotlightArticles = searchQuery
+    ? KNOWLEDGE_BASE.flatMap(c => c.articles).filter(a =>
+        a.title.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : [];
+
+  const spotlightTrades = searchQuery
+    ? TRADE_PLAYBOOKS.filter(
+        t =>
+          t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          t.headline.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : [];
+
+  const spotlightTemplates = searchQuery
+    ? DOWNLOADABLE_TEMPLATES.filter(
+        d =>
+          d.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          d.description.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : [];
+
   const currentTrade = TRADE_PLAYBOOKS.find(t => t.id === activeTrade) || TRADE_PLAYBOOKS[0];
 
   return (
@@ -461,6 +600,9 @@ export default function HelpCenter() {
               <span>Help Center &amp; Command Hub</span>
             </div>
             <nav className={styles.subNavLinks}>
+              <a href="#quick-start" className={styles.subNavLink}>
+                Quick Start
+              </a>
               <a href="#trade-playbooks" className={styles.subNavLink}>
                 Trade Playbooks
               </a>
@@ -476,9 +618,6 @@ export default function HelpCenter() {
               <a href="#faqs" className={styles.subNavLink}>
                 FAQs
               </a>
-              <Link href="/contact" className={styles.subNavLink}>
-                Contact
-              </Link>
             </nav>
           </div>
 
@@ -513,15 +652,17 @@ export default function HelpCenter() {
           Explore instant answers, step-by-step contractor playbooks, video walkthroughs, or direct support from product engineers.
         </p>
 
-        {/* Search Command Box */}
+        {/* Search Command Box & Spotlight Dropdown */}
         <div className={styles.searchCommandBox}>
           <div className={styles.searchGlowWrapper}>
             <div className={styles.searchInputWrapper}>
               <Icons.Search />
               <input
+                ref={searchInputRef}
                 type="text"
-                placeholder="Search guides, setup tutorials, errors, or ask a question..."
+                placeholder="Search guides, trade formulas, errors, or press ⌘K..."
                 value={searchQuery}
+                onFocus={() => setIsSearchFocused(true)}
                 onChange={e => setSearchQuery(e.target.value)}
               />
               <div className={styles.hotkeyBadge}>
@@ -539,6 +680,95 @@ export default function HelpCenter() {
               )}
             </div>
           </div>
+
+          {/* ================= SPOTLIGHT COMMAND PALETTE ================= */}
+          {isSearchFocused && searchQuery.length > 0 && (
+            <div className={styles.spotlightDropdown}>
+              {spotlightArticles.length > 0 && (
+                <div>
+                  <div className={styles.spotlightCategoryTitle}>📖 Contractor Guides</div>
+                  {spotlightArticles.slice(0, 4).map(art => (
+                    <div
+                      key={art.id}
+                      className={styles.spotlightItem}
+                      onClick={() => {
+                        setActiveArticle(art);
+                        setIsSearchFocused(false);
+                      }}
+                    >
+                      <div className={styles.spotlightItemLeft}>
+                        <Icons.BookCheck />
+                        <div>
+                          <div className={styles.spotlightItemTitle}>{art.title}</div>
+                          <div className={styles.spotlightItemMeta}>{art.category} · {art.readTime}</div>
+                        </div>
+                      </div>
+                      <span className={styles.spotlightTag}>Open Guide</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {spotlightTrades.length > 0 && (
+                <div>
+                  <div className={styles.spotlightCategoryTitle}>🧰 Trade Playbooks</div>
+                  {spotlightTrades.map(trade => (
+                    <div
+                      key={trade.id}
+                      className={styles.spotlightItem}
+                      onClick={() => {
+                        setActiveTrade(trade.id);
+                        setIsSearchFocused(false);
+                        const el = document.getElementById('trade-playbooks');
+                        el?.scrollIntoView({ behavior: 'smooth' });
+                      }}
+                    >
+                      <div className={styles.spotlightItemLeft}>
+                        <Icons.Wrench />
+                        <div>
+                          <div className={styles.spotlightItemTitle}>{trade.name} Playbook</div>
+                          <div className={styles.spotlightItemMeta}>{trade.headline}</div>
+                        </div>
+                      </div>
+                      <span className={styles.spotlightTag}>Switch Trade</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {spotlightTemplates.length > 0 && (
+                <div>
+                  <div className={styles.spotlightCategoryTitle}>📄 Legal &amp; Billing Templates</div>
+                  {spotlightTemplates.map(tpl => (
+                    <div
+                      key={tpl.id}
+                      className={styles.spotlightItem}
+                      onClick={() => {
+                        triggerRealDownload(tpl);
+                        showToast(`Downloading ${tpl.name}...`);
+                        setIsSearchFocused(false);
+                      }}
+                    >
+                      <div className={styles.spotlightItemLeft}>
+                        <Icons.Download />
+                        <div>
+                          <div className={styles.spotlightItemTitle}>{tpl.name}</div>
+                          <div className={styles.spotlightItemMeta}>{tpl.fileFormat} · {tpl.fileSize}</div>
+                        </div>
+                      </div>
+                      <span className={styles.spotlightTag}>Download</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {spotlightArticles.length === 0 && spotlightTrades.length === 0 && spotlightTemplates.length === 0 && (
+                <div style={{ padding: '1.5rem', textAlign: 'center', color: '#94a3b8' }}>
+                  No exact matches for &quot;{searchQuery}&quot;. Try searching for <em>&quot;DNS&quot;</em>, <em>&quot;Deposit&quot;</em>, or <em>&quot;SMS&quot;</em>.
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Quick Topic Filter Pills */}
           <div className={styles.topicPillsRow}>
@@ -590,6 +820,71 @@ export default function HelpCenter() {
             <div className={styles.statMeta}>
               <span className={styles.statVal}>Priority SLA</span>
               <span className={styles.statLbl}>Engineering Support</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ================= NEW: QUICK START 3-STEP ONBOARDING CHECKLIST ================= */}
+      <section id="quick-start" style={{ padding: '0 1.5rem' }}>
+        <div className={styles.quickStartBanner}>
+          <div className={styles.quickStartHeader}>
+            <div className={styles.quickStartBadge}>
+              <Icons.Rocket />
+            </div>
+            <div>
+              <h3 className={styles.quickStartTitle}>New to Let&apos;s Get Quoted? Start Here</h3>
+              <p className={styles.quickStartSubtitle}>Complete these 3 foundational steps to send your first quote today.</p>
+            </div>
+          </div>
+
+          <div className={styles.quickStepsRow}>
+            <div
+              className={styles.quickStepItem}
+              onClick={() => {
+                setCompletedSteps(prev => ({ ...prev, 1: !prev[1] }));
+                showToast('Step 1 status updated');
+              }}
+            >
+              <div className={`${styles.stepNum} ${completedSteps[1] ? styles.stepDone : ''}`}>
+                {completedSteps[1] ? <Icons.Check /> : '1'}
+              </div>
+              <div className={styles.stepText}>
+                <strong>Set Profit Markup</strong>
+                <span>Add materials &amp; labor rate</span>
+              </div>
+            </div>
+
+            <div
+              className={styles.quickStepItem}
+              onClick={() => {
+                setCompletedSteps(prev => ({ ...prev, 2: !prev[2] }));
+                showToast('Step 2 status updated');
+              }}
+            >
+              <div className={`${styles.stepNum} ${completedSteps[2] ? styles.stepDone : ''}`}>
+                {completedSteps[2] ? <Icons.Check /> : '2'}
+              </div>
+              <div className={styles.stepText}>
+                <strong>Verify Business SMS</strong>
+                <span>10DLC carrier compliance</span>
+              </div>
+            </div>
+
+            <div
+              className={styles.quickStepItem}
+              onClick={() => {
+                setCompletedSteps(prev => ({ ...prev, 3: !prev[3] }));
+                showToast('Step 3 status updated');
+              }}
+            >
+              <div className={`${styles.stepNum} ${completedSteps[3] ? styles.stepDone : ''}`}>
+                {completedSteps[3] ? <Icons.Check /> : '3'}
+              </div>
+              <div className={styles.stepText}>
+                <strong>Send 3-Tier Quote</strong>
+                <span>Good / Better / Best options</span>
+              </div>
             </div>
           </div>
         </div>
@@ -773,7 +1068,10 @@ export default function HelpCenter() {
               <p className={styles.templateDesc}>{tpl.description}</p>
               <button
                 className={styles.btnOutlineBlock}
-                onClick={() => showToast(`Downloaded: ${tpl.name} (${tpl.fileSize})`)}
+                onClick={() => {
+                  triggerRealDownload(tpl);
+                  showToast(`Downloaded: ${tpl.name}`);
+                }}
               >
                 <Icons.Download />
                 <span>Download Free Template ({tpl.fileSize})</span>
@@ -989,7 +1287,7 @@ export default function HelpCenter() {
         </div>
       )}
 
-      {/* 2. Article Reader Modal */}
+      {/* 2. Article Reader Modal with 1-Click Clipboard Helpers */}
       {activeArticle && (
         <div className={styles.modalOverlay} onClick={() => setActiveArticle(null)}>
           <div className={styles.articleModal} onClick={e => e.stopPropagation()}>
@@ -1003,7 +1301,36 @@ export default function HelpCenter() {
               <h1 className={styles.articleTitle}>{activeArticle.title}</h1>
               <div className={styles.articleMeta}>
                 <span>Verified by LGQ Engineering</span>
+                <span>{activeArticle.readTime}</span>
               </div>
+
+              {/* 1-Click DNS Copy Box for domain articles */}
+              {activeArticle.id === 'art-custom-domain-dns' && (
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <div className={styles.copySnippetBox}>
+                    <span>A Record (@): <strong>76.76.21.21</strong></span>
+                    <button
+                      className={styles.copyMiniBtn}
+                      onClick={() => copyToClipboard('76.76.21.21', 'A Record IP')}
+                    >
+                      {copiedRecord === 'A Record IP' ? <Icons.Check /> : <Icons.Copy />}
+                      <span>{copiedRecord === 'A Record IP' ? 'Copied' : 'Copy IP'}</span>
+                    </button>
+                  </div>
+
+                  <div className={styles.copySnippetBox}>
+                    <span>CNAME (www): <strong>cname.letsgetquoted.com</strong></span>
+                    <button
+                      className={styles.copyMiniBtn}
+                      onClick={() => copyToClipboard('cname.letsgetquoted.com', 'CNAME')}
+                    >
+                      {copiedRecord === 'CNAME' ? <Icons.Check /> : <Icons.Copy />}
+                      <span>{copiedRecord === 'CNAME' ? 'Copied' : 'Copy CNAME'}</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
               <div
                 className={styles.articleContent}
                 dangerouslySetInnerHTML={{ __html: activeArticle.content }}
