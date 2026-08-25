@@ -54,23 +54,6 @@ export interface FAQItem {
   category: string;
 }
 
-export interface DiagnosticStep {
-  text: string;
-  status: 'pass' | 'warn';
-  delay: number;
-}
-
-export interface DiagnosticScenario {
-  title: string;
-  steps: DiagnosticStep[];
-  action: {
-    title: string;
-    desc: string;
-    btnText: string;
-    type: string;
-  };
-}
-
 export const TRADE_PLAYBOOKS: TradePlaybook[] = [
   {
     id: 'plumbing',
@@ -415,67 +398,3 @@ export const FAQS: FAQItem[] = [
     category: 'invoicing'
   }
 ];
-
-export const DIAGNOSTIC_SCENARIOS: Record<string, DiagnosticScenario> = {
-  'sms-verification': {
-    title: 'SMS & 10DLC Carrier Verification Diagnostic',
-    steps: [
-      { text: 'Connecting to 10DLC Carrier Registry Gateway...', status: 'pass', delay: 200 },
-      { text: 'Checking EIN & Legal Brand Match (Maplewood Pro)...', status: 'pass', delay: 400 },
-      { text: 'Verifying 10DLC Messaging Campaign: "LGQ Alerts & Quoting"...', status: 'pass', delay: 700 },
-      { text: 'Checking Carrier Status (AT&T: Active, Verizon: Active, T-Mobile: Active)...', status: 'pass', delay: 1000 },
-      { text: 'All 3 Outbound SMS Gateways Healthy. 0 Failed Delivery Webhooks.', status: 'pass', delay: 1200 }
-    ],
-    action: {
-      title: 'SMS Pipeline is 100% Operational',
-      desc: 'If a specific homeowner did not receive an SMS, check if they replied "STOP" previously to opt out.',
-      btnText: 'Send Test SMS to My Mobile',
-      type: 'test-sms'
-    }
-  },
-  'stripe-deposits': {
-    title: 'Stripe Connect & Payout Health Check',
-    steps: [
-      { text: 'Pinging Stripe API Endpoint (v2.stripe.com)...', status: 'pass', delay: 200 },
-      { text: 'Checking Express Account Authorization: "acct_1NZ..."', status: 'pass', delay: 500 },
-      { text: 'Verifying Payout Bank Account Status: Direct Deposit Active...', status: 'pass', delay: 800 },
-      { text: 'Checkout Webhook Listener: 200 OK (Latency: 28ms)...', status: 'pass', delay: 1100 }
-    ],
-    action: {
-      title: 'Payments & Instant Deposits Ready',
-      desc: 'Homeowner credit card transactions will automatically transfer next business day.',
-      btnText: 'Generate Test $1.00 Checkout Link',
-      type: 'test-payment'
-    }
-  },
-  'custom-domain': {
-    title: 'Custom Domain & Edge DNS Diagnostic',
-    steps: [
-      { text: 'Querying Global DNS Anycast (Cloudflare / Fastly)...', status: 'pass', delay: 200 },
-      { text: 'Resolving A Record: 76.76.21.21 (Matches LGQ Edge)...', status: 'pass', delay: 500 },
-      { text: 'Resolving CNAME Record: cname.letsgetquoted.com...', status: 'pass', delay: 800 },
-      { text: 'Checking Let\'s Encrypt SSL / TLS Certificate: Valid...', status: 'pass', delay: 1100 }
-    ],
-    action: {
-      title: 'DNS Configured Correctly & Secure',
-      desc: 'Your AI landing page is live worldwide with sub-second page load times.',
-      btnText: 'Test Live Website Preview',
-      type: 'test-domain'
-    }
-  },
-  'quote-templates': {
-    title: 'Estimate Calculator & Margin Math Diagnostic',
-    steps: [
-      { text: 'Scanning Active Quote Tier Formulas...', status: 'pass', delay: 200 },
-      { text: 'Verifying Minimum Profit Margin Floor (40% Target)...', status: 'pass', delay: 450 },
-      { text: 'Checking Regional Sales Tax Table (NJ: 6.625%)...', status: 'pass', delay: 750 },
-      { text: 'PDF Rendering Engine: Latency 84ms (OK)...', status: 'pass', delay: 1050 }
-    ],
-    action: {
-      title: 'Estimate Generator Optimized',
-      desc: 'All formula tiers and material calculations are operating with verified accuracy.',
-      btnText: 'Preview Sample 3-Tier PDF',
-      type: 'test-quote'
-    }
-  }
-};

@@ -5,7 +5,6 @@ import Link from 'next/link';
 import {
   KNOWLEDGE_BASE,
   FAQS,
-  DIAGNOSTIC_SCENARIOS,
   TRADE_PLAYBOOKS,
   VIDEO_PLAYBOOKS,
   DOWNLOADABLE_TEMPLATES,
@@ -244,12 +243,6 @@ const Icons = {
       className={styles.statIconPurple}
     />
   ),
-  MessageSquare: () => (
-    <Icon
-      d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"
-      className={styles.scenarioIcon}
-    />
-  ),
   MessagesSquare: () => (
     <Icon
       d={
@@ -297,37 +290,7 @@ const Icons = {
       className={styles.successIcon}
     />
   ),
-  Cpu: () => (
-    <Icon
-      d={
-        <>
-          <rect width="16" height="16" x="4" y="4" rx="2" />
-          <rect width="6" height="6" x="9" y="9" rx="1" />
-          <path d="M15 2v2" />
-          <path d="M15 20v2" />
-          <path d="M2 15h2" />
-          <path d="M2 9h2" />
-          <path d="M20 15h2" />
-          <path d="M20 9h2" />
-          <path d="M9 2v2" />
-          <path d="M9 20v2" />
-        </>
-      }
-    />
-  ),
   ArrowUpRight: () => <Icon d="M7 7h10v10M7 17 17 7" className={styles.arrowIcon} />,
-  RefreshCw: () => (
-    <Icon
-      d={
-        <>
-          <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
-          <path d="M21 3v5h-5" />
-          <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
-          <path d="M8 16H3v5" />
-        </>
-      }
-    />
-  ),
   Play: () => (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
       <polygon points="5 3 19 12 5 21 5 3" />
@@ -423,31 +386,6 @@ export default function HelpCenter() {
   const [isTicketDrawerOpen, setIsTicketDrawerOpen] = useState(false);
   const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
 
-  // Copilot Modes: 'scenarios' | 'dns' | 'sms' | 'chat'
-  const [copilotMode, setCopilotMode] = useState<'scenarios' | 'dns' | 'sms' | 'chat'>('scenarios');
-
-  // Scenario state
-  const [activeScenario, setActiveScenario] = useState('sms-verification');
-  const [terminalLogs, setTerminalLogs] = useState<{ text: string; status: 'pass' | 'warn' }[]>([]);
-  const [isTerminalDone, setIsTerminalDone] = useState(false);
-
-  // Live DNS state
-  const [dnsDomainInput, setDnsDomainInput] = useState('maplewoodpro.com');
-  const [isDnsAuditing, setIsDnsAuditing] = useState(false);
-
-  // Live SMS state
-  const [smsPhoneInput, setSmsPhoneInput] = useState('(973) 555-0192');
-  const [isSmsSending, setIsSmsSending] = useState(false);
-
-  // Natural Language Chat Copilot state
-  const [naturalPrompt, setNaturalPrompt] = useState('');
-  const [naturalAnswer, setNaturalAnswer] = useState<{
-    title: string;
-    body: string;
-    linkText?: string;
-    linkUrl?: string;
-  } | null>(null);
-
   const [ticketSubject, setTicketSubject] = useState('');
   const [ticketDeflection, setTicketDeflection] = useState<string | null>(null);
   const [isTicketSubmitted, setIsTicketSubmitted] = useState(false);
@@ -475,23 +413,6 @@ export default function HelpCenter() {
   }, []);
 
   useEffect(() => {
-    const scenario = DIAGNOSTIC_SCENARIOS[activeScenario];
-    if (!scenario) return;
-
-    setTerminalLogs([]);
-    setIsTerminalDone(false);
-
-    scenario.steps.forEach((step, idx) => {
-      setTimeout(() => {
-        setTerminalLogs(prev => [...prev, { text: step.text, status: step.status }]);
-        if (idx === scenario.steps.length - 1) {
-          setIsTerminalDone(true);
-        }
-      }, step.delay);
-    });
-  }, [activeScenario]);
-
-  useEffect(() => {
     const val = ticketSubject.toLowerCase();
     if (val.length < 3) {
       setTicketDeflection(null);
@@ -514,58 +435,6 @@ export default function HelpCenter() {
     }
   }, [ticketSubject]);
 
-  const handleRunDnsAudit = () => {
-    setIsDnsAuditing(true);
-    setTimeout(() => {
-      setIsDnsAuditing(false);
-      showToast(`DNS Audit Complete for ${dnsDomainInput || 'domain'}`);
-    }, 1200);
-  };
-
-  const handleSendTestSms = () => {
-    setIsSmsSending(true);
-    setTimeout(() => {
-      setIsSmsSending(false);
-      showToast(`Test Lead SMS dispatched to ${smsPhoneInput}`);
-    }, 1000);
-  };
-
-  const handleAskNaturalCopilot = (q?: string) => {
-    const query = q || naturalPrompt;
-    if (!query) return;
-
-    const lower = query.toLowerCase();
-    if (lower.includes('helper') || lower.includes('team') || lower.includes('dispatch') || lower.includes('role')) {
-      setNaturalAnswer({
-        title: 'Adding Crew Members & Setting Technician Roles',
-        body: 'Navigate to Dashboard > Settings > Team. Click "Invite Member", enter their mobile number, and choose "Technician" role. Technicians see jobsite addresses and customer notes without seeing company financials or billing.',
-        linkText: 'Open Team Roles Playbook',
-        linkUrl: '#knowledge-hub'
-      });
-    } else if (lower.includes('deposit') || lower.includes('50%') || lower.includes('card') || lower.includes('stripe')) {
-      setNaturalAnswer({
-        title: '50% Upfront Material Deposit Automation',
-        body: 'In your Quote Template, toggle "Require Deposit to Book" and set percentage to 50%. When the homeowner clicks their preferred tier on mobile, they pay via Apple Pay / Credit Card and the job automatically moves to "Scheduled" in your Dispatch board.',
-        linkText: 'View Invoicing & Deposits Guide',
-        linkUrl: '#knowledge-hub'
-      });
-    } else if (lower.includes('domain') || lower.includes('godaddy') || lower.includes('dns') || lower.includes('website')) {
-      setNaturalAnswer({
-        title: 'Custom Domain Setup (A & CNAME Records)',
-        body: 'Add two records in your DNS manager (GoDaddy / Namecheap): 1) A Record (@) pointing to 76.76.21.21. 2) CNAME (www) pointing to cname.letsgetquoted.com. SSL certificates generate automatically in under 5 minutes.',
-        linkText: 'Check Domain DNS Tool',
-        linkUrl: '#ai-troubleshooter'
-      });
-    } else {
-      setNaturalAnswer({
-        title: 'Instant Resolution Recommendation',
-        body: `For "${query}", ensure your Company Settings are saved with your verified EIN. Our automated background sync handles real-time quote generation and multi-tier estimate deliveries.`,
-        linkText: 'Submit Priority Ticket for Engineering',
-        linkUrl: '#knowledge-hub'
-      });
-    }
-  };
-
   const filteredCategories = KNOWLEDGE_BASE.filter(cat => {
     const matchesTopic = selectedTopic === 'all' || cat.topic === selectedTopic;
     if (!searchQuery) return matchesTopic;
@@ -583,7 +452,7 @@ export default function HelpCenter() {
       <div className={`${styles.ambientGlow} ${styles.glow2}`} />
       <div className={`${styles.ambientGlow} ${styles.glow3}`} />
 
-      {/* Refined Command Strip (No duplicate logo) */}
+      {/* Refined Command Strip */}
       <div className={styles.subNavbar}>
         <div className={styles.subNavContainer}>
           <div className={styles.subNavLeft}>
@@ -601,8 +470,8 @@ export default function HelpCenter() {
               <a href="#knowledge-hub" className={styles.subNavLink}>
                 Guides
               </a>
-              <a href="#ai-troubleshooter" className={styles.subNavLink}>
-                AI Diagnostics
+              <a href="#contractor-templates" className={styles.subNavLink}>
+                Templates
               </a>
               <a href="#faqs" className={styles.subNavLink}>
                 FAQs
@@ -641,7 +510,7 @@ export default function HelpCenter() {
           How can we help your <span className={styles.highlightText}>business thrive</span> today?
         </h1>
         <p className={styles.heroSubtitle}>
-          Explore instant answers, step-by-step contractor playbooks, AI diagnostics, or direct support from product engineers.
+          Explore instant answers, step-by-step contractor playbooks, video walkthroughs, or direct support from product engineers.
         </p>
 
         {/* Search Command Box */}
@@ -719,14 +588,14 @@ export default function HelpCenter() {
           <div className={styles.statCard}>
             <Icons.Bot />
             <div className={styles.statMeta}>
-              <span className={styles.statVal}>AI Powered</span>
-              <span className={styles.statLbl}>Instant Deflection</span>
+              <span className={styles.statVal}>Priority SLA</span>
+              <span className={styles.statLbl}>Engineering Support</span>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ================= NEW SECTION: TRADE-SPECIFIC PLAYBOOKS ================= */}
+      {/* ================= TRADE-SPECIFIC PLAYBOOKS ================= */}
       <section id="trade-playbooks" className={styles.sectionContainer}>
         <div className={styles.sectionHeader}>
           <div>
@@ -783,7 +652,7 @@ export default function HelpCenter() {
         </div>
       </section>
 
-      {/* ================= NEW SECTION: 60-SECOND VIDEO PLAYBOOKS ================= */}
+      {/* ================= 60-SECOND VIDEO PLAYBOOKS ================= */}
       <section id="video-playbooks" className={styles.sectionContainer}>
         <div className={styles.sectionHeader}>
           <div>
@@ -881,8 +750,8 @@ export default function HelpCenter() {
         </div>
       </section>
 
-      {/* ================= NEW SECTION: DOWNLOADABLE CONTRACTOR ASSETS ================= */}
-      <section className={styles.sectionContainer}>
+      {/* ================= DOWNLOADABLE CONTRACTOR ASSETS ================= */}
+      <section id="contractor-templates" className={styles.sectionContainer}>
         <div className={styles.sectionHeader}>
           <div>
             <span className={styles.sectionTag}>Free Contractor Assets</span>
@@ -911,350 +780,6 @@ export default function HelpCenter() {
               </button>
             </div>
           ))}
-        </div>
-      </section>
-
-      {/* Interactive AI Diagnostic & Self-Test Suite */}
-      <section id="ai-troubleshooter" className={styles.sectionContainer}>
-        <div className={styles.copilotCard}>
-          <div className={styles.copilotHeader}>
-            <div>
-              <div className={styles.copilotBadge}>
-                <Icons.Cpu />
-                <span>Interactive AI Diagnostic &amp; Self-Test Suite</span>
-              </div>
-              <h2 className={styles.copilotTitle}>Smart Troubleshooting &amp; Self-Service Tools</h2>
-              <p className={styles.copilotSubtitle}>
-                Audit your custom DNS records, simulate incoming SMS lead texting, or run automated health checks in real time.
-              </p>
-            </div>
-            <div className={styles.copilotStatusChip}>
-              <span className={styles.pulseDot} />
-              <span>Engine Active</span>
-            </div>
-          </div>
-
-          {/* Mode Switcher Tabs */}
-          <div className={styles.copilotNavTabs}>
-            <button
-              className={`${styles.copilotNavTab} ${copilotMode === 'scenarios' ? styles.copilotNavTabActive : ''}`}
-              onClick={() => setCopilotMode('scenarios')}
-            >
-              <Icons.Cpu />
-              <span>Automated Diagnostics</span>
-            </button>
-            <button
-              className={`${styles.copilotNavTab} ${copilotMode === 'dns' ? styles.copilotNavTabActive : ''}`}
-              onClick={() => setCopilotMode('dns')}
-            >
-              <Icons.Globe />
-              <span>Live Domain DNS Auditor</span>
-            </button>
-            <button
-              className={`${styles.copilotNavTab} ${copilotMode === 'sms' ? styles.copilotNavTabActive : ''}`}
-              onClick={() => setCopilotMode('sms')}
-            >
-              <Icons.Smartphone />
-              <span>SMS &amp; Texting Simulator</span>
-            </button>
-            <button
-              className={`${styles.copilotNavTab} ${copilotMode === 'chat' ? styles.copilotNavTabActive : ''}`}
-              onClick={() => setCopilotMode('chat')}
-            >
-              <Icons.Bot />
-              <span>AI Copilot Q&amp;A</span>
-            </button>
-          </div>
-
-          {/* TAB 1: Automated Scenario Diagnostics */}
-          {copilotMode === 'scenarios' && (
-            <div className={styles.copilotBody}>
-              <div className={styles.scenarioList}>
-                {Object.entries(DIAGNOSTIC_SCENARIOS).map(([key, sc]) => (
-                  <button
-                    key={key}
-                    className={`${styles.scenarioBtn} ${activeScenario === key ? styles.scenarioActive : ''}`}
-                    onClick={() => setActiveScenario(key)}
-                  >
-                    <Icons.MessageSquare />
-                    <div className={styles.scenarioText}>
-                      <strong>{sc.title}</strong>
-                      <span>{sc.action.desc}</span>
-                    </div>
-                  </button>
-                ))}
-              </div>
-
-              <div className={styles.terminalContainer}>
-                <div className={styles.terminalHeader}>
-                  <div className={styles.terminalDots}>
-                    <span className={styles.dotRed} />
-                    <span className={styles.dotYellow} />
-                    <span className={styles.dotGreen} />
-                  </div>
-                  <span className={styles.terminalTitle}>LGQ_DIAGNOSTICS_V4.sh · LIVE</span>
-                </div>
-                <div className={styles.terminalBody}>
-                  {terminalLogs.map((log, i) => (
-                    <div key={i} className={styles.logRow}>
-                      <span className={styles.logPrompt}>&gt;</span>
-                      <span className={log.status === 'pass' ? styles.logPass : styles.logWarn}>
-                        [{log.status.toUpperCase()}]
-                      </span>
-                      <span>{log.text}</span>
-                    </div>
-                  ))}
-                  {isTerminalDone && (
-                    <div className={styles.terminalActionBox}>
-                      <h4>{DIAGNOSTIC_SCENARIOS[activeScenario]?.action.title}</h4>
-                      <p>{DIAGNOSTIC_SCENARIOS[activeScenario]?.action.desc}</p>
-                      <button
-                        className={styles.btnPrimarySm}
-                        onClick={() =>
-                          showToast(`Triggered: ${DIAGNOSTIC_SCENARIOS[activeScenario]?.action.btnText}`)
-                        }
-                      >
-                        <Icons.Sparkles />
-                        <span>{DIAGNOSTIC_SCENARIOS[activeScenario]?.action.btnText}</span>
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* TAB 2: Live Domain DNS Auditor */}
-          {copilotMode === 'dns' && (
-            <div className={styles.toolPanelContainer}>
-              <div className={styles.toolInputCard}>
-                <h3 className={styles.toolCardTitle}>Audit Domain Configuration</h3>
-                <p className={styles.toolCardDesc}>
-                  Enter your contractor domain to verify root A records, CNAME routing, SSL certificates, and Edge CDN propagation.
-                </p>
-                <div className={styles.toolInputGroup}>
-                  <label>Custom Domain Name</label>
-                  <div className={styles.toolInputWrapper}>
-                    <input
-                      type="text"
-                      placeholder="e.g. maplewoodplumbing.com"
-                      value={dnsDomainInput}
-                      onChange={e => setDnsDomainInput(e.target.value)}
-                    />
-                    <button
-                      className={styles.btnPrimarySm}
-                      onClick={handleRunDnsAudit}
-                      disabled={isDnsAuditing}
-                    >
-                      {isDnsAuditing ? <Icons.RefreshCw /> : <Icons.Globe />}
-                      <span>{isDnsAuditing ? 'Auditing...' : 'Audit DNS'}</span>
-                    </button>
-                  </div>
-                </div>
-
-                <div className={styles.deflectionBox} style={{ marginTop: 'auto' }}>
-                  <div className={styles.deflectionHeader}>
-                    <Icons.Sparkles />
-                    <span>Required DNS Records for GoDaddy / Namecheap</span>
-                  </div>
-                  <p style={{ fontSize: '0.8rem', color: '#cbd5e1', lineHeight: '1.5' }}>
-                    • <strong>A Record (@)</strong>: <code>76.76.21.21</code> (Points root domain to Let&apos;s Get Quoted)<br />
-                    • <strong>CNAME (www)</strong>: <code>cname.letsgetquoted.com</code> (Automated SSL &amp; CDN routing)
-                  </p>
-                </div>
-              </div>
-
-              <div className={styles.toolResultCard}>
-                <div className={styles.resultTitleRow}>
-                  <span className={styles.resultTitle}>Audit Status: {dnsDomainInput || 'maplewoodpro.com'}</span>
-                  <span className={styles.dnsStatusPass}>
-                    <Icons.Check /> All Records Valid
-                  </span>
-                </div>
-
-                <div className={styles.dnsAuditGrid}>
-                  <div className={styles.dnsAuditItem}>
-                    <div className={styles.dnsItemLeft}>
-                      <span className={styles.dnsRecordBadge}>A</span>
-                      <span className={styles.dnsHostName}>@ (Root Domain)</span>
-                    </div>
-                    <div className={styles.dnsItemRight}>
-                      <span className={styles.dnsItemVal}>76.76.21.21</span>
-                      <span className={styles.dnsStatusPass}>Verified</span>
-                    </div>
-                  </div>
-
-                  <div className={styles.dnsAuditItem}>
-                    <div className={styles.dnsItemLeft}>
-                      <span className={styles.dnsRecordBadge}>CNAME</span>
-                      <span className={styles.dnsHostName}>www</span>
-                    </div>
-                    <div className={styles.dnsItemRight}>
-                      <span className={styles.dnsItemVal}>cname.letsgetquoted.com</span>
-                      <span className={styles.dnsStatusPass}>Verified</span>
-                    </div>
-                  </div>
-
-                  <div className={styles.dnsAuditItem}>
-                    <div className={styles.dnsItemLeft}>
-                      <span className={styles.dnsRecordBadge}>SSL</span>
-                      <span className={styles.dnsHostName}>Let&apos;s Encrypt TLS 1.3</span>
-                    </div>
-                    <div className={styles.dnsItemRight}>
-                      <span className={styles.dnsItemVal}>Active (256-bit)</span>
-                      <span className={styles.dnsStatusPass}>Secure</span>
-                    </div>
-                  </div>
-
-                  <div className={styles.dnsAuditItem}>
-                    <div className={styles.dnsItemLeft}>
-                      <span className={styles.dnsRecordBadge}>CDN</span>
-                      <span className={styles.dnsHostName}>Fastly Global Edge</span>
-                    </div>
-                    <div className={styles.dnsItemRight}>
-                      <span className={styles.dnsItemVal}>Latency: 18ms</span>
-                      <span className={styles.dnsStatusPass}>Optimal</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* TAB 3: SMS Lead Simulator */}
-          {copilotMode === 'sms' && (
-            <div className={styles.toolPanelContainer}>
-              <div className={styles.toolInputCard}>
-                <h3 className={styles.toolCardTitle}>Test Automated Text Deliverability</h3>
-                <p className={styles.toolCardDesc}>
-                  Enter a mobile phone number to simulate how instant quote follow-ups, dispatch alerts, and 50% deposit requests look on a customer&apos;s device.
-                </p>
-                <div className={styles.toolInputGroup}>
-                  <label>Test Mobile Phone Number</label>
-                  <div className={styles.toolInputWrapper}>
-                    <input
-                      type="text"
-                      placeholder="(555) 234-5678"
-                      value={smsPhoneInput}
-                      onChange={e => setSmsPhoneInput(e.target.value)}
-                    />
-                    <button
-                      className={styles.btnPrimarySm}
-                      onClick={handleSendTestSms}
-                      disabled={isSmsSending}
-                    >
-                      <Icons.Send />
-                      <span>{isSmsSending ? 'Sending...' : 'Send Sample'}</span>
-                    </button>
-                  </div>
-                </div>
-
-                <div className={styles.deflectionBox} style={{ marginTop: 'auto' }}>
-                  <div className={styles.deflectionHeader}>
-                    <Icons.ShieldCheck />
-                    <span>10DLC Carrier Verified Compliance</span>
-                  </div>
-                  <p style={{ fontSize: '0.8rem', color: '#cbd5e1', lineHeight: '1.5' }}>
-                    All outbound SMS messages include required opt-out keywords (<code>Reply STOP to cancel</code>) and custom brand identification to ensure 100% carrier delivery.
-                  </p>
-                </div>
-              </div>
-
-              <div className={styles.toolResultCard}>
-                <div className={styles.phoneSimulator}>
-                  <div className={styles.phoneSimulatorHeader}>
-                    <span>Messages · Let&apos;s Get Quoted Dedicated Line</span>
-                  </div>
-
-                  <div className={styles.smsBubbleReceived}>
-                    <p>
-                      Hi Brett, thank you for requesting an estimate with <strong>Maplewood Pro</strong>!
-                    </p>
-                    <p style={{ marginTop: '0.4rem' }}>
-                      Click below to view your 3 pricing tiers (Good / Better / Best) and select your preferred schedule:
-                    </p>
-                    <p style={{ marginTop: '0.4rem' }}>
-                      <span className={styles.smsBubbleLink}>https://app.letsgetquoted.com/q/demo</span>
-                    </p>
-                    <span className={styles.smsTimestamp}>Just now · Delivered</span>
-                  </div>
-
-                  <div className={styles.smsMetaAudit}>
-                    <span>Carrier: AT&amp;T / Verizon</span>
-                    <span>10DLC: Verified Active</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* TAB 4: Natural Language AI Copilot */}
-          {copilotMode === 'chat' && (
-            <div className={styles.naturalQueryContainer}>
-              <div className={styles.naturalQueryInputBox}>
-                <Icons.Bot />
-                <input
-                  type="text"
-                  placeholder="Ask any setup, pricing, or troubleshooting question (e.g. 'How do I add a helper to dispatch?')..."
-                  value={naturalPrompt}
-                  onChange={e => setNaturalPrompt(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && handleAskNaturalCopilot()}
-                />
-                <button
-                  className={styles.btnPrimarySm}
-                  onClick={() => handleAskNaturalCopilot()}
-                >
-                  <Icons.Sparkles />
-                  <span>Ask AI</span>
-                </button>
-              </div>
-
-              <div className={styles.naturalSuggestions}>
-                <span style={{ fontSize: '0.8rem', color: '#64748b', alignSelf: 'center' }}>
-                  Try asking:
-                </span>
-                {[
-                  'How do I add a helper to dispatch?',
-                  'How do 50% upfront deposits work?',
-                  'How do I connect my GoDaddy domain?',
-                  'How do quote expiration dates work?'
-                ].map((s, idx) => (
-                  <button
-                    key={idx}
-                    className={styles.naturalSuggestChip}
-                    onClick={() => {
-                      setNaturalPrompt(s);
-                      handleAskNaturalCopilot(s);
-                    }}
-                  >
-                    {s}
-                  </button>
-                ))}
-              </div>
-
-              {naturalAnswer && (
-                <div className={styles.naturalAnswerCard}>
-                  <div className={styles.naturalAnswerHeader}>
-                    <Icons.Sparkles />
-                    <span>{naturalAnswer.title}</span>
-                  </div>
-                  <p className={styles.naturalAnswerBody}>{naturalAnswer.body}</p>
-                  {naturalAnswer.linkText && (
-                    <div style={{ marginTop: '1rem' }}>
-                      <a
-                        href={naturalAnswer.linkUrl}
-                        className={styles.btnEmeraldSm}
-                        onClick={() => showToast('Opening playbook...')}
-                      >
-                        <Icons.BookCheck />
-                        <span>{naturalAnswer.linkText}</span>
-                      </a>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
         </div>
       </section>
 
