@@ -22,7 +22,8 @@ import type { Lead } from './leads';
 import { formatMoney, formatMoneyExact } from './jobs';
 import { buildUnsubscribePageUrl, buildUnsubscribeOneClickUrl } from './email-suppression';
 import { APP_ORIGIN } from './app-origin';
-import { contractorFrom, renderBrandedEmail, type EmailBrand } from '@/emails/brand';
+import { contractorFrom, normalizeEmailTheme, renderBrandedEmail, safeAccent, themePaint, type EmailBrand } from '@/emails/brand';
+import { appointmentBlock, contactBlock, detailCard, moneySummary, statusBanner } from '@/emails/primitives';
 import { loadEmailBrand, nameOnlyBrand } from './email-brand';
 import type { DailyDigest } from './daily-digest';
 import { quoteFollowupEmailPreview } from './quote-followups';
@@ -102,6 +103,16 @@ async function brandFor(input: { accountId?: string | null; businessName: string
 /** Replies reach the contractor when we know how; otherwise they reach us. */
 function replyAddress(brand: EmailBrand): string {
   return brand.replyTo || 'hello@letsgetquoted.com';
+}
+
+/** Standard tags attached to all outbound emails for outcome tracking and theme performance. */
+function defaultTags(kind: string, brand: EmailBrand, accountId?: string | null): Array<{ name: string; value: string }> {
+  return [
+    { name: 'kind', value: kind },
+    { name: 'theme', value: brand.theme || 'studio' },
+    { name: 'template_version', value: '2.0' },
+    ...(accountId ? [{ name: 'account_id', value: accountId }] : []),
+  ];
 }
 
 // Resolve the account owner's login email — the contractor — for out-of-band
@@ -200,10 +211,7 @@ export async function sendInvoiceEmail(input: SendInvoiceEmailInput): Promise<vo
             },
           ]
         : undefined,
-      tags: [
-        { name: 'kind', value: 'invoice' },
-        ...(input.accountId ? [{ name: 'account_id', value: input.accountId }] : []),
-      ],
+      tags: defaultTags('invoice', brand, input.accountId),
     });
 
     if (result.error) {
@@ -229,40 +237,63 @@ export interface SendClientQuoteEmailInput {
   includesScheduleOptions?: boolean;
 }
 
+/**
+ * Generates the production HTML for a client quote email.
+ * Reusable for live sending and preview rendering.
+ */
+export function renderClientQuoteEmailHtml(input: SendClientQuoteEmailInput & { brand: EmailBrand }): string {
+  const brand = input.brand;
+  const theme = normalizeEmailTheme(brand.theme);
+  const paint = themePaint(theme, brand.accent);
+
+  const paragraphs = [
+    'Your customized quote is ready for review. Approve online to lock in your project schedule.',
+  ];
+  if (input.includesScheduleOptions) {
+    paragraphs.push('You can also pick your preferred start date right on your quote page.');
+  }
+
+  const quoteSummary = moneySummary(
+    paint,
+    [{ label: 'Estimated Project Total', value: formatMoneyExact(input.quotedAmount), strong: true }],
+    { label: 'Total Estimate', value: formatMoneyExact(input.quotedAmount) },
+    { dueNotice: `Quote ${escapeHtml(input.jobRef)} · Valid for 30 days` },
+  );
+
+  const contactHtml = contactBlock(paint, brand, {
+    prompt: `Questions about quote ${escapeHtml(input.jobRef)}?`,
+  });
+
+  return renderBrandedEmail({
+    brand,
+    preheader: `${formatMoneyExact(input.quotedAmount)} · Quote ${input.jobRef} from ${input.businessName}`,
+    eyebrow: `Quote ${input.jobRef}`,
+    heading: `${input.clientName}, here is your quote`,
+    paragraphs,
+    bodyHtml: quoteSummary,
+    cta: { label: 'View & approve your quote', url: input.quoteUrl },
+    contactCallout: contactHtml,
+  });
+}
+
 // Client-facing quote email — the fallback channel when a lead has an email but
 // no textable mobile, so the quote still reaches them instead of silently
 // stalling. Throws on provider rejection so the caller can flag delivery failed.
 export async function sendClientQuoteEmail(input: SendClientQuoteEmailInput): Promise<void> {
-  // Unlike the best-effort alert helpers, this is a PRIMARY delivery channel
-  // whose outcome is reported to the owner (and to the client feed). If the
-  // provider isn't configured, throw so the caller flags delivery='failed'
-  // and shows the honest "copy the link" banner — never a false "emailed".
   if (!process.env.RESEND_API_KEY) {
     throw new Error('Email provider is not configured.');
   }
 
   const brand = await brandFor(input);
-  const paragraphs = [formatMoneyExact(input.quotedAmount)];
-  if (input.includesScheduleOptions) paragraphs.push('You can also pick a start date right on your quote page.');
-  paragraphs.push('Review the full details and approve your quote online — no login needed.');
+  const html = renderClientQuoteEmailHtml({ ...input, brand });
 
   const result = await resend.emails.send({
     from: contractorFrom(brand.businessName),
     to: input.recipientEmail,
     subject: `Your quote ${input.jobRef} from ${input.businessName}`,
-    html: renderBrandedEmail({
-      brand,
-      preheader: `${formatMoneyExact(input.quotedAmount)} · quote ${input.jobRef}`,
-      eyebrow: 'Your quote',
-      heading: `${input.clientName}, here is your quote`,
-      paragraphs,
-      cta: { label: 'View & approve your quote', url: input.quoteUrl },
-    }),
+    html,
     reply_to: replyAddress(brand),
-    tags: [
-      { name: 'kind', value: 'client_quote' },
-      ...(input.accountId ? [{ name: 'account_id', value: input.accountId }] : []),
-    ],
+    tags: defaultTags('client_quote', brand, input.accountId),
   });
 
   if (result.error) {

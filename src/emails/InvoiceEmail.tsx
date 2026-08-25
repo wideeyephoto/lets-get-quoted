@@ -1,21 +1,13 @@
-import { escapeHtml, renderBrandedEmail, safeAccent, type EmailBrand } from './brand';
+import { escapeHtml, normalizeEmailTheme, renderBrandedEmail, safeAccent, themePaint, type EmailBrand } from './brand';
+import { moneySummary, contactBlock } from './primitives';
 import { formatUsdExact } from '@/lib/money-format';
 
 // The invoice email: the branded shell, with the line items and totals as its
 // body.
 //
-// Two things were wrong with the version this replaces, and both were invisible
-// unless you opened it in the wrong client:
-//
-//   - The totals were laid out with display:flex. Outlook renders through Word
-//     and ignores flex entirely, so every "Subtotal / Discount / Tax / Total"
-//     row collapsed into a single column there. It is a table now.
-//   - Business name, client name and every line-item description went in
-//     unescaped. An ampersand in a company name is common; a "<" in a
-//     description would eat the rest of the email.
-//
-// The footer used to promise "Questions? Please contact ${businessName}
-// directly" while Reply-To pointed at us. The shell makes that line true.
+// Driven by theme tokens: Letterhead provides a classic business document rule,
+// Blueprint provides strong high-contrast financial structure, Neighborly provides
+// warm soft accents, and Studio / Spotlight provide crisp modern execution.
 
 export function generateInvoiceHtml(params: {
   brand: EmailBrand;
@@ -32,65 +24,66 @@ export function generateInvoiceHtml(params: {
   items: Array<{ description: string; amount: number }>;
   invoiceLink: string;
 }): string {
-  // TO THE CENT. This rounded to whole dollars, on a document whose whole job is
-  // to add up: Description/Amount rows above Subtotal -> Tax -> Total. Four
-  // $438.50 items printed as four $439s over a subtotal of $1,754, and the Total
-  // is the figure the card is actually charged -- invoice/[id]/actions.ts charges
-  // round2(total - paid), so the number here could differ from the statement by
-  // up to fifty cents.
-  //
-  // The hosted invoice page has always been exact, and says why in as many words
-  // ("an invoice has to add up on the page"). So one invoice was being stated
-  // three ways: exact on the page, rounded in this email, and rounded again in
-  // the PDF attached to it. money-format.ts is dependency-free precisely so a
-  // renderer like this one can use it.
   const money = formatUsdExact;
   const accent = safeAccent(params.brand.accent);
+  const theme = normalizeEmailTheme(params.brand.theme);
+  const paint = themePaint(theme, accent);
+
   const subtotal = params.subtotal ?? params.total;
   const discountAmount = params.discountAmount ?? 0;
   const taxAmount = params.taxAmount ?? 0;
 
-  const summaryRow = (label: string, value: string, strong = false) => `
-    <tr>
-      <td style="padding:${strong ? '10px 0 0' : '6px 0'};font-size:${strong ? '15px' : '13px'};color:${strong ? '#1c2230' : '#6b7280'};font-weight:${strong ? '700' : '400'}">${escapeHtml(label)}</td>
-      <td align="right" style="padding:${strong ? '10px 0 0' : '6px 0'};font-size:${strong ? '18px' : '13px'};color:${strong ? '#1c2230' : '#6b7280'};font-weight:${strong ? '700' : '400'}">${escapeHtml(value)}</td>
-    </tr>`;
-
-  const breakdown = discountAmount > 0 || taxAmount > 0
-    ? summaryRow('Subtotal', money(subtotal)) +
-      (discountAmount > 0 ? summaryRow(`Discount (${params.discountPercent ?? 0}%)`, '-' + money(discountAmount)) : '') +
-      (taxAmount > 0 ? summaryRow(`Tax (${params.taxRate ?? 0}%)`, money(taxAmount)) : '')
-    : '';
-
   const itemRows = params.items
     .map((item) => `
       <tr>
-        <td style="padding:10px 0;border-bottom:1px solid #f0f2f5;font-size:14px;color:#1c2230">${escapeHtml(item.description)}</td>
-        <td align="right" style="padding:10px 0;border-bottom:1px solid #f0f2f5;font-size:14px;color:#1c2230;white-space:nowrap">${escapeHtml(money(item.amount))}</td>
+        <td style="padding:10px 12px;border-bottom:1px solid ${paint.border};font-size:14px;color:#1c2230">${escapeHtml(item.description)}</td>
+        <td align="right" style="padding:10px 12px;border-bottom:1px solid ${paint.border};font-size:14px;font-weight:600;color:#1c2230;white-space:nowrap">${escapeHtml(money(item.amount))}</td>
       </tr>`)
     .join('');
 
-  const bodyHtml = `
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 18px">
+  const summaryRows: Array<{ label: string; value: string; strong?: boolean; accent?: boolean }> = [];
+  if (discountAmount > 0 || taxAmount > 0) {
+    summaryRows.push({ label: 'Subtotal', value: money(subtotal) });
+    if (discountAmount > 0) {
+      summaryRows.push({ label: `Discount (${params.discountPercent ?? 0}%)`, value: `-${money(discountAmount)}` });
+    }
+    if (taxAmount > 0) {
+      summaryRows.push({ label: `Tax (${params.taxRate ?? 0}%)`, value: money(taxAmount) });
+    }
+  }
+
+  const itemsTable = `
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 16px;background:${paint.subtleBg};border:1px solid ${paint.border};border-radius:${paint.cardRadius};overflow:hidden">
       <tr>
-        <td style="padding-bottom:8px;border-bottom:2px solid #e6e9ef;font-size:12px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#6b7280">Description</td>
-        <td align="right" style="padding-bottom:8px;border-bottom:2px solid #e6e9ef;font-size:12px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#6b7280">Amount</td>
+        <td style="padding:10px 12px;background:${paint.tableHeaderBg};border-bottom:${paint.tableHeaderBorder};font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:${paint.accessibleAccent}">Description</td>
+        <td align="right" style="padding:10px 12px;background:${paint.tableHeaderBg};border-bottom:${paint.tableHeaderBorder};font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:${paint.accessibleAccent}">Amount</td>
       </tr>
       ${itemRows}
     </table>
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 22px;border-top:1px solid #e6e9ef">
-      ${breakdown}
-      ${summaryRow('Total', money(params.total), true)}
-    </table>`;
+  `;
+
+  const summaryHtml = moneySummary(
+    paint,
+    summaryRows,
+    { label: 'Total Due', value: money(params.total) },
+    { dueNotice: `Due upon receipt · Job ${escapeHtml(params.jobRef)}` },
+  );
+
+  const contactHtml = contactBlock(paint, params.brand, {
+    prompt: `Questions about invoice ${escapeHtml(params.invoiceRef)}?`,
+  });
+
+  const bodyHtml = `${itemsTable}${summaryHtml}`;
 
   return renderBrandedEmail({
     brand: params.brand,
-    preheader: `Invoice ${params.invoiceRef} · ${money(params.total)}`,
+    preheader: `Invoice ${params.invoiceRef} · ${money(params.total)} due from ${params.businessName}`,
     eyebrow: `Invoice ${params.invoiceRef}`,
     heading: `${params.clientName}, here is your invoice`,
-    paragraphs: [`Job ${params.jobRef} · ${money(params.total)} due`],
+    paragraphs: [`Please review the line items below and complete your payment online.`],
     bodyHtml,
-    cta: { label: 'View invoice', url: params.invoiceLink },
-    footerHtml: `<p style="margin:10px 0 0;font-size:12px;line-height:1.6;color:#6b7280">A PDF copy is attached. <span style="color:${accent}">&#9679;</span> Invoice ${escapeHtml(params.invoiceRef)}</p>`,
+    cta: { label: 'View & pay invoice', url: params.invoiceLink },
+    contactCallout: contactHtml,
+    footerHtml: `<p style="margin:10px 0 0;font-size:12px;line-height:1.6;color:#6b7280">A PDF copy is attached. <span style="color:${paint.accessibleAccent}">&#9679;</span> Invoice ${escapeHtml(params.invoiceRef)}</p>`,
   });
 }

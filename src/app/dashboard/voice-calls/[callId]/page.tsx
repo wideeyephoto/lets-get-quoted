@@ -10,6 +10,7 @@ import { describeSettlement, formatCallLength, type VoiceCallSettlement } from '
 import { detectCallEmergency } from '@/lib/voice/triage';
 import VoiceCallWorkflowPanel from './VoiceCallWorkflowPanel';
 import InteractiveTranscriptViewer from './InteractiveTranscriptViewer';
+import QuickSmsFollowupCard from './QuickSmsFollowupCard';
 import styles from './call-detail.module.css';
 
 export const metadata = { title: 'Voice Call Details & Transcript' };
@@ -38,17 +39,19 @@ export default async function VoiceCallDetailPage({
 
   const { data: account } = await supabase
     .from('accounts')
-    .select('timezone')
+    .select('timezone, business_name')
     .eq('id', accountId)
     .maybeSingle();
 
   const timezone = (account?.timezone as string) || 'America/New_York';
+  const businessName = (account?.business_name as string) || null;
   const call = await loadVoiceCallDetail(supabase, accountId, params.callId);
 
   if (!call) {
     notFound();
   }
 
+  const callerName = call.contact.client?.name ?? call.contact.lead?.name ?? null;
   const emergency = call.summary ? detectCallEmergency(call.summary) : null;
 
   return (
@@ -129,6 +132,14 @@ export default async function VoiceCallDetailPage({
               )}
             </div>
           </div>
+
+          {/* 1-Click SMS Follow-up Card */}
+          <QuickSmsFollowupCard
+            callerPhone={call.callerNumber}
+            callerName={callerName}
+            summary={call.summary}
+            businessName={businessName}
+          />
 
           {/* Interactive Audio Player & Synchronized Transcript */}
           <InteractiveTranscriptViewer

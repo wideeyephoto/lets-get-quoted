@@ -31,26 +31,59 @@ export type EmailBrand = {
   replyTo: string | null;
   /** The owner's chosen layout. Missing/legacy values render as Studio. */
   theme?: EmailThemeId;
+  /** Physical postal address for CAN-SPAM and footer verification. */
+  mailingAddress?: string | null;
+  /** Contractor license number, e.g. "Lic #104928" */
+  licenseNumber?: string | null;
+  /** Geographic service territory, e.g. "Serving Oakland & Wayne Counties" */
+  serviceArea?: string | null;
+  /** Friendly sender name or owner name */
+  senderName?: string | null;
 };
 
 export const EMAIL_THEMES = [
-  { id: 'studio', name: 'Studio', description: 'Quiet, polished, and easy to scan. The strongest all-purpose choice.' },
-  { id: 'letterhead', name: 'Letterhead', description: 'A crisp business-document look with a strong branded rule.' },
-  { id: 'neighborly', name: 'Neighborly', description: 'Warmer paper tones and softer type for a more personal note.' },
-  { id: 'blueprint', name: 'Blueprint', description: 'Structured, confident, and built for schedules, jobs, and details.' },
-  { id: 'spotlight', name: 'Spotlight', description: 'A bold color-led header for quotes, invoices, and big calls to action.' },
+  {
+    id: 'studio',
+    name: 'Studio',
+    outcome: 'Best all-purpose choice',
+    description: 'Quiet, polished, and easy to scan. Best all-purpose choice for any trade.',
+  },
+  {
+    id: 'letterhead',
+    name: 'Letterhead',
+    outcome: 'Estimates, invoices, and commercial work',
+    description: 'Crisp, formal business-document look. Ideal for estimates, invoices, and commercial work.',
+  },
+  {
+    id: 'neighborly',
+    name: 'Neighborly',
+    outcome: 'Residential and recurring service',
+    description: 'Warmer paper tones and soft typography. Perfect for residential homeowners and recurring service.',
+  },
+  {
+    id: 'blueprint',
+    name: 'Blueprint',
+    outcome: 'Project updates and scheduling',
+    description: 'Structured, confident, and high-contrast. Built for project updates, schedules, and job details.',
+  },
+  {
+    id: 'spotlight',
+    name: 'Spotlight',
+    outcome: 'Campaigns and prominent calls to action',
+    description: 'Bold color-led header and high visual punch. Great for seasonal campaigns and big calls to action.',
+  },
 ] as const;
 
 export type EmailThemeId = (typeof EMAIL_THEMES)[number]['id'];
 
 export function normalizeEmailTheme(value: unknown): EmailThemeId {
-  return EMAIL_THEMES.some((theme) => theme.id === value) ? value as EmailThemeId : 'studio';
+  return EMAIL_THEMES.some((theme) => theme.id === value) ? (value as EmailThemeId) : 'studio';
 }
 
-const NAVY = '#172033';
-const INK = '#1c2230';
-const MUTED = '#6b7280';
-const HAIRLINE = '#e6e9ef';
+export const NAVY = '#172033';
+export const INK = '#1c2230';
+export const MUTED = '#6b7280';
+export const HAIRLINE = '#e6e9ef';
 
 export function escapeHtml(value: string | null | undefined): string {
   return String(value ?? '')
@@ -66,19 +99,67 @@ export function safeAccent(accent: string | null | undefined): string {
   return typeof accent === 'string' && /^#[0-9a-fA-F]{6}$/.test(accent.trim()) ? accent.trim() : NAVY;
 }
 
+/** Parse a 6-digit hex into RGB integers [0-255]. */
+export function hexToRgb(hex: string): [number, number, number] {
+  const clean = safeAccent(hex).slice(1);
+  return [0, 2, 4].map((i) => parseInt(clean.slice(i, i + 2), 16)) as [number, number, number];
+}
+
 /**
- * Readable text on the accent.
+ * WCAG 2.2 Relative Luminance (0 = black, 1 = white).
+ * Follows the standard W3C definition with linearized sRGB channels.
+ */
+export function relativeLuminance(hex: string): number {
+  const [r, g, b] = hexToRgb(hex).map((v) => v / 255);
+  const channel = (c: number) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
+  return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
+}
+
+/**
+ * WCAG 2.2 Contrast Ratio between two colors (ranging from 1:1 to 21:1).
+ */
+export function contrastRatio(colorA: string, colorB: string): number {
+  const lumA = relativeLuminance(colorA);
+  const lumB = relativeLuminance(colorB);
+  const lighter = Math.max(lumA, lumB);
+  const darker = Math.min(lumA, lumB);
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
+/**
+ * Readable text color (dark ink vs white) on top of the accent color.
  *
- * A contractor who picks a pale yellow gets white-on-yellow otherwise, which is
- * the kind of thing nobody notices until a customer cannot find the button.
- * Standard luminance, same rule the app's own theme uses.
+ * The mathematical crossover point for maximum contrast is luminance ≈ 0.179.
+ * Accents lighter than 0.179 (e.g. orange #ff7a21, yellow #f0b429, cyan, lime)
+ * achieve WCAG AA (>= 4.5:1) with dark ink (#1c2230). White text on #ff7a21
+ * produces only ~2.61:1 contrast and fails WCAG AA.
  */
 export function onAccent(accent: string): string {
-  const hex = safeAccent(accent).slice(1);
-  const [r, g, b] = [0, 2, 4].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
-  const channel = (c: number) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
-  const luminance = 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
-  return luminance > 0.55 ? INK : '#ffffff';
+  const lum = relativeLuminance(accent);
+  return lum >= 0.179 ? INK : '#ffffff';
+}
+
+/**
+ * Derives a darkened "accessible accent" that achieves at least targetRatio
+ * (default 4.5:1 under WCAG AA) against a light background (default #ffffff).
+ *
+ * Keeps the contractor's brand identity while preventing unreadable pale orange/yellow text.
+ */
+export function accessibleAccent(accent: string, onBackground = '#ffffff', targetRatio = 4.5): string {
+  const base = safeAccent(accent);
+  if (contrastRatio(base, onBackground) >= targetRatio) return base;
+
+  let [r, g, b] = hexToRgb(base);
+  for (let step = 0; step < 40; step++) {
+    r = Math.max(0, Math.floor(r * 0.93));
+    g = Math.max(0, Math.floor(g * 0.93));
+    b = Math.max(0, Math.floor(b * 0.93));
+    const candidate = `#${[r, g, b].map((v) => v.toString(16).padStart(2, '0')).join('')}`;
+    if (contrastRatio(candidate, onBackground) >= targetRatio) {
+      return candidate;
+    }
+  }
+  return INK;
 }
 
 /**
@@ -88,9 +169,6 @@ export function onAccent(accent: string): string {
  * domain because that is what SPF and DKIM sign. Sending as their own address
  * without their DNS would fail authentication and land in spam — the failure
  * mode being worse than the branding gain, by a lot.
- *
- * Quotes and backslashes are stripped rather than escaped: a display name is a
- * header field, and a stray quote there can split it.
  */
 export function contractorFrom(businessName: string): string {
   const clean = String(businessName ?? '').replace(/["\\<>\r\n]/g, '').trim().slice(0, 60);
@@ -106,7 +184,7 @@ export function contractorFrom(businessName: string): string {
  * be an empty box for most recipients — worse than a wordmark, which always
  * works and still carries the color.
  */
-function brandLockup(
+export function brandLockup(
   brand: EmailBrand,
   options: { textColor?: string; logoPlate?: boolean } = {},
 ): string {
@@ -114,8 +192,9 @@ function brandLockup(
   const name = escapeHtml(brand.businessName || 'Your contractor');
   if (brand.logoUrl) {
     const image = `<img src="${escapeHtml(brand.logoUrl)}" alt="${name}" width="150" style="display:block;max-width:150px;height:auto;border:0;outline:none;text-decoration:none" />`;
+    // A clean white plate ensures transparent light or dark logos never vanish against colored or dark theme headers
     return options.logoPlate
-      ? `<div style="display:inline-block;padding:8px 12px;background:#ffffff;border-radius:7px">${image}</div>`
+      ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="display:inline-block"><tr><td bgcolor="#ffffff" style="padding:8px 14px;background:#ffffff;border-radius:8px;border:1px solid #e2e8f0">${image}</td></tr></table>`
       : image;
   }
   return `<span style="font-size:20px;font-weight:700;color:${options.textColor ?? accent};letter-spacing:-0.01em">${name}</span>`;
@@ -123,10 +202,6 @@ function brandLockup(
 
 /**
  * Hidden preview text — the line a mail client shows next to the subject.
- *
- * Without it the preview is whatever the first visible words happen to be,
- * which for a branded email is the business name it already shows in the From
- * line. The padding characters stop the client pulling the body in after it.
  */
 function preheaderBlock(text: string): string {
   if (!text) return '';
@@ -147,16 +222,24 @@ export type BrandedEmail = {
   /** Plain sentences. Escaped for you — pass text, not markup. */
   paragraphs?: string[];
   cta?: { label: string; url: string };
+  /** High-proximity contact callout placed before footer when appropriate. */
+  contactCallout?: string;
   /** Pre-built, already-escaped HTML dropped in below the paragraphs (line items, totals). */
   bodyHtml?: string;
   /** Appended inside the footer, e.g. the CAN-SPAM block for marketing mail. */
   footerHtml?: string;
 };
 
-type ThemePaint = {
+export type ThemePaint = {
+  theme: EmailThemeId;
+  accent: string;
+  accessibleAccent: string;
   page: string;
   card: string;
   cardStyle: string;
+  cardRadius: string;
+  subtleBg: string;
+  border: string;
   header: string;
   headerStyle: string;
   headerText: string;
@@ -167,12 +250,18 @@ type ThemePaint = {
   eyebrow: string;
   headingFont: string;
   headingSize: string;
+  tableHeaderBg: string;
+  tableHeaderBorder: string;
+  badgeBg: string;
+  badgeText: string;
+  highlightBg: string;
+  highlightBorder: string;
   ctaRadius: string;
   ctaBackground: string;
   ctaText: string;
 };
 
-function tint(hexValue: string, whitePercent: number): string {
+export function tint(hexValue: string, whitePercent: number): string {
   const hex = safeAccent(hexValue).slice(1);
   const amount = Math.min(1, Math.max(0, whitePercent));
   const channel = (offset: number) => {
@@ -182,52 +271,175 @@ function tint(hexValue: string, whitePercent: number): string {
   return `#${channel(0)}${channel(2)}${channel(4)}`;
 }
 
-function themePaint(theme: EmailThemeId, accent: string): ThemePaint {
+export function themePaint(theme: EmailThemeId, accent: string): ThemePaint {
+  const acc = safeAccent(accent);
+  const darkAcc = accessibleAccent(acc, '#ffffff', 4.5);
+
   if (theme === 'letterhead') {
     return {
-      page: '#ffffff', card: '#ffffff', cardStyle: 'border:1px solid #dfe3e8',
-      header: '#ffffff', headerStyle: `padding:26px 32px 22px;border-bottom:5px solid ${accent}`,
-      headerText: accent, logoPlate: false, bodyStyle: 'padding:28px 32px 10px',
-      footer: '#f8fafc', footerStyle: 'padding:22px 32px 26px;border-top:1px solid #e6e9ef',
-      eyebrow: accent, headingFont: 'Arial,sans-serif', headingSize: '23px',
-      ctaRadius: '3px', ctaBackground: NAVY, ctaText: '#ffffff',
+      theme: 'letterhead',
+      accent: acc,
+      accessibleAccent: darkAcc,
+      page: '#ffffff',
+      card: '#ffffff',
+      cardStyle: 'border:1px solid #dfe3e8;border-radius:4px',
+      cardRadius: '4px',
+      subtleBg: '#f8fafc',
+      border: '#dfe3e8',
+      header: '#ffffff',
+      headerStyle: `padding:26px 32px 22px;border-bottom:5px solid ${acc}`,
+      headerText: darkAcc,
+      logoPlate: true,
+      bodyStyle: 'padding:28px 32px 10px',
+      footer: '#f8fafc',
+      footerStyle: 'padding:22px 32px 26px;border-top:1px solid #e6e9ef',
+      eyebrow: darkAcc,
+      headingFont: 'Arial,sans-serif',
+      headingSize: '23px',
+      tableHeaderBg: '#f1f5f9',
+      tableHeaderBorder: '#cbd5e1',
+      badgeBg: NAVY,
+      badgeText: '#ffffff',
+      highlightBg: '#f8fafc',
+      highlightBorder: `border-left:4px solid ${acc}`,
+      ctaRadius: '3px',
+      ctaBackground: NAVY,
+      ctaText: '#ffffff',
     };
   }
+
   if (theme === 'neighborly') {
+    const cardBg = '#fffdf9';
+    const darkOnWarm = accessibleAccent(acc, cardBg, 4.5);
     return {
-      page: '#f5f0e8', card: '#fffdf9', cardStyle: `border-left:8px solid ${accent};border-radius:4px`,
-      header: '#fffdf9', headerStyle: 'padding:30px 34px 0', headerText: accent, logoPlate: false,
-      bodyStyle: 'padding:24px 34px 10px', footer: '#fffdf9', footerStyle: 'padding:24px 34px 30px',
-      eyebrow: accent, headingFont: 'Georgia,Times,serif', headingSize: '25px',
-      ctaRadius: '999px', ctaBackground: accent, ctaText: onAccent(accent),
+      theme: 'neighborly',
+      accent: acc,
+      accessibleAccent: darkOnWarm,
+      page: '#f5f0e8',
+      card: cardBg,
+      cardStyle: `border:1px solid #ebd5be;border-left:8px solid ${acc};border-radius:8px`,
+      cardRadius: '8px',
+      subtleBg: '#faf4eb',
+      border: '#ebd5be',
+      header: cardBg,
+      headerStyle: 'padding:30px 34px 0',
+      headerText: darkOnWarm,
+      logoPlate: true,
+      bodyStyle: 'padding:24px 34px 10px',
+      footer: cardBg,
+      footerStyle: 'padding:24px 34px 30px;border-top:1px solid #ebd5be',
+      eyebrow: darkOnWarm,
+      headingFont: 'Georgia,Times,serif',
+      headingSize: '25px',
+      tableHeaderBg: '#f4ece0',
+      tableHeaderBorder: '#dfcfb9',
+      badgeBg: '#f3ede2',
+      badgeText: '#422006',
+      highlightBg: '#fcf7ee',
+      highlightBorder: `border-left:4px solid ${acc}`,
+      ctaRadius: '999px',
+      ctaBackground: acc,
+      ctaText: onAccent(acc),
     };
   }
+
   if (theme === 'blueprint') {
     return {
-      page: '#111827', card: '#ffffff', cardStyle: 'border-radius:2px',
-      header: NAVY, headerStyle: `padding:27px 32px 24px;border-top:5px solid ${accent}`,
-      headerText: '#ffffff', logoPlate: true, bodyStyle: 'padding:28px 32px 10px',
-      footer: '#f3f5f8', footerStyle: 'padding:22px 32px 27px;border-top:1px solid #dfe3e8',
-      eyebrow: accent, headingFont: 'Trebuchet MS,Arial,sans-serif', headingSize: '24px',
-      ctaRadius: '2px', ctaBackground: accent, ctaText: onAccent(accent),
+      theme: 'blueprint',
+      accent: acc,
+      accessibleAccent: darkAcc,
+      page: '#111827',
+      card: '#ffffff',
+      cardStyle: 'border:1px solid #374151;border-radius:4px',
+      cardRadius: '4px',
+      subtleBg: '#f1f5f9',
+      border: '#cbd5e1',
+      header: NAVY,
+      headerStyle: `padding:27px 32px 24px;border-top:5px solid ${acc}`,
+      headerText: '#ffffff',
+      logoPlate: true,
+      bodyStyle: 'padding:28px 32px 10px',
+      footer: '#f3f5f8',
+      footerStyle: 'padding:22px 32px 27px;border-top:1px solid #dfe3e8',
+      eyebrow: darkAcc,
+      headingFont: 'Trebuchet MS,Arial,sans-serif',
+      headingSize: '24px',
+      tableHeaderBg: '#1e293b',
+      tableHeaderBorder: '#0f172a',
+      badgeBg: NAVY,
+      badgeText: '#ffffff',
+      highlightBg: '#f8fafc',
+      highlightBorder: `border-left:4px solid ${acc}`,
+      ctaRadius: '4px',
+      ctaBackground: acc,
+      ctaText: onAccent(acc),
     };
   }
+
   if (theme === 'spotlight') {
+    const pageBg = tint(acc, 0.92);
     return {
-      page: tint(accent, 0.9), card: '#ffffff', cardStyle: 'border-radius:16px',
-      header: accent, headerStyle: 'padding:30px 34px 27px', headerText: onAccent(accent), logoPlate: true,
-      bodyStyle: 'padding:30px 34px 12px', footer: '#ffffff', footerStyle: 'padding:24px 34px 30px',
-      eyebrow: accent, headingFont: 'Arial,sans-serif', headingSize: '27px',
-      ctaRadius: '8px', ctaBackground: accent, ctaText: onAccent(accent),
+      theme: 'spotlight',
+      accent: acc,
+      accessibleAccent: darkAcc,
+      page: pageBg,
+      card: '#ffffff',
+      cardStyle: 'border:1px solid #e2e8f0;border-radius:16px',
+      cardRadius: '16px',
+      subtleBg: tint(acc, 0.96),
+      border: tint(acc, 0.8),
+      header: acc,
+      headerStyle: 'padding:30px 34px 27px',
+      headerText: onAccent(acc),
+      logoPlate: true,
+      bodyStyle: 'padding:30px 34px 12px',
+      footer: '#ffffff',
+      footerStyle: 'padding:24px 34px 30px;border-top:1px solid #f0f2f5',
+      eyebrow: darkAcc,
+      headingFont: 'Arial,sans-serif',
+      headingSize: '27px',
+      tableHeaderBg: tint(acc, 0.9),
+      tableHeaderBorder: tint(acc, 0.75),
+      badgeBg: acc,
+      badgeText: onAccent(acc),
+      highlightBg: tint(acc, 0.95),
+      highlightBorder: `border-left:4px solid ${acc}`,
+      ctaRadius: '10px',
+      ctaBackground: acc,
+      ctaText: onAccent(acc),
     };
   }
+
+  // Default: Studio
   return {
-    page: '#f4f6f9', card: '#ffffff', cardStyle: 'border-radius:12px',
-    header: '#ffffff', headerStyle: `padding:28px 32px 0;border-top:4px solid ${accent}`,
-    headerText: accent, logoPlate: false, bodyStyle: 'padding:24px 32px 8px',
-    footer: '#ffffff', footerStyle: 'padding:24px 32px 28px', eyebrow: accent,
-    headingFont: 'Arial,sans-serif', headingSize: '22px', ctaRadius: '6px',
-    ctaBackground: accent, ctaText: onAccent(accent),
+    theme: 'studio',
+    accent: acc,
+    accessibleAccent: darkAcc,
+    page: '#f4f6f9',
+    card: '#ffffff',
+    cardStyle: 'border:1px solid #e6e9ef;border-radius:12px',
+    cardRadius: '12px',
+    subtleBg: '#f8fafc',
+    border: '#e2e8f0',
+    header: '#ffffff',
+    headerStyle: `padding:28px 32px 0;border-top:4px solid ${acc}`,
+    headerText: darkAcc,
+    logoPlate: true,
+    bodyStyle: 'padding:24px 32px 8px',
+    footer: '#ffffff',
+    footerStyle: 'padding:24px 32px 28px;border-top:1px solid #f1f5f9',
+    eyebrow: darkAcc,
+    headingFont: 'Arial,sans-serif',
+    headingSize: '22px',
+    tableHeaderBg: '#f8fafc',
+    tableHeaderBorder: '#e2e8f0',
+    badgeBg: '#e2e8f0',
+    badgeText: '#1e293b',
+    highlightBg: '#f8fafc',
+    highlightBorder: `border-left:4px solid ${acc}`,
+    ctaRadius: '6px',
+    ctaBackground: acc,
+    ctaText: onAccent(acc),
   };
 }
 
@@ -249,17 +461,28 @@ export function renderBrandedEmail(input: BrandedEmail): string {
   // A table, not a styled <a>: Outlook ignores padding on inline anchors, so a
   // plain button collapses to a bare link exactly where it matters most.
   const cta = input.cta
-    ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:8px 0 4px">
+    ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:16px 0 8px">
          <tr><td align="center" bgcolor="${paint.ctaBackground}" style="border-radius:${paint.ctaRadius}">
            <a href="${escapeHtml(input.cta.url)}" style="display:inline-block;padding:13px 26px;font-size:15px;font-weight:700;color:${paint.ctaText};text-decoration:none;border-radius:${paint.ctaRadius}">${escapeHtml(input.cta.label)}</a>
          </td></tr>
        </table>`
     : '';
 
+  const contactCallout = input.contactCallout
+    ? `<p style="margin:16px 0 8px;font-size:14px;line-height:1.5;color:${MUTED}">${input.contactCallout}</p>`
+    : '';
+
   const contactBits = [
     brand.phone ? `<a href="tel:${escapeHtml(brand.phone)}" style="color:${MUTED};text-decoration:none">${escapeHtml(brand.phone)}</a>` : '',
     brand.siteUrl ? `<a href="${escapeHtml(brand.siteUrl)}" style="color:${MUTED};text-decoration:none">${escapeHtml(brand.siteUrl.replace(/^https?:\/\//, ''))}</a>` : '',
   ].filter(Boolean).join(' &nbsp;·&nbsp; ');
+
+  const metaBits = [
+    brand.licenseNumber ? `Lic: ${escapeHtml(brand.licenseNumber)}` : '',
+    brand.serviceArea ? escapeHtml(brand.serviceArea) : '',
+    brand.mailingAddress ? escapeHtml(brand.mailingAddress) : '',
+  ].filter(Boolean).join(' &nbsp;·&nbsp; ');
+
   const accountEmail = input.audience === 'account';
   const senderLine = accountEmail
     ? `For ${name} &nbsp;&middot;&nbsp; sent by Let&#39;s Get Quoted`
@@ -282,12 +505,14 @@ ${preheaderBlock(input.preheader ?? '')}
         ${paragraphs}
         ${input.bodyHtml ?? ''}
         ${cta}
+        ${contactCallout}
       </td></tr>
       <tr><td bgcolor="${paint.footer}" style="${paint.footerStyle}">
         <div style="border-top:1px solid ${HAIRLINE};padding-top:16px">
           <p style="margin:0;font-size:12px;line-height:1.6;color:${MUTED}">
              ${senderLine}
           </p>
+          ${metaBits ? `<p style="margin:4px 0 0;font-size:11px;line-height:1.5;color:#94a3b8">${metaBits}</p>` : ''}
           <p style="margin:10px 0 0;font-size:12px;line-height:1.6;color:${MUTED}">
              ${replyLine}
           </p>
