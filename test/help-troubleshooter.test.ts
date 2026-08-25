@@ -95,4 +95,51 @@ describe('Help Center Data & Section Grounding', () => {
     expect(ids).toContain('art-team-access-troubleshooting');
     expect(ids).toContain('art-schedule-sync-troubleshooting');
   });
+
+  it('submits support tickets using submitContactMessage server action with full form state', () => {
+    expect(helpComponentSource).toContain('submitContactMessage');
+    expect(helpComponentSource).toContain('handleTicketSubmit');
+    expect(helpComponentSource).toContain('id="ticket-name"');
+    expect(helpComponentSource).toContain('htmlFor="ticket-name"');
+    expect(helpComponentSource).toContain('id="ticket-email"');
+    expect(helpComponentSource).toContain('htmlFor="ticket-email"');
+    expect(helpComponentSource).toContain('id="ticket-subject"');
+    expect(helpComponentSource).toContain('htmlFor="ticket-subject"');
+    expect(helpComponentSource).toContain('id="ticket-message"');
+    expect(helpComponentSource).toContain('htmlFor="ticket-message"');
+    expect(helpComponentSource).toContain('name="company"'); // honeypot
+  });
+
+  it('verifies honest live system status from /api/health with ET timezone timestamp', () => {
+    expect(helpComponentSource).toContain('/api/health');
+    expect(helpComponentSource).toContain('fetchSystemStatus');
+    expect(helpComponentSource).toContain('timeZone: \'America/New_York\'');
+    expect(helpComponentSource).toContain('statusRefreshBtn');
+  });
+
+  it('uses semantic button elements with aria-haspopup for all guide and common fix cards', () => {
+    expect(helpComponentSource).toContain('button\n              type="button"\n              key={art.id}\n              className={styles.commonFixCard}');
+    expect(helpComponentSource).toContain('aria-haspopup="dialog"');
+  });
+
+  it('manages dialog focus trapping and accessibility attributes', () => {
+    expect(helpComponentSource).toContain('role="dialog"');
+    expect(helpComponentSource).toContain('aria-modal="true"');
+    expect(helpComponentSource).toContain('aria-labelledby="article-modal-title"');
+    expect(helpComponentSource).toContain('aria-labelledby="status-modal-title"');
+    expect(helpComponentSource).toContain('aria-labelledby="drawer-title"');
+  });
+
+  it('ensures timezones use standard ET instead of EST across help data', () => {
+    const helpDataSource = readFileSync('src/components/help-center/help-center-data.ts', 'utf8');
+    expect(helpDataSource).not.toContain('EST');
+    expect(helpDataSource).toContain('5:00 PM ET');
+    expect(helpDataSource).toContain('8:00 PM ET');
+  });
+
+  it('ensures page metadata has single non-duplicated brand title', () => {
+    const pageSource = readFileSync('src/app/help/page.tsx', 'utf8');
+    expect(pageSource).toContain("title: 'Help Center & Troubleshooting'");
+    expect(pageSource).not.toContain("title: 'Help Center & Troubleshooting | Let’s Get Quoted'");
+  });
 });

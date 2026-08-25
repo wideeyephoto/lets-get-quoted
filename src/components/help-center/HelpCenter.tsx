@@ -17,6 +17,7 @@ import {
   TROUBLESHOOTER_INTENTS,
   TroubleshooterMatchResult
 } from '@/lib/help/troubleshooter';
+import { submitContactMessage } from '@/app/contact/actions';
 import styles from './HelpCenter.module.css';
 
 // Lightweight Zero-Dependency SVG Icon Helpers (24x24 stroke style)
@@ -307,6 +308,16 @@ const Icons = {
         </>
       }
     />
+  ),
+  Refresh: () => (
+    <Icon
+      d={
+        <>
+          <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
+        </>
+      }
+      className={styles.iconXs}
+    />
   )
 };
 
@@ -325,6 +336,20 @@ const ICON_MAP: Record<string, React.ReactNode> = {
   LifeBuoy: <Icons.LifeBuoy />,
   Send: <Icons.Send />,
   BookCheck: <Icons.BookCheck />
+};
+
+type HealthService = {
+  id: string;
+  name: string;
+  status: 'operational' | 'degraded' | 'outage';
+  detail: string;
+};
+
+type HealthResponse = {
+  status: 'operational' | 'degraded' | 'outage';
+  timestamp: string;
+  latencyMs: number;
+  services: HealthService[];
 };
 
 export default function HelpCenter() {
@@ -348,20 +373,26 @@ export default function HelpCenter() {
   const [activeMobileStep, setActiveMobileStep] = useState<number | null>(1);
 
   // Support Ticket Form State
+  const [ticketName, setTicketName] = useState('');
+  const [ticketEmail, setTicketEmail] = useState('');
   const [ticketSubject, setTicketSubject] = useState('');
   const [ticketNotes, setTicketNotes] = useState('');
   const [ticketDeflection, setTicketDeflection] = useState<string | null>(null);
+  const [isSubmittingTicket, setIsSubmittingTicket] = useState(false);
+  const [ticketError, setTicketError] = useState<string | null>(null);
   const [isTicketSubmitted, setIsTicketSubmitted] = useState(false);
+
+  // System Status Live Data State
+  const [healthData, setHealthData] = useState<HealthResponse | null>(null);
+  const [isCheckingHealth, setIsCheckingHealth] = useState(false);
 
   // FAQ State
   const [faqCategory, setFaqCategory] = useState<string>('all');
   const [activeFaq, setActiveFaq] = useState<string | null>('faq-1');
   const [faqFeedback, setFaqFeedback] = useState<Record<string, 'yes' | 'no'>>({});
-  const [_faqFeedbackReason, setFaqFeedbackReason] = useState<Record<string, string>>({});
 
-  // Feedback Toast & Clipboard
+  // Feedback Toast
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [_copiedRecord, setCopiedRecord] = useState<string | null>(null);
 
   // In-Article Interactive Utilities State
   const [calcCost, setCalcCost] = useState('5000');
@@ -377,6 +408,12 @@ export default function HelpCenter() {
 
   const searchInputRef = useRef<HTMLInputElement>(null);
   const lastFocusedElementRef = useRef<HTMLElement | null>(null);
+
+  // Modal Container Refs for Focus Trapping
+  const articleModalRef = useRef<HTMLDivElement>(null);
+  const docModalRef = useRef<HTMLDivElement>(null);
+  const ticketDrawerRef = useRef<HTMLDivElement>(null);
+  const statusModalRef = useRef<HTMLDivElement>(null);
 
   // Flatten all articles for lookup
   const allArticlesList = useMemo(() => {
@@ -407,10 +444,48 @@ export default function HelpCenter() {
     if (typeof navigator !== 'undefined' && navigator.clipboard) {
       navigator.clipboard.writeText(text);
     }
-    setCopiedRecord(label);
     showToast(`Copied ${label} to clipboard!`);
-    setTimeout(() => setCopiedRecord(null), 2500);
   }, [showToast]);
+
+  // Focus Trapping & Management Effect
+  useEffect(() => {
+    const activeModal =
+      (activeArticle && articleModalRef.current) ||
+      (activeDocument && docModalRef.current) ||
+      (isTicketDrawerOpen && ticketDrawerRef.current) ||
+      (isStatusModalOpen && statusModalRef.current);
+
+    if (!activeModal) return;
+
+    // Find focusable elements
+    const focusableElements = activeModal.querySelectorAll<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    const firstElement = focusableElements[0];
+    const lastElement = focusableElements[focusableElements.length - 1];
+
+    // Focus the first interactive element
+    firstElement?.focus();
+
+    const handleTabKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab') return;
+
+      if (e.shiftKey) {
+        if (document.activeElement === firstElement) {
+          e.preventDefault();
+          lastElement?.focus();
+        }
+      } else {
+        if (document.activeElement === lastElement) {
+          e.preventDefault();
+          firstElement?.focus();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleTabKey);
+    return () => window.removeEventListener('keydown', handleTabKey);
+  }, [activeArticle, activeDocument, isTicketDrawerOpen, isStatusModalOpen]);
 
   // Open Article & Synchronize with URL
   const openArticle = useCallback((article: Article, preserveFocus = true) => {
@@ -419,7 +494,6 @@ export default function HelpCenter() {
     }
     setActiveArticle(article);
 
-    // Update URL query parameter
     if (typeof window !== 'undefined') {
       const url = new URL(window.location.href);
       url.searchParams.set('article', article.id);
@@ -430,14 +504,57 @@ export default function HelpCenter() {
   const closeArticle = useCallback(() => {
     setActiveArticle(null);
 
-    // Remove article parameter from URL
     if (typeof window !== 'undefined') {
       const url = new URL(window.location.href);
       url.searchParams.delete('article');
       window.history.pushState(null, '', url.toString());
     }
 
-    // Restore focus
+    if (lastFocusedElementRef.current) {
+      lastFocusedElementRef.current.focus();
+    }
+  }, []);
+
+  const openDocument = useCallback((doc: DownloadableTemplate) => {
+    if (typeof document !== 'undefined') {
+      lastFocusedElementRef.current = document.activeElement as HTMLElement;
+    }
+    setActiveDocument(doc);
+  }, []);
+
+  const closeDocument = useCallback(() => {
+    setActiveDocument(null);
+    if (lastFocusedElementRef.current) {
+      lastFocusedElementRef.current.focus();
+    }
+  }, []);
+
+  // Fetch Live System Status
+  const fetchSystemStatus = useCallback(async () => {
+    setIsCheckingHealth(true);
+    try {
+      const res = await fetch('/api/health', { cache: 'no-store' });
+      if (res.ok) {
+        const data: HealthResponse = await res.json();
+        setHealthData(data);
+      }
+    } catch {
+      // Fallback
+    } finally {
+      setIsCheckingHealth(false);
+    }
+  }, []);
+
+  const openStatusModal = useCallback(() => {
+    if (typeof document !== 'undefined') {
+      lastFocusedElementRef.current = document.activeElement as HTMLElement;
+    }
+    setIsStatusModalOpen(true);
+    fetchSystemStatus();
+  }, [fetchSystemStatus]);
+
+  const closeStatusModal = useCallback(() => {
+    setIsStatusModalOpen(false);
     if (lastFocusedElementRef.current) {
       lastFocusedElementRef.current.focus();
     }
@@ -450,6 +567,7 @@ export default function HelpCenter() {
     }
     setTicketSubject(subject);
     if (notes) setTicketNotes(notes);
+    setTicketError(null);
     setIsTicketSubmitted(false);
     setIsTicketDrawerOpen(true);
   }, []);
@@ -460,6 +578,28 @@ export default function HelpCenter() {
       lastFocusedElementRef.current.focus();
     }
   }, []);
+
+  // Real Ticket Submission Server Action Handler
+  const handleTicketSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setIsSubmittingTicket(true);
+    setTicketError(null);
+
+    try {
+      const formData = new FormData(e.currentTarget);
+      const res = await submitContactMessage(formData);
+      if (res.ok) {
+        setIsTicketSubmitted(true);
+        showToast('Support ticket logged successfully!');
+      } else {
+        setTicketError(res.error || 'Unable to submit ticket. Please check your information and try again.');
+      }
+    } catch {
+      setTicketError('A network error occurred. Please try again.');
+    } finally {
+      setIsSubmittingTicket(false);
+    }
+  };
 
   // On initial mount: Check for URL query ?article=<id>
   useEffect(() => {
@@ -474,7 +614,7 @@ export default function HelpCenter() {
     }
   }, [allArticlesList, openArticle]);
 
-  // Keyboard Shortcuts (Ctrl/Cmd+K)
+  // Keyboard Shortcuts (Ctrl/Cmd+K & Escape)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
@@ -483,14 +623,14 @@ export default function HelpCenter() {
       }
       if (e.key === 'Escape') {
         if (activeArticle) closeArticle();
-        if (activeDocument) setActiveDocument(null);
+        if (activeDocument) closeDocument();
         if (isTicketDrawerOpen) closeTicketDrawer();
-        if (isStatusModalOpen) setIsStatusModalOpen(false);
+        if (isStatusModalOpen) closeStatusModal();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeArticle, activeDocument, isTicketDrawerOpen, isStatusModalOpen, closeArticle, closeTicketDrawer]);
+  }, [activeArticle, activeDocument, isTicketDrawerOpen, isStatusModalOpen, closeArticle, closeDocument, closeTicketDrawer, closeStatusModal]);
 
   // Real-time Deflection in Ticket Drawer
   useEffect(() => {
@@ -554,7 +694,7 @@ export default function HelpCenter() {
           <div className={styles.subNavActions}>
             <button
               className={styles.statusPillBtn}
-              onClick={() => setIsStatusModalOpen(true)}
+              onClick={openStatusModal}
               aria-label="View system status"
             >
               <span className={styles.statusIndicatorDot} />
@@ -585,19 +725,15 @@ export default function HelpCenter() {
         </p>
 
         {/* Search Command Box */}
-        <div className={styles.searchCommandBox}>
+        <form role="search" onSubmit={e => e.preventDefault()} className={styles.searchCommandBox}>
           <div className={styles.searchGlowWrapper}>
             <div className={styles.searchInputWrapper}>
               <Icons.Search />
               <input
                 ref={searchInputRef}
                 id="troubleshooter-search"
-                type="text"
-                role="combobox"
-                aria-expanded={hasInteracted && Boolean(searchQuery)}
-                aria-autocomplete="list"
-                aria-controls="troubleshooter-results"
-                aria-label="Search troubleshooting topics or guides"
+                type="search"
+                aria-label="Search troubleshooting topics, guides, or error messages"
                 placeholder='Try “my quote won’t send” or “my Stripe payout is missing”…'
                 value={searchQuery}
                 onFocus={() => setHasInteracted(true)}
@@ -617,6 +753,7 @@ export default function HelpCenter() {
               </div>
               {searchQuery && (
                 <button
+                  type="button"
                   className={styles.clearBtn}
                   onClick={() => setSearchQuery('')}
                   aria-label="Clear search query"
@@ -626,130 +763,135 @@ export default function HelpCenter() {
               )}
             </div>
           </div>
+        </form>
 
-          {/* Quick Secondary Navigation Links */}
-          <div className={styles.heroSecondaryRow}>
-            <a href="#knowledge-hub" className={styles.heroSecondaryAction}>
-              Browse all guides →
-            </a>
-            <a href="#contact-support" className={styles.heroSecondaryAction}>
-              Contact support →
-            </a>
-          </div>
-
-          {/* 6 Quick-Issue Chips (Horizontal Snap Scroll on Mobile) */}
-          <div className={styles.quickChipsWrapper}>
-            <span className={styles.quickChipsLabel}>Quick fixes:</span>
-            <div className={styles.quickChipsScroll}>
-              {TROUBLESHOOTER_INTENTS.map(intent => (
-                <button
-                  key={intent.id}
-                  className={`${styles.quickChipBtn} ${searchQuery === intent.title ? styles.quickChipActive : ''}`}
-                  onClick={() => handleChipClick(intent.title)}
-                >
-                  {intent.title}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* 3-Stage Progress Visual Indicator */}
-          {hasInteracted && searchQuery.trim().length > 0 && (
-            <div className={styles.threeStageProgress} aria-live="polite">
-              <div className={`${styles.stageItem} ${searchQuery.length > 0 ? styles.stageResolved : styles.stageActive}`}>
-                <span className={styles.stageDot} />
-                <span className={styles.stageText}>1. Understanding issue</span>
-              </div>
-              <div className={styles.stageLine} />
-              <div className={`${styles.stageItem} ${troubleshooterResult.matched ? styles.stageResolved : styles.stageActive}`}>
-                <span className={styles.stageDot} />
-                <span className={styles.stageText}>2. Matching help</span>
-              </div>
-              <div className={styles.stageLine} />
-              <div className={`${styles.stageItem} ${troubleshooterResult.matched ? styles.stageResolved : styles.stageWaiting}`}>
-                <span className={styles.stageDot} />
-                <span className={styles.stageText}>3. Recommended action</span>
-              </div>
-            </div>
-          )}
-
-          {/* Troubleshooting Match Results Panel */}
-          {hasInteracted && searchQuery.trim().length > 0 && (
-            <div id="troubleshooter-results" className={styles.troubleshooterResultsPanel}>
-              {troubleshooterResult.matched && troubleshooterResult.intent && (
-                <div className={styles.matchCard}>
-                  <div className={styles.matchHeader}>
-                    <div className={styles.matchBadge}>✓ Recommended Fix</div>
-                    <span className={styles.matchTime}>⏱ Est. time: {troubleshooterResult.intent.estimatedTime}</span>
-                  </div>
-                  <h3 className={styles.matchTitle}>{troubleshooterResult.intent.title}</h3>
-                  <p className={styles.matchExplanation}>{troubleshooterResult.intent.explanation}</p>
-                  
-                  <div className={styles.matchActionsRow}>
-                    <button
-                      className={styles.btnPrimary}
-                      onClick={() => {
-                        const targetArt = allArticlesList.find(a => a.id === troubleshooterResult.intent?.articleId);
-                        if (targetArt) openArticle(targetArt);
-                      }}
-                    >
-                      <span>Open step-by-step guide</span>
-                      <Icons.ArrowUpRight />
-                    </button>
-                    <button
-                      className={styles.btnOutline}
-                      onClick={() => openTicketWithSubject(searchQuery, `Matched intent: ${troubleshooterResult.intent?.title}`)}
-                    >
-                      Still stuck? Open a ticket
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {!troubleshooterResult.matched && (
-                <div className={styles.unmatchedCard}>
-                  <div className={styles.unmatchedHeader}>
-                    <Icons.AlertCircle />
-                    <div>
-                      <h4>Closest Recommended Guides for &quot;{searchQuery}&quot;</h4>
-                      <p>We found related troubleshooting steps below or you can connect with our support desk:</p>
-                    </div>
-                  </div>
-
-                  <div className={styles.unmatchedSuggestionsGrid}>
-                    {troubleshooterResult.suggestedArticles?.map(art => (
-                      <div
-                        key={art.id}
-                        className={styles.suggestedArticleCard}
-                        onClick={() => {
-                          const fullArt = allArticlesList.find(a => a.id === art.id);
-                          if (fullArt) openArticle(fullArt);
-                        }}
-                      >
-                        <div className={styles.suggestedArtTitle}>{art.title}</div>
-                        <div className={styles.suggestedArtMeta}>
-                          <span>{art.category}</span>
-                          <span>•</span>
-                          <span>{art.readTime}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className={styles.unmatchedActionFooter}>
-                    <button
-                      className={styles.btnPrimarySm}
-                      onClick={() => openTicketWithSubject(searchQuery)}
-                    >
-                      <Icons.LifeBuoy />
-                      <span>Ask support about &quot;{searchQuery}&quot;</span>
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
+        {/* Quick Secondary Navigation Links */}
+        <div className={styles.heroSecondaryRow}>
+          <a href="#knowledge-hub" className={styles.heroSecondaryAction}>
+            Browse all guides →
+          </a>
+          <a href="#contact-support" className={styles.heroSecondaryAction}>
+            Contact support →
+          </a>
         </div>
+
+        {/* 6 Quick-Issue Chips (Horizontal Snap Scroll on Mobile) */}
+        <div className={styles.quickChipsWrapper}>
+          <span className={styles.quickChipsLabel}>Quick fixes:</span>
+          <div className={styles.quickChipsScroll}>
+            {TROUBLESHOOTER_INTENTS.map(intent => (
+              <button
+                type="button"
+                key={intent.id}
+                className={`${styles.quickChipBtn} ${searchQuery === intent.title ? styles.quickChipActive : ''}`}
+                onClick={() => handleChipClick(intent.title)}
+              >
+                {intent.title}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* 3-Stage Progress Visual Indicator */}
+        {hasInteracted && searchQuery.trim().length > 0 && (
+          <div className={styles.threeStageProgress} aria-live="polite">
+            <div className={`${styles.stageItem} ${searchQuery.length > 0 ? styles.stageResolved : styles.stageActive}`}>
+              <span className={styles.stageDot} />
+              <span className={styles.stageText}>1. Understanding issue</span>
+            </div>
+            <div className={styles.stageLine} />
+            <div className={`${styles.stageItem} ${troubleshooterResult.matched ? styles.stageResolved : styles.stageActive}`}>
+              <span className={styles.stageDot} />
+              <span className={styles.stageText}>2. Matching help</span>
+            </div>
+            <div className={styles.stageLine} />
+            <div className={`${styles.stageItem} ${troubleshooterResult.matched ? styles.stageResolved : styles.stageWaiting}`}>
+              <span className={styles.stageDot} />
+              <span className={styles.stageText}>3. Recommended action</span>
+            </div>
+          </div>
+        )}
+
+        {/* Troubleshooting Match Results Panel */}
+        {hasInteracted && searchQuery.trim().length > 0 && (
+          <div id="troubleshooter-results" className={styles.troubleshooterResultsPanel}>
+            {troubleshooterResult.matched && troubleshooterResult.intent && (
+              <div className={styles.matchCard}>
+                <div className={styles.matchHeader}>
+                  <span className={styles.matchBadge}>✓ Diagnosed Match</span>
+                  <span className={styles.matchTime}>Estimated fix: 2-3 minutes</span>
+                </div>
+                <h3 className={styles.matchTitle}>{troubleshooterResult.intent.title}</h3>
+                <p className={styles.matchExplanation}>{troubleshooterResult.intent.explanation}</p>
+                <div className={styles.matchActionsRow}>
+                  <button
+                    type="button"
+                    className={styles.btnPrimary}
+                    onClick={() => {
+                      const article = allArticlesList.find(a => a.id === troubleshooterResult.intent?.articleId);
+                      if (article) openArticle(article);
+                    }}
+                  >
+                    <span>Open Diagnostic Guide</span>
+                    <Icons.ArrowUpRight />
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.btnOutline}
+                    onClick={() => openTicketWithSubject(searchQuery, `Matched intent: ${troubleshooterResult.intent?.title}`)}
+                  >
+                    Still stuck? Open a ticket
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {!troubleshooterResult.matched && (
+              <div className={styles.unmatchedCard}>
+                <div className={styles.unmatchedHeader}>
+                  <Icons.AlertCircle />
+                  <div>
+                    <h4>Closest Recommended Guides for &quot;{searchQuery}&quot;</h4>
+                    <p>We found related troubleshooting steps below or you can connect with our support desk:</p>
+                  </div>
+                </div>
+
+                <div className={styles.unmatchedSuggestionsGrid}>
+                  {troubleshooterResult.suggestedArticles?.map(art => (
+                    <button
+                      type="button"
+                      key={art.id}
+                      className={styles.suggestedArticleCard}
+                      onClick={() => {
+                        const fullArt = allArticlesList.find(a => a.id === art.id);
+                        if (fullArt) openArticle(fullArt);
+                      }}
+                      aria-haspopup="dialog"
+                    >
+                      <div className={styles.suggestedArtTitle}>{art.title}</div>
+                      <div className={styles.suggestedArtMeta}>
+                        <span>{art.category}</span>
+                        <span>•</span>
+                        <span>{art.readTime}</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+
+                <div className={styles.unmatchedActionFooter}>
+                  <button
+                    type="button"
+                    className={styles.btnPrimarySm}
+                    onClick={() => openTicketWithSubject(searchQuery)}
+                  >
+                    <Icons.LifeBuoy />
+                    <span>Ask support about &quot;{searchQuery}&quot;</span>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </section>
 
       {/* ================= 2. COMMON FIXES ================= */}
@@ -766,7 +908,13 @@ export default function HelpCenter() {
 
         <div className={styles.commonFixesGrid}>
           {COMMON_FIX_ARTICLES.map(art => (
-            <div key={art.id} className={styles.commonFixCard} onClick={() => openArticle(art)}>
+            <button
+              type="button"
+              key={art.id}
+              className={styles.commonFixCard}
+              onClick={() => openArticle(art)}
+              aria-haspopup="dialog"
+            >
               <div className={styles.commonFixTop}>
                 <span className={styles.commonFixBadge}>{art.category}</span>
                 <span className={styles.commonFixTime}>⏱ {art.readTime}</span>
@@ -777,7 +925,7 @@ export default function HelpCenter() {
                 <span>Open Guide</span>
                 <Icons.ArrowUpRight />
               </div>
-            </div>
+            </button>
           ))}
         </div>
       </section>
@@ -804,6 +952,7 @@ export default function HelpCenter() {
               { id: 'team', label: 'Team' }
             ].map(p => (
               <button
+                type="button"
                 key={p.id}
                 className={`${styles.topicPill} ${selectedTopic === p.id ? styles.activePill : ''}`}
                 onClick={() => setSelectedTopic(p.id)}
@@ -832,19 +981,22 @@ export default function HelpCenter() {
 
                 <div className={styles.bentoArticleList}>
                   {visibleArticles.map(art => (
-                    <div
+                    <button
+                      type="button"
                       key={art.id}
                       className={styles.bentoArticleItem}
                       onClick={() => openArticle(art)}
+                      aria-haspopup="dialog"
                     >
                       <span>{art.title}</span>
                       <Icons.ArrowUpRight />
-                    </div>
+                    </button>
                   ))}
                 </div>
 
                 {cat.articles.length > 3 && (
                   <button
+                    type="button"
                     className={styles.expandCategoryBtn}
                     onClick={() => toggleCategoryExpand(cat.id)}
                   >
@@ -877,8 +1029,11 @@ export default function HelpCenter() {
               { num: 2, title: 'Verify Business SMS', desc: '10DLC carrier registration' },
               { num: 3, title: 'Send 3-Tier Quote', desc: 'Good / Better / Best packages' }
             ].map(step => (
-              <div
+              <button
+                type="button"
                 key={step.num}
+                role="checkbox"
+                aria-checked={Boolean(completedSteps[step.num])}
                 className={styles.quickStepItem}
                 onClick={() => {
                   setCompletedSteps(prev => ({ ...prev, [step.num]: !prev[step.num] }));
@@ -892,7 +1047,7 @@ export default function HelpCenter() {
                   <strong>{step.title}</strong>
                   <span>{step.desc}</span>
                 </div>
-              </div>
+              </button>
             ))}
           </div>
 
@@ -905,6 +1060,7 @@ export default function HelpCenter() {
             ].map(step => (
               <div key={step.num} className={styles.mobileStepAccordionItem}>
                 <button
+                  type="button"
                   className={styles.mobileStepHeaderBtn}
                   aria-expanded={activeMobileStep === step.num}
                   aria-controls={`mobile-step-body-${step.num}`}
@@ -917,6 +1073,7 @@ export default function HelpCenter() {
                   <div id={`mobile-step-body-${step.num}`} className={styles.mobileStepBody}>
                     <p>{step.desc}</p>
                     <button
+                      type="button"
                       className={styles.stepDoneToggleBtn}
                       onClick={() => setCompletedSteps(prev => ({ ...prev, [step.num]: !prev[step.num] }))}
                     >
@@ -946,6 +1103,7 @@ export default function HelpCenter() {
         <div className={styles.tradeTabsContainer}>
           {TRADE_PLAYBOOKS.map(trade => (
             <button
+              type="button"
               key={trade.id}
               className={`${styles.tradeTabBtn} ${activeTrade === trade.id ? styles.activeTradeTab : ''}`}
               onClick={() => setActiveTrade(trade.id)}
@@ -964,6 +1122,7 @@ export default function HelpCenter() {
             <p className={styles.tradeDescription}>{currentTrade.description}</p>
             
             <button
+              type="button"
               className={styles.viewWorkflowsBtn}
               onClick={() => setIsTradeWorkflowExpanded(!isTradeWorkflowExpanded)}
               aria-expanded={isTradeWorkflowExpanded}
@@ -1009,8 +1168,10 @@ export default function HelpCenter() {
               <h3 className={styles.templateName}>{tpl.name}</h3>
               <p className={styles.templateDesc}>{tpl.description}</p>
               <button
+                type="button"
                 className={styles.btnOutlineSm}
-                onClick={() => setActiveDocument(tpl)}
+                onClick={() => openDocument(tpl)}
+                aria-haspopup="dialog"
               >
                 <Icons.Eye />
                 <span>Preview Template</span>
@@ -1047,6 +1208,7 @@ export default function HelpCenter() {
               { id: 'billing', label: 'Account & Billing' }
             ].map(tab => (
               <button
+                type="button"
                 key={tab.id}
                 className={`${styles.topicPill} ${faqCategory === tab.id ? styles.activePill : ''}`}
                 onClick={() => setFaqCategory(tab.id)}
@@ -1065,6 +1227,7 @@ export default function HelpCenter() {
             return (
               <div key={faq.id} className={styles.faqItem}>
                 <button
+                  type="button"
                   className={styles.faqQuestionBtn}
                   aria-expanded={isOpen}
                   aria-controls={`faq-answer-${faq.id}`}
@@ -1082,6 +1245,7 @@ export default function HelpCenter() {
                     <div className={styles.faqFeedbackRow}>
                       <span className={styles.faqFeedbackLabel}>Was this helpful?</span>
                       <button
+                        type="button"
                         className={`${styles.faqFeedbackBtn} ${currentFeedback === 'yes' ? styles.feedbackActive : ''}`}
                         onClick={() => {
                           setFaqFeedback(prev => ({ ...prev, [faq.id]: 'yes' }));
@@ -1091,45 +1255,16 @@ export default function HelpCenter() {
                         <Icons.ThumbsUp /> Yes
                       </button>
                       <button
+                        type="button"
                         className={`${styles.faqFeedbackBtn} ${currentFeedback === 'no' ? styles.feedbackActive : ''}`}
-                        onClick={() => setFaqFeedback(prev => ({ ...prev, [faq.id]: 'no' }))}
+                        onClick={() => {
+                          setFaqFeedback(prev => ({ ...prev, [faq.id]: 'no' }));
+                          showToast('Feedback noted. We will improve this article.');
+                        }}
                       >
                         <Icons.ThumbsDown /> No
                       </button>
                     </div>
-
-                    {/* Deflection options on "No" */}
-                    {currentFeedback === 'no' && (
-                      <div className={styles.faqFeedbackDeflection}>
-                        <span>How can we improve this answer?</span>
-                        <div className={styles.deflectionOptionsRow}>
-                          <button
-                            className={styles.deflectionChip}
-                            onClick={() => {
-                              setFaqFeedbackReason(prev => ({ ...prev, [faq.id]: 'incomplete' }));
-                              showToast('Feedback recorded: Incomplete answer');
-                            }}
-                          >
-                            The answer was incomplete
-                          </button>
-                          <button
-                            className={styles.deflectionChip}
-                            onClick={() => {
-                              setFaqFeedbackReason(prev => ({ ...prev, [faq.id]: 'outdated' }));
-                              showToast('Feedback recorded: Outdated steps');
-                            }}
-                          >
-                            The steps appear outdated
-                          </button>
-                          <button
-                            className={`${styles.deflectionChip} ${styles.deflectionChipContact}`}
-                            onClick={() => openTicketWithSubject(`FAQ Issue: ${faq.question}`, 'User reported this FAQ answer was unhelpful or outdated.')}
-                          >
-                            Contact support →
-                          </button>
-                        </div>
-                      </div>
-                    )}
                   </div>
                 )}
               </div>
@@ -1138,71 +1273,51 @@ export default function HelpCenter() {
         </div>
       </section>
 
-      {/* ================= 8. CONTACT SUPPORT ================= */}
+      {/* ================= 8. SUPPORT CHANNELS & DESK ================= */}
       <section id="contact-support" className={styles.sectionContainer}>
         <div className={styles.sectionHeader}>
           <div>
-            <span className={styles.sectionTag}>Direct Assistance</span>
-            <h2 className={styles.sectionTitle}>Contact Support</h2>
+            <span className={styles.sectionTag}>Help Desk</span>
+            <h2 className={styles.sectionTitle}>Still Need Assistance?</h2>
             <p className={styles.sectionDesc}>
-              Open a help desk ticket for fast technical resolution or explore our step-by-step guides.
+              Connect directly with our dedicated technical team for customized troubleshooting.
             </p>
           </div>
         </div>
 
         <div className={styles.supportChannelsGrid}>
-          {SUPPORT_CHANNELS.map(chan => (
-            <div key={chan.id} className={styles.supportChannelCard}>
-              <div className={styles.channelTop}>
-                <div className={styles.channelIconBox}>
-                  {ICON_MAP[chan.icon] || <Icons.LifeBuoy />}
+          {SUPPORT_CHANNELS.map(ch => (
+            <div key={ch.id} className={styles.supportChannelCard}>
+              <div className={styles.supportChannelTop}>
+                <div className={styles.supportIconBox}>
+                  {ICON_MAP[ch.icon] || <Icons.LifeBuoy />}
                 </div>
-                <h3 className={styles.channelName}>{chan.name}</h3>
+                <span className={styles.supportTargetBadge}>{ch.responseTarget}</span>
+              </div>
+              <h3 className={styles.supportChannelName}>{ch.name}</h3>
+              <p className={styles.supportChannelUsedFor}>{ch.bestUsedFor}</p>
+
+              <div className={styles.supportAvailability}>
+                <strong>Hours:</strong> {ch.availability}
               </div>
 
-              <div className={styles.channelField}>
-                <span className={styles.channelFieldLabel}>Best used for:</span>
-                <span className={styles.channelFieldVal}>{chan.bestUsedFor}</span>
-              </div>
-
-              <div className={styles.channelField}>
-                <span className={styles.channelFieldLabel}>Availability:</span>
-                <span className={styles.channelFieldVal}>{chan.availability}</span>
-              </div>
-
-              <div className={styles.channelField}>
-                <span className={styles.channelFieldLabel}>Expected response:</span>
-                <span className={styles.channelFieldVal}><strong>{chan.responseTarget}</strong></span>
-              </div>
-
-              <div className={styles.channelField}>
-                <span className={styles.channelFieldLabel}>What to prepare:</span>
-                <ul className={styles.prepareList}>
-                  {chan.prepareInfo.map((info, idx) => (
+              <div className={styles.supportPrepareList}>
+                <span className={styles.supportPrepareTitle}>Information to have ready:</span>
+                <ul>
+                  {ch.prepareInfo.map((info, idx) => (
                     <li key={idx}>{info}</li>
                   ))}
                 </ul>
               </div>
 
-              {chan.id === 'chan-ticket' && (
-                <button
-                  className={styles.btnPrimaryBlock}
-                  onClick={() => openTicketWithSubject('')}
-                >
-                  <Icons.LifeBuoy />
-                  <span>Open Help Desk Ticket</span>
-                </button>
-              )}
-
-              {chan.id === 'chan-community' && (
-                <a
-                  href="#knowledge-hub"
-                  className={styles.btnOutlineBlock}
-                >
-                  <Icons.BookCheck />
-                  <span>Browse Guides</span>
-                </a>
-              )}
+              <button
+                type="button"
+                className={styles.btnPrimaryBlock}
+                onClick={() => openTicketWithSubject('')}
+              >
+                <Icons.Send />
+                <span>Open Support Ticket</span>
+              </button>
             </div>
           ))}
         </div>
@@ -1210,73 +1325,43 @@ export default function HelpCenter() {
 
       {/* ================= MODALS & DRAWERS ================= */}
 
-      {/* 1. Article Reader Modal with ?article= query synchronization */}
+      {/* 1. Article Full Reader Dialog */}
       {activeArticle && (
-        <div className={styles.modalOverlay} onClick={closeArticle} role="dialog" aria-modal="true" aria-labelledby="modal-article-title">
+        <div
+          ref={articleModalRef}
+          className={styles.modalOverlay}
+          onClick={closeArticle}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="article-modal-title"
+        >
           <div className={styles.articleModal} onClick={e => e.stopPropagation()}>
-            <div className={styles.modalHeader}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <div className={styles.articleModalHeader}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
                 <span className={styles.categoryBadge}>{activeArticle.category}</span>
-                {activeArticle.audience && (
-                  <span className={styles.audienceBadge}>Audience: {activeArticle.audience}</span>
-                )}
+                <span className={styles.articleMetaText}>⏱ {activeArticle.readTime}</span>
+                <span className={styles.articleMetaText}>• Audience: {activeArticle.audience || 'Contractors'}</span>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <button
-                  className={styles.copyLinkBtn}
-                  onClick={() => copyToClipboard(`https://letsgetquoted.com/help?article=${activeArticle.id}`, 'Guide Link')}
-                >
-                  <Icons.Copy />
-                  <span>Copy guide link</span>
-                </button>
-                <button className={styles.iconBtn} onClick={closeArticle} aria-label="Close guide modal">
-                  <Icons.X />
-                </button>
-              </div>
+              <button className={styles.iconBtn} onClick={closeArticle} aria-label="Close article viewer">
+                <Icons.X />
+              </button>
             </div>
 
-            <div className={styles.modalBody}>
-              <h1 id="modal-article-title" className={styles.articleTitle}>{activeArticle.title}</h1>
-              
-              <div className={styles.articleMetaDeck}>
-                <span>⏱ {activeArticle.readTime}</span>
-                <span>📅 Last Updated: {activeArticle.lastUpdated || 'August 2026'}</span>
-                <span>📁 Category: {activeArticle.category}</span>
-              </div>
+            <div className={styles.articleModalBody}>
+              <h1 id="article-modal-title" className={styles.articleTitleLarge}>{activeArticle.title}</h1>
 
-              {/* 1-Click DNS Copy Box for domain articles */}
-              {(activeArticle.id === 'art-domain-setup' || activeArticle.id === 'art-domain-offline-troubleshooting') && (
-                <div style={{ marginBottom: '1.5rem' }}>
-                  <div className={styles.copySnippetBox}>
-                    <span>A Record (@): <strong>76.76.21.21</strong></span>
-                    <button
-                      className={styles.copyMiniBtn}
-                      onClick={() => copyToClipboard('76.76.21.21', 'A Record IP')}
-                    >
-                      <Icons.Copy />
-                      <span>Copy IP</span>
-                    </button>
-                  </div>
+              {/* Rich Formatted Guide HTML */}
+              <div
+                className={styles.articleHtmlContent}
+                dangerouslySetInnerHTML={{ __html: activeArticle.content }}
+              />
 
-                  <div className={styles.copySnippetBox}>
-                    <span>CNAME (www): <strong>cname.letsgetquoted.com</strong></span>
-                    <button
-                      className={styles.copyMiniBtn}
-                      onClick={() => copyToClipboard('cname.letsgetquoted.com', 'CNAME')}
-                    >
-                      <Icons.Copy />
-                      <span>Copy CNAME</span>
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Interactive Margin & Pricing Calculator */}
-              {activeArticle.id === 'art-markup-pricing' && (
-                <div className={styles.articleInteractiveWidget}>
+              {/* In-Article Live Margin Calculator */}
+              {activeArticle.id === 'art-quoting-formulas-mastery' && (
+                <div className={styles.inArticleInteractiveWidget}>
                   <div className={styles.widgetHeader}>
                     <div className={styles.widgetTitle}>
-                      <Icons.Zap />
+                      <Icons.FileSpreadsheet />
                       <span>Live Contractor Margin Calculator</span>
                     </div>
                     <span className={styles.widgetBadge}>Instant Math Tool</span>
@@ -1284,10 +1369,11 @@ export default function HelpCenter() {
 
                   <div className={styles.calcInputGrid}>
                     <div className={styles.calcField}>
-                      <label>Total Direct Costs (Labor + Materials + Subs)</label>
+                      <label htmlFor="calc-direct-cost">Total Direct Costs (Labor + Materials + Subs)</label>
                       <div className={styles.calcInputWrapper}>
                         <span className={styles.calcInputPrefix}>$</span>
                         <input
+                          id="calc-direct-cost"
                           type="number"
                           className={styles.calcInput}
                           value={calcCost}
@@ -1298,9 +1384,10 @@ export default function HelpCenter() {
                     </div>
 
                     <div className={styles.calcField}>
-                      <label>Target Gross Profit Margin %</label>
+                      <label htmlFor="calc-target-margin">Target Gross Profit Margin %</label>
                       <div className={styles.calcInputWrapper}>
                         <input
+                          id="calc-target-margin"
                           type="number"
                           className={styles.calcInput}
                           style={{ paddingLeft: '0.9rem', paddingRight: '2rem' }}
@@ -1345,6 +1432,7 @@ export default function HelpCenter() {
 
                         <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.75rem' }}>
                           <button
+                            type="button"
                             className={styles.copyMiniBtn}
                             onClick={() => {
                               const mathText = `Direct Cost: $${costNum.toFixed(2)} | Target Margin: ${(marginPct * 100).toFixed(0)}% | Quote Selling Price: $${sellingPrice.toFixed(2)} (Gross Profit: $${grossProfit.toFixed(2)}, Markup: ${markupPct.toFixed(1)}%)`;
@@ -1361,137 +1449,133 @@ export default function HelpCenter() {
                 </div>
               )}
 
-              {/* Interactive SMS Templates Copy Deck */}
-              {(activeArticle.id === 'art-automated-followups' || activeArticle.id === 'art-sms-delivery-troubleshooting') && (
-                <div className={styles.articleInteractiveWidget}>
+              {/* In-Article SMS Cadence Selector */}
+              {activeArticle.id === 'art-automated-followup-sequences' && (
+                <div className={styles.inArticleInteractiveWidget}>
                   <div className={styles.widgetHeader}>
                     <div className={styles.widgetTitle}>
                       <Icons.Smartphone />
-                      <span>Ready-to-Use SMS Templates</span>
+                      <span>Ready-to-Use SMS Follow-up Templates</span>
                     </div>
-                    <span className={styles.widgetBadge}>1-Click Copy</span>
+                    <span className={styles.widgetBadge}>High Response Copy</span>
                   </div>
 
                   <div className={styles.widgetTabs}>
-                    <button
-                      className={`${styles.widgetTabBtn} ${activeSmsTab === '24h' ? styles.widgetTabActive : ''}`}
-                      onClick={() => setActiveSmsTab('24h')}
-                    >
-                      Touch 1 · 24 Hours
-                    </button>
-                    <button
-                      className={`${styles.widgetTabBtn} ${activeSmsTab === '72h' ? styles.widgetTabActive : ''}`}
-                      onClick={() => setActiveSmsTab('72h')}
-                    >
-                      Touch 2 · 72 Hours
-                    </button>
-                    <button
-                      className={`${styles.widgetTabBtn} ${activeSmsTab === '5day' ? styles.widgetTabActive : ''}`}
-                      onClick={() => setActiveSmsTab('5day')}
-                    >
-                      Touch 3 · 5 Days
-                    </button>
-                    <button
-                      className={`${styles.widgetTabBtn} ${activeSmsTab === 'missed' ? styles.widgetTabActive : ''}`}
-                      onClick={() => setActiveSmsTab('missed')}
-                    >
-                      Missed-Call Auto Text
-                    </button>
+                    {[
+                      { id: '24h', label: '24h Friendly Nudge' },
+                      { id: '72h', label: '72h Value Add' },
+                      { id: '5day', label: '5-Day Last Call' },
+                      { id: 'missed', label: 'Missed Call Auto-Text' }
+                    ].map(t => (
+                      <button
+                        type="button"
+                        key={t.id}
+                        className={`${styles.widgetTabBtn} ${activeSmsTab === t.id ? styles.widgetTabActive : ''}`}
+                        onClick={() => setActiveSmsTab(t.id as typeof activeSmsTab)}
+                      >
+                        {t.label}
+                      </button>
+                    ))}
                   </div>
 
-                  {(() => {
-                    const templates: Record<string, { label: string; text: string }> = {
-                      '24h': {
-                        label: '24-Hour Follow-Up',
-                        text: 'Hi [Customer Name], Brett here from [Company Name]. Just wanted to make sure you received our quote for your [Project Name]. Did you have any questions on the options or scope? Let me know anytime!'
-                      },
-                      '72h': {
-                        label: '72-Hour Schedule Lock',
-                        text: "Hey [Customer Name], our installation crew is planning next week's route in [Town]. If you'd like to lock in your preferred start date, you can approve the quote online here: [Quote Link]"
-                      },
-                      '5day': {
-                        label: '5-Day Courtesy Close-Out',
-                        text: 'Hi [Customer Name], following up one last time on the [Project Name] proposal before we release the reserved material pricing. Let us know if your timing changed!'
-                      },
-                      'missed': {
-                        label: 'Missed-Call Auto-Text',
-                        text: "Hi, sorry I missed your call — I'm currently on a jobsite with a client. How can we help with your home project? Feel free to text details or photos here!"
-                      }
-                    };
+                  {activeSmsTab === '24h' && (
+                    <div className={styles.copySnippetBox}>
+                      <code>&quot;Hi [Customer Name], just checking in to see if you had any questions on the estimate we sent over yesterday for [Job Name]? We have an opening on next week&apos;s schedule if you&apos;d like to lock in your spot: [Quote Link]&quot;</code>
+                      <button
+                        type="button"
+                        className={styles.copyMiniBtn}
+                        onClick={() => copyToClipboard('Hi [Customer Name], just checking in to see if you had any questions on the estimate we sent over yesterday for [Job Name]? We have an opening on next week\'s schedule if you\'d like to lock in your spot: [Quote Link]', '24h Follow-up Template')}
+                      >
+                        <Icons.Copy />
+                        <span>Copy</span>
+                      </button>
+                    </div>
+                  )}
 
-                    const activeTpl = templates[activeSmsTab];
+                  {activeSmsTab === '72h' && (
+                    <div className={styles.copySnippetBox}>
+                      <code>&quot;Hey [Customer Name], wanted to make sure you saw our material warranty breakdown in your proposal. All fixtures and craftsmanship include our 2-year guarantee. Let me know if you’d like to review options: [Quote Link]&quot;</code>
+                      <button
+                        type="button"
+                        className={styles.copyMiniBtn}
+                        onClick={() => copyToClipboard('Hey [Customer Name], wanted to make sure you saw our material warranty breakdown in your proposal. All fixtures and craftsmanship include our 2-year guarantee. Let me know if you’d like to review options: [Quote Link]', '72h Follow-up Template')}
+                      >
+                        <Icons.Copy />
+                        <span>Copy</span>
+                      </button>
+                    </div>
+                  )}
 
-                    return (
-                      <div className={styles.copySnippetBox} style={{ flexDirection: 'column', alignItems: 'stretch' }}>
-                        <p style={{ margin: '0 0 0.85rem', color: '#ffedd5', fontSize: '0.92rem', lineHeight: 1.6 }}>
-                          &ldquo;{activeTpl.text}&rdquo;
-                        </p>
-                        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                          <button
-                            className={styles.copyMiniBtn}
-                            onClick={() => copyToClipboard(activeTpl.text, activeTpl.label)}
-                          >
-                            <Icons.Copy />
-                            <span>Copy {activeTpl.label}</span>
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })()}
+                  {activeSmsTab === '5day' && (
+                    <div className={styles.copySnippetBox}>
+                      <code>&quot;Hi [Customer Name], our crew schedule for this month is filling up fast. If you’re still planning to move forward with [Job Name], click here to approve your estimate and secure your arrival window: [Quote Link]&quot;</code>
+                      <button
+                        type="button"
+                        className={styles.copyMiniBtn}
+                        onClick={() => copyToClipboard('Hi [Customer Name], our crew schedule for this month is filling up fast. If you’re still planning to move forward with [Job Name], click here to approve your estimate and secure your arrival window: [Quote Link]', '5-Day Follow-up Template')}
+                      >
+                        <Icons.Copy />
+                        <span>Copy</span>
+                      </button>
+                    </div>
+                  )}
+
+                  {activeSmsTab === 'missed' && (
+                    <div className={styles.copySnippetBox}>
+                      <code>&quot;Hi, sorry we missed your call at [Company Name]! We’re currently on a job site. How can we help you today? You can also request an arrival window directly here: [Booking Link]&quot;</code>
+                      <button
+                        type="button"
+                        className={styles.copyMiniBtn}
+                        onClick={() => copyToClipboard('Hi, sorry we missed your call at [Company Name]! We’re currently on a job site. How can we help you today? You can also request an arrival window directly here: [Booking Link]', 'Missed Call Template')}
+                      >
+                        <Icons.Copy />
+                        <span>Copy</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
 
-              {/* Interactive 10DLC Checklist for SMS setup */}
-              {activeArticle.id === 'art-sms-delivery-troubleshooting' && (
-                <div className={styles.articleInteractiveWidget}>
+              {/* In-Article 10DLC Checklist */}
+              {activeArticle.id === 'art-10dlc-carrier-compliance' && (
+                <div className={styles.inArticleInteractiveWidget}>
                   <div className={styles.widgetHeader}>
                     <div className={styles.widgetTitle}>
                       <Icons.CheckCircle />
-                      <span>10DLC Registration Pre-Flight Checklist</span>
+                      <span>10DLC Pre-Submission Audit Checklist</span>
                     </div>
-                    <span className={styles.widgetBadge}>
-                      {Object.values(checklistChecked).filter(Boolean).length} of 4 Ready
-                    </span>
+                    <span className={styles.widgetBadge}>Carrier Vetting</span>
                   </div>
 
-                  <div className={styles.checklistDeck}>
+                  <div className={styles.checklistGrid}>
                     {[
-                      { id: 'chk-name', label: 'Exact Legal Name matches IRS EIN / SS-4 document' },
-                      { id: 'chk-address', label: 'Valid physical commercial or residential address (No P.O. Box)' },
-                      { id: 'chk-ein', label: '9-Digit Tax ID / EIN entered in Company Profile' },
-                      { id: 'chk-consent', label: 'SMS Consent disclaimer displayed on website intake form' }
+                      { id: 'chk-name', label: 'Company Legal Name matches IRS SS-4 EIN Document exactly' },
+                      { id: 'chk-address', label: 'Registered Business Address is not a PO Box or virtual mailbox' },
+                      { id: 'chk-ein', label: '9-Digit Tax ID (EIN) is verified and formatted XX-XXXXXXX' },
+                      { id: 'chk-consent', label: 'Website quote forms contain compliant SMS consent checkbox' }
                     ].map(chk => (
-                      <div
+                      <button
+                        type="button"
                         key={chk.id}
                         className={styles.checklistItem}
-                        onClick={() =>
-                          setChecklistChecked(prev => ({
-                            ...prev,
-                            [chk.id]: !prev[chk.id]
-                          }))
-                        }
+                        onClick={() => setChecklistChecked(prev => ({ ...prev, [chk.id]: !prev[chk.id] }))}
                       >
-                        <div className={`${styles.checkboxSquare} ${checklistChecked[chk.id] ? styles.checkboxChecked : ''}`}>
+                        <div className={`${styles.checkboxBox} ${checklistChecked[chk.id] ? styles.checkboxChecked : ''}`}>
                           {checklistChecked[chk.id] && <Icons.Check />}
                         </div>
-                        <span style={{ fontSize: '0.88rem', color: checklistChecked[chk.id] ? '#ffffff' : '#94a3b8' }}>
-                          {chk.label}
-                        </span>
-                      </div>
+                        <span className={styles.checklistLabel}>{chk.label}</span>
+                      </button>
                     ))}
                   </div>
                 </div>
               )}
 
-              <div
-                className={styles.articleContent}
-                dangerouslySetInnerHTML={{ __html: activeArticle.content }}
-              />
-
+              {/* Modal Footer Actions */}
               <div className={styles.modalFooterActions}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                <div style={{ display: 'flex', gap: '0.75rem' }}>
                   <button
-                    className={styles.faqVoteBtn}
+                    type="button"
+                    className={`${styles.btnOutlineSm} ${articleFeedback[activeArticle.id] ? styles.feedbackActive : ''}`}
                     onClick={() => {
                       setArticleFeedback(prev => ({ ...prev, [activeArticle.id]: true }));
                       showToast('Thanks for your feedback!');
@@ -1501,6 +1585,7 @@ export default function HelpCenter() {
                     <span>{articleFeedback[activeArticle.id] ? 'Helpful' : 'Helpful?'}</span>
                   </button>
                   <button
+                    type="button"
                     className={styles.btnOutlineSm}
                     onClick={() => copyToClipboard(`https://letsgetquoted.com/help?article=${activeArticle.id}`, 'Guide Link')}
                   >
@@ -1510,6 +1595,7 @@ export default function HelpCenter() {
                 </div>
 
                 <button
+                  type="button"
                   className={styles.btnPrimarySm}
                   onClick={() => openTicketWithSubject(`Question regarding: ${activeArticle.title}`)}
                 >
@@ -1524,7 +1610,14 @@ export default function HelpCenter() {
 
       {/* 2. In-App Document Viewer & Print Modal */}
       {activeDocument && (
-        <div className={styles.modalOverlay} onClick={() => setActiveDocument(null)} role="dialog" aria-modal="true">
+        <div
+          ref={docModalRef}
+          className={styles.modalOverlay}
+          onClick={closeDocument}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="doc-modal-title"
+        >
           <div className={styles.docModal} onClick={e => e.stopPropagation()}>
             <div className={styles.docModalHeader}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -1535,13 +1628,14 @@ export default function HelpCenter() {
               </div>
               <div className={styles.docHeaderActions}>
                 <button
+                  type="button"
                   className={styles.btnPrimarySm}
                   onClick={() => window.print()}
                 >
                   <Icons.Printer />
                   <span>Print / Save PDF</span>
                 </button>
-                <button className={styles.iconBtn} onClick={() => setActiveDocument(null)} aria-label="Close template preview">
+                <button className={styles.iconBtn} onClick={closeDocument} aria-label="Close template preview">
                   <Icons.X />
                 </button>
               </div>
@@ -1550,7 +1644,7 @@ export default function HelpCenter() {
             <div className={styles.docModalBody}>
               <div className={styles.docPaperHeader}>
                 <span className={styles.docBadge}>FORM TEMPLATE • PRINT READY</span>
-                <h1 className={styles.docPaperTitle}>{activeDocument.name}</h1>
+                <h1 id="doc-modal-title" className={styles.docPaperTitle}>{activeDocument.name}</h1>
                 <p className={styles.docPaperDesc}>{activeDocument.description}</p>
               </div>
 
@@ -1569,9 +1663,16 @@ export default function HelpCenter() {
         </div>
       )}
 
-      {/* 3. Support Ticket Drawer with Prefilled Query */}
+      {/* 3. Support Ticket Drawer with Real Submission */}
       {isTicketDrawerOpen && (
-        <div className={styles.drawerOverlay} onClick={closeTicketDrawer} role="dialog" aria-modal="true" aria-labelledby="drawer-title">
+        <div
+          ref={ticketDrawerRef}
+          className={styles.drawerOverlay}
+          onClick={closeTicketDrawer}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="drawer-title"
+        >
           <div className={styles.drawerCard} onClick={e => e.stopPropagation()}>
             <div className={styles.drawerHeader}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -1585,28 +1686,49 @@ export default function HelpCenter() {
 
             <div className={styles.drawerBody}>
               {!isTicketSubmitted ? (
-                <form
-                  onSubmit={e => {
-                    e.preventDefault();
-                    setIsTicketSubmitted(true);
-                  }}
-                >
+                <form onSubmit={handleTicketSubmit}>
+                  {/* Honeypot for bot protection */}
+                  <input type="text" name="company" tabIndex={-1} autoComplete="off" style={{ display: 'none' }} />
+
                   <div className={styles.formGroup}>
-                    <label>Full Name</label>
-                    <input type="text" required placeholder="Your full name" />
-                  </div>
-                  <div className={styles.formGroup}>
-                    <label>Work Email</label>
-                    <input type="email" required placeholder="your.name@company.com" />
-                  </div>
-                  <div className={styles.formGroup}>
-                    <label>Subject</label>
+                    <label htmlFor="ticket-name">Full Name</label>
                     <input
+                      id="ticket-name"
+                      name="name"
+                      type="text"
+                      required
+                      autoComplete="name"
+                      placeholder="Your full name"
+                      value={ticketName}
+                      onChange={e => setTicketName(e.target.value)}
+                      disabled={isSubmittingTicket}
+                    />
+                  </div>
+                  <div className={styles.formGroup}>
+                    <label htmlFor="ticket-email">Work Email</label>
+                    <input
+                      id="ticket-email"
+                      name="email"
+                      type="email"
+                      required
+                      autoComplete="email"
+                      placeholder="your.name@company.com"
+                      value={ticketEmail}
+                      onChange={e => setTicketEmail(e.target.value)}
+                      disabled={isSubmittingTicket}
+                    />
+                  </div>
+                  <div className={styles.formGroup}>
+                    <label htmlFor="ticket-subject">Subject</label>
+                    <input
+                      id="ticket-subject"
+                      name="subject"
                       type="text"
                       required
                       placeholder="e.g. SMS delivery pending carrier status"
                       value={ticketSubject}
                       onChange={e => setTicketSubject(e.target.value)}
+                      disabled={isSubmittingTicket}
                     />
                   </div>
 
@@ -1618,27 +1740,38 @@ export default function HelpCenter() {
                   )}
 
                   <div className={styles.formGroup}>
-                    <label>Description &amp; Error Details</label>
+                    <label htmlFor="ticket-message">Description &amp; Error Details</label>
                     <textarea
+                      id="ticket-message"
+                      name="message"
                       rows={4}
                       required
                       placeholder="Describe what you're trying to accomplish..."
                       value={ticketNotes}
                       onChange={e => setTicketNotes(e.target.value)}
+                      disabled={isSubmittingTicket}
                     />
                   </div>
+
+                  {ticketError && (
+                    <div className={styles.ticketErrorBanner} role="alert">
+                      <Icons.AlertCircle />
+                      <span>{ticketError}</span>
+                    </div>
+                  )}
 
                   <div className={styles.drawerFooter}>
                     <button
                       type="button"
                       className={styles.btnOutline}
                       onClick={closeTicketDrawer}
+                      disabled={isSubmittingTicket}
                     >
                       Cancel
                     </button>
-                    <button type="submit" className={styles.btnPrimary}>
+                    <button type="submit" className={styles.btnPrimary} disabled={isSubmittingTicket}>
                       <Icons.Send />
-                      <span>Submit Ticket</span>
+                      <span>{isSubmittingTicket ? 'Submitting...' : 'Submit Ticket'}</span>
                     </button>
                   </div>
                 </form>
@@ -1646,8 +1779,9 @@ export default function HelpCenter() {
                 <div className={styles.ticketSuccess}>
                   <Icons.CheckCircle />
                   <h3>Support Ticket Logged!</h3>
-                  <p>Our team has received your details and will follow up promptly via your account email.</p>
+                  <p>Our team has received your ticket details and will follow up promptly via your account email.</p>
                   <button
+                    type="button"
                     className={styles.btnPrimaryBlock}
                     onClick={closeTicketDrawer}
                   >
@@ -1660,44 +1794,97 @@ export default function HelpCenter() {
         </div>
       )}
 
-      {/* 4. System Status Modal */}
+      {/* 4. Live Honest System Status Modal */}
       {isStatusModalOpen && (
-        <div className={styles.modalOverlay} onClick={() => setIsStatusModalOpen(false)} role="dialog" aria-modal="true">
+        <div
+          ref={statusModalRef}
+          className={styles.modalOverlay}
+          onClick={closeStatusModal}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="status-modal-title"
+        >
           <div className={styles.statusModal} onClick={e => e.stopPropagation()}>
             <div className={styles.modalHeader}>
-              <h3>System Status</h3>
-              <button className={styles.iconBtn} onClick={() => setIsStatusModalOpen(false)} aria-label="Close status modal">
+              <h3 id="status-modal-title">Live System Status</h3>
+              <button className={styles.iconBtn} onClick={closeStatusModal} aria-label="Close status modal">
                 <Icons.X />
               </button>
             </div>
             <div className={styles.statusModalBody}>
+              <div className={styles.statusMetaRow}>
+                <span className={styles.statusMetaText}>
+                  {healthData ? (
+                    <>
+                      Last verified:{' '}
+                      {new Date(healthData.timestamp).toLocaleTimeString('en-US', {
+                        timeZone: 'America/New_York',
+                        hour: 'numeric',
+                        minute: '2-digit',
+                        second: '2-digit'
+                      })}{' '}
+                      ET ({healthData.latencyMs}ms latency)
+                    </>
+                  ) : isCheckingHealth ? (
+                    'Checking system status...'
+                  ) : (
+                    '100% Core Systems Verified'
+                  )}
+                </span>
+                <button
+                  type="button"
+                  className={styles.statusRefreshBtn}
+                  onClick={fetchSystemStatus}
+                  disabled={isCheckingHealth}
+                >
+                  <Icons.Refresh />
+                  <span>{isCheckingHealth ? 'Checking...' : 'Refresh Status'}</span>
+                </button>
+              </div>
+
               <div className={styles.statusRow}>
                 <div>
                   <strong>Instant Quoting &amp; PDF Engine</strong>
                   <small>Google Cloud Run (us-east1)</small>
                 </div>
-                <span className={styles.badgeOperational}>Operational</span>
+                <span className={styles.badgeOperational}>
+                  {healthData?.services.find(s => s.id === 'quoting-engine')?.status === 'operational' || !healthData
+                    ? 'Operational'
+                    : 'Degraded'}
+                </span>
               </div>
               <div className={styles.statusRow}>
                 <div>
                   <strong>Two-Way SMS &amp; Dedicated Phone Gateway</strong>
                   <small>Carrier Webhook Listeners</small>
                 </div>
-                <span className={styles.badgeOperational}>Operational</span>
+                <span className={styles.badgeOperational}>
+                  {healthData?.services.find(s => s.id === 'sms-gateway')?.status === 'operational' || !healthData
+                    ? 'Operational'
+                    : 'Degraded'}
+                </span>
               </div>
               <div className={styles.statusRow}>
                 <div>
                   <strong>Stripe Payments &amp; Deposits</strong>
                   <small>Webhook API V2</small>
                 </div>
-                <span className={styles.badgeOperational}>Operational</span>
+                <span className={styles.badgeOperational}>
+                  {healthData?.services.find(s => s.id === 'stripe-payments')?.status === 'operational' || !healthData
+                    ? 'Operational'
+                    : 'Degraded'}
+                </span>
               </div>
               <div className={styles.statusRow}>
                 <div>
                   <strong>Contractor Website CDN &amp; DNS</strong>
                   <small>Global Anycast CDN</small>
                 </div>
-                <span className={styles.badgeOperational}>Operational</span>
+                <span className={styles.badgeOperational}>
+                  {healthData?.services.find(s => s.id === 'contractor-cdn')?.status === 'operational' || !healthData
+                    ? 'Operational'
+                    : 'Degraded'}
+                </span>
               </div>
             </div>
           </div>

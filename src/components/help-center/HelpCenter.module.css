@@ -156,18 +156,30 @@
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  background: #FF6B35;
-  color: #FFFFFF;
+  background: #FF7A29;
+  color: #081014;
   border: none;
   border-radius: 8px;
   padding: 6px 12px;
   font-size: 0.85rem;
-  font-weight: 600;
+  font-weight: 800;
   cursor: pointer;
-  transition: background 0.15s ease;
+  transition: background 0.15s ease, transform 0.15s ease;
 }
 .btnPrimarySm:hover {
-  background: #E85D04;
+  background: #FF8C42;
+  transform: translateY(-1px);
+}
+
+/* Card Button Resets */
+button.commonFixCard,
+button.bentoArticleItem,
+button.suggestedArticleCard,
+button.quickStepItem {
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  width: 100%;
 }
 
 /* Hero Section */
@@ -237,7 +249,7 @@
   outline: none;
 }
 .searchInputWrapper input::placeholder {
-  color: #64748B;
+  color: #94A3B8;
 }
 .hotkeyBadge {
   display: flex;
@@ -288,7 +300,7 @@
 .quickChipsLabel {
   font-size: 0.8rem;
   font-weight: 600;
-  color: #64748B;
+  color: #94A3B8;
   white-space: nowrap;
 }
 .quickChipsScroll {
@@ -1680,6 +1692,36 @@
   font-size: 0.85rem;
 }
 
+.statusMetaRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.25rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.statusMetaText {
+  font-size: 0.78rem;
+  color: #94A3B8;
+}
+.statusRefreshBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: #15252B;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #CBD5E1;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.statusRefreshBtn:hover {
+  border-color: #10B981;
+  color: #FFFFFF;
+}
 .statusRow {
   display: flex;
   justify-content: space-between;
@@ -1693,7 +1735,7 @@
   font-size: 0.9rem;
 }
 .statusRow small {
-  color: #64748B;
+  color: #94A3B8;
   font-size: 0.75rem;
 }
 .badgeOperational {
@@ -1778,6 +1820,24 @@
   color: #CBD5E1;
   margin-top: 4px;
 }
+.ticketErrorBanner {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: #fca5a5;
+  font-size: 0.85rem;
+  margin-top: 1rem;
+}
+.ticketErrorBanner svg {
+  width: 18px;
+  height: 18px;
+  color: #f87171;
+  flex-shrink: 0;
+}
 .drawerFooter {
   display: flex;
   justify-content: flex-end;
@@ -1792,19 +1852,48 @@
   color: #CBD5E1;
   font-size: 0.85rem;
   cursor: pointer;
+  transition: all 0.15s ease;
+}
+.btnOutline:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.3);
 }
 .btnPrimary {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0.4rem;
-  background: #FF6B35;
+  background: #FF7A29;
   border: none;
   border-radius: 8px;
   padding: 8px 18px;
-  color: #FFFFFF;
+  color: #081014;
   font-size: 0.85rem;
-  font-weight: 600;
+  font-weight: 800;
   cursor: pointer;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+.btnPrimary:hover {
+  background: #FF8C42;
+  transform: translateY(-1px);
+}
+.btnPrimaryBlock {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  background: #FF7A29;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 18px;
+  color: #081014;
+  font-size: 0.9rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.btnPrimaryBlock:hover {
+  background: #FF8C42;
 }
 .ticketSuccess {
   text-align: center;
