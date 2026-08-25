@@ -174,6 +174,60 @@ export const signalwireVoiceProvider: VoiceProvider = {
         });
       }
       mainSection.push({ play: { url: `say: ${spokenGreeting}` } });
+      const swaigFunctions: Record<string, unknown>[] = [];
+
+      if (plan.transferTo) {
+        swaigFunctions.push({
+          function: 'transfer_to_business',
+          purpose: 'Send the caller to a person when they ask for one or the '
+            + 'request is beyond what can be handled.',
+          argument: { type: 'object', properties: {} },
+          data_map: { expressions: [{
+            string: 'true', pattern: '.*',
+            output: { response: 'Connecting you now.', action: [{ transfer: true, SWML: {
+              version: '1.0.0',
+              sections: { main: [{ connect: { to: plan.transferTo } }] },
+            } }] },
+          }] },
+        });
+      }
+
+      if (plan.swaigUrl) {
+        swaigFunctions.push({
+          function: 'send_booking_link',
+          purpose: 'Send an SMS text message containing our direct online appointment and estimate booking link to the caller\'s phone.',
+          argument: {
+            type: 'object',
+            properties: {
+              caller_phone: {
+                type: 'string',
+                description: 'The phone number to receive the booking text message.',
+              },
+            },
+          },
+          web_hook_url: plan.swaigUrl,
+          web_hook_auth_user: plan.receiptAuthorization.username,
+          web_hook_auth_password: plan.receiptAuthorization.password,
+        });
+
+        swaigFunctions.push({
+          function: 'check_contractor_availability',
+          purpose: 'Query current business hours, appointment availability, and emergency coverage.',
+          argument: {
+            type: 'object',
+            properties: {
+              timeframe: {
+                type: 'string',
+                description: 'Optional timeframe or query type (e.g. today, tomorrow, this week, emergency).',
+              },
+            },
+          },
+          web_hook_url: plan.swaigUrl,
+          web_hook_auth_user: plan.receiptAuthorization.username,
+          web_hook_auth_password: plan.receiptAuthorization.password,
+        });
+      }
+
       mainSection.push({
         ai: {
           post_prompt_url: plan.receiptUrl,
@@ -201,21 +255,7 @@ export const signalwireVoiceProvider: VoiceProvider = {
               + 'the work requested, how urgent it is, and any appointment time '
               + 'they preferred. State plainly if any of these were not given.'),
           },
-          ...(plan.transferTo
-            ? { SWAIG: { functions: [{
-              function: 'transfer_to_business',
-              purpose: 'Send the caller to a person when they ask for one or the '
-                + 'request is beyond what can be handled.',
-              argument: { type: 'object', properties: {} },
-              data_map: { expressions: [{
-                string: 'true', pattern: '.*',
-                output: { response: 'Connecting you now.', action: [{ transfer: true, SWML: {
-                  version: '1.0.0',
-                  sections: { main: [{ connect: { to: plan.transferTo } }] },
-                } }] },
-              }] },
-            }] } }
-            : {}),
+          ...(swaigFunctions.length > 0 ? { SWAIG: { functions: swaigFunctions } } : {}),
         },
       });
 

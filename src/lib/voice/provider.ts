@@ -107,6 +107,8 @@ export type VoiceAnswerPlan =
     recordCall?: boolean;
     /** Webhook status URL for recording completion callbacks. */
     recordingStatusUrl?: string;
+    /** Secure SWAIG webhook URL for real-time tool calling during live calls. */
+    swaigUrl?: string;
   }>
   | Readonly<{
     kind: 'forward';

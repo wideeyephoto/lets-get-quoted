@@ -20,6 +20,7 @@ import {
   ownerHighValueLeadText,
   ownerVerificationCodeText,
   ownerVoiceEmergencyAlertText,
+  callerVoiceBookingLinkText,
   paymentText,
   quickStopConfirmedText,
   quickStopOfferText,
@@ -255,6 +256,48 @@ export async function sendOwnerVoiceEmergencyAlertSms(input: {
     });
   } catch (error) {
     console.error('Owner voice emergency alert SMS failed:', error instanceof Error ? error.message : error);
+  }
+}
+
+/**
+ * Sends an instant SMS containing the business booking link to a caller during an AI voice call.
+ */
+export async function sendCallerVoiceBookingLinkSms(input: {
+  accountId: string;
+  callerPhone: string;
+  bookingUrl: string;
+  idempotencyKey?: string;
+}): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const to = normalizeUsPhone(input.callerPhone);
+    if (!to) return { ok: false, error: 'Invalid phone number' };
+    if (await isPhoneOptedOut(input.accountId, to)) {
+      return { ok: false, error: 'Caller opted out of SMS' };
+    }
+
+    const admin = createAdminClient();
+    const businessName = await loadBusinessName(admin, input.accountId);
+    const body = callerVoiceBookingLinkText({
+      businessName,
+      bookingUrl: input.bookingUrl,
+    });
+
+    await queueAccountSms({
+      accountId: input.accountId,
+      phone: to,
+      body,
+      messageKind: 'caller-voice-booking-link',
+      category: 'customer_message',
+      context: 'customer',
+      senderPurpose: 'contractor_dedicated',
+      idempotencyKey: input.idempotencyKey,
+    });
+
+    return { ok: true };
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
+    console.error('Caller voice booking link SMS failed:', msg);
+    return { ok: false, error: msg };
   }
 }
 

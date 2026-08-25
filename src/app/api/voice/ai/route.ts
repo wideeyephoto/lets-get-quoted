@@ -104,6 +104,7 @@ export async function POST(request: Request) {
       // in the URL or included in the decline log below.
       receiptAuthorization: voiceReceiptAuthorization(),
       forwardActionUrl: (id) => `${callbackOrigin}/api/voice/ai/status?account=${id}`,
+      swaigUrl: (id) => `${callbackOrigin}/api/voice/swaig?account_id=${id}`,
     });
 
     // A valid signed call to this route is the only durable proof LGQ can get

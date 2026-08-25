@@ -232,6 +232,7 @@ export type PlanInboundOptions = Readonly<{
   receiptUrl: string;
   receiptAuthorization: VoiceReceiptAuthorization | null;
   forwardActionUrl: (accountId: string) => string;
+  swaigUrl?: (accountId: string) => string;
   enabled?: boolean;
   now?: () => Date;
 }>;
@@ -340,6 +341,7 @@ export async function planInboundCall(
       // The configured hand-off, falling back to the line the contractor
       // already forwards to. Null is a valid setup, not a broken one.
       transferTo: settings.transferNumber || workspace.callForwardNumber,
+      swaigUrl: options.swaigUrl ? options.swaigUrl(workspace.accountId) : undefined,
     }),
   });
 }

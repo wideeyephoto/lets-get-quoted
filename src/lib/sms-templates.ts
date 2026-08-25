@@ -78,6 +78,13 @@ export function ownerVoiceEmergencyAlertText(input: {
   return `🚨 EMERGENCY CALL for ${input.businessName} from ${caller}: ${input.hazardSummary}. Review details & transcript: ${input.dashboardUrl} — Reply STOP to opt out.`;
 }
 
+export function callerVoiceBookingLinkText(input: {
+  businessName: string;
+  bookingUrl: string;
+}): string {
+  return `Thanks for calling ${input.businessName}! Here is the direct link to book an appointment or request an estimate: ${input.bookingUrl} — Reply STOP to opt out.`;
+}
+
 
 // -- Quick Stop --------------------------------------------------------------
 
