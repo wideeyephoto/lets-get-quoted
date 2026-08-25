@@ -81,7 +81,7 @@ export default function DemoSettingsPage() {
                 </div>
                 <p className="workspace-card-copy">
                   The real account shows its saved plan, LGQ platform-fee rate, billing status, and the exact
-                  text, marketing email, AI Intake, and AI writing balances available right now.
+                  text, marketing email, and unified AI usage credit balances available right now.
                 </p>
                 <p className="workspace-card-copy">
                   Purchased credits and plan-period credits may share a balance, so the page labels the amount

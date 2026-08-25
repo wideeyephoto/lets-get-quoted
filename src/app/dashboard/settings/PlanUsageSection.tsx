@@ -1,6 +1,7 @@
 import { formatUsdFromCents } from '@/lib/billing/catalog';
 import type {
   PlanUsageLimits,
+  UsageBalance,
   WorkspaceBalancesRead,
   WorkspacePlanRead,
   WorkspacePlanUsage,
@@ -484,17 +485,10 @@ function ResourceIcon({ label }: { label: string }) {
       </svg>
     );
   }
-  if (norm.includes('intake') || norm.includes('thread')) {
+  if (norm.includes('ai') || norm.includes('intake') || norm.includes('draft') || norm.includes('writing')) {
     return (
       <svg viewBox="0 0 24 24" className="plan-usage-resource-ic" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
-      </svg>
-    );
-  }
-  if (norm.includes('draft') || norm.includes('writing')) {
-    return (
-      <svg viewBox="0 0 24 24" className="plan-usage-resource-ic" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-        <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" /><path d="m15 5 4 4" />
       </svg>
     );
   }
@@ -517,6 +511,78 @@ function ResourceIcon({ label }: { label: string }) {
       <circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" />
     </svg>
   );
+}
+
+function consolidateCreditResources(resources: readonly CreditLotSplit[]): CreditLotSplit[] {
+  const textResource = resources.find((r) => r.resourceCode === 'text_segments');
+  const emailResource = resources.find((r) => r.resourceCode === 'marketing_email_sends');
+  const aiIntake = resources.find((r) => r.resourceCode === 'ai_intake_threads');
+  const aiWriting = resources.find((r) => r.resourceCode === 'ai_writing_drafts');
+
+  const result: CreditLotSplit[] = [];
+  if (textResource) result.push(textResource);
+  if (emailResource) result.push(emailResource);
+
+  if (aiIntake || aiWriting) {
+    const sawAnyPeriod = (aiIntake?.periodGranted !== null && (aiIntake?.periodGranted ?? 0) > 0)
+      || (aiWriting?.periodGranted !== null && (aiWriting?.periodGranted ?? 0) > 0);
+    const periodGranted = sawAnyPeriod
+      ? (aiIntake?.periodGranted ?? 0) + (aiWriting?.periodGranted ?? 0)
+      : null;
+    const periodRemaining = sawAnyPeriod
+      ? (aiIntake?.periodRemaining ?? 0) + (aiWriting?.periodRemaining ?? 0)
+      : null;
+    const periodUsed = sawAnyPeriod
+      ? (aiIntake?.periodUsed ?? 0) + (aiWriting?.periodUsed ?? 0)
+      : null;
+    const nonExpiring = (aiIntake?.nonExpiring ?? 0) + (aiWriting?.nonExpiring ?? 0);
+    const percentUsed = periodGranted && periodGranted > 0 && periodUsed !== null
+      ? Math.min(100, Math.round((periodUsed / periodGranted) * 100))
+      : null;
+    const nextExpirationAt = aiIntake?.nextExpirationAt || aiWriting?.nextExpirationAt || null;
+
+    result.push({
+      resourceCode: 'ai_writing_drafts',
+      label: 'AI Usage Credits',
+      periodRemaining,
+      periodGranted,
+      periodUsed,
+      nonExpiring,
+      percentUsed,
+      nextExpirationAt,
+    });
+  }
+
+  return result;
+}
+
+function consolidateUsageBalances(balances: readonly UsageBalance[]): UsageBalance[] {
+  const textResource = balances.find((b) => b.resourceCode === 'text_segments');
+  const emailResource = balances.find((b) => b.resourceCode === 'marketing_email_sends');
+  const aiIntake = balances.find((b) => b.resourceCode === 'ai_intake_threads');
+  const aiWriting = balances.find((b) => b.resourceCode === 'ai_writing_drafts');
+
+  const result: UsageBalance[] = [];
+  if (textResource) result.push(textResource);
+  if (emailResource) result.push(emailResource);
+
+  if (aiIntake || aiWriting) {
+    const hasAnyUnits = (aiIntake?.availableUnits !== null && aiIntake?.availableUnits !== undefined)
+      || (aiWriting?.availableUnits !== null && aiWriting?.availableUnits !== undefined);
+    const availableUnits = hasAnyUnits
+      ? (aiIntake?.availableUnits ?? 0) + (aiWriting?.availableUnits ?? 0)
+      : null;
+    const nextExpirationAt = aiIntake?.nextExpirationAt || aiWriting?.nextExpirationAt || null;
+
+    result.push({
+      resourceCode: 'ai_writing_drafts',
+      label: 'AI Usage Credits',
+      availableUnits,
+      nextExpirationAt,
+    });
+  }
+
+  return result;
 }
 
 /**
@@ -589,8 +655,8 @@ function CreditBalance({ resource }: { resource: CreditLotSplit }) {
       {hasWindow && resource.nonExpiring > 0 ? (
         <small>Plus {resource.nonExpiring.toLocaleString('en-US')} that never expire</small>
       ) : null}
-      {(resource.resourceCode === 'ai_intake_threads' || resource.resourceCode === 'ai_writing_drafts') ? (
-        <small className="plan-usage-shared-pool-tag">⚡ Flexible pool: balances flex across Smart Intake &amp; AI Writing</small>
+      {(resource.label.includes('AI') || resource.resourceCode === 'ai_intake_threads' || resource.resourceCode === 'ai_writing_drafts') ? (
+        <small className="plan-usage-shared-pool-tag">⚡ Powers Smart Intake lead qualification, AI quotes, &amp; marketing copy</small>
       ) : null}
     </article>
   );
@@ -904,12 +970,12 @@ export default function PlanUsageSection({
     && data.plan.billingStatus === 'free'
     && data.plan.entitlementState === 'active';
   const creditSummary = lots?.kind === 'ready'
-    ? lots.resources.map((resource) => {
+    ? consolidateCreditResources(lots.resources).map((resource) => {
       const available = (resource.periodRemaining ?? 0) + resource.nonExpiring;
       return `${resource.label.replace(/ credits$/i, '')}: ${available.toLocaleString('en-US')}`;
     }).join(' · ')
     : data.balances.kind === 'ready'
-      ? data.balances.balances.map((balance) => (
+      ? consolidateUsageBalances(data.balances.balances).map((balance) => (
         `${balance.label.replace(/ credits$/i, '')}: ${balance.availableUnits?.toLocaleString('en-US') ?? '—'}`
       )).join(' · ')
       : 'Unavailable';
@@ -1004,14 +1070,14 @@ export default function PlanUsageSection({
               </summary>
               {lots?.kind === 'ready' ? (
                 <div className="plan-usage-balance-grid">
-                  {lots.resources.map((resource) => (
-                    <CreditBalance key={resource.resourceCode} resource={resource} />
+                  {consolidateCreditResources(lots.resources).map((resource) => (
+                    <CreditBalance key={resource.label} resource={resource} />
                   ))}
                 </div>
               ) : data.balances.kind === 'ready' ? (
                 <div className="plan-usage-balance-grid">
-                  {data.balances.balances.map((balance) => (
-                    <article className="plan-usage-balance" key={balance.resourceCode}>
+                  {consolidateUsageBalances(data.balances.balances).map((balance) => (
+                    <article className="plan-usage-balance" key={balance.label}>
                       <span>{balance.label}</span>
                       <strong>
                         {balance.availableUnits === null
