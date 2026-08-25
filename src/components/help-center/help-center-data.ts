@@ -1,8 +1,15 @@
+/**
+ * Help Center Data Definitions & Contractor Knowledge Base
+ * Single source of truth for categories, trade playbooks, legal templates, and common fixes.
+ */
+
 export interface Article {
   id: string;
   title: string;
   readTime: string;
+  audience?: string;
   category: string;
+  lastUpdated?: string;
   content: string;
 }
 
@@ -12,762 +19,719 @@ export interface KnowledgeCategory {
   title: string;
   desc: string;
   icon: string;
-  color: string;
-  count: string;
   articles: Article[];
 }
 
-export interface TradeQuoteTier {
-  name: string;
-  price: string;
-  badge?: string;
-  features: string[];
-}
-
-export interface TradeLineItem {
-  name: string;
-  qty: string;
-  rate: string;
-  total: string;
-  category: 'Labor' | 'Materials' | 'Permit' | 'Equipment';
-}
-
-export interface TradeWorkflowDetail {
-  title: string;
-  desc: string;
-  formulaOrClause: string;
-  actionLabel: string;
-  actionUrl: string;
+export interface FAQItem {
+  id: string;
+  category: string;
+  question: string;
+  answer: string;
 }
 
 export interface TradePlaybook {
   id: string;
   name: string;
-  tradeSlug: string;
   icon: string;
   badge: string;
   headline: string;
   description: string;
-  depositTerms: string;
-  multiplierNotes: string;
-  tiers: TradeQuoteTier[];
-  sampleLineItems: TradeLineItem[];
-  keyWorkflows: TradeWorkflowDetail[];
-}
-
-export interface VideoPlaybook {
-  id: string;
-  title: string;
-  duration: string;
-  category: string;
-  thumbnailGradient: string;
-  summary: string;
-  keySteps: string[];
-  relatedGuideUrl: string;
+  keyWorkflows: { title: string; desc: string }[];
 }
 
 export interface DownloadableTemplate {
   id: string;
   name: string;
-  fileFormat: string;
-  fileSize: string;
   description: string;
-  downloadsCount: string;
+  fileSize: string;
+  fileName: string;
 }
 
-export interface FAQItem {
-  question: string;
-  answer: string;
-  category: string;
+export interface SupportChannel {
+  id: string;
+  name: string;
+  icon: string;
+  bestUsedFor: string;
+  availability: string;
+  responseTarget: string;
+  prepareInfo: string[];
 }
 
-export const TRADE_PLAYBOOKS: TradePlaybook[] = [
-  {
-    id: 'plumbing',
-    name: 'Plumbing & HVAC',
-    tradeSlug: 'plumbers',
-    icon: 'Wrench',
-    badge: 'Popular for Service & Repair',
-    headline: 'Emergency Dispatch & Tiered Fixture Replacements',
-    description: 'Master fast on-truck dispatch, after-hours emergency call multipliers, and multi-tier water heater replacement proposals.',
-    depositTerms: '50% deposit on equipment orders > $1,000; balance due upon installation.',
-    multiplierNotes: '1.5x dispatch multiplier for weekends & calls after 6:00 PM.',
-    tiers: [
-      {
-        name: 'Standard Tank (Good)',
-        price: '$1,850',
-        features: [
-          '50-Gallon Atmospheric Gas Water Heater',
-          'Standard 6-Year Tank & Parts Warranty',
-          'Thermal Expansion Tank & Ball Valve Replacement',
-          'Complete Haul-Away of Old Unit'
-        ]
-      },
-      {
-        name: 'Hybrid Heat Pump (Better)',
-        price: '$2,850',
-        badge: 'Most Popular',
-        features: [
-          '50-Gallon Hybrid Electric Heat Pump (4.0 UEF)',
-          '10-Year Comprehensive Warranty',
-          'Qualifies for $900+ Utility & Inflation Reduction Act Rebates',
-          'Up to $330/Year in Electrical Energy Savings'
-        ]
-      },
-      {
-        name: 'Tankless Continuous (Best)',
-        price: '$4,400',
-        badge: 'Platinum Lifetime',
-        features: [
-          'Condensing Tankless Unit (199k BTU / 9.8 GPM)',
-          '15-Year Heat Exchanger Warranty',
-          'Continuous Endless Hot Water with Built-In Recirculation',
-          'Space-Saving Wall-Mounted Footprint'
-        ]
-      }
-    ],
-    sampleLineItems: [
-      { name: '50-Gal Hybrid Heat Pump Water Heater', qty: '1 unit', rate: '$1,650.00', total: '$1,650.00', category: 'Materials' },
-      { name: 'Master Plumber Installation & Retrofit Labor', qty: '4.5 hrs', rate: '$210.00/hr', total: '$945.00', category: 'Labor' },
-      { name: 'Thermal Expansion Tank & Brass Full-Port Ball Valves', qty: '1 kit', rate: '$185.00', total: '$185.00', category: 'Materials' },
-      { name: 'Municipality Plumbing Inspection Permit Pass-Through', qty: '1 permit', rate: '$70.00', total: '$70.00', category: 'Permit' }
-    ],
-    keyWorkflows: [
-      {
-        title: 'Emergency After-Hours Multiplier',
-        desc: 'Auto-adjust dispatch fees by 1.5x on weekends or after 6 PM.',
-        formulaOrClause: 'Emergency Rate = Standard Dispatch Fee ($149) × 1.50 = $223.50. Applied automatically for calls received between 6:00 PM and 7:00 AM or on weekends.',
-        actionLabel: 'View Pricing Guide',
-        actionUrl: '/resources/markup-vs-margin-calculator-guide'
-      },
-      {
-        title: 'Water Heater Good/Better/Best',
-        desc: 'Standard Tank (Good) vs Hybrid Heat Pump (Better) vs Tankless Lifetime (Best).',
-        formulaOrClause: '3-Tier presentation lifts average replacement revenue by +38%. Position Option 2 as the Recommended energy-saving tier.',
-        actionLabel: 'View Quoting Playbook',
-        actionUrl: '/resources/good-better-best-quoting-guide'
-      },
-      {
-        title: 'Camera Inspection Video Attachments',
-        desc: 'Attach drain camera MP4 clips directly to homeowner estimate links.',
-        formulaOrClause: 'Direct cloud video upload links to client estimate URL. Homeowners approve root-intrusion line items with visual evidence.',
-        actionLabel: 'Explore Plumbing Trade',
-        actionUrl: '/for/plumbers'
-      }
-    ]
-  },
-  {
-    id: 'roofing',
-    name: 'Roofing & Siding',
-    tradeSlug: 'roofers',
-    icon: 'Home',
-    badge: 'High-Ticket Remodeling',
-    headline: 'Multi-Square Estimation & Drone Photo Proposals',
-    description: 'Calculate pitch multipliers, waste factors (10–15%), architectural shingle upgrade packages, and insurance deductible workflows.',
-    depositTerms: '50% material deposit upon contract signing; 50% upon completion.',
-    multiplierNotes: '10% waste factor for gable roofs; 15% waste factor for hip & valley designs.',
-    tiers: [
-      {
-        name: 'Architectural 30-Yr (Good)',
-        price: '$9,800',
-        features: [
-          '30-Year Laminated Architectural Shingles',
-          'Synthetic Breathable Underlayment',
-          'Aluminum Drip Edge & Starter Shingle Strip',
-          'Full Magnetic Nail Sweep & Ground Cleanup'
-        ]
-      },
-      {
-        name: 'Lifetime HD System (Better)',
-        price: '$13,500',
-        badge: 'Recommended',
-        features: [
-          '50-Year High-Definition Lifetime Shingles',
-          'Ice & Water Leak Barrier (3 courses on all eaves & valleys)',
-          'Continuous Ridge Vent Ventilation System',
-          'Transferable 50-Year Manufacturer System Warranty'
-        ]
-      },
-      {
-        name: 'Standing Seam Metal (Best)',
-        price: '$19,200',
-        badge: 'Maximum Protection',
-        features: [
-          '24-Gauge Concealed Fastener Standing Seam Metal Panels',
-          'Class 4 Impact Resistance (Lowers insurance premiums)',
-          '50-Year Kynar 500 Fade & Corrosion Warranty',
-          '140 MPH Extreme Wind Uplift Certification'
-        ]
-      }
-    ],
-    sampleLineItems: [
-      { name: 'Tear-Off Existing 1-Layer Shingles & Disposal', qty: '28 squares', rate: '$105.00/sq', total: '$2,940.00', category: 'Labor' },
-      { name: 'Lifetime HD Architectural Shingle Bundles (12% waste included)', qty: '95 bundles', rate: '$58.00/bdl', total: '$5,510.00', category: 'Materials' },
-      { name: 'Self-Adhering Ice & Water Protection Barrier (Valleys & Eaves)', qty: '3 rolls', rate: '$145.00/roll', total: '$435.00', category: 'Materials' },
-      { name: 'Continuous Ridge Venting System & Lead Pipe Boots', qty: '1 set', rate: '$615.00', total: '$615.00', category: 'Materials' }
-    ],
-    keyWorkflows: [
-      {
-        title: 'Square & Pitch Calculator',
-        desc: 'Enter total square footage and pitch slope to instantly calculate bundles & underlayment.',
-        formulaOrClause: 'Total Squares = (Footprint Sq Ft × Pitch Factor [e.g. 1.15 for 6/12]) ÷ 100 × (1 + Waste Factor [0.12]). Each square requires 3 shingle bundles.',
-        actionLabel: 'Calculate Roof Margin',
-        actionUrl: '/resources/markup-vs-margin-calculator-guide'
-      },
-      {
-        title: '30-Year vs 50-Year Shingle Tiers',
-        desc: 'Present Architectural (Good), Lifetime Designer (Better), and Standing Seam Metal (Best).',
-        formulaOrClause: 'Give homeowners confidence in material longevity while unlocking higher-margin premium underlayment and ridge cap upgrades.',
-        actionLabel: 'Quoting Strategy Guide',
-        actionUrl: '/resources/good-better-best-quoting-guide'
-      },
-      {
-        title: 'Drone Inspection Photo Carousels',
-        desc: 'Embed before/after roof leak photos in the client-facing digital quote.',
-        formulaOrClause: 'Attach high-res aerial roof photos into digital estimates to document storm damage and missing flashing for homeowners and insurance adjusters.',
-        actionLabel: 'Explore Roofing Trade',
-        actionUrl: '/for/roofers'
-      }
-    ]
-  },
-  {
-    id: 'electrical',
-    name: 'Electrical & Solar',
-    tradeSlug: 'electricians',
-    icon: 'Zap',
-    badge: 'Precision Permitting & Panels',
-    headline: 'Panel Upgrades, EV Chargers & Permit Line Items',
-    description: 'Quote 200A service panel upgrades, Level 2 EV charger installations, and pass-through municipality permit fees cleanly.',
-    depositTerms: '50% upfront deposit on panel gear & charging units; 50% upon final municipal inspection.',
-    multiplierNotes: 'Wire run distance brackets: Base up to 25ft; +$14/ft for runs exceeding 25ft.',
-    tiers: [
-      {
-        name: '200A Panel Swap (Good)',
-        price: '$2,400',
-        features: [
-          '200-Amp Main Breaker Panel with Copper Bus Bar',
-          'New Dual Grounding Electrode System (8ft Ground Rods)',
-          'Whole-House Electrical Code Circuit Labeling',
-          'Township Electrical Permit & Inspection Coordination'
-        ]
-      },
-      {
-        name: 'Panel + Level 2 EV (Better)',
-        price: '$3,800',
-        badge: 'Recommended',
-        features: [
-          '200A Main Panel Upgrade + Whole-Home Surge Protector (Type 2)',
-          'Dedicated 50A / 240V Level 2 EV Charger Circuit in Garage',
-          'NEMA 14-50 Industrial Receptacle or Hardwired Station',
-          '10-Year Workmanship & Breaker Warranty'
-        ]
-      },
-      {
-        name: 'Smart Energy + Backup (Best)',
-        price: '$6,900',
-        badge: 'Platinum Resilience',
-        features: [
-          'Smart Controllable Load Center with App Circuit Monitoring',
-          '50A Generator Inlet Interlock Kit with Outdoor Power Inlet Box',
-          'Dual Level 2 Fast Charger Capacity',
-          'Zero-Downtime Whole-Home Power Monitoring'
-        ]
-      }
-    ],
-    sampleLineItems: [
-      { name: '200-Amp 40-Space Outdoor Meter/Load Center Combo', qty: '1 unit', rate: '$1,250.00', total: '$1,250.00', category: 'Materials' },
-      { name: 'Master Licensed Electrician Panel Wiring & Service Re-attachment', qty: '6.0 hrs', rate: '$225.00/hr', total: '$1,350.00', category: 'Labor' },
-      { name: 'Level 2 EV 50A Circuit (6/3 NM-B Wire + Industrial Receptacle)', qty: '35 ft', rate: '$18.00/ft', total: '$630.00', category: 'Labor' },
-      { name: 'Township Electrical Plan Review & Permit Pass-Through', qty: '1 permit', rate: '$140.00', total: '$140.00', category: 'Permit' }
-    ],
-    keyWorkflows: [
-      {
-        title: '200A Service Upgrade Tiers',
-        desc: 'Main breaker panel swap vs whole-home surge protection vs battery backup.',
-        formulaOrClause: 'Bundle surge protection and EV pre-wiring into Option 2 to increase average electrician project size from $2,400 to $3,800+.',
-        actionLabel: 'View Quoting Playbook',
-        actionUrl: '/resources/good-better-best-quoting-guide'
-      },
-      {
-        title: 'Municipality Permit Line Items',
-        desc: 'Add non-taxable town permit pass-through line items that calculate automatically.',
-        formulaOrClause: 'Mark municipality permit fees as non-taxable direct pass-through line items so material/labor tax calculations stay clean.',
-        actionLabel: 'Explore Electrician Features',
-        actionUrl: '/for/electricians'
-      },
-      {
-        title: 'EV Charger Load Calculation',
-        desc: 'Include wire run distance brackets (up to 25ft, 50ft, 100ft) with upfront materials.',
-        formulaOrClause: 'Load Capacity Formula: Continuous load must not exceed 80% of circuit rating (40A continuous charging on a 50A dedicated breaker).',
-        actionLabel: 'View Estimator Tool',
-        actionUrl: '/tools/estimate-generator'
-      }
-    ]
-  },
-  {
-    id: 'landscaping',
-    name: 'Landscaping & Tree Care',
-    tradeSlug: 'landscapers',
-    icon: 'Trees',
-    badge: 'Recurring Maintenance & Hardscaping',
-    headline: 'Recurring Service Agreements & Hardscape Deposits',
-    description: 'Automate weekly/bi-weekly lawn maintenance billing, seasonal spring/fall cleanups, and 50% upfront patio material deposits.',
-    depositTerms: 'Recurring contracts: Auto-charged 1st of month. Hardscapes: 50% upfront stone deposit.',
-    multiplierNotes: 'Tree hazard multiplier: 1.3x for proximity to overhead utility lines or roofs.',
-    tiers: [
-      {
-        name: 'Weekly Lawn Care (Good)',
-        price: '$260/mo',
-        features: [
-          'Weekly Precision Mowing, String Trimming & Edging',
-          'Hard Surface Debris Blow-Off (Driveways & Walkways)',
-          'Bi-Weekly Weed Control in Mulch Beds',
-          'Card-on-File Automated Monthly Invoicing'
-        ]
-      },
-      {
-        name: 'Full-Season Elite (Better)',
-        price: '$480/mo',
-        badge: 'Best Value Plan',
-        features: [
-          'Weekly Mowing + Spring & Fall Property Cleanups',
-          'Double-Shredded Hardwood Mulch Delivery & Install (Up to 5 yds)',
-          '5-Step Fertilizer & Pre-Emergent Weed Program',
-          'Fall Core Aeration & Premium Sun/Shade Overseeding'
-        ]
-      },
-      {
-        name: 'Paver Patio & Outdoor Living (Best)',
-        price: '$14,500',
-        badge: 'Hardscape Build',
-        features: [
-          '450 sq ft Interlocking Paver Patio with Polymeric Sand',
-          '6-Inch Compacted Crushed Aggregate Base (Zero Settling)',
-          'Built-In Fire Pit Kit with Matching Coping Stones',
-          '5-Year Hardscape Craftsmanship Guarantee'
-        ]
-      }
-    ],
-    sampleLineItems: [
-      { name: 'Commercial Paver Stones & Wall Blocks (450 sq ft)', qty: '6 pallets', rate: '$680.00/plt', total: '$4,080.00', category: 'Materials' },
-      { name: 'Excavation, Soil Disposal & Base Compaction', qty: '18 hrs', rate: '$140.00/hr', total: '$2,520.00', category: 'Labor' },
-      { name: 'Crushed Dense Aggregate Base & Washed Sand Bedding', qty: '12 tons', rate: '$65.00/ton', total: '$780.00', category: 'Materials' },
-      { name: 'Polymeric Joint Sanding, Edge Restraints & Final Seal', qty: '1 package', rate: '$850.00', total: '$850.00', category: 'Labor' }
-    ],
-    keyWorkflows: [
-      {
-        title: 'Seasonal Recurring Contracts',
-        desc: 'Set monthly auto-invoicing from April to November with card-on-file billing.',
-        formulaOrClause: 'Monthly Subscription Amount = (Total Season Visits [28] × Per-Visit Rate [$65] + Cleanups [$800]) ÷ 8 Equal Monthly Payments = $327.50/mo.',
-        actionLabel: 'Payment Plan Playbook',
-        actionUrl: '/resources/deposits-and-payment-plans'
-      },
-      {
-        title: 'Hardscape Paver Square Footage',
-        desc: 'Calculate base gravel, sand bedding, and paver stone quantities with built-in labor rates.',
-        formulaOrClause: 'Base Volume: Area (sq ft) × Depth (0.5 ft) ÷ 27 = Cubic Yards of Dense Grade Aggregate required for frost-resistant base.',
-        actionLabel: 'Explore Landscaper Features',
-        actionUrl: '/for/landscapers'
-      },
-      {
-        title: 'Tree Removal Hazard Multiplier',
-        desc: 'Quote crane access, stump grinding, and limb clearance as modular optional add-ons.',
-        formulaOrClause: 'Modular add-on selections empower customers to add stump grinding (+$250) or wood chipping (+$180) during digital quote sign-off.',
-        actionLabel: 'View Estimator Tool',
-        actionUrl: '/tools/estimate-generator'
-      }
-    ]
-  },
-  {
-    id: 'general',
-    name: 'General Contracting',
-    tradeSlug: 'remodelers',
-    icon: 'Hammer',
-    badge: 'Milestone & Remodeling Billing',
-    headline: 'Milestone Invoicing (50/40/10) & Change Orders',
-    description: 'Structure large-scale bathroom and kitchen remodels with compliant milestone deposit schedules and 1-click change order sign-offs.',
-    depositTerms: '50% upon signing (materials); 40% rough-in completion; 10% final punch list sign-off.',
-    multiplierNotes: '1-click electronic change order addendums with customer e-signature.',
-    tiers: [
-      {
-        name: 'Essential Bathroom Refresh (Good)',
-        price: '$14,500',
-        features: [
-          'Prefab Acrylic Tub/Shower Surround & Single Vanity',
-          'Waterproof Luxury Vinyl Plank (LVP) Flooring',
-          'New Moen Fixtures, GFCI Outlets & LED Recessed Lighting',
-          'Fresh Moisture-Resistant Paint & Moldings'
-        ]
-      },
-      {
-        name: 'Custom Tile Walk-In Suite (Better)',
-        price: '$26,500',
-        badge: 'Recommended',
-        features: [
-          'Custom Tiled Walk-In Shower with Built-In Bench & Recessed Niche',
-          'Schluter-Kerdi 100% Waterproof Membrane System',
-          'Double Quartz Vanity with Undermount Sinks & Brushed Nickel Trim',
-          'Heated Electric Floor System with Programmable Thermostat'
-        ]
-      },
-      {
-        name: 'Luxury Spa Master Retreat (Best)',
-        price: '$44,000',
-        badge: 'Platinum Renovation',
-        features: [
-          'Zero-Entry Curbless Shower with Frameless Glass Enclosure',
-          'Freestanding Soaking Tub with Floor-Mounted Filler',
-          'Large-Format Calacatta Porcelain Tile (Floor to Ceiling)',
-          'Smart LED Mirror, Custom Cabinetry & Dual Showerheads'
-        ]
-      }
-    ],
-    sampleLineItems: [
-      { name: 'Complete Demolition, Haul-Off & Subfloor Preparation', qty: '1 job', rate: '$2,200.00', total: '$2,200.00', category: 'Labor' },
-      { name: 'Schluter Waterproofing & Floor-to-Ceiling Tile Installation', qty: '220 sq ft', rate: '$42.00/sq ft', total: '$9,240.00', category: 'Labor' },
-      { name: '60-Inch Double Quartz Top Vanity & Faucet Trim Kits', qty: '1 set', rate: '$3,400.00', total: '$3,400.00', category: 'Materials' },
-      { name: 'Rough-In Plumbing & Electrical Alterations with Town Inspection', qty: '1 package', rate: '$2,850.00', total: '$2,850.00', category: 'Labor' }
-    ],
-    keyWorkflows: [
-      {
-        title: '50/40/10 Milestone Billing',
-        desc: 'Collect 50% deposit on contract signing, 40% upon rough-in completion, 10% final punch list.',
-        formulaOrClause: 'Payment 1: 50% upfront to order cabinetry & custom stone ($13,250). Payment 2: 40% upon passing plumbing/electrical rough-in ($10,600). Payment 3: 10% upon final punch list sign-off ($2,650).',
-        actionLabel: 'Deposit Structure Guide',
-        actionUrl: '/resources/deposits-and-payment-plans'
-      },
-      {
-        title: 'Mobile Change Order Signatures',
-        desc: 'Generate a 1-page extra work authorization with instant homeowner e-signature on site.',
-        formulaOrClause: 'Homeowners digitally sign unforeseen scope additions (e.g. subfloor rot repair +$1,200) from their mobile phone before extra work starts.',
-        actionLabel: 'Download Change Order Form',
-        actionUrl: '#contractor-templates'
-      },
-      {
-        title: 'Subcontractor Lien Waiver Receipts',
-        desc: 'Generate unconditional progress lien waivers upon payment receipt for banks and lenders.',
-        formulaOrClause: 'Automated lien waiver PDFs generate with legal property descriptions and clearance timestamps upon invoice payment.',
-        actionLabel: 'Explore Remodeler Trade',
-        actionUrl: '/for/remodelers'
-      }
-    ]
-  }
-];
+export const LEGAL_TEMPLATES_DISCLAIMER =
+  'These templates are starting points, not legal advice. Requirements vary by state and project. Have important agreements reviewed by a qualified local professional.';
 
-export const VIDEO_PLAYBOOKS: VideoPlaybook[] = [
+// 6 Common-Fix Diagnostic Articles
+export const COMMON_FIX_ARTICLES: Article[] = [
   {
-    id: 'vid-tiered-quoting',
-    title: 'Building a 3-Tier "Good / Better / Best" Quote on Mobile',
-    duration: '1:15',
-    category: 'Instant Quoting',
-    thumbnailGradient: 'linear-gradient(135deg, #0e1622 0%, #1e293b 100%)',
-    summary: 'Watch how to create an interactive 3-option estimate on your phone in under 60 seconds from the jobsite truck.',
-    keySteps: [
-      '1. Open Quote Builder on phone and enable Multi-Tier mode',
-      '2. Select Essential, Recommended Pro, and Platinum Lifetime options',
-      '3. Enter material costs and watch profit margin compute automatically',
-      '4. Send via 1-click SMS for instant client e-signature'
-    ],
-    relatedGuideUrl: '/resources/good-better-best-quoting-guide'
+    id: 'art-quote-send-troubleshooting',
+    title: 'Why Customer Quotes Fail to Deliver (and How to Fix Them in 2 Minutes)',
+    category: 'Quoting',
+    readTime: '2 min read',
+    audience: 'Contractors & Estimators',
+    lastUpdated: 'August 2026',
+    content: `
+      <h3>Diagnosing Quote Delivery Issues</h3>
+      <p>When an estimate or quote fails to reach your customer, it is almost always caused by one of three issues:</p>
+      <ol>
+        <li><strong>Invalid or Landline Phone Number:</strong> SMS delivery automatically detects landlines and stops sending to protect your carrier trust score. If a number fails, toggle the delivery method to Email in the Quote Actions drawer.</li>
+        <li><strong>Expired Magic Token:</strong> If a customer reports the quote link is expired, click <em>Regenerate Link</em> on the quote summary screen to extend access by 30 days.</li>
+        <li><strong>Pending 10DLC Verification:</strong> New accounts sending high-volume SMS must have their EIN name matching IRS records exactly.</li>
+      </ol>
+      <h4>Quick Fix Checklist:</h4>
+      <ul>
+        <li>Verify the recipient phone number includes 10 digits without international country codes.</li>
+        <li>Check the live delivery log in <em>Settings &gt; SMS Logs</em>.</li>
+        <li>Use <em>Copy Private Link</em> to paste the quote directly into WhatsApp or personal iMessage if urgency is critical.</li>
+      </ul>
+    `
   },
   {
-    id: 'vid-stripe-deposits',
-    title: 'Collecting 50% Material Deposits with Apple Pay',
-    duration: '0:48',
-    category: 'Payments & Stripe',
-    thumbnailGradient: 'linear-gradient(135deg, #101c2c 0%, #172a3a 100%)',
-    summary: 'See how homeowners receive an SMS link, select their package, sign digitally, and pay instant deposits via 1-click Apple Pay.',
-    keySteps: [
-      '1. Client taps SMS quote link on iPhone or Android',
-      '2. Selects package tier and optional add-ons',
-      '3. E-signs with finger on screen',
-      '4. Taps Apple Pay to submit 50% upfront deposit directly to your bank'
-    ],
-    relatedGuideUrl: '/resources/deposits-and-payment-plans'
+    id: 'art-sms-delivery-troubleshooting',
+    title: 'Troubleshooting 10DLC Carrier Verification & Pending Text Messages',
+    category: 'SMS & Messaging',
+    readTime: '3 min read',
+    audience: 'Owners & Administrators',
+    lastUpdated: 'August 2026',
+    content: `
+      <h3>10DLC Carrier Brand Approval Workflow</h3>
+      <p>US telecom regulations require all business texting to be verified under 10DLC (10-Digit Long Code). Here is how to unblock pending status:</p>
+      <ol>
+        <li><strong>Legal Entity Name Mismatch:</strong> Your legal business name in <em>Settings &gt; SMS</em> must match word-for-word with your IRS CP-575 or Form 147C letter.</li>
+        <li><strong>EIN Validation:</strong> Ensure your 9-digit Employer Identification Number contains no hyphens or spaces in the verification form.</li>
+        <li><strong>Website Privacy Policy:</strong> Carriers require a visible SMS opt-in privacy clause. If you use our website builder, this is hosted automatically at <code>/privacy</code>.</li>
+      </ol>
+      <h4>Delivery Timelines:</h4>
+      <p>Standard carrier verification completes in <strong>2 to 24 hours</strong>. While pending, all quote notifications automatically route via priority transactional email.</p>
+    `
   },
   {
-    id: 'vid-custom-domain',
-    title: 'Connecting Your GoDaddy / Squarespace Domain in 2 Mins',
-    duration: '1:32',
-    category: 'AI Website Builder',
-    thumbnailGradient: 'linear-gradient(135deg, #181c24 0%, #202b36 100%)',
-    summary: 'Step-by-step walkthrough of adding an A record (76.76.21.21) and CNAME to deploy your contractor AI website live.',
-    keySteps: [
-      '1. Open GoDaddy, Namecheap, or Squarespace DNS management',
-      '2. Add A Record pointing @ to 76.76.21.21',
-      '3. Add CNAME Record pointing www to cname.letsgetquoted.com',
-      '4. Automatic SSL certificates provision in under 60 seconds'
-    ],
-    relatedGuideUrl: '/resources'
+    id: 'art-stripe-payout-troubleshooting',
+    title: 'Resolving Stripe Connect Deposit Schedules & Verification Holds',
+    category: 'Payments & Banking',
+    readTime: '2 min read',
+    audience: 'Business Owners & Bookkeepers',
+    lastUpdated: 'August 2026',
+    content: `
+      <h3>Understanding Payout Timing</h3>
+      <p>Customer deposits and credit card payments clear through Stripe Connect directly into your linked checking account on a <strong>2-business-day rolling basis</strong>.</p>
+      <h4>Common Reasons for Delayed Deposits:</h4>
+      <ul>
+        <li><strong>First Payout Delay:</strong> Stripe applies a one-time 5-7 business day holding period on your very first collected customer payment for fraud prevention.</li>
+        <li><strong>Identity Verification Needed:</strong> Check <em>Settings &gt; Payments &gt; Stripe Express Dashboard</em> to see if a photo ID or bank statement upload is requested.</li>
+        <li><strong>Weekend &amp; Bank Holiday Rollover:</strong> Payments processed after 5:00 PM EST on Fridays batch into Monday morning bank processing.</li>
+      </ul>
+    `
   },
   {
-    id: 'vid-sms-followups',
-    title: 'Configuring 24/7 Automated SMS Quote Follow-Ups',
-    duration: '1:05',
-    category: 'Two-Way SMS',
-    thumbnailGradient: 'linear-gradient(135deg, #1c1424 0%, #2a1f3a 100%)',
-    summary: 'How to automate polite text follow-ups at 24h and 72h that automatically stop the second a homeowner replies or signs.',
-    keySteps: [
-      '1. Navigate to Settings > Automated SMS Sequences',
-      '2. Toggle on 24-Hour and 72-Hour Quote Follow-Up Triggers',
-      '3. Customize wording or use verified contractor templates',
-      '4. Sequence automatically cancels the moment homeowner approves or replies'
-    ],
-    relatedGuideUrl: '/resources/speed-to-lead-contractor-playbook'
-  }
-];
-
-export const DOWNLOADABLE_TEMPLATES: DownloadableTemplate[] = [
-  {
-    id: 'tpl-lien-waiver',
-    name: 'Residential Contractor Progress Lien Waiver Template',
-    fileFormat: 'PDF & Word',
-    fileSize: '142 KB',
-    description: 'Standard conditional and unconditional lien waiver form for banks, homeowners, and general contractors.',
-    downloadsCount: '4,280+'
+    id: 'art-domain-offline-troubleshooting',
+    title: 'Fixing Custom Domain DNS Records & SSL Certificate Propagation',
+    category: 'Custom Domains',
+    readTime: '4 min read',
+    audience: 'Administrators & Web Leads',
+    lastUpdated: 'August 2026',
+    content: `
+      <h3>DNS Configuration Reference</h3>
+      <p>To connect your own custom domain (e.g. <code>maplewoodplumbing.com</code>) to your contractor site:</p>
+      <ol>
+        <li>Log into your registrar (GoDaddy, Namecheap, Google Domains / Squarespace).</li>
+        <li>Create an <strong>A Record</strong> with Host: <code>@</code> pointing to IP: <code>76.76.21.21</code>.</li>
+        <li>Create a <strong>CNAME Record</strong> with Host: <code>www</code> pointing to <code>cname.letsgetquoted.com</code>.</li>
+        <li>Remove any competing A records or domain parking redirects.</li>
+      </ol>
+      <h4>SSL Generation:</h4>
+      <p>Our edge servers issue a free auto-renewing Let&apos;s Encrypt SSL certificate within <strong>15 minutes</strong> of DNS propagation.</p>
+    `
   },
   {
-    id: 'tpl-change-order',
-    name: 'Extra Work Authorization & Change Order Agreement',
-    fileFormat: 'PDF & Fillable',
-    fileSize: '98 KB',
-    description: 'Legally compliant 1-page form to document unforeseen scope changes, material additions, and updated totals.',
-    downloadsCount: '3,650+'
+    id: 'art-team-access-troubleshooting',
+    title: 'Resolving Crew Sign-In Issues & Role Permission Settings',
+    category: 'Team Management',
+    readTime: '2 min read',
+    audience: 'Owners & Field Managers',
+    lastUpdated: 'August 2026',
+    content: `
+      <h3>Managing Team Invitations</h3>
+      <p>If a technician or office manager cannot access their dashboard, follow these verification steps:</p>
+      <ol>
+        <li><strong>Resend Activation Invite:</strong> Navigate to <em>Settings &gt; Team</em>, locate the member, and click <em>Resend Invite Link</em>.</li>
+        <li><strong>Check Seat Entitlements:</strong> Ensure your subscription plan has available active crew seats before adding new field workers.</li>
+        <li><strong>Role Permissions:</strong> Technicians assigned the <em>Field Crew</em> role only see jobs dispatched directly to their schedule.</li>
+      </ol>
+    `
   },
   {
-    id: 'tpl-deposit-terms',
-    name: '50% Upfront Material Deposit & Payment Schedule Addendum',
-    fileFormat: 'PDF & DOCX',
-    fileSize: '116 KB',
-    description: 'Standard clause defining upfront non-refundable material orders, payment milestones, and late fee terms.',
-    downloadsCount: '5,120+'
+    id: 'art-schedule-sync-troubleshooting',
+    title: 'Why a Dispatched Job is Missing from the Crew Calendar',
+    category: 'Scheduling & Dispatch',
+    readTime: '2 min read',
+    audience: 'Dispatchers & Technicians',
+    lastUpdated: 'August 2026',
+    content: `
+      <h3>Dispatch Synchronization Guide</h3>
+      <p>When an approved quote or emergency service call is not showing on a technician&apos;s phone calendar:</p>
+      <ul>
+        <li><strong>Assigned Truck Filter:</strong> Verify the job has an assigned technician in the <em>Crew &amp; Equipment</em> dropdown. Unassigned jobs appear in the <em>Unscheduled Queue</em> on the left sidebar.</li>
+        <li><strong>Confirmed Deposit Requirement:</strong> If your job setting requires a deposit before dispatch, the job remains in <em>Pending Approval</em> until Stripe confirms payment.</li>
+        <li><strong>Timezone Alignment:</strong> Check that your company operating timezone in <em>Settings &gt; Profile</em> matches your local service territory.</li>
+      </ul>
+    `
   }
 ];
 
 export const KNOWLEDGE_BASE: KnowledgeCategory[] = [
   {
-    id: 'cat-onboarding',
+    id: 'cat-getting-started',
     topic: 'onboarding',
-    title: 'Fast-Track Contractor Setup',
-    desc: 'Get your company profile, tax rules, trade license, and branding configured in under 5 minutes.',
+    title: 'Getting Started & Workspace Setup',
+    desc: 'Company branding, default labor rates, material markups, and contractor profiles.',
     icon: 'Rocket',
-    color: '#6366f1',
-    count: '8 Guides',
     articles: [
       {
-        id: 'art-profile-setup',
-        title: 'Configuring Company Info, Trade License & Logos',
-        readTime: '3 min read',
-        category: 'Fast-Track Setup',
+        id: 'art-quickstart-guide',
+        title: 'Complete 10-Minute Onboarding Checklist for Contractors',
+        category: 'Setup',
+        readTime: '4 min read',
+        audience: 'New Users',
+        lastUpdated: 'August 2026',
         content: `
-          <h3>Overview</h3>
-          <p>Your company profile is used across all outgoing client estimates, PDF agreements, and AI landing pages. Ensuring accurate contact and licensing data boosts homeowner confidence and approval rates.</p>
-          <div class="callout">
-            <strong>Pro Tip:</strong> Upload a high-resolution PNG logo with a transparent background for the sharpest results on invoices and mobile quote views.
+          <h3>Fast-Tracking Your Live Contractor Workspace</h3>
+          <p>Setting up your workspace properly ensures every outgoing estimate, invoice, SMS alert, and customer agreement reflects your verified business credentials and brand identity.</p>
+
+          <div class="calloutSuccess">
+            <strong>Pro Tip:</strong> Upload a high-resolution PNG logo with a transparent background (recommended 800x400px). Our PDF proposal generator formats it automatically for 300 DPI print receipts.
           </div>
-          <h3>Step-by-Step Configuration</h3>
+
+          <h3>The 5-Step Workspace Checklist:</h3>
           <ol>
-            <li>Navigate to <strong>Dashboard &gt; Settings &gt; Company Profile</strong>.</li>
-            <li>Enter your registered Legal Business Name, Trade / Contractor License Number, and Insurance details.</li>
-            <li>Set your primary business phone number (this will sync with your dedicated 10DLC automated business SMS number).</li>
-            <li>Upload your company logo (recommended dimensions: 800x400px).</li>
-            <li>Click <strong>Save &amp; Verify Profile</strong>.</li>
+            <li><strong>Company Profile &amp; Trade License:</strong> Navigate to <em>Settings &gt; Profile</em> and enter your legal business name, state contractor license number, and general liability insurance policy details.</li>
+            <li><strong>10DLC SMS Phone Line:</strong> Submit your 9-digit IRS EIN in <em>Settings &gt; SMS</em> to provision a dedicated local area code number for two-way client texting.</li>
+            <li><strong>Labor Rates &amp; Default Markup:</strong> In <em>Settings &gt; Pricing</em>, set your baseline hourly labor rate and target gross profit margin.</li>
+            <li><strong>Stripe Connect Banking:</strong> Link your business checking account in <em>Settings &gt; Payments</em> for automatic next-business-day deposits.</li>
+            <li><strong>Install Mobile PWA:</strong> Open <code>app.letsgetquoted.com</code> on your iPhone (Safari &gt; Share &gt; Add to Home Screen) or Android (Chrome &gt; Install App) for 1-tap truck dispatch.</li>
           </ol>
         `
       },
       {
-        id: 'art-carrier-onboarding',
-        title: '10DLC Carrier Brand & Campaign Verification Checklist',
-        readTime: '4 min read',
-        category: 'Fast-Track Setup',
+        id: 'art-markup-pricing',
+        title: 'Configuring Hourly Rates, Overhead Multipliers, and Material Markup',
+        category: 'Setup',
+        readTime: '5 min read',
+        audience: 'Owners & Estimators',
+        lastUpdated: 'August 2026',
         content: `
-          <h3>Understanding 10DLC Compliance</h3>
-          <p>Major US mobile carriers (AT&T, Verizon, T-Mobile) require all automated and two-way business texting systems to be registered with The Campaign Registry (TCR). We manage carrier compliance directly to ensure 99.9% SMS deliverability.</p>
+          <h3>The Core Difference Between Margin and Markup</h3>
+          <p>Marking up job costs by 30% does <strong>NOT</strong> yield a 30% gross profit margin. If direct costs are $10,000 and you add a 30% markup ($13,000 total), your actual margin is only <strong>23.08%</strong> ($3,000 ÷ $13,000). That missing 7% often wipes out net profits after business overhead.</p>
+
           <div class="callout">
-            <strong>Carrier Approval Timeline:</strong> Most contractor brands are verified within <strong>2 to 24 hours</strong> once EIN and business legal address are submitted.
+            <strong>The Golden Contractor Margin Formula:</strong><br />
+            <code>Quote Price = Total Direct Job Costs ÷ (1 - Desired Gross Margin)</code>
           </div>
-          <h3>Required Registration Details</h3>
-          <ul>
-            <li><strong>Exact Legal Name:</strong> Must match your IRS EIN document letter exactly.</li>
-            <li><strong>Company EIN / Tax ID:</strong> 9-digit tax ID.</li>
-            <li><strong>Physical Business Address:</strong> PO Boxes are rejected by telecom carriers.</li>
-          </ul>
+
+          <h3>Margin to Markup Reference Table</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Target Margin</th>
+                <th>Cost Multiplier</th>
+                <th>Equivalent Markup Needed</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>25% Margin</strong></td>
+                <td><code>÷ 0.75 (x 1.33)</code></td>
+                <td><strong>33.3% Markup</strong></td>
+              </tr>
+              <tr>
+                <td><strong>35% Margin</strong></td>
+                <td><code>÷ 0.65 (x 1.54)</code></td>
+                <td><strong>53.8% Markup</strong></td>
+              </tr>
+              <tr>
+                <td><strong>45% Margin</strong></td>
+                <td><code>÷ 0.55 (x 1.82)</code></td>
+                <td><strong>81.8% Markup</strong></td>
+              </tr>
+              <tr>
+                <td><strong>50% Margin</strong></td>
+                <td><code>÷ 0.50 (x 2.00)</code></td>
+                <td><strong>100.0% Markup (2x Cost)</strong></td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h3>Setting Up Your Rate Card</h3>
+          <ol>
+            <li>Go to <strong>Settings &gt; Pricing &amp; Markups</strong>.</li>
+            <li>Input your loaded labor rate (wage + payroll taxes + insurance + vehicle burden).</li>
+            <li>Set your default material markup multiplier (e.g. <code>1.45</code> for 45% markup on retail supplies).</li>
+            <li>Enable line-item margin alerts to flag any estimates falling below your target profitability threshold.</li>
+          </ol>
         `
       },
       {
-        id: 'art-mobile-app-sync',
-        title: 'Installing the Progressive Mobile Web App on iOS & Android',
-        readTime: '2 min read',
-        category: 'Fast-Track Setup',
+        id: 'art-domain-setup',
+        title: 'Connecting Custom Domains & Free SSL Setup Guide',
+        category: 'Setup',
+        readTime: '4 min read',
+        audience: 'Admins',
+        lastUpdated: 'August 2026',
         content: `
-          <h3>One-Tap Field Access</h3>
-          <p>Access jobs, dispatch notes, instant quote calculators, and customer calling from your truck without downloading a bloated app store binary.</p>
-          <p><strong>On iPhone / iPad (Safari):</strong> Tap the <em>Share</em> icon and select <strong>Add to Home Screen</strong>.</p>
-          <p><strong>On Android (Chrome):</strong> Tap the menu and select <strong>Install App</strong>.</p>
+          <h3>Connecting Your Own Domain in 3 Minutes</h3>
+          <p>Connect your custom registered domain (e.g. <code>www.maplewoodpro.com</code>) to your contractor website by adding two standard DNS records in your domain registrar.</p>
+
+          <h3>Required DNS Records</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Type</th>
+                <th>Host / Name</th>
+                <th>Value / Target</th>
+                <th>TTL</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>A Record</strong></td>
+                <td><code>@</code> (root)</td>
+                <td><code>76.76.21.21</code></td>
+                <td>Automatic / 3600</td>
+              </tr>
+              <tr>
+                <td><strong>CNAME</strong></td>
+                <td><code>www</code></td>
+                <td><code>cname.letsgetquoted.com</code></td>
+                <td>Automatic / 3600</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="calloutInfo">
+            <strong>Automatic SSL Provisioning:</strong> Once DNS records propagate, our cloud edge automatically provisions and renews a free 256-bit Let's Encrypt SSL certificate within 15 minutes.
+          </div>
         `
       }
     ]
   },
   {
-    id: 'cat-quoting',
+    id: 'cat-instant-quoting',
     topic: 'quoting',
-    title: 'Instant Quoting & Good/Better/Best Tiers',
-    desc: 'Build multi-option proposals, interactive material selectors, and collect homeowner e-signatures on mobile.',
+    title: 'Instant Multi-Tier Quoting',
+    desc: '3-tier Good / Better / Best packages, change orders, and instant customer signature approval.',
     icon: 'FileSpreadsheet',
-    color: '#06b6d4',
-    count: '14 Guides',
     articles: [
+      COMMON_FIX_ARTICLES[0],
       {
-        id: 'art-tier-builder',
-        title: 'Creating 3-Tier "Good / Better / Best" Proposals',
-        readTime: '4 min read',
-        category: 'Instant Quoting',
+        id: 'art-good-better-best',
+        title: 'How to Build High-Converting 3-Option Proposals (Good / Better / Best)',
+        category: 'Quoting',
+        readTime: '5 min read',
+        audience: 'Estimators',
+        lastUpdated: 'August 2026',
         content: `
-          <h3>Why Tiered Quoting Wins 38% Higher Revenue</h3>
-          <p>Homeowners love having choices. By presenting three clear options, you eliminate price shopping against competitors.</p>
-          <ol>
-            <li>In your Quote Editor, toggle on <strong>Multi-Option Proposal</strong>.</li>
-            <li>Set Option 1 as <em>Essential Fix</em>.</li>
-            <li>Set Option 2 as <em>Recommended Pro Upgrade</em>.</li>
-            <li>Set Option 3 as <em>Platinum Lifetime</em>.</li>
-          </ol>
+          <h3>Why Multi-Tier Quoting Lifts Average Job Size by 35%+</h3>
+          <p>Sending a homeowner a single quote price forces a binary <strong>"Yes vs. No"</strong> decision where they compare your number to low-bid competitors. Providing three curated options shifts their internal evaluation to <strong>"Which level of quality best fits our home?"</strong></p>
+
+          <h3>The 20 / 65 / 15 Rule</h3>
+          <ul>
+            <li><strong>Good (Baseline Option · ~20% select):</strong> Meets standard building codes, standard fixtures/materials, 1-year workmanship warranty. Protects against losing cost-conscious homeowners.</li>
+            <li><strong>Better (The Sweet Spot · ~65% select):</strong> Architectural-grade durability, enhanced energy efficiency, upgraded aesthetic finishes, and 5–10 year extended warranty. Priced 25–40% above Good. This is where your highest net profit lives.</li>
+            <li><strong>Best (Executive Premium · ~15% select):</strong> Commercial-grade materials, lifetime transferable warranty, annual inspections, and priority 24/7 emergency dispatch. Priced 70–100% above Good.</li>
+          </ul>
+
+          <div class="calloutSuccess">
+            <strong>Building in 60 Seconds:</strong> In the Quote Builder, toggle on <strong>Multi-Option Tiers</strong>. Load a trade playbook or duplicate your base line items and add warranty and material upgrades to Tiers 2 &amp; 3.
+          </div>
         `
       },
       {
-        id: 'art-esignatures',
-        title: 'Legally Binding Mobile E-Signatures & Quote Receipts',
-        readTime: '3 min read',
-        category: 'Instant Quoting',
+        id: 'art-change-orders',
+        title: 'Issuing On-Site Extra Work Orders & Instant Client Approvals',
+        category: 'Quoting',
+        readTime: '4 min read',
+        audience: 'Field Techs',
+        lastUpdated: 'August 2026',
         content: `
-          <h3>How Quote E-Signatures Work</h3>
-          <p>When a homeowner receives your digital quote link, they can review the itemized scope, select optional upgrades, and legally approve the proposal right from their phone — with no app download or account creation required.</p>
-          <div class="callout">
-            <strong>ESIGN &amp; UETA Compliant:</strong> Electronic signatures captured with clear intent, timestamping, and signer attribution are legally binding under the US federal ESIGN Act and state UETA laws.
-          </div>
-          <h3>What Is Recorded on Quote Acceptance</h3>
-          <ul>
-            <li><strong>Signer Legal Name:</strong> The full name provided by the client upon approval.</li>
-            <li><strong>Signature Mark or Typed Name:</strong> Homeowners can draw their mark using a finger or stylus (stored as vector SVG paths) or type their legal name.</li>
-            <li><strong>ISO Timestamp:</strong> The exact date and time of acceptance is permanently recorded on the job record and audit feed.</li>
-            <li><strong>Snapshot of Agreed Pricing &amp; Add-ons:</strong> The accepted line items and upgrade selections are locked to the record so subsequent edits never quietly alter what was approved.</li>
-          </ul>
-          <h3>Print &amp; PDF Receipts</h3>
-          <p>Both you and the homeowner can use <strong>Print or save as PDF</strong> at any time to generate a clean, formatted receipt containing the full scope of work, company header, and executed signature block.</p>
+          <h3>Preventing Unpaid Scope Creep</h3>
+          <p>Unforeseen issues happen on every remodel: rotted subfloors, corroded cast-iron pipes, or customer-requested fixture additions. Performing extra work without written sign-off is the leading cause of contractor-homeowner payment disputes.</p>
+
+          <h3>The 3-Minute Mobile Change Order Workflow</h3>
+          <ol>
+            <li><strong>Capture Jobsite Photos:</strong> Take 2 photos of the uncovered unforeseen condition directly in the mobile app.</li>
+            <li><strong>Draft Additional Scope:</strong> Open the active job, tap <strong>+ Add Change Order</strong>, and enter itemized additional labor and materials.</li>
+            <li><strong>Send Instant SMS Authorization:</strong> Send the 1-click approval link to the homeowner. They review the photo evidence, approve the cost adjustment, and authorize the charge from their phone before you purchase additional materials.</li>
+          </ol>
         `
       }
     ]
   },
   {
-    id: 'cat-website',
-    topic: 'website',
-    title: 'AI Website Builder & Local SEO',
-    desc: 'Deploy ultra-fast, high-converting contractor landing pages with built-in instant quote estimation widgets.',
-    icon: 'Globe',
-    color: '#10b981',
-    count: '9 Guides',
-    articles: [
-      {
-        id: 'art-custom-domain-dns',
-        title: 'Connecting Your Custom Domain (GoDaddy, Squarespace, Cloudflare)',
-        readTime: '3 min read',
-        category: 'AI Website Builder',
-        content: `
-          <h3>Connecting Your Custom Domain</h3>
-          <p>Add these DNS records in your domain registrar (GoDaddy, Squarespace, Cloudflare):</p>
-          <ul>
-            <li><strong>Type:</strong> <code>A</code> | <strong>Host:</strong> <code>@</code> | <strong>Value:</strong> <code>76.76.21.21</code></li>
-            <li><strong>Type:</strong> <code>CNAME</code> | <strong>Host:</strong> <code>www</code> | <strong>Value:</strong> <code>cname.letsgetquoted.com</code></li>
-          </ul>
-        `
-      }
-    ]
-  },
-  {
-    id: 'cat-sms',
+    id: 'cat-sms-messaging',
     topic: 'sms',
-    title: 'Two-Way SMS & Dedicated Phone',
-    desc: 'Automated 24/7 quote follow-up sequences, missed-call text back, and two-way client chat.',
+    title: 'Dedicated SMS & Two-Way Client Chat',
+    desc: '10DLC carrier compliance, automated quote follow-ups, and review request automations.',
     icon: 'Smartphone',
-    color: '#a855f7',
-    count: '11 Guides',
     articles: [
+      COMMON_FIX_ARTICLES[1],
       {
         id: 'art-automated-followups',
-        title: 'Configuring Intelligent Multi-Step SMS Follow-Up Sequences',
-        readTime: '3 min read',
-        category: 'SMS & Business Phone',
-        content: `
-          <p>Automate polite text check-ins at 24 hours, 72 hours, and 5 days. When the customer replies or signs the quote, the sequence instantly halts.</p>
-        `
-      }
-    ]
-  },
-  {
-    id: 'cat-invoicing',
-    topic: 'invoicing',
-    title: 'Invoicing, Deposits & Stripe Payments',
-    desc: 'Collect upfront material deposits, enable 1-click Apple Pay / Google Pay, and automate payouts.',
-    icon: 'CreditCard',
-    color: '#f59e0b',
-    count: '10 Guides',
-    articles: [
-      {
-        id: 'art-stripe-connect',
-        title: 'Setting Up Stripe Connect for Next-Day Bank Payouts',
-        readTime: '3 min read',
-        category: 'Invoicing & Payments',
-        content: `
-          <p>Connect your business bank account through our secure Stripe integration. Funds clear directly to your account with zero holding periods.</p>
-        `
-      }
-    ]
-  },
-  {
-    id: 'cat-team',
-    topic: 'team',
-    title: 'Team Roles, Dispatch & Crew Routing',
-    desc: 'Manage technician permissions, assign job tickets, track GPS dispatch, and share jobsite notes.',
-    icon: 'Users',
-    color: '#f43f5e',
-    count: '7 Guides',
-    articles: [
-      {
-        id: 'art-roles-permissions',
-        title: 'Technician vs Sales Rep vs Admin Permission Tiers',
+        title: 'Setting Up 24-Hour & 72-Hour Quote Follow-Up Sequences',
+        category: 'SMS & Messaging',
         readTime: '4 min read',
-        category: 'Team & Dispatch',
+        audience: 'Sales & Dispatch',
+        lastUpdated: 'August 2026',
         content: `
-          <p>Technicians see assigned customer addresses and job notes, while overall company profit margins and monthly revenues remain restricted to Admins.</p>
+          <h3>Recovering Stalled Quotes on Autopilot</h3>
+          <p>Contractors lose over 40% of winnable projects simply due to lack of timely follow-up. Homeowners get busy; automated text sequences bring your proposal back to the top of their mind without sounding aggressive.</p>
+
+          <h3>Proven High-Converting 3-Touch Follow-Up Cadence</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Timing</th>
+                <th>Objective</th>
+                <th>Proven Message Template</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>24 Hours Post-Quote</strong></td>
+                <td>Clarity &amp; Questions</td>
+                <td><em>"Hi [Name], Brett here from [Company]. Just wanted to make sure you received the quote for your [Project]. Did you have any questions on the options?"</em></td>
+              </tr>
+              <tr>
+                <td><strong>72 Hours Post-Quote</strong></td>
+                <td>Schedule Lock</td>
+                <td><em>"Hey [Name], our installation crew is planning next week’s route in [Town]. If you’d like to lock in your preferred start date, you can approve the quote online here: [Link]"</em></td>
+              </tr>
+              <tr>
+                <td><strong>5 Days Post-Quote</strong></td>
+                <td>Courtesy Close-Out</td>
+                <td><em>"Hi [Name], following up one last time on the [Project] proposal before we release reserved material pricing. Let us know if your timing changed!"</em></td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="calloutSuccess">
+            <strong>Auto-Halt Intelligence:</strong> The instant the customer replies with a text or signs the quote, the automated follow-up sequence instantly stops.
+          </div>
+        `
+      },
+      {
+        id: 'art-review-requests',
+        title: 'Automated 5-Star Google Review Requests Upon Job Completion',
+        category: 'SMS & Messaging',
+        readTime: '3 min read',
+        audience: 'Owners',
+        lastUpdated: 'August 2026',
+        content: `
+          <h3>Why Timing Decides 80% of Customer Reviews</h3>
+          <p>Asking for a review 3 days after a job yields under 10% response rates. Sending an automated SMS review link within <strong>20 minutes</strong> of the technician marking the work order complete generates <strong>65%+ review submission rates</strong> while customer satisfaction is highest.</p>
+
+          <h3>Review Request Best Practices</h3>
+          <ul>
+            <li><strong>Direct Deep-Link:</strong> The SMS message links directly to your Google Business Profile review dialog so homeowners do not have to search for your company.</li>
+            <li><strong>Personalized Signature:</strong> The automated text mentions the technician's name (e.g. <em>"Dave loved working on your home today!"</em>) to increase emotional connection.</li>
+            <li><strong>Automated Review Gate:</strong> If a customer reports an issue, the system alerts the office dispatcher immediately before negative feedback is posted publicly.</li>
+          </ul>
+        `
+      }
+    ]
+  },
+  {
+    id: 'cat-payments-invoicing',
+    topic: 'invoicing',
+    title: 'Stripe Connect, Deposits & Invoicing',
+    desc: 'Deposit milestones, credit card processing fees, next-day bank transfers, and receipts.',
+    icon: 'CreditCard',
+    articles: [
+      COMMON_FIX_ARTICLES[2],
+      {
+        id: 'art-deposit-schedules',
+        title: 'Enforcing 30% / 50% Milestone Deposits Prior to Job Dispatch',
+        category: 'Payments',
+        readTime: '4 min read',
+        audience: 'Estimators',
+        lastUpdated: 'August 2026',
+        content: `
+          <h3>Protecting Cash Flow with Milestone Billing</h3>
+          <p>Never front high-ticket materials or crew payroll out of your personal pocket. Requiring an upfront deposit before reserving calendar dates ensures projects are fully funded from day one.</p>
+
+          <h3>Standard Residential Milestone Framework</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Milestone Stage</th>
+                <th>Percent Due</th>
+                <th>Trigger Event &amp; Deliverable</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Deposit / Booking</strong></td>
+                <td><strong>50%</strong></td>
+                <td>Required upon contract signing to lock calendar date and purchase materials.</td>
+              </tr>
+              <tr>
+                <td><strong>Rough-In Progress</strong></td>
+                <td><strong>40%</strong></td>
+                <td>Due upon completion of framing, plumbing/electrical rough-in, or major mechanical milestone.</td>
+              </tr>
+              <tr>
+                <td><strong>Final Completion</strong></td>
+                <td><strong>10%</strong></td>
+                <td>Due upon final walkthrough, punch-list sign-off, and delivery of lien waiver.</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="calloutSuccess">
+            <strong>Calendar Gating:</strong> Jobs can be configured to require the initial 50% deposit before dates are confirmed on the master crew dispatch schedule.
+          </div>
+        `
+      },
+      {
+        id: 'art-convenience-fees',
+        title: 'Passing Credit Card Processing Fees Compliantly by State Law',
+        category: 'Payments',
+        readTime: '4 min read',
+        audience: 'Owners',
+        lastUpdated: 'August 2026',
+        content: `
+          <h3>Surcharging Compliance &amp; Zero-Fee Bank Transfers</h3>
+          <p>Credit card processing fees (typically 2.9% + 30¢) can erode significant net margins on large projects. You can configure convenience fees or offer zero-fee ACH bank transfers to keep 100% of your earnings.</p>
+
+          <h3>Compliance Rules:</h3>
+          <ul>
+            <li><strong>Clear Disclosure:</strong> Surcharges must be displayed transparently on client quote summaries before checkout.</li>
+            <li><strong>State Regulations:</strong> Surcharging credit cards is prohibited or restricted in certain states (e.g. Connecticut, Massachusetts). Check your local state commerce regulations.</li>
+            <li><strong>Instant ACH Bank Transfers:</strong> Enable direct bank-to-bank transfers for large contract amounts (over $5,000) with capped low-fee processing.</li>
+          </ul>
+        `
+      }
+    ]
+  },
+  {
+    id: 'cat-crew-scheduling',
+    topic: 'team',
+    title: 'Crew Management & Route Dispatch',
+    desc: 'GPS technician dispatching, time tracking, crew seat permissions, and calendar sync.',
+    icon: 'Users',
+    articles: [
+      COMMON_FIX_ARTICLES[4],
+      COMMON_FIX_ARTICLES[5],
+      {
+        id: 'art-route-density',
+        title: 'Optimizing Route Density & Grouping Jobs by Neighborhood',
+        category: 'Team Management',
+        readTime: '4 min read',
+        audience: 'Dispatchers',
+        lastUpdated: 'August 2026',
+        content: `
+          <h3>Cutting Windshield Time &amp; Increasing Daily Billable Hours</h3>
+          <p>Technicians spending 2.5 hours per day driving between distant zip codes lose 1 to 2 billable service calls daily. Grouping appointments by geographic clusters maximizes revenue per truck.</p>
+
+          <h3>The Route Density Strategy:</h3>
+          <ol>
+            <li><strong>Neighborhood Zone Days:</strong> Assign specific days of the week to specific town clusters (e.g., North County on Tuesdays/Thursdays, South County on Mondays/Wednesdays).</li>
+            <li><strong>2-Hour Arrival Windows:</strong> Use 2-hour arrival windows with automated "Tech is en route" SMS alerts to eliminate customer arrival anxiety.</li>
+            <li><strong>Buffer Zones:</strong> Schedule 30-minute buffer windows between major jobs to accommodate traffic and supply house runs without running late.</li>
+          </ol>
+        `
+      }
+    ]
+  },
+  {
+    id: 'cat-contractor-website',
+    topic: 'website',
+    title: 'Contractor Website Builder & SEO',
+    desc: 'Service area landing pages, instant intake forms, logo branding, and local search SEO.',
+    icon: 'Globe',
+    articles: [
+      COMMON_FIX_ARTICLES[3],
+      {
+        id: 'art-local-seo-ranking',
+        title: 'How Local Service Landing Pages Rank on Google Search',
+        category: 'Website & SEO',
+        readTime: '5 min read',
+        audience: 'Marketing Leads',
+        lastUpdated: 'August 2026',
+        content: `
+          <h3>Dominating Google Maps &amp; Local Search</h3>
+          <p>Over 60% of high-intent homeowners searching for contractors on Google click the top 3 map results. Having dedicated town landing pages with localized schema microdata helps you outrank competitors.</p>
+
+          <h3>The 4 Essential Local SEO Factors:</h3>
+          <ul>
+            <li><strong>Schema.org LocalBusiness Microdata:</strong> Built-in JSON-LD microdata tells Google your exact license number, service radius, and operating hours automatically.</li>
+            <li><strong>NAP Consistency:</strong> Ensure your Name, Address, and Phone number are formatted identically across your website, Google Business Profile, and licensing registries.</li>
+            <li><strong>Hyper-Local Service Area Pages:</strong> Generate automated landing pages for adjacent towns and suburbs you service (e.g. <code>/plumbing-maplewood-nj</code>).</li>
+            <li><strong>Geotagged Jobsite Photos:</strong> Uploading 3–5 project photos weekly signals active local commercial activity to Google's ranking crawlers.</li>
+          </ul>
         `
       }
     ]
   }
 ];
 
+export const TRADE_PLAYBOOKS: TradePlaybook[] = [
+  {
+    id: 'plumbing',
+    name: 'Plumbing',
+    icon: 'Wrench',
+    badge: 'Master Plumber Playbook',
+    headline: 'Emergency Diagnostic Fees & Water Heater Replacements',
+    description:
+      'Standardized pricing for sewer camera inspections, emergency after-hours dispatches, and Good/Better/Best water heater packages.',
+    keyWorkflows: [
+      { title: 'Emergency Dispatch Fee', desc: 'Pre-authorize $149 diagnostic fee before rolling the truck.' },
+      { title: '3-Tier Water Heater Quote', desc: 'Standard tank, hybrid high-efficiency, or tankless instant-hot packages.' },
+      { title: 'Camera Inspection Add-On', desc: 'Attach video inspection clips directly to customer proposal links.' }
+    ]
+  },
+  {
+    id: 'electrical',
+    name: 'Electrical',
+    icon: 'Zap',
+    badge: 'Master Electrician Playbook',
+    headline: 'Panel Upgrades, EV Chargers & Whole-Home Rewiring',
+    description:
+      'Milestone deposit structures for 200A service panel upgrades, Level 2 EV charging circuits, and generator hookups.',
+    keyWorkflows: [
+      { title: 'Panel Upgrade Scope', desc: 'Break down utility disconnect, main panel, and permit pass-through fees.' },
+      { title: 'EV Charger Installation', desc: 'Standardize 40A vs 50A breaker runs by distance from main panel.' },
+      { title: 'Safety Inspection Checklist', desc: 'Deliver printable home electrical compliance report cards.' }
+    ]
+  },
+  {
+    id: 'roofing',
+    name: 'Roofing',
+    icon: 'Home',
+    badge: 'Roofing Contractor Playbook',
+    headline: 'Insurance Claim Supplements & Architectural Shingle Tiers',
+    description:
+      'Capture square footage estimates, aerial roof pitch measurements, and 3-option shingle replacement warranties.',
+    keyWorkflows: [
+      { title: '3-Tier Shingle Package', desc: '3-Tab Economy, Architectural Lifetime, and Premium Designer Shingles.' },
+      { title: 'Decking Replacement Clause', desc: 'Standard per-sheet plywood replacement rates for rotted sub-roofing.' },
+      { title: 'Lien Waiver Generation', desc: 'Issue unconditional partial and final lien waivers on progress draws.' }
+    ]
+  },
+  {
+    id: 'landscaping',
+    name: 'Landscaping',
+    icon: 'Trees',
+    badge: 'Landscape Specialist Playbook',
+    headline: 'Recurring Maintenance Agreements & Hardscape Proposals',
+    description:
+      'Automate monthly seasonal maintenance contracts, spring cleanups, and multi-stage patio hardscaping bids.',
+    keyWorkflows: [
+      { title: 'Recurring Monthly Billing', desc: 'Auto-charge credit cards on the 1st of every month for weekly lawn care.' },
+      { title: 'Hardscape Progress Draw', desc: 'Collect 40% material deposit, 40% base prep draw, and 20% on completion.' },
+      { title: 'Mulch & Bed Calculation', desc: 'Instant yards-of-mulch calculator embedded in client proposals.' }
+    ]
+  },
+  {
+    id: 'hvac',
+    name: 'HVAC',
+    icon: 'Hammer',
+    badge: 'HVAC Contractor Playbook',
+    headline: 'Seasonal Maintenance Clubs & Heat Pump Conversions',
+    description:
+      'Offer biannual system tune-up subscriptions, SEER2 efficiency tiers, and multi-zone mini-split packages.',
+    keyWorkflows: [
+      { title: 'Annual Maintenance Plan', desc: 'Subscription model for spring AC and fall heating tune-ups.' },
+      { title: 'SEER2 Comparison Matrix', desc: 'Compare annual energy savings side-by-side on client approval screens.' },
+      { title: 'Ductwork Inspection Add-On', desc: 'Upsell air quality filtration and duct sealing on equipment changeouts.' }
+    ]
+  }
+];
+
+export const DOWNLOADABLE_TEMPLATES: DownloadableTemplate[] = [
+  {
+    id: 'tpl-progress-deposit',
+    name: 'Contractor Milestone Deposit Agreement',
+    description: 'Printable 3-stage progress payment terms with mobilization and material release clauses.',
+    fileSize: '48 KB',
+    fileName: 'contractor-milestone-deposit-agreement.pdf'
+  },
+  {
+    id: 'tpl-extra-work-order',
+    name: 'On-Site Extra Work Order & Scope Change Form',
+    description: 'Instant change order template with customer signature acknowledgment and material markup line items.',
+    fileSize: '42 KB',
+    fileName: 'extra-work-order-form.pdf'
+  },
+  {
+    id: 'tpl-unconditional-lien-waiver',
+    name: 'Progress & Final Unconditional Lien Waiver',
+    description: 'Standard statutory lien release form for residential general contractors and trade subcontractors.',
+    fileSize: '36 KB',
+    fileName: 'lien-waiver-progress-final.pdf'
+  }
+];
+
 export const FAQS: FAQItem[] = [
   {
-    question: 'How long does it take for 10DLC carrier brand registration to be approved?',
-    answer: 'Most contractor brand registrations are approved within 2 to 24 hours once your EIN and legal business address are submitted.',
-    category: 'sms'
+    id: 'faq-1',
+    category: 'quotes',
+    question: 'How does instant quote approval work for homeowners?',
+    answer:
+      'Homeowners receive a private secure link via SMS and email. They can compare Good, Better, and Best options, select package upgrades, accept legal agreement terms, and pay their deposit via credit card or Apple Pay in under 60 seconds.'
   },
   {
-    question: 'Can homeowners approve quotes and pay deposits directly from their phones?',
-    answer: 'Yes! Homeowners receive a private link via SMS and email where they can choose tiers, sign digitally, and pay upfront deposits with Apple Pay or Credit Card.',
-    category: 'quoting'
+    id: 'faq-2',
+    category: 'messaging',
+    question: 'What is 10DLC registration and why is it mandatory for SMS?',
+    answer:
+      '10DLC (10-Digit Long Code) is a telecommunications standard required by US carriers (AT&T, Verizon, T-Mobile) to eliminate spam. We guide you through automated brand verification using your legal EIN in Settings > SMS.'
   },
   {
-    question: 'Can I connect my own custom domain to my AI website?',
-    answer: 'Absolutely. We provide free CDN hosting and automated SSL. Just point an A record to 76.76.21.21 and CNAME to cname.letsgetquoted.com.',
-    category: 'website'
+    id: 'faq-3',
+    category: 'payments',
+    question: 'How fast do customer payments reach my bank account?',
+    answer:
+      'Credit card and debit card payments clear directly into your business checking account on a 2-business-day rolling schedule via Stripe Connect. First-time payouts have a one-time verification period of 5-7 business days.'
   },
   {
-    question: 'How do automated SMS follow-ups know when to stop?',
-    answer: 'The moment a customer replies with a text or digitally signs any quote tier, our real-time webhook immediately cancels all remaining scheduled follow-ups.',
-    category: 'sms'
+    id: 'faq-4',
+    category: 'website',
+    question: 'Can I use my existing domain name like maplewoodpros.com?',
+    answer:
+      'Yes. You can point your existing root domain or www subdomain to our cloud edge servers by adding an A record (76.76.21.21) and CNAME in your DNS registrar. SSL certificates are provisioned automatically.'
   },
   {
-    question: 'Are credit card processing fees passed through or deductible?',
-    answer: 'You can choose whether to absorb standard 2.9% + 30¢ credit card fees or automatically include a compliant cash discount / card surcharge at checkout.',
-    category: 'invoicing'
+    id: 'faq-5',
+    category: 'team',
+    question: 'How do technician and crew permissions work?',
+    answer:
+      'Crew members with the Field Tech role only see the jobs and addresses dispatched directly to their schedule. Financial revenue reports, bank payouts, and client payment details remain restricted to Owners and Office Managers.'
+  },
+  {
+    id: 'faq-6',
+    category: 'billing',
+    question: 'Is there a contract or can I cancel anytime?',
+    answer:
+      'All plans are month-to-month with no long-term lock-in. You can upgrade, downgrade, or cancel your subscription at any time directly in Settings > Billing.'
+  }
+];
+
+export const SUPPORT_CHANNELS: SupportChannel[] = [
+  {
+    id: 'chan-ticket',
+    name: 'Help Desk Ticket',
+    icon: 'LifeBuoy',
+    bestUsedFor: 'DNS setup, 10DLC carrier approvals, and custom account troubleshooting.',
+    availability: 'Monday – Saturday (8:00 AM – 8:00 PM EST)',
+    responseTarget: 'Target response in under 2 hours',
+    prepareInfo: ['Company registered name', 'Account login email', 'Relevant quote or job number']
+  },
+  {
+    id: 'chan-community',
+    name: 'Knowledge Base & Guides',
+    icon: 'BookCheck',
+    bestUsedFor: 'Self-service setup, rate card formulas, and trade playbooks.',
+    availability: 'Available 24/7/365',
+    responseTarget: 'Instant step-by-step guides',
+    prepareInfo: ['Search keywords in the AI Troubleshooter above']
   }
 ];
