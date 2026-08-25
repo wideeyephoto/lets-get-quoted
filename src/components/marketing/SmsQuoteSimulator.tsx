@@ -170,7 +170,7 @@ export default function SmsQuoteSimulator() {
           </div>
 
           <div>
-            <a href={APP_SIGNUP_URL} className={styles.simBtn} style={{ display: 'inline-block', padding: '12px 20px', fontSize: 14 }}>
+            <a href={APP_SIGNUP_URL} className={styles.ctaButton}>
               Enable AI Intake on Flex ($0/mo) &rarr;
             </a>
           </div>

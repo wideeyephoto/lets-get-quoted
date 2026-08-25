@@ -104,8 +104,7 @@
   font-weight: 700;
 }
 
-/* Photo placeholders: squares that say what they are rather than fake
-   photographs of somebody's boiler. */
+/* Photo attachment badges that show realistic media artifacts */
 .leadPhotos {
   list-style: none;
   margin: 0;
@@ -117,20 +116,39 @@
 .leadPhotos > li + li { margin-top: 0; }
 
 .photo {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
-  width: 3.4rem;
-  height: 3.4rem;
-  border: 1px dashed var(--edge-t18);
-  border-radius: 12px;
-  background: rgba(var(--tint), 0.03);
-  font-size: 0.6rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  gap: 0.45rem;
+  padding: 0.35rem 0.65rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(var(--tint), 0.04);
+  color: var(--text);
+  font-size: 0.75rem;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.photo:hover {
+  border-color: var(--cedge-orange-2);
+  background: rgba(var(--tint), 0.08);
+}
+
+.photoIcon {
+  font-size: 0.85rem;
+  opacity: 0.85;
+}
+
+.photoName {
+  font-family: var(--font-mono), monospace;
+  font-size: 0.68rem;
+  font-weight: 650;
+  color: var(--text);
+}
+
+.photoSize {
+  font-size: 0.62rem;
+  font-weight: 600;
   color: var(--muted-2);
-  text-align: center;
 }
 
 /* ---- who is allowed to interrupt you ------------------------------------ */
@@ -212,6 +230,12 @@
   /* The hero's second button points here, and on a phone this is what it is
      scrolling to. The header is fixed at 68px there. */
   scroll-margin-top: 88px;
+  border-radius: 16px;
+  transition: box-shadow 0.3s ease;
+}
+
+.sample:target {
+  box-shadow: 0 0 0 2px var(--cedge-orange-2, #ff6a24), 0 12px 32px rgba(255, 106, 36, 0.15);
 }
 
 .srOnly {

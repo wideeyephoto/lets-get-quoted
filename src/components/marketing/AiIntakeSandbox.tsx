@@ -83,9 +83,42 @@ export default function AiIntakeSandbox() {
     }
 
     const lower = customText.toLowerCase();
-    const isEmergency = lower.includes('emergency') || lower.includes('urgent') || lower.includes('spark') || lower.includes('leak') || lower.includes('smoke') || lower.includes('flood');
-    const isHighTicket = lower.includes('remodel') || lower.includes('renovat') || lower.includes('replace') || lower.includes('addition') || lower.includes('whole') || lower.includes('panel');
-    const isMinor = lower.includes('lightbulb') || lower.includes('single') || lower.includes('small') || lower.includes('hang');
+    const isEmergency =
+      lower.includes('emergency') ||
+      lower.includes('urgent') ||
+      lower.includes('spark') ||
+      lower.includes('leak') ||
+      lower.includes('smoke') ||
+      lower.includes('flood') ||
+      lower.includes('burst') ||
+      lower.includes('gas') ||
+      lower.includes('no heat') ||
+      lower.includes('outage') ||
+      lower.includes('overflow') ||
+      lower.includes('sewage');
+    const isHighTicket =
+      lower.includes('remodel') ||
+      lower.includes('renovat') ||
+      lower.includes('replace') ||
+      lower.includes('addition') ||
+      lower.includes('whole') ||
+      lower.includes('panel') ||
+      lower.includes('roof') ||
+      lower.includes('siding') ||
+      lower.includes('deck') ||
+      lower.includes('hvac') ||
+      lower.includes('heat pump') ||
+      lower.includes('generator') ||
+      lower.includes('re-pipe') ||
+      lower.includes('excavat') ||
+      lower.includes('drain');
+    const isMinor =
+      lower.includes('lightbulb') ||
+      lower.includes('single') ||
+      lower.includes('small') ||
+      lower.includes('hang') ||
+      lower.includes('fixture') ||
+      lower.includes('patch');
 
     if (isEmergency) {
       return {
@@ -275,7 +308,7 @@ export default function AiIntakeSandbox() {
         {/* Footer */}
         <div className={styles.bottomBar}>
           <div className={styles.bottomText}>
-            <strong>Never miss a \$10k project while under a sink.</strong> Smart intake qualifies inquiries 24/7,
+            <strong>Never miss a $10k project while under a sink.</strong> Smart intake qualifies inquiries 24/7,
             verifies homeowner phones, and keeps you in full control of your schedule.
           </div>
           <Link href={APP_SIGNUP_URL} className={styles.tryLink}>

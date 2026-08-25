@@ -89,9 +89,21 @@ function ArrivingLead() {
       </p>
 
       <ul className={styles.leadPhotos} aria-label="Photos the homeowner attached">
-        <li className={styles.photo}>Photo 1</li>
-        <li className={styles.photo}>Photo 2</li>
-        <li className={styles.photo}>Photo 3</li>
+        <li className={styles.photo}>
+          <span className={styles.photoIcon} aria-hidden="true">📷</span>
+          <span className={styles.photoName}>heater-base.jpg</span>
+          <span className={styles.photoSize}>1.4 MB</span>
+        </li>
+        <li className={styles.photo}>
+          <span className={styles.photoIcon} aria-hidden="true">📷</span>
+          <span className={styles.photoName}>pilot-assembly.jpg</span>
+          <span className={styles.photoSize}>2.1 MB</span>
+        </li>
+        <li className={styles.photo}>
+          <span className={styles.photoIcon} aria-hidden="true">📷</span>
+          <span className={styles.photoName}>rating-plate.jpg</span>
+          <span className={styles.photoSize}>980 KB</span>
+        </li>
       </ul>
     </div>
   );
