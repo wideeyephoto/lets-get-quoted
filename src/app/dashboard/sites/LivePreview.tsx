@@ -154,7 +154,10 @@ export default function LivePreview({ site, openSection, overlaySlot }: LivePrev
             <strong>Live preview</strong>
             <span>Click any section or photo to edit it</span>
           </div>
-          <div className={styles.previewToolbarActions}>{deviceToggle}</div>
+          <div className={styles.previewToolbarActions}>
+            <span className={styles.previewTip}>💡 Click any block to edit</span>
+            {deviceToggle}
+          </div>
         </div>
       )}
 

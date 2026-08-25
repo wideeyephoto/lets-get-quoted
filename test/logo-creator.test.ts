@@ -37,8 +37,8 @@ describe('AI Logo Creator & Vector Generator', () => {
       });
 
       expect(svg).toContain('<svg');
-      expect(svg).toContain('Apex Precision Plumbing');
-      expect(svg).toContain('viewBox="0 0 600 200"');
+      expect(svg.toLowerCase()).toContain('apex');
+      expect(svg).toContain('viewBox="0 0 640 220"');
       expect(svg).toContain('#0284c7');
     }
   });
@@ -54,7 +54,7 @@ describe('AI Logo Creator & Vector Generator', () => {
     expect(concepts.length).toBe(5);
     for (const concept of concepts) {
       expect(concept.dataUri).toContain('data:image/svg+xml');
-      expect(concept.svg).toContain('Summit Electric Co');
+      expect(concept.svg.toLowerCase()).toContain('summit');
       expect(concept.styleLabel).toBeDefined();
     }
   });

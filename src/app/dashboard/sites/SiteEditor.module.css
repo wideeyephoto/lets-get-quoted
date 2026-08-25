@@ -1174,3 +1174,179 @@ a.blogGenerateBtn { display: block; text-align: center; text-decoration: none; l
  * bottom of the Page list rather than buried in the Header card — an owner
  * thinking about their clips is who decides whether they get a menu item. */
 .videosNavBlock { display: grid; gap: .8rem; padding: .95rem 1rem; border: 1px solid var(--edge-t14); border-radius: 10px; background: rgba(var(--tint), .035); }
+
+/* Quick Section Filters & Search on the Page Tab */
+.pageFilterBar {
+  display: flex;
+  flex-direction: column;
+  gap: .65rem;
+  padding: .85rem 1rem;
+  border-radius: 10px;
+  background: rgba(var(--tint), .03);
+  border: 1px solid var(--edge-t12);
+  margin-bottom: .4rem;
+}
+.pageFilterChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .4rem;
+}
+.pageFilterChip {
+  padding: .35rem .75rem;
+  border-radius: 999px;
+  border: 1px solid var(--edge-t14);
+  background: rgba(var(--tint), .04);
+  color: var(--muted);
+  font-size: .78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all .15s ease;
+}
+.pageFilterChip:hover {
+  background: rgba(var(--tint), .08);
+  color: var(--text);
+  border-color: var(--edge-t28);
+}
+.pageFilterChipActive {
+  background: linear-gradient(180deg, #ff8a3d, #ff7a21);
+  color: #fff;
+  border-color: #ff7a21;
+  box-shadow: 0 4px 12px -4px rgba(255, 122, 33, .5);
+}
+.pageFilterChipActive:hover {
+  background: linear-gradient(180deg, #ff8a3d, #ff7a21);
+  color: #fff;
+}
+.pageSearchWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.pageSearchIcon {
+  position: absolute;
+  left: .75rem;
+  color: var(--muted-2);
+  font-size: .85rem;
+  pointer-events: none;
+}
+.pageSearchInput {
+  width: 100%;
+  min-height: 38px;
+  padding: .45rem .75rem .45rem 2.2rem;
+  border-radius: 7px;
+  border: 1px solid var(--edge-t14);
+  background: rgba(var(--panel-rgb), .6);
+  color: var(--text);
+  font-size: .82rem;
+  outline: none;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+.pageSearchInput:focus {
+  border-color: #ff9b54;
+  box-shadow: 0 0 0 3px rgba(255, 122, 33, .12);
+}
+.pageSearchClear {
+  position: absolute;
+  right: .5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(var(--tint), .12);
+  color: var(--muted);
+  font-size: .72rem;
+  cursor: pointer;
+}
+.pageSearchClear:hover {
+  background: rgba(var(--tint), .22);
+  color: var(--text);
+}
+.pageSearchEmpty {
+  padding: 1.25rem 1rem;
+  text-align: center;
+  color: var(--muted-2);
+  font-size: .86rem;
+  background: rgba(var(--tint), .02);
+  border: 1px dashed var(--edge-t14);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .5rem;
+}
+.pageSearchEmpty button {
+  padding: .35rem .75rem;
+  border-radius: 6px;
+  border: 1px solid var(--edge-t18);
+  background: rgba(var(--tint), .06);
+  color: var(--text);
+  font-size: .78rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* History Undo/Redo & Revert Controls */
+.historyBtnGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: .25rem;
+}
+.historyBtn {
+  min-height: 38px;
+  padding: .45rem .65rem;
+  border: 1px solid var(--edge-t16);
+  border-radius: 7px;
+  background: rgba(var(--tint), .05);
+  color: var(--text);
+  font-size: .8rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: .3rem;
+  transition: all .15s ease;
+}
+.historyBtn:hover:not(:disabled) {
+  background: rgba(var(--tint), .1);
+  border-color: var(--edge-t30);
+}
+.historyBtn:disabled {
+  opacity: .35;
+  cursor: default;
+}
+.revertBtn {
+  min-height: 38px;
+  padding: .45rem .85rem;
+  border: 1px solid var(--cedge-amber-48);
+  border-radius: 7px;
+  background: rgba(255, 170, 0, .08);
+  color: var(--gold-ink);
+  font-size: .82rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  transition: all .15s ease;
+}
+.revertBtn:hover:not(:disabled) {
+  background: rgba(255, 170, 0, .16);
+  border-color: var(--cedge-amber-56);
+}
+
+/* Preview Tip Helper Badge */
+.previewTip {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  font-size: .7rem;
+  font-weight: 600;
+  color: var(--muted-2);
+  padding: .2rem .55rem;
+  border-radius: 999px;
+  background: rgba(var(--tint), .04);
+  border: 1px solid var(--edge-t10);
+}
