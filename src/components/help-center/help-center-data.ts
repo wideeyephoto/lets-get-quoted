@@ -65,20 +65,20 @@ export const KNOWLEDGE_BASE: KnowledgeCategory[] = [
           <ol>
             <li>Navigate to <strong>Dashboard &gt; Settings &gt; Company Profile</strong>.</li>
             <li>Enter your registered Legal Business Name, Trade / Contractor License Number, and Insurance details.</li>
-            <li>Set your primary business phone number (this will sync with your SignalWire 10DLC automated SMS number).</li>
+            <li>Set your primary business phone number (this will sync with your dedicated 10DLC automated business SMS number).</li>
             <li>Upload your company logo (recommended dimensions: 800x400px).</li>
             <li>Click <strong>Save &amp; Verify Profile</strong>.</li>
           </ol>
         `
       },
       {
-        id: 'art-signalwire-onboarding',
+        id: 'art-carrier-onboarding',
         title: '10DLC Carrier Brand & Campaign Verification Checklist',
         readTime: '4 min read',
         category: 'Fast-Track Setup',
         content: `
           <h3>Understanding 10DLC Compliance</h3>
-          <p>Major US mobile carriers (AT&T, Verizon, T-Mobile) require all automated and two-way business texting systems to be registered with The Campaign Registry (TCR). We manage this through SignalWire to ensure 99.9% SMS deliverability.</p>
+          <p>Major US mobile carriers (AT&T, Verizon, T-Mobile) require all automated and two-way business texting systems to be registered with The Campaign Registry (TCR). We manage carrier compliance directly to ensure 99.9% SMS deliverability.</p>
           <div class="callout">
             <strong>Carrier Approval Timeline:</strong> Most contractor brands are verified within <strong>2 to 24 hours</strong> once EIN and business legal address are submitted.
           </div>
@@ -168,7 +168,7 @@ export const KNOWLEDGE_BASE: KnowledgeCategory[] = [
   {
     id: 'cat-sms',
     topic: 'sms',
-    title: 'Two-Way SMS & SignalWire Voice',
+    title: 'Two-Way SMS & Dedicated Phone',
     desc: 'Automated 24/7 quote follow-up sequences, missed-call text back, and two-way client chat.',
     icon: 'Smartphone',
     color: '#a855f7',
@@ -178,7 +178,7 @@ export const KNOWLEDGE_BASE: KnowledgeCategory[] = [
         id: 'art-automated-followups',
         title: 'Configuring Intelligent Multi-Step SMS Follow-Up Sequences',
         readTime: '3 min read',
-        category: 'SMS & SignalWire',
+        category: 'SMS & Business Phone',
         content: `
           <p>Automate polite text check-ins at 24 hours, 72 hours, and 5 days. When the customer replies or signs the quote, the sequence instantly halts.</p>
         `
@@ -229,7 +229,7 @@ export const KNOWLEDGE_BASE: KnowledgeCategory[] = [
 
 export const FAQS: FAQItem[] = [
   {
-    question: 'How long does it take for SignalWire 10DLC carrier registration to be approved?',
+    question: 'How long does it take for 10DLC carrier brand registration to be approved?',
     answer: 'Most contractor brand registrations are approved within 2 to 24 hours once your EIN and legal business address are submitted.',
     category: 'sms'
   },
@@ -257,13 +257,13 @@ export const FAQS: FAQItem[] = [
 
 export const DIAGNOSTIC_SCENARIOS: Record<string, DiagnosticScenario> = {
   'sms-verification': {
-    title: 'SMS / 10DLC Carrier Verification Diagnostic',
+    title: 'SMS & 10DLC Carrier Verification Diagnostic',
     steps: [
-      { text: 'Connecting to SignalWire Campaign Registry...', status: 'pass', delay: 200 },
+      { text: 'Connecting to 10DLC Carrier Registry Gateway...', status: 'pass', delay: 200 },
       { text: 'Checking EIN & Legal Brand Match (Maplewood Pro)...', status: 'pass', delay: 400 },
       { text: 'Verifying 10DLC Messaging Campaign: "LGQ Alerts & Quoting"...', status: 'pass', delay: 700 },
       { text: 'Checking Carrier Status (AT&T: Active, Verizon: Active, T-Mobile: Active)...', status: 'pass', delay: 1000 },
-      { text: 'All 3 SMS Outbound Gateways Healthy. 0 Failed Delivery Webhooks.', status: 'pass', delay: 1200 }
+      { text: 'All 3 Outbound SMS Gateways Healthy. 0 Failed Delivery Webhooks.', status: 'pass', delay: 1200 }
     ],
     action: {
       title: 'SMS Pipeline is 100% Operational',

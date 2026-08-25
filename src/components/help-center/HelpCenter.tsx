@@ -379,7 +379,7 @@ export default function HelpCenter() {
       setTicketDeflection(null);
       return;
     }
-    if (val.includes('sms') || val.includes('carrier') || val.includes('text') || val.includes('signalwire')) {
+    if (val.includes('sms') || val.includes('carrier') || val.includes('text') || val.includes('phone')) {
       setTicketDeflection(
         '10DLC carrier verification takes 2–24 hrs. Ensure your company legal name matches your IRS EIN letter in Settings.'
       );
@@ -499,7 +499,7 @@ export default function HelpCenter() {
             {[
               { id: 'all', label: 'All Topics' },
               { id: 'quoting', label: 'Instant Quoting' },
-              { id: 'sms', label: 'SMS & SignalWire' },
+              { id: 'sms', label: 'SMS & Business Phone' },
               { id: 'website', label: 'AI Website' },
               { id: 'invoicing', label: 'Invoicing & Stripe' },
               { id: 'team', label: 'Team & Dispatch' }
@@ -932,7 +932,7 @@ export default function HelpCenter() {
               </div>
               <div className={styles.statusRow}>
                 <div>
-                  <strong>SignalWire 10DLC SMS Gateway</strong>
+                  <strong>Two-Way SMS &amp; Dedicated Phone Gateway</strong>
                   <small>Carrier Webhook Listeners</small>
                 </div>
                 <span className={styles.badgeOperational}>Operational · 100%</span>
