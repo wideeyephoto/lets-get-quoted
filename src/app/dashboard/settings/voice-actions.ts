@@ -29,6 +29,7 @@ export type VoiceSettingsInput = {
   answerMode: string;
   greeting: string;
   transferNumber: string;
+  alertPhone?: string;
   businessHours: Record<string, [string, string] | null>;
 };
 
@@ -149,6 +150,12 @@ export async function updateVoiceSettingsAction(
     }
   }
 
+  const rawAlertPhone = input?.alertPhone !== undefined ? String(input.alertPhone).trim() : null;
+  const alertPhone = rawAlertPhone ? normalizeUsPhone(rawAlertPhone) : null;
+  if (rawAlertPhone && !alertPhone) {
+    throw new Error('Enter a valid US mobile number for emergency alerts, or leave it blank.');
+  }
+
   // Recording is NOT settable here. It is a legal act with its own action and
   // its own record of who accepted what; folding it into a general save would
   // let a contractor turn it on by editing their opening times.
@@ -165,13 +172,20 @@ export async function updateVoiceSettingsAction(
 
   if (error) throw new Error(error.message);
 
+  if (input?.alertPhone !== undefined) {
+    await supabase
+      .from('accounts')
+      .update({ alert_phone: alertPhone })
+      .eq('id', accountId);
+  }
+
   const { data: { user } } = await supabase.auth.getUser();
   await recordAccountEvent({
     accountId,
     kind: 'ai_voice_settings_updated',
     summary: `AI receptionist ${status === 'active' ? 'turned on' : status === 'paused' ? 'paused' : 'turned off'}`,
     actorEmail: user?.email ?? null,
-    meta: { status, answer_mode: answerMode, has_transfer: Boolean(transferNumber), dropped_days: dropped },
+    meta: { status, answer_mode: answerMode, has_transfer: Boolean(transferNumber), has_alert_phone: Boolean(alertPhone), dropped_days: dropped },
   });
 
   revalidatePath('/dashboard/settings');

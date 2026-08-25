@@ -215,7 +215,7 @@ export default async function AutomationsPage() {
     : 'An approved, active dedicated number is required before this automation can text customers.';
 
   const [{ data: account }, { data: site }] = await Promise.all([
-    supabase.from('accounts').select('business_name, timezone, connect_onboarded, call_textback_enabled, call_forward_number, call_tracking_number, arrival_updates_enabled, arrival_location_policy, arrival_window_minutes, arrival_morning_confirmation, arrival_clock_travel, time_clock_mode, workday_start, workday_end, job_buffer_minutes, schedule_day_hours').eq('id', accountId).single(),
+    supabase.from('accounts').select('business_name, timezone, alert_phone, connect_onboarded, call_textback_enabled, call_forward_number, call_tracking_number, arrival_updates_enabled, arrival_location_policy, arrival_window_minutes, arrival_morning_confirmation, arrival_clock_travel, time_clock_mode, workday_start, workday_end, job_buffer_minutes, schedule_day_hours').eq('id', accountId).single(),
     // The whole row: the intake preview renders the REAL intake component
     // against it, so it needs the accent, the template and the rest — a
     // hand-picked subset would render a preview that isn't what visitors see.
@@ -651,6 +651,7 @@ export default async function AutomationsPage() {
               answerMode={(voiceSettings?.answer_mode as 'always' | 'after_hours') ?? 'after_hours'}
               greeting={(voiceSettings?.greeting as string | null) ?? ''}
               transferNumber={(voiceSettings?.transfer_number as string | null) ?? ''}
+              alertPhone={(account?.alert_phone as string | null) ?? ''}
               businessHours={(voiceSettings?.business_hours ?? {}) as Record<string, [string, string] | null>}
               timezone={accountTimeZone}
               entitled={voiceEntitlement?.enabled ?? false}

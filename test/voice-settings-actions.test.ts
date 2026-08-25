@@ -3,10 +3,12 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const upsert = vi.fn();
+const update = vi.fn();
 const getUser = vi.fn();
 const supabase = {
   from: (table: string) => {
     if (table === 'voice_settings') return { upsert };
+    if (table === 'accounts') return { update: (...args: unknown[]) => { update(...args); return { eq: () => Promise.resolve({ error: null }) }; } };
     throw new Error(`unexpected table ${table}`);
   },
   auth: { getUser },
@@ -94,6 +96,11 @@ describe('what the server does with what the form sends', () => {
     expect(upsert.mock.calls[0][0]).toMatchObject({
       transfer_number: null,
     });
+  });
+
+  it('normalises and updates alertPhone on accounts table', async () => {
+    await updateVoiceSettingsAction(input({ alertPhone: '(248) 555-0199' }));
+    expect(update).toHaveBeenCalledWith({ alert_phone: '+12485550199' });
   });
 
   it('rejects an invalid nonblank transfer number instead of silently erasing it', async () => {

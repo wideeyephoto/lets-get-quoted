@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, useTransition } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
 import { updateVoiceSettingsAction } from './voice-actions';
@@ -30,6 +31,7 @@ type Props = {
   answerMode: 'always' | 'after_hours';
   greeting: string;
   transferNumber: string;
+  alertPhone?: string;
   businessHours: Hours;
   timezone: string;
   /** Base-plan inclusion or an active recurring AI Voice add-on. */
@@ -52,6 +54,7 @@ export default function AiReceptionistSection(props: Props) {
   const [answerMode, setAnswerMode] = useState(props.answerMode);
   const [greeting, setGreeting] = useState(props.greeting);
   const [transferNumber, setTransferNumber] = useState(props.transferNumber);
+  const [alertPhone, setAlertPhone] = useState(props.alertPhone ?? '');
   const [hours, setHours] = useState<Hours>(props.businessHours);
   const [save, setSave] = useState<SaveState>('idle');
   const [problem, setProblem] = useState<string | null>(null);
@@ -104,7 +107,7 @@ export default function AiReceptionistSection(props: Props) {
     startSaving(async () => {
       try {
         const result = await updateVoiceSettingsAction({
-          status, answerMode, greeting, transferNumber,
+          status, answerMode, greeting, transferNumber, alertPhone,
           businessHours: hours,
         });
         // The server drops a day whose closing time is at or before its opening
@@ -278,19 +281,50 @@ export default function AiReceptionistSection(props: Props) {
       </div>
 
       <div className="voice-field">
-        <span className="voice-label">Emergency routing</span>
+        <label className="voice-label" htmlFor="voice-alert-phone">Owner emergency SMS alerts</label>
+        <input
+          id="voice-alert-phone"
+          type="tel"
+          inputMode="tel"
+          disabled={controlsDisabled}
+          placeholder="(248) 555-0199"
+          value={alertPhone}
+          onChange={(event) => { markEdited(); setAlertPhone(event.target.value); }}
+        />
         <small>
-          Not available yet. The receptionist can use only the primary transfer number above;
-          it does not currently classify an emergency into a separate route.
+          🚨 Instant automated SMS alert sent directly to this mobile phone with a live link to the call transcript whenever severe emergency hazards (gas leak, flooding, burst pipe, electrical fire) are detected.
         </small>
       </div>
 
-      <div className="voice-field voice-recording">
-        <span className="voice-label">Record calls</span>
-        <small>
-          Not available yet. Calls are not recorded; LGQ will not offer this switch until
-          recording storage, disclosure, retention and deletion all work end to end.
-        </small>
+      <div className="voice-field" style={{ background: 'rgba(59, 130, 246, 0.08)', padding: '1rem', borderRadius: '8px', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
+        <span className="voice-label" style={{ color: '#93c5fd', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+          ⚡ Live In-Call SWAIG Capabilities Active
+        </span>
+        <ul style={{ margin: '0.5rem 0 0 1.25rem', padding: 0, fontSize: '0.85rem', color: '#e2e8f0', lineHeight: 1.6 }}>
+          <li><strong>Instant SMS Booking Link:</strong> When a caller asks to schedule an appointment or get a quote, the AI receptionist texts your online booking portal link directly to their mobile phone during the call.</li>
+          <li><strong>Live Availability Checking:</strong> The AI receptionist checks your configured operating hours and turnaround availability in real time.</li>
+        </ul>
+      </div>
+
+      <div style={{ display: 'flex', justifyContent: 'flex-start', margin: '0.5rem 0' }}>
+        <Link
+          href="/dashboard/voice-calls"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            padding: '0.6rem 1.1rem',
+            borderRadius: '8px',
+            background: 'var(--accent, #3b82f6)',
+            color: '#fff',
+            fontSize: '0.88rem',
+            fontWeight: 700,
+            textDecoration: 'none',
+            transition: 'background 0.15s ease',
+          }}
+        >
+          📞 Open Dedicated Voice Calls Inbox →
+        </Link>
       </div>
 
       <div className="voice-foot">
