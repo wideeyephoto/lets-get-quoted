@@ -195,8 +195,8 @@ export default async function MessagingRegistrationsPage({
         <h1 className={styles.title}>Dedicated-number registrations</h1>
         <p className={styles.lead}>
           Multi-state carrier registration and number lifecycle console. Vet downstream businesses, configure TCR Brands & Campaigns,
-          purchase SignalWire numbers, and activate 2-way messaging after live 10DLC carrier assignment verification.
-          Dedicated-number allowance remains zero and unpriced; this private beta is not an entitlement or a billable add-on.
+          purchase SignalWire numbers, and activate 2-way messaging and AI Voice after live 10DLC carrier assignment verification.
+          Dedicated-number provisioning and carrier spend are controlled through authoritative database policy.
         </p>
         <p><Link href="/admin/messaging">← Messaging health & operations</Link></p>
       </header>
@@ -514,7 +514,7 @@ export default async function MessagingRegistrationsPage({
                   <h2 className={styles.panelTitle}>Stage 3: Authoritative Carrier Spend Policy</h2>
                   <p>
                     This database policy—not environment configuration—is snapshotted into every purchase claim and enforced under one
-                    database lock. Dedicated numbers remain an unpriced private beta; this ceiling authorizes carrier spend only and does not create a customer entitlement.
+                    database lock. This ceiling authorizes carrier spend only and enforces authoritative spending limits.
                   </p>
                   {purchasePolicy ? (
                     <p>Revision {purchasePolicy.revision}: <strong>{purchasePolicy.monthlyPriceLabel}</strong> per number, aggregate ceiling <strong>{purchasePolicy.monthlySpendCeilingLabel}</strong>. Updated {when(purchasePolicy.updatedAt)}.</p>

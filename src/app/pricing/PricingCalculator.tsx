@@ -500,8 +500,8 @@ export default function PricingCalculator({
       </div>
 
       <p className={styles.calculatorFinePrint}>
-        Estimate includes the selected subscription, LGQ platform fee, and extra office users. AI Voice Receptionist is
-        in private beta, requires dedicated number activation, and adds nothing to these figures. The comparison assumes usage stays within each plan’s
+        Estimate includes the selected subscription, LGQ platform fee, and extra office users. AI Voice Receptionist
+        requires dedicated number activation and adds nothing to these figures. The comparison assumes usage stays within each plan’s
         allowances and excludes Stripe processing, carrier registration/number fees, taxes, and optional top-ups.
       </p>
     </div>

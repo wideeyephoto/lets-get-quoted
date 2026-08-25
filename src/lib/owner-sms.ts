@@ -165,8 +165,8 @@ export function ownerAlertChip(alerts: OwnerAlerts): StatusChip {
  * that dedicated sender is carrier-approved, inbound-ready, and active in the
  * currently selected provider lane.
  *
- * Applications are a private beta: an owner may submit the evidence now, while
- * carrier submission and activation remain explicitly operator-controlled.
+ * Dedicated numbers require business vetting and carrier registration. An owner
+ * submits their registration details, and LGQ manages carrier approval and activation.
  */
 export function registrationChip(registration: Registration): StatusChip {
   if (registration.kind === 'unavailable') {
@@ -185,9 +185,9 @@ export function registrationChip(registration: Registration): StatusChip {
     case 'not_started':
     default:
       return {
-        label: 'Private beta',
+        label: 'Available',
         tone: 'pending',
-        detail: 'Applications are open. LGQ reviews each business before any carrier submission or number purchase.',
+        detail: 'Dedicated business numbers and 10DLC registration are available. Required for AI Voice Receptionist and 2-way homeowner texting.',
       };
   }
 }

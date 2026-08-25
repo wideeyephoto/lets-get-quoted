@@ -259,13 +259,13 @@ describe('the owner-alert chip', () => {
 });
 
 describe('the customer-texting chip', () => {
-  it('calls not_started a private beta and separates applying from activation', () => {
+  it('calls not_started Available and separates applying from activation', () => {
     const chip = registrationChip({ kind: 'ok', status: 'not_started', assignedNumber: null, detail: null });
-    expect(chip.label).toBe('Private beta');
+    expect(chip.label).toBe('Available');
     expect(chip.label).not.toBe('Not started');
-    expect(chip.detail).toContain('Applications are open');
-    expect(chip.detail).toContain('before any carrier submission or number purchase');
-    for (const claim of ['Ready', 'Approved', 'Active', 'Enabled']) {
+    expect(chip.detail).toContain('Dedicated business numbers');
+    expect(chip.detail).toContain('Required for AI Voice');
+    for (const claim of ['Ready', 'Approved', 'Active', 'Enabled', 'Private beta']) {
       expect(chip.label, claim).not.toBe(claim);
     }
   });
@@ -663,8 +663,8 @@ describe('the screenshot must not leak the inbox behind it', () => {
 });
 
 describe('the dedicated number claims nothing it cannot do', () => {
-  /* The private beta may collect a vetted application, but this compact setup
-     surface still cannot purchase or assign a provider number. */
+  /* Dedicated number registration collects a vetted application, but this compact setup
+     surface still cannot directly purchase or assign a provider number without review. */
   it('links to the application without turning setup into a purchase surface', () => {
     const section = STRIP.slice(STRIP.indexOf('Your customer texting number'));
     expect(section).toContain('/dashboard/messages/dedicated-number');

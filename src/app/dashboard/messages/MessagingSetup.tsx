@@ -139,15 +139,15 @@ export default function MessagingSetup({ setup, openOnLoad }: { setup: Setup; op
               </div>
               <div className="msg-setup-section-titles">
                 <h3>Your customer texting number</h3>
-                <span className="msg-setup-subhead">Dedicated 2-way homeowner messaging</span>
+                <span className="msg-setup-subhead">Dedicated 2-way homeowner messaging &amp; AI Voice</span>
               </div>
               <span className={`msg-setup-status-pill is-${registration.tone}`}>{registration.label}</span>
             </div>
 
             <p className="msg-setup-lead">
               Let&rsquo;s Get Quoted&rsquo;s shared numbers are reserved for LGQ account, billing, support, and
-              platform notifications. Messages sent in your business name to homeowners stay unavailable until
-              your business is vetted, carrier-approved, and its dedicated two-way number is active.
+              platform notifications. Get your dedicated two-way business number with carrier approval to message
+              homeowners directly and power our AI Voice Receptionist plans.
             </p>
 
             <div className="msg-setup-features">
@@ -172,6 +172,13 @@ export default function MessagingSetup({ setup, openOnLoad }: { setup: Setup; op
                   <span>Carrier vetting, anti-spam registration, and high deliverability</span>
                 </div>
               </div>
+              <div className="msg-setup-feature-item">
+                <span className="msg-setup-feature-icon" aria-hidden="true">🎙️</span>
+                <div>
+                  <strong>Required for AI Voice</strong>
+                  <span>Powers 24/7 AI Voice Receptionist, inbound call routing, and missed-call follow-ups</span>
+                </div>
+              </div>
             </div>
 
             <div className="msg-setup-registration-box">
@@ -182,27 +189,18 @@ export default function MessagingSetup({ setup, openOnLoad }: { setup: Setup; op
               {registration.detail ? <p className="msg-setup-note">{registration.detail}</p> : null}
 
               {/**
-               * NO BUTTON HERE, AND THAT IS THE FEATURE.
-               *
-               * The obvious thing to ship is a "Start registration" button, and
-               * it would do nothing — the provider has not confirmed the process
-               * for registering businesses underneath our account, so there is no
-               * submission to make. A button that opens a form nobody can file is
-               * a worse answer than a sentence saying not yet.
-               *
-               * When the states below become reachable each gets exactly one
-               * contextual action — Continue, Fix issue, or Manage — and it goes
-               * here.
+               * Registration action box for not_started status.
                */}
               {setup.registration.kind === 'ok' && setup.registration.status === 'not_started' ? (
-                <div className="msg-setup-beta-box">
+                <div className="msg-setup-action-box">
                   <p className="msg-setup-note">
-                    We are accepting applications for dedicated business texting numbers. Applying does not guarantee
-                    approval, purchase a number, change your plan, or add a charge until you review and accept final carrier fees.
+                    Register for a dedicated business phone number. Carrier vetting ensures 10DLC spam compliance,
+                    high deliverability, and unlocks our AI Voice Receptionist plans. Applying does not charge your account until you
+                    review and accept final carrier fees.
                   </p>
                   <p>
                     <Link className="btn primary msg-setup-apply-btn" href="/dashboard/messages/dedicated-number">
-                      Start Application <span>›</span>
+                      Get Dedicated Number <span>›</span>
                     </Link>
                   </p>
                 </div>

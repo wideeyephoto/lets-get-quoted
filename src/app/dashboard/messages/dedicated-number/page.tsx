@@ -126,12 +126,12 @@ export default async function DedicatedNumberApplicationPage({
       <ApplicationDraftLifecycle storageKey={draftStorageKey} clear={Boolean(application && !canSubmit)} />
       <header className={styles.header}>
         <Link href="/dashboard/messages?setup=1#texting-setup" className={styles.back}>← Back to Messages</Link>
-        <p className={styles.eyebrow}>Carrier Application</p>
-        <h1>Start Application for Dedicated Business Number</h1>
+        <p className={styles.eyebrow}>Dedicated Number &amp; AI Voice</p>
+        <h1>Get Your Dedicated Business Number</h1>
         <p>
-          This information lets our team vet your business and register its customer messaging with the mobile carriers.
-          Submitting does not guarantee approval, purchase a number, or add a charge. Carrier registration, number lease,
-          and usage rates will be displayed for your explicit acceptance before any charges are incurred.
+          A dedicated local phone number enables 2-way customer texting from your LGQ inbox and is required for our AI Voice Receptionist plans.
+          This information lets our team register your business with mobile carriers for high deliverability and 10DLC compliance.
+          Submitting does not charge you; carrier registration, number lease, and usage rates will be displayed for your explicit acceptance before any charges are incurred.
         </p>
       </header>
 

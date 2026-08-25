@@ -202,7 +202,7 @@ export const PRICING_FAQS = [
   },
   {
     q: 'Is AI Voice Receptionist available?',
-    a: 'AI Voice Receptionist is currently in private beta. It requires dedicated business number setup, carrier compliance, and voice activation before handling live calls.',
+    a: 'AI Voice Receptionist is available and requires dedicated business number setup, carrier compliance, and voice activation before handling live calls.',
   },
   {
     q: 'How does Flex starter usage work?',
