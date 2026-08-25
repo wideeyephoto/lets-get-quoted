@@ -615,7 +615,7 @@
   color: #ff7a21;
 }
 
-/* AI Copilot Card */
+/* AI Copilot & Live Diagnostic Tools */
 .copilotCard {
   background: rgba(14, 22, 35, 0.85);
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -632,7 +632,7 @@
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 2.25rem;
+  margin-bottom: 2rem;
 }
 
 .copilotBadge {
@@ -681,6 +681,45 @@
   background: #06b6d4;
   box-shadow: 0 0 8px #06b6d4;
   animation: pulse-dot 1.5s infinite;
+}
+
+/* Copilot Navigation Mode Tabs */
+.copilotNavTabs {
+  display: flex;
+  gap: 0.5rem;
+  background: #0b111b;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 5px;
+  margin-bottom: 2rem;
+  overflow-x: auto;
+}
+
+.copilotNavTab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  padding: 0.65rem 1.2rem;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.copilotNavTab:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.copilotNavTabActive {
+  background: #182335 !important;
+  color: #ff7a21 !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
 }
 
 .copilotBody {
@@ -824,6 +863,283 @@
   font-size: 0.8rem;
   color: #94a3b8;
   margin-bottom: 0.85rem;
+}
+
+/* Live Tool Panels: DNS & SMS */
+.toolPanelContainer {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  gap: 2rem;
+}
+
+.toolInputCard {
+  background: #101826;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  padding: 1.75rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.toolCardTitle {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin-bottom: 0.4rem;
+}
+
+.toolCardDesc {
+  font-size: 0.85rem;
+  color: #94a3b8;
+  margin-bottom: 1.5rem;
+  line-height: 1.5;
+}
+
+.toolInputGroup {
+  margin-bottom: 1.25rem;
+}
+
+.toolInputGroup label {
+  display: block;
+  font-size: 0.825rem;
+  font-weight: 600;
+  color: #cbd5e1;
+  margin-bottom: 0.4rem;
+}
+
+.toolInputWrapper {
+  display: flex;
+  gap: 0.6rem;
+}
+
+.toolInputWrapper input {
+  flex: 1;
+  background: #070c14;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
+  color: #ffffff;
+  font-size: 0.95rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.toolInputWrapper input:focus {
+  border-color: #ff7a21;
+}
+
+.toolResultCard {
+  background: #070c14;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 18px;
+  padding: 1.75rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.resultTitleRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  margin-bottom: 1.25rem;
+}
+
+.resultTitle {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.dnsAuditGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.dnsAuditItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.85rem 1rem;
+  background: #0f1724;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+}
+
+.dnsItemLeft {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.dnsRecordBadge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  background: #1e293b;
+  color: #ff7a21;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-family: monospace;
+}
+
+.dnsHostName {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.dnsItemRight {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.dnsItemVal {
+  font-size: 0.8rem;
+  color: #94a3b8;
+  font-family: monospace;
+}
+
+.dnsStatusPass {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.12);
+  padding: 3px 8px;
+  border-radius: 9999px;
+}
+
+/* Phone Simulator Card */
+.phoneSimulator {
+  background: #0b111b;
+  border: 2px solid #1e293b;
+  border-radius: 20px;
+  padding: 1.25rem;
+  max-width: 380px;
+  margin: 0 auto;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6);
+}
+
+.phoneSimulatorHeader {
+  text-align: center;
+  font-size: 0.75rem;
+  color: #64748b;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  margin-bottom: 1rem;
+}
+
+.smsBubbleReceived {
+  background: #1e293b;
+  color: #f1f5f9;
+  border-radius: 16px 16px 16px 4px;
+  padding: 0.95rem 1.15rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  margin-bottom: 0.85rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.smsBubbleLink {
+  color: #ff7a21;
+  text-decoration: underline;
+  word-break: break-all;
+}
+
+.smsTimestamp {
+  display: block;
+  font-size: 0.7rem;
+  color: #64748b;
+  text-align: right;
+  margin-top: 0.4rem;
+}
+
+.smsMetaAudit {
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 0.75rem;
+  color: #10b981;
+  display: flex;
+  justify-content: space-between;
+}
+
+/* Natural Language AI Copilot */
+.naturalQueryContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.naturalQueryInputBox {
+  display: flex;
+  gap: 0.75rem;
+  background: #0d1422;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  padding: 0.75rem 1rem;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+}
+
+.naturalQueryInputBox input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: #ffffff;
+  font-size: 1rem;
+  outline: none;
+}
+
+.naturalSuggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.naturalSuggestChip {
+  background: #141e2e;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 9999px;
+  padding: 5px 12px;
+  font-size: 0.8rem;
+  color: #cbd5e1;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.naturalSuggestChip:hover {
+  background: #1c2a40;
+  border-color: #ff7a21;
+  color: #ffffff;
+}
+
+.naturalAnswerCard {
+  background: #0b111b;
+  border: 1px solid rgba(255, 122, 33, 0.3);
+  border-radius: 16px;
+  padding: 1.5rem;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.naturalAnswerHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #ff7a21;
+  margin-bottom: 0.75rem;
+}
+
+.naturalAnswerBody {
+  font-size: 0.925rem;
+  color: #e2e8f0;
+  line-height: 1.6;
 }
 
 /* FAQ */
@@ -1309,6 +1625,7 @@
   .bentoGrid { grid-template-columns: repeat(2, 1fr); }
   .spanTwo { grid-column: span 2; }
   .copilotBody { grid-template-columns: 1fr; }
+  .toolPanelContainer { grid-template-columns: 1fr; }
   .channelsGrid { grid-template-columns: 1fr; }
   .heroStatsDeck { grid-template-columns: repeat(2, 1fr); }
 }
