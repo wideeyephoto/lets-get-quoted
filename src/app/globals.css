@@ -5534,6 +5534,13 @@ h3 {
   line-height: 1.45;
   font-size: 0.84rem;
 }
+.plan-usage-shared-pool-tag {
+  display: inline-block;
+  margin-top: 0.25rem;
+  color: #0284c7 !important;
+  font-weight: 600;
+  font-size: 0.78rem !important;
+}
 .plan-usage-balance form {
   display: flex;
   flex-direction: column;

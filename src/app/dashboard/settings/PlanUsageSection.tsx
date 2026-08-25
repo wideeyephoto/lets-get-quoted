@@ -589,6 +589,9 @@ function CreditBalance({ resource }: { resource: CreditLotSplit }) {
       {hasWindow && resource.nonExpiring > 0 ? (
         <small>Plus {resource.nonExpiring.toLocaleString('en-US')} that never expire</small>
       ) : null}
+      {(resource.resourceCode === 'ai_intake_threads' || resource.resourceCode === 'ai_writing_drafts') ? (
+        <small className="plan-usage-shared-pool-tag">⚡ Flexible pool: balances flex across Smart Intake &amp; AI Writing</small>
+      ) : null}
     </article>
   );
 }
