@@ -1,0 +1,307 @@
+.section {
+  padding: 72px 24px;
+  background: #06111a;
+  position: relative;
+}
+
+.container {
+  max-width: 1150px;
+  margin: 0 auto;
+}
+
+.header {
+  text-align: center;
+  max-width: 760px;
+  margin: 0 auto 44px;
+}
+
+.kicker {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: #ff6a24;
+  background: rgba(255, 106, 36, 0.12);
+  border: 1px solid rgba(255, 106, 36, 0.3);
+  padding: 4px 12px;
+  border-radius: 999px;
+  margin-bottom: 14px;
+}
+
+.title {
+  font-size: clamp(26px, 3.5vw, 40px);
+  font-weight: 850;
+  color: #ffffff;
+  line-height: 1.15;
+  letter-spacing: -1.2px;
+  margin: 0 0 14px;
+}
+
+.title em {
+  color: #50e3bd;
+  font-style: normal;
+}
+
+.subtitle {
+  font-size: 15px;
+  color: #a7bcc8;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1.15fr;
+  gap: 28px;
+}
+
+@media (max-width: 900px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.stackCardComp {
+  background: #081722;
+  border: 1px solid rgba(174, 199, 211, 0.15);
+  border-radius: 18px;
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+}
+
+.badgeComp {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 850;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #ff8e8e;
+  background: rgba(255, 82, 82, 0.12);
+  border: 1px solid rgba(255, 82, 82, 0.25);
+  padding: 3px 10px;
+  border-radius: 999px;
+  margin-bottom: 12px;
+}
+
+.cardHeader {
+  margin-bottom: 24px;
+}
+
+.cardTitle {
+  font-size: 20px;
+  font-weight: 850;
+  color: #f5f0e7;
+  margin: 0 0 6px;
+}
+
+.cardSub {
+  font-size: 13px;
+  color: #889fab;
+  margin: 0;
+}
+
+.stackCardLgq {
+  background: radial-gradient(circle at 100% 0%, rgba(80, 227, 189, 0.1), transparent 70%),
+              #0a1f2c;
+  border: 1px solid rgba(80, 227, 189, 0.35);
+  border-radius: 18px;
+  padding: 32px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+}
+
+.badgeLgqPopular {
+  position: absolute;
+  top: 16px;
+  right: 20px;
+  font-size: 10.5px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  background: #50e3bd;
+  color: #06131f;
+  padding: 3px 10px;
+  border-radius: 999px;
+}
+
+.badgeLgq {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 850;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #50e3bd;
+  background: rgba(80, 227, 189, 0.12);
+  border: 1px solid rgba(80, 227, 189, 0.3);
+  padding: 3px 10px;
+  border-radius: 999px;
+  margin-bottom: 12px;
+}
+
+.cardTitleLgq {
+  font-size: 20px;
+  font-weight: 850;
+  color: #ffffff;
+  margin: 0 0 6px;
+}
+
+.cardSubLgq {
+  font-size: 13px;
+  color: #a7bcc8;
+  margin: 0;
+}
+
+.stackList {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  flex: 1;
+}
+
+.stackItemComp,
+.stackItemLgq {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.itemMain {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.itemIconComp {
+  color: #ff5252;
+  font-weight: 900;
+  font-size: 15px;
+  line-height: 1.2;
+}
+
+.itemIconLgq {
+  color: #50e3bd;
+  font-weight: 900;
+  font-size: 15px;
+  line-height: 1.2;
+}
+
+.itemLabel {
+  font-size: 13.5px;
+  color: #f5f0e7;
+  font-weight: 750;
+  display: block;
+}
+
+.itemLabelLgq {
+  font-size: 13.5px;
+  color: #ffffff;
+  font-weight: 750;
+  display: block;
+}
+
+.itemNote {
+  font-size: 11.5px;
+  color: #889fab;
+  margin-top: 2px;
+}
+
+.itemNoteLgq {
+  font-size: 11.5px;
+  color: #a7bcc8;
+  margin-top: 2px;
+}
+
+.itemCostComp {
+  font-size: 13px;
+  font-weight: 800;
+  color: #ff8e8e;
+  white-space: nowrap;
+}
+
+.itemCostLgq {
+  font-size: 11px;
+  font-weight: 900;
+  color: #50e3bd;
+  background: rgba(80, 227, 189, 0.15);
+  padding: 4px 10px;
+  border-radius: 6px;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.totalBoxComp {
+  background: rgba(255, 82, 82, 0.08);
+  border: 1px solid rgba(255, 82, 82, 0.25);
+  border-radius: 12px;
+  padding: 16px 20px;
+  text-align: center;
+}
+
+.totalLabel {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #a7bcc8;
+  margin-bottom: 4px;
+}
+
+.totalAmountComp {
+  font-size: 26px;
+  font-weight: 900;
+  color: #ff8e8e;
+  letter-spacing: -0.5px;
+}
+
+.totalAnnualComp {
+  font-size: 12px;
+  color: #ff8e8e;
+  margin-top: 4px;
+}
+
+.totalBoxLgq {
+  background: rgba(80, 227, 189, 0.1);
+  border: 1px solid rgba(80, 227, 189, 0.35);
+  border-radius: 12px;
+  padding: 16px 20px;
+  text-align: center;
+}
+
+.totalLabelLgq {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #50e3bd;
+  margin-bottom: 4px;
+}
+
+.totalAmountLgq {
+  font-size: 28px;
+  font-weight: 900;
+  color: #50e3bd;
+  letter-spacing: -0.5px;
+}
+
+.totalAnnualLgq {
+  font-size: 12px;
+  color: #c2d4df;
+  margin-top: 4px;
+}
+
+.totalAnnualLgq em {
+  color: #50e3bd;
+  font-style: normal;
+  font-weight: 750;
+}

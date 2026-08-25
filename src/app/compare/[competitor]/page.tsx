@@ -6,7 +6,11 @@ import { notFound } from 'next/navigation';
 import { SiteHeader, SiteFooter } from '@/components/flagship/site-chrome';
 import { APP_SIGNUP_URL } from '@/components/marketing/links';
 import CompetitorSavingsCalculator from '@/components/marketing/CompetitorSavingsCalculator';
+import StackCostComparison from '@/components/marketing/StackCostComparison';
+import CompareTradeSwitcher from '@/components/marketing/CompareTradeSwitcher';
+import SmsQuoteSimulator from '@/components/marketing/SmsQuoteSimulator';
 import AiIntakeSandbox from '@/components/marketing/AiIntakeSandbox';
+import CompareStickyBar from '@/components/marketing/CompareStickyBar';
 import { cspNonce } from '@/lib/csp-nonce';
 import { COMPARISONS, type CompetitorDetail } from '../compare-data';
 import styles from '../compare.module.css';
@@ -153,8 +157,14 @@ export default function CompetitorDetailPage({ params }: Props) {
           ))}
         </section>
 
+        {/* Interactive Stack Cost Comparison */}
+        <StackCostComparison competitorName={data.name} />
+
         {/* Interactive Savings & ROI Calculator */}
         <CompetitorSavingsCalculator competitorName={data.name} />
+
+        {/* Trade-Specific Scenarios Switcher */}
+        <CompareTradeSwitcher competitorName={data.name} />
 
         {/* Visual Product Pillars */}
         {data.visualPillars && data.visualPillars.length > 0 && (
@@ -201,8 +211,20 @@ export default function CompetitorDetailPage({ params }: Props) {
           </section>
         )}
 
-        {/* Live Interactive AI Intake Simulator */}
+        {/* Live Interactive AI Lead Intake Sandbox */}
         <AiIntakeSandbox />
+
+        {/* Instant SMS Quote Simulator */}
+        <section className={styles.simulatorSection} aria-label="Live SMS and Quote Experience">
+          <div className={styles.sectionHeader}>
+            <span className={styles.kicker}>Homeowner Experience</span>
+            <h2>Experience What Your Customers See &amp; E-Sign</h2>
+            <p>
+              Test how an inbound text description turns into a signed quote and an instant Apple Pay deposit in 60 seconds.
+            </p>
+          </div>
+          <SmsQuoteSimulator />
+        </section>
 
         {/* Categorized Side-by-Side Comparison Matrix */}
         <section className={styles.tableSection}>
@@ -288,6 +310,29 @@ export default function CompetitorDetailPage({ params }: Props) {
                 </div>
               ))}
             </div>
+
+            {/* Concierge & Dual-Run Guarantee Cards */}
+            <div className={styles.guaranteeGrid}>
+              <div className={styles.guaranteeCard}>
+                <div className={styles.guaranteeIcon}>🛡️</div>
+                <div>
+                  <h4 className={styles.guaranteeTitle}>30-Day Zero-Risk Dual Run</h4>
+                  <p className={styles.guaranteeText}>
+                    Keep {data.name} active while you set up Let’s Get Quoted. Test your new website, send quotes, and verify payouts before canceling {data.name}.
+                  </p>
+                </div>
+              </div>
+
+              <div className={styles.guaranteeCard}>
+                <div className={styles.guaranteeIcon}>⚡</div>
+                <div>
+                  <h4 className={styles.guaranteeTitle}>Free CSV Concierge Assistance</h4>
+                  <p className={styles.guaranteeText}>
+                    Have a large client database or price book? Upload your file or message our support team for free migration assistance within 24 hours.
+                  </p>
+                </div>
+              </div>
+            </div>
           </section>
         )}
 
@@ -369,6 +414,9 @@ export default function CompetitorDetailPage({ params }: Props) {
           </div>
         </section>
       </main>
+
+      {/* Floating Sticky Conversion Bar */}
+      <CompareStickyBar competitorName={data.name} />
 
       <SiteFooter />
     </div>

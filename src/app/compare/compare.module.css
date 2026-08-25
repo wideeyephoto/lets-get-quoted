@@ -403,6 +403,13 @@
   object-fit: cover;
 }
 
+/* SMS Simulator Section */
+.simulatorSection {
+  max-width: 1200px;
+  margin: 72px auto;
+  padding: 0 24px;
+}
+
 /* Comparison Table */
 .tableSection {
   max-width: 1200px;
@@ -499,6 +506,7 @@
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 24px;
+  margin-bottom: 32px;
 }
 
 @media (max-width: 860px) {
@@ -551,6 +559,48 @@
   font-size: 12px;
   color: #50e3bd;
   font-weight: 750;
+}
+
+/* Dual-Run & Concierge Guarantees */
+.guaranteeGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+@media (max-width: 760px) {
+  .guaranteeGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.guaranteeCard {
+  background: #081722;
+  border: 1px solid rgba(174, 199, 211, 0.16);
+  border-radius: 12px;
+  padding: 20px 24px;
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.guaranteeIcon {
+  font-size: 24px;
+  line-height: 1;
+}
+
+.guaranteeTitle {
+  font-size: 15px;
+  font-weight: 850;
+  color: #ffffff;
+  margin: 0 0 4px;
+}
+
+.guaranteeText {
+  font-size: 13px;
+  color: #a7bcc8;
+  line-height: 1.5;
+  margin: 0;
 }
 
 /* Objective Fit */

@@ -1,0 +1,345 @@
+.section {
+  padding: 72px 24px;
+  background: #07131d;
+  position: relative;
+}
+
+.container {
+  max-width: 1150px;
+  margin: 0 auto;
+}
+
+.header {
+  text-align: center;
+  max-width: 760px;
+  margin: 0 auto 36px;
+}
+
+.kicker {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: #50e3bd;
+  background: rgba(80, 227, 189, 0.12);
+  border: 1px solid rgba(80, 227, 189, 0.3);
+  padding: 4px 12px;
+  border-radius: 999px;
+  margin-bottom: 14px;
+}
+
+.title {
+  font-size: clamp(26px, 3.5vw, 40px);
+  font-weight: 850;
+  color: #ffffff;
+  line-height: 1.15;
+  letter-spacing: -1.2px;
+  margin: 0 0 14px;
+}
+
+.title em {
+  color: #ff6a24;
+  font-style: normal;
+}
+
+.subtitle {
+  font-size: 15px;
+  color: #a7bcc8;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.tabsRow {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 32px;
+}
+
+.tabBtn {
+  background: #091a25;
+  border: 1px solid rgba(174, 199, 211, 0.2);
+  border-radius: 999px;
+  padding: 10px 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+  color: #a7bcc8;
+  font-size: 14px;
+  font-weight: 750;
+}
+
+.tabBtn:hover {
+  background: #0f2738;
+  border-color: rgba(255, 106, 36, 0.4);
+  color: #ffffff;
+}
+
+.tabBtnActive {
+  background: rgba(255, 106, 36, 0.15);
+  border-color: #ff6a24;
+  color: #ffffff;
+  box-shadow: 0 0 14px rgba(255, 106, 36, 0.25);
+}
+
+.tabIcon {
+  font-size: 16px;
+}
+
+.tradeCard {
+  background: #091a25;
+  border: 1px solid rgba(174, 199, 211, 0.18);
+  border-radius: 18px;
+  padding: 36px;
+  display: grid;
+  grid-template-columns: 1.15fr 1fr;
+  gap: 36px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.4);
+}
+
+@media (max-width: 900px) {
+  .tradeCard {
+    grid-template-columns: 1fr;
+    padding: 24px;
+    gap: 24px;
+  }
+}
+
+.tradeCopyCol {
+  display: flex;
+  flex-direction: column;
+}
+
+.tradeHeader {
+  margin-bottom: 20px;
+}
+
+.tradeBadge {
+  font-size: 11px;
+  font-weight: 850;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #50e3bd;
+  display: inline-block;
+  margin-bottom: 8px;
+}
+
+.tradeHeadline {
+  font-size: clamp(20px, 2.5vw, 26px);
+  font-weight: 850;
+  color: #ffffff;
+  line-height: 1.2;
+  margin: 0;
+}
+
+.comparisonBoxes {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 24px;
+}
+
+.painBox {
+  background: rgba(255, 82, 82, 0.08);
+  border-left: 3px solid #ff5252;
+  padding: 14px 18px;
+  border-radius: 0 8px 8px 0;
+}
+
+.boxTitleComp {
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: #ff8e8e;
+  margin-bottom: 4px;
+}
+
+.solutionBox {
+  background: rgba(80, 227, 189, 0.08);
+  border-left: 3px solid #50e3bd;
+  padding: 14px 18px;
+  border-radius: 0 8px 8px 0;
+}
+
+.boxTitleLgq {
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: #50e3bd;
+  margin-bottom: 4px;
+}
+
+.boxText {
+  font-size: 13.5px;
+  color: #c2d4df;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.featuresList {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.featuresList li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 13.5px;
+  color: #f5f0e7;
+  line-height: 1.4;
+}
+
+.featCheck {
+  color: #50e3bd;
+  font-weight: 900;
+  font-size: 14px;
+}
+
+.tradeCta {
+  background: #ff6a24;
+  color: #ffffff;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 14.5px;
+  font-weight: 800;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 16px rgba(255, 106, 36, 0.35);
+}
+
+.tradeCta:hover {
+  background: #ff7d3e;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 22px rgba(255, 106, 36, 0.45);
+}
+
+/* Quote Sample Card Column */
+.quoteSampleCol {
+  display: flex;
+  align-items: center;
+}
+
+.quoteCardFrame {
+  width: 100%;
+  background: #06121b;
+  border: 1px solid rgba(174, 199, 211, 0.25);
+  border-radius: 14px;
+  padding: 24px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
+}
+
+.quoteTopBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.quoteStatusBadge {
+  font-size: 11px;
+  font-weight: 800;
+  color: #50e3bd;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+.quoteSentTime {
+  font-size: 12px;
+  color: #889fab;
+}
+
+.quoteSampleTitle {
+  font-size: 16px;
+  font-weight: 850;
+  color: #ffffff;
+  margin: 0 0 16px;
+  line-height: 1.3;
+}
+
+.quoteItemsList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(174, 199, 211, 0.12);
+  margin-bottom: 16px;
+}
+
+.quoteItemRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+  color: #a7bcc8;
+}
+
+.quoteItemRow strong {
+  color: #ffffff;
+  white-space: nowrap;
+}
+
+.quoteSummaryRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.totalLabel,
+.depositLabel {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #889fab;
+  display: block;
+}
+
+.totalVal {
+  font-size: 20px;
+  font-weight: 900;
+  color: #ffffff;
+}
+
+.depositVal {
+  font-size: 18px;
+  font-weight: 900;
+  color: #50e3bd;
+}
+
+.fakeApplePayBtn {
+  background: #000000;
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  padding: 12px;
+  text-align: center;
+  font-size: 13.5px;
+  font-weight: 750;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: default;
+}
+
+.quoteFootnote {
+  font-size: 11px;
+  color: #7b929f;
+  text-align: center;
+  margin: 8px 0 0;
+}
