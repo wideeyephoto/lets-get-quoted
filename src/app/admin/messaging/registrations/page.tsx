@@ -196,7 +196,7 @@ export default async function MessagingRegistrationsPage({
         <p className={styles.lead}>
           Multi-state carrier registration and number lifecycle console. Vet downstream businesses, configure TCR Brands & Campaigns,
           purchase SignalWire numbers, and activate 2-way messaging and AI Voice after live 10DLC carrier assignment verification.
-          Dedicated-number provisioning and carrier spend are controlled through authoritative database policy.
+          Dedicated-number allowance remains zero and unpriced; this private beta is not an entitlement or a billable add-on.
         </p>
         <p><Link href="/admin/messaging">← Messaging health & operations</Link></p>
       </header>
