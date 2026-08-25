@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import BrandLogo from '@/components/brand-logo';
 import { KNOWLEDGE_BASE, FAQS, DIAGNOSTIC_SCENARIOS, Article } from './help-center-data';
 import styles from './HelpCenter.module.css';
 
@@ -196,7 +195,44 @@ const Icons = {
           <polyline points="12 6 12 12 16 14" />
         </>
       }
-      className={styles.iconXs}
+      className={styles.statIconCyan}
+    />
+  ),
+  BookCheck: () => (
+    <Icon
+      d={
+        <>
+          <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20" />
+          <path d="m9 9.5 2 2 4-4" />
+        </>
+      }
+      className={styles.statIconEmerald}
+    />
+  ),
+  ShieldCheck: () => (
+    <Icon
+      d={
+        <>
+          <path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" />
+          <path d="m9 12 2 2 4-4" />
+        </>
+      }
+      className={styles.statIconOrange}
+    />
+  ),
+  Bot: () => (
+    <Icon
+      d={
+        <>
+          <path d="M12 8V4H8" />
+          <rect width="16" height="12" x="4" y="8" rx="2" />
+          <path d="M2 14h2" />
+          <path d="M20 14h2" />
+          <path d="M15 13v2" />
+          <path d="M9 13v2" />
+        </>
+      }
+      className={styles.statIconPurple}
     />
   ),
   MessageSquare: () => (
@@ -373,34 +409,33 @@ export default function HelpCenter() {
     <div className={styles.helpRoot}>
       <div className={`${styles.ambientGlow} ${styles.glow1}`} />
       <div className={`${styles.ambientGlow} ${styles.glow2}`} />
+      <div className={`${styles.ambientGlow} ${styles.glow3}`} />
 
-      {/* Branded Header */}
-      <header className={styles.navbar}>
-        <div className={styles.navContainer}>
-          <Link href="/" className={styles.brandLogo}>
-            <BrandLogo size={32} />
-            <div className={styles.logoText}>
-              <strong className={styles.logoTitle}>Let&apos;s Get Quoted</strong>
-              <span className={styles.logoBadge}>Help Center</span>
+      {/* Refined Command Strip (No duplicate logo) */}
+      <div className={styles.subNavbar}>
+        <div className={styles.subNavContainer}>
+          <div className={styles.subNavLeft}>
+            <div className={styles.helpBadgePill}>
+              <Icons.Sparkles />
+              <span>Help Center &amp; Command Hub</span>
             </div>
-          </Link>
+            <nav className={styles.subNavLinks}>
+              <a href="#knowledge-hub" className={styles.subNavLink}>
+                Guides
+              </a>
+              <a href="#ai-troubleshooter" className={styles.subNavLink}>
+                AI Copilot
+              </a>
+              <a href="#faqs" className={styles.subNavLink}>
+                FAQs
+              </a>
+              <Link href="/contact" className={styles.subNavLink}>
+                Contact
+              </Link>
+            </nav>
+          </div>
 
-          <nav className={styles.navLinks}>
-            <a href="#knowledge-hub" className={styles.navLink}>
-              Guides
-            </a>
-            <a href="#ai-troubleshooter" className={styles.navLink}>
-              AI Copilot
-            </a>
-            <a href="#faqs" className={styles.navLink}>
-              FAQs
-            </a>
-            <Link href="/contact" className={styles.navLink}>
-              Contact
-            </Link>
-          </nav>
-
-          <div className={styles.navActions}>
+          <div className={styles.subNavActions}>
             <button
               className={styles.statusPillBtn}
               onClick={() => setIsStatusModalOpen(true)}
@@ -416,7 +451,7 @@ export default function HelpCenter() {
             </button>
           </div>
         </div>
-      </header>
+      </div>
 
       {/* Hero Section */}
       <section className={styles.heroSection}>
@@ -424,34 +459,38 @@ export default function HelpCenter() {
           <Icons.Sparkles />
           <span>Support &amp; Knowledge Command Center</span>
         </div>
-        <h1 className={styles.heroTitle}>How can we help your business thrive today?</h1>
+        <h1 className={styles.heroTitle}>
+          How can we help your <span className={styles.highlightText}>business thrive</span> today?
+        </h1>
         <p className={styles.heroSubtitle}>
-          Instant answers, step-by-step contractor playbooks, AI diagnostics, or direct support from product engineers.
+          Explore instant answers, step-by-step contractor playbooks, AI diagnostics, or direct support from product engineers.
         </p>
 
-        {/* Search Bar */}
+        {/* Search Command Box */}
         <div className={styles.searchCommandBox}>
-          <div className={styles.searchInputWrapper}>
-            <Icons.Search />
-            <input
-              type="text"
-              placeholder="Search guides, setup tutorials, errors, or ask a question..."
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-            />
-            <div className={styles.hotkeyBadge}>
-              <kbd>⌘</kbd>
-              <kbd>K</kbd>
+          <div className={styles.searchGlowWrapper}>
+            <div className={styles.searchInputWrapper}>
+              <Icons.Search />
+              <input
+                type="text"
+                placeholder="Search guides, setup tutorials, errors, or ask a question..."
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+              />
+              <div className={styles.hotkeyBadge}>
+                <kbd>⌘</kbd>
+                <kbd>K</kbd>
+              </div>
+              {searchQuery && (
+                <button
+                  className={styles.clearBtn}
+                  onClick={() => setSearchQuery('')}
+                  aria-label="Clear search"
+                >
+                  <Icons.X />
+                </button>
+              )}
             </div>
-            {searchQuery && (
-              <button
-                className={styles.clearBtn}
-                onClick={() => setSearchQuery('')}
-                aria-label="Clear search"
-              >
-                <Icons.X />
-              </button>
-            )}
           </div>
 
           {/* Quick Topic Filter Pills */}
@@ -475,6 +514,38 @@ export default function HelpCenter() {
             ))}
           </div>
         </div>
+
+        {/* Hero Metric Highlights Bar */}
+        <div className={styles.heroStatsDeck}>
+          <div className={styles.statCard}>
+            <Icons.Clock />
+            <div className={styles.statMeta}>
+              <span className={styles.statVal}>&lt; 2 mins</span>
+              <span className={styles.statLbl}>Average Chat Reply</span>
+            </div>
+          </div>
+          <div className={styles.statCard}>
+            <Icons.BookCheck />
+            <div className={styles.statMeta}>
+              <span className={styles.statVal}>120+</span>
+              <span className={styles.statLbl}>Contractor Guides</span>
+            </div>
+          </div>
+          <div className={styles.statCard}>
+            <Icons.ShieldCheck />
+            <div className={styles.statMeta}>
+              <span className={styles.statVal}>99.98%</span>
+              <span className={styles.statLbl}>Uptime SLA</span>
+            </div>
+          </div>
+          <div className={styles.statCard}>
+            <Icons.Bot />
+            <div className={styles.statMeta}>
+              <span className={styles.statVal}>AI Powered</span>
+              <span className={styles.statLbl}>Instant Deflection</span>
+            </div>
+          </div>
+        </div>
       </section>
 
       {/* Bento Grid Knowledge Base */}
@@ -484,7 +555,7 @@ export default function HelpCenter() {
             <span className={styles.sectionTag}>Knowledge Base</span>
             <h2 className={styles.sectionTitle}>Explore by Category</h2>
             <p className={styles.sectionDesc}>
-              Deep-dive into workflows built specifically for modern residential contractors.
+              Deep-dive into comprehensive workflows built specifically for modern residential contractors.
             </p>
           </div>
           <div className={styles.viewSwitchTabs}>
@@ -830,9 +901,6 @@ export default function HelpCenter() {
             <div className={styles.modalBody}>
               <h1 className={styles.articleTitle}>{activeArticle.title}</h1>
               <div className={styles.articleMeta}>
-                <span>
-                  <Icons.Clock /> {activeArticle.readTime}
-                </span>
                 <span>Verified by LGQ Engineering</span>
               </div>
               <div
