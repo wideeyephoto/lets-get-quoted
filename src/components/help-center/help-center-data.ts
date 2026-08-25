@@ -141,7 +141,7 @@ export const VIDEO_PLAYBOOKS: VideoPlaybook[] = [
   },
   {
     id: 'vid-custom-domain',
-    title: 'Connecting Your GoDaddy / Namecheap Domain in 2 Mins',
+    title: 'Connecting Your GoDaddy / Squarespace Domain in 2 Mins',
     duration: '1:32',
     category: 'AI Website Builder',
     thumbnailGradient: 'linear-gradient(135deg, #181c24 0%, #202b36 100%)',
@@ -295,12 +295,12 @@ export const KNOWLEDGE_BASE: KnowledgeCategory[] = [
     articles: [
       {
         id: 'art-custom-domain-dns',
-        title: 'Connecting Your Custom Domain (GoDaddy, Namecheap, Cloudflare)',
+        title: 'Connecting Your Custom Domain (GoDaddy, Squarespace, Cloudflare)',
         readTime: '3 min read',
         category: 'AI Website Builder',
         content: `
           <h3>Connecting Your Custom Domain</h3>
-          <p>Add these DNS records in your domain registrar:</p>
+          <p>Add these DNS records in your domain registrar (GoDaddy, Squarespace, Cloudflare):</p>
           <ul>
             <li><strong>Type:</strong> <code>A</code> | <strong>Host:</strong> <code>@</code> | <strong>Value:</strong> <code>76.76.21.21</code></li>
             <li><strong>Type:</strong> <code>CNAME</code> | <strong>Host:</strong> <code>www</code> | <strong>Value:</strong> <code>cname.letsgetquoted.com</code></li>
