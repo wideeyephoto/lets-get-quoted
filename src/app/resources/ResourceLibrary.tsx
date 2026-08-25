@@ -3,29 +3,17 @@
 import Link from 'next/link';
 import { useId, useState } from 'react';
 import { ARTICLES, ARTICLE_CATEGORIES, formatArticleDate } from '@/lib/resources';
-import styles from '../for/for.module.css';
+import forStyles from '../for/for.module.css';
+import guideStyles from './guide.module.css';
 
-/**
- * The library, with a category filter and a search box.
- *
- * SAME RULE AS TradeFinder, and for the same reason: every article link stays
- * in the HTML whatever the controls say. Filtering sets `hidden` on the cards
- * that do not match rather than unmounting them, so the page a crawler reads
- * contains all of them, in order, and a filtered-out card is out of the tab
- * order and out of the accessibility tree at the same time. Unmounting would
- * put the full set in the initial HTML and then take most of it away the moment
- * anybody pressed a category — a difference no crawler sees and every "view
- * source after clicking" audit does.
- *
- * The controls are borrowed wholesale from /for's stylesheet rather than
- * duplicated into a second module: they are the same three controls doing the
- * same job, and two copies is how they drift.
- *
- * FOUR ARTICLES DO NOT NEED A SEARCH BOX. That is true today and is not the
- * point — the shape is here so that the tenth and the fortieth arrive into a
- * library that already files them, and so the category names on the cards mean
- * something you can act on rather than being decoration.
- */
+const CATEGORY_ICONS: Record<string, string> = {
+  'Pricing & profit': '💰',
+  'Getting leads': '⚡',
+  'Getting paid': '💳',
+  'Reputation': '⭐️',
+  'Operations & crew': '🛠',
+  'Customer messaging': '📱',
+};
 
 // Searched text, built once at module scope — these are facts about static data.
 const INDEX = new Map(
@@ -48,14 +36,37 @@ export default function ResourceLibrary() {
   const shown = ARTICLES.filter((article) => shows(article.slug, article.category)).length;
   const filtering = term !== '' || category !== 'all';
 
+  const spotlight = ARTICLES.find((a) => a.slug === 'good-better-best-quoting-guide') || ARTICLES[0];
+
   return (
     <>
-      <div className={styles.finder}>
+      {/* Featured Spotlight Card when browsing all */}
+      {!filtering && spotlight ? (
+        <div className={guideStyles.spotlightCard}>
+          <div>
+            <span className={guideStyles.spotlightBadge}>
+              <span aria-hidden="true">★</span> Featured Contractor Playbook
+            </span>
+            <h2 className={guideStyles.spotlightTitle}>{spotlight.title}</h2>
+            <p className={guideStyles.spotlightExcerpt}>{spotlight.excerpt}</p>
+            <span className="resource-meta">
+              {spotlight.category} · {spotlight.readMinutes} min read
+            </span>
+          </div>
+          <div>
+            <Link href={`/resources/${spotlight.slug}`} className="btn primary" style={{ whiteSpace: 'nowrap' }}>
+              Read playbook →
+            </Link>
+          </div>
+        </div>
+      ) : null}
+
+      <div className={forStyles.finder}>
         <div>
-          <label className={styles.searchLabel} htmlFor={searchId}>
+          <label className={forStyles.searchLabel} htmlFor={searchId}>
             Search the guides
           </label>
-          <div className={styles.searchField}>
+          <div className={forStyles.searchField}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
               <circle cx="11" cy="11" r="6.5" />
               <path d="M16 16l4.5 4.5" strokeLinecap="round" />
@@ -65,39 +76,51 @@ export default function ResourceLibrary() {
               type="search"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Deposits, margin, reviews…"
+              placeholder="Deposits, margin, 10DLC, reviews, scheduling…"
               autoComplete="off"
             />
+            {query ? (
+              <button
+                type="button"
+                onClick={() => setQuery('')}
+                aria-label="Clear search"
+                style={{ background: 'transparent', border: 'none', color: 'var(--muted)', cursor: 'pointer', padding: '0 4px', fontSize: '1.1rem' }}
+              >
+                ×
+              </button>
+            ) : null}
           </div>
         </div>
 
-        <div className={styles.cats} role="group" aria-label="Filter by topic">
+        <div className={forStyles.cats} role="group" aria-label="Filter by topic">
           <button
             type="button"
-            className={styles.cat}
+            className={forStyles.cat}
             aria-pressed={category === 'all'}
             onClick={() => setCategory('all')}
           >
-            All guides
+            All guides ({ARTICLES.length})
           </button>
           {ARTICLE_CATEGORIES.map((label) => (
             <button
               key={label}
               type="button"
-              className={styles.cat}
+              className={forStyles.cat}
               aria-pressed={category === label}
               onClick={() => setCategory(label)}
             >
+              <span aria-hidden="true" style={{ marginRight: '4px' }}>
+                {CATEGORY_ICONS[label] ?? '📄'}
+              </span>
               {label}
             </button>
           ))}
         </div>
       </div>
 
-      <p className={styles.count}>
+      <p className={forStyles.count}>
         {filtering ? `${shown} of ${ARTICLES.length} guides` : `All ${ARTICLES.length} guides`}
       </p>
-      {/* Politely, and only the count. */}
       <p className="sr-only" role="status" aria-live="polite">
         {shown} of {ARTICLES.length} guides shown
       </p>
@@ -110,7 +133,12 @@ export default function ResourceLibrary() {
             className="feature-card fav-card resource-card"
             hidden={!shows(article.slug, article.category)}
           >
-            <span className="fav-card-tag">{article.category}</span>
+            <span className="fav-card-tag">
+              <span aria-hidden="true" style={{ marginRight: '4px' }}>
+                {CATEGORY_ICONS[article.category] ?? '📄'}
+              </span>
+              {article.category}
+            </span>
             <h3>{article.title}</h3>
             <p>{article.excerpt}</p>
             <span className="resource-meta">
@@ -121,9 +149,21 @@ export default function ResourceLibrary() {
       </div>
 
       {shown === 0 ? (
-        <p className={styles.count}>
-          Nothing matches that yet. <button type="button" className={styles.cat} onClick={() => { setQuery(''); setCategory('all'); }}>Show all guides</button>
-        </p>
+        <div style={{ textAlign: 'center', padding: '2.5rem 1rem' }}>
+          <p className={forStyles.count} style={{ fontSize: '1.05rem', marginBottom: '1rem' }}>
+            No guides match &ldquo;{query}&rdquo;.
+          </p>
+          <button
+            type="button"
+            className="btn secondary"
+            onClick={() => {
+              setQuery('');
+              setCategory('all');
+            }}
+          >
+            Reset filters & show all guides
+          </button>
+        </div>
       ) : null}
     </>
   );
