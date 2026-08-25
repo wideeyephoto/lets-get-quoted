@@ -29,6 +29,8 @@ import SectionCard from './SectionCard';
 import SocialsField from './SocialsField';
 import ChatButtonField from './ChatButtonField';
 import type { MessagingSetup } from '@/lib/owner-sms';
+import { displayPhone } from '@/lib/phone';
+import { phoneDigits } from '@/lib/chat-button';
 import AnalyticsField from './AnalyticsField';
 import ThemeIcon from './ThemeIcon';
 import VideoStudio from './VideoStudio';
@@ -347,6 +349,16 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, mess
   const galleryImages = getSiteGallery(site.content);
   const siteContent = getSiteContent(site.content);
   const selectableImages = [...siteImages, ...STOCK_SITE_IMAGES];
+
+  const dedicatedNumber =
+    messagingSetup?.registration.kind === 'ok' && messagingSetup.registration.status === 'approved' && messagingSetup.registration.assignedNumber
+      ? messagingSetup.registration.assignedNumber
+      : null;
+
+  const alertPhone =
+    messagingSetup?.alerts.kind === 'ok' && messagingSetup.alerts.phone
+      ? messagingSetup.alerts.phone
+      : null;
 
   // What a stock gallery tile's overlay says when its title is blank — mirrors
   // the public-page fallback (service names round-robin, then the trade).
@@ -1933,7 +1945,39 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, mess
                   open={openSection === 'estimate'}
                   onToggleOpen={() => toggleSection('estimate')}
                 >
-                  <label className={styles.formField}><span>Phone</span><input id="bf-phone" type="tel" value={site.phone || ''} onChange={(event) => handleChange('phone', event.target.value || null)} placeholder="(555) 123-4567" /><small className={styles.fieldHint}>Powers your call buttons and the text/call follow-up on leads.</small></label>
+                  <label className={styles.formField}>
+                    <span>Phone</span>
+                    <input
+                      id="bf-phone"
+                      type="tel"
+                      value={site.phone || ''}
+                      onChange={(event) => handleChange('phone', event.target.value || null)}
+                      placeholder={dedicatedNumber ? displayPhone(dedicatedNumber) : alertPhone ? displayPhone(alertPhone) : '(555) 123-4567'}
+                    />
+                    {(dedicatedNumber || alertPhone) && (
+                      <div className={styles.chatNumberChips} style={{ marginTop: '0.4rem', marginBottom: '0.2rem' }}>
+                        {dedicatedNumber && (
+                          <button
+                            type="button"
+                            className={`${styles.chatNumberChip} ${site.phone && phoneDigits(site.phone) === phoneDigits(dedicatedNumber) ? styles.chatNumberChipActive : ''}`}
+                            onClick={() => handleChange('phone', dedicatedNumber)}
+                          >
+                            💬 Use Dedicated Business Number ({displayPhone(dedicatedNumber)})
+                          </button>
+                        )}
+                        {alertPhone && (!dedicatedNumber || phoneDigits(alertPhone) !== phoneDigits(dedicatedNumber)) && (
+                          <button
+                            type="button"
+                            className={`${styles.chatNumberChip} ${site.phone && phoneDigits(site.phone) === phoneDigits(alertPhone) ? styles.chatNumberChipActive : ''}`}
+                            onClick={() => handleChange('phone', alertPhone)}
+                          >
+                            📱 Use Account Mobile ({displayPhone(alertPhone)})
+                          </button>
+                        )}
+                      </div>
+                    )}
+                    <small className={styles.fieldHint}>Powers your call buttons and the text/call follow-up on leads.</small>
+                  </label>
                   <label className={styles.toggleRow}><input type="checkbox" checked={siteContent.phonePublic} onChange={(event) => updateSiteContent({ phonePublic: event.target.checked })} /><span><strong>Show phone number</strong><small>This controls whether your phone number and call buttons appear anywhere on your website.</small></span></label>
                   {siteContent.quoteForm.enabled && (
                     <label className={styles.formField}><span>What visitors see the form called</span><input type="text" maxLength={40} value={siteContent.quoteForm.formHeading} onChange={(event) => updateQuoteForm({ ...siteContent.quoteForm, formHeading: event.target.value })} placeholder="Request an Estimate" /><small className={styles.fieldHint}>The heading on the hero capture and the button in your header. The classic form replies later rather than pricing on the spot, so avoid wording that promises an instant number.</small></label>
