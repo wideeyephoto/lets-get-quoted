@@ -225,14 +225,13 @@
 /* Hero quick-capture form — kept compact so it renders above the fold */
 .heroQuickForm { position: relative; z-index: 2; display: grid; gap: .6rem; width: min(400px, 100%); margin-top: 1.5rem; padding: 1.1rem 1.2rem 1.25rem; border-radius: var(--theme-radius, 8px); background: rgba(255,255,255,.97); color: #17140f; box-shadow: 0 20px 45px -18px rgba(0,0,0,.5); }
 /* Live, animated gradient border on the intake card — a thin rotating ring that
-   shimmers in the site's OWN accent (accent → light → accent), so the "Instant
-   Estimate" box feels active without a hardcoded cyan clashing on non-teal
-   themes. The mask cuts out the centre so only the ~2px ring shows; @property
+   shimmers in a vibrant purple/blue gradient (indigo → royal blue → purple → electric cyan).
+   The mask cuts out the centre so only the crisp 2px ring shows; @property
    lets the conic angle animate (degrades to a static ring where unsupported). */
 @property --lgqBorderAngle { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
 .heroQuickForm::before {
-  content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 3px;
-  background: conic-gradient(from var(--lgqBorderAngle), var(--theme-accent), color-mix(in srgb, var(--theme-accent) 35%, #fff), var(--theme-accent), color-mix(in srgb, var(--theme-accent) 65%, #fff), var(--theme-accent));
+  content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 2px;
+  background: conic-gradient(from var(--lgqBorderAngle), #6366f1, #3b82f6, #8b5cf6, #38bdf8, #a855f7, #2563eb, #6366f1);
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); mask-composite: exclude;
   animation: lgqBorderSpin 4s linear infinite; pointer-events: none;
@@ -248,13 +247,18 @@
    inside a 400px form. A class means no section descendant selector can reach
    it again. */
 .heroQuickForm .heroFormTitle { margin: 0; font-family: var(--theme-display); font-size: 1.05rem; font-weight: 800; line-height: 1.15; color: #17140f; text-transform: none; max-width: none; letter-spacing: normal; }
-.heroFormNote { margin: 0 0 .1rem; font-size: .74rem; color: #6b675e; }
+.heroFormNote { margin: 0 0 .1rem; font-size: .74rem; color: #4b5563; }
 .heroQuickFormRow { display: grid; grid-template-columns: 1fr 1fr; gap: .55rem; }
 .heroFormChoice { display: grid; gap: .3rem; }
-.heroFormChoiceLabel { font-size: .74rem; font-weight: 700; color: #4b463d; }
+.heroFormChoiceLabel { font-size: .74rem; font-weight: 700; color: #374151; }
 .heroFormChipRow { display: flex; gap: .4rem; }
-.heroQuickForm .heroFormChip:hover:not([data-selected='true']) { border-color: color-mix(in srgb, var(--theme-accent) 55%, #d8d3c6); background: color-mix(in srgb, var(--theme-accent) 8%, #fff); }
-.heroQuickForm input { width: 100%; min-height: 44px; padding: .6rem .7rem; border: 1px solid #d8d3c6; border-radius: calc(var(--theme-radius, 8px) * .6); font-size: .84rem; color: #17140f; background: #fff; font-family: inherit; }
+.heroQuickForm .heroFormChip:hover:not([data-selected='true']) { border-color: color-mix(in srgb, var(--theme-accent) 55%, #a8a29e); background: color-mix(in srgb, var(--theme-accent) 8%, #fff); }
+.heroQuickForm input { width: 100%; min-height: 44px; padding: .6rem .7rem; border: 1.5px solid #a8a29e; border-radius: calc(var(--theme-radius, 8px) * .6); font-size: .84rem; color: #111827; background: #fff; font-family: inherit; }
+.heroQuickForm input::placeholder,
+.heroQuickForm textarea::placeholder {
+  color: #64748b;
+  opacity: 1;
+}
 
 /* --- named contact fields -------------------------------------------------
    The last step before a price, and it used to be three unlabelled boxes. Each
@@ -262,19 +266,22 @@
    is visible progress on a step that gives nothing back until you submit.
    The <label> wraps the input, so clicking anywhere on the field focuses it. */
 .heroField { display: grid; gap: .22rem; min-width: 0; }
-.heroFieldLabel { font-size: .68rem; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: #6b675e; transition: color .15s ease; }
+.heroFieldLabel { font-size: .68rem; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: #374151; transition: color .15s ease; }
 .heroFieldBox { position: relative; display: block; }
 /* The input owns the border; the icon and tick sit inside its padding. */
 .heroQuickForm .heroFieldBox input { padding-left: 2.1rem; padding-right: 1.9rem; }
-.heroFieldIcon { position: absolute; left: .62rem; top: 50%; transform: translateY(-50%); width: 1.05rem; height: 1.05rem; color: #9c968a; pointer-events: none; transition: color .15s ease; }
+.heroFieldIcon { position: absolute; left: .62rem; top: 50%; transform: translateY(-50%); width: 1.05rem; height: 1.05rem; color: #4b5563; pointer-events: none; transition: color .15s ease; }
 /* Hidden until the field has something in it — that reveal IS the feedback. */
 .heroFieldTick { position: absolute; right: .6rem; top: 50%; transform: translateY(-50%) scale(.7); font-size: .8rem; font-weight: 900; color: var(--theme-accent); opacity: 0; transition: opacity .16s ease, transform .16s ease; pointer-events: none; }
 .heroField[data-filled] .heroFieldTick { opacity: 1; transform: translateY(-50%) scale(1); }
 .heroField[data-filled] .heroFieldIcon { color: var(--theme-accent); }
-.heroField[data-filled] .heroFieldLabel { color: #4b463d; }
-.heroQuickForm .heroFieldBox input:focus { outline: none; border-color: var(--theme-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--theme-accent) 22%, transparent); }
-.heroField:focus-within .heroFieldIcon { color: var(--theme-accent); }
-.heroField:focus-within .heroFieldLabel { color: #17140f; }
+.heroField[data-filled] .heroFieldLabel { color: #111827; }
+.heroQuickForm .heroFieldBox input:focus,
+.heroQuickForm input:focus,
+.heroQuickForm textarea:focus,
+.heroQuickForm select:focus { outline: none; border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.28); }
+.heroField:focus-within .heroFieldIcon { color: #6366f1; }
+.heroField:focus-within .heroFieldLabel { color: #111827; }
 @media (prefers-reduced-motion: reduce) {
   .heroFieldTick, .heroFieldIcon, .heroFieldLabel { transition: none; }
 }
@@ -323,8 +330,8 @@
    accent (the accent belongs to the main submit). */
 .heroFormVerifyRow { display: flex; gap: .5rem; align-items: stretch; }
 .heroFormVerifyRow input { flex: 1; min-width: 0; }
-.heroQuickForm .heroFormVerifyBtn { margin-top: 0; min-height: 44px; padding: .55rem .8rem; background: #eef0f4; color: #17140f; border: 1px solid #d8d3c6; font-weight: 700; font-size: .78rem; white-space: nowrap; flex: none; }
-.heroQuickForm textarea { width: 100%; padding: .6rem .7rem; border: 1px solid #d8d3c6; border-radius: calc(var(--theme-radius, 8px) * .6); font-size: .84rem; color: #17140f; background: #fff; font-family: inherit; resize: vertical; min-height: 3.6rem; }
+.heroQuickForm .heroFormVerifyBtn { margin-top: 0; min-height: 44px; padding: .55rem .8rem; background: #eef0f4; color: #17140f; border: 1.5px solid #a8a29e; font-weight: 700; font-size: .78rem; white-space: nowrap; flex: none; }
+.heroQuickForm textarea { width: 100%; padding: .6rem .7rem; border: 1.5px solid #a8a29e; border-radius: calc(var(--theme-radius, 8px) * .6); font-size: .84rem; color: #111827; background: #fff; font-family: inherit; resize: vertical; min-height: 3.6rem; }
 .heroQuickForm button { margin-top: .1rem; min-height: 48px; padding: .75rem; border: 0; border-radius: calc(var(--theme-radius, 8px) * .6); background: var(--theme-accent); color: var(--theme-on-accent, #111); font-weight: 800; font-size: .82rem; cursor: pointer; }
 .heroQuickForm button:disabled { opacity: .6; cursor: progress; }
 .heroFormStatus { margin: 0; font-size: .78rem; }
@@ -335,7 +342,7 @@
    than a bare `.heroFormChip`): without the prefix every chip inherited the
    solid submit-button fill and the selected state only got a pale tint — so
    selection read backwards. Unselected = quiet outline, selected = solid accent. */
-.heroQuickForm .heroFormChip { flex: 1; margin-top: 0; min-height: 44px; padding: .5rem .4rem; border: 1px solid #d8d3c6; border-radius: calc(var(--theme-radius, 8px) * .6); background: #fff; color: #17140f; font-size: .78rem; font-weight: 700; cursor: pointer; }
+.heroQuickForm .heroFormChip { flex: 1; margin-top: 0; min-height: 44px; padding: .5rem .4rem; border: 1.5px solid #a8a29e; border-radius: calc(var(--theme-radius, 8px) * .6); background: #fff; color: #111827; font-size: .78rem; font-weight: 700; cursor: pointer; }
 .heroQuickForm .heroFormChip[data-selected='true'] { border-color: color-mix(in srgb, var(--theme-accent) 65%, #000); background: var(--theme-accent); color: var(--theme-on-accent, #111); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--theme-accent) 45%, #fff); }
 .heroFormResult { margin: 0; font-family: var(--theme-display); font-size: 1.7rem; font-weight: 800; color: #17140f; }
 .heroFormCall { display: inline-flex; align-items: center; justify-content: center; gap: .4rem; min-height: 48px; margin-top: .2rem; padding: .7rem 1rem; border-radius: calc(var(--theme-radius, 8px) * .6); background: var(--theme-accent); color: var(--theme-on-accent, #111); font-weight: 800; font-size: .88rem; transition: transform .2s ease, filter .2s ease; }
@@ -1053,20 +1060,29 @@
   box-shadow: 0 24px 50px -20px rgba(0,0,0,.7);
 }
 .forge .heroQuickForm .heroFormTitle { color: var(--c-on-deep); font-family: var(--theme-display); text-transform: uppercase; letter-spacing: .02em; }
-.forge .heroQuickForm .heroFormNote { color: color-mix(in srgb, var(--c-on-deep) 70%, transparent); font-family: var(--font-mono); font-size: .7rem; }
+.forge .heroQuickForm .heroFormNote { color: rgba(255, 255, 255, 0.85); font-family: var(--font-mono); font-size: .7rem; }
 .forge .heroQuickForm input, .forge .heroQuickForm select, .forge .heroQuickForm textarea {
-  background: color-mix(in srgb, var(--c-deep) 75%, #000 25%);
-  color: var(--c-on-deep);
-  border-color: color-mix(in srgb, var(--c-on-deep) 20%, transparent);
+  background: rgba(0, 0, 0, 0.55);
+  color: #f8fafc;
+  border: 1.5px solid rgba(255, 255, 255, 0.38);
   border-radius: 4px;
+}
+.forge .heroQuickForm input::placeholder, .forge .heroQuickForm textarea::placeholder {
+  color: rgba(255, 255, 255, 0.65);
+  opacity: 1;
+}
+.forge .heroQuickForm input:focus, .forge .heroQuickForm select:focus, .forge .heroQuickForm textarea:focus {
+  border-color: #818cf8;
+  box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.32);
 }
 .forge .heroQuickForm .heroFormChip {
-  background: color-mix(in srgb, var(--c-deep) 80%, #000 20%);
-  color: var(--c-on-deep);
-  border-color: color-mix(in srgb, var(--c-on-deep) 22%, transparent);
+  background: rgba(0, 0, 0, 0.45);
+  color: #f8fafc;
+  border: 1.5px solid rgba(255, 255, 255, 0.32);
   border-radius: 4px;
 }
-.forge .heroQuickForm .heroFieldLabel { color: color-mix(in srgb, var(--c-on-deep) 75%, transparent); font-family: var(--font-mono); }
+.forge .heroQuickForm .heroFieldLabel { color: rgba(255, 255, 255, 0.9); font-family: var(--font-mono); font-weight: 800; }
+.forge .heroQuickForm .heroFieldIcon { color: rgba(255, 255, 255, 0.75); }
 
 /* Guild */
 /* Guild on the --c-* scheme tokens. Cream body (--c-bg), warm hairlines
@@ -1274,20 +1290,29 @@
   box-shadow: 0 26px 54px -22px rgba(0,0,0,.6);
 }
 .vista .heroQuickForm .heroFormTitle { color: var(--c-on-deep); text-transform: uppercase; letter-spacing: .02em; }
-.vista .heroQuickForm .heroFormNote { color: color-mix(in srgb, var(--c-on-deep) 70%, transparent); }
+.vista .heroQuickForm .heroFormNote { color: rgba(255, 255, 255, 0.85); }
 .vista .heroQuickForm input, .vista .heroQuickForm select, .vista .heroQuickForm textarea {
-  background: color-mix(in srgb, var(--c-deep) 80%, #000 20%);
-  color: var(--c-on-deep);
-  border-color: color-mix(in srgb, var(--c-on-deep) 18%, transparent);
+  background: rgba(0, 0, 0, 0.55);
+  color: #f8fafc;
+  border: 1.5px solid rgba(255, 255, 255, 0.38);
   border-radius: 8px;
 }
+.vista .heroQuickForm input::placeholder, .vista .heroQuickForm textarea::placeholder {
+  color: rgba(255, 255, 255, 0.65);
+  opacity: 1;
+}
+.vista .heroQuickForm input:focus, .vista .heroQuickForm select:focus, .vista .heroQuickForm textarea:focus {
+  border-color: #818cf8;
+  box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.32);
+}
 .vista .heroQuickForm .heroFormChip {
-  background: color-mix(in srgb, var(--c-deep) 85%, #000 15%);
-  color: var(--c-on-deep);
-  border-color: color-mix(in srgb, var(--c-on-deep) 20%, transparent);
+  background: rgba(0, 0, 0, 0.45);
+  color: #f8fafc;
+  border: 1.5px solid rgba(255, 255, 255, 0.32);
   border-radius: 6px;
 }
-.vista .heroQuickForm .heroFieldLabel { color: color-mix(in srgb, var(--c-on-deep) 75%, transparent); }
+.vista .heroQuickForm .heroFieldLabel { color: rgba(255, 255, 255, 0.9); font-weight: 800; }
+.vista .heroQuickForm .heroFieldIcon { color: rgba(255, 255, 255, 0.75); }
 
 @media (max-width: 820px) {
   .navLinks { display: none; }
@@ -1659,20 +1684,29 @@
   box-shadow: 0 28px 56px -22px rgba(0,0,0,.7);
 }
 .coat .heroQuickForm .heroFormTitle { color: var(--c-on-deep); font-family: var(--theme-display); font-weight: 800; }
-.coat .heroQuickForm .heroFormNote { color: color-mix(in srgb, var(--c-on-deep) 72%, transparent); }
+.coat .heroQuickForm .heroFormNote { color: rgba(255, 255, 255, 0.85); }
 .coat .heroQuickForm input, .coat .heroQuickForm select, .coat .heroQuickForm textarea {
-  background: color-mix(in srgb, var(--coat-maroon, var(--c-deep)) 75%, #000 25%);
-  color: var(--c-on-deep);
-  border-color: color-mix(in srgb, var(--c-on-deep) 18%, transparent);
+  background: rgba(0, 0, 0, 0.55);
+  color: #f8fafc;
+  border: 1.5px solid rgba(255, 255, 255, 0.38);
   border-radius: 10px;
 }
+.coat .heroQuickForm input::placeholder, .coat .heroQuickForm textarea::placeholder {
+  color: rgba(255, 255, 255, 0.65);
+  opacity: 1;
+}
+.coat .heroQuickForm input:focus, .coat .heroQuickForm select:focus, .coat .heroQuickForm textarea:focus {
+  border-color: #818cf8;
+  box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.32);
+}
 .coat .heroQuickForm .heroFormChip {
-  background: color-mix(in srgb, var(--coat-maroon, var(--c-deep)) 82%, #000 18%);
-  color: var(--c-on-deep);
-  border-color: color-mix(in srgb, var(--c-on-deep) 22%, transparent);
+  background: rgba(0, 0, 0, 0.45);
+  color: #f8fafc;
+  border: 1.5px solid rgba(255, 255, 255, 0.32);
   border-radius: 8px;
 }
-.coat .heroQuickForm .heroFieldLabel { color: color-mix(in srgb, var(--c-on-deep) 75%, transparent); }
+.coat .heroQuickForm .heroFieldLabel { color: rgba(255, 255, 255, 0.9); font-weight: 800; }
+.coat .heroQuickForm .heroFieldIcon { color: rgba(255, 255, 255, 0.75); }
 @media (max-width: 900px) {
   .coatHero, .coatContact { grid-template-columns: 1fr; }
   .coatHeroMedia { order: -1; max-width: 440px; margin-inline: auto; }
@@ -1891,20 +1925,29 @@
   box-shadow: 0 24px 50px -22px rgba(0,0,0,.65);
 }
 .reno .heroQuickForm .heroFormTitle { color: var(--c-on-deep); }
-.reno .heroQuickForm .heroFormNote { color: color-mix(in srgb, var(--c-on-deep) 70%, transparent); }
+.reno .heroQuickForm .heroFormNote { color: rgba(255, 255, 255, 0.85); }
 .reno .heroQuickForm input, .reno .heroQuickForm select, .reno .heroQuickForm textarea {
-  background: color-mix(in srgb, var(--c-deep) 75%, #000 25%);
-  color: var(--c-on-deep);
-  border-color: color-mix(in srgb, var(--c-on-deep) 20%, transparent);
+  background: rgba(0, 0, 0, 0.55);
+  color: #f8fafc;
+  border: 1.5px solid rgba(255, 255, 255, 0.38);
   border-radius: 4px;
+}
+.reno .heroQuickForm input::placeholder, .reno .heroQuickForm textarea::placeholder {
+  color: rgba(255, 255, 255, 0.65);
+  opacity: 1;
+}
+.reno .heroQuickForm input:focus, .reno .heroQuickForm select:focus, .reno .heroQuickForm textarea:focus {
+  border-color: #818cf8;
+  box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.32);
 }
 .reno .heroQuickForm .heroFormChip {
-  background: color-mix(in srgb, var(--c-deep) 85%, #000 15%);
-  color: var(--c-on-deep);
-  border-color: color-mix(in srgb, var(--c-on-deep) 22%, transparent);
+  background: rgba(0, 0, 0, 0.45);
+  color: #f8fafc;
+  border: 1.5px solid rgba(255, 255, 255, 0.32);
   border-radius: 4px;
 }
-.reno .heroQuickForm .heroFieldLabel { color: color-mix(in srgb, var(--c-on-deep) 75%, transparent); }
+.reno .heroQuickForm .heroFieldLabel { color: rgba(255, 255, 255, 0.9); font-weight: 800; }
+.reno .heroQuickForm .heroFieldIcon { color: rgba(255, 255, 255, 0.75); }
 .renoHeroCopy > * { animation: renoRise .7s cubic-bezier(.22, .61, .36, 1) both; }
 .renoHeroCopy > *:nth-child(1) { animation-delay: .05s; }
 .renoHeroCopy > *:nth-child(2) { animation-delay: .13s; }
@@ -1984,20 +2027,29 @@
   box-shadow: 0 30px 60px -24px rgba(0,0,0,.65), inset 0 0 0 1px rgba(255,255,255,.1);
 }
 .shineHeroCopy .heroQuickForm .heroFormTitle { color: var(--c-on-deep); }
-.shineHeroCopy .heroQuickForm .heroFormNote { color: color-mix(in srgb, var(--c-on-deep) 70%, transparent); }
+.shineHeroCopy .heroQuickForm .heroFormNote { color: rgba(255, 255, 255, 0.85); }
 .shineHeroCopy .heroQuickForm input, .shineHeroCopy .heroQuickForm select, .shineHeroCopy .heroQuickForm textarea {
-  background: color-mix(in srgb, var(--c-deep) 80%, #000 20%);
-  color: var(--c-on-deep);
-  border-color: color-mix(in srgb, var(--c-on-deep) 20%, transparent);
+  background: rgba(0, 0, 0, 0.55);
+  color: #f8fafc;
+  border: 1.5px solid rgba(255, 255, 255, 0.38);
   border-radius: 10px;
 }
+.shineHeroCopy .heroQuickForm input::placeholder, .shineHeroCopy .heroQuickForm textarea::placeholder {
+  color: rgba(255, 255, 255, 0.65);
+  opacity: 1;
+}
+.shineHeroCopy .heroQuickForm input:focus, .shineHeroCopy .heroQuickForm select:focus, .shineHeroCopy .heroQuickForm textarea:focus {
+  border-color: #818cf8;
+  box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.32);
+}
 .shineHeroCopy .heroQuickForm .heroFormChip {
-  background: color-mix(in srgb, var(--c-deep) 85%, #000 15%);
-  color: var(--c-on-deep);
-  border-color: color-mix(in srgb, var(--c-on-deep) 22%, transparent);
+  background: rgba(0, 0, 0, 0.45);
+  color: #f8fafc;
+  border: 1.5px solid rgba(255, 255, 255, 0.32);
   border-radius: 8px;
 }
-.shineHeroCopy .heroQuickForm .heroFieldLabel { color: color-mix(in srgb, var(--c-on-deep) 75%, transparent); }
+.shineHeroCopy .heroQuickForm .heroFieldLabel { color: rgba(255, 255, 255, 0.9); font-weight: 800; }
+.shineHeroCopy .heroQuickForm .heroFieldIcon { color: rgba(255, 255, 255, 0.75); }
 .shineBtn { display: inline-flex; align-items: center; gap: .45rem; min-height: 50px; padding: .8rem 1.6rem; border-radius: 999px; background: var(--theme-accent); color: var(--theme-on-accent, #0f1b2d); font-weight: 700; font-size: .96rem; box-shadow: 0 16px 30px -14px color-mix(in srgb, var(--theme-accent) 55%, transparent); transition: transform .2s ease, filter .2s ease; }
 .shineBtn:hover { transform: translateY(-2px); filter: brightness(1.04); }
 .shineBtnGhost { display: inline-flex; align-items: center; gap: .45rem; min-height: 50px; padding: .8rem 1.4rem; border-radius: 999px; border: 1.5px solid color-mix(in srgb, var(--c-on-deep) 50%, transparent); color: var(--c-on-deep); font-weight: 700; font-size: .96rem; transition: background .2s ease, border-color .2s ease; }
