@@ -275,11 +275,24 @@ export const KNOWLEDGE_BASE: KnowledgeCategory[] = [
       },
       {
         id: 'art-esignatures',
-        title: 'Legally Binding Mobile E-Signatures & PDF Receipts',
+        title: 'Legally Binding Mobile E-Signatures & Quote Receipts',
         readTime: '3 min read',
         category: 'Instant Quoting',
         content: `
-          <p>Every estimate accepted records a timestamp, IP address, signature image, and geolocation proof, generating a tamper-proof PDF audit trail.</p>
+          <h3>How Quote E-Signatures Work</h3>
+          <p>When a homeowner receives your digital quote link, they can review the itemized scope, select optional upgrades, and legally approve the proposal right from their phone — with no app download or account creation required.</p>
+          <div class="callout">
+            <strong>ESIGN &amp; UETA Compliant:</strong> Electronic signatures captured with clear intent, timestamping, and signer attribution are legally binding under the US federal ESIGN Act and state UETA laws.
+          </div>
+          <h3>What Is Recorded on Quote Acceptance</h3>
+          <ul>
+            <li><strong>Signer Legal Name:</strong> The full name provided by the client upon approval.</li>
+            <li><strong>Signature Mark or Typed Name:</strong> Homeowners can draw their mark using a finger or stylus (stored as vector SVG paths) or type their legal name.</li>
+            <li><strong>ISO Timestamp:</strong> The exact date and time of acceptance is permanently recorded on the job record and audit feed.</li>
+            <li><strong>Snapshot of Agreed Pricing &amp; Add-ons:</strong> The accepted line items and upgrade selections are locked to the record so subsequent edits never quietly alter what was approved.</li>
+          </ul>
+          <h3>Print &amp; PDF Receipts</h3>
+          <p>Both you and the homeowner can use <strong>Print or save as PDF</strong> at any time to generate a clean, formatted receipt containing the full scope of work, company header, and executed signature block.</p>
         `
       }
     ]
