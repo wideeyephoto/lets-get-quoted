@@ -5,11 +5,12 @@ import type { ReactNode } from 'react';
 import type { LeadDetailDto } from '@/lib/lead-detail';
 import { isContactablePhone } from '@/lib/lead-queue';
 import type { LeadViewItem } from './LeadsWorkspace';
+import { PropertyDossierCard } from '@/components/property-intel/PropertyDossierCard';
 import styles from '../focus.module.css';
 import leadStyles from './leads.module.css';
 
 /**
- * The five detail panels behind a lead — Overview, Request, Activity, Photos,
+ * The six detail panels behind a lead — Overview, Property & Roof, Request, Activity, Photos,
  * Quote & visit.
  *
  * Lifted out of LeadFocusView unchanged so Focus and Smoothie render the same
@@ -24,6 +25,7 @@ import leadStyles from './leads.module.css';
 
 export const LEAD_TABS = [
   { id: 'overview', label: 'Overview' },
+  { id: 'property', label: 'Property & Roof' },
   { id: 'request', label: 'Request' },
   { id: 'activity', label: 'Activity' },
   { id: 'photos', label: 'Photos' },
@@ -117,6 +119,18 @@ export default function LeadDetailTabs({
             </p>
           )}
         </section>
+      </div>
+    );
+  }
+
+  if (tab === 'property') {
+    return (
+      <div style={{ maxWidth: '720px' }}>
+        {detail.address ? (
+          <PropertyDossierCard address={detail.address} />
+        ) : (
+          <p className={styles.muted}>No address on file for this lead to fetch property intelligence.</p>
+        )}
       </div>
     );
   }

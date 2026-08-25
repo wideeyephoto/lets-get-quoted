@@ -7,6 +7,11 @@ import {
   formatPriceBook, formatQuoteHistory, reconcileDraft, MAX_DRAFT_LINES, MAX_HISTORY_JOBS,
   type HistoricalQuote, type PriceBookEntry, type QuoteDraft, type RawDraft,
 } from '@/lib/quote-draft';
+import {
+  getPropertyIntelligence,
+  summarizePropertyIntelligence,
+  type PropertyIntelligenceSummary,
+} from '@/lib/property-intel';
 
 // The model call behind "Draft this quote".
 //
@@ -24,6 +29,7 @@ export type DraftContext = {
   services: PriceBookEntry[];
   history: HistoricalQuote[];
   refinement?: string | null;
+  propertyIntel?: PropertyIntelligenceSummary | null;
 };
 
 export { QUICK_QUOTE_REFINE_CHIPS } from '@/lib/quote-draft';
@@ -31,9 +37,8 @@ export { QUICK_QUOTE_REFINE_CHIPS } from '@/lib/quote-draft';
 /**
  * Everything the drafter needs, in one place.
  *
- * Deliberately does NOT load the client's name, phone, email or address. None
- * of them make a price better, and the less that leaves the building the
- * better — see formatQuoteHistory.
+ * Deliberately does NOT load the client's name, phone, email or address into the prompt.
+ * Only verified geometric measurements (e.g. roof squares, footprint sq ft) are passed.
  */
 export async function loadDraftContext(
   supabase: SupabaseClient,
@@ -43,13 +48,13 @@ export async function loadDraftContext(
 ): Promise<DraftContext | null> {
   const { data: job } = await supabase
     .from('jobs')
-    .select('id, scope, estimated_hours')
+    .select('id, scope, estimated_hours, address')
     .eq('account_id', accountId)
     .eq('id', jobId)
     .maybeSingle();
   if (!job) return null;
 
-  const [services, { data: site }, { data: past }] = await Promise.all([
+  const [services, { data: site }, { data: past }, propertyIntel] = await Promise.all([
     listServices(supabase, accountId, { activeOnly: true }),
     // The trade lives in the website's content, not on the account — it's the
     // owner's own words for what they do ("window cleaning", "roofing"), which
@@ -65,6 +70,10 @@ export async function loadDraftContext(
       .gt('quoted_amount', 0)
       .order('created_at', { ascending: false })
       .limit(MAX_HISTORY_JOBS * 2),
+    // If the job has an address, fetch property & roof measurements to size quantities accurately
+    typeof job.address === 'string' && job.address.trim().length >= 5
+      ? getPropertyIntelligence({ address: job.address.trim() }).catch(() => null)
+      : Promise.resolve(null),
   ]);
 
   const history: HistoricalQuote[] = (past ?? []).map((row) => ({
@@ -87,6 +96,7 @@ export async function loadDraftContext(
     })),
     history,
     refinement: refinement?.trim() || null,
+    propertyIntel: summarizePropertyIntelligence(propertyIntel),
   };
 }
 
@@ -106,6 +116,42 @@ export function buildDraftInstructions(context: DraftContext): string {
   const book = formatPriceBook(context.services);
   const history = formatQuoteHistory(context.history);
 
+  const propertyLines = context.propertyIntel
+    ? [
+        'VERIFIED PROPERTY & ROOF MEASUREMENTS (Use for accurate quantities and sizing):',
+        context.propertyIntel.yearBuilt
+          ? `- Year Built: ${context.propertyIntel.yearBuilt}${context.propertyIntel.isPre1978LeadRisk ? ' (Pre-1978 structure: consider EPA Lead-Safe certified protocols if disturbing painted surfaces/pipes)' : ''}`
+          : '',
+        context.propertyIntel.livingAreaSqFt
+          ? `- Interior Living Area: ${context.propertyIntel.livingAreaSqFt.toLocaleString()} sq ft`
+          : '',
+        context.propertyIntel.lotSizeAcres || context.propertyIntel.lotSizeSqFt
+          ? `- Total Lot Size: ${context.propertyIntel.lotSizeAcres ? `${context.propertyIntel.lotSizeAcres} acres` : ''}${context.propertyIntel.lotSizeSqFt ? ` (${context.propertyIntel.lotSizeSqFt.toLocaleString()} sq ft)` : ''}`
+          : '',
+        context.propertyIntel.stories ? `- Stories: ${context.propertyIntel.stories}` : '',
+        context.propertyIntel.bedrooms || context.propertyIntel.bathrooms
+          ? `- Layout: ${context.propertyIntel.bedrooms ?? '?'} beds / ${context.propertyIntel.bathrooms ?? '?'} baths`
+          : '',
+        context.propertyIntel.heatingFuel ? `- Heating Fuel: ${context.propertyIntel.heatingFuel}` : '',
+        context.propertyIntel.foundationType ? `- Foundation: ${context.propertyIntel.foundationType}` : '',
+        context.propertyIntel.totalRoofAreaSqFt
+          ? `- Total Roof Area: ${context.propertyIntel.totalRoofAreaSqFt.toLocaleString()} sq ft (${context.propertyIntel.roofingSquares ?? Math.round(context.propertyIntel.totalRoofAreaSqFt / 100)} roofing squares)`
+          : '',
+        context.propertyIntel.groundFootprintSqFt
+          ? `- Building Ground Footprint: ${context.propertyIntel.groundFootprintSqFt.toLocaleString()} sq ft`
+          : '',
+        context.propertyIntel.dominantPitch
+          ? `- Roof Pitch: ${context.propertyIntel.dominantPitch}${context.propertyIntel.isSteep ? ' (Steep slope - include steep safety/labor adder if applicable)' : ''}`
+          : '',
+        context.propertyIntel.complexityLabel
+          ? `- Roof Complexity: ${context.propertyIntel.complexityLabel}`
+          : '',
+        context.propertyIntel.solarPanelCapacity
+          ? `- Max Solar Capacity: ~${context.propertyIntel.solarPanelCapacity} panels`
+          : '',
+      ].filter(Boolean).join('\n')
+    : '';
+
   return [
     `You draft an itemized quote for a ${context.trade || 'home services'} contractor to review before they send it.`,
     'You are drafting FOR THE CONTRACTOR, not for their customer: be specific and practical, not reassuring.',
@@ -116,6 +162,7 @@ export function buildDraftInstructions(context: DraftContext): string {
     '',
     history ? `WHAT THEY HAVE CHARGED RECENTLY (their real quotes):\n${history}` : '',
     '',
+    propertyLines ? `${propertyLines}\n` : '',
     'Return STRICT JSON only:',
     '{"lines":[{"label":"<what the line is>","service":"<exact price-book name, or omit>","quantity":<number|null>,',
     '"amount":<number>,"kind":"base"|"addon","priced_from":"book"|"history"|"estimate","note":"<short, optional>"}],',
@@ -127,6 +174,7 @@ export function buildDraftInstructions(context: DraftContext): string {
     `  A quick service call is 1-2 lines. Substantial work (a replacement, a repipe, a re-roof) is 4-8 lines covering the real components a tradesperson knows it takes: access and demolition, materials, labour, fixtures or units, permits and inspection where that trade requires them, and making good afterwards. Never more than ${MAX_DRAFT_LINES}.`,
     '- Do NOT pad. Every line must be work somebody actually does on this job; if you would struggle to justify it to the customer, leave it out. A line the contractor has to delete costs them more attention than one they have to add.',
     '- When a line matches a price-book service, put that service name in "service" EXACTLY as written above, and set "quantity" (hours, sqft, or how many of that flat job). The contractor\'s own price will be applied — your "amount" is only a sanity check.',
+    '- When property dimensions are provided above, use the verified square footage, squares, and pitch for quantities and line items.',
     '- When nothing in the book matches, omit "service" and price it yourself. Set priced_from to "history" whenever you leaned on their recent quotes above — including scaling one of them up or down — and "estimate" only when you priced it from general knowledge of the trade. Be honest about this; the contractor is shown which is which.',
     '- Prefer their own numbers over national averages. These are the prices this business actually gets in its own market.',
     '- Put genuinely optional work in "kind":"addon". Do not invent add-ons to make the quote look thorough.',
