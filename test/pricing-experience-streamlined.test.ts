@@ -16,8 +16,8 @@ describe('Problem 5: Streamlining Pricing Decision Architecture', () => {
     });
 
     it('provides primary and secondary CTAs in hero', () => {
-      expect(PRICING_EXPERIENCE).toContain('Start free &rarr;');
-      expect(PRICING_EXPERIENCE).toContain('Find my plan &darr;');
+      expect(PRICING_EXPERIENCE).toContain('See plans &darr;');
+      expect(PRICING_EXPERIENCE).toContain('Find my plan &rarr;');
       expect(PRICING_EXPERIENCE).toContain('href="#plans"');
       expect(PRICING_EXPERIENCE).toContain('href="#recommender"');
     });
@@ -32,7 +32,7 @@ describe('Problem 5: Streamlining Pricing Decision Architecture', () => {
 
     it('renders a unified recommendation card with winner, reason, cost breakdown, alternative, and crossover', () => {
       expect(PRICING_EXPERIENCE).toContain('★ Recommended Fit');
-      expect(PRICING_EXPERIENCE).toContain('Estimated Effective Monthly Cost');
+      expect(PRICING_EXPERIENCE).toContain('Estimated LGQ Monthly Cost');
       expect(PRICING_EXPERIENCE).toContain('Base Subscription');
       expect(PRICING_EXPERIENCE).toContain('LGQ Platform Fee');
       expect(PRICING_EXPERIENCE).toContain('Closest Alternative:');

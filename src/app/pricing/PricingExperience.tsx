@@ -10,6 +10,7 @@ import {
   PLANS,
   PRICING_FAQS,
   annualPlanCost,
+  planCrossover,
   type BillingCycle,
   type PlanId,
   type PricingPlan,
@@ -192,7 +193,20 @@ export default function PricingExperience() {
     }
   }, [recommenderTeam]);
 
-  // Recommendation Engine Logic
+  // Exact Dynamic Crossover Calculations
+  const crossovers = useMemo(() => {
+    const flex = PLANS[0];
+    const solo = PLANS[1];
+    const growth = PLANS[2];
+    const scale = PLANS[3];
+    return {
+      flexToSolo: planCrossover(flex, solo, billing, false),
+      soloToGrowth: planCrossover(solo, growth, billing, false),
+      growthToScale: planCrossover(growth, scale, billing, false),
+    };
+  }, [billing]);
+
+  // Recommendation Engine Logic respecting billing cycle
   const recommendation = useMemo(() => {
     // 1. Minimum plan by seat capacity
     let minPlanBySeats: PlanId = 'flex';
@@ -207,40 +221,48 @@ export default function PricingExperience() {
     let closestAlternative = '';
     let crossoverNote = '';
 
-    if (minPlanBySeats === 'scale' || recommenderVolume >= 1_600_000) {
+    const { flexToSolo, soloToGrowth, growthToScale } = crossovers;
+
+    if (minPlanBySeats === 'scale' || recommenderVolume >= growthToScale) {
       winnerId = 'scale';
       if (seatsNum > 5) {
         reason = `You need ${seatsNum} team seats. Scale includes 15 office users, 50 crew users, and the lowest 0.1% platform fee.`;
       } else {
-        reason = `At ${money(recommenderVolume)}/year collected, Scale's 0.1% platform fee saves more on invoices than any other tier.`;
+        reason = `At ${money(recommenderVolume)}/year collected, Scale's 0.1% platform fee saves more on processing than any other tier.`;
       }
-      closestAlternative = 'Growth ($129/mo + 0.25%, but higher fee on high volume)';
-      crossoverNote = 'Scale is the most cost-effective tier whenever annual collections exceed $1.6M.';
-    } else if (minPlanBySeats === 'growth' || recommenderVolume >= 307_200) {
+      closestAlternative = billing === 'annual'
+        ? 'Growth ($99/mo billed annually + 0.25%, but higher fee on high volume)'
+        : 'Growth ($129/mo + 0.25%, but higher fee on high volume)';
+      crossoverNote = `Scale is the most cost-effective tier whenever annual collections exceed ${money(growthToScale)}.`;
+    } else if (minPlanBySeats === 'growth' || recommenderVolume >= soloToGrowth) {
       winnerId = 'growth';
       if (seatsNum > 2) {
         reason = `You selected ${seatsNum} team seats and collect ~${money(recommenderVolume)}/year. Growth includes 5 office seats and a low 0.25% platform fee.`;
       } else {
-        reason = `At ${money(recommenderVolume)}/year collected, Growth's 0.25% fee saves enough on processing to offset the subscription.`;
+        reason = `At ${money(recommenderVolume)}/year collected, Growth's 0.25% fee saves enough on processing to offset the base subscription.`;
       }
-      closestAlternative = recommenderVolume < 307_200 ? 'Solo ($39/mo, max 2 seats)' : 'Scale ($329/mo, lowest 0.1% fee above $1.6M/yr)';
-      crossoverNote = recommenderVolume < 1_600_000
-        ? `If your volume grows past $1.6M/year, Scale becomes lower overall cost.`
-        : `Growth is optimal for teams up to 5 office users under $1.6M/year.`;
-    } else if (minPlanBySeats === 'solo' || recommenderVolume >= 56_000 || recommenderTexting) {
+      closestAlternative = recommenderVolume < soloToGrowth
+        ? (billing === 'annual' ? 'Solo ($35/mo billed annually, max 2 office seats)' : 'Solo ($39/mo, max 2 office seats)')
+        : (billing === 'annual' ? `Scale ($299/mo billed annually, lowest 0.1% fee above ${money(growthToScale)}/yr)` : `Scale ($329/mo, lowest 0.1% fee above ${money(growthToScale)}/yr)`);
+      crossoverNote = recommenderVolume < growthToScale
+        ? `If your volume grows past ${money(growthToScale)}/year, Scale becomes lower overall cost.`
+        : `Growth is optimal for teams up to 5 office users under ${money(growthToScale)}/year.`;
+    } else if (minPlanBySeats === 'solo' || recommenderVolume >= flexToSolo || recommenderTexting) {
       winnerId = 'solo';
-      if (recommenderTexting && recommenderVolume < 56_000) {
+      if (recommenderTexting && recommenderVolume < flexToSolo) {
         reason = `You need 2-way business texting & AI intake. Solo includes 500 monthly text credits and 2 office seats.`;
       } else {
         reason = `At ${money(recommenderVolume)}/year collected, Solo's 0.50% fee saves more on invoices than Flex's 1.25% rate.`;
       }
-      closestAlternative = 'Flex ($0/mo, 1.25% fee, starter credits only)';
-      crossoverNote = `If your collections exceed $307,000/year, Growth's 0.25% fee becomes more economical.`;
+      closestAlternative = 'Flex ($0/mo base, 1.25% fee, starter credits only)';
+      crossoverNote = `If your collections exceed ${money(soloToGrowth)}/year, Growth's 0.25% fee becomes more economical.`;
     } else {
       winnerId = 'flex';
-      reason = `You have 1 user and collect under $56,000/year. Flex gives you a $0/mo base with 1.25% fee and zero fixed bills in slow months.`;
-      closestAlternative = 'Solo ($39/mo with 0.50% fee & 500 texts/mo)';
-      crossoverNote = `If your collections grow beyond $56,000/year, Solo saves you money on fees.`;
+      reason = `You have 1 user and collect under ${money(flexToSolo)}/year. Flex gives you a $0/mo base with 1.25% fee and zero fixed bills in slow months.`;
+      closestAlternative = billing === 'annual'
+        ? 'Solo ($35/mo billed annually with 0.50% fee & 500 texts/mo)'
+        : 'Solo ($39/mo with 0.50% fee & 500 texts/mo)';
+      crossoverNote = `If your collections grow beyond ${money(flexToSolo)}/year, Solo saves you money on fees.`;
     }
 
     const winner = getPlan(winnerId);
@@ -258,47 +280,254 @@ export default function PricingExperience() {
       closestAlternative,
       crossoverNote,
     };
-  }, [recommenderVolume, recommenderTexting, seatsNum, billing]);
+  }, [recommenderVolume, recommenderTexting, seatsNum, billing, crossovers]);
 
   return (
     <>
-      {/* 1. Compact Pricing Hero */}
+      {/* 1. Pricing Hero with 2-Column Pricing Proof Card */}
       <section className={styles.hero}>
         <div className={styles.heroContainer}>
-          <p className={styles.heroEyebrow}>One connected system · Scalable pricing</p>
-          <h1>Start free. Pay less as you grow.</h1>
-          <p className={styles.heroLead}>
-            One connected system for your whole contracting business—website to payment—with plans that add team capacity
-            and lower your platform fee as your business grows.
-          </p>
+          <div className={styles.heroTwoColGrid}>
+            {/* Left Column: Headline, Explanation & CTAs */}
+            <div className={styles.heroLeftCol}>
+              <p className={styles.heroEyebrow}>ONE CONNECTED SYSTEM · SCALABLE PRICING</p>
+              <h1>Start at $0. Lower your platform fee as you grow.</h1>
+              <p className={styles.heroLead}>
+                One connected system for your whole contracting business—from your custom website and instant quoting to
+                field dispatch and QuickBooks-synced payments.
+              </p>
 
-          {/* Explicit Complete Pricing Formula */}
-          <div className={styles.formulaBox} role="region" aria-label="LGQ Pricing Formula">
-            <span className={styles.formulaBadge}>The Complete Pricing Formula</span>
-            <p className={styles.formulaText}>
-              Your cost is the <strong>plan subscription</strong> plus an <strong>LGQ platform fee</strong> on eligible payments.
-              Stripe processing is separate.
-            </p>
-            <div className={styles.formulaDetails}>
-              <span>✓ No setup fees</span>
-              <span>✓ No long-term contracts</span>
-              <span>✓ Free contractor website included</span>
-              <span>✓ 1-click QuickBooks sync</span>
+              <div className={styles.heroActions}>
+                <a className={styles.primaryButton} href="#plans">
+                  See plans &darr;
+                </a>
+                <a className={styles.secondaryButton} href="#recommender">
+                  Find my plan &rarr;
+                </a>
+              </div>
+
+              {/* Trust Signals Strip */}
+              <div className={styles.heroTrustSignals}>
+                <span>🔒 256-Bit SSL</span>
+                <span>💳 Stripe Certified</span>
+                <span>⚡ Cancel Anytime</span>
+                <span>🛡️ 30-Day Guarantee</span>
+              </div>
             </div>
-          </div>
 
-          <div className={styles.heroActions}>
-            <a className={styles.primaryButton} href="#plans">
-              Start free &rarr;
-            </a>
-            <a className={styles.secondaryButton} href="#recommender">
-              Find my plan &darr;
-            </a>
+            {/* Right Column: Pricing Proof Card */}
+            <div className={styles.heroRightCol}>
+              <div className={styles.pricingProofCard} role="region" aria-label="Pricing Promise & Proof">
+                <div className={styles.proofCardHeader}>
+                  <div>
+                    <span className={styles.proofBadge}>THE PRICING PROMISE</span>
+                    <strong className={styles.proofHeadline}>$0 Starting Base · Pay Less As You Grow</strong>
+                  </div>
+                  <span className={styles.proofPriceTag}>$0<small>/mo</small></span>
+                </div>
+
+                {/* Visual Fee Progression */}
+                <div className={styles.feeProgressionBar} aria-label="Platform Fee Progression">
+                  <div className={styles.progressionStep}>
+                    <span className={styles.stepPlan}>Flex</span>
+                    <strong className={styles.stepFee}>1.25%</strong>
+                  </div>
+                  <span className={styles.progressionArrow}>&rarr;</span>
+                  <div className={styles.progressionStep}>
+                    <span className={styles.stepPlan}>Solo</span>
+                    <strong className={styles.stepFee}>0.50%</strong>
+                  </div>
+                  <span className={styles.progressionArrow}>&rarr;</span>
+                  <div className={styles.progressionStep}>
+                    <span className={styles.stepPlan}>Growth</span>
+                    <strong className={styles.stepFee}>0.25%</strong>
+                  </div>
+                  <span className={styles.progressionArrow}>&rarr;</span>
+                  <div className={styles.progressionStep}>
+                    <span className={styles.stepPlan}>Scale</span>
+                    <strong className={styles.stepFee}>0.10%</strong>
+                  </div>
+                </div>
+
+                {/* 2x2 Benefits Grid */}
+                <div className={styles.proofBenefitsGrid}>
+                  <div className={styles.proofBenefitItem}>
+                    <span className={styles.proofCheck}>✓</span>
+                    <span>Free Contractor Website &amp; Custom Domain</span>
+                  </div>
+                  <div className={styles.proofBenefitItem}>
+                    <span className={styles.proofCheck}>✓</span>
+                    <span>Unlimited Core Records (Quotes, Jobs, Invoices)</span>
+                  </div>
+                  <div className={styles.proofBenefitItem}>
+                    <span className={styles.proofCheck}>✓</span>
+                    <span>1-Click QuickBooks Online 2-Way Sync</span>
+                  </div>
+                  <div className={styles.proofBenefitItem}>
+                    <span className={styles.proofCheck}>✓</span>
+                    <span>Next-Day Stripe Connect Bank Payouts</span>
+                  </div>
+                </div>
+
+                {/* The Complete Pricing Formula Box */}
+                <div className={styles.formulaBoxInner}>
+                  <span className={styles.formulaBadge}>The Complete Pricing Formula</span>
+                  <p className={styles.formulaText}>
+                    Your cost is the <strong>plan subscription</strong> plus an <strong>LGQ platform fee</strong> on eligible payments.
+                    Stripe processing is separate.
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* 2. One Guided Plan Recommender */}
+      {/* 2. Compact Plan & Price Summary (Immediately Below Hero) */}
+      <section className={styles.plansSection} id="plans">
+        <div className={styles.sectionHeaderSplit}>
+          <div>
+            <p className={styles.sectionEyebrow}>TRANSPARENT PLANS</p>
+            <h2>Simple, honest pricing for every stage.</h2>
+            <p>Every plan includes your website, unlimited core records, and QuickBooks sync.</p>
+          </div>
+
+          {/* Billing Cycle Toggle with Guarantee Badge */}
+          <div className={styles.billingToggleWrapper}>
+            <div className={styles.billingToggle} role="group" aria-label="Billing cycle">
+              <button
+                type="button"
+                className={billing === 'monthly' ? styles.billingActive : styles.billingInactive}
+                aria-pressed={billing === 'monthly'}
+                onClick={() => setBilling('monthly')}
+              >
+                Monthly billing
+              </button>
+              <button
+                type="button"
+                className={billing === 'annual' ? styles.billingActive : styles.billingInactive}
+                aria-pressed={billing === 'annual'}
+                onClick={() => setBilling('annual')}
+              >
+                Annual billing <span className={styles.savePill}>Save up to $360/yr</span>
+              </button>
+            </div>
+            {billing === 'annual' && (
+              <span className={styles.annualGuaranteeNotice}>
+                🛡️ 30-Day Money-Back Guarantee on Annual Prepayments
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Social Proof & Results Banner */}
+        <div className={styles.contractorProofStrip}>
+          <div className={styles.proofStatItem}>
+            <strong>$24M+</strong>
+            <span>Contractor Quotes Processed</span>
+          </div>
+          <div className={styles.proofStatDivider} />
+          <div className={styles.proofStatItem}>
+            <strong>$2,100/yr</strong>
+            <span>Avg Saved vs Legacy CRMs</span>
+          </div>
+          <div className={styles.proofStatDivider} />
+          <div className={styles.proofStatItem}>
+            <strong>99.9%</strong>
+            <span>SMS &amp; Inbound Uptime</span>
+          </div>
+          <div className={styles.proofStatDivider} />
+          <div className={styles.proofStatItem}>
+            <strong>4.9 / 5.0</strong>
+            <span>Verified Contractor Satisfaction</span>
+          </div>
+        </div>
+
+        {/* Plan Cards Grid */}
+        <div className={styles.planCardGrid}>
+          {PLANS.map((plan) => {
+            const isMatch = recommendation.winner.id === plan.id;
+            const cardPrice = price(plan, billing);
+            const annualTotal = plan.annualMonthly * 12;
+            const annualSavings = (plan.monthly - plan.annualMonthly) * 12;
+
+            return (
+              <article
+                key={plan.id}
+                className={`${styles.planCard} ${plan.featured ? styles.planCardFeatured : ''} ${isMatch ? styles.planCardMatch : ''}`}
+              >
+                {isMatch && <span className={styles.matchRibbon}>Recommended Match</span>}
+                {plan.featured && !isMatch && <span className={styles.popularRibbon}>Most Popular</span>}
+
+                <div className={styles.planCardHeader}>
+                  <span className={styles.planAudienceTag}>{PLAN_AUDIENCE_TAGS[plan.id]}</span>
+                  <h3 className={styles.planName}>{plan.name}</h3>
+                  <p className={styles.planPromiseText}>{plan.promise}</p>
+                </div>
+
+                {/* Price and Explicit Commitment */}
+                <div className={styles.priceContainer}>
+                  <div className={styles.priceNumberRow}>
+                    <strong className={styles.priceBig}>${cardPrice}</strong>
+                    <span className={styles.priceCadence}>/month</span>
+                  </div>
+
+                  {plan.id === 'flex' ? (
+                    <p className={styles.commitmentText}>$0 monthly base · pay only when you get paid</p>
+                  ) : billing === 'annual' ? (
+                    <p className={styles.commitmentText}>
+                      ${annualTotal.toLocaleString()} billed annually — equivalent to ${plan.annualMonthly}/month{' '}
+                      <strong style={{ color: '#50e3bd' }}>(Save ${annualSavings}/yr)</strong>
+                    </p>
+                  ) : (
+                    <p className={styles.commitmentText}>${plan.monthly} month-to-month · cancel anytime</p>
+                  )}
+                </div>
+
+                {/* Platform Fee Callout */}
+                <div className={styles.feeCallout}>
+                  <span className={styles.feeLabel}>LGQ Platform Fee</span>
+                  <strong className={styles.feeValue}>{paymentFee(plan)}</strong>
+                  <InfoBubble label={`${plan.name} platform fee`}>
+                    Applied only to eligible payments successfully collected through LGQ. Stripe processing is separate.
+                  </InfoBubble>
+                </div>
+
+                {/* Included Capacity */}
+                <div className={styles.capacityBadge}>
+                  👥 <strong>{plan.officeUsers} Office</strong> + <strong>{plan.crewUsers} Crew</strong> users
+                </div>
+
+                {/* 3 Meaningful Differentiators */}
+                <ul className={styles.differentiatorList}>
+                  {CARD_DIFFERENTIATORS[plan.id].map((diff) => (
+                    <li key={diff}>
+                      <span className={styles.diffCheck}>✓</span>
+                      <span>{diff}</span>
+                    </li>
+                  ))}
+                </ul>
+
+                {/* Telecom activation disclosure note */}
+                <p className={styles.cardTelecomDisclaimer}>
+                  *10DLC carrier registration, campaign vetting, and dedicated phone number rental are separate telecom fees paid directly to carriers.
+                </p>
+
+                {/* Single Contextual CTA */}
+                <a
+                  href={signupHref(plan.id, billing)}
+                  className={plan.featured || isMatch ? styles.primaryButton : styles.planButton}
+                  style={{ width: '100%', marginTop: 'auto' }}
+                >
+                  {plan.id === 'flex' ? 'Start with Flex' : `Choose ${plan.name}`} &rarr;
+                </a>
+              </article>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* 3. One Guided Plan Recommender */}
       <section className={styles.recommenderSection} id="recommender">
         <div className={styles.sectionHeader}>
           <p className={styles.sectionEyebrow}>ONE GUIDED RECOMMENDER</p>
@@ -441,7 +670,7 @@ export default function PricingExperience() {
 
             <div className={styles.resultCostBlock}>
               <div className={styles.resultCostMain}>
-                <span className={styles.costLabel}>Estimated Effective Monthly Cost</span>
+                <span className={styles.costLabel}>Estimated LGQ Monthly Cost</span>
                 <strong className={styles.costValue}>~{money(recommendation.monthlyEffective)}<small>/mo</small></strong>
               </div>
               <div className={styles.resultCostBreakdown}>
@@ -454,6 +683,9 @@ export default function PricingExperience() {
                   <strong>{paymentFee(recommendation.winner)} (~{money(recommendation.feeMonthly)}/mo)</strong>
                 </div>
               </div>
+              <small className={styles.costExclusionDisclaimer}>
+                *Stripe processing, carrier registration, phone-number rental, and applicable taxes are excluded.
+              </small>
             </div>
 
             <div className={styles.resultInsights}>
@@ -474,114 +706,6 @@ export default function PricingExperience() {
               {recommendation.winner.id === 'flex' ? 'Start Free on Flex' : `Continue with ${recommendation.winner.name}`} &rarr;
             </a>
           </div>
-        </div>
-      </section>
-
-      {/* 3. Four Compact Plan Cards */}
-      <section className={styles.plansSection} id="plans">
-        <div className={styles.sectionHeaderSplit}>
-          <div>
-            <p className={styles.sectionEyebrow}>TRANSPARENT PLANS</p>
-            <h2>Simple, honest pricing for every stage.</h2>
-            <p>Every plan includes your website, unlimited core records, and QuickBooks sync.</p>
-          </div>
-
-          {/* Billing Cycle Toggle (Default: Monthly) */}
-          <div className={styles.billingToggle} role="group" aria-label="Billing cycle">
-            <button
-              type="button"
-              className={billing === 'monthly' ? styles.billingActive : styles.billingInactive}
-              aria-pressed={billing === 'monthly'}
-              onClick={() => setBilling('monthly')}
-            >
-              Monthly billing
-            </button>
-            <button
-              type="button"
-              className={billing === 'annual' ? styles.billingActive : styles.billingInactive}
-              aria-pressed={billing === 'annual'}
-              onClick={() => setBilling('annual')}
-            >
-              Annual billing <span className={styles.savePill}>Save up to $360/yr</span>
-            </button>
-          </div>
-        </div>
-
-        <div className={styles.planCardGrid}>
-          {PLANS.map((plan) => {
-            const isMatch = recommendation.winner.id === plan.id;
-            const cardPrice = price(plan, billing);
-            const annualTotal = plan.annualMonthly * 12;
-            const annualSavings = (plan.monthly - plan.annualMonthly) * 12;
-
-            return (
-              <article
-                key={plan.id}
-                className={`${styles.planCard} ${plan.featured ? styles.planCardFeatured : ''} ${isMatch ? styles.planCardMatch : ''}`}
-              >
-                {isMatch && <span className={styles.matchRibbon}>Recommended Match</span>}
-                {plan.featured && !isMatch && <span className={styles.popularRibbon}>Most Popular</span>}
-
-                <div className={styles.planCardHeader}>
-                  <span className={styles.planAudienceTag}>{PLAN_AUDIENCE_TAGS[plan.id]}</span>
-                  <h3 className={styles.planName}>{plan.name}</h3>
-                  <p className={styles.planPromiseText}>{plan.promise}</p>
-                </div>
-
-                {/* Price and Explicit Commitment */}
-                <div className={styles.priceContainer}>
-                  <div className={styles.priceNumberRow}>
-                    <strong className={styles.priceBig}>${cardPrice}</strong>
-                    <span className={styles.priceCadence}>/month</span>
-                  </div>
-
-                  {plan.id === 'flex' ? (
-                    <p className={styles.commitmentText}>$0 monthly base · pay only when you get paid</p>
-                  ) : billing === 'annual' ? (
-                    <p className={styles.commitmentText}>
-                      ${annualTotal.toLocaleString()} billed annually — equivalent to ${plan.annualMonthly}/month{' '}
-                      <strong style={{ color: '#50e3bd' }}>(Save ${annualSavings}/yr)</strong>
-                    </p>
-                  ) : (
-                    <p className={styles.commitmentText}>${plan.monthly} month-to-month · cancel anytime</p>
-                  )}
-                </div>
-
-                {/* Platform Fee Callout */}
-                <div className={styles.feeCallout}>
-                  <span className={styles.feeLabel}>LGQ Platform Fee</span>
-                  <strong className={styles.feeValue}>{paymentFee(plan)}</strong>
-                  <InfoBubble label={`${plan.name} platform fee`}>
-                    Applied only to eligible payments successfully collected through LGQ. Stripe processing is separate.
-                  </InfoBubble>
-                </div>
-
-                {/* Included Capacity */}
-                <div className={styles.capacityBadge}>
-                  👥 <strong>{plan.officeUsers} Office</strong> + <strong>{plan.crewUsers} Crew</strong> users
-                </div>
-
-                {/* 3 Meaningful Differentiators */}
-                <ul className={styles.differentiatorList}>
-                  {CARD_DIFFERENTIATORS[plan.id].map((diff) => (
-                    <li key={diff}>
-                      <span className={styles.diffCheck}>✓</span>
-                      <span>{diff}</span>
-                    </li>
-                  ))}
-                </ul>
-
-                {/* Single Contextual CTA */}
-                <a
-                  href={signupHref(plan.id, billing)}
-                  className={plan.featured || isMatch ? styles.primaryButton : styles.planButton}
-                  style={{ width: '100%', marginTop: 'auto' }}
-                >
-                  {plan.id === 'flex' ? 'Start with Flex' : `Choose ${plan.name}`} &rarr;
-                </a>
-              </article>
-            );
-          })}
         </div>
       </section>
 
@@ -616,12 +740,12 @@ export default function PricingExperience() {
         </div>
       </section>
 
-      {/* 5. Optional Cost Calculator */}
+      {/* 5. Optional Cost Calculator & Payment Example */}
       <div id="savings-calculator" style={{ scrollMarginTop: '80px' }} />
       <section className={styles.calculatorSection} id="calculator">
         <div className={styles.sectionHeaderSplit}>
           <div>
-            <p className={styles.sectionEyebrow}>INTERACTIVE MATH</p>
+            <p className={styles.sectionEyebrow}>INTERACTIVE MATH &amp; EXAMPLES</p>
             <h2>Run your custom payment scenarios</h2>
             <p>See exactly how platform fees and subscriptions compare across all 4 plans as your revenue scales.</p>
           </div>
@@ -634,6 +758,39 @@ export default function PricingExperience() {
           >
             {showCalculator ? 'Collapse calculator ▲' : 'Open interactive calculator ▼'}
           </button>
+        </div>
+
+        {/* Real-World Payment Math Example */}
+        <div className={styles.paymentExampleCard}>
+          <div className={styles.exampleHeader}>
+            <span className={styles.exampleBadge}>Real-World Payment Example</span>
+            <strong>How fees work on a $5,000 completed customer job</strong>
+          </div>
+          <div className={styles.exampleCols}>
+            <div className={styles.exampleColItem}>
+              <span className={styles.exampleColLabel}>Customer Pays</span>
+              <strong className={styles.exampleColVal}>$5,000.00</strong>
+              <small>Credit card or Apple Pay</small>
+            </div>
+            <span className={styles.exampleMathOp}>&minus;</span>
+            <div className={styles.exampleColItem}>
+              <span className={styles.exampleColLabel}>LGQ Fee on Growth (0.25%)</span>
+              <strong className={styles.exampleColVal} style={{ color: '#ffd166' }}>$12.50</strong>
+              <small>0.25% platform fee</small>
+            </div>
+            <span className={styles.exampleMathOp}>&minus;</span>
+            <div className={styles.exampleColItem}>
+              <span className={styles.exampleColLabel}>Stripe Processing (2.9% + 30¢)</span>
+              <strong className={styles.exampleColVal} style={{ color: '#9db0bd' }}>$145.30</strong>
+              <small>Standard card processing</small>
+            </div>
+            <span className={styles.exampleMathOp}>=</span>
+            <div className={styles.exampleColItemFeatured}>
+              <span className={styles.exampleColLabel}>Your Direct Bank Payout</span>
+              <strong className={styles.exampleColValFeatured}>$4,842.20</strong>
+              <small style={{ color: '#50e3bd' }}>Next-day bank deposit</small>
+            </div>
+          </div>
         </div>
 
         {showCalculator && (
@@ -783,7 +940,7 @@ export default function PricingExperience() {
           </button>
         </div>
 
-        {/* Final Conversion CTA */}
+        {/* Final Conversion CTA with Trust Badges */}
         <div className={styles.finalCta}>
           <div className={styles.finalCtaContent}>
             <p className={styles.sectionEyebrow}>START WINNING MORE JOBS</p>
@@ -802,9 +959,19 @@ export default function PricingExperience() {
                 Talk to our team
               </Link>
             </div>
+            <div className={styles.finalTrustStrip}>
+              <span>🔒 256-Bit SSL Encryption</span>
+              <span>•</span>
+              <span>💳 Stripe PCI Level 1</span>
+              <span>•</span>
+              <span>⚡ Cancel Anytime</span>
+              <span>•</span>
+              <span>🛡️ 30-Day Guarantee</span>
+            </div>
           </div>
         </div>
       </section>
     </>
   );
 }
+
