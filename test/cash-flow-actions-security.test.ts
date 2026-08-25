@@ -21,7 +21,7 @@ describe('Cash Flow Least Privilege & Write Action Security', () => {
         'migrations/20260825150000_office_member_capabilities_and_least_privilege.sql',
       ),
       'utf8',
-    );
+    ).replace(/\r\n/g, '\n');
 
     expect(migrationContent).toContain('create policy scheduled_payments_select on public.scheduled_payments');
     expect(migrationContent).toContain('create policy scheduled_payments_insert on public.scheduled_payments');

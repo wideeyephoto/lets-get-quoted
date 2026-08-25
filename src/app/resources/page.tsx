@@ -33,7 +33,7 @@ export default function ResourcesPage() {
         <div className="cta-band-inner">
           <p className="eyebrow">Ready when you are</p>
           <h2>Put the advice to work.</h2>
-          <p>Start with Flex at $0/month plus a 1.25% LGQ platform fee.</p>
+          <p>Start free — you only pay when a homeowner pays you.</p>
           <div className="actions">
             <a href={APP_SIGNUP_URL} className="btn primary">Build my free site</a>
             <Link href="/features" className="btn secondary">Browse all features</Link>

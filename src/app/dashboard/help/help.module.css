@@ -171,6 +171,82 @@
 }
 .closedNote a { color: var(--ink-sky-1); }
 
+.guidesSection {
+  margin-bottom: 2rem;
+  padding: 1.1rem 1.25rem;
+  border: 1px solid var(--rule-g16);
+  border-radius: 18px;
+  background: rgba(var(--panel-rgb), 0.92);
+}
+
+.guidesHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 0.9rem;
+}
+
+.guidesHead a {
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: var(--accent, #ff5a12);
+  text-decoration: none;
+}
+
+.guidesHead a:hover {
+  text-decoration: underline;
+}
+
+.guidesGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 0.75rem;
+}
+
+.guideCard {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.85rem 1rem;
+  border-radius: 12px;
+  border: 1px solid var(--edge-t12);
+  background: rgba(var(--tint), 0.03);
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.15s ease, transform 0.15s ease, background 0.15s ease;
+}
+
+.guideCard:hover {
+  border-color: var(--cedge-orange-30);
+  background: rgba(255, 90, 18, 0.04);
+  transform: translateY(-2px);
+}
+
+.guideTag {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--accent, #ff5a12);
+}
+
+.guideTitle {
+  font-size: 0.92rem;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--text);
+}
+
+.guideExcerpt {
+  font-size: 0.8rem;
+  color: var(--muted);
+  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
 @media (max-width: 560px) {
   .case { grid-template-columns: minmax(0, 1fr); }
   .status { justify-self: start; }
