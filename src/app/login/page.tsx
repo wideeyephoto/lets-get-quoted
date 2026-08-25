@@ -1,17 +1,23 @@
 'use client';
 
-import { Suspense, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { safeNextPath } from '@/lib/app-origin';
+import { BILLING_PLANS, platformFeePercent } from '@/lib/billing/catalog';
 import {
   PLAN_INTENT_BILLING_PARAM,
   PLAN_INTENT_PLAN_PARAM,
   parsePlanIntent,
-  welcomePathWithPlanIntent,
 } from '@/lib/plan-intent';
+import { getTrade } from '@/lib/trades';
 import { sendMagicLinkAction } from './actions';
 import { normalizeUsPhone } from '@/lib/phone';
 import { supabase } from '@/lib/supabase';
+
+import {
+  parseSignupIntent,
+  serializeSignupIntent,
+} from '@/lib/signup-intent';
 
 function LockIcon() {
   return (
@@ -73,27 +79,36 @@ function MicrosoftIcon() {
 
 function LoginInner() {
   const searchParams = useSearchParams();
-  const isSignup = searchParams.get('intent') === 'signup';
-  // Where to land afterwards. Only ever a path on this site: `safeNextPath`
-  // rejects anything that could leave it, and every sign-in route below runs
-  // the same value through the same function on the server before using it.
-  //
-  // This exists because an office invitation sends an anonymous visitor here and
-  // needs them back at the link afterwards. Before it, all three paths pinned
-  // /dashboard and the destination was silently dropped.
-  //
-  // A visitor arriving from /pricing carries plan= and billing= rather than
-  // next=. They are folded into this same rail instead of getting one of their
-  // own, so there stays exactly one parameter deciding where a signed-in session
-  // lands. An explicit next= always wins: it means somebody was already being
-  // sent somewhere specific, which is not ours to override.
+  const intent = parseSignupIntent(searchParams);
+  const isSignup = searchParams.get('intent') === 'signup' || intent.goal !== 'explore';
+
   const planIntent = parsePlanIntent(
-    searchParams.get(PLAN_INTENT_PLAN_PARAM),
-    searchParams.get(PLAN_INTENT_BILLING_PARAM),
+    intent.plan ?? searchParams.get(PLAN_INTENT_PLAN_PARAM),
+    intent.billing ?? searchParams.get(PLAN_INTENT_BILLING_PARAM),
   );
+  const tradeParam = intent.trade ?? searchParams.get('trade')?.trim() ?? null;
+  const cityParam = intent.city ?? searchParams.get('city')?.trim() ?? null;
+  const matchedTrade = tradeParam ? getTrade(tradeParam) : null;
+
+  // Build welcome destination preserving full signup intent
+  const welcomeParams = serializeSignupIntent(intent);
+  const defaultWelcomeDestination = `/welcome${welcomeParams.toString() ? `?${welcomeParams.toString()}` : ''}`;
+
   const nextPath = safeNextPath(
-    searchParams.get('next') ?? (planIntent ? welcomePathWithPlanIntent(planIntent) : null),
+    searchParams.get('next') ?? (isSignup || planIntent || tradeParam || cityParam ? defaultWelcomeDestination : null),
   );
+
+  const buildToggleUrl = (targetMode: 'signin' | 'signup') => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (targetMode === 'signup') {
+      params.set('intent', 'signup');
+    } else {
+      params.delete('intent');
+    }
+    const q = params.toString();
+    return `/login${q ? `?${q}` : ''}`;
+  };
+
   const [step, setStep] = useState<'request' | 'verify'>('request');
   const [identifier, setIdentifier] = useState('');
   const [normalizedPhone, setNormalizedPhone] = useState('');
@@ -101,10 +116,21 @@ function LoginInner() {
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // Redirect authenticated owners to dashboard/next destination immediately
+  useEffect(() => {
+    let active = true;
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session && active) {
+        window.location.assign(nextPath || '/dashboard');
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, [nextPath]);
+
   async function sendEmailLink(value: string) {
     try {
-      // Where to land after sign-in, as a path. The host is the server's own —
-      // it stopped taking one from here on purpose (see lib/app-origin).
       await sendMagicLinkAction(value, nextPath);
       setMessage('Check your inbox for the magic-link sign-in email.');
       setIdentifier('');
@@ -172,10 +198,6 @@ function LoginInner() {
     setLoading(true);
     setMessage('');
     try {
-      // Verify on the SERVER so the session cookies are written server-side and
-      // are visible to the middleware/server components. The previous
-      // client-side verifyOtp wrote a session the server never accepted, so the
-      // dashboard bounced back to /login. Mirrors the email /auth/callback flow.
       const res = await fetch('/auth/verify-phone', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
@@ -187,7 +209,6 @@ function LoginInner() {
         setLoading(false);
         return;
       }
-      // Cookies are set on the response — a full navigation carries them.
       window.location.assign(nextPath);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'That code could not be verified.');
@@ -221,12 +242,70 @@ function LoginInner() {
     if (error) setMessage(error.message);
   }
 
+  const selectedPlan = planIntent ? BILLING_PLANS[planIntent.planCode] : null;
+  const tradeDisplayName = matchedTrade ? matchedTrade.name : tradeParam ? tradeParam : null;
+
+  const badgeLabel = !isSignup
+    ? 'Secure Sign-In'
+    : selectedPlan
+      ? `${selectedPlan.name} Plan`
+      : tradeDisplayName && cityParam
+        ? `${tradeDisplayName} · ${cityParam}`
+        : tradeDisplayName
+          ? `${tradeDisplayName} Website`
+          : 'Free contractor account';
+
+  const headingText = !isSignup
+    ? 'Sign in'
+    : selectedPlan
+      ? `Sign up with ${selectedPlan.name}`
+      : tradeDisplayName && cityParam
+        ? `Building your ${tradeDisplayName} website for ${cityParam}`
+        : tradeDisplayName
+          ? `Building your ${tradeDisplayName} website`
+          : 'Create your free account';
+
+  let leadText = 'Mobile number or email. No password.';
+  if (isSignup) {
+    if (selectedPlan && planIntent) {
+      const priceText =
+        planIntent.billingInterval === 'annual'
+          ? `$${selectedPlan.annualPriceCents / 12 / 100}/mo billed annually`
+          : `$${selectedPlan.monthlyPriceCents / 100}/mo`;
+      leadText = `You selected ${selectedPlan.name} (${priceText}, ${platformFeePercent(planIntent.planCode)}% fee). ${
+        tradeDisplayName && cityParam
+          ? `Building your ${tradeDisplayName} website for ${cityParam}. `
+          : tradeDisplayName
+            ? `Building your ${tradeDisplayName} website. `
+            : ''
+      }No card required today — start with free setup.`;
+    } else if (tradeDisplayName && cityParam) {
+      leadText = `We will generate your complete website, 24/7 AI quote intake, and service pages for ${cityParam}. Flex plan starts at $0/month.`;
+    } else if (tradeDisplayName) {
+      leadText = `We will generate your complete ${tradeDisplayName} website with AI intake and instant booking. Flex plan starts at $0/month.`;
+    } else if (intent.goal === 'feature' && intent.feature) {
+      const featureNames: Record<string, string> = {
+        quick_stops: 'Quick Stops route-gap filler',
+        ai_intake: '24/7 AI Smart Intake',
+        quotes: 'Instant Quote Builder',
+        scheduling: 'Smart Scheduling & Dispatch',
+        crew: 'Crew & Field Management',
+        payments: 'Card & Tap-to-Pay Processing',
+        reviews: 'Automated Review Collection',
+        cash_flow: 'Cash Flow Protection',
+      };
+      leadText = `Set up your free account to activate ${featureNames[intent.feature] || intent.feature}. Flex plan starts at $0/month.`;
+    } else {
+      leadText = 'Phone or email — no password or card. Flex starts at $0/month plus 1.25%.';
+    }
+  }
+
   return (
     <main className="page-shell">
       <section className="hero-card auth-card">
-        <div className="auth-badge"><LockIcon /><span>{isSignup ? 'Free account' : 'Secure Sign-In'}</span></div>
-        <h1>{isSignup ? 'Create your free account' : 'Sign in'}</h1>
-        <p>{isSignup ? 'Phone or email — no password or card. Flex starts at $0/month plus 1.25%.' : 'Mobile number or email. No password.'}</p>
+        <div className="auth-badge"><LockIcon /><span>{badgeLabel}</span></div>
+        <h1>{headingText}</h1>
+        <p>{leadText}</p>
 
         {step === 'request' ? (
           <form onSubmit={handleIdentifierSubmit} className="auth-form">
@@ -235,7 +314,17 @@ function LoginInner() {
               <IdCardIcon />
               <input id="login-identifier" type="text" value={identifier} onChange={(event) => setIdentifier(event.target.value)} placeholder="(248) 555-0117 or you@company.com" autoComplete="username" required />
             </div>
-            <button type="submit" className="btn primary" disabled={loading}>{loading ? 'Sending…' : <>{isSignup ? 'Create my account' : 'Continue'} <ArrowRightIcon /></>}</button>
+            <button type="submit" className="btn primary" disabled={loading}>
+              {loading ? 'Sending…' : (
+                <>
+                  {selectedPlan
+                    ? `Continue with ${selectedPlan.name}`
+                    : isSignup
+                      ? 'Create my account'
+                      : 'Continue'} <ArrowRightIcon />
+                </>
+              )}
+            </button>
           </form>
         ) : (
           <form onSubmit={verifyPhoneCode} className="auth-form">
@@ -259,18 +348,16 @@ function LoginInner() {
 
         <p className="auth-toggle">
           {isSignup ? (
-            <>Already have an account? <a href="/login">Sign in</a></>
+            <>Already have an account? <a href={buildToggleUrl('signin')}>Sign in</a></>
           ) : (
-            <>New here? <a href="/login?intent=signup">Create a free account</a></>
+            <>New here? <a href={buildToggleUrl('signup')}>Create a free account</a></>
           )}
         </p>
-        {/* "Encrypted" on its own is a word, not a claim — and "we never store
-            passwords" is true only because there are none, which is the
-            interesting part. Say that instead. The disclosure below it is the
-            one thing somebody deciding whether to sign up actually needs. */}
         <p className="auth-trust"><LockIcon /> Passwordless sign-in secured with a one-time code.</p>
         <p className="auth-trust auth-trust-fine">
-          No card required. Platform and Stripe processing fees apply only when you collect a payment.
+          {selectedPlan
+            ? `No card required today. Your ${selectedPlan.name} setup is free — upgrade or change anytime.`
+            : 'No card required. Platform and Stripe processing fees apply only when you collect a payment.'}
         </p>
         <p className="auth-crew-link"><a href="/field/login">On a crew? Open the field app →</a></p>
       </section>
@@ -285,3 +372,4 @@ export default function LoginPage() {
     </Suspense>
   );
 }
+

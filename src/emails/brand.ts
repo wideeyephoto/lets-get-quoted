@@ -525,3 +525,29 @@ ${preheaderBlock(input.preheader ?? '')}
 </table>
 </body></html>`;
 }
+
+/**
+ * Recommends an email theme based on the contractor's website theme template.
+ * Enables the "Match my website" feature so emails harmonize with the web presence.
+ */
+export function recommendEmailTheme(websiteTemplate?: string | null): EmailThemeId {
+  if (!websiteTemplate) return 'studio';
+  const key = websiteTemplate.toLowerCase().trim();
+  switch (key) {
+    case 'carbon': // Forge
+    case 'reno': // Blueprint
+      return 'blueprint';
+    case 'professional': // Guild
+    case 'coat': // Foundry
+      return 'letterhead';
+    case 'handy': // Haven
+    case 'fixit': // Tinker
+      return 'neighborly';
+    case 'shine': // Lustre
+      return 'spotlight';
+    case 'modern': // Vista
+    default:
+      return 'studio';
+  }
+}
+

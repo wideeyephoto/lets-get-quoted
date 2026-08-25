@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { TRADES } from '@/lib/trades';
-import { APP_SIGNUP_URL } from '@/components/marketing/links';
+import { buildStartUrl } from '@/lib/signup-intent';
 import styles from './trade-website-generator.module.css';
 
 const POPULAR_TRADE_SLUGS = [
@@ -50,7 +50,13 @@ export default function TradeWebsiteGenerator() {
     est: '$1,500–$4,000',
   };
 
-  const signupUrl = `${APP_SIGNUP_URL}&trade=${selectedTrade.slug}&city=${encodeURIComponent(city)}`;
+  const signupUrl = buildStartUrl({
+    goal: 'build_site',
+    trade: selectedTrade.slug,
+    city,
+    businessName,
+    source: 'site_generator',
+  });
 
   return (
     <section className={styles.container} id="trade-preview-generator" aria-label="Interactive Contractor Website Generator">

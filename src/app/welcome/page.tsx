@@ -9,35 +9,35 @@ import { TRADES } from '@/lib/trades';
 import { initialBusinessName, needsFirstRun, TERMS_EFFECTIVE_DATE } from '@/lib/terms';
 import WelcomeForm from './WelcomeForm';
 
+import { parseSignupIntent, resolveDestination } from '@/lib/signup-intent';
+
 export const metadata: Metadata = {
   title: 'Welcome',
   robots: { index: false, follow: false },
 };
 
-// First run. Two questions and the Terms — one screen, because the agreement has
-// to be collected before anyone stores a customer's phone number, and making
-// that a separate interstitial on top of a separate setup step would be two
-// walls in a row.
-//
-// skipFirstRunGate: requireOwnerContext sends un-accepted owners here, so this
-// page must not be gated by it or it would redirect to itself forever.
 export default async function WelcomePage({
   searchParams,
 }: {
-  searchParams: { plan?: string; billing?: string };
+  searchParams: Record<string, string | string[] | undefined>;
 }) {
   const { supabase, accountId } = await requireOwnerContext({ skipFirstRunGate: true });
 
-  // Carried here from /pricing via /login's `next`. Parsed on the server so the
-  // form is handed a value that is already known to name a paid plan.
-  // Only acknowledged when the checkout that would honour it actually exists.
-  // The redirect was already gated; the SENTENCE was not, so a visitor who
-  // clicked "Choose Scale" was told "we'll set you up on Scale" and then landed
-  // in the site builder with no way to buy anything. The intent is still
-  // recorded either way -- see completeFirstRunAction.
+  const flatParams: Record<string, string | null> = {};
+  for (const [key, value] of Object.entries(searchParams)) {
+    if (typeof value === 'string') {
+      flatParams[key] = value;
+    } else if (Array.isArray(value) && value.length > 0) {
+      flatParams[key] = value[0];
+    }
+  }
+
+  const intent = parseSignupIntent(flatParams);
   const canSellPlans = planUsageDashboardEnabled() && basePlanSubscriptionCheckoutEnabled();
-  const planIntent = parsePlanIntent(searchParams.plan ?? null, searchParams.billing ?? null);
-  const acknowledgePlan = canSellPlans ? planIntent : null;
+  const planIntent = parsePlanIntent(intent.plan ?? null, intent.billing ?? null);
+  const tradeParam = (typeof searchParams?.trade === 'string' ? searchParams.trade : null) || intent.trade;
+  const cityParam = (typeof searchParams?.city === 'string' ? searchParams.city : null) || intent.city;
+  const matchedTrade = tradeParam ? (TRADES.find((t) => t.slug === tradeParam) ?? null) : null;
 
   const { data: account } = await supabase
     .from('accounts')
@@ -45,17 +45,11 @@ export default async function WelcomePage({
     .eq('id', accountId)
     .maybeSingle();
 
-  // Already done — nothing to ask. Reachable by typing the URL or by going Back,
-  // and also by an existing owner who clicked a plan on /pricing: they have no
-  // first run left to do, so carry them the last hop rather than dropping the
-  // choice at the door. Only when the checkout is actually rendered, though.
+  // Already done — send directly to intended destination
   if (!needsFirstRun(account)) {
-    redirect(acknowledgePlan ? planCheckoutPath(acknowledgePlan) : '/dashboard');
+    redirect(canSellPlans && planIntent ? planCheckoutPath(planIntent) : resolveDestination(intent, 'active'));
   }
 
-  // The name an existing owner actually recognizes — see initialBusinessName.
-  // Read separately (not joined) so a site that doesn't exist yet, which is the
-  // normal case at first run, is simply an empty field rather than an error.
   const { data: site } = await supabase
     .from('sites')
     .select('company_name')
@@ -65,6 +59,15 @@ export default async function WelcomePage({
   const trades = TRADES.map((trade) => ({ slug: trade.slug, name: trade.name }));
   const returning = Boolean(account?.terms_accepted_at);
 
+  const cityNameClean = cityParam ? cityParam.split(',')[0].trim() : '';
+  const suggestedBusinessName =
+    intent.businessName ||
+    (!initialBusinessName(account, site?.company_name) && matchedTrade && cityNameClean
+      ? `${cityNameClean} ${matchedTrade.name.replace(/s$/, '')} Co.`
+      : initialBusinessName(account, site?.company_name));
+
+  const acknowledgePlan = planIntent;
+
   return (
     <main className="page-shell">
       <div className="hero-card auth-card">
@@ -73,23 +76,41 @@ export default async function WelcomePage({
         <p className="welcome-lead">
           {returning
             ? `Our Terms of Service changed, effective ${TERMS_EFFECTIVE_DATE}. Have a read and accept them to carry on where you left off.`
-            : 'Three quick things and we can build your whole website from them. You can change any of it later in Settings.'}
+            : matchedTrade && cityParam
+              ? `We're setting up your ${matchedTrade.name} website for ${cityParam}. Three quick things and we can build your whole website from them.`
+              : matchedTrade
+                ? `We're setting up your ${matchedTrade.name} website. Three quick things and we can build your whole website from them.`
+                : 'Three quick things and we can build your whole website from them. You can change any of it later in Settings.'}
         </p>
 
         {acknowledgePlan ? (
           <p className="welcome-lead">
-            We&apos;ll set you up on <strong>{BILLING_PLANS[acknowledgePlan.planCode].name}</strong>
-            {acknowledgePlan.billingInterval === 'annual' ? ', billed annually' : ', billed monthly'}. Nothing is charged
-            while you finish setting up, and you can change plan any time.
+            {canSellPlans ? (
+              <>
+                We&apos;ll set you up on <strong>{BILLING_PLANS[acknowledgePlan.planCode].name}</strong>
+                {acknowledgePlan.billingInterval === 'annual' ? ', billed annually' : ', billed monthly'}. Nothing is charged
+                while you finish setting up, and you can change plan any time.
+              </>
+            ) : (
+              <>
+                You selected <strong>{BILLING_PLANS[acknowledgePlan.planCode].name}</strong>
+                {acknowledgePlan.billingInterval === 'annual' ? ' (billed annually)' : ' (billed monthly)'}. Your preference is saved, and your account begins on the free <strong>Flex</strong> plan ($0/mo). You can upgrade anytime from Settings.
+              </>
+            )}
           </p>
         ) : null}
 
         <WelcomeForm
-          initialBusinessName={initialBusinessName(account, site?.company_name)}
+          initialBusinessName={suggestedBusinessName}
           initialPostalCode={(account as { postal_code?: string | null } | null)?.postal_code ?? ''}
+          initialTrade={account?.trade || matchedTrade?.slug || ''}
           trades={trades}
           planCode={planIntent?.planCode ?? null}
           billingInterval={planIntent?.billingInterval ?? null}
+          goal={intent.goal}
+          feature={intent.feature}
+          city={cityParam}
+          next={intent.next}
         />
       </div>
     </main>

@@ -148,6 +148,29 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 
+  // A signed-in contractor requesting /login (or /login?intent=signup) is already
+  // authenticated. Forward them to next, welcome with intent params, or dashboard.
+  if (user && request.nextUrl.pathname === '/login') {
+    const rawNext = request.nextUrl.searchParams.get('next');
+    const plan = request.nextUrl.searchParams.get('plan');
+    const billing = request.nextUrl.searchParams.get('billing');
+    const trade = request.nextUrl.searchParams.get('trade');
+    const city = request.nextUrl.searchParams.get('city');
+
+    let destination = '/dashboard';
+    if (rawNext && rawNext.startsWith('/')) {
+      destination = rawNext;
+    } else if (plan || trade || city) {
+      const p = new URLSearchParams();
+      if (plan) p.set('plan', plan);
+      if (billing) p.set('billing', billing);
+      if (trade) p.set('trade', trade);
+      if (city) p.set('city', city);
+      destination = `/welcome?${p.toString()}`;
+    }
+    return NextResponse.redirect(new URL(destination, request.url));
+  }
+
   // ── One host for the public site ──────────────────────────────────────────
   // The other half of the rule above. Every marketing page answered 200 on both
   // letsgetquoted.com and app.letsgetquoted.com while declaring a canonical on

@@ -3,7 +3,7 @@ import { buildFillScheduleCopy, TEMPLATES } from '@/lib/campaign-templates';
 import type { CampaignDraft } from '@/lib/marketing-draft-data';
 import type { ArrivalAnalytics } from '@/lib/arrival-analytics-data';
 import { summariseArrivals } from '@/lib/arrival-analytics';
-import { DEMO_ACCOUNT_ID, DEMO_COMPANY_NAME, DEMO_SITE_HOST } from '@/lib/demo-data';
+import { DEMO_ACCOUNT_ID, DEMO_COMPANY_NAME } from '@/lib/demo-data';
 import { demoSupabase } from '@/lib/demo-rows';
 import InsightsScreen from '@/app/dashboard/insights/InsightsScreen';
 
@@ -64,7 +64,7 @@ export default async function DemoInsightsPage({
   const fillCopy = buildFillScheduleCopy({
     businessName: DEMO_COMPANY_NAME,
     openSlotCount: insights.scheduleUtilization.openDays,
-    bookingUrl: `https://${DEMO_SITE_HOST}/book`,
+    bookingUrl: '/demo/schedule/booking',
   });
   const fillDraft: CampaignDraft = {
     channel: fillMeta.defaultChannel,

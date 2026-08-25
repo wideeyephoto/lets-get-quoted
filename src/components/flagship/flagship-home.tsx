@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import Link from 'next/link';
 import { SiteFooter, SiteHeader } from './site-chrome';
+import { BRAND_POSITIONING } from '@/lib/brand-messaging';
 import { COMMAND_CENTER_SCREENS } from '@/components/command-center-deck';
 import HeroShowcase from './hero-showcase';
 import { HOME_FAQS } from '@/lib/home-faqs';
@@ -22,7 +23,7 @@ const CommandCenterDeck = dynamic(() => import('@/components/command-center-deck
    declare its own copy of the URL and then say three different things next to
    it — "Start free" at the price, "Create my account" at the close, and
    whatever the header said above both. */
-import { SIGNUP_URL, SIGNUP_LABEL } from './site-chrome';
+import { SIGNUP_LABEL } from './site-chrome';
 
 /**
  * THREE DECLARED PLANES.
@@ -46,30 +47,16 @@ const PLANE_TRAVEL = 118;
 const cssVars = (vars: Record<string, string | number>) => vars as React.CSSProperties;
 
 /**
- * ONE NAVIGATION STRIP UNDER THE HERO, NOT TWO.
+ * THREE NON-COMPETING PROOF POINTS UNDER THE HERO.
  *
- * There were eight links between the hero and the first real section: four
- * outcome badges (Plan & Schedule, Automate & Follow Up, Get Paid Faster, Grow
- * Your Business) and these four tiles. Eight choices before a visitor has been
- * told anything is not navigation, it is a decision they have no basis to make
- * — and the two rows overlapped, because "Get Paid Faster" and "Back office
- * included · Quote, schedule and collect" are the same claim at two levels of
- * abstraction.
- *
- * The concrete one survives. It names things that exist rather than outcomes,
- * so it also says what the product IS while it is offering somewhere to go.
- *
- * AND IT GOES STRAIGHT TO THE FEATURE PAGES. These used to point at the card
- * index (/features#website-builder), which was a summary of a summary — one
- * more click to reach the page that actually answers the tile. The four groups
- * on /features are still linked, from the suite cards further down, where the
- * broader framing is what the visitor is looking at.
+ * Replaces the four linked feature tiles with clear, static proof points so
+ * the first viewport remains uncluttered and easy to digest before the visitor
+ * sees the 5-step workflow below.
  */
-const PROMISES = [
-  { label: 'WEBSITE INCLUDED', blurb: 'One-click AI builder', href: '/features/website-builder' },
-  { label: 'SMART INTAKE INCLUDED', blurb: 'Qualify every request', href: '/features/ai-intake' },
-  { label: 'BACK OFFICE INCLUDED', blurb: 'Quote, schedule and collect', href: '/features/back-office' },
-  { label: 'QUICK STOPS INCLUDED', blurb: 'Paid priority visits nearby', href: '/features/quick-stops' },
+const PROOF_POINTS = [
+  { label: 'FREE WEBSITE INCLUDED', blurb: 'Launch with instant estimate' },
+  { label: 'NO CARD REQUIRED', blurb: 'Flex plan starts at $0/month' },
+  { label: 'QUOTE-TO-PAYMENT WORKFLOW', blurb: 'One connected system' },
 ];
 
 /**
@@ -628,25 +615,16 @@ export default function FlagshipHome() {
             headline, the buttons and the product frame. */}
         <TradeOrbit />
         <div className="hero-copy" data-rise>
-          <h1>Run your contracting business.<br /><em>All in one place.</em></h1>
+          <p className="eyebrow"><span>✦</span> CONTRACTOR SOFTWARE—STARTING WITH A FREE WEBSITE</p>
+          <h1>From first click to final payment.<br /><em>Run it all in one place.</em></h1>
           <p className="hero-sub">
-            From jobs to payments, automations to Quick Stops, LGQ helps you save time, earn more,
-            and stay organized.
+            Build your website, qualify leads, send quotes, schedule work, manage your crew, and collect payment without switching tools.
           </p>
           <div className="hero-actions">
-            {/* SIGNUP_LABEL, not a fifth spelling of it. This button was the
-                last "Create Free Account" on the site — the label site-chrome's
-                own note records losing to "Build my free site", on the one page
-                where the free site IS the offer. The header directly above it
-                and the phone bar below it both already said the other thing. */}
-            <a className="button primary" href={SIGNUP_URL} ref={heroCtaRef}>{SIGNUP_LABEL} <span>→</span></a>
-            <a className="button secondary" href="/demo">Try the Demo</a>
+            <a className="button primary" href="https://app.letsgetquoted.com/start?goal=build_site&source=home_hero" ref={heroCtaRef}>{SIGNUP_LABEL} <span>→</span></a>
+            <a className="button secondary" href="#workflow">See the full workflow</a>
           </div>
           <p className="hero-note"><i>✓</i> Flex starts at $0/month + 1.25% &nbsp;·&nbsp; No credit card</p>
-
-          {/* The four outcome badges sat here. Removed — see PROMISES above:
-              they were the second of two navigation strips in the same screen,
-              and the concrete one is the one worth keeping. */}
         </div>
 
         <div className="hero-product">
@@ -654,21 +632,40 @@ export default function FlagshipHome() {
         </div>
       </section>
 
-      {/* THE ANCHOR IS INSIDE THE CELL, NOT INSTEAD OF IT.
-          Every rule that draws this strip — the four-column grid, the hairline
-          borders, the corner number, the left rule that fills on hover, and
-          four separate padding values across three breakpoints — is written
-          against `.trust-strip span`, and most of it comes from the generated
-          source rather than from TWEAKS, so it cannot be re-aimed at an `a`.
-          The span stays the cell; the link fills it. Its padding moves onto the
-          anchor so the whole cell is the target and not just the two lines of
-          text (see §95 in the generator). */}
-      <section className="trust-strip" aria-label="What's included">
-        {PROMISES.map(({ label, blurb, href }) => (
+      {/* THREE STATIC PROOF POINTS */}
+      <section className="trust-strip trust-strip-3" aria-label="Key guarantees">
+        {PROOF_POINTS.map(({ label, blurb }) => (
           <span key={label}>
-            <Link href={href}><b>{label}</b> {blurb}</Link>
+            <b>{label}</b> {blurb}
           </span>
         ))}
+      </section>
+
+      {/* THE 5-STEP CONNECTED WORKFLOW */}
+      <section className="home-workflow" id="workflow" data-track>
+        <Glare />
+        <div className="section-intro" data-rise>
+          <p className="eyebrow"><span>✦</span> THE COMPLETE 5-STEP LIFECYCLE</p>
+          <p className="section-kicker">ONE CONTINUOUS JOURNEY</p>
+          <h2>From first click to<br /><em>final payment in your bank.</em></h2>
+          <p>
+            Every step connects to the next in our <Link href="/features/back-office" style={{ color: '#ffd166', textDecoration: 'underline' }}>connected back office</Link> without copying data, retyping quotes, or losing track of the conversation.
+          </p>
+        </div>
+
+        <div className="workflow-rail" data-rise>
+          {BRAND_POSITIONING.workflowSteps.map((step) => (
+            <article key={step.step} className="workflow-step-card">
+              <span className="workflow-step-num">0{step.step}</span>
+              <p className="workflow-step-kicker">{step.kicker}</p>
+              <h3>{step.name}</h3>
+              <p className="workflow-step-desc">{step.description}</p>
+              <Link className="workflow-step-link" href={step.href}>
+                Learn more <span aria-hidden="true">→</span>
+              </Link>
+            </article>
+          ))}
+        </div>
       </section>
 
       <TradeWebsiteGenerator />
@@ -939,8 +936,7 @@ export default function FlagshipHome() {
               needs somewhere to go, and a sentence-ending text link is not it.
               Secondary, so the primary action still reads as the primary one. */}
           <div className="pricing-actions">
-            <a className="button primary" href={SIGNUP_URL}>{SIGNUP_LABEL} <span>→</span></a>
-            <Link className="button secondary" href="/pricing">
+            <Link className="button primary" href="/pricing">
               Compare plans <span aria-hidden="true">→</span>
             </Link>
           </div>
@@ -952,16 +948,7 @@ export default function FlagshipHome() {
         </div>
       </section>
 
-      {/* The questions, visible.
-          These carry the site's FAQPage structured data, and Google's policy is
-          that marked-up content has to be on the page — schema describing
-          questions nobody can read is grounds for a manual action rather than a
-          rich result. They come from the same array the JSON-LD reads
-          (src/lib/home-faqs.ts), so the two cannot drift.
-
-          <details> rather than an always-open list: seven answers at this
-          length is a wall directly before the closing CTA, and the questions
-          alone are what most people scan for. */}
+      {/* The questions, visible. Condensed to top 3 questions on the homepage. */}
       <section className="home-faq home-faq-dark" id="faq" aria-labelledby="faq-title">
         <Glare />
         <div className="home-faq-head" data-rise>
@@ -969,12 +956,17 @@ export default function FlagshipHome() {
           <h2 id="faq-title">The questions contractors actually ask.</h2>
         </div>
         <div className="home-faq-list">
-          {HOME_FAQS.map((faq) => (
+          {HOME_FAQS.slice(0, 3).map((faq) => (
             <details key={faq.q}>
               <summary>{faq.q}</summary>
               <p>{faq.a}</p>
             </details>
           ))}
+        </div>
+        <div className="home-faq-more" data-rise>
+          <Link className="button secondary" href="/faq">
+            Read all FAQs <span aria-hidden="true">→</span>
+          </Link>
         </div>
       </section>
 
@@ -987,7 +979,7 @@ export default function FlagshipHome() {
         <p className="eyebrow"><span>✦</span> BUILT FOR THE ONE-TRUCK OPERATOR—AND THE CREW DOING $2M</p>
         <h2>One truck or ten crews.<br />Your next stage starts here.</h2>
         <p>Launch the site, connect the work and give your growing business one place to run.</p>
-        <a className="button primary light" href={SIGNUP_URL}>{SIGNUP_LABEL} <span>→</span></a>
+        <a className="button primary light" href="https://app.letsgetquoted.com/start?goal=build_site&source=footer">{SIGNUP_LABEL} <span>→</span></a>
         <small>Flex starts at $0/month · Free onboarding · Cancel anytime from Settings</small>
       </section>
 

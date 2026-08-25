@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { APP_LOGIN_URL, APP_SIGNUP_URL } from '@/components/marketing/links';
+import { APP_SIGNUP_URL } from '@/components/marketing/links';
 
 // Pinned to the top of every /demo page — makes it unmissable that this is a
 // sample account (fictional data, no real business) while funneling visitors
@@ -10,24 +10,19 @@ export default function DemoBanner() {
       <div className="demo-banner">
         <span className="demo-banner-icon" aria-hidden="true">🎬</span>
         <div className="demo-banner-copy">
-          <strong>You&apos;re viewing a live demo.</strong>
+          <strong>Interactive product demo using sample data.</strong>
           <span>
-            Every job, lead, and client here is fictional - this is what a real, established contractor
-            account looks like inside Let&apos;s Get Quoted.
+            No messages, bookings, or payments are sent — this is what an established contractor account looks like inside Let&apos;s Get Quoted.
           </span>
         </div>
         <div className="demo-banner-actions">
-          <Link href="/" className="demo-banner-back">
-            <span aria-hidden="true">←</span> Exit the LIVE Demo
+          <Link href="/demo/tour/site" className="btn primary" style={{ background: '#50e3bd', color: '#09212f', fontWeight: 700 }}>
+            Start 5-min tour &rarr;
           </Link>
-          {/* Plain anchors on the app host. next/link prefetched a bare
-              /login on the marketing host — a route that only ever redirects —
-              on every demo page, and logged an error for each before falling
-              back to a normal navigation. */}
-          <a href={APP_LOGIN_URL} className="btn secondary">
-            Log in
-          </a>
-          <a href={APP_SIGNUP_URL} className="btn primary">
+          <Link href="/" className="demo-banner-back">
+            <span aria-hidden="true">←</span> Exit demo
+          </Link>
+          <a href={APP_SIGNUP_URL} className="btn secondary">
             Build my free site
           </a>
         </div>

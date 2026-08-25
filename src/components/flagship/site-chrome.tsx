@@ -21,7 +21,7 @@ import styles from './flagship.module.css';
  * to a form headed "Sign in", with the actual signup one more click away behind
  * "New here?". The signup screen is the same route with an intent.
  */
-export const SIGNUP_URL = 'https://app.letsgetquoted.com/login?intent=signup';
+export const SIGNUP_URL = 'https://app.letsgetquoted.com/start?goal=build_site&source=nav';
 const LOGIN_URL = 'https://app.letsgetquoted.com/login';
 
 /**
@@ -88,7 +88,7 @@ function useSignedIn(): boolean {
    it among five cards. Second rather than first, so the general list still
    reads before the specific offer. */
 const NAV = [
-  ['/features', 'Features'],
+  ['/features', 'Product'],
   /* "Website" and not "Website + video", which it was for one release. The
      video studio is real and worth selling, but a nav label names the
      destination, and the destination is a website builder — the page behind it
@@ -126,25 +126,81 @@ function BrandMark() {
 export function SiteHeader() {
   const signedIn = useSignedIn();
   const [open, setOpen] = useState(false);
+  const toggleRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const wasOpenRef = useRef(false);
 
-  /* The nav is display:none below 760px, and until now nothing replaced it.
-     Pricing, How it works, For your trade and Founder existed on a phone only
-     in the footer — 18,000px down the homepage. This is the drawer.
-
-     Escape closes it, because a panel that covers the page and traps you in it
-     is worse than no panel. The body scroll lock stops the page drifting
-     underneath the open menu. */
+  /* The nav is display:none below 760px, replaced by this accessible drawer.
+     Traps focus, closes on Escape, restores body scroll, and returns focus to
+     the toggle button upon close. */
   useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    window.addEventListener('keydown', onKey);
-    return () => {
-      window.removeEventListener('keydown', onKey);
-      document.body.style.overflow = previous;
-    };
+    if (open) {
+      wasOpenRef.current = true;
+      const previous = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+
+      // Focus first interactive link or button inside the menu
+      const firstInteractive = menuRef.current?.querySelector<HTMLElement>('a, button');
+      firstInteractive?.focus();
+
+      const onKey = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') {
+          setOpen(false);
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('lgq-menu-toggle', { detail: { open: false } }));
+          }
+          return;
+        }
+
+        // Focus trap inside the drawer
+        if (e.key === 'Tab' && menuRef.current) {
+          const focusables = Array.from(
+            menuRef.current.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])')
+          );
+          if (focusables.length === 0) return;
+          const first = focusables[0];
+          const last = focusables[focusables.length - 1];
+
+          if (e.shiftKey) {
+            if (document.activeElement === first) {
+              last.focus();
+              e.preventDefault();
+            }
+          } else {
+            if (document.activeElement === last) {
+              first.focus();
+              e.preventDefault();
+            }
+          }
+        }
+      };
+
+      window.addEventListener('keydown', onKey);
+      return () => {
+        window.removeEventListener('keydown', onKey);
+        document.body.style.overflow = previous;
+      };
+    } else if (wasOpenRef.current) {
+      toggleRef.current?.focus();
+    }
   }, [open]);
+
+  const toggleMenu = () => {
+    setOpen((v) => {
+      const next = !v;
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('lgq-menu-toggle', { detail: { open: next } }));
+      }
+      return next;
+    });
+  };
+
+  const closeMenu = () => {
+    setOpen(false);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('lgq-menu-toggle', { detail: { open: false } }));
+    }
+  };
 
   const cta = signedIn
     ? { href: '/dashboard', label: 'Dashboard' }
@@ -159,19 +215,17 @@ export function SiteHeader() {
         {NAV.map(([href, label]) => <a key={href} href={href}>{label}</a>)}
       </nav>
       {/* SIGN IN, FOR PEOPLE WHO ALREADY PAID US THE COMPLIMENT.
-          There was no way back into the account from anywhere on the marketing
-          site — every button on every page pointed at signup, so an existing
-          customer landing on the homepage had to know to type the app subdomain.
-          Quiet next to the primary action, because it is not what this page is
-          selling; it is just the door that was missing. */}
+          On mobile (<760px), this and the header CTA hide from the bar row
+          and live cleanly inside the accessible menu drawer. */}
       {!signedIn ? <a className="header-signin" href={LOGIN_URL}>Sign in</a> : null}
       <a className="header-cta" href={cta.href}>{cta.label} <span>→</span></a>
       <button
         type="button"
+        ref={toggleRef}
         className="nav-toggle"
         aria-expanded={open}
         aria-controls="site-menu"
-        onClick={() => setOpen((v) => !v)}
+        onClick={toggleMenu}
       >
         <span className="nav-toggle-bars" aria-hidden="true"><i /><i /><i /></span>
         <span className="sr-only">{open ? 'Close menu' : 'Open menu'}</span>
@@ -179,15 +233,15 @@ export function SiteHeader() {
 
       {/* `hidden` rather than a CSS-only hide: a closed menu must be out of the
           tab order and out of the accessibility tree, not merely invisible. */}
-      <div className="site-menu" id="site-menu" hidden={!open}>
+      <div className="site-menu" id="site-menu" ref={menuRef} hidden={!open}>
         <nav aria-label="Site">
           {NAV.map(([href, label]) => (
-            <a key={href} href={href} onClick={() => setOpen(false)}>{label}</a>
+            <a key={href} href={href} onClick={closeMenu}>{label}</a>
           ))}
         </nav>
-        <a className="site-menu-cta" href={cta.href}>{cta.label} <span>→</span></a>
+        <a className="site-menu-cta" href={cta.href} onClick={closeMenu}>{cta.label} <span>→</span></a>
         {!signedIn ? (
-          <a className="site-menu-signin" href={LOGIN_URL} onClick={() => setOpen(false)}>
+          <a className="site-menu-signin" href={LOGIN_URL} onClick={closeMenu}>
             Already have an account? <b>Sign in</b>
           </a>
         ) : null}
@@ -198,23 +252,6 @@ export function SiteHeader() {
 
 /**
  * THE SAME HEADER, ON A PAGE THAT IS NOT WRITTEN IN THIS LANGUAGE.
- *
- * A flagship page renders <SiteHeader /> inside its own `.root` wrapper,
- * because every rule that styles the header is scoped to that class — dropped
- * in as a bare sibling it comes out as a 600px logo above five run-together
- * links. But `.root` is also a full reset (margins off headings and
- * paragraphs, list styling off ul/ol, decoration off links), so /for, /pricing,
- * /founder and the rest of the public site cannot simply adopt it: their
- * layout comes from globals.css and the reset would take it apart.
- *
- * This wraps the header and nothing else. The reset reaches the eight elements
- * in the bar, the custom properties inherit into it, and the page underneath is
- * untouched. See §100 in the generator for what the wrapper has to reserve and
- * why it takes over the stickiness below 760px.
- *
- * `skipTo` is the page's own main landmark. It has to be rendered here rather
- * than by the page, because the header comes first in the DOM and a skip link
- * written after it is not a skip link.
  */
 export function SiteHeaderSlot({ skipTo = '#main-content' }: { skipTo?: string }) {
   return (
@@ -226,46 +263,23 @@ export function SiteHeaderSlot({ skipTo = '#main-content' }: { skipTo?: string }
 }
 
 /**
- * When the fixed mobile bar should NOT be on screen.
- *
- * Two cases, and they are the same mistake at opposite ends of the page:
- * offering a button that is already there.
- *
- *   - The first screen on a phone carried three "Build my free site" buttons —
- *     the header's, the hero's, and this bar. The homepage already suppressed
- *     the bar while its own hero CTA was in view; /features did not, so it
- *     showed all three.
- *   - At the bottom, the closing CTA band IS the ask, full width, and the bar
- *     floated on top of it and then on top of the footer links.
- *
- * Watching the page's own elements rather than scroll offsets, so this keeps
- * working when a section is added, removed or reordered — which has happened
- * twice to the homepage this week.
+ * When the fixed mobile bar should NOT be on screen:
+ * - When scrolling down
+ * - When hero CTA, final CTA, or footer is visible
+ * - When menu drawer is open
+ * - When an input/textarea is focused (virtual keyboard)
  */
-function useMobileBarVisibility() {
+export function useMobileBarVisibility() {
   const barRef = useRef<HTMLAnchorElement>(null);
 
   useEffect(() => {
     const bar = barRef.current;
     if (!bar || !('IntersectionObserver' in window)) return;
 
-    // The whole hero, not just its button. On /how-it-works the hero CTA sits
-    // under a 400px graphic, so on a phone it is below the fold — the bar
-    // decided it was needed and covered the graphic instead. Every hero on this
-    // site carries its own CTA, so while any part of one is on screen the bar
-    // has nothing to add. Matched positionally rather than by class so a new
-    // page does not have to remember to opt in.
     const zones = [
       document.querySelector('main > section'),
       ...document.querySelectorAll('.final-cta, .page-cta, .hiq-final'),
       ...document.querySelectorAll('footer'),
-      // A PAGE'S OWN STICKY NAVIGATION COUNTS TOO.
-      // /how-it-works carries a sticky bar of its own section anchors. With the
-      // header above it and this bar below, a 390x844 phone was spending 173px
-      // — better than a fifth of the screen — on fixed furniture, and the bar
-      // was covering the headings it was floating over. That nav is the page's
-      // own wayfinding and the header still carries a signup button the whole
-      // way down, so while it is on screen this one has nothing to add.
       ...document.querySelectorAll('.hiq-nav'),
     ].filter((el): el is Element => !!el && el !== bar);
     if (!zones.length) return;
@@ -285,17 +299,6 @@ function useMobileBarVisibility() {
     return () => io.disconnect();
   }, []);
 
-  /* AND IT YIELDS TO THE DIRECTION OF TRAVEL.
-     data-redundant answers "is this offer already on screen", which is the
-     right question at both ends of the page and no question at all in the
-     middle — where the bar is 66px of a 844px phone, fixed, for the whole
-     4,000px between them. Measured on /features at 390x844 it was sitting on a
-     feature card's "Explore feature →" and on a job-record stage tab.
-
-     So: gone while the reader is moving DOWN, back the moment they scroll up,
-     which is when somebody is looking for a control rather than reading. The
-     8px threshold is there because momentum scrolling reports tiny negative
-     deltas on the way down and the bar would otherwise flicker. */
   useEffect(() => {
     const bar = barRef.current;
     if (!bar) return;
@@ -309,8 +312,6 @@ function useMobileBarVisibility() {
         const delta = y - last;
         if (Math.abs(delta) < 8) return;
         last = y;
-        // Near the top there is nothing to hide from, and the hero's own CTA
-        // has usually already stood the bar down anyway.
         bar.setAttribute('data-scroll', delta > 0 && y > 240 ? 'down' : 'up');
       });
     };
@@ -321,44 +322,72 @@ function useMobileBarVisibility() {
     };
   }, [barRef]);
 
+  // Hide on virtual keyboard/input focus & menu toggle events
+  useEffect(() => {
+    const bar = barRef.current;
+    if (!bar) return;
+
+    const onFocusChange = () => {
+      const isInput = ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName || '');
+      bar.setAttribute('data-input-focused', isInput ? 'true' : 'false');
+    };
+
+    const handleMenuState = (e: Event) => {
+      const customEvent = e as CustomEvent<{ open: boolean }>;
+      bar.setAttribute('data-menu-open', customEvent.detail?.open ? 'true' : 'false');
+    };
+
+    window.addEventListener('focusin', onFocusChange);
+    window.addEventListener('focusout', onFocusChange);
+    window.addEventListener('lgq-menu-toggle', handleMenuState);
+
+    return () => {
+      window.removeEventListener('focusin', onFocusChange);
+      window.removeEventListener('focusout', onFocusChange);
+      window.removeEventListener('lgq-menu-toggle', handleMenuState);
+    };
+  }, [barRef]);
+
   return barRef;
+}
+
+export function MobileActionDock({
+  href = SIGNUP_URL,
+  label = SIGNUP_LABEL,
+  signedInHref = '/dashboard',
+  signedInLabel = 'Go to my dashboard',
+}: {
+  href?: string;
+  label?: string;
+  signedInHref?: string;
+  signedInLabel?: string;
+}) {
+  const signedIn = useSignedIn();
+  const barRef = useMobileBarVisibility();
+  return signedIn ? (
+    <a className="mobile-cta" ref={barRef} data-redundant="true" href={signedInHref}>
+      {signedInLabel} <span>→</span>
+    </a>
+  ) : (
+    <a className="mobile-cta" ref={barRef} data-redundant="true" href={href}>
+      {label} <span>→</span>
+    </a>
+  );
 }
 
 export function SiteFooter() {
   const signedIn = useSignedIn();
-  const barRef = useMobileBarVisibility();
   return (
     <>
-      {/* Same reasoning as the header's: on a phone this bar is the only
-          persistent control on the page, and "Build my free site" is the wrong
-          offer for somebody who has already built one. */}
-      {signedIn ? (
-        <a className="mobile-cta" ref={barRef} data-redundant="true" href="/dashboard">Go to my dashboard <span>→</span></a>
-      ) : (
-        <a className="mobile-cta" ref={barRef} data-redundant="true" href={SIGNUP_URL}>{SIGNUP_LABEL} <span>→</span></a>
-      )}
+      <MobileActionDock />
       <footer>
         <a className="brand brand-logo footer-logo" href="/" aria-label="Let’s Get Quoted home">
           <BrandMark />
         </a>
-        {/* FOOTER_PRIMARY, not NAV. The header's NAV is a six-item bar with a
-            length limit; a footer has no such constraint, and using it here
-            meant this footer — the one under the homepage, /features and
-            /how-it-works — was the only one on the site with no path to
-            Resources, the FAQ, Security or the SMS terms. See footer-nav. */}
         <p className="footer-links">
           {FOOTER_PRIMARY.map(([href, label]) => <a key={href} href={href}>{label}</a>)}
-          {/* The footer is where people look for a way in once the top of the
-              page has scrolled away. */}
           {!signedIn ? <a href={LOGIN_URL}>Sign in</a> : null}
         </p>
-        {/* SECURITY, PRIVACY, TERMS AND A WAY TO REACH A HUMAN.
-            All of these routes existed and none of them was linked from
-            anywhere on the marketing site — which for the legal pages is what
-            the footer is for, and for the other two is the thing a contractor
-            looks for before handing over their business. Kept on their own
-            line, quieter than the product nav, because that is the convention
-            people scan for. */}
         <p className="footer-legal">
           {FOOTER_LEGAL.map(([href, label]) => <a key={href} href={href}>{label}</a>)}
         </p>

@@ -10,36 +10,58 @@ type TradeOption = { slug: string; name: string };
 export default function WelcomeForm({
   initialBusinessName,
   initialPostalCode,
+  initialTrade = '',
   trades,
   planCode = null,
   billingInterval = null,
+  goal = 'build_site',
+  feature = null,
+  city = null,
+  next = null,
 }: {
   initialBusinessName: string;
   initialPostalCode: string;
+  initialTrade?: string | null;
   trades: TradeOption[];
-  // The plan chosen on /pricing, already parsed by the server. Passed straight
-  // back to the action, which re-validates it rather than trusting the round
-  // trip, and which decides where to land because the flags are server-only.
   planCode?: string | null;
   billingInterval?: string | null;
+  goal?: string | null;
+  feature?: string | null;
+  city?: string | null;
+  next?: string | null;
 }) {
   const router = useRouter();
   const [businessName, setBusinessName] = useState(initialBusinessName);
-  const [trade, setTrade] = useState('');
+  const [trade, setTrade] = useState(initialTrade || '');
   const [postalCode, setPostalCode] = useState(initialPostalCode);
   const [accepted, setAccepted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [building, setBuilding] = useState(false);
   const [pending, startTransition] = useTransition();
 
+  let submitButtonText = 'Build my free site';
+  if (goal === 'build_site') {
+    submitButtonText = 'Build my website';
+  } else if (goal === 'choose_plan' && planCode) {
+    submitButtonText = `Continue to ${planCode === 'growth' ? 'Growth' : planCode === 'starter' ? 'Starter' : planCode === 'scale' ? 'Scale' : 'Plan'}`;
+  } else if (goal === 'feature' && feature) {
+    const featureLabels: Record<string, string> = {
+      quick_stops: 'Quick Stops',
+      ai_intake: 'AI Intake',
+      quotes: 'Quotes',
+      scheduling: 'Scheduling',
+      crew: 'Crew App',
+      payments: 'Payments',
+      reviews: 'Reviews',
+      cash_flow: 'Cash Flow',
+    };
+    submitButtonText = `Go to ${featureLabels[feature] || feature}`;
+  }
+
   function submit(event: React.FormEvent) {
     event.preventDefault();
     setError(null);
     startTransition(async () => {
-      // Two steps on purpose. Acceptance is a fast database write and must not
-      // be held hostage by a model call; building the site takes several seconds
-      // and can fail. Splitting them means a slow OpenAI day costs a spinner
-      // instead of making signup look broken.
       const result = await completeFirstRunAction({
         businessName,
         trade,
@@ -47,6 +69,9 @@ export default function WelcomeForm({
         accepted,
         plan: planCode,
         billing: billingInterval,
+        goal,
+        feature,
+        next,
       });
       if (!result.ok) {
         setError(result.error);
@@ -54,20 +79,11 @@ export default function WelcomeForm({
       }
 
       setBuilding(true);
-      // Deliberately not awaited into a failure path: whatever happens next, the
-      // account exists and the terms are accepted. A site that didn't build is a
-      // button press away, and trapping someone on this screen over it would be
-      // far worse than landing them in the builder with a note.
       const seeded = await seedSiteFromFirstRunAction();
 
-      // replace, not push — first run is not somewhere Back should return to.
-      //
-      // A plan chosen on /pricing wins over the builder: they asked to buy
-      // something, and the site is a button press away from anywhere. The action
-      // returns null here unless the checkout is switched on, so this falls back
-      // to the builder for as long as paid plans stay dark.
       router.replace(
         result.planCheckoutPath
+          ?? result.destinationPath
           ?? (seeded.ok && seeded.built ? '/dashboard/sites?built=1' : '/dashboard/sites'),
       );
       router.refresh();
@@ -119,7 +135,11 @@ export default function WelcomeForm({
           required
         />
       </label>
-      <p className="welcome-hint">This is what lets us write your whole site about the actual towns you serve, not &ldquo;your local area&rdquo;.</p>
+      <p className="welcome-hint">
+        {city
+          ? `We have your city (${city}), but need your 5-digit ZIP for accurate permit requirements, tax rules, and local Google SEO.`
+          : 'This is what lets us write your whole site about the actual towns you serve, not "your local area".'}
+      </p>
 
       <label className="welcome-accept" htmlFor="wf-accept">
         <input
@@ -145,7 +165,7 @@ export default function WelcomeForm({
       )}
 
       <button className="btn primary" type="submit" disabled={pending}>
-        {building ? 'Building your site…' : pending ? 'Setting up…' : 'Start setting up'}
+        {building ? 'Building your site…' : pending ? 'Setting up…' : `${submitButtonText} →`}
       </button>
     </form>
   );

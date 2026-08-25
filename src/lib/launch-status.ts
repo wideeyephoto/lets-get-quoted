@@ -38,6 +38,8 @@ export const LAUNCH_HEADLINE = 'Let’s Get Quoted is opening to contractors in 
 export const LAUNCH_DETAIL =
   'Text messaging is still going through carrier registration, so automatic texts — quote links, arrival updates, payment requests — are not sending yet. Everything else is live and free to explore.';
 
+export { CAPABILITIES, VERIFIED_CLAIMS, type FeatureStatus } from './product-truth';
+
 export function isLaunchBannerEnabled(): boolean {
   return process.env.NEXT_PUBLIC_LAUNCH_BANNER !== 'off';
 }

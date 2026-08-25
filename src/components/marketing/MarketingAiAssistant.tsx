@@ -167,6 +167,26 @@ const FOLLOW_UP_MAP: Record<string, string[]> = {
 
 const KNOWLEDGE_BASE: FaqItem[] = [
   {
+    id: 'what-is-lgq',
+    title: 'What is Let’s Get Quoted?',
+    keywords: [
+      'what is',
+      'about',
+      'overview',
+      'let\'s get quoted',
+      'lgq',
+      'platform',
+      'system',
+      'how it works',
+      'software',
+      'features',
+    ],
+    answer:
+      'Let’s Get Quoted is one connected system for winning the job, running it, and getting paid—starting with a free contractor website. It connects your website, AI intake, quotes, scheduling, crew management, customer texts, and Stripe payments in one place.',
+    ctaText: 'See The Full Workflow',
+    ctaHref: '/how-it-works',
+  },
+  {
     id: 'quotes',
     title: 'How do Instant Quotes & Estimates work?',
     keywords: [
@@ -203,7 +223,8 @@ const KNOWLEDGE_BASE: FaqItem[] = [
       'fee',
       'fees',
       'flex',
-      'pro',
+      'solo',
+      'growth',
       'scale',
       'plan',
       'plans',
@@ -219,7 +240,7 @@ const KNOWLEDGE_BASE: FaqItem[] = [
       'base price',
     ],
     answer:
-      'Flex has $0 monthly fees and $0 setup cost. You get a custom contractor website, AI quote qualification, scheduling, customer portal, and Stripe payments. You only pay a 1.25% platform fee when a client pays you. Upgrading to Pro ($89/mo) or Scale ($299/mo) drops your fee to 0.45% or 0.10%.',
+      'Flex has $0 monthly fees and $0 setup cost. You get a custom contractor website, AI quote qualification, scheduling, customer portal, and Stripe payments. You only pay a 1.25% platform fee when a client pays you. Upgrading to Solo ($39/mo), Growth ($129/mo), or Scale ($329/mo) drops your fee to 0.50%, 0.25%, or 0.10%.',
     ctaText: 'See Full Pricing Breakdown',
     ctaHref: '/pricing',
   },
@@ -503,19 +524,21 @@ function searchKnowledgeBase(query: string): SearchResult {
   }
 
   return {
-    id: 'quotes',
+    id: 'what-is-lgq',
     query: query.trim(),
-    title: 'Let’s Get Quoted Contractor Platform',
+    title: 'Let’s Get Quoted Contractor Software',
     answer:
-      'Let’s Get Quoted gives trade contractors a free custom website, 24/7 AI instant quotes, deposit collection, and crew scheduling starting at $0/mo. All plans include QuickBooks sync and Stripe bank payouts.',
-    ctaText: 'Explore Features & Pricing',
-    ctaHref: '/pricing',
+      'Let’s Get Quoted is one connected system for winning the job, running it, and getting paid—starting with a free contractor website. It connects your website, AI intake, quotes, scheduling, crew management, customer texts, and Stripe payments in one place.',
+    ctaText: 'See The Full Workflow',
+    ctaHref: '/how-it-works',
   };
 }
 
 export default function MarketingAiAssistant() {
   const pathname = usePathname();
+  const isTargetPage = pathname?.startsWith('/pricing') || pathname?.startsWith('/faq');
   const [isOpen, setIsOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(isTargetPage);
   const [expandedFaqId, setExpandedFaqId] = useState<string | null>(null);
   const [searchResult, setSearchResult] = useState<SearchResult | null>(null);
   const [query, setQuery] = useState('');
@@ -524,6 +547,23 @@ export default function MarketingAiAssistant() {
   const [competitorMonthly, setCompetitorMonthly] = useState<number>(199);
   const [selectedTrade, setSelectedTrade] = useState<string>('all');
   const [isSearching, setIsSearching] = useState(false);
+
+  useEffect(() => {
+    if (isTargetPage) {
+      setScrolled(true);
+      return;
+    }
+    const checkScroll = () => {
+      if (window.scrollY > 350) {
+        setScrolled(true);
+      } else {
+        setScrolled(false);
+      }
+    };
+    checkScroll();
+    window.addEventListener('scroll', checkScroll, { passive: true });
+    return () => window.removeEventListener('scroll', checkScroll);
+  }, [isTargetPage]);
 
   // Quote Simulator state
   const [selectedScenarioId, setSelectedScenarioId] = useState<string>('pipe-emergency');
@@ -537,8 +577,7 @@ export default function MarketingAiAssistant() {
   const drawerRef = useRef<HTMLDivElement>(null);
   const faqRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const searchResultRef = useRef<HTMLDivElement>(null);
-
-  // Close on Escape key
+  // Close on Escape key and body scroll lock when open on mobile
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isOpen) {
@@ -548,6 +587,21 @@ export default function MarketingAiAssistant() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen]);
+
+  // Listen for global open-marketing-assistant events from inline "Questions about this?" buttons
+  useEffect(() => {
+    const handleOpenEvent = (e: Event) => {
+      const customEvent = e as CustomEvent<{ query?: string; faqId?: string }>;
+      setIsOpen(true);
+      if (customEvent.detail?.query) {
+        handleTriggerSearch(customEvent.detail.query);
+      } else if (customEvent.detail?.faqId) {
+        setExpandedFaqId(customEvent.detail.faqId);
+      }
+    };
+    window.addEventListener('open-marketing-assistant', handleOpenEvent);
+    return () => window.removeEventListener('open-marketing-assistant', handleOpenEvent);
+  }, []);
 
   // Contextual page guidance
   const pageGreeting = useMemo(() => {
@@ -566,25 +620,32 @@ export default function MarketingAiAssistant() {
     return '👋 Hi! Ask anything about plans, instant quotes, QuickBooks sync, or switching. Tap a quick question or use the tools below:';
   }, [pathname]);
 
-  // Plan recommendation logic
+  // Plan recommendation logic derived directly from product truth catalog
   const planRecommendation = useMemo(() => {
-    if (monthlyVolume < 15000) {
+    if (monthlyVolume < 6000) {
       return {
         name: 'Flex',
         price: '$0/mo + 1.25%',
         reason: 'Zero fixed overhead keeps 100% of your margin on low or seasonal volume.',
       };
     }
-    if (monthlyVolume <= 45000) {
+    if (monthlyVolume <= 30000) {
       return {
-        name: 'Pro',
-        price: '$89/mo + 0.45%',
-        reason: 'The lower 0.45% rate saves you hundreds over Flex at this volume.',
+        name: 'Solo',
+        price: '$39/mo + 0.50%',
+        reason: 'The lower 0.50% fee and 500 monthly texts save money over Flex for active owner-operators.',
+      };
+    }
+    if (monthlyVolume <= 80000) {
+      return {
+        name: 'Growth',
+        price: '$129/mo + 0.25%',
+        reason: '0.25% platform fee plus team dispatch for 5 office and 10 crew seats.',
       };
     }
     return {
       name: 'Scale',
-      price: '$299/mo + 0.10%',
+      price: '$329/mo + 0.10%',
       reason: 'Ultra-low 0.10% fee maximizes profit for multi-truck crews and high volume.',
     };
   }, [monthlyVolume]);
@@ -657,35 +718,46 @@ export default function MarketingAiAssistant() {
     []
   );
 
-  return (
-    <div className={styles.floatingWrapper}>
-      {/* Floating Trigger Capsule */}
-      {!isOpen && (
-        <button
-          type="button"
-          onClick={() => setIsOpen(true)}
-          className={styles.floatingTrigger}
-          aria-label="Open AI Product Assistant"
-          aria-expanded={isOpen}
-          aria-controls="marketing-ai-assistant-drawer"
-        >
-          <span className={styles.sparkleIcon}>✦</span>
-          <div className={styles.triggerText}>
-            <span className={styles.triggerTitle}>Ask AI Helper</span>
-            <span className={styles.triggerSub}>Plans · Switching · Pricing</span>
-          </div>
-        </button>
-      )}
+  if (!scrolled && !isOpen) {
+    return null;
+  }
 
-      {/* Slide-Up Chat Drawer */}
+  return (
+    <>
       {isOpen && (
         <div
-          id="marketing-ai-assistant-drawer"
-          ref={drawerRef}
-          className={styles.drawer}
-          role="dialog"
-          aria-label="Let’s Get Quoted AI Helper"
-        >
+          className={styles.backdrop}
+          onClick={() => setIsOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+      <div className={`${styles.floatingWrapper} ${isOpen ? styles.wrapperOpen : ''}`}>
+        {/* Floating Trigger Capsule — desktop only */}
+        {!isOpen && (
+          <button
+            type="button"
+            onClick={() => setIsOpen(true)}
+            className={styles.floatingTrigger}
+            aria-label="Open AI Product Assistant"
+            aria-expanded={isOpen}
+            aria-controls="marketing-ai-assistant-drawer"
+          >
+            <span className={styles.sparkleIcon}>✦</span>
+            <div className={styles.triggerText}>
+              <span className={styles.triggerTitle}>Ask AI Helper</span>
+            </div>
+          </button>
+        )}
+
+        {/* Slide-Up Chat Drawer */}
+        {isOpen && (
+          <div
+            id="marketing-ai-assistant-drawer"
+            ref={drawerRef}
+            className={styles.drawer}
+            role="dialog"
+            aria-label="Let’s Get Quoted AI Helper"
+          >
           {/* Header */}
           <div className={styles.drawerHeader}>
             <div className={styles.headerLeft}>
@@ -1079,7 +1151,8 @@ export default function MarketingAiAssistant() {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </>
   );
 }
 

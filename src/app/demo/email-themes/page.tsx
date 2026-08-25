@@ -9,7 +9,9 @@ export default function DemoEmailThemesPage() {
         <div className="workspace-hero-copy">
           <p className="eyebrow">Email design</p>
           <h1 className="workspace-title">Five ways to show up in the inbox</h1>
-          <p className="workspace-lead">Compare the actual email layouts with one example brand and message.</p>
+          <p className="workspace-lead">
+            Compare live production email layouts across quotes, invoices, appointment reminders, campaigns, and account alerts.
+          </p>
         </div>
       </section>
       <EmailThemeSection
@@ -17,6 +19,8 @@ export default function DemoEmailThemesPage() {
         accent="#d65316"
         logoUrl={null}
         currentTheme="studio"
+        websiteTemplate="handy"
+        userEmail="demo-owner@lawnandorder.example.com"
       />
     </main>
   );

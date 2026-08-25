@@ -16,12 +16,11 @@ import {
   postalCodeProblem,
 } from '@/lib/terms';
 
-/**
- * Where the browser should go once first run is saved. The form used to hard-code
- * /dashboard/sites; it is decided here now because honouring a plan choice
- * depends on two server-only flags, and a client cannot read those.
- */
-export type FirstRunResult = { ok: true; planCheckoutPath: string | null } | { ok: false; error: string };
+import { resolveDestination, type SignupGoal, type SignupFeature } from '@/lib/signup-intent';
+
+export type FirstRunResult =
+  | { ok: true; destinationPath: string; planCheckoutPath: string | null }
+  | { ok: false; error: string };
 
 /**
  * The plan a visitor picked on /pricing, if it survived to first run.
@@ -61,6 +60,9 @@ export async function completeFirstRunAction(input: {
   accepted: boolean;
   plan?: string | null;
   billing?: string | null;
+  goal?: string | null;
+  feature?: string | null;
+  next?: string | null;
 }): Promise<FirstRunResult> {
   const { supabase, accountId, userId } = await requireOwnerContext({ skipFirstRunGate: true });
 
@@ -101,11 +103,18 @@ export async function completeFirstRunAction(input: {
   revalidatePath('/dashboard');
 
   const intent = resolvePlanIntent(input);
-  if (!intent) return { ok: true, planCheckoutPath: null };
+  const destinationPath = resolveDestination({
+    goal: (input.goal as SignupGoal) || (input.plan ? 'choose_plan' : 'build_site'),
+    feature: (input.feature as SignupFeature) || null,
+    next: input.next || null,
+  }, 'active');
+
+  if (!intent) {
+    return { ok: true, destinationPath, planCheckoutPath: null };
+  }
 
   // Best-effort and deliberately after the update above: a failure to record
   // what someone wanted must never cost them the account they just created.
-  // recordAccountEvent already swallows its own errors.
   const plan = BILLING_PLANS[intent.planCode];
   await recordAccountEvent({
     accountId,
@@ -114,11 +123,10 @@ export async function completeFirstRunAction(input: {
     meta: { plan_code: intent.planCode, billing_interval: intent.billingInterval, source: 'pricing' },
   });
 
-  // Only send them to the checkout if the checkout is actually there. Both flags
-  // are 0 today, and the Plan & usage tab does not render at all under the first
-  // one -- so honouring the intent right now would mean landing a new customer on
-  // a settings page with nothing on it about plans. The choice is recorded either
-  // way; this decides only whether it can be acted on yet.
   const surfaceIsLive = planUsageDashboardEnabled() && basePlanSubscriptionCheckoutEnabled();
-  return { ok: true, planCheckoutPath: surfaceIsLive ? planCheckoutPath(intent) : null };
+  return {
+    ok: true,
+    destinationPath,
+    planCheckoutPath: surfaceIsLive ? planCheckoutPath(intent) : null,
+  };
 }

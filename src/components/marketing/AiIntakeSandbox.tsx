@@ -176,7 +176,7 @@ export default function AiIntakeSandbox() {
   }, [activePreset, customText]);
 
   return (
-    <section className={styles.container} id="ai-intake-simulator" aria-label="Interactive AI Intake & Lead Scoring Sandbox">
+    <section className={styles.container} id="sandbox" aria-label="Interactive AI Intake & Lead Scoring Sandbox">
       <div className={styles.card}>
         <div className={styles.header}>
           <div className={styles.kicker}>Live Technology Sandbox</div>

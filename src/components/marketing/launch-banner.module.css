@@ -50,37 +50,69 @@
 .inner {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0.35rem 0.75rem;
+  align-items: center;
+  gap: 0.35rem 0.6rem;
   width: min(1180px, 100%);
   margin: 0 auto;
-  padding: 0.6rem clamp(22px, 4.5vw, 78px);
-  font-size: 0.88rem;
-  line-height: 1.5;
+  padding: 0.45rem clamp(22px, 4.5vw, 78px);
+  font-size: 0.84rem;
+  line-height: 1.4;
 }
 
 .badge {
   flex: none;
-  padding: 0.15rem 0.6rem;
+  padding: 0.12rem 0.55rem;
   border-radius: 999px;
   background: #ffd166;
-  /* Dark ink on the gold. #ffd166 as a background needs a dark foreground to
-     clear AA — the same reason --on-accent exists for the orange. */
   color: #180c02;
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   font-weight: 800;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   white-space: nowrap;
 }
 
-.headline {
-  font-weight: 700;
+.summary {
+  font-weight: 500;
   color: #eef5f6;
 }
 
+.detailsTag {
+  display: inline;
+}
+
+.detailsTag[open] {
+  flex-basis: 100%;
+}
+
+.summaryBtn {
+  display: inline;
+  margin-left: 4px;
+  color: #ffd166;
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+  white-space: nowrap;
+  list-style: none;
+}
+
+.summaryBtn::-webkit-details-marker {
+  display: none;
+}
+
+.summaryBtn:hover {
+  color: #ffe6a3;
+}
+
 .detail {
-  color: #9db0bd;
+  flex-basis: 100%;
+  margin: 0.35rem 0 0;
+  padding-top: 0.35rem;
+  border-top: 1px dashed rgba(255, 209, 102, 0.2);
+  color: #b0c4cf;
+  font-size: 0.8rem;
+  line-height: 1.5;
 }
 
 @media (max-width: 640px) {

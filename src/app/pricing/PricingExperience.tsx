@@ -1,70 +1,81 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { APP_SIGNUP_URL } from '@/components/marketing/links';
+import { useMemo, useState, type ReactNode } from 'react';
+import { buildStartUrl } from '@/lib/signup-intent';
 import PricingCalculator from './PricingCalculator';
 import {
   ADD_ONS,
   COMPARISON_ROWS,
-  ENTERPRISE,
   PLANS,
   PRICING_FAQS,
-  annualPlanEstimate,
   annualPlanCost,
-  planCrossover,
-  VOICE_PURCHASABLE,
   type BillingCycle,
   type PlanId,
   type PricingPlan,
 } from './pricing-catalog';
 import styles from './pricing.module.css';
 
-const CARD_FEATURES: Record<PlanId, readonly string[]> = {
+const CARD_DIFFERENTIATORS: Record<PlanId, readonly string[]> = {
   flex: [
-    'Unlimited leads, quotes, jobs & invoices',
-    '1 Office user + 2 Crew users included',
-    'Website text button connects to your business phone',
-    'Custom domain + SEO website included',
-    '1 QuickBooks Online sync included',
+    'No monthly subscription — 100% free when work slows down',
+    '1 office user + 2 crew users with full job & invoice dispatch',
+    'Custom-domain contractor website with standard lead capture forms',
   ],
   solo: [
-    '0.50% lower LGQ platform fee',
-    '500 text credits + 300 AI credits/mo (Intake & Drafts)',
-    '2-way business texting (available after carrier approval)',
-    'Custom domain + SEO website included',
-    '1 QuickBooks Online sync included',
+    '0.50% lower platform fee (pays for itself around $56k/yr)',
+    '2 office users + 2 crew users included',
+    '500 monthly text credits & 300 AI intake/draft credits',
   ],
   growth: [
-    '5 Office users + 10 Crew users included',
-    '0.25% platform fee (save on every invoice)',
-    '1,500 text credits + 750 AI credits/mo (Intake & Drafts)',
-    'Team dispatch & central scheduling',
-    '1 QuickBooks Online sync included',
+    '0.25% platform fee for rapidly growing invoice volume',
+    '5 office users + 10 crew users with team scheduling',
+    '1,500 monthly text credits & 750 AI intake/draft credits',
   ],
   scale: [
-    '0.10% lowest LGQ platform fee',
-    '15 Office users + 50 Crew users included',
-    '3,000 text credits + 1,500 AI credits/mo (Intake & Drafts)',
-    '250 GB photo and job file storage',
-    '1 QuickBooks Online sync included',
+    '0.10% lowest platform fee for maximum margin efficiency',
+    '15 office users + 50 crew users included',
+    '3,000 monthly text credits, 1,500 AI credits & 250 GB storage',
   ],
 };
 
-const PLAN_STAGES: Record<PlanId, { label: string; shortLabel: string; number: string; persona: string }> = {
-  flex: { label: 'Seasonal / starting out', shortLabel: 'Start', number: '01', persona: 'Handyman · Solo Lawn · Seasonal' },
-  solo: { label: 'Owner-operator', shortLabel: 'Own', number: '02', persona: 'Electrician · Plumber · Painter' },
-  growth: { label: 'Growing team', shortLabel: 'Grow', number: '03', persona: 'HVAC · Remodeling · 2–10 Crew' },
-  scale: { label: 'High volume', shortLabel: 'Scale', number: '04', persona: 'Roofing · Multi-Truck · GC' },
+const PLAN_AUDIENCE_TAGS: Record<PlanId, string> = {
+  flex: 'Seasonal / Starting Out',
+  solo: 'Owner-Operator',
+  growth: 'Growing Team · Most Popular',
+  scale: 'High-Volume Operations',
 };
 
-const TRADE_PRESETS = [
-  { trade: '⚡ Electrical & Plumbing', volume: 250_000, users: 2, plan: 'growth' as PlanId, desc: 'Owner + 1 Office, steady invoices' },
-  { trade: '🌿 Landscaping & Lawn', volume: 140_000, users: 1, plan: 'solo' as PlanId, desc: 'Solo operator with crew in field' },
-  { trade: '🏠 Roofing & Siding', volume: 850_000, users: 5, plan: 'growth' as PlanId, desc: 'High ticket size, team dispatch' },
-  { trade: '🔨 Handyman & Painting', volume: 45_000, users: 1, plan: 'flex' as PlanId, desc: 'Starting out / zero monthly base' },
-  { trade: '🏗️ General Contractor', volume: 1_800_000, users: 8, plan: 'scale' as PlanId, desc: 'High volume, lowest 0.1% fee' },
-] as const;
+const RECOMMENDER_PRESETS = [
+  {
+    label: 'Solo Handyman',
+    sublabel: '$35k/yr · 1 user',
+    teamSize: 'solo' as const,
+    volume: 35_000,
+    needsTexting: false,
+  },
+  {
+    label: 'Owner-Operator Electrician',
+    sublabel: '$150k/yr · 2 users',
+    teamSize: 'small' as const,
+    volume: 150_000,
+    needsTexting: true,
+  },
+  {
+    label: 'Growing Remodeling Crew',
+    sublabel: '$600k/yr · 5 users',
+    teamSize: 'growth' as const,
+    volume: 600_000,
+    needsTexting: true,
+  },
+  {
+    label: 'High-Volume Roofing',
+    sublabel: '$1.8M/yr · 12 users',
+    teamSize: 'scale' as const,
+    volume: 1_800_000,
+    needsTexting: true,
+  },
+];
 
 const COMPARISON_CATEGORIES = [
   { id: 'all', label: 'All features (19)' },
@@ -101,102 +112,6 @@ const ROW_CATEGORY_MAP: Record<string, ComparisonCategory> = {
   'QuickBooks Online': 'ai',
 };
 
-const SCENARIOS: readonly {
-  planId: PlanId;
-  revenue: number;
-  title: string;
-  description: string;
-}[] = [
-  {
-    planId: 'flex',
-    revenue: 40_000,
-    title: 'Seasonal handyman',
-    description: 'Keeps fixed costs at zero while the business finds its rhythm.',
-  },
-  {
-    planId: 'solo',
-    revenue: 250_000,
-    title: 'Owner-operator electrician',
-    description: 'Gets a much lower platform fee and expanded messaging capacity.',
-  },
-  {
-    planId: 'growth',
-    revenue: 600_000,
-    title: 'Landscaping team',
-    description: 'Adds office and field capacity without paying per core record.',
-  },
-  {
-    planId: 'scale',
-    revenue: 2_000_000,
-    title: 'High-volume roofer',
-    description: 'Pairs the lowest LGQ platform fee with predictable software cost.',
-  },
-];
-
-const COMPARISON_HIGHLIGHTS = [
-  { value: '1.25% → 0.1%', label: 'Choose a plan with the fee that fits' },
-  { value: '1 → 15', label: 'Office seats scale with your team' },
-  { value: '100%', label: 'QuickBooks Online connection included on every plan' },
-  { value: 'Unlimited', label: 'Core records: leads, quotes, jobs & invoices' },
-] as const;
-
-const COMPETITORS = [
-  {
-    provider: 'Let’s Get Quoted',
-    plan: 'Growth',
-    monthly: '$129 + 0.25%',
-    annual: '$99 + 0.25%',
-    users: '5 office + 10 crew',
-    phone: 'Customer messaging inbox available after carrier approval',
-    href: '#plans',
-  },
-  {
-    provider: 'Jobber',
-    plan: 'Connect',
-    monthly: '$199',
-    annual: '$149',
-    users: '5 users',
-    phone: 'Receptionist add-on starts at $29',
-    href: 'https://www.getjobber.com/pricing/',
-  },
-  {
-    provider: 'Housecall Pro',
-    plan: 'Essentials',
-    monthly: '$189',
-    annual: '$149',
-    users: '5 users',
-    phone: 'CSR AI sold separately',
-    href: 'https://www.housecallpro.com/pricing/',
-  },
-  {
-    provider: 'Contractor+',
-    plan: 'Pro Team (5 users)',
-    monthly: '$185',
-    annual: '$118',
-    users: '5 users',
-    phone: 'Phone usage metered separately',
-    href: 'https://support.contractorplus.app/en/articles/9476522-contractor-pricing-plans',
-  },
-  {
-    provider: 'QuoteIQ',
-    plan: 'Elite',
-    monthly: '$299',
-    annual: 'About $249',
-    users: 'Up to 10 users',
-    phone: 'AI uses shared IQ credits',
-    href: 'https://myquoteiq.com/pricing/',
-  },
-] as const;
-
-const SECTION_IDS = ['plans', 'calculator', 'compare', 'questions'] as const;
-
-const NAV_ITEMS = [
-  { id: 'plans', label: 'Plans', mobileLabel: 'Plans' },
-  { id: 'calculator', label: 'Cost calculator', mobileLabel: 'Calculator' },
-  { id: 'compare', label: 'Compare', mobileLabel: 'Compare' },
-  { id: 'questions', label: 'Questions', mobileLabel: 'FAQ' },
-] as const;
-
 function price(plan: PricingPlan, billing: BillingCycle): number {
   return billing === 'annual' ? plan.annualMonthly : plan.monthly;
 }
@@ -220,794 +135,673 @@ function getPlan(planId: PlanId): PricingPlan {
   return plan;
 }
 
-function signupHref(plan: PlanId, billing: BillingCycle): string {
-  return `${APP_SIGNUP_URL}&${[`plan=${plan}`, `billing=${billing}`].join('&')}`;
+function signupHref(plan: PlanId, billing: BillingCycle) {
+  return buildStartUrl({
+    goal: 'choose_plan',
+    plan: plan as 'flex' | 'starter' | 'growth' | 'scale',
+    billing: billing as 'monthly' | 'annual',
+    source: 'pricing',
+  });
 }
 
 function InfoBubble({ label, children }: { label: string; children: ReactNode }) {
+  const [open, setOpen] = useState(false);
   return (
-    <details className={styles.infoBubble}>
-      <summary aria-label={`More information about ${label}`}>i</summary>
-      <div>{children}</div>
-    </details>
+    <span className={styles.infoBubbleWrapper}>
+      <button
+        type="button"
+        className={styles.infoBubbleTrigger}
+        aria-label={`Learn more about ${label}`}
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+      >
+        i
+      </button>
+      {open && (
+        <span className={styles.infoBubbleContent} role="tooltip">
+          {children}
+        </span>
+      )}
+    </span>
   );
 }
 
-
-
 export default function PricingExperience() {
-  const [billing, setBilling] = useState<BillingCycle>('annual');
-  const [volume, setVolume] = useState(40_000);
-  const [spotlightPlan, setSpotlightPlan] = useState<PlanId | null>(null);
-  const [activeSection, setActiveSection] = useState<string>('plans');
-  const [expandedMobilePlan, setExpandedMobilePlan] = useState<PlanId | null>(null);
-  const [showAllFaqs, setShowAllFaqs] = useState(false);
-  const [officeUsers, setOfficeUsers] = useState(1);
-  const [hasUsedCalculator, setHasUsedCalculator] = useState(false);
-  const [stickyDismissed, setStickyDismissed] = useState(false);
-  const [showSeasonalRhythm, setShowSeasonalRhythm] = useState(false);
-  const [showMobileScenarios, setShowMobileScenarios] = useState(false);
+  // Billing default is Monthly (lower commitment comparison)
+  const [billing, setBilling] = useState<BillingCycle>('monthly');
+
+  // Unified 3-Input Recommender State
+  const [recommenderTeam, setRecommenderTeam] = useState<'solo' | 'small' | 'growth' | 'scale'>('solo');
+  const [recommenderVolume, setRecommenderVolume] = useState<number>(75_000);
+  const [recommenderTexting, setRecommenderTexting] = useState<boolean>(true);
+
+  // Expanded Sections
+  const [showCalculator, setShowCalculator] = useState<boolean>(false);
   const [comparisonCategory, setComparisonCategory] = useState<ComparisonCategory>('all');
-  const [fitMode, setFitMode] = useState<'stage' | 'trade'>('trade');
+  const [showAllFaqs, setShowAllFaqs] = useState<boolean>(false);
 
-  const filteredComparisonRows = useMemo(() => {
-    if (comparisonCategory === 'all') return COMPARISON_ROWS;
-    return COMPARISON_ROWS.filter(([label]) => ROW_CATEGORY_MAP[label] === comparisonCategory);
-  }, [comparisonCategory]);
-
-  const recommendation = useMemo(() => PLANS.map((plan) => ({
-    plan,
-    annualCost: annualPlanEstimate(plan, billing, volume, VOICE_PURCHASABLE, officeUsers, false),
-  })).filter((result): result is typeof result & { annualCost: number } => result.annualCost !== null)
-    .sort((a, b) => a.annualCost - b.annualCost)[0], [billing, officeUsers, volume]);
-
-  const scaleCrossover = planCrossover(getPlan('growth'), getPlan('scale'), billing, VOICE_PURCHASABLE);
-  const markCalculatorUsed = () => { setHasUsedCalculator(true); setStickyDismissed(false); };
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const params = new URLSearchParams(window.location.search);
-    const urlVolume = Number(params.get('volume'));
-    const urlBilling = params.get('billing');
-    const urlUsers = Number(params.get('users'));
-
-    if (Number.isFinite(urlVolume) && urlVolume > 0) {
-      setVolume(Math.min(3_000_000, urlVolume));
-      setHasUsedCalculator(true);
+  // Derive seat count number from selection
+  const seatsNum = useMemo(() => {
+    switch (recommenderTeam) {
+      case 'solo': return 1;
+      case 'small': return 2;
+      case 'growth': return 5;
+      case 'scale': return 15;
     }
-    if (urlBilling === 'monthly' || urlBilling === 'annual') {
-      setBilling(urlBilling);
-    }
-    if (Number.isFinite(urlUsers) && urlUsers >= 1) {
-      setOfficeUsers(Math.min(25, Math.max(1, Math.round(urlUsers))));
-      setHasUsedCalculator(true);
-    }
-  }, []);
+  }, [recommenderTeam]);
 
-  useEffect(() => {
-    const sections = SECTION_IDS.map((id) => document.getElementById(id)).filter(
-      (section): section is HTMLElement => section !== null,
-    );
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries
-          .filter((entry) => entry.isIntersecting)
-          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
-        if (visible?.target.id) setActiveSection(visible.target.id);
-      },
-      { rootMargin: '-25% 0px -60% 0px', threshold: [0, 0.1, 0.35] },
-    );
+  // Recommendation Engine Logic
+  const recommendation = useMemo(() => {
+    // 1. Minimum plan by seat capacity
+    let minPlanBySeats: PlanId = 'flex';
+    if (seatsNum > 5) minPlanBySeats = 'scale';
+    else if (seatsNum > 2) minPlanBySeats = 'growth';
+    else if (seatsNum > 1) minPlanBySeats = 'solo';
+    else minPlanBySeats = recommenderTexting ? 'solo' : 'flex';
 
-    sections.forEach((section) => observer.observe(section));
-    return () => observer.disconnect();
-  }, []);
+    // 2. Cost-based evaluation across eligible plans
+    let winnerId: PlanId = 'flex';
+    let reason = '';
+    let closestAlternative = '';
+    let crossoverNote = '';
+
+    if (minPlanBySeats === 'scale' || recommenderVolume >= 1_600_000) {
+      winnerId = 'scale';
+      if (seatsNum > 5) {
+        reason = `You need ${seatsNum} team seats. Scale includes 15 office users, 50 crew users, and the lowest 0.1% platform fee.`;
+      } else {
+        reason = `At ${money(recommenderVolume)}/year collected, Scale's 0.1% platform fee saves more on invoices than any other tier.`;
+      }
+      closestAlternative = 'Growth ($129/mo + 0.25%, but higher fee on high volume)';
+      crossoverNote = 'Scale is the most cost-effective tier whenever annual collections exceed $1.6M.';
+    } else if (minPlanBySeats === 'growth' || recommenderVolume >= 307_200) {
+      winnerId = 'growth';
+      if (seatsNum > 2) {
+        reason = `You selected ${seatsNum} team seats and collect ~${money(recommenderVolume)}/year. Growth includes 5 office seats and a low 0.25% platform fee.`;
+      } else {
+        reason = `At ${money(recommenderVolume)}/year collected, Growth's 0.25% fee saves enough on processing to offset the subscription.`;
+      }
+      closestAlternative = recommenderVolume < 307_200 ? 'Solo ($39/mo, max 2 seats)' : 'Scale ($329/mo, lowest 0.1% fee above $1.6M/yr)';
+      crossoverNote = recommenderVolume < 1_600_000
+        ? `If your volume grows past $1.6M/year, Scale becomes lower overall cost.`
+        : `Growth is optimal for teams up to 5 office users under $1.6M/year.`;
+    } else if (minPlanBySeats === 'solo' || recommenderVolume >= 56_000 || recommenderTexting) {
+      winnerId = 'solo';
+      if (recommenderTexting && recommenderVolume < 56_000) {
+        reason = `You need 2-way business texting & AI intake. Solo includes 500 monthly text credits and 2 office seats.`;
+      } else {
+        reason = `At ${money(recommenderVolume)}/year collected, Solo's 0.50% fee saves more on invoices than Flex's 1.25% rate.`;
+      }
+      closestAlternative = 'Flex ($0/mo, 1.25% fee, starter credits only)';
+      crossoverNote = `If your collections exceed $307,000/year, Growth's 0.25% fee becomes more economical.`;
+    } else {
+      winnerId = 'flex';
+      reason = `You have 1 user and collect under $56,000/year. Flex gives you a $0/mo base with 1.25% fee and zero fixed bills in slow months.`;
+      closestAlternative = 'Solo ($39/mo with 0.50% fee & 500 texts/mo)';
+      crossoverNote = `If your collections grow beyond $56,000/year, Solo saves you money on fees.`;
+    }
+
+    const winner = getPlan(winnerId);
+    const annualTotalCost = annualPlanCost(winner, billing, recommenderVolume, false);
+    const monthlyEffective = Math.round(annualTotalCost / 12);
+    const fixedBaseMonthly = price(winner, billing);
+    const feeMonthly = Math.round((recommenderVolume * (winner.paymentFeePct / 100)) / 12);
+
+    return {
+      winner,
+      reason,
+      monthlyEffective,
+      fixedBaseMonthly,
+      feeMonthly,
+      closestAlternative,
+      crossoverNote,
+    };
+  }, [recommenderTeam, recommenderVolume, recommenderTexting, seatsNum, billing]);
 
   return (
     <>
+      {/* 1. Compact Pricing Hero */}
       <section className={styles.hero}>
-        <div className={styles.heroGrid}>
-          <div className={styles.heroCopy}>
-            <p className={styles.heroEyebrow}>Pricing built for working contractors</p>
-            <h1>Start free. Pay less as you grow.</h1>
-            <p className={styles.heroLead}>
-              One system for seasonal work—from your first side job to a high-volume crew—with pricing that gets more
-              efficient at every stage.
+        <div className={styles.heroContainer}>
+          <p className={styles.heroEyebrow}>One connected system · Scalable pricing</p>
+          <h1>Start free. Pay less as you grow.</h1>
+          <p className={styles.heroLead}>
+            One connected system for your whole contracting business—website to payment—with plans that add team capacity
+            and lower your platform fee as your business grows.
+          </p>
+
+          {/* Explicit Complete Pricing Formula */}
+          <div className={styles.formulaBox} role="region" aria-label="LGQ Pricing Formula">
+            <span className={styles.formulaBadge}>The Complete Pricing Formula</span>
+            <p className={styles.formulaText}>
+              Your cost is the <strong>plan subscription</strong> plus an <strong>LGQ platform fee</strong> on eligible payments.
+              Stripe processing is separate.
             </p>
-            <div className={styles.heroActions}>
-              <a className={styles.primaryButton} href="#plans">Find my fit</a>
-              <a className={styles.secondaryButton} href="#calculator">Run my numbers</a>
-            </div>
-            <div className={styles.heroSubMeta}>
-              <ul className={styles.heroProof} aria-label="Pricing highlights">
-                <li>QuickBooks on every plan</li>
-                <li>Free onboarding</li>
-                <li>No forced upgrades</li>
-              </ul>
-              <a className={styles.seasonalHeroLink} href="#seasonal-flex">
-                <span aria-hidden="true">01</span>
-                Seasonal contractor? See why Flex fits →
-              </a>
+            <div className={styles.formulaDetails}>
+              <span>✓ No setup fees</span>
+              <span>✓ No long-term contracts</span>
+              <span>✓ Free contractor website included</span>
+              <span>✓ 1-click QuickBooks sync</span>
             </div>
           </div>
 
-          <aside className={styles.heroBoard} aria-label="How LGQ pricing grows with a contractor">
-            <div className={styles.boardTopline}>
-              <p className={styles.boardLabel}>Your growth path</p>
-              <span>Fixed cost rises</span>
-            </div>
-            <ol className={styles.growthPath}>
-              {PLANS.map((plan, index) => {
-                const isSelected = spotlightPlan === plan.id;
-                return (
-                  <li
-                    data-plan={plan.id}
-                    key={plan.id}
-                    className={isSelected ? styles.growthPathActive : undefined}
-                    onClick={() => setSpotlightPlan((selected) => selected === plan.id ? null : plan.id)}
-                    role="button"
-                    tabIndex={0}
-                    aria-pressed={isSelected}
-                    title={`Click to highlight the ${plan.name} plan`}
-                  >
-                    <span className={styles.pathNumber}>{PLAN_STAGES[plan.id].number}</span>
-                    <div>
-                      <span>{PLAN_STAGES[plan.id].label}</span>
-                      <strong>{plan.name}</strong>
-                    </div>
-                    <div className={styles.pathPrice}>
-                      <strong>${plan.annualMonthly}<small>/mo</small></strong>
-                      <span>{paymentFee(plan)} platform fee</span>
-                    </div>
-                    {index < PLANS.length - 1 ? <i aria-hidden="true" /> : null}
-                  </li>
-                );
-              })}
-            </ol>
-            <div className={styles.boardFooter}>
-              <span><b>$0</b> to start</span>
-              <span><b>0.1%</b> at scale</span>
-            </div>
-            <p className={styles.boardNote}>Annual monthly equivalent shown. Stripe processing is separate.</p>
-          </aside>
+          <div className={styles.heroActions}>
+            <a className={styles.primaryButton} href="#plans">
+              Start free &rarr;
+            </a>
+            <a className={styles.secondaryButton} href="#recommender">
+              Find my plan &darr;
+            </a>
+          </div>
         </div>
       </section>
 
-      <nav className={styles.sectionNav} aria-label="Pricing sections">
-        {NAV_ITEMS.map((item) => (
-          <a
-            key={item.id}
-            href={`#${item.id}`}
-            data-active={activeSection === item.id}
-            aria-current={activeSection === item.id ? 'location' : undefined}
-          >
-            <span className={styles.navDesktopLabel}>{item.label}</span>
-            <span className={styles.navMobileLabel}>{item.mobileLabel}</span>
-          </a>
-        ))}
-      </nav>
+      {/* 2. One Guided Plan Recommender */}
+      <section className={styles.recommenderSection} id="recommender">
+        <div className={styles.sectionHeader}>
+          <p className={styles.sectionEyebrow}>ONE GUIDED RECOMMENDER</p>
+          <h2>Which plan fits your business?</h2>
+          <p>Answer 3 quick questions to calculate your exact fees and match the right team capacity.</p>
+        </div>
 
-      <section className={styles.plansSection} id="plans">
-        <div className={styles.sectionHeadingSplit}>
-          <div>
-            <p className={styles.sectionEyebrow}>Choose what fits today</p>
-            <h2>Four stages. One clear next step.</h2>
-            <p>Start with how you work. Then let the calculator check the math.</p>
+        {/* Quick Scenario Preset Chips */}
+        <div className={styles.presetChips} role="group" aria-label="Quick preset scenarios">
+          <span className={styles.presetLabel}>Quick scenarios:</span>
+          {RECOMMENDER_PRESETS.map((preset) => {
+            const isMatch =
+              recommenderTeam === preset.teamSize &&
+              recommenderVolume === preset.volume &&
+              recommenderTexting === preset.needsTexting;
+            return (
+              <button
+                key={preset.label}
+                type="button"
+                className={isMatch ? styles.presetChipActive : styles.presetChip}
+                onClick={() => {
+                  setRecommenderTeam(preset.teamSize);
+                  setRecommenderVolume(preset.volume);
+                  setRecommenderTexting(preset.needsTexting);
+                }}
+              >
+                <strong>{preset.label}</strong>
+                <small>{preset.sublabel}</small>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className={styles.recommenderGrid}>
+          {/* 3 Decision Inputs */}
+          <div className={styles.recommenderInputsCard}>
+            <h3 className={styles.recommenderInputTitle}>1. Team &amp; Office Users</h3>
+            <div className={styles.inputOptionGroup} role="radiogroup" aria-label="Team size">
+              <button
+                type="button"
+                className={recommenderTeam === 'solo' ? styles.optionBtnActive : styles.optionBtn}
+                aria-checked={recommenderTeam === 'solo'}
+                role="radio"
+                onClick={() => setRecommenderTeam('solo')}
+              >
+                <strong>1 User</strong>
+                <small>Solo Operator</small>
+              </button>
+              <button
+                type="button"
+                className={recommenderTeam === 'small' ? styles.optionBtnActive : styles.optionBtn}
+                aria-checked={recommenderTeam === 'small'}
+                role="radio"
+                onClick={() => setRecommenderTeam('small')}
+              >
+                <strong>2–3 Users</strong>
+                <small>Small Office</small>
+              </button>
+              <button
+                type="button"
+                className={recommenderTeam === 'growth' ? styles.optionBtnActive : styles.optionBtn}
+                aria-checked={recommenderTeam === 'growth'}
+                role="radio"
+                onClick={() => setRecommenderTeam('growth')}
+              >
+                <strong>4–8 Users</strong>
+                <small>Growing Crew</small>
+              </button>
+              <button
+                type="button"
+                className={recommenderTeam === 'scale' ? styles.optionBtnActive : styles.optionBtn}
+                aria-checked={recommenderTeam === 'scale'}
+                role="radio"
+                onClick={() => setRecommenderTeam('scale')}
+              >
+                <strong>9+ Users</strong>
+                <small>High Volume</small>
+              </button>
+            </div>
+
+            <h3 className={styles.recommenderInputTitle} style={{ marginTop: '24px' }}>
+              2. Annual Payments Collected via LGQ
+            </h3>
+            <div className={styles.volumeDisplayRow}>
+              <strong className={styles.volumeAmount}>{money(recommenderVolume)} / year</strong>
+              <span className={styles.volumeMonthlyEquiv}>~{money(recommenderVolume / 12)} / month</span>
+            </div>
+            <input
+              type="range"
+              min={10_000}
+              max={2_500_000}
+              step={10_000}
+              value={recommenderVolume}
+              onChange={(e) => setRecommenderVolume(Number(e.target.value))}
+              className={styles.volumeSlider}
+              aria-label="Annual payments collected"
+            />
+            <div className={styles.sliderTickMarks}>
+              <span onClick={() => setRecommenderVolume(40_000)}>$40k</span>
+              <span onClick={() => setRecommenderVolume(150_000)}>$150k</span>
+              <span onClick={() => setRecommenderVolume(350_000)}>$350k</span>
+              <span onClick={() => setRecommenderVolume(600_000)}>$600k</span>
+              <span onClick={() => setRecommenderVolume(1_500_000)}>$1.5M+</span>
+            </div>
+
+            <h3 className={styles.recommenderInputTitle} style={{ marginTop: '24px' }}>
+              3. Business Texting &amp; AI Intake
+            </h3>
+            <div className={styles.inputOptionGroup} role="radiogroup" aria-label="Messaging needs">
+              <button
+                type="button"
+                className={!recommenderTexting ? styles.optionBtnActive : styles.optionBtn}
+                aria-checked={!recommenderTexting}
+                role="radio"
+                onClick={() => setRecommenderTexting(false)}
+              >
+                <strong>Starter Credits</strong>
+                <small>Standard web quote form only</small>
+              </button>
+              <button
+                type="button"
+                className={recommenderTexting ? styles.optionBtnActive : styles.optionBtn}
+                aria-checked={recommenderTexting}
+                role="radio"
+                onClick={() => setRecommenderTexting(true)}
+              >
+                <strong>2-Way Texting &amp; AI Intake</strong>
+                <small>Automated text &amp; instant AI estimates</small>
+              </button>
+            </div>
           </div>
 
+          {/* Unified Recommendation Result Card */}
+          <div className={styles.recommenderResultCard}>
+            <div className={styles.resultHeader}>
+              <span className={styles.resultBadge}>★ Recommended Fit</span>
+              <h3 className={styles.resultHeadline}>{recommendation.winner.name} fits your business</h3>
+              <p className={styles.resultReason}>{recommendation.reason}</p>
+            </div>
+
+            <div className={styles.resultCostBlock}>
+              <div className={styles.resultCostMain}>
+                <span className={styles.costLabel}>Estimated Effective Monthly Cost</span>
+                <strong className={styles.costValue}>~{money(recommendation.monthlyEffective)}<small>/mo</small></strong>
+              </div>
+              <div className={styles.resultCostBreakdown}>
+                <div>
+                  <span>Base Subscription</span>
+                  <strong>${recommendation.fixedBaseMonthly}/mo</strong>
+                </div>
+                <div>
+                  <span>LGQ Platform Fee</span>
+                  <strong>{paymentFee(recommendation.winner)} (~{money(recommendation.feeMonthly)}/mo)</strong>
+                </div>
+              </div>
+            </div>
+
+            <div className={styles.resultInsights}>
+              <div className={styles.insightItem}>
+                <span className={styles.insightLabel}>Closest Alternative:</span>
+                <p className={styles.insightValue}>{recommendation.closestAlternative}</p>
+              </div>
+              <div className={styles.insightItem}>
+                <span className={styles.insightLabel}>Crossover Insight:</span>
+                <p className={styles.insightValue}>{recommendation.crossoverNote}</p>
+              </div>
+            </div>
+
+            <a
+              href={signupHref(recommendation.winner.id, billing)}
+              className={styles.resultCtaButton}
+            >
+              {recommendation.winner.id === 'flex' ? 'Start Free on Flex' : `Continue with ${recommendation.winner.name}`} &rarr;
+            </a>
+          </div>
+        </div>
+      </section>
+
+      {/* 3. Four Compact Plan Cards */}
+      <section className={styles.plansSection} id="plans">
+        <div className={styles.sectionHeaderSplit}>
+          <div>
+            <p className={styles.sectionEyebrow}>TRANSPARENT PLANS</p>
+            <h2>Simple, honest pricing for every stage.</h2>
+            <p>Every plan includes your website, unlimited core records, and QuickBooks sync.</p>
+          </div>
+
+          {/* Billing Cycle Toggle (Default: Monthly) */}
           <div className={styles.billingToggle} role="group" aria-label="Billing cycle">
             <button
               type="button"
+              className={billing === 'monthly' ? styles.billingActive : styles.billingInactive}
               aria-pressed={billing === 'monthly'}
               onClick={() => setBilling('monthly')}
             >
-              Monthly
+              Monthly billing
             </button>
             <button
               type="button"
+              className={billing === 'annual' ? styles.billingActive : styles.billingInactive}
               aria-pressed={billing === 'annual'}
               onClick={() => setBilling('annual')}
             >
-              Annual <span>Save up to $360</span>
+              Annual billing <span className={styles.savePill}>Save up to $360/yr</span>
             </button>
           </div>
         </div>
 
-        <div className={styles.fitFinder}>
-          <div className={styles.fitFinderHeader}>
-            <div>
-              <span className={styles.miniEyebrow}>Quick fit finder · 30-second match</span>
-              <strong className={styles.fitFinderTitle}>Find your contractor tier instantly</strong>
-            </div>
-            <div className={styles.fitFinderModes} role="group" aria-label="Fit finder mode">
-              <button
-                type="button"
-                className={fitMode === 'trade' ? styles.fitModeActive : styles.fitModeBtn}
-                aria-pressed={fitMode === 'trade'}
-                onClick={() => setFitMode('trade')}
-              >
-                By Trade Preset
-              </button>
-              <button
-                type="button"
-                className={fitMode === 'stage' ? styles.fitModeActive : styles.fitModeBtn}
-                aria-pressed={fitMode === 'stage'}
-                onClick={() => setFitMode('stage')}
-              >
-                By Business Stage
-              </button>
-            </div>
-          </div>
-
-          {fitMode === 'trade' ? (
-            <div className={styles.tradePresetGrid} role="group" aria-label="Contractor trade presets">
-              {TRADE_PRESETS.map((item) => {
-                const isActive = spotlightPlan === item.plan && volume === item.volume;
-                return (
-                  <button
-                    type="button"
-                    key={item.trade}
-                    className={`${styles.tradePresetCard}${isActive ? ` ${styles.tradePresetActive}` : ''}`}
-                    aria-pressed={isActive}
-                    onClick={() => {
-                      setSpotlightPlan(item.plan);
-                      setVolume(item.volume);
-                      setOfficeUsers(item.users);
-                      setHasUsedCalculator(true);
-                    }}
-                  >
-                    <strong className={styles.tradePresetName}>{item.trade}</strong>
-                    <span className={styles.tradePresetDesc}>{item.desc}</span>
-                    <small className={styles.tradePresetMeta}>Sets {money(item.volume)}/yr · {item.users} office</small>
-                  </button>
-                );
-              })}
-            </div>
-          ) : (
-            <div className={styles.stagePresetGrid} role="group" aria-label="Business stage">
-              {PLANS.map((plan) => (
-                <button
-                  type="button"
-                  key={plan.id}
-                  data-plan={plan.id}
-                  className={`${styles.stagePresetBtn}${spotlightPlan === plan.id ? ` ${styles.stagePresetActive}` : ''}`}
-                  aria-pressed={spotlightPlan === plan.id}
-                  onClick={() => setSpotlightPlan((selected) => (selected === plan.id ? null : plan.id))}
-                >
-                  <span className={styles.stageNumber}>{PLAN_STAGES[plan.id].number}</span>
-                  <span className={styles.stageLabel}>{PLAN_STAGES[plan.id].label}</span>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className={styles.planGrid}>
+        <div className={styles.planCardGrid}>
           {PLANS.map((plan) => {
-            const selectedPrice = price(plan, billing);
+            const isMatch = recommendation.winner.id === plan.id;
+            const cardPrice = price(plan, billing);
             const annualTotal = plan.annualMonthly * 12;
             const annualSavings = (plan.monthly - plan.annualMonthly) * 12;
-            const isSpotlighted = spotlightPlan === plan.id;
-            const isExpandedOnMobile = plan.id === 'flex' || expandedMobilePlan === plan.id;
+
             return (
               <article
                 key={plan.id}
-                className={`${styles.planCard}${plan.featured ? ` ${styles.featuredCard}` : ''}${isSpotlighted ? ` ${styles.spotlightCard}` : ''}`}
-                data-plan={plan.id}
-                data-expanded={isExpandedOnMobile}
+                className={`${styles.planCard} ${plan.featured ? styles.planCardFeatured : ''} ${isMatch ? styles.planCardMatch : ''}`}
               >
-                <div className={styles.planAccent} />
-                <div className={styles.planIdentity}>
-                  <span>{PLAN_STAGES[plan.id].number}</span>
-                  <small>{PLAN_STAGES[plan.id].shortLabel}</small>
-                </div>
-                {isSpotlighted ? (
-                  <span className={styles.matchBadge}>Your match</span>
-                ) : plan.id === 'flex' ? (
-                  <span className={styles.seasonalBadge}>Seasonal favorite</span>
-                ) : plan.featured ? (
-                  <span className={styles.featuredBadge}>Best for teams</span>
-                ) : null}
-                <p className={styles.planAudience}>{plan.audience}</p>
-                <h3>{plan.name}</h3>
-                <p className={styles.planPromise}>{plan.promise}</p>
+                {isMatch && <span className={styles.matchRibbon}>Recommended Match</span>}
+                {plan.featured && !isMatch && <span className={styles.popularRibbon}>Most Popular</span>}
 
-                <div className={styles.planPrice}>
-                  <strong>${selectedPrice}</strong>
-                  <span>/month</span>
+                <div className={styles.planCardHeader}>
+                  <span className={styles.planAudienceTag}>{PLAN_AUDIENCE_TAGS[plan.id]}</span>
+                  <h3 className={styles.planName}>{plan.name}</h3>
+                  <p className={styles.planPromiseText}>{plan.promise}</p>
                 </div>
-                {plan.id === 'flex' ? (
-                  <p className={styles.billingDetail}>No subscription · optional top-ups only</p>
-                ) : billing === 'annual' ? (
-                  <p className={styles.billingDetail}>
-                    ${annualTotal.toLocaleString()}/year prepaid · save ${annualSavings}/year
-                  </p>
-                ) : (
-                  <p className={styles.billingDetail}>Month-to-month · no annual commitment</p>
-                )}
 
-                <div className={styles.feeLine}>
-                  <span>LGQ platform fee</span>
-                  <strong>{paymentFee(plan)}</strong>
-                  <InfoBubble label={`${plan.name} LGQ platform fee`}>
-                    Applied only to the discount-adjusted service subtotal successfully collected through LGQ.
-                    Separately stated tax, tips, Stripe fees, refunds, and credits are excluded.
+                {/* Price and Explicit Commitment */}
+                <div className={styles.priceContainer}>
+                  <div className={styles.priceNumberRow}>
+                    <strong className={styles.priceBig}>${cardPrice}</strong>
+                    <span className={styles.priceCadence}>/month</span>
+                  </div>
+
+                  {plan.id === 'flex' ? (
+                    <p className={styles.commitmentText}>$0 monthly base · pay only when you get paid</p>
+                  ) : billing === 'annual' ? (
+                    <p className={styles.commitmentText}>
+                      ${annualTotal.toLocaleString()} billed annually — equivalent to ${plan.annualMonthly}/month{' '}
+                      <strong style={{ color: '#50e3bd' }}>(Save ${annualSavings}/yr)</strong>
+                    </p>
+                  ) : (
+                    <p className={styles.commitmentText}>${plan.monthly} month-to-month · cancel anytime</p>
+                  )}
+                </div>
+
+                {/* Platform Fee Callout */}
+                <div className={styles.feeCallout}>
+                  <span className={styles.feeLabel}>LGQ Platform Fee</span>
+                  <strong className={styles.feeValue}>{paymentFee(plan)}</strong>
+                  <InfoBubble label={`${plan.name} platform fee`}>
+                    Applied only to eligible payments successfully collected through LGQ. Stripe processing is separate.
                   </InfoBubble>
                 </div>
 
-                {plan.id === 'scale' ? (
-                  <p className={styles.scaleBreakpoint}>
-                    <span>Base-plan price crossover</span>
-                    <strong>Usually lowest-cost above {money(scaleCrossover)}/year collected.</strong>
-                  </p>
-                ) : null}
-
-                {plan.id !== 'flex' ? (
-                  <button
-                    type="button"
-                    className={styles.mobilePlanToggle}
-                    aria-expanded={isExpandedOnMobile}
-                    aria-controls={`plan-highlights-${plan.id}`}
-                    onClick={() => setExpandedMobilePlan((expanded) => (expanded === plan.id ? null : plan.id))}
-                  >
-                    {isExpandedOnMobile ? 'Hide key features' : 'See key features'}
-                  </button>
-                ) : null}
-
-                <div className={styles.planHighlights} id={`plan-highlights-${plan.id}`}>
-                  <ul className={styles.cardFeatures}>
-                    {CARD_FEATURES[plan.id].map((feature) => (
-                      <li key={feature}>
-                        <span className={styles.featureCheckmark} aria-hidden="true">✓</span>
-                        <span>{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
+                {/* Included Capacity */}
+                <div className={styles.capacityBadge}>
+                  👥 <strong>{plan.officeUsers} Office</strong> + <strong>{plan.crewUsers} Crew</strong> users
                 </div>
 
-                <a
-                  className={
-                    plan.id === 'flex'
-                      ? styles.seasonalButton
-                      : plan.featured || isSpotlighted
-                        ? styles.primaryButton
-                        : styles.planButton
-                  }
-                  href={signupHref(plan.id, billing)}
-                >
-                  <span>{plan.id === 'flex' ? 'Start with Flex' : `Choose ${plan.name}`}</span>
-                  <span className={styles.btnArrow} aria-hidden="true">→</span>
-                </a>
+                {/* 3 Meaningful Differentiators */}
+                <ul className={styles.differentiatorList}>
+                  {CARD_DIFFERENTIATORS[plan.id].map((diff) => (
+                    <li key={diff}>
+                      <span className={styles.diffCheck}>✓</span>
+                      <span>{diff}</span>
+                    </li>
+                  ))}
+                </ul>
 
-                <details className={styles.cardDetails}>
-                  <summary>See every included item</summary>
-                  <ul>
-                    {plan.features.map((feature) => (
-                      <li key={feature}>{feature}</li>
-                    ))}
-                  </ul>
-                </details>
+                {/* Single Contextual CTA */}
+                <a
+                  href={signupHref(plan.id, billing)}
+                  className={plan.featured || isMatch ? styles.primaryButton : styles.planButton}
+                  style={{ width: '100%', marginTop: 'auto' }}
+                >
+                  {plan.id === 'flex' ? 'Start with Flex' : `Choose ${plan.name}`} &rarr;
+                </a>
               </article>
             );
           })}
         </div>
+      </section>
 
-        <aside className={styles.seasonalFeature} id="seasonal-flex">
-          <div className={styles.seasonalCopy}>
-            <p className={styles.sectionEyebrow}>Seasonal contractor? This is your plan.</p>
-            <h3>Flex stays light when work slows down.</h3>
-            <p>
-              There is no monthly base subscription. Pay the 1.25% LGQ platform fee only on eligible payments you actually
-              collect, then move up when the math or your team makes sense.
-            </p>
-            <button
-              type="button"
-              className={styles.mobileDisclosureButton}
-              aria-expanded={showSeasonalRhythm}
-              aria-controls="seasonal-rhythm"
-              onClick={() => setShowSeasonalRhythm((shown) => !shown)}
-            >
-              {showSeasonalRhythm ? 'Hide seasonal cost rhythm' : 'See the seasonal cost rhythm'}
-            </button>
-          </div>
-          <ol
-            id="seasonal-rhythm"
-            className={styles.seasonalRhythm}
-            data-mobile-expanded={showSeasonalRhythm}
-            aria-label="How Flex follows a seasonal business"
-          >
-            <li><span>Quiet months</span><strong>$0</strong><small>monthly base</small></li>
-            <li><span>Jobs come in</span><strong>1.25%</strong><small>eligible payments</small></li>
-            <li><span>Business grows</span><strong>Your call</strong><small>upgrade when ready</small></li>
-          </ol>
-          <a className={styles.seasonalButton} href={signupHref('flex', billing)}>
-            Start with Flex
-          </a>
-        </aside>
-
-        <div className={styles.quickOptions} aria-label="Fine-tune plan options">
-          <div className={styles.quickOptionsIntro}>
-            <span className={styles.miniEyebrow}>Included on every plan</span>
-            <strong>Tools ready to run on day one.</strong>
-          </div>
-          <div className={`${styles.quickOptionGroup} ${styles.includedOption}`}>
-            <div className={styles.includedOptionBody}>
-              <span className={styles.quickIcon} aria-hidden="true">2W</span>
-              <span>
-                <strong>2-Way Business Texting</strong>
-                <small>Available after carrier approval with a registered business number</small>
-              </span>
-              <b>Software Included</b>
-            </div>
-            <Link className={styles.quickLearnMore} href="/demo/messages">
-              See the messaging demo →
-            </Link>
-          </div>
-          <div className={`${styles.quickOptionGroup} ${styles.includedOption}`}>
-            <div className={styles.includedOptionBody}>
-              <span className={styles.quickIcon} aria-hidden="true">QB</span>
-              <span>
-                <strong>QuickBooks Online Integration</strong>
-                <small>1-click sync for invoices, customer records, and payment reconciliation</small>
-              </span>
-              <b>Included</b>
-            </div>
-            <Link className={styles.quickLearnMore} href="/features/back-office">
-              Learn about QuickBooks sync →
-            </Link>
-          </div>
+      {/* 4. What Every Plan Includes */}
+      <section className={styles.includedSection} id="included">
+        <div className={styles.includedHeader}>
+          <p className={styles.sectionEyebrow}>INCLUDED ON EVERY PLAN</p>
+          <h2>No Nickel-and-Diming for Core Business Tools</h2>
         </div>
 
-        <div className={styles.trustStrip} aria-label="LGQ Guarantees and Security">
-          <div className={styles.trustItem}>
-            <span className={styles.trustIcon} aria-hidden="true">🛡️</span>
-            <div>
-              <strong>30-Day Guarantee</strong>
-              <p>Risk-free refund on prepaid annual base plans.</p>
-            </div>
+        <div className={styles.includedGrid}>
+          <div className={styles.includedCard}>
+            <span className={styles.includedIcon}>📋</span>
+            <strong>Unlimited Core Records</strong>
+            <p>Leads, customers, job history, quotes, invoices, and standard quote forms stay unlimited on every plan.</p>
           </div>
-          <div className={styles.trustItem}>
-            <span className={styles.trustIcon} aria-hidden="true">⚡</span>
-            <div>
-              <strong>Zero Setup Fees</strong>
-              <p>Self-guided onboarding & quick tour included.</p>
-            </div>
+          <div className={styles.includedCard}>
+            <span className={styles.includedIcon}>🌐</span>
+            <strong>Free Contractor Website</strong>
+            <p>Connect your custom domain with fast mobile SEO, instant estimate intake, and customer self-booking.</p>
           </div>
-          <div className={styles.trustItem}>
-            <span className={styles.trustIcon} aria-hidden="true">🔒</span>
-            <div>
-              <strong>Stripe Certified</strong>
-              <p>256-bit bank-grade encryption with direct deposit.</p>
-            </div>
+          <div className={styles.includedCard}>
+            <span className={styles.includedIcon}>⚡</span>
+            <strong>QuickBooks Online Sync</strong>
+            <p>1-Click bi-directional synchronization for invoices, line items, customers, and payments reconciliation.</p>
           </div>
-          <div className={styles.trustItem}>
-            <span className={styles.trustIcon} aria-hidden="true">🤝</span>
-            <div>
-              <strong>QuickBooks Sync</strong>
-              <p>1-Click ledger connection included on every plan.</p>
-            </div>
+          <div className={styles.includedCard}>
+            <span className={styles.includedIcon}>💳</span>
+            <strong>Stripe Certified Payments</strong>
+            <p>Bank-grade direct deposits, Apple Pay / Google Pay, card-on-file, and automated review collection.</p>
           </div>
-        </div>
-
-        <div className={styles.enterpriseStrip}>
-          <div>
-            <p className={styles.sectionEyebrow}>Multiple companies or custom operations</p>
-            <h3>Enterprise starts at ${ENTERPRISE.startingMonthly}/month</h3>
-            <p>
-              One master agreement with separate workspaces and ledgers. A limited two-workspace package starts at $
-              {ENTERPRISE.startingMonthly}; two workspaces with full Scale-level capacity are typically quoted around $
-              {ENTERPRISE.fullScaleDuoMonthly}/month.
-            </p>
-          </div>
-          <Link className={styles.secondaryButton} href="/contact">
-            Talk through Enterprise
-          </Link>
         </div>
       </section>
 
-      <section className={styles.scenarioSection} aria-labelledby="scenario-heading">
-        <div className={styles.scenarioIntro}>
-          <p className={styles.sectionEyebrow}>Picture your business here</p>
-          <h2 id="scenario-heading">What the journey can look like.</h2>
-          <p>Modeled examples using annual billing and eligible payment volume. Your exact fit may differ.</p>
+      {/* 5. Optional Cost Calculator */}
+      <div id="savings-calculator" style={{ scrollMarginTop: '80px' }} />
+      <section className={styles.calculatorSection} id="calculator">
+        <div className={styles.sectionHeaderSplit}>
+          <div>
+            <p className={styles.sectionEyebrow}>INTERACTIVE MATH</p>
+            <h2>Run your custom payment scenarios</h2>
+            <p>See exactly how platform fees and subscriptions compare across all 4 plans as your revenue scales.</p>
+          </div>
           <button
             type="button"
-            className={styles.mobileDisclosureButton}
-            aria-expanded={showMobileScenarios}
-            aria-controls="scenario-examples"
-            onClick={() => setShowMobileScenarios((shown) => !shown)}
+            className={styles.secondaryButton}
+            onClick={() => setShowCalculator((v) => !v)}
+            aria-expanded={showCalculator}
           >
-            {showMobileScenarios ? 'Hide example businesses' : 'See example businesses'}
+            {showCalculator ? 'Collapse calculator ▲' : 'Open interactive calculator ▼'}
           </button>
         </div>
-        <div id="scenario-examples" className={styles.scenarioTrack} data-mobile-expanded={showMobileScenarios}>
-          {SCENARIOS.map((scenario) => {
-            const plan = getPlan(scenario.planId);
-            const cost = annualPlanCost(plan, 'annual', scenario.revenue, false);
-            return (
-              <article key={scenario.planId} data-plan={scenario.planId}>
-                <div className={styles.scenarioMarker}>{PLAN_STAGES[plan.id].number}</div>
-                <p>{scenario.title}</p>
-                <h3>{money(scenario.revenue)} collected</h3>
-                <span>
-                  {plan.name} · about {money(cost / 12)}/month
-                </span>
-                <small>{scenario.description}</small>
-              </article>
-            );
-          })}
-        </div>
+
+        {showCalculator && (
+          <div className={styles.calculatorWrapper}>
+            <PricingCalculator
+              billing={billing}
+              volume={recommenderVolume}
+              officeUsers={seatsNum}
+              onBillingChange={(b) => setBilling(b)}
+              onVolumeChange={(v) => setRecommenderVolume(v)}
+              onOfficeUsersChange={(u) => {
+                if (u <= 1) setRecommenderTeam('solo');
+                else if (u <= 3) setRecommenderTeam('small');
+                else if (u <= 8) setRecommenderTeam('growth');
+                else setRecommenderTeam('scale');
+              }}
+            />
+          </div>
+        )}
       </section>
 
-      <section className={styles.calculatorSection} id="calculator">
-        <div className={styles.sectionHeadingSplit}>
-          <div>
-            <p className={styles.sectionEyebrow}>Run your real numbers</p>
-            <h2>Find the point where your plan should change.</h2>
-            <p>The math responds instantly to payment volume and billing cadence.</p>
-          </div>
-        </div>
-        <PricingCalculator
-          billing={billing}
-          volume={volume}
-          officeUsers={officeUsers}
-          onBillingChange={(value) => {
-            setBilling(value);
-            markCalculatorUsed();
-          }}
-          onVolumeChange={(value) => {
-            setVolume(value);
-            markCalculatorUsed();
-          }}
-          onOfficeUsersChange={(value) => {
-            setOfficeUsers(Math.min(25, Math.max(1, Math.round(value || 1))));
-            markCalculatorUsed();
-          }}
-        />
-      </section>
-
-      <section className={styles.compareSection} id="compare">
-        <div className={styles.sectionHeadingSplit}>
-          <div>
-            <p className={styles.sectionEyebrow}>Straight answers before checkout</p>
-            <h2>Compare the details without squinting.</h2>
-          </div>
-          <p className={styles.compareIntro}>
-            Core business records stay unlimited. We meter only the services that create real usage cost.
-          </p>
-        </div>
-
-        <div className={styles.comparisonHighlights}>
-          {COMPARISON_HIGHLIGHTS.map((item, index) => (
-            <div key={item.label}>
-              <span>0{index + 1}</span>
-              <strong>{item.value}</strong>
-              <small>{item.label}</small>
-            </div>
-          ))}
-        </div>
-
+      {/* 6. Detailed Feature Comparison & Allowances */}
+      <section className={styles.compareSection} id="comparison">
         <details className={styles.disclosure}>
-          <summary>
-            <span>
-              <strong>Full LGQ feature comparison</strong>
-              <small>Every allowance and plan gate</small>
-            </span>
-            <b aria-hidden="true">+</b>
+          <summary className={styles.disclosureSummary}>
+            <div>
+              <span className={styles.sectionEyebrow}>DETAILED ALLOWANCES</span>
+              <h3 style={{ margin: '4px 0 0', fontSize: '20px', color: '#ffffff' }}>
+                Full feature comparison &amp; plan limits
+              </h3>
+              <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#9db0bd' }}>
+                Click to inspect line-by-line allowances, team seats, messaging credits, and optional add-ons.
+              </p>
+            </div>
+            <span className={styles.disclosurePlus}>+</span>
           </summary>
-          <div className={styles.categoryTabs} role="tablist" aria-label="Feature categories">
-            {COMPARISON_CATEGORIES.map((cat) => (
-              <button
-                key={cat.id}
-                type="button"
-                role="tab"
-                aria-selected={comparisonCategory === cat.id}
-                className={comparisonCategory === cat.id ? styles.categoryTabActive : styles.categoryTab}
-                onClick={() => setComparisonCategory(cat.id)}
-              >
-                {cat.label}
-              </button>
-            ))}
-          </div>
-          <p className={styles.tableHint}>Swipe horizontally to compare all plans →</p>
-          <div className={styles.tableScroll} tabIndex={0}>
-            <table className={styles.comparisonTable}>
-              <caption className={styles.srOnly}>Detailed comparison of Flex, Solo, Growth, and Scale</caption>
-              <thead>
-                <tr>
-                  <th scope="col">Feature</th>
-                  {PLANS.map((plan) => (
-                    <th scope="col" key={plan.id}>
-                      {plan.name}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {filteredComparisonRows.map(([label, ...values]) => (
-                  <tr key={label}>
-                    <th scope="row">{label}</th>
-                    {values.map((value, index) => (
-                      <td key={`${label}-${PLANS[index].id}`}>{value}</td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </details>
 
-        <div className={styles.disclosureGrid}>
-          <details className={styles.disclosure}>
-            <summary>
-              <span>
-                <strong>Optional capacity top-ups</strong>
-                <small>Margin-safe, opt-in capacity</small>
-              </span>
-              <b aria-hidden="true">+</b>
-            </summary>
-            <div className={styles.addOnList}>
-              {ADD_ONS.map((item) => (
-                <div key={item.label}>
-                  <span>
-                    <strong>{item.label}</strong>
-                    <small>{item.eligibility}</small>
-                  </span>
-                  <b>{item.price}</b>
-                </div>
+          <div className={styles.disclosureBody}>
+            <div className={styles.categoryTabs} role="tablist" aria-label="Feature categories">
+              {COMPARISON_CATEGORIES.map((cat) => (
+                <button
+                  key={cat.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={comparisonCategory === cat.id}
+                  className={comparisonCategory === cat.id ? styles.categoryTabActive : styles.categoryTab}
+                  onClick={() => setComparisonCategory(cat.id)}
+                >
+                  {cat.label}
+                </button>
               ))}
             </div>
-          </details>
 
-          <details className={styles.disclosure}>
-            <summary>
-              <span>
-                <strong>Published competitor rates</strong>
-                <small>Closest public team tiers</small>
-              </span>
-              <b aria-hidden="true">+</b>
-            </summary>
             <div className={styles.tableScroll} tabIndex={0}>
-              <table className={styles.competitorTable}>
-                <caption className={styles.srOnly}>LGQ Growth compared with four contractor software team plans</caption>
+              <table className={styles.comparisonTable}>
+                <caption className={styles.srOnly}>Detailed comparison of Flex, Solo, Growth, and Scale</caption>
                 <thead>
                   <tr>
-                    <th>Provider</th>
-                    <th>Plan</th>
-                    <th>Monthly</th>
-                    <th>Annual equivalent</th>
-                    <th>Users</th>
-                    <th>Phone / Messaging</th>
+                    <th scope="col">Feature</th>
+                    {PLANS.map((plan) => (
+                      <th scope="col" key={plan.id}>
+                        {plan.name}
+                      </th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {COMPETITORS.map((row) => (
-                    <tr key={row.provider}>
-                      <th scope="row">
-                        <a href={row.href}>{row.provider}</a>
-                      </th>
-                      <td>{row.plan}</td>
-                      <td>{row.monthly}</td>
-                      <td>{row.annual}</td>
-                      <td>{row.users}</td>
-                      <td>{row.phone}</td>
+                  {COMPARISON_ROWS.filter(([label]) => {
+                    if (comparisonCategory === 'all') return true;
+                    return ROW_CATEGORY_MAP[label] === comparisonCategory;
+                  }).map(([label, ...values]) => (
+                    <tr key={label}>
+                      <th scope="row">{label}</th>
+                      {values.map((val, idx) => (
+                        <td key={`${label}-${PLANS[idx].id}`}>{val}</td>
+                      ))}
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-            <p className={styles.competitorNote}>
-              Public USD list prices checked August 14, 2026; limited-time promotions excluded. LGQ percentages are
-              platform fees. “No published percentage” elsewhere does not mean payment processing, phone, AI, seats,
-              or add-ons are free. Plans are not feature-identical.
-            </p>
-          </details>
-        </div>
-      </section>
 
-      <section className={styles.promiseSection}>
-        <div>
-          <strong>Unlimited core work</strong>
-          <span>Leads, clients, quotes, jobs, invoices, and standard forms.</span>
-        </div>
-        <div>
-          <strong>No surprise overages</strong>
-          <span>Extra usage is off unless you switch it on and set your own spending limit.</span>
-        </div>
-        <div>
-          <strong>No lost website leads</strong>
-          <span>When AI Intake ends, LGQ switches to the normal quote form.</span>
-        </div>
-        <div>
-          <strong>Bring your books</strong>
-          <span>One QuickBooks Online connection is included on every plan.</span>
-        </div>
-      </section>
+            {/* Margin-safe Top-ups */}
+            <div style={{ marginTop: '28px' }}>
+              <h4 style={{ fontSize: '16px', color: '#ffd166', margin: '0 0 8px' }}>
+                Optional Usage Top-Ups (Margin-Safe &amp; Opt-in Only)
+              </h4>
+              <p style={{ fontSize: '13px', color: '#9db0bd', margin: '0 0 14px' }}>
+                No surprise overages — extra usage is off unless you switch it on and set your own spending limit, at a price you see before you pay.
+              </p>
+              <div className={styles.addOnList}>
+                {ADD_ONS.map((item) => (
+                  <div key={item.label} className={styles.addOnItem}>
+                    <span>
+                      <strong>{item.label}</strong>
+                      <small style={{ display: 'block', color: '#9db0bd', fontSize: '12px' }}>{item.eligibility}</small>
+                    </span>
+                    <b style={{ color: '#50e3bd' }}>{item.price}</b>
+                  </div>
+                ))}
+              </div>
+            </div>
 
-      <section className={styles.faqSection} id="questions">
-        <div className={styles.faqIntro}>
-          <p className={styles.sectionEyebrow}>The fine print, in plain English</p>
-          <h2>Questions contractors actually ask.</h2>
-          <p>Still unsure which plan fits? We’ll talk through the math with you.</p>
-          <Link className={styles.secondaryButton} href="/contact">
-            Ask a real person
-          </Link>
-        </div>
-
-        <div className={styles.faqContent}>
-          <div id="pricing-faqs" className={`${styles.faqGrid}${showAllFaqs ? ` ${styles.faqGridExpanded}` : ''}`}>
-            {(showAllFaqs ? PRICING_FAQS : PRICING_FAQS.slice(0, 6)).map((item) => (
-              <details key={item.q} className={styles.faqItem}>
-                <summary>
-                  <span>{item.q}</span>
-                  <span className={styles.faqToggleIcon} aria-hidden="true">+</span>
-                </summary>
-                <p>{item.a}</p>
-              </details>
-            ))}
+            {/* Competitor Benchmarking Link */}
+            <div className={styles.competitorLinkBanner}>
+              <div>
+                <strong>Want to see how Let&apos;s Get Quoted compares to Jobber, Housecall Pro, or ServiceTitan?</strong>
+                <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#9db0bd' }}>
+                  View transparent competitor list pricing and side-by-side feature breakdowns on our comparison hub.
+                </p>
+              </div>
+              <Link href="/compare" className={styles.secondaryButton}>
+                See Competitor Comparisons &rarr;
+              </Link>
+            </div>
           </div>
+        </details>
+      </section>
 
+      {/* 7. Short FAQ (Top 6 Purchasing Questions) & Final CTA */}
+      <section className={styles.faqSection} id="faq">
+        <div className={styles.sectionHeader}>
+          <p className={styles.sectionEyebrow}>FREQUENTLY ASKED QUESTIONS</p>
+          <h2>Questions contractors ask before starting</h2>
+          <p>Clear answers without the sales runaround.</p>
+        </div>
+
+        <div className={styles.faqGrid}>
+          {(showAllFaqs ? PRICING_FAQS : PRICING_FAQS.slice(0, 6)).map((item) => (
+            <details key={item.q} className={styles.faqItem}>
+              <summary className={styles.faqSummary}>
+                <span>{item.q}</span>
+                <span className={styles.faqIcon}>+</span>
+              </summary>
+              <p className={styles.faqAnswer}>{item.a}</p>
+            </details>
+          ))}
+        </div>
+
+        <div style={{ textAlign: 'center', marginTop: '24px' }}>
           <button
             type="button"
             className={styles.faqMoreButton}
-            aria-expanded={showAllFaqs}
-            aria-controls="pricing-faqs"
-            onClick={() => setShowAllFaqs((shown) => !shown)}
+            onClick={() => setShowAllFaqs((v) => !v)}
           >
-            {showAllFaqs ? 'Show fewer questions' : `Show all ${PRICING_FAQS.length} questions`}
+            {showAllFaqs ? 'Show fewer questions' : `Show all ${PRICING_FAQS.length} pricing questions`}
           </button>
         </div>
-      </section>
 
-      <section className={styles.finalCta}>
-        <div className={styles.finalCtaCopy}>
-          <p className={styles.sectionEyebrow}>Built for your busy season and beyond</p>
-          <h2>Keep costs light when work slows. Keep the same system when it takes off.</h2>
-          <p>Flex starts at $0/month plus 1.25% on eligible payments. Upgrade only when the math or your team says it is time.</p>
-          <div className={styles.heroActions}>
-            <a className={styles.seasonalButton} href={signupHref('flex', billing)}>
-              Start with Flex
-            </a>
-            <Link className={styles.secondaryButton} href="/contact">
-              Talk to a real person
-            </Link>
+        {/* Final Conversion CTA */}
+        <div className={styles.finalCta}>
+          <div className={styles.finalCtaContent}>
+            <p className={styles.sectionEyebrow}>START WINNING MORE JOBS</p>
+            <h2>From first click to final payment. Run it all in one place.</h2>
+            <p>
+              Start free on Flex with $0 monthly base, or pick the plan with the team seats and messaging capacity you need.
+            </p>
+            <div className={styles.heroActions} style={{ justifyContent: 'center' }}>
+              <a
+                href={buildStartUrl({ goal: 'build_site', source: 'pricing_footer' })}
+                className={styles.primaryButton}
+              >
+                Build my free site &rarr;
+              </a>
+              <Link href="/contact" className={styles.secondaryButton}>
+                Talk to our team
+              </Link>
+            </div>
           </div>
         </div>
-        <ol className={styles.finalPath} aria-label="LGQ plan journey">
-          {PLANS.map((plan) => (
-            <li key={plan.id} data-plan={plan.id}>
-              <span>{PLAN_STAGES[plan.id].number}</span>
-              <strong>{plan.name}</strong>
-              <small>{paymentFee(plan)} platform fee</small>
-            </li>
-          ))}
-        </ol>
       </section>
-
-      {hasUsedCalculator && !stickyDismissed ? (
-        <aside
-          className={styles.mobileRecommendation}
-          data-plan={recommendation.plan.id}
-          aria-label="Current plan recommendation"
-        >
-          <button
-            type="button"
-            className={styles.mobileRecommendationDismiss}
-            aria-label="Dismiss recommendation"
-            onClick={() => setStickyDismissed(true)}
-          >
-            ×
-          </button>
-          <div>
-            <span>Your current best fit</span>
-            <strong>
-              {recommendation.plan.name} · {money(recommendation.annualCost / 12)}/mo effective
-            </strong>
-          </div>
-          <a href={signupHref(recommendation.plan.id, billing)}>
-            {recommendation.plan.id === 'flex' ? 'Start Flex' : `Choose ${recommendation.plan.name}`}
-          </a>
-        </aside>
-      ) : null}
     </>
   );
 }

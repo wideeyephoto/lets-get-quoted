@@ -7,12 +7,12 @@ import { COMPARISONS } from './compare-data';
 import styles from './compare.module.css';
 
 export const metadata: Metadata = {
-  title: 'Compare Contractor Software & Alternatives · Let’s Get Quoted',
+  title: 'Compare Contractor Software & Alternatives',
   description:
     'Compare Let’s Get Quoted with legacy contractor tools like Jobber, Housecall Pro, ServiceTitan, Angi, and Thumbtack. See transparent pricing and feature breakdowns.',
   alternates: { canonical: 'https://letsgetquoted.com/compare' },
   openGraph: {
-    title: 'Compare Contractor Software Alternatives · Let’s Get Quoted',
+    title: 'Compare Contractor Software & Alternatives',
     description:
       'Compare Let’s Get Quoted vs Jobber, Housecall Pro, ServiceTitan, and Angi. Start at $0/month with free contractor websites and built-in AI intake.',
     url: 'https://letsgetquoted.com/compare',

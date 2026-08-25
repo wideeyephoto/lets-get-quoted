@@ -79,7 +79,7 @@ const SITE_URL = 'https://letsgetquoted.com';
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "Let's Get Quoted — Contractor websites that get you paid, straight to your bank",
+    default: "Let's Get Quoted — Contractor software starting with a free website",
     template: "%s · Let's Get Quoted",
   },
   /* 160 CHARACTERS, NOT 364.
@@ -91,23 +91,23 @@ export const metadata: Metadata = {
      model in full, and the homepage's own pricing band carries it above the
      fold. A <meta description> is a snippet, not a disclosure surface. */
   description:
-    'One platform for contractors: a website with AI Intake, quotes and e-signatures, scheduling, and Stripe payments. Plans start at $0/month.',
+    'One connected system for contractors: build your website, qualify leads, send quotes, schedule work, manage crew, and collect payment without switching tools.',
   applicationName: "Let's Get Quoted",
   alternates: { canonical: '/' },
   openGraph: {
     type: 'website',
     url: SITE_URL,
     siteName: "Let's Get Quoted",
-    title: 'The website, CRM & payments platform built for contractors',
+    title: 'Let’s Get Quoted · Contractor Business Software',
     description:
-      'Win leads with AI Intake, send quotes and e-signatures, schedule work, and collect card or bank payments. Contractor plans start at $0/month.',
+      'From first click to final payment. Build your website, qualify leads, send quotes, schedule work, manage crew, and collect payment in one connected system.',
     images: [{ url: '/template-previews/professional.jpg', width: 1900, height: 881, alt: 'A contractor website built with Let’s Get Quoted' }],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'The website, CRM & payments platform built for contractors',
+    title: 'Let’s Get Quoted · Contractor Business Software',
     description:
-      'Capture leads, quote, e-sign, schedule, and get paid in one contractor platform. Plans start at $0/month.',
+      'From first click to final payment. Run your contracting business in one place—starting with a free website.',
     images: ['/template-previews/professional.jpg'],
   },
 };

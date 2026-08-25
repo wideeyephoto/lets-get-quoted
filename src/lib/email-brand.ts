@@ -1,13 +1,8 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { normalizeEmailTheme, type EmailBrand, type EmailThemeId } from '@/emails/brand';
+import { normalizeEmailTheme, recommendEmailTheme, type EmailBrand, type EmailThemeId } from '@/emails/brand';
 import { createAdminClient } from './auth';
 
-// Assembling a contractor's email brand from what they've already set up.
-//
-// Nothing new to fill in: the name, color and logo come from the website they
-// built, and the reply address is the login they already have. A contractor who
-// has never opened the site builder still gets their business name and a working
-// reply-to, which is most of the benefit.
+export { recommendEmailTheme };
 
 const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'letsgetquoted.com';
 
@@ -20,6 +15,9 @@ type BrandRow = {
   custom_domain: string | null;
   custom_domain_verified_at: string | null;
   email_theme: EmailThemeId | null;
+  service_area: string | null;
+  license_number?: string | null;
+  template?: string | null;
 };
 
 /**
@@ -38,13 +36,23 @@ export async function loadEmailBrand(
   // as from a request, and none of those carry a session.
   const admin = client ?? createAdminClient();
   let row: BrandRow | null = null;
+  let mailingAddress: string | null = null;
+
   try {
-    const { data } = await admin
-      .from('sites')
-      .select('company_name, accent_override, logo_url, phone, subdomain, custom_domain, custom_domain_verified_at, email_theme')
-      .eq('account_id', accountId)
-      .maybeSingle();
-    row = (data as BrandRow) ?? null;
+    const [{ data: siteData }, { data: accountData }] = await Promise.all([
+      admin
+        .from('sites')
+        .select('company_name, accent_override, logo_url, phone, subdomain, custom_domain, custom_domain_verified_at, email_theme, service_area, license_number, template')
+        .eq('account_id', accountId)
+        .maybeSingle(),
+      admin
+        .from('accounts')
+        .select('mailing_address')
+        .eq('id', accountId)
+        .maybeSingle(),
+    ]);
+    row = (siteData as BrandRow) ?? null;
+    mailingAddress = accountData?.mailing_address ? String(accountData.mailing_address).trim() : null;
   } catch {
     row = null;
   }
@@ -56,6 +64,8 @@ export async function loadEmailBrand(
   // a cycle between them resolves to undefined at runtime in a way that only
   // shows up when an email is actually sent.
   let replyTo: string | null = null;
+  let senderName: string | null = null;
+
   try {
     const { data: owner } = await admin
       .from('memberships')
@@ -68,6 +78,8 @@ export async function loadEmailBrand(
     if (owner?.user_id) {
       const { data: ownerUser } = await admin.auth.admin.getUserById(owner.user_id);
       replyTo = ownerUser?.user?.email ?? null;
+      const meta = ownerUser?.user?.user_metadata;
+      senderName = meta?.full_name || meta?.name || null;
     }
   } catch {
     replyTo = null;
@@ -89,6 +101,10 @@ export async function loadEmailBrand(
     siteUrl: host ? `https://${host}` : null,
     replyTo,
     theme: normalizeEmailTheme(row?.email_theme),
+    mailingAddress,
+    licenseNumber: row?.license_number?.trim() || null,
+    serviceArea: row?.service_area?.trim() || null,
+    senderName,
   };
 }
 

@@ -1,0 +1,343 @@
+/* Shared CSS for Demo Evaluation Tour */
+
+.tourContainer {
+  min-height: 100vh;
+  background: #07131d;
+  color: #f1f7fa;
+  font-family: var(--font-body, system-ui, -apple-system, sans-serif);
+  display: flex;
+  flex-direction: column;
+}
+
+.perspectiveHero {
+  background: linear-gradient(180deg, rgba(80, 227, 189, 0.12) 0%, rgba(7, 19, 29, 0) 100%);
+  border-bottom: 1px solid rgba(80, 227, 189, 0.18);
+  padding: 18px clamp(16px, 4vw, 40px);
+}
+
+.perspectiveHeroContractor {
+  background: linear-gradient(180deg, rgba(255, 209, 102, 0.12) 0%, rgba(7, 19, 29, 0) 100%);
+  border-bottom: 1px solid rgba(255, 209, 102, 0.18);
+  padding: 18px clamp(16px, 4vw, 40px);
+}
+
+.perspectiveHeroSummary {
+  background: linear-gradient(180deg, rgba(255, 106, 36, 0.12) 0%, rgba(7, 19, 29, 0) 100%);
+  border-bottom: 1px solid rgba(255, 106, 36, 0.18);
+  padding: 18px clamp(16px, 4vw, 40px);
+}
+
+.perspectiveHeroInner {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.perspectiveInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.perspectiveTag {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--mint, #50e3bd);
+}
+
+.perspectiveTagContractor {
+  color: var(--yellow, #ffd166);
+}
+
+.perspectiveTagSummary {
+  color: var(--orange, #ff6a24);
+}
+
+.perspectiveHeading {
+  font-size: 16px;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0;
+}
+
+.perspectiveSub {
+  font-size: 13px;
+  color: #9eb5c2;
+  margin: 0;
+}
+
+.tourNextActionBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--orange, #ff6a24);
+  color: #0b1e2a;
+  font-weight: 750;
+  font-size: 13.5px;
+  padding: 8px 18px;
+  border-radius: 6px;
+  text-decoration: none;
+  box-shadow: 0 4px 14px rgba(255, 106, 36, 0.35);
+  transition: all 0.2s ease;
+}
+
+.tourNextActionBtn:hover {
+  background: #ff8142;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(255, 106, 36, 0.5);
+}
+
+/* Site Step Styles */
+.siteWrapper {
+  background: #ffffff;
+  color: #1a2830;
+  min-height: calc(100vh - 120px);
+}
+
+.siteNav {
+  background: #0f2434;
+  color: #ffffff;
+  padding: 14px clamp(16px, 4vw, 48px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 2px solid #50e3bd;
+}
+
+.siteBrand {
+  font-size: 18px;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: -0.02em;
+}
+
+.siteBrand span {
+  color: #50e3bd;
+}
+
+.siteNavLinks {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.sitePhone {
+  font-size: 14px;
+  font-weight: 700;
+  color: #ffd166;
+  text-decoration: none;
+}
+
+.siteEstimateBtn {
+  background: #50e3bd;
+  color: #071a26;
+  font-size: 13px;
+  font-weight: 750;
+  padding: 8px 16px;
+  border-radius: 6px;
+  text-decoration: none;
+  transition: background 0.2s ease;
+}
+
+.siteEstimateBtn:hover {
+  background: #68f0cb;
+}
+
+.siteHero {
+  background: linear-gradient(135deg, #091a27 0%, #153245 100%);
+  color: #ffffff;
+  padding: clamp(40px, 8vw, 80px) clamp(16px, 4vw, 48px);
+  text-align: center;
+}
+
+.siteHeroInner {
+  max-width: 860px;
+  margin: 0 auto;
+}
+
+.siteHeroBadge {
+  display: inline-block;
+  background: rgba(80, 227, 189, 0.15);
+  border: 1px solid rgba(80, 227, 189, 0.4);
+  color: #50e3bd;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 14px;
+  border-radius: 999px;
+  margin-bottom: 16px;
+}
+
+.siteHeroTitle {
+  font-size: clamp(32px, 5vw, 54px);
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  margin: 0 0 16px;
+}
+
+.siteHeroTitle em {
+  font-style: normal;
+  color: #50e3bd;
+}
+
+.siteHeroSub {
+  font-size: clamp(15px, 2vw, 19px);
+  color: #b7cdd7;
+  line-height: 1.5;
+  margin: 0 0 28px;
+}
+
+.siteHeroCtaBox {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 12px;
+  padding: 24px;
+  max-width: 580px;
+  margin: 0 auto;
+  backdrop-filter: blur(8px);
+}
+
+.siteHeroCtaBox h3 {
+  font-size: 18px;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0 0 8px;
+}
+
+.siteHeroCtaBox p {
+  font-size: 13.5px;
+  color: #d1e2eb;
+  margin: 0 0 18px;
+}
+
+.sitePulseBtn {
+  display: inline-block;
+  width: 100%;
+  background: #ff6a24;
+  color: #0b1e2a;
+  font-size: 16px;
+  font-weight: 800;
+  padding: 14px 24px;
+  border-radius: 8px;
+  text-decoration: none;
+  box-shadow: 0 4px 16px rgba(255, 106, 36, 0.4);
+  transition: all 0.2s ease;
+}
+
+.sitePulseBtn:hover {
+  background: #ff8142;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(255, 106, 36, 0.6);
+}
+
+.siteServicesGrid {
+  max-width: 1200px;
+  margin: 60px auto;
+  padding: 0 clamp(16px, 4vw, 40px);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 24px;
+}
+
+.siteServiceCard {
+  background: #f7f9fb;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 24px;
+}
+
+.siteServiceCard h4 {
+  font-size: 18px;
+  font-weight: 700;
+  color: #0f2434;
+  margin: 0 0 8px;
+}
+
+.siteServiceCard p {
+  font-size: 14px;
+  line-height: 1.5;
+  color: #4a5568;
+  margin: 0 0 16px;
+}
+
+.siteServiceLink {
+  color: #0d7a5f;
+  font-weight: 700;
+  font-size: 13px;
+  text-decoration: none;
+}
+
+.siteReviews {
+  background: #edf2f7;
+  padding: 50px clamp(16px, 4vw, 40px);
+  text-align: center;
+}
+
+.siteReviewsInner {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.siteReviewsInner h3 {
+  font-size: 24px;
+  font-weight: 800;
+  color: #0f2434;
+  margin: 0 0 8px;
+}
+
+.siteReviewGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
+  margin-top: 32px;
+  text-align: left;
+}
+
+.siteReviewCard {
+  background: #ffffff;
+  border: 1px solid #cbd5e0;
+  border-radius: 8px;
+  padding: 20px;
+}
+
+.siteReviewStars {
+  color: #f59e0b;
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+
+.siteReviewText {
+  font-size: 14px;
+  line-height: 1.5;
+  color: #2d3748;
+  margin: 0 0 12px;
+}
+
+.siteReviewAuthor {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #718096;
+}
+
+/* Card Workspace Styles */
+.cardLayout {
+  max-width: 1160px;
+  margin: 32px auto;
+  padding: 0 clamp(16px, 3vw, 32px);
+  width: 100%;
+}
+
+.panelCard {
+  background: linear-gradient(175deg, rgba(16, 38, 54, 0.85), rgba(9, 23, 34, 0.95));
+  border: 1px solid rgba(168, 204, 255, 0.14);
+  border-radius: 14px;
+  padding: clamp(24px, 4vw, 40px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+}

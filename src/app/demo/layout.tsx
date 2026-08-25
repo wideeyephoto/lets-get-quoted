@@ -14,9 +14,7 @@
 import '../globals.css';
 import type { ReactNode } from 'react';
 import type { Metadata } from 'next';
-import DemoBanner from '@/components/demo-banner';
-import DemoSidebar from '@/components/demo-sidebar';
-import ThemeFab from '@/components/theme-fab';
+import DemoChromeShell from '@/components/demo/DemoChromeShell';
 
 export const metadata: Metadata = {
   title: 'Example dashboard',
@@ -25,22 +23,8 @@ export const metadata: Metadata = {
 
 // Every /demo/** page is 100% static/fictional and requires no auth — see
 // src/lib/demo-data.ts for the fixed dataset. The demo owns its chrome: AppShell
-// steps aside for /demo (see app-shell.tsx), and we render the same left rail
-// the real dashboard uses so prospects see the current product. Route stays out
-// of middleware's /dashboard auth guard and out of search results (robots above).
+// steps aside for /demo (see app-shell.tsx), and DemoChromeShell renders the
+// appropriate chrome (full tour layout for /demo/tour, dashboard rail for /demo).
 export default function DemoLayout({ children }: { children: ReactNode }) {
-  return (
-    <div className="chrome-shell chrome-shell-sidenav">
-      <DemoSidebar />
-      <div className="app-main app-main-sidenav">
-        <DemoBanner />
-        {children}
-      </div>
-      {/* The same always-on switch the real dashboard carries (see its call
-          site in app-shell.tsx). The demo is what a prospect looks at outside
-          on their phone, and the rail's own Appearance row is below the fold of
-          a drawer here exactly as it is in the product. */}
-      <ThemeFab />
-    </div>
-  );
+  return <DemoChromeShell>{children}</DemoChromeShell>;
 }

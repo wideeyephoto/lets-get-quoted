@@ -424,7 +424,7 @@ export default function DashboardHomeScreen({
         {automation.total === 0 ? (
           <p className="workspace-card-copy">
             Nothing automated yet. Turn on review requests, quote follow-ups and appointment
-            reminders in <Link href={`${basePath}/automations`}>Automations</Link> and this fills
+            reminders in <Link href={basePath === '/demo' ? '/demo/settings' : `${basePath}/automations`}>Automations</Link> and this fills
             in as they run.
           </p>
         ) : (

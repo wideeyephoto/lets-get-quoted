@@ -65,7 +65,9 @@ const DWELL = 5200;
 
 export default function HeroShowcase() {
   const [index, setIndex] = useState(0);
-  const [paused, setPaused] = useState(false);
+  // Paused by default on first viewport: shows one clean, stable hero product shot
+  // without distracting auto-rotation. Users can click any tab dot to switch.
+  const [paused, setPaused] = useState(true);
   const frameRef = useRef<HTMLDivElement>(null);
 
   const go = useCallback((next: number) => {

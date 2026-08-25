@@ -17,22 +17,22 @@ import TextAlertDemo from './text-alert-demo';
 export const metadata: Metadata = {
   // absolute: the root template's " · Let's Get Quoted" pushed this to 77
   // characters, and the brand is already the third word. See titleWithBrand.
-  title: { absolute: titleWithBrand('How Let’s Get Quoted Works — your best jobs rise to the top') },
+  title: { absolute: titleWithBrand('How It Works — The Connected Contractor System') },
   description:
-    'Your website qualifies every request, scores it by value, and tells you when a promising job needs an answer — then carries it all the way through to paid.',
+    'From website lead to paid job: see how Let’s Get Quoted qualifies requests, sends quotes, schedules crew, and collects payments in one connected system.',
   alternates: { canonical: 'https://letsgetquoted.com/how-it-works' },
   openGraph: {
-    title: 'Your best jobs rise to the top.',
+    title: 'How It Works · From First Click to Final Payment',
     description:
-      'Incoming requests are qualified, scored and surfaced when they deserve an answer — and the one you take carries straight through quote, schedule, crew, payment and review.',
+      'From website lead to paid job: see how Let’s Get Quoted qualifies requests, sends quotes, schedules crew, and collects payments in one connected system.',
     url: 'https://letsgetquoted.com/how-it-works',
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Your best jobs rise to the top.',
+    title: 'How Let’s Get Quoted Works',
     description:
-      'Incoming requests are qualified, scored and surfaced when they deserve an answer.',
+      'From website lead to paid job: one connected workflow for contractors.',
   },
 };
 
@@ -132,12 +132,11 @@ const TRUST: { term: string; detail: ReactNode }[] = [
  * with the three the page has already shown marked as shown.
  */
 const JOURNEY: { n: string; title: string; body: string; href: string; done?: boolean }[] = [
-  { n: '1', title: 'Request', body: 'A homeowner describes the job on your own site.', href: '/features/website-builder', done: true },
-  { n: '2', title: 'Ranked', body: 'Estimated, scored against your filters, and placed in the queue.', href: '/features/ai-intake', done: true },
-  { n: '3', title: 'Texted', body: 'One message when a job is worth interrupting you for.', href: '#text-alerts', done: true },
-  { n: '4', title: 'Quoted', body: 'The summary becomes a quote they approve and sign from a phone.', href: '/features/quotes' },
-  { n: '5', title: 'Scheduled', body: 'A window they pick, a crew assigned, the scope in the field.', href: '/features/scheduling' },
-  { n: '6', title: 'Paid', body: 'Deposit, balance and review, on the record that started it.', href: '/features/payments' },
+  { n: '1', title: 'Website visit', body: 'A homeowner requests an instant estimate on your contractor site.', href: '/features/website-builder', done: true },
+  { n: '2', title: 'Qualified lead', body: 'Estimated, scored against your trade rules, and ranked in your queue.', href: '/features/ai-intake', done: true },
+  { n: '3', title: 'Quote', body: 'The summary turns into an itemized quote for e-signature and deposit.', href: '/features/quotes' },
+  { n: '4', title: 'Scheduled work', body: 'Book the arrival window, assign your crew, and dispatch the route.', href: '/features/scheduling' },
+  { n: '5', title: 'Payment', body: 'Two-way customer texts, client portal updates, and Stripe payouts.', href: '/features/client-portal' },
 ];
 
 /* THE LAST PIECE OF PAPER ON THE PAGE.
@@ -232,17 +231,16 @@ export default function HowItWorksPage() {
           ------------------------------------------------------------------ */}
       <section className="hiq-hero" id="main-content" aria-labelledby="hiq-title">
         <div className="hiq-hero-copy">
-          <p className="hiq-eyebrow">AI-ranked lead queue</p>
+          <p className="hiq-eyebrow">THE 5-STEP CONTRACTOR WORKFLOW</p>
           <h1 id="hiq-title">
-            Your best jobs <em>rise to the top.</em>
+            From first click to <em>final payment.</em>
           </h1>
           <p className="hiq-lede">
-            Your website qualifies every request, estimates its value and alerts you when a
-            promising job needs an answer. Respond now—or save it for later.
+            Let’s Get Quoted is one connected system: launch your free website, qualify leads 24/7, send quotes, schedule crew, and collect payment without switching tools.
           </p>
           <div className="hiq-actions">
             <a className="hiq-button" href={APP_SIGNUP_URL}>
-              Start free <span aria-hidden="true">→</span>
+              Build my free site <span aria-hidden="true">→</span>
             </a>
             <Link className="hiq-textlink" href={DEMO_URL}>
               Explore the demo
@@ -324,7 +322,7 @@ export default function HowItWorksPage() {
       <section className="hiq-journey" aria-labelledby="hiq-journey-title">
         <div className="hiq-shell">
           <h2 id="hiq-journey-title" className="hiq-journey-title">
-            One request, six steps: <em>Request → Ranked → Texted → Quoted → Scheduled → Paid.</em>
+            One connected workflow, five steps: <em>Website visit → Qualified lead → Quote → Scheduled work → Payment.</em>
           </h2>
           <ol className="hiq-journey-rail">
             {JOURNEY.map((beat) => (

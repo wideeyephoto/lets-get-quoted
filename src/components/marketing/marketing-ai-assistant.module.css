@@ -1037,17 +1037,47 @@
   transform: translateY(-1px);
 }
 
-@media (max-width: 600px) {
-  .floatingWrapper {
-    bottom: 74px; /* Positioned above mobile bottom CTA bar */
-    right: 16px;
+.backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(6, 17, 26, 0.65);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 998;
+}
+
+@media (max-width: 768px) {
+  /* On mobile: floating pill is hidden to eliminate collisions with the bottom dock */
+  .floatingTrigger {
+    display: none !important;
   }
 
+  .floatingWrapper {
+    position: static;
+  }
+
+  .floatingWrapper.wrapperOpen {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    pointer-events: none;
+  }
+
+  /* Full-width accessible bottom sheet on phone viewports */
   .drawer {
-    width: calc(100vw - 32px);
+    position: fixed;
+    left: 0;
     right: 0;
-    bottom: 54px;
-    height: 500px;
+    bottom: 0;
+    width: 100vw;
+    max-width: 100vw;
+    height: min(85vh, 620px);
+    max-height: 85vh;
+    border-radius: 20px 20px 0 0;
+    border-bottom: 0;
+    box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.6);
+    pointer-events: auto;
+    padding-bottom: max(16px, env(safe-area-inset-bottom));
   }
 }
 

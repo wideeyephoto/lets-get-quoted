@@ -48,9 +48,9 @@ import LaunchBanner from '@/components/marketing/launch-banner';
  */
 
 export const metadata: Metadata = {
-  title: 'Features',
+  title: 'Contractor Software & Features',
   description:
-    'Explore the connected contractor suite — website, AI Intake, quotes, scheduling, crews and payments — with plans starting at $0/month.',
+    'One connected system for contractors: free website, AI intake, quotes, scheduling, crews, and Stripe payments. Plans start at $0/month.',
   alternates: { canonical: 'https://letsgetquoted.com/features' },
 };
 
@@ -233,14 +233,13 @@ export default function FeaturesPage() {
           generated sheet and a wrapper would silently drop both. */}
       <section className="index-hero index-hero-beside" id="main-content">
         <p className="eyebrow">
-          <span aria-hidden="true">✦</span> THE COMPLETE CONTRACTOR WORKFLOW
+          <span aria-hidden="true">✦</span> THE CONNECTED CONTRACTOR SYSTEM
         </p>
         <h1>
-          Turn more website leads into <em>paid jobs</em>—without switching tools.
+          Everything connected from <em>website lead to paid job.</em>
         </h1>
         <p>
-          Your website, AI intake, quotes, scheduling, crew, customer texts and payments stay
-          connected in one job record.
+          Build your website, qualify leads, send quotes, schedule work, manage your crew, and collect payment without switching tools.
         </p>
         <div className="hero-actions">
           {/* Was the app ROOT, which is the sign-in screen — the biggest button

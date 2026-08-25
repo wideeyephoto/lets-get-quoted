@@ -70,9 +70,9 @@ export default async function DemoQuickStopsPage() {
             usual.
           </p>
         </div>
-        <span className="btn secondary bset-head-cta" aria-disabled="true">
+        <Link href="/demo/schedule/booking" className="btn secondary bset-head-cta">
           View booking page <Icon name="external" />
-        </span>
+        </Link>
       </header>
 
       {!isLoggedIn && (
@@ -85,19 +85,7 @@ export default async function DemoQuickStopsPage() {
         />
       )}
 
-      {/* The REAL status panel, read-only. It replaces a hand-drawn switch and
-          a four-card row that had to be kept in step with the live one by hand —
-          and had already drifted from it. Everything it shows is the same
-          derivation an owner sees: which of the prerequisites are met, and which
-          single one is missing when it is not live. */}
-      {/* NO PREVIEW LINK, because there is nowhere true to send one. bookingUrl
-          was `https://evergreenlawn.letsgetquoted.com/book` and that 404s:
-          middleware rewrites a tenant host to /site/<subdomain><path>, and
-          src/app/site/[subdomain] has no `book` route — the real booking page is
-          /book/<subdomain> on the app host, which is what a signed-in owner's
-          own link uses. The demo account is fixture data with no published site
-          behind it either way, so both addresses are a promise the click cannot
-          keep. QuickStopStatus renders no button when this is null. */}
+      {/* The REAL status panel, read-only with internal demo booking link. */}
       <QuickStopStatus
         readOnly
         enabled
@@ -107,7 +95,7 @@ export default async function DemoQuickStopsPage() {
         feeSet
         daysSet
         stripeConnected
-        bookingUrl={null}
+        bookingUrl="/demo/schedule/booking"
         dayNames="Mon – Fri"
         dayCount={5}
         hoursLabel={`8 AM – ${clockLabel(DEMO_QUICK_STOPS.cutoffTime)}`}

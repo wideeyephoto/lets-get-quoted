@@ -20,10 +20,16 @@ import type { Lead } from './leads';
  * them against anything. That is the case formatUsdRounded documents as its own.
  */
 import { formatMoney, formatMoneyExact } from './jobs';
+import { APP_ORIGIN } from '@/lib/app-origin';
 import { buildUnsubscribePageUrl, buildUnsubscribeOneClickUrl } from './email-suppression';
-import { APP_ORIGIN } from './app-origin';
-import { contractorFrom, normalizeEmailTheme, renderBrandedEmail, safeAccent, themePaint, type EmailBrand } from '@/emails/brand';
-import { appointmentBlock, contactBlock, detailCard, moneySummary, statusBanner } from '@/emails/primitives';
+import { contractorFrom, normalizeEmailTheme, renderBrandedEmail, themePaint, type EmailBrand } from '@/emails/brand';
+import { detailCard, statusBanner } from '@/emails/primitives';
+import {
+  renderClientQuoteEmailHtml,
+  renderAppointmentReminderEmailHtml,
+  renderContractorAlertEmailHtml,
+  type SendClientQuoteEmailInput,
+} from '@/emails/renderers';
 import { loadEmailBrand, nameOnlyBrand } from './email-brand';
 import type { DailyDigest } from './daily-digest';
 import { quoteFollowupEmailPreview } from './quote-followups';
@@ -226,55 +232,12 @@ export async function sendInvoiceEmail(input: SendInvoiceEmailInput): Promise<vo
   }
 }
 
-export interface SendClientQuoteEmailInput {
-  recipientEmail: string;
-  businessName: string;
-  accountId?: string;
-  clientName: string;
-  jobRef: string;
-  quotedAmount: number;
-  quoteUrl: string;
-  includesScheduleOptions?: boolean;
-}
-
-/**
- * Generates the production HTML for a client quote email.
- * Reusable for live sending and preview rendering.
- */
-export function renderClientQuoteEmailHtml(input: SendClientQuoteEmailInput & { brand: EmailBrand }): string {
-  const brand = input.brand;
-  const theme = normalizeEmailTheme(brand.theme);
-  const paint = themePaint(theme, brand.accent);
-
-  const paragraphs = [
-    'Your customized quote is ready for review. Approve online to lock in your project schedule.',
-  ];
-  if (input.includesScheduleOptions) {
-    paragraphs.push('You can also pick your preferred start date right on your quote page.');
-  }
-
-  const quoteSummary = moneySummary(
-    paint,
-    [{ label: 'Estimated Project Total', value: formatMoneyExact(input.quotedAmount), strong: true }],
-    { label: 'Total Estimate', value: formatMoneyExact(input.quotedAmount) },
-    { dueNotice: `Quote ${escapeHtml(input.jobRef)} · Valid for 30 days` },
-  );
-
-  const contactHtml = contactBlock(paint, brand, {
-    prompt: `Questions about quote ${escapeHtml(input.jobRef)}?`,
-  });
-
-  return renderBrandedEmail({
-    brand,
-    preheader: `${formatMoneyExact(input.quotedAmount)} · Quote ${input.jobRef} from ${input.businessName}`,
-    eyebrow: `Quote ${input.jobRef}`,
-    heading: `${input.clientName}, here is your quote`,
-    paragraphs,
-    bodyHtml: quoteSummary,
-    cta: { label: 'View & approve your quote', url: input.quoteUrl },
-    contactCallout: contactHtml,
-  });
-}
+export {
+  renderClientQuoteEmailHtml,
+  renderAppointmentReminderEmailHtml,
+  renderContractorAlertEmailHtml,
+  type SendClientQuoteEmailInput,
+} from '@/emails/renderers';
 
 // Client-facing quote email — the fallback channel when a lead has an email but
 // no textable mobile, so the quote still reaches them instead of silently
@@ -352,10 +315,7 @@ export async function sendOfficeInvitationEmail(input: {
       cta: { label: 'Set up your access', url: input.inviteUrl },
     }),
     reply_to: replyAddress(brand),
-    tags: [
-      { name: 'kind', value: 'office_invitation' },
-      ...(input.accountId ? [{ name: 'account_id', value: input.accountId }] : []),
-    ],
+    tags: defaultTags('office_invitation', brand, input.accountId),
   });
 
   if (result.error) {
@@ -386,24 +346,16 @@ export async function sendContractorAlertEmail(input: {
     return;
   }
 
-  const eyebrow = input.tone === 'info' ? 'ACCOUNT UPDATE' : 'ACTION NEEDED';
   const brand = await brandFor(input);
+  const html = renderContractorAlertEmailHtml({ ...input, brand });
 
   const result = await resend.emails.send({
     from: "Let's Get Quoted <hello@letsgetquoted.com>",
     to: input.recipientEmail,
     subject: input.subject,
-    html: renderBrandedEmail({
-      brand,
-      audience: 'account',
-      preheader: input.subject,
-      eyebrow,
-      heading: input.heading,
-      paragraphs: input.bodyLines,
-      cta: { label: input.ctaLabel, url: input.ctaUrl },
-    }),
+    html,
     reply_to: 'hello@letsgetquoted.com',
-    tags: [{ name: 'kind', value: 'contractor_alert' }],
+    tags: defaultTags('contractor_alert', brand, input.accountId),
   });
 
   if (result.error) {
@@ -624,10 +576,7 @@ export async function sendQuoteFollowupEmail(input: {
       cta: { label: copy.cta, url: input.url },
     }),
     reply_to: replyAddress(brand),
-    tags: [
-      { name: 'kind', value: 'quote_followup' },
-      ...(input.accountId ? [{ name: 'account_id', value: input.accountId }] : []),
-    ],
+    tags: defaultTags('quote_followup', brand, input.accountId),
   });
 
   if (result.error) {
@@ -679,10 +628,7 @@ export async function sendSelectionRequestEmail(input: {
       cta: { label: input.count === 1 ? 'Make your choice' : 'Make your choices', url: input.url },
     }),
     reply_to: replyAddress(brand),
-    tags: [
-      { name: 'kind', value: 'selection_request' },
-      ...(input.accountId ? [{ name: 'account_id', value: input.accountId }] : []),
-    ],
+    tags: defaultTags('selection_request', brand, input.accountId),
   });
 
   if (result.error) {
@@ -725,10 +671,7 @@ export async function sendReviewRequestEmail(input: {
     }),
     reply_to: replyAddress(brand),
     headers: listUnsubscribeHeaders(oneClickUrl),
-    tags: [
-      { name: 'kind', value: 'review_request' },
-      { name: 'account_id', value: input.accountId },
-    ],
+    tags: defaultTags('review_request', brand, input.accountId),
   });
 
   if (result.error) {
@@ -756,9 +699,6 @@ export async function sendRebookInviteEmail(input: {
   const brand = await brandFor(input);
   const unsubscribeUrl = buildUnsubscribePageUrl(input.accountId, input.recipientEmail);
   const oneClickUrl = buildUnsubscribeOneClickUrl(input.accountId, input.recipientEmail);
-  // The words come from rebookInviteEmailContent so the preview on the Win-back
-  // page is the message rather than a description of it. A preview built from a
-  // second copy of the copy tells the truth until the first edit.
   const content = rebookInviteEmailContent(input);
   const result = await resend.emails.send({
     from: contractorFrom(brand.businessName),
@@ -775,10 +715,7 @@ export async function sendRebookInviteEmail(input: {
     }),
     reply_to: replyAddress(brand),
     headers: listUnsubscribeHeaders(oneClickUrl),
-    tags: [
-      { name: 'kind', value: 'rebook_invite' },
-      { name: 'account_id', value: input.accountId },
-    ],
+    tags: defaultTags('rebook_invite', brand, input.accountId),
   });
 
   if (result.error) {
@@ -804,26 +741,15 @@ export async function sendAppointmentReminderEmail(input: {
   }
 
   const brand = await brandFor(input);
-  const paragraphs = [`When: ${input.whenLabel}`];
-  if (input.address) paragraphs.push(`Where: ${input.address}`);
-  paragraphs.push(`${input.businessName} is looking forward to seeing you. Need to reschedule? Just reply to this email or give us a call.`);
+  const html = renderAppointmentReminderEmailHtml({ ...input, brand });
 
   const result = await resend.emails.send({
     from: contractorFrom(brand.businessName),
     to: input.recipientEmail,
     subject: `Reminder: your appointment with ${input.businessName}`,
-    html: renderBrandedEmail({
-      brand,
-      preheader: input.whenLabel,
-      eyebrow: 'Appointment reminder',
-      heading: `${input.clientName}, your appointment is coming up`,
-      paragraphs,
-    }),
+    html,
     reply_to: replyAddress(brand),
-    tags: [
-      { name: 'kind', value: 'appointment_reminder' },
-      ...(input.accountId ? [{ name: 'account_id', value: input.accountId }] : []),
-    ],
+    tags: defaultTags('appointment_reminder', brand, input.accountId),
   });
 
   if (result.error) {
@@ -872,10 +798,7 @@ export async function sendChoiceReminderTestEmail(input: {
       ],
     }),
     reply_to: replyAddress(brand),
-    tags: [
-      { name: 'kind', value: 'choice_reminder_test' },
-      ...(input.accountId ? [{ name: 'account_id', value: input.accountId }] : []),
-    ],
+    tags: defaultTags('choice_reminder_test', brand, input.accountId),
   });
 
   if (result.error) {
@@ -930,10 +853,7 @@ export async function sendBookingConfirmationEmail(input: {
       paragraphs,
     }),
     reply_to: replyAddress(brand),
-    tags: [
-      { name: 'kind', value: 'booking_confirmation' },
-      ...(input.accountId ? [{ name: 'account_id', value: input.accountId }] : []),
-    ],
+    tags: defaultTags('booking_confirmation', brand, input.accountId),
   });
 
   if (result.error) {
@@ -979,10 +899,7 @@ export async function sendClientPortalLinkEmail(input: {
       footerHtml: `<p style="margin:10px 0 0;font-size:12px;line-height:1.6;color:#6b7280">The link works for 90 days and only opens your own records. Do not forward it — anyone with it can see your job history. If you did not ask for this, you can ignore it; nothing has changed on your account.</p>`,
     }),
     reply_to: replyAddress(brand),
-    tags: [
-      { name: 'kind', value: 'client_portal_link' },
-      ...(input.accountId ? [{ name: 'account_id', value: input.accountId }] : []),
-    ],
+    tags: defaultTags('client_portal_link', brand, input.accountId),
   });
 
   if (result.error) {
@@ -1019,10 +936,7 @@ export async function sendCardUpdateEmail(input: {
       footerHtml: `<p style="margin:10px 0 0;font-size:12px;line-height:1.6;color:#6b7280">Your card is stored securely by Stripe. You can ask ${escapeHtml(input.businessName)} to stop automatic billing at any time.</p>`,
     }),
     reply_to: replyAddress(brand),
-    tags: [
-      { name: 'kind', value: 'card_update' },
-      ...(input.accountId ? [{ name: 'account_id', value: input.accountId }] : []),
-    ],
+    tags: defaultTags('card_update', brand, input.accountId),
   });
 
   if (result.error) {
@@ -1062,10 +976,7 @@ export async function sendCardSetupEmail(input: {
       footerHtml: `<p style="margin:10px 0 0;font-size:12px;line-height:1.6;color:#6b7280">Your card is stored securely by Stripe. You can ask ${escapeHtml(input.businessName)} to stop automatic billing at any time.</p>`,
     }),
     reply_to: replyAddress(brand),
-    tags: [
-      { name: 'kind', value: 'card_setup' },
-      ...(input.accountId ? [{ name: 'account_id', value: input.accountId }] : []),
-    ],
+    tags: defaultTags('card_setup', brand, input.accountId),
   });
 
   if (result.error) {
@@ -1110,8 +1021,6 @@ export async function renderCampaignEmailHtml(input: {
   const unsubscribeUrl = buildUnsubscribePageUrl(input.accountId, input.recipientEmail);
   return renderBrandedEmail({
     brand,
-    // The owner wrote this themselves, so there is no heading of ours to put
-    // above it — their words start the email.
     heading: input.subject,
     bodyHtml: campaignParagraphs(input.body),
     footerHtml: marketingFooter(input.businessName, input.mailingAddress, unsubscribeUrl),
@@ -1139,10 +1048,7 @@ export async function sendCampaignEmail(input: {
     html: await renderCampaignEmailHtml(input),
     reply_to: replyAddress(brand),
     headers: listUnsubscribeHeaders(oneClickUrl),
-    tags: [
-      { name: 'kind', value: 'campaign' },
-      { name: 'account_id', value: input.accountId },
-    ],
+    tags: defaultTags('campaign', brand, input.accountId),
   });
 
   if (result.error) {
@@ -1168,33 +1074,39 @@ export function renderDailyDigestEmailHtml(input: {
   isTest?: boolean;
 }): string {
   const d = input.digest;
+  const theme = normalizeEmailTheme(input.brand.theme);
+  const paint = themePaint(theme, input.brand.accent);
 
   // A labelled stat line; `accent` highlights the ones that want attention.
   const row = (label: string, value: string, accent?: 'good' | 'warn') => {
     const color = accent === 'warn' ? '#dc2626' : accent === 'good' ? '#059669' : '#172033';
-    return `<tr><td style="padding:8px 0;color:#4b5563;font-size:15px">${escapeHtml(label)}</td><td style="padding:8px 0;text-align:right;font-weight:700;font-size:15px;color:${color}">${value}</td></tr>`;
+    return `<tr><td style="padding:7px 0;color:#4b5563;font-size:14px">${escapeHtml(label)}</td><td style="padding:7px 0;text-align:right;font-weight:700;font-size:14px;color:${color}">${value}</td></tr>`;
   };
-  const section = (title: string, rowsHtml: string) =>
-    rowsHtml
-      ? `<p style="margin:22px 0 4px;color:#b45309;font-weight:700;letter-spacing:0.04em;font-size:12px">${escapeHtml(title.toUpperCase())}</p><table style="width:100%;border-collapse:collapse">${rowsHtml}</table>`
-      : '';
+
+  const section = (title: string, rowsHtml: string) => {
+    if (!rowsHtml) return '';
+    return detailCard(paint, `<table style="width:100%;border-collapse:collapse">${rowsHtml}</table>`, {
+      title,
+    });
+  };
 
   const money = [
     d.moneyInCount > 0 ? row('Payments received', `${d.moneyInCount} · ${escapeHtml(formatMoney(d.moneyInTotal))}`, 'good') : '',
     d.failedCount > 0 ? row('Failed charges', `${d.failedCount} · ${escapeHtml(formatMoney(d.failedTotal))}`, 'warn') : '',
     d.openRequestsCount > 0 ? row('Awaiting payment', `${d.openRequestsCount} · ${escapeHtml(formatMoney(d.openRequestsTotal))}`) : '',
   ].join('');
+
   const pipeline = [
     d.newLeads > 0 ? row('New leads', String(d.newLeads), 'good') : '',
     d.quotesApproved > 0 ? row('Quotes approved', String(d.quotesApproved), 'good') : '',
   ].join('');
+
   const reputation = [
     d.newReviews > 0 ? row('New reviews', d.newReviewsAvg != null ? `${d.newReviews} · ${d.newReviewsAvg}★ avg` : String(d.newReviews), 'good') : '',
     d.privateFeedback > 0 ? row('Private feedback to review', String(d.privateFeedback), 'warn') : '',
   ].join('');
+
   const schedule = [
-    // The cash warning goes FIRST and loudest. Everything else in this email is
-    // a report; this is the only line that is a deadline.
     d.cash
       ? row(
           d.cash.overdraft ? `Overdrawn ${d.cash.label}` : `Under your buffer ${d.cash.label}`,
@@ -1206,8 +1118,6 @@ export function renderDailyDigestEmailHtml(input: {
       : '',
     d.confirmations > 0 ? row('Appointments confirmed', String(d.confirmations), 'good') : '',
     d.rebookDue > 0 ? row('Past clients due to rebook', String(d.rebookDue)) : '',
-    // A job that can't be ordered because nobody has picked the tile. Warned
-    // only once it's late — a board built a month ahead is not a problem yet.
     d.selections
       ? row(
           `Waiting on customer choices · ${d.selections.jobs} job${d.selections.jobs === 1 ? '' : 's'}`,
@@ -1217,8 +1127,6 @@ export function renderDailyDigestEmailHtml(input: {
           d.selections.overdue > 0 ? 'warn' : undefined,
         )
       : '',
-    // Payday only appears when it is close and something is still outstanding —
-    // and it says what stands in the way, because the date alone is not a task.
     d.payday
       ? row(
           d.payday.label,
@@ -1231,14 +1139,21 @@ export function renderDailyDigestEmailHtml(input: {
   ].join('');
 
   const todayList = d.todaysJobs.length
-    ? `<p style="margin:22px 0 4px;color:#b45309;font-weight:700;letter-spacing:0.04em;font-size:12px">TODAY&rsquo;S SCHEDULE · ${d.todaysJobsCount} JOB${d.todaysJobsCount === 1 ? '' : 'S'}</p>` +
-      d.todaysJobs
-        .map((j) => `<p style="margin:0 0 6px;font-size:15px;color:#172033">${j.time ? `<strong>${escapeHtml(j.time)}</strong> · ` : ''}${escapeHtml(j.clientName)}${j.ref ? ` <span style="color:#9ca3af">${escapeHtml(j.ref)}</span>` : ''}</p>`)
-        .join('')
+    ? detailCard(
+        paint,
+        d.todaysJobs
+          .map((j) => `<p style="margin:0 0 6px;font-size:14px;color:#172033">${j.time ? `<strong>${escapeHtml(j.time)}</strong> · ` : ''}${escapeHtml(j.clientName)}${j.ref ? ` <span style="color:#9ca3af">${escapeHtml(j.ref)}</span>` : ''}</p>`)
+          .join(''),
+        { title: 'Today’s Schedule', subtitle: `${d.todaysJobsCount} job${d.todaysJobsCount === 1 ? '' : 's'}` },
+      )
     : '';
 
   const testBanner = input.isTest
-    ? `<p style="margin:0 0 14px;padding:8px 12px;background:#f4f5f7;border-radius:6px;color:#6b7280;font-size:13px">This is a test digest — the real one sends once a day when there&rsquo;s something to report.</p>`
+    ? statusBanner(paint, {
+        tone: 'info',
+        title: 'Test Digest',
+        message: 'This is a test digest — the real one sends once a day when there is something to report.',
+      })
     : '';
 
   return renderBrandedEmail({
@@ -1281,7 +1196,7 @@ export async function sendDailyDigestEmail(input: {
     subject: `${input.isTest ? '[Test] ' : ''}Your ${input.businessName} daily digest`,
     html,
     reply_to: 'hello@letsgetquoted.com',
-    tags: [{ name: 'kind', value: 'daily_digest' }],
+    tags: defaultTags('daily_digest', brand, input.accountId),
   });
   if (result.error) {
     console.error('Failed to send daily digest email:', result.error);
@@ -1330,7 +1245,7 @@ export async function sendLeadNotificationEmail(input: {
       cta: { label: `Open quote request in ${input.businessName}`, url: input.dashboardUrl },
     }),
     reply_to: input.lead.email || 'hello@letsgetquoted.com',
-    tags: [{ name: 'kind', value: 'lead_notification' }],
+    tags: defaultTags('lead_notification', brand, input.accountId),
   });
   if (result.error) throw new Error(result.error.message);
 }

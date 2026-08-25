@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { APP_SIGNUP_URL } from '@/components/marketing/links';
+import { buildStartUrl } from '@/lib/signup-intent';
 import {
   PLANS,
   VOICE_PURCHASABLE,
@@ -41,7 +41,12 @@ function money(value: number) {
 }
 
 function signupHref(plan: PlanId, billing: BillingCycle) {
-  return `${APP_SIGNUP_URL}&${[`plan=${plan}`, `billing=${billing}`].join('&')}`;
+  return buildStartUrl({
+    goal: 'choose_plan',
+    plan: plan as 'flex' | 'starter' | 'growth' | 'scale',
+    billing: billing as 'monthly' | 'annual',
+    source: 'pricing',
+  });
 }
 
 export default function PricingCalculator({

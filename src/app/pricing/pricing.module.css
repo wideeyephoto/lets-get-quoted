@@ -272,6 +272,18 @@
   scrollbar-width: none;
 }
 
+@media (max-width: 768px) {
+  .sectionNav {
+    position: static;
+    top: auto;
+    box-shadow: none;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    margin: 0.5rem 0 1.25rem;
+    padding: 0.4rem;
+  }
+}
+
 .sectionNav::-webkit-scrollbar { display: none; }
 
 .sectionNav a {
@@ -281,6 +293,9 @@
   color: var(--muted);
   font-size: 0.78rem;
   font-weight: 800;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
 }
 
 .sectionNav a:hover {
@@ -3698,6 +3713,858 @@
   content-visibility: auto;
   contain-intrinsic-size: auto 600px;
 }
+
+/* ==========================================================================
+   PROBLEM 5: STREAMLINED 7-SECTION PRICING STYLES
+   ========================================================================== */
+
+.heroContainer {
+  max-width: 52rem;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.formulaBox {
+  margin: 2rem auto;
+  padding: 1.5rem 1.8rem;
+  background: rgba(15, 36, 52, 0.7);
+  border: 1px solid rgba(80, 227, 189, 0.35);
+  border-radius: 1rem;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(12px);
+  text-align: left;
+}
+
+.formulaBadge {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: #ffd166;
+  background: rgba(255, 209, 102, 0.15);
+  border: 1px solid rgba(255, 209, 102, 0.3);
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  margin-bottom: 0.75rem;
+}
+
+.formulaText {
+  font-size: 1.15rem;
+  line-height: 1.5;
+  color: #ffffff;
+  margin: 0 0 1rem;
+}
+
+.formulaDetails {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.5rem;
+  font-size: 0.85rem;
+  color: #9db0bd;
+  font-weight: 600;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-top: 0.85rem;
+}
+
+.formulaDetails span {
+  color: #50e3bd;
+}
+
+/* Recommender Section */
+.recommenderSection {
+  margin: 4rem auto;
+  max-width: 72rem;
+  padding: 0 1.5rem;
+}
+
+.sectionHeader {
+  text-align: center;
+  max-width: 44rem;
+  margin: 0 auto 2rem;
+}
+
+.sectionHeader h2,
+.sectionHeaderSplit h2 {
+  font-size: clamp(2rem, 4vw, 2.8rem);
+  font-weight: 800;
+  color: #ffffff;
+  margin: 0.4rem 0 0.6rem;
+  letter-spacing: -0.02em;
+}
+
+.presetChips {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-bottom: 2rem;
+}
+
+.presetLabel {
+  font-size: 0.82rem;
+  color: #9db0bd;
+  font-weight: 700;
+  margin-right: 0.3rem;
+}
+
+.presetChip,
+.presetChipActive {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 0.5rem 0.85rem;
+  border-radius: 0.75rem;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s ease;
+}
+
+.presetChip {
+  background: rgba(15, 36, 52, 0.5);
+  border: 1px solid rgba(168, 204, 255, 0.15);
+  color: #d1e2eb;
+}
+
+.presetChip:hover {
+  border-color: rgba(80, 227, 189, 0.4);
+  background: rgba(15, 36, 52, 0.8);
+}
+
+.presetChipActive {
+  background: rgba(80, 227, 189, 0.15);
+  border: 1px solid #50e3bd;
+  color: #ffffff;
+}
+
+.presetChip strong,
+.presetChipActive strong {
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.presetChip small,
+.presetChipActive small {
+  font-size: 0.72rem;
+  color: #9db0bd;
+}
+
+.recommenderGrid {
+  display: grid;
+  grid-template-columns: 1.15fr 1fr;
+  gap: 2rem;
+  align-items: stretch;
+}
+
+.recommenderInputsCard {
+  background: #09212f;
+  border: 1px solid rgba(168, 204, 255, 0.18);
+  border-radius: 1.25rem;
+  padding: 2rem;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.3);
+}
+
+.recommenderInputTitle {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #ffd166;
+  margin: 0 0 0.85rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.inputOptionGroup {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 0.6rem;
+}
+
+.optionBtn,
+.optionBtnActive {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0.85rem 0.75rem;
+  border-radius: 0.85rem;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.15s ease;
+}
+
+.optionBtn {
+  background: rgba(4, 13, 20, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #c4d7e0;
+}
+
+.optionBtn:hover {
+  border-color: rgba(255, 209, 102, 0.4);
+}
+
+.optionBtnActive {
+  background: rgba(255, 209, 102, 0.15);
+  border: 2px solid #ffd166;
+  color: #ffffff;
+}
+
+.optionBtn strong,
+.optionBtnActive strong {
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.optionBtn small,
+.optionBtnActive small {
+  font-size: 0.72rem;
+  color: #9db0bd;
+  margin-top: 0.2rem;
+}
+
+.volumeDisplayRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 0.6rem;
+}
+
+.volumeAmount {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #50e3bd;
+}
+
+.volumeMonthlyEquiv {
+  font-size: 0.9rem;
+  color: #9db0bd;
+}
+
+.volumeSlider {
+  width: 100%;
+  accent-color: #50e3bd;
+  cursor: pointer;
+}
+
+.sliderTickMarks {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 0.4rem;
+  font-size: 0.72rem;
+  color: #8da4b0;
+  cursor: pointer;
+}
+
+.sliderTickMarks span:hover {
+  color: #50e3bd;
+}
+
+/* Recommender Result Card */
+.recommenderResultCard {
+  background: linear-gradient(145deg, #0f2b3e 0%, #081a26 100%);
+  border: 2px solid #50e3bd;
+  border-radius: 1.25rem;
+  padding: 2.2rem;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 60px rgba(80, 227, 189, 0.18);
+  position: relative;
+}
+
+.resultBadge {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #071a26;
+  background: #50e3bd;
+  padding: 0.3rem 0.8rem;
+  border-radius: 999px;
+  margin-bottom: 0.85rem;
+}
+
+.resultHeadline {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: #ffffff;
+  margin: 0 0 0.5rem;
+}
+
+.resultReason {
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: #d1e2eb;
+  margin: 0 0 1.5rem;
+}
+
+.resultCostBlock {
+  background: rgba(4, 13, 20, 0.7);
+  border: 1px solid rgba(80, 227, 189, 0.25);
+  border-radius: 1rem;
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.resultCostMain {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  margin-bottom: 0.85rem;
+}
+
+.costLabel {
+  font-size: 0.85rem;
+  color: #9db0bd;
+  font-weight: 600;
+}
+
+.costValue {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: #ffd166;
+}
+
+.costValue small {
+  font-size: 0.9rem;
+  color: #9db0bd;
+}
+
+.resultCostBreakdown {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  font-size: 0.82rem;
+}
+
+.resultCostBreakdown span {
+  display: block;
+  color: #8da4b0;
+  margin-bottom: 0.2rem;
+}
+
+.resultCostBreakdown strong {
+  color: #ffffff;
+}
+
+.resultInsights {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1.8rem;
+  font-size: 0.85rem;
+}
+
+.insightItem {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 0.6rem;
+  padding: 0.6rem 0.85rem;
+}
+
+.insightLabel {
+  font-weight: 700;
+  color: #ffd166;
+  margin-right: 0.4rem;
+}
+
+.insightValue {
+  display: inline;
+  color: #c4d7e0;
+  margin: 0;
+}
+
+.resultCtaButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: linear-gradient(135deg, #ff7a29, #ffd166);
+  color: #0b1e2a;
+  font-size: 1rem;
+  font-weight: 800;
+  padding: 1rem 1.75rem;
+  border-radius: 0.85rem;
+  text-decoration: none;
+  box-shadow: 0 8px 24px rgba(255, 122, 33, 0.35);
+  margin-top: auto;
+  transition: transform 0.15s ease;
+}
+
+.resultCtaButton:hover {
+  transform: translateY(-2px);
+}
+
+/* 4 Plans Section */
+.plansSection {
+  margin: 5rem auto;
+  max-width: 76rem;
+  padding: 0 1.5rem;
+}
+
+.sectionHeaderSplit {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 2.5rem;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+}
+
+.billingToggle {
+  display: inline-flex;
+  background: #09212f;
+  border: 1px solid rgba(168, 204, 255, 0.2);
+  border-radius: 999px;
+  padding: 0.3rem;
+}
+
+.billingActive {
+  background: #ff7a29;
+  color: #09212f;
+  font-weight: 800;
+  font-size: 0.88rem;
+  padding: 0.55rem 1.25rem;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+}
+
+.billingInactive {
+  background: transparent;
+  color: #a4bcc7;
+  font-weight: 600;
+  font-size: 0.88rem;
+  padding: 0.55rem 1.25rem;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+}
+
+.savePill {
+  display: inline-block;
+  background: rgba(80, 227, 189, 0.25);
+  color: #50e3bd;
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  margin-left: 0.4rem;
+}
+
+.planCardGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.25rem;
+  align-items: stretch;
+}
+
+.planCard {
+  background: #09212f;
+  border: 1px solid rgba(168, 204, 255, 0.16);
+  border-radius: 1.25rem;
+  padding: 1.8rem;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+
+.planCardFeatured {
+  border-color: rgba(255, 209, 102, 0.6);
+  box-shadow: 0 16px 48px rgba(255, 122, 33, 0.15);
+}
+
+.planCardMatch {
+  border-color: #50e3bd;
+  box-shadow: 0 16px 48px rgba(80, 227, 189, 0.2);
+}
+
+.matchRibbon,
+.popularRibbon {
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.matchRibbon {
+  background: #50e3bd;
+  color: #071a26;
+}
+
+.popularRibbon {
+  background: #ffd166;
+  color: #180c02;
+}
+
+.planAudienceTag {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #9db0bd;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.planName {
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: #ffffff;
+  margin: 0.2rem 0;
+}
+
+.planPromiseText {
+  font-size: 0.85rem;
+  color: #9db0bd;
+  margin: 0 0 1.2rem;
+  min-height: 2.4em;
+}
+
+.priceContainer {
+  padding: 1rem 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  margin-bottom: 1.2rem;
+}
+
+.priceNumberRow {
+  display: flex;
+  align-items: baseline;
+  gap: 0.3rem;
+}
+
+.priceBig {
+  font-size: 2.4rem;
+  font-weight: 800;
+  color: #ffffff;
+  line-height: 1;
+}
+
+.priceCadence {
+  font-size: 0.9rem;
+  color: #9db0bd;
+}
+
+.commitmentText {
+  font-size: 0.76rem;
+  color: #a4bcc7;
+  margin: 0.4rem 0 0;
+  line-height: 1.35;
+}
+
+.feeCallout {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(4, 13, 20, 0.6);
+  border-radius: 0.6rem;
+  padding: 0.6rem 0.85rem;
+  margin-bottom: 1rem;
+}
+
+.feeLabel {
+  font-size: 0.82rem;
+  color: #8da4b0;
+}
+
+.feeValue {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #50e3bd;
+}
+
+.capacityBadge {
+  font-size: 0.82rem;
+  color: #ffd166;
+  background: rgba(255, 209, 102, 0.1);
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.6rem;
+  margin-bottom: 1.2rem;
+  text-align: center;
+}
+
+.differentiatorList {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  font-size: 0.82rem;
+  color: #c4d7e0;
+}
+
+.differentiatorList li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  line-height: 1.4;
+}
+
+.diffCheck {
+  color: #50e3bd;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+/* What Every Plan Includes */
+.includedSection {
+  margin: 5rem auto;
+  max-width: 76rem;
+  padding: 0 1.5rem;
+}
+
+.includedHeader {
+  text-align: center;
+  max-width: 44rem;
+  margin: 0 auto 2.5rem;
+}
+
+.includedGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.25rem;
+}
+
+.includedCard {
+  background: #09212f;
+  border: 1px solid rgba(168, 204, 255, 0.14);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  text-align: left;
+}
+
+.includedIcon {
+  display: inline-block;
+  font-size: 1.8rem;
+  margin-bottom: 0.8rem;
+}
+
+.includedCard strong {
+  display: block;
+  font-size: 1rem;
+  color: #ffffff;
+  margin-bottom: 0.4rem;
+}
+
+.includedCard p {
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: #9db0bd;
+  margin: 0;
+}
+
+/* Optional Calculator Section */
+.calculatorSection {
+  margin: 5rem auto;
+  max-width: 76rem;
+  padding: 0 1.5rem;
+}
+
+.calculatorWrapper {
+  margin-top: 2rem;
+  background: #09212f;
+  border: 1px solid rgba(168, 204, 255, 0.2);
+  border-radius: 1.25rem;
+  padding: 2rem;
+}
+
+/* Detailed Comparison Disclosure */
+.compareSection {
+  margin: 4rem auto;
+  max-width: 76rem;
+  padding: 0 1.5rem;
+}
+
+.disclosure {
+  background: #09212f;
+  border: 1px solid rgba(168, 204, 255, 0.18);
+  border-radius: 1.25rem;
+  overflow: hidden;
+}
+
+.disclosureSummary {
+  padding: 1.8rem 2rem;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  list-style: none;
+}
+
+.disclosureSummary::-webkit-details-marker {
+  display: none;
+}
+
+.disclosurePlus {
+  font-size: 1.8rem;
+  color: #50e3bd;
+  font-weight: 300;
+}
+
+.disclosureBody {
+  padding: 0 2rem 2rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.addOnList {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem;
+}
+
+.addOnItem {
+  background: rgba(4, 13, 20, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.75rem;
+  padding: 1rem 1.25rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.competitorLinkBanner {
+  margin-top: 2rem;
+  background: rgba(255, 209, 102, 0.08);
+  border: 1px solid rgba(255, 209, 102, 0.25);
+  border-radius: 1rem;
+  padding: 1.5rem 1.8rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+/* FAQ Section */
+.faqSection {
+  margin: 5rem auto;
+  max-width: 54rem;
+  padding: 0 1.5rem;
+}
+
+.faqGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.faqItem {
+  background: #09212f;
+  border: 1px solid rgba(168, 204, 255, 0.15);
+  border-radius: 0.85rem;
+  overflow: hidden;
+}
+
+.faqSummary {
+  padding: 1.25rem 1.5rem;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #ffffff;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  list-style: none;
+}
+
+.faqSummary::-webkit-details-marker {
+  display: none;
+}
+
+.faqIcon {
+  font-size: 1.4rem;
+  color: #50e3bd;
+}
+
+.faqAnswer {
+  padding: 0 1.5rem 1.25rem;
+  font-size: 0.9rem;
+  line-height: 1.55;
+  color: #a4bcc7;
+  margin: 0;
+}
+
+.faqMoreButton {
+  background: transparent;
+  border: 1px solid rgba(168, 204, 255, 0.25);
+  color: #50e3bd;
+  font-size: 0.88rem;
+  font-weight: 700;
+  padding: 0.65rem 1.25rem;
+  border-radius: 0.75rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.faqMoreButton:hover {
+  background: rgba(80, 227, 189, 0.1);
+  border-color: #50e3bd;
+}
+
+/* Final CTA */
+.finalCta {
+  margin: 6rem auto 2rem;
+  max-width: 68rem;
+  background: radial-gradient(circle at 50% 0%, rgba(255, 122, 33, 0.25), transparent 70%), #09212f;
+  border: 1px solid rgba(255, 209, 102, 0.4);
+  border-radius: 1.5rem;
+  padding: 3.5rem 2rem;
+  text-align: center;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.4);
+}
+
+.finalCtaContent {
+  max-width: 44rem;
+  margin: 0 auto;
+}
+
+.finalCtaContent h2 {
+  font-size: clamp(2rem, 4vw, 2.8rem);
+  font-weight: 800;
+  color: #ffffff;
+  margin: 0.4rem 0 0.8rem;
+}
+
+.finalCtaContent p {
+  font-size: 1.05rem;
+  color: #d1e2eb;
+  line-height: 1.5;
+  margin: 0 0 2rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1024px) {
+  .planCardGrid,
+  .includedGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .recommenderGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .planCardGrid,
+  .includedGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .sectionHeaderSplit {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
 
 
 

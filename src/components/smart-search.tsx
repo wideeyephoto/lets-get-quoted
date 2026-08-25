@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, useMemo, type KeyboardEvent as ReactKeyboardEvent } from 'react';
+import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import type {
   SearchEntitySection,
@@ -66,13 +67,23 @@ export function SmartSearch({
 }: SmartSearchProps) {
   const router = useRouter();
   const [internalOpen, setInternalOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const isControlled = controlledIsOpen !== undefined;
   const isOpen = isControlled ? controlledIsOpen : internalOpen;
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const setOpen = (open: boolean) => {
     if (onOpenChange) onOpenChange(open);
     if (!isControlled) setInternalOpen(open);
   };
+
+  // If onOpenChange is provided for a trigger-only button (rail or mobile),
+  // the parent or palette-only instance manages the modal and global shortcuts.
+  const shouldRenderModal = variant === 'palette-only' || !onOpenChange;
+  const shouldListenGlobal = variant === 'palette-only' || !onOpenChange;
 
   const [query, setQuery] = useState('');
   const [activeTab, setActiveTab] = useState<FilterTabKey>('all');
@@ -98,6 +109,8 @@ export function SmartSearch({
 
   // Global Shortcut listener (⌘K, Ctrl+K, or '/')
   useEffect(() => {
+    if (!shouldListenGlobal) return;
+
     const handleKeyDown = (e: KeyboardEvent) => {
       // ⌘K or Ctrl+K
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
@@ -124,11 +137,11 @@ export function SmartSearch({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen]);
+  }, [isOpen, shouldListenGlobal]);
 
   // Autofocus input on open & freeze background
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && shouldRenderModal) {
       setSelectedIndex(0);
       const timer = setTimeout(() => {
         inputRef.current?.focus();
@@ -138,11 +151,22 @@ export function SmartSearch({
       setQuery('');
       setActiveTab('all');
     }
-  }, [isOpen]);
+  }, [isOpen, shouldRenderModal]);
+
+  // Prevent body scrolling when modal is open
+  useEffect(() => {
+    if (isOpen && shouldRenderModal) {
+      const prev = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = prev;
+      };
+    }
+  }, [isOpen, shouldRenderModal]);
 
   // Escape key closes modal
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || !shouldRenderModal) return;
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.preventDefault();
@@ -151,7 +175,7 @@ export function SmartSearch({
     };
     window.addEventListener('keydown', handleEscape);
     return () => window.removeEventListener('keydown', handleEscape);
-  }, [isOpen]);
+  }, [isOpen, shouldRenderModal]);
 
   // Fetch search results on query change (debounced)
   useEffect(() => {
@@ -314,200 +338,204 @@ export function SmartSearch({
         </button>
       )}
 
-      {/* Modal Dialog Overlay */}
-      {isOpen && (
-        <div
-          className={styles.overlay}
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setOpen(false);
-          }}
-          aria-modal="true"
-          role="dialog"
-        >
-          <div className={styles.dialog} ref={dialogRef}>
-            {/* Header / Search Input */}
-            <div className={styles.searchHeader}>
-              <svg className={styles.searchIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true">
-                <circle cx="11" cy="11" r="8" />
-                <path d="m21 21-4.3-4.3" />
-              </svg>
-              <input
-                ref={inputRef}
-                type="text"
-                className={styles.searchInput}
-                placeholder="Search jobs, clients, addresses, team, actions..."
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                onKeyDown={handleInputKeyDown}
-                autoComplete="off"
-                spellCheck={false}
-              />
-              {loading && <div className={styles.loadingSpinner} aria-label="Searching..." />}
-              {query && (
-                <button
-                  type="button"
-                  className={styles.clearBtn}
-                  onClick={() => {
-                    setQuery('');
-                    inputRef.current?.focus();
-                  }}
-                  aria-label="Clear search"
-                >
-                  ✕
-                </button>
-              )}
-              <kbd className={styles.escBadge} onClick={() => setOpen(false)}>
-                ESC
-              </kbd>
-            </div>
-
-            {/* Category Filter Tabs */}
-            <div className={styles.filterTabs} role="tablist">
-              <button
-                type="button"
-                className={`${styles.filterTab} ${activeTab === 'all' ? styles.filterTabActive : ''}`}
-                onClick={() => setActiveTab('all')}
-              >
-                All
-                {tabCounts.all > 0 && <span className={styles.tabCount}>{tabCounts.all}</span>}
-              </button>
-              {tabCounts.jobs > 0 && (
-                <button
-                  type="button"
-                  className={`${styles.filterTab} ${activeTab === 'jobs' ? styles.filterTabActive : ''}`}
-                  onClick={() => setActiveTab('jobs')}
-                >
-                  Jobs
-                  <span className={styles.tabCount}>{tabCounts.jobs}</span>
-                </button>
-              )}
-              {tabCounts.clients > 0 && (
-                <button
-                  type="button"
-                  className={`${styles.filterTab} ${activeTab === 'clients' ? styles.filterTabActive : ''}`}
-                  onClick={() => setActiveTab('clients')}
-                >
-                  Clients
-                  <span className={styles.tabCount}>{tabCounts.clients}</span>
-                </button>
-              )}
-              {tabCounts.addresses > 0 && (
-                <button
-                  type="button"
-                  className={`${styles.filterTab} ${activeTab === 'addresses' ? styles.filterTabActive : ''}`}
-                  onClick={() => setActiveTab('addresses')}
-                >
-                  Addresses
-                  <span className={styles.tabCount}>{tabCounts.addresses}</span>
-                </button>
-              )}
-              {tabCounts.crew > 0 && (
-                <button
-                  type="button"
-                  className={`${styles.filterTab} ${activeTab === 'crew' ? styles.filterTabActive : ''}`}
-                  onClick={() => setActiveTab('crew')}
-                >
-                  Crew
-                  <span className={styles.tabCount}>{tabCounts.crew}</span>
-                </button>
-              )}
-              {tabCounts.leads > 0 && (
-                <button
-                  type="button"
-                  className={`${styles.filterTab} ${activeTab === 'leads' ? styles.filterTabActive : ''}`}
-                  onClick={() => setActiveTab('leads')}
-                >
-                  Leads
-                  <span className={styles.tabCount}>{tabCounts.leads}</span>
-                </button>
-              )}
-              {tabCounts.actions > 0 && (
-                <button
-                  type="button"
-                  className={`${styles.filterTab} ${activeTab === 'actions' ? styles.filterTabActive : ''}`}
-                  onClick={() => setActiveTab('actions')}
-                >
-                  Actions
-                  <span className={styles.tabCount}>{tabCounts.actions}</span>
-                </button>
-              )}
-            </div>
-
-            {/* Results Body */}
-            <div className={styles.resultsBody}>
-              {flatItems.length === 0 && !loading && (
-                <div className={styles.emptyState}>
-                  <div className={styles.emptyIcon}>🔍</div>
-                  <div className={styles.emptyTitle}>No results found for &ldquo;{query}&rdquo;</div>
-                  <p className={styles.emptySub}>
-                    Try searching for a client name, job address, phone number, quote ID, or crew member.
-                  </p>
+      {/* Modal Dialog Overlay via Portal */}
+      {isOpen && shouldRenderModal && mounted && typeof document !== 'undefined'
+        ? createPortal(
+            <div
+              className={styles.overlay}
+              onClick={(e) => {
+                if (e.target === e.currentTarget) setOpen(false);
+              }}
+              aria-modal="true"
+              role="dialog"
+            >
+              <div className={styles.dialog} ref={dialogRef}>
+                {/* Header / Search Input */}
+                <div className={styles.searchHeader}>
+                  <svg className={styles.searchIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true">
+                    <circle cx="11" cy="11" r="8" />
+                    <path d="m21 21-4.3-4.3" />
+                  </svg>
+                  <input
+                    ref={inputRef}
+                    type="text"
+                    className={styles.searchInput}
+                    placeholder="Search jobs, clients, addresses, team, actions..."
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    onKeyDown={handleInputKeyDown}
+                    autoComplete="off"
+                    spellCheck={false}
+                    aria-label="Search workspace"
+                  />
+                  {loading && <div className={styles.loadingSpinner} aria-label="Searching..." />}
+                  {query && (
+                    <button
+                      type="button"
+                      className={styles.clearBtn}
+                      onClick={() => {
+                        setQuery('');
+                        inputRef.current?.focus();
+                      }}
+                      aria-label="Clear search"
+                    >
+                      ✕
+                    </button>
+                  )}
+                  <kbd className={styles.escBadge} onClick={() => setOpen(false)}>
+                    ESC
+                  </kbd>
                 </div>
-              )}
 
-              {visibleSections.map((section) => {
-                const secMeta = SECTION_LABELS[section.key];
-                return (
-                  <div key={section.key} className={styles.sectionGroup}>
-                    <div className={styles.sectionHeader}>
-                      <span>
-                        {secMeta.icon} {secMeta.title}
-                      </span>
-                      <span>{section.items.length}</span>
+                {/* Category Filter Tabs */}
+                <div className={styles.filterTabs} role="tablist">
+                  <button
+                    type="button"
+                    className={`${styles.filterTab} ${activeTab === 'all' ? styles.filterTabActive : ''}`}
+                    onClick={() => setActiveTab('all')}
+                  >
+                    All
+                    {tabCounts.all > 0 && <span className={styles.tabCount}>{tabCounts.all}</span>}
+                  </button>
+                  {tabCounts.jobs > 0 && (
+                    <button
+                      type="button"
+                      className={`${styles.filterTab} ${activeTab === 'jobs' ? styles.filterTabActive : ''}`}
+                      onClick={() => setActiveTab('jobs')}
+                    >
+                      Jobs
+                      <span className={styles.tabCount}>{tabCounts.jobs}</span>
+                    </button>
+                  )}
+                  {tabCounts.clients > 0 && (
+                    <button
+                      type="button"
+                      className={`${styles.filterTab} ${activeTab === 'clients' ? styles.filterTabActive : ''}`}
+                      onClick={() => setActiveTab('clients')}
+                    >
+                      Clients
+                      <span className={styles.tabCount}>{tabCounts.clients}</span>
+                    </button>
+                  )}
+                  {tabCounts.addresses > 0 && (
+                    <button
+                      type="button"
+                      className={`${styles.filterTab} ${activeTab === 'addresses' ? styles.filterTabActive : ''}`}
+                      onClick={() => setActiveTab('addresses')}
+                    >
+                      Addresses
+                      <span className={styles.tabCount}>{tabCounts.addresses}</span>
+                    </button>
+                  )}
+                  {tabCounts.crew > 0 && (
+                    <button
+                      type="button"
+                      className={`${styles.filterTab} ${activeTab === 'crew' ? styles.filterTabActive : ''}`}
+                      onClick={() => setActiveTab('crew')}
+                    >
+                      Crew
+                      <span className={styles.tabCount}>{tabCounts.crew}</span>
+                    </button>
+                  )}
+                  {tabCounts.leads > 0 && (
+                    <button
+                      type="button"
+                      className={`${styles.filterTab} ${activeTab === 'leads' ? styles.filterTabActive : ''}`}
+                      onClick={() => setActiveTab('leads')}
+                    >
+                      Leads
+                      <span className={styles.tabCount}>{tabCounts.leads}</span>
+                    </button>
+                  )}
+                  {tabCounts.actions > 0 && (
+                    <button
+                      type="button"
+                      className={`${styles.filterTab} ${activeTab === 'actions' ? styles.filterTabActive : ''}`}
+                      onClick={() => setActiveTab('actions')}
+                    >
+                      Actions
+                      <span className={styles.tabCount}>{tabCounts.actions}</span>
+                    </button>
+                  )}
+                </div>
+
+                {/* Results Body */}
+                <div className={styles.resultsBody}>
+                  {flatItems.length === 0 && !loading && (
+                    <div className={styles.emptyState}>
+                      <div className={styles.emptyIcon}>🔍</div>
+                      <div className={styles.emptyTitle}>No results found for &ldquo;{query}&rdquo;</div>
+                      <p className={styles.emptySub}>
+                        Try searching for a client name, job address, phone number, quote ID, or crew member.
+                      </p>
                     </div>
-                    {section.items.map((item) => {
-                      const itemFlatIndex = flatItems.indexOf(item);
-                      const isSelected = itemFlatIndex === selectedIndex;
-                      return (
-                        <div
-                          key={item.id}
-                          className={styles.resultItem}
-                          data-selected={isSelected}
-                          onClick={() => handleSelectItem(item)}
-                          onMouseEnter={() => setSelectedIndex(itemFlatIndex)}
-                        >
-                          <div className={styles.itemLeft}>
-                            <div className={styles.itemIcon}>{getItemIcon(item)}</div>
-                            <div className={styles.itemInfo}>
-                              <p className={styles.itemTitle}>{item.title}</p>
-                              {item.subtitle && <p className={styles.itemSubtitle}>{item.subtitle}</p>}
-                            </div>
-                          </div>
-                          <div className={styles.itemRight}>
-                            {item.badge && <span className={getBadgeClass(item.badge)}>{item.badge.label}</span>}
-                            <span className={styles.enterArrow} aria-hidden="true">
-                              ↵
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                );
-              })}
-            </div>
+                  )}
 
-            {/* Footer with keyboard guidance */}
-            <div className={styles.dialogFooter}>
-              <div className={styles.shortcutsList}>
-                <span className={styles.shortcutItem}>
-                  <kbd className={styles.shortcutKey}>↑</kbd>
-                  <kbd className={styles.shortcutKey}>↓</kbd> to navigate
-                </span>
-                <span className={styles.shortcutItem}>
-                  <kbd className={styles.shortcutKey}>↵</kbd> to select
-                </span>
-                <span className={styles.shortcutItem}>
-                  <kbd className={styles.shortcutKey}>Tab</kbd> to filter
-                </span>
-                <span className={styles.shortcutItem}>
-                  <kbd className={styles.shortcutKey}>esc</kbd> to close
-                </span>
+                  {visibleSections.map((section) => {
+                    const secMeta = SECTION_LABELS[section.key];
+                    return (
+                      <div key={section.key} className={styles.sectionGroup}>
+                        <div className={styles.sectionHeader}>
+                          <span>
+                            {secMeta.icon} {secMeta.title}
+                          </span>
+                          <span>{section.items.length}</span>
+                        </div>
+                        {section.items.map((item) => {
+                          const itemFlatIndex = flatItems.indexOf(item);
+                          const isSelected = itemFlatIndex === selectedIndex;
+                          return (
+                            <div
+                              key={item.id}
+                              className={styles.resultItem}
+                              data-selected={isSelected}
+                              onClick={() => handleSelectItem(item)}
+                              onMouseEnter={() => setSelectedIndex(itemFlatIndex)}
+                            >
+                              <div className={styles.itemLeft}>
+                                <div className={styles.itemIcon}>{getItemIcon(item)}</div>
+                                <div className={styles.itemInfo}>
+                                  <p className={styles.itemTitle}>{item.title}</p>
+                                  {item.subtitle && <p className={styles.itemSubtitle}>{item.subtitle}</p>}
+                                </div>
+                              </div>
+                              <div className={styles.itemRight}>
+                                {item.badge && <span className={getBadgeClass(item.badge)}>{item.badge.label}</span>}
+                                <span className={styles.enterArrow} aria-hidden="true">
+                                  ↵
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Footer with keyboard guidance */}
+                <div className={styles.dialogFooter}>
+                  <div className={styles.shortcutsList}>
+                    <span className={styles.shortcutItem}>
+                      <kbd className={styles.shortcutKey}>↑</kbd>
+                      <kbd className={styles.shortcutKey}>↓</kbd> to navigate
+                    </span>
+                    <span className={styles.shortcutItem}>
+                      <kbd className={styles.shortcutKey}>↵</kbd> to select
+                    </span>
+                    <span className={styles.shortcutItem}>
+                      <kbd className={styles.shortcutKey}>Tab</kbd> to filter
+                    </span>
+                    <span className={styles.shortcutItem}>
+                      <kbd className={styles.shortcutKey}>esc</kbd> to close
+                    </span>
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
-        </div>
-      )}
+            </div>,
+            document.body
+          )
+        : null}
     </>
   );
 }

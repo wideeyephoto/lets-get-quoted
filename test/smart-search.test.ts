@@ -165,4 +165,24 @@ describe('Workspace Smart Search', () => {
     expect(results.sections.clients).toHaveLength(1);
     expect(results.sections.clients[0].title).toBe('Alice Smith');
   });
+
+  it('portals the modal overlay to document.body to avoid being trapped by sidenav backdrop-filter', async () => {
+    const fs = await import('fs');
+    const path = await import('path');
+    const code = fs.readFileSync(path.resolve('src/components/smart-search.tsx'), 'utf-8');
+
+    expect(code).toContain("import { createPortal } from 'react-dom'");
+    expect(code).toContain('createPortal(');
+    expect(code).toContain('document.body');
+  });
+
+  it('coordinates mobile and rail triggers via AppShell without rendering duplicate modals', async () => {
+    const fs = await import('fs');
+    const path = await import('path');
+    const appShellCode = fs.readFileSync(path.resolve('src/components/app-shell.tsx'), 'utf-8');
+
+    expect(appShellCode).toContain('<SmartSearch variant="mobile" onOpenChange={setIsSearchOpen} />');
+    expect(appShellCode).toContain('<SmartSearch variant="rail" onOpenChange={setIsSearchOpen} />');
+    expect(appShellCode).toContain('<SmartSearch variant="palette-only" isOpen={isSearchOpen} onOpenChange={setIsSearchOpen} />');
+  });
 });

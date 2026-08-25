@@ -5,12 +5,12 @@ import { cspNonce } from '@/lib/csp-nonce';
 import styles from './tools.module.css';
 
 export const metadata: Metadata = {
-  title: 'Free Contractor Tools & Calculators · Let’s Get Quoted',
+  title: 'Free Contractor Tools & Calculators',
   description:
     'Free interactive business tools for trade contractors. Calculate true billable hourly rates, profit margins, and create instant itemized quotes with no signup required.',
   alternates: { canonical: 'https://letsgetquoted.com/tools' },
   openGraph: {
-    title: 'Free Contractor Tools & Calculators · Let’s Get Quoted',
+    title: 'Free Contractor Tools & Calculators',
     description:
       'Free trade calculators: True Hourly Rate & Margin Calculator, Instant Estimate Generator, and Competitor Fee Benchmark.',
     url: 'https://letsgetquoted.com/tools',

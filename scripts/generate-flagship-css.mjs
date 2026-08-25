@@ -5777,16 +5777,150 @@ const TWEAKS = `
    its own shell, so leaving the card on would frame a phone in a second phone.
    Equal specificity to the base rule, later in the file, which is what TWEAKS
    is for. */
-.root :global(.hero-thread-sim) {
-  padding: 0;
-  border: 0;
-  background: none;
-  box-shadow: none;
-}
-@media (max-width: 560px) {
-  /* The base sheet re-pads .hero-thread here. A media query adds no
-     specificity, so this has to be restated or the padding comes back. */
-  .root :global(.hero-thread-sim) { padding: 0; }
+/* ===========================================================================
+   §113 — PROBLEM 7: MOBILE PERSISTENT SURFACE RULES & COGNITIVE DENSITY
+
+   Single top navigation surface (56–60px, logo and menu toggle only).
+   Single contextual bottom action dock (hides on scroll-down, hero CTA,
+   menu-open, input-focus, footer in view).
+   All interactive tap targets >= 44x44px. Safe-area insets enforced.
+   =========================================================================== */
+
+@media (max-width: 760px) {
+  .root :global(.site-header) {
+    height: 58px;
+    padding: 0 16px;
+  }
+
+  .root :global(.brand-logo) {
+    height: 44px;
+    width: 145px;
+  }
+
+  .root :global(.header-cta),
+  .root :global(.header-signin) {
+    display: none !important;
+  }
+
+  .root :global(.nav-toggle) {
+    min-height: 44px;
+    min-width: 44px;
+    display: grid;
+    place-items: center;
+    padding: 10px;
+    border-radius: 8px;
+  }
+
+  .root :global(.site-menu) {
+    position: fixed;
+    top: 58px;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(7, 19, 29, 0.98);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    padding: 24px 20px;
+    padding-bottom: max(32px, env(safe-area-inset-bottom));
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    overflow-y: auto;
+    z-index: 100;
+  }
+
+  .root :global(.site-menu[hidden]) {
+    display: none !important;
+  }
+
+  .root :global(.site-menu nav) {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .root :global(.site-menu nav a) {
+    min-height: 48px;
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+    font-size: 16px;
+    font-weight: 700;
+    color: #eef5f6;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .root :global(.site-menu-cta) {
+    margin-top: 16px;
+    min-height: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--orange);
+    color: white;
+    font-size: 16px;
+    font-weight: 850;
+    border-radius: 10px;
+  }
+
+  .root :global(.site-menu-signin) {
+    margin-top: 12px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #adc0ca;
+    font-size: 14px;
+  }
+
+  /* Single Coordinated Mobile Action Dock */
+  .root :global(.mobile-cta) {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 90;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    min-height: 56px;
+    padding: 14px 20px;
+    padding-bottom: max(14px, env(safe-area-inset-bottom));
+    background: var(--orange);
+    color: #ffffff;
+    font-size: 15px;
+    font-weight: 850;
+    text-decoration: none;
+    box-shadow: 0 -6px 24px rgba(0, 0, 0, 0.4);
+    transform: translateY(0);
+    opacity: 1;
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease;
+  }
+
+  .root :global(.mobile-cta[data-redundant="true"]),
+  .root :global(.mobile-cta[data-scroll="down"]),
+  .root :global(.mobile-cta[data-menu-open="true"]),
+  .root :global(.mobile-cta[data-input-focused="true"]) {
+    transform: translateY(110%);
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  /* Mobile Content Density & Spacing */
+  .root :global(.hero),
+  .root :global(.workflow),
+  .root :global(.included),
+  .root :global(.pricing-band),
+  .root :global(.home-faq),
+  .root :global(.final-cta) {
+    padding-block: clamp(56px, 12vw, 72px);
+  }
+
+  .root :global(.button),
+  .root :global(button.button) {
+    min-height: 48px;
+  }
 }
 
 `;

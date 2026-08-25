@@ -140,22 +140,27 @@ const STEPS = [
   {
     title: 'Visit the website',
     href: '/features/website-builder',
-    body: 'A real contractor site, published on its own address.',
+    body: 'A free contractor site, published on its own address with an instant estimate.',
   },
   {
     title: 'Get an estimate',
     href: '/features/ai-intake',
-    body: 'Answer a few questions and see an estimated range in seconds.',
+    body: 'AI intake asks trade-specific questions and estimates the job in seconds.',
   },
   {
     title: 'Approve the quote',
-    href: '/features/back-office#quote-and-approve',
-    body: 'Read the line items and e-sign it from a phone.',
+    href: '/features/quotes',
+    body: 'Read line items, choose add-ons, and e-sign from a phone.',
+  },
+  {
+    title: 'Schedule the crew',
+    href: '/features/scheduling',
+    body: 'Book the arrival window and dispatch the crew without retyping the job.',
   },
   {
     title: 'Pay online',
-    href: '/features/back-office#money',
-    body: 'Card or bank, through Stripe, straight to the contractor.',
+    href: '/features/client-portal',
+    body: 'Deposits and balances through Stripe, straight to your bank account.',
   },
 ];
 
@@ -184,9 +189,9 @@ export default function TradeIndexPage() {
           <section className={styles.hero}>
             <div className={styles.heroCopy}>
               <p className={styles.eyebrow}>Built for your trade</p>
-              <h1>Websites and quoting software built for your trade.</h1>
+              <h1>The connected contractor system—preconfigured for your trade.</h1>
               <p className={styles.heroLede}>
-                Everything you need to win the lead, quote the job, and get paid.
+                From website intake to final payment: your pages, estimates, quotes, scheduling, and Stripe payouts pre-tuned for the work you do.
               </p>
               <div className={styles.heroCtas}>
                 <a href={APP_SIGNUP_URL} className={`${styles.btn} ${styles.btnPrimary}`}>

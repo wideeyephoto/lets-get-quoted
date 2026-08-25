@@ -21,6 +21,9 @@ import type { CampaignFinding } from '@/lib/campaign-guard';
 import { readCampaign } from '@/lib/campaign-guard-ai';
 import { buildCalendarView, type CalendarView } from '@/lib/marketing-calendar-data';
 import { EMAIL_THEMES, normalizeEmailTheme } from '@/emails/brand';
+import { loadEmailBrand } from '@/lib/email-brand';
+import { getSampleEmailPreview, type EmailPreviewKind } from '@/lib/email-previews';
+import { Resend } from 'resend';
 
 /** Save the one layout used by every customer-facing email for this account. */
 export async function updateEmailThemeAction(formData: FormData) {
@@ -41,6 +44,50 @@ export async function updateEmailThemeAction(formData: FormData) {
 
   revalidatePath('/dashboard/marketing');
   revalidatePath('/dashboard/marketing/email-theme');
+}
+
+/** Sends a real test email with the selected theme and preview scenario to the signed-in contractor. */
+export async function sendTestEmailThemeAction(formData: FormData): Promise<{ success: boolean; recipient: string }> {
+  const { supabase, accountId } = await requireOfficeContext('settings.write');
+  const requestedTheme = String(formData.get('emailTheme') ?? 'studio');
+  const requestedKind = (String(formData.get('previewKind') ?? 'quote') as EmailPreviewKind) || 'quote';
+  const theme = normalizeEmailTheme(requestedTheme);
+
+  const { data: userData } = await supabase.auth.getUser();
+  const recipient = userData?.user?.email;
+  if (!recipient) {
+    throw new Error('Could not find email address for the signed-in user.');
+  }
+
+  if (!process.env.RESEND_API_KEY) {
+    throw new Error('Email provider is not configured (RESEND_API_KEY is missing).');
+  }
+
+  const brand = await loadEmailBrand(accountId, '', supabase);
+  brand.theme = theme;
+
+  const preview = await getSampleEmailPreview(theme, requestedKind, brand);
+  const resend = new Resend(process.env.RESEND_API_KEY);
+
+  const result = await resend.emails.send({
+    from: preview.from,
+    to: recipient,
+    subject: `[Test] ${preview.subject}`,
+    html: preview.html,
+    reply_to: preview.replyTo,
+    tags: [
+      { name: 'kind', value: 'theme_test_send' },
+      { name: 'theme', value: theme },
+      { name: 'account_id', value: accountId },
+    ],
+  });
+
+  if (result.error) {
+    console.error('Failed to send test email theme:', result.error);
+    throw new Error(result.error.message);
+  }
+
+  return { success: true, recipient };
 }
 
 /**

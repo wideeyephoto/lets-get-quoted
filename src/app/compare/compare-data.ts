@@ -73,7 +73,7 @@ export const COMPARISONS: Record<string, CompetitorDetail> = {
       'Jobber charges $49–$349/month whether you book jobs or not and still expects you to build a website. Let’s Get Quoted gives you a free SEO contractor website, 24/7 AI lead qualification, and a complete back office from $0/month.',
     summary:
       'While Jobber provides traditional scheduling and quoting, it requires ongoing fixed subscriptions, charges for additional seats, and does not build your contractor website. Let’s Get Quoted replaces subscription bloat with performance-aligned plans and built-in lead capture.',
-    metaTitle: 'Jobber Alternative for Contractors · Let’s Get Quoted',
+    metaTitle: 'Jobber Alternative for Contractors',
     metaDescription:
       'Compare Let’s Get Quoted vs Jobber. Get a free contractor website, 24/7 AI intake, and quotes-to-paid workflow starting at $0/mo without per-seat surprises.',
     basePricing: {
@@ -399,7 +399,7 @@ export const COMPARISONS: Record<string, CompetitorDetail> = {
       'Housecall Pro locks core tools behind expensive tiers ($65–$299/mo) and paid add-on fees. Let’s Get Quoted bundles your public website, 2-way texting, AI smart intake, and payments into a unified platform starting at $0/month.',
     summary:
       'Housecall Pro is a popular tool for trade businesses, but its pricing escalates rapidly with extra team members and optional add-on fees for marketing and websites. Let’s Get Quoted provides an all-in-one alternative designed around honest pricing.',
-    metaTitle: 'Housecall Pro Alternative for Contractors · Let’s Get Quoted',
+    metaTitle: 'Housecall Pro Alternative for Contractors',
     metaDescription:
       'Switch from Housecall Pro to Let’s Get Quoted. Get a free contractor website, AI smart intake, quick stops dispatch, and online payments starting at $0/mo.',
     basePricing: {
@@ -614,7 +614,7 @@ export const COMPARISONS: Record<string, CompetitorDetail> = {
       'ServiceTitan charges $398–$1,000+/month with massive implementation setup fees and strict annual contracts. Let’s Get Quoted gives you a free SEO website, AI smart intake, and modern CRM starting at $0/month.',
     summary:
       'ServiceTitan is built for 50+ truck commercial enterprise franchises with dedicated IT staff. For independent trade businesses and residential contractors, its extreme cost, heavy complexity, and annual lock-ins drain profits. Let’s Get Quoted offers a modern, high-performance alternative designed for speed.',
-    metaTitle: 'ServiceTitan Alternative for Independent Contractors · Let’s Get Quoted',
+    metaTitle: 'ServiceTitan Alternative for Independent Contractors',
     metaDescription:
       'Looking for a lightweight ServiceTitan alternative? Avoid $5k setup fees and locked contracts. Get a free contractor website, AI intake, and fast payments starting at $0/mo.',
     basePricing: {
@@ -818,7 +818,7 @@ export const COMPARISONS: Record<string, CompetitorDetail> = {
       'Lead marketplaces charge you $50–$150 for shared leads that 5 other contractors also get. Let’s Get Quoted builds your own high-converting website so you generate exclusive leads you own forever.',
     summary:
       'Buying shared leads from brokers like Angi and HomeAdvisor drains contractor profits through price wars with competitors. Let’s Get Quoted gives you the marketing website, 24/7 AI intake, and SEO presence to capture direct homeowner leads.',
-    metaTitle: 'Stop Buying Shared Leads · Angi Leads Alternative · Let’s Get Quoted',
+    metaTitle: 'Stop Buying Shared Leads · Angi Leads Alternative',
     metaDescription:
       'Tired of paying $75+ per shared lead on Angi? Build your own high-converting contractor website with AI intake and keep 100% of your customer relationships.',
     basePricing: {
@@ -1021,7 +1021,7 @@ export const COMPARISONS: Record<string, CompetitorDetail> = {
       'Thumbtack charges you $30–$120 every time a homeowner clicks "Direct Lead" or sends a message—even if they never hire you. Let’s Get Quoted gives you your own high-converting website and 24/7 AI intake with $0 lead fees.',
     summary:
       'Thumbtack auto-charges your credit card for customer inquiries regardless of whether the job is legitimate or books. Let’s Get Quoted lets you build direct brand equity, verified reviews, and exclusive homeowner relationships without per-click broker taxes.',
-    metaTitle: 'Thumbtack Alternative for Trade Contractors · Let’s Get Quoted',
+    metaTitle: 'Thumbtack Alternative for Trade Contractors',
     metaDescription:
       'Tired of automatic Thumbtack lead charges? Build your own SEO contractor website with 24/7 AI intake. Start for $0/month and keep 100% of your earnings.',
     basePricing: {

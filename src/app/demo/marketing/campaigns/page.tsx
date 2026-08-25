@@ -11,7 +11,7 @@ import {
 import { resolveMarketingMailingAddress } from '@/lib/email-suppression';
 import { buildCampaignRecommendations } from '@/lib/campaign-recommendations';
 import { buildCalendarView } from '@/lib/marketing-calendar-data';
-import { DEMO_ACCOUNT_ID, DEMO_COMPANY_NAME, DEMO_SITE_HOST } from '@/lib/demo-data';
+import { DEMO_ACCOUNT_ID, DEMO_COMPANY_NAME } from '@/lib/demo-data';
 import { DEMO_ACCOUNT_ROW, demoSupabase } from '@/lib/demo-rows';
 import CampaignsScreen from '@/app/dashboard/marketing/campaigns/CampaignsScreen';
 
@@ -56,7 +56,7 @@ export default async function DemoCampaignsPage({
           recipients,
           reach,
           businessName: DEMO_COMPANY_NAME,
-          bookingUrl: `https://${DEMO_SITE_HOST}/book`,
+          bookingUrl: '/demo/schedule/booking',
         })
       : null;
 

@@ -187,6 +187,28 @@ export default function DemoSidebar() {
           <span aria-hidden="true">←</span> Exit the LIVE Demo
         </Link>
 
+        <Link
+          href="/demo/tour/site"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            background: 'rgba(80, 227, 189, 0.12)',
+            border: '1px solid rgba(80, 227, 189, 0.35)',
+            color: '#50e3bd',
+            fontSize: '12px',
+            fontWeight: 750,
+            padding: '6px 12px',
+            borderRadius: '6px',
+            margin: '0 16px 12px',
+            textDecoration: 'none',
+          }}
+        >
+          <span>✦</span>
+          <span>Start 5-Min Tour</span>
+          <span style={{ marginLeft: 'auto' }}>&rarr;</span>
+        </Link>
+
         <div className="sidenav-lead">
           <p className="sidenav-bizname">{DEMO_COMPANY_NAME}</p>
           {/* The two things a contractor starts the day with, on one row — same

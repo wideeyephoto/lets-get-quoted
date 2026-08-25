@@ -40,7 +40,7 @@ const jsonLd = {
       applicationCategory: 'BusinessApplication',
       operatingSystem: 'Web',
       description:
-        'An all-in-one platform for contractors: a marketing website with AI Intake, quotes and e-signatures, scheduling, recurring billing, reviews, and Stripe payments. Plans start at $0/month.',
+        'Contractor business software starting with a free website: build your site, qualify leads, send quotes, schedule work, manage crew, and collect Stripe payments in one connected system.',
       offers: {
         '@type': 'Offer',
         price: '0',
@@ -51,7 +51,7 @@ const jsonLd = {
     },
     {
       '@type': 'FAQPage',
-      mainEntity: HOME_FAQS.map((faq) => ({
+      mainEntity: HOME_FAQS.slice(0, 3).map((faq) => ({
         '@type': 'Question',
         name: faq.q,
         acceptedAnswer: { '@type': 'Answer', text: faq.a },

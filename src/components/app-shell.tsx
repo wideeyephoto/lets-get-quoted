@@ -331,6 +331,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
   const [quickStopState, setQuickStopState] = useState<NavState>('unknown');
   const [bookingState, setBookingState] = useState<NavState>('unknown');
   const [dismissedQuoteRequestId, setDismissedQuoteRequestId] = useState<string | null>(null);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const isDashboard = pathname.startsWith('/dashboard');
   // Homeowner-facing transactional pages (paying, approving a quote, an invoice)
   // stay on the minimal top bar — a big marketing rail there would be off-key.
@@ -351,7 +352,8 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
   // A signed-in contractor gets the FULL dashboard rail on every app/marketing
   // page (incl. the homepage) — same live counts, Website badge, New button and
   // Stripe pill as inside /dashboard — never the logged-out marketing teaser.
-  const showAppRail = isLoggedIn && !isTransactional;
+  // /login stays bare so auth forms render isolated.
+  const showAppRail = isLoggedIn && !isTransactional && !pathname.startsWith('/login');
   const primaryAction = getPrimaryAction();
   // The bare host for the live badge — "yoursite.letsgetquoted.com", no scheme.
   const siteHost = siteUrl ? siteUrl.replace(/^https?:\/\//, '').replace(/\/+$/, '') : null;
@@ -911,7 +913,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
               word because a bare plus could add anything. */}
           {isLoggedIn ? (
             <>
-              <SmartSearch variant="mobile" />
+              <SmartSearch variant="mobile" onOpenChange={setIsSearchOpen} />
               <Link
                 href="/dashboard/schedule/plan"
                 className={`mobilebar-plan${pathname.startsWith('/dashboard/schedule/plan') ? ' active' : ''}`}
@@ -963,7 +965,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
 
           <div className="sidenav-lead">
             {businessName ? <p className="sidenav-bizname" title={businessName}>{businessName}</p> : null}
-            <SmartSearch variant="rail" />
+            <SmartSearch variant="rail" onOpenChange={setIsSearchOpen} />
             {/* The two things a contractor starts the day with, on one row.
                 Plan my day is the wider of the two because it carries three
                 words; "+ New" only ever says one, so it takes what it needs and
@@ -1125,6 +1127,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
               occasion it exists for. It sits inside the showAppRail branch, so
               a rail is always present for its desktop offset to clear. */}
           <ThemeFab />
+          <SmartSearch variant="palette-only" isOpen={isSearchOpen} onOpenChange={setIsSearchOpen} />
           {/* INSIDE the page, above its content. Fixed to the bottom-right it
               covered what you were reading and the controls you'd tap next —
               351x98 of it on a phone — and every dashboard page had to reserve

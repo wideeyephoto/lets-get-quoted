@@ -16,7 +16,11 @@ import type { ReactNode } from 'react';
  * site-chrome.tsx has used it since the header was fixed, and this is the rest
  * of the site catching up to it. */
 
-export const APP_SIGNUP_URL = 'https://app.letsgetquoted.com/login?intent=signup';
+import { buildStartUrl, type SignupIntent } from '@/lib/signup-intent';
+
+export { buildStartUrl, type SignupIntent };
+export const APP_START_URL = 'https://app.letsgetquoted.com/start';
+export const APP_SIGNUP_URL = 'https://app.letsgetquoted.com/start?goal=build_site';
 
 /**
  * The way back in for somebody who already has an account.
