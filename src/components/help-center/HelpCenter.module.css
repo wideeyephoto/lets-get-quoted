@@ -1272,15 +1272,347 @@
   font-size: 0.95rem;
   line-height: 1.7;
 }
-.articleContent h3, .articleContent h4 {
-  color: #FFFFFF;
-  margin: 1.5rem 0 0.5rem;
+
+.articleContent h3 {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #ffffff;
+  margin: 1.75rem 0 0.6rem;
+  letter-spacing: -0.01em;
 }
-.articleContent ol, .articleContent ul {
-  margin: 0.5rem 0 1rem 1.25rem;
+
+.articleContent h4 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #ffedd5;
+  margin: 1.25rem 0 0.45rem;
 }
+
+.articleContent p {
+  font-size: 0.95rem;
+  color: #cbd5e1;
+  line-height: 1.7;
+  margin-bottom: 1rem;
+}
+
+.articleContent ul, .articleContent ol {
+  margin: 0.75rem 0 1.25rem 1.4rem;
+  color: #cbd5e1;
+  font-size: 0.92rem;
+  line-height: 1.65;
+}
+
+.articleContent li {
+  margin-bottom: 0.45rem;
+}
+
+.articleContent li strong {
+  color: #ffffff;
+}
+
+.articleContent .callout {
+  background: rgba(255, 122, 33, 0.08);
+  border-left: 3px solid #ff7a21;
+  border-radius: 0 10px 10px 0;
+  padding: 0.9rem 1.15rem;
+  margin: 1.25rem 0;
+  font-size: 0.88rem;
+  color: #ffedd5;
+  line-height: 1.6;
+}
+
+.articleContent .calloutInfo {
+  background: rgba(6, 182, 212, 0.08);
+  border-left: 3px solid #06b6d4;
+  border-radius: 0 10px 10px 0;
+  padding: 0.9rem 1.15rem;
+  margin: 1.25rem 0;
+  font-size: 0.88rem;
+  color: #cffafe;
+  line-height: 1.6;
+}
+
+.articleContent .calloutSuccess {
+  background: rgba(16, 185, 129, 0.08);
+  border-left: 3px solid #10b981;
+  border-radius: 0 10px 10px 0;
+  padding: 0.9rem 1.15rem;
+  margin: 1.25rem 0;
+  font-size: 0.88rem;
+  color: #d1fae5;
+  line-height: 1.6;
+}
+
+.articleContent code {
+  background: #162234;
+  color: #38bdf8;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.88em;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.articleContent table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1.25rem 0;
+  font-size: 0.86rem;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.articleContent th {
+  background: #162234;
+  color: #ffffff;
+  text-align: left;
+  padding: 0.7rem 0.9rem;
+  font-weight: 700;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.articleContent td {
+  padding: 0.7rem 0.9rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  color: #cbd5e1;
+  background: #0e1522;
+}
+
+/* Interactive In-Article Widgets */
+.articleInteractiveWidget {
+  background: #111a28;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 1.25rem;
+  margin: 1.5rem 0;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+}
+
+.widgetHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.25rem;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.widgetTitle {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.widgetBadge {
+  font-size: 0.725rem;
+  font-weight: 700;
+  color: #ff7a21;
+  background: rgba(255, 122, 33, 0.15);
+  padding: 3px 8px;
+  border-radius: 6px;
+  text-transform: uppercase;
+}
+
+.calcInputGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.calcField label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #94a3b8;
+  margin-bottom: 0.4rem;
+}
+
+.calcInputWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.calcInputPrefix, .calcInputSuffix {
+  position: absolute;
+  color: #64748b;
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.calcInputPrefix { left: 12px; }
+.calcInputSuffix { right: 12px; }
+
+.calcInput {
+  width: 100%;
+  background: #172235;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 0.6rem 0.8rem 0.6rem 1.8rem;
+  color: #ffffff;
+  font-size: 0.95rem;
+  font-weight: 600;
+  transition: border-color 0.2s;
+}
+
+.calcInput:focus {
+  border-color: #ff7a21;
+  outline: none;
+}
+
+.calcResultDeck {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+  margin: 1rem 0;
+}
+
+.calcResultCard {
+  background: #172235;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 0.85rem;
+  text-align: center;
+}
+
+.calcResultCardFeatured {
+  border-color: rgba(255, 122, 33, 0.4);
+  background: linear-gradient(180deg, rgba(255, 122, 33, 0.1) 0%, #172235 100%);
+}
+
+.calcResultLabel {
+  display: block;
+  font-size: 0.725rem;
+  font-weight: 600;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.25rem;
+}
+
+.calcResultVal {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.calcResultValHighlight {
+  color: #ff7a21;
+}
+
+.copySnippetBox {
+  background: #141d2b;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 0.85rem 1.1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+  font-size: 0.88rem;
+  color: #cbd5e1;
+}
+
+.copyMiniBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: #1e2b40;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #cbd5e1;
+  padding: 5px 10px;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+
+.copyMiniBtn:hover {
+  background: #253752;
+  border-color: #ff7a21;
+  color: #ffffff;
+}
+
+.widgetTabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: 0.5rem;
+  overflow-x: auto;
+}
+
+.widgetTabBtn {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+
+.widgetTabActive {
+  background: rgba(255, 122, 33, 0.15);
+  color: #ff7a21;
+}
+
+.checklistDeck {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin: 1rem 0;
+}
+
+.checklistItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: #162234;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.checklistItem:hover {
+  background: #1b2a40;
+  border-color: rgba(255, 122, 33, 0.3);
+}
+
+.checkboxSquare {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  border: 2px solid #64748b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.checkboxChecked {
+  background: #10b981;
+  border-color: #10b981;
+  color: #070b12;
+}
+
 .modalFooterActions {
   display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
   gap: 0.75rem;
   margin-top: 2rem;
   padding-top: 1.25rem;

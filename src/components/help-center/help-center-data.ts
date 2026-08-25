@@ -194,32 +194,121 @@ export const KNOWLEDGE_BASE: KnowledgeCategory[] = [
         audience: 'New Users',
         lastUpdated: 'August 2026',
         content: `
-          <h3>Setup Overview</h3>
-          <p>Get up and running with custom branded quotes, rate cards, and client communication channels.</p>
+          <h3>Fast-Tracking Your Live Contractor Workspace</h3>
+          <p>Setting up your workspace properly ensures every outgoing estimate, invoice, SMS alert, and customer agreement reflects your verified business credentials and brand identity.</p>
+
+          <div class="calloutSuccess">
+            <strong>Pro Tip:</strong> Upload a high-resolution PNG logo with a transparent background (recommended 800x400px). Our PDF proposal generator formats it automatically for 300 DPI print receipts.
+          </div>
+
+          <h3>The 5-Step Workspace Checklist:</h3>
+          <ol>
+            <li><strong>Company Profile &amp; Trade License:</strong> Navigate to <em>Settings &gt; Profile</em> and enter your legal business name, state contractor license number, and general liability insurance policy details.</li>
+            <li><strong>10DLC SMS Phone Line:</strong> Submit your 9-digit IRS EIN in <em>Settings &gt; SMS</em> to provision a dedicated local area code number for two-way client texting.</li>
+            <li><strong>Labor Rates &amp; Default Markup:</strong> In <em>Settings &gt; Pricing</em>, set your baseline hourly labor rate and target gross profit margin.</li>
+            <li><strong>Stripe Connect Banking:</strong> Link your business checking account in <em>Settings &gt; Payments</em> for automatic next-business-day deposits.</li>
+            <li><strong>Install Mobile PWA:</strong> Open <code>app.letsgetquoted.com</code> on your iPhone (Safari &gt; Share &gt; Add to Home Screen) or Android (Chrome &gt; Install App) for 1-tap truck dispatch.</li>
+          </ol>
         `
       },
       {
         id: 'art-markup-pricing',
         title: 'Configuring Hourly Rates, Overhead Multipliers, and Material Markup',
         category: 'Setup',
-        readTime: '3 min read',
+        readTime: '5 min read',
         audience: 'Owners & Estimators',
         lastUpdated: 'August 2026',
         content: `
-          <h3>Rate Calculation Formulas</h3>
-          <p>Ensure profitable bids across residential plumbing, electrical, and HVAC projects.</p>
+          <h3>The Core Difference Between Margin and Markup</h3>
+          <p>Marking up job costs by 30% does <strong>NOT</strong> yield a 30% gross profit margin. If direct costs are $10,000 and you add a 30% markup ($13,000 total), your actual margin is only <strong>23.08%</strong> ($3,000 ÷ $13,000). That missing 7% often wipes out net profits after business overhead.</p>
+
+          <div class="callout">
+            <strong>The Golden Contractor Margin Formula:</strong><br />
+            <code>Quote Price = Total Direct Job Costs ÷ (1 - Desired Gross Margin)</code>
+          </div>
+
+          <h3>Margin to Markup Reference Table</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Target Margin</th>
+                <th>Cost Multiplier</th>
+                <th>Equivalent Markup Needed</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>25% Margin</strong></td>
+                <td><code>÷ 0.75 (x 1.33)</code></td>
+                <td><strong>33.3% Markup</strong></td>
+              </tr>
+              <tr>
+                <td><strong>35% Margin</strong></td>
+                <td><code>÷ 0.65 (x 1.54)</code></td>
+                <td><strong>53.8% Markup</strong></td>
+              </tr>
+              <tr>
+                <td><strong>45% Margin</strong></td>
+                <td><code>÷ 0.55 (x 1.82)</code></td>
+                <td><strong>81.8% Markup</strong></td>
+              </tr>
+              <tr>
+                <td><strong>50% Margin</strong></td>
+                <td><code>÷ 0.50 (x 2.00)</code></td>
+                <td><strong>100.0% Markup (2x Cost)</strong></td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h3>Setting Up Your Rate Card</h3>
+          <ol>
+            <li>Go to <strong>Settings &gt; Pricing &amp; Markups</strong>.</li>
+            <li>Input your loaded labor rate (wage + payroll taxes + insurance + vehicle burden).</li>
+            <li>Set your default material markup multiplier (e.g. <code>1.45</code> for 45% markup on retail supplies).</li>
+            <li>Enable line-item margin alerts to flag any estimates falling below your target profitability threshold.</li>
+          </ol>
         `
       },
       {
         id: 'art-domain-setup',
         title: 'Connecting Custom Domains & Free SSL Setup Guide',
         category: 'Setup',
-        readTime: '5 min read',
+        readTime: '4 min read',
         audience: 'Admins',
         lastUpdated: 'August 2026',
         content: `
-          <h3>Domain Setup</h3>
-          <p>DNS configuration steps for GoDaddy, Namecheap, Cloudflare, and Squarespace.</p>
+          <h3>Connecting Your Own Domain in 3 Minutes</h3>
+          <p>Connect your custom registered domain (e.g. <code>www.maplewoodpro.com</code>) to your contractor website by adding two standard DNS records in your domain registrar.</p>
+
+          <h3>Required DNS Records</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Type</th>
+                <th>Host / Name</th>
+                <th>Value / Target</th>
+                <th>TTL</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>A Record</strong></td>
+                <td><code>@</code> (root)</td>
+                <td><code>76.76.21.21</code></td>
+                <td>Automatic / 3600</td>
+              </tr>
+              <tr>
+                <td><strong>CNAME</strong></td>
+                <td><code>www</code></td>
+                <td><code>cname.letsgetquoted.com</code></td>
+                <td>Automatic / 3600</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="calloutInfo">
+            <strong>Automatic SSL Provisioning:</strong> Once DNS records propagate, our cloud edge automatically provisions and renews a free 256-bit Let's Encrypt SSL certificate within 15 minutes.
+          </div>
         `
       }
     ]
@@ -236,24 +325,42 @@ export const KNOWLEDGE_BASE: KnowledgeCategory[] = [
         id: 'art-good-better-best',
         title: 'How to Build High-Converting 3-Option Proposals (Good / Better / Best)',
         category: 'Quoting',
-        readTime: '4 min read',
+        readTime: '5 min read',
         audience: 'Estimators',
         lastUpdated: 'August 2026',
         content: `
-          <h3>Package Strategy</h3>
-          <p>Increase your average project size by offering tiered options with transparent value add-ons.</p>
+          <h3>Why Multi-Tier Quoting Lifts Average Job Size by 35%+</h3>
+          <p>Sending a homeowner a single quote price forces a binary <strong>"Yes vs. No"</strong> decision where they compare your number to low-bid competitors. Providing three curated options shifts their internal evaluation to <strong>"Which level of quality best fits our home?"</strong></p>
+
+          <h3>The 20 / 65 / 15 Rule</h3>
+          <ul>
+            <li><strong>Good (Baseline Option · ~20% select):</strong> Meets standard building codes, standard fixtures/materials, 1-year workmanship warranty. Protects against losing cost-conscious homeowners.</li>
+            <li><strong>Better (The Sweet Spot · ~65% select):</strong> Architectural-grade durability, enhanced energy efficiency, upgraded aesthetic finishes, and 5–10 year extended warranty. Priced 25–40% above Good. This is where your highest net profit lives.</li>
+            <li><strong>Best (Executive Premium · ~15% select):</strong> Commercial-grade materials, lifetime transferable warranty, annual inspections, and priority 24/7 emergency dispatch. Priced 70–100% above Good.</li>
+          </ul>
+
+          <div class="calloutSuccess">
+            <strong>Building in 60 Seconds:</strong> In the Quote Builder, toggle on <strong>Multi-Option Tiers</strong>. Load a trade playbook or duplicate your base line items and add warranty and material upgrades to Tiers 2 &amp; 3.
+          </div>
         `
       },
       {
         id: 'art-change-orders',
         title: 'Issuing On-Site Extra Work Orders & Instant Client Approvals',
         category: 'Quoting',
-        readTime: '3 min read',
+        readTime: '4 min read',
         audience: 'Field Techs',
         lastUpdated: 'August 2026',
         content: `
-          <h3>Handling Unexpected Scope Changes</h3>
-          <p>Generate supplementary work agreements on your mobile phone before buying additional materials.</p>
+          <h3>Preventing Unpaid Scope Creep</h3>
+          <p>Unforeseen issues happen on every remodel: rotted subfloors, corroded cast-iron pipes, or customer-requested fixture additions. Performing extra work without written sign-off is the leading cause of contractor-homeowner payment disputes.</p>
+
+          <h3>The 3-Minute Mobile Change Order Workflow</h3>
+          <ol>
+            <li><strong>Capture Jobsite Photos:</strong> Take 2 photos of the uncovered unforeseen condition directly in the mobile app.</li>
+            <li><strong>Draft Additional Scope:</strong> Open the active job, tap <strong>+ Add Change Order</strong>, and enter itemized additional labor and materials.</li>
+            <li><strong>Send Instant SMS Authorization:</strong> Send the 1-click approval link to the homeowner. They review the photo evidence, approve the cost adjustment, and authorize the charge from their phone before you purchase additional materials.</li>
+          </ol>
         `
       }
     ]
@@ -270,24 +377,63 @@ export const KNOWLEDGE_BASE: KnowledgeCategory[] = [
         id: 'art-automated-followups',
         title: 'Setting Up 24-Hour & 72-Hour Quote Follow-Up Sequences',
         category: 'SMS & Messaging',
-        readTime: '3 min read',
+        readTime: '4 min read',
         audience: 'Sales & Dispatch',
         lastUpdated: 'August 2026',
         content: `
-          <h3>Automated Reminders</h3>
-          <p>Follow up with residential homeowners automatically without sounding pushy or robotic.</p>
+          <h3>Recovering Stalled Quotes on Autopilot</h3>
+          <p>Contractors lose over 40% of winnable projects simply due to lack of timely follow-up. Homeowners get busy; automated text sequences bring your proposal back to the top of their mind without sounding aggressive.</p>
+
+          <h3>Proven High-Converting 3-Touch Follow-Up Cadence</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Timing</th>
+                <th>Objective</th>
+                <th>Proven Message Template</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>24 Hours Post-Quote</strong></td>
+                <td>Clarity &amp; Questions</td>
+                <td><em>"Hi [Name], Brett here from [Company]. Just wanted to make sure you received the quote for your [Project]. Did you have any questions on the options?"</em></td>
+              </tr>
+              <tr>
+                <td><strong>72 Hours Post-Quote</strong></td>
+                <td>Schedule Lock</td>
+                <td><em>"Hey [Name], our installation crew is planning next week’s route in [Town]. If you’d like to lock in your preferred start date, you can approve the quote online here: [Link]"</em></td>
+              </tr>
+              <tr>
+                <td><strong>5 Days Post-Quote</strong></td>
+                <td>Courtesy Close-Out</td>
+                <td><em>"Hi [Name], following up one last time on the [Project] proposal before we release reserved material pricing. Let us know if your timing changed!"</em></td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="calloutSuccess">
+            <strong>Auto-Halt Intelligence:</strong> The instant the customer replies with a text or signs the quote, the automated follow-up sequence instantly stops.
+          </div>
         `
       },
       {
         id: 'art-review-requests',
         title: 'Automated 5-Star Google Review Requests Upon Job Completion',
         category: 'SMS & Messaging',
-        readTime: '2 min read',
+        readTime: '3 min read',
         audience: 'Owners',
         lastUpdated: 'August 2026',
         content: `
-          <h3>Review Ingest</h3>
-          <p>Send review requests via SMS the moment your technician marks a work order complete.</p>
+          <h3>Why Timing Decides 80% of Customer Reviews</h3>
+          <p>Asking for a review 3 days after a job yields under 10% response rates. Sending an automated SMS review link within <strong>20 minutes</strong> of the technician marking the work order complete generates <strong>65%+ review submission rates</strong> while customer satisfaction is highest.</p>
+
+          <h3>Review Request Best Practices</h3>
+          <ul>
+            <li><strong>Direct Deep-Link:</strong> The SMS message links directly to your Google Business Profile review dialog so homeowners do not have to search for your company.</li>
+            <li><strong>Personalized Signature:</strong> The automated text mentions the technician's name (e.g. <em>"Dave loved working on your home today!"</em>) to increase emotional connection.</li>
+            <li><strong>Automated Review Gate:</strong> If a customer reports an issue, the system alerts the office dispatcher immediately before negative feedback is posted publicly.</li>
+          </ul>
         `
       }
     ]
@@ -304,12 +450,44 @@ export const KNOWLEDGE_BASE: KnowledgeCategory[] = [
         id: 'art-deposit-schedules',
         title: 'Enforcing 30% / 50% Milestone Deposits Prior to Job Dispatch',
         category: 'Payments',
-        readTime: '3 min read',
+        readTime: '4 min read',
         audience: 'Estimators',
         lastUpdated: 'August 2026',
         content: `
-          <h3>Milestone Billing</h3>
-          <p>Collect non-refundable material deposits securely before scheduling crew trucks.</p>
+          <h3>Protecting Cash Flow with Milestone Billing</h3>
+          <p>Never front high-ticket materials or crew payroll out of your personal pocket. Requiring an upfront deposit before reserving calendar dates ensures projects are fully funded from day one.</p>
+
+          <h3>Standard Residential Milestone Framework</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Milestone Stage</th>
+                <th>Percent Due</th>
+                <th>Trigger Event &amp; Deliverable</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Deposit / Booking</strong></td>
+                <td><strong>50%</strong></td>
+                <td>Required upon contract signing to lock calendar date and purchase materials.</td>
+              </tr>
+              <tr>
+                <td><strong>Rough-In Progress</strong></td>
+                <td><strong>40%</strong></td>
+                <td>Due upon completion of framing, plumbing/electrical rough-in, or major mechanical milestone.</td>
+              </tr>
+              <tr>
+                <td><strong>Final Completion</strong></td>
+                <td><strong>10%</strong></td>
+                <td>Due upon final walkthrough, punch-list sign-off, and delivery of lien waiver.</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="calloutSuccess">
+            <strong>Calendar Gating:</strong> Jobs can be configured to require the initial 50% deposit before dates are confirmed on the master crew dispatch schedule.
+          </div>
         `
       },
       {
@@ -320,8 +498,15 @@ export const KNOWLEDGE_BASE: KnowledgeCategory[] = [
         audience: 'Owners',
         lastUpdated: 'August 2026',
         content: `
-          <h3>Card Processing Rules</h3>
-          <p>Understand state-by-state guidelines for credit card surcharging and zero-fee bank transfers.</p>
+          <h3>Surcharging Compliance &amp; Zero-Fee Bank Transfers</h3>
+          <p>Credit card processing fees (typically 2.9% + 30¢) can erode significant net margins on large projects. You can configure convenience fees or offer zero-fee ACH bank transfers to keep 100% of your earnings.</p>
+
+          <h3>Compliance Rules:</h3>
+          <ul>
+            <li><strong>Clear Disclosure:</strong> Surcharges must be displayed transparently on client quote summaries before checkout.</li>
+            <li><strong>State Regulations:</strong> Surcharging credit cards is prohibited or restricted in certain states (e.g. Connecticut, Massachusetts). Check your local state commerce regulations.</li>
+            <li><strong>Instant ACH Bank Transfers:</strong> Enable direct bank-to-bank transfers for large contract amounts (over $5,000) with capped low-fee processing.</li>
+          </ul>
         `
       }
     ]
@@ -339,12 +524,19 @@ export const KNOWLEDGE_BASE: KnowledgeCategory[] = [
         id: 'art-route-density',
         title: 'Optimizing Route Density & Grouping Jobs by Neighborhood',
         category: 'Team Management',
-        readTime: '3 min read',
+        readTime: '4 min read',
         audience: 'Dispatchers',
         lastUpdated: 'August 2026',
         content: `
-          <h3>Route Optimization</h3>
-          <p>Cut fuel costs and travel time by scheduling adjacent zip codes on recurring calendar blocks.</p>
+          <h3>Cutting Windshield Time &amp; Increasing Daily Billable Hours</h3>
+          <p>Technicians spending 2.5 hours per day driving between distant zip codes lose 1 to 2 billable service calls daily. Grouping appointments by geographic clusters maximizes revenue per truck.</p>
+
+          <h3>The Route Density Strategy:</h3>
+          <ol>
+            <li><strong>Neighborhood Zone Days:</strong> Assign specific days of the week to specific town clusters (e.g., North County on Tuesdays/Thursdays, South County on Mondays/Wednesdays).</li>
+            <li><strong>2-Hour Arrival Windows:</strong> Use 2-hour arrival windows with automated "Tech is en route" SMS alerts to eliminate customer arrival anxiety.</li>
+            <li><strong>Buffer Zones:</strong> Schedule 30-minute buffer windows between major jobs to accommodate traffic and supply house runs without running late.</li>
+          </ol>
         `
       }
     ]
@@ -361,12 +553,20 @@ export const KNOWLEDGE_BASE: KnowledgeCategory[] = [
         id: 'art-local-seo-ranking',
         title: 'How Local Service Landing Pages Rank on Google Search',
         category: 'Website & SEO',
-        readTime: '4 min read',
+        readTime: '5 min read',
         audience: 'Marketing Leads',
         lastUpdated: 'August 2026',
         content: `
-          <h3>Local Search Optimization</h3>
-          <p>Target specific towns and suburbs with automated SEO landing pages that generate direct calls.</p>
+          <h3>Dominating Google Maps &amp; Local Search</h3>
+          <p>Over 60% of high-intent homeowners searching for contractors on Google click the top 3 map results. Having dedicated town landing pages with localized schema microdata helps you outrank competitors.</p>
+
+          <h3>The 4 Essential Local SEO Factors:</h3>
+          <ul>
+            <li><strong>Schema.org LocalBusiness Microdata:</strong> Built-in JSON-LD microdata tells Google your exact license number, service radius, and operating hours automatically.</li>
+            <li><strong>NAP Consistency:</strong> Ensure your Name, Address, and Phone number are formatted identically across your website, Google Business Profile, and licensing registries.</li>
+            <li><strong>Hyper-Local Service Area Pages:</strong> Generate automated landing pages for adjacent towns and suburbs you service (e.g. <code>/plumbing-maplewood-nj</code>).</li>
+            <li><strong>Geotagged Jobsite Photos:</strong> Uploading 3–5 project photos weekly signals active local commercial activity to Google's ranking crawlers.</li>
+          </ul>
         `
       }
     ]

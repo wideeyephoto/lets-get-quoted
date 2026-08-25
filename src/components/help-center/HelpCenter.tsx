@@ -363,6 +363,18 @@ export default function HelpCenter() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [_copiedRecord, setCopiedRecord] = useState<string | null>(null);
 
+  // In-Article Interactive Utilities State
+  const [calcCost, setCalcCost] = useState('5000');
+  const [calcMargin, setCalcMargin] = useState('35');
+  const [activeSmsTab, setActiveSmsTab] = useState<'24h' | '72h' | '5day' | 'missed'>('24h');
+  const [checklistChecked, setChecklistChecked] = useState<Record<string, boolean>>({
+    'chk-name': true,
+    'chk-address': true,
+    'chk-ein': true,
+    'chk-consent': false
+  });
+  const [articleFeedback, setArticleFeedback] = useState<Record<string, boolean>>({});
+
   const searchInputRef = useRef<HTMLInputElement>(null);
   const lastFocusedElementRef = useRef<HTMLElement | null>(null);
 
@@ -1232,24 +1244,277 @@ export default function HelpCenter() {
                 <span>📁 Category: {activeArticle.category}</span>
               </div>
 
+              {/* 1-Click DNS Copy Box for domain articles */}
+              {(activeArticle.id === 'art-domain-setup' || activeArticle.id === 'art-domain-offline-troubleshooting') && (
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <div className={styles.copySnippetBox}>
+                    <span>A Record (@): <strong>76.76.21.21</strong></span>
+                    <button
+                      className={styles.copyMiniBtn}
+                      onClick={() => copyToClipboard('76.76.21.21', 'A Record IP')}
+                    >
+                      <Icons.Copy />
+                      <span>Copy IP</span>
+                    </button>
+                  </div>
+
+                  <div className={styles.copySnippetBox}>
+                    <span>CNAME (www): <strong>cname.letsgetquoted.com</strong></span>
+                    <button
+                      className={styles.copyMiniBtn}
+                      onClick={() => copyToClipboard('cname.letsgetquoted.com', 'CNAME')}
+                    >
+                      <Icons.Copy />
+                      <span>Copy CNAME</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Interactive Margin & Pricing Calculator */}
+              {activeArticle.id === 'art-markup-pricing' && (
+                <div className={styles.articleInteractiveWidget}>
+                  <div className={styles.widgetHeader}>
+                    <div className={styles.widgetTitle}>
+                      <Icons.Zap />
+                      <span>Live Contractor Margin Calculator</span>
+                    </div>
+                    <span className={styles.widgetBadge}>Instant Math Tool</span>
+                  </div>
+
+                  <div className={styles.calcInputGrid}>
+                    <div className={styles.calcField}>
+                      <label>Total Direct Costs (Labor + Materials + Subs)</label>
+                      <div className={styles.calcInputWrapper}>
+                        <span className={styles.calcInputPrefix}>$</span>
+                        <input
+                          type="number"
+                          className={styles.calcInput}
+                          value={calcCost}
+                          onChange={e => setCalcCost(e.target.value)}
+                          placeholder="5000"
+                        />
+                      </div>
+                    </div>
+
+                    <div className={styles.calcField}>
+                      <label>Target Gross Profit Margin %</label>
+                      <div className={styles.calcInputWrapper}>
+                        <input
+                          type="number"
+                          className={styles.calcInput}
+                          style={{ paddingLeft: '0.9rem', paddingRight: '2rem' }}
+                          value={calcMargin}
+                          onChange={e => setCalcMargin(e.target.value)}
+                          placeholder="35"
+                        />
+                        <span className={styles.calcInputSuffix}>%</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {(() => {
+                    const costNum = Math.max(0, parseFloat(calcCost) || 0);
+                    const marginPct = Math.min(0.95, Math.max(0.01, (parseFloat(calcMargin) || 0) / 100));
+                    const sellingPrice = marginPct < 1 ? costNum / (1 - marginPct) : costNum * 2;
+                    const grossProfit = sellingPrice - costNum;
+                    const markupPct = costNum > 0 ? (grossProfit / costNum) * 100 : 0;
+
+                    return (
+                      <>
+                        <div className={styles.calcResultDeck}>
+                          <div className={`${styles.calcResultCard} ${styles.calcResultCardFeatured}`}>
+                            <span className={styles.calcResultLabel}>Quote Selling Price</span>
+                            <div className={`${styles.calcResultVal} ${styles.calcResultValHighlight}`}>
+                              ${sellingPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </div>
+                          </div>
+                          <div className={styles.calcResultCard}>
+                            <span className={styles.calcResultLabel}>Gross Profit Dollars</span>
+                            <div className={styles.calcResultVal} style={{ color: '#10b981' }}>
+                              ${grossProfit.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </div>
+                          </div>
+                          <div className={styles.calcResultCard}>
+                            <span className={styles.calcResultLabel}>Required Markup</span>
+                            <div className={styles.calcResultVal} style={{ color: '#38bdf8' }}>
+                              {markupPct.toFixed(1)}%
+                            </div>
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.75rem' }}>
+                          <button
+                            className={styles.copyMiniBtn}
+                            onClick={() => {
+                              const mathText = `Direct Cost: $${costNum.toFixed(2)} | Target Margin: ${(marginPct * 100).toFixed(0)}% | Quote Selling Price: $${sellingPrice.toFixed(2)} (Gross Profit: $${grossProfit.toFixed(2)}, Markup: ${markupPct.toFixed(1)}%)`;
+                              copyToClipboard(mathText, 'Margin Math Breakdown');
+                            }}
+                          >
+                            <Icons.Copy />
+                            <span>Copy Math Calculation</span>
+                          </button>
+                        </div>
+                      </>
+                    );
+                  })()}
+                </div>
+              )}
+
+              {/* Interactive SMS Templates Copy Deck */}
+              {(activeArticle.id === 'art-automated-followups' || activeArticle.id === 'art-sms-delivery-troubleshooting') && (
+                <div className={styles.articleInteractiveWidget}>
+                  <div className={styles.widgetHeader}>
+                    <div className={styles.widgetTitle}>
+                      <Icons.Smartphone />
+                      <span>Ready-to-Use SMS Templates</span>
+                    </div>
+                    <span className={styles.widgetBadge}>1-Click Copy</span>
+                  </div>
+
+                  <div className={styles.widgetTabs}>
+                    <button
+                      className={`${styles.widgetTabBtn} ${activeSmsTab === '24h' ? styles.widgetTabActive : ''}`}
+                      onClick={() => setActiveSmsTab('24h')}
+                    >
+                      Touch 1 · 24 Hours
+                    </button>
+                    <button
+                      className={`${styles.widgetTabBtn} ${activeSmsTab === '72h' ? styles.widgetTabActive : ''}`}
+                      onClick={() => setActiveSmsTab('72h')}
+                    >
+                      Touch 2 · 72 Hours
+                    </button>
+                    <button
+                      className={`${styles.widgetTabBtn} ${activeSmsTab === '5day' ? styles.widgetTabActive : ''}`}
+                      onClick={() => setActiveSmsTab('5day')}
+                    >
+                      Touch 3 · 5 Days
+                    </button>
+                    <button
+                      className={`${styles.widgetTabBtn} ${activeSmsTab === 'missed' ? styles.widgetTabActive : ''}`}
+                      onClick={() => setActiveSmsTab('missed')}
+                    >
+                      Missed-Call Auto Text
+                    </button>
+                  </div>
+
+                  {(() => {
+                    const templates: Record<string, { label: string; text: string }> = {
+                      '24h': {
+                        label: '24-Hour Follow-Up',
+                        text: 'Hi [Customer Name], Brett here from [Company Name]. Just wanted to make sure you received our quote for your [Project Name]. Did you have any questions on the options or scope? Let me know anytime!'
+                      },
+                      '72h': {
+                        label: '72-Hour Schedule Lock',
+                        text: "Hey [Customer Name], our installation crew is planning next week's route in [Town]. If you'd like to lock in your preferred start date, you can approve the quote online here: [Quote Link]"
+                      },
+                      '5day': {
+                        label: '5-Day Courtesy Close-Out',
+                        text: 'Hi [Customer Name], following up one last time on the [Project Name] proposal before we release the reserved material pricing. Let us know if your timing changed!'
+                      },
+                      'missed': {
+                        label: 'Missed-Call Auto-Text',
+                        text: "Hi, sorry I missed your call — I'm currently on a jobsite with a client. How can we help with your home project? Feel free to text details or photos here!"
+                      }
+                    };
+
+                    const activeTpl = templates[activeSmsTab];
+
+                    return (
+                      <div className={styles.copySnippetBox} style={{ flexDirection: 'column', alignItems: 'stretch' }}>
+                        <p style={{ margin: '0 0 0.85rem', color: '#ffedd5', fontSize: '0.92rem', lineHeight: 1.6 }}>
+                          &ldquo;{activeTpl.text}&rdquo;
+                        </p>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                          <button
+                            className={styles.copyMiniBtn}
+                            onClick={() => copyToClipboard(activeTpl.text, activeTpl.label)}
+                          >
+                            <Icons.Copy />
+                            <span>Copy {activeTpl.label}</span>
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+
+              {/* Interactive 10DLC Checklist for SMS setup */}
+              {activeArticle.id === 'art-sms-delivery-troubleshooting' && (
+                <div className={styles.articleInteractiveWidget}>
+                  <div className={styles.widgetHeader}>
+                    <div className={styles.widgetTitle}>
+                      <Icons.CheckCircle />
+                      <span>10DLC Registration Pre-Flight Checklist</span>
+                    </div>
+                    <span className={styles.widgetBadge}>
+                      {Object.values(checklistChecked).filter(Boolean).length} of 4 Ready
+                    </span>
+                  </div>
+
+                  <div className={styles.checklistDeck}>
+                    {[
+                      { id: 'chk-name', label: 'Exact Legal Name matches IRS EIN / SS-4 document' },
+                      { id: 'chk-address', label: 'Valid physical commercial or residential address (No P.O. Box)' },
+                      { id: 'chk-ein', label: '9-Digit Tax ID / EIN entered in Company Profile' },
+                      { id: 'chk-consent', label: 'SMS Consent disclaimer displayed on website intake form' }
+                    ].map(chk => (
+                      <div
+                        key={chk.id}
+                        className={styles.checklistItem}
+                        onClick={() =>
+                          setChecklistChecked(prev => ({
+                            ...prev,
+                            [chk.id]: !prev[chk.id]
+                          }))
+                        }
+                      >
+                        <div className={`${styles.checkboxSquare} ${checklistChecked[chk.id] ? styles.checkboxChecked : ''}`}>
+                          {checklistChecked[chk.id] && <Icons.Check />}
+                        </div>
+                        <span style={{ fontSize: '0.88rem', color: checklistChecked[chk.id] ? '#ffffff' : '#94a3b8' }}>
+                          {chk.label}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div
                 className={styles.articleContent}
                 dangerouslySetInnerHTML={{ __html: activeArticle.content }}
               />
 
               <div className={styles.modalFooterActions}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                  <button
+                    className={styles.faqVoteBtn}
+                    onClick={() => {
+                      setArticleFeedback(prev => ({ ...prev, [activeArticle.id]: true }));
+                      showToast('Thanks for your feedback!');
+                    }}
+                  >
+                    {articleFeedback[activeArticle.id] ? <Icons.Check /> : <Icons.ThumbsUp />}
+                    <span>{articleFeedback[activeArticle.id] ? 'Helpful' : 'Helpful?'}</span>
+                  </button>
+                  <button
+                    className={styles.btnOutlineSm}
+                    onClick={() => copyToClipboard(`https://letsgetquoted.com/help?article=${activeArticle.id}`, 'Guide Link')}
+                  >
+                    <Icons.Copy />
+                    <span>Share Guide</span>
+                  </button>
+                </div>
+
                 <button
                   className={styles.btnPrimarySm}
-                  onClick={() => copyToClipboard(`https://letsgetquoted.com/help?article=${activeArticle.id}`, 'Guide Link')}
-                >
-                  <Icons.Copy />
-                  <span>Share Guide</span>
-                </button>
-                <button
-                  className={styles.btnOutlineSm}
                   onClick={() => openTicketWithSubject(`Question regarding: ${activeArticle.title}`)}
                 >
-                  Still stuck? Contact Support
+                  <Icons.LifeBuoy />
+                  <span>Contact Support</span>
                 </button>
               </div>
             </div>
