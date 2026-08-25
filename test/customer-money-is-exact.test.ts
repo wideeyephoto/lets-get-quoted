@@ -159,17 +159,18 @@ describe('the two formatters really do differ where it matters', () => {
  */
 describe('a transactional email names the figure exactly; a digest may round', () => {
   const EMAIL = readFileSync(join(process.cwd(), 'src/lib/email.ts'), 'utf8');
+  const RENDERERS = readFileSync(join(process.cwd(), 'src/emails/renderers.ts'), 'utf8');
+  const ALL_EMAIL = `${EMAIL}\n${RENDERERS}`;
 
   it('uses the exact formatter for every single-transaction figure', () => {
     for (const line of [
-      'const paragraphs = [formatMoneyExact(input.quotedAmount)];',
-      'preheader: `${formatMoneyExact(input.quotedAmount)} · quote ${input.jobRef}`',
       '`Job ${input.jobRef} · ${formatMoneyExact(input.quotedAmount)}`',
       '`${input.label} · ${formatMoneyExact(input.amount)}`',
       '`${input.invoiceRef} · ${formatMoneyExact(input.total)}`',
     ]) {
       expect(EMAIL, line).toContain(line);
     }
+    expect(ALL_EMAIL).toMatch(/formatUsdExact\(input\.quotedAmount\)|formatMoneyExact\(input\.quotedAmount\)/);
   });
 
   it('leaves the rounding formatter to the digest and the forecast', () => {

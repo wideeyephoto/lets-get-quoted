@@ -19,6 +19,8 @@ import {
   missedCallTextBack,
   ownerHighValueLeadText,
   ownerVerificationCodeText,
+  ownerVoiceEmergencyAlertText,
+  callerVoiceBookingLinkText,
   paymentText,
   portalLinkText,
   quickStopConfirmedText,
@@ -598,6 +600,30 @@ export const SMS_CATALOGUE: SmsCatalogueEntry[] = [
     ownerAuthored: true,
     body: inboxReplyText({ businessName: SAMPLE.business, body: 'Yes — Thursday morning works, see you at 9.' }),
   },
+  {
+    id: 'owner-voice-emergency-alert',
+    title: 'Voice emergency alert',
+    trigger: 'A caller reports an urgent hazard during an AI voice call',
+    audience: 'owner',
+    control: always('Urgent safety notification'),
+    body: ownerVoiceEmergencyAlertText({
+      businessName: SAMPLE.business,
+      callerNumber: '(248) 555-0117',
+      hazardSummary: 'Water main rupture in basement',
+      dashboardUrl: SAMPLE.link,
+    }),
+  },
+  {
+    id: 'caller-voice-booking-link',
+    title: 'Voice call booking link',
+    trigger: 'Caller requests a booking or quote link during an AI voice call',
+    audience: 'customer',
+    control: always('Requested by caller'),
+    body: callerVoiceBookingLinkText({
+      businessName: SAMPLE.business,
+      bookingUrl: SAMPLE.link,
+    }),
+  },
 ];
 
 /** Every sender this catalogue claims to cover, checked against lib/sms by test. */
@@ -606,6 +632,7 @@ export const CATALOGUE_SENDERS = [
   'sendArrivalSms',
   'sendArrivalTimeChangedSms',
   'sendBookingDecisionSms',
+  'sendCallerVoiceBookingLinkSms',
   'sendCampaignSms',
   'sendCardSetupSms',
   'sendCardUpdateSms',
@@ -623,6 +650,7 @@ export const CATALOGUE_SENDERS = [
   'sendOwnerEstimateAcceptedSms',
   'sendOwnerHighValueLeadSms',
   'sendOwnerPhoneVerificationSms',
+  'sendOwnerVoiceEmergencyAlertSms',
   'sendPaymentSmsEvent',
   'sendQuickStopConfirmedSms',
   'sendQuickStopOfferSms',

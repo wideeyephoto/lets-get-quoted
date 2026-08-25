@@ -120,8 +120,22 @@ export default function CompetitorDetailPage({ params }: Props) {
       <main id="main-content">
         {/* Hero Section */}
         <section className={styles.hero}>
-          <span className={styles.badge}>{data.badge}</span>
-          <h1 className={styles.headline}>{data.headline}</h1>
+          <span className={styles.badge}>✦ {data.badge}</span>
+          <h1 className={styles.headline}>
+            {data.slug === 'jobber-alternative' ? (
+              <>A Modern Contractor Platform with <em>$0/Mo Entry</em> &amp; <em>Built-In AI Intake</em>.</>
+            ) : data.slug === 'housecall-pro-alternative' ? (
+              <>Contractor Software Without <em>Surprise Add-Ons</em> &amp; <em>Seat Penalties</em>.</>
+            ) : data.slug === 'servicetitan-alternative' ? (
+              <>Contractor Software Without <em>$5,000 Setup Fees</em> &amp; <em>Locked Contracts</em>.</>
+            ) : data.slug === 'angi-leads-alternative' ? (
+              <>Own Your Leads. <em>Stop Paying $80+</em> for Shared Inquiries.</>
+            ) : data.slug === 'thumbtack-alternative' ? (
+              <>Stop Paying for Every Message. <em>Own Your Direct Leads</em>.</>
+            ) : (
+              data.headline
+            )}
+          </h1>
           <p className={styles.subhead}>{data.subhead}</p>
 
           <div className={styles.heroActions}>
@@ -131,6 +145,56 @@ export default function CompetitorDetailPage({ params }: Props) {
             <Link href="#savings-calculator" className={styles.btnSecondary}>
               Calculate Annual Savings &darr;
             </Link>
+          </div>
+
+          {/* Hero Side-by-Side Snapshot Comparison Card */}
+          <div className={styles.heroSnapshotGrid} aria-label={`Quick comparison: Let's Get Quoted vs ${data.name}`}>
+            {/* Competitor Snapshot Box */}
+            <div className={styles.heroSnapshotCardComp}>
+              <div className={styles.heroSnapshotHeadComp}>
+                <span className={styles.heroSnapshotBrand}>{data.name}</span>
+                <span className={styles.heroSnapshotPriceComp}>
+                  {data.basePricing.competitor.split('+')[0].trim()}
+                </span>
+              </div>
+              <ul className={styles.heroSnapshotList}>
+                <li>
+                  <span className={styles.crossIcon}>✕</span>
+                  <span>Recurring monthly SaaS bills even during slow months</span>
+                </li>
+                <li>
+                  <span className={styles.crossIcon}>✕</span>
+                  <span>No custom contractor website included (requires Wix/Squarespace)</span>
+                </li>
+                <li>
+                  <span className={styles.crossIcon}>✕</span>
+                  <span>Basic static forms without automated 24/7 AI lead scoping</span>
+                </li>
+              </ul>
+            </div>
+
+            {/* LGQ Snapshot Box (Winner) */}
+            <div className={styles.heroSnapshotCardLgq}>
+              <div className={styles.heroSnapshotTagLgq}>Built for Contractor Profit</div>
+              <div className={styles.heroSnapshotHeadLgq}>
+                <span className={styles.heroSnapshotBrandLgq}>Let’s Get Quoted</span>
+                <span className={styles.heroSnapshotPriceLgq}>From $0/mo on Flex</span>
+              </div>
+              <ul className={styles.heroSnapshotList}>
+                <li>
+                  <span className={styles.checkIconTeal}>✓</span>
+                  <span><strong>$0/month base software overhead</strong> · Pay only 1.25% when you get paid</span>
+                </li>
+                <li>
+                  <span className={styles.checkIconTeal}>✓</span>
+                  <span><strong>SEO contractor website included</strong> with 20+ trade themes &amp; instant booking</span>
+                </li>
+                <li>
+                  <span className={styles.checkIconTeal}>✓</span>
+                  <span><strong>24/7 AI Smart Intake</strong> qualifying, scoping &amp; alerting hot leads instantly</span>
+                </li>
+              </ul>
+            </div>
           </div>
 
           {/* Trust Badges */}

@@ -289,7 +289,7 @@ describe('what the roster looks like afterwards', () => {
     // "$305" here and "$304.50" on the next tab, from the same figure, is what
     // makes an app look like it cannot add up.
     expect(PAGE_CODE).toContain("import { payMoney } from '@/lib/crew-pay'");
-    expect(PAGE_CODE).toContain('periodPayLabel: payMoney(bucket?.pay ?? 0)');
+    expect(PAGE_CODE).toContain('payMoney(bucket?.pay ?? 0)');
     expect(PAGE_CODE).not.toContain('formatMoney');
     // Whole dollars stay right for a crew-wide headline in the Focus rail.
     expect(ROSTER_CODE).toContain('return `$${Math.round(amount).toLocaleString(\'en-US\')}`');

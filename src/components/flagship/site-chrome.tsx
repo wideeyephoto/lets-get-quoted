@@ -127,20 +127,20 @@ export function SiteHeader() {
   const signedIn = useSignedIn();
   const [open, setOpen] = useState(false);
   const toggleRef = useRef<HTMLButtonElement>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
   const wasOpenRef = useRef(false);
 
   /* The nav is display:none below 760px, replaced by this accessible drawer.
      Traps focus, closes on Escape, restores body scroll, and returns focus to
      the toggle button upon close. */
   useEffect(() => {
+    const menuEl = document.getElementById('site-menu');
     if (open) {
       wasOpenRef.current = true;
       const previous = document.body.style.overflow;
       document.body.style.overflow = 'hidden';
 
       // Focus first interactive link or button inside the menu
-      const firstInteractive = menuRef.current?.querySelector<HTMLElement>('a, button');
+      const firstInteractive = menuEl?.querySelector<HTMLElement>('a, button');
       firstInteractive?.focus();
 
       const onKey = (e: KeyboardEvent) => {
@@ -153,9 +153,9 @@ export function SiteHeader() {
         }
 
         // Focus trap inside the drawer
-        if (e.key === 'Tab' && menuRef.current) {
+        if (e.key === 'Tab' && menuEl) {
           const focusables = Array.from(
-            menuRef.current.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])')
+            menuEl.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])')
           );
           if (focusables.length === 0) return;
           const first = focusables[0];
@@ -233,7 +233,7 @@ export function SiteHeader() {
 
       {/* `hidden` rather than a CSS-only hide: a closed menu must be out of the
           tab order and out of the accessibility tree, not merely invisible. */}
-      <div className="site-menu" id="site-menu" ref={menuRef} hidden={!open}>
+      <div className="site-menu" id="site-menu" hidden={!open}>
         <nav aria-label="Site">
           {NAV.map(([href, label]) => (
             <a key={href} href={href} onClick={closeMenu}>{label}</a>

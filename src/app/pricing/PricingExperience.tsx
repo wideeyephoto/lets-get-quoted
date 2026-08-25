@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState, type ReactNode } from 'react';
+import { useId, useMemo, useState, type ReactNode } from 'react';
 import { buildStartUrl } from '@/lib/signup-intent';
 import PricingCalculator from './PricingCalculator';
 import {
@@ -146,6 +146,7 @@ function signupHref(plan: PlanId, billing: BillingCycle) {
 
 function InfoBubble({ label, children }: { label: string; children: ReactNode }) {
   const [open, setOpen] = useState(false);
+  const bubbleId = useId();
   return (
     <span className={styles.infoBubbleWrapper}>
       <button
@@ -153,12 +154,13 @@ function InfoBubble({ label, children }: { label: string; children: ReactNode })
         className={styles.infoBubbleTrigger}
         aria-label={`Learn more about ${label}`}
         aria-expanded={open}
+        aria-controls={bubbleId}
         onClick={() => setOpen((v) => !v)}
       >
         i
       </button>
       {open && (
-        <span className={styles.infoBubbleContent} role="tooltip">
+        <span id={bubbleId} className={styles.infoBubbleContent} role="tooltip">
           {children}
         </span>
       )}
@@ -628,13 +630,14 @@ export default function PricingExperience() {
             className={styles.secondaryButton}
             onClick={() => setShowCalculator((v) => !v)}
             aria-expanded={showCalculator}
+            aria-controls="pricing-calculator-section"
           >
             {showCalculator ? 'Collapse calculator ▲' : 'Open interactive calculator ▼'}
           </button>
         </div>
 
         {showCalculator && (
-          <div className={styles.calculatorWrapper}>
+          <div id="pricing-calculator-section" className={styles.calculatorWrapper}>
             <PricingCalculator
               billing={billing}
               volume={recommenderVolume}

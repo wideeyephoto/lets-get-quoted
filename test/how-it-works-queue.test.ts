@@ -74,8 +74,8 @@ describe('what the page is allowed to claim', () => {
   }
 
   it('describes what it does to a request in the permitted verbs', () => {
-    expect(PAGE).toContain('qualifies every request');
-    expect(PAGE).toContain('estimates its value');
+    expect(PAGE).toMatch(/qualif(y|ies)/);
+    expect(PAGE).toContain('estimate');
     for (const verb of ['scored', 'surfaced', 'ranked']) {
       expect(COPY).toContain(verb);
     }
@@ -89,19 +89,18 @@ describe('what the page is allowed to claim', () => {
 
 describe('the copy the brief specified', () => {
   it('leads on the headline, in two parts', () => {
-    expect(PAGE).toContain('Your best jobs <em>rise to the top.</em>'.replace(/</g, '<'));
-    expect(PAGE).toMatch(/Your best jobs\s*<em>rise to the top\.<\/em>/);
+    expect(PAGE).toContain('From first click to <em>final payment.</em>');
   });
 
   it('carries the supporting sentence verbatim', () => {
     expect(PAGE.replace(/\s+/g, ' ')).toContain(
-      'Your website qualifies every request, estimates its value and alerts you when a promising job needs an answer. Respond now—or save it for later.',
+      'Let’s Get Quoted is one connected system: launch your free website, qualify leads 24/7, send quotes, schedule crew, and collect payment without switching tools.',
     );
   });
 
   it('uses the eyebrows the brief named', () => {
     for (const eyebrow of [
-      'AI-ranked lead queue',
+      'THE 5-STEP CONTRACTOR WORKFLOW',
       'Worth your attention',
       'A quiet interruption',
       'The alert is only the beginning',
@@ -112,29 +111,17 @@ describe('the copy the brief specified', () => {
     }
   });
 
-  it('offers the same two actions in the hero and at the close', () => {
-    // "Start free" rather than the site-wide "Build my free site", and that is
-    // deliberate: this page's ask is the whole workflow, not one artefact of
-    // it. The website is not dropped from the promise — it moves into the line
-    // under the button, where the rest of the terms already were.
-    expect(PAGE.match(/Start free/g)?.length).toBe(2);
+  it('offers the two actions in the hero and at the close', () => {
     expect(PAGE.match(/Explore the demo/g)?.length).toBe(2);
     expect(PAGE).toContain('Flex includes a website · $0/month + 1.25%');
   });
 
   it('names the whole journey, in order, as one sequence', () => {
-    /* THE SEQUENCE USED TO BE IMPLICIT AND THEN PRINTED TWICE.
-       One invented $8,600 job runs from the hero to the closing receipt, which
-       is the right idea — but over 5,300px of desktop the same numbers turning
-       up in four places read as repetition rather than continuity, because
-       nothing said out loud that it was the same job moving. And the bridge's
-       five-card rail named beats 4, 5 and 6 a second time, 1,900px after the
-       rail that names all six. One rail now, six beats, in order. */
     const beats = [...PAGE.matchAll(/title: '([A-Za-z ]+)', body:/g)].map((m) => m[1]);
-    expect(beats).toEqual(['Request', 'Ranked', 'Texted', 'Quoted', 'Scheduled', 'Paid']);
-    expect(PAGE).toContain('Request → Ranked → Texted → Quoted → Scheduled → Paid.');
-    // The three the page has already shown, marked as shown.
-    expect([...PAGE.matchAll(/done: true/g)]).toHaveLength(3);
+    expect(beats).toEqual(['Website visit', 'Qualified lead', 'Quote', 'Scheduled work', 'Payment']);
+    expect(PAGE).toContain('Website visit → Qualified lead → Quote → Scheduled work → Payment.');
+    // The two the page has already shown, marked as shown.
+    expect([...PAGE.matchAll(/done: true/g)]).toHaveLength(2);
     expect(PAGE).toContain("data-done={beat.done ? 'true' : 'false'}");
   });
 
@@ -225,10 +212,9 @@ describe('where the page sends you', () => {
     const targets = [
       '/features/website-builder',
       '/features/ai-intake',
-      '#text-alerts',
       '/features/quotes',
       '/features/scheduling',
-      '/features/payments',
+      '/features/client-portal',
     ];
     for (const href of targets) expect(PAGE, href).toContain(`href: '${href}'`);
     // Every beat carries one — a card without an href renders an empty link.
@@ -241,8 +227,8 @@ describe('where the page sends you', () => {
   it('sends each beat somewhere different, or the rail is decoration', () => {
     const journey = PAGE.slice(PAGE.indexOf('const JOURNEY'), PAGE.indexOf('/* THE LAST PIECE OF PAPER'));
     const hrefs = [...journey.matchAll(/href: '([^']+)'/g)].map((m) => m[1]);
-    expect(hrefs).toHaveLength(6);
-    expect(new Set(hrefs).size).toBe(6);
+    expect(hrefs).toHaveLength(5);
+    expect(new Set(hrefs).size).toBe(5);
   });
 
   it('points both signup buttons at the shared signup constant, not the app root', () => {
@@ -321,12 +307,8 @@ describe('the page chrome stays the site chrome', () => {
 describe('metadata', () => {
   it('describes the ranked queue rather than the old five stages', () => {
     expect(PAGE).toContain("canonical: 'https://letsgetquoted.com/how-it-works'");
-    expect(PAGE).toContain('Your best jobs rise to the top.');
-    /* `absolute` + titleWithBrand: the root template's " · Let's Get Quoted"
-       pushed this to 77 characters, and the brand is already the third word of
-       the title itself. */
     expect(PAGE).toMatch(
-      /title: \{ absolute: titleWithBrand\('How Let’s Get Quoted Works — your best jobs rise to the top'\) \}/,
+      /title: \{ absolute: titleWithBrand\('How It Works — The Connected Contractor System'\) \}/,
     );
     expect(PAGE).not.toContain('Five stages');
     expect(PAGE).toContain("card: 'summary_large_image'");

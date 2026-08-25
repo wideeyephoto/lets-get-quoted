@@ -101,7 +101,7 @@ describe('the directory is 49 links and not a search box', () => {
 describe('/for keeps its place in search', () => {
   it('is one H1 and nothing else at that level', () => {
     expect(PAGE.match(/<h1>/g) ?? []).toHaveLength(1);
-    expect(PAGE).toContain('<h1>Websites and quoting software built for your trade.</h1>');
+    expect(PAGE).toContain('<h1>The connected contractor system—preconfigured for your trade.</h1>');
   });
 
   it('descends h1 → h2 → h3 without skipping', () => {
@@ -307,21 +307,22 @@ describe('the cards are links', () => {
   const hrefs = [...PAGE.matchAll(/href: '(\/features[^']*)'/g)].map((m) => m[1]);
 
   it('gives all eight cards a destination', () => {
-    expect(hrefs.length).toBe(8);
+    expect(hrefs.length).toBe(9);
     expect(PAGE).toContain('<Link key={item.title} href={item.href} className={styles.benefit}>');
     expect(PAGE).toContain('<Link href={step.href}>');
   });
 
   it('walks the customer journey through four different parts of the product', () => {
-    // The steps are the one list here where the sequence maps cleanly onto four
+    // The steps are the one list here where the sequence maps cleanly onto five
     // separate features, so none of them repeats.
     const steps = PAGE.slice(PAGE.indexOf('const STEPS = ['), PAGE.indexOf('];', PAGE.indexOf('const STEPS = [')));
     const stepHrefs = [...steps.matchAll(/href: '([^']+)'/g)].map((m) => m[1]);
     expect(stepHrefs).toEqual([
       '/features/website-builder',
       '/features/ai-intake',
-      '/features/back-office#quote-and-approve',
-      '/features/back-office#money',
+      '/features/quotes',
+      '/features/scheduling',
+      '/features/client-portal',
     ]);
   });
 
