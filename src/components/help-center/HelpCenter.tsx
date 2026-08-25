@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import Link from 'next/link';
 import {
   KNOWLEDGE_BASE,
   FAQS,
@@ -9,7 +10,9 @@ import {
   DOWNLOADABLE_TEMPLATES,
   Article,
   VideoPlaybook,
-  DownloadableTemplate
+  DownloadableTemplate,
+  TradePlaybook,
+  TradeWorkflowDetail
 } from './help-center-data';
 import styles from './HelpCenter.module.css';
 
@@ -665,7 +668,6 @@ function generateStylizedDocument(tpl: DownloadableTemplate) {
 </body>
 </html>`;
 
-  // Trigger file download
   const blob = new Blob([htmlDoc], { type: 'text/html;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
@@ -675,7 +677,107 @@ function generateStylizedDocument(tpl: DownloadableTemplate) {
   link.click();
   document.body.removeChild(link);
 
-  // Open formatted live preview in new tab for instant printing/viewing
+  const previewWindow = window.open('', '_blank');
+  if (previewWindow) {
+    previewWindow.document.write(htmlDoc);
+    previewWindow.document.close();
+  }
+}
+
+// Generate Printable Trade Specification Sheet
+function generateStylizedTradeTemplateDoc(trade: TradePlaybook) {
+  const tiersHtml = trade.tiers
+    .map(
+      t => `
+    <div class="milestone-card" style="border: 1px solid #e2e8f0; padding: 1.25rem;">
+      <span class="m-badge">${t.badge || 'Quote Tier'}</span>
+      <h4>${t.name} — <span style="color: #ff7a21;">${t.price}</span></h4>
+      <ul style="margin: 0.5rem 0 0 1.25rem; font-size: 0.82rem; color: #475569;">
+        ${t.features.map(f => `<li>${f}</li>`).join('')}
+      </ul>
+    </div>
+  `
+    )
+    .join('');
+
+  const itemsHtml = trade.sampleLineItems
+    .map(
+      item => `
+    <tr>
+      <td><strong>${item.name}</strong> <span style="font-size:0.75rem; color:#64748b;">(${item.category})</span></td>
+      <td>${item.qty}</td>
+      <td>${item.rate}</td>
+      <td><strong>${item.total}</strong></td>
+    </tr>
+  `
+    )
+    .join('');
+
+  const htmlDoc = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>${trade.name} · Trade Quoting Specification</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Plus Jakarta Sans', sans-serif; background: #f8fafc; color: #0f172a; line-height: 1.6; padding: 2rem 1rem; }
+    .page-container { max-width: 850px; margin: 0 auto; background: #fff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 3rem 3.5rem; }
+    .print-bar { max-width: 850px; margin: 0 auto 1.5rem; display: flex; justify-content: space-between; align-items: center; }
+    .btn-print { background: #ff7a21; color: #fff; border: none; padding: 0.6rem 1.4rem; border-radius: 8px; font-weight: 700; cursor: pointer; }
+    .doc-header { display: flex; justify-content: space-between; border-bottom: 2px solid #ff7a21; padding-bottom: 1.5rem; margin-bottom: 2rem; }
+    .badge { display: inline-block; font-size: 0.75rem; font-weight: 800; color: #ff7a21; background: #fff3eb; padding: 4px 10px; border-radius: 6px; margin-bottom: 0.5rem; }
+    .doc-title { font-size: 1.75rem; font-weight: 800; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin: 1.5rem 0; }
+    .styled-table { width: 100%; border-collapse: collapse; margin: 1.25rem 0; font-size: 0.85rem; }
+    .styled-table th { background: #f1f5f9; text-align: left; padding: 0.75rem; }
+    .styled-table td { padding: 0.75rem; border-bottom: 1px solid #e2e8f0; }
+    .milestone-card { background: #f8fafc; border-radius: 10px; padding: 1rem; }
+    .m-badge { font-size: 0.7rem; font-weight: 800; color: #ff7a21; background: #fff3eb; padding: 2px 6px; border-radius: 4px; display: inline-block; margin-bottom: 0.35rem; }
+    @media print { body { background: white; padding: 0; } .print-bar { display: none; } .page-container { border: none; } }
+  </style>
+</head>
+<body>
+  <div class="print-bar">
+    <span style="font-size: 0.85rem; color: #64748b;">Ready to customize &amp; use on customer jobs</span>
+    <button class="btn-print" onclick="window.print()">🖨️ Print / Save as PDF</button>
+  </div>
+  <div class="page-container">
+    <div class="doc-header">
+      <div>
+        <span class="badge">${trade.badge}</span>
+        <h1 class="doc-title">${trade.name} Quoting Playbook</h1>
+        <p style="color: #64748b; font-size: 0.9rem; margin-top: 0.25rem;">${trade.headline}</p>
+      </div>
+      <div style="text-align: right;">
+        <div style="font-weight: 800;">Let's Get <span style="color: #ff7a21;">Quoted</span></div>
+        <div style="font-size: 0.75rem; color: #64748b;">Trade Playbook Spec</div>
+      </div>
+    </div>
+
+    <h3 style="margin-top: 1rem; font-size: 1.1rem;">1. Pre-Configured Good / Better / Best Tiers</h3>
+    <div class="grid-3">${tiersHtml}</div>
+
+    <h3 style="margin-top: 1.5rem; font-size: 1.1rem;">2. Itemized Sample Scope &amp; Rates</h3>
+    <table class="styled-table">
+      <thead>
+        <tr><th>Scope Description &amp; Category</th><th>Quantity</th><th>Unit Rate</th><th>Line Total</th></tr>
+      </thead>
+      <tbody>${itemsHtml}</tbody>
+    </table>
+
+    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.25rem; margin-top: 1.5rem;">
+      <h4 style="font-size: 0.95rem; margin-bottom: 0.35rem;">Deposit Schedule &amp; Terms</h4>
+      <p style="font-size: 0.85rem; color: #475569;">${trade.depositTerms}</p>
+      <h4 style="font-size: 0.95rem; margin: 0.85rem 0 0.35rem;">Multipliers &amp; Surge Rates</h4>
+      <p style="font-size: 0.85rem; color: #475569;">${trade.multiplierNotes}</p>
+    </div>
+  </div>
+</body>
+</html>`;
+
   const previewWindow = window.open('', '_blank');
   if (previewWindow) {
     previewWindow.document.write(htmlDoc);
@@ -689,7 +791,10 @@ export default function HelpCenter() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
 
-  const [activeTrade, setActiveTrade] = useState('plumbing');
+  const [activeTrade, setActiveTrade] = useState('general');
+  const [activeTradeTemplate, setActiveTradeTemplate] = useState<TradePlaybook | null>(null);
+  const [activeWorkflow, setActiveWorkflow] = useState<TradeWorkflowDetail | null>(null);
+
   const [activeArticle, setActiveArticle] = useState<Article | null>(null);
   const [activeVideo, setActiveVideo] = useState<VideoPlaybook | null>(null);
   const [isTicketDrawerOpen, setIsTicketDrawerOpen] = useState(false);
@@ -734,6 +839,8 @@ export default function HelpCenter() {
         setIsStatusModalOpen(false);
         setActiveArticle(null);
         setActiveVideo(null);
+        setActiveTradeTemplate(null);
+        setActiveWorkflow(null);
         setIsSearchFocused(false);
       }
     };
@@ -798,6 +905,27 @@ export default function HelpCenter() {
 
   const currentTrade = TRADE_PLAYBOOKS.find(t => t.id === activeTrade) || TRADE_PLAYBOOKS[0];
 
+  const copyTradeScopeToClipboard = (trade: TradePlaybook) => {
+    const scopeText = [
+      `=== ${trade.name.toUpperCase()} QUOTING TEMPLATE ===`,
+      `Headline: ${trade.headline}`,
+      `Deposit Terms: ${trade.depositTerms}`,
+      `Multipliers: ${trade.multiplierNotes}`,
+      '',
+      '--- GOOD / BETTER / BEST TIERS ---',
+      ...trade.tiers.map(
+        t => `${t.name} (${t.price}):\n${t.features.map(f => `  • ${f}`).join('\n')}`
+      ),
+      '',
+      '--- SAMPLE ITEMIZED LINE ITEMS ---',
+      ...trade.sampleLineItems.map(
+        item => `• ${item.name} [${item.category}] - ${item.qty} @ ${item.rate} = ${item.total}`
+      )
+    ].join('\n');
+
+    copyToClipboard(scopeText, `${trade.name} Quote Spec`);
+  };
+
   return (
     <div className={styles.helpRoot}>
       <div className={`${styles.ambientGlow} ${styles.glow1}`} />
@@ -844,7 +972,14 @@ export default function HelpCenter() {
               <span>All Systems 99.9%</span>
             </button>
 
-            <button className={styles.btnPrimarySm} onClick={() => setIsTicketDrawerOpen(true)}>
+            <button
+              className={styles.btnPrimarySm}
+              onClick={() => {
+                setTicketSubject('');
+                setIsTicketSubmitted(false);
+                setIsTicketDrawerOpen(true);
+              }}
+            >
               <Icons.LifeBuoy />
               <span>Open Ticket</span>
             </button>
@@ -931,9 +1066,8 @@ export default function HelpCenter() {
                       className={styles.spotlightItem}
                       onClick={() => {
                         setActiveTrade(trade.id);
+                        setActiveTradeTemplate(trade);
                         setIsSearchFocused(false);
-                        const el = document.getElementById('trade-playbooks');
-                        el?.scrollIntoView({ behavior: 'smooth' });
                       }}
                     >
                       <div className={styles.spotlightItemLeft}>
@@ -943,7 +1077,7 @@ export default function HelpCenter() {
                           <div className={styles.spotlightItemMeta}>{trade.headline}</div>
                         </div>
                       </div>
-                      <span className={styles.spotlightTag}>Switch Trade</span>
+                      <span className={styles.spotlightTag}>View Template</span>
                     </div>
                   ))}
                 </div>
@@ -1056,7 +1190,6 @@ export default function HelpCenter() {
               className={styles.quickStepItem}
               onClick={() => {
                 setCompletedSteps(prev => ({ ...prev, 1: !prev[1] }));
-                showToast('Step 1 status updated');
               }}
             >
               <div className={`${styles.stepNum} ${completedSteps[1] ? styles.stepDone : ''}`}>
@@ -1065,6 +1198,13 @@ export default function HelpCenter() {
               <div className={styles.stepText}>
                 <strong>Set Profit Markup</strong>
                 <span>Add materials &amp; labor rate</span>
+                <Link
+                  href="/resources/markup-vs-margin-calculator-guide"
+                  className={styles.quickStepLink}
+                  onClick={e => e.stopPropagation()}
+                >
+                  Open Calculator Guide ↗
+                </Link>
               </div>
             </div>
 
@@ -1072,7 +1212,6 @@ export default function HelpCenter() {
               className={styles.quickStepItem}
               onClick={() => {
                 setCompletedSteps(prev => ({ ...prev, 2: !prev[2] }));
-                showToast('Step 2 status updated');
               }}
             >
               <div className={`${styles.stepNum} ${completedSteps[2] ? styles.stepDone : ''}`}>
@@ -1081,6 +1220,13 @@ export default function HelpCenter() {
               <div className={styles.stepText}>
                 <strong>Verify Business SMS</strong>
                 <span>10DLC carrier compliance</span>
+                <Link
+                  href="/resources/contractor-10dlc-sms-compliance-guide"
+                  className={styles.quickStepLink}
+                  onClick={e => e.stopPropagation()}
+                >
+                  Carrier Checklist ↗
+                </Link>
               </div>
             </div>
 
@@ -1088,7 +1234,6 @@ export default function HelpCenter() {
               className={styles.quickStepItem}
               onClick={() => {
                 setCompletedSteps(prev => ({ ...prev, 3: !prev[3] }));
-                showToast('Step 3 status updated');
               }}
             >
               <div className={`${styles.stepNum} ${completedSteps[3] ? styles.stepDone : ''}`}>
@@ -1097,6 +1242,13 @@ export default function HelpCenter() {
               <div className={styles.stepText}>
                 <strong>Send 3-Tier Quote</strong>
                 <span>Good / Better / Best options</span>
+                <Link
+                  href="/resources/good-better-best-quoting-guide"
+                  className={styles.quickStepLink}
+                  onClick={e => e.stopPropagation()}
+                >
+                  Tiered Quoting Guide ↗
+                </Link>
               </div>
             </div>
           </div>
@@ -1135,23 +1287,36 @@ export default function HelpCenter() {
             <span className={styles.tradeBadge}>{currentTrade.badge}</span>
             <h3 className={styles.tradeHeadline}>{currentTrade.headline}</h3>
             <p className={styles.tradeDescription}>{currentTrade.description}</p>
-            <div style={{ marginTop: 'auto' }}>
+            <div style={{ marginTop: 'auto', display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
               <button
                 className={styles.btnPrimarySm}
-                onClick={() => showToast(`Loaded ${currentTrade.name} quote template configuration`)}
+                onClick={() => setActiveTradeTemplate(currentTrade)}
               >
                 <Icons.Sparkles />
                 <span>Load {currentTrade.name} Template</span>
               </button>
+              <Link
+                href={`/for/${currentTrade.tradeSlug}`}
+                className={styles.btnOutline}
+                style={{ fontSize: '0.85rem', padding: '0.5rem 0.9rem' }}
+              >
+                <span>View Trade Features ↗</span>
+              </Link>
             </div>
           </div>
 
           <div className={styles.tradeCardRight}>
             {currentTrade.keyWorkflows.map((wf, idx) => (
-              <div key={idx} className={styles.workflowItemCard}>
+              <div
+                key={idx}
+                className={`${styles.workflowItemCard} ${styles.clickableWorkflow}`}
+                onClick={() => setActiveWorkflow(wf)}
+                title="Click to view full workflow formula & actions"
+              >
                 <h4 className={styles.workflowTitle}>
                   <Icons.CheckCircle />
                   <span>{wf.title}</span>
+                  <Icons.ArrowUpRight />
                 </h4>
                 <p className={styles.workflowDesc}>{wf.desc}</p>
               </div>
@@ -1353,7 +1518,11 @@ export default function HelpCenter() {
               </p>
               <button
                 className={styles.btnOutlineBlock}
-                onClick={() => showToast('Connecting to on-call specialist...')}
+                onClick={() => {
+                  setTicketSubject('[Live Chat Request] Need help with quote setup');
+                  setIsTicketSubmitted(false);
+                  setIsTicketDrawerOpen(true);
+                }}
               >
                 Start Live Chat
               </button>
@@ -1367,7 +1536,11 @@ export default function HelpCenter() {
               </p>
               <button
                 className={styles.btnPrimaryBlock}
-                onClick={() => setIsTicketDrawerOpen(true)}
+                onClick={() => {
+                  setTicketSubject('');
+                  setIsTicketSubmitted(false);
+                  setIsTicketDrawerOpen(true);
+                }}
               >
                 Submit Priority Ticket
               </button>
@@ -1381,7 +1554,11 @@ export default function HelpCenter() {
               </p>
               <button
                 className={styles.btnOutlineBlock}
-                onClick={() => showToast('Opening calendar...')}
+                onClick={() => {
+                  setTicketSubject('[Onboarding Walkthrough Request] Schedule screen-share session');
+                  setIsTicketSubmitted(false);
+                  setIsTicketDrawerOpen(true);
+                }}
               >
                 Schedule Session
               </button>
@@ -1500,7 +1677,190 @@ export default function HelpCenter() {
         </div>
       )}
 
-      {/* 2. Article Reader Modal with 1-Click Clipboard Helpers */}
+      {/* 2. Trade Quote Template Modal */}
+      {activeTradeTemplate && (
+        <div className={styles.modalOverlay} onClick={() => setActiveTradeTemplate(null)}>
+          <div className={styles.tradeTemplateModal} onClick={e => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <div>
+                <span className={styles.categoryBadge}>{activeTradeTemplate.badge}</span>
+                <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#fff', marginTop: '0.4rem' }}>
+                  {activeTradeTemplate.name} Quoting Template
+                </h2>
+                <p style={{ color: '#94a3b8', fontSize: '0.92rem', marginTop: '0.2rem' }}>
+                  {activeTradeTemplate.headline}
+                </p>
+              </div>
+              <button className={styles.iconBtn} onClick={() => setActiveTradeTemplate(null)}>
+                <Icons.X />
+              </button>
+            </div>
+
+            <div style={{ marginTop: '1.25rem' }}>
+              <div className={styles.formulaBox}>
+                <strong>Deposit Terms:</strong> {activeTradeTemplate.depositTerms}
+                <br />
+                <strong>Multipliers:</strong> {activeTradeTemplate.multiplierNotes}
+              </div>
+
+              <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: '#ffffff', margin: '1.5rem 0 0.5rem' }}>
+                Included 3-Tier Proposal Options
+              </h3>
+
+              <div className={styles.tierPreviewGrid}>
+                {activeTradeTemplate.tiers.map((t, idx) => (
+                  <div
+                    key={t.name}
+                    className={`${styles.tierCard} ${idx === 1 ? styles.tierCardFeatured : ''}`}
+                  >
+                    {t.badge && <span className={styles.tierBadge}>{t.badge}</span>}
+                    <div className={styles.tierName}>{t.name}</div>
+                    <div className={styles.tierPrice}>{t.price}</div>
+                    <ul className={styles.tierFeatureList}>
+                      {t.features.map(f => (
+                        <li key={f} className={styles.tierFeatureItem}>
+                          <Icons.Check />
+                          <span>{f}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+
+              <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: '#ffffff', margin: '1.5rem 0 0.5rem' }}>
+                Itemized Scope &amp; Materials
+              </h3>
+
+              <div className={styles.templateTableWrapper}>
+                <table className={styles.templateTable}>
+                  <thead>
+                    <tr>
+                      <th>Line Item Description</th>
+                      <th>Category</th>
+                      <th>Quantity</th>
+                      <th>Rate</th>
+                      <th>Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {activeTradeTemplate.sampleLineItems.map(item => (
+                      <tr key={item.name}>
+                        <td><strong>{item.name}</strong></td>
+                        <td><span className={styles.spotlightTag}>{item.category}</span></td>
+                        <td>{item.qty}</td>
+                        <td>{item.rate}</td>
+                        <td><strong style={{ color: '#ff7a21' }}>{item.total}</strong></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className={styles.templateActionsRow}>
+                <button
+                  type="button"
+                  className={styles.btnPrimarySm}
+                  onClick={() => {
+                    copyTradeScopeToClipboard(activeTradeTemplate);
+                  }}
+                >
+                  <Icons.Copy />
+                  <span>Copy Line Items to Clipboard</span>
+                </button>
+
+                <button
+                  type="button"
+                  className={styles.btnOutline}
+                  onClick={() => {
+                    generateStylizedTradeTemplateDoc(activeTradeTemplate);
+                  }}
+                >
+                  <Icons.Download />
+                  <span>Print / Save Spec PDF</span>
+                </button>
+
+                <Link
+                  href={`/for/${activeTradeTemplate.tradeSlug}`}
+                  className={styles.btnOutline}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <Icons.Globe />
+                  <span>View Trade Website ↗</span>
+                </Link>
+
+                <Link
+                  href="/resources/good-better-best-quoting-guide"
+                  className={styles.btnOutline}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <Icons.BookCheck />
+                  <span>Read Quoting Playbook ↗</span>
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 3. Trade Workflow Detail Modal */}
+      {activeWorkflow && (
+        <div className={styles.modalOverlay} onClick={() => setActiveWorkflow(null)}>
+          <div className={styles.articleModal} onClick={e => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <span className={styles.categoryBadge}>Trade Workflow Formula</span>
+              <button className={styles.iconBtn} onClick={() => setActiveWorkflow(null)}>
+                <Icons.X />
+              </button>
+            </div>
+            <div className={styles.modalBody}>
+              <h1 className={styles.articleTitle}>{activeWorkflow.title}</h1>
+              <p style={{ color: '#94a3b8', fontSize: '1rem', marginBottom: '1.25rem' }}>
+                {activeWorkflow.desc}
+              </p>
+
+              <div className={styles.formulaBox}>
+                <h4 style={{ color: '#ff7a21', marginBottom: '0.4rem' }}>Recommended Formula &amp; Policy:</h4>
+                <p>{activeWorkflow.formulaOrClause}</p>
+              </div>
+
+              <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1.75rem' }}>
+                <button
+                  className={styles.btnPrimarySm}
+                  onClick={() => {
+                    copyToClipboard(activeWorkflow.formulaOrClause, activeWorkflow.title);
+                  }}
+                >
+                  <Icons.Copy />
+                  <span>Copy Formula</span>
+                </button>
+
+                {activeWorkflow.actionUrl.startsWith('#') ? (
+                  <a
+                    href={activeWorkflow.actionUrl}
+                    className={styles.btnOutline}
+                    onClick={() => setActiveWorkflow(null)}
+                  >
+                    <span>{activeWorkflow.actionLabel}</span>
+                  </a>
+                ) : (
+                  <Link
+                    href={activeWorkflow.actionUrl}
+                    className={styles.btnOutline}
+                    onClick={() => setActiveWorkflow(null)}
+                  >
+                    <span>{activeWorkflow.actionLabel} ↗</span>
+                  </Link>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 4. Article Reader Modal with 1-Click Clipboard Helpers */}
       {activeArticle && (
         <div className={styles.modalOverlay} onClick={() => setActiveArticle(null)}>
           <div className={styles.articleModal} onClick={e => e.stopPropagation()}>
@@ -1553,7 +1913,7 @@ export default function HelpCenter() {
         </div>
       )}
 
-      {/* 3. Video Modal */}
+      {/* 5. Video Modal */}
       {activeVideo && (
         <div className={styles.modalOverlay} onClick={() => setActiveVideo(null)}>
           <div className={styles.articleModal} onClick={e => e.stopPropagation()}>
@@ -1571,7 +1931,7 @@ export default function HelpCenter() {
               </div>
               <div
                 style={{
-                  height: '240px',
+                  height: '220px',
                   background: activeVideo.thumbnailGradient,
                   borderRadius: '16px',
                   display: 'flex',
@@ -1585,13 +1945,38 @@ export default function HelpCenter() {
                   <Icons.Play />
                 </div>
               </div>
-              <p style={{ color: '#cbd5e1', lineHeight: '1.6' }}>{activeVideo.summary}</p>
+              <p style={{ color: '#cbd5e1', lineHeight: '1.6', marginBottom: '1.25rem' }}>
+                {activeVideo.summary}
+              </p>
+
+              <h4 style={{ color: '#ffffff', fontSize: '0.95rem', marginBottom: '0.6rem' }}>
+                Key Configuration Steps:
+              </h4>
+              <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 1.5rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                {activeVideo.keySteps.map(step => (
+                  <li key={step} style={{ color: '#94a3b8', fontSize: '0.85rem', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    <Icons.CheckCircle />
+                    <span>{step}</span>
+                  </li>
+                ))}
+              </ul>
+
+              {activeVideo.relatedGuideUrl && (
+                <Link
+                  href={activeVideo.relatedGuideUrl}
+                  className={styles.btnPrimarySm}
+                  onClick={() => setActiveVideo(null)}
+                >
+                  <Icons.BookCheck />
+                  <span>Read Full In-Depth Guide ↗</span>
+                </Link>
+              )}
             </div>
           </div>
         </div>
       )}
 
-      {/* 4. System Status Modal */}
+      {/* 6. System Status Modal */}
       {isStatusModalOpen && (
         <div className={styles.modalOverlay} onClick={() => setIsStatusModalOpen(false)}>
           <div className={styles.statusModal} onClick={e => e.stopPropagation()}>

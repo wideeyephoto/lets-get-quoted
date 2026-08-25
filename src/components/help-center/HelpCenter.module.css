@@ -1570,6 +1570,169 @@
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
 }
 
+/* Trade Template Modal & Interactive Tiers */
+.tradeTemplateModal {
+  background: #0d1522;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 24px;
+  width: 94%;
+  max-width: 920px;
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 2.25rem;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+  animation: modalFadeIn 0.2s ease-out;
+}
+
+.tierPreviewGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.15rem;
+  margin: 1.5rem 0;
+}
+
+.tierCard {
+  background: #131c2b;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  transition: transform 0.2s, border-color 0.2s;
+}
+
+.tierCard:hover {
+  border-color: rgba(255, 122, 33, 0.4);
+  transform: translateY(-2px);
+}
+
+.tierCardFeatured {
+  background: linear-gradient(180deg, rgba(255, 122, 33, 0.1) 0%, #131c2b 100%);
+  border-color: #ff7a21;
+}
+
+.tierBadge {
+  position: absolute;
+  top: -10px;
+  right: 14px;
+  background: #ff7a21;
+  color: #ffffff;
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 6px;
+  letter-spacing: 0.04em;
+}
+
+.tierName {
+  font-size: 1rem;
+  font-weight: 750;
+  color: #ffffff;
+  margin-bottom: 0.4rem;
+}
+
+.tierPrice {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: #ff7a21;
+  margin-bottom: 0.9rem;
+}
+
+.tierFeatureList {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex-grow: 1;
+}
+
+.tierFeatureItem {
+  font-size: 0.8rem;
+  color: #cbd5e1;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.45rem;
+  line-height: 1.4;
+}
+
+.tierFeatureItem svg {
+  color: #10b981;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.templateTableWrapper {
+  background: #111a28;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  overflow: hidden;
+  margin: 1.5rem 0;
+}
+
+.templateTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.86rem;
+}
+
+.templateTable th {
+  background: #162234;
+  text-align: left;
+  padding: 0.75rem 1rem;
+  color: #94a3b8;
+  font-weight: 700;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.templateTable td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  color: #e2e8f0;
+}
+
+.templateActionsRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1.75rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.formulaBox {
+  background: rgba(255, 122, 33, 0.08);
+  border: 1px solid rgba(255, 122, 33, 0.25);
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  margin: 1rem 0;
+  font-size: 0.88rem;
+  color: #ffedd5;
+  line-height: 1.6;
+}
+
+.clickableWorkflow {
+  cursor: pointer;
+}
+
+.quickStepLink {
+  margin-top: 0.35rem;
+  font-size: 0.75rem;
+  color: #ff7a21;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  text-decoration: none;
+}
+
+.quickStepLink:hover {
+  text-decoration: underline;
+}
+
 .iconSm { width: 18px; height: 18px; }
 .iconXs { width: 14px; height: 14px; }
 
@@ -1578,6 +1741,7 @@
   .bentoGrid { grid-template-columns: repeat(2, 1fr); }
   .spanTwo { grid-column: span 2; }
   .tradePlaybookCard { grid-template-columns: 1fr; }
+  .tierPreviewGrid { grid-template-columns: 1fr; }
   .videoGrid { grid-template-columns: repeat(2, 1fr); }
   .templateGrid { grid-template-columns: 1fr; }
   .channelsGrid { grid-template-columns: 1fr; }
@@ -1592,6 +1756,7 @@
   .heroSubtitle { font-size: 1rem; }
   .bentoGrid { grid-template-columns: 1fr; }
   .spanTwo { grid-column: span 1; }
+  .tierPreviewGrid { grid-template-columns: 1fr; }
   .videoGrid { grid-template-columns: 1fr; }
   .heroStatsDeck { grid-template-columns: 1fr; }
 }
