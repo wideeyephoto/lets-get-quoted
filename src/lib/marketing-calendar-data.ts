@@ -9,7 +9,7 @@ import {
   type ClimateZone,
   type PlannedBeat,
 } from '@/lib/marketing-calendar';
-import { loadRecipients, loadSentBeats, BEAT_DONE_DAYS } from '@/lib/campaigns';
+import { loadRecipients, loadSentBeats, BEAT_DONE_DAYS, type BeatSend, type CampaignRecipient } from '@/lib/campaigns';
 import { matchesAudience, campaignAudienceForBeat } from '@/lib/campaign-audiences';
 
 /**
@@ -52,6 +52,14 @@ export type CalendarView = {
   }[];
 };
 
+export type CalendarViewPreloaded = {
+  recipients?: CampaignRecipient[];
+  sentBeats?: Map<string, BeatSend>;
+  serviceNames?: string[];
+  account?: { business_name?: string | null; mailing_address?: string | null } | null;
+  site?: { company_name?: string | null; content?: Record<string, unknown> | null; service_area?: string | null } | null;
+};
+
 /**
  * The months ahead, for this trade in this climate.
  *
@@ -63,15 +71,39 @@ export async function buildCalendarView(
   supabase: SupabaseClient,
   accountId: string,
   monthsAhead: number,
+  preloaded?: CalendarViewPreloaded,
 ): Promise<CalendarView> {
-  const [{ data: account }, { data: site }, recipients, sentBeats, { data: serviceRows }] = await Promise.all([
-    supabase.from('accounts').select('business_name, mailing_address').eq('id', accountId).maybeSingle(),
-    supabase.from('sites').select('company_name, content, service_area').eq('account_id', accountId).maybeSingle(),
-    loadRecipients(supabase, accountId),
-    loadSentBeats(supabase, accountId),
-    // What they actually sell, so a beat from an adjacent trade has to be
-    // earned rather than assumed — see Beat.needs in marketing-calendar.ts.
-    supabase.from('services').select('name').eq('account_id', accountId).eq('active', true),
+  const [account, site, recipients, sentBeats, serviceNames] = await Promise.all([
+    preloaded?.account !== undefined
+      ? Promise.resolve(preloaded.account)
+      : supabase
+          .from('accounts')
+          .select('business_name, mailing_address')
+          .eq('id', accountId)
+          .maybeSingle()
+          .then((r) => r.data as { business_name?: string | null; mailing_address?: string | null } | null),
+    preloaded?.site !== undefined
+      ? Promise.resolve(preloaded.site)
+      : supabase
+          .from('sites')
+          .select('company_name, content, service_area')
+          .eq('account_id', accountId)
+          .maybeSingle()
+          .then((r) => r.data as { company_name?: string | null; content?: Record<string, unknown> | null; service_area?: string | null } | null),
+    preloaded?.recipients !== undefined
+      ? Promise.resolve(preloaded.recipients)
+      : loadRecipients(supabase, accountId),
+    preloaded?.sentBeats !== undefined
+      ? Promise.resolve(preloaded.sentBeats)
+      : loadSentBeats(supabase, accountId),
+    preloaded?.serviceNames !== undefined
+      ? Promise.resolve(preloaded.serviceNames)
+      : supabase
+          .from('services')
+          .select('name')
+          .eq('account_id', accountId)
+          .eq('active', true)
+          .then((r) => (r.data ?? []).map((row) => String((row as { name?: unknown }).name ?? ''))),
   ]);
 
   const content = getSiteContent(site?.content as Record<string, unknown> | null);
@@ -84,7 +116,7 @@ export async function buildCalendarView(
     zone,
     fromMonth: new Date().getMonth() + 1,
     monthsAhead,
-    services: (serviceRows ?? []).map((row) => String((row as { name?: unknown }).name ?? '')),
+    services: serviceNames ?? [],
   });
 
   // Which topics already have a post drafted on the website. Matched on the

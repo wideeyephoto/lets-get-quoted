@@ -4,6 +4,7 @@ import {
   listCampaigns,
   loadListHealth,
   loadRecipients,
+  loadSentBeats,
   matchesAudience,
   summarizeReach,
   type CampaignAudience,
@@ -13,7 +14,7 @@ import { resolveMarketingMailingAddress } from '@/lib/email-suppression';
 import { buildQuickStopPitch } from '@/lib/quick-stop-pitch';
 import { campaignDraftForBeat } from '@/lib/marketing-draft-data';
 import { buildCampaignRecommendations } from '@/lib/campaign-recommendations';
-import { marketingCalendarAction } from '../actions';
+import { buildCalendarView } from '@/lib/marketing-calendar-data';
 import CampaignsScreen from './CampaignsScreen';
 
 export const dynamic = 'force-dynamic';
@@ -37,13 +38,14 @@ export default async function CampaignsPage({
 }) {
   const { supabase, accountId } = await requireOfficeContext('settings.write');
 
-  const [recipients, campaigns, listHealth, { data: accountRow }, { data: siteRow }, view] = await Promise.all([
+  const [recipients, campaigns, listHealth, { data: accountRow }, { data: siteRow }, { data: serviceRows }, sentBeats] = await Promise.all([
     loadRecipients(supabase, accountId),
     listCampaigns(supabase, accountId),
     loadListHealth(supabase, accountId),
     supabase.from('accounts').select('business_name, mailing_address').eq('id', accountId).maybeSingle(),
-    supabase.from('sites').select('company_name, published, subdomain').eq('account_id', accountId).maybeSingle(),
-    marketingCalendarAction(12),
+    supabase.from('sites').select('company_name, published, subdomain, content, service_area').eq('account_id', accountId).maybeSingle(),
+    supabase.from('services').select('id, name, created_at, active').eq('account_id', accountId).eq('active', true),
+    loadSentBeats(supabase, accountId),
   ]);
 
   const mailingAddress = resolveMarketingMailingAddress((accountRow?.mailing_address as string | null) ?? null);
@@ -61,8 +63,30 @@ export default async function CampaignsPage({
     }),
   ) as Record<CampaignAudience, Reach>;
 
-  const recommendations =
-    recipients.length > 0 ? await buildCampaignRecommendations(supabase, accountId, { recipients, reach, businessName, bookingUrl }) : null;
+  const services = (serviceRows ?? []) as Array<{ name: string; created_at: string; active?: boolean }>;
+  const serviceNames = services.map((s) => s.name);
+
+  const [view, recommendations] = await Promise.all([
+    buildCalendarView(supabase, accountId, 4, {
+      recipients,
+      sentBeats,
+      serviceNames,
+      account: accountRow,
+      site: siteRow,
+    }),
+    recipients.length > 0
+      ? buildCampaignRecommendations(supabase, accountId, {
+          recipients,
+          reach,
+          businessName,
+          bookingUrl,
+          siteContent: (siteRow?.content as Record<string, unknown> | null) ?? null,
+          serviceArea: (siteRow?.service_area as string | null) ?? null,
+          mailingAddress: (accountRow?.mailing_address as string | null) ?? null,
+          services,
+        })
+      : Promise.resolve(null),
+  ]);
 
 
   // A draft handed over from the overview. Built here rather than passed through

@@ -307,3 +307,27 @@ describe('the "all" listing', () => {
     ]);
   });
 });
+
+describe('preloaded data inputs', () => {
+  it('uses preloaded siteContent, services, and signals without falling back to DB queries', async () => {
+    mockThinSignals();
+    // Pass empty db that would fail if queried for sites/services
+    const db = fakeSupabase({});
+    const result = await buildCampaignRecommendations(db, ACCOUNT, {
+      recipients: [],
+      reach: reachMap({ repeat: 2 }),
+      businessName: 'BrokePipes',
+      bookingUrl: null,
+      siteContent: { trade: 'Plumber', testimonials: { googlePlaceId: '', googleUrl: '' } },
+      serviceArea: 'Michigan',
+      mailingAddress: '123 Main St, Ann Arbor, MI 48104',
+      services: [{ name: 'Drain Cleaning', created_at: new Date().toISOString(), active: true }],
+      jobSignals: { openQuoteCount: 2, completedCount: 5 },
+    });
+
+    expect(result.recommended).toBeDefined();
+    expect(result.recommended.length).toBeGreaterThan(0);
+    const followUp = result.all.find((c) => c.id === 'follow-up-quotes');
+    expect(followUp?.whyText).toBe('2 open quotes waiting on a reply');
+  });
+});

@@ -1,11 +1,11 @@
 import { requireOfficeContext } from '@/lib/auth';
-import { loadRecipients } from '@/lib/campaigns';
+import { loadRecipients, loadSentBeats } from '@/lib/campaigns';
 import { resolveMarketingMailingAddress } from '@/lib/email-suppression';
 import { loadBlogWorkspace } from '@/lib/site-blog';
 import { listRebookCandidates, DEFAULT_REBOOK_DAYS } from '@/lib/rebook';
 import { countStates, needsAttention, postState, shortDate, todayKeyOf } from '@/lib/marketing-status';
 import { overviewSummary, prepareRecommendations, type Recommendation } from '@/lib/marketing-overview';
-import { marketingCalendarAction } from './actions';
+import { buildCalendarView } from '@/lib/marketing-calendar-data';
 import MarketingOverviewScreen from './MarketingOverviewScreen';
 
 export const dynamic = 'force-dynamic';
@@ -28,18 +28,29 @@ export default async function MarketingPage() {
   const { supabase, accountId } = await requireOfficeContext('settings.write');
   const today = todayKeyOf();
 
-  const [view, recipients, { data: addressRow }, rebookCandidates, blogData, { data: emailSite }] = await Promise.all([
-    marketingCalendarAction(4),
-    loadRecipients(supabase, accountId),
-    supabase.from('accounts').select('mailing_address').eq('id', accountId).maybeSingle(),
-    listRebookCandidates(supabase, accountId, DEFAULT_REBOOK_DAYS),
-    loadBlogWorkspace(supabase, accountId, process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'letsgetquoted.com'),
-    supabase
-      .from('sites')
-      .select('email_theme')
-      .eq('account_id', accountId)
-      .maybeSingle(),
-  ]);
+  const [recipients, { data: accountRow }, rebookCandidates, blogData, { data: siteRow }, { data: serviceRows }, sentBeats] =
+    await Promise.all([
+      loadRecipients(supabase, accountId),
+      supabase.from('accounts').select('business_name, mailing_address').eq('id', accountId).maybeSingle(),
+      listRebookCandidates(supabase, accountId, DEFAULT_REBOOK_DAYS),
+      loadBlogWorkspace(supabase, accountId, process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'letsgetquoted.com'),
+      supabase
+        .from('sites')
+        .select('company_name, content, service_area, email_theme')
+        .eq('account_id', accountId)
+        .maybeSingle(),
+      supabase.from('services').select('name').eq('account_id', accountId).eq('active', true),
+      loadSentBeats(supabase, accountId),
+    ]);
+
+  const serviceNames = (serviceRows ?? []).map((row) => String((row as { name?: unknown }).name ?? ''));
+  const view = await buildCalendarView(supabase, accountId, 4, {
+    recipients,
+    sentBeats,
+    serviceNames,
+    account: accountRow,
+    site: siteRow,
+  });
 
   const posts = blogData?.posts ?? [];
   const counts = countStates(posts, today);
@@ -82,7 +93,7 @@ export default async function MarketingPage() {
   return (
     <MarketingOverviewScreen
       view={view}
-      mailingAddress={resolveMarketingMailingAddress(addressRow?.mailing_address as string | null)}
+      mailingAddress={resolveMarketingMailingAddress((accountRow?.mailing_address as string | null) ?? null)}
       summary={summary}
       recommendations={recommendations}
       upcoming={upcoming}
@@ -90,7 +101,7 @@ export default async function MarketingPage() {
       hasBlog={Boolean(blogData)}
       rebookDue={rebookCandidates.filter((c) => (c.smsReady || c.hasEmail) && !c.invitedAt).length}
       emailTheme={{
-        currentTheme: (emailSite?.email_theme as string | null) ?? null,
+        currentTheme: (siteRow?.email_theme as string | null) ?? null,
       }}
     />
   );

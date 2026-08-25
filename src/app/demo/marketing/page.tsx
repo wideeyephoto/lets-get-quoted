@@ -26,12 +26,15 @@ export const metadata = { title: 'Marketing — Live Demo' };
 export default async function DemoMarketingPage() {
   const today = todayKeyOf();
 
-  const [view, recipients, rebookCandidates, blogData] = await Promise.all([
-    buildCalendarView(demoSupabase, DEMO_ACCOUNT_ID, 4),
+  const [recipients, rebookCandidates, blogData] = await Promise.all([
     loadRecipients(demoSupabase, DEMO_ACCOUNT_ID),
     listRebookCandidates(demoSupabase, DEMO_ACCOUNT_ID, DEFAULT_REBOOK_DAYS),
     loadBlogWorkspace(demoSupabase, DEMO_ACCOUNT_ID, DEMO_SITE_HOST.split('.').slice(1).join('.')),
   ]);
+
+  const view = await buildCalendarView(demoSupabase, DEMO_ACCOUNT_ID, 4, {
+    recipients,
+  });
 
   // Derived exactly as the real page derives them, off the same seeded posts the
   // Blog section shows — so the overview's tiles and the blog list cannot

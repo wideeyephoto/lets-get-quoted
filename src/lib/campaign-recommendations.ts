@@ -133,50 +133,70 @@ async function loadRecurringPlanSignal(supabase: SupabaseClient, accountId: stri
   return { activeCount: data.length, dueSoonCount };
 }
 
+export type CampaignRecommendationsInput = {
+  recipients: CampaignRecipient[];
+  reach: Record<CampaignAudience, Reach>;
+  businessName: string;
+  bookingUrl: string | null;
+  siteContent?: Record<string, unknown> | null;
+  serviceArea?: string | null;
+  mailingAddress?: string | null;
+  services?: Array<{ name: string; created_at: string; active?: boolean }>;
+  jobSignals?: { openQuoteCount: number; completedCount: number };
+  awaitingReviewCount?: number;
+};
+
 export async function buildCampaignRecommendations(
   supabase: SupabaseClient,
   accountId: string,
-  input: {
-    recipients: CampaignRecipient[];
-    reach: Record<CampaignAudience, Reach>;
-    businessName: string;
-    bookingUrl: string | null;
-  },
+  input: CampaignRecommendationsInput,
 ): Promise<CampaignRecommendations> {
   const { recipients, reach, businessName, bookingUrl } = input;
   const now = Date.now();
   const nowDate = new Date();
   const currentMonth = nowDate.getMonth() + 1;
 
-  const [bookingDays, jobSignals, recurringSignal, awaitingReviewCount, services, siteRow, accountRow] = await Promise.all([
+  const [bookingDays, jobSignals, recurringSignal, services, siteRow, accountRow] = await Promise.all([
     bookingUrl ? getAvailableBookingDays(supabase, accountId) : Promise.resolve([]),
-    loadJobSignals(supabase, accountId),
+    input.jobSignals !== undefined ? Promise.resolve(input.jobSignals) : loadJobSignals(supabase, accountId),
     loadRecurringPlanSignal(supabase, accountId),
-    countCompletedJobsAwaitingReview(supabase, accountId),
-    listServices(supabase, accountId),
-    supabase
-      .from('sites')
-      .select('content, service_area')
-      .eq('account_id', accountId)
-      .maybeSingle()
-      .then((r) => r.data as { content: Record<string, unknown> | null; service_area: string | null } | null),
-    supabase
-      .from('accounts')
-      .select('mailing_address')
-      .eq('id', accountId)
-      .maybeSingle()
-      .then((r) => r.data as { mailing_address: string | null } | null),
+    input.services !== undefined ? Promise.resolve(input.services as import('@/lib/services').Service[]) : listServices(supabase, accountId),
+    input.siteContent !== undefined && input.serviceArea !== undefined
+      ? Promise.resolve({ content: input.siteContent, service_area: input.serviceArea })
+      : supabase
+          .from('sites')
+          .select('content, service_area')
+          .eq('account_id', accountId)
+          .maybeSingle()
+          .then((r) => r.data as { content: Record<string, unknown> | null; service_area: string | null } | null),
+    input.mailingAddress !== undefined
+      ? Promise.resolve({ mailing_address: input.mailingAddress })
+      : supabase
+          .from('accounts')
+          .select('mailing_address')
+          .eq('id', accountId)
+          .maybeSingle()
+          .then((r) => r.data as { mailing_address: string | null } | null),
   ]);
+
+  const { openQuoteCount, completedCount } = jobSignals;
+  const content = getSiteContent(input.siteContent !== undefined ? input.siteContent : siteRow?.content ?? null);
+  const reviewUrl = googleReviewUrl({ placeId: content.testimonials.googlePlaceId, listingUrl: content.testimonials.googleUrl });
+
+  // Only query awaiting review if reviewUrl is configured and there are completed jobs.
+  const awaitingReviewCount =
+    input.awaitingReviewCount !== undefined
+      ? input.awaitingReviewCount
+      : completedCount === 0 || !reviewUrl
+        ? 0
+        : await countCompletedJobsAwaitingReview(supabase, accountId);
 
   const sevenDaysOut = new Date(now + 7 * DAY).toISOString().slice(0, 10);
   const openSlotCount = bookingDays.filter((day) => day.dateKey <= sevenDaysOut).reduce((sum, day) => sum + day.slots.length, 0);
-  const { openQuoteCount, completedCount } = jobSignals;
   const { activeCount: activePlanCount, dueSoonCount } = recurringSignal;
 
-  const content = getSiteContent(siteRow?.content ?? null);
   const trade = content.trade.trim() || null;
-  const zone = climateZoneForState(stateFromAddress(accountRow?.mailing_address ?? siteRow?.service_area ?? null));
-  const reviewUrl = googleReviewUrl({ placeId: content.testimonials.googlePlaceId, listingUrl: content.testimonials.googleUrl });
+  const zone = climateZoneForState(stateFromAddress((accountRow?.mailing_address as string | null) ?? siteRow?.service_area ?? null));
 
   // Reconnect / We Miss You both live in the same 'lapsed' bucket; only one of
   // them is ever the "scored" representative, decided by how long the most

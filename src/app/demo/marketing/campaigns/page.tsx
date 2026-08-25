@@ -33,12 +33,15 @@ export default async function DemoCampaignsPage({
 }: {
   searchParams: { emailSent?: string; smsQueued?: string; recipients?: string; skipped?: string; failed?: string; test?: string; draft?: string };
 }) {
-  const [recipients, campaigns, listHealth, view] = await Promise.all([
+  const [recipients, campaigns, listHealth] = await Promise.all([
     loadRecipients(demoSupabase, DEMO_ACCOUNT_ID),
     listCampaigns(demoSupabase, DEMO_ACCOUNT_ID),
     loadListHealth(demoSupabase, DEMO_ACCOUNT_ID),
-    buildCalendarView(demoSupabase, DEMO_ACCOUNT_ID, 12),
   ]);
+
+  const view = await buildCalendarView(demoSupabase, DEMO_ACCOUNT_ID, 4, {
+    recipients,
+  });
 
   const mailingAddress = resolveMarketingMailingAddress((DEMO_ACCOUNT_ROW.mailing_address as string | null) ?? null);
 
