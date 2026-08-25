@@ -30,7 +30,7 @@ const CARD_FEATURES: Record<PlanId, readonly string[]> = {
   ],
   solo: [
     '0.50% lower LGQ platform fee',
-    '500 text credits + 250 AI Intake credits/mo',
+    '500 text credits + 300 AI credits/mo (Intake & Drafts)',
     '2-Way customer text messaging included',
     'Custom domain + SEO website included',
     '1 QuickBooks Online sync included',
@@ -38,14 +38,14 @@ const CARD_FEATURES: Record<PlanId, readonly string[]> = {
   growth: [
     '5 Office users + 10 Crew users included',
     '0.25% platform fee (save on every invoice)',
-    '1,500 text credits + 500 AI Intake credits/mo',
+    '1,500 text credits + 750 AI credits/mo (Intake & Drafts)',
     'Team dispatch & central scheduling',
     '1 QuickBooks Online sync included',
   ],
   scale: [
     '0.10% lowest LGQ platform fee',
     '15 Office users + 50 Crew users included',
-    '3,000 text credits + 1,000 AI Intake credits/mo',
+    '3,000 text credits + 1,500 AI credits/mo (Intake & Drafts)',
     '250 GB photo and job file storage',
     '1 QuickBooks Online sync included',
   ],
