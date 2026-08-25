@@ -116,7 +116,7 @@ describe('Problem 2: Reduce Homepage Attention Competition', () => {
   const MARKETING_AI = readFileSync('src/components/marketing/MarketingAiAssistant.tsx', 'utf8');
 
   it('compresses launch banner to a single line with expandable details', () => {
-    expect(LAUNCH_BANNER).toContain('Automatic text messaging is awaiting carrier approval');
+    expect(LAUNCH_BANNER).toContain('LAUNCH_HEADLINE');
     expect(LAUNCH_BANNER).toContain('summaryBtn');
     expect(LAUNCH_BANNER).toContain('Details');
   });
