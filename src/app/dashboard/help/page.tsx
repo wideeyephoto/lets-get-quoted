@@ -9,25 +9,20 @@ import {
   listAccountCases,
   type SupportFormError,
 } from '@/lib/support-portal';
+import { ARTICLES } from '@/lib/resources';
 import { openSupportCaseAction } from './actions';
 import styles from './help.module.css';
 
-export const metadata = { title: 'Help' };
-
-/**
- * Help — where a contractor asks us something and can see what happened next.
- *
- * Until now the only support route from inside the product was an email address
- * on the account-suspended page, which you can only reach by being suspended.
- * Everything else went through the public /contact form into an inbox, so
- * nobody could check on their own request and nothing linked it to an account.
- *
- * The list comes FIRST when there is one. People arrive here twice: once to ask
- * and many times to find out whether anyone answered, and the second visit is
- * the more common one.
- */
+export const metadata = { title: 'Help & Guides' };
 
 export const dynamic = 'force-dynamic';
+
+const POPULAR_GUIDE_SLUGS = [
+  'contractor-10dlc-sms-compliance-guide',
+  'deposits-and-payment-plans',
+  'good-better-best-quoting-guide',
+  'more-google-reviews',
+];
 
 export default async function HelpPage({ searchParams }: { searchParams: { error?: string; done?: string } }) {
   const { accountId } = await requireOfficeContext('leads.read');
@@ -39,18 +34,46 @@ export default async function HelpPage({ searchParams }: { searchParams: { error
   const error = searchParams.error as SupportFormError | undefined;
   const errorMessage = error ? SUPPORT_ERROR_MESSAGE[error] ?? SUPPORT_ERROR_MESSAGE.failed : null;
 
+  const popularGuides = POPULAR_GUIDE_SLUGS.map((slug) => ARTICLES.find((a) => a.slug === slug)).filter(Boolean);
+
   return (
     <main className="wide-shell workspace-shell">
       <header className={styles.head}>
-        <p className="eyebrow">Help</p>
-        <h1 className={styles.title}>Ask us anything</h1>
+        <p className="eyebrow">Help & Guides</p>
+        <h1 className={styles.title}>Ask us anything or browse guides</h1>
         <p className={styles.lead}>
-          Tell us what is going on and a real person will pick it up. Everything you send lands here, so you can
-          check on it without digging through your email.
+          Instant answers in our contractor playbooks, or tell us what is going on and a real person will pick it up.
         </p>
       </header>
 
       {errorMessage ? <p className={`${styles.banner} ${styles.err}`} role="alert">{errorMessage}</p> : null}
+
+      {/* Instant self-service guides */}
+      <section className={styles.guidesSection} aria-labelledby="help-guides-heading">
+        <div className={styles.guidesHead}>
+          <p className={styles.sectionTitle} id="help-guides-heading" style={{ margin: 0 }}>
+            Instant contractor guides
+          </p>
+          <Link href="/resources" target="_blank" rel="noopener noreferrer">
+            Browse all {ARTICLES.length} guides ↗
+          </Link>
+        </div>
+        <div className={styles.guidesGrid}>
+          {popularGuides.map((guide) => (
+            <Link
+              key={guide!.slug}
+              href={`/resources/${guide!.slug}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={styles.guideCard}
+            >
+              <span className={styles.guideTag}>{guide!.category}</span>
+              <strong className={styles.guideTitle}>{guide!.title}</strong>
+              <span className={styles.guideExcerpt}>{guide!.excerpt}</span>
+            </Link>
+          ))}
+        </div>
+      </section>
 
       {cases.length > 0 ? (
         <>
@@ -69,7 +92,6 @@ export default async function HelpPage({ searchParams }: { searchParams: { error
                         {last !== entry.created_at ? ` · last update ${formatWhen(last)}` : ''}
                       </span>
                     </span>
-                    {/* The word carries the state. The tint only agrees with it. */}
                     <span className={styles.status} data-status={entry.status}>
                       {CUSTOMER_STATUS_LABEL[entry.status]}
                     </span>

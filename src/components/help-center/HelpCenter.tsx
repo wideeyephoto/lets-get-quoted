@@ -1,13 +1,18 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import Link from 'next/link';
 import {
   KNOWLEDGE_BASE,
   FAQS,
   TRADE_PLAYBOOKS,
+  VIDEO_PLAYBOOKS,
   DOWNLOADABLE_TEMPLATES,
   Article,
-  DownloadableTemplate
+  VideoPlaybook,
+  DownloadableTemplate,
+  TradePlaybook,
+  TradeWorkflowDetail
 } from './help-center-data';
 import styles from './HelpCenter.module.css';
 
@@ -289,23 +294,18 @@ const Icons = {
     />
   ),
   ArrowUpRight: () => <Icon d="M7 7h10v10M7 17 17 7" className={styles.arrowIcon} />,
-  Eye: () => (
-    <Icon
-      d={
-        <>
-          <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
-          <circle cx="12" cy="12" r="3" />
-        </>
-      }
-    />
+  Play: () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+      <polygon points="5 3 19 12 5 21 5 3" />
+    </svg>
   ),
-  Printer: () => (
+  Download: () => (
     <Icon
       d={
         <>
-          <polyline points="6 9 6 2 18 2 18 9" />
-          <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
-          <rect width="12" height="8" x="6" y="14" />
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+          <polyline points="7 10 12 15 17 10" />
+          <line x1="12" y1="15" x2="12" y2="3" />
         </>
       }
     />
@@ -389,15 +389,414 @@ const ICON_MAP: Record<string, React.ReactNode> = {
   Hammer: <Icons.Hammer />
 };
 
+// ================= STYLIZED CONTRACTOR DOCUMENT GENERATOR =================
+function generateStylizedDocument(tpl: DownloadableTemplate) {
+  const docTitle = tpl.name;
+  let formBadge = 'FORM LW-101 · PROGRESS PAYMENT LIEN WAIVER';
+  let bodyContent = '';
+
+  if (tpl.id === 'tpl-lien-waiver') {
+    formBadge = 'FORM LW-101 · CONTRACTOR PROGRESS LIEN WAIVER';
+    bodyContent = `
+      <div class="meta-card">
+        <div class="grid-2">
+          <div><span class="label">Property / Jobsite Address</span><div class="fill-box">124 Maplewood Ave, Maplewood, NJ 07040</div></div>
+          <div><span class="label">Contractor / Business Name</span><div class="fill-box">Maplewood Pro Services LLC</div></div>
+          <div><span class="label">Owner / Customer Name</span><div class="fill-box">Jane &amp; David Miller</div></div>
+          <div><span class="label">Payment Amount Received</span><div class="fill-box highlight-val">$12,450.00 (Twelve Thousand Four Hundred Fifty Dollars)</div></div>
+        </div>
+      </div>
+
+      <div class="clause-section">
+        <h3>1. Conditional Waiver &amp; Release Upon Progress Payment</h3>
+        <p>The undersigned Contractor, upon receipt of the sum stated above, hereby waives and releases any and all liens, claims, or rights to lien under the statutes of this State relating to mechanics' and materialmen's liens, on account of labor, services, equipment, or materials furnished through the date of this instrument to the property described above.</p>
+        
+        <h3>2. Exceptions &amp; Exclusions</h3>
+        <p>This waiver does not cover any retainage or disputed extra work not included in prior approved change orders. This release is conditioned upon clearance of funds into the Contractor's banking institution.</p>
+      </div>
+
+      <div class="signature-deck">
+        <div class="sig-box">
+          <div class="sig-line"></div>
+          <span class="sig-label">Authorized Contractor Signature</span>
+          <span class="sig-sub">Brett M. — Managing Partner</span>
+        </div>
+        <div class="sig-box">
+          <div class="sig-line"></div>
+          <span class="sig-label">Date Signed</span>
+          <span class="sig-sub">August 25, 2026</span>
+        </div>
+      </div>
+    `;
+  } else if (tpl.id === 'tpl-change-order') {
+    formBadge = 'FORM CO-202 · RESIDENTIAL CONTRACT CHANGE ORDER';
+    bodyContent = `
+      <div class="meta-card">
+        <div class="grid-2">
+          <div><span class="label">Project Title &amp; Address</span><div class="fill-box">Master Bathroom &amp; Plumbing Remodel · 45 Highland Rd</div></div>
+          <div><span class="label">Change Order Number</span><div class="fill-box highlight-val">CO-#003</div></div>
+          <div><span class="label">Prime Contractor</span><div class="fill-box">Maplewood Pro Services LLC</div></div>
+          <div><span class="label">Property Owner</span><div class="fill-box">Robert Sterling</div></div>
+        </div>
+      </div>
+
+      <div class="clause-section">
+        <h3>1. Description of Unforeseen Scope / Material Additions</h3>
+        <p>Upon demolition of subfloor, cracked 4" cast iron main drain stack was uncovered requiring replacement with Schedule 40 PVC, plus customer-requested upgrade to thermostatic brushed nickel shower valve trim kit.</p>
+        
+        <table class="styled-table">
+          <thead>
+            <tr><th>Itemized Scope Description</th><th>Labor Hours</th><th>Materials Cost</th><th>Total Adjustment</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Main Stack Cast Iron to PVC replacement</td><td>4.5 hrs</td><td>$340.00</td><td>$880.00</td></tr>
+            <tr><td>Thermostatic Valve upgrade &amp; rough-in adjustment</td><td>2.0 hrs</td><td>$480.00</td><td>$720.00</td></tr>
+          </tbody>
+        </table>
+
+        <h3>2. Financial &amp; Schedule Impact</h3>
+        <div class="financial-summary-box">
+          <div class="fin-row"><span>Original Contract Amount:</span><strong>$24,500.00</strong></div>
+          <div class="fin-row"><span>Prior Approved Changes (CO #1 &amp; #2):</span><strong>+$1,200.00</strong></div>
+          <div class="fin-row highlight-row"><span>This Change Order Amount (+):</span><strong>+$1,600.00</strong></div>
+          <div class="fin-row total-row"><span>REVISED TOTAL CONTRACT PRICE:</span><strong>$27,300.00</strong></div>
+        </div>
+        <p style="margin-top: 0.75rem; font-size: 0.85rem; color: #475569;">Schedule Adjustment: <strong>+2 Additional Working Days</strong> required for final plumbing inspection.</p>
+      </div>
+
+      <div class="signature-deck">
+        <div class="sig-box">
+          <div class="sig-line"></div>
+          <span class="sig-label">Homeowner Acceptance Signature</span>
+          <span class="sig-sub">I authorize the scope and cost adjustment above</span>
+        </div>
+        <div class="sig-box">
+          <div class="sig-line"></div>
+          <span class="sig-label">Contractor Authorization Signature</span>
+          <span class="sig-sub">Maplewood Pro Services LLC</span>
+        </div>
+      </div>
+    `;
+  } else {
+    formBadge = 'FORM MD-303 · MATERIAL DEPOSIT & PAYMENT MILESTONES';
+    bodyContent = `
+      <div class="meta-card">
+        <div class="grid-2">
+          <div><span class="label">Customer / Jobsite Address</span><div class="fill-box">78 Elm Street, Millburn, NJ</div></div>
+          <div><span class="label">Total Contract Proposal Value</span><div class="fill-box highlight-val">$18,600.00</div></div>
+        </div>
+      </div>
+
+      <div class="clause-section">
+        <h3>1. Mandatory Upfront Material Deposit (50%)</h3>
+        <p>In accordance with standard trade practices, a <strong>50% upfront material deposit ($9,300.00)</strong> is required upon signing to secure guaranteed calendar scheduling and place non-cancelable factory orders for specialty equipment and fixtures.</p>
+
+        <div class="milestones-deck">
+          <div class="milestone-card">
+            <span class="m-badge">Milestone 1 · 50%</span>
+            <h4>Upon Contract Signing</h4>
+            <p>Secures jobsite date &amp; purchases custom materials ($9,300.00).</p>
+          </div>
+          <div class="milestone-card">
+            <span class="m-badge">Milestone 2 · 40%</span>
+            <h4>Rough-In Inspection</h4>
+            <p>Due upon completion of framing, plumbing &amp; electrical rough-in ($7,440.00).</p>
+          </div>
+          <div class="milestone-card">
+            <span class="m-badge">Milestone 3 · 10%</span>
+            <h4>Final Punch List</h4>
+            <p>Due upon final walkthrough and customer sign-off ($1,860.00).</p>
+          </div>
+        </div>
+
+        <h3>2. Terms &amp; Instant Digital Payment Options</h3>
+        <p>Homeowners may authorize payment via instant 1-click Apple Pay, Google Pay, major Credit Cards (Visa, MasterCard, Amex) through the Let's Get Quoted client portal, or certified bank draft.</p>
+      </div>
+
+      <div class="signature-deck">
+        <div class="sig-box">
+          <div class="sig-line"></div>
+          <span class="sig-label">Homeowner Acceptance Signature</span>
+          <span class="sig-sub">Date: ________________________</span>
+        </div>
+        <div class="sig-box">
+          <div class="sig-line"></div>
+          <span class="sig-label">Contractor Authorized Representative</span>
+          <span class="sig-sub">Date: ________________________</span>
+        </div>
+      </div>
+    `;
+  }
+
+  const htmlDoc = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${docTitle} · Let's Get Quoted</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background-color: #f8fafc;
+      color: #0f172a;
+      line-height: 1.6;
+      padding: 2rem 1rem;
+    }
+    .page-container {
+      max-width: 850px;
+      margin: 0 auto;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 16px;
+      padding: 3rem 3.5rem;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01);
+      position: relative;
+    }
+    .print-bar {
+      max-width: 850px;
+      margin: 0 auto 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .btn-print {
+      background: #ff7a21;
+      color: #ffffff;
+      border: none;
+      padding: 0.6rem 1.4rem;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 0.9rem;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(255, 122, 33, 0.3);
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .btn-print:hover { background: #e66914; }
+    .doc-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      border-bottom: 2px solid #ff7a21;
+      padding-bottom: 1.5rem;
+      margin-bottom: 2rem;
+    }
+    .badge {
+      display: inline-block;
+      font-size: 0.75rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #ff7a21;
+      background: #fff3eb;
+      padding: 4px 10px;
+      border-radius: 6px;
+      margin-bottom: 0.5rem;
+    }
+    .doc-title { font-size: 1.75rem; font-weight: 800; color: #0f172a; line-height: 1.25; }
+    .brand-stamp { text-align: right; }
+    .brand-logo { font-size: 1.1rem; font-weight: 800; color: #0f172a; }
+    .brand-logo span { color: #ff7a21; }
+    .brand-sub { font-size: 0.75rem; color: #64748b; font-weight: 500; }
+    
+    .meta-card {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 2rem;
+    }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+    .label { display: block; font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.25rem; }
+    .fill-box { font-size: 0.95rem; font-weight: 600; color: #1e293b; }
+    .highlight-val { color: #ff7a21; font-weight: 700; }
+
+    .clause-section h3 { font-size: 1.05rem; font-weight: 700; color: #0f172a; margin: 1.5rem 0 0.5rem; }
+    .clause-section p { font-size: 0.9rem; color: #334155; line-height: 1.65; margin-bottom: 0.75rem; }
+
+    .styled-table { width: 100%; border-collapse: collapse; margin: 1.25rem 0; font-size: 0.85rem; }
+    .styled-table th { background: #f1f5f9; text-align: left; padding: 0.75rem; font-weight: 700; color: #334155; border-bottom: 2px solid #cbd5e1; }
+    .styled-table td { padding: 0.75rem; border-bottom: 1px solid #e2e8f0; color: #1e293b; }
+
+    .financial-summary-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 1rem 1.25rem; margin-top: 1rem; }
+    .fin-row { display: flex; justify-content: space-between; font-size: 0.9rem; padding: 0.35rem 0; color: #475569; }
+    .highlight-row { color: #ff7a21; font-weight: 700; }
+    .total-row { border-top: 2px solid #cbd5e1; padding-top: 0.6rem; font-size: 1rem; font-weight: 800; color: #0f172a; }
+
+    .milestones-deck { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin: 1.25rem 0; }
+    .milestone-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 1rem; }
+    .m-badge { font-size: 0.7rem; font-weight: 800; color: #ff7a21; background: #fff3eb; padding: 2px 6px; border-radius: 4px; display: inline-block; margin-bottom: 0.35rem; }
+    .milestone-card h4 { font-size: 0.9rem; font-weight: 700; margin-bottom: 0.3rem; }
+    .milestone-card p { font-size: 0.8rem; color: #64748b; line-height: 1.4; }
+
+    .signature-deck { display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; margin-top: 3.5rem; padding-top: 1.5rem; }
+    .sig-box { display: flex; flex-direction: column; }
+    .sig-line { border-bottom: 1.5px solid #0f172a; height: 35px; margin-bottom: 0.5rem; }
+    .sig-label { font-size: 0.8rem; font-weight: 700; color: #0f172a; }
+    .sig-sub { font-size: 0.75rem; color: #64748b; }
+
+    @media print {
+      body { background: white; padding: 0; }
+      .print-bar { display: none; }
+      .page-container { border: none; box-shadow: none; padding: 1.5rem 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="print-bar">
+    <span style="font-size: 0.85rem; color: #64748b;">Ready to customize &amp; print for your customer</span>
+    <button class="btn-print" onclick="window.print()">🖨️ Print / Save as PDF</button>
+  </div>
+  <div class="page-container">
+    <div class="doc-header">
+      <div>
+        <span class="badge">${formBadge}</span>
+        <h1 class="doc-title">${docTitle}</h1>
+      </div>
+      <div class="brand-stamp">
+        <div class="brand-logo">Let's Get <span>Quoted</span></div>
+        <div class="brand-sub">Contractor Legal Template Suite</div>
+      </div>
+    </div>
+    ${bodyContent}
+  </div>
+</body>
+</html>`;
+
+  const blob = new Blob([htmlDoc], { type: 'text/html;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `${tpl.name.replace(/[^a-zA-Z0-9]/g, '-')}.html`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+
+  const previewWindow = window.open('', '_blank');
+  if (previewWindow) {
+    previewWindow.document.write(htmlDoc);
+    previewWindow.document.close();
+  }
+}
+
+// Generate Printable Trade Specification Sheet
+function generateStylizedTradeTemplateDoc(trade: TradePlaybook) {
+  const tiersHtml = trade.tiers
+    .map(
+      t => `
+    <div class="milestone-card" style="border: 1px solid #e2e8f0; padding: 1.25rem;">
+      <span class="m-badge">${t.badge || 'Quote Tier'}</span>
+      <h4>${t.name} — <span style="color: #ff7a21;">${t.price}</span></h4>
+      <ul style="margin: 0.5rem 0 0 1.25rem; font-size: 0.82rem; color: #475569;">
+        ${t.features.map(f => `<li>${f}</li>`).join('')}
+      </ul>
+    </div>
+  `
+    )
+    .join('');
+
+  const itemsHtml = trade.sampleLineItems
+    .map(
+      item => `
+    <tr>
+      <td><strong>${item.name}</strong> <span style="font-size:0.75rem; color:#64748b;">(${item.category})</span></td>
+      <td>${item.qty}</td>
+      <td>${item.rate}</td>
+      <td><strong>${item.total}</strong></td>
+    </tr>
+  `
+    )
+    .join('');
+
+  const htmlDoc = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>${trade.name} · Trade Quoting Specification</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Plus Jakarta Sans', sans-serif; background: #f8fafc; color: #0f172a; line-height: 1.6; padding: 2rem 1rem; }
+    .page-container { max-width: 850px; margin: 0 auto; background: #fff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 3rem 3.5rem; }
+    .print-bar { max-width: 850px; margin: 0 auto 1.5rem; display: flex; justify-content: space-between; align-items: center; }
+    .btn-print { background: #ff7a21; color: #fff; border: none; padding: 0.6rem 1.4rem; border-radius: 8px; font-weight: 700; cursor: pointer; }
+    .doc-header { display: flex; justify-content: space-between; border-bottom: 2px solid #ff7a21; padding-bottom: 1.5rem; margin-bottom: 2rem; }
+    .badge { display: inline-block; font-size: 0.75rem; font-weight: 800; color: #ff7a21; background: #fff3eb; padding: 4px 10px; border-radius: 6px; margin-bottom: 0.5rem; }
+    .doc-title { font-size: 1.75rem; font-weight: 800; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin: 1.5rem 0; }
+    .styled-table { width: 100%; border-collapse: collapse; margin: 1.25rem 0; font-size: 0.85rem; }
+    .styled-table th { background: #f1f5f9; text-align: left; padding: 0.75rem; }
+    .styled-table td { padding: 0.75rem; border-bottom: 1px solid #e2e8f0; }
+    .milestone-card { background: #f8fafc; border-radius: 10px; padding: 1rem; }
+    .m-badge { font-size: 0.7rem; font-weight: 800; color: #ff7a21; background: #fff3eb; padding: 2px 6px; border-radius: 4px; display: inline-block; margin-bottom: 0.35rem; }
+    @media print { body { background: white; padding: 0; } .print-bar { display: none; } .page-container { border: none; } }
+  </style>
+</head>
+<body>
+  <div class="print-bar">
+    <span style="font-size: 0.85rem; color: #64748b;">Ready to customize &amp; use on customer jobs</span>
+    <button class="btn-print" onclick="window.print()">🖨️ Print / Save as PDF</button>
+  </div>
+  <div class="page-container">
+    <div class="doc-header">
+      <div>
+        <span class="badge">${trade.badge}</span>
+        <h1 class="doc-title">${trade.name} Quoting Playbook</h1>
+        <p style="color: #64748b; font-size: 0.9rem; margin-top: 0.25rem;">${trade.headline}</p>
+      </div>
+      <div style="text-align: right;">
+        <div style="font-weight: 800;">Let's Get <span style="color: #ff7a21;">Quoted</span></div>
+        <div style="font-size: 0.75rem; color: #64748b;">Trade Playbook Spec</div>
+      </div>
+    </div>
+
+    <h3 style="margin-top: 1rem; font-size: 1.1rem;">1. Pre-Configured Good / Better / Best Tiers</h3>
+    <div class="grid-3">${tiersHtml}</div>
+
+    <h3 style="margin-top: 1.5rem; font-size: 1.1rem;">2. Itemized Sample Scope &amp; Rates</h3>
+    <table class="styled-table">
+      <thead>
+        <tr><th>Scope Description &amp; Category</th><th>Quantity</th><th>Unit Rate</th><th>Line Total</th></tr>
+      </thead>
+      <tbody>${itemsHtml}</tbody>
+    </table>
+
+    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.25rem; margin-top: 1.5rem;">
+      <h4 style="font-size: 0.95rem; margin-bottom: 0.35rem;">Deposit Schedule &amp; Terms</h4>
+      <p style="font-size: 0.85rem; color: #475569;">${trade.depositTerms}</p>
+      <h4 style="font-size: 0.95rem; margin: 0.85rem 0 0.35rem;">Multipliers &amp; Surge Rates</h4>
+      <p style="font-size: 0.85rem; color: #475569;">${trade.multiplierNotes}</p>
+    </div>
+  </div>
+</body>
+</html>`;
+
+  const previewWindow = window.open('', '_blank');
+  if (previewWindow) {
+    previewWindow.document.write(htmlDoc);
+    previewWindow.document.close();
+  }
+}
+
 export default function HelpCenter() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTopic, setSelectedTopic] = useState('all');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
 
-  const [activeTrade, setActiveTrade] = useState('plumbing');
+  const [activeTrade, setActiveTrade] = useState('general');
+  const [activeTradeTemplate, setActiveTradeTemplate] = useState<TradePlaybook | null>(null);
+  const [activeWorkflow, setActiveWorkflow] = useState<TradeWorkflowDetail | null>(null);
+
   const [activeArticle, setActiveArticle] = useState<Article | null>(null);
-  const [activeDocument, setActiveDocument] = useState<DownloadableTemplate | null>(null);
+  const [activeVideo, setActiveVideo] = useState<VideoPlaybook | null>(null);
   const [isTicketDrawerOpen, setIsTicketDrawerOpen] = useState(false);
   const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
 
@@ -439,7 +838,9 @@ export default function HelpCenter() {
         setIsTicketDrawerOpen(false);
         setIsStatusModalOpen(false);
         setActiveArticle(null);
-        setActiveDocument(null);
+        setActiveVideo(null);
+        setActiveTradeTemplate(null);
+        setActiveWorkflow(null);
         setIsSearchFocused(false);
       }
     };
@@ -461,7 +862,7 @@ export default function HelpCenter() {
       setTicketDeflection(
         'Stripe Connect deposits 50% upfront material funds directly to your verified bank account next business day.'
       );
-    } else if (val.includes('domain') || val.includes('dns') || val.includes('godaddy') || val.includes('squarespace')) {
+    } else if (val.includes('domain') || val.includes('dns') || val.includes('godaddy')) {
       setTicketDeflection(
         'Point root domain A record to 76.76.21.21 and CNAME www to cname.letsgetquoted.com in your registrar.'
       );
@@ -504,6 +905,27 @@ export default function HelpCenter() {
 
   const currentTrade = TRADE_PLAYBOOKS.find(t => t.id === activeTrade) || TRADE_PLAYBOOKS[0];
 
+  const copyTradeScopeToClipboard = (trade: TradePlaybook) => {
+    const scopeText = [
+      `=== ${trade.name.toUpperCase()} QUOTING TEMPLATE ===`,
+      `Headline: ${trade.headline}`,
+      `Deposit Terms: ${trade.depositTerms}`,
+      `Multipliers: ${trade.multiplierNotes}`,
+      '',
+      '--- GOOD / BETTER / BEST TIERS ---',
+      ...trade.tiers.map(
+        t => `${t.name} (${t.price}):\n${t.features.map(f => `  • ${f}`).join('\n')}`
+      ),
+      '',
+      '--- SAMPLE ITEMIZED LINE ITEMS ---',
+      ...trade.sampleLineItems.map(
+        item => `• ${item.name} [${item.category}] - ${item.qty} @ ${item.rate} = ${item.total}`
+      )
+    ].join('\n');
+
+    copyToClipboard(scopeText, `${trade.name} Quote Spec`);
+  };
+
   return (
     <div className={styles.helpRoot}>
       <div className={`${styles.ambientGlow} ${styles.glow1}`} />
@@ -525,11 +947,14 @@ export default function HelpCenter() {
               <a href="#trade-playbooks" className={styles.subNavLink}>
                 Trade Playbooks
               </a>
+              <a href="#video-playbooks" className={styles.subNavLink}>
+                60s Videos
+              </a>
               <a href="#knowledge-hub" className={styles.subNavLink}>
                 Guides
               </a>
               <a href="#contractor-templates" className={styles.subNavLink}>
-                Agreements
+                Templates
               </a>
               <a href="#faqs" className={styles.subNavLink}>
                 FAQs
@@ -547,7 +972,14 @@ export default function HelpCenter() {
               <span>All Systems 99.9%</span>
             </button>
 
-            <button className={styles.btnPrimarySm} onClick={() => setIsTicketDrawerOpen(true)}>
+            <button
+              className={styles.btnPrimarySm}
+              onClick={() => {
+                setTicketSubject('');
+                setIsTicketSubmitted(false);
+                setIsTicketDrawerOpen(true);
+              }}
+            >
               <Icons.LifeBuoy />
               <span>Open Ticket</span>
             </button>
@@ -565,7 +997,7 @@ export default function HelpCenter() {
           How can we help your <span className={styles.highlightText}>business thrive</span> today?
         </h1>
         <p className={styles.heroSubtitle}>
-          Explore instant answers, step-by-step contractor playbooks, printable legal templates, or direct support from product engineers.
+          Explore instant answers, step-by-step contractor playbooks, video walkthroughs, or direct support from product engineers.
         </p>
 
         {/* Search Command Box & Spotlight Dropdown */}
@@ -634,9 +1066,8 @@ export default function HelpCenter() {
                       className={styles.spotlightItem}
                       onClick={() => {
                         setActiveTrade(trade.id);
+                        setActiveTradeTemplate(trade);
                         setIsSearchFocused(false);
-                        const el = document.getElementById('trade-playbooks');
-                        el?.scrollIntoView({ behavior: 'smooth' });
                       }}
                     >
                       <div className={styles.spotlightItemLeft}>
@@ -646,7 +1077,7 @@ export default function HelpCenter() {
                           <div className={styles.spotlightItemMeta}>{trade.headline}</div>
                         </div>
                       </div>
-                      <span className={styles.spotlightTag}>Switch Trade</span>
+                      <span className={styles.spotlightTag}>View Template</span>
                     </div>
                   ))}
                 </div>
@@ -660,18 +1091,19 @@ export default function HelpCenter() {
                       key={tpl.id}
                       className={styles.spotlightItem}
                       onClick={() => {
-                        setActiveDocument(tpl);
+                        generateStylizedDocument(tpl);
+                        showToast(`Generated & opened: ${tpl.name}`);
                         setIsSearchFocused(false);
                       }}
                     >
                       <div className={styles.spotlightItemLeft}>
-                        <Icons.Eye />
+                        <Icons.Download />
                         <div>
                           <div className={styles.spotlightItemTitle}>{tpl.name}</div>
                           <div className={styles.spotlightItemMeta}>{tpl.fileFormat} · Print &amp; PDF Ready</div>
                         </div>
                       </div>
-                      <span className={styles.spotlightTag}>Preview</span>
+                      <span className={styles.spotlightTag}>Open &amp; Print</span>
                     </div>
                   ))}
                 </div>
@@ -758,7 +1190,6 @@ export default function HelpCenter() {
               className={styles.quickStepItem}
               onClick={() => {
                 setCompletedSteps(prev => ({ ...prev, 1: !prev[1] }));
-                showToast('Step 1 status updated');
               }}
             >
               <div className={`${styles.stepNum} ${completedSteps[1] ? styles.stepDone : ''}`}>
@@ -767,6 +1198,13 @@ export default function HelpCenter() {
               <div className={styles.stepText}>
                 <strong>Set Profit Markup</strong>
                 <span>Add materials &amp; labor rate</span>
+                <Link
+                  href="/resources/markup-vs-margin-calculator-guide"
+                  className={styles.quickStepLink}
+                  onClick={e => e.stopPropagation()}
+                >
+                  Open Calculator Guide ↗
+                </Link>
               </div>
             </div>
 
@@ -774,7 +1212,6 @@ export default function HelpCenter() {
               className={styles.quickStepItem}
               onClick={() => {
                 setCompletedSteps(prev => ({ ...prev, 2: !prev[2] }));
-                showToast('Step 2 status updated');
               }}
             >
               <div className={`${styles.stepNum} ${completedSteps[2] ? styles.stepDone : ''}`}>
@@ -783,6 +1220,13 @@ export default function HelpCenter() {
               <div className={styles.stepText}>
                 <strong>Verify Business SMS</strong>
                 <span>10DLC carrier compliance</span>
+                <Link
+                  href="/resources/contractor-10dlc-sms-compliance-guide"
+                  className={styles.quickStepLink}
+                  onClick={e => e.stopPropagation()}
+                >
+                  Carrier Checklist ↗
+                </Link>
               </div>
             </div>
 
@@ -790,7 +1234,6 @@ export default function HelpCenter() {
               className={styles.quickStepItem}
               onClick={() => {
                 setCompletedSteps(prev => ({ ...prev, 3: !prev[3] }));
-                showToast('Step 3 status updated');
               }}
             >
               <div className={`${styles.stepNum} ${completedSteps[3] ? styles.stepDone : ''}`}>
@@ -799,6 +1242,13 @@ export default function HelpCenter() {
               <div className={styles.stepText}>
                 <strong>Send 3-Tier Quote</strong>
                 <span>Good / Better / Best options</span>
+                <Link
+                  href="/resources/good-better-best-quoting-guide"
+                  className={styles.quickStepLink}
+                  onClick={e => e.stopPropagation()}
+                >
+                  Tiered Quoting Guide ↗
+                </Link>
               </div>
             </div>
           </div>
@@ -837,28 +1287,82 @@ export default function HelpCenter() {
             <span className={styles.tradeBadge}>{currentTrade.badge}</span>
             <h3 className={styles.tradeHeadline}>{currentTrade.headline}</h3>
             <p className={styles.tradeDescription}>{currentTrade.description}</p>
-            <div style={{ marginTop: 'auto' }}>
+            <div style={{ marginTop: 'auto', display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
               <button
                 className={styles.btnPrimarySm}
-                onClick={() => showToast(`Loaded ${currentTrade.name} quote template configuration`)}
+                onClick={() => setActiveTradeTemplate(currentTrade)}
               >
                 <Icons.Sparkles />
                 <span>Load {currentTrade.name} Template</span>
               </button>
+              <Link
+                href={`/for/${currentTrade.tradeSlug}`}
+                className={styles.btnOutline}
+                style={{ fontSize: '0.85rem', padding: '0.5rem 0.9rem' }}
+              >
+                <span>View Trade Features ↗</span>
+              </Link>
             </div>
           </div>
 
           <div className={styles.tradeCardRight}>
             {currentTrade.keyWorkflows.map((wf, idx) => (
-              <div key={idx} className={styles.workflowItemCard}>
+              <div
+                key={idx}
+                className={`${styles.workflowItemCard} ${styles.clickableWorkflow}`}
+                onClick={() => setActiveWorkflow(wf)}
+                title="Click to view full workflow formula & actions"
+              >
                 <h4 className={styles.workflowTitle}>
                   <Icons.CheckCircle />
                   <span>{wf.title}</span>
+                  <Icons.ArrowUpRight />
                 </h4>
                 <p className={styles.workflowDesc}>{wf.desc}</p>
               </div>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* ================= 60-SECOND VIDEO PLAYBOOKS ================= */}
+      <section id="video-playbooks" className={styles.sectionContainer}>
+        <div className={styles.sectionHeader}>
+          <div>
+            <span className={styles.sectionTag}>Visual Walkthroughs</span>
+            <h2 className={styles.sectionTitle}>60-Second Video Fixes</h2>
+            <p className={styles.sectionDesc}>
+              Fast, on-truck video demonstrations showing you exactly how to configure key features in under a minute.
+            </p>
+          </div>
+        </div>
+
+        <div className={styles.videoGrid}>
+          {VIDEO_PLAYBOOKS.map(vid => (
+            <div
+              key={vid.id}
+              className={styles.videoCard}
+              onClick={() => setActiveVideo(vid)}
+            >
+              <div
+                className={styles.videoThumbnailBox}
+                style={{ background: vid.thumbnailGradient }}
+              >
+                <div className={styles.playBtnCircle}>
+                  <Icons.Play />
+                </div>
+                <div className={styles.videoDurationBadge}>
+                  <Icons.Clock />
+                  <span>{vid.duration}</span>
+                </div>
+              </div>
+              <div className={styles.videoBody}>
+                <span className={styles.videoCat}>{vid.category}</span>
+                <h4 className={styles.videoTitle}>{vid.title}</h4>
+                <p className={styles.videoSummary}>{vid.summary}</p>
+              </div>
+            </div>
+          ))}
         </div>
       </section>
 
@@ -919,12 +1423,12 @@ export default function HelpCenter() {
         </div>
       </section>
 
-      {/* ================= STYLIZED CONTRACTOR AGREEMENTS ================= */}
+      {/* ================= STYLIZED DOWNLOADABLE CONTRACTOR ASSETS ================= */}
       <section id="contractor-templates" className={styles.sectionContainer}>
         <div className={styles.sectionHeader}>
           <div>
             <span className={styles.sectionTag}>Stylized Legal Documents</span>
-            <h2 className={styles.sectionTitle}>Preview &amp; Print Contractor Agreements</h2>
+            <h2 className={styles.sectionTitle}>Download &amp; Print Contractor Agreements</h2>
             <p className={styles.sectionDesc}>
               Ready-to-print, beautifully formatted contractor lien waivers, change order authorizations, and milestone deposit schedules.
             </p>
@@ -942,10 +1446,13 @@ export default function HelpCenter() {
               <p className={styles.templateDesc}>{tpl.description}</p>
               <button
                 className={styles.btnOutlineBlock}
-                onClick={() => setActiveDocument(tpl)}
+                onClick={() => {
+                  generateStylizedDocument(tpl);
+                  showToast(`Opened printable document: ${tpl.name}`);
+                }}
               >
-                <Icons.Eye />
-                <span>Preview &amp; Print Agreement</span>
+                <Icons.Download />
+                <span>Open &amp; Print Document</span>
               </button>
             </div>
           ))}
@@ -1011,7 +1518,11 @@ export default function HelpCenter() {
               </p>
               <button
                 className={styles.btnOutlineBlock}
-                onClick={() => showToast('Connecting to on-call specialist...')}
+                onClick={() => {
+                  setTicketSubject('[Live Chat Request] Need help with quote setup');
+                  setIsTicketSubmitted(false);
+                  setIsTicketDrawerOpen(true);
+                }}
               >
                 Start Live Chat
               </button>
@@ -1025,7 +1536,11 @@ export default function HelpCenter() {
               </p>
               <button
                 className={styles.btnPrimaryBlock}
-                onClick={() => setIsTicketDrawerOpen(true)}
+                onClick={() => {
+                  setTicketSubject('');
+                  setIsTicketSubmitted(false);
+                  setIsTicketDrawerOpen(true);
+                }}
               >
                 Submit Priority Ticket
               </button>
@@ -1039,7 +1554,11 @@ export default function HelpCenter() {
               </p>
               <button
                 className={styles.btnOutlineBlock}
-                onClick={() => showToast('Opening calendar...')}
+                onClick={() => {
+                  setTicketSubject('[Onboarding Walkthrough Request] Schedule screen-share session');
+                  setIsTicketSubmitted(false);
+                  setIsTicketDrawerOpen(true);
+                }}
               >
                 Schedule Session
               </button>
@@ -1158,7 +1677,190 @@ export default function HelpCenter() {
         </div>
       )}
 
-      {/* 2. Article Reader Modal with 1-Click Clipboard Helpers */}
+      {/* 2. Trade Quote Template Modal */}
+      {activeTradeTemplate && (
+        <div className={styles.modalOverlay} onClick={() => setActiveTradeTemplate(null)}>
+          <div className={styles.tradeTemplateModal} onClick={e => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <div>
+                <span className={styles.categoryBadge}>{activeTradeTemplate.badge}</span>
+                <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#fff', marginTop: '0.4rem' }}>
+                  {activeTradeTemplate.name} Quoting Template
+                </h2>
+                <p style={{ color: '#94a3b8', fontSize: '0.92rem', marginTop: '0.2rem' }}>
+                  {activeTradeTemplate.headline}
+                </p>
+              </div>
+              <button className={styles.iconBtn} onClick={() => setActiveTradeTemplate(null)}>
+                <Icons.X />
+              </button>
+            </div>
+
+            <div style={{ marginTop: '1.25rem' }}>
+              <div className={styles.formulaBox}>
+                <strong>Deposit Terms:</strong> {activeTradeTemplate.depositTerms}
+                <br />
+                <strong>Multipliers:</strong> {activeTradeTemplate.multiplierNotes}
+              </div>
+
+              <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: '#ffffff', margin: '1.5rem 0 0.5rem' }}>
+                Included 3-Tier Proposal Options
+              </h3>
+
+              <div className={styles.tierPreviewGrid}>
+                {activeTradeTemplate.tiers.map((t, idx) => (
+                  <div
+                    key={t.name}
+                    className={`${styles.tierCard} ${idx === 1 ? styles.tierCardFeatured : ''}`}
+                  >
+                    {t.badge && <span className={styles.tierBadge}>{t.badge}</span>}
+                    <div className={styles.tierName}>{t.name}</div>
+                    <div className={styles.tierPrice}>{t.price}</div>
+                    <ul className={styles.tierFeatureList}>
+                      {t.features.map(f => (
+                        <li key={f} className={styles.tierFeatureItem}>
+                          <Icons.Check />
+                          <span>{f}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+
+              <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: '#ffffff', margin: '1.5rem 0 0.5rem' }}>
+                Itemized Scope &amp; Materials
+              </h3>
+
+              <div className={styles.templateTableWrapper}>
+                <table className={styles.templateTable}>
+                  <thead>
+                    <tr>
+                      <th>Line Item Description</th>
+                      <th>Category</th>
+                      <th>Quantity</th>
+                      <th>Rate</th>
+                      <th>Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {activeTradeTemplate.sampleLineItems.map(item => (
+                      <tr key={item.name}>
+                        <td><strong>{item.name}</strong></td>
+                        <td><span className={styles.spotlightTag}>{item.category}</span></td>
+                        <td>{item.qty}</td>
+                        <td>{item.rate}</td>
+                        <td><strong style={{ color: '#ff7a21' }}>{item.total}</strong></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className={styles.templateActionsRow}>
+                <button
+                  type="button"
+                  className={styles.btnPrimarySm}
+                  onClick={() => {
+                    copyTradeScopeToClipboard(activeTradeTemplate);
+                  }}
+                >
+                  <Icons.Copy />
+                  <span>Copy Line Items to Clipboard</span>
+                </button>
+
+                <button
+                  type="button"
+                  className={styles.btnOutline}
+                  onClick={() => {
+                    generateStylizedTradeTemplateDoc(activeTradeTemplate);
+                  }}
+                >
+                  <Icons.Download />
+                  <span>Print / Save Spec PDF</span>
+                </button>
+
+                <Link
+                  href={`/for/${activeTradeTemplate.tradeSlug}`}
+                  className={styles.btnOutline}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <Icons.Globe />
+                  <span>View Trade Website ↗</span>
+                </Link>
+
+                <Link
+                  href="/resources/good-better-best-quoting-guide"
+                  className={styles.btnOutline}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <Icons.BookCheck />
+                  <span>Read Quoting Playbook ↗</span>
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 3. Trade Workflow Detail Modal */}
+      {activeWorkflow && (
+        <div className={styles.modalOverlay} onClick={() => setActiveWorkflow(null)}>
+          <div className={styles.articleModal} onClick={e => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <span className={styles.categoryBadge}>Trade Workflow Formula</span>
+              <button className={styles.iconBtn} onClick={() => setActiveWorkflow(null)}>
+                <Icons.X />
+              </button>
+            </div>
+            <div className={styles.modalBody}>
+              <h1 className={styles.articleTitle}>{activeWorkflow.title}</h1>
+              <p style={{ color: '#94a3b8', fontSize: '1rem', marginBottom: '1.25rem' }}>
+                {activeWorkflow.desc}
+              </p>
+
+              <div className={styles.formulaBox}>
+                <h4 style={{ color: '#ff7a21', marginBottom: '0.4rem' }}>Recommended Formula &amp; Policy:</h4>
+                <p>{activeWorkflow.formulaOrClause}</p>
+              </div>
+
+              <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1.75rem' }}>
+                <button
+                  className={styles.btnPrimarySm}
+                  onClick={() => {
+                    copyToClipboard(activeWorkflow.formulaOrClause, activeWorkflow.title);
+                  }}
+                >
+                  <Icons.Copy />
+                  <span>Copy Formula</span>
+                </button>
+
+                {activeWorkflow.actionUrl.startsWith('#') ? (
+                  <a
+                    href={activeWorkflow.actionUrl}
+                    className={styles.btnOutline}
+                    onClick={() => setActiveWorkflow(null)}
+                  >
+                    <span>{activeWorkflow.actionLabel}</span>
+                  </a>
+                ) : (
+                  <Link
+                    href={activeWorkflow.actionUrl}
+                    className={styles.btnOutline}
+                    onClick={() => setActiveWorkflow(null)}
+                  >
+                    <span>{activeWorkflow.actionLabel} ↗</span>
+                  </Link>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 4. Article Reader Modal with 1-Click Clipboard Helpers */}
       {activeArticle && (
         <div className={styles.modalOverlay} onClick={() => setActiveArticle(null)}>
           <div className={styles.articleModal} onClick={e => e.stopPropagation()}>
@@ -1211,258 +1913,70 @@ export default function HelpCenter() {
         </div>
       )}
 
-      {/* 3. In-App Document Viewer & Print Modal (NO Auto-Save / Download Trigger) */}
-      {activeDocument && (
-        <div className={styles.modalOverlay} onClick={() => setActiveDocument(null)}>
-          <div className={styles.docModal} onClick={e => e.stopPropagation()}>
-            <div className={styles.docModalHeader}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                <span className={styles.categoryBadge}>Contractor Legal Suite</span>
-                <span style={{ fontSize: '0.8rem', color: '#10b981', fontWeight: 600 }}>
-                  ✓ Print &amp; PDF Ready
-                </span>
-              </div>
-              <div className={styles.docHeaderActions}>
-                <button
-                  className={styles.btnPrimarySm}
-                  onClick={() => window.print()}
-                >
-                  <Icons.Printer />
-                  <span>Print / Save PDF</span>
-                </button>
-                <button className={styles.iconBtn} onClick={() => setActiveDocument(null)}>
-                  <Icons.X />
-                </button>
-              </div>
+      {/* 5. Video Modal */}
+      {activeVideo && (
+        <div className={styles.modalOverlay} onClick={() => setActiveVideo(null)}>
+          <div className={styles.articleModal} onClick={e => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <span className={styles.categoryBadge}>{activeVideo.category}</span>
+              <button className={styles.iconBtn} onClick={() => setActiveVideo(null)}>
+                <Icons.X />
+              </button>
             </div>
-
-            <div className={styles.docModalBody}>
-              <div className={styles.docPaperHeader}>
-                <div>
-                  <span className={styles.docBadge}>
-                    {activeDocument.id === 'tpl-lien-waiver'
-                      ? 'FORM LW-101 · CONTRACTOR PROGRESS LIEN WAIVER'
-                      : activeDocument.id === 'tpl-change-order'
-                      ? 'FORM CO-202 · RESIDENTIAL CONTRACT CHANGE ORDER'
-                      : 'FORM MD-303 · MATERIAL DEPOSIT & PAYMENT MILESTONES'}
-                  </span>
-                  <h1 className={styles.docPaperTitle}>{activeDocument.name}</h1>
-                </div>
-                <div className={styles.docPaperBrand}>
-                  <div className={styles.docPaperBrandName}>Let&apos;s Get <span>Quoted</span></div>
-                  <div className={styles.docPaperBrandSub}>Contractor Legal Suite</div>
+            <div className={styles.modalBody}>
+              <h1 className={styles.articleTitle}>{activeVideo.title}</h1>
+              <div className={styles.articleMeta}>
+                <span>Duration: {activeVideo.duration}</span>
+                <span>HD Mobile Walkthrough</span>
+              </div>
+              <div
+                style={{
+                  height: '220px',
+                  background: activeVideo.thumbnailGradient,
+                  borderRadius: '16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: '1.5rem',
+                  border: '1px solid rgba(255, 255, 255, 0.1)'
+                }}
+              >
+                <div className={styles.playBtnCircle} style={{ width: '56px', height: '56px' }}>
+                  <Icons.Play />
                 </div>
               </div>
+              <p style={{ color: '#cbd5e1', lineHeight: '1.6', marginBottom: '1.25rem' }}>
+                {activeVideo.summary}
+              </p>
 
-              {activeDocument.id === 'tpl-lien-waiver' && (
-                <div>
-                  <div className={styles.docMetaCard}>
-                    <div className={styles.docGrid2}>
-                      <div>
-                        <span className={styles.docMetaLabel}>Property / Jobsite Address</span>
-                        <div className={styles.docMetaVal}>124 Maplewood Ave, Maplewood, NJ 07040</div>
-                      </div>
-                      <div>
-                        <span className={styles.docMetaLabel}>Contractor / Business Name</span>
-                        <div className={styles.docMetaVal}>Maplewood Pro Services LLC</div>
-                      </div>
-                      <div>
-                        <span className={styles.docMetaLabel}>Owner / Customer Name</span>
-                        <div className={styles.docMetaVal}>Jane &amp; David Miller</div>
-                      </div>
-                      <div>
-                        <span className={styles.docMetaLabel}>Payment Amount Received</span>
-                        <div className={`${styles.docMetaVal} ${styles.docMetaHighlight}`}>
-                          $12,450.00 (Twelve Thousand Four Hundred Fifty Dollars)
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+              <h4 style={{ color: '#ffffff', fontSize: '0.95rem', marginBottom: '0.6rem' }}>
+                Key Configuration Steps:
+              </h4>
+              <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 1.5rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                {activeVideo.keySteps.map(step => (
+                  <li key={step} style={{ color: '#94a3b8', fontSize: '0.85rem', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    <Icons.CheckCircle />
+                    <span>{step}</span>
+                  </li>
+                ))}
+              </ul>
 
-                  <div className={styles.docClause}>
-                    <h3>1. Conditional Waiver &amp; Release Upon Progress Payment</h3>
-                    <p>
-                      The undersigned Contractor, upon receipt of the sum stated above, hereby waives and releases any and all liens, claims, or rights to lien under the statutes of this State relating to mechanics&apos; and materialmen&apos;s liens, on account of labor, services, equipment, or materials furnished through the date of this instrument to the property described above.
-                    </p>
-                    <h3>2. Exceptions &amp; Exclusions</h3>
-                    <p>
-                      This waiver does not cover any retainage or disputed extra work not included in prior approved change orders. This release is conditioned upon clearance of funds into the Contractor&apos;s banking institution.
-                    </p>
-                  </div>
-
-                  <div className={styles.docSigDeck}>
-                    <div className={styles.docSigBox}>
-                      <div className={styles.docSigLine} />
-                      <span className={styles.docSigLabel}>Authorized Contractor Signature</span>
-                      <span className={styles.docSigSub}>Brett M. — Managing Partner</span>
-                    </div>
-                    <div className={styles.docSigBox}>
-                      <div className={styles.docSigLine} />
-                      <span className={styles.docSigLabel}>Date Signed</span>
-                      <span className={styles.docSigSub}>August 25, 2026</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {activeDocument.id === 'tpl-change-order' && (
-                <div>
-                  <div className={styles.docMetaCard}>
-                    <div className={styles.docGrid2}>
-                      <div>
-                        <span className={styles.docMetaLabel}>Project Title &amp; Address</span>
-                        <div className={styles.docMetaVal}>Master Bathroom &amp; Plumbing Remodel · 45 Highland Rd</div>
-                      </div>
-                      <div>
-                        <span className={styles.docMetaLabel}>Change Order Number</span>
-                        <div className={`${styles.docMetaVal} ${styles.docMetaHighlight}`}>CO-#003</div>
-                      </div>
-                      <div>
-                        <span className={styles.docMetaLabel}>Prime Contractor</span>
-                        <div className={styles.docMetaVal}>Maplewood Pro Services LLC</div>
-                      </div>
-                      <div>
-                        <span className={styles.docMetaLabel}>Property Owner</span>
-                        <div className={styles.docMetaVal}>Robert Sterling</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className={styles.docClause}>
-                    <h3>1. Description of Unforeseen Scope / Material Additions</h3>
-                    <p>
-                      Upon demolition of subfloor, cracked 4&quot; cast iron main drain stack was uncovered requiring replacement with Schedule 40 PVC, plus customer-requested upgrade to thermostatic brushed nickel shower valve trim kit.
-                    </p>
-
-                    <table className={styles.docTable}>
-                      <thead>
-                        <tr>
-                          <th>Itemized Scope Description</th>
-                          <th>Labor Hours</th>
-                          <th>Materials Cost</th>
-                          <th>Total Adjustment</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr>
-                          <td>Main Stack Cast Iron to PVC replacement</td>
-                          <td>4.5 hrs</td>
-                          <td>$340.00</td>
-                          <td>$880.00</td>
-                        </tr>
-                        <tr>
-                          <td>Thermostatic Valve upgrade &amp; rough-in adjustment</td>
-                          <td>2.0 hrs</td>
-                          <td>$480.00</td>
-                          <td>$720.00</td>
-                        </tr>
-                      </tbody>
-                    </table>
-
-                    <h3>2. Financial &amp; Schedule Impact</h3>
-                    <div className={styles.docFinancialBox}>
-                      <div className={styles.docFinRow}>
-                        <span>Original Contract Amount:</span>
-                        <strong>$24,500.00</strong>
-                      </div>
-                      <div className={styles.docFinRow}>
-                        <span>Prior Approved Changes (CO #1 &amp; #2):</span>
-                        <strong>+$1,200.00</strong>
-                      </div>
-                      <div className={`${styles.docFinRow} ${styles.docFinRowHighlight}`}>
-                        <span>This Change Order Amount (+):</span>
-                        <strong>+$1,600.00</strong>
-                      </div>
-                      <div className={`${styles.docFinRow} ${styles.docFinRowTotal}`}>
-                        <span>REVISED TOTAL CONTRACT PRICE:</span>
-                        <strong>$27,300.00</strong>
-                      </div>
-                    </div>
-                    <p style={{ marginTop: '0.75rem', fontSize: '0.85rem', color: '#475569' }}>
-                      Schedule Adjustment: <strong>+2 Additional Working Days</strong> required for final plumbing inspection.
-                    </p>
-                  </div>
-
-                  <div className={styles.docSigDeck}>
-                    <div className={styles.docSigBox}>
-                      <div className={styles.docSigLine} />
-                      <span className={styles.docSigLabel}>Homeowner Acceptance Signature</span>
-                      <span className={styles.docSigSub}>I authorize the scope and cost adjustment above</span>
-                    </div>
-                    <div className={styles.docSigBox}>
-                      <div className={styles.docSigLine} />
-                      <span className={styles.docSigLabel}>Contractor Authorization Signature</span>
-                      <span className={styles.docSigSub}>Maplewood Pro Services LLC</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {activeDocument.id === 'tpl-deposit-terms' && (
-                <div>
-                  <div className={styles.docMetaCard}>
-                    <div className={styles.docGrid2}>
-                      <div>
-                        <span className={styles.docMetaLabel}>Customer / Jobsite Address</span>
-                        <div className={styles.docMetaVal}>78 Elm Street, Millburn, NJ</div>
-                      </div>
-                      <div>
-                        <span className={styles.docMetaLabel}>Total Contract Proposal Value</span>
-                        <div className={`${styles.docMetaVal} ${styles.docMetaHighlight}`}>$18,600.00</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className={styles.docClause}>
-                    <h3>1. Mandatory Upfront Material Deposit (50%)</h3>
-                    <p>
-                      In accordance with standard trade practices, a <strong>50% upfront material deposit ($9,300.00)</strong> is required upon signing to secure guaranteed calendar scheduling and place non-cancelable factory orders for specialty equipment and fixtures.
-                    </p>
-
-                    <div className={styles.docMilestonesDeck}>
-                      <div className={styles.docMilestoneCard}>
-                        <span className={styles.docMBadge}>Milestone 1 · 50%</span>
-                        <h4>Upon Contract Signing</h4>
-                        <p>Secures jobsite date &amp; purchases custom materials ($9,300.00).</p>
-                      </div>
-                      <div className={styles.docMilestoneCard}>
-                        <span className={styles.docMBadge}>Milestone 2 · 40%</span>
-                        <h4>Rough-In Inspection</h4>
-                        <p>Due upon completion of framing, plumbing &amp; electrical rough-in ($7,440.00).</p>
-                      </div>
-                      <div className={styles.docMilestoneCard}>
-                        <span className={styles.docMBadge}>Milestone 3 · 10%</span>
-                        <h4>Final Punch List</h4>
-                        <p>Due upon final walkthrough and customer sign-off ($1,860.00).</p>
-                      </div>
-                    </div>
-
-                    <h3>2. Terms &amp; Instant Digital Payment Options</h3>
-                    <p>
-                      Homeowners may authorize payment via instant 1-click Apple Pay, Google Pay, major Credit Cards (Visa, MasterCard, Amex) through the Let&apos;s Get Quoted client portal, or certified bank draft.
-                    </p>
-                  </div>
-
-                  <div className={styles.docSigDeck}>
-                    <div className={styles.docSigBox}>
-                      <div className={styles.docSigLine} />
-                      <span className={styles.docSigLabel}>Homeowner Acceptance Signature</span>
-                      <span className={styles.docSigSub}>Date: ________________________</span>
-                    </div>
-                    <div className={styles.docSigBox}>
-                      <div className={styles.docSigLine} />
-                      <span className={styles.docSigLabel}>Contractor Authorized Representative</span>
-                      <span className={styles.docSigSub}>Date: ________________________</span>
-                    </div>
-                  </div>
-                </div>
+              {activeVideo.relatedGuideUrl && (
+                <Link
+                  href={activeVideo.relatedGuideUrl}
+                  className={styles.btnPrimarySm}
+                  onClick={() => setActiveVideo(null)}
+                >
+                  <Icons.BookCheck />
+                  <span>Read Full In-Depth Guide ↗</span>
+                </Link>
               )}
             </div>
           </div>
         </div>
       )}
 
-      {/* 4. System Status Modal */}
+      {/* 6. System Status Modal */}
       {isStatusModalOpen && (
         <div className={styles.modalOverlay} onClick={() => setIsStatusModalOpen(false)}>
           <div className={styles.statusModal} onClick={e => e.stopPropagation()}>

@@ -6,6 +6,16 @@ import { breadcrumbJsonLd, HOME_CRUMB } from '@/lib/seo/breadcrumbs';
 import SiteFooter from '@/components/site-footer';
 import { cspNonce } from '@/lib/csp-nonce';
 import { APP_SIGNUP_URL } from '@/components/marketing/links';
+import {
+  ReadingProgressBar,
+  CopyGuideLinkButton,
+  TableOfContents,
+  KeyTakeaways,
+  InteractiveMarginCalculator,
+  InteractiveChecklist10DLC,
+  SpeedToLeadEstimator,
+} from '../guide-components';
+import guideStyles from '../guide.module.css';
 
 export function generateStaticParams() {
   return ARTICLES.map((article) => ({ slug: article.slug }));
@@ -15,8 +25,6 @@ export function generateMetadata({ params }: { params: { slug: string } }): Meta
   const article = getArticle(params.slug);
   if (!article) return {};
   return {
-    // The root layout's title template appends the brand; carrying it here too
-    // printed it twice.
     title: article.title,
     description: article.excerpt,
     alternates: { canonical: `https://letsgetquoted.com/resources/${article.slug}` },
@@ -27,6 +35,13 @@ export function generateMetadata({ params }: { params: { slug: string } }): Meta
       url: `https://letsgetquoted.com/resources/${article.slug}`,
     },
   };
+}
+
+function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, '')
+    .replace(/\s+/g, '-');
 }
 
 export default function ArticlePage({ params }: { params: { slug: string } }) {
@@ -41,18 +56,7 @@ export default function ArticlePage({ params }: { params: { slug: string } }) {
     headline: article.title,
     description: article.excerpt,
     datePublished: article.datePublished,
-    /* dateModified, image, a publisher logo and a named author were all absent.
-       The first two are what Google asks for on an Article and what it uses to
-       decide whether the piece is current; without dateModified a crawler has
-       no signal that an edited article changed at all.
-
-       dateModified falls back to datePublished rather than to today's date —
-       `new Date()` here would restamp all four articles as freshly updated on
-       every request, which is the one thing this field must never say. When an
-       article is genuinely revised, give it a dateModified in lib/resources. */
     dateModified: article.dateModified ?? article.datePublished,
-    // The generated social card for this exact article — see the sibling
-    // opengraph-image.tsx. Next serves it from this route.
     image: [`${url}/opengraph-image`],
     articleSection: article.category,
     wordCount: article.body.reduce(
@@ -60,11 +64,6 @@ export default function ArticlePage({ params }: { params: { slug: string } }) {
         total + (block.type === 'ul' ? block.items.join(' ') : block.text).split(/\s+/).length,
       0,
     ),
-    /* A person, not the Organization. These are written by the founder, the
-       /founder page is a real author page on this domain, and "Brett" is the
-       name that page publishes — so this is the strongest author identity the
-       site can honestly assert. Claiming a fuller byline than the site itself
-       shows would be inventing one. */
     author: { '@type': 'Person', name: 'Brett', url: 'https://letsgetquoted.com/founder' },
     publisher: {
       '@type': 'Organization',
@@ -83,21 +82,56 @@ export default function ArticlePage({ params }: { params: { slug: string } }) {
     { name: article.title, path: `/resources/${article.slug}` },
   ]);
 
+  // Extract all h2 headings for the Table of Contents
+  const headings = article.body
+    .filter((b): b is { type: 'h2'; text: string } => b.type === 'h2')
+    .map((b) => ({
+      id: slugify(b.text),
+      text: b.text,
+    }));
+
   return (
     <main className="marketing-shell" id="main-content">
+      <ReadingProgressBar />
       <script type="application/ld+json" nonce={cspNonce()} dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <script type="application/ld+json" nonce={cspNonce()} dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbs) }} />
       <div className="ambient-glow ambient-glow-a" aria-hidden="true" />
 
       <article className="section-block article">
-        <p className="article-back"><Link href="/resources">&larr; All resources</Link></p>
+        <p className="article-back"><Link href="/resources">&larr; All guides & resources</Link></p>
         <p className="eyebrow">{article.category}</p>
         <h1 className="article-title">{article.title}</h1>
-        <p className="article-meta">{formatArticleDate(article.datePublished)} · {article.readMinutes} min read</p>
+
+        <div className={guideStyles.guideMetaRow}>
+          <div className={guideStyles.guideMetaLeft}>
+            <span>{formatArticleDate(article.datePublished)}</span>
+            <span>·</span>
+            <span>{article.readMinutes} min read</span>
+          </div>
+          <CopyGuideLinkButton url={url} />
+        </div>
+
+        {/* TL;DR Key Takeaways Callout */}
+        <KeyTakeaways text={article.excerpt} />
+
+        {/* Table of Contents for multi-section guides */}
+        {headings.length > 2 ? <TableOfContents headings={headings} /> : null}
+
+        {/* Embedded Interactive Tools */}
+        {article.slug === 'markup-vs-margin-calculator-guide' ? <InteractiveMarginCalculator /> : null}
+        {article.slug === 'contractor-10dlc-sms-compliance-guide' ? <InteractiveChecklist10DLC /> : null}
+        {article.slug === 'speed-to-lead-contractor-playbook' ? <SpeedToLeadEstimator /> : null}
 
         <div className="article-body">
           {article.body.map((block, index) => {
-            if (block.type === 'h2') return <h2 key={index}>{block.text}</h2>;
+            if (block.type === 'h2') {
+              const headingId = slugify(block.text);
+              return (
+                <h2 key={index} id={headingId}>
+                  {block.text}
+                </h2>
+              );
+            }
             if (block.type === 'ul') {
               return (
                 <ul key={index}>
@@ -109,11 +143,7 @@ export default function ArticlePage({ params }: { params: { slug: string } }) {
           })}
         </div>
 
-        {/* SEE IT IN THE PRODUCT, and READ NEXT. Both of these are here because
-            the four articles ended on a full stop and nothing else: no path
-            into the feature that implements the advice, and no path to the
-            other three guides. An article that ranks and then dead-ends spends
-            its traffic on one page view. */}
+        {/* Contextual links into the product */}
         {article.featureLinks?.length ? (
           <aside className="article-links" aria-labelledby="article-links-title">
             <h2 id="article-links-title">See it in the product</h2>
@@ -151,8 +181,8 @@ export default function ArticlePage({ params }: { params: { slug: string } }) {
       <section className="cta-band">
         <div className="cta-band-inner">
           <p className="eyebrow">Ready when you are</p>
-          <h2>Start with Flex at $0/month plus 1.25%.</h2>
-          <p>Plans start with Flex at $0/month plus 1.25%. No setup fee. The whole toolkit, from your first quote.</p>
+          <h2>Start free — you only pay when a homeowner pays you.</h2>
+          <p>No subscription. No setup fee. The whole toolkit, from your first quote.</p>
           <div className="actions">
             <a href={APP_SIGNUP_URL} className="btn primary">Build my free site</a>
             <Link href="/resources" className="btn secondary">More resources</Link>
