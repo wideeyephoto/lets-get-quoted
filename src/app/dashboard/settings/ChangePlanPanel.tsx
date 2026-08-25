@@ -52,19 +52,19 @@ const TIER_FEATURES: Record<BillingPlanId, readonly string[]> = {
   solo: [
     '1.00% lower platform fee',
     '1 Office + 3 Crew seats included',
-    '500 texts + 250 AI credits/mo',
+    '500 texts + 300 AI credits/mo',
     'Custom domain & SEO website',
   ],
   growth: [
     '0.25% low platform fee',
     '5 Office + 10 Crew seats included',
-    '1,500 texts + 500 AI credits/mo',
+    '1,500 texts + 750 AI credits/mo',
     'Team dispatch & scheduling',
   ],
   scale: [
     '0.10% lowest platform fee',
     '15 Office + 50 Crew seats included',
-    '3,000 texts + 1,000 AI credits/mo',
+    '3,000 texts + 1,500 AI credits/mo',
     '250 GB photo & file storage',
   ],
 };
