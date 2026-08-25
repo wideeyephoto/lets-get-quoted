@@ -35,7 +35,7 @@ describe('Problem 1: Product Identity and Message Hierarchy', () => {
       expect(HOME).toContain(
         'Build your website, qualify leads, send quotes, schedule work, manage your crew, and collect payment without switching tools.',
       );
-      expect(HOME).toContain('See the full workflow');
+      expect(HOME).toContain('See how it works');
       expect(HOME).toContain('{SIGNUP_LABEL}');
     });
 
@@ -132,14 +132,14 @@ describe('Problem 2: Reduce Homepage Attention Competition', () => {
     expect(HOME).toContain('QUOTE-TO-PAYMENT WORKFLOW');
   });
 
-  it('places the 5-step continuous workflow section before TradeWebsiteGenerator', () => {
-    const workflowPos = HOME.indexOf('home-workflow');
-    const generatorPos = HOME.indexOf('<TradeWebsiteGenerator />');
+  it('leads directly from hero proof strip into the flagship feature tour without competing sandboxes', () => {
+    const stripPos = HOME.indexOf('trust-strip trust-strip-3');
     const flagshipsPos = HOME.indexOf('className="flagships"');
 
-    expect(workflowPos).toBeGreaterThan(0);
-    expect(generatorPos).toBeGreaterThan(workflowPos);
-    expect(flagshipsPos).toBeGreaterThan(generatorPos);
+    expect(stripPos).toBeGreaterThan(0);
+    expect(flagshipsPos).toBeGreaterThan(stripPos);
+    expect(HOME).not.toContain('<TradeWebsiteGenerator />');
+    expect(HOME).not.toContain('className="home-workflow"');
   });
 
   it('consolidates pricing CTAs to emphasize plan comparison without duplicate signup button', () => {

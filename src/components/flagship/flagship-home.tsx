@@ -6,14 +6,12 @@ import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import Link from 'next/link';
 import { SiteFooter, SiteHeader } from './site-chrome';
-import { BRAND_POSITIONING } from '@/lib/brand-messaging';
 import { COMMAND_CENTER_SCREENS } from '@/components/command-center-deck';
 import HeroShowcase from './hero-showcase';
 import { HOME_FAQS } from '@/lib/home-faqs';
 import { PLAN_PRICE_OPTIONS, STRIPE_PROCESSING_NOTE } from '@/lib/pricing';
 import styles from './flagship.module.css';
 import LaunchBanner from '@/components/marketing/launch-banner';
-import TradeWebsiteGenerator from '@/components/marketing/TradeWebsiteGenerator';
 
 const TradeOrbit = dynamic(() => import('./trade-orbit'), { ssr: true });
 const CommandCenterDeck = dynamic(() => import('@/components/command-center-deck'), { ssr: true });
@@ -622,7 +620,7 @@ export default function FlagshipHome() {
           </p>
           <div className="hero-actions">
             <a className="button primary" href="https://app.letsgetquoted.com/start?goal=build_site&source=home_hero" ref={heroCtaRef}>{SIGNUP_LABEL} <span>→</span></a>
-            <a className="button secondary" href="#workflow">See the full workflow</a>
+            <a className="button secondary" href="#flagships">See how it works</a>
           </div>
           <p className="hero-note"><i>✓</i> Flex starts at $0/month + 1.25% &nbsp;·&nbsp; No credit card</p>
         </div>
@@ -640,35 +638,6 @@ export default function FlagshipHome() {
           </span>
         ))}
       </section>
-
-      {/* THE 5-STEP CONNECTED WORKFLOW */}
-      <section className="home-workflow" id="workflow" data-track>
-        <Glare />
-        <div className="section-intro" data-rise>
-          <p className="eyebrow"><span>✦</span> THE COMPLETE 5-STEP LIFECYCLE</p>
-          <p className="section-kicker">ONE CONTINUOUS JOURNEY</p>
-          <h2>From first click to<br /><em>final payment in your bank.</em></h2>
-          <p>
-            Every step connects to the next in our <Link href="/features/back-office" style={{ color: '#ffd166', textDecoration: 'underline' }}>connected back office</Link> without copying data, retyping quotes, or losing track of the conversation.
-          </p>
-        </div>
-
-        <div className="workflow-rail" data-rise>
-          {BRAND_POSITIONING.workflowSteps.map((step) => (
-            <article key={step.step} className="workflow-step-card">
-              <span className="workflow-step-num">0{step.step}</span>
-              <p className="workflow-step-kicker">{step.kicker}</p>
-              <h3>{step.name}</h3>
-              <p className="workflow-step-desc">{step.description}</p>
-              <Link className="workflow-step-link" href={step.href}>
-                Learn more <span aria-hidden="true">→</span>
-              </Link>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <TradeWebsiteGenerator />
 
       <section className="flagships" id="flagships" data-track>
         <Glare />
@@ -851,7 +820,7 @@ export default function FlagshipHome() {
         <div className="included-head" data-rise>
           <p className="eyebrow"><span>✦</span> THE REST OF THE JOB IS INCLUDED</p>
           <h2>One system from quote to review.</h2>
-          <p>Your website is the front door. Quotes, scheduling, crews, payments and follow-up are already connected behind it.</p>
+          <p>Your website is the front door. Quotes, scheduling, crews, payments and follow-up are already connected behind it in your <Link href="/features/back-office">back office</Link>.</p>
         </div>
 
         {/* The screens that exist, as a tab strip. Built from the deck itself
