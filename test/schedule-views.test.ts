@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-const read = (...parts: string[]) => readFileSync(join(process.cwd(), ...parts), 'utf8');
+const read = (...parts: string[]) => readFileSync(join(process.cwd(), ...parts), 'utf8').replace(/\r\n/g, '\n');
 
 const CALENDAR = read('src', 'app', 'dashboard', 'schedule', 'schedule-calendar.tsx');
 const PAGE = read('src', 'app', 'dashboard', 'schedule', 'page.tsx');
