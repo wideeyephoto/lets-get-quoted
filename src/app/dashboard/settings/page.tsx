@@ -450,12 +450,12 @@ export default async function SettingsPage({
                 <section className="panel workspace-section-card" id="appearance">
                   <div className="section-heading workspace-section-heading compact-heading">
                     <p className="eyebrow">Appearance</p>
-                    <h2>Light or dark</h2>
+                    <h2>Theme &amp; contrast</h2>
                   </div>
                   <p className="workspace-details-copy" style={{ marginTop: '0.5rem', marginBottom: '0.9rem' }}>
-                    Auto follows your phone or computer, including its night schedule. There is also a
-                    switch in the bottom-left corner of every page for when the light changes and you
-                    need it now — it sets Light or Dark, so come back here to hand it back to Auto.
+                    Auto follows your phone or computer schedule. Light is built for bright daylight, Dim offers
+                    a soft slate contrast for low-strain working, and Dark provides deep midnight focus.
+                    There is also a switch in the bottom-left corner of every page to cycle through them on the fly.
                   </p>
                   <ThemeToggle />
                 </section>

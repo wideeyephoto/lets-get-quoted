@@ -12,11 +12,11 @@
 // localStorage instead and every page load flashes dark before correcting
 // itself, which is worse than not offering the setting.
 
-export type Theme = 'dark' | 'light';
+export type Theme = 'dark' | 'dim' | 'light';
 
 /**
  * What the PERSON picked, which is not the same as what gets rendered.
- * 'system' resolves to one of the other two at paint time; it is a standing
+ * 'system' resolves to one of the other three at paint time; it is a standing
  * instruction ("follow the phone"), not a colour.
  */
 export type ThemeChoice = Theme | 'system';
@@ -43,7 +43,7 @@ export const THEME_SYSTEM_COOKIE = 'lgq-sys';
 export const THEME_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
 
 export function parseTheme(value: string | null | undefined): Theme | null {
-  return value === 'light' || value === 'dark' ? value : null;
+  return value === 'light' || value === 'dim' || value === 'dark' ? value : null;
 }
 
 /** Like parseTheme, but 'system' is a legal answer rather than junk. */
@@ -66,26 +66,36 @@ export function resolveTheme(cookieValue: string | null | undefined, systemPrefe
   return parseTheme(cookieValue) ?? (systemPrefersLight ? 'light' : 'dark');
 }
 
+/** Cycles across the three modes: dark -> dim -> light -> dark */
+export function nextTheme(theme: Theme): Theme {
+  if (theme === 'dark') return 'dim';
+  if (theme === 'dim') return 'light';
+  return 'dark';
+}
+
 export function otherTheme(theme: Theme): Theme {
-  return theme === 'dark' ? 'light' : 'dark';
+  return nextTheme(theme);
 }
 
 /** What the switch says it will do, for the label and the accessible name. */
 export function themeToggleLabel(theme: Theme): string {
-  return theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode';
+  if (theme === 'dark') return 'Switch to dim mode';
+  if (theme === 'dim') return 'Switch to light mode';
+  return 'Switch to dark mode';
 }
 
 /**
- * The three options, in the order they are drawn.
+ * The four options, in the order they are drawn.
  *
  * Auto sits FIRST because it is the default state and the one you fall back to,
- * not a third alternative bolted on the end — and because left-to-right the row
- * then reads auto → light → dark, which is the same order of increasing
- * commitment the labels describe.
+ * not an alternative bolted on the end — and because left-to-right the row
+ * then reads auto → light → dim → dark, which is the gradient of increasing
+ * commitment and deepening contrast.
  */
 export const THEME_CHOICES: { value: ThemeChoice; word: string; label: string }[] = [
   { value: 'system', word: 'Auto', label: 'Match my device' },
   { value: 'light', word: 'Light', label: 'Always light' },
+  { value: 'dim', word: 'Dim', label: 'Soft contrast' },
   { value: 'dark', word: 'Dark', label: 'Always dark' },
 ];
 

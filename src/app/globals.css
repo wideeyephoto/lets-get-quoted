@@ -216,6 +216,59 @@
   --fresh: #4fd39a;
 }
 
+/* DIM / TWILIGHT — the in-between canvas.
+   ---------------------------------------------------------------------------
+   A soft slate-charcoal ground that sits between the high-contrast midnight
+   Dark theme (#06131f) and the light Harbour theme. Built for lower eye strain
+   in moderate indoor light. Surfaces lift with white alpha tokens (--tint is
+   white) on a slate background. */
+:root[data-theme='dim'] {
+  color-scheme: dark;
+  --tint: 255, 255, 255;
+  --ink-rgb: 242, 246, 250;
+  --grey-1: 152, 175, 204;
+  --grey-2: 188, 202, 220;
+  --grey-3: 182, 198, 216;
+  --grey-4: 192, 206, 224;
+  --grey-5: 148, 166, 188;
+  --grey-6: 226, 234, 244;
+  --bg: #121d2b;
+  --bg-2: #182638;
+  --bg-3: #1f3046;
+  --bg-elevated: rgba(24, 38, 56, 0.88);
+  --bg-soft: rgba(var(--tint), 0.05);
+  --line: rgba(var(--tint), 0.11);
+  --text: #f0f4f8;
+  --muted: #b8c6d6;
+  --muted-2: #8c9eb4;
+  --shade: 0, 0, 0;
+  --shadow-strong: rgba(0, 0, 0, 0.48);
+  --shadow-soft: rgba(0, 0, 0, 0.28);
+  --ground-1: #0f1926;
+  --ground-2: #162436;
+  --panel-rgb: 24, 38, 56;
+  --chrome-rgb: 16, 26, 38;
+  --chrome: rgba(16, 26, 38, 0.90);
+  --chrome-soft: rgba(16, 26, 38, 0.80);
+  --chrome-solid: rgba(16, 26, 38, 0.96);
+  --glow-a: 0.05;
+  --glow-b: 0.04;
+  --good: #72dcab;
+  --warn: #ffd285;
+  --bad: #ffaba0;
+  --info: #9ec1ff;
+  --cap-open: #55c98a;
+  --cap-light: #b6e94f;
+  --cap-busy: #f5c542;
+  --cap-full: #ff8a3d;
+  --cap-over: #ff6b57;
+  --cap-unknown: #9aa4b2;
+  --gold-ink: #ffd166;
+  --accent-ink: #ff9d5c;
+  --on-active: #fff;
+  --fresh: #4fd39a;
+}
+
 /* THE INK PALETTE.
    ---------------------------------------------------------------------------
    Every colour in this app was written as a GLOW: a translucent fill of some

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  nextTheme,
   otherTheme,
   parseTheme,
   parseThemeChoice,
@@ -11,15 +12,16 @@ import {
 } from '@/lib/theme';
 
 describe('parseTheme', () => {
-  it('accepts only the two real values', () => {
+  it('accepts only the three real values', () => {
     expect(parseTheme('dark')).toBe('dark');
+    expect(parseTheme('dim')).toBe('dim');
     expect(parseTheme('light')).toBe('light');
   });
 
   it('rejects anything else rather than guessing', () => {
     // The cookie is user-writable; a junk value must fall through to the
     // default, never render an undefined data-theme.
-    for (const raw of [null, undefined, '', 'Dark', 'LIGHT', 'auto', 'system', '1', 'true']) {
+    for (const raw of [null, undefined, '', 'Dark', 'DIM', 'LIGHT', 'auto', 'system', '1', 'true']) {
       expect(parseTheme(raw), String(raw)).toBeNull();
     }
   });
@@ -28,6 +30,7 @@ describe('parseTheme', () => {
 describe('resolveTheme', () => {
   it('an explicit choice always wins over the system', () => {
     expect(resolveTheme('light', false)).toBe('light');
+    expect(resolveTheme('dim', false)).toBe('dim');
     expect(resolveTheme('dark', true)).toBe('dark');
   });
 
@@ -46,8 +49,9 @@ describe('resolveTheme', () => {
 });
 
 describe('parseThemeChoice', () => {
-  it('accepts the three real answers', () => {
+  it('accepts the four real answers', () => {
     expect(parseThemeChoice('light')).toBe('light');
+    expect(parseThemeChoice('dim')).toBe('dim');
     expect(parseThemeChoice('dark')).toBe('dark');
     expect(parseThemeChoice('system')).toBe('system');
   });
@@ -69,7 +73,7 @@ describe('system as a choice', () => {
   });
 
   it('is the first option offered, and every option has a label', () => {
-    expect(THEME_CHOICES.map((c) => c.value)).toEqual(['system', 'light', 'dark']);
+    expect(THEME_CHOICES.map((c) => c.value)).toEqual(['system', 'light', 'dim', 'dark']);
     for (const c of THEME_CHOICES) expect(themeChoiceLabel(c.value)).toBe(c.label);
   });
 });
@@ -84,14 +88,19 @@ describe('themeCookieString', () => {
   });
 });
 
-describe('otherTheme / label', () => {
-  it('flips', () => {
-    expect(otherTheme('dark')).toBe('light');
+describe('nextTheme / otherTheme / label', () => {
+  it('cycles across the three themes: dark -> dim -> light -> dark', () => {
+    expect(nextTheme('dark')).toBe('dim');
+    expect(nextTheme('dim')).toBe('light');
+    expect(nextTheme('light')).toBe('dark');
+    expect(otherTheme('dark')).toBe('dim');
+    expect(otherTheme('dim')).toBe('light');
     expect(otherTheme('light')).toBe('dark');
   });
 
   it('the label says what pressing it will DO, not what it currently is', () => {
-    expect(themeToggleLabel('dark')).toBe('Switch to light mode');
+    expect(themeToggleLabel('dark')).toBe('Switch to dim mode');
+    expect(themeToggleLabel('dim')).toBe('Switch to light mode');
     expect(themeToggleLabel('light')).toBe('Switch to dark mode');
   });
 });
