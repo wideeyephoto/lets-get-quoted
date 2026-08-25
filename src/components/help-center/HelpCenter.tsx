@@ -1,19 +1,22 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
-import Link from 'next/link';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
   KNOWLEDGE_BASE,
   FAQS,
   TRADE_PLAYBOOKS,
-  VIDEO_PLAYBOOKS,
   DOWNLOADABLE_TEMPLATES,
+  COMMON_FIX_ARTICLES,
+  SUPPORT_CHANNELS,
+  LEGAL_TEMPLATES_DISCLAIMER,
   Article,
-  VideoPlaybook,
-  DownloadableTemplate,
-  TradePlaybook,
-  TradeWorkflowDetail
+  DownloadableTemplate
 } from './help-center-data';
+import {
+  matchTroubleshooter,
+  TROUBLESHOOTER_INTENTS,
+  TroubleshooterMatchResult
+} from '@/lib/help/troubleshooter';
 import styles from './HelpCenter.module.css';
 
 // Lightweight Zero-Dependency SVG Icon Helpers (24x24 stroke style)
@@ -102,7 +105,22 @@ const Icons = {
       }
     />
   ),
-  ChevronDown: () => <Icon d="m6 9 6 6 6-6" className={styles.faqChevron} />,
+  ThumbsDown: () => (
+    <Icon
+      d={
+        <>
+          <path d="M17 14V2" />
+          <path d="M9 18.12 10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-3" />
+        </>
+      }
+    />
+  ),
+  ChevronDown: ({ isOpen }: { isOpen?: boolean }) => (
+    <Icon
+      d="m6 9 6 6 6-6"
+      className={`${styles.faqChevron} ${isOpen ? styles.faqChevronRotated : ''}`}
+    />
+  ),
   Rocket: () => (
     <Icon
       d={
@@ -172,43 +190,6 @@ const Icons = {
       }
     />
   ),
-  LayoutGrid: () => (
-    <Icon
-      d={
-        <>
-          <rect width="7" height="7" x="3" y="3" rx="1" />
-          <rect width="7" height="7" x="14" y="3" rx="1" />
-          <rect width="7" height="7" x="14" y="14" rx="1" />
-          <rect width="7" height="7" x="3" y="14" rx="1" />
-        </>
-      }
-    />
-  ),
-  List: () => (
-    <Icon
-      d={
-        <>
-          <line x1="8" x2="21" y1="6" y2="6" />
-          <line x1="8" x2="21" y1="12" y2="12" />
-          <line x1="8" x2="21" y1="18" y2="18" />
-          <line x1="3" x2="3.01" y1="6" y2="6" />
-          <line x1="3" x2="3.01" y1="12" y2="12" />
-          <line x1="3" x2="3.01" y1="18" y2="18" />
-        </>
-      }
-    />
-  ),
-  Clock: () => (
-    <Icon
-      d={
-        <>
-          <circle cx="12" cy="12" r="10" />
-          <polyline points="12 6 12 12 16 14" />
-        </>
-      }
-      className={styles.statIconCyan}
-    />
-  ),
   BookCheck: () => (
     <Icon
       d={
@@ -218,68 +199,6 @@ const Icons = {
         </>
       }
       className={styles.statIconEmerald}
-    />
-  ),
-  ShieldCheck: () => (
-    <Icon
-      d={
-        <>
-          <path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" />
-          <path d="m9 12 2 2 4-4" />
-        </>
-      }
-      className={styles.statIconOrange}
-    />
-  ),
-  Bot: () => (
-    <Icon
-      d={
-        <>
-          <path d="M12 8V4H8" />
-          <rect width="16" height="12" x="4" y="8" rx="2" />
-          <path d="M2 14h2" />
-          <path d="M20 14h2" />
-          <path d="M15 13v2" />
-          <path d="M9 13v2" />
-        </>
-      }
-      className={styles.statIconPurple}
-    />
-  ),
-  MessagesSquare: () => (
-    <Icon
-      d={
-        <>
-          <path d="M14 9a2 2 0 0 1-2 2H6l-4 4V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2z" />
-          <path d="M18 9h2a2 2 0 0 1 2 2v11l-4-4h-6a2 2 0 0 1-2-2v-1" />
-        </>
-      }
-      className={styles.channelIconCyan}
-    />
-  ),
-  Calendar: () => (
-    <Icon
-      d={
-        <>
-          <path d="M8 2v4" />
-          <path d="M16 2v4" />
-          <rect width="18" height="18" x="3" y="4" rx="2" />
-          <path d="M3 10h18" />
-        </>
-      }
-      className={styles.channelIconEmerald}
-    />
-  ),
-  UploadCloud: () => (
-    <Icon
-      d={
-        <>
-          <path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242" />
-          <path d="M12 12v9" />
-          <path d="m16 16-4-4-4 4" />
-        </>
-      }
-      className={styles.dropzoneIcon}
     />
   ),
   CheckCircle: () => (
@@ -294,18 +213,23 @@ const Icons = {
     />
   ),
   ArrowUpRight: () => <Icon d="M7 7h10v10M7 17 17 7" className={styles.arrowIcon} />,
-  Play: () => (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-      <polygon points="5 3 19 12 5 21 5 3" />
-    </svg>
-  ),
-  Download: () => (
+  Eye: () => (
     <Icon
       d={
         <>
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-          <polyline points="7 10 12 15 17 10" />
-          <line x1="12" y1="15" x2="12" y2="3" />
+          <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+          <circle cx="12" cy="12" r="3" />
+        </>
+      }
+    />
+  ),
+  Printer: () => (
+    <Icon
+      d={
+        <>
+          <polyline points="6 9 6 2 18 2 18 9" />
+          <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+          <rect width="12" height="8" x="6" y="14" />
         </>
       }
     />
@@ -372,6 +296,17 @@ const Icons = {
         </>
       }
     />
+  ),
+  AlertCircle: () => (
+    <Icon
+      d={
+        <>
+          <circle cx="12" cy="12" r="10" />
+          <line x1="12" y1="8" x2="12" y2="12" />
+          <line x1="12" y1="16" x2="12.01" y2="16" />
+        </>
+      }
+    />
   )
 };
 
@@ -386,544 +321,198 @@ const ICON_MAP: Record<string, React.ReactNode> = {
   Home: <Icons.Home />,
   Zap: <Icons.Zap />,
   Trees: <Icons.Trees />,
-  Hammer: <Icons.Hammer />
+  Hammer: <Icons.Hammer />,
+  LifeBuoy: <Icons.LifeBuoy />,
+  Send: <Icons.Send />,
+  BookCheck: <Icons.BookCheck />
 };
-
-// ================= STYLIZED CONTRACTOR DOCUMENT GENERATOR =================
-function generateStylizedDocument(tpl: DownloadableTemplate) {
-  const docTitle = tpl.name;
-  let formBadge = 'FORM LW-101 · PROGRESS PAYMENT LIEN WAIVER';
-  let bodyContent = '';
-
-  if (tpl.id === 'tpl-lien-waiver') {
-    formBadge = 'FORM LW-101 · CONTRACTOR PROGRESS LIEN WAIVER';
-    bodyContent = `
-      <div class="meta-card">
-        <div class="grid-2">
-          <div><span class="label">Property / Jobsite Address</span><div class="fill-box">124 Maplewood Ave, Maplewood, NJ 07040</div></div>
-          <div><span class="label">Contractor / Business Name</span><div class="fill-box">Maplewood Pro Services LLC</div></div>
-          <div><span class="label">Owner / Customer Name</span><div class="fill-box">Jane &amp; David Miller</div></div>
-          <div><span class="label">Payment Amount Received</span><div class="fill-box highlight-val">$12,450.00 (Twelve Thousand Four Hundred Fifty Dollars)</div></div>
-        </div>
-      </div>
-
-      <div class="clause-section">
-        <h3>1. Conditional Waiver &amp; Release Upon Progress Payment</h3>
-        <p>The undersigned Contractor, upon receipt of the sum stated above, hereby waives and releases any and all liens, claims, or rights to lien under the statutes of this State relating to mechanics' and materialmen's liens, on account of labor, services, equipment, or materials furnished through the date of this instrument to the property described above.</p>
-        
-        <h3>2. Exceptions &amp; Exclusions</h3>
-        <p>This waiver does not cover any retainage or disputed extra work not included in prior approved change orders. This release is conditioned upon clearance of funds into the Contractor's banking institution.</p>
-      </div>
-
-      <div class="signature-deck">
-        <div class="sig-box">
-          <div class="sig-line"></div>
-          <span class="sig-label">Authorized Contractor Signature</span>
-          <span class="sig-sub">Brett M. — Managing Partner</span>
-        </div>
-        <div class="sig-box">
-          <div class="sig-line"></div>
-          <span class="sig-label">Date Signed</span>
-          <span class="sig-sub">August 25, 2026</span>
-        </div>
-      </div>
-    `;
-  } else if (tpl.id === 'tpl-change-order') {
-    formBadge = 'FORM CO-202 · RESIDENTIAL CONTRACT CHANGE ORDER';
-    bodyContent = `
-      <div class="meta-card">
-        <div class="grid-2">
-          <div><span class="label">Project Title &amp; Address</span><div class="fill-box">Master Bathroom &amp; Plumbing Remodel · 45 Highland Rd</div></div>
-          <div><span class="label">Change Order Number</span><div class="fill-box highlight-val">CO-#003</div></div>
-          <div><span class="label">Prime Contractor</span><div class="fill-box">Maplewood Pro Services LLC</div></div>
-          <div><span class="label">Property Owner</span><div class="fill-box">Robert Sterling</div></div>
-        </div>
-      </div>
-
-      <div class="clause-section">
-        <h3>1. Description of Unforeseen Scope / Material Additions</h3>
-        <p>Upon demolition of subfloor, cracked 4" cast iron main drain stack was uncovered requiring replacement with Schedule 40 PVC, plus customer-requested upgrade to thermostatic brushed nickel shower valve trim kit.</p>
-        
-        <table class="styled-table">
-          <thead>
-            <tr><th>Itemized Scope Description</th><th>Labor Hours</th><th>Materials Cost</th><th>Total Adjustment</th></tr>
-          </thead>
-          <tbody>
-            <tr><td>Main Stack Cast Iron to PVC replacement</td><td>4.5 hrs</td><td>$340.00</td><td>$880.00</td></tr>
-            <tr><td>Thermostatic Valve upgrade &amp; rough-in adjustment</td><td>2.0 hrs</td><td>$480.00</td><td>$720.00</td></tr>
-          </tbody>
-        </table>
-
-        <h3>2. Financial &amp; Schedule Impact</h3>
-        <div class="financial-summary-box">
-          <div class="fin-row"><span>Original Contract Amount:</span><strong>$24,500.00</strong></div>
-          <div class="fin-row"><span>Prior Approved Changes (CO #1 &amp; #2):</span><strong>+$1,200.00</strong></div>
-          <div class="fin-row highlight-row"><span>This Change Order Amount (+):</span><strong>+$1,600.00</strong></div>
-          <div class="fin-row total-row"><span>REVISED TOTAL CONTRACT PRICE:</span><strong>$27,300.00</strong></div>
-        </div>
-        <p style="margin-top: 0.75rem; font-size: 0.85rem; color: #475569;">Schedule Adjustment: <strong>+2 Additional Working Days</strong> required for final plumbing inspection.</p>
-      </div>
-
-      <div class="signature-deck">
-        <div class="sig-box">
-          <div class="sig-line"></div>
-          <span class="sig-label">Homeowner Acceptance Signature</span>
-          <span class="sig-sub">I authorize the scope and cost adjustment above</span>
-        </div>
-        <div class="sig-box">
-          <div class="sig-line"></div>
-          <span class="sig-label">Contractor Authorization Signature</span>
-          <span class="sig-sub">Maplewood Pro Services LLC</span>
-        </div>
-      </div>
-    `;
-  } else {
-    formBadge = 'FORM MD-303 · MATERIAL DEPOSIT & PAYMENT MILESTONES';
-    bodyContent = `
-      <div class="meta-card">
-        <div class="grid-2">
-          <div><span class="label">Customer / Jobsite Address</span><div class="fill-box">78 Elm Street, Millburn, NJ</div></div>
-          <div><span class="label">Total Contract Proposal Value</span><div class="fill-box highlight-val">$18,600.00</div></div>
-        </div>
-      </div>
-
-      <div class="clause-section">
-        <h3>1. Mandatory Upfront Material Deposit (50%)</h3>
-        <p>In accordance with standard trade practices, a <strong>50% upfront material deposit ($9,300.00)</strong> is required upon signing to secure guaranteed calendar scheduling and place non-cancelable factory orders for specialty equipment and fixtures.</p>
-
-        <div class="milestones-deck">
-          <div class="milestone-card">
-            <span class="m-badge">Milestone 1 · 50%</span>
-            <h4>Upon Contract Signing</h4>
-            <p>Secures jobsite date &amp; purchases custom materials ($9,300.00).</p>
-          </div>
-          <div class="milestone-card">
-            <span class="m-badge">Milestone 2 · 40%</span>
-            <h4>Rough-In Inspection</h4>
-            <p>Due upon completion of framing, plumbing &amp; electrical rough-in ($7,440.00).</p>
-          </div>
-          <div class="milestone-card">
-            <span class="m-badge">Milestone 3 · 10%</span>
-            <h4>Final Punch List</h4>
-            <p>Due upon final walkthrough and customer sign-off ($1,860.00).</p>
-          </div>
-        </div>
-
-        <h3>2. Terms &amp; Instant Digital Payment Options</h3>
-        <p>Homeowners may authorize payment via instant 1-click Apple Pay, Google Pay, major Credit Cards (Visa, MasterCard, Amex) through the Let's Get Quoted client portal, or certified bank draft.</p>
-      </div>
-
-      <div class="signature-deck">
-        <div class="sig-box">
-          <div class="sig-line"></div>
-          <span class="sig-label">Homeowner Acceptance Signature</span>
-          <span class="sig-sub">Date: ________________________</span>
-        </div>
-        <div class="sig-box">
-          <div class="sig-line"></div>
-          <span class="sig-label">Contractor Authorized Representative</span>
-          <span class="sig-sub">Date: ________________________</span>
-        </div>
-      </div>
-    `;
-  }
-
-  const htmlDoc = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${docTitle} · Let's Get Quoted</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background-color: #f8fafc;
-      color: #0f172a;
-      line-height: 1.6;
-      padding: 2rem 1rem;
-    }
-    .page-container {
-      max-width: 850px;
-      margin: 0 auto;
-      background: #ffffff;
-      border: 1px solid #e2e8f0;
-      border-radius: 16px;
-      padding: 3rem 3.5rem;
-      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01);
-      position: relative;
-    }
-    .print-bar {
-      max-width: 850px;
-      margin: 0 auto 1.5rem;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .btn-print {
-      background: #ff7a21;
-      color: #ffffff;
-      border: none;
-      padding: 0.6rem 1.4rem;
-      border-radius: 8px;
-      font-weight: 700;
-      font-size: 0.9rem;
-      cursor: pointer;
-      box-shadow: 0 4px 12px rgba(255, 122, 33, 0.3);
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
-    .btn-print:hover { background: #e66914; }
-    .doc-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      border-bottom: 2px solid #ff7a21;
-      padding-bottom: 1.5rem;
-      margin-bottom: 2rem;
-    }
-    .badge {
-      display: inline-block;
-      font-size: 0.75rem;
-      font-weight: 800;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: #ff7a21;
-      background: #fff3eb;
-      padding: 4px 10px;
-      border-radius: 6px;
-      margin-bottom: 0.5rem;
-    }
-    .doc-title { font-size: 1.75rem; font-weight: 800; color: #0f172a; line-height: 1.25; }
-    .brand-stamp { text-align: right; }
-    .brand-logo { font-size: 1.1rem; font-weight: 800; color: #0f172a; }
-    .brand-logo span { color: #ff7a21; }
-    .brand-sub { font-size: 0.75rem; color: #64748b; font-weight: 500; }
-    
-    .meta-card {
-      background: #f8fafc;
-      border: 1px solid #e2e8f0;
-      border-radius: 12px;
-      padding: 1.25rem 1.5rem;
-      margin-bottom: 2rem;
-    }
-    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
-    .label { display: block; font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.25rem; }
-    .fill-box { font-size: 0.95rem; font-weight: 600; color: #1e293b; }
-    .highlight-val { color: #ff7a21; font-weight: 700; }
-
-    .clause-section h3 { font-size: 1.05rem; font-weight: 700; color: #0f172a; margin: 1.5rem 0 0.5rem; }
-    .clause-section p { font-size: 0.9rem; color: #334155; line-height: 1.65; margin-bottom: 0.75rem; }
-
-    .styled-table { width: 100%; border-collapse: collapse; margin: 1.25rem 0; font-size: 0.85rem; }
-    .styled-table th { background: #f1f5f9; text-align: left; padding: 0.75rem; font-weight: 700; color: #334155; border-bottom: 2px solid #cbd5e1; }
-    .styled-table td { padding: 0.75rem; border-bottom: 1px solid #e2e8f0; color: #1e293b; }
-
-    .financial-summary-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 1rem 1.25rem; margin-top: 1rem; }
-    .fin-row { display: flex; justify-content: space-between; font-size: 0.9rem; padding: 0.35rem 0; color: #475569; }
-    .highlight-row { color: #ff7a21; font-weight: 700; }
-    .total-row { border-top: 2px solid #cbd5e1; padding-top: 0.6rem; font-size: 1rem; font-weight: 800; color: #0f172a; }
-
-    .milestones-deck { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin: 1.25rem 0; }
-    .milestone-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 1rem; }
-    .m-badge { font-size: 0.7rem; font-weight: 800; color: #ff7a21; background: #fff3eb; padding: 2px 6px; border-radius: 4px; display: inline-block; margin-bottom: 0.35rem; }
-    .milestone-card h4 { font-size: 0.9rem; font-weight: 700; margin-bottom: 0.3rem; }
-    .milestone-card p { font-size: 0.8rem; color: #64748b; line-height: 1.4; }
-
-    .signature-deck { display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; margin-top: 3.5rem; padding-top: 1.5rem; }
-    .sig-box { display: flex; flex-direction: column; }
-    .sig-line { border-bottom: 1.5px solid #0f172a; height: 35px; margin-bottom: 0.5rem; }
-    .sig-label { font-size: 0.8rem; font-weight: 700; color: #0f172a; }
-    .sig-sub { font-size: 0.75rem; color: #64748b; }
-
-    @media print {
-      body { background: white; padding: 0; }
-      .print-bar { display: none; }
-      .page-container { border: none; box-shadow: none; padding: 1.5rem 0; }
-    }
-  </style>
-</head>
-<body>
-  <div class="print-bar">
-    <span style="font-size: 0.85rem; color: #64748b;">Ready to customize &amp; print for your customer</span>
-    <button class="btn-print" onclick="window.print()">🖨️ Print / Save as PDF</button>
-  </div>
-  <div class="page-container">
-    <div class="doc-header">
-      <div>
-        <span class="badge">${formBadge}</span>
-        <h1 class="doc-title">${docTitle}</h1>
-      </div>
-      <div class="brand-stamp">
-        <div class="brand-logo">Let's Get <span>Quoted</span></div>
-        <div class="brand-sub">Contractor Legal Template Suite</div>
-      </div>
-    </div>
-    ${bodyContent}
-  </div>
-</body>
-</html>`;
-
-  const blob = new Blob([htmlDoc], { type: 'text/html;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = `${tpl.name.replace(/[^a-zA-Z0-9]/g, '-')}.html`;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-
-  const previewWindow = window.open('', '_blank');
-  if (previewWindow) {
-    previewWindow.document.write(htmlDoc);
-    previewWindow.document.close();
-  }
-}
-
-// Generate Printable Trade Specification Sheet
-function generateStylizedTradeTemplateDoc(trade: TradePlaybook) {
-  const tiersHtml = trade.tiers
-    .map(
-      t => `
-    <div class="milestone-card" style="border: 1px solid #e2e8f0; padding: 1.25rem;">
-      <span class="m-badge">${t.badge || 'Quote Tier'}</span>
-      <h4>${t.name} — <span style="color: #ff7a21;">${t.price}</span></h4>
-      <ul style="margin: 0.5rem 0 0 1.25rem; font-size: 0.82rem; color: #475569;">
-        ${t.features.map(f => `<li>${f}</li>`).join('')}
-      </ul>
-    </div>
-  `
-    )
-    .join('');
-
-  const itemsHtml = trade.sampleLineItems
-    .map(
-      item => `
-    <tr>
-      <td><strong>${item.name}</strong> <span style="font-size:0.75rem; color:#64748b;">(${item.category})</span></td>
-      <td>${item.qty}</td>
-      <td>${item.rate}</td>
-      <td><strong>${item.total}</strong></td>
-    </tr>
-  `
-    )
-    .join('');
-
-  const htmlDoc = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>${trade.name} · Trade Quoting Specification</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Plus Jakarta Sans', sans-serif; background: #f8fafc; color: #0f172a; line-height: 1.6; padding: 2rem 1rem; }
-    .page-container { max-width: 850px; margin: 0 auto; background: #fff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 3rem 3.5rem; }
-    .print-bar { max-width: 850px; margin: 0 auto 1.5rem; display: flex; justify-content: space-between; align-items: center; }
-    .btn-print { background: #ff7a21; color: #fff; border: none; padding: 0.6rem 1.4rem; border-radius: 8px; font-weight: 700; cursor: pointer; }
-    .doc-header { display: flex; justify-content: space-between; border-bottom: 2px solid #ff7a21; padding-bottom: 1.5rem; margin-bottom: 2rem; }
-    .badge { display: inline-block; font-size: 0.75rem; font-weight: 800; color: #ff7a21; background: #fff3eb; padding: 4px 10px; border-radius: 6px; margin-bottom: 0.5rem; }
-    .doc-title { font-size: 1.75rem; font-weight: 800; }
-    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin: 1.5rem 0; }
-    .styled-table { width: 100%; border-collapse: collapse; margin: 1.25rem 0; font-size: 0.85rem; }
-    .styled-table th { background: #f1f5f9; text-align: left; padding: 0.75rem; }
-    .styled-table td { padding: 0.75rem; border-bottom: 1px solid #e2e8f0; }
-    .milestone-card { background: #f8fafc; border-radius: 10px; padding: 1rem; }
-    .m-badge { font-size: 0.7rem; font-weight: 800; color: #ff7a21; background: #fff3eb; padding: 2px 6px; border-radius: 4px; display: inline-block; margin-bottom: 0.35rem; }
-    @media print { body { background: white; padding: 0; } .print-bar { display: none; } .page-container { border: none; } }
-  </style>
-</head>
-<body>
-  <div class="print-bar">
-    <span style="font-size: 0.85rem; color: #64748b;">Ready to customize &amp; use on customer jobs</span>
-    <button class="btn-print" onclick="window.print()">🖨️ Print / Save as PDF</button>
-  </div>
-  <div class="page-container">
-    <div class="doc-header">
-      <div>
-        <span class="badge">${trade.badge}</span>
-        <h1 class="doc-title">${trade.name} Quoting Playbook</h1>
-        <p style="color: #64748b; font-size: 0.9rem; margin-top: 0.25rem;">${trade.headline}</p>
-      </div>
-      <div style="text-align: right;">
-        <div style="font-weight: 800;">Let's Get <span style="color: #ff7a21;">Quoted</span></div>
-        <div style="font-size: 0.75rem; color: #64748b;">Trade Playbook Spec</div>
-      </div>
-    </div>
-
-    <h3 style="margin-top: 1rem; font-size: 1.1rem;">1. Pre-Configured Good / Better / Best Tiers</h3>
-    <div class="grid-3">${tiersHtml}</div>
-
-    <h3 style="margin-top: 1.5rem; font-size: 1.1rem;">2. Itemized Sample Scope &amp; Rates</h3>
-    <table class="styled-table">
-      <thead>
-        <tr><th>Scope Description &amp; Category</th><th>Quantity</th><th>Unit Rate</th><th>Line Total</th></tr>
-      </thead>
-      <tbody>${itemsHtml}</tbody>
-    </table>
-
-    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.25rem; margin-top: 1.5rem;">
-      <h4 style="font-size: 0.95rem; margin-bottom: 0.35rem;">Deposit Schedule &amp; Terms</h4>
-      <p style="font-size: 0.85rem; color: #475569;">${trade.depositTerms}</p>
-      <h4 style="font-size: 0.95rem; margin: 0.85rem 0 0.35rem;">Multipliers &amp; Surge Rates</h4>
-      <p style="font-size: 0.85rem; color: #475569;">${trade.multiplierNotes}</p>
-    </div>
-  </div>
-</body>
-</html>`;
-
-  const previewWindow = window.open('', '_blank');
-  if (previewWindow) {
-    previewWindow.document.write(htmlDoc);
-    previewWindow.document.close();
-  }
-}
 
 export default function HelpCenter() {
   const [searchQuery, setSearchQuery] = useState('');
+  const [hasInteracted, setHasInteracted] = useState(false);
   const [selectedTopic, setSelectedTopic] = useState('all');
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const [activeTrade, setActiveTrade] = useState('plumbing');
+  const [isTradeWorkflowExpanded, setIsTradeWorkflowExpanded] = useState(false);
 
-  const [activeTrade, setActiveTrade] = useState('general');
-  const [activeTradeTemplate, setActiveTradeTemplate] = useState<TradePlaybook | null>(null);
-  const [activeWorkflow, setActiveWorkflow] = useState<TradeWorkflowDetail | null>(null);
+  // Category inline expansion
+  const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
 
+  // Active modals
   const [activeArticle, setActiveArticle] = useState<Article | null>(null);
-  const [activeVideo, setActiveVideo] = useState<VideoPlaybook | null>(null);
+  const [activeDocument, setActiveDocument] = useState<DownloadableTemplate | null>(null);
   const [isTicketDrawerOpen, setIsTicketDrawerOpen] = useState(false);
   const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
 
   // Quick Start Checklist State
   const [completedSteps, setCompletedSteps] = useState<Record<number, boolean>>({});
+  const [activeMobileStep, setActiveMobileStep] = useState<number | null>(1);
 
+  // Support Ticket Form State
   const [ticketSubject, setTicketSubject] = useState('');
+  const [ticketNotes, setTicketNotes] = useState('');
   const [ticketDeflection, setTicketDeflection] = useState<string | null>(null);
   const [isTicketSubmitted, setIsTicketSubmitted] = useState(false);
 
-  const [activeFaq, setActiveFaq] = useState<number | null>(0);
-  const [faqFeedback, setFaqFeedback] = useState<Record<number, boolean>>({});
+  // FAQ State
+  const [faqCategory, setFaqCategory] = useState<string>('all');
+  const [activeFaq, setActiveFaq] = useState<string | null>('faq-1');
+  const [faqFeedback, setFaqFeedback] = useState<Record<string, 'yes' | 'no'>>({});
+  const [_faqFeedbackReason, setFaqFeedbackReason] = useState<Record<string, string>>({});
+
+  // Feedback Toast & Clipboard
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [copiedRecord, setCopiedRecord] = useState<string | null>(null);
+  const [_copiedRecord, setCopiedRecord] = useState<string | null>(null);
 
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const lastFocusedElementRef = useRef<HTMLElement | null>(null);
 
-  const showToast = (msg: string) => {
+  // Flatten all articles for lookup
+  const allArticlesList = useMemo(() => {
+    const map = new Map<string, Article>();
+    COMMON_FIX_ARTICLES.forEach(a => map.set(a.id, a));
+    KNOWLEDGE_BASE.forEach(cat => cat.articles.forEach(a => map.set(a.id, a)));
+    return Array.from(map.values());
+  }, []);
+
+  const totalGuides = useMemo(() => {
+    return KNOWLEDGE_BASE.reduce((sum, category) => sum + category.articles.length, 0);
+  }, []);
+
+  // Match troubleshooter intent
+  const troubleshooterResult: TroubleshooterMatchResult = useMemo(() => {
+    if (!searchQuery.trim()) {
+      return { matched: false, confidence: 0 };
+    }
+    return matchTroubleshooter(searchQuery, allArticlesList);
+  }, [searchQuery, allArticlesList]);
+
+  const showToast = useCallback((msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3500);
-  };
+  }, []);
 
-  const copyToClipboard = (text: string, label: string) => {
-    navigator.clipboard.writeText(text);
+  const copyToClipboard = useCallback((text: string, label: string) => {
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(text);
+    }
     setCopiedRecord(label);
     showToast(`Copied ${label} to clipboard!`);
     setTimeout(() => setCopiedRecord(null), 2500);
-  };
+  }, [showToast]);
 
+  // Open Article & Synchronize with URL
+  const openArticle = useCallback((article: Article, preserveFocus = true) => {
+    if (preserveFocus && typeof document !== 'undefined') {
+      lastFocusedElementRef.current = document.activeElement as HTMLElement;
+    }
+    setActiveArticle(article);
+
+    // Update URL query parameter
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.set('article', article.id);
+      window.history.pushState(null, '', url.toString());
+    }
+  }, []);
+
+  const closeArticle = useCallback(() => {
+    setActiveArticle(null);
+
+    // Remove article parameter from URL
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('article');
+      window.history.pushState(null, '', url.toString());
+    }
+
+    // Restore focus
+    if (lastFocusedElementRef.current) {
+      lastFocusedElementRef.current.focus();
+    }
+  }, []);
+
+  // Open ticket prefilled with query or reason
+  const openTicketWithSubject = useCallback((subject: string, notes?: string) => {
+    if (typeof document !== 'undefined') {
+      lastFocusedElementRef.current = document.activeElement as HTMLElement;
+    }
+    setTicketSubject(subject);
+    if (notes) setTicketNotes(notes);
+    setIsTicketSubmitted(false);
+    setIsTicketDrawerOpen(true);
+  }, []);
+
+  const closeTicketDrawer = useCallback(() => {
+    setIsTicketDrawerOpen(false);
+    if (lastFocusedElementRef.current) {
+      lastFocusedElementRef.current.focus();
+    }
+  }, []);
+
+  // On initial mount: Check for URL query ?article=<id>
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const articleParam = params.get('article');
+    if (articleParam) {
+      const found = allArticlesList.find(a => a.id === articleParam);
+      if (found) {
+        openArticle(found, false);
+      }
+    }
+  }, [allArticlesList, openArticle]);
+
+  // Keyboard Shortcuts (Ctrl/Cmd+K)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // ⌘K or Ctrl+K focuses search
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
         searchInputRef.current?.focus();
-        setIsSearchFocused(true);
       }
       if (e.key === 'Escape') {
-        setIsTicketDrawerOpen(false);
-        setIsStatusModalOpen(false);
-        setActiveArticle(null);
-        setActiveVideo(null);
-        setActiveTradeTemplate(null);
-        setActiveWorkflow(null);
-        setIsSearchFocused(false);
+        if (activeArticle) closeArticle();
+        if (activeDocument) setActiveDocument(null);
+        if (isTicketDrawerOpen) closeTicketDrawer();
+        if (isStatusModalOpen) setIsStatusModalOpen(false);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [activeArticle, activeDocument, isTicketDrawerOpen, isStatusModalOpen, closeArticle, closeTicketDrawer]);
 
+  // Real-time Deflection in Ticket Drawer
   useEffect(() => {
     const val = ticketSubject.toLowerCase();
     if (val.length < 3) {
       setTicketDeflection(null);
       return;
     }
-    if (val.includes('sms') || val.includes('carrier') || val.includes('text') || val.includes('phone')) {
-      setTicketDeflection(
-        '10DLC carrier verification takes 2–24 hrs. Ensure your company legal name matches your IRS EIN letter in Settings.'
-      );
+    if (val.includes('sms') || val.includes('carrier') || val.includes('text') || val.includes('phone') || val.includes('10dlc')) {
+      setTicketDeflection('10DLC carrier registration takes 2-24 hrs. Ensure your company legal name matches your IRS EIN letter in Settings.');
     } else if (val.includes('stripe') || val.includes('deposit') || val.includes('payout')) {
-      setTicketDeflection(
-        'Stripe Connect deposits 50% upfront material funds directly to your verified bank account next business day.'
-      );
-    } else if (val.includes('domain') || val.includes('dns') || val.includes('godaddy')) {
-      setTicketDeflection(
-        'Point root domain A record to 76.76.21.21 and CNAME www to cname.letsgetquoted.com in your registrar.'
-      );
+      setTicketDeflection('Stripe Connect deposits customer funds on a standard 2-business-day rolling schedule to your verified checking account.');
+    } else if (val.includes('domain') || val.includes('dns') || val.includes('godaddy') || val.includes('squarespace')) {
+      setTicketDeflection('Point root domain A record to 76.76.21.21 and CNAME www to cname.letsgetquoted.com in your registrar DNS.');
     } else {
       setTicketDeflection(null);
     }
   }, [ticketSubject]);
 
-  const filteredCategories = KNOWLEDGE_BASE.filter(cat => {
-    const matchesTopic = selectedTopic === 'all' || cat.topic === selectedTopic;
-    if (!searchQuery) return matchesTopic;
-    const q = searchQuery.toLowerCase();
-    const catMatch = cat.title.toLowerCase().includes(q) || cat.desc.toLowerCase().includes(q);
-    const artMatch = cat.articles.some(a => a.title.toLowerCase().includes(q));
-    return matchesTopic && (catMatch || artMatch);
-  });
-
-  // Spotlight matches across all content
-  const spotlightArticles = searchQuery
-    ? KNOWLEDGE_BASE.flatMap(c => c.articles).filter(a =>
-        a.title.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    : [];
-
-  const spotlightTrades = searchQuery
-    ? TRADE_PLAYBOOKS.filter(
-        t =>
-          t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          t.headline.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    : [];
-
-  const spotlightTemplates = searchQuery
-    ? DOWNLOADABLE_TEMPLATES.filter(
-        d =>
-          d.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          d.description.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    : [];
-
   const currentTrade = TRADE_PLAYBOOKS.find(t => t.id === activeTrade) || TRADE_PLAYBOOKS[0];
 
-  const copyTradeScopeToClipboard = (trade: TradePlaybook) => {
-    const scopeText = [
-      `=== ${trade.name.toUpperCase()} QUOTING TEMPLATE ===`,
-      `Headline: ${trade.headline}`,
-      `Deposit Terms: ${trade.depositTerms}`,
-      `Multipliers: ${trade.multiplierNotes}`,
-      '',
-      '--- GOOD / BETTER / BEST TIERS ---',
-      ...trade.tiers.map(
-        t => `${t.name} (${t.price}):\n${t.features.map(f => `  • ${f}`).join('\n')}`
-      ),
-      '',
-      '--- SAMPLE ITEMIZED LINE ITEMS ---',
-      ...trade.sampleLineItems.map(
-        item => `• ${item.name} [${item.category}] - ${item.qty} @ ${item.rate} = ${item.total}`
-      )
-    ].join('\n');
+  const filteredFaqs = useMemo(() => {
+    if (faqCategory === 'all') return FAQS;
+    return FAQS.filter(f => f.category === faqCategory);
+  }, [faqCategory]);
 
-    copyToClipboard(scopeText, `${trade.name} Quote Spec`);
+  const toggleCategoryExpand = (catId: string) => {
+    setExpandedCategories(prev => ({ ...prev, [catId]: !prev[catId] }));
+  };
+
+  const handleChipClick = (title: string) => {
+    setSearchQuery(title);
+    setHasInteracted(true);
+    searchInputRef.current?.focus();
   };
 
   return (
@@ -932,96 +521,93 @@ export default function HelpCenter() {
       <div className={`${styles.ambientGlow} ${styles.glow2}`} />
       <div className={`${styles.ambientGlow} ${styles.glow3}`} />
 
-      {/* Refined Command Strip */}
-      <div className={styles.subNavbar}>
+      {/* Sticky Sub-Navigation (<= 64px on mobile) */}
+      <nav className={styles.subNavbar} aria-label="Help Center Sub-navigation">
         <div className={styles.subNavContainer}>
           <div className={styles.subNavLeft}>
             <div className={styles.helpBadgePill}>
               <Icons.Sparkles />
-              <span>Help Center &amp; Command Hub</span>
+              <span>Help Center</span>
             </div>
-            <nav className={styles.subNavLinks}>
-              <a href="#quick-start" className={styles.subNavLink}>
-                Quick Start
-              </a>
-              <a href="#trade-playbooks" className={styles.subNavLink}>
-                Trade Playbooks
-              </a>
-              <a href="#video-playbooks" className={styles.subNavLink}>
-                60s Videos
-              </a>
-              <a href="#knowledge-hub" className={styles.subNavLink}>
-                Guides
-              </a>
-              <a href="#contractor-templates" className={styles.subNavLink}>
-                Templates
-              </a>
-              <a href="#faqs" className={styles.subNavLink}>
-                FAQs
-              </a>
-            </nav>
+            <div className={styles.subNavLinks}>
+              <a href="#ai-troubleshooter" className={styles.subNavLink}>Troubleshoot</a>
+              <a href="#common-fixes" className={styles.subNavLink}>Common Fixes</a>
+              <a href="#knowledge-hub" className={styles.subNavLink}>Guides</a>
+              <a href="#quick-start" className={styles.subNavLink}>Setup</a>
+              <a href="#faqs" className={styles.subNavLink}>FAQs</a>
+              <a href="#contact-support" className={styles.subNavLink}>Contact</a>
+            </div>
           </div>
 
           <div className={styles.subNavActions}>
             <button
               className={styles.statusPillBtn}
               onClick={() => setIsStatusModalOpen(true)}
-              aria-label="Check live system status"
+              aria-label="View system status"
             >
               <span className={styles.statusIndicatorDot} />
-              <span>All Systems 99.9%</span>
+              <span className={styles.statusTextDesktop}>System status</span>
             </button>
 
             <button
               className={styles.btnPrimarySm}
-              onClick={() => {
-                setTicketSubject('');
-                setIsTicketSubmitted(false);
-                setIsTicketDrawerOpen(true);
-              }}
+              onClick={() => openTicketWithSubject('')}
+              aria-label="Open support ticket"
             >
               <Icons.LifeBuoy />
-              <span>Open Ticket</span>
+              <span className={styles.btnTextDesktop}>Open Ticket</span>
             </button>
           </div>
         </div>
-      </div>
+      </nav>
 
-      {/* Hero Section */}
-      <section className={styles.heroSection}>
+      {/* ================= 1. HERO SECTION & AI TROUBLESHOOTER ================= */}
+      <section id="ai-troubleshooter" className={styles.heroSection}>
         <div className={styles.heroBadge}>
           <Icons.Sparkles />
-          <span>Support &amp; Knowledge Command Center</span>
+          <span>Help Center</span>
         </div>
-        <h1 className={styles.heroTitle}>
-          How can we help your <span className={styles.highlightText}>business thrive</span> today?
-        </h1>
+        <h1 className={styles.heroTitle}>What do you need help with?</h1>
         <p className={styles.heroSubtitle}>
-          Explore instant answers, step-by-step contractor playbooks, video walkthroughs, or direct support from product engineers.
+          Describe what’s happening in plain language. We’ll identify the right help path and take you to the fastest fix.
         </p>
 
-        {/* Search Command Box & Spotlight Dropdown */}
+        {/* Search Command Box */}
         <div className={styles.searchCommandBox}>
           <div className={styles.searchGlowWrapper}>
             <div className={styles.searchInputWrapper}>
               <Icons.Search />
               <input
                 ref={searchInputRef}
+                id="troubleshooter-search"
                 type="text"
-                placeholder="Search guides, trade formulas, errors, or press ⌘K..."
+                role="combobox"
+                aria-expanded={hasInteracted && Boolean(searchQuery)}
+                aria-autocomplete="list"
+                aria-controls="troubleshooter-results"
+                aria-label="Search troubleshooting topics or guides"
+                placeholder='Try “my quote won’t send” or “my Stripe payout is missing”…'
                 value={searchQuery}
-                onFocus={() => setIsSearchFocused(true)}
-                onChange={e => setSearchQuery(e.target.value)}
+                onFocus={() => setHasInteracted(true)}
+                onChange={e => {
+                  setSearchQuery(e.target.value);
+                  setHasInteracted(true);
+                }}
+                onKeyDown={e => {
+                  if (e.key === 'Escape') {
+                    setSearchQuery('');
+                  }
+                }}
               />
               <div className={styles.hotkeyBadge}>
-                <kbd>⌘</kbd>
+                <kbd>Ctrl</kbd>
                 <kbd>K</kbd>
               </div>
               {searchQuery && (
                 <button
                   className={styles.clearBtn}
                   onClick={() => setSearchQuery('')}
-                  aria-label="Clear search"
+                  aria-label="Clear search query"
                 >
                   <Icons.X />
                 </button>
@@ -1029,104 +615,181 @@ export default function HelpCenter() {
             </div>
           </div>
 
-          {/* ================= SPOTLIGHT COMMAND PALETTE ================= */}
-          {isSearchFocused && searchQuery.length > 0 && (
-            <div className={styles.spotlightDropdown}>
-              {spotlightArticles.length > 0 && (
-                <div>
-                  <div className={styles.spotlightCategoryTitle}>📖 Contractor Guides</div>
-                  {spotlightArticles.slice(0, 4).map(art => (
-                    <div
-                      key={art.id}
-                      className={styles.spotlightItem}
+          {/* Quick Secondary Navigation Links */}
+          <div className={styles.heroSecondaryRow}>
+            <a href="#knowledge-hub" className={styles.heroSecondaryAction}>
+              Browse all guides →
+            </a>
+            <a href="#contact-support" className={styles.heroSecondaryAction}>
+              Contact support →
+            </a>
+          </div>
+
+          {/* 6 Quick-Issue Chips (Horizontal Snap Scroll on Mobile) */}
+          <div className={styles.quickChipsWrapper}>
+            <span className={styles.quickChipsLabel}>Quick fixes:</span>
+            <div className={styles.quickChipsScroll}>
+              {TROUBLESHOOTER_INTENTS.map(intent => (
+                <button
+                  key={intent.id}
+                  className={`${styles.quickChipBtn} ${searchQuery === intent.title ? styles.quickChipActive : ''}`}
+                  onClick={() => handleChipClick(intent.title)}
+                >
+                  {intent.title}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* 3-Stage Progress Visual Indicator */}
+          {hasInteracted && searchQuery.trim().length > 0 && (
+            <div className={styles.threeStageProgress} aria-live="polite">
+              <div className={`${styles.stageItem} ${searchQuery.length > 0 ? styles.stageResolved : styles.stageActive}`}>
+                <span className={styles.stageDot} />
+                <span className={styles.stageText}>1. Understanding issue</span>
+              </div>
+              <div className={styles.stageLine} />
+              <div className={`${styles.stageItem} ${troubleshooterResult.matched ? styles.stageResolved : styles.stageActive}`}>
+                <span className={styles.stageDot} />
+                <span className={styles.stageText}>2. Matching help</span>
+              </div>
+              <div className={styles.stageLine} />
+              <div className={`${styles.stageItem} ${troubleshooterResult.matched ? styles.stageResolved : styles.stageWaiting}`}>
+                <span className={styles.stageDot} />
+                <span className={styles.stageText}>3. Recommended action</span>
+              </div>
+            </div>
+          )}
+
+          {/* Troubleshooting Match Results Panel */}
+          {hasInteracted && searchQuery.trim().length > 0 && (
+            <div id="troubleshooter-results" className={styles.troubleshooterResultsPanel}>
+              {troubleshooterResult.matched && troubleshooterResult.intent && (
+                <div className={styles.matchCard}>
+                  <div className={styles.matchHeader}>
+                    <div className={styles.matchBadge}>✓ Recommended Fix</div>
+                    <span className={styles.matchTime}>⏱ Est. time: {troubleshooterResult.intent.estimatedTime}</span>
+                  </div>
+                  <h3 className={styles.matchTitle}>{troubleshooterResult.intent.title}</h3>
+                  <p className={styles.matchExplanation}>{troubleshooterResult.intent.explanation}</p>
+                  
+                  <div className={styles.matchActionsRow}>
+                    <button
+                      className={styles.btnPrimary}
                       onClick={() => {
-                        setActiveArticle(art);
-                        setIsSearchFocused(false);
+                        const targetArt = allArticlesList.find(a => a.id === troubleshooterResult.intent?.articleId);
+                        if (targetArt) openArticle(targetArt);
                       }}
                     >
-                      <div className={styles.spotlightItemLeft}>
-                        <Icons.BookCheck />
-                        <div>
-                          <div className={styles.spotlightItemTitle}>{art.title}</div>
-                          <div className={styles.spotlightItemMeta}>{art.category} · {art.readTime}</div>
-                        </div>
-                      </div>
-                      <span className={styles.spotlightTag}>Open Guide</span>
-                    </div>
-                  ))}
+                      <span>Open step-by-step guide</span>
+                      <Icons.ArrowUpRight />
+                    </button>
+                    <button
+                      className={styles.btnOutline}
+                      onClick={() => openTicketWithSubject(searchQuery, `Matched intent: ${troubleshooterResult.intent?.title}`)}
+                    >
+                      Still stuck? Open a ticket
+                    </button>
+                  </div>
                 </div>
               )}
 
-              {spotlightTrades.length > 0 && (
-                <div>
-                  <div className={styles.spotlightCategoryTitle}>🧰 Trade Playbooks</div>
-                  {spotlightTrades.map(trade => (
-                    <div
-                      key={trade.id}
-                      className={styles.spotlightItem}
-                      onClick={() => {
-                        setActiveTrade(trade.id);
-                        setActiveTradeTemplate(trade);
-                        setIsSearchFocused(false);
-                      }}
-                    >
-                      <div className={styles.spotlightItemLeft}>
-                        <Icons.Wrench />
-                        <div>
-                          <div className={styles.spotlightItemTitle}>{trade.name} Playbook</div>
-                          <div className={styles.spotlightItemMeta}>{trade.headline}</div>
+              {!troubleshooterResult.matched && (
+                <div className={styles.unmatchedCard}>
+                  <div className={styles.unmatchedHeader}>
+                    <Icons.AlertCircle />
+                    <div>
+                      <h4>Closest Recommended Guides for &quot;{searchQuery}&quot;</h4>
+                      <p>We found related troubleshooting steps below or you can connect with our support desk:</p>
+                    </div>
+                  </div>
+
+                  <div className={styles.unmatchedSuggestionsGrid}>
+                    {troubleshooterResult.suggestedArticles?.map(art => (
+                      <div
+                        key={art.id}
+                        className={styles.suggestedArticleCard}
+                        onClick={() => {
+                          const fullArt = allArticlesList.find(a => a.id === art.id);
+                          if (fullArt) openArticle(fullArt);
+                        }}
+                      >
+                        <div className={styles.suggestedArtTitle}>{art.title}</div>
+                        <div className={styles.suggestedArtMeta}>
+                          <span>{art.category}</span>
+                          <span>•</span>
+                          <span>{art.readTime}</span>
                         </div>
                       </div>
-                      <span className={styles.spotlightTag}>View Template</span>
-                    </div>
-                  ))}
-                </div>
-              )}
+                    ))}
+                  </div>
 
-              {spotlightTemplates.length > 0 && (
-                <div>
-                  <div className={styles.spotlightCategoryTitle}>📄 Stylized Legal &amp; Billing Documents</div>
-                  {spotlightTemplates.map(tpl => (
-                    <div
-                      key={tpl.id}
-                      className={styles.spotlightItem}
-                      onClick={() => {
-                        generateStylizedDocument(tpl);
-                        showToast(`Generated & opened: ${tpl.name}`);
-                        setIsSearchFocused(false);
-                      }}
+                  <div className={styles.unmatchedActionFooter}>
+                    <button
+                      className={styles.btnPrimarySm}
+                      onClick={() => openTicketWithSubject(searchQuery)}
                     >
-                      <div className={styles.spotlightItemLeft}>
-                        <Icons.Download />
-                        <div>
-                          <div className={styles.spotlightItemTitle}>{tpl.name}</div>
-                          <div className={styles.spotlightItemMeta}>{tpl.fileFormat} · Print &amp; PDF Ready</div>
-                        </div>
-                      </div>
-                      <span className={styles.spotlightTag}>Open &amp; Print</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {spotlightArticles.length === 0 && spotlightTrades.length === 0 && spotlightTemplates.length === 0 && (
-                <div style={{ padding: '1.5rem', textAlign: 'center', color: '#94a3b8' }}>
-                  No exact matches for &quot;{searchQuery}&quot;. Try searching for <em>&quot;DNS&quot;</em>, <em>&quot;Deposit&quot;</em>, or <em>&quot;SMS&quot;</em>.
+                      <Icons.LifeBuoy />
+                      <span>Ask support about &quot;{searchQuery}&quot;</span>
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
           )}
+        </div>
+      </section>
 
-          {/* Quick Topic Filter Pills */}
-          <div className={styles.topicPillsRow}>
-            <span className={styles.pillsLabel}>Popular:</span>
+      {/* ================= 2. COMMON FIXES ================= */}
+      <section id="common-fixes" className={styles.sectionContainer}>
+        <div className={styles.sectionHeader}>
+          <div>
+            <span className={styles.sectionTag}>Diagnostic Guides</span>
+            <h2 className={styles.sectionTitle}>Common Fixes</h2>
+            <p className={styles.sectionDesc}>
+              Fast step-by-step diagnostic solutions for top contractor setup and delivery workflows.
+            </p>
+          </div>
+        </div>
+
+        <div className={styles.commonFixesGrid}>
+          {COMMON_FIX_ARTICLES.map(art => (
+            <div key={art.id} className={styles.commonFixCard} onClick={() => openArticle(art)}>
+              <div className={styles.commonFixTop}>
+                <span className={styles.commonFixBadge}>{art.category}</span>
+                <span className={styles.commonFixTime}>⏱ {art.readTime}</span>
+              </div>
+              <h3 className={styles.commonFixTitle}>{art.title}</h3>
+              <p className={styles.commonFixAudience}>For: {art.audience || 'Contractors'}</p>
+              <div className={styles.commonFixAction}>
+                <span>Open Guide</span>
+                <Icons.ArrowUpRight />
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ================= 3. EXPLORE ALL GUIDES ================= */}
+      <section id="knowledge-hub" className={styles.sectionContainer}>
+        <div className={styles.sectionHeader}>
+          <div>
+            <span className={styles.sectionTag}>Knowledge Base</span>
+            <h2 className={styles.sectionTitle}>Explore All Guides</h2>
+            <p className={styles.sectionDesc}>
+              {totalGuides} step-by-step guides covering instant quoting, custom domains, SMS carrier rules, and dispatch.
+            </p>
+          </div>
+
+          <div className={styles.topicFilterPills}>
             {[
-              { id: 'all', label: 'All Topics' },
-              { id: 'quoting', label: 'Instant Quoting' },
-              { id: 'sms', label: 'SMS & Business Phone' },
-              { id: 'website', label: 'AI Website' },
-              { id: 'invoicing', label: 'Invoicing & Stripe' },
-              { id: 'team', label: 'Team & Dispatch' }
+              { id: 'all', label: 'All Guides' },
+              { id: 'onboarding', label: 'Setup' },
+              { id: 'quoting', label: 'Quoting' },
+              { id: 'sms', label: 'SMS & Phone' },
+              { id: 'website', label: 'Website' },
+              { id: 'invoicing', label: 'Invoicing' },
+              { id: 'team', label: 'Team' }
             ].map(p => (
               <button
                 key={p.id}
@@ -1139,135 +802,135 @@ export default function HelpCenter() {
           </div>
         </div>
 
-        {/* Hero Metric Highlights Bar */}
-        <div className={styles.heroStatsDeck}>
-          <div className={styles.statCard}>
-            <Icons.Clock />
-            <div className={styles.statMeta}>
-              <span className={styles.statVal}>&lt; 2 mins</span>
-              <span className={styles.statLbl}>Average Chat Reply</span>
-            </div>
-          </div>
-          <div className={styles.statCard}>
-            <Icons.BookCheck />
-            <div className={styles.statMeta}>
-              <span className={styles.statVal}>120+</span>
-              <span className={styles.statLbl}>Contractor Guides</span>
-            </div>
-          </div>
-          <div className={styles.statCard}>
-            <Icons.ShieldCheck />
-            <div className={styles.statMeta}>
-              <span className={styles.statVal}>99.98%</span>
-              <span className={styles.statLbl}>Uptime SLA</span>
-            </div>
-          </div>
-          <div className={styles.statCard}>
-            <Icons.Bot />
-            <div className={styles.statMeta}>
-              <span className={styles.statVal}>Priority SLA</span>
-              <span className={styles.statLbl}>Engineering Support</span>
-            </div>
-          </div>
+        <div className={styles.bentoGrid}>
+          {KNOWLEDGE_BASE.filter(cat => selectedTopic === 'all' || cat.topic === selectedTopic).map(cat => {
+            const isExpanded = Boolean(expandedCategories[cat.id]);
+            const visibleArticles = isExpanded ? cat.articles : cat.articles.slice(0, 3);
+
+            return (
+              <div key={cat.id} className={styles.bentoCard}>
+                <div className={styles.bentoCardTop}>
+                  <div className={styles.bentoIconBox}>
+                    {ICON_MAP[cat.icon] || <Icons.Rocket />}
+                  </div>
+                  <span className={styles.bentoCountBadge}>{cat.articles.length} Guides</span>
+                </div>
+                <h3 className={styles.bentoCardTitle}>{cat.title}</h3>
+                <p className={styles.bentoCardDesc}>{cat.desc}</p>
+
+                <div className={styles.bentoArticleList}>
+                  {visibleArticles.map(art => (
+                    <div
+                      key={art.id}
+                      className={styles.bentoArticleItem}
+                      onClick={() => openArticle(art)}
+                    >
+                      <span>{art.title}</span>
+                      <Icons.ArrowUpRight />
+                    </div>
+                  ))}
+                </div>
+
+                {cat.articles.length > 3 && (
+                  <button
+                    className={styles.expandCategoryBtn}
+                    onClick={() => toggleCategoryExpand(cat.id)}
+                  >
+                    {isExpanded ? 'Show fewer guides ↑' : `View all ${cat.articles.length} guides ↓`}
+                  </button>
+                )}
+              </div>
+            );
+          })}
         </div>
       </section>
 
-      {/* ================= QUICK START 3-STEP ONBOARDING CHECKLIST ================= */}
-      <section id="quick-start" style={{ padding: '0 1.5rem' }}>
+      {/* ================= 4. NEW-USER QUICK START ================= */}
+      <section id="quick-start" className={styles.sectionContainer}>
         <div className={styles.quickStartBanner}>
           <div className={styles.quickStartHeader}>
             <div className={styles.quickStartBadge}>
               <Icons.Rocket />
             </div>
             <div>
-              <h3 className={styles.quickStartTitle}>New to Let&apos;s Get Quoted? Start Here</h3>
+              <h3 className={styles.quickStartTitle}>New to Let’s Get Quoted? Fast-Track Setup</h3>
               <p className={styles.quickStartSubtitle}>Complete these 3 foundational steps to send your first quote today.</p>
             </div>
           </div>
 
-          <div className={styles.quickStepsRow}>
-            <div
-              className={styles.quickStepItem}
-              onClick={() => {
-                setCompletedSteps(prev => ({ ...prev, 1: !prev[1] }));
-              }}
-            >
-              <div className={`${styles.stepNum} ${completedSteps[1] ? styles.stepDone : ''}`}>
-                {completedSteps[1] ? <Icons.Check /> : '1'}
+          {/* Desktop Compact Progress Row */}
+          <div className={styles.quickStepsDesktopRow}>
+            {[
+              { num: 1, title: 'Set Profit Markup', desc: 'Add materials & hourly rates' },
+              { num: 2, title: 'Verify Business SMS', desc: '10DLC carrier registration' },
+              { num: 3, title: 'Send 3-Tier Quote', desc: 'Good / Better / Best packages' }
+            ].map(step => (
+              <div
+                key={step.num}
+                className={styles.quickStepItem}
+                onClick={() => {
+                  setCompletedSteps(prev => ({ ...prev, [step.num]: !prev[step.num] }));
+                  showToast(`Step ${step.num} updated`);
+                }}
+              >
+                <div className={`${styles.stepNum} ${completedSteps[step.num] ? styles.stepDone : ''}`}>
+                  {completedSteps[step.num] ? <Icons.Check /> : step.num}
+                </div>
+                <div className={styles.stepText}>
+                  <strong>{step.title}</strong>
+                  <span>{step.desc}</span>
+                </div>
               </div>
-              <div className={styles.stepText}>
-                <strong>Set Profit Markup</strong>
-                <span>Add materials &amp; labor rate</span>
-                <Link
-                  href="/resources/markup-vs-margin-calculator-guide"
-                  className={styles.quickStepLink}
-                  onClick={e => e.stopPropagation()}
-                >
-                  Open Calculator Guide ↗
-                </Link>
-              </div>
-            </div>
+            ))}
+          </div>
 
-            <div
-              className={styles.quickStepItem}
-              onClick={() => {
-                setCompletedSteps(prev => ({ ...prev, 2: !prev[2] }));
-              }}
-            >
-              <div className={`${styles.stepNum} ${completedSteps[2] ? styles.stepDone : ''}`}>
-                {completedSteps[2] ? <Icons.Check /> : '2'}
-              </div>
-              <div className={styles.stepText}>
-                <strong>Verify Business SMS</strong>
-                <span>10DLC carrier compliance</span>
-                <Link
-                  href="/resources/contractor-10dlc-sms-compliance-guide"
-                  className={styles.quickStepLink}
-                  onClick={e => e.stopPropagation()}
+          {/* Mobile Accordion */}
+          <div className={styles.quickStepsMobileAccordion}>
+            {[
+              { num: 1, title: '1. Set Profit Markup', desc: 'Configure company hourly labor rate and baseline material markups in Settings > Rates.' },
+              { num: 2, title: '2. Verify Business SMS', desc: 'Submit your legal EIN and business address in Settings > SMS to enable dedicated carrier texting.' },
+              { num: 3, title: '3. Send 3-Tier Quote', desc: 'Create a multi-option estimate in Jobs > Quotes and text the private approval link to a customer.' }
+            ].map(step => (
+              <div key={step.num} className={styles.mobileStepAccordionItem}>
+                <button
+                  className={styles.mobileStepHeaderBtn}
+                  aria-expanded={activeMobileStep === step.num}
+                  aria-controls={`mobile-step-body-${step.num}`}
+                  onClick={() => setActiveMobileStep(activeMobileStep === step.num ? null : step.num)}
                 >
-                  Carrier Checklist ↗
-                </Link>
+                  <span>{step.title}</span>
+                  <Icons.ChevronDown isOpen={activeMobileStep === step.num} />
+                </button>
+                {activeMobileStep === step.num && (
+                  <div id={`mobile-step-body-${step.num}`} className={styles.mobileStepBody}>
+                    <p>{step.desc}</p>
+                    <button
+                      className={styles.stepDoneToggleBtn}
+                      onClick={() => setCompletedSteps(prev => ({ ...prev, [step.num]: !prev[step.num] }))}
+                    >
+                      {completedSteps[step.num] ? '✓ Marked as Completed' : 'Mark as Done'}
+                    </button>
+                  </div>
+                )}
               </div>
-            </div>
-
-            <div
-              className={styles.quickStepItem}
-              onClick={() => {
-                setCompletedSteps(prev => ({ ...prev, 3: !prev[3] }));
-              }}
-            >
-              <div className={`${styles.stepNum} ${completedSteps[3] ? styles.stepDone : ''}`}>
-                {completedSteps[3] ? <Icons.Check /> : '3'}
-              </div>
-              <div className={styles.stepText}>
-                <strong>Send 3-Tier Quote</strong>
-                <span>Good / Better / Best options</span>
-                <Link
-                  href="/resources/good-better-best-quoting-guide"
-                  className={styles.quickStepLink}
-                  onClick={e => e.stopPropagation()}
-                >
-                  Tiered Quoting Guide ↗
-                </Link>
-              </div>
-            </div>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* ================= TRADE-SPECIFIC PLAYBOOKS ================= */}
+      {/* ================= 5. TRADE-SPECIFIC PLAYBOOKS ================= */}
       <section id="trade-playbooks" className={styles.sectionContainer}>
         <div className={styles.sectionHeader}>
           <div>
-            <span className={styles.sectionTag}>Custom Workflows</span>
+            <span className={styles.sectionTag}>Trade Playbooks</span>
             <h2 className={styles.sectionTitle}>Playbooks Built for Your Trade</h2>
             <p className={styles.sectionDesc}>
-              Tailored quoting formulas, emergency multipliers, and deposit schedules designed specifically for residential trade specialists.
+              Tailored quoting formulas, emergency multipliers, and deposit schedules for residential trade specialists.
             </p>
           </div>
         </div>
 
-        {/* Trade Switcher Pills */}
+        {/* Trade Switcher Tabs */}
         <div className={styles.tradeTabsContainer}>
           {TRADE_PLAYBOOKS.map(trade => (
             <button
@@ -1287,36 +950,23 @@ export default function HelpCenter() {
             <span className={styles.tradeBadge}>{currentTrade.badge}</span>
             <h3 className={styles.tradeHeadline}>{currentTrade.headline}</h3>
             <p className={styles.tradeDescription}>{currentTrade.description}</p>
-            <div style={{ marginTop: 'auto', display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-              <button
-                className={styles.btnPrimarySm}
-                onClick={() => setActiveTradeTemplate(currentTrade)}
-              >
-                <Icons.Sparkles />
-                <span>Load {currentTrade.name} Template</span>
-              </button>
-              <Link
-                href={`/for/${currentTrade.tradeSlug}`}
-                className={styles.btnOutline}
-                style={{ fontSize: '0.85rem', padding: '0.5rem 0.9rem' }}
-              >
-                <span>View Trade Features ↗</span>
-              </Link>
-            </div>
+            
+            <button
+              className={styles.viewWorkflowsBtn}
+              onClick={() => setIsTradeWorkflowExpanded(!isTradeWorkflowExpanded)}
+              aria-expanded={isTradeWorkflowExpanded}
+              aria-controls="trade-workflows-panel"
+            >
+              {isTradeWorkflowExpanded ? 'Hide Workflows ↑' : 'View Workflows ↓'}
+            </button>
           </div>
 
-          <div className={styles.tradeCardRight}>
+          <div id="trade-workflows-panel" className={`${styles.tradeCardRight} ${isTradeWorkflowExpanded ? styles.tradeCardRightExpanded : ''}`}>
             {currentTrade.keyWorkflows.map((wf, idx) => (
-              <div
-                key={idx}
-                className={`${styles.workflowItemCard} ${styles.clickableWorkflow}`}
-                onClick={() => setActiveWorkflow(wf)}
-                title="Click to view full workflow formula & actions"
-              >
+              <div key={idx} className={styles.workflowItemCard}>
                 <h4 className={styles.workflowTitle}>
                   <Icons.CheckCircle />
                   <span>{wf.title}</span>
-                  <Icons.ArrowUpRight />
                 </h4>
                 <p className={styles.workflowDesc}>{wf.desc}</p>
               </div>
@@ -1325,295 +975,365 @@ export default function HelpCenter() {
         </div>
       </section>
 
-      {/* ================= 60-SECOND VIDEO PLAYBOOKS ================= */}
-      <section id="video-playbooks" className={styles.sectionContainer}>
-        <div className={styles.sectionHeader}>
-          <div>
-            <span className={styles.sectionTag}>Visual Walkthroughs</span>
-            <h2 className={styles.sectionTitle}>60-Second Video Fixes</h2>
-            <p className={styles.sectionDesc}>
-              Fast, on-truck video demonstrations showing you exactly how to configure key features in under a minute.
-            </p>
-          </div>
-        </div>
-
-        <div className={styles.videoGrid}>
-          {VIDEO_PLAYBOOKS.map(vid => (
-            <div
-              key={vid.id}
-              className={styles.videoCard}
-              onClick={() => setActiveVideo(vid)}
-            >
-              <div
-                className={styles.videoThumbnailBox}
-                style={{ background: vid.thumbnailGradient }}
-              >
-                <div className={styles.playBtnCircle}>
-                  <Icons.Play />
-                </div>
-                <div className={styles.videoDurationBadge}>
-                  <Icons.Clock />
-                  <span>{vid.duration}</span>
-                </div>
-              </div>
-              <div className={styles.videoBody}>
-                <span className={styles.videoCat}>{vid.category}</span>
-                <h4 className={styles.videoTitle}>{vid.title}</h4>
-                <p className={styles.videoSummary}>{vid.summary}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Bento Grid Knowledge Base */}
-      <section id="knowledge-hub" className={styles.sectionContainer}>
-        <div className={styles.sectionHeader}>
-          <div>
-            <span className={styles.sectionTag}>Knowledge Base</span>
-            <h2 className={styles.sectionTitle}>Explore All Guides</h2>
-            <p className={styles.sectionDesc}>
-              Deep-dive into comprehensive workflows built specifically for modern residential contractors.
-            </p>
-          </div>
-          <div className={styles.viewSwitchTabs}>
-            <button
-              className={`${styles.viewTab} ${viewMode === 'grid' ? styles.activeTab : ''}`}
-              onClick={() => setViewMode('grid')}
-            >
-              <Icons.LayoutGrid /> Grid
-            </button>
-            <button
-              className={`${styles.viewTab} ${viewMode === 'list' ? styles.activeTab : ''}`}
-              onClick={() => setViewMode('list')}
-            >
-              <Icons.List /> List
-            </button>
-          </div>
-        </div>
-
-        <div className={`${styles.bentoGrid} ${viewMode === 'list' ? styles.listView : ''}`}>
-          {filteredCategories.map((cat, idx) => (
-            <div
-              key={cat.id}
-              className={`${styles.bentoCard} ${idx === 0 && viewMode === 'grid' ? styles.spanTwo : ''}`}
-            >
-              <div className={styles.bentoCardTop}>
-                <div className={styles.bentoIconBox}>
-                  {ICON_MAP[cat.icon] || <Icons.Rocket />}
-                </div>
-                <span className={styles.bentoCountBadge}>{cat.count}</span>
-              </div>
-              <h3 className={styles.bentoCardTitle}>{cat.title}</h3>
-              <p className={styles.bentoCardDesc}>{cat.desc}</p>
-              <div className={styles.bentoArticleList}>
-                {cat.articles.map(art => (
-                  <div
-                    key={art.id}
-                    className={styles.bentoArticleItem}
-                    onClick={() => setActiveArticle(art)}
-                  >
-                    <span>{art.title}</span>
-                    <Icons.ArrowUpRight />
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ================= STYLIZED DOWNLOADABLE CONTRACTOR ASSETS ================= */}
+      {/* ================= 6. CONTRACTOR TEMPLATES & AGREEMENTS ================= */}
       <section id="contractor-templates" className={styles.sectionContainer}>
         <div className={styles.sectionHeader}>
           <div>
-            <span className={styles.sectionTag}>Stylized Legal Documents</span>
-            <h2 className={styles.sectionTitle}>Download &amp; Print Contractor Agreements</h2>
+            <span className={styles.sectionTag}>Documentation</span>
+            <h2 className={styles.sectionTitle}>Contractor Templates</h2>
             <p className={styles.sectionDesc}>
-              Ready-to-print, beautifully formatted contractor lien waivers, change order authorizations, and milestone deposit schedules.
+              Print-ready milestone deposit agreements, extra work change orders, and progress lien waiver templates.
             </p>
           </div>
         </div>
 
-        <div className={styles.templateGrid}>
+        <div className={styles.templatesGrid}>
           {DOWNLOADABLE_TEMPLATES.map(tpl => (
             <div key={tpl.id} className={styles.templateCard}>
-              <div className={styles.templateHeader}>
-                <span className={styles.templateFormatTag}>Print &amp; PDF Ready</span>
-                <span className={styles.templateDownloads}>{tpl.downloadsCount} downloads</span>
+              <div className={styles.templateTop}>
+                <span className={styles.templateFormatBadge}>PDF &amp; Print Ready</span>
+                <span className={styles.templateSize}>{tpl.fileSize}</span>
               </div>
               <h3 className={styles.templateName}>{tpl.name}</h3>
               <p className={styles.templateDesc}>{tpl.description}</p>
               <button
-                className={styles.btnOutlineBlock}
-                onClick={() => {
-                  generateStylizedDocument(tpl);
-                  showToast(`Opened printable document: ${tpl.name}`);
-                }}
+                className={styles.btnOutlineSm}
+                onClick={() => setActiveDocument(tpl)}
               >
-                <Icons.Download />
-                <span>Open &amp; Print Document</span>
+                <Icons.Eye />
+                <span>Preview Template</span>
               </button>
             </div>
           ))}
         </div>
+
+        {/* Mandatory Legal Disclaimer */}
+        <div className={styles.legalDisclaimerBox}>
+          <strong>Disclaimer:</strong> {LEGAL_TEMPLATES_DISCLAIMER}
+        </div>
       </section>
 
-      {/* FAQs Section */}
+      {/* ================= 7. FAQS ================= */}
       <section id="faqs" className={styles.sectionContainer}>
-        <div className={styles.sectionHeaderCenter}>
-          <span className={styles.sectionTag}>FAQ</span>
-          <h2 className={styles.sectionTitle}>Frequently Asked Questions</h2>
-          <p className={styles.sectionDesc}>Quick answers to the most common questions our team receives.</p>
+        <div className={styles.sectionHeader}>
+          <div>
+            <span className={styles.sectionTag}>Answers</span>
+            <h2 className={styles.sectionTitle}>Frequently Asked Questions</h2>
+            <p className={styles.sectionDesc}>
+              Common questions on 10DLC compliance, Stripe payout timings, domain setup, and crew dispatch.
+            </p>
+          </div>
+
+          <div className={styles.faqCategoryPills}>
+            {[
+              { id: 'all', label: 'All' },
+              { id: 'quotes', label: 'Quotes' },
+              { id: 'messaging', label: 'Messaging' },
+              { id: 'payments', label: 'Payments' },
+              { id: 'website', label: 'Website' },
+              { id: 'team', label: 'Team & Scheduling' },
+              { id: 'billing', label: 'Account & Billing' }
+            ].map(tab => (
+              <button
+                key={tab.id}
+                className={`${styles.topicPill} ${faqCategory === tab.id ? styles.activePill : ''}`}
+                onClick={() => setFaqCategory(tab.id)}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
         </div>
 
-        <div className={styles.faqList}>
-          {FAQS.map((faq, i) => (
-            <div key={i} className={`${styles.faqItem} ${activeFaq === i ? styles.faqActive : ''}`}>
-              <button
-                className={styles.faqTrigger}
-                onClick={() => setActiveFaq(activeFaq === i ? null : i)}
-              >
-                <span>{faq.question}</span>
-                <Icons.ChevronDown />
-              </button>
-              {activeFaq === i && (
-                <div className={styles.faqAnswer}>
-                  <p>{faq.answer}</p>
-                  <div className={styles.faqVoteRow}>
-                    <span>Was this helpful?</span>
-                    <button
-                      className={styles.faqVoteBtn}
-                      onClick={() => {
-                        setFaqFeedback(prev => ({ ...prev, [i]: true }));
-                        showToast('Thanks for your feedback!');
-                      }}
-                    >
-                      {faqFeedback[i] ? <Icons.Check /> : <Icons.ThumbsUp />}
-                      <span>{faqFeedback[i] ? 'Recorded' : 'Yes'}</span>
-                    </button>
+        <div className={styles.faqAccordionList}>
+          {filteredFaqs.map(faq => {
+            const isOpen = activeFaq === faq.id;
+            const currentFeedback = faqFeedback[faq.id];
+
+            return (
+              <div key={faq.id} className={styles.faqItem}>
+                <button
+                  className={styles.faqQuestionBtn}
+                  aria-expanded={isOpen}
+                  aria-controls={`faq-answer-${faq.id}`}
+                  onClick={() => setActiveFaq(isOpen ? null : faq.id)}
+                >
+                  <span>{faq.question}</span>
+                  <Icons.ChevronDown isOpen={isOpen} />
+                </button>
+
+                {isOpen && (
+                  <div id={`faq-answer-${faq.id}`} className={styles.faqAnswerBody}>
+                    <p>{faq.answer}</p>
+
+                    {/* FAQ Feedback Row */}
+                    <div className={styles.faqFeedbackRow}>
+                      <span className={styles.faqFeedbackLabel}>Was this helpful?</span>
+                      <button
+                        className={`${styles.faqFeedbackBtn} ${currentFeedback === 'yes' ? styles.feedbackActive : ''}`}
+                        onClick={() => {
+                          setFaqFeedback(prev => ({ ...prev, [faq.id]: 'yes' }));
+                          showToast('Thank you for your feedback!');
+                        }}
+                      >
+                        <Icons.ThumbsUp /> Yes
+                      </button>
+                      <button
+                        className={`${styles.faqFeedbackBtn} ${currentFeedback === 'no' ? styles.feedbackActive : ''}`}
+                        onClick={() => setFaqFeedback(prev => ({ ...prev, [faq.id]: 'no' }))}
+                      >
+                        <Icons.ThumbsDown /> No
+                      </button>
+                    </div>
+
+                    {/* Deflection options on "No" */}
+                    {currentFeedback === 'no' && (
+                      <div className={styles.faqFeedbackDeflection}>
+                        <span>How can we improve this answer?</span>
+                        <div className={styles.deflectionOptionsRow}>
+                          <button
+                            className={styles.deflectionChip}
+                            onClick={() => {
+                              setFaqFeedbackReason(prev => ({ ...prev, [faq.id]: 'incomplete' }));
+                              showToast('Feedback recorded: Incomplete answer');
+                            }}
+                          >
+                            The answer was incomplete
+                          </button>
+                          <button
+                            className={styles.deflectionChip}
+                            onClick={() => {
+                              setFaqFeedbackReason(prev => ({ ...prev, [faq.id]: 'outdated' }));
+                              showToast('Feedback recorded: Outdated steps');
+                            }}
+                          >
+                            The steps appear outdated
+                          </button>
+                          <button
+                            className={`${styles.deflectionChip} ${styles.deflectionChipContact}`}
+                            onClick={() => openTicketWithSubject(`FAQ Issue: ${faq.question}`, 'User reported this FAQ answer was unhelpful or outdated.')}
+                          >
+                            Contact support →
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* ================= 8. CONTACT SUPPORT ================= */}
+      <section id="contact-support" className={styles.sectionContainer}>
+        <div className={styles.sectionHeader}>
+          <div>
+            <span className={styles.sectionTag}>Direct Assistance</span>
+            <h2 className={styles.sectionTitle}>Contact Support</h2>
+            <p className={styles.sectionDesc}>
+              Reach our dedicated support desk or submit technical logs for fast resolution.
+            </p>
+          </div>
+        </div>
+
+        <div className={styles.supportChannelsGrid}>
+          {SUPPORT_CHANNELS.map(chan => (
+            <div key={chan.id} className={styles.supportChannelCard}>
+              <div className={styles.channelTop}>
+                <div className={styles.channelIconBox}>
+                  {ICON_MAP[chan.icon] || <Icons.LifeBuoy />}
                 </div>
+                <h3 className={styles.channelName}>{chan.name}</h3>
+              </div>
+
+              <div className={styles.channelField}>
+                <span className={styles.channelFieldLabel}>Best used for:</span>
+                <span className={styles.channelFieldVal}>{chan.bestUsedFor}</span>
+              </div>
+
+              <div className={styles.channelField}>
+                <span className={styles.channelFieldLabel}>Availability:</span>
+                <span className={styles.channelFieldVal}>{chan.availability}</span>
+              </div>
+
+              <div className={styles.channelField}>
+                <span className={styles.channelFieldLabel}>Expected response:</span>
+                <span className={styles.channelFieldVal}><strong>{chan.responseTarget}</strong></span>
+              </div>
+
+              <div className={styles.channelField}>
+                <span className={styles.channelFieldLabel}>What to prepare:</span>
+                <ul className={styles.prepareList}>
+                  {chan.prepareInfo.map((info, idx) => (
+                    <li key={idx}>{info}</li>
+                  ))}
+                </ul>
+              </div>
+
+              {chan.id === 'chan-ticket' && (
+                <button
+                  className={styles.btnPrimaryBlock}
+                  onClick={() => openTicketWithSubject('')}
+                >
+                  <Icons.LifeBuoy />
+                  <span>Open Help Desk Ticket</span>
+                </button>
+              )}
+
+              {chan.id === 'chan-email' && (
+                <a
+                  href="mailto:support@letsgetquoted.com"
+                  className={styles.btnOutlineBlock}
+                >
+                  <Icons.Send />
+                  <span>Email Support Team</span>
+                </a>
+              )}
+
+              {chan.id === 'chan-community' && (
+                <a
+                  href="#knowledge-hub"
+                  className={styles.btnOutlineBlock}
+                >
+                  <Icons.BookCheck />
+                  <span>Browse Guides</span>
+                </a>
               )}
             </div>
           ))}
         </div>
       </section>
 
-      {/* Multi-Channel Escalation Footer Dock */}
-      <section className={styles.escalationSection}>
-        <div className={styles.escalationCard}>
-          <span className={styles.sectionTag}>Always Here For You</span>
-          <h2 className={styles.escalationTitle}>Still have questions? We&apos;re on standby.</h2>
-          <p className={styles.escalationSubtitle}>
-            Our technical team and contractor specialists are ready to jump in via chat, ticket, or phone.
-          </p>
+      {/* ================= MODALS & DRAWERS ================= */}
 
-          <div className={styles.channelsGrid}>
-            <div className={styles.channelCard}>
-              <Icons.MessagesSquare />
-              <h3 className={styles.channelName}>Live Specialist Chat</h3>
-              <p className={styles.channelDesc}>
-                Instant real-time support from our engineering and product team.
-              </p>
-              <button
-                className={styles.btnOutlineBlock}
-                onClick={() => {
-                  setTicketSubject('[Live Chat Request] Need help with quote setup');
-                  setIsTicketSubmitted(false);
-                  setIsTicketDrawerOpen(true);
-                }}
-              >
-                Start Live Chat
-              </button>
+      {/* 1. Article Reader Modal with ?article= query synchronization */}
+      {activeArticle && (
+        <div className={styles.modalOverlay} onClick={closeArticle} role="dialog" aria-modal="true" aria-labelledby="modal-article-title">
+          <div className={styles.articleModal} onClick={e => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <span className={styles.categoryBadge}>{activeArticle.category}</span>
+                {activeArticle.audience && (
+                  <span className={styles.audienceBadge}>Audience: {activeArticle.audience}</span>
+                )}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <button
+                  className={styles.copyLinkBtn}
+                  onClick={() => copyToClipboard(`https://letsgetquoted.com/help?article=${activeArticle.id}`, 'Guide Link')}
+                >
+                  <Icons.Copy />
+                  <span>Copy guide link</span>
+                </button>
+                <button className={styles.iconBtn} onClick={closeArticle} aria-label="Close guide modal">
+                  <Icons.X />
+                </button>
+              </div>
             </div>
 
-            <div className={`${styles.channelCard} ${styles.channelFeatured}`}>
-              <Icons.LifeBuoy />
-              <h3 className={styles.channelName}>Priority Support Ticket</h3>
-              <p className={styles.channelDesc}>
-                Submit logs, screenshots, and receive in-depth diagnostic assistance.
-              </p>
-              <button
-                className={styles.btnPrimaryBlock}
-                onClick={() => {
-                  setTicketSubject('');
-                  setIsTicketSubmitted(false);
-                  setIsTicketDrawerOpen(true);
-                }}
-              >
-                Submit Priority Ticket
-              </button>
-            </div>
+            <div className={styles.modalBody}>
+              <h1 id="modal-article-title" className={styles.articleTitle}>{activeArticle.title}</h1>
+              
+              <div className={styles.articleMetaDeck}>
+                <span>⏱ {activeArticle.readTime}</span>
+                <span>📅 Last Updated: {activeArticle.lastUpdated || 'August 2026'}</span>
+                <span>📁 Category: {activeArticle.category}</span>
+              </div>
 
-            <div className={styles.channelCard}>
-              <Icons.Calendar />
-              <h3 className={styles.channelName}>1-on-1 Onboarding Call</h3>
-              <p className={styles.channelDesc}>
-                Book a dedicated screen-share walkthrough with a contractor specialist.
-              </p>
-              <button
-                className={styles.btnOutlineBlock}
-                onClick={() => {
-                  setTicketSubject('[Onboarding Walkthrough Request] Schedule screen-share session');
-                  setIsTicketSubmitted(false);
-                  setIsTicketDrawerOpen(true);
-                }}
-              >
-                Schedule Session
-              </button>
+              <div
+                className={styles.articleContent}
+                dangerouslySetInnerHTML={{ __html: activeArticle.content }}
+              />
+
+              <div className={styles.modalFooterActions}>
+                <button
+                  className={styles.btnPrimarySm}
+                  onClick={() => copyToClipboard(`https://letsgetquoted.com/help?article=${activeArticle.id}`, 'Guide Link')}
+                >
+                  <Icons.Copy />
+                  <span>Share Guide</span>
+                </button>
+                <button
+                  className={styles.btnOutlineSm}
+                  onClick={() => openTicketWithSubject(`Question regarding: ${activeArticle.title}`)}
+                >
+                  Still stuck? Contact Support
+                </button>
+              </div>
             </div>
           </div>
         </div>
-      </section>
+      )}
 
-      {/* ================= DRAWERS & MODALS ================= */}
-
-      {/* 1. Slide-Out Smart Ticket Drawer */}
-      {isTicketDrawerOpen && (
-        <div className={styles.drawerOverlay} onClick={() => setIsTicketDrawerOpen(false)}>
-          <div className={styles.ticketDrawer} onClick={e => e.stopPropagation()}>
-            <div className={styles.drawerHeader}>
-              <div>
-                <h3 className={styles.drawerTitle}>Priority Support Ticket</h3>
-                <p className={styles.drawerSubtitle}>
-                  Direct line to our senior engineering &amp; contractor support team.
-                </p>
+      {/* 2. In-App Document Viewer & Print Modal */}
+      {activeDocument && (
+        <div className={styles.modalOverlay} onClick={() => setActiveDocument(null)} role="dialog" aria-modal="true">
+          <div className={styles.docModal} onClick={e => e.stopPropagation()}>
+            <div className={styles.docModalHeader}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <span className={styles.categoryBadge}>Contractor Templates</span>
+                <span style={{ fontSize: '0.8rem', color: '#10b981', fontWeight: 600 }}>
+                  ✓ Print &amp; PDF Ready
+                </span>
               </div>
-              <button className={styles.iconBtn} onClick={() => setIsTicketDrawerOpen(false)}>
+              <div className={styles.docHeaderActions}>
+                <button
+                  className={styles.btnPrimarySm}
+                  onClick={() => window.print()}
+                >
+                  <Icons.Printer />
+                  <span>Print / Save PDF</span>
+                </button>
+                <button className={styles.iconBtn} onClick={() => setActiveDocument(null)} aria-label="Close template preview">
+                  <Icons.X />
+                </button>
+              </div>
+            </div>
+
+            <div className={styles.docModalBody}>
+              <div className={styles.docPaperHeader}>
+                <span className={styles.docBadge}>FORM TEMPLATE • PRINT READY</span>
+                <h1 className={styles.docPaperTitle}>{activeDocument.name}</h1>
+                <p className={styles.docPaperDesc}>{activeDocument.description}</p>
+              </div>
+
+              <div className={styles.docSampleBody}>
+                <div className={styles.docClause}>
+                  <h3>Template Structure &amp; Clauses</h3>
+                  <p>Standard contractor agreement template ready for printing or attaching to customer proposals.</p>
+                </div>
+              </div>
+
+              <div className={styles.legalDisclaimerBox}>
+                <strong>Disclaimer:</strong> {LEGAL_TEMPLATES_DISCLAIMER}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 3. Support Ticket Drawer with Prefilled Query */}
+      {isTicketDrawerOpen && (
+        <div className={styles.drawerOverlay} onClick={closeTicketDrawer} role="dialog" aria-modal="true" aria-labelledby="drawer-title">
+          <div className={styles.drawerCard} onClick={e => e.stopPropagation()}>
+            <div className={styles.drawerHeader}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Icons.LifeBuoy />
+                <h3 id="drawer-title">Open Support Ticket</h3>
+              </div>
+              <button className={styles.iconBtn} onClick={closeTicketDrawer} aria-label="Close ticket drawer">
                 <Icons.X />
               </button>
             </div>
 
             <div className={styles.drawerBody}>
-              {ticketDeflection && (
-                <div className={styles.deflectionBox}>
-                  <div className={styles.deflectionHeader}>
-                    <Icons.Sparkles />
-                    <span>Instant Solution Found!</span>
-                  </div>
-                  <p>{ticketDeflection}</p>
-                  <div className={styles.deflectionActions}>
-                    <button
-                      className={styles.btnEmeraldSm}
-                      onClick={() => {
-                        setIsTicketDrawerOpen(false);
-                        showToast('Glad this solved your question! 🎉');
-                      }}
-                    >
-                      <Icons.Check />
-                      <span>Yes, this resolved my issue</span>
-                    </button>
-                  </div>
-                </div>
-              )}
-
               {!isTicketSubmitted ? (
                 <form
                   onSubmit={e => {
                     e.preventDefault();
                     setIsTicketSubmitted(true);
-                    showToast('Priority Ticket #LGQ-8942 Created');
                   }}
                 >
                   <div className={styles.formGroup}>
@@ -1625,7 +1345,7 @@ export default function HelpCenter() {
                     <input type="email" required defaultValue="support@letsgetquoted.com" />
                   </div>
                   <div className={styles.formGroup}>
-                    <label>Subject (Type to trigger instant answers)</label>
+                    <label>Subject</label>
                     <input
                       type="text"
                       required
@@ -1634,39 +1354,47 @@ export default function HelpCenter() {
                       onChange={e => setTicketSubject(e.target.value)}
                     />
                   </div>
-                  <div className={styles.formGroup}>
-                    <label>Description</label>
-                    <textarea rows={4} required placeholder="Describe what you're trying to accomplish..." />
-                  </div>
-                  <div className={styles.formGroup}>
-                    <label>Attachments (Optional)</label>
-                    <div className={styles.dropzone} onClick={() => showToast('Attached screenshot.png')}>
-                      <Icons.UploadCloud />
-                      <span>Drag &amp; drop screenshots or click to browse</span>
+
+                  {ticketDeflection && (
+                    <div className={styles.ticketDeflectionCard}>
+                      <strong>⚡ Instant Answer:</strong>
+                      <p>{ticketDeflection}</p>
                     </div>
+                  )}
+
+                  <div className={styles.formGroup}>
+                    <label>Description &amp; Error Details</label>
+                    <textarea
+                      rows={4}
+                      required
+                      placeholder="Describe what you're trying to accomplish..."
+                      value={ticketNotes}
+                      onChange={e => setTicketNotes(e.target.value)}
+                    />
                   </div>
+
                   <div className={styles.drawerFooter}>
                     <button
                       type="button"
                       className={styles.btnOutline}
-                      onClick={() => setIsTicketDrawerOpen(false)}
+                      onClick={closeTicketDrawer}
                     >
                       Cancel
                     </button>
                     <button type="submit" className={styles.btnPrimary}>
                       <Icons.Send />
-                      <span>Submit Priority Ticket</span>
+                      <span>Submit Ticket</span>
                     </button>
                   </div>
                 </form>
               ) : (
                 <div className={styles.ticketSuccess}>
                   <Icons.CheckCircle />
-                  <h3>Ticket #LGQ-8942 Created!</h3>
-                  <p>Our on-call engineers have been alerted. Guaranteed response within 4 hours.</p>
+                  <h3>Support Ticket Logged!</h3>
+                  <p>Our team has received your details and will follow up promptly via your account email.</p>
                   <button
                     className={styles.btnPrimaryBlock}
-                    onClick={() => setIsTicketDrawerOpen(false)}
+                    onClick={closeTicketDrawer}
                   >
                     Done
                   </button>
@@ -1677,312 +1405,13 @@ export default function HelpCenter() {
         </div>
       )}
 
-      {/* 2. Trade Quote Template Modal */}
-      {activeTradeTemplate && (
-        <div className={styles.modalOverlay} onClick={() => setActiveTradeTemplate(null)}>
-          <div className={styles.tradeTemplateModal} onClick={e => e.stopPropagation()}>
-            <div className={styles.modalHeader}>
-              <div>
-                <span className={styles.categoryBadge}>{activeTradeTemplate.badge}</span>
-                <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#fff', marginTop: '0.4rem' }}>
-                  {activeTradeTemplate.name} Quoting Template
-                </h2>
-                <p style={{ color: '#94a3b8', fontSize: '0.92rem', marginTop: '0.2rem' }}>
-                  {activeTradeTemplate.headline}
-                </p>
-              </div>
-              <button className={styles.iconBtn} onClick={() => setActiveTradeTemplate(null)}>
-                <Icons.X />
-              </button>
-            </div>
-
-            <div style={{ marginTop: '1.25rem' }}>
-              <div className={styles.formulaBox}>
-                <strong>Deposit Terms:</strong> {activeTradeTemplate.depositTerms}
-                <br />
-                <strong>Multipliers:</strong> {activeTradeTemplate.multiplierNotes}
-              </div>
-
-              <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: '#ffffff', margin: '1.5rem 0 0.5rem' }}>
-                Included 3-Tier Proposal Options
-              </h3>
-
-              <div className={styles.tierPreviewGrid}>
-                {activeTradeTemplate.tiers.map((t, idx) => (
-                  <div
-                    key={t.name}
-                    className={`${styles.tierCard} ${idx === 1 ? styles.tierCardFeatured : ''}`}
-                  >
-                    {t.badge && <span className={styles.tierBadge}>{t.badge}</span>}
-                    <div className={styles.tierName}>{t.name}</div>
-                    <div className={styles.tierPrice}>{t.price}</div>
-                    <ul className={styles.tierFeatureList}>
-                      {t.features.map(f => (
-                        <li key={f} className={styles.tierFeatureItem}>
-                          <Icons.Check />
-                          <span>{f}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ))}
-              </div>
-
-              <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: '#ffffff', margin: '1.5rem 0 0.5rem' }}>
-                Itemized Scope &amp; Materials
-              </h3>
-
-              <div className={styles.templateTableWrapper}>
-                <table className={styles.templateTable}>
-                  <thead>
-                    <tr>
-                      <th>Line Item Description</th>
-                      <th>Category</th>
-                      <th>Quantity</th>
-                      <th>Rate</th>
-                      <th>Total</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {activeTradeTemplate.sampleLineItems.map(item => (
-                      <tr key={item.name}>
-                        <td><strong>{item.name}</strong></td>
-                        <td><span className={styles.spotlightTag}>{item.category}</span></td>
-                        <td>{item.qty}</td>
-                        <td>{item.rate}</td>
-                        <td><strong style={{ color: '#ff7a21' }}>{item.total}</strong></td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              <div className={styles.templateActionsRow}>
-                <button
-                  type="button"
-                  className={styles.btnPrimarySm}
-                  onClick={() => {
-                    copyTradeScopeToClipboard(activeTradeTemplate);
-                  }}
-                >
-                  <Icons.Copy />
-                  <span>Copy Line Items to Clipboard</span>
-                </button>
-
-                <button
-                  type="button"
-                  className={styles.btnOutline}
-                  onClick={() => {
-                    generateStylizedTradeTemplateDoc(activeTradeTemplate);
-                  }}
-                >
-                  <Icons.Download />
-                  <span>Print / Save Spec PDF</span>
-                </button>
-
-                <Link
-                  href={`/for/${activeTradeTemplate.tradeSlug}`}
-                  className={styles.btnOutline}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <Icons.Globe />
-                  <span>View Trade Website ↗</span>
-                </Link>
-
-                <Link
-                  href="/resources/good-better-best-quoting-guide"
-                  className={styles.btnOutline}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <Icons.BookCheck />
-                  <span>Read Quoting Playbook ↗</span>
-                </Link>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 3. Trade Workflow Detail Modal */}
-      {activeWorkflow && (
-        <div className={styles.modalOverlay} onClick={() => setActiveWorkflow(null)}>
-          <div className={styles.articleModal} onClick={e => e.stopPropagation()}>
-            <div className={styles.modalHeader}>
-              <span className={styles.categoryBadge}>Trade Workflow Formula</span>
-              <button className={styles.iconBtn} onClick={() => setActiveWorkflow(null)}>
-                <Icons.X />
-              </button>
-            </div>
-            <div className={styles.modalBody}>
-              <h1 className={styles.articleTitle}>{activeWorkflow.title}</h1>
-              <p style={{ color: '#94a3b8', fontSize: '1rem', marginBottom: '1.25rem' }}>
-                {activeWorkflow.desc}
-              </p>
-
-              <div className={styles.formulaBox}>
-                <h4 style={{ color: '#ff7a21', marginBottom: '0.4rem' }}>Recommended Formula &amp; Policy:</h4>
-                <p>{activeWorkflow.formulaOrClause}</p>
-              </div>
-
-              <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1.75rem' }}>
-                <button
-                  className={styles.btnPrimarySm}
-                  onClick={() => {
-                    copyToClipboard(activeWorkflow.formulaOrClause, activeWorkflow.title);
-                  }}
-                >
-                  <Icons.Copy />
-                  <span>Copy Formula</span>
-                </button>
-
-                {activeWorkflow.actionUrl.startsWith('#') ? (
-                  <a
-                    href={activeWorkflow.actionUrl}
-                    className={styles.btnOutline}
-                    onClick={() => setActiveWorkflow(null)}
-                  >
-                    <span>{activeWorkflow.actionLabel}</span>
-                  </a>
-                ) : (
-                  <Link
-                    href={activeWorkflow.actionUrl}
-                    className={styles.btnOutline}
-                    onClick={() => setActiveWorkflow(null)}
-                  >
-                    <span>{activeWorkflow.actionLabel} ↗</span>
-                  </Link>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 4. Article Reader Modal with 1-Click Clipboard Helpers */}
-      {activeArticle && (
-        <div className={styles.modalOverlay} onClick={() => setActiveArticle(null)}>
-          <div className={styles.articleModal} onClick={e => e.stopPropagation()}>
-            <div className={styles.modalHeader}>
-              <span className={styles.categoryBadge}>{activeArticle.category}</span>
-              <button className={styles.iconBtn} onClick={() => setActiveArticle(null)}>
-                <Icons.X />
-              </button>
-            </div>
-            <div className={styles.modalBody}>
-              <h1 className={styles.articleTitle}>{activeArticle.title}</h1>
-              <div className={styles.articleMeta}>
-                <span>Verified by LGQ Engineering</span>
-                <span>{activeArticle.readTime}</span>
-              </div>
-
-              {/* 1-Click DNS Copy Box for domain articles */}
-              {activeArticle.id === 'art-custom-domain-dns' && (
-                <div style={{ marginBottom: '1.5rem' }}>
-                  <div className={styles.copySnippetBox}>
-                    <span>A Record (@): <strong>76.76.21.21</strong></span>
-                    <button
-                      className={styles.copyMiniBtn}
-                      onClick={() => copyToClipboard('76.76.21.21', 'A Record IP')}
-                    >
-                      {copiedRecord === 'A Record IP' ? <Icons.Check /> : <Icons.Copy />}
-                      <span>{copiedRecord === 'A Record IP' ? 'Copied' : 'Copy IP'}</span>
-                    </button>
-                  </div>
-
-                  <div className={styles.copySnippetBox}>
-                    <span>CNAME (www): <strong>cname.letsgetquoted.com</strong></span>
-                    <button
-                      className={styles.copyMiniBtn}
-                      onClick={() => copyToClipboard('cname.letsgetquoted.com', 'CNAME')}
-                    >
-                      {copiedRecord === 'CNAME' ? <Icons.Check /> : <Icons.Copy />}
-                      <span>{copiedRecord === 'CNAME' ? 'Copied' : 'Copy CNAME'}</span>
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              <div
-                className={styles.articleContent}
-                dangerouslySetInnerHTML={{ __html: activeArticle.content }}
-              />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 5. Video Modal */}
-      {activeVideo && (
-        <div className={styles.modalOverlay} onClick={() => setActiveVideo(null)}>
-          <div className={styles.articleModal} onClick={e => e.stopPropagation()}>
-            <div className={styles.modalHeader}>
-              <span className={styles.categoryBadge}>{activeVideo.category}</span>
-              <button className={styles.iconBtn} onClick={() => setActiveVideo(null)}>
-                <Icons.X />
-              </button>
-            </div>
-            <div className={styles.modalBody}>
-              <h1 className={styles.articleTitle}>{activeVideo.title}</h1>
-              <div className={styles.articleMeta}>
-                <span>Duration: {activeVideo.duration}</span>
-                <span>HD Mobile Walkthrough</span>
-              </div>
-              <div
-                style={{
-                  height: '220px',
-                  background: activeVideo.thumbnailGradient,
-                  borderRadius: '16px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  marginBottom: '1.5rem',
-                  border: '1px solid rgba(255, 255, 255, 0.1)'
-                }}
-              >
-                <div className={styles.playBtnCircle} style={{ width: '56px', height: '56px' }}>
-                  <Icons.Play />
-                </div>
-              </div>
-              <p style={{ color: '#cbd5e1', lineHeight: '1.6', marginBottom: '1.25rem' }}>
-                {activeVideo.summary}
-              </p>
-
-              <h4 style={{ color: '#ffffff', fontSize: '0.95rem', marginBottom: '0.6rem' }}>
-                Key Configuration Steps:
-              </h4>
-              <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 1.5rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                {activeVideo.keySteps.map(step => (
-                  <li key={step} style={{ color: '#94a3b8', fontSize: '0.85rem', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                    <Icons.CheckCircle />
-                    <span>{step}</span>
-                  </li>
-                ))}
-              </ul>
-
-              {activeVideo.relatedGuideUrl && (
-                <Link
-                  href={activeVideo.relatedGuideUrl}
-                  className={styles.btnPrimarySm}
-                  onClick={() => setActiveVideo(null)}
-                >
-                  <Icons.BookCheck />
-                  <span>Read Full In-Depth Guide ↗</span>
-                </Link>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 6. System Status Modal */}
+      {/* 4. System Status Modal */}
       {isStatusModalOpen && (
-        <div className={styles.modalOverlay} onClick={() => setIsStatusModalOpen(false)}>
+        <div className={styles.modalOverlay} onClick={() => setIsStatusModalOpen(false)} role="dialog" aria-modal="true">
           <div className={styles.statusModal} onClick={e => e.stopPropagation()}>
             <div className={styles.modalHeader}>
-              <h3>System Status &amp; Real-time Uptime</h3>
-              <button className={styles.iconBtn} onClick={() => setIsStatusModalOpen(false)}>
+              <h3>System Status</h3>
+              <button className={styles.iconBtn} onClick={() => setIsStatusModalOpen(false)} aria-label="Close status modal">
                 <Icons.X />
               </button>
             </div>
@@ -1992,37 +1421,37 @@ export default function HelpCenter() {
                   <strong>Instant Quoting &amp; PDF Engine</strong>
                   <small>Google Cloud Run (us-east1)</small>
                 </div>
-                <span className={styles.badgeOperational}>Operational · 42ms</span>
+                <span className={styles.badgeOperational}>Operational</span>
               </div>
               <div className={styles.statusRow}>
                 <div>
                   <strong>Two-Way SMS &amp; Dedicated Phone Gateway</strong>
                   <small>Carrier Webhook Listeners</small>
                 </div>
-                <span className={styles.badgeOperational}>Operational · 100%</span>
+                <span className={styles.badgeOperational}>Operational</span>
               </div>
               <div className={styles.statusRow}>
                 <div>
                   <strong>Stripe Payments &amp; Deposits</strong>
                   <small>Webhook API V2</small>
                 </div>
-                <span className={styles.badgeOperational}>Operational · 100%</span>
+                <span className={styles.badgeOperational}>Operational</span>
               </div>
               <div className={styles.statusRow}>
                 <div>
-                  <strong>AI Website CDN &amp; DNS</strong>
-                  <small>Fastly Global Anycast</small>
+                  <strong>Contractor Website CDN &amp; DNS</strong>
+                  <small>Global Anycast CDN</small>
                 </div>
-                <span className={styles.badgeOperational}>Operational · 18ms</span>
+                <span className={styles.badgeOperational}>Operational</span>
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* Toast */}
+      {/* Floating Toast Message */}
       {toastMessage && (
-        <div className={styles.toast}>
+        <div className={styles.toast} role="status">
           <Icons.Check />
           <span>{toastMessage}</span>
         </div>
