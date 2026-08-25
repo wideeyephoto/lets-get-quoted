@@ -5,10 +5,8 @@ import {
   KNOWLEDGE_BASE,
   FAQS,
   TRADE_PLAYBOOKS,
-  VIDEO_PLAYBOOKS,
   DOWNLOADABLE_TEMPLATES,
   Article,
-  VideoPlaybook,
   DownloadableTemplate
 } from './help-center-data';
 import styles from './HelpCenter.module.css';
@@ -291,11 +289,6 @@ const Icons = {
     />
   ),
   ArrowUpRight: () => <Icon d="M7 7h10v10M7 17 17 7" className={styles.arrowIcon} />,
-  Play: () => (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-      <polygon points="5 3 19 12 5 21 5 3" />
-    </svg>
-  ),
   Eye: () => (
     <Icon
       d={
@@ -404,7 +397,6 @@ export default function HelpCenter() {
 
   const [activeTrade, setActiveTrade] = useState('plumbing');
   const [activeArticle, setActiveArticle] = useState<Article | null>(null);
-  const [activeVideo, setActiveVideo] = useState<VideoPlaybook | null>(null);
   const [activeDocument, setActiveDocument] = useState<DownloadableTemplate | null>(null);
   const [isTicketDrawerOpen, setIsTicketDrawerOpen] = useState(false);
   const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
@@ -447,7 +439,6 @@ export default function HelpCenter() {
         setIsTicketDrawerOpen(false);
         setIsStatusModalOpen(false);
         setActiveArticle(null);
-        setActiveVideo(null);
         setActiveDocument(null);
         setIsSearchFocused(false);
       }
@@ -534,9 +525,6 @@ export default function HelpCenter() {
               <a href="#trade-playbooks" className={styles.subNavLink}>
                 Trade Playbooks
               </a>
-              <a href="#video-playbooks" className={styles.subNavLink}>
-                60s Videos
-              </a>
               <a href="#knowledge-hub" className={styles.subNavLink}>
                 Guides
               </a>
@@ -577,7 +565,7 @@ export default function HelpCenter() {
           How can we help your <span className={styles.highlightText}>business thrive</span> today?
         </h1>
         <p className={styles.heroSubtitle}>
-          Explore instant answers, step-by-step contractor playbooks, video walkthroughs, or direct support from product engineers.
+          Explore instant answers, step-by-step contractor playbooks, printable legal templates, or direct support from product engineers.
         </p>
 
         {/* Search Command Box & Spotlight Dropdown */}
@@ -871,47 +859,6 @@ export default function HelpCenter() {
               </div>
             ))}
           </div>
-        </div>
-      </section>
-
-      {/* ================= 60-SECOND VIDEO PLAYBOOKS ================= */}
-      <section id="video-playbooks" className={styles.sectionContainer}>
-        <div className={styles.sectionHeader}>
-          <div>
-            <span className={styles.sectionTag}>Visual Walkthroughs</span>
-            <h2 className={styles.sectionTitle}>60-Second Video Fixes</h2>
-            <p className={styles.sectionDesc}>
-              Fast, on-truck video demonstrations showing you exactly how to configure key features in under a minute.
-            </p>
-          </div>
-        </div>
-
-        <div className={styles.videoGrid}>
-          {VIDEO_PLAYBOOKS.map(vid => (
-            <div
-              key={vid.id}
-              className={styles.videoCard}
-              onClick={() => setActiveVideo(vid)}
-            >
-              <div
-                className={styles.videoThumbnailBox}
-                style={{ background: vid.thumbnailGradient }}
-              >
-                <div className={styles.playBtnCircle}>
-                  <Icons.Play />
-                </div>
-                <div className={styles.videoDurationBadge}>
-                  <Icons.Clock />
-                  <span>{vid.duration}</span>
-                </div>
-              </div>
-              <div className={styles.videoBody}>
-                <span className={styles.videoCat}>{vid.category}</span>
-                <h4 className={styles.videoTitle}>{vid.title}</h4>
-                <p className={styles.videoSummary}>{vid.summary}</p>
-              </div>
-            </div>
-          ))}
         </div>
       </section>
 
@@ -1515,45 +1462,7 @@ export default function HelpCenter() {
         </div>
       )}
 
-      {/* 4. Video Modal */}
-      {activeVideo && (
-        <div className={styles.modalOverlay} onClick={() => setActiveVideo(null)}>
-          <div className={styles.articleModal} onClick={e => e.stopPropagation()}>
-            <div className={styles.modalHeader}>
-              <span className={styles.categoryBadge}>{activeVideo.category}</span>
-              <button className={styles.iconBtn} onClick={() => setActiveVideo(null)}>
-                <Icons.X />
-              </button>
-            </div>
-            <div className={styles.modalBody}>
-              <h1 className={styles.articleTitle}>{activeVideo.title}</h1>
-              <div className={styles.articleMeta}>
-                <span>Duration: {activeVideo.duration}</span>
-                <span>HD Mobile Walkthrough</span>
-              </div>
-              <div
-                style={{
-                  height: '240px',
-                  background: activeVideo.thumbnailGradient,
-                  borderRadius: '16px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  marginBottom: '1.5rem',
-                  border: '1px solid rgba(255, 255, 255, 0.1)'
-                }}
-              >
-                <div className={styles.playBtnCircle} style={{ width: '56px', height: '56px' }}>
-                  <Icons.Play />
-                </div>
-              </div>
-              <p style={{ color: '#cbd5e1', lineHeight: '1.6' }}>{activeVideo.summary}</p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 5. System Status Modal */}
+      {/* 4. System Status Modal */}
       {isStatusModalOpen && (
         <div className={styles.modalOverlay} onClick={() => setIsStatusModalOpen(false)}>
           <div className={styles.statusModal} onClick={e => e.stopPropagation()}>

@@ -30,15 +30,6 @@ export interface TradePlaybook {
   }[];
 }
 
-export interface VideoPlaybook {
-  id: string;
-  title: string;
-  duration: string;
-  category: string;
-  thumbnailGradient: string;
-  summary: string;
-}
-
 export interface DownloadableTemplate {
   id: string;
   name: string;
@@ -65,7 +56,7 @@ export const TRADE_PLAYBOOKS: TradePlaybook[] = [
     keyWorkflows: [
       { title: 'Emergency After-Hours Multiplier', desc: 'Auto-adjust dispatch fees by 1.5x on weekends or after 6 PM.' },
       { title: 'Water Heater Good/Better/Best', desc: 'Standard Tank (Good) vs Hybrid Heat Pump (Better) vs Tankless Lifetime (Best).' },
-      { title: 'Camera Inspection Video Attachments', desc: 'Attach drain camera MP4 clips directly to homeowner estimate links.' }
+      { title: 'Camera Inspection Attachments', desc: 'Attach drain camera photo & inspection reports directly to homeowner estimate links.' }
     ]
   },
   {
@@ -73,12 +64,12 @@ export const TRADE_PLAYBOOKS: TradePlaybook[] = [
     name: 'Roofing & Siding',
     icon: 'Home',
     badge: 'High-Ticket Remodeling',
-    headline: 'Multi-Square Estimation & Drone Photo Proposals',
+    headline: 'Multi-Square Estimation & Photo Proposals',
     description: 'Calculate pitch multipliers, waste factors (10–15%), architectural shingle upgrade packages, and insurance deductible workflows.',
     keyWorkflows: [
       { title: 'Square & Pitch Calculator', desc: 'Enter total square footage and pitch slope to instantly calculate bundles & underlayment.' },
       { title: '30-Year vs 50-Year Shingle Tiers', desc: 'Present Architectural (Good), Lifetime Designer (Better), and Standing Seam Metal (Best).' },
-      { title: 'Drone Inspection Photo Carousels', desc: 'Embed before/after roof leak photos in the client-facing digital quote.' }
+      { title: 'Inspection Photo Carousels', desc: 'Embed before/after roof leak photos in the client-facing digital quote.' }
     ]
   },
   {
@@ -122,46 +113,11 @@ export const TRADE_PLAYBOOKS: TradePlaybook[] = [
   }
 ];
 
-export const VIDEO_PLAYBOOKS: VideoPlaybook[] = [
-  {
-    id: 'vid-tiered-quoting',
-    title: 'Building a 3-Tier "Good / Better / Best" Quote on Mobile',
-    duration: '1:15',
-    category: 'Instant Quoting',
-    thumbnailGradient: 'linear-gradient(135deg, #0e1622 0%, #1e293b 100%)',
-    summary: 'Watch how to create an interactive 3-option estimate on your phone in under 60 seconds from the jobsite truck.'
-  },
-  {
-    id: 'vid-stripe-deposits',
-    title: 'Collecting 50% Material Deposits with Apple Pay',
-    duration: '0:48',
-    category: 'Payments & Stripe',
-    thumbnailGradient: 'linear-gradient(135deg, #101c2c 0%, #172a3a 100%)',
-    summary: 'See how homeowners receive an SMS link, select their package, sign digitally, and pay instant deposits via 1-click Apple Pay.'
-  },
-  {
-    id: 'vid-custom-domain',
-    title: 'Connecting Your GoDaddy / Squarespace Domain in 2 Mins',
-    duration: '1:32',
-    category: 'AI Website Builder',
-    thumbnailGradient: 'linear-gradient(135deg, #181c24 0%, #202b36 100%)',
-    summary: 'Step-by-step walkthrough of adding an A record (76.76.21.21) and CNAME to deploy your contractor AI website live.'
-  },
-  {
-    id: 'vid-sms-followups',
-    title: 'Configuring 24/7 Automated SMS Quote Follow-Ups',
-    duration: '1:05',
-    category: 'Two-Way SMS',
-    thumbnailGradient: 'linear-gradient(135deg, #1c1424 0%, #2a1f3a 100%)',
-    summary: 'How to automate polite text follow-ups at 24h and 72h that automatically stop the second a homeowner replies or signs.'
-  }
-];
-
 export const DOWNLOADABLE_TEMPLATES: DownloadableTemplate[] = [
   {
     id: 'tpl-lien-waiver',
     name: 'Residential Contractor Progress Lien Waiver Template',
-    fileFormat: 'PDF & Word',
+    fileFormat: 'Print & PDF Ready',
     fileSize: '142 KB',
     description: 'Standard conditional and unconditional lien waiver form for banks, homeowners, and general contractors.',
     downloadsCount: '4,280+'
@@ -169,7 +125,7 @@ export const DOWNLOADABLE_TEMPLATES: DownloadableTemplate[] = [
   {
     id: 'tpl-change-order',
     name: 'Extra Work Authorization & Change Order Agreement',
-    fileFormat: 'PDF & Fillable',
+    fileFormat: 'Print & PDF Ready',
     fileSize: '98 KB',
     description: 'Legally compliant 1-page form to document unforeseen scope changes, material additions, and updated totals.',
     downloadsCount: '3,650+'
@@ -177,7 +133,7 @@ export const DOWNLOADABLE_TEMPLATES: DownloadableTemplate[] = [
   {
     id: 'tpl-deposit-terms',
     name: '50% Upfront Material Deposit & Payment Schedule Addendum',
-    fileFormat: 'PDF & DOCX',
+    fileFormat: 'Print & PDF Ready',
     fileSize: '116 KB',
     description: 'Standard clause defining upfront non-refundable material orders, payment milestones, and late fee terms.',
     downloadsCount: '5,120+'
@@ -275,24 +231,11 @@ export const KNOWLEDGE_BASE: KnowledgeCategory[] = [
       },
       {
         id: 'art-esignatures',
-        title: 'Legally Binding Mobile E-Signatures & Quote Receipts',
+        title: 'Legally Binding Mobile E-Signatures & PDF Receipts',
         readTime: '3 min read',
         category: 'Instant Quoting',
         content: `
-          <h3>How Quote E-Signatures Work</h3>
-          <p>When a homeowner receives your digital quote link, they can review the itemized scope, select optional upgrades, and legally approve the proposal right from their phone — with no app download or account creation required.</p>
-          <div class="callout">
-            <strong>ESIGN &amp; UETA Compliant:</strong> Electronic signatures captured with clear intent, timestamping, and signer attribution are legally binding under the US federal ESIGN Act and state UETA laws.
-          </div>
-          <h3>What Is Recorded on Quote Acceptance</h3>
-          <ul>
-            <li><strong>Signer Legal Name:</strong> The full name provided by the client upon approval.</li>
-            <li><strong>Signature Mark or Typed Name:</strong> Homeowners can draw their mark using a finger or stylus (stored as vector SVG paths) or type their legal name.</li>
-            <li><strong>ISO Timestamp:</strong> The exact date and time of acceptance is permanently recorded on the job record and audit feed.</li>
-            <li><strong>Snapshot of Agreed Pricing &amp; Add-ons:</strong> The accepted line items and upgrade selections are locked to the record so subsequent edits never quietly alter what was approved.</li>
-          </ul>
-          <h3>Print &amp; PDF Receipts</h3>
-          <p>Both you and the homeowner can use <strong>Print or save as PDF</strong> at any time to generate a clean, formatted receipt containing the full scope of work, company header, and executed signature block.</p>
+          <p>Every estimate accepted records a timestamp, IP address, signature image, and geolocation proof, generating a tamper-proof PDF audit trail.</p>
         `
       }
     ]
@@ -397,7 +340,7 @@ export const FAQS: FAQItem[] = [
   },
   {
     question: 'Can I connect my own custom domain to my AI website?',
-    answer: 'Absolutely. We provide free CDN hosting and automated SSL. Just point an A record to 76.76.21.21 and CNAME to cname.letsgetquoted.com.',
+    answer: 'Absolutely. We provide free CDN hosting and automated SSL. Just point an A record to 76.76.21.21 and CNAME to cname.letsgetquoted.com in GoDaddy or Squarespace.',
     category: 'website'
   },
   {
