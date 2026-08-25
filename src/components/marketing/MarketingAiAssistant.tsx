@@ -17,11 +17,24 @@ type FaqItem = {
 };
 
 type SearchResult = {
+  id?: string;
   query: string;
   title: string;
   answer: string;
   ctaText?: string;
   ctaHref?: string;
+};
+
+type QuoteScenario = {
+  id: string;
+  name: string;
+  trade: string;
+  customerMsg: string;
+  title: string;
+  laborLine: string;
+  materialLine: string;
+  total: string;
+  deposit: string;
 };
 
 const TRADES = [
@@ -41,6 +54,116 @@ const QUICK_PROMPTS = [
   'How soon do customer payments reach my bank?',
   'Can my crew log hours in the field?',
 ];
+
+const QUOTE_SCENARIOS: QuoteScenario[] = [
+  {
+    id: 'pipe-emergency',
+    name: '🔧 Burst Pipe',
+    trade: 'Plumbing',
+    customerMsg: 'Pipe burst under kitchen sink, water spreading across floor. Need emergency shutoff & repair!',
+    title: 'Emergency Pipe Repair & Shutoff',
+    laborLine: 'Emergency Labor & Pressure Testing: $240.00',
+    materialLine: 'PEX/Copper Fittings & Shutoff Valve: $65.00',
+    total: '$305.00',
+    deposit: '$150.00',
+  },
+  {
+    id: 'hvac-ac',
+    name: '❄️ AC Repair',
+    trade: 'HVAC',
+    customerMsg: 'AC stopped cooling. Fan is spinning outside but vents blowing warm room temp air.',
+    title: 'AC Diagnostic & Capacitor Replacement',
+    laborLine: 'System Diagnostic & Inspection: $149.00',
+    materialLine: 'Dual Run Capacitor & Coil Clean: $135.00',
+    total: '$284.00',
+    deposit: '$100.00',
+  },
+  {
+    id: 'deck-build',
+    name: '🔨 Cedar Deck',
+    trade: 'Carpentry',
+    customerMsg: 'Looking to replace 250 sq ft backyard deck with cedar decking and aluminum railing.',
+    title: '250 sq ft Premium Cedar Deck',
+    laborLine: 'Framing & Installation Labor: $3,200.00',
+    materialLine: 'Cedar Decking & Railings: $4,450.00',
+    total: '$7,650.00',
+    deposit: '$500.00',
+  },
+  {
+    id: 'tree-haul',
+    name: '🌳 Tree Limb',
+    trade: 'Landscaping',
+    customerMsg: 'Large oak limb snapped in storm, blocking driveway. Need cut and hauled away today.',
+    title: 'Emergency Tree Limb Removal & Haul',
+    laborLine: 'Chainsaw Crew Labor & Chipper: $275.00',
+    materialLine: 'Disposal & Yard Rake / Sweep: $75.00',
+    total: '$350.00',
+    deposit: '$150.00',
+  },
+];
+
+const FOLLOW_UP_MAP: Record<string, string[]> = {
+  quotes: [
+    'How does the $0/month Flex plan work?',
+    'Can clients pay deposits and milestone payments?',
+    'What are Quick Stops and how do they work?',
+  ],
+  'flex-plan': [
+    'How soon do customer payments reach my bank?',
+    'How do I switch from Jobber or Housecall Pro?',
+    'Does it sync with QuickBooks & Stripe?',
+  ],
+  switching: [
+    'Can I cancel anytime or export my data?',
+    'Does it sync with QuickBooks & Stripe?',
+    'How does the $0/month Flex plan work?',
+  ],
+  deposits: [
+    'How soon do customer payments reach my bank?',
+    'Does it sync with QuickBooks & Stripe?',
+    'How do Instant Quotes & Estimates work?',
+  ],
+  'quick-stops': [
+    'How do Instant Quotes & Estimates work?',
+    'Can my crew log hours and view jobs in the field?',
+    'How does the $0/month Flex plan work?',
+  ],
+  integrations: [
+    'How soon do customer payments reach my bank?',
+    'Can clients pay deposits and milestone payments?',
+    'How does the $0/month Flex plan work?',
+  ],
+  website: [
+    'How do Instant Quotes & Estimates work?',
+    'How do I switch from Jobber or Housecall Pro?',
+    'How does the $0/month Flex plan work?',
+  ],
+  payouts: [
+    'How does the $0/month Flex plan work?',
+    'Does it sync with QuickBooks & Stripe?',
+    'Can I cancel anytime or export my data?',
+  ],
+  crew: [
+    'What are Quick Stops and how do they work?',
+    'Does it sync with QuickBooks & Stripe?',
+    'How does the $0/month Flex plan work?',
+  ],
+  cancellation: [
+    'How does the $0/month Flex plan work?',
+    'How do I switch from Jobber or Housecall Pro?',
+    'How do Instant Quotes & Estimates work?',
+  ],
+  messaging: [
+    'What are Quick Stops and how do they work?',
+    'How do Instant Quotes & Estimates work?',
+    'How does the $0/month Flex plan work?',
+  ],
+  support: [
+    'How do I switch from Jobber or Housecall Pro?',
+    'How does the $0/month Flex plan work?',
+    'How do Instant Quotes & Estimates work?',
+  ],
+};
 
 const KNOWLEDGE_BASE: FaqItem[] = [
   {
@@ -370,6 +493,7 @@ function searchKnowledgeBase(query: string): SearchResult {
 
   if (bestItem && bestScore >= 5) {
     return {
+      id: bestItem.id,
       query: query.trim(),
       title: bestItem.title,
       answer: bestItem.answer,
@@ -379,6 +503,7 @@ function searchKnowledgeBase(query: string): SearchResult {
   }
 
   return {
+    id: 'quotes',
     query: query.trim(),
     title: 'Let’s Get Quoted Contractor Platform',
     answer:
@@ -395,10 +520,14 @@ export default function MarketingAiAssistant() {
   const [searchResult, setSearchResult] = useState<SearchResult | null>(null);
   const [query, setQuery] = useState('');
   const [monthlyVolume, setMonthlyVolume] = useState<number>(20000);
-  const [activeToolTab, setActiveToolTab] = useState<'matcher' | 'savings'>('matcher');
+  const [activeToolTab, setActiveToolTab] = useState<'matcher' | 'savings' | 'simulator'>('matcher');
   const [competitorMonthly, setCompetitorMonthly] = useState<number>(199);
   const [selectedTrade, setSelectedTrade] = useState<string>('all');
   const [isSearching, setIsSearching] = useState(false);
+
+  // Quote Simulator state
+  const [selectedScenarioId, setSelectedScenarioId] = useState<string>('pipe-emergency');
+  const [isDepositPaid, setIsDepositPaid] = useState<boolean>(false);
 
   // Callback form state
   const [showCallback, setShowCallback] = useState(false);
@@ -465,6 +594,11 @@ export default function MarketingAiAssistant() {
     const annualOldSoftware = (competitorMonthly + 35) * 12; // software + standard website hosting
     return annualOldSoftware;
   }, [competitorMonthly]);
+
+  // Current selected quote scenario
+  const currentScenario = useMemo(() => {
+    return QUOTE_SCENARIOS.find((s) => s.id === selectedScenarioId) || QUOTE_SCENARIOS[0];
+  }, [selectedScenarioId]);
 
   const handleToggleFaq = (faqId: string) => {
     const nextId = expandedFaqId === faqId ? null : faqId;
@@ -610,6 +744,13 @@ export default function MarketingAiAssistant() {
               >
                 💸 Switch &amp; Save
               </button>
+              <button
+                type="button"
+                onClick={() => setActiveToolTab('simulator')}
+                className={`${styles.toolTab} ${activeToolTab === 'simulator' ? styles.toolTabActive : ''}`}
+              >
+                ⚡ Test a Quote
+              </button>
             </div>
 
             {/* Tool 1: Plan Matcher */}
@@ -667,6 +808,76 @@ export default function MarketingAiAssistant() {
               </div>
             )}
 
+            {/* Tool 3: Live Interactive Quote Simulator */}
+            {activeToolTab === 'simulator' && (
+              <div className={styles.quoteSimBox}>
+                <div className={styles.quoteSimHeader}>
+                  <span className={styles.quoteSimLabel}>⚡ Instant Quote Simulator</span>
+                </div>
+                {/* Scenario buttons */}
+                <div className={styles.quoteSimScenarioRow}>
+                  {QUOTE_SCENARIOS.map((s) => (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedScenarioId(s.id);
+                        setIsDepositPaid(false);
+                      }}
+                      className={`${styles.quoteSimScenarioBtn} ${selectedScenarioId === s.id ? styles.quoteSimScenarioBtnActive : ''}`}
+                    >
+                      {s.name}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Simulated Customer Quote Card */}
+                <div className={styles.quoteSimCard}>
+                  <div className={styles.quoteSimCustomerMsg}>
+                    &ldquo;{currentScenario.customerMsg}&rdquo;
+                  </div>
+                  <div className={styles.quoteSimTitle}>{currentScenario.title}</div>
+                  <div className={styles.quoteSimLineRow}>
+                    <span>Labor &amp; Service:</span>
+                    <span>{currentScenario.laborLine.split(': ')[1]}</span>
+                  </div>
+                  <div className={styles.quoteSimLineRow}>
+                    <span>Parts &amp; Materials:</span>
+                    <span>{currentScenario.materialLine.split(': ')[1]}</span>
+                  </div>
+                  <div className={styles.quoteSimTotalRow}>
+                    <span>Estimated Total:</span>
+                    <span>{currentScenario.total}</span>
+                  </div>
+                  <div className={styles.quoteSimDepositRow}>
+                    <span>Required Deposit:</span>
+                    <span>{currentScenario.deposit}</span>
+                  </div>
+
+                  {!isDepositPaid ? (
+                    <button
+                      type="button"
+                      onClick={() => setIsDepositPaid(true)}
+                      className={styles.quoteSimPayBtn}
+                    >
+                      Simulate Apple Pay Deposit ({currentScenario.deposit}) &rarr;
+                    </button>
+                  ) : (
+                    <div className={styles.quoteSimSuccess}>
+                      <span>✓ {currentScenario.deposit} Deposit Collected! Auto-scheduled.</span>
+                      <button
+                        type="button"
+                        onClick={() => setIsDepositPaid(false)}
+                        className={styles.quoteSimResetLink}
+                      >
+                        Reset
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Typing Animation State */}
             {isSearching && (
               <div className={styles.typingIndicator}>
@@ -702,6 +913,25 @@ export default function MarketingAiAssistant() {
                     </Link>
                   </div>
                 )}
+
+                {/* Follow-up suggestions for custom search result */}
+                {searchResult.id && FOLLOW_UP_MAP[searchResult.id] && (
+                  <div className={styles.followUpSection}>
+                    <span className={styles.followUpLabel}>Related Topics:</span>
+                    <div className={styles.followUpChipsRow}>
+                      {FOLLOW_UP_MAP[searchResult.id].map((chip) => (
+                        <button
+                          key={chip}
+                          type="button"
+                          onClick={() => handleTriggerSearch(chip)}
+                          className={styles.followUpChip}
+                        >
+                          {chip} &rarr;
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -713,6 +943,7 @@ export default function MarketingAiAssistant() {
               <div className={styles.accordionList}>
                 {starterFaqs.map((faq) => {
                   const isExpanded = expandedFaqId === faq.id;
+                  const followUps = FOLLOW_UP_MAP[faq.id];
                   return (
                     <div
                       key={faq.id}
@@ -742,6 +973,25 @@ export default function MarketingAiAssistant() {
                               <Link href={faq.ctaHref} className={styles.accordionCta}>
                                 {faq.ctaText} &rarr;
                               </Link>
+                            </div>
+                          )}
+
+                          {/* Contextual Follow-Up Suggestions inside Accordion */}
+                          {followUps && followUps.length > 0 && (
+                            <div className={styles.followUpSection}>
+                              <span className={styles.followUpLabel}>Related Topics:</span>
+                              <div className={styles.followUpChipsRow}>
+                                {followUps.map((chip) => (
+                                  <button
+                                    key={chip}
+                                    type="button"
+                                    onClick={() => handleTriggerSearch(chip)}
+                                    className={styles.followUpChip}
+                                  >
+                                    {chip} &rarr;
+                                  </button>
+                                ))}
+                              </div>
                             </div>
                           )}
                         </div>
@@ -832,4 +1082,5 @@ export default function MarketingAiAssistant() {
     </div>
   );
 }
+
 
