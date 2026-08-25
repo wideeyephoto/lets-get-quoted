@@ -1,0 +1,461 @@
+.wrapper {
+  padding: 64px 24px;
+  background: radial-gradient(circle at 50% 0%, rgba(80, 227, 189, 0.08), transparent 70%),
+              #07131d;
+  position: relative;
+}
+
+.container {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.header {
+  text-align: center;
+  max-width: 760px;
+  margin: 0 auto 36px;
+}
+
+.kicker {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: #50e3bd;
+  background: rgba(80, 227, 189, 0.12);
+  border: 1px solid rgba(80, 227, 189, 0.3);
+  padding: 4px 12px;
+  border-radius: 999px;
+  margin-bottom: 14px;
+}
+
+.title {
+  font-size: clamp(26px, 3.5vw, 40px);
+  font-weight: 850;
+  color: #ffffff;
+  line-height: 1.15;
+  letter-spacing: -1.2px;
+  margin: 0 0 14px;
+}
+
+.title em {
+  color: #ff6a24;
+  font-style: normal;
+}
+
+.subtitle {
+  font-size: 15px;
+  color: #a7bcc8;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.calculatorCard {
+  background: #091a25;
+  border: 1px solid rgba(174, 199, 211, 0.18);
+  border-radius: 18px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+  overflow: hidden;
+}
+
+.controlsGrid {
+  padding: 28px;
+  background: rgba(10, 28, 40, 0.6);
+  border-bottom: 1px solid rgba(174, 199, 211, 0.12);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+@media (max-width: 860px) {
+  .controlsGrid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+    padding: 20px;
+  }
+}
+
+.controlGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.controlLabel {
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: #d1e2eb;
+}
+
+.segmentedButtons {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+@media (max-width: 600px) {
+  .segmentedButtons {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.segmentBtn {
+  background: #06121b;
+  border: 1px solid rgba(174, 199, 211, 0.2);
+  border-radius: 8px;
+  padding: 10px 8px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  color: #a7bcc8;
+}
+
+.segmentBtn:hover {
+  background: #0d2230;
+  border-color: rgba(255, 106, 36, 0.4);
+  color: #ffffff;
+}
+
+.segmentBtnActive {
+  background: rgba(255, 106, 36, 0.15);
+  border-color: #ff6a24;
+  color: #ffffff;
+  box-shadow: 0 0 12px rgba(255, 106, 36, 0.25);
+}
+
+.segmentLabel {
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.segmentSub {
+  font-size: 11px;
+  opacity: 0.75;
+  margin-top: 2px;
+}
+
+.toggleRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  padding: 10px 14px;
+  background: #06121b;
+  border: 1px solid rgba(174, 199, 211, 0.15);
+  border-radius: 8px;
+}
+
+.checkbox {
+  width: 18px;
+  height: 18px;
+  accent-color: #ff6a24;
+  cursor: pointer;
+}
+
+.toggleText {
+  font-size: 13px;
+  font-weight: 650;
+  color: #f5f0e7;
+}
+
+.toggleHint {
+  font-size: 11.5px;
+  color: #889fab;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.resultGrid {
+  display: grid;
+  grid-template-columns: 1fr 1.15fr;
+  position: relative;
+}
+
+@media (max-width: 860px) {
+  .resultGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.compColumn {
+  padding: 32px;
+  background: #081722;
+  border-right: 1px solid rgba(174, 199, 211, 0.12);
+  display: flex;
+  flex-direction: column;
+}
+
+@media (max-width: 860px) {
+  .compColumn {
+    border-right: none;
+    border-bottom: 1px solid rgba(174, 199, 211, 0.12);
+    padding: 24px;
+  }
+}
+
+.lgqColumn {
+  padding: 32px;
+  background: radial-gradient(circle at 100% 0%, rgba(80, 227, 189, 0.08), transparent 70%),
+              #0a1d29;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+@media (max-width: 860px) {
+  .lgqColumn {
+    padding: 24px;
+  }
+}
+
+.popularBadge {
+  position: absolute;
+  top: 14px;
+  right: 18px;
+  background: #50e3bd;
+  color: #06131f;
+  font-size: 10.5px;
+  font-weight: 900;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  padding: 3px 10px;
+  border-radius: 999px;
+}
+
+.colHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 20px;
+}
+
+.colBadgeComp {
+  font-size: 14px;
+  font-weight: 800;
+  color: #ff8e8e;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.colBadgeLgq {
+  font-size: 14px;
+  font-weight: 800;
+  color: #50e3bd;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.colSub {
+  font-size: 12.5px;
+  color: #889fab;
+}
+
+.colSubLgq {
+  font-size: 12.5px;
+  color: #a7bcc8;
+}
+
+.priceDisplay {
+  margin-bottom: 24px;
+}
+
+.monthlyAmount {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  color: #ffffff;
+}
+
+.monthlyAmount .currency {
+  font-size: 24px;
+  font-weight: 750;
+  color: #a7bcc8;
+}
+
+.monthlyAmount .number {
+  font-size: 44px;
+  font-weight: 900;
+  letter-spacing: -1.5px;
+}
+
+.monthlyAmount .period {
+  font-size: 15px;
+  color: #a7bcc8;
+}
+
+.annualAmount {
+  font-size: 13px;
+  color: #ff8e8e;
+  margin-top: 4px;
+}
+
+.priceDisplayLgq {
+  margin-bottom: 24px;
+}
+
+.monthlyAmountLgq {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  color: #50e3bd;
+}
+
+.currencyLgq {
+  font-size: 24px;
+  font-weight: 750;
+}
+
+.numberLgq {
+  font-size: 48px;
+  font-weight: 900;
+  letter-spacing: -1.5px;
+}
+
+.periodLgq {
+  font-size: 15px;
+  color: #a7bcc8;
+}
+
+.annualAmountLgq {
+  font-size: 13px;
+  color: #a7bcc8;
+  margin-top: 4px;
+}
+
+.annualAmountLgq em {
+  color: #50e3bd;
+  font-style: normal;
+  font-weight: 750;
+}
+
+.breakdownList {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  font-size: 13.5px;
+  color: #a7bcc8;
+  line-height: 1.45;
+}
+
+.breakdownList li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.iconRed {
+  color: #ff5252;
+  font-weight: 900;
+  font-size: 15px;
+  line-height: 1;
+}
+
+.breakdownListLgq {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  font-size: 13.5px;
+  color: #f5f0e7;
+  line-height: 1.45;
+}
+
+.breakdownListLgq li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.iconGreen {
+  color: #50e3bd;
+  font-weight: 900;
+  font-size: 15px;
+  line-height: 1;
+}
+
+.savingsBox {
+  margin-top: auto;
+  background: rgba(80, 227, 189, 0.08);
+  border: 1px solid rgba(80, 227, 189, 0.35);
+  border-radius: 12px;
+  padding: 16px 20px;
+  text-align: center;
+  box-shadow: 0 8px 24px rgba(80, 227, 189, 0.1);
+}
+
+.savingsTag {
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: #50e3bd;
+  margin-bottom: 4px;
+}
+
+.savingsFigure {
+  font-size: clamp(24px, 3vw, 32px);
+  font-weight: 900;
+  color: #50e3bd;
+  letter-spacing: -0.5px;
+  line-height: 1.1;
+  margin-bottom: 6px;
+}
+
+.savingsSub {
+  font-size: 12px;
+  color: #c2d4df;
+  line-height: 1.4;
+}
+
+.cardFooter {
+  padding: 20px 28px;
+  background: #06121b;
+  border-top: 1px solid rgba(174, 199, 211, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.footerNote {
+  font-size: 13px;
+  color: #a7bcc8;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ctaButton {
+  background: #ff6a24;
+  color: #ffffff;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 14.5px;
+  font-weight: 800;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 16px rgba(255, 106, 36, 0.35);
+}
+
+.ctaButton:hover {
+  background: #ff7d3e;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 22px rgba(255, 106, 36, 0.45);
+}

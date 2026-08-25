@@ -416,28 +416,61 @@
 
 /* Custom Search Result Box */
 .customResultCard {
-  background: rgba(12, 28, 40, 0.95);
-  border: 1px solid rgba(80, 227, 189, 0.45);
-  border-radius: 10px;
-  padding: 12px 14px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  background: rgba(10, 24, 34, 0.95);
+  border: 1px solid #50e3bd;
+  border-radius: 12px;
+  padding: 14px 16px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5), 0 0 16px rgba(80, 227, 189, 0.2);
   animation: answerReveal 0.25s ease-out;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.customResultHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.customResultBadge {
+  font-size: 11px;
+  font-weight: 800;
+  color: #50e3bd;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.customResultDismiss {
+  background: none;
+  border: none;
+  color: #8fa6b5;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.customResultDismiss:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .customResultTitle {
-  font-size: 12px;
+  font-size: 13.5px;
   font-weight: 800;
-  color: #50e3bd;
-  margin-bottom: 6px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
+  color: #f5f0e7;
+  line-height: 1.35;
 }
 
 .customResultText {
   margin: 0;
-  font-size: 12.5px;
-  line-height: 1.5;
+  font-size: 13px;
+  line-height: 1.55;
   color: #d1e2eb;
 }
 

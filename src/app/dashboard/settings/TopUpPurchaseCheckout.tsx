@@ -70,9 +70,26 @@ function newBrowserOperationId(): string | null {
 }
 
 function offeredTopUps(planCode: PlanCode): TopUpDefinition[] {
-  return SELLABLE_TOP_UP_IDS
+  const sellable = SELLABLE_TOP_UP_IDS
     .map((id) => TOP_UPS[id])
     .filter((sku) => (sku.eligiblePlans as readonly string[]).includes(planCode));
+
+  // AI Intake and AI Writing Drafts share a unified flexible pool across the product.
+  // Consolidate them into a single 250 AI Credits top-up pack ($19) so AI and draft credits are one.
+  const hasAi = sellable.some((sku) => sku.resourceCode === 'ai_writing_drafts');
+  const filtered = hasAi
+    ? sellable.filter((sku) => sku.resourceCode !== 'ai_intake_threads')
+    : sellable;
+
+  return filtered.map((sku) => {
+    if (sku.resourceCode === 'ai_writing_drafts') {
+      return {
+        ...sku,
+        label: '250 AI Credits',
+      };
+    }
+    return sku;
+  });
 }
 
 // unitsLabel used to live here and derived its noun from the resource code,
@@ -95,25 +112,14 @@ function TopUpIcon({ id }: { id: string }) {
       </svg>
     );
   }
-  if (id.startsWith('ai_intake')) {
+  if (id.startsWith('ai')) {
     return (
       <svg className="plan-usage-resource-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-        <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+        <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
       </svg>
     );
   }
-  if (id.startsWith('ai_drafts')) {
-    return (
-      <svg className="plan-usage-resource-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-        <polyline points="14 2 14 8 20 8" />
-        <line x1="16" y1="13" x2="8" y2="13" />
-        <line x1="16" y1="17" x2="8" y2="17" />
-        <polyline points="10 9 9 9 8 9" />
-      </svg>
-    );
-  }
-  if (id.startsWith('crew_user')) {
+  if (id.startsWith('crew')) {
     return (
       <svg className="plan-usage-resource-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
@@ -225,7 +231,10 @@ export default function TopUpPurchaseCheckout({
               <strong>{formatUsdFromCents(sku.priceCents)}</strong>
               {sku.recurring ? <span className="plan-topup-interval">/ mo</span> : null}
             </div>
-            <small>{describeTopUpUnits(sku)} · {describeTopUpCadence(sku)}</small>
+            <small>{sku.resourceCode === 'ai_writing_drafts' ? '250 AI credits' : describeTopUpUnits(sku)} · {describeTopUpCadence(sku)}</small>
+            {sku.resourceCode === 'ai_writing_drafts' ? (
+              <small className="plan-topup-flex-hint">⚡ Powers Smart Intake lead qualification, AI quotes &amp; marketing copy</small>
+            ) : null}
             <form action={formAction}>
               <input type="hidden" name="topUpId" value={sku.id} />
               <input type="hidden" name="operationId" value={operationIds[sku.id] ?? ''} />

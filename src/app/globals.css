@@ -6245,6 +6245,15 @@ h3 {
   font-weight: 600;
 }
 
+.plan-topup-flex-hint {
+  display: inline-block;
+  margin: 0.25rem 0 0.5rem;
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: #0284c7 !important;
+  line-height: 1.35;
+}
+
 .plan-topup-security-badge {
   display: flex;
   align-items: center;
