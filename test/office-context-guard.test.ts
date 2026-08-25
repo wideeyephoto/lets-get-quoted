@@ -310,6 +310,7 @@ describe('the wiring, as source', () => {
     };
     walk('src/app');
     expect(callers.sort()).toEqual([
+      'src/app/api/voice/export/route.ts',
       'src/app/api/voice/recordings/[recordingId]/route.ts',
       'src/app/dashboard/automations/page.tsx',
       'src/app/dashboard/cash-flow/actions.ts',

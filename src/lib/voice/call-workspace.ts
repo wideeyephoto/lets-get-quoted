@@ -143,10 +143,32 @@ export type VoiceWorkspaceCounters = Readonly<{
   transferred: number;
   completedToday: number;
   totalCount: number;
+  totalAiMinutes: number;
+  avgDurationSeconds: number;
+  handledCount: number;
+  emergencyCount: number;
+  leadsGeneratedCount: number;
+  peakHour: string | null;
 }>;
+
+export const EMPTY_WORKSPACE_COUNTERS: VoiceWorkspaceCounters = {
+  unreviewed: 0,
+  needsCallback: 0,
+  urgent: 0,
+  transferred: 0,
+  completedToday: 0,
+  totalCount: 0,
+  totalAiMinutes: 0,
+  avgDurationSeconds: 0,
+  handledCount: 0,
+  emergencyCount: 0,
+  leadsGeneratedCount: 0,
+  peakHour: null,
+};
 
 export type VoiceWorkspaceFilters = Readonly<{
   tab?: 'all' | 'unreviewed' | 'needs_callback' | 'urgent' | 'transferred' | 'completed';
+  dateRange?: 'all' | 'today' | 'yesterday' | '7d' | '30d' | 'month';
   query?: string;
   disposition?: VoiceCallDisposition | 'all';
   outcome?: VoiceCallOutcome | 'all';
@@ -264,7 +286,7 @@ export async function loadVoiceWorkspaceQueue(
       return {
         available: false,
         items: [],
-        counters: { unreviewed: 0, needsCallback: 0, urgent: 0, transferred: 0, completedToday: 0, totalCount: 0 },
+        counters: EMPTY_WORKSPACE_COUNTERS,
       };
     }
 
@@ -327,22 +349,59 @@ export async function loadVoiceWorkspaceQueue(
       };
     });
 
-    // Compute top-level counters
+    // Compute top-level counters and analytics
     let unreviewed = 0;
     let needsCallback = 0;
     let urgent = 0;
     let transferred = 0;
     let completedToday = 0;
+    let totalAiSeconds = 0;
+    let handledCount = 0;
+    let emergencyCount = 0;
+    let leadsGeneratedCount = 0;
+    const hourHistogram: Record<number, number> = {};
 
     for (const item of allItems) {
       if (item.workflow.disposition === 'unreviewed') unreviewed += 1;
       if (item.workflow.disposition === 'needs_callback') needsCallback += 1;
       if (item.workflow.urgency === 'urgent' || item.workflow.urgency === 'emergency') urgent += 1;
+      if (item.workflow.urgency === 'emergency') emergencyCount += 1;
+      if (item.leadId || item.workflow.disposition === 'converted') leadsGeneratedCount += 1;
+
       if (item.outcome === 'transfer_attempted' || item.outcome === 'transferred_and_answered' || item.outcome === 'transferred') {
         transferred += 1;
+      } else if (item.outcome === 'completed' || item.outcome === 'ai_handled') {
+        handledCount += 1;
       }
-      if (item.startedAt && item.startedAt >= todayStartIso) completedToday += 1;
+
+      if (typeof item.aiSeconds === 'number' && item.aiSeconds > 0) {
+        totalAiSeconds += item.aiSeconds;
+      }
+
+      if (item.startedAt) {
+        if (item.startedAt >= todayStartIso) completedToday += 1;
+        const callDate = new Date(item.startedAt);
+        if (!Number.isNaN(callDate.getTime())) {
+          const hr = callDate.getHours();
+          hourHistogram[hr] = (hourHistogram[hr] ?? 0) + 1;
+        }
+      }
     }
+
+    let peakHourStr: string | null = null;
+    let maxHourCount = 0;
+    for (const [hourStr, count] of Object.entries(hourHistogram)) {
+      if (count > maxHourCount) {
+        maxHourCount = count;
+        const hrNum = Number(hourStr);
+        const ampm = hrNum >= 12 ? 'PM' : 'AM';
+        const displayHr = hrNum % 12 === 0 ? 12 : hrNum % 12;
+        peakHourStr = `${displayHr} ${ampm}`;
+      }
+    }
+
+    const totalAiMinutes = Math.ceil(totalAiSeconds / 60);
+    const avgDurationSeconds = allItems.length > 0 ? Math.round(totalAiSeconds / allItems.length) : 0;
 
     const counters: VoiceWorkspaceCounters = {
       unreviewed,
@@ -351,10 +410,42 @@ export async function loadVoiceWorkspaceQueue(
       transferred,
       completedToday,
       totalCount: allItems.length,
+      totalAiMinutes,
+      avgDurationSeconds,
+      handledCount,
+      emergencyCount,
+      leadsGeneratedCount,
+      peakHour: peakHourStr,
     };
 
-    // Filter items based on active tab and search params
+    // Filter items based on active tab, dateRange, and search params
     let filtered = allItems;
+
+    // Date range filtering
+    const dateRange = filters.dateRange ?? 'all';
+    if (dateRange !== 'all') {
+      const nowMs = now.getTime();
+      let startCutoffIso: string | null = null;
+      if (dateRange === 'today') {
+        startCutoffIso = todayStartIso;
+      } else if (dateRange === 'yesterday') {
+        const yesterday = new Date(now);
+        yesterday.setDate(yesterday.getDate() - 1);
+        yesterday.setHours(0, 0, 0, 0);
+        startCutoffIso = yesterday.toISOString();
+      } else if (dateRange === '7d') {
+        startCutoffIso = new Date(nowMs - 7 * 24 * 60 * 60 * 1000).toISOString();
+      } else if (dateRange === '30d') {
+        startCutoffIso = new Date(nowMs - 30 * 24 * 60 * 60 * 1000).toISOString();
+      } else if (dateRange === 'month') {
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        startCutoffIso = monthStart.toISOString();
+      }
+
+      if (startCutoffIso) {
+        filtered = filtered.filter((i) => i.startedAt && i.startedAt >= startCutoffIso);
+      }
+    }
 
     const tab = filters.tab ?? 'all';
     if (tab === 'unreviewed') {
@@ -399,7 +490,7 @@ export async function loadVoiceWorkspaceQueue(
     return {
       available: false,
       items: [],
-      counters: { unreviewed: 0, needsCallback: 0, urgent: 0, transferred: 0, completedToday: 0, totalCount: 0 },
+      counters: EMPTY_WORKSPACE_COUNTERS,
     };
   }
 }

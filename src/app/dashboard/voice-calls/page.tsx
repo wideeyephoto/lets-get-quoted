@@ -32,6 +32,7 @@ export default async function VoiceCallsPage({
 }: {
   searchParams: {
     tab?: string;
+    dateRange?: string;
     q?: string;
     disposition?: string;
     outcome?: string;
@@ -47,15 +48,20 @@ export default async function VoiceCallsPage({
 
   const timezone = (account?.timezone as string) || 'America/New_York';
   const currentTab = (searchParams.tab as 'all' | 'unreviewed' | 'needs_callback' | 'urgent' | 'transferred' | 'completed') || 'all';
+  const currentDateRange = (searchParams.dateRange as 'all' | 'today' | 'yesterday' | '7d' | '30d' | 'month') || 'all';
 
   const queue = await loadVoiceWorkspaceQueue(supabase, accountId, {
     tab: currentTab,
+    dateRange: currentDateRange,
     query: searchParams.q,
     disposition: (searchParams.disposition as VoiceCallDisposition) || 'all',
     outcome: (searchParams.outcome as VoiceCallOutcome) || 'all',
   });
 
   const { counters, items } = queue;
+  const handledRate = counters.totalCount > 0
+    ? Math.round((counters.handledCount / counters.totalCount) * 100)
+    : 0;
 
   return (
     <div className={styles.container}>
@@ -64,43 +70,113 @@ export default async function VoiceCallsPage({
           <h1>Voice Calls Inbox</h1>
           <p>Triage AI receptionist calls, review transcripts, and schedule customer callbacks.</p>
         </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <a
+            href={`/api/voice/export?dateRange=${currentDateRange}`}
+            className={styles.exportBtn}
+            download
+          >
+            📥 Export CSV
+          </a>
+        </div>
+      </div>
+
+      {/* AI Voice Intelligence & Performance Analytics */}
+      <div className={styles.analyticsGrid}>
+        <div className={styles.analyticsCard}>
+          <span className={styles.analyticsLabel}>AI Answered Usage</span>
+          <span className={styles.analyticsValue}>{counters.totalAiMinutes} min</span>
+          <span className={styles.analyticsSubtext}>Total billable AI minutes</span>
+        </div>
+
+        <div className={styles.analyticsCard}>
+          <span className={styles.analyticsLabel}>AI Resolution Rate</span>
+          <span className={styles.analyticsValue}>{handledRate}%</span>
+          <span className={styles.analyticsSubtext}>{counters.handledCount} calls handled without transfer</span>
+        </div>
+
+        <div className={styles.analyticsCard}>
+          <span className={styles.analyticsLabel}>Avg Call Length</span>
+          <span className={styles.analyticsValue}>{formatCallLength(counters.avgDurationSeconds)}</span>
+          <span className={styles.analyticsSubtext}>Across {counters.totalCount} calls</span>
+        </div>
+
+        <div className={styles.analyticsCard}>
+          <span className={styles.analyticsLabel}>Peak Calling Window</span>
+          <span className={styles.analyticsValue}>{counters.peakHour ?? '—'}</span>
+          <span className={styles.analyticsSubtext}>Highest incoming volume</span>
+        </div>
+
+        <div className={styles.analyticsCard}>
+          <span className={styles.analyticsLabel}>Emergency Hazards</span>
+          <span className={styles.analyticsValue} style={{ color: counters.emergencyCount > 0 ? '#fca5a5' : '#fff' }}>
+            {counters.emergencyCount}
+          </span>
+          <span className={styles.analyticsSubtext}>High-priority urgent safety calls</span>
+        </div>
+      </div>
+
+      {/* Date Range Selector Toolbar */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem', margin: '0.5rem 0' }}>
+        <div className={styles.dateFilterGroup}>
+          <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--mute-t62, #94a3b8)', marginRight: '0.25rem' }}>
+            Timeframe:
+          </span>
+          {[
+            ['all', 'All Time'],
+            ['today', 'Today'],
+            ['yesterday', 'Yesterday'],
+            ['7d', 'Last 7 Days'],
+            ['30d', 'Last 30 Days'],
+            ['month', 'This Month'],
+          ].map(([val, label]) => (
+            <Link
+              key={val}
+              href={`/dashboard/voice-calls?tab=${currentTab}&dateRange=${val}${searchParams.q ? `&q=${encodeURIComponent(searchParams.q)}` : ''}`}
+              className={`${styles.dateFilterBtn} ${currentDateRange === val ? styles.dateFilterActive : ''}`}
+            >
+              {label}
+            </Link>
+          ))}
+        </div>
       </div>
 
       {/* Top-Level Operational Counters */}
       <div className={styles.statsGrid}>
         <Link
-          href="/dashboard/voice-calls?tab=unreviewed"
+          href={`/dashboard/voice-calls?tab=unreviewed&dateRange=${currentDateRange}`}
           className={`${styles.statCard} ${currentTab === 'unreviewed' ? styles.statActive : ''} ${counters.unreviewed > 0 ? styles.statAlert : ''}`}
         >
           <span className={styles.statLabel}>Unreviewed</span>
           <span className={styles.statValue}>{counters.unreviewed}</span>
         </Link>
         <Link
-          href="/dashboard/voice-calls?tab=needs_callback"
+          href={`/dashboard/voice-calls?tab=needs_callback&dateRange=${currentDateRange}`}
           className={`${styles.statCard} ${currentTab === 'needs_callback' ? styles.statActive : ''} ${counters.needsCallback > 0 ? styles.statWarning : ''}`}
         >
           <span className={styles.statLabel}>Needs Callback</span>
           <span className={styles.statValue}>{counters.needsCallback}</span>
         </Link>
         <Link
-          href="/dashboard/voice-calls?tab=urgent"
+          href={`/dashboard/voice-calls?tab=urgent&dateRange=${currentDateRange}`}
           className={`${styles.statCard} ${currentTab === 'urgent' ? styles.statActive : ''} ${counters.urgent > 0 ? styles.statAlert : ''}`}
         >
           <span className={styles.statLabel}>Urgent / Emergency</span>
           <span className={styles.statValue}>{counters.urgent}</span>
         </Link>
         <Link
-          href="/dashboard/voice-calls?tab=transferred"
+          href={`/dashboard/voice-calls?tab=transferred&dateRange=${currentDateRange}`}
           className={`${styles.statCard} ${currentTab === 'transferred' ? styles.statActive : ''}`}
         >
           <span className={styles.statLabel}>Transferred</span>
           <span className={styles.statValue}>{counters.transferred}</span>
         </Link>
         <Link
-          href="/dashboard/voice-calls?tab=all"
+          href={`/dashboard/voice-calls?tab=all&dateRange=${currentDateRange}`}
           className={`${styles.statCard} ${currentTab === 'all' ? styles.statActive : ''}`}
         >
-          <span className={styles.statLabel}>Total In History</span>
+          <span className={styles.statLabel}>Total in Range</span>
           <span className={styles.statValue}>{counters.totalCount}</span>
         </Link>
       </div>
@@ -109,37 +185,37 @@ export default async function VoiceCallsPage({
       <div className={styles.toolbar}>
         <div className={styles.filterTabs}>
           <Link
-            href="/dashboard/voice-calls?tab=all"
+            href={`/dashboard/voice-calls?tab=all&dateRange=${currentDateRange}`}
             className={`${styles.tabBtn} ${currentTab === 'all' ? styles.tabActive : ''}`}
           >
             All Calls ({counters.totalCount})
           </Link>
           <Link
-            href="/dashboard/voice-calls?tab=unreviewed"
+            href={`/dashboard/voice-calls?tab=unreviewed&dateRange=${currentDateRange}`}
             className={`${styles.tabBtn} ${currentTab === 'unreviewed' ? styles.tabActive : ''}`}
           >
             Unreviewed ({counters.unreviewed})
           </Link>
           <Link
-            href="/dashboard/voice-calls?tab=needs_callback"
+            href={`/dashboard/voice-calls?tab=needs_callback&dateRange=${currentDateRange}`}
             className={`${styles.tabBtn} ${currentTab === 'needs_callback' ? styles.tabActive : ''}`}
           >
             Needs Callback ({counters.needsCallback})
           </Link>
           <Link
-            href="/dashboard/voice-calls?tab=urgent"
+            href={`/dashboard/voice-calls?tab=urgent&dateRange=${currentDateRange}`}
             className={`${styles.tabBtn} ${currentTab === 'urgent' ? styles.tabActive : ''}`}
           >
             Urgent ({counters.urgent})
           </Link>
           <Link
-            href="/dashboard/voice-calls?tab=transferred"
+            href={`/dashboard/voice-calls?tab=transferred&dateRange=${currentDateRange}`}
             className={`${styles.tabBtn} ${currentTab === 'transferred' ? styles.tabActive : ''}`}
           >
             Transferred ({counters.transferred})
           </Link>
           <Link
-            href="/dashboard/voice-calls?tab=completed"
+            href={`/dashboard/voice-calls?tab=completed&dateRange=${currentDateRange}`}
             className={`${styles.tabBtn} ${currentTab === 'completed' ? styles.tabActive : ''}`}
           >
             Resolved
@@ -148,6 +224,7 @@ export default async function VoiceCallsPage({
 
         <form method="GET" className={styles.searchRow}>
           <input type="hidden" name="tab" value={currentTab} />
+          <input type="hidden" name="dateRange" value={currentDateRange} />
           <input
             type="search"
             name="q"
