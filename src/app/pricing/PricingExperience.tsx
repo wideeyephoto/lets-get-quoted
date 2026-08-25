@@ -256,7 +256,7 @@ export default function PricingExperience() {
       closestAlternative,
       crossoverNote,
     };
-  }, [recommenderTeam, recommenderVolume, recommenderTexting, seatsNum, billing]);
+  }, [recommenderVolume, recommenderTexting, seatsNum, billing]);
 
   return (
     <>

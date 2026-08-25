@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, useMemo, type KeyboardEvent as ReactKeyboardEvent } from 'react';
+import { useEffect, useRef, useState, useMemo, useCallback, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import type {
@@ -75,10 +75,13 @@ export function SmartSearch({
     setMounted(true);
   }, []);
 
-  const setOpen = (open: boolean) => {
-    if (onOpenChange) onOpenChange(open);
-    if (!isControlled) setInternalOpen(open);
-  };
+  const setOpen = useCallback(
+    (open: boolean) => {
+      if (onOpenChange) onOpenChange(open);
+      if (!isControlled) setInternalOpen(open);
+    },
+    [onOpenChange, isControlled]
+  );
 
   // If onOpenChange is provided for a trigger-only button (rail or mobile),
   // the parent or palette-only instance manages the modal and global shortcuts.
@@ -137,7 +140,7 @@ export function SmartSearch({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, shouldListenGlobal]);
+  }, [isOpen, shouldListenGlobal, setOpen]);
 
   // Autofocus input on open & freeze background
   useEffect(() => {
@@ -175,7 +178,7 @@ export function SmartSearch({
     };
     window.addEventListener('keydown', handleEscape);
     return () => window.removeEventListener('keydown', handleEscape);
-  }, [isOpen, shouldRenderModal]);
+  }, [isOpen, shouldRenderModal, setOpen]);
 
   // Fetch search results on query change (debounced)
   useEffect(() => {
