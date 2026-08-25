@@ -58,6 +58,12 @@ export default function VoiceCallHistorySection({
 
   return (
     <div className="voice-history">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+        <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--mute-t62, #94a3b8)' }}>Recent calls preview</span>
+        <Link href="/dashboard/voice-calls" style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--accent, #3b82f6)' }}>
+          Open Voice Calls Inbox →
+        </Link>
+      </div>
       <div className="voice-history-totals">
         <div>
           <strong>{history.billedMinutes}</strong>

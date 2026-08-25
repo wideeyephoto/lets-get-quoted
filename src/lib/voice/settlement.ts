@@ -210,8 +210,105 @@ function instant(micros: number | null): string | null {
   return Number.isFinite(ms) ? new Date(ms).toISOString() : null;
 }
 
+export type VoiceCallProviderOutcome =
+  | 'in_progress'
+  | 'ai_handled'
+  | 'transfer_attempted'
+  | 'transferred_and_answered'
+  | 'caller_abandoned'
+  | 'no_input'
+  | 'voicemail_fallback'
+  | 'provider_failure'
+  | 'completed'
+  | 'unknown';
+
+export function inferProviderOutcome(receipt: VoiceReceipt): VoiceCallProviderOutcome {
+  const log = receipt.callLog ?? [];
+  const hasUserTurns = log.some((turn) => turn.role === 'user' && turn.content.trim().length > 0);
+  const hasAssistantTurns = log.some((turn) => turn.role === 'assistant' && turn.content.trim().length > 0);
+
+  const transferMentioned = log.some((turn) =>
+    turn.content.toLowerCase().includes('connecting you now')
+    || turn.content.toLowerCase().includes('transfer_to_business')
+    || turn.content.toLowerCase().includes('transferring you')
+  );
+
+  if (transferMentioned) {
+    return 'transfer_attempted';
+  }
+
+  if (!hasUserTurns) {
+    if (hasAssistantTurns) {
+      return 'no_input';
+    }
+    return 'caller_abandoned';
+  }
+
+  const seconds = receipt.aiStartMicros !== null && receipt.aiEndMicros !== null
+    ? Math.round((receipt.aiEndMicros - receipt.aiStartMicros) / MICROS_PER_SECOND)
+    : null;
+
+  if (seconds !== null && seconds < 8 && log.length <= 2) {
+    return 'caller_abandoned';
+  }
+
+  if (hasUserTurns && hasAssistantTurns) {
+    return 'ai_handled';
+  }
+
+  return 'completed';
+}
+
+export async function recordProvisionalVoiceCall(
+  admin: SupabaseClient,
+  input: Readonly<{
+    accountId: string;
+    provider: 'signalwire';
+    providerCallId: string;
+    callerNumber: string | null;
+    startedAt: string;
+  }>,
+): Promise<string | null> {
+  let callId: string | null = null;
+  try {
+    const res = await admin
+      .from('voice_calls')
+      .upsert({
+        account_id: input.accountId,
+        provider: input.provider,
+        provider_call_id: input.providerCallId,
+        caller_number: input.callerNumber,
+        started_at: input.startedAt,
+        outcome: 'in_progress',
+        outcome_source: 'provisional_admission',
+        outcome_observed_at: input.startedAt,
+        is_provisional: true,
+        settlement: 'unsettled',
+      }, { onConflict: 'provider,provider_call_id' })
+      .select('id');
+    callId = (res?.data as { id?: string }[] | null)?.[0]?.id ?? null;
+  } catch {
+    callId = null;
+  }
+
+  if (callId) {
+    try {
+      await admin.from('voice_call_workflows').upsert({
+        call_id: callId,
+        account_id: input.accountId,
+        disposition: 'unreviewed',
+        urgency: 'normal',
+      }, { onConflict: 'call_id' });
+    } catch {
+      // Non-blocking on provisional initialization failure
+    }
+    return callId;
+  }
+  return null;
+}
+
 /** Required transcript projection; throws so the durable receipt can retry. */
-async function recordCallHistory(
+export async function recordCallHistory(
   admin: SupabaseClient,
   receipt: VoiceReceipt,
   facts: Readonly<{
@@ -230,16 +327,13 @@ async function recordCallHistory(
     ? Math.round((receipt.aiEndMicros - receipt.aiStartMicros) / MICROS_PER_SECOND)
     : null;
 
-  // `unmetered` is a real outcome, not a failure: the meter fails open when the
-  // ledger cannot answer, and such a call must look different from a free one.
-  // 'overage' was a legal value in the column, handled by the reader and
-  // rendered by the dashboard as "at your overage rate" -- and nothing ever
-  // wrote it. Every settled call was recorded as 'allowance', including the
-  // ones charged well above it.
   const settlement = facts.unbillable ? 'unbillable'
     : facts.unmetered ? 'unmetered'
       : facts.minutes === null ? 'unsettled'
         : facts.overage ? 'overage' : 'allowance';
+
+  const outcome = inferProviderOutcome(receipt);
+  const nowIso = new Date().toISOString();
 
   const { error } = await admin.from('voice_calls').upsert({
     account_id: facts.accountId,
@@ -253,14 +347,42 @@ async function recordCallHistory(
     ai_seconds: seconds,
     billed_minutes: facts.minutes,
     settlement,
+    outcome,
+    outcome_source: 'swml_post_prompt',
+    outcome_observed_at: nowIso,
+    is_provisional: false,
     summary: summaryLine(receipt),
     transcript: receipt.callLog,
     lead_id: facts.leadId,
   }, { onConflict: 'provider,provider_call_id' });
+
   if (error) {
     const code = typeof error.code === 'string' && error.code.trim()
       ? error.code.trim()
       : 'unknown';
     throw new Error(`Voice call history write failed (${code}).`);
+  }
+
+  const emergency = detectCallEmergency(summaryLine(receipt));
+  const urgency = emergency.isEmergency ? 'emergency' : 'normal';
+
+  try {
+    const { data: callRow } = await admin
+      .from('voice_calls')
+      .select('id')
+      .eq('provider', receipt.provider)
+      .eq('provider_call_id', receipt.providerCallId)
+      .maybeSingle();
+
+    if (callRow?.id) {
+      await admin.from('voice_call_workflows').upsert({
+        call_id: callRow.id,
+        account_id: facts.accountId,
+        disposition: 'unreviewed',
+        urgency,
+      }, { onConflict: 'call_id' });
+    }
+  } catch {
+    // Non-blocking on workflow sync
   }
 }

@@ -184,6 +184,34 @@ export function supabaseRefOf(url) {
   return m ? m[1] : null;
 }
 
+/**
+ * Select the 10DLC campaign that actually contains the target number, or the active
+ * campaign, and detect any duplicate or secondary campaigns under the brand.
+ */
+export function selectTargetCampaignAndAssignment(campaigns, campaignNumbersMap, wantNumber) {
+  if (!Array.isArray(campaigns) || campaigns.length === 0) return { campaign: null, assignment: null, duplicates: [] };
+
+  let matchedCampaign = null;
+  let matchedAssignment = null;
+
+  for (const c of campaigns) {
+    const rows = campaignNumbersMap[c.id] || [];
+    const found = wantNumber ? rows.find((r) => r.phone_number && r.phone_number.number === wantNumber) : rows[0];
+    if (found) {
+      matchedCampaign = c;
+      matchedAssignment = found;
+      break;
+    }
+  }
+
+  const campaign = matchedCampaign || campaigns.find((c) => c.state === 'active') || campaigns[0];
+  const rows = campaignNumbersMap[campaign.id] || [];
+  const mine = matchedAssignment || (wantNumber ? rows.find((r) => r.phone_number && r.phone_number.number === wantNumber) : rows[0]);
+  const duplicates = campaigns.filter((c) => c.id !== campaign.id);
+
+  return { campaign, assignment: mine || null, duplicates };
+}
+
 // ------------------------------------------------------------ reporting ----
 
 const results = [];
@@ -327,28 +355,39 @@ async function main() {
   if (brand.state === 'completed') pass('brand', `${brand.name} -- ${brand.state}`);
   else fail('brand', `${brand.name} -- state ${brand.state}, needs completed`);
 
-  const campaigns = await get(`/api/relay/rest/registry/beta/brands/${brand.id}/campaigns`);
-  const campaign = ((campaigns.json && campaigns.json.data) || [])[0];
-  if (!campaign) {
+  const campaignsRes = await get(`/api/relay/rest/registry/beta/brands/${brand.id}/campaigns`);
+  const campaignList = (campaignsRes.json && campaignsRes.json.data) || [];
+  if (!campaignList.length) {
     fail('campaign', 'the brand has no campaign');
     return finish();
   }
-  if (campaign.state === 'active') pass('campaign', `${campaign.name} -- ${campaign.state}`);
-  else fail('campaign', `${campaign.name} -- state ${campaign.state}, needs active`);
+
+  const numbersMap = {};
+  for (const c of campaignList) {
+    const assignedRes = await get(`/api/relay/rest/registry/beta/campaigns/${c.id}/numbers`);
+    numbersMap[c.id] = (assignedRes.json && assignedRes.json.data) || [];
+  }
+
+  const { campaign, assignment: mine, duplicates } = selectTargetCampaignAndAssignment(campaignList, numbersMap, want);
+
+  if (duplicates.length) {
+    const dupeDetails = duplicates.map((d) => `${d.name} (${d.id}): ${d.state}`).join(', ');
+    warn('extra campaigns', `found ${duplicates.length} other campaign(s) on brand: ${dupeDetails}`);
+  }
+
+  if (campaign.state === 'active') pass('campaign', `${campaign.name} (${campaign.id}) -- ${campaign.state}`);
+  else fail('campaign', `${campaign.name} (${campaign.id}) -- state ${campaign.state}, needs active`);
 
   // 7. The assignment, which is the link that fails while everything else
   //    looks healthy. A processed ORDER is not an assigned NUMBER.
-  const assigned = await get(`/api/relay/rest/registry/beta/campaigns/${campaign.id}/numbers`);
-  const rows = (assigned.json && assigned.json.data) || [];
-  const mine = want ? rows.find((r) => r.phone_number && r.phone_number.number === want) : rows[0];
   if (!mine) {
     fail('campaign assignment', `${want || 'the number'} is not attached to campaign ${campaign.id} at all -- outbound A2P will be carrier-filtered`);
   } else if (mine.state === 'failed') {
     fail('campaign assignment', `assignment ${mine.id} is FAILED (updated ${mine.updated_at}). The number is not attached to the active campaign, so outbound will be filtered even though the provider accepts the send.`);
   } else if (mine.state === 'assigned' || mine.state === 'completed') {
-    pass('campaign assignment', `${mine.state}`);
+    pass('campaign assignment', `${mine.state} (${mine.id}) on ${campaign.name}`);
   } else {
-    warn('campaign assignment', `state ${mine.state}`);
+    warn('campaign assignment', `state ${mine.state} (${mine.id}) on ${campaign.name}`);
   }
 
   // 8. Whether a retry could learn anything ---------------------------------

@@ -31,7 +31,7 @@ const CARD_FEATURES: Record<PlanId, readonly string[]> = {
   solo: [
     '0.50% lower LGQ platform fee',
     '500 text credits + 300 AI credits/mo (Intake & Drafts)',
-    'Customer messaging inbox available after carrier approval',
+    '2-way business texting (available after carrier approval)',
     'Custom domain + SEO website included',
     '1 QuickBooks Online sync included',
   ],
@@ -633,10 +633,10 @@ export default function PricingExperience() {
             <div className={styles.includedOptionBody}>
               <span className={styles.quickIcon} aria-hidden="true">2W</span>
               <span>
-                <strong>2-Way Customer Messaging</strong>
-                <small>Business texting requires A2P registration and a dedicated number</small>
+                <strong>2-Way Business Texting</strong>
+                <small>Available after carrier approval with a registered business number</small>
               </span>
-              <b>Included</b>
+              <b>Software Included</b>
             </div>
             <Link className={styles.quickLearnMore} href="/demo/messages">
               See the messaging demo →

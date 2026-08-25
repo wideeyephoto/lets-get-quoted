@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { afterEach, describe, expect, it } from 'vitest';
 
 import {
@@ -6,6 +7,7 @@ import {
   misfiledCredentials,
   parseEnvEntries,
   resolveProvider,
+  selectTargetCampaignAndAssignment,
   signalwireConfigResolves,
   supabaseRefOf,
   unreadableMessagingNames,
@@ -196,3 +198,44 @@ describe('the 10DLC callback token shape', () => {
     expect(CALLBACK_TOKEN_SHAPE.test(`${'a'.repeat(31)}/`)).toBe(false);
   });
 });
+
+describe('10DLC campaign and assignment selection', () => {
+  const activeCampaign = { id: 'camp_active', name: 'LGQ Active Campaign', state: 'active' };
+  const pendingDupe = { id: 'camp_pending', name: 'LGQ Platform Alerts & Verification', state: 'pending' };
+
+  it('selects the campaign containing the target number when multiple exist', () => {
+    const campaigns = [pendingDupe, activeCampaign];
+    const numbersMap = {
+      camp_pending: [],
+      camp_active: [
+        { id: 'asgn_1', phone_number: { number: '+19479412323' }, state: 'assigned' },
+      ],
+    };
+
+    const res = selectTargetCampaignAndAssignment(campaigns, numbersMap, '+19479412323');
+    expect(res.campaign).toEqual(activeCampaign);
+    expect(res.assignment).toMatchObject({ id: 'asgn_1', state: 'assigned' });
+    expect(res.duplicates).toEqual([pendingDupe]);
+  });
+
+  it('falls back to active campaign if target number is not attached', () => {
+    const campaigns = [pendingDupe, activeCampaign];
+    const numbersMap = {
+      camp_pending: [],
+      camp_active: [],
+    };
+
+    const res = selectTargetCampaignAndAssignment(campaigns, numbersMap, '+19479412323');
+    expect(res.campaign).toEqual(activeCampaign);
+    expect(res.assignment).toBeNull();
+    expect(res.duplicates).toEqual([pendingDupe]);
+  });
+
+  it('handles empty campaign list gracefully', () => {
+    const res = selectTargetCampaignAndAssignment([], {}, '+19479412323');
+    expect(res.campaign).toBeNull();
+    expect(res.assignment).toBeNull();
+    expect(res.duplicates).toEqual([]);
+  });
+});
+

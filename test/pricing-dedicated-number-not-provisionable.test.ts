@@ -18,7 +18,7 @@ import { COMPARISON_ROWS, PLANS } from '@/app/pricing/pricing-catalog';
 const read = (...parts: string[]): string =>
   readFileSync(join(process.cwd(), ...parts), 'utf8').replace(/\r\n/g, '\n');
 
-const NOT_YET = /coming soon|at launch|when it launches|planned|not yet|not available|shared|\bwill\b|\bwould\b/i;
+const NOT_YET = /coming soon|at launch|when it launches|planned|not yet|not available|shared|carrier (approval|registration|vetting)|after carrier|private beta|requires (carrier|dedicated)|\bwill\b|\bwould\b/i;
 const OWN_NUMBER = /\b(dedicated|own)\b[\w/ -]{0,30}?\bnumber/i;
 
 const PRICING_SOURCES = [

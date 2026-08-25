@@ -59,6 +59,7 @@ export const NAV_ICON_PATHS: Record<string, string> = {
   // outline that reads at that size, with the two long diagonals kept parallel
   // so it still says "lightning" beside a speech bubble and a megaphone.
   '/dashboard/automations': '<path d="M13.2 2.8 5.4 13.4a.6.6 0 0 0 .5 1h4.3l-.8 6.8 7.9-10.6a.6.6 0 0 0-.5-1h-4.3z"/>',
+  '/dashboard/voice-calls': '<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>',
   // Keyed to /dashboard/marketing, where the composer now lives. It was on
   // /dashboard/campaigns, which meant the merged page rendered with no glyph at
   // all while every item around it had one.

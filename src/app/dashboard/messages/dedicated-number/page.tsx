@@ -2,12 +2,13 @@ import { randomUUID } from 'node:crypto';
 import Link from 'next/link';
 import type { InputHTMLAttributes } from 'react';
 import { requireOwnerContext } from '@/lib/auth';
+import { buildStandardContractorCampaignPayload } from '@/lib/messaging-contractor-campaign-template';
 import { loadMessagingRegistrationApplication } from '@/lib/messaging-number-provisioning';
 import { submitDedicatedNumberApplicationAction } from './actions';
 import PersistedApplicationForm, { ApplicationDraftLifecycle } from './PersistedApplicationForm';
 import styles from './registration.module.css';
 
-export const metadata = { title: 'Dedicated texting number application' };
+export const metadata = { title: 'Dedicated business texting application' };
 export const dynamic = 'force-dynamic';
 
 const STATUS_COPY: Record<string, string> = {
@@ -62,6 +63,15 @@ export default async function DedicatedNumberApplicationPage({
       ? `https://${site.subdomain}.${publicRoot}`
       : '';
 
+  const suggestedBrand = site?.company_name ?? account?.business_name ?? 'Your Business';
+  const standardTemplate = buildStandardContractorCampaignPayload({
+    legalBusinessName: application?.legalBusinessName ?? suggestedBrand,
+    dbaName: application?.dbaName ?? site?.company_name ?? null,
+    websiteUrl: suggestedWebsite || 'https://example.com',
+    supportEmail: userEmail ?? 'support@example.com',
+    supportPhone: site?.phone ?? '+12485550140',
+  });
+
   const defaults = {
     legalBusinessName: application?.legalBusinessName ?? site?.company_name ?? account?.business_name ?? '',
     dbaName: application?.dbaName ?? site?.company_name ?? '',
@@ -81,13 +91,15 @@ export default async function DedicatedNumberApplicationPage({
     region: application?.region ?? 'MI',
     postalCode: application?.postalCode ?? '',
     desiredAreaCode: application?.desiredAreaCode ?? '248',
-    messagingUseCase: application?.messagingUseCase ?? '',
+    messagingUseCase: application?.messagingUseCase ?? standardTemplate.description,
     estimatedMonthlyMessages: application?.estimatedMonthlyMessages ?? 500,
-    optInDescription: application?.optInDescription ?? '',
+    optInDescription: application?.optInDescription ?? standardTemplate.optInDescription,
     optInEvidenceUrl: application?.optInEvidenceUrl ?? '',
-    sampleMessages: application?.sampleMessages ?? [],
-    privacyPolicyUrl: application?.privacyPolicyUrl ?? '',
-    termsUrl: application?.termsUrl ?? '',
+    sampleMessages: (application?.sampleMessages && application.sampleMessages.length >= 2)
+      ? application.sampleMessages
+      : standardTemplate.sampleMessages,
+    privacyPolicyUrl: application?.privacyPolicyUrl ?? (suggestedWebsite ? `${suggestedWebsite}/privacy` : ''),
+    termsUrl: application?.termsUrl ?? (suggestedWebsite ? `${suggestedWebsite}/terms` : ''),
   };
   const submissionConfirmed = searchParams.done === 'submitted'
     && application?.status === 'submitted';
@@ -114,11 +126,12 @@ export default async function DedicatedNumberApplicationPage({
       <ApplicationDraftLifecycle storageKey={draftStorageKey} clear={Boolean(application && !canSubmit)} />
       <header className={styles.header}>
         <Link href="/dashboard/messages?setup=1#texting-setup" className={styles.back}>← Back to Messages</Link>
-        <p className={styles.eyebrow}>Private beta</p>
-        <h1>Apply for your own texting number</h1>
+        <p className={styles.eyebrow}>Carrier Application</p>
+        <h1>Start Application for Dedicated Business Number</h1>
         <p>
           This information lets our team vet your business and register its customer messaging with the mobile carriers.
-          Applying does not purchase a number, change your plan, or add a charge.
+          Submitting does not guarantee approval, purchase a number, or add a charge. Carrier registration, number lease,
+          and usage rates will be displayed for your explicit acceptance before any charges are incurred.
         </p>
       </header>
 
@@ -257,8 +270,8 @@ export default async function DedicatedNumberApplicationPage({
                 opt-outs will be honored; and purchased contact lists will not be used.
               </span>
             </label>
-            <button type="submit" className="btn primary">Submit for review</button>
-            <p className={styles.note}>Submission creates an application only. It cannot buy a phone number.</p>
+            <button type="submit" className="btn primary">Submit Application for Review</button>
+            <p className={styles.note}>Submission creates an application only. It does not purchase a number or add a charge.</p>
           </section>
         </PersistedApplicationForm>
       )}

@@ -21,6 +21,7 @@ import {
   buildVoiceSystemPrompt,
   loadVoiceGroundingContext,
 } from '@/lib/voice/grounding';
+import { recordProvisionalVoiceCall } from '@/lib/voice/settlement';
 
 /**
  * Deciding what happens to an inbound call, with no HTTP anywhere in it.
@@ -312,6 +313,14 @@ export async function planInboundCall(
   });
 
   if (decision.outcome === 'refused') return fallback(workspace, decision.reason);
+
+  await recordProvisionalVoiceCall(admin, {
+    accountId: workspace.accountId,
+    provider: 'signalwire',
+    providerCallId: call.providerCallId,
+    callerNumber: call.fromNumber,
+    startedAt: (options.now ?? (() => new Date()))().toISOString(),
+  }).catch(() => null);
 
   const grounding = await loadVoiceGroundingContext(admin, workspace.accountId).catch(() => null);
   const systemPrompt = grounding ? buildVoiceSystemPrompt(grounding) : undefined;

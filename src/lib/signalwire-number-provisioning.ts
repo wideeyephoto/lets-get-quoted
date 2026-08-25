@@ -398,23 +398,104 @@ export class SignalWireNumberProvisioningClient {
     throw malformed(`SignalWire phone pagination exceeded ${MAX_PHONE_PAGES} pages.`);
   }
 
+  async createBrand(input: Readonly<{
+    name: string;
+    companyName: string;
+    ein: string;
+    einIssuingCountry?: string;
+    entityType?: string;
+    vertical?: string;
+    street: string;
+    city: string;
+    state: string;
+    postalCode: string;
+    country?: string;
+    email: string;
+    phone: string;
+    website: string;
+    brandType?: string;
+  }>): Promise<SignalWireBrand> {
+    const payload = {
+      name: input.name.trim(),
+      company_name: input.companyName.trim(),
+      ein: input.ein.trim(),
+      ein_issuing_country: (input.einIssuingCountry ?? 'USA').trim(),
+      entity_type: (input.entityType ?? 'PRIVATE_PROFIT').trim(),
+      vertical: (input.vertical ?? 'HOME_SERVICES').trim(),
+      street: input.street.trim(),
+      city: input.city.trim(),
+      state: input.state.trim(),
+      postal_code: input.postalCode.trim(),
+      country: (input.country ?? 'US').trim(),
+      email: input.email.trim(),
+      phone: input.phone.trim(),
+      website: input.website.trim(),
+      brand_type: (input.brandType ?? 'STANDARD').trim(),
+    };
+    return this.parseBrand(await this.request(
+      '/api/relay/rest/registry/beta/brands',
+      { method: 'POST', body: JSON.stringify(payload) },
+      ['Messaging', 'Numbers'],
+    ));
+  }
+
   async getBrand(brandId: string): Promise<SignalWireBrand> {
     if (!UUID.test(brandId)) throw new Error('SignalWire brand ID is invalid.');
-    const row = record(await this.request(
+    return this.parseBrand(await this.request(
       `/api/relay/rest/registry/beta/brands/${encodeURIComponent(brandId)}`,
       { method: 'GET' },
       ['Messaging', 'Numbers'],
-    ), 'SignalWire brand response');
-    const id = requireText(row.id, 'Brand ID');
-    if (id !== brandId) throw malformed('SignalWire returned a different brand than requested.');
-    return {
-      id,
-      state: requireText(row.state, 'Brand state').toLowerCase(),
-      name: requireText(row.name, 'Brand name'),
-      companyName: requireText(row.company_name, 'Brand legal company name'),
-      ein: requireText(row.ein, 'Brand EIN'),
-      companyWebsite: requireText(row.company_website, 'Brand website'),
+    ), brandId);
+  }
+
+  async createCampaign(input: Readonly<{
+    brandId: string;
+    name: string;
+    useCase: string;
+    vertical?: string;
+    description: string;
+    messageFlow: string;
+    sampleMessages: readonly string[];
+    helpMessage?: string;
+    optOutMessage?: string;
+    optInMessage?: string;
+    hasEmbeddedLinks?: boolean;
+    hasEmbeddedPhone?: boolean;
+    ageGated?: boolean;
+    directLending?: boolean;
+    subscriberOptIn?: boolean;
+    subscriberOptOut?: boolean;
+    subscriberHelp?: boolean;
+    affiliateMarketing?: boolean;
+  }>): Promise<SignalWireCampaign> {
+    if (!UUID.test(input.brandId)) throw new Error('SignalWire brand ID is invalid.');
+    const payload: Record<string, unknown> = {
+      brand_id: input.brandId,
+      name: input.name.trim(),
+      usecase: input.useCase.trim(),
+      vertical: (input.vertical ?? 'HOME_SERVICES').trim(),
+      description: input.description.trim(),
+      message_flow: input.messageFlow.trim(),
+      embedded_link: input.hasEmbeddedLinks ?? true,
+      embedded_phone: input.hasEmbeddedPhone ?? false,
+      age_gated: input.ageGated ?? false,
+      direct_lending: input.directLending ?? false,
+      subscriber_optin: input.subscriberOptIn ?? true,
+      subscriber_optout: input.subscriberOptOut ?? true,
+      subscriber_help: input.subscriberHelp ?? true,
+      affiliate_marketing: input.affiliateMarketing ?? false,
     };
+    if (input.helpMessage) payload.help_message = input.helpMessage.trim();
+    if (input.optOutMessage) payload.optout_message = input.optOutMessage.trim();
+    if (input.optInMessage) payload.optin_message = input.optInMessage.trim();
+    for (let i = 0; i < input.sampleMessages.length && i < 5; i += 1) {
+      payload[`sample${i + 1}`] = input.sampleMessages[i].trim();
+    }
+    return this.parseCampaign(await this.request(
+      '/api/relay/rest/registry/beta/campaigns',
+      { method: 'POST', body: JSON.stringify(payload) },
+      ['Messaging', 'Numbers'],
+    ));
   }
 
   async getCampaign(campaignId: string): Promise<SignalWireCampaign> {
@@ -618,6 +699,22 @@ export class SignalWireNumberProvisioningClient {
       messageHandler: optionalText(row.message_handler),
       messageRequestUrl: optionalText(row.message_request_url),
       messageRequestMethod: optionalText(row.message_request_method),
+    };
+  }
+
+  private parseBrand(value: unknown, expectedId?: string): SignalWireBrand {
+    const row = record(value, 'SignalWire brand response');
+    const id = requireText(row.id, 'Brand ID');
+    if (!UUID.test(id) || (expectedId && id !== expectedId)) {
+      throw malformed('SignalWire brand identity is invalid.');
+    }
+    return {
+      id,
+      state: requireText(row.state, 'Brand state').toLowerCase(),
+      name: requireText(row.name, 'Brand name'),
+      companyName: requireText(row.company_name, 'Brand legal company name'),
+      ein: requireText(row.ein, 'Brand EIN'),
+      companyWebsite: requireText(row.company_website, 'Brand website'),
     };
   }
 

@@ -31,7 +31,7 @@ function optionalMoney(value: FormDataEntryValue | null): number | null {
  * shows the age and asks for it again once it's stale.
  */
 export async function saveCashSettingsAction(formData: FormData) {
-  const { supabase, accountId } = await requireOfficeContext('reports.read');
+  const { supabase, accountId } = await requireOfficeContext('payments.collect');
 
   const balance = optionalMoney(formData.get('balance'));
   const buffer = optionalMoney(formData.get('buffer'));
@@ -111,7 +111,7 @@ async function recordCashSnapshot(
 }
 
 export async function saveScheduledPaymentAction(formData: FormData) {
-  const { supabase, accountId } = await requireOfficeContext('reports.read');
+  const { supabase, accountId } = await requireOfficeContext('payments.collect');
 
   const id = String(formData.get('id') ?? '').trim();
   const label = String(formData.get('label') ?? '').trim();
@@ -182,7 +182,7 @@ export async function saveScheduledPaymentAction(formData: FormData) {
  * from memory is how the amount ends up wrong.
  */
 export async function setScheduledPaymentActiveAction(id: string, active: boolean) {
-  const { supabase, accountId } = await requireOfficeContext('reports.read');
+  const { supabase, accountId } = await requireOfficeContext('payments.collect');
   const { error } = await supabase
     .from('scheduled_payments')
     .update({ active, updated_at: new Date().toISOString() })
@@ -193,7 +193,7 @@ export async function setScheduledPaymentActiveAction(id: string, active: boolea
 }
 
 export async function deleteScheduledPaymentAction(id: string) {
-  const { supabase, accountId } = await requireOfficeContext('reports.read');
+  const { supabase, accountId } = await requireOfficeContext('payments.collect');
   const { error } = await supabase.from('scheduled_payments').delete().eq('account_id', accountId).eq('id', id);
   if (error) throw new Error(error.message);
   revalidatePath('/dashboard/cash-flow');

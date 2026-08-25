@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
-import { getCurrentMembership } from '@/lib/auth';
+import { getCurrentMembership, loadHeldCapabilities } from '@/lib/auth';
 import { getPropertyIntelligence } from '@/lib/property-intel';
 
 export const dynamic = 'force-dynamic';
@@ -21,8 +21,26 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'No active workspace' }, { status: 403 });
     }
 
+    if (membership.role === 'crew') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    const held = await loadHeldCapabilities(
+      membership.role as 'owner' | 'crew' | 'office' | null,
+      membership.accountId,
+      user.id,
+    );
+
+    if (
+      membership.role !== 'owner' &&
+      !held.has('jobs.read') &&
+      !held.has('leads.read')
+    ) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     const searchParams = request.nextUrl.searchParams;
-    const address = searchParams.get('address') ?? '';
+    const address = searchParams.get('address')?.trim() ?? '';
     const latParam = searchParams.get('lat');
     const lngParam = searchParams.get('lng');
 
@@ -30,7 +48,18 @@ export async function GET(request: NextRequest) {
     const lng = lngParam ? parseFloat(lngParam) : undefined;
 
     if (!address && (lat == null || lng == null)) {
-      return NextResponse.json({ error: 'Address or lat/lng coordinates required' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Address or lat/lng coordinates required' },
+        { status: 400 },
+      );
+    }
+
+    if (lat != null && (!Number.isFinite(lat) || lat < -90 || lat > 90)) {
+      return NextResponse.json({ error: 'Invalid latitude' }, { status: 400 });
+    }
+
+    if (lng != null && (!Number.isFinite(lng) || lng < -180 || lng > 180)) {
+      return NextResponse.json({ error: 'Invalid longitude' }, { status: 400 });
     }
 
     const intel = await getPropertyIntelligence({
@@ -40,14 +69,20 @@ export async function GET(request: NextRequest) {
     });
 
     if (!intel) {
-      return NextResponse.json({ data: null, message: 'No property intelligence available for this location' });
+      return NextResponse.json({
+        data: null,
+        message: 'No property intelligence available for this location',
+      });
     }
 
-    return NextResponse.json({ data: intel }, {
-      headers: {
-        'Cache-Control': 'private, max-age=3600', // 1 hour client cache
+    return NextResponse.json(
+      { data: intel },
+      {
+        headers: {
+          'Cache-Control': 'private, max-age=3600',
+        },
       },
-    });
+    );
   } catch (error) {
     console.error('API /api/property-intel error:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });

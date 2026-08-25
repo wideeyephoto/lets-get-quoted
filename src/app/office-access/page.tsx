@@ -53,7 +53,7 @@ export default async function OfficeAccessPage() {
    * pairing this line is a redirect loop: send somebody to a page that still
    * asks requireOwnerContext and it returns them straight here.
    */
-  const landing = officeLandingPath(await loadHeldCapabilities('office'));
+  const landing = officeLandingPath(await loadHeldCapabilities('office', membership.accountId, user.id));
   if (landing !== OFFICE_NO_ACCESS_PATH) redirect(landing);
 
   // Service-role: the whole point is that this person's session can read

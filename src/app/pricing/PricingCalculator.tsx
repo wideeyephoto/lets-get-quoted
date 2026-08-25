@@ -145,7 +145,7 @@ export default function PricingCalculator({
         </label>
 
         <div>
-          <span className={styles.controlLabel}>2-Way Customer Messaging</span>
+          <span className={styles.controlLabel}>2-Way Business Texting</span>
           <div
             className={styles.requirementToggle}
             style={{
@@ -162,7 +162,7 @@ export default function PricingCalculator({
               padding: '0.4rem 0.6rem',
             }}
           >
-            Messaging software included; carrier registration and number fees separate
+            Messaging software included; carrier registration, campaign vetting, and dedicated number fees separate
           </div>
         </div>
         <p className={styles.requirementsHint}>
@@ -484,7 +484,7 @@ export default function PricingCalculator({
                     {savings > 0 ? (
                       <>You keep an estimated <strong>{money(savings)}/year</strong> in your pocket compared to {activeCompetitor.name}, with no surprise monthly charges during slow seasons.</>
                     ) : (
-                      <>With Let’s Get Quoted {winner.plan.name}, you get built-in AI intake, automated 2-way texting, and QuickBooks sync included without stacking third-party add-on fees.</>
+                      <>With Let’s Get Quoted {winner.plan.name}, you get built-in AI intake, 2-way business texting software, and QuickBooks sync included without stacking third-party add-on fees.</>
                     )}
                   </p>
                 </>
@@ -496,8 +496,8 @@ export default function PricingCalculator({
 
       <p className={styles.calculatorFinePrint}>
         Estimate includes the selected subscription, LGQ platform fee, and extra office users. AI Voice Receptionist is
-        not available yet and adds nothing to these figures. The comparison assumes usage stays within each plan’s
-        allowances and excludes Stripe processing, taxes, and optional top-ups.
+        in private beta, requires dedicated number activation, and adds nothing to these figures. The comparison assumes usage stays within each plan’s
+        allowances and excludes Stripe processing, carrier registration/number fees, taxes, and optional top-ups.
       </p>
     </div>
   );

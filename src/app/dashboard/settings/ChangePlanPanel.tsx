@@ -46,7 +46,7 @@ const TIER_FEATURES: Record<BillingPlanId, readonly string[]> = {
   flex: [
     '1.50% platform fee',
     '1 Office + 2 Crew seats included',
-    'Shared 2-way messaging',
+    'Website message-button connect',
     'Free custom SEO website',
   ],
   solo: [

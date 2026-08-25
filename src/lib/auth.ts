@@ -585,21 +585,47 @@ export async function requireMfaPermissions(...permissions: Permission[]): Promi
  */
 export async function loadHeldCapabilities(
   role: 'owner' | 'crew' | 'office' | null,
+  accountId?: string,
+  userId?: string,
 ): Promise<ReadonlySet<string>> {
   if (role === 'owner') return ALL_CAPABILITIES_SENTINEL;
   if (role !== 'office') return new Set<string>();
 
   const admin = createAdminClient();
+
+  if (accountId && userId) {
+    const { data: memberCaps, error: memberError } = await admin
+      .from('office_member_capabilities')
+      .select('capability')
+      .eq('account_id', accountId)
+      .eq('user_id', userId);
+
+    if (memberError) return new Set<string>();
+
+    if (memberCaps && memberCaps.length > 0) {
+      const { data: globalCaps, error: globalError } = await admin
+        .from('office_capabilities')
+        .select('capability')
+        .eq('enabled', true);
+
+      if (globalError || !globalCaps) return new Set<string>();
+      const enabledSet = new Set(globalCaps.map((row) => row.capability as string));
+      return new Set(
+        memberCaps
+          .map((row) => row.capability as string)
+          .filter((cap) => enabledSet.has(cap)),
+      );
+    } else if (memberCaps && memberCaps.length === 0) {
+      // Per-member grant model: if explicit table is queried and returns 0 rows, user holds no capabilities
+      return new Set<string>();
+    }
+  }
+
   const { data, error } = await admin
     .from('office_capabilities')
     .select('capability')
     .eq('enabled', true);
 
-  // Fails CLOSED. A read error means we cannot say what this person holds, and
-  // the safe answer to that is "nothing" -- unlike the terms gate above, which
-  // fails open because locking every owner out is worse than a missing
-  // agreement. Here the two failures are not symmetric: showing an employee a
-  // screen they should not see cannot be undone by a later deploy.
   if (error || !data) return new Set<string>();
   return new Set(data.map((row) => row.capability as string));
 }
@@ -630,7 +656,7 @@ async function resolveOfficeCapableMember() {
   }
 
   const role = membership.role as 'owner' | 'office';
-  const held = await loadHeldCapabilities(role);
+  const held = await loadHeldCapabilities(role, membership.accountId, user.id);
 
   // Read with the SERVICE ROLE, not the session client. `accounts` has
   // `acc_read` as `is_owner(id)`, so an office user's own read returns nothing

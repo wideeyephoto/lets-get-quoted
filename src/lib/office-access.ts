@@ -161,6 +161,11 @@ export const OFFICE_ROUTES: readonly OfficeRoute[] = Object.freeze([
     label: 'Help',
     requires: Object.freeze(['leads.read']),
   }),
+  Object.freeze({
+    href: '/dashboard/voice-calls',
+    label: 'Voice Calls',
+    requires: Object.freeze(['leads.read']),
+  }),
 ]);
 
 /** Where an office user goes when they hold nothing. */

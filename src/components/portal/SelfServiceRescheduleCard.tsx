@@ -60,16 +60,15 @@ export default function SelfServiceRescheduleCard({
     }
 
     try {
-      if (onConfirmReschedule) {
-        await onConfirmReschedule({
-          requestedDate: selectedDate,
-          requestedSlot: selectedSlot,
-          reason,
-        });
-      } else {
-        // Simulated API turnaround
-        await new Promise((resolve) => setTimeout(resolve, 800));
+      if (!onConfirmReschedule) {
+        throw new Error('Self-service rescheduling is currently unavailable. Please contact the business directly.');
       }
+
+      await onConfirmReschedule({
+        requestedDate: selectedDate,
+        requestedSlot: selectedSlot,
+        reason,
+      });
 
       const matchingSlot = slotsForDate.find((s) => s.slot === selectedSlot);
       setSuccessMessage(

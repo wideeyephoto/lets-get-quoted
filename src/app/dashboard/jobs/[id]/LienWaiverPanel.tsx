@@ -22,31 +22,6 @@ type Props = {
   initialSubcontractors?: SubcontractorWaiverRecord[];
 };
 
-const SAMPLE_SUBCONTRACTORS: SubcontractorWaiverRecord[] = [
-  {
-    id: 'sub-1',
-    jobId: '',
-    subcontractorName: 'Apex Electrical Services',
-    trade: 'Electrical',
-    contractAmount: 3400,
-    amountPaid: 3400,
-    waiverType: 'unconditional_final',
-    status: 'verified',
-    receivedAt: new Date().toISOString(),
-  },
-  {
-    id: 'sub-2',
-    jobId: '',
-    subcontractorName: 'Tri-County Drywall & Framing',
-    trade: 'Drywall & Framing',
-    contractAmount: 4800,
-    amountPaid: 4800,
-    waiverType: 'unconditional_progress',
-    status: 'received',
-    receivedAt: new Date().toISOString(),
-  },
-];
-
 export default function LienWaiverPanel({
   jobId,
   jobRef: _jobRef,
@@ -64,9 +39,7 @@ export default function LienWaiverPanel({
     new Date().toISOString().split('T')[0],
   );
   const [subs, setSubs] = useState<SubcontractorWaiverRecord[]>(
-    initialSubcontractors && initialSubcontractors.length > 0
-      ? initialSubcontractors
-      : SAMPLE_SUBCONTRACTORS,
+    initialSubcontractors ?? [],
   );
 
   const compliance = auditJobSubcontractorCompliance(subs, jobStatus === 'complete');
@@ -267,49 +240,57 @@ export default function LienWaiverPanel({
               </tr>
             </thead>
             <tbody>
-              {subs.map((sub) => {
-                const desc = describeSubcontractorWaiverStatus(sub.status);
-                return (
-                  <tr key={sub.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                    <td style={{ padding: '10px 14px', fontWeight: 500, color: '#0f172a' }}>
-                      {sub.subcontractorName}
-                    </td>
-                    <td style={{ padding: '10px 14px', color: '#64748b' }}>{sub.trade}</td>
-                    <td style={{ padding: '10px 14px', color: '#0f172a' }}>
-                      {formatUsdExact(sub.contractAmount)}
-                    </td>
-                    <td style={{ padding: '10px 14px' }}>
-                      <span style={{
-                        fontSize: '0.72rem',
-                        fontWeight: 600,
-                        padding: '2px 8px',
-                        borderRadius: '10px',
-                        background: desc.tone === 'success' ? '#dcfce7' : desc.tone === 'warn' ? '#fef3c7' : '#f1f5f9',
-                        color: desc.tone === 'success' ? '#15803d' : desc.tone === 'warn' ? '#b45309' : '#64748b',
-                      }}>
-                        {desc.label}
-                      </span>
-                    </td>
-                    <td style={{ padding: '10px 14px', textAlign: 'right' }}>
-                      <button
-                        type="button"
-                        onClick={() => toggleSubStatus(sub.id)}
-                        style={{
-                          background: 'transparent',
-                          border: '1px solid #cbd5e1',
-                          borderRadius: '4px',
-                          padding: '4px 10px',
-                          fontSize: '0.75rem',
-                          cursor: 'pointer',
-                          color: '#334155',
-                        }}
-                      >
-                        Cycle Status
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
+              {subs.length === 0 ? (
+                <tr>
+                  <td colSpan={5} style={{ padding: '16px 14px', color: '#64748b', textAlign: 'center' }}>
+                    No subcontractor lien waivers on file for this job.
+                  </td>
+                </tr>
+              ) : (
+                subs.map((sub) => {
+                  const desc = describeSubcontractorWaiverStatus(sub.status);
+                  return (
+                    <tr key={sub.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                      <td style={{ padding: '10px 14px', fontWeight: 500, color: '#0f172a' }}>
+                        {sub.subcontractorName}
+                      </td>
+                      <td style={{ padding: '10px 14px', color: '#64748b' }}>{sub.trade}</td>
+                      <td style={{ padding: '10px 14px', color: '#0f172a' }}>
+                        {formatUsdExact(sub.contractAmount)}
+                      </td>
+                      <td style={{ padding: '10px 14px' }}>
+                        <span style={{
+                          fontSize: '0.72rem',
+                          fontWeight: 600,
+                          padding: '2px 8px',
+                          borderRadius: '10px',
+                          background: desc.tone === 'success' ? '#dcfce7' : desc.tone === 'warn' ? '#fef3c7' : '#f1f5f9',
+                          color: desc.tone === 'success' ? '#15803d' : desc.tone === 'warn' ? '#b45309' : '#64748b',
+                        }}>
+                          {desc.label}
+                        </span>
+                      </td>
+                      <td style={{ padding: '10px 14px', textAlign: 'right' }}>
+                        <button
+                          type="button"
+                          onClick={() => toggleSubStatus(sub.id)}
+                          style={{
+                            background: 'transparent',
+                            border: '1px solid #cbd5e1',
+                            borderRadius: '4px',
+                            padding: '4px 10px',
+                            fontSize: '0.75rem',
+                            cursor: 'pointer',
+                            color: '#334155',
+                          }}
+                        >
+                          Cycle Status
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>

@@ -197,12 +197,12 @@ export default function MessagingSetup({ setup, openOnLoad }: { setup: Setup; op
               {setup.registration.kind === 'ok' && setup.registration.status === 'not_started' ? (
                 <div className="msg-setup-beta-box">
                   <p className="msg-setup-note">
-                    We are accepting a small number of vetted businesses into a private beta. Applying does not
-                    purchase a number, change your plan, or add a charge.
+                    We are accepting applications for dedicated business texting numbers. Applying does not guarantee
+                    approval, purchase a number, change your plan, or add a charge until you review and accept final carrier fees.
                   </p>
                   <p>
                     <Link className="btn primary msg-setup-apply-btn" href="/dashboard/messages/dedicated-number">
-                      Apply for the private beta <span>›</span>
+                      Start Application <span>›</span>
                     </Link>
                   </p>
                 </div>

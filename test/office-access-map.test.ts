@@ -63,6 +63,7 @@ describe('what an office user may open', () => {
       '/dashboard/marketing',
       '/dashboard/import',
       '/dashboard/help',
+      '/dashboard/voice-calls',
     ]);
   });
 

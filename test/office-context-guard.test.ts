@@ -94,6 +94,7 @@ const asOffice = (capabilities: string[]) => {
   rows['memberships:list'] = [{ account_id: ACCOUNT, role: 'office' }];
   rows.memberships = { account_id: ACCOUNT, role: 'office' };
   rows['office_capabilities:list'] = capabilities.map((capability) => ({ capability }));
+  rows['office_member_capabilities:list'] = capabilities.map((capability) => ({ capability }));
   // Settled, unsuspended, terms accepted.
   rows.accounts = { suspended_at: null, terms_accepted_at: '2026-01-01', terms_version: TERMS_VERSION, timezone: 'UTC' };
 };
@@ -309,6 +310,7 @@ describe('the wiring, as source', () => {
     };
     walk('src/app');
     expect(callers.sort()).toEqual([
+      'src/app/api/voice/recordings/[recordingId]/route.ts',
       'src/app/dashboard/automations/page.tsx',
       'src/app/dashboard/cash-flow/actions.ts',
       'src/app/dashboard/cash-flow/page.tsx',
@@ -327,7 +329,6 @@ describe('the wiring, as source', () => {
       'src/app/dashboard/import/actions.ts',
       'src/app/dashboard/import/page.tsx',
       'src/app/dashboard/insights/page.tsx',
-      'src/app/dashboard/inventory/page.tsx',
       'src/app/dashboard/jobs/[id]/arrival-actions.ts',
       'src/app/dashboard/jobs/[id]/change-order-actions.ts',
       'src/app/dashboard/jobs/[id]/invoices/[invoiceId]/page.tsx',
@@ -379,6 +380,9 @@ describe('the wiring, as source', () => {
       'src/app/dashboard/sites/actions.ts',
       'src/app/dashboard/sites/page.tsx',
       'src/app/dashboard/sites/preview/page.tsx',
+      'src/app/dashboard/voice-calls/[callId]/page.tsx',
+      'src/app/dashboard/voice-calls/actions.ts',
+      'src/app/dashboard/voice-calls/page.tsx',
     ]);
   });
 

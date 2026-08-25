@@ -43,6 +43,7 @@ export type InboundCall = Readonly<{
 
 /** The disclosure callers must hear before interacting with the agent. */
 export const AI_VOICE_DISCLOSURE = 'You are speaking with an AI assistant.';
+export const RECORDING_DISCLOSURE = 'This call may be recorded for quality and training purposes.';
 
 /**
  * Add the fixed disclosure to a contractor-authored greeting.
@@ -51,13 +52,28 @@ export const AI_VOICE_DISCLOSURE = 'You are speaking with an AI assistant.';
  * admission makes the plan truthful to tests/UI, and the adapter makes a plan
  * assembled anywhere else unable to omit the disclosure.
  */
-export function greetingWithAiDisclosure(greeting: string | null | undefined): string {
+export function greetingWithAiDisclosure(
+  greeting: string | null | undefined,
+  options: { recordingEnabled?: boolean } = {},
+): string {
   const custom = (greeting ?? '').trim();
-  if (!custom) {
-    return `${AI_VOICE_DISCLOSURE} I can take a few details about the work you need and pass them straight to the team.`;
+  const disclosures: string[] = [AI_VOICE_DISCLOSURE];
+  if (options.recordingEnabled) {
+    disclosures.push(RECORDING_DISCLOSURE);
   }
-  if (custom.includes(AI_VOICE_DISCLOSURE)) return custom;
-  return `${AI_VOICE_DISCLOSURE} ${custom}`;
+  const prefix = disclosures.join(' ');
+
+  if (!custom) {
+    return `${prefix} I can take a few details about the work you need and pass them straight to the team.`;
+  }
+  let result = custom;
+  if (!result.includes(AI_VOICE_DISCLOSURE)) {
+    result = `${AI_VOICE_DISCLOSURE} ${result}`;
+  }
+  if (options.recordingEnabled && !result.includes(RECORDING_DISCLOSURE)) {
+    result = `${result} ${RECORDING_DISCLOSURE}`;
+  }
+  return result;
 }
 
 /**
@@ -87,6 +103,10 @@ export type VoiceAnswerPlan =
     capMinutes: number;
     /** Where to send the caller when the agent hands off. */
     transferTo: string | null;
+    /** Whether background call recording is enabled. */
+    recordCall?: boolean;
+    /** Webhook status URL for recording completion callbacks. */
+    recordingStatusUrl?: string;
   }>
   | Readonly<{
     kind: 'forward';

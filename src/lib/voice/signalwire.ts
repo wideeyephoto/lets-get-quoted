@@ -160,64 +160,71 @@ export const signalwireVoiceProvider: VoiceProvider = {
     if (plan.kind === 'ai_agent') {
       // SWML, which is JSON. `post_prompt_url` is where the receipt lands, and
       // it is the only URL in here — LGQ's own.
-      const spokenGreeting = greetingWithAiDisclosure(plan.greeting);
+      const spokenGreeting = greetingWithAiDisclosure(plan.greeting, {
+        recordingEnabled: plan.recordCall,
+      });
+      const mainSection: Record<string, unknown>[] = [{ answer: {} }];
+      if (plan.recordCall) {
+        mainSection.push({
+          record_call: {
+            ...(plan.recordingStatusUrl ? { status_url: plan.recordingStatusUrl } : {}),
+            format: 'mp3',
+            stereo: false,
+          },
+        });
+      }
+      mainSection.push({ play: { url: `say: ${spokenGreeting}` } });
+      mainSection.push({
+        ai: {
+          post_prompt_url: plan.receiptUrl,
+          // SignalWire supports these as dedicated fields. Using them
+          // produces Authorization: Basic on the receipt request while
+          // keeping reusable credentials out of URLs, request logs and
+          // error trackers.
+          post_prompt_auth_user: plan.receiptAuthorization.username,
+          post_prompt_auth_password: plan.receiptAuthorization.password,
+          params: {
+            // The published safety cap, expressed to the provider so it
+            // holds even if LGQ's own settlement never runs.
+            end_of_speech_timeout: 1000,
+            max_duration: plan.capMinutes * 60,
+          },
+          prompt: {
+            text: plan.systemPrompt || ('You are an AI receptionist for a home-service contractor. '
+              + 'The opening greeting and AI disclosure have already been played; do not repeat them unless asked. '
+              + 'Collect the caller\'s name, callback number, service address, the work requested, urgency, '
+              + 'and preferred appointment time. Never claim an appointment is confirmed. '
+              + 'If the caller asks for a person and a transfer tool is available, use it.'),
+          },
+          post_prompt: {
+            text: plan.postPrompt || ('Summarise the caller\'s name, phone number, service address, '
+              + 'the work requested, how urgent it is, and any appointment time '
+              + 'they preferred. State plainly if any of these were not given.'),
+          },
+          ...(plan.transferTo
+            ? { SWAIG: { functions: [{
+              function: 'transfer_to_business',
+              purpose: 'Send the caller to a person when they ask for one or the '
+                + 'request is beyond what can be handled.',
+              argument: { type: 'object', properties: {} },
+              data_map: { expressions: [{
+                string: 'true', pattern: '.*',
+                output: { response: 'Connecting you now.', action: [{ transfer: true, SWML: {
+                  version: '1.0.0',
+                  sections: { main: [{ connect: { to: plan.transferTo } }] },
+                } }] },
+              }] },
+            }] } }
+            : {}),
+        },
+      });
+
       return Object.freeze({
         contentType: 'application/json',
         body: JSON.stringify({
           version: '1.0.0',
           sections: {
-            main: [
-              { answer: {} },
-              // `ai.prompt` is the model's hidden identity/instruction prompt,
-              // not a deterministic spoken greeting. Play the disclosure and
-              // contractor greeting first so hearing it never depends on model
-              // compliance. SignalWire documents `say:` as a `play` URL.
-              { play: { url: `say: ${spokenGreeting}` } },
-              {
-                ai: {
-                  post_prompt_url: plan.receiptUrl,
-                  // SignalWire supports these as dedicated fields. Using them
-                  // produces Authorization: Basic on the receipt request while
-                  // keeping reusable credentials out of URLs, request logs and
-                  // error trackers.
-                  post_prompt_auth_user: plan.receiptAuthorization.username,
-                  post_prompt_auth_password: plan.receiptAuthorization.password,
-                  params: {
-                    // The published safety cap, expressed to the provider so it
-                    // holds even if LGQ's own settlement never runs.
-                    end_of_speech_timeout: 1000,
-                    max_duration: plan.capMinutes * 60,
-                  },
-                  prompt: {
-                    text: plan.systemPrompt || ('You are an AI receptionist for a home-service contractor. '
-                      + 'The opening greeting and AI disclosure have already been played; do not repeat them unless asked. '
-                      + 'Collect the caller\'s name, callback number, service address, the work requested, urgency, '
-                      + 'and preferred appointment time. Never claim an appointment is confirmed. '
-                      + 'If the caller asks for a person and a transfer tool is available, use it.'),
-                  },
-                  post_prompt: {
-                    text: plan.postPrompt || ('Summarise the caller\'s name, phone number, service address, '
-                      + 'the work requested, how urgent it is, and any appointment time '
-                      + 'they preferred. State plainly if any of these were not given.'),
-                  },
-                  ...(plan.transferTo
-                    ? { SWAIG: { functions: [{
-                      function: 'transfer_to_business',
-                      purpose: 'Send the caller to a person when they ask for one or the '
-                        + 'request is beyond what can be handled.',
-                      argument: { type: 'object', properties: {} },
-                      data_map: { expressions: [{
-                        string: 'true', pattern: '.*',
-                        output: { response: 'Connecting you now.', action: [{ transfer: true, SWML: {
-                          version: '1.0.0',
-                          sections: { main: [{ connect: { to: plan.transferTo } }] },
-                        } }] },
-                      }] },
-                    }] } }
-                    : {}),
-                },
-              },
-            ],
+            main: mainSection,
           },
         }),
       });

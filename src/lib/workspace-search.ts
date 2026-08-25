@@ -565,6 +565,13 @@ function filterQuickActions(term: string): SearchResultItem[] {
   );
 }
 
+export type WorkspaceSearchPermissions = {
+  canReadJobs?: boolean;
+  canReadClients?: boolean;
+  canReadCrew?: boolean;
+  canReadLeads?: boolean;
+};
+
 /**
  * Unified search across all workspace entities.
  */
@@ -572,10 +579,19 @@ export async function searchWorkspaceEverything(
   supabase: SupabaseClient,
   accountId: string,
   query: string,
-  opts: { limitPerSection?: number } = {},
+  opts: {
+    limitPerSection?: number;
+    permissions?: WorkspaceSearchPermissions;
+  } = {},
 ): Promise<WorkspaceSearchResults> {
   const term = query.trim();
   const limit = opts.limitPerSection ?? 6;
+  const permissions = opts.permissions ?? {
+    canReadJobs: true,
+    canReadClients: true,
+    canReadCrew: true,
+    canReadLeads: true,
+  };
 
   if (!term) {
     return {
@@ -593,18 +609,28 @@ export async function searchWorkspaceEverything(
     };
   }
 
+  const emptyBranch: SearchBranch = { rows: [], available: false };
+
   const [jobsBranch, clientsBranch, crewBranch, leadsBranch] = await Promise.all([
-    searchWorkspaceJobs(supabase, accountId, term, limit),
-    searchWorkspaceClients(supabase, accountId, term, limit),
-    searchWorkspaceCrew(supabase, accountId, term, limit),
-    searchWorkspaceLeads(supabase, accountId, term, limit),
+    permissions.canReadJobs !== false
+      ? searchWorkspaceJobs(supabase, accountId, term, limit)
+      : Promise.resolve(emptyBranch),
+    permissions.canReadClients !== false
+      ? searchWorkspaceClients(supabase, accountId, term, limit)
+      : Promise.resolve(emptyBranch),
+    permissions.canReadCrew !== false
+      ? searchWorkspaceCrew(supabase, accountId, term, limit)
+      : Promise.resolve(emptyBranch),
+    permissions.canReadLeads !== false
+      ? searchWorkspaceLeads(supabase, accountId, term, limit)
+      : Promise.resolve(emptyBranch),
   ]);
 
   const unavailable: SearchEntitySection[] = [];
-  if (!jobsBranch.available) unavailable.push('jobs');
-  if (!clientsBranch.available) unavailable.push('clients');
-  if (!crewBranch.available) unavailable.push('crew');
-  if (!leadsBranch.available) unavailable.push('leads');
+  if (permissions.canReadJobs === false || !jobsBranch.available) unavailable.push('jobs');
+  if (permissions.canReadClients === false || !clientsBranch.available) unavailable.push('clients');
+  if (permissions.canReadCrew === false || !crewBranch.available) unavailable.push('crew');
+  if (permissions.canReadLeads === false || !leadsBranch.available) unavailable.push('leads');
 
   const addresses = extractDistinctAddresses(jobsBranch.rows, clientsBranch.rows, leadsBranch.rows, term, limit);
   const actions = filterQuickActions(term);

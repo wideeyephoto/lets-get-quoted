@@ -112,7 +112,8 @@ export default async function CrewLaborPage({
     add?: string;
   };
 }) {
-  const { supabase, accountId } = await requireOfficeContext('crew.read');
+  const { supabase, accountId, capabilities, role } = await requireOfficeContext('crew.read');
+  const canViewPay = role === 'owner' || capabilities.has('crew_pay.read');
   const tab = normalizeTab(searchParams.tab);
   // Pay periods are cut in the CONTRACTOR's zone, not the server's — on Vercel
   // the server is UTC, which put every Saturday evening of an Eastern shop into
@@ -206,14 +207,14 @@ export default async function CrewLaborPage({
       initials: initialsFor(member.name),
       photoUrl: member.photo_path ? photoUrls[member.photo_path] ?? null : null,
       roleLabel: member.role_label,
-      hourlyRate: Number(member.hourly_rate) || 0,
-      payType: payBasisFromCrew(member).payType,
-      annualSalary: member.annual_salary == null ? null : Number(member.annual_salary),
-      dayRate: member.day_rate == null ? null : Number(member.day_rate),
-      payrollId: member.payroll_id ?? null,
+      hourlyRate: canViewPay ? Number(member.hourly_rate) || 0 : 0,
+      payType: canViewPay ? payBasisFromCrew(member).payType : 'hourly',
+      annualSalary: canViewPay && member.annual_salary != null ? Number(member.annual_salary) : null,
+      dayRate: canViewPay && member.day_rate != null ? Number(member.day_rate) : null,
+      payrollId: canViewPay ? member.payroll_id ?? null : null,
       // Reads from the pay basis, so a salaried member shows "$72,000.00/yr"
       // rather than the derived hourly figure nobody typed.
-      rateLabel: payRateLabel(payBasisFromCrew(member)),
+      rateLabel: canViewPay ? payRateLabel(payBasisFromCrew(member)) : '',
       phone: member.phone || null,
       phoneLabel: member.phone ? formatPhoneDashes(member.phone) : null,
       email: member.email,
@@ -227,7 +228,7 @@ export default async function CrewLaborPage({
       fieldAppDetail: fieldAppDetail(member),
       jobs: jobsByCrew[member.id] ?? [],
       periodHours: bucket?.hours ?? 0,
-      periodPay: bucket?.pay ?? 0,
+      periodPay: canViewPay ? (bucket?.pay ?? 0) : 0,
       // payMoney, not formatMoney. formatMoney rounds to whole dollars, which is
       // right for a margin headline and wrong for a person: this roster printed
       // "$305" beside a name while the Hours & pay tab printed "$304.50" for the
@@ -235,7 +236,7 @@ export default async function CrewLaborPage({
       // one page disagreeing about one number reads as a product that cannot
       // add up. payMoney is the formatter Hours & pay already uses, and it is
       // pure, so both tabs now derive their answer from one place.
-      periodPayLabel: payMoney(bucket?.pay ?? 0),
+      periodPayLabel: canViewPay ? payMoney(bucket?.pay ?? 0) : '',
       createdAt: member.created_at,
     };
   });

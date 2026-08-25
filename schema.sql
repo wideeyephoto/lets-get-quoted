@@ -24870,4 +24870,421 @@ begin
 end $$;
 
 commit;
+
+-- Source: migrations/20260825133000_reconcile_shared_sender_and_registry_matching.sql
+-- ===========================================================================
+-- Reconcile LGQ shared number (+1 947-941-2323) and improve registry callback
+-- matching across applications and platform sender numbers.
+-- ===========================================================================
+
+begin;
+
+-- ---------------------------------------------------------------------------
+-- 1. Reconcile LGQ shared sender (+1 947-941-2323) as assigned and active.
+-- ---------------------------------------------------------------------------
+insert into public.sms_sender_numbers (
+  provider,
+  e164_number,
+  purpose,
+  account_id,
+  assignment_state,
+  provisioning_status,
+  inbound_ready,
+  activated_at,
+  updated_at
+) values (
+  'signalwire',
+  '+19479412323',
+  'lgq_shared',
+  null,
+  'assigned',
+  'active',
+  true,
+  pg_catalog.now(),
+  pg_catalog.now()
+) on conflict (provider, e164_number) do update set
+  purpose = excluded.purpose,
+  assignment_state = excluded.assignment_state,
+  provisioning_status = excluded.provisioning_status,
+  inbound_ready = excluded.inbound_ready,
+  activated_at = coalesce(public.sms_sender_numbers.activated_at, excluded.activated_at),
+  suspended_at = null,
+  updated_at = pg_catalog.now();
+
+-- ---------------------------------------------------------------------------
+-- 2. Upgrade ingest_messaging_registry_callback to resolve callbacks against
+--    both contractor applications and platform sender inventory.
+-- ---------------------------------------------------------------------------
+create or replace function public.ingest_messaging_registry_callback(
+  p_receipt_key text,
+  p_body_sha256 text,
+  p_raw_body text,
+  p_content_type text,
+  p_request_method text,
+  p_request_path text,
+  p_request_headers jsonb,
+  p_signature_header_name text,
+  p_signature_header_value text,
+  p_parsed jsonb,
+  p_provider_order_id text,
+  p_provider_assignment_id text,
+  p_provider_campaign_id text,
+  p_provider_phone_number text,
+  p_provider_state text,
+  p_normalized_state text,
+  p_failure_code text,
+  p_failure_detail text
+)
+returns table (
+  callback_id uuid,
+  inserted boolean,
+  matched_application_id uuid,
+  disposition text
+)
+language plpgsql
+security definer
+set search_path = pg_catalog, pg_temp
+set timezone to 'UTC'
+as $$
+declare
+  v_now timestamptz := pg_catalog.clock_timestamp();
+  v_existing public.messaging_registry_callbacks%rowtype;
+  v_application public.messaging_registration_applications%rowtype;
+  v_sender public.sms_sender_numbers%rowtype;
+  v_matched boolean := false;
+  v_account uuid;
+  v_status text;
+  v_id uuid;
+begin
+  if p_receipt_key is null or pg_catalog.length(pg_catalog.btrim(p_receipt_key)) = 0
+     or coalesce(p_body_sha256, '') !~ '^[0-9a-f]{64}$'
+     or p_raw_body is null then
+    raise exception 'registry callback input is invalid' using errcode = '22023';
+  end if;
+
+  select c.* into v_existing
+    from public.messaging_registry_callbacks c
+   where c.provider = 'signalwire' and c.receipt_key = p_receipt_key
+   for update;
+
+  if found then
+    -- A replay must be byte-identical. Differing bytes under one receipt key
+    -- means the key was built from something that does not identify the event.
+    if v_existing.body_sha256 is distinct from p_body_sha256 then
+      raise exception 'registry callback already received with different bytes'
+        using errcode = '23505';
+    end if;
+    return query select v_existing.id, false, v_existing.application_id,
+                        v_existing.processing_status;
+    return;
+  end if;
+
+  -- 1. Try matching contractor application by order id
+  if p_provider_order_id is not null then
+    select a.* into v_application
+      from public.messaging_registration_applications a
+     where a.assignment_order_id = p_provider_order_id
+     for update;
+    v_matched := found;
+  end if;
+
+  -- 2. Try matching contractor application by phone number, assignment id, or campaign id if not matched by order
+  if not v_matched then
+    if p_provider_phone_number is not null then
+      select a.* into v_application
+        from public.messaging_registration_applications a
+       where a.purchased_number = p_provider_phone_number
+       order by a.created_at desc
+       limit 1
+       for update;
+      v_matched := found;
+    end if;
+
+    if not v_matched and p_provider_assignment_id is not null then
+      select a.* into v_application
+        from public.messaging_registration_applications a
+       where a.assignment_id = p_provider_assignment_id
+       order by a.created_at desc
+       limit 1
+       for update;
+      v_matched := found;
+    end if;
+  end if;
+
+  if v_matched and v_application.id is not null then
+    v_account := v_application.account_id;
+    v_status  := 'received';
+  else
+    -- 3. Check for platform/shared senders in sms_sender_numbers
+    select s.* into v_sender
+      from public.sms_sender_numbers s
+     where s.provider = 'signalwire'
+       and (
+         (p_provider_phone_number is not null and s.e164_number = p_provider_phone_number)
+         or (p_provider_assignment_id is not null and s.assignment_id = p_provider_assignment_id)
+         or (p_provider_campaign_id is not null and s.campaign_id = p_provider_campaign_id and s.purpose in ('lgq_shared', 'lgq_dispatch'))
+       )
+     order by s.created_at desc
+     limit 1
+     for update;
+
+    if found then
+      v_account := v_sender.account_id;
+      v_status  := 'processed';
+      v_application.id := v_sender.provisioning_application_id;
+
+      -- Update assignment state on sender number
+      if p_normalized_state = 'complete' then
+        update public.sms_sender_numbers
+           set assignment_state = 'assigned',
+               last_verified_at = v_now,
+               updated_at = v_now
+         where id = v_sender.id;
+      elsif p_normalized_state = 'failed' then
+        update public.sms_sender_numbers
+           set assignment_state = 'failed',
+               updated_at = v_now
+         where id = v_sender.id;
+      end if;
+    else
+      -- A callback naming an identifier LGQ cannot resolve is still stored.
+      v_application.id := null;
+      v_account := null;
+      v_status  := 'unmatched';
+    end if;
+  end if;
+
+  insert into public.messaging_registry_callbacks (
+    provider, receipt_key, body_sha256, raw_body, content_type,
+    request_method, request_path, request_headers,
+    signature_header_name, signature_header_value, parsed,
+    provider_order_id, provider_assignment_id, provider_campaign_id,
+    provider_phone_number, provider_state, normalized_state,
+    failure_code, failure_detail,
+    application_id, account_id, processing_status, processed_at
+  ) values (
+    'signalwire', p_receipt_key, p_body_sha256, p_raw_body, p_content_type,
+    p_request_method, p_request_path, coalesce(p_request_headers, '{}'::jsonb),
+    p_signature_header_name, p_signature_header_value, p_parsed,
+    p_provider_order_id, p_provider_assignment_id, p_provider_campaign_id,
+    p_provider_phone_number, p_provider_state, p_normalized_state,
+    p_failure_code, p_failure_detail,
+    v_application.id, v_account, v_status,
+    case when v_status <> 'received' then v_now else null end
+  )
+  returning id into v_id;
+
+  if v_id is null then
+    raise exception 'registry callback was not stored' using errcode = '55000';
+  end if;
+
+  return query select v_id, true, v_application.id, v_status;
+end;
+$$;
+
+commit;
+
+-- Source: migrations/20260825140000_voice_calls_workspace_and_workflows.sql
+-- Expand voice_calls with granular provider outcomes, provisional admission tracking,
+-- recording metadata, and introduce dedicated workflow and note tables for the Voice Calls workspace.
+
+begin;
+
+-- 1. Expand outcome constraints and add operational fields on public.voice_calls
+alter table public.voice_calls
+  drop constraint if exists voice_calls_outcome_check;
+
+alter table public.voice_calls
+  add constraint voice_calls_outcome_check
+  check (
+    outcome in (
+      'in_progress',
+      'ai_handled',
+      'transfer_attempted',
+      'transferred_and_answered',
+      'caller_abandoned',
+      'no_input',
+      'voicemail_fallback',
+      'provider_failure',
+      'completed',
+      'transferred',
+      'voicemail',
+      'abandoned',
+      'failed',
+      'unknown'
+    )
+  );
+
+alter table public.voice_calls
+  add column if not exists outcome_source text
+    check (outcome_source is null or outcome_source in ('provisional_admission', 'swml_post_prompt', 'reconciliation', 'manual', 'legacy')),
+  add column if not exists outcome_observed_at timestamptz,
+  add column if not exists is_provisional boolean not null default false,
+  add column if not exists recording_status text not null default 'none'
+    check (recording_status in ('none', 'pending', 'ready', 'failed', 'expired')),
+  add column if not exists recording_storage_path text,
+  add column if not exists recording_duration_seconds integer
+    check (recording_duration_seconds is null or recording_duration_seconds >= 0),
+  add column if not exists recording_size_bytes bigint
+    check (recording_size_bytes is null or recording_size_bytes >= 0),
+  add column if not exists recording_content_type text,
+  add column if not exists recording_captured_at timestamptz;
+
+-- 2. Upgrade voice_calls RLS policy to office_can(account_id, 'leads.read')
+drop policy if exists voice_calls_owner_read on public.voice_calls;
+drop policy if exists voice_calls_office_read on public.voice_calls;
+
+create policy voice_calls_office_read
+  on public.voice_calls
+  for select
+  to authenticated
+  using (
+    public.office_can(account_id, 'leads.read')
+    and (
+      started_at is null
+      or started_at >= now() - public.voice_transcript_retention_interval(account_id)
+    )
+  );
+
+-- Indexes for fast workspace queue queries
+create index if not exists voice_calls_account_outcome_started_idx
+  on public.voice_calls (account_id, outcome, started_at desc nulls last);
+
+create index if not exists voice_calls_lead_idx
+  on public.voice_calls (lead_id)
+  where lead_id is not null;
+
+-- 3. Create public.voice_call_workflows table
+create table if not exists public.voice_call_workflows (
+  call_id uuid primary key references public.voice_calls(id) on delete cascade,
+  account_id uuid not null references public.accounts(id) on delete cascade,
+  disposition text not null default 'unreviewed'
+    check (disposition in ('unreviewed', 'needs_callback', 'callback_scheduled', 'contacted', 'qualified', 'converted', 'not_a_fit', 'spam', 'resolved')),
+  urgency text not null default 'normal'
+    check (urgency in ('normal', 'urgent', 'emergency')),
+  assigned_user_id uuid references auth.users(id) on delete set null,
+  callback_due_at timestamptz,
+  callback_completed_at timestamptz,
+  reviewed_at timestamptz,
+  reviewed_by uuid references auth.users(id) on delete set null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists voice_call_workflows_account_disp_idx
+  on public.voice_call_workflows (account_id, disposition, callback_due_at);
+
+create index if not exists voice_call_workflows_assigned_user_idx
+  on public.voice_call_workflows (account_id, assigned_user_id)
+  where assigned_user_id is not null;
+
+alter table public.voice_call_workflows enable row level security;
+revoke all on table public.voice_call_workflows from public, anon, authenticated;
+grant select, insert, update on table public.voice_call_workflows to authenticated;
+
+create policy voice_call_workflows_read
+  on public.voice_call_workflows
+  for select
+  to authenticated
+  using (public.office_can(account_id, 'leads.read'));
+
+create policy voice_call_workflows_insert
+  on public.voice_call_workflows
+  for insert
+  to authenticated
+  with check (public.office_can(account_id, 'leads.write'));
+
+create policy voice_call_workflows_update
+  on public.voice_call_workflows
+  for update
+  to authenticated
+  using (public.office_can(account_id, 'leads.write'))
+  with check (public.office_can(account_id, 'leads.write'));
+
+drop trigger if exists touch_voice_call_workflows_updated_at_trigger on public.voice_call_workflows;
+create trigger touch_voice_call_workflows_updated_at_trigger
+  before update on public.voice_call_workflows
+  for each row execute function public.touch_voice_settings_updated_at();
+
+-- 4. Create public.voice_call_notes table
+create table if not exists public.voice_call_notes (
+  id uuid primary key default gen_random_uuid(),
+  call_id uuid not null references public.voice_calls(id) on delete cascade,
+  account_id uuid not null references public.accounts(id) on delete cascade,
+  author_user_id uuid references auth.users(id) on delete set null,
+  author_name text not null,
+  note text not null check (pg_catalog.length(pg_catalog.btrim(note)) > 0 and pg_catalog.length(note) <= 4000),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists voice_call_notes_call_created_idx
+  on public.voice_call_notes (call_id, created_at desc);
+
+create index if not exists voice_call_notes_account_idx
+  on public.voice_call_notes (account_id, created_at desc);
+
+alter table public.voice_call_notes enable row level security;
+revoke all on table public.voice_call_notes from public, anon, authenticated;
+grant select, insert, update on table public.voice_call_notes to authenticated;
+
+create policy voice_call_notes_read
+  on public.voice_call_notes
+  for select
+  to authenticated
+  using (public.office_can(account_id, 'leads.read'));
+
+create policy voice_call_notes_insert
+  on public.voice_call_notes
+  for insert
+  to authenticated
+  with check (public.office_can(account_id, 'leads.write'));
+
+create policy voice_call_notes_update
+  on public.voice_call_notes
+  for update
+  to authenticated
+  using (public.office_can(account_id, 'leads.write'))
+  with check (public.office_can(account_id, 'leads.write'));
+
+drop trigger if exists touch_voice_call_notes_updated_at_trigger on public.voice_call_notes;
+create trigger touch_voice_call_notes_updated_at_trigger
+  before update on public.voice_call_notes
+  for each row execute function public.touch_voice_settings_updated_at();
+
+-- 5. Safety verification assertion block
+do $$
+declare
+  v_writable text;
+begin
+  if not exists (
+    select 1 from pg_catalog.pg_class c
+    join pg_catalog.pg_namespace n on n.oid = c.relnamespace
+    where n.nspname = 'public' and c.relname = 'voice_call_workflows' and c.relrowsecurity
+  ) then
+    raise exception 'row level security is not enabled on voice_call_workflows';
+  end if;
+
+  if not exists (
+    select 1 from pg_catalog.pg_class c
+    join pg_catalog.pg_namespace n on n.oid = c.relnamespace
+    where n.nspname = 'public' and c.relname = 'voice_call_notes' and c.relrowsecurity
+  ) then
+    raise exception 'row level security is not enabled on voice_call_notes';
+  end if;
+
+  select string_agg(grantee || ':' || privilege_type, ', ')
+    into v_writable
+    from information_schema.role_table_grants
+   where table_schema = 'public'
+     and table_name in ('voice_call_workflows', 'voice_call_notes')
+     and privilege_type = 'TRUNCATE'
+     and grantee in ('public', 'anon', 'authenticated');
+
+  if v_writable is not null then
+    raise exception 'voice tables have dangerous truncate grants: %', v_writable;
+  end if;
+end $$;
+
+commit;
 -- END GENERATED SIGNALWIRE MESSAGING AND VOICE RUNTIME
