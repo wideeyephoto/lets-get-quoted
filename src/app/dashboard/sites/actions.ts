@@ -824,3 +824,84 @@ export async function syncClientReviewsToSiteAction() {
   revalidatePath('/dashboard/sites');
   return result;
 }
+
+export async function generateLogoTaglinesAction(params: {
+  companyName?: string;
+  trade?: string;
+  serviceArea?: string;
+  zip?: string;
+}): Promise<{ ok: boolean; taglines?: string[]; message?: string }> {
+  try {
+    const { accountId } = await requireOfficeContext('settings.write');
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      return {
+        ok: true,
+        taglines: [
+          'Master Craftsmanship & Reliable Service',
+          'Licensed, Insured & Family Owned',
+          'Fast, Honest & Precision Quality',
+          'Residential & Commercial Specialists',
+          'Your Trusted Local Trade Experts',
+        ],
+      };
+    }
+
+    const companyName = params.companyName?.trim() || 'Our Company';
+    const trade = params.trade?.trim() || 'General Contractor';
+    const location = params.serviceArea?.trim() || params.zip?.trim() || '';
+
+    const instructions =
+      'You generate 5 distinct, high-impact, professional marketing taglines/slogans for a local home services contractor logo. ' +
+      'Rules: ' +
+      '1. Each tagline must be under 40 characters so it fits cleanly on an invoice, truck wrap, or logo emblem. ' +
+      '2. Make them punchy, trustworthy, and industry-specific (e.g. Plumbing, HVAC, Roofing, Electrical). ' +
+      '3. Offer varied angles: one reliability/speed, one master craftsmanship/heritage, one local pride, one modern concise, one premium quality. ' +
+      '4. Return strict JSON format: {"taglines": ["line 1", "line 2", "line 3", "line 4", "line 5"]}';
+
+    const input = `Company: ${companyName}. Trade: ${trade}. Location: ${location || 'Local'}.`;
+
+    const response = await callModel(
+      {
+        model: 'gpt-4o-mini',
+        temperature: 0.8,
+        instructions,
+        input,
+        text: { format: { type: 'json_object' } },
+      },
+      { accountId, kind: 'site_copy' }
+    );
+
+    if (!response.ok) throw new Error(`Model request failed: ${response.status}`);
+    const payload = await response.json();
+    const parsed = JSON.parse(extractOutputText(payload)) as { taglines?: string[] };
+
+    const taglines = Array.isArray(parsed.taglines)
+      ? parsed.taglines.map((t) => String(t).trim().slice(0, 50)).filter(Boolean)
+      : [];
+
+    return {
+      ok: true,
+      taglines: taglines.length > 0 ? taglines : [
+        'Master Craftsmanship & Reliable Service',
+        'Licensed, Insured & Family Owned',
+        'Fast, Honest & Precision Quality',
+        'Residential & Commercial Specialists',
+        'Your Trusted Local Trade Experts',
+      ],
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      message: error instanceof Error ? error.message : 'Could not generate taglines.',
+      taglines: [
+        'Master Craftsmanship & Reliable Service',
+        'Licensed, Insured & Family Owned',
+        'Fast, Honest & Precision Quality',
+        'Residential & Commercial Specialists',
+        'Your Trusted Local Trade Experts',
+      ],
+    };
+  }
+}
+
