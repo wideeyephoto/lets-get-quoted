@@ -8,6 +8,7 @@ import {
   PLAN_INTENT_BILLING_PARAM,
   PLAN_INTENT_PLAN_PARAM,
   parsePlanIntent,
+  welcomePathWithPlanIntent,
 } from '@/lib/plan-intent';
 import { getTrade } from '@/lib/trades';
 import { sendMagicLinkAction } from './actions';
@@ -90,9 +91,11 @@ function LoginInner() {
   const cityParam = intent.city ?? searchParams.get('city')?.trim() ?? null;
   const matchedTrade = tradeParam ? getTrade(tradeParam) : null;
 
-  // Build welcome destination preserving full signup intent
-  const welcomeParams = serializeSignupIntent(intent);
-  const defaultWelcomeDestination = `/welcome${welcomeParams.toString() ? `?${welcomeParams.toString()}` : ''}`;
+  // Build welcome destination preserving full signup intent (plan, billing, trade, city, goal)
+  const welcomeQuery = serializeSignupIntent(intent).toString();
+  const defaultWelcomeDestination = planIntent && !tradeParam && !cityParam
+    ? welcomePathWithPlanIntent(planIntent)
+    : `/welcome${welcomeQuery ? `?${welcomeQuery}` : ''}`;
 
   const nextPath = safeNextPath(
     searchParams.get('next') ?? (isSignup || planIntent || tradeParam || cityParam ? defaultWelcomeDestination : null),
