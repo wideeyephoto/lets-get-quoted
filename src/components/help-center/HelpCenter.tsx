@@ -2,7 +2,16 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { KNOWLEDGE_BASE, FAQS, DIAGNOSTIC_SCENARIOS, Article } from './help-center-data';
+import {
+  KNOWLEDGE_BASE,
+  FAQS,
+  DIAGNOSTIC_SCENARIOS,
+  TRADE_PLAYBOOKS,
+  VIDEO_PLAYBOOKS,
+  DOWNLOADABLE_TEMPLATES,
+  Article,
+  VideoPlaybook
+} from './help-center-data';
 import styles from './HelpCenter.module.css';
 
 // Lightweight Zero-Dependency SVG Icon Helpers (24x24 stroke style)
@@ -318,6 +327,74 @@ const Icons = {
         </>
       }
     />
+  ),
+  Play: () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+      <polygon points="5 3 19 12 5 21 5 3" />
+    </svg>
+  ),
+  Download: () => (
+    <Icon
+      d={
+        <>
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+          <polyline points="7 10 12 15 17 10" />
+          <line x1="12" y1="15" x2="12" y2="3" />
+        </>
+      }
+    />
+  ),
+  Wrench: () => (
+    <Icon
+      d={
+        <>
+          <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
+        </>
+      }
+    />
+  ),
+  Home: () => (
+    <Icon
+      d={
+        <>
+          <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+          <polyline points="9 22 9 12 15 12 15 22" />
+        </>
+      }
+    />
+  ),
+  Zap: () => (
+    <Icon
+      d={
+        <>
+          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+        </>
+      }
+    />
+  ),
+  Trees: () => (
+    <Icon
+      d={
+        <>
+          <path d="M10 10v.2A3 3 0 0 1 8.9 16H5a3 3 0 0 1-1-5.8V10a3 3 0 0 1 6 0Z" />
+          <path d="M7 16v6" />
+          <path d="M13 19v3" />
+          <path d="M12 19h8.3a1 1 0 0 0 .7-1.7L18 14h.3a1 1 0 0 0 .7-1.7L16 9h.2a1 1 0 0 0 .8-1.7L13 3l-4 4.3a1 1 0 0 0 .8 1.7H10l-3 3.3a1 1 0 0 0 .7 1.7H9l-3 3.3a1 1 0 0 0 .7 1.7H12" />
+        </>
+      }
+    />
+  ),
+  Hammer: () => (
+    <Icon
+      d={
+        <>
+          <path d="m15 12-8.5 8.5c-.83.83-2.17.83-3 0 0 0 0 0 0 0a2.12 2.12 0 0 1 0-3L12 9" />
+          <path d="M17.64 15 22 10.64" />
+          <path d="m20.91 3.26-1.25-1.25a2 2 0 0 0-2.83 0l-1.8 1.8a2 2 0 0 0 0 2.83l1.25 1.25" />
+          <path d="m14 6 3 3" />
+        </>
+      }
+    />
   )
 };
 
@@ -327,7 +404,12 @@ const ICON_MAP: Record<string, React.ReactNode> = {
   Globe: <Icons.Globe />,
   Smartphone: <Icons.Smartphone />,
   CreditCard: <Icons.CreditCard />,
-  Users: <Icons.Users />
+  Users: <Icons.Users />,
+  Wrench: <Icons.Wrench />,
+  Home: <Icons.Home />,
+  Zap: <Icons.Zap />,
+  Trees: <Icons.Trees />,
+  Hammer: <Icons.Hammer />
 };
 
 export default function HelpCenter() {
@@ -335,7 +417,9 @@ export default function HelpCenter() {
   const [selectedTopic, setSelectedTopic] = useState('all');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
+  const [activeTrade, setActiveTrade] = useState('plumbing');
   const [activeArticle, setActiveArticle] = useState<Article | null>(null);
+  const [activeVideo, setActiveVideo] = useState<VideoPlaybook | null>(null);
   const [isTicketDrawerOpen, setIsTicketDrawerOpen] = useState(false);
   const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
 
@@ -383,6 +467,7 @@ export default function HelpCenter() {
         setIsTicketDrawerOpen(false);
         setIsStatusModalOpen(false);
         setActiveArticle(null);
+        setActiveVideo(null);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -490,6 +575,8 @@ export default function HelpCenter() {
     return matchesTopic && (catMatch || artMatch);
   });
 
+  const currentTrade = TRADE_PLAYBOOKS.find(t => t.id === activeTrade) || TRADE_PLAYBOOKS[0];
+
   return (
     <div className={styles.helpRoot}>
       <div className={`${styles.ambientGlow} ${styles.glow1}`} />
@@ -505,6 +592,12 @@ export default function HelpCenter() {
               <span>Help Center &amp; Command Hub</span>
             </div>
             <nav className={styles.subNavLinks}>
+              <a href="#trade-playbooks" className={styles.subNavLink}>
+                Trade Playbooks
+              </a>
+              <a href="#video-playbooks" className={styles.subNavLink}>
+                60s Videos
+              </a>
               <a href="#knowledge-hub" className={styles.subNavLink}>
                 Guides
               </a>
@@ -633,12 +726,110 @@ export default function HelpCenter() {
         </div>
       </section>
 
+      {/* ================= NEW SECTION: TRADE-SPECIFIC PLAYBOOKS ================= */}
+      <section id="trade-playbooks" className={styles.sectionContainer}>
+        <div className={styles.sectionHeader}>
+          <div>
+            <span className={styles.sectionTag}>Custom Workflows</span>
+            <h2 className={styles.sectionTitle}>Playbooks Built for Your Trade</h2>
+            <p className={styles.sectionDesc}>
+              Tailored quoting formulas, emergency multipliers, and deposit schedules designed specifically for residential trade specialists.
+            </p>
+          </div>
+        </div>
+
+        {/* Trade Switcher Pills */}
+        <div className={styles.tradeTabsContainer}>
+          {TRADE_PLAYBOOKS.map(trade => (
+            <button
+              key={trade.id}
+              className={`${styles.tradeTabBtn} ${activeTrade === trade.id ? styles.activeTradeTab : ''}`}
+              onClick={() => setActiveTrade(trade.id)}
+            >
+              {ICON_MAP[trade.icon] || <Icons.Wrench />}
+              <span>{trade.name}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* Trade Detail Showcase Card */}
+        <div className={styles.tradePlaybookCard}>
+          <div className={styles.tradeCardLeft}>
+            <span className={styles.tradeBadge}>{currentTrade.badge}</span>
+            <h3 className={styles.tradeHeadline}>{currentTrade.headline}</h3>
+            <p className={styles.tradeDescription}>{currentTrade.description}</p>
+            <div style={{ marginTop: 'auto' }}>
+              <button
+                className={styles.btnPrimarySm}
+                onClick={() => showToast(`Loaded ${currentTrade.name} quote template configuration`)}
+              >
+                <Icons.Sparkles />
+                <span>Load {currentTrade.name} Template</span>
+              </button>
+            </div>
+          </div>
+
+          <div className={styles.tradeCardRight}>
+            {currentTrade.keyWorkflows.map((wf, idx) => (
+              <div key={idx} className={styles.workflowItemCard}>
+                <h4 className={styles.workflowTitle}>
+                  <Icons.CheckCircle />
+                  <span>{wf.title}</span>
+                </h4>
+                <p className={styles.workflowDesc}>{wf.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ================= NEW SECTION: 60-SECOND VIDEO PLAYBOOKS ================= */}
+      <section id="video-playbooks" className={styles.sectionContainer}>
+        <div className={styles.sectionHeader}>
+          <div>
+            <span className={styles.sectionTag}>Visual Walkthroughs</span>
+            <h2 className={styles.sectionTitle}>60-Second Video Fixes</h2>
+            <p className={styles.sectionDesc}>
+              Fast, on-truck video demonstrations showing you exactly how to configure key features in under a minute.
+            </p>
+          </div>
+        </div>
+
+        <div className={styles.videoGrid}>
+          {VIDEO_PLAYBOOKS.map(vid => (
+            <div
+              key={vid.id}
+              className={styles.videoCard}
+              onClick={() => setActiveVideo(vid)}
+            >
+              <div
+                className={styles.videoThumbnailBox}
+                style={{ background: vid.thumbnailGradient }}
+              >
+                <div className={styles.playBtnCircle}>
+                  <Icons.Play />
+                </div>
+                <div className={styles.videoDurationBadge}>
+                  <Icons.Clock />
+                  <span>{vid.duration}</span>
+                </div>
+              </div>
+              <div className={styles.videoBody}>
+                <span className={styles.videoCat}>{vid.category}</span>
+                <h4 className={styles.videoTitle}>{vid.title}</h4>
+                <p className={styles.videoSummary}>{vid.summary}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
       {/* Bento Grid Knowledge Base */}
       <section id="knowledge-hub" className={styles.sectionContainer}>
         <div className={styles.sectionHeader}>
           <div>
             <span className={styles.sectionTag}>Knowledge Base</span>
-            <h2 className={styles.sectionTitle}>Explore by Category</h2>
+            <h2 className={styles.sectionTitle}>Explore All Guides</h2>
             <p className={styles.sectionDesc}>
               Deep-dive into comprehensive workflows built specifically for modern residential contractors.
             </p>
@@ -685,6 +876,39 @@ export default function HelpCenter() {
                   </div>
                 ))}
               </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ================= NEW SECTION: DOWNLOADABLE CONTRACTOR ASSETS ================= */}
+      <section className={styles.sectionContainer}>
+        <div className={styles.sectionHeader}>
+          <div>
+            <span className={styles.sectionTag}>Free Contractor Assets</span>
+            <h2 className={styles.sectionTitle}>Download Legal &amp; Billing Templates</h2>
+            <p className={styles.sectionDesc}>
+              Ready-to-use contractor lien waivers, change order authorizations, and 50% deposit clauses vetted by trade attorneys.
+            </p>
+          </div>
+        </div>
+
+        <div className={styles.templateGrid}>
+          {DOWNLOADABLE_TEMPLATES.map(tpl => (
+            <div key={tpl.id} className={styles.templateCard}>
+              <div className={styles.templateHeader}>
+                <span className={styles.templateFormatTag}>{tpl.fileFormat}</span>
+                <span className={styles.templateDownloads}>{tpl.downloadsCount} downloads</span>
+              </div>
+              <h3 className={styles.templateName}>{tpl.name}</h3>
+              <p className={styles.templateDesc}>{tpl.description}</p>
+              <button
+                className={styles.btnOutlineBlock}
+                onClick={() => showToast(`Downloaded: ${tpl.name} (${tpl.fileSize})`)}
+              >
+                <Icons.Download />
+                <span>Download Free Template ({tpl.fileSize})</span>
+              </button>
             </div>
           ))}
         </div>
@@ -1264,7 +1488,45 @@ export default function HelpCenter() {
         </div>
       )}
 
-      {/* 3. System Status Modal */}
+      {/* 3. Video Modal */}
+      {activeVideo && (
+        <div className={styles.modalOverlay} onClick={() => setActiveVideo(null)}>
+          <div className={styles.articleModal} onClick={e => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <span className={styles.categoryBadge}>{activeVideo.category}</span>
+              <button className={styles.iconBtn} onClick={() => setActiveVideo(null)}>
+                <Icons.X />
+              </button>
+            </div>
+            <div className={styles.modalBody}>
+              <h1 className={styles.articleTitle}>{activeVideo.title}</h1>
+              <div className={styles.articleMeta}>
+                <span>Duration: {activeVideo.duration}</span>
+                <span>HD Mobile Walkthrough</span>
+              </div>
+              <div
+                style={{
+                  height: '240px',
+                  background: activeVideo.thumbnailGradient,
+                  borderRadius: '16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: '1.5rem',
+                  border: '1px solid rgba(255, 255, 255, 0.1)'
+                }}
+              >
+                <div className={styles.playBtnCircle} style={{ width: '56px', height: '56px' }}>
+                  <Icons.Play />
+                </div>
+              </div>
+              <p style={{ color: '#cbd5e1', lineHeight: '1.6' }}>{activeVideo.summary}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 4. System Status Modal */}
       {isStatusModalOpen && (
         <div className={styles.modalOverlay} onClick={() => setIsStatusModalOpen(false)}>
           <div className={styles.statusModal} onClick={e => e.stopPropagation()}>

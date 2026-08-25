@@ -17,6 +17,37 @@ export interface KnowledgeCategory {
   articles: Article[];
 }
 
+export interface TradePlaybook {
+  id: string;
+  name: string;
+  icon: string;
+  badge: string;
+  headline: string;
+  description: string;
+  keyWorkflows: {
+    title: string;
+    desc: string;
+  }[];
+}
+
+export interface VideoPlaybook {
+  id: string;
+  title: string;
+  duration: string;
+  category: string;
+  thumbnailGradient: string;
+  summary: string;
+}
+
+export interface DownloadableTemplate {
+  id: string;
+  name: string;
+  fileFormat: string;
+  fileSize: string;
+  description: string;
+  downloadsCount: string;
+}
+
 export interface FAQItem {
   question: string;
   answer: string;
@@ -39,6 +70,136 @@ export interface DiagnosticScenario {
     type: string;
   };
 }
+
+export const TRADE_PLAYBOOKS: TradePlaybook[] = [
+  {
+    id: 'plumbing',
+    name: 'Plumbing & HVAC',
+    icon: 'Wrench',
+    badge: 'Popular for Service & Repair',
+    headline: 'Emergency Dispatch & Tiered Fixture Replacements',
+    description: 'Master fast on-truck dispatch, after-hours emergency call multipliers, and multi-tier water heater replacement proposals.',
+    keyWorkflows: [
+      { title: 'Emergency After-Hours Multiplier', desc: 'Auto-adjust dispatch fees by 1.5x on weekends or after 6 PM.' },
+      { title: 'Water Heater Good/Better/Best', desc: 'Standard Tank (Good) vs Hybrid Heat Pump (Better) vs Tankless Lifetime (Best).' },
+      { title: 'Camera Inspection Video Attachments', desc: 'Attach drain camera MP4 clips directly to homeowner estimate links.' }
+    ]
+  },
+  {
+    id: 'roofing',
+    name: 'Roofing & Siding',
+    icon: 'Home',
+    badge: 'High-Ticket Remodeling',
+    headline: 'Multi-Square Estimation & Drone Photo Proposals',
+    description: 'Calculate pitch multipliers, waste factors (10–15%), architectural shingle upgrade packages, and insurance deductible workflows.',
+    keyWorkflows: [
+      { title: 'Square & Pitch Calculator', desc: 'Enter total square footage and pitch slope to instantly calculate bundles & underlayment.' },
+      { title: '30-Year vs 50-Year Shingle Tiers', desc: 'Present Architectural (Good), Lifetime Designer (Better), and Standing Seam Metal (Best).' },
+      { title: 'Drone Inspection Photo Carousels', desc: 'Embed before/after roof leak photos in the client-facing digital quote.' }
+    ]
+  },
+  {
+    id: 'electrical',
+    name: 'Electrical & Solar',
+    icon: 'Zap',
+    badge: 'Precision Permitting & Panels',
+    headline: 'Panel Upgrades, EV Chargers & Permit Line Items',
+    description: 'Quote 200A service panel upgrades, Level 2 EV charger installations, and pass-through municipality permit fees cleanly.',
+    keyWorkflows: [
+      { title: '200A Service Upgrade Tiers', desc: 'Main breaker panel swap vs whole-home surge protection vs battery backup.' },
+      { title: 'Municipality Permit Line Items', desc: 'Add non-taxable town permit pass-through line items that calculate automatically.' },
+      { title: 'EV Charger Load Calculation', desc: 'Include wire run distance brackets (up to 25ft, 50ft, 100ft) with upfront materials.' }
+    ]
+  },
+  {
+    id: 'landscaping',
+    name: 'Landscaping & Tree Care',
+    icon: 'Trees',
+    badge: 'Recurring Maintenance & Hardscaping',
+    headline: 'Recurring Service Agreements & Hardscape Deposits',
+    description: 'Automate weekly/bi-weekly lawn maintenance billing, seasonal spring/fall cleanups, and 50% upfront patio material deposits.',
+    keyWorkflows: [
+      { title: 'Seasonal Recurring Contracts', desc: 'Set monthly auto-invoicing from April to November with card-on-file billing.' },
+      { title: 'Hardscape Paver Square Footage', desc: 'Calculate base gravel, sand bedding, and paver stone quantities with built-in labor rates.' },
+      { title: 'Tree Removal Hazard Multiplier', desc: 'Quote crane access, stump grinding, and limb clearance as modular optional add-ons.' }
+    ]
+  },
+  {
+    id: 'general',
+    name: 'General Contracting',
+    icon: 'Hammer',
+    badge: 'Milestone & Remodeling Billing',
+    headline: 'Milestone Invoicing (50/40/10) & Change Orders',
+    description: 'Structure large-scale bathroom and kitchen remodels with compliant milestone deposit schedules and 1-click change order sign-offs.',
+    keyWorkflows: [
+      { title: '50/40/10 Milestone Billing', desc: 'Collect 50% deposit on contract signing, 40% upon rough-in completion, 10% final punch list.' },
+      { title: 'Mobile Change Order Signatures', desc: 'Generate a 1-page extra work authorization with instant homeowner e-signature on site.' },
+      { title: 'Subcontractor Lien Waiver Receipts', desc: 'Generate unconditional progress lien waivers upon payment receipt for banks and lenders.' }
+    ]
+  }
+];
+
+export const VIDEO_PLAYBOOKS: VideoPlaybook[] = [
+  {
+    id: 'vid-tiered-quoting',
+    title: 'Building a 3-Tier "Good / Better / Best" Quote on Mobile',
+    duration: '1:15',
+    category: 'Instant Quoting',
+    thumbnailGradient: 'linear-gradient(135deg, #0e1622 0%, #1e293b 100%)',
+    summary: 'Watch how to create an interactive 3-option estimate on your phone in under 60 seconds from the jobsite truck.'
+  },
+  {
+    id: 'vid-stripe-deposits',
+    title: 'Collecting 50% Material Deposits with Apple Pay',
+    duration: '0:48',
+    category: 'Payments & Stripe',
+    thumbnailGradient: 'linear-gradient(135deg, #101c2c 0%, #172a3a 100%)',
+    summary: 'See how homeowners receive an SMS link, select their package, sign digitally, and pay instant deposits via 1-click Apple Pay.'
+  },
+  {
+    id: 'vid-custom-domain',
+    title: 'Connecting Your GoDaddy / Namecheap Domain in 2 Mins',
+    duration: '1:32',
+    category: 'AI Website Builder',
+    thumbnailGradient: 'linear-gradient(135deg, #181c24 0%, #202b36 100%)',
+    summary: 'Step-by-step walkthrough of adding an A record (76.76.21.21) and CNAME to deploy your contractor AI website live.'
+  },
+  {
+    id: 'vid-sms-followups',
+    title: 'Configuring 24/7 Automated SMS Quote Follow-Ups',
+    duration: '1:05',
+    category: 'Two-Way SMS',
+    thumbnailGradient: 'linear-gradient(135deg, #1c1424 0%, #2a1f3a 100%)',
+    summary: 'How to automate polite text follow-ups at 24h and 72h that automatically stop the second a homeowner replies or signs.'
+  }
+];
+
+export const DOWNLOADABLE_TEMPLATES: DownloadableTemplate[] = [
+  {
+    id: 'tpl-lien-waiver',
+    name: 'Residential Contractor Progress Lien Waiver Template',
+    fileFormat: 'PDF & Word',
+    fileSize: '142 KB',
+    description: 'Standard conditional and unconditional lien waiver form for banks, homeowners, and general contractors.',
+    downloadsCount: '4,280+'
+  },
+  {
+    id: 'tpl-change-order',
+    name: 'Extra Work Authorization & Change Order Agreement',
+    fileFormat: 'PDF & Fillable',
+    fileSize: '98 KB',
+    description: 'Legally compliant 1-page form to document unforeseen scope changes, material additions, and updated totals.',
+    downloadsCount: '3,650+'
+  },
+  {
+    id: 'tpl-deposit-terms',
+    name: '50% Upfront Material Deposit & Payment Schedule Addendum',
+    fileFormat: 'PDF & DOCX',
+    fileSize: '116 KB',
+    description: 'Standard clause defining upfront non-refundable material orders, payment milestones, and late fee terms.',
+    downloadsCount: '5,120+'
+  }
+];
 
 export const KNOWLEDGE_BASE: KnowledgeCategory[] = [
   {

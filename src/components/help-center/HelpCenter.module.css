@@ -615,6 +615,283 @@
   color: #ff7a21;
 }
 
+/* ================= NEW: TRADE-SPECIFIC PLAYBOOKS ================= */
+.tradeTabsContainer {
+  display: flex;
+  gap: 0.65rem;
+  overflow-x: auto;
+  padding-bottom: 0.75rem;
+  margin-bottom: 1.75rem;
+}
+
+.tradeTabBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: #0f1724;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 0.75rem 1.25rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #cbd5e1;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s;
+}
+
+.tradeTabBtn:hover {
+  background: #172235;
+  border-color: rgba(255, 122, 33, 0.4);
+  color: #ffffff;
+}
+
+.activeTradeTab {
+  background: rgba(255, 122, 33, 0.14) !important;
+  border-color: #ff7a21 !important;
+  color: #ff7a21 !important;
+  box-shadow: 0 4px 15px rgba(255, 122, 33, 0.2);
+}
+
+.tradePlaybookCard {
+  background: rgba(14, 22, 35, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 24px;
+  padding: 2.25rem;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+  display: grid;
+  grid-template-columns: 1fr 1.3fr;
+  gap: 2.5rem;
+}
+
+.tradeCardLeft {
+  display: flex;
+  flex-direction: column;
+}
+
+.tradeBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #ff7a21;
+  background: rgba(255, 122, 33, 0.15);
+  padding: 4px 12px;
+  border-radius: 9999px;
+  margin-bottom: 1rem;
+  align-self: flex-start;
+}
+
+.tradeHeadline {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: #ffffff;
+  line-height: 1.25;
+  margin-bottom: 0.75rem;
+}
+
+.tradeDescription {
+  color: #94a3b8;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  margin-bottom: 1.75rem;
+}
+
+.tradeCardRight {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.workflowItemCard {
+  background: #0f1724;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 14px;
+  padding: 1.15rem 1.35rem;
+  transition: all 0.2s;
+}
+
+.workflowItemCard:hover {
+  background: #172338;
+  border-color: rgba(255, 122, 33, 0.35);
+  transform: translateX(4px);
+}
+
+.workflowTitle {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin-bottom: 0.3rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.workflowDesc {
+  font-size: 0.825rem;
+  color: #94a3b8;
+  line-height: 1.45;
+}
+
+/* ================= NEW: 60-SECOND VIDEO PLAYBOOKS ================= */
+.videoGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.5rem;
+}
+
+.videoCard {
+  background: rgba(14, 22, 35, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  cursor: pointer;
+  transition: all 0.25s;
+}
+
+.videoCard:hover {
+  transform: translateY(-4px);
+  border-color: rgba(255, 122, 33, 0.5);
+  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.6);
+}
+
+.videoThumbnailBox {
+  height: 140px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.playBtnCircle {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(255, 122, 33, 0.9);
+  color: #070b12;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 15px rgba(255, 122, 33, 0.5);
+  transition: transform 0.2s;
+}
+
+.videoCard:hover .playBtnCircle {
+  transform: scale(1.1);
+  background: #ff7a21;
+}
+
+.videoDurationBadge {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(8px);
+  color: #ffffff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.videoBody {
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.videoCat {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #ff7a21;
+  text-transform: uppercase;
+  margin-bottom: 0.35rem;
+}
+
+.videoTitle {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin-bottom: 0.5rem;
+  line-height: 1.35;
+}
+
+.videoSummary {
+  font-size: 0.8rem;
+  color: #94a3b8;
+  line-height: 1.45;
+  margin-top: auto;
+}
+
+/* ================= NEW: DOWNLOADABLE TEMPLATES ================= */
+.templateGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+}
+
+.templateCard {
+  background: rgba(14, 22, 35, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  padding: 1.75rem;
+  display: flex;
+  flex-direction: column;
+  transition: all 0.2s;
+}
+
+.templateCard:hover {
+  transform: translateY(-3px);
+  border-color: rgba(255, 122, 33, 0.4);
+}
+
+.templateHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.templateFormatTag {
+  font-size: 0.725rem;
+  font-weight: 700;
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.12);
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+
+.templateDownloads {
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.templateName {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin-bottom: 0.5rem;
+  line-height: 1.35;
+}
+
+.templateDesc {
+  font-size: 0.825rem;
+  color: #94a3b8;
+  line-height: 1.5;
+  margin-bottom: 1.5rem;
+  flex: 1;
+}
+
 /* AI Copilot & Live Diagnostic Tools */
 .copilotCard {
   background: rgba(14, 22, 35, 0.85);
@@ -1626,6 +1903,9 @@
   .spanTwo { grid-column: span 2; }
   .copilotBody { grid-template-columns: 1fr; }
   .toolPanelContainer { grid-template-columns: 1fr; }
+  .tradePlaybookCard { grid-template-columns: 1fr; }
+  .videoGrid { grid-template-columns: repeat(2, 1fr); }
+  .templateGrid { grid-template-columns: 1fr; }
   .channelsGrid { grid-template-columns: 1fr; }
   .heroStatsDeck { grid-template-columns: repeat(2, 1fr); }
 }
@@ -1636,5 +1916,6 @@
   .heroSubtitle { font-size: 1rem; }
   .bentoGrid { grid-template-columns: 1fr; }
   .spanTwo { grid-column: span 1; }
+  .videoGrid { grid-template-columns: 1fr; }
   .heroStatsDeck { grid-template-columns: 1fr; }
 }
