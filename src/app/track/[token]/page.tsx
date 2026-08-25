@@ -5,6 +5,7 @@ import {
   ARRIVAL_STATUS_HEADLINE, HOMEOWNER_REPLIES, homeownerReply, isClosedStatus,
 } from '@/lib/arrival';
 import PinMap, { type MapPin } from '@/components/pin-map';
+import SelfServiceRescheduleCard from '@/components/portal/SelfServiceRescheduleCard';
 import AutoRefresh from './AutoRefresh';
 import { homeownerReplyAction } from './actions';
 import styles from './track.module.css';
@@ -146,6 +147,14 @@ export default async function TrackPage({
             ))}
           </div>
         </section>
+      ) : null}
+
+      {!closed ? (
+        <SelfServiceRescheduleCard
+          jobId={visit.jobId}
+          businessName={visit.businessName}
+          currentTimeWindow={visit.windowLabel}
+        />
       ) : null}
 
       <p className={styles.foot}>
