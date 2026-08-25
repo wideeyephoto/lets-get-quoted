@@ -737,7 +737,7 @@ export default function FlagshipHome() {
 
       </section>
 
-      <section className="client-experience" aria-labelledby="client-experience-title">
+      <section className="client-experience" id="workflow" aria-labelledby="client-experience-title">
         <Glare />
         <div className="client-copy" data-rise>
           <p className="eyebrow"><span>✦</span> TEXT MESSAGING + A CLIENT PORTAL FOR EVERY JOB</p>
