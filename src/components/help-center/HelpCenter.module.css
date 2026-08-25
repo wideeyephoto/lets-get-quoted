@@ -471,7 +471,7 @@
   color: #94a3b8;
 }
 
-/* ================= NEW: QUICK START 3-STEP ONBOARDING BAR ================= */
+/* ================= QUICK START 3-STEP ONBOARDING BAR ================= */
 .quickStartBanner {
   background: linear-gradient(135deg, rgba(255, 122, 33, 0.08) 0%, rgba(14, 22, 35, 0.95) 100%);
   border: 1px solid rgba(255, 122, 33, 0.25);
@@ -1552,6 +1552,261 @@
   border-radius: 9999px;
 }
 
+/* ================= IN-APP DOCUMENT VIEWER MODAL ================= */
+.docModal {
+  background: #0b111b;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 22px;
+  width: 100%;
+  max-width: 860px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.8);
+}
+
+.docModalHeader {
+  padding: 1.25rem 1.75rem;
+  background: #0e1624;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.docHeaderActions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.docModalBody {
+  padding: 2.5rem;
+  overflow-y: auto;
+  background: #ffffff;
+  color: #0f172a;
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.docPaperHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  border-bottom: 2px solid #ff7a21;
+  padding-bottom: 1.25rem;
+  margin-bottom: 1.75rem;
+}
+
+.docBadge {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #ff7a21;
+  background: #fff3eb;
+  padding: 4px 10px;
+  border-radius: 6px;
+  margin-bottom: 0.4rem;
+}
+
+.docPaperTitle {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: #0f172a;
+  line-height: 1.25;
+}
+
+.docPaperBrand {
+  text-align: right;
+}
+
+.docPaperBrandName {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.docPaperBrandName span {
+  color: #ff7a21;
+}
+
+.docPaperBrandSub {
+  font-size: 0.75rem;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.docMetaCard {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.75rem;
+}
+
+.docGrid2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+}
+
+.docMetaLabel {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.25rem;
+}
+
+.docMetaVal {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.docMetaHighlight {
+  color: #ff7a21;
+  font-weight: 700;
+}
+
+.docClause h3 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 1.25rem 0 0.5rem;
+}
+
+.docClause p {
+  font-size: 0.9rem;
+  color: #334155;
+  line-height: 1.65;
+  margin-bottom: 0.75rem;
+}
+
+.docTable {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1.25rem 0;
+  font-size: 0.85rem;
+}
+
+.docTable th {
+  background: #f1f5f9;
+  text-align: left;
+  padding: 0.75rem;
+  font-weight: 700;
+  color: #334155;
+  border-bottom: 2px solid #cbd5e1;
+}
+
+.docTable td {
+  padding: 0.75rem;
+  border-bottom: 1px solid #e2e8f0;
+  color: #1e293b;
+}
+
+.docFinancialBox {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 1rem 1.25rem;
+  margin-top: 1rem;
+}
+
+.docFinRow {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.9rem;
+  padding: 0.35rem 0;
+  color: #475569;
+}
+
+.docFinRowHighlight {
+  color: #ff7a21;
+  font-weight: 700;
+}
+
+.docFinRowTotal {
+  border-top: 2px solid #cbd5e1;
+  padding-top: 0.6rem;
+  font-size: 1rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.docMilestonesDeck {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin: 1.25rem 0;
+}
+
+.docMilestoneCard {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 1rem;
+}
+
+.docMBadge {
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: #ff7a21;
+  background: #fff3eb;
+  padding: 2px 6px;
+  border-radius: 4px;
+  display: inline-block;
+  margin-bottom: 0.35rem;
+}
+
+.docMilestoneCard h4 {
+  font-size: 0.9rem;
+  font-weight: 700;
+  margin-bottom: 0.3rem;
+  color: #0f172a;
+}
+
+.docMilestoneCard p {
+  font-size: 0.8rem;
+  color: #64748b;
+  line-height: 1.4;
+}
+
+.docSigDeck {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3rem;
+  margin-top: 3rem;
+  padding-top: 1.5rem;
+}
+
+.docSigBox {
+  display: flex;
+  flex-direction: column;
+}
+
+.docSigLine {
+  border-bottom: 1.5px solid #0f172a;
+  height: 35px;
+  margin-bottom: 0.5rem;
+}
+
+.docSigLabel {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.docSigSub {
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
 /* Toast */
 .toast {
   position: fixed;
@@ -1594,4 +1849,7 @@
   .spanTwo { grid-column: span 1; }
   .videoGrid { grid-template-columns: 1fr; }
   .heroStatsDeck { grid-template-columns: 1fr; }
+  .docGrid2 { grid-template-columns: 1fr; }
+  .docMilestonesDeck { grid-template-columns: 1fr; }
+  .docSigDeck { grid-template-columns: 1fr; gap: 1.5rem; }
 }

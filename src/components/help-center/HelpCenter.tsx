@@ -296,13 +296,23 @@ const Icons = {
       <polygon points="5 3 19 12 5 21 5 3" />
     </svg>
   ),
-  Download: () => (
+  Eye: () => (
     <Icon
       d={
         <>
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-          <polyline points="7 10 12 15 17 10" />
-          <line x1="12" y1="15" x2="12" y2="3" />
+          <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+          <circle cx="12" cy="12" r="3" />
+        </>
+      }
+    />
+  ),
+  Printer: () => (
+    <Icon
+      d={
+        <>
+          <polyline points="6 9 6 2 18 2 18 9" />
+          <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+          <rect width="12" height="8" x="6" y="14" />
         </>
       }
     />
@@ -386,303 +396,6 @@ const ICON_MAP: Record<string, React.ReactNode> = {
   Hammer: <Icons.Hammer />
 };
 
-// ================= STYLIZED CONTRACTOR DOCUMENT GENERATOR =================
-function generateStylizedDocument(tpl: DownloadableTemplate) {
-  const docTitle = tpl.name;
-  let formBadge = 'FORM LW-101 · PROGRESS PAYMENT LIEN WAIVER';
-  let bodyContent = '';
-
-  if (tpl.id === 'tpl-lien-waiver') {
-    formBadge = 'FORM LW-101 · CONTRACTOR PROGRESS LIEN WAIVER';
-    bodyContent = `
-      <div class="meta-card">
-        <div class="grid-2">
-          <div><span class="label">Property / Jobsite Address</span><div class="fill-box">124 Maplewood Ave, Maplewood, NJ 07040</div></div>
-          <div><span class="label">Contractor / Business Name</span><div class="fill-box">Maplewood Pro Services LLC</div></div>
-          <div><span class="label">Owner / Customer Name</span><div class="fill-box">Jane &amp; David Miller</div></div>
-          <div><span class="label">Payment Amount Received</span><div class="fill-box highlight-val">$12,450.00 (Twelve Thousand Four Hundred Fifty Dollars)</div></div>
-        </div>
-      </div>
-
-      <div class="clause-section">
-        <h3>1. Conditional Waiver &amp; Release Upon Progress Payment</h3>
-        <p>The undersigned Contractor, upon receipt of the sum stated above, hereby waives and releases any and all liens, claims, or rights to lien under the statutes of this State relating to mechanics' and materialmen's liens, on account of labor, services, equipment, or materials furnished through the date of this instrument to the property described above.</p>
-        
-        <h3>2. Exceptions &amp; Exclusions</h3>
-        <p>This waiver does not cover any retainage or disputed extra work not included in prior approved change orders. This release is conditioned upon clearance of funds into the Contractor's banking institution.</p>
-      </div>
-
-      <div class="signature-deck">
-        <div class="sig-box">
-          <div class="sig-line"></div>
-          <span class="sig-label">Authorized Contractor Signature</span>
-          <span class="sig-sub">Brett M. — Managing Partner</span>
-        </div>
-        <div class="sig-box">
-          <div class="sig-line"></div>
-          <span class="sig-label">Date Signed</span>
-          <span class="sig-sub">August 25, 2026</span>
-        </div>
-      </div>
-    `;
-  } else if (tpl.id === 'tpl-change-order') {
-    formBadge = 'FORM CO-202 · RESIDENTIAL CONTRACT CHANGE ORDER';
-    bodyContent = `
-      <div class="meta-card">
-        <div class="grid-2">
-          <div><span class="label">Project Title &amp; Address</span><div class="fill-box">Master Bathroom &amp; Plumbing Remodel · 45 Highland Rd</div></div>
-          <div><span class="label">Change Order Number</span><div class="fill-box highlight-val">CO-#003</div></div>
-          <div><span class="label">Prime Contractor</span><div class="fill-box">Maplewood Pro Services LLC</div></div>
-          <div><span class="label">Property Owner</span><div class="fill-box">Robert Sterling</div></div>
-        </div>
-      </div>
-
-      <div class="clause-section">
-        <h3>1. Description of Unforeseen Scope / Material Additions</h3>
-        <p>Upon demolition of subfloor, cracked 4" cast iron main drain stack was uncovered requiring replacement with Schedule 40 PVC, plus customer-requested upgrade to thermostatic brushed nickel shower valve trim kit.</p>
-        
-        <table class="styled-table">
-          <thead>
-            <tr><th>Itemized Scope Description</th><th>Labor Hours</th><th>Materials Cost</th><th>Total Adjustment</th></tr>
-          </thead>
-          <tbody>
-            <tr><td>Main Stack Cast Iron to PVC replacement</td><td>4.5 hrs</td><td>$340.00</td><td>$880.00</td></tr>
-            <tr><td>Thermostatic Valve upgrade &amp; rough-in adjustment</td><td>2.0 hrs</td><td>$480.00</td><td>$720.00</td></tr>
-          </tbody>
-        </table>
-
-        <h3>2. Financial &amp; Schedule Impact</h3>
-        <div class="financial-summary-box">
-          <div class="fin-row"><span>Original Contract Amount:</span><strong>$24,500.00</strong></div>
-          <div class="fin-row"><span>Prior Approved Changes (CO #1 &amp; #2):</span><strong>+$1,200.00</strong></div>
-          <div class="fin-row highlight-row"><span>This Change Order Amount (+):</span><strong>+$1,600.00</strong></div>
-          <div class="fin-row total-row"><span>REVISED TOTAL CONTRACT PRICE:</span><strong>$27,300.00</strong></div>
-        </div>
-        <p style="margin-top: 0.75rem; font-size: 0.85rem; color: #475569;">Schedule Adjustment: <strong>+2 Additional Working Days</strong> required for final plumbing inspection.</p>
-      </div>
-
-      <div class="signature-deck">
-        <div class="sig-box">
-          <div class="sig-line"></div>
-          <span class="sig-label">Homeowner Acceptance Signature</span>
-          <span class="sig-sub">I authorize the scope and cost adjustment above</span>
-        </div>
-        <div class="sig-box">
-          <div class="sig-line"></div>
-          <span class="sig-label">Contractor Authorization Signature</span>
-          <span class="sig-sub">Maplewood Pro Services LLC</span>
-        </div>
-      </div>
-    `;
-  } else {
-    formBadge = 'FORM MD-303 · MATERIAL DEPOSIT & PAYMENT MILESTONES';
-    bodyContent = `
-      <div class="meta-card">
-        <div class="grid-2">
-          <div><span class="label">Customer / Jobsite Address</span><div class="fill-box">78 Elm Street, Millburn, NJ</div></div>
-          <div><span class="label">Total Contract Proposal Value</span><div class="fill-box highlight-val">$18,600.00</div></div>
-        </div>
-      </div>
-
-      <div class="clause-section">
-        <h3>1. Mandatory Upfront Material Deposit (50%)</h3>
-        <p>In accordance with standard trade practices, a <strong>50% upfront material deposit ($9,300.00)</strong> is required upon signing to secure guaranteed calendar scheduling and place non-cancelable factory orders for specialty equipment and fixtures.</p>
-
-        <div class="milestones-deck">
-          <div class="milestone-card">
-            <span class="m-badge">Milestone 1 · 50%</span>
-            <h4>Upon Contract Signing</h4>
-            <p>Secures jobsite date &amp; purchases custom materials ($9,300.00).</p>
-          </div>
-          <div class="milestone-card">
-            <span class="m-badge">Milestone 2 · 40%</span>
-            <h4>Rough-In Inspection</h4>
-            <p>Due upon completion of framing, plumbing &amp; electrical rough-in ($7,440.00).</p>
-          </div>
-          <div class="milestone-card">
-            <span class="m-badge">Milestone 3 · 10%</span>
-            <h4>Final Punch List</h4>
-            <p>Due upon final walkthrough and customer sign-off ($1,860.00).</p>
-          </div>
-        </div>
-
-        <h3>2. Terms &amp; Instant Digital Payment Options</h3>
-        <p>Homeowners may authorize payment via instant 1-click Apple Pay, Google Pay, major Credit Cards (Visa, MasterCard, Amex) through the Let's Get Quoted client portal, or certified bank draft.</p>
-      </div>
-
-      <div class="signature-deck">
-        <div class="sig-box">
-          <div class="sig-line"></div>
-          <span class="sig-label">Homeowner Acceptance Signature</span>
-          <span class="sig-sub">Date: ________________________</span>
-        </div>
-        <div class="sig-box">
-          <div class="sig-line"></div>
-          <span class="sig-label">Contractor Authorized Representative</span>
-          <span class="sig-sub">Date: ________________________</span>
-        </div>
-      </div>
-    `;
-  }
-
-  const htmlDoc = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${docTitle} · Let's Get Quoted</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background-color: #f8fafc;
-      color: #0f172a;
-      line-height: 1.6;
-      padding: 2rem 1rem;
-    }
-    .page-container {
-      max-width: 850px;
-      margin: 0 auto;
-      background: #ffffff;
-      border: 1px solid #e2e8f0;
-      border-radius: 16px;
-      padding: 3rem 3.5rem;
-      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01);
-      position: relative;
-    }
-    .print-bar {
-      max-width: 850px;
-      margin: 0 auto 1.5rem;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .btn-print {
-      background: #ff7a21;
-      color: #ffffff;
-      border: none;
-      padding: 0.6rem 1.4rem;
-      border-radius: 8px;
-      font-weight: 700;
-      font-size: 0.9rem;
-      cursor: pointer;
-      box-shadow: 0 4px 12px rgba(255, 122, 33, 0.3);
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
-    .btn-print:hover { background: #e66914; }
-    .doc-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      border-bottom: 2px solid #ff7a21;
-      padding-bottom: 1.5rem;
-      margin-bottom: 2rem;
-    }
-    .badge {
-      display: inline-block;
-      font-size: 0.75rem;
-      font-weight: 800;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: #ff7a21;
-      background: #fff3eb;
-      padding: 4px 10px;
-      border-radius: 6px;
-      margin-bottom: 0.5rem;
-    }
-    .doc-title { font-size: 1.75rem; font-weight: 800; color: #0f172a; line-height: 1.25; }
-    .brand-stamp { text-align: right; }
-    .brand-logo { font-size: 1.1rem; font-weight: 800; color: #0f172a; }
-    .brand-logo span { color: #ff7a21; }
-    .brand-sub { font-size: 0.75rem; color: #64748b; font-weight: 500; }
-    
-    .meta-card {
-      background: #f8fafc;
-      border: 1px solid #e2e8f0;
-      border-radius: 12px;
-      padding: 1.25rem 1.5rem;
-      margin-bottom: 2rem;
-    }
-    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
-    .label { display: block; font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.25rem; }
-    .fill-box { font-size: 0.95rem; font-weight: 600; color: #1e293b; }
-    .highlight-val { color: #ff7a21; font-weight: 700; }
-
-    .clause-section h3 { font-size: 1.05rem; font-weight: 700; color: #0f172a; margin: 1.5rem 0 0.5rem; }
-    .clause-section p { font-size: 0.9rem; color: #334155; line-height: 1.65; margin-bottom: 0.75rem; }
-
-    .styled-table { width: 100%; border-collapse: collapse; margin: 1.25rem 0; font-size: 0.85rem; }
-    .styled-table th { background: #f1f5f9; text-align: left; padding: 0.75rem; font-weight: 700; color: #334155; border-bottom: 2px solid #cbd5e1; }
-    .styled-table td { padding: 0.75rem; border-bottom: 1px solid #e2e8f0; color: #1e293b; }
-
-    .financial-summary-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 1rem 1.25rem; margin-top: 1rem; }
-    .fin-row { display: flex; justify-content: space-between; font-size: 0.9rem; padding: 0.35rem 0; color: #475569; }
-    .highlight-row { color: #ff7a21; font-weight: 700; }
-    .total-row { border-top: 2px solid #cbd5e1; padding-top: 0.6rem; font-size: 1rem; font-weight: 800; color: #0f172a; }
-
-    .milestones-deck { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin: 1.25rem 0; }
-    .milestone-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 1rem; }
-    .m-badge { font-size: 0.7rem; font-weight: 800; color: #ff7a21; background: #fff3eb; padding: 2px 6px; border-radius: 4px; display: inline-block; margin-bottom: 0.35rem; }
-    .milestone-card h4 { font-size: 0.9rem; font-weight: 700; margin-bottom: 0.3rem; }
-    .milestone-card p { font-size: 0.8rem; color: #64748b; line-height: 1.4; }
-
-    .signature-deck { display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; margin-top: 3.5rem; padding-top: 1.5rem; }
-    .sig-box { display: flex; flex-direction: column; }
-    .sig-line { border-bottom: 1.5px solid #0f172a; height: 35px; margin-bottom: 0.5rem; }
-    .sig-label { font-size: 0.8rem; font-weight: 700; color: #0f172a; }
-    .sig-sub { font-size: 0.75rem; color: #64748b; }
-
-    @media print {
-      body { background: white; padding: 0; }
-      .print-bar { display: none; }
-      .page-container { border: none; box-shadow: none; padding: 1.5rem 0; }
-    }
-  </style>
-</head>
-<body>
-  <div class="print-bar">
-    <span style="font-size: 0.85rem; color: #64748b;">Ready to customize &amp; print for your customer</span>
-    <button class="btn-print" onclick="window.print()">🖨️ Print / Save as PDF</button>
-  </div>
-  <div class="page-container">
-    <div class="doc-header">
-      <div>
-        <span class="badge">${formBadge}</span>
-        <h1 class="doc-title">${docTitle}</h1>
-      </div>
-      <div class="brand-stamp">
-        <div class="brand-logo">Let's Get <span>Quoted</span></div>
-        <div class="brand-sub">Contractor Legal Template Suite</div>
-      </div>
-    </div>
-    ${bodyContent}
-  </div>
-</body>
-</html>`;
-
-  // Trigger file download
-  const blob = new Blob([htmlDoc], { type: 'text/html;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = `${tpl.name.replace(/[^a-zA-Z0-9]/g, '-')}.html`;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-
-  // Open formatted live preview in new tab for instant printing/viewing
-  const previewWindow = window.open('', '_blank');
-  if (previewWindow) {
-    previewWindow.document.write(htmlDoc);
-    previewWindow.document.close();
-  }
-}
-
 export default function HelpCenter() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTopic, setSelectedTopic] = useState('all');
@@ -692,6 +405,7 @@ export default function HelpCenter() {
   const [activeTrade, setActiveTrade] = useState('plumbing');
   const [activeArticle, setActiveArticle] = useState<Article | null>(null);
   const [activeVideo, setActiveVideo] = useState<VideoPlaybook | null>(null);
+  const [activeDocument, setActiveDocument] = useState<DownloadableTemplate | null>(null);
   const [isTicketDrawerOpen, setIsTicketDrawerOpen] = useState(false);
   const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
 
@@ -734,6 +448,7 @@ export default function HelpCenter() {
         setIsStatusModalOpen(false);
         setActiveArticle(null);
         setActiveVideo(null);
+        setActiveDocument(null);
         setIsSearchFocused(false);
       }
     };
@@ -755,7 +470,7 @@ export default function HelpCenter() {
       setTicketDeflection(
         'Stripe Connect deposits 50% upfront material funds directly to your verified bank account next business day.'
       );
-    } else if (val.includes('domain') || val.includes('dns') || val.includes('godaddy')) {
+    } else if (val.includes('domain') || val.includes('dns') || val.includes('godaddy') || val.includes('squarespace')) {
       setTicketDeflection(
         'Point root domain A record to 76.76.21.21 and CNAME www to cname.letsgetquoted.com in your registrar.'
       );
@@ -826,7 +541,7 @@ export default function HelpCenter() {
                 Guides
               </a>
               <a href="#contractor-templates" className={styles.subNavLink}>
-                Templates
+                Agreements
               </a>
               <a href="#faqs" className={styles.subNavLink}>
                 FAQs
@@ -957,19 +672,18 @@ export default function HelpCenter() {
                       key={tpl.id}
                       className={styles.spotlightItem}
                       onClick={() => {
-                        generateStylizedDocument(tpl);
-                        showToast(`Generated & opened: ${tpl.name}`);
+                        setActiveDocument(tpl);
                         setIsSearchFocused(false);
                       }}
                     >
                       <div className={styles.spotlightItemLeft}>
-                        <Icons.Download />
+                        <Icons.Eye />
                         <div>
                           <div className={styles.spotlightItemTitle}>{tpl.name}</div>
                           <div className={styles.spotlightItemMeta}>{tpl.fileFormat} · Print &amp; PDF Ready</div>
                         </div>
                       </div>
-                      <span className={styles.spotlightTag}>Open &amp; Print</span>
+                      <span className={styles.spotlightTag}>Preview</span>
                     </div>
                   ))}
                 </div>
@@ -1258,12 +972,12 @@ export default function HelpCenter() {
         </div>
       </section>
 
-      {/* ================= STYLIZED DOWNLOADABLE CONTRACTOR ASSETS ================= */}
+      {/* ================= STYLIZED CONTRACTOR AGREEMENTS ================= */}
       <section id="contractor-templates" className={styles.sectionContainer}>
         <div className={styles.sectionHeader}>
           <div>
             <span className={styles.sectionTag}>Stylized Legal Documents</span>
-            <h2 className={styles.sectionTitle}>Download &amp; Print Contractor Agreements</h2>
+            <h2 className={styles.sectionTitle}>Preview &amp; Print Contractor Agreements</h2>
             <p className={styles.sectionDesc}>
               Ready-to-print, beautifully formatted contractor lien waivers, change order authorizations, and milestone deposit schedules.
             </p>
@@ -1281,13 +995,10 @@ export default function HelpCenter() {
               <p className={styles.templateDesc}>{tpl.description}</p>
               <button
                 className={styles.btnOutlineBlock}
-                onClick={() => {
-                  generateStylizedDocument(tpl);
-                  showToast(`Opened printable document: ${tpl.name}`);
-                }}
+                onClick={() => setActiveDocument(tpl)}
               >
-                <Icons.Download />
-                <span>Open &amp; Print Document</span>
+                <Icons.Eye />
+                <span>Preview &amp; Print Agreement</span>
               </button>
             </div>
           ))}
@@ -1553,7 +1264,258 @@ export default function HelpCenter() {
         </div>
       )}
 
-      {/* 3. Video Modal */}
+      {/* 3. In-App Document Viewer & Print Modal (NO Auto-Save / Download Trigger) */}
+      {activeDocument && (
+        <div className={styles.modalOverlay} onClick={() => setActiveDocument(null)}>
+          <div className={styles.docModal} onClick={e => e.stopPropagation()}>
+            <div className={styles.docModalHeader}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <span className={styles.categoryBadge}>Contractor Legal Suite</span>
+                <span style={{ fontSize: '0.8rem', color: '#10b981', fontWeight: 600 }}>
+                  ✓ Print &amp; PDF Ready
+                </span>
+              </div>
+              <div className={styles.docHeaderActions}>
+                <button
+                  className={styles.btnPrimarySm}
+                  onClick={() => window.print()}
+                >
+                  <Icons.Printer />
+                  <span>Print / Save PDF</span>
+                </button>
+                <button className={styles.iconBtn} onClick={() => setActiveDocument(null)}>
+                  <Icons.X />
+                </button>
+              </div>
+            </div>
+
+            <div className={styles.docModalBody}>
+              <div className={styles.docPaperHeader}>
+                <div>
+                  <span className={styles.docBadge}>
+                    {activeDocument.id === 'tpl-lien-waiver'
+                      ? 'FORM LW-101 · CONTRACTOR PROGRESS LIEN WAIVER'
+                      : activeDocument.id === 'tpl-change-order'
+                      ? 'FORM CO-202 · RESIDENTIAL CONTRACT CHANGE ORDER'
+                      : 'FORM MD-303 · MATERIAL DEPOSIT & PAYMENT MILESTONES'}
+                  </span>
+                  <h1 className={styles.docPaperTitle}>{activeDocument.name}</h1>
+                </div>
+                <div className={styles.docPaperBrand}>
+                  <div className={styles.docPaperBrandName}>Let&apos;s Get <span>Quoted</span></div>
+                  <div className={styles.docPaperBrandSub}>Contractor Legal Suite</div>
+                </div>
+              </div>
+
+              {activeDocument.id === 'tpl-lien-waiver' && (
+                <div>
+                  <div className={styles.docMetaCard}>
+                    <div className={styles.docGrid2}>
+                      <div>
+                        <span className={styles.docMetaLabel}>Property / Jobsite Address</span>
+                        <div className={styles.docMetaVal}>124 Maplewood Ave, Maplewood, NJ 07040</div>
+                      </div>
+                      <div>
+                        <span className={styles.docMetaLabel}>Contractor / Business Name</span>
+                        <div className={styles.docMetaVal}>Maplewood Pro Services LLC</div>
+                      </div>
+                      <div>
+                        <span className={styles.docMetaLabel}>Owner / Customer Name</span>
+                        <div className={styles.docMetaVal}>Jane &amp; David Miller</div>
+                      </div>
+                      <div>
+                        <span className={styles.docMetaLabel}>Payment Amount Received</span>
+                        <div className={`${styles.docMetaVal} ${styles.docMetaHighlight}`}>
+                          $12,450.00 (Twelve Thousand Four Hundred Fifty Dollars)
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className={styles.docClause}>
+                    <h3>1. Conditional Waiver &amp; Release Upon Progress Payment</h3>
+                    <p>
+                      The undersigned Contractor, upon receipt of the sum stated above, hereby waives and releases any and all liens, claims, or rights to lien under the statutes of this State relating to mechanics&apos; and materialmen&apos;s liens, on account of labor, services, equipment, or materials furnished through the date of this instrument to the property described above.
+                    </p>
+                    <h3>2. Exceptions &amp; Exclusions</h3>
+                    <p>
+                      This waiver does not cover any retainage or disputed extra work not included in prior approved change orders. This release is conditioned upon clearance of funds into the Contractor&apos;s banking institution.
+                    </p>
+                  </div>
+
+                  <div className={styles.docSigDeck}>
+                    <div className={styles.docSigBox}>
+                      <div className={styles.docSigLine} />
+                      <span className={styles.docSigLabel}>Authorized Contractor Signature</span>
+                      <span className={styles.docSigSub}>Brett M. — Managing Partner</span>
+                    </div>
+                    <div className={styles.docSigBox}>
+                      <div className={styles.docSigLine} />
+                      <span className={styles.docSigLabel}>Date Signed</span>
+                      <span className={styles.docSigSub}>August 25, 2026</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {activeDocument.id === 'tpl-change-order' && (
+                <div>
+                  <div className={styles.docMetaCard}>
+                    <div className={styles.docGrid2}>
+                      <div>
+                        <span className={styles.docMetaLabel}>Project Title &amp; Address</span>
+                        <div className={styles.docMetaVal}>Master Bathroom &amp; Plumbing Remodel · 45 Highland Rd</div>
+                      </div>
+                      <div>
+                        <span className={styles.docMetaLabel}>Change Order Number</span>
+                        <div className={`${styles.docMetaVal} ${styles.docMetaHighlight}`}>CO-#003</div>
+                      </div>
+                      <div>
+                        <span className={styles.docMetaLabel}>Prime Contractor</span>
+                        <div className={styles.docMetaVal}>Maplewood Pro Services LLC</div>
+                      </div>
+                      <div>
+                        <span className={styles.docMetaLabel}>Property Owner</span>
+                        <div className={styles.docMetaVal}>Robert Sterling</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className={styles.docClause}>
+                    <h3>1. Description of Unforeseen Scope / Material Additions</h3>
+                    <p>
+                      Upon demolition of subfloor, cracked 4&quot; cast iron main drain stack was uncovered requiring replacement with Schedule 40 PVC, plus customer-requested upgrade to thermostatic brushed nickel shower valve trim kit.
+                    </p>
+
+                    <table className={styles.docTable}>
+                      <thead>
+                        <tr>
+                          <th>Itemized Scope Description</th>
+                          <th>Labor Hours</th>
+                          <th>Materials Cost</th>
+                          <th>Total Adjustment</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td>Main Stack Cast Iron to PVC replacement</td>
+                          <td>4.5 hrs</td>
+                          <td>$340.00</td>
+                          <td>$880.00</td>
+                        </tr>
+                        <tr>
+                          <td>Thermostatic Valve upgrade &amp; rough-in adjustment</td>
+                          <td>2.0 hrs</td>
+                          <td>$480.00</td>
+                          <td>$720.00</td>
+                        </tr>
+                      </tbody>
+                    </table>
+
+                    <h3>2. Financial &amp; Schedule Impact</h3>
+                    <div className={styles.docFinancialBox}>
+                      <div className={styles.docFinRow}>
+                        <span>Original Contract Amount:</span>
+                        <strong>$24,500.00</strong>
+                      </div>
+                      <div className={styles.docFinRow}>
+                        <span>Prior Approved Changes (CO #1 &amp; #2):</span>
+                        <strong>+$1,200.00</strong>
+                      </div>
+                      <div className={`${styles.docFinRow} ${styles.docFinRowHighlight}`}>
+                        <span>This Change Order Amount (+):</span>
+                        <strong>+$1,600.00</strong>
+                      </div>
+                      <div className={`${styles.docFinRow} ${styles.docFinRowTotal}`}>
+                        <span>REVISED TOTAL CONTRACT PRICE:</span>
+                        <strong>$27,300.00</strong>
+                      </div>
+                    </div>
+                    <p style={{ marginTop: '0.75rem', fontSize: '0.85rem', color: '#475569' }}>
+                      Schedule Adjustment: <strong>+2 Additional Working Days</strong> required for final plumbing inspection.
+                    </p>
+                  </div>
+
+                  <div className={styles.docSigDeck}>
+                    <div className={styles.docSigBox}>
+                      <div className={styles.docSigLine} />
+                      <span className={styles.docSigLabel}>Homeowner Acceptance Signature</span>
+                      <span className={styles.docSigSub}>I authorize the scope and cost adjustment above</span>
+                    </div>
+                    <div className={styles.docSigBox}>
+                      <div className={styles.docSigLine} />
+                      <span className={styles.docSigLabel}>Contractor Authorization Signature</span>
+                      <span className={styles.docSigSub}>Maplewood Pro Services LLC</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {activeDocument.id === 'tpl-deposit-terms' && (
+                <div>
+                  <div className={styles.docMetaCard}>
+                    <div className={styles.docGrid2}>
+                      <div>
+                        <span className={styles.docMetaLabel}>Customer / Jobsite Address</span>
+                        <div className={styles.docMetaVal}>78 Elm Street, Millburn, NJ</div>
+                      </div>
+                      <div>
+                        <span className={styles.docMetaLabel}>Total Contract Proposal Value</span>
+                        <div className={`${styles.docMetaVal} ${styles.docMetaHighlight}`}>$18,600.00</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className={styles.docClause}>
+                    <h3>1. Mandatory Upfront Material Deposit (50%)</h3>
+                    <p>
+                      In accordance with standard trade practices, a <strong>50% upfront material deposit ($9,300.00)</strong> is required upon signing to secure guaranteed calendar scheduling and place non-cancelable factory orders for specialty equipment and fixtures.
+                    </p>
+
+                    <div className={styles.docMilestonesDeck}>
+                      <div className={styles.docMilestoneCard}>
+                        <span className={styles.docMBadge}>Milestone 1 · 50%</span>
+                        <h4>Upon Contract Signing</h4>
+                        <p>Secures jobsite date &amp; purchases custom materials ($9,300.00).</p>
+                      </div>
+                      <div className={styles.docMilestoneCard}>
+                        <span className={styles.docMBadge}>Milestone 2 · 40%</span>
+                        <h4>Rough-In Inspection</h4>
+                        <p>Due upon completion of framing, plumbing &amp; electrical rough-in ($7,440.00).</p>
+                      </div>
+                      <div className={styles.docMilestoneCard}>
+                        <span className={styles.docMBadge}>Milestone 3 · 10%</span>
+                        <h4>Final Punch List</h4>
+                        <p>Due upon final walkthrough and customer sign-off ($1,860.00).</p>
+                      </div>
+                    </div>
+
+                    <h3>2. Terms &amp; Instant Digital Payment Options</h3>
+                    <p>
+                      Homeowners may authorize payment via instant 1-click Apple Pay, Google Pay, major Credit Cards (Visa, MasterCard, Amex) through the Let&apos;s Get Quoted client portal, or certified bank draft.
+                    </p>
+                  </div>
+
+                  <div className={styles.docSigDeck}>
+                    <div className={styles.docSigBox}>
+                      <div className={styles.docSigLine} />
+                      <span className={styles.docSigLabel}>Homeowner Acceptance Signature</span>
+                      <span className={styles.docSigSub}>Date: ________________________</span>
+                    </div>
+                    <div className={styles.docSigBox}>
+                      <div className={styles.docSigLine} />
+                      <span className={styles.docSigLabel}>Contractor Authorized Representative</span>
+                      <span className={styles.docSigSub}>Date: ________________________</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 4. Video Modal */}
       {activeVideo && (
         <div className={styles.modalOverlay} onClick={() => setActiveVideo(null)}>
           <div className={styles.articleModal} onClick={e => e.stopPropagation()}>
@@ -1591,7 +1553,7 @@ export default function HelpCenter() {
         </div>
       )}
 
-      {/* 4. System Status Modal */}
+      {/* 5. System Status Modal */}
       {isStatusModalOpen && (
         <div className={styles.modalOverlay} onClick={() => setIsStatusModalOpen(false)}>
           <div className={styles.statusModal} onClick={e => e.stopPropagation()}>
