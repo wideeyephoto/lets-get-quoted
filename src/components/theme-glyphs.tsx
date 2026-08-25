@@ -29,8 +29,19 @@ export function AutoGlyph() {
   );
 }
 
-export function ThemeGlyph({ name }: { name: 'system' | 'light' | 'dark' }) {
+/** A twilight disc — striped half-tone representing soft in-between contrast. */
+export function DimGlyph() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="8.6" stroke="currentColor" strokeWidth="2" fill="none" />
+      <path d="M12 3.4v17.2M12 7h6.5M12 11h7.8M12 15h6.5M12 18.5h3.5" stroke="currentColor" strokeWidth="1.6" />
+    </svg>
+  );
+}
+
+export function ThemeGlyph({ name }: { name: 'system' | 'light' | 'dim' | 'dark' }) {
   if (name === 'light') return <SunGlyph />;
+  if (name === 'dim') return <DimGlyph />;
   if (name === 'dark') return <MoonGlyph />;
   return <AutoGlyph />;
 }

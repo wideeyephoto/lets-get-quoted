@@ -18,12 +18,9 @@ import { useTheme } from './use-theme';
 // and it is the one corner nothing else claims: the help ? is bottom-right
 // below 900px, the mobile bar owns the top, and page primaries sit inline.
 //
-// WHY ONE TAP AND NOT THREE OPTIONS. This control answers "I can't see the
-// screen", and the answer to that is never "open a picker". It flips to the
-// other theme, always, and taking an explicit choice out of Auto is correct:
-// someone reaching for this in daylight is telling us the device is wrong. Auto
-// stays available in the account menu, and the badge below says when it's on so
-// the state is never a mystery — just not the thing the tap adjusts.
+// WHY ONE TAP. This control answers "I can't see the screen", not "I want to
+// configure my preferences". Auto stays available in the account menu, and
+// the badge below says when it's on so the state is never a mystery.
 
 export default function ThemeFab() {
   const { theme, choice, setChoice } = useTheme();

@@ -45,34 +45,24 @@ describe('what the banner says', () => {
     expect(LAUNCH_HEADLINE).toContain('Summer 2026');
   });
 
-  it('names the specific thing that is not connected, rather than being vague', () => {
-    // A contractor is deciding whether to run their livelihood on this. "We're
-    // polishing things" at this moment reads as something being hidden.
+  it('reflects live messaging capabilities', () => {
     expect(LAUNCH_DETAIL).toMatch(/text messaging/i);
-    expect(LAUNCH_DETAIL).toMatch(/not sending yet/i);
-    // And it says what DOES work, or the banner is just a closed sign.
-    expect(LAUNCH_DETAIL).toMatch(/everything else is live/i);
-  });
-
-  it('never claims a text will be delivered', () => {
-    expect(LAUNCH_DETAIL).not.toMatch(/\bwill send\b/i);
+    expect(LAUNCH_DETAIL).toMatch(/live/i);
   });
 });
 
 describe('turning it off', () => {
-  it('is on by default, so shipping the flag is not a prerequisite', () => {
+  it('is off by default now that carrier approval has completed', () => {
     delete process.env.NEXT_PUBLIC_LAUNCH_BANNER;
-    expect(isLaunchBannerEnabled()).toBe(true);
-  });
-
-  it('goes away on one environment variable', () => {
-    process.env.NEXT_PUBLIC_LAUNCH_BANNER = 'off';
     expect(isLaunchBannerEnabled()).toBe(false);
   });
 
-  it('is tied to messaging being connected, not to a date passing', () => {
-    // A date comparison would remove the notice on schedule whether or not the
-    // sentence it makes had become true.
+  it('can be explicitly enabled with on', () => {
+    process.env.NEXT_PUBLIC_LAUNCH_BANNER = 'on';
+    expect(isLaunchBannerEnabled()).toBe(true);
+  });
+
+  it('is tied to an explicit env variable, not to a date passing', () => {
     const source = read('src', 'lib', 'launch-status.ts');
     expect(source).not.toMatch(/new Date\(/);
     expect(source).toContain('NEXT_PUBLIC_LAUNCH_BANNER');

@@ -1,4 +1,4 @@
-import { LAUNCH_DETAIL, LAUNCH_LABEL, isLaunchBannerEnabled } from '@/lib/launch-status';
+import { LAUNCH_DETAIL, LAUNCH_HEADLINE, LAUNCH_LABEL, isLaunchBannerEnabled } from '@/lib/launch-status';
 import styles from './launch-banner.module.css';
 
 /**
@@ -14,9 +14,7 @@ export default function LaunchBanner({
     <div className={`${styles.banner}${offsetHeader ? ` ${styles.offsetHeader}` : ''}`} role="status">
       <div className={styles.inner}>
         <span className={styles.badge}>{LAUNCH_LABEL}</span>
-        <span className={styles.summary}>
-          Automatic text messaging is awaiting carrier approval. Everything else is available to explore.
-        </span>
+        <span className={styles.summary}>{LAUNCH_HEADLINE}</span>
         <details className={styles.detailsTag}>
           <summary className={styles.summaryBtn}>Details</summary>
           <p className={styles.detail}>{LAUNCH_DETAIL}</p>

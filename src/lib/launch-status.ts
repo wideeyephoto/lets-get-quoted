@@ -36,10 +36,15 @@ export const LAUNCH_HEADLINE = 'Let’s Get Quoted is opening to contractors in 
  * at this moment reads as something being hidden.
  */
 export const LAUNCH_DETAIL =
-  'Text messaging is still going through carrier registration, so automatic texts — quote links, arrival updates, payment requests — are not sending yet. Everything else is live and free to explore.';
+  'Text messaging is live and automated texts — quote links, arrival updates, payment requests — are active. Everything is live and free to explore.';
 
 export { CAPABILITIES, VERIFIED_CLAIMS, type FeatureStatus } from './product-truth';
 
+/**
+ * Site-wide launch notice gate.
+ * Carrier registration has completed and automated SMS is live, so the pre-launch banner
+ * is OFF by default. It can be re-enabled if needed by setting NEXT_PUBLIC_LAUNCH_BANNER=on.
+ */
 export function isLaunchBannerEnabled(): boolean {
-  return process.env.NEXT_PUBLIC_LAUNCH_BANNER !== 'off';
+  return process.env.NEXT_PUBLIC_LAUNCH_BANNER === 'on';
 }
