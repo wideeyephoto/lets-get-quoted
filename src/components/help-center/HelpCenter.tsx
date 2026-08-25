@@ -1133,7 +1133,7 @@ export default function HelpCenter() {
             <span className={styles.sectionTag}>Direct Assistance</span>
             <h2 className={styles.sectionTitle}>Contact Support</h2>
             <p className={styles.sectionDesc}>
-              Reach our dedicated support desk or submit technical logs for fast resolution.
+              Open a help desk ticket for fast technical resolution or explore our step-by-step guides.
             </p>
           </div>
         </div>
@@ -1180,16 +1180,6 @@ export default function HelpCenter() {
                   <Icons.LifeBuoy />
                   <span>Open Help Desk Ticket</span>
                 </button>
-              )}
-
-              {chan.id === 'chan-email' && (
-                <a
-                  href="mailto:support@letsgetquoted.com"
-                  className={styles.btnOutlineBlock}
-                >
-                  <Icons.Send />
-                  <span>Email Support Team</span>
-                </a>
               )}
 
               {chan.id === 'chan-community' && (
@@ -1338,11 +1328,11 @@ export default function HelpCenter() {
                 >
                   <div className={styles.formGroup}>
                     <label>Full Name</label>
-                    <input type="text" required defaultValue="Brett (Maplewood Pro)" />
+                    <input type="text" required placeholder="Your full name" />
                   </div>
                   <div className={styles.formGroup}>
                     <label>Work Email</label>
-                    <input type="email" required defaultValue="support@letsgetquoted.com" />
+                    <input type="email" required placeholder="your.name@company.com" />
                   </div>
                   <div className={styles.formGroup}>
                     <label>Subject</label>

@@ -526,21 +526,12 @@ export const SUPPORT_CHANNELS: SupportChannel[] = [
     prepareInfo: ['Company registered name', 'Account login email', 'Relevant quote or job number']
   },
   {
-    id: 'chan-email',
-    name: 'Priority Email Desk',
-    icon: 'Send',
-    bestUsedFor: 'Billing inquiries, seat management, and API integrations.',
-    availability: '24/7 Monitored Queue',
-    responseTarget: 'Same business day response',
-    prepareInfo: ['Invoice receipt number', 'Detailed error screenshot or logs']
-  },
-  {
     id: 'chan-community',
     name: 'Knowledge Base & Guides',
     icon: 'BookCheck',
     bestUsedFor: 'Self-service setup, rate card formulas, and trade playbooks.',
     availability: 'Available 24/7/365',
     responseTarget: 'Instant step-by-step guides',
-    prepareInfo: ['Search keywords above in the AI Troubleshooter']
+    prepareInfo: ['Search keywords in the AI Troubleshooter above']
   }
 ];
