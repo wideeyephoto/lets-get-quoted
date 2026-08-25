@@ -99,6 +99,11 @@ const nextConfig = {
       // 307 rather than 308: browsers cache a permanent redirect hard, and this
       // URL is one we might want back.
       { source: '/dashboard/campaigns', destination: '/dashboard/marketing', permanent: false },
+      // Guides aliases — routes visitors navigating to /guides or /guide directly to the resource center.
+      { source: '/guides', destination: '/resources', permanent: true },
+      { source: '/guide', destination: '/resources', permanent: true },
+      { source: '/guides/:slug', destination: '/resources/:slug', permanent: true },
+      { source: '/guide/:slug', destination: '/resources/:slug', permanent: true },
     ];
   },
   images: {

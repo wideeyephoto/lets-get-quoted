@@ -2,15 +2,16 @@ import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { requireOwnerContext } from '@/lib/auth';
 import AddressAutocomplete from '@/components/address-autocomplete';
-import { expireStaleLeads, formatDuration, formatElapsedTime, formatLeadSource, getAverageRequestResponseMs, getLeadLostAfterDays, getLeadTriage, isLeadSnoozed, LEAD_FLAG_LABELS, LEAD_LOST_AFTER_CHOICES, LEAD_LOST_NEVER, leadLostAfterLabel, LEADS_VIEW_COOKIE, listLeads, normalizeLeadsView } from '@/lib/leads';
+import { expireStaleLeads, formatDuration, formatElapsedTime, formatLeadSource, getAverageRequestResponseMs, getLeadTriage, isLeadSnoozed, LEAD_FLAG_LABELS, LEAD_LOST_AFTER_CHOICES, LEAD_LOST_NEVER, leadLostAfterLabel, LEADS_VIEW_COOKIE, listLeads, normalizeLeadLostAfterDays, normalizeLeadsView } from '@/lib/leads';
 import { estimateRangeLabel, leadCityLabel, leadScoreLabel, leadStageLabel } from '@/lib/lead-detail-labels';
 import { autoCloseWarning, isSetAside, stageCounts, waitingFor } from '@/lib/lead-queue';
 import { archiveLeadAction, createLeadAction, deleteLeadAction, setLeadLostAfterDaysAction, unsnoozeLeadAction } from './actions';
 import DeleteLeadButton from './DeleteLeadButton';
 import { shouldAutoOpenCreate } from '@/lib/nav-helpers';
 import SaveButton from '@/components/save-button';
-import { getMapPins } from '@/lib/map-pins';
+import { buildLeadMapPins } from '@/lib/map-pins';
 import { MAP_THEME_COOKIE, mapViewCookie, normalizeMapTheme, normalizeMapView } from '@/lib/dashboard-views';
+import { loadLeadDetail } from '@/lib/lead-detail';
 import LeadsWorkspace, { type LeadViewItem } from './LeadsWorkspace';
 import styles from './leads.module.css';
 
@@ -18,12 +19,16 @@ export const metadata = { title: 'Leads' };
 
 
 export default async function LeadsPage({ searchParams }: { searchParams: { add?: string } }) {
-  const { supabase, accountId } = await requireOwnerContext();
-  // Read the window BEFORE expiring, and hand it over, so the number shown in
-  // the selector is provably the one that just ran — not a second read that
-  // could disagree with it.
-  const leadLostAfterDays = await getLeadLostAfterDays(supabase, accountId);
-  await expireStaleLeads(supabase, accountId, leadLostAfterDays);
+  const { supabase, accountId, account } = await requireOwnerContext();
+  // Read the window from the already fetched account context rather than a second
+  // query for one column of the row requireOwnerContext already has.
+  const leadLostAfterDays = normalizeLeadLostAfterDays(
+    (account as { lead_lost_after_days?: unknown } | null)?.lead_lost_after_days
+  );
+  // Stale lead expiration runs non-blocking so it doesn't stall TTFB behind a write transaction
+  expireStaleLeads(supabase, accountId, leadLostAfterDays).catch((err) => {
+    console.error('expireStaleLeads error:', err);
+  });
   const allLeads = await listLeads(supabase, accountId);
 
   // One clock for the whole page. Called per lead it would drift across the
@@ -61,11 +66,8 @@ export default async function LeadsPage({ searchParams }: { searchParams: { add?
   // never has to import the server-only leads module.
   const initialView = normalizeLeadsView(cookies().get(LEADS_VIEW_COOKIE)?.value);
 
-  // Always fetched now that the map is a toolbar TOGGLE rather than a band
-  // welded above one view. Opening it has to be instant and local — a round
-  // trip to fetch pins would make a toggle feel like a navigation, and it is
-  // one query on a page that already runs several.
-  const mapPins = await getMapPins(supabase, accountId);
+  // Derived in-memory directly from allLeads with 0 database round trips.
+  const mapPins = buildLeadMapPins(allLeads, now);
 
   const toViewItem = (lead: (typeof allLeads)[number]): LeadViewItem => {
     const triage = getLeadTriage(lead);
@@ -135,6 +137,12 @@ export default async function LeadsPage({ searchParams }: { searchParams: { add?
     .filter(({ triage }) => !triage.archived && isLeadSnoozed(triage, now))
     .map(({ lead }) => toViewItem(lead));
 
+  // Pre-fetch the top lead's detail so the initial master-detail inbox pane
+  // renders populated immediately without a client-side fetch waterfall or skeleton.
+  const topLeadId = leads[0]?.id;
+  const initialDetail = topLeadId ? await loadLeadDetail(supabase, accountId, topLeadId).catch(() => null) : null;
+  const initialDetails = initialDetail && topLeadId ? { [topLeadId]: initialDetail } : undefined;
+
   return (
     <main className="wide-shell workspace-shell">
       <section className="panel workspace-section-card">
@@ -146,7 +154,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: { add?
             stage — without the title contradicting the navigation. */}
         <div className="section-heading workspace-section-heading"><p className="eyebrow">Work pipeline</p><h1>Leads</h1></div>
         {leads.length === 0 ? <p className="empty-state">No leads yet. Website requests will appear here — or <Link href="/dashboard/leads?add=1#add-lead">add a lead manually</Link>.</p> : (
-          <LeadsWorkspace leads={viewLeads} snoozedLeads={snoozedViewLeads} initialView={initialView} mapView={mapView} mapTheme={mapTheme} mapPins={mapPins} />
+          <LeadsWorkspace leads={viewLeads} snoozedLeads={snoozedViewLeads} initialView={initialView} mapView={mapView} mapTheme={mapTheme} mapPins={mapPins} details={initialDetails} />
         )}
       </section>
 

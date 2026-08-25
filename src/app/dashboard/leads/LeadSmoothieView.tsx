@@ -3,8 +3,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import type { LeadDetailDto } from '@/lib/lead-detail';
+import dynamic from 'next/dynamic';
 import type { MapPin } from '@/components/pin-map';
-import PinMap from '@/components/pin-map';
+
+const PinMap = dynamic(() => import('@/components/pin-map'), { ssr: false });
 import { pinRecordId } from '@/lib/reveal-row';
 import { scopePinsToFilter } from '@/lib/map-pin-scope';
 import { priorityLabel, priorityTone } from '@/lib/lead-priority';

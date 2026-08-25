@@ -31,7 +31,7 @@ import styles from '../for/for.module.css';
 const INDEX = new Map(
   ARTICLES.map((article) => [
     article.slug,
-    `${article.title} ${article.excerpt} ${article.category}`.toLowerCase(),
+    `${article.title} ${article.excerpt} ${article.category} ${article.body.map((b) => (b.type === 'ul' ? b.items.join(' ') : b.text)).join(' ')}`.toLowerCase(),
   ]),
 );
 

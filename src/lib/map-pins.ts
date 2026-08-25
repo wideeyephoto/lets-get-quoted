@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { formatMoney, listJobs } from '@/lib/jobs';
-import { formatElapsedTime, getLeadTriage, listLeads } from '@/lib/leads';
+import { formatElapsedTime, getLeadTriage, listLeads, type Lead } from '@/lib/leads';
 import { isLeadActive } from '@/lib/lead-queue';
 import { listCrew, listCrewAssignmentsForJobs } from '@/lib/crew';
 import type { MapPin, MapPinRow } from '@/components/pin-map';
@@ -19,34 +19,8 @@ function scheduledLabel(dateIso: string, time: string | null): string {
   return time ? `${label} · ${time}` : label;
 }
 
-// Assemble the dashboard map's pins for an account: active leads and jobs that
-// have geocoded coordinates, color-coded by what they need next, each carrying
-// a few detail rows for the map card.
-//   lead        → a lead awaiting a response (orange)
-//   unscheduled → a job/quote with no date yet (gold)
-//   scheduled   → a job with a date on the calendar (green)
-export async function getMapPins(supabase: SupabaseClient, accountId: string): Promise<MapPin[]> {
-  // Rows missing coordinates are repaired by the nightly sweep
-  // (/api/cron/geocode-backfill), not here: doing it inline billed up to 24
-  // geocode lookups on every dashboard load and put them in front of first paint.
-  // A pin can be absent for one night; that's cheaper than paying on every render.
-  const [leads, jobs] = await Promise.all([listLeads(supabase, accountId), listJobs(supabase, accountId)]);
-
-  // Crew names per mapped, active job (for the job cards).
-  const mappedJobIds = jobs
-    .filter((j) => j.lat != null && j.lng != null && j.status !== 'complete' && j.status !== 'archived')
-    .map((j) => j.id);
-  const [assignments, crew] = await Promise.all([
-    listCrewAssignmentsForJobs(supabase, accountId, mappedJobIds),
-    mappedJobIds.length ? listCrew(supabase, accountId) : Promise.resolve([]),
-  ]);
-  const crewName = new Map<string, string>(crew.map((c) => [c.id, c.name]));
-
+export function buildLeadMapPins(leads: Lead[], now = new Date()): MapPin[] {
   const pins: MapPin[] = [];
-  // One clock for every pin, so a snooze expiring mid-loop cannot drop one lead
-  // and keep the next.
-  const now = new Date();
-
   for (const lead of leads) {
     if (lead.lat == null || lead.lng == null) continue;
     if (lead.converted_job) continue; // now a job — pinned below instead
@@ -74,6 +48,36 @@ export async function getMapPins(supabase: SupabaseClient, accountId: string): P
       rows,
     });
   }
+  return pins;
+}
+
+// Assemble the dashboard map's pins for an account: active leads and jobs that
+// have geocoded coordinates, color-coded by what they need next, each carrying
+// a few detail rows for the map card.
+//   lead        → a lead awaiting a response (orange)
+//   unscheduled → a job/quote with no date yet (gold)
+//   scheduled   → a job with a date on the calendar (green)
+export async function getMapPins(supabase: SupabaseClient, accountId: string): Promise<MapPin[]> {
+  // Rows missing coordinates are repaired by the nightly sweep
+  // (/api/cron/geocode-backfill), not here: doing it inline billed up to 24
+  // geocode lookups on every dashboard load and put them in front of first paint.
+  // A pin can be absent for one night; that's cheaper than paying on every render.
+  const [leads, jobs] = await Promise.all([listLeads(supabase, accountId), listJobs(supabase, accountId)]);
+
+  // Crew names per mapped, active job (for the job cards).
+  const mappedJobIds = jobs
+    .filter((j) => j.lat != null && j.lng != null && j.status !== 'complete' && j.status !== 'archived')
+    .map((j) => j.id);
+  const [assignments, crew] = await Promise.all([
+    listCrewAssignmentsForJobs(supabase, accountId, mappedJobIds),
+    mappedJobIds.length ? listCrew(supabase, accountId) : Promise.resolve([]),
+  ]);
+  const crewName = new Map<string, string>(crew.map((c) => [c.id, c.name]));
+
+  // One clock for every pin, so a snooze expiring mid-loop cannot drop one lead
+  // and keep the next.
+  const now = new Date();
+  const pins: MapPin[] = buildLeadMapPins(leads, now);
 
   for (const job of jobs) {
     if (job.lat == null || job.lng == null) continue;

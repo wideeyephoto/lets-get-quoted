@@ -9,16 +9,19 @@ import { archiveLeadAction, snoozeLeadAction, updateLeadStatusAction, setLeadsVi
 import { setMapThemeAction, setMapViewAction } from '@/app/dashboard/view-actions';
 import type { MapTheme, MapView } from '@/lib/dashboard-views';
 import { leadScoreLabel } from '@/lib/lead-detail-labels';
+import dynamic from 'next/dynamic';
 import ViewGear from '@/components/view-gear';
-import PinMap, { type MapPin } from '@/components/pin-map';
+import type { MapPin } from '@/components/pin-map';
 import { pinRecordId, revealRow } from '@/lib/reveal-row';
 import { scopePinsToFilter } from '@/lib/map-pin-scope';
-import LeadFocusView from './LeadFocusView';
 import LeadSmoothieView from './LeadSmoothieView';
-import LeadPriorityView from './LeadPriorityView';
-import LeadBoardView from './LeadBoardView';
-import LeadTableView from './LeadTableView';
 import styles from './leads.module.css';
+
+const PinMap = dynamic(() => import('@/components/pin-map'), { ssr: false });
+const LeadBoardView = dynamic(() => import('./LeadBoardView'));
+const LeadPriorityView = dynamic(() => import('./LeadPriorityView'));
+const LeadTableView = dynamic(() => import('./LeadTableView'));
+const LeadFocusView = dynamic(() => import('./LeadFocusView'));
 
 // Display-ready lead shape, built server-side in page.tsx so this client
 // component never imports the server-only leads module.
