@@ -381,8 +381,19 @@ export async function recordCallHistory(
         disposition: 'unreviewed',
         urgency,
       }, { onConflict: 'call_id' });
+
+      if (emergency.isEmergency) {
+        await notifyEmergencyCall(
+          admin,
+          facts.accountId,
+          callerPhone(receipt),
+          summaryLine(receipt) || emergency.reason,
+          emergency,
+          callRow.id,
+        );
+      }
     }
   } catch {
-    // Non-blocking on workflow sync
+    // Non-blocking on workflow sync and emergency alert
   }
 }

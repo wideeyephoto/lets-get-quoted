@@ -8,6 +8,7 @@ import {
   type VoiceCallDisposition,
 } from '@/lib/voice/call-workspace';
 import { formatCallLength } from '@/lib/voice/call-history';
+import VoiceCallsLiveRefresher from './VoiceCallsLiveRefresher';
 import styles from './voice-calls.module.css';
 
 export const metadata = { title: 'Voice Calls | Operational Inbox' };
@@ -190,6 +191,11 @@ export default async function VoiceCallsPage({
                     <span className={styles.callerNumber}>
                       {call.callerNumber ?? 'Unknown Caller'}
                     </span>
+                    {call.isProvisional || call.outcome === 'in_progress' ? (
+                      <span className={`${styles.badge} ${styles.badgeLive}`}>
+                        🔴 Live Call
+                      </span>
+                    ) : null}
                     {call.workflow.urgency === 'emergency' ? (
                       <span className={`${styles.badge} ${styles.badgeEmergency}`}>
                         🚨 Emergency
@@ -243,6 +249,11 @@ export default async function VoiceCallsPage({
           })}
         </div>
       )}
+
+      {/* Live Polling & Focus-Regained Refresher */}
+      <VoiceCallsLiveRefresher
+        hasActiveCalls={items.some((i) => i.isProvisional || i.outcome === 'in_progress')}
+      />
     </div>
   );
 }

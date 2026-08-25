@@ -64,24 +64,25 @@ export async function notifyEmergencyCall(
   callerPhone: string | null,
   summary: string,
   emergency: EmergencyDetectionResult,
+  callId?: string | null,
 ): Promise<boolean> {
   if (!emergency.isEmergency) return false;
 
-  // Find account transfer number or business owner phone
+  // Find account alert phone or transfer number or phone
+  const { data: account } = await admin
+    .from('accounts')
+    .select('company_name, business_name, alert_phone, phone, call_forward_number')
+    .eq('id', accountId)
+    .maybeSingle();
+
   const { data: voiceSettings } = await admin
     .from('voice_settings')
     .select('transfer_number')
     .eq('account_id', accountId)
     .maybeSingle();
 
-  const { data: account } = await admin
-    .from('accounts')
-    .select('company_name, phone, call_forward_number')
-    .eq('id', accountId)
-    .maybeSingle();
-
   const targetPhone = normalizeUsPhone(
-    voiceSettings?.transfer_number || account?.call_forward_number || account?.phone || '',
+    account?.alert_phone || voiceSettings?.transfer_number || account?.call_forward_number || account?.phone || '',
   );
 
   if (!targetPhone) {
@@ -89,11 +90,15 @@ export async function notifyEmergencyCall(
     return false;
   }
 
-  const callerDisplay = callerPhone || 'Caller number unavailable';
-  const alertText = `🚨 URGENT CALL ALERT: ${emergency.reason.toUpperCase()}\n`
-    + `Caller: ${callerDisplay}\n`
-    + `Summary: ${summary.slice(0, 140)}\n`
-    + `Open Let's Get Quoted to view transcript & callback.`;
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://app.letsgetquoted.com';
+  const dashboardUrl = callId
+    ? `${appUrl}/dashboard/voice-calls/${callId}`
+    : `${appUrl}/dashboard/voice-calls`;
+  const callerDisplay = callerPhone || 'Unknown caller';
+  const businessName = account?.business_name || account?.company_name || 'Your Business';
+  const hazardSummary = summary.slice(0, 140) || emergency.reason;
+
+  const alertText = `🚨 EMERGENCY CALL for ${businessName} from ${callerDisplay}: ${hazardSummary}. View transcript: ${dashboardUrl} — Reply STOP to opt out.`;
 
   try {
     const queued = await enqueueSmsDelivery({
@@ -104,7 +109,8 @@ export async function notifyEmergencyCall(
       billingCategory: 'owner_alert',
       context: 'owner',
       senderPurpose: 'lgq_dispatch',
-    });
+      idempotencyKey: callId ? `voice-emergency:${accountId}:${callId}` : undefined,
+    }, admin);
     return Boolean(queued?.eventId);
   } catch (error) {
     console.error('[AI Voice Emergency] Failed to send emergency SMS alert:', error);

@@ -68,6 +68,16 @@ export function ownerVerificationCodeText(input: { code: string }): string {
   return `Your Let’s Get Quoted verification code is ${input.code}. Enter this code in your Texting Setup to verify your mobile number. Reply STOP to opt out.`;
 }
 
+export function ownerVoiceEmergencyAlertText(input: {
+  businessName: string;
+  callerNumber: string | null;
+  hazardSummary: string;
+  dashboardUrl: string;
+}): string {
+  const caller = input.callerNumber || 'Unknown caller';
+  return `🚨 EMERGENCY CALL for ${input.businessName} from ${caller}: ${input.hazardSummary}. Review details & transcript: ${input.dashboardUrl} — Reply STOP to opt out.`;
+}
+
 
 // -- Quick Stop --------------------------------------------------------------
 

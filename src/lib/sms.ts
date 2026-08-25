@@ -19,6 +19,7 @@ import {
   missedCallTextBack,
   ownerHighValueLeadText,
   ownerVerificationCodeText,
+  ownerVoiceEmergencyAlertText,
   paymentText,
   quickStopConfirmedText,
   quickStopOfferText,
@@ -215,6 +216,45 @@ export async function sendOwnerHighValueLeadSms(input: {
     });
   } catch (error) {
     console.error('Owner high-value lead SMS failed:', error instanceof Error ? error.message : error);
+  }
+}
+
+/**
+ * Sends an urgent emergency SMS alert to the contractor owner whenever a caller
+ * reports an emergency hazard (gas leak, flooding, burst pipe, electrical fire).
+ *
+ * Best-effort: never throws so voice call settlement is never interrupted.
+ */
+export async function sendOwnerVoiceEmergencyAlertSms(input: {
+  accountId: string;
+  alertPhone: string;
+  businessName: string;
+  callerPhone: string | null;
+  hazardSummary: string;
+  dashboardUrl: string;
+  idempotencyKey: string;
+}): Promise<void> {
+  try {
+    const to = normalizeUsPhone(input.alertPhone);
+    if (!to) return;
+    if (await isPhoneOptedOut(input.accountId, to)) return;
+    const body = ownerVoiceEmergencyAlertText({
+      businessName: input.businessName,
+      callerNumber: input.callerPhone,
+      hazardSummary: input.hazardSummary,
+      dashboardUrl: input.dashboardUrl,
+    });
+    await queueAccountSms({
+      accountId: input.accountId,
+      phone: to,
+      body,
+      messageKind: 'owner-voice-emergency-alert',
+      category: 'owner_alert',
+      context: 'owner',
+      idempotencyKey: input.idempotencyKey,
+    });
+  } catch (error) {
+    console.error('Owner voice emergency alert SMS failed:', error instanceof Error ? error.message : error);
   }
 }
 
