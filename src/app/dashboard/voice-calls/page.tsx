@@ -7,7 +7,7 @@ import {
   type VoiceCallOutcome,
   type VoiceCallDisposition,
 } from '@/lib/voice/call-workspace';
-import { formatCallLength } from '@/lib/voice/call-history';
+import { formatCallLength } from '@/lib/voice/call-formatting';
 import VoiceCallsLiveRefresher from './VoiceCallsLiveRefresher';
 import styles from './voice-calls.module.css';
 

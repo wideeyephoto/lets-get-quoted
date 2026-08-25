@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import type { SanitizedTranscriptTurn } from '@/lib/voice/call-workspace';
-import { formatCallLength } from '@/lib/voice/call-history';
+import { formatCallLength } from '@/lib/voice/call-formatting';
 import styles from './call-detail.module.css';
 
 export default function InteractiveTranscriptViewer({

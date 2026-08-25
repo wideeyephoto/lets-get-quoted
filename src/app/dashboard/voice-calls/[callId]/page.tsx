@@ -6,7 +6,8 @@ import {
   formatOutcomeLabel,
   loadVoiceCallDetail,
 } from '@/lib/voice/call-workspace';
-import { describeSettlement, formatCallLength, type VoiceCallSettlement } from '@/lib/voice/call-history';
+import { formatCallLength } from '@/lib/voice/call-formatting';
+import { describeSettlement, type VoiceCallSettlement } from '@/lib/voice/call-history';
 import { detectCallEmergency } from '@/lib/voice/triage';
 import VoiceCallWorkflowPanel from './VoiceCallWorkflowPanel';
 import InteractiveTranscriptViewer from './InteractiveTranscriptViewer';

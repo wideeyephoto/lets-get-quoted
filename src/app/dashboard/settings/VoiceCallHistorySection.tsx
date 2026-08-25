@@ -1,8 +1,8 @@
 import Link from 'next/link';
 
+import { formatCallLength } from '@/lib/voice/call-formatting';
 import {
   describeSettlement,
-  formatCallLength,
   type VoiceCallHistory,
 } from '@/lib/voice/call-history';
 import { detectCallEmergency } from '@/lib/voice/triage';

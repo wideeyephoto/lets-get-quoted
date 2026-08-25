@@ -2,10 +2,10 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { formatCallLength } from '@/lib/voice/call-formatting';
 import {
   boundedVoiceHistoryDays,
   describeSettlement,
-  formatCallLength,
   loadVoiceCallHistory,
 } from '@/lib/voice/call-history';
 

@@ -1,4 +1,4 @@
-import { formatCallLength } from '@/lib/voice/call-history';
+import { formatCallLength } from '@/lib/voice/call-formatting';
 
 export default function VoiceCallAudioPlayer({
   callId,
