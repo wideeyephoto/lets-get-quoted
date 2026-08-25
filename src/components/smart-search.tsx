@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState, useMemo, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import type {
   SearchEntitySection,
   SearchResultItem,

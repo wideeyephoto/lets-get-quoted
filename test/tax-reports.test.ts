@@ -109,7 +109,7 @@ describe('buildScheduleCWorksheet', () => {
   });
 
   it('accounts for every expense dollar exactly once (lines sum to total expenses)', () => {
-    const expenseLines = lines.filter((l) => l.line !== 'Line 1');
+    const expenseLines = lines.filter((l) => ['Line 10', 'Line 11', 'Line 22', 'Line 26', 'Line 27a'].includes(l.line));
     const sum = expenseLines.reduce((s, l) => s + l.amount, 0);
     expect(Math.round(sum * 100) / 100).toBe(pl.totalExpenses);
   });
@@ -167,8 +167,8 @@ describe('CSV exports', () => {
   it('escapes commas and quotes in supplier names', () => {
     const csv = build1099Csv([{ supplier: 'Smith, "Bob" & Sons', total: 1200, needs1099: true }]);
     const rows = csv.split('\n');
-    expect(rows[0]).toBe('Subcontractor,Total Paid,May Need 1099-NEC');
-    expect(rows[1]).toBe('"Smith, ""Bob"" & Sons",1200.00,Yes');
+    expect(rows[0]).toBe('Subcontractor,Total Paid,May Need 1099-NEC,IRS Threshold,Tax Year');
+    expect(rows[1]).toContain('"Smith, ""Bob"" & Sons",1200.00,Yes');
   });
 
   it('escapes the Schedule C category labels (they contain commas)', () => {

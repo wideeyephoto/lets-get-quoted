@@ -49,6 +49,14 @@ const PER_UNIT = new Set(['hour', 'sqft']);
 export const MAX_DRAFT_LINES = 14;
 export const MAX_LINE_AMOUNT = 500_000;
 
+export const QUICK_QUOTE_REFINE_CHIPS = [
+  'Add demo & cleanup',
+  'Itemize materials & labor',
+  'Add 10% safety margin',
+  'Include permits & inspection',
+  'Break out into base + add-on',
+] as const;
+
 // -- What the model is allowed to send back -----------------------------------
 
 export type RawDraftLine = {

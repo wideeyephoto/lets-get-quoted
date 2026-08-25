@@ -31,7 +31,7 @@ interface JobDetailWorkspaceProps {
 }
 
 export default function JobDetailWorkspace({
-  jobId,
+  jobId: _jobId,
   layout: initialLayout,
   initialTab = 'overview',
   badges,

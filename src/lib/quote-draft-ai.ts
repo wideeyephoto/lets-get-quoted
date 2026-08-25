@@ -26,13 +26,7 @@ export type DraftContext = {
   refinement?: string | null;
 };
 
-export const QUICK_QUOTE_REFINE_CHIPS = [
-  'Add demo & cleanup',
-  'Itemize materials & labor',
-  'Add 10% safety margin',
-  'Include permits & inspection',
-  'Break out into base + add-on',
-] as const;
+export { QUICK_QUOTE_REFINE_CHIPS } from '@/lib/quote-draft';
 
 /**
  * Everything the drafter needs, in one place.

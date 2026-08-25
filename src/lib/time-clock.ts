@@ -34,6 +34,8 @@ export const LONG_SHIFT_HOURS = 12;
 /** Past this, we stop treating the end time as real at all. */
 export const MAX_SHIFT_HOURS = 16;
 
+import type { GeofenceStatus } from '@/lib/crew-geofence';
+
 export type OpenShift = {
   id: string;
   crewId: string;
@@ -42,6 +44,9 @@ export type OpenShift = {
   jobLabel: string;
   startedAt: string;
   rate: number;
+  geofenceStatus?: GeofenceStatus | null;
+  clockInDistanceFt?: number | null;
+  clockOutDistanceFt?: number | null;
 };
 
 export function hoursBetween(startedAt: string, endedAt: string): number {

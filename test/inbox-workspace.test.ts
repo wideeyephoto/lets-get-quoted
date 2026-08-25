@@ -223,7 +223,8 @@ describe('the inbox is framed by the viewport', () => {
    appeared below the list, while the messages stayed hidden.
    ======================================================================== */
 describe('the customer column is really hidden when it is meant to be', () => {
-  const narrow = CSS.slice(CSS.indexOf('@media (max-width: 1180px)'));
+  const inboxSection = CSS.slice(CSS.indexOf('.inbox-layout {'));
+  const narrow = inboxSection.slice(inboxSection.indexOf('@media (max-width: 1180px)'));
   const block = narrow.slice(0, narrow.indexOf('@media (max-width: 820px)'));
 
   /**

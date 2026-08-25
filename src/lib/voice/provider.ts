@@ -79,6 +79,10 @@ export type VoiceAnswerPlan =
      */
     receiptAuthorization: VoiceReceiptAuthorization;
     greeting: string;
+    /** Dynamic grounded system prompt tailored to the contractor's trade, services, and schedule. */
+    systemPrompt?: string;
+    /** Custom summary instructions for the end-of-call post-prompt. */
+    postPrompt?: string;
     /** Minutes after which the agent must stop, whatever else is true. */
     capMinutes: number;
     /** Where to send the caller when the agent hands off. */

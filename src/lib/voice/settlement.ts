@@ -7,6 +7,7 @@ import { settleUsageOverage } from '@/lib/billing/usage-overage';
 import { createLead } from '@/lib/leads';
 import { normalizeUsPhone } from '@/lib/phone';
 import type { VoiceReceipt } from '@/lib/voice/provider';
+import { detectCallEmergency, notifyEmergencyCall } from '@/lib/voice/triage';
 
 const MICROS_PER_SECOND = 1_000_000;
 
@@ -146,16 +147,28 @@ export async function settleVoiceReceipt(
   let leadId: string | null = null;
   try {
     const phone = callerPhone(receipt);
+    const summary = summaryLine(receipt);
+    const emergency = detectCallEmergency(summary);
+    const flags = emergency.isEmergency ? ['emergency_hazard', emergency.hazardType].filter(Boolean) as string[] : [];
+    const score = emergency.isEmergency ? 'hot' : 'warm';
+
     const lead = await createLead(admin, row.account_id, {
       source: 'ai_voice',
       name: phone ? `AI call — ${phone}` : 'AI call — caller unknown',
       phone,
-      message: summaryLine(receipt),
+      message: summary,
       sourcePage: '/call',
       sourceVoiceEventId: options.voiceEventId,
-      triage: { score: 'warm', flags: [], contactPreference: 'any' },
+      triage: { score, flags, contactPreference: 'any' },
     });
     leadId = lead.id;
+
+    if (emergency.isEmergency) {
+      // Priority SMS dispatch to contractor's on-call number
+      notifyEmergencyCall(admin, row.account_id, phone, summary, emergency).catch((err) => {
+        console.error('[AI Voice Emergency] Alert dispatch error:', err);
+      });
+    }
   } catch (error) {
     console.error('AI voice lead creation failed:', error);
     throw error;

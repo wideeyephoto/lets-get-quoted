@@ -16,6 +16,11 @@ import {
   type InboundCall,
   type VoiceAnswerPlan,
 } from '@/lib/voice/provider';
+import {
+  buildVoicePostPrompt,
+  buildVoiceSystemPrompt,
+  loadVoiceGroundingContext,
+} from '@/lib/voice/grounding';
 
 /**
  * Deciding what happens to an inbound call, with no HTTP anywhere in it.
@@ -308,6 +313,10 @@ export async function planInboundCall(
 
   if (decision.outcome === 'refused') return fallback(workspace, decision.reason);
 
+  const grounding = await loadVoiceGroundingContext(admin, workspace.accountId).catch(() => null);
+  const systemPrompt = grounding ? buildVoiceSystemPrompt(grounding) : undefined;
+  const postPrompt = grounding ? buildVoicePostPrompt() : undefined;
+
   return Object.freeze({
     accountId: workspace.accountId,
     declineReason: null,
@@ -316,6 +325,8 @@ export async function planInboundCall(
       receiptUrl: options.receiptUrl,
       receiptAuthorization: options.receiptAuthorization,
       greeting: greetingWithAiDisclosure(settings.greeting?.trim() || DEFAULT_GREETING),
+      systemPrompt,
+      postPrompt,
       capMinutes: VOICE_CALL_CAP_MINUTES,
       // The configured hand-off, falling back to the line the contractor
       // already forwards to. Null is a valid setup, not a broken one.

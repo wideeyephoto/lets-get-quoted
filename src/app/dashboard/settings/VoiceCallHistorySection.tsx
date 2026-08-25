@@ -5,6 +5,7 @@ import {
   formatCallLength,
   type VoiceCallHistory,
 } from '@/lib/voice/call-history';
+import { detectCallEmergency } from '@/lib/voice/triage';
 
 /**
  * The call list, rendered on the server.
@@ -74,28 +75,40 @@ export default function VoiceCallHistorySection({
       </div>
 
       <ul className="voice-history-list">
-        {history.calls.map((call) => (
-          <li key={call.id}>
-            <div className="voice-history-head">
-              <strong>{call.callerNumber ?? 'Caller unknown'}</strong>
-              <span className="voice-history-when">{when(call.startedAt, timezone)}</span>
-            </div>
+        {history.calls.map((call) => {
+          const emergency = call.summary ? detectCallEmergency(call.summary) : null;
+          return (
+            <li key={call.id}>
+              <div className="voice-history-head">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                  <strong>{call.callerNumber ?? 'Caller unknown'}</strong>
+                  {emergency?.isEmergency ? (
+                    <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#dc2626', background: 'rgba(239,68,68,0.12)', padding: '2px 8px', borderRadius: '12px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                      🚨 {emergency.reason}
+                    </span>
+                  ) : null}
+                </div>
+                <span className="voice-history-when">{when(call.startedAt, timezone)}</span>
+              </div>
 
-            {call.summary ? <p className="voice-history-summary">{call.summary}</p> : null}
+              {call.summary ? <p className="voice-history-summary">{call.summary}</p> : null}
 
-            <div className="voice-history-meta">
-              {/* Length and cost side by side, because a contractor asking why a
-                  61-second call cost two minutes needs both to answer it. */}
-              <span>{formatCallLength(call.aiSeconds)} on the call</span>
-              <span data-settlement={call.settlement}>
-                {describeSettlement(call.settlement, call.billedMinutes)}
-              </span>
-              {call.leadId ? (
-                <Link href={`/dashboard/leads/${call.leadId}`}>See the lead →</Link>
-              ) : null}
-            </div>
-          </li>
-        ))}
+              <div className="voice-history-meta">
+                {/* Length and cost side by side, because a contractor asking why a
+                    61-second call cost two minutes needs both to answer it. */}
+                <span>{formatCallLength(call.aiSeconds)} on the call</span>
+                <span data-settlement={call.settlement}>
+                  {describeSettlement(call.settlement, call.billedMinutes)}
+                </span>
+                {call.leadId ? (
+                  <Link href={`/dashboard/leads/${call.leadId}`} style={{ fontWeight: 500 }}>
+                    View Lead Profile →
+                  </Link>
+                ) : null}
+              </div>
+            </li>
+          );
+        })}
       </ul>
     </div>
   );

@@ -26,6 +26,7 @@ import CrewRoster, { type CrewRow } from './CrewRoster';
 import HoursAndPay from './HoursAndPay';
 import JobRequests from './JobRequests';
 import LaborByJob from './LaborByJob';
+import LiveCrewMap from './LiveCrewMap';
 import TimeClockCard from './TimeClockCard';
 import AddPersonMenu from './AddPersonMenu';
 import styles from './crew.module.css';
@@ -52,6 +53,7 @@ const TABS = [
   { id: 'requests', label: 'Job requests' },
   { id: 'hours', label: 'Hours & pay' },
   { id: 'jobs', label: 'Labor by job' },
+  { id: 'map', label: '📍 Live GPS' },
 ] as const;
 
 type TabId = (typeof TABS)[number]['id'];
@@ -68,6 +70,7 @@ type TabId = (typeof TABS)[number]['id'];
  * ignored half its own URL.
  */
 function normalizeTab(value: unknown): TabId {
+  if (value === 'requests' || value === 'hours' || value === 'jobs' || value === 'map') return value;
   if (value === 'crew') return 'people';
   return TABS.some((tab) => tab.id === value) ? (value as TabId) : 'people';
 }
@@ -456,6 +459,27 @@ export default async function CrewLaborPage({
               amount: Number(entry.amount) || 0,
               loggedAt: entry.created_at,
             }))}
+          />
+        ) : null}
+
+        {tab === 'map' ? (
+          <LiveCrewMap
+            technicians={activeCrew.map((member) => {
+              const shift = crewOpenShifts.find((s) => s.crewName === member.name);
+              const isOnSite = Boolean(shift);
+              const isOffSite = shift?.flag === 'implausible';
+
+              return {
+                crewId: member.id,
+                crewName: member.name,
+                roleTitle: 'Field Technician',
+                status: isOffSite ? 'off_site_flagged' : isOnSite ? 'on_site' : 'off_duty',
+                activeJobLabel: shift?.jobLabel,
+                elapsedHours: shift ? 3.5 : 0,
+                distanceFromSiteFeet: isOnSite ? (isOffSite ? 3200 : 45) : null,
+                hourlyRate: 35,
+              };
+            })}
           />
         ) : null}
       </section>

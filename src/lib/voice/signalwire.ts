@@ -189,16 +189,16 @@ export const signalwireVoiceProvider: VoiceProvider = {
                     max_duration: plan.capMinutes * 60,
                   },
                   prompt: {
-                    text: 'You are an AI receptionist for a home-service contractor. '
+                    text: plan.systemPrompt || ('You are an AI receptionist for a home-service contractor. '
                       + 'The opening greeting and AI disclosure have already been played; do not repeat them unless asked. '
                       + 'Collect the caller\'s name, callback number, service address, the work requested, urgency, '
                       + 'and preferred appointment time. Never claim an appointment is confirmed. '
-                      + 'If the caller asks for a person and a transfer tool is available, use it.',
+                      + 'If the caller asks for a person and a transfer tool is available, use it.'),
                   },
                   post_prompt: {
-                    text: 'Summarise the caller\'s name, phone number, service address, '
+                    text: plan.postPrompt || ('Summarise the caller\'s name, phone number, service address, '
                       + 'the work requested, how urgent it is, and any appointment time '
-                      + 'they preferred. State plainly if any of these were not given.',
+                      + 'they preferred. State plainly if any of these were not given.'),
                   },
                   ...(plan.transferTo
                     ? { SWAIG: { functions: [{

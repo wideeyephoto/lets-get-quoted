@@ -5,7 +5,7 @@ import type { QuoteItem, QuoteItemKind, QuoteSubscriptionFrequency } from '@/lib
 import type { DraftSource, SerializedDraft } from '@/lib/quote-draft';
 import { guardSummary, type FindingSource, type QuoteFinding } from '@/lib/quote-guard';
 import { AiRefineChips } from '@/components/ai';
-import { QUICK_QUOTE_REFINE_CHIPS } from '@/lib/quote-draft-ai';
+import { QUICK_QUOTE_REFINE_CHIPS } from '@/lib/quote-draft';
 
 type Row = QuoteItem;
 

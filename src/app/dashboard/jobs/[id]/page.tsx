@@ -30,6 +30,7 @@ import { listChangeOrders } from '@/lib/change-orders-data';
 import { changeOrderTotals } from '@/lib/change-orders';
 import ChangeOrderPanel from './ChangeOrderPanel';
 import WarrantyPanel from './WarrantyPanel';
+import LienWaiverPanel from './LienWaiverPanel';
 import SelectionBoard from './SelectionBoard';
 import TaskAddForm from './TaskAddForm';
 import { zonedNowParts } from '@/lib/quick-stop';
@@ -1712,6 +1713,28 @@ export default async function JobDetailPage({
           </details>
         ) : null;
 
+        const lienWaiverBlock = (
+          <details className="panel workspace-section-card workspace-details job-action-details" open={searchParams.open === 'lien-waiver' || job.status === 'complete'}>
+            <summary className="workspace-details-summary job-action-summary">
+              <div className="section-heading workspace-section-heading compact-heading">
+                <p className="eyebrow">Legal &amp; billing protection</p>
+                <h2>Lien waivers</h2>
+              </div>
+              <span className="workspace-details-copy">
+                Statutory conditional &amp; unconditional release forms for progress draws and job closeout.
+              </span>
+            </summary>
+            <LienWaiverPanel
+              jobId={job.id}
+              jobRef={job.ref}
+              clientName={job.client_name}
+              address={job.address}
+              jobStatus={job.status}
+              suggestedAmount={margin.revenue || 0}
+            />
+          </details>
+        );
+
         const roiBlock = role === 'owner' ? (
           <details className="panel workspace-section-card workspace-details job-action-details" open={layout === 'tabs'}>
             <summary className="workspace-details-summary job-action-summary">
@@ -1803,6 +1826,7 @@ export default async function JobDetailPage({
             {paymentInvoiceBlock}
             {expensesBlock}
             {changeOrdersBlock}
+            {lienWaiverBlock}
             {roiBlock}
           </>
         );
@@ -1871,6 +1895,7 @@ export default async function JobDetailPage({
               {expensesBlock}
               {warrantyBlock}
               {changeOrdersBlock}
+              {lienWaiverBlock}
               {roiBlock}
             </section>
           </>

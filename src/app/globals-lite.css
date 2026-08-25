@@ -1,6 +1,6 @@
 /* GENERATED — do not edit. Source: src/app/globals.css
    Run: node scripts/build-css-subset.mjs
-   source-sha256: 420d6d5ebb8bd0d6
+   source-sha256: d0a2029867f3c104
 
    globals.css with the rules that can only match inside /dashboard, /admin and
    /demo removed. Every route except those three imports this file; they import
@@ -3324,13 +3324,35 @@ h3 {
   margin-top: 0.125rem;
 }
 
+.plan-change-cycle-btn.is-active {
+  background: var(--bg-card, #131722);
+  color: var(--text);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.plan-change-card.is-current {
+  border-color: rgba(99, 102, 241, 0.4);
+  background: linear-gradient(180deg, rgba(99, 102, 241, 0.05) 0%, rgba(var(--tint), 0.015) 100%);
+  box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.2), 0 8px 24px -2px rgba(0, 0, 0, 0.25);
+}
+
+.plan-change-card.is-featured {
+  border-color: rgba(255, 138, 61, 0.35);
+}
+
+.plan-change-card.is-featured:hover {
+  border-color: rgba(255, 138, 61, 0.55);
+  box-shadow: 0 12px 32px -4px rgba(255, 138, 61, 0.15);
+}
+
 .plan-change-card.is-immediate {
-  border-color: rgba(16, 185, 129, 0.2);
+  border-color: rgba(16, 185, 129, 0.25);
 }
 
 .plan-change-card.is-immediate:hover {
-  border-color: rgba(16, 185, 129, 0.45);
-  box-shadow: 0 12px 32px -4px rgba(16, 185, 129, 0.15);
+  border-color: rgba(16, 185, 129, 0.5);
+  box-shadow: 0 12px 32px -4px rgba(16, 185, 129, 0.18);
 }
 
 .plan-change-card.is-confirming {
