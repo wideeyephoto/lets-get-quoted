@@ -28,6 +28,7 @@ import BuilderTabStrip from './BuilderTabStrip';
 import SectionCard from './SectionCard';
 import SocialsField from './SocialsField';
 import ChatButtonField from './ChatButtonField';
+import type { MessagingSetup } from '@/lib/owner-sms';
 import AnalyticsField from './AnalyticsField';
 import ThemeIcon from './ThemeIcon';
 import VideoStudio from './VideoStudio';
@@ -39,6 +40,7 @@ type BuilderTab = 'business' | 'page' | 'design' | 'publish';
 type WebsiteBuilderProps = {
   site: Site;
   uploadedImages: SiteImage[];
+  messagingSetup?: MessagingSetup;
   // Arriving straight from first run, on a site that was just written from the
   // business name, trade and ZIP. Opens with an explanation rather than letting
   // the owner wonder who wrote all this.
@@ -251,7 +253,7 @@ function siteUpdates(site: Site) {
   };
 }
 
-export default function WebsiteBuilder({ site: initialSite, uploadedImages, justBuilt = false, openTarget = null }: WebsiteBuilderProps) {
+export default function WebsiteBuilder({ site: initialSite, uploadedImages, messagingSetup, justBuilt = false, openTarget = null }: WebsiteBuilderProps) {
   const [site, setSite] = useState(initialSite);
   const [siteImages, setSiteImages] = useState(uploadedImages);
   const [jobPhotoOptions, setJobPhotoOptions] = useState<JobPhotoImportOption[]>([]);
@@ -2787,6 +2789,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, just
                     chatButton={siteContent.chatButton}
                     sitePhone={site.phone}
                     companyName={site.company_name}
+                    messagingSetup={messagingSetup}
                     onChange={updateChatButton}
                   />
                 </SectionCard>

@@ -130,4 +130,11 @@ describe('validation shown in the builder', () => {
   it('handles a business with no name', () => {
     expect(defaultChatGreeting('')).toBe("Hi, I'd like a quote for ");
   });
+
+  it('correctly compares phone digits for dedicated number matching', () => {
+    const dedicated = '+13135550100';
+    const typed = '(313) 555-0100';
+    expect(phoneDigits(dedicated).endsWith(phoneDigits(typed).slice(-10))).toBe(true);
+  });
 });
+

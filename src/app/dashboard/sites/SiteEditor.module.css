@@ -1075,6 +1075,91 @@ a.blogGenerateBtn { display: block; text-align: center; text-decoration: none; l
 .chatChannelOn { border-color: #ff9b54; background: rgba(255,122,33,.1); box-shadow: 0 0 0 3px rgba(255,122,33,.12); }
 @media (max-width: 700px) { .chatChannelRow { grid-template-columns: 1fr; } }
 
+/* Chat button & Texting Setup integration */
+.chatIntegrationBox {
+  margin-top: .75rem;
+  padding: .85rem .95rem;
+  border: 1px solid var(--edge-t16);
+  border-radius: 9px;
+  background: rgba(var(--tint), .035);
+  display: grid;
+  gap: .55rem;
+}
+.chatIntegrationHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .6rem;
+  flex-wrap: wrap;
+}
+.chatIntegrationTitle {
+  font-size: .82rem;
+  font-weight: 700;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+}
+.chatIntegrationBadge {
+  font-size: .72rem;
+  font-weight: 700;
+  padding: .2rem .55rem;
+  border-radius: 999px;
+  line-height: 1.2;
+}
+.chatBadgeReady { background: rgba(34, 197, 94, .14); color: #4ade80; border: 1px solid rgba(34, 197, 94, .3); }
+.chatBadgePending { background: rgba(234, 179, 8, .12); color: #facc15; border: 1px solid rgba(234, 179, 8, .25); }
+.chatBadgeAttention { background: rgba(239, 68, 68, .12); color: #f87171; border: 1px solid rgba(239, 68, 68, .25); }
+.chatBadgeNeutral { background: rgba(255, 255, 255, .08); color: var(--muted-2); border: 1px solid var(--edge-t16); }
+
+.chatIntegrationBody {
+  margin: 0;
+  font-size: .8rem;
+  line-height: 1.45;
+  color: var(--muted-2);
+}
+.chatIntegrationLink {
+  color: #ff9b54;
+  font-weight: 600;
+  text-decoration: none;
+  font-size: .8rem;
+  display: inline-flex;
+  align-items: center;
+  gap: .25rem;
+}
+.chatIntegrationLink:hover {
+  text-decoration: underline;
+}
+.chatNumberChips {
+  display: flex;
+  gap: .45rem;
+  flex-wrap: wrap;
+  margin-top: .35rem;
+}
+.chatNumberChip {
+  padding: .35rem .7rem;
+  border-radius: 6px;
+  font-size: .78rem;
+  font-weight: 600;
+  border: 1px solid var(--edge-t16);
+  background: rgba(var(--tint), .04);
+  color: var(--text);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  transition: all .15s ease;
+}
+.chatNumberChip:hover {
+  border-color: var(--edge-t30);
+  background: rgba(var(--tint), .08);
+}
+.chatNumberChipActive {
+  border-color: #ff9b54;
+  background: rgba(255, 122, 33, .12);
+  color: #ff9b54;
+}
+
 /* Setup → Visitor tracking: a preview of the banner a visitor will actually
  * read, because an owner pasting a pixel ID has just taken on responsibility
  * for other people's data and should see what their site will say about it. */

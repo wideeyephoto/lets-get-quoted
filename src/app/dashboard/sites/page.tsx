@@ -1,4 +1,5 @@
 import { requireOfficeContext } from '@/lib/auth';
+import { loadMessagingSetup } from '@/lib/owner-sms';
 import { listUploadedSiteImages } from '@/lib/site-image-storage';
 import { getOrCreateSite } from '@/lib/sites';
 import { templateFontVars } from '@/lib/templates/fonts';
@@ -28,9 +29,12 @@ export default async function SitesPage({ searchParams }: { searchParams?: Promi
   const { supabase, accountId } = await requireOfficeContext('settings.write');
   const justBuilt = params?.built === '1';
 
-  // Get or create site
-  const site = await getOrCreateSite(supabase, accountId);
-  const uploadedImages = await listUploadedSiteImages(accountId);
+  // Get site, images, and messaging registration / texting setup in parallel
+  const [site, uploadedImages, messagingSetup] = await Promise.all([
+    getOrCreateSite(supabase, accountId),
+    listUploadedSiteImages(accountId),
+    loadMessagingSetup(accountId),
+  ]);
 
   return (
     // The one dashboard route that renders the contractor's own type: the
@@ -42,6 +46,7 @@ export default async function SitesPage({ searchParams }: { searchParams?: Promi
       <WebsiteBuilder
         site={site}
         uploadedImages={uploadedImages}
+        messagingSetup={messagingSetup}
         justBuilt={justBuilt}
         openTarget={params?.open ?? null}
       />
