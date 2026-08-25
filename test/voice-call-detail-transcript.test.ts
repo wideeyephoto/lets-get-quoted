@@ -85,7 +85,7 @@ describe('call detail loader with multi-tenant isolation', () => {
   const mockSupabase = {
     from(table: string) {
       const chain: Record<string, unknown> = {};
-      for (const method of ['select', 'eq', 'order']) {
+      for (const method of ['select', 'eq', 'neq', 'order', 'limit']) {
         chain[method] = () => chain;
       }
       chain.maybeSingle = (async () => {

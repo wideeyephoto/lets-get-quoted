@@ -287,3 +287,126 @@
   color: var(--mute-t62, #94a3b8);
   margin-bottom: 0.35rem;
 }
+
+/* CRM Intelligence Card */
+.crmCard {
+  background: linear-gradient(180deg, rgba(59, 130, 246, 0.08) 0%, rgba(255, 255, 255, 0.03) 100%);
+  border: 1px solid rgba(59, 130, 246, 0.25);
+}
+
+.crmBadge {
+  background: rgba(59, 130, 246, 0.2);
+  color: #93c5fd;
+  border: 1px solid rgba(59, 130, 246, 0.4);
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.clientName {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.clientAddress {
+  font-size: 0.8rem;
+  color: var(--mute-t62, #94a3b8);
+}
+
+/* Prior Calls */
+.priorCallsList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.priorCallItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.6rem 0.75rem;
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  font-size: 0.82rem;
+  text-decoration: none;
+  color: #e2e8f0;
+  transition: all 0.15s ease;
+}
+
+.priorCallItem:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.15);
+  color: #fff;
+  transform: translateX(2px);
+}
+
+/* Interactive Audio Player & Transcript */
+.audioPlayerContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.35);
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.audioControlsRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.audioBtnGroup {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.audioBtn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #e2e8f0;
+  padding: 0.3rem 0.6rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.audioBtn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+}
+
+.audioBtnActive {
+  background: var(--accent, #3b82f6);
+  color: #fff;
+  border-color: #60a5fa;
+}
+
+.turnSeekBtn {
+  margin-left: auto;
+  font-size: 0.7rem;
+  color: var(--mute-t62, #94a3b8);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  padding: 0.15rem 0.4rem;
+  cursor: pointer;
+  opacity: 0.7;
+  transition: all 0.15s ease;
+}
+
+.turnBubble:hover .turnSeekBtn {
+  opacity: 1;
+  background: rgba(59, 130, 246, 0.2);
+  color: #93c5fd;
+  border-color: rgba(59, 130, 246, 0.4);
+}

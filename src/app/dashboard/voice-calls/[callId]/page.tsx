@@ -9,7 +9,7 @@ import {
 import { describeSettlement, formatCallLength, type VoiceCallSettlement } from '@/lib/voice/call-history';
 import { detectCallEmergency } from '@/lib/voice/triage';
 import VoiceCallWorkflowPanel from './VoiceCallWorkflowPanel';
-import VoiceCallAudioPlayer from './VoiceCallAudioPlayer';
+import InteractiveTranscriptViewer from './InteractiveTranscriptViewer';
 import styles from './call-detail.module.css';
 
 export const metadata = { title: 'Voice Call Details & Transcript' };
@@ -130,70 +130,124 @@ export default async function VoiceCallDetailPage({
             </div>
           </div>
 
-          {/* Chronological Dialogue Transcript */}
-          <div className={styles.card}>
-            <div className={styles.cardHeader}>
-              <span>Conversation Transcript</span>
-              <span style={{ fontSize: '0.8rem', fontWeight: 500, color: 'var(--mute-t62, #94a3b8)' }}>
-                {call.transcript.length} turns recorded
-              </span>
-            </div>
-
-            {call.transcript.length === 0 ? (
-              <div style={{ padding: '2rem 1rem', textAlign: 'center', color: 'var(--mute-t62, #94a3b8)', fontSize: '0.88rem' }}>
-                {call.isProvisional
-                  ? 'Call in progress. Transcript dialogue will appear here upon completion.'
-                  : 'No transcript dialogue was retained for this call.'}
-              </div>
-            ) : (
-              <div className={styles.transcriptFeed}>
-                {call.transcript.map((turn, index) => {
-                  const isAssistant = turn.role === 'assistant';
-                  return (
-                    <div
-                      key={index}
-                      className={`${styles.turnBubble} ${isAssistant ? styles.turnAssistant : styles.turnCaller}`}
-                    >
-                      <span className={styles.turnAuthor}>
-                        {isAssistant ? '🤖 AI Receptionist' : '👤 Caller'}
-                      </span>
-                      <div className={styles.turnBody}>{turn.content}</div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          {/* Recording Player & Ingest Status */}
-          <div className={styles.card}>
-            <div className={styles.cardHeader}>
-              <span>Audio Recording</span>
-              <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--mute-t62, #94a3b8)' }}>
-                {call.recordingStatus === 'ready'
-                  ? 'Ready'
-                  : call.recordingStatus === 'pending'
-                  ? 'Processing'
-                  : 'Disabled / Not Captured'}
-              </span>
-            </div>
-            {call.recordingStatus === 'ready' ? (
-              <VoiceCallAudioPlayer
-                callId={call.id}
-                durationSeconds={call.recordingDurationSeconds}
-              />
-            ) : (
-              <div style={{ padding: '1rem', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', fontSize: '0.88rem', color: 'var(--mute-t62, #94a3b8)' }}>
-                <p style={{ margin: 0 }}>
-                  Audio call recording is disabled by default to maintain compliance with multi-party consent regulations. Transcripts are retained per your workspace retention policy.
-                </p>
-              </div>
-            )}
-          </div>
+          {/* Interactive Audio Player & Synchronized Transcript */}
+          <InteractiveTranscriptViewer
+            callId={call.id}
+            transcript={call.transcript}
+            recordingStatus={call.recordingStatus}
+            recordingDurationSeconds={call.recordingDurationSeconds}
+            isProvisional={call.isProvisional}
+          />
         </div>
 
         {/* Sidebar Column */}
         <div className={styles.sideColumn}>
+          {/* Customer & CRM Intelligence Card */}
+          <div className={`${styles.card} ${call.contact.client ? styles.crmCard : ''}`}>
+            <div className={styles.cardHeader}>
+              <span>Customer Intelligence</span>
+              {call.contact.client ? (
+                <span className={styles.crmBadge}>Known Client</span>
+              ) : call.contact.lead ? (
+                <span className={styles.crmBadge}>Active Lead</span>
+              ) : (
+                <span style={{ fontSize: '0.75rem', color: 'var(--mute-t62, #94a3b8)' }}>New Contact</span>
+              )}
+            </div>
+
+            {call.contact.client ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                <div>
+                  <div className={styles.clientName}>{call.contact.client.name}</div>
+                  {call.contact.client.address ? (
+                    <div className={styles.clientAddress}>📍 {call.contact.client.address}</div>
+                  ) : null}
+                  {call.contact.client.email ? (
+                    <div className={styles.clientAddress}>✉️ {call.contact.client.email}</div>
+                  ) : null}
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.2rem' }}>
+                  <span className={`${styles.badge} ${styles.badgeAi}`}>
+                    ⭐ {call.contact.client.totalJobsCount} {call.contact.client.totalJobsCount === 1 ? 'Job' : 'Jobs'} on file
+                  </span>
+                </div>
+
+                <Link
+                  href={`/dashboard/clients/${call.contact.client.id}`}
+                  className={`${styles.actionBtn} ${styles.actionBtnSecondary}`}
+                  style={{ marginTop: '0.3rem', justifyContent: 'center' }}
+                >
+                  👤 Open Client Profile →
+                </Link>
+              </div>
+            ) : call.contact.lead ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                <div>
+                  <div className={styles.clientName}>{call.contact.lead.name}</div>
+                  {call.contact.lead.address ? (
+                    <div className={styles.clientAddress}>📍 {call.contact.lead.address}</div>
+                  ) : null}
+                  <div className={styles.clientAddress}>
+                    Lead Status: <strong>{call.contact.lead.status}</strong>
+                  </div>
+                </div>
+
+                <Link
+                  href={`/dashboard/leads/${call.contact.lead.id}`}
+                  className={`${styles.actionBtn} ${styles.actionBtnSecondary}`}
+                  style={{ marginTop: '0.3rem', justifyContent: 'center' }}
+                >
+                  🎯 Open Lead Profile →
+                </Link>
+              </div>
+            ) : (
+              <div style={{ fontSize: '0.85rem', color: 'var(--mute-t62, #94a3b8)', lineHeight: 1.5 }}>
+                <p style={{ margin: '0 0 0.5rem 0' }}>
+                  No existing client or lead record was found for this phone number.
+                </p>
+                {call.callerNumber ? (
+                  <Link
+                    href={`/dashboard/clients`}
+                    className={`${styles.actionBtn} ${styles.actionBtnSecondary}`}
+                    style={{ justifyContent: 'center', width: '100%' }}
+                  >
+                    ➕ Create Client Record
+                  </Link>
+                ) : null}
+              </div>
+            )}
+          </div>
+
+          {/* Caller History Timeline */}
+          {call.contact.priorCalls.length > 0 ? (
+            <div className={styles.card}>
+              <div className={styles.cardHeader}>
+                <span>Caller History</span>
+                <span style={{ fontSize: '0.8rem', color: 'var(--mute-t62, #94a3b8)' }}>
+                  {call.contact.totalPriorCallsCount} previous {call.contact.totalPriorCallsCount === 1 ? 'call' : 'calls'}
+                </span>
+              </div>
+              <div className={styles.priorCallsList}>
+                {call.contact.priorCalls.map((prior) => (
+                  <Link
+                    key={prior.id}
+                    href={`/dashboard/voice-calls/${prior.id}`}
+                    className={styles.priorCallItem}
+                  >
+                    <div>
+                      <div style={{ fontWeight: 600 }}>{formatCallTime(prior.startedAt, timezone)}</div>
+                      <div style={{ fontSize: '0.72rem', color: 'var(--mute-t62, #94a3b8)' }}>
+                        {formatCallLength(prior.aiSeconds)} • {formatOutcomeLabel(prior.outcome)}
+                      </div>
+                    </div>
+                    <span style={{ fontSize: '0.85rem' }}>→</span>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
           {/* Call Technical Facts */}
           <div className={styles.card}>
             <div className={styles.cardHeader}>

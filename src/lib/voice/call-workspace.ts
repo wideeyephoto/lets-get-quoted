@@ -78,6 +78,40 @@ export type SanitizedTranscriptTurn = Readonly<{
   timestamp: number | null;
 }>;
 
+export type MatchedClientProfile = Readonly<{
+  id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  address: string | null;
+  notes: string | null;
+  totalJobsCount: number;
+}>;
+
+export type MatchedLeadProfile = Readonly<{
+  id: string;
+  name: string;
+  phone: string | null;
+  status: string;
+  address: string | null;
+  serviceCategory: string | null;
+}>;
+
+export type PriorCallSummary = Readonly<{
+  id: string;
+  startedAt: string | null;
+  aiSeconds: number | null;
+  outcome: VoiceCallOutcome;
+  summary: string | null;
+}>;
+
+export type CallerContactIntelligence = Readonly<{
+  client: MatchedClientProfile | null;
+  lead: MatchedLeadProfile | null;
+  priorCalls: readonly PriorCallSummary[];
+  totalPriorCallsCount: number;
+}>;
+
 export type VoiceCallDetail = Readonly<{
   id: string;
   providerCallId: string;
@@ -99,6 +133,7 @@ export type VoiceCallDetail = Readonly<{
   workflow: VoiceCallWorkflowData;
   notes: readonly VoiceCallNoteItem[];
   transcript: readonly SanitizedTranscriptTurn[];
+  contact: CallerContactIntelligence;
 }>;
 
 export type VoiceWorkspaceCounters = Readonly<{
@@ -454,10 +489,107 @@ export async function loadVoiceCallDetail(
 
     const sanitizedTranscript = sanitizeTranscriptTurns(callRow.transcript);
 
+    // Resolve CRM Contact Intelligence
+    let matchedClient: MatchedClientProfile | null = null;
+    let matchedLead: MatchedLeadProfile | null = null;
+    let priorCalls: PriorCallSummary[] = [];
+    let totalPriorCallsCount = 0;
+
+    const callerPhone = (callRow.caller_number as string | null) ?? null;
+
+    if (callerPhone) {
+      try {
+        const { data: clientRow } = await supabase
+          .from('clients')
+          .select('id, name, email, phone, address, notes')
+          .eq('account_id', accountId)
+          .eq('phone', callerPhone)
+          .maybeSingle();
+
+        if (clientRow) {
+          const { count: jobCount } = await supabase
+            .from('jobs')
+            .select('*', { count: 'exact', head: true })
+            .eq('account_id', accountId)
+            .eq('client_id', clientRow.id);
+
+          matchedClient = {
+            id: String(clientRow.id),
+            name: String(clientRow.name),
+            email: (clientRow.email as string | null) ?? null,
+            phone: (clientRow.phone as string | null) ?? null,
+            address: (clientRow.address as string | null) ?? null,
+            notes: (clientRow.notes as string | null) ?? null,
+            totalJobsCount: jobCount ?? 0,
+          };
+        }
+
+        if (callRow.lead_id) {
+          const { data: leadRow } = await supabase
+            .from('leads')
+            .select('id, name, phone, status, address, service_category')
+            .eq('account_id', accountId)
+            .eq('id', callRow.lead_id)
+            .maybeSingle();
+
+          if (leadRow) {
+            matchedLead = {
+              id: String(leadRow.id),
+              name: String(leadRow.name ?? 'New Lead'),
+              phone: (leadRow.phone as string | null) ?? null,
+              status: String(leadRow.status ?? 'new'),
+              address: (leadRow.address as string | null) ?? null,
+              serviceCategory: (leadRow.service_category as string | null) ?? null,
+            };
+          }
+        } else {
+          const { data: leadRow } = await supabase
+            .from('leads')
+            .select('id, name, phone, status, address, service_category')
+            .eq('account_id', accountId)
+            .eq('phone', callerPhone)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (leadRow) {
+            matchedLead = {
+              id: String(leadRow.id),
+              name: String(leadRow.name ?? 'New Lead'),
+              phone: (leadRow.phone as string | null) ?? null,
+              status: String(leadRow.status ?? 'new'),
+              address: (leadRow.address as string | null) ?? null,
+              serviceCategory: (leadRow.service_category as string | null) ?? null,
+            };
+          }
+        }
+
+        const { data: priorRows, count: priorCount } = await supabase
+          .from('voice_calls')
+          .select('id, started_at, ai_seconds, outcome, summary', { count: 'exact' })
+          .eq('account_id', accountId)
+          .eq('caller_number', callerPhone)
+          .neq('id', callId)
+          .order('started_at', { ascending: false })
+          .limit(5);
+
+        totalPriorCallsCount = priorCount ?? (priorRows?.length ?? 0);
+        priorCalls = (priorRows ?? []).map((p) => ({
+          id: String(p.id),
+          startedAt: (p.started_at as string | null) ?? null,
+          aiSeconds: typeof p.ai_seconds === 'number' ? p.ai_seconds : null,
+          outcome: (p.outcome as VoiceCallOutcome) ?? 'completed',
+          summary: (p.summary as string | null) ?? null,
+        }));
+      } catch (crmErr) {
+        console.warn('CRM intelligence resolution non-blocking error:', crmErr);
+      }
+    }
+
     return {
       id: String(callRow.id),
       providerCallId: String(callRow.provider_call_id),
-      callerNumber: (callRow.caller_number as string | null) ?? null,
+      callerNumber: callerPhone,
       startedAt: (callRow.started_at as string | null) ?? null,
       answeredAt: (callRow.answered_at as string | null) ?? null,
       endedAt: (callRow.ended_at as string | null) ?? null,
@@ -475,6 +607,12 @@ export async function loadVoiceCallDetail(
       workflow,
       notes,
       transcript: sanitizedTranscript,
+      contact: {
+        client: matchedClient,
+        lead: matchedLead,
+        priorCalls,
+        totalPriorCallsCount,
+      },
     };
   } catch (error) {
     console.error('loadVoiceCallDetail error:', error);

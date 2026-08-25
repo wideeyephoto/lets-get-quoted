@@ -29,17 +29,21 @@ describe('Voice Calls Workspace Complete End-to-End Lifecycle', () => {
       voice_call_workflows: Record<string, unknown>[];
       voice_call_notes: Record<string, unknown>[];
       leads: Record<string, unknown>[];
+      clients: Record<string, unknown>[];
+      jobs: Record<string, unknown>[];
     } = {
       voice_calls: [],
       voice_call_workflows: [],
       voice_call_notes: [],
       leads: [],
+      clients: [],
+      jobs: [],
     };
 
     const mockSupabase = {
       from(table: keyof typeof memoryDb) {
         const chain: Record<string, unknown> = {};
-        for (const m of ['select', 'order', 'limit', 'gte', 'in']) {
+        for (const m of ['select', 'order', 'limit', 'gte', 'in', 'neq']) {
           chain[m] = () => chain;
         }
 
