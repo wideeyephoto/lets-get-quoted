@@ -58,10 +58,10 @@ type WebsiteBuilderProps = {
 const OPEN_TARGETS: Record<string, { tab: BuilderTab; card: string }> = {
   intake: { tab: 'page', card: 'estimate' },
   reviews: { tab: 'page', card: 'testimonials' },
-  // Linked from Settings → Business → Connected apps, which is where somebody
-  // looking for their integrations goes. The linking itself stays here: it
-  // needs the Places library and the builder's own save path.
   google: { tab: 'publish', card: 'found' },
+  logo: { tab: 'design', card: 'logo' },
+  typography: { tab: 'design', card: 'typography' },
+  theme: { tab: 'design', card: 'theme' },
 };
 
 // Heading font choices. The webfont options reuse faces the app already loads
@@ -702,7 +702,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, mess
       // open before focusField can find the input.
       if (target === 'hero') { setActiveTab('page'); setOpenSection('hero'); focusField('bf-headline'); return; }
       if (target === 'heroEyebrow') { setActiveTab('page'); setOpenSection('hero'); focusField('bf-hero-eyebrow'); return; }
-      if (target === 'identity') { setActiveTab('page'); setOpenSection('header'); focusField('bf-name-style'); return; }
+      if (target === 'identity') { setActiveTab('design'); setOpenSection('typography'); focusField('bf-name-style'); return; }
       if (target === 'bizTagline') { setActiveTab('page'); setOpenSection('hero'); focusField('bf-tagline'); return; }
       if (target === 'bizArea') { setActiveTab('page'); setOpenSection('serviceAreas'); focusField('bf-area-intro'); return; }
       if (target === 'bizHours') { setActiveTab('page'); setOpenSection('footer'); focusField('bf-hours'); return; }
@@ -717,9 +717,8 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, mess
       // falling through to SECTION_TARGETS, which assumes the Page tab.
       if (target === 'socials') { setActiveTab('business'); setOpenSection('socials'); scrollCardToTop(); return; }
       if (target === 'heroBadge') { setActiveTab('page'); setOpenSection('hero'); flashCard('heroBadge', 'design-hero-badge'); return; }
-      // The logo + auto trade-icon jump to the Header section's "Your logo" card
-      // (Page tab), where the glyph picker, transparent toggle, and upload live.
-      if (target === 'brandIcon' || target === 'logo') { setActiveTab('page'); setOpenSection('header'); requestAnimationFrame(() => requestAnimationFrame(() => document.getElementById('design-logo')?.scrollIntoView({ behavior: 'smooth', block: 'center' }))); return; }
+      // The logo + auto trade-icon jump to the Brand tab's "Logo & brand icon" card
+      if (target === 'brandIcon' || target === 'logo') { setActiveTab('design'); setOpenSection('logo'); scrollCardToTop(); return; }
       // Every photo opens the "Replace photo" popup, routed by what was clicked.
       if (target === 'heroImage') { setPicker({ label: 'the hero image', kind: 'hero' }); return; }
       if (target.startsWith('image-')) {
@@ -1886,6 +1885,131 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, mess
 
                 </SectionCard>
 
+                <SectionCard title="Logo &amp; brand icon" description="Your business logo or trade icon — shown in the header, footer, and browser tab." open={openSection === 'logo'} onToggleOpen={() => toggleSection('logo')}>
+                  <div className={styles.imageSlot}>
+                    {site.logo_url
+                      ? <div className={styles.logoPreviews}><div className={styles.logoPreview}><img src={site.logo_url} alt="Logo on a light header" data-logo-style={siteContent.logoStyle} /><em>Light</em></div><div className={styles.logoPreviewDark}><img src={site.logo_url} alt="Logo on a dark header" data-logo-style={siteContent.logoStyle} /><em>Dark</em></div></div>
+                      : (() => {
+                          const glyphOptions = getTradeGlyphOptions(siteContent.trade);
+                          const glyph = glyphForContent(siteContent);
+                          const accent = site.accent_override || '#ff7a21';
+                          const query = iconSearch.trim().toLowerCase();
+                          const shownGlyphs = query
+                            ? SERVICE_ICON_KEYS.filter((key) => key.toLowerCase().includes(query) || (TRADE_GLYPH_NOUNS[key] ?? '').toLowerCase().includes(query))
+                            : glyphOptions;
+                          return (
+                            <div className={styles.autoLogoWrap}>
+                              <div className={styles.autoLogo}>
+                                <span className={styles.autoLogoChip} data-logo-style={siteContent.logoStyle} style={{ color: accent }}>
+                                  <ServiceIcon name={glyph} className={styles.autoLogoGlyph} />
+                                </span>
+                                <div className={styles.autoLogoMeta}>
+                                  <strong>Auto icon for your trade</strong>
+                                  <small>Pick the mark that fits best — it’s your header, footer, and browser-tab icon until you add your own logo.</small>
+                                </div>
+                              </div>
+                              <input
+                                type="search"
+                                className={styles.glyphSearch}
+                                value={iconSearch}
+                                onChange={(event) => setIconSearch(event.target.value)}
+                                placeholder="Search all icons — e.g. wrench, leaf, truck, drill"
+                                aria-label="Search brand icons"
+                              />
+                              {shownGlyphs.length > 0 ? (
+                                <div className={styles.glyphPicker} role="group" aria-label="Choose your brand icon">
+                                  {shownGlyphs.map((key) => (
+                                    <button
+                                      type="button"
+                                      key={key}
+                                      className={`${styles.glyphPickerBtn}${glyph === key ? ` ${styles.glyphPickerBtnOn}` : ''}`}
+                                      style={{ color: accent }}
+                                      aria-pressed={glyph === key}
+                                      aria-label={`Use the ${TRADE_GLYPH_NOUNS[key] ?? key} icon`}
+                                      onClick={() => updateSiteContent({ brandGlyph: key })}
+                                    >
+                                      <ServiceIcon name={key} className={styles.glyphPickerGlyph} />
+                                    </button>
+                                  ))}
+                                </div>
+                              ) : (
+                                <p className={styles.glyphSearchEmpty}>No icons match “{iconSearch.trim()}”. Try another word.</p>
+                              )}
+                              <label className={styles.autoLogoTransparent}>
+                                <input
+                                  type="checkbox"
+                                  checked={siteContent.logoStyle === 'transparent'}
+                                  onChange={(event) => updateSiteContent({ logoStyle: event.target.checked ? 'transparent' : 'rounded' })}
+                                />
+                                <span><strong>Transparent background</strong><small>Show just the icon on your site — drop the tile behind it.</small></span>
+                              </label>
+                            </div>
+                          );
+                        })()}
+                    <hr className={styles.logoDivider} />
+                    <div className={styles.imageSlotActions}>
+                      <button type="button" className={`${styles.secondaryAction} btn primary`} onClick={() => setShowLogoStudio(true)} style={{ background: '#2563eb', color: '#ffffff', border: 'none', fontWeight: 700 }}>
+                        ✨ AI Logo Studio
+                      </button>
+                      <button type="button" className={styles.secondaryAction} onClick={() => openPicker('your logo', 'logo')}>{site.logo_url ? 'Replace photo' : 'Upload custom file'}</button>
+                      {site.logo_url && <button type="button" className={styles.secondaryAction} onClick={() => handleChange('logo_url', null)}>Remove</button>}
+                    </div>
+                    <div className={styles.formColumns}>
+                      <label className={styles.formField}><span>Logo style</span><select value={siteContent.logoStyle} onChange={(event) => updateSiteContent({ logoStyle: event.target.value })}><option value="plain">Plain (no frame)</option><option value="transparent">Transparent (no background)</option><option value="rounded">Rounded corners</option><option value="squircle">Squircle</option><option value="circle">Circle</option><option value="framed">Framed chip (padding + border)</option></select></label>
+                      <label className={styles.formField}><span>Logo size</span><select value={siteContent.logoSize} onChange={(event) => updateSiteContent({ logoSize: event.target.value })}><option value="small">Small</option><option value="medium">Medium</option><option value="large">Large</option></select></label>
+                    </div>
+                    <small className={styles.fieldHint}>Best as a <strong>PNG or SVG with a transparent background</strong> — wide and simple. Aim for ~400×120px; it&apos;s shown up to 70px tall.</small>
+                  </div>
+                </SectionCard>
+
+                <SectionCard title="Typography &amp; buttons" description="Select typography and button styles that define your brand across the entire site." open={openSection === 'typography'} onToggleOpen={() => toggleSection('typography')}>
+                  <label className={styles.formField}><span>Heading font</span><select value={site.header_font || ''} onChange={(event) => handleChange('header_font', event.target.value || null)}>
+                    <option value="">Theme default</option>
+                    {HEADING_FONT_OPTIONS.map((font) => <option key={font.value} value={font.value} style={{ fontFamily: font.value }}>{font.label}</option>)}
+                  </select></label>
+
+                  <label className={styles.formField} id="bf-brand-font"><span>Company name font</span>
+                    <select value={siteContent.brandFont} onChange={(event) => updateSiteContent({ brandFont: event.target.value })} style={{ fontFamily: siteContent.brandFont && siteContent.brandFont !== 'var(--theme-display)' ? siteContent.brandFont : undefined }}>
+                      <option value="">Theme default</option>
+                      <option value="var(--theme-display)">Match heading font</option>
+                      {HEADING_FONT_OPTIONS.map((font) => <option key={font.value} value={font.value} style={{ fontFamily: font.value }}>{font.label}</option>)}
+                    </select>
+                  </label>
+
+                  <div className={styles.formField} id="bf-name-style">
+                    <span>Company name style</span>
+                    {(() => {
+                      const nm = site.company_name.trim() || 'Your Company';
+                      const parts = nm.split(/\s+/);
+                      const renderName = () => parts.length <= 1
+                        ? <span className={`${styles.wmPreviewFirst} ${styles.wmPreviewLast}`}>{nm}</span>
+                        : parts.map((word, i) => <span key={i}>{i > 0 ? ' ' : ''}<span className={i === 0 ? styles.wmPreviewFirst : i === parts.length - 1 ? styles.wmPreviewLast : styles.wmPreviewMid}>{word}</span></span>);
+                      const previewFont = siteContent.brandFont && siteContent.brandFont !== 'var(--theme-display)' ? siteContent.brandFont : undefined;
+                      const options = [{ key: '', label: 'Standard' }, ...WORDMARK_STYLES];
+                      return (
+                        <div className={styles.namePicker} role="radiogroup" aria-label="Company name style" style={{ '--wm-accent': site.accent_override || '#ff7a21', fontFamily: previewFont } as CSSProperties}>
+                          {options.map((style) => {
+                            const selected = (siteContent.wordmarkStyle || '') === style.key;
+                            return (
+                              <button type="button" key={style.key || 'standard'} role="radio" aria-checked={selected} className={`${styles.namePickerTile}${selected ? ` ${styles.namePickerTileOn}` : ''}`} onClick={() => updateSiteContent({ wordmarkStyle: style.key })}>
+                                <span className={styles.namePickerMark} data-wm={style.key || 'plain'}>{renderName()}</span>
+                                <small>{style.label}</small>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                  <small className={styles.fieldHint}>Your business name in the header — shown exactly as you type. Tap a style to layer a treatment on top; the accent color follows your theme.</small>
+
+                  <hr className={styles.logoDivider} />
+                  <div className={styles.formColumns}>
+                    <label className={styles.formField}><span>Page buttons</span><select value={site.button_style === 'ghost' ? 'solid' : (site.button_style || 'solid')} onChange={(event) => handleChange('button_style', event.target.value)}>{BUTTON_STYLES.map((b) => <option key={b.key} value={b.key}>{b.label}</option>)}</select><small className={styles.fieldHint}>Hero, contact &amp; footer call-to-action buttons.</small></label>
+                    <label className={styles.formField}><span>Header button</span><select value={siteContent.headerButtonStyle} onChange={(event) => updateSiteContent({ headerButtonStyle: event.target.value })}><option value="">Match page buttons</option>{HEADER_BUTTON_STYLES.map((b) => <option key={b.key} value={b.key}>{b.label}</option>)}</select><small className={styles.fieldHint}>The &ldquo;Instant Estimate&rdquo; button in your header.</small></label>
+                  </div>
+                </SectionCard>
+
               </div>
             )}
 
@@ -2031,130 +2155,13 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, mess
                   </div>
 
                   <hr className={styles.logoDivider} />
-                  <div className={styles.cardGroupLabel}>Type &amp; layout</div>
-                  <label className={styles.formField}><span>Heading font</span><select value={site.header_font || ''} onChange={(event) => handleChange('header_font', event.target.value || null)}>
-                    <option value="">Theme default</option>
-                    {HEADING_FONT_OPTIONS.map((font) => <option key={font.value} value={font.value} style={{ fontFamily: font.value }}>{font.label}</option>)}
-                  </select></label>
-                  <div className={styles.formColumns}>
-                    <label className={styles.formField}><span>Page buttons</span><select value={site.button_style === 'ghost' ? 'solid' : (site.button_style || 'solid')} onChange={(event) => handleChange('button_style', event.target.value)}>{BUTTON_STYLES.map((b) => <option key={b.key} value={b.key}>{b.label}</option>)}</select><small className={styles.fieldHint}>Hero, contact &amp; footer call-to-action buttons.</small></label>
-                    <label className={styles.formField}><span>Header button</span><select value={siteContent.headerButtonStyle} onChange={(event) => updateSiteContent({ headerButtonStyle: event.target.value })}><option value="">Match page buttons</option>{HEADER_BUTTON_STYLES.map((b) => <option key={b.key} value={b.key}>{b.label}</option>)}</select><small className={styles.fieldHint}>The &ldquo;Instant Estimate&rdquo; button in your header.</small></label>
-                  </div>
-
-                  <hr className={styles.logoDivider} />
-                  <label className={styles.formField} id="bf-brand-font"><span>Company name font</span>
-                    <select value={siteContent.brandFont} onChange={(event) => updateSiteContent({ brandFont: event.target.value })} style={{ fontFamily: siteContent.brandFont && siteContent.brandFont !== 'var(--theme-display)' ? siteContent.brandFont : undefined }}>
-                      <option value="">Theme default</option>
-                      <option value="var(--theme-display)">Match heading font</option>
-                      {HEADING_FONT_OPTIONS.map((font) => <option key={font.value} value={font.value} style={{ fontFamily: font.value }}>{font.label}</option>)}
-                    </select>
-                  </label>
-                  <div className={styles.formField} id="bf-name-style">
-                    <span>Company name style</span>
-                    {(() => {
-                      const nm = site.company_name.trim() || 'Your Company';
-                      const parts = nm.split(/\s+/);
-                      const renderName = () => parts.length <= 1
-                        ? <span className={`${styles.wmPreviewFirst} ${styles.wmPreviewLast}`}>{nm}</span>
-                        : parts.map((word, i) => <span key={i}>{i > 0 ? ' ' : ''}<span className={i === 0 ? styles.wmPreviewFirst : i === parts.length - 1 ? styles.wmPreviewLast : styles.wmPreviewMid}>{word}</span></span>);
-                      const previewFont = siteContent.brandFont && siteContent.brandFont !== 'var(--theme-display)' ? siteContent.brandFont : undefined;
-                      const options = [{ key: '', label: 'Standard' }, ...WORDMARK_STYLES];
-                      return (
-                        <div className={styles.namePicker} role="radiogroup" aria-label="Company name style" style={{ '--wm-accent': site.accent_override || '#ff7a21', fontFamily: previewFont } as CSSProperties}>
-                          {options.map((style) => {
-                            const selected = (siteContent.wordmarkStyle || '') === style.key;
-                            return (
-                              <button type="button" key={style.key || 'standard'} role="radio" aria-checked={selected} className={`${styles.namePickerTile}${selected ? ` ${styles.namePickerTileOn}` : ''}`} onClick={() => updateSiteContent({ wordmarkStyle: style.key })}>
-                                <span className={styles.namePickerMark} data-wm={style.key || 'plain'}>{renderName()}</span>
-                                <small>{style.label}</small>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      );
-                    })()}
-                  </div>
-                  <small className={styles.fieldHint}>Your business name in the header — shown exactly as you type. Tap a style to layer a treatment on top; the accent color follows your theme.</small>
-
-                  <hr className={styles.logoDivider} />
-                  <div id="design-logo">
-                    <div className={styles.contentSubhead}><strong>Your logo</strong><small>Shown small in your header and footer.</small></div>
-                    <div className={styles.imageSlot}>
-                    {site.logo_url
-                      ? <div className={styles.logoPreviews}><div className={styles.logoPreview}><img src={site.logo_url} alt="Logo on a light header" data-logo-style={siteContent.logoStyle} /><em>Light</em></div><div className={styles.logoPreviewDark}><img src={site.logo_url} alt="Logo on a dark header" data-logo-style={siteContent.logoStyle} /><em>Dark</em></div></div>
-                      : (() => {
-                          const glyphOptions = getTradeGlyphOptions(siteContent.trade);
-                          const glyph = glyphForContent(siteContent);
-                          const accent = site.accent_override || '#ff7a21';
-                          // Empty search shows the trade-suggested marks; a query
-                          // filters the whole baked set by key OR friendly noun.
-                          const query = iconSearch.trim().toLowerCase();
-                          const shownGlyphs = query
-                            ? SERVICE_ICON_KEYS.filter((key) => key.toLowerCase().includes(query) || (TRADE_GLYPH_NOUNS[key] ?? '').toLowerCase().includes(query))
-                            : glyphOptions;
-                          return (
-                            <div className={styles.autoLogoWrap}>
-                              <div className={styles.autoLogo}>
-                                <span className={styles.autoLogoChip} data-logo-style={siteContent.logoStyle} style={{ color: accent }}>
-                                  <ServiceIcon name={glyph} className={styles.autoLogoGlyph} />
-                                </span>
-                                <div className={styles.autoLogoMeta}>
-                                  <strong>Auto icon for your trade</strong>
-                                  <small>Pick the mark that fits best — it’s your header, footer, and browser-tab icon until you add your own logo.</small>
-                                </div>
-                              </div>
-                              <input
-                                type="search"
-                                className={styles.glyphSearch}
-                                value={iconSearch}
-                                onChange={(event) => setIconSearch(event.target.value)}
-                                placeholder="Search all icons — e.g. wrench, leaf, truck, drill"
-                                aria-label="Search brand icons"
-                              />
-                              {shownGlyphs.length > 0 ? (
-                                <div className={styles.glyphPicker} role="group" aria-label="Choose your brand icon">
-                                  {shownGlyphs.map((key) => (
-                                    <button
-                                      type="button"
-                                      key={key}
-                                      className={`${styles.glyphPickerBtn}${glyph === key ? ` ${styles.glyphPickerBtnOn}` : ''}`}
-                                      style={{ color: accent }}
-                                      aria-pressed={glyph === key}
-                                      aria-label={`Use the ${TRADE_GLYPH_NOUNS[key] ?? key} icon`}
-                                      onClick={() => updateSiteContent({ brandGlyph: key })}
-                                    >
-                                      <ServiceIcon name={key} className={styles.glyphPickerGlyph} />
-                                    </button>
-                                  ))}
-                                </div>
-                              ) : (
-                                <p className={styles.glyphSearchEmpty}>No icons match “{iconSearch.trim()}”. Try another word.</p>
-                              )}
-                              <label className={styles.autoLogoTransparent}>
-                                <input
-                                  type="checkbox"
-                                  checked={siteContent.logoStyle === 'transparent'}
-                                  onChange={(event) => updateSiteContent({ logoStyle: event.target.checked ? 'transparent' : 'rounded' })}
-                                />
-                                <span><strong>Transparent background</strong><small>Show just the icon on your site — drop the tile behind it.</small></span>
-                              </label>
-                            </div>
-                          );
-                        })()}
-                    <hr className={styles.logoDivider} />
-                    <div className={styles.imageSlotActions}>
-                      <button type="button" className={`${styles.secondaryAction} btn primary`} onClick={() => setShowLogoStudio(true)} style={{ background: '#2563eb', color: '#ffffff', border: 'none', fontWeight: 700 }}>
-                        ✨ AI Logo Studio
-                      </button>
-                      <button type="button" className={styles.secondaryAction} onClick={() => openPicker('your logo', 'logo')}>{site.logo_url ? 'Replace photo' : 'Upload custom file'}</button>
-                      {site.logo_url && <button type="button" className={styles.secondaryAction} onClick={() => handleChange('logo_url', null)}>Remove</button>}
-                    </div>
-                    <div className={styles.formColumns}>
-                      <label className={styles.formField}><span>Logo style</span><select value={siteContent.logoStyle} onChange={(event) => updateSiteContent({ logoStyle: event.target.value })}><option value="plain">Plain (no frame)</option><option value="transparent">Transparent (no background)</option><option value="rounded">Rounded corners</option><option value="squircle">Squircle</option><option value="circle">Circle</option><option value="framed">Framed chip (padding + border)</option></select></label>
-                      <label className={styles.formField}><span>Logo size</span><select value={siteContent.logoSize} onChange={(event) => updateSiteContent({ logoSize: event.target.value })}><option value="small">Small</option><option value="medium">Medium</option><option value="large">Large</option></select></label>
-                    </div>
-                    <small className={styles.fieldHint}>Best as a <strong>PNG or SVG with a transparent background</strong> — wide and simple. Aim for ~400×120px; it&apos;s shown up to 70px tall.</small>
-                    </div>
+                  <div className={styles.chatNumberChips} style={{ marginTop: '0.6rem' }}>
+                    <button type="button" className={styles.chatNumberChip} onClick={() => jumpTo('design', 'logo')}>
+                      🎨 Logo &amp; Brand Icon (on Brand tab) →
+                    </button>
+                    <button type="button" className={styles.chatNumberChip} onClick={() => jumpTo('design', 'typography')}>
+                      ✏️ Typography &amp; Buttons (on Brand tab) →
+                    </button>
                   </div>
                 </SectionCard>
 
@@ -2695,7 +2702,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, mess
                   <button type="button" className={styles.secondaryAction} onClick={() => updateServiceAreas({ ...siteContent.serviceAreas, enabled: true, cities: [...siteContent.serviceAreas.cities, ''] })}>Add city</button>
                 </SectionCard>
 
-                <SectionCard reorder={reorderProps('projectShowcase', 'Additional image gallery')} title="Additional image gallery" description="An animated band of your best photos — up to 10. Add your own here, or import them from completed jobs." enabled={siteContent.projectShowcase.enabled} onToggleEnabled={(value) => updateProjectShowcase({ ...siteContent.projectShowcase, enabled: value })} {...projectShowcaseHint} open={openSection === 'projectShowcase'} onToggleOpen={() => toggleSection('projectShowcase')}>
+                <SectionCard reorder={reorderProps('projectShowcase', 'Project carousel')} title="Project Carousel &amp; Showcase" description="An animated visual band of your best photos — coverflow, spotlight, or auto-sliding carousel. Add your own here, or import them from completed jobs." evidence="An animated visual showcase catches the eye immediately and lets homeowners see multiple finished transformations in motion." enabled={siteContent.projectShowcase.enabled} onToggleEnabled={(value) => updateProjectShowcase({ ...siteContent.projectShowcase, enabled: value })} {...projectShowcaseHint} open={openSection === 'projectShowcase'} onToggleOpen={() => toggleSection('projectShowcase')}>
                   <label className={styles.formField}><span>Title</span><input value={siteContent.projectShowcase.eyebrow} maxLength={40} onChange={(event) => updateProjectShowcase({ ...siteContent.projectShowcase, eyebrow: event.target.value })} placeholder="Recent Jobs" /></label>
                   <label className={styles.formField}><span>Heading</span><input value={siteContent.projectShowcase.title} maxLength={80} onChange={(event) => updateProjectShowcase({ ...siteContent.projectShowcase, title: event.target.value })} placeholder="See Our Work" /></label>
                   {/* The public page swaps the two DEFAULT headings while the
@@ -2782,6 +2789,29 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, mess
                 <div className={styles.cardGroupLabel}>Trust boosters</div>
 
                 <SectionCard title="Star-rating badge" description={'Shows a "4.9 ★ from 37 reviews" trust badge near your reviews. Enter your real average rating and review count — only enable this if the numbers are accurate.'} evidence="97% of buyers check reviews first — a rating shown right beside your form is what turns that trust into a call." enabled={siteContent.ratingBadge.enabled} onToggleEnabled={(value) => updateRatingBadge({ ...siteContent.ratingBadge, enabled: value })} open={openSection === 'rating'} onToggleOpen={() => toggleSection('rating')}>
+                  {siteContent.testimonials.googleRating > 0 && (
+                    <div style={{ marginBottom: '0.75rem' }}>
+                      <button
+                        type="button"
+                        className={styles.secondaryAction}
+                        onClick={() => {
+                          const rating = siteContent.testimonials.googleRating;
+                          const count = siteContent.testimonials.googleReviewCount;
+                          setRatingInput(String(rating));
+                          setReviewCountInput(String(count));
+                          updateRatingBadge({
+                            ...siteContent.ratingBadge,
+                            enabled: true,
+                            rating,
+                            reviewCount: count,
+                            sourceLabel: 'Google reviews',
+                          });
+                        }}
+                      >
+                        ⚡ Auto-sync from connected Google Reviews ({siteContent.testimonials.googleRating}★ · {siteContent.testimonials.googleReviewCount} reviews)
+                      </button>
+                    </div>
+                  )}
                   <div className={styles.formColumns}>
                     <label className={styles.formField}><span>Average rating (1–5)</span><input type="number" min={1} max={5} step={0.1} value={ratingInput} onChange={(event) => { const raw = event.target.value; setRatingInput(raw); if (raw !== '') updateRatingBadge({ ...siteContent.ratingBadge, rating: Number(raw) }); }} onBlur={() => setRatingInput(String(siteContent.ratingBadge.rating))} /></label>
                     <label className={styles.formField}><span>Number of reviews</span><input type="number" min={0} step={1} value={reviewCountInput} onChange={(event) => { const raw = event.target.value; setReviewCountInput(raw); if (raw !== '') updateRatingBadge({ ...siteContent.ratingBadge, reviewCount: Number(raw) }); }} onBlur={() => setReviewCountInput(String(siteContent.ratingBadge.reviewCount))} /></label>
