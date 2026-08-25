@@ -33,7 +33,7 @@ export default function InventoryWorkspace({
   const [tools, setTools] = useState<ToolAsset[]>(initialTools);
   const [vehicles, setVehicles] = useState<FleetVehicle[]>(initialVehicles);
   const [stock, setStock] = useState<VanStockItem[]>(initialStock);
-  const [maintenance, setMaintenance] = useState<MaintenanceRecord[]>(initialMaintenance);
+  const [maintenance, _setMaintenance] = useState<MaintenanceRecord[]>(initialMaintenance);
 
   // Filter & Search states
   const [toolFilter, setToolFilter] = useState<'all' | ToolAssetStatus>('all');
@@ -625,6 +625,7 @@ export default function InventoryWorkspace({
                   Crew Technician
                 </label>
                 <select
+                  aria-label="Crew Technician"
                   value={selectedCrewName}
                   onChange={(e) => setSelectedCrewName(e.target.value)}
                   style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #cbd5e1' }}

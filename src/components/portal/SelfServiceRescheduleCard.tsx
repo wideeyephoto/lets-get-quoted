@@ -221,6 +221,7 @@ export default function SelfServiceRescheduleCard({
               Reason for rescheduling (optional):
             </label>
             <select
+              aria-label="Reason for rescheduling"
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.82rem' }}
