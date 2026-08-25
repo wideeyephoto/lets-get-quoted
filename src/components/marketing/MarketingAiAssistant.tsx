@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { SIGNUP_URL } from '@/components/flagship/site-chrome';
 import styles from './marketing-ai-assistant.module.css';
 
@@ -10,6 +11,7 @@ type FaqItem = {
   title: string;
   answer: string;
   keywords: string[];
+  trade?: string;
   ctaText?: string;
   ctaHref?: string;
 };
@@ -21,6 +23,24 @@ type SearchResult = {
   ctaText?: string;
   ctaHref?: string;
 };
+
+const TRADES = [
+  { id: 'all', label: '✨ All Trades' },
+  { id: 'plumbing', label: '🔧 Plumbing' },
+  { id: 'hvac', label: '❄️ HVAC' },
+  { id: 'carpentry', label: '🔨 Carpentry' },
+  { id: 'landscaping', label: '🌳 Landscaping' },
+  { id: 'solo', label: '⚡ Solo Handyman' },
+] as const;
+
+const QUICK_PROMPTS = [
+  'How do instant quotes work?',
+  'Does it sync with QuickBooks & Stripe?',
+  'Can clients pay deposits online?',
+  'How do I switch from Jobber or Housecall Pro?',
+  'How soon do customer payments reach my bank?',
+  'Can my crew log hours in the field?',
+];
 
 const KNOWLEDGE_BASE: FaqItem[] = [
   {
@@ -312,8 +332,7 @@ const KNOWLEDGE_BASE: FaqItem[] = [
   },
 ];
 
-// 5 starter FAQs displayed in the default accordion list
-const STARTER_FAQ_IDS = ['switching', 'flex-plan', 'quotes', 'quick-stops', 'integrations'];
+const STARTER_FAQ_IDS = ['quotes', 'flex-plan', 'switching', 'quick-stops', 'integrations'];
 
 function searchKnowledgeBase(query: string): SearchResult {
   const clean = query.trim().toLowerCase();
@@ -327,11 +346,9 @@ function searchKnowledgeBase(query: string): SearchResult {
     const titleLower = item.title.toLowerCase();
     const answerLower = item.answer.toLowerCase();
 
-    // Exact query in title / answer
     if (titleLower.includes(clean)) score += 60;
     if (answerLower.includes(clean)) score += 25;
 
-    // Token & keyword matches
     for (const token of tokens) {
       if (token.length < 2) continue;
 
@@ -372,11 +389,22 @@ function searchKnowledgeBase(query: string): SearchResult {
 }
 
 export default function MarketingAiAssistant() {
+  const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
   const [expandedFaqId, setExpandedFaqId] = useState<string | null>(null);
   const [searchResult, setSearchResult] = useState<SearchResult | null>(null);
   const [query, setQuery] = useState('');
   const [monthlyVolume, setMonthlyVolume] = useState<number>(20000);
+  const [activeToolTab, setActiveToolTab] = useState<'matcher' | 'savings'>('matcher');
+  const [competitorMonthly, setCompetitorMonthly] = useState<number>(199);
+  const [selectedTrade, setSelectedTrade] = useState<string>('all');
+  const [isSearching, setIsSearching] = useState(false);
+
+  // Callback form state
+  const [showCallback, setShowCallback] = useState(false);
+  const [callbackPhone, setCallbackPhone] = useState('');
+  const [callbackSent, setCallbackSent] = useState(false);
+
   const drawerRef = useRef<HTMLDivElement>(null);
   const faqRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const searchResultRef = useRef<HTMLDivElement>(null);
@@ -391,6 +419,23 @@ export default function MarketingAiAssistant() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen]);
+
+  // Contextual page guidance
+  const pageGreeting = useMemo(() => {
+    if (pathname?.startsWith('/pricing')) {
+      return 'Looking for the right plan? Calculate your card volume fees below or compare your annual savings on Flex ($0/mo).';
+    }
+    if (pathname?.startsWith('/compare')) {
+      return 'Switching from Jobber or Housecall Pro takes under 10 minutes via CSV with zero contracts and $0 upfront setup.';
+    }
+    if (pathname?.startsWith('/features/website-builder')) {
+      return 'Choose from 20 trade-tested website templates with custom domain connection, Google Reviews, and SSL included.';
+    }
+    if (pathname?.startsWith('/features/ai-intake') || pathname?.startsWith('/features/quick-stops')) {
+      return 'Quick Stops match small emergency leads directly to your crew’s live route so you book extra revenue on the way home.';
+    }
+    return '👋 Hi! Ask anything about plans, instant quotes, QuickBooks sync, or switching. Tap a quick question or use the tools below:';
+  }, [pathname]);
 
   // Plan recommendation logic
   const planRecommendation = useMemo(() => {
@@ -415,6 +460,12 @@ export default function MarketingAiAssistant() {
     };
   }, [monthlyVolume]);
 
+  // Annual competitor savings logic
+  const annualSavings = useMemo(() => {
+    const annualOldSoftware = (competitorMonthly + 35) * 12; // software + standard website hosting
+    return annualOldSoftware;
+  }, [competitorMonthly]);
+
   const handleToggleFaq = (faqId: string) => {
     const nextId = expandedFaqId === faqId ? null : faqId;
     setExpandedFaqId(nextId);
@@ -429,29 +480,42 @@ export default function MarketingAiAssistant() {
     }
   };
 
-  const handleSearchSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const clean = query.trim();
+  const handleTriggerSearch = (searchQuery: string) => {
+    const clean = searchQuery.trim();
     if (!clean) return;
 
-    const result = searchKnowledgeBase(clean);
-    setSearchResult(result);
-
-    // If it matches an active starter FAQ, also expand that accordion
-    const matchedStarter = KNOWLEDGE_BASE.find(
-      (k) => STARTER_FAQ_IDS.includes(k.id) && k.title === result.title
-    );
-    if (matchedStarter) {
-      setExpandedFaqId(matchedStarter.id);
-    }
+    setIsSearching(true);
 
     setTimeout(() => {
-      if (searchResultRef.current) {
-        searchResultRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-      }
-    }, 50);
+      const result = searchKnowledgeBase(clean);
+      setSearchResult(result);
+      setIsSearching(false);
 
+      const matchedStarter = KNOWLEDGE_BASE.find(
+        (k) => STARTER_FAQ_IDS.includes(k.id) && k.title === result.title
+      );
+      if (matchedStarter) {
+        setExpandedFaqId(matchedStarter.id);
+      }
+
+      setTimeout(() => {
+        if (searchResultRef.current) {
+          searchResultRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+      }, 50);
+    }, 180);
+  };
+
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    handleTriggerSearch(query);
     setQuery('');
+  };
+
+  const handleCallbackSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!callbackPhone.trim()) return;
+    setCallbackSent(true);
   };
 
   const starterFaqs = useMemo(
@@ -511,40 +575,110 @@ export default function MarketingAiAssistant() {
 
           {/* Body */}
           <div className={styles.chatBody}>
+            {/* Contextual Greeting Banner */}
             <div className={styles.messageBubble}>
-              👋 Hi! Ask anything about plans, switching, or integrations. Tap any question below to see instant answers:
+              {pageGreeting}
             </div>
 
-            {/* Interactive Plan Matcher */}
-            <div className={styles.planBox}>
-              <div className={styles.planBoxHeader}>
-                <span className={styles.planBoxLabel}>🧮 Plan Matcher</span>
-                <span className={styles.planBadgeMini}>
-                  <strong>{planRecommendation.name}</strong> (${(monthlyVolume / 1000).toFixed(0)}k/mo)
-                </span>
-              </div>
-              <div className={styles.planInputRow}>
-                <span className={styles.planVolLabel}>Volume:</span>
-                <input
-                  type="range"
-                  min={2000}
-                  max={90000}
-                  step={2000}
-                  value={monthlyVolume}
-                  onChange={(e) => setMonthlyVolume(Number(e.target.value))}
-                  className={styles.planSlider}
-                  aria-label="Estimated monthly card volume"
-                />
-                <span className={styles.planVolDisplay}>${(monthlyVolume / 1000).toFixed(0)}k/mo</span>
-              </div>
-              <div className={styles.planRecBadge}>
-                Recommended: <strong>{planRecommendation.name} Plan</strong> ({planRecommendation.price})
-                <div className={styles.planRecReason}>{planRecommendation.reason}</div>
-              </div>
+            {/* Trade Filter Bar */}
+            <div className={styles.tradeBar} role="tablist" aria-label="Trade Persona Selector">
+              {TRADES.map((trade) => (
+                <button
+                  key={trade.id}
+                  type="button"
+                  onClick={() => setSelectedTrade(trade.id)}
+                  className={`${styles.tradePill} ${selectedTrade === trade.id ? styles.tradePillActive : ''}`}
+                >
+                  {trade.label}
+                </button>
+              ))}
             </div>
+
+            {/* Tool Switcher Tabs */}
+            <div className={styles.toolTabRow}>
+              <button
+                type="button"
+                onClick={() => setActiveToolTab('matcher')}
+                className={`${styles.toolTab} ${activeToolTab === 'matcher' ? styles.toolTabActive : ''}`}
+              >
+                🧮 Plan Matcher
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveToolTab('savings')}
+                className={`${styles.toolTab} ${activeToolTab === 'savings' ? styles.toolTabActive : ''}`}
+              >
+                💸 Switch &amp; Save
+              </button>
+            </div>
+
+            {/* Tool 1: Plan Matcher */}
+            {activeToolTab === 'matcher' && (
+              <div className={styles.planBox}>
+                <div className={styles.planBoxHeader}>
+                  <span className={styles.planBoxLabel}>🧮 Volume Matcher</span>
+                  <span className={styles.planBadgeMini}>
+                    <strong>{planRecommendation.name}</strong> (${(monthlyVolume / 1000).toFixed(0)}k/mo)
+                  </span>
+                </div>
+                <div className={styles.planInputRow}>
+                  <span className={styles.planVolLabel}>Volume:</span>
+                  <input
+                    type="range"
+                    min={2000}
+                    max={90000}
+                    step={2000}
+                    value={monthlyVolume}
+                    onChange={(e) => setMonthlyVolume(Number(e.target.value))}
+                    className={styles.planSlider}
+                    aria-label="Estimated monthly card volume"
+                  />
+                  <span className={styles.planVolDisplay}>${(monthlyVolume / 1000).toFixed(0)}k/mo</span>
+                </div>
+                <div className={styles.planRecBadge}>
+                  Recommended: <strong>{planRecommendation.name} Plan</strong> ({planRecommendation.price})
+                  <div className={styles.planRecReason}>{planRecommendation.reason}</div>
+                </div>
+              </div>
+            )}
+
+            {/* Tool 2: Switch & Save Calculator */}
+            {activeToolTab === 'savings' && (
+              <div className={styles.savingsBox}>
+                <div className={styles.savingsHeader}>
+                  <span className={styles.savingsLabel}>💸 Competitor ROI Calculator</span>
+                </div>
+                <div style={{ fontSize: 11.5, color: '#a7bcc8' }}>What do you pay Jobber / Housecall Pro today?</div>
+                <div className={styles.savingsPresetRow}>
+                  {[149, 199, 299].map((amt) => (
+                    <button
+                      key={amt}
+                      type="button"
+                      onClick={() => setCompetitorMonthly(amt)}
+                      className={`${styles.savingsPresetBtn} ${competitorMonthly === amt ? styles.savingsPresetBtnActive : ''}`}
+                    >
+                      ${amt}/mo
+                    </button>
+                  ))}
+                </div>
+                <div className={styles.savingsResultBadge}>
+                  Switch to Flex ($0/mo): Save <strong>${annualSavings.toLocaleString()}/yr</strong> in fixed software &amp; website costs.
+                </div>
+              </div>
+            )}
+
+            {/* Typing Animation State */}
+            {isSearching && (
+              <div className={styles.typingIndicator}>
+                <span>✦ Consulting AI Knowledge Base</span>
+                <span className={styles.typingDot} />
+                <span className={styles.typingDot} />
+                <span className={styles.typingDot} />
+              </div>
+            )}
 
             {/* Search Answer Display */}
-            {searchResult && (
+            {searchResult && !isSearching && (
               <div ref={searchResultRef} className={styles.customResultCard}>
                 <div className={styles.customResultHeader}>
                   <span className={styles.customResultBadge}>
@@ -573,7 +707,9 @@ export default function MarketingAiAssistant() {
 
             {/* In-Place Accordion Questions */}
             <div className={styles.quickPillsSection}>
-              <span className={styles.quickPillsLabel}>Common Contractor Questions</span>
+              <span className={styles.quickPillsLabel}>
+                {selectedTrade !== 'all' ? `${TRADES.find((t) => t.id === selectedTrade)?.label} Questions` : 'Common Contractor Questions'}
+              </span>
               <div className={styles.accordionList}>
                 {starterFaqs.map((faq) => {
                   const isExpanded = expandedFaqId === faq.id;
@@ -615,10 +751,65 @@ export default function MarketingAiAssistant() {
                 })}
               </div>
             </div>
+
+            {/* Direct Human Callback Section */}
+            <div className={styles.callbackSection}>
+              {!showCallback && !callbackSent && (
+                <button
+                  type="button"
+                  onClick={() => setShowCallback(true)}
+                  className={styles.callbackToggleBtn}
+                >
+                  💬 Have a specific question? Get answers via SMS &rarr;
+                </button>
+              )}
+
+              {showCallback && !callbackSent && (
+                <form onSubmit={handleCallbackSubmit} className={styles.callbackCard}>
+                  <div className={styles.callbackCardTitle}>📱 Drop your number for a quick text answer:</div>
+                  <div className={styles.callbackInputRow}>
+                    <input
+                      type="tel"
+                      value={callbackPhone}
+                      onChange={(e) => setCallbackPhone(e.target.value)}
+                      placeholder="(555) 000-0000"
+                      className={styles.callbackPhoneInput}
+                      required
+                      aria-label="Your mobile phone number"
+                    />
+                    <button type="submit" className={styles.callbackSubmitBtn}>
+                      Text Me
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {callbackSent && (
+                <div className={styles.callbackCard}>
+                  <div className={styles.callbackSuccess}>
+                    ✓ Thanks! A product specialist will text you at {callbackPhone} shortly.
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* Footer Input + Conversion Link */}
+          {/* Footer Input + Quick Prompts + Conversion Link */}
           <div className={styles.drawerFooter}>
+            {/* Quick Prompt Chips */}
+            <div className={styles.quickPromptsRow} role="list" aria-label="Suggested questions">
+              {QUICK_PROMPTS.map((prompt) => (
+                <button
+                  key={prompt}
+                  type="button"
+                  onClick={() => handleTriggerSearch(prompt)}
+                  className={styles.quickPromptChip}
+                >
+                  {prompt}
+                </button>
+              ))}
+            </div>
+
             <form onSubmit={handleSearchSubmit} className={styles.inputForm}>
               <input
                 type="text"
@@ -641,3 +832,4 @@ export default function MarketingAiAssistant() {
     </div>
   );
 }
+

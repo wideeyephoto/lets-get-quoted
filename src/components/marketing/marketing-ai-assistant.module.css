@@ -474,50 +474,136 @@
   color: #d1e2eb;
 }
 
-.planBoxLabel {
+/* Trade Persona Filter Bar */
+.tradeBar {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.tradeBar::-webkit-scrollbar {
+  display: none;
+}
+
+.tradePill {
+  background: #06141e;
+  border: 1px solid rgba(174, 199, 211, 0.2);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 750;
+  color: #a7bcc8;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.tradePill:hover {
+  color: #f5f0e7;
+  border-color: rgba(80, 227, 189, 0.4);
+}
+
+.tradePillActive {
+  background: rgba(80, 227, 189, 0.15);
+  border-color: #50e3bd;
+  color: #50e3bd;
+  box-shadow: 0 0 10px rgba(80, 227, 189, 0.25);
+}
+
+/* Tool Tab Switcher (Plan Matcher vs Switch & Save) */
+.toolTabRow {
+  display: flex;
+  background: #06131c;
+  border: 1px solid rgba(174, 199, 211, 0.2);
+  border-radius: 8px;
+  padding: 2px;
+  gap: 2px;
+}
+
+.toolTab {
+  flex: 1;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-size: 11px;
+  font-weight: 800;
+  color: #8fa6b5;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.toolTab:hover {
+  color: #f5f0e7;
+}
+
+.toolTabActive {
+  background: #0e2433;
+  color: #50e3bd;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+/* Switch & Save Competitor Box */
+.savingsBox {
+  background: rgba(7, 19, 29, 0.9);
+  border: 1px solid rgba(255, 106, 36, 0.35);
+  border-radius: 12px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  animation: answerReveal 0.2s ease-out;
+}
+
+.savingsHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.savingsLabel {
   font-size: 11px;
   font-weight: 800;
   text-transform: uppercase;
-  color: #50e3bd;
+  letter-spacing: 0.5px;
+  color: #ff8547;
 }
 
-.planInputRow {
+.savingsPresetRow {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
-.planSlider {
+.savingsPresetBtn {
   flex: 1;
-  -webkit-appearance: none;
-  appearance: none;
-  height: 4px;
-  background: #173244;
-  border-radius: 2px;
-  outline: none;
-}
-
-.planSlider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: #50e3bd;
+  background: #0a1b26;
+  border: 1px solid rgba(174, 199, 211, 0.2);
+  border-radius: 6px;
+  padding: 6px 4px;
+  font-size: 11px;
+  font-weight: 750;
+  color: #a7bcc8;
   cursor: pointer;
+  transition: all 0.2s ease;
 }
 
-.planVolDisplay {
-  font-family: monospace;
-  font-size: 13px;
-  font-weight: 800;
-  color: #f5f0e7;
-  min-width: 65px;
-  text-align: right;
+.savingsPresetBtn:hover {
+  color: #ffffff;
+  border-color: #ff6a24;
 }
 
-.planRecBadge {
-  background: rgba(80, 227, 189, 0.15);
+.savingsPresetBtnActive {
+  background: rgba(255, 106, 36, 0.18);
+  border-color: #ff6a24;
+  color: #ffffff;
+}
+
+.savingsResultBadge {
+  background: rgba(80, 227, 189, 0.12);
   border: 1px solid #50e3bd;
   border-radius: 8px;
   padding: 8px 10px;
@@ -526,23 +612,180 @@
   line-height: 1.4;
 }
 
-.planRecBadge strong {
+.savingsResultBadge strong {
   color: #50e3bd;
+}
+
+/* Quick Suggestion Prompt Chips */
+.quickPromptsRow {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 2px 0 6px 0;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.quickPromptsRow::-webkit-scrollbar {
+  display: none;
+}
+
+.quickPromptChip {
+  background: #081722;
+  border: 1px solid rgba(174, 199, 211, 0.25);
+  border-radius: 999px;
+  padding: 5px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #d1e2eb;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.quickPromptChip:hover {
+  background: rgba(255, 106, 36, 0.15);
+  border-color: #ff6a24;
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
+/* Typing Indicator Animation */
+.typingIndicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 800;
+  color: #50e3bd;
+  padding: 6px 10px;
+  background: rgba(80, 227, 189, 0.1);
+  border: 1px solid rgba(80, 227, 189, 0.25);
+  border-radius: 8px;
+  animation: answerReveal 0.2s ease-out;
+}
+
+.typingDot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #50e3bd;
+  animation: typingBounce 1.2s infinite ease-in-out;
+}
+
+.typingDot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.typingDot:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes typingBounce {
+  0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+  40% { transform: scale(1.2); opacity: 1; }
+}
+
+/* Direct Phone Callback Intake */
+.callbackSection {
+  margin-top: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.callbackToggleBtn {
+  background: transparent;
+  border: none;
+  color: #8fa6b5;
+  font-size: 11px;
+  font-weight: 750;
+  text-decoration: underline;
+  cursor: pointer;
+  text-align: center;
+  padding: 4px;
+  transition: color 0.2s;
+}
+
+.callbackToggleBtn:hover {
+  color: #50e3bd;
+}
+
+.callbackCard {
+  background: rgba(10, 24, 34, 0.95);
+  border: 1px solid rgba(174, 199, 211, 0.25);
+  border-radius: 10px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  animation: answerReveal 0.2s ease-out;
+}
+
+.callbackCardTitle {
+  font-size: 11.5px;
+  font-weight: 800;
+  color: #f5f0e7;
+}
+
+.callbackInputRow {
+  display: flex;
+  gap: 6px;
+}
+
+.callbackPhoneInput {
+  flex: 1;
+  background: #06131c;
+  border: 1px solid rgba(174, 199, 211, 0.25);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 11.5px;
+  color: #ffffff;
+  outline: none;
+}
+
+.callbackPhoneInput:focus {
+  border-color: #50e3bd;
+}
+
+.callbackSubmitBtn {
+  background: #50e3bd;
+  border: none;
+  border-radius: 6px;
+  color: #06111a;
+  font-size: 11px;
+  font-weight: 850;
+  padding: 6px 10px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.2s;
+}
+
+.callbackSubmitBtn:hover {
+  background: #68f0cb;
+}
+
+.callbackSuccess {
+  font-size: 11px;
+  font-weight: 750;
+  color: #50e3bd;
+  line-height: 1.4;
 }
 
 /* Chat Footer & Input */
 .drawerFooter {
-  padding: 12px 16px;
+  padding: 10px 14px 12px 14px;
   background: rgba(6, 17, 26, 0.95);
   border-top: 1px solid rgba(174, 199, 211, 0.15);
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
 .inputForm {
   display: flex;
-  gap: 8px;
+  gap: 6px;
 }
 
 .textInput {
@@ -580,7 +823,7 @@
   background: #50e3bd;
   color: #06111a;
   border-radius: 8px;
-  padding: 10px;
+  padding: 9px;
   text-align: center;
   font-size: 12px;
   font-weight: 850;
@@ -603,16 +846,16 @@
     width: calc(100vw - 32px);
     right: 0;
     bottom: 54px;
-    height: 480px;
+    height: 500px;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .floatingTrigger, .drawer, .sparkleIcon, .pillBtn, .drawerCtaBtn {
+  .floatingTrigger, .drawer, .sparkleIcon, .accordionCard, .drawerCtaBtn, .tradePill, .toolTab {
     transition: none;
     animation: none;
   }
-  .floatingTrigger:hover, .pillBtn:hover, .drawerCtaBtn:hover {
+  .floatingTrigger:hover, .drawerCtaBtn:hover {
     transform: none;
   }
 }
