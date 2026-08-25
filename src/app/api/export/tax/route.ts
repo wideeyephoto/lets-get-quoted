@@ -26,7 +26,7 @@ export async function GET(request: Request) {
     filename = `letsgetquoted-schedule-c-worksheet-${year}.csv`;
   } else if (type === '1099') {
     const list = await build1099PrepList(supabase, accountId, year);
-    csv = build1099Csv(list);
+    csv = build1099Csv(list, year);
     filename = `letsgetquoted-1099-prep-${year}.csv`;
   } else {
     const pl = await buildProfitAndLoss(supabase, accountId, year);

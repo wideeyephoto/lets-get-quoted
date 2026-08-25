@@ -2,6 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { gridToCsv } from '@/lib/import-formats';
 import { listJobs, type Job, type JobStatus } from '@/lib/jobs';
 import { listServices } from '@/lib/services';
+import { fetchAllPages } from '@/lib/pagination';
 
 // Faithful CSV exports of the account's core records — the mirror of the
 // "migrate from another CRM" importer. Column headers match the importer's
@@ -31,14 +32,34 @@ const JOB_STATUS_LABEL: Record<JobStatus, string> = {
   archived: 'Archived',
 };
 
+type ExportClientRow = {
+  name: string | null;
+  phone: string | null;
+  email: string | null;
+  address: string | null;
+  notes: string | null;
+};
+
+type ExportInvoiceRow = {
+  ref: string | null;
+  job_id: string | null;
+  status: string | null;
+  total: number | null;
+  created_at: string | null;
+};
+
 export async function buildClientsCsv(supabase: SupabaseClient, accountId: string): Promise<string> {
-  const { data } = await supabase
-    .from('clients')
-    .select('name, phone, email, address, notes')
-    .eq('account_id', accountId)
-    .order('name', { ascending: true });
+  const data = await fetchAllPages<ExportClientRow>((from, to) =>
+    supabase
+      .from('clients')
+      .select('name, phone, email, address, notes')
+      .eq('account_id', accountId)
+      .order('name', { ascending: true })
+      .range(from, to),
+  );
+
   const grid: string[][] = [['Name', 'Phone', 'Email', 'Address', 'Notes']];
-  for (const c of data ?? []) {
+  for (const c of data) {
     grid.push([cell(c.name), cell(c.phone), cell(c.email), cell(c.address), cell(c.notes)]);
   }
   return gridToCsv(grid);
@@ -76,19 +97,22 @@ export async function buildJobsCsv(supabase: SupabaseClient, accountId: string):
 }
 
 export async function buildInvoicesCsv(supabase: SupabaseClient, accountId: string): Promise<string> {
-  const [{ data: invoices }, jobs] = await Promise.all([
-    supabase
-      .from('invoices')
-      .select('ref, job_id, status, total, created_at')
-      .eq('account_id', accountId)
-      .order('created_at', { ascending: false }),
+  const [invoices, jobs] = await Promise.all([
+    fetchAllPages<ExportInvoiceRow>((from, to) =>
+      supabase
+        .from('invoices')
+        .select('ref, job_id, status, total, created_at')
+        .eq('account_id', accountId)
+        .order('created_at', { ascending: false })
+        .range(from, to),
+    ),
     listJobs(supabase, accountId),
   ]);
   const jobById = new Map<string, Job>(jobs.map((job) => [job.id, job]));
   const grid: string[][] = [
     ['Ref', 'Customer', 'Phone', 'Email', 'Address', 'Description', 'Date', 'Total', 'Status'],
   ];
-  for (const inv of invoices ?? []) {
+  for (const inv of invoices) {
     const job = jobById.get(inv.job_id as string);
     grid.push([
       cell(inv.ref),
