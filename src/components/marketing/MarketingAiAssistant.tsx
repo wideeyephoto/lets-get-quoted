@@ -13,6 +13,15 @@ type FaqItem = {
   ctaHref?: string;
 };
 
+type Message = {
+  id: string;
+  role: 'user' | 'assistant';
+  text: string;
+  title?: string;
+  ctaText?: string;
+  ctaHref?: string;
+};
+
 const KNOWLEDGE_BASE: FaqItem[] = [
   {
     id: 'switching',
@@ -34,7 +43,7 @@ const KNOWLEDGE_BASE: FaqItem[] = [
     id: 'quick-stops',
     title: 'What are Quick Stops and how do they work?',
     answer:
-      'Quick Stops match incoming repair and small-job leads to your crew’s live route proximity. If you are finishing a job in a neighborhood, nearby emergency requests are dispatched to your phone so you book an extra \$300–\$600 on the way home.',
+      'Quick Stops match incoming repair and small-job leads to your crew’s live route proximity. If you are finishing a job in a neighborhood, nearby emergency requests are dispatched to your phone so you book an extra $300–$600 on the way home.',
     ctaText: 'Test AI Lead Sandbox',
     ctaHref: '/features/ai-intake',
   },
@@ -58,10 +67,19 @@ const KNOWLEDGE_BASE: FaqItem[] = [
 
 export default function MarketingAiAssistant() {
   const [isOpen, setIsOpen] = useState(false);
-  const [activeFaq, setActiveFaq] = useState<FaqItem | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [query, setQuery] = useState('');
   const [monthlyVolume, setMonthlyVolume] = useState<number>(20000);
   const drawerRef = useRef<HTMLDivElement>(null);
+  const chatBodyRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to bottom when messages update
+  useEffect(() => {
+    if (messages.length > 0 && messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }
+  }, [messages]);
 
   // Close on Escape key
   useEffect(() => {
@@ -98,33 +116,80 @@ export default function MarketingAiAssistant() {
   }, [monthlyVolume]);
 
   const handleSelectFaq = (faq: FaqItem) => {
-    setActiveFaq(faq);
+    const userMsg: Message = {
+      id: `user-${Date.now()}`,
+      role: 'user',
+      text: faq.title,
+    };
+    const botMsg: Message = {
+      id: `assistant-${Date.now() + 1}`,
+      role: 'assistant',
+      title: faq.title,
+      text: faq.answer,
+      ctaText: faq.ctaText,
+      ctaHref: faq.ctaHref,
+    };
+    setMessages((prev) => [...prev, userMsg, botMsg]);
+  };
+
+  const handleClearChat = () => {
+    setMessages([]);
   };
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!query.trim()) return;
+    const clean = query.trim();
+    if (!clean) return;
 
-    const lower = query.toLowerCase();
-    const match = KNOWLEDGE_BASE.find(
+    const lower = clean.toLowerCase();
+
+    // Match FAQ by keyword or title
+    let match = KNOWLEDGE_BASE.find(
       (item) =>
         item.title.toLowerCase().includes(lower) ||
         item.answer.toLowerCase().includes(lower) ||
         item.id.toLowerCase().includes(lower)
     );
 
-    if (match) {
-      setActiveFaq(match);
-    } else {
-      setActiveFaq({
-        id: 'custom',
-        title: `Question: "${query}"`,
-        answer:
-          'Let’s Get Quoted gives trade contractors a free custom website, 24/7 AI lead qualification, instant quotes with deposits, and complete scheduling starting at $0/mo. All plans include QuickBooks sync and Stripe payouts.',
-        ctaText: 'Start Free on Flex',
-        ctaHref: SIGNUP_URL,
-      });
+    if (!match) {
+      if (/jobber|housecall|switch|migrate|import|csv|competitor/i.test(lower)) {
+        match = KNOWLEDGE_BASE.find((k) => k.id === 'switching');
+      } else if (/pricing|price|cost|flex|monthly|fee|commission|percentage|free|plan/i.test(lower)) {
+        match = KNOWLEDGE_BASE.find((k) => k.id === 'flex-plan');
+      } else if (/quick\s*stop|route|proximity|emergency|lead|radius|dispatch/i.test(lower)) {
+        match = KNOWLEDGE_BASE.find((k) => k.id === 'quick-stops');
+      } else if (/quickbooks|qbo|stripe|sync|accounting|payout|bank|ach|apple\s*pay/i.test(lower)) {
+        match = KNOWLEDGE_BASE.find((k) => k.id === 'integrations');
+      } else if (/website|domain|url|template|design|theme|builder|google\s*review/i.test(lower)) {
+        match = KNOWLEDGE_BASE.find((k) => k.id === 'website');
+      }
     }
+
+    const userMsg: Message = {
+      id: `user-${Date.now()}`,
+      role: 'user',
+      text: clean,
+    };
+
+    const botMsg: Message = match
+      ? {
+          id: `assistant-${Date.now() + 1}`,
+          role: 'assistant',
+          title: match.title,
+          text: match.answer,
+          ctaText: match.ctaText,
+          ctaHref: match.ctaHref,
+        }
+      : {
+          id: `assistant-${Date.now() + 1}`,
+          role: 'assistant',
+          title: `Answer for "${clean}"`,
+          text: 'Let’s Get Quoted gives trade contractors a free custom website, 24/7 AI lead qualification, instant quotes with deposits, and complete scheduling starting at $0/mo. All plans include QuickBooks sync and Stripe payouts.',
+          ctaText: 'Start Free on Flex',
+          ctaHref: SIGNUP_URL,
+        };
+
+    setMessages((prev) => [...prev, userMsg, botMsg]);
     setQuery('');
   };
 
@@ -168,43 +233,35 @@ export default function MarketingAiAssistant() {
                 </span>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={() => setIsOpen(false)}
-              className={styles.closeBtn}
-              aria-label="Close Assistant"
-            >
-              ✕
-            </button>
+            <div className={styles.headerActions}>
+              {messages.length > 0 && (
+                <button
+                  type="button"
+                  onClick={handleClearChat}
+                  className={styles.resetBtn}
+                  title="Reset conversation"
+                  aria-label="Reset conversation"
+                >
+                  ↺ Clear
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setIsOpen(false)}
+                className={styles.closeBtn}
+                aria-label="Close Assistant"
+              >
+                ✕
+              </button>
+            </div>
           </div>
 
           {/* Body */}
-          <div className={styles.chatBody}>
+          <div ref={chatBodyRef} className={styles.chatBody}>
             <div className={styles.messageBubble}>
               👋 Hi! I can help you choose the right plan, explain how to switch from Jobber or Housecall Pro, or show
               you how our <strong>$0/mo Flex plan</strong> works.
             </div>
-
-            {/* Answer Display */}
-            {activeFaq && (
-              <div
-                className={styles.messageBubble}
-                style={{ background: 'rgba(80, 227, 189, 0.08)', borderColor: 'rgba(80, 227, 189, 0.3)' }}
-              >
-                <div style={{ fontWeight: 800, color: '#50e3bd', marginBottom: 6 }}>{activeFaq.title}</div>
-                <p style={{ margin: 0, fontSize: 13, lineHeight: 1.5 }}>{activeFaq.answer}</p>
-                {activeFaq.ctaText && activeFaq.ctaHref && (
-                  <div style={{ marginTop: 10 }}>
-                    <Link
-                      href={activeFaq.ctaHref}
-                      style={{ color: '#ff6a24', fontWeight: 800, fontSize: 12, textDecoration: 'underline' }}
-                    >
-                      {activeFaq.ctaText} &rarr;
-                    </Link>
-                  </div>
-                )}
-              </div>
-            )}
 
             {/* Interactive Plan Matcher */}
             <div className={styles.planBox}>
@@ -229,23 +286,69 @@ export default function MarketingAiAssistant() {
               </div>
             </div>
 
-            {/* Quick Questions Pills */}
-            <div className={styles.quickPillsSection}>
-              <span className={styles.quickPillsLabel}>Common Contractor Questions</span>
-              <div className={styles.pillList}>
-                {KNOWLEDGE_BASE.map((faq) => (
-                  <button
-                    key={faq.id}
-                    type="button"
-                    onClick={() => handleSelectFaq(faq)}
-                    className={styles.pillBtn}
-                  >
-                    <span>{faq.title}</span>
-                    <span className={styles.pillArrow}>&rarr;</span>
-                  </button>
-                ))}
+            {/* If no questions asked yet, show prominent starter list */}
+            {messages.length === 0 && (
+              <div className={styles.quickPillsSection}>
+                <span className={styles.quickPillsLabel}>Common Contractor Questions</span>
+                <div className={styles.pillList}>
+                  {KNOWLEDGE_BASE.map((faq) => (
+                    <button
+                      key={faq.id}
+                      type="button"
+                      onClick={() => handleSelectFaq(faq)}
+                      className={styles.pillBtn}
+                    >
+                      <span>{faq.title}</span>
+                      <span className={styles.pillArrow}>&rarr;</span>
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
+
+            {/* Active Conversation Messages */}
+            {messages.map((msg) =>
+              msg.role === 'user' ? (
+                <div key={msg.id} className={styles.userBubble}>
+                  {msg.text}
+                </div>
+              ) : (
+                <div key={msg.id} className={styles.assistantBubble}>
+                  {msg.title && <div className={styles.assistantBubbleTitle}>{msg.title}</div>}
+                  <p className={styles.assistantBubbleText}>{msg.text}</p>
+                  {msg.ctaText && msg.ctaHref && (
+                    <div>
+                      <Link href={msg.ctaHref} className={styles.assistantBubbleCta}>
+                        {msg.ctaText} &rarr;
+                      </Link>
+                    </div>
+                  )}
+                </div>
+              )
+            )}
+
+            {/* Suggestion Follow-up Chips when conversation has started */}
+            {messages.length > 0 && (
+              <div className={styles.quickChipsSection}>
+                <span className={styles.quickChipsLabel}>Ask another question:</span>
+                <div className={styles.quickChipsRow}>
+                  {KNOWLEDGE_BASE.map((faq) => (
+                    <button
+                      key={faq.id}
+                      type="button"
+                      onClick={() => handleSelectFaq(faq)}
+                      className={styles.quickChip}
+                    >
+                      <span>{faq.title}</span>
+                      <span className={styles.quickChipArrow}>&rarr;</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Anchor for auto-scroll */}
+            <div ref={messagesEndRef} style={{ height: 1, minHeight: 1 }} />
           </div>
 
           {/* Footer Input + Conversion Link */}

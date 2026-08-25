@@ -169,6 +169,7 @@
   flex: 1;
   padding: 16px;
   overflow-y: auto;
+  scroll-behavior: smooth;
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -186,6 +187,82 @@
 
 .messageBubble strong {
   color: #f5f0e7;
+}
+
+/* User & Assistant Chat Bubbles */
+.userBubble {
+  align-self: flex-end;
+  background: linear-gradient(135deg, #18384d 0%, #1f465f 100%);
+  border: 1px solid rgba(80, 227, 189, 0.4);
+  border-radius: 14px 14px 2px 14px;
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #ffffff;
+  max-width: 85%;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+  animation: messageFadeIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.assistantBubble {
+  align-self: flex-start;
+  background: rgba(14, 30, 42, 0.95);
+  border: 1px solid rgba(80, 227, 189, 0.35);
+  border-radius: 14px 14px 14px 2px;
+  padding: 14px 16px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #d1e2eb;
+  width: 100%;
+  box-sizing: border-box;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+  animation: messageFadeIn 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.assistantBubbleTitle {
+  font-weight: 800;
+  color: #50e3bd;
+  margin-bottom: 6px;
+  font-size: 13px;
+}
+
+.assistantBubbleText {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #d1e2eb;
+}
+
+.assistantBubbleCta {
+  margin-top: 10px;
+  display: inline-block;
+  background: rgba(255, 106, 36, 0.12);
+  border: 1px solid rgba(255, 106, 36, 0.35);
+  border-radius: 6px;
+  padding: 6px 12px;
+  color: #ff8547;
+  font-weight: 800;
+  font-size: 12px;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.assistantBubbleCta:hover {
+  background: rgba(255, 106, 36, 0.25);
+  border-color: #ff6a24;
+  color: #ffffff;
+  transform: translateX(2px);
+}
+
+@keyframes messageFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .quickPillsSection {
@@ -234,6 +311,82 @@
 .pillArrow {
   color: #ff6a24;
   font-weight: 800;
+}
+
+/* Quick Suggestion Chips (Follow-up questions) */
+.quickChipsSection {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px dashed rgba(174, 199, 211, 0.15);
+}
+
+.quickChipsLabel {
+  font-size: 11px;
+  font-weight: 800;
+  color: #8fa6b5;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.quickChipsRow {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.quickChip {
+  background: #081722;
+  border: 1px solid rgba(174, 199, 211, 0.2);
+  border-radius: 8px;
+  padding: 8px 10px;
+  color: #d1e2eb;
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.quickChip:hover {
+  background: rgba(255, 106, 36, 0.12);
+  border-color: #ff6a24;
+  color: #ffffff;
+  transform: translateX(2px);
+}
+
+.quickChipArrow {
+  color: #ff6a24;
+  font-weight: 800;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.resetBtn {
+  background: transparent;
+  border: 1px solid rgba(174, 199, 211, 0.2);
+  color: #8fa6b5;
+  font-size: 11px;
+  font-weight: 750;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.resetBtn:hover {
+  color: #50e3bd;
+  border-color: rgba(80, 227, 189, 0.4);
+  background: rgba(80, 227, 189, 0.08);
 }
 
 /* Plan Recommender Box inside Chat */

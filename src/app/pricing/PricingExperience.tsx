@@ -24,14 +24,14 @@ const CARD_FEATURES: Record<PlanId, readonly string[]> = {
   flex: [
     'Unlimited leads, quotes, jobs & invoices',
     '1 Office user + 2 Crew users included',
-    '2-Way customer messaging on shared line',
+    'Website text button connects to your business phone',
     'Custom domain + SEO website included',
     '1 QuickBooks Online sync included',
   ],
   solo: [
     '0.50% lower LGQ platform fee',
     '500 text credits + 300 AI credits/mo (Intake & Drafts)',
-    '2-Way customer text messaging included',
+    'Customer messaging inbox available after carrier approval',
     'Custom domain + SEO website included',
     '1 QuickBooks Online sync included',
   ],
@@ -147,7 +147,7 @@ const COMPETITORS = [
     monthly: '$129 + 0.25%',
     annual: '$99 + 0.25%',
     users: '5 office + 10 crew',
-    phone: '2-way messaging and shared business line included',
+    phone: 'Customer messaging inbox available after carrier approval',
     href: '#plans',
   },
   {
@@ -634,7 +634,7 @@ export default function PricingExperience() {
               <span className={styles.quickIcon} aria-hidden="true">2W</span>
               <span>
                 <strong>2-Way Customer Messaging</strong>
-                <small>Keep customer texts and replies organized in one team inbox</small>
+                <small>Business texting requires A2P registration and a dedicated number</small>
               </span>
               <b>Included</b>
             </div>

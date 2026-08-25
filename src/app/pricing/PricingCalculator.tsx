@@ -146,8 +146,23 @@ export default function PricingCalculator({
 
         <div>
           <span className={styles.controlLabel}>2-Way Customer Messaging</span>
-          <div className={styles.requirementToggle} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', background: 'rgba(82, 217, 172, 0.08)', borderColor: 'rgba(82, 217, 172, 0.4)' }}>
-            Included on all plans
+          <div
+            className={styles.requirementToggle}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              textAlign: 'center',
+              pointerEvents: 'none',
+              background: 'rgba(82, 217, 172, 0.08)',
+              borderColor: 'rgba(82, 217, 172, 0.4)',
+              fontSize: '0.70rem',
+              lineHeight: 1.3,
+              fontWeight: 600,
+              padding: '0.4rem 0.6rem',
+            }}
+          >
+            Messaging software included; carrier registration and number fees separate
           </div>
         </div>
         <p className={styles.requirementsHint}>

@@ -52,7 +52,7 @@ export default function PricingPage() {
             name: 'Solo',
             price: '35',
             priceCurrency: 'USD',
-            description: 'Owner-operator plan with 0.50% platform fee and 2-way customer text messaging.',
+            description: 'Owner-operator plan with 0.50% platform fee and customer messaging inbox available after carrier approval.',
           },
           {
             '@type': 'Offer',
