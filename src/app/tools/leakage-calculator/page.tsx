@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
-import { SiteHeader, SiteFooter } from '@/components/flagship/site-chrome';
+import SiteFooter from '@/components/site-footer';
 import { APP_SIGNUP_URL } from '@/components/marketing/links';
 import styles from '../tools.module.css';
 
@@ -132,12 +132,11 @@ Generated via https://letsgetquoted.com/tools/leakage-calculator`;
   };
 
   return (
-    <main className={styles.page}>
+    <main className={styles.page} id="main-content">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <SiteHeader />
 
       <section className={styles.hero}>
         <div className={styles.heroInner}>

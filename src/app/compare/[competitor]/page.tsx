@@ -3,7 +3,7 @@ import React from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { SiteHeader, SiteFooter } from '@/components/flagship/site-chrome';
+import SiteFooter from '@/components/site-footer';
 import { APP_SIGNUP_URL } from '@/components/marketing/links';
 import CompetitorSavingsCalculator from '@/components/marketing/CompetitorSavingsCalculator';
 import StackCostComparison from '@/components/marketing/StackCostComparison';
@@ -116,9 +116,8 @@ export default function CompetitorDetailPage({ params }: Props) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <SiteHeader />
 
-      <main>
+      <main id="main-content">
         {/* Hero Section */}
         <section className={styles.hero}>
           <span className={styles.badge}>{data.badge}</span>

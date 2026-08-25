@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { SiteHeader, SiteFooter } from '@/components/flagship/site-chrome';
+import SiteFooter from '@/components/site-footer';
 import { cspNonce } from '@/lib/csp-nonce';
 import styles from './tools.module.css';
 
@@ -57,9 +57,8 @@ export default function ToolsHubPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <SiteHeader />
 
-      <main>
+      <main id="main-content">
         <section className={styles.hero}>
           <span className={styles.kicker}>Free Trade Utilities</span>
           <h1 className={styles.headline}>

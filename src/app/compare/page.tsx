@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { SiteHeader, SiteFooter } from '@/components/flagship/site-chrome';
+import SiteFooter from '@/components/site-footer';
 import { APP_SIGNUP_URL } from '@/components/marketing/links';
 import { cspNonce } from '@/lib/csp-nonce';
 import { COMPARISONS } from './compare-data';
@@ -39,16 +39,15 @@ export default function CompareHubPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(hubJsonLd) }}
       />
-      <SiteHeader />
 
-      <main>
+      <main id="main-content">
         <section className={styles.hero}>
           <span className={styles.badge}>Fair &amp; Honest Comparison</span>
           <h1 className={styles.headline}>
             The contractor software built for <em>your profits</em>, not subscription bloat.
           </h1>
           <p className={styles.subhead}>
-            Legacy platforms charge \$150–\$1,000+ every month whether you book jobs or not—and still make you buy
+            Legacy platforms charge $150–$1,000+ every month whether you book jobs or not—and still make you buy
             websites and pay for shared leads. See how Let’s Get Quoted compares.
           </p>
 

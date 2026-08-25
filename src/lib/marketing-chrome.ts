@@ -46,6 +46,8 @@ export const OWN_CHROME_MARKETING_ROUTES = [
      site. */
   '/for',
   '/pricing',
+  '/compare',
+  '/tools',
   '/faq',
   '/security',
   '/resources',

@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
-import { SiteHeader, SiteFooter } from '@/components/flagship/site-chrome';
+import SiteFooter from '@/components/site-footer';
 import { APP_SIGNUP_URL } from '@/components/marketing/links';
 import styles from '../tools.module.css';
 
@@ -155,9 +155,8 @@ export default function EstimateGeneratorPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <SiteHeader />
 
-      <main>
+      <main id="main-content">
         <section className={styles.hero}>
           <span className={styles.kicker}>Free Contractor Tool</span>
           <h1 className={styles.headline}>
