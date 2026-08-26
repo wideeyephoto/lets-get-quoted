@@ -1,10 +1,12 @@
 import Link from 'next/link';
+import { displayPhone } from '@/lib/phone';
 import styles from './voice-calls.module.css';
 
 interface VoiceControlsSectionProps {
   status: 'active' | 'paused' | 'off';
   answerMode: 'always' | 'after_hours';
-  phoneNumber: string | null;
+  dedicatedNumber: string | null;
+  isReady: boolean;
   greeting: string | null;
   transferNumber: string | null;
   businessName: string | null;
@@ -90,12 +92,19 @@ const AI_CONTROLS = [
 export default function VoiceControlsSection({
   status,
   answerMode,
-  phoneNumber,
+  dedicatedNumber,
+  isReady,
   businessName,
   trade,
 }: VoiceControlsSectionProps) {
-  const isAnswering = status === 'active';
-  const statusLabel = isAnswering ? 'Online & Answering' : status === 'paused' ? 'Paused' : 'Off';
+  const isAnswering = isReady && status === 'active';
+  const statusLabel = !isReady
+    ? 'Standby · No Dedicated Line'
+    : isAnswering
+    ? 'Online & Answering'
+    : status === 'paused'
+    ? 'Paused'
+    : 'Off';
   const modeLabel = answerMode === 'always' ? '24/7 All Inbound Calls' : 'After Hours Only';
 
   return (
@@ -103,8 +112,29 @@ export default function VoiceControlsSection({
       {/* Top Assistant Status Banner */}
       <div className={styles.assistantStatusBanner}>
         <div className={styles.statusMetaGroup}>
-          <div className={styles.statusIndicator} style={!isAnswering ? { background: 'rgba(245, 158, 11, 0.15)', borderColor: 'rgba(245, 158, 11, 0.35)', color: '#f59e0b' } : undefined}>
-            <span className={styles.statusDot} style={!isAnswering ? { background: '#f59e0b', boxShadow: '0 0 10px #f59e0b' } : undefined} />
+          <div
+            className={styles.statusIndicator}
+            style={
+              !isAnswering
+                ? {
+                    background: 'rgba(245, 158, 11, 0.15)',
+                    borderColor: 'rgba(245, 158, 11, 0.35)',
+                    color: '#f59e0b',
+                  }
+                : undefined
+            }
+          >
+            <span
+              className={styles.statusDot}
+              style={
+                !isAnswering
+                  ? {
+                      background: '#f59e0b',
+                      boxShadow: '0 0 10px #f59e0b',
+                    }
+                  : undefined
+              }
+            />
             <span>{statusLabel}</span>
           </div>
 
@@ -113,15 +143,19 @@ export default function VoiceControlsSection({
               {businessName || 'Your Business'} · {trade ? `${trade.charAt(0).toUpperCase() + trade.slice(1)} Assistant` : 'AI Receptionist'}
             </span>
             <span className={styles.statusSub}>
-              {phoneNumber ? `Answering on ${phoneNumber}` : 'Dedicated voice line'} · Mode: {modeLabel}
+              {isReady && dedicatedNumber
+                ? `Answering on ${displayPhone(dedicatedNumber)} · Mode: ${modeLabel}`
+                : 'Dedicated line not connected · Setup required before AI can answer live calls'}
             </span>
           </div>
         </div>
 
-        <Link href="/dashboard/settings#receptionist" className={styles.configActionBtn}>
+        <Link href="/dashboard/automations#ai-receptionist" className={styles.configActionBtn}>
           Configure Voice Receptionist →
         </Link>
       </div>
+
+
 
       {/* Controls Grid */}
       <div className={styles.controlsHeader}>

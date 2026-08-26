@@ -22,11 +22,22 @@ export async function GET() {
   const elapsedMs = Math.round(performance.now() - start);
 
   const isScopeConfigured = Boolean(providerScope?.projectId && providerScope?.spaceId);
-  const status = isScopeConfigured ? 'healthy' : 'degraded';
+  let status: 'healthy' | 'not_ready' | 'degraded' | 'unavailable' = 'healthy';
+  if (!isScopeConfigured) {
+    status = 'degraded';
+  } else if (routeReadiness.kind === 'ready') {
+    status = 'healthy';
+  } else if (routeReadiness.kind === 'not_ready') {
+    status = 'not_ready';
+  } else {
+    status = 'unavailable';
+  }
 
   const activeNumber = routeReadiness.kind === 'ready'
     ? routeReadiness.number
-    : (routeReadiness.kind === 'not_ready' ? routeReadiness.number : null) ?? 'Assigned Dedicated Line';
+    : (routeReadiness.kind === 'not_ready' ? routeReadiness.number : null);
+
+  const notReadyReason = routeReadiness.kind === 'not_ready' ? routeReadiness.reason : null;
 
   return NextResponse.json({
     ok: true,
@@ -35,9 +46,11 @@ export async function GET() {
     engine: 'SignalWire SWML',
     activeNumber,
     routeState: routeReadiness.kind,
+    notReadyReason,
     totalCallsLogged: callCount ?? 0,
     toolsActive: 8,
     securityGuard: 'HMAC-SHA256 Admission Permit Guard',
     checkedAt: new Date().toISOString(),
   });
 }
+

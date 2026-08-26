@@ -1,5 +1,6 @@
 import Link from 'next/link';
-import { requireOfficeContext } from '@/lib/auth';
+import { createAdminClient, requireOfficeContext } from '@/lib/auth';
+import { loadVoiceRouteReadiness } from '@/lib/voice/route-readiness';
 import {
   formatDispositionLabel,
   formatOutcomeLabel,
@@ -7,6 +8,7 @@ import {
   type VoiceCallOutcome,
   type VoiceCallDisposition,
 } from '@/lib/voice/call-workspace';
+
 import { formatCallLength } from '@/lib/voice/call-formatting';
 import { convertVoiceCallToQuoteDraftAction } from './actions';
 import VoiceCallsLiveRefresher from './VoiceCallsLiveRefresher';
@@ -43,11 +45,12 @@ export default async function VoiceCallsPage({
   };
 }) {
   const { supabase, accountId } = await requireOfficeContext('leads.read');
+  const admin = createAdminClient();
 
-  const [{ data: account }, { data: voiceSettings }, queue] = await Promise.all([
+  const [{ data: account }, { data: voiceSettings }, routeReadiness, queue] = await Promise.all([
     supabase
       .from('accounts')
-      .select('company_name, trade, phone, timezone, license_number, service_areas')
+      .select('company_name, business_name, trade, phone, timezone, license_number, service_areas, call_tracking_number')
       .eq('id', accountId)
       .maybeSingle(),
     supabase
@@ -55,6 +58,7 @@ export default async function VoiceCallsPage({
       .select('status, answer_mode, greeting, transfer_number, alert_phone, voice_tone')
       .eq('account_id', accountId)
       .maybeSingle(),
+    loadVoiceRouteReadiness(admin, accountId),
     loadVoiceWorkspaceQueue(supabase, accountId, {
       tab: (searchParams.tab as 'all' | 'unreviewed' | 'needs_callback' | 'urgent' | 'transferred' | 'completed') || 'all',
       dateRange: (searchParams.dateRange as 'all' | 'today' | 'yesterday' | '7d' | '30d' | 'month') || 'all',
@@ -63,6 +67,9 @@ export default async function VoiceCallsPage({
       outcome: (searchParams.outcome as VoiceCallOutcome) || 'all',
     }),
   ]);
+
+  const isRouteReady = routeReadiness.kind === 'ready';
+  const dedicatedNumber = isRouteReady ? routeReadiness.number : null;
 
   const timezone = (account?.timezone as string) || 'America/New_York';
   const currentTab = (searchParams.tab as 'all' | 'unreviewed' | 'needs_callback' | 'urgent' | 'transferred' | 'completed') || 'all';
@@ -99,13 +106,15 @@ export default async function VoiceCallsPage({
       <VoiceControlsSection
         status={(voiceSettings?.status as 'active' | 'paused' | 'off') || 'active'}
         answerMode={(voiceSettings?.answer_mode as 'always' | 'after_hours') || 'always'}
-        phoneNumber={voiceSettings?.transfer_number || account?.phone || null}
+        dedicatedNumber={dedicatedNumber}
+        isReady={isRouteReady}
         greeting={voiceSettings?.greeting || null}
         transferNumber={voiceSettings?.transfer_number || null}
-        businessName={account?.company_name || null}
+        businessName={account?.business_name || account?.company_name || null}
         trade={account?.trade || null}
         serviceAreas={account?.service_areas || null}
       />
+
 
       {/* In-Browser Zero-Minute Voice Simulator Sandbox */}
       <VoiceSimulatorSandbox

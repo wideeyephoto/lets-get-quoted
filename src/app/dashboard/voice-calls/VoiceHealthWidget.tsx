@@ -1,15 +1,18 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { displayPhone } from '@/lib/phone';
 import styles from './voice-calls.module.css';
 
 type HealthData = {
   ok: boolean;
-  status: 'healthy' | 'degraded';
+  status: 'healthy' | 'not_ready' | 'degraded' | 'unavailable';
   latencyMs: number;
   engine: string;
-  activeNumber: string;
+  activeNumber: string | null;
   routeState: string;
+  notReadyReason: string | null;
   totalCallsLogged: number;
   toolsActive: number;
   securityGuard: string;
@@ -50,6 +53,34 @@ export default function VoiceHealthWidget() {
     );
   }
 
+  const isHealthy = health.status === 'healthy';
+  const isNotReady = health.status === 'not_ready';
+  const isDegraded = health.status === 'degraded';
+
+  const dotColor = isHealthy
+    ? '#22c55e'
+    : isNotReady
+    ? '#f59e0b'
+    : isDegraded
+    ? '#ef4444'
+    : '#94a3b8';
+
+  const engineStatusLabel = isHealthy
+    ? 'Operational'
+    : isNotReady
+    ? 'Standby (Line Not Connected)'
+    : isDegraded
+    ? 'Carrier Degraded'
+    : 'Unavailable';
+
+  const engineStatusColor = isHealthy
+    ? '#4ade80'
+    : isNotReady
+    ? '#fbbf24'
+    : isDegraded
+    ? '#f87171'
+    : '#94a3b8';
+
   return (
     <div className={styles.healthWidget} role="region" aria-label="AI Voice Carrier Health">
       <div className={styles.healthCluster}>
@@ -57,24 +88,39 @@ export default function VoiceHealthWidget() {
           <span
             className={styles.healthPulseDot}
             style={{
-              background: health.status === 'healthy' ? '#22c55e' : '#f59e0b',
-              boxShadow: health.status === 'healthy' ? '0 0 8px #22c55e' : '0 0 8px #f59e0b',
+              background: dotColor,
+              boxShadow: `0 0 8px ${dotColor}`,
             }}
           />
           <strong>SignalWire SWML Engine:</strong>
-          <span style={{ color: '#4ade80', fontWeight: 600 }}>
-            {health.status === 'healthy' ? 'Operational' : 'Degraded'}
+          <span style={{ color: engineStatusColor, fontWeight: 600 }}>
+            {engineStatusLabel}
           </span>
+        </div>
+
+        <div className={styles.healthItem}>
+          <span>Dedicated Line:</span>
+          {health.activeNumber ? (
+            <code style={{ fontSize: '0.8rem', color: '#93c5fd' }}>
+              {displayPhone(health.activeNumber)}
+            </code>
+          ) : (
+            <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
+              None Assigned{' '}
+              <Link
+                href="/dashboard/automations#ai-receptionist"
+                style={{ color: '#60a5fa', textDecoration: 'underline', marginLeft: '0.25rem' }}
+              >
+                (Setup Required)
+              </Link>
+            </span>
+
+          )}
         </div>
 
         <div className={styles.healthItem}>
           <span>Latency:</span>
           <span className={styles.healthLatencyBadge}>{health.latencyMs}ms</span>
-        </div>
-
-        <div className={styles.healthItem}>
-          <span>Dedicated Line:</span>
-          <code style={{ fontSize: '0.8rem', color: '#93c5fd' }}>{health.activeNumber}</code>
         </div>
 
         <div className={styles.healthItem}>
@@ -95,3 +141,4 @@ export default function VoiceHealthWidget() {
     </div>
   );
 }
+
