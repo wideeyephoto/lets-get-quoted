@@ -70,17 +70,7 @@ alter table public.time_entries add column if not exists clock_out_distance_ft n
 alter table public.time_entries add column if not exists clock_out_accuracy_m numeric(8,2);
 alter table public.time_entries add column if not exists clock_out_verified_at timestamptz;
 
--- 5. Add capabilities to office_capabilities
-insert into public.office_capabilities (capability, band, label, description, enabled)
-values
-  ('crew.location.read', 'people', 'See crew live locations', 'View real-time technician GPS and geofence statuses during shifts.', true),
-  ('crew.location.manage', 'account', 'Manage location tracking policies', 'Change account tracking policy, geofence radius, and crew location settings.', true)
-on conflict (capability) do update
-  set label = excluded.label,
-      description = excluded.description,
-      band = excluded.band,
-      enabled = true,
-      updated_at = pg_catalog.now();
+-- 5. Capabilities are governed under existing crew.read / crew.write permissions.
 
 -- 6. Enable Row Level Security on crew_location_state
 alter table public.crew_location_state enable row level security;
@@ -95,21 +85,18 @@ drop policy if exists crew_location_crew_upsert on public.crew_location_state;
 create policy crew_location_owner on public.crew_location_state
   for all using ( public.is_owner(account_id) );
 
--- Office staff with crew.location.read or crew.read
+-- Office staff with crew.read
 create policy crew_location_office_select on public.crew_location_state
   for select using (
-    public.office_can(account_id, 'crew.location.read')
-    or public.office_can(account_id, 'crew.read')
+    public.office_can(account_id, 'crew.read')
   );
 
--- Office staff with crew.location.manage or crew.write
+-- Office staff with crew.write
 create policy crew_location_office_modify on public.crew_location_state
   for all using (
-    public.office_can(account_id, 'crew.location.manage')
-    or public.office_can(account_id, 'crew.write')
+    public.office_can(account_id, 'crew.write')
   ) with check (
-    public.office_can(account_id, 'crew.location.manage')
-    or public.office_can(account_id, 'crew.write')
+    public.office_can(account_id, 'crew.write')
   );
 
 -- Crew members can select their own location state
