@@ -19,6 +19,7 @@ import {
 
 type DemoTourContextValue = {
   state: DemoTourState;
+  setIntakeAnalyzed: (val: boolean) => void;
   setUpgradeSelected: (val: boolean) => void;
   setQuoteSent: (val: boolean) => void;
   setSignature: (val: string) => void;
@@ -45,6 +46,10 @@ export function DemoTourStateProvider({ children }: { children: ReactNode }) {
       return next;
     });
   }, []);
+
+  const setIntakeAnalyzed = useCallback((val: boolean) => {
+    updateState((prev) => ({ ...prev, intakeAnalyzed: val }));
+  }, [updateState]);
 
   const setUpgradeSelected = useCallback((val: boolean) => {
     updateState((prev) => ({ ...prev, upgradeSelected: val }));
@@ -75,6 +80,7 @@ export function DemoTourStateProvider({ children }: { children: ReactNode }) {
     <DemoTourContext.Provider
       value={{
         state: hydrated ? state : DEFAULT_DEMO_TOUR_STATE,
+        setIntakeAnalyzed,
         setUpgradeSelected,
         setQuoteSent,
         setSignature,

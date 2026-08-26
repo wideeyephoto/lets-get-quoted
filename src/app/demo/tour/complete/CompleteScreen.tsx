@@ -149,7 +149,10 @@ export default function CompleteScreen() {
           >
             <a
               href={signupUrl}
-              onClick={() => trackDemoEvent('signup_clicked', { source: 'tour_complete_main_button' })}
+              onClick={() => {
+                trackDemoEvent('cta_clicked', { source: 'tour_complete_main_button', action: 'build_free_site' });
+                trackDemoEvent('signup_clicked', { source: 'tour_complete_main_button' });
+              }}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',

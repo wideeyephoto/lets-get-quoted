@@ -10,6 +10,8 @@ export type DemoEventName =
   | 'tour_started'
   | 'step_viewed'
   | 'step_completed'
+  | 'action_simulated'
+  | 'step_skipped'
   | 'step_target_missing'
   | 'tour_exited'
   | 'tour_dismissed'
@@ -17,6 +19,7 @@ export type DemoEventName =
   | 'tour_restarted'
   | 'explore_freely'
   | 'signup_clicked'
+  | 'cta_clicked'
   | 'setup_action_clicked';
 
 export type DemoEventPayload = {
@@ -31,6 +34,7 @@ export type DemoEventPayload = {
   pathname?: string;
   depositAmount?: number;
   totalSteps?: number;
+  deviceType?: 'mobile' | 'tablet' | 'desktop';
   [key: string]: string | number | boolean | null | undefined;
 };
 
@@ -51,6 +55,14 @@ function getOrCreateSessionId(): string {
   }
 }
 
+function resolveDeviceType(): 'mobile' | 'tablet' | 'desktop' {
+  if (typeof window === 'undefined') return 'desktop';
+  const width = window.innerWidth || 1200;
+  if (width <= 768) return 'mobile';
+  if (width <= 1024) return 'tablet';
+  return 'desktop';
+}
+
 export function trackDemoEvent(eventName: DemoEventName, payload: DemoEventPayload = {}): void {
   if (typeof window === 'undefined') return;
 
@@ -58,12 +70,14 @@ export function trackDemoEvent(eventName: DemoEventName, payload: DemoEventPaylo
     const timestamp = new Date().toISOString();
     const sessionId = getOrCreateSessionId();
     const clientEventId = 'ev_' + Math.random().toString(36).slice(2, 11) + '_' + Date.now();
+    const deviceType = payload.deviceType || resolveDeviceType();
 
     const eventRecord = {
       client_event_id: clientEventId,
       anonymous_session_id: sessionId,
       event: eventName,
       timestamp,
+      device_type: deviceType,
       pathname: window.location.pathname,
       ...payload,
     };
@@ -95,10 +109,18 @@ export function trackDemoEvent(eventName: DemoEventName, payload: DemoEventPaylo
         perspective: payload.perspective,
         stepSlug: payload.stepSlug,
         targetId: payload.targetId,
+        deviceType,
       },
     });
 
-    if (navigator && typeof navigator.sendBeacon === 'function' && (eventName === 'tour_exited' || eventName === 'signup_clicked' || eventName === 'tour_completed')) {
+    if (
+      navigator &&
+      typeof navigator.sendBeacon === 'function' &&
+      (eventName === 'tour_exited' ||
+        eventName === 'signup_clicked' ||
+        eventName === 'tour_completed' ||
+        eventName === 'cta_clicked')
+    ) {
       navigator.sendBeacon('/api/demo-tour/events', body);
     } else {
       fetch('/api/demo-tour/events', {

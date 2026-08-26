@@ -75,12 +75,15 @@ export type TourEventName =
   | 'tour_started'
   | 'step_viewed'
   | 'step_completed'
+  | 'action_simulated'
+  | 'step_skipped'
   | 'step_target_missing'
   | 'tour_exited'
   | 'tour_dismissed'
   | 'tour_completed'
   | 'tour_restarted'
   | 'signup_clicked'
+  | 'cta_clicked'
   | 'setup_action_clicked';
 
 export type TourEventRecord = {

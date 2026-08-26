@@ -15,29 +15,29 @@
 .inner {
   max-width: 1420px;
   margin: 0 auto;
-  padding: 8px clamp(12px, 2.5vw, 28px);
+  padding: 6px clamp(10px, 2.5vw, 24px);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: 12px;
   flex-wrap: wrap;
 }
 
 .leftGroup {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   flex-wrap: wrap;
 }
 
 .perspectiveBadge {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  min-height: 36px;
+  gap: 5px;
+  padding: 4px 10px;
+  min-height: 32px;
   border-radius: 999px;
-  font-size: 11.5px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -61,13 +61,25 @@
   color: #ff8a4c;
 }
 
-.simulationDisclosure {
-  font-size: 11.5px;
+.simulationDisclosureDesktop {
+  font-size: 11px;
   font-weight: 600;
   color: #9db0bd;
   background: rgba(255, 255, 255, 0.05);
   border: 1px dashed rgba(168, 204, 255, 0.25);
-  padding: 4px 10px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+.simulationDisclosureMobile {
+  display: none;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #ffd166;
+  background: rgba(255, 209, 102, 0.12);
+  border: 1px solid rgba(255, 209, 102, 0.3);
+  padding: 2px 7px;
   border-radius: 6px;
   white-space: nowrap;
 }
@@ -75,45 +87,44 @@
 .stepIndicator {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 
 .stepDots {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
 }
 
 /* Touch target: 44px min hit area via relative positioning and pseudo hit box */
 .stepDot {
   position: relative;
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.2);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 700;
   color: #9db0bd;
   text-decoration: none;
   transition: all 0.2s ease;
 }
 
-/* Invisible hit area extending touch target to 44x44 */
 .stepDot::before {
   content: '';
   position: absolute;
-  inset: -8px;
+  inset: -9px;
 }
 
 .stepDotActive {
   background: var(--orange, #ff6a24);
   border-color: #ff8a4c;
   color: #ffffff;
-  box-shadow: 0 0 10px rgba(255, 106, 36, 0.5);
+  box-shadow: 0 0 8px rgba(255, 106, 36, 0.5);
 }
 
 .stepDotCompleted {
@@ -123,7 +134,7 @@
 }
 
 .stepLabel {
-  font-size: 13px;
+  font-size: 12.5px;
   color: #d1e2eb;
 }
 
@@ -135,7 +146,7 @@
 .actionsGroup {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   margin-left: auto;
 }
 
@@ -144,11 +155,11 @@
   align-items: center;
   justify-content: center;
   min-height: 44px;
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 600;
   color: #9db0bd;
   text-decoration: none;
-  padding: 8px 14px;
+  padding: 6px 12px;
   border-radius: 6px;
   border: 1px solid rgba(168, 204, 255, 0.2);
   background: rgba(255, 255, 255, 0.04);
@@ -163,29 +174,56 @@
   outline: 2px solid #50e3bd;
 }
 
-.nextBtn {
+/* Primary Action when step experienced */
+.nextBtnPrimary {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   min-height: 44px;
   gap: 6px;
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 800;
   color: #0b1e2a;
   background: var(--orange, #ff6a24);
-  padding: 8px 18px;
+  padding: 6px 16px;
   border-radius: 6px;
   text-decoration: none;
   box-shadow: 0 2px 8px rgba(255, 106, 36, 0.35);
   transition: all 0.2s ease;
 }
 
-.nextBtn:hover,
-.nextBtn:focus-visible {
+.nextBtnPrimary:hover,
+.nextBtnPrimary:focus-visible {
   background: #ff8142;
   transform: translateY(-1px);
   box-shadow: 0 4px 14px rgba(255, 106, 36, 0.5);
   outline: 2px solid #ffffff;
+}
+
+/* Secondary Action when step not yet experienced */
+.nextBtnSecondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #d1e2eb;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  padding: 6px 14px;
+  border-radius: 6px;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.nextBtnSecondary:hover,
+.nextBtnSecondary:focus-visible {
+  background: rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.4);
+  outline: 2px solid #50e3bd;
 }
 
 .exitBtn {
@@ -193,10 +231,10 @@
   align-items: center;
   justify-content: center;
   min-height: 44px;
-  font-size: 12.5px;
+  font-size: 12px;
   color: #7b93a2;
   text-decoration: none;
-  padding: 8px 12px;
+  padding: 6px 10px;
   transition: color 0.2s ease;
 }
 
@@ -208,15 +246,18 @@
 }
 
 @media (max-width: 960px) {
-  .simulationDisclosure {
+  .simulationDisclosureDesktop {
     display: none;
+  }
+  .simulationDisclosureMobile {
+    display: inline-block;
   }
 }
 
 @media (max-width: 820px) {
   .inner {
-    padding: 8px 14px;
-    gap: 8px;
+    padding: 6px 10px;
+    gap: 6px;
   }
   .stepLabel {
     display: none;
@@ -224,12 +265,16 @@
   .actionsGroup {
     width: 100%;
     justify-content: space-between;
-    padding-top: 6px;
+    padding-top: 4px;
     border-top: 1px solid rgba(255, 255, 255, 0.08);
   }
   .perspectiveBadge {
-    font-size: 11px;
-    padding: 5px 10px;
-    min-height: 32px;
+    font-size: 10px;
+    padding: 3px 8px;
+    min-height: 28px;
+  }
+  .simulationDisclosureMobile {
+    font-size: 10px;
+    padding: 2px 6px;
   }
 }

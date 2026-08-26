@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import DemoTourBar from '@/components/demo/DemoTourBar';
 import { useDemoTourState } from '@/components/demo/DemoTourStateProvider';
@@ -15,14 +16,16 @@ import styles from '../tour.module.css';
 export default function QuoteScreen() {
   const currentStep = TOUR_STEPS[3];
   const { state, setUpgradeSelected, setQuoteSent } = useDemoTourState();
+  const [showDetails, setShowDetails] = useState(false);
 
   const total = DEMO_TOUR_JOB.baseTotal + (state.upgradeSelected ? DEMO_TOUR_JOB.upgradeTotal : 0);
 
   const handleSimulateSend = () => {
     setQuoteSent(true);
-    trackDemoEvent('step_completed', {
+    trackDemoEvent('action_simulated', {
       step: 4,
       stepSlug: 'quote',
+      action: 'quote_dispatched_simulation',
       total,
       upgradeSelected: state.upgradeSelected,
       quoteId: DEMO_TOUR_JOB.quoteId,
@@ -42,7 +45,7 @@ export default function QuoteScreen() {
             </span>
             <h1 className={styles.perspectiveHeading}>Contractor prepares &amp; sends itemized quote</h1>
             <p className={styles.perspectiveSub}>
-              Line items, optional upgrades, and deposit terms are pre-populated. Send via text in one tap.
+              Line items, optional upgrades, and deposit terms are pre-populated. Preview simulated SMS delivery in one tap.
             </p>
           </div>
         </div>
@@ -83,9 +86,9 @@ export default function QuoteScreen() {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              paddingBottom: '20px',
+              paddingBottom: '18px',
               borderBottom: '1px solid rgba(168, 204, 255, 0.15)',
-              marginBottom: '24px',
+              marginBottom: '20px',
               flexWrap: 'wrap',
               gap: '12px',
             }}
@@ -94,28 +97,93 @@ export default function QuoteScreen() {
               <div style={{ fontSize: '12px', fontWeight: 800, color: '#ffd166', textTransform: 'uppercase' }}>
                 Quote Builder &middot; {DEMO_TOUR_JOB.quoteId}
               </div>
-              <h2 style={{ fontSize: '24px', fontWeight: 800, margin: '4px 0 0', color: '#ffffff' }}>
+              <h2 style={{ fontSize: '22px', fontWeight: 800, margin: '4px 0 0', color: '#ffffff' }}>
                 {DEMO_TOUR_JOB.title}
               </h2>
-              <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#9db0bd' }}>
-                Client: {DEMO_TOUR_CUSTOMER.name} &middot; {DEMO_TOUR_CUSTOMER.address}, {DEMO_TOUR_CUSTOMER.city}
+              <p style={{ margin: '3px 0 0', fontSize: '13px', color: '#9db0bd' }}>
+                Client: {DEMO_TOUR_CUSTOMER.name} &middot; {DEMO_TOUR_CUSTOMER.city}, MI
               </p>
             </div>
 
             <div style={{ textAlign: 'right' }}>
               <div style={{ fontSize: '11px', color: '#9db0bd', textTransform: 'uppercase' }}>Total Quote Value</div>
-              <div style={{ fontSize: '28px', fontWeight: 800, color: '#50e3bd' }}>
+              <div style={{ fontSize: '26px', fontWeight: 800, color: '#50e3bd' }}>
                 ${total.toLocaleString()}
               </div>
               <span style={{ fontSize: '12px', color: '#ffd166' }}>$500.00 deposit required</span>
             </div>
           </div>
 
-          {/* Itemized Line Items Table */}
-          <div style={{ marginBottom: '28px' }}>
-            <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#d1e2eb', margin: '0 0 12px' }}>
-              Base Service Line Items
-            </h3>
+          {/* Optional Upgrades Section (Placed prominently) */}
+          <div style={{ marginBottom: '22px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+              <h3 style={{ fontSize: '14.5px', fontWeight: 700, color: '#ffd166', margin: 0 }}>
+                Optional Upgrades &middot; Boost Ticket Size
+              </h3>
+              <span style={{ fontSize: '12px', color: '#9db0bd' }}>Editable by homeowner on approval</span>
+            </div>
+
+            <div
+              style={{
+                background: state.upgradeSelected ? 'rgba(80, 227, 189, 0.08)' : 'rgba(255, 209, 102, 0.06)',
+                border: `1px solid ${state.upgradeSelected ? 'rgba(80, 227, 189, 0.35)' : 'rgba(255, 209, 102, 0.25)'}`,
+                borderRadius: '10px',
+                padding: '14px 18px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '14px',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                <input
+                  type="checkbox"
+                  id="includeUpgrade"
+                  checked={state.upgradeSelected}
+                  onChange={(e) => setUpgradeSelected(e.target.checked)}
+                  aria-label={`Add optional ${DEMO_TOUR_JOB.optionalUpgrades[0].title} (+$${DEMO_TOUR_JOB.optionalUpgrades[0].amount})`}
+                  style={{ width: '20px', height: '20px', marginTop: '2px', accentColor: '#ff6a24', cursor: 'pointer' }}
+                />
+                <div>
+                  <label htmlFor="includeUpgrade" style={{ fontSize: '14px', fontWeight: 700, color: '#ffffff', cursor: 'pointer' }}>
+                    {DEMO_TOUR_JOB.optionalUpgrades[0].title}
+                  </label>
+                  <p style={{ margin: '2px 0 0', fontSize: '12.5px', color: '#b7cdd7' }}>
+                    {DEMO_TOUR_JOB.optionalUpgrades[0].description}
+                  </p>
+                </div>
+              </div>
+              <div style={{ fontSize: '15px', fontWeight: 800, color: '#ffd166', whiteSpace: 'nowrap' }}>
+                +${DEMO_TOUR_JOB.optionalUpgrades[0].amount}
+              </div>
+            </div>
+          </div>
+
+          {/* Itemized Line Items Table (Collapsible on Mobile to reduce scroll friction) */}
+          <div style={{ marginBottom: '22px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+              <h3 style={{ fontSize: '14.5px', fontWeight: 700, color: '#d1e2eb', margin: 0 }}>
+                Base Service Line Items
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowDetails(!showDetails)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#50e3bd',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  textDecoration: 'underline',
+                  padding: '4px 0',
+                }}
+                aria-label={showDetails ? 'Hide line item descriptions' : 'Show full line item descriptions'}
+              >
+                {showDetails ? 'Collapse descriptions' : 'Expand descriptions'}
+              </button>
+            </div>
+
             <div
               style={{
                 background: '#040d14',
@@ -131,70 +199,27 @@ export default function QuoteScreen() {
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'flex-start',
-                    padding: '16px 20px',
+                    padding: showDetails ? '14px 18px' : '10px 18px',
                     borderBottom:
                       i === DEMO_TOUR_JOB.lineItems.length - 1 ? 'none' : '1px solid rgba(255, 255, 255, 0.06)',
-                    gap: '16px',
+                    gap: '14px',
                   }}
                 >
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: '14.5px', fontWeight: 700, color: '#ffffff', marginBottom: '4px' }}>
+                    <div style={{ fontSize: '13.5px', fontWeight: 700, color: '#ffffff' }}>
                       {item.title}
                     </div>
-                    <div style={{ fontSize: '13px', color: '#8faab7', lineHeight: '1.4' }}>
-                      {item.description}
-                    </div>
+                    {showDetails ? (
+                      <div style={{ fontSize: '12.5px', color: '#8faab7', lineHeight: '1.4', marginTop: '4px' }}>
+                        {item.description}
+                      </div>
+                    ) : null}
                   </div>
-                  <div style={{ fontSize: '15px', fontWeight: 700, color: '#e2edf2', whiteSpace: 'nowrap' }}>
+                  <div style={{ fontSize: '14px', fontWeight: 700, color: '#e2edf2', whiteSpace: 'nowrap' }}>
                     ${item.amount.toLocaleString()}
                   </div>
                 </div>
               ))}
-            </div>
-          </div>
-
-          {/* Optional Upgrades Section */}
-          <div style={{ marginBottom: '28px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-              <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#ffd166', margin: 0 }}>
-                Optional Upgrades &middot; Boost Ticket Size
-              </h3>
-              <span style={{ fontSize: '12px', color: '#9db0bd' }}>Customer can toggle this on approval screen</span>
-            </div>
-
-            <div
-              style={{
-                background: 'rgba(255, 209, 102, 0.06)',
-                border: '1px solid rgba(255, 209, 102, 0.25)',
-                borderRadius: '10px',
-                padding: '16px 20px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: '16px',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-                <input
-                  type="checkbox"
-                  id="includeUpgrade"
-                  checked={state.upgradeSelected}
-                  onChange={(e) => setUpgradeSelected(e.target.checked)}
-                  aria-label={`Add optional ${DEMO_TOUR_JOB.optionalUpgrades[0].title} (+$${DEMO_TOUR_JOB.optionalUpgrades[0].amount})`}
-                  style={{ width: '20px', height: '20px', marginTop: '2px', accentColor: '#ff6a24', cursor: 'pointer' }}
-                />
-                <div>
-                  <label htmlFor="includeUpgrade" style={{ fontSize: '14.5px', fontWeight: 700, color: '#ffffff', cursor: 'pointer' }}>
-                    {DEMO_TOUR_JOB.optionalUpgrades[0].title}
-                  </label>
-                  <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#b7cdd7' }}>
-                    {DEMO_TOUR_JOB.optionalUpgrades[0].description}
-                  </p>
-                </div>
-              </div>
-              <div style={{ fontSize: '16px', fontWeight: 800, color: '#ffd166', whiteSpace: 'nowrap' }}>
-                +${DEMO_TOUR_JOB.optionalUpgrades[0].amount}
-              </div>
             </div>
           </div>
 
@@ -204,7 +229,7 @@ export default function QuoteScreen() {
               background: '#040d14',
               border: '1px solid rgba(168, 204, 255, 0.15)',
               borderRadius: '10px',
-              padding: '20px',
+              padding: '18px 20px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
@@ -213,10 +238,10 @@ export default function QuoteScreen() {
             }}
           >
             <div>
-              <div style={{ fontSize: '14.5px', fontWeight: 700, color: '#ffffff' }}>
+              <div style={{ fontSize: '14px', fontWeight: 700, color: '#ffffff' }}>
                 {state.quoteSent ? `✓ Simulated dispatch to ${DEMO_TOUR_CUSTOMER.phone}` : `Dispatch Quote to ${DEMO_TOUR_CUSTOMER.name}`}
               </div>
-              <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#9db0bd' }}>
+              <p style={{ margin: '3px 0 0', fontSize: '12.5px', color: '#9db0bd' }}>
                 {state.quoteSent
                   ? 'Demo complete — no real SMS text was sent.'
                   : 'Customer receives instant SMS link to review, toggle upgrades, e-sign, and pay deposit.'}
@@ -231,9 +256,9 @@ export default function QuoteScreen() {
                   style={{
                     background: '#50e3bd',
                     color: '#071a26',
-                    fontSize: '14px',
+                    fontSize: '13.5px',
                     fontWeight: 800,
-                    padding: '10px 20px',
+                    padding: '10px 18px',
                     minHeight: '44px',
                     borderRadius: '6px',
                     border: 'none',
@@ -250,7 +275,7 @@ export default function QuoteScreen() {
                     border: '1px solid #50e3bd',
                     color: '#50e3bd',
                     fontWeight: 700,
-                    fontSize: '13.5px',
+                    fontSize: '13px',
                     padding: '8px 14px',
                     borderRadius: '6px',
                   }}
@@ -271,6 +296,43 @@ export default function QuoteScreen() {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Compact Mobile Sticky Action Dock */}
+      <div className={styles.mobileStickyActionDock}>
+        <div>
+          <span style={{ fontSize: '11px', color: '#9db0bd', display: 'block' }}>Total with deposit:</span>
+          <strong style={{ fontSize: '16px', color: '#50e3bd' }}>${total.toLocaleString()}</strong>
+        </div>
+        {!state.quoteSent ? (
+          <button
+            type="button"
+            onClick={handleSimulateSend}
+            style={{
+              background: '#50e3bd',
+              color: '#071a26',
+              fontSize: '13px',
+              fontWeight: 800,
+              padding: '10px 16px',
+              minHeight: '44px',
+              borderRadius: '6px',
+              border: 'none',
+              cursor: 'pointer',
+            }}
+            aria-label="Simulate sending quote on mobile"
+          >
+            📱 Simulate sending
+          </button>
+        ) : (
+          <Link
+            href="/demo/tour/approve"
+            className={styles.tourNextActionBtn}
+            style={{ minHeight: '44px', padding: '8px 16px', fontSize: '13px' }}
+            aria-label="Review customer approval on mobile"
+          >
+            Customer Approval &rarr;
+          </Link>
+        )}
       </div>
     </div>
   );

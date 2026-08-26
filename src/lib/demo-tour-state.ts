@@ -9,6 +9,7 @@
 export type DemoPaymentMethod = 'apple_pay' | 'card' | null;
 
 export type DemoTourState = {
+  intakeAnalyzed: boolean;
   upgradeSelected: boolean;
   quoteSent: boolean;
   signature: string;
@@ -18,6 +19,7 @@ export type DemoTourState = {
 };
 
 export const DEFAULT_DEMO_TOUR_STATE: DemoTourState = {
+  intakeAnalyzed: false,
   upgradeSelected: true,
   quoteSent: false,
   signature: '',
@@ -38,6 +40,7 @@ export function loadDemoTourState(): DemoTourState {
     if (!raw) return { ...DEFAULT_DEMO_TOUR_STATE };
     const parsed = JSON.parse(raw);
     return {
+      intakeAnalyzed: Boolean(parsed.intakeAnalyzed),
       upgradeSelected: typeof parsed.upgradeSelected === 'boolean' ? parsed.upgradeSelected : true,
       quoteSent: Boolean(parsed.quoteSent),
       signature: typeof parsed.signature === 'string' ? parsed.signature : '',

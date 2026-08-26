@@ -30,7 +30,7 @@ export default function ApproveScreen() {
   const handleApplyDemoSignature = () => {
     setSignature(DEMO_TOUR_CUSTOMER.name);
     setSigned(true);
-    trackDemoEvent('step_viewed', {
+    trackDemoEvent('action_simulated', {
       step: 5,
       stepSlug: 'approve',
       action: 'demo_signature_applied',
@@ -43,6 +43,13 @@ export default function ApproveScreen() {
     setTimeout(() => {
       setIsProcessing(false);
       setDepositSimulated(true, method);
+      trackDemoEvent('action_simulated', {
+        step: 5,
+        stepSlug: 'approve',
+        action: 'deposit_simulated',
+        depositAmount: DEMO_TOUR_JOB.requiredDeposit,
+        paymentMethod: method,
+      });
       trackDemoEvent('step_completed', {
         step: 5,
         stepSlug: 'approve',
@@ -89,7 +96,7 @@ export default function ApproveScreen() {
             style={{
               background: '#0f2434',
               color: '#ffffff',
-              padding: '24px 28px',
+              padding: '20px 24px',
               borderBottom: '3px solid #50e3bd',
             }}
           >
@@ -98,37 +105,37 @@ export default function ApproveScreen() {
                 <span style={{ fontSize: '11px', fontWeight: 800, color: '#50e3bd', textTransform: 'uppercase', letterSpacing: '1px' }}>
                   Customer Portal &middot; Estimate Review
                 </span>
-                <h2 style={{ fontSize: '20px', fontWeight: 800, margin: '4px 0 0', color: '#ffffff' }}>
+                <h2 style={{ fontSize: '19px', fontWeight: 800, margin: '3px 0 0', color: '#ffffff' }}>
                   {DEMO_TOUR_CONTRACTOR.name}
                 </h2>
-                <div style={{ fontSize: '13px', color: '#a0aec0', marginTop: '2px' }}>
+                <div style={{ fontSize: '12.5px', color: '#a0aec0', marginTop: '2px' }}>
                   Quote #{DEMO_TOUR_JOB.quoteId} &middot; Prepared for {DEMO_TOUR_CUSTOMER.name}
                 </div>
               </div>
               <div style={{ textAlign: 'right' }}>
                 <span style={{ fontSize: '11px', color: '#a0aec0', textTransform: 'uppercase' }}>Amount</span>
-                <div style={{ fontSize: '24px', fontWeight: 800, color: '#50e3bd' }}>
+                <div style={{ fontSize: '22px', fontWeight: 800, color: '#50e3bd' }}>
                   ${total.toLocaleString()}
                 </div>
               </div>
             </div>
           </div>
 
-          <div style={{ padding: '24px 28px' }}>
+          <div style={{ padding: '20px 24px' }}>
             {/* Scope Summary */}
-            <div style={{ marginBottom: '20px' }}>
-              <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#2d3748', margin: '0 0 10px' }}>
+            <div style={{ marginBottom: '18px' }}>
+              <h3 style={{ fontSize: '14.5px', fontWeight: 700, color: '#2d3748', margin: '0 0 8px' }}>
                 {DEMO_TOUR_JOB.title}
               </h3>
-              <div style={{ background: '#f7fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '14px' }}>
+              <div style={{ background: '#f7fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '12px 14px' }}>
                 {DEMO_TOUR_JOB.lineItems.map((item) => (
                   <div
                     key={item.id}
                     style={{
                       display: 'flex',
                       justifyContent: 'space-between',
-                      fontSize: '13.5px',
-                      padding: '6px 0',
+                      fontSize: '13px',
+                      padding: '5px 0',
                       borderBottom: '1px dashed #edf2f7',
                     }}
                   >
@@ -140,13 +147,13 @@ export default function ApproveScreen() {
             </div>
 
             {/* Optional Upgrade Checkbox */}
-            <div style={{ marginBottom: '24px' }}>
+            <div style={{ marginBottom: '20px' }}>
               <div
                 style={{
                   background: state.upgradeSelected ? '#f0fff4' : '#f7fafc',
                   border: `2px solid ${state.upgradeSelected ? '#38a169' : '#cbd5e0'}`,
                   borderRadius: '10px',
-                  padding: '14px 18px',
+                  padding: '12px 16px',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
@@ -162,27 +169,27 @@ export default function ApproveScreen() {
                     checked={state.upgradeSelected}
                     onChange={(e) => setUpgradeSelected(e.target.checked)}
                     aria-label={`Add optional ${DEMO_TOUR_JOB.optionalUpgrades[0].title} (+$${DEMO_TOUR_JOB.optionalUpgrades[0].amount})`}
-                    style={{ width: '20px', height: '20px', accentColor: '#38a169', cursor: 'pointer' }}
+                    style={{ width: '18px', height: '18px', accentColor: '#38a169', cursor: 'pointer' }}
                   />
                   <div>
-                    <label htmlFor="portalUpgradeCheckbox" style={{ fontSize: '14px', fontWeight: 700, color: '#1a202c', cursor: 'pointer' }}>
+                    <label htmlFor="portalUpgradeCheckbox" style={{ fontSize: '13.5px', fontWeight: 700, color: '#1a202c', cursor: 'pointer' }}>
                       Add {DEMO_TOUR_JOB.optionalUpgrades[0].title}
                     </label>
-                    <p style={{ margin: '2px 0 0', fontSize: '12.5px', color: '#4a5568' }}>
+                    <p style={{ margin: '1px 0 0', fontSize: '12px', color: '#4a5568' }}>
                       {DEMO_TOUR_JOB.optionalUpgrades[0].description}
                     </p>
                   </div>
                 </div>
-                <div style={{ fontSize: '15px', fontWeight: 800, color: '#2f855a', whiteSpace: 'nowrap' }}>
+                <div style={{ fontSize: '14.5px', fontWeight: 800, color: '#2f855a', whiteSpace: 'nowrap' }}>
                   +${DEMO_TOUR_JOB.optionalUpgrades[0].amount}.00
                 </div>
               </div>
             </div>
 
             {/* E-Signature Box */}
-            <div style={{ marginBottom: '24px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                <label htmlFor="signatureInput" style={{ fontSize: '13px', fontWeight: 700, color: '#2d3748' }}>
+            <div style={{ marginBottom: '20px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '5px' }}>
+                <label htmlFor="signatureInput" style={{ fontSize: '12.5px', fontWeight: 700, color: '#2d3748' }}>
                   Electronic Signature &middot; Acceptance
                 </label>
                 {!state.signed ? (
@@ -193,7 +200,7 @@ export default function ApproveScreen() {
                       background: 'none',
                       border: 'none',
                       color: '#2b6cb0',
-                      fontSize: '12.5px',
+                      fontSize: '12px',
                       fontWeight: 700,
                       textDecoration: 'underline',
                       cursor: 'pointer',
@@ -211,7 +218,7 @@ export default function ApproveScreen() {
                   background: '#f7fafc',
                   border: state.signed ? '1px solid #38a169' : '1px dashed #cbd5e0',
                   borderRadius: '8px',
-                  padding: '12px 16px',
+                  padding: '10px 14px',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
@@ -225,7 +232,7 @@ export default function ApproveScreen() {
                   onChange={(e) => setSignature(e.target.value)}
                   style={{
                     fontFamily: 'cursive, serif',
-                    fontSize: '20px',
+                    fontSize: '18px',
                     border: 'none',
                     background: 'transparent',
                     color: '#2b6cb0',
@@ -254,18 +261,18 @@ export default function ApproveScreen() {
                   background: '#ebf8ff',
                   border: '1px solid #bee3f8',
                   borderRadius: '10px',
-                  padding: '18px',
-                  marginBottom: '20px',
+                  padding: '16px',
+                  marginBottom: '16px',
                 }}
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '6px' }}>
                   <div>
-                    <strong style={{ fontSize: '14.5px', color: '#2b6cb0' }}>Simulate Required Deposit ($500.00)</strong>
-                    <div style={{ fontSize: '12.5px', color: '#4a5568' }}>
+                    <strong style={{ fontSize: '14px', color: '#2b6cb0' }}>Simulate Required Deposit ($500.00)</strong>
+                    <div style={{ fontSize: '12px', color: '#4a5568' }}>
                       Reserves arrival slot for {DEMO_TOUR_JOB.scheduledDate} (Sample transaction).
                     </div>
                   </div>
-                  <span style={{ fontSize: '11px', background: '#3182ce', color: '#ffffff', padding: '2px 8px', borderRadius: '4px', fontWeight: 700 }}>
+                  <span style={{ fontSize: '10.5px', background: '#3182ce', color: '#ffffff', padding: '2px 7px', borderRadius: '4px', fontWeight: 700 }}>
                     Stripe Simulation
                   </span>
                 </div>
@@ -278,9 +285,9 @@ export default function ApproveScreen() {
                     width: '100%',
                     background: '#000000',
                     color: '#ffffff',
-                    fontSize: '15px',
+                    fontSize: '14.5px',
                     fontWeight: 700,
-                    padding: '14px 20px',
+                    padding: '12px 18px',
                     minHeight: '44px',
                     borderRadius: '8px',
                     border: 'none',
@@ -298,7 +305,7 @@ export default function ApproveScreen() {
                   ) : (
                     <>
                       {/* Clean SVG Apple Icon to avoid missing unicode glyph box */}
-                      <svg width="16" height="20" viewBox="0 0 170 170" fill="#ffffff" aria-hidden="true">
+                      <svg width="15" height="18" viewBox="0 0 170 170" fill="#ffffff" aria-hidden="true">
                         <path d="M150.37 130.25c-2.45 5.66-5.35 10.87-8.71 15.66-4.58 6.53-8.33 11.05-11.22 13.56-4.48 4.12-9.28 6.23-14.42 6.35-3.69 0-8.14-1.05-13.32-3.18-5.19-2.12-9.97-3.17-14.34-3.17-4.58 0-9.49 1.05-14.75 3.17-5.26 2.13-9.5 3.24-12.74 3.35-4.35.13-9.16-1.9-14.42-6.08-3.7-3.04-7.69-7.85-11.97-14.42-6.53-9.97-11.7-21.72-15.52-35.25-3.82-13.53-5.73-26.17-5.73-37.92 0-14.93 3.65-27.18 10.96-36.75 7.31-9.57 16.59-14.48 27.84-14.73 4.9 0 10.37 1.34 16.42 4.02 6.05 2.68 9.94 4.08 11.67 4.2 2.01-.24 6.13-1.68 12.37-4.32 6.24-2.64 11.64-3.83 16.2-3.57 12.74.85 22.84 5.75 30.3 14.7-10.96 6.66-16.32 15.77-16.08 27.33.24 9.38 3.86 17.29 10.86 23.73 7 6.44 15.24 10.23 24.72 11.37-2.32 7.08-5.22 14.28-8.7 21.61zM119.22 31.84c0-7.23 2.65-13.97 7.95-20.22 5.3-6.25 11.83-10.33 19.59-12.24-.24 1.34-.42 2.45-.54 3.33-.85 6.65-3.69 13.1-8.52 19.35-4.83 6.25-10.87 10.42-18.12 12.51-.24-.97-.36-1.88-.36-2.73z" />
                       </svg>
                       <span>Simulate Apple Pay deposit ($500.00)</span>
@@ -312,16 +319,16 @@ export default function ApproveScreen() {
                   background: '#f0fff4',
                   border: '1px solid #9ae6b4',
                   borderRadius: '10px',
-                  padding: '20px',
-                  marginBottom: '20px',
+                  padding: '18px',
+                  marginBottom: '16px',
                   textAlign: 'center',
                 }}
               >
-                <div style={{ fontSize: '24px', marginBottom: '6px' }}>🎉</div>
-                <strong style={{ fontSize: '16px', color: '#22543d', display: 'block' }}>
+                <div style={{ fontSize: '22px', marginBottom: '4px' }}>🎉</div>
+                <strong style={{ fontSize: '15px', color: '#22543d', display: 'block' }}>
                   Simulated Deposit Recorded &middot; Booking Confirmed!
                 </strong>
-                <p style={{ fontSize: '13.5px', color: '#276749', margin: '6px 0 14px' }}>
+                <p style={{ fontSize: '13px', color: '#276749', margin: '4px 0 12px' }}>
                   Demo complete — simulated $500.00 deposit was captured (no money moved). Arrival slot reserved for <strong>{DEMO_TOUR_JOB.scheduledDate}</strong>.
                 </p>
                 <Link
@@ -336,7 +343,7 @@ export default function ApproveScreen() {
             )}
 
             {!state.depositSimulated && (
-              <div style={{ textAlign: 'center', marginTop: '12px' }}>
+              <div style={{ textAlign: 'center', marginTop: '10px' }}>
                 <button
                   type="button"
                   onClick={() => handleSimulatePayment('card')}
@@ -345,12 +352,12 @@ export default function ApproveScreen() {
                     background: 'none',
                     border: 'none',
                     color: '#4a5568',
-                    fontSize: '13px',
+                    fontSize: '12.5px',
                     fontWeight: 600,
                     textDecoration: 'underline',
                     cursor: 'pointer',
                     minHeight: '44px',
-                    padding: '8px 12px',
+                    padding: '6px 10px',
                   }}
                   aria-label="Simulate credit card deposit payment"
                 >

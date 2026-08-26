@@ -15,14 +15,13 @@ import {
 } from '@/lib/demo-tour-state';
 
 const TOUR_BAR = readFileSync('src/components/demo/DemoTourBar.tsx', 'utf8');
-const DEMO_BANNER = readFileSync('src/components/demo-banner.tsx', 'utf8');
-const DEMO_SIDEBAR = readFileSync('src/components/demo-sidebar.tsx', 'utf8');
-const DEMO_HOME = readFileSync('src/app/demo/page.tsx', 'utf8');
+const SITE_PAGE = readFileSync('src/app/demo/tour/site/page.tsx', 'utf8');
 const QUICK_STOPS = readFileSync('src/app/demo/quick-stops/page.tsx', 'utf8');
 const INTAKE_SCREEN = readFileSync('src/app/demo/tour/intake/IntakeScreen.tsx', 'utf8');
 const QUOTE_SCREEN = readFileSync('src/app/demo/tour/quote/QuoteScreen.tsx', 'utf8');
 const APPROVE_SCREEN = readFileSync('src/app/demo/tour/approve/ApproveScreen.tsx', 'utf8');
 const COMPLETE_SCREEN = readFileSync('src/app/demo/tour/complete/CompleteScreen.tsx', 'utf8');
+const ANALYTICS = readFileSync('src/lib/demo-analytics.ts', 'utf8');
 
 describe('5-Minute Evaluation Demo Journey', () => {
   describe('Canonical Tour Fixture Data', () => {
@@ -70,6 +69,7 @@ describe('5-Minute Evaluation Demo Journey', () => {
 
   describe('Shared Tour State & Session Persistence', () => {
     it('initializes with unsigned and unperformed action defaults', () => {
+      expect(DEFAULT_DEMO_TOUR_STATE.intakeAnalyzed).toBe(false);
       expect(DEFAULT_DEMO_TOUR_STATE.upgradeSelected).toBe(true);
       expect(DEFAULT_DEMO_TOUR_STATE.quoteSent).toBe(false);
       expect(DEFAULT_DEMO_TOUR_STATE.signature).toBe('');
@@ -83,6 +83,7 @@ describe('5-Minute Evaluation Demo Journey', () => {
       expect(initial.signed).toBe(false);
 
       saveDemoTourState({
+        intakeAnalyzed: true,
         upgradeSelected: false,
         quoteSent: true,
         signature: 'Taylor Brooks',
@@ -93,18 +94,26 @@ describe('5-Minute Evaluation Demo Journey', () => {
 
       const reset = resetDemoTourState();
       expect(reset.quoteSent).toBe(false);
+      expect(reset.intakeAnalyzed).toBe(false);
     });
   });
 
   describe('Simulation Disclosures & Non-Deceptive Copy', () => {
-    it('displays persistent simulation disclosure across all tour steps in top bar', () => {
+    it('displays persistent desktop and mobile simulation disclosures across all tour steps in top bar', () => {
       expect(TOUR_BAR).toContain('Sample workflow');
       expect(TOUR_BAR).toContain('No texts, signatures, bookings, or payments are real');
+      expect(TOUR_BAR).toContain('Demo only');
+      expect(TOUR_BAR).toContain('No real texts or payments');
     });
 
-    it('labels quote dispatch action as simulation', () => {
+    it('labels illustrative social proof on step 1 site', () => {
+      expect(SITE_PAGE).toContain('Illustrative demo reviews');
+    });
+
+    it('labels quote dispatch action and preview as simulation', () => {
       expect(QUOTE_SCREEN).toContain('Simulate sending quote');
       expect(QUOTE_SCREEN).toContain('Demo complete — no real SMS text was sent');
+      expect(QUOTE_SCREEN).toContain('Preview simulated SMS delivery in one tap');
     });
 
     it('starts approval unsigned and labels signature and deposit as simulations', () => {
@@ -141,17 +150,27 @@ describe('5-Minute Evaluation Demo Journey', () => {
     });
   });
 
-  describe('Accessibility & Touch Target Standards', () => {
-    it('provides descriptive accessible aria-labels on navigation and step dots', () => {
+  describe('Accessibility, Touch Targets & Action Hierarchy', () => {
+    it('provides descriptive accessible aria-labels and smart Skip vs Continue states', () => {
       expect(TOUR_BAR).toContain('aria-label={`Step ${s.step}: ${s.shortTitle}`}');
       expect(TOUR_BAR).toContain('aria-label="Previous tour step"');
-      expect(TOUR_BAR).toContain('aria-label="Next tour step"');
+      expect(TOUR_BAR).toContain('Skip step →');
+      expect(TOUR_BAR).toContain('Continue →');
     });
 
     it('provides accessible names on upgrade checkboxes and signature inputs', () => {
       expect(QUOTE_SCREEN).toContain('aria-label={`Add optional');
       expect(APPROVE_SCREEN).toContain('aria-label={`Add optional');
       expect(APPROVE_SCREEN).toContain('id="signatureInput"');
+    });
+  });
+
+  describe('Funnel Analytics & Telemetry', () => {
+    it('tracks full funnel events with device attribution', () => {
+      expect(ANALYTICS).toContain('action_simulated');
+      expect(ANALYTICS).toContain('step_skipped');
+      expect(ANALYTICS).toContain('cta_clicked');
+      expect(ANALYTICS).toContain('device_type');
     });
   });
 

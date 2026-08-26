@@ -3,12 +3,14 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import DemoTourBar from '@/components/demo/DemoTourBar';
+import { useDemoTourState } from '@/components/demo/DemoTourStateProvider';
 import {
   TOUR_STEPS,
   DEMO_TOUR_CONTRACTOR,
   DEMO_TOUR_CUSTOMER,
   DEMO_TOUR_JOB,
 } from '@/lib/demo-tour-data';
+import { trackDemoEvent } from '@/lib/demo-analytics';
 import styles from '../tour.module.css';
 
 type AnalysisStep = {
@@ -27,6 +29,7 @@ const ANALYSIS_STEPS: AnalysisStep[] = [
 
 export default function IntakeScreen() {
   const currentStep = TOUR_STEPS[1];
+  const { setIntakeAnalyzed } = useDemoTourState();
   const [activeStepIndex, setActiveStepIndex] = useState<number>(0);
   const [isCompleted, setIsCompleted] = useState<boolean>(false);
   const [message] = useState(DEMO_TOUR_JOB.homeownerInquiry);
@@ -36,6 +39,7 @@ export default function IntakeScreen() {
     if (typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       setActiveStepIndex(ANALYSIS_STEPS.length);
       setIsCompleted(true);
+      setIntakeAnalyzed(true);
       return;
     }
 
@@ -47,16 +51,28 @@ export default function IntakeScreen() {
       }
       if (current >= ANALYSIS_STEPS.length) {
         setIsCompleted(true);
+        setIntakeAnalyzed(true);
+        trackDemoEvent('action_simulated', {
+          step: 2,
+          stepSlug: 'intake',
+          action: 'ai_intake_qualification',
+        });
         clearInterval(interval);
       }
     }, 850);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [setIntakeAnalyzed]);
 
   const handleSkipAnimation = () => {
     setActiveStepIndex(ANALYSIS_STEPS.length);
     setIsCompleted(true);
+    setIntakeAnalyzed(true);
+    trackDemoEvent('action_simulated', {
+      step: 2,
+      stepSlug: 'intake',
+      action: 'ai_intake_skipped_to_result',
+    });
   };
 
   const handleReplay = () => {
@@ -70,6 +86,7 @@ export default function IntakeScreen() {
       }
       if (current >= ANALYSIS_STEPS.length) {
         setIsCompleted(true);
+        setIntakeAnalyzed(true);
         clearInterval(interval);
       }
     }, 800);

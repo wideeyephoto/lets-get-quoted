@@ -99,6 +99,9 @@ export default function DemoTourSitePage() {
         <section className={styles.siteReviews}>
           <div className={styles.siteReviewsInner}>
             <h3>What your neighbors say</h3>
+            <span className={styles.siteReviewDisclaimer}>
+              Illustrative demo reviews &middot; Evergreen Lawn &amp; Landscape (fictional sample)
+            </span>
             <p style={{ color: '#4a5568', fontSize: '14px', margin: 0 }}>
               {DEMO_TOUR_CONTRACTOR.rating}
             </p>
