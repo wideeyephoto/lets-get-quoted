@@ -533,6 +533,18 @@ export default function HelpCenter() {
     }
   }, []);
 
+  // Lock background page scroll when modal or drawer is active
+  useEffect(() => {
+    const isAnyModalOpen = Boolean(activeArticle || isStatusModalOpen || isTicketDrawerOpen || activeDocument);
+    if (isAnyModalOpen && typeof document !== 'undefined') {
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = originalOverflow;
+      };
+    }
+  }, [activeArticle, isStatusModalOpen, isTicketDrawerOpen, activeDocument]);
+
   // Fetch Live System Status
   const fetchSystemStatus = useCallback(async () => {
     setIsCheckingHealth(true);
@@ -1450,28 +1462,51 @@ export default function HelpCenter() {
           aria-labelledby="article-modal-title"
         >
           <div className={styles.articleModal} onClick={e => e.stopPropagation()}>
+            {/* Sticky Modal Top Bar */}
             <div className={styles.articleModalHeader}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+              <div className={styles.modalHeaderMeta}>
                 <span className={styles.categoryBadge}>{activeArticle.category}</span>
                 <span className={styles.articleMetaText}>⏱ {activeArticle.readTime}</span>
-                <span className={styles.articleMetaText}>• Audience: {activeArticle.audience || 'Contractors'}</span>
                 {activeArticle.lastReviewed && (
                   <span className={styles.articleMetaText}>• Verified: {activeArticle.lastReviewed}</span>
                 )}
+                <button
+                  type="button"
+                  className={styles.modalCopyLinkBtn}
+                  onClick={() => copyToClipboard(`https://letsgetquoted.com/help/articles/${activeArticle.slug || activeArticle.id}`, 'Permanent Guide URL')}
+                  title="Copy permanent article link"
+                >
+                  <Icons.Copy />
+                  <span>Copy Link</span>
+                </button>
               </div>
-              <button className={styles.iconBtn} onClick={closeArticle} aria-label="Close article viewer">
+              <button className={styles.modalCloseBtn} onClick={closeArticle} aria-label="Close article viewer">
                 <Icons.X />
               </button>
             </div>
 
+            {/* Scrollable Reading Body */}
             <div className={styles.articleModalBody}>
-              <h1 id="article-modal-title" className={styles.articleTitleLarge}>{activeArticle.title}</h1>
+              <div className={styles.articleReadingColumn}>
+                <h1 id="article-modal-title" className={styles.articleTitleLarge}>{activeArticle.title}</h1>
 
-              {/* Rich Formatted Guide HTML */}
-              <div
-                className={styles.articleHtmlContent}
-                dangerouslySetInnerHTML={{ __html: activeArticle.content }}
-              />
+                <div className={styles.articleMetaDeck}>
+                  <span>Audience: <strong>{activeArticle.audience || 'Contractors'}</strong></span>
+                  <span>•</span>
+                  <span>Region: <strong>{activeArticle.applicableRegion || 'US & Canada'}</strong></span>
+                  {activeArticle.author && (
+                    <>
+                      <span>•</span>
+                      <span>Author: <strong>{activeArticle.author}</strong></span>
+                    </>
+                  )}
+                </div>
+
+                {/* Rich Formatted Guide HTML */}
+                <div
+                  className={styles.articleHtmlContent}
+                  dangerouslySetInnerHTML={{ __html: activeArticle.content }}
+                />
 
               {/* In-Article Live Margin Calculator */}
               {(activeArticle.id === 'art-markup-pricing' || activeArticle.slug === 'labor-rates-margin-markup-calculator') && (
@@ -1687,67 +1722,70 @@ export default function HelpCenter() {
                 </div>
               )}
 
-              {/* In-Modal Governance & Verification Box */}
-              <div className={styles.governanceModalBox}>
-                <div className={styles.governanceModalTitle}>
-                  <span>🛡️ Verified Support Guide</span>
-                </div>
-                <div className={styles.governanceModalDetails}>
-                  <span><strong>Last Reviewed:</strong> {activeArticle.lastReviewed || 'August 2026'}</span>
-                  <span><strong>Applicable:</strong> {activeArticle.applicableRegion || 'US & Canada'}</span>
-                  <span><strong>Author:</strong> {activeArticle.author || 'LGQ Technical Team'}</span>
-                </div>
-                {activeArticle.sources && activeArticle.sources.length > 0 && (
-                  <div className={styles.governanceModalSources}>
-                    <span>Sources:</span>
-                    {activeArticle.sources.map((s, idx) => (
-                      <a key={idx} href={s.url} target="_blank" rel="noopener noreferrer" className={styles.modalSourceLink}>
-                        {s.title} ↗
-                      </a>
-                    ))}
+                {/* In-Modal Governance & Verification Box */}
+                <div className={styles.governanceModalBox}>
+                  <div className={styles.governanceModalTitle}>
+                    <span>🛡️ Verified Support Guide</span>
                   </div>
-                )}
-              </div>
-
-              {/* Modal Footer Actions */}
-              <div className={styles.modalFooterActions}>
-                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                  <button
-                    type="button"
-                    className={`${styles.btnOutlineSm} ${articleFeedback[activeArticle.id] ? styles.feedbackActive : ''}`}
-                    onClick={() => {
-                      setArticleFeedback(prev => ({ ...prev, [activeArticle.id]: true }));
-                      showToast('Thanks for your feedback!');
-                    }}
-                  >
-                    {articleFeedback[activeArticle.id] ? <Icons.Check /> : <Icons.ThumbsUp />}
-                    <span>{articleFeedback[activeArticle.id] ? 'Helpful' : 'Helpful?'}</span>
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.btnOutlineSm}
-                    onClick={() => copyToClipboard(`https://letsgetquoted.com/help/articles/${activeArticle.slug || activeArticle.id}`, 'Permanent Guide URL')}
-                  >
-                    <Icons.Copy />
-                    <span>Copy URL</span>
-                  </button>
-                  <Link
-                    href={`/help/articles/${activeArticle.slug || activeArticle.id}`}
-                    className={styles.btnOutlineSm}
-                  >
-                    <span>Open Full Page ↗</span>
-                  </Link>
+                  <div className={styles.governanceModalDetails}>
+                    <span><strong>Last Reviewed:</strong> {activeArticle.lastReviewed || 'August 2026'}</span>
+                    <span>•</span>
+                    <span><strong>Applicable:</strong> {activeArticle.applicableRegion || 'US & Canada'}</span>
+                    <span>•</span>
+                    <span><strong>Author:</strong> {activeArticle.author || 'LGQ Technical Team'}</span>
+                  </div>
+                  {activeArticle.sources && activeArticle.sources.length > 0 && (
+                    <div className={styles.governanceModalSources}>
+                      <span>Official Sources:</span>
+                      {activeArticle.sources.map((s, idx) => (
+                        <a key={idx} href={s.url} target="_blank" rel="noopener noreferrer" className={styles.modalSourceLink}>
+                          {s.title} ↗
+                        </a>
+                      ))}
+                    </div>
+                  )}
                 </div>
+              </div>
+            </div>
 
+            {/* Sticky Modal Action Footer */}
+            <div className={styles.modalFooterActions}>
+              <div className={styles.modalFooterLeft}>
                 <button
                   type="button"
-                  className={styles.btnPrimarySm}
-                  onClick={() => openTicketWithSubject(`Question regarding: ${activeArticle.title}`)}
+                  className={`${styles.btnOutlineSm} ${articleFeedback[activeArticle.id] ? styles.feedbackActive : ''}`}
+                  onClick={() => {
+                    setArticleFeedback(prev => ({ ...prev, [activeArticle.id]: true }));
+                    showToast('Thanks for your feedback!');
+                  }}
                 >
-                  <Icons.LifeBuoy />
-                  <span>Contact Support</span>
+                  {articleFeedback[activeArticle.id] ? <Icons.Check /> : <Icons.ThumbsUp />}
+                  <span>{articleFeedback[activeArticle.id] ? 'Helpful' : 'Helpful?'}</span>
                 </button>
+                <button
+                  type="button"
+                  className={styles.btnOutlineSm}
+                  onClick={() => copyToClipboard(`https://letsgetquoted.com/help/articles/${activeArticle.slug || activeArticle.id}`, 'Permanent Guide URL')}
+                >
+                  <Icons.Copy />
+                  <span>Copy URL</span>
+                </button>
+                <Link
+                  href={`/help/articles/${activeArticle.slug || activeArticle.id}`}
+                  className={styles.btnOutlineSm}
+                >
+                  <span>Open Full Page ↗</span>
+                </Link>
               </div>
+
+              <button
+                type="button"
+                className={styles.btnPrimarySm}
+                onClick={() => openTicketWithSubject(`Question regarding: ${activeArticle.title}`)}
+              >
+                <Icons.LifeBuoy />
+                <span>Contact Support</span>
+              </button>
             </div>
           </div>
         </div>
