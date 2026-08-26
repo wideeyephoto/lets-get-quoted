@@ -1,6 +1,6 @@
 /* GENERATED — do not edit. Source: src/app/globals.css
    Run: node scripts/build-css-subset.mjs
-   source-sha256: a14f3ec469dd2568
+   source-sha256: 70caddf97145d9a7
 
    globals.css with the rules that can only match inside /dashboard, /admin and
    /demo removed. Every route except those three imports this file; they import
@@ -11783,6 +11783,62 @@ button.plan-badge.warn.is-action:focus-visible { outline: 2px solid rgba(255, 12
 /* Both jump targets clear the sticky top bar rather than landing under it. */
 #quick-stop-earn-more,
 #quick-stop-demand { scroll-margin-top: calc(var(--appbar-h) + 1.25rem); }
+
+/* --- summary cards --- */
+.bset-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: 0.9rem;
+}
+
+.bset-card {
+  display: grid;
+  gap: 0.25rem;
+  /* The card holds a hostname, and a hostname has no spaces to break on — a
+     long subdomain ran straight out of the card and onto the page. */
+  min-width: 0;
+  overflow-wrap: anywhere;
+  padding: 1.1rem 1.15rem 0.9rem;
+  border: 1px solid var(--bset-line);
+  border-radius: 16px;
+  background: var(--bset-card);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.16s ease, transform 0.16s ease;
+}
+
+.bset-card:hover { border-color: var(--bset-line-strong); transform: translateY(-1px); }
+.bset-card:focus-visible { outline: 2px solid rgba(255, 122, 41, 0.7); outline-offset: 2px; }
+
+.bset-card-icon {
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  margin-bottom: 0.55rem;
+  border-radius: 12px;
+  background: rgba(var(--tint), 0.05);
+}
+
+.bset-card-icon svg { width: 1.25rem; height: 1.25rem; }
+
+.bset-card-label { font-size: 0.8rem; color: var(--muted, var(--muted-2)); }
+.bset-card > strong { font-size: 1.12rem; font-weight: 700; letter-spacing: -0.01em; }
+.bset-card > small { font-size: 0.8rem; color: var(--muted, var(--muted-2)); line-height: 1.4; }
+
+.bset-card-edit {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: 0.65rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--bset-line);
+  font-size: 0.84rem;
+  font-weight: 650;
+  color: var(--bset-accent-ink);
+}
+
+.bset-card-edit svg { width: 0.85rem; height: 0.85rem; }
 .bset-summary-item.is-static { cursor: default; }
 .bset-summary-item.is-static:hover { border-color: var(--bset-line); transform: none; }
 .bset-summary-copy > span.is-warning { color: var(--ink-amber-1); font-weight: 700; }
@@ -11840,6 +11896,10 @@ button.plan-badge.warn.is-action:focus-visible { outline: 2px solid rgba(255, 12
 
 .bset-tipcard a:hover, .bset-recurring-link:hover { text-decoration: underline; }
 .bset-tipcard a svg, .bset-recurring-link svg { width: 0.85rem; height: 0.85rem; }
+
+@media (prefers-reduced-motion: reduce) {
+  .bset-card, .bset-summary-item, .bset-day, .bset-window, .bset-chev, .bset-preview-toggle > svg, .bset-switch-track, .bset-switch-track > span { transition: none; }
+}
 
 /* Applied for ~1.5s by revealRow() when a map pin points at a record, so the
    row you were sent to identifies itself instead of leaving you to work out
@@ -12156,6 +12216,11 @@ button.plan-badge.warn.is-action:focus-visible { outline: 2px solid rgba(255, 12
 .sidenav-link .sidenav-state,
 .sidenav-link .sidenav-count,
 .sidenav-link .sidenav-total { flex: none; }
+
+/* Quick Stops reuses the booking summary cards, but as links rather than
+   in-page jumps — an anchor would otherwise pick up the global link colour and
+   underline and stop matching the buttons beside it. */
+a.bset-card { color: inherit; text-decoration: none; }
 
 /* ==========================================================================
    Crew & Labor SKINS.
@@ -12604,6 +12669,28 @@ button.plan-badge.warn.is-action:focus-visible { outline: 2px solid rgba(255, 12
    told to call 911 rather than shown a price, and it should not look like a
    scheduling technicality. */
 .es-demand-tag.is-unsafe { background: rgba(248, 113, 113, 0.18); color: var(--ink-red-1); }
+
+
+/* The "people actually asked" block inside the Quick Stops demand panel. */
+.es-demand-asked {
+  margin-top: 0.9rem;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid var(--edge-t10);
+  border-radius: 14px;
+  background: rgba(var(--tint), 0.03);
+}
+.es-demand-asked > p { margin: 0 0 0.6rem; font-size: 0.9rem; line-height: 1.6; color: rgba(var(--ink-rgb), 0.75); }
+.es-demand-asked strong { color: var(--text); font-family: var(--font-display); font-size: 1.1em; }
+.es-demand-asked-list { list-style: none; margin: 0.6rem 0 0; padding: 0; display: flex; flex-direction: column; gap: 0.3rem; }
+.es-demand-asked-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem;
+  font-size: 0.82rem;
+  color: var(--mute-i60);
+}
+.es-demand-asked-list em { font-style: normal; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--mute-i42); }
 
 /* Quick Stop: which day the customer is asking for. Chips rather than a date
    input — the choice is two or three named days, and a calendar widget makes a
@@ -14366,18 +14453,20 @@ button.plan-badge.warn.is-action:focus-visible { outline: 2px solid rgba(255, 12
    padding on the bar and on both pills, a smaller gap, and the wordmark down a
    size. No label is dropped and no target goes under 44px. */
 @media (max-width: 440px) {
-  .sidenav-mobilebar { gap: 0.35rem; padding-left: 0.6rem; padding-right: 0.6rem; }
-  .sidenav-mobilebar .sidenav-wordmark { font-size: 0.8rem; padding: 0.35rem 0.5rem; }
-  .sidenav-mobilebar .mobilebar-new { padding: 0 0.7rem; }
-  .sidenav-mobilebar .nav-toggle { padding: 0.65rem 0.7rem; margin-left: 0.25rem; }
+  .sidenav-mobilebar { gap: 0.3rem; padding-left: 0.5rem; padding-right: 0.5rem; }
+  .sidenav-mobilebar .sidenav-brand { min-width: 0; }
+  .sidenav-mobilebar .sidenav-wordmark { font-size: 0.78rem; padding: 0.3rem 0.45rem; }
+  .sidenav-mobilebar .mobilebar-new { padding: 0 0.65rem; }
+  .sidenav-mobilebar .nav-toggle { padding: 0.65rem 0.65rem; margin-left: 0.2rem; }
 }
 
 /* 360px is a real Android width, not a corner case. */
 @media (max-width: 400px) {
-  .sidenav-mobilebar { gap: 0.25rem; padding-left: 0.5rem; padding-right: 0.5rem; }
-  .sidenav-mobilebar .sidenav-wordmark { font-size: 0.7rem; padding: 0.3rem 0.42rem; letter-spacing: 0.03em; }
-  .sidenav-mobilebar .mobilebar-new { padding: 0 0.55rem; }
-  .sidenav-mobilebar .nav-toggle { padding: 0.65rem 0.6rem; margin-left: 0.15rem; }
+  .sidenav-mobilebar { gap: 0.2rem; padding-left: 0.4rem; padding-right: 0.4rem; }
+  .sidenav-mobilebar .sidenav-brand { min-width: 0; }
+  .sidenav-mobilebar .sidenav-wordmark { font-size: 0.7rem; padding: 0.25rem 0.38rem; letter-spacing: 0.02em; }
+  .sidenav-mobilebar .mobilebar-new { padding: 0 0.48rem; }
+  .sidenav-mobilebar .nav-toggle { padding: 0.6rem 0.55rem; margin-left: 0.1rem; }
 }
 
 /* Below ~345px the wordmark and three 44px targets cannot both fit, and the
@@ -15065,6 +15154,21 @@ select optgroup {
   overflow-wrap: anywhere;
 }
 .calendar-job-chip-main { font-size: 0.75rem; line-height: 1.25; }
+
+@media (max-width: 640px) {
+  /* The site-wide floating switch sat on top of the first job card. Theme is
+     still available in Menu; on this task-heavy phone surface content wins. */
+  body:has(.schedule-shell) .theme-fab,
+  body:has(.workspace-shell) .theme-fab { display: none; }
+  .schedule-shell .sched-card-top { align-items: flex-start; }
+  .schedule-shell .sched-card-badge {
+    max-width: 62%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    text-align: right;
+    line-height: 1.25;
+  }
+}
 
 /* --- the chip stops truncating names ---------------------------------------
    .calendar-job-chip has carried `white-space: nowrap` since it was a one-line
@@ -15871,6 +15975,66 @@ select optgroup {
   color: var(--mute-t62);
   font-size: 0.8rem;
   line-height: 1.45;
+}
+
+.qs-savebar-note {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.qs-savebar-note strong { color: var(--text); font-weight: 700; }
+.qs-presets-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.qs-presets-title {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0;
+}
+.qs-calculator-table {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  font-size: 0.85rem;
+}
+.qs-calc-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--muted);
+}
+.qs-calc-row strong {
+  color: var(--text);
+}
+.qs-calc-row.fee {
+  color: #ff9b54;
+}
+.qs-calc-row.net {
+  padding-top: 0.6rem;
+  margin-top: 0.4rem;
+  border-top: 1px dashed var(--edge-t14, rgba(255, 255, 255, 0.15));
+  font-size: 1rem;
+  font-weight: 750;
+  color: var(--text);
+}
+.qs-calc-row.net strong {
+  color: #34c77b;
+  font-size: 1.2rem;
+}
+
+.qs-funnel-detail {
+  display: block;
+  margin-top: 0.5rem;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: var(--muted);
 }
 
 /* ══════════════════════════════════════════════════════════════════════════

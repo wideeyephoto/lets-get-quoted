@@ -1,0 +1,143 @@
+.card {
+  background: var(--surface, #ffffff);
+  border: 1px solid var(--line, #e2e8f0);
+  border-radius: 12px;
+  padding: 1.25rem;
+  margin-top: 1.25rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.title {
+  font-size: 1.05rem;
+  font-weight: 750;
+  color: var(--text, #0f172a);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  background: #f0fdf4;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+}
+
+.lead {
+  font-size: 0.875rem;
+  color: var(--muted, #64748b);
+  margin: 0 0 1rem 0;
+  line-height: 1.45;
+}
+
+.progressBarContainer {
+  width: 100%;
+  height: 6px;
+  background: #f1f5f9;
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: 1rem;
+}
+
+.progressBar {
+  height: 100%;
+  background: #22c55e;
+  transition: width 0.25s ease-in-out;
+}
+
+.checklist {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.checkItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border-radius: 8px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.checkItem:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+.checkItemDone {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+
+.checkbox {
+  width: 1.15rem;
+  height: 1.15rem;
+  margin-top: 0.15rem;
+  accent-color: #16a34a;
+  cursor: pointer;
+}
+
+.itemContent {
+  flex: 1;
+}
+
+.itemTitle {
+  font-size: 0.9rem;
+  font-weight: 650;
+  color: var(--text, #0f172a);
+  margin: 0 0 0.15rem 0;
+}
+
+.itemTitleDone {
+  text-decoration: line-through;
+  color: #15803d;
+}
+
+.itemDesc {
+  font-size: 0.78rem;
+  color: var(--muted, #64748b);
+  margin: 0;
+  line-height: 1.35;
+}
+
+.citation {
+  display: inline-block;
+  margin-top: 0.25rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #0284c7;
+  background: #e0f2fe;
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+}
+
+.footerNote {
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--line, #e2e8f0);
+  font-size: 0.78rem;
+  color: var(--muted, #64748b);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}

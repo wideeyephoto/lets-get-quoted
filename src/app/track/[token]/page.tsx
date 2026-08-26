@@ -1,10 +1,12 @@
-import type { CSSProperties, ReactNode } from 'react';
+import React, { type CSSProperties, type ReactNode } from 'react';
 import { createAdminClient } from '@/lib/auth';
 import { getTrackingByToken, recordTrackingView, type PublicTracking } from '@/lib/job-tracking';
 import {
   ARRIVAL_STATUS_HEADLINE, HOMEOWNER_REPLIES, homeownerReply, isClosedStatus,
 } from '@/lib/arrival';
 import PinMap, { type MapPin } from '@/components/pin-map';
+import { CustomerPermitBadge } from '@/components/permits/CustomerPermitBadge';
+import { getCustomerPermitSummary } from '@/lib/permit-intel/customer-portal';
 import AutoRefresh from './AutoRefresh';
 import { homeownerReplyAction } from './actions';
 import styles from './track.module.css';
@@ -74,6 +76,16 @@ export default async function TrackPage({
   // is a person, not a formation.
   if (visit.tech) pins.push({ id: 'tech', lat: visit.tech.lat, lng: visit.tech.lng, kind: 'lead', label: `${visit.crewFirstName || visit.businessName} — on the way`, href: '#' });
 
+  // Fetch sanitized municipal permit status for homeowner reassurance
+  let permitSummary = null;
+  if (visit.jobId && visit.accountId) {
+    try {
+      permitSummary = await getCustomerPermitSummary(admin, visit.accountId, visit.jobId);
+    } catch (err) {
+      console.warn('Could not load permit summary for tracking:', err);
+    }
+  }
+
   return (
     <Shell accent={visit.accent}>
       {/* Only poll while something can still change. A finished visit that
@@ -111,6 +123,13 @@ export default async function TrackPage({
           </div>
         ) : null}
       </section>
+
+      {/* Municipal Permit & Compliance Seal */}
+      {permitSummary ? (
+        <section style={{ margin: '0.75rem 0' }}>
+          <CustomerPermitBadge jobId={visit.jobId} initialSummary={permitSummary} />
+        </section>
+      ) : null}
 
       {said ? <p className={styles.ack}>{said.ack}</p> : null}
       {searchParams.said === 'busy' ? <p className={styles.ack}>Thanks — we already have that. No need to tap again.</p> : null}

@@ -6,6 +6,7 @@ import type { LeadDetailDto } from '@/lib/lead-detail';
 import { isContactablePhone } from '@/lib/lead-queue';
 import type { LeadViewItem } from './LeadsWorkspace';
 import { PropertyDossierCard } from '@/components/property-intel/PropertyDossierCard';
+import { PermitFeasibilityCard } from '@/components/permits/PermitFeasibilityCard';
 import styles from '../focus.module.css';
 import leadStyles from './leads.module.css';
 
@@ -127,7 +128,10 @@ export default function LeadDetailTabs({
     return (
       <div style={{ maxWidth: '720px' }}>
         {detail.address ? (
-          <PropertyDossierCard address={detail.address} />
+          <>
+            <PropertyDossierCard address={detail.address} />
+            <PermitFeasibilityCard address={detail.address} isLead={true} />
+          </>
         ) : (
           <p className={styles.muted}>No address on file for this lead to fetch property intelligence.</p>
         )}

@@ -36,6 +36,11 @@ export type LeadTriage = {
   timelineAlt?: string;
   location?: string;
   estimate?: { min: number; max: number } | null;
+  permit?: {
+    required: boolean;
+    authorityName: string;
+    estimatedFee: number | null;
+  };
   // 'text_only' = the homeowner asked not to be called — text first.
   //
   // A VOICE preference, and only that: it is about picking up the phone, and it

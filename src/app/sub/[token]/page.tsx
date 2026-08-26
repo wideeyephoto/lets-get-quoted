@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import SaveButton from '@/components/save-button';
 import { ALREADY_CLAIMED_MESSAGE, SELECTION_MODE_LABEL, expiryLabel } from '@/lib/subcontractor-dispatch';
 import { loadPublicOffer } from '@/lib/subcontractor-dispatch-data';
+import { FieldInspectionChecklist } from '@/components/permits/FieldInspectionChecklist';
 import { acceptOfferAction, askQuestionAction, declineOfferAction, keepAsBackupAction } from './actions';
 import styles from './sub.module.css';
 
@@ -119,6 +120,7 @@ export default async function SubcontractorOfferPage({ params }: { params: { tok
             <li>Arrive inside the window above. Call the customer first if you are running late.</li>
             <li>Invoice {view.businessName} when the work is done — not the homeowner.</li>
           </ol>
+          <FieldInspectionChecklist />
         </div>
         <p className={styles.footer}>
           Sent by {view.businessName} through Let&rsquo;s Get Quoted · <Link href="/privacy">Privacy</Link>

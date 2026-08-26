@@ -284,8 +284,8 @@ export default async function CrewLaborPage({
             </Link>
             {tab === 'team' ? (
               <AddPersonMenu
-                employeeHref="/dashboard/crew?tab=team&add=1"
-                subcontractorHref="/dashboard/crew?tab=team&add=sub"
+                employeeHref="/dashboard/crew?tab=people&add=1"
+                subcontractorHref="/dashboard/crew?tab=people&add=sub"
               />
             ) : null}
           </div>

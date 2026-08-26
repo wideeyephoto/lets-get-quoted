@@ -1,3 +1,4 @@
+import React from 'react';
 import { createAdminClient } from '@/lib/auth';
 import { formatMoneyExact } from '@/lib/jobs';
 import {
@@ -21,6 +22,8 @@ import {
 } from '@/lib/payment-banner';
 import { resolvePaymentView } from '@/lib/payment-view';
 import { QUICK_STOP_PAYABLE_COLUMNS, quickStopOfferAllowsPayment } from '@/lib/quick-stop';
+import { CustomerPermitBadge } from '@/components/permits/CustomerPermitBadge';
+import { getCustomerPermitSummary } from '@/lib/permit-intel/customer-portal';
 import { startCheckoutAction } from './actions';
 
 // Always render fresh from the database — this page's content changes based
@@ -364,6 +367,16 @@ export default async function PublicPaymentPage({
     loadInstallmentPosition(admin, payment.payment_plan_id, payment.installment_seq),
   ]);
 
+  // Fetch sanitized municipal permit status for homeowner reassurance
+  let permitSummary = null;
+  if (payment.job_id && payment.account_id) {
+    try {
+      permitSummary = await getCustomerPermitSummary(admin, payment.account_id, payment.job_id);
+    } catch (err) {
+      console.warn('Could not load permit summary for payment page:', err);
+    }
+  }
+
   // A priority visit fee is not a deposit, whatever the row says. An installment
   // says which one it is, because "Installment" alone is the same three words
   // every month of a plan.
@@ -572,6 +585,13 @@ export default async function PublicPaymentPage({
           </article>
         </div>
       </section>
+
+      {payment.job_id && permitSummary ? (
+        <section style={{ maxWidth: '860px', margin: '1.25rem auto', padding: '0 1rem' }}>
+          <CustomerPermitBadge jobId={payment.job_id} initialSummary={permitSummary} />
+        </section>
+      ) : null}
+
       <ContractorBrandFoot businessName={businessName} />
       </main>
     </>

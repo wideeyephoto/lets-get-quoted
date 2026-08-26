@@ -226,6 +226,72 @@ export const signalwireVoiceProvider: VoiceProvider = {
           web_hook_auth_user: plan.receiptAuthorization.username,
           web_hook_auth_password: plan.receiptAuthorization.password,
         });
+
+        swaigFunctions.push({
+          function: 'check_permit_requirement',
+          purpose: 'Look up municipal building codes, permit requirements, and estimated fees for a project in a specific city.',
+          argument: {
+            type: 'object',
+            properties: {
+              city_or_address: {
+                type: 'string',
+                description: 'The city or street address where work is being performed (e.g. Royal Oak, Detroit, Troy).',
+              },
+              trade: {
+                type: 'string',
+                description: 'The trade discipline: roofing, electrical, mechanical, or plumbing.',
+              },
+              project_description: {
+                type: 'string',
+                description: 'Brief description of the work requested (e.g. roof replacement, panel upgrade, water heater).',
+              },
+            },
+            required: ['city_or_address'],
+          },
+          web_hook_url: plan.swaigUrl,
+          web_hook_auth_user: plan.receiptAuthorization.username,
+          web_hook_auth_password: plan.receiptAuthorization.password,
+        });
+
+        swaigFunctions.push({
+          function: 'check_inspection_status',
+          purpose: 'Look up municipal permit approval status and scheduled inspection dates for an active customer or property address.',
+          argument: {
+            type: 'object',
+            properties: {
+              customer_name_or_address: {
+                type: 'string',
+                description: 'The customer name, phone number, or street address to look up.',
+              },
+            },
+            required: ['customer_name_or_address'],
+          },
+          web_hook_url: plan.swaigUrl,
+          web_hook_auth_user: plan.receiptAuthorization.username,
+          web_hook_auth_password: plan.receiptAuthorization.password,
+        });
+
+        swaigFunctions.push({
+          function: 'check_rebates_and_incentives',
+          purpose: 'Look up federal Inflation Reduction Act (IRA) tax credits and local utility cash rebates for heat pumps, EV chargers, solar, water heaters, and electrical panels.',
+          argument: {
+            type: 'object',
+            properties: {
+              category: {
+                type: 'string',
+                description: 'The clean energy improvement: heat_pump, ev_charger, solar, water_heater, or panel_upgrade.',
+              },
+              state: {
+                type: 'string',
+                description: 'The 2-letter state abbreviation (e.g. MI, CA, NY). Defaults to MI if unspecified.',
+              },
+            },
+            required: ['category'],
+          },
+          web_hook_url: plan.swaigUrl,
+          web_hook_auth_user: plan.receiptAuthorization.username,
+          web_hook_auth_password: plan.receiptAuthorization.password,
+        });
       }
 
       mainSection.push({
@@ -248,6 +314,8 @@ export const signalwireVoiceProvider: VoiceProvider = {
               + 'The opening greeting and AI disclosure have already been played; do not repeat them unless asked. '
               + 'Collect the caller\'s name, callback number, service address, the work requested, urgency, '
               + 'and preferred appointment time. Never claim an appointment is confirmed. '
+              + 'If the caller asks whether a permit or city inspection is needed or asks about municipal building code rules, use the check_permit_requirement tool with their city and trade. '
+              + 'If an existing customer calls asking about their permit status or scheduled municipal inspection, use the check_inspection_status tool. '
               + 'If the caller asks for a person and a transfer tool is available, use it.'),
           },
           post_prompt: {

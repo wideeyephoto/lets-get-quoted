@@ -26,7 +26,7 @@ describe('AI Voice Tier 3 Live SWAIG Tools & In-Call Scheduling', () => {
     expect(aiSection.SWAIG).toBeDefined();
 
     const functions = aiSection.SWAIG.functions;
-    expect(functions).toHaveLength(3);
+    expect(functions.length).toBeGreaterThanOrEqual(3);
 
     // 1. Transfer tool
     const transferFn = functions.find((f: any) => f.function === 'transfer_to_business');
@@ -47,6 +47,12 @@ describe('AI Voice Tier 3 Live SWAIG Tools & In-Call Scheduling', () => {
     expect(availFn.web_hook_url).toBe('https://example.com/api/voice/swaig?account_id=acc-123');
     expect(availFn.web_hook_auth_user).toBe('test-user');
     expect(availFn.web_hook_auth_password).toBe('test-password');
+
+    // 4. Clean Energy Rebates tool
+    const rebateFn = functions.find((f: any) => f.function === 'check_rebates_and_incentives');
+    expect(rebateFn).toBeDefined();
+    expect(rebateFn.argument.properties.category).toBeDefined();
+    expect(rebateFn.web_hook_url).toBe('https://example.com/api/voice/swaig?account_id=acc-123');
   });
 
   it('formats caller booking link SMS copy accurately with opt-out compliance', () => {

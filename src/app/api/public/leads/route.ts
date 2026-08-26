@@ -14,6 +14,8 @@ import { getSiteContent, isFullyBookedActive } from '@/lib/site-content';
 import { sendOwnerHighValueLeadSms } from '@/lib/sms';
 import { checkRateLimit, clientIpFrom } from '@/lib/rate-limit';
 import { serviceAreaVerdict } from '@/lib/service-area-match';
+import { resolveJurisdiction } from '@/lib/location-context/jurisdiction-resolver';
+import { evaluatePermitRequirement } from '@/lib/permit-intel/requirement-engine';
 
 export const runtime = 'nodejs';
 
@@ -266,11 +268,38 @@ export async function POST(request: NextRequest) {
   // parallel tier) and drives escalated alerts.
   const isHighValue = !hasPruneFlag && estimate != null && highValueThreshold > 0 && estimate.max >= highValueThreshold;
   if (isHighValue) flags.push('high_value');
+
+  let permitTriage: LeadTriage['permit'] = undefined;
+  if (location && location.trim().length >= 3) {
+    try {
+      const jurisdiction = resolveJurisdiction({
+        raw: location,
+        city: location,
+        state: 'MI',
+        formattedAddress: location,
+        isValid: true,
+      });
+      const req = evaluatePermitRequirement(jurisdiction.authorityId, {
+        trade: 'roofing',
+        scope: 'replacement',
+        estimatedCost: estimate?.max || 8500,
+      });
+      permitTriage = {
+        required: req.decision === 'required',
+        authorityName: jurisdiction.authorityName,
+        estimatedFee: req.estimatedGovernmentFee?.estimatedTotal ?? null,
+      };
+    } catch {
+      // quiet fallback
+    }
+  }
+
   const triage: LeadTriage = {
     score: hasPruneFlag ? 'low' : isHighValue || (normalizedPhone && estimate) ? 'hot' : 'warm',
     flags,
     ...(timeline ? { timeline } : {}),
     ...(location ? { location } : {}),
+    ...(permitTriage ? { permit: permitTriage } : {}),
     estimate,
     contactPreference: text(data, 'contactPreference', 10) === 'text' ? 'text_only' : 'any',
   };

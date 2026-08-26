@@ -5,38 +5,17 @@ import { formatJobTime, formatMoney } from '@/lib/jobs';
 import type { DashboardHome } from '@/lib/dashboard-home-data';
 import { ChecklistTourInvitation } from '@/components/product-tour/ProductTourLauncher';
 import BlogReminderBanner from './BlogReminderBanner';
+import { extractCity, initials } from '@/lib/dashboard/schedule-loader';
 
-/**
- * The dashboard home, given its figures.
- *
- * Split out of page.tsx so the logged-out demo renders the same first screen a
- * prospect would get after signing up. Every count here has to agree with every
- * other one — the priority list, the week strip and the snapshot all read the
- * same jobs and leads — which is exactly what a hand-drawn demo copy of this
- * page could not keep true.
- */
-
-function extractCity(address: string | null): string {
-  if (!address) return 'No address on file';
-  const parts = address.split(',').map((part) => part.trim()).filter(Boolean);
-  const statePattern = /^[A-Z]{2}(?:\s+\d{5}(?:-\d{4})?)?$/i;
-  const cityPart = parts.find((part, index) => index > 0 && !statePattern.test(part));
-  if (cityPart) return cityPart;
-
-  const stateIndex = parts.findIndex((part) => statePattern.test(part));
-  const fallback = stateIndex > 0 ? parts[stateIndex - 1] : parts[0];
-  const inferredCity = fallback?.match(/(?:\b(?:Ave|Avenue|St|Street|Rd|Road|Dr|Drive|Ln|Lane|Ct|Court|Blvd|Boulevard|Way|Trail|Trl|Circle|Cir)\b\.?\s+)(.+)$/i)?.[1];
-  return inferredCity || fallback || 'No address on file';
-}
-
-function initials(name: string): string {
-  return name
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase() ?? '')
-    .join('');
-}
+// Additional Command Center Components
+import SystemStatusStrip from './home/SystemStatusStrip';
+import TodaySchedule from './home/TodaySchedule';
+import JobReadiness from './home/JobReadiness';
+import CrewStatus from './home/CrewStatus';
+import CommunicationsPanel from './home/CommunicationsPanel';
+import SalesPipeline from './home/SalesPipeline';
+import CashPreview from './home/CashPreview';
+import BestNextOpportunity from './home/BestNextOpportunity';
 
 export default function DashboardHomeScreen({
   home,
@@ -45,25 +24,63 @@ export default function DashboardHomeScreen({
 }: {
   home: DashboardHome;
   basePath?: string;
-  /** The demo: automation switches read as state, not as controls. */
   readOnly?: boolean;
 }) {
   const {
-    connectDisabledAt, onboardingComplete, onboardingSteps, completedStepCount,
-    topPriorities, restPriorities, waitingItems, quietDays, next7Days, todayKey, assignmentsByJob, crew,
-    siteUrl, sitePublished, bookingSubdomain, rebookDue, privateFeedback,
-    jobsNext7Days, reviewsOn, followupsOn, remindersOn, dailyDigestOn,
-    automation, blogReminderWeeks, lastPublishedBlogISO, blogTopicSuggestion,
-    outstanding, openQuotes, bookedWork, collectedThisMonth, collectedMonthLabel,
+    connectDisabledAt,
+    onboardingComplete,
+    onboardingSteps,
+    completedStepCount,
+    topPriorities,
+    restPriorities,
+    waitingItems,
+    quietDays,
+    next7Days,
+    todayKey,
+    assignmentsByJob,
+    crew,
+    siteUrl,
+    sitePublished,
+    bookingSubdomain,
+    rebookDue,
+    privateFeedback,
+    jobsNext7Days,
+    reviewsOn,
+    followupsOn,
+    remindersOn,
+    dailyDigestOn,
+    automation,
+    blogReminderWeeks,
+    lastPublishedBlogISO,
+    blogTopicSuggestion,
+    outstanding,
+    openQuotes,
+    bookedWork,
+    collectedThisMonth,
+    collectedMonthLabel,
+
+    // Modular command center data
+    alerts,
+    todaySchedule,
+    pulse,
+    pipeline,
+    cashPreview,
+    readiness,
+    crewStatus,
+    communications,
+    opportunity,
   } = home;
+
   const priorityCount = topPriorities.length + restPriorities.length;
-  // How many automations ran. The compact summary needs one number, and "4
-  // follow-ups" is what an owner reads it as.
   const automationsOn = [reviewsOn, followupsOn, remindersOn, dailyDigestOn].filter(Boolean).length;
 
   return (
     <main className="wide-shell workspace-shell">
       <h1 className="sr-only">Dashboard</h1>
+
+      {/* Critical system alerts */}
+      <SystemStatusStrip alerts={alerts} />
+
       {connectDisabledAt ? (
         <section
           className="panel workspace-section-card"
@@ -120,12 +137,10 @@ export default function DashboardHomeScreen({
         </section>
       ) : null}
 
-      {/* ACT NOW — and only things you can act on.
-          This list used to carry "N quotes awaiting approval" alongside the real
-          tasks. That is a customer taking their time, not a job for the owner,
-          and with quote follow-ups switched on the app is already chasing it on
-          a schedule. It moved to WAITING below. A to-do list containing things
-          you cannot do is a list people stop reading. */}
+      {/* Best next opportunity recommendation */}
+      <BestNextOpportunity opportunity={opportunity} />
+
+      {/* ACT NOW — Needs your attention */}
       <section className="panel workspace-section-card priority-panel" data-tour-id="dashboard:needs-attention">
         <div className="section-heading workspace-section-heading">
           <p className="eyebrow">Act now</p>
@@ -174,11 +189,7 @@ export default function DashboardHomeScreen({
         )}
       </section>
 
-      {/* WAITING — the customer's move, not yours.
-          Its own section rather than a row in the list above, because the right
-          response to everything here is usually "nothing". The detail line says
-          whether the app is chasing it, which is the fact that decides whether
-          the owner needs to do anything at all. */}
+      {/* WAITING — With your customers */}
       {waitingItems.length > 0 ? (
         <section className="panel workspace-section-card priority-panel dash-waiting">
           <div className="section-heading workspace-section-heading">
@@ -199,19 +210,22 @@ export default function DashboardHomeScreen({
         </section>
       ) : null}
 
+      {/* Today's operational timeline */}
+      <TodaySchedule schedule={todaySchedule} basePath={basePath} />
+
+      {/* Next 7 days capacity */}
       <section className="panel workspace-section-card">
         <div className="section-heading workspace-section-heading">
           <p className="eyebrow">What&apos;s next</p>
           <h2>Next 7 days</h2>
         </div>
-        {/* A phone gets one column, so seven cards became seven rows and four
-            of them said "No jobs". The quiet days are named once in a line and
-            hidden below 640px; the desktop grid is untouched, because seven
-            columns side by side is where an empty day is actually useful
-            information. */}
         {quietDays.length > 0 && quietDays.length < 7 ? (
           <p className="week-glance-quiet">
             Clear: {quietDays.map((day) => day.shortLabel).join(', ')}
+          </p>
+        ) : quietDays.length === 7 ? (
+          <p className="week-glance-quiet" style={{ display: 'block' }}>
+            All 7 days are clear — no jobs scheduled.
           </p>
         ) : null}
         <div className="week-glance-grid">
@@ -250,16 +264,12 @@ export default function DashboardHomeScreen({
         </div>
       </section>
 
-      {/* MONEY — the question the page could not answer.
-          This was "Business snapshot", and it held two numbers the page had
-          already given ("7 open leads", "3 jobs next week") plus two links to
-          public web pages. A snapshot that repeats the screen above it and then
-          offers to open your website is not a snapshot of a business.
+      {/* Operational checks: Readiness, Crew status & Comms */}
+      <JobReadiness readiness={readiness} />
+      <CrewStatus crewSummary={crewStatus} basePath={basePath} />
+      <CommunicationsPanel communications={communications} basePath={basePath} />
 
-          The page now answers three questions in order — what needs me, what is
-          happening next, how are we doing — and this is the third. Every figure
-          here is defined once in lib/dashboard-money, because two of them
-          already had two rival definitions in this codebase. */}
+      {/* MONEY — How the business is doing */}
       <section className="panel workspace-section-card">
         <div className="section-heading workspace-section-heading">
           <p className="eyebrow">Money</p>
@@ -267,80 +277,98 @@ export default function DashboardHomeScreen({
         </div>
 
         <div className="workspace-metric-grid">
-          <article className={`workspace-metric-card${outstanding.total > 0 ? ' accent' : ''}`}>
-            <span className="workspace-metric-label">
-              Unpaid invoices
-              <InfoTip label="More information about unpaid invoices">
-                Invoices sent or signed and not yet settled, counting only what is still owed —
-                deposits and part-payments already collected are deducted.
-              </InfoTip>
-            </span>
-            <strong className="workspace-metric-value">{formatMoney(outstanding.total)}</strong>
-            <p className="workspace-metric-note">
-              {outstanding.count === 0
-                ? 'Nothing outstanding.'
-                : `across ${outstanding.count} invoice${outstanding.count === 1 ? '' : 's'}`}
-            </p>
-          </article>
+          <Link href={`${basePath}/jobs?owing=1`} style={{ textDecoration: 'none', color: 'inherit' }}>
+            <article className={`workspace-metric-card${outstanding.total > 0 ? ' accent' : ''}`}>
+              <span className="workspace-metric-label">
+                Unpaid invoices
+                <InfoTip label="More information about unpaid invoices">
+                  Invoices sent or signed and not yet settled, counting only what is still owed —
+                  deposits and part-payments already collected are deducted.
+                </InfoTip>
+              </span>
+              <strong className="workspace-metric-value">{formatMoney(outstanding.total)}</strong>
+              <p className="workspace-metric-note">
+                {outstanding.count === 0
+                  ? 'Nothing outstanding.'
+                  : `across ${outstanding.count} invoice${outstanding.count === 1 ? '' : 's'}`}
+              </p>
+            </article>
+          </Link>
 
-          <article className="workspace-metric-card">
-            <span className="workspace-metric-label">
-              Out for approval
-              <InfoTip label="More information about quotes out for approval">
-                Jobs still at the quote stage with a price on them. The same set the
-                &ldquo;awaiting approval&rdquo; row above counts, so the two cannot disagree.
-              </InfoTip>
-            </span>
-            <strong className="workspace-metric-value">{formatMoney(openQuotes.total)}</strong>
-            <p className="workspace-metric-note">
-              {openQuotes.count === 0 ? 'No open quotes.' : `${openQuotes.count} quote${openQuotes.count === 1 ? '' : 's'}`}
-            </p>
-          </article>
+          <Link href={`${basePath}/jobs`} style={{ textDecoration: 'none', color: 'inherit' }}>
+            <article className="workspace-metric-card">
+              <span className="workspace-metric-label">
+                Out for approval
+                <InfoTip label="More information about quotes out for approval">
+                  Jobs still at the quote stage with a price on them. The same set the
+                  &ldquo;awaiting approval&rdquo; row above counts, so the two cannot disagree.
+                </InfoTip>
+              </span>
+              <strong className="workspace-metric-value">{formatMoney(openQuotes.total)}</strong>
+              <p className="workspace-metric-note">
+                {openQuotes.count === 0 ? 'No open quotes.' : `${openQuotes.count} quote${openQuotes.count === 1 ? '' : 's'}`}
+              </p>
+            </article>
+          </Link>
 
-          <article className="workspace-metric-card">
-            <span className="workspace-metric-label">
-              Booked, next 30 days
-              {/* Named "booked work", never "revenue". A job with a deposit
-                  already banked contributes its whole quoted amount here AND
-                  that same dollar appears under "collected" — right for two
-                  different questions, wrong if either tile claimed to be cash.
-                  The cash forecast is the netted answer and says so. */}
-              <InfoTip label="More information about booked work">
-                The quoted value of approved work on your calendar in the next 30 days. Work
-                value, not cash — some of it is already paid and some is not due yet. For money
-                in and out by date, see Cash flow.
-              </InfoTip>
-            </span>
-            <strong className="workspace-metric-value">{formatMoney(bookedWork.total)}</strong>
-            <p className="workspace-metric-note">
-              {bookedWork.count === 0 ? 'Nothing booked yet.' : `${bookedWork.count} job${bookedWork.count === 1 ? '' : 's'} on the calendar`}
-            </p>
-          </article>
+          <Link href={`${basePath}/schedule`} style={{ textDecoration: 'none', color: 'inherit' }}>
+            <article className="workspace-metric-card">
+              <span className="workspace-metric-label">
+                Booked, next 30 days
+                <InfoTip label="More information about booked work">
+                  The quoted value of approved work on your calendar in the next 30 days. Work
+                  value, not cash — some of it is already paid and some is not due yet. For money
+                  in and out by date, see Cash flow.
+                </InfoTip>
+              </span>
+              <strong className="workspace-metric-value">{formatMoney(bookedWork.total)}</strong>
+              <p className="workspace-metric-note">
+                {bookedWork.count === 0 ? 'Nothing booked yet.' : `${bookedWork.count} job${bookedWork.count === 1 ? '' : 's'} on the calendar`}
+              </p>
+            </article>
+          </Link>
 
-          <article className="workspace-metric-card">
-            <span className="workspace-metric-label">
-              Collected in {collectedMonthLabel}
-              <InfoTip label="More information about payments collected">
-                Payments received this calendar month, net of refunds. The month is cut in your
-                own timezone, so a payment taken at 5pm on the last day of the month counts in
-                that month.
-              </InfoTip>
-            </span>
-            <strong className="workspace-metric-value">{formatMoney(collectedThisMonth.total)}</strong>
-            <p className="workspace-metric-note">
-              {collectedThisMonth.count === 0
-                ? 'Nothing collected yet this month.'
-                : `${collectedThisMonth.count} payment${collectedThisMonth.count === 1 ? '' : 's'}`}
-            </p>
-          </article>
+          <Link href={`${basePath}/cash-flow`} style={{ textDecoration: 'none', color: 'inherit' }}>
+            <article className="workspace-metric-card">
+              <span className="workspace-metric-label">
+                Collected in {collectedMonthLabel}
+                <InfoTip label="More information about payments collected">
+                  Payments received this calendar month, net of refunds. The month is cut in your
+                  own timezone, so a payment taken at 5pm on the last day of the month counts in
+                  that month.
+                </InfoTip>
+              </span>
+              <strong className="workspace-metric-value">{formatMoney(collectedThisMonth.total)}</strong>
+              <p className="workspace-metric-note">
+                {collectedThisMonth.count === 0
+                  ? 'Nothing collected yet this month.'
+                  : `${collectedThisMonth.count} payment${collectedThisMonth.count === 1 ? '' : 's'}`}
+              </p>
+            </article>
+          </Link>
+
+          {pulse.kind === 'ready' ? (
+            <Link href={`${basePath}/leads`} style={{ textDecoration: 'none', color: 'inherit' }}>
+              <article className="workspace-metric-card">
+                <span className="workspace-metric-label">
+                  {pulse.data.newLeadsThisMonth.label}
+                  <InfoTip label="More information about new leads">
+                    {pulse.data.newLeadsThisMonth.tooltip}
+                  </InfoTip>
+                </span>
+                <strong className="workspace-metric-value">{pulse.data.newLeadsThisMonth.formattedValue}</strong>
+                <p className="workspace-metric-note">{pulse.data.newLeadsThisMonth.subtitle}</p>
+              </article>
+            </Link>
+          ) : null}
         </div>
       </section>
 
-      {/* QUICK LINKS — where the site buttons went.
-          "Visit your site" and "Online booking page" sat inside Business
-          snapshot as though they were business metrics. They are shortcuts to
-          two public web pages. Down here with the other jumps, under a heading
-          that says what they are. */}
+      {/* Sales Pipeline Funnel & Cash Preview */}
+      <SalesPipeline pipeline={pipeline} />
+      <CashPreview cashPreview={cashPreview} basePath={basePath} />
+
+      {/* Quick links */}
       {siteUrl || rebookDue > 0 || privateFeedback > 0 || jobsNext7Days > 0 ? (
         <section className="panel workspace-section-card dash-quicklinks">
           <div className="section-heading workspace-section-heading compact-heading">
@@ -371,15 +399,7 @@ export default function DashboardHomeScreen({
         </section>
       ) : null}
 
-      {/* AUTOMATIONS, COMPRESSED TO ITS ANSWER.
-          This was a full section of the page: four status chips, then a grid of
-          four metric cards — most of them reading 0 on most accounts — then a
-          log. Three of those cards are a number nobody needs to see every day,
-          and a large panel of zeroes reads as a broken feature rather than a
-          quiet one.
-
-          One line now: what they did, and whether anything is wrong. It opens
-          only when somebody asks. The whole page it links to lives in Grow. */}
+      {/* AUTOMATIONS, COMPRESSED TO ITS ANSWER */}
       <details className="panel workspace-section-card dash-automations" open={automationsOn === 0}>
         <summary className="dash-automations-summary">
           <span className="dash-automations-line">
@@ -388,8 +408,6 @@ export default function DashboardHomeScreen({
                 ? 'Automations haven’t run yet'
                 : `Automations handled ${automation.total} follow-up${automation.total === 1 ? '' : 's'} in the last 30 days`}
             </strong>
-            {/* The health half. Says "all" rather than a bare count so nobody
-                has to remember how many there are in total. */}
             <span className={`dash-automations-health${automationsOn === 0 ? ' is-off' : ''}`}>
               {automationsOn === 0
                 ? 'All switched off'
@@ -402,8 +420,6 @@ export default function DashboardHomeScreen({
 
         <div className="automation-status-row">
           {readOnly ? (
-            // State, not a control. AutomationLink navigates into the
-            // automations page, which a logged-out visitor cannot reach.
             [
               { label: 'Review requests', on: reviewsOn },
               { label: 'Quote follow-ups', on: followupsOn },
@@ -435,10 +451,6 @@ export default function DashboardHomeScreen({
               <h3>Automation results · Last 30 days</h3>
             </div>
             <div className="workspace-metric-grid dash-results-grid">
-              {/* The explanatory sentence under each figure is now behind the
-                  ⓘ. The only note left is the deposit TOTAL, which is money
-                  raised rather than a description of the metric — that is a
-                  number you decide with, so it stays on the card. */}
               <article className="workspace-metric-card accent">
                 <span className="workspace-metric-label">
                   Review requests
@@ -460,9 +472,6 @@ export default function DashboardHomeScreen({
               <article className="workspace-metric-card">
                 <span className="workspace-metric-label">
                   Appointment reminders
-                  {/* Not "one day in advance" any more — the lead time is an
-                      account setting now, so a fixed claim here would be wrong
-                      for anyone who changed it. */}
                   <InfoTip label="More information about appointment reminders">
                     Appointment reminders sent ahead of scheduled jobs, on the schedule you set.
                   </InfoTip>
@@ -483,8 +492,6 @@ export default function DashboardHomeScreen({
               </article>
             </div>
             {automation.recent.length > 0 ? (
-              // A log, folded away. It is the only thing on this page that is
-              // history rather than something to act on.
               <details className="dash-activity">
                 <summary>Recent automation activity ({automation.recent.length})</summary>
                 <div className="cost-list" style={{ marginTop: '0.85rem' }}>
