@@ -220,10 +220,6 @@ export default async function DedicatedNumberApplicationPage({
                 inputMode="numeric"
                 maxLength={10}
               />
-              <label className={styles.checkboxLabel} style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.84rem', color: 'var(--muted)' }}>
-                <input type="checkbox" name="solePropNoEin" />
-                <span>Sole Proprietor without an IRS EIN (Uses TCR individual/sole proprietor verification path)</span>
-              </label>
               <Field label="Business website" name="websiteUrl" type="url" value={defaults.websiteUrl} placeholder="https://example.com" required />
               <Field label="Business email" name="businessEmail" type="email" value={defaults.businessEmail} required />
               <Field label="Business phone" name="businessPhone" type="tel" value={defaults.businessPhone} required />

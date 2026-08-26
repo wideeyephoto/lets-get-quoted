@@ -27,7 +27,6 @@ describe('messaging registration form safety', () => {
 
   it('collects EIN on the owner page while keeping full tax identity out of drafts and client records', () => {
     expect(ownerPage).toContain('name="ein"');
-    expect(ownerPage).toContain('name="solePropNoEin"');
     expect(ownerPage).toContain('Your EIN is encrypted and transmitted directly to mobile carrier registries');
     expect(ownerPage).toContain('LGQ stores only the verified last four digits');
     expect(ownerAction).toContain('rawEin.replace(/\\D/g,');
