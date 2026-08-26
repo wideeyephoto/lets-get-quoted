@@ -252,6 +252,32 @@ export async function markArrivedQuickStopAction(requestId: string, formData: Fo
 }
 
 // Visit done → completes the Quick Stop and its job.
+export async function sendEtaSmsQuickStopAction(requestId: string, minutes: number = 15) {
+  const { supabase, accountId } = await requireOfficeContext('schedule.write');
+  const req = await getQuickStopRequest(supabase, accountId, requestId);
+  if (!req) throw new Error('Request not found.');
+  if (!['confirmed', 'en_route'].includes(req.status)) {
+    throw new Error('Can only send ETA updates for confirmed or en route Quick Stops.');
+  }
+  if (!req.client_phone) throw new Error('No phone number on file for this customer.');
+
+  await sendQuickStopStatusSms({
+    accountId,
+    toPhone: req.client_phone,
+    message: `Quick Stop update: Your technician is approximately ${minutes} minutes away.`,
+    idempotencyKey: `quick-stop:${requestId}:eta-${Date.now().toString().slice(0, -4)}`,
+  });
+
+  await logQuickStopEvent(supabase, accountId, requestId, {
+    actor: 'contractor',
+    from: req.status,
+    to: req.status,
+    meta: { action: 'eta_sms_sent', etaMinutes: minutes },
+  });
+
+  revalidatePath('/dashboard/quick-stops');
+}
+
 export async function completeQuickStopAction(requestId: string) {
   const { supabase, accountId } = await requireOfficeContext('schedule.write');
   const req = await getQuickStopRequest(supabase, accountId, requestId);

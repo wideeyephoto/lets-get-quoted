@@ -2,7 +2,7 @@ import { requireOfficeContext, createAdminClient } from '@/lib/auth';
 import { listQuickStopRequests } from '@/lib/quick-stop-requests';
 import { sweepQuickStopOffers } from '@/lib/quick-stop-sweep';
 import { quickStopSettingsFromAccount, QUICK_STOP_SETTINGS_COLUMNS, QUICK_STOP_TERMINAL_STATUSES } from '@/lib/quick-stop';
-import { computeQuickStopRoute, lastKnownWorkPoint, loadRouteStops } from '@/lib/quick-stop-route';
+import { computeQuickStopRoute, lastKnownWorkPoint, loadMultiDayRouteStops } from '@/lib/quick-stop-route';
 import QuickStopCoverageMap from './QuickStopCoverageMap';
 import QuickStopAreas from './QuickStopAreas';
 import { loadPriorityZones, priorityZonesAvailable } from '@/lib/quick-stop-zones-data';
@@ -196,8 +196,32 @@ export default async function QuickStopsPage({ searchParams }: { searchParams: {
     .map((row) => row.job_id)
     .filter((id): id is string => Boolean(id));
 
+  type LeadCandidateRow = {
+    id: string;
+    name: string | null;
+    email: string | null;
+    phone: string | null;
+    message: string | null;
+    project_type: string | null;
+    estimated_hours: number | null;
+    source: string;
+    created_at: string;
+    converted_job: string | null;
+  };
+
+  type JobCandidateRow = {
+    id: string;
+    ref: string;
+    client_name: string;
+    client_email: string | null;
+    client_phone: string | null;
+    scope: string | null;
+    estimated_hours: number | null;
+    created_at: string;
+  };
+
   const candidateInputs: CandidateInput[] = [
-    ...((recentLeads ?? []) as Array<{ id: string; name: string | null; email: string | null; phone: string | null; message: string | null; project_type: string | null; estimated_hours: number | null; source: string; created_at: string; converted_job: string | null }>).map(
+    ...((recentLeads ?? []) as LeadCandidateRow[]).map(
       (lead) => ({
         id: lead.id,
         source: 'lead' as const,
@@ -212,7 +236,7 @@ export default async function QuickStopsPage({ searchParams }: { searchParams: {
         href: `/dashboard/leads/${lead.id}`,
       }),
     ),
-    ...((recentJobs ?? []) as Array<{ id: string; ref: string; client_name: string; client_email: string | null; client_phone: string | null; scope: string | null; estimated_hours: number | null; created_at: string }>).map(
+    ...((recentJobs ?? []) as JobCandidateRow[]).map(
       (job) => ({
         id: job.id,
         source: 'job' as const,
@@ -254,15 +278,27 @@ export default async function QuickStopsPage({ searchParams }: { searchParams: {
     (r) => r.arrival_date === todayKey && ['confirmed', 'en_route', 'arrived', 'completed'].includes(r.status),
   ).length;
 
-  // Today's real route, for the coverage map in the hero. Same loader the
-  // detour screener uses, so the picture and the rule cannot disagree.
-  const routeStops = await loadRouteStops(supabase, accountId, { day: todayKey, timezone });
+  // Multi-day route loader covering up to settings.daysAhead (or 7 days max)
+  const daysWindow: Array<{ key: string; label: string; weekdayName: string }> = [];
+  const dayDate = new Date();
+  for (let offset = 0; offset <= Math.min(settings.daysAhead, 7); offset++) {
+    const current = new Date(dayDate);
+    current.setDate(dayDate.getDate() + offset);
+    const key = current.toLocaleDateString('en-CA', { timeZone: timezone });
+    const weekdayShort = current.toLocaleDateString('en-US', { timeZone: timezone, weekday: 'short' });
+    const label = offset === 0 ? 'Today' : offset === 1 ? 'Tomorrow' : weekdayShort;
+    daysWindow.push({ key, label, weekdayName: weekdayShort });
+  }
+
+  const multiDayStops = await loadMultiDayRouteStops(supabase, accountId, {
+    days: daysWindow.map((d) => d.key),
+    timezone,
+  });
+  const routeStops = multiDayStops[todayKey] ?? [];
+
   // Empty until the migration is applied — the map then draws the plain limit.
   const priorityZones = await loadPriorityZones(supabase, accountId);
   const zonesAvailable = await priorityZonesAvailable(supabase, accountId);
-  // Somewhere to open the map on a day with nothing booked. Without it the
-  // canvas never mounted, and priority areas — a setting about where you WOULD
-  // drive — could not be drawn at all unless you happened to have work today.
   const fallbackCenter = routeStops.length > 0 ? null : await lastKnownWorkPoint(supabase, accountId);
   const coverageEmpty =
     settings.maxDetourMiles <= 0
@@ -271,19 +307,51 @@ export default async function QuickStopsPage({ searchParams }: { searchParams: {
         ? 'Nothing geocoded on today’s schedule yet. Once today has scheduled work with an address, this shows exactly where a Quick Stop could land.'
         : null;
 
+  // Realized Performance & Results Metrics for Insights
+  const offersSentCount = requests.filter(
+    (r) =>
+      r.offer_sent_at ||
+      ['contractor_offer_sent', 'awaiting_customer_payment', 'confirmed', 'en_route', 'arrived', 'completed'].includes(
+        r.status,
+      ),
+  ).length;
+  const confirmedCount = requests.filter((r) =>
+    ['confirmed', 'en_route', 'arrived', 'completed'].includes(r.status),
+  ).length;
+  const conversionRate = offersSentCount > 0 ? Math.round((confirmedCount / offersSentCount) * 100) : 0;
+  const totalRevenueCents = requests
+    .filter((r) => ['confirmed', 'en_route', 'arrived', 'completed'].includes(r.status))
+    .reduce((sum, r) => sum + (r.fee_cents ?? 0) + (r.diagnostic_fee_cents ?? 0), 0);
+  const detourValues = requests.map((r) => r.detour_miles).filter((d): d is number => d != null && d >= 0);
+  const avgDetourMiles =
+    detourValues.length > 0 ? Math.round((detourValues.reduce((a, b) => a + b, 0) / detourValues.length) * 10) / 10 : null;
+
+  const responseTimeMinutes = requests
+    .filter((r) => r.created_at && r.offer_sent_at)
+    .map((r) => (new Date(r.offer_sent_at!).getTime() - new Date(r.created_at).getTime()) / 60000)
+    .filter((m) => m >= 0);
+  const medianResponseMinutes =
+    responseTimeMinutes.length > 0
+      ? Math.round(responseTimeMinutes.sort((a, b) => a - b)[Math.floor(responseTimeMinutes.length / 2)])
+      : null;
+
+  const resultsMetrics = {
+    totalRequests: requests.length,
+    offersSent: offersSentCount,
+    confirmedCount,
+    conversionRate,
+    totalRevenueCents,
+    medianResponseMinutes,
+    avgDetourMiles,
+  };
+
   const todayPanel = (
     <>
-      {/* ACTIVATION FIRST. The route map and the priority-area editor used to
-          come before this, so an owner met a coverage map and a zone list
-          before learning Quick Stops was switched off — the one fact that
-          decides whether anything below it matters. */}
       <QuickStopStatus
         enabled={settings.enabled}
         locked={settings.locked}
         lockedUntil={settings.lockedUntil}
         lockReason={lockReason}
-        // Passed apart rather than pre-ANDed, so the status line can name the one
-        // that is actually missing instead of both.
         feeSet={settings.maxFeeCents > 0}
         daysSet={settings.weekdays.length > 0}
         stripeConnected={stripeConnected}
@@ -299,29 +367,15 @@ export default async function QuickStopsPage({ searchParams }: { searchParams: {
             : 'Not set'
         }
         maxPerDay={settings.maxPerDay}
-        // How soon "sooner" is, for this account. Every sentence that used to
-        // say "same-day" reads it — see lib/quick-stop-window.
         daysAhead={settings.daysAhead}
         todayCount={acceptedToday}
         openCount={active.length}
+        maxDetourMiles={settings.maxDetourMiles}
       />
 
-      {/* The map stays on Today, below the switch: where a Quick Stop could land
-          is a fact about today's route. The priority-area editor it was bundled
-          with is a standing preference and three server actions — that is a
-          setting, and it has moved to one. The comment here used to claim that
-          had already happened; QuickStopCoverage rendered both. */}
-      <QuickStopCoverageMap
-        stops={routeStops}
-        radiusMiles={settings.maxDetourMiles}
-        emptyReason={coverageEmpty}
-        zones={priorityZones}
-        fallbackCenter={fallbackCenter}
-      />
-
+      {/* ACTIVE REQUESTS RENDERED BEFORE THE MAP SO IMMEDIATE WORK IS ABOVE THE FOLD */}
       {active.length > 0 ? (
-        // The id the Requests summary card jumps to.
-        <section className="panel workspace-section-card" id="quick-stop-requests">
+        <section className="panel workspace-section-card" id="quick-stop-requests" style={{ marginBottom: '1.25rem' }}>
           <div className="section-heading workspace-section-heading compact-heading">
             <p className="eyebrow">Waiting on you</p>
             <h2>{active.length} open {active.length === 1 ? 'request' : 'requests'}</h2>
@@ -333,22 +387,9 @@ export default async function QuickStopsPage({ searchParams }: { searchParams: {
           </div>
         </section>
       ) : (
-        <section className="panel workspace-section-card quick-stop-empty-panel" id="quick-stop-requests">
+        <section className="panel workspace-section-card quick-stop-empty-panel" id="quick-stop-requests" style={{ marginBottom: '1.25rem' }}>
           <div className="quick-stop-empty">
             <span className="quick-stop-empty-mark" aria-hidden="true">📍</span>
-            {/* `quickStopLive`, not `settings.enabled`. The switch being on is
-                one of five things a request needs — the others are a fee band,
-                the days you take them, Stripe, and a published site. Keyed on
-                the switch alone, this panel congratulated an owner with
-                "You're all set — waiting on requests" while the status block a
-                few inches above it said "Not live yet" and listed four things
-                still missing. Nothing could arrive, and the page said two
-                opposite things about why. */}
-            {/* Reads from the one state now. The old chain had its own fourth
-                opinion and its "Nothing can come in yet" fired on the switch
-                alone — so a fully-configured account that simply had not been
-                turned on was told nothing could come in, and then told to
-                "finish the setup" that was finished. */}
             <h3>
               {quickStopLive
                 ? "You're all set — waiting on requests"
@@ -367,17 +408,18 @@ export default async function QuickStopsPage({ searchParams }: { searchParams: {
         </section>
       )}
 
-      {/* THE PITCH, FOLDED, IN EVERY STATE.
-          "How it works", the worked example, the customer preview, the benefit
-          list and the setup checklist are exactly right the first time and
-          scrolled past every day after. This used to fold only once the switch
-          was on — so the state it opened fully in was the state a brand-new
-          owner is in, and Today opened on a sales page rather than on their day.
+      {/* MULTI-DAY ROUTE COVERAGE MAP & TIMELINE GAP FINDER */}
+      <QuickStopCoverageMap
+        stops={routeStops}
+        multiDayStops={multiDayStops}
+        daysWindow={daysWindow}
+        defaultDayKey={active[0]?.requested_date || todayKey}
+        radiusMiles={settings.maxDetourMiles}
+        emptyReason={coverageEmpty}
+        zones={priorityZones}
+        fallbackCenter={fallbackCenter}
+      />
 
-          What a new owner needs is above this and always was: the status block
-          names every missing step and its primary action goes to the first one.
-          The drawer's summary changes to say the pitch is in here; the pitch
-          itself does not have to be the page to be one press away. */}
       <details className="panel workspace-section-card es-how" id="quick-stop-how" open={openPitch}>
         <summary className="es-how-summary">
           <span className="es-how-copy">
@@ -401,16 +443,6 @@ export default async function QuickStopsPage({ searchParams }: { searchParams: {
     </>
   );
 
-  /**
-   * SETTINGS — and the whole configurator stays inside it, entire.
-   *
-   * That is a hard constraint, not a preference. The configurator is ONE <form>
-   * spanning five drawers of plain DOM inputs, kept mounted-but-hidden because
-   * an unrendered input contributes nothing to the FormData and the action
-   * writes the resulting blanks over your settings — saving with one drawer open
-   * once zeroed the fee band. Move any part of that form onto another tab and
-   * the same bug returns as silent data loss on save.
-   */
   const settingsPanel = (
     <>
       <QuickStopConfigurator
@@ -418,8 +450,6 @@ export default async function QuickStopsPage({ searchParams }: { searchParams: {
         refundTiers={refundTiers}
         stripeConnected={stripeConnected}
       />
-      {/* Where you would drive further than usual — a standing preference, so
-          it belongs with the rest of them rather than in the middle of Today. */}
       <QuickStopAreas
         radiusMiles={settings.maxDetourMiles}
         zones={priorityZones}
@@ -431,7 +461,7 @@ export default async function QuickStopsPage({ searchParams }: { searchParams: {
   const insightsPanel = (
     <>
       {history.length ? (
-        <section className="panel workspace-section-card">
+        <section className="panel workspace-section-card" style={{ marginBottom: '1.25rem' }}>
           <div className="section-heading workspace-section-heading compact-heading">
             <p className="eyebrow">History</p>
             <h2>Closed &amp; completed</h2>
@@ -444,9 +474,6 @@ export default async function QuickStopsPage({ searchParams }: { searchParams: {
         </section>
       ) : null}
 
-      {/* Past work that might have qualified. It is a decision ("is this worth
-          switching on?") rather than a thing to do today, which is exactly what
-          an Insights tab is for. */}
       <QuickStopCandidates
         report={demand}
         screenings={screenings}
@@ -455,6 +482,7 @@ export default async function QuickStopsPage({ searchParams }: { searchParams: {
         minFeeCents={settings.minFeeCents}
         maxVisitMinutes={settings.maxVisitMinutes}
         enabled={settings.enabled}
+        results={resultsMetrics}
       />
     </>
   );
@@ -462,17 +490,12 @@ export default async function QuickStopsPage({ searchParams }: { searchParams: {
   return (
     <main className="wide-shell workspace-shell bset">
       <QuickStopHead />
-      {/* The tab strip has always written `?tab=` on every switch; nothing read
-          it back, so a refresh or a link somebody shared out of Insights opened
-          on Today. Normalized through the same list the strip renders from, so
-          a hand-typed value lands on Today rather than on no tab at all. A hash
-          still wins over this — the deep links into Settings sections are
-          answered on the client, after mount. */}
       <QuickStopTabs
         today={todayPanel}
         settings={settingsPanel}
         insights={insightsPanel}
         initialTab={normalizeQuickStopTab(searchParams.tab)}
+        openCount={active.length}
       />
     </main>
   );

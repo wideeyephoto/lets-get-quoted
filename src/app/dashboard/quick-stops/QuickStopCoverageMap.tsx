@@ -1,31 +1,23 @@
 'use client';
 
 import { useEffect, useId, useRef, useState } from 'react';
+import Link from 'next/link';
 import { circleMarkerContent, createAdvancedMarker } from '@/lib/advanced-markers';
 import { googleMapAppearance, loadGoogleMaps } from '@/lib/maps-loader';
-import type { RouteStop } from '@/lib/quick-stop-route';
+import type { RouteStop, MultiDayRouteMap } from '@/lib/quick-stop-route';
 import type { PriorityZone } from '@/lib/quick-stop-zones';
 
-// Where a Quick Stop can actually land today.
-//
-// The circles are not decoration: their radius is the account's own
-// maxDetourMiles, drawn around the stops already on today's calendar, which is
-// the same route and the same number a request's detour is measured against.
-//
-// CAREFUL ABOUT WHAT THIS CLAIMS. maxDetourMiles is the OWNER's threshold for
-// what is worth driving to — it is what the request card is judged against, not
-// a gate that stops a customer asking. (The customer-facing proximity gate is
-// instant booking's separate radiusMiles, in route-density.) So this says
-// "inside your limit", never "can be offered": the first is true, the second
-// would be a promise the system does not keep.
-//
-// Live in the sense that matters: it is today's real calendar, re-read on every
-// page load. Not a socket — the route changes when somebody books a job, not
-// second to second, and a map that redraws itself while you are looking at it
-// is worse than one that is right when you open it.
+export type CoverageDayOption = {
+  key: string;
+  label: string;
+  weekdayName: string;
+};
 
 export type CoverageMapProps = {
   stops: RouteStop[];
+  multiDayStops?: MultiDayRouteMap;
+  daysWindow?: CoverageDayOption[];
+  defaultDayKey?: string;
   radiusMiles: number;
   /** Null when nothing is scheduled — the map says so rather than centring on the ocean. */
   emptyReason: string | null;
@@ -42,16 +34,70 @@ const METERS_PER_MILE = 1609.344;
 
 const ROUTE_COLOR = '#ff7a21';
 const ZONE_COLOR = '#4ade80';
-// Priority zones read as a different KIND of thing, not a bigger version of the
-// same one — they are the owner's decision, where the green is the consequence
-// of their settings.
 const PRIORITY_COLOR = '#a78bfa';
 
 type MapTheme = 'dark' | 'light';
 const THEME_KEY = 'qs-coverage-map-theme';
 
+type TimelineSegment =
+  | { type: 'stop'; index: number; time: string; label: string; scope?: string | null }
+  | { type: 'opening'; durationMinutes: number; label: string };
+
+function buildTimelineSegments(dayStops: RouteStop[]): TimelineSegment[] {
+  if (!dayStops || dayStops.length === 0) return [];
+  const segments: TimelineSegment[] = [];
+
+  const parseMinutes = (timeStr?: string | null): number | null => {
+    if (!timeStr) return null;
+    const parts = timeStr.split(':').map(Number);
+    if (!Number.isFinite(parts[0])) return null;
+    return parts[0] * 60 + (parts[1] || 0);
+  };
+
+  const formatGap = (mins: number): string => {
+    if (mins < 60) return `${mins}m opening`;
+    const hrs = (mins / 60).toFixed(1);
+    return `${hrs}-hour opening`;
+  };
+
+  for (let i = 0; i < dayStops.length; i++) {
+    const stop = dayStops[i];
+    segments.push({
+      type: 'stop',
+      index: i + 1,
+      time: stop.timeLabel || `Stop ${i + 1}`,
+      label: stop.clientName ? `${stop.clientName}` : `Job #${i + 1}`,
+      scope: stop.scope,
+    });
+
+    if (i < dayStops.length - 1) {
+      const nextStop = dayStops[i + 1];
+      const startCurrent = parseMinutes(stop.scheduledTime);
+      const estHours = stop.estimatedHours && stop.estimatedHours > 0 ? stop.estimatedHours : 1.0;
+      const endCurrent = startCurrent !== null ? startCurrent + Math.round(estHours * 60) : null;
+      const startNext = parseMinutes(nextStop.scheduledTime);
+
+      if (endCurrent !== null && startNext !== null && startNext > endCurrent) {
+        const gapMins = startNext - endCurrent;
+        if (gapMins >= 25) {
+          segments.push({
+            type: 'opening',
+            durationMinutes: gapMins,
+            label: formatGap(gapMins),
+          });
+        }
+      }
+    }
+  }
+
+  return segments;
+}
+
 export default function QuickStopCoverageMap({
   stops,
+  multiDayStops,
+  daysWindow = [],
+  defaultDayKey,
   radiusMiles,
   emptyReason,
   zones,
@@ -63,26 +109,26 @@ export default function QuickStopCoverageMap({
   const [menuOpen, setMenuOpen] = useState(false);
   const gearMenuId = useId();
 
-  // Read the saved choice after mount, never during render: reading
-  // localStorage while rendering gives the server and the client different
-  // answers and React throws away the markup it just streamed.
+  // Multi-day selection state
+  const initialDay = defaultDayKey || daysWindow[0]?.key || '';
+  const [selectedDayKey, setSelectedDayKey] = useState<string>(initialDay);
+
+  const activeStops = multiDayStops && selectedDayKey && multiDayStops[selectedDayKey]
+    ? multiDayStops[selectedDayKey]
+    : stops;
+
+  const timeline = buildTimelineSegments(activeStops);
+
   useEffect(() => {
     try {
       const saved = window.localStorage.getItem(THEME_KEY);
       if (saved === 'dark' || saved === 'light') setTheme(saved);
     } catch {
-      // Private mode or storage disabled — the default is fine.
+      // Private mode fallback
     }
   }, []);
 
-  // Declared before the effect so the effect's deps and the markup below read
-  // the SAME condition — they disagreed, and the canvas lost.
-  //
-  // NOT gated on emptyReason. A priority area is a SETTING — where you would
-  // drive further for work — with nothing to do with whether anything happens to
-  // be booked today. Gating on it meant a quiet day showed no map, and so no
-  // picture of the areas the owner had saved.
-  const canDrawMap = stops.length > 0 || zones.length > 0 || Boolean(fallbackCenter);
+  const canDrawMap = activeStops.length > 0 || zones.length > 0 || Boolean(fallbackCenter);
 
   useEffect(() => {
     if (!canDrawMap) return;
@@ -99,7 +145,7 @@ export default function QuickStopCoverageMap({
       .then(async () => {
         if (cancelled || !containerRef.current || !window.google) return;
         const g = window.google.maps;
-        const markerLibrary = await g.importLibrary('marker') as google.maps.MarkerLibrary;
+        const markerLibrary = (await g.importLibrary('marker')) as google.maps.MarkerLibrary;
         if (cancelled || !containerRef.current) return;
 
         const map = new g.Map(containerRef.current, {
@@ -109,36 +155,13 @@ export default function QuickStopCoverageMap({
           fullscreenControl: false,
           zoomControl: true,
           clickableIcons: false,
-          // COOPERATIVE, NOT 'auto'.
-          //
-          // Left unset, Google picks between cooperative and greedy per load by
-          // sniffing whether the map sits in a scrollable container. On this
-          // page the sniff came out desktop-flavoured on touch devices, so a
-          // phone got the overlay reading "Use Ctrl + scroll to zoom the map" —
-          // an instruction naming two things a phone does not have, over a map
-          // that had by then captured the page scroll. Dragging up the page
-          // panned the map instead.
-          //
-          // 'cooperative' is the documented fix and is explicitly the correct
-          // setting for a map inside a scrolling page: one finger scrolls the
-          // PAGE, two fingers pan the map, and the overlay Google shows says so
-          // in the right words for the device it is on.
           gestureHandling: 'cooperative',
-          // The theme arrives through googleMapAppearance() above — a mapId plus
-          // colorScheme, styled in the Cloud console. The inline `styles` array
-          // that used to sit here is gone with the Advanced Markers migration:
-          // Maps refuses to apply JSON styles to a map that carries a mapId and
-          // warns about it in the console.
           backgroundColor: theme === 'dark' ? '#16222f' : '#eef1f5',
         });
 
         const bounds = new g.LatLngBounds();
 
-        // One circle per stop rather than a corridor around the whole route.
-        // That is what the screener actually does — it measures to the NEAREST
-        // scheduled stop — so a corridor would draw coverage between two distant
-        // jobs that nothing would ever be offered from.
-        for (const stop of stops) {
+        for (const stop of activeStops) {
           const center = { lat: stop.lat, lng: stop.lng };
           const circle = new g.Circle({
             map,
@@ -148,9 +171,6 @@ export default function QuickStopCoverageMap({
             strokeOpacity: 0.65,
             strokeWeight: 1.5,
             fillColor: ZONE_COLOR,
-            // Faint, because these overlap. Two circles stacking read as a
-            // deeper green, which is honest: that ground is reachable from two
-            // different stops.
             fillOpacity: 0.1,
             clickable: false,
           });
@@ -159,7 +179,6 @@ export default function QuickStopCoverageMap({
           if (circleBounds) bounds.union(circleBounds);
         }
 
-        // The owner's priority areas, and the one being drawn right now.
         for (const zone of zones) {
           const circle = new g.Circle({
             map,
@@ -177,48 +196,48 @@ export default function QuickStopCoverageMap({
           if (zoneBounds) bounds.union(zoneBounds);
         }
 
-        if (stops.length > 1) {
-          drawings.push(new g.Polyline({
-            map,
-            path: stops.map((stop) => ({ lat: stop.lat, lng: stop.lng })),
-            strokeColor: ROUTE_COLOR,
-            strokeOpacity: 0.9,
-            strokeWeight: 3,
-          }));
+        if (activeStops.length > 1) {
+          drawings.push(
+            new g.Polyline({
+              map,
+              path: activeStops.map((stop) => ({ lat: stop.lat, lng: stop.lng })),
+              strokeColor: ROUTE_COLOR,
+              strokeOpacity: 0.9,
+              strokeWeight: 3,
+            }),
+          );
         }
 
-        stops.forEach((stop, index) => {
+        activeStops.forEach((stop, index) => {
           const position = { lat: stop.lat, lng: stop.lng };
           bounds.extend(position);
-          const marker = createAdvancedMarker(markerLibrary, {
-            map,
-            position,
-            title: stop.timeLabel ? `Stop ${index + 1} · ${stop.timeLabel}` : `Stop ${index + 1}`,
-            anchorLeft: '-50%',
-            anchorTop: '-50%',
-          }, circleMarkerContent({
-            diameter: 22,
-            fill: ROUTE_COLOR,
-            borderWidth: 1.5,
-            label: String(index + 1),
-          }));
+          const marker = createAdvancedMarker(
+            markerLibrary,
+            {
+              map,
+              position,
+              title: stop.timeLabel ? `Stop ${index + 1} · ${stop.timeLabel}` : `Stop ${index + 1}`,
+              anchorLeft: '-50%',
+              anchorTop: '-50%',
+            },
+            circleMarkerContent({
+              diameter: 22,
+              fill: ROUTE_COLOR,
+              borderWidth: 1.5,
+              label: String(index + 1),
+            }),
+          );
           mapMarkers.push(marker);
         });
 
         if (!bounds.isEmpty()) {
           map.fitBounds(bounds, 32);
-          // One stop plus its circle can zoom in absurdly far; cap it so the
-          // circle still reads as a neighbourhood rather than a driveway.
           const listener = g.event.addListenerOnce(map, 'idle', () => {
             const zoom = map.getZoom();
             if (typeof zoom === 'number' && zoom > 14) map.setZoom(14);
           });
           void listener;
         } else if (fallbackCenter) {
-          // Nothing booked and no areas drawn yet, so there is nothing to fit
-          // to — open over the last place this account actually worked. Zoom 11
-          // is roughly a metro area: wide enough to find the suburb you have in
-          // mind, tight enough that tapping it means something.
           map.setCenter(fallbackCenter);
           map.setZoom(11);
         }
@@ -234,13 +253,7 @@ export default function QuickStopCoverageMap({
       for (const marker of mapMarkers) marker.map = null;
       for (const drawing of drawings) drawing.setMap(null);
     };
-    // Rebuilt on a theme change because Google only accepts `colorScheme` when
-    // the map is constructed.
-    //
-    // `zones` is a dependency, which is what makes a newly added area appear:
-    // the action revalidates the page, the new zone arrives as a prop, and the
-    // map redraws with it inside the fitted bounds.
-  }, [stops, radiusMiles, theme, zones, fallbackCenter, canDrawMap]);
+  }, [activeStops, radiusMiles, theme, zones, fallbackCenter, canDrawMap]);
 
   function chooseTheme(next: MapTheme) {
     setTheme(next);
@@ -248,43 +261,92 @@ export default function QuickStopCoverageMap({
     try {
       window.localStorage.setItem(THEME_KEY, next);
     } catch {
-      // Not worth surfacing — the map still switched.
+      // Ignored
     }
   }
 
+  const selectedDayLabel = daysWindow.find((d) => d.key === selectedDayKey)?.label || 'Today';
+
   return (
-    <div className="qs-coverage" data-theme={theme}>
-      <div className="qs-coverage-head">
+    <div className="qs-coverage" data-theme={theme} style={{ marginBottom: '1.25rem' }}>
+      <div className="qs-coverage-head" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.75rem' }}>
         <div>
-          <p className="eyebrow">Today</p>
-          <h2>Where a Quick Stop can land</h2>
+          <p className="eyebrow" style={{ margin: 0 }}>Route Coverage</p>
+          <h2 style={{ margin: '0.2rem 0' }}>Where a Quick Stop can land</h2>
+          <p className="qs-coverage-sub" style={{ margin: 0 }}>
+            {activeStops.length > 0
+              ? `${activeStops.length} stop${activeStops.length === 1 ? '' : 's'} scheduled for ${selectedDayLabel} · ${radiusMiles}-mile detour reach from any stop.`
+              : `No scheduled stops for ${selectedDayLabel}.`}
+          </p>
         </div>
-        <p className="qs-coverage-sub">
-          {emptyReason
-            ? emptyReason
-            : `${stops.length} stop${stops.length === 1 ? '' : 's'} on today's route · your limit is ${radiusMiles} mile${radiusMiles === 1 ? '' : 's'} from one of them.`}
-        </p>
+
+        {/* Multi-Day Selection Pills */}
+        {daysWindow.length > 1 ? (
+          <div className="qs-day-pills" style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+            {daysWindow.map((day) => {
+              const dayStopCount = multiDayStops?.[day.key]?.length ?? (day.key === initialDay ? stops.length : 0);
+              const isSelected = selectedDayKey === day.key;
+              return (
+                <button
+                  key={day.key}
+                  type="button"
+                  onClick={() => setSelectedDayKey(day.key)}
+                  style={{
+                    padding: '0.35rem 0.65rem',
+                    borderRadius: '8px',
+                    fontSize: '0.8rem',
+                    fontWeight: isSelected ? 700 : 500,
+                    border: '1px solid',
+                    borderColor: isSelected ? '#ff7a21' : 'var(--edge-t14, rgba(255,255,255,0.1))',
+                    background: isSelected ? 'rgba(255,122,33,0.12)' : 'rgba(var(--tint, 255,255,255), 0.03)',
+                    color: isSelected ? 'var(--text)' : 'var(--muted)',
+                    cursor: 'pointer',
+                    minHeight: '36px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.35rem',
+                  }}
+                >
+                  <span>{day.label}</span>
+                  <small style={{ opacity: 0.8, fontSize: '0.72rem' }}>({dayStopCount})</small>
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
       </div>
 
-      <div className="qs-coverage-frame">
-        {/* The canvas renders whenever the map CAN be built — same condition the
-            effect uses. It used to be swapped out for the empty message, which
-            is why a day with nothing booked left "Add a priority area" pointing
-            at a map that was never mounted. */}
-        {!canDrawMap ? (
-          <p className="qs-coverage-empty">{emptyReason}</p>
+      <div className="qs-coverage-frame" style={{ marginTop: '0.75rem' }}>
+        {activeStops.length === 0 && zones.length === 0 ? (
+          <div className="qs-no-route-card" style={{ padding: '1.75rem 1.25rem', background: 'rgba(var(--tint, 255,255,255), 0.02)', border: '1px solid var(--edge-t10, rgba(255,255,255,0.08))', borderRadius: '12px', display: 'flex', alignItems: 'flex-start', gap: '1rem' }}>
+            <span style={{ fontSize: '1.75rem', lineHeight: 1 }} aria-hidden="true">📍</span>
+            <div>
+              <strong style={{ fontSize: '1rem', color: 'var(--text)', display: 'block', marginBottom: '0.25rem' }}>
+                No route available for {selectedDayLabel}
+              </strong>
+              <p style={{ margin: '0 0 0.85rem', fontSize: '0.84rem', color: 'var(--muted)', lineHeight: 1.45 }}>
+                {emptyReason || `Nothing geocoded on your schedule for ${selectedDayLabel} yet. Once scheduled jobs with addresses exist, this map shows exactly where a Quick Stop fits.`}
+              </p>
+              <Link href="/dashboard/schedule" className="btn secondary" style={{ minHeight: '40px', display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.85rem' }}>
+                Open schedule →
+              </Link>
+            </div>
+          </div>
         ) : (
           <>
-            <div ref={containerRef} className="qs-coverage-canvas" role="region" aria-label={`Today's route with your ${radiusMiles}-mile detour limit drawn around each stop`} />
-            {status === 'loading' ? <p className="qs-coverage-empty">Loading the map…</p> : null}
+            <div
+              ref={containerRef}
+              className="qs-coverage-canvas"
+              role="region"
+              aria-label={`${selectedDayLabel}'s route with your ${radiusMiles}-mile detour limit drawn around each stop`}
+            />
+            {status === 'loading' ? <p className="qs-coverage-empty">Loading map…</p> : null}
             {status === 'error' ? (
               <p className="qs-coverage-empty">
-                The map couldn&rsquo;t load. Your detour limit is still {radiusMiles} miles from each of today&rsquo;s{' '}
-                {stops.length} stop{stops.length === 1 ? '' : 's'} — this is only the picture of it.
+                Map preview unavailable. Detour limit is {radiusMiles} miles around scheduled stops.
               </p>
             ) : null}
 
-            {/* Bottom-right, over the map, out of the way of the zoom control. */}
             <div className="qs-coverage-gear">
               <button
                 type="button"
@@ -314,9 +376,89 @@ export default function QuickStopCoverageMap({
         )}
       </div>
 
-      <ul className="qs-coverage-legend">
-        <li><span className="qs-key-stop" aria-hidden="true" />Today&rsquo;s scheduled work</li>
-        <li><span className="qs-key-zone" aria-hidden="true" />Within {radiusMiles} miles — inside your detour limit</li>
+      {/* Route Timeline & Gap Openings Strip */}
+      {timeline.length > 0 ? (
+        <div
+          className="qs-timeline-strip"
+          style={{
+            marginTop: '0.85rem',
+            padding: '0.85rem 1rem',
+            borderRadius: '12px',
+            background: 'rgba(var(--tint, 255, 255, 255), 0.025)',
+            border: '1px solid var(--edge-t10, rgba(255, 255, 255, 0.08))',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.6rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+            <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Route Timeline &amp; Openings
+            </span>
+            <span style={{ fontSize: '0.75rem', color: 'var(--muted)' }}>
+              {activeStops.length} {activeStops.length === 1 ? 'stop' : 'stops'} scheduled
+            </span>
+          </div>
+
+          <div
+            className="qs-timeline-flow"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.45rem',
+              flexWrap: 'wrap',
+              fontSize: '0.82rem',
+            }}
+          >
+            {timeline.map((seg, idx) => {
+              if (seg.type === 'stop') {
+                return (
+                  <span
+                    key={`stop-${idx}`}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.3rem',
+                      padding: '0.25rem 0.55rem',
+                      borderRadius: '6px',
+                      background: 'rgba(255, 122, 33, 0.1)',
+                      border: '1px solid rgba(255, 122, 33, 0.25)',
+                      color: 'var(--text)',
+                      fontWeight: 600,
+                    }}
+                  >
+                    <span style={{ color: '#ff7a21', fontWeight: 800 }}>#{seg.index}</span>
+                    <span>{seg.time}</span>
+                    <small style={{ color: 'var(--muted)', fontWeight: 400 }}>({seg.label})</small>
+                  </span>
+                );
+              }
+              return (
+                <span
+                  key={`open-${idx}`}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.25rem',
+                    padding: '0.25rem 0.5rem',
+                    borderRadius: '6px',
+                    background: 'rgba(52, 199, 123, 0.12)',
+                    border: '1px solid rgba(52, 199, 123, 0.3)',
+                    color: '#34c77b',
+                    fontWeight: 700,
+                    fontSize: '0.78rem',
+                  }}
+                  title="Available time window between stops where a Quick Stop fits"
+                >
+                  <span aria-hidden="true">🟢</span>
+                  <span>{seg.label}</span>
+                </span>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
+
+      <ul className="qs-coverage-legend" style={{ marginTop: '0.75rem' }}>
+        <li><span className="qs-key-stop" aria-hidden="true" />Scheduled work</li>
+        <li><span className="qs-key-zone" aria-hidden="true" />Within {radiusMiles} miles — inside detour limit</li>
         {zones.length > 0 ? (
           <li><span className="qs-key-priority" aria-hidden="true" />Priority area — worth a longer drive</li>
         ) : null}

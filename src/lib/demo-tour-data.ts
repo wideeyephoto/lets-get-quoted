@@ -106,6 +106,8 @@ export const DEMO_SHOWCASE_WORKFLOW = {
     name: 'Evergreen Lawn & Landscape',
     ownerName: 'Dana Whitfield',
     trade: 'Lawn Care & Landscape Construction',
+    tradeKey: 'landscaping',
+    tradeCta: 'Build my landscaping site →',
     phone: '(248) 555-0142',
     email: 'service@evergreenlawn.letsgetquoted.com',
     city: 'Royal Oak',

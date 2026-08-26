@@ -33,6 +33,7 @@ export type SignupSource =
   | 'pricing'
   | 'pricing_footer'
   | 'demo_complete'
+  | 'demo_tour'
   | 'feature_page'
   | 'nav'
   | 'footer'

@@ -130,7 +130,9 @@ export default function DemoTourBar({ currentStep }: { currentStep: TourStepMeta
             <Link
               href={currentStep.nextHref}
               onClick={handleNextClick}
-              className={isStepExperienced ? styles.nextBtnPrimary : styles.nextBtnSecondary}
+              className={`${isStepExperienced ? styles.nextBtnPrimary : styles.nextBtnSecondary} ${
+                currentStep.step === 4 ? styles.hideOnMobileDock : ''
+              }`}
               aria-label={isStepExperienced ? 'Continue to next step' : 'Skip this step and proceed'}
             >
               {isStepExperienced ? 'Continue →' : 'Skip step →'}

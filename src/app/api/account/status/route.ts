@@ -28,18 +28,18 @@ export async function GET() {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    return NextResponse.json({ loggedIn: false, onboarded: false, sitePublished: false, siteUrl: null, businessName: null, newQuoteRequestCount: 0, jobsNeedingAttentionCount: 0, unscheduledJobCount: 0, newestQuoteRequestId: null, newestQuoteRequestCreatedAt: null });
+    return NextResponse.json({ loggedIn: false, onboarded: false, sitePublished: false, siteUrl: null, businessName: null, newQuoteRequestCount: 0, jobsNeedingAttentionCount: 0, unscheduledJobCount: 0, openQuickStopRequestCount: 0, newestQuoteRequestId: null, newestQuoteRequestCreatedAt: null });
   }
 
   const membership = await getCurrentMembership(user.id);
 
   if (!membership.accountId) {
-    return NextResponse.json({ loggedIn: true, onboarded: false, sitePublished: false, siteUrl: null, businessName: null, newQuoteRequestCount: 0, jobsNeedingAttentionCount: 0, unscheduledJobCount: 0, newestQuoteRequestId: null, newestQuoteRequestCreatedAt: null });
+    return NextResponse.json({ loggedIn: true, onboarded: false, sitePublished: false, siteUrl: null, businessName: null, newQuoteRequestCount: 0, jobsNeedingAttentionCount: 0, unscheduledJobCount: 0, openQuickStopRequestCount: 0, newestQuoteRequestId: null, newestQuoteRequestCreatedAt: null });
   }
 
   const admin = createAdminClient();
   await expireStaleLeads(admin, membership.accountId);
-  const [{ data: account }, { data: site }, { data: newLeadRows }, { data: openLeadRows }, jobs] = await Promise.all([
+  const [{ data: account }, { data: site }, { data: newLeadRows }, { data: openLeadRows }, jobs, { count: openQuickStopRequestCount }] = await Promise.all([
     admin
       .from('accounts')
       .select(
@@ -96,7 +96,12 @@ export async function GET() {
         .eq('account_id', membership.accountId)
         .not('status', 'in', '("won","lost")'),
     ),
-      listJobs(admin, membership.accountId),
+    listJobs(admin, membership.accountId),
+    admin
+      .from('extra_stop_requests')
+      .select('id', { count: 'exact', head: true })
+      .eq('account_id', membership.accountId)
+      .in('status', ['awaiting_contractor', 'more_information_requested']),
   ]);
       // Badges mean "needs YOUR attention", not inventory. Jobs = quotes still
       // in the approval stage (drop the moment they're approved -> in_progress);
@@ -210,6 +215,7 @@ export async function GET() {
     jobsNeedingAttentionCount,
     unscheduledJobCount,
     unreadMessageCount,
+    openQuickStopRequestCount: openQuickStopRequestCount ?? 0,
     openLeadCount: leadStats.open,
     // The rail's tooltip, built here from the same function the dashboard card
     // uses, so the two can never drift into telling different stories.

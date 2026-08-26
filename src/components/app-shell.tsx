@@ -159,6 +159,7 @@ type AccountStatus = {
   jobsNeedingAttentionCount: number;
   unreadMessageCount: number;
   unscheduledJobCount: number;
+  openQuickStopRequestCount?: number;
   /** Leads still being worked — excludes won (now a job) and lost. */
   openLeadCount: number;
   /** The same total, spelled out. Built server-side by lib/lead-summary. */
@@ -319,6 +320,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
   const [unreadMessageCount, setUnreadMessageCount] = useState(0);
   const [jobsNeedingAttentionCount, setJobsNeedingAttentionCount] = useState(0);
   const [unscheduledJobCount, setUnscheduledJobCount] = useState(0);
+  const [openQuickStopCount, setOpenQuickStopCount] = useState(0);
   const [openLeadCount, setOpenLeadCount] = useState(0);
   // Built server-side by lead-summary, so the rail cannot drift from the
   // dashboard's card. Falls back to the plain count until the first poll lands.
@@ -657,6 +659,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
             setUnreadMessageCount(Number(data.unreadMessageCount ?? 0));
             setJobsNeedingAttentionCount(Number(data.jobsNeedingAttentionCount ?? 0));
             setUnscheduledJobCount(Number(data.unscheduledJobCount ?? 0));
+            setOpenQuickStopCount(Number(data.openQuickStopRequestCount ?? 0));
             setOpenLeadCount(Number(data.openLeadCount ?? 0));
             setLeadTitle(typeof data.leadRailTitle === 'string' ? data.leadRailTitle : null);
             setActiveJobCount(Number(data.activeJobCount ?? 0));
@@ -805,6 +808,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
       '/dashboard/schedule': unscheduledJobCount,
       // A customer text is exactly the kind of thing this dot exists for.
       '/dashboard/messages': unreadMessageCount,
+      '/dashboard/quick-stops': openQuickStopCount,
     };
     // Inventory beside attention. The filled circle has always meant "these
     // need you today" and stays that way; the hollow one is simply how much is
@@ -1478,6 +1482,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
                       ['/dashboard/leads', newQuoteRequestCount],
                       ['/dashboard/jobs', jobsNeedingAttentionCount],
                       ['/dashboard/schedule', unscheduledJobCount],
+                      ['/dashboard/quick-stops', openQuickStopCount],
                     ].map(([href, n]) =>
                       item.href === href && (n as number) > 0 ? (
                         <span className="topnav-count" key={href as string} title={navAttentionLabel(href as string, n as number) ?? undefined}>

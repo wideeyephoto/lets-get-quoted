@@ -209,6 +209,7 @@ const ATTENTION_LABEL: Record<string, (count: number) => string> = {
   '/dashboard/jobs': (n) => `${n} ${n === 1 ? 'job needs' : 'jobs need'} attention`,
   '/dashboard/schedule': (n) => `${n} approved ${n === 1 ? 'job has' : 'jobs have'} no date yet`,
   '/dashboard/messages': (n) => `${n} unread ${n === 1 ? 'message' : 'messages'}`,
+  '/dashboard/quick-stops': (n) => `${n} Quick Stop ${n === 1 ? 'request is' : 'requests are'} waiting on you`,
 };
 
 /**

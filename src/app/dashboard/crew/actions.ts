@@ -567,7 +567,7 @@ export async function geocodeJobAction(jobId: string): Promise<{ ok: boolean; la
   const { supabase, accountId } = await requireOfficeContext('crew.write');
   const { data: job, error } = await supabase
     .from('jobs')
-    .select('id, property_address, client_address')
+    .select('id, address, property_address, client_address')
     .eq('account_id', accountId)
     .eq('id', jobId)
     .maybeSingle();
@@ -576,7 +576,9 @@ export async function geocodeJobAction(jobId: string): Promise<{ ok: boolean; la
     return { ok: false, error: 'Job not found' };
   }
 
-  const rawAddress = (job.property_address || job.client_address || '').trim();
+  type JobAddressRow = { id: string; address?: string | null; property_address?: string | null; client_address?: string | null };
+  const jobRow = job as unknown as JobAddressRow;
+  const rawAddress = (jobRow.property_address || jobRow.address || jobRow.client_address || '').trim();
   if (!rawAddress) {
     return { ok: false, error: 'Job has no address to geocode' };
   }

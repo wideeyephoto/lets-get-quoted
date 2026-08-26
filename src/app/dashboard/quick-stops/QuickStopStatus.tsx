@@ -54,6 +54,7 @@ export type QuickStopStatusProps = {
   daysAhead: number;
   todayCount: number;
   openCount: number;
+  maxDetourMiles?: number;
 };
 
 const ICONS: Record<string, string> = {
@@ -69,10 +70,11 @@ const ICONS: Record<string, string> = {
   external: '<path d="M14 4h6v6"/><path d="M20 4 11 13"/><path d="M19 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5"/>',
 };
 
-function Icon({ name, className }: { name: string; className?: string }) {
+function Icon({ name, className, style }: { name: string; className?: string; style?: React.CSSProperties }) {
   return (
     <svg
       className={className}
+      style={style}
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
@@ -179,48 +181,47 @@ export default function QuickStopStatus(props: QuickStopStatusProps) {
             <strong>
               Quick Stops is <em className={live ? 'on' : 'off'}>{quickStopStateLabel(state)}</em>
             </strong>
-            {/* "Only customers near your route" was the old promise here, and it
-                is not what the product does — priority areas exist precisely to
-                let a customer further out qualify. */}
             <small id={describedId}>
               Nearby customers, and anyone in a priority area, can request a paid priority visit{' '}
               {windowPhrase} at a fee you set.
             </small>
           </span>
         </label>
-
         <div className={`bset-master-status${live ? ' live' : ''}`}>
-          <p><span className="bset-dot" aria-hidden="true" />{quickStopStateHeadline(state)}</p>
-          <small>{quickStopStateDetail(state)}</small>
+          <p>
+            <span className="bset-dot" aria-hidden="true" />
+            {props.openCount > 0 ? (
+              <strong style={{ color: '#ff9a52' }}>
+                {props.openCount} open {props.openCount === 1 ? 'request' : 'requests'} waiting on you
+              </strong>
+            ) : (
+              quickStopStateHeadline(state)
+            )}
+          </p>
+          <small>
+            {props.openCount > 0
+              ? 'Review and respond before the customer response deadline passes.'
+              : quickStopStateDetail(state)}
+          </small>
         </div>
 
-        {/* THE PRIMARY ACTION IS WHATEVER THIS STATE ACTUALLY CALLS FOR.
-            It used to be "Review settings" in all four states — so an account
-            that was configured and simply switched off had the page tell it, in
-            its largest button, to go and review settings that needed no
-            reviewing, while the one thing left to do (turn it on) was an
-            unlabelled toggle. Worse in setup_incomplete: the detail line named
-            four missing things and the button went somewhere that could fix two
-            of them.
-
-            THIS IS NOT THE THIRD TURN-ON CONTROL THAT WAS REMOVED. That one was
-            a "Pause / Turn on" button sitting beside the switch in every state,
-            doing the identical thing at all times — two controls for one fact.
-            This appears only in ready_off, where turning it on is the entire
-            remaining step, and it calls the same setter the switch does. In
-            every other state there is no primary at all, because there is
-            nothing the page should be pushing. */}
+        {/* Action Controls */}
         <div className="bset-master-actions">
-          {/* Support's lock is not the owner's to undo, so it offers an
-              explanation rather than a button that would not work. */}
+          {props.openCount > 0 ? (
+            <a href={QUEUE_ANCHOR} className="btn primary" style={{ minHeight: '44px' }}>
+              <Icon name="pin" />
+              Review {props.openCount} open {props.openCount === 1 ? 'request' : 'requests'}
+            </a>
+          ) : null}
+
           {locked ? (
-            <Link href={SETTINGS_HREF} className="btn secondary bset-pause">
+            <Link href={SETTINGS_HREF} className="btn secondary bset-pause" style={{ minHeight: '44px' }}>
               Why is this paused?
             </Link>
           ) : null}
 
           {firstGap ? (
-            <Link href={firstGap.href} className="btn primary bset-setup">
+            <Link href={firstGap.href} className="btn primary bset-setup" style={{ minHeight: '44px' }}>
               <Icon name={GAP_ICON[firstGap.key] ?? 'cash'} />
               {asButtonLabel(firstGap.label)}
             </Link>
@@ -230,43 +231,138 @@ export default function QuickStopStatus(props: QuickStopStatusProps) {
               className="btn primary bset-setup"
               onClick={() => setEnabled(true)}
               disabled={pending}
+              style={{ minHeight: '44px' }}
             >
               <Icon name="play" />
               {pending ? 'Turning on…' : 'Turn on Quick Stops'}
             </button>
           ) : null}
 
-          <Link href={SETTINGS_HREF} className="btn secondary bset-setup">
+          <Link href={SETTINGS_HREF} className="btn secondary bset-setup" style={{ minHeight: '44px' }}>
             <Icon name="cash" />
             Review settings
           </Link>
 
-          {/* THE LABEL SAYS WHAT IS ON THE OTHER SIDE OF THE CLICK.
-              "Preview customer experience" was a promise the link could not
-              keep: it opens the live booking page, and Quick Stops is hidden
-              there whenever the feature is not live — so an owner pressed
-              "preview" on the thing they had just configured and found no sign
-              of it. There is no unpublished preview mode to send them to, so
-              the label stops claiming one. */}
-          {/* bset-OPEN, not bset-preview. That name already belonged to the
-              right-rail preview CARD in BookingSetup — a section with a heading
-              and a phone mock — so this button was inheriting 1.2rem of
-              padding, a 2px border and an 18px radius, and rendering as a card
-              in a row of buttons. Its icon came out oversized for the same
-              reason: the 0.95rem svg cap is on .bset-setup, which this never
-              had. Two symptoms, one collision. */}
           {bookingUrl ? (
-            <a href={bookingUrl} target="_blank" rel="noopener noreferrer" className="btn secondary bset-open">
+            <a href={bookingUrl} target="_blank" rel="noopener noreferrer" className="btn secondary bset-open" style={{ minHeight: '44px' }}>
               <Icon name="external" />
               {live ? 'Preview what customers see' : 'View booking page — Quick Stops hidden'}
             </a>
           ) : null}
 
-          <button type="button" className="btn ghost bset-how" onClick={jumpToHowItWorks}>
+          <button type="button" className="btn ghost bset-how" onClick={jumpToHowItWorks} style={{ minHeight: '44px' }}>
             <Icon name="help" />
             How it works
           </button>
         </div>
+
+        {/* Compact Configuration Chips */}
+        <div className="qs-config-chips" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.45rem', marginTop: '0.75rem', alignItems: 'center' }}>
+          <Link
+            href={SETTINGS_HREF}
+            className="qs-chip"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.35rem',
+              padding: '0.4rem 0.75rem',
+              borderRadius: '999px',
+              background: 'rgba(255, 122, 33, 0.08)',
+              border: '1px solid rgba(255, 122, 33, 0.25)',
+              color: 'var(--text)',
+              fontSize: '0.8rem',
+              textDecoration: 'none',
+              minHeight: '36px',
+            }}
+          >
+            <Icon name="calendar" style={{ width: '0.9rem', height: '0.9rem', color: '#ff7a21' }} />
+            <span>
+              <strong>{props.daysAhead === 0 ? 'Today only' : props.daysAhead === 1 ? 'Today or tomorrow' : `Today + ${props.daysAhead}d`}</strong> · {props.dayNames}
+            </span>
+          </Link>
+
+          <Link
+            href={SETTINGS_HREF}
+            className="qs-chip"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.35rem',
+              padding: '0.4rem 0.75rem',
+              borderRadius: '999px',
+              background: 'rgba(255, 209, 102, 0.08)',
+              border: '1px solid rgba(255, 209, 102, 0.25)',
+              color: 'var(--text)',
+              fontSize: '0.8rem',
+              textDecoration: 'none',
+              minHeight: '36px',
+            }}
+          >
+            <Icon name="clock" style={{ width: '0.9rem', height: '0.9rem', color: '#ffd166' }} />
+            <span>{props.hoursLabel}</span>
+          </Link>
+
+          <Link
+            href={SETTINGS_HREF}
+            className="qs-chip"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.35rem',
+              padding: '0.4rem 0.75rem',
+              borderRadius: '999px',
+              background: 'rgba(167, 139, 250, 0.08)',
+              border: '1px solid rgba(167, 139, 250, 0.25)',
+              color: 'var(--text)',
+              fontSize: '0.8rem',
+              textDecoration: 'none',
+              minHeight: '36px',
+            }}
+          >
+            <Icon name="cash" style={{ width: '0.9rem', height: '0.9rem', color: '#a78bfa' }} />
+            <span>{props.feeLabel}</span>
+          </Link>
+
+          <Link
+            href={SETTINGS_HREF}
+            className="qs-chip"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.35rem',
+              padding: '0.4rem 0.75rem',
+              borderRadius: '999px',
+              background: 'rgba(52, 199, 123, 0.08)',
+              border: '1px solid rgba(52, 199, 123, 0.25)',
+              color: 'var(--text)',
+              fontSize: '0.8rem',
+              textDecoration: 'none',
+              minHeight: '36px',
+            }}
+          >
+            <Icon name="pin" style={{ width: '0.9rem', height: '0.9rem', color: '#34c77b' }} />
+            <span>{props.maxDetourMiles ?? 10}-mile detour</span>
+          </Link>
+
+          <div
+            className="qs-chip is-static"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.35rem',
+              padding: '0.4rem 0.75rem',
+              borderRadius: '999px',
+              background: 'rgba(var(--tint, 255, 255, 255), 0.03)',
+              border: '1px solid var(--edge-t10, rgba(255, 255, 255, 0.06))',
+              color: 'var(--muted)',
+              fontSize: '0.8rem',
+              minHeight: '36px',
+            }}
+          >
+            <span>⚡ {props.todayCount}/{props.maxPerDay} used today</span>
+          </div>
+        </div>
+
         {bookingUrl && !live ? (
           <p className="bset-preview-note">
             It shows what customers see today, without Quick Stops. They appear on that page the moment this is{' '}
@@ -274,69 +370,6 @@ export default function QuickStopStatus(props: QuickStopStatusProps) {
           </p>
         ) : null}
       </section>
-
-      <div className="bset-cards">
-        <Link href={SETTINGS_HREF} className="bset-card">
-          <span className="bset-card-icon tone-days"><Icon name="calendar" /></span>
-          <span className="bset-card-label">Days you take them</span>
-          <strong>{props.dayNames}</strong>
-          <small>
-            {props.dayCount > 0
-              ? `Up to ${props.maxPerDay} quick stop${props.maxPerDay === 1 ? '' : 's'} on ${props.dayCount} day${props.dayCount === 1 ? '' : 's'} a week`
-              : 'No days chosen, so nothing can be requested'}
-          </small>
-          <span className="bset-card-edit">Edit <Icon name="chevronRight" /></span>
-        </Link>
-
-        <Link href={SETTINGS_HREF} className="bset-card">
-          <span className="bset-card-icon tone-time"><Icon name="clock" /></span>
-          <span className="bset-card-label">Hours</span>
-          <strong>{props.hoursLabel}</strong>
-          <small>Requests only land inside this window</small>
-          <span className="bset-card-edit">Edit <Icon name="chevronRight" /></span>
-        </Link>
-
-        <Link href={SETTINGS_HREF} className="bset-card">
-          <span className="bset-card-icon tone-off"><Icon name="cash" /></span>
-          <span className="bset-card-label">Your fee</span>
-          <strong>{props.feeLabel}</strong>
-          <small>What a priority visit costs the customer</small>
-          <span className="bset-card-edit">Edit <Icon name="chevronRight" /></span>
-        </Link>
-
-        {/* This one is not a settings shortcut — there is nothing to EDIT about
-            requests. It goes to the queue further down the page, and when there
-            is no queue to go to it stops being a link at all rather than
-            offering a click that lands nowhere. */}
-        {props.openCount > 0 || props.todayCount > 0 ? (
-          <a href={QUEUE_ANCHOR} className="bset-card">
-            <span className="bset-card-icon tone-link"><Icon name="pin" /></span>
-            <span className="bset-card-label">Requests</span>
-            <strong>{props.openCount > 0 ? `${props.openCount} waiting on you` : `${props.todayCount} today`}</strong>
-            <small>
-              {props.openCount > 0 && props.todayCount > 0
-                ? `${props.todayCount} already accepted for today`
-                : props.openCount > 0
-                  ? 'Answer them before they expire'
-                  : 'Accepted onto today’s route'}
-            </small>
-            <span className="bset-card-edit">View <Icon name="chevronRight" /></span>
-          </a>
-        ) : (
-          <div className="bset-card is-static">
-            <span className="bset-card-icon tone-link"><Icon name="pin" /></span>
-            <span className="bset-card-label">Requests</span>
-            {/* Reads from the one state, like everything else on this page. It
-                used to say "Off" for a fully-configured account that simply had
-                not been switched on, with a sub-line about finishing a setup
-                that was finished. */}
-            <strong>{live ? 'None waiting' : quickStopStateLabel(state)}</strong>
-            <small>
-              {live ? 'They appear here the moment one arrives' : quickStopStateDetail(state)}
-            </small>
-          </div>
-        )}
-      </div>
     </>
   );
 }

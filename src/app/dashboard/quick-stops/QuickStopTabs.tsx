@@ -42,11 +42,13 @@ export default function QuickStopTabs({
   settings,
   insights,
   initialTab = 'today',
+  openCount = 0,
 }: {
   today: ReactNode;
   settings: ReactNode;
   insights: ReactNode;
   initialTab?: QuickStopTabId;
+  openCount?: number;
 }) {
   const [active, setActive] = useState<QuickStopTabId>('today');
   const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
@@ -143,7 +145,30 @@ export default function QuickStopTabs({
             className={`qs-tab${active === tab.id ? ' active' : ''}`}
             onClick={() => select(tab.id)}
           >
-            <span>{tab.label}</span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', justifyContent: 'inherit' }}>
+              {tab.label}
+              {tab.id === 'today' && openCount > 0 ? (
+                <span
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    minWidth: '1.25rem',
+                    height: '1.25rem',
+                    padding: '0 0.35rem',
+                    borderRadius: '999px',
+                    fontSize: '0.72rem',
+                    fontWeight: 800,
+                    backgroundColor: '#ff7a21',
+                    color: '#ffffff',
+                    lineHeight: 1,
+                  }}
+                  title={`${openCount} open request${openCount === 1 ? '' : 's'} waiting`}
+                >
+                  {openCount}
+                </span>
+              ) : null}
+            </span>
             <small>{tab.hint}</small>
           </button>
         ))}

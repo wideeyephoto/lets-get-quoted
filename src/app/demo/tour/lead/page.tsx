@@ -99,6 +99,25 @@ export default function DemoTourLeadPage() {
             </div>
           </div>
 
+          {/* LGQ Business Result Chip */}
+          <div
+            style={{
+              background: 'rgba(80, 227, 189, 0.12)',
+              border: '1px solid rgba(80, 227, 189, 0.35)',
+              borderRadius: '8px',
+              padding: '10px 16px',
+              marginBottom: '22px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+            }}
+          >
+            <span style={{ fontSize: '16px' }} aria-hidden="true">⚡</span>
+            <span style={{ fontSize: '13px', color: '#e2edf2', lineHeight: '1.4' }}>
+              <strong style={{ color: '#50e3bd' }}>LGQ Automated Result:</strong> Scored 94/100 HOT &amp; mapped 2.1 mi from your existing Thursday route to maximize route density.
+            </span>
+          </div>
+
           {/* 3-Column Lead Intelligence Strip */}
           <div
             style={{

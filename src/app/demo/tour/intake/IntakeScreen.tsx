@@ -52,6 +52,11 @@ export default function IntakeScreen() {
       if (current >= ANALYSIS_STEPS.length) {
         setIsCompleted(true);
         setIntakeAnalyzed(true);
+        trackDemoEvent('step_interacted', {
+          step: 2,
+          stepSlug: 'intake',
+          action: 'ai_intake_qualification',
+        });
         trackDemoEvent('action_simulated', {
           step: 2,
           stepSlug: 'intake',
@@ -266,9 +271,26 @@ export default function IntakeScreen() {
                     </div>
                   </div>
 
-                  <p style={{ margin: '0', fontSize: '13px', color: '#9db0bd' }}>
+                  <p style={{ margin: '0 0 12px', fontSize: '13px', color: '#9db0bd' }}>
                     Our project manager has been alerted. We will generate your final itemized quote right away!
                   </p>
+
+                  <div
+                    style={{
+                      background: 'rgba(80, 227, 189, 0.12)',
+                      border: '1px solid rgba(80, 227, 189, 0.35)',
+                      borderRadius: '8px',
+                      padding: '8px 12px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                    }}
+                  >
+                    <span style={{ fontSize: '15px' }} aria-hidden="true">⚡</span>
+                    <span style={{ fontSize: '12.5px', color: '#e2edf2' }}>
+                      <strong style={{ color: '#50e3bd' }}>LGQ Automated Result:</strong> Lead qualified 24/7 automatically in under 60 seconds without playing phone tag.
+                    </span>
+                  </div>
                 </div>
               </div>
             ) : null}

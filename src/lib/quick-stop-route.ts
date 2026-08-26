@@ -39,7 +39,68 @@ function timeLabel(hhmm: string | null): string | null {
 type ScheduledStop = { scheduled_time: string | null; lat: number | null; lng: number | null };
 
 /** One geocoded stop on a day's route, in schedule order. */
-export type RouteStop = { lat: number; lng: number; timeLabel: string | null };
+export type RouteStop = {
+  lat: number;
+  lng: number;
+  timeLabel: string | null;
+  scheduledTime?: string | null;
+  scope?: string | null;
+  clientName?: string | null;
+  estimatedHours?: number | null;
+};
+
+export type MultiDayRouteMap = Record<string, RouteStop[]>;
+
+/**
+ * Every geocoded stop across multiple days, grouped by day key (YYYY-MM-DD).
+ */
+export async function loadMultiDayRouteStops(
+  supabase: SupabaseClient,
+  accountId: string,
+  opts: { days: string[]; timezone: string },
+): Promise<MultiDayRouteMap> {
+  const result: MultiDayRouteMap = {};
+  for (const day of opts.days) {
+    result[day] = [];
+  }
+  if (opts.days.length === 0) return result;
+
+  const { data } = await supabase
+    .from('jobs')
+    .select('scheduled_for, scheduled_time, lat, lng, status, scope, client_name, estimated_hours')
+    .eq('account_id', accountId)
+    .in('scheduled_for', opts.days)
+    .neq('status', 'archived')
+    .not('lat', 'is', null)
+    .order('scheduled_time', { ascending: true });
+
+  for (const row of (data ?? []) as Array<{
+    scheduled_for: string;
+    scheduled_time: string | null;
+    lat: number | null;
+    lng: number | null;
+    scope: string | null;
+    client_name: string | null;
+    estimated_hours: number | null;
+  }>) {
+    const day = row.scheduled_for;
+    if (day && result[day]) {
+      const coord = coordOf(row);
+      if (coord) {
+        result[day].push({
+          lat: coord.lat,
+          lng: coord.lng,
+          timeLabel: timeLabel(row.scheduled_time),
+          scheduledTime: row.scheduled_time,
+          scope: row.scope,
+          clientName: row.client_name,
+          estimatedHours: row.estimated_hours != null ? Number(row.estimated_hours) : null,
+        });
+      }
+    }
+  }
+  return result;
+}
 
 /**
  * Every geocoded stop on a given day, in schedule order.
@@ -57,7 +118,7 @@ export async function loadRouteStops(
   const day = opts.day || localDateKey(opts.timezone);
   const { data } = await supabase
     .from('jobs')
-    .select('scheduled_time, lat, lng, status')
+    .select('scheduled_time, lat, lng, status, scope, client_name, estimated_hours')
     .eq('account_id', accountId)
     .eq('scheduled_for', day)
     .neq('status', 'archived')
@@ -65,9 +126,19 @@ export async function loadRouteStops(
     .order('scheduled_time', { ascending: true });
 
   const stops: RouteStop[] = [];
-  for (const row of (data ?? []) as ScheduledStop[]) {
+  for (const row of (data ?? []) as (ScheduledStop & { scope?: string | null; client_name?: string | null; estimated_hours?: number | null })[]) {
     const coord = coordOf(row);
-    if (coord) stops.push({ lat: coord.lat, lng: coord.lng, timeLabel: timeLabel(row.scheduled_time) });
+    if (coord) {
+      stops.push({
+        lat: coord.lat,
+        lng: coord.lng,
+        timeLabel: timeLabel(row.scheduled_time),
+        scheduledTime: row.scheduled_time,
+        scope: row.scope,
+        clientName: row.client_name,
+        estimatedHours: row.estimated_hours != null ? Number(row.estimated_hours) : null,
+      });
+    }
   }
   return stops;
 }

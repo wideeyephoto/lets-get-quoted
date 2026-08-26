@@ -11,17 +11,42 @@ import {
   DEMO_TOUR_JOB,
 } from '@/lib/demo-tour-data';
 import { trackDemoEvent } from '@/lib/demo-analytics';
+import { generateQrSvg } from '@/lib/equipment-qr';
 import styles from '../tour.module.css';
 
 export default function QuoteScreen() {
   const currentStep = TOUR_STEPS[3];
   const { state, setUpgradeSelected, setQuoteSent } = useDemoTourState();
   const [showDetails, setShowDetails] = useState(false);
+  const [showQrModal, setShowQrModal] = useState(false);
 
   const total = DEMO_TOUR_JOB.baseTotal + (state.upgradeSelected ? DEMO_TOUR_JOB.upgradeTotal : 0);
 
+  const handoffUrl = typeof window !== 'undefined'
+    ? `${window.location.origin}/demo/tour/approve?upgrade=${state.upgradeSelected ? '1' : '0'}`
+    : `https://letsgetquoted.com/demo/tour/approve?upgrade=${state.upgradeSelected ? '1' : '0'}`;
+
+  const handleToggleUpgrade = (checked: boolean) => {
+    setUpgradeSelected(checked);
+    const nextTotal = DEMO_TOUR_JOB.baseTotal + (checked ? DEMO_TOUR_JOB.upgradeTotal : 0);
+    trackDemoEvent('quote_option_changed', {
+      step: 4,
+      stepSlug: 'quote',
+      upgradeSelected: checked,
+      total: nextTotal,
+    });
+  };
+
   const handleSimulateSend = () => {
     setQuoteSent(true);
+    trackDemoEvent('step_interacted', {
+      step: 4,
+      stepSlug: 'quote',
+      action: 'quote_dispatched_simulation',
+      total,
+      upgradeSelected: state.upgradeSelected,
+      quoteId: DEMO_TOUR_JOB.quoteId,
+    });
     trackDemoEvent('action_simulated', {
       step: 4,
       stepSlug: 'quote',
@@ -29,6 +54,15 @@ export default function QuoteScreen() {
       total,
       upgradeSelected: state.upgradeSelected,
       quoteId: DEMO_TOUR_JOB.quoteId,
+    });
+  };
+
+  const handleOpenQrModal = () => {
+    setShowQrModal(true);
+    trackDemoEvent('cross_device_handoff_opened', {
+      step: 4,
+      stepSlug: 'quote',
+      upgradeSelected: state.upgradeSelected,
     });
   };
 
@@ -114,7 +148,7 @@ export default function QuoteScreen() {
             </div>
           </div>
 
-          {/* Optional Upgrades Section (Placed prominently) */}
+          {/* Optional Upgrades Section */}
           <div style={{ marginBottom: '22px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
               <h3 style={{ fontSize: '14.5px', fontWeight: 700, color: '#ffd166', margin: 0 }}>
@@ -140,7 +174,7 @@ export default function QuoteScreen() {
                   type="checkbox"
                   id="includeUpgrade"
                   checked={state.upgradeSelected}
-                  onChange={(e) => setUpgradeSelected(e.target.checked)}
+                  onChange={(e) => handleToggleUpgrade(e.target.checked)}
                   aria-label={`Add optional ${DEMO_TOUR_JOB.optionalUpgrades[0].title} (+$${DEMO_TOUR_JOB.optionalUpgrades[0].amount})`}
                   style={{ width: '20px', height: '20px', marginTop: '2px', accentColor: '#ff6a24', cursor: 'pointer' }}
                 />
@@ -159,7 +193,7 @@ export default function QuoteScreen() {
             </div>
           </div>
 
-          {/* Itemized Line Items Table (Collapsible on Mobile to reduce scroll friction) */}
+          {/* Itemized Line Items Table */}
           <div style={{ marginBottom: '22px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
               <h3 style={{ fontSize: '14.5px', fontWeight: 700, color: '#d1e2eb', margin: 0 }}>
@@ -248,7 +282,29 @@ export default function QuoteScreen() {
               </p>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={handleOpenQrModal}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.08)',
+                  border: '1px solid rgba(168, 204, 255, 0.25)',
+                  color: '#d1e2eb',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  padding: '9px 14px',
+                  minHeight: '44px',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                }}
+                aria-label="Test homeowner approval portal on your actual mobile phone via QR code"
+              >
+                <span>📱</span> Test on your phone
+              </button>
+
               {!state.quoteSent ? (
                 <button
                   type="button"
@@ -295,8 +351,108 @@ export default function QuoteScreen() {
               </Link>
             </div>
           </div>
+
+          {/* LGQ Business Result Chip */}
+          <div
+            style={{
+              background: 'rgba(80, 227, 189, 0.12)',
+              border: '1px solid rgba(80, 227, 189, 0.35)',
+              borderRadius: '8px',
+              padding: '10px 14px',
+              marginTop: '16px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+            }}
+          >
+            <span style={{ fontSize: '16px' }} aria-hidden="true">⚡</span>
+            <span style={{ fontSize: '13px', color: '#e2edf2', lineHeight: '1.4' }}>
+              <strong style={{ color: '#50e3bd' }}>LGQ Automated Result:</strong> Quote generated in 1 tap from pre-set pricing rules with optional up-sell; simulated SMS sent directly to customer.
+            </span>
+          </div>
         </div>
       </div>
+
+      {/* QR Code Cross-Device Modal */}
+      {showQrModal ? (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 2000,
+            background: 'rgba(0, 0, 0, 0.8)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px',
+            backdropFilter: 'blur(6px)',
+          }}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Cross-device customer approval preview"
+        >
+          <div
+            style={{
+              background: '#0c2231',
+              border: '1px solid rgba(80, 227, 189, 0.4)',
+              borderRadius: '16px',
+              padding: '28px',
+              maxWidth: '440px',
+              width: '100%',
+              textAlign: 'center',
+              boxShadow: '0 20px 60px rgba(0, 0, 0, 0.7)',
+            }}
+          >
+            <span style={{ fontSize: '11px', fontWeight: 800, color: '#50e3bd', letterSpacing: '1px', textTransform: 'uppercase' }}>
+              Cross-Device Experience
+            </span>
+            <h3 style={{ fontSize: '20px', fontWeight: 800, color: '#ffffff', margin: '6px 0 10px' }}>
+              See exactly what the customer receives
+            </h3>
+            <p style={{ fontSize: '13px', color: '#b2c7d3', lineHeight: '1.5', margin: '0 0 20px' }}>
+              Scan this QR code with your phone&apos;s camera to open Taylor&apos;s live mobile approval portal with your selected quote total (${total.toLocaleString()}).
+            </p>
+
+            <div
+              style={{
+                background: '#ffffff',
+                padding: '16px',
+                borderRadius: '12px',
+                display: 'inline-block',
+                marginBottom: '18px',
+              }}
+              dangerouslySetInnerHTML={{ __html: generateQrSvg(handoffUrl, 200) }}
+            />
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <Link
+                href="/demo/tour/approve"
+                className={styles.tourNextActionBtn}
+                style={{ width: '100%', justifyContent: 'center', minHeight: '44px' }}
+                onClick={() => setShowQrModal(false)}
+                aria-label="Continue on this computer"
+              >
+                Continue on this computer &rarr;
+              </Link>
+              <button
+                type="button"
+                onClick={() => setShowQrModal(false)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#9eb5c2',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  padding: '8px',
+                }}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {/* Compact Mobile Sticky Action Dock */}
       <div className={styles.mobileStickyActionDock}>
