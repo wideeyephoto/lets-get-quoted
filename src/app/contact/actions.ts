@@ -25,7 +25,7 @@ const CONTACT_WINDOW_SECONDS = 60 * 60;
 // is set, so the form keeps working before the secret is configured; once set, a
 // missing or invalid token is rejected. Fails closed on any network/parse error.
 async function passesTurnstile(token: string, remoteip: string | undefined): Promise<boolean> {
-  const secret = process.env.TURNSTILE_SECRET;
+  const secret = process.env.TURNSTILE_SECRET || process.env.TURNSTILE_SECRET_KEY;
   if (!secret) {
     // Say so out loud. Silently skipping meant the only signal that the check
     // was doing nothing was the absence of a signal.
