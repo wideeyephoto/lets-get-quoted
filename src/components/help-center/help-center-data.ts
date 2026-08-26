@@ -118,7 +118,7 @@ export const COMMON_FIX_ARTICLES: Article[] = [
       <ul>
         <li><strong>First Payout Delay:</strong> Stripe applies a one-time 5-7 business day holding period on your very first collected customer payment for fraud prevention.</li>
         <li><strong>Identity Verification Needed:</strong> Check <em>Settings &gt; Payments &gt; Stripe Express Dashboard</em> to see if a photo ID or bank statement upload is requested.</li>
-        <li><strong>Weekend &amp; Bank Holiday Rollover:</strong> Payments processed after 5:00 PM EST on Fridays batch into Monday morning bank processing.</li>
+        <li><strong>Weekend &amp; Bank Holiday Rollover:</strong> Payments processed after 5:00 PM ET on Fridays batch into Monday morning bank processing.</li>
       </ul>
     `
   },
@@ -721,7 +721,7 @@ export const SUPPORT_CHANNELS: SupportChannel[] = [
     name: 'Help Desk Ticket',
     icon: 'LifeBuoy',
     bestUsedFor: 'DNS setup, 10DLC carrier approvals, and custom account troubleshooting.',
-    availability: 'Monday – Saturday (8:00 AM – 8:00 PM EST)',
+    availability: 'Monday – Saturday (8:00 AM – 8:00 PM ET)',
     responseTarget: 'Target response in under 2 hours',
     prepareInfo: ['Company registered name', 'Account login email', 'Relevant quote or job number']
   },

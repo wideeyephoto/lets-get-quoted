@@ -169,7 +169,7 @@ export const COMPARISON_ROWS = [
   ['Leads, clients, quotes, jobs & invoices', 'Unlimited', 'Unlimited', 'Unlimited', 'Unlimited'],
   ['Standard quote-form submissions', 'Unlimited', 'Unlimited', 'Unlimited', 'Unlimited'],
   ['Lead capture after AI limit', 'Automatic standard form', 'Automatic standard form', 'Automatic standard form', 'Automatic standard form'],
-  ['Office / admin users', '1', '1', '5', '15'],
+  ['Office / admin users', '1', '2', '5', '15'],
   ['Crew-only users', '2', '2', '10', '50'],
   ['Operating locations for one legal business', 'Unlimited', 'Unlimited', 'Unlimited', 'Unlimited'],
   ['Custom-domain connections', '1', '1', '1', '1'],
