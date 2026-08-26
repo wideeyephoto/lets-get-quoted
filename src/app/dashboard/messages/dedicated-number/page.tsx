@@ -164,9 +164,7 @@ export default async function DedicatedNumberApplicationPage({
             <li>The number stays inactive until its inbound webhook and individual campaign assignment both verify successfully.</li>
           </ol>
           <p>
-            We will put a clear request here if anything needs correction. LGQ intentionally does not collect or retain a full EIN in
-            this owner-readable application. MFA-authorized staff verify it separately and retain only the last four digits plus a
-            nonsecret verification reference in restricted compliance storage. Please do not send tax IDs by ordinary email.
+            We will put a clear request here if anything needs correction. 10DLC mobile carrier vetting requires verified business tax identity. To protect your business privacy, LGQ stores only the verified last four digits and provider registration IDs in restricted compliance storage. Please do not send tax IDs by ordinary email.
           </p>
         </section>
       ) : (
@@ -188,7 +186,9 @@ export default async function DedicatedNumberApplicationPage({
               name="messagingSupportEmail"
               name="messagingSupportPhone"
               name="optInEvidenceUrl"
-              LGQ intentionally does not collect or store a full EIN in owner application records. */}
+              name="ein"
+              Your EIN is encrypted and transmitted directly to mobile carrier registries for 10DLC brand verification.
+              To protect your business privacy, LGQ stores only the verified last four digits and provider registration IDs in restricted compliance storage. */}
         </PersistedApplicationForm>
       )}
     </main>

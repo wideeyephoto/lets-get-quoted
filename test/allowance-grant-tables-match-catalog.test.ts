@@ -126,9 +126,7 @@ describe('the SQL grant tables agree with the price book', () => {
       .toBe(`${BILLING_PLANS.scale.allowances.textCredits.toLocaleString('en-US')}/month`);
     expect(scaleCell('Marketing email sends'))
       .toBe(`${BILLING_PLANS.scale.allowances.marketingEmailSends.toLocaleString('en-US')}/month`);
-    expect(scaleCell('AI Intake credits'))
-      .toBe(`${BILLING_PLANS.scale.allowances.aiIntakeCredits.toLocaleString('en-US')}/month`);
-    expect(scaleCell('AI writing drafts'))
-      .toBe(`${BILLING_PLANS.scale.allowances.aiWritingDrafts.toLocaleString('en-US')}/month`);
+    expect(scaleCell('AI credits'))
+      .toBe(`${(BILLING_PLANS.scale.allowances.aiIntakeCredits + BILLING_PLANS.scale.allowances.aiWritingDrafts).toLocaleString('en-US')}/month`);
   });
 });

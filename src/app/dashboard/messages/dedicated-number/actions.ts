@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import { requireOwnerContext } from '@/lib/auth';
 import { buildStandardContractorCampaignPayload } from '@/lib/messaging-contractor-campaign-template';
 import {
+  recordMessagingComplianceVerification,
   submitMessagingRegistrationApplication,
   validateMessagingApplication,
 } from '@/lib/messaging-number-provisioning';
@@ -18,6 +19,22 @@ function back(kind: 'done' | 'error', code: ResultCode): never {
 
 export async function submitDedicatedNumberApplicationAction(formData: FormData) {
   const { accountId, userId, userEmail } = await requireOwnerContext();
+
+  const businessType = String(formData.get('businessType') ?? '');
+  const rawEin = String(formData.get('ein') ?? '').trim();
+
+  const einDigits = rawEin.replace(/\D/g, '');
+  const isSoleProp = businessType === 'sole_proprietor';
+  const hasEin = einDigits.length > 0;
+
+  // EIN validation:
+  // Non-sole proprietors MUST have a valid 9-digit EIN.
+  // Sole proprietors can either provide a 9-digit EIN or register as no-EIN sole prop.
+  if (!isSoleProp) {
+    if (einDigits.length !== 9) back('error', 'invalid');
+  } else if (hasEin && einDigits.length !== 9) {
+    back('error', 'invalid');
+  }
 
   const legalBusinessName = String(formData.get('legalBusinessName') ?? '').trim();
   const dbaName = String(formData.get('dbaName') ?? '').trim();
@@ -65,7 +82,7 @@ export async function submitDedicatedNumberApplicationAction(formData: FormData)
   const validation = validateMessagingApplication({
     legalBusinessName,
     dbaName,
-    businessType: String(formData.get('businessType') ?? ''),
+    businessType,
     websiteUrl,
     businessEmail,
     businessPhone,
@@ -94,12 +111,21 @@ export async function submitDedicatedNumberApplicationAction(formData: FormData)
 
   const submissionKey = String(formData.get('submissionKey') ?? '');
   try {
-    await submitMessagingRegistrationApplication({
+    const result = await submitMessagingRegistrationApplication({
       accountId,
       userId,
       submissionKey,
       value: validation.value,
     });
+
+    if (einDigits.length === 9) {
+      await recordMessagingComplianceVerification({
+        applicationId: result.applicationId,
+        einLastFour: einDigits.slice(-4),
+        verificationReference: 'Owner-submitted 10DLC registration',
+        actorReference: userEmail || userId,
+      });
+    }
   } catch (error) {
     logMessagingRegistrationActionFailure({
       applicationId: null,

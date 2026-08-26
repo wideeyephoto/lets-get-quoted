@@ -71,7 +71,7 @@ describe('dedicated-number provisioning migration', () => {
     expect(action).not.toMatch(/from\(['"]messaging_compliance_verifications['"]\)\.(insert|update|upsert)/);
   });
 
-  it('collects contact/support/opt-in evidence without exposing a full-EIN field', () => {
+  it('collects contact/support/opt-in evidence and EIN securely with last-four compliance retention', () => {
     for (const field of [
       'authorizedContactName', 'authorizedContactTitle', 'authorizedContactEmail', 'authorizedContactPhone',
       'messagingSupportEmail', 'messagingSupportPhone', 'optInEvidenceUrl',
@@ -79,8 +79,8 @@ describe('dedicated-number provisioning migration', () => {
       expect(ownerRegistrationAction).toContain(`formData.get('${field}')`);
       expect(ownerRegistrationPage).toContain(`name="${field}"`);
     }
-    expect(ownerRegistrationPage).toContain('does not collect or store a full EIN');
-    expect(ownerRegistrationPage).not.toMatch(/name=["'](?:ein|taxId|tax_id)["']/i);
+    expect(ownerRegistrationPage).toContain('name="ein"');
+    expect(ownerRegistrationPage).toContain('stores only the verified last four digits');
     for (const field of [
       'selected.authorizedContactName', 'selected.authorizedContactTitle', 'selected.authorizedContactEmail',
       'selected.authorizedContactPhone', 'selected.messagingSupportEmail', 'selected.messagingSupportPhone',

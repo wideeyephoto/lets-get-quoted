@@ -41,17 +41,15 @@ export default function ContactPage() {
           <h2>Where to send what</h2>
           <ul>
             <li>
-              <strong>General questions and support</strong> — the form above, or{' '}
-              <a href="mailto:hello@letsgetquoted.com">hello@letsgetquoted.com</a>.
+              <strong>General questions and support</strong> — use the form above.
             </li>
             <li>
-              <strong>Account and billing help</strong> —{' '}
-              <a href="mailto:support@letsgetquoted.com">support@letsgetquoted.com</a>, or reply to any
-              email the platform has sent you so the thread stays together.
+              <strong>Account and billing help</strong> — reply to any email the
+              platform has sent you so the thread stays together, or send a note
+              using the form above.
             </li>
             <li>
-              <strong>Privacy requests</strong> — the form above, or{' '}
-              <a href="mailto:hello@letsgetquoted.com">hello@letsgetquoted.com</a> with
+              <strong>Privacy requests</strong> — use the form above with
               &ldquo;Privacy request&rdquo; in the subject. See the{' '}
               <Link href="/privacy">Privacy Policy</Link> for what we hold and how to ask for it.
             </li>

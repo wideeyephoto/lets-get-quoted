@@ -19,8 +19,20 @@ describe('messaging registration form safety', () => {
     expect(persistedForm).toContain('window.sessionStorage.getItem(storageKey)');
     expect(persistedForm).toContain("element.name === 'submissionKey'");
     expect(persistedForm).toContain("element.name === 'attested'");
-    expect(persistedForm).toContain("if (name === 'attested' || name === 'submissionKey') continue");
+    expect(persistedForm).toContain("element.name === 'ein'");
+    expect(persistedForm).toContain("element.name === 'taxId'");
+    expect(persistedForm).toContain("if (name === 'attested' || name === 'submissionKey' || name === 'ein' || name === 'taxId') continue");
     expect(persistedForm).toContain('onSubmit={submit}');
+  });
+
+  it('collects EIN on the owner page while keeping full tax identity out of drafts and client records', () => {
+    expect(ownerPage).toContain('name="ein"');
+    expect(ownerPage).toContain('Your EIN is encrypted and transmitted directly to mobile carrier registries');
+    expect(ownerPage).toContain('LGQ stores only the verified last four digits');
+    expect(ownerAction).toContain('rawEin.replace(/\\D/g,');
+    expect(ownerAction).toContain('recordMessagingComplianceVerification({');
+    expect(ownerAction).toContain('einLastFour: einDigits.slice(-4)');
+    expect(ownerAction).not.toContain('p_ein:');
   });
 
   it('renders the application controls disabled until the saved draft has restored', () => {

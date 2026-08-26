@@ -26,12 +26,12 @@ const CARD_DIFFERENTIATORS: Record<PlanId, readonly string[]> = {
   solo: [
     '0.50% lower platform fee (pays for itself around $56k/yr)',
     '2 office users + 2 crew users included',
-    '500 monthly text credits & 300 AI intake/draft credits',
+    '500 monthly text credits & 300 AI credits',
   ],
   growth: [
     '0.25% platform fee for rapidly growing invoice volume',
     '5 office users + 10 crew users with team scheduling',
-    '1,500 monthly text credits & 750 AI intake/draft credits',
+    '1,500 monthly text credits & 750 AI credits',
   ],
   scale: [
     '0.10% lowest platform fee for maximum margin efficiency',
@@ -79,11 +79,11 @@ const RECOMMENDER_PRESETS = [
 ];
 
 const COMPARISON_CATEGORIES = [
-  { id: 'all', label: 'All features (19)' },
+  { id: 'all', label: 'All features (18)' },
   { id: 'fees', label: 'Fees & Seats (5)' },
   { id: 'core', label: 'Leads & Quotes (5)' },
   { id: 'comms', label: 'Messaging & Phone (5)' },
-  { id: 'ai', label: 'AI, Storage & QBO (4)' },
+  { id: 'ai', label: 'AI, Storage & QBO (3)' },
 ] as const;
 
 type ComparisonCategory = (typeof COMPARISON_CATEGORIES)[number]['id'];
@@ -107,8 +107,7 @@ const ROW_CATEGORY_MAP: Record<string, ComparisonCategory> = {
   'Marketing email sends': 'comms',
   'Transactional emails': 'comms',
 
-  'AI Intake credits': 'ai',
-  'AI writing drafts': 'ai',
+  'AI credits': 'ai',
   'File & photo storage': 'ai',
   'QuickBooks Online': 'ai',
 };
@@ -290,7 +289,7 @@ export default function PricingExperience() {
           <div className={styles.heroTwoColGrid}>
             {/* Left Column: Headline, Explanation & CTAs */}
             <div className={styles.heroLeftCol}>
-              <p className={styles.heroEyebrow}>ONE CONNECTED SYSTEM · SCALABLE PRICING</p>
+              <p className={styles.heroEyebrow}>One connected system · Scalable pricing</p>
               <h1>Start at $0. Lower your platform fee as you grow.</h1>
               <p className={styles.heroLead}>
                 One connected system for your whole contracting business—from your custom website and instant quoting to

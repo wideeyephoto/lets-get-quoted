@@ -98,6 +98,7 @@ export default function DedicatedNumberWizard({
     legalBusinessName: defaults.legalBusinessName,
     dbaName: defaults.dbaName,
     businessType: defaults.businessType,
+    ein: '',
     websiteUrl: defaults.websiteUrl,
     businessEmail: defaults.businessEmail,
     businessPhone: defaults.businessPhone,
@@ -114,6 +115,7 @@ export default function DedicatedNumberWizard({
   });
 
   const [useBusinessContact, setUseBusinessContact] = useState(false);
+  const isSoleProp = formValues.businessType === 'sole_proprietor';
 
   const handleInputChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -138,6 +140,13 @@ export default function DedicatedNumberWizard({
 
   const validateStep1 = () => {
     if (!formValues.legalBusinessName.trim()) return 'Enter your legal business name.';
+    if (!isSoleProp) {
+      const digits = formValues.ein.replace(/\D/g, '');
+      if (digits.length !== 9) return 'Enter a valid 9-digit Tax ID / EIN (e.g. 12-3456789).';
+    } else if (formValues.ein.trim()) {
+      const digits = formValues.ein.replace(/\D/g, '');
+      if (digits.length !== 9) return 'EIN must be 9 digits if provided.';
+    }
     if (!formValues.websiteUrl.trim()) return 'Enter your business website URL.';
     if (!formValues.businessEmail.trim()) return 'Enter a valid business email address.';
     if (!formValues.businessPhone.trim()) return 'Enter your business phone number.';
@@ -329,6 +338,23 @@ export default function DedicatedNumberWizard({
             </label>
 
             <label>
+              <span>
+                Tax ID / EIN {isSoleProp ? <small className={styles.opt}>(Optional for Sole Prop)</small> : <small className={styles.req}>(Required for LLC/Corp)</small>}
+              </span>
+              <input
+                name="ein"
+                value={formValues.ein}
+                onChange={handleInputChange}
+                placeholder="12-3456789"
+                pattern="[0-9]{2}-?[0-9]{7}"
+                title="9-digit Employer Identification Number (e.g. 12-3456789)"
+                inputMode="numeric"
+                maxLength={10}
+                required={!isSoleProp}
+              />
+            </label>
+
+            <label>
               <span>Business website <small className={styles.req}>(Required)</small></span>
               <input
                 name="websiteUrl"
@@ -517,9 +543,7 @@ export default function DedicatedNumberWizard({
           </div>
 
           <p className={styles.note}>
-            Carrier vetting requires tax-identity verification. LGQ intentionally does not collect or store a full EIN here.
-            MFA-authorized staff verify it out of band and retain only its last four digits and a nonsecret case reference in a
-            service-only record that this owner page cannot read.
+            10DLC mobile carrier vetting requires verified business tax identity. To protect your business privacy, LGQ stores only the verified last four digits and provider registration IDs in restricted compliance storage.
           </p>
 
           <div className={styles.wizardActions}>
@@ -571,6 +595,7 @@ export default function DedicatedNumberWizard({
               </div>
               <p><b>Name:</b> {formValues.legalBusinessName} {formValues.dbaName ? `(DBA: ${formValues.dbaName})` : ''}</p>
               <p><b>Type:</b> {formValues.businessType.toUpperCase()}</p>
+              <p><b>Tax ID / EIN:</b> {formValues.ein ? `XX-XXX${formValues.ein.replace(/\D/g, '').slice(-4)}` : 'None (Sole Proprietor)'}</p>
               <p><b>Website:</b> {formValues.websiteUrl}</p>
               <p><b>Email:</b> {formValues.businessEmail}</p>
               <p><b>Phone:</b> {formValues.businessPhone}</p>
