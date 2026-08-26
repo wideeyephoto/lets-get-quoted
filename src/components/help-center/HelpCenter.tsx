@@ -6,14 +6,11 @@ import {
   KNOWLEDGE_BASE,
   FAQS,
   TRADE_PLAYBOOKS,
-  DOWNLOADABLE_TEMPLATES,
   COMMON_FIX_ARTICLES,
   SUPPORT_CHANNELS,
-  LEGAL_TEMPLATES_DISCLAIMER,
   getAllArticles,
   findArticleBySlugOrId,
-  Article,
-  DownloadableTemplate
+  Article
 } from './help-center-data';
 import {
   matchTroubleshooter,
@@ -367,7 +364,6 @@ export default function HelpCenter() {
 
   // Active modals
   const [activeArticle, setActiveArticle] = useState<Article | null>(null);
-  const [activeDocument, setActiveDocument] = useState<DownloadableTemplate | null>(null);
   const [isTicketDrawerOpen, setIsTicketDrawerOpen] = useState(false);
   const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
 
@@ -418,7 +414,6 @@ export default function HelpCenter() {
 
   // Modal Container Refs for Focus Trapping
   const articleModalRef = useRef<HTMLDivElement>(null);
-  const docModalRef = useRef<HTMLDivElement>(null);
   const ticketDrawerRef = useRef<HTMLDivElement>(null);
   const statusModalRef = useRef<HTMLDivElement>(null);
 
@@ -455,7 +450,6 @@ export default function HelpCenter() {
   useEffect(() => {
     const activeModal =
       (activeArticle && articleModalRef.current) ||
-      (activeDocument && docModalRef.current) ||
       (isTicketDrawerOpen && ticketDrawerRef.current) ||
       (isStatusModalOpen && statusModalRef.current);
 
@@ -489,7 +483,7 @@ export default function HelpCenter() {
 
     window.addEventListener('keydown', handleTabKey);
     return () => window.removeEventListener('keydown', handleTabKey);
-  }, [activeArticle, activeDocument, isTicketDrawerOpen, isStatusModalOpen]);
+  }, [activeArticle, isTicketDrawerOpen, isStatusModalOpen]);
 
   // Open Article & Synchronize with URL
   const openArticle = useCallback((article: Article, preserveFocus = true) => {
@@ -519,23 +513,9 @@ export default function HelpCenter() {
     }
   }, []);
 
-  const openDocument = useCallback((doc: DownloadableTemplate) => {
-    if (typeof document !== 'undefined') {
-      lastFocusedElementRef.current = document.activeElement as HTMLElement;
-    }
-    setActiveDocument(doc);
-  }, []);
-
-  const closeDocument = useCallback(() => {
-    setActiveDocument(null);
-    if (lastFocusedElementRef.current) {
-      lastFocusedElementRef.current.focus();
-    }
-  }, []);
-
   // Lock background page scroll when modal or drawer is active
   useEffect(() => {
-    const isAnyModalOpen = Boolean(activeArticle || isStatusModalOpen || isTicketDrawerOpen || activeDocument);
+    const isAnyModalOpen = Boolean(activeArticle || isStatusModalOpen || isTicketDrawerOpen);
     if (isAnyModalOpen && typeof document !== 'undefined') {
       const originalOverflow = document.body.style.overflow;
       document.body.style.overflow = 'hidden';
@@ -543,7 +523,7 @@ export default function HelpCenter() {
         document.body.style.overflow = originalOverflow;
       };
     }
-  }, [activeArticle, isStatusModalOpen, isTicketDrawerOpen, activeDocument]);
+  }, [activeArticle, isStatusModalOpen, isTicketDrawerOpen]);
 
   // Fetch Live System Status
   const fetchSystemStatus = useCallback(async () => {
@@ -649,14 +629,13 @@ export default function HelpCenter() {
       }
       if (e.key === 'Escape') {
         if (activeArticle) closeArticle();
-        if (activeDocument) closeDocument();
         if (isTicketDrawerOpen) closeTicketDrawer();
         if (isStatusModalOpen) closeStatusModal();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeArticle, activeDocument, isTicketDrawerOpen, isStatusModalOpen, closeArticle, closeDocument, closeTicketDrawer, closeStatusModal]);
+  }, [activeArticle, isTicketDrawerOpen, isStatusModalOpen, closeArticle, closeTicketDrawer, closeStatusModal]);
 
   // Real-time Deflection in Ticket Drawer
   useEffect(() => {
@@ -1259,49 +1238,7 @@ export default function HelpCenter() {
         </section>
       )}
 
-      {/* ================= 6. CONTRACTOR TEMPLATES & AGREEMENTS ================= */}
-      {!isSearchActive && (
-        <section id="contractor-templates" className={styles.sectionContainer}>
-          <div className={styles.sectionHeader}>
-            <div>
-              <span className={styles.sectionTag}>Documentation</span>
-              <h2 className={styles.sectionTitle}>Contractor Templates</h2>
-              <p className={styles.sectionDesc}>
-                Print-ready milestone deposit agreements, extra work change orders, and progress lien waiver templates.
-              </p>
-            </div>
-          </div>
-
-          <div className={styles.templatesGrid}>
-            {DOWNLOADABLE_TEMPLATES.map(tpl => (
-              <div key={tpl.id} className={styles.templateCard}>
-                <div className={styles.templateTop}>
-                  <span className={styles.templateFormatBadge}>PDF &amp; Print Ready</span>
-                  <span className={styles.templateSize}>{tpl.fileSize}</span>
-                </div>
-                <h3 className={styles.templateName}>{tpl.name}</h3>
-                <p className={styles.templateDesc}>{tpl.description}</p>
-                <button
-                  type="button"
-                  className={styles.btnOutlineSm}
-                  onClick={() => openDocument(tpl)}
-                  aria-haspopup="dialog"
-                >
-                  <Icons.Eye />
-                  <span>Preview Template</span>
-                </button>
-              </div>
-            ))}
-          </div>
-
-          {/* Mandatory Legal Disclaimer */}
-          <div className={styles.legalDisclaimerBox}>
-            <strong>Disclaimer:</strong> {LEGAL_TEMPLATES_DISCLAIMER}
-          </div>
-        </section>
-      )}
-
-      {/* ================= 7. FAQS ================= */}
+      {/* ================= 6. FAQS ================= */}
       <section id="faqs" className={styles.sectionContainer}>
         <div className={styles.sectionHeader}>
           <div>
@@ -1791,62 +1728,7 @@ export default function HelpCenter() {
         </div>
       )}
 
-      {/* 2. In-App Document Viewer & Print Modal */}
-      {activeDocument && (
-        <div
-          ref={docModalRef}
-          className={styles.modalOverlay}
-          onClick={closeDocument}
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="doc-modal-title"
-        >
-          <div className={styles.docModal} onClick={e => e.stopPropagation()}>
-            <div className={styles.docModalHeader}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                <span className={styles.categoryBadge}>Contractor Templates</span>
-                <span style={{ fontSize: '0.8rem', color: '#10b981', fontWeight: 600 }}>
-                  ✓ Print &amp; PDF Ready
-                </span>
-              </div>
-              <div className={styles.docHeaderActions}>
-                <button
-                  type="button"
-                  className={styles.btnPrimarySm}
-                  onClick={() => window.print()}
-                >
-                  <Icons.Printer />
-                  <span>Print / Save PDF</span>
-                </button>
-                <button className={styles.iconBtn} onClick={closeDocument} aria-label="Close template preview">
-                  <Icons.X />
-                </button>
-              </div>
-            </div>
-
-            <div className={styles.docModalBody}>
-              <div className={styles.docPaperHeader}>
-                <span className={styles.docBadge}>FORM TEMPLATE • PRINT READY</span>
-                <h1 id="doc-modal-title" className={styles.docPaperTitle}>{activeDocument.name}</h1>
-                <p className={styles.docPaperDesc}>{activeDocument.description}</p>
-              </div>
-
-              <div className={styles.docSampleBody}>
-                <div className={styles.docClause}>
-                  <h3>Template Structure &amp; Clauses</h3>
-                  <p>Standard contractor agreement template ready for printing or attaching to customer proposals.</p>
-                </div>
-              </div>
-
-              <div className={styles.legalDisclaimerBox}>
-                <strong>Disclaimer:</strong> {LEGAL_TEMPLATES_DISCLAIMER}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 3. Support Ticket Drawer with Enriched Structured Fields */}
+      {/* 2. Support Ticket Drawer with Enriched Structured Fields */}
       {isTicketDrawerOpen && (
         <div
           ref={ticketDrawerRef}

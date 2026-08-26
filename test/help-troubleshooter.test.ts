@@ -80,9 +80,8 @@ describe('Help Center Data & Section Grounding', () => {
     expect(helpComponentSource).not.toContain('120+');
   });
 
-  it('includes mandatory legal disclaimer for contractor templates', () => {
-    expect(LEGAL_TEMPLATES_DISCLAIMER).toContain('These templates are starting points, not legal advice');
-    expect(helpComponentSource).toContain('LEGAL_TEMPLATES_DISCLAIMER');
+  it('does not render non-functional contractor templates', () => {
+    expect(helpComponentSource).not.toContain('id="contractor-templates"');
   });
 
   it('contains all 6 common fix articles', () => {
