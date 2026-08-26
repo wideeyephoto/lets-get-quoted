@@ -108,7 +108,7 @@ export function getInitialBlankEstimate(): EstimateData {
     contractorLicense: '',
     clientName: '',
     clientAddress: '',
-    estimateNumber: generateEstimateNumber(),
+    estimateNumber: 'EST-2026-001',
     estimateDate: getTodaysDateString(),
     selectedTrade: 'roofing',
     roofPitch: '6/12',

@@ -984,8 +984,12 @@
 .seoSection {
   background: #081a29;
   border-top: 1px solid rgba(174, 199, 211, 0.15);
-  padding: clamp(48px, 6vw, 80px) 24px;
+  padding: clamp(48px, 6vw, 80px) 16px;
   color: #f7f5ef;
+  overflow-x: clip;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .seoContainer {
@@ -994,12 +998,16 @@
   display: flex;
   flex-direction: column;
   gap: 60px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .seoBlock {
   display: flex;
   flex-direction: column;
   gap: 20px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .seoBlockHeader {
@@ -1033,8 +1041,8 @@
 
 .stepsGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+  gap: 16px;
   margin-top: 10px;
 }
 
@@ -1042,8 +1050,9 @@
   background: rgba(12, 32, 45, 0.7);
   border: 1px solid rgba(174, 199, 211, 0.18);
   border-radius: 12px;
-  padding: 24px;
+  padding: clamp(16px, 4vw, 24px);
   position: relative;
+  box-sizing: border-box;
 }
 
 .stepNumber {
@@ -1076,15 +1085,16 @@
 
 .guideGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+  gap: 16px;
 }
 
 .guideCard {
   background: rgba(12, 32, 45, 0.7);
   border: 1px solid rgba(174, 199, 211, 0.18);
   border-radius: 12px;
-  padding: 24px;
+  padding: clamp(16px, 4vw, 24px);
+  box-sizing: border-box;
 }
 
 .guideIcon {
@@ -1109,17 +1119,21 @@
 .comparisonWrapper {
   overflow-x: auto;
   margin-top: 10px;
+  max-width: 100%;
+  width: 100%;
+  box-sizing: border-box;
+  -webkit-overflow-scrolling: touch;
 }
 
 .comparisonTable {
   width: 100%;
   border-collapse: collapse;
-  min-width: 600px;
+  min-width: 540px;
 }
 
 .comparisonTable th {
   background: rgba(12, 32, 45, 0.9);
-  padding: 12px 16px;
+  padding: 12px 14px;
   text-align: left;
   font-size: 13px;
   font-weight: 800;
@@ -1128,7 +1142,7 @@
 }
 
 .comparisonTable td {
-  padding: 14px 16px;
+  padding: 12px 14px;
   border-bottom: 1px solid rgba(174, 199, 211, 0.12);
   font-size: 13px;
   color: #a7bcc8;
@@ -1138,15 +1152,16 @@
 
 .faqGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+  gap: 16px;
 }
 
 .faqCard {
   background: rgba(12, 32, 45, 0.7);
   border: 1px solid rgba(174, 199, 211, 0.18);
   border-radius: 12px;
-  padding: 24px;
+  padding: clamp(16px, 4vw, 24px);
+  box-sizing: border-box;
 }
 
 .faqQuestion {
@@ -1165,8 +1180,8 @@
 
 .crossToolsGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+  gap: 16px;
   margin-top: 12px;
 }
 
@@ -1174,13 +1189,14 @@
   background: linear-gradient(180deg, #0c202d 0%, #07131d 100%);
   border: 1px solid rgba(174, 199, 211, 0.2);
   border-radius: 14px;
-  padding: 24px;
+  padding: clamp(16px, 4vw, 24px);
   text-decoration: none;
   color: inherit;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   transition: transform 0.2s, border-color 0.2s;
+  box-sizing: border-box;
 }
 
 .crossToolCard:hover {
@@ -1210,8 +1226,12 @@
 
 /* Mobile Responsiveness Breakdown (< 768px) */
 @media (max-width: 768px) {
+  .container {
+    padding: 0 12px 60px;
+  }
+
   .estimateSheet {
-    padding: 16px;
+    padding: 14px;
     border-radius: 10px;
   }
 
@@ -1313,11 +1333,6 @@
     size: auto;
   }
 
-  body {
-    background: #ffffff !important;
-    color: #0c202d !important;
-  }
-
   .page {
     background: #ffffff !important;
     color: #0c202d !important;
@@ -1332,9 +1347,7 @@
   .printActions,
   .postActionCta,
   .seoSection,
-  .permitBox,
-  :global(header),
-  :global(footer) {
+  .permitBox {
     display: none !important;
   }
 

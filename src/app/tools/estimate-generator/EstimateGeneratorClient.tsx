@@ -242,7 +242,11 @@ export default function EstimateGeneratorClient() {
   };
 
   const handleNewEstimate = () => {
-    const fresh = getInitialBlankEstimate();
+    const fresh = {
+      ...getInitialBlankEstimate(),
+      estimateNumber: generateEstimateNumber(),
+      estimateDate: getTodaysDateString(),
+    };
     setEstimate(fresh);
     clearEstimateDraft();
     setStatusMessage('Created new blank estimate.');
@@ -256,28 +260,42 @@ export default function EstimateGeneratorClient() {
 
   const handleCopySummary = async () => {
     const summaryText = formatEstimateSummaryText(estimate, totals);
-    try {
-      if (navigator?.clipboard?.writeText) {
+    let success = false;
+    if (navigator?.clipboard?.writeText) {
+      try {
         await navigator.clipboard.writeText(summaryText);
-      } else {
-        // Fallback for older browsers
+        success = true;
+      } catch {
+        // clipboard permission or headless restriction, fall back
+      }
+    }
+
+    if (!success) {
+      try {
         const textArea = document.createElement('textarea');
         textArea.value = summaryText;
         textArea.style.position = 'fixed';
         textArea.style.opacity = '0';
+        textArea.style.left = '-9999px';
         document.body.appendChild(textArea);
         textArea.focus();
         textArea.select();
         document.execCommand('copy');
         document.body.removeChild(textArea);
+        success = true;
+      } catch {
+        success = false;
       }
+    }
+
+    if (success) {
       setCopied(true);
       setStatusMessage('Estimate summary copied to clipboard.');
       if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
       copyTimeoutRef.current = setTimeout(() => {
         setCopied(false);
       }, 3000);
-    } catch {
+    } else {
       setStatusMessage('Failed to copy. Please select and copy manually.');
     }
   };
