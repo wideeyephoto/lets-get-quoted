@@ -2,9 +2,9 @@
 .header { margin-bottom: 1.25rem; }
 .header h1 { margin: .25rem 0 .45rem; font-size: clamp(1.65rem, 4vw, 2.4rem); max-width: none; }
 .header p { color: var(--muted); max-width: 70ch; line-height: 1.6; }
-.back { color: var(--muted); font-size: .86rem; }
+.back { color: var(--muted); font-size: .86rem; display: inline-flex; align-items: center; min-height: 36px; }
 .back:hover { color: var(--text); }
-.eyebrow { color: var(--accent) !important; text-transform: uppercase; font-size: .72rem; font-weight: 800; letter-spacing: .14em; margin-top: 1rem; }
+.eyebrow { color: var(--accent) !important; text-transform: uppercase; font-size: .72rem; font-weight: 800; letter-spacing: .14em; margin-top: .75rem; }
 .banner { padding: .8rem 1rem; border-radius: .7rem; border: 1px solid; margin: 0 0 1rem; }
 .success { border-color: rgba(52, 211, 153, .4); background: rgba(52, 211, 153, .1); }
 .error { border-color: rgba(248, 113, 113, .4); background: rgba(248, 113, 113, .1); }
@@ -14,6 +14,80 @@
 .statusCard strong { color: var(--accent-2); font-size: 1.1rem; }
 .statusCard p { margin: .35rem 0 0; }
 .form { display: grid; gap: 1.25rem; }
+
+/* Wizard Stepper Navigation */
+.wizardRoot { display: grid; gap: 1.25rem; }
+.stepperBar {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  background: rgba(var(--tint), .03);
+  border: 1px solid var(--edge-t10);
+  border-radius: .8rem;
+  padding: .4rem .55rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.stepperBar::-webkit-scrollbar { display: none; }
+
+.stepTab {
+  display: inline-flex;
+  align-items: center;
+  gap: .55rem;
+  padding: .5rem .85rem;
+  border-radius: .55rem;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: .85rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  min-height: 44px;
+  transition: all .15s ease;
+}
+
+.stepTab:hover:not(:disabled) {
+  color: var(--text);
+  background: rgba(var(--tint), .05);
+}
+
+.tabNumber {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  background: rgba(var(--tint), .08);
+  color: var(--muted);
+  font-size: .75rem;
+  font-weight: 800;
+}
+
+.activeTab {
+  background: rgba(var(--tint), .08);
+  color: var(--text);
+  border-color: var(--edge-t14);
+}
+
+.activeTab .tabNumber {
+  background: var(--accent);
+  color: #fff;
+}
+
+.completedTab .tabNumber {
+  background: rgba(52, 211, 153, .2);
+  color: #34d399;
+}
+
+.stepDivider {
+  color: var(--muted);
+  opacity: .5;
+  font-size: 1.1rem;
+  user-select: none;
+}
 
 .cardHeader { display: flex; align-items: flex-start; gap: 1rem; margin-bottom: 1.1rem; }
 .stepBadge {
@@ -33,18 +107,119 @@
 .card h2 { margin: 0 0 .25rem; font-size: 1.2rem; }
 .subtext { margin: 0; color: var(--muted); font-size: .88rem; line-height: 1.45; }
 
+.req { color: var(--accent); font-weight: normal; font-size: .75rem; margin-left: .25rem; }
+.opt { color: var(--muted); font-weight: normal; font-size: .75rem; margin-left: .25rem; }
+
 .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
 .grid label { display: flex; flex-direction: column; gap: .35rem; }
+.fullWidth { grid-column: 1 / -1; }
+
+.shortcutCheckbox {
+  display: inline-flex;
+  align-items: center;
+  gap: .6rem;
+  margin-bottom: 1rem;
+  cursor: pointer;
+  user-select: none;
+}
+.shortcutCheckbox input {
+  width: 1.1rem;
+  height: 1.1rem;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+.shortcutCheckbox span {
+  font-size: .88rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
 .form label > span { font-size: .82rem; font-weight: 700; color: var(--muted); }
 .form input:not([type='checkbox']), .form select, .form textarea {
   width: 100%; border: 1px solid var(--edge-t14); border-radius: .55rem;
-  background: rgba(var(--tint), .05); color: var(--text); padding: .65rem .72rem;
-  font: inherit;
+  background: rgba(var(--tint), .05); color: var(--text); padding: .7rem .8rem;
+  font: inherit; min-height: 44px;
 }
 .form textarea { resize: vertical; line-height: 1.45; }
 .form input:focus, .form select:focus, .form textarea:focus { outline: 2px solid rgba(255, 122, 33, .45); outline-offset: 1px; }
 .note { line-height: 1.5; margin: .75rem 0 0; }
 
+.wizardActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: .75rem;
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--edge-t10);
+}
+
+.wizardActions button {
+  min-height: 44px;
+  padding: .65rem 1.4rem;
+  font-size: .92rem;
+  font-weight: 600;
+}
+
+/* Review Section */
+.reviewGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.25rem;
+  margin-top: .5rem;
+}
+
+.reviewSection {
+  background: rgba(var(--tint), .03);
+  border: 1px solid var(--edge-t10);
+  border-radius: .7rem;
+  padding: 1rem 1.1rem;
+}
+
+.reviewSectionHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: .65rem;
+  padding-bottom: .45rem;
+  border-bottom: 1px solid var(--edge-t10);
+}
+
+.reviewSectionHead strong {
+  font-size: .92rem;
+  color: var(--text);
+}
+
+.editBtn {
+  background: transparent;
+  border: 1px solid var(--edge-t14);
+  color: var(--muted);
+  border-radius: .4rem;
+  padding: .2rem .55rem;
+  font-size: .75rem;
+  font-weight: 600;
+  cursor: pointer;
+  min-height: 32px;
+}
+
+.editBtn:hover {
+  color: var(--text);
+  background: rgba(var(--tint), .08);
+}
+
+.reviewSection p {
+  margin: .3rem 0;
+  font-size: .84rem;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.reviewSection p b {
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* 10DLC Compliance Card */
 .complianceCard {
   border-color: rgba(52, 211, 153, .3);
   background: linear-gradient(180deg, rgba(52, 211, 153, .04) 0%, rgba(var(--tint), .02) 100%);
@@ -154,6 +329,7 @@
   padding: .15rem .35rem;
   border-radius: .3rem;
   background: rgba(var(--tint), .08);
+  word-break: break-all;
 }
 
 .detailRow ul {
@@ -163,12 +339,15 @@
   line-height: 1.45;
 }
 
-.attestation { display: grid !important; grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: .65rem !important; }
-.attestation input { margin-top: .2rem; }
-.attestation span { line-height: 1.5; color: var(--text) !important; font-weight: 500 !important; }
+.attestation { display: grid !important; grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: .65rem !important; margin-bottom: .5rem; }
+.attestation input { margin-top: .25rem; width: 1.2rem; height: 1.2rem; }
+.attestation span { line-height: 1.5; color: var(--text) !important; font-weight: 500 !important; font-size: .88rem; }
 .card ol { color: var(--muted); line-height: 1.6; padding-left: 1.25rem; }
 
 @media (max-width: 680px) {
-  .grid, .featuresGrid { grid-template-columns: 1fr; }
+  .grid, .featuresGrid, .reviewGrid { grid-template-columns: 1fr; }
   .cardHeader { flex-direction: column; gap: .5rem; }
+  .wizardActions { flex-direction: column-reverse; gap: .5rem; }
+  .wizardActions button { width: 100%; justify-content: center; }
+  .stepperBar { justify-content: flex-start; }
 }

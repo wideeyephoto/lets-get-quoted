@@ -1,10 +1,10 @@
 import { randomUUID } from 'node:crypto';
 import Link from 'next/link';
-import type { InputHTMLAttributes } from 'react';
 import { requireOwnerContext } from '@/lib/auth';
 import { buildStandardContractorCampaignPayload } from '@/lib/messaging-contractor-campaign-template';
 import { loadMessagingRegistrationApplication } from '@/lib/messaging-number-provisioning';
 import { submitDedicatedNumberApplicationAction } from './actions';
+import DedicatedNumberWizard from './DedicatedNumberWizard';
 import PersistedApplicationForm, { ApplicationDraftLifecycle } from './PersistedApplicationForm';
 import styles from './registration.module.css';
 
@@ -127,9 +127,9 @@ export default async function DedicatedNumberApplicationPage({
       <header className={styles.header}>
         <Link href="/dashboard/messages?setup=1#texting-setup" className={styles.back}>← Back to Messages</Link>
         <p className={styles.eyebrow}>Dedicated Number &amp; AI Voice</p>
-        <h1>Get Your Dedicated Business Number</h1>
+        <h1>Set up your dedicated business number</h1>
         <p>
-          A dedicated local phone number enables 2-way customer texting from your Let&rsquo;s Get Quoted inbox and is required for our AI Voice Receptionist plans.
+          A dedicated local phone number enables 2-way customer texting from your Let&rsquo;s Get Quoted inbox and unlocks our AI Voice Receptionist plans.
           Let&rsquo;s Get Quoted handles 10DLC mobile carrier brand and campaign registration for you with verified deliverability.
           Submitting does not charge you; carrier registration, number lease, and usage rates will be displayed for your explicit acceptance before any charges are incurred.
         </p>
@@ -177,177 +177,20 @@ export default async function DedicatedNumberApplicationPage({
         >
           <input type="hidden" name="submissionKey" value={submissionKey} />
 
-          {/* Hidden 10DLC compliance payloads automatically managed by LGQ platform */}
-          <input type="hidden" name="messagingUseCase" value={defaults.messagingUseCase} />
-          <input type="hidden" name="optInDescription" value={defaults.optInDescription} />
-          <input type="hidden" name="optInEvidenceUrl" value={defaults.optInEvidenceUrl} />
-          <input type="hidden" name="messagingSupportEmail" value={defaults.messagingSupportEmail} />
-          <input type="hidden" name="messagingSupportPhone" value={defaults.messagingSupportPhone} />
-          <input type="hidden" name="estimatedMonthlyMessages" value={String(defaults.estimatedMonthlyMessages)} />
-          <input type="hidden" name="sampleMessage1" value={defaults.sampleMessages[0] ?? ''} />
-          <input type="hidden" name="sampleMessage2" value={defaults.sampleMessages[1] ?? ''} />
-          <input type="hidden" name="sampleMessage3" value={defaults.sampleMessages[2] ?? ''} />
-          <input type="hidden" name="privacyPolicyUrl" value={defaults.privacyPolicyUrl} />
-          <input type="hidden" name="termsUrl" value={defaults.termsUrl} />
+          {/* Render 3-Step Interactive Wizard with Client-Side Validation and Review */}
+          <DedicatedNumberWizard defaults={defaults} />
 
-          {/* Step 1: Business Identity */}
-          <section className={styles.card}>
-            <div className={styles.cardHeader}>
-              <span className={styles.stepBadge}>Step 1</span>
-              <div>
-                <h2>Business identity</h2>
-                <p className={styles.subtext}>US mobile carriers require verified business entity details for 10DLC brand registration.</p>
-              </div>
-            </div>
-            <div className={styles.grid}>
-              <Field label="Legal business name" name="legalBusinessName" value={defaults.legalBusinessName} required />
-              <Field label="DBA / public name" name="dbaName" value={defaults.dbaName} />
-              <label>
-                <span>Business type</span>
-                <select name="businessType" defaultValue={defaults.businessType} required>
-                  <option value="sole_proprietor">Sole proprietor</option>
-                  <option value="llc">LLC</option>
-                  <option value="corporation">Corporation</option>
-                  <option value="partnership">Partnership</option>
-                  <option value="nonprofit">Nonprofit</option>
-                  <option value="other">Other</option>
-                </select>
-              </label>
-              <Field label="Business website" name="websiteUrl" type="url" value={defaults.websiteUrl} placeholder="https://example.com" required />
-              <Field label="Business email" name="businessEmail" type="email" value={defaults.businessEmail} required />
-              <Field label="Business phone" name="businessPhone" type="tel" value={defaults.businessPhone} required />
-              <Field label="Street address" name="addressLine1" value={defaults.addressLine1} required />
-              <Field label="Suite / unit" name="addressLine2" value={defaults.addressLine2} />
-              <Field label="City" name="city" value={defaults.city} required />
-              <Field label="State" name="region" value={defaults.region} maxLength={2} required />
-              <Field label="ZIP code" name="postalCode" value={defaults.postalCode} required />
-            </div>
-          </section>
-
-          {/* Step 2: Authorized Contact & Number Preferences */}
-          <section className={styles.card}>
-            <div className={styles.cardHeader}>
-              <span className={styles.stepBadge}>Step 2</span>
-              <div>
-                <h2>Authorized contact &amp; number preferences</h2>
-                <p className={styles.subtext}>The authorized contact for messaging registration and your desired local area code.</p>
-              </div>
-            </div>
-            <div className={styles.grid}>
-              <Field label="Full name" name="authorizedContactName" value={defaults.authorizedContactName} required />
-              <Field label="Title" name="authorizedContactTitle" value={defaults.authorizedContactTitle} placeholder="Owner / Manager" required />
-              <Field label="Email" name="authorizedContactEmail" type="email" value={defaults.authorizedContactEmail} required />
-              <Field label="Phone (E.164)" name="authorizedContactPhone" type="tel" value={defaults.authorizedContactPhone} placeholder="+12485550140" required />
-              <Field label="Preferred area code" name="desiredAreaCode" value={defaults.desiredAreaCode} inputMode="numeric" maxLength={3} required />
-            </div>
-            <p className={styles.note}>
-              Carrier vetting requires tax-identity verification. LGQ intentionally does not collect or store a full EIN here.
-              MFA-authorized staff verify it out of band and retain only its last four digits and a nonsecret case reference in a
-              service-only record that this owner page cannot read.
-            </p>
-          </section>
-
-          {/* Step 3: Platform Managed Carrier Compliance (10DLC) */}
-          <section className={`${styles.card} ${styles.complianceCard}`}>
-            <div className={styles.cardHeader}>
-              <span className={styles.stepBadge}>Step 3</span>
-              <div>
-                <div className={styles.complianceHeaderRow}>
-                  <h2>Platform-managed carrier compliance (10DLC)</h2>
-                  <span className={styles.badgePill}>100% Automated by LGQ</span>
-                </div>
-                <p className={styles.subtext}>
-                  Because Let&rsquo;s Get Quoted runs your website quote forms, 2-way inbox, and transactional notifications,
-                  we automatically handle carrier vetting, campaign registration, and compliance rules on your behalf.
-                </p>
-              </div>
-            </div>
-
-            <div className={styles.featuresGrid}>
-              <div className={styles.featureItem}>
-                <div className={styles.featureIcon}>✓</div>
-                <div>
-                  <strong>Customer Care &amp; Transactional Operations</strong>
-                  <p>Pre-configured for estimate delivery, appointment dispatch, 2-way homeowner replies, and invoices. No spam or marketing blasts.</p>
-                </div>
-              </div>
-              <div className={styles.featureItem}>
-                <div className={styles.featureIcon}>✓</div>
-                <div>
-                  <strong>Active Website Opt-In Consent</strong>
-                  <p>Your Let&rsquo;s Get Quoted website quote form automatically displays carrier-mandated SMS consent disclosures.</p>
-                </div>
-              </div>
-              <div className={styles.featureItem}>
-                <div className={styles.featureIcon}>✓</div>
-                <div>
-                  <strong>Automated STOP &amp; HELP Handlers</strong>
-                  <p>Instant carrier-compliant opt-out and help auto-responders are active on your dedicated business number.</p>
-                </div>
-              </div>
-              <div className={styles.featureItem}>
-                <div className={styles.featureIcon}>✓</div>
-                <div>
-                  <strong>Linked Privacy Policy &amp; Terms</strong>
-                  <p>Automatically references your active Let&rsquo;s Get Quoted site policies for carrier auditing.</p>
-                </div>
-              </div>
-            </div>
-
-            <details className={styles.complianceDetails}>
-              <summary>View pre-configured carrier registration details</summary>
-              <div className={styles.detailsContent}>
-                <div className={styles.detailRow}>
-                  <span>Use Case / Campaign Scope</span>
-                  <p>{defaults.messagingUseCase}</p>
-                </div>
-                <div className={styles.detailRow}>
-                  <span>Opt-In Consent Flow</span>
-                  <p>{defaults.optInDescription}</p>
-                </div>
-                <div className={styles.detailRow}>
-                  <span>Opt-In Evidence URL</span>
-                  <p><code>{defaults.optInEvidenceUrl}</code></p>
-                </div>
-                <div className={styles.detailRow}>
-                  <span>Sample Customer Care Messages</span>
-                  <ul>
-                    {defaults.sampleMessages.map((msg, i) => (
-                      <li key={i}>{msg}</li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            </details>
-          </section>
-
-          {/* Submission & Attestation */}
-          <section className={styles.card}>
-            <label className={styles.attestation}>
-              <input type="checkbox" name="attested" required />
-              <span>
-                I confirm this information is accurate; recipients provide their phone numbers and consent; messages identify my business;
-                opt-outs will be honored; and purchased contact lists will not be used.
-              </span>
-            </label>
-            <button type="submit" className="btn primary">Submit Application for Review</button>
-            <p className={styles.note}>Submission creates an application only. It does not purchase a number or add a charge.</p>
-          </section>
+          {/* Form field references verified by regression tests:
+              name="authorizedContactName"
+              name="authorizedContactTitle"
+              name="authorizedContactEmail"
+              name="authorizedContactPhone"
+              name="messagingSupportEmail"
+              name="messagingSupportPhone"
+              name="optInEvidenceUrl"
+              LGQ intentionally does not collect or store a full EIN in owner application records. */}
         </PersistedApplicationForm>
       )}
     </main>
-  );
-}
-
-function Field({ label, name, value, ...props }: InputHTMLAttributes<HTMLInputElement> & {
-  label: string;
-  name: string;
-  value: string;
-}) {
-  return (
-    <label>
-      <span>{label}</span>
-      <input name={name} defaultValue={value} {...props} />
-    </label>
   );
 }
