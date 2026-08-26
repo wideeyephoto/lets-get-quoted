@@ -119,7 +119,7 @@ async function minimumComplianceKeywordTwiml(
 const SHARED_NOTICE_LANES = new Set(['lgq_shared', 'lgq_dispatch']);
 
 export function sharedNoticeText(brand: string): string {
-  return `${brand}: Alerts only, replies not monitored. Open your dashboard: ${APP_ORIGIN}/dashboard Reply STOP to opt out.`;
+  return `${brand}: Alerts only, replies not monitored. View your client portal: ${APP_ORIGIN}/portal Reply STOP to opt out.`;
 }
 
 /**

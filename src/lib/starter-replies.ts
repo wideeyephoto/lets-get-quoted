@@ -76,8 +76,17 @@ export const STARTER_REPLIES: readonly StarterReply[] = [
   },
 ] as const;
 
-/** The five, resolved against whoever this thread is with. */
-export function starterRepliesFor(clientName: string | null | undefined): { id: string; title: string; body: string }[] {
+/** The five, resolved against whoever this thread is with and contractor's sign-off. */
+export function starterRepliesFor(
+  clientName: string | null | undefined,
+  signoff?: string | null,
+): { id: string; title: string; body: string }[] {
   const first = firstNameOf(clientName);
-  return STARTER_REPLIES.map((reply) => ({ id: reply.id, title: reply.title, body: reply.body(first) }));
+  const cleanSignoff = (signoff ?? '').trim();
+  const suffix = cleanSignoff ? ` ${cleanSignoff.startsWith('—') || cleanSignoff.startsWith('-') ? cleanSignoff : `— ${cleanSignoff}`}` : '';
+  return STARTER_REPLIES.map((reply) => ({
+    id: reply.id,
+    title: reply.title,
+    body: `${reply.body(first)}${suffix}`,
+  }));
 }

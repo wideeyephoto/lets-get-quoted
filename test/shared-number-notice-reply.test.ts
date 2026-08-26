@@ -36,9 +36,9 @@ describe('shared-number notice copy', () => {
     }
   });
 
-  it('carries the dashboard link and the opt-out instruction', () => {
+  it('carries the client portal link and the opt-out instruction', () => {
     const text = sharedNoticeText("Let's Get Quoted");
-    expect(text).toContain('/dashboard');
+    expect(text).toContain('/portal');
     expect(text).toMatch(/reply stop/i);
   });
 

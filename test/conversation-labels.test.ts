@@ -169,8 +169,8 @@ describe('the inbox page uses the label without greeting by it', () => {
 
   it('greets with the name, never the label', () => {
     // The whole reason `name` and `label` are separate fields.
-    expect(page).toContain('starterRepliesFor(activeName)');
-    expect(page).not.toContain('starterRepliesFor(activeLabel)');
+    expect(page).toMatch(/starterRepliesFor\(\s*activeName/);
+    expect(page).not.toMatch(/starterRepliesFor\(\s*activeLabel/);
   });
 
   it('still shows the number under a heading that is not the number', () => {

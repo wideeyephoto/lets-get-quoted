@@ -87,8 +87,9 @@ export async function updateBusinessBasicsAction(formData: FormData) {
   const companyName = (formData.get('companyName') ?? '').toString().trim();
   const trade = (formData.get('trade') ?? '').toString().trim();
   const zip = (formData.get('zip') ?? '').toString().trim();
+  const smsSignoff = (formData.get('smsSignoff') ?? '').toString().trim().slice(0, 60);
 
-  const content = mergeSiteContent((site.content as Record<string, unknown>) ?? {}, { trade, zip });
+  const content = mergeSiteContent((site.content as Record<string, unknown>) ?? {}, { trade, zip, smsSignoff });
   await updateSite(supabase, accountId, site.id as string, {
     company_name: companyName || (site.company_name as string) || 'My Business',
     content,

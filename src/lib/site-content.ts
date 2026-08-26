@@ -940,6 +940,8 @@ export type NormalizedSiteContent = {
   // Business ZIP code — seeds the AI so it can name the real primary city and
   // nearby towns for the service area (not a generic guess).
   zip: string;
+  // Custom message and text sign-off (e.g. "— Dave @ Evergreen").
+  smsSignoff: string;
   // Google Search Console verification, rendered as the
   // <meta name="google-site-verification"> tag on the site's homepage.
   //
@@ -1666,6 +1668,7 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
     footerStyle: FOOTER_STYLE_KEYS.has(toString(root.footerStyle)) ? toString(root.footerStyle) : 'columns',
     trade: toString(root.trade).slice(0, 80),
     zip: toString(root.zip).slice(0, 12),
+    smsSignoff: toString(root.smsSignoff).slice(0, 60),
     // Raw on purpose (see the type) — capped only so a paste can't grow the row.
     googleSiteVerification: toString(root.googleSiteVerification).slice(0, 300),
     brandGlyph: SERVICE_ICON_GLYPHS[toString(root.brandGlyph)] ? toString(root.brandGlyph) : '',

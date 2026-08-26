@@ -651,6 +651,17 @@ export default async function SettingsPage({
                       <input id="zip" name="zip" defaultValue={businessBasics.zip} placeholder="64002" />
                       <small className="field-hint">Sets your service area &mdash; the AI names the real nearby cities and towns you serve.</small>
                     </div>
+                    <div className="field full">
+                      <label htmlFor="smsSignoff">Custom message &amp; text sign-off</label>
+                      <input
+                        id="smsSignoff"
+                        name="smsSignoff"
+                        defaultValue={businessBasics.smsSignoff ?? ''}
+                        placeholder="e.g. — Dave @ Evergreen"
+                        maxLength={60}
+                      />
+                      <small className="field-hint">Appears on outgoing customer messages and text replies when set.</small>
+                    </div>
                     <div className="form-actions">
                       <SaveButton onlyWhenChanged>Save business basics</SaveButton>
                     </div>

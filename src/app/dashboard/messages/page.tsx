@@ -18,6 +18,7 @@ import {
 import { listMessageTemplates } from '@/lib/message-templates';
 import { starterRepliesFor } from '@/lib/starter-replies';
 import { loadMessagingSetup } from '@/lib/owner-sms';
+import { getSiteContent } from '@/lib/site-content';
 import { sendReplyAction, createTemplateAction, deleteTemplateAction, startConversationAction, addPhoneAsClientAction } from './actions';
 import MessagingSetup from './MessagingSetup';
 import SavedReplies from './SavedReplies';
@@ -81,14 +82,16 @@ export default async function MessagesPage({
   // Built ONCE and shared. Both loadConversations and this page need it, and
   // letting each build its own meant six table reads per inbox load.
   const identities = await buildContactIdentityMap(supabase, accountId);
-  const [conversationRead, consentPhoneRead, setup, messagingReadiness] = await Promise.all([
+  const [conversationRead, consentPhoneRead, setup, messagingReadiness, { data: site }] = await Promise.all([
     loadConversations(supabase, accountId, identities),
     loadCurrentSmsConsentPhones(supabase, accountId),
     // Both setup reads report "unavailable" rather than a default on failure,
     // so the strip can say it could not tell instead of announcing a state.
     loadMessagingSetup(accountId),
     loadDedicatedMessagingReadiness(accountId),
+    supabase.from('sites').select('content').eq('account_id', accountId).maybeSingle(),
   ]);
+  const siteContent = getSiteContent((site?.content as Record<string, unknown> | null) ?? null);
   const allConversations = conversationRead.data;
   const conversationsAvailable = conversationRead.kind === 'ready';
   const customerMessagingReady = messagingReadiness.kind === 'ready';
@@ -447,7 +450,7 @@ export default async function MessagesPage({
               <div className="inbox-reply-area">
                 <SavedReplies
                   templates={templates}
-                  starters={starterRepliesFor(activeName)}
+                  starters={starterRepliesFor(activeName, siteContent.smsSignoff)}
                   targetId="reply-body"
                   threadPhone={activePhone}
                   createAction={createTemplateAction}
