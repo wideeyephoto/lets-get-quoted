@@ -9,8 +9,6 @@ import {
 } from './pitch-calc';
 import type { RoofSegment, RoofStats } from './types';
 
-const GMP_SOLUTION_ID = 'gmp_git_agentskills_v1';
-
 type SolarBuildingInsightsResponse = {
   name?: string;
   center?: { latitude?: number; longitude?: number };
@@ -72,12 +70,8 @@ export async function fetchSolarBuildingInsightsDetailed(
     url.searchParams.set('location.longitude', String(lng));
     url.searchParams.set('requiredQuality', requiredQuality);
     url.searchParams.set('key', apiKey);
-    url.searchParams.set('solution_id', GMP_SOLUTION_ID);
 
     const res = await fetch(url.toString(), {
-      headers: {
-        'X-Goog-Maps-Solution-ID': GMP_SOLUTION_ID,
-      },
       signal: AbortSignal.timeout(6000),
     });
 
