@@ -40,6 +40,8 @@ export default function PersistedApplicationForm({
       if (!element.name
         || element.name === 'submissionKey'
         || element.name === 'attested'
+        || element.name === 'ein'
+        || element.name === 'taxId'
         || element.type === 'submit') continue;
       draft[element.name] = element instanceof HTMLInputElement && element.type === 'checkbox'
         ? element.checked
@@ -63,7 +65,7 @@ export default function PersistedApplicationForm({
       if (raw) {
         const draft = JSON.parse(raw) as Record<string, unknown>;
         for (const [name, value] of Object.entries(draft)) {
-          if (name === 'attested' || name === 'submissionKey') continue;
+          if (name === 'attested' || name === 'submissionKey' || name === 'ein' || name === 'taxId') continue;
           const element = form.elements.namedItem(name);
           if (element instanceof HTMLInputElement && element.type === 'checkbox') {
             if (typeof value === 'boolean') element.checked = value;

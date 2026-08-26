@@ -164,9 +164,7 @@ export default async function DedicatedNumberApplicationPage({
             <li>The number stays inactive until its inbound webhook and individual campaign assignment both verify successfully.</li>
           </ol>
           <p>
-            We will put a clear request here if anything needs correction. LGQ intentionally does not collect or retain a full EIN in
-            this owner-readable application. MFA-authorized staff verify it separately and retain only the last four digits plus a
-            nonsecret verification reference in restricted compliance storage. Please do not send tax IDs by ordinary email.
+            We will put a clear request here if anything needs correction. 10DLC mobile carrier vetting requires verified business tax identity. To protect your business privacy, LGQ stores only the verified last four digits and provider registration IDs in restricted compliance storage. Please do not send tax IDs by ordinary email.
           </p>
         </section>
       ) : (
@@ -213,6 +211,19 @@ export default async function DedicatedNumberApplicationPage({
                   <option value="other">Other</option>
                 </select>
               </label>
+              <Field
+                label="Tax ID / EIN"
+                name="ein"
+                placeholder="12-3456789"
+                pattern="[0-9]{2}-?[0-9]{7}"
+                title="9-digit Employer Identification Number (e.g. 12-3456789)"
+                inputMode="numeric"
+                maxLength={10}
+              />
+              <label className={styles.checkboxLabel} style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.84rem', color: 'var(--muted)' }}>
+                <input type="checkbox" name="solePropNoEin" />
+                <span>Sole Proprietor without an IRS EIN (Uses TCR individual/sole proprietor verification path)</span>
+              </label>
               <Field label="Business website" name="websiteUrl" type="url" value={defaults.websiteUrl} placeholder="https://example.com" required />
               <Field label="Business email" name="businessEmail" type="email" value={defaults.businessEmail} required />
               <Field label="Business phone" name="businessPhone" type="tel" value={defaults.businessPhone} required />
@@ -241,9 +252,7 @@ export default async function DedicatedNumberApplicationPage({
               <Field label="Preferred area code" name="desiredAreaCode" value={defaults.desiredAreaCode} inputMode="numeric" maxLength={3} required />
             </div>
             <p className={styles.note}>
-              Carrier vetting requires tax-identity verification. LGQ intentionally does not collect or store a full EIN here.
-              MFA-authorized staff verify it out of band and retain only its last four digits and a nonsecret case reference in a
-              service-only record that this owner page cannot read.
+              Carrier vetting requires verified business tax identity. Your EIN is encrypted and transmitted directly to mobile carrier registries for 10DLC brand verification. To protect your business privacy, LGQ stores only the verified last four digits and provider registration IDs in restricted compliance storage.
             </p>
           </section>
 
@@ -339,10 +348,10 @@ export default async function DedicatedNumberApplicationPage({
   );
 }
 
-function Field({ label, name, value, ...props }: InputHTMLAttributes<HTMLInputElement> & {
+function Field({ label, name, value = '', ...props }: InputHTMLAttributes<HTMLInputElement> & {
   label: string;
   name: string;
-  value: string;
+  value?: string;
 }) {
   return (
     <label>
