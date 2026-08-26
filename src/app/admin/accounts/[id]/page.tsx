@@ -914,131 +914,124 @@ export default async function AdminAccountDetailPage({
       </div>
 
       {/* Main Tabbed Detail View */}
-      <AccountDetailView tabs={tabs} defaultTab="overview">
-        {(activeTab) => (
-          <>
-            {activeTab === 'overview' && (
-              <div className={styles.detailGrid}>
-                <div>
-                  {renderProfilePanel()}
-                  {renderActivityPanel()}
+      <AccountDetailView
+        tabs={tabs}
+        defaultTab="overview"
+        overviewPanel={
+          <div className={styles.detailGrid}>
+            <div>
+              {renderProfilePanel()}
+              {renderActivityPanel()}
+            </div>
+            <div>
+              {renderFeatureFlagsPanel()}
+              <section className={styles.panel}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem' }}>
+                  <h2 className={styles.panelTitle} style={{ margin: 0 }}>Recent notes</h2>
+                  <a href="#support" className={styles.rowLink} style={{ fontSize: '0.78rem' }}>
+                    View all ({detail.notes.length}) →
+                  </a>
                 </div>
-                <div>
-                  {renderFeatureFlagsPanel()}
-                  <section className={styles.panel}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem' }}>
-                      <h2 className={styles.panelTitle} style={{ margin: 0 }}>Recent notes</h2>
-                      <a href="#support" className={styles.rowLink} style={{ fontSize: '0.78rem' }}>
-                        View all ({detail.notes.length}) →
-                      </a>
-                    </div>
-                    {detail.notes.length === 0 ? (
-                      <p className={styles.emptyState}>No notes yet.</p>
-                    ) : (
-                      <ul className={styles.timeline}>
-                        {detail.notes.slice(0, 3).map((n) => (
-                          <li key={n.id}>
-                            <time>{fmtDateTime(n.created_at)}</time>
-                            <span>
-                              <span className={styles.timelineActor}>{n.created_by}</span> — {n.body}
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </section>
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'billing' && (
-              <div className={styles.detailGrid}>
-                <div>
-                  {renderPlanAuthorityPanel()}
-                  {renderPaymentsPanel()}
-                </div>
-                <div>
-                  {renderRecentPaymentsPanel()}
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'messages' && (
-              <div className={styles.detailGrid}>
-                <div>
-                  {renderMessagesPanel()}
-                </div>
-                <div>
-                  {renderLoginHistoryPanel()}
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'support' && (
-              <div className={styles.detailGrid}>
-                <div>
-                  {renderNotesAndTagsPanel()}
-                  {renderSupportCasesPanel()}
-                </div>
-                <div>
-                  {renderAttachmentsPanel()}
-                  {renderPrivacyRequestsPanel()}
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'staff' && (
-              <div className={styles.detailGrid}>
-                <div>
-                  <AccountActions
-                    role={role}
-                    accountId={params.id}
-                    suspended={suspended}
-                    quickStopLockedUntil={lockedUntil}
-                    businessName={displayName}
-                    payoutsRestricted={payoutsRestricted}
-                    synthetic={Boolean(a.test_marker)}
-                  />
-                </div>
-                <div>
-                  {renderAuditPanel()}
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'all' && (
-              <div className={styles.detailGrid}>
-                <div>
-                  {renderProfilePanel()}
-                  {renderPlanAuthorityPanel()}
-                  {renderPaymentsPanel()}
-                  {renderRecentPaymentsPanel()}
-                  {renderMessagesPanel()}
-                  {renderLoginHistoryPanel()}
-                </div>
-                <div>
-                  {renderActivityPanel()}
-                  {renderFeatureFlagsPanel()}
-                  {renderNotesAndTagsPanel()}
-                  {renderAttachmentsPanel()}
-                  {renderSupportCasesPanel()}
-                  {renderPrivacyRequestsPanel()}
-                  <AccountActions
-                    role={role}
-                    accountId={params.id}
-                    suspended={suspended}
-                    quickStopLockedUntil={lockedUntil}
-                    businessName={displayName}
-                    payoutsRestricted={payoutsRestricted}
-                    synthetic={Boolean(a.test_marker)}
-                  />
-                  {renderAuditPanel()}
-                </div>
-              </div>
-            )}
-          </>
-        )}
-      </AccountDetailView>
+                {detail.notes.length === 0 ? (
+                  <p className={styles.emptyState}>No notes yet.</p>
+                ) : (
+                  <ul className={styles.timeline}>
+                    {detail.notes.slice(0, 3).map((n) => (
+                      <li key={n.id}>
+                        <time>{fmtDateTime(n.created_at)}</time>
+                        <span>
+                          <span className={styles.timelineActor}>{n.created_by}</span> — {n.body}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </section>
+            </div>
+          </div>
+        }
+        billingPanel={
+          <div className={styles.detailGrid}>
+            <div>
+              {renderPlanAuthorityPanel()}
+              {renderPaymentsPanel()}
+            </div>
+            <div>
+              {renderRecentPaymentsPanel()}
+            </div>
+          </div>
+        }
+        messagesPanel={
+          <div className={styles.detailGrid}>
+            <div>
+              {renderMessagesPanel()}
+            </div>
+            <div>
+              {renderLoginHistoryPanel()}
+            </div>
+          </div>
+        }
+        supportPanel={
+          <div className={styles.detailGrid}>
+            <div>
+              {renderNotesAndTagsPanel()}
+              {renderSupportCasesPanel()}
+            </div>
+            <div>
+              {renderAttachmentsPanel()}
+              {renderPrivacyRequestsPanel()}
+            </div>
+          </div>
+        }
+        staffPanel={
+          <div className={styles.detailGrid}>
+            <div>
+              <AccountActions
+                role={role}
+                accountId={params.id}
+                suspended={suspended}
+                quickStopLockedUntil={lockedUntil}
+                businessName={displayName}
+                payoutsRestricted={payoutsRestricted}
+                synthetic={Boolean(a.test_marker)}
+              />
+            </div>
+            <div>
+              {renderAuditPanel()}
+            </div>
+          </div>
+        }
+        allPanel={
+          <div className={styles.detailGrid}>
+            <div>
+              {renderProfilePanel()}
+              {renderPlanAuthorityPanel()}
+              {renderPaymentsPanel()}
+              {renderRecentPaymentsPanel()}
+              {renderMessagesPanel()}
+              {renderLoginHistoryPanel()}
+            </div>
+            <div>
+              {renderActivityPanel()}
+              {renderFeatureFlagsPanel()}
+              {renderNotesAndTagsPanel()}
+              {renderAttachmentsPanel()}
+              {renderSupportCasesPanel()}
+              {renderPrivacyRequestsPanel()}
+              <AccountActions
+                role={role}
+                accountId={params.id}
+                suspended={suspended}
+                quickStopLockedUntil={lockedUntil}
+                businessName={displayName}
+                payoutsRestricted={payoutsRestricted}
+                synthetic={Boolean(a.test_marker)}
+              />
+              {renderAuditPanel()}
+            </div>
+          </div>
+        }
+      />
     </>
   );
 }

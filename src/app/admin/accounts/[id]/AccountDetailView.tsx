@@ -15,11 +15,21 @@ export interface AccountTab {
 export default function AccountDetailView({
   tabs,
   defaultTab = 'overview',
-  children,
+  overviewPanel,
+  billingPanel,
+  messagesPanel,
+  supportPanel,
+  staffPanel,
+  allPanel,
 }: {
   tabs: AccountTab[];
   defaultTab?: AccountTabId;
-  children: (activeTab: AccountTabId) => React.ReactNode;
+  overviewPanel: React.ReactNode;
+  billingPanel: React.ReactNode;
+  messagesPanel: React.ReactNode;
+  supportPanel: React.ReactNode;
+  staffPanel: React.ReactNode;
+  allPanel: React.ReactNode;
 }) {
   const [activeTab, setActiveTab] = useState<AccountTabId>(defaultTab);
 
@@ -67,7 +77,24 @@ export default function AccountDetailView({
       </nav>
 
       <div role="tabpanel">
-        {children(activeTab)}
+        <div style={{ display: activeTab === 'overview' ? 'block' : 'none' }}>
+          {overviewPanel}
+        </div>
+        <div style={{ display: activeTab === 'billing' ? 'block' : 'none' }}>
+          {billingPanel}
+        </div>
+        <div style={{ display: activeTab === 'messages' ? 'block' : 'none' }}>
+          {messagesPanel}
+        </div>
+        <div style={{ display: activeTab === 'support' ? 'block' : 'none' }}>
+          {supportPanel}
+        </div>
+        <div style={{ display: activeTab === 'staff' ? 'block' : 'none' }}>
+          {staffPanel}
+        </div>
+        <div style={{ display: activeTab === 'all' ? 'block' : 'none' }}>
+          {allPanel}
+        </div>
       </div>
     </div>
   );
