@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import LaunchBanner from '@/components/marketing/launch-banner';
+import ThemeFab from '@/components/theme-fab';
 import { SiteHeaderSlot } from './site-chrome';
 
 /**
@@ -39,6 +40,7 @@ export default function PublicHeaderLayout({ children }: { children: ReactNode }
           it is clipped. Out here the banner is in ordinary flow with the header
           already accounted for, so it needs no offset of its own. */}
       <LaunchBanner />
+      <ThemeFab />
       {children}
     </>
   );

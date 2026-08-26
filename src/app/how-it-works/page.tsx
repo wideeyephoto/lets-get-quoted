@@ -6,6 +6,7 @@ import LaunchBanner from '@/components/marketing/launch-banner';
 // The flagship chrome and stylesheet — the same ones the homepage and
 // /features draw, so this page is the site rather than a document about it.
 import { SiteFooter, SiteHeader } from '@/components/flagship/site-chrome';
+import ThemeFab from '@/components/theme-fab';
 import styles from '@/components/flagship/flagship.module.css';
 import { APP_SIGNUP_URL, DEMO_URL } from '@/components/marketing/links';
 import { titleWithBrand } from '@/lib/seo/marketing-seo';
@@ -224,6 +225,7 @@ export default function HowItWorksPage() {
           page's own three anchors are the bar underneath it. */}
       <SiteHeader />
       <LaunchBanner offsetHeader />
+      <ThemeFab />
       <SectionNav sections={NAV_SECTIONS} />
 
       {/* ------------------------------------------------------------------

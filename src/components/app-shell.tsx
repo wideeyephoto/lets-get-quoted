@@ -1387,7 +1387,10 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
         {/* tabIndex -1 so the skip link can actually put focus here; without
             it the browser scrolls to the target and leaves focus behind, which
             means the next Tab lands back at the top of the rail. */}
-        <div id="app-main" tabIndex={-1} className={`app-main app-main-public${showQuoteRequestAlert ? " app-main-alerted" : ""}`}>{children}</div>
+        <div id="app-main" tabIndex={-1} className={`app-main app-main-public${showQuoteRequestAlert ? " app-main-alerted" : ""}`}>
+          <ThemeFab />
+          {children}
+        </div>
       </div>
     );
   }

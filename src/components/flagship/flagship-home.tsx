@@ -12,6 +12,7 @@ import { HOME_FAQS } from '@/lib/home-faqs';
 import { PLAN_PRICE_OPTIONS, STRIPE_PROCESSING_NOTE } from '@/lib/pricing';
 import styles from './flagship.module.css';
 import LaunchBanner from '@/components/marketing/launch-banner';
+import ThemeFab from '@/components/theme-fab';
 
 const TradeOrbit = dynamic(() => import('./trade-orbit'), { ssr: true });
 const CommandCenterDeck = dynamic(() => import('@/components/command-center-deck'), { ssr: true });
@@ -52,9 +53,24 @@ const cssVars = (vars: Record<string, string | number>) => vars as React.CSSProp
  * sees the 5-step workflow below.
  */
 const PROOF_POINTS = [
-  { label: 'FREE WEBSITE INCLUDED', blurb: 'Launch with instant estimate' },
-  { label: 'NO CARD REQUIRED', blurb: 'Flex plan starts at $0/month' },
-  { label: 'QUOTE-TO-PAYMENT WORKFLOW', blurb: 'One connected system' },
+  {
+    label: 'FREE WEBSITE INCLUDED',
+    blurb: 'Launch with instant estimate',
+    href: '#flagships',
+    ariaLabel: 'Jump to the free contractor website builder section',
+  },
+  {
+    label: 'NO CARD REQUIRED',
+    blurb: 'Flex plan starts at $0/month',
+    href: '#pricing',
+    ariaLabel: 'Jump to transparent pricing and $0/month plan details',
+  },
+  {
+    label: 'QUOTE-TO-PAYMENT WORKFLOW',
+    blurb: 'One connected system',
+    href: '#workflow',
+    ariaLabel: 'Jump to connected quote-to-payment workflow features',
+  },
 ];
 
 /**
@@ -590,6 +606,7 @@ export default function FlagshipHome() {
       <a className="skip-link" href="#main-content">Skip to content</a>
       <SiteHeader />
       <LaunchBanner offsetHeader />
+      <ThemeFab />
 
       {/* THE HERO, TO THE MOCKUP.
           Copy left, product right, four pillars along the bottom of the copy.
@@ -617,7 +634,7 @@ export default function FlagshipHome() {
           <p className="eyebrow"><span>✦</span> CONTRACTOR SOFTWARE—STARTING WITH A FREE WEBSITE</p>
           <h1>From first click to final payment.<br /><em>Run it all in one place.</em></h1>
           <p className="hero-sub">
-            Tell us your company, trade, and ZIP. We’ll generate an editable contractor website with instant estimates—then keep every lead, quote, schedule, message, and payment connected behind it.
+            Tell us your company, trade, and ZIP. We’ll generate an <strong>editable contractor website with instant estimates</strong>—then keep every lead, quote, schedule, message, and payment connected behind it.
           </p>
           <div className="hero-actions">
             <a className="button primary" href="https://app.letsgetquoted.com/start?goal=build_site&source=home_hero" ref={heroCtaRef}>{SIGNUP_LABEL} <span>→</span></a>
@@ -631,11 +648,13 @@ export default function FlagshipHome() {
         </div>
       </section>
 
-      {/* THREE STATIC PROOF POINTS */}
+      {/* THREE INTERACTIVE PROOF POINTS */}
       <section className="trust-strip trust-strip-3" aria-label="Key guarantees">
-        {PROOF_POINTS.map(({ label, blurb }) => (
+        {PROOF_POINTS.map(({ label, blurb, href, ariaLabel }) => (
           <span key={label}>
-            <b>{label}</b> {blurb}
+            <a href={href} aria-label={ariaLabel}>
+              <b>{label}</b> {blurb}
+            </a>
           </span>
         ))}
       </section>

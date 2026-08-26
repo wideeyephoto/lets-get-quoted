@@ -33,7 +33,7 @@ describe('Problem 1: Product Identity and Message Hierarchy', () => {
       expect(HOME).toContain('CONTRACTOR SOFTWARE—STARTING WITH A FREE WEBSITE');
       expect(HOME).toContain('From first click to final payment.<br /><em>Run it all in one place.</em>');
       expect(HOME).toContain(
-        'Tell us your company, trade, and ZIP. We’ll generate an editable contractor website with instant estimates',
+        'Tell us your company, trade, and ZIP. We’ll generate an <strong>editable contractor website with instant estimates</strong>',
       );
       expect(HOME).toContain('Explore a live demo');
       expect(HOME).toContain('{SIGNUP_LABEL}');
@@ -121,8 +121,9 @@ describe('Problem 2: Reduce Homepage Attention Competition', () => {
     expect(LAUNCH_BANNER).toContain('Details');
   });
 
-  it('keeps hero product showcase paused by default on initial viewport', () => {
-    expect(HERO_SHOWCASE).toContain('const [paused, setPaused] = useState(true);');
+  it('supports hero product showcase auto-rotation and interactive pause controls', () => {
+    expect(HERO_SHOWCASE).toContain('const [paused, setPaused] = useState(false);');
+    expect(HERO_SHOWCASE).toContain("onMouseEnter={() => setPaused(true)}");
   });
 
   it('renders a 3-point static proof strip under hero', () => {

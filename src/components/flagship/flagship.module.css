@@ -4069,20 +4069,10 @@
    moves onto the anchor so the target is the whole cell and not two lines of
    text. "flex: 1" is what fills it — the span is a column flex container, so
    stretch only governs width and the anchor would otherwise be content-height. */
-.root :global(.trust-strip-3) {
-  grid-template-columns: repeat(3, 1fr) !important;
-}
-
 .root :global(.trust-strip span) {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  padding: 18px 24px 18px 30px;
-  font-size: 13.5px;
-  line-height: 1.45;
+  padding: 0;
+  font-size: 14px;
   color: #1f2c34;
-  position: relative;
-  box-sizing: border-box;
 }
 
 .root :global(.trust-strip span > a) {
@@ -4090,43 +4080,28 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: 0;
+  padding: 16px 25px 16px 30px;
   color: inherit;
   text-decoration: none;
 }
 
 .root :global(.trust-strip b) {
-  display: block;
-  font-size: 11.5px;
-  font-weight: 750;
+  font-size: 12.5px;
   letter-spacing: 1.3px;
   color: #b8430f;
-  margin-bottom: 5px;
-  text-transform: uppercase;
+  margin-bottom: 7px;
 }
 
 /* Same fix for the corner number, which was 1.9:1. */
-.root :global(.trust-strip span)::after {
-  content: counter(lgq-promise, decimal-leading-zero);
-  position: absolute;
-  top: 14px;
-  right: 18px;
-  font-family: var(--font-geist-mono);
-  font-size: 10px;
-  letter-spacing: 0.08em;
-  color: rgba(184, 67, 15, .8);
-}
+.root :global(.trust-strip span)::after { color: rgba(184, 67, 15, .8); }
 
 /* The lift and the left rule were hover-only, so a keyboard never saw either.
    :focus-within is on the span because that is what carries both effects. */
-.root :global(.trust-strip span:hover),
 .root :global(.trust-strip span:focus-within) {
   background: var(--paper);
+  transform: translateY(-3px);
 }
-.root :global(.trust-strip span:hover)::before,
-.root :global(.trust-strip span:focus-within)::before {
-  opacity: 1;
-}
+.root :global(.trust-strip span:focus-within)::before { opacity: 1; }
 .root :global(.trust-strip span > a:focus-visible) {
   outline: 2px solid var(--orange);
   outline-offset: -5px;
@@ -4136,24 +4111,9 @@
   text-underline-offset: 3px;
 }
 
-@media (max-width: 860px) {
-  .root :global(.trust-strip-3) {
-    grid-template-columns: 1fr !important;
-    padding: 0 16px !important;
-  }
-  .root :global(.trust-strip-3 span) {
-    border-left: 1px solid #d8d2c8;
-    border-right: 1px solid #d8d2c8;
-    border-bottom: 1px solid #d8d2c8;
-    padding: 16px 20px 16px 26px;
-    font-size: 13px;
-  }
-  .root :global(.trust-strip-3 span:last-child) {
-    border-bottom: 1px solid #d8d2c8;
-  }
-  .root :global(.trust-strip-3 span)::after {
-    display: none;
-  }
+@media (max-width: 760px) {
+  .root :global(.trust-strip span) { font-size: 13.5px; }
+  .root :global(.trust-strip span > a) { padding: 15px 14px 15px 22px; }
 }
 
 /* ===========================================================================
@@ -7972,3 +7932,456 @@
   }
 }
 
+/* ===========================================================================
+   §114 — ABOVE-THE-FOLD HOMEPAGE OPTIMIZATION & HERO SHOWCASE CALLOUTS
+   =========================================================================== */
+
+/* Proportional letter-spacing and hierarchy refinement */
+.root :global(.hero h1) {
+  letter-spacing: -0.04em !important;
+}
+
+.root :global(.hero-sub strong) {
+  color: #eef5f6;
+  font-weight: 650;
+}
+
+/* Hero Showcase slide transitions & layers */
+.root :global(.showcase-slide) {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  transition: opacity 0.55s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+}
+
+.root :global(.showcase-slide[data-on="true"]) {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Floating feature callout badges on product screenshots */
+.root :global(.showcase-callouts) {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 4;
+}
+
+.root :global(.showcase-callout-pill) {
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  background: rgba(7, 19, 29, 0.88);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 106, 36, 0.35);
+  border-radius: 999px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1), transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+}
+
+.root :global(.showcase-callout-pill.pill-0) {
+  top: 18px;
+  right: 18px;
+}
+
+.root :global(.showcase-callout-pill.pill-1) {
+  bottom: 18px;
+  left: 18px;
+}
+
+.root :global(.showcase-slide[data-on="true"] .showcase-callout-pill) {
+  opacity: 1;
+  transform: translateY(0);
+  transition-delay: 0.15s;
+}
+
+.root :global(.showcase-slide[data-on="true"] .showcase-callout-pill.pill-1) {
+  transition-delay: 0.28s;
+}
+
+.root :global(.callout-spark) {
+  color: var(--yellow);
+  font-size: 11px;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+  text-shadow: 0 0 8px rgba(255, 215, 107, 0.6);
+}
+
+.root :global(.callout-body) {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.root :global(.callout-body small) {
+  font-size: 8.5px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: var(--orange);
+  text-transform: uppercase;
+  line-height: 1.2;
+}
+
+.root :global(.callout-body b) {
+  font-size: 12px;
+  font-weight: 700;
+  color: #ffffff;
+  white-space: nowrap;
+  line-height: 1.3;
+}
+
+@media (max-width: 760px) {
+  .root :global(.hero) {
+    padding-top: clamp(84px, 14vw, 98px) !important;
+    padding-bottom: 48px !important;
+  }
+
+  .root :global(.hero h1) {
+    font-size: clamp(38px, 9.5vw, 48px) !important;
+    letter-spacing: -0.03em !important;
+    line-height: 1.04 !important;
+  }
+
+  .root :global(.hero-sub) {
+    font-size: 15px !important;
+    margin: 16px 0 22px !important;
+    line-height: 1.6 !important;
+  }
+
+  .root :global(.hero-product) {
+    height: auto !important;
+    margin-top: 20px !important;
+  }
+
+  .root :global(.showcase-callout-pill) {
+    padding: 6px 11px;
+    border-radius: 8px;
+    gap: 7px;
+  }
+
+  .root :global(.showcase-callout-pill.pill-0) {
+    top: 10px;
+    right: 10px;
+  }
+
+  .root :global(.showcase-callout-pill.pill-1) {
+    bottom: 10px;
+    left: 10px;
+  }
+
+  .root :global(.callout-body small) {
+    font-size: 7.5px;
+    letter-spacing: 0.8px;
+  }
+
+  .root :global(.callout-body b) {
+    font-size: 11px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .root :global(.showcase-slide) {
+    transition: none !important;
+  }
+  .root :global(.showcase-callout-pill) {
+    transition: none !important;
+    transform: none !important;
+  }
+}
+
+/* =========================================================================
+   PUBLIC SITE LIGHT MODE & DIM MODE
+   ========================================================================= */
+
+:root[data-theme='light'] .root {
+  --ink: #f8fafc;
+  --ink-2: #ffffff;
+  --panel: #ffffff;
+  --line: rgba(15, 23, 42, 0.09);
+  --cream: #f1f5f9;
+  --paper: #ffffff;
+  --orange: #f95700;
+  --yellow: #b45309;
+  --mint: #059669;
+  --blue: #2563eb;
+  --muted: #475569;
+  background: var(--ink);
+  color: #0f172a;
+}
+
+:root[data-theme='light'] .root :global(.site-header) {
+  background: rgba(255, 255, 255, 0.88);
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+}
+
+:root[data-theme='light'] .root :global(.site-header nav) {
+  color: #475569;
+}
+
+:root[data-theme='light'] .root :global(.site-header nav a:hover) {
+  color: #0f172a;
+}
+
+:root[data-theme='light'] .root :global(.header-signin) {
+  color: #475569;
+}
+
+:root[data-theme='light'] .root :global(.header-signin:hover) {
+  color: #0f172a;
+}
+
+:root[data-theme='light'] .root :global(.header-cta) {
+  background: rgba(255, 106, 36, 0.08);
+  border-color: rgba(255, 106, 36, 0.35);
+  color: #0f172a;
+}
+
+:root[data-theme='light'] .root :global(.header-cta:hover) {
+  background: rgba(255, 106, 36, 0.16);
+  border-color: var(--orange);
+}
+
+:root[data-theme='light'] .root :global(.site-menu) {
+  background: #ffffff;
+  border-left: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: -10px 0 30px rgba(0, 0, 0, 0.08);
+}
+
+:root[data-theme='light'] .root :global(.site-menu nav a) {
+  color: #0f172a;
+  border-bottom-color: rgba(15, 23, 42, 0.06);
+}
+
+:root[data-theme='light'] .root :global(.site-menu-signin) {
+  color: #475569;
+}
+
+:root[data-theme='light'] .root :global(.site-menu-signin b) {
+  color: #0f172a;
+}
+
+:root[data-theme='light'] .root :global(.nav-toggle) {
+  color: #0f172a;
+}
+
+:root[data-theme='light'] .root :global(.nav-toggle-bars i) {
+  background: #0f172a;
+}
+
+:root[data-theme='light'] .root :global(.hero),
+:root[data-theme='light'] .root :global(.index-hero) {
+  background:
+    radial-gradient(circle at 14% 20%, rgba(255, 106, 36, 0.08), transparent 42%),
+    radial-gradient(circle at 84% 32%, rgba(37, 99, 235, 0.06), transparent 42%),
+    linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+}
+
+:root[data-theme='light'] .root :global(.hero)::after,
+:root[data-theme='light'] .root :global(.index-hero)::after {
+  opacity: 0.14;
+  background-image: linear-gradient(rgba(15, 23, 42, 0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(15, 23, 42, 0.04) 1px, transparent 1px);
+}
+
+:root[data-theme='light'] .root :global(.hero h1),
+:root[data-theme='light'] .root :global(.index-hero h1) {
+  color: #0f172a;
+}
+
+:root[data-theme='light'] .root :global(.hero-sub),
+:root[data-theme='light'] .root :global(.index-hero p:not(.eyebrow)) {
+  color: #475569;
+}
+
+:root[data-theme='light'] .root :global(.hero-note) {
+  color: #64748b;
+}
+
+:root[data-theme='light'] .root :global(.button.secondary) {
+  border: 1px solid rgba(15, 23, 42, 0.15);
+  color: #0f172a;
+  background: rgba(15, 23, 42, 0.03);
+}
+
+:root[data-theme='light'] .root :global(.button.secondary:hover) {
+  background: rgba(15, 23, 42, 0.07);
+  border-color: rgba(15, 23, 42, 0.25);
+}
+
+:root[data-theme='light'] .root :global(.trust-strip),
+:root[data-theme='light'] .root :global(.trust-strip-3) {
+  background: #f1f5f9;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+  border-top: 1px solid rgba(15, 23, 42, 0.08);
+  color: #0f172a;
+}
+
+:root[data-theme='light'] .root :global(.trust-strip span),
+:root[data-theme='light'] .root :global(.trust-strip-3 a) {
+  border-right-color: rgba(15, 23, 42, 0.08);
+  color: #475569;
+}
+
+:root[data-theme='light'] .root :global(.trust-strip span:first-child),
+:root[data-theme='light'] .root :global(.trust-strip-3 a:first-child) {
+  border-left-color: rgba(15, 23, 42, 0.08);
+}
+
+:root[data-theme='light'] .root :global(.trust-strip b),
+:root[data-theme='light'] .root :global(.trust-strip-3 b) {
+  color: #0f172a;
+}
+
+:root[data-theme='light'] .root :global(.flagships),
+:root[data-theme='light'] .root :global(.hiq-page),
+:root[data-theme='light'] .root :global(.included),
+:root[data-theme='light'] .root :global(.pricing-band),
+:root[data-theme='light'] .root :global(.final-cta) {
+  background: #f8fafc;
+  color: #0f172a;
+}
+
+:root[data-theme='light'] .root :global(.section-intro h2),
+:root[data-theme='light'] .root :global(.included h2),
+:root[data-theme='light'] .root :global(.pricing-band h2),
+:root[data-theme='light'] .root :global(.final-cta h2) {
+  color: #0f172a;
+}
+
+:root[data-theme='light'] .root :global(.feature-step h3) {
+  color: #0f172a;
+}
+
+:root[data-theme='light'] .root :global(.feature-body) {
+  color: #475569;
+}
+
+:root[data-theme='light'] .root :global(.feature-step ul) {
+  color: #334155;
+}
+
+:root[data-theme='light'] .root :global(.feature-handoff) {
+  border-color: rgba(15, 23, 42, 0.1);
+  background: #ffffff;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+}
+
+:root[data-theme='light'] .root :global(.feature-handoff b) {
+  color: #0f172a;
+}
+
+:root[data-theme='light'] .root :global(.feature-handoff small) {
+  color: #64748b;
+}
+
+:root[data-theme='light'] .root :global(.flagship-card),
+:root[data-theme='light'] .root :global(.included-card),
+:root[data-theme='light'] .root :global(.portal-card),
+:root[data-theme='light'] .root :global(.system-pipeline),
+:root[data-theme='light'] .root :global(.cc-screen-card) {
+  background: #ffffff;
+  border-color: rgba(15, 23, 42, 0.08);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.04);
+  color: #0f172a;
+}
+
+:root[data-theme='light'] .root :global(.dashboard-card) {
+  background: #ffffff;
+  border-color: rgba(15, 23, 42, 0.1);
+  box-shadow: 0 30px 70px rgba(0, 0, 0, 0.08);
+}
+
+:root[data-theme='light'] .root :global(.dash-top) {
+  background: #f1f5f9;
+  border-bottom-color: rgba(15, 23, 42, 0.08);
+  color: #0f172a;
+}
+
+:root[data-theme='light'] .root :global(.dash-body aside) {
+  border-right-color: rgba(15, 23, 42, 0.08);
+  color: #64748b;
+}
+
+:root[data-theme='light'] .root :global(.attention-card) {
+  background: #f8fafc;
+  border-color: rgba(15, 23, 42, 0.08);
+}
+
+:root[data-theme='light'] .root :global(.attention-row) {
+  border-top-color: rgba(15, 23, 42, 0.06);
+}
+
+:root[data-theme='light'] .root :global(.attention-row span) {
+  color: #334155;
+}
+
+:root[data-theme='light'] .root :global(.dash-grid > div) {
+  background: #f8fafc;
+  border-color: rgba(15, 23, 42, 0.08);
+  color: #0f172a;
+}
+
+:root[data-theme='light'] .root :global(.dash-grid p) {
+  color: #64748b;
+}
+
+:root[data-theme='light'] .root :global(.site-footer),
+:root[data-theme='light'] .root :global(.marketing-footer) {
+  background: #f1f5f9;
+  border-top: 1px solid rgba(15, 23, 42, 0.08);
+  color: #64748b;
+}
+
+:root[data-theme='light'] .root :global(.footer-links a),
+:root[data-theme='light'] .root :global(.marketing-footer a) {
+  color: #475569;
+}
+
+:root[data-theme='light'] .root :global(.footer-links a:hover),
+:root[data-theme='light'] .root :global(.marketing-footer a:hover) {
+  color: #0f172a;
+}
+
+:root[data-theme='light'] .root :global(.site-footer .footer-copy) {
+  color: #64748b;
+}
+
+/* DIM MODE FOR PUBLIC FLAGSHIP SITE */
+:root[data-theme='dim'] .root {
+  --ink: #0d1722;
+  --ink-2: #132230;
+  --panel: #162938;
+  --line: rgba(174, 199, 211, 0.14);
+  --cream: #182b3a;
+  --paper: #162938;
+  --orange: #ff6a24;
+  --yellow: #ffd76b;
+  --mint: #50e3bd;
+  --blue: #a8ccff;
+  --muted: #94a3b8;
+  background: var(--ink);
+  color: #f1f5f9;
+}
+
+:root[data-theme='dim'] .root :global(.site-header) {
+  background: rgba(13, 23, 34, 0.88);
+  border-bottom: 1px solid rgba(174, 199, 211, 0.12);
+}
+
+:root[data-theme='dim'] .root :global(.hero),
+:root[data-theme='dim'] .root :global(.index-hero) {
+  background:
+    radial-gradient(circle at 14% 20%, rgba(255, 106, 36, 0.09), transparent 38%),
+    radial-gradient(circle at 84% 32%, rgba(65, 127, 153, 0.14), transparent 38%),
+    linear-gradient(180deg, #0d1722 0%, #10202e 100%);
+}

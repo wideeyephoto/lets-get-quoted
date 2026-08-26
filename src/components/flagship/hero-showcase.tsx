@@ -23,6 +23,19 @@ import { useCallback, useEffect, useRef, useState } from 'react';
  * .showcase-frame and must match the script's canvas.
  */
 
+type Callout = {
+  kicker: string;
+  text: string;
+};
+
+type Shot = {
+  src: string;
+  label: string;
+  focus: string;
+  alt: string;
+  callouts: Callout[];
+};
+
 /**
  * `focus` is the horizontal object-position used on a phone, where the frame
  * turns portrait and shows an 800px-wide window of the 1600px shot rather than
@@ -36,7 +49,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
  * It does nothing above the mobile breakpoint, where the frame and the images
  * are both 16:10 and cover crops nothing.
  */
-const SHOTS = [
+const SHOTS: Shot[] = [
   {
     src: '/product/website.webp',
     label: 'Website',
@@ -46,18 +59,30 @@ const SHOTS = [
     // and the Edit header button both stay in frame.
     focus: '72%',
     alt: 'The website builder: a live, editable preview of the published page, with its headline, photo and instant-estimate form.',
+    callouts: [
+      { kicker: '24/7 LEAD CAPTURE', text: 'Instant estimate form built-in' },
+      { kicker: 'READY TO PUBLISH', text: 'Pre-configured for 49 trades' },
+    ],
   },
   {
     src: '/product/jobs.webp',
     label: 'Jobs',
     focus: '46%',
     alt: 'The Jobs screen: the whole pipeline filtered by stage, a queue showing each job’s customer, value and date, and a map of where the work is.',
+    callouts: [
+      { kicker: 'SMART CRM', text: 'Visual pipeline & hot lead scoring' },
+      { kicker: 'QUICK STOPS', text: '1-tap detour & route dispatch' },
+    ],
   },
   {
     src: '/product/insights.webp',
     label: 'Insights',
     focus: '40%',
     alt: 'The Insights screen: what you kept over the last 90 days, revenue against costs, cash position and how long invoices have been owed.',
+    callouts: [
+      { kicker: 'REAL-TIME P&L', text: 'Live Stripe cash flow & margins' },
+      { kicker: 'GET PAID FASTER', text: 'Automated invoice follow-ups' },
+    ],
   },
 ];
 
@@ -65,9 +90,8 @@ const DWELL = 5200;
 
 export default function HeroShowcase() {
   const [index, setIndex] = useState(0);
-  // Paused by default on first viewport: shows one clean, stable hero product shot
-  // without distracting auto-rotation. Users can click any tab dot to switch.
-  const [paused, setPaused] = useState(true);
+  // Auto-rotates on load when in view; pauses on hover, tab interaction, or reduced-motion.
+  const [paused, setPaused] = useState(false);
   const frameRef = useRef<HTMLDivElement>(null);
 
   const go = useCallback((next: number) => {
@@ -117,23 +141,44 @@ export default function HeroShowcase() {
     >
       <div className="showcase-frame">
         {SHOTS.map((shot, i) => (
-          <Image
+          <div
             key={shot.src}
-            className="showcase-shot"
-            src={shot.src}
-            alt={shot.alt}
-            width={1600}
-            height={1000}
-            /* The first is the hero image and is very likely the LCP element,
-               so it is eager and high priority; the others are only ever
-               seen after a 5-second dwell. */
-            priority={i === 0}
-            loading={i === 0 ? undefined : 'lazy'}
-            sizes="(max-width: 980px) 92vw, 52vw"
-            style={{ objectPosition: `${shot.focus} 0` }}
+            className="showcase-slide"
             data-on={i === index ? 'true' : 'false'}
             aria-hidden={i === index ? undefined : 'true'}
-          />
+          >
+            <Image
+              className="showcase-shot"
+              src={shot.src}
+              alt={shot.alt}
+              width={1600}
+              height={1000}
+              /* The first is the hero image and is very likely the LCP element,
+                 so it is eager and high priority; the others are only ever
+                 seen after a 5-second dwell. */
+              priority={i === 0}
+              loading={i === 0 ? undefined : 'lazy'}
+              sizes="(max-width: 980px) 92vw, 52vw"
+              style={{ objectPosition: `${shot.focus} 0` }}
+              data-on={i === index ? 'true' : 'false'}
+            />
+            {/* Contextual callouts highlighting key features on the screen */}
+            <div className="showcase-callouts" aria-hidden="true">
+              {shot.callouts.map((callout, cIdx) => (
+                <div
+                  key={callout.kicker}
+                  className={`showcase-callout-pill pill-${cIdx}`}
+                  data-on={i === index ? 'true' : 'false'}
+                >
+                  <span className="callout-spark">✦</span>
+                  <div className="callout-body">
+                    <small>{callout.kicker}</small>
+                    <b>{callout.text}</b>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         ))}
       </div>
 
