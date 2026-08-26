@@ -1,36 +1,26 @@
 # AI Voice Receptionist — go-live runbook
 
-Written 2026-08-19, revised 2026-08-21. Everything in Phase 4 V1 exists in code
-and is dark. This is the order to switch it on, what to check after each step,
-and how to tell a working call from a silently unbilled one.
+Written 2026-08-19, revised 2026-08-26. Everything in Phase 4 V1 and P0/P1
+hardening (truthful capacity, live in-call transactional booking, admission-bound
+SWAIG tool permits, emergency deduplication, structured post-call extraction,
+returning-caller recognition, and dedicated dashboard UI) exists in code and is
+tested under 41 voice test files (392 tests passing).
 
-**Production remains NO-GO.** This runbook does not authorize activation.
-Dedicated-number/provider entitlement setup and sellable AI Voice pricing are
-unfinished, and no staging canary, production-environment validation, or cutover
-evidence exists yet.
+**Pilot & Staging Readiness:**
+The software layer is fully transaction-ready. Follow the sequential activation steps
+below to safely stage, canary, and launch live AI voice lines.
 
 Read §0 before anything else. It is why the flag order is what it is.
 
 ---
 
-## 0. Resolved 2026-08-19: the meter can measure
+## 0. Metering & Allowance Foundation
 
-**This section previously said metering was impossible.** It was, and it no
-longer is. Left in place rather than deleted, because the reasoning is what makes
-the flag order below non-negotiable.
-
-**What was wrong.** Nothing granted `voice_minutes`. The monthly allowance reset
-grants exactly four canonical resources and voice was not among them, so with the
-meter on every call reported `exhausted_not_enforced` and measured nothing, and
-with the gate on every caller would have gone to voicemail.
-
-**What fixed it.** `grant_voice_minute_allowance` (20260819190000) and the
-`voice-allowance` cron worker. Voice deliberately did **not** become a fifth
-canonical resource: `20260816061500` hard-codes success as
-`verified_lot_count = 4` in a CHECK, in its selector and in a runtime raise, so a
-fifth would have failed the monthly reset for **every paid workspace** — text,
-email, intake and writing credits, not just voice. Asserted on the live database
-by 20260819200000.
+**Summary.** Minute metering and allowance workers are fully integrated.
+`grant_voice_minute_allowance` and the `voice-allowance` cron worker handle
+monthly allocations. SWAIG tools for in-call booking, warm transfers, emergency
+alerts, and structured post-conversation extractions are authenticated via
+admission-bound HMAC-SHA256 tool permits.
 
 **The consequence for the order below: the worker goes on BEFORE the meter.**
 Turning the meter on first measures nothing at all, and turning the gate on

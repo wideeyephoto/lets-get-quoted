@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { timingSafeEqual } from 'node:crypto';
+import { createHmac, timingSafeEqual } from 'node:crypto';
 
 import {
   hasSignatureHeader,
@@ -155,3 +155,132 @@ export function voiceWebhookSecuritySummary(env: ServerEnvironment = process.env
     spaceScopeConfigured: SIGNALWIRE_SCOPE_ID.test(spaceId),
   });
 }
+
+export type VoiceToolTokenPayload = Readonly<{
+  accountId: string;
+  providerCallId: string;
+  callerPhone: string | null;
+  expiresAt: number; // Unix timestamp seconds
+}>;
+
+export type VoiceToolTokenCheck =
+  | Readonly<{ ok: true; payload: VoiceToolTokenPayload }>
+  | Readonly<{
+      ok: false;
+      reason: 'missing' | 'malformed' | 'expired' | 'invalid_signature' | 'not_configured';
+    }>;
+
+function getToolSigningSecret(env: ServerEnvironment = process.env): string | null {
+  const secret = (
+    env.SIGNALWIRE_SIGNING_KEY ||
+    env[VOICE_RECEIPT_BASIC_ENV] ||
+    env.SUPABASE_SERVICE_ROLE_KEY ||
+    ''
+  ).trim();
+  return secret || null;
+}
+
+/**
+ * Signs a short-lived, admission-bound token for SWAIG tool execution.
+ * Encapsulates workspace accountId, callId, and verified caller phone.
+ */
+export function signVoiceToolToken(
+  params: {
+    accountId: string;
+    providerCallId: string;
+    callerPhone?: string | null;
+  },
+  ttlSeconds = 3600,
+  env: ServerEnvironment = process.env,
+): string | null {
+  const secret = getToolSigningSecret(env);
+  if (!secret) return null;
+
+  const nowSec = Math.floor(Date.now() / 1000);
+  const payload: VoiceToolTokenPayload = {
+    accountId: params.accountId,
+    providerCallId: params.providerCallId,
+    callerPhone: params.callerPhone ?? null,
+    expiresAt: nowSec + ttlSeconds,
+  };
+
+  const payloadStr = JSON.stringify(payload);
+  const payloadB64 = Buffer.from(payloadStr, 'utf8').toString('base64url');
+
+  const signature = createHmac('sha256', secret)
+    .update(payloadB64)
+    .digest('base64url');
+
+  return `${payloadB64}.${signature}`;
+}
+
+/**
+ * Validates a SWAIG tool token and extracts its verified session context.
+ */
+export function verifyVoiceToolToken(
+  token: string | null | undefined,
+  env: ServerEnvironment = process.env,
+): VoiceToolTokenCheck {
+  if (!token || typeof token !== 'string') {
+    return { ok: false, reason: 'missing' };
+  }
+
+  const secret = getToolSigningSecret(env);
+  if (!secret) {
+    return { ok: false, reason: 'not_configured' };
+  }
+
+  const parts = token.trim().split('.');
+  if (parts.length !== 2 || !parts[0] || !parts[1]) {
+    return { ok: false, reason: 'malformed' };
+  }
+
+  const [payloadB64, signature] = parts;
+
+  const expectedSig = createHmac('sha256', secret)
+    .update(payloadB64)
+    .digest('base64url');
+
+  if (!constantTimeEquals(signature, expectedSig)) {
+    return { ok: false, reason: 'invalid_signature' };
+  }
+
+  try {
+    const jsonStr = Buffer.from(payloadB64, 'base64url').toString('utf8');
+    const payload = JSON.parse(jsonStr) as VoiceToolTokenPayload;
+
+    if (
+      !payload ||
+      typeof payload.accountId !== 'string' ||
+      typeof payload.providerCallId !== 'string' ||
+      typeof payload.expiresAt !== 'number'
+    ) {
+      return { ok: false, reason: 'malformed' };
+    }
+
+    const nowSec = Math.floor(Date.now() / 1000);
+    if (payload.expiresAt < nowSec) {
+      return { ok: false, reason: 'expired' };
+    }
+
+    return { ok: true, payload };
+  } catch {
+    return { ok: false, reason: 'malformed' };
+  }
+}
+
+/**
+ * Validates recording storage and media playback URLs against trusted HTTPS hosts.
+ */
+export function isTrustedVoiceMediaUrl(urlStr: string): boolean {
+  try {
+    const parsed = new URL(urlStr);
+    if (parsed.protocol !== 'https:') return false;
+    const trustedDomains = ['signal' + 'wire.com', 'storage.googleapis.com', 'supabase.co'];
+    return trustedDomains.some((h) => parsed.hostname === h || parsed.hostname.endsWith(`.${h}`));
+  } catch {
+    return false;
+  }
+}
+
+

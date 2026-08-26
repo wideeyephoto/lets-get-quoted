@@ -157,6 +157,8 @@ export type VoiceReceipt = Readonly<{
   aiEndMicros: number | null;
   callerNumber: string | null;
   summary: string | null;
+  /** Structured JSON intake extracted from post-prompt. */
+  structuredPostPrompt?: Readonly<Record<string, unknown>> | null;
   /** SignalWire `call_log`, normalized to role/content/timestamp only. */
   callLog: readonly VoiceTranscriptTurn[] | null;
 }>;

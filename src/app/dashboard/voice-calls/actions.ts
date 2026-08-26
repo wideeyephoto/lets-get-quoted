@@ -153,3 +153,64 @@ export async function createLeadFromVoiceCallAction(formData: FormData): Promise
   revalidatePath(`/dashboard/voice-calls/${callId}`);
   return { leadId: lead.id };
 }
+
+export async function convertVoiceCallToQuoteDraftAction(formData: FormData): Promise<{ jobId: string }> {
+  const { supabase, accountId, userId } = await requireOfficeContext('leads.write');
+
+  const callId = (formData.get('callId') ?? '').toString().trim();
+  if (!callId) throw new Error('Call ID is required.');
+
+  const { data: call, error: callError } = await supabase
+    .from('voice_calls')
+    .select('id, caller_number, summary, lead_id')
+    .eq('id', callId)
+    .eq('account_id', accountId)
+    .maybeSingle();
+
+  if (callError || !call) throw new Error('Voice call not found.');
+
+  let leadId = call.lead_id;
+  if (!leadId) {
+    const phone = call.caller_number;
+    const summary = call.summary || 'AI receptionist call';
+    const emergency = detectCallEmergency(summary);
+    const flags = emergency.isEmergency ? ['emergency_hazard', emergency.hazardType].filter(Boolean) as string[] : [];
+    const score = emergency.isEmergency ? 'hot' : 'warm';
+
+    const lead = await createLead(supabase, accountId, {
+      source: 'ai_voice',
+      name: phone ? `AI call — ${phone}` : 'AI call — caller unknown',
+      phone,
+      message: summary,
+      sourcePage: '/call',
+      triage: { score, flags, contactPreference: 'any' },
+    });
+    leadId = lead.id;
+
+    await supabase
+      .from('voice_calls')
+      .update({ lead_id: lead.id })
+      .eq('id', callId)
+      .eq('account_id', accountId);
+  }
+
+  const { convertLeadToJob } = await import('@/lib/leads');
+  const job = await convertLeadToJob(supabase, accountId, leadId, 0, null);
+
+  const nowIso = new Date().toISOString();
+  await supabase
+    .from('voice_call_workflows')
+    .upsert({
+      call_id: callId,
+      account_id: accountId,
+      disposition: 'converted',
+      reviewed_at: nowIso,
+      reviewed_by: userId,
+    }, { onConflict: 'call_id' });
+
+  revalidatePath('/dashboard/voice-calls');
+  revalidatePath(`/dashboard/voice-calls/${callId}`);
+  revalidatePath('/dashboard/leads');
+  revalidatePath('/dashboard/jobs');
+  return { jobId: job.id };
+}

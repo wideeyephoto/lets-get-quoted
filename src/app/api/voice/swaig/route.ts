@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/auth';
-import { voiceReceiptAuthorization } from '@/lib/voice/auth';
-import { sendCallerVoiceBookingLinkSms } from '@/lib/sms';
+import { verifyVoiceToolToken, voiceReceiptAuthorization } from '@/lib/voice/auth';
+import { sendCallerVoiceBookingLinkSms, sendCallerVoiceBookingConfirmationSms } from '@/lib/sms';
+import { getAvailableBookingDays, claimBookingHold, createBooking } from '@/lib/booking';
 import { resolveJurisdiction } from '@/lib/location-context/jurisdiction-resolver';
 import { evaluatePermitRequirement } from '@/lib/permit-intel/requirement-engine';
 import { calculateCleanEnergyRebates, type CleanEnergyWorkCategory } from '@/lib/rebates/clean-energy-rebate-engine';
@@ -34,10 +35,23 @@ export async function POST(request: Request) {
   }
 
   const url = new URL(request.url);
-  const accountId = url.searchParams.get('account_id');
+  const token = url.searchParams.get('token');
+  let accountId = url.searchParams.get('account_id');
+  let verifiedCallerPhone: string | null = null;
+  let verifiedProviderCallId: string | null = null;
+
+  if (token) {
+    const tokenCheck = verifyVoiceToolToken(token);
+    if (!tokenCheck.ok) {
+      return NextResponse.json({ error: `Invalid tool token: ${tokenCheck.reason}` }, { status: 403 });
+    }
+    accountId = tokenCheck.payload.accountId;
+    verifiedCallerPhone = tokenCheck.payload.callerPhone;
+    verifiedProviderCallId = tokenCheck.payload.providerCallId;
+  }
 
   if (!accountId) {
-    return NextResponse.json({ error: 'Missing account_id' }, { status: 400 });
+    return NextResponse.json({ error: 'Missing account_id or token' }, { status: 400 });
   }
 
   let body: Record<string, unknown> = {};
@@ -61,7 +75,7 @@ export async function POST(request: Request) {
   const admin = createAdminClient();
 
   if (fnName === 'send_booking_link') {
-    const callerPhone = String(args.caller_phone || body.caller_id_number || '').trim();
+    const callerPhone = verifiedCallerPhone || String(args.caller_phone || body.caller_id_number || '').trim();
     if (!callerPhone) {
       return NextResponse.json({
         response: 'I could not detect a mobile phone number to text. Could you please tell me your cell phone number?',
@@ -84,7 +98,7 @@ export async function POST(request: Request) {
       bookingUrl = `https://${site.subdomain}.letsgetquoted.com/quote`;
     }
 
-    const callId = typeof body.call_id === 'string' ? body.call_id : undefined;
+    const callId = verifiedProviderCallId || (typeof body.call_id === 'string' ? body.call_id : undefined);
     const sendResult = await sendCallerVoiceBookingLinkSms({
       accountId,
       callerPhone,
@@ -103,22 +117,168 @@ export async function POST(request: Request) {
     });
   }
 
-  if (fnName === 'check_contractor_availability') {
-    const { data: voiceSettings } = await admin
-      .from('voice_settings')
-      .select('business_hours, emergency_enabled')
-      .eq('account_id', accountId)
-      .maybeSingle();
+  if (fnName === 'check_available_slots' || fnName === 'check_contractor_availability') {
+    const [{ data: voiceSettings }, bookingDays] = await Promise.all([
+      admin
+        .from('voice_settings')
+        .select('business_hours, emergency_enabled')
+        .eq('account_id', accountId)
+        .maybeSingle(),
+      getAvailableBookingDays(admin, accountId).catch(() => []),
+    ]);
 
     const emergency = Boolean(voiceSettings?.emergency_enabled);
+    const preferredDateRaw = String(args.preferred_date || args.timeframe || '').trim().toLowerCase();
 
-    return NextResponse.json({
-      response: `Our standard service hours are Monday through Friday, 8:00 AM to 5:00 PM. ${
-        emergency
-          ? 'We also provide 24/7 priority emergency dispatch for urgent situations like leaks or hazards.'
-          : 'For any after-hours requests, our team responds first thing the next business morning.'
-      }`,
+    if (!bookingDays || bookingDays.length === 0) {
+      let resp = 'Our service calendar is currently accepting requests, and our team will follow up to confirm the earliest open dispatch window.';
+      if (emergency) {
+        resp += ' We also provide 24/7 priority emergency service for active hazards and leaks.';
+      }
+      return NextResponse.json({ response: resp });
+    }
+
+    // Check if user requested a specific day
+    let matchedDay = bookingDays.find((d) =>
+      (preferredDateRaw && d.dateKey.toLowerCase() === preferredDateRaw)
+      || (preferredDateRaw && d.dayLabel.toLowerCase().includes(preferredDateRaw)),
+    );
+
+    if (!matchedDay && preferredDateRaw.includes('tomorrow') && bookingDays.length > 1) {
+      matchedDay = bookingDays[1];
+    } else if (!matchedDay && preferredDateRaw.includes('today') && bookingDays.length > 0) {
+      matchedDay = bookingDays[0];
+    }
+
+    if (matchedDay) {
+      const slotLabels = matchedDay.slots.map((s) => s.label);
+      if (slotLabels.length > 0) {
+        return NextResponse.json({
+          response: `On ${matchedDay.dayLabel}, we currently have ${slotLabels.join(' and ')} open. Would one of those times work for you?`,
+        });
+      }
+      return NextResponse.json({
+        response: `We are currently fully booked on ${matchedDay.dayLabel}, but we have openings on ${bookingDays.slice(0, 3).map((d) => d.dayLabel).join(', ')}.`,
+      });
+    }
+
+    // General availability list
+    const topDays = bookingDays.slice(0, 3);
+    const summaries = topDays.map((d) => {
+      const slotLabels = d.slots.map((s) => s.label);
+      return slotLabels.length > 0 ? `${d.dayLabel} (${slotLabels.join(' or ')})` : d.dayLabel;
     });
+
+    let resp = `We currently have available appointment slots on ${summaries.join('; ')}.`;
+    if (emergency) {
+      resp += ' We also have 24/7 emergency dispatch available for urgent hazards.';
+    }
+    return NextResponse.json({ response: resp });
+  }
+
+  if (fnName === 'book_appointment_slot') {
+    const callerName = String(args.caller_name || '').trim();
+    const callerPhone = verifiedCallerPhone || String(args.caller_phone || body.caller_id_number || '').trim();
+    const serviceAddress = String(args.service_address || '').trim() || null;
+    const requestedDateRaw = String(args.requested_date || '').trim();
+    const requestedTimeRaw = String(args.requested_time || '').trim().toLowerCase();
+    const serviceDesc = String(args.service_description || '').trim() || null;
+    const notes = String(args.notes || '').trim() || null;
+
+    if (!callerName) {
+      return NextResponse.json({
+        response: 'May I please have your full name to put on the appointment reservation?',
+      });
+    }
+
+    if (!requestedDateRaw) {
+      return NextResponse.json({
+        response: 'Which date would you like to schedule the appointment for?',
+      });
+    }
+
+    const bookingDays = await getAvailableBookingDays(admin, accountId).catch(() => []);
+    if (!bookingDays || bookingDays.length === 0) {
+      return NextResponse.json({
+        response: 'I have recorded your appointment request for our team to review and confirm the earliest dispatch time.',
+      });
+    }
+
+    // Match day
+    let matchedDay = bookingDays.find((d) =>
+      d.dateKey === requestedDateRaw
+      || d.dayLabel.toLowerCase().includes(requestedDateRaw.toLowerCase()),
+    );
+
+    if (!matchedDay && requestedDateRaw.toLowerCase().includes('tomorrow') && bookingDays.length > 1) {
+      matchedDay = bookingDays[1];
+    } else if (!matchedDay && requestedDateRaw.toLowerCase().includes('today') && bookingDays.length > 0) {
+      matchedDay = bookingDays[0];
+    }
+
+    if (!matchedDay) {
+      matchedDay = bookingDays[0]; // fallback to first available
+    }
+
+    // Match slot on that day
+    let matchedSlot = matchedDay.slots.find((s) =>
+      s.time.startsWith(requestedTimeRaw)
+      || s.label.toLowerCase().includes(requestedTimeRaw)
+      || (requestedTimeRaw.includes('morning') && s.time < '12:00')
+      || (requestedTimeRaw.includes('afternoon') && s.time >= '12:00'),
+    );
+
+    if (!matchedSlot && matchedDay.slots.length > 0) {
+      matchedSlot = matchedDay.slots[0];
+    }
+
+    if (!matchedSlot) {
+      return NextResponse.json({
+        response: `I see that ${matchedDay.dayLabel} is currently fully booked. Would you like to check our next available date instead?`,
+      });
+    }
+
+    // Claim provisional hold to prevent race conditions
+    await claimBookingHold(admin, accountId, matchedDay.dateKey, matchedSlot.time);
+
+    // Create the booking lead and pending job in database
+    try {
+      await createBooking(admin, accountId, {
+        name: callerName,
+        phone: callerPhone || null,
+        email: null,
+        address: serviceAddress,
+        description: serviceDesc || 'Booked via AI Voice receptionist',
+        serviceName: serviceDesc || null,
+        dateKey: matchedDay.dateKey,
+        dateLabel: matchedDay.dayLabel,
+        time: matchedSlot.time,
+        endTime: matchedSlot.endTime,
+        timeLabel: matchedSlot.label,
+        note: notes ? `Voice call note: ${notes}` : 'Scheduled by AI phone receptionist',
+      });
+
+      // Send SMS confirmation to mobile phone if phone is present
+      const callId = verifiedProviderCallId || (typeof body.call_id === 'string' ? body.call_id : undefined);
+      if (callerPhone) {
+        await sendCallerVoiceBookingConfirmationSms({
+          accountId,
+          callerPhone,
+          whenLabel: `${matchedDay.dayLabel} (${matchedSlot.label})`,
+          serviceAddress,
+          idempotencyKey: callId ? `voice-booking-sms:${accountId}:${callId}` : undefined,
+        });
+      }
+
+      return NextResponse.json({
+        response: `I have reserved ${matchedDay.dayLabel} for ${matchedSlot.label} for ${callerName}${serviceAddress ? ` at ${serviceAddress}` : ''}. I also texted a confirmation to your mobile phone. Our team will review the request and see you then!`,
+      });
+    } catch (err) {
+      console.error('Error creating in-call booking:', err);
+      return NextResponse.json({
+        response: `I have recorded your request for ${matchedDay.dayLabel} for ${matchedSlot.label}. Our dispatch team will confirm all details with you directly.`,
+      });
+    }
   }
 
   if (fnName === 'check_permit_requirement') {

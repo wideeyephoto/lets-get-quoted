@@ -39,12 +39,32 @@ function QuoteRequestFormFull({ site }: QuoteRequestFormProps) {
   const quoteForm = siteContent.quoteForm;
   const emailRequired = quoteForm.emailRequired;
   const estimateLabel = getEstimateButtonLabel(quoteForm);
+  const configuredCities = siteContent.serviceAreas.cities.map((city) => city.trim()).filter(Boolean);
+  const primaryServedCity = configuredCities[0]
+    ? (siteContent.serviceAreas.state ? `${configuredCities[0]}, ${siteContent.serviceAreas.state}` : configuredCities[0])
+    : (site.service_area || 'Your city or town');
+  const addressPlaceholder = primaryServedCity.includes('1418') || primaryServedCity.includes('St') ? primaryServedCity : `123 Main St, ${primaryServedCity}`;
   const [step, setStep] = useState(0);
   const [progress, setProgress] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedPhotos, setSelectedPhotos] = useState<File[]>([]);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const startedAt = useRef(Date.now());
+
+  // Sync across duplicate forms on the same page (e.g. hero and footer).
+  useEffect(() => {
+    function handleRemoteSubmit(event: Event) {
+      const custom = event as CustomEvent<{ siteId: string }>;
+      if (custom.detail?.siteId === site.id) {
+        setMessage({
+          type: 'success',
+          text: "We've received your request! Our team is already reviewing your details.",
+        });
+      }
+    }
+    window.addEventListener('lgq:lead-submitted', handleRemoteSubmit);
+    return () => window.removeEventListener('lgq:lead-submitted', handleRemoteSubmit);
+  }, [site.id]);
 
   // Move focus into a step only when the user navigated to it (Continue/Back),
   // so keyboard/SR users aren't dropped on <body> when a nav button unmounts.
@@ -162,6 +182,10 @@ function QuoteRequestFormFull({ site }: QuoteRequestFormProps) {
         request.send(data);
       });
 
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('lgq:lead-submitted', { detail: { siteId: site.id } }));
+      }
+
       setProgress(100);
       setMessage({ type: 'success', text: "Your request was sent — we'll call you back within about an hour." });
       formRef.current?.reset();
@@ -187,7 +211,7 @@ function QuoteRequestFormFull({ site }: QuoteRequestFormProps) {
 
       <div ref={projectStepRef} className={styles.step} hidden={step !== 0} role="group" aria-label="Your project" onKeyDown={handleProjectKeyDown}>
         <label className={`${styles.field} ${styles.wide}`}><span>Tell us about the project</span><textarea name="message" maxLength={3000} required placeholder="Tell us what you need done, any problem areas or details, and your ideal timing. The more you share, the faster we can get you an accurate quote." /></label>
-        <div className={`${styles.field} ${styles.wide}`}><label htmlFor="quote-address">Project address <em className={styles.optional}>(optional)</em></label><AddressAutocomplete id="quote-address" name="address" placeholder="1418 Maplewood Ave, Royal Oak, MI" maxLength={240} /></div>
+        <div className={`${styles.field} ${styles.wide}`}><label htmlFor="quote-address">Project address <em className={styles.optional}>(optional)</em></label><AddressAutocomplete id="quote-address" name="address" placeholder={addressPlaceholder} maxLength={240} /></div>
         <div className={`${styles.field} ${styles.wide}`}>
           <div className={styles.photoHeader}>
             <span>Project photos</span>

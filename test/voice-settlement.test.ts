@@ -341,4 +341,39 @@ describe('the row the contractor will read', () => {
       expect(row).toMatchObject({ provider_call_id: CALL });
     }
   });
+
+  it('populates structured caller name, address, urgency, and timeline from structured post-prompt', async () => {
+    admissionRow = { account_id: ACCOUNT, reservation_id: null, reserved_minutes: 0, overage_key: null };
+    createLead.mockResolvedValue({ id: 'lead-structured-123' });
+
+    const structuredReceipt = receipt({
+      structuredPostPrompt: {
+        caller_name: 'Elena Rostova',
+        caller_phone: '+12485559988',
+        service_address: '777 Woodward Ave, Detroit, MI',
+        work_requested: 'Main water line burst in basement',
+        urgency: 'emergency',
+        is_emergency: true,
+        hazard_type: 'active_leak',
+        requested_slot: '2026-08-27 Morning',
+        follow_up_action: 'booked',
+        confidence: 0.98,
+      },
+    });
+
+    const result = await settleVoiceReceipt(admin, structuredReceipt, { voiceEventId: EVENT });
+    expect(result.leadId).toBe('lead-structured-123');
+
+    expect(createLead).toHaveBeenCalledWith(admin, ACCOUNT, expect.objectContaining({
+      name: 'Elena Rostova',
+      phone: '+12485559988',
+      address: '777 Woodward Ave, Detroit, MI',
+      projectType: 'Main water line burst in basement',
+      triage: expect.objectContaining({
+        score: 'hot',
+        flags: expect.arrayContaining(['emergency_hazard', 'active_leak']),
+        timeline: '2026-08-27 Morning',
+      }),
+    }));
+  });
 });

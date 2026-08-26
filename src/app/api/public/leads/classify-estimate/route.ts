@@ -193,11 +193,13 @@ export async function POST(request: NextRequest) {
     ' ' +
     'Respond with strict JSON only, no other text. ' +
     askingRules +
-    '{"type":"estimate","min":<number>,"max":<number>,"basis":"<short>","in_area":true|false|null,"excluded":true|false} — min/max is a realistic pre-visit price range in whole US dollars for THIS SPECIFIC JOB as this trade would actually charge for it in the US today, including typical labor and materials. ' +
+    '{"type":"estimate","min":<number>,"max":<number>,"basis":"<short>","in_area":true|false|null,"excluded":true|false,"requires_site_visit":true|false,"visit_reason":"<short reason>"} — min/max is a realistic pre-visit price range in whole US dollars for THIS SPECIFIC JOB as this trade would actually charge for it in the US today, including typical labor and materials. ' +
     'basis: a short plain-language phrase naming what you priced, under 60 characters, starting lowercase, no price in it (e.g. "a standard running-toilet repair", "a deep clean of a 2-bed home"). ' +
     'in_area: false ONLY when the visitor\'s stated location is clearly outside the served areas listed; true when it clearly matches or neighbors them; null when no location was given or you are unsure. ' +
     'excluded: true ONLY when the described work clearly matches something the business does NOT take on; otherwise false. Never refuse to estimate — always include min/max regardless of these two fields. ' +
+    'requires_site_visit: true ONLY when the job involves high-complexity structural work, whole-home repiping (e.g. 50+ ft galvanized pipe across multiple floors), main sewer excavations, panel replacements, or full roof tear-offs that cannot be accurately priced without in-person inspection. For these, min/max must reflect true full-scope baseline price floors (e.g. multi-story repipes start at $3,500-$8,000+), never trivial patch repair numbers. ' +
     'Price the described job itself, not a generic project category: cleaning one 150 sq ft room is a low-cost routine service call, not a renovation. ' +
+    'For active emergencies (burst pipes, severe flooding, gas leaks), account for emergency response/dispatch diagnostic fees. ' +
     postureBias + ' ' +
     'Round to natural amounts (e.g. 120-220, 850-1500, 4000-7500). ' +
     (questionsRemaining > 0
@@ -278,15 +280,25 @@ export async function POST(request: NextRequest) {
       inArea: parsed.in_area === true ? true : parsed.in_area === false ? false : null,
       excluded: parsed.excluded === true,
     };
+    const siteVisit = (parsed.requires_site_visit === true || parsed.site_visit_required === true)
+      ? {
+          requiresSiteVisit: true,
+          visitReason: typeof parsed.visit_reason === 'string'
+            ? parsed.visit_reason.trim().slice(0, 100)
+            : typeof parsed.reason === 'string'
+              ? parsed.reason.trim().slice(0, 100)
+              : 'On-site inspection required for accurate scope & access',
+        }
+      : {};
     if (band) {
       const basis = typeof parsed.basis === 'string' ? parsed.basis.trim().slice(0, 60) : '';
-      return substantiveResponse({ type: 'estimate', ...band, ...(basis ? { basis } : {}), ...fit });
+      return substantiveResponse({ type: 'estimate', ...band, ...(basis ? { basis } : {}), ...fit, ...siteVisit });
     }
     if (usageLease) {
       await releaseUsage('non_substantive_result');
       return NextResponse.json(classicFallback());
     }
-    return NextResponse.json({ ...fallback(), ...fit });
+    return NextResponse.json({ ...fallback(), ...fit, ...siteVisit });
   } catch (error) {
     console.error('Estimate chat failed:', error);
     if (usageLease) {

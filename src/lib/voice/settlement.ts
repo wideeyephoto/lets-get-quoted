@@ -8,6 +8,7 @@ import { createLead } from '@/lib/leads';
 import { normalizeUsPhone } from '@/lib/phone';
 import type { VoiceReceipt } from '@/lib/voice/provider';
 import { detectCallEmergency, notifyEmergencyCall } from '@/lib/voice/triage';
+import { triggerVoicePostCallFollowup } from '@/lib/voice/post-call-sms';
 
 const MICROS_PER_SECOND = 1_000_000;
 
@@ -146,29 +147,51 @@ export async function settleVoiceReceipt(
   // the customer inquiry.
   let leadId: string | null = null;
   try {
-    const phone = callerPhone(receipt);
+    const structured = receipt.structuredPostPrompt;
+    const phone = (structured?.caller_phone && typeof structured.caller_phone === 'string' && structured.caller_phone.trim())
+      ? structured.caller_phone.trim()
+      : callerPhone(receipt);
+
     const summary = summaryLine(receipt);
     const emergency = detectCallEmergency(summary);
-    const flags = emergency.isEmergency ? ['emergency_hazard', emergency.hazardType].filter(Boolean) as string[] : [];
-    const score = emergency.isEmergency ? 'hot' : 'warm';
+    const isEmergency = structured?.is_emergency === true || structured?.urgency === 'emergency' || emergency.isEmergency;
+    const hazardType = (typeof structured?.hazard_type === 'string' && structured.hazard_type) || emergency.hazardType;
+    const flags = isEmergency ? ['emergency_hazard', hazardType].filter(Boolean) as string[] : [];
+    const score = isEmergency ? 'hot' : 'warm';
+
+    const callerName = (typeof structured?.caller_name === 'string' && structured.caller_name.trim())
+      ? structured.caller_name.trim()
+      : (phone ? `AI call — ${phone}` : 'AI call — caller unknown');
+
+    const serviceAddress = (typeof structured?.service_address === 'string' && structured.service_address.trim())
+      ? structured.service_address.trim()
+      : null;
+
+    const projectType = (typeof structured?.work_requested === 'string' && structured.work_requested.trim())
+      ? structured.work_requested.trim()
+      : 'AI Voice inquiry';
+
+    const requestedSlot = (typeof structured?.requested_slot === 'string' && structured.requested_slot.trim())
+      ? structured.requested_slot.trim()
+      : undefined;
 
     const lead = await createLead(admin, row.account_id, {
       source: 'ai_voice',
-      name: phone ? `AI call — ${phone}` : 'AI call — caller unknown',
+      name: callerName,
       phone,
+      address: serviceAddress,
+      projectType,
       message: summary,
       sourcePage: '/call',
       sourceVoiceEventId: options.voiceEventId,
-      triage: { score, flags, contactPreference: 'any' },
+      triage: {
+        score,
+        flags,
+        ...(requestedSlot ? { timeline: requestedSlot } : {}),
+        contactPreference: 'any',
+      },
     });
     leadId = lead.id;
-
-    if (emergency.isEmergency) {
-      // Priority SMS dispatch to contractor's on-call number
-      notifyEmergencyCall(admin, row.account_id, phone, summary, emergency).catch((err) => {
-        console.error('[AI Voice Emergency] Alert dispatch error:', err);
-      });
-    }
   } catch (error) {
     console.error('AI voice lead creation failed:', error);
     throw error;
@@ -363,8 +386,16 @@ export async function recordCallHistory(
     throw new Error(`Voice call history write failed (${code}).`);
   }
 
+  const structured = receipt.structuredPostPrompt;
   const emergency = detectCallEmergency(summaryLine(receipt));
-  const urgency = emergency.isEmergency ? 'emergency' : 'normal';
+  const isEmergency = structured?.is_emergency === true || structured?.urgency === 'emergency' || emergency.isEmergency;
+  const isUrgent = structured?.urgency === 'urgent';
+  const urgency = isEmergency ? 'emergency' : isUrgent ? 'urgent' : 'normal';
+
+  const followUp = typeof structured?.follow_up_action === 'string' ? structured.follow_up_action : null;
+  const disposition = followUp === 'callback_required' ? 'needs_callback'
+    : followUp === 'booked' ? 'converted'
+    : 'unreviewed';
 
   try {
     const { data: callRow } = await admin
@@ -378,11 +409,11 @@ export async function recordCallHistory(
       await admin.from('voice_call_workflows').upsert({
         call_id: callRow.id,
         account_id: facts.accountId,
-        disposition: 'unreviewed',
+        disposition,
         urgency,
       }, { onConflict: 'call_id' });
 
-      if (emergency.isEmergency) {
+      if (isEmergency) {
         await notifyEmergencyCall(
           admin,
           facts.accountId,
@@ -392,8 +423,22 @@ export async function recordCallHistory(
           callRow.id,
         );
       }
+
+      const cPhone = callerPhone(receipt);
+      if (cPhone && outcome !== 'caller_abandoned') {
+        await triggerVoicePostCallFollowup(
+          admin,
+          facts.accountId,
+          callRow.id,
+          cPhone,
+          {
+            callerName: structured?.caller_name,
+            issueSummary: structured?.issue_summary || receipt.summary,
+          },
+        );
+      }
     }
   } catch {
-    // Non-blocking on workflow sync and emergency alert
+    // Non-blocking on workflow sync, emergency alert, and follow-up SMS
   }
 }

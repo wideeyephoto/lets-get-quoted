@@ -32,6 +32,7 @@ type Props = {
   greeting: string;
   transferNumber: string;
   alertPhone?: string;
+  voiceTone?: 'friendly' | 'professional' | 'urgent_dispatcher';
   businessHours: Hours;
   timezone: string;
   /** Base-plan inclusion or an active recurring AI Voice add-on. */
@@ -55,6 +56,7 @@ export default function AiReceptionistSection(props: Props) {
   const [greeting, setGreeting] = useState(props.greeting);
   const [transferNumber, setTransferNumber] = useState(props.transferNumber);
   const [alertPhone, setAlertPhone] = useState(props.alertPhone ?? '');
+  const [voiceTone, setVoiceTone] = useState<'friendly' | 'professional' | 'urgent_dispatcher'>(props.voiceTone ?? 'professional');
   const [hours, setHours] = useState<Hours>(props.businessHours);
   const [save, setSave] = useState<SaveState>('idle');
   const [problem, setProblem] = useState<string | null>(null);
@@ -107,7 +109,7 @@ export default function AiReceptionistSection(props: Props) {
     startSaving(async () => {
       try {
         const result = await updateVoiceSettingsAction({
-          status, answerMode, greeting, transferNumber, alertPhone,
+          status, answerMode, greeting, transferNumber, alertPhone, voiceTone,
           businessHours: hours,
         });
         // The server drops a day whose closing time is at or before its opening
@@ -248,6 +250,43 @@ export default function AiReceptionistSection(props: Props) {
       ) : null}
 
       <div className="voice-field">
+        <span className="voice-label">Conversational Persona & Tone</span>
+        <div className="voice-choices" role="group" aria-label="Receptionist Persona Tone">
+          <button
+            type="button"
+            disabled={controlsDisabled}
+            aria-pressed={voiceTone === 'friendly'}
+            onClick={() => { markEdited(); setVoiceTone('friendly'); }}
+          >
+            Warm & Friendly
+          </button>
+          <button
+            type="button"
+            disabled={controlsDisabled}
+            aria-pressed={voiceTone === 'professional'}
+            onClick={() => { markEdited(); setVoiceTone('professional'); }}
+          >
+            Concise & Professional
+          </button>
+          <button
+            type="button"
+            disabled={controlsDisabled}
+            aria-pressed={voiceTone === 'urgent_dispatcher'}
+            onClick={() => { markEdited(); setVoiceTone('urgent_dispatcher'); }}
+          >
+            Trade Dispatcher
+          </button>
+        </div>
+        <small>
+          {voiceTone === 'friendly'
+            ? 'Warm, neighborly, and empathetic. Builds personal connection with homeowners.'
+            : voiceTone === 'urgent_dispatcher'
+            ? 'Fast, focused, safety-first dispatching with direct slot reservations.'
+            : 'Polished, authoritative, and clear business tone.'}
+        </small>
+      </div>
+
+      <div className="voice-field">
         <label className="voice-label" htmlFor="voice-greeting">Greeting</label>
         <textarea
           id="voice-greeting"
@@ -292,17 +331,18 @@ export default function AiReceptionistSection(props: Props) {
           onChange={(event) => { markEdited(); setAlertPhone(event.target.value); }}
         />
         <small>
-          🚨 Instant automated SMS alert sent directly to this mobile phone with a live link to the call transcript whenever severe emergency hazards (gas leak, flooding, burst pipe, electrical fire) are detected.
+          🚨 Automated SMS alert dispatched to this mobile phone with a direct link to the call transcript whenever severe emergency hazards (gas leak, flooding, burst pipe, electrical fire) are detected.
         </small>
       </div>
 
       <div className="voice-field" style={{ background: 'rgba(59, 130, 246, 0.08)', padding: '1rem', borderRadius: '8px', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
         <span className="voice-label" style={{ color: '#93c5fd', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-          ⚡ Live In-Call SWAIG Capabilities Active
+          ⚡ Live In-Call SWAIG &amp; Smart Routing Capabilities Active
         </span>
         <ul style={{ margin: '0.5rem 0 0 1.25rem', padding: 0, fontSize: '0.85rem', color: '#e2e8f0', lineHeight: 1.6 }}>
-          <li><strong>Instant SMS Booking Link:</strong> When a caller asks to schedule an appointment or get a quote, the AI receptionist texts your online booking portal link directly to their mobile phone during the call.</li>
-          <li><strong>Live Availability Checking:</strong> The AI receptionist checks your configured operating hours and turnaround availability in real time.</li>
+          <li><strong>Instant SMS Booking &amp; Post-Call Follow-up:</strong> The AI receptionist texts booking confirmations and quote status links directly to callers&apos; mobile phones upon call completion.</li>
+          <li><strong>Smart Warm Transfer Routing:</strong> Connects callers to your office transfer line or on-call emergency dispatcher when requested.</li>
+          <li><strong>Live Schedule &amp; Capacity Grounding:</strong> The AI receptionist references your real business hours and live appointment slots during intake conversations.</li>
         </ul>
       </div>
 

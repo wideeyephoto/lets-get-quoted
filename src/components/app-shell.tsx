@@ -76,6 +76,7 @@ const baseNavItems: { href: string; label: string; hint?: string }[] = [
   // the other things that talk to customers on your behalf, above them because
   // it does the talking without being asked.
   { href: '/dashboard/automations', label: 'Automations', hint: 'The follow-ups, reminders and review asks that run without you' },
+  { href: '/dashboard/voice-calls', label: 'AI Voice Assistant', hint: '24/7 AI receptionist, live booking & call log' },
   { href: '/dashboard/messages', label: 'Messages', hint: 'Two-way customer texts' },
   // One destination, not two. "Marketing" (the composer) and "Calendar" (the
   // seasonal topics) were the same workflow split across two pages that linked
@@ -147,7 +148,7 @@ const NAV_GROUPS: { label: string; accent: string; hrefs: string[] }[] = [
   // Automations leads the group: it is the only row here that reaches customers
   // without somebody pressing something, so it is what the rest of Grow runs on
   // top of.
-  { label: 'Grow', accent: 'grow', hrefs: ['/dashboard/automations', '/dashboard/messages', '/dashboard/marketing', '/dashboard/marketing/blog', '/dashboard/reviews'] },
+  { label: 'Grow', accent: 'grow', hrefs: ['/dashboard/automations', '/dashboard/voice-calls', '/dashboard/messages', '/dashboard/marketing', '/dashboard/marketing/blog', '/dashboard/reviews'] },
 ];
 
 type AccountStatus = {

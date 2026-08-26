@@ -104,6 +104,7 @@ export function minimizeSignalWireVoiceReceiptPayload(
     ai_end_date: receipt.aiEndMicros,
     caller_id_number: receipt.callerNumber,
     summary: receipt.summary,
+    structured_post_prompt: receipt.structuredPostPrompt ?? null,
     SWMLCall: callEcho ? { call_id: callEcho } : null,
     SWMLVars: memberEcho ? { userVariables: { memberCallId: memberEcho } } : null,
   });
@@ -113,6 +114,28 @@ function escapeXml(value: string): string {
   return value
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+}
+
+export function structuredPostPromptFrom(payload: Record<string, unknown>): Readonly<Record<string, unknown>> | null {
+  const post = record(payload.post_prompt_data);
+  if (!post) return null;
+  const parsed = record(post.parsed);
+  if (parsed) return parsed;
+  const rawText = text(post.substituted) ?? text(post.raw);
+  if (rawText) {
+    try {
+      const match = rawText.match(/\{[\s\S]*\}/);
+      if (match) {
+        const obj = JSON.parse(match[0]);
+        if (typeof obj === 'object' && obj !== null && !Array.isArray(obj)) {
+          return obj as Record<string, unknown>;
+        }
+      }
+    } catch {
+      // not JSON, continue
+    }
+  }
+  return null;
 }
 
 /**
@@ -181,10 +204,18 @@ export const signalwireVoiceProvider: VoiceProvider = {
           function: 'transfer_to_business',
           purpose: 'Send the caller to a person when they ask for one or the '
             + 'request is beyond what can be handled.',
-          argument: { type: 'object', properties: {} },
+          argument: {
+            type: 'object',
+            properties: {
+              reason: {
+                type: 'string',
+                description: 'Brief reason for the transfer to announce to the live staff.',
+              },
+            },
+          },
           data_map: { expressions: [{
             string: 'true', pattern: '.*',
-            output: { response: 'Connecting you now.', action: [{ transfer: true, SWML: {
+            output: { response: 'Connecting you with our office staff now. Please hold for just a moment.', action: [{ transfer: true, SWML: {
               version: '1.0.0',
               sections: { main: [{ connect: { to: plan.transferTo } }] },
             } }] },
@@ -205,6 +236,77 @@ export const signalwireVoiceProvider: VoiceProvider = {
               },
             },
           },
+          web_hook_url: plan.swaigUrl,
+          web_hook_auth_user: plan.receiptAuthorization.username,
+          web_hook_auth_password: plan.receiptAuthorization.password,
+        });
+
+        swaigFunctions.push({
+          function: 'check_available_slots',
+          purpose: 'Query live appointment slots and dispatch windows by date or timeframe.',
+          argument: {
+            type: 'object',
+            properties: {
+              preferred_date: {
+                type: 'string',
+                description: 'The date requested by the caller (e.g. 2026-08-27, tomorrow, Thursday, next week).',
+              },
+              service_type: {
+                type: 'string',
+                description: 'The type of service requested (e.g. leak repair, estimate, installation).',
+              },
+            },
+          },
+          fillers: [
+            'Checking our available appointment slots for you...',
+            'Looking up open dispatch windows on our calendar...',
+          ],
+          web_hook_url: plan.swaigUrl,
+          web_hook_auth_user: plan.receiptAuthorization.username,
+          web_hook_auth_password: plan.receiptAuthorization.password,
+        });
+
+        swaigFunctions.push({
+          function: 'book_appointment_slot',
+          purpose: 'Directly schedule and confirm an appointment slot into the system, place a hold, and send an SMS confirmation to the caller.',
+          argument: {
+            type: 'object',
+            properties: {
+              caller_name: {
+                type: 'string',
+                description: 'Full name of the homeowner or business contact.',
+              },
+              caller_phone: {
+                type: 'string',
+                description: 'Mobile phone number for booking confirmation and dispatch alerts.',
+              },
+              service_address: {
+                type: 'string',
+                description: 'The street address, city, and ZIP where the service will take place.',
+              },
+              requested_date: {
+                type: 'string',
+                description: 'The chosen date in YYYY-MM-DD format (e.g. 2026-08-27).',
+              },
+              requested_time: {
+                type: 'string',
+                description: 'The start time of the window (HH:MM format in 24h or label e.g. 08:00 or Morning).',
+              },
+              service_description: {
+                type: 'string',
+                description: 'Description of the work needed or issue reported.',
+              },
+              notes: {
+                type: 'string',
+                description: 'Optional gate codes, parking instructions, or customer notes.',
+              },
+            },
+            required: ['caller_name', 'requested_date', 'requested_time'],
+          },
+          fillers: [
+            'Reserving that appointment window for you right now...',
+            'Locking in your appointment slot on our schedule...',
+          ],
           web_hook_url: plan.swaigUrl,
           web_hook_auth_user: plan.receiptAuthorization.username,
           web_hook_auth_password: plan.receiptAuthorization.password,
@@ -410,6 +512,7 @@ export const signalwireVoiceProvider: VoiceProvider = {
         aiEndMicros: micros(body.ai_end_date),
         callerNumber: text(body.caller_id_number) ?? text(record(body.global_data)?.caller_id_number),
         summary: summaryFrom(body),
+        structuredPostPrompt: structuredPostPromptFrom(body),
         callLog: transcriptFrom(body),
       }),
     });

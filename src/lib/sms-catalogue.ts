@@ -21,6 +21,8 @@ import {
   ownerVerificationCodeText,
   ownerVoiceEmergencyAlertText,
   callerVoiceBookingLinkText,
+  callerVoiceBookingConfirmationText,
+  callerVoicePostCallFollowupText,
   paymentText,
   portalLinkText,
   quickStopConfirmedText,
@@ -624,6 +626,32 @@ export const SMS_CATALOGUE: SmsCatalogueEntry[] = [
       bookingUrl: SAMPLE.link,
     }),
   },
+  {
+    id: 'caller-voice-booking-confirmation',
+    title: 'Voice call appointment confirmation',
+    trigger: 'Caller schedules and reserves an appointment slot during an AI voice call',
+    audience: 'customer',
+    control: always('Triggered on live call reservation'),
+    body: callerVoiceBookingConfirmationText({
+      businessName: SAMPLE.business,
+      whenLabel: 'Thursday, Aug 27 (Morning: 8 AM – 12 PM)',
+      serviceAddress: '123 Main St, Royal Oak, MI',
+    }),
+  },
+  {
+    id: 'caller-voice-post-call-followup',
+    title: 'Voice call follow-up summary',
+    trigger: 'Automated post-call summary and next steps sent after an AI voice call completes',
+    audience: 'customer',
+    control: always('Triggered on voice call completion'),
+    body: callerVoicePostCallFollowupText({
+      businessName: SAMPLE.business,
+      callerName: SAMPLE.customer,
+      scheduledTime: 'Thursday, Aug 27 at 9:00 AM',
+      portalUrl: SAMPLE.link,
+      issueSummary: 'Water heater maintenance and inspection',
+    }),
+  },
 ];
 
 /** Every sender this catalogue claims to cover, checked against lib/sms by test. */
@@ -632,7 +660,9 @@ export const CATALOGUE_SENDERS = [
   'sendArrivalSms',
   'sendArrivalTimeChangedSms',
   'sendBookingDecisionSms',
+  'sendCallerVoiceBookingConfirmationSms',
   'sendCallerVoiceBookingLinkSms',
+  'sendCallerVoicePostCallFollowupSms',
   'sendCampaignSms',
   'sendCardSetupSms',
   'sendCardUpdateSms',

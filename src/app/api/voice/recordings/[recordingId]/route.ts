@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireOfficeContext } from '@/lib/auth';
+import { isTrustedVoiceMediaUrl } from '@/lib/voice/auth';
 
 export async function GET(
   req: Request,
@@ -30,9 +31,12 @@ export async function GET(
 
     const storageUrl = call.recording_storage_path;
 
-    // If it's a remote URL from the provider, stream or redirect with private no-store headers
-    if (storageUrl.startsWith('http://') || storageUrl.startsWith('https://')) {
-      // In production, we can proxy or redirect with short expiration
+    // Validate that the media URL is a secure HTTPS link from trusted provider/storage hostnames
+    if (storageUrl.startsWith('https://')) {
+      if (!isTrustedVoiceMediaUrl(storageUrl)) {
+        return NextResponse.json({ error: 'untrusted_storage_host' }, { status: 403 });
+      }
+
       return NextResponse.redirect(storageUrl, {
         status: 307,
         headers: {

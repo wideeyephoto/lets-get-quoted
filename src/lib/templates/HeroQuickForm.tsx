@@ -102,7 +102,13 @@ function Field({
   );
 }
 
-type EstimateRange = { min: number; max: number; basis?: string };
+type EstimateRange = {
+  min: number;
+  max: number;
+  basis?: string;
+  requiresSiteVisit?: boolean;
+  visitReason?: string;
+};
 
 function formatCurrency(value: number): string {
   return `$${value.toLocaleString('en-US')}`;
@@ -135,7 +141,12 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
   // note, and fully-booked capacity banner. Gates flag, never block.
   const leadFilters = siteContent.leadFilters;
   const askTimeline = smartIntakeActive && leadFilters.askTimeline;
-  const askLocation = smartIntakeActive && leadFilters.serviceAreaGate && siteContent.serviceAreas.cities.some((city) => city.trim());
+  const configuredCities = siteContent.serviceAreas.cities.map((city) => city.trim()).filter(Boolean);
+  const askLocation = smartIntakeActive && leadFilters.serviceAreaGate && configuredCities.length > 0;
+  const primaryServedCity = configuredCities[0]
+    ? (siteContent.serviceAreas.state ? `${configuredCities[0]}, ${siteContent.serviceAreas.state}` : configuredCities[0])
+    : (site.service_area || 'Your city or town');
+  const locationPlaceholder = primaryServedCity.startsWith('e.g.') ? primaryServedCity : `e.g. ${primaryServedCity}`;
   // Real, earned response-time stat (absent = no honest claim to make).
   const avgReplyMs = typeof site.avg_response_ms === 'number' && site.avg_response_ms > 0 ? site.avg_response_ms : null;
   const replyPromise = avgReplyMs
@@ -169,6 +180,22 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
   const [chatAnswer, setChatAnswer] = useState('');
   const [chatResponseId, setChatResponseId] = useState('');
   const [chatTurn, setChatTurn] = useState(0);
+
+  // Sync across duplicate forms on the same page (e.g. hero and footer).
+  useEffect(() => {
+    function handleRemoteSubmit(event: Event) {
+      const custom = event as CustomEvent<{ siteId: string }>;
+      if (custom.detail?.siteId === site.id && step !== 'result') {
+        setStatus({
+          tone: 'success',
+          text: "We've received your request! Our team is already reviewing your details.",
+        });
+        setStep('result');
+      }
+    }
+    window.addEventListener('lgq:lead-submitted', handleRemoteSubmit);
+    return () => window.removeEventListener('lgq:lead-submitted', handleRemoteSubmit);
+  }, [site.id, step]);
 
   // `step` is seeded from wizardEnabled, which is fine on a live site where the
   // intake method never changes mid-visit — but the builder's live preview
@@ -288,7 +315,7 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
     setSelectedPhotos((current) => current.filter((_, photoIndex) => photoIndex !== index));
   }
 
-  function applyChatResult(result: { type?: string; question?: string; responseId?: string; min?: number; max?: number; basis?: string; inArea?: boolean | null; excluded?: boolean } | null) {
+  function applyChatResult(result: { type?: string; question?: string; responseId?: string; min?: number; max?: number; basis?: string; inArea?: boolean | null; excluded?: boolean; requiresSiteVisit?: boolean; requires_site_visit?: boolean; visitReason?: string; visit_reason?: string } | null) {
     if (result?.type === 'classic_fallback') {
       setClassicFallback(true);
       setEstimate(null);
@@ -310,7 +337,17 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
     const min = Number(result?.min);
     const max = Number(result?.max);
     const basis = typeof result?.basis === 'string' ? result.basis.trim().slice(0, 60) : '';
-    setEstimate(Number.isFinite(min) && Number.isFinite(max) && min > 0 && min < max ? { min: Math.round(min), max: Math.round(max), ...(basis ? { basis } : {}) } : null);
+    const requiresSiteVisit = result?.requiresSiteVisit === true || result?.requires_site_visit === true;
+    const visitReason = typeof result?.visitReason === 'string'
+      ? result.visitReason.trim().slice(0, 100)
+      : typeof result?.visit_reason === 'string'
+        ? result.visit_reason.trim().slice(0, 100)
+        : '';
+    setEstimate(
+      Number.isFinite(min) && Number.isFinite(max) && min > 0 && min < max
+        ? { min: Math.round(min), max: Math.round(max), ...(basis ? { basis } : {}), ...(requiresSiteVisit ? { requiresSiteVisit, visitReason } : {}) }
+        : null
+    );
     const namedLocation = location.trim() && !/^\d{5}(?:-\d{4})?$/.test(location.trim());
     const configuredCities = siteContent.serviceAreas.cities.map((city) => city.trim()).filter(Boolean);
     const deterministicArea = askLocation && namedLocation && configuredCities.length > 0
@@ -647,6 +684,10 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
       const result = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(result.error || 'Unable to send your request.');
 
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('lgq:lead-submitted', { detail: { siteId: site.id } }));
+      }
+
       if (details && estimate) {
         setStep('result');
       } else {
@@ -673,9 +714,22 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
   }
 
   const stepIndex = step === 'describe' ? 0 : step === 'qa' ? 1 : step === 'contact' ? 2 : 3;
+  const isEmergency = Boolean(
+    description &&
+    /\b(burst\s*pipe|pipe\s*burst|flooding|water\s*pouring|leak(?:ing)?\s*everywhere|spraying\s*water|gushing|sewage\s*backup|smell\s*gas|gas\s*leak|no\s*heat|furnace\s*out)\b/i.test(description)
+  );
+
+  const thinkingLabel = description.toLowerCase().includes('drain')
+    ? 'Scoping drain cleaning'
+    : description.toLowerCase().includes('water heater')
+      ? 'Scoping water heater'
+      : description.toLowerCase().includes('pipe') || description.toLowerCase().includes('leak')
+        ? 'Analyzing pipe repair'
+        : 'Preparing your estimate';
+
   const thinking = (
     <span className={styles.heroFormThinking}>
-      Thinking
+      {thinkingLabel}
       <span className={styles.heroFormDots} aria-hidden="true"><i /><i /><i /></span>
     </span>
   );
@@ -700,6 +754,20 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
       {step === 'describe' && (
         <div className={styles.heroFormStep} key="describe">
           <h2 className={styles.heroFormTitle}>{estimateLabel}</h2>
+          {isEmergency && (
+            <div className={styles.heroFormEmergencyAlert} role="alert">
+              <span aria-hidden="true">🚨</span>
+              <div>
+                <strong>Emergency Safety Guidance</strong>
+                <p>If water or gas is actively leaking, locate and turn off your main shutoff valve immediately.</p>
+                {site.phone && (
+                  <a className={styles.heroFormEmergencyCallBtn} href={`tel:${site.phone}`}>
+                    📞 Call Emergency Dispatch ({site.phone})
+                  </a>
+                )}
+              </div>
+            </div>
+          )}
           <p className={styles.heroFormNote}>Tell us about the job. We may ask up to {MAX_INTAKE_QUESTIONS} quick questions, then collect contact details before showing your range.</p>
           {avgReplyMs && <span className={styles.heroFormReplyChip}><span aria-hidden="true">⚡</span> Typically replies within {formatReplyTime(avgReplyMs)}</span>}
           <textarea
@@ -708,6 +776,8 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
             maxLength={500}
             rows={2}
             required
+            aria-invalid={status?.tone === 'error' ? 'true' : undefined}
+            aria-describedby={status ? 'hqf-status' : undefined}
             value={description}
             onChange={(event) => setDescription(event.target.value)}
             onKeyDown={(event) => {
@@ -720,16 +790,38 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
           {askLocation && (
             <Field icon="pin" label="Town or city where the work is" filled={Boolean(location.trim())}>
               <input
-                placeholder="Royal Oak, MI"
+                placeholder={locationPlaceholder}
                 autoComplete="address-level2"
                 maxLength={80}
                 required={!demo}
+                aria-invalid={status?.tone === 'error' ? 'true' : undefined}
+                aria-describedby={status ? 'hqf-status' : undefined}
                 value={location}
                 onChange={(event) => setLocation(event.target.value)}
               />
             </Field>
           )}
+          {askLocation && location.trim() && !/^\d{5}(?:-\d{4})?$/.test(location.trim()) && configuredCities.length > 0 && matchesServedCity(location, configuredCities) === false && (
+            <p className={styles.heroFormFitNote}>
+              Heads up: <strong>{location.trim()}</strong> appears outside our primary service area. Travel fees or limited availability may apply.
+            </p>
+          )}
           <button type="submit" disabled={isClassifying}>{isClassifying ? thinking : 'Continue'}</button>
+          {isEmergency && !isClassifying && (
+            <button
+              type="button"
+              className={styles.heroFormRestart}
+              onClick={() => {
+                classifyAbortRef.current?.abort();
+                setStatus(null);
+                setEstimate(null);
+                setTimeline('asap');
+                setStep('contact');
+              }}
+            >
+              ⚡ Urgent: Skip questions — go straight to contact details →
+            </button>
+          )}
           {/* The escape hatch exists ONLY while a classification is in flight.
               It used to sit here permanently as "Skip the estimate — just send
               my details", and that was wrong twice over.
@@ -994,15 +1086,25 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
 
       {step === 'result' && estimate && (
         <div className={styles.heroFormStep} key="result">
-          <h2 className={styles.heroFormTitle}>Your estimated range</h2>
+          <h2 className={styles.heroFormTitle}>{estimate.requiresSiteVisit ? 'Estimate & Inspection Scope' : 'Your estimated range'}</h2>
+          {estimate.requiresSiteVisit && (
+            <div className={styles.heroFormFitNote} style={{ background: '#fef3c7', borderColor: '#f59e0b', color: '#92400e', fontWeight: 600 }}>
+              <span>🔍 <strong>On-Site Assessment Required:</strong> {estimate.visitReason || 'Major scope detected — final pricing requires visual inspection of structural access and line runs.'}</span>
+            </div>
+          )}
           <div className={styles.heroFormResultPanel}>
-            <p className={styles.heroFormResult}>{formatCurrency(estimate.min)} – {formatCurrency(estimate.max)}</p>
+            <p className={styles.heroFormResult}>
+              {estimate.requiresSiteVisit ? `Baseline: ${formatCurrency(estimate.min)} – ${formatCurrency(estimate.max)}` : `${formatCurrency(estimate.min)} – ${formatCurrency(estimate.max)}`}
+            </p>
             {/* The badge is a statement of fact about a request. In the preview
                 no request exists, so it must not claim one — the price is real,
                 the send is the part that didn't happen. */}
             <span className={styles.heroFormResultBadge}>{demo ? 'Preview — nothing sent' : '✓ Request sent'}</span>
           </div>
-          <p className={styles.heroFormBasis}>{estimate.basis ? `Based on ${estimate.basis}. ` : ''}A rough estimate, not a final quote.</p>
+          <p className={styles.heroFormBasis}>{estimate.basis ? `Based on ${estimate.basis}. ` : ''}{estimate.requiresSiteVisit ? 'Subject to visual site inspection.' : 'A rough estimate, not a final quote.'}</p>
+          {fit.inArea === false && (
+            <p className={styles.heroFormFitNote}>📍 Note: Your location ({location.trim() || 'provided'}) is outside our standard primary service area. Our dispatcher will confirm coverage when following up.</p>
+          )}
           {/* Below the number, never over it. The range is what the visitor
               waited for; the video is what fills the moment after they've read
               it. Anything that covered or preceded the estimate would be a toll
@@ -1024,7 +1126,7 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
         </div>
       )}
 
-      {status && <p className={styles.heroFormStatus} data-tone={status.tone} role={status.tone === 'error' ? 'alert' : 'status'}>{status.text}</p>}
+      {status && <p id="hqf-status" className={styles.heroFormStatus} data-tone={status.tone} role={status.tone === 'error' ? 'alert' : 'status'} aria-live="polite">{status.text}</p>}
       {sentWithoutEstimate && step !== 'result' && <IntroVideo video={introVideo} />}
     </form>
   );

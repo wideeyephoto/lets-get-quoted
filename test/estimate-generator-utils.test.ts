@@ -149,5 +149,62 @@ describe('estimate-generator-utils', () => {
       expect(text).toContain(`TOTAL AMOUNT: ${formatCurrency(totals.grandTotal)}`);
       expect(text).toContain(`Deposit Required (${example.depositPct}%)`);
     });
+
+    it('formats 3-tier package comparison text when in multi_tier mode', () => {
+      const example = getInitialExampleEstimate();
+      example.mode = 'multi_tier';
+      const totals = calculateEstimateTotals(example.items, example.taxRate, example.depositPct);
+      const text = formatEstimateSummaryText(example, totals);
+
+      expect(text).toContain('3-TIER ESTIMATE PROPOSAL');
+      expect(text).toContain('STANDARD PACKAGE');
+      expect(text).toContain('PREFERRED PACKAGE');
+      expect(text).toContain('RECOMMENDED');
+      expect(text).toContain('ULTIMATE PROTECTION');
+    });
+  });
+
+  describe('discounts, optional items, and milestones', () => {
+    it('applies discount line items correctly', () => {
+      const items: LineItem[] = [
+        { id: '1', description: 'Labor', type: 'Labor', quantity: 1, unitPrice: 1000 },
+        { id: '2', description: 'Promo Discount', type: 'Discount', isDiscount: true, quantity: 1, unitPrice: 150 },
+      ];
+      const totals = calculateEstimateTotals(items, 10, 20); // subtotal should be 850 (1000 - 150)
+
+      expect(totals.subtotal).toBe(850);
+      expect(totals.discountTotal).toBe(150);
+      expect(totals.taxAmount).toBe(85);
+      expect(totals.grandTotal).toBe(935);
+    });
+
+    it('excludes unselected optional items from totals', () => {
+      const items: LineItem[] = [
+        { id: '1', description: 'Base Labor', type: 'Labor', quantity: 1, unitPrice: 500 },
+        { id: '2', description: 'Optional Surge Protector', type: 'Equipment', isOptional: true, selected: false, quantity: 1, unitPrice: 200 },
+      ];
+      const totals = calculateEstimateTotals(items, 0, 0);
+
+      expect(totals.subtotal).toBe(500);
+      expect(totals.grandTotal).toBe(500);
+    });
+
+    it('calculates milestone payment schedule correctly', () => {
+      const items: LineItem[] = [
+        { id: '1', description: 'Full Roof Replacement', type: 'Labor', quantity: 1, unitPrice: 10000 },
+      ];
+      const milestones = [
+        { name: 'Deposit', pct: 30 },
+        { name: 'Progress', pct: 40 },
+        { name: 'Final', pct: 30 },
+      ];
+      const totals = calculateEstimateTotals(items, 0, 30, 0, milestones);
+
+      expect(totals.grandTotal).toBe(10000);
+      expect(totals.milestones).toBeDefined();
+      expect(totals.milestones?.[0]?.amount).toBe(3000);
+      expect(totals.milestones?.[1]?.amount).toBe(4000);
+      expect(totals.milestones?.[2]?.amount).toBe(3000);
+    });
   });
 });

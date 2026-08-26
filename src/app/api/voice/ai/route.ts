@@ -5,6 +5,7 @@ import { logWebhookFailure } from '@/lib/webhook-failures';
 import { planInboundCall } from '@/lib/voice/admission';
 import {
   signalWireVoiceScope,
+  signVoiceToolToken,
   verifySignedVoiceWebhook,
   voiceReceiptAuthorization,
 } from '@/lib/voice/auth';
@@ -104,7 +105,18 @@ export async function POST(request: Request) {
       // in the URL or included in the decline log below.
       receiptAuthorization: voiceReceiptAuthorization(),
       forwardActionUrl: (id) => `${callbackOrigin}/api/voice/ai/status?account=${id}`,
-      swaigUrl: (id) => `${callbackOrigin}/api/voice/swaig?account_id=${id}`,
+      swaigUrl: (id, ctx) => {
+        const token = ctx
+          ? signVoiceToolToken({
+              accountId: id,
+              providerCallId: ctx.providerCallId,
+              callerPhone: ctx.callerPhone,
+            })
+          : null;
+        return token
+          ? `${callbackOrigin}/api/voice/swaig?token=${encodeURIComponent(token)}`
+          : `${callbackOrigin}/api/voice/swaig?account_id=${id}`;
+      },
     });
 
     // A valid signed call to this route is the only durable proof LGQ can get

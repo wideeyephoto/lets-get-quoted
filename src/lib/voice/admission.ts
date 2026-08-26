@@ -232,7 +232,10 @@ export type PlanInboundOptions = Readonly<{
   receiptUrl: string;
   receiptAuthorization: VoiceReceiptAuthorization | null;
   forwardActionUrl: (accountId: string) => string;
-  swaigUrl?: (accountId: string) => string;
+  swaigUrl?: (
+    accountId: string,
+    callContext?: { providerCallId: string; callerPhone?: string | null },
+  ) => string;
   enabled?: boolean;
   now?: () => Date;
 }>;
@@ -323,7 +326,7 @@ export async function planInboundCall(
     startedAt: (options.now ?? (() => new Date()))().toISOString(),
   }).catch(() => null);
 
-  const grounding = await loadVoiceGroundingContext(admin, workspace.accountId).catch(() => null);
+  const grounding = await loadVoiceGroundingContext(admin, workspace.accountId, call.fromNumber).catch(() => null);
   const systemPrompt = grounding ? buildVoiceSystemPrompt(grounding) : undefined;
   const postPrompt = grounding ? buildVoicePostPrompt() : undefined;
 
@@ -341,7 +344,12 @@ export async function planInboundCall(
       // The configured hand-off, falling back to the line the contractor
       // already forwards to. Null is a valid setup, not a broken one.
       transferTo: settings.transferNumber || workspace.callForwardNumber,
-      swaigUrl: options.swaigUrl ? options.swaigUrl(workspace.accountId) : undefined,
+      swaigUrl: options.swaigUrl
+        ? options.swaigUrl(workspace.accountId, {
+            providerCallId: call.providerCallId,
+            callerPhone: call.fromNumber,
+          })
+        : undefined,
     }),
   });
 }

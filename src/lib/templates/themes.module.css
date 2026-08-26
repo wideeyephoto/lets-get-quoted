@@ -313,6 +313,18 @@
    minimum, excluded work) — literal inks: the card is always white. */
 .heroFormBooked { margin: 0; padding: .5rem .7rem; border-radius: 8px; border: 1px solid color-mix(in srgb, var(--theme-accent) 45%, #d8d3c6); background: color-mix(in srgb, var(--theme-accent) 12%, #fff); color: #17140f; font-size: .78rem; line-height: 1.45; }
 .heroFormFitNote { margin: 0; padding: .45rem .65rem; border-radius: 8px; background: #fdf6e3; border: 1px solid #ecd9a0; color: #7a5f17; font-size: .76rem; line-height: 1.45; }
+.heroFormEmergencyAlert { display: flex; align-items: flex-start; gap: .6rem; padding: .65rem .8rem; border-radius: 8px; background: #fef2f2; border: 1.5px solid #f87171; color: #991b1b; font-size: .78rem; line-height: 1.4; }
+.heroFormEmergencyAlert strong { display: block; font-size: .84rem; font-weight: 800; color: #7f1d1d; margin-bottom: .15rem; }
+.heroFormEmergencyAlert p { margin: 0 0 .4rem; }
+.heroFormEmergencyCallBtn { display: inline-flex; align-items: center; gap: .35rem; padding: .4rem .75rem; border-radius: 6px; background: #dc2626; color: #ffffff !important; font-weight: 800; font-size: .76rem; text-decoration: none; transition: background .15s ease; }
+.heroFormEmergencyCallBtn:hover { background: #b91c1c; }
+@media (max-width: 640px) {
+  .heroQuickForm { width: 100% !important; max-width: 100% !important; margin-top: 1rem !important; padding: 1rem .9rem 1.15rem !important; }
+}
+@media (max-width: 520px) {
+  .heroQuickFormRow { grid-template-columns: 1fr !important; gap: .5rem !important; }
+  .heroQuickForm .heroFormTitle { font-size: 1rem !important; }
+}
 /* "Did you mean gmail.com?" — sits tight under the email field it corrects.
    Amber, not red: nothing is wrong yet, and the address may well be right. */
 .heroFormEmailFix { justify-self: start; margin: -.35rem 0 0; padding: .3rem .6rem; border: 1px solid #ecd9a0; border-radius: 8px; background: #fdf6e3; color: #7a5f17; font-size: .74rem; font-weight: 600; line-height: 1.35; text-align: left; cursor: pointer; }

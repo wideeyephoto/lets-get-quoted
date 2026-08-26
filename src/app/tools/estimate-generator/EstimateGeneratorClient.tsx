@@ -6,6 +6,7 @@ import { buildStartUrl } from '@/lib/signup-intent';
 import {
   type LineItem,
   type EstimateData,
+  type EstimateTier,
   calculateEstimateTotals,
   clampPercentage,
   clampQuantity,
@@ -53,7 +54,6 @@ export default function EstimateGeneratorClient() {
     setMounted(true);
     const draft = loadEstimateDraft();
     if (draft) {
-      // Ensure date is updated if missing
       setEstimate({
         ...draft,
         estimateDate: draft.estimateDate || getTodaysDateString(),
@@ -68,9 +68,46 @@ export default function EstimateGeneratorClient() {
     saveEstimateDraft(estimate);
   }, [estimate, mounted]);
 
+  // Active items and totals
+  const activeItems = useMemo(() => {
+    if (estimate.mode === 'multi_tier') {
+      const activeTier = estimate.tiers.find((t) => t.id === estimate.activeTierId) || estimate.tiers[1] || estimate.tiers[0];
+      return activeTier ? activeTier.items : [];
+    }
+    return estimate.items;
+  }, [estimate.mode, estimate.activeTierId, estimate.tiers, estimate.items]);
+
   const totals = useMemo(() => {
-    return calculateEstimateTotals(estimate.items, estimate.taxRate, estimate.depositPct);
-  }, [estimate.items, estimate.taxRate, estimate.depositPct]);
+    if (estimate.mode === 'multi_tier') {
+      const activeTier = estimate.tiers.find((t) => t.id === estimate.activeTierId) || estimate.tiers[1] || estimate.tiers[0];
+      if (activeTier) {
+        return calculateEstimateTotals(
+          activeTier.items,
+          activeTier.taxRate,
+          activeTier.depositPct,
+          activeTier.discountAmount || 0,
+          estimate.milestonesEnabled ? estimate.milestones : undefined
+        );
+      }
+    }
+    return calculateEstimateTotals(
+      estimate.items,
+      estimate.taxRate,
+      estimate.depositPct,
+      estimate.discountAmount,
+      estimate.milestonesEnabled ? estimate.milestones : undefined
+    );
+  }, [
+    estimate.mode,
+    estimate.activeTierId,
+    estimate.tiers,
+    estimate.items,
+    estimate.taxRate,
+    estimate.depositPct,
+    estimate.discountAmount,
+    estimate.milestonesEnabled,
+    estimate.milestones,
+  ]);
 
   // Live Permit & Building Code Analyzer + Clean Energy Rebates query
   useEffect(() => {
@@ -150,15 +187,6 @@ export default function EstimateGeneratorClient() {
     return () => clearTimeout(timer);
   }, [estimate.clientAddress, estimate.selectedTrade, totals.subtotal]);
 
-  const hasPermitItem = useMemo(() => {
-    return estimate.items.some(
-      (item) =>
-        item.type === 'Permit' ||
-        item.description.toLowerCase().includes('permit') ||
-        item.description.toLowerCase().includes('municipal fee')
-    );
-  }, [estimate.items]);
-
   const addPermitItemToEstimate = () => {
     if (!permitData) return;
     const fee = permitData.estimatedFee || 125;
@@ -169,11 +197,22 @@ export default function EstimateGeneratorClient() {
       quantity: 1,
       unitPrice: fee,
     };
-    setEstimate((prev) => ({
-      ...prev,
-      items: [...prev.items, newItem],
-    }));
-    setStatusMessage('Permit line item added to estimate.');
+
+    setHasInteracted(true);
+    if (estimate.mode === 'multi_tier') {
+      setEstimate((prev) => ({
+        ...prev,
+        tiers: prev.tiers.map((t) =>
+          t.id === prev.activeTierId ? { ...t, items: [...t.items, newItem] } : t
+        ),
+      }));
+    } else {
+      setEstimate((prev) => ({
+        ...prev,
+        items: [...prev.items, newItem],
+      }));
+    }
+    setStatusMessage('Permit line item added.');
   };
 
   const handleFieldChange = <K extends keyof EstimateData>(key: K, value: EstimateData[K]) => {
@@ -193,18 +232,54 @@ export default function EstimateGeneratorClient() {
       quantity: 1,
       unitPrice: 100,
     };
-    setEstimate((prev) => ({
-      ...prev,
-      items: [...prev.items, newItem],
-    }));
+
+    if (estimate.mode === 'multi_tier') {
+      setEstimate((prev) => ({
+        ...prev,
+        tiers: prev.tiers.map((t) =>
+          t.id === prev.activeTierId ? { ...t, items: [...t.items, newItem] } : t
+        ),
+      }));
+    } else {
+      setEstimate((prev) => ({
+        ...prev,
+        items: [...prev.items, newItem],
+      }));
+    }
     setStatusMessage('Line item added.');
   };
 
-  const updateItem = (id: string, field: keyof LineItem, value: string | number) => {
+  const addDiscountItem = () => {
     setHasInteracted(true);
-    setEstimate((prev) => ({
-      ...prev,
-      items: prev.items.map((item) => {
+    const discountItem: LineItem = {
+      id: `discount-${Date.now()}`,
+      description: 'Promotional / Seasonal Discount',
+      type: 'Discount',
+      quantity: 1,
+      unitPrice: 100,
+      isDiscount: true,
+    };
+
+    if (estimate.mode === 'multi_tier') {
+      setEstimate((prev) => ({
+        ...prev,
+        tiers: prev.tiers.map((t) =>
+          t.id === prev.activeTierId ? { ...t, items: [...t.items, discountItem] } : t
+        ),
+      }));
+    } else {
+      setEstimate((prev) => ({
+        ...prev,
+        items: [...prev.items, discountItem],
+      }));
+    }
+    setStatusMessage('Discount line item added.');
+  };
+
+  const updateItem = (id: string, field: keyof LineItem, value: any) => {
+    setHasInteracted(true);
+    const updateFn = (items: LineItem[]) =>
+      items.map((item) => {
         if (item.id !== id) return item;
         if (field === 'quantity') {
           return { ...item, quantity: clampQuantity(value, 1) };
@@ -213,17 +288,41 @@ export default function EstimateGeneratorClient() {
           return { ...item, unitPrice: clampUnitPrice(value, 0) };
         }
         return { ...item, [field]: value };
-      }),
-    }));
+      });
+
+    if (estimate.mode === 'multi_tier') {
+      setEstimate((prev) => ({
+        ...prev,
+        tiers: prev.tiers.map((t) =>
+          t.id === prev.activeTierId ? { ...t, items: updateFn(t.items) } : t
+        ),
+      }));
+    } else {
+      setEstimate((prev) => ({
+        ...prev,
+        items: updateFn(prev.items),
+      }));
+    }
   };
 
   const removeItem = (id: string) => {
-    if (estimate.items.length <= 1) return;
+    if (activeItems.length <= 1) return;
     setHasInteracted(true);
-    setEstimate((prev) => ({
-      ...prev,
-      items: prev.items.filter((item) => item.id !== id),
-    }));
+    const filterFn = (items: LineItem[]) => items.filter((item) => item.id !== id);
+
+    if (estimate.mode === 'multi_tier') {
+      setEstimate((prev) => ({
+        ...prev,
+        tiers: prev.tiers.map((t) =>
+          t.id === prev.activeTierId ? { ...t, items: filterFn(t.items) } : t
+        ),
+      }));
+    } else {
+      setEstimate((prev) => ({
+        ...prev,
+        items: filterFn(prev.items),
+      }));
+    }
     setStatusMessage('Line item removed.');
   };
 
@@ -266,7 +365,7 @@ export default function EstimateGeneratorClient() {
         await navigator.clipboard.writeText(summaryText);
         success = true;
       } catch {
-        // clipboard permission or headless restriction, fall back
+        // fallback
       }
     }
 
@@ -307,6 +406,10 @@ export default function EstimateGeneratorClient() {
     businessName: estimate.contractorName ? estimate.contractorName.trim() : undefined,
   });
 
+  const activeTier = estimate.mode === 'multi_tier'
+    ? estimate.tiers.find((t) => t.id === estimate.activeTierId) || estimate.tiers[1] || estimate.tiers[0]
+    : null;
+
   return (
     <section className={styles.container}>
       {/* Screen Reader Announcement Live Region */}
@@ -317,23 +420,45 @@ export default function EstimateGeneratorClient() {
       <div className={styles.estimateSheet}>
         {/* Editor Controls Bar */}
         <div className={styles.editorHeaderBar}>
-          <div className={styles.modeToggleGroup} role="group" aria-label="Estimate Preset Mode">
-            <button
-              type="button"
-              onClick={() => handleModeChange(false)}
-              className={`${styles.modeBtn} ${!estimate.isSample ? styles.modeBtnActive : ''}`}
-              aria-pressed={!estimate.isSample}
-            >
-              Start Blank
-            </button>
-            <button
-              type="button"
-              onClick={() => handleModeChange(true)}
-              className={`${styles.modeBtn} ${estimate.isSample ? styles.modeBtnActive : ''}`}
-              aria-pressed={estimate.isSample}
-            >
-              Use Example
-            </button>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+            <div className={styles.modeToggleGroup} role="group" aria-label="Estimate Preset Mode">
+              <button
+                type="button"
+                onClick={() => handleModeChange(false)}
+                className={`${styles.modeBtn} ${!estimate.isSample ? styles.modeBtnActive : ''}`}
+                aria-pressed={!estimate.isSample}
+              >
+                Start Blank
+              </button>
+              <button
+                type="button"
+                onClick={() => handleModeChange(true)}
+                className={`${styles.modeBtn} ${estimate.isSample ? styles.modeBtnActive : ''}`}
+                aria-pressed={estimate.isSample}
+              >
+                Use Example
+              </button>
+            </div>
+
+            {/* Proposal Mode: Single vs Multi-Tier */}
+            <div className={styles.modeToggleGroup} role="group" aria-label="Proposal Format">
+              <button
+                type="button"
+                onClick={() => handleFieldChange('mode', 'single')}
+                className={`${styles.modeBtn} ${estimate.mode === 'single' ? styles.modeBtnActive : ''}`}
+                aria-pressed={estimate.mode === 'single'}
+              >
+                📄 Single Estimate
+              </button>
+              <button
+                type="button"
+                onClick={() => handleFieldChange('mode', 'multi_tier')}
+                className={`${styles.modeBtn} ${estimate.mode === 'multi_tier' ? styles.modeBtnActive : ''}`}
+                aria-pressed={estimate.mode === 'multi_tier'}
+              >
+                ⭐ 3-Tier Packages (Good/Better/Best)
+              </button>
+            </div>
           </div>
 
           <div className={styles.draftStatusGroup}>
@@ -371,7 +496,9 @@ export default function EstimateGeneratorClient() {
         {/* Top Row: Business Info + Estimate Metadata */}
         <div className={styles.estimateTopRow}>
           <div style={{ flex: 1 }}>
-            <h2 className={styles.estimateDocTitle}>ESTIMATE</h2>
+            <h2 className={styles.estimateDocTitle}>
+              {estimate.mode === 'multi_tier' ? 'MULTI-TIER PROPOSAL' : 'ESTIMATE'}
+            </h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
               <input
                 type="text"
@@ -506,32 +633,6 @@ export default function EstimateGeneratorClient() {
               </div>
             </div>
 
-            {estimate.selectedTrade === 'roofing' && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#094886' }}>
-                <span style={{ fontWeight: 750 }}>Roof Pitch:</span>
-                {(['4/12', '6/12', '8/12', '10/12'] as const).map((p) => (
-                  <button
-                    key={p}
-                    type="button"
-                    onClick={() => handleFieldChange('roofPitch', p)}
-                    style={{
-                      background: estimate.roofPitch === p ? '#0066cc' : '#ffffff',
-                      color: estimate.roofPitch === p ? '#ffffff' : '#334e68',
-                      border: '1px solid #bcd7f5',
-                      borderRadius: 4,
-                      padding: '4px 8px',
-                      fontSize: 11,
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                      minHeight: 32,
-                    }}
-                  >
-                    {p}
-                  </button>
-                ))}
-              </div>
-            )}
-
             {permitData ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                 <span
@@ -552,292 +653,257 @@ export default function EstimateGeneratorClient() {
                 <button
                   type="button"
                   onClick={addPermitItemToEstimate}
-                  disabled={hasPermitItem}
                   style={{
-                    background: hasPermitItem ? '#bcccdc' : '#0066cc',
+                    background: '#094886',
                     color: '#ffffff',
                     border: 'none',
-                    borderRadius: 6,
-                    padding: '6px 12px',
-                    fontSize: 12,
-                    fontWeight: 750,
-                    cursor: hasPermitItem ? 'default' : 'pointer',
-                    minHeight: 34,
+                    borderRadius: 4,
+                    padding: '4px 8px',
+                    fontSize: 11,
+                    fontWeight: 700,
+                    cursor: 'pointer',
                   }}
                 >
-                  {hasPermitItem ? '✓ Permit Added' : '+ Add Permit to Estimate'}
+                  + Add Permit to Estimate
                 </button>
               </div>
             ) : loadingPermit ? (
-              <span style={{ fontSize: 12, color: '#687e8d' }}>Analyzing municipal codes &amp; permits...</span>
+              <span style={{ fontSize: 12, color: '#094886', fontStyle: 'italic' }}>
+                🔍 Checking municipal building codes...
+              </span>
             ) : null}
           </div>
-
-          {permitData ? (
-            <div style={{ marginTop: 8, fontSize: 11, color: '#486581', display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-              <span>
-                <strong>Authority:</strong> {permitData.authorityName} ({permitData.agencyName})
-              </span>
-              {permitData.citations?.[0] ? (
-                <span>
-                  <strong>Code Citation:</strong> {permitData.citations[0].codeFamily} {permitData.citations[0].section} - {permitData.citations[0].title}
-                </span>
-              ) : null}
-            </div>
-          ) : null}
-
-          {rebateData && (
-            <div
-              style={{
-                marginTop: 10,
-                padding: '8px 12px',
-                background: '#ecfdf5',
-                border: '1px solid #a7f3d0',
-                borderRadius: 6,
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                flexWrap: 'wrap',
-                gap: 8,
-              }}
-            >
-              <div>
-                <span style={{ fontSize: 11, fontWeight: 800, color: '#065f46' }}>
-                  🌱 Clean Energy Incentives Available:
-                </span>{' '}
-                <span style={{ fontSize: 11, color: '#047857' }}>
-                  Est. Federal Tax Credit: <strong>{formatCurrency(rebateData.federalCredit)}</strong>
-                  {rebateData.utilityRebate > 0 && ` + Local Utility Rebate: ${formatCurrency(rebateData.utilityRebate)}`}
-                </span>
-              </div>
-              <div style={{ fontSize: 12, fontWeight: 800, color: '#065f46' }}>
-                Net Investment After Incentives: {formatCurrency(rebateData.netCost)}
-              </div>
-            </div>
-          )}
         </div>
 
-        {/* Desktop Line Items Table */}
+        {/* Multi-Tier Package Tab Selector (if in 3-Tier Mode) */}
+        {estimate.mode === 'multi_tier' && (
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <span style={{ fontSize: 13, fontWeight: 800, color: '#334155', textTransform: 'uppercase' }}>
+                ⭐ Package Tier Selector:
+              </span>
+              <span style={{ fontSize: 12, color: '#64748b' }}>
+                Editing: <strong>{activeTier?.name}</strong>
+              </span>
+            </div>
+
+            <div className={styles.tierTabsRow}>
+              {estimate.tiers.map((t) => {
+                const isActive = estimate.activeTierId === t.id;
+                const isRec = t.isRecommended;
+                const tTotals = calculateEstimateTotals(t.items, t.taxRate, t.depositPct, t.discountAmount);
+
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => handleFieldChange('activeTierId', t.id)}
+                    className={`${styles.tierTabBtn} ${isActive ? styles.tierTabBtnActive : ''} ${
+                      isRec ? styles.tierTabRecommended : ''
+                    }`}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                      <strong style={{ fontSize: 14, color: isActive ? '#0f172a' : '#475569' }}>{t.name}</strong>
+                      <span
+                        className={`${styles.tierBadgeRibbon} ${
+                          isRec ? styles.ribbonRecommended : t.id === 'best' ? styles.ribbonBest : styles.ribbonStandard
+                        }`}
+                      >
+                        {t.badge || (isRec ? 'Recommended' : t.id === 'best' ? 'Best Value' : 'Standard')}
+                      </span>
+                    </div>
+                    <span style={{ fontSize: 12, color: '#64748b' }}>{t.items.length} items included</span>
+                    <strong style={{ fontSize: 15, color: '#0f172a', marginTop: 4 }}>
+                      {formatCurrency(tTotals.grandTotal)}
+                    </strong>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Line Items Table (Desktop) */}
         <table className={styles.estimateTable}>
           <thead>
             <tr>
-              <th style={{ width: '48%' }}>Description</th>
-              <th style={{ width: '16%' }}>Type</th>
-              <th style={{ width: '12%' }}>Qty</th>
-              <th style={{ width: '14%' }}>Unit Price</th>
+              <th style={{ width: '45%' }}>Description</th>
+              <th style={{ width: '15%' }}>Category</th>
+              <th style={{ width: '10%', textAlign: 'center' }}>Qty</th>
+              <th style={{ width: '15%', textAlign: 'right' }}>Unit Price ($)</th>
               <th style={{ width: '10%', textAlign: 'right' }}>Total</th>
-              <th style={{ width: '5%' }}></th>
+              <th style={{ width: '5%', textAlign: 'center' }} aria-label="Actions"></th>
             </tr>
           </thead>
           <tbody>
-            {estimate.items.map((item) => (
-              <tr key={item.id}>
-                <td>
-                  <input
-                    type="text"
-                    value={item.description}
-                    onChange={(e) => updateItem(item.id, 'description', e.target.value)}
-                    placeholder="Scope item description..."
-                    className={styles.itemDescInput}
-                    aria-label="Item description"
-                  />
-                </td>
-                <td>
-                  <select
-                    value={item.type}
-                    onChange={(e) => updateItem(item.id, 'type', e.target.value)}
-                    className={styles.itemSelect}
-                    aria-label="Item type"
-                  >
-                    <option value="Labor">Labor</option>
-                    <option value="Material">Material</option>
-                    <option value="Equipment">Equipment</option>
-                    <option value="Permit">Permit</option>
-                  </select>
-                </td>
-                <td>
-                  <input
-                    type="number"
-                    min="1"
-                    step="1"
-                    value={item.quantity}
-                    onChange={(e) => updateItem(item.id, 'quantity', e.target.value)}
-                    className={styles.itemNumInput}
-                    aria-label="Item quantity"
-                  />
-                </td>
-                <td>
-                  <input
-                    type="number"
-                    min="0"
-                    step="1"
-                    value={item.unitPrice}
-                    onChange={(e) => updateItem(item.id, 'unitPrice', e.target.value)}
-                    className={styles.itemNumInput}
-                    aria-label="Unit price"
-                  />
-                </td>
-                <td style={{ textAlign: 'right', fontWeight: 700, color: '#0c202d' }}>
-                  {formatCurrency(clampQuantity(item.quantity, 1) * clampUnitPrice(item.unitPrice, 0))}
-                </td>
-                <td style={{ textAlign: 'center' }}>
-                  {estimate.items.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => removeItem(item.id)}
-                      style={{
-                        background: 'none',
-                        border: 'none',
-                        color: '#dc2626',
-                        cursor: 'pointer',
-                        fontWeight: 800,
-                        fontSize: 16,
-                        padding: 6,
-                      }}
-                      title="Remove item"
-                      aria-label="Remove line item"
+            {activeItems.map((item) => {
+              const qty = clampQuantity(item.quantity, 1);
+              const price = clampUnitPrice(item.unitPrice, 0);
+              const itemTotal = qty * price;
+              const isDisc = item.isDiscount || item.type === 'Discount';
+
+              return (
+                <tr key={item.id} style={{ background: isDisc ? '#fef2f2' : undefined }}>
+                  <td>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <input
+                        type="text"
+                        value={item.description}
+                        onChange={(e) => updateItem(item.id, 'description', e.target.value)}
+                        placeholder="Item description (e.g. Master Tech Labor)"
+                        className={styles.itemDescInput}
+                        aria-label="Item description"
+                      />
+                      <label style={{ fontSize: 11, color: '#64748b', display: 'flex', alignItems: 'center', gap: 3, whiteSpace: 'nowrap', cursor: 'pointer' }}>
+                        <input
+                          type="checkbox"
+                          checked={Boolean(item.isOptional)}
+                          onChange={(e) => updateItem(item.id, 'isOptional', e.target.checked)}
+                          aria-label="Optional item toggle"
+                        />
+                        Optional
+                      </label>
+                    </div>
+                  </td>
+                  <td>
+                    <select
+                      value={item.type}
+                      onChange={(e) => updateItem(item.id, 'type', e.target.value)}
+                      className={styles.itemSelect}
+                      aria-label="Item category"
                     >
-                      ✕
-                    </button>
-                  )}
-                </td>
-              </tr>
-            ))}
+                      <option value="Labor">Labor</option>
+                      <option value="Material">Material</option>
+                      <option value="Equipment">Equipment</option>
+                      <option value="Permit">Permit</option>
+                      <option value="Discount">Discount</option>
+                    </select>
+                  </td>
+                  <td style={{ textAlign: 'center' }}>
+                    <input
+                      type="number"
+                      min="0.01"
+                      step="any"
+                      value={item.quantity}
+                      onChange={(e) => updateItem(item.id, 'quantity', e.target.value)}
+                      className={styles.itemNumInput}
+                      style={{ textAlign: 'center' }}
+                      aria-label="Quantity"
+                    />
+                  </td>
+                  <td style={{ textAlign: 'right' }}>
+                    <input
+                      type="number"
+                      min="0"
+                      step="any"
+                      value={item.unitPrice}
+                      onChange={(e) => updateItem(item.id, 'unitPrice', e.target.value)}
+                      className={styles.itemNumInput}
+                      style={{ textAlign: 'right' }}
+                      aria-label="Unit price"
+                    />
+                  </td>
+                  <td style={{ textAlign: 'right', fontWeight: 800, color: isDisc ? '#dc2626' : '#0c202d' }}>
+                    {isDisc ? `-${formatCurrency(itemTotal)}` : formatCurrency(itemTotal)}
+                  </td>
+                  <td style={{ textAlign: 'center' }}>
+                    {activeItems.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeItem(item.id)}
+                        className={styles.cardRemoveBtn}
+                        style={{ width: 32, height: 32, fontSize: 14 }}
+                        title="Delete line item"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
 
-        {/* Mobile Line Items Stacked Cards (< 768px) */}
-        <div className={styles.mobileItemList}>
-          {estimate.items.map((item, idx) => (
-            <div key={item.id} className={styles.mobileItemCard}>
-              <div className={styles.mobileCardHeader}>
-                <div style={{ flex: 1 }}>
-                  <label style={{ fontSize: 11, fontWeight: 700, color: '#687e8d', display: 'block', marginBottom: 4 }}>
-                    Item #{idx + 1} Type
-                  </label>
-                  <select
-                    value={item.type}
-                    onChange={(e) => updateItem(item.id, 'type', e.target.value)}
-                    className={styles.itemSelect}
-                    aria-label={`Item ${idx + 1} type`}
-                  >
-                    <option value="Labor">Labor</option>
-                    <option value="Material">Material</option>
-                    <option value="Equipment">Equipment</option>
-                    <option value="Permit">Permit</option>
-                  </select>
-                </div>
-
-                {estimate.items.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => removeItem(item.id)}
-                    className={styles.cardRemoveBtn}
-                    title="Remove item"
-                    aria-label={`Remove item ${idx + 1}`}
-                  >
-                    ✕
-                  </button>
-                )}
-              </div>
-
-              <div>
-                <label style={{ fontSize: 11, fontWeight: 700, color: '#687e8d', display: 'block', marginBottom: 4 }}>
-                  Description
-                </label>
-                <input
-                  type="text"
-                  value={item.description}
-                  onChange={(e) => updateItem(item.id, 'description', e.target.value)}
-                  placeholder="Scope item description..."
-                  className={styles.itemDescInput}
-                  aria-label={`Item ${idx + 1} description`}
-                />
-              </div>
-
-              <div className={styles.mobileCardNumbers}>
-                <div>
-                  <label style={{ fontSize: 11, fontWeight: 700, color: '#687e8d', display: 'block', marginBottom: 4 }}>
-                    Qty
-                  </label>
-                  <input
-                    type="number"
-                    min="1"
-                    step="1"
-                    value={item.quantity}
-                    onChange={(e) => updateItem(item.id, 'quantity', e.target.value)}
-                    className={styles.itemNumInput}
-                    style={{ width: '100%' }}
-                    aria-label={`Item ${idx + 1} quantity`}
-                  />
-                </div>
-
-                <div>
-                  <label style={{ fontSize: 11, fontWeight: 700, color: '#687e8d', display: 'block', marginBottom: 4 }}>
-                    Unit Price ($)
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="1"
-                    value={item.unitPrice}
-                    onChange={(e) => updateItem(item.id, 'unitPrice', e.target.value)}
-                    className={styles.itemNumInput}
-                    style={{ width: '100%' }}
-                    aria-label={`Item ${idx + 1} unit price`}
-                  />
-                </div>
-
-                <div className={styles.mobileItemTotal}>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: '#687e8d', display: 'block', marginBottom: 4 }}>
-                    Line Total
-                  </span>
-                  <span>{formatCurrency(clampQuantity(item.quantity, 1) * clampUnitPrice(item.unitPrice, 0))}</span>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Add Line Item Button */}
+        {/* Action Button Row */}
         <div className={styles.actionBtnRow}>
           <button type="button" onClick={addItem} className={styles.addLineBtn}>
             + Add Line Item
           </button>
+          <button
+            type="button"
+            onClick={addDiscountItem}
+            className={styles.addLineBtn}
+            style={{ color: '#b91c1c', borderColor: '#fca5a5', background: '#fff5f5' }}
+          >
+            - Add Discount
+          </button>
         </div>
 
-        {/* Totals & Terms */}
+        {/* Terms, Tax, Deposit & Totals Grid */}
         <div className={styles.termsAndTotalsGrid}>
           <div>
-            <label style={{ fontSize: 12, fontWeight: 750, color: '#4a5c68', display: 'block', marginBottom: 6 }}>
-              Terms &amp; Warranty Notes:
+            <label style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', color: '#687e8d', display: 'block', marginBottom: 6 }}>
+              Terms, Conditions &amp; Warranty Notes
             </label>
             <textarea
+              rows={3}
               value={estimate.terms}
               onChange={(e) => handleFieldChange('terms', e.target.value)}
-              rows={4}
               className={styles.termsTextarea}
-              aria-label="Scope notes and warranty terms"
-              placeholder="e.g. Estimate valid for 30 days. Deposit required upon scheduling..."
+              placeholder="e.g. Estimate valid for 30 days. Deposit required prior to scheduling."
+              aria-label="Terms and conditions notes"
             />
+
+            {/* Payment Milestone Schedule Expander */}
+            <div className={styles.milestoneScheduleBox}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                <strong style={{ fontSize: 13, color: '#334155' }}>💳 Payment Milestone Schedule</strong>
+                <label style={{ fontSize: 12, fontWeight: 700, color: '#2563eb', display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={estimate.milestonesEnabled}
+                    onChange={(e) => handleFieldChange('milestonesEnabled', e.target.checked)}
+                  />
+                  Enable Milestones
+                </label>
+              </div>
+
+              {estimate.milestonesEnabled && (
+                <div style={{ marginTop: 8 }}>
+                  {totals.milestones?.map((m, idx) => (
+                    <div key={idx} className={styles.milestoneRow}>
+                      <span>{m.name}</span>
+                      <strong>{formatCurrency(m.amount)} ({m.percentage}%)</strong>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
           <div className={styles.totalsBox}>
             <div className={styles.totalLine}>
               <span>Subtotal:</span>
-              <strong>{formatCurrency(totals.subtotal)}</strong>
+              <strong style={{ color: '#0c202d' }}>{formatCurrency(totals.subtotal)}</strong>
             </div>
+
+            {totals.discountTotal > 0 && (
+              <div className={styles.totalLine} style={{ color: '#dc2626' }}>
+                <span>Discounts:</span>
+                <strong>-{formatCurrency(totals.discountTotal)}</strong>
+              </div>
+            )}
 
             <div className={styles.totalLine}>
               <span>
                 Tax (
                 <input
                   type="number"
-                  step="0.1"
                   min="0"
                   max="100"
                   value={estimate.taxRate}
-                  onChange={(e) => handleFieldChange('taxRate', clampPercentage(e.target.value, 0))}
+                  onChange={(e) => handleFieldChange('taxRate', clampPercentage(e.target.value))}
                   className={styles.totalPercentInput}
                   aria-label="Tax percentage"
                 />
@@ -847,7 +913,7 @@ export default function EstimateGeneratorClient() {
             </div>
 
             <div className={`${styles.totalLine} ${styles.totalGrand}`}>
-              <span>Total Amount:</span>
+              <span>Total:</span>
               <span>{formatCurrency(totals.grandTotal)}</span>
             </div>
 
@@ -859,8 +925,9 @@ export default function EstimateGeneratorClient() {
                   min="0"
                   max="100"
                   value={estimate.depositPct}
-                  onChange={(e) => handleFieldChange('depositPct', clampPercentage(e.target.value, 0))}
+                  onChange={(e) => handleFieldChange('depositPct', clampPercentage(e.target.value))}
                   className={styles.totalPercentInput}
+                  style={{ border: '1px solid #a3e5ce' }}
                   aria-label="Deposit percentage"
                 />
                 %):
@@ -870,7 +937,66 @@ export default function EstimateGeneratorClient() {
           </div>
         </div>
 
-        {/* Primary Action Buttons */}
+        {/* Multi-Tier Side-by-Side Comparison Grid (if in 3-Tier Mode) */}
+        {estimate.mode === 'multi_tier' && (
+          <div style={{ marginTop: 32, paddingTop: 24, borderTop: '2px dashed #e2e8f0' }}>
+            <h3 style={{ fontSize: 18, fontWeight: 900, color: '#0f172a', margin: '0 0 4px' }}>
+              📊 Package Comparison Summary (Customer Preview)
+            </h3>
+            <p style={{ fontSize: 13, color: '#64748b', margin: '0 0 16px' }}>
+              This side-by-side view shows how your 3 tiers compare for the client to choose their preferred option.
+            </p>
+
+            <div className={styles.tierComparisonGrid}>
+              {estimate.tiers.map((t) => {
+                const isRec = t.isRecommended;
+                const tTotals = calculateEstimateTotals(t.items, t.taxRate, t.depositPct, t.discountAmount);
+
+                return (
+                  <div key={t.id} className={`${styles.tierCard} ${isRec ? styles.tierCardRec : ''}`}>
+                    {isRec && (
+                      <span
+                        style={{
+                          position: 'absolute',
+                          top: -12,
+                          right: 16,
+                          background: '#2563eb',
+                          color: '#ffffff',
+                          fontSize: 11,
+                          fontWeight: 800,
+                          padding: '3px 10px',
+                          borderRadius: 999,
+                          textTransform: 'uppercase',
+                        }}
+                      >
+                        ⭐ Most Popular
+                      </span>
+                    )}
+
+                    <h4 className={styles.tierCardTitle}>{t.name}</h4>
+                    <p className={styles.tierCardDesc}>{t.description}</p>
+                    <div className={styles.tierCardPrice}>{formatCurrency(tTotals.grandTotal)}</div>
+
+                    <ul className={styles.tierCardItemsList}>
+                      {t.items.map((it) => (
+                        <li key={it.id} className={styles.tierCardItem}>
+                          <span style={{ color: '#16a34a' }}>✓</span>
+                          <span>{it.description || 'Service component'}</span>
+                        </li>
+                      ))}
+                    </ul>
+
+                    <div style={{ marginTop: 'auto', paddingTop: 12, borderTop: '1px solid #e2e8f0', fontSize: 12, color: '#64748b' }}>
+                      Deposit required: <strong>{formatCurrency(tTotals.depositDue)}</strong>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Action Bar */}
         <div className={styles.printActions}>
           <div className={styles.actionButtonsCluster}>
             <button type="button" onClick={handlePrint} className={styles.printBtn}>
@@ -879,27 +1005,19 @@ export default function EstimateGeneratorClient() {
             <button
               type="button"
               onClick={handleCopySummary}
-              className={`${styles.copyBtn} ${copied ? styles.copyBtnCopied : ''}`}
+              className={styles.copyBtn}
+              style={{ background: copied ? '#e0fbf0' : '#f0f4f7' }}
             >
               {copied ? '✓ Copied to Clipboard!' : '📋 Copy Text Summary'}
             </button>
           </div>
-        </div>
 
-        {/* Contextual Post-Action Conversion Opportunity */}
-        <div className={styles.postActionCta}>
-          <div className={styles.postActionText}>
-            <h3 className={styles.postActionTitle}>
-              Save this estimate, text it for approval, and collect a deposit.
-            </h3>
-            <p className={styles.postActionDesc}>
-              Let’s Get Quoted lets trade contractors send interactive SMS quotes with 1-tap Apple Pay deposits,
-              automatic customer follow-ups, and live booking with zero monthly fee.
-            </p>
+          <div style={{ fontSize: 13, color: '#687e8d' }}>
+            Save this estimate, text it for approval, and collect a deposit:{' '}
+            <Link href={signupUrl} style={{ color: '#ff6a24', fontWeight: 800 }}>
+              Try Let’s Get Quoted ($0/mo Flex) &rarr;
+            </Link>
           </div>
-          <Link href={signupUrl} className={styles.postActionBtn}>
-            Start Free on Flex ($0/mo) &rarr;
-          </Link>
         </div>
       </div>
     </section>

@@ -75,6 +75,23 @@ describe('voice recording status ingest webhook (/api/voice/recording-status)', 
       recording_content_type: 'audio/mp3',
     });
   });
+
+  it('rejects recording callbacks containing invalid or untrusted URL schemes', async () => {
+    const req = new Request('http://localhost/api/voice/recording-status', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        call_id: PROVIDER_CALL_ID,
+        recording_status: 'completed',
+        recording_url: 'http://malicious-site.example.com/exploit.mp3',
+      }),
+    });
+
+    const res = await recordingStatusHandler(req);
+    expect(res.status).toBe(400);
+    const data = await res.json();
+    expect(data.error).toBe('invalid_recording_url');
+  });
 });
 
 describe('authenticated voice recording playback endpoint (/api/voice/recordings/[recordingId])', () => {
@@ -97,6 +114,38 @@ describe('authenticated voice recording playback endpoint (/api/voice/recordings
     const res = await recordingPlaybackHandler(req, { params: { recordingId: CALL_ID } });
 
     expect(res.status).toBe(404);
+  });
+
+  it('rejects playback redirect if recording URL hostname is untrusted', async () => {
+    const mockSupabase = {
+      from() {
+        const chain: Record<string, unknown> = {};
+        for (const method of ['select', 'eq']) chain[method] = () => chain;
+        chain.maybeSingle = async () => ({
+          data: {
+            id: CALL_ID,
+            recording_status: 'ready',
+            recording_storage_path: 'https://evil-untrusted-host.com/audio.mp3',
+            recording_duration_seconds: 45,
+            started_at: '2026-08-25T13:00:00Z',
+          },
+          error: null,
+        });
+        return chain;
+      },
+    };
+
+    mockRequireOfficeContext.mockResolvedValue({
+      supabase: mockSupabase,
+      accountId: ACCOUNT_ID,
+    });
+
+    const req = new Request(`http://localhost/api/voice/recordings/${CALL_ID}`);
+    const res = await recordingPlaybackHandler(req, { params: { recordingId: CALL_ID } });
+
+    expect(res.status).toBe(403);
+    const data = await res.json();
+    expect(data.error).toBe('untrusted_storage_host');
   });
 
   it('redirects with private no-store headers when audio is ready', async () => {

@@ -11,13 +11,16 @@ vi.mock('@/lib/auth', () => ({
 }));
 
 const mockCreateLead = vi.fn();
+const mockConvertLeadToJob = vi.fn();
 vi.mock('@/lib/leads', () => ({
   createLead: (...args: unknown[]) => mockCreateLead(...args),
+  convertLeadToJob: (...args: unknown[]) => mockConvertLeadToJob(...args),
 }));
 
 import {
   addVoiceCallNoteAction,
   createLeadFromVoiceCallAction,
+  convertVoiceCallToQuoteDraftAction,
   scheduleVoiceCallCallbackAction,
   updateVoiceCallDispositionAction,
 } from '@/app/dashboard/voice-calls/actions';
@@ -69,6 +72,7 @@ describe('voice call workflow server actions', () => {
     mockRevalidatePath.mockReset();
     mockRequireOfficeContext.mockReset();
     mockCreateLead.mockReset();
+    mockConvertLeadToJob.mockReset();
 
     mockRequireOfficeContext.mockResolvedValue({
       supabase: mockSupabase,
@@ -77,6 +81,7 @@ describe('voice call workflow server actions', () => {
       userEmail: 'dispatcher@example.com',
     });
     mockCreateLead.mockResolvedValue({ id: 'new-lead-123' });
+    mockConvertLeadToJob.mockResolvedValue({ id: 'new-job-456', ref: 'JOB-0456' });
   });
 
   it('updates staff disposition with reviewed attribution', async () => {
@@ -154,5 +159,26 @@ describe('voice call workflow server actions', () => {
     }));
     const callUpdate = updates.find((u) => u.table === 'voice_calls');
     expect(callUpdate).toMatchObject({ lead_id: 'new-lead-123' });
+  });
+
+  it('converts voice call directly into a draft quote job and marks disposition converted', async () => {
+    const formData = new FormData();
+    formData.append('callId', CALL_ID);
+
+    const res = await convertVoiceCallToQuoteDraftAction(formData);
+
+    expect(res.jobId).toBe('new-job-456');
+    expect(mockConvertLeadToJob).toHaveBeenCalledWith(mockSupabase, ACCOUNT_ID, 'new-lead-123', 0, null);
+
+    const workflowUpsert = upserts.find((u) => u.table === 'voice_call_workflows');
+    expect(workflowUpsert).toBeDefined();
+    expect(workflowUpsert).toMatchObject({
+      call_id: CALL_ID,
+      account_id: ACCOUNT_ID,
+      disposition: 'converted',
+      reviewed_by: USER_ID,
+    });
+    expect(mockRevalidatePath).toHaveBeenCalledWith('/dashboard/voice-calls');
+    expect(mockRevalidatePath).toHaveBeenCalledWith('/dashboard/jobs');
   });
 });

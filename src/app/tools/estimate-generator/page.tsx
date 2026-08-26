@@ -250,6 +250,13 @@ export default function EstimateGeneratorPage() {
 
               <div className={styles.faqGrid}>
                 <div className={styles.faqCard}>
+                  <h3 className={styles.faqQuestion}>Why do 3-tier (Good / Better / Best) estimates win more jobs?</h3>
+                  <p className={styles.faqAnswer}>
+                    Presenting single lump-sum quotes forces homeowners into a binary &quot;yes or no&quot; decision. Offering 3 packages (Standard, Recommended, and Premium) reframes the choice into &quot;which option is best for our home?&quot; Over 60% of homeowners choose the middle (Recommended) tier, increasing contractor average ticket sizes by 30% to 50%.
+                  </p>
+                </div>
+
+                <div className={styles.faqCard}>
                   <h3 className={styles.faqQuestion}>How much deposit can a contractor legally charge?</h3>
                   <p className={styles.faqAnswer}>
                     In most US states, residential contractors commonly collect 20% to 33% upfront to purchase materials

@@ -30,12 +30,18 @@ export type VoiceSettingsInput = {
   greeting: string;
   transferNumber: string;
   alertPhone?: string;
+  voiceTone?: string;
   businessHours: Record<string, [string, string] | null>;
 };
 
 function statusOf(value: unknown): 'off' | 'active' | 'paused' {
   if (value === 'off' || value === 'active' || value === 'paused') return value;
   throw new Error('Choose Off, Answering, or Paused.');
+}
+
+function voiceToneOf(value: unknown): 'friendly' | 'professional' | 'urgent_dispatcher' {
+  if (value === 'friendly' || value === 'professional' || value === 'urgent_dispatcher') return value;
+  return 'professional';
 }
 
 function answerModeOf(value: unknown): 'always' | 'after_hours' {
@@ -167,6 +173,7 @@ export async function updateVoiceSettingsAction(
       answer_mode: answerMode,
       greeting,
       transfer_number: transferNumber,
+      voice_tone: voiceToneOf(input.voiceTone),
       business_hours: hours,
     }, { onConflict: 'account_id' });
 

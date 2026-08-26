@@ -23,6 +23,7 @@ export async function GET(request: Request) {
 
     const queue = await loadVoiceWorkspaceQueue(supabase, accountId, {
       dateRange: dateRangeParam || 'all',
+      limit: 1000,
     });
 
     const headers = [

@@ -245,4 +245,41 @@ describe('rendering an answer', () => {
     expect(provider.renderAnswer({ kind: 'unavailable', message: 'Sorry.' }).body)
       .not.toContain('<Record');
   });
+
+  it('parses structured JSON post prompt data into receipt.structuredPostPrompt', () => {
+    const payload = {
+      ...measured(),
+      post_prompt_data: {
+        raw: JSON.stringify({
+          caller_name: 'Marcus Brody',
+          caller_phone: '+12485554321',
+          service_address: '100 Indiana Blvd',
+          work_requested: 'Furnace blowing cold air',
+          urgency: 'urgent',
+          is_emergency: false,
+          hazard_type: null,
+          requested_slot: 'Tomorrow Afternoon',
+          follow_up_action: 'callback_required',
+          confidence: 0.95,
+        }),
+      },
+    };
+
+    const parsed = provider.parseReceipt(payload);
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+
+    expect(parsed.receipt.structuredPostPrompt).toEqual({
+      caller_name: 'Marcus Brody',
+      caller_phone: '+12485554321',
+      service_address: '100 Indiana Blvd',
+      work_requested: 'Furnace blowing cold air',
+      urgency: 'urgent',
+      is_emergency: false,
+      hazard_type: null,
+      requested_slot: 'Tomorrow Afternoon',
+      follow_up_action: 'callback_required',
+      confidence: 0.95,
+    });
+  });
 });

@@ -9,6 +9,7 @@ import {
 import { formatCallLength } from '@/lib/voice/call-formatting';
 import { describeSettlement, type VoiceCallSettlement } from '@/lib/voice/call-history';
 import { detectCallEmergency } from '@/lib/voice/triage';
+import { convertVoiceCallToQuoteDraftAction } from '../actions';
 import VoiceCallWorkflowPanel from './VoiceCallWorkflowPanel';
 import InteractiveTranscriptViewer from './InteractiveTranscriptViewer';
 import QuickSmsFollowupCard from './QuickSmsFollowupCard';
@@ -85,6 +86,16 @@ export default async function VoiceCallDetailPage({
         </div>
 
         <div className={styles.headerActions}>
+          <form action={convertVoiceCallToQuoteDraftAction} style={{ display: 'inline' }}>
+            <input type="hidden" name="callId" value={call.id} />
+            <button
+              type="submit"
+              className={`${styles.actionBtn} ${styles.actionBtnSecondary}`}
+              style={{ background: 'rgba(59, 130, 246, 0.15)', borderColor: 'rgba(59, 130, 246, 0.35)', color: '#93c5fd', cursor: 'pointer' }}
+            >
+              ⚡ Convert to Quote →
+            </button>
+          </form>
           {call.callerNumber ? (
             <a
               href={`tel:${call.callerNumber}`}

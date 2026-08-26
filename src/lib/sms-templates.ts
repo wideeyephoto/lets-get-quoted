@@ -85,6 +85,15 @@ export function callerVoiceBookingLinkText(input: {
   return `Thanks for calling ${input.businessName}! Here is the direct link to book an appointment or request an estimate: ${input.bookingUrl} — Reply STOP to opt out.`;
 }
 
+export function callerVoiceBookingConfirmationText(input: {
+  businessName: string;
+  whenLabel: string;
+  serviceAddress?: string | null;
+}): string {
+  const atAddress = input.serviceAddress ? ` for ${input.serviceAddress}` : '';
+  return `Thanks for calling ${input.businessName}! Your appointment request for ${input.whenLabel}${atAddress} has been received. Our team will follow up shortly to confirm details. Reply STOP to opt out.`;
+}
+
 
 // -- Quick Stop --------------------------------------------------------------
 
@@ -416,6 +425,27 @@ export function inboxReplyText(input: { businessName: string; body: string }): s
 
 export function campaignText(input: { businessName: string; body: string }): string {
   return `${input.businessName}: ${input.body} Reply STOP to opt out.`;
+}
+
+export function callerVoicePostCallFollowupText(input: {
+  businessName: string;
+  callerName?: string | null;
+  scheduledTime?: string | null;
+  portalUrl?: string | null;
+  issueSummary?: string | null;
+}): string {
+  const greeting = input.callerName?.trim() ? `Hi ${input.callerName.trim()}, ` : '';
+  if (input.scheduledTime) {
+    const linkClause = input.portalUrl ? ` Details & manage: ${input.portalUrl}` : '';
+    return withOptOut(
+      `${greeting}thanks for calling ${input.businessName}! We've reserved your appointment for ${input.scheduledTime}.${linkClause}`
+    );
+  }
+  const linkClause = input.portalUrl ? ` View status: ${input.portalUrl}` : '';
+  const issueClause = input.issueSummary ? ` regarding ${input.issueSummary}` : '';
+  return withOptOut(
+    `${greeting}thanks for calling ${input.businessName}! We received your inquiry${issueClause}.${linkClause}`
+  );
 }
 
 // -- the ones that live with their own logic ---------------------------------

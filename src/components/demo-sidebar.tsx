@@ -93,6 +93,7 @@ const GROUPS: { label: string; accent: string; items: DemoItem[] }[] = [
       // own, so it points at the demo settings screen — the same place the row
       // pointed before, now under the right heading.
       { icon: '/dashboard/automations', label: 'Automations', href: '/demo/settings' },
+      { icon: '/dashboard/voice-calls', label: 'AI Voice Assistant', href: '/demo/settings' },
       { icon: '/dashboard/messages', label: 'Messages', href: '/demo/messages' },
       // The demo's marketing area mirrors the real one's shape now, so the rail
       // points at its overview exactly as the live rail does. The old

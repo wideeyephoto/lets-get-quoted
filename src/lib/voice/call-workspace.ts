@@ -243,7 +243,7 @@ export async function loadVoiceWorkspaceQueue(
   accountId: string,
   filters: VoiceWorkspaceFilters = {},
 ): Promise<VoiceWorkspaceQueueResult> {
-  const limit = Math.min(200, Math.max(1, filters.limit ?? 100));
+  const limit = Math.min(1000, Math.max(1, filters.limit ?? 100));
   const historyDays = boundedVoiceHistoryDays(filters.historyDays);
   const now = filters.now ?? new Date();
   const retainedAfter = new Date(
@@ -253,6 +253,28 @@ export async function loadVoiceWorkspaceQueue(
   const todayStart = new Date(now);
   todayStart.setHours(0, 0, 0, 0);
   const todayStartIso = todayStart.toISOString();
+
+  // Date range cutoff determination
+  const dateRange = filters.dateRange ?? 'all';
+  let startCutoffIso: string | null = null;
+  if (dateRange !== 'all') {
+    const nowMs = now.getTime();
+    if (dateRange === 'today') {
+      startCutoffIso = todayStartIso;
+    } else if (dateRange === 'yesterday') {
+      const yesterday = new Date(now);
+      yesterday.setDate(yesterday.getDate() - 1);
+      yesterday.setHours(0, 0, 0, 0);
+      startCutoffIso = yesterday.toISOString();
+    } else if (dateRange === '7d') {
+      startCutoffIso = new Date(nowMs - 7 * 24 * 60 * 60 * 1000).toISOString();
+    } else if (dateRange === '30d') {
+      startCutoffIso = new Date(nowMs - 30 * 24 * 60 * 60 * 1000).toISOString();
+    } else if (dateRange === 'month') {
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      startCutoffIso = monthStart.toISOString();
+    }
+  }
 
   try {
     const { data: rawCalls, error: callsError } = await supabase
@@ -278,8 +300,7 @@ export async function loadVoiceWorkspaceQueue(
       `)
       .eq('account_id', accountId)
       .gte('created_at', retainedAfter)
-      .order('started_at', { ascending: false, nullsFirst: false })
-      .limit(limit);
+      .order('started_at', { ascending: false, nullsFirst: false });
 
     if (callsError) {
       console.error('Voice calls workspace queue read failed:', callsError);
@@ -349,7 +370,12 @@ export async function loadVoiceWorkspaceQueue(
       };
     });
 
-    // Compute top-level counters and analytics
+    // Apply dateRange filter before computing counters
+    const dateFilteredItems = startCutoffIso
+      ? allItems.filter((i) => i.startedAt && i.startedAt >= startCutoffIso)
+      : allItems;
+
+    // Compute top-level counters and analytics on the date-filtered set
     let unreviewed = 0;
     let needsCallback = 0;
     let urgent = 0;
@@ -361,7 +387,7 @@ export async function loadVoiceWorkspaceQueue(
     let leadsGeneratedCount = 0;
     const hourHistogram: Record<number, number> = {};
 
-    for (const item of allItems) {
+    for (const item of dateFilteredItems) {
       if (item.workflow.disposition === 'unreviewed') unreviewed += 1;
       if (item.workflow.disposition === 'needs_callback') needsCallback += 1;
       if (item.workflow.urgency === 'urgent' || item.workflow.urgency === 'emergency') urgent += 1;
@@ -401,7 +427,7 @@ export async function loadVoiceWorkspaceQueue(
     }
 
     const totalAiMinutes = Math.ceil(totalAiSeconds / 60);
-    const avgDurationSeconds = allItems.length > 0 ? Math.round(totalAiSeconds / allItems.length) : 0;
+    const avgDurationSeconds = dateFilteredItems.length > 0 ? Math.round(totalAiSeconds / dateFilteredItems.length) : 0;
 
     const counters: VoiceWorkspaceCounters = {
       unreviewed,
@@ -409,7 +435,7 @@ export async function loadVoiceWorkspaceQueue(
       urgent,
       transferred,
       completedToday,
-      totalCount: allItems.length,
+      totalCount: dateFilteredItems.length,
       totalAiMinutes,
       avgDurationSeconds,
       handledCount,
@@ -418,34 +444,8 @@ export async function loadVoiceWorkspaceQueue(
       peakHour: peakHourStr,
     };
 
-    // Filter items based on active tab, dateRange, and search params
-    let filtered = allItems;
-
-    // Date range filtering
-    const dateRange = filters.dateRange ?? 'all';
-    if (dateRange !== 'all') {
-      const nowMs = now.getTime();
-      let startCutoffIso: string | null = null;
-      if (dateRange === 'today') {
-        startCutoffIso = todayStartIso;
-      } else if (dateRange === 'yesterday') {
-        const yesterday = new Date(now);
-        yesterday.setDate(yesterday.getDate() - 1);
-        yesterday.setHours(0, 0, 0, 0);
-        startCutoffIso = yesterday.toISOString();
-      } else if (dateRange === '7d') {
-        startCutoffIso = new Date(nowMs - 7 * 24 * 60 * 60 * 1000).toISOString();
-      } else if (dateRange === '30d') {
-        startCutoffIso = new Date(nowMs - 30 * 24 * 60 * 60 * 1000).toISOString();
-      } else if (dateRange === 'month') {
-        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-        startCutoffIso = monthStart.toISOString();
-      }
-
-      if (startCutoffIso) {
-        filtered = filtered.filter((i) => i.startedAt && i.startedAt >= startCutoffIso);
-      }
-    }
+    // Filter items based on active tab and search params
+    let filtered = dateFilteredItems;
 
     const tab = filters.tab ?? 'all';
     if (tab === 'unreviewed') {
@@ -480,9 +480,11 @@ export async function loadVoiceWorkspaceQueue(
       );
     }
 
+    const pagedItems = filtered.slice(0, limit);
+
     return {
       available: true,
-      items: filtered,
+      items: pagedItems,
       counters,
     };
   } catch (error) {

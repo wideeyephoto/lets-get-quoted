@@ -8,10 +8,14 @@ import {
   type VoiceCallDisposition,
 } from '@/lib/voice/call-workspace';
 import { formatCallLength } from '@/lib/voice/call-formatting';
+import { convertVoiceCallToQuoteDraftAction } from './actions';
 import VoiceCallsLiveRefresher from './VoiceCallsLiveRefresher';
+import VoiceControlsSection from './VoiceControlsSection';
+import VoiceSimulatorSandbox from './VoiceSimulatorSandbox';
+import VoiceHealthWidget from './VoiceHealthWidget';
 import styles from './voice-calls.module.css';
 
-export const metadata = { title: 'Voice Calls | Operational Inbox' };
+export const metadata = { title: 'AI Voice Assistant | Receptionist & Call Triage' };
 
 function formatCallTime(iso: string | null, timeZone: string): string {
   if (!iso) return '—';
@@ -40,23 +44,29 @@ export default async function VoiceCallsPage({
 }) {
   const { supabase, accountId } = await requireOfficeContext('leads.read');
 
-  const { data: account } = await supabase
-    .from('accounts')
-    .select('timezone')
-    .eq('id', accountId)
-    .maybeSingle();
+  const [{ data: account }, { data: voiceSettings }, queue] = await Promise.all([
+    supabase
+      .from('accounts')
+      .select('company_name, trade, phone, timezone, license_number, service_areas')
+      .eq('id', accountId)
+      .maybeSingle(),
+    supabase
+      .from('voice_settings')
+      .select('status, answer_mode, greeting, transfer_number, alert_phone')
+      .eq('account_id', accountId)
+      .maybeSingle(),
+    loadVoiceWorkspaceQueue(supabase, accountId, {
+      tab: (searchParams.tab as 'all' | 'unreviewed' | 'needs_callback' | 'urgent' | 'transferred' | 'completed') || 'all',
+      dateRange: (searchParams.dateRange as 'all' | 'today' | 'yesterday' | '7d' | '30d' | 'month') || 'all',
+      query: searchParams.q,
+      disposition: (searchParams.disposition as VoiceCallDisposition) || 'all',
+      outcome: (searchParams.outcome as VoiceCallOutcome) || 'all',
+    }),
+  ]);
 
   const timezone = (account?.timezone as string) || 'America/New_York';
   const currentTab = (searchParams.tab as 'all' | 'unreviewed' | 'needs_callback' | 'urgent' | 'transferred' | 'completed') || 'all';
   const currentDateRange = (searchParams.dateRange as 'all' | 'today' | 'yesterday' | '7d' | '30d' | 'month') || 'all';
-
-  const queue = await loadVoiceWorkspaceQueue(supabase, accountId, {
-    tab: currentTab,
-    dateRange: currentDateRange,
-    query: searchParams.q,
-    disposition: (searchParams.disposition as VoiceCallDisposition) || 'all',
-    outcome: (searchParams.outcome as VoiceCallOutcome) || 'all',
-  });
 
   const { counters, items } = queue;
   const handledRate = counters.totalCount > 0
@@ -67,8 +77,8 @@ export default async function VoiceCallsPage({
     <div className={styles.container}>
       <div className={styles.header}>
         <div className={styles.headerTitle}>
-          <h1>Voice Calls Inbox</h1>
-          <p>Triage AI receptionist calls, review transcripts, and schedule customer callbacks.</p>
+          <h1>AI Voice Assistant</h1>
+          <p>24/7 AI Receptionist, live in-call booking controls, and operational call triage inbox.</p>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
@@ -81,6 +91,28 @@ export default async function VoiceCallsPage({
           </a>
         </div>
       </div>
+
+      {/* Live Carrier SignalWire Engine & Webhook Latency Health Widget */}
+      <VoiceHealthWidget />
+
+      {/* AI Voice Assistant Active Controls & Status Matrix */}
+      <VoiceControlsSection
+        status={(voiceSettings?.status as 'active' | 'paused' | 'off') || 'active'}
+        answerMode={(voiceSettings?.answer_mode as 'always' | 'after_hours') || 'always'}
+        phoneNumber={voiceSettings?.transfer_number || account?.phone || null}
+        greeting={voiceSettings?.greeting || null}
+        transferNumber={voiceSettings?.transfer_number || null}
+        businessName={account?.company_name || null}
+        trade={account?.trade || null}
+        serviceAreas={account?.service_areas || null}
+      />
+
+      {/* In-Browser Zero-Minute Voice Simulator Sandbox */}
+      <VoiceSimulatorSandbox
+        companyName={account?.company_name || 'Our Company'}
+        trade={account?.trade || 'Contractor'}
+        voiceTone={(voiceSettings?.voice_tone as string) || 'professional'}
+      />
 
       {/* AI Voice Intelligence & Performance Analytics */}
       <div className={styles.analyticsGrid}>
@@ -311,6 +343,24 @@ export default async function VoiceCallsPage({
                     ) : null}
                   </div>
                   <div className={styles.footerRight}>
+                    <form action={convertVoiceCallToQuoteDraftAction} style={{ display: 'inline' }}>
+                      <input type="hidden" name="callId" value={call.id} />
+                      <button
+                        type="submit"
+                        className={styles.linkButton}
+                        style={{
+                          fontWeight: 600,
+                          color: '#93c5fd',
+                          background: 'none',
+                          border: 'none',
+                          cursor: 'pointer',
+                          padding: 0,
+                          font: 'inherit',
+                        }}
+                      >
+                        ⚡ Convert to Quote →
+                      </button>
+                    </form>
                     {call.leadId ? (
                       <Link href={`/dashboard/leads/${call.leadId}`} className={styles.linkButton}>
                         View Lead Profile →

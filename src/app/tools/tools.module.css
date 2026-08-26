@@ -1411,7 +1411,8 @@
   .estimateBillTo,
   .estimateTable tr,
   .totalsBox,
-  .termsAndTotalsGrid {
+  .termsAndTotalsGrid,
+  .tierComparisonGrid {
     break-inside: avoid !important;
     page-break-inside: avoid !important;
   }
@@ -1420,3 +1421,171 @@
     border-top: 2px solid #0c202d !important;
   }
 }
+
+/* Multi-Tier Good / Better / Best Option Package Styles */
+.packageModeBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-bottom: 18px;
+}
+
+.tierTabsRow {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.tierTabBtn {
+  flex: 1;
+  min-width: 140px;
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 10px 14px;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  transition: all 0.15s ease;
+}
+
+.tierTabBtnActive {
+  background: #ffffff;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+}
+
+.tierTabRecommended {
+  border-color: #f59e0b;
+}
+
+.tierTabRecommended.tierTabBtnActive {
+  border-color: #d97706;
+  box-shadow: 0 0 0 2px rgba(217, 119, 6, 0.2);
+}
+
+.tierBadgeRibbon {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+
+.ribbonRecommended {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.ribbonBest {
+  background: #e0e7ff;
+  color: #4338ca;
+}
+
+.ribbonStandard {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.tierComparisonGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+  margin: 24px 0;
+}
+
+.tierCard {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.tierCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08);
+}
+
+.tierCardRec {
+  border: 2px solid #2563eb;
+  background: #f8faff;
+}
+
+.tierCardTitle {
+  font-size: 18px;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0 0 4px;
+}
+
+.tierCardDesc {
+  font-size: 13px;
+  color: #64748b;
+  margin: 0 0 16px;
+  line-height: 1.4;
+}
+
+.tierCardPrice {
+  font-size: 26px;
+  font-weight: 900;
+  color: #0f172a;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.tierCardItemsList {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 13px;
+  color: #334155;
+}
+
+.tierCardItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.milestoneScheduleBox {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 14px 16px;
+  margin-top: 16px;
+}
+
+.milestoneRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  color: #475569;
+  padding: 6px 0;
+  border-bottom: 1px dashed #e2e8f0;
+}
+
+.milestoneRow:last-child {
+  border-bottom: none;
+}
+

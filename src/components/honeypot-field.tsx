@@ -50,6 +50,17 @@ const HIDDEN: CSSProperties = {
   pointerEvents: 'none',
 };
 
+const INPUT_HIDDEN: CSSProperties = {
+  position: 'absolute',
+  width: 0,
+  height: 0,
+  padding: 0,
+  margin: 0,
+  border: 0,
+  opacity: 0,
+  pointerEvents: 'none',
+};
+
 export function HoneypotField() {
   return (
     <div aria-hidden="true" style={HIDDEN}>
@@ -57,7 +68,9 @@ export function HoneypotField() {
         name={HONEYPOT_FIELD}
         type="text"
         tabIndex={-1}
+        aria-hidden="true"
         autoComplete="off"
+        style={INPUT_HIDDEN}
         data-lpignore="true"
         data-1p-ignore="true"
         data-bwignore="true"

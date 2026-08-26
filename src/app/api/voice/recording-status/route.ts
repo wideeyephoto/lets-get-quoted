@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/auth';
+import { verifyVoiceReceiptAuthorization, isTrustedVoiceMediaUrl } from '@/lib/voice/auth';
 
 function text(value: unknown): string | null {
   if (typeof value === 'string' && value.trim()) return value.trim();
@@ -11,8 +12,17 @@ function integer(value: unknown): number | null {
   return Number.isSafeInteger(n) && n >= 0 ? n : null;
 }
 
+function isValidRecordingUrl(urlStr: string): boolean {
+  return isTrustedVoiceMediaUrl(urlStr);
+}
+
 export async function POST(req: Request) {
   try {
+    const authCheck = verifyVoiceReceiptAuthorization(req);
+    if (!authCheck.ok && authCheck.reason === 'mismatch') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     let payload: Record<string, unknown> = {};
     const contentType = req.headers.get('content-type') || '';
 
@@ -36,6 +46,10 @@ export async function POST(req: Request) {
     const isCompleted = statusRaw === 'completed' || statusRaw === 'ready';
 
     const recordingUrl = text(payload.recording_url) ?? text(payload.RecordingUrl);
+    if (recordingUrl && !isValidRecordingUrl(recordingUrl)) {
+      return NextResponse.json({ error: 'invalid_recording_url' }, { status: 400 });
+    }
+
     const durationSeconds = integer(payload.recording_duration) ?? integer(payload.RecordingDuration);
     const sizeBytes = integer(payload.recording_size) ?? integer(payload.RecordingSize);
 

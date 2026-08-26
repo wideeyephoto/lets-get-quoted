@@ -9,6 +9,8 @@ import {
   signalWireVoiceScope,
   voiceReceiptAuthorization,
   voiceWebhookSecuritySummary,
+  signVoiceToolToken,
+  verifyVoiceToolToken,
 } from '@/lib/voice/auth';
 
 const ENV = { LGQ_VOICE_RECEIPT_BASIC: 'voice-receipt:test:password' };
@@ -156,3 +158,60 @@ describe('voice webhook route boundaries', () => {
     expect(receipt).not.toMatch(/ingestVoiceEvent\([\s\S]*?\bpayload,\s*[\s\S]*?\)/);
   });
 });
+
+describe('SWAIG admission-bound tool token security', () => {
+  const tokenEnv = { SIGNALWIRE_SIGNING_KEY: 'test-secret-key-1234567890' };
+
+  it('signs and verifies a valid admission-bound token', () => {
+    const token = signVoiceToolToken(
+      {
+        accountId: 'acc-111',
+        providerCallId: 'call-222',
+        callerPhone: '+12485550199',
+      },
+      3600,
+      tokenEnv,
+    );
+
+    expect(token).toBeTruthy();
+    const result = verifyVoiceToolToken(token, tokenEnv);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.payload.accountId).toBe('acc-111');
+      expect(result.payload.providerCallId).toBe('call-222');
+      expect(result.payload.callerPhone).toBe('+12485550199');
+      expect(result.payload.expiresAt).toBeGreaterThan(Math.floor(Date.now() / 1000));
+    }
+  });
+
+  it('rejects tampered or forged tokens', () => {
+    const token = signVoiceToolToken(
+      { accountId: 'acc-111', providerCallId: 'call-222' },
+      3600,
+      tokenEnv,
+    );
+    expect(token).toBeTruthy();
+    if (!token) return;
+    const [payload] = token.split('.');
+    const tampered = `${payload}.invalid-signature`;
+    expect(verifyVoiceToolToken(tampered, tokenEnv)).toEqual({
+      ok: false,
+      reason: 'invalid_signature',
+    });
+  });
+
+  it('rejects expired tokens', () => {
+    const expiredToken = signVoiceToolToken(
+      { accountId: 'acc-111', providerCallId: 'call-222' },
+      -10,
+      tokenEnv,
+    );
+    expect(expiredToken).toBeTruthy();
+    if (!expiredToken) return;
+    expect(verifyVoiceToolToken(expiredToken, tokenEnv)).toEqual({
+      ok: false,
+      reason: 'expired',
+    });
+  });
+});
+

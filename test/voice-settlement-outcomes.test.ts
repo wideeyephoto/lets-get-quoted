@@ -1,13 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { VoiceReceipt } from '@/lib/voice/provider';
 
-vi.mock('@/lib/billing/voice-minute-usage', async (importOriginal) => ({
-  ...(await importOriginal<Record<string, unknown>>()),
+vi.mock('@/lib/billing/voice-minute-usage', () => ({
+  billableVoiceMinutes: vi.fn().mockReturnValue(1),
   settleVoiceCall: vi.fn().mockResolvedValue(1),
 }));
 
-vi.mock('@/lib/billing/usage-overage', async (importOriginal) => ({
-  ...(await importOriginal<Record<string, unknown>>()),
+vi.mock('@/lib/billing/usage-overage', () => ({
   settleUsageOverage: vi.fn().mockResolvedValue({ settled: true, refundedMillicents: 0 }),
 }));
 
@@ -15,9 +14,18 @@ vi.mock('@/lib/leads', () => ({
   createLead: vi.fn().mockResolvedValue({ id: 'lead-1' }),
 }));
 
-vi.mock('@/lib/voice/triage', async (importOriginal) => ({
-  ...(await importOriginal<Record<string, unknown>>()),
+vi.mock('@/lib/voice/triage', () => ({
+  detectCallEmergency: vi.fn((summary: string) => ({
+    isEmergency: /emergency|gas leak|fire|flood/i.test(summary),
+    hazardType: /gas leak/i.test(summary) ? 'gas_leak_hazard' : null,
+    severity: /gas leak/i.test(summary) ? 'critical' : 'normal',
+    reason: 'Emergency detected',
+  })),
   notifyEmergencyCall: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock('@/lib/voice/post-call-sms', () => ({
+  triggerVoicePostCallFollowup: vi.fn().mockResolvedValue({ ok: true }),
 }));
 
 import {

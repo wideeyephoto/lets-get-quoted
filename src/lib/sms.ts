@@ -21,6 +21,8 @@ import {
   ownerVerificationCodeText,
   ownerVoiceEmergencyAlertText,
   callerVoiceBookingLinkText,
+  callerVoiceBookingConfirmationText,
+  callerVoicePostCallFollowupText,
   paymentText,
   quickStopConfirmedText,
   quickStopOfferText,
@@ -297,6 +299,98 @@ export async function sendCallerVoiceBookingLinkSms(input: {
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
     console.error('Caller voice booking link SMS failed:', msg);
+    return { ok: false, error: msg };
+  }
+}
+
+/**
+ * Sends an instant SMS confirmation to a caller after an appointment slot is held/scheduled during an AI voice call.
+ */
+export async function sendCallerVoiceBookingConfirmationSms(input: {
+  accountId: string;
+  callerPhone: string;
+  whenLabel: string;
+  serviceAddress?: string | null;
+  idempotencyKey?: string;
+}): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const to = normalizeUsPhone(input.callerPhone);
+    if (!to) return { ok: false, error: 'Invalid phone number' };
+    if (await isPhoneOptedOut(input.accountId, to)) {
+      return { ok: false, error: 'Caller opted out of SMS' };
+    }
+
+    const admin = createAdminClient();
+    const businessName = await loadBusinessName(admin, input.accountId);
+    const body = callerVoiceBookingConfirmationText({
+      businessName,
+      whenLabel: input.whenLabel,
+      serviceAddress: input.serviceAddress,
+    });
+
+    await queueAccountSms({
+      accountId: input.accountId,
+      phone: to,
+      body,
+      messageKind: 'caller-voice-booking-confirmation',
+      category: 'customer_message',
+      context: 'customer',
+      senderPurpose: 'contractor_dedicated',
+      idempotencyKey: input.idempotencyKey,
+    });
+
+    return { ok: true };
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
+    console.error('Caller voice booking confirmation SMS failed:', msg);
+    return { ok: false, error: msg };
+  }
+}
+
+/**
+ * Sends an automated post-call follow-up SMS to a caller after an AI voice receptionist call completes.
+ */
+export async function sendCallerVoicePostCallFollowupSms(input: {
+  accountId: string;
+  callerPhone: string;
+  callerName?: string | null;
+  scheduledTime?: string | null;
+  portalUrl?: string | null;
+  issueSummary?: string | null;
+  idempotencyKey?: string;
+}): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const to = normalizeUsPhone(input.callerPhone);
+    if (!to) return { ok: false, error: 'Invalid phone number' };
+    if (await isPhoneOptedOut(input.accountId, to)) {
+      return { ok: false, error: 'Caller opted out of SMS' };
+    }
+
+    const admin = createAdminClient();
+    const businessName = await loadBusinessName(admin, input.accountId);
+    const body = callerVoicePostCallFollowupText({
+      businessName,
+      callerName: input.callerName,
+      scheduledTime: input.scheduledTime,
+      portalUrl: input.portalUrl,
+      issueSummary: input.issueSummary,
+    });
+
+    await queueAccountSms({
+      accountId: input.accountId,
+      phone: to,
+      body,
+      messageKind: 'caller-voice-post-call-followup',
+      category: 'customer_message',
+      context: 'customer',
+      senderPurpose: 'contractor_dedicated',
+      idempotencyKey: input.idempotencyKey,
+    });
+
+    return { ok: true };
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
+    console.error('Caller voice post-call follow-up SMS failed:', msg);
     return { ok: false, error: msg };
   }
 }
