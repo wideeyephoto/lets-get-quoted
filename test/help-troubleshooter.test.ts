@@ -64,7 +64,7 @@ describe('Pure Troubleshooter Matcher', () => {
 });
 
 describe('Help Center Data & Section Grounding', () => {
-  const helpComponentSource = readFileSync('src/components/help-center/HelpCenter.tsx', 'utf8');
+  const helpComponentSource = readFileSync('src/components/help-center/HelpCenter.tsx', 'utf8').replace(/\r\n/g, '\n');
 
   it('contains id="ai-troubleshooter" in the hero', () => {
     expect(helpComponentSource).toContain('id="ai-troubleshooter"');
