@@ -218,6 +218,43 @@ describe('Property Intelligence - Provider Diagnostics & Resilience', () => {
     }
   });
 
+  it('uses only documented query parameters for Google Solar building insights', async () => {
+    const { fetchSolarBuildingInsightsDetailed } = await import('../src/lib/property-intel/google-solar');
+    const origSolarKey = process.env.GOOGLE_SOLAR_API_KEY;
+    process.env.GOOGLE_SOLAR_API_KEY = 'AIzaSyTEST_SOLAR_KEY';
+
+    const fetchSpy = vi.spyOn(global, 'fetch').mockImplementation(async () => {
+      return new Response(JSON.stringify({
+        solarPotential: {
+          wholeRoofStats: {
+            areaMeters2: 100,
+            groundAreaMeters2: 80,
+          },
+          roofSegmentStats: [],
+        },
+      }), { status: 200 });
+    });
+
+    const res = await fetchSolarBuildingInsightsDetailed(42.4895, -83.1446);
+    const requestUrl = new URL(String(fetchSpy.mock.calls[0]?.[0]));
+    const requestOptions = fetchSpy.mock.calls[0]?.[1] as RequestInit | undefined;
+
+    expect(res.status).toBe('ok');
+    expect(requestUrl.searchParams.get('location.latitude')).toBe('42.4895');
+    expect(requestUrl.searchParams.get('location.longitude')).toBe('-83.1446');
+    expect(requestUrl.searchParams.get('requiredQuality')).toBe('HIGH');
+    expect(requestUrl.searchParams.get('key')).toBe('AIzaSyTEST_SOLAR_KEY');
+    expect(requestUrl.searchParams.has('solution_id')).toBe(false);
+    expect(requestOptions?.headers).toBeUndefined();
+
+    fetchSpy.mockRestore();
+    if (origSolarKey) {
+      process.env.GOOGLE_SOLAR_API_KEY = origSolarKey;
+    } else {
+      delete process.env.GOOGLE_SOLAR_API_KEY;
+    }
+  });
+
   it('verifies PropertyDossierCard uses CSS module and has no unstyled Tailwind classes', async () => {
     const fs = await import('fs');
     const path = await import('path');
