@@ -2,6 +2,7 @@ import Link from 'next/link';
 import DemoTourBar from '@/components/demo/DemoTourBar';
 import {
   TOUR_STEPS,
+  DEMO_TOUR_CONTRACTOR,
   DEMO_TOUR_CUSTOMER,
   DEMO_TOUR_JOB,
 } from '@/lib/demo-tour-data';
@@ -30,14 +31,38 @@ export default function DemoTourLeadPage() {
               No digging through vague messages. You see why the job scored 94/100, its route fit, and project scope instantly.
             </p>
           </div>
-          <Link href="/demo/tour/quote" className={styles.tourNextActionBtn}>
-            Prepare Quote (Next) &rarr;
-          </Link>
         </div>
       </div>
 
       <div className={styles.cardLayout}>
-        <div className={styles.panelCard}>
+        {/* Lightweight Dashboard Context Framing */}
+        <div
+          style={{
+            background: '#0e2333',
+            border: '1px solid rgba(80, 227, 189, 0.3)',
+            borderRadius: '12px 12px 0 0',
+            padding: '12px 20px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            fontSize: '12px',
+            color: '#9eb5c2',
+            borderBottom: 'none',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ color: '#50e3bd', fontWeight: 800 }}>{DEMO_TOUR_CONTRACTOR.name}</span>
+            <span>&rsaquo;</span>
+            <span style={{ color: '#ffffff', fontWeight: 600 }}>Leads Workspace</span>
+            <span>&rsaquo;</span>
+            <span style={{ color: '#ffd166' }}>{DEMO_TOUR_JOB.leadId}</span>
+          </div>
+          <span style={{ background: 'rgba(80, 227, 189, 0.15)', color: '#50e3bd', padding: '2px 8px', borderRadius: '4px', fontWeight: 700 }}>
+            Live LGQ Dashboard Preview
+          </span>
+        </div>
+
+        <div className={styles.panelCard} style={{ borderRadius: '0 0 14px 14px' }}>
           {/* Header row with Lead Score and badges */}
           <div
             style={{
@@ -72,14 +97,6 @@ export default function DemoTourLeadPage() {
                 {DEMO_TOUR_JOB.title}
               </h2>
             </div>
-
-            <Link
-              href="/demo/tour/quote"
-              className={styles.tourNextActionBtn}
-              style={{ background: '#50e3bd', color: '#09212f' }}
-            >
-              Draft &amp; Send Quote &rarr;
-            </Link>
           </div>
 
           {/* 3-Column Lead Intelligence Strip */}
@@ -147,7 +164,7 @@ export default function DemoTourLeadPage() {
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'minmax(280px, 1fr) minmax(320px, 1.4fr)',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
               gap: '24px',
             }}
           >
@@ -226,7 +243,8 @@ export default function DemoTourLeadPage() {
                 <Link
                   href="/demo/tour/quote"
                   className={styles.tourNextActionBtn}
-                  style={{ width: '100%', justifyContent: 'center' }}
+                  style={{ width: '100%', justifyContent: 'center', minHeight: '44px' }}
+                  aria-label="Review itemized quote and send to customer"
                 >
                   Review Itemized Quote &amp; Send &rarr;
                 </Link>

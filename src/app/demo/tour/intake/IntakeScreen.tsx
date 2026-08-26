@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import DemoTourBar from '@/components/demo/DemoTourBar';
 import {
@@ -11,16 +11,68 @@ import {
 } from '@/lib/demo-tour-data';
 import styles from '../tour.module.css';
 
+type AnalysisStep = {
+  id: string;
+  label: string;
+  detail: string;
+  icon: string;
+};
+
+const ANALYSIS_STEPS: AnalysisStep[] = [
+  { id: 'received', label: '1. Request Received', detail: 'Homeowner submitted inquiry via website instant estimate', icon: '📥' },
+  { id: 'extracting', label: '2. Extracting Scope', detail: 'Identified 380 sq ft paver patio, curved seat wall, natural stone fire pit', icon: '🔍' },
+  { id: 'location', label: '3. Checking Service & Route', detail: 'Royal Oak, MI (Primary zone · 1.4 mi from Tuesday crew route)', icon: '📍' },
+  { id: 'pricing', label: '4. Estimating Range', detail: 'Catalog matched pavers, drainage base, and fire pit hardware ($4,650 – $5,000)', icon: '⚡' },
+];
+
 export default function IntakeScreen() {
   const currentStep = TOUR_STEPS[1];
-  const [stage, setStage] = useState<'prompt' | 'typing' | 'done'>('done');
+  const [activeStepIndex, setActiveStepIndex] = useState<number>(0);
+  const [isCompleted, setIsCompleted] = useState<boolean>(false);
   const [message] = useState(DEMO_TOUR_JOB.homeownerInquiry);
 
-  const handleSimulate = () => {
-    setStage('typing');
-    setTimeout(() => {
-      setStage('done');
-    }, 1200);
+  useEffect(() => {
+    // Check prefers-reduced-motion
+    if (typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      setActiveStepIndex(ANALYSIS_STEPS.length);
+      setIsCompleted(true);
+      return;
+    }
+
+    let current = 0;
+    const interval = setInterval(() => {
+      current += 1;
+      if (current <= ANALYSIS_STEPS.length) {
+        setActiveStepIndex(current);
+      }
+      if (current >= ANALYSIS_STEPS.length) {
+        setIsCompleted(true);
+        clearInterval(interval);
+      }
+    }, 850);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleSkipAnimation = () => {
+    setActiveStepIndex(ANALYSIS_STEPS.length);
+    setIsCompleted(true);
+  };
+
+  const handleReplay = () => {
+    setIsCompleted(false);
+    setActiveStepIndex(0);
+    let current = 0;
+    const interval = setInterval(() => {
+      current += 1;
+      if (current <= ANALYSIS_STEPS.length) {
+        setActiveStepIndex(current);
+      }
+      if (current >= ANALYSIS_STEPS.length) {
+        setIsCompleted(true);
+        clearInterval(interval);
+      }
+    }, 800);
   };
 
   return (
@@ -34,12 +86,9 @@ export default function IntakeScreen() {
             <span className={styles.perspectiveTag}>👤 Homeowner Perspective · Step 2 of 6</span>
             <h1 className={styles.perspectiveHeading}>Homeowner requests an instant estimate</h1>
             <p className={styles.perspectiveSub}>
-              Watch how AI Intake qualifies scope, detects urgency, and prepares preliminary pricing automatically.
+              Watch how AI Intake qualifies scope, detects urgency, and prepares preliminary pricing automatically in seconds.
             </p>
           </div>
-          <Link href="/demo/tour/lead" className={styles.tourNextActionBtn}>
-            Switch to Contractor View &rarr;
-          </Link>
         </div>
       </div>
 
@@ -48,28 +97,53 @@ export default function IntakeScreen() {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
             <div>
               <span style={{ fontSize: '11px', fontWeight: 800, color: '#50e3bd', letterSpacing: '1px', textTransform: 'uppercase' }}>
-                AI Smart Intake &middot; 24/7 Estimator
+                AI Smart Intake &middot; 24/7 Live Qualification
               </span>
               <h2 style={{ fontSize: '24px', fontWeight: 700, margin: '4px 0 0', color: '#ffffff' }}>
                 {DEMO_TOUR_CONTRACTOR.name} &mdash; Project Intake
               </h2>
             </div>
-            <button
-              type="button"
-              onClick={handleSimulate}
-              style={{
-                background: 'rgba(80, 227, 189, 0.15)',
-                border: '1px solid rgba(80, 227, 189, 0.4)',
-                color: '#50e3bd',
-                fontSize: '13px',
-                fontWeight: 700,
-                padding: '6px 14px',
-                borderRadius: '6px',
-                cursor: 'pointer',
-              }}
-            >
-              🔄 Re-play AI Analysis
-            </button>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              {!isCompleted ? (
+                <button
+                  type="button"
+                  onClick={handleSkipAnimation}
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.08)',
+                    border: '1px solid rgba(255, 255, 255, 0.2)',
+                    color: '#d1e2eb',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    padding: '8px 14px',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    minHeight: '44px',
+                  }}
+                  aria-label="Show result immediately"
+                >
+                  Show result immediately &rarr;
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleReplay}
+                  style={{
+                    background: 'rgba(80, 227, 189, 0.15)',
+                    border: '1px solid rgba(80, 227, 189, 0.4)',
+                    color: '#50e3bd',
+                    fontSize: '13px',
+                    fontWeight: 700,
+                    padding: '8px 14px',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    minHeight: '44px',
+                  }}
+                  aria-label="Re-play AI qualification analysis"
+                >
+                  🔄 Re-play AI Analysis
+                </button>
+              )}
+            </div>
           </div>
 
           <div
@@ -80,7 +154,7 @@ export default function IntakeScreen() {
               padding: '24px',
               display: 'flex',
               flexDirection: 'column',
-              gap: '18px',
+              gap: '20px',
             }}
           >
             {/* Customer Message Bubble */}
@@ -103,27 +177,50 @@ export default function IntakeScreen() {
               </div>
             </div>
 
-            {/* AI Real-time Qualification Analysis */}
-            {stage === 'typing' ? (
-              <div style={{ alignSelf: 'flex-end', maxWidth: '85%' }}>
-                <div style={{ fontSize: '12px', color: '#50e3bd', marginBottom: '4px', fontWeight: 600 }}>
-                  ✦ AI Estimator analyzing scope &amp; location...
-                </div>
-                <div
-                  style={{
-                    background: 'rgba(80, 227, 189, 0.1)',
-                    color: '#a4bcc7',
-                    padding: '14px 18px',
-                    borderRadius: '12px 12px 2px 12px',
-                    fontSize: '14px',
-                    fontStyle: 'italic',
-                  }}
-                >
-                  Checking project dimensions, materials, Royal Oak service fit, and route proximity...
-                </div>
+            {/* Staged Qualification Steps */}
+            <div
+              style={{
+                background: 'rgba(8, 24, 36, 0.7)',
+                border: '1px solid rgba(80, 227, 189, 0.2)',
+                borderRadius: '10px',
+                padding: '16px 20px',
+              }}
+              role="status"
+              aria-live="polite"
+            >
+              <div style={{ fontSize: '11px', fontWeight: 800, color: '#50e3bd', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: '10px' }}>
+                AI Processing Sequence
               </div>
-            ) : (
-              <div style={{ alignSelf: 'flex-end', maxWidth: '90%' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {ANALYSIS_STEPS.map((s, idx) => {
+                  const isDone = activeStepIndex > idx;
+                  const isCurrent = activeStepIndex === idx && !isCompleted;
+                  return (
+                    <div
+                      key={s.id}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        fontSize: '13.5px',
+                        color: isDone ? '#50e3bd' : isCurrent ? '#ffd166' : '#57707e',
+                        transition: 'all 0.3s ease',
+                      }}
+                    >
+                      <span>{isDone ? '✓' : isCurrent ? '⏳' : '○'}</span>
+                      <span style={{ fontWeight: isCurrent || isDone ? 700 : 500 }}>{s.label}:</span>
+                      <span style={{ color: isDone ? '#d1e2eb' : isCurrent ? '#ffd166' : '#57707e', fontSize: '13px' }}>
+                        {s.detail}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* AI Real-time Qualification Output Card */}
+            {isCompleted ? (
+              <div style={{ alignSelf: 'flex-end', maxWidth: '90%', width: '100%' }}>
                 <div style={{ fontSize: '12px', color: '#50e3bd', marginBottom: '4px', fontWeight: 600, textAlign: 'right' }}>
                   ✦ AI Estimator Response &middot; Instant Breakdown
                 </div>
@@ -157,7 +254,7 @@ export default function IntakeScreen() {
                   </p>
                 </div>
               </div>
-            )}
+            ) : null}
           </div>
 
           <div
@@ -183,7 +280,8 @@ export default function IntakeScreen() {
             <Link
               href="/demo/tour/lead"
               className={styles.tourNextActionBtn}
-              style={{ background: '#ffd166', color: '#180c02' }}
+              style={{ background: '#ffd166', color: '#180c02', minHeight: '44px', display: 'inline-flex', alignItems: 'center' }}
+              aria-label="Proceed to Contractor Leads Inbox"
             >
               View in Leads Inbox &rarr;
             </Link>

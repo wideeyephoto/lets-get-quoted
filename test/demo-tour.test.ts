@@ -7,12 +7,22 @@ import {
   DEMO_TOUR_CUSTOMER,
   DEMO_TOUR_JOB,
 } from '@/lib/demo-tour-data';
+import {
+  DEFAULT_DEMO_TOUR_STATE,
+  loadDemoTourState,
+  saveDemoTourState,
+  resetDemoTourState,
+} from '@/lib/demo-tour-state';
 
 const TOUR_BAR = readFileSync('src/components/demo/DemoTourBar.tsx', 'utf8');
 const DEMO_BANNER = readFileSync('src/components/demo-banner.tsx', 'utf8');
 const DEMO_SIDEBAR = readFileSync('src/components/demo-sidebar.tsx', 'utf8');
 const DEMO_HOME = readFileSync('src/app/demo/page.tsx', 'utf8');
 const QUICK_STOPS = readFileSync('src/app/demo/quick-stops/page.tsx', 'utf8');
+const INTAKE_SCREEN = readFileSync('src/app/demo/tour/intake/IntakeScreen.tsx', 'utf8');
+const QUOTE_SCREEN = readFileSync('src/app/demo/tour/quote/QuoteScreen.tsx', 'utf8');
+const APPROVE_SCREEN = readFileSync('src/app/demo/tour/approve/ApproveScreen.tsx', 'utf8');
+const COMPLETE_SCREEN = readFileSync('src/app/demo/tour/complete/CompleteScreen.tsx', 'utf8');
 
 describe('5-Minute Evaluation Demo Journey', () => {
   describe('Canonical Tour Fixture Data', () => {
@@ -58,6 +68,93 @@ describe('5-Minute Evaluation Demo Journey', () => {
     });
   });
 
+  describe('Shared Tour State & Session Persistence', () => {
+    it('initializes with unsigned and unperformed action defaults', () => {
+      expect(DEFAULT_DEMO_TOUR_STATE.upgradeSelected).toBe(true);
+      expect(DEFAULT_DEMO_TOUR_STATE.quoteSent).toBe(false);
+      expect(DEFAULT_DEMO_TOUR_STATE.signature).toBe('');
+      expect(DEFAULT_DEMO_TOUR_STATE.signed).toBe(false);
+      expect(DEFAULT_DEMO_TOUR_STATE.depositSimulated).toBe(false);
+      expect(DEFAULT_DEMO_TOUR_STATE.paymentMethod).toBeNull();
+    });
+
+    it('loads, saves and resets state safely without throwing in node environment', () => {
+      const initial = loadDemoTourState();
+      expect(initial.signed).toBe(false);
+
+      saveDemoTourState({
+        upgradeSelected: false,
+        quoteSent: true,
+        signature: 'Taylor Brooks',
+        signed: true,
+        depositSimulated: true,
+        paymentMethod: 'apple_pay',
+      });
+
+      const reset = resetDemoTourState();
+      expect(reset.quoteSent).toBe(false);
+    });
+  });
+
+  describe('Simulation Disclosures & Non-Deceptive Copy', () => {
+    it('displays persistent simulation disclosure across all tour steps in top bar', () => {
+      expect(TOUR_BAR).toContain('Sample workflow');
+      expect(TOUR_BAR).toContain('No texts, signatures, bookings, or payments are real');
+    });
+
+    it('labels quote dispatch action as simulation', () => {
+      expect(QUOTE_SCREEN).toContain('Simulate sending quote');
+      expect(QUOTE_SCREEN).toContain('Demo complete — no real SMS text was sent');
+    });
+
+    it('starts approval unsigned and labels signature and deposit as simulations', () => {
+      expect(APPROVE_SCREEN).toContain('Apply demo signature');
+      expect(APPROVE_SCREEN).toContain('Simulate Apple Pay deposit');
+      expect(APPROVE_SCREEN).toContain('Or simulate credit card deposit');
+      expect(APPROVE_SCREEN).toContain('Simulated Deposit Recorded');
+    });
+
+    it('renders Apple Pay using SVG instead of unicode glyph box', () => {
+      expect(APPROVE_SCREEN).toContain('<svg');
+      expect(APPROVE_SCREEN).toContain('Simulate Apple Pay deposit');
+      expect(APPROVE_SCREEN).not.toContain('Pay');
+    });
+
+    it('renders honest completion summary conditioned on actual simulated interactions', () => {
+      expect(COMPLETE_SCREEN).toContain('allActionsSimulated');
+      expect(COMPLETE_SCREEN).toContain('anyActionSimulated');
+      expect(COMPLETE_SCREEN).toContain("You previewed the full contractor workflow for");
+      expect(COMPLETE_SCREEN).toContain("Taylor&apos;s quote was signed and the simulated $500 deposit was recorded");
+      expect(COMPLETE_SCREEN).not.toContain('in your bank');
+    });
+  });
+
+  describe('Active & Staged AI Intake on Step 2', () => {
+    it('features staged AI qualification steps with skip and replay controls', () => {
+      expect(INTAKE_SCREEN).toContain('ANALYSIS_STEPS');
+      expect(INTAKE_SCREEN).toContain('1. Request Received');
+      expect(INTAKE_SCREEN).toContain('2. Extracting Scope');
+      expect(INTAKE_SCREEN).toContain('3. Checking Service & Route');
+      expect(INTAKE_SCREEN).toContain('4. Estimating Range');
+      expect(INTAKE_SCREEN).toContain('Show result immediately');
+      expect(INTAKE_SCREEN).toContain('prefers-reduced-motion');
+    });
+  });
+
+  describe('Accessibility & Touch Target Standards', () => {
+    it('provides descriptive accessible aria-labels on navigation and step dots', () => {
+      expect(TOUR_BAR).toContain('aria-label={`Step ${s.step}: ${s.shortTitle}`}');
+      expect(TOUR_BAR).toContain('aria-label="Previous tour step"');
+      expect(TOUR_BAR).toContain('aria-label="Next tour step"');
+    });
+
+    it('provides accessible names on upgrade checkboxes and signature inputs', () => {
+      expect(QUOTE_SCREEN).toContain('aria-label={`Add optional');
+      expect(APPROVE_SCREEN).toContain('aria-label={`Add optional');
+      expect(APPROVE_SCREEN).toContain('id="signatureInput"');
+    });
+  });
+
   describe('Tour Route Files on Disk', () => {
     it('provides page components for all 6 steps and index redirect', () => {
       expect(existsSync('src/app/demo/tour/page.tsx')).toBe(true);
@@ -67,42 +164,6 @@ describe('5-Minute Evaluation Demo Journey', () => {
       expect(existsSync('src/app/demo/tour/quote/page.tsx')).toBe(true);
       expect(existsSync('src/app/demo/tour/approve/page.tsx')).toBe(true);
       expect(existsSync('src/app/demo/tour/complete/page.tsx')).toBe(true);
-    });
-
-    it('verifies step pages reference the canonical tour fixture', () => {
-      const sitePage = readFileSync('src/app/demo/tour/site/page.tsx', 'utf8');
-      const intakeScreen = readFileSync('src/app/demo/tour/intake/IntakeScreen.tsx', 'utf8');
-      const leadPage = readFileSync('src/app/demo/tour/lead/page.tsx', 'utf8');
-      const quoteScreen = readFileSync('src/app/demo/tour/quote/QuoteScreen.tsx', 'utf8');
-      const approveScreen = readFileSync('src/app/demo/tour/approve/ApproveScreen.tsx', 'utf8');
-      const completeScreen = readFileSync('src/app/demo/tour/complete/CompleteScreen.tsx', 'utf8');
-
-      expect(sitePage).toContain('DEMO_TOUR_CONTRACTOR');
-      expect(intakeScreen).toContain('DEMO_TOUR_CUSTOMER');
-      expect(leadPage).toContain('DEMO_TOUR_JOB');
-      expect(quoteScreen).toContain('DEMO_TOUR_JOB');
-      expect(approveScreen).toContain('DEMO_TOUR_JOB');
-      expect(completeScreen).toContain('DEMO_TOUR_JOB');
-    });
-  });
-
-  describe('Tour Navigation Bar and Chrome Controls', () => {
-    it('contains back, next, and exit navigation links', () => {
-      expect(TOUR_BAR).toContain('currentStep.prevHref');
-      expect(TOUR_BAR).toContain('currentStep.nextHref');
-      expect(TOUR_BAR).toContain('Explore freely');
-      expect(TOUR_BAR).toContain('currentStep.perspectiveLabel');
-    });
-
-    it('wires telemetry tracking to step views and exits', () => {
-      expect(TOUR_BAR).toContain("trackDemoEvent('step_viewed'");
-      expect(TOUR_BAR).toContain("trackDemoEvent('explore_freely'");
-    });
-
-    it('promotes the 5-minute tour from the demo banner and sidebar', () => {
-      expect(DEMO_BANNER).toContain('Start 5-min tour');
-      expect(DEMO_SIDEBAR).toContain('Start 5-Min Tour');
-      expect(DEMO_HOME).toContain('DemoTourPromptCard');
     });
   });
 

@@ -24,9 +24,6 @@ export default function DemoTourSitePage() {
               A prospective homeowner in Royal Oak needs a paver patio and outdoor fire pit. They land on Evergreen&apos;s site.
             </p>
           </div>
-          <Link href="/demo/tour/intake" className={styles.tourNextActionBtn}>
-            Try AI Intake (Next) &rarr;
-          </Link>
         </div>
       </div>
 
@@ -38,7 +35,7 @@ export default function DemoTourSitePage() {
           </div>
           <div className={styles.siteNavLinks}>
             <span className={styles.sitePhone}>{DEMO_TOUR_CONTRACTOR.phone}</span>
-            <Link href="/demo/tour/intake" className={styles.siteEstimateBtn}>
+            <Link href="/demo/tour/intake" className={styles.siteEstimateBtn} aria-label="Get Instant Estimate on Evergreen website">
               Get Instant Estimate &rarr;
             </Link>
           </div>
@@ -60,7 +57,7 @@ export default function DemoTourSitePage() {
               <p>
                 Answer 3 quick questions. Our AI estimator calculates your preliminary quote in 30 seconds.
               </p>
-              <Link href="/demo/tour/intake" className={styles.sitePulseBtn}>
+              <Link href="/demo/tour/intake" className={styles.sitePulseBtn} aria-label="Get My Instant Estimate">
                 Get My Instant Estimate &rarr;
               </Link>
             </div>
@@ -73,7 +70,7 @@ export default function DemoTourSitePage() {
             <p>
               Premium Unilock and Belgard pavers with commercial aggregate base compaction, precision jointing, and lifetime structural integrity.
             </p>
-            <Link href="/demo/tour/intake" className={styles.siteServiceLink}>
+            <Link href="/demo/tour/intake" className={styles.siteServiceLink} aria-label="Get quote for Custom Paver Patios & Walkways">
               Get quote &rarr;
             </Link>
           </div>
@@ -83,7 +80,7 @@ export default function DemoTourSitePage() {
             <p>
               Integrated curved seating walls, wood or gas stone fire pits, and outdoor entertainment focal points designed for Michigan seasons.
             </p>
-            <Link href="/demo/tour/intake" className={styles.siteServiceLink}>
+            <Link href="/demo/tour/intake" className={styles.siteServiceLink} aria-label="Get quote for Built-in Fire Pits & Seat Walls">
               Get quote &rarr;
             </Link>
           </div>
@@ -93,7 +90,7 @@ export default function DemoTourSitePage() {
             <p>
               Architectural step, wall, and path lighting with smart dusk-to-dawn controls for warmth, safety, and nighttime curb appeal.
             </p>
-            <Link href="/demo/tour/intake" className={styles.siteServiceLink}>
+            <Link href="/demo/tour/intake" className={styles.siteServiceLink} aria-label="Get quote for Low-Voltage Landscape Lighting">
               Get quote &rarr;
             </Link>
           </div>

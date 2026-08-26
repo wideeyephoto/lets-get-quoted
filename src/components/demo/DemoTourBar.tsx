@@ -38,8 +38,12 @@ export default function DemoTourBar({ currentStep }: { currentStep: TourStepMeta
             <span>{currentStep.perspectiveLabel}</span>
           </span>
 
+          <span className={styles.simulationDisclosure} role="status">
+            Sample workflow &middot; No texts, signatures, bookings, or payments are real.
+          </span>
+
           <div className={styles.stepIndicator}>
-            <div className={styles.stepDots} aria-label={`Step ${currentStep.step} of 6`}>
+            <div className={styles.stepDots} aria-label="Tour step progression">
               {TOUR_STEPS.map((s) => {
                 const isActive = s.step === currentStep.step;
                 const isCompleted = s.step < currentStep.step;
@@ -54,10 +58,11 @@ export default function DemoTourBar({ currentStep }: { currentStep: TourStepMeta
                         ? styles.stepDotCompleted
                         : ''
                     }`}
+                    aria-label={`Step ${s.step}: ${s.shortTitle}`}
                     title={`Step ${s.step}: ${s.shortTitle}`}
                     aria-current={isActive ? 'step' : undefined}
                   >
-                    {s.step}
+                    <span>{s.step}</span>
                   </Link>
                 );
               })}
@@ -70,13 +75,21 @@ export default function DemoTourBar({ currentStep }: { currentStep: TourStepMeta
 
         <div className={styles.actionsGroup}>
           {currentStep.prevHref ? (
-            <Link href={currentStep.prevHref} className={styles.prevBtn}>
+            <Link
+              href={currentStep.prevHref}
+              className={styles.prevBtn}
+              aria-label="Previous tour step"
+            >
               &larr; Previous
             </Link>
           ) : null}
 
           {currentStep.nextHref ? (
-            <Link href={currentStep.nextHref} className={styles.nextBtn}>
+            <Link
+              href={currentStep.nextHref}
+              className={styles.nextBtn}
+              aria-label="Next tour step"
+            >
               Next Step &rarr;
             </Link>
           ) : null}
@@ -85,6 +98,7 @@ export default function DemoTourBar({ currentStep }: { currentStep: TourStepMeta
             href="/demo"
             className={styles.exitBtn}
             onClick={() => trackDemoEvent('explore_freely', { source: 'tour_bar_exit' })}
+            aria-label="Exit tour and explore demo dashboard"
           >
             Explore freely &rarr;
           </Link>

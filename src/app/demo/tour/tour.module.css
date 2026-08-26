@@ -125,7 +125,8 @@
 .siteNavLinks {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 16px;
+  flex-wrap: wrap;
 }
 
 .sitePhone {
@@ -133,6 +134,7 @@
   font-weight: 700;
   color: #ffd166;
   text-decoration: none;
+  white-space: nowrap;
 }
 
 .siteEstimateBtn {
@@ -141,9 +143,14 @@
   font-size: 13px;
   font-weight: 750;
   padding: 8px 16px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 6px;
   text-decoration: none;
   transition: background 0.2s ease;
+  white-space: nowrap;
 }
 
 .siteEstimateBtn:hover {

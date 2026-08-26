@@ -31,7 +31,7 @@ export type DemoEventPayload = {
   pathname?: string;
   depositAmount?: number;
   totalSteps?: number;
-  [key: string]: string | number | boolean | undefined;
+  [key: string]: string | number | boolean | null | undefined;
 };
 
 const STORAGE_KEY = 'lgq_demo_tour_events';

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import DemoTourBar from '@/components/demo/DemoTourBar';
+import { useDemoTourState } from '@/components/demo/DemoTourStateProvider';
 import {
   TOUR_STEPS,
   DEMO_TOUR_CONTRACTOR,
@@ -14,25 +15,43 @@ import styles from '../tour.module.css';
 
 export default function ApproveScreen() {
   const currentStep = TOUR_STEPS[4];
-  const [hasUpgrade, setHasUpgrade] = useState(true);
-  const [signature, setSignature] = useState<string>(DEMO_TOUR_CUSTOMER.name);
-  const [depositPaid, setDepositPaid] = useState(false);
-  const [isPaying, setIsPaying] = useState(false);
+  const {
+    state,
+    setUpgradeSelected,
+    setSignature,
+    setSigned,
+    setDepositSimulated,
+  } = useDemoTourState();
 
-  const total = DEMO_TOUR_JOB.baseTotal + (hasUpgrade ? DEMO_TOUR_JOB.upgradeTotal : 0);
+  const [isProcessing, setIsProcessing] = useState(false);
 
-  const handlePayDeposit = () => {
-    setIsPaying(true);
+  const total = DEMO_TOUR_JOB.baseTotal + (state.upgradeSelected ? DEMO_TOUR_JOB.upgradeTotal : 0);
+
+  const handleApplyDemoSignature = () => {
+    setSignature(DEMO_TOUR_CUSTOMER.name);
+    setSigned(true);
+    trackDemoEvent('step_viewed', {
+      step: 5,
+      stepSlug: 'approve',
+      action: 'demo_signature_applied',
+      signer: DEMO_TOUR_CUSTOMER.name,
+    });
+  };
+
+  const handleSimulatePayment = (method: 'apple_pay' | 'card') => {
+    setIsProcessing(true);
     setTimeout(() => {
-      setIsPaying(false);
-      setDepositPaid(true);
+      setIsProcessing(false);
+      setDepositSimulated(true, method);
       trackDemoEvent('step_completed', {
         step: 5,
         stepSlug: 'approve',
         perspective: 'homeowner',
         depositAmount: DEMO_TOUR_JOB.requiredDeposit,
+        paymentMethod: method,
+        simulated: true,
       });
-    }, 1000);
+    }, 850);
   };
 
   return (
@@ -46,12 +65,9 @@ export default function ApproveScreen() {
             <span className={styles.perspectiveTag}>👤 Homeowner Perspective · Step 5 of 6</span>
             <h1 className={styles.perspectiveHeading}>Homeowner approves upgrades, e-signs &amp; pays deposit</h1>
             <p className={styles.perspectiveSub}>
-              Customer reviews quote on mobile/portal, toggles optional landscape lighting, e-signs, and pays $500 deposit.
+              Customer reviews quote in mobile customer portal, toggles optional lighting, applies signature, and tests simulated deposit.
             </p>
           </div>
-          <Link href="/demo/tour/complete" className={styles.tourNextActionBtn}>
-            Complete Tour &rarr;
-          </Link>
         </div>
       </div>
 
@@ -77,7 +93,7 @@ export default function ApproveScreen() {
               borderBottom: '3px solid #50e3bd',
             }}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px' }}>
               <div>
                 <span style={{ fontSize: '11px', fontWeight: 800, color: '#50e3bd', textTransform: 'uppercase', letterSpacing: '1px' }}>
                   Customer Portal &middot; Estimate Review
@@ -127,8 +143,8 @@ export default function ApproveScreen() {
             <div style={{ marginBottom: '24px' }}>
               <div
                 style={{
-                  background: hasUpgrade ? '#f0fff4' : '#f7fafc',
-                  border: `2px solid ${hasUpgrade ? '#38a169' : '#e2e8f0'}`,
+                  background: state.upgradeSelected ? '#f0fff4' : '#f7fafc',
+                  border: `2px solid ${state.upgradeSelected ? '#38a169' : '#cbd5e0'}`,
                   borderRadius: '10px',
                   padding: '14px 18px',
                   display: 'flex',
@@ -137,19 +153,21 @@ export default function ApproveScreen() {
                   gap: '12px',
                   cursor: 'pointer',
                 }}
-                onClick={() => setHasUpgrade(!hasUpgrade)}
+                onClick={() => setUpgradeSelected(!state.upgradeSelected)}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                   <input
                     type="checkbox"
-                    checked={hasUpgrade}
-                    onChange={(e) => setHasUpgrade(e.target.checked)}
-                    style={{ width: '18px', height: '18px', accentColor: '#38a169' }}
+                    id="portalUpgradeCheckbox"
+                    checked={state.upgradeSelected}
+                    onChange={(e) => setUpgradeSelected(e.target.checked)}
+                    aria-label={`Add optional ${DEMO_TOUR_JOB.optionalUpgrades[0].title} (+$${DEMO_TOUR_JOB.optionalUpgrades[0].amount})`}
+                    style={{ width: '20px', height: '20px', accentColor: '#38a169', cursor: 'pointer' }}
                   />
                   <div>
-                    <strong style={{ fontSize: '14px', color: '#1a202c' }}>
+                    <label htmlFor="portalUpgradeCheckbox" style={{ fontSize: '14px', fontWeight: 700, color: '#1a202c', cursor: 'pointer' }}>
                       Add {DEMO_TOUR_JOB.optionalUpgrades[0].title}
-                    </strong>
+                    </label>
                     <p style={{ margin: '2px 0 0', fontSize: '12.5px', color: '#4a5568' }}>
                       {DEMO_TOUR_JOB.optionalUpgrades[0].description}
                     </p>
@@ -163,23 +181,47 @@ export default function ApproveScreen() {
 
             {/* E-Signature Box */}
             <div style={{ marginBottom: '24px' }}>
-              <label style={{ fontSize: '13px', fontWeight: 700, color: '#2d3748', display: 'block', marginBottom: '6px' }}>
-                Electronic Signature &middot; Legally Binding Acceptance
-              </label>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                <label htmlFor="signatureInput" style={{ fontSize: '13px', fontWeight: 700, color: '#2d3748' }}>
+                  Electronic Signature &middot; Acceptance
+                </label>
+                {!state.signed ? (
+                  <button
+                    type="button"
+                    onClick={handleApplyDemoSignature}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#2b6cb0',
+                      fontSize: '12.5px',
+                      fontWeight: 700,
+                      textDecoration: 'underline',
+                      cursor: 'pointer',
+                      padding: '4px 0',
+                    }}
+                    aria-label="Apply demo signature for Taylor Brooks"
+                  >
+                    Apply demo signature
+                  </button>
+                ) : null}
+              </div>
+
               <div
                 style={{
                   background: '#f7fafc',
-                  border: '1px dashed #cbd5e0',
+                  border: state.signed ? '1px solid #38a169' : '1px dashed #cbd5e0',
                   borderRadius: '8px',
                   padding: '12px 16px',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
+                  gap: '12px',
                 }}
               >
                 <input
+                  id="signatureInput"
                   type="text"
-                  value={signature}
+                  value={state.signature}
                   onChange={(e) => setSignature(e.target.value)}
                   style={{
                     fontFamily: 'cursive, serif',
@@ -190,16 +232,23 @@ export default function ApproveScreen() {
                     width: '100%',
                     outline: 'none',
                   }}
-                  placeholder="Type signature..."
+                  placeholder="Type name to sign..."
+                  aria-label="Signature name"
                 />
-                <span style={{ fontSize: '12px', color: '#38a169', fontWeight: 700, whiteSpace: 'nowrap' }}>
-                  ✓ Signed
-                </span>
+                {state.signed ? (
+                  <span style={{ fontSize: '12px', color: '#38a169', fontWeight: 700, whiteSpace: 'nowrap' }}>
+                    ✓ Signed
+                  </span>
+                ) : (
+                  <span style={{ fontSize: '12px', color: '#a0aec0', fontStyle: 'italic', whiteSpace: 'nowrap' }}>
+                    (Unsigned)
+                  </span>
+                )}
               </div>
             </div>
 
             {/* Deposit Payment Box */}
-            {!depositPaid ? (
+            {!state.depositSimulated ? (
               <div
                 style={{
                   background: '#ebf8ff',
@@ -209,29 +258,30 @@ export default function ApproveScreen() {
                   marginBottom: '20px',
                 }}
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
                   <div>
-                    <strong style={{ fontSize: '14.5px', color: '#2b6cb0' }}>Pay Required Deposit ($500.00)</strong>
+                    <strong style={{ fontSize: '14.5px', color: '#2b6cb0' }}>Simulate Required Deposit ($500.00)</strong>
                     <div style={{ fontSize: '12.5px', color: '#4a5568' }}>
-                      Reserves arrival slot for {DEMO_TOUR_JOB.scheduledDate}.
+                      Reserves arrival slot for {DEMO_TOUR_JOB.scheduledDate} (Sample transaction).
                     </div>
                   </div>
                   <span style={{ fontSize: '11px', background: '#3182ce', color: '#ffffff', padding: '2px 8px', borderRadius: '4px', fontWeight: 700 }}>
-                    Stripe Secured
+                    Stripe Simulation
                   </span>
                 </div>
 
                 <button
                   type="button"
-                  onClick={handlePayDeposit}
-                  disabled={isPaying}
+                  onClick={() => handleSimulatePayment('apple_pay')}
+                  disabled={isProcessing}
                   style={{
                     width: '100%',
                     background: '#000000',
                     color: '#ffffff',
-                    fontSize: '16px',
+                    fontSize: '15px',
                     fontWeight: 700,
-                    padding: '14px',
+                    padding: '14px 20px',
+                    minHeight: '44px',
                     borderRadius: '8px',
                     border: 'none',
                     cursor: 'pointer',
@@ -241,8 +291,19 @@ export default function ApproveScreen() {
                     gap: '8px',
                     boxShadow: '0 4px 12px rgba(0, 0, 0, 0.25)',
                   }}
+                  aria-label="Simulate Apple Pay deposit of $500"
                 >
-                  {isPaying ? 'Processing Deposit...' : 'Pay $500.00 with Pay'}
+                  {isProcessing ? (
+                    'Processing simulated deposit...'
+                  ) : (
+                    <>
+                      {/* Clean SVG Apple Icon to avoid missing unicode glyph box */}
+                      <svg width="16" height="20" viewBox="0 0 170 170" fill="#ffffff" aria-hidden="true">
+                        <path d="M150.37 130.25c-2.45 5.66-5.35 10.87-8.71 15.66-4.58 6.53-8.33 11.05-11.22 13.56-4.48 4.12-9.28 6.23-14.42 6.35-3.69 0-8.14-1.05-13.32-3.18-5.19-2.12-9.97-3.17-14.34-3.17-4.58 0-9.49 1.05-14.75 3.17-5.26 2.13-9.5 3.24-12.74 3.35-4.35.13-9.16-1.9-14.42-6.08-3.7-3.04-7.69-7.85-11.97-14.42-6.53-9.97-11.7-21.72-15.52-35.25-3.82-13.53-5.73-26.17-5.73-37.92 0-14.93 3.65-27.18 10.96-36.75 7.31-9.57 16.59-14.48 27.84-14.73 4.9 0 10.37 1.34 16.42 4.02 6.05 2.68 9.94 4.08 11.67 4.2 2.01-.24 6.13-1.68 12.37-4.32 6.24-2.64 11.64-3.83 16.2-3.57 12.74.85 22.84 5.75 30.3 14.7-10.96 6.66-16.32 15.77-16.08 27.33.24 9.38 3.86 17.29 10.86 23.73 7 6.44 15.24 10.23 24.72 11.37-2.32 7.08-5.22 14.28-8.7 21.61zM119.22 31.84c0-7.23 2.65-13.97 7.95-20.22 5.3-6.25 11.83-10.33 19.59-12.24-.24 1.34-.42 2.45-.54 3.33-.85 6.65-3.69 13.1-8.52 19.35-4.83 6.25-10.87 10.42-18.12 12.51-.24-.97-.36-1.88-.36-2.73z" />
+                      </svg>
+                      <span>Simulate Apple Pay deposit ($500.00)</span>
+                    </>
+                  )}
                 </button>
               </div>
             ) : (
@@ -258,35 +319,40 @@ export default function ApproveScreen() {
               >
                 <div style={{ fontSize: '24px', marginBottom: '6px' }}>🎉</div>
                 <strong style={{ fontSize: '16px', color: '#22543d', display: 'block' }}>
-                  Deposit Paid &middot; Booking Confirmed!
+                  Simulated Deposit Recorded &middot; Booking Confirmed!
                 </strong>
                 <p style={{ fontSize: '13.5px', color: '#276749', margin: '6px 0 14px' }}>
-                  Arrival window confirmed for <strong>{DEMO_TOUR_JOB.scheduledDate} ({DEMO_TOUR_JOB.scheduledArrivalWindow})</strong>.
-                  {DEMO_TOUR_JOB.crewAssigned} assigned to your project.
+                  Demo complete — simulated $500.00 deposit was captured (no money moved). Arrival slot reserved for <strong>{DEMO_TOUR_JOB.scheduledDate}</strong>.
                 </p>
                 <Link
                   href="/demo/tour/complete"
                   className={styles.tourNextActionBtn}
-                  style={{ width: '100%', justifyContent: 'center' }}
+                  style={{ width: '100%', justifyContent: 'center', minHeight: '44px' }}
+                  aria-label="Proceed to Tour Summary"
                 >
                   View Tour Summary &rarr;
                 </Link>
               </div>
             )}
 
-            {!depositPaid && (
+            {!state.depositSimulated && (
               <div style={{ textAlign: 'center', marginTop: '12px' }}>
                 <button
                   type="button"
-                  onClick={handlePayDeposit}
+                  onClick={() => handleSimulatePayment('card')}
+                  disabled={isProcessing}
                   style={{
                     background: 'none',
                     border: 'none',
                     color: '#4a5568',
-                    fontSize: '12.5px',
+                    fontSize: '13px',
+                    fontWeight: 600,
                     textDecoration: 'underline',
                     cursor: 'pointer',
+                    minHeight: '44px',
+                    padding: '8px 12px',
                   }}
+                  aria-label="Simulate credit card deposit payment"
                 >
                   Or simulate credit card deposit &rarr;
                 </button>

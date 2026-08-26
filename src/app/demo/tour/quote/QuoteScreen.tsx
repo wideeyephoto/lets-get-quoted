@@ -1,24 +1,32 @@
 'use client';
 
-import { useState } from 'react';
 import Link from 'next/link';
 import DemoTourBar from '@/components/demo/DemoTourBar';
+import { useDemoTourState } from '@/components/demo/DemoTourStateProvider';
 import {
   TOUR_STEPS,
+  DEMO_TOUR_CONTRACTOR,
   DEMO_TOUR_CUSTOMER,
   DEMO_TOUR_JOB,
 } from '@/lib/demo-tour-data';
+import { trackDemoEvent } from '@/lib/demo-analytics';
 import styles from '../tour.module.css';
 
 export default function QuoteScreen() {
   const currentStep = TOUR_STEPS[3];
-  const [includeUpgrade, setIncludeUpgrade] = useState(true);
-  const [sent, setSent] = useState(false);
+  const { state, setUpgradeSelected, setQuoteSent } = useDemoTourState();
 
-  const total = DEMO_TOUR_JOB.baseTotal + (includeUpgrade ? DEMO_TOUR_JOB.upgradeTotal : 0);
+  const total = DEMO_TOUR_JOB.baseTotal + (state.upgradeSelected ? DEMO_TOUR_JOB.upgradeTotal : 0);
 
-  const handleSendQuote = () => {
-    setSent(true);
+  const handleSimulateSend = () => {
+    setQuoteSent(true);
+    trackDemoEvent('step_completed', {
+      step: 4,
+      stepSlug: 'quote',
+      total,
+      upgradeSelected: state.upgradeSelected,
+      quoteId: DEMO_TOUR_JOB.quoteId,
+    });
   };
 
   return (
@@ -37,14 +45,38 @@ export default function QuoteScreen() {
               Line items, optional upgrades, and deposit terms are pre-populated. Send via text in one tap.
             </p>
           </div>
-          <Link href="/demo/tour/approve" className={styles.tourNextActionBtn}>
-            Switch to Homeowner Approval &rarr;
-          </Link>
         </div>
       </div>
 
       <div className={styles.cardLayout}>
-        <div className={styles.panelCard}>
+        {/* Lightweight Dashboard Context Framing */}
+        <div
+          style={{
+            background: '#0e2333',
+            border: '1px solid rgba(80, 227, 189, 0.3)',
+            borderRadius: '12px 12px 0 0',
+            padding: '12px 20px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            fontSize: '12px',
+            color: '#9eb5c2',
+            borderBottom: 'none',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ color: '#50e3bd', fontWeight: 800 }}>{DEMO_TOUR_CONTRACTOR.name}</span>
+            <span>&rsaquo;</span>
+            <span style={{ color: '#ffffff', fontWeight: 600 }}>Quotes Workspace</span>
+            <span>&rsaquo;</span>
+            <span style={{ color: '#ffd166' }}>{DEMO_TOUR_JOB.quoteId}</span>
+          </div>
+          <span style={{ background: 'rgba(80, 227, 189, 0.15)', color: '#50e3bd', padding: '2px 8px', borderRadius: '4px', fontWeight: 700 }}>
+            Live LGQ Dashboard Preview
+          </span>
+        </div>
+
+        <div className={styles.panelCard} style={{ borderRadius: '0 0 14px 14px' }}>
           {/* Quote Header */}
           <div
             style={{
@@ -146,9 +178,10 @@ export default function QuoteScreen() {
                 <input
                   type="checkbox"
                   id="includeUpgrade"
-                  checked={includeUpgrade}
-                  onChange={(e) => setIncludeUpgrade(e.target.checked)}
-                  style={{ width: '18px', height: '18px', marginTop: '2px', accentColor: '#ff6a24' }}
+                  checked={state.upgradeSelected}
+                  onChange={(e) => setUpgradeSelected(e.target.checked)}
+                  aria-label={`Add optional ${DEMO_TOUR_JOB.optionalUpgrades[0].title} (+$${DEMO_TOUR_JOB.optionalUpgrades[0].amount})`}
+                  style={{ width: '20px', height: '20px', marginTop: '2px', accentColor: '#ff6a24', cursor: 'pointer' }}
                 />
                 <div>
                   <label htmlFor="includeUpgrade" style={{ fontSize: '14.5px', fontWeight: 700, color: '#ffffff', cursor: 'pointer' }}>
@@ -180,41 +213,58 @@ export default function QuoteScreen() {
             }}
           >
             <div>
-              <div style={{ fontSize: '14px', fontWeight: 700, color: '#ffffff' }}>
-                {sent ? `✓ Quote text dispatched to ${DEMO_TOUR_CUSTOMER.phone}` : `Send Quote to ${DEMO_TOUR_CUSTOMER.name}`}
+              <div style={{ fontSize: '14.5px', fontWeight: 700, color: '#ffffff' }}>
+                {state.quoteSent ? `✓ Simulated dispatch to ${DEMO_TOUR_CUSTOMER.phone}` : `Dispatch Quote to ${DEMO_TOUR_CUSTOMER.name}`}
               </div>
               <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#9db0bd' }}>
-                Customer receives SMS link to review, toggle upgrades, e-sign, and pay $500 deposit.
+                {state.quoteSent
+                  ? 'Demo complete — no real SMS text was sent.'
+                  : 'Customer receives instant SMS link to review, toggle upgrades, e-sign, and pay deposit.'}
               </p>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              {!sent ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+              {!state.quoteSent ? (
                 <button
                   type="button"
-                  onClick={handleSendQuote}
+                  onClick={handleSimulateSend}
                   style={{
                     background: '#50e3bd',
                     color: '#071a26',
                     fontSize: '14px',
                     fontWeight: 800,
                     padding: '10px 20px',
+                    minHeight: '44px',
                     borderRadius: '6px',
                     border: 'none',
                     cursor: 'pointer',
                   }}
+                  aria-label="Simulate sending quote to customer"
                 >
-                  📱 Send Quote via Text
+                  📱 Simulate sending quote
                 </button>
               ) : (
-                <span style={{ color: '#50e3bd', fontWeight: 700, fontSize: '14px' }}>
-                  ✓ Sent to Customer!
+                <span
+                  style={{
+                    background: 'rgba(80, 227, 189, 0.15)',
+                    border: '1px solid #50e3bd',
+                    color: '#50e3bd',
+                    fontWeight: 700,
+                    fontSize: '13.5px',
+                    padding: '8px 14px',
+                    borderRadius: '6px',
+                  }}
+                  role="status"
+                >
+                  ✓ Simulated text sent
                 </span>
               )}
 
               <Link
                 href="/demo/tour/approve"
                 className={styles.tourNextActionBtn}
+                style={{ minHeight: '44px' }}
+                aria-label="Proceed to Homeowner Approval Screen"
               >
                 View Customer Approval Screen &rarr;
               </Link>
