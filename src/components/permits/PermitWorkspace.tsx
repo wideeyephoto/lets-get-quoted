@@ -135,34 +135,28 @@ export function PermitWorkspace({
         .catch((err) => console.warn('Could not load permit history:', err));
     } else {
       // Client-only fallback if no jobId
-      import('@/lib/permit-intel').then(({ getPermitIntelligence, getPropertyPermitHistory }) => {
-        getPermitIntelligence({ address, discipline: activeDiscipline })
-          .then((dto) => {
-            if (isMounted) {
-              setData(dto);
-              setCurrentStatus(dto.permitCase?.applicationStatus || 'not_started');
-              setPermitNumber(dto.permitCase?.externalPermitNumber || '');
-              setLoading(false);
+      fetch(`/api/permits/preview?address=${encodeURIComponent(address || '')}&discipline=${encodeURIComponent(activeDiscipline)}`)
+        .then((res) => (res.ok ? res.json() : null))
+        .then((res) => {
+          if (isMounted && res?.data) {
+            setData(res.data);
+            setCurrentStatus(res.data.permitCase?.applicationStatus || 'not_started');
+            setPermitNumber(res.data.permitCase?.externalPermitNumber || '');
+            if (res.history) {
+              setHistoryRecords(res.history.records || []);
+              setPortalSearchUrl(res.history.portalSearchUrl || null);
             }
-          })
-          .catch((err) => {
-            if (isMounted) {
-              setError(err instanceof Error ? err.message : 'Error resolving permits');
-              setLoading(false);
-            }
-          });
-
-        if (address) {
-          getPropertyPermitHistory(address)
-            .then((hist) => {
-              if (isMounted) {
-                setHistoryRecords(hist.records || []);
-                setPortalSearchUrl(hist.portalSearchUrl || null);
-              }
-            })
-            .catch((err) => console.warn('Could not load permit history:', err));
-        }
-      });
+            setLoading(false);
+          } else if (isMounted) {
+            setLoading(false);
+          }
+        })
+        .catch((err) => {
+          if (isMounted) {
+            setError(err instanceof Error ? err.message : 'Error resolving permits');
+            setLoading(false);
+          }
+        });
     }
 
     return () => {

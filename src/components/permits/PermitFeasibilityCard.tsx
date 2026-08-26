@@ -28,20 +28,23 @@ export function PermitFeasibilityCard({
     let isMounted = true;
     setLoading(true);
 
-    import('@/lib/permit-intel').then(({ getPermitIntelligence }) => {
-      getPermitIntelligence({ address })
-        .then((dto) => {
-          if (isMounted) {
-            setIntel(dto);
-            setLoading(false);
+    fetch(`/api/permits/preview?address=${encodeURIComponent(address)}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((res) => {
+        if (isMounted) {
+          if (res?.data) {
+            setIntel(res.data);
+          } else {
+            setIntel(null);
           }
-        })
-        .catch(() => {
-          if (isMounted) {
-            setLoading(false);
-          }
-        });
-    });
+          setLoading(false);
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setLoading(false);
+        }
+      });
 
     return () => {
       isMounted = false;
