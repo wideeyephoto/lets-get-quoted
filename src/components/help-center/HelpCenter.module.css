@@ -254,24 +254,48 @@ button.quickStepItem {
 .searchInputWrapper input::placeholder {
   color: #94A3B8;
 }
-.hotkeyBadge {
-  display: flex;
+.searchSubmitBtn {
+  background: transparent;
+  border: none;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  border-radius: 6px;
+}
+.enterKeyBadge {
+  background: #15252B;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  padding: 4px 9px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #2DD4BF;
+  display: inline-flex;
   align-items: center;
   gap: 4px;
+  transition: all 0.15s ease;
+  font-family: inherit;
 }
-.hotkeyBadge kbd {
-  background: #15252B;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 4px;
-  padding: 2px 6px;
-  font-size: 0.75rem;
-  color: #94A3B8;
+.searchSubmitBtn:hover .enterKeyBadge,
+.searchSubmitBtn:focus-visible .enterKeyBadge {
+  background: #1F3841;
+  border-color: #2DD4BF;
+  color: #FFFFFF;
 }
 .clearBtn {
   background: none;
   border: none;
   color: #94A3B8;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border-radius: 4px;
+}
+.clearBtn:hover {
+  color: #FFFFFF;
 }
 
 /* Secondary Action Links */
@@ -293,9 +317,9 @@ button.quickStepItem {
   text-decoration: underline;
 }
 
-/* Quick Issue Chips (Horizontal Snap Scroll on mobile) */
+/* Quick Issue Chips (Horizontal Snap Scroll on mobile, clean overflow on desktop) */
 .quickChipsWrapper {
-  margin-top: 1.5rem;
+  margin-top: 1rem;
   display: flex;
   align-items: center;
   gap: 0.75rem;
@@ -310,9 +334,15 @@ button.quickStepItem {
   display: flex;
   gap: 0.5rem;
   overflow-x: auto;
-  padding-bottom: 4px;
-  scrollbar-width: thin;
+  padding: 4px 0;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
   -webkit-overflow-scrolling: touch;
+}
+.quickChipsScroll::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Edge */
+  width: 0;
+  height: 0;
 }
 .quickChipBtn {
   background: #101D22;

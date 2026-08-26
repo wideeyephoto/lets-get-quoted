@@ -741,7 +741,18 @@ export default function HelpCenter() {
         </p>
 
         {/* Search Command Box */}
-        <form role="search" onSubmit={e => e.preventDefault()} className={styles.searchCommandBox}>
+        <form
+          role="search"
+          onSubmit={e => {
+            e.preventDefault();
+            if (searchQuery.trim()) {
+              setHasInteracted(true);
+              const target = document.getElementById('troubleshooter-results') || document.getElementById('knowledge-hub');
+              target?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+          }}
+          className={styles.searchCommandBox}
+        >
           <div className={styles.searchGlowWrapper}>
             <div className={styles.searchInputWrapper}>
               <Icons.Search />
@@ -763,10 +774,6 @@ export default function HelpCenter() {
                   }
                 }}
               />
-              <div className={styles.hotkeyBadge}>
-                <kbd>Ctrl</kbd>
-                <kbd>K</kbd>
-              </div>
               {searchQuery && (
                 <button
                   type="button"
@@ -777,6 +784,14 @@ export default function HelpCenter() {
                   <Icons.X />
                 </button>
               )}
+              <button
+                type="submit"
+                className={styles.searchSubmitBtn}
+                aria-label="Search"
+                title="Press Enter to search"
+              >
+                <kbd className={styles.enterKeyBadge}>↵ Enter</kbd>
+              </button>
             </div>
           </div>
         </form>
