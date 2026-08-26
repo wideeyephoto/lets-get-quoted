@@ -1,6 +1,6 @@
 .shell { max-width: 980px; padding-bottom: 4rem; }
 .header { margin-bottom: 1.25rem; }
-.header h1 { margin: .25rem 0 .45rem; font-size: clamp(1.65rem, 4vw, 2.4rem); }
+.header h1 { margin: .25rem 0 .45rem; font-size: clamp(1.65rem, 4vw, 2.4rem); max-width: none; }
 .header p { color: var(--muted); max-width: 70ch; line-height: 1.6; }
 .back { color: var(--muted); font-size: .86rem; }
 .back:hover { color: var(--text); }
