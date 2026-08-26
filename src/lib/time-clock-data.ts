@@ -2,6 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { createCost } from './jobs';
 import { resolveCrewBurdenPct } from './cost-truth-data';
 import { normalizeTimeClockMode, shiftHours, type OpenShift, type TimeClockMode } from './time-clock';
+import type { GeofenceStatus } from './crew-geofence';
 
 // Server side of the time clock.
 //
@@ -269,7 +270,7 @@ export async function listOpenShifts(supabase: SupabaseClient, accountId: string
   try {
     const { data, error } = await supabase
       .from('time_entries')
-      .select('id, crew_id, job_id, started_at, rate')
+      .select('id, crew_id, job_id, started_at, rate, clock_in_geofence_status, clock_in_distance_ft')
       .eq('account_id', accountId)
       .is('ended_at', null)
       .order('started_at', { ascending: true });
@@ -292,6 +293,8 @@ export async function listOpenShifts(supabase: SupabaseClient, accountId: string
       jobLabel: jobById.get(row.job_id as string) ?? 'Job',
       startedAt: row.started_at as string,
       rate: Number(row.rate) || 0,
+      geofenceStatus: (row.clock_in_geofence_status as GeofenceStatus) || null,
+      clockInDistanceFt: row.clock_in_distance_ft != null ? Number(row.clock_in_distance_ft) : null,
     }));
   } catch {
     return [];

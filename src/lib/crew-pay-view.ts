@@ -17,6 +17,7 @@ import { PAY_DAY_COLUMNS, payDaySettingsFromAccount, payDayView } from '@/lib/pa
 import { listLaborEntries } from '@/lib/labor-data';
 import { getTimeClockMode, listOpenShifts } from '@/lib/time-clock-data';
 import { SHIFT_FLAG_HELP, SHIFT_FLAG_LABEL, formatClock, formatElapsed, openShiftFlag } from '@/lib/time-clock';
+import { describeGeofenceDistance } from '@/lib/crew-geofence';
 
 /**
  * Everything the Hours & pay tab needs, in one read.
@@ -158,6 +159,15 @@ export async function loadCrewPayView(
     timeClockMode !== 'off'
       ? (await listOpenShifts(supabase, accountId)).map((shift) => {
           const flag = openShiftFlag(shift.startedAt);
+          let geofenceLabel: string | null = null;
+          if (shift.geofenceStatus === 'verified_on_site') {
+            geofenceLabel = shift.clockInDistanceFt != null ? `📍 On site (${describeGeofenceDistance(shift.clockInDistanceFt)})` : '📍 Verified on site';
+          } else if (shift.geofenceStatus === 'off_site_warning') {
+            geofenceLabel = shift.clockInDistanceFt != null ? `⚠️ Off site (${describeGeofenceDistance(shift.clockInDistanceFt)})` : '⚠️ Off site';
+          } else if (shift.geofenceStatus === 'location_uncertain') {
+            geofenceLabel = '⏳ GPS uncertain';
+          }
+
           return {
             id: shift.id,
             crewName: shift.crewName,
@@ -170,6 +180,8 @@ export async function loadCrewPayView(
             flag,
             flagLabel: flag ? SHIFT_FLAG_LABEL[flag] : null,
             flagHelp: flag ? SHIFT_FLAG_HELP[flag] : null,
+            geofenceStatus: shift.geofenceStatus ?? null,
+            geofenceLabel,
           };
         })
       : [];

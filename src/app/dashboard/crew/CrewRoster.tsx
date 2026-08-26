@@ -94,6 +94,7 @@ export type CrewRow = {
   startAddress: string | null;
   // What this person may do around an arrival — see lib/arrival.
   permissions: { send: boolean; shareLocation: boolean; viewContact: boolean; reschedule: boolean };
+  canShareWorkLocation?: boolean | null;
   active: boolean;
   /** Where they are in the field-app invitation — see lib/crew-invite. */
   fieldApp: FieldAppState;
@@ -1699,6 +1700,10 @@ function CrewDrawer({ row, onClose, periodLabel }: { row: CrewRow; onClose: () =
               <label className="checkbox-row" htmlFor={`canReschedule-${row.id}`}>
                 <input id={`canReschedule-${row.id}`} name="canReschedule" type="checkbox" defaultChecked={row.permissions.reschedule} />
                 <span>Mark a visit rescheduled from the field</span>
+              </label>
+              <label className="checkbox-row" htmlFor={`canShareWorkLocation-${row.id}`}>
+                <input id={`canShareWorkLocation-${row.id}`} name="canShareWorkLocation" type="checkbox" defaultChecked={row.canShareWorkLocation !== false} />
+                <span>Share foreground GPS location on dispatch map during active shifts</span>
               </label>
             </fieldset>
 

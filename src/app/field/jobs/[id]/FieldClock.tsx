@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState, useRef, type FormEvent } from 'react';
 import SaveButton from '@/components/save-button';
 import { looksOffline, payloadFor, queueFieldSubmission } from '@/lib/field-offline-client';
-import { verifyGeofenceClockIn, type GeofenceVerificationResult } from '@/lib/crew-geofence';
+import { verifyGeofenceClockIn, describeGeofenceDistance, type GeofenceVerificationResult } from '@/lib/crew-geofence';
 import { useWorkLocationTracker } from '@/hooks/use-work-location-tracker';
 import type { LatLng } from '@/lib/distance';
 
@@ -45,6 +45,7 @@ export default function FieldClock({
   const [problem, setProblem] = useState<string | null>(null);
   const [geofenceResult, setGeofenceResult] = useState<GeofenceVerificationResult | null>(null);
   const [acquiringGps, setAcquiringGps] = useState(false);
+  const [offSiteReason, setOffSiteReason] = useState<string>('');
 
   const clockInFormRef = useRef<HTMLFormElement | null>(null);
   const clockOutFormRef = useRef<HTMLFormElement | null>(null);
@@ -91,6 +92,23 @@ export default function FieldClock({
       );
     });
   }, []);
+
+  // Passive pre-check when clock is rendered
+  useEffect(() => {
+    if (startedAt || !jobSiteCoord || typeof window === 'undefined' || !navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const verification = verifyGeofenceClockIn({
+          technicianCoord: { lat: pos.coords.latitude, lng: pos.coords.longitude },
+          jobSiteCoord,
+          accuracyMeters: pos.coords.accuracy,
+        });
+        setGeofenceResult(verification);
+      },
+      () => {},
+      { enableHighAccuracy: false, timeout: 4000, maximumAge: 60000 },
+    );
+  }, [startedAt, jobSiteCoord]);
 
   const offlineSubmit = useCallback(
     (kind: 'clock-in' | 'clock-out', message: string) => (event: FormEvent<HTMLFormElement>) => {
@@ -140,6 +158,11 @@ export default function FieldClock({
         }
       } else {
         formData.set('gpsUnavailable', 'true');
+      }
+
+      if (offSiteReason) {
+        const existingDesc = formData.get('description');
+        formData.set('description', existingDesc ? `${offSiteReason} - ${existingDesc}` : offSiteReason);
       }
 
       await clockIn(formData);
@@ -258,13 +281,38 @@ export default function FieldClock({
       {geofenceResult ? (
         <div style={{
           fontSize: '0.78rem',
-          padding: '4px 10px',
+          padding: '5px 10px',
           borderRadius: '6px',
           margin: '6px 0',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
           background: geofenceResult.badgeTone === 'success' ? '#dcfce7' : '#fef3c7',
           color: geofenceResult.badgeTone === 'success' ? '#15803d' : '#b45309',
         }}>
-          {geofenceResult.badgeLabel}
+          <span>{geofenceResult.badgeLabel}</span>
+          {geofenceResult.distanceFeet != null ? (
+            <span style={{ fontSize: '0.72rem', opacity: 0.85 }}>
+              {describeGeofenceDistance(geofenceResult.distanceFeet)}
+            </span>
+          ) : null}
+        </div>
+      ) : null}
+
+      {/* Optional Reason if clocking in off-site */}
+      {geofenceResult && !geofenceResult.isWithinGeofence && geofenceResult.status === 'off_site_warning' ? (
+        <div style={{ margin: '6px 0', fontSize: '0.75rem' }}>
+          <select
+            value={offSiteReason}
+            onChange={(e) => setOffSiteReason(e.target.value)}
+            aria-label="Reason for off-site clock in"
+            style={{ width: '100%', padding: '4px 8px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '0.75rem' }}
+          >
+            <option value="">Off-site reason (optional)...</option>
+            <option value="Picking up parts / Supply house">Picking up parts / Supply house</option>
+            <option value="Shop / Yard staging">Shop / Yard staging</option>
+            <option value="Client consultation / In transit">Client consultation / In transit</option>
+          </select>
         </div>
       ) : null}
 

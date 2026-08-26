@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { haversineFeet, feetToMeters } from '@/lib/crew-geofence';
 import type { LatLng } from '@/lib/distance';
 
-const HEARTBEAT_INTERVAL_MS = 45_000;
+const BASE_HEARTBEAT_INTERVAL_MS = 45_000;
 const MIN_MOVE_METERS = 60;
 
 type UseWorkLocationTrackerOptions = {
@@ -37,6 +37,34 @@ export function useWorkLocationTracker({
 
   const shouldTrack = canShareLocation && (isOnShift || isSharingArrival);
 
+  // Screen WakeLock for active driving / arrival trips
+  useEffect(() => {
+    let wakeLockSentinel: unknown = null;
+    let isMounted = true;
+
+    if (isSharingArrival && typeof navigator !== 'undefined' && 'wakeLock' in navigator) {
+      (navigator as unknown as { wakeLock: { request: (type: string) => Promise<{ release: () => Promise<void> }> } })
+        .wakeLock.request('screen')
+        .then((lock) => {
+          if (isMounted) {
+            wakeLockSentinel = lock;
+          } else {
+            void lock.release();
+          }
+        })
+        .catch(() => {
+          // Non-blocking if wake lock unavailable or denied
+        });
+    }
+
+    return () => {
+      isMounted = false;
+      if (wakeLockSentinel && typeof (wakeLockSentinel as { release: () => Promise<void> }).release === 'function') {
+        void (wakeLockSentinel as { release: () => Promise<void> }).release();
+      }
+    };
+  }, [isSharingArrival]);
+
   const pushLocation = useCallback(
     async (coords: GeolocationCoordinates, capturedAt: string) => {
       if (isPushingRef.current) return;
@@ -63,7 +91,7 @@ export function useWorkLocationTracker({
         if (!res.ok && res.status !== 200) {
           console.warn('Location ingestion response:', res.status);
         }
-      } catch (err) {
+      } catch {
         // Drop network error silently; next position sample will send when in signal
       } finally {
         isPushingRef.current = false;
@@ -96,8 +124,15 @@ export function useWorkLocationTracker({
       const movedFeet = previous ? haversineFeet(here, { lat: previous.lat, lng: previous.lng }) : Infinity;
       const movedMeters = previous ? feetToMeters(movedFeet) : Infinity;
 
-      // Throttle: Send if first point, if moved > 60m, or if heartbeat interval exceeded
-      if (elapsed < HEARTBEAT_INTERVAL_MS && movedMeters < MIN_MOVE_METERS) {
+      // Adaptive motion-based throttling:
+      // In Transit (> 15 mph / 6.7 mps): 20s or 40m
+      // Normal: 45s or 60m
+      // Stationary (< 3 mph / 1.5 mps): 75s
+      const speed = position.coords.speed || 0;
+      const targetHeartbeatMs = speed > 6.7 ? 20_000 : speed < 1.5 ? 75_000 : BASE_HEARTBEAT_INTERVAL_MS;
+      const targetMinMoveMeters = speed > 6.7 ? 40 : MIN_MOVE_METERS;
+
+      if (elapsed < targetHeartbeatMs && movedMeters < targetMinMoveMeters) {
         return;
       }
 
@@ -132,12 +167,12 @@ export function useWorkLocationTracker({
           },
           {
             enableHighAccuracy: true,
-            maximumAge: 30_000,
+            maximumAge: 25_000,
             timeout: 20_000,
           },
         );
         setIsTracking(true);
-      } catch (err) {
+      } catch {
         setError('Could not start GPS tracking');
         setIsTracking(false);
       }

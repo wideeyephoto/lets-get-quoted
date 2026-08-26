@@ -221,6 +221,7 @@ export default async function CrewLaborPage({
       email: member.email,
       startAddress: member.start_address ?? null,
       permissions: arrivalPermissionsFromCrew(member as unknown as Record<string, unknown>),
+      canShareWorkLocation: member.can_share_work_location !== false,
       active: member.active,
       // The whole invitation, not "has a user_id". See lib/crew-invite for why
       // three states derived from two booleans could not describe an invitation

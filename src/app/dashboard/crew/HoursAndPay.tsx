@@ -106,6 +106,8 @@ export type OpenShiftView = {
   flag: 'running-long' | 'implausible' | null;
   flagLabel: string | null;
   flagHelp: string | null;
+  geofenceStatus?: string | null;
+  geofenceLabel?: string | null;
 };
 
 type StatusFilter = 'all' | 'needs_review' | 'approved' | 'draft';
@@ -1294,6 +1296,19 @@ export default function HoursAndPay({
                   <strong>{shift.elapsedLabel}</strong>
                   <small>since {shift.startedLabel}</small>
                 </span>
+                {shift.geofenceLabel ? (
+                  <span style={{
+                    fontSize: '0.72rem',
+                    fontWeight: 600,
+                    padding: '2px 6px',
+                    borderRadius: '4px',
+                    background: shift.geofenceStatus === 'verified_on_site' ? '#dcfce7' : '#fef3c7',
+                    color: shift.geofenceStatus === 'verified_on_site' ? '#15803d' : '#b45309',
+                    whiteSpace: 'nowrap',
+                  }}>
+                    {shift.geofenceLabel}
+                  </span>
+                ) : null}
                 {shift.flag ? (
                   <span className={styles.shiftFlag} data-level={shift.flag} title={shift.flagHelp ?? undefined}>
                     {shift.flagLabel}

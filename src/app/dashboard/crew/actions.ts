@@ -6,6 +6,7 @@ import { cookies } from 'next/headers';
 import { createAdminClient, requireOfficeContext } from '@/lib/auth';
 import { loadBusinessName } from '@/lib/business-name';
 import { LABOR_SETTINGS_COOKIE, normalizeLaborSettings, roundHours } from '@/lib/labor-settings';
+import { geocodeAddress } from '@/lib/geocode';
 import { normalizePayType } from '@/lib/pay-types';
 import { validateManualEnd } from '@/lib/time-clock';
 import { clockOut, getTimeEntry } from '@/lib/time-clock-data';
@@ -207,6 +208,7 @@ export async function updateCrewAction(crewId: string, formData: FormData) {
     phone,
     email: optionalText(formData.get('email')) ?? null,
     roleLabel: optionalText(formData.get('roleLabel')),
+    canShareWorkLocation: formData.get('canShareWorkLocation') === 'on',
     ...payFromForm(formData),
   });
 
@@ -558,4 +560,43 @@ export async function deleteLaborEntryAction(entryId: string) {
   if (error) throw error;
   revalidatePath('/dashboard/crew');
   revalidatePath('/dashboard/jobs');
+}
+
+// 1-Click Geocoding for a job address from dispatch operations map
+export async function geocodeJobAction(jobId: string): Promise<{ ok: boolean; lat?: number; lng?: number; error?: string }> {
+  const { supabase, accountId } = await requireOfficeContext('crew.write');
+  const { data: job, error } = await supabase
+    .from('jobs')
+    .select('id, property_address, client_address')
+    .eq('account_id', accountId)
+    .eq('id', jobId)
+    .maybeSingle();
+
+  if (error || !job) {
+    return { ok: false, error: 'Job not found' };
+  }
+
+  const rawAddress = (job.property_address || job.client_address || '').trim();
+  if (!rawAddress) {
+    return { ok: false, error: 'Job has no address to geocode' };
+  }
+
+  const geo = await geocodeAddress(rawAddress);
+  if (!geo) {
+    return { ok: false, error: 'Could not resolve coordinates for this address' };
+  }
+
+  const { error: updateError } = await supabase
+    .from('jobs')
+    .update({ lat: geo.lat, lng: geo.lng })
+    .eq('account_id', accountId)
+    .eq('id', jobId);
+
+  if (updateError) {
+    return { ok: false, error: updateError.message };
+  }
+
+  revalidatePath('/dashboard/crew');
+  revalidatePath(`/dashboard/jobs/${jobId}`);
+  return { ok: true, lat: geo.lat, lng: geo.lng };
 }

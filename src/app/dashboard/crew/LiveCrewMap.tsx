@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { loadGoogleMaps, googleMapAppearance } from '@/lib/maps-loader';
@@ -14,9 +14,11 @@ import {
   type TechnicianLocationSnapshot,
 } from '@/lib/crew-location';
 import { describeGeofenceDistance, feetToMeters } from '@/lib/crew-geofence';
+import { geocodeJobAction } from './actions';
 import styles from './LiveCrewMap.module.css';
 
 type FilterKey = 'all' | 'live' | 'en_route' | 'on_site' | 'off_site' | 'attention' | 'stale' | 'off_duty';
+type WorkerTypeFilter = 'all' | 'employee' | 'subcontractor';
 
 type Props = {
   initialSnapshot: CrewMapSnapshot;
@@ -112,6 +114,7 @@ export default function LiveCrewMap({
 }: Props) {
   const [technicians, setTechnicians] = useState<TechnicianLocationSnapshot[]>(initialSnapshot.technicians);
   const [filter, setFilter] = useState<FilterKey>('all');
+  const [workerTypeFilter, setWorkerTypeFilter] = useState<WorkerTypeFilter>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(
     initialSnapshot.technicians.find((t) => t.status === 'on_site' || t.status === 'en_route')?.crewId ||
@@ -121,6 +124,8 @@ export default function LiveCrewMap({
   const [mobileView, setMobileView] = useState<'map' | 'list'>('map');
   const [realtimeConnected, setRealtimeConnected] = useState(false);
   const [mapReady, setMapReady] = useState(false);
+  const [mapType, setMapType] = useState<'roadmap' | 'hybrid'>('roadmap');
+  const [geocodingJobId, setGeocodingJobId] = useState<string | null>(null);
 
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapInstanceRef = useRef<google.maps.Map | null>(null);
@@ -149,6 +154,33 @@ export default function LiveCrewMap({
       );
     }, 5000);
     return () => clearInterval(timer);
+  }, []);
+
+  // Resynchronize on window focus or reconnection
+  useEffect(() => {
+    let isMounted = true;
+    const resync = async () => {
+      if (document.visibilityState !== 'visible') return;
+      try {
+        const res = await fetch('/api/dashboard/crew/locations');
+        if (res.ok) {
+          const json = await res.json();
+          if (json.ok && json.snapshot?.technicians && isMounted) {
+            setTechnicians(json.snapshot.technicians);
+          }
+        }
+      } catch {
+        // Non-blocking
+      }
+    };
+
+    window.addEventListener('focus', resync);
+    document.addEventListener('visibilitychange', resync);
+    return () => {
+      isMounted = false;
+      window.removeEventListener('focus', resync);
+      document.removeEventListener('visibilitychange', resync);
+    };
   }, []);
 
   // Supabase Realtime Broadcast Subscription
@@ -271,6 +303,98 @@ export default function LiveCrewMap({
       cancelled = true;
     };
   }, [theme]);
+
+  // Toggle Map Type (Roadmap / Satellite)
+  const toggleMapType = useCallback(() => {
+    const nextType = mapType === 'roadmap' ? 'hybrid' : 'roadmap';
+    setMapType(nextType);
+    if (mapInstanceRef.current) {
+      mapInstanceRef.current.setMapTypeId(nextType);
+    }
+  }, [mapType]);
+
+  // Fit All Active Pins
+  const fitAllCrew = useCallback(() => {
+    const map = mapInstanceRef.current;
+    if (!map || typeof google === 'undefined') return;
+
+    const bounds = new google.maps.LatLngBounds();
+    let hasPins = false;
+
+    for (const tech of technicians) {
+      if (tech.lat != null && tech.lng != null) {
+        bounds.extend({ lat: tech.lat, lng: tech.lng });
+        hasPins = true;
+      }
+      if (tech.jobCoord && tech.jobCoord.lat != null && tech.jobCoord.lng != null) {
+        bounds.extend({ lat: tech.jobCoord.lat, lng: tech.jobCoord.lng });
+        hasPins = true;
+      }
+    }
+
+    if (hasPins && !bounds.isEmpty()) {
+      map.fitBounds(bounds, 60);
+    }
+  }, [technicians]);
+
+  // 1-Click Geocode Job Action
+  const handleGeocodeJob = async (jobId: string) => {
+    setGeocodingJobId(jobId);
+    try {
+      const res = await geocodeJobAction(jobId);
+      if (res.ok && res.lat != null && res.lng != null) {
+        const jobCoord = { lat: res.lat, lng: res.lng };
+        setTechnicians((prev) =>
+          prev.map((t) => {
+            if (t.activeJobId !== jobId) return t;
+            const now = Date.now();
+            const { freshness } = resolveFreshness(t.lastCapturedAt, now);
+            const { status, statusLabel, statusTone, geofenceResult } = resolveTechnicianStatus({
+              isOnShift: Boolean(t.shiftId),
+              isEnRoute: t.status === 'en_route',
+              locationState: t.lat != null && t.lng != null ? {
+                account_id: accountId,
+                crew_id: t.crewId,
+                time_entry_id: t.shiftId,
+                job_id: jobId,
+                lat: t.lat,
+                lng: t.lng,
+                accuracy_m: t.accuracyMeters,
+                heading_deg: t.headingDeg,
+                speed_mps: t.speedMps,
+                captured_at: t.lastCapturedAt || new Date().toISOString(),
+                received_at: new Date().toISOString(),
+                expires_at: new Date(now + 10 * 60_000).toISOString(),
+                source: 'shift',
+                client_sequence: 1,
+                permission_state: 'granted',
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+              } : null,
+              jobCoord,
+              geofenceRadiusFeet: initialSnapshot.geofenceRadiusFeet,
+              freshness,
+            });
+
+            return {
+              ...t,
+              jobCoord,
+              status,
+              statusLabel,
+              statusTone,
+              distanceFromSiteFeet: geofenceResult?.distanceFeet ?? null,
+              distanceLabel: geofenceResult?.distanceFeet != null ? describeGeofenceDistance(geofenceResult.distanceFeet) : null,
+              geofenceStatus: geofenceResult?.status ?? 'verified_on_site',
+            };
+          }),
+        );
+      }
+    } catch (err) {
+      console.error('Job geocoding failed:', err);
+    } finally {
+      setGeocodingJobId(null);
+    }
+  };
 
   // Synchronize Google Maps Markers and Overlays without Recreating the Map
   useEffect(() => {
@@ -397,6 +521,14 @@ export default function LiveCrewMap({
   // Filtering & Search
   const filteredTechnicians = useMemo(() => {
     return technicians.filter((tech) => {
+      // Worker type filter
+      if (workerTypeFilter === 'employee' && tech.roleTitle.toLowerCase().includes('subcontractor')) {
+        return false;
+      }
+      if (workerTypeFilter === 'subcontractor' && !tech.roleTitle.toLowerCase().includes('subcontractor')) {
+        return false;
+      }
+
       // Status filter
       if (filter === 'live' && !(tech.freshness === 'live' && (tech.status === 'on_site' || tech.status === 'en_route'))) {
         return false;
@@ -422,7 +554,7 @@ export default function LiveCrewMap({
 
       return true;
     });
-  }, [technicians, filter, searchQuery]);
+  }, [technicians, filter, workerTypeFilter, searchQuery]);
 
   const selectedTechnician = useMemo(
     () => technicians.find((t) => t.crewId === selectedId) || null,
@@ -486,7 +618,7 @@ export default function LiveCrewMap({
         </div>
       </div>
 
-      {/* ── Toolbar: Filter Pills & Search ── */}
+      {/* ── Toolbar: Filter Pills, Worker Type & Search ── */}
       <div className={styles.toolbar}>
         <div className={styles.filterPills} role="tablist" aria-label="Crew status filters">
           <button
@@ -542,15 +674,42 @@ export default function LiveCrewMap({
           </button>
         </div>
 
-        <div className={styles.searchBox}>
-          <span className={styles.searchIcon} aria-hidden="true">🔍</span>
-          <input
-            type="text"
-            className={styles.searchInput}
-            placeholder="Search tech, role, address…"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+          {/* Worker Type Quick Switcher */}
+          <div style={{ display: 'inline-flex', border: '1px solid #e2e8f0', borderRadius: '6px', overflow: 'hidden', fontSize: '0.75rem' }}>
+            <button
+              type="button"
+              onClick={() => setWorkerTypeFilter('all')}
+              style={{ padding: '4px 8px', border: 'none', background: workerTypeFilter === 'all' ? '#0f172a' : '#ffffff', color: workerTypeFilter === 'all' ? '#ffffff' : '#64748b', cursor: 'pointer', fontWeight: 600 }}
+            >
+              All Types
+            </button>
+            <button
+              type="button"
+              onClick={() => setWorkerTypeFilter('employee')}
+              style={{ padding: '4px 8px', border: 'none', borderLeft: '1px solid #e2e8f0', background: workerTypeFilter === 'employee' ? '#0f172a' : '#ffffff', color: workerTypeFilter === 'employee' ? '#ffffff' : '#64748b', cursor: 'pointer', fontWeight: 600 }}
+            >
+              Employees
+            </button>
+            <button
+              type="button"
+              onClick={() => setWorkerTypeFilter('subcontractor')}
+              style={{ padding: '4px 8px', border: 'none', borderLeft: '1px solid #e2e8f0', background: workerTypeFilter === 'subcontractor' ? '#0f172a' : '#ffffff', color: workerTypeFilter === 'subcontractor' ? '#ffffff' : '#64748b', cursor: 'pointer', fontWeight: 600 }}
+            >
+              Subs
+            </button>
+          </div>
+
+          <div className={styles.searchBox}>
+            <span className={styles.searchIcon} aria-hidden="true">🔍</span>
+            <input
+              type="text"
+              className={styles.searchInput}
+              placeholder="Search tech, role, address…"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
         </div>
       </div>
 
@@ -569,6 +728,26 @@ export default function LiveCrewMap({
       <div className={styles.mainSplit}>
         {/* Left Pane: Interactive Google Map */}
         <div className={styles.mapPane}>
+          {/* Floating Map Overlay Controls */}
+          <div className={styles.mapOverlayControls}>
+            <button
+              type="button"
+              className={styles.mapControlBtn}
+              onClick={toggleMapType}
+              title="Toggle standard map vs satellite hybrid imagery"
+            >
+              {mapType === 'roadmap' ? '🛰️ Satellite' : '🗺️ Map'}
+            </button>
+            <button
+              type="button"
+              className={styles.mapControlBtn}
+              onClick={fitAllCrew}
+              title="Center and fit all active crew pins on the map"
+            >
+              🎯 Fit All
+            </button>
+          </div>
+
           <div ref={containerRef} className={styles.mapCanvas} />
           {!mapReady ? (
             <div className={styles.mapFallback}>
@@ -701,6 +880,21 @@ export default function LiveCrewMap({
                   <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #e2e8f0', paddingTop: '6px' }}>
                     <span style={{ color: '#64748b' }}>Labor Accrued:</span>
                     <strong>{formatUsdExact(selectedTechnician.estimatedLaborCost || 0)} ({formatUsdExact(selectedTechnician.hourlyRate)}/hr)</strong>
+                  </div>
+                ) : null}
+
+                {/* 1-Click Job Geocoding Button if Job lacks Coordinates */}
+                {!selectedTechnician.jobCoord && selectedTechnician.activeJobId && selectedTechnician.activeJobAddress ? (
+                  <div style={{ background: '#f8fafc', padding: '8px', borderRadius: '6px', border: '1px solid #e2e8f0', marginTop: '4px' }}>
+                    <span style={{ fontSize: '0.74rem', color: '#64748b' }}>Job site address needs coordinate verification to enable 200 ft geofencing.</span>
+                    <button
+                      type="button"
+                      className={styles.geocodeActionBtn}
+                      disabled={geocodingJobId === selectedTechnician.activeJobId}
+                      onClick={() => handleGeocodeJob(selectedTechnician.activeJobId!)}
+                    >
+                      {geocodingJobId === selectedTechnician.activeJobId ? '📍 Geocoding…' : '📍 Geocode Job Address'}
+                    </button>
                   </div>
                 ) : null}
               </div>

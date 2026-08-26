@@ -63,6 +63,7 @@ export type CrewInput = {
   annualSalary?: number | null;
   dayRate?: number | null;
   payrollId?: string | null;
+  canShareWorkLocation?: boolean | null;
 };
 
 /**
@@ -122,6 +123,7 @@ export function crewMemberCreateColumns(accountId: string, input: CrewInput) {
     email: cleanEmail(input.email),
     role_label: input.roleLabel?.trim() || 'Laborer',
     photo_path: input.photoPath ?? null,
+    can_share_work_location: input.canShareWorkLocation !== undefined ? input.canShareWorkLocation : true,
     ...payColumns(input),
   };
 }
@@ -238,6 +240,7 @@ export async function updateCrewMember(
     phone: input.phone,
     email: cleanEmail(input.email),
     role_label: input.roleLabel?.trim() || 'Laborer',
+    ...(input.canShareWorkLocation !== undefined ? { can_share_work_location: input.canShareWorkLocation } : {}),
   };
   const { data, error } = await supabase
     .from('crew')
