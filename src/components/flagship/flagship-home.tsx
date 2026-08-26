@@ -168,6 +168,7 @@ const suite: Array<[title: string, body: string, href: string]> = [
   ["Reviews + growth", "Follow-ups, review requests and AI-assisted marketing.", "/features/reviews"],
 ];
 
+
 /**
  * A slow band of light crossing a section's background.
  *
@@ -616,13 +617,13 @@ export default function FlagshipHome() {
           <p className="eyebrow"><span>✦</span> CONTRACTOR SOFTWARE—STARTING WITH A FREE WEBSITE</p>
           <h1>From first click to final payment.<br /><em>Run it all in one place.</em></h1>
           <p className="hero-sub">
-            Build your website, qualify leads, send quotes, schedule work, manage your crew, and collect payment without switching tools.
+            Tell us your company, trade, and ZIP. We’ll generate an editable contractor website with instant estimates—then keep every lead, quote, schedule, message, and payment connected behind it.
           </p>
           <div className="hero-actions">
             <a className="button primary" href="https://app.letsgetquoted.com/start?goal=build_site&source=home_hero" ref={heroCtaRef}>{SIGNUP_LABEL} <span>→</span></a>
-            <a className="button secondary" href="#flagships">See how it works</a>
+            <Link className="button secondary" href="/demo">Explore a live demo</Link>
           </div>
-          <p className="hero-note"><i>✓</i> Flex starts at $0/month + 1.25% &nbsp;·&nbsp; No credit card</p>
+          <p className="hero-note"><i>✓</i> Flex: $0/month. LGQ charges 1.25% on eligible payments collected through LGQ. Stripe processing is separate. No card to start.</p>
         </div>
 
         <div className="hero-product">
@@ -855,15 +856,6 @@ export default function FlagshipHome() {
           <CommandCenterDeck activeId={screen} />
         </div>
 
-        {/* Below the screen, not above it: these are the parts with no mockup,
-            so they read as "and the rest" rather than as the main event. */}
-        {/* THE CARD STAYS AN <article> AND THE LINK STRETCHES OVER IT.
-            Roughly twenty rules across five breakpoints are written against
-            `.suite-grid article` — the grid, the borders, the corner circle,
-            the hover lift, the reveal. Swapping the element for an <a> would
-            have silently dropped every one of them. The title is the link, so
-            it is also the accessible name, and its ::after covers the card so
-            the whole tile is the target (see §97). */}
         <div className="suite-grid suite-linked">
           {suite.map(([title, body, href], index) => (
             <article key={title} data-rise style={cssVars({ '--rise-i': index })}>

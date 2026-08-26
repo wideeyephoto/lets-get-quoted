@@ -3,13 +3,23 @@
  * Single source of truth for categories, trade playbooks, legal templates, and common fixes.
  */
 
+export interface ArticleSource {
+  title: string;
+  url: string;
+}
+
 export interface Article {
   id: string;
+  slug: string;
   title: string;
   readTime: string;
   audience?: string;
   category: string;
   lastUpdated?: string;
+  lastReviewed?: string;
+  applicableRegion?: string;
+  author?: string;
+  sources?: ArticleSource[];
   content: string;
 }
 
@@ -55,6 +65,8 @@ export interface SupportChannel {
   availability: string;
   responseTarget: string;
   prepareInfo: string[];
+  actionLabel?: string;
+  actionTarget?: string;
 }
 
 export const LEGAL_TEMPLATES_DISCLAIMER =
@@ -64,11 +76,19 @@ export const LEGAL_TEMPLATES_DISCLAIMER =
 export const COMMON_FIX_ARTICLES: Article[] = [
   {
     id: 'art-quote-send-troubleshooting',
+    slug: 'quote-delivery-failures-quick-fix',
     title: 'Why Customer Quotes Fail to Deliver (and How to Fix Them in 2 Minutes)',
     category: 'Quoting',
     readTime: '2 min read',
     audience: 'Contractors & Estimators',
     lastUpdated: 'August 2026',
+    lastReviewed: 'August 2026',
+    applicableRegion: 'US & Canada',
+    author: 'LGQ Support & Estimating Engineering',
+    sources: [
+      { title: 'CTIA Messaging Principles & Best Practices', url: 'https://www.ctia.org' },
+      { title: 'LGQ Quote Delivery Engine Overview', url: 'https://letsgetquoted.com/features/quotes' }
+    ],
     content: `
       <h3>Diagnosing Quote Delivery Issues</h3>
       <p>When an estimate or quote fails to reach your customer, it is almost always caused by one of three issues:</p>
@@ -87,11 +107,19 @@ export const COMMON_FIX_ARTICLES: Article[] = [
   },
   {
     id: 'art-sms-delivery-troubleshooting',
+    slug: '10dlc-carrier-verification-pending-sms',
     title: 'Troubleshooting 10DLC Carrier Verification & Pending Text Messages',
     category: 'SMS & Messaging',
     readTime: '3 min read',
     audience: 'Owners & Administrators',
     lastUpdated: 'August 2026',
+    lastReviewed: 'August 2026',
+    applicableRegion: 'US (10DLC Regulations)',
+    author: 'LGQ Carrier Compliance Team',
+    sources: [
+      { title: 'The Campaign Registry 10DLC Guidelines', url: 'https://www.campaignregistry.com' },
+      { title: 'FCC Consumer Texting Compliance', url: 'https://www.fcc.gov' }
+    ],
     content: `
       <h3>10DLC Carrier Brand Approval Workflow</h3>
       <p>US telecom regulations require all business texting to be verified under 10DLC (10-Digit Long Code). Here is how to unblock pending status:</p>
@@ -106,29 +134,48 @@ export const COMMON_FIX_ARTICLES: Article[] = [
   },
   {
     id: 'art-stripe-payout-troubleshooting',
+    slug: 'stripe-payout-schedules-holds',
     title: 'Resolving Stripe Connect Deposit Schedules & Verification Holds',
     category: 'Payments & Banking',
-    readTime: '2 min read',
+    readTime: '3 min read',
     audience: 'Business Owners & Bookkeepers',
     lastUpdated: 'August 2026',
+    lastReviewed: 'August 2026',
+    applicableRegion: 'US & Canada (Banking jurisdictions vary)',
+    author: 'LGQ Payments & Billing Operations',
+    sources: [
+      { title: 'Stripe Connect Payout Documentation', url: 'https://docs.stripe.com/payouts' },
+      { title: 'Stripe Express Identity Verification', url: 'https://support.stripe.com/express' }
+    ],
     content: `
-      <h3>Understanding Payout Timing</h3>
-      <p>Customer deposits and credit card payments clear through Stripe Connect directly into your linked checking account on a <strong>2-business-day rolling basis</strong>.</p>
-      <h4>Common Reasons for Delayed Deposits:</h4>
+      <h3>Understanding Payout Timing &amp; Verification</h3>
+      <p>Customer payments made via debit card, credit card, or ACH clear into your linked bank account via Stripe Connect. Deposit timing depends on your account age, country, payment method, and risk profile:</p>
       <ul>
-        <li><strong>First Payout Delay:</strong> Stripe applies a one-time 5-7 business day holding period on your very first collected customer payment for fraud prevention.</li>
-        <li><strong>Identity Verification Needed:</strong> Check <em>Settings &gt; Payments &gt; Stripe Express Dashboard</em> to see if a photo ID or bank statement upload is requested.</li>
-        <li><strong>Weekend &amp; Bank Holiday Rollover:</strong> Payments processed after 5:00 PM ET on Fridays batch into Monday morning bank processing.</li>
+        <li><strong>First Payout Timeline (7–14 Days):</strong> Stripe applies an initial 7 to 14-day holding period to your very first collected customer payment. This window is standard across payment processors to verify bank ownership, confirm business identity, and mitigate fraud risk.</li>
+        <li><strong>Subsequent Rolling Schedule (2 Business Days in US):</strong> After initial account verification, subsequent card charges typically batch and transfer on a 2-business-day rolling schedule for standard US bank accounts. ACH direct debits typically take 4–5 business days to clear before payout.</li>
+        <li><strong>Identity &amp; Document Verification:</strong> If a payout status is pending or held, open <em>Settings &gt; Payments &gt; Stripe Express Dashboard</em> to review whether a photo ID, tax document, or bank statement verification is required.</li>
+        <li><strong>Weekend &amp; Holiday Banking Processing:</strong> Payments batched after Friday 5:00 PM ET bank cutoff windows roll over into Monday morning Federal Reserve processing.</li>
       </ul>
+      <div class="calloutInfo">
+        <strong>Official Documentation:</strong> For detailed country-specific payout schedules, instant payouts availability, and risk review guidelines, see <a href="https://docs.stripe.com/payouts" target="_blank" rel="noopener noreferrer">Stripe's Official Payout Documentation</a>.
+      </div>
     `
   },
   {
     id: 'art-domain-offline-troubleshooting',
+    slug: 'custom-domain-dns-ssl-troubleshooting',
     title: 'Fixing Custom Domain DNS Records & SSL Certificate Propagation',
     category: 'Custom Domains',
     readTime: '4 min read',
     audience: 'Administrators & Web Leads',
     lastUpdated: 'August 2026',
+    lastReviewed: 'August 2026',
+    applicableRegion: 'Global DNS',
+    author: 'LGQ Infrastructure & Edge Network',
+    sources: [
+      { title: 'Let’s Encrypt Certificate Automation Guide', url: 'https://letsencrypt.org/docs/' },
+      { title: 'ICANN DNS Resolution Standards', url: 'https://www.icann.org' }
+    ],
     content: `
       <h3>DNS Configuration Reference</h3>
       <p>To connect your own custom domain (e.g. <code>maplewoodplumbing.com</code>) to your contractor site:</p>
@@ -144,11 +191,18 @@ export const COMMON_FIX_ARTICLES: Article[] = [
   },
   {
     id: 'art-team-access-troubleshooting',
+    slug: 'crew-login-role-permissions',
     title: 'Resolving Crew Sign-In Issues & Role Permission Settings',
     category: 'Team Management',
     readTime: '2 min read',
     audience: 'Owners & Field Managers',
     lastUpdated: 'August 2026',
+    lastReviewed: 'August 2026',
+    applicableRegion: 'All Platforms',
+    author: 'LGQ Identity & Security Team',
+    sources: [
+      { title: 'LGQ Role-Based Access Control Architecture', url: 'https://letsgetquoted.com/security' }
+    ],
     content: `
       <h3>Managing Team Invitations</h3>
       <p>If a technician or office manager cannot access their dashboard, follow these verification steps:</p>
@@ -161,11 +215,18 @@ export const COMMON_FIX_ARTICLES: Article[] = [
   },
   {
     id: 'art-schedule-sync-troubleshooting',
+    slug: 'dispatched-job-missing-calendar',
     title: 'Why a Dispatched Job is Missing from the Crew Calendar',
     category: 'Scheduling & Dispatch',
     readTime: '2 min read',
     audience: 'Dispatchers & Technicians',
     lastUpdated: 'August 2026',
+    lastReviewed: 'August 2026',
+    applicableRegion: 'All Platforms',
+    author: 'LGQ Dispatch Operations Team',
+    sources: [
+      { title: 'LGQ Field Dispatch & Routing Overview', url: 'https://letsgetquoted.com/features/scheduling' }
+    ],
     content: `
       <h3>Dispatch Synchronization Guide</h3>
       <p>When an approved quote or emergency service call is not showing on a technician&apos;s phone calendar:</p>
@@ -188,11 +249,18 @@ export const KNOWLEDGE_BASE: KnowledgeCategory[] = [
     articles: [
       {
         id: 'art-quickstart-guide',
+        slug: 'contractor-onboarding-checklist',
         title: 'Complete 10-Minute Onboarding Checklist for Contractors',
         category: 'Setup',
         readTime: '4 min read',
         audience: 'New Users',
         lastUpdated: 'August 2026',
+        lastReviewed: 'August 2026',
+        applicableRegion: 'US & Canada',
+        author: 'LGQ Onboarding & Customer Success',
+        sources: [
+          { title: 'LGQ Quick Start Onboarding Hub', url: 'https://letsgetquoted.com/how-it-works' }
+        ],
         content: `
           <h3>Fast-Tracking Your Live Contractor Workspace</h3>
           <p>Setting up your workspace properly ensures every outgoing estimate, invoice, SMS alert, and customer agreement reflects your verified business credentials and brand identity.</p>
@@ -206,18 +274,26 @@ export const KNOWLEDGE_BASE: KnowledgeCategory[] = [
             <li><strong>Company Profile &amp; Trade License:</strong> Navigate to <em>Settings &gt; Profile</em> and enter your legal business name, state contractor license number, and general liability insurance policy details.</li>
             <li><strong>10DLC SMS Phone Line:</strong> Submit your 9-digit IRS EIN in <em>Settings &gt; SMS</em> to provision a dedicated local area code number for two-way client texting.</li>
             <li><strong>Labor Rates &amp; Default Markup:</strong> In <em>Settings &gt; Pricing</em>, set your baseline hourly labor rate and target gross profit margin.</li>
-            <li><strong>Stripe Connect Banking:</strong> Link your business checking account in <em>Settings &gt; Payments</em> for automatic next-business-day deposits.</li>
+            <li><strong>Stripe Connect Banking:</strong> Link your business checking account in <em>Settings &gt; Payments</em> to enable automated card and bank deposits directly to your bank account.</li>
             <li><strong>Install Mobile PWA:</strong> Open <code>app.letsgetquoted.com</code> on your iPhone (Safari &gt; Share &gt; Add to Home Screen) or Android (Chrome &gt; Install App) for 1-tap truck dispatch.</li>
           </ol>
         `
       },
       {
         id: 'art-markup-pricing',
+        slug: 'labor-rates-margin-markup-calculator',
         title: 'Configuring Hourly Rates, Overhead Multipliers, and Material Markup',
         category: 'Setup',
         readTime: '5 min read',
         audience: 'Owners & Estimators',
         lastUpdated: 'August 2026',
+        lastReviewed: 'August 2026',
+        applicableRegion: 'Standard Accounting',
+        author: 'LGQ Estimating & Pricing Advisory',
+        sources: [
+          { title: 'Small Business Administration Financial Formula Guidelines', url: 'https://www.sba.gov' },
+          { title: 'LGQ Hourly Rate & Margin Calculator', url: 'https://letsgetquoted.com/tools/hourly-rate-calculator' }
+        ],
         content: `
           <h3>The Core Difference Between Margin and Markup</h3>
           <p>Marking up job costs by 30% does <strong>NOT</strong> yield a 30% gross profit margin. If direct costs are $10,000 and you add a 30% markup ($13,000 total), your actual margin is only <strong>23.08%</strong> ($3,000 ÷ $13,000). That missing 7% often wipes out net profits after business overhead.</p>
@@ -271,11 +347,18 @@ export const KNOWLEDGE_BASE: KnowledgeCategory[] = [
       },
       {
         id: 'art-domain-setup',
+        slug: 'connect-custom-domain-ssl-guide',
         title: 'Connecting Custom Domains & Free SSL Setup Guide',
         category: 'Setup',
         readTime: '4 min read',
         audience: 'Admins',
         lastUpdated: 'August 2026',
+        lastReviewed: 'August 2026',
+        applicableRegion: 'Global DNS',
+        author: 'LGQ Web & Edge Network Team',
+        sources: [
+          { title: 'Let’s Encrypt Certificate Automation Standards', url: 'https://letsencrypt.org' }
+        ],
         content: `
           <h3>Connecting Your Own Domain in 3 Minutes</h3>
           <p>Connect your custom registered domain (e.g. <code>www.maplewoodpro.com</code>) to your contractor website by adding two standard DNS records in your domain registrar.</p>
@@ -323,11 +406,18 @@ export const KNOWLEDGE_BASE: KnowledgeCategory[] = [
       COMMON_FIX_ARTICLES[0],
       {
         id: 'art-good-better-best',
+        slug: '3-tier-good-better-best-proposals',
         title: 'How to Build High-Converting 3-Option Proposals (Good / Better / Best)',
         category: 'Quoting',
         readTime: '5 min read',
         audience: 'Estimators',
         lastUpdated: 'August 2026',
+        lastReviewed: 'August 2026',
+        applicableRegion: 'US & Canada',
+        author: 'LGQ Sales & Estimating Engineering',
+        sources: [
+          { title: 'Behavioral Pricing & Decoy Effect in Field Services', url: 'https://letsgetquoted.com/tools/estimate-generator' }
+        ],
         content: `
           <h3>Why Multi-Tier Quoting Lifts Average Job Size by 35%+</h3>
           <p>Sending a homeowner a single quote price forces a binary <strong>"Yes vs. No"</strong> decision where they compare your number to low-bid competitors. Providing three curated options shifts their internal evaluation to <strong>"Which level of quality best fits our home?"</strong></p>
@@ -346,11 +436,18 @@ export const KNOWLEDGE_BASE: KnowledgeCategory[] = [
       },
       {
         id: 'art-change-orders',
+        slug: 'mobile-extra-work-change-orders',
         title: 'Issuing On-Site Extra Work Orders & Instant Client Approvals',
         category: 'Quoting',
         readTime: '4 min read',
         audience: 'Field Techs',
         lastUpdated: 'August 2026',
+        lastReviewed: 'August 2026',
+        applicableRegion: 'US Construction Law',
+        author: 'LGQ Legal & Field Workflow Team',
+        sources: [
+          { title: 'American Institute of Architects Change Order Principles', url: 'https://www.aia.org' }
+        ],
         content: `
           <h3>Preventing Unpaid Scope Creep</h3>
           <p>Unforeseen issues happen on every remodel: rotted subfloors, corroded cast-iron pipes, or customer-requested fixture additions. Performing extra work without written sign-off is the leading cause of contractor-homeowner payment disputes.</p>
@@ -375,11 +472,18 @@ export const KNOWLEDGE_BASE: KnowledgeCategory[] = [
       COMMON_FIX_ARTICLES[1],
       {
         id: 'art-automated-followups',
+        slug: 'automated-quote-followup-sequences',
         title: 'Setting Up 24-Hour & 72-Hour Quote Follow-Up Sequences',
         category: 'SMS & Messaging',
         readTime: '4 min read',
         audience: 'Sales & Dispatch',
         lastUpdated: 'August 2026',
+        lastReviewed: 'August 2026',
+        applicableRegion: 'US & Canada SMS Standards',
+        author: 'LGQ Automation & Messaging Team',
+        sources: [
+          { title: 'CTIA Consumer Messaging Guidelines', url: 'https://www.ctia.org' }
+        ],
         content: `
           <h3>Recovering Stalled Quotes on Autopilot</h3>
           <p>Contractors lose over 40% of winnable projects simply due to lack of timely follow-up. Homeowners get busy; automated text sequences bring your proposal back to the top of their mind without sounding aggressive.</p>
@@ -419,11 +523,19 @@ export const KNOWLEDGE_BASE: KnowledgeCategory[] = [
       },
       {
         id: 'art-review-requests',
+        slug: 'automated-google-review-requests',
         title: 'Automated 5-Star Google Review Requests Upon Job Completion',
         category: 'SMS & Messaging',
         readTime: '3 min read',
         audience: 'Owners',
         lastUpdated: 'August 2026',
+        lastReviewed: 'August 2026',
+        applicableRegion: 'Google Business Profile Policy',
+        author: 'LGQ Reputation Management Team',
+        sources: [
+          { title: 'Google Business Profile Review Policy & Guidelines', url: 'https://support.google.com/business/answer/3474122' },
+          { title: 'FTC Endorsement and Review Guidelines', url: 'https://www.ftc.gov' }
+        ],
         content: `
           <h3>Why Timing Decides 80% of Customer Reviews</h3>
           <p>Asking for a review 3 days after a job yields under 10% response rates. Sending an automated SMS review link within <strong>20 minutes</strong> of the technician marking the work order complete generates <strong>65%+ review submission rates</strong> while customer satisfaction is highest.</p>
@@ -448,11 +560,18 @@ export const KNOWLEDGE_BASE: KnowledgeCategory[] = [
       COMMON_FIX_ARTICLES[2],
       {
         id: 'art-deposit-schedules',
+        slug: 'milestone-deposits-progress-billing',
         title: 'Enforcing 30% / 50% Milestone Deposits Prior to Job Dispatch',
         category: 'Payments',
         readTime: '4 min read',
         audience: 'Estimators',
         lastUpdated: 'August 2026',
+        lastReviewed: 'August 2026',
+        applicableRegion: 'US Residential Construction',
+        author: 'LGQ Billing & Cash Flow Operations',
+        sources: [
+          { title: 'National Association of State Contractors Licensing Agencies', url: 'https://www.nascla.org' }
+        ],
         content: `
           <h3>Protecting Cash Flow with Milestone Billing</h3>
           <p>Never front high-ticket materials or crew payroll out of your personal pocket. Requiring an upfront deposit before reserving calendar dates ensures projects are fully funded from day one.</p>
@@ -492,21 +611,35 @@ export const KNOWLEDGE_BASE: KnowledgeCategory[] = [
       },
       {
         id: 'art-convenience-fees',
+        slug: 'credit-card-surcharge-compliance-fees',
         title: 'Passing Credit Card Processing Fees Compliantly by State Law',
         category: 'Payments',
         readTime: '4 min read',
         audience: 'Owners',
         lastUpdated: 'August 2026',
+        lastReviewed: 'August 2026',
+        applicableRegion: 'US (State & Federal rules apply)',
+        author: 'LGQ Compliance & Payment Operations',
+        sources: [
+          { title: 'Visa Core Rules & Surcharging Standards', url: 'https://usa.visa.com/support/small-business/regulations-fees.html' },
+          { title: 'Mastercard Merchant Rules on Surcharging', url: 'https://www.mastercard.us/en-us/business/overview/support/merchant-surcharge-rules.html' },
+          { title: 'Consumer Financial Protection Bureau Guidance', url: 'https://www.consumerfinance.gov' }
+        ],
         content: `
-          <h3>Surcharging Compliance &amp; Zero-Fee Bank Transfers</h3>
-          <p>Credit card processing fees (typically 2.9% + 30¢) can erode significant net margins on large projects. You can configure convenience fees or offer zero-fee ACH bank transfers to keep 100% of your earnings.</p>
+          <h3>Credit Card Surcharging Rules, Convenience Fees &amp; ACH</h3>
+          <p>Credit card processing fees (typically 2.9% + 30¢) can represent significant overhead on large residential jobs. Contractors often pass processing fees to customers or offer zero-fee ACH bank transfers. However, surcharging is subject to strict state laws and card network rules.</p>
 
-          <h3>Compliance Rules:</h3>
+          <h3>Key Compliance Requirements:</h3>
           <ul>
-            <li><strong>Clear Disclosure:</strong> Surcharges must be displayed transparently on client quote summaries before checkout.</li>
-            <li><strong>State Regulations:</strong> Surcharging credit cards is prohibited or restricted in certain states (e.g. Connecticut, Massachusetts). Check your local state commerce regulations.</li>
-            <li><strong>Instant ACH Bank Transfers:</strong> Enable direct bank-to-bank transfers for large contract amounts (over $5,000) with capped low-fee processing.</li>
+            <li><strong>State-Specific Prohibitions &amp; Restrictions:</strong> Credit card surcharging is prohibited or heavily restricted by statute in several jurisdictions (including Connecticut, Massachusetts, Maine, and New York under specific disclosure rules). Check your specific state and municipal commercial regulations before enabling surcharges.</li>
+            <li><strong>Network Surcharge Caps:</strong> Major card networks (Visa, Mastercard) cap credit card surcharges at your actual cost of card acceptance or a maximum of 3% (whichever is lower). Surcharging debit cards is strictly prohibited nationwide under federal law (Dodd-Frank Act).</li>
+            <li><strong>Pre-Transaction Disclosure:</strong> Surcharges must be clearly disclosed at your point of entry and on proposal quote summaries before the customer submits payment.</li>
+            <li><strong>Zero-Fee ACH Bank Transfers:</strong> For large residential projects (over $2,000), offering direct bank-to-bank ACH transfers eliminates high card percentage fees while remaining fully compliant nationwide.</li>
           </ul>
+
+          <div class="calloutWarning">
+            <strong>Legal Disclaimer:</strong> This guide is for educational and operational information only and does not constitute formal legal or financial advice. Surcharging laws evolve frequently across jurisdictions. Consult with qualified legal counsel or your CPA regarding local commercial compliance.
+          </div>
         `
       }
     ]
@@ -522,11 +655,18 @@ export const KNOWLEDGE_BASE: KnowledgeCategory[] = [
       COMMON_FIX_ARTICLES[5],
       {
         id: 'art-route-density',
+        slug: 'route-density-neighborhood-dispatching',
         title: 'Optimizing Route Density & Grouping Jobs by Neighborhood',
         category: 'Team Management',
         readTime: '4 min read',
         audience: 'Dispatchers',
         lastUpdated: 'August 2026',
+        lastReviewed: 'August 2026',
+        applicableRegion: 'Field Operations',
+        author: 'LGQ Fleet & Route Logistics Team',
+        sources: [
+          { title: 'LGQ Smart Dispatch & Scheduling Suite', url: 'https://letsgetquoted.com/features/scheduling' }
+        ],
         content: `
           <h3>Cutting Windshield Time &amp; Increasing Daily Billable Hours</h3>
           <p>Technicians spending 2.5 hours per day driving between distant zip codes lose 1 to 2 billable service calls daily. Grouping appointments by geographic clusters maximizes revenue per truck.</p>
@@ -551,22 +691,38 @@ export const KNOWLEDGE_BASE: KnowledgeCategory[] = [
       COMMON_FIX_ARTICLES[3],
       {
         id: 'art-local-seo-ranking',
-        title: 'How Local Service Landing Pages Rank on Google Search',
+        slug: 'local-seo-ranking-landing-pages',
+        title: 'How Local Service Landing Pages Rank on Google Search & Maps',
         category: 'Website & SEO',
         readTime: '5 min read',
         audience: 'Marketing Leads',
         lastUpdated: 'August 2026',
+        lastReviewed: 'August 2026',
+        applicableRegion: 'United States & Global Search',
+        author: 'LGQ SEO & Platform Team',
+        sources: [
+          { title: 'Google Business Profile Local Ranking Guidance', url: 'https://support.google.com/business/answer/7091' },
+          { title: 'Schema.org LocalBusiness Structured Data', url: 'https://schema.org/LocalBusiness' }
+        ],
         content: `
-          <h3>Dominating Google Maps &amp; Local Search</h3>
-          <p>Over 60% of high-intent homeowners searching for contractors on Google click the top 3 map results. Having dedicated town landing pages with localized schema microdata helps you outrank competitors.</p>
+          <h3>How Local Service Landing Pages Rank on Google Search &amp; Maps</h3>
+          <p>When high-intent homeowners search for residential contractors on Google (e.g. <em>"emergency plumber near me"</em>), Google evaluates three core ranking pillars:</p>
+          <ol>
+            <li><strong>Relevance:</strong> How closely your business profile and website match what the user is searching for. Having clear service descriptions, detailed service-area pages, and accurate categories ensures Google understands your specialties.</li>
+            <li><strong>Distance:</strong> How far each potential search result is from the location term used in the search or the user's GPS location.</li>
+            <li><strong>Prominence:</strong> How well known and reputable a business is, evaluated through online reviews, rating volume, citations, structured data markup, and active business profile updates.</li>
+          </ol>
 
-          <h3>The 4 Essential Local SEO Factors:</h3>
+          <h3>Key Implementation Practices for Contractors:</h3>
           <ul>
-            <li><strong>Schema.org LocalBusiness Microdata:</strong> Built-in JSON-LD microdata tells Google your exact license number, service radius, and operating hours automatically.</li>
-            <li><strong>NAP Consistency:</strong> Ensure your Name, Address, and Phone number are formatted identically across your website, Google Business Profile, and licensing registries.</li>
-            <li><strong>Hyper-Local Service Area Pages:</strong> Generate automated landing pages for adjacent towns and suburbs you service (e.g. <code>/plumbing-maplewood-nj</code>).</li>
-            <li><strong>Geotagged Jobsite Photos:</strong> Uploading 3–5 project photos weekly signals active local commercial activity to Google's ranking crawlers.</li>
+            <li><strong>Schema.org LocalBusiness Microdata:</strong> Built-in JSON-LD structured data communicates your verified business name, license credentials, operating territory, and service offerings directly to search engine crawlers.</li>
+            <li><strong>NAP Consistency:</strong> Ensure your legal Name, physical Address, and Phone number are formatted identically across your website, Google Business Profile, state licensing databases, and local directories.</li>
+            <li><strong>Dedicated Service-Area Pages:</strong> Create high-quality, localized landing pages for the adjacent towns and municipalities you serve (e.g. <code>/plumbing-maplewood-nj</code>) with unique localized copy and real project references.</li>
+            <li><strong>Authentic Project Photos &amp; Customer Reviews:</strong> Regularly posting authentic jobsite photos and collecting verified customer reviews builds consumer trust and signals ongoing business activity to prominence algorithms. (Note: Search engines strip photo EXIF/GPS metadata upon upload; authentic engagement and review velocity drive prominence).</li>
           </ul>
+          <div class="calloutInfo">
+            <strong>Google Guidance:</strong> For official criteria on improving local ranking, review <a href="https://support.google.com/business/answer/7091" target="_blank" rel="noopener noreferrer">Google's How to Improve Your Local Ranking on Google</a>.
+          </div>
         `
       }
     ]
@@ -690,7 +846,7 @@ export const FAQS: FAQItem[] = [
     category: 'payments',
     question: 'How fast do customer payments reach my bank account?',
     answer:
-      'Credit card and debit card payments clear directly into your business checking account on a 2-business-day rolling schedule via Stripe Connect. First-time payouts have a one-time verification period of 5-7 business days.'
+      'Stripe Connect processes your first customer payment within an initial 7–14 business day verification period to confirm banking details. After initial verification, US card payments transfer on a standard 2-business-day rolling schedule into your linked checking account.'
   },
   {
     id: 'faq-4',
@@ -723,7 +879,8 @@ export const SUPPORT_CHANNELS: SupportChannel[] = [
     bestUsedFor: 'DNS setup, 10DLC carrier approvals, and custom account troubleshooting.',
     availability: 'Monday – Saturday (8:00 AM – 8:00 PM ET)',
     responseTarget: 'Target response in under 2 hours',
-    prepareInfo: ['Company registered name', 'Account login email', 'Relevant quote or job number']
+    prepareInfo: ['Company registered name', 'Account login email', 'Relevant quote or job number'],
+    actionLabel: 'Open Support Ticket'
   },
   {
     id: 'chan-community',
@@ -732,6 +889,25 @@ export const SUPPORT_CHANNELS: SupportChannel[] = [
     bestUsedFor: 'Self-service setup, rate card formulas, and trade playbooks.',
     availability: 'Available 24/7/365',
     responseTarget: 'Instant step-by-step guides',
-    prepareInfo: ['Search keywords in the AI Troubleshooter above']
+    prepareInfo: ['Search keywords in the AI Troubleshooter above'],
+    actionLabel: 'Browse Guides',
+    actionTarget: '#knowledge-hub'
   }
 ];
+
+/**
+ * Helper to get all articles as a single flat array
+ */
+export function getAllArticles(): Article[] {
+  const map = new Map<string, Article>();
+  COMMON_FIX_ARTICLES.forEach(a => map.set(a.id, a));
+  KNOWLEDGE_BASE.forEach(cat => cat.articles.forEach(a => map.set(a.id, a)));
+  return Array.from(map.values());
+}
+
+/**
+ * Helper to find article by slug or id
+ */
+export function findArticleBySlugOrId(slugOrId: string): Article | undefined {
+  return getAllArticles().find(a => a.slug === slugOrId || a.id === slugOrId);
+}

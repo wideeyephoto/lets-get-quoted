@@ -101,14 +101,14 @@ export const metadata: Metadata = {
     title: 'Let’s Get Quoted · Contractor Business Software',
     description:
       'From first click to final payment. Build your website, qualify leads, send quotes, schedule work, manage crew, and collect payment in one connected system.',
-    images: [{ url: '/template-previews/professional.jpg', width: 1900, height: 881, alt: 'A contractor website built with Let’s Get Quoted' }],
+    images: [{ url: '/product/website.webp', width: 1600, height: 1000, alt: 'A contractor website built with Let’s Get Quoted' }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Let’s Get Quoted · Contractor Business Software',
     description:
       'From first click to final payment. Run your contracting business in one place—starting with a free website.',
-    images: ['/template-previews/professional.jpg'],
+    images: ['/product/website.webp'],
   },
 };
 

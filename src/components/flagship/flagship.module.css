@@ -4069,10 +4069,20 @@
    moves onto the anchor so the target is the whole cell and not two lines of
    text. "flex: 1" is what fills it — the span is a column flex container, so
    stretch only governs width and the anchor would otherwise be content-height. */
+.root :global(.trust-strip-3) {
+  grid-template-columns: repeat(3, 1fr) !important;
+}
+
 .root :global(.trust-strip span) {
-  padding: 0;
-  font-size: 14px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 18px 24px 18px 30px;
+  font-size: 13.5px;
+  line-height: 1.45;
   color: #1f2c34;
+  position: relative;
+  box-sizing: border-box;
 }
 
 .root :global(.trust-strip span > a) {
@@ -4080,28 +4090,43 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: 16px 25px 16px 30px;
+  padding: 0;
   color: inherit;
   text-decoration: none;
 }
 
 .root :global(.trust-strip b) {
-  font-size: 12.5px;
+  display: block;
+  font-size: 11.5px;
+  font-weight: 750;
   letter-spacing: 1.3px;
   color: #b8430f;
-  margin-bottom: 7px;
+  margin-bottom: 5px;
+  text-transform: uppercase;
 }
 
 /* Same fix for the corner number, which was 1.9:1. */
-.root :global(.trust-strip span)::after { color: rgba(184, 67, 15, .8); }
+.root :global(.trust-strip span)::after {
+  content: counter(lgq-promise, decimal-leading-zero);
+  position: absolute;
+  top: 14px;
+  right: 18px;
+  font-family: var(--font-geist-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: rgba(184, 67, 15, .8);
+}
 
 /* The lift and the left rule were hover-only, so a keyboard never saw either.
    :focus-within is on the span because that is what carries both effects. */
+.root :global(.trust-strip span:hover),
 .root :global(.trust-strip span:focus-within) {
   background: var(--paper);
-  transform: translateY(-3px);
 }
-.root :global(.trust-strip span:focus-within)::before { opacity: 1; }
+.root :global(.trust-strip span:hover)::before,
+.root :global(.trust-strip span:focus-within)::before {
+  opacity: 1;
+}
 .root :global(.trust-strip span > a:focus-visible) {
   outline: 2px solid var(--orange);
   outline-offset: -5px;
@@ -4111,9 +4136,24 @@
   text-underline-offset: 3px;
 }
 
-@media (max-width: 760px) {
-  .root :global(.trust-strip span) { font-size: 13.5px; }
-  .root :global(.trust-strip span > a) { padding: 15px 14px 15px 22px; }
+@media (max-width: 860px) {
+  .root :global(.trust-strip-3) {
+    grid-template-columns: 1fr !important;
+    padding: 0 16px !important;
+  }
+  .root :global(.trust-strip-3 span) {
+    border-left: 1px solid #d8d2c8;
+    border-right: 1px solid #d8d2c8;
+    border-bottom: 1px solid #d8d2c8;
+    padding: 16px 20px 16px 26px;
+    font-size: 13px;
+  }
+  .root :global(.trust-strip-3 span:last-child) {
+    border-bottom: 1px solid #d8d2c8;
+  }
+  .root :global(.trust-strip-3 span)::after {
+    display: none;
+  }
 }
 
 /* ===========================================================================

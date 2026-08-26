@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import Link from 'next/link';
 import {
   KNOWLEDGE_BASE,
   FAQS,
@@ -9,6 +10,8 @@ import {
   COMMON_FIX_ARTICLES,
   SUPPORT_CHANNELS,
   LEGAL_TEMPLATES_DISCLAIMER,
+  getAllArticles,
+  findArticleBySlugOrId,
   Article,
   DownloadableTemplate
 } from './help-center-data';
@@ -372,9 +375,13 @@ export default function HelpCenter() {
   const [completedSteps, setCompletedSteps] = useState<Record<number, boolean>>({});
   const [activeMobileStep, setActiveMobileStep] = useState<number | null>(1);
 
-  // Support Ticket Form State
+  // Support Ticket Form State with enriched structured fields
   const [ticketName, setTicketName] = useState('');
   const [ticketEmail, setTicketEmail] = useState('');
+  const [ticketCompany, setTicketCompany] = useState('');
+  const [ticketProductArea, setTicketProductArea] = useState('general');
+  const [ticketJobNumber, setTicketJobNumber] = useState('');
+  const [ticketUrgency, setTicketUrgency] = useState('normal');
   const [ticketSubject, setTicketSubject] = useState('');
   const [ticketNotes, setTicketNotes] = useState('');
   const [ticketDeflection, setTicketDeflection] = useState<string | null>(null);
@@ -417,10 +424,7 @@ export default function HelpCenter() {
 
   // Flatten all articles for lookup
   const allArticlesList = useMemo(() => {
-    const map = new Map<string, Article>();
-    COMMON_FIX_ARTICLES.forEach(a => map.set(a.id, a));
-    KNOWLEDGE_BASE.forEach(cat => cat.articles.forEach(a => map.set(a.id, a)));
-    return Array.from(map.values());
+    return getAllArticles();
   }, []);
 
   const totalGuides = useMemo(() => {
@@ -496,7 +500,7 @@ export default function HelpCenter() {
 
     if (typeof window !== 'undefined') {
       const url = new URL(window.location.href);
-      url.searchParams.set('article', article.id);
+      url.searchParams.set('article', article.slug || article.id);
       window.history.pushState(null, '', url.toString());
     }
   }, []);
@@ -587,6 +591,16 @@ export default function HelpCenter() {
 
     try {
       const formData = new FormData(e.currentTarget);
+      const combinedMessage = [
+        ticketNotes,
+        ticketCompany ? `\n\nCompany: ${ticketCompany}` : '',
+        ticketProductArea ? `\nProduct Area: ${ticketProductArea}` : '',
+        ticketJobNumber ? `\nJob / Quote #: ${ticketJobNumber}` : '',
+        ticketUrgency ? `\nUrgency: ${ticketUrgency}` : ''
+      ].join('');
+
+      formData.set('message', combinedMessage.trim());
+
       const res = await submitContactMessage(formData);
       if (res.ok) {
         setIsTicketSubmitted(true);
@@ -601,18 +615,18 @@ export default function HelpCenter() {
     }
   };
 
-  // On initial mount: Check for URL query ?article=<id>
+  // On initial mount: Check for URL query ?article=<id_or_slug>
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
     const articleParam = params.get('article');
     if (articleParam) {
-      const found = allArticlesList.find(a => a.id === articleParam);
+      const found = findArticleBySlugOrId(articleParam);
       if (found) {
         openArticle(found, false);
       }
     }
-  }, [allArticlesList, openArticle]);
+  }, [openArticle]);
 
   // Keyboard Shortcuts (Ctrl/Cmd+K & Escape)
   useEffect(() => {
@@ -642,7 +656,7 @@ export default function HelpCenter() {
     if (val.includes('sms') || val.includes('carrier') || val.includes('text') || val.includes('phone') || val.includes('10dlc')) {
       setTicketDeflection('10DLC carrier registration takes 2-24 hrs. Ensure your company legal name matches your IRS EIN letter in Settings.');
     } else if (val.includes('stripe') || val.includes('deposit') || val.includes('payout')) {
-      setTicketDeflection('Stripe Connect deposits customer funds on a standard 2-business-day rolling schedule to your verified checking account.');
+      setTicketDeflection('Stripe Connect deposits customer funds on a standard 2-business-day rolling schedule (initial payout takes 7-14 days for verification).');
     } else if (val.includes('domain') || val.includes('dns') || val.includes('godaddy') || val.includes('squarespace')) {
       setTicketDeflection('Point root domain A record to 76.76.21.21 and CNAME www to cname.letsgetquoted.com in your registrar DNS.');
     } else {
@@ -667,14 +681,16 @@ export default function HelpCenter() {
     searchInputRef.current?.focus();
   };
 
+  const isSearchActive = searchQuery.trim().length > 0;
+
   return (
     <div className={styles.helpRoot}>
       <div className={`${styles.ambientGlow} ${styles.glow1}`} />
       <div className={`${styles.ambientGlow} ${styles.glow2}`} />
       <div className={`${styles.ambientGlow} ${styles.glow3}`} />
 
-      {/* Sticky Sub-Navigation (<= 64px on mobile) */}
-      <nav className={styles.subNavbar} aria-label="Help Center Sub-navigation">
+      {/* Sticky Sub-Navigation with Mobile Horizontal Scrolling */}
+      <nav className={styles.subNavbar} aria-label="Help Center Jump Navigation">
         <div className={styles.subNavContainer}>
           <div className={styles.subNavLeft}>
             <div className={styles.helpBadgePill}>
@@ -725,7 +741,18 @@ export default function HelpCenter() {
         </p>
 
         {/* Search Command Box */}
-        <form role="search" onSubmit={e => e.preventDefault()} className={styles.searchCommandBox}>
+        <form
+          role="search"
+          onSubmit={e => {
+            e.preventDefault();
+            if (searchQuery.trim()) {
+              setHasInteracted(true);
+              const target = document.getElementById('troubleshooter-results') || document.getElementById('knowledge-hub');
+              target?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+          }}
+          className={styles.searchCommandBox}
+        >
           <div className={styles.searchGlowWrapper}>
             <div className={styles.searchInputWrapper}>
               <Icons.Search />
@@ -747,10 +774,6 @@ export default function HelpCenter() {
                   }
                 }}
               />
-              <div className={styles.hotkeyBadge}>
-                <kbd>Ctrl</kbd>
-                <kbd>K</kbd>
-              </div>
               {searchQuery && (
                 <button
                   type="button"
@@ -761,6 +784,14 @@ export default function HelpCenter() {
                   <Icons.X />
                 </button>
               )}
+              <button
+                type="submit"
+                className={styles.searchSubmitBtn}
+                aria-label="Search"
+                title="Press Enter to search"
+              >
+                <kbd className={styles.enterKeyBadge}>↵ Enter</kbd>
+              </button>
             </div>
           </div>
         </form>
@@ -793,7 +824,7 @@ export default function HelpCenter() {
         </div>
 
         {/* 3-Stage Progress Visual Indicator */}
-        {hasInteracted && searchQuery.trim().length > 0 && (
+        {hasInteracted && isSearchActive && (
           <div className={styles.threeStageProgress} aria-live="polite">
             <div className={`${styles.stageItem} ${searchQuery.length > 0 ? styles.stageResolved : styles.stageActive}`}>
               <span className={styles.stageDot} />
@@ -813,13 +844,13 @@ export default function HelpCenter() {
         )}
 
         {/* Troubleshooting Match Results Panel */}
-        {hasInteracted && searchQuery.trim().length > 0 && (
-          <div id="troubleshooter-results" className={styles.troubleshooterResultsPanel}>
+        {hasInteracted && isSearchActive && (
+          <div id="troubleshooter-results" className={styles.troubleshooterResultsPanel} aria-live="polite">
             {troubleshooterResult.matched && troubleshooterResult.intent && (
               <div className={styles.matchCard}>
                 <div className={styles.matchHeader}>
                   <span className={styles.matchBadge}>✓ Diagnosed Match</span>
-                  <span className={styles.matchTime}>Estimated fix: 2-3 minutes</span>
+                  <span className={styles.matchTime}>Estimated fix: {troubleshooterResult.intent.estimatedTime}</span>
                 </div>
                 <h3 className={styles.matchTitle}>{troubleshooterResult.intent.title}</h3>
                 <p className={styles.matchExplanation}>{troubleshooterResult.intent.explanation}</p>
@@ -835,29 +866,35 @@ export default function HelpCenter() {
                     <span>Open Diagnostic Guide</span>
                     <Icons.ArrowUpRight />
                   </button>
+                  <Link
+                    href={`/help/articles/${troubleshooterResult.intent.articleSlug || 'quote-delivery-failures-quick-fix'}`}
+                    className={styles.btnOutline}
+                  >
+                    <span>View Dedicated Page ↗</span>
+                  </Link>
                   <button
                     type="button"
                     className={styles.btnOutline}
                     onClick={() => openTicketWithSubject(searchQuery, `Matched intent: ${troubleshooterResult.intent?.title}`)}
                   >
-                    Still stuck? Open a ticket
+                    Still stuck? Open ticket
                   </button>
                 </div>
               </div>
             )}
 
-            {!troubleshooterResult.matched && (
+            {!troubleshooterResult.matched && troubleshooterResult.confidence > 0 && troubleshooterResult.suggestedArticles && troubleshooterResult.suggestedArticles.length > 0 && (
               <div className={styles.unmatchedCard}>
                 <div className={styles.unmatchedHeader}>
                   <Icons.AlertCircle />
                   <div>
-                    <h4>Closest Recommended Guides for &quot;{searchQuery}&quot;</h4>
-                    <p>We found related troubleshooting steps below or you can connect with our support desk:</p>
+                    <h4>Related Diagnostic Guides for &quot;{searchQuery}&quot;</h4>
+                    <p>We found potential relevant troubleshooting guides below or you can reach our technical team:</p>
                   </div>
                 </div>
 
                 <div className={styles.unmatchedSuggestionsGrid}>
-                  {troubleshooterResult.suggestedArticles?.map(art => (
+                  {troubleshooterResult.suggestedArticles.map(art => (
                     <button
                       type="button"
                       key={art.id}
@@ -890,12 +927,72 @@ export default function HelpCenter() {
                 </div>
               </div>
             )}
+
+            {/* Zero-Match Low Confidence Fallback State */}
+            {!troubleshooterResult.matched && (troubleshooterResult.confidence === 0 || !troubleshooterResult.suggestedArticles || troubleshooterResult.suggestedArticles.length === 0) && (
+              <div className={styles.zeroMatchCard}>
+                <div className={styles.zeroMatchHeader}>
+                  <Icons.AlertCircle />
+                  <div>
+                    <h3 className={styles.zeroMatchTitle}>No direct matches found for &quot;{searchQuery}&quot;</h3>
+                    <p className={styles.zeroMatchDesc}>
+                      We couldn’t find an exact troubleshooting guide for this phrase. You can jump directly to a product category below or send this error to our support desk:
+                    </p>
+                  </div>
+                </div>
+
+                <div className={styles.zeroMatchCategories}>
+                  <span className={styles.zeroMatchCatLabel}>Browse by topic:</span>
+                  <div className={styles.zeroMatchCatRow}>
+                    {[
+                      { topic: 'quoting', label: 'Quoting' },
+                      { topic: 'sms', label: 'SMS & 10DLC' },
+                      { topic: 'invoicing', label: 'Payments & Banking' },
+                      { topic: 'website', label: 'Custom Domains & DNS' },
+                      { topic: 'team', label: 'Crew & Scheduling' }
+                    ].map(c => (
+                      <button
+                        key={c.topic}
+                        type="button"
+                        className={styles.zeroMatchPill}
+                        onClick={() => {
+                          setSelectedTopic(c.topic);
+                          setSearchQuery('');
+                          const el = document.getElementById('knowledge-hub');
+                          el?.scrollIntoView({ behavior: 'smooth' });
+                        }}
+                      >
+                        {c.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className={styles.zeroMatchActions}>
+                  <button
+                    type="button"
+                    className={styles.btnPrimary}
+                    onClick={() => openTicketWithSubject(`Support assistance: ${searchQuery}`, `User encountered issue: ${searchQuery}`)}
+                  >
+                    <Icons.LifeBuoy />
+                    <span>Ask Technical Support Desk</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.btnOutline}
+                    onClick={() => setSearchQuery('')}
+                  >
+                    Clear Search &amp; View All Guides
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </section>
 
       {/* ================= 2. COMMON FIXES ================= */}
-      <section id="common-fixes" className={styles.sectionContainer}>
+      <section id="common-fixes" className={`${styles.sectionContainer} ${styles.commonFixesSection}`}>
         <div className={styles.sectionHeader}>
           <div>
             <span className={styles.sectionTag}>Diagnostic Guides</span>
@@ -922,7 +1019,7 @@ export default function HelpCenter() {
               <h3 className={styles.commonFixTitle}>{art.title}</h3>
               <p className={styles.commonFixAudience}>For: {art.audience || 'Contractors'}</p>
               <div className={styles.commonFixAction}>
-                <span>Open Guide</span>
+                <span>Open Diagnostic Guide</span>
                 <Icons.ArrowUpRight />
               </div>
             </button>
@@ -1010,181 +1107,187 @@ export default function HelpCenter() {
       </section>
 
       {/* ================= 4. NEW-USER QUICK START ================= */}
-      <section id="quick-start" className={styles.sectionContainer}>
-        <div className={styles.quickStartBanner}>
-          <div className={styles.quickStartHeader}>
-            <div className={styles.quickStartBadge}>
-              <Icons.Rocket />
+      {!isSearchActive && (
+        <section id="quick-start" className={styles.sectionContainer}>
+          <div className={styles.quickStartBanner}>
+            <div className={styles.quickStartHeader}>
+              <div className={styles.quickStartBadge}>
+                <Icons.Rocket />
+              </div>
+              <div>
+                <h3 className={styles.quickStartTitle}>New to Let’s Get Quoted? Fast-Track Setup</h3>
+                <p className={styles.quickStartSubtitle}>Complete these 3 foundational steps to send your first quote today.</p>
+              </div>
             </div>
-            <div>
-              <h3 className={styles.quickStartTitle}>New to Let’s Get Quoted? Fast-Track Setup</h3>
-              <p className={styles.quickStartSubtitle}>Complete these 3 foundational steps to send your first quote today.</p>
-            </div>
-          </div>
 
-          {/* Desktop Compact Progress Row */}
-          <div className={styles.quickStepsDesktopRow}>
-            {[
-              { num: 1, title: 'Set Profit Markup', desc: 'Add materials & hourly rates' },
-              { num: 2, title: 'Verify Business SMS', desc: '10DLC carrier registration' },
-              { num: 3, title: 'Send 3-Tier Quote', desc: 'Good / Better / Best packages' }
-            ].map(step => (
-              <button
-                type="button"
-                key={step.num}
-                role="checkbox"
-                aria-checked={Boolean(completedSteps[step.num])}
-                className={styles.quickStepItem}
-                onClick={() => {
-                  setCompletedSteps(prev => ({ ...prev, [step.num]: !prev[step.num] }));
-                  showToast(`Step ${step.num} updated`);
-                }}
-              >
-                <div className={`${styles.stepNum} ${completedSteps[step.num] ? styles.stepDone : ''}`}>
-                  {completedSteps[step.num] ? <Icons.Check /> : step.num}
-                </div>
-                <div className={styles.stepText}>
-                  <strong>{step.title}</strong>
-                  <span>{step.desc}</span>
-                </div>
-              </button>
-            ))}
-          </div>
-
-          {/* Mobile Accordion */}
-          <div className={styles.quickStepsMobileAccordion}>
-            {[
-              { num: 1, title: '1. Set Profit Markup', desc: 'Configure company hourly labor rate and baseline material markups in Settings > Rates.' },
-              { num: 2, title: '2. Verify Business SMS', desc: 'Submit your legal EIN and business address in Settings > SMS to enable dedicated carrier texting.' },
-              { num: 3, title: '3. Send 3-Tier Quote', desc: 'Create a multi-option estimate in Jobs > Quotes and text the private approval link to a customer.' }
-            ].map(step => (
-              <div key={step.num} className={styles.mobileStepAccordionItem}>
+            {/* Desktop Compact Progress Row */}
+            <div className={styles.quickStepsDesktopRow}>
+              {[
+                { num: 1, title: 'Set Profit Markup', desc: 'Add materials & hourly rates' },
+                { num: 2, title: 'Verify Business SMS', desc: '10DLC carrier registration' },
+                { num: 3, title: 'Send 3-Tier Quote', desc: 'Good / Better / Best packages' }
+              ].map(step => (
                 <button
                   type="button"
-                  className={styles.mobileStepHeaderBtn}
-                  aria-expanded={activeMobileStep === step.num}
-                  aria-controls={`mobile-step-body-${step.num}`}
-                  onClick={() => setActiveMobileStep(activeMobileStep === step.num ? null : step.num)}
+                  key={step.num}
+                  role="checkbox"
+                  aria-checked={Boolean(completedSteps[step.num])}
+                  className={styles.quickStepItem}
+                  onClick={() => {
+                    setCompletedSteps(prev => ({ ...prev, [step.num]: !prev[step.num] }));
+                    showToast(`Step ${step.num} updated`);
+                  }}
                 >
-                  <span>{step.title}</span>
-                  <Icons.ChevronDown isOpen={activeMobileStep === step.num} />
-                </button>
-                {activeMobileStep === step.num && (
-                  <div id={`mobile-step-body-${step.num}`} className={styles.mobileStepBody}>
-                    <p>{step.desc}</p>
-                    <button
-                      type="button"
-                      className={styles.stepDoneToggleBtn}
-                      onClick={() => setCompletedSteps(prev => ({ ...prev, [step.num]: !prev[step.num] }))}
-                    >
-                      {completedSteps[step.num] ? '✓ Marked as Completed' : 'Mark as Done'}
-                    </button>
+                  <div className={`${styles.stepNum} ${completedSteps[step.num] ? styles.stepDone : ''}`}>
+                    {completedSteps[step.num] ? <Icons.Check /> : step.num}
                   </div>
-                )}
-              </div>
-            ))}
+                  <div className={styles.stepText}>
+                    <strong>{step.title}</strong>
+                    <span>{step.desc}</span>
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            {/* Mobile Accordion */}
+            <div className={styles.quickStepsMobileAccordion}>
+              {[
+                { num: 1, title: '1. Set Profit Markup', desc: 'Configure company hourly labor rate and baseline material markups in Settings > Rates.' },
+                { num: 2, title: '2. Verify Business SMS', desc: 'Submit your legal EIN and business address in Settings > SMS to enable dedicated carrier texting.' },
+                { num: 3, title: '3. Send 3-Tier Quote', desc: 'Create a multi-option estimate in Jobs > Quotes and text the private approval link to a customer.' }
+              ].map(step => (
+                <div key={step.num} className={styles.mobileStepAccordionItem}>
+                  <button
+                    type="button"
+                    className={styles.mobileStepHeaderBtn}
+                    aria-expanded={activeMobileStep === step.num}
+                    aria-controls={`mobile-step-body-${step.num}`}
+                    onClick={() => setActiveMobileStep(activeMobileStep === step.num ? null : step.num)}
+                  >
+                    <span>{step.title}</span>
+                    <Icons.ChevronDown isOpen={activeMobileStep === step.num} />
+                  </button>
+                  {activeMobileStep === step.num && (
+                    <div id={`mobile-step-body-${step.num}`} className={styles.mobileStepBody}>
+                      <p>{step.desc}</p>
+                      <button
+                        type="button"
+                        className={styles.stepDoneToggleBtn}
+                        onClick={() => setCompletedSteps(prev => ({ ...prev, [step.num]: !prev[step.num] }))}
+                      >
+                        {completedSteps[step.num] ? '✓ Marked as Completed' : 'Mark as Done'}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* ================= 5. TRADE-SPECIFIC PLAYBOOKS ================= */}
-      <section id="trade-playbooks" className={styles.sectionContainer}>
-        <div className={styles.sectionHeader}>
-          <div>
-            <span className={styles.sectionTag}>Trade Playbooks</span>
-            <h2 className={styles.sectionTitle}>Playbooks Built for Your Trade</h2>
-            <p className={styles.sectionDesc}>
-              Tailored quoting formulas, emergency multipliers, and deposit schedules for residential trade specialists.
-            </p>
-          </div>
-        </div>
-
-        {/* Trade Switcher Tabs */}
-        <div className={styles.tradeTabsContainer}>
-          {TRADE_PLAYBOOKS.map(trade => (
-            <button
-              type="button"
-              key={trade.id}
-              className={`${styles.tradeTabBtn} ${activeTrade === trade.id ? styles.activeTradeTab : ''}`}
-              onClick={() => setActiveTrade(trade.id)}
-            >
-              {ICON_MAP[trade.icon] || <Icons.Wrench />}
-              <span>{trade.name}</span>
-            </button>
-          ))}
-        </div>
-
-        {/* Trade Detail Showcase Card */}
-        <div className={styles.tradePlaybookCard}>
-          <div className={styles.tradeCardLeft}>
-            <span className={styles.tradeBadge}>{currentTrade.badge}</span>
-            <h3 className={styles.tradeHeadline}>{currentTrade.headline}</h3>
-            <p className={styles.tradeDescription}>{currentTrade.description}</p>
-            
-            <button
-              type="button"
-              className={styles.viewWorkflowsBtn}
-              onClick={() => setIsTradeWorkflowExpanded(!isTradeWorkflowExpanded)}
-              aria-expanded={isTradeWorkflowExpanded}
-              aria-controls="trade-workflows-panel"
-            >
-              {isTradeWorkflowExpanded ? 'Hide Workflows ↑' : 'View Workflows ↓'}
-            </button>
+      {!isSearchActive && (
+        <section id="trade-playbooks" className={styles.sectionContainer}>
+          <div className={styles.sectionHeader}>
+            <div>
+              <span className={styles.sectionTag}>Trade Playbooks</span>
+              <h2 className={styles.sectionTitle}>Playbooks Built for Your Trade</h2>
+              <p className={styles.sectionDesc}>
+                Tailored quoting formulas, emergency multipliers, and deposit schedules for residential trade specialists.
+              </p>
+            </div>
           </div>
 
-          <div id="trade-workflows-panel" className={`${styles.tradeCardRight} ${isTradeWorkflowExpanded ? styles.tradeCardRightExpanded : ''}`}>
-            {currentTrade.keyWorkflows.map((wf, idx) => (
-              <div key={idx} className={styles.workflowItemCard}>
-                <h4 className={styles.workflowTitle}>
-                  <Icons.CheckCircle />
-                  <span>{wf.title}</span>
-                </h4>
-                <p className={styles.workflowDesc}>{wf.desc}</p>
+          {/* Trade Switcher Tabs */}
+          <div className={styles.tradeTabsContainer}>
+            {TRADE_PLAYBOOKS.map(trade => (
+              <button
+                type="button"
+                key={trade.id}
+                className={`${styles.tradeTabBtn} ${activeTrade === trade.id ? styles.activeTradeTab : ''}`}
+                onClick={() => setActiveTrade(trade.id)}
+              >
+                {ICON_MAP[trade.icon] || <Icons.Wrench />}
+                <span>{trade.name}</span>
+              </button>
+            ))}
+          </div>
+
+          {/* Trade Detail Showcase Card */}
+          <div className={styles.tradePlaybookCard}>
+            <div className={styles.tradeCardLeft}>
+              <span className={styles.tradeBadge}>{currentTrade.badge}</span>
+              <h3 className={styles.tradeHeadline}>{currentTrade.headline}</h3>
+              <p className={styles.tradeDescription}>{currentTrade.description}</p>
+              
+              <button
+                type="button"
+                className={styles.viewWorkflowsBtn}
+                onClick={() => setIsTradeWorkflowExpanded(!isTradeWorkflowExpanded)}
+                aria-expanded={isTradeWorkflowExpanded}
+                aria-controls="trade-workflows-panel"
+              >
+                {isTradeWorkflowExpanded ? 'Hide Workflows ↑' : 'View Workflows ↓'}
+              </button>
+            </div>
+
+            <div id="trade-workflows-panel" className={`${styles.tradeCardRight} ${isTradeWorkflowExpanded ? styles.tradeCardRightExpanded : ''}`}>
+              {currentTrade.keyWorkflows.map((wf, idx) => (
+                <div key={idx} className={styles.workflowItemCard}>
+                  <h4 className={styles.workflowTitle}>
+                    <Icons.CheckCircle />
+                    <span>{wf.title}</span>
+                  </h4>
+                  <p className={styles.workflowDesc}>{wf.desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* ================= 6. CONTRACTOR TEMPLATES & AGREEMENTS ================= */}
+      {!isSearchActive && (
+        <section id="contractor-templates" className={styles.sectionContainer}>
+          <div className={styles.sectionHeader}>
+            <div>
+              <span className={styles.sectionTag}>Documentation</span>
+              <h2 className={styles.sectionTitle}>Contractor Templates</h2>
+              <p className={styles.sectionDesc}>
+                Print-ready milestone deposit agreements, extra work change orders, and progress lien waiver templates.
+              </p>
+            </div>
+          </div>
+
+          <div className={styles.templatesGrid}>
+            {DOWNLOADABLE_TEMPLATES.map(tpl => (
+              <div key={tpl.id} className={styles.templateCard}>
+                <div className={styles.templateTop}>
+                  <span className={styles.templateFormatBadge}>PDF &amp; Print Ready</span>
+                  <span className={styles.templateSize}>{tpl.fileSize}</span>
+                </div>
+                <h3 className={styles.templateName}>{tpl.name}</h3>
+                <p className={styles.templateDesc}>{tpl.description}</p>
+                <button
+                  type="button"
+                  className={styles.btnOutlineSm}
+                  onClick={() => openDocument(tpl)}
+                  aria-haspopup="dialog"
+                >
+                  <Icons.Eye />
+                  <span>Preview Template</span>
+                </button>
               </div>
             ))}
           </div>
-        </div>
-      </section>
 
-      {/* ================= 6. CONTRACTOR TEMPLATES & AGREEMENTS ================= */}
-      <section id="contractor-templates" className={styles.sectionContainer}>
-        <div className={styles.sectionHeader}>
-          <div>
-            <span className={styles.sectionTag}>Documentation</span>
-            <h2 className={styles.sectionTitle}>Contractor Templates</h2>
-            <p className={styles.sectionDesc}>
-              Print-ready milestone deposit agreements, extra work change orders, and progress lien waiver templates.
-            </p>
+          {/* Mandatory Legal Disclaimer */}
+          <div className={styles.legalDisclaimerBox}>
+            <strong>Disclaimer:</strong> {LEGAL_TEMPLATES_DISCLAIMER}
           </div>
-        </div>
-
-        <div className={styles.templatesGrid}>
-          {DOWNLOADABLE_TEMPLATES.map(tpl => (
-            <div key={tpl.id} className={styles.templateCard}>
-              <div className={styles.templateTop}>
-                <span className={styles.templateFormatBadge}>PDF &amp; Print Ready</span>
-                <span className={styles.templateSize}>{tpl.fileSize}</span>
-              </div>
-              <h3 className={styles.templateName}>{tpl.name}</h3>
-              <p className={styles.templateDesc}>{tpl.description}</p>
-              <button
-                type="button"
-                className={styles.btnOutlineSm}
-                onClick={() => openDocument(tpl)}
-                aria-haspopup="dialog"
-              >
-                <Icons.Eye />
-                <span>Preview Template</span>
-              </button>
-            </div>
-          ))}
-        </div>
-
-        {/* Mandatory Legal Disclaimer */}
-        <div className={styles.legalDisclaimerBox}>
-          <strong>Disclaimer:</strong> {LEGAL_TEMPLATES_DISCLAIMER}
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* ================= 7. FAQS ================= */}
       <section id="faqs" className={styles.sectionContainer}>
@@ -1310,14 +1413,25 @@ export default function HelpCenter() {
                 </ul>
               </div>
 
-              <button
-                type="button"
-                className={styles.btnPrimaryBlock}
-                onClick={() => openTicketWithSubject('')}
-              >
-                <Icons.Send />
-                <span>Open Support Ticket</span>
-              </button>
+              {ch.actionTarget ? (
+                <a
+                  href={ch.actionTarget}
+                  className={styles.btnPrimaryBlock}
+                  style={{ textDecoration: 'none' }}
+                >
+                  <Icons.BookCheck />
+                  <span>{ch.actionLabel || 'Browse Guides'}</span>
+                </a>
+              ) : (
+                <button
+                  type="button"
+                  className={styles.btnPrimaryBlock}
+                  onClick={() => openTicketWithSubject('')}
+                >
+                  <Icons.Send />
+                  <span>{ch.actionLabel || 'Open Support Ticket'}</span>
+                </button>
+              )}
             </div>
           ))}
         </div>
@@ -1341,6 +1455,9 @@ export default function HelpCenter() {
                 <span className={styles.categoryBadge}>{activeArticle.category}</span>
                 <span className={styles.articleMetaText}>⏱ {activeArticle.readTime}</span>
                 <span className={styles.articleMetaText}>• Audience: {activeArticle.audience || 'Contractors'}</span>
+                {activeArticle.lastReviewed && (
+                  <span className={styles.articleMetaText}>• Verified: {activeArticle.lastReviewed}</span>
+                )}
               </div>
               <button className={styles.iconBtn} onClick={closeArticle} aria-label="Close article viewer">
                 <Icons.X />
@@ -1357,7 +1474,7 @@ export default function HelpCenter() {
               />
 
               {/* In-Article Live Margin Calculator */}
-              {activeArticle.id === 'art-quoting-formulas-mastery' && (
+              {(activeArticle.id === 'art-markup-pricing' || activeArticle.slug === 'labor-rates-margin-markup-calculator') && (
                 <div className={styles.inArticleInteractiveWidget}>
                   <div className={styles.widgetHeader}>
                     <div className={styles.widgetTitle}>
@@ -1450,7 +1567,7 @@ export default function HelpCenter() {
               )}
 
               {/* In-Article SMS Cadence Selector */}
-              {activeArticle.id === 'art-automated-followup-sequences' && (
+              {(activeArticle.id === 'art-automated-followups' || activeArticle.slug === 'automated-quote-followup-sequences') && (
                 <div className={styles.inArticleInteractiveWidget}>
                   <div className={styles.widgetHeader}>
                     <div className={styles.widgetTitle}>
@@ -1537,7 +1654,7 @@ export default function HelpCenter() {
               )}
 
               {/* In-Article 10DLC Checklist */}
-              {activeArticle.id === 'art-10dlc-carrier-compliance' && (
+              {(activeArticle.id === 'art-sms-delivery-troubleshooting' || activeArticle.slug === '10dlc-carrier-verification-pending-sms') && (
                 <div className={styles.inArticleInteractiveWidget}>
                   <div className={styles.widgetHeader}>
                     <div className={styles.widgetTitle}>
@@ -1570,9 +1687,31 @@ export default function HelpCenter() {
                 </div>
               )}
 
+              {/* In-Modal Governance & Verification Box */}
+              <div className={styles.governanceModalBox}>
+                <div className={styles.governanceModalTitle}>
+                  <span>🛡️ Verified Support Guide</span>
+                </div>
+                <div className={styles.governanceModalDetails}>
+                  <span><strong>Last Reviewed:</strong> {activeArticle.lastReviewed || 'August 2026'}</span>
+                  <span><strong>Applicable:</strong> {activeArticle.applicableRegion || 'US & Canada'}</span>
+                  <span><strong>Author:</strong> {activeArticle.author || 'LGQ Technical Team'}</span>
+                </div>
+                {activeArticle.sources && activeArticle.sources.length > 0 && (
+                  <div className={styles.governanceModalSources}>
+                    <span>Sources:</span>
+                    {activeArticle.sources.map((s, idx) => (
+                      <a key={idx} href={s.url} target="_blank" rel="noopener noreferrer" className={styles.modalSourceLink}>
+                        {s.title} ↗
+                      </a>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               {/* Modal Footer Actions */}
               <div className={styles.modalFooterActions}>
-                <div style={{ display: 'flex', gap: '0.75rem' }}>
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                   <button
                     type="button"
                     className={`${styles.btnOutlineSm} ${articleFeedback[activeArticle.id] ? styles.feedbackActive : ''}`}
@@ -1587,11 +1726,17 @@ export default function HelpCenter() {
                   <button
                     type="button"
                     className={styles.btnOutlineSm}
-                    onClick={() => copyToClipboard(`https://letsgetquoted.com/help?article=${activeArticle.id}`, 'Guide Link')}
+                    onClick={() => copyToClipboard(`https://letsgetquoted.com/help/articles/${activeArticle.slug || activeArticle.id}`, 'Permanent Guide URL')}
                   >
                     <Icons.Copy />
-                    <span>Share Guide</span>
+                    <span>Copy URL</span>
                   </button>
+                  <Link
+                    href={`/help/articles/${activeArticle.slug || activeArticle.id}`}
+                    className={styles.btnOutlineSm}
+                  >
+                    <span>Open Full Page ↗</span>
+                  </Link>
                 </div>
 
                 <button
@@ -1663,7 +1808,7 @@ export default function HelpCenter() {
         </div>
       )}
 
-      {/* 3. Support Ticket Drawer with Real Submission */}
+      {/* 3. Support Ticket Drawer with Enriched Structured Fields */}
       {isTicketDrawerOpen && (
         <div
           ref={ticketDrawerRef}
@@ -1691,7 +1836,7 @@ export default function HelpCenter() {
                   <input type="text" name="company" tabIndex={-1} autoComplete="off" style={{ display: 'none' }} />
 
                   <div className={styles.formGroup}>
-                    <label htmlFor="ticket-name">Full Name</label>
+                    <label htmlFor="ticket-name">Full Name *</label>
                     <input
                       id="ticket-name"
                       name="name"
@@ -1704,8 +1849,9 @@ export default function HelpCenter() {
                       disabled={isSubmittingTicket}
                     />
                   </div>
+
                   <div className={styles.formGroup}>
-                    <label htmlFor="ticket-email">Work Email</label>
+                    <label htmlFor="ticket-email">Work Email *</label>
                     <input
                       id="ticket-email"
                       name="email"
@@ -1718,8 +1864,70 @@ export default function HelpCenter() {
                       disabled={isSubmittingTicket}
                     />
                   </div>
+
+                  <div className={styles.formRow}>
+                    <div className={styles.formGroup}>
+                      <label htmlFor="ticket-company-input">Company Name</label>
+                      <input
+                        id="ticket-company-input"
+                        type="text"
+                        placeholder="e.g. Acme Plumbing LLC"
+                        value={ticketCompany}
+                        onChange={e => setTicketCompany(e.target.value)}
+                        disabled={isSubmittingTicket}
+                      />
+                    </div>
+
+                    <div className={styles.formGroup}>
+                      <label htmlFor="ticket-product-area">Product Area</label>
+                      <select
+                        id="ticket-product-area"
+                        className={styles.selectInput}
+                        value={ticketProductArea}
+                        onChange={e => setTicketProductArea(e.target.value)}
+                        disabled={isSubmittingTicket}
+                      >
+                        <option value="general">General / Account</option>
+                        <option value="quotes">Quoting &amp; Estimates</option>
+                        <option value="sms">10DLC &amp; SMS Messaging</option>
+                        <option value="payments">Stripe Payouts &amp; Payments</option>
+                        <option value="domain">Custom Domain &amp; DNS</option>
+                        <option value="scheduling">Crew Scheduling &amp; Dispatch</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className={styles.formRow}>
+                    <div className={styles.formGroup}>
+                      <label htmlFor="ticket-job-number">Quote / Job # (Optional)</label>
+                      <input
+                        id="ticket-job-number"
+                        type="text"
+                        placeholder="e.g. QT-2041 or JOB-882"
+                        value={ticketJobNumber}
+                        onChange={e => setTicketJobNumber(e.target.value)}
+                        disabled={isSubmittingTicket}
+                      />
+                    </div>
+
+                    <div className={styles.formGroup}>
+                      <label htmlFor="ticket-urgency">Urgency Level</label>
+                      <select
+                        id="ticket-urgency"
+                        className={styles.selectInput}
+                        value={ticketUrgency}
+                        onChange={e => setTicketUrgency(e.target.value)}
+                        disabled={isSubmittingTicket}
+                      >
+                        <option value="normal">Normal - Question / Setup</option>
+                        <option value="high">High - Payout or DNS Blocked</option>
+                        <option value="urgent">Urgent - Jobsite Issue Right Now</option>
+                      </select>
+                    </div>
+                  </div>
+
                   <div className={styles.formGroup}>
-                    <label htmlFor="ticket-subject">Subject</label>
+                    <label htmlFor="ticket-subject">Subject *</label>
                     <input
                       id="ticket-subject"
                       name="subject"
@@ -1740,13 +1948,13 @@ export default function HelpCenter() {
                   )}
 
                   <div className={styles.formGroup}>
-                    <label htmlFor="ticket-message">Description &amp; Error Details</label>
+                    <label htmlFor="ticket-message">Description &amp; Error Details *</label>
                     <textarea
                       id="ticket-message"
                       name="message"
                       rows={4}
                       required
-                      placeholder="Describe what you're trying to accomplish..."
+                      placeholder="Describe what you're trying to accomplish, error codes seen, or steps to reproduce..."
                       value={ticketNotes}
                       onChange={e => setTicketNotes(e.target.value)}
                       disabled={isSubmittingTicket}
@@ -1814,7 +2022,9 @@ export default function HelpCenter() {
             <div className={styles.statusModalBody}>
               <div className={styles.statusMetaRow}>
                 <span className={styles.statusMetaText}>
-                  {healthData ? (
+                  {isCheckingHealth ? (
+                    'Verifying edge & cloud services...'
+                  ) : healthData ? (
                     <>
                       Last verified:{' '}
                       {new Date(healthData.timestamp).toLocaleTimeString('en-US', {
@@ -1825,8 +2035,6 @@ export default function HelpCenter() {
                       })}{' '}
                       ET ({healthData.latencyMs}ms latency)
                     </>
-                  ) : isCheckingHealth ? (
-                    'Checking system status...'
                   ) : (
                     '100% Core Systems Verified'
                   )}
@@ -1847,44 +2055,60 @@ export default function HelpCenter() {
                   <strong>Instant Quoting &amp; PDF Engine</strong>
                   <small>Google Cloud Run (us-east1)</small>
                 </div>
-                <span className={styles.badgeOperational}>
-                  {healthData?.services.find(s => s.id === 'quoting-engine')?.status === 'operational' || !healthData
-                    ? 'Operational'
-                    : 'Degraded'}
-                </span>
+                {isCheckingHealth ? (
+                  <span className={styles.badgeChecking}>Checking…</span>
+                ) : (
+                  <span className={styles.badgeOperational}>
+                    {healthData?.services.find(s => s.id === 'quoting-engine')?.status === 'operational' || !healthData
+                      ? 'Operational'
+                      : 'Degraded'}
+                  </span>
+                )}
               </div>
               <div className={styles.statusRow}>
                 <div>
                   <strong>Two-Way SMS &amp; Dedicated Phone Gateway</strong>
                   <small>Carrier Webhook Listeners</small>
                 </div>
-                <span className={styles.badgeOperational}>
-                  {healthData?.services.find(s => s.id === 'sms-gateway')?.status === 'operational' || !healthData
-                    ? 'Operational'
-                    : 'Degraded'}
-                </span>
+                {isCheckingHealth ? (
+                  <span className={styles.badgeChecking}>Checking…</span>
+                ) : (
+                  <span className={styles.badgeOperational}>
+                    {healthData?.services.find(s => s.id === 'sms-gateway')?.status === 'operational' || !healthData
+                      ? 'Operational'
+                      : 'Degraded'}
+                  </span>
+                )}
               </div>
               <div className={styles.statusRow}>
                 <div>
                   <strong>Stripe Payments &amp; Deposits</strong>
                   <small>Webhook API V2</small>
                 </div>
-                <span className={styles.badgeOperational}>
-                  {healthData?.services.find(s => s.id === 'stripe-payments')?.status === 'operational' || !healthData
-                    ? 'Operational'
-                    : 'Degraded'}
-                </span>
+                {isCheckingHealth ? (
+                  <span className={styles.badgeChecking}>Checking…</span>
+                ) : (
+                  <span className={styles.badgeOperational}>
+                    {healthData?.services.find(s => s.id === 'stripe-payments')?.status === 'operational' || !healthData
+                      ? 'Operational'
+                      : 'Degraded'}
+                  </span>
+                )}
               </div>
               <div className={styles.statusRow}>
                 <div>
                   <strong>Contractor Website CDN &amp; DNS</strong>
                   <small>Global Anycast CDN</small>
                 </div>
-                <span className={styles.badgeOperational}>
-                  {healthData?.services.find(s => s.id === 'contractor-cdn')?.status === 'operational' || !healthData
-                    ? 'Operational'
-                    : 'Degraded'}
-                </span>
+                {isCheckingHealth ? (
+                  <span className={styles.badgeChecking}>Checking…</span>
+                ) : (
+                  <span className={styles.badgeOperational}>
+                    {healthData?.services.find(s => s.id === 'contractor-cdn')?.status === 'operational' || !healthData
+                      ? 'Operational'
+                      : 'Degraded'}
+                  </span>
+                )}
               </div>
             </div>
           </div>

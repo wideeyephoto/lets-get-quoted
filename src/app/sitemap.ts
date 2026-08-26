@@ -2,6 +2,7 @@ import type { MetadataRoute } from 'next';
 import { marketingOrigin } from '@/lib/tenant-host';
 import { TRADES } from '@/lib/trades';
 import { ARTICLES } from '@/lib/resources';
+import { getAllArticles } from '@/components/help-center/help-center-data';
 import { COMPARISONS } from '@/app/compare/compare-data';
 
 export const dynamic = 'force-dynamic';
@@ -93,6 +94,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${origin}/faq`, lastModified, changeFrequency: 'monthly', priority: 0.6 },
     { url: `${origin}/security`, lastModified, changeFrequency: 'yearly', priority: 0.5 },
     { url: `${origin}/resources`, lastModified, changeFrequency: 'weekly', priority: 0.6 },
+    { url: `${origin}/help`, lastModified, changeFrequency: 'weekly', priority: 0.8 },
+    ...getAllArticles().map((article) => ({
+      url: `${origin}/help/articles/${article.slug}`,
+      lastModified: '2026-08-25',
+      changeFrequency: 'monthly' as const,
+      priority: 0.6,
+    })),
     ...TRADES.map((trade) => ({
       url: `${origin}/for/${trade.slug}`,
       lastModified,
