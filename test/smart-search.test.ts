@@ -91,7 +91,7 @@ describe('Workspace Smart Search', () => {
         let returnData: any[] = [];
         if (table === 'jobs') returnData = mockJobs;
         if (table === 'clients') returnData = mockClients;
-        if (table === 'crew_members') returnData = mockCrew;
+        if (table === 'crew') returnData = mockCrew;
         if (table === 'leads') returnData = mockLeads;
 
         return {

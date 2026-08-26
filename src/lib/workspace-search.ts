@@ -345,12 +345,12 @@ async function searchWorkspaceCrew(
   try {
     const phoneDigits = term.replace(/\D/g, '');
     const queries = [
-      supabase.from('crew_members').select('id, name, phone, email, role_label, active, pay_type')
+      supabase.from('crew').select('id, name, phone, email, role_label, active, pay_type')
         .eq('account_id', accountId)
         .is('deleted_at', null)
         .ilike('name', `%${term}%`)
         .limit(limit),
-      supabase.from('crew_members').select('id, name, phone, email, role_label, active, pay_type')
+      supabase.from('crew').select('id, name, phone, email, role_label, active, pay_type')
         .eq('account_id', accountId)
         .is('deleted_at', null)
         .ilike('role_label', `%${term}%`)
@@ -359,7 +359,7 @@ async function searchWorkspaceCrew(
 
     if (phoneDigits.length >= 3) {
       queries.push(
-        supabase.from('crew_members').select('id, name, phone, email, role_label, active, pay_type')
+        supabase.from('crew').select('id, name, phone, email, role_label, active, pay_type')
           .eq('account_id', accountId)
           .is('deleted_at', null)
           .ilike('phone', `%${phoneDigits}%`)
