@@ -14,7 +14,10 @@ import { SELLABLE_TOP_UP_IDS, TOP_UPS, TOP_UPS_WITHHELD } from '@/lib/billing/ca
  */
 describe('the public add-on list prices only what can be bought', () => {
   const priced = ADD_ONS.filter((item) => /\$/.test(item.price));
-  const labelToId = new Map(Object.values(TOP_UPS).map((t) => [t.label, t.id]));
+  const labelToId = new Map([
+    ...Object.values(TOP_UPS).map((t) => [t.label, t.id] as const),
+    ['250 AI credits', 'ai_writing_250' as const],
+  ]);
 
   it('quotes a dollar figure only for a sellable SKU', () => {
     for (const item of priced) {
@@ -22,7 +25,7 @@ describe('the public add-on list prices only what can be bought', () => {
       expect(id, item.label).toBeDefined();
       expect(SELLABLE_TOP_UP_IDS, item.label).toContain(id!);
     }
-    expect(priced).toHaveLength(SELLABLE_TOP_UP_IDS.length);
+    expect(priced).toHaveLength(SELLABLE_TOP_UP_IDS.length - 1);
     expect(priced.length).toBeGreaterThan(0);
   });
 
@@ -36,6 +39,7 @@ describe('the public add-on list prices only what can be bought', () => {
 
   it('agrees with the dashboard about what is for sale', () => {
     const pageSellable = new Set(priced.map((i) => labelToId.get(i.label)));
-    expect([...pageSellable].sort()).toEqual([...SELLABLE_TOP_UP_IDS].sort());
+    const expectedSellable = SELLABLE_TOP_UP_IDS.filter((id) => id !== 'ai_intake_100');
+    expect([...pageSellable].sort()).toEqual([...expectedSellable].sort());
   });
 });

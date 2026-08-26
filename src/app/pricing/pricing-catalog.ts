@@ -60,8 +60,8 @@ export const PLANS: readonly PricingPlan[] = [
       '1 custom-domain connection',
       '2-way business texting (requires carrier registration & number)',
       'QuickBooks Online connection included',
-      '50 text + 30 AI Intake one-time starter credits',
-      '100 marketing emails + 25 AI writing drafts to start',
+      '50 text credits + 100 marketing emails to start',
+      '55 AI starter credits (Smart Intake & writing drafts)',
       'No automatic refills; optional paid top-ups',
     ],
   },
@@ -89,7 +89,7 @@ export const PLANS: readonly PricingPlan[] = [
       '2-way business texting (requires carrier registration & number)',
       'QuickBooks Online connection included',
       '500 text credits + 500 marketing emails/month',
-      '300 AI credits/month (250 Smart Intake + 50 quote drafts)',
+      '300 AI credits/month (Smart Intake & quote drafts)',
       '100 domestic forwarding/voicemail minutes/month',
     ],
   },
@@ -117,7 +117,7 @@ export const PLANS: readonly PricingPlan[] = [
       '2-way business texting (requires carrier registration & number)',
       'QuickBooks Online connection included',
       '1,500 text credits + 2,500 marketing emails/month',
-      '750 AI credits/month (500 Smart Intake + 250 quote drafts)',
+      '750 AI credits/month (Smart Intake & quote drafts)',
       '100 domestic forwarding/voicemail minutes/month',
     ],
   },
@@ -145,7 +145,7 @@ export const PLANS: readonly PricingPlan[] = [
       '1 custom-domain connection',
       '2-way business texting (requires carrier registration & number)',
       '3,000 text credits + 5,000 marketing emails/month',
-      '1,500 AI credits/month (1,000 Smart Intake + 500 quote drafts)',
+      '1,500 AI credits/month (Smart Intake & quote drafts)',
       '250 GB file and photo storage',
       'QuickBooks Online connection included',
       'Extra usage is opt-in through top-ups you choose',
@@ -178,8 +178,7 @@ export const COMPARISON_ROWS = [
   ['Text credits', '50 one-time starter credits', '500/month', '1,500/month', '3,000/month'],
   ['Marketing email sends', '100 one-time starter sends', '500/month', '2,500/month', '5,000/month'],
   ['Transactional emails', 'Unlimited (fair use)', 'Unlimited (fair use)', 'Unlimited (fair use)', 'Unlimited (fair use)'],
-  ['AI Intake credits', '30 one-time starter credits', '250/month', '500/month', '1,000/month'],
-  ['AI writing drafts', '25 one-time starter drafts', '50/month', '250/month', '500/month'],
+  ['AI credits', '55 one-time starter credits', '300/month', '750/month', '1,500/month'],
   ['File & photo storage', '5 GB', '10 GB', '100 GB', '250 GB'],
   ['QuickBooks Online', '1 connection included', '1 connection included', '1 connection included', '1 connection included'],
   ['Usage beyond included limits', 'Top-ups, or opt-in extra usage with a limit you set', 'Top-ups, or opt-in extra usage with a limit you set', 'Top-ups, or opt-in extra usage with a limit you set', 'Top-ups, or opt-in extra usage with a limit you set'],
@@ -187,13 +186,16 @@ export const COMPARISON_ROWS = [
 ] as const;
 
 export const ADD_ONS = Object.values(TOP_UPS)
-  .filter((topUp) => !(topUp.id in TOP_UPS_WITHHELD))
-  .map((topUp) => ({
-    label: topUp.label,
-    price: `${formatUsdFromCents(topUp.priceCents)}${topUp.recurring ? '/month' : ''}`,
-    eligibility: topUp.eligibilityLabel,
-    available: true,
-  }));
+  .filter((topUp) => !(topUp.id in TOP_UPS_WITHHELD) && topUp.id !== 'ai_intake_100')
+  .map((topUp) => {
+    const isAi = topUp.id === 'ai_writing_250';
+    return {
+      label: isAi ? '250 AI credits' : topUp.label,
+      price: `${formatUsdFromCents(topUp.priceCents)}${topUp.recurring ? '/month' : ''}`,
+      eligibility: topUp.eligibilityLabel,
+      available: true,
+    };
+  });
 
 export const PRICING_FAQS = [
   {
@@ -206,15 +208,15 @@ export const PRICING_FAQS = [
   },
   {
     q: 'How does Flex starter usage work?',
-    a: 'Flex includes one-time starter balances of 50 text credits, 100 marketing email sends, 30 AI Intake credits, and 25 AI writing drafts. They are issued once per verified business, remain available until used, and do not reset monthly or replenish when you collect a payment. Buy an optional top-up or move to Solo when you need more.',
+    a: 'Flex includes one-time starter balances of 50 text credits, 100 marketing email sends, and 55 AI credits (for Smart Intake and AI writing drafts). They are issued once per verified business, remain available until used, and do not reset monthly or replenish when you collect a payment. Buy an optional top-up or move to Solo when you need more.',
   },
   {
-    q: 'What happens when AI Intake credits run out?',
+    q: 'What happens when AI credits run out?',
     a: 'LGQ automatically switches new website visitors to the normal quote form at no charge. The standard form remains unlimited and creates the same lead and notifications without using AI credits.',
   },
   {
-    q: 'What counts as one AI Intake credit?',
-    a: 'One credit covers one deduplicated lead thread for 24 hours, beginning with the first meaningful AI response and subject to published turn and size safety limits. Blocked spam and provider failures before a meaningful response do not use a credit.',
+    q: 'What counts as one AI credit?',
+    a: 'AI credits cover both 24/7 Smart Intake lead threads and AI writing drafts (like quote descriptions, review replies, and messages). For Smart Intake, one credit covers one deduplicated lead thread for 24 hours. For AI writing, one credit generates one draft. Blocked spam and provider failures do not consume credits.',
   },
   {
     q: 'What does the LGQ platform fee apply to?',

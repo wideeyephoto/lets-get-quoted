@@ -95,8 +95,7 @@ describe('the contractor pricing catalog', () => {
       ['Flex: 250 text-credit top-up', '$12'],
       ['1,000 text credits', '$42'],
       ['5,000 marketing emails', '$17'],
-      ['100 AI Intake credits', '$15'],
-      ['250 AI writing drafts', '$19'],
+      ['250 AI credits', '$19'],
       ['Crew user', '$5/month'],
     ]);
   });
@@ -152,8 +151,7 @@ describe('the contractor pricing catalog', () => {
       ['Crew-only users', '50'],
       ['Text credits', '3,000/month'],
       ['Marketing email sends', '5,000/month'],
-      ['AI Intake credits', '1,000/month'],
-      ['AI writing drafts', '500/month'],
+      ['AI credits', '1,500/month'],
       ['File & photo storage', '250 GB'],
       ['Basic call forwarding & voicemail', '200 min/month'],
     ] as const) {
@@ -181,8 +179,8 @@ describe('the contractor pricing catalog', () => {
     expect(faq!.a).toContain('do not reset monthly or replenish when you collect a payment');
   });
 
-  it('keeps lead capture working through the free standard form after AI Intake runs out', () => {
-    const faq = PRICING_FAQS.find(({ q }) => q === 'What happens when AI Intake credits run out?');
+  it('keeps lead capture working through the free standard form after AI credits run out', () => {
+    const faq = PRICING_FAQS.find(({ q }) => q === 'What happens when AI credits run out?');
     expect(faq).toBeDefined();
     expect(faq!.a).toContain('normal quote form at no charge');
     expect(faq!.a).toContain('standard form remains unlimited');
