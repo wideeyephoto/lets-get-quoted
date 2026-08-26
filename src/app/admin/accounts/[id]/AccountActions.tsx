@@ -32,6 +32,17 @@ function ConfirmSubmit({ phrase, label, danger = false }: { phrase: string; labe
   );
 }
 
+function safeDate(v: unknown): string {
+  if (!v) return '—';
+  try {
+    const d = new Date(v as string | number | Date);
+    if (isNaN(d.getTime())) return '—';
+    return d.toLocaleDateString('en-US', { dateStyle: 'medium' });
+  } catch {
+    return '—';
+  }
+}
+
 export default function AccountActions({
   accountId,
   suspended,
@@ -92,7 +103,7 @@ export default function AccountActions({
               {quickStopLockedUntil ? (
                 <form action={unlockQuickStopAction.bind(null, accountId)} className={styles.formStack}>
                   <label htmlFor="unlock-quick-stop-reason" className={styles.formLabel}>
-                    Quick Stop is locked until {new Date(quickStopLockedUntil).toLocaleDateString('en-US', { dateStyle: 'medium' })}
+                    Quick Stop is locked until {safeDate(quickStopLockedUntil)}
                   </label>
                   <input id="unlock-quick-stop-reason" className={styles.input} name="reason" required minLength={4} placeholder="Reason for clearing the lock" />
                   <button type="submit" className="btn secondary">Clear Quick Stop lock</button>

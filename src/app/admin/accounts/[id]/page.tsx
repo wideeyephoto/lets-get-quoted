@@ -25,32 +25,95 @@ import { formatPlatformFeeBps } from '@/lib/admin-plan-authority';
 
 export const dynamic = 'force-dynamic';
 
-function usd(dollars: number | null | undefined): string {
+const DONE_MESSAGES: Record<string, string> = {
+  suspended: 'Account suspended. The owner is now blocked from the dashboard.',
+  unsuspended: 'Suspension lifted. The owner has access again.',
+  credit: 'Account credit issued.',
+  es_locked: 'Quick Stop locked for this account.',
+  es_unlocked: 'Quick Stop lock cleared.',
+  exported: 'Account data exported.',
+  reset_verification: 'Payment verification reset. The owner will need to reconnect.',
+  payouts_restricted: 'Payouts restricted for this account.',
+  payouts_unrestricted: 'Payout restriction lifted.',
+  onboarding_resent: 'Onboarding link resent to the owner.',
+  signed_out: 'New sign-ins and token refreshes are blocked for 24 hours. Existing short-lived access tokens expire naturally.',
+  noted: 'Note added.',
+  tagged: 'Tag added.',
+  untagged: 'Tag removed.',
+  attached: 'File uploaded.',
+  attachment_deleted: 'File deleted.',
+  privacy_logged: 'Privacy request logged.',
+  privacy_resolved: 'Privacy request resolved.',
+  flag_changed: 'Setting changed, and recorded against your name.',
+  refunded: 'Refund issued.',
+  marked_synthetic: 'Account marked synthetic and removed from production reporting.',
+  marked_production: 'Account returned to production reporting.',
+};
+
+const ERROR_MESSAGES: Record<string, string> = {
+  flag: 'That is not a setting this console can change.',
+  flag_save: 'Could not save that setting. Try again in a moment.',
+  amount: 'Enter a valid dollar amount.',
+  state: 'That action isn’t available right now.',
+  confirm: 'Confirmation text didn’t match.',
+  no_owner: 'No owner email found for this account.',
+  note: 'Enter some text for the note.',
+  tag: 'Enter a tag.',
+  attachment: 'That file could not be uploaded.',
+  privacy_kind: 'Choose a request type.',
+  reason_required: 'Enter a reason of at least four characters.',
+  update_failed: 'The account could not be updated. Try again.',
+  partial_signout: 'Some account members were blocked, but at least one update failed. Review the audit entry before retrying.',
+  delete_blocked: 'This account has billing or messaging history that cannot be removed automatically — 24 tables hold it under a RESTRICT key, including payments. NOTHING was deleted and no privacy request was scrubbed. Close it out by hand.',
+  delete_failed: 'The account could not be deleted. Nothing was removed and no privacy request was scrubbed. Check the server log and try again.',
+};
+
+function usd(dollars: unknown): string {
   const n = Number(dollars) || 0;
   return `$${n.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
 }
-function usdCents(cents: number | null | undefined): string {
+function usdCents(cents: unknown): string {
   return usd((Number(cents) || 0) / 100);
 }
 function fmtDate(v: unknown): string {
-  if (!v || typeof v !== 'string') return '—';
-  return new Date(v).toLocaleDateString('en-US', { dateStyle: 'medium' });
+  if (!v) return '—';
+  try {
+    const d = new Date(v as string | number | Date);
+    if (isNaN(d.getTime())) return '—';
+    return d.toLocaleDateString('en-US', { dateStyle: 'medium' });
+  } catch {
+    return '—';
+  }
 }
 function fmtDateTime(v: unknown): string {
-  if (!v || typeof v !== 'string') return '—';
-  return new Date(v).toLocaleString('en-US', { dateStyle: 'short', timeStyle: 'short' });
+  if (!v) return '—';
+  try {
+    const d = new Date(v as string | number | Date);
+    if (isNaN(d.getTime())) return '—';
+    return d.toLocaleString('en-US', { dateStyle: 'short', timeStyle: 'short' });
+  } catch {
+    return '—';
+  }
 }
 function bool(v: unknown): boolean {
   return v === true;
 }
-function words(v: string): string {
+function words(v: unknown): string {
+  if (!v || typeof v !== 'string') return '—';
   return v.replace(/_/g, ' ');
 }
-function initials(name: string): string {
+function initials(name: unknown): string {
+  if (!name || typeof name !== 'string') return 'AC';
   const parts = name.trim().split(/\s+/).filter(Boolean);
   if (parts.length === 0) return 'AC';
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
   return (parts[0][0] + parts[1][0]).toUpperCase();
+}
+
+function PaymentStatusPill({ status }: { status: string | null }) {
+  const s = status ?? 'requested';
+  const cls = s === 'paid' ? styles.good : s === 'disputed' ? styles.bad : s === 'refunded' ? styles.warn : s === 'failed' ? styles.bad : styles.neutral;
+  return <span className={`${styles.pill} ${cls}`}>{s}</span>;
 }
 
 export default async function AdminAccountDetailPage({
@@ -85,7 +148,7 @@ export default async function AdminAccountDetailPage({
 
   const suspended = Boolean(a.suspended_at);
   const lockedUntil =
-    a.extra_stop_locked_until && new Date(String(a.extra_stop_locked_until)).getTime() > Date.now()
+    a.extra_stop_locked_until && !isNaN(new Date(String(a.extra_stop_locked_until)).getTime()) && new Date(String(a.extra_stop_locked_until)).getTime() > Date.now()
       ? String(a.extra_stop_locked_until)
       : null;
   const paypaused = Boolean(a.connect_disabled_at);
@@ -93,7 +156,7 @@ export default async function AdminAccountDetailPage({
   const payoutsRestricted = Boolean(a.payouts_restricted_at);
   const entitlement = detail.entitlement;
   const subscription = detail.subscription;
-  const doneMessage = searchParams.done ? DONE_MESSAGES[searchParams.done] : null;
+  const doneMessage = searchParams?.done ? DONE_MESSAGES[searchParams.done] : null;
 
   const tabs: AccountTab[] = [
     { id: 'overview', label: 'Overview', icon: '📑' },
@@ -693,7 +756,7 @@ export default async function AdminAccountDetailPage({
         <ul className={styles.timeline}>
           {cases.map((c) => (
             <li key={c.id}>
-              <time>{new Date(c.created_at).toLocaleDateString('en-US', { dateStyle: 'short' })}</time>
+              <time>{fmtDate(c.created_at)}</time>
               <span>
                 <Link href={`/admin/cases/${c.id}`} className={styles.rowLink}>
                   {c.subject}
@@ -766,7 +829,7 @@ export default async function AdminAccountDetailPage({
         <ul className={styles.timeline}>
           {actions.map((ac) => (
             <li key={ac.id}>
-              <time>{new Date(ac.created_at).toLocaleString('en-US', { dateStyle: 'short', timeStyle: 'short' })}</time>
+              <time>{fmtDateTime(ac.created_at)}</time>
               <span>
                 <span className={styles.timelineActor}>{ac.admin_email}</span> — {ac.action.replace(/_/g, ' ')}
               </span>
@@ -855,7 +918,7 @@ export default async function AdminAccountDetailPage({
 
       {/* Alert Banners */}
       {doneMessage ? <div className={`${styles.banner} ${styles.ok}`}>{doneMessage}</div> : null}
-      {searchParams.error ? (
+      {searchParams?.error ? (
         <div className={`${styles.banner} ${styles.err}`}>
           {ERROR_MESSAGES[searchParams.error] ?? 'Something went wrong.'}
         </div>
@@ -1034,52 +1097,4 @@ export default async function AdminAccountDetailPage({
       />
     </>
   );
-}
-
-const DONE_MESSAGES: Record<string, string> = {
-  suspended: 'Account suspended. The owner is now blocked from the dashboard.',
-  unsuspended: 'Suspension lifted. The owner has access again.',
-  credit: 'Account credit issued.',
-  es_locked: 'Quick Stop locked for this account.',
-  es_unlocked: 'Quick Stop lock cleared.',
-  exported: 'Account data exported.',
-  reset_verification: 'Payment verification reset. The owner will need to reconnect.',
-  payouts_restricted: 'Payouts restricted for this account.',
-  payouts_unrestricted: 'Payout restriction lifted.',
-  onboarding_resent: 'Onboarding link resent to the owner.',
-  signed_out: 'New sign-ins and token refreshes are blocked for 24 hours. Existing short-lived access tokens expire naturally.',
-  noted: 'Note added.',
-  tagged: 'Tag added.',
-  untagged: 'Tag removed.',
-  attached: 'File uploaded.',
-  attachment_deleted: 'File deleted.',
-  privacy_logged: 'Privacy request logged.',
-  privacy_resolved: 'Privacy request resolved.',
-  flag_changed: 'Setting changed, and recorded against your name.',
-  refunded: 'Refund issued.',
-  marked_synthetic: 'Account marked synthetic and removed from production reporting.',
-  marked_production: 'Account returned to production reporting.',
-};
-const ERROR_MESSAGES: Record<string, string> = {
-  flag: 'That is not a setting this console can change.',
-  flag_save: 'Could not save that setting. Try again in a moment.',
-  amount: 'Enter a valid dollar amount.',
-  state: 'That action isn’t available right now.',
-  confirm: 'Confirmation text didn’t match.',
-  no_owner: 'No owner email found for this account.',
-  note: 'Enter some text for the note.',
-  tag: 'Enter a tag.',
-  attachment: 'That file could not be uploaded.',
-  privacy_kind: 'Choose a request type.',
-  reason_required: 'Enter a reason of at least four characters.',
-  update_failed: 'The account could not be updated. Try again.',
-  partial_signout: 'Some account members were blocked, but at least one update failed. Review the audit entry before retrying.',
-  delete_blocked: 'This account has billing or messaging history that cannot be removed automatically — 24 tables hold it under a RESTRICT key, including payments. NOTHING was deleted and no privacy request was scrubbed. Close it out by hand.',
-  delete_failed: 'The account could not be deleted. Nothing was removed and no privacy request was scrubbed. Check the server log and try again.',
-};
-
-function PaymentStatusPill({ status }: { status: string | null }) {
-  const s = status ?? 'requested';
-  const cls = s === 'paid' ? styles.good : s === 'disputed' ? styles.bad : s === 'refunded' ? styles.warn : s === 'failed' ? styles.bad : styles.neutral;
-  return <span className={`${styles.pill} ${cls}`}>{s}</span>;
 }
