@@ -317,12 +317,17 @@ button.quickStepItem {
   text-decoration: underline;
 }
 
-/* Quick Issue Chips (Horizontal Snap Scroll on mobile, clean overflow on desktop) */
+/* Quick Issue Chips (Wrapped & Centered) */
 .quickChipsWrapper {
-  margin-top: 1rem;
+  margin-top: 1.25rem;
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.6rem 0.75rem;
+  max-width: 860px;
+  margin-left: auto;
+  margin-right: auto;
 }
 .quickChipsLabel {
   font-size: 0.8rem;
@@ -332,17 +337,11 @@ button.quickStepItem {
 }
 .quickChipsScroll {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
   gap: 0.5rem;
-  overflow-x: auto;
-  padding: 4px 0;
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* IE and Edge */
-  -webkit-overflow-scrolling: touch;
-}
-.quickChipsScroll::-webkit-scrollbar {
-  display: none; /* Chrome, Safari, Edge */
-  width: 0;
-  height: 0;
+  padding: 2px 0;
 }
 .quickChipBtn {
   background: #101D22;
@@ -355,7 +354,6 @@ button.quickStepItem {
   cursor: pointer;
   white-space: nowrap;
   transition: all 0.15s ease;
-  scroll-snap-align: start;
 }
 .quickChipBtn:hover {
   border-color: #FF6B35;
@@ -434,22 +432,28 @@ button.quickStepItem {
   to { opacity: 1; transform: translateY(0); }
 }
 
-.diagnosedCard {
+.diagnosedCard,
+.matchCard {
   background: #0E1A1F;
   border: 1px solid rgba(45, 212, 191, 0.35);
   border-radius: 14px;
   padding: 1.5rem;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+  max-width: 760px;
+  margin: 1.5rem auto 0;
+  text-align: center;
 }
-.diagnosedHeader {
+.diagnosedHeader,
+.matchHeader {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 1rem;
+  justify-content: center;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.85rem;
   flex-wrap: wrap;
-  gap: 0.5rem;
 }
-.matchPill {
+.matchPill,
+.matchBadge {
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -460,26 +464,79 @@ button.quickStepItem {
   font-size: 0.75rem;
   font-weight: 700;
 }
-.confidencePill {
+.confidencePill,
+.matchTime {
   font-size: 0.75rem;
   color: #94A3B8;
+  display: inline-flex;
+  align-items: center;
 }
-.diagnosedTitle {
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: #FFFFFF;
+.diagnosedTitle,
+.matchTitle {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #2DD4BF;
   margin-bottom: 0.5rem;
+  line-height: 1.25;
 }
-.diagnosedSummary {
+.diagnosedSummary,
+.matchExplanation {
   color: #CBD5E1;
-  font-size: 0.9rem;
-  line-height: 1.5;
+  font-size: 0.95rem;
+  line-height: 1.55;
   margin-bottom: 1.25rem;
+  max-width: 640px;
+  margin-left: auto;
+  margin-right: auto;
 }
-.diagnosedActions {
+.diagnosedActions,
+.matchActionsRow {
   display: flex;
   gap: 0.75rem;
+  justify-content: center;
+  align-items: center;
   flex-wrap: wrap;
+}
+.btnPrimary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  background: #FF7A29;
+  color: #081014;
+  border: none;
+  border-radius: 8px;
+  padding: 9px 18px;
+  font-size: 0.9rem;
+  font-weight: 800;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+.btnPrimary:hover {
+  background: #FF8C42;
+  transform: translateY(-1px);
+}
+.btnOutline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  background: #15252B;
+  color: #E2E8F0;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 9px 16px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.15s ease;
+}
+.btnOutline:hover {
+  border-color: #2DD4BF;
+  color: #2DD4BF;
+  transform: translateY(-1px);
 }
 
 .unmatchedCard {
@@ -2348,19 +2405,23 @@ button.quickStepItem {
   }
   .quickChipsWrapper {
     flex-direction: column;
-    align-items: flex-start;
+    align-items: center;
     gap: 0.5rem;
+    width: 100%;
+    margin-top: 1rem;
   }
   .quickChipsScroll {
     width: 100%;
-    scroll-snap-type: x mandatory;
-    padding-bottom: 6px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.45rem;
+    padding-bottom: 4px;
   }
   .quickChipBtn {
-    min-height: 42px;
-    padding: 8px 14px;
-    font-size: 0.85rem;
-    scroll-snap-align: start;
+    min-height: 38px;
+    padding: 6px 12px;
+    font-size: 0.8rem;
   }
 
   .sectionContainer {
