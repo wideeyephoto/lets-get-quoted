@@ -5,7 +5,6 @@ import { getJob } from '@/lib/jobs';
 import {
   mapJobToAccountingInvoice,
   mapPermitFeeToVendorBill,
-  mapPurchaseOrderToVendorBill,
   calculateJobFinancialLedger,
   type AccountingVendorBill,
 } from '@/lib/accounting/accounting-sync-engine';

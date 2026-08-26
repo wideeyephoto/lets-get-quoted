@@ -426,14 +426,18 @@ export async function recordCallHistory(
 
       const cPhone = callerPhone(receipt);
       if (cPhone && outcome !== 'caller_abandoned') {
+        const callerName = typeof structured?.caller_name === 'string' ? structured.caller_name : null;
+        const issueSummary = typeof structured?.issue_summary === 'string'
+          ? structured.issue_summary
+          : (summaryLine(receipt) || null);
         await triggerVoicePostCallFollowup(
           admin,
           facts.accountId,
           callRow.id,
           cPhone,
           {
-            callerName: structured?.caller_name,
-            issueSummary: structured?.issue_summary || receipt.summary,
+            callerName,
+            issueSummary,
           },
         );
       }

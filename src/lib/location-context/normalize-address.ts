@@ -126,7 +126,6 @@ export function normalizeAddress(rawAddress: string | null | undefined): ParsedA
     // Try to extract State, Zip, and remaining as City
     const parts = cityStateZip.split(' ').map((s) => s.trim()).filter(Boolean);
     const lastWord = parts[parts.length - 1];
-    const secondLastWord = parts.length > 1 ? parts[parts.length - 2] : '';
 
     if (postalCode && lastWord.startsWith(postalCode.slice(0, 5))) {
       parts.pop(); // remove zip

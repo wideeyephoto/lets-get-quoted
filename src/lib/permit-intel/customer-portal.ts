@@ -4,6 +4,7 @@ import { normalizeAddress } from '../location-context/normalize-address';
 import { resolveJurisdiction } from '../location-context/jurisdiction-resolver';
 import { evaluatePermitRequirement, classifyWorkScope } from './requirement-engine';
 import { listJobInspections } from './inspection-service';
+import type { JobPermitInspection } from './types';
 
 export type CustomerPermitStage =
   | 'not_required'
@@ -70,7 +71,7 @@ export async function getCustomerPermitSummary(
     .maybeSingle();
 
   // Fetch inspections
-  let inspections: any[] = [];
+  let inspections: JobPermitInspection[] = [];
   try {
     inspections = await listJobInspections(supabase, accountId, jobId);
   } catch (err) {

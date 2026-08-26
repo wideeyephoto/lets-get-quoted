@@ -3,7 +3,7 @@ import { GET } from '@/app/api/voice/health/route';
 
 vi.mock('@/lib/auth', () => ({
   requireOfficeContext: vi.fn(async () => ({
-    account: { id: 'test-account-123' },
+    accountId: 'test-account-123',
     supabase: {},
   })),
   createAdminClient: vi.fn(() => ({
@@ -24,8 +24,9 @@ vi.mock('@/lib/voice/auth', () => ({
 
 vi.mock('@/lib/voice/route-readiness', () => ({
   loadVoiceRouteReadiness: vi.fn(async () => ({
-    state: 'ready' as const,
-    activeDedicatedNumber: '+12485550100',
+    kind: 'ready' as const,
+    number: '+12485550100',
+    verifiedAt: '2026-08-26T12:00:00Z',
   })),
 }));
 

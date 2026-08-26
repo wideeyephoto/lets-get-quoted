@@ -6,7 +6,6 @@ import { buildStartUrl } from '@/lib/signup-intent';
 import {
   type LineItem,
   type EstimateData,
-  type EstimateTier,
   calculateEstimateTotals,
   clampPercentage,
   clampQuantity,
@@ -27,7 +26,7 @@ export default function EstimateGeneratorClient() {
   const [mounted, setMounted] = useState(false);
   const [estimate, setEstimate] = useState<EstimateData>(getInitialBlankEstimate);
   const [copied, setCopied] = useState(false);
-  const [hasInteracted, setHasInteracted] = useState(false);
+  const [_hasInteracted, setHasInteracted] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
 
   // Permit & Clean Energy Rebate state
@@ -276,16 +275,16 @@ export default function EstimateGeneratorClient() {
     setStatusMessage('Discount line item added.');
   };
 
-  const updateItem = (id: string, field: keyof LineItem, value: any) => {
+  const updateItem = (id: string, field: keyof LineItem, value: string | number | boolean | null | undefined) => {
     setHasInteracted(true);
     const updateFn = (items: LineItem[]) =>
       items.map((item) => {
         if (item.id !== id) return item;
         if (field === 'quantity') {
-          return { ...item, quantity: clampQuantity(value, 1) };
+          return { ...item, quantity: clampQuantity(typeof value === 'number' || typeof value === 'string' ? value : 1, 1) };
         }
         if (field === 'unitPrice') {
-          return { ...item, unitPrice: clampUnitPrice(value, 0) };
+          return { ...item, unitPrice: clampUnitPrice(typeof value === 'number' || typeof value === 'string' ? value : 0, 0) };
         }
         return { ...item, [field]: value };
       });
@@ -614,7 +613,7 @@ export default function EstimateGeneratorClient() {
                   <button
                     key={t.id}
                     type="button"
-                    onClick={() => handleFieldChange('selectedTrade', t.id as any)}
+                    onClick={() => handleFieldChange('selectedTrade', t.id as EstimateData['selectedTrade'])}
                     style={{
                       background: estimate.selectedTrade === t.id ? '#0066cc' : '#ffffff',
                       color: estimate.selectedTrade === t.id ? '#ffffff' : '#334e68',
@@ -666,6 +665,20 @@ export default function EstimateGeneratorClient() {
                 >
                   + Add Permit to Estimate
                 </button>
+                {rebateData && rebateData.federalCredit > 0 && (
+                  <span
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 750,
+                      padding: '4px 8px',
+                      borderRadius: 4,
+                      background: '#fef3c7',
+                      color: '#92400e',
+                    }}
+                  >
+                    ⚡ IRA 25C Rebate: {formatCurrency(rebateData.federalCredit)} Credit
+                  </span>
+                )}
               </div>
             ) : loadingPermit ? (
               <span style={{ fontSize: 12, color: '#094886', fontStyle: 'italic' }}>

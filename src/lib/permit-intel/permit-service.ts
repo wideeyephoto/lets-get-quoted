@@ -57,7 +57,7 @@ export async function getPermitIntelligence(params: {
   let portalAction: PermitPortalAction | undefined;
   let contactPhone = '248-246-3210';
   let officeHours = 'Monday – Friday, 8:00 AM – 4:30 PM';
-  let inspectorHours = '8:00 AM – 9:00 AM & 3:30 PM – 4:30 PM';
+  const inspectorHours = '8:00 AM – 9:00 AM & 3:30 PM – 4:30 PM';
   let department = 'Building Inspection Division';
 
   if (jurisdiction.authorityId === 'mi-royal-oak') {

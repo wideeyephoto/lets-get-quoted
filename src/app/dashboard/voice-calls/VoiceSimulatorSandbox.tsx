@@ -64,18 +64,18 @@ const PRESETS = [
 ];
 
 export default function VoiceSimulatorSandbox({
-  companyName,
-  trade,
-  voiceTone = 'professional',
+  companyName: _companyName,
+  trade: _trade,
+  voiceTone: _voiceTone = 'professional',
 }: {
-  companyName: string;
-  trade: string;
+  companyName?: string;
+  trade?: string;
   voiceTone?: string;
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedPreset, setSelectedPreset] = useState('booking');
   const [customPrompt, setCustomPrompt] = useState(PRESETS[0]!.prompt);
-  const [callerPhone, setCallerPhone] = useState('(555) 019-2834');
+  const [callerPhone] = useState('(555) 019-2834');
   const [result, setResult] = useState<SimulationResult | null>(null);
   const [isPending, startTransition] = useTransition();
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);

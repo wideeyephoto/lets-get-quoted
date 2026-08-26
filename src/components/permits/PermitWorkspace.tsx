@@ -58,7 +58,6 @@ export function PermitWorkspace({
   const [currentStatus, setCurrentStatus] = useState<PermitApplicationStatus>('draft');
   const [permitNumber, setPermitNumber] = useState<string>('');
   const [savingStatus, setSavingStatus] = useState<boolean>(false);
-  const [savingPermitNum, setSavingPermitNum] = useState<boolean>(false);
   const [permitNumFeedback, setPermitNumFeedback] = useState<string | null>(null);
   const [syncingTasks, setSyncingTasks] = useState<boolean>(false);
   const [taskFeedback, setTaskFeedback] = useState<string | null>(null);

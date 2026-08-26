@@ -117,13 +117,12 @@ export async function POST(
           authorName: user.email || 'Office',
         },
       );
-      const cost = (result as any)?.cost || result;
       return NextResponse.json({
         success: true,
-        cost,
-        invoiceItem: (result as any)?.invoiceItem,
-        totalBilled: (result as any)?.totalBilled,
-        markupAmount: (result as any)?.markupAmount,
+        cost: result.cost,
+        invoiceItem: result.invoiceItem,
+        totalBilled: result.totalBilled,
+        markupAmount: result.markupAmount,
       });
     }
 

@@ -209,7 +209,7 @@ export function CredentialsVaultModal({
                       <select
                         id="trade-disc-input"
                         value={tradeDiscipline}
-                        onChange={(e) => setTradeDiscipline(e.target.value as any)}
+                        onChange={(e) => setTradeDiscipline(e.target.value as JurisdictionDiscipline | 'general')}
                         className={styles.selectInput}
                       >
                         <option value="building">Building / Roofing</option>

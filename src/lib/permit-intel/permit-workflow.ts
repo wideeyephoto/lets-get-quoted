@@ -380,35 +380,35 @@ export async function registerPermitDocument(
   return shapePermitDocument(data);
 }
 
-function shapePermitCase(row: any): JobPermitCase {
+function shapePermitCase(row: Record<string, unknown>): JobPermitCase {
   return {
-    id: row.id,
-    accountId: row.account_id,
-    jobId: row.job_id,
-    authorityId: row.authority_id,
-    requirementVerdict: row.requirement_verdict,
-    applicationStatus: row.application_status,
-    externalPermitNumber: row.external_permit_number,
+    id: String(row.id),
+    accountId: String(row.account_id),
+    jobId: String(row.job_id),
+    authorityId: String(row.authority_id),
+    requirementVerdict: row.requirement_verdict as PermitRequirementVerdict,
+    applicationStatus: row.application_status as PermitApplicationStatus,
+    externalPermitNumber: row.external_permit_number ? String(row.external_permit_number) : null,
     estimatedFee: row.estimated_fee ? Number(row.estimated_fee) : null,
     actualFee: row.actual_fee ? Number(row.actual_fee) : null,
-    notes: row.notes,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
+    notes: row.notes ? String(row.notes) : null,
+    createdAt: String(row.created_at),
+    updatedAt: String(row.updated_at),
   };
 }
 
-function shapePermitDocument(row: any): JobPermitDocument {
+function shapePermitDocument(row: Record<string, unknown>): JobPermitDocument {
   return {
-    id: row.id,
-    accountId: row.account_id,
-    jobId: row.job_id,
-    permitCaseId: row.permit_case_id,
-    documentType: row.document_type,
-    fileName: row.file_name,
+    id: String(row.id),
+    accountId: String(row.account_id),
+    jobId: String(row.job_id),
+    permitCaseId: row.permit_case_id ? String(row.permit_case_id) : null,
+    documentType: String(row.document_type || 'other'),
+    fileName: String(row.file_name),
     fileSizeBytes: Number(row.file_size_bytes || 0),
-    mimeType: row.mime_type,
-    storagePath: row.storage_path,
-    createdAt: row.created_at,
+    mimeType: String(row.mime_type),
+    storagePath: String(row.storage_path),
+    createdAt: String(row.created_at),
   };
 }
 

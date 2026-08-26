@@ -28,7 +28,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     // 1. Load active grounding context
     const grounding = await loadVoiceGroundingContext(supabase, accountId, callerPhone);
-    const systemPrompt = buildVoiceSystemPrompt(grounding);
+    const _systemPrompt = buildVoiceSystemPrompt(grounding);
 
     // 2. Emergency Triage Analysis
     const emergency = detectCallEmergency(testMessage);

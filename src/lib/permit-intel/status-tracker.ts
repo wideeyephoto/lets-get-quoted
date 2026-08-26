@@ -4,7 +4,7 @@ import { createJobFeedEvent } from '../job-feed';
 import { getPermitIntelligence } from './permit-service';
 import { getPropertyPermitHistory } from './permit-history-service';
 import { updatePermitCase, getOrCreatePermitCase } from './permit-workflow';
-import type { JobPermitCase, PermitApplicationStatus } from './types';
+import type { PermitApplicationStatus } from './types';
 
 export type PermitStatusSyncResult = {
   jobId: string;
@@ -176,7 +176,7 @@ export async function syncAllActivePermits(
 export async function processInboundPermitWebhook(
   supabase: SupabaseClient,
   provider: string,
-  payload: any,
+  payload: Record<string, unknown>,
   secretHeader?: string | null,
 ): Promise<{ success: boolean; message: string; jobId?: string }> {
   // Validate secret if configured

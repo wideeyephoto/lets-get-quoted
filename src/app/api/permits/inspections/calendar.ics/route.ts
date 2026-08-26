@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
  * GET /api/permits/inspections/calendar.ics
  * Returns an RFC 5545 iCalendar feed of active municipal permit inspections for the contractor workspace.
  */
-export async function GET(request: Request) {
+export async function GET(_request: Request) {
   const supabase = createSupabaseServerClient();
   const {
     data: { user },

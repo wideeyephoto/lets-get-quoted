@@ -143,9 +143,7 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
   const askTimeline = smartIntakeActive && leadFilters.askTimeline;
   const configuredCities = siteContent.serviceAreas.cities.map((city) => city.trim()).filter(Boolean);
   const askLocation = smartIntakeActive && leadFilters.serviceAreaGate && configuredCities.length > 0;
-  const primaryServedCity = configuredCities[0]
-    ? (siteContent.serviceAreas.state ? `${configuredCities[0]}, ${siteContent.serviceAreas.state}` : configuredCities[0])
-    : (site.service_area || 'Your city or town');
+  const primaryServedCity = configuredCities[0] || (site.service_area || 'Your city or town');
   const locationPlaceholder = primaryServedCity.startsWith('e.g.') ? primaryServedCity : `e.g. ${primaryServedCity}`;
   // Real, earned response-time stat (absent = no honest claim to make).
   const avgReplyMs = typeof site.avg_response_ms === 'number' && site.avg_response_ms > 0 ? site.avg_response_ms : null;

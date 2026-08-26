@@ -98,7 +98,7 @@ export async function saveContractorCredential(
 ): Promise<ContractorCredential> {
   const status = computeCredentialStatus(input.expiresAt);
 
-  const payload: any = {
+  const payload: Record<string, unknown> = {
     account_id: accountId,
     credential_type: input.credentialType,
     trade_discipline: input.tradeDiscipline || 'building',
@@ -219,26 +219,26 @@ function computeCredentialStatus(expiresAt?: string | null): ContractorCredentia
   return 'active';
 }
 
-function shapeContractorCredential(row: any): ContractorCredential {
-  const computedStatus = computeCredentialStatus(row.expires_at);
+function shapeContractorCredential(row: Record<string, unknown>): ContractorCredential {
+  const computedStatus = computeCredentialStatus(row.expires_at ? String(row.expires_at) : null);
   return {
-    id: row.id,
-    accountId: row.account_id,
+    id: String(row.id),
+    accountId: String(row.account_id),
     credentialType: row.credential_type as ContractorCredentialType,
     tradeDiscipline: row.trade_discipline as JurisdictionDiscipline | 'general',
-    licenseNumber: row.license_number,
-    issuingAuthority: row.issuing_authority,
-    authorityId: row.authority_id,
-    contractorPin: row.contractor_pin,
-    holderName: row.holder_name,
-    policyNumber: row.policy_number,
-    insuranceCarrier: row.insurance_carrier,
+    licenseNumber: row.license_number ? String(row.license_number) : null,
+    issuingAuthority: String(row.issuing_authority || ''),
+    authorityId: row.authority_id ? String(row.authority_id) : null,
+    contractorPin: row.contractor_pin ? String(row.contractor_pin) : null,
+    holderName: String(row.holder_name || ''),
+    policyNumber: row.policy_number ? String(row.policy_number) : null,
+    insuranceCarrier: row.insurance_carrier ? String(row.insurance_carrier) : null,
     coverageAmount: row.coverage_amount ? Number(row.coverage_amount) : null,
-    expiresAt: row.expires_at,
+    expiresAt: row.expires_at ? String(row.expires_at) : null,
     status: computedStatus,
-    documentUrl: row.document_url,
-    notes: row.notes,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
+    documentUrl: row.document_url ? String(row.document_url) : null,
+    notes: row.notes ? String(row.notes) : null,
+    createdAt: String(row.created_at),
+    updatedAt: String(row.updated_at),
   };
 }

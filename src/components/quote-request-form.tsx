@@ -40,9 +40,7 @@ function QuoteRequestFormFull({ site }: QuoteRequestFormProps) {
   const emailRequired = quoteForm.emailRequired;
   const estimateLabel = getEstimateButtonLabel(quoteForm);
   const configuredCities = siteContent.serviceAreas.cities.map((city) => city.trim()).filter(Boolean);
-  const primaryServedCity = configuredCities[0]
-    ? (siteContent.serviceAreas.state ? `${configuredCities[0]}, ${siteContent.serviceAreas.state}` : configuredCities[0])
-    : (site.service_area || 'Your city or town');
+  const primaryServedCity = configuredCities[0] || (site.service_area || 'Your city or town');
   const addressPlaceholder = primaryServedCity.includes('1418') || primaryServedCity.includes('St') ? primaryServedCity : `123 Main St, ${primaryServedCity}`;
   const [step, setStep] = useState(0);
   const [progress, setProgress] = useState(0);

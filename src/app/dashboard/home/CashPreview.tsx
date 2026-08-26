@@ -4,7 +4,7 @@ import type { CashPreview as CashPreviewType, Loadable } from '@/lib/dashboard-t
 
 export default function CashPreview({
   cashPreview,
-  basePath = '/dashboard',
+  basePath: _basePath = '/dashboard',
 }: {
   cashPreview: Loadable<CashPreviewType>;
   basePath?: string;

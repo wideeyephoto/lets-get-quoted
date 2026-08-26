@@ -646,7 +646,7 @@ export const SMS_CATALOGUE: SmsCatalogueEntry[] = [
     control: always('Triggered on voice call completion'),
     body: callerVoicePostCallFollowupText({
       businessName: SAMPLE.business,
-      callerName: SAMPLE.customer,
+      callerName: SAMPLE.first,
       scheduledTime: 'Thursday, Aug 27 at 9:00 AM',
       portalUrl: SAMPLE.link,
       issueSummary: 'Water heater maintenance and inspection',

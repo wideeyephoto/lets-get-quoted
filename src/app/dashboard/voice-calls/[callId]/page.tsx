@@ -86,7 +86,13 @@ export default async function VoiceCallDetailPage({
         </div>
 
         <div className={styles.headerActions}>
-          <form action={convertVoiceCallToQuoteDraftAction} style={{ display: 'inline' }}>
+          <form
+            action={async (formData: FormData) => {
+              'use server';
+              await convertVoiceCallToQuoteDraftAction(formData);
+            }}
+            style={{ display: 'inline' }}
+          >
             <input type="hidden" name="callId" value={call.id} />
             <button
               type="submit"

@@ -52,7 +52,7 @@ export default async function VoiceCallsPage({
       .maybeSingle(),
     supabase
       .from('voice_settings')
-      .select('status, answer_mode, greeting, transfer_number, alert_phone')
+      .select('status, answer_mode, greeting, transfer_number, alert_phone, voice_tone')
       .eq('account_id', accountId)
       .maybeSingle(),
     loadVoiceWorkspaceQueue(supabase, accountId, {
@@ -343,7 +343,13 @@ export default async function VoiceCallsPage({
                     ) : null}
                   </div>
                   <div className={styles.footerRight}>
-                    <form action={convertVoiceCallToQuoteDraftAction} style={{ display: 'inline' }}>
+                    <form
+                      action={async (formData: FormData) => {
+                        'use server';
+                        await convertVoiceCallToQuoteDraftAction(formData);
+                      }}
+                      style={{ display: 'inline' }}
+                    >
                       <input type="hidden" name="callId" value={call.id} />
                       <button
                         type="submit"

@@ -1,8 +1,8 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { getJob, createCost } from '../jobs';
+import { createCost } from '../jobs';
 import { createJobTask } from '../job-tasks';
 import { createJobFeedEvent } from '../job-feed';
-import { updatePermitCase, getOrCreatePermitCase } from './permit-workflow';
+import { updatePermitCase } from './permit-workflow';
 import type {
   JobPermitInspection,
   PermitInspectionStatus,
@@ -261,25 +261,25 @@ export async function recordInspectionResult(
   }
 }
 
-function shapePermitInspection(row: any): JobPermitInspection {
+function shapePermitInspection(row: Record<string, unknown>): JobPermitInspection {
   return {
-    id: row.id,
-    accountId: row.account_id,
-    jobId: row.job_id,
-    permitCaseId: row.permit_case_id,
-    inspectionType: row.inspection_type,
-    title: row.title,
+    id: String(row.id),
+    accountId: String(row.account_id),
+    jobId: String(row.job_id),
+    permitCaseId: row.permit_case_id ? String(row.permit_case_id) : null,
+    inspectionType: String(row.inspection_type || ''),
+    title: String(row.title || ''),
     status: row.status as PermitInspectionStatus,
-    requestedDate: row.requested_date,
-    scheduledDate: row.scheduled_date,
-    completedDate: row.completed_date,
-    inspectorName: row.inspector_name,
-    inspectorPhone: row.inspector_phone,
-    notes: row.notes,
-    failureReasons: row.failure_reasons,
+    requestedDate: row.requested_date ? String(row.requested_date) : null,
+    scheduledDate: row.scheduled_date ? String(row.scheduled_date) : null,
+    completedDate: row.completed_date ? String(row.completed_date) : null,
+    inspectorName: row.inspector_name ? String(row.inspector_name) : null,
+    inspectorPhone: row.inspector_phone ? String(row.inspector_phone) : null,
+    notes: row.notes ? String(row.notes) : null,
+    failureReasons: Array.isArray(row.failure_reasons) ? (row.failure_reasons as string[]) : null,
     reinspectionFee: row.reinspection_fee ? Number(row.reinspection_fee) : null,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
+    createdAt: String(row.created_at),
+    updatedAt: String(row.updated_at),
   };
 }
 

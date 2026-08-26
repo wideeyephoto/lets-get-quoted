@@ -57,7 +57,7 @@ export async function GET(
     }
 
     const { searchParams } = new URL(request.url);
-    const discipline = (searchParams.get('discipline') || undefined) as any;
+    const discipline = (searchParams.get('discipline') || undefined) as import('@/lib/location-context/types').JurisdictionDiscipline | undefined;
 
     const intel = await getPermitIntelligence({
       address: job.address,

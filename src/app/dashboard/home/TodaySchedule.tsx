@@ -23,7 +23,7 @@ export default function TodaySchedule({
     );
   }
 
-  const { items, totalWorkValue, completedCount, inProgressCount } = schedule.data;
+  const { items, totalWorkValue } = schedule.data;
 
   return (
     <section className="panel workspace-section-card today-schedule-panel">

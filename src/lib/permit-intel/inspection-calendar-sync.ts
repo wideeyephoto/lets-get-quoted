@@ -93,7 +93,7 @@ export async function sendHomeownerInspectionPrepReminder(
   });
 
   try {
-    const delivery = await enqueueSmsDelivery({
+    await enqueueSmsDelivery({
       accountId,
       phoneNumber: phone,
       body,

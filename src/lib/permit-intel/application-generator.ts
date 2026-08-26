@@ -97,10 +97,10 @@ export async function compilePermitApplication(
   const work: PermitWorkContext = classifyWorkScope(job.scope);
   const effectiveDiscipline = work.discipline || 'building';
   const jurisdiction = resolveJurisdiction(parsedAddress, effectiveDiscipline);
-  const requirement = evaluatePermitRequirement(jurisdiction.authorityId, work);
+  const _requirement = evaluatePermitRequirement(jurisdiction.authorityId, work);
 
   // Retrieve credentials from vault
-  let vaultCreds: any = {};
+  let vaultCreds: Awaited<ReturnType<typeof getCredentialsForAuthority>> = {};
   try {
     vaultCreds = await getCredentialsForAuthority(
       supabase,
