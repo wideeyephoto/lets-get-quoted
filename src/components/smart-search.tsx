@@ -321,7 +321,6 @@ export function SmartSearch({
             <path d="m21 21-4.3-4.3" />
           </svg>
           <span className={styles.triggerText}>Search workspace...</span>
-          <kbd className={styles.triggerKbd}>⌘K</kbd>
         </button>
       )}
 
