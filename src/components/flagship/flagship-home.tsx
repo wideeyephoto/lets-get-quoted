@@ -158,6 +158,16 @@ const SUITE_DWELL = 1250;
  */
 const SUITE_ROTATE_MIN = 1024;
 
+const suite: Array<[title: string, body: string, href: string]> = [
+  ["Quotes + e-sign", "Professional, itemized quotes with optional upgrades.", "/features/quotes"],
+  ["Scheduling", "Arrival windows, capacity and weather-aware planning.", "/features/scheduling"],
+  ["Crew + labor", "Assignments, time clock, hours and estimated pay.", "/features/crew"],
+  ["Payments", "Deposits, balances and payment plans through Stripe.", "/features/payments"],
+  ["Recurring work", "Automatic visits, saved cards and predictable revenue.", "/features/recurring"],
+  ["Cash flow", "See payroll, bills and customer money before it moves.", "/features/cash-flow"],
+  ["Reviews + growth", "Follow-ups, review requests and AI-assisted marketing.", "/features/reviews"],
+];
+
 
 /**
  * A slow band of light crossing a section's background.
@@ -844,6 +854,17 @@ export default function FlagshipHome() {
 
         <div className="suite-screen" id="suite-screen" role="tabpanel" aria-labelledby={`suite-tab-${screen}`}>
           <CommandCenterDeck activeId={screen} />
+        </div>
+
+        <div className="suite-grid suite-linked">
+          {suite.map(([title, body, href], index) => (
+            <article key={title} data-rise style={cssVars({ '--rise-i': index })}>
+              <span>{String(index + 1).padStart(2, "0")}</span>
+              <h3><Link className="suite-card-link" href={href}>{title}</Link></h3>
+              <p>{body}</p>
+              <b className="suite-card-go" aria-hidden="true">→</b>
+            </article>
+          ))}
         </div>
       </section>
 
