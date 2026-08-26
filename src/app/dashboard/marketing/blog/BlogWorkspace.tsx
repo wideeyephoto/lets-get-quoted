@@ -7,7 +7,13 @@ import type { SiteBlogPost } from '@/lib/site-content';
 import {
   countStates, postDateLabel, postState, POST_STATE_LABEL, todayKeyOf, type PostState,
 } from '@/lib/marketing-status';
-import { createBlogPostAction, generateBlogPostAction, setBlogReminderAction } from './actions';
+import { blocksPublish, tradeDriftOf } from '@/lib/blog-trade-drift';
+import {
+  createBlogPostAction,
+  generateBlogPostAction,
+  setBlogReminderAction,
+  updateBlogPostAction,
+} from './actions';
 
 /**
  * The post list.
@@ -17,7 +23,7 @@ import { createBlogPostAction, generateBlogPostAction, setBlogReminderAction } f
  * page was either a list you could scan or one post you could edit, never both,
  * and the "list" was a stack of collapsed accordions whose heights jumped every
  * time you opened one. Editing now has its own screen at /blog/[id]; this is a
- * list again.
+ * list again with fast 1-click edit and publish actions.
  */
 
 const FILTERS: { id: PostState | 'all'; label: string }[] = [
@@ -41,6 +47,8 @@ export default function BlogWorkspace({
   initialFilter,
   readOnly = false,
   basePath = '/dashboard',
+  trade = '',
+  publicBase = null,
 }: {
   initialPosts: SiteBlogPost[];
   reminderWeeks: number;
@@ -58,6 +66,8 @@ export default function BlogWorkspace({
    */
   readOnly?: boolean;
   basePath?: string;
+  trade?: string;
+  publicBase?: string | null;
 }) {
   const router = useRouter();
   const [posts, setPosts] = useState(initialPosts);
@@ -96,7 +106,24 @@ export default function BlogWorkspace({
   function openNewest(next: SiteBlogPost[]) {
     setPosts(next);
     const newest = next[0];
-    if (newest) router.push(`/dashboard/marketing/blog/${newest.id}`);
+    if (newest) router.push(`${basePath}/marketing/blog/${newest.id}`);
+  }
+
+  function publishPost(post: SiteBlogPost) {
+    const drift = tradeDriftOf(post.trade, trade);
+    if (blocksPublish(drift)) {
+      router.push(`${basePath}/marketing/blog/${post.id}`);
+      return;
+    }
+
+    run(`publish-${post.id}`, async () => {
+      const updated = await updateBlogPostAction(post.id, { status: 'published' });
+      setPosts(updated);
+      setMessage({
+        tone: 'ok',
+        text: `Published "${post.title.trim() || 'Untitled post'}" to your website.`,
+      });
+    });
   }
 
   return (
@@ -131,7 +158,7 @@ export default function BlogWorkspace({
           <button
             type="button"
             className="btn primary"
-            disabled={pending && busy === 'generate'}
+            disabled={pending && (busy === 'generate' || busy === 'generate-publish')}
             onClick={() =>
               run('generate', async () => {
                 const result = await generateBlogPostAction(topic);
@@ -149,6 +176,28 @@ export default function BlogWorkspace({
           <button
             type="button"
             className="btn secondary"
+            disabled={pending && (busy === 'generate' || busy === 'generate-publish')}
+            onClick={() =>
+              run('generate-publish', async () => {
+                const result = await generateBlogPostAction(topic, true);
+                if (!result.ok) {
+                  setMessage({ tone: 'bad', text: result.message });
+                  return;
+                }
+                setTopic('');
+                setPosts(result.posts);
+                setMessage({
+                  tone: 'ok',
+                  text: `Generated and published "${result.title}" to your website!`,
+                });
+              })
+            }
+          >
+            {pending && busy === 'generate-publish' ? 'Publishing…' : '🚀 Draft & publish now'}
+          </button>
+          <button
+            type="button"
+            className="btn secondary"
             disabled={pending && busy === 'blank'}
             onClick={() => run('blank', async () => openNewest(await createBlogPostAction()))}
           >
@@ -156,7 +205,7 @@ export default function BlogWorkspace({
           </button>
         </div>
         <p className="field-note">
-          Everything saves as a hidden draft. Nothing appears on your website until you publish it.
+          Drafts stay hidden until published. &ldquo;Draft &amp; publish now&rdquo; makes the article live immediately.
         </p>
       </section>
       )}
@@ -206,20 +255,62 @@ export default function BlogWorkspace({
             {shown.map((post) => {
               const state = postState(post, today);
               const words = wordCount(post.body);
+              const liveUrl = publicBase && post.status === 'published' ? `${publicBase}/${post.slug}` : null;
+              const isPublishing = pending && busy === `publish-${post.id}`;
+
               return (
                 <li key={post.id}>
-                  <Link href={`${basePath}/marketing/blog/${post.id}`} className="mkt-post-row">
-                    <span className="mkt-post-copy">
+                  <div className="mkt-post-row">
+                    <Link
+                      href={`${basePath}/marketing/blog/${post.id}`}
+                      className="mkt-post-copy"
+                      title="Click to edit post"
+                    >
                       <strong>{post.title.trim() || 'Untitled post'}</strong>
                       <small>
                         {postDateLabel(post, today)}
                         {words > 0 ? ` · ${words} words` : ''}
                       </small>
-                    </span>
-                    {/* The word itself carries the state — the color only
-                        repeats it, so this reads the same in greyscale. */}
-                    <span className={`mkt-state mkt-state-${state}`}>{POST_STATE_LABEL[state]}</span>
-                  </Link>
+                    </Link>
+
+                    <div className="mkt-post-actions">
+                      {/* The word itself carries the state — the color only
+                          repeats it, so this reads the same in greyscale. */}
+                      <span className={`mkt-state mkt-state-${state}`}>{POST_STATE_LABEL[state]}</span>
+
+                      <Link
+                        href={`${basePath}/marketing/blog/${post.id}`}
+                        className="btn secondary btn-sm"
+                        aria-label={`Edit ${post.title.trim() || 'post'}`}
+                      >
+                        Edit
+                      </Link>
+
+                      {!readOnly && post.status !== 'published' ? (
+                        <button
+                          type="button"
+                          className="btn primary btn-sm"
+                          disabled={isPublishing}
+                          onClick={() => publishPost(post)}
+                          aria-label={`Publish ${post.title.trim() || 'post'}`}
+                        >
+                          {isPublishing ? 'Publishing…' : 'Publish now'}
+                        </button>
+                      ) : null}
+
+                      {liveUrl ? (
+                        <a
+                          href={liveUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="btn secondary btn-sm"
+                          title="View on your live website"
+                        >
+                          View live ↗
+                        </a>
+                      ) : null}
+                    </div>
+                  </div>
                 </li>
               );
             })}

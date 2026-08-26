@@ -60,6 +60,8 @@ export default function BlogScreen({
           initialFilter={initialFilter}
           basePath={basePath}
           readOnly={readOnly}
+          trade={blog.trade}
+          publicBase={blog.publicBase}
         />
       )}
     </main>

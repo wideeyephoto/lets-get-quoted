@@ -117,7 +117,7 @@ export async function setBlogReminderAction(weeks: number): Promise<void> {
  * model, and a draft that only exists on screen is one a refresh throws away
  * after it has already been paid for.
  */
-export async function generateBlogPostAction(topic?: string): Promise<{ ok: true; posts: SiteBlogPost[]; title: string } | { ok: false; message: string }> {
+export async function generateBlogPostAction(topic?: string, autoPublish = false): Promise<{ ok: true; posts: SiteBlogPost[]; title: string } | { ok: false; message: string }> {
   const { supabase, accountId } = await requireOfficeContext('settings.write');
   if (!(await checkRateLimit(createAdminClient(), `blog-draft:${accountId}`, 20, 3600))) {
     return { ok: false, message: 'That is a lot of posts in an hour — give it a few minutes.' };
@@ -161,7 +161,7 @@ export async function generateBlogPostAction(topic?: string): Promise<{ ok: true
       excerpt: draft.excerpt,
       body: draft.body,
       coverImage: coverImage || '',
-      status: 'draft' as const,
+      status: (autoPublish ? 'published' : 'draft') as const,
       date: new Date().toISOString().slice(0, 10),
       publishAt: '',
       // The trade the DRAFT was written for, from the drafter rather than read
