@@ -977,7 +977,7 @@ export default function HelpCenter() {
       </section>
 
       {/* ================= 2. COMMON FIXES ================= */}
-      <section id="common-fixes" className={styles.sectionContainer}>
+      <section id="common-fixes" className={`${styles.sectionContainer} ${styles.commonFixesSection}`}>
         <div className={styles.sectionHeader}>
           <div>
             <span className={styles.sectionTag}>Diagnostic Guides</span>
