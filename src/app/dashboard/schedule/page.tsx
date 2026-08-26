@@ -769,7 +769,7 @@ export default async function SchedulePage({
         }}
         clientAvailability={clientScheduleAvailability}
       >
-      <section className="panel workspace-section-card schedule-calendar-panel">
+      <section className="panel workspace-section-card schedule-calendar-panel" data-tour-id="schedule:workbench">
         {/* Two rows, not six. The page used to spend ~470px on desktop and
             ~640px on mobile introducing itself — an eyebrow, a title, a lead
             paragraph, an action row, a metric card, then a SECOND eyebrow and

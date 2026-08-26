@@ -72,6 +72,15 @@ export type TimeEntryRow = {
   note: string | null;
   cost_id: string | null;
   closed_by_owner: boolean;
+  clock_in_geofence_status?: string | null;
+  clock_in_distance_ft?: number | null;
+  clock_in_accuracy_m?: number | null;
+  clock_in_verified_at?: string | null;
+  clock_in_gps_unavailable?: boolean | null;
+  clock_out_geofence_status?: string | null;
+  clock_out_distance_ft?: number | null;
+  clock_out_accuracy_m?: number | null;
+  clock_out_verified_at?: string | null;
 };
 
 /** The crew member's currently running shift, if any. */
@@ -126,6 +135,14 @@ export async function clockIn(
    * the question an owner reviewing a timesheet is really asking.
    */
   note?: string,
+  /** Optional geofence audit evidence captured at the moment of clock-in. */
+  geofenceEvidence?: {
+    status?: string | null;
+    distanceFt?: number | null;
+    accuracyMeters?: number | null;
+    verifiedAt?: string | null;
+    gpsUnavailable?: boolean | null;
+  },
 ): Promise<TimeEntryRow> {
   const existing = await getOpenShift(supabase, accountId, crewId);
   if (existing) {
@@ -136,16 +153,23 @@ export async function clockIn(
     );
   }
 
+  const insertPayload: Record<string, unknown> = {
+    account_id: accountId,
+    crew_id: crewId,
+    job_id: jobId,
+    rate,
+    ...(startedAt ? { started_at: startedAt } : {}),
+    ...(note ? { note } : {}),
+    ...(geofenceEvidence?.status ? { clock_in_geofence_status: geofenceEvidence.status } : {}),
+    ...(geofenceEvidence?.distanceFt != null ? { clock_in_distance_ft: geofenceEvidence.distanceFt } : {}),
+    ...(geofenceEvidence?.accuracyMeters != null ? { clock_in_accuracy_m: geofenceEvidence.accuracyMeters } : {}),
+    ...(geofenceEvidence?.verifiedAt ? { clock_in_verified_at: geofenceEvidence.verifiedAt } : {}),
+    ...(geofenceEvidence?.gpsUnavailable != null ? { clock_in_gps_unavailable: geofenceEvidence.gpsUnavailable } : {}),
+  };
+
   const { data, error } = await supabase
     .from('time_entries')
-    .insert({
-      account_id: accountId,
-      crew_id: crewId,
-      job_id: jobId,
-      rate,
-      ...(startedAt ? { started_at: startedAt } : {}),
-      ...(note ? { note } : {}),
-    })
+    .insert(insertPayload)
     .select('*')
     .single();
 
@@ -179,6 +203,13 @@ export async function clockOut(
     /** Cost category override — travel shifts cost out under 'Travel' so they
      *  stay separable from time spent on the work itself. */
     category?: string;
+    /** Optional geofence audit evidence captured at the moment of clock-out. */
+    geofenceEvidence?: {
+      status?: string | null;
+      distanceFt?: number | null;
+      accuracyMeters?: number | null;
+      verifiedAt?: string | null;
+    };
   },
 ): Promise<{ hours: number }> {
   const hours = shiftHours(entry.started_at, options.endedAt, options.round);
@@ -209,14 +240,20 @@ export async function clockOut(
     costId = cost.id;
   }
 
+  const updatePayload: Record<string, unknown> = {
+    ended_at: options.endedAt,
+    cost_id: costId,
+    closed_by_owner: options.closedByOwner ?? false,
+    ...(options.note ? { note: options.note } : {}),
+    ...(options.geofenceEvidence?.status ? { clock_out_geofence_status: options.geofenceEvidence.status } : {}),
+    ...(options.geofenceEvidence?.distanceFt != null ? { clock_out_distance_ft: options.geofenceEvidence.distanceFt } : {}),
+    ...(options.geofenceEvidence?.accuracyMeters != null ? { clock_out_accuracy_m: options.geofenceEvidence.accuracyMeters } : {}),
+    ...(options.geofenceEvidence?.verifiedAt ? { clock_out_verified_at: options.geofenceEvidence.verifiedAt } : {}),
+  };
+
   const { error } = await supabase
     .from('time_entries')
-    .update({
-      ended_at: options.endedAt,
-      cost_id: costId,
-      closed_by_owner: options.closedByOwner ?? false,
-      ...(options.note ? { note: options.note } : {}),
-    })
+    .update(updatePayload)
     .eq('account_id', accountId)
     .eq('id', entry.id)
     // Only close a shift that is still open, so a double submit can't overwrite

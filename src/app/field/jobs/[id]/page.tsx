@@ -416,6 +416,8 @@ export default async function FieldJobPage({ params, searchParams }: { params: {
               elapsedLabel={shiftOnThisJob ? formatElapsed(shiftOnThisJob.started_at) : null}
               busyElsewhere={Boolean(openShift && !shiftOnThisJob)}
               required={clockMode === 'required'}
+              jobSiteCoord={job.lat != null && job.lng != null ? { lat: Number(job.lat), lng: Number(job.lng) } : null}
+              canShareLocation={crew.can_share_work_location !== false}
             />
           ) : null}
 

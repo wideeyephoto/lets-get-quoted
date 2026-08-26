@@ -1859,15 +1859,18 @@ export function projectShowcaseHeadings(
 // the rest are on-brand alternatives offered in the logo picker (≥5 where the
 // icon set allows). All keys are validated against the icon set at read time.
 const TRADE_GLYPH_RULES: { test: RegExp; options: string[] }[] = [
+  { test: /holiday|christmas|\bseasonal lighting/, options: ['lightbulb', 'sparkles', 'star', 'bolt', 'power', 'lamp', 'home'] },
+  { test: /pond|water\s*feature|koi/, options: ['waves', 'droplets', 'droplet', 'drip', 'sparkles', 'leaf'] },
+  { test: /duct|dryer\s*vent/, options: ['wind', 'fan', 'airvent', 'thermometerSnow', 'gauge', 'sparkles'] },
   { test: /electric|electrician|wiring|generator|solar|lighting/, options: ['bolt', 'plug', 'lightbulb', 'power', 'lamp', 'cable', 'sun', 'battery'] },
   { test: /pressure\s*wash|power\s*wash|soft\s*wash/, options: ['spray', 'droplets', 'waves', 'drip', 'faucet', 'sparkles', 'wind', 'gauge'] },
   { test: /paint|drywall|stain|\bcoat/, options: ['roller', 'paintbrush', 'brush', 'palette', 'paintbucket'] },
   { test: /window\s*clean|window\s*wash|\bclean|maid|janitor|carpet/, options: ['sparkles', 'spray', 'droplets', 'drip', 'brush', 'wind', 'trash'] },
-  { test: /pest|extermin|termite|rodent|mosquito/, options: ['bug', 'rat', 'shield', 'spray', 'clover', 'sparkles'] },
+  { test: /pest|extermin|termite|rodent|mosquito|tick/, options: ['bug', 'rat', 'shield', 'spray', 'clover', 'sparkles'] },
   { test: /tree|arborist|stump|forestry/, options: ['tree', 'trees', 'pine', 'palm', 'treestump', 'chainsaw', 'axe', 'scissors', 'leaf'] },
   { test: /landscap|lawn|garden|\byard|sod|mow|irrigation|hardscape|snow/, options: ['sprout', 'leaf', 'trees', 'shrub', 'leafyGreen', 'flower', 'tractor', 'shovel', 'scissors', 'palm', 'cactus', 'fence', 'clover'] },
   { test: /haul|mov(?:e|ing)|junk|dumpster|delivery|demolition/, options: ['truck', 'trash', 'boxes', 'package', 'container', 'recycle', 'forklift'] },
-  { test: /hvac|heat|cool|\bair\b|furnace|boiler|duct|ventilat/, options: ['wind', 'fan', 'snowflake', 'thermometerSnow', 'thermometer', 'flame', 'airvent', 'gauge'] },
+  { test: /hvac|heat|cool|\bair\b|furnace|boiler|ventilat/, options: ['wind', 'fan', 'snowflake', 'thermometerSnow', 'thermometer', 'flame', 'airvent', 'gauge'] },
   { test: /plumb|drain|sewer|pipe|\bwater|leak|faucet/, options: ['droplet', 'droplets', 'faucet', 'showerhead', 'drip', 'waves', 'gauge', 'wrench'] },
   { test: /roof|gutter|siding/, options: ['home', 'hardhat', 'triangle', 'ruler', 'warehouse', 'building'] },
   { test: /concrete|mason|foundation|paver|brick|asphalt/, options: ['hardhat', 'brickwall', 'bulldozer', 'pickaxe', 'layers', 'ruler', 'hammer', 'square'] },

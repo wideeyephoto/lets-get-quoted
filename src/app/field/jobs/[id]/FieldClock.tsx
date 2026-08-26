@@ -1,16 +1,11 @@
 'use client';
 
-import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useState, useRef, type FormEvent } from 'react';
 import SaveButton from '@/components/save-button';
 import { looksOffline, payloadFor, queueFieldSubmission } from '@/lib/field-offline-client';
-
-// The crew member's clock, on the job page in the field app.
-//
-// Two states and nothing else: you're on the clock or you aren't. The running
-// timer ticks client-side from the server-supplied start time — it isn't
-// decoration, it's the thing that makes a forgotten clock-out obvious while
-// you're still standing there, which is far cheaper than the owner finding it
-// three days later.
+import { verifyGeofenceClockIn, type GeofenceVerificationResult } from '@/lib/crew-geofence';
+import { useWorkLocationTracker } from '@/hooks/use-work-location-tracker';
+import type { LatLng } from '@/lib/distance';
 
 function elapsedFrom(startedAt: string): string {
   const totalMinutes = Math.max(0, Math.floor((Date.now() - new Date(startedAt).getTime()) / 60_000));
@@ -28,9 +23,11 @@ export default function FieldClock({
   elapsedLabel,
   busyElsewhere,
   required,
+  jobSiteCoord,
+  canShareLocation = true,
 }: {
   jobId: string;
-  clockIn: () => Promise<void>;
+  clockIn: (formData: FormData) => Promise<void>;
   clockOut: (formData: FormData) => Promise<void>;
   startedAt: string | null;
   startedLabel: string | null;
@@ -38,33 +35,63 @@ export default function FieldClock({
   /** They're clocked in on a different job — one shift at a time. */
   busyElsewhere: boolean;
   required: boolean;
+  jobSiteCoord?: LatLng | null;
+  canShareLocation?: boolean;
 }) {
   // Server-rendered first so the number is right before hydration, then ticked.
   const [elapsed, setElapsed] = useState(elapsedLabel ?? '');
   // Held on the phone because there was no signal at the moment of the tap.
   const [held, setHeld] = useState<string | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
+  const [geofenceResult, setGeofenceResult] = useState<GeofenceVerificationResult | null>(null);
+  const [acquiringGps, setAcquiringGps] = useState(false);
+
+  const clockInFormRef = useRef<HTMLFormElement | null>(null);
+  const clockOutFormRef = useRef<HTMLFormElement | null>(null);
+
+  // Background/Foreground GPS tracker while on the clock
+  const { isTracking } = useWorkLocationTracker({
+    jobId,
+    isOnShift: Boolean(startedAt),
+    canShareLocation,
+  });
 
   useEffect(() => {
     if (!startedAt) return;
     setElapsed(elapsedFrom(startedAt));
-    // Every 30s: a minute-resolution readout doesn't need a per-second timer
-    // burning battery in someone's pocket all afternoon.
     const timer = setInterval(() => setElapsed(elapsedFrom(startedAt)), 30_000);
     return () => clearInterval(timer);
   }, [startedAt]);
 
-  /**
-   * THE CLOCK IS THE ONE CONTROL THAT CANNOT WAIT FOR SIGNAL.
-   *
-   * Everything else on this screen can be typed in later from memory; the clock
-   * cannot, because its entire value is that the time was recorded at the
-   * moment it happened. A dead "Clock out" button in a basement doesn't delay
-   * the record, it destroys it — the crew member writes 3:30 on a receipt and
-   * keys in 4:00 on Friday.
-   *
-   * Online this returns immediately and the server action runs untouched.
-   */
+  const acquireLocation = useCallback(async (): Promise<{
+    lat?: number;
+    lng?: number;
+    accuracy?: number;
+    gpsUnavailable?: boolean;
+  }> => {
+    if (typeof window === 'undefined' || !navigator.geolocation) {
+      return { gpsUnavailable: true };
+    }
+    return new Promise((resolve) => {
+      const timeoutId = window.setTimeout(() => resolve({ gpsUnavailable: true }), 3500);
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          window.clearTimeout(timeoutId);
+          resolve({
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude,
+            accuracy: pos.coords.accuracy,
+          });
+        },
+        () => {
+          window.clearTimeout(timeoutId);
+          resolve({ gpsUnavailable: true });
+        },
+        { enableHighAccuracy: true, timeout: 3000, maximumAge: 15000 },
+      );
+    });
+  }, []);
+
   const offlineSubmit = useCallback(
     (kind: 'clock-in' | 'clock-out', message: string) => (event: FormEvent<HTMLFormElement>) => {
       if (!looksOffline()) return;
@@ -82,6 +109,85 @@ export default function FieldClock({
     },
     [jobId],
   );
+
+  const handleClockInSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    if (looksOffline()) return; // Handled by offlineSubmit
+    e.preventDefault();
+    setAcquiringGps(true);
+    setProblem(null);
+
+    const form = e.currentTarget;
+    const formData = new FormData(form);
+
+    try {
+      const loc = await acquireLocation();
+      if (loc.lat != null && loc.lng != null) {
+        formData.set('lat', String(loc.lat));
+        formData.set('lng', String(loc.lng));
+        if (loc.accuracy != null) formData.set('accuracy', String(loc.accuracy));
+
+        if (jobSiteCoord) {
+          const verification = verifyGeofenceClockIn({
+            technicianCoord: { lat: loc.lat, lng: loc.lng },
+            jobSiteCoord,
+            accuracyMeters: loc.accuracy,
+          });
+          setGeofenceResult(verification);
+          formData.set('geofenceStatus', verification.status);
+          if (verification.distanceFeet != null) {
+            formData.set('distanceFt', String(verification.distanceFeet));
+          }
+        }
+      } else {
+        formData.set('gpsUnavailable', 'true');
+      }
+
+      await clockIn(formData);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Could not clock in.';
+      setProblem(msg);
+    } finally {
+      setAcquiringGps(false);
+    }
+  };
+
+  const handleClockOutSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    if (looksOffline()) return;
+    e.preventDefault();
+    setAcquiringGps(true);
+    setProblem(null);
+
+    const form = e.currentTarget;
+    const formData = new FormData(form);
+
+    try {
+      const loc = await acquireLocation();
+      if (loc.lat != null && loc.lng != null) {
+        formData.set('lat', String(loc.lat));
+        formData.set('lng', String(loc.lng));
+        if (loc.accuracy != null) formData.set('accuracy', String(loc.accuracy));
+
+        if (jobSiteCoord) {
+          const verification = verifyGeofenceClockIn({
+            technicianCoord: { lat: loc.lat, lng: loc.lng },
+            jobSiteCoord,
+            accuracyMeters: loc.accuracy,
+          });
+          formData.set('geofenceStatus', verification.status);
+          if (verification.distanceFeet != null) {
+            formData.set('distanceFt', String(verification.distanceFeet));
+          }
+        }
+      }
+
+      await clockOut(formData);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Could not clock out.';
+      setProblem(msg);
+    } finally {
+      setAcquiringGps(false);
+    }
+  };
 
   const notes = (
     <>
@@ -104,13 +210,28 @@ export default function FieldClock({
             <span>Since {startedLabel} · {elapsed}</span>
           </div>
         </div>
+
+        {/* Foreground Live Tracking Indicator */}
+        {isTracking ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: '#047857', background: '#dcfce7', padding: '4px 10px', borderRadius: '6px', margin: '4px 0 10px' }}>
+            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981' }} />
+            <span>Work location sharing active while this app is open</span>
+          </div>
+        ) : null}
+
         <form
+          ref={clockOutFormRef}
           action={clockOut}
-          onSubmit={offlineSubmit('clock-out', 'Clocked out at this time — held on your phone until you’re back in signal ✓')}
+          onSubmit={looksOffline() ? offlineSubmit('clock-out', 'Clocked out at this time — held on your phone until you’re back in signal ✓') : handleClockOutSubmit}
           className="field-clock-form"
         >
           <input name="description" type="text" placeholder="What you worked on (optional)" />
-          <SaveButton className="btn primary" pendingLabel="Clocking out…" savedLabel="Clocked out ✓">
+          <SaveButton
+            className="btn primary"
+            pendingLabel={acquiringGps ? 'Checking GPS & clocking out…' : 'Clocking out…'}
+            savedLabel="Clocked out ✓"
+            disabled={acquiringGps}
+          >
             Clock out
           </SaveButton>
         </form>
@@ -133,12 +254,32 @@ export default function FieldClock({
           </span>
         </div>
       </div>
+
+      {geofenceResult ? (
+        <div style={{
+          fontSize: '0.78rem',
+          padding: '4px 10px',
+          borderRadius: '6px',
+          margin: '6px 0',
+          background: geofenceResult.badgeTone === 'success' ? '#dcfce7' : '#fef3c7',
+          color: geofenceResult.badgeTone === 'success' ? '#15803d' : '#b45309',
+        }}>
+          {geofenceResult.badgeLabel}
+        </div>
+      ) : null}
+
       {!busyElsewhere ? (
         <form
+          ref={clockInFormRef}
           action={clockIn}
-          onSubmit={offlineSubmit('clock-in', 'Clocked in at this time — held on your phone until you’re back in signal ✓')}
+          onSubmit={looksOffline() ? offlineSubmit('clock-in', 'Clocked in at this time — held on your phone until you’re back in signal ✓') : handleClockInSubmit}
         >
-          <SaveButton className="btn primary" pendingLabel="Clocking in…" savedLabel="Clocked in ✓">
+          <SaveButton
+            className="btn primary"
+            pendingLabel={acquiringGps ? 'Acquiring GPS & clocking in…' : 'Clocking in…'}
+            savedLabel="Clocked in ✓"
+            disabled={acquiringGps}
+          >
             Clock in
           </SaveButton>
         </form>

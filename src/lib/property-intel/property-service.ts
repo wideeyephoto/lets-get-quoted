@@ -1,8 +1,8 @@
 // Unified Property Intelligence Service
 import { geocodeAddress } from '@/lib/geocode';
-import { fetchSolarBuildingInsights } from './google-solar';
+import { fetchSolarBuildingInsightsDetailed } from './google-solar';
 import { checkStreetViewAvailability, getSatelliteStaticImageUrl } from './google-streetview';
-import { fetchRentCastProperty } from './rentcast';
+import { fetchRentCastPropertyDetailed } from './rentcast';
 import type { PropertyIntelligence, PropertyIntelligenceSummary } from './types';
 
 export type PropertyLocationInput =
@@ -71,12 +71,15 @@ export async function getPropertyIntelligence(
   }
 
   // Parallel fetch Solar insights, Street View, Satellite, and RentCast property specs
-  const [roof, streetView, satellite, specs] = await Promise.all([
-    fetchSolarBuildingInsights(lat, lng),
+  const [solarRes, streetView, satellite, rentCastRes] = await Promise.all([
+    fetchSolarBuildingInsightsDetailed(lat, lng),
     checkStreetViewAvailability(lat, lng),
     Promise.resolve(getSatelliteStaticImageUrl(lat, lng)),
-    fetchRentCastProperty({ address, lat, lng }),
+    fetchRentCastPropertyDetailed({ address, lat, lng }),
   ]);
+
+  const roof = solarRes.data;
+  const specs = rentCastRes.data;
 
   const result: PropertyIntelligence = {
     address,
@@ -88,6 +91,12 @@ export async function getPropertyIntelligence(
     specs,
     hasSolarCoverage: Boolean(roof),
     hasSpecs: Boolean(specs),
+    providerStatus: {
+      solar: solarRes.status,
+      specs: rentCastRes.status,
+      streetView: streetView.available ? 'ok' : 'not_available',
+      satellite: satellite.imageUrl ? 'ok' : 'unconfigured',
+    },
   };
 
   // Cache result if valid key

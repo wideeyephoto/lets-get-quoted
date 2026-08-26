@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync, existsSync } from 'node:fs';
 import {
   TOUR_STEPS,
+  DEMO_SHOWCASE_WORKFLOW,
   DEMO_TOUR_CONTRACTOR,
   DEMO_TOUR_CUSTOMER,
   DEMO_TOUR_JOB,
@@ -13,7 +14,7 @@ const DEMO_SIDEBAR = readFileSync('src/components/demo-sidebar.tsx', 'utf8');
 const DEMO_HOME = readFileSync('src/app/demo/page.tsx', 'utf8');
 const QUICK_STOPS = readFileSync('src/app/demo/quick-stops/page.tsx', 'utf8');
 
-describe('Problem 3: 5-Minute Evaluation Demo Journey', () => {
+describe('5-Minute Evaluation Demo Journey', () => {
   describe('Canonical Tour Fixture Data', () => {
     it('defines 6 sequential steps covering the full lifecycle', () => {
       expect(TOUR_STEPS).toHaveLength(6);
@@ -45,9 +46,11 @@ describe('Problem 3: 5-Minute Evaluation Demo Journey', () => {
       expect(TOUR_STEPS[5].perspective).toBe('summary');
     });
 
-    it('maintains consistent customer and financial data across the story', () => {
-      expect(DEMO_TOUR_CUSTOMER.name).toBe('Sarah Jenkins');
-      expect(DEMO_TOUR_CUSTOMER.city).toBe('Maplewood');
+    it('maintains consistent customer, contractor and financial data across the canonical story', () => {
+      expect(DEMO_SHOWCASE_WORKFLOW.company.name).toBe('Evergreen Lawn & Landscape');
+      expect(DEMO_TOUR_CONTRACTOR.name).toBe('Evergreen Lawn & Landscape');
+      expect(DEMO_TOUR_CUSTOMER.name).toBe('Taylor Brooks');
+      expect(DEMO_TOUR_CUSTOMER.city).toBe('Royal Oak');
       expect(DEMO_TOUR_JOB.baseTotal).toBe(4650);
       expect(DEMO_TOUR_JOB.upgradeTotal).toBe(350);
       expect(DEMO_TOUR_JOB.totalWithUpgrade).toBe(5000);
@@ -72,14 +75,14 @@ describe('Problem 3: 5-Minute Evaluation Demo Journey', () => {
       const leadPage = readFileSync('src/app/demo/tour/lead/page.tsx', 'utf8');
       const quoteScreen = readFileSync('src/app/demo/tour/quote/QuoteScreen.tsx', 'utf8');
       const approveScreen = readFileSync('src/app/demo/tour/approve/ApproveScreen.tsx', 'utf8');
-      const completePage = readFileSync('src/app/demo/tour/complete/page.tsx', 'utf8');
+      const completeScreen = readFileSync('src/app/demo/tour/complete/CompleteScreen.tsx', 'utf8');
 
       expect(sitePage).toContain('DEMO_TOUR_CONTRACTOR');
       expect(intakeScreen).toContain('DEMO_TOUR_CUSTOMER');
       expect(leadPage).toContain('DEMO_TOUR_JOB');
       expect(quoteScreen).toContain('DEMO_TOUR_JOB');
       expect(approveScreen).toContain('DEMO_TOUR_JOB');
-      expect(completePage).toContain('DEMO_TOUR_JOB');
+      expect(completeScreen).toContain('DEMO_TOUR_JOB');
     });
   });
 

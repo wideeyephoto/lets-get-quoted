@@ -21,8 +21,13 @@ describe('suggestTrades', () => {
     expect(values('electrician')).toContain('electrical work');
     expect(values('plumber')).toContain('plumbing');
     expect(values('roofer')).toContain('roofing');
-    expect(values('landscaper')).toContain('landscaping & lawn care');
+    expect(values('landscaper')).toContain('landscaping');
     expect(values('exterminator')).toContain('pest control');
+    expect(values('mowing')).toContain('lawn care');
+    expect(values('lawn service')).toContain('lawn care');
+    expect(values('christmas lights')).toContain('holiday lighting');
+    expect(values('mosquito')).toContain('mosquito & tick control');
+    expect(values('duct cleaning')).toContain('air duct & dryer vent cleaning');
   });
 
   it('says why it jumped', () => {
@@ -33,7 +38,7 @@ describe('suggestTrades', () => {
   it('handles the short ones people actually type', () => {
     expect(values('ac')).toContain('HVAC');
     expect(values('hvac')).toContain('HVAC');
-    expect(values('lawn')).toContain('landscaping & lawn care');
+    expect(values('lawn')).toContain('lawn care');
   });
 
   it('does not match inside a word', () => {
@@ -45,9 +50,9 @@ describe('suggestTrades', () => {
   });
 
   it('matches a word in the middle of a phrase', () => {
-    // Not the same thing as matching inside a word: "lawn" is the second word
-    // of "landscaping & lawn care" and absolutely should hit.
-    expect(values('care')).toContain('landscaping & lawn care');
+    // Not the same thing as matching inside a word: "care" is the second word
+    // of "lawn care" and absolutely should hit.
+    expect(values('care')).toContain('lawn care');
     expect(values('removal')).toContain('junk removal & hauling');
   });
 
@@ -86,7 +91,7 @@ describe('suggestTrades', () => {
 
   it('returns nothing for a trade nobody has a word for', () => {
     // And that is fine — the field takes free text. A picker that invented a
-    // match for "koi pond maintenance" would be worse than an empty list.
-    expect(values('koi pond')).toEqual([]);
+    // match for an unrelated trade would be worse than an empty list.
+    expect(values('underwater basket weaving')).toEqual([]);
   });
 });

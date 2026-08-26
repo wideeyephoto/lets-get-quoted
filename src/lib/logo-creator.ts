@@ -62,6 +62,14 @@ export const CURATED_COLOR_PALETTES = [
 ];
 
 const TRADE_GLYPH_MAP: Record<string, string> = {
+  holiday: 'lightbulb',
+  christmas: 'lightbulb',
+  mosquito: 'bug',
+  tick: 'bug',
+  duct: 'wind',
+  pond: 'waves',
+  koi: 'waves',
+  mow: 'sprout',
   plumb: 'droplet',
   drain: 'droplets',
   pipe: 'wrench',
@@ -77,7 +85,7 @@ const TRADE_GLYPH_MAP: Record<string, string> = {
   roof: 'home',
   gutter: 'droplets',
   landscap: 'leaf',
-  lawn: 'leaf',
+  lawn: 'sprout',
   tree: 'tree',
   pine: 'pine',
   plant: 'sprout',

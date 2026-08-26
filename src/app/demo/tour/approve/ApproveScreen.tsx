@@ -9,22 +9,29 @@ import {
   DEMO_TOUR_CUSTOMER,
   DEMO_TOUR_JOB,
 } from '@/lib/demo-tour-data';
+import { trackDemoEvent } from '@/lib/demo-analytics';
 import styles from '../tour.module.css';
 
 export default function ApproveScreen() {
   const currentStep = TOUR_STEPS[4];
-  const [hasSurgeUpgrade, setHasSurgeUpgrade] = useState(true);
-  const [signature, setSignature] = useState('Sarah Jenkins');
+  const [hasUpgrade, setHasUpgrade] = useState(true);
+  const [signature, setSignature] = useState<string>(DEMO_TOUR_CUSTOMER.name);
   const [depositPaid, setDepositPaid] = useState(false);
   const [isPaying, setIsPaying] = useState(false);
 
-  const total = DEMO_TOUR_JOB.baseTotal + (hasSurgeUpgrade ? DEMO_TOUR_JOB.upgradeTotal : 0);
+  const total = DEMO_TOUR_JOB.baseTotal + (hasUpgrade ? DEMO_TOUR_JOB.upgradeTotal : 0);
 
   const handlePayDeposit = () => {
     setIsPaying(true);
     setTimeout(() => {
       setIsPaying(false);
       setDepositPaid(true);
+      trackDemoEvent('step_completed', {
+        step: 5,
+        stepSlug: 'approve',
+        perspective: 'homeowner',
+        depositAmount: DEMO_TOUR_JOB.requiredDeposit,
+      });
     }, 1000);
   };
 
@@ -39,7 +46,7 @@ export default function ApproveScreen() {
             <span className={styles.perspectiveTag}>👤 Homeowner Perspective · Step 5 of 6</span>
             <h1 className={styles.perspectiveHeading}>Homeowner approves upgrades, e-signs &amp; pays deposit</h1>
             <p className={styles.perspectiveSub}>
-              Customer reviews quote on mobile/portal, toggles optional surge protection, e-signs, and pays $500 deposit.
+              Customer reviews quote on mobile/portal, toggles optional landscape lighting, e-signs, and pays $500 deposit.
             </p>
           </div>
           <Link href="/demo/tour/complete" className={styles.tourNextActionBtn}>
@@ -120,8 +127,8 @@ export default function ApproveScreen() {
             <div style={{ marginBottom: '24px' }}>
               <div
                 style={{
-                  background: hasSurgeUpgrade ? '#f0fff4' : '#f7fafc',
-                  border: `2px solid ${hasSurgeUpgrade ? '#38a169' : '#e2e8f0'}`,
+                  background: hasUpgrade ? '#f0fff4' : '#f7fafc',
+                  border: `2px solid ${hasUpgrade ? '#38a169' : '#e2e8f0'}`,
                   borderRadius: '10px',
                   padding: '14px 18px',
                   display: 'flex',
@@ -130,13 +137,13 @@ export default function ApproveScreen() {
                   gap: '12px',
                   cursor: 'pointer',
                 }}
-                onClick={() => setHasSurgeUpgrade(!hasSurgeUpgrade)}
+                onClick={() => setHasUpgrade(!hasUpgrade)}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                   <input
                     type="checkbox"
-                    checked={hasSurgeUpgrade}
-                    onChange={(e) => setHasSurgeUpgrade(e.target.checked)}
+                    checked={hasUpgrade}
+                    onChange={(e) => setHasUpgrade(e.target.checked)}
                     style={{ width: '18px', height: '18px', accentColor: '#38a169' }}
                   />
                   <div>
@@ -144,12 +151,12 @@ export default function ApproveScreen() {
                       Add {DEMO_TOUR_JOB.optionalUpgrades[0].title}
                     </strong>
                     <p style={{ margin: '2px 0 0', fontSize: '12.5px', color: '#4a5568' }}>
-                      Protects electric vehicle charger &amp; electronics from lightning/spikes.
+                      {DEMO_TOUR_JOB.optionalUpgrades[0].description}
                     </p>
                   </div>
                 </div>
                 <div style={{ fontSize: '15px', fontWeight: 800, color: '#2f855a', whiteSpace: 'nowrap' }}>
-                  +$350.00
+                  +${DEMO_TOUR_JOB.optionalUpgrades[0].amount}.00
                 </div>
               </div>
             </div>
@@ -255,7 +262,7 @@ export default function ApproveScreen() {
                 </strong>
                 <p style={{ fontSize: '13.5px', color: '#276749', margin: '6px 0 14px' }}>
                   Arrival window confirmed for <strong>{DEMO_TOUR_JOB.scheduledDate} ({DEMO_TOUR_JOB.scheduledArrivalWindow})</strong>.
-                  Marcus Rivera is assigned to your project.
+                  {DEMO_TOUR_JOB.crewAssigned} assigned to your project.
                 </p>
                 <Link
                   href="/demo/tour/complete"

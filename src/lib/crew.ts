@@ -39,6 +39,7 @@ export type CrewMember = {
   // column to the behavior that shipped before permissions existed.
   can_send_arrival?: boolean | null;
   can_share_location?: boolean | null;
+  can_share_work_location?: boolean | null;
   can_view_client_contact?: boolean | null;
   can_reschedule?: boolean | null;
   // Where they are in the field-app invitation. Optional for the same

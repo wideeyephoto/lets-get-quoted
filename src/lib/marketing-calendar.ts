@@ -83,15 +83,31 @@ export function stateFromAddress(address: string | null | undefined): string | n
  * "gutter cleaning and roof repair" business and a "roofing" business want the
  * same October beat.
  */
-export type TradeFamily = 'roofing' | 'hvac' | 'plumbing' | 'exterior' | 'landscaping' | 'general';
+export type TradeFamily =
+  | 'roofing'
+  | 'hvac'
+  | 'plumbing'
+  | 'exterior'
+  | 'landscaping'
+  | 'holiday-lighting'
+  | 'lawn-care'
+  | 'mosquito-control'
+  | 'duct-cleaning'
+  | 'pond-service'
+  | 'general';
 
 export function tradeFamily(trade: string | null | undefined): TradeFamily {
   const text = (trade ?? '').toLowerCase();
+  if (/holiday|christmas|permanent lighting/.test(text)) return 'holiday-lighting';
+  if (/mosquito|tick\b|larvicid/.test(text)) return 'mosquito-control';
+  if (/duct|dryer vent/.test(text)) return 'duct-cleaning';
+  if (/pond\b|water feature|koi/.test(text)) return 'pond-service';
+  if (/lawn\b|mow\b|fertiliz|weed control|dethatch/.test(text)) return 'lawn-care';
   if (/roof|gutter|siding|chimney/.test(text)) return 'roofing';
   if (/hvac|heat|furnace|air condition|ac\b|cooling/.test(text)) return 'hvac';
   if (/plumb|drain|septic|water heater/.test(text)) return 'plumbing';
   if (/paint|deck|fence|power ?wash|pressure ?wash|window/.test(text)) return 'exterior';
-  if (/landscap|lawn|garden|tree|irrigation|snow/.test(text)) return 'landscaping';
+  if (/landscap|garden|tree|irrigation|snow/.test(text)) return 'landscaping';
   return 'general';
 }
 
@@ -229,10 +245,144 @@ export const BEATS: Beat[] = [
     monthsByZone: { cold: [9, 10], temperate: [10, 11] },
   },
   {
+    id: 'holiday-early-booking',
+    title: 'Book holiday lighting installation before the prime slots fill',
+    whyNow: 'Prime November installation slots fill up by September. Locking in commitments now guarantees a calm and fully booked schedule before Halloween.',
+    trades: ['holiday-lighting', 'exterior', 'general'],
+    needs: /holiday|christmas|light|lighting/i,
+    channels: ['email', 'blog'],
+    audience: 'past-service',
+    monthsByZone: { cold: [8, 9], temperate: [8, 9], hot: [9, 10], marine: [8, 9] },
+  },
+  {
+    id: 'holiday-install-rush',
+    title: 'Final call for holiday light installation before Thanksgiving',
+    whyNow: 'Homeowners and businesses want displays glowing for Thanksgiving weekend. Remind pending leads that calendar slots are almost gone.',
+    trades: ['holiday-lighting', 'general'],
+    channels: ['email'],
+    audience: 'everyone',
+    monthsByZone: { cold: [10, 11], temperate: [10, 11], hot: [10, 11], marine: [10, 11] },
+  },
+  {
+    id: 'holiday-takedown-storage',
+    title: 'Schedule post-holiday light takedown and off-season storage',
+    whyNow: 'Taking displays down safely and packing them into labeled commercial bins in January prevents damage and locks in next year’s early reservation.',
+    trades: ['holiday-lighting', 'general'],
+    channels: ['email'],
+    audience: 'past-service',
+    monthsByZone: { cold: [1], temperate: [1], hot: [1], marine: [1] },
+  },
+  {
+    id: 'lawn-spring-renewal',
+    title: 'Renew your seasonal lawn care and mowing plan for the year',
+    whyNow: 'Locking in standing routes before the grass wakes up gives homeowners priority scheduling and ensures your route density is set.',
+    trades: ['lawn-care', 'landscaping', 'general'],
+    needs: /lawn|mow|fertiliz/i,
+    channels: ['email'],
+    audience: 'past-service',
+    monthsByZone: { cold: [2, 3], temperate: [2, 3], hot: [1, 2], marine: [2, 3] },
+  },
+  {
+    id: 'lawn-fall-aeration',
+    title: 'Schedule fall core aeration and overseeding',
+    whyNow: 'Cool autumn soil and warm sun create the ideal window for seed germination and root development. Missing this window delays lawn repair until next autumn.',
+    trades: ['lawn-care', 'landscaping'],
+    needs: /aerat|seed|fertiliz|lawn/i,
+    channels: ['email', 'blog'],
+    audience: 'past-service',
+    monthsByZone: { cold: [8, 9], temperate: [9, 10], marine: [9, 10] },
+  },
+  {
+    id: 'lawn-leaf-cleanup',
+    title: 'Book final fall leaf removal before winter sets in',
+    whyNow: 'Matting leaves suffocate turf and invite fungal disease over winter. Getting the final cleanup done protects grass health until spring.',
+    trades: ['lawn-care', 'landscaping', 'general'],
+    needs: /leaf|cleanup|lawn|yard/i,
+    channels: ['email'],
+    audience: 'everyone',
+    monthsByZone: { cold: [10, 11], temperate: [11], marine: [10, 11] },
+  },
+  {
+    id: 'mosquito-season-pass',
+    title: 'Enroll in season-long mosquito and tick barrier protection',
+    whyNow: 'Starting treatments before initial larvae hatch stops mosquito populations before they multiply. Early enrollment locks in recurring route discounts.',
+    trades: ['mosquito-control', 'general'],
+    channels: ['email', 'blog'],
+    audience: 'past-service',
+    monthsByZone: { hot: [2, 3], temperate: [3, 4], cold: [4, 5], marine: [4, 5] },
+  },
+  {
+    id: 'mosquito-peak-summer',
+    title: 'Keep your yard protected during peak mid-summer mosquito activity',
+    whyNow: 'High humidity and summer thunderstorms create breeding pools. Consistent 21-day barrier sprays prevent mid-summer resurgence.',
+    trades: ['mosquito-control'],
+    channels: ['email'],
+    audience: 'maintenance-due',
+    monthsByZone: { hot: [6, 7], temperate: [6, 7, 8], cold: [6, 7, 8], marine: [6, 7, 8] },
+  },
+  {
+    id: 'mosquito-event-sprays',
+    title: 'Book a barrier spray for your upcoming outdoor graduation or wedding',
+    whyNow: 'Outdoor gatherings get ruined by biting pests. A specialized event treatment 24–48 hours prior keeps guests comfortable.',
+    trades: ['mosquito-control', 'general'],
+    channels: ['blog', 'email'],
+    audience: 'everyone',
+    monthsByZone: { hot: [4, 5], temperate: [5, 6], cold: [6, 7], marine: [6, 7] },
+  },
+  {
+    id: 'duct-pre-heating',
+    title: 'Clear dust and buildup from air ducts before turning on the heat',
+    whyNow: 'Furnaces blowing through summer dust buildup create burning odors and circulate accumulated allergens through sealed winter homes.',
+    trades: ['duct-cleaning', 'hvac', 'general'],
+    needs: /duct|air quality|vent/i,
+    channels: ['email', 'blog'],
+    audience: 'maintenance-due',
+    monthsByZone: { cold: [9, 10], temperate: [10, 11], marine: [10] },
+  },
+  {
+    id: 'dryer-vent-safety',
+    title: 'Inspect and clean your clothes dryer vent line',
+    whyNow: 'Heavy lint accumulation forces dryers to run hotter, increases cycle times, and wastes electricity. A seasonal line clearing restores full airflow.',
+    trades: ['duct-cleaning', 'general'],
+    channels: ['email', 'blog'],
+    audience: 'everyone',
+    monthsByZone: { cold: [10, 11], temperate: [4, 10], hot: [4, 10], marine: [10, 11] },
+  },
+  {
+    id: 'pond-spring-opening',
+    title: 'Schedule your spring pond opening and deep cleanout',
+    whyNow: 'Warming water wakes fish and algae before beneficial bacteria can establish. A complete spring cleanout and filter startup resets water balance.',
+    trades: ['pond-service', 'general'],
+    channels: ['email'],
+    audience: 'past-service',
+    monthsByZone: { cold: [4, 5], temperate: [3, 4], hot: [2, 3], marine: [3, 4] },
+  },
+  {
+    id: 'pond-fall-winterization',
+    title: 'Install protective netting and prepare your pond for winter',
+    whyNow: 'Falling autumn leaves decompose into toxic gas under winter ice. Netting early and shutting down vulnerable pumps prevents winter freeze damage.',
+    trades: ['pond-service'],
+    channels: ['email', 'blog'],
+    audience: 'past-service',
+    monthsByZone: { cold: [9, 10], temperate: [10, 11], marine: [10, 11] },
+  },
+  {
     id: 'year-review',
     title: 'What we did this year, and thank you',
     whyNow: 'A December note that asks for nothing is the one people remember in March. Send it to everyone and sell nothing.',
-    trades: ['roofing', 'hvac', 'plumbing', 'exterior', 'landscaping', 'general'],
+    trades: [
+      'roofing',
+      'hvac',
+      'plumbing',
+      'exterior',
+      'landscaping',
+      'holiday-lighting',
+      'lawn-care',
+      'mosquito-control',
+      'duct-cleaning',
+      'pond-service',
+      'general',
+    ],
     channels: ['email'],
     audience: 'everyone',
     monthsByZone: { cold: [12], temperate: [12], hot: [12], marine: [12] },

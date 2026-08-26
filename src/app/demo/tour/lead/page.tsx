@@ -105,7 +105,7 @@ export default function DemoTourLeadPage() {
               <p style={{ margin: '6px 0 0', fontSize: '15px', fontWeight: 700, color: '#ffffff' }}>
                 {DEMO_TOUR_JOB.distanceMiles} miles from Thursday route
               </p>
-              <small style={{ color: '#9eb5c2', fontSize: '12.5px' }}>Fits morning route in Maplewood</small>
+              <small style={{ color: '#9eb5c2', fontSize: '12.5px' }}>Fits morning route in Royal Oak</small>
             </div>
 
             <div
@@ -181,8 +181,8 @@ export default function DemoTourLeadPage() {
                   <span style={{ color: '#d1e2eb' }}>{DEMO_TOUR_CUSTOMER.propertyType}</span>
                 </div>
                 <div>
-                  <span style={{ color: '#7b93a2', display: 'block', fontSize: '11.5px', textTransform: 'uppercase' }}>Panel &amp; Garage</span>
-                  <span style={{ color: '#d1e2eb' }}>{DEMO_TOUR_CUSTOMER.panelLocation} &middot; {DEMO_TOUR_CUSTOMER.garageLocation}</span>
+                  <span style={{ color: '#7b93a2', display: 'block', fontSize: '11.5px', textTransform: 'uppercase' }}>Project Area</span>
+                  <span style={{ color: '#d1e2eb' }}>{DEMO_TOUR_CUSTOMER.projectArea}</span>
                 </div>
               </div>
             </div>

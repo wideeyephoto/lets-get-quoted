@@ -155,7 +155,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: { add?
 
   return (
     <main className="wide-shell workspace-shell">
-      <section className="panel workspace-section-card">
+      <section className="panel workspace-section-card" data-tour-id="leads:workspace">
         {/* The heading matches the nav item that got you here. It read "Work
             pipeline" under a rail item called "Leads", so the one page in the
             app whose job is to tell you where a request has got to could not

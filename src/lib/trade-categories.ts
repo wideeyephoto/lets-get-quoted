@@ -1,7 +1,7 @@
 import { TRADES, type Trade } from './trades';
 
 /**
- * The 49 trades, grouped so a directory can be scanned instead of read.
+ * The full slate of trades, grouped so a directory can be scanned instead of read.
  *
  * WHY A SEPARATE MODULE. The grouping is an editorial judgement, not a fact
  * about the data, and it has one failure mode that is silent in the browser: a
@@ -37,6 +37,8 @@ export const TRADE_CATEGORIES: TradeCategory[] = [
       'excavation',
       'pool-services',
       'concrete',
+      'lawn-care',
+      'pond-services',
     ],
   },
   {
@@ -67,6 +69,7 @@ export const TRADE_CATEGORIES: TradeCategory[] = [
       'well-water',
       'garage-doors',
       'locksmiths',
+      'air-duct-cleaning',
     ],
   },
   {
@@ -95,19 +98,20 @@ export const TRADE_CATEGORIES: TradeCategory[] = [
       'junk-removal',
       'pest-control',
       'auto-detailing',
+      'mosquito-tick-control',
     ],
   },
   {
     id: 'repair',
     label: 'Repair & home services',
-    slugs: ['handyman', 'appliance-repair', 'home-inspectors', 'movers'],
+    slugs: ['handyman', 'appliance-repair', 'home-inspectors', 'movers', 'holiday-lighting'],
   },
 ];
 
 /**
  * The shortlist shown before anyone types anything.
  *
- * EDITORIAL, NOT MEASURED. We have no traffic data on which of the 49 people
+ * EDITORIAL, NOT MEASURED. We have no traffic data on which of the trades people
  * arrive looking for, so this is not labelled "popular" or "most searched" on
  * the page — it is the head of the TRADES array, which is itself ordered by
  * hand, and the page calls it what it is: a place to start.

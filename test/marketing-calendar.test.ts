@@ -47,7 +47,12 @@ describe('tradeFamily', () => {
     expect(tradeFamily('Heating and Air Conditioning')).toBe('hvac');
     expect(tradeFamily('Plumbing')).toBe('plumbing');
     expect(tradeFamily('Exterior Painting')).toBe('exterior');
-    expect(tradeFamily('Lawn Care')).toBe('landscaping');
+    expect(tradeFamily('Landscaping')).toBe('landscaping');
+    expect(tradeFamily('Lawn Care')).toBe('lawn-care');
+    expect(tradeFamily('Holiday Lighting')).toBe('holiday-lighting');
+    expect(tradeFamily('Mosquito & Tick Control')).toBe('mosquito-control');
+    expect(tradeFamily('Air Duct Cleaning')).toBe('duct-cleaning');
+    expect(tradeFamily('Pond Services')).toBe('pond-service');
   });
 
   it('falls back to general rather than dropping a trade off the calendar', () => {

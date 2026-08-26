@@ -440,7 +440,7 @@ export default async function AutomationsPage() {
       {/* Opens the card a deep link points at — the job SettingsTabs used to do
           for these cards while they were a tab. */}
       <OpenAnchoredCard />
-      <section className="workspace-hero panel">
+      <section className="workspace-hero panel" data-tour-id="automations:overview">
         <div className="workspace-hero-copy">
           <p className="eyebrow">Grow</p>
           <h1 className="workspace-title">Automations</h1>

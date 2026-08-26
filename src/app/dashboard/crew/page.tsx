@@ -22,6 +22,7 @@ import { isTimeClockAvailable } from '@/lib/time-clock-data';
 import { isLiveMessagingEnvironment } from '@/lib/sms';
 import { listSubcontractorRequests, loadSubcontractors, todayIn } from '@/lib/subcontractor-dispatch-data';
 import { normalizeWorkerType } from '@/lib/subcontractors';
+import { loadCrewLocationMapSnapshot } from '@/lib/crew-location';
 import CrewRoster, { type CrewRow } from './CrewRoster';
 import HoursAndPay from './HoursAndPay';
 import JobRequests from './JobRequests';
@@ -284,6 +285,12 @@ export default async function CrewLaborPage({
   const timeClockAvailable = tab === 'hours' ? await isTimeClockAvailable(supabase, accountId) : false;
   const crewOpenShifts = payView?.openShifts ?? [];
 
+  // The map tab pays for its own snapshot (active shifts, jobs, latest locations)
+  const mapSnapshot =
+    tab === 'map'
+      ? await loadCrewLocationMapSnapshot(supabase, accountId, { canViewPay })
+      : null;
+
   const tabHref = (next: TabId) => {
     const query = new URLSearchParams();
     query.set('tab', next);
@@ -463,24 +470,11 @@ export default async function CrewLaborPage({
           />
         ) : null}
 
-        {tab === 'map' ? (
+        {tab === 'map' && mapSnapshot ? (
           <LiveCrewMap
-            technicians={activeCrew.map((member) => {
-              const shift = crewOpenShifts.find((s) => s.crewName === member.name);
-              const isOnSite = Boolean(shift);
-              const isOffSite = shift?.flag === 'implausible';
-
-              return {
-                crewId: member.id,
-                crewName: member.name,
-                roleTitle: 'Field Technician',
-                status: isOffSite ? 'off_site_flagged' : isOnSite ? 'on_site' : 'off_duty',
-                activeJobLabel: shift?.jobLabel,
-                elapsedHours: shift ? 3.5 : 0,
-                distanceFromSiteFeet: isOnSite ? (isOffSite ? 3200 : 45) : null,
-                hourlyRate: 35,
-              };
-            })}
+            initialSnapshot={mapSnapshot}
+            accountId={accountId}
+            canViewPay={canViewPay}
           />
         ) : null}
       </section>

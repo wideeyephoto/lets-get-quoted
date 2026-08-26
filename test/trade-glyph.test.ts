@@ -4,15 +4,21 @@ import { SERVICE_ICON_GLYPHS } from '@/lib/templates/ServiceIcon';
 
 const TRADES = [
   'Electrician', 'Residential Electrical & Lighting', 'House Painting', 'Drywall & Finishing',
-  'Window Cleaning', 'Pressure Washing', 'Lawn Care & Landscaping', 'Tree Service', 'Stump Removal',
-  'Junk Removal & Hauling', 'Pest Control', 'Plumbing', 'HVAC', 'Appliance Repair', 'Roofing',
-  'Concrete & Masonry', 'Handyman', 'Flooring & Tile', 'General Contractor', 'Security & Alarm',
-  '', 'Underwater Basket Weaving',
+  'Window Cleaning', 'Pressure Washing', 'Lawn Care & Landscaping', 'Lawn Care Companies',
+  'Holiday Light Installers', 'Mosquito & Tick Control', 'Air Duct Cleaning', 'Pond & Water Feature Services',
+  'Tree Service', 'Stump Removal', 'Junk Removal & Hauling', 'Pest Control', 'Plumbing', 'HVAC',
+  'Appliance Repair', 'Roofing', 'Concrete & Masonry', 'Handyman', 'Flooring & Tile',
+  'General Contractor', 'Security & Alarm', '', 'Underwater Basket Weaving',
 ];
 
 describe('getTradeGlyph', () => {
   it('maps common trades to a fitting default icon key', () => {
     expect(getTradeGlyph('Electrician')).toBe('bolt');
+    expect(getTradeGlyph('Holiday Light Installers')).toBe('lightbulb');
+    expect(getTradeGlyph('Pond & Water Feature Services')).toBe('waves');
+    expect(getTradeGlyph('Air Duct Cleaning')).toBe('wind');
+    expect(getTradeGlyph('Mosquito & Tick Control')).toBe('bug');
+    expect(getTradeGlyph('Lawn Care Companies')).toBe('sprout');
     expect(getTradeGlyph('House Painting')).toBe('roller');
     expect(getTradeGlyph('Window Cleaning')).toBe('sparkles');
     expect(getTradeGlyph('Pressure Washing')).toBe('spray');

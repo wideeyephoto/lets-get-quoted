@@ -33,9 +33,9 @@ describe('Problem 1: Product Identity and Message Hierarchy', () => {
       expect(HOME).toContain('CONTRACTOR SOFTWARE—STARTING WITH A FREE WEBSITE');
       expect(HOME).toContain('From first click to final payment.<br /><em>Run it all in one place.</em>');
       expect(HOME).toContain(
-        'Build your website, qualify leads, send quotes, schedule work, manage your crew, and collect payment without switching tools.',
+        'Tell us your company, trade, and ZIP. We’ll generate an editable contractor website with instant estimates',
       );
-      expect(HOME).toContain('See how it works');
+      expect(HOME).toContain('Explore a live demo');
       expect(HOME).toContain('{SIGNUP_LABEL}');
     });
 

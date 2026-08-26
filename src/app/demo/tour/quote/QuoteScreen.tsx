@@ -181,7 +181,7 @@ export default function QuoteScreen() {
           >
             <div>
               <div style={{ fontSize: '14px', fontWeight: 700, color: '#ffffff' }}>
-                {sent ? '✓ Quote text dispatched to (973) 555-0142' : 'Send Quote to Sarah Jenkins'}
+                {sent ? `✓ Quote text dispatched to ${DEMO_TOUR_CUSTOMER.phone}` : `Send Quote to ${DEMO_TOUR_CUSTOMER.name}`}
               </div>
               <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#9db0bd' }}>
                 Customer receives SMS link to review, toggle upgrades, e-sign, and pay $500 deposit.

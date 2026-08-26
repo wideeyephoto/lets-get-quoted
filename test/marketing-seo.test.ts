@@ -54,15 +54,20 @@ describe('trade page metadata fits what search results render', () => {
   });
 });
 
-describe('trade copy reads as English on all 49 pages', () => {
+describe('trade copy reads as English on all trade pages', () => {
   it('picks the article by sound, including initialisms', () => {
     expect(indefiniteArticle('appliance repair')).toBe('an');
     expect(indefiniteArticle('electrical work')).toBe('an');
     expect(indefiniteArticle('excavation & grading')).toBe('an');
+    expect(indefiniteArticle('air duct & dryer vent cleaning')).toBe('an');
     // "aitch-vac" — the letter name starts with a vowel even though H does not.
     expect(indefiniteArticle('HVAC')).toBe('an');
     expect(indefiniteArticle('roofing')).toBe('a');
-    expect(indefiniteArticle('landscaping & lawn care')).toBe('a');
+    expect(indefiniteArticle('landscaping')).toBe('a');
+    expect(indefiniteArticle('lawn care')).toBe('a');
+    expect(indefiniteArticle('holiday lighting')).toBe('a');
+    expect(indefiniteArticle('mosquito & tick control')).toBe('a');
+    expect(indefiniteArticle('pond & water feature services')).toBe('a');
     // /juː/ takes "a". No current trade hits this; the fiftieth might.
     expect(indefiniteArticle('utility trenching')).toBe('a');
     expect(indefiniteArticle('uniform rental')).toBe('a');

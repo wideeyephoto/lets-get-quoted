@@ -1,10 +1,10 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { TRADES, getTrade, indefiniteArticle, lowerTradeName } from '@/lib/trades';
+import { TRADES, getTrade, indefiniteArticle, lowerTradeName, type Trade } from '@/lib/trades';
 import { AVAILABLE_TEMPLATES } from '@/lib/templates/types';
 import { FAVORITE_FEATURES, FEATURE_COUNT } from '@/lib/features';
-import { APP_SIGNUP_URL } from '@/components/marketing/links';
+import { buildSignupUrl } from '@/components/marketing/links';
 import { titleWithBrand } from '@/lib/seo/marketing-seo';
 import { breadcrumbJsonLd, HOME_CRUMB } from '@/lib/seo/breadcrumbs';
 import { cspNonce } from '@/lib/csp-nonce';
@@ -21,9 +21,7 @@ export function generateMetadata({ params }: { params: { trade: string } }): Met
   return {
     /* `absolute` + titleWithBrand, not the root layout's title template.
        The template appends "· Let's Get Quoted" unconditionally, which is why
-       29 of these 49 titles rendered past the ~60 characters Google shows —
-       "Website & Software for Water Damage Restoration Companies" is 57 on its
-       own and 76 with the brand, so the brand was the part being truncated.
+       titles rendered past the ~60 characters Google shows.
        titleWithBrand adds it back on every trade short enough to keep it. */
     title: { absolute: titleWithBrand(trade.metaTitle) },
     description: trade.metaDescription,
@@ -44,12 +42,15 @@ export default function TradePage({ params }: { params: { trade: string } }) {
     .map((id) => AVAILABLE_TEMPLATES.find((template) => template.id === id))
     .filter((template): template is NonNullable<typeof template> => Boolean(template));
 
-  // "hvac contractors" and "a appliance repair business" were both produced
-  // here, on every one of the 49 pages. See the notes on these helpers.
+  const relatedTrades = (trade.relatedSlugs ?? [])
+    .map(getTrade)
+    .filter((t): t is Trade => Boolean(t));
+
   const name = lowerTradeName(trade.name);
   const an = indefiniteArticle(trade.work);
+  const signupUrl = buildSignupUrl({ trade: trade.slug });
 
-  // Home › For your trade › Roofers, in place of the bare slug, on all 49.
+  // Home › For your trade › Roofers, in place of the bare slug.
   const breadcrumbs = breadcrumbJsonLd([
     HOME_CRUMB,
     { name: 'For your trade', path: '/for' },
@@ -66,7 +67,7 @@ export default function TradePage({ params }: { params: { trade: string } }) {
         <h1>{trade.headline}</h1>
         <p className="hero-text">{trade.subhead}</p>
         <div className="actions">
-          <a href={APP_SIGNUP_URL} className="btn primary">Build my free site</a>
+          <a href={signupUrl} className="btn primary">Build my free site</a>
           <Link href="/demo" className="btn secondary">Explore the demo &mdash; no signup</Link>
         </div>
         <p className="hero-reassure">Flex starts at $0/month + 1.25% &middot; No credit card</p>
@@ -97,11 +98,6 @@ export default function TradePage({ params }: { params: { trade: string } }) {
       <section className="section-block">
         <div className="section-heading">
           <p className="eyebrow">The whole toolkit</p>
-          {/* trade.work, not a de-pluralised trade.name. Stripping the "s" off
-              "Plumbers" gives "a plumber business" and off "Roofers" gives "a
-              roofer business" — the practitioner where the trade belongs.
-              `work` is already the noun for the work itself ("plumbing",
-              "roofing", "landscaping & lawn care"). */}
           <h2>Everything {an} {trade.work} business needs to run.</h2>
           <p>One login for your site, leads, quotes, scheduling, and getting paid &mdash; a slice of the {FEATURE_COUNT} features that come standard.</p>
         </div>
@@ -140,13 +136,30 @@ export default function TradePage({ params }: { params: { trade: string } }) {
         </section>
       ) : null}
 
+      {relatedTrades.length > 0 ? (
+        <section className="section-block">
+          <div className="section-heading">
+            <p className="eyebrow">Related trades</p>
+            <h2>Also see solutions for related specialties.</h2>
+          </div>
+          <div className="feature-grid">
+            {relatedTrades.map((related) => (
+              <Link key={related.slug} href={`/for/${related.slug}`} className="feature-card" style={{ textDecoration: 'none' }}>
+                <h3>{related.name} &rarr;</h3>
+                <p>{related.services.slice(0, 4).join(' · ')}</p>
+              </Link>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
       <section className="cta-band">
         <div className="cta-band-inner">
           <p className="eyebrow">Ready when you are</p>
           <h2>Start with Flex at $0/month plus 1.25%.</h2>
           <p>Plans start with Flex at $0/month plus 1.25%. No setup fee. Everything {an} {trade.work} business needs, from your first quote.</p>
           <div className="actions">
-            <a href={APP_SIGNUP_URL} className="btn primary">Build my free site</a>
+            <a href={signupUrl} className="btn primary">Build my free site</a>
             <Link href="/faq" className="btn secondary">Read the FAQ</Link>
           </div>
         </div>

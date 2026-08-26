@@ -132,6 +132,7 @@ const MARKETING_PATHS = [
   '/compare',
   '/tools',
   '/faq',
+  '/help',
   '/security',
   '/resources',
   '/contact',

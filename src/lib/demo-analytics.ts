@@ -1,40 +1,74 @@
 /**
- * Client telemetry tracker for the 5-minute evaluation demo tour.
+ * Client telemetry tracker for the 5-minute evaluation demo tour and product tours.
  *
- * Tracks funnel progression (tour_started, step_viewed, tour_completed,
- * explore_freely, signup_clicked) safely in sessionStorage without collecting
- * any customer-entered PII.
+ * Tracks funnel progression safely in sessionStorage and sends non-PII events to
+ * the aggregate telemetry endpoint.
  */
 
 export type DemoEventName =
+  | 'tour_offered'
   | 'tour_started'
   | 'step_viewed'
+  | 'step_completed'
+  | 'step_target_missing'
+  | 'tour_exited'
+  | 'tour_dismissed'
   | 'tour_completed'
+  | 'tour_restarted'
   | 'explore_freely'
-  | 'signup_clicked';
+  | 'signup_clicked'
+  | 'setup_action_clicked';
 
 export type DemoEventPayload = {
   step?: number;
   stepSlug?: string;
+  stepId?: string;
+  tourKey?: string;
+  tourVersion?: number;
   perspective?: string;
   source?: string;
+  targetId?: string;
+  pathname?: string;
+  depositAmount?: number;
+  totalSteps?: number;
   [key: string]: string | number | boolean | undefined;
 };
 
 const STORAGE_KEY = 'lgq_demo_tour_events';
+const SESSION_ID_KEY = 'lgq_demo_session_id';
+
+function getOrCreateSessionId(): string {
+  if (typeof window === 'undefined') return '';
+  try {
+    let id = sessionStorage.getItem(SESSION_ID_KEY);
+    if (!id) {
+      id = 'ds_' + Math.random().toString(36).slice(2, 11) + Date.now().toString(36);
+      sessionStorage.setItem(SESSION_ID_KEY, id);
+    }
+    return id;
+  } catch {
+    return 'fallback_session';
+  }
+}
 
 export function trackDemoEvent(eventName: DemoEventName, payload: DemoEventPayload = {}): void {
   if (typeof window === 'undefined') return;
 
   try {
     const timestamp = new Date().toISOString();
+    const sessionId = getOrCreateSessionId();
+    const clientEventId = 'ev_' + Math.random().toString(36).slice(2, 11) + '_' + Date.now();
+
     const eventRecord = {
+      client_event_id: clientEventId,
+      anonymous_session_id: sessionId,
       event: eventName,
       timestamp,
+      pathname: window.location.pathname,
       ...payload,
     };
 
-    // Store in sessionStorage for evaluation metrics
+    // Store in sessionStorage for evaluation metrics and tests
     const existing = sessionStorage.getItem(STORAGE_KEY);
     const events = existing ? JSON.parse(existing) : [];
     events.push(eventRecord);
@@ -46,6 +80,36 @@ export function trackDemoEvent(eventName: DemoEventName, payload: DemoEventPaylo
         detail: eventRecord,
       }),
     );
+
+    // Send to backend telemetry endpoint if online
+    const body = JSON.stringify({
+      client_event_id: clientEventId,
+      anonymous_session_id: sessionId,
+      event_type: eventName,
+      tour_key: payload.tourKey ?? 'demo-job-lifecycle',
+      tour_version: payload.tourVersion ?? 1,
+      step_id: payload.stepId ?? (payload.step ? `step-${payload.step}` : undefined),
+      source: payload.source ?? 'demo_client',
+      pathname: window.location.pathname,
+      metadata: {
+        perspective: payload.perspective,
+        stepSlug: payload.stepSlug,
+        targetId: payload.targetId,
+      },
+    });
+
+    if (navigator && typeof navigator.sendBeacon === 'function' && (eventName === 'tour_exited' || eventName === 'signup_clicked' || eventName === 'tour_completed')) {
+      navigator.sendBeacon('/api/demo-tour/events', body);
+    } else {
+      fetch('/api/demo-tour/events', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body,
+        keepalive: true,
+      }).catch(() => {
+        // Fail silently
+      });
+    }
   } catch {
     // Fail silently in restricted sandbox environments
   }

@@ -844,6 +844,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
         <Link
           href={href}
           key={href}
+          data-tour-id={`nav:${href}`}
           className={`sidenav-link${brand ? ' sidenav-link-brand' : ''}${extraClass ? ` ${extraClass}` : ''}${active ? ' active' : ''}`}
           // Which row you are standing on was said in color and in nothing
           // else, so a screen reader had no way to know — 18 identical links.
@@ -1010,6 +1011,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
 
           <Link
             href="/dashboard/sites"
+            data-tour-id="nav:/dashboard/sites"
             className={`website-nav-badge sidenav-website${sitePublished ? ' live' : ''}`}
             title={sitePublished ? `Your website is live${siteHost ? ` at ${siteHost}` : ''} — manage it` : 'Build your free contractor website'}
           >

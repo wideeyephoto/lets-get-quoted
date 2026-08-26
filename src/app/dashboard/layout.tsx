@@ -15,6 +15,10 @@ import '../globals.css';
 import { headers } from 'next/headers';
 import type { ReactNode } from 'react';
 import { requireDashboardShellContext } from '@/lib/auth';
+import { DASHBOARD_ORIENTATION_TOUR } from '@/lib/product-tour/catalog';
+import { filterStepsForUser } from '@/lib/product-tour/access';
+import type { TourProgressRecord } from '@/lib/product-tour/types';
+import ProductTourRoot from '@/components/product-tour/ProductTourRoot';
 import StripeAlertBanner from './StripeAlertBanner';
 import { connectStripeFromBannerAction } from './stripe-actions';
 
@@ -36,7 +40,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
   // that an office user is not bounced off a page they are allowed to open --
   // every page still runs its own, and all but the deliberately converted ones
   // still run requireOwnerContext. See requireDashboardShellContext.
-  const { supabase, accountId, role } = await requireDashboardShellContext();
+  const { supabase, userId, accountId, role, capabilities } = await requireDashboardShellContext();
 
   const { data: account } = await supabase
     .from('accounts')
@@ -50,6 +54,36 @@ export default async function DashboardLayout({ children }: { children: ReactNod
   // would simply fail.
   const onboarded = role !== 'owner' || (account?.connect_onboarded ?? false);
 
+  // Resolve product tour enablement and progress
+  // Server-controlled rollout flag (enabled by default unless explicitly disabled)
+  const orientationFlag = process.env.LGQ_DASHBOARD_ORIENTATION_ENABLED;
+  const tourEnabled = orientationFlag === undefined || orientationFlag === '1' || orientationFlag === 'true';
+
+  let tourProgress: TourProgressRecord | null = null;
+  const allowedStepIds = filterStepsForUser(DASHBOARD_ORIENTATION_TOUR, {
+    userId,
+    accountId,
+    role,
+    capabilities,
+  }).map((s) => s.id);
+
+  if (tourEnabled) {
+    try {
+      const { data } = await supabase
+        .from('product_tour_progress')
+        .select('*')
+        .eq('account_id', accountId)
+        .eq('user_id', userId)
+        .eq('tour_key', DASHBOARD_ORIENTATION_TOUR.key)
+        .eq('tour_version', DASHBOARD_ORIENTATION_TOUR.version)
+        .maybeSingle();
+      tourProgress = (data as TourProgressRecord | null) ?? null;
+    } catch {
+      // Defensive fallback if migration not yet applied in local/test sandbox
+      tourProgress = null;
+    }
+  }
+
   return (
     <>
       {!onboarded ? (
@@ -57,6 +91,12 @@ export default async function DashboardLayout({ children }: { children: ReactNod
         // and hunting for the same button is a step that does nothing.
         <StripeAlertBanner connectAction={connectStripeFromBannerAction} />
       ) : null}
+      <ProductTourRoot
+        role={role}
+        initialProgress={tourProgress}
+        allowedStepIds={allowedStepIds}
+        enabled={tourEnabled}
+      />
       {children}
     </>
   );

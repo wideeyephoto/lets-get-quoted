@@ -65,6 +65,13 @@ export type CorePropertySpecs = {
   exteriorWallType?: string | null;
 };
 
+export type ProviderStatus = {
+  solar?: 'ok' | 'forbidden' | 'not_found' | 'unconfigured' | 'error';
+  specs?: 'ok' | 'unconfigured' | 'not_found' | 'rate_limited' | 'error';
+  streetView?: 'ok' | 'not_available' | 'unconfigured' | 'error';
+  satellite?: 'ok' | 'unconfigured' | 'error';
+};
+
 export type PropertyIntelligence = {
   address: string;
   lat: number;
@@ -75,6 +82,7 @@ export type PropertyIntelligence = {
   specs: CorePropertySpecs | null;
   hasSolarCoverage: boolean;
   hasSpecs: boolean;
+  providerStatus?: ProviderStatus;
 };
 
 export type PropertyIntelligenceSummary = {

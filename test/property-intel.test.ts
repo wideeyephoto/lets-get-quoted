@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import {
   pitchDegreesToRatio,
   isSteepPitch,
@@ -183,5 +183,65 @@ describe('Property Intelligence - Summarizer & Quote AI Context', () => {
     const instructions = buildDraftInstructions(draftContext);
     expect(instructions).not.toContain('VERIFIED PROPERTY & ROOF MEASUREMENTS');
     expect(instructions).toContain('You draft an itemized quote for a plumbing contractor');
+  });
+});
+
+describe('Property Intelligence - Provider Diagnostics & Resilience', () => {
+  it('returns unconfigured status when rentcast API key is not set', async () => {
+    const { fetchRentCastPropertyDetailed } = await import('../src/lib/property-intel/rentcast');
+    const res = await fetchRentCastPropertyDetailed({ address: '123 Main St' });
+    expect(res.data).toBeNull();
+    expect(res.status).toBe('unconfigured');
+  });
+
+  it('differentiates 403 Forbidden on Google Solar API', async () => {
+    const { fetchSolarBuildingInsightsDetailed } = await import('../src/lib/property-intel/google-solar');
+    const origEnv = process.env.GOOGLE_MAPS_API_KEY;
+    process.env.GOOGLE_MAPS_API_KEY = 'AIzaSyTEST_KEY';
+
+    const fetchSpy = vi.spyOn(global, 'fetch').mockImplementation(async () => {
+      return new Response(JSON.stringify({ error: { code: 403, message: 'Forbidden' } }), {
+        status: 403,
+        statusText: 'Forbidden',
+      });
+    });
+
+    const res = await fetchSolarBuildingInsightsDetailed(42.4895, -83.1446);
+    expect(res.data).toBeNull();
+    expect(res.status).toBe('forbidden');
+
+    fetchSpy.mockRestore();
+    if (origEnv) {
+      process.env.GOOGLE_MAPS_API_KEY = origEnv;
+    } else {
+      delete process.env.GOOGLE_MAPS_API_KEY;
+    }
+  });
+
+  it('verifies PropertyDossierCard uses CSS module and has no unstyled Tailwind classes', async () => {
+    const fs = await import('fs');
+    const path = await import('path');
+
+    const tsxPath = path.resolve(__dirname, '../src/components/property-intel/PropertyDossierCard.tsx');
+    const cssPath = path.resolve(__dirname, '../src/components/property-intel/PropertyDossierCard.module.css');
+
+    expect(fs.existsSync(tsxPath)).toBe(true);
+    expect(fs.existsSync(cssPath)).toBe(true);
+
+    const tsxContent = fs.readFileSync(tsxPath, 'utf8');
+    const cssContent = fs.readFileSync(cssPath, 'utf8');
+
+    // Ensure CSS module is imported
+    expect(tsxContent).toContain("import styles from './PropertyDossierCard.module.css'");
+
+    // Ensure unstyled Tailwind utility classes that cause sizing bugs are not present
+    expect(tsxContent).not.toContain('className="w-4 h-4');
+    expect(tsxContent).not.toContain('bg-neutral-900');
+    expect(tsxContent).not.toContain('border-neutral-800');
+
+    // Ensure CSS module explicitly constrains the header icon to prevent 591x591px expansion
+    expect(cssContent).toContain('.headerIcon');
+    expect(cssContent).toContain('width: 16px');
+    expect(cssContent).toContain('height: 16px');
   });
 });

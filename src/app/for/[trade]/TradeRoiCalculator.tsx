@@ -1,9 +1,8 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import Link from 'next/link';
 import { type Trade, getTradeEconomics } from '@/lib/trades';
-import { APP_SIGNUP_URL } from '@/components/marketing/links';
+import { buildSignupUrl } from '@/components/marketing/links';
 import styles from './trade-roi.module.css';
 
 function formatCurrency(amount: number): string {
@@ -19,8 +18,11 @@ export default function TradeRoiCalculator({ trade }: { trade: Trade }) {
   const [monthlyVolume, setMonthlyVolume] = useState<number>(economics.typicalMonthlyVolume);
 
   const calculations = useMemo(() => {
-    // Annual volume
-    const annualVolume = monthlyVolume * 12;
+    const activeMonths = economics.activeMonthsPerYear ?? 12;
+    const quickStopMonths = economics.quickStopActiveMonthsPerYear ?? activeMonths;
+
+    // Annual volume based on operating season
+    const annualVolume = monthlyVolume * activeMonths;
     // Estimated jobs per year based on avg ticket
     const jobsPerYear = Math.max(6, Math.round(annualVolume / (economics.avgTicket || 1000)));
 
@@ -31,13 +33,14 @@ export default function TradeRoiCalculator({ trade }: { trade: Trade }) {
     const lgqFlexFixed = 0;
     const softwareSavings = legacyAnnualFixed - lgqFlexFixed;
 
-    // Quick Stop additional revenue upside (filling 2-4 route gaps / month)
-    const quickStopAnnualUpside = economics.quickStopMonthlyBonus * 12;
+    // Quick Stop additional revenue upside (filling 2-4 route gaps / active month)
+    const quickStopAnnualUpside = economics.quickStopMonthlyBonus * quickStopMonths;
 
     // Total annual economic advantage
     const totalAnnualAdvantage = softwareSavings + quickStopAnnualUpside;
 
     return {
+      activeMonths,
       annualVolume,
       jobsPerYear,
       softwareSavings,
@@ -46,7 +49,8 @@ export default function TradeRoiCalculator({ trade }: { trade: Trade }) {
     };
   }, [monthlyVolume, economics]);
 
-  const signupUrl = `${APP_SIGNUP_URL}?trade=${encodeURIComponent(trade.slug)}`;
+  const signupUrl = buildSignupUrl({ trade: trade.slug });
+  const volumeLabel = economics.volumeLabel ?? 'Your Estimated Monthly Card Volume:';
 
   return (
     <section className={styles.section} id="roi-calculator">
@@ -69,7 +73,7 @@ export default function TradeRoiCalculator({ trade }: { trade: Trade }) {
               <div className={styles.inputGroup}>
                 <div className={styles.inputHeader}>
                   <label htmlFor="volume-slider" className={styles.label}>
-                    Your Estimated Monthly Card Volume:
+                    {volumeLabel}
                   </label>
                   <span className={styles.volumeValue}>{formatCurrency(monthlyVolume)}/mo</span>
                 </div>
@@ -96,6 +100,14 @@ export default function TradeRoiCalculator({ trade }: { trade: Trade }) {
                   <span className={styles.benchmarkLabel}>Industry Avg Ticket:</span>
                   <strong className={styles.benchmarkVal}>{formatCurrency(economics.avgTicket)}</strong>
                 </div>
+                {calculations.activeMonths < 12 ? (
+                  <div className={styles.benchmarkItem}>
+                    <span className={styles.benchmarkLabel}>Active Season:</span>
+                    <strong className={styles.benchmarkVal}>
+                      {calculations.activeMonths} mos{trade.seasonality?.peakLabel ? ` (${trade.seasonality.peakLabel})` : ''}
+                    </strong>
+                  </div>
+                ) : null}
                 <div className={styles.benchmarkItem}>
                   <span className={styles.benchmarkLabel}>Est. Completed Jobs:</span>
                   <strong className={styles.benchmarkVal}>~{calculations.jobsPerYear} jobs / yr</strong>
@@ -140,9 +152,9 @@ export default function TradeRoiCalculator({ trade }: { trade: Trade }) {
               </div>
 
               <div className={styles.actionRow}>
-                <Link href={signupUrl} className={styles.primaryCta}>
+                <a href={signupUrl} className={styles.primaryCta}>
                   Launch Free {trade.name} Site &rarr;
-                </Link>
+                </a>
                 <span className={styles.ctaNote}>No credit card required · Free forever on Flex</span>
               </div>
             </div>

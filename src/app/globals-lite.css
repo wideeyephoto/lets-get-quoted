@@ -1,6 +1,6 @@
 /* GENERATED — do not edit. Source: src/app/globals.css
    Run: node scripts/build-css-subset.mjs
-   source-sha256: 6eb1649f0abb6df8
+   source-sha256: a14f3ec469dd2568
 
    globals.css with the rules that can only match inside /dashboard, /admin and
    /demo removed. Every route except those three imports this file; they import
@@ -14816,6 +14816,61 @@ select optgroup {
 @media (hover: none) {
   .infotip:hover .infotip-bubble { display: none; opacity: 0; }
   .infotip .infotip-bubble[data-open='true'] { display: block; opacity: 1; }
+}
+
+/* --- the workbench: queue, calendar, open job ------------------------------
+   Single column is the default (phone and portrait tablet); columns arrive only
+   once there is room for a readable grid beside them.
+
+   At 1024 the queue becomes a deliberately compact rail: its cards use two
+   fact columns and put actions below the facts, leaving the calendar the rest.
+   Below that the page returns to one column and opens the queue from the bar.
+
+   THE QUEUE IS SIZED AGAINST WHAT IS LEFT, NOT AGAINST THE SCREEN.
+   A 1366x768 laptop has ~1054px for this whole page. A flat 420px column there
+   left the calendar 595px -- seven columns of 85px, which measured 36 clipped
+   labels. It starts at 300px and only widens once the screen can pay for it.
+
+   1024 IS THE QUEUE'S OWN BREAKPOINT, not a new one: below it UnscheduledQueue
+   is a full-screen overlay, so a column reserved for it would be an empty gap.
+
+   THE THIRD COLUMN STARTS AT 1760, AND THAT NUMBER IS MEASURED RATHER THAN
+   ESTIMATED -- twice, because the estimate was wrong both times.
+   It was 1440 first, then 1600 on an arithmetic guess that the nav and page
+   gutters cost 268px. They cost 338px: this grid measures viewport minus 338 at
+   1440, 1600 and 1920 alike. So 1600 was really 1262px of grid, and two rails
+   at their 340/380 growth limits plus two gaps left the calendar 506px --
+   68px per weekday, WORSE than the ~82px this whole pass exists to fix.
+   1760 gives 1422px of grid and a 666px calendar (95px per weekday); 1920 gives
+   786px. Below 1760 the detail is an overlay instead; see .sched-detail.is-sheet.
+
+   The rails take their MAX, not their min: a minmax() track fills to its growth
+   limit before an fr track sees any free space, which is why sizing this off
+   the 300px/320px minimums under-counted them by 100px. */
+.schedule-workbench {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+@media (min-width: 1024px) {
+  .schedule-workbench {
+    grid-template-columns: minmax(250px, 300px) minmax(0, 1fr);
+    gap: 1.15rem;
+  }
+
+  /* At least the rest of the viewport, so a quiet month still looks like a
+     workspace instead of a card floating in a field of background. */
+  .schedule-calendar-panel { min-height: calc(100vh - 12rem); }
+}
+
+@media (min-width: 1760px) {
+  .schedule-workbench { grid-template-columns: minmax(300px, 340px) minmax(0, 1fr) minmax(320px, 380px); }
+}
+
+@media (min-width: 1860px) {
+  .schedule-workbench { grid-template-columns: minmax(320px, 360px) minmax(0, 1fr) minmax(340px, 400px); }
 }
 
 .schedule-bar-actions { flex: 0 0 auto; }

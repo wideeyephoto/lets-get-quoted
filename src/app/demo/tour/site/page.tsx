@@ -21,7 +21,7 @@ export default function DemoTourSitePage() {
             <span className={styles.perspectiveTag}>👤 Homeowner Perspective · Step 1 of 6</span>
             <h1 className={styles.perspectiveHeading}>Homeowner visits your live contractor website</h1>
             <p className={styles.perspectiveSub}>
-              A prospect in Maplewood needs a 200A panel upgrade and EV charger. They land on Timberline&apos;s site.
+              A prospective homeowner in Royal Oak needs a paver patio and outdoor fire pit. They land on Evergreen&apos;s site.
             </p>
           </div>
           <Link href="/demo/tour/intake" className={styles.tourNextActionBtn}>
@@ -46,17 +46,17 @@ export default function DemoTourSitePage() {
 
         <section className={styles.siteHero}>
           <div className={styles.siteHeroInner}>
-            <span className={styles.siteHeroBadge}>⚡ {DEMO_TOUR_CONTRACTOR.badge}</span>
+            <span className={styles.siteHeroBadge}>🌿 {DEMO_TOUR_CONTRACTOR.badge}</span>
             <h2 className={styles.siteHeroTitle}>
-              Modern power for modern homes.<br />
-              <em>200A upgrades &amp; EV chargers.</em>
+              Outdoor living spaces built to endure.<br />
+              <em>Custom patios, walls &amp; plantings.</em>
             </h2>
             <p className={styles.siteHeroSub}>
-              Serving {DEMO_TOUR_CONTRACTOR.serviceArea}. Transparent upfront pricing, zero hidden fees, and dedicated master electricians on every project.
+              Serving {DEMO_TOUR_CONTRACTOR.serviceArea}. Transparent upfront pricing, zero hidden fees, and master craftsmen on every project.
             </p>
 
             <div className={styles.siteHeroCtaBox}>
-              <h3>Ready to power your next stage?</h3>
+              <h3>Ready to transform your outdoor space?</h3>
               <p>
                 Answer 3 quick questions. Our AI estimator calculates your preliminary quote in 30 seconds.
               </p>
@@ -69,9 +69,9 @@ export default function DemoTourSitePage() {
 
         <section className={styles.siteServicesGrid}>
           <div className={styles.siteServiceCard}>
-            <h4>⚡ 200-Amp Heavy-Up Upgrades</h4>
+            <h4>🧱 Custom Paver Patios &amp; Walkways</h4>
             <p>
-              Replace outdated or overloaded 100A panels with clean 40-space Square D or Eaton breakers, fully bonded to NEC 2023 code.
+              Premium Unilock and Belgard pavers with commercial aggregate base compaction, precision jointing, and lifetime structural integrity.
             </p>
             <Link href="/demo/tour/intake" className={styles.siteServiceLink}>
               Get quote &rarr;
@@ -79,9 +79,9 @@ export default function DemoTourSitePage() {
           </div>
 
           <div className={styles.siteServiceCard}>
-            <h4>🚗 Level 2 EV Charger Circuits</h4>
+            <h4>🔥 Built-in Fire Pits &amp; Seat Walls</h4>
             <p>
-              Dedicated 50A/60A high-output circuits for Tesla Wall Connectors, ChargePoint, and all NEMA 14-50 home chargers.
+              Integrated curved seating walls, wood or gas stone fire pits, and outdoor entertainment focal points designed for Michigan seasons.
             </p>
             <Link href="/demo/tour/intake" className={styles.siteServiceLink}>
               Get quote &rarr;
@@ -89,9 +89,9 @@ export default function DemoTourSitePage() {
           </div>
 
           <div className={styles.siteServiceCard}>
-            <h4>🛡️ Whole-Home Surge Protection</h4>
+            <h4>✨ Low-Voltage Landscape Lighting</h4>
             <p>
-              Protect thousands of dollars in sensitive EV electronics, heat pumps, and home appliances from grid spikes.
+              Architectural step, wall, and path lighting with smart dusk-to-dawn controls for warmth, safety, and nighttime curb appeal.
             </p>
             <Link href="/demo/tour/intake" className={styles.siteServiceLink}>
               Get quote &rarr;
@@ -110,16 +110,16 @@ export default function DemoTourSitePage() {
               <div className={styles.siteReviewCard}>
                 <div className={styles.siteReviewStars}>★★★★★</div>
                 <p className={styles.siteReviewText}>
-                  &ldquo;Got an instant quote on Thursday night, panel upgrade completed by Tuesday. Clean wiring and zero mess.&rdquo;
+                  &ldquo;Got an instant quote on Thursday night, patio installation completed the following week. Clean crew, zero mess.&rdquo;
                 </p>
-                <span className={styles.siteReviewAuthor}>David M. &middot; Maplewood, NJ</span>
+                <span className={styles.siteReviewAuthor}>David M. &middot; Royal Oak, MI</span>
               </div>
               <div className={styles.siteReviewCard}>
                 <div className={styles.siteReviewStars}>★★★★★</div>
                 <p className={styles.siteReviewText}>
-                  &ldquo;They handled the town inspection and permit seamlessly. The EV charger charges our car in 5 hours flat.&rdquo;
+                  &ldquo;The built-in fire pit and seat wall are incredible. Mike and Jamal were on time every morning and handled everything seamlessly.&rdquo;
                 </p>
-                <span className={styles.siteReviewAuthor}>Elena R. &middot; South Orange, NJ</span>
+                <span className={styles.siteReviewAuthor}>Elena R. &middot; Ferndale, MI</span>
               </div>
             </div>
           </div>

@@ -53,20 +53,25 @@ function getApiKey(): string | null {
   );
 }
 
+export type RentCastResult = {
+  data: CorePropertySpecs | null;
+  status: 'ok' | 'unconfigured' | 'not_found' | 'rate_limited' | 'error';
+};
+
 /**
  * Fetches physical building specs, tax assessor data, and lot size from RentCast API.
  */
-export async function fetchRentCastProperty(
+export async function fetchRentCastPropertyDetailed(
   addressOrCoords: { address?: string; lat?: number; lng?: number }
-): Promise<CorePropertySpecs | null> {
+): Promise<RentCastResult> {
   const apiKey = getApiKey();
-  if (!apiKey) return null;
+  if (!apiKey) return { data: null, status: 'unconfigured' };
 
   const address = (addressOrCoords.address ?? '').trim();
   const lat = addressOrCoords.lat;
   const lng = addressOrCoords.lng;
 
-  if (!address && (lat == null || lng == null)) return null;
+  if (!address && (lat == null || lng == null)) return { data: null, status: 'error' };
 
   try {
     const url = new URL('https://api.rentcast.io/v1/properties');
@@ -88,16 +93,19 @@ export async function fetchRentCastProperty(
     if (!res.ok) {
       if (res.status === 429) {
         console.warn('[RentCast API] Rate limit reached (status 429). Skipping enrichment for this request.');
-      } else if (res.status !== 404) {
-        console.warn(`[RentCast API] request returned status ${res.status}: ${res.statusText}`);
+        return { data: null, status: 'rate_limited' };
       }
-      return null;
+      if (res.status === 404) {
+        return { data: null, status: 'not_found' };
+      }
+      console.warn(`[RentCast API] request returned status ${res.status}: ${res.statusText}`);
+      return { data: null, status: 'error' };
     }
 
     const data = (await res.json()) as RawRentCastProperty | RawRentCastProperty[];
     const raw = Array.isArray(data) ? data[0] : data;
 
-    if (!raw) return null;
+    if (!raw) return { data: null, status: 'not_found' };
 
     const lotSqFt = raw.lotSize && raw.lotSize > 0 ? raw.lotSize : null;
     const lotAcres = lotSqFt ? Math.round((lotSqFt / 43560) * 100) / 100 : null;
@@ -114,30 +122,43 @@ export async function fetchRentCastProperty(
     const feat = raw.features ?? {};
 
     return {
-      propertyType: raw.propertyType ?? null,
-      yearBuilt: raw.yearBuilt && raw.yearBuilt > 1700 ? raw.yearBuilt : null,
-      squareFootage: raw.squareFootage && raw.squareFootage > 0 ? raw.squareFootage : null,
-      lotSizeSqFt: lotSqFt,
-      lotSizeAcres: lotAcres,
-      bedrooms: raw.bedrooms ?? null,
-      bathrooms: raw.bathrooms ?? null,
-      stories: feat.stories ?? null,
-      ownerOccupied: raw.ownerOccupied ?? raw.owner?.occupied ?? null,
-      lastSaleDate: raw.lastSaleDate ? raw.lastSaleDate.split('T')[0] : null,
-      lastSalePrice: raw.lastSalePrice ?? null,
-      assessedValue: latestAssessmentValue,
-      coolingType: feat.coolingType ?? (feat.cooling ? 'Yes' : null),
-      heatingType: feat.heatingType ?? (feat.heating ? 'Yes' : null),
-      heatingFuel: feat.heatingFuel ?? null,
-      garageSpaces: feat.garageSpaces ?? (feat.garage ? 1 : null),
-      hasPool: feat.pool ?? null,
-      hasFireplace: feat.fireplace ?? null,
-      foundationType: feat.foundationType ?? null,
-      roofType: feat.roofType ?? null,
-      exteriorWallType: feat.exteriorWallType ?? null,
+      data: {
+        propertyType: raw.propertyType ?? null,
+        yearBuilt: raw.yearBuilt && raw.yearBuilt > 1700 ? raw.yearBuilt : null,
+        squareFootage: raw.squareFootage && raw.squareFootage > 0 ? raw.squareFootage : null,
+        lotSizeSqFt: lotSqFt,
+        lotSizeAcres: lotAcres,
+        bedrooms: raw.bedrooms ?? null,
+        bathrooms: raw.bathrooms ?? null,
+        stories: feat.stories ?? null,
+        ownerOccupied: raw.ownerOccupied ?? raw.owner?.occupied ?? null,
+        lastSaleDate: raw.lastSaleDate ? raw.lastSaleDate.split('T')[0] : null,
+        lastSalePrice: raw.lastSalePrice ?? null,
+        assessedValue: latestAssessmentValue,
+        coolingType: feat.coolingType ?? (feat.cooling ? 'Yes' : null),
+        heatingType: feat.heatingType ?? (feat.heating ? 'Yes' : null),
+        heatingFuel: feat.heatingFuel ?? null,
+        garageSpaces: feat.garageSpaces ?? (feat.garage ? 1 : null),
+        hasPool: feat.pool ?? null,
+        hasFireplace: feat.fireplace ?? null,
+        foundationType: feat.foundationType ?? null,
+        roofType: feat.roofType ?? null,
+        exteriorWallType: feat.exteriorWallType ?? null,
+      },
+      status: 'ok',
     };
   } catch (error) {
     console.error('[RentCast API] Error fetching property details:', error instanceof Error ? error.message : error);
-    return null;
+    return { data: null, status: 'error' };
   }
+}
+
+/**
+ * Convenience helper returning just CorePropertySpecs or null.
+ */
+export async function fetchRentCastProperty(
+  addressOrCoords: { address?: string; lat?: number; lng?: number }
+): Promise<CorePropertySpecs | null> {
+  const result = await fetchRentCastPropertyDetailed(addressOrCoords);
+  return result.data;
 }

@@ -558,6 +558,75 @@
   color: var(--flare);
 }
 
+/* ---------------------------------------------------------------- */
+/* 5b — seasonal trades                                              */
+/* ---------------------------------------------------------------- */
+
+.seasonalGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.seasonalCard {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  min-height: 44px;
+  padding: 1.25rem 1.2rem;
+  border: 1px solid var(--edge-soft);
+  border-radius: 16px;
+  background: var(--card);
+  transition: border-color 0.16s ease, transform 0.16s ease, background-color 0.16s ease;
+}
+
+.seasonalCard:hover {
+  border-color: rgba(255, 90, 18, 0.5);
+  background: var(--card-2);
+  transform: translateY(-2px);
+}
+
+.seasonalCardHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.seasonalCard h3 {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin: 0;
+  color: var(--ink);
+}
+
+.seasonalBadge {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.15rem 0.45rem;
+  border-radius: 6px;
+  background: var(--flare-soft);
+  color: var(--flare);
+  white-space: nowrap;
+}
+
+.seasonalCard span {
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+
+.seasonalCard em {
+  margin-top: auto;
+  padding-top: 0.35rem;
+  font-style: normal;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--flare);
+}
+
 /**
  * MOTION IS OPTIONAL, AND ALL OF IT.
  *
@@ -572,7 +641,8 @@
  * image are untouched — depth is not motion.
  */
 @media (prefers-reduced-motion: reduce) {
-  .featuredCard:hover { transform: none; }
+  .featuredCard:hover,
+  .seasonalCard:hover { transform: none; }
 
   /* The hero panel stands its own animations down in
      intake-simulator.module.css, and never starts the transcript at all. */
@@ -943,6 +1013,7 @@
 
   .benefits,
   .featured,
+  .seasonalGrid,
   .steps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
   /* The chevron points along a row. In a 2x2 grid the second item's arrow would
@@ -986,6 +1057,7 @@
 
   .benefits,
   .featured,
+  .seasonalGrid,
   .steps,
   .tradeList { grid-template-columns: minmax(0, 1fr); }
 

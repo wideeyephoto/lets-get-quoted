@@ -2,6 +2,7 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import { TRADES } from '@/lib/trades';
 import { COMMON_TRADE_SLUGS, tradesBySlugs } from '@/lib/trade-categories';
+import { seasonalTrades } from '@/lib/trade-collections';
 import { FLEX_PRICE, LOWEST_PLATFORM_FEE } from '@/lib/pricing';
 import { APP_SIGNUP_URL } from '@/components/marketing/links';
 import { titleWithBrand } from '@/lib/seo/marketing-seo';
@@ -17,8 +18,7 @@ export const metadata: Metadata = {
      "… | Let's Get Quoted · Let's Get Quoted", at 65 characters. titleWithBrand
      puts the brand back exactly once and only while it fits inside 60. */
   title: { absolute: titleWithBrand('Contractor Website & Software by Trade') },
-  description:
-    'A website, AI Intake, quotes, scheduling, and Stripe payments tailored to your trade. Browse all 49 trades. Plans start at $0/month.',
+  description: `A website, AI Intake, quotes, scheduling, and Stripe payments tailored to your trade. Browse all ${TRADES.length} trades. Plans start at $0/month.`,
   alternates: { canonical: 'https://letsgetquoted.com/for' },
   /* Next replaces the parent's `openGraph` object wholesale rather than merging
      into it, so everything this card needs has to be here — including the image,
@@ -30,8 +30,7 @@ export const metadata: Metadata = {
     url: 'https://letsgetquoted.com/for',
     siteName: "Let's Get Quoted",
     title: 'Contractor Website & Quoting Software by Trade · Let’s Get Quoted',
-    description:
-      'Websites and quoting software built for your trade — 49 of them. Win the lead, quote the job, and get paid. Plans start at $0/month.',
+    description: `Websites and quoting software built for your trade — ${TRADES.length} of them. Win the lead, quote the job, and get paid. Plans start at $0/month.`,
     images: [
       {
         url: '/template-previews/professional.jpg',
@@ -44,8 +43,7 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: 'Contractor Website & Quoting Software by Trade',
-    description:
-      'Websites and quoting software built for your trade — 49 of them. Plans start at $0/month.',
+    description: `Websites and quoting software built for your trade — ${TRADES.length} of them. Plans start at $0/month.`,
     images: ['/template-previews/professional.jpg'],
   },
 };
@@ -174,6 +172,7 @@ function Check() {
 
 export default function TradeIndexPage() {
   const common = tradesBySlugs(COMMON_TRADE_SLUGS);
+  const seasonal = seasonalTrades();
 
   return (
     <>
@@ -292,6 +291,33 @@ export default function TradeIndexPage() {
                 <Link key={trade.slug} href={`/for/${trade.slug}`} className={styles.featuredCard}>
                   <h3>{trade.name}</h3>
                   <span>{trade.services.slice(0, 4).join(' · ')}</span>
+                  <em aria-hidden="true">See the page &rarr;</em>
+                </Link>
+              ))}
+            </div>
+          </section>
+
+          {/* ---- 5b. Seasonal trades collection ---------------------------- */}
+          <section className={styles.section}>
+            <div className={styles.sectionHead}>
+              <p className={styles.eyebrow}>Built for seasonal businesses</p>
+              <h2>Busy season shouldn’t mean paying all year.</h2>
+              <p>
+                Recurring routes, deposits, and early renewals when you’re busy&mdash;and a $0 base fee on
+                Flex during off-season months with zero card volume.{' '}
+                <Link href="/pricing">Compare plans and seasonal pricing &rarr;</Link>
+              </p>
+            </div>
+            <div className={styles.seasonalGrid}>
+              {seasonal.map((trade) => (
+                <Link key={trade.slug} href={`/for/${trade.slug}`} className={styles.seasonalCard}>
+                  <div className={styles.seasonalCardHead}>
+                    <h3>{trade.name}</h3>
+                    {trade.seasonality?.peakLabel ? (
+                      <span className={styles.seasonalBadge}>{trade.seasonality.peakLabel}</span>
+                    ) : null}
+                  </div>
+                  <span>{trade.services.slice(0, 3).join(' · ')}</span>
                   <em aria-hidden="true">See the page &rarr;</em>
                 </Link>
               ))}

@@ -16,9 +16,9 @@ import type { ReactNode } from 'react';
  * site-chrome.tsx has used it since the header was fixed, and this is the rest
  * of the site catching up to it. */
 
-import { buildStartUrl, type SignupIntent } from '@/lib/signup-intent';
+import { buildStartUrl, buildSignupUrl, type SignupIntent, type SignupSource } from '@/lib/signup-intent';
 
-export { buildStartUrl, type SignupIntent };
+export { buildStartUrl, buildSignupUrl, type SignupIntent, type SignupSource };
 export const APP_START_URL = 'https://app.letsgetquoted.com/start';
 export const APP_SIGNUP_URL = 'https://app.letsgetquoted.com/start?goal=build_site';
 

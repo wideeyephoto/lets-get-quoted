@@ -232,7 +232,7 @@ export default async function JobsPage({
 
   return (
     <main className="wide-shell workspace-shell">
-      <section className="panel workspace-section-card">
+      <section className="panel workspace-section-card" data-tour-id="jobs:workspace">
         <div className="section-heading workspace-section-heading">
           <p className="eyebrow">Pipeline</p>
           <h1>Current jobs</h1>

@@ -19,6 +19,11 @@ describe('Trade Starter Catalogs', () => {
     expect(tradeKeys).toContain('painting');
     expect(tradeKeys).toContain('handyman');
     expect(tradeKeys).toContain('pressure_washing');
+    expect(tradeKeys).toContain('holiday_lighting');
+    expect(tradeKeys).toContain('lawn_care');
+    expect(tradeKeys).toContain('mosquito_tick_control');
+    expect(tradeKeys).toContain('air_duct_cleaning');
+    expect(tradeKeys).toContain('pond_services');
   });
 
   it('every starter item has valid price, cost, unit, and healthy margin', () => {

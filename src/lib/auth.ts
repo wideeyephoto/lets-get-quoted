@@ -698,8 +698,8 @@ async function resolveOfficeCapableMember() {
  * the decision.
  */
 export async function requireDashboardShellContext() {
-  const { supabase, accountId, role, capabilities } = await resolveOfficeCapableMember();
-  return { supabase, accountId, role, capabilities };
+  const { supabase, userId, userEmail, accountId, role, capabilities, accountTimeZone } = await resolveOfficeCapableMember();
+  return { supabase, userId, userEmail, accountId, role, capabilities, accountTimeZone };
 }
 
 /**

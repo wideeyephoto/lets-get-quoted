@@ -1,0 +1,333 @@
+/* Product Tour & Coachmark Styles */
+
+.portalRoot {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  font-family: inherit;
+}
+
+/* Spotlight backdrop: 4 dark mask panels framing the highlighted element */
+.maskOverlay {
+  position: fixed;
+  background: rgba(4, 13, 20, 0.78);
+  backdrop-filter: blur(2px);
+  pointer-events: auto;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.spotlightRing {
+  position: fixed;
+  border-radius: 8px;
+  box-shadow: 0 0 0 2px #50e3bd, 0 0 24px rgba(80, 227, 189, 0.45);
+  pointer-events: none;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 10000;
+}
+
+/* Full backdrop for unanchored fallback / modal pause */
+.fullBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(4, 13, 20, 0.75);
+  backdrop-filter: blur(2px);
+  pointer-events: auto;
+  z-index: 9999;
+}
+
+/* Coachmark Card */
+.coachmarkCard {
+  position: fixed;
+  width: 380px;
+  max-width: calc(100vw - 32px);
+  background: #091c28;
+  color: #f1f7fa;
+  border: 1px solid rgba(80, 227, 189, 0.45);
+  border-radius: 14px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6), 0 0 20px rgba(80, 227, 189, 0.15);
+  padding: 22px 24px;
+  pointer-events: auto;
+  z-index: 10001;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  animation: fadeInPop 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes fadeInPop {
+  0% {
+    opacity: 0;
+    transform: scale(0.96) translateY(6px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* Mobile Bottom Sheet */
+.bottomSheet {
+  position: fixed;
+  left: 16px;
+  right: 16px;
+  bottom: 20px;
+  width: auto;
+  max-width: 520px;
+  margin: 0 auto;
+  border-radius: 16px;
+}
+
+/* Coachmark Header */
+.header {
+  display: flex;
+  align-items: center;
+  justifyContent: space-between;
+  gap: 12px;
+}
+
+.stepBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: #50e3bd;
+  background: rgba(80, 227, 189, 0.12);
+  border: 1px solid rgba(80, 227, 189, 0.3);
+  padding: 3px 9px;
+  border-radius: 999px;
+}
+
+.closeButton {
+  background: transparent;
+  border: none;
+  color: #9db0bd;
+  font-size: 18px;
+  line-height: 1;
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.closeButton:hover,
+.closeButton:focus-visible {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.1);
+  outline: 2px solid #50e3bd;
+}
+
+/* Content */
+.title {
+  font-size: 17px;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0;
+  line-height: 1.35;
+}
+
+.body {
+  font-size: 14px;
+  color: #bed3df;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.warningNote {
+  font-size: 12.5px;
+  color: #ffd166;
+  background: rgba(255, 209, 102, 0.1);
+  border: 1px solid rgba(255, 209, 102, 0.3);
+  padding: 8px 12px;
+  border-radius: 8px;
+  margin: 0;
+}
+
+/* Footer / Actions */
+.footer {
+  display: flex;
+  align-items: center;
+  justifyContent: space-between;
+  margin-top: 6px;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.progressDots {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.2);
+  transition: all 0.2s ease;
+}
+
+.dotActive {
+  width: 18px;
+  background: #50e3bd;
+  box-shadow: 0 0 8px rgba(80, 227, 189, 0.6);
+}
+
+.buttonGroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.secondaryBtn {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #d1e2eb;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 14px;
+  min-height: 44px;
+  min-width: 44px;
+  border-radius: 7px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.secondaryBtn:hover,
+.secondaryBtn:focus-visible {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.4);
+  outline: 2px solid #50e3bd;
+}
+
+.primaryBtn {
+  background: #50e3bd;
+  color: #071a26;
+  border: none;
+  font-size: 13.5px;
+  font-weight: 800;
+  padding: 8px 18px;
+  min-height: 44px;
+  min-width: 44px;
+  border-radius: 7px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(80, 227, 189, 0.35);
+  transition: all 0.15s ease;
+}
+
+.primaryBtn:hover,
+.primaryBtn:focus-visible {
+  background: #63f0cb;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(80, 227, 189, 0.45);
+  outline: 2px solid #ffffff;
+}
+
+/* Launcher Card for Checklist */
+.checklistLauncher {
+  background: linear-gradient(135deg, rgba(80, 227, 189, 0.12) 0%, rgba(13, 39, 56, 0.5) 100%);
+  border: 1px solid rgba(80, 227, 189, 0.35);
+  border-radius: 10px;
+  padding: 14px 18px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.checklistLauncherCopy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.checklistLauncherTitle {
+  font-size: 14px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.checklistLauncherSub {
+  font-size: 12.5px;
+  color: #9db0bd;
+}
+
+.checklistLauncherActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.launcherStartBtn {
+  background: #50e3bd;
+  color: #071a26;
+  border: none;
+  font-size: 13px;
+  font-weight: 800;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(80, 227, 189, 0.3);
+  transition: all 0.15s ease;
+}
+
+.launcherStartBtn:hover {
+  background: #63f0cb;
+}
+
+.launcherDismissBtn {
+  background: transparent;
+  border: none;
+  color: #8faab7;
+  font-size: 12.5px;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 6px 8px;
+}
+
+.launcherDismissBtn:hover {
+  color: #ffffff;
+}
+
+/* Screen reader announcement helper */
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Reduced Motion Overrides */
+@media (prefers-reduced-motion: reduce) {
+  .maskOverlay,
+  .spotlightRing,
+  .coachmarkCard,
+  .primaryBtn,
+  .secondaryBtn,
+  .dot {
+    transition: none !important;
+    animation: none !important;
+  }
+}

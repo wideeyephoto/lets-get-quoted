@@ -48,18 +48,22 @@ function getApiKey(): string | null {
   );
 }
 
-/**
- * Fetches building insights and roof geometry from Google Solar API for a given lat/lng.
- * Returns null if no coverage exists for the location or API key is not configured.
- */
-export async function fetchSolarBuildingInsights(
+export type SolarResult = {
+  data: RoofStats | null;
+  status: 'ok' | 'forbidden' | 'not_found' | 'unconfigured' | 'error';
+};
+
+export async function fetchSolarBuildingInsightsDetailed(
   lat: number,
   lng: number,
   requiredQuality: 'HIGH' | 'MEDIUM' | 'BASE' = 'HIGH'
-): Promise<RoofStats | null> {
+): Promise<SolarResult> {
   const apiKey = getApiKey();
-  if (!apiKey || !Number.isFinite(lat) || !Number.isFinite(lng)) {
-    return null;
+  if (!apiKey) {
+    return { data: null, status: 'unconfigured' };
+  }
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+    return { data: null, status: 'error' };
   }
 
   try {
@@ -80,14 +84,19 @@ export async function fetchSolarBuildingInsights(
     if (res.status === 404) {
       // If HIGH quality wasn't available, try MEDIUM if we haven't already
       if (requiredQuality === 'HIGH') {
-        return fetchSolarBuildingInsights(lat, lng, 'MEDIUM');
+        return fetchSolarBuildingInsightsDetailed(lat, lng, 'MEDIUM');
       }
-      return null;
+      return { data: null, status: 'not_found' };
+    }
+
+    if (res.status === 403) {
+      console.warn(`[Google Solar API] 403 Forbidden: Solar API is not authorized/enabled on this API key`);
+      return { data: null, status: 'forbidden' };
     }
 
     if (!res.ok) {
       console.warn(`[Google Solar API] fetch failed with status ${res.status}: ${res.statusText}`);
-      return null;
+      return { data: null, status: 'error' };
     }
 
     const data = (await res.json()) as SolarBuildingInsightsResponse;
@@ -95,7 +104,7 @@ export async function fetchSolarBuildingInsights(
     const wholeRoof = potential?.wholeRoofStats;
 
     if (!potential || !wholeRoof) {
-      return null;
+      return { data: null, status: 'not_found' };
     }
 
     const totalAreaSqFt = sqMetersToSqFt(wholeRoof.areaMeters2 ?? 0);
@@ -151,23 +160,38 @@ export async function fetchSolarBuildingInsights(
     }
 
     return {
-      totalAreaSqFt,
-      roofingSquares,
-      groundAreaSqFt,
-      dominantPitchRatio,
-      dominantPitchDegrees: Math.round(dominantPitchDegrees * 10) / 10,
-      maxPitchDegrees: Math.round(maxPitchDegrees * 10) / 10,
-      isSteep,
-      complexity,
-      complexityLabel,
-      segmentCount: segments.length,
-      segments,
-      maxSunshineHoursPerYear: Math.round(potential.maxSunshineHoursPerYear ?? 0),
-      solarPotentialPanels: potential.maxArrayPanelsCount ?? 0,
-      imageryDate,
+      data: {
+        totalAreaSqFt,
+        roofingSquares,
+        groundAreaSqFt,
+        dominantPitchRatio,
+        dominantPitchDegrees: Math.round(dominantPitchDegrees * 10) / 10,
+        maxPitchDegrees: Math.round(maxPitchDegrees * 10) / 10,
+        isSteep,
+        complexity,
+        complexityLabel,
+        segmentCount: segments.length,
+        segments,
+        maxSunshineHoursPerYear: Math.round(potential.maxSunshineHoursPerYear ?? 0),
+        solarPotentialPanels: potential.maxArrayPanelsCount ?? 0,
+        imageryDate,
+      },
+      status: 'ok',
     };
   } catch (error) {
     console.error('[Google Solar API] Error fetching building insights:', error instanceof Error ? error.message : error);
-    return null;
+    return { data: null, status: 'error' };
   }
+}
+
+/**
+ * Convenience helper returning just the RoofStats or null.
+ */
+export async function fetchSolarBuildingInsights(
+  lat: number,
+  lng: number,
+  requiredQuality: 'HIGH' | 'MEDIUM' | 'BASE' = 'HIGH'
+): Promise<RoofStats | null> {
+  const result = await fetchSolarBuildingInsightsDetailed(lat, lng, requiredQuality);
+  return result.data;
 }

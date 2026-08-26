@@ -86,7 +86,7 @@ export default function IntakeScreen() {
             {/* Customer Message Bubble */}
             <div style={{ alignSelf: 'flex-start', maxWidth: '85%' }}>
               <div style={{ fontSize: '12px', color: '#9db0bd', marginBottom: '4px', fontWeight: 600 }}>
-                {DEMO_TOUR_CUSTOMER.name} &middot; {DEMO_TOUR_CUSTOMER.address}
+                {DEMO_TOUR_CUSTOMER.name} &middot; {DEMO_TOUR_CUSTOMER.address}, {DEMO_TOUR_CUSTOMER.city}
               </div>
               <div
                 style={{
@@ -119,7 +119,7 @@ export default function IntakeScreen() {
                     fontStyle: 'italic',
                   }}
                 >
-                  Checking service requirements, Maplewood permit rules, and route proximity...
+                  Checking project dimensions, materials, Royal Oak service fit, and route proximity...
                 </div>
               </div>
             ) : (
@@ -140,20 +140,20 @@ export default function IntakeScreen() {
                   }}
                 >
                   <p style={{ margin: '0 0 12px', color: '#ffffff', fontWeight: 600 }}>
-                    Thanks Sarah! We specialize in heavy-up 200A panel upgrades and Level 2 EV charging circuits in Maplewood.
+                    Thanks Taylor! We specialize in custom paver patios, curved seat walls, and stone fire pits in Royal Oak.
                   </p>
 
                   <div style={{ background: 'rgba(0, 0, 0, 0.3)', borderRadius: '8px', padding: '12px 16px', margin: '12px 0' }}>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px', fontSize: '13px' }}>
-                      <div><strong style={{ color: '#ffd166' }}>Service:</strong> 200A Square D Panel</div>
-                      <div><strong style={{ color: '#ffd166' }}>EV Run:</strong> 45 ft 50A Circuit</div>
-                      <div><strong style={{ color: '#ffd166' }}>Permits:</strong> Included &amp; Filed</div>
+                      <div><strong style={{ color: '#ffd166' }}>Scope:</strong> 380 sq ft Pavers</div>
+                      <div><strong style={{ color: '#ffd166' }}>Features:</strong> Seat Wall &amp; Fire Pit</div>
+                      <div><strong style={{ color: '#ffd166' }}>Sub-base:</strong> Drainage &amp; Edging</div>
                       <div><strong style={{ color: '#50e3bd' }}>Estimated Range:</strong> $4,650 &ndash; $5,000</div>
                     </div>
                   </div>
 
                   <p style={{ margin: '0', fontSize: '13px', color: '#9db0bd' }}>
-                    Our master electrician has been alerted. We will generate your final itemized quote right away!
+                    Our project manager has been alerted. We will generate your final itemized quote right away!
                   </p>
                 </div>
               </div>
@@ -177,7 +177,7 @@ export default function IntakeScreen() {
             <div>
               <strong style={{ color: '#ffd166', fontSize: '15px' }}>Next in evaluation tour:</strong>
               <p style={{ margin: '2px 0 0', fontSize: '13.5px', color: '#eef5f6' }}>
-                Switch perspectives and see how Sarah&apos;s lead arrives ranked in your contractor Leads inbox.
+                Switch perspectives and see how Taylor&apos;s lead arrives ranked in your contractor Leads inbox.
               </p>
             </div>
             <Link

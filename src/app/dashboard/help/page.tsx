@@ -10,6 +10,7 @@ import {
   type SupportFormError,
 } from '@/lib/support-portal';
 import { ARTICLES } from '@/lib/resources';
+import { HelpTourRestartButton } from '@/components/product-tour/ProductTourLauncher';
 import { openSupportCaseAction } from './actions';
 import styles from './help.module.css';
 
@@ -44,6 +45,9 @@ export default async function HelpPage({ searchParams }: { searchParams: { error
         <p className={styles.lead}>
           Instant answers in our contractor playbooks, or tell us what is going on and a real person will pick it up.
         </p>
+        <div style={{ marginTop: '16px' }}>
+          <HelpTourRestartButton />
+        </div>
       </header>
 
       {errorMessage ? <p className={`${styles.banner} ${styles.err}`} role="alert">{errorMessage}</p> : null}

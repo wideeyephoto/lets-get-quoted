@@ -3,6 +3,7 @@ import AutomationLink from '@/components/automation-link';
 import InfoTip from '@/components/info-tip';
 import { formatJobTime, formatMoney } from '@/lib/jobs';
 import type { DashboardHome } from '@/lib/dashboard-home-data';
+import { ChecklistTourInvitation } from '@/components/product-tour/ProductTourLauncher';
 import BlogReminderBanner from './BlogReminderBanner';
 
 /**
@@ -92,6 +93,7 @@ export default function DashboardHomeScreen({
             <p className="eyebrow">Get set up</p>
             <h2>Onboarding checklist</h2>
           </div>
+          <ChecklistTourInvitation />
           <p className="onboarding-progress-note">
             {completedStepCount} of {onboardingSteps.length} steps complete.
           </p>
@@ -124,7 +126,7 @@ export default function DashboardHomeScreen({
           and with quote follow-ups switched on the app is already chasing it on
           a schedule. It moved to WAITING below. A to-do list containing things
           you cannot do is a list people stop reading. */}
-      <section className="panel workspace-section-card priority-panel">
+      <section className="panel workspace-section-card priority-panel" data-tour-id="dashboard:needs-attention">
         <div className="section-heading workspace-section-heading">
           <p className="eyebrow">Act now</p>
           <h2>Needs your attention</h2>

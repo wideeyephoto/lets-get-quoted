@@ -5,11 +5,20 @@
 
 export type TradePain = { title: string; body: string };
 
+export type TradeSeasonality = {
+  kind: 'year-round' | 'seasonal-peak' | 'seasonal';
+  activeMonthsPerYear: number;
+  peakLabel?: string;
+};
+
 export type TradeEconomics = {
   avgTicket: number;
   typicalMonthlyVolume: number;
   typicalJobsPerMonth: number;
   quickStopMonthlyBonus: number;
+  activeMonthsPerYear?: number;
+  quickStopActiveMonthsPerYear?: number;
+  volumeLabel?: string;
 };
 
 export type Trade = {
@@ -25,26 +34,30 @@ export type Trade = {
   metaDescription: string;
   payer?: string;
   economics?: TradeEconomics;
+  relatedSlugs?: string[];
+  seasonality?: TradeSeasonality;
 };
 
 export const TRADES: Trade[] = [
   {
     slug: 'landscapers',
     name: 'Landscapers',
-    work: 'landscaping & lawn care',
+    work: 'landscaping',
     headline: 'The website and payment tool built for landscapers.',
     subhead:
-      'Win more spring contracts, quote mowing and installs on the spot, and get paid — recurring visits schedule and bill themselves, all season long.',
+      'Win more design/build contracts, quote plantings and hardscaping on the spot, and get paid with staged deposits that keep cash flow steady.',
     pains: [
-      { title: 'Recurring that runs itself', body: 'Weekly and biweekly plans auto-create each visit and charge the card on file — no re-invoicing every mow.' },
-      { title: 'Quote installs on-site', body: 'Send a branded, itemized quote for a patio or planting from your phone and get it e-signed before you leave.' },
-      { title: 'Smooth the seasonal dip', body: 'Deposits on big installs and cards on file keep cash coming in when the schedule tightens up.' },
+      { title: 'Quote installs on-site', body: 'Send a branded, itemized quote for a patio, retaining wall, or planting bed from your phone and get it e-signed before you leave.' },
+      { title: 'Stage the project payments', body: 'Collect a deposit before ordering materials and progress payments at each milestone—all tracked on one job.' },
+      { title: 'Showcase design transformations', body: 'A photo-first gallery puts your before-and-after outdoor transformations front and center where they sell the project.' },
     ],
-    services: ['Lawn mowing', 'Landscape design', 'Sod & seeding', 'Mulch & beds', 'Irrigation', 'Snow removal'],
+    services: ['Landscape design', 'Hardscaping & patios', 'Planting & mulch beds', 'Sod installation', 'Retaining walls', 'Drainage solutions'],
     templateIds: ['handy', 'modern'],
     metaTitle: 'Website & Software for Landscapers',
     metaDescription:
-      'A landscaping website with instant estimates, online booking, recurring auto-billing, and Stripe payments. Plans start at $0/month with Flex.',
+      'A landscaping website with instant estimates, itemized quotes, staged deposits, and Stripe payments. Plans start at $0/month with Flex.',
+    relatedSlugs: ['lawn-care', 'pond-services'],
+    seasonality: { kind: 'seasonal-peak', activeMonthsPerYear: 9, peakLabel: 'Mar–Nov' },
   },
   {
     slug: 'roofers',
@@ -261,6 +274,7 @@ export const TRADES: Trade[] = [
     metaTitle: 'Website & Software for Pressure Washing Businesses',
     metaDescription:
       'A pressure-washing website with instant estimates, online booking, tap-to-pay, and recurring plans. Plans start at $0/month with Flex.',
+    seasonality: { kind: 'seasonal-peak', activeMonthsPerYear: 8, peakLabel: 'Mar–Oct' },
   },
   {
     slug: 'tree-services',
@@ -292,11 +306,12 @@ export const TRADES: Trade[] = [
       { title: 'Catch the urgent call', body: 'AI intake and online booking take the “there’s a wasp nest now” lead any hour and slot it into the next open window.' },
       { title: 'Keep the home on plan', body: 'Cards on file and automatic per-visit invoices turn a one-time treatment into a standing customer for years.' },
     ],
-    services: ['General pest', 'Termites', 'Rodents', 'Mosquito & tick', 'Bed bugs', 'Wildlife removal'],
+    services: ['General pest control', 'Termite treatments', 'Rodent exclusion', 'Bed bug remediation', 'Wildlife exclusion', 'Commercial pest plans'],
     templateIds: ['professional', 'handy'],
     metaTitle: 'Website & Software for Pest Control Companies',
     metaDescription:
       'A pest-control website with online booking, recurring auto-billing, cards on file, and Stripe payments. Plans start at $0/month with Flex.',
+    relatedSlugs: ['mosquito-tick-control'],
   },
   {
     slug: 'pool-services',
@@ -315,6 +330,7 @@ export const TRADES: Trade[] = [
     metaTitle: 'Website & Software for Pool Service Companies',
     metaDescription:
       'A pool-service website with online booking, recurring auto-billing, on-site quotes, and Stripe payments. Plans start at $0/month with Flex.',
+    seasonality: { kind: 'seasonal-peak', activeMonthsPerYear: 7, peakLabel: 'Apr–Oct' },
   },
   {
     slug: 'garage-doors',
@@ -351,6 +367,7 @@ export const TRADES: Trade[] = [
     metaTitle: 'Website & Software for Gutter Companies',
     metaDescription:
       'A gutter-company website with instant estimates, online booking, recurring cleaning plans, and Stripe payments. Plans start at $0/month with Flex.',
+    seasonality: { kind: 'seasonal-peak', activeMonthsPerYear: 8, peakLabel: 'Spring/Fall Peak' },
   },
   {
     slug: 'siding',
@@ -588,6 +605,7 @@ export const TRADES: Trade[] = [
     metaTitle: 'Website & Software for Chimney Sweeps',
     metaDescription:
       'A chimney-sweep website with online booking, instant estimates, recurring inspection plans, and Stripe payments. Plans start at $0/month with Flex.',
+    seasonality: { kind: 'seasonal-peak', activeMonthsPerYear: 6, peakLabel: 'Sep–Feb' },
   },
   {
     slug: 'epoxy-flooring',
@@ -750,6 +768,7 @@ export const TRADES: Trade[] = [
     metaTitle: 'Website & Software for Irrigation & Sprinkler Companies',
     metaDescription:
       'An irrigation-company website with instant estimates, recurring seasonal service, and Stripe payments. Plans start at $0/month with Flex.',
+    seasonality: { kind: 'seasonal-peak', activeMonthsPerYear: 7, peakLabel: 'Apr–Oct' },
   },
   {
     slug: 'auto-detailing',
@@ -788,6 +807,7 @@ export const TRADES: Trade[] = [
     metaTitle: 'Website & Software for Snow Removal Businesses',
     metaDescription:
       'A snow-removal website with online contracts, deposits, cards on file, and per-storm auto-billing. Plans start at $0/month with Flex.',
+    seasonality: { kind: 'seasonal', activeMonthsPerYear: 5, peakLabel: 'Nov–Mar' },
   },
   {
     slug: 'home-inspectors',
@@ -917,6 +937,185 @@ export const TRADES: Trade[] = [
     metaDescription:
       'A generator-installer website with 24/7 lead capture, itemized quotes, payment plans, and Stripe payments. Plans start at $0/month with Flex.',
   },
+  {
+    slug: 'holiday-lighting',
+    name: 'Holiday Light Installers',
+    work: 'holiday lighting',
+    headline: 'Holiday lighting websites that sell out your season by October.',
+    subhead:
+      'Book early installations, quote custom roofline and tree displays on the spot, and manage takedown, storage, and annual renewal billing seamlessly.',
+    pains: [
+      { title: 'Lock the short booking window', body: 'Early-bird deposits and online scheduling secure your November installation calendar before the rush starts.' },
+      { title: 'Quote custom displays on-site', body: 'Itemize roofline footage, tree wraps, and wreath add-ons from your phone and collect e-signatures in minutes.' },
+      { title: 'Automate off-season renewals', body: 'Takedown, storage, and early rebooking reminders turn one holiday season into standing repeat revenue every year.' },
+    ],
+    services: [
+      'Residential installs',
+      'Commercial displays',
+      'Wreaths & greenery',
+      'In-season maintenance',
+      'Takedown & storage',
+      'Permanent roofline lighting',
+    ],
+    templateIds: ['handy', 'modern'],
+    metaTitle: 'Website & Software for Holiday Light Installers',
+    metaDescription:
+      'A holiday lighting website with instant estimates, online booking, deposits, and Stripe payments. Plans start at $0/month with Flex.',
+    relatedSlugs: ['electricians', 'pressure-washing'],
+    seasonality: { kind: 'seasonal', activeMonthsPerYear: 4, peakLabel: 'Oct–Jan' },
+    economics: {
+      avgTicket: 1500,
+      typicalMonthlyVolume: 35000,
+      typicalJobsPerMonth: 23,
+      quickStopMonthlyBonus: 2500,
+      activeMonthsPerYear: 4,
+      quickStopActiveMonthsPerYear: 3,
+      volumeLabel: 'Estimated in-season monthly card volume',
+    },
+  },
+  {
+    slug: 'lawn-care',
+    name: 'Lawn Care Companies',
+    work: 'lawn care',
+    headline: 'Lawn care websites that fill and auto-bill your recurring routes.',
+    subhead:
+      'Win recurring mowing and fertilization contracts, quote cleanups and aeration on the fly, and auto-charge cards on file after every service visit.',
+    pains: [
+      { title: 'Recurring route auto-billing', body: 'Weekly and biweekly mowing schedules auto-generate visits and bill saved cards—no invoicing every cut.' },
+      { title: 'Quote treatment packages on-site', body: 'Send itemized quotes for aeration, overseeding, and multi-step weed control with easy one-tap approvals.' },
+      { title: 'Bridge the winter shoulder', body: 'Seasonal cleanup packages and prepay discounts keep cash flowing reliably as the mowing season winds down.' },
+    ],
+    services: [
+      'Lawn mowing & edging',
+      'Fertilization & weed control',
+      'Aeration & overseeding',
+      'Spring & fall cleanups',
+      'Leaf removal',
+      'Dethatching',
+    ],
+    templateIds: ['handy', 'modern'],
+    metaTitle: 'Website & Software for Lawn Care Companies',
+    metaDescription:
+      'A lawn care website with recurring auto-billing, online booking, instant estimates, and Stripe payments. Plans start at $0/month with Flex.',
+    relatedSlugs: ['landscapers'],
+    seasonality: { kind: 'seasonal-peak', activeMonthsPerYear: 8, peakLabel: 'Mar–Oct' },
+    economics: {
+      avgTicket: 450,
+      typicalMonthlyVolume: 25000,
+      typicalJobsPerMonth: 55,
+      quickStopMonthlyBonus: 1800,
+      activeMonthsPerYear: 8,
+      quickStopActiveMonthsPerYear: 8,
+      volumeLabel: 'Estimated in-season monthly card volume',
+    },
+  },
+  {
+    slug: 'mosquito-tick-control',
+    name: 'Mosquito & Tick Control Companies',
+    work: 'mosquito & tick control',
+    headline: 'Mosquito & tick control websites that lock in season-long protection.',
+    subhead:
+      'Sell recurring barrier spray subscriptions, book one-time event sprays online, and auto-bill treatments across your seasonal routes.',
+    pains: [
+      { title: 'Season pass recurring billing', body: '21-day barrier spray cycles bill cards on file automatically all summer long with zero manual chasing.' },
+      { title: 'Instant event spray booking', body: 'Online booking and upfront payments let homeowners schedule wedding and party sprays with zero back-and-forth.' },
+      { title: 'Automated spring renewals', body: 'Rebook reminders and early-season prepay incentives reactivate last year’s yard list before pest activity peaks.' },
+    ],
+    services: [
+      'Barrier spray treatments',
+      'Tick control programs',
+      'All-natural treatments',
+      'Special event spraying',
+      'Larvicide & water treatments',
+      'Seasonal protection plans',
+    ],
+    templateIds: ['professional', 'handy'],
+    metaTitle: 'Website & Software for Mosquito & Tick Control',
+    metaDescription:
+      'A mosquito & tick control website with recurring auto-billing, online booking, and Stripe payments. Plans start at $0/month with Flex.',
+    relatedSlugs: ['pest-control'],
+    seasonality: { kind: 'seasonal', activeMonthsPerYear: 7, peakLabel: 'Apr–Oct' },
+    economics: {
+      avgTicket: 650,
+      typicalMonthlyVolume: 22000,
+      typicalJobsPerMonth: 34,
+      quickStopMonthlyBonus: 1500,
+      activeMonthsPerYear: 7,
+      quickStopActiveMonthsPerYear: 7,
+      volumeLabel: 'Estimated in-season monthly card volume',
+    },
+  },
+  {
+    slug: 'air-duct-cleaning',
+    name: 'Air Duct & Dryer Vent Cleaners',
+    work: 'air duct & dryer vent cleaning',
+    headline: 'Air duct cleaning websites that turn airflow calls into booked jobs.',
+    subhead:
+      'Quote whole-home duct cleaning and dryer vents with transparent package pricing, book online 24/7, and offer seasonal maintenance reminders.',
+    pains: [
+      { title: 'Quote clear packages upfront', body: 'Pre-set system pricing by vent count or square footage turns quick estimates into confirmed bookings in minutes.' },
+      { title: 'Dryer vent safety add-ons', body: 'One-click add-ons for lint clearing and sanitization increase your average ticket on every residential call.' },
+      { title: 'Seasonal tune-up tie-ins', body: 'Automated seasonal reminders capture bookings right before furnace and air conditioning seasons start.' },
+    ],
+    services: [
+      'Whole-home duct cleaning',
+      'Dryer vent cleaning',
+      'Sanitization & deodorizing',
+      'Furnace & blower cleaning',
+      'Air filter replacement',
+      'Commercial duct cleaning',
+    ],
+    templateIds: ['shine', 'handy'],
+    metaTitle: 'Website & Software for Air Duct Cleaning',
+    metaDescription:
+      'An air duct cleaning website with instant estimates, online booking, package quotes, and Stripe payments. Plans start at $0/month with Flex.',
+    relatedSlugs: ['hvac'],
+    seasonality: { kind: 'year-round', activeMonthsPerYear: 10, peakLabel: 'Spring/Fall Peak' },
+    economics: {
+      avgTicket: 500,
+      typicalMonthlyVolume: 18000,
+      typicalJobsPerMonth: 36,
+      quickStopMonthlyBonus: 2000,
+      activeMonthsPerYear: 10,
+      quickStopActiveMonthsPerYear: 10,
+    },
+  },
+  {
+    slug: 'pond-services',
+    name: 'Pond & Water Feature Services',
+    work: 'pond & water feature services',
+    headline: 'Pond service websites that book the spring opening and fall winterization.',
+    subhead:
+      'Quote cleanouts, pump repairs, and custom water features on-site, book recurring maintenance visits, and collect deposits on new installations.',
+    pains: [
+      { title: 'Capture the spring cleanout rush', body: 'Online booking and deposits lock in early opening dates before your spring schedule fills completely.' },
+      { title: 'Quote equipment and repairs on-site', body: 'Send itemized quotes for replacement pumps, UV clarifiers, and filtration upgrades straight from the pond edge.' },
+      { title: 'Firm winterization deadlines', body: 'Targeted fall netting and shutdown reminders get every customer scheduled before the first hard freeze.' },
+    ],
+    services: [
+      'Pond openings & cleanouts',
+      'Winterization & netting',
+      'Algae & water quality',
+      'Pump & filter repair',
+      'Koi pond maintenance',
+      'Custom water features',
+    ],
+    templateIds: ['modern', 'handy'],
+    metaTitle: 'Website & Software for Pond & Water Feature Companies',
+    metaDescription:
+      'A pond service website with online booking, seasonal cleanout scheduling, and Stripe payments. Plans start at $0/month with Flex.',
+    relatedSlugs: ['landscapers', 'pool-services'],
+    seasonality: { kind: 'seasonal-peak', activeMonthsPerYear: 8, peakLabel: 'Apr–Nov' },
+    economics: {
+      avgTicket: 850,
+      typicalMonthlyVolume: 20000,
+      typicalJobsPerMonth: 24,
+      quickStopMonthlyBonus: 1800,
+      activeMonthsPerYear: 8,
+      quickStopActiveMonthsPerYear: 8,
+      volumeLabel: 'Estimated in-season monthly card volume',
+    },
+  },
 ];
 
 export function getTrade(slug: string): Trade | undefined {
@@ -926,7 +1125,7 @@ export function getTrade(slug: string): Trade | undefined {
 /**
  * "an appliance repair business", not "a appliance repair business".
  *
- * The trade template renders "Everything a {work} business needs" for all 49
+ * The trade template renders "Everything a {work} business needs" for all
  * trades, and eight of the `work` nouns begin with a vowel sound — appliance
  * repair, auto detailing, electrical work, epoxy & floor coatings, excavation &
  * grading, HVAC, insulation, irrigation & sprinklers. Every one of those pages
@@ -939,7 +1138,7 @@ export function getTrade(slug: string): Trade | undefined {
  *     the name of the FIRST LETTER: "an HVAC business" (aitch), "an SBA loan"
  *     (ess). H, F, L, M, N, R, S and X all sound out with a leading vowel.
  *   - A leading "u" that says /juː/ takes "a": a uniform, a utility trailer, a
- *     used truck. None of the current 49 hit this, which is exactly why it is
+ *     used truck. None of the current trades hit this, which is exactly why it is
  *     guarded — the fiftieth trade should not have to rediscover it.
  */
 const VOWEL_SOUND_LETTERS = new Set(['A', 'E', 'F', 'H', 'I', 'L', 'M', 'N', 'O', 'R', 'S', 'X']);
@@ -1019,7 +1218,16 @@ const MID_TICKET_TRADES = new Set([
 ]);
 
 export function getTradeEconomics(trade: Trade): TradeEconomics {
-  if (trade.economics) return trade.economics;
+  const activeMonths = trade.seasonality?.activeMonthsPerYear ?? 12;
+
+  if (trade.economics) {
+    return {
+      ...trade.economics,
+      activeMonthsPerYear: trade.economics.activeMonthsPerYear ?? activeMonths,
+      quickStopActiveMonthsPerYear:
+        trade.economics.quickStopActiveMonthsPerYear ?? trade.economics.activeMonthsPerYear ?? activeMonths,
+    };
+  }
 
   if (HIGH_TICKET_TRADES.has(trade.slug)) {
     return {
@@ -1027,6 +1235,8 @@ export function getTradeEconomics(trade: Trade): TradeEconomics {
       typicalMonthlyVolume: 46000,
       typicalJobsPerMonth: 4,
       quickStopMonthlyBonus: 3200,
+      activeMonthsPerYear: activeMonths,
+      quickStopActiveMonthsPerYear: activeMonths,
     };
   }
 
@@ -1036,6 +1246,8 @@ export function getTradeEconomics(trade: Trade): TradeEconomics {
       typicalMonthlyVolume: 28000,
       typicalJobsPerMonth: 15,
       quickStopMonthlyBonus: 2400,
+      activeMonthsPerYear: activeMonths,
+      quickStopActiveMonthsPerYear: activeMonths,
     };
   }
 
@@ -1045,5 +1257,7 @@ export function getTradeEconomics(trade: Trade): TradeEconomics {
     typicalMonthlyVolume: 16000,
     typicalJobsPerMonth: 38,
     quickStopMonthlyBonus: 1600,
+    activeMonthsPerYear: activeMonths,
+    quickStopActiveMonthsPerYear: activeMonths,
   };
 }

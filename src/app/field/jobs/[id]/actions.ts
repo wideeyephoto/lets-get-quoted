@@ -184,7 +184,7 @@ export async function setArrivalStatusFieldAction(jobId: string, formData: FormD
 
 // Start a shift. The rate is snapshotted now, so a rate change later doesn't
 // restate time that was already worked.
-export async function clockInFieldAction(jobId: string) {
+export async function clockInFieldAction(jobId: string, formData?: FormData) {
   const { supabase, accountId, crew, timeClockMode } = await requireCrewContext();
   await assertAssigned(supabase, accountId, jobId, crew.id);
 
@@ -193,8 +193,41 @@ export async function clockInFieldAction(jobId: string) {
   // `accounts` — which is how "required" quietly became "optional".
   if (timeClockMode === 'off') redirect(`/field/jobs/${jobId}`);
 
+  let geofenceEvidence: {
+    status?: string | null;
+    distanceFt?: number | null;
+    accuracyMeters?: number | null;
+    verifiedAt?: string | null;
+    gpsUnavailable?: boolean | null;
+  } | undefined = undefined;
+
+  if (formData) {
+    const latStr = formData.get('lat');
+    const lngStr = formData.get('lng');
+    const accStr = formData.get('accuracy');
+    const status = formData.get('geofenceStatus');
+    const distStr = formData.get('distanceFt');
+    const gpsUnavailable = formData.get('gpsUnavailable') === 'true';
+
+    if (latStr && lngStr) {
+      geofenceEvidence = {
+        status: status ? String(status) : null,
+        distanceFt: distStr ? Number(distStr) : null,
+        accuracyMeters: accStr ? Number(accStr) : null,
+        verifiedAt: new Date().toISOString(),
+        gpsUnavailable,
+      };
+    } else if (gpsUnavailable) {
+      geofenceEvidence = {
+        status: 'coordinates_missing',
+        gpsUnavailable: true,
+        verifiedAt: new Date().toISOString(),
+      };
+    }
+  }
+
   try {
-    await clockIn(supabase, accountId, crew.id, jobId, Number(crew.hourly_rate) || 0);
+    await clockIn(supabase, accountId, crew.id, jobId, Number(crew.hourly_rate) || 0, undefined, undefined, geofenceEvidence);
   } catch (error) {
     // Everything that can go wrong here is worth SAYING — "already clocked in
     // on another job" is the one a crew member actually hits, and a silent
@@ -216,10 +249,34 @@ export async function clockOutFieldAction(jobId: string, formData: FormData) {
   if (!entry || entry.job_id !== jobId) redirect(`/field/jobs/${jobId}?clock=${encodeURIComponent('No open shift to clock out of.')}`);
 
   const note = String(formData.get('description') ?? '').trim() || null;
+
+  let geofenceEvidence: {
+    status?: string | null;
+    distanceFt?: number | null;
+    accuracyMeters?: number | null;
+    verifiedAt?: string | null;
+  } | undefined = undefined;
+
+  const latStr = formData.get('lat');
+  const lngStr = formData.get('lng');
+  const accStr = formData.get('accuracy');
+  const status = formData.get('geofenceStatus');
+  const distStr = formData.get('distanceFt');
+
+  if (latStr && lngStr) {
+    geofenceEvidence = {
+      status: status ? String(status) : null,
+      distanceFt: distStr ? Number(distStr) : null,
+      accuracyMeters: accStr ? Number(accStr) : null,
+      verifiedAt: new Date().toISOString(),
+    };
+  }
+
   const { hours } = await clockOut(supabase, accountId, entry, {
     endedAt: new Date().toISOString(),
     crewName: crew.name,
     note,
+    geofenceEvidence,
   });
 
   revalidatePath(`/field/jobs/${jobId}`);

@@ -5,9 +5,12 @@
  * 1. Homeowner visits contractor website
  * 2. Homeowner requests estimate via AI intake
  * 3. Contractor receives pre-scored HOT lead (94/100)
- * 4. Contractor reviews & sends itemized quote with optional surge protection upgrade
+ * 4. Contractor reviews & sends itemized quote with optional lighting upgrade
  * 5. Homeowner approves upgrade, e-signs, pays $500 simulated deposit & books arrival
  * 6. Tour completion with direct links to start free or explore dashboard
+ *
+ * Standardized on Evergreen Lawn & Landscape (Royal Oak, MI) to unify the
+ * guided tour with the broader /demo/* exploratory fixture ecosystem.
  */
 
 export type TourStepMetadata = {
@@ -98,93 +101,97 @@ export const TOUR_STEPS: TourStepMetadata[] = [
   },
 ];
 
-export const DEMO_TOUR_CONTRACTOR = {
-  name: 'Timberline Electrical & Modernization',
-  trade: 'Licensed Electrical Contractor',
-  phone: '(973) 555-0199',
-  email: 'service@timberline-electric.com',
-  city: 'Maplewood',
-  state: 'NJ',
-  zip: '07040',
-  serviceArea: 'Maplewood, Millburn, South Orange & Summit',
-  rating: '4.9 ★ (128 Google Reviews)',
-  license: 'NJ Lic #13VH09842100',
-  badge: 'Licensed · Insured · 24/7 Response',
-};
+export const DEMO_SHOWCASE_WORKFLOW = {
+  company: {
+    name: 'Evergreen Lawn & Landscape',
+    ownerName: 'Dana Whitfield',
+    trade: 'Lawn Care & Landscape Construction',
+    phone: '(248) 555-0142',
+    email: 'service@evergreenlawn.letsgetquoted.com',
+    city: 'Royal Oak',
+    state: 'MI',
+    zip: '48067',
+    serviceArea: 'Royal Oak, Ferndale, Berkley, Clawson & Troy',
+    rating: '4.9 ★ (128 Google Reviews)',
+    license: 'MI Lic #24VH09842100',
+    badge: 'Licensed · Insured · 24/7 Response',
+  },
+  customer: {
+    name: 'Taylor Brooks',
+    email: 'taylor.brooks@example.com',
+    phone: '(248) 555-0212',
+    address: '14 Pinehurst Dr',
+    city: 'Royal Oak',
+    state: 'MI',
+    zip: '48067',
+    propertyType: 'Single Family Residential · 3,200 sq ft lot',
+    projectArea: 'Rear patio & backyard living space',
+  },
+  job: {
+    id: 'JOB-2084',
+    leadId: 'LEAD-9042',
+    quoteId: 'Q-7721',
+    title: 'Paver Patio (380 sq ft) with Fire Pit & Seat Wall',
+    category: 'Hardscaping & Landscape Construction',
+    homeownerInquiry:
+      'Would love a custom paver patio with a built-in fire pit and seat wall for outdoor entertaining this summer. We have roughly 400 sq ft of space behind our kitchen slider. Can we get an itemized estimate with timeline?',
+    leadScore: 94,
+    leadScoreLabel: 'HOT · Immediate Action',
+    leadFitReason: 'High project value ($5k+), homeowner owns property, 2.1 miles from Thursday route.',
+    distanceMiles: 2.1,
+    timeline: 'Needs completion within 2 weeks',
+    urgency: 'High (Summer entertaining / upcoming event)',
+    quoteCreatedDate: 'Today',
+    scheduledDate: 'Thursday, Aug 28',
+    scheduledArrivalWindow: '8:00 AM – 10:00 AM',
+    estimatedDuration: '6 hours on site',
+    crewAssigned: 'Mike Torres (Crew Lead) & Jamal Reed',
 
-export const DEMO_TOUR_CUSTOMER = {
-  name: 'Sarah Jenkins',
-  email: 'sarah.jenkins@example.com',
-  phone: '(973) 555-0142',
-  address: '742 Evergreen Terrace',
-  city: 'Maplewood',
-  state: 'NJ',
-  zip: '07040',
-  propertyType: 'Single Family Residential · 2,400 sq ft',
-  panelLocation: 'Basement utility wall',
-  garageLocation: 'Attached 2-car garage (45 ft run)',
-};
+    lineItems: [
+      {
+        id: 'item-1',
+        title: '380 sq ft Unilock Paver Patio Installation',
+        description: 'Excavation, 6" compacted crushed aggregate base, 1" coarse bedding sand, precision paver lay, and polymeric sand jointing.',
+        amount: 2850,
+      },
+      {
+        id: 'item-2',
+        title: 'Integrated Curved Seat Wall (24 linear ft)',
+        description: 'Commercial retaining block core with smooth capstone, structural outdoor adhesive, and finished end pillars.',
+        amount: 650,
+      },
+      {
+        id: 'item-3',
+        title: 'Built-in Natural Stone Fire Pit Unit',
+        description: 'Heavy-gauge steel insert, fire-rated block enclosure, coping stone border, and integrated draft vents.',
+        amount: 850,
+      },
+      {
+        id: 'item-4',
+        title: 'Sub-base Drainage & Heavy Edge Restraint System',
+        description: 'Commercial snap edging with 10" steel spikes, geotextile separation fabric, and tie-in to downspout run.',
+        amount: 300,
+      },
+    ],
 
-export const DEMO_TOUR_JOB = {
-  id: 'JOB-2084',
-  leadId: 'LEAD-9042',
-  quoteId: 'Q-7721',
-  title: '200A Main Service Panel Upgrade & Level 2 EV Charger',
-  category: 'Electrical Modernization',
-  homeownerInquiry:
-    'Hi! We just purchased a Tesla Model Y and need a Level 2 charger installed in our attached garage. Our current main electric panel is an older 100A Federal Pacific box, so our electrician friend said we need a 200A heavy-up upgrade first. Can we get an itemized estimate?',
-  leadScore: 94,
-  leadScoreLabel: 'HOT · Immediate Action',
-  leadFitReason: 'High project value ($4k+), homeowner owns property, 2.1 miles from Thursday route.',
-  distanceMiles: 2.1,
-  timeline: 'Needs completion within 2 weeks',
-  urgency: 'High (Vehicle arrives next week)',
-  quoteCreatedDate: 'Today',
-  scheduledDate: 'Thursday, Aug 28',
-  scheduledArrivalWindow: '8:00 AM – 10:00 AM',
-  estimatedDuration: '6 hours on site',
-  crewAssigned: 'Marcus Rivera (Lead Master Electrician) & Tyler Hayes',
+    optionalUpgrades: [
+      {
+        id: 'upgrade-lighting',
+        title: 'Low-Voltage Hardscape & Step LED Lighting Package',
+        description: '6 flush-mount under-cap LED lights, waterproof wiring, and commercial transformer with smart dusk-to-dawn timer.',
+        amount: 350,
+        recommended: true,
+      },
+    ],
 
-  lineItems: [
-    {
-      id: 'item-1',
-      title: '200-Amp Main Service Panel Upgrade',
-      description: 'Remove existing 100A panel, install Square D QO 40-space 200A main breaker panel, arc-fault/ground-fault dual function breakers.',
-      amount: 2850,
-    },
-    {
-      id: 'item-2',
-      title: 'Grounding Electrode & Bonding System (NEC 2023 Compliant)',
-      description: 'Drive dual copper grounding rods, install #4 bare copper grounding conductor to incoming water main with inter-system bonding bridge.',
-      amount: 650,
-    },
-    {
-      id: 'item-3',
-      title: 'Dedicated 50A Level 2 EV Charger Circuit',
-      description: 'Run 6/3 NM-B copper cable from panel to garage wall, install industrial-grade NEMA 14-50 receptacle in weatherproof enclosure.',
-      amount: 850,
-    },
-    {
-      id: 'item-4',
-      title: 'Municipal Permit Filing & Inspection Coordination',
-      description: 'Prepare electrical schematics, submit Maplewood Township permit application, and meet town inspector on site.',
-      amount: 300,
-    },
-  ],
+    baseTotal: 4650,
+    upgradeTotal: 350,
+    totalWithUpgrade: 5000,
+    requiredDeposit: 500,
+    depositPaidStatus: 'PAID ($500 via Apple Pay)',
+  },
+} as const;
 
-  optionalUpgrades: [
-    {
-      id: 'upgrade-surge',
-      title: 'Whole-Home Type 2 Surge Protection Device',
-      description: 'Square D HEPD80 whole-house surge protector (80kA surge current rating) protecting EV charger, HVAC, and smart appliances.',
-      amount: 350,
-      recommended: true,
-    },
-  ],
-
-  baseTotal: 4650,
-  upgradeTotal: 350,
-  totalWithUpgrade: 5000,
-  requiredDeposit: 500,
-  depositPaidStatus: 'PAID ($500 via Apple Pay)',
-};
+export const DEMO_TOUR_CONTRACTOR = DEMO_SHOWCASE_WORKFLOW.company;
+export const DEMO_TOUR_CUSTOMER = DEMO_SHOWCASE_WORKFLOW.customer;
+export const DEMO_TOUR_JOB = DEMO_SHOWCASE_WORKFLOW.job;

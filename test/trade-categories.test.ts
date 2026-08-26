@@ -57,7 +57,7 @@ describe('the shortlist and the A-Z list', () => {
     expect(names).toEqual([...names].sort((a, b) => a.localeCompare(b, 'en')));
     // Sorting by SLUG would put "hvac" between "handyman" and "insulation";
     // by NAME, "HVAC Contractors" lands under H beside "Home Inspectors".
-    expect(names[0]).toBe('Appliance Repair Services');
+    expect(names[0]).toBe('Air Duct & Dryer Vent Cleaners');
   });
 });
 

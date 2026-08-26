@@ -1689,7 +1689,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, mess
         : null;
 
   return (
-    <main className={styles.builderShell}>
+    <main className={styles.builderShell} data-tour-id="website:builder">
       {isGeneratingText && (
         <div className={styles.generatingOverlay} role="alert" aria-busy="true">
           <div className={styles.generatingCard}>

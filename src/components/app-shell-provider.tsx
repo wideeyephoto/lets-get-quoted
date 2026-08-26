@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useMemo, useState, type ReactNo
 
 type AppShellContextValue = {
   isNavOpen: boolean;
+  openNav: () => void;
   closeNav: () => void;
   toggleNav: () => void;
 };
@@ -17,12 +18,13 @@ export function AppShellProvider({ children }: { children: ReactNode }) {
   // retriggers the "close nav on route change" effect in AppShell, which
   // instantly reclosed the menu the moment it opened (visible on narrow
   // widths, where the panel's visibility actually depends on isNavOpen).
+  const openNav = useCallback(() => setIsNavOpen(true), []);
   const closeNav = useCallback(() => setIsNavOpen(false), []);
   const toggleNav = useCallback(() => setIsNavOpen((open) => !open), []);
 
   const value = useMemo<AppShellContextValue>(
-    () => ({ isNavOpen, closeNav, toggleNav }),
-    [isNavOpen, closeNav, toggleNav],
+    () => ({ isNavOpen, openNav, closeNav, toggleNav }),
+    [isNavOpen, openNav, closeNav, toggleNav],
   );
 
   return <AppShellContext.Provider value={value}>{children}</AppShellContext.Provider>;

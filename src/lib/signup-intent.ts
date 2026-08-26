@@ -139,13 +139,39 @@ export function serializeSignupIntent(intent: Partial<SignupIntent>): URLSearchP
   return params;
 }
 
+export const APP_SIGNUP_URL = 'https://app.letsgetquoted.com/start?goal=build_site';
+
 /**
  * Builds the canonical entry point URL `/start` with the given intent.
  */
 export function buildStartUrl(intent: Partial<SignupIntent>, baseUrl = 'https://app.letsgetquoted.com'): string {
   const params = serializeSignupIntent(intent);
   const query = params.toString();
-  return `${baseUrl}/start${query ? `?${query}` : ''}`;
+  const base = baseUrl.endsWith('/start') ? baseUrl : `${baseUrl.replace(/\/$/, '')}/start`;
+  return `${base}${query ? `?${query}` : ''}`;
+}
+
+/**
+ * Helper to build the marketing site's primary signup CTA with `goal=build_site`
+ * and optional trade, city, or source attribution without query string corruption.
+ */
+export function buildSignupUrl(
+  options?: {
+    trade?: string | null;
+    city?: string | null;
+    source?: SignupSource | null;
+  },
+  baseUrl = 'https://app.letsgetquoted.com',
+): string {
+  return buildStartUrl(
+    {
+      goal: 'build_site',
+      trade: options?.trade,
+      city: options?.city,
+      source: options?.source,
+    },
+    baseUrl,
+  );
 }
 
 /**
