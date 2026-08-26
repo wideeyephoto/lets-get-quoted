@@ -28,9 +28,14 @@ vi.mock('@/lib/permit-intel', async (importOriginal) => {
       tasks: [],
     }),
     recordPermitFeeExpense: vi.fn().mockResolvedValue({
-      id: 'cost-1',
-      amount: 125,
-      category: 'Permit & Government Fees',
+      cost: {
+        id: 'cost-1',
+        amount: 125,
+        category: 'Permit & Government Fees',
+      },
+      invoiceItem: null,
+      totalBilled: 125,
+      markupAmount: 0,
     }),
     listPermitDocuments: vi.fn().mockResolvedValue([]),
     registerPermitDocument: vi.fn().mockResolvedValue({
