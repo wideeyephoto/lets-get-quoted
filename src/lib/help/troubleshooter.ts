@@ -9,6 +9,7 @@ export interface TroubleshooterIntent {
   title: string;
   aliases: string[];
   articleId: string;
+  articleSlug?: string;
   explanation: string;
   estimatedTime: string;
 }
@@ -19,6 +20,7 @@ export interface TroubleshooterMatchResult {
   confidence: number;
   suggestedArticles?: {
     id: string;
+    slug?: string;
     title: string;
     category: string;
     readTime: string;
@@ -27,6 +29,7 @@ export interface TroubleshooterMatchResult {
 
 export interface MinimalArticle {
   id: string;
+  slug?: string;
   title: string;
   category: string;
   readTime: string;
@@ -53,6 +56,7 @@ export const TROUBLESHOOTER_INTENTS: TroubleshooterIntent[] = [
       'quote link broken'
     ],
     articleId: 'art-quote-send-troubleshooting',
+    articleSlug: 'quote-delivery-failures-quick-fix',
     explanation: 'Resolve customer quote delivery failures, expired token links, and approval permissions.',
     estimatedTime: '2 mins'
   },
@@ -75,6 +79,7 @@ export const TROUBLESHOOTER_INTENTS: TroubleshooterIntent[] = [
       'not receiving texts'
     ],
     articleId: 'art-sms-delivery-troubleshooting',
+    articleSlug: '10dlc-carrier-verification-pending-sms',
     explanation: 'Check 10DLC brand approval status, remaining SMS credits, and carrier delivery logs.',
     estimatedTime: '3 mins'
   },
@@ -93,9 +98,12 @@ export const TROUBLESHOOTER_INTENTS: TroubleshooterIntent[] = [
       'missing money',
       'missing payout',
       'funds',
-      'transfer'
+      'transfer',
+      'payout delayed',
+      'deposit delayed'
     ],
     articleId: 'art-stripe-payout-troubleshooting',
+    articleSlug: 'stripe-payout-schedules-holds',
     explanation: 'Trace deposit schedules, Stripe Connect verification holds, and bank account routing.',
     estimatedTime: '2 mins'
   },
@@ -118,6 +126,7 @@ export const TROUBLESHOOTER_INTENTS: TroubleshooterIntent[] = [
       'a record'
     ],
     articleId: 'art-domain-offline-troubleshooting',
+    articleSlug: 'custom-domain-dns-ssl-troubleshooting',
     explanation: 'Verify custom DNS A/CNAME records, SSL certificate generation, and registrar propagation.',
     estimatedTime: '4 mins'
   },
@@ -141,6 +150,7 @@ export const TROUBLESHOOTER_INTENTS: TroubleshooterIntent[] = [
       'cant sign in'
     ],
     articleId: 'art-team-access-troubleshooting',
+    articleSlug: 'crew-login-role-permissions',
     explanation: 'Resend crew invitations, unlock technician accounts, and audit role permission tiers.',
     estimatedTime: '2 mins'
   },
@@ -160,6 +170,7 @@ export const TROUBLESHOOTER_INTENTS: TroubleshooterIntent[] = [
       'missing from schedule'
     ],
     articleId: 'art-schedule-sync-troubleshooting',
+    articleSlug: 'dispatched-job-missing-calendar',
     explanation: 'Check booking confirmation status, crew truck assignment filters, and calendar sync.',
     estimatedTime: '2 mins'
   }
@@ -177,10 +188,15 @@ export function normalizeQuery(query: string): string {
 
 export function tokenizeQuery(query: string): string[] {
   const normalized = normalizeQuery(query);
-  const stopWords = new Set(['a', 'an', 'the', 'is', 'in', 'at', 'of', 'on', 'for', 'to', 'from', 'my', 'our', 'your', 'i', 'we', 'me', 'it', 'where', 'why', 'how']);
+  const stopWords = new Set([
+    'a', 'an', 'the', 'is', 'in', 'at', 'of', 'on', 'for', 'to', 'from',
+    'my', 'our', 'your', 'i', 'we', 'me', 'it', 'where', 'why', 'how',
+    'when', 'what', 'see', 'seeing', 'have', 'has', 'had', 'do', 'does',
+    'did', 'can', 'could', 'would', 'should', 'get', 'getting', 'am'
+  ]);
   return normalized
     .split(' ')
-    .filter(token => token.length > 0 && !stopWords.has(token));
+    .filter(token => token.length > 1 && !stopWords.has(token));
 }
 
 export function scoreIntent(query: string, intent: TroubleshooterIntent): number {
@@ -232,12 +248,7 @@ export function matchTroubleshooter(
     return {
       matched: false,
       confidence: 0,
-      suggestedArticles: allArticles.slice(0, 3).map(a => ({
-        id: a.id,
-        title: a.title,
-        category: a.category,
-        readTime: a.readTime
-      }))
+      suggestedArticles: []
     };
   }
 
@@ -248,29 +259,58 @@ export function matchTroubleshooter(
 
   const topMatch = scoredIntents[0];
 
+  // Intent matching threshold
   if (topMatch && topMatch.score >= 20) {
     return {
       matched: true,
       intent: topMatch.intent,
-      confidence: Math.min(topMatch.score / 100, 1)
+      confidence: Math.min(topMatch.score / 100, 1),
+      suggestedArticles: []
     };
   }
 
   const queryTokens = tokenizeQuery(query);
+  if (queryTokens.length === 0) {
+    return {
+      matched: false,
+      confidence: 0,
+      suggestedArticles: allArticles.slice(0, 3).map(a => ({
+        id: a.id,
+        slug: a.slug,
+        title: a.title,
+        category: a.category,
+        readTime: a.readTime
+      }))
+    };
+  }
+
   const scoredArticles = allArticles.map(article => {
+    const titleTokens = tokenizeQuery(article.title);
+    const categoryTokens = tokenizeQuery(article.category);
     const artText = normalizeQuery(`${article.title} ${article.category} ${article.content || ''}`);
-    let matchCount = 0;
+    
+    let score = 0;
     for (const token of queryTokens) {
-      if (artText.includes(token)) matchCount++;
+      if (titleTokens.includes(token)) {
+        score += 10;
+      } else if (categoryTokens.includes(token)) {
+        score += 5;
+      } else if (artText.includes(token)) {
+        score += 2;
+      }
     }
     return {
       article,
-      score: matchCount
+      score
     };
   }).sort((a, b) => b.score - a.score);
 
-  const suggestions = scoredArticles.slice(0, 3).map(sa => ({
+  const matchedArticles = scoredArticles.filter(sa => sa.score >= 5);
+  const hasStrongMatch = matchedArticles.length > 0;
+
+  const suggestions = (hasStrongMatch ? matchedArticles : scoredArticles).slice(0, 3).map(sa => ({
     id: sa.article.id,
+    slug: sa.article.slug,
     title: sa.article.title,
     category: sa.article.category,
     readTime: sa.article.readTime
@@ -278,9 +318,10 @@ export function matchTroubleshooter(
 
   return {
     matched: false,
-    confidence: 0,
+    confidence: hasStrongMatch ? Math.min(matchedArticles[0].score / 50, 0.8) : 0,
     suggestedArticles: suggestions.length > 0 ? suggestions : allArticles.slice(0, 3).map(a => ({
       id: a.id,
+      slug: a.slug,
       title: a.title,
       category: a.category,
       readTime: a.readTime

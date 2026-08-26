@@ -38,18 +38,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
  */
 const SHOTS = [
   {
-    src: '/product/insights.webp',
-    label: 'Insights',
-    focus: '40%',
-    alt: 'The Insights screen: what you kept over the last 90 days, revenue against costs, cash position and how long invoices have been owed.',
-  },
-  {
-    src: '/product/jobs.webp',
-    label: 'Jobs',
-    focus: '46%',
-    alt: 'The Jobs screen: the whole pipeline filtered by stage, a queue showing each job’s customer, value and date, and a map of where the work is.',
-  },
-  {
     src: '/product/website.webp',
     label: 'Website',
     // Past the control panel entirely, onto the live preview: on a phone the
@@ -58,6 +46,18 @@ const SHOTS = [
     // and the Edit header button both stay in frame.
     focus: '72%',
     alt: 'The website builder: a live, editable preview of the published page, with its headline, photo and instant-estimate form.',
+  },
+  {
+    src: '/product/jobs.webp',
+    label: 'Jobs',
+    focus: '46%',
+    alt: 'The Jobs screen: the whole pipeline filtered by stage, a queue showing each job’s customer, value and date, and a map of where the work is.',
+  },
+  {
+    src: '/product/insights.webp',
+    label: 'Insights',
+    focus: '40%',
+    alt: 'The Insights screen: what you kept over the last 90 days, revenue against costs, cash position and how long invoices have been owed.',
   },
 ];
 

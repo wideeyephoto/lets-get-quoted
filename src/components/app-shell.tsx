@@ -282,7 +282,13 @@ const PUBLIC_NAV = [
  * flagship header had, on the chrome that wraps the other marketing pages.
  * The label matches those pages now too: one promise across the whole site.
  */
-function getPrimaryAction() {
+function getPrimaryAction(isLoggedIn = false, pathname: string | null = null) {
+  if (isLoggedIn) {
+    return { href: '/dashboard', label: 'Open dashboard' };
+  }
+  if (pathname?.startsWith('/help')) {
+    return { href: APP_LOGIN_URL, label: 'Sign in to Dashboard' };
+  }
   return { href: APP_SIGNUP_URL, label: 'Build my free site' };
 }
 
@@ -354,7 +360,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
   // Stripe pill as inside /dashboard — never the logged-out marketing teaser.
   // /login stays bare so auth forms render isolated.
   const showAppRail = isLoggedIn && !isTransactional && !pathname.startsWith('/login');
-  const primaryAction = getPrimaryAction();
+  const primaryAction = getPrimaryAction(isLoggedIn, pathname);
   // The bare host for the live badge — "yoursite.letsgetquoted.com", no scheme.
   const siteHost = siteUrl ? siteUrl.replace(/^https?:\/\//, '').replace(/\/+$/, '') : null;
   // Middleware rewrites a wildcard subdomain/custom-domain request to

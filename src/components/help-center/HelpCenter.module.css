@@ -1852,6 +1852,10 @@ button.quickStepItem {
   color: #CBD5E1;
   font-size: 0.85rem;
   cursor: pointer;
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   transition: all 0.15s ease;
 }
 .btnOutline:hover {
@@ -1871,6 +1875,7 @@ button.quickStepItem {
   font-size: 0.85rem;
   font-weight: 800;
   cursor: pointer;
+  min-height: 42px;
   transition: background 0.15s ease, transform 0.15s ease;
 }
 .btnPrimary:hover {
@@ -1890,6 +1895,7 @@ button.quickStepItem {
   font-size: 0.9rem;
   font-weight: 800;
   cursor: pointer;
+  min-height: 44px;
   transition: background 0.15s ease;
 }
 .btnPrimaryBlock:hover {
@@ -1914,6 +1920,171 @@ button.quickStepItem {
   color: #94A3B8;
   font-size: 0.9rem;
   margin-bottom: 1.5rem;
+}
+
+/* Zero Match Fallback Card */
+.zeroMatchCard {
+  background: #0E1B20;
+  border: 1px solid rgba(255, 107, 53, 0.35);
+  border-radius: 14px;
+  padding: 1.75rem;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+}
+.zeroMatchHeader {
+  display: flex;
+  gap: 0.85rem;
+  align-items: flex-start;
+  margin-bottom: 1.25rem;
+}
+.zeroMatchHeader svg {
+  width: 24px;
+  height: 24px;
+  color: #FF8C42;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.zeroMatchTitle {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #FFFFFF;
+  margin-bottom: 0.35rem;
+}
+.zeroMatchDesc {
+  color: #CBD5E1;
+  font-size: 0.925rem;
+  line-height: 1.55;
+}
+.zeroMatchCategories {
+  background: rgba(15, 23, 42, 0.6);
+  border-radius: 10px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.zeroMatchCatLabel {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #CBD5E1;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.65rem;
+}
+.zeroMatchCatRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.zeroMatchPill {
+  min-height: 42px;
+  background: #15252B;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 20px;
+  padding: 8px 16px;
+  color: #E2E8F0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.zeroMatchPill:hover {
+  background: #1A2F37;
+  border-color: #2DD4BF;
+  color: #2DD4BF;
+}
+.zeroMatchActions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+/* In-Modal Governance Verification Box */
+.governanceModalBox {
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 1rem 1.25rem;
+  margin: 2rem 0 1.25rem;
+}
+.governanceModalTitle {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #FFFFFF;
+  margin-bottom: 0.5rem;
+}
+.governanceModalDetails {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  font-size: 0.825rem;
+  color: #CBD5E1;
+  margin-bottom: 0.5rem;
+}
+.governanceModalSources {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem;
+  font-size: 0.8rem;
+  color: #CBD5E1;
+  padding-top: 0.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+.modalSourceLink {
+  color: #38bdf8;
+  text-decoration: none;
+  font-weight: 500;
+}
+.modalSourceLink:hover {
+  text-decoration: underline;
+}
+
+/* Checking Status Badge */
+.badgeChecking {
+  background: rgba(56, 189, 248, 0.15);
+  color: #38bdf8;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 6px;
+  animation: pulseOpacity 1.5s infinite ease-in-out;
+}
+
+@keyframes pulseOpacity {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* Enriched Form Elements */
+.formRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.85rem;
+}
+@media (max-width: 500px) {
+  .formRow {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+}
+.selectInput {
+  width: 100%;
+  background: #101D22;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: #FFFFFF;
+  font-size: 0.9rem;
+  outline: none;
+  cursor: pointer;
+  min-height: 42px;
+}
+.selectInput:focus {
+  border-color: #2DD4BF;
+}
+.selectInput option {
+  background: #0B1519;
+  color: #FFFFFF;
 }
 
 /* Floating Toast */
@@ -1941,26 +2112,58 @@ button.quickStepItem {
 /* ================= MOBILE RULES (<= 768px) ================= */
 @media (max-width: 768px) {
   .subNavbar {
-    height: 56px;
+    height: auto;
+    padding: 6px 0;
+  }
+  .subNavContainer {
+    padding: 0 0.75rem;
+    gap: 0.5rem;
+  }
+  .subNavLeft {
+    gap: 0.75rem;
+    overflow: hidden;
+    flex: 1;
   }
   .subNavLinks {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding: 2px 0;
+  }
+  .subNavLinks::-webkit-scrollbar {
     display: none;
+  }
+  .subNavLink {
+    padding: 6px 10px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.06);
+    font-size: 0.8rem;
+    color: #cbd5e1;
+    min-height: 36px;
+    display: inline-flex;
+    align-items: center;
   }
   .statusTextDesktop, .btnTextDesktop {
     display: none;
   }
   .statusPillBtn {
-    padding: 8px;
+    padding: 8px 12px;
+    min-height: 42px;
   }
   .btnPrimarySm {
-    padding: 8px;
+    padding: 8px 12px;
+    min-height: 42px;
   }
 
   .heroSection {
     padding: 32px 16px 24px;
   }
   .heroTitle {
-    font-size: clamp(2.25rem, 10vw, 3rem);
+    font-size: clamp(2rem, 9vw, 2.75rem);
   }
   .hotkeyBadge {
     display: none;
@@ -1971,14 +2174,22 @@ button.quickStepItem {
   .quickChipsWrapper {
     flex-direction: column;
     align-items: flex-start;
-    gap: 0.4rem;
+    gap: 0.5rem;
   }
   .quickChipsScroll {
     width: 100%;
+    scroll-snap-type: x mandatory;
+    padding-bottom: 6px;
+  }
+  .quickChipBtn {
+    min-height: 42px;
+    padding: 8px 14px;
+    font-size: 0.85rem;
+    scroll-snap-align: start;
   }
 
   .sectionContainer {
-    padding: 48px 16px;
+    padding: 40px 16px;
   }
   .commonFixCard, .bentoCard, .templateCard, .supportChannelCard {
     padding: 16px;
