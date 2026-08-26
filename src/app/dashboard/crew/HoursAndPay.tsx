@@ -122,11 +122,9 @@ type CrewPick = CrewView | 'overview';
 type Layout = CrewPick;
 
 const CREW_VIEW_OPTIONS: ViewOption<CrewPick>[] = [
+  { id: 'grouped', label: 'Action queue', hint: 'Sections by what needs doing' },
   { id: 'table', label: 'Table', hint: 'Every crew member in one list' },
-  { id: 'grouped', label: 'Grouped', hint: 'Sections by what needs doing' },
-  { id: 'rail', label: 'Review', hint: 'Table with the actions pinned beside it' },
-  { id: 'focus', label: 'Focus', hint: 'One person at a time — their timesheet, approval and pay' },
-  overviewOption<CrewPick>('Everyone in a list, one open beside it — all three tabs'),
+  overviewOption<CrewPick>('Everyone in a list, one open beside it — master-detail'),
 ];
 
 // Views that put the rail beside the table rather than under it. They need the
@@ -136,12 +134,13 @@ function isRailView(view: CrewView): boolean {
 }
 
 // The order the sections appear in is the order the work happens in: sort out
-// the exceptions, pay who's owed, then everything already settled.
+// the exceptions, approve ready shifts, pay who's owed, then everything already settled.
 const GROUPS = [
-  { id: 'needs_review', label: 'Needs review', tone: 'alert' as const },
-  { id: 'unpaid', label: 'Unpaid', tone: 'warn' as const },
-  { id: 'paid', label: 'Paid', tone: 'ok' as const },
-  { id: 'no_hours', label: 'No hours', tone: 'muted' as const },
+  { id: 'needs_review', label: '🚨 Needs attention & anomalies', tone: 'alert' as const },
+  { id: 'ready_to_approve', label: '⏳ Shifts ready to approve', tone: 'warn' as const },
+  { id: 'unpaid', label: '💵 Approved (Unpaid)', tone: 'warn' as const },
+  { id: 'paid', label: '✅ Paid & settled', tone: 'ok' as const },
+  { id: 'no_hours', label: 'No hours logged', tone: 'muted' as const },
 ];
 
 /**
@@ -2504,17 +2503,15 @@ function GroupedCrew({
                     Review all
                   </button>
                 ) : null}
+                {group.id === 'ready_to_approve' && members.length > 0 ? (
+                  <button type="button" className="btn secondary" onClick={() => onApproveGroup(members.map(rowKey))}>
+                    Approve all ({members.length})
+                  </button>
+                ) : null}
                 {group.id === 'unpaid' && payAvailable && payable.length > 0 ? (
-                  <>
-                    {members.some((row) => row.review !== 'approved') ? (
-                      <button type="button" className="btn secondary" onClick={() => onApproveGroup(payable.map(rowKey))}>
-                        Approve all
-                      </button>
-                    ) : null}
-                    <button type="button" className="btn secondary" onClick={() => onPayGroup(payable.map(rowKey))}>
-                      Mark all as paid
-                    </button>
-                  </>
+                  <button type="button" className="btn secondary" onClick={() => onPayGroup(payable.map(rowKey))}>
+                    Mark all as paid ({payable.length})
+                  </button>
                 ) : null}
                 {group.id === 'paid' && members.length > 0 ? (
                   <button type="button" className="btn secondary" onClick={onHistory}>

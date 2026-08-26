@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
 import { requireOfficeContext } from '@/lib/auth';
 import { listCrew, listCrewAssignmentsForJobs } from '@/lib/crew';
 import { fieldAppDetail, fieldAppState } from '@/lib/crew-invite';
@@ -8,9 +9,6 @@ import { createCrewPhotoUrls } from '@/lib/crew-photo-storage';
 import { listJobs } from '@/lib/jobs';
 import { payMoney } from '@/lib/crew-pay';
 import { formatPhoneDashes } from '@/lib/phone';
-// The pay-period rollup, the pay day, the open shifts and the previous-period
-// comparison all moved into lib/crew-pay-view, which the logged-out demo reads
-// too. Twenty-four imports left this file with them.
 import { normalizePeriodMode, normalizeOffset, resolvePayPeriod, summarizeJobLabor } from '@/lib/labor';
 import { CREW_ROSTER_VIEW_COOKIE, CREW_SKIN_COOKIE, CREW_THEME_COOKIE, CREW_VIEW_COOKIE, normalizeCrewSkin, normalizeCrewTheme, normalizeCrewView, normalizeRosterView } from '@/lib/dashboard-views';
 import { loadCrewPayView } from '@/lib/crew-pay-view';
@@ -18,62 +16,33 @@ import { payBasisFromCrew, payRateLabel } from '@/lib/pay-types';
 import { normalizePayrollProvider } from '@/lib/payroll-export';
 import { laborTotalsByCrew, listLaborEntries } from '@/lib/labor-data';
 import { LABOR_RULE_COLUMNS, LABOR_SETTINGS_COOKIE, laborRulesFromAccount, normalizeLaborSettings } from '@/lib/labor-settings';
-import { isTimeClockAvailable } from '@/lib/time-clock-data';
-import { isLiveMessagingEnvironment } from '@/lib/sms';
-import { listSubcontractorRequests, loadSubcontractors, todayIn } from '@/lib/subcontractor-dispatch-data';
+import { isTimeClockAvailable, listOpenShifts } from '@/lib/time-clock-data';
+import { loadSubcontractors, todayIn } from '@/lib/subcontractor-dispatch-data';
 import { normalizeWorkerType } from '@/lib/subcontractors';
-import { loadCrewLocationMapSnapshot } from '@/lib/crew-location';
 import CrewRoster, { type CrewRow } from './CrewRoster';
 import HoursAndPay from './HoursAndPay';
-import JobRequests from './JobRequests';
 import LaborByJob from './LaborByJob';
-import LiveCrewMap from './LiveCrewMap';
+import CrewPeriodBar from './CrewPeriodBar';
 import TimeClockCard from './TimeClockCard';
 import AddPersonMenu from './AddPersonMenu';
 import styles from './crew.module.css';
 
 export const metadata = { title: 'Crew & Labor' };
-
-// Crew & subcontractors — the people who do the work, whoever employs them.
-//
-// FOUR SECTIONS, and the fourth is the one that changed what this page is. It
-// used to be three: a roster, the hours those people logged, and what that labor
-// did to each job's budget. Job requests is different in kind — it is not a
-// record of work done, it is the act of finding somebody to do it — and it sits
-// here rather than on its own page because the firms it dispatches to ARE the
-// directory on the first tab. Splitting them would have meant two places to keep
-// a subcontractor's insurance date up to date.
-//
-// Tabs are links rather than client state so a tab is shareable, back works, and
-// the server only fetches what the open tab actually needs.
-
 export const dynamic = 'force-dynamic';
 
 const TABS = [
-  { id: 'people', label: 'People' },
-  { id: 'requests', label: 'Job requests' },
-  { id: 'hours', label: 'Hours & pay' },
-  { id: 'jobs', label: 'Labor by job' },
-  { id: 'map', label: '📍 Live GPS' },
+  { id: 'team', label: 'Team' },
+  { id: 'timecards', label: 'Timecards' },
+  { id: 'jobs', label: 'Job labor' },
 ] as const;
 
 type TabId = (typeof TABS)[number]['id'];
 
-/**
- * 'crew' still means People.
- *
- * The old tab was called that, and the id is in the sidebar's New menu
- * (?tab=crew&add=1), in the Payroll redirect, in the Job Costing settings copy
- * and in every bookmark an owner has made in a year of using this page.
- * Renaming the tab without keeping the alias would have quietly sent all of them
- * to the default — which is the same tab, but only by luck, and the &add=1 that
- * rides with the first one would have opened a drawer on a page that had just
- * ignored half its own URL.
- */
 function normalizeTab(value: unknown): TabId {
-  if (value === 'requests' || value === 'hours' || value === 'jobs' || value === 'map') return value;
-  if (value === 'crew') return 'people';
-  return TABS.some((tab) => tab.id === value) ? (value as TabId) : 'people';
+  if (value === 'timecards' || value === 'hours') return 'timecards';
+  if (value === 'jobs' || value === 'labor' || value === 'job-labor') return 'jobs';
+  if (value === 'team' || value === 'people' || value === 'crew') return 'team';
+  return 'team';
 }
 
 function initialsFor(name: string) {
@@ -98,28 +67,23 @@ export default async function CrewLaborPage({
     from?: string;
     to?: string;
     crew?: string;
-    /** "?worker=subcontractor" — the People tab, filtered to one kind of person. */
     worker?: string;
-    /**
-     * "?add=1" — open the add-crew drawer. "?add=sub" opens the subcontractor one.
-     *
-     * Read on the CLIENT, by AddCrewDrawer's useSearchParams, and deliberately
-     * not passed down from here. This page used to hand it over as a prop that
-     * the roster fed to useState, where it was an initializer and therefore
-     * ignored on every soft navigation after the first — which is exactly why
-     * the header button did nothing. It is listed here because it is part of
-     * this route's contract, not because anything on the server acts on it.
-     */
+    risk?: string;
     add?: string;
   };
 }) {
+  // Operational features moved to Schedule
+  if (searchParams.tab === 'map') {
+    redirect('/dashboard/schedule/dispatch');
+  }
+  if (searchParams.tab === 'requests') {
+    redirect('/dashboard/schedule/requests');
+  }
+
   const { supabase, accountId, capabilities, role } = await requireOfficeContext('crew.read');
   const canViewPay = role === 'owner' || capabilities.has('crew_pay.read');
   const tab = normalizeTab(searchParams.tab);
-  // Pay periods are cut in the CONTRACTOR's zone, not the server's — on Vercel
-  // the server is UTC, which put every Saturday evening of an Eastern shop into
-  // the following week's payroll. And the rules that decide an amount live on
-  // the ACCOUNT, so a phone and a laptop cannot total the same week differently.
+
   const { data: accountRules } = await supabase
     .from('accounts')
     .select(`timezone, require_separate_payer, payroll_provider, ${LABOR_RULE_COLUMNS}`)
@@ -132,8 +96,6 @@ export default async function CrewLaborPage({
   );
   const requireSeparatePayer = (accountRules as { require_separate_payer?: boolean } | null)?.require_separate_payer === true;
 
-  // No period in the URL means "whatever this account calls a pay period",
-  // which is the setting — so the tab opens on their cadence, not on a week.
   const period = resolvePayPeriod(
     searchParams.period ? normalizePeriodMode(searchParams.period) : settings.periodMode,
     normalizeOffset(searchParams.offset),
@@ -146,37 +108,45 @@ export default async function CrewLaborPage({
     crew.map((member) => member.photo_path).filter((path): path is string => Boolean(path)),
   );
 
-  // The subcontractor half of the directory, read whole — profile, compliance
-  // and the six performance numbers — but only on the two tabs that show any of
-  // it. Labor by job pays for none of this.
   const today = todayIn(timeZone);
   const subs =
-    tab === 'people' || tab === 'requests'
+    tab === 'team'
       ? await loadSubcontractors(supabase, accountId, { today, includeArchived: true })
       : [];
   const subsById = new Map(subs.map((sub) => [sub.id, sub]));
 
-  const requests = tab === 'requests' ? await listSubcontractorRequests(supabase, accountId) : [];
-
   const activeCrew = crew.filter((member) => member.active);
   const assignableJobs = jobs.filter((job) => job.status !== 'complete' && job.status !== 'archived');
 
-  // Invert jobId -> crewIds into crewId -> open jobs, so each row can show what
-  // the member is on right now (and mark idle active members as available).
   const assignmentsByJob = await listCrewAssignmentsForJobs(supabase, accountId, assignableJobs.map((job) => job.id));
   const jobsById = new Map(assignableJobs.map((job) => [job.id, job]));
   const jobsByCrew: Record<string, { id: string; ref: string; clientName: string }[]> = {};
+  const jobsTodayByCrew: Record<string, { id: string; ref: string; clientName: string }[]> = {};
+
+  const isJobScheduledToday = (job: { scheduled_for?: string | null; scheduled_until?: string | null }) => {
+    if (!job.scheduled_for) return false;
+    const start = job.scheduled_for;
+    const end = job.scheduled_until || job.scheduled_for;
+    return start <= today && today <= end;
+  };
+
   for (const [jobId, crewIds] of Object.entries(assignmentsByJob)) {
     const job = jobsById.get(jobId);
     if (!job) continue;
+    const isToday = isJobScheduledToday(job);
     for (const crewId of crewIds) {
       const bucket = jobsByCrew[crewId] ?? (jobsByCrew[crewId] = []);
       bucket.push({ id: job.id, ref: job.ref, clientName: job.client_name });
+      if (isToday) {
+        const todayBucket = jobsTodayByCrew[crewId] ?? (jobsTodayByCrew[crewId] = []);
+        todayBucket.push({ id: job.id, ref: job.ref, clientName: job.client_name });
+      }
     }
   }
 
-  // Hours for the roster's "this pay period" summary. Cheap enough to always
-  // load: it's the number that makes a roster row worth reading.
+  const openShiftsList = tab === 'timecards' || tab === 'team' ? await listOpenShifts(supabase, accountId) : [];
+  const openShiftCrewIds = new Set(openShiftsList.map((s) => s.crewId));
+
   const totals = await laborTotalsByCrew(supabase, accountId, { startIso: period.startIso, endIso: period.endIso });
 
   const crewRows: CrewRow[] = crew.map((member) => {
@@ -185,9 +155,6 @@ export default async function CrewLaborPage({
     return {
       id: member.id,
       name: member.name,
-      // Read off the row rather than off `sub`, because the People tab shows
-      // everybody and `sub` is only populated for subcontractors. An employee
-      // resolves to 'employee' here whether or not the migration has run.
       workerType: normalizeWorkerType((member as unknown as Record<string, unknown>).worker_type),
       companyName: sub?.profile.companyName ?? null,
       displayName: sub?.displayName ?? member.name,
@@ -213,8 +180,6 @@ export default async function CrewLaborPage({
       annualSalary: canViewPay && member.annual_salary != null ? Number(member.annual_salary) : null,
       dayRate: canViewPay && member.day_rate != null ? Number(member.day_rate) : null,
       payrollId: canViewPay ? member.payroll_id ?? null : null,
-      // Reads from the pay basis, so a salaried member shows "$72,000.00/yr"
-      // rather than the derived hourly figure nobody typed.
       rateLabel: canViewPay ? payRateLabel(payBasisFromCrew(member)) : '',
       phone: member.phone || null,
       phoneLabel: member.phone ? formatPhoneDashes(member.phone) : null,
@@ -223,27 +188,18 @@ export default async function CrewLaborPage({
       permissions: arrivalPermissionsFromCrew(member as unknown as Record<string, unknown>),
       canShareWorkLocation: member.can_share_work_location !== false,
       active: member.active,
-      // The whole invitation, not "has a user_id". See lib/crew-invite for why
-      // three states derived from two booleans could not describe an invitation
-      // that had expired, or access that had been taken away.
       fieldApp: fieldAppState(member),
       fieldAppDetail: fieldAppDetail(member),
       jobs: jobsByCrew[member.id] ?? [],
+      jobsToday: jobsTodayByCrew[member.id] ?? [],
+      isBusyToday: openShiftCrewIds.has(member.id) || (jobsTodayByCrew[member.id] ?? []).length > 0,
       periodHours: bucket?.hours ?? 0,
       periodPay: canViewPay ? (bucket?.pay ?? 0) : 0,
-      // payMoney, not formatMoney. formatMoney rounds to whole dollars, which is
-      // right for a margin headline and wrong for a person: this roster printed
-      // "$305" beside a name while the Hours & pay tab printed "$304.50" for the
-      // same crew member in the same period, from the same figure. Two tabs of
-      // one page disagreeing about one number reads as a product that cannot
-      // add up. payMoney is the formatter Hours & pay already uses, and it is
-      // pure, so both tabs now derive their answer from one place.
       periodPayLabel: canViewPay ? payMoney(bucket?.pay ?? 0) : '',
       createdAt: member.created_at,
     };
   });
 
-  // Only the open tab pays for its own reads.
   const laborEntries =
     tab === 'jobs'
       ? await listLaborEntries(supabase, accountId, { startIso: period.startIso, endIso: period.endIso, crewId: null })
@@ -252,23 +208,11 @@ export default async function CrewLaborPage({
 
   const crewView = normalizeCrewView(cookies().get(CREW_VIEW_COOKIE)?.value);
   const rosterView = normalizeRosterView(cookies().get(CREW_ROSTER_VIEW_COOKIE)?.value);
-  // The page theme, not a layout. Read once here and worn by the whole shell so
-  // all three tabs — including Labor by job, which has no picker — look like one
-  // page rather than changing character as you move across them.
   const crewTheme = normalizeCrewTheme(cookies().get(CREW_THEME_COOKIE)?.value);
-  // The skin is independent of the theme above: one decides how the page looks,
-  // the other how it is laid out, and they compose.
   const crewSkin = normalizeCrewSkin(cookies().get(CREW_SKIN_COOKIE)?.value);
 
-  // Hours & pay, in one read — the rollup, the pay day, what is still owed from
-  // earlier periods, the open shifts and the previous period's comparison. Lives
-  // in lib/crew-pay-view so the logged-out demo renders this tab from exactly
-  // the same figures rather than assembling its own set.
-  //
-  // Only the grouped layout shows the comparison, so that read is still paid for
-  // by the view rather than by the tab.
   const payView =
-    tab === 'hours'
+    tab === 'timecards'
       ? await loadCrewPayView(supabase, accountId, {
           period,
           settings,
@@ -279,18 +223,8 @@ export default async function CrewLaborPage({
           searchParams,
         })
       : null;
-  // Time-clock configuration now sits beside the hours it produces. The pay
-  // view already loaded the mode and open shifts, so the only extra read is the
-  // migration-availability check needed to explain a disabled save.
-  const timeClockMode = payView?.timeClockMode ?? 'off';
-  const timeClockAvailable = tab === 'hours' ? await isTimeClockAvailable(supabase, accountId) : false;
-  const crewOpenShifts = payView?.openShifts ?? [];
 
-  // The map tab pays for its own snapshot (active shifts, jobs, latest locations)
-  const mapSnapshot =
-    tab === 'map'
-      ? await loadCrewLocationMapSnapshot(supabase, accountId, { canViewPay })
-      : null;
+  const timeClockAvailable = tab === 'timecards' ? await isTimeClockAvailable(supabase, accountId) : false;
 
   const tabHref = (next: TabId) => {
     const query = new URLSearchParams();
@@ -303,31 +237,18 @@ export default async function CrewLaborPage({
   };
 
   return (
-    // Review pins the actions beside the table, which only fits if the shell
-    // stops capping content at 1100px. Driven by the cookie so the width is
-    // right on first paint; picking a view refreshes to pick the change up.
     <main
       className={[
         'wide-shell',
         'workspace-shell',
-        // The stable hook. Unconditional on purpose: it is what tells the shell
-        // this is the crew page at all, and the cap rule reads `crew-wide` off
-        // it to decide whether this particular view keeps the standard column.
         'crew-shell',
         crewTheme === 'focus' ? 'crew-focus' : '',
-        // Two classes: one generic hook the structural rules hang off, one
-        // per-skin so the tokens can differ. Standard adds neither, so the
-        // untouched page is byte-identical to what it was.
         crewSkin !== 'standard' ? 'crew-skin' : '',
         crewSkin !== 'standard' ? `crew-skin-${crewSkin}` : '',
-        // Focus's rail, the board columns and the nine-column table all need the
-        // shell to stop capping content at 1100px.
-        // Overview is capped at the standard width whatever layout is stored
-        // underneath it: a list beside one open thing does not need 1600px.
         crewTheme !== 'overview' &&
         (crewTheme === 'focus' ||
-          (tab === 'hours' && crewView === 'rail') ||
-          (tab === 'people' && (rosterView === 'board' || rosterView === 'table')))
+          (tab === 'timecards' && crewView === 'rail') ||
+          (tab === 'team' && (rosterView === 'board' || rosterView === 'table')))
           ? 'crew-wide'
           : '',
       ]
@@ -337,10 +258,17 @@ export default async function CrewLaborPage({
       <section className={`panel workspace-section-card ${styles.crewPanel}`}>
         <header className={styles.pageHead}>
           <div>
-            <p className="eyebrow">Team</p>
-            <h1 className={styles.pageTitle}>Crew &amp; subcontractors</h1>
+            <p className="eyebrow">Team &amp; Labor</p>
+            <h1 className={styles.pageTitle}>Crew &amp; Labor</h1>
           </div>
           <div className={styles.pageHeadActions}>
+            <Link
+              href="/dashboard/schedule/dispatch"
+              className="btn secondary"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.84rem' }}
+            >
+              <span>Live Dispatch →</span>
+            </Link>
             <Link
               href="/dashboard/settings#office-team"
               className="btn secondary"
@@ -354,27 +282,16 @@ export default async function CrewLaborPage({
               </svg>
               <span>Manage Seats &amp; Staff</span>
             </Link>
-            {tab === 'people' ? (
-              // No #add-crew fragment any more, and that is the point. The old
-              // link scrolled to a collapsed toggle at the bottom of the roster
-              // that a soft navigation never opened — the search parameter alone
-              // now opens the drawer (AddCrewDrawer reads it), and a dangling
-              // hash pointing at an element that no longer exists would only
-              // scroll the page for no reason.
+            {tab === 'team' ? (
               <AddPersonMenu
-                employeeHref="/dashboard/crew?tab=people&add=1"
-                subcontractorHref="/dashboard/crew?tab=people&add=sub"
+                employeeHref="/dashboard/crew?tab=team&add=1"
+                subcontractorHref="/dashboard/crew?tab=team&add=sub"
               />
-            ) : null}
-            {tab === 'requests' && subs.length > 0 && assignableJobs.length > 0 ? (
-              <Link href="/dashboard/crew/requests/new" className="btn primary">
-                + New job request
-              </Link>
             ) : null}
           </div>
         </header>
 
-        <nav className={styles.tabs} aria-label="Crew and subcontractor sections">
+        <nav className={styles.tabs} aria-label="Crew and labor sections">
           {TABS.map((item) => (
             <Link
               key={item.id}
@@ -387,28 +304,31 @@ export default async function CrewLaborPage({
           ))}
         </nav>
 
-        {tab === 'people' ? (
+        {tab !== 'team' ? (
+          <CrewPeriodBar
+            period={period}
+            tab={tab}
+            basePath="/dashboard/crew"
+            extraParams={{
+              crew: searchParams.crew,
+              risk: searchParams.risk,
+            }}
+          />
+        ) : null}
+
+        {tab === 'team' ? (
           <CrewRoster
             rows={crewRows}
             assignableJobs={assignableJobs.map((job) => ({ id: job.id, ref: job.ref, clientName: job.client_name }))}
             periodLabel={period.rangeLabel}
             initialStatus={searchParams.status === 'archived' ? 'archived' : 'active'}
             initialWorkerType={searchParams.worker === 'subcontractor' || searchParams.worker === 'employee' ? searchParams.worker : 'all'}
-            initialView={rosterView}
+            initialView={rosterView === 'table' ? 'table' : 'rows'}
             initialOverview={crewTheme === 'overview'}
           />
         ) : null}
 
-        {tab === 'requests' ? (
-          <JobRequests
-            entries={requests}
-            assignableJobs={assignableJobs.map((job) => ({ id: job.id, ref: job.ref, clientName: job.client_name }))}
-            subcontractorCount={subs.length}
-            simulated={!isLiveMessagingEnvironment()}
-          />
-        ) : null}
-
-        {tab === 'hours' && payView ? (
+        {tab === 'timecards' && payView ? (
           <HoursAndPay
             payrollProvider={normalizePayrollProvider((accountRules as { payroll_provider?: string } | null)?.payroll_provider)}
             rows={payView.rows}
@@ -433,7 +353,7 @@ export default async function CrewLaborPage({
             showTodayColumn={payView.showTodayColumn}
             todayKey={payView.todayKey}
             progress={payView.progress}
-            initialView={crewView}
+            initialView={crewView === 'table' ? 'table' : 'grouped'}
             initialSkin={crewSkin}
             initialOverview={crewTheme === 'overview'}
             comparison={payView.comparison}
@@ -451,6 +371,15 @@ export default async function CrewLaborPage({
           />
         ) : null}
 
+        {tab === 'timecards' ? (
+          <TimeClockCard
+            mode={payView?.timeClockMode ?? 'off'}
+            available={timeClockAvailable}
+            crewCount={activeCrew.length}
+            openShiftCount={payView?.openShifts?.length ?? 0}
+          />
+        ) : null}
+
         {tab === 'jobs' ? (
           <LaborByJob
             rows={jobRows}
@@ -463,34 +392,14 @@ export default async function CrewLaborPage({
               jobId: entry.job_id,
               crewId: entry.crew_id,
               crewName: entry.crew_name || 'Unassigned',
-              description: entry.description || 'Labor',
+              description: entry.description || '',
               hours: Number(entry.hours) || 0,
               amount: Number(entry.amount) || 0,
               loggedAt: entry.created_at,
             }))}
           />
         ) : null}
-
-        {tab === 'map' && mapSnapshot ? (
-          <LiveCrewMap
-            initialSnapshot={mapSnapshot}
-            accountId={accountId}
-            canViewPay={canViewPay}
-          />
-        ) : null}
       </section>
-
-      {/* Kept outside HoursAndPay's rows/no-rows branch so a completely empty
-          period can still turn the clock on. It now sits beside the hours it
-          creates instead of after the entire people directory. */}
-      {tab === 'hours' ? (
-        <TimeClockCard
-          mode={timeClockMode}
-          available={timeClockAvailable}
-          crewCount={activeCrew.length}
-          openShiftCount={crewOpenShifts.length}
-        />
-      ) : null}
     </main>
   );
 }

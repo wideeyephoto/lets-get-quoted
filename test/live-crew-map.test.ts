@@ -6,6 +6,7 @@ const read = (...parts: string[]) => readFileSync(join(process.cwd(), ...parts),
 
 const LIVE_MAP_TSX = read('src', 'app', 'dashboard', 'crew', 'LiveCrewMap.tsx');
 const CREW_PAGE_TSX = read('src', 'app', 'dashboard', 'crew', 'page.tsx');
+const DISPATCH_PAGE_TSX = read('src', 'app', 'dashboard', 'schedule', 'dispatch', 'page.tsx');
 const LOCATION_API_TS = read('src', 'app', 'api', 'field', 'location', 'route.ts');
 const FIELD_CLOCK_TSX = read('src', 'app', 'field', 'jobs', '[id]', 'FieldClock.tsx');
 const CREW_ROSTER_TSX = read('src', 'app', 'dashboard', 'crew', 'CrewRoster.tsx');
@@ -20,9 +21,10 @@ describe('Live Crew Map truth and correctness', () => {
     expect(LIVE_MAP_TSX).not.toContain('Water Heater Replacement');
   });
 
-  it('loads real mapSnapshot when tab is map in crew page.tsx', () => {
-    expect(CREW_PAGE_TSX).toMatch(/tab === 'map'[\s\S]*?loadCrewLocationMapSnapshot/);
-    expect(CREW_PAGE_TSX).toContain('initialSnapshot={mapSnapshot}');
+  it('loads real mapSnapshot in schedule live dispatch page and redirects crew map tab', () => {
+    expect(CREW_PAGE_TSX).toContain("redirect('/dashboard/schedule/dispatch')");
+    expect(DISPATCH_PAGE_TSX).toContain('loadCrewLocationMapSnapshot');
+    expect(DISPATCH_PAGE_TSX).toContain('initialSnapshot={mapSnapshot}');
   });
 
   it('removes hardcoded elapsed hours, distance, and rates from page.tsx', () => {
@@ -33,7 +35,7 @@ describe('Live Crew Map truth and correctness', () => {
 
   it('strictly gates labor cost and hourly rates behind canViewPay', () => {
     expect(LIVE_MAP_TSX).toContain('canViewPay && selectedTechnician.hourlyRate');
-    expect(CREW_PAGE_TSX).toMatch(/loadCrewLocationMapSnapshot\([^)]*canViewPay/);
+    expect(DISPATCH_PAGE_TSX).toMatch(/loadCrewLocationMapSnapshot\([^)]*canViewPay/);
   });
 
   it('includes interactive map controls: satellite toggle, fit-all, and geocoding', () => {

@@ -45,21 +45,20 @@ function rule(css: string, selector: string): string {
 
 describe('Crew & subcontractors — the page', () => {
   it('is titled for both kinds of person', () => {
-    expect(CREW_PAGE).toContain('Crew &amp; subcontractors');
+    expect(CREW_PAGE).toContain('Crew &amp; Labor');
   });
 
-  it('offers exactly the four sections, in order', () => {
+  it('offers focused 3-tab layout: Team, Timecards, Job labor', () => {
     const tabs = CREW_PAGE.slice(CREW_PAGE.indexOf('const TABS'), CREW_PAGE.indexOf('type TabId'));
-    expect(tabs).toContain("{ id: 'people', label: 'People' }");
-    expect(tabs).toContain("{ id: 'requests', label: 'Job requests' }");
-    expect(tabs).toContain("{ id: 'hours', label: 'Hours & pay' }");
-    expect(tabs).toContain("{ id: 'jobs', label: 'Labor by job' }");
-    expect(tabs.indexOf("'people'")).toBeLessThan(tabs.indexOf("'requests'"));
-    expect(tabs.indexOf("'requests'")).toBeLessThan(tabs.indexOf("'hours'"));
+    expect(tabs).toContain("{ id: 'team', label: 'Team' }");
+    expect(tabs).toContain("{ id: 'timecards', label: 'Timecards' }");
+    expect(tabs).toContain("{ id: 'jobs', label: 'Job labor' }");
+    expect(tabs.indexOf("'team'")).toBeLessThan(tabs.indexOf("'timecards'"));
+    expect(tabs.indexOf("'timecards'")).toBeLessThan(tabs.indexOf("'jobs'"));
   });
 
-  it('keeps ?tab=crew working, because the sidebar and every bookmark still say it', () => {
-    expect(CREW_PAGE).toContain("if (value === 'crew') return 'people'");
+  it('keeps legacy ?tab=crew and ?tab=people working', () => {
+    expect(CREW_PAGE).toContain("if (value === 'team' || value === 'people' || value === 'crew') return 'team'");
   });
 
   it('uses aria-current on the open tab rather than colour alone', () => {

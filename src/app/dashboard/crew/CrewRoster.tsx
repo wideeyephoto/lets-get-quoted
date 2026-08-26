@@ -101,6 +101,8 @@ export type CrewRow = {
   /** The date behind the chip: "Invited 3 days ago · link expired". */
   fieldAppDetail: string | null;
   jobs: { id: string; ref: string; clientName: string }[];
+  jobsToday?: { id: string; ref: string; clientName: string }[];
+  isBusyToday?: boolean;
   periodHours: number;
   periodPay: number;
   periodPayLabel: string;
@@ -131,10 +133,9 @@ type SortId = (typeof SORTS)[number]['id'];
 type RosterPick = RosterView | 'overview';
 
 const ROSTER_VIEW_OPTIONS: ViewOption<RosterPick>[] = [
-  { id: 'rows', label: 'Rows', hint: 'One line each, the everyday roster' },
-  { id: 'board', label: 'Board', hint: "Split by who's free and who's already assigned" },
+  { id: 'rows', label: 'Overview', hint: 'Everyday roster with rich profile drawer' },
   { id: 'table', label: 'Table', hint: 'Dense columns for a big crew' },
-  overviewOption<RosterPick>('One person open beside the list — all three tabs'),
+  overviewOption<RosterPick>('One person open beside the list — master-detail'),
 ];
 
 function isSimplifiedRosterView(view: RosterView): view is Extract<RosterView, 'rows' | 'board' | 'table'> {
@@ -253,6 +254,17 @@ export default function CrewRoster({
   const [filtersOpen, setFiltersOpen] = useState(false);
   const filtersId = useId();
   const [openId, setOpenId] = useState<string | null>(null);
+
+  const hoursHrefFor = useCallback(
+    (row: CrewRow): string => {
+      const query = new URLSearchParams();
+      query.set('tab', 'timecards');
+      query.set('crew', row.id);
+      const prefix = basePath.endsWith('/crew') ? basePath : `${basePath}/crew`;
+      return `${prefix}?${query.toString()}`.replace(/\/+/g, '/');
+    },
+    [basePath],
+  );
   // The crew member just added, until it has been read and acted on: it names
   // the person in the confirmation and tells the roster whose card to focus.
   const [added, setAdded] = useState<{ id: string; name: string; message: string } | null>(null);
@@ -372,8 +384,8 @@ export default function CrewRoster({
       if (role !== 'all' && row.roleLabel !== role) return false;
       if (appFilter === 'needs-setup' && !needsFieldAppSetup(row)) return false;
       if (appFilter !== 'all' && appFilter !== 'needs-setup' && row.fieldApp !== appFilter) return false;
-      if (jobFilter === 'available' && row.jobs.length > 0) return false;
-      if (jobFilter === 'assigned' && row.jobs.length === 0) return false;
+      if (jobFilter === 'available' && (row.isBusyToday ?? row.jobs.length > 0)) return false;
+      if (jobFilter === 'assigned' && !(row.isBusyToday ?? row.jobs.length > 0)) return false;
       if (jobFilter !== 'all' && jobFilter !== 'available' && jobFilter !== 'assigned') {
         if (!row.jobs.some((job) => job.id === jobFilter)) return false;
       }
@@ -463,16 +475,21 @@ export default function CrewRoster({
         amountTitle: periodTitle(periodLabel),
         badge: !row.active
           ? { label: 'Archived', tone: 'muted' as const }
-          : row.jobs.length > 0
-            // "Assigned", not "On a job". What the data says is: this person is
-            // attached to at least one job that is not complete or archived —
-            // which includes work scheduled for next month and work with no
-            // date at all. "On a job" reads as "right now", so a roster where
-            // everyone was assigned to future work announced a whole crew out
-            // on site with zero hours logged against any of it. The title still
-            // names the jobs.
-            ? { label: 'Assigned', tone: 'warn' as const, title: row.jobs.map((job) => `${job.ref} · ${job.clientName}`).join('\n') }
-            : { label: 'Available', tone: 'ok' as const },
+          : (row.isBusyToday ?? row.jobs.length > 0)
+            ? {
+                label: 'Assigned today',
+                tone: 'warn' as const,
+                title: (row.jobsToday && row.jobsToday.length > 0 ? row.jobsToday : row.jobs)
+                  .map((job) => `${job.ref} · ${job.clientName}`)
+                  .join('\n'),
+              }
+            : {
+                label: 'Available today',
+                tone: 'ok' as const,
+                title: row.jobs.length > 0
+                  ? `No work scheduled today (${row.jobs.length} upcoming/unscheduled assignments)`
+                  : 'No active job assignments',
+              },
         headline: [row.phoneLabel, row.email].filter(Boolean).join(' · ') || 'No contact on file',
         stats: [
           { label: periodLabel, value: `${row.periodHours} hrs`, title: periodTitle(periodLabel) },
@@ -507,19 +524,19 @@ export default function CrewRoster({
           </>
         ),
       })),
-    [visible, periodLabel],
+    [visible, periodLabel, hoursHrefFor],
   );
 
   // The board's whole point: who could you send somewhere right now. Archived
   // people get their own column rather than being called "available", which
   // they emphatically are not.
   const columns = useMemo(() => {
-    const free = visible.filter((row) => row.active && row.jobs.length === 0);
-    const busy = visible.filter((row) => row.active && row.jobs.length > 0);
+    const free = visible.filter((row) => row.active && !(row.isBusyToday ?? row.jobs.length > 0));
+    const busy = visible.filter((row) => row.active && Boolean(row.isBusyToday ?? row.jobs.length > 0));
     const archived = visible.filter((row) => !row.active);
     return [
-      { id: 'free', label: 'Available now', hint: 'Nobody has them booked today', rows: free },
-      { id: 'busy', label: 'Assigned', hint: 'On at least one job that is not finished', rows: busy },
+      { id: 'free', label: 'Available today', hint: 'No active shift or job scheduled today', rows: free },
+      { id: 'busy', label: 'Assigned today', hint: 'On the clock or scheduled for work today', rows: busy },
       ...(archived.length > 0 ? [{ id: 'archived', label: 'Archived', hint: 'Not on the crew right now', rows: archived }] : []),
     ];
   }, [visible]);
@@ -564,7 +581,7 @@ export default function CrewRoster({
           onClick={() => showRosterSlice('active', 'available')}
         >
           <strong>{totals.available}</strong>
-          <span>Available</span>
+          <span>Available today</span>
         </button>
         <button
           type="button"
@@ -572,7 +589,7 @@ export default function CrewRoster({
           onClick={() => showRosterSlice('active', 'assigned')}
         >
           <strong>{totals.onJob}</strong>
-          <span>Assigned</span>
+          <span>Assigned today</span>
         </button>
         {setup.total > 0 ? (
           <button
@@ -627,6 +644,81 @@ export default function CrewRoster({
             </label>
           </div>
         </div>
+
+        {activeFilterCount > 0 ? (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginTop: '0.5rem', alignItems: 'center' }}>
+            {workerType !== 'all' ? (
+              <button
+                type="button"
+                className="btn secondary sm"
+                style={{ fontSize: '0.75rem', padding: '2px 8px', borderRadius: '12px' }}
+                onClick={() => setWorkerType('all')}
+              >
+                <span>Type: {workerType === 'employee' ? 'Employees' : 'Subcontractors'}</span>
+                <span aria-hidden="true" style={{ marginLeft: '4px' }}>×</span>
+              </button>
+            ) : null}
+            {role !== 'all' ? (
+              <button
+                type="button"
+                className="btn secondary sm"
+                style={{ fontSize: '0.75rem', padding: '2px 8px', borderRadius: '12px' }}
+                onClick={() => setRole('all')}
+              >
+                <span>Role: {role}</span>
+                <span aria-hidden="true" style={{ marginLeft: '4px' }}>×</span>
+              </button>
+            ) : null}
+            {status !== 'active' ? (
+              <button
+                type="button"
+                className="btn secondary sm"
+                style={{ fontSize: '0.75rem', padding: '2px 8px', borderRadius: '12px' }}
+                onClick={() => setStatus('active')}
+              >
+                <span>Status: Archived</span>
+                <span aria-hidden="true" style={{ marginLeft: '4px' }}>×</span>
+              </button>
+            ) : null}
+            {jobFilter !== 'all' ? (
+              <button
+                type="button"
+                className="btn secondary sm"
+                style={{ fontSize: '0.75rem', padding: '2px 8px', borderRadius: '12px' }}
+                onClick={() => setJobFilter('all')}
+              >
+                <span>Availability: {jobFilter === 'available' ? 'Available today' : jobFilter === 'assigned' ? 'Assigned today' : 'Filtered Job'}</span>
+                <span aria-hidden="true" style={{ marginLeft: '4px' }}>×</span>
+              </button>
+            ) : null}
+            {appFilter !== 'all' ? (
+              <button
+                type="button"
+                className="btn secondary sm"
+                style={{ fontSize: '0.75rem', padding: '2px 8px', borderRadius: '12px' }}
+                onClick={() => setAppFilter('all')}
+              >
+                <span>App: {appFilter}</span>
+                <span aria-hidden="true" style={{ marginLeft: '4px' }}>×</span>
+              </button>
+            ) : null}
+            <button
+              type="button"
+              className="btn quiet sm"
+              style={{ fontSize: '0.75rem', color: 'var(--muted)' }}
+              onClick={() => {
+                setWorkerType('all');
+                setRole('all');
+                setStatus('active');
+                setJobFilter('all');
+                setAppFilter('all');
+                setQuery('');
+              }}
+            >
+              Clear filters
+            </button>
+          </div>
+        ) : null}
 
         <div id={filtersId} className={`${styles.filters}${filtersOpen ? ` ${styles.filtersOpen}` : ''}`}>
           <label className={styles.filter}>

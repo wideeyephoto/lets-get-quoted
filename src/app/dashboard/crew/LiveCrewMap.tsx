@@ -620,10 +620,11 @@ export default function LiveCrewMap({
 
       {/* ── Toolbar: Filter Pills, Worker Type & Search ── */}
       <div className={styles.toolbar}>
-        <div className={styles.filterPills} role="tablist" aria-label="Crew status filters">
+        <div className={styles.filterPills} role="group" aria-label="Crew status filters">
           <button
             type="button"
             className={`${styles.pill} ${filter === 'all' ? styles.pillActive : ''}`}
+            aria-pressed={filter === 'all'}
             onClick={() => setFilter('all')}
           >
             All Crew ({counts.total})
@@ -631,6 +632,7 @@ export default function LiveCrewMap({
           <button
             type="button"
             className={`${styles.pill} ${filter === 'live' ? styles.pillActive : ''}`}
+            aria-pressed={filter === 'live'}
             onClick={() => setFilter('live')}
           >
             🟢 Live Now ({counts.live})
@@ -638,6 +640,7 @@ export default function LiveCrewMap({
           <button
             type="button"
             className={`${styles.pill} ${filter === 'on_site' ? styles.pillActive : ''}`}
+            aria-pressed={filter === 'on_site'}
             onClick={() => setFilter('on_site')}
           >
             📍 On Site ({counts.onSite})
@@ -645,6 +648,7 @@ export default function LiveCrewMap({
           <button
             type="button"
             className={`${styles.pill} ${filter === 'en_route' ? styles.pillActive : ''}`}
+            aria-pressed={filter === 'en_route'}
             onClick={() => setFilter('en_route')}
           >
             🚗 En Route ({counts.enRoute})
@@ -653,6 +657,7 @@ export default function LiveCrewMap({
             <button
               type="button"
               className={`${styles.pill} ${styles.pillWarning} ${filter === 'off_site' ? styles.pillWarningActive : ''}`}
+              aria-pressed={filter === 'off_site'}
               onClick={() => setFilter('off_site')}
             >
               ⚠️ Off-Site ({counts.offSite})

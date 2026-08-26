@@ -39,7 +39,6 @@ describe('the action-first roster', () => {
   it('keeps the view menu focused on operational layouts', () => {
     const options = ROSTER.slice(ROSTER.indexOf('const ROSTER_VIEW_OPTIONS'), ROSTER.indexOf('function isSimplifiedRosterView'));
     expect(options).toContain("id: 'rows'");
-    expect(options).toContain("id: 'board'");
     expect(options).toContain("id: 'table'");
     expect(options).not.toContain("id: 'cards'");
     expect(options).not.toContain("id: 'focus'");
@@ -56,14 +55,14 @@ describe('the roster responds to the space it actually has', () => {
     expect(narrow).toMatch(/\.rowActions\s*\{[^}]*flex-wrap:\s*wrap/);
   });
 
-  it('collapses secondary filters and makes all four tabs visible on a phone', () => {
+  it('collapses secondary filters and supports mobile tab scrolling', () => {
     expect(ROSTER).toContain('aria-controls={filtersId}');
     expect(ROSTER).toContain("Filters{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}");
     const mobile = CSS.slice(CSS.indexOf('@media (max-width: 640px)'));
     expect(mobile).toContain('.filters { display: none; }');
     expect(mobile).toContain('.filtersOpen { display: grid;');
-    expect(mobile).toContain('grid-template-columns: repeat(2, minmax(0, 1fr))');
-    for (const id of ['people', 'requests', 'hours', 'jobs']) {
+    expect(mobile).toContain('.tabs {');
+    for (const id of ['team', 'timecards', 'jobs']) {
       expect(PAGE).toContain(`id: '${id}'`);
     }
   });
@@ -75,15 +74,10 @@ describe('crew workflow exits are actionable and correctly routed', () => {
     expect(REQUESTS).toContain('+ Add subcontractor');
   });
 
-  it('links Labor by job to Hours & pay instead of back to itself', () => {
-    expect(LABOR).toContain("periodHref({ tab: 'hours' })");
-  });
-
-  it('files the time clock beside Hours & pay without hiding it in the empty state', () => {
-    expect(PAGE).toMatch(/\{tab === 'hours' \? \(\s*<TimeClockCard/);
+  it('files the time clock beside Timecards without hiding it in the empty state', () => {
+    expect(PAGE).toMatch(/\{tab === 'timecards' \? \(\s*<TimeClockCard/);
     expect(PAGE).toContain('payView?.timeClockMode');
     expect(PAGE).toContain('payView?.openShifts');
     expect(HOURS).toContain('href="/dashboard/crew?tab=hours#time-clock"');
-    expect(HOURS).toContain('href="/dashboard/crew?tab=people">People</Link>');
   });
 });

@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import {
   CANDIDATE_AI_NOTE,
+  CANDIDATE_QUERY_LIMIT,
   quickStopRuleReference,
   type CandidateReport,
 } from '@/lib/quick-stop-candidates';
@@ -8,6 +9,10 @@ import type { ScreeningSummary } from '@/lib/quick-stop-screenings';
 import { quickStopFunnel, quickStopFunnelSentence } from '@/lib/quick-stop-funnel';
 
 const SHOW = 6;
+
+function money(cents: number): string {
+  return `$${Math.round(cents / 100).toLocaleString('en-US')}`;
+}
 
 function dayLabel(iso: string): string {
   const at = new Date(iso);
@@ -33,8 +38,8 @@ export type QuickStopResults = {
 export default function QuickStopCandidates({
   report,
   screenings: _screenings,
-  windowDays: _windowDays,
-  minFeeCents: _minFeeCents,
+  windowDays,
+  minFeeCents,
   maxVisitMinutes,
   enabled,
   reachable,
@@ -51,8 +56,9 @@ export default function QuickStopCandidates({
 }) {
   const rules = quickStopRuleReference();
   const funnel = quickStopFunnel(report);
-  const _count = report.eligible.length;
+  const count = report.eligible.length;
   const unknown = report.unknownLength.length;
+  const floorCents = minFeeCents > 0 ? count * minFeeCents : 0;
 
   const leftOut: string[] = [];
   if (report.removed.duplicates > 0) {
@@ -72,10 +78,11 @@ export default function QuickStopCandidates({
   if (report.removed.testData > 0) {
     leftOut.push(
       report.removed.testData === 1
-        ? '1 test record'
-        : `${report.removed.testData} test records`,
+        ? '1 record that looks like test data'
+        : `${report.removed.testData} records that look like test data`,
     );
   }
+  const leftOutNote = leftOut.length > 0 ? <p className="es-demand-more">Left out before counting: {leftOut.join('; ')}.</p> : null;
 
   const defaultResults: QuickStopResults = results || {
     totalRequests: 0,
@@ -86,6 +93,57 @@ export default function QuickStopCandidates({
     medianResponseMinutes: null,
     avgDetourMiles: null,
   };
+
+  if (report.screened === 0) {
+    return (
+      <div className="qs-insights-container">
+        {/* Results Section */}
+        <section className="panel workspace-section-card" id="quick-stop-results" style={{ marginBottom: '1.25rem' }}>
+          <div className="section-heading workspace-section-heading compact-heading">
+            <p className="eyebrow">Performance</p>
+            <h2>Results &amp; Realized Revenue</h2>
+          </div>
+          <div className="qs-results-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '0.75rem', marginTop: '0.75rem' }}>
+            <div className="qs-result-card" style={{ padding: '0.85rem', borderRadius: '10px', background: 'rgba(var(--tint, 255,255,255), 0.03)', border: '1px solid var(--edge-t10, rgba(255,255,255,0.08))' }}>
+              <span style={{ fontSize: '0.75rem', color: 'var(--muted)', display: 'block' }}>Requests Received</span>
+              <strong style={{ fontSize: '1.25rem', color: 'var(--text)' }}>{defaultResults.totalRequests}</strong>
+            </div>
+            <div className="qs-result-card" style={{ padding: '0.85rem', borderRadius: '10px', background: 'rgba(var(--tint, 255,255,255), 0.03)', border: '1px solid var(--edge-t10, rgba(255,255,255,0.08))' }}>
+              <span style={{ fontSize: '0.75rem', color: 'var(--muted)', display: 'block' }}>Offers Sent</span>
+              <strong style={{ fontSize: '1.25rem', color: 'var(--text)' }}>{defaultResults.offersSent}</strong>
+            </div>
+            <div className="qs-result-card" style={{ padding: '0.85rem', borderRadius: '10px', background: 'rgba(52, 199, 123, 0.08)', border: '1px solid rgba(52, 199, 123, 0.25)' }}>
+              <span style={{ fontSize: '0.75rem', color: '#34c77b', display: 'block' }}>Paid Conversion</span>
+              <strong style={{ fontSize: '1.25rem', color: '#34c77b' }}>{defaultResults.conversionRate}% <small style={{ fontSize: '0.75rem', fontWeight: 500 }}>({defaultResults.confirmedCount} paid)</small></strong>
+            </div>
+            <div className="qs-result-card" style={{ padding: '0.85rem', borderRadius: '10px', background: 'rgba(255, 122, 33, 0.08)', border: '1px solid rgba(255, 122, 33, 0.25)' }}>
+              <span style={{ fontSize: '0.75rem', color: '#ff9a52', display: 'block' }}>Revenue Earned</span>
+              <strong style={{ fontSize: '1.25rem', color: '#ff9a52' }}>${Math.round(defaultResults.totalRevenueCents / 100)}</strong>
+            </div>
+            <div className="qs-result-card" style={{ padding: '0.85rem', borderRadius: '10px', background: 'rgba(var(--tint, 255,255,255), 0.03)', border: '1px solid var(--edge-t10, rgba(255,255,255,0.08))' }}>
+              <span style={{ fontSize: '0.75rem', color: 'var(--muted)', display: 'block' }}>Median Response</span>
+              <strong style={{ fontSize: '1.25rem', color: 'var(--text)' }}>{defaultResults.medianResponseMinutes != null ? `${defaultResults.medianResponseMinutes}m` : '—'}</strong>
+            </div>
+            <div className="qs-result-card" style={{ padding: '0.85rem', borderRadius: '10px', background: 'rgba(var(--tint, 255,255,255), 0.03)', border: '1px solid var(--edge-t10, rgba(255,255,255,0.08))' }}>
+              <span style={{ fontSize: '0.75rem', color: 'var(--muted)', display: 'block' }}>Avg. Detour</span>
+              <strong style={{ fontSize: '1.25rem', color: 'var(--text)' }}>{defaultResults.avgDetourMiles != null ? `${defaultResults.avgDetourMiles} mi` : '—'}</strong>
+            </div>
+          </div>
+        </section>
+
+        <section className="panel workspace-section-card es-demand" id="quick-stop-demand">
+          <div className="section-heading workspace-section-heading compact-heading">
+            <p className="eyebrow">Demand</p>
+            <h2>Possibly eligible work</h2>
+          </div>
+          <p className="empty-state">
+            Nothing in the last {windowDays} days to look at yet. As leads and jobs come in, the ones short enough to slot into a day will be listed here.
+          </p>
+          {leftOutNote}
+        </section>
+      </div>
+    );
+  }
 
   return (
     <div className="qs-insights-container">
@@ -145,31 +203,26 @@ export default function QuickStopCandidates({
         </div>
       </section>
 
-      {/* 2. OPPORTUNITIES & HISTORICAL DEMAND SECTION */}
+      {/* 2. DEMAND & OPPORTUNITIES SECTION */}
       <section className="panel workspace-section-card es-demand" id="quick-stop-demand">
         <div className="section-heading workspace-section-heading compact-heading">
-          <p className="eyebrow">Opportunities</p>
-          <h2>Historical Fit &amp; Untapped Demand</h2>
+          <p className="eyebrow">Demand</p>
+          <h2>Possibly eligible work</h2>
         </div>
 
-        {/* Promoted Action: Missing Duration Warning */}
+        <p className="workspace-details-copy es-demand-lede">
+          Read {report.screened} of your {CANDIDATE_QUERY_LIMIT} most recent leads and jobs across the last {windowDays} days.
+        </p>
+
+        {count > 0 ? (
+          <div className="es-demand-headline">
+            <h3>{count} × {money(minFeeCents)} = <strong>{money(floorCents)}</strong> in potential visit fees</h3>
+            <p className="field-hint">A minimum calculation based on your lowest fee — not money you lost, but work that passed your rules.</p>
+          </div>
+        ) : null}
+
         {unknown > 0 ? (
-          <div
-            className="qs-opportunity-alert"
-            style={{
-              marginTop: '0.75rem',
-              marginBottom: '1rem',
-              padding: '0.85rem 1rem',
-              borderRadius: '10px',
-              background: 'rgba(255, 209, 102, 0.1)',
-              border: '1px solid rgba(255, 209, 102, 0.3)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              flexWrap: 'wrap',
-              gap: '0.65rem',
-            }}
-          >
+          <div className="es-demand-warn" style={{ marginTop: '0.75rem', marginBottom: '1rem', padding: '0.85rem 1rem', borderRadius: '10px', background: 'rgba(255, 209, 102, 0.1)', border: '1px solid rgba(255, 209, 102, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.65rem' }}>
             <div>
               <strong style={{ color: '#ffd166', fontSize: '0.9rem' }}>
                 ⚠️ {unknown} likely-fit {unknown === 1 ? 'job is' : 'jobs are'} missing an estimated duration
@@ -178,32 +231,13 @@ export default function QuickStopCandidates({
                 Adding duration estimates to past work helps the route engine identify open gaps automatically.
               </p>
             </div>
-            <Link
-              href="/dashboard/jobs"
-              className="btn secondary"
-              style={{ minHeight: '38px', fontSize: '0.82rem', padding: '0.35rem 0.85rem' }}
-            >
+            <Link href="/dashboard/jobs" className="btn secondary" style={{ minHeight: '38px', fontSize: '0.82rem', padding: '0.35rem 0.85rem' }}>
               Add duration to jobs →
             </Link>
           </div>
         ) : null}
 
-        {/* Rebranded Promote Quick Stops Campaign CTA */}
-        {enabled && reachable > 0 ? (
-          <div className="es-demand-tell" style={{ marginTop: '0.5rem', marginBottom: '1.25rem' }}>
-            <div>
-              <strong>Promote Quick Stops to {reachable} Past Customers</strong>
-              <p>
-                Quick Stops appear on your booking page, but past clients often don&rsquo;t check your website when a small repair pops up. You have <strong>{reachable}</strong> past {reachable === 1 ? 'client' : 'clients'} you can announce Quick Stops to via email or SMS.
-              </p>
-            </div>
-            <Link href="/dashboard/marketing/campaigns?draft=extra-stop#new-campaign" className="btn primary">
-              Promote Quick Stops →
-            </Link>
-          </div>
-        ) : null}
-
-        {/* Collapsible Funnel Breakdown */}
+        {/* Funnel Breakdown */}
         <details className="qs-funnel-details" style={{ marginBottom: '1.25rem' }}>
           <summary style={{ cursor: 'pointer', fontWeight: 600, fontSize: '0.85rem', color: 'var(--muted)' }}>
             📊 How this demand calculation was broken down
@@ -217,6 +251,11 @@ export default function QuickStopCandidates({
                     <span className="qs-funnel-label">{step.label}</span>
                   </div>
                   {step.detail ? <small className="qs-funnel-desc">{step.detail}</small> : null}
+                  {step.action ? (
+                    <a href={step.action.href} className="qs-funnel-action" style={{ fontSize: '0.78rem', color: 'var(--accent)' }}>
+                      {step.action.label} →
+                    </a>
+                  ) : null}
                 </li>
               ))}
             </ol>
@@ -226,7 +265,7 @@ export default function QuickStopCandidates({
         <div className="es-demand-cols">
           <div className="es-demand-col">
             <h3 className="es-demand-col-head is-yes">
-              <span aria-hidden="true">✓</span> Would have qualified
+              <span aria-hidden="true">✓</span> Possibly eligible
             </h3>
             {report.eligible.length === 0 ? (
               <p className="es-demand-none">No past jobs matched all criteria.</p>
@@ -257,7 +296,7 @@ export default function QuickStopCandidates({
 
           <div className="es-demand-col" id="quick-stop-unknown">
             <h3 className="es-demand-col-head is-unknown">
-              <span aria-hidden="true">?</span> Needs duration
+              <span aria-hidden="true">?</span> No length recorded
             </h3>
             {report.unknownLength.length === 0 ? (
               <p className="es-demand-none">All recent records had recorded lengths.</p>
@@ -329,6 +368,20 @@ export default function QuickStopCandidates({
           </div>
         ) : null}
 
+        {enabled && reachable > 0 ? (
+          <div className="es-demand-tell" style={{ marginTop: '1.25rem', marginBottom: '1.25rem' }}>
+            <div>
+              <strong>Promote Quick Stops to {reachable} Past Customers</strong>
+              <p>
+                Quick Stops appear on your booking page, but past clients often don&rsquo;t check your website when a small repair pops up. You have <strong>{reachable}</strong> past {reachable === 1 ? 'client' : 'clients'} you can announce Quick Stops to via email or SMS.
+              </p>
+            </div>
+            <Link href="/dashboard/marketing/campaigns?draft=extra-stop#new-campaign" className="btn primary">
+              Promote Quick Stops →
+            </Link>
+          </div>
+        ) : null}
+
         <details className="es-demand-rules" style={{ marginTop: '1rem' }}>
           <summary>What never qualifies, and why</summary>
           <div className="es-demand-rules-body">
@@ -356,6 +409,8 @@ export default function QuickStopCandidates({
         <p className="es-demand-note" style={{ marginTop: '0.75rem' }}>
           {CANDIDATE_AI_NOTE}
         </p>
+
+        {leftOutNote}
       </section>
     </div>
   );

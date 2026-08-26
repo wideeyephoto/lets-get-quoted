@@ -348,11 +348,11 @@ describe('grouping the crew by what needs doing', () => {
       entry({ id: 'e3', crew_id: 'c3', crew_name: 'Already paid' }),
     ], [record({ id: 'r3', crewId: 'c3', crewName: 'Already paid', status: 'paid', paidAmount: 336, paidAt: LOGGED, paymentDate: '2026-07-31' })]);
     const groups = groupCrewRows(rows);
-    const total = groups.needs_review.length + groups.unpaid.length + groups.paid.length + groups.no_hours.length;
+    const total = groups.needs_review.length + groups.ready_to_approve.length + groups.unpaid.length + groups.paid.length + groups.no_hours.length;
     expect(total).toBe(rows.length);
     expect(groups.needs_review.map((row) => row.name)).toEqual(['Needs sorting']);
     expect(groups.paid.map((row) => row.name)).toEqual(['Already paid']);
-    expect(groups.unpaid.map((row) => row.name)).toEqual(['Mike Torres']);
+    expect(groups.ready_to_approve.map((row) => row.name)).toEqual(['Mike Torres']);
   });
 
   // Somebody with a problem on their hours isn't waiting to be paid, they're

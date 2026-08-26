@@ -226,6 +226,7 @@ export default function LaborByJob({
   initialOverview,
   scheduledHours,
   overtimeThreshold = DEFAULT_OVERTIME_THRESHOLD,
+  basePath = '/dashboard/crew',
 }: {
   rows: JobLaborRow[];
   period: PayPeriod;
@@ -234,6 +235,7 @@ export default function LaborByJob({
   initialSkin: CrewSkin;
   /** Whether the whole page is in Overview. */
   initialOverview: boolean;
+  basePath?: string;
   /**
    * Scheduled hours per job id, when the page has scheduling data to give.
    *
@@ -290,7 +292,7 @@ export default function LaborByJob({
       if (value === null) query.delete(key);
       else query.set(key, value);
     }
-    return `/dashboard/crew?${query.toString()}`;
+    return `${basePath}?${query.toString()}`;
   }
 
   const ranked = useMemo(
@@ -596,13 +598,13 @@ export default function LaborByJob({
           {PERIOD_MODES.filter((mode) => mode.id !== 'custom').map((mode) => (
             <Link
               key={mode.id}
-              href={`/dashboard/crew?tab=jobs&period=${mode.id}`}
+              href={periodHref({ period: mode.id, offset: '0', from: null, to: null })}
               className={`${styles.periodMode}${period.mode === mode.id ? ` ${styles.periodModeOn}` : ''}`}
             >
               {mode.label}
             </Link>
           ))}
-          <form className={styles.customRange} action="/dashboard/crew" method="get">
+          <form className={styles.customRange} action={basePath} method="get">
             <input type="hidden" name="tab" value="jobs" />
             <input type="hidden" name="period" value="custom" />
             <input type="date" name="from" aria-label="Range start" required />

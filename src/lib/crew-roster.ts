@@ -154,12 +154,12 @@ export type RosterTotals = {
   periodPay: number;
 };
 
-export function rosterTotals(members: Array<RosterMember & { periodHours: number; periodPay: number }>): RosterTotals {
+export function rosterTotals(members: Array<RosterMember & { periodHours: number; periodPay: number; isBusyToday?: boolean }>): RosterTotals {
   const active = members.filter((member) => member.active);
   return {
     activeCount: active.length,
-    onJob: active.filter((member) => member.jobs.length > 0).length,
-    available: active.filter((member) => member.jobs.length === 0).length,
+    onJob: active.filter((member) => Boolean(member.isBusyToday ?? member.jobs.length > 0)).length,
+    available: active.filter((member) => !(member.isBusyToday ?? member.jobs.length > 0)).length,
     archived: members.length - active.length,
     // Across the ACTIVE crew only: an archived person's past hours are real, but
     // they aren't part of what this roster is currently costing.

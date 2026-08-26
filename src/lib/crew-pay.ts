@@ -202,6 +202,7 @@ export type PayWarning =
   | 'no-job'
   | 'open-shift'
   | 'long-shift'
+  | 'weekly-hours-anomaly'
   | 'overtime'
   | 'changed-after-approval'
   | 'logged-after-approval'
@@ -227,6 +228,7 @@ export const PAY_WARNING_LABEL: Record<PayWarning, string> = {
   'no-job': 'Hours without a job',
   'open-shift': 'Shift still running',
   'long-shift': 'Unusually long shift',
+  'weekly-hours-anomaly': 'Unusually high hours (60h+)',
   overtime: 'Overtime',
   'changed-after-approval': 'Amount changed after approval',
   'logged-after-approval': 'Hours added after approval',
@@ -241,6 +243,7 @@ export const PAY_WARNING_HELP: Record<PayWarning, string> = {
   'no-job': 'Hours here aren’t attached to a job, so they won’t show up in that job’s costs or margin.',
   'open-shift': 'This person is still clocked in for this period. The hours will grow until the shift is closed.',
   'long-shift': 'A single entry is over 16 hours, which is usually a missed clock-out rather than a real shift.',
+  'weekly-hours-anomaly': 'Total logged hours in this period exceed 60 hours. This often indicates runaway open shifts or duplicate entries.',
   overtime: `Some of these hours are past your weekly overtime threshold. ${OVERTIME_POLICY}`,
   'changed-after-approval': 'The hours have changed since you approved them, so the approved figure and the current one no longer agree.',
   'logged-after-approval': 'Hours were logged for this person after you approved the period.',
@@ -264,6 +267,7 @@ export const PAY_WARNING_FIX: Record<PayWarning, string> = {
   'no-job': 'Add it again against the job it belongs to if that job’s costs need it.',
   'open-shift': 'Close the shift from the banner at the top of this tab, then the hours stop moving.',
   'long-shift': 'Check it isn’t a missed clock-out before you approve it.',
+  'weekly-hours-anomaly': 'Check entries for duplicate or runaway shifts and adjust before approving.',
   overtime: 'Nothing to fix. The hours are counted as logged and no premium is applied.',
   'changed-after-approval': 'Approve the hours again to agree the new figure, or leave it — the difference stays visible as an adjustment.',
   'logged-after-approval': 'Approve the hours again to take the new entries in, or leave it and pay the agreed figure.',
@@ -284,6 +288,7 @@ export const PAY_WARNING_SEVERITY: Record<PayWarning, 'block' | 'warn' | 'info'>
   'no-job': 'info',
   'open-shift': 'warn',
   'long-shift': 'warn',
+  'weekly-hours-anomaly': 'block',
   overtime: 'info',
   'changed-after-approval': 'warn',
   'logged-after-approval': 'warn',
@@ -401,6 +406,7 @@ export function buildPayRows(
     if (row.entries.some((entry) => !entry.jobId)) warnings.push('no-job');
     if (row.crewId && openShifts.has(row.crewId)) warnings.push('open-shift');
     if (row.entries.some((entry) => entry.hours > LONG_SHIFT_HOURS)) warnings.push('long-shift');
+    if (row.hours >= 60) warnings.push('weekly-hours-anomaly');
 
     const approvedAmount = record && record.approvedAt ? record.approvedAmount : null;
     const paidAmount = record && record.paidAt ? record.paidAmount ?? 0 : null;
@@ -868,12 +874,18 @@ export function buildPayCsv(rows: CrewPayRow[], rangeLabel: string): string {
 
 // -- Grouping ----------------------------------------------------------------
 
-export type CrewGroups = { needs_review: CrewPayRow[]; unpaid: CrewPayRow[]; paid: CrewPayRow[]; no_hours: CrewPayRow[] };
+export type CrewGroups = {
+  needs_review: CrewPayRow[];
+  ready_to_approve: CrewPayRow[];
+  unpaid: CrewPayRow[];
+  paid: CrewPayRow[];
+  no_hours: CrewPayRow[];
+};
 
 /**
  * The crew split by what needs doing to them.
  *
- * A PARTITION — everybody lands in exactly one bucket, so the four counts add
+ * A PARTITION — everybody lands in exactly one bucket, so the counts add
  * up to the crew. That matters because the same screen shows both the sections
  * and a tally beside them: if "Unpaid" meant "not yet paid" in one place and
  * "unpaid and ready to go" in the other, the two would disagree by however many
@@ -883,11 +895,12 @@ export type CrewGroups = { needs_review: CrewPayRow[]; unpaid: CrewPayRow[]; pai
  * hours isn't waiting to be paid, they're waiting to be sorted out.
  */
 export function groupCrewRows(rows: CrewPayRow[]): CrewGroups {
-  const groups: CrewGroups = { needs_review: [], unpaid: [], paid: [], no_hours: [] };
+  const groups: CrewGroups = { needs_review: [], ready_to_approve: [], unpaid: [], paid: [], no_hours: [] };
   for (const row of rows) {
     if (row.hours === 0) groups.no_hours.push(row);
     else if (row.review === 'needs_review' || row.blockers.length > 0) groups.needs_review.push(row);
     else if (row.payment === 'paid') groups.paid.push(row);
+    else if (row.review === 'draft') groups.ready_to_approve.push(row);
     else groups.unpaid.push(row);
   }
   return groups;
