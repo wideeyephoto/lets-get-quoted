@@ -58,7 +58,7 @@ const FULL_WIDTH = 1440;
  * off the largest object: bigger art gets a correspondingly shorter ellipse
  * rather than one that runs its objects under the header.
  */
-const ICON_SIZE = 1.3;
+const ICON_SIZE = 1.55;
 const MIN_SCALE = 0.46 * ICON_SIZE;
 const FULL_SCALE = 1 * ICON_SIZE;
 
