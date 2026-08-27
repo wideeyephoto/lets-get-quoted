@@ -39,7 +39,7 @@ export async function GET() {
 
   const admin = createAdminClient();
   await expireStaleLeads(admin, membership.accountId);
-  const [{ data: account }, { data: site }, { data: newLeadRows }, { data: openLeadRows }, jobs, { count: openQuickStopRequestCount }] = await Promise.all([
+  const [{ data: account }, { data: site }, { data: newLeadRows }, { data: openLeadRows }, jobs, { count: openQuickStopRequestCount }, { data: balanceRows }] = await Promise.all([
     admin
       .from('accounts')
       .select(
@@ -102,6 +102,10 @@ export async function GET() {
       .select('id', { count: 'exact', head: true })
       .eq('account_id', membership.accountId)
       .in('status', ['awaiting_contractor', 'more_information_requested']),
+    admin
+      .from('workspace_usage_credit_balances')
+      .select('resource_code, available_units')
+      .eq('account_id', membership.accountId),
   ]);
       // Badges mean "needs YOUR attention", not inventory. Jobs = quotes still
       // in the approval stage (drop the moment they're approved -> in_progress);
@@ -197,6 +201,12 @@ export async function GET() {
     }),
   );
 
+  const textCredits = balanceRows?.find((r) => r.resource_code === 'text_segments')?.available_units;
+  const aiCredits = (balanceRows?.find((r) => r.resource_code === 'ai_intake_threads')?.available_units ?? 0)
+    + (balanceRows?.find((r) => r.resource_code === 'ai_writing_drafts')?.available_units ?? 0);
+  const lowCreditAlert = (typeof textCredits === 'number' && textCredits <= 15)
+    || (Boolean(balanceRows && balanceRows.length > 0) && aiCredits <= 5);
+
   return NextResponse.json({
     loggedIn: true,
     onboarded: account?.connect_onboarded ?? false,
@@ -226,6 +236,7 @@ export async function GET() {
     newestQuoteRequestHighValue,
     newestJobCreatedAt,
     quickStopState: quickStopNav,
+    lowCreditAlert,
     // Online booking, judged the same way its own setup page judges it: the
     // switch being on is not the same as the page being able to take a booking.
     // Without a published site, or with no open days or no arrival windows,

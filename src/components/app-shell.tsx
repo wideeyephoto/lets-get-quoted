@@ -176,6 +176,8 @@ type AccountStatus = {
   quickStopState: NavState;
   /** Whether the public booking page is actually live. */
   bookingState: NavState;
+  /** Whether any communication or AI credit balance is low. */
+  lowCreditAlert?: boolean;
 };
 
 // Whether an automation is actually accepting work right now. 'paused' is the
@@ -339,6 +341,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
   // a second on every page load would be worse than one that waits.
   const [quickStopState, setQuickStopState] = useState<NavState>('unknown');
   const [bookingState, setBookingState] = useState<NavState>('unknown');
+  const [lowCreditAlert, setLowCreditAlert] = useState(false);
   const [dismissedQuoteRequestId, setDismissedQuoteRequestId] = useState<string | null>(null);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const isDashboard = pathname.startsWith('/dashboard');
@@ -642,6 +645,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
       setNewestLeadHighValue(false);
       setQuickStopState('unknown');
       setBookingState('unknown');
+      setLowCreditAlert(false);
       setSiteUrl(null);
       setBusinessName(null);
       return;
@@ -670,6 +674,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
             setNewestJobCreatedAt(data.newestJobCreatedAt ?? null);
             setQuickStopState(navState(data.quickStopState));
             setBookingState(navState(data.bookingState));
+            setLowCreditAlert(Boolean(data.lowCreditAlert));
           }
         })
         .catch(() => {});
@@ -1081,9 +1086,30 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
               can reach the contractor, and a warning behind a click stops being
               one. */}
           <div className="sidenav-foot">
-            <Link href="/dashboard/settings" className={`sidenav-account${isActiveNav(pathname, '/dashboard/settings') ? ' active' : ''}`}>
+            <Link
+              href="/dashboard/settings"
+              className={`sidenav-account${isActiveNav(pathname, '/dashboard/settings') ? ' active' : ''}`}
+              title={lowCreditAlert ? 'Account settings (Low credit balance — tap to manage)' : 'Account settings'}
+            >
               <NavIcon href="/dashboard/settings" />
               <span className="sidenav-account-name">Account</span>
+              {lowCreditAlert ? (
+                <span
+                  className="sidenav-credit-dot"
+                  title="Low credit balance — tap to view plan & credits"
+                  aria-label="Low credit balance"
+                  style={{
+                    width: '8px',
+                    height: '8px',
+                    borderRadius: '50%',
+                    backgroundColor: 'var(--amber-9, #f59e0b)',
+                    boxShadow: '0 0 6px rgba(245, 158, 11, 0.6)',
+                    marginLeft: 'auto',
+                    flexShrink: 0,
+                    display: 'inline-block',
+                  }}
+                />
+              ) : null}
             </Link>
 
             {/* Whether money can actually reach this contractor. Beside Account

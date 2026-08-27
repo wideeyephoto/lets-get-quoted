@@ -470,7 +470,19 @@ export default async function MessagesPage({
                       resetToken={searchParams.sent === 'reply' ? searchParams.queued : null}
                     />
                     <textarea id="reply-body" name="body" rows={2} placeholder="Type a reply…" required aria-label="Reply message" />
-                    <SaveButton className="btn primary" pendingLabel="Queueing…" savedLabel="Queued ✓">Send</SaveButton>
+                    <div className="inbox-reply-actions" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
+                      {availableTextCredits !== null ? (
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8125rem', color: availableTextCredits <= 25 ? 'var(--amber-10, #f59e0b)' : 'var(--text-muted, #94a3b8)', fontWeight: 500 }}>
+                          <span>💬 {availableTextCredits.toLocaleString('en-US')} text credits remaining</span>
+                          {availableTextCredits <= 25 ? (
+                            <Link href="/dashboard/settings#buy-credits" style={{ color: 'var(--amber-11, #d97706)', fontWeight: 600, textDecoration: 'underline' }}>
+                              + Top up
+                            </Link>
+                          ) : null}
+                        </div>
+                      ) : <span />}
+                      <SaveButton className="btn primary" pendingLabel="Queueing…" savedLabel="Queued ✓">Send</SaveButton>
+                    </div>
                   </form>
                 ) : !messagesAvailable ? (
                   <p className="empty-state">Messaging is disabled until this conversation can be checked safely.</p>

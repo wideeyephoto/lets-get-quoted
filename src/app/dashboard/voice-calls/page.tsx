@@ -47,7 +47,7 @@ export default async function VoiceCallsPage({
   const { supabase, accountId } = await requireOfficeContext('leads.read');
   const admin = createAdminClient();
 
-  const [{ data: account }, { data: site }, { data: voiceSettings }, routeReadiness, queue] = await Promise.all([
+  const [{ data: account }, { data: site }, { data: voiceSettings }, { data: balanceRows }, routeReadiness, queue] = await Promise.all([
     supabase
       .from('accounts')
       .select('company_name, business_name, trade, phone, timezone, license_number, service_areas, call_tracking_number')
@@ -63,6 +63,10 @@ export default async function VoiceCallsPage({
       .select('status, answer_mode, greeting, transfer_number, alert_phone, voice_tone')
       .eq('account_id', accountId)
       .maybeSingle(),
+    supabase
+      .from('workspace_usage_credit_balances')
+      .select('resource_code, available_units')
+      .eq('account_id', accountId),
     loadVoiceRouteReadiness(admin, accountId),
     loadVoiceWorkspaceQueue(supabase, accountId, {
       tab: (searchParams.tab as 'all' | 'unreviewed' | 'needs_callback' | 'urgent' | 'transferred' | 'completed') || 'all',
@@ -75,6 +79,11 @@ export default async function VoiceCallsPage({
 
   const isRouteReady = routeReadiness.kind === 'ready';
   const dedicatedNumber = isRouteReady ? routeReadiness.number : null;
+
+  const aiIntakeUnits = balanceRows?.find((r) => r.resource_code === 'ai_intake_threads')?.available_units;
+  const aiWritingUnits = balanceRows?.find((r) => r.resource_code === 'ai_writing_drafts')?.available_units;
+  const hasAiBalance = typeof aiIntakeUnits === 'number' || typeof aiWritingUnits === 'number';
+  const totalAiUnits = (typeof aiIntakeUnits === 'number' ? aiIntakeUnits : 0) + (typeof aiWritingUnits === 'number' ? aiWritingUnits : 0);
 
   const resolvedBusinessName = site?.company_name || account?.business_name || account?.company_name || null;
   const timezone = (account?.timezone as string) || 'America/New_York';
@@ -95,6 +104,16 @@ export default async function VoiceCallsPage({
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+          {hasAiBalance ? (
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.35rem 0.75rem', background: 'var(--bg-card, rgba(255,255,255,0.04))', border: '1px solid var(--rule-t12, rgba(255,255,255,0.08))', borderRadius: '6px', fontSize: '0.8125rem', color: totalAiUnits <= 25 ? 'var(--amber-10, #f59e0b)' : 'var(--text-secondary, #94a3b8)', fontWeight: 500 }}>
+              <span>⚡ {totalAiUnits.toLocaleString('en-US')} AI credits available</span>
+              {totalAiUnits <= 25 ? (
+                <Link href="/dashboard/settings#buy-credits" style={{ color: 'var(--amber-11, #d97706)', fontWeight: 600, textDecoration: 'underline' }}>
+                  + Top up
+                </Link>
+              ) : null}
+            </div>
+          ) : null}
           {counters.totalCount > 0 ? (
             <a
               href={`/api/voice/export?dateRange=${currentDateRange}`}
@@ -120,7 +139,7 @@ export default async function VoiceCallsPage({
       </header>
 
       {/* Live Carrier SignalWire Engine & Webhook Latency Health Widget */}
-      <VoiceHealthWidget />
+      <VoiceHealthWidget availableCredits={hasAiBalance ? totalAiUnits : null} />
 
       {/* Top Assistant Status Banner */}
       <VoiceStatusBanner

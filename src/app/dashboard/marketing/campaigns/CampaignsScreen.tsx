@@ -23,6 +23,8 @@ type Props = {
   mailingAddress: string | null;
   daysSinceLastSend: number | null;
   unsubscribesSinceLastSend: number;
+  availableEmailCredits?: number | null;
+  availableSmsCredits?: number | null;
   draft?: Parameters<typeof CampaignWorkspace>[0]['composer']['initial'];
   searchParams: { emailSent?: string; smsQueued?: string; recipients?: string; skipped?: string; failed?: string; test?: string; draft?: string };
   basePath?: string;
@@ -39,6 +41,8 @@ export default function CampaignsScreen({
   mailingAddress,
   daysSinceLastSend,
   unsubscribesSinceLastSend,
+  availableEmailCredits,
+  availableSmsCredits,
   draft,
   searchParams,
   basePath = '/dashboard',
@@ -98,6 +102,8 @@ export default function CampaignsScreen({
           mailingAddress,
           daysSinceLastSend,
           unsubscribesSinceLastSend,
+          availableEmailCredits,
+          availableSmsCredits,
         }}
       />
     </main>

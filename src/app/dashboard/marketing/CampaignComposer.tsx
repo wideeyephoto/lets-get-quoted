@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState, useTransition } from 'react';
+import Link from 'next/link';
 import SaveButton from '@/components/save-button';
 import {
   checkCampaign,
@@ -47,6 +48,8 @@ type Props = {
   mailingAddress: string | null;
   daysSinceLastSend: number | null;
   unsubscribesSinceLastSend: number;
+  availableEmailCredits?: number | null;
+  availableSmsCredits?: number | null;
   /** Reports whether there's unsaved text in the box, so a caller can confirm before replacing it. */
   onDirtyChange?: (dirty: boolean) => void;
 };
@@ -76,6 +79,8 @@ export default function CampaignComposer({
   mailingAddress,
   daysSinceLastSend,
   unsubscribesSinceLastSend,
+  availableEmailCredits,
+  availableSmsCredits,
   onDirtyChange,
 }: Props) {
   const [channel, setChannel] = useState<'email' | 'sms' | 'both'>(initial?.channel ?? 'email');
@@ -406,6 +411,28 @@ export default function CampaignComposer({
           <li>{audienceReach.optedOut} opted out</li>
           <li>{audienceReach.excluded} excluded</li>
         </ul>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', marginTop: '0.5rem', marginBottom: '0.5rem' }}>
+          {wantEmail && typeof availableEmailCredits === 'number' ? (
+            <span style={{ fontSize: '0.8125rem', color: availableEmailCredits < audienceReach.email ? 'var(--amber-10, #f59e0b)' : 'var(--text-secondary, #94a3b8)' }}>
+              ✉️ <strong>{audienceReach.email}</strong> of {availableEmailCredits.toLocaleString('en-US')} email credits needed
+              {availableEmailCredits < audienceReach.email ? (
+                <Link href="/dashboard/settings#buy-credits" style={{ color: 'var(--amber-11, #d97706)', fontWeight: 600, marginLeft: '0.35rem', textDecoration: 'underline' }}>
+                  + Buy credits
+                </Link>
+              ) : null}
+            </span>
+          ) : null}
+          {wantSms && typeof availableSmsCredits === 'number' ? (
+            <span style={{ fontSize: '0.8125rem', color: availableSmsCredits < audienceReach.sms ? 'var(--amber-10, #f59e0b)' : 'var(--text-secondary, #94a3b8)' }}>
+              💬 <strong>{audienceReach.sms}</strong> of {availableSmsCredits.toLocaleString('en-US')} text credits needed
+              {availableSmsCredits < audienceReach.sms ? (
+                <Link href="/dashboard/settings#buy-credits" style={{ color: 'var(--amber-11, #d97706)', fontWeight: 600, marginLeft: '0.35rem', textDecoration: 'underline' }}>
+                  + Buy credits
+                </Link>
+              ) : null}
+            </span>
+          ) : null}
+        </div>
         <div className="campaign-actions">
           {wantEmail ? (
             <button type="button" className="btn ghost" onClick={runPreview} disabled={previewing || !body.trim()}>

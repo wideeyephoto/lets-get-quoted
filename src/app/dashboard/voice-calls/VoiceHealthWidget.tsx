@@ -19,7 +19,7 @@ type HealthData = {
   checkedAt: string;
 };
 
-export default function VoiceHealthWidget() {
+export default function VoiceHealthWidget({ availableCredits }: { availableCredits?: number | null }) {
   const [health, setHealth] = useState<HealthData | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -114,7 +114,6 @@ export default function VoiceHealthWidget() {
                 (Setup Required)
               </Link>
             </span>
-
           )}
         </div>
 
@@ -129,6 +128,15 @@ export default function VoiceHealthWidget() {
             {isHealthy ? health.toolsActive : health.toolsActive > 0 ? health.toolsActive : '0 (Offline)'}
           </strong>
         </div>
+
+        {typeof availableCredits === 'number' ? (
+          <div className={styles.healthItem}>
+            <span>AI Receptionist Credits:</span>
+            <strong style={{ color: availableCredits <= 25 ? '#fbbf24' : '#60a5fa' }}>
+              ⚡ {availableCredits.toLocaleString('en-US')}
+            </strong>
+          </div>
+        ) : null}
       </div>
 
       <button
