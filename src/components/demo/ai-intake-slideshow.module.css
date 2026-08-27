@@ -15,9 +15,15 @@
   outline: none;
   color: #f8fbff;
   background: #071527;
+  cursor: grab;
+  touch-action: pan-y;
+  user-select: none;
 }
 
 .stage:focus-visible { box-shadow: inset 0 0 0 3px #ff6b35; }
+.stage[data-dragging="true"] { cursor: grabbing; }
+.slideMotion { position: absolute; inset: 0; transition: transform 180ms cubic-bezier(.2, .8, .2, 1); will-change: transform; }
+.slideMotion[data-dragging="true"] { transition: none; }
 
 .slide {
   position: absolute;
@@ -358,7 +364,7 @@
 .quoteFormBottom b { margin-left: 0.25rem; font-size: 0.85rem; }
 
 .reviewPanel { padding: 0.75rem; }
-.reviewTop { display: flex; align-items: end; justify-content: space-between; gap: 1rem; padding-bottom: 0.62rem; border-bottom: 1px solid rgba(255, 255, 255, 0.09); }
+.reviewTop { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; padding-bottom: 0.62rem; border-bottom: 1px solid rgba(255, 255, 255, 0.09); }
 .reviewTop > div { display: grid; gap: 0.16rem; }
 .reviewTop > div:last-child { text-align: right; }
 .reviewTop small { color: rgba(220, 237, 247, 0.48); font-size: 0.48rem; font-weight: 900; letter-spacing: 0.09em; }
@@ -466,14 +472,49 @@
 
 .slideCount { position: absolute; z-index: 4; top: 1.35rem; right: 1.35rem; color: rgba(255, 255, 255, 0.52); font-size: 0.62rem; font-weight: 850; font-variant-numeric: tabular-nums; letter-spacing: 0.08em; }
 
-.controls { display: grid; min-height: 4.25rem; grid-template-columns: auto auto minmax(4rem, 1fr) auto; align-items: center; gap: 0.55rem; padding: 0.55rem 0.7rem; border-top: 1px solid rgba(255, 255, 255, 0.1); background: #071527; }
-.controls button { min-width: 2.75rem; min-height: 2.75rem; border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 999px; background: rgba(255, 255, 255, 0.07); color: white; font: inherit; font-size: 0.75rem; font-weight: 850; cursor: pointer; }
-.controls button:disabled { cursor: default; opacity: 0.3; }
-.controls button:focus-visible { outline: 2px solid #ff6b35; outline-offset: 2px; }
-.controls .playButton { padding: 0 0.9rem; }
+.edgeArrow {
+  position: absolute;
+  z-index: 6;
+  top: 50%;
+  display: grid;
+  width: 2.65rem;
+  height: 2.65rem;
+  padding: 0 0 0.12rem;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
+  background: rgba(4, 17, 31, 0.82);
+  box-shadow: 0 0.8rem 2rem rgba(0, 0, 0, 0.28);
+  color: white;
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-50%) scale(0.9);
+  transition: opacity 180ms ease, background 180ms ease, border-color 180ms ease, transform 180ms ease;
+  backdrop-filter: blur(12px);
+}
+.edgeArrow span { font-size: 2rem; font-weight: 500; line-height: 1; }
+.edgeArrowPrevious { left: 0.75rem; }
+.edgeArrowNext { right: 0.75rem; }
+.stage:hover .edgeArrow:not(:disabled),
+.stage:focus-within .edgeArrow:not(:disabled),
+.edgeArrow:focus-visible {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(-50%) scale(1);
+}
+.edgeArrow:hover { border-color: rgba(124, 245, 189, 0.64); background: rgba(7, 33, 49, 0.95); }
+.edgeArrow:focus-visible { outline: 2px solid #7cf5bd; outline-offset: 2px; }
+.edgeArrow:disabled { display: none; }
+
+.swipeNav { min-height: 3.2rem; padding: 0.4rem 0.75rem; border-top: 1px solid rgba(255, 255, 255, 0.1); background: #071527; }
 .progress { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 0.18rem; }
-.progress span { height: 0.2rem; border-radius: 999px; background: rgba(255, 255, 255, 0.18); }
-.progress .progressActive { background: #ff6b35; }
+.progress button { position: relative; min-width: 0; min-height: 2.25rem; padding: 0; border: 0; background: transparent; cursor: pointer; }
+.progress button::before { position: absolute; top: 50%; right: 0; left: 0; height: 0.2rem; border-radius: 999px; background: rgba(255, 255, 255, 0.18); content: ''; transform: translateY(-50%); transition: background 180ms ease, box-shadow 180ms ease; }
+.progress button:hover::before { background: rgba(255, 255, 255, 0.36); }
+.progress button.progressActive::before { background: #ff6b35; }
+.progress button[aria-current="step"]::before { box-shadow: 0 0 0.7rem rgba(255, 107, 53, 0.56); }
+.progress button:focus-visible { outline: 2px solid #ff6b35; outline-offset: 1px; }
 
 .srOnly {
   position: absolute;
@@ -598,6 +639,46 @@
   }
   .storyCopy .slideHeading h2 { max-width: 12ch; font-size: clamp(1.9rem, 3.15vw, 2.55rem); }
   .storyCopy .slideHeading p { max-width: 33ch; font-size: 0.78rem; }
+  .coachSlide .storyCopy {
+    top: 1.1rem;
+    width: min(45%, 19rem);
+    transform: none;
+  }
+  .coachSlide .storyCopy .slideHeading h2 {
+    max-width: 15ch;
+    margin-top: 0.5rem;
+    font-size: clamp(1.85rem, 2.8vw, 2.25rem);
+  }
+  .coachSlide .storyCopy .slideHeading p { margin-top: 0.45rem; }
+  .coachSlide .capturedNotice,
+  .coachSlide .mediaAnswered {
+    width: 100%;
+    max-width: none;
+  }
+  .coachSlide .capturedNotice {
+    margin-top: 0.55rem;
+    padding: 0.48rem 0.58rem;
+  }
+  .coachSlide .capturedNotice > i {
+    width: 1.35rem;
+    height: 1.35rem;
+  }
+  .coachSlide .detectedDetails {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.32rem;
+    margin-top: 0.4rem;
+  }
+  .coachSlide .detectedDetails span {
+    width: 100%;
+    padding: 0.36rem 0.44rem;
+    font-size: 0.59rem;
+  }
+  .coachSlide .detectedDetails span:last-child { grid-column: 1 / -1; }
+  .coachSlide .mediaAnswered {
+    margin-top: 0.4rem;
+    padding: 0.48rem 0.58rem;
+  }
   .captureStatus { font-size: 0.57rem; }
   .captureChecks span,
   .detectedDetails span { font-size: 0.65rem; }
@@ -636,7 +717,7 @@
     box-shadow: 0 0 0.8rem rgba(124, 245, 189, 0.8);
     animation: scanSweep 2.6s 350ms ease-in-out infinite;
   }
-  .detailTarget { top: 42%; left: 38%; width: 22%; height: 34%; }
+  .detailTarget { top: 42%; left: 50%; width: 18%; height: 34%; }
   .mediaCount { top: auto; right: 1rem; bottom: 1rem; }
 
   .visionSlide { grid-template-columns: minmax(0, 0.86fr) minmax(0, 1.14fr); }
@@ -712,9 +793,11 @@
   .reviewRows > div { padding: 0.4rem 0.45rem; }
   .marginRow,
   .reviewAction { margin-top: 0.45rem; }
-  .controls { grid-template-columns: auto 1fr auto; }
-  .controls .playButton { justify-self: start; }
-  .progress { display: none; }
+  .swipeNav { min-height: 3rem; padding-inline: 0.6rem; }
+}
+
+@media (hover: none) {
+  .edgeArrow { display: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {

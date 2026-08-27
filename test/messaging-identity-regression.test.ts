@@ -116,7 +116,7 @@ describe('Problem 1: Product Identity and Message Hierarchy', () => {
 
 describe('Problem 2: Reduce Homepage Attention Competition', () => {
   const LAUNCH_BANNER = readFileSync('src/components/marketing/launch-banner.tsx', 'utf8');
-  const HERO_SHOWCASE = readFileSync('src/components/flagship/hero-showcase.tsx', 'utf8');
+  const HERO_SHOWCASE = readFileSync('src/components/flagship/hero-ai-intake-showcase.tsx', 'utf8');
   const MARKETING_AI = readFileSync('src/components/marketing/MarketingAiAssistant.tsx', 'utf8');
 
   it('compresses launch banner to a single line with expandable details', () => {
@@ -125,10 +125,9 @@ describe('Problem 2: Reduce Homepage Attention Competition', () => {
     expect(LAUNCH_BANNER).toContain('Details');
   });
 
-  it('supports hero product showcase auto-rotation, interactive pause controls, and visible labeled tabs', () => {
-    expect(HERO_SHOWCASE).toContain('const [paused, setPaused] = useState(false);');
-    expect(HERO_SHOWCASE).toContain("onMouseEnter={() => setPaused(true)}");
-    expect(HERO_SHOWCASE).toContain('<span>{shot.label}</span>');
+  it('replaces the hero screenshot carousel with the interactive AI intake story', () => {
+    expect(HERO_SHOWCASE).toContain("import AiIntakeSlideshow from '@/components/demo/AiIntakeSlideshow';");
+    expect(HERO_SHOWCASE).toContain('<AiIntakeSlideshow autoStart />');
   });
 
   it('renders a 3-point static proof strip under hero', () => {

@@ -258,7 +258,10 @@ export default function AiIntakeSlideshow({ autoStart = false }: AiIntakeSlidesh
   const [isPlaying, setIsPlaying] = useState(false);
   const [isInView, setIsInView] = useState(true);
   const [pageVisible, setPageVisible] = useState(true);
+  const [dragOffset, setDragOffset] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
+  const dragStartRef = useRef<{ pointerId: number; x: number; y: number } | null>(null);
 
   useEffect(() => {
     if (!autoStart || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
@@ -296,6 +299,31 @@ export default function AiIntakeSlideshow({ autoStart = false }: AiIntakeSlidesh
   }, [isInView, isPlaying, pageVisible, slide]);
 
   const CurrentSlide = slides[slide];
+  const goToSlide = (nextSlide: number) => {
+    setIsPlaying(false);
+    setSlide(Math.max(0, Math.min(slides.length - 1, nextSlide)));
+  };
+
+  const finishSwipe = (event: React.PointerEvent<HTMLDivElement>) => {
+    const start = dragStartRef.current;
+    if (!start || start.pointerId !== event.pointerId) return;
+
+    const deltaX = event.clientX - start.x;
+    const deltaY = event.clientY - start.y;
+    const isHorizontalSwipe = Math.abs(deltaX) >= 42 && Math.abs(deltaX) > Math.abs(deltaY) * 1.15;
+
+    dragStartRef.current = null;
+    setDragOffset(0);
+    setIsDragging(false);
+
+    if (isHorizontalSwipe) goToSlide(slide + (deltaX < 0 ? 1 : -1));
+  };
+
+  const cancelSwipe = () => {
+    dragStartRef.current = null;
+    setDragOffset(0);
+    setIsDragging(false);
+  };
 
   return (
     <div className={styles.player} ref={rootRef}>
@@ -303,42 +331,81 @@ export default function AiIntakeSlideshow({ autoStart = false }: AiIntakeSlidesh
         aria-label="AI intake feature slideshow"
         aria-roledescription="slideshow"
         className={styles.stage}
+        data-dragging={isDragging ? 'true' : 'false'}
+        onDragStart={(event) => event.preventDefault()}
         onKeyDown={(event) => {
           if (event.key === 'ArrowLeft') {
             event.preventDefault();
-            setIsPlaying(false);
-            setSlide((current) => Math.max(0, current - 1));
+            goToSlide(slide - 1);
           }
           if (event.key === 'ArrowRight') {
             event.preventDefault();
-            setIsPlaying(false);
-            setSlide((current) => Math.min(slides.length - 1, current + 1));
+            goToSlide(slide + 1);
           }
         }}
+        onPointerCancel={cancelSwipe}
+        onPointerDown={(event) => {
+          if (!event.isPrimary || event.button !== 0) return;
+          setIsPlaying(false);
+          dragStartRef.current = { pointerId: event.pointerId, x: event.clientX, y: event.clientY };
+          event.currentTarget.setPointerCapture(event.pointerId);
+        }}
+        onPointerMove={(event) => {
+          const start = dragStartRef.current;
+          if (!start || start.pointerId !== event.pointerId) return;
+          const deltaX = event.clientX - start.x;
+          const deltaY = event.clientY - start.y;
+          if (Math.abs(deltaX) <= Math.abs(deltaY)) return;
+          setIsDragging(true);
+          setDragOffset(Math.max(-72, Math.min(72, deltaX * 0.35)));
+        }}
+        onPointerUp={(event) => finishSwipe(event)}
         role="region"
         tabIndex={0}
       >
-        <CurrentSlide key={slide} />
+        <div
+          className={styles.slideMotion}
+          data-dragging={isDragging ? 'true' : 'false'}
+          style={{ transform: `translate3d(${dragOffset}px, 0, 0)` }}
+        >
+          <CurrentSlide key={slide} />
+        </div>
+        <button
+          aria-label="Previous slide"
+          className={`${styles.edgeArrow} ${styles.edgeArrowPrevious}`}
+          disabled={slide === 0}
+          onClick={() => goToSlide(slide - 1)}
+          onPointerDown={(event) => event.stopPropagation()}
+          type="button"
+        >
+          <span aria-hidden="true">‹</span>
+        </button>
+        <button
+          aria-label="Next slide"
+          className={`${styles.edgeArrow} ${styles.edgeArrowNext}`}
+          disabled={slide === slides.length - 1}
+          onClick={() => goToSlide(slide + 1)}
+          onPointerDown={(event) => event.stopPropagation()}
+          type="button"
+        >
+          <span aria-hidden="true">›</span>
+        </button>
         <div className={styles.slideCount}>{String(slide + 1).padStart(2, '0')} / {String(slides.length).padStart(2, '0')}</div>
       </div>
 
-      <div className={styles.controls}>
-        <span aria-live="polite" className={styles.srOnly}>Slide {slide + 1} of {slides.length}</span>
-        <button aria-label="Previous slide" disabled={slide === 0} onClick={() => { setIsPlaying(false); setSlide((current) => Math.max(0, current - 1)); }} type="button">←</button>
-        <button
-          className={styles.playButton}
-          onClick={() => {
-            if (slide === slides.length - 1) setSlide(0);
-            setIsPlaying((current) => slide === slides.length - 1 || !current);
-          }}
-          type="button"
-        >
-          {isPlaying ? 'Pause' : slide === slides.length - 1 ? 'Play again' : 'Play slideshow'}
-        </button>
-        <div aria-hidden="true" className={styles.progress}>
-          {slides.map((_, index) => <span className={index <= slide ? styles.progressActive : undefined} key={index} />)}
+      <div className={styles.swipeNav}>
+        <div aria-label="Choose a slide" className={styles.progress} role="group">
+          {slides.map((_, index) => (
+            <button
+              aria-current={index === slide ? 'step' : undefined}
+              aria-label={`Go to slide ${index + 1}`}
+              className={index <= slide ? styles.progressActive : undefined}
+              key={index}
+              onClick={() => goToSlide(index)}
+              type="button"
+            />
+          ))}
         </div>
-        <button aria-label="Next slide" disabled={slide === slides.length - 1} onClick={() => { setIsPlaying(false); setSlide((current) => Math.min(slides.length - 1, current + 1)); }} type="button">→</button>
       </div>
     </div>
   );

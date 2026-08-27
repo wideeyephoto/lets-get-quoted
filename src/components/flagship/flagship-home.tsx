@@ -7,7 +7,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { SiteFooter, SiteHeader } from './site-chrome';
 import { COMMAND_CENTER_SCREENS } from '@/components/command-center-deck';
-import HeroShowcase from './hero-showcase';
+import HeroAiIntakeShowcase from './hero-ai-intake-showcase';
 import { HOME_FAQS } from '@/lib/home-faqs';
 import { PLAN_PRICE_OPTIONS, STRIPE_PROCESSING_NOTE } from '@/lib/pricing';
 import styles from './flagship.module.css';
@@ -644,7 +644,7 @@ export default function FlagshipHome() {
         </div>
 
         <div className="hero-product">
-          <HeroShowcase />
+          <HeroAiIntakeShowcase />
         </div>
       </section>
 
