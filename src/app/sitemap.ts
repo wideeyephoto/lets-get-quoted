@@ -15,6 +15,9 @@ export const dynamic = 'force-dynamic';
 // part-way down back-office or on a capability group on /features.
 const FEATURE_SLUGS = [
   'ai-intake',
+  'ai-voice',
+  'ai-vision',
+  'dispatch',
   'quick-stops',
   'client-portal',
   'website-builder',

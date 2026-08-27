@@ -29,8 +29,10 @@ async function runVisualQA() {
   const safeGoto = async (urlPath) => {
     try {
       console.log(`Navigating to ${BASE_URL}${urlPath}...`);
+      await page.emulateMedia({ media: null });
       await page.goto(`${BASE_URL}${urlPath}`, { waitUntil: 'domcontentloaded', timeout: 30000 });
       await page.waitForTimeout(1500);
+      await page.evaluate(() => window.scrollTo(0, 0));
     } catch (e) {
       console.warn(`⚠️ Warning navigating to ${urlPath}: ${e.message}`);
     }
@@ -66,10 +68,11 @@ async function runVisualQA() {
     await capture('04_estimate_gen_line_items_and_guardrails');
 
     // Test Print preview
+    await page.evaluate(() => window.scrollTo(0, 0));
     await page.emulateMedia({ media: 'print' });
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(600);
     await capture('05_estimate_gen_print_mode');
-    await page.emulateMedia({ media: 'screen' });
+    await page.emulateMedia({ media: null });
   } catch (err) {
     console.error('Error testing Estimate Generator:', err);
   }
@@ -153,7 +156,7 @@ async function runVisualQA() {
   }
 
   // =============================================================
-  // 6. DEMO REEL (BATH TO SHOWER)
+  // 6. DEMO REEL INTERACTION
   // =============================================================
   console.log('\n--- 6. Testing Demo Reel ---');
   try {
@@ -164,18 +167,21 @@ async function runVisualQA() {
   }
 
   // =============================================================
-  // 7. DASHBOARD (MOCK AUTH / DEMO MODE IF AVAILABLE)
+  // 7. AUTH / LOGIN FLOW
   // =============================================================
   console.log('\n--- 7. Testing Dashboard / Auth redirects ---');
   try {
     await safeGoto('/login');
     await capture('15_login_screen');
   } catch (err) {
-    console.error('Error testing login screen:', err);
+    console.error('Error testing Auth flow:', err);
   }
 
   console.log('\n🎉 Visual QA Complete!');
   await browser.close();
 }
 
-runVisualQA();
+runVisualQA().catch((err) => {
+  console.error('Fatal Error during visual QA:', err);
+  process.exit(1);
+});

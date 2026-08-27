@@ -167,6 +167,26 @@ export default function CrewFeaturePage() {
         title: 'Put the crew, the hours and the margin on one record.',
         note: `${FEATURE_PRICING_NOTE} Included crew seats and optional extras are listed on /pricing; Stripe's ${STRIPE_PROCESSING_NOTE} are separate.`,
       }}
-    />
+    >
+      <section className="section-block" style={{ margin: '48px 0', background: 'var(--bg-surface-elevated, #f8fafc)', padding: '2rem', borderRadius: '12px', border: '1px solid var(--border-subtle, rgba(0,0,0,0.08))' }}>
+        <div>
+          <p className="eyebrow" style={{ textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: '0.75rem', color: '#0284c7', fontWeight: 700 }}>
+            Automated Morning Dispatch &amp; Equipment Loadouts
+          </p>
+          <h2 style={{ fontSize: '1.5rem', margin: '0.5rem 0' }}>One-click morning crew briefing deck.</h2>
+          <p style={{ color: 'var(--text-secondary, #475569)', fontSize: '0.9375rem', lineHeight: 1.5 }}>
+            Send turn-by-turn route maps, equipment loadout checklists, gate codes, and site hazard warnings straight to your crew’s field phones before they depart the shop.
+          </p>
+        </div>
+        <div style={{ marginTop: '1.25rem' }}>
+          <a
+            href="/features/dispatch"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', fontWeight: 700, color: '#0284c7', textDecoration: 'none' }}
+          >
+            Explore Morning Crew Briefings &amp; Dispatch Suite →
+          </a>
+        </div>
+      </section>
+    </SuiteFeaturePage>
   );
 }

@@ -323,8 +323,8 @@ export default async function CrewLaborPage({
             <div style={{
               margin: '0.5rem 0 1.25rem 0',
               padding: '1rem 1.25rem',
-              background: 'linear-gradient(135deg, rgba(88, 28, 135, 0.25), rgba(49, 46, 129, 0.2))',
-              border: '1px solid rgba(168, 85, 247, 0.3)',
+              background: 'rgba(88, 28, 135, 0.05)',
+              border: '1px solid rgba(147, 51, 234, 0.25)',
               borderRadius: '0.85rem',
               display: 'flex',
               alignItems: 'center',
@@ -335,14 +335,14 @@ export default async function CrewLaborPage({
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
                   <span style={{ fontSize: '1.2rem' }}>🎙️</span>
-                  <strong style={{ color: '#f3f4f6', fontSize: '0.92rem' }}>2-Way Field Voice Hotline Enabled</strong>
-                  <span style={{ fontSize: '0.7rem', padding: '0.15rem 0.4rem', background: '#9333ea', color: '#fff', borderRadius: '0.35rem', textTransform: 'uppercase', fontWeight: 600 }}>Zero Extra Lines</span>
+                  <strong style={{ color: '#1e1b4b', fontSize: '0.92rem' }}>2-Way Field Voice Hotline Enabled</strong>
+                  <span style={{ fontSize: '0.7rem', padding: '0.15rem 0.4rem', background: '#7e22ce', color: '#fff', borderRadius: '0.35rem', textTransform: 'uppercase', fontWeight: 600 }}>Zero Extra Lines</span>
                 </div>
-                <p style={{ margin: 0, fontSize: '0.84rem', color: '#d1d5db' }}>
+                <p style={{ margin: 0, fontSize: '0.84rem', color: '#475569', lineHeight: 1.4 }}>
                   Adding a phone number to any crew member allows them to call your main business number from the road to update job scopes, log materials, and record change orders hands-free.
                 </p>
               </div>
-              <Link href="/dashboard/voice-calls" style={{ fontSize: '0.8rem', color: '#c084fc', textDecoration: 'underline', fontWeight: 600 }}>
+              <Link href="/dashboard/voice-calls" style={{ fontSize: '0.8rem', color: '#7e22ce', textDecoration: 'underline', fontWeight: 700 }}>
                 View Voice Assistant →
               </Link>
             </div>

@@ -39738,6 +39738,33 @@ a.sms-cat-switch:focus-visible { outline: 2px solid var(--accent); outline-offse
   background: rgba(var(--tint, 255, 255, 255), 0.035);
   border: 1px solid var(--rule-t12, rgba(255, 255, 255, 0.1));
 }
+.brief-crew-sms-preview-bubble.is-urgent {
+  border-color: rgba(239, 68, 68, 0.4);
+  background: rgba(239, 68, 68, 0.05);
+}
+.brief-footer-ready.urgent {
+  color: #fca5a5;
+}
+
+/* Global Print Suppression for Tool PDFs & Run-Sheets */
+@media print {
+  header,
+  nav,
+  footer,
+  .public-topbar,
+  .marketing-header,
+  .topbar,
+  .sidenav,
+  .sidenav-mobilebar,
+  .sidenav-scrim,
+  .theme-fab,
+  .skip-link,
+  .marketing-footer,
+  footer.marketing-footer {
+    display: none !important;
+  }
+}
+
 .brief-crew-sms-meta {
   display: flex;
   justify-content: space-between;

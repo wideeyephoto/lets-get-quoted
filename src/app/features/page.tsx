@@ -368,6 +368,116 @@ export default function FeaturesPage() {
         </ul>
       </section>
 
+      {/* AI BREAKTHROUGHS & FIELD DISPATCH SUITE */}
+      <section className="breakthroughs-band" id="breakthroughs" aria-labelledby="breakthroughs-title" style={{ padding: '4rem 1.5rem', maxWidth: '1200px', margin: '0 auto' }}>
+        <div className="index-heading">
+          <p className="eyebrow">
+            <span aria-hidden="true">✦</span> NEW FIELD &amp; AI BREAKTHROUGHS
+          </p>
+          <h2 id="breakthroughs-title">
+            Intelligent tools built for the truck, <em>not just the desk.</em>
+          </h2>
+          <p>
+            24/7 call answering, photo-grounded estimating, and automated morning crew briefings.
+          </p>
+        </div>
+        <div className="feature-link-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', marginTop: '2rem' }}>
+          <Link href="/features/ai-voice" id="ai-voice-spotlight">
+            <span style={{ fontSize: '1.25rem', color: '#0284c7' }}>🎙️</span>
+            <small>24/7 AI RECEPTIONIST &amp; HOTLINE</small>
+            <h3>AI Voice Assistant</h3>
+            <p>Answer every homeowner call in two rings, qualify scope details, transcribe audio, and dictate job notes hands-free.</p>
+            <ul className="feature-produces" aria-label="What AI Voice gives you">
+              <li>24/7 call qualification</li>
+              <li>Audio transcripts &amp; summaries</li>
+              <li>Hands-free field dictation</li>
+            </ul>
+            <b>Explore AI Voice <span aria-hidden="true">→</span></b>
+          </Link>
+
+          <Link href="/features/ai-vision" id="ai-vision-spotlight">
+            <span style={{ fontSize: '1.25rem', color: '#8b5cf6' }}>📸</span>
+            <small>MULTIMODAL PHOTO SCOPE</small>
+            <h3>AI Vision Estimator</h3>
+            <p>Read equipment rating plates, detect damage patterns, and draft material pick-lists directly from uploaded photos.</p>
+            <ul className="feature-produces" aria-label="What AI Vision gives you">
+              <li>Equipment model OCR</li>
+              <li>Material pick-list generation</li>
+              <li>Visual inspection PDF reports</li>
+            </ul>
+            <b>Explore AI Vision <span aria-hidden="true">→</span></b>
+          </Link>
+
+          <Link href="/features/dispatch" id="dispatch-spotlight">
+            <span style={{ fontSize: '1.25rem', color: '#16a34a' }}>🚚</span>
+            <small>MORNING CREW BRIEFINGS</small>
+            <h3>Dispatch &amp; Loadout Suite</h3>
+            <p>One-click morning dispatch with turn-by-turn route maps, tool loadout checklists, hazard warnings, and gate codes.</p>
+            <ul className="feature-produces" aria-label="What Dispatch gives you">
+              <li>One-click crew dispatch</li>
+              <li>Truck equipment checklists</li>
+              <li>Site hazard &amp; lockbox alerts</li>
+            </ul>
+            <b>Explore Dispatch <span aria-hidden="true">→</span></b>
+          </Link>
+        </div>
+      </section>
+
+      {/* INTERACTIVE FREE CONTRACTOR TOOLS SHOWCASE */}
+      <section className="tools-showcase-band" id="contractor-tools" aria-labelledby="tools-showcase-title" style={{ padding: '4rem 1.5rem', maxWidth: '1200px', margin: '0 auto' }}>
+        <div className="index-heading">
+          <p className="eyebrow">
+            <span aria-hidden="true">✦</span> FREE CONTRACTOR TOOLS &amp; CALCULATORS
+          </p>
+          <h2 id="tools-showcase-title">
+            Try our instant estimating and <em>margin calculators live.</em>
+          </h2>
+          <p>
+            Deterministic 1-page PDF exports, hourly rate modeling, and profit leak diagnostics — free to use right now.
+          </p>
+        </div>
+        <div className="feature-link-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', marginTop: '2rem' }}>
+          <Link href="/tools/estimate-generator">
+            <span style={{ fontSize: '1.25rem', color: '#2563eb' }}>📄</span>
+            <small>INSTANT ESTIMATE BUILDER</small>
+            <h3>1-Page PDF Estimate Generator</h3>
+            <p>Create trade-specific, itemized estimates with 1-click presets and export clean, printable 1-page PDFs.</p>
+            <ul className="feature-produces" aria-label="What Estimate Generator provides">
+              <li>Clean 1-page printable PDF</li>
+              <li>Trade-specific line presets</li>
+              <li>Instant customer pricing view</li>
+            </ul>
+            <b>Open Estimate Generator <span aria-hidden="true">→</span></b>
+          </Link>
+
+          <Link href="/tools/hourly-rate-calculator">
+            <span style={{ fontSize: '1.25rem', color: '#059669' }}>🧮</span>
+            <small>PROFITABILITY MODELING</small>
+            <h3>Hourly Rate &amp; Margin Calculator</h3>
+            <p>Calculate your true billable hourly rate based on overhead, labor burden, and target gross margin.</p>
+            <ul className="feature-produces" aria-label="What Hourly Rate Calculator provides">
+              <li>Overhead &amp; burden rollup</li>
+              <li>Target gross margin slider</li>
+              <li>Minimum billable rate benchmark</li>
+            </ul>
+            <b>Open Rate Calculator <span aria-hidden="true">→</span></b>
+          </Link>
+
+          <Link href="/tools/leakage-calculator">
+            <span style={{ fontSize: '1.25rem', color: '#d97706' }}>🔍</span>
+            <small>PROFIT DIAGNOSTIC</small>
+            <h3>Profit Leakage Calculator</h3>
+            <p>Diagnose where your contracting business loses margin between intake, uncollected change orders, and unpaid travel.</p>
+            <ul className="feature-produces" aria-label="What Leakage Calculator provides">
+              <li>Unbilled change order leaks</li>
+              <li>Drive time margin recovery</li>
+              <li>Estimated annual revenue lift</li>
+            </ul>
+            <b>Open Leakage Calculator <span aria-hidden="true">→</span></b>
+          </Link>
+        </div>
+      </section>
+
       {/* The light chapter. This is the break the page was missing: it reads as
           a separate chapter on cream instead of as one more dark band.
 

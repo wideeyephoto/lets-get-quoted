@@ -27,8 +27,8 @@ const workflowSteps = [
   },
   {
     number: '04',
-    title: 'Rank it and hand off the next step',
-    copy: 'Guardrails protect the estimate, fit signals set priority, and booking stays connected.',
+    title: 'Transfer the trust—not just the lead',
+    copy: 'A guarded ballpark creates confidence now; the full context lets the contractor own what happens next.',
   },
 ] as const;
 
@@ -57,10 +57,11 @@ export default function BathContractorMockSite() {
         <section className={styles.hero} id="walkthrough">
           <div className={styles.heroCopy}>
             <span className={styles.eyebrow}>50-SECOND AI INTAKE SLIDESHOW</span>
-            <h1>Every lead arrives scoped, ranked, and ready.</h1>
+            <h1>Make the first impression. Hand off the trust.</h1>
             <p className={styles.heroLead}>
-              Watch AI listen to the homeowner, inspect photos and video, ask only the
-              questions that matter, and hand the right job to the contractor.
+              The instant estimate is not here to replace the contractor. It proves the
+              homeowner was heard, creates confidence, and hands a warmer, better-scoped
+              opportunity to the person who will build the real relationship.
             </p>
 
             <div className={styles.heroActions}>
@@ -69,9 +70,9 @@ export default function BathContractorMockSite() {
             </div>
 
             <div className={styles.proofRow} aria-label="Walkthrough outcomes">
-              <span><b>6</b> photo or video uploads</span>
-              <span><b>6 max</b> smart questions</span>
-              <span><b>1 flow</b> intake to booking</span>
+              <span><b>50 ms</b> to form a first impression</span>
+              <span><b>71%</b> expect personalization</span>
+              <span><b>1 handoff</b> AI confidence to human trust</span>
             </div>
           </div>
 
@@ -106,7 +107,7 @@ export default function BathContractorMockSite() {
             <h2>Ten new intake wins. One homeowner journey.</h2>
             <p>
               The slideshow follows one bath-to-shower request from setup and first contact
-              through visual analysis, safe pricing, lead priority, and booking.
+              through visual analysis, a research-backed trust moment, lead priority, and booking.
             </p>
           </div>
 
@@ -152,8 +153,9 @@ export default function BathContractorMockSite() {
               in what the customer actually sent.
             </p>
             <blockquote>
-              “Before I open the lead, I know what they want, what they sent, and what needs follow-up.”
-              <cite>— Mock remodeler testimonial</cite>
+              “The estimate is the first useful answer—not the final promise. It earns attention,
+              then gives the contractor everything needed to make the next interaction personal.”
+              <cite>— The trust-transfer strategy</cite>
             </blockquote>
           </div>
         </section>
@@ -161,8 +163,8 @@ export default function BathContractorMockSite() {
         <section className={styles.quoteSection} id="start">
           <div>
             <span className={styles.eyebrow}>FROM LEAD TO BOOKED</span>
-            <h2>Your new AI intake deserves the spotlight.</h2>
-            <p>Ten slides. One real contractor story. Every feature installed today.</p>
+            <h2>Let the technology impress. Let the contractor connect.</h2>
+            <p>Ten slides. One trust-building journey from first impression to booked visit.</p>
           </div>
           <a className={styles.quoteButton} href="#reel">Replay all 10 slides <span>↗</span></a>
         </section>

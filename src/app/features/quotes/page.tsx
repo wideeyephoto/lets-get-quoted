@@ -293,6 +293,26 @@ export default function QuotesFeaturePage() {
         title: 'Quote it once. Let them sign it tonight.',
         note: `${FEATURE_PRICING_NOTE} Core quotes are unlimited on every plan.`,
       }}
-    />
+    >
+      <section className="section-block" style={{ margin: '48px 0', background: 'var(--bg-surface-elevated, #f8fafc)', padding: '2rem', borderRadius: '12px', border: '1px solid var(--border-subtle, rgba(0,0,0,0.08))' }}>
+        <div>
+          <p className="eyebrow" style={{ textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: '0.75rem', color: '#2563eb', fontWeight: 700 }}>
+            Instant Printable Estimates &amp; PDF Reports
+          </p>
+          <h2 style={{ fontSize: '1.5rem', margin: '0.5rem 0' }}>Export clean, professional 1-page PDF estimates.</h2>
+          <p style={{ color: 'var(--text-secondary, #475569)', fontSize: '0.9375rem', lineHeight: 1.5 }}>
+            Need a clean physical estimate or a printable PDF for insurance and commercial property managers? Generate deterministic 1-page estimates and visual inspection check-sheets with your logo and license numbers in one click.
+          </p>
+        </div>
+        <div style={{ marginTop: '1.25rem' }}>
+          <a
+            href="/tools/estimate-generator"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', fontWeight: 700, color: '#2563eb', textDecoration: 'none' }}
+          >
+            Try the Free 1-Page Estimate Generator Tool →
+          </a>
+        </div>
+      </section>
+    </SuiteFeaturePage>
   );
 }

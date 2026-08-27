@@ -10,8 +10,8 @@ describe('bath-to-shower mock product site', () => {
   it('embeds the AI intake slideshow inside a contractor-focused product landing page', () => {
     expect(mockSite).toContain("LET&apos;S GET QUOTED");
     expect(mockSite).toContain('<AiIntakeSlideshow />');
-    expect(mockSite).toContain('Every lead arrives scoped, ranked, and ready.');
-    expect(mockSite).toContain('Your new AI intake deserves the spotlight.');
+    expect(mockSite).toContain('Make the first impression. Hand off the trust.');
+    expect(mockSite).toContain('Let the technology impress. Let the contractor connect.');
   });
 
   it('preserves the reel design scale in an inline aspect-ratio container', () => {
@@ -39,8 +39,10 @@ describe('bath-to-shower mock product site', () => {
     expect(intakeSlideshow).toContain('MULTIMODAL VISION');
     expect(intakeSlideshow).toContain('ADAPTIVE QUESTIONS');
     expect(intakeSlideshow).toContain('LEAD INTELLIGENCE');
-    expect(intakeSlideshow).toContain('ESTIMATE GUARDRAILS');
-    expect(intakeSlideshow).toContain('QUALIFY + PRIORITIZE');
+    expect(intakeSlideshow).toContain('THE TRUST TRANSFER');
+    expect(intakeSlideshow).toContain('PREMIUM LEAD SIGNALS');
+    expect(intakeSlideshow).toContain('+15–20%');
+    expect(intakeSlideshow).toContain('BCG–Altagamma, 2024');
     expect(intakeSlideshow).toContain('BOOKING HANDOFF');
     expect((intakeSlideshow.match(/function \w+Slide\(/g) ?? [])).toHaveLength(10);
   });

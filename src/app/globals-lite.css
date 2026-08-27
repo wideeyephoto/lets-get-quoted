@@ -1,6 +1,6 @@
 /* GENERATED — do not edit. Source: src/app/globals.css
    Run: node scripts/build-css-subset.mjs
-   source-sha256: b6f77656d594fa3f
+   source-sha256: 964b28502ea4864c
 
    globals.css with the rules that can only match inside /dashboard, /admin and
    /demo removed. Every route except those three imports this file; they import
@@ -17644,6 +17644,29 @@ select optgroup {
 .brief-crew-card.is-selected {
   background: rgba(var(--tint, 255, 255, 255), 0.08);
   border-color: rgba(var(--accent-rgb, 96, 165, 250), 0.35);
+}
+.brief-crew-sms-preview-bubble.is-urgent {
+  border-color: rgba(239, 68, 68, 0.4);
+  background: rgba(239, 68, 68, 0.05);
+}
+
+/* Global Print Suppression for Tool PDFs & Run-Sheets */
+@media print {
+  header,
+  nav,
+  footer,
+  .public-topbar,
+  .marketing-header,
+  .topbar,
+  .sidenav,
+  .sidenav-mobilebar,
+  .sidenav-scrim,
+  .theme-fab,
+  .skip-link,
+  .marketing-footer,
+  footer.marketing-footer {
+    display: none !important;
+  }
 }
 
 .brief-crew-sms-preview-bubble.is-urgent {

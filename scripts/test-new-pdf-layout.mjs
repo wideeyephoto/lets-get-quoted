@@ -1,20 +1,34 @@
 import PDFDocument from 'pdfkit';
-import type { EstimateData, EstimateTotals } from '@/lib/tools/estimate-generator-utils';
-import { formatCurrency, formatDisplayDate } from '@/lib/tools/estimate-generator-utils';
+import fs from 'node:fs';
 
 const PAGE_MARGIN = 36;
-const PAGE_WIDTH = 612; // US Letter width in points (8.5in)
-const PAGE_HEIGHT = 792; // US Letter height in points (11in)
+const PAGE_WIDTH = 612; // US Letter width in points
+const PAGE_HEIGHT = 792; // US Letter height in points
 const CONTENT_WIDTH = PAGE_WIDTH - PAGE_MARGIN * 2;
-const FOOTER_Y = 734;
-const BOTTOM_LIMIT = 714;
+const FOOTER_Y = PAGE_HEIGHT - PAGE_MARGIN - 8;
+const BOTTOM_LIMIT = FOOTER_Y - 12;
 
-/**
- * Generates a polished, executive-grade US Letter PDF document for contractor estimates.
- * Dynamically balances vertical rhythm across the full page for standard scopes (up to 7 items),
- * while cleanly flowing across multiple pages when oversized scopes exceed single-page capacity.
- */
-export function generateEstimatePdf(estimate: EstimateData, totals: EstimateTotals): Promise<Buffer> {
+function formatCurrency(amount) {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 2,
+  }).format(amount || 0);
+}
+
+function formatDisplayDate(dateStr) {
+  if (!dateStr) return 'Today';
+  try {
+    const [year, month, day] = dateStr.split('-');
+    if (!year || !month || !day) return dateStr;
+    const d = new Date(parseInt(year, 10), parseInt(month, 10) - 1, parseInt(day, 10));
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  } catch {
+    return dateStr;
+  }
+}
+
+export function generateTestPdf(estimate, totals) {
   return new Promise((resolve, reject) => {
     try {
       const doc = new PDFDocument({
@@ -24,53 +38,46 @@ export function generateEstimatePdf(estimate: EstimateData, totals: EstimateTota
         bufferPages: true,
       });
 
-      const chunks: Buffer[] = [];
-      doc.on('data', (chunk: Buffer) => chunks.push(chunk));
+      const chunks = [];
+      doc.on('data', (chunk) => chunks.push(chunk));
       doc.on('end', () => resolve(Buffer.concat(chunks)));
-      doc.on('error', (err: Error) => reject(err));
+      doc.on('error', (err) => reject(err));
 
       const startY = PAGE_MARGIN;
 
       // ==========================================
       // 1. TOP HEADER: Contractor Info + Meta Card
       // ==========================================
-      const companyName = estimate.contractorName?.trim() || 'Apex Trade Solutions';
+      const companyName = estimate.contractorName?.trim() || 'Contractor Estimate';
       const contractorPhone = estimate.contractorPhone?.trim();
       const contractorEmail = estimate.contractorEmail?.trim();
       const contractorLicense = estimate.contractorLicense?.trim();
 
+      // Left Column: Business Info
+      doc.font('Helvetica-Bold').fontSize(21).fillColor('#0f172a').text(companyName, PAGE_MARGIN, startY, {
+        width: 320,
+        lineGap: 2,
+      });
+
+      let contactY = doc.y + 4;
+      const contactBits = [];
+      if (contractorPhone) contactBits.push(`Phone: ${contractorPhone}`);
+      if (contractorEmail) contactBits.push(`Email: ${contractorEmail}`);
+      if (contractorLicense) contactBits.push(contractorLicense.startsWith('LIC') ? contractorLicense : `Lic: ${contractorLicense}`);
+
+      doc.font('Helvetica').fontSize(9.5).fillColor('#475569');
+      if (contactBits.length > 0) {
+        doc.text(contactBits.join('   •   '), PAGE_MARGIN, contactY, { width: 320, lineGap: 3 });
+      } else {
+        doc.text('Licensed & Insured Trade Contractor', PAGE_MARGIN, contactY, { width: 320 });
+      }
+
+      // Right Column: Estimate Meta Card
       const metaCardWidth = 190;
       const metaCardX = PAGE_WIDTH - PAGE_MARGIN - metaCardWidth;
       const metaCardY = startY;
       const metaCardHeight = 72;
-      const leftColHeaderWidth = metaCardX - PAGE_MARGIN - 14;
 
-      // Left Column: Business Info
-      doc.font('Helvetica-Bold').fontSize(21).fillColor('#0f172a').text(companyName, PAGE_MARGIN, startY, {
-        width: leftColHeaderWidth,
-        lineGap: 2,
-      });
-
-      let contactY = doc.y + 3;
-      const phoneEmailBits: string[] = [];
-      if (contractorPhone) phoneEmailBits.push(`Phone: ${contractorPhone}`);
-      if (contractorEmail) phoneEmailBits.push(`Email: ${contractorEmail}`);
-
-      doc.font('Helvetica').fontSize(9.5).fillColor('#475569');
-      if (phoneEmailBits.length > 0) {
-        doc.text(phoneEmailBits.join('   •   '), PAGE_MARGIN, contactY, { width: leftColHeaderWidth });
-        contactY = doc.y + 2;
-      }
-
-      const cleanLicNumber = contractorLicense.replace(/^lic[:\s#-]*\s*/i, '');
-      const licText = cleanLicNumber
-        ? `Contractor Lic: ${cleanLicNumber}   •   Licensed & Insured`
-        : 'Licensed & Insured Trade Contractor';
-      doc.font('Helvetica').fontSize(9).fillColor('#64748b').text(licText, PAGE_MARGIN, contactY, {
-        width: leftColHeaderWidth,
-      });
-
-      // Right Column: Estimate Meta Card
       doc.roundedRect(metaCardX, metaCardY, metaCardWidth, metaCardHeight, 6)
         .fillColor('#f8fafc')
         .fillAndStroke('#cbd5e1');
@@ -108,8 +115,8 @@ export function generateEstimatePdf(estimate: EstimateData, totals: EstimateTota
         align: 'right',
       });
 
-      // Divider Line
-      const headerBottomY = Math.max(doc.y + 10, metaCardY + metaCardHeight + 10);
+      // Dividing Line
+      const headerBottomY = Math.max(doc.y + 12, metaCardY + metaCardHeight + 12);
       doc.moveTo(PAGE_MARGIN, headerBottomY)
         .lineTo(PAGE_WIDTH - PAGE_MARGIN, headerBottomY)
         .strokeColor('#0f172a')
@@ -140,7 +147,7 @@ export function generateEstimatePdf(estimate: EstimateData, totals: EstimateTota
       }
 
       // Right: Trade & Scope
-      const tradeLabel = (estimate.selectedTrade ? estimate.selectedTrade.replace(/_/g, ' ') : 'General').toUpperCase();
+      const tradeLabel = (estimate.selectedTrade || 'General').toUpperCase();
       doc.font('Helvetica-Bold').fontSize(8).fillColor('#64748b').text('PROJECT TRADE / SCOPE:', PAGE_MARGIN + 14 + colHalf, clientBoxY + 9);
       doc.font('Helvetica-Bold').fontSize(11.5).fillColor('#ea580c').text(`${tradeLabel} SERVICES`, PAGE_MARGIN + 14 + colHalf, clientBoxY + 22, {
         width: colHalf - 14,
@@ -152,7 +159,7 @@ export function generateEstimatePdf(estimate: EstimateData, totals: EstimateTota
       // ==========================================
       // 3. LINE ITEMS TABLE
       // ==========================================
-      const tableTopY = clientBoxY + clientBoxHeight + 14;
+      const tableTopY = clientBoxY + clientBoxHeight + 16;
       const colDescWidth = 260;
       const colTypeWidth = 70;
       const colQtyWidth = 46;
@@ -180,13 +187,11 @@ export function generateEstimatePdf(estimate: EstimateData, totals: EstimateTota
 
       let currentY = tableTopY + thHeight + 2;
 
-      const items = (estimate.items || []).filter((item) => !(item.isOptional && item.selected === false));
-      const itemCount = items.length;
-      // Allow slightly more row padding when few items are present
-      const baseRowPadding = itemCount <= 4 ? 16 : 12;
-
+      const items = estimate.items || [];
       let rowIndex = 0;
       for (const item of items) {
+        if (item.isOptional && item.selected === false) continue;
+
         const isDisc = item.isDiscount || item.type === 'Discount';
         const qty = item.quantity || 1;
         const rate = item.unitPrice || 0;
@@ -196,7 +201,7 @@ export function generateEstimatePdf(estimate: EstimateData, totals: EstimateTota
         const descText = item.description || 'Line Item';
         doc.font('Helvetica-Bold').fontSize(9.5);
         const descHeight = doc.heightOfString(descText, { width: colDescWidth - 20, lineGap: 2 });
-        const rowHeight = Math.max(itemCount <= 4 ? 32 : 28, descHeight + baseRowPadding);
+        const rowHeight = Math.max(30, descHeight + 14);
 
         // Check if page overflow would occur
         if (currentY + rowHeight > BOTTOM_LIMIT - 230) {
@@ -258,7 +263,7 @@ export function generateEstimatePdf(estimate: EstimateData, totals: EstimateTota
 
       // Calculate vertical breathing room to distribute space gracefully on single page
       const remainingSpace = Math.max(0, BOTTOM_LIMIT - currentY - bottomSectionNeeded);
-      const gapBeforeGrid = Math.min(28, Math.max(12, remainingSpace * 0.3));
+      const gapBeforeGrid = Math.min(24, Math.max(12, remainingSpace * 0.25));
 
       const gridY = currentY + gapBeforeGrid;
       const leftColWidth = 310;
@@ -293,8 +298,8 @@ export function generateEstimatePdf(estimate: EstimateData, totals: EstimateTota
         doc.font('Helvetica-Bold').fontSize(8.5).fillColor('#0f172a').text('PAYMENT MILESTONE SCHEDULE:', PAGE_MARGIN + 12, msBoxY + 7);
         let msY = msBoxY + 20;
         for (const m of totals.milestones.slice(0, 3)) {
-          doc.font('Helvetica').fontSize(8).fillColor('#475569').text(m.name, PAGE_MARGIN + 12, msY, { width: 185 });
-          doc.font('Helvetica-Bold').fontSize(8.5).fillColor('#0f172a').text(`${formatCurrency(m.amount)} (${m.percentage}%)`, PAGE_MARGIN + 195, msY, { width: 102, align: 'right' });
+          doc.font('Helvetica').fontSize(8).fillColor('#475569').text(m.name, PAGE_MARGIN + 12, msY, { width: 190 });
+          doc.font('Helvetica-Bold').fontSize(8).fillColor('#0f172a').text(`${formatCurrency(m.amount)} (${m.percentage}%)`, PAGE_MARGIN + 200, msY, { width: 98, align: 'right' });
           msY += 11;
         }
       }
@@ -349,7 +354,7 @@ export function generateEstimatePdf(estimate: EstimateData, totals: EstimateTota
       // ==========================================
       const contentHeightSoFar = Math.max(gridY + termsBoxHeight + (estimate.milestonesEnabled ? 56 : 0), gridY + totalsCardHeight);
       const remainingForSig = Math.max(0, FOOTER_Y - contentHeightSoFar - 95);
-      const gapBeforeSig = Math.min(28, Math.max(14, remainingForSig * 0.35));
+      const gapBeforeSig = Math.min(26, Math.max(14, remainingForSig * 0.35));
       const sigSectionY = contentHeightSoFar + gapBeforeSig;
 
       doc.moveTo(PAGE_MARGIN, sigSectionY)
@@ -393,7 +398,7 @@ export function generateEstimatePdf(estimate: EstimateData, totals: EstimateTota
         .stroke();
 
       doc.font('Helvetica').fontSize(8).fillColor('#64748b')
-        .text('Thank you for the opportunity to earn your business!', PAGE_MARGIN, FOOTER_Y, { width: 300 });
+        .text('✓ Thank you for the opportunity to earn your business!', PAGE_MARGIN, FOOTER_Y, { width: 300 });
       doc.font('Helvetica').fontSize(8).fillColor('#94a3b8')
         .text("Prepared via Let's Get Quoted • Instant Contractor Estimate", PAGE_MARGIN + 300, FOOTER_Y, {
           width: CONTENT_WIDTH - 300,
@@ -406,3 +411,43 @@ export function generateEstimatePdf(estimate: EstimateData, totals: EstimateTota
     }
   });
 }
+
+async function run() {
+  const estimate = {
+    contractorName: 'Apex Trade Solutions',
+    contractorPhone: '(555) 382-9102',
+    contractorEmail: 'estimates@apextrades.com',
+    contractorLicense: 'LIC-MI-884920',
+    estimateNumber: 'EST-2026-104',
+    estimateDate: '2026-08-27',
+    clientName: 'Sarah & Mark Jenkins',
+    clientAddress: '1482 Crestview Lane, Ann Arbor, MI',
+    selectedTrade: 'Roofing',
+    taxRate: 6,
+    depositPct: 30,
+    discountAmount: 0,
+    milestonesEnabled: false,
+    terms: 'Estimate valid for 30 days. 30% deposit due prior to material delivery. Balance payable upon final customer walkthrough and inspection. All workmanship backed by 5-year contractor guarantee.',
+    items: [
+      { id: '1', description: 'Complete tear-off of existing asphalt shingles & haul-away disposal', type: 'Labor', quantity: 24, unitPrice: 125 },
+      { id: '2', description: 'Architectural dimensional shingles (50-yr warranty, dual-layer fiberglass)', type: 'Material', quantity: 24, unitPrice: 185 },
+      { id: '3', description: 'Synthetic water-resistant underlayment, ice & water shield eaves barrier', type: 'Material', quantity: 6, unitPrice: 95 },
+      { id: '4', description: 'Continuous ridge vent ventilation system & starter strip shingles', type: 'Material', quantity: 1, unitPrice: 650 },
+      { id: '5', description: 'City Building & Roofing Permit Application Fee with Final Inspection', type: 'Permit', quantity: 1, unitPrice: 175 }
+    ]
+  };
+
+  const totals = {
+    subtotal: 8840,
+    discountTotal: 0,
+    taxAmount: 530.40,
+    grandTotal: 9370.40,
+    depositDue: 2811.12
+  };
+
+  const buf = await generateTestPdf(estimate, totals);
+  fs.writeFileSync('artifacts/sample-new-pdf.pdf', buf);
+  console.log('Saved artifacts/sample-new-pdf.pdf');
+}
+
+run().catch(console.error);

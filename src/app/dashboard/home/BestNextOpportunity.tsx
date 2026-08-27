@@ -16,8 +16,9 @@ export default function BestNextOpportunity({
     <section
       className="panel workspace-section-card next-opportunity-panel"
       style={{
-        background: 'linear-gradient(135deg, rgba(255, 122, 33, 0.08) 0%, rgba(139, 92, 246, 0.08) 100%)',
-        borderColor: 'var(--accent, #ff7a21)',
+        background: 'linear-gradient(135deg, rgba(255, 122, 33, 0.12) 0%, rgba(139, 92, 246, 0.1) 100%), #0e1c2b',
+        border: '1.5px solid rgba(255, 122, 33, 0.4)',
+        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.25)',
         padding: '1.25rem',
       }}
     >
@@ -39,10 +40,10 @@ export default function BestNextOpportunity({
               ★ Recommended Next Step
             </span>
           </div>
-          <h2 style={{ margin: '0 0 0.4rem', fontSize: '1.15rem', fontWeight: 700, color: 'var(--text)' }}>
+          <h2 style={{ margin: '0 0 0.4rem', fontSize: '1.15rem', fontWeight: 700, color: '#f7f5ef' }}>
             {opp.headline}
           </h2>
-          <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--muted)', lineHeight: 1.4 }}>
+          <p style={{ margin: 0, fontSize: '0.88rem', color: '#c8d0dc', lineHeight: 1.4 }}>
             {opp.reason}
           </p>
         </div>

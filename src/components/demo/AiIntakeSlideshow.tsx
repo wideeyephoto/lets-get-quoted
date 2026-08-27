@@ -49,6 +49,11 @@ function VoiceSlide() {
       <div className={styles.channelRow}>
         <span>Website</span><span>Text</span><span className={styles.chipActive}>AI phone line</span>
       </div>
+      <div className={`${styles.insightBadge} ${styles.firstImpressionBadge}`}>
+        <b>50 ms</b>
+        <span>That is how quickly people form a visual first impression.</span>
+        <small>Lindgaard et al.</small>
+      </div>
       <div className={styles.callCard}>
         <div className={styles.callTop}>
           <span className={styles.waveform}>|||||||||</span>
@@ -197,23 +202,27 @@ function IntelligenceSlide() {
   );
 }
 
-function GuardrailSlide() {
+function TrustTransferSlide() {
   return (
     <section className={`${styles.slide} ${styles.guardrailSlide}`}>
       <div className={styles.slideHeading}>
-        <span>08 · ESTIMATE GUARDRAILS</span>
-        <h2>The AI can estimate. It cannot make promises.</h2>
-        <p>Deterministic rules sit after the model and decide whether a range is safe to show.</p>
+        <span>08 · THE TRUST TRANSFER</span>
+        <h2>Answer now. Hand the trust to the contractor next.</h2>
+        <p>A useful ballpark proves the homeowner was heard.</p>
       </div>
 
       <div className={styles.estimatePanel}>
-        <div className={styles.estimateTop}><span>ONLINE BALLPARK</span><strong>$7,600 – $9,200</strong></div>
-        <div className={styles.guardrailChecks}>
-          <span><i>✓</i> Inside contractor price bounds</span>
-          <span><i>✓</i> Range spread below 2.5× cap</span>
-          <span><i>✓</i> No excluded work detected</span>
+        <div className={styles.estimateTop}><span>INSTANT, GUARDED BALLPARK</span><strong>$7,600 – $9,200</strong></div>
+        <div className={styles.trustFlow}>
+          <span><b>AI</b> creates the first impression</span>
+          <i>→</i>
+          <span><b>YOU</b> take the relationship</span>
         </div>
-        <div className={styles.safetyRule}><b>SAFETY RULE</b><span>Structural, gas, mold, or permit-heavy work withholds a blind price and requires a site visit.</span></div>
+        <div className={styles.evidenceCards} aria-label="Research-backed outcomes">
+          <div><strong>+15–20%</strong><span>customer satisfaction potential</span><small>AI personalization · McKinsey</small></div>
+          <div><strong>+5–8%</strong><span>revenue potential</span><small>AI personalization · McKinsey</small></div>
+        </div>
+        <div className={styles.safetyRule}><b>TRUST NEEDS GUARDRAILS</b><span>61% say AI makes trust more important (Salesforce). Price bounds and site-visit rules keep the contractor in control.</span></div>
       </div>
     </section>
   );
@@ -223,11 +232,16 @@ function RankingSlide() {
   return (
     <section className={`${styles.slide} ${styles.rankingSlide}`}>
       <div className={styles.slideHeading}>
-        <span>09 · QUALIFY + PRIORITIZE</span>
-        <h2>The right lead gets attention first.</h2>
-        <p>Area, timeframe, verified contact data, exclusions, and value become one honest priority.</p>
+        <span>09 · PREMIUM LEAD SIGNALS</span>
+        <h2>High-expectation homeowners feel the difference.</h2>
+        <p>Fit, timing, and project value become one honest priority.</p>
       </div>
 
+      <div className={`${styles.insightBadge} ${styles.premiumBadge}`}>
+        <b>TABLE STAKES</b>
+        <span>Top-tier clients expect personalized experiences—not generic follow-up.</span>
+        <small>BCG–Altagamma, 2024</small>
+      </div>
       <div className={styles.rankCard}>
         <div className={styles.rankPerson}><span>MC</span><div><strong>Michelle Carter</strong><small>Bath-to-shower conversion</small></div><b>HOT · HIGH VALUE</b></div>
         <div className={styles.rankSignals}>
@@ -279,7 +293,7 @@ const slides = [
   VisionSlide,
   QuestionsSlide,
   IntelligenceSlide,
-  GuardrailSlide,
+  TrustTransferSlide,
   RankingSlide,
   BookingSlide,
 ] as const;

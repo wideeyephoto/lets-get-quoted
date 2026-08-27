@@ -322,6 +322,47 @@ export default function AIIntakePage() {
 
       <AiIntakeSandbox />
 
+      {/* 4 DISTINCT QUOTE FORM STYLES & VISION INTEGRATION */}
+      <section className="section-block" style={{ margin: '48px 0', background: 'var(--bg-surface-elevated, #f8fafc)', padding: '2rem', borderRadius: '12px', border: '1px solid var(--border-subtle, rgba(0,0,0,0.08))' }}>
+        <div>
+          <p className="eyebrow">Custom Quote Form Appearance &amp; Photo Analysis</p>
+          <h2>4 distinct styles tailored to your trade &amp; brand.</h2>
+          <p>
+            Choose from Clean, Compact, Card, or Conversational styles. Plus, homeowners can upload job photos for instant AI scope recognition and equipment rating plate reading.
+          </p>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem', marginTop: '1.5rem' }}>
+          <div style={{ padding: '1rem', background: '#ffffff', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#2563eb', textTransform: 'uppercase' }}>Style 01</span>
+            <h4 style={{ margin: '0.25rem 0' }}>Clean Minimal</h4>
+            <p style={{ fontSize: '0.8125rem', color: '#64748b', margin: 0 }}>Streamlined, distraction-free inputs with zero visual friction for high conversion.</p>
+          </div>
+          <div style={{ padding: '1rem', background: '#ffffff', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#059669', textTransform: 'uppercase' }}>Style 02</span>
+            <h4 style={{ margin: '0.25rem 0' }}>Compact Stepper</h4>
+            <p style={{ fontSize: '0.8125rem', color: '#64748b', margin: 0 }}>Step-by-step micro-stepper with progress indicators for detailed trade scopes.</p>
+          </div>
+          <div style={{ padding: '1rem', background: '#ffffff', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#7c3aed', textTransform: 'uppercase' }}>Style 03</span>
+            <h4 style={{ margin: '0.25rem 0' }}>Card-Based Grid</h4>
+            <p style={{ fontSize: '0.8125rem', color: '#64748b', margin: 0 }}>Visual tile selectors with custom trade icons and 1-click preset suggestions.</p>
+          </div>
+          <div style={{ padding: '1rem', background: '#ffffff', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#ea580c', textTransform: 'uppercase' }}>Style 04</span>
+            <h4 style={{ margin: '0.25rem 0' }}>AI Conversational</h4>
+            <p style={{ fontSize: '0.8125rem', color: '#64748b', margin: 0 }}>Interactive conversational flow with photo uploads &amp; multimodal vision analysis.</p>
+          </div>
+        </div>
+
+        <p style={{ marginTop: '1.5rem', fontSize: '0.875rem' }}>
+          Want to see how photos turn into material pick-lists?{' '}
+          <Link href="/features/ai-vision" style={{ fontWeight: 700, color: '#2563eb' }}>
+            Explore AI Vision &amp; Photo Estimating →
+          </Link>
+        </p>
+      </section>
+
       {/* <details> rather than a script: it works before hydration, it is in the
           tab order for free, and the browser's own find-in-page opens it. No
           `name`, so reading one answer never closes another. */}

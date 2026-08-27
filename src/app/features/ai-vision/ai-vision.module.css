@@ -1,0 +1,179 @@
+.visionSimulator {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding: 1.25rem;
+  background: var(--bg-surface, #ffffff);
+  border-radius: 12px;
+  font-family: inherit;
+  color: var(--text-primary, #1e293b);
+}
+
+.visionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  border-bottom: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.08));
+  padding-bottom: 0.875rem;
+}
+
+.visionBadge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #8b5cf6;
+  background: rgba(139, 92, 246, 0.1);
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  margin-bottom: 0.25rem;
+}
+
+.visionTitle {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 700;
+}
+
+.confidencePill {
+  font-size: 0.75rem;
+  font-weight: 700;
+  background: #ecfdf5;
+  color: #047857;
+  padding: 0.25rem 0.6rem;
+  border-radius: 6px;
+  border: 1px solid #a7f3d0;
+}
+
+.photoGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.photoBox {
+  background: var(--bg-surface-elevated, #f8fafc);
+  border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.08));
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.photoPlaceholder {
+  position: relative;
+  height: 140px;
+  background: #0f172a;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8;
+  gap: 0.35rem;
+}
+
+.photoIcon {
+  font-size: 1.75rem;
+}
+
+.photoLabel {
+  font-size: 0.75rem;
+  font-family: monospace;
+  color: #cbd5e1;
+}
+
+.detectionBox {
+  position: absolute;
+  border: 2px dashed #a855f7;
+  background: rgba(168, 85, 247, 0.15);
+  border-radius: 4px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  padding: 2px 4px;
+  box-sizing: border-box;
+}
+
+.detectionLabel {
+  background: #7e22ce;
+  color: #ffffff;
+  font-size: 0.625rem;
+  font-weight: 700;
+  padding: 2px 5px;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+
+.photoMeta {
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.photoMeta b {
+  font-size: 0.8125rem;
+  color: var(--text-primary, #0f172a);
+}
+
+.photoMeta small {
+  font-size: 0.75rem;
+  color: var(--text-muted, #64748b);
+  line-height: 1.35;
+}
+
+.pickListContainer {
+  background: #fdf4ff;
+  border: 1px solid #f0abfc;
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.pickListHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.pickListTitle {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #701a75;
+}
+
+.groundedPrice {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  background: #fae8ff;
+  color: #86198f;
+  padding: 0.2rem 0.6rem;
+  border-radius: 6px;
+}
+
+.pickListItems {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.pickListItems li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+  color: #4a044e;
+  line-height: 1.4;
+}
+
+.itemCheck {
+  color: #a21caf;
+  font-weight: 700;
+}

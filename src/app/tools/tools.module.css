@@ -1775,6 +1775,7 @@
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
+
   .hero,
   .editorHeaderBar,
   .sampleBanner,
@@ -1790,16 +1791,8 @@
   }
 
   .page :global(.public-topbar),
-  .page :global(.topbar),
-  .page :global(.sidenav),
-  .page :global(.sidenav-mobilebar),
-  .page :global(.sidenav-scrim),
   .page :global(.theme-fab),
-  .page :global(.marketing-footer),
-  .page :global(footer.marketing-footer),
-  .page :global(.skip-link),
-  .page :global(.shell-skip-link),
-  .page :global(.quote-request-alert) {
+  .page :global(.marketing-footer) {
     display: none !important;
   }
 
@@ -1826,9 +1819,9 @@
     justify-content: space-between !important;
     align-items: flex-start !important;
     gap: 20px !important;
-    padding-bottom: 12px !important;
-    border-bottom: 2px solid #0f172a !important;
-    margin-bottom: 12px !important;
+    padding-bottom: 14px !important;
+    border-bottom: 2.5px solid #0f172a !important;
+    margin-bottom: 14px !important;
   }
 
   .printHeaderCompany {
@@ -1838,19 +1831,19 @@
   }
 
   .printCompanyName {
-    font-size: 22px !important;
+    font-size: 24px !important;
     font-weight: 900 !important;
     color: #0f172a !important;
     letter-spacing: -0.5px !important;
-    margin: 0 0 3px 0 !important;
+    margin: 0 0 4px 0 !important;
     line-height: 1.15 !important;
   }
 
   .printCompanyContact {
-    font-size: 11px !important;
+    font-size: 11.5px !important;
     font-weight: 600 !important;
     color: #475569 !important;
-    line-height: 1.35 !important;
+    line-height: 1.4 !important;
   }
 
   .printMetaCard {
@@ -1858,10 +1851,10 @@
     flex-direction: column !important;
     align-items: flex-end !important;
     border: 1.5px solid #cbd5e1 !important;
-    border-radius: 6px !important;
-    padding: 8px 12px !important;
+    border-radius: 8px !important;
+    padding: 10px 14px !important;
     background: #f8fafc !important;
-    min-width: 180px !important;
+    min-width: 190px !important;
     text-align: right !important;
     margin: 0 !important;
   }
@@ -1874,30 +1867,30 @@
     text-transform: uppercase !important;
     background: #0f172a !important;
     color: #ffffff !important;
-    padding: 2px 8px !important;
+    padding: 3px 8px !important;
     border-radius: 4px !important;
-    margin-bottom: 5px !important;
+    margin-bottom: 6px !important;
   }
 
   .printMetaGrid {
     display: flex !important;
     flex-direction: column !important;
-    gap: 2px !important;
+    gap: 3px !important;
     width: 100% !important;
   }
 
   .printMetaRow {
     display: flex !important;
     justify-content: space-between !important;
-    gap: 10px !important;
-    font-size: 11px !important;
+    gap: 12px !important;
+    font-size: 11.5px !important;
     color: #475569 !important;
   }
 
   .printMetaKey {
     font-weight: 700 !important;
     color: #64748b !important;
-    font-size: 10px !important;
+    font-size: 10.5px !important;
   }
 
   .printMetaVal {
@@ -1914,12 +1907,12 @@
     display: flex !important;
     justify-content: space-between !important;
     align-items: flex-start !important;
-    gap: 18px !important;
+    gap: 20px !important;
     background: #f8fafc !important;
     border: 1px solid #e2e8f0 !important;
-    border-radius: 6px !important;
-    padding: 10px 14px !important;
-    margin-bottom: 12px !important;
+    border-radius: 8px !important;
+    padding: 12px 16px !important;
+    margin-bottom: 16px !important;
   }
 
   .printClientCol {
@@ -1927,36 +1920,36 @@
   }
 
   .printSectionLabel {
-    font-size: 10px !important;
+    font-size: 10.5px !important;
     font-weight: 800 !important;
     letter-spacing: 0.5px !important;
     text-transform: uppercase !important;
     color: #64748b !important;
     display: block !important;
-    margin-bottom: 2px !important;
+    margin-bottom: 3px !important;
   }
 
   .printClientName {
-    font-size: 14px !important;
+    font-size: 15px !important;
     font-weight: 800 !important;
     color: #0f172a !important;
     margin-bottom: 2px !important;
   }
 
   .printClientAddr {
-    font-size: 12px !important;
+    font-size: 12.5px !important;
     color: #334155 !important;
     font-weight: 500 !important;
   }
 
   .printProjectTrade {
-    font-size: 12px !important;
+    font-size: 13px !important;
     font-weight: 800 !important;
     color: #ea580c !important;
   }
 
   .printProjectNotes {
-    font-size: 11px !important;
+    font-size: 11.5px !important;
     color: #64748b !important;
     font-style: italic !important;
   }
@@ -1965,53 +1958,68 @@
   .estimateTable {
     display: table !important;
     width: 100% !important;
-    margin: 10px 0 !important;
+    margin: 14px 0 !important;
     border-collapse: collapse !important;
   }
 
   .estimateTable th {
-    background: #f1f5f9 !important;
-    color: #1e293b !important;
-    border-bottom: 2px solid #cbd5e1 !important;
-    padding: 6px 8px !important;
+    background: #0f172a !important;
+    color: #ffffff !important;
+    border-bottom: none !important;
+    padding: 8px 10px !important;
     font-size: 11px !important;
     font-weight: 800 !important;
     letter-spacing: 0.5px !important;
     text-transform: uppercase !important;
   }
 
+  .estimateTable th:first-child {
+    border-top-left-radius: 4px !important;
+    border-bottom-left-radius: 4px !important;
+  }
+
+  .estimateTable th:last-child {
+    border-top-right-radius: 4px !important;
+    border-bottom-right-radius: 4px !important;
+  }
+
   .estimateTable td {
     border-bottom: 1px solid #e2e8f0 !important;
-    padding: 8px !important;
-    font-size: 12px !important;
+    padding: 10px 10px !important;
+    font-size: 12.5px !important;
     color: #0f172a !important;
   }
 
+  .estimateTable tr:nth-child(even) td {
+    background: #f8fafc !important;
+  }
+
   .printItemTitle {
-    font-size: 12px !important;
+    font-size: 12.5px !important;
     font-weight: 700 !important;
     color: #0f172a !important;
+    line-height: 1.4 !important;
   }
 
   .printOptionalTag {
     display: inline-block !important;
-    font-size: 9px !important;
+    font-size: 9.5px !important;
     font-weight: 800 !important;
     color: #64748b !important;
     margin-left: 6px !important;
-    padding: 1px 4px !important;
+    padding: 1px 5px !important;
     border: 1px solid #cbd5e1 !important;
     border-radius: 3px !important;
   }
 
   .printCategoryPill {
     display: inline-block !important;
-    font-size: 10px !important;
-    font-weight: 750 !important;
-    color: #334155 !important;
+    font-size: 10.5px !important;
+    font-weight: 700 !important;
+    color: #475569 !important;
     background: #e2e8f0 !important;
     border-radius: 4px !important;
-    padding: 1px 6px !important;
+    padding: 2px 7px !important;
   }
 
   .mobileItemList {
@@ -2020,31 +2028,31 @@
 
   .termsAndTotalsGrid {
     display: grid !important;
-    grid-template-columns: 1.2fr 0.8fr !important;
-    gap: 16px !important;
-    margin-top: 8px !important;
+    grid-template-columns: 1.25fr 0.75fr !important;
+    gap: 20px !important;
+    margin-top: 12px !important;
   }
 
   .printTermsBlock {
     border: 1px solid #e2e8f0 !important;
     background: #fafbfc !important;
-    border-radius: 6px !important;
-    padding: 8px 10px !important;
-    margin-bottom: 8px !important;
+    border-radius: 8px !important;
+    padding: 12px 14px !important;
+    margin-bottom: 10px !important;
   }
 
   .printTermsContent {
-    font-size: 11px !important;
-    line-height: 1.4 !important;
+    font-size: 11.5px !important;
+    line-height: 1.5 !important;
     color: #334155 !important;
-    margin: 3px 0 0 0 !important;
+    margin: 4px 0 0 0 !important;
   }
 
   .totalsBox {
     background: #f8fafc !important;
-    border: 1px solid #e2e8f0 !important;
-    border-radius: 6px !important;
-    padding: 10px 14px !important;
+    border: 1.5px solid #cbd5e1 !important;
+    border-radius: 8px !important;
+    padding: 12px 16px !important;
     margin: 0 !important;
   }
 
@@ -2052,15 +2060,15 @@
     display: flex !important;
     justify-content: space-between !important;
     align-items: center !important;
-    font-size: 12px !important;
-    padding: 3px 0 !important;
+    font-size: 12.5px !important;
+    padding: 4px 0 !important;
   }
 
   .totalGrand {
     border-top: 2px solid #0f172a !important;
-    margin-top: 6px !important;
-    padding-top: 6px !important;
-    font-size: 14px !important;
+    margin-top: 8px !important;
+    padding-top: 8px !important;
+    font-size: 15px !important;
     font-weight: 900 !important;
     color: #0f172a !important;
   }
@@ -2068,9 +2076,9 @@
   .depositLine {
     background: #ecfdf5 !important;
     border: 1px solid #a7f3d0 !important;
-    border-radius: 4px !important;
-    padding: 4px 8px !important;
-    margin-top: 4px !important;
+    border-radius: 5px !important;
+    padding: 6px 10px !important;
+    margin-top: 6px !important;
     color: #065f46 !important;
     font-weight: 800 !important;
   }
@@ -2078,9 +2086,9 @@
   .milestoneScheduleBox {
     background: #f8fafc !important;
     border: 1px solid #e2e8f0 !important;
-    border-radius: 6px !important;
-    padding: 8px 10px !important;
-    margin-top: 8px !important;
+    border-radius: 8px !important;
+    padding: 10px 12px !important;
+    margin-top: 10px !important;
   }
 
   .milestoneScheduleBox label {
@@ -2088,41 +2096,41 @@
   }
 
   .milestoneRow {
-    font-size: 11px !important;
+    font-size: 11.5px !important;
     padding: 4px 0 !important;
   }
 
   /* Authorized Acceptance & Signature Section in Print */
   .acceptanceSection {
     display: block !important;
-    margin-top: 14px !important;
-    padding-top: 10px !important;
-    border-top: 1.5px solid #0f172a !important;
+    margin-top: 18px !important;
+    padding-top: 12px !important;
+    border-top: 2px solid #0f172a !important;
     break-inside: avoid !important;
     page-break-inside: avoid !important;
   }
 
   .acceptanceNotice {
-    font-size: 10px !important;
+    font-size: 10.5px !important;
     color: #475569 !important;
-    margin-bottom: 10px !important;
-    line-height: 1.35 !important;
+    margin-bottom: 12px !important;
+    line-height: 1.4 !important;
   }
 
   .signatureGrid {
     display: grid !important;
     grid-template-columns: 1fr 1fr !important;
-    gap: 20px !important;
+    gap: 24px !important;
   }
 
   .signatureLine {
     border-bottom: 1.5px solid #0f172a !important;
-    height: 24px !important;
-    margin-bottom: 4px !important;
+    height: 30px !important;
+    margin-bottom: 5px !important;
   }
 
   .signatureLabel {
-    font-size: 10px !important;
+    font-size: 10.5px !important;
     font-weight: 800 !important;
     text-transform: uppercase !important;
     letter-spacing: 0.5px !important;
@@ -2132,10 +2140,10 @@
   .signatureMetaRow {
     display: flex !important;
     justify-content: space-between !important;
-    font-size: 9px !important;
+    font-size: 10px !important;
     color: #64748b !important;
     font-weight: 600 !important;
-    margin-top: 2px !important;
+    margin-top: 3px !important;
   }
 
   /* Professional Document Footer */
@@ -2143,12 +2151,12 @@
     display: flex !important;
     justify-content: space-between !important;
     align-items: center !important;
-    font-size: 9px !important;
+    font-size: 10px !important;
     font-weight: 600 !important;
     color: #94a3b8 !important;
-    border-top: 1px solid #e2e8f0 !important;
-    padding-top: 6px !important;
-    margin-top: 10px !important;
+    border-top: 1px solid #cbd5e1 !important;
+    padding-top: 8px !important;
+    margin-top: 16px !important;
     break-inside: avoid !important;
     page-break-inside: avoid !important;
   }
@@ -2484,6 +2492,201 @@
   line-height: 1.4;
   color: #334155;
   background: #fafbfc;
+}
+
+.tierCardDesc {
+  font-size: 13px;
+  color: #64748b;
+  margin: 0 0 16px;
+  line-height: 1.45;
+}
+
+.tierCardPrice {
+  font-size: 28px;
+  font-weight: 900;
+  color: #0f172a;
+  margin-bottom: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.tierCardItemsList {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 13px;
+  color: #334155;
+}
+
+.tierCardItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  line-height: 1.4;
+}
+
+.milestoneScheduleBox {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 16px 18px;
+  margin-top: 18px;
+}
+
+.milestoneRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  color: #475569;
+  padding: 8px 0;
+  border-bottom: 1px dashed #e2e8f0;
+}
+
+.milestoneRow:last-child {
+  border-bottom: none;
+}
+
+/* Financial Diagnostic Executive Print Reports */
+.printOnlyReport {
+  max-width: 800px;
+  margin: 0 auto;
+  background: #ffffff;
+  color: #0f172a;
+}
+
+.printReportHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+  padding-bottom: 14px;
+  border-bottom: 2px solid #0f172a;
+  margin-bottom: 14px;
+}
+
+.printReportTitle {
+  font-size: 22px;
+  font-weight: 900;
+  color: #0f172a;
+  margin: 0 0 4px 0;
+  line-height: 1.2;
+}
+
+.printReportSub {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.printSummaryGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.printLeakageBox {
+  border: 1.5px solid #fecaca;
+  background: #fef2f2;
+  border-radius: 8px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+}
+
+.printRecoveryBox {
+  border: 1.5px solid #a7f3d0;
+  background: #ecfdf5;
+  border-radius: 8px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+}
+
+.printBoxLabel {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.printBoxValDanger {
+  font-size: 22px;
+  font-weight: 900;
+  color: #b91c1c;
+  line-height: 1.2;
+}
+
+.printBoxValSuccess {
+  font-size: 22px;
+  font-weight: 900;
+  color: #047857;
+  line-height: 1.2;
+}
+
+.printBoxSub {
+  font-size: 10.5px;
+  color: #475569;
+  margin-top: 4px;
+  line-height: 1.35;
+}
+
+.printSectionBlock {
+  margin-bottom: 14px;
+}
+
+.printBlockTitle {
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: #0f172a;
+  background: #f1f5f9;
+  padding: 5px 8px;
+  border-radius: 4px;
+  margin-bottom: 8px;
+}
+
+.printDataTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11.5px;
+}
+
+.printDataTable th {
+  background: #f8fafc;
+  color: #475569;
+  border-bottom: 1.5px solid #cbd5e1;
+  padding: 6px 8px;
+  font-size: 10.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  text-align: left;
+}
+
+.printDataTable td {
+  padding: 6px 8px;
+  border-bottom: 1px solid #e2e8f0;
+  color: #1e293b;
+}
+
+.printActionGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.printActionItem {
+  font-size: 11px;
+  line-height: 1.4;
+  color: #334155;
+  background: #fafbfc;
   border: 1px solid #e2e8f0;
   border-radius: 6px;
   padding: 6px 10px;
@@ -2499,4 +2702,82 @@
   border-top: 1px solid #e2e8f0;
   padding-top: 8px;
   margin-top: 14px;
+}
+
+/* Itemized Leakage Metric & List Styles */
+.primaryMetric {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 8px 0 16px;
+  gap: 4px;
+}
+
+.metricLabel {
+  font-size: 12.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.metricBig {
+  font-size: 38px;
+  font-weight: 900;
+  line-height: 1.1;
+  letter-spacing: -0.5px;
+}
+
+.metricSub {
+  font-size: 12.5px;
+  color: #8fa6b5;
+  line-height: 1.4;
+  max-width: 320px;
+}
+
+.summaryList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 16px 0;
+}
+
+.summaryItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13.5px;
+  color: #c8d0dc;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.summaryValue {
+  font-weight: 700;
+  color: #f7f5ef;
+}
+
+.signupBox {
+  margin-top: 16px;
+}
+
+.primaryCta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 13px 20px;
+  background: linear-gradient(135deg, #ff6a24 0%, #ff8c42 100%);
+  color: #ffffff !important;
+  font-weight: 700;
+  font-size: 14px;
+  border-radius: 10px;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 14px rgba(255, 106, 36, 0.35);
+}
+
+.primaryCta:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(255, 106, 36, 0.45);
 }
