@@ -7,7 +7,7 @@ import {
 } from '@/lib/site-content';
 import ServiceIcon from './ServiceIcon';
 import SocialLinks from './SocialLinks';
-import { navEditTarget } from './SiteNavLinks';
+import { navEditTarget } from './nav-edit-target';
 import { siteLegalLinks } from '@/lib/legal/site-legal';
 import styles from './themes.module.css';
 

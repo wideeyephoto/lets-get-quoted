@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { getSiteContent, getFooterStyle, FOOTER_STYLE_KEYS } from '@/lib/site-content';
-import { navEditTarget, NAV_EDIT_TARGET } from '@/lib/templates/SiteNavLinks';
+import { navEditTarget, NAV_EDIT_TARGET } from '@/lib/templates/nav-edit-target';
 
 describe('footerStyle normalization', () => {
   it('defaults to columns when unset', () => {

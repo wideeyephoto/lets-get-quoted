@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import type { Site } from '@/lib/sites';
 import {
   DEFAULT_VIDEOS_NAV_LABEL, getAllPublishedVideos, getPortalNavLink, getPublishedBlog, getPublishedFaqs,
-  getPublishedShowcase, getPublishedTestimonials, getSiteContent, PORTAL_SITE_PATH,
+  getPublishedShowcase, getPublishedTestimonials, getSiteContent,
 } from '@/lib/site-content';
 import styles from './themes.module.css';
 
@@ -14,36 +14,8 @@ type SiteNavLink = {
   label: string;
 };
 
-// In the builder preview, clicking a nav link should open the editor for the
-// section it points at rather than scrolling the (non-browsable) preview. Maps
-// each header link's hash to a click-to-edit target; anything unmapped
-// (structural anchors like #top/#about) falls back to the business identity.
-export const NAV_EDIT_TARGET: Record<string, string> = {
-  '#our-services': 'our-services',
-  '#services': 'our-services',
-  '#work': 'showcase',
-  '#projects': 'showcase',
-  '#why': 'whyUs',
-  '#how-it-works': 'how-it-works',
-  '#showcase': 'showcase',
-  '#reviews': 'reviews',
-  '#faqs': 'faqs',
-  '#blog': 'blog',
-  '/blog': 'blog',
-  '/videos': 'video',
-  [PORTAL_SITE_PATH]: 'clientPortal',
-  '#contact': 'contact',
-  '/#our-services': 'our-services',
-  '/#services': 'our-services',
-  '/#showcase': 'showcase',
-  '/#reviews': 'reviews',
-  '/#faqs': 'faqs',
-  '/#blog': 'blog',
-  '/#contact': 'contact',
-  '/privacy': 'legal',
-  '/terms': 'legal',
-};
-export const navEditTarget = (href: string): string => NAV_EDIT_TARGET[href] || 'identity';
+import { NAV_EDIT_TARGET, navEditTarget } from './nav-edit-target';
+export { NAV_EDIT_TARGET, navEditTarget };
 
 type SiteNavLinksProps = {
   site: Site;
