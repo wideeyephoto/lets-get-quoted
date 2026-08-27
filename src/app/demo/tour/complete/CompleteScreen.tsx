@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import DemoTourBar from '@/components/demo/DemoTourBar';
+import DemoTourFrame from '@/components/demo/DemoTourFrame';
 import { useDemoTourState } from '@/components/demo/DemoTourStateProvider';
 import {
   TOUR_STEPS,
@@ -50,23 +50,7 @@ export default function CompleteScreen() {
   const tradeCtaLabel = DEMO_TOUR_CONTRACTOR.tradeCta || 'Build my landscaping site →';
 
   return (
-    <div className={styles.tourContainer}>
-      <DemoTourBar currentStep={currentStep} />
-
-      {/* Perspective Context Banner */}
-      <div className={styles.perspectiveHeroSummary}>
-        <div className={styles.perspectiveHeroInner}>
-          <div className={styles.perspectiveInfo}>
-            <span className={`${styles.perspectiveTag} ${styles.perspectiveTagSummary}`}>
-              ✨ Evaluation Complete · 5-Minute Journey
-            </span>
-            <h1 className={styles.perspectiveHeading}>From first click to job kickoff</h1>
-            <p className={styles.perspectiveSub}>
-              You just walked through a complete contractor job lifecycle without switching tools or losing context.
-            </p>
-          </div>
-        </div>
-      </div>
+    <DemoTourFrame currentStep={currentStep}>
 
       <div className={styles.cardLayout}>
         <div className={styles.panelCard} style={{ textAlign: 'center', maxWidth: '840px', margin: '0 auto' }}>
@@ -79,7 +63,7 @@ export default function CompleteScreen() {
           <p style={{ fontSize: '15px', color: '#b2c7d3', lineHeight: '1.6', margin: '0 auto 28px', maxWidth: '640px' }}>
             {allActionsSimulated ? (
               <>
-                Taylor&apos;s quote was signed and the simulated $500 deposit was recorded for the{' '}
+                Taylor&apos;s quote was signed and the simulated ${DEMO_TOUR_JOB.requiredDeposit.toLocaleString()} deposit was recorded for the{' '}
                 <strong style={{ color: '#50e3bd' }}>${total.toLocaleString()}</strong> project (
                 {state.upgradeSelected ? 'with lighting upgrade' : 'base hardscape package'}).
               </>
@@ -109,7 +93,7 @@ export default function CompleteScreen() {
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
               <span style={{ fontSize: '11px', fontWeight: 800, color: '#50e3bd', letterSpacing: '1px', textTransform: 'uppercase' }}>
-                LGQ Workflow Outcome Summary
+                Live operating result
               </span>
               <span style={{ fontSize: '11px', color: '#8faab7', background: 'rgba(255, 255, 255, 0.06)', padding: '2px 8px', borderRadius: '4px' }}>
                 Illustrative Demo Metrics
@@ -136,7 +120,7 @@ export default function CompleteScreen() {
               </div>
 
               <div style={{ background: 'rgba(255, 255, 255, 0.03)', padding: '12px', borderRadius: '8px', border: '1px solid rgba(255, 255, 255, 0.06)' }}>
-                <span style={{ fontSize: '11px', color: '#8faab7', textTransform: 'uppercase', display: 'block' }}>Quote Value</span>
+                <span style={{ fontSize: '11px', color: '#8faab7', textTransform: 'uppercase', display: 'block' }}>New Booked Work</span>
                 <strong style={{ fontSize: '17px', color: '#ffffff', display: 'block', marginTop: '2px' }}>${total.toLocaleString()}</strong>
                 <small style={{ fontSize: '11px', color: '#a0aec0' }}>{state.upgradeSelected ? '+ LED Lighting' : 'Base package'}</small>
               </div>
@@ -144,7 +128,7 @@ export default function CompleteScreen() {
               <div style={{ background: 'rgba(255, 255, 255, 0.03)', padding: '12px', borderRadius: '8px', border: '1px solid rgba(255, 255, 255, 0.06)' }}>
                 <span style={{ fontSize: '11px', color: '#8faab7', textTransform: 'uppercase', display: 'block' }}>Simulated Deposit</span>
                 <strong style={{ fontSize: '17px', color: state.depositSimulated ? '#50e3bd' : '#ffd166', display: 'block', marginTop: '2px' }}>
-                  $500.00
+                  ${DEMO_TOUR_JOB.requiredDeposit.toLocaleString()}
                 </strong>
                 <small style={{ fontSize: '11px', color: '#a0aec0' }}>
                   {state.depositSimulated ? `${state.paymentMethod === 'card' ? 'Card' : 'Apple Pay'} captured` : 'Ready for payment'}
@@ -156,6 +140,21 @@ export default function CompleteScreen() {
                 <strong style={{ fontSize: '14px', color: '#ffffff', display: 'block', marginTop: '4px' }}>Thursday Crew</strong>
                 <small style={{ fontSize: '11px', color: '#a0aec0' }}>Arrival window locked</small>
               </div>
+            </div>
+
+            <div className={styles.bookedJobResult}>
+              <div className={styles.bookedJobDate}>
+                <span>Thu</span>
+                <strong>28</strong>
+              </div>
+              <div className={styles.bookedJobDetails}>
+                <span>Scheduled job · {DEMO_TOUR_JOB.scheduledArrivalWindow}</span>
+                <strong>{DEMO_TOUR_CUSTOMER.name} · {DEMO_TOUR_JOB.title}</strong>
+                <small>{DEMO_TOUR_JOB.crewAssigned} · {DEMO_TOUR_CUSTOMER.address}</small>
+              </div>
+              <span className={styles.bookedJobStatus}>
+                <i aria-hidden="true" /> {state.depositSimulated ? 'Booked & paid' : 'Ready to book'}
+              </span>
             </div>
           </div>
 
@@ -260,6 +259,6 @@ export default function CompleteScreen() {
           </p>
         </div>
       </div>
-    </div>
+    </DemoTourFrame>
   );
 }

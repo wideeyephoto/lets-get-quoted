@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import DemoTourBar from '@/components/demo/DemoTourBar';
+import DemoTourFrame from '@/components/demo/DemoTourFrame';
 import { useDemoTourState } from '@/components/demo/DemoTourStateProvider';
 import {
   TOUR_STEPS,
@@ -104,21 +104,7 @@ export default function ApproveScreen() {
   };
 
   return (
-    <div className={styles.tourContainer}>
-      <DemoTourBar currentStep={currentStep} />
-
-      {/* Perspective Context Banner */}
-      <div className={styles.perspectiveHero}>
-        <div className={styles.perspectiveHeroInner}>
-          <div className={styles.perspectiveInfo}>
-            <span className={styles.perspectiveTag}>👤 Homeowner Perspective · Step 5 of 6</span>
-            <h1 className={styles.perspectiveHeading}>Homeowner approves upgrades, e-signs &amp; pays deposit</h1>
-            <p className={styles.perspectiveSub}>
-              Customer reviews quote in mobile customer portal, toggles optional lighting, applies signature, and tests simulated deposit.
-            </p>
-          </div>
-        </div>
-      </div>
+    <DemoTourFrame currentStep={currentStep}>
 
       <div className={styles.cardLayout}>
         <div
@@ -448,6 +434,6 @@ export default function ApproveScreen() {
           </div>
         </div>
       </div>
-    </div>
+    </DemoTourFrame>
   );
 }

@@ -15,6 +15,7 @@ import {
 } from '@/lib/demo-tour-state';
 
 const TOUR_BAR = readFileSync('src/components/demo/DemoTourBar.tsx', 'utf8');
+const TOUR_FRAME = readFileSync('src/components/demo/DemoTourFrame.tsx', 'utf8');
 const SITE_PAGE = readFileSync('src/app/demo/tour/site/page.tsx', 'utf8');
 const QUICK_STOPS = readFileSync('src/app/demo/quick-stops/page.tsx', 'utf8');
 const INTAKE_SCREEN = readFileSync('src/app/demo/tour/intake/IntakeScreen.tsx', 'utf8');
@@ -35,6 +36,15 @@ describe('5-Minute Evaluation Demo Journey', () => {
         'approve',
         'complete',
       ]);
+      expect(TOUR_STEPS.map((s) => s.phase)).toEqual([
+        'Attract',
+        'Qualify',
+        'Prioritize',
+        'Quote',
+        'Close',
+        'Result',
+      ]);
+      expect(TOUR_STEPS.every((step) => step.outcomeHeadline && step.nextPreview && step.flow.length > 0)).toBe(true);
     });
 
     it('has both Homeowner and Contractor perspectives represented', () => {
@@ -60,10 +70,10 @@ describe('5-Minute Evaluation Demo Journey', () => {
       expect(DEMO_TOUR_CONTRACTOR.name).toBe('Evergreen Lawn & Landscape');
       expect(DEMO_TOUR_CUSTOMER.name).toBe('Taylor Brooks');
       expect(DEMO_TOUR_CUSTOMER.city).toBe('Royal Oak');
-      expect(DEMO_TOUR_JOB.baseTotal).toBe(4650);
-      expect(DEMO_TOUR_JOB.upgradeTotal).toBe(350);
-      expect(DEMO_TOUR_JOB.totalWithUpgrade).toBe(5000);
-      expect(DEMO_TOUR_JOB.requiredDeposit).toBe(500);
+      expect(DEMO_TOUR_JOB.baseTotal).toBe(15250);
+      expect(DEMO_TOUR_JOB.upgradeTotal).toBe(750);
+      expect(DEMO_TOUR_JOB.totalWithUpgrade).toBe(16000);
+      expect(DEMO_TOUR_JOB.requiredDeposit).toBe(1600);
     });
   });
 
@@ -100,10 +110,8 @@ describe('5-Minute Evaluation Demo Journey', () => {
 
   describe('Simulation Disclosures & Non-Deceptive Copy', () => {
     it('displays persistent desktop and mobile simulation disclosures across all tour steps in top bar', () => {
-      expect(TOUR_BAR).toContain('Sample workflow');
-      expect(TOUR_BAR).toContain('No texts, signatures, bookings, or payments are real');
-      expect(TOUR_BAR).toContain('Demo only');
-      expect(TOUR_BAR).toContain('No real texts or payments');
+      expect(TOUR_BAR).toContain('Interactive sample');
+      expect(TOUR_BAR).toContain('No real texts, signatures, bookings, or payments');
     });
 
     it('labels illustrative social proof on step 1 site', () => {
@@ -113,7 +121,6 @@ describe('5-Minute Evaluation Demo Journey', () => {
     it('labels quote dispatch action and preview as simulation', () => {
       expect(QUOTE_SCREEN).toContain('Simulate sending quote');
       expect(QUOTE_SCREEN).toContain('Demo complete — no real SMS text was sent');
-      expect(QUOTE_SCREEN).toContain('Preview simulated SMS delivery in one tap');
     });
 
     it('starts approval unsigned and labels signature and deposit as simulations', () => {
@@ -133,8 +140,18 @@ describe('5-Minute Evaluation Demo Journey', () => {
       expect(COMPLETE_SCREEN).toContain('allActionsSimulated');
       expect(COMPLETE_SCREEN).toContain('anyActionSimulated');
       expect(COMPLETE_SCREEN).toContain("You previewed the full contractor workflow for");
-      expect(COMPLETE_SCREEN).toContain("Taylor&apos;s quote was signed and the simulated $500 deposit was recorded");
+      expect(COMPLETE_SCREEN).toContain("Taylor&apos;s quote was signed and the simulated ${DEMO_TOUR_JOB.requiredDeposit.toLocaleString()} deposit was recorded");
       expect(COMPLETE_SCREEN).not.toContain('in your bank');
+    });
+  });
+
+  describe('At-a-Glance Outcome Framing', () => {
+    it('keeps the result, next step, perspective, and job continuity visible on every step', () => {
+      expect(TOUR_FRAME).toContain('currentStep.outcomeHeadline');
+      expect(TOUR_FRAME).toContain('currentStep.nextPreview');
+      expect(TOUR_FRAME).toContain('currentStep.perspectiveShift');
+      expect(TOUR_FRAME).toContain('currentStep.flow.map');
+      expect(TOUR_FRAME).toContain('Live job activity');
     });
   });
 
@@ -152,10 +169,10 @@ describe('5-Minute Evaluation Demo Journey', () => {
 
   describe('Accessibility, Touch Targets & Action Hierarchy', () => {
     it('provides descriptive accessible aria-labels and smart Skip vs Continue states', () => {
-      expect(TOUR_BAR).toContain('aria-label={`Step ${s.step}: ${s.shortTitle}`}');
+      expect(TOUR_BAR).toContain('aria-label={`Step ${step.step}: ${step.phase} — ${step.shortTitle}`}');
       expect(TOUR_BAR).toContain('aria-label="Previous tour step"');
-      expect(TOUR_BAR).toContain('Skip step →');
-      expect(TOUR_BAR).toContain('Continue →');
+      expect(TOUR_BAR).toContain('currentStep.nextActionLabel');
+      expect(TOUR_BAR).toContain('Preview next:');
     });
 
     it('provides accessible names on upgrade checkboxes and signature inputs', () => {

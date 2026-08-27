@@ -1,77 +1,5 @@
 /* Shared CSS for Demo Evaluation Tour */
 
-.tourContainer {
-  min-height: 100vh;
-  background: #07131d;
-  color: #f1f7fa;
-  font-family: var(--font-body, system-ui, -apple-system, sans-serif);
-  display: flex;
-  flex-direction: column;
-}
-
-.perspectiveHero {
-  background: linear-gradient(180deg, rgba(80, 227, 189, 0.12) 0%, rgba(7, 19, 29, 0) 100%);
-  border-bottom: 1px solid rgba(80, 227, 189, 0.18);
-  padding: 14px clamp(14px, 3vw, 36px);
-}
-
-.perspectiveHeroContractor {
-  background: linear-gradient(180deg, rgba(255, 209, 102, 0.12) 0%, rgba(7, 19, 29, 0) 100%);
-  border-bottom: 1px solid rgba(255, 209, 102, 0.18);
-  padding: 14px clamp(14px, 3vw, 36px);
-}
-
-.perspectiveHeroSummary {
-  background: linear-gradient(180deg, rgba(255, 106, 36, 0.12) 0%, rgba(7, 19, 29, 0) 100%);
-  border-bottom: 1px solid rgba(255, 106, 36, 0.18);
-  padding: 14px clamp(14px, 3vw, 36px);
-}
-
-.perspectiveHeroInner {
-  max-width: 1200px;
-  margin: 0 auto;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.perspectiveInfo {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.perspectiveTag {
-  font-size: 10.5px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--mint, #50e3bd);
-}
-
-.perspectiveTagContractor {
-  color: var(--yellow, #ffd166);
-}
-
-.perspectiveTagSummary {
-  color: var(--orange, #ff6a24);
-}
-
-.perspectiveHeading {
-  font-size: 15.5px;
-  font-weight: 700;
-  color: #ffffff;
-  margin: 0;
-}
-
-.perspectiveSub {
-  font-size: 12.5px;
-  color: #9eb5c2;
-  margin: 0;
-}
-
 .tourNextActionBtn {
   display: inline-flex;
   align-items: center;
@@ -98,6 +26,65 @@
   background: #ffffff;
   color: #1a2830;
   min-height: calc(100vh - 120px);
+}
+
+.siteBrowserBar {
+  display: grid;
+  grid-template-columns: auto minmax(180px, 560px) auto;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  min-height: 45px;
+  padding: 7px 18px;
+  color: #637581;
+  background: #edf2f4;
+  border-bottom: 1px solid #d7e0e4;
+  font-size: 11px;
+}
+
+.siteBrowserDots {
+  display: flex;
+  gap: 5px;
+}
+
+.siteBrowserDots i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #c9d4d9;
+}
+
+.siteBrowserDots i:first-child { background: #ff8a78; }
+.siteBrowserDots i:nth-child(2) { background: #ffd166; }
+.siteBrowserDots i:last-child { background: #50e3bd; }
+
+.siteBrowserAddress {
+  width: 100%;
+  padding: 6px 12px;
+  overflow: hidden;
+  border: 1px solid #d3dde2;
+  border-radius: 7px;
+  background: #ffffff;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.siteBrowserLive {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #287c65;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.siteBrowserLive i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #20b98b;
+  box-shadow: 0 0 0 4px rgba(32, 185, 139, 0.12);
 }
 
 .siteNav {
@@ -367,26 +354,102 @@
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
 }
 
+.bookedJobResult {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  margin-top: 16px;
+  padding: 14px;
+  border: 1px solid rgba(80, 227, 189, 0.22);
+  border-radius: 10px;
+  background: linear-gradient(90deg, rgba(80, 227, 189, 0.08), rgba(255, 255, 255, 0.025));
+}
+
+.bookedJobDate {
+  display: grid;
+  place-items: center;
+  width: 50px;
+  height: 54px;
+  border-radius: 8px;
+  color: #07141d;
+  background: #50e3bd;
+  line-height: 1;
+}
+
+.bookedJobDate span {
+  align-self: end;
+  font-size: 9px;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.bookedJobDate strong {
+  align-self: start;
+  margin-top: 3px;
+  font-size: 22px;
+}
+
+.bookedJobDetails {
+  min-width: 0;
+}
+
+.bookedJobDetails span,
+.bookedJobDetails strong,
+.bookedJobDetails small {
+  display: block;
+}
+
+.bookedJobDetails span {
+  color: #50e3bd;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.bookedJobDetails strong {
+  margin-top: 4px;
+  color: #ffffff;
+  font-size: 13px;
+}
+
+.bookedJobDetails small {
+  margin-top: 3px;
+  color: #829aa7;
+  font-size: 11px;
+}
+
+.bookedJobStatus {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 9px;
+  border-radius: 999px;
+  color: #bdf4e4;
+  background: rgba(80, 227, 189, 0.11);
+  font-size: 10px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.bookedJobStatus i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #50e3bd;
+  box-shadow: 0 0 8px rgba(80, 227, 189, 0.75);
+}
+
 /* Mobile Sticky Action Dock */
 .mobileStickyActionDock {
   display: none;
 }
 
 @media (max-width: 820px) {
-  .perspectiveHero,
-  .perspectiveHeroContractor,
-  .perspectiveHeroSummary {
-    padding: 8px 12px;
-  }
-  .perspectiveHeading {
-    font-size: 14px;
-  }
-  .perspectiveSub {
-    font-size: 11.5px;
-  }
-  .perspectiveTag {
-    font-size: 9.5px;
-  }
+  .siteBrowserBar { grid-template-columns: auto minmax(0, 1fr); gap: 10px; }
+  .siteBrowserLive { display: none; }
   .cardLayout {
     margin: 14px auto;
     padding: 0 10px;
@@ -394,6 +457,8 @@
   .panelCard {
     padding: 16px 14px;
   }
+  .bookedJobResult { grid-template-columns: auto minmax(0, 1fr); }
+  .bookedJobStatus { grid-column: 2; justify-self: start; }
   .mobileStickyActionDock {
     display: flex;
     position: sticky;

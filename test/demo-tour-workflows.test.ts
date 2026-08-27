@@ -55,35 +55,37 @@ describe('Demo Tour High-Impact Workflows & Quality Hardening', () => {
   });
 
   describe('3. Final Outcome KPI Summary & Branch Calculation', () => {
-    it('calculates the $5,000 branch with lighting and $4,650 branch without lighting', () => {
+    it('calculates the $16,000 branch with lighting and $15,250 branch without lighting', () => {
       const stateWithUpgrade: DemoTourState = {
         ...DEFAULT_DEMO_TOUR_STATE,
         upgradeSelected: true,
       };
       const totalWith = DEMO_TOUR_JOB.baseTotal + (stateWithUpgrade.upgradeSelected ? DEMO_TOUR_JOB.upgradeTotal : 0);
-      expect(totalWith).toBe(5000);
+      expect(totalWith).toBe(16000);
 
       const stateWithoutUpgrade: DemoTourState = {
         ...DEFAULT_DEMO_TOUR_STATE,
         upgradeSelected: false,
       };
       const totalWithout = DEMO_TOUR_JOB.baseTotal + (stateWithoutUpgrade.upgradeSelected ? DEMO_TOUR_JOB.upgradeTotal : 0);
-      expect(totalWithout).toBe(4650);
+      expect(totalWithout).toBe(15250);
     });
 
     it('renders the compact Outcome KPI Summary card with illustrative demo metrics', () => {
-      expect(COMPLETE_SCREEN).toContain('LGQ Workflow Outcome Summary');
+      expect(COMPLETE_SCREEN).toContain('Live operating result');
       expect(COMPLETE_SCREEN).toContain('Illustrative Demo Metrics');
       expect(COMPLETE_SCREEN).toContain('&lt; 1 min');
       expect(COMPLETE_SCREEN).toContain('94/100 HOT');
-      expect(COMPLETE_SCREEN).toContain('$500.00');
+      expect(COMPLETE_SCREEN).toContain('DEMO_TOUR_JOB.requiredDeposit.toLocaleString()');
       expect(COMPLETE_SCREEN).toContain('Thursday Crew');
+      expect(COMPLETE_SCREEN).toContain('Scheduled job');
+      expect(COMPLETE_SCREEN).toContain('Booked & paid');
     });
 
     it('handles signed, unsigned, paid, and skipped summary variations honestly', () => {
       expect(COMPLETE_SCREEN).toContain('allActionsSimulated');
       expect(COMPLETE_SCREEN).toContain('anyActionSimulated');
-      expect(COMPLETE_SCREEN).toContain('Taylor&apos;s quote was signed and the simulated $500 deposit was recorded');
+      expect(COMPLETE_SCREEN).toContain('Taylor&apos;s quote was signed and the simulated ${DEMO_TOUR_JOB.requiredDeposit.toLocaleString()} deposit was recorded');
       expect(COMPLETE_SCREEN).toContain('You previewed the full contractor workflow for');
     });
   });

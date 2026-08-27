@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import DemoTourBar from '@/components/demo/DemoTourBar';
+import DemoTourFrame from '@/components/demo/DemoTourFrame';
 import {
   TOUR_STEPS,
   DEMO_TOUR_CONTRACTOR,
@@ -16,23 +16,7 @@ export default function DemoTourLeadPage() {
   const currentStep = TOUR_STEPS[2];
 
   return (
-    <div className={styles.tourContainer}>
-      <DemoTourBar currentStep={currentStep} />
-
-      {/* Perspective Context Banner */}
-      <div className={styles.perspectiveHeroContractor}>
-        <div className={styles.perspectiveHeroInner}>
-          <div className={styles.perspectiveInfo}>
-            <span className={`${styles.perspectiveTag} ${styles.perspectiveTagContractor}`}>
-              🛠️ Contractor Perspective · Step 3 of 6
-            </span>
-            <h1 className={styles.perspectiveHeading}>Contractor receives the pre-scored lead</h1>
-            <p className={styles.perspectiveSub}>
-              No digging through vague messages. You see why the job scored 94/100, its route fit, and project scope instantly.
-            </p>
-          </div>
-        </div>
-      </div>
+    <DemoTourFrame currentStep={currentStep}>
 
       <div className={styles.cardLayout}>
         {/* Lightweight Dashboard Context Framing */}
@@ -272,6 +256,6 @@ export default function DemoTourLeadPage() {
           </div>
         </div>
       </div>
-    </div>
+    </DemoTourFrame>
   );
 }

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect } from 'react';
-import { TOUR_STEPS, TourStepMetadata } from '@/lib/demo-tour-data';
+import { TOUR_STEPS, type TourStepMetadata } from '@/lib/demo-tour-data';
 import { useDemoTourState } from '@/components/demo/DemoTourStateProvider';
 import { trackDemoEvent } from '@/lib/demo-analytics';
 import styles from './demo-tour-bar.module.css';
@@ -18,111 +18,51 @@ export default function DemoTourBar({ currentStep }: { currentStep: TourStepMeta
     });
   }, [currentStep]);
 
-  // Determine if user has experienced the simulated core action of this step
   const isStepExperienced = (() => {
     switch (currentStep.step) {
-      case 1:
-        return true;
       case 2:
         return state.intakeAnalyzed;
-      case 3:
-        return true;
       case 4:
         return state.quoteSent;
       case 5:
         return state.depositSimulated || state.signed;
-      case 6:
-        return true;
       default:
         return true;
     }
   })();
 
-  const perspectiveClass =
-    currentStep.perspective === 'homeowner'
-      ? styles.perspectiveHomeowner
-      : currentStep.perspective === 'contractor'
-      ? styles.perspectiveContractor
-      : styles.perspectiveSummary;
-
-  const perspectiveIcon =
-    currentStep.perspective === 'homeowner'
-      ? '👤'
-      : currentStep.perspective === 'contractor'
-      ? '🛠️'
-      : '✨';
-
   const handleNextClick = () => {
-    if (isStepExperienced) {
-      trackDemoEvent('step_completed', {
-        step: currentStep.step,
-        stepSlug: currentStep.slug,
-        perspective: currentStep.perspective,
-      });
-    } else {
-      trackDemoEvent('step_skipped', {
-        step: currentStep.step,
-        stepSlug: currentStep.slug,
-        perspective: currentStep.perspective,
-      });
-    }
+    trackDemoEvent(isStepExperienced ? 'step_completed' : 'step_skipped', {
+      step: currentStep.step,
+      stepSlug: currentStep.slug,
+      perspective: currentStep.perspective,
+    });
   };
 
+  const nextStep = currentStep.nextHref ? TOUR_STEPS[currentStep.step] : null;
+
   return (
-    <nav className={styles.bar} aria-label="Demo Evaluation Tour Navigation">
-      <div className={styles.inner}>
-        <div className={styles.leftGroup}>
-          <span className={`${styles.perspectiveBadge} ${perspectiveClass}`}>
-            <span aria-hidden="true">{perspectiveIcon}</span>
-            <span>{currentStep.perspectiveLabel}</span>
+    <nav className={styles.bar} aria-label="Demo evaluation tour navigation">
+      <div className={styles.utilityRow}>
+        <Link className={styles.brand} href="/demo" aria-label="Let’s Get Quoted demo home">
+          <span className={styles.brandMark}>LGQ</span>
+          <span>
+            <strong>Live job lifecycle</strong>
+            <small>One customer · one connected story</small>
           </span>
+        </Link>
 
-          <span className={styles.simulationDisclosureDesktop} role="status">
-            Sample workflow &middot; No texts, signatures, bookings, or payments are real.
-          </span>
-          <span className={styles.simulationDisclosureMobile} role="status">
-            Demo only &middot; No real texts or payments
-          </span>
-
-          <div className={styles.stepIndicator}>
-            <div className={styles.stepDots} aria-label="Tour step progression">
-              {TOUR_STEPS.map((s) => {
-                const isActive = s.step === currentStep.step;
-                const isCompleted = s.step < currentStep.step;
-                return (
-                  <Link
-                    key={s.slug}
-                    href={s.href}
-                    className={`${styles.stepDot} ${
-                      isActive
-                        ? styles.stepDotActive
-                        : isCompleted
-                        ? styles.stepDotCompleted
-                        : ''
-                    }`}
-                    aria-label={`Step ${s.step}: ${s.shortTitle}`}
-                    title={`Step ${s.step}: ${s.shortTitle}`}
-                    aria-current={isActive ? 'step' : undefined}
-                  >
-                    <span>{s.step}</span>
-                  </Link>
-                );
-              })}
-            </div>
-            <span className={styles.stepLabel}>
-              <strong>Step {currentStep.step} of 6:</strong> {currentStep.title}
-            </span>
-          </div>
-        </div>
+        <span className={styles.simulationDisclosureDesktop} role="status">
+          Interactive sample · No real texts, signatures, bookings, or payments
+        </span>
+        <span className={styles.simulationDisclosureMobile} role="status">
+          Interactive sample
+        </span>
 
         <div className={styles.actionsGroup}>
           {currentStep.prevHref ? (
-            <Link
-              href={currentStep.prevHref}
-              className={styles.prevBtn}
-              aria-label="Previous tour step"
-            >
-              &larr; Prev
+            <Link href={currentStep.prevHref} className={styles.prevBtn} aria-label="Previous tour step">
+              ← Prev
             </Link>
           ) : null}
 
@@ -133,9 +73,9 @@ export default function DemoTourBar({ currentStep }: { currentStep: TourStepMeta
               className={`${isStepExperienced ? styles.nextBtnPrimary : styles.nextBtnSecondary} ${
                 currentStep.step === 4 ? styles.hideOnMobileDock : ''
               }`}
-              aria-label={isStepExperienced ? 'Continue to next step' : 'Skip this step and proceed'}
+              aria-label={isStepExperienced ? currentStep.nextActionLabel : `Preview next: ${nextStep?.phase}`}
             >
-              {isStepExperienced ? 'Continue →' : 'Skip step →'}
+              {isStepExperienced ? `${currentStep.nextActionLabel} →` : `Preview next: ${nextStep?.phase} →`}
             </Link>
           ) : null}
 
@@ -143,11 +83,32 @@ export default function DemoTourBar({ currentStep }: { currentStep: TourStepMeta
             href="/demo"
             className={styles.exitBtn}
             onClick={() => trackDemoEvent('explore_freely', { source: 'tour_bar_exit' })}
-            aria-label="Exit tour and explore demo dashboard"
           >
-            Explore freely &rarr;
+            Explore freely
           </Link>
         </div>
+      </div>
+
+      <div className={styles.phaseRail} aria-label="Tour phases">
+        {TOUR_STEPS.map((step) => {
+          const isActive = step.step === currentStep.step;
+          const isComplete = step.step < currentStep.step;
+          return (
+            <Link
+              key={step.slug}
+              href={step.href}
+              className={`${styles.phaseLink} ${isActive ? styles.phaseActive : ''} ${isComplete ? styles.phaseComplete : ''}`}
+              aria-label={`Step ${step.step}: ${step.phase} — ${step.shortTitle}`}
+              aria-current={isActive ? 'step' : undefined}
+            >
+              <span className={styles.phaseNumber}>{isComplete ? '✓' : step.step}</span>
+              <span>
+                <strong>{step.phase}</strong>
+                <small>{step.shortTitle}</small>
+              </span>
+            </Link>
+          );
+        })}
       </div>
     </nav>
   );

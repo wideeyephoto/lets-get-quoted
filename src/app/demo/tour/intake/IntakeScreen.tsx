@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import DemoTourBar from '@/components/demo/DemoTourBar';
+import DemoTourFrame from '@/components/demo/DemoTourFrame';
 import { useDemoTourState } from '@/components/demo/DemoTourStateProvider';
 import {
   TOUR_STEPS,
@@ -24,7 +24,7 @@ const ANALYSIS_STEPS: AnalysisStep[] = [
   { id: 'received', label: '1. Request Received', detail: 'Homeowner submitted inquiry via website instant estimate', icon: '📥' },
   { id: 'extracting', label: '2. Extracting Scope', detail: 'Identified 380 sq ft paver patio, curved seat wall, natural stone fire pit', icon: '🔍' },
   { id: 'location', label: '3. Checking Service & Route', detail: 'Royal Oak, MI (Primary zone · 1.4 mi from Tuesday crew route)', icon: '📍' },
-  { id: 'pricing', label: '4. Estimating Range', detail: 'Catalog matched pavers, drainage base, and fire pit hardware ($4,650 – $5,000)', icon: '⚡' },
+  { id: 'pricing', label: '4. Estimating Range', detail: 'Catalog matched pavers, drainage base, and fire pit hardware ($12,000 – $16,000)', icon: '⚡' },
 ];
 
 export default function IntakeScreen() {
@@ -98,21 +98,7 @@ export default function IntakeScreen() {
   };
 
   return (
-    <div className={styles.tourContainer}>
-      <DemoTourBar currentStep={currentStep} />
-
-      {/* Perspective Context Banner */}
-      <div className={styles.perspectiveHero}>
-        <div className={styles.perspectiveHeroInner}>
-          <div className={styles.perspectiveInfo}>
-            <span className={styles.perspectiveTag}>👤 Homeowner Perspective · Step 2 of 6</span>
-            <h1 className={styles.perspectiveHeading}>Homeowner requests an instant estimate</h1>
-            <p className={styles.perspectiveSub}>
-              Watch how AI Intake qualifies scope, detects urgency, and prepares preliminary pricing automatically in seconds.
-            </p>
-          </div>
-        </div>
-      </div>
+    <DemoTourFrame currentStep={currentStep}>
 
       <div className={styles.cardLayout}>
         <div className={styles.panelCard}>
@@ -267,7 +253,7 @@ export default function IntakeScreen() {
                       <div><strong style={{ color: '#ffd166' }}>Scope:</strong> 380 sq ft Pavers</div>
                       <div><strong style={{ color: '#ffd166' }}>Features:</strong> Seat Wall &amp; Fire Pit</div>
                       <div><strong style={{ color: '#ffd166' }}>Sub-base:</strong> Drainage &amp; Edging</div>
-                      <div><strong style={{ color: '#50e3bd' }}>Estimated Range:</strong> $4,650 &ndash; $5,000</div>
+                      <div><strong style={{ color: '#50e3bd' }}>Estimated Range:</strong> $12,000 &ndash; $16,000</div>
                     </div>
                   </div>
 
@@ -327,6 +313,6 @@ export default function IntakeScreen() {
           </div>
         </div>
       </div>
-    </div>
+    </DemoTourFrame>
   );
 }

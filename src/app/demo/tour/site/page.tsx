@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import DemoTourBar from '@/components/demo/DemoTourBar';
+import DemoTourFrame from '@/components/demo/DemoTourFrame';
 import { TOUR_STEPS, DEMO_TOUR_CONTRACTOR } from '@/lib/demo-tour-data';
 import styles from '../tour.module.css';
 
@@ -11,24 +11,15 @@ export default function DemoTourSitePage() {
   const currentStep = TOUR_STEPS[0];
 
   return (
-    <div className={styles.tourContainer}>
-      <DemoTourBar currentStep={currentStep} />
-
-      {/* Perspective Context Banner */}
-      <div className={styles.perspectiveHero}>
-        <div className={styles.perspectiveHeroInner}>
-          <div className={styles.perspectiveInfo}>
-            <span className={styles.perspectiveTag}>👤 Homeowner Perspective · Step 1 of 6</span>
-            <h1 className={styles.perspectiveHeading}>Homeowner visits your live contractor website</h1>
-            <p className={styles.perspectiveSub}>
-              A prospective homeowner in Royal Oak needs a paver patio and outdoor fire pit. They land on Evergreen&apos;s site.
-            </p>
-          </div>
-        </div>
-      </div>
+    <DemoTourFrame currentStep={currentStep}>
 
       {/* Realistic Fixture-Backed Public Contractor Website */}
       <div className={styles.siteWrapper}>
+        <div className={styles.siteBrowserBar} aria-label="Contractor website preview">
+          <span className={styles.siteBrowserDots} aria-hidden="true"><i /><i /><i /></span>
+          <span className={styles.siteBrowserAddress}>evergreenlawn.letsgetquoted.com</span>
+          <span className={styles.siteBrowserLive}><i aria-hidden="true" /> Live site</span>
+        </div>
         <header className={styles.siteNav}>
           <div className={styles.siteBrand}>
             {DEMO_TOUR_CONTRACTOR.name.split(' ')[0]} <span>{DEMO_TOUR_CONTRACTOR.name.split(' ').slice(1).join(' ')}</span>
@@ -125,6 +116,6 @@ export default function DemoTourSitePage() {
           </div>
         </section>
       </div>
-    </div>
+    </DemoTourFrame>
   );
 }

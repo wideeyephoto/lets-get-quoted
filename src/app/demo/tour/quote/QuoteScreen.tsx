@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import DemoTourBar from '@/components/demo/DemoTourBar';
+import DemoTourFrame from '@/components/demo/DemoTourFrame';
 import { useDemoTourState } from '@/components/demo/DemoTourStateProvider';
 import {
   TOUR_STEPS,
@@ -67,23 +67,7 @@ export default function QuoteScreen() {
   };
 
   return (
-    <div className={styles.tourContainer}>
-      <DemoTourBar currentStep={currentStep} />
-
-      {/* Perspective Context Banner */}
-      <div className={styles.perspectiveHeroContractor}>
-        <div className={styles.perspectiveHeroInner}>
-          <div className={styles.perspectiveInfo}>
-            <span className={`${styles.perspectiveTag} ${styles.perspectiveTagContractor}`}>
-              🛠️ Contractor Perspective · Step 4 of 6
-            </span>
-            <h1 className={styles.perspectiveHeading}>Contractor prepares &amp; sends itemized quote</h1>
-            <p className={styles.perspectiveSub}>
-              Line items, optional upgrades, and deposit terms are pre-populated. Preview simulated SMS delivery in one tap.
-            </p>
-          </div>
-        </div>
-      </div>
+    <DemoTourFrame currentStep={currentStep}>
 
       <div className={styles.cardLayout}>
         {/* Lightweight Dashboard Context Framing */}
@@ -490,6 +474,6 @@ export default function QuoteScreen() {
           </Link>
         )}
       </div>
-    </div>
+    </DemoTourFrame>
   );
 }
