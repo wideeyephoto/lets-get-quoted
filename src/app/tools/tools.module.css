@@ -1436,6 +1436,201 @@
     display: flex;
   }
 
+}
+
+.guideGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+  gap: 16px;
+}
+
+.guideCard {
+  background: rgba(12, 32, 45, 0.7);
+  border: 1px solid rgba(174, 199, 211, 0.18);
+  border-radius: 12px;
+  padding: clamp(16px, 4vw, 24px);
+  box-sizing: border-box;
+}
+
+.guideIcon {
+  font-size: 24px;
+  margin-bottom: 12px;
+}
+
+.guideTitle {
+  font-size: 16px;
+  font-weight: 800;
+  color: #f5f0e7;
+  margin: 0 0 8px;
+}
+
+.guideText {
+  font-size: 13px;
+  color: #9cb3c1;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.comparisonWrapper {
+  overflow-x: auto;
+  margin-top: 10px;
+  max-width: 100%;
+  width: 100%;
+  box-sizing: border-box;
+  -webkit-overflow-scrolling: touch;
+}
+
+.comparisonTable {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 540px;
+}
+
+.comparisonTable th {
+  background: rgba(12, 32, 45, 0.9);
+  padding: 12px 14px;
+  text-align: left;
+  font-size: 13px;
+  font-weight: 800;
+  color: #f5f0e7;
+  border-bottom: 2px solid rgba(255, 106, 36, 0.4);
+}
+
+.comparisonTable td {
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(174, 199, 211, 0.12);
+  font-size: 13px;
+  color: #a7bcc8;
+  vertical-align: top;
+  line-height: 1.5;
+}
+
+.faqGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+  gap: 16px;
+}
+
+.faqCard {
+  background: rgba(12, 32, 45, 0.7);
+  border: 1px solid rgba(174, 199, 211, 0.18);
+  border-radius: 12px;
+  padding: clamp(16px, 4vw, 24px);
+  box-sizing: border-box;
+}
+
+.faqQuestion {
+  font-size: 16px;
+  font-weight: 800;
+  color: #ffffff;
+  margin: 0 0 10px;
+}
+
+.faqAnswer {
+  font-size: 13px;
+  color: #9cb3c1;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.crossToolsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+  gap: 16px;
+  margin-top: 12px;
+}
+
+.crossToolCard {
+  background: linear-gradient(180deg, #0c202d 0%, #07131d 100%);
+  border: 1px solid rgba(174, 199, 211, 0.2);
+  border-radius: 14px;
+  padding: clamp(16px, 4vw, 24px);
+  text-decoration: none;
+  color: inherit;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: transform 0.2s, border-color 0.2s;
+  box-sizing: border-box;
+}
+
+.crossToolCard:hover {
+  transform: translateY(-3px);
+  border-color: rgba(255, 106, 36, 0.5);
+}
+
+.crossToolTitle {
+  font-size: 16px;
+  font-weight: 800;
+  color: #f5f0e7;
+  margin: 0 0 8px;
+}
+
+.crossToolDesc {
+  font-size: 13px;
+  color: #8fa6b5;
+  line-height: 1.5;
+  margin: 0 0 16px;
+}
+
+.crossToolLink {
+  color: #ff6a24;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+/* Mobile Responsiveness Breakdown (< 768px) */
+@media (max-width: 768px) {
+  .container {
+    padding: 0 12px 60px;
+  }
+
+  .estimateSheet {
+    padding: 14px;
+    border-radius: 10px;
+  }
+
+  .estimateTopRow {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+    padding-bottom: 16px;
+    margin-bottom: 16px;
+  }
+
+  .estimateMetaBox {
+    text-align: left;
+    min-width: 100%;
+  }
+
+  .estimateMetaGrid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .estimateMetaItem {
+    align-items: flex-start;
+  }
+
+  .estimateMetaLabel {
+    text-align: left;
+  }
+
+  .billToGrid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  /* Hide table on phone, show cards */
+  .estimateTable {
+    display: none;
+  }
+
+  .mobileItemList {
+    display: flex;
+  }
+
   .termsAndTotalsGrid {
     grid-template-columns: 1fr;
     gap: 20px;
@@ -1495,10 +1690,11 @@
 }
 
 .screenOnly {
-  /* Displayed in screen view, hidden in print */
+  /* Visible on screen, hidden in print */
 }
 
-.printOnly {
+.printOnly,
+.printOnlyReport {
   display: none !important;
 }
 
@@ -1568,24 +1764,6 @@
     print-color-adjust: exact !important;
   }
 
-  .screenOnly {
-    display: none !important;
-  }
-
-  .printOnly {
-    display: block !important;
-  }
-
-  .page {
-    background: #ffffff !important;
-    color: #0f172a !important;
-    padding: 0 !important;
-    min-height: auto !important;
-  }
-
-  /* Completely suppress all web chrome, navs, heroes, actions, and SEO blocks */
-  .hero,
-  .editorHeaderBar,
   .sampleBanner,
   .actionBtnRow,
   .printActions,
@@ -2156,3 +2334,156 @@
   border-bottom: none;
 }
 
+/* Financial Diagnostic Executive Print Reports */
+.printOnlyReport {
+  max-width: 800px;
+  margin: 0 auto;
+  background: #ffffff;
+  color: #0f172a;
+}
+
+.printReportHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+  padding-bottom: 14px;
+  border-bottom: 2px solid #0f172a;
+  margin-bottom: 14px;
+}
+
+.printReportTitle {
+  font-size: 22px;
+  font-weight: 900;
+  color: #0f172a;
+  margin: 0 0 4px 0;
+  line-height: 1.2;
+}
+
+.printReportSub {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.printSummaryGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.printLeakageBox {
+  border: 1.5px solid #fecaca;
+  background: #fef2f2;
+  border-radius: 8px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+}
+
+.printRecoveryBox {
+  border: 1.5px solid #a7f3d0;
+  background: #ecfdf5;
+  border-radius: 8px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+}
+
+.printBoxLabel {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.printBoxValDanger {
+  font-size: 22px;
+  font-weight: 900;
+  color: #b91c1c;
+  line-height: 1.2;
+}
+
+.printBoxValSuccess {
+  font-size: 22px;
+  font-weight: 900;
+  color: #047857;
+  line-height: 1.2;
+}
+
+.printBoxSub {
+  font-size: 10.5px;
+  color: #475569;
+  margin-top: 4px;
+  line-height: 1.35;
+}
+
+.printSectionBlock {
+  margin-bottom: 14px;
+}
+
+.printBlockTitle {
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: #0f172a;
+  background: #f1f5f9;
+  padding: 5px 8px;
+  border-radius: 4px;
+  margin-bottom: 8px;
+}
+
+.printDataTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11.5px;
+}
+
+.printDataTable th {
+  background: #f8fafc;
+  color: #475569;
+  border-bottom: 1.5px solid #cbd5e1;
+  padding: 6px 8px;
+  font-size: 10.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  text-align: left;
+}
+
+.printDataTable td {
+  padding: 6px 8px;
+  border-bottom: 1px solid #e2e8f0;
+  color: #1e293b;
+}
+
+.printActionGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.printActionItem {
+  font-size: 11px;
+  line-height: 1.4;
+  color: #334155;
+  background: #fafbfc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 6px 10px;
+}
+
+.printReportFooter {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 9.5px;
+  font-weight: 600;
+  color: #94a3b8;
+  border-top: 1px solid #e2e8f0;
+  padding-top: 8px;
+  margin-top: 14px;
+}

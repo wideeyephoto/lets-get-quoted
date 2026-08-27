@@ -83,25 +83,6 @@ export default function HourlyRateCalculatorPage() {
     setProfitMargin(preset.profitMargin);
   };
 
-  const handleCopyReport = () => {
-    const text = `=== CONTRACTOR HOURLY RATE & MARGIN BENCHMARK ===
-Target Take-Home Pay: ${formatCurrency(takeHomePay)}/yr
-Annual Operating Overhead: ${formatCurrency(overhead)}/yr
-Weekly Unbillable Hours: ${unbillableHours} hrs/week
-Target Profit Margin: ${profitMargin}%
---------------------------------------------------
-REQUIRED BILLABLE RATE: ${formatCurrency(results.requiredHourlyRate)}/hr
-TARGET 8-HOUR DAY RATE: ${formatCurrency(results.targetDayRate)}/day
-BREAKEVEN RATE (0% Margin): ${formatCurrency(results.breakevenHourlyRate)}/hr
-ANNUAL GROSS TARGET: ${formatCurrency(results.grossRevenueTarget)}/year
-Generated via https://letsgetquoted.com/tools/hourly-rate-calculator`;
-
-    navigator.clipboard.writeText(text).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2500);
-    });
-  };
-
   const results = useMemo(() => {
     const billableHoursPerWeek = Math.max(5, totalHoursPerWeek - unbillableHours);
     const annualBillableHours = billableHoursPerWeek * weeksPerYear;
@@ -151,6 +132,25 @@ Generated via https://letsgetquoted.com/tools/hourly-rate-calculator`;
     helperWage,
     profitMargin,
   ]);
+
+  const handleCopyReport = () => {
+    const text = `=== CONTRACTOR HOURLY RATE & MARGIN BENCHMARK ===
+Target Take-Home Pay: ${formatCurrency(takeHomePay)}/yr
+Annual Operating Overhead: ${formatCurrency(overhead)}/yr
+Weekly Unbillable Hours: ${unbillableHours} hrs/week
+Target Profit Margin: ${profitMargin}%
+--------------------------------------------------
+REQUIRED BILLABLE RATE: ${formatCurrency(results.requiredHourlyRate)}/hr
+TARGET 8-HOUR DAY RATE: ${formatCurrency(results.targetDayRate)}/day
+BREAKEVEN RATE (0% Margin): ${formatCurrency(results.breakevenHourlyRate)}/hr
+ANNUAL GROSS TARGET: ${formatCurrency(results.grossRevenueTarget)}/year
+Generated via https://letsgetquoted.com/tools/hourly-rate-calculator`;
+
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    });
+  };
 
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -301,14 +301,14 @@ Generated via https://letsgetquoted.com/tools/hourly-rate-calculator`;
                 <div className={styles.inputGroup}>
                   <div className={styles.inputHeader}>
                     <label htmlFor="unbillable" className={styles.inputLabel}>
-                      Unbillable Windshield &amp; Quoting Hours / Week:
+                      Unbillable Hours / Week (Windshield, Bids, Supply Runs):
                     </label>
                     <span className={styles.inputValueDisplay}>{unbillableHours} hrs/wk</span>
                   </div>
                   <input
                     id="unbillable"
                     type="range"
-                    min={2}
+                    min={0}
                     max={25}
                     step={1}
                     value={unbillableHours}
@@ -316,22 +316,22 @@ Generated via https://letsgetquoted.com/tools/hourly-rate-calculator`;
                     className={styles.slider}
                   />
                   <div className={styles.sliderTicks}>
-                    <span>2 hrs (Low drive)</span>
-                    <span>14 hrs (Avg)</span>
-                    <span>25 hrs (Heavy transit)</span>
+                    <span>0 hrs (Rare)</span>
+                    <span>12 hrs (Avg)</span>
+                    <span>25 hrs</span>
                   </div>
                 </div>
 
                 {/* Profit Margin */}
                 <div className={styles.inputGroup}>
                   <div className={styles.inputHeader}>
-                    <label htmlFor="profit-margin" className={styles.inputLabel}>
+                    <label htmlFor="profit" className={styles.inputLabel}>
                       Target Net Profit Margin:
                     </label>
                     <span className={styles.inputValueDisplay}>{profitMargin}%</span>
                   </div>
                   <input
-                    id="profit-margin"
+                    id="profit"
                     type="range"
                     min={5}
                     max={40}
@@ -342,8 +342,8 @@ Generated via https://letsgetquoted.com/tools/hourly-rate-calculator`;
                   />
                   <div className={styles.sliderTicks}>
                     <span>5% (Slim)</span>
-                    <span>20% (Standard)</span>
-                    <span>40% (High Growth)</span>
+                    <span>20% (Healthy)</span>
+                    <span>40% (Growth)</span>
                   </div>
                 </div>
 
@@ -441,6 +441,25 @@ Generated via https://letsgetquoted.com/tools/hourly-rate-calculator`;
                     </div>
                   </div>
                 </div>
+
+                <button
+                  type="button"
+                  onClick={handleCopyReport}
+                  style={{
+                    width: '100%',
+                    padding: '0.65rem 1rem',
+                    marginBottom: '1rem',
+                    background: copied ? '#15803d' : '#27272a',
+                    color: '#fff',
+                    border: '1px solid #3f3f46',
+                    borderRadius: '8px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                  }}
+                >
+                  {copied ? '✓ Rate Breakdown Copied to Clipboard!' : '📋 Copy Rate & Margin Breakdown'}
+                </button>
 
                 {/* Callout to Let's Get Quoted */}
                 <div className={styles.calloutCta}>

@@ -5,6 +5,7 @@ import { listServices } from '@/lib/services';
 import { getSiteContent } from '@/lib/site-content';
 import { getAvailableBookingDays } from '@/lib/booking';
 import { normalizeUsPhone } from '@/lib/phone';
+import { isCrewPhoneVerified } from '@/lib/crew-verification';
 
 export type VoiceGroundingContext = {
   companyName: string;
@@ -120,9 +121,10 @@ export async function loadVoiceGroundingContext(
       const [{ data: crewMember }, { data: accountRow }, { data: job }, { data: lead }] = await Promise.all([
         admin
           .from('crew')
-          .select('name, phone')
+          .select('id, name, phone, active, user_id, last_signed_in_at, phone_verified_at, phone_verified')
           .eq('account_id', accountId)
           .eq('phone', normalized)
+          .eq('active', true)
           .maybeSingle(),
         admin
           .from('accounts')
@@ -147,7 +149,7 @@ export async function loadVoiceGroundingContext(
           .maybeSingle(),
       ]);
 
-      if (crewMember) {
+      if (crewMember && isCrewPhoneVerified(crewMember)) {
         contractorStaffCaller = { name: crewMember.name || 'Team Member', role: 'crew' };
       } else if (accountRow && (accountRow.owner_phone === normalized || accountRow.call_forward_number === normalized)) {
         contractorStaffCaller = { name: accountRow.full_name || 'Owner', role: 'owner' };

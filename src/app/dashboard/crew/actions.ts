@@ -602,3 +602,33 @@ export async function geocodeJobAction(jobId: string): Promise<{ ok: boolean; la
   revalidatePath(`/dashboard/jobs/${jobId}`);
   return { ok: true, lat: geo.lat, lng: geo.lng };
 }
+
+/**
+ * Directly toggles or updates the phone verification status of a crew member.
+ */
+export async function toggleCrewPhoneVerifiedAction(
+  crewId: string,
+  verified: boolean
+): Promise<{ ok: boolean; error?: string }> {
+  const { supabase, accountId } = await requireOfficeContext('crew.write');
+  const now = verified ? new Date().toISOString() : null;
+
+  const { error } = await supabase
+    .from('crew')
+    .update({
+      phone_verified: verified,
+      phone_verified_at: now,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('account_id', accountId)
+    .eq('id', crewId);
+
+  if (error) {
+    console.error('Failed to toggle crew phone verification:', error);
+    return { ok: false, error: error.message };
+  }
+
+  revalidatePath('/dashboard/crew');
+  revalidatePath('/dashboard/voice-calls');
+  return { ok: true };
+}
