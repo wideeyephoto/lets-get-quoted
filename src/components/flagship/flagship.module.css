@@ -106,6 +106,30 @@
 
 .root :global(.hero-note i) { color: var(--mint); font-style: normal; }
 
+.root :global(.hero-proof-list) {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-top: 20px;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+  color: #9cbcd3;
+}
+
+.root :global(.hero-proof-list li) {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 550;
+}
+
+.root :global(.hero-proof-list li i) {
+  color: var(--mint, #5ed6a0);
+  font-style: normal;
+  font-weight: 850;
+}
+
 .root :global(.hero-scale) { display: grid; grid-template-columns: 1fr 1fr; max-width: 600px; margin-top: 28px; border-top: 1px solid rgba(255,255,255,.12); }
 
 .root :global(.hero-scale span) { padding: 17px 18px 0 0; display: flex; flex-direction: column; gap: 5px; }
@@ -8252,7 +8276,8 @@
   color: #475569;
 }
 
-:root[data-theme='light'] .root :global(.hero-note) {
+:root[data-theme='light'] .root :global(.hero-note),
+:root[data-theme='light'] .root :global(.hero-proof-list) {
   color: #64748b;
 }
 

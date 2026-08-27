@@ -54,16 +54,16 @@ const cssVars = (vars: Record<string, string | number>) => vars as React.CSSProp
  */
 const PROOF_POINTS = [
   {
-    label: 'FREE WEBSITE INCLUDED',
+    label: 'ONE-CLICK AI WEBSITE',
     blurb: 'Launch with instant estimate',
     href: '#flagships',
-    ariaLabel: 'Jump to the free contractor website builder section',
+    ariaLabel: 'Jump to the contractor website builder section',
   },
   {
-    label: 'NO CARD REQUIRED',
-    blurb: 'Flex plan starts at $0/month',
-    href: '#pricing',
-    ariaLabel: 'Jump to transparent pricing and $0/month plan details',
+    label: 'SMART PHOTO INTAKE',
+    blurb: 'See scope & risks before you call',
+    href: '/features/ai-intake',
+    ariaLabel: 'Learn about AI photo intake and lead qualification',
   },
   {
     label: 'QUOTE-TO-PAYMENT WORKFLOW',
@@ -640,7 +640,11 @@ export default function FlagshipHome() {
             <a className="button primary" href="https://app.letsgetquoted.com/start?goal=build_site&source=home_hero" ref={heroCtaRef}>{SIGNUP_LABEL} <span>→</span></a>
             <Link className="button secondary" href="/demo">Explore a live demo</Link>
           </div>
-          <p className="hero-note"><i>✓</i> Flex: $0/month · No card to start · 1.25% on eligible payments collected through LGQ · Stripe processing separate</p>
+          <ul className="hero-proof-list" aria-label="Key contractor capabilities">
+            <li><i>✓</i> AI photo &amp; smart intake</li>
+            <li><i>✓</i> Instant quote drafts with profit guardrails</li>
+            <li><i>✓</i> Connected schedule, crew &amp; payments</li>
+          </ul>
         </div>
 
         <div className="hero-product">
