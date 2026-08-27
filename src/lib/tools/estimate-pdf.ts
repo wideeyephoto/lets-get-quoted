@@ -34,7 +34,8 @@ export function generateEstimatePdf(estimate: EstimateData, totals: EstimateTota
       // ==========================================
       // 1. TOP HEADER: Contractor Info + Meta Card
       // ==========================================
-      const companyName = estimate.contractorName?.trim() || 'Apex Trade Solutions';
+      const rawCompany = estimate.contractorName?.trim();
+      const companyName = rawCompany || (estimate.mode === 'multi_tier' ? 'MULTI-TIER PROPOSAL' : 'CONTRACTOR ESTIMATE');
       const contractorPhone = estimate.contractorPhone?.trim();
       const contractorEmail = estimate.contractorEmail?.trim();
       const contractorLicense = estimate.contractorLicense?.trim();
@@ -62,13 +63,17 @@ export function generateEstimatePdf(estimate: EstimateData, totals: EstimateTota
         contactY = doc.y + 2;
       }
 
-      const cleanLicNumber = contractorLicense.replace(/^lic[:\s#-]*\s*/i, '');
+      const cleanLicNumber = contractorLicense ? contractorLicense.replace(/^lic[:\s#-]*\s*/i, '') : '';
       const licText = cleanLicNumber
         ? `Contractor Lic: ${cleanLicNumber}   •   Licensed & Insured`
-        : 'Licensed & Insured Trade Contractor';
-      doc.font('Helvetica').fontSize(9).fillColor('#64748b').text(licText, PAGE_MARGIN, contactY, {
-        width: leftColHeaderWidth,
-      });
+        : rawCompany
+        ? 'Licensed & Insured Trade Contractor'
+        : '';
+      if (licText) {
+        doc.font('Helvetica').fontSize(9).fillColor('#64748b').text(licText, PAGE_MARGIN, contactY, {
+          width: leftColHeaderWidth,
+        });
+      }
 
       // Right Column: Estimate Meta Card
       doc.roundedRect(metaCardX, metaCardY, metaCardWidth, metaCardHeight, 6)

@@ -1,14 +1,14 @@
 'use client';
 
-import React, { useState, useEffect, useId, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useId, useRef, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import {
   ALL_FEATURES_CATALOG,
   TOTAL_CATALOG_FEATURE_COUNT,
 } from '@/lib/all-features-catalog';
 import { SIGNUP_LABEL, SIGNUP_URL } from '@/components/flagship/site-chrome';
+import { modalStackFor } from '@/components/modal-stack';
 import styles from './AllFeaturesModal.module.css';
-
 
 export type AllFeaturesModalProps = {
   triggerLabel?: React.ReactNode;
@@ -25,44 +25,37 @@ export default function AllFeaturesModal({
 }: AllFeaturesModalProps) {
   const [open, setOpen] = useState(defaultOpen);
   const [mounted, setMounted] = useState(false);
+  const [topmost, setTopmost] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>({});
 
   const dialogId = useId();
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const backdropRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const scrollBodyRef = useRef<HTMLDivElement>(null);
+
+  const close = useCallback(() => setOpen(false), []);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  // Lock body scroll when modal is open
+  // Connect to shared modal stack for focus containment, inert background & stacking
   useEffect(() => {
-    if (!open) return;
-    const originalStyle = window.getComputedStyle(document.body).overflow;
-    document.body.style.overflow = 'hidden';
-
-    // Focus search on open
-    const timer = setTimeout(() => {
-      searchInputRef.current?.focus();
-    }, 100);
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setOpen(false);
-        triggerRef.current?.focus();
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => {
-      document.body.style.overflow = originalStyle;
-      window.removeEventListener('keydown', handleKeyDown);
-      clearTimeout(timer);
-    };
-  }, [open]);
+    if (!open || !mounted) return;
+    const backdrop = backdropRef.current;
+    if (!backdrop) return;
+    return modalStackFor(document).register({
+      id: dialogId,
+      backdrop,
+      trigger: triggerRef.current,
+      requestClose: close,
+      focusInitial: () => searchInputRef.current?.focus(),
+      setTopmost,
+    });
+  }, [open, mounted, close, dialogId]);
 
   // Filter categories and features based on live search
   const filteredCatalog = useMemo(() => {
@@ -149,12 +142,12 @@ export default function AllFeaturesModal({
       {mounted && open
         ? createPortal(
             <div
+              ref={backdropRef}
               className={styles.backdrop}
               role="presentation"
               onClick={(e) => {
-                if (e.target === e.currentTarget) {
-                  setOpen(false);
-                  triggerRef.current?.focus();
+                if (e.target === e.currentTarget && modalStackFor(document).isTopmost(dialogId)) {
+                  close();
                 }
               }}
             >
@@ -162,7 +155,8 @@ export default function AllFeaturesModal({
                 id={dialogId}
                 className={styles.dialog}
                 role="dialog"
-                aria-modal="true"
+                aria-modal={topmost ? 'true' : undefined}
+                aria-hidden={topmost ? undefined : true}
                 aria-label="Let's Get Quoted Comprehensive Feature Catalog"
               >
                 {/* Header with Title & Controls */}
@@ -183,10 +177,7 @@ export default function AllFeaturesModal({
                       type="button"
                       className={styles.closeButton}
                       aria-label="Close features modal"
-                      onClick={() => {
-                        setOpen(false);
-                        triggerRef.current?.focus();
-                      }}
+                      onClick={close}
                     >
                       ✕
                     </button>

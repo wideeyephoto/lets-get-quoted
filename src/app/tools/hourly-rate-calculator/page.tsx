@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import Link from 'next/link';
 import SiteFooter from '@/components/site-footer';
 import { APP_SIGNUP_URL } from '@/components/marketing/links';
@@ -55,6 +55,8 @@ const PRESETS: Preset[] = [
   },
 ];
 
+const STORAGE_KEY = 'lgq_hourly_rate_calc_v1';
+
 function formatCurrency(num: number): string {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
@@ -73,6 +75,59 @@ export default function HourlyRateCalculatorPage() {
   const [helperWage, setHelperWage] = useState<number>(24);
   const [profitMargin, setProfitMargin] = useState<number>(20);
   const [copied, setCopied] = useState(false);
+  const [emailAddress, setEmailAddress] = useState('');
+  const [emailSending, setEmailSending] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
+
+  // Restore draft from localStorage on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (typeof parsed.takeHomePay === 'number') setTakeHomePay(parsed.takeHomePay);
+        if (typeof parsed.overhead === 'number') setOverhead(parsed.overhead);
+        if (typeof parsed.weeksPerYear === 'number') setWeeksPerYear(parsed.weeksPerYear);
+        if (typeof parsed.totalHoursPerWeek === 'number') setTotalHoursPerWeek(parsed.totalHoursPerWeek);
+        if (typeof parsed.unbillableHours === 'number') setUnbillableHours(parsed.unbillableHours);
+        if (typeof parsed.helpersCount === 'number') setHelpersCount(parsed.helpersCount);
+        if (typeof parsed.helperWage === 'number') setHelperWage(parsed.helperWage);
+        if (typeof parsed.profitMargin === 'number') setProfitMargin(parsed.profitMargin);
+      }
+    } catch {
+      // quiet fallback
+    }
+  }, []);
+
+  // Save changes to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({
+          takeHomePay,
+          overhead,
+          weeksPerYear,
+          totalHoursPerWeek,
+          unbillableHours,
+          helpersCount,
+          helperWage,
+          profitMargin,
+        }),
+      );
+    } catch {
+      // quiet fallback
+    }
+  }, [
+    takeHomePay,
+    overhead,
+    weeksPerYear,
+    totalHoursPerWeek,
+    unbillableHours,
+    helpersCount,
+    helperWage,
+    profitMargin,
+  ]);
 
   const applyPreset = (preset: Preset) => {
     setTakeHomePay(preset.takeHomePay);
@@ -152,6 +207,26 @@ Generated via https://letsgetquoted.com/tools/hourly-rate-calculator`;
     });
   };
 
+  const handleEmailReport = async () => {
+    if (!emailAddress || !emailAddress.includes('@')) return;
+    try {
+      setEmailSending(true);
+      await fetch('/api/tools/email-report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: emailAddress,
+          toolName: 'True Hourly Rate & Margin Benchmark',
+          summary: `Required: ${formatCurrency(results.requiredHourlyRate)}/hr, Day Rate: ${formatCurrency(results.targetDayRate)}, Breakeven: ${formatCurrency(results.breakevenHourlyRate)}/hr, Gross: ${formatCurrency(results.grossRevenueTarget)}/yr`,
+          calculations: results,
+        }),
+      }).catch(() => null);
+      setEmailSent(true);
+    } finally {
+      setEmailSending(false);
+    }
+  };
+
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'SoftwareApplication',
@@ -223,11 +298,35 @@ Generated via https://letsgetquoted.com/tools/hourly-rate-calculator`;
                     value={takeHomePay}
                     onChange={(e) => setTakeHomePay(Number(e.target.value))}
                     className={styles.slider}
+                    aria-label="Target Annual Owner Pay slider"
                   />
-                  <div className={styles.sliderTicks}>
-                    <span>\$40k</span>
-                    <span>\$125k</span>
-                    <span>\$250k</span>
+                  <div className={styles.stepperRow}>
+                    <button
+                      type="button"
+                      onClick={() => setTakeHomePay((p) => Math.max(40000, p - 5000))}
+                      className={styles.stepperBtn}
+                      aria-label="Decrease take-home pay by 5k"
+                    >
+                      −
+                    </button>
+                    <input
+                      type="number"
+                      min={40000}
+                      max={250000}
+                      step={5000}
+                      value={takeHomePay}
+                      onChange={(e) => setTakeHomePay(Math.max(0, Number(e.target.value) || 0))}
+                      className={styles.stepperInput}
+                      aria-label="Target Annual Owner Pay numeric entry"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setTakeHomePay((p) => Math.min(250000, p + 5000))}
+                      className={styles.stepperBtn}
+                      aria-label="Increase take-home pay by 5k"
+                    >
+                      +
+                    </button>
                   </div>
                 </div>
 
@@ -248,11 +347,35 @@ Generated via https://letsgetquoted.com/tools/hourly-rate-calculator`;
                     value={overhead}
                     onChange={(e) => setOverhead(Number(e.target.value))}
                     className={styles.slider}
+                    aria-label="Annual Overhead slider"
                   />
-                  <div className={styles.sliderTicks}>
-                    <span>\$5k</span>
-                    <span>\$50k</span>
-                    <span>\$100k</span>
+                  <div className={styles.stepperRow}>
+                    <button
+                      type="button"
+                      onClick={() => setOverhead((o) => Math.max(5000, o - 2500))}
+                      className={styles.stepperBtn}
+                      aria-label="Decrease overhead by 2.5k"
+                    >
+                      −
+                    </button>
+                    <input
+                      type="number"
+                      min={5000}
+                      max={100000}
+                      step={2500}
+                      value={overhead}
+                      onChange={(e) => setOverhead(Math.max(0, Number(e.target.value) || 0))}
+                      className={styles.stepperInput}
+                      aria-label="Annual Overhead numeric entry"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setOverhead((o) => Math.min(100000, o + 2500))}
+                      className={styles.stepperBtn}
+                      aria-label="Increase overhead by 2.5k"
+                    >
+                      +
+                    </button>
                   </div>
                 </div>
 
@@ -274,7 +397,36 @@ Generated via https://letsgetquoted.com/tools/hourly-rate-calculator`;
                       value={totalHoursPerWeek}
                       onChange={(e) => setTotalHoursPerWeek(Number(e.target.value))}
                       className={styles.slider}
+                      aria-label="Total work hours slider"
                     />
+                    <div className={styles.stepperRow}>
+                      <button
+                        type="button"
+                        onClick={() => setTotalHoursPerWeek((h) => Math.max(30, h - 1))}
+                        className={styles.stepperBtn}
+                        aria-label="Decrease total hours per week"
+                      >
+                        −
+                      </button>
+                      <input
+                        type="number"
+                        min={30}
+                        max={60}
+                        step={1}
+                        value={totalHoursPerWeek}
+                        onChange={(e) => setTotalHoursPerWeek(Math.min(60, Math.max(30, Number(e.target.value) || 30)))}
+                        className={styles.stepperInput}
+                        aria-label="Total work hours entry"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setTotalHoursPerWeek((h) => Math.min(60, h + 1))}
+                        className={styles.stepperBtn}
+                        aria-label="Increase total hours per week"
+                      >
+                        +
+                      </button>
+                    </div>
                   </div>
 
                   <div className={styles.inputGroup}>
@@ -293,7 +445,36 @@ Generated via https://letsgetquoted.com/tools/hourly-rate-calculator`;
                       value={weeksPerYear}
                       onChange={(e) => setWeeksPerYear(Number(e.target.value))}
                       className={styles.slider}
+                      aria-label="Work weeks per year slider"
                     />
+                    <div className={styles.stepperRow}>
+                      <button
+                        type="button"
+                        onClick={() => setWeeksPerYear((w) => Math.max(40, w - 1))}
+                        className={styles.stepperBtn}
+                        aria-label="Decrease weeks per year"
+                      >
+                        −
+                      </button>
+                      <input
+                        type="number"
+                        min={40}
+                        max={52}
+                        step={1}
+                        value={weeksPerYear}
+                        onChange={(e) => setWeeksPerYear(Math.min(52, Math.max(40, Number(e.target.value) || 40)))}
+                        className={styles.stepperInput}
+                        aria-label="Work weeks per year entry"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setWeeksPerYear((w) => Math.min(52, w + 1))}
+                        className={styles.stepperBtn}
+                        aria-label="Increase weeks per year"
+                      >
+                        +
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -314,11 +495,35 @@ Generated via https://letsgetquoted.com/tools/hourly-rate-calculator`;
                     value={unbillableHours}
                     onChange={(e) => setUnbillableHours(Number(e.target.value))}
                     className={styles.slider}
+                    aria-label="Unbillable hours slider"
                   />
-                  <div className={styles.sliderTicks}>
-                    <span>0 hrs (Rare)</span>
-                    <span>12 hrs (Avg)</span>
-                    <span>25 hrs</span>
+                  <div className={styles.stepperRow}>
+                    <button
+                      type="button"
+                      onClick={() => setUnbillableHours((u) => Math.max(0, u - 1))}
+                      className={styles.stepperBtn}
+                      aria-label="Decrease unbillable hours"
+                    >
+                      −
+                    </button>
+                    <input
+                      type="number"
+                      min={0}
+                      max={25}
+                      step={1}
+                      value={unbillableHours}
+                      onChange={(e) => setUnbillableHours(Math.min(25, Math.max(0, Number(e.target.value) || 0)))}
+                      className={styles.stepperInput}
+                      aria-label="Unbillable hours entry"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setUnbillableHours((u) => Math.min(25, u + 1))}
+                      className={styles.stepperBtn}
+                      aria-label="Increase unbillable hours"
+                    >
+                      +
+                    </button>
                   </div>
                 </div>
 
@@ -339,11 +544,35 @@ Generated via https://letsgetquoted.com/tools/hourly-rate-calculator`;
                     value={profitMargin}
                     onChange={(e) => setProfitMargin(Number(e.target.value))}
                     className={styles.slider}
+                    aria-label="Target profit margin slider"
                   />
-                  <div className={styles.sliderTicks}>
-                    <span>5% (Slim)</span>
-                    <span>20% (Healthy)</span>
-                    <span>40% (Growth)</span>
+                  <div className={styles.stepperRow}>
+                    <button
+                      type="button"
+                      onClick={() => setProfitMargin((m) => Math.max(5, m - 1))}
+                      className={styles.stepperBtn}
+                      aria-label="Decrease profit margin"
+                    >
+                      −
+                    </button>
+                    <input
+                      type="number"
+                      min={5}
+                      max={40}
+                      step={1}
+                      value={profitMargin}
+                      onChange={(e) => setProfitMargin(Math.min(40, Math.max(5, Number(e.target.value) || 5)))}
+                      className={styles.stepperInput}
+                      aria-label="Profit margin entry"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setProfitMargin((m) => Math.min(40, m + 1))}
+                      className={styles.stepperBtn}
+                      aria-label="Increase profit margin"
+                    >
+                      +
+                    </button>
                   </div>
                 </div>
 
@@ -366,11 +595,35 @@ Generated via https://letsgetquoted.com/tools/hourly-rate-calculator`;
                     value={helpersCount}
                     onChange={(e) => setHelpersCount(Number(e.target.value))}
                     className={styles.slider}
+                    aria-label="Additional helpers slider"
                   />
-                  <div className={styles.sliderTicks}>
-                    <span>0 (Solo)</span>
-                    <span>2 Helpers</span>
-                    <span>4 Crew</span>
+                  <div className={styles.stepperRow}>
+                    <button
+                      type="button"
+                      onClick={() => setHelpersCount((c) => Math.max(0, c - 1))}
+                      className={styles.stepperBtn}
+                      aria-label="Decrease helpers count"
+                    >
+                      −
+                    </button>
+                    <input
+                      type="number"
+                      min={0}
+                      max={4}
+                      step={1}
+                      value={helpersCount}
+                      onChange={(e) => setHelpersCount(Math.min(4, Math.max(0, Number(e.target.value) || 0)))}
+                      className={styles.stepperInput}
+                      aria-label="Helpers count entry"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setHelpersCount((c) => Math.min(4, c + 1))}
+                      className={styles.stepperBtn}
+                      aria-label="Increase helpers count"
+                    >
+                      +
+                    </button>
                   </div>
                 </div>
               </div>
@@ -460,6 +713,37 @@ Generated via https://letsgetquoted.com/tools/hourly-rate-calculator`;
                 >
                   {copied ? '✓ Rate Breakdown Copied to Clipboard!' : '📋 Copy Rate & Margin Breakdown'}
                 </button>
+
+                {/* Optional Un-gated Email Audit Report */}
+                <div className={styles.emailReportBox} style={{ marginBottom: '1.25rem' }}>
+                  <label htmlFor="hourly-email" className={styles.emailReportLabel}>
+                    <span>📧</span> Email full rate benchmark to yourself:
+                  </label>
+                  <div className={styles.emailReportRow}>
+                    <input
+                      id="hourly-email"
+                      type="email"
+                      value={emailAddress}
+                      onChange={(e) => setEmailAddress(e.target.value)}
+                      placeholder="contractor@example.com"
+                      className={styles.emailReportInput}
+                      aria-label="Email address for rate benchmark report"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleEmailReport}
+                      disabled={emailSending || !emailAddress}
+                      className={styles.emailReportBtn}
+                    >
+                      {emailSending ? 'Sending...' : emailSent ? '✓ Sent!' : 'Send Report'}
+                    </button>
+                  </div>
+                  {emailSent ? (
+                    <span className={styles.emailReportSuccess}>
+                      ✓ Rate benchmark report summary dispatched to {emailAddress}!
+                    </span>
+                  ) : null}
+                </div>
 
                 {/* Callout to Let's Get Quoted */}
                 <div className={styles.calloutCta}>

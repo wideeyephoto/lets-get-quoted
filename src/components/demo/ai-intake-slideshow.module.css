@@ -28,8 +28,8 @@
 
 .setupSlide { background: radial-gradient(circle at 92% 0, rgba(61, 141, 187, 0.33), transparent 36%), #071527; }
 .voiceSlide { background: radial-gradient(circle at 8% 100%, rgba(255, 107, 53, 0.18), transparent 34%), #071527; }
-.mediaSlide { padding: 0; background: #071527; }
-.coachSlide { background: radial-gradient(circle at 100% 90%, rgba(124, 245, 189, 0.14), transparent 34%), #071527; }
+.mediaSlide,
+.coachSlide { display: block; padding: 0; background: #071527; }
 .visionSlide,
 .bookingSlide { padding: 0; background: #071527; }
 .questionsSlide { background: radial-gradient(circle at 0 100%, rgba(76, 137, 214, 0.2), transparent 38%), #071527; }
@@ -118,16 +118,147 @@
 .parsedGrid small { color: rgba(215, 232, 243, 0.47); font-size: 0.52rem; font-weight: 850; letter-spacing: 0.1em; }
 .parsedGrid b { font-size: 0.68rem; }
 
-.mediaPhoto { position: relative; height: 48%; overflow: hidden; }
-.mediaPhoto img { object-fit: cover; }
-.mediaPhoto::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(2, 9, 18, 0.15), rgba(2, 9, 18, 0.68)); }
-.mediaCount { position: absolute; z-index: 2; left: 1rem; bottom: 0.85rem; padding: 0.42rem 0.58rem; border-radius: 999px; background: rgba(5, 18, 31, 0.75); color: #7cf5bd; font-size: 0.58rem; font-weight: 900; letter-spacing: 0.12em; backdrop-filter: blur(10px); }
-.mediaContent { padding: 1.2rem 1.7rem 1.5rem; }
-.mediaContent .slideHeading h2 { font-size: clamp(1.8rem, 4.4vw, 2.7rem); }
-.mediaContent .slideHeading p { margin-top: 0.65rem; }
-.mediaChecks { display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem; margin-top: 0.75rem; }
-.mediaChecks span { display: flex; align-items: center; gap: 0.4rem; color: rgba(238, 247, 253, 0.78); font-size: 0.62rem; }
-.mediaChecks i { width: 1rem; height: 1rem; font-size: 0.58rem; }
+.storyPhoto { position: absolute; inset: 0; overflow: hidden; }
+.storyPhoto img {
+  object-fit: cover;
+  object-position: 62% center;
+  animation: storyPush 4.8s ease-out both;
+}
+.storyShade {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(3, 12, 25, 0.04) 25%, rgba(3, 12, 25, 0.92) 88%),
+    linear-gradient(90deg, rgba(3, 12, 25, 0.58), transparent 72%);
+}
+.storyCopy {
+  position: absolute;
+  z-index: 3;
+  right: 1.25rem;
+  bottom: 1.2rem;
+  left: 1.25rem;
+}
+.storyCopy .slideHeading h2 { max-width: 14ch; font-size: clamp(1.9rem, 7vw, 2.5rem); }
+.storyCopy .slideHeading p { max-width: 36ch; margin-top: 0.55rem; color: rgba(243, 249, 253, 0.78); font-size: 0.72rem; }
+.captureStatus {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-top: 0.75rem;
+  padding: 0.42rem 0.58rem;
+  border: 1px solid rgba(124, 245, 189, 0.34);
+  border-radius: 999px;
+  background: rgba(4, 17, 31, 0.72);
+  color: #c9ffe5;
+  font-size: 0.54rem;
+  font-weight: 900;
+  letter-spacing: 0.09em;
+  backdrop-filter: blur(10px);
+  animation: overlayReveal 520ms 180ms cubic-bezier(.2, .8, .2, 1) both;
+}
+.captureStatus > i {
+  width: 0.48rem;
+  height: 0.48rem;
+  border-radius: 50%;
+  background: #7cf5bd;
+  box-shadow: 0 0 0 0 rgba(124, 245, 189, 0.5);
+  animation: cameraPulse 1.6s ease-out infinite;
+}
+.captureChecks { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.55rem; }
+.captureChecks span,
+.detectedDetails span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.38rem;
+  padding: 0.42rem 0.52rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.55rem;
+  background: rgba(4, 17, 31, 0.72);
+  color: rgba(244, 250, 255, 0.9);
+  font-size: 0.62rem;
+  font-weight: 760;
+  backdrop-filter: blur(10px);
+  animation: overlayReveal 520ms cubic-bezier(.2, .8, .2, 1) both;
+}
+.captureChecks span:first-child { animation-delay: 360ms; }
+.captureChecks span:last-child { animation-delay: 510ms; }
+.captureChecks i,
+.detectedDetails i { color: #7cf5bd; font-style: normal; }
+.captureNext {
+  display: grid;
+  gap: 0.22rem;
+  max-width: 24rem;
+  margin-top: 0.55rem;
+  padding: 0.58rem 0.68rem;
+  border-left: 0.2rem solid #ffc05e;
+  background: rgba(4, 17, 31, 0.78);
+  backdrop-filter: blur(12px);
+  animation: overlayReveal 520ms 700ms cubic-bezier(.2, .8, .2, 1) both;
+}
+.captureNext small { color: #ffc05e; font-size: 0.5rem; font-weight: 900; letter-spacing: 0.1em; }
+.captureNext strong { font-size: 0.7rem; }
+.mediaCount {
+  position: absolute;
+  z-index: 3;
+  top: 1rem;
+  right: 1rem;
+  padding: 0.42rem 0.58rem;
+  border-radius: 999px;
+  background: rgba(5, 18, 31, 0.75);
+  color: #7cf5bd;
+  font-size: 0.58rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  backdrop-filter: blur(10px);
+}
+.captureTarget { display: none; }
+.capturedNotice {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  max-width: 18rem;
+  margin-top: 0.75rem;
+  padding: 0.58rem 0.68rem;
+  border: 1px solid rgba(124, 245, 189, 0.35);
+  border-radius: 0.7rem;
+  background: rgba(4, 17, 31, 0.74);
+  backdrop-filter: blur(12px);
+  animation: overlayReveal 520ms 180ms cubic-bezier(.2, .8, .2, 1) both;
+}
+.capturedNotice > i {
+  display: grid;
+  width: 1.55rem;
+  height: 1.55rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  background: #7cf5bd;
+  color: #0a2c20;
+  font-style: normal;
+  font-weight: 950;
+}
+.capturedNotice span { display: grid; gap: 0.1rem; }
+.capturedNotice small { color: #7cf5bd; font-size: 0.48rem; font-weight: 900; letter-spacing: 0.11em; }
+.capturedNotice strong { font-size: 0.7rem; }
+.detectedDetails { display: flex; flex-wrap: wrap; gap: 0.38rem; margin-top: 0.5rem; }
+.detectedDetails span:nth-child(1) { animation-delay: 360ms; }
+.detectedDetails span:nth-child(2) { animation-delay: 500ms; }
+.detectedDetails span:nth-child(3) { animation-delay: 640ms; }
+.mediaAnswered {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  max-width: 24rem;
+  margin-top: 0.55rem;
+  padding: 0.58rem 0.68rem;
+  border-radius: 0.65rem;
+  background: rgba(255, 107, 53, 0.91);
+  color: white;
+  animation: overlayReveal 520ms 820ms cubic-bezier(.2, .8, .2, 1) both;
+}
+.mediaAnswered strong { flex: 0 0 auto; font-size: 0.78rem; }
+.mediaAnswered span { font-size: 0.6rem; line-height: 1.3; }
 
 .coachPanel,
 .questionPanel,
@@ -290,6 +421,27 @@
   to { opacity: 1; transform: translateX(0) scale(1); }
 }
 
+@keyframes storyPush {
+  from { transform: scale(1.01); }
+  to { transform: scale(1.045); }
+}
+
+@keyframes overlayReveal {
+  from { opacity: 0; transform: translateY(0.65rem); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes cameraPulse {
+  0% { box-shadow: 0 0 0 0 rgba(124, 245, 189, 0.48); }
+  70%, 100% { box-shadow: 0 0 0 0.5rem rgba(124, 245, 189, 0); }
+}
+
+@keyframes scanSweep {
+  0% { top: 5%; opacity: 0; }
+  12%, 82% { opacity: 1; }
+  100% { top: 94%; opacity: 0; }
+}
+
 @media (min-width: 701px) {
   .stage { aspect-ratio: 16 / 10; }
 
@@ -316,13 +468,11 @@
   }
 
   .setupSlide .slideHeading,
-  .coachSlide .slideHeading,
   .questionsSlide .slideHeading,
   .intelligenceSlide .slideHeading,
   .guardrailSlide .slideHeading { grid-column: 1; }
 
   .setupSlide .presetPanel,
-  .coachSlide .coachPanel,
   .questionsSlide .questionPanel,
   .guardrailSlide .estimatePanel {
     grid-column: 2;
@@ -338,10 +488,64 @@
   .voiceSlide .insightBadge { grid-column: 2; grid-row: 2; margin-top: 0; }
   .voiceSlide .callCard { grid-column: 2; grid-row: 3; margin-top: 0; }
 
-  .mediaSlide { grid-template-columns: minmax(0, 0.88fr) minmax(0, 1.12fr); }
-  .mediaPhoto { height: 100%; }
-  .mediaContent { padding: 1.45rem 1.7rem; }
-  .mediaContent .slideHeading h2 { font-size: clamp(1.9rem, 3.15vw, 2.65rem); }
+  .mediaSlide,
+  .coachSlide { display: block; padding: 0; }
+  .storyPhoto img { object-position: center; }
+  .storyShade {
+    background:
+      linear-gradient(90deg, rgba(3, 12, 25, 0.98) 0%, rgba(3, 12, 25, 0.9) 34%, rgba(3, 12, 25, 0.38) 58%, rgba(3, 12, 25, 0.04) 82%),
+      linear-gradient(180deg, rgba(3, 12, 25, 0.08), rgba(3, 12, 25, 0.35));
+  }
+  .storyCopy {
+    top: 50%;
+    right: auto;
+    bottom: auto;
+    left: 1.65rem;
+    width: 43%;
+    transform: translateY(-50%);
+  }
+  .storyCopy .slideHeading h2 { max-width: 12ch; font-size: clamp(1.9rem, 3.15vw, 2.55rem); }
+  .storyCopy .slideHeading p { max-width: 33ch; font-size: 0.78rem; }
+  .captureStatus { font-size: 0.57rem; }
+  .captureChecks span,
+  .detectedDetails span { font-size: 0.65rem; }
+  .captureNext strong,
+  .capturedNotice strong { font-size: 0.72rem; }
+  .captureTarget {
+    position: absolute;
+    z-index: 2;
+    top: 17%;
+    left: 43%;
+    display: block;
+    width: 18%;
+    height: 54%;
+    overflow: hidden;
+    border: 1px solid rgba(124, 245, 189, 0.78);
+    border-radius: 0.55rem;
+    box-shadow: inset 0 0 0 1px rgba(7, 21, 39, 0.45), 0 0 2.5rem rgba(124, 245, 189, 0.13);
+  }
+  .captureTarget::before,
+  .captureTarget::after {
+    position: absolute;
+    z-index: 1;
+    width: 1.1rem;
+    height: 1.1rem;
+    content: '';
+    border-color: #7cf5bd;
+  }
+  .captureTarget::before { top: -1px; left: -1px; border-top: 0.2rem solid; border-left: 0.2rem solid; }
+  .captureTarget::after { right: -1px; bottom: -1px; border-right: 0.2rem solid; border-bottom: 0.2rem solid; }
+  .captureTarget > i {
+    position: absolute;
+    right: 0;
+    left: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #7cf5bd 18%, #7cf5bd 82%, transparent);
+    box-shadow: 0 0 0.8rem rgba(124, 245, 189, 0.8);
+    animation: scanSweep 2.6s 350ms ease-in-out infinite;
+  }
+  .detailTarget { top: 42%; left: 38%; width: 22%; height: 34%; }
+  .mediaCount { top: auto; right: 1rem; bottom: 1rem; }
 
   .visionSlide { grid-template-columns: minmax(0, 0.86fr) minmax(0, 1.14fr); }
   .visionPhoto { height: 100%; }
@@ -390,7 +594,13 @@
 @media (max-width: 420px) {
   .slide { padding: 1.5rem; }
   .slideHeading h2 { font-size: 2.2rem; }
-  .mediaContent { padding-inline: 1.4rem; }
+  .mediaSlide,
+  .coachSlide { padding: 0; }
+  .storyCopy { right: 1rem; bottom: 1rem; left: 1rem; }
+  .storyCopy .slideHeading h2 { font-size: 1.85rem; }
+  .storyCopy .slideHeading p { font-size: 0.68rem; }
+  .captureChecks span,
+  .detectedDetails span { font-size: 0.57rem; }
   .controls { grid-template-columns: auto 1fr auto; }
   .controls .playButton { justify-self: start; }
   .progress { display: none; }
@@ -399,5 +609,14 @@
 @media (prefers-reduced-motion: reduce) {
   .slide,
   .insightBadge,
-  .evidenceCards > div { animation: none; }
+  .evidenceCards > div,
+  .storyPhoto img,
+  .captureStatus,
+  .captureStatus > i,
+  .captureChecks span,
+  .captureNext,
+  .capturedNotice,
+  .detectedDetails span,
+  .mediaAnswered,
+  .captureTarget > i { animation: none; }
 }

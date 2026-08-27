@@ -21,6 +21,7 @@ import {
   saveEstimateDraft,
   clearEstimateDraft,
 } from '@/lib/tools/estimate-generator-utils';
+import { normalizeAddress } from '@/lib/location-context/normalize-address';
 import styles from '../tools.module.css';
 
 export default function EstimateGeneratorClient() {
@@ -48,11 +49,12 @@ export default function EstimateGeneratorClient() {
 
   const [loadingPermit, setLoadingPermit] = useState(false);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
+  const [pdfError, setPdfError] = useState<string | null>(null);
   const copyTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isLoadedRef = useRef(false);
 
   // Load initial draft from localStorage after mount
   useEffect(() => {
-    setMounted(true);
     const draft = loadEstimateDraft();
     if (draft) {
       setEstimate({
@@ -61,11 +63,15 @@ export default function EstimateGeneratorClient() {
       });
       setHasInteracted(true);
     }
+    setMounted(true);
+    setTimeout(() => {
+      isLoadedRef.current = true;
+    }, 50);
   }, []);
 
-  // Autosave draft on change
+  // Autosave draft on change once initial load is complete
   useEffect(() => {
-    if (!mounted) return;
+    if (!mounted || !isLoadedRef.current) return;
     saveEstimateDraft(estimate);
   }, [estimate, mounted]);
 
@@ -155,12 +161,15 @@ export default function EstimateGeneratorClient() {
               ? 'solar_rooftop_pv'
               : 'ev_charger_level2';
 
+          const parsedClientAddr = normalizeAddress(estimate.clientAddress);
+          const clientState = parsedClientAddr.state || 'US';
+
           const rebateRes = await fetch('/api/rebates/calculate', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               category: rebateCategory,
-              state: 'MI',
+              state: clientState,
               projectCost: totals.subtotal || 9500,
             }),
           });
@@ -327,6 +336,25 @@ export default function EstimateGeneratorClient() {
     setStatusMessage('Line item removed.');
   };
 
+  const handleCopyFromTier1 = () => {
+    const tier1 = estimate.tiers.find((t) => t.id === 'good') || estimate.tiers[0];
+    if (!tier1 || !activeTier) return;
+
+    const clonedItems: LineItem[] = tier1.items.map((it) => ({
+      ...it,
+      id: `item-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    }));
+
+    setEstimate((prev) => ({
+      ...prev,
+      tiers: prev.tiers.map((t) =>
+        t.id === prev.activeTierId ? { ...t, items: [...clonedItems] } : t
+      ),
+    }));
+    setHasInteracted(true);
+    setStatusMessage(`Copied ${clonedItems.length} items from ${tier1.name} into ${activeTier.name}.`);
+  };
+
   const handleModeChange = (useSample: boolean) => {
     if (useSample) {
       const sample = getInitialExampleEstimate();
@@ -355,13 +383,17 @@ export default function EstimateGeneratorClient() {
   const handleDownloadPdf = async () => {
     try {
       setDownloadingPdf(true);
+      setPdfError(null);
       setStatusMessage('Generating professional PDF...');
       const res = await fetch('/api/tools/estimate-pdf', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ estimate, totals }),
       });
-      if (!res.ok) throw new Error('Failed to generate PDF');
+      if (!res.ok) {
+        const errorJson = await res.json().catch(() => null);
+        throw new Error(errorJson?.details || errorJson?.error || 'Server error generating PDF');
+      }
       const blob = await res.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -376,10 +408,9 @@ export default function EstimateGeneratorClient() {
       setStatusMessage('Estimate PDF downloaded successfully.');
     } catch (err) {
       console.error('PDF download error:', err);
-      setStatusMessage('Direct PDF download failed, opening browser print dialog...');
-      if (typeof window !== 'undefined') {
-        window.print();
-      }
+      const msg = err instanceof Error ? err.message : 'Direct PDF generation service unavailable.';
+      setPdfError(msg);
+      setStatusMessage(`PDF download encountered an issue: ${msg}`);
     } finally {
       setDownloadingPdf(false);
     }
@@ -576,15 +607,17 @@ export default function EstimateGeneratorClient() {
           {/* Dedicated Print Business Branding Header */}
           <div className={`${styles.printHeaderCompany} ${styles.printOnly}`}>
             <h1 className={styles.printCompanyName}>
-              {estimate.contractorName?.trim() || 'Apex Trade Solutions'}
+              {estimate.contractorName?.trim() || (estimate.mode === 'multi_tier' ? 'MULTI-TIER PROPOSAL' : 'CONTRACTOR ESTIMATE')}
             </h1>
-            <div className={styles.printCompanyContact}>
-              {[
-                estimate.contractorPhone?.trim() || null,
-                estimate.contractorEmail?.trim() || null,
-                estimate.contractorLicense?.trim() ? `License # ${estimate.contractorLicense.replace(/^lic\s*#?\s*/i, '')}` : null,
-              ].filter(Boolean).join(' • ') || 'Licensed & Insured Trade Contractor'}
-            </div>
+            {estimate.contractorName?.trim() || estimate.contractorPhone?.trim() || estimate.contractorEmail?.trim() || estimate.contractorLicense?.trim() ? (
+              <div className={styles.printCompanyContact}>
+                {[
+                  estimate.contractorPhone?.trim() || null,
+                  estimate.contractorEmail?.trim() || null,
+                  estimate.contractorLicense?.trim() ? `License # ${estimate.contractorLicense.replace(/^lic\s*#?\s*/i, '')}` : null,
+                ].filter(Boolean).join(' • ') || (estimate.contractorName?.trim() ? 'Licensed & Insured Trade Contractor' : null)}
+              </div>
+            ) : null}
           </div>
 
           {/* Screen Estimate Metadata Controls */}
@@ -836,6 +869,32 @@ export default function EstimateGeneratorClient() {
                 );
               })}
             </div>
+
+            {estimate.activeTierId !== 'good' && (
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10 }}>
+                <button
+                  type="button"
+                  onClick={handleCopyFromTier1}
+                  className="btn ghost xs"
+                  style={{
+                    fontSize: 12.5,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    color: '#0369a1',
+                    borderColor: '#bae6fd',
+                    background: '#f0f9ff',
+                    padding: '6px 12px',
+                    borderRadius: 6,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                  }}
+                  title="Duplicate base scope from Tier 1 (Standard) into this package to save time"
+                >
+                  <span aria-hidden="true">📋</span> Copy Base Scope from {estimate.tiers[0]?.name || 'Tier 1 (Standard)'}
+                </button>
+              </div>
+            )}
           </div>
         )}
 
@@ -1277,6 +1336,35 @@ export default function EstimateGeneratorClient() {
 
         {/* Action Bar */}
         <div className={styles.printActions}>
+          {pdfError ? (
+            <div className={styles.pdfErrorBanner} role="alert">
+              <div className={styles.pdfErrorBannerHeader}>
+                <span aria-hidden="true">⚠️</span>
+                <span>Direct PDF download failed: {pdfError}</span>
+              </div>
+              <div>
+                You can retry the download or generate a clean print/PDF directly using your browser.
+              </div>
+              <div className={styles.pdfErrorActions}>
+                <button
+                  type="button"
+                  onClick={handleDownloadPdf}
+                  disabled={downloadingPdf}
+                  className={styles.pdfErrorRetryBtn}
+                >
+                  🔄 {downloadingPdf ? 'Retrying...' : 'Retry PDF Download'}
+                </button>
+                <button
+                  type="button"
+                  onClick={handlePrint}
+                  className={styles.pdfErrorPrintBtn}
+                >
+                  🖨️ Print / Save as PDF via Browser
+                </button>
+              </div>
+            </div>
+          ) : null}
+
           <div className={styles.actionButtonsCluster}>
             <button
               type="button"

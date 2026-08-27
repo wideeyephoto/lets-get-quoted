@@ -74,29 +74,35 @@ function VoiceSlide() {
 function MediaSlide() {
   return (
     <section className={`${styles.slide} ${styles.mediaSlide}`}>
-      <div className={styles.mediaPhoto}>
+      <div className={styles.storyPhoto}>
         <Image
-          alt="Existing bathtub submitted for AI intake"
+          alt="Michelle photographing her existing bathtub for the AI intake"
           fill
           priority
           sizes="(max-width: 700px) 92vw, 430px"
-          src="/demo/bath-to-shower/before.png"
+          src="/demo/bath-to-shower/homeowner-tub-photo-v1.png"
         />
-        <span className={styles.mediaCount}>3 PHOTOS · 1 VIDEO</span>
       </div>
+      <div className={styles.storyShade} />
+      <div className={styles.captureTarget} aria-hidden="true"><i /></div>
 
-      <div className={styles.mediaContent}>
+      <div className={styles.storyCopy}>
         <div className={styles.slideHeading}>
-          <span>03 · PHOTO + VIDEO</span>
-          <h2>Every upload becomes scoping context.</h2>
-          <p>Up to six photos or video clips—35 MB each—with quality coaching before they send.</p>
+          <span>03 · LIVE PHOTO CAPTURE</span>
+          <h2>She shows the job. AI checks the shot.</h2>
+          <p>Michelle gets useful guidance before the photo ever reaches the contractor.</p>
         </div>
-        <div className={styles.mediaChecks}>
+        <div className={styles.captureStatus}><i /> CAMERA READY · ANALYZING LIVE</div>
+        <div className={styles.captureChecks}>
           <span><i>✓</i> Lighting looks good</span>
           <span><i>✓</i> Focus is sharp</span>
-          <span><i>✓</i> Video keyframes ready</span>
+        </div>
+        <div className={styles.captureNext}>
+          <small>ONE MORE ANGLE WOULD HELP</small>
+          <strong>Show the tub edge and floor transition.</strong>
         </div>
       </div>
+      <span className={styles.mediaCount}>3 PHOTOS · 1 VIDEO</span>
     </section>
   );
 }
@@ -104,28 +110,30 @@ function MediaSlide() {
 function PhotoCoachSlide() {
   return (
     <section className={`${styles.slide} ${styles.coachSlide}`}>
-      <div className={styles.slideHeading}>
-        <span>04 · QUALITY COACH</span>
-        <h2>It asks for the photo that changes the estimate.</h2>
-        <p>Before upload, the intake checks lighting and focus, then gives trade-aware camera guidance.</p>
+      <div className={styles.storyPhoto}>
+        <Image
+          alt="Michelle capturing the requested tub-edge and floor-transition detail"
+          fill
+          sizes="(max-width: 700px) 92vw, 640px"
+          src="/demo/bath-to-shower/homeowner-threshold-detail-v1.png"
+        />
       </div>
+      <div className={styles.storyShade} />
+      <div className={`${styles.captureTarget} ${styles.detailTarget}`} aria-hidden="true"><i /></div>
 
-      <div className={styles.coachPanel}>
-        <div className={styles.uploadRow}>
-          <span>JPG</span>
-          <div><strong>shower-wall.jpg</strong><small>1.8 MB · checking quality</small></div>
-          <b>✓</b>
+      <div className={styles.storyCopy}>
+        <div className={styles.slideHeading}>
+          <span>04 · GUIDED FOLLOW-UP</span>
+          <h2>The next photo answers a price-changing question.</h2>
+          <p>The AI asks for one precise detail instead of making Michelle guess what matters.</p>
         </div>
-        <div className={styles.coachCheck}><i>!</i><span><strong>One more angle would help.</strong><small>Show the threshold and the wall with the shower controls.</small></span></div>
-        <div className={styles.tradeTip}>
-          <small>TRADE-AWARE TIP</small>
-          <strong>Take one wide room photo and one close view of the plumbing wall.</strong>
+        <div className={styles.capturedNotice}><i>✓</i><span><small>REQUESTED ANGLE</small><strong>Captured and understood</strong></span></div>
+        <div className={styles.detectedDetails}>
+          <span><i>✓</i> Tub edge visible</span>
+          <span><i>✓</i> Floor transition clear</span>
+          <span><i>✓</i> Entry condition documented</span>
         </div>
-        <div className={styles.photoPrompt}>
-          <span>AI FOLLOW-UP</span>
-          <p>Can you snap the tub edge and floor transition?</p>
-          <b>Snap photo</b>
-        </div>
+        <div className={styles.mediaAnswered}><strong>3 questions</strong><span>answered from the photos—so the intake will not ask them again.</span></div>
       </div>
     </section>
   );

@@ -48,4 +48,5 @@ scripts/tmp-*.mjs
 
 # Generated video/screen capture recording artifacts
 artifacts/
+test-results/
 

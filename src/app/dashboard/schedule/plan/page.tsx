@@ -88,6 +88,7 @@ export default async function PlanDayPage({
     texted?: string;
     untexted?: string;
     failed?: string;
+    failedDispatch?: string;
     stranded?: string;
     geocoded?: string;
     briefed?: string;
@@ -501,20 +502,26 @@ export default async function PlanDayPage({
         </div>
       </header>
 
-      {searchParams.briefed !== undefined ? (
+      {searchParams.briefed !== undefined || searchParams.failedDispatch !== undefined ? (
         <p className={`plan-flash ${Number(searchParams.briefed) > 0 ? 'good' : 'warn'}`}>
           {Number(searchParams.briefed) > 0
             ? `${
                 searchParams.urgent === '1'
-                  ? 'Sent URGENT schedule update SMS'
+                  ? 'Queued URGENT schedule update SMS'
                   : searchParams.scheduled === '1'
                   ? 'Scheduled morning dispatch briefing SMS for 7:00 AM'
-                  : 'Sent morning dispatch briefing SMS with Google Maps routes'
-              } to ${searchParams.briefed} crew ${searchParams.briefed === '1' ? 'member' : 'members'}.${
+                  : 'Queued morning dispatch briefing SMS with Google Maps routes'
+              } for ${searchParams.briefed} crew ${searchParams.briefed === '1' ? 'member' : 'members'}.${
+                searchParams.failedDispatch
+                  ? ` (⚠️ Failed to queue for ${searchParams.failedDispatch.split(',').length} member: ${searchParams.failedDispatch})`
+                  : ''
+              }${
                 Number(searchParams.skippedNoPhone) > 0
                   ? ` (${searchParams.skippedNoPhone} member${searchParams.skippedNoPhone === '1' ? '' : 's'} skipped: no mobile number on file)`
                   : ''
               }`
+            : searchParams.failedDispatch
+            ? `Dispatch delivery failed for: ${searchParams.failedDispatch}. Please verify valid mobile numbers in Settings → Crew or use the Copy/Print options.`
             : 'Could not send dispatch SMS: none of the selected crew members have a valid mobile phone number on file. Update phone numbers in Settings → Crew or use the Copy/Print options.'}
         </p>
       ) : null}

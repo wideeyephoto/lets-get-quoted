@@ -12,6 +12,7 @@ import {
 } from '@/lib/crew-briefing';
 import type { CrewBriefingHistory } from '@/lib/crew';
 import { displayPhone, normalizeUsPhone } from '@/lib/phone';
+import { calculateSmsSegments } from '@/lib/sms/sms-segments';
 import { sendCrewMorningBriefingAction, updateCrewPhoneQuickAction } from './actions';
 
 export type CrewBriefMember = {
@@ -370,9 +371,8 @@ export default function BriefCrewModal({
     return `sms:${phone}?&body=${encodeURIComponent(previewSms)}`;
   }, [currentPreviewMember.phone, previewSms]);
 
-  // SMS character & segment calculation
-  const charCount = previewSms.length;
-  const segmentCount = charCount <= 160 ? 1 : Math.ceil(charCount / 153);
+  // SMS character & carrier segment calculation
+  const smsStats = useMemo(() => calculateSmsSegments(previewSms), [previewSms]);
 
   return (
     <ModalDialog
@@ -775,7 +775,9 @@ export default function BriefCrewModal({
           <div className={`brief-crew-sms-preview-bubble ${isUrgentUpdate ? 'is-urgent' : ''}`}>
             <div className="brief-crew-sms-meta">
               <span>To: {currentPreviewMember.name} {currentPreviewMember.phone ? `(${displayPhone(currentPreviewMember.phone)})` : ''}</span>
-              <span>{charCount} chars · ~{segmentCount} segment{segmentCount === 1 ? '' : 's'}</span>
+              <span title={smsStats.containsUnicode ? 'UCS-2 encoding (emojis/unicode): max 70 chars for single or 67 chars/segment' : 'Standard GSM-7 encoding: max 160 chars for single or 153 chars/segment'}>
+                {smsStats.charCount} chars · {smsStats.segmentCount} segment{smsStats.segmentCount === 1 ? '' : 's'} ({smsStats.encoding})
+              </span>
             </div>
             <pre className="brief-crew-sms-body">{previewSms}</pre>
           </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import SiteFooter from '@/components/site-footer';
 import { APP_SIGNUP_URL } from '@/components/marketing/links';
@@ -53,6 +53,8 @@ const PRESETS = [
   },
 ];
 
+const STORAGE_KEY = 'lgq_leakage_calc_v1';
+
 export default function LeakageCalculatorPage() {
   const [revenue, setRevenue] = useState(350000);
   const [unbilledScopePct, setUnbilledScopePct] = useState(6);
@@ -60,6 +62,44 @@ export default function LeakageCalculatorPage() {
   const [hourlyBillingRate, setHourlyBillingRate] = useState(95);
   const [checkTripsPerMonth, setCheckTripsPerMonth] = useState(6);
   const [copied, setCopied] = useState(false);
+  const [emailAddress, setEmailAddress] = useState('');
+  const [emailSending, setEmailSending] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
+
+  // Restore draft from localStorage on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (typeof parsed.revenue === 'number') setRevenue(parsed.revenue);
+        if (typeof parsed.unbilledScopePct === 'number') setUnbilledScopePct(parsed.unbilledScopePct);
+        if (typeof parsed.supplyHouseHours === 'number') setSupplyHouseHours(parsed.supplyHouseHours);
+        if (typeof parsed.hourlyBillingRate === 'number') setHourlyBillingRate(parsed.hourlyBillingRate);
+        if (typeof parsed.checkTripsPerMonth === 'number') setCheckTripsPerMonth(parsed.checkTripsPerMonth);
+      }
+    } catch {
+      // quiet fallback
+    }
+  }, []);
+
+  // Save changes to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({
+          revenue,
+          unbilledScopePct,
+          supplyHouseHours,
+          hourlyBillingRate,
+          checkTripsPerMonth,
+        }),
+      );
+    } catch {
+      // quiet fallback
+    }
+  }, [revenue, unbilledScopePct, supplyHouseHours, hourlyBillingRate, checkTripsPerMonth]);
 
   const calculations = useMemo(() => {
     // 1. Unbilled Scope Creep & Change Orders
@@ -108,14 +148,33 @@ Unbilled Parts / Supply Runs Loss: ${formatCurrency(calculations.annualSupplyHou
 Paper Check Pickups & Drive Cost: ${formatCurrency(calculations.annualCheckChasingLoss)}
 Cashflow Float & Late Invoice Cost: ${formatCurrency(calculations.annualCashFlowCost)}
 ---------------------------------------------
-TOTAL ANNUAL PROFIT LEAKAGE: ${formatCurrency(calculations.totalAnnualLeakage)}/year
-RECOVERABLE WITH LET'S GET QUOTED: ${formatCurrency(calculations.recoverableWithLGQ)}/year
-Generated via https://letsgetquoted.com/tools/leakage-calculator`;
+TOTAL ESTIMATED LEAKAGE: ${formatCurrency(calculations.totalAnnualLeakage)} / yr
+RECOVERABLE WITH LET'S GET QUOTED: +${formatCurrency(calculations.recoverableWithLGQ)} / yr
+Audit URL: https://letsgetquoted.com/tools/leakage-calculator`;
 
-    navigator.clipboard.writeText(text).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2500);
-    });
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 3000);
+  };
+
+  const handleEmailReport = async () => {
+    if (!emailAddress || !emailAddress.includes('@')) return;
+    try {
+      setEmailSending(true);
+      await fetch('/api/tools/email-report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: emailAddress,
+          toolName: 'Profit Leakage & Cash Flow Audit',
+          summary: `Gross: ${formatCurrency(revenue)}, Leakage: ${formatCurrency(calculations.totalAnnualLeakage)}/yr, Recoverable: ${formatCurrency(calculations.recoverableWithLGQ)}/yr`,
+          calculations,
+        }),
+      }).catch(() => null);
+      setEmailSent(true);
+    } finally {
+      setEmailSending(false);
+    }
   };
 
   const jsonLd = {
@@ -336,7 +395,36 @@ Generated via https://letsgetquoted.com/tools/leakage-calculator`;
                   value={revenue}
                   onChange={(e) => setRevenue(Number(e.target.value))}
                   className={styles.slider}
+                  aria-label="Annual Gross Revenue slider"
                 />
+                <div className={styles.stepperRow}>
+                  <button
+                    type="button"
+                    onClick={() => setRevenue((r) => Math.max(80000, r - 10000))}
+                    className={styles.stepperBtn}
+                    aria-label="Decrease revenue by 10k"
+                  >
+                    −
+                  </button>
+                  <input
+                    type="number"
+                    min={80000}
+                    max={1500000}
+                    step={10000}
+                    value={revenue}
+                    onChange={(e) => setRevenue(Math.max(0, Number(e.target.value) || 0))}
+                    className={styles.stepperInput}
+                    aria-label="Annual Gross Revenue direct numeric entry"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setRevenue((r) => Math.min(1500000, r + 10000))}
+                    className={styles.stepperBtn}
+                    aria-label="Increase revenue by 10k"
+                  >
+                    +
+                  </button>
+                </div>
               </div>
 
               {/* Unbilled Scope Creep */}
@@ -356,7 +444,36 @@ Generated via https://letsgetquoted.com/tools/leakage-calculator`;
                   value={unbilledScopePct}
                   onChange={(e) => setUnbilledScopePct(Number(e.target.value))}
                   className={styles.slider}
+                  aria-label="Unbilled Scope Creep slider"
                 />
+                <div className={styles.stepperRow}>
+                  <button
+                    type="button"
+                    onClick={() => setUnbilledScopePct((s) => Math.max(1, s - 1))}
+                    className={styles.stepperBtn}
+                    aria-label="Decrease scope creep percentage"
+                  >
+                    −
+                  </button>
+                  <input
+                    type="number"
+                    min={1}
+                    max={15}
+                    step={1}
+                    value={unbilledScopePct}
+                    onChange={(e) => setUnbilledScopePct(Math.min(15, Math.max(1, Number(e.target.value) || 1)))}
+                    className={styles.stepperInput}
+                    aria-label="Scope creep percentage entry"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setUnbilledScopePct((s) => Math.min(15, s + 1))}
+                    className={styles.stepperBtn}
+                    aria-label="Increase scope creep percentage"
+                  >
+                    +
+                  </button>
+                </div>
                 <span className={styles.microHint}>
                   Extra fixtures, framing tweaks, or extra coats done without a formal signed change order.
                 </span>
@@ -379,7 +496,36 @@ Generated via https://letsgetquoted.com/tools/leakage-calculator`;
                   value={supplyHouseHours}
                   onChange={(e) => setSupplyHouseHours(Number(e.target.value))}
                   className={styles.slider}
+                  aria-label="Supply house hours slider"
                 />
+                <div className={styles.stepperRow}>
+                  <button
+                    type="button"
+                    onClick={() => setSupplyHouseHours((h) => Math.max(1, h - 1))}
+                    className={styles.stepperBtn}
+                    aria-label="Decrease supply house hours"
+                  >
+                    −
+                  </button>
+                  <input
+                    type="number"
+                    min={1}
+                    max={12}
+                    step={1}
+                    value={supplyHouseHours}
+                    onChange={(e) => setSupplyHouseHours(Math.min(12, Math.max(1, Number(e.target.value) || 1)))}
+                    className={styles.stepperInput}
+                    aria-label="Supply house hours entry"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setSupplyHouseHours((h) => Math.min(12, h + 1))}
+                    className={styles.stepperBtn}
+                    aria-label="Increase supply house hours"
+                  >
+                    +
+                  </button>
+                </div>
               </div>
 
               {/* Hourly Billing Rate */}
@@ -399,7 +545,36 @@ Generated via https://letsgetquoted.com/tools/leakage-calculator`;
                   value={hourlyBillingRate}
                   onChange={(e) => setHourlyBillingRate(Number(e.target.value))}
                   className={styles.slider}
+                  aria-label="Hourly billing rate slider"
                 />
+                <div className={styles.stepperRow}>
+                  <button
+                    type="button"
+                    onClick={() => setHourlyBillingRate((r) => Math.max(45, r - 5))}
+                    className={styles.stepperBtn}
+                    aria-label="Decrease hourly rate"
+                  >
+                    −
+                  </button>
+                  <input
+                    type="number"
+                    min={45}
+                    max={200}
+                    step={5}
+                    value={hourlyBillingRate}
+                    onChange={(e) => setHourlyBillingRate(Math.min(200, Math.max(45, Number(e.target.value) || 45)))}
+                    className={styles.stepperInput}
+                    aria-label="Hourly billing rate entry"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setHourlyBillingRate((r) => Math.min(200, r + 5))}
+                    className={styles.stepperBtn}
+                    aria-label="Increase hourly rate"
+                  >
+                    +
+                  </button>
+                </div>
               </div>
 
               {/* Check Chasing Trips */}
@@ -419,7 +594,36 @@ Generated via https://letsgetquoted.com/tools/leakage-calculator`;
                   value={checkTripsPerMonth}
                   onChange={(e) => setCheckTripsPerMonth(Number(e.target.value))}
                   className={styles.slider}
+                  aria-label="Check collection trips slider"
                 />
+                <div className={styles.stepperRow}>
+                  <button
+                    type="button"
+                    onClick={() => setCheckTripsPerMonth((t) => Math.max(0, t - 1))}
+                    className={styles.stepperBtn}
+                    aria-label="Decrease check collection trips"
+                  >
+                    −
+                  </button>
+                  <input
+                    type="number"
+                    min={0}
+                    max={20}
+                    step={1}
+                    value={checkTripsPerMonth}
+                    onChange={(e) => setCheckTripsPerMonth(Math.min(20, Math.max(0, Number(e.target.value) || 0)))}
+                    className={styles.stepperInput}
+                    aria-label="Check collection trips entry"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setCheckTripsPerMonth((t) => Math.min(20, t + 1))}
+                    className={styles.stepperBtn}
+                    aria-label="Increase check collection trips"
+                  >
+                    +
+                  </button>
+                </div>
                 <span className={styles.microHint}>
                   Driving back to finished jobsites to pick up paper checks or deposits.
                 </span>
@@ -502,6 +706,37 @@ Generated via https://letsgetquoted.com/tools/leakage-calculator`;
                 >
                   {copied ? '✓ Report Copied!' : '📋 Copy Report'}
                 </button>
+              </div>
+
+              {/* Optional Un-gated Email Audit Report */}
+              <div className={styles.emailReportBox}>
+                <label htmlFor="leak-email" className={styles.emailReportLabel}>
+                  <span>📧</span> Email full diagnostic audit to yourself:
+                </label>
+                <div className={styles.emailReportRow}>
+                  <input
+                    id="leak-email"
+                    type="email"
+                    value={emailAddress}
+                    onChange={(e) => setEmailAddress(e.target.value)}
+                    placeholder="contractor@example.com"
+                    className={styles.emailReportInput}
+                    aria-label="Email address for diagnostic report"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleEmailReport}
+                    disabled={emailSending || !emailAddress}
+                    className={styles.emailReportBtn}
+                  >
+                    {emailSending ? 'Sending...' : emailSent ? '✓ Sent!' : 'Send Report'}
+                  </button>
+                </div>
+                {emailSent ? (
+                  <span className={styles.emailReportSuccess}>
+                    ✓ Diagnostic report summary dispatched to {emailAddress}!
+                  </span>
+                ) : null}
               </div>
 
               {/* Signup Link */}

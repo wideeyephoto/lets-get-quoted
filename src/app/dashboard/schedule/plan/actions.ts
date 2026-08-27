@@ -370,6 +370,7 @@ export async function sendCrewMorningBriefingAction(formData: FormData) {
   let briefedCount = 0;
   let skippedNoPhone = 0;
   let skippedNoJobs = 0;
+  const failedList: string[] = [];
 
   for (const member of targets) {
     if (!member.phone) {
@@ -421,27 +422,31 @@ export async function sendCrewMorningBriefingAction(formData: FormData) {
       scheduledTiming,
     });
 
-    const { enqueueSmsDelivery } = await import('@/lib/sms-delivery');
-    await enqueueSmsDelivery({
-      accountId,
-      phoneNumber: phone,
-      body: text,
-      messageKind: 'crew-briefing',
-      context: 'crew',
-      eventType: 'crew_briefing',
-      crewId: member.id,
-      senderPurpose: 'lgq_dispatch',
-      billingCategory: 'crew_message',
-      idempotencyKey: `crew-briefing:${member.id}:${dateKey}:${Date.now()}`,
-    });
-
-    briefedCount += 1;
+    try {
+      const { enqueueSmsDelivery } = await import('@/lib/sms-delivery');
+      await enqueueSmsDelivery({
+        accountId,
+        phoneNumber: phone,
+        body: text,
+        messageKind: 'crew-briefing',
+        context: 'crew',
+        eventType: 'crew_briefing',
+        crewId: member.id,
+        senderPurpose: 'lgq_dispatch',
+        billingCategory: 'crew_message',
+        idempotencyKey: `crew-briefing:${member.id}:${dateKey}:${Date.now()}`,
+      });
+      briefedCount += 1;
+    } catch (deliveryErr) {
+      console.error(`[actions.ts] Failed to enqueue SMS delivery for crew member ${member.name} (${member.id}):`, deliveryErr);
+      failedList.push(member.name);
+    }
   }
 
   revalidatePlan();
-  const queryParams: Record<string, string> = {
-    briefed: String(briefedCount),
-  };
+  const queryParams: Record<string, string> = {};
+  if (briefedCount > 0) queryParams.briefed = String(briefedCount);
+  if (failedList.length > 0) queryParams.failedDispatch = failedList.join(',');
   if (isUrgentUpdate) queryParams.urgent = '1';
   if (scheduledTiming === 'scheduled_7am') queryParams.scheduled = '1';
   if (skippedNoPhone > 0) queryParams.skippedNoPhone = String(skippedNoPhone);

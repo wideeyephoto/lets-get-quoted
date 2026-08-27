@@ -5,6 +5,20 @@
   background: var(--bg, #06131f);
   color: var(--text, #f7f5ef);
   font-family: var(--font-body, system-ui, sans-serif);
+  overflow-x: clip;
+  max-width: 100%;
+}
+
+.page :global(.marketing-footer) {
+  max-width: 100%;
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+
+.page :global(.marketing-footer nav) {
+  max-width: 100%;
+  flex-wrap: wrap;
+  box-sizing: border-box;
 }
 
 .hero {
@@ -252,26 +266,55 @@
   -webkit-appearance: none;
   appearance: none;
   width: 100%;
-  height: 6px;
-  border-radius: 4px;
+  height: 8px;
+  border-radius: 6px;
   background: #152c3c;
   outline: none;
+  cursor: pointer;
+  margin: 12px 0 6px;
+}
+
+.slider:focus-visible {
+  box-shadow: 0 0 0 3px rgba(255, 106, 36, 0.35);
 }
 
 .slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 18px;
-  height: 18px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
   background: #ff6a24;
-  cursor: pointer;
-  box-shadow: 0 0 10px rgba(255, 106, 36, 0.5);
-  transition: transform 0.15s;
+  cursor: grab;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), 0 0 12px rgba(255, 106, 36, 0.6);
+  border: 2px solid #ffffff;
+  transition: transform 0.15s ease, background 0.15s ease;
 }
 
 .slider::-webkit-slider-thumb:hover {
-  transform: scale(1.2);
+  transform: scale(1.15);
+  background: #ff7d40;
+}
+
+.slider::-webkit-slider-thumb:active {
+  cursor: grabbing;
+  transform: scale(1.25);
+}
+
+.slider::-moz-range-thumb {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #ff6a24;
+  cursor: grab;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), 0 0 12px rgba(255, 106, 36, 0.6);
+  border: 2px solid #ffffff;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.slider::-moz-range-thumb:hover {
+  transform: scale(1.15);
+  background: #ff7d40;
 }
 
 .sliderTicks {
@@ -295,6 +338,76 @@
 
 .numberInput:focus {
   border-color: #ff6a24;
+}
+
+.emailReportBox {
+  background: rgba(16, 36, 48, 0.6);
+  border: 1px solid rgba(174, 199, 211, 0.2);
+  border-radius: 12px;
+  padding: 16px;
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.emailReportLabel {
+  font-size: 13px;
+  font-weight: 700;
+  color: #f5f0e7;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.emailReportRow {
+  display: flex;
+  gap: 8px;
+}
+
+.emailReportInput {
+  flex: 1;
+  background: #102430;
+  border: 1px solid rgba(174, 199, 211, 0.3);
+  border-radius: 8px;
+  color: #f5f0e7;
+  font-size: 13.5px;
+  padding: 8px 12px;
+  outline: none;
+  min-height: 40px;
+}
+
+.emailReportInput:focus {
+  border-color: #ff6a24;
+}
+
+.emailReportBtn {
+  background: #ff6a24;
+  border: 1px solid #ea580c;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 800;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+  min-height: 40px;
+}
+
+.emailReportBtn:hover:not(:disabled) {
+  background: #f05a14;
+}
+
+.emailReportBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.emailReportSuccess {
+  font-size: 12px;
+  color: #50e3bd;
+  font-weight: 700;
 }
 
 /* Results Card */
@@ -1049,6 +1162,72 @@
   box-shadow: 0 6px 16px rgba(15, 23, 42, 0.35);
 }
 
+.pdfErrorBanner {
+  background: #fef2f2;
+  border: 1.5px solid #f87171;
+  border-radius: 10px;
+  padding: 14px 18px;
+  margin-top: 16px;
+  margin-bottom: 8px;
+  color: #991b1b;
+  font-size: 13.5px;
+  line-height: 1.45;
+}
+
+.pdfErrorBannerHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  color: #b91c1c;
+  margin-bottom: 8px;
+}
+
+.pdfErrorActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.pdfErrorRetryBtn {
+  background: #ffffff;
+  border: 1.5px solid #ef4444;
+  color: #b91c1c;
+  font-size: 12.5px;
+  font-weight: 800;
+  padding: 8px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+}
+
+.pdfErrorRetryBtn:hover {
+  background: #fee2e2;
+}
+
+.pdfErrorPrintBtn {
+  background: #0f172a;
+  border: 1.5px solid #0f172a;
+  color: #ffffff;
+  font-size: 12.5px;
+  font-weight: 800;
+  padding: 8px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+}
+
+.pdfErrorPrintBtn:hover {
+  background: #1e293b;
+}
+
 .copyBtn {
   background: #f8fafc;
   border: 1px solid #cbd5e1;
@@ -1666,6 +1845,32 @@
     justify-content: center;
     width: 100%;
     box-sizing: border-box;
+  }
+}
+
+@media (max-width: 480px) {
+  .modeToggleGroup {
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    box-sizing: border-box;
+  }
+
+  .modeBtn {
+    flex: 1 1 auto;
+    font-size: 11.5px;
+    padding: 6px 8px;
+    justify-content: center;
+    text-align: center;
+  }
+
+  .editorHeaderBar {
+    gap: 10px;
+  }
+
+  .estimateSheet {
+    padding: 10px;
+    border-radius: 8px;
   }
 }
 

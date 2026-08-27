@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 const mockSite = readFileSync('src/app/demo/reel/mock-site/page.tsx', 'utf8');
@@ -24,6 +24,16 @@ describe('bath-to-shower mock product site', () => {
   it('uses the matched before and after project imagery', () => {
     expect(mockSite).toContain('/demo/bath-to-shower/before.png');
     expect(mockSite).toContain('/demo/bath-to-shower/after.png');
+  });
+
+  it('uses the homeowner photo sequence with live capture coaching', () => {
+    expect(existsSync('public/demo/bath-to-shower/homeowner-tub-photo-v1.png')).toBe(true);
+    expect(existsSync('public/demo/bath-to-shower/homeowner-threshold-detail-v1.png')).toBe(true);
+    expect(intakeSlideshow).toContain('/demo/bath-to-shower/homeowner-tub-photo-v1.png');
+    expect(intakeSlideshow).toContain('/demo/bath-to-shower/homeowner-threshold-detail-v1.png');
+    expect(intakeSlideshow).toContain('CAMERA READY · ANALYZING LIVE');
+    expect(intakeSlideshow).toContain('Show the tub edge and floor transition.');
+    expect(intakeSlideshow).toContain('Captured and understood');
   });
 
   it('uses playback controls and removes fake focusable scene actions', () => {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/auth';
 import { checkRateLimit, clientIpFrom } from '@/lib/rate-limit';
 import { resolveJurisdiction } from '@/lib/location-context/jurisdiction-resolver';
+import { normalizeAddress } from '@/lib/location-context/normalize-address';
 import { evaluatePermitRequirement } from '@/lib/permit-intel/requirement-engine';
 import type { JurisdictionDiscipline } from '@/lib/location-context/types';
 
@@ -46,16 +47,8 @@ export async function GET(request: NextRequest) {
       ? tradeKey
       : 'building';
 
-  const jurisdiction = resolveJurisdiction(
-    {
-      raw: address,
-      city: address,
-      state: 'MI',
-      formattedAddress: address,
-      isValid: true,
-    },
-    discipline,
-  );
+  const parsedAddress = normalizeAddress(address);
+  const jurisdiction = resolveJurisdiction(parsedAddress, discipline);
 
   const requirement = evaluatePermitRequirement(jurisdiction.authorityId, {
     trade: tradeKey,
