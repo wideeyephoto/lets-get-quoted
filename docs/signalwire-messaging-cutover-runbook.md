@@ -1,10 +1,33 @@
 # SignalWire Messaging Cutover Runbook
 
 **Owner:** LGQ Operations<br>
-**Last updated:** 2026-08-22<br>
+**Last updated:** 2026-08-26<br>
 **Default state:** dark; do not activate from this document alone
 
 This is the controlled handoff for LGQ operational messaging. Supabase Auth phone login remains on Twilio. The kill switch is always `LGQ_DISABLE_OUTBOUND_SMS=1`.
+
+## Provider cost record
+
+Purchased from SignalWire on 2026-08-26 for the LGQ crew/subcontractor dispatch
+Campaign. SignalWire created Campaign
+`19e7c875-3611-4b40-8429-7dae3b5e6553` at 20:57 UTC; its carrier status was
+`Pending` immediately after submission.
+
+| Item | Timing | Amount | Status / note |
+|---|---:|---:|---|
+| Campaign registration | Initial three months | $4.50 | Purchased 2026-08-26 |
+| Carrier setup | One time | $0.00 | Included in the registration checkout |
+| Campaign vetting | One time | $7.50 | Purchased 2026-08-26; review pending |
+| **Campaign checkout total** | **At submission** | **$12.00** | **Incurred 2026-08-26** |
+| Campaign re-vetting | Per additional review, if required | $7.50 | Contingent; do not book unless incurred |
+| Proposed dispatch number `+1 (947) 257-6777` | Monthly | $0.50 | Available candidate; not yet purchased |
+
+Provider cost incurred to date for this dispatch Campaign is **$12.00**. If the
+proposed number is purchased, the known first-three-month provider cost becomes
+**$13.50**: the $12.00 Campaign checkout plus three months of number rental.
+Usage, carrier pass-through, messaging segments, taxes, and Campaign pricing
+after the initial three months are not included because they were not quoted on
+the confirmation screen.
 
 ## Traffic lanes
 

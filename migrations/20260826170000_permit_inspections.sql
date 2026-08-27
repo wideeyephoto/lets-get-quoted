@@ -29,6 +29,7 @@ CREATE INDEX IF NOT EXISTS idx_job_permit_inspections_status ON public.job_permi
 ALTER TABLE public.job_permit_inspections ENABLE ROW LEVEL SECURITY;
 
 -- Policies for tenant office users
+DROP POLICY IF EXISTS "office_users_read_permit_inspections" ON public.job_permit_inspections;
 CREATE POLICY "office_users_read_permit_inspections"
   ON public.job_permit_inspections
   FOR SELECT
@@ -37,6 +38,7 @@ CREATE POLICY "office_users_read_permit_inspections"
     public.office_can(account_id, 'jobs.read')
   );
 
+DROP POLICY IF EXISTS "office_users_write_permit_inspections" ON public.job_permit_inspections;
 CREATE POLICY "office_users_write_permit_inspections"
   ON public.job_permit_inspections
   FOR ALL

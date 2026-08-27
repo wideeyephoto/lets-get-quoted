@@ -161,7 +161,7 @@ export async function generateBlogPostAction(topic?: string, autoPublish = false
       excerpt: draft.excerpt,
       body: draft.body,
       coverImage: coverImage || '',
-      status: (autoPublish ? 'published' : 'draft') as const,
+      status: autoPublish ? ('published' as const) : ('draft' as const),
       date: new Date().toISOString().slice(0, 10),
       publishAt: '',
       // The trade the DRAFT was written for, from the drafter rather than read

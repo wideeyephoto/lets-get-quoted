@@ -1,6 +1,4 @@
-// Sun / moon / auto, shared by the account-menu row and the floating switch so
-// the two controls are visibly the same control in two sizes. They inherit
-// currentColor and fill their box; every size decision belongs to the caller.
+import type { ThemeChoice } from '@/lib/theme';
 
 export function SunGlyph() {
   return (
@@ -11,10 +9,30 @@ export function SunGlyph() {
   );
 }
 
+/** High-contrast brilliant sun — full daylight. */
+export function SunlightGlyph() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="5" fill="currentColor" />
+      <path d="M12 1v3M12 20v3M1 12h3M20 12h3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12" />
+    </svg>
+  );
+}
+
 export function MoonGlyph() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true">
       <path d="M20.7 14.4A8.7 8.7 0 0 1 9.6 3.3a8.7 8.7 0 1 0 11.1 11.1Z" fill="currentColor" />
+    </svg>
+  );
+}
+
+/** OLED pure black — solid high-contrast rounded tile with inner focal core. */
+export function OnyxGlyph() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+      <rect x="3.5" y="3.5" width="17" height="17" rx="4" stroke="currentColor" strokeWidth="2" />
+      <circle cx="12" cy="12" r="4.2" fill="currentColor" />
     </svg>
   );
 }
@@ -39,9 +57,11 @@ export function DimGlyph() {
   );
 }
 
-export function ThemeGlyph({ name }: { name: 'system' | 'light' | 'dim' | 'dark' }) {
+export function ThemeGlyph({ name }: { name: ThemeChoice }) {
+  if (name === 'sunlight') return <SunlightGlyph />;
   if (name === 'light') return <SunGlyph />;
   if (name === 'dim') return <DimGlyph />;
   if (name === 'dark') return <MoonGlyph />;
+  if (name === 'onyx') return <OnyxGlyph />;
   return <AutoGlyph />;
 }

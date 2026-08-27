@@ -182,17 +182,12 @@ export default function HeroShowcase() {
         ))}
       </div>
 
-      {/* DOTS OVER THE FRAME, NOT NAMED BUTTONS UNDER IT.
-          The names were doing real work — they said what else is in the product
-          — but as a second row of controls beneath the screenshot they competed
-          with the screenshot, which is the thing meant to be looked at. Each
-          name survives as the button's accessible name and as its tooltip, so a
-          screen reader still hears "Insights, tab, 1 of 3" and a mouse still
-          gets the label; what is painted is a position indicator.
-
-          Still a tablist, still keyboard-navigable, and each dot still sits in
-          a 44px target — the dot is drawn inside the button, it is not the
-          button. */}
+      {/* THREE VISIBLE LABELED PILLS UNDER THE SCREENSHOT.
+          These descriptive buttons provide immediate clarity on LGQ's breadth
+          (Website, Jobs, Insights) without requiring interaction. Each button
+          combines an animated dwell countdown indicator with a visible label,
+          preserves a >=44px accessible touch target, and supports full keyboard
+          navigation via arrow keys. */}
       <div
         className="showcase-tabs"
         role="tablist"
@@ -212,6 +207,7 @@ export default function HeroShowcase() {
             data-on={i === index ? 'true' : 'false'}
           >
             <i aria-hidden="true"><s style={{ animationDuration: `${DWELL}ms` }} /></i>
+            <span>{shot.label}</span>
           </button>
         ))}
       </div>

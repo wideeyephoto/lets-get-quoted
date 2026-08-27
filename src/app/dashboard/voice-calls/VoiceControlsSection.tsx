@@ -2,19 +2,22 @@ import Link from 'next/link';
 import { displayPhone } from '@/lib/phone';
 import styles from './voice-calls.module.css';
 
-interface VoiceControlsSectionProps {
+interface VoiceStatusBannerProps {
   status: 'active' | 'paused' | 'off';
   answerMode: 'always' | 'after_hours';
   dedicatedNumber: string | null;
   isReady: boolean;
-  greeting: string | null;
-  transferNumber: string | null;
   businessName: string | null;
   trade: string | null;
-  serviceAreas: string | null;
 }
 
-const AI_CONTROLS = [
+interface VoiceControlsSectionProps extends VoiceStatusBannerProps {
+  greeting?: string | null;
+  transferNumber?: string | null;
+  serviceAreas?: string | null;
+}
+
+export const AI_CONTROLS = [
   {
     id: 'in-call-booking',
     title: 'In-Call Appointment Booking',
@@ -89,14 +92,14 @@ const AI_CONTROLS = [
   },
 ];
 
-export default function VoiceControlsSection({
+export function VoiceStatusBanner({
   status,
   answerMode,
   dedicatedNumber,
   isReady,
   businessName,
   trade,
-}: VoiceControlsSectionProps) {
+}: VoiceStatusBannerProps) {
   const isAnswering = isReady && status === 'active';
   const statusLabel = !isReady
     ? 'Standby · No Dedicated Line'
@@ -108,56 +111,56 @@ export default function VoiceControlsSection({
   const modeLabel = answerMode === 'always' ? '24/7 All Inbound Calls' : 'After Hours Only';
 
   return (
-    <section className={styles.controlsSection} aria-label="AI Voice Assistant Controls">
-      {/* Top Assistant Status Banner */}
-      <div className={styles.assistantStatusBanner}>
-        <div className={styles.statusMetaGroup}>
-          <div
-            className={styles.statusIndicator}
+    <div className={styles.assistantStatusBanner} role="region" aria-label="AI Voice Assistant Status">
+      <div className={styles.statusMetaGroup}>
+        <div
+          className={styles.statusIndicator}
+          style={
+            !isAnswering
+              ? {
+                  background: 'rgba(245, 158, 11, 0.15)',
+                  borderColor: 'rgba(245, 158, 11, 0.35)',
+                  color: '#f59e0b',
+                }
+              : undefined
+          }
+        >
+          <span
+            className={styles.statusDot}
             style={
               !isAnswering
                 ? {
-                    background: 'rgba(245, 158, 11, 0.15)',
-                    borderColor: 'rgba(245, 158, 11, 0.35)',
-                    color: '#f59e0b',
+                    background: '#f59e0b',
+                    boxShadow: '0 0 10px #f59e0b',
                   }
                 : undefined
             }
-          >
-            <span
-              className={styles.statusDot}
-              style={
-                !isAnswering
-                  ? {
-                      background: '#f59e0b',
-                      boxShadow: '0 0 10px #f59e0b',
-                    }
-                  : undefined
-              }
-            />
-            <span>{statusLabel}</span>
-          </div>
-
-          <div className={styles.statusDetails}>
-            <span className={styles.statusTitle}>
-              {businessName || 'Your Business'} · {trade ? `${trade.charAt(0).toUpperCase() + trade.slice(1)} Assistant` : 'AI Receptionist'}
-            </span>
-            <span className={styles.statusSub}>
-              {isReady && dedicatedNumber
-                ? `Answering on ${displayPhone(dedicatedNumber)} · Mode: ${modeLabel}`
-                : 'Dedicated line not connected · Setup required before AI can answer live calls'}
-            </span>
-          </div>
+          />
+          <span>{statusLabel}</span>
         </div>
 
-        <Link href="/dashboard/automations#ai-receptionist" className={styles.configActionBtn}>
-          Configure Voice Receptionist →
-        </Link>
+        <div className={styles.statusDetails}>
+          <span className={styles.statusTitle}>
+            {businessName || 'Your Business'} · {trade ? `${trade.charAt(0).toUpperCase() + trade.slice(1)} Assistant` : 'AI Receptionist'}
+          </span>
+          <span className={styles.statusSub}>
+            {isReady && dedicatedNumber
+              ? `Answering on ${displayPhone(dedicatedNumber)} · Mode: ${modeLabel}`
+              : 'Dedicated line not connected · Setup required before AI can answer live calls'}
+          </span>
+        </div>
       </div>
 
+      <Link href="/dashboard/automations#ai-receptionist" className={styles.configActionBtn}>
+        Configure Voice Receptionist →
+      </Link>
+    </div>
+  );
+}
 
-
-      {/* Controls Grid */}
+export function VoiceCapabilitiesGrid() {
+  return (
+    <section className={styles.controlsSection} aria-label="AI Voice Assistant Controls and Capabilities">
       <div className={styles.controlsHeader}>
         <div className={styles.controlsHeaderTitle}>
           <h2>Controls & Capabilities Granted to AI Voice Assistant</h2>
@@ -184,5 +187,14 @@ export default function VoiceControlsSection({
         ))}
       </div>
     </section>
+  );
+}
+
+export default function VoiceControlsSection(props: VoiceControlsSectionProps) {
+  return (
+    <div>
+      <VoiceStatusBanner {...props} />
+      <VoiceCapabilitiesGrid />
+    </div>
   );
 }

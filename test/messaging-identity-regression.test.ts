@@ -31,15 +31,19 @@ describe('Problem 1: Product Identity and Message Hierarchy', () => {
   describe('Homepage hero alignment', () => {
     it('carries the unified hero copy and CTAs', () => {
       expect(HOME).toContain('CONTRACTOR SOFTWARE—STARTING WITH A FREE WEBSITE');
-      expect(HOME).toContain('From first click to final payment.<br /><em>Run it all in one place.</em>');
+      expect(HOME).toContain('Launch your contractor website.<br /><em>Run every job behind it.</em>');
       expect(HOME).toContain(
-        'Tell us your company, trade, and ZIP. We’ll generate an <strong>editable contractor website with instant estimates</strong>',
+        'Tell us your trade and location. We’ll build an <strong>editable website with instant estimates</strong>',
       );
       expect(HOME).toContain('Explore a live demo');
       expect(HOME).toContain('{SIGNUP_LABEL}');
+      expect(HOME).toContain(
+        'Flex: $0/month · No card to start · 1.25% on eligible payments collected through LGQ · Stripe processing separate',
+      );
     });
 
     it('removes outdated unaligned headline copy', () => {
+      expect(HOME).not.toContain('From first click to final payment.<br /><em>Run it all in one place.</em>');
       expect(HOME).not.toContain('Run your contracting business.<br /><em>All in one place.</em>');
     });
   });
@@ -121,9 +125,10 @@ describe('Problem 2: Reduce Homepage Attention Competition', () => {
     expect(LAUNCH_BANNER).toContain('Details');
   });
 
-  it('supports hero product showcase auto-rotation and interactive pause controls', () => {
+  it('supports hero product showcase auto-rotation, interactive pause controls, and visible labeled tabs', () => {
     expect(HERO_SHOWCASE).toContain('const [paused, setPaused] = useState(false);');
     expect(HERO_SHOWCASE).toContain("onMouseEnter={() => setPaused(true)}");
+    expect(HERO_SHOWCASE).toContain('<span>{shot.label}</span>');
   });
 
   it('renders a 3-point static proof strip under hero', () => {

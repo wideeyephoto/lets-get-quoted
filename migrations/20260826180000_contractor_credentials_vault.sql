@@ -31,6 +31,7 @@ CREATE INDEX IF NOT EXISTS idx_contractor_credentials_authority ON public.contra
 ALTER TABLE public.contractor_credentials ENABLE ROW LEVEL SECURITY;
 
 -- Office / Owner RLS Policies
+DROP POLICY IF EXISTS "office_users_read_contractor_credentials" ON public.contractor_credentials;
 CREATE POLICY "office_users_read_contractor_credentials"
   ON public.contractor_credentials
   FOR SELECT
@@ -39,6 +40,7 @@ CREATE POLICY "office_users_read_contractor_credentials"
     public.office_can(account_id, 'jobs.read')
   );
 
+DROP POLICY IF EXISTS "office_users_write_contractor_credentials" ON public.contractor_credentials;
 CREATE POLICY "office_users_write_contractor_credentials"
   ON public.contractor_credentials
   FOR ALL

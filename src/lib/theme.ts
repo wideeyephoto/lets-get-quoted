@@ -12,11 +12,11 @@
 // localStorage instead and every page load flashes dark before correcting
 // itself, which is worse than not offering the setting.
 
-export type Theme = 'dark' | 'dim' | 'light';
+export type Theme = 'onyx' | 'dark' | 'dim' | 'light' | 'sunlight';
 
 /**
  * What the PERSON picked, which is not the same as what gets rendered.
- * 'system' resolves to one of the other three at paint time; it is a standing
+ * 'system' resolves to one of the other five at paint time; it is a standing
  * instruction ("follow the phone"), not a colour.
  */
 export type ThemeChoice = Theme | 'system';
@@ -43,7 +43,9 @@ export const THEME_SYSTEM_COOKIE = 'lgq-sys';
 export const THEME_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
 
 export function parseTheme(value: string | null | undefined): Theme | null {
-  return value === 'light' || value === 'dim' || value === 'dark' ? value : null;
+  return value === 'onyx' || value === 'dark' || value === 'dim' || value === 'light' || value === 'sunlight'
+    ? value
+    : null;
 }
 
 /** Like parseTheme, but 'system' is a legal answer rather than junk. */
@@ -66,11 +68,13 @@ export function resolveTheme(cookieValue: string | null | undefined, systemPrefe
   return parseTheme(cookieValue) ?? (systemPrefersLight ? 'light' : 'dark');
 }
 
-/** Cycles across the three modes: dark -> dim -> light -> dark */
+/** Cycles across the five modes: onyx -> dark -> dim -> light -> sunlight -> onyx */
 export function nextTheme(theme: Theme): Theme {
+  if (theme === 'onyx') return 'dark';
   if (theme === 'dark') return 'dim';
   if (theme === 'dim') return 'light';
-  return 'dark';
+  if (theme === 'light') return 'sunlight';
+  return 'onyx';
 }
 
 export function otherTheme(theme: Theme): Theme {
@@ -79,24 +83,28 @@ export function otherTheme(theme: Theme): Theme {
 
 /** What the switch says it will do, for the label and the accessible name. */
 export function themeToggleLabel(theme: Theme): string {
+  if (theme === 'onyx') return 'Switch to dark mode';
   if (theme === 'dark') return 'Switch to dim mode';
   if (theme === 'dim') return 'Switch to light mode';
-  return 'Switch to dark mode';
+  if (theme === 'light') return 'Switch to sunlight mode';
+  return 'Switch to onyx mode';
 }
 
 /**
- * The four options, in the order they are drawn.
+ * The six options, in the order they are drawn.
  *
  * Auto sits FIRST because it is the default state and the one you fall back to,
  * not an alternative bolted on the end — and because left-to-right the row
- * then reads auto → light → dim → dark, which is the gradient of increasing
- * commitment and deepening contrast.
+ * then reads auto → sunlight → light → dim → dark → onyx, which is the gradient
+ * of highest brightness down to deepest OLED black.
  */
 export const THEME_CHOICES: { value: ThemeChoice; word: string; label: string }[] = [
   { value: 'system', word: 'Auto', label: 'Match my device' },
-  { value: 'light', word: 'Light', label: 'Always light' },
-  { value: 'dim', word: 'Dim', label: 'Soft contrast' },
-  { value: 'dark', word: 'Dark', label: 'Always dark' },
+  { value: 'sunlight', word: 'Sunlight', label: 'High-contrast daylight' },
+  { value: 'light', word: 'Light', label: 'Soft daylight (workbench)' },
+  { value: 'dim', word: 'Dim', label: 'Soft slate contrast' },
+  { value: 'dark', word: 'Dark', label: 'Midnight navy' },
+  { value: 'onyx', word: 'Onyx', label: 'OLED pure black (AAA)' },
 ];
 
 /** The accessible name for a control that is currently on `choice`. */

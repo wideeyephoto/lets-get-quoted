@@ -48,7 +48,7 @@ export async function GET() {
     routeState: routeReadiness.kind,
     notReadyReason,
     totalCallsLogged: callCount ?? 0,
-    toolsActive: 8,
+    toolsActive: status === 'healthy' ? 8 : 0,
     securityGuard: 'HMAC-SHA256 Admission Permit Guard',
     checkedAt: new Date().toISOString(),
   });

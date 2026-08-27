@@ -218,14 +218,22 @@ for (const file of files) {
     .map((m) => ({ privilege: m[1].toUpperCase(), table: m[2], role: m[3] }));
 
   // A migration that only source-patches proves itself by its own marker.
-  const patches = sql.includes('pg_get_functiondef')
-    ? [...sql.matchAll(PATCH_RE)].map((m) => m[1])
-      .concat([...sql.matchAll(PATCH_BY_NAME_RE)].map((m) => m[1]))
-      .concat([...sql.matchAll(SIGNATURE_RE)].map((m) => m[1]))
-    : [];
   const marker = sql.match(MARKER_RE);
-  const patchProbe = patches.length > 0 && marker
-    ? { target: patches[0], text: marker[1].replace(/''/g, "'") }
+  let patchTarget = null;
+  if (marker) {
+    const markerIndex = sql.indexOf(marker[0]);
+    const beforeMarker = sql.slice(0, markerIndex);
+    const pronameMatches = [...beforeMarker.matchAll(PATCH_BY_NAME_RE)].map((m) => m[1]);
+    const patchMatches = [...beforeMarker.matchAll(PATCH_RE)].map((m) => m[1])
+      .concat([...beforeMarker.matchAll(SIGNATURE_RE)].map((m) => m[1]));
+    if (pronameMatches.length > 0) {
+      patchTarget = pronameMatches[pronameMatches.length - 1];
+    } else if (patchMatches.length > 0) {
+      patchTarget = patchMatches[patchMatches.length - 1];
+    }
+  }
+  const patchProbe = patchTarget && marker
+    ? { target: patchTarget, text: marker[1].replace(/''/g, "'") }
     : null;
 
   const enums = [...sql.matchAll(ENUM_RE)].map((m) => ({ type: m[1], value: m[2] }));
@@ -367,9 +375,9 @@ for (const file of files) {
       proofs.push({ what: `function ${fn}`, ok: false, detail: 'absent' });
       continue;
     }
-    // A later source patch rewrites the installed body on purpose, so a
+    // A source patch rewrites the installed body on purpose, so a
     // mismatch here proves nothing at all. Never call that a gap.
-    const patches = (patchedBy.get(fn) || []).filter((f) => f > file);
+    const patches = (patchedBy.get(fn) || []).filter((f) => f !== file);
     if (patches.length > 0) {
       proofs.push({
         what: `body of ${fn}`,

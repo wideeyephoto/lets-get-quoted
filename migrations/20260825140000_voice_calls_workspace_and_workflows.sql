@@ -44,6 +44,25 @@ alter table public.voice_calls
   add column if not exists recording_captured_at timestamptz;
 
 -- 2. Upgrade voice_calls RLS policy to office_can(account_id, 'leads.read')
+create or replace function public.voice_transcript_retention_interval(
+  p_account_id uuid
+)
+returns interval
+language sql
+stable
+security definer
+set search_path = pg_catalog, pg_temp
+set timezone to 'UTC'
+as $fn$
+  select pg_catalog.make_interval(
+    days => coalesce((
+      select public.voice_history_retention_days(w.feature_limits)
+        from public.workspace_entitlements w
+       where w.account_id = p_account_id
+    ), 30)
+  )
+$fn$;
+
 drop policy if exists voice_calls_owner_read on public.voice_calls;
 drop policy if exists voice_calls_office_read on public.voice_calls;
 

@@ -55,6 +55,7 @@
     "verify:plan-change-agnostic": "node scripts/verify-plan-change-table-agnostic.mjs"
   },
   "dependencies": {
+    "@google/genai": "^2.19.0",
     "@supabase/ssr": "^0.5.0",
     "@supabase/supabase-js": "^2.49.1",
     "geist": "^1.7.2",

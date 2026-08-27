@@ -17,7 +17,14 @@ insert into public.sms_sender_numbers (
   provisioning_status,
   inbound_ready,
   activated_at,
-  updated_at
+  updated_at,
+  provider_brand_state,
+  provider_campaign_state,
+  provider_verified_at,
+  provider_phone_verified_at,
+  provider_sms_capable,
+  inbound_request_method,
+  inbound_message_handler
 ) values (
   'signalwire',
   '+19479412323',
@@ -27,7 +34,14 @@ insert into public.sms_sender_numbers (
   'active',
   true,
   pg_catalog.now(),
-  pg_catalog.now()
+  pg_catalog.now(),
+  'complete',
+  'complete',
+  pg_catalog.now(),
+  pg_catalog.now(),
+  true,
+  'POST',
+  'laml_webhooks'
 ) on conflict (provider, e164_number) do update set
   purpose = excluded.purpose,
   assignment_state = excluded.assignment_state,
@@ -35,6 +49,13 @@ insert into public.sms_sender_numbers (
   inbound_ready = excluded.inbound_ready,
   activated_at = coalesce(public.sms_sender_numbers.activated_at, excluded.activated_at),
   suspended_at = null,
+  provider_brand_state = coalesce(public.sms_sender_numbers.provider_brand_state, excluded.provider_brand_state),
+  provider_campaign_state = coalesce(public.sms_sender_numbers.provider_campaign_state, excluded.provider_campaign_state),
+  provider_verified_at = coalesce(public.sms_sender_numbers.provider_verified_at, excluded.provider_verified_at),
+  provider_phone_verified_at = coalesce(public.sms_sender_numbers.provider_phone_verified_at, excluded.provider_phone_verified_at),
+  provider_sms_capable = coalesce(public.sms_sender_numbers.provider_sms_capable, excluded.provider_sms_capable),
+  inbound_request_method = coalesce(public.sms_sender_numbers.inbound_request_method, excluded.inbound_request_method),
+  inbound_message_handler = coalesce(public.sms_sender_numbers.inbound_message_handler, excluded.inbound_message_handler),
   updated_at = pg_catalog.now();
 
 -- ---------------------------------------------------------------------------

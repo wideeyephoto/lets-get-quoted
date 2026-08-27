@@ -64,8 +64,8 @@ const PRESETS = [
 ];
 
 export default function VoiceSimulatorSandbox({
-  companyName: _companyName,
-  trade: _trade,
+  companyName = 'Our Company',
+  trade = 'Contractor',
   voiceTone: _voiceTone = 'professional',
 }: {
   companyName?: string;
@@ -121,7 +121,14 @@ export default function VoiceSimulatorSandbox({
 
     // Pick a natural US English voice if available
     const voices = window.speechSynthesis.getVoices();
-    const englishVoice = voices.find((v) => v.lang.startsWith('en-US') && (v.name.includes('Natural') || v.name.includes('Google') || v.name.includes('Samantha') || v.name.includes('Jenny')));
+    const englishVoice = voices.find(
+      (v) =>
+        v.lang.startsWith('en-US') &&
+        (v.name.includes('Natural') ||
+          v.name.includes('Google') ||
+          v.name.includes('Samantha') ||
+          v.name.includes('Jenny')),
+    );
     if (englishVoice) utterance.voice = englishVoice;
 
     utterance.onstart = () => setIsPlayingAudio(true);
@@ -132,7 +139,11 @@ export default function VoiceSimulatorSandbox({
   }
 
   return (
-    <div style={{ marginTop: '1.5rem', marginBottom: '2rem' }}>
+    <div
+      style={{ marginTop: '1.5rem', marginBottom: '2rem' }}
+      role="region"
+      aria-label="In-Browser AI Voice Simulator Sandbox"
+    >
       <div
         style={{
           background: 'rgba(30, 41, 59, 0.4)',
@@ -142,11 +153,24 @@ export default function VoiceSimulatorSandbox({
           backdropFilter: 'blur(8px)',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '1rem',
+          }}
+        >
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-              <span style={{ fontSize: '1.35rem' }}>🎙️</span>
-              <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600, color: '#f8fafc' }}>
+              <span style={{ fontSize: '1.35rem' }} aria-hidden="true">
+                🎙️
+              </span>
+              <h3
+                id="voice-simulator-title"
+                style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600, color: '#f8fafc' }}
+              >
                 In-Browser AI Voice Simulator Sandbox
               </h3>
               <span
@@ -164,12 +188,16 @@ export default function VoiceSimulatorSandbox({
               </span>
             </div>
             <p style={{ margin: '0.35rem 0 0', fontSize: '0.85rem', color: '#94a3b8' }}>
-              Simulate inbound customer phone calls, test live appointment booking, emergency triage, and persona tones without burning phone minutes.
+              Simulate inbound customer phone calls for {companyName} ({trade}), test live appointment booking,
+              emergency triage, and persona tones without burning phone minutes.
             </p>
           </div>
 
           <button
             type="button"
+            id="voice-simulator-toggle"
+            aria-expanded={isOpen}
+            aria-controls="voice-simulator-content"
             onClick={() => setIsOpen(!isOpen)}
             className={styles.actionBtnSecondary}
             style={{
@@ -185,18 +213,42 @@ export default function VoiceSimulatorSandbox({
         </div>
 
         {isOpen ? (
-          <div style={{ marginTop: '1.25rem', paddingTop: '1.25rem', borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
+          <div
+            id="voice-simulator-content"
+            aria-labelledby="voice-simulator-title"
+            style={{
+              marginTop: '1.25rem',
+              paddingTop: '1.25rem',
+              borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+            }}
+          >
             <div style={{ marginBottom: '1rem' }}>
-              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              <label
+                id="scenario-presets-label"
+                style={{
+                  display: 'block',
+                  fontSize: '0.8rem',
+                  fontWeight: 600,
+                  color: '#94a3b8',
+                  marginBottom: '0.5rem',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                }}
+              >
                 Select Test Scenario
               </label>
-              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <div
+                role="group"
+                aria-labelledby="scenario-presets-label"
+                style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}
+              >
                 {PRESETS.map((p) => {
                   const isActive = selectedPreset === p.id;
                   return (
                     <button
                       key={p.id}
                       type="button"
+                      aria-pressed={isActive}
                       onClick={() => handleSelectPreset(p.id)}
                       style={{
                         padding: '6px 12px',
@@ -213,7 +265,7 @@ export default function VoiceSimulatorSandbox({
                         transition: 'all 0.15s ease',
                       }}
                     >
-                      <span>{p.icon}</span>
+                      <span aria-hidden="true">{p.icon}</span>
                       <span>{p.label}</span>
                     </button>
                   );
@@ -221,12 +273,30 @@ export default function VoiceSimulatorSandbox({
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: '0.75rem', alignItems: 'flex-start', marginBottom: '1rem' }}>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'minmax(0, 1fr) auto',
+                gap: '0.75rem',
+                alignItems: 'flex-start',
+                marginBottom: '1rem',
+              }}
+            >
               <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.35rem' }}>
+                <label
+                  htmlFor="simulator-prompt-textarea"
+                  style={{
+                    display: 'block',
+                    fontSize: '0.8rem',
+                    fontWeight: 600,
+                    color: '#94a3b8',
+                    marginBottom: '0.35rem',
+                  }}
+                >
                   Simulated Customer Statement:
                 </label>
                 <textarea
+                  id="simulator-prompt-textarea"
                   rows={2}
                   value={customPrompt}
                   onChange={(e) => setCustomPrompt(e.target.value)}
@@ -242,6 +312,7 @@ export default function VoiceSimulatorSandbox({
                     resize: 'vertical',
                   }}
                   placeholder="Type simulated caller inquiry..."
+                  aria-label="Simulated customer statement"
                 />
               </div>
 
@@ -250,6 +321,7 @@ export default function VoiceSimulatorSandbox({
                   type="button"
                   disabled={isPending || !customPrompt.trim()}
                   onClick={handleRunSimulation}
+                  aria-label="Run simulated inbound phone call"
                   style={{
                     padding: '9px 18px',
                     borderRadius: '6px',
@@ -274,6 +346,10 @@ export default function VoiceSimulatorSandbox({
             {/* Simulation Results Display */}
             {result ? (
               <div
+                role="region"
+                aria-live="polite"
+                aria-atomic="true"
+                aria-label="Simulation Output"
                 style={{
                   background: 'rgba(15, 23, 42, 0.7)',
                   borderRadius: '8px',
@@ -283,9 +359,20 @@ export default function VoiceSimulatorSandbox({
                   animation: 'fadeIn 0.2s ease',
                 }}
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: '1rem',
+                    flexWrap: 'wrap',
+                    gap: '0.5rem',
+                  }}
+                >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <span style={{ fontSize: '1.1rem' }}>🤖</span>
+                    <span style={{ fontSize: '1.1rem' }} aria-hidden="true">
+                      🤖
+                    </span>
                     <strong style={{ color: '#f8fafc', fontSize: '0.95rem' }}>AI Receptionist Live Response</strong>
                     <span
                       style={{
@@ -304,6 +391,7 @@ export default function VoiceSimulatorSandbox({
                   <button
                     type="button"
                     onClick={() => handlePlayAudio(result.spokenResponse)}
+                    aria-label={isPlayingAudio ? 'Stop speaking AI response' : 'Play receptionist spoken response'}
                     style={{
                       padding: '4px 10px',
                       borderRadius: '6px',
@@ -340,7 +428,16 @@ export default function VoiceSimulatorSandbox({
                 {/* SWAIG Tools Executed Trace */}
                 {result.toolsExecuted.length > 0 ? (
                   <div style={{ marginBottom: '1rem' }}>
-                    <span style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', marginBottom: '0.4rem' }}>
+                    <span
+                      style={{
+                        display: 'block',
+                        fontSize: '0.75rem',
+                        fontWeight: 600,
+                        color: '#94a3b8',
+                        textTransform: 'uppercase',
+                        marginBottom: '0.4rem',
+                      }}
+                    >
                       ⚡ SWAIG Tools Triggered During Call ({result.toolsExecuted.length})
                     </span>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
@@ -355,7 +452,15 @@ export default function VoiceSimulatorSandbox({
                             fontSize: '0.82rem',
                           }}
                         >
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#34d399', fontWeight: 600 }}>
+                          <div
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.4rem',
+                              color: '#34d399',
+                              fontWeight: 600,
+                            }}
+                          >
                             <span>✓ Tool Invocation:</span>
                             <code>{t.tool}</code>
                           </div>
@@ -370,7 +475,16 @@ export default function VoiceSimulatorSandbox({
 
                 {/* Structured Extraction Intake Preview */}
                 <div>
-                  <span style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', marginBottom: '0.4rem' }}>
+                  <span
+                    style={{
+                      display: 'block',
+                      fontSize: '0.75rem',
+                      fontWeight: 600,
+                      color: '#94a3b8',
+                      textTransform: 'uppercase',
+                      marginBottom: '0.4rem',
+                    }}
+                  >
                     📋 Live CRM Intake & Disposition Extraction
                   </span>
                   <div
@@ -385,12 +499,23 @@ export default function VoiceSimulatorSandbox({
                       overflowX: 'auto',
                     }}
                   >
-                    <div><strong>Urgency:</strong> {result.extractedIntake.urgency.toUpperCase()} {result.extractedIntake.isEmergency ? '🚨 (EMERGENCY HAZARD)' : ''}</div>
-                    <div><strong>Customer:</strong> {result.extractedIntake.callerName} ({result.extractedIntake.callerPhone})</div>
-                    <div><strong>Address:</strong> {result.extractedIntake.serviceAddress}</div>
-                    <div><strong>Work Scope:</strong> {result.extractedIntake.workRequested}</div>
+                    <div>
+                      <strong>Urgency:</strong> {result.extractedIntake.urgency.toUpperCase()}{' '}
+                      {result.extractedIntake.isEmergency ? '🚨 (EMERGENCY HAZARD)' : ''}
+                    </div>
+                    <div>
+                      <strong>Customer:</strong> {result.extractedIntake.callerName} ({result.extractedIntake.callerPhone})
+                    </div>
+                    <div>
+                      <strong>Address:</strong> {result.extractedIntake.serviceAddress}
+                    </div>
+                    <div>
+                      <strong>Work Scope:</strong> {result.extractedIntake.workRequested}
+                    </div>
                     {result.extractedIntake.suggestedFollowUp ? (
-                      <div><strong>Suggested Action:</strong> {result.extractedIntake.suggestedFollowUp}</div>
+                      <div>
+                        <strong>Suggested Action:</strong> {result.extractedIntake.suggestedFollowUp}
+                      </div>
                     ) : null}
                   </div>
                 </div>

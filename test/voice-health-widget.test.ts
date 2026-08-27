@@ -74,6 +74,7 @@ describe('Voice Health & Latency API Endpoint', () => {
     expect(json.activeNumber).toBeNull();
     expect(json.routeState).toBe('not_ready');
     expect(json.notReadyReason).toBe('missing_number');
+    expect(json.toolsActive).toBe(0);
   });
 
   it('returns degraded status when SignalWire provider scope is missing', async () => {
@@ -87,6 +88,7 @@ describe('Voice Health & Latency API Endpoint', () => {
     const res = await GET();
     const json = await res.json();
     expect(json.status).toBe('degraded');
+    expect(json.toolsActive).toBe(0);
   });
 });
 

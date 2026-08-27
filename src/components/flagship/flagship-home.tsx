@@ -632,15 +632,15 @@ export default function FlagshipHome() {
         <TradeOrbit />
         <div className="hero-copy" data-rise>
           <p className="eyebrow"><span>✦</span> CONTRACTOR SOFTWARE—STARTING WITH A FREE WEBSITE</p>
-          <h1>From first click to final payment.<br /><em>Run it all in one place.</em></h1>
+          <h1>Launch your contractor website.<br /><em>Run every job behind it.</em></h1>
           <p className="hero-sub">
-            Tell us your company, trade, and ZIP. We’ll generate an <strong>editable contractor website with instant estimates</strong>—then keep every lead, quote, schedule, message, and payment connected behind it.
+            Tell us your trade and location. We’ll build an <strong>editable website with instant estimates</strong>—then keep every lead, quote, schedule, message, and payment connected.
           </p>
           <div className="hero-actions">
             <a className="button primary" href="https://app.letsgetquoted.com/start?goal=build_site&source=home_hero" ref={heroCtaRef}>{SIGNUP_LABEL} <span>→</span></a>
             <Link className="button secondary" href="/demo">Explore a live demo</Link>
           </div>
-          <p className="hero-note"><i>✓</i> Flex: $0/month. LGQ charges 1.25% on eligible payments collected through LGQ. Stripe processing is separate. No card to start.</p>
+          <p className="hero-note"><i>✓</i> Flex: $0/month · No card to start · 1.25% on eligible payments collected through LGQ · Stripe processing separate</p>
         </div>
 
         <div className="hero-product">

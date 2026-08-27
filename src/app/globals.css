@@ -269,6 +269,115 @@
   --fresh: #4fd39a;
 }
 
+/* ONYX — Pure OLED Black / Ultra High-Contrast Dark (WCAG AAA)
+   ---------------------------------------------------------------------------
+   True #000000 pitch black ground for maximum contrast (21:1 pure white-to-black),
+   OLED battery efficiency, and low-vision accessibility. Ambient glow is
+   replaced by crisp 1px structural borders and high-visibility status ink. */
+:root[data-theme='onyx'] {
+  color-scheme: dark;
+  --tint: 255, 255, 255;
+  --ink-rgb: 255, 255, 255;
+  --grey-1: 170, 180, 195;
+  --grey-2: 210, 220, 235;
+  --grey-3: 205, 215, 230;
+  --grey-4: 215, 225, 240;
+  --grey-5: 165, 175, 190;
+  --grey-6: 240, 245, 255;
+  --bg: #000000;
+  --bg-2: #09090b;
+  --bg-3: #111114;
+  --bg-elevated: rgba(14, 14, 16, 0.96);
+  --bg-soft: rgba(var(--tint), 0.08);
+  --line: rgba(var(--tint), 0.22);
+  --text: #ffffff;
+  --muted: #d4d4d8;
+  --muted-2: #a1a1aa;
+  --shade: 0, 0, 0;
+  --shadow-strong: rgba(0, 0, 0, 0.85);
+  --shadow-soft: rgba(0, 0, 0, 0.55);
+  --ground-1: #000000;
+  --ground-2: #08080a;
+  --panel-rgb: 9, 9, 11;
+  --chrome-rgb: 0, 0, 0;
+  --chrome: rgba(0, 0, 0, 0.96);
+  --chrome-soft: rgba(0, 0, 0, 0.88);
+  --chrome-solid: #000000;
+  --glow-a: 0.08;
+  --glow-b: 0.06;
+  --accent: #ff8800;
+  --accent-paper: var(--accent);
+  --accent-ink: #ffa33a;
+  --on-accent: #000000;
+  --good: #4ade80;
+  --warn: #fde047;
+  --bad: #f87171;
+  --info: #60a5fa;
+  --cap-open: #4ade80;
+  --cap-light: #bef264;
+  --cap-busy: #fde047;
+  --cap-full: #ff8800;
+  --cap-over: #f87171;
+  --cap-unknown: #a1a1aa;
+  --gold-ink: #fde047;
+  --on-active: #ffffff;
+  --fresh: #4ade80;
+}
+
+/* SUNLIGHT — True Full Light / High-Contrast Day
+   ---------------------------------------------------------------------------
+   A 100% full-light canvas for bright daylight and direct sun on mobile screens.
+   Both canvas and chrome are light (#f8fafc / #ffffff), and text is deep carbon
+   (#0f172a) for maximum daytime legibility (16.5:1). */
+:root[data-theme='sunlight'] {
+  color-scheme: light;
+  --tint: 15, 23, 42;
+  --shade: 15, 23, 42;
+  --ink-rgb: 15, 23, 42;
+  --grey-1: 71, 85, 105;
+  --grey-2: 51, 65, 85;
+  --grey-3: 51, 65, 85;
+  --grey-4: 30, 41, 59;
+  --grey-5: 71, 85, 105;
+  --grey-6: 15, 23, 42;
+  --bg: #f8fafc;
+  --bg-2: #ffffff;
+  --bg-3: #f1f5f9;
+  --bg-elevated: #ffffff;
+  --bg-soft: rgba(15, 23, 42, 0.04);
+  --line: rgba(15, 23, 42, 0.14);
+  --text: #0f172a;
+  --muted: #334155;
+  --muted-2: #475569;
+  --on-accent: #ffffff;
+  --accent: #d95d00;
+  --accent-paper: #c2410c;
+  --accent-ink: #c2410c;
+  --accent-2: #b45309;
+  --fresh: #047857;
+  --good: #047857;
+  --warn: #b45309;
+  --bad: #b91c1c;
+  --info: #1d4ed8;
+  --cap-open: #047857;
+  --cap-light: #4d7c0f;
+  --cap-busy: #b45309;
+  --cap-full: #c2410c;
+  --cap-over: #b91c1c;
+  --cap-unknown: #64748b;
+  --gold-ink: #92400e;
+  --on-active: #0f172a;
+  --shadow-strong: rgba(15, 23, 42, 0.16);
+  --shadow-soft: rgba(15, 23, 42, 0.08);
+  --ground-1: #f1f5f9;
+  --ground-2: #e2e8f0;
+  --panel-rgb: 255, 255, 255;
+  --chrome-rgb: 255, 255, 255;
+  --chrome: rgba(255, 255, 255, 0.95);
+  --chrome-soft: rgba(255, 255, 255, 0.88);
+  --chrome-solid: #ffffff;
+}
+
 /* THE INK PALETTE.
    ---------------------------------------------------------------------------
    Every colour in this app was written as a GLOW: a translucent fill of some
@@ -935,25 +1044,45 @@
    click, which is exactly how they all survived the first pass. A surface that
    opens from paper is paper. */
 :root[data-theme='light'] .panel,
+:root[data-theme='sunlight'] .panel,
 :root[data-theme='light'] .feature-card,
+:root[data-theme='sunlight'] .feature-card,
 :root[data-theme='light'] .bset-master,
+:root[data-theme='sunlight'] .bset-master,
 :root[data-theme='light'] .bset-card,
+:root[data-theme='sunlight'] .bset-card,
 :root[data-theme='light'] .bset-summary-item,
+:root[data-theme='sunlight'] .bset-summary-item,
 :root[data-theme='light'] .bset-section,
+:root[data-theme='sunlight'] .bset-section,
 :root[data-theme='light'] .bset-preview,
+:root[data-theme='sunlight'] .bset-preview,
 :root[data-theme='light'] .bset-preview-toggle,
+:root[data-theme='sunlight'] .bset-preview-toggle,
 :root[data-theme='light'] .bset-recurring,
+:root[data-theme='sunlight'] .bset-recurring,
 :root[data-theme='light'] .schedule-popover-panel,
+:root[data-theme='sunlight'] .schedule-popover-panel,
 :root[data-theme='light'] .schedule-crew-picker-panel,
+:root[data-theme='sunlight'] .schedule-crew-picker-panel,
 :root[data-theme='light'] .schedule-crew-card-panel,
+:root[data-theme='sunlight'] .schedule-crew-card-panel,
 :root[data-theme='light'] .schedule-crew-quick-panel,
+:root[data-theme='sunlight'] .schedule-crew-quick-panel,
 :root[data-theme='light'] .calendar-view-panel,
+:root[data-theme='sunlight'] .calendar-view-panel,
 :root[data-theme='light'] .crew-assign-panel,
+:root[data-theme='sunlight'] .crew-assign-panel,
 :root[data-theme='light'] .plan-stop-menu,
+:root[data-theme='sunlight'] .plan-stop-menu,
 :root[data-theme='light'] .recurring-menu-pop,
+:root[data-theme='sunlight'] .recurring-menu-pop,
 :root[data-theme='light'] .bset-dots-pop,
+:root[data-theme='sunlight'] .bset-dots-pop,
 :root[data-theme='light'] .client-modal,
+:root[data-theme='sunlight'] .client-modal,
 :root[data-theme='light'] .unsaved-guard-panel,
+:root[data-theme='sunlight'] .unsaved-guard-panel,
 /* .bset-tipcard shares a rule with .bset-recurring below (both paint
    `background: var(--bset-card)`, white on paper) but only the sibling was ever
    added to this list, so two boxes declared on the same line rendered with
@@ -970,7 +1099,8 @@
    on a sheet takes the deep ink. That is the same call .book-scope's chrome
    makes at the foot of this file, for the same reason. So .bset keeps canvas
    ink, and every white surface inside it is on this list in its own right. */
-:root[data-theme='light'] .bset-tipcard {
+:root[data-theme='light'] .bset-tipcard,
+:root[data-theme='sunlight'] .bset-tipcard {
   color-scheme: light;
   --tint: 17, 27, 41;
   /* Near-black, not the navy. `rgba(var(--ink-rgb), α)` is how ~300 declarations
@@ -27769,12 +27899,10 @@ a.bset-card { color: inherit; text-decoration: none; }
    and this is the control you are looking at while the page changes shape. */
 
 .theme-choice {
-  display: grid;
-  /* Sized to its own three options, not to whatever contains it — it sits in a
-     264px rail and on a full-width settings card, and a segmented control
-     stretched across a settings panel reads as a toolbar, not a choice. */
-  grid-template-columns: repeat(3, minmax(0, 5.4rem));
+  display: flex;
+  flex-wrap: wrap;
   width: fit-content;
+  max-width: 100%;
   gap: 2px;
   flex: 0 0 auto;
   min-width: 0;
@@ -27793,7 +27921,7 @@ a.bset-card { color: inherit; text-decoration: none; }
   /* 32px inside the menu, where the pointer is a mouse and the row above it is
      the same height. The floating one below is the touch target. */
   height: 1.85rem;
-  padding: 0 0.35rem;
+  padding: 0 0.45rem;
   border: 0;
   border-radius: 999px;
   background: none;
@@ -27815,9 +27943,9 @@ a.bset-card { color: inherit; text-decoration: none; }
 
 .theme-choice-glyph { display: block; width: 0.85rem; height: 0.85rem; flex: 0 0 auto; }
 .theme-choice-glyph svg { display: block; width: 100%; height: 100%; }
-/* The sun is gold on the dark track and gold on the white pill — it is the one
-   glyph that needs no state-dependent colour. The other two inherit. */
+.theme-choice-opt[data-choice='sunlight'] .theme-choice-glyph { color: #ff8800; }
 .theme-choice-opt[data-choice='light'] .theme-choice-glyph { color: #f5a300; }
+.theme-choice-opt[data-choice='onyx'] .theme-choice-glyph { color: #ffffff; }
 .theme-choice-word { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* --- The floating switch, bottom-left, EVERY width --------------------------
@@ -27867,9 +27995,9 @@ a.bset-card { color: inherit; text-decoration: none; }
 
 .theme-fab-glyph { display: block; width: 24px; height: 24px; }
 .theme-fab-glyph svg { display: block; width: 100%; height: 100%; }
-/* Gold for the sun, because "this makes it brighter" should be legible as a
-   shape at arm's length in glare; the moon rides on the panel colour. */
+.theme-fab-glyph[data-theme-glyph='sunlight'] { color: #ff8800; }
 .theme-fab-glyph[data-theme-glyph='light'] { color: #f5a300; }
+.theme-fab-glyph[data-theme-glyph='onyx'] { color: #ffffff; }
 
 /* On Auto. Small, and it never changes what the tap does — it is there so
    "why did it go dark on its own?" has an answer on screen. */

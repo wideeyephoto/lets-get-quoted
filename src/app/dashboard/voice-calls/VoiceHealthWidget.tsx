@@ -125,7 +125,9 @@ export default function VoiceHealthWidget() {
 
         <div className={styles.healthItem}>
           <span>Active SWAIG Tools:</span>
-          <strong style={{ color: '#60a5fa' }}>{health.toolsActive}</strong>
+          <strong style={{ color: isHealthy ? '#60a5fa' : '#94a3b8' }}>
+            {isHealthy ? health.toolsActive : health.toolsActive > 0 ? health.toolsActive : '0 (Offline)'}
+          </strong>
         </div>
       </div>
 

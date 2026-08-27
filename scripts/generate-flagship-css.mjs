@@ -1917,77 +1917,99 @@ const TWEAKS = `
 .root :global(.price-zero) { container-type: inline-size; }
 
 /* ===========================================================================
-   §93 — THE HERO SLIDER'S DOTS
+   §93 — THE HERO SLIDER'S LABELED TABS
    ===========================================================================
-   Three named buttons under the frame became three dots ON it. The names were
-   doing real work — they said what else was in the product — but they also read
-   as a second row of controls under the screenshot, and the screenshot is the
-   thing being looked at. The names survive as accessible labels and as the
-   tooltip; what is on screen is a position indicator.
+   Three visible, labelled pills underneath the screenshot frame. They give
+   immediate clarity into LGQ's breadth (Website, Jobs, Insights) with an
+   integrated animated dwell indicator inside each active dot.
 
-   Still buttons, still a tablist, still 44px of touch target: the dot is drawn
-   inside a transparent box rather than being the target itself. */
+   Preserves accessible touch targets with min-height: 44px across all screen
+   widths and full keyboard focus rings. */
 .root :global(.showcase-tabs) {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 2;
+  position: relative;
   display: flex;
-  justify-content: center;
-  align-items: flex-end;
-  gap: 0;
-  margin: 0;
-  padding: 0 0 6px;
-  /* A wash so the dots hold against a light screenshot without drawing a bar
-     across the image. */
-  background: linear-gradient(to top, rgba(6,11,17,.55), transparent);
-  border-radius: 0 0 18px 18px;
-  pointer-events: none;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 0;
+  background: none;
+  border-radius: 0;
+  pointer-events: auto;
 }
 .root :global(.showcase-tabs button) {
   pointer-events: auto;
-  display: grid;
-  place-items: center;
-  width: 44px;
-  height: 44px;
-  padding: 0;
-  border: 0;
-  border-radius: 50%;
-  background: none;
-  /* The label is the accessible name; it must not be painted. */
-  font-size: 0;
-  line-height: 0;
-  color: transparent;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 8px 14px 8px 11px;
+  border-radius: 999px;
+  border: 1px solid rgba(174, 199, 211, .17);
+  background: rgba(255, 255, 255, .03);
+  color: #9db0bd;
+  font-family: var(--font-geist-mono);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  line-height: 1;
+  text-decoration: none;
+  cursor: pointer;
+  transition: color .2s ease, border-color .2s ease, background .2s ease;
 }
-.root :global(.showcase-tabs button:hover) { background: none; border: 0; }
-.root :global(.showcase-tabs button[data-on="true"]) { background: none; border: 0; }
+.root :global(.showcase-tabs button:hover) {
+  color: #e6eef2;
+  border-color: rgba(255, 106, 36, .4);
+  background: rgba(255, 255, 255, .06);
+}
+.root :global(.showcase-tabs button[data-on="true"]) {
+  color: #f3f7f8;
+  border-color: rgba(255, 106, 36, .5);
+  background: rgba(255, 106, 36, .09);
+}
 
 .root :global(.showcase-tabs i) {
-  width: 9px;
-  height: 9px;
+  position: relative;
+  display: block;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
-  background: rgba(255,255,255,.42);
-  box-shadow: 0 1px 3px rgba(0,0,0,.5);
-  transition: background .2s ease, transform .2s ease;
+  background: rgba(174, 199, 211, .3);
+  overflow: hidden;
+  box-shadow: none;
+  transition: background .2s ease;
 }
-.root :global(.showcase-tabs button:hover i) { background: rgba(255,255,255,.7); }
+.root :global(.showcase-tabs button:hover i) { background: rgba(255, 255, 255, .5); }
 .root :global(.showcase-tabs button[data-on="true"] i) {
-  background: rgba(255,255,255,.28);
-  transform: scale(1.15);
+  background: rgba(255, 106, 36, .3);
 }
-/* The dwell timer still fills the active dot — the rotation stays legible
-   rather than being something that just happens to you. */
-.root :global(.showcase-tabs button[data-on="true"] i s) { background: var(--orange); }
+.root :global(.showcase-tabs button[data-on="true"] i s) {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: var(--orange);
+  transform: scale(0);
+  animation-name: showcaseDwell;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
 
 .root :global(.showcase-tabs button:focus-visible) {
   outline: 2px solid var(--orange);
-  outline-offset: -6px;
+  outline-offset: 2px;
 }
 
 @media (max-width: 760px) {
-  .root :global(.showcase-tabs) { padding-bottom: 2px; }
-  .root :global(.showcase-tabs button) { width: 44px; height: 40px; }
+  .root :global(.showcase-tabs) {
+    gap: 6px;
+    margin-top: 10px;
+  }
+  .root :global(.showcase-tabs button) {
+    min-height: 44px;
+    padding: 6px 11px 6px 9px;
+    font-size: 11px;
+    gap: 6px;
+  }
 }
 
 /* ===========================================================================

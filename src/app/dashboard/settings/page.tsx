@@ -453,8 +453,8 @@ export default async function SettingsPage({
                     <h2>Theme &amp; contrast</h2>
                   </div>
                   <p className="workspace-details-copy" style={{ marginTop: '0.5rem', marginBottom: '0.9rem' }}>
-                    Auto follows your phone or computer schedule. Light is built for bright daylight, Dim offers
-                    a soft slate contrast for low-strain working, and Dark provides deep midnight focus.
+                    Auto follows your phone or computer schedule. Sunlight is built for direct outdoor light, Light and Dim offer
+                    balanced daylight and soft slate contrast, Dark provides midnight focus, and Onyx delivers pure OLED black (WCAG AAA).
                     There is also a switch in the bottom-left corner of every page to cycle through them on the fly.
                   </p>
                   <ThemeToggle />
