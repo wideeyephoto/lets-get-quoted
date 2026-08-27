@@ -82,7 +82,7 @@ export default async function MessagesPage({
   // Built ONCE and shared. Both loadConversations and this page need it, and
   // letting each build its own meant six table reads per inbox load.
   const identities = await buildContactIdentityMap(supabase, accountId);
-  const [conversationRead, consentPhoneRead, setup, messagingReadiness, { data: site }] = await Promise.all([
+  const [conversationRead, consentPhoneRead, setup, messagingReadiness, { data: site }, { data: balanceRows }] = await Promise.all([
     loadConversations(supabase, accountId, identities),
     loadCurrentSmsConsentPhones(supabase, accountId),
     // Both setup reads report "unavailable" rather than a default on failure,
@@ -90,7 +90,10 @@ export default async function MessagesPage({
     loadMessagingSetup(accountId),
     loadDedicatedMessagingReadiness(accountId),
     supabase.from('sites').select('content').eq('account_id', accountId).maybeSingle(),
+    supabase.from('workspace_usage_credit_balances').select('resource_code, available_units').eq('account_id', accountId),
   ]);
+  const textCreditUnits = balanceRows?.find((r) => r.resource_code === 'text_segments')?.available_units;
+  const availableTextCredits = typeof textCreditUnits === 'number' && Number.isFinite(textCreditUnits) ? Math.max(0, textCreditUnits) : null;
   const siteContent = getSiteContent((site?.content as Record<string, unknown> | null) ?? null);
   const allConversations = conversationRead.data;
   const conversationsAvailable = conversationRead.kind === 'ready';
@@ -239,7 +242,9 @@ export default async function MessagesPage({
               fallbackIntentId={composeIntentId}
               intentStorageKey={`lgq:messages:compose:${accountId}`}
               resetToken={searchParams.sent === 'compose' ? searchParams.queued : null}
+              availableCredits={availableTextCredits}
             />
+
           ) : customerMessagingReady ? (
             <button className="btn primary" type="button" disabled title="Messaging history could not be checked">
               New message unavailable
