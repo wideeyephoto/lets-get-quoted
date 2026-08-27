@@ -80,12 +80,13 @@
   position: relative;
   width: 100%;
   max-width: 980px;
-  max-height: 90vh;
-  background: #0f172a;
+  height: 88vh;
+  max-height: 900px;
+  background: #0b1322;
   color: #f8fafc;
   border-radius: 20px;
   border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.08);
+  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.08);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -105,9 +106,10 @@
 
 /* Header Section */
 .header {
+  flex-shrink: 0;
   padding: 1.5rem 1.75rem 1.25rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  background: linear-gradient(180deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.95) 100%);
+  background: linear-gradient(180deg, rgba(30, 41, 59, 0.85) 0%, rgba(15, 23, 42, 0.98) 100%);
 }
 
 .topRow {
@@ -259,14 +261,18 @@
 
 /* Category Quick-Jump Bar */
 .categoryBar {
+  flex-shrink: 0;
   display: flex;
-  gap: 0.4rem;
+  gap: 0.45rem;
   overflow-x: auto;
   padding: 0.75rem 1.75rem;
-  background: rgba(15, 23, 42, 0.95);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(15, 23, 42, 0.98);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+  min-height: 52px;
+  align-items: center;
+  box-sizing: border-box;
 }
 
 .categoryBar::-webkit-scrollbar {
@@ -274,47 +280,50 @@
 }
 
 .categoryBar::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.2);
   border-radius: 9999px;
 }
 
 .categoryPill {
+  flex-shrink: 0;
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
-  padding: 0.35rem 0.75rem;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  gap: 0.4rem;
+  padding: 0.4rem 0.85rem;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 9999px;
   color: #94a3b8;
-  font-size: 0.775rem;
-  font-weight: 500;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.2;
   white-space: nowrap;
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
 .categoryPill:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.12);
   color: #f8fafc;
-  border-color: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.25);
 }
 
 .categoryPillActive {
   background: rgba(56, 189, 248, 0.2);
   border-color: rgba(56, 189, 248, 0.5);
   color: #38bdf8;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 /* Scrollable Content Body */
 .body {
-  flex: 1;
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
   padding: 1.5rem 1.75rem 2rem;
   display: flex;
   flex-direction: column;
-  gap: 2rem;
+  gap: 1.75rem;
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
 }
@@ -330,12 +339,15 @@
 
 /* Category Card / Section */
 .categorySection {
+  flex-shrink: 0;
+  width: 100%;
   scroll-margin-top: 1rem;
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(30, 41, 59, 0.35);
   border-radius: 16px;
   overflow: hidden;
   transition: border-color 0.2s ease;
+  box-sizing: border-box;
 }
 
 .categorySection:hover {
@@ -344,19 +356,24 @@
 
 .categoryHead {
   padding: 1.15rem 1.35rem;
-  background: rgba(30, 41, 59, 0.65);
+  min-height: 56px;
+  background: rgba(30, 41, 59, 0.75);
   display: flex;
   align-items: center;
   justify-content: space-between;
   cursor: pointer;
   user-select: none;
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  gap: 1rem;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .categoryHeadLeft {
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  flex-wrap: wrap;
 }
 
 .categoryNum {
@@ -372,6 +389,9 @@
 
 .categoryIcon {
   font-size: 1.25rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .categoryTitle {
@@ -379,23 +399,27 @@
   font-weight: 700;
   color: #ffffff;
   margin: 0;
+  line-height: 1.3;
 }
 
 .categoryFeatureCount {
   font-size: 0.8125rem;
   color: #94a3b8;
   margin-left: 0.5rem;
+  font-weight: 500;
 }
 
 .categoryChevron {
   color: #94a3b8;
   font-size: 0.875rem;
   transition: transform 0.2s ease;
+  flex-shrink: 0;
 }
 
 .categoryChevronOpen {
   transform: rotate(180deg);
 }
+
 
 .categoryIntro {
   padding: 0.85rem 1.35rem 0.5rem;
@@ -514,6 +538,7 @@
 
 /* Footer Section */
 .footer {
+  flex-shrink: 0;
   padding: 1rem 1.75rem;
   background: #0b1120;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
@@ -525,6 +550,7 @@
   flex-wrap: wrap;
   gap: 0.75rem;
 }
+
 
 .footerActions {
   display: flex;
