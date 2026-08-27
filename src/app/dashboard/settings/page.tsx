@@ -421,9 +421,71 @@ export default async function SettingsPage({
 
       <SettingsTabs
         tabs={[
+          ...(!pricingDashboardEnabled || !planUsage ? [{
+            id: 'team',
+            label: 'Team',
+            anchors: ['office-team'],
+            content: (
+              <section id="office-team" className="settings-card">
+                <h2>Office team</h2>
+                <OfficeTeamSection team={officeTeam} />
+              </section>
+            ),
+          }] : []),
+          ...(pricingDashboardEnabled && planUsage ? [{
+            id: 'plan',
+            label: 'Plan & usage',
+            anchors: [
+              'plan-at-a-glance',
+              'current-plan',
+              'platform-fee',
+              // Rendered only for a workspace on the CURRENT catalog -- a pinned
+              // one is billed at prices the ladder does not know. Listed
+              // unconditionally anyway: an anchor for a section that is absent
+              // costs a reader nothing, while a section with no anchor is one
+              // they cannot link to at all.
+              'plan-fit',
+              ...(showSubscriptionCheckout ? ['choose-paid-plan'] : []),
+              ...(planChange ? ['change-plan'] : []),
+              ...(cancellable ? ['cancel-plan'] : []),
+              'usage-balances',
+              ...(storageState ? ['workspace-storage'] : []),
+              // OverageCard renders whenever `overage` is non-null -- in BOTH
+              // its branches, so the id is always in the DOM when the card is.
+              // It was missing here, which is not a cosmetic gap: a hash this
+              // list does not know resolves to no tab at all, so
+              // /dashboard/settings#overage left the reader on Account with the
+              // card sitting inside a hidden panel. Guarded now by
+              // test/plan-usage-anchors.test.ts.
+              ...(overage ? ['overage'] : []),
+              ...(showTopUpPurchase ? ['buy-credits'] : []),
+              'included-limits',
+              'office-team',
+            ],
+            content: (
+              <PlanUsageSection
+                officeTeam={officeTeam}
+                cancellable={cancellable}
+                planChange={planChange}
+                planIntent={parsePlanIntent(searchParams.plan ?? null, searchParams.billing ?? null)}
+                data={planUsage}
+                storage={storageState}
+                purchasedSeats={purchasedSeats}
+                purchasedCapacitySubscriptions={purchasedCapacitySubscriptions}
+                capacity={capacity}
+                lots={creditLots}
+                overage={overage}
+                overageSelfServe={overageSelfServe}
+                showSubscriptionCheckout={showSubscriptionCheckout}
+                showTopUpPurchase={showTopUpPurchase}
+                topUpCheckoutStatus={topUpCheckoutStatus}
+              />
+            ),
+          }] : []),
           {
             id: 'account',
             label: 'Login & security',
+            anchors: ['appearance', 'support'],
             content: (
               <>
                 <section className="panel workspace-section-card">
@@ -487,67 +549,6 @@ export default async function SettingsPage({
               </>
             ),
           },
-          ...(!pricingDashboardEnabled || !planUsage ? [{
-            id: 'team',
-            label: 'Team',
-            anchors: ['office-team'],
-            content: (
-              <section id="office-team" className="settings-card">
-                <h2>Office team</h2>
-                <OfficeTeamSection team={officeTeam} />
-              </section>
-            ),
-          }] : []),
-          ...(pricingDashboardEnabled && planUsage ? [{
-            id: 'plan',
-            label: 'Plan & usage',
-            anchors: [
-              'plan-at-a-glance',
-              'current-plan',
-              'platform-fee',
-              // Rendered only for a workspace on the CURRENT catalog -- a pinned
-              // one is billed at prices the ladder does not know. Listed
-              // unconditionally anyway: an anchor for a section that is absent
-              // costs a reader nothing, while a section with no anchor is one
-              // they cannot link to at all.
-              'plan-fit',
-              ...(showSubscriptionCheckout ? ['choose-paid-plan'] : []),
-              ...(planChange ? ['change-plan'] : []),
-              ...(cancellable ? ['cancel-plan'] : []),
-              'usage-balances',
-              ...(storageState ? ['workspace-storage'] : []),
-              // OverageCard renders whenever `overage` is non-null -- in BOTH
-              // its branches, so the id is always in the DOM when the card is.
-              // It was missing here, which is not a cosmetic gap: a hash this
-              // list does not know resolves to no tab at all, so
-              // /dashboard/settings#overage left the reader on Account with the
-              // card sitting inside a hidden panel. Guarded now by
-              // test/plan-usage-anchors.test.ts.
-              ...(overage ? ['overage'] : []),
-              ...(showTopUpPurchase ? ['buy-credits'] : []),
-              'included-limits',
-              'office-team',
-            ],
-            content: (
-              <PlanUsageSection
-                officeTeam={officeTeam}
-                cancellable={cancellable}
-                planChange={planChange}
-                planIntent={parsePlanIntent(searchParams.plan ?? null, searchParams.billing ?? null)}
-                data={planUsage}
-                storage={storageState}
-                purchasedSeats={purchasedSeats}
-                purchasedCapacitySubscriptions={purchasedCapacitySubscriptions}
-                capacity={capacity}
-                lots={creditLots}
-                overage={overage}
-                overageSelfServe={overageSelfServe}
-                showSubscriptionCheckout={showSubscriptionCheckout}
-                showTopUpPurchase={showTopUpPurchase}
-                topUpCheckoutStatus={topUpCheckoutStatus}
-              />
-            ),
-          }] : []),
           {
             id: 'payments',
             label: 'Payments',

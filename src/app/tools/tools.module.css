@@ -1401,20 +1401,26 @@
   .permitBox,
   .tierTabsRow,
   .packageModeBar,
-  .hideOnPrint,
-  :global(.public-topbar),
-  :global(.topbar),
-  :global(.sidenav),
-  :global(.sidenav-mobilebar),
-  :global(.sidenav-scrim),
-  :global(.theme-fab),
-  :global(.marketing-footer),
-  :global(footer.marketing-footer),
-  :global(.skip-link),
-  :global(.shell-skip-link),
-  :global(.quote-request-alert) {
+  .hideOnPrint {
     display: none !important;
   }
+
+  :global {
+    .public-topbar,
+    .topbar,
+    .sidenav,
+    .sidenav-mobilebar,
+    .sidenav-scrim,
+    .theme-fab,
+    .marketing-footer,
+    footer.marketing-footer,
+    .skip-link,
+    .shell-skip-link,
+    .quote-request-alert {
+      display: none !important;
+    }
+  }
+
 
   .container {
     padding: 0 !important;

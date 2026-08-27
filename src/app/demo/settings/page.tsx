@@ -48,6 +48,26 @@ export default function DemoSettingsPage() {
 
       <SettingsTabs
         tabs={[
+          ...(pricingDashboardEnabled ? [{
+            id: 'plan',
+            label: 'Plan & usage',
+            content: (
+              <section className="panel workspace-section-card">
+                <div className="section-heading workspace-section-heading">
+                  <p className="eyebrow">Plan &amp; usage</p>
+                  <h2>What is included and what is available</h2>
+                </div>
+                <p className="workspace-card-copy">
+                  The real account shows its saved plan, LGQ platform-fee rate, billing status, and the exact
+                  text, marketing email, and unified AI usage credit balances available right now.
+                </p>
+                <p className="workspace-card-copy">
+                  Purchased credits and plan-period credits may share a balance, so the page labels the amount
+                  available instead of presenting a misleading monthly progress bar.
+                </p>
+              </section>
+            ),
+          }] : []),
           {
             id: 'account',
             label: 'Login & security',
@@ -70,26 +90,6 @@ export default function DemoSettingsPage() {
               </section>
             ),
           },
-          ...(pricingDashboardEnabled ? [{
-            id: 'plan',
-            label: 'Plan & usage',
-            content: (
-              <section className="panel workspace-section-card">
-                <div className="section-heading workspace-section-heading">
-                  <p className="eyebrow">Plan &amp; usage</p>
-                  <h2>What is included and what is available</h2>
-                </div>
-                <p className="workspace-card-copy">
-                  The real account shows its saved plan, LGQ platform-fee rate, billing status, and the exact
-                  text, marketing email, and unified AI usage credit balances available right now.
-                </p>
-                <p className="workspace-card-copy">
-                  Purchased credits and plan-period credits may share a balance, so the page labels the amount
-                  available instead of presenting a misleading monthly progress bar.
-                </p>
-              </section>
-            ),
-          }] : []),
           {
             id: 'payments',
             label: 'Payments',
