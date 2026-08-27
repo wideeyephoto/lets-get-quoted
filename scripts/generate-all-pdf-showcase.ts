@@ -441,6 +441,284 @@ function generateInvoiceHtml() {
 </html>`;
 }
 
+// 4. Permit Application HTML Template
+function generatePermitHtml() {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Uniform Permit Application Packet</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap');
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Plus Jakarta Sans', sans-serif; background: #ffffff; color: #0f172a; padding: 28px 36px; }
+    .packet { border: 2px solid #0f172a; border-radius: 6px; padding: 20px 24px; position: relative; max-width: 800px; margin: 0 auto; }
+    .innerBorder { border: 1px solid #cbd5e1; border-radius: 4px; padding: 18px 20px; }
+    .header { text-align: center; border-bottom: 2px solid #0f172a; padding-bottom: 12px; margin-bottom: 14px; }
+    .agency { font-size: 15px; font-weight: 900; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px; }
+    .dept { font-size: 11px; font-weight: 800; color: #475569; text-transform: uppercase; margin-top: 2px; }
+    .statute { font-size: 9px; font-weight: 700; color: #64748b; margin-top: 3px; }
+    .secTitle { font-size: 10px; font-weight: 900; color: #0f172a; background: #f1f5f9; padding: 4px 8px; border-radius: 3px; text-transform: uppercase; margin: 12px 0 8px; }
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; font-size: 11px; }
+    .fieldRow { display: flex; gap: 6px; }
+    .fieldKey { font-weight: 800; color: #0f172a; white-space: nowrap; font-size: 10.5px; }
+    .fieldVal { color: #334155; }
+    .warningBox { background: #fef2f2; border: 1.5px solid #fecaca; border-radius: 6px; padding: 10px 14px; margin-top: 14px; }
+    .warningTitle { font-size: 10px; font-weight: 900; color: #b91c1c; text-transform: uppercase; margin-bottom: 3px; }
+    .warningText { font-size: 9px; color: #7f1d1d; line-height: 1.4; }
+    .sigRow { display: grid; grid-template-columns: 2fr 1fr; gap: 24px; margin-top: 16px; padding-top: 10px; border-top: 1px dashed #cbd5e1; }
+    .sigLine { border-bottom: 1.5px solid #0f172a; height: 28px; margin-bottom: 4px; }
+    .sigLabel { font-size: 10px; font-weight: 800; color: #0f172a; }
+  </style>
+</head>
+<body>
+  <div class="packet">
+    <div class="innerBorder">
+      <div class="header">
+        <div class="agency">City of Royal Oak Building Department</div>
+        <div class="dept">Community Development Division · Building & Safety Inspection Bureau</div>
+        <div class="statute">OFFICIAL UNIFORM PERMIT APPLICATION PACKET (MICHIGAN PUBLIC ACT 230)</div>
+      </div>
+
+      <div class="secTitle">I. PROPERTY & JOB SITE LOCATION</div>
+      <div class="grid2">
+        <div class="fieldRow"><span class="fieldKey">Street Address:</span><span class="fieldVal">211 S Williams St</span></div>
+        <div class="fieldRow"><span class="fieldKey">Occupancy / Type:</span><span class="fieldVal">R-3 Residential · Type V-B</span></div>
+        <div class="fieldRow"><span class="fieldKey">City / State / ZIP:</span><span class="fieldVal">Royal Oak, MI 48067</span></div>
+        <div class="fieldRow"><span class="fieldKey">Parcel ID:</span><span class="fieldVal">25-15-200-014</span></div>
+      </div>
+
+      <div class="secTitle">II. PROPERTY OWNER IDENTIFICATION</div>
+      <div class="grid2">
+        <div class="fieldRow"><span class="fieldKey">Owner Name:</span><span class="fieldVal">Sarah Jenkins</span></div>
+        <div class="fieldRow"><span class="fieldKey">Phone:</span><span class="fieldVal">(248) 555-0199</span></div>
+        <div class="fieldRow"><span class="fieldKey">Email:</span><span class="fieldVal">s.jenkins@example.com</span></div>
+        <div class="fieldRow"><span class="fieldKey">Owner Address:</span><span class="fieldVal">Same as Job Site</span></div>
+      </div>
+
+      <div class="secTitle">III. LICENSED CONTRACTOR & CREDENTIALS</div>
+      <div class="grid2">
+        <div class="fieldRow"><span class="fieldKey">Company:</span><span class="fieldVal">Apex Trade Solutions LLC</span></div>
+        <div class="fieldRow"><span class="fieldKey">Licensee:</span><span class="fieldVal">Marcus Vance (Master Elec)</span></div>
+        <div class="fieldRow"><span class="fieldKey">State License #:</span><span class="fieldVal">6201948201 (Master Electrician)</span></div>
+        <div class="fieldRow"><span class="fieldKey">Expiration:</span><span class="fieldVal">2027-12-31 (Current Active)</span></div>
+        <div class="fieldRow"><span class="fieldKey">Liability Policy:</span><span class="fieldVal">Auto-Owners Insurance (#POL-94820)</span></div>
+        <div class="fieldRow"><span class="fieldKey">Worker's Comp:</span><span class="fieldVal">Accident Fund of MI (#WC-83921)</span></div>
+      </div>
+
+      <div class="secTitle">IV. PROJECT SCOPE & TECHNICAL SPECIFICATIONS</div>
+      <div class="grid2">
+        <div class="fieldRow"><span class="fieldKey">Project Title:</span><span class="fieldVal">Residential 200A Service Upgrade & EV Charger</span></div>
+        <div class="fieldRow"><span class="fieldKey">Estimated Valuation:</span><span class="fieldVal"><strong>$4,500.00</strong></span></div>
+      </div>
+      <div style="font-size: 10.5px; color: #334155; margin-top: 6px; line-height: 1.4;">
+        <strong>Detailed Scope:</strong> Removal of existing 100A split-bus load center. Installation of new 200A meter socket, copper service entrance conductors, 200A main breaker panel, two 8ft ground rods with #4 copper grounding electrode conductor, whole-home surge protective device, and dedicated 50A circuit to garage NEMA 14-50 EV receptacle.
+      </div>
+
+      <div class="warningBox">
+        <div class="warningTitle">MICHIGAN PUBLIC ACT 230 OF 1972 STATUTORY WARNING:</div>
+        <div class="warningText">
+          Section 23a of the State Construction Code Act of 1972, Act No. 230 of the Public Acts of 1972, being Section 125.1523a of the Michigan Compiled Laws, prohibits a person from conspiring to circumvent the licensing requirements of this state relating to persons who are to perform work on a residential building or a residential structure. Violators of Section 23a are subject to civil fines.
+        </div>
+      </div>
+
+      <div class="sigRow">
+        <div>
+          <div class="sigLine"></div>
+          <div class="sigLabel">LICENSED CONTRACTOR / AUTHORIZED AGENT SIGNATURE</div>
+        </div>
+        <div>
+          <div class="sigLine"></div>
+          <div class="sigLabel">DATE</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>`;
+}
+
+// 5. Lien Waiver HTML Template
+function generateLienWaiverHtml() {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Conditional Progress Lien Waiver</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Plus Jakarta Sans', sans-serif; background: #ffffff; color: #0f172a; padding: 32px 40px; }
+    .waiver { border: 2px solid #334155; border-radius: 6px; padding: 22px 26px; max-width: 800px; margin: 0 auto; }
+    .header { text-align: center; margin-bottom: 14px; }
+    .title { font-size: 17px; font-weight: 900; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 3px; }
+    .ref { font-size: 10px; color: #64748b; }
+    .noticeBox { background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 6px; padding: 10px 14px; margin-bottom: 16px; }
+    .noticeTitle { font-size: 9px; font-weight: 900; color: #b91c1c; text-transform: uppercase; margin-bottom: 3px; }
+    .noticeText { font-size: 8.5px; color: #334155; line-height: 1.45; }
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+    .fieldBlock { display: flex; flex-direction: column; gap: 2px; }
+    .fieldLabel { font-size: 9.5px; font-weight: 800; color: #0f172a; text-transform: uppercase; }
+    .fieldValue { font-size: 12px; font-weight: 700; color: #1e293b; }
+    .legalText { font-size: 9.5px; color: #334155; line-height: 1.5; margin: 12px 0 16px; border-top: 1px solid #e2e8f0; padding-top: 12px; }
+    .sigBox { border: 1px solid #cbd5e1; background: #fafbfc; border-radius: 6px; padding: 12px 16px; margin-top: 14px; }
+    .sigGrid { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-top: 8px; }
+    .sigLine { border-bottom: 1.5px solid #0f172a; height: 26px; margin-bottom: 3px; }
+    .sigLabel { font-size: 9.5px; font-weight: 800; color: #0f172a; }
+  </style>
+</head>
+<body>
+  <div class="waiver">
+    <div class="header">
+      <div class="title">Conditional Progress Lien Waiver & Release</div>
+      <div class="ref">Document Reference: LW-2026-9812 • State of Michigan Statutory Format • Generated via Let's Get Quoted</div>
+    </div>
+
+    <div class="noticeBox">
+      <div class="noticeTitle">STATUTORY NOTICE:</div>
+      <div class="noticeText">
+        THIS DOCUMENT WAIVES THE CLAIMANT'S LIEN, STOP PAYMENT NOTICE, AND PAYMENT BOND RIGHTS EFFECTIVE ON RECEIPT OF PAYMENT. DO NOT RELY ON THIS DOCUMENT UNLESS SATISFIED THAT THE CLAIMANT HAS RECEIVED PAYMENT.
+      </div>
+    </div>
+
+    <div class="grid2">
+      <div class="fieldBlock">
+        <span class="fieldLabel">CLAIMANT (CONTRACTOR):</span>
+        <span class="fieldValue">Apex Trade Solutions LLC</span>
+      </div>
+      <div class="fieldBlock">
+        <span class="fieldLabel">JOB LOCATION & PROPERTY ADDRESS:</span>
+        <span class="fieldValue">211 S Williams St, Royal Oak, MI 48067</span>
+      </div>
+      <div class="fieldBlock">
+        <span class="fieldLabel">CUSTOMER / PROPERTY OWNER:</span>
+        <span class="fieldValue">Sarah Jenkins</span>
+      </div>
+      <div class="fieldBlock">
+        <span class="fieldLabel">WAIVER SUM & THROUGH-DATE:</span>
+        <span class="fieldValue" style="color: #047857; font-size: 13px;">$1,908.00 • Through Aug 27, 2026</span>
+      </div>
+    </div>
+
+    <div class="legalText">
+      <strong>TERMS OF WAIVER AND RELEASE:</strong><br />
+      Upon receipt by the undersigned of a check from Sarah Jenkins in the sum of $1,908.00 payable to Apex Trade Solutions LLC and when the check has been properly endorsed and has been paid by the bank on which it is drawn, this document becomes effective to release any mechanic's lien, stop payment notice, or bond right the undersigned has on the job of Sarah Jenkins located at 211 S Williams St, Royal Oak, MI 48067 to the following extent: This release covers a progress payment for all labor, services, equipment, or materials furnished to the jobsite through Aug 27, 2026 only, and does not cover any retention withheld, before or after the through-date.
+    </div>
+
+    <div class="sigBox">
+      <div style="font-size: 10px; font-weight: 800; color: #0f172a; text-transform: uppercase;">EXECUTION & CERTIFICATION</div>
+      <div class="sigGrid">
+        <div>
+          <div class="sigLine"></div>
+          <div class="sigLabel">AUTHORIZED OFFICER SIGNATURE (Apex Trade Solutions LLC)</div>
+        </div>
+        <div>
+          <div class="sigLine"></div>
+          <div class="sigLabel">DATE</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>`;
+}
+
+// 6. Insights Export HTML Template
+function generateInsightsHtml() {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Apex Trade Solutions — Business Performance Report</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Plus Jakarta Sans', sans-serif; background: #ffffff; color: #0f172a; padding: 32px 40px; }
+    .sheet { max-width: 800px; margin: 0 auto; }
+    .header { display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 12px; border-bottom: 2px solid #0f172a; margin-bottom: 16px; }
+    .title { font-size: 22px; font-weight: 900; color: #0f172a; }
+    .period { font-size: 12px; font-weight: 700; color: #64748b; margin-top: 2px; }
+    .metaCard { border: 1.5px solid #cbd5e1; background: #f8fafc; border-radius: 8px; padding: 8px 12px; text-align: right; }
+    .kpiGrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 18px; }
+    .kpiCard { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 14px; }
+    .kpiLabel { font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase; margin-bottom: 4px; }
+    .kpiVal { font-size: 20px; font-weight: 900; color: #0f172a; }
+    .kpiDelta { font-size: 10.5px; font-weight: 800; color: #059669; margin-top: 2px; }
+    .secTitle { font-size: 11px; font-weight: 900; text-transform: uppercase; color: #0f172a; background: #f1f5f9; padding: 5px 8px; border-radius: 4px; margin: 14px 0 8px; }
+    table { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+    th { background: #f8fafc; color: #475569; border-bottom: 1.5px solid #cbd5e1; padding: 6px 8px; font-size: 10px; font-weight: 800; text-transform: uppercase; text-align: left; }
+    td { padding: 6px 8px; border-bottom: 1px solid #e2e8f0; }
+    .footer { display: flex; justify-content: space-between; font-size: 9.5px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 8px; margin-top: 18px; }
+  </style>
+</head>
+<body>
+  <div class="sheet">
+    <div class="header">
+      <div>
+        <div class="title">Apex Trade Solutions</div>
+        <div class="period">Executive Business Performance Report • Last 30 Days</div>
+      </div>
+      <div class="metaCard">
+        <div style="font-size: 10px; font-weight: 900; background: #0f172a; color: #fff; padding: 2px 6px; border-radius: 3px; display: inline-block; margin-bottom: 3px;">KPI EXPORT</div>
+        <div style="font-size: 10px; color: #64748b;">Generated: Aug 27, 2026</div>
+      </div>
+    </div>
+
+    <div class="kpiGrid">
+      <div class="kpiCard">
+        <div class="kpiLabel">Gross Revenue Quoted</div>
+        <div class="kpiVal">$142,500</div>
+        <div class="kpiDelta">↑ +18% vs prior period</div>
+      </div>
+      <div class="kpiCard">
+        <div class="kpiLabel">Net Cash Collected</div>
+        <div class="kpiVal">$98,400</div>
+        <div class="kpiDelta">↑ +24% vs prior period</div>
+      </div>
+      <div class="kpiCard">
+        <div class="kpiLabel">Quote Win Rate</div>
+        <div class="kpiVal">68.5%</div>
+        <div class="kpiDelta">↑ +5.2pp conversion</div>
+      </div>
+    </div>
+
+    <div class="secTitle">I. REVENUE COLLECTED OVER TIME</div>
+    <table>
+      <thead>
+        <tr><th>Period</th><th style="text-align: right;">Collected</th><th style="text-align: right;">Previous Period</th><th style="text-align: right;">Growth</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Week 1 (Aug 01 - Aug 07)</td><td style="text-align: right; font-weight: 700;">$24,200</td><td style="text-align: right; color: #64748b;">$19,500</td><td style="text-align: right; color: #059669; font-weight: 800;">+24.1%</td></tr>
+        <tr><td>Week 2 (Aug 08 - Aug 14)</td><td style="text-align: right; font-weight: 700;">$28,600</td><td style="text-align: right; color: #64748b;">$21,300</td><td style="text-align: right; color: #059669; font-weight: 800;">+34.3%</td></tr>
+        <tr><td>Week 3 (Aug 15 - Aug 21)</td><td style="text-align: right; font-weight: 700;">$22,100</td><td style="text-align: right; color: #64748b;">$20,800</td><td style="text-align: right; color: #059669; font-weight: 800;">+6.3%</td></tr>
+        <tr><td>Week 4 (Aug 22 - Aug 27)</td><td style="text-align: right; font-weight: 700;">$23,500</td><td style="text-align: right; color: #64748b;">$17,800</td><td style="text-align: right; color: #059669; font-weight: 800;">+32.0%</td></tr>
+        <tr style="background: #f8fafc; border-top: 2px solid #0f172a;">
+          <td><strong>TOTAL REVENUE</strong></td><td style="text-align: right; font-weight: 900; color: #0f172a;">$98,400</td><td style="text-align: right; font-weight: 800; color: #64748b;">$79,400</td><td style="text-align: right; font-weight: 900; color: #059669;">+23.9%</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="secTitle">II. SCHEDULE CAPACITY & PAYMENT HEALTH</div>
+    <table>
+      <thead>
+        <tr><th>Operational Indicator</th><th style="text-align: right;">Status / Metric</th><th style="text-align: right;">Benchmark Target</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Schedule Utilization (Next 14 Days)</td><td style="text-align: right; font-weight: 700; color: #059669;">88.5% Booked</td><td style="text-align: right; color: #64748b;">&gt; 80% Healthy</td></tr>
+        <tr><td>Average Days to Payment Settlement</td><td style="text-align: right; font-weight: 700; color: #059669;">1.8 Days</td><td style="text-align: right; color: #64748b;">&lt; 3 Days via LGQ Text-to-Pay</td></tr>
+        <tr><td>Aged Receivables (30+ Days Past Due)</td><td style="text-align: right; font-weight: 800; color: #059669;">$0.00</td><td style="text-align: right; color: #64748b;">Zero delinquent float</td></tr>
+      </tbody>
+    </table>
+
+    <div class="footer">
+      <div>✓ Prepared via Let’s Get Quoted • Business Insights Engine</div>
+      <div>https://letsgetquoted.com/dashboard/insights</div>
+    </div>
+  </div>
+</body>
+</html>`;
+}
+
 async function run() {
   console.log('Generating all PDFs and high-res screenshot previews...');
 
@@ -475,6 +753,30 @@ async function run() {
   fs.writeFileSync(invHtmlPath, invHtml, 'utf8');
   execSync(`"${browserExe}" --headless --disable-gpu --screenshot="${invImgPath}" --window-size=950,1280 "file:///${invHtmlPath.replace(/\\/g, '/')}"`);
   console.log('✓ Invoice PDF Preview ready.');
+
+  // 5. Permit Application PDF Preview
+  const permitHtml = generatePermitHtml();
+  const permitHtmlPath = path.join(artifactDir, 'permit-preview.html');
+  const permitImgPath = path.join(artifactDir, 'permit-pdf-preview.png');
+  fs.writeFileSync(permitHtmlPath, permitHtml, 'utf8');
+  execSync(`"${browserExe}" --headless --disable-gpu --screenshot="${permitImgPath}" --window-size=950,1280 "file:///${permitHtmlPath.replace(/\\/g, '/')}"`);
+  console.log('✓ Permit Application PDF Preview ready.');
+
+  // 6. Lien Waiver PDF Preview
+  const lienHtml = generateLienWaiverHtml();
+  const lienHtmlPath = path.join(artifactDir, 'lien-waiver-preview.html');
+  const lienImgPath = path.join(artifactDir, 'lien-waiver-pdf-preview.png');
+  fs.writeFileSync(lienHtmlPath, lienHtml, 'utf8');
+  execSync(`"${browserExe}" --headless --disable-gpu --screenshot="${lienImgPath}" --window-size=950,1280 "file:///${lienHtmlPath.replace(/\\/g, '/')}"`);
+  console.log('✓ Lien Waiver PDF Preview ready.');
+
+  // 7. Insights Export PDF Preview
+  const insHtml = generateInsightsHtml();
+  const insHtmlPath = path.join(artifactDir, 'insights-preview.html');
+  const insImgPath = path.join(artifactDir, 'insights-pdf-preview.png');
+  fs.writeFileSync(insHtmlPath, insHtml, 'utf8');
+  execSync(`"${browserExe}" --headless --disable-gpu --screenshot="${insImgPath}" --window-size=950,1280 "file:///${insHtmlPath.replace(/\\/g, '/')}"`);
+  console.log('✓ Insights PDF Preview ready.');
 
   console.log('All PDF showcase files generated successfully!');
 }

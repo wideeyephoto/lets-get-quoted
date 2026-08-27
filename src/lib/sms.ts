@@ -418,6 +418,30 @@ export async function sendOwnerPhoneVerificationSms(input: {
   });
 }
 
+/**
+ * Sends a one-time 6-digit verification code to a crew member's phone number.
+ */
+export async function sendCrewPhoneVerificationCodeSms(input: {
+  accountId: string;
+  phone: string;
+  code: string;
+  businessName: string;
+  idempotencyKey?: string;
+}): Promise<string> {
+  const to = normalizeUsPhone(input.phone);
+  if (!to) throw new Error('Invalid phone number.');
+  const body = `${input.businessName}: Your 6-digit verification code for Voice Assistant & Field Access is ${input.code}. Reply STOP to opt out.`;
+  return queueAccountSms({
+    accountId: input.accountId,
+    phone: to,
+    body,
+    messageKind: 'crew-phone-verification',
+    category: 'verification',
+    context: 'crew',
+    idempotencyKey: input.idempotencyKey ?? `crew-verify:${input.accountId}:${to}:${Date.now()}`,
+  });
+}
+
 
 // The one text that asks a lead whether they want the gap in today's route.
 //

@@ -2,7 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { createAdminClient } from '@/lib/auth';
 import { isLeadVerificationValid, leadVerificationToken } from '@/lib/lead-verification';
 import { normalizeUsPhone } from '@/lib/phone';
-import { sendRawSms } from '@/lib/sms';
+import { sendCrewPhoneVerificationCodeSms } from '@/lib/sms';
 
 export type CrewVerificationState = {
   isVerified: boolean;
@@ -93,18 +93,18 @@ export async function sendCrewPhoneVerificationSms(
 
   const { code, token, expiresAt } = createCrewPhoneOtp(normalized);
 
-  const message = `${businessName}: Your 6-digit verification code for Voice Assistant & Field Access is ${code}. Expires in 15 mins. Reply STOP to opt out.`;
-  const result = await sendRawSms({
-    to: normalized,
-    body: message,
-    accountId,
-  });
-
-  if (!result.ok) {
-    return { ok: false, error: result.error || 'Failed to send SMS verification.' };
+  try {
+    await sendCrewPhoneVerificationCodeSms({
+      accountId,
+      phone: normalized,
+      code,
+      businessName,
+    });
+    return { ok: true, token, expiresAt };
+  } catch (sendErr) {
+    const message = sendErr instanceof Error ? sendErr.message : String(sendErr);
+    return { ok: false, error: message };
   }
-
-  return { ok: true, token, expiresAt };
 }
 
 /**

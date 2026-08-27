@@ -231,9 +231,21 @@ export async function updateCrewAction(crewId: string, formData: FormData) {
   // Keep a baseline consent row in step with the (possibly new) phone number.
   await ensureSmsConsentBaseline(accountId, phone).catch(() => {});
 
+  const phoneVerified = formData.get('phoneVerified') === 'on';
+  await supabase
+    .from('crew')
+    .update({
+      phone_verified: phoneVerified,
+      phone_verified_at: phoneVerified ? new Date().toISOString() : null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('account_id', accountId)
+    .eq('id', crewId);
+
   revalidatePath('/dashboard/crew');
   revalidatePath('/dashboard/jobs');
   revalidatePath('/dashboard/schedule');
+  revalidatePath('/dashboard/voice-calls');
 }
 
 export async function updateCrewPhotoAction(crewId: string, formData: FormData) {

@@ -15,7 +15,9 @@ import IntroVideo from './IntroVideo';
 import styles from './themes.module.css';
 
 type HeroQuickFormProps = {
-  site: Pick<Site, 'id' | 'published' | 'content' | 'company_name' | 'tagline' | 'headline' | 'service_area' | 'phone' | 'avg_response_ms'>;
+  site: Pick<Site, 'id' | 'published' | 'content' | 'company_name' | 'tagline' | 'headline' | 'service_area' | 'phone' | 'avg_response_ms'> & {
+    subdomain?: string | null;
+  };
   /**
    * Rendered for the owner to try, not for a customer to use — the builder's
    * "Preview your AI Intake". Everything behaves normally, including the AI
@@ -810,6 +812,22 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
         </div>
       )}
 
+      {smartIntakeActive && (
+        <nav className={styles.heroFormStepper} aria-label="Quote progress">
+          <span className={`${styles.heroFormStepDot} ${step === 'describe' ? styles.heroFormStepDotActive : styles.heroFormStepDotComplete}`}>
+            <span className={styles.heroFormStepNum}>1</span> Project
+          </span>
+          <span className={styles.heroFormStepDivider} aria-hidden="true" />
+          <span className={`${styles.heroFormStepDot} ${step === 'qa' ? styles.heroFormStepDotActive : step === 'contact' || step === 'result' ? styles.heroFormStepDotComplete : ''}`}>
+            <span className={styles.heroFormStepNum}>2</span> Details
+          </span>
+          <span className={styles.heroFormStepDivider} aria-hidden="true" />
+          <span className={`${styles.heroFormStepDot} ${step === 'contact' ? styles.heroFormStepDotActive : step === 'result' ? styles.heroFormStepDotComplete : ''}`}>
+            <span className={styles.heroFormStepNum}>3</span> Ballpark
+          </span>
+        </nav>
+      )}
+
       {step === 'describe' && (
         <div className={styles.heroFormStep} key="describe">
           <h2 className={styles.heroFormTitle}>{estimateLabel}</h2>
@@ -1247,6 +1265,14 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
             <li><strong>We {contactPref === 'text' ? 'text' : 'reach'} you</strong><span>{responseTiming}</span></li>
             <li><strong>Book your job</strong><span>Or a free in-person estimate — your call.</span></li>
           </ol>
+          {site.subdomain && (
+            <div className={styles.heroFormBookingHandoff}>
+              <a className={styles.heroFormBookCta} href={demo ? '#' : `/book/${site.subdomain}`}>
+                📅 Pick an arrival window to book on-site →
+              </a>
+              <small className={styles.heroFormBookingNote}>Select an available arrival window · No card required</small>
+            </div>
+          )}
           {site.phone && <a className={styles.heroFormCall} href={`tel:${site.phone}`}>Call now to lock it in</a>}
         </div>
       )}

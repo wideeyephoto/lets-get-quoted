@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useRef, useState, useTransition, type ReactNode } from 'react';
 import type { SiteEstimateRangesContent, SiteLeadFiltersContent } from '@/lib/site-content';
 import { intakeQuality, groupStatus } from '@/lib/intake-quality';
+import { TRADE_INTAKE_PRESETS, type TradeIntakePreset } from '@/lib/trade-intake-presets';
 import { updateIntakeContentAction } from './actions';
 
 /**
@@ -85,6 +86,7 @@ export default function IntakeContentSection({
   const [filters, setFilters] = useState(initialFilters);
   const [emailField, setEmailField] = useState(initialEmailField);
   const [save, setSave] = useState<SaveState>('idle');
+  const [appliedPresetName, setAppliedPresetName] = useState<string | null>(null);
   const [, startSaving] = useTransition();
   const savedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -109,6 +111,18 @@ export default function IntakeContentSection({
         setSave('error');
       }
     });
+  }
+
+  function applyTradePreset(preset: TradeIntakePreset) {
+    const existing = filters.exclusions.filter((item) => item.trim());
+    const merged = Array.from(new Set([...existing, ...preset.exclusions])).slice(0, 10);
+    const next: Partial<SiteLeadFiltersContent> = {
+      minJobAmount: preset.minJobAmount,
+      exclusions: merged,
+    };
+    patchFilters(next);
+    setAppliedPresetName(preset.name);
+    setTimeout(() => setAppliedPresetName(null), 3000);
   }
 
   /** Immediate — a toggle that waits feels broken. */
@@ -160,6 +174,26 @@ export default function IntakeContentSection({
             <div>
               <strong>Smart Intake setup</strong>
               <small>Questions &amp; qualification — changes save automatically.</small>
+            </div>
+          </div>
+
+          <div className="iq-presets-bar">
+            <div className="iq-presets-title">
+              <span>⚡ 1-Click Trade Presets</span>
+              {appliedPresetName && <span className="iq-preset-success">✓ {appliedPresetName} preset loaded</span>}
+            </div>
+            <div className="iq-presets-list">
+              {Object.values(TRADE_INTAKE_PRESETS).map((preset) => (
+                <button
+                  key={preset.id}
+                  type="button"
+                  onClick={() => applyTradePreset(preset)}
+                  className="iq-preset-chip"
+                  title={preset.description}
+                >
+                  {preset.name}
+                </button>
+              ))}
             </div>
           </div>
 
@@ -372,6 +406,28 @@ export default function IntakeContentSection({
                       + Add exclusion
                     </button>
                   ) : null}
+
+                  <div className="iq-exclusions-suggestions">
+                    <span className="iq-sugg-label">Tap to add common trade exclusions:</span>
+                    <div className="iq-sugg-chips">
+                      {['mobile homes', 'window AC units', 'commercial grease traps', 'lead paint abatement', 'unpermitted additions']
+                        .filter((s) => !filters.exclusions.some((e) => e.toLowerCase() === s.toLowerCase()))
+                        .map((s) => (
+                          <button
+                            key={s}
+                            type="button"
+                            className="iq-sugg-chip"
+                            onClick={() => {
+                              if (filters.exclusions.length < 10) {
+                                patchFilters({ exclusions: [...filters.exclusions.filter(Boolean), s] });
+                              }
+                            }}
+                          >
+                            + {s}
+                          </button>
+                        ))}
+                    </div>
+                  </div>
                 </div>
               }
             />

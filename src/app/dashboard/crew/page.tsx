@@ -19,6 +19,7 @@ import { LABOR_RULE_COLUMNS, LABOR_SETTINGS_COOKIE, laborRulesFromAccount, norma
 import { isTimeClockAvailable, listOpenShifts } from '@/lib/time-clock-data';
 import { loadSubcontractors, todayIn } from '@/lib/subcontractor-dispatch-data';
 import { normalizeWorkerType } from '@/lib/subcontractors';
+import { isCrewPhoneVerified } from '@/lib/crew-verification';
 import CrewRoster, { type CrewRow } from './CrewRoster';
 import HoursAndPay from './HoursAndPay';
 import LaborByJob from './LaborByJob';
@@ -183,6 +184,7 @@ export default async function CrewLaborPage({
       rateLabel: canViewPay ? payRateLabel(payBasisFromCrew(member)) : '',
       phone: member.phone || null,
       phoneLabel: member.phone ? formatPhoneDashes(member.phone) : null,
+      phoneVerified: isCrewPhoneVerified(member),
       email: member.email,
       startAddress: member.start_address ?? null,
       permissions: arrivalPermissionsFromCrew(member as unknown as Record<string, unknown>),

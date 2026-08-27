@@ -89,6 +89,7 @@ export type CrewRow = {
   rateLabel: string;
   phone: string | null;
   phoneLabel: string | null;
+  phoneVerified?: boolean;
   email: string | null;
   // Where their day starts, for Plan my day. Null = start from the shop.
   startAddress: string | null;
@@ -1796,6 +1797,12 @@ function CrewDrawer({ row, onClose, periodLabel }: { row: CrewRow; onClose: () =
               <label className="checkbox-row" htmlFor={`canShareWorkLocation-${row.id}`}>
                 <input id={`canShareWorkLocation-${row.id}`} name="canShareWorkLocation" type="checkbox" defaultChecked={row.canShareWorkLocation !== false} />
                 <span>Share foreground GPS location on dispatch map during active shifts</span>
+              </label>
+              <label className="checkbox-row" htmlFor={`phoneVerified-${row.id}`}>
+                <input id={`phoneVerified-${row.id}`} name="phoneVerified" type="checkbox" defaultChecked={row.phoneVerified} />
+                <span>
+                  <strong>Allow Voice Hotline Access:</strong> Phone number is verified to call into our shared business line for AI voice dispatch &amp; job updates
+                </span>
               </label>
             </fieldset>
 
