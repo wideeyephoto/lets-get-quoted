@@ -181,7 +181,26 @@ export default function AiVoicePage() {
           body: 'The recording and transcript attach to the customer profile, ready for one-tap quote generation.',
         },
       ]}
-      faq={FAQ}
-    />
+      cta={{
+        title: 'Never lose another job to voicemail.',
+        note: 'AI Voice assistant & phone line included on eligible plans. Standard voicemail takes over when credits run out.',
+      }}
+    >
+      <section className="section-block" aria-labelledby="voice-faq-title" style={{ margin: '48px 0' }}>
+        <div>
+          <p className="eyebrow">Before you turn it on</p>
+          <h2 id="voice-faq-title">The questions contractors ask us.</h2>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1.5rem' }}>
+          {FAQ.map((item, index) => (
+            <details key={item.q} open={index === 0} style={{ padding: '1rem', background: 'var(--bg-surface-elevated, #f8fafc)', borderRadius: '8px', border: '1px solid var(--border-subtle, rgba(0,0,0,0.08))' }}>
+              <summary style={{ fontWeight: 700, cursor: 'pointer', fontSize: '1rem' }}>{item.q}</summary>
+              <p style={{ marginTop: '0.5rem', color: 'var(--text-secondary, #475569)', lineHeight: 1.5, fontSize: '0.9375rem' }}>{item.a}</p>
+            </details>
+          ))}
+        </div>
+      </section>
+    </FeatureDetailLayout>
   );
 }

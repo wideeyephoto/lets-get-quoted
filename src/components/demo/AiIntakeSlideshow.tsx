@@ -298,12 +298,21 @@ const slides = [
   BookingSlide,
 ] as const;
 
-export default function AiIntakeSlideshow() {
+type AiIntakeSlideshowProps = {
+  autoStart?: boolean;
+};
+
+export default function AiIntakeSlideshow({ autoStart = false }: AiIntakeSlideshowProps) {
   const [slide, setSlide] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isInView, setIsInView] = useState(true);
   const [pageVisible, setPageVisible] = useState(true);
   const rootRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!autoStart || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    setIsPlaying(true);
+  }, [autoStart]);
 
   useEffect(() => {
     const updateVisibility = () => setPageVisible(document.visibilityState === 'visible');

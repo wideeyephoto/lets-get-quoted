@@ -141,6 +141,7 @@ const MARKETING_PATHS = [
   '/privacy',
   '/terms',
   '/sms-terms',
+  '/dpa',
 ];
 
 /** Each entry claims its own path and its subtree — /features has five children. */

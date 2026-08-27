@@ -154,14 +154,14 @@ export default function SmsTermsPage() {
         <section>
           <h2>Messaging providers and data sharing</h2>
           <p>
-            Text messages are delivered through Twilio Inc., our messaging provider, acting as a service provider on
-            our behalf. Delivering a message requires sharing the recipient&apos;s mobile number and the message
-            content with them.
+            Text messages are delivered through verified telecommunications and messaging providers (such as SignalWire
+            and Twilio), acting as service providers on our behalf. Delivering a message requires sharing the recipient&apos;s
+            mobile number and the message content with them.
           </p>
           <p>
             We do not sell mobile phone numbers, and we do not share mobile numbers or SMS opt-in information with
             third parties or affiliates for their own marketing or promotional purposes. Our wider handling of this
-            data is described in the <Link href="/privacy">Privacy Policy</Link>.
+            data is described in our <Link href="/privacy">Privacy Policy</Link> and <Link href="/dpa">Data Processing Addendum</Link>.
           </p>
         </section>
 
@@ -182,8 +182,10 @@ export default function SmsTermsPage() {
       </div>
 
       <nav className={styles.legalNav} aria-label="Legal pages">
-        <Link href="/privacy">Privacy Policy</Link>
         <Link href="/terms">Terms of Service</Link>
+        <Link href="/privacy">Privacy Policy</Link>
+        <Link href="/dpa">Data Processing Addendum</Link>
+        <Link href="/security">Security</Link>
         <Link href="/">Home</Link>
       </nav>
     </main>

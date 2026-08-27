@@ -56,17 +56,16 @@ export default function BathContractorMockSite() {
       <main>
         <section className={styles.hero} id="walkthrough">
           <div className={styles.heroCopy}>
-            <span className={styles.eyebrow}>50-SECOND AI INTAKE SLIDESHOW</span>
-            <h1>Make the first impression. Hand off the trust.</h1>
+            <span className={styles.eyebrow}>YOUR WEBSITE MAKES THE INTRODUCTION</span>
+            <h1>Let AI impress. You build the relationship.</h1>
             <p className={styles.heroLead}>
-              The instant estimate is not here to replace the contractor. It proves the
-              homeowner was heard, creates confidence, and hands a warmer, better-scoped
-              opportunity to the person who will build the real relationship.
+              Your site listens, scopes, and gives a guarded ballpark while interest is high—then
+              hands you a homeowner who already feels understood.
             </p>
 
             <div className={styles.heroActions}>
-              <a className={styles.primaryButton} href="#reel">Watch the AI intake <span>▶</span></a>
-              <a className={styles.textLink} href="#workflow">See the workflow <span>↓</span></a>
+              <a className={styles.primaryButton} href="#reel">Watch the 48-sec journey <span>▶</span></a>
+              <a className={styles.textLink} href="#workflow">Why the estimate works <span>↓</span></a>
             </div>
 
             <div className={styles.proofRow} aria-label="Walkthrough outcomes">
@@ -79,14 +78,14 @@ export default function BathContractorMockSite() {
           <div className={styles.reelColumn} id="reel">
             <div className={styles.reelHeader}>
               <div>
-                <span>AI INTAKE · INSTALLED TODAY</span>
-                <strong>Bath-to-shower lead</strong>
+                <span>LIVE AI INTAKE · HOMEPAGE HERO CONCEPT</span>
+                <strong>One lead—from first click to booked visit</strong>
               </div>
               <span className={styles.duration}>00:48</span>
             </div>
-            <AiIntakeSlideshow />
+            <AiIntakeSlideshow autoStart />
             <p className={styles.reelNote}>
-              Press play when you are ready. Use the arrows to linger on any feature.
+              The story advances automatically. Pause or use the arrows to explore any feature.
             </p>
           </div>
         </section>

@@ -42,13 +42,13 @@ describe('canonical paid base-plan recurring consent', () => {
   });
 
   it('moves the material platform Terms version and publishes matching billing disclosures', () => {
-    expect(TERMS_VERSION).toBe('2026-08-16');
-    expect(TERMS_EFFECTIVE_DATE).toBe('August 16, 2026');
+    expect(TERMS_VERSION).toBe('2026-08-28');
+    expect(TERMS_EFFECTIVE_DATE).toBe('August 28, 2026');
 
     const termsPath = fileURLToPath(new URL('../src/app/terms/page.tsx', import.meta.url));
     const terms = readFileSync(termsPath, 'utf8');
-    expect(terms).toContain('Paid base plans are prepaid monthly or annually and renew automatically');
-    expect(terms).toContain('you authorize us, through Stripe, to charge');
+    expect(terms).toContain('Paid base subscription plans are billed in advance');
+    expect(terms).toContain('you authorize Let&apos;s Get Quoted (via Stripe) to automatically charge');
     expect(terms).toContain('cancellation takes effect at the end of the current paid billing period');
     expect(terms).toContain('<strong>First annual base-plan guarantee.</strong>');
     expect(terms).toContain('annual prepayment minus one normal month-to-month base charge');

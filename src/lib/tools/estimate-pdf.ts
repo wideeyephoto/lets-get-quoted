@@ -4,7 +4,7 @@ import { formatCurrency, formatDisplayDate } from '@/lib/tools/estimate-generato
 
 const PAGE_MARGIN = 36;
 const PAGE_WIDTH = 612; // US Letter width in points (8.5in)
-const PAGE_HEIGHT = 792; // US Letter height in points (11in)
+const _PAGE_HEIGHT = 792; // US Letter height in points (11in)
 const CONTENT_WIDTH = PAGE_WIDTH - PAGE_MARGIN * 2;
 const FOOTER_Y = 734;
 const BOTTOM_LIMIT = 714;

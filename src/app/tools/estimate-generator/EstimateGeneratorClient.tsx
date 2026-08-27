@@ -374,7 +374,7 @@ export default function EstimateGeneratorClient() {
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
       setStatusMessage('Estimate PDF downloaded successfully.');
-    } catch (err: any) {
+    } catch (err) {
       console.error('PDF download error:', err);
       setStatusMessage('Direct PDF download failed, opening browser print dialog...');
       if (typeof window !== 'undefined') {

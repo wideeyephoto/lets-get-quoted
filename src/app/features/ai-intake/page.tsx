@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import FeatureDetailLayout from '@/components/marketing/feature-detail-layout';
 import SampleIntake from './sample-intake';
 import ExampleFrame from '@/components/marketing/example-frame';

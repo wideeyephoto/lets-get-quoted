@@ -9,8 +9,8 @@ const intakeSlideshow = readFileSync('src/components/demo/AiIntakeSlideshow.tsx'
 describe('bath-to-shower mock product site', () => {
   it('embeds the AI intake slideshow inside a contractor-focused product landing page', () => {
     expect(mockSite).toContain("LET&apos;S GET QUOTED");
-    expect(mockSite).toContain('<AiIntakeSlideshow />');
-    expect(mockSite).toContain('Make the first impression. Hand off the trust.');
+    expect(mockSite).toContain('<AiIntakeSlideshow autoStart />');
+    expect(mockSite).toContain('Let AI impress. You build the relationship.');
     expect(mockSite).toContain('Let the technology impress. Let the contractor connect.');
   });
 

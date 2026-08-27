@@ -290,6 +290,103 @@
   to { opacity: 1; transform: translateX(0) scale(1); }
 }
 
+@media (min-width: 701px) {
+  .stage { aspect-ratio: 16 / 10; }
+
+  .slide {
+    display: grid;
+    padding: 1.45rem 1.6rem;
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+    align-items: center;
+    gap: 1.25rem;
+  }
+
+  .slideHeading h2,
+  .guardrailSlide .slideHeading h2,
+  .rankingSlide .slideHeading h2 {
+    max-width: 13ch;
+    font-size: clamp(1.9rem, 3.15vw, 2.65rem);
+  }
+
+  .slideHeading p,
+  .guardrailSlide .slideHeading p,
+  .rankingSlide .slideHeading p {
+    max-width: 34ch;
+    font-size: 0.84rem;
+  }
+
+  .setupSlide .slideHeading,
+  .coachSlide .slideHeading,
+  .questionsSlide .slideHeading,
+  .intelligenceSlide .slideHeading,
+  .guardrailSlide .slideHeading { grid-column: 1; }
+
+  .setupSlide .presetPanel,
+  .coachSlide .coachPanel,
+  .questionsSlide .questionPanel,
+  .guardrailSlide .estimatePanel {
+    grid-column: 2;
+    margin-top: 0;
+  }
+
+  .voiceSlide {
+    grid-template-rows: auto auto 1fr;
+    row-gap: 0.55rem;
+  }
+  .voiceSlide .slideHeading { grid-column: 1; grid-row: 1 / 4; }
+  .voiceSlide .channelRow { grid-column: 2; grid-row: 1; margin-top: 0; }
+  .voiceSlide .insightBadge { grid-column: 2; grid-row: 2; margin-top: 0; }
+  .voiceSlide .callCard { grid-column: 2; grid-row: 3; margin-top: 0; }
+
+  .mediaSlide { grid-template-columns: minmax(0, 0.88fr) minmax(0, 1.12fr); }
+  .mediaPhoto { height: 100%; }
+  .mediaContent { padding: 1.45rem 1.7rem; }
+  .mediaContent .slideHeading h2 { font-size: clamp(1.9rem, 3.15vw, 2.65rem); }
+
+  .visionSlide { grid-template-columns: minmax(0, 0.86fr) minmax(0, 1.14fr); }
+  .visionPhoto { height: 100%; }
+  .visionContent { padding: 1.45rem 1.7rem; }
+  .visionContent .slideHeading h2 { max-width: 13ch; font-size: clamp(1.9rem, 3.15vw, 2.65rem); }
+
+  .questionsSlide { grid-template-rows: 1fr auto; }
+  .questionsSlide .slideHeading { grid-row: 1 / 3; }
+  .questionsSlide .questionPanel { grid-row: 1; }
+  .questionsSlide .escapeRow { grid-column: 2; grid-row: 2; margin-top: 0; }
+
+  .intelligenceSlide { grid-template-rows: 1fr auto; }
+  .intelligenceSlide .slideHeading { grid-row: 1 / 3; }
+  .intelligenceSlide .intelPanel { grid-column: 2; grid-row: 1; margin-top: 0; }
+  .intelligenceSlide .intelFooter { grid-column: 2; grid-row: 2; margin-top: 0; }
+
+  .rankingSlide { grid-template-rows: 1fr auto; }
+  .rankingSlide .slideHeading { grid-column: 1; grid-row: 1; }
+  .rankingSlide .premiumBadge { grid-column: 1; grid-row: 2; margin-top: 0; }
+  .rankingSlide .rankCard { grid-column: 2; grid-row: 1 / 3; margin-top: 0; }
+
+  .bookingSlide { display: block; padding: 0; }
+  .bookingPhoto { left: 43%; }
+  .bookingShade { background: linear-gradient(90deg, #071527 0%, #071527 39%, rgba(7, 21, 39, 0.9) 50%, rgba(7, 21, 39, 0.16) 100%); }
+  .bookingContent { top: 50%; right: 48%; bottom: auto; transform: translateY(-50%); }
+  .bookingContent .slideHeading h2 { font-size: clamp(1.9rem, 3.15vw, 2.65rem); }
+
+  .settingRows div,
+  .parsedGrid b,
+  .mediaChecks span,
+  .coachCheck strong,
+  .tradeTip strong,
+  .photoPrompt p,
+  .intelPanel strong,
+  .evidenceCards span { font-size: 0.7rem; }
+
+  .parsedGrid small,
+  .uploadRow small,
+  .coachCheck small,
+  .observationCard span,
+  .intelPanel span,
+  .evidenceCards small,
+  .safetyRule span { font-size: 0.6rem; }
+}
+
 @media (max-width: 420px) {
   .slide { padding: 1.5rem; }
   .slideHeading h2 { font-size: 2.2rem; }

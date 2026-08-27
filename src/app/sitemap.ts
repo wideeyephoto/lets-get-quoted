@@ -123,6 +123,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // Shipped with the signup terms gate and never added here.
     { url: `${origin}/terms`, lastModified, changeFrequency: 'yearly', priority: 0.3 },
     { url: `${origin}/sms-terms`, lastModified, changeFrequency: 'yearly', priority: 0.3 },
+    { url: `${origin}/dpa`, lastModified, changeFrequency: 'yearly', priority: 0.3 },
   ];
   /* CONTRACTOR SITES ARE NOT LISTED HERE, AND THAT IS THE FIX, NOT AN OMISSION.
      ------------------------------------------------------------------------

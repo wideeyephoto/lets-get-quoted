@@ -39,10 +39,11 @@ export async function POST(request: Request) {
         'Cache-Control': 'no-store, max-age=0',
       },
     });
-  } catch (error: any) {
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
     console.error('[API /api/tools/estimate-pdf] PDF generation failed:', error);
     return NextResponse.json(
-      { error: 'Failed to generate PDF', details: error?.message || String(error) },
+      { error: 'Failed to generate PDF', details: message },
       { status: 500 }
     );
   }
