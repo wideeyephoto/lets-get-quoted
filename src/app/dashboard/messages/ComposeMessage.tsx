@@ -24,12 +24,14 @@ export default function ComposeMessage({
   fallbackIntentId,
   intentStorageKey,
   resetToken,
+  availableCredits,
 }: {
   contacts: Contact[];
   action: (formData: FormData) => void | Promise<void>;
   fallbackIntentId: string;
   intentStorageKey: string;
   resetToken?: string | null;
+  availableCredits?: number | null;
 }) {
   const [phone, setPhone] = useState('');
 
@@ -68,16 +70,23 @@ export default function ComposeMessage({
           <textarea name="body" rows={4} placeholder="Hi — quick update on your job…" required />
         </label>
 
-        <div className="cash-bill-form-actions">
-          <SaveButton
-            className="btn primary"
-            pendingLabel="Queueing…"
-            savedLabel="Queued ✓"
-            disabled={contacts.length === 0}
-          >
-            Send text
-          </SaveButton>
-          <CloseOnSuccess />
+        <div className="cash-bill-form-actions" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
+          {typeof availableCredits === 'number' ? (
+            <span style={{ fontSize: '0.8125rem', color: availableCredits <= 25 ? 'var(--amber-10, #f59e0b)' : 'var(--text-muted, #94a3b8)', fontWeight: 500 }}>
+              💬 {availableCredits.toLocaleString('en-US')} credits available
+            </span>
+          ) : <span />}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <SaveButton
+              className="btn primary"
+              pendingLabel="Queueing…"
+              savedLabel="Queued ✓"
+              disabled={contacts.length === 0}
+            >
+              Send text
+            </SaveButton>
+            <CloseOnSuccess />
+          </div>
         </div>
       </form>
     </ModalDialog>
