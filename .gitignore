@@ -29,6 +29,9 @@ build/
 .env.*
 !.env.example
 
+# Claude Code machine-local permissions and preferences
+.claude/settings.local.json
+
 # throwaway scratch files (commit messages, one-off e2e scripts)
 _*.txt
 _*.mjs

@@ -37,9 +37,9 @@ describe('Problem 1: Product Identity and Message Hierarchy', () => {
       );
       expect(HOME).toContain('Explore a live demo');
       expect(HOME).toContain('{SIGNUP_LABEL}');
-      expect(HOME).toContain(
-        'Flex: $0/month · No card to start · 1.25% on eligible payments collected through LGQ · Stripe processing separate',
-      );
+      expect(HOME).toContain('AI photo &amp; smart intake');
+      expect(HOME).toContain('Instant quote drafts with profit guardrails');
+      expect(HOME).toContain('Connected schedule, crew &amp; payments');
     });
 
     it('removes outdated unaligned headline copy', () => {
@@ -126,15 +126,16 @@ describe('Problem 2: Reduce Homepage Attention Competition', () => {
   });
 
   it('replaces the hero screenshot carousel with the interactive AI intake story', () => {
-    expect(HERO_SHOWCASE).toContain("import AiIntakeSlideshow from '@/components/demo/AiIntakeSlideshow';");
-    expect(HERO_SHOWCASE).toContain('<AiIntakeSlideshow autoStart />');
+    expect(HERO_SHOWCASE).toContain("import HeroIntakeStory from '@/components/flagship/HeroIntakeStory';");
+    expect(HERO_SHOWCASE).toContain('<HeroIntakeStory />');
   });
 
-  it('renders a 3-point static proof strip under hero', () => {
+  it('renders a 3-point feature proof strip under hero and profit guardrail bullets', () => {
     expect(HOME).toContain('trust-strip trust-strip-3');
-    expect(HOME).toContain('FREE WEBSITE INCLUDED');
-    expect(HOME).toContain('NO CARD REQUIRED');
+    expect(HOME).toContain('ONE-CLICK AI WEBSITE');
+    expect(HOME).toContain('SMART PHOTO INTAKE');
     expect(HOME).toContain('QUOTE-TO-PAYMENT WORKFLOW');
+    expect(HOME).toContain('Instant quote drafts with profit guardrails');
   });
 
   it('leads directly from hero proof strip into the flagship feature tour without competing sandboxes', () => {
