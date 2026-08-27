@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import styles from './bath-to-shower-reel.module.css';
 
 const BEFORE_IMAGE = '/demo/bath-to-shower/before.png';
@@ -17,6 +17,7 @@ const quoteItems = [
 type BathToShowerReelProps = {
   initialScene?: number;
   autoplay?: boolean;
+  variant?: 'standalone' | 'embed';
 };
 
 function ArrowIcon() {
@@ -43,6 +44,8 @@ function SendIcon() {
     </svg>
   );
 }
+
+const sceneLabels = ['Lead arrives', 'Scope the work', 'Build the quote', 'Customer preview', 'Deposit paid'] as const;
 
 function SceneOne() {
   return (
@@ -162,9 +165,9 @@ function SceneThree() {
           <strong>$810 due today</strong>
         </div>
 
-        <button className={styles.sendButton} type="button" data-reel-action="send-quote">
+        <div className={styles.sendButton} data-reel-action="send-quote">
           Send quote to Michelle <SendIcon />
-        </button>
+        </div>
       </div>
 
       <p className={styles.microProof}>Clear scope. Clean pricing. No spreadsheet.</p>
@@ -202,7 +205,7 @@ function SceneFour() {
           <strong>$8,100</strong>
           <small>$810 to book</small>
         </div>
-        <button className={styles.approveButton} type="button">Approve &amp; reserve date</button>
+        <div className={styles.approveButton}>Approve &amp; reserve date</div>
       </div>
 
       <div className={styles.previewCaption}>
@@ -253,40 +256,144 @@ function SceneFive() {
 
 const scenes = [SceneOne, SceneTwo, SceneThree, SceneFour, SceneFive] as const;
 
-export default function BathToShowerReel({ initialScene = 0, autoplay = true }: BathToShowerReelProps) {
+export default function BathToShowerReel({
+  initialScene = 0,
+  autoplay = true,
+  variant = 'standalone',
+}: BathToShowerReelProps) {
   const [scene, setScene] = useState(initialScene);
+  const [embedScale, setEmbedScale] = useState(1);
+  const [isPlaying, setIsPlaying] = useState(autoplay);
+  const [isInView, setIsInView] = useState(true);
+  const [pageVisible, setPageVisible] = useState(true);
+  const embedRootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!autoplay || scene >= scenes.length - 1) return;
+    const media = window.matchMedia('(prefers-reduced-motion: reduce)');
+    if (media.matches && autoplay) setIsPlaying(false);
+  }, [autoplay]);
+
+  useEffect(() => {
+    const onVisibilityChange = () => setPageVisible(document.visibilityState === 'visible');
+    onVisibilityChange();
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', onVisibilityChange);
+  }, []);
+
+  useEffect(() => {
+    const root = embedRootRef.current;
+    if (variant !== 'embed' || !root || typeof IntersectionObserver === 'undefined') return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setIsInView(entry.isIntersecting && entry.intersectionRatio >= 0.35),
+      { threshold: [0, 0.35, 1] },
+    );
+    observer.observe(root);
+    return () => observer.disconnect();
+  }, [variant]);
+
+  useEffect(() => {
+    if (!isPlaying || !isInView || !pageVisible || scene >= scenes.length - 1) return;
     const timer = window.setTimeout(() => setScene((current) => current + 1), SCENE_DURATIONS[scene]);
     return () => window.clearTimeout(timer);
-  }, [autoplay, scene]);
+  }, [isInView, isPlaying, pageVisible, scene]);
+
+  useEffect(() => {
+    if (scene === scenes.length - 1) setIsPlaying(false);
+  }, [scene]);
+
+  useEffect(() => {
+    if (variant !== 'embed') return;
+    const root = embedRootRef.current;
+    if (!root) return;
+
+    const measure = () => setEmbedScale(root.clientWidth / 720);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(root);
+    return () => observer.disconnect();
+  }, [variant]);
 
   const CurrentScene = scenes[scene];
 
-  return (
-    <main className={styles.reelShell}>
+  const reel = (
       <div
-        className={styles.reelCanvas}
+        className={`${styles.reelCanvas}${variant === 'embed' ? ` ${styles.reelCanvasEmbed}` : ''}`}
         data-reel-current={scene}
         data-reel-ready="true"
         key={scene}
+        style={variant === 'embed' ? { transform: `scale(${embedScale})` } : undefined}
       >
         <CurrentScene />
 
-        <div className={styles.sceneProgress} aria-label={`Scene ${scene + 1} of ${scenes.length}`}>
+        <div
+          aria-label={`Scene ${scene + 1} of ${scenes.length}`}
+          aria-valuemax={scenes.length}
+          aria-valuemin={1}
+          aria-valuenow={scene + 1}
+          className={styles.sceneProgress}
+          role="progressbar"
+        >
           {scenes.map((_, index) => (
-            <button
-              aria-label={`Show scene ${index + 1}`}
+            <span
               className={index <= scene ? styles.progressActive : undefined}
               key={index}
-              onClick={() => setScene(index)}
-              type="button"
             />
           ))}
         </div>
 
       </div>
+  );
+
+  if (variant === 'embed') {
+    return (
+      <div className={styles.reelShellEmbed}>
+        <div
+          aria-label="Bath-to-shower quote walkthrough"
+          className={styles.reelViewportEmbed}
+          ref={embedRootRef}
+          role="region"
+        >
+          {reel}
+        </div>
+
+        <div className={styles.playerBar}>
+          <button
+            className={styles.playButton}
+            onClick={() => {
+              if (scene === scenes.length - 1) setScene(0);
+              setIsPlaying((current) => scene === scenes.length - 1 || !current);
+            }}
+            type="button"
+          >
+            {isPlaying ? 'Pause' : scene === scenes.length - 1 ? 'Play again' : 'Play'}
+          </button>
+
+          <div className={styles.playerTimeline} aria-label="Choose a scene">
+            {sceneLabels.map((label, index) => (
+              <button
+                aria-label={`Show scene ${index + 1}: ${label}`}
+                className={index <= scene ? styles.timelineActive : undefined}
+                key={label}
+                onClick={() => {
+                  setScene(index);
+                  setIsPlaying(false);
+                }}
+                type="button"
+              />
+            ))}
+          </div>
+
+          <span aria-live="polite" className={styles.playerStatus}>
+            {scene + 1} / {scenes.length} · 32 sec
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <main className={styles.reelShell}>
+      {reel}
     </main>
   );
 }

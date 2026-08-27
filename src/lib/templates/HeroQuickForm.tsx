@@ -4,7 +4,6 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { compressImage } from '@/lib/client-images';
 import { extractMediaDataUrls } from '@/lib/client-media-frames';
 import { assessImageQuality } from '@/lib/client-photo-quality';
-import { getTradePhotoTip } from '@/lib/trade-photo-tips';
 import { classifyEmail, suggestEmailFix } from '@/lib/email-quality';
 import { normalizeUsPhone } from '@/lib/phone';
 import { matchesServedCity } from '@/lib/service-area-match';
@@ -873,13 +872,10 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
               </div>
             )}
             {photoQualityWarning && (
-              <p style={{ margin: '0.35rem 0 0', padding: '0.35rem 0.55rem', borderRadius: '6px', background: 'rgba(255, 209, 102, 0.14)', border: '1px solid var(--cedge-amber-12, rgba(255, 209, 102, 0.4))', fontSize: '0.74rem', color: 'var(--text)', lineHeight: '1.35' }}>
+              <p className={styles.heroFormPhotoWarning}>
                 {photoQualityWarning}
               </p>
             )}
-            <p style={{ margin: '0.35rem 0 0', fontSize: '0.72rem', color: 'var(--mute-t70)', lineHeight: '1.35' }}>
-              {getTradePhotoTip(siteContent.trade, description)}
-            </p>
           </div>
 
           {askLocation && (
@@ -952,20 +948,17 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
           />
 
           {chatPhotoPrompt && (
-            <div style={{ marginBottom: '0.65rem', padding: '0.45rem 0.65rem', border: '1px dashed var(--cedge-orange-66, rgba(255,122,33,0.4))', borderRadius: '6px', background: 'rgba(255,122,33,0.06)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
-                <span style={{ fontSize: '0.75rem', color: 'var(--text)' }}>
-                  📸 <strong>Helpful photo:</strong> {chatPhotoPrompt}
-                </span>
-                <button
-                  type="button"
-                  style={{ fontSize: '0.72rem', padding: '0.25rem 0.55rem', borderRadius: '4px', background: 'var(--accent-ink, #ff7a21)', color: '#fff', border: 'none', cursor: 'pointer', flexShrink: 0 }}
-                  onClick={() => qaPhotoInputRef.current?.click()}
-                  disabled={selectedPhotos.length >= MAX_PHOTOS}
-                >
-                  Snap Photo
-                </button>
-              </div>
+            <div className={styles.heroFormQaPhotoPrompt}>
+              <span>
+                📸 <strong>Helpful photo:</strong> {chatPhotoPrompt}
+              </span>
+              <button
+                type="button"
+                onClick={() => qaPhotoInputRef.current?.click()}
+                disabled={selectedPhotos.length >= MAX_PHOTOS}
+              >
+                Snap Photo
+              </button>
             </div>
           )}
 
@@ -980,7 +973,7 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
           )}
 
           {photoQualityWarning && (
-            <p style={{ margin: '0 0 0.5rem', padding: '0.35rem 0.55rem', borderRadius: '6px', background: 'rgba(255, 209, 102, 0.14)', border: '1px solid var(--cedge-amber-12, rgba(255, 209, 102, 0.4))', fontSize: '0.74rem', color: 'var(--text)', lineHeight: '1.35' }}>
+            <p className={styles.heroFormPhotoWarning} style={{ margin: '0 0 0.5rem' }}>
               {photoQualityWarning}
             </p>
           )}

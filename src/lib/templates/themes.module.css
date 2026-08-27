@@ -223,7 +223,7 @@
 .contactActions { display: flex; flex-wrap: wrap; align-items: center; gap: 1.25rem; }
 
 /* Hero quick-capture form — kept compact so it renders above the fold */
-.heroQuickForm { position: relative; z-index: 2; display: grid; gap: .6rem; width: min(400px, 100%); margin-top: 1.5rem; padding: 1.1rem 1.2rem 1.25rem; border-radius: var(--theme-radius, 8px); background: rgba(255,255,255,.97); color: #17140f; box-shadow: 0 20px 45px -18px rgba(0,0,0,.5); }
+.heroQuickForm { position: relative; z-index: 2; display: grid; gap: .65rem; width: min(400px, 100%); margin-top: 1.5rem; padding: 1.2rem 1.25rem 1.35rem; border-radius: var(--theme-radius, 10px); background: rgba(255,255,255,.97); color: #17140f; box-shadow: 0 20px 45px -18px rgba(0,0,0,.5); }
 /* Live, animated gradient border on the intake card — a thin rotating ring that
    shimmers in a vibrant purple/blue gradient (indigo → royal blue → purple → electric cyan).
    The mask cuts out the centre so only the crisp 2px ring shows; @property
@@ -246,14 +246,14 @@
    Forge, 64px in Guild, 70px in Vista, wrapping "Instant Quote" onto two lines
    inside a 400px form. A class means no section descendant selector can reach
    it again. */
-.heroQuickForm .heroFormTitle { margin: 0; font-family: var(--theme-display); font-size: 1.05rem; font-weight: 800; line-height: 1.15; color: #17140f; text-transform: none; max-width: none; letter-spacing: normal; }
-.heroFormNote { margin: 0 0 .1rem; font-size: .74rem; color: #4b5563; }
+.heroQuickForm .heroFormTitle { margin: 0; font-family: var(--theme-display); font-size: 1.1rem; font-weight: 800; line-height: 1.15; color: inherit; text-transform: none; max-width: none; letter-spacing: normal; }
+.heroFormNote { margin: 0 0 .15rem; font-size: .76rem; line-height: 1.45; color: color-mix(in srgb, currentColor 72%, transparent); }
 .heroQuickFormRow { display: grid; grid-template-columns: 1fr 1fr; gap: .55rem; }
 .heroFormChoice { display: grid; gap: .3rem; }
-.heroFormChoiceLabel { font-size: .74rem; font-weight: 700; color: #374151; }
+.heroFormChoiceLabel { font-size: .74rem; font-weight: 700; color: inherit; opacity: .9; }
 .heroFormChipRow { display: flex; gap: .4rem; }
 .heroQuickForm .heroFormChip:hover:not([data-selected='true']) { border-color: color-mix(in srgb, var(--theme-accent) 55%, #a8a29e); background: color-mix(in srgb, var(--theme-accent) 8%, #fff); }
-.heroQuickForm input { width: 100%; min-height: 44px; padding: .6rem .7rem; border: 1.5px solid #a8a29e; border-radius: calc(var(--theme-radius, 8px) * .6); font-size: .84rem; color: #111827; background: #fff; font-family: inherit; }
+.heroQuickForm input { width: 100%; min-height: 44px; padding: .65rem .75rem; border: 1.5px solid color-mix(in srgb, currentColor 25%, #a8a29e); border-radius: calc(var(--theme-radius, 8px) * .6); font-size: .86rem; color: #111827; background: #fff; font-family: inherit; transition: border-color .18s ease, box-shadow .18s ease; }
 .heroQuickForm input::placeholder,
 .heroQuickForm textarea::placeholder {
   color: #64748b;
@@ -266,22 +266,22 @@
    is visible progress on a step that gives nothing back until you submit.
    The <label> wraps the input, so clicking anywhere on the field focuses it. */
 .heroField { display: grid; gap: .22rem; min-width: 0; }
-.heroFieldLabel { font-size: .68rem; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: #374151; transition: color .15s ease; }
+.heroFieldLabel { font-size: .68rem; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: inherit; opacity: .88; transition: color .15s ease, opacity .15s ease; }
 .heroFieldBox { position: relative; display: block; }
 /* The input owns the border; the icon and tick sit inside its padding. */
 .heroQuickForm .heroFieldBox input { padding-left: 2.1rem; padding-right: 1.9rem; }
-.heroFieldIcon { position: absolute; left: .62rem; top: 50%; transform: translateY(-50%); width: 1.05rem; height: 1.05rem; color: #4b5563; pointer-events: none; transition: color .15s ease; }
+.heroFieldIcon { position: absolute; left: .62rem; top: 50%; transform: translateY(-50%); width: 1.05rem; height: 1.05rem; color: #64748b; pointer-events: none; transition: color .15s ease; }
 /* Hidden until the field has something in it — that reveal IS the feedback. */
 .heroFieldTick { position: absolute; right: .6rem; top: 50%; transform: translateY(-50%) scale(.7); font-size: .8rem; font-weight: 900; color: var(--theme-accent); opacity: 0; transition: opacity .16s ease, transform .16s ease; pointer-events: none; }
 .heroField[data-filled] .heroFieldTick { opacity: 1; transform: translateY(-50%) scale(1); }
 .heroField[data-filled] .heroFieldIcon { color: var(--theme-accent); }
-.heroField[data-filled] .heroFieldLabel { color: #111827; }
+.heroField[data-filled] .heroFieldLabel { color: inherit; opacity: 1; }
 .heroQuickForm .heroFieldBox input:focus,
 .heroQuickForm input:focus,
 .heroQuickForm textarea:focus,
-.heroQuickForm select:focus { outline: none; border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.28); }
-.heroField:focus-within .heroFieldIcon { color: #6366f1; }
-.heroField:focus-within .heroFieldLabel { color: #111827; }
+.heroQuickForm select:focus { outline: none; border-color: var(--theme-accent, #6366f1); box-shadow: 0 0 0 3px color-mix(in srgb, var(--theme-accent, #6366f1) 28%, transparent); }
+.heroField:focus-within .heroFieldIcon { color: var(--theme-accent, #6366f1); }
+.heroField:focus-within .heroFieldLabel { color: inherit; opacity: 1; }
 @media (prefers-reduced-motion: reduce) {
   .heroFieldTick, .heroFieldIcon, .heroFieldLabel { transition: none; }
 }
@@ -299,7 +299,7 @@
    the site picked (solid / outline / ghost / glow / double / gloss), and a
    background or box-shadow here would fight all six. drop-shadow composes with
    every one of them. */
-.heroQuickForm button[type='submit'] { transition: transform .18s ease, filter .18s ease; }
+.heroQuickForm button[type='submit'] { transition: transform .18s ease, filter .18s ease, box-shadow .18s ease; }
 .heroQuickForm button[type='submit'][data-ready] {
   transform: translateY(-1px);
   filter: drop-shadow(0 7px 18px color-mix(in srgb, var(--theme-accent) 42%, transparent));
@@ -331,20 +331,20 @@
 .heroFormEmailFix strong { font-weight: 800; }
 .heroFormEmailFix:hover { border-color: #d9bf6d; background: #fbf0d2; }
 /* Trust microcopy + earned response-time badge on the intake. */
-.heroFormPrivacy { color: #6b7280; font-size: .72rem; line-height: 1.4; }
-.heroFormConsent { color: #7b8494; font-size: .68rem; line-height: 1.4; }
+.heroFormPrivacy { color: color-mix(in srgb, currentColor 65%, transparent); font-size: .72rem; line-height: 1.4; }
+.heroFormConsent { color: color-mix(in srgb, currentColor 60%, transparent); font-size: .68rem; line-height: 1.4; }
 .heroFormConsent a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
-.heroFormReplyChip { display: inline-flex; align-items: center; gap: .3rem; justify-self: start; align-self: start; padding: .22rem .6rem; border-radius: 999px; background: #eef7ee; border: 1px solid #bfe3c0; color: #1e6b2d; font-size: .72rem; font-weight: 700; }
-.heroFormQaMeta { margin: -.2rem 0 0; color: #55606f; font-size: .72rem; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
-.heroFormQaMeta span { font-weight: 600; letter-spacing: .02em; text-transform: none; color: #6b7686; }
+.heroFormReplyChip { display: inline-flex; align-items: center; gap: .3rem; justify-self: start; align-self: start; padding: .22rem .6rem; border-radius: 999px; background: color-mix(in srgb, #10b981 14%, transparent); border: 1px solid color-mix(in srgb, #10b981 35%, transparent); color: #10b981; font-size: .72rem; font-weight: 700; }
+.heroFormQaMeta { margin: -.2rem 0 0; color: color-mix(in srgb, currentColor 70%, transparent); font-size: .72rem; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
+.heroFormQaMeta span { font-weight: 600; letter-spacing: .02em; text-transform: none; color: color-mix(in srgb, currentColor 55%, transparent); }
 
 /* Phone-verification row: the code button is a quiet secondary, never the
    accent (the accent belongs to the main submit). */
 .heroFormVerifyRow { display: flex; gap: .5rem; align-items: stretch; }
 .heroFormVerifyRow input { flex: 1; min-width: 0; }
 .heroQuickForm .heroFormVerifyBtn { margin-top: 0; min-height: 44px; padding: .55rem .8rem; background: #eef0f4; color: #17140f; border: 1.5px solid #a8a29e; font-weight: 700; font-size: .78rem; white-space: nowrap; flex: none; }
-.heroQuickForm textarea { width: 100%; padding: .6rem .7rem; border: 1.5px solid #a8a29e; border-radius: calc(var(--theme-radius, 8px) * .6); font-size: .84rem; color: #111827; background: #fff; font-family: inherit; resize: vertical; min-height: 3.6rem; }
-.heroQuickForm button { margin-top: .1rem; min-height: 48px; padding: .75rem; border: 0; border-radius: calc(var(--theme-radius, 8px) * .6); background: var(--theme-accent); color: var(--theme-on-accent, #111); font-weight: 800; font-size: .82rem; cursor: pointer; }
+.heroQuickForm textarea { width: 100%; padding: .65rem .75rem; border: 1.5px solid color-mix(in srgb, currentColor 25%, #a8a29e); border-radius: calc(var(--theme-radius, 8px) * .6); font-size: .86rem; color: #111827; background: #fff; font-family: inherit; resize: vertical; min-height: 3.8rem; transition: border-color .18s ease, box-shadow .18s ease; }
+.heroQuickForm button { margin-top: .1rem; min-height: 48px; padding: .75rem; border: 0; border-radius: calc(var(--theme-radius, 8px) * .6); background: var(--theme-accent); color: var(--theme-on-accent, #111); font-weight: 800; font-size: .84rem; cursor: pointer; transition: transform .2s ease, filter .2s ease, box-shadow .2s ease; }
 .heroQuickForm button:disabled { opacity: .6; cursor: progress; }
 .heroFormStatus { margin: 0; font-size: .78rem; }
 .heroFormStatus[data-tone='error'] { color: #b3341f; }
@@ -356,7 +356,7 @@
    selection read backwards. Unselected = quiet outline, selected = solid accent. */
 .heroQuickForm .heroFormChip { flex: 1; margin-top: 0; min-height: 44px; padding: .5rem .4rem; border: 1.5px solid #a8a29e; border-radius: calc(var(--theme-radius, 8px) * .6); background: #fff; color: #111827; font-size: .78rem; font-weight: 700; cursor: pointer; }
 .heroQuickForm .heroFormChip[data-selected='true'] { border-color: color-mix(in srgb, var(--theme-accent) 65%, #000); background: var(--theme-accent); color: var(--theme-on-accent, #111); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--theme-accent) 45%, #fff); }
-.heroFormResult { margin: 0; font-family: var(--theme-display); font-size: 1.7rem; font-weight: 800; color: #17140f; }
+.heroFormResult { margin: 0; font-family: var(--theme-display); font-size: 1.7rem; font-weight: 800; color: inherit; }
 .heroFormCall { display: inline-flex; align-items: center; justify-content: center; gap: .4rem; min-height: 48px; margin-top: .2rem; padding: .7rem 1rem; border-radius: calc(var(--theme-radius, 8px) * .6); background: var(--theme-accent); color: var(--theme-on-accent, #111); font-weight: 800; font-size: .88rem; transition: transform .2s ease, filter .2s ease; }
 .heroFormCall:hover { transform: translateY(-1px); filter: brightness(1.05); }
 /* Estimate-wizard polish. Steps are wrapped in .heroFormStep (preserving the
@@ -364,13 +364,13 @@
    stall invisible in the throttled preview iframe. */
 .heroFormStep { display: grid; gap: .6rem; animation: heroStepIn .32s cubic-bezier(.22, .61, .36, 1) both; }
 @keyframes heroStepIn { from { transform: translateY(8px); } to { transform: none; } }
-.heroFormProgress { display: flex; gap: .3rem; }
-.heroFormProgress span { flex: 1; height: 4px; border-radius: 999px; background: #e7e3d8; transition: background .35s ease; }
+.heroFormProgress { display: flex; gap: .35rem; margin-bottom: .15rem; }
+.heroFormProgress span { flex: 1; height: 4px; border-radius: 999px; background: color-mix(in srgb, currentColor 18%, transparent); transition: background .35s ease; }
 .heroFormProgress span[data-active='true'] { background: var(--theme-accent); }
 /* The AI's follow-up question, presented as a chat-style callout. */
-.heroFormQuestion { margin: 0; padding: .55rem .75rem; border-left: 3px solid var(--theme-accent); border-radius: 0 calc(var(--theme-radius, 8px) * .5) calc(var(--theme-radius, 8px) * .5) 0; background: color-mix(in srgb, var(--theme-accent) 10%, #fff); font-size: .84rem; font-weight: 600; line-height: 1.45; color: #17140f; }
-.heroQuickForm .heroFormRestart { justify-self: start; min-height: 0; margin: 0; padding: 0; border: none; background: transparent; color: #6b675e; font-size: .72rem; font-weight: 700; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
-.heroQuickForm .heroFormRestart:hover { color: #17140f; }
+.heroFormQuestion { margin: 0; padding: .65rem .85rem; border-left: 3px solid var(--theme-accent); border-radius: 0 calc(var(--theme-radius, 8px) * .5) calc(var(--theme-radius, 8px) * .5) 0; background: color-mix(in srgb, var(--theme-accent) 10%, transparent); font-size: .86rem; font-weight: 600; line-height: 1.45; color: inherit; }
+.heroQuickForm .heroFormRestart { justify-self: start; min-height: 0; margin: 0; padding: 0; border: none; background: transparent; color: color-mix(in srgb, currentColor 65%, transparent); font-size: .72rem; font-weight: 700; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+.heroQuickForm .heroFormRestart:hover { color: inherit; }
 .heroQuickForm button[type='submit'] { transition: transform .2s ease, filter .2s ease; }
 .heroQuickForm button[type='submit']:hover:not(:disabled) { transform: translateY(-1px); filter: brightness(1.05); }
 .heroFormThinking { display: inline-flex; align-items: center; gap: .1rem; }
@@ -380,7 +380,7 @@
 .heroFormDots i:nth-child(3) { animation-delay: .3s; }
 @keyframes heroDotBounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
 /* Result reveal — springy scale-in accent panel with a "sent" confirmation. */
-.heroFormResultPanel { display: grid; gap: .3rem; padding: .85rem 1rem; border-radius: calc(var(--theme-radius, 8px) * .6); border: 1px solid color-mix(in srgb, var(--theme-accent) 40%, transparent); background: color-mix(in srgb, var(--theme-accent) 12%, #fff); animation: heroResultIn .45s cubic-bezier(.34, 1.56, .64, 1) both; }
+.heroFormResultPanel { display: grid; gap: .3rem; padding: .85rem 1rem; border-radius: calc(var(--theme-radius, 8px) * .6); border: 1px solid color-mix(in srgb, var(--theme-accent) 40%, transparent); background: color-mix(in srgb, var(--theme-accent) 12%, transparent); animation: heroResultIn .45s cubic-bezier(.34, 1.56, .64, 1) both; }
 @keyframes heroResultIn { from { transform: scale(.94); } to { transform: none; } }
 .heroFormResultBadge { justify-self: start; font-size: .68rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: #1f7a3f; }
 /* Result-screen credibility stack: basis line, star rating, what-happens-next. */
@@ -424,17 +424,61 @@
 .proofChip { display: inline-flex; align-items: center; gap: .35rem; padding: .32rem .7rem; border: 1px solid color-mix(in srgb, currentColor 22%, transparent); border-radius: 999px; font-size: .8rem; font-weight: 600; }
 .proofChip > span { color: var(--theme-accent); font-weight: 900; font-size: .85em; }
 .guild[data-mode='dark'] .proofStars, .guild[data-mode='dark'] .proofChip > span { color: color-mix(in srgb, var(--theme-accent) 60%, #ffffff); }
-.heroFormPhotoRow { display: flex; flex-direction: column; gap: .35rem; }
+.heroFormPhotoRow { display: flex; flex-direction: column; gap: .4rem; }
 .heroFormPhotoInput { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 /* Actively nudge visitors to attach photos — better photos = faster, more
    accurate quotes and higher-quality leads. */
-.heroFormPhotoPrompt { display: flex; align-items: center; gap: .35rem; color: #4b463d; font-size: .76rem; font-weight: 600; line-height: 1.35; }
-.heroFormPhotoRow .heroFormPhotoButton { margin-top: 0; padding: .55rem .7rem; border: 1.5px dashed color-mix(in srgb, var(--theme-accent) 55%, #d8d3c6); border-radius: calc(var(--theme-radius, 8px) * .6); background: color-mix(in srgb, var(--theme-accent) 7%, #fff); color: #4b463d; font-weight: 700; font-size: .78rem; text-align: left; }
-.heroFormPhotoRow .heroFormPhotoButton:disabled { opacity: .6; cursor: default; }
+.heroFormPhotoPrompt { display: flex; align-items: center; gap: .35rem; color: inherit; opacity: .85; font-size: .76rem; font-weight: 600; line-height: 1.35; }
+.heroFormPhotoRow .heroFormPhotoButton {
+  margin-top: 0;
+  padding: .62rem .8rem;
+  border: 1.5px dashed color-mix(in srgb, var(--theme-accent) 55%, transparent);
+  border-radius: calc(var(--theme-radius, 8px) * .6);
+  background: color-mix(in srgb, var(--theme-accent) 9%, transparent);
+  color: inherit;
+  font-weight: 700;
+  font-size: .8rem;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .45rem;
+  cursor: pointer;
+  transition: background .2s ease, border-color .2s ease, transform .18s ease;
+}
+.heroFormPhotoRow .heroFormPhotoButton:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--theme-accent) 18%, transparent);
+  border-color: var(--theme-accent);
+  transform: translateY(-1px);
+}
+.heroFormPhotoRow .heroFormPhotoButton:disabled { opacity: .5; cursor: default; }
 .heroFormPhotoList { display: flex; flex-wrap: wrap; gap: .35rem; }
-.heroFormPhotoChip { display: inline-flex; align-items: center; gap: .3rem; padding: .3rem .5rem; border-radius: 999px; background: #f2efe6; color: #17140f; font-size: .72rem; font-weight: 600; }
-.heroFormPhotoList .heroFormPhotoChip button { margin: 0; padding: 0; width: 1rem; height: 1rem; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; background: transparent; color: #6b675e; font-size: .8rem; line-height: 1; }
-.heroFormPhotoList .heroFormPhotoChip button:hover { background: rgba(0,0,0,.08); }
+.heroFormPhotoChip { display: inline-flex; align-items: center; gap: .3rem; padding: .3rem .55rem; border-radius: 999px; background: color-mix(in srgb, currentColor 8%, transparent); color: inherit; font-size: .72rem; font-weight: 600; border: 1px solid color-mix(in srgb, currentColor 14%, transparent); }
+.heroFormPhotoList .heroFormPhotoChip button { margin: 0; padding: 0; width: 1.1rem; height: 1.1rem; min-height: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; background: transparent; color: inherit; opacity: .7; font-size: .85rem; line-height: 1; border: 0; cursor: pointer; }
+.heroFormPhotoList .heroFormPhotoChip button:hover { opacity: 1; background: color-mix(in srgb, currentColor 15%, transparent); }
+.heroFormPhotoWarning {
+  margin: 0.35rem 0 0;
+  padding: 0.4rem 0.65rem;
+  border-radius: 6px;
+  background: color-mix(in srgb, #f59e0b 14%, transparent);
+  border: 1px solid color-mix(in srgb, #f59e0b 40%, transparent);
+  font-size: 0.74rem;
+  color: inherit;
+  line-height: 1.35;
+}
+.heroFormQaPhotoPrompt {
+  margin-bottom: 0.65rem;
+  padding: 0.5rem 0.75rem;
+  border: 1.5px dashed color-mix(in srgb, var(--theme-accent) 55%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--theme-accent) 10%, transparent);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.heroFormQaPhotoPrompt span { font-size: 0.76rem; color: inherit; }
+.heroFormQaPhotoPrompt button { font-size: 0.72rem; padding: 0.3rem 0.65rem; min-height: 0; margin: 0; border-radius: 6px; background: var(--theme-accent); color: var(--theme-on-accent, #111); border: none; cursor: pointer; flex-shrink: 0; }
 .sectionHeading { display: flex; align-items: flex-end; justify-content: space-between; gap: 2rem; }
 .sectionHeading > p { max-width: 34rem; }
 .extraSections { background: color-mix(in srgb, currentColor 4%, transparent); }
@@ -1140,6 +1184,21 @@
 }
 .forge .heroQuickForm .heroFieldLabel { color: rgba(255, 255, 255, 0.9); font-family: var(--font-mono); font-weight: 800; }
 .forge .heroQuickForm .heroFieldIcon { color: rgba(255, 255, 255, 0.75); }
+.forge .heroQuickForm .heroFormPhotoRow .heroFormPhotoButton {
+  background: rgba(255, 255, 255, 0.07);
+  border: 1.5px dashed color-mix(in srgb, var(--theme-accent) 60%, rgba(255, 255, 255, 0.4));
+  color: #f8fafc;
+}
+.forge .heroQuickForm .heroFormPhotoRow .heroFormPhotoButton:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--theme-accent) 20%, rgba(255, 255, 255, 0.1));
+  border-color: var(--theme-accent);
+}
+.forge .heroQuickForm .heroFormPhotoChip {
+  background: rgba(255, 255, 255, 0.12);
+  color: #f8fafc;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+.forge .heroQuickForm .heroFormPhotoChip button { color: rgba(255, 255, 255, 0.75); }
 
 /* Guild */
 /* Guild on the --c-* scheme tokens. Cream body (--c-bg), warm hairlines
@@ -1370,6 +1429,21 @@
 }
 .vista .heroQuickForm .heroFieldLabel { color: rgba(255, 255, 255, 0.9); font-weight: 800; }
 .vista .heroQuickForm .heroFieldIcon { color: rgba(255, 255, 255, 0.75); }
+.vista .heroQuickForm .heroFormPhotoRow .heroFormPhotoButton {
+  background: rgba(255, 255, 255, 0.07);
+  border: 1.5px dashed color-mix(in srgb, var(--theme-accent) 60%, rgba(255, 255, 255, 0.4));
+  color: #f8fafc;
+}
+.vista .heroQuickForm .heroFormPhotoRow .heroFormPhotoButton:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--theme-accent) 20%, rgba(255, 255, 255, 0.1));
+  border-color: var(--theme-accent);
+}
+.vista .heroQuickForm .heroFormPhotoChip {
+  background: rgba(255, 255, 255, 0.12);
+  color: #f8fafc;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+.vista .heroQuickForm .heroFormPhotoChip button { color: rgba(255, 255, 255, 0.75); }
 
 @media (max-width: 820px) {
   .navLinks { display: none; }
@@ -2005,6 +2079,21 @@
 }
 .reno .heroQuickForm .heroFieldLabel { color: rgba(255, 255, 255, 0.9); font-weight: 800; }
 .reno .heroQuickForm .heroFieldIcon { color: rgba(255, 255, 255, 0.75); }
+.reno .heroQuickForm .heroFormPhotoRow .heroFormPhotoButton {
+  background: rgba(255, 255, 255, 0.07);
+  border: 1.5px dashed color-mix(in srgb, var(--theme-accent) 60%, rgba(255, 255, 255, 0.4));
+  color: #f8fafc;
+}
+.reno .heroQuickForm .heroFormPhotoRow .heroFormPhotoButton:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--theme-accent) 20%, rgba(255, 255, 255, 0.1));
+  border-color: var(--theme-accent);
+}
+.reno .heroQuickForm .heroFormPhotoChip {
+  background: rgba(255, 255, 255, 0.12);
+  color: #f8fafc;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+.reno .heroQuickForm .heroFormPhotoChip button { color: rgba(255, 255, 255, 0.75); }
 .renoHeroCopy > * { animation: renoRise .7s cubic-bezier(.22, .61, .36, 1) both; }
 .renoHeroCopy > *:nth-child(1) { animation-delay: .05s; }
 .renoHeroCopy > *:nth-child(2) { animation-delay: .13s; }
@@ -2107,6 +2196,21 @@
 }
 .shineHeroCopy .heroQuickForm .heroFieldLabel { color: rgba(255, 255, 255, 0.9); font-weight: 800; }
 .shineHeroCopy .heroQuickForm .heroFieldIcon { color: rgba(255, 255, 255, 0.75); }
+.shineHeroCopy .heroQuickForm .heroFormPhotoRow .heroFormPhotoButton {
+  background: rgba(255, 255, 255, 0.07);
+  border: 1.5px dashed color-mix(in srgb, var(--theme-accent) 60%, rgba(255, 255, 255, 0.4));
+  color: #f8fafc;
+}
+.shineHeroCopy .heroQuickForm .heroFormPhotoRow .heroFormPhotoButton:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--theme-accent) 20%, rgba(255, 255, 255, 0.1));
+  border-color: var(--theme-accent);
+}
+.shineHeroCopy .heroQuickForm .heroFormPhotoChip {
+  background: rgba(255, 255, 255, 0.12);
+  color: #f8fafc;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+.shineHeroCopy .heroQuickForm .heroFormPhotoChip button { color: rgba(255, 255, 255, 0.75); }
 .shineBtn { display: inline-flex; align-items: center; gap: .45rem; min-height: 50px; padding: .8rem 1.6rem; border-radius: 999px; background: var(--theme-accent); color: var(--theme-on-accent, #0f1b2d); font-weight: 700; font-size: .96rem; box-shadow: 0 16px 30px -14px color-mix(in srgb, var(--theme-accent) 55%, transparent); transition: transform .2s ease, filter .2s ease; }
 .shineBtn:hover { transform: translateY(-2px); filter: brightness(1.04); }
 .shineBtnGhost { display: inline-flex; align-items: center; gap: .45rem; min-height: 50px; padding: .8rem 1.4rem; border-radius: 999px; border: 1.5px solid color-mix(in srgb, var(--c-on-deep) 50%, transparent); color: var(--c-on-deep); font-weight: 700; font-size: .96rem; transition: background .2s ease, border-color .2s ease; }

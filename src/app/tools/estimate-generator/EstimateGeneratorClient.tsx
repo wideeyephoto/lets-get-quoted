@@ -11,6 +11,7 @@ import {
   clampQuantity,
   clampUnitPrice,
   formatCurrency,
+  formatDisplayDate,
   getTodaysDateString,
   generateEstimateNumber,
   getInitialBlankEstimate,
@@ -494,7 +495,8 @@ export default function EstimateGeneratorClient() {
 
         {/* Top Row: Business Info + Estimate Metadata */}
         <div className={styles.estimateTopRow}>
-          <div style={{ flex: 1 }}>
+          {/* Screen Editing Contractor Inputs */}
+          <div className={`${styles.contractorEditorCol} ${styles.screenOnly}`} style={{ flex: 1 }}>
             <h2 className={styles.estimateDocTitle}>
               {estimate.mode === 'multi_tier' ? 'MULTI-TIER PROPOSAL' : 'ESTIMATE'}
             </h2>
@@ -537,7 +539,22 @@ export default function EstimateGeneratorClient() {
             </div>
           </div>
 
-          <div className={styles.estimateMetaBox}>
+          {/* Dedicated Print Business Branding Header */}
+          <div className={`${styles.printHeaderCompany} ${styles.printOnly}`}>
+            <h1 className={styles.printCompanyName}>
+              {estimate.contractorName?.trim() || 'Apex Trade Solutions'}
+            </h1>
+            <div className={styles.printCompanyContact}>
+              {[
+                estimate.contractorPhone?.trim() || null,
+                estimate.contractorEmail?.trim() || null,
+                estimate.contractorLicense?.trim() ? `License # ${estimate.contractorLicense.replace(/^lic\s*#?\s*/i, '')}` : null,
+              ].filter(Boolean).join(' • ') || 'Licensed & Insured Trade Contractor'}
+            </div>
+          </div>
+
+          {/* Screen Estimate Metadata Controls */}
+          <div className={`${styles.estimateMetaBox} ${styles.screenOnly}`}>
             <div className={styles.estimateMetaGrid}>
               <div className={styles.estimateMetaItem}>
                 <label className={styles.estimateMetaLabel}>
@@ -567,10 +584,31 @@ export default function EstimateGeneratorClient() {
               </div>
             </div>
           </div>
+
+          {/* Dedicated Print Estimate Metadata Card */}
+          <div className={`${styles.printMetaCard} ${styles.printOnly}`}>
+            <div className={styles.printDocBadge}>
+              {estimate.mode === 'multi_tier' ? 'PROPOSAL' : 'ESTIMATE'}
+            </div>
+            <div className={styles.printMetaGrid}>
+              <div className={styles.printMetaRow}>
+                <span className={styles.printMetaKey}>ESTIMATE #:</span>
+                <strong className={styles.printMetaVal}>{estimate.estimateNumber || 'EST-2026-001'}</strong>
+              </div>
+              <div className={styles.printMetaRow}>
+                <span className={styles.printMetaKey}>DATE:</span>
+                <strong className={styles.printMetaVal}>{formatDisplayDate(estimate.estimateDate)}</strong>
+              </div>
+              <div className={styles.printMetaRow}>
+                <span className={styles.printMetaKey}>VALIDITY:</span>
+                <span className={styles.printMetaVal}>30 Days</span>
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* Bill To Section */}
-        <div className={styles.estimateBillTo}>
+        {/* Bill To Section (Screen) */}
+        <div className={`${styles.estimateBillTo} ${styles.screenOnly}`}>
           <span style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', color: '#687e8d' }}>
             Prepared For:
           </span>
@@ -592,6 +630,26 @@ export default function EstimateGeneratorClient() {
               className={styles.estimateFieldText}
               aria-label="Job Property Address"
             />
+          </div>
+        </div>
+
+        {/* Dedicated Print Client & Job Site Information Block */}
+        <div className={`${styles.printClientSection} ${styles.printOnly}`}>
+          <div className={styles.printClientCol}>
+            <span className={styles.printSectionLabel}>PREPARED FOR:</span>
+            <div className={styles.printClientName}>{estimate.clientName?.trim() || 'Valued Client / Homeowner'}</div>
+            {estimate.clientAddress?.trim() && (
+              <div className={styles.printClientAddr}>{estimate.clientAddress.trim()}</div>
+            )}
+          </div>
+          <div className={styles.printClientCol} style={{ textAlign: 'right' }}>
+            <span className={styles.printSectionLabel}>TRADE / SCOPE SPECIFICATION:</span>
+            <div className={styles.printProjectTrade}>
+              {estimate.selectedTrade ? `${estimate.selectedTrade.toUpperCase().replace('_', ' ')} SERVICE` : 'GENERAL CONTRACTING'}
+            </div>
+            <div className={styles.printProjectNotes}>
+              {estimate.roofPitch && estimate.selectedTrade === 'roofing' ? `Pitch Spec: ${estimate.roofPitch}` : 'Standard Workmanship & Building Codes'}
+            </div>
           </div>
         </div>
 
@@ -747,7 +805,7 @@ export default function EstimateGeneratorClient() {
           </div>
         )}
 
-        {/* Line Items Table (Desktop) */}
+        {/* Line Items Table (Desktop & Print) */}
         <table className={styles.estimateTable}>
           <thead>
             <tr>
@@ -756,7 +814,7 @@ export default function EstimateGeneratorClient() {
               <th style={{ width: '10%', textAlign: 'center' }}>Qty</th>
               <th style={{ width: '15%', textAlign: 'right' }}>Unit Price ($)</th>
               <th style={{ width: '10%', textAlign: 'right' }}>Total</th>
-              <th style={{ width: '5%', textAlign: 'center' }} aria-label="Actions"></th>
+              <th style={{ width: '5%', textAlign: 'center' }} className={styles.screenOnly} aria-label="Actions"></th>
             </tr>
           </thead>
           <tbody>
@@ -769,7 +827,8 @@ export default function EstimateGeneratorClient() {
               return (
                 <tr key={item.id} style={{ background: isDisc ? '#fef2f2' : undefined }}>
                   <td>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    {/* Screen Input */}
+                    <div className={styles.screenOnly} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <input
                         type="text"
                         value={item.description}
@@ -790,12 +849,17 @@ export default function EstimateGeneratorClient() {
                         </span>
                       </label>
                     </div>
+                    {/* Print Clean Display */}
+                    <div className={styles.printOnly}>
+                      <span className={styles.printItemTitle}>{item.description?.trim() || 'Specified Scope Item'}</span>
+                      {item.isOptional && <span className={styles.printOptionalTag}>[OPTIONAL]</span>}
+                    </div>
                   </td>
                   <td>
                     <select
                       value={item.type}
                       onChange={(e) => updateItem(item.id, 'type', e.target.value)}
-                      className={styles.itemSelect}
+                      className={`${styles.itemSelect} ${styles.screenOnly}`}
                       aria-label="Item category"
                     >
                       <option value="Labor">Labor</option>
@@ -804,6 +868,9 @@ export default function EstimateGeneratorClient() {
                       <option value="Permit">Permit</option>
                       <option value="Discount">Discount</option>
                     </select>
+                    <span className={`${styles.printCategoryPill} ${styles.printOnly}`}>
+                      {item.type || 'Labor'}
+                    </span>
                   </td>
                   <td style={{ textAlign: 'center' }}>
                     <input
@@ -812,10 +879,11 @@ export default function EstimateGeneratorClient() {
                       step="any"
                       value={item.quantity}
                       onChange={(e) => updateItem(item.id, 'quantity', e.target.value)}
-                      className={styles.itemNumInput}
+                      className={`${styles.itemNumInput} ${styles.screenOnly}`}
                       style={{ textAlign: 'center' }}
                       aria-label="Quantity"
                     />
+                    <span className={styles.printOnly}>{qty}</span>
                   </td>
                   <td style={{ textAlign: 'right' }}>
                     <input
@@ -824,15 +892,16 @@ export default function EstimateGeneratorClient() {
                       step="any"
                       value={item.unitPrice}
                       onChange={(e) => updateItem(item.id, 'unitPrice', e.target.value)}
-                      className={styles.itemNumInput}
+                      className={`${styles.itemNumInput} ${styles.screenOnly}`}
                       style={{ textAlign: 'right' }}
                       aria-label="Unit price"
                     />
+                    <span className={styles.printOnly}>{formatCurrency(price)}</span>
                   </td>
                   <td style={{ textAlign: 'right', fontWeight: 800, color: isDisc ? '#dc2626' : '#0f172a' }}>
                     {isDisc ? `-${formatCurrency(itemTotal)}` : formatCurrency(itemTotal)}
                   </td>
-                  <td style={{ textAlign: 'center' }}>
+                  <td style={{ textAlign: 'center' }} className={styles.screenOnly}>
                     {activeItems.length > 1 && (
                       <button
                         type="button"
@@ -850,8 +919,8 @@ export default function EstimateGeneratorClient() {
           </tbody>
         </table>
 
-        {/* Mobile Stacked Card View (< 768px) */}
-        <div className={styles.mobileItemList}>
+        {/* Mobile Stacked Card View (< 768px, Screen Only) */}
+        <div className={`${styles.mobileItemList} ${styles.screenOnly}`}>
           {activeItems.map((item) => {
             const qty = clampQuantity(item.quantity, 1);
             const price = clampUnitPrice(item.unitPrice, 0);
@@ -951,8 +1020,8 @@ export default function EstimateGeneratorClient() {
           })}
         </div>
 
-        {/* Action Button Row */}
-        <div className={styles.actionBtnRow}>
+        {/* Action Button Row (Screen Only) */}
+        <div className={`${styles.actionBtnRow} ${styles.screenOnly}`}>
           <button type="button" onClick={addItem} className={styles.addLineBtn}>
             + Add Line Item
           </button>
@@ -969,19 +1038,30 @@ export default function EstimateGeneratorClient() {
         {/* Terms, Tax, Deposit & Totals Grid */}
         <div className={styles.termsAndTotalsGrid}>
           <div>
-            <label style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: 6, letterSpacing: '0.5px' }}>
-              Terms, Conditions &amp; Warranty Notes
-            </label>
-            <textarea
-              rows={3}
-              value={estimate.terms}
-              onChange={(e) => handleFieldChange('terms', e.target.value)}
-              className={styles.termsTextarea}
-              placeholder="e.g. Estimate valid for 30 days. Deposit required prior to scheduling."
-              aria-label="Terms and conditions notes"
-            />
+            <div className={styles.screenOnly}>
+              <label style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: 6, letterSpacing: '0.5px' }}>
+                Terms, Conditions &amp; Warranty Notes
+              </label>
+              <textarea
+                rows={3}
+                value={estimate.terms}
+                onChange={(e) => handleFieldChange('terms', e.target.value)}
+                className={styles.termsTextarea}
+                placeholder="e.g. Estimate valid for 30 days. Deposit required prior to scheduling."
+                aria-label="Terms and conditions notes"
+              />
+            </div>
 
-            {/* Payment Milestone Schedule Expander */}
+            {/* Print Clean Terms Display */}
+            <div className={`${styles.printTermsBlock} ${styles.printOnly}`}>
+              <span className={styles.printSectionLabel}>TERMS, CONDITIONS &amp; WARRANTY:</span>
+              <p className={styles.printTermsContent}>
+                {estimate.terms?.trim() ||
+                  'Estimate valid for 30 days. Deposit required upon authorization to schedule crew and order materials. Workmanship backed by standard warranty.'}
+              </p>
+            </div>
+
+            {/* Payment Milestone Schedule */}
             <div className={`${styles.milestoneScheduleBox} ${!estimate.milestonesEnabled ? styles.hideOnPrint : ''}`}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: estimate.milestonesEnabled ? 8 : 0 }}>
                 <strong style={{ fontSize: 13, color: '#1e293b' }}>💳 Payment Milestone Schedule</strong>
@@ -1022,7 +1102,7 @@ export default function EstimateGeneratorClient() {
             )}
 
             <div className={styles.totalLine}>
-              <span>
+              <span className={styles.screenOnly}>
                 Tax (
                 <input
                   type="number"
@@ -1035,6 +1115,9 @@ export default function EstimateGeneratorClient() {
                 />
                 %):
               </span>
+              <span className={styles.printOnly}>
+                Estimated Tax ({estimate.taxRate}%):
+              </span>
               <span>{formatCurrency(totals.taxAmount)}</span>
             </div>
 
@@ -1044,7 +1127,7 @@ export default function EstimateGeneratorClient() {
             </div>
 
             <div className={`${styles.totalLine} ${styles.depositLine}`}>
-              <span>
+              <span className={styles.screenOnly}>
                 Deposit Due (
                 <input
                   type="number"
@@ -1057,6 +1140,9 @@ export default function EstimateGeneratorClient() {
                   aria-label="Deposit percentage"
                 />
                 %):
+              </span>
+              <span className={styles.printOnly}>
+                Deposit Due ({estimate.depositPct}%):
               </span>
               <span>{formatCurrency(totals.depositDue)}</span>
             </div>
@@ -1123,6 +1209,37 @@ export default function EstimateGeneratorClient() {
             </div>
           </div>
         )}
+
+        {/* Authorized Client Signature & Acceptance Block (Visible in Print & Preview) */}
+        <div className={styles.acceptanceSection}>
+          <div className={styles.acceptanceNotice}>
+            <strong>Authorization &amp; Acceptance of Scope:</strong> By signing below, the client agrees to the specified scope of work, total pricing, and payment terms outlined in this estimate and authorizes the contractor to proceed as scheduled.
+          </div>
+          <div className={styles.signatureGrid}>
+            <div className={styles.signatureCol}>
+              <div className={styles.signatureLine}></div>
+              <div className={styles.signatureLabel}>Authorized Client / Homeowner Signature</div>
+              <div className={styles.signatureMetaRow}>
+                <span>Print Name: _____________________</span>
+                <span>Date: ____________</span>
+              </div>
+            </div>
+            <div className={styles.signatureCol}>
+              <div className={styles.signatureLine}></div>
+              <div className={styles.signatureLabel}>Contractor Representative Signature</div>
+              <div className={styles.signatureMetaRow}>
+                <span>Authorized Rep: _________________</span>
+                <span>Date: ____________</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Print Only Page Footer */}
+        <div className={`${styles.printFooter} ${styles.printOnly}`}>
+          <div>✓ Thank you for the opportunity to earn your business!</div>
+          <div>Prepared via Let’s Get Quoted • Instant Contractor Estimate</div>
+        </div>
 
         {/* Action Bar */}
         <div className={styles.printActions}>

@@ -79,4 +79,30 @@ describe('Estimate Generator Route & Metadata Integrity', () => {
     expect(clientSource).toContain('loadEstimateDraft');
     expect(clientSource).toContain('saveEstimateDraft');
   });
+
+  it('includes professional client acceptance, signature block, and print footer', () => {
+    expect(clientSource).toContain('acceptanceSection');
+    expect(clientSource).toContain('Authorization &amp; Acceptance of Scope');
+    expect(clientSource).toContain('Authorized Client / Homeowner Signature');
+    expect(clientSource).toContain('Contractor Representative Signature');
+    expect(clientSource).toContain('printFooter');
+    expect(clientSource).toContain('Thank you for the opportunity to earn your business!');
+    expect(cssSource).toContain('.acceptanceSection');
+    expect(cssSource).toContain('.signatureGrid');
+    expect(cssSource).toContain('.signatureLine');
+    expect(cssSource).toContain('.printFooter');
+  });
+
+  it('provides dedicated print typography and clean metadata card without raw input artifacts', () => {
+    expect(clientSource).toContain('printHeaderCompany');
+    expect(clientSource).toContain('printMetaCard');
+    expect(clientSource).toContain('printClientSection');
+    expect(clientSource).toContain('printItemTitle');
+    expect(clientSource).toContain('printCategoryPill');
+    expect(clientSource).toContain('printTermsBlock');
+    expect(cssSource).toContain('.printHeaderCompany');
+    expect(cssSource).toContain('.printMetaCard');
+    expect(cssSource).toContain('.printClientSection');
+    expect(cssSource).toContain('.printCategoryPill');
+  });
 });

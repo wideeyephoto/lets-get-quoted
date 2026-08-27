@@ -10,6 +10,7 @@ import {
   getInitialBlankEstimate,
   getInitialExampleEstimate,
   formatEstimateSummaryText,
+  formatDisplayDate,
   type LineItem,
 } from '@/lib/tools/estimate-generator-utils';
 
@@ -115,6 +116,12 @@ describe('estimate-generator-utils', () => {
     it('generates an estimate number starting with EST-', () => {
       const estNo = generateEstimateNumber();
       expect(estNo).toMatch(/^EST-\d{4}-\d{3}$/);
+    });
+
+    it('formats display dates cleanly for document presentation', () => {
+      expect(formatDisplayDate('2026-08-27')).toBe('Aug 27, 2026');
+      expect(formatDisplayDate('')).toBe('');
+      expect(formatDisplayDate(undefined)).toBe('');
     });
   });
 
