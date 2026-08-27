@@ -3,9 +3,11 @@ import type { Site } from '@/lib/sites';
 import {
   getSiteContent, getFooterStyle, glyphForContent, getPortalNavLink,
   getPublishedServices, getPublishedShowcase, getPublishedTestimonials, getPublishedFaqs, getPublishedBlog,
+  getAllPublishedVideos, DEFAULT_VIDEOS_NAV_LABEL,
 } from '@/lib/site-content';
 import ServiceIcon from './ServiceIcon';
 import SocialLinks from './SocialLinks';
+import { navEditTarget } from './SiteNavLinks';
 import { siteLegalLinks } from '@/lib/legal/site-legal';
 import styles from './themes.module.css';
 
@@ -21,12 +23,16 @@ type FooterLink = { href: string; label: string };
 function footerLinks(site: Site): FooterLink[] {
   const c = site.content;
   const links: FooterLink[] = [];
-  if (getPublishedServices(c)) links.push({ href: '#our-services', label: 'Services' });
+  if (getPublishedServices(c)) links.push({ href: '/#our-services', label: 'Services' });
   const showcase = getPublishedShowcase(c);
-  if (showcase) links.push({ href: '#showcase', label: showcase.navLabel.trim() || 'Gallery' });
-  if (getPublishedTestimonials(c)) links.push({ href: '#reviews', label: 'Reviews' });
-  if (getPublishedFaqs(c)) links.push({ href: '#faqs', label: 'FAQs' });
-  if (getPublishedBlog(c)) links.push({ href: '#blog', label: 'Blog' });
+  if (showcase) links.push({ href: '/#showcase', label: showcase.navLabel.trim() || 'Gallery' });
+  const videosPage = getSiteContent(c).videosPage;
+  if (videosPage.navEnabled && getAllPublishedVideos(c).length > 0) {
+    links.push({ href: '/videos', label: videosPage.navLabel.trim() || DEFAULT_VIDEOS_NAV_LABEL });
+  }
+  if (getPublishedTestimonials(c)) links.push({ href: '/#reviews', label: 'Reviews' });
+  if (getPublishedFaqs(c)) links.push({ href: '/#faqs', label: 'FAQs' });
+  if (getPublishedBlog(c)) links.push({ href: '/#blog', label: 'Blog' });
   // Existing customers last — see SiteNavLinks. Off unless the owner added it
   // in Settings → Automations → Past customer job lookup.
   const portal = getPortalNavLink(c);
@@ -57,8 +63,16 @@ export default function SiteFooter({ site }: { site: Site }) {
     : <span className={styles.sfMark} data-edit="brandIcon" aria-hidden="true"><ServiceIcon name={glyphForContent(content)} className={styles.brandGlyph} /></span>;
   const brand = <span className={styles.sfBrandRow}>{mark}<span className={styles.sfName} data-edit="identity">{site.company_name}</span></span>;
   const tagline = <p className={styles.sfTagline} data-edit="bizTagline">{site.tagline || 'Trusted local service, done right.'}</p>;
-  const quoteBtn = <a className={styles.sfBtn} href="#contact">Get a free quote</a>;
-  const linkList = links.length > 0 ? <nav className={styles.sfLinks}>{links.map((l) => <a key={l.href} href={l.href}>{l.label}</a>)}</nav> : null;
+  const quoteBtn = <a className={styles.sfBtn} href="/#contact" data-edit="quoteForm">Get a free quote</a>;
+  const linkList = links.length > 0 ? (
+    <nav className={styles.sfLinks} aria-label="Footer navigation">
+      {links.map((l) => (
+        <a key={l.href} href={l.href} data-edit={navEditTarget(l.href)}>
+          {l.label}
+        </a>
+      ))}
+    </nav>
+  ) : null;
   // Renders null when the owner has added none, so every layout below can place
   // it unconditionally without each one repeating the emptiness check.
   const socials = <SocialLinks site={site} />;
@@ -78,8 +92,8 @@ export default function SiteFooter({ site }: { site: Site }) {
       <span>© {site.company_name}</span>
       {(legal.privacy || legal.terms) && (
         <nav className={styles.sfLegal} aria-label="Legal" data-edit="legal">
-          {legal.privacy && <a href="/privacy">Privacy Policy</a>}
-          {legal.terms && <a href="/terms">Terms of Service</a>}
+          {legal.privacy && <a href="/privacy" data-edit="legal">Privacy Policy</a>}
+          {legal.terms && <a href="/terms" data-edit="legal">Terms of Service</a>}
         </nav>
       )}
       {/* The customer-portal link is in footerLinks() above, with the rest of
@@ -116,8 +130,12 @@ export default function SiteFooter({ site }: { site: Site }) {
           {site.phone && <a className={styles.sfChip} href={`tel:${site.phone}`} data-edit="bizPhone">{PhoneIcon}{site.phone}</a>}
         </div>
         {(links.length > 0 || site.license) && (
-          <nav className={styles.sfLinksRow}>
-            {links.map((l) => <a key={l.href} href={l.href}>{l.label}</a>)}
+          <nav className={styles.sfLinksRow} aria-label="Footer navigation">
+            {links.map((l) => (
+              <a key={l.href} href={l.href} data-edit={navEditTarget(l.href)}>
+                {l.label}
+              </a>
+            ))}
             {site.license && <span data-edit="bizLicense">{site.license}</span>}
           </nav>
         )}
@@ -129,7 +147,18 @@ export default function SiteFooter({ site }: { site: Site }) {
       <div className={styles.sfPad}>
         <div className={styles.sfTop}>{brand}{tagline}{socials}</div>
         <div className={styles.sfGrid}>
-          {links.length > 0 && <div className={styles.sfCol}><h3>Explore</h3>{links.map((l) => <a key={l.href} href={l.href}>{l.label}</a>)}</div>}
+          {links.length > 0 && (
+            <div className={styles.sfCol}>
+              <h3>Explore</h3>
+              <nav className={styles.sfLinks} aria-label="Footer navigation">
+                {links.map((l) => (
+                  <a key={l.href} href={l.href} data-edit={navEditTarget(l.href)}>
+                    {l.label}
+                  </a>
+                ))}
+              </nav>
+            </div>
+          )}
           {areaLine && <div className={styles.sfCol}><h3>Areas served</h3><span data-edit="bizArea">{areaLine}</span></div>}
           {site.hours && <div className={styles.sfCol}><h3>Hours</h3><span data-edit="bizHours">{site.hours}</span></div>}
           <div className={styles.sfCol}><h3>Contact</h3>{site.phone && <a href={`tel:${site.phone}`} data-edit="bizPhone">{site.phone}</a>}{site.license && <span data-edit="bizLicense">{site.license}</span>}</div>
