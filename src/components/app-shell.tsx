@@ -15,7 +15,6 @@ import { isOwnChromeRoute } from '@/lib/marketing-chrome';
 import { APP_LOGIN_URL, APP_SIGNUP_URL } from '@/components/marketing/links';
 import { isSectionNew, markNavSeen, navAttentionLabel, parseNavSeen, NAV_SEEN_STORAGE_KEY, type NavSeenMap } from '@/lib/nav-helpers';
 import { attentionBadgeLabel } from '@/lib/lead-queue';
-import { WhatsNewTrigger } from '@/components/whats-new/WhatsNewDrawer';
 
 // The leads badge is the only one of the four fed by a capped scan (500 rows,
 // see the status route), so it is the only one whose digits can run away from
@@ -1081,10 +1080,6 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
               link. It is not a setting; it is a live warning about whether money
               can reach the contractor, and a warning behind a click stops being
               one. */}
-          <div style={{ padding: '0.25rem 0.65rem 0.35rem' }}>
-            <WhatsNewTrigger />
-          </div>
-
           <div className="sidenav-foot">
             <Link href="/dashboard/settings" className={`sidenav-account${isActiveNav(pathname, '/dashboard/settings') ? ' active' : ''}`}>
               <NavIcon href="/dashboard/settings" />
