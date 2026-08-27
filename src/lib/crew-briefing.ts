@@ -22,6 +22,7 @@ export type CrewDailyBriefing = {
   date: string;
   stops: CrewBriefingStop[];
   portalUrl?: string | null;
+  customNote?: string | null;
 };
 
 /**
@@ -63,9 +64,10 @@ export function buildCrewMorningBriefingSms(briefing: CrewDailyBriefing): string
   const crewFirst = (briefing.crewName || 'Team').trim().split(/\s+/)[0] || 'Team';
   const business = (briefing.businessName || 'our team').trim();
   const stopCount = briefing.stops.length;
+  const noteSection = briefing.customNote ? `\n📌 Note: ${briefing.customNote.trim()}` : '';
 
   if (stopCount === 0) {
-    return `Good morning ${crewFirst}! You have no scheduled stops on your run-sheet for ${briefing.date} with ${business}. Enjoy your day! Reply STOP to opt out.`;
+    return `Good morning ${crewFirst}! You have no scheduled stops on your run-sheet for ${briefing.date} with ${business}.${noteSection} Enjoy your day! Reply STOP to opt out.`;
   }
 
   const stopLabel = stopCount === 1 ? '1 stop' : `${stopCount} stops`;
@@ -73,5 +75,49 @@ export function buildCrewMorningBriefingSms(briefing: CrewDailyBriefing): string
 
   const portalLink = briefing.portalUrl ? `\nOpen Field App: ${briefing.portalUrl}` : '';
 
-  return `☀️ Good morning ${crewFirst}! Here is your schedule for ${briefing.date} with ${business} (${stopLabel}):\n${stopsSummary}${portalLink}\nReply STOP to opt out.`;
+  return `☀️ Good morning ${crewFirst}! Here is your schedule for ${briefing.date} with ${business} (${stopLabel}):${noteSection}\n${stopsSummary}${portalLink}\nReply STOP to opt out.`;
+}
+
+/**
+ * Generates a clean, detailed multi-line text run-sheet suitable for clipboard sharing
+ * (WhatsApp, iMessage, Slack, email) or printed briefings.
+ */
+export function buildCrewDailyRunSheetText(briefing: CrewDailyBriefing): string {
+  const crewName = briefing.crewName || 'Field Crew';
+  const business = briefing.businessName || 'Our Business';
+  const header = `📋 DAILY DISPATCH RUN-SHEET: ${briefing.date}\nAssigned: ${crewName} (${business})\nTotal Stops: ${briefing.stops.length}`;
+  const note = briefing.customNote ? `\n\n📌 DAILY NOTES:\n${briefing.customNote.trim()}` : '';
+
+  if (briefing.stops.length === 0) {
+    return `${header}${note}\n\nNo stops scheduled for this day.`;
+  }
+
+  const stopsList = briefing.stops
+    .map((stop, index) => {
+      const time = stop.scheduledTime ? `⏰ Scheduled: ${stop.scheduledTime}` : '⏰ Scheduled: Anytime / Unset';
+      const client = stop.clientName ? `👤 Client: ${stop.clientName}` : '';
+      const phone = stop.phone ? `📞 Phone: ${stop.phone}` : '';
+      const address = stop.address ? `📍 Address: ${stop.address}` : '';
+      const nav = `🗺️ Nav: ${buildGoogleMapsNavUrl(stop.address, stop.lat, stop.lng)}`;
+      const scope = stop.scope ? `📝 Scope: ${stop.scope}` : '';
+      const notes = stop.notes ? `💬 Notes: ${stop.notes}` : '';
+
+      const lines = [
+        `Stop #${index + 1} [${stop.jobRef}]`,
+        time,
+        client,
+        phone,
+        address,
+        nav,
+        scope,
+        notes,
+      ].filter(Boolean);
+
+      return lines.join('\n');
+    })
+    .join('\n\n---\n\n');
+
+  const fieldApp = briefing.portalUrl ? `\n\n🔗 Crew Field Portal: ${briefing.portalUrl}` : '';
+
+  return `${header}${note}\n\n${stopsList}${fieldApp}`;
 }

@@ -310,9 +310,17 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
   const [selectedPhotos, setSelectedPhotos] = useState<File[]>([]);
   const [photoQualityWarning, setPhotoQualityWarning] = useState<string | null>(null);
   const [visualObservation, setVisualObservation] = useState<string | null>(null);
+  const MAX_MEDIA_BYTES = 35 * 1024 * 1024;
 
   async function addPhotos(files: FileList | File[]) {
-    const media = Array.from(files).filter((file) => file.type.startsWith('image/') || file.type.startsWith('video/'));
+    const rawMedia = Array.from(files).filter((file) => file.type.startsWith('image/') || file.type.startsWith('video/'));
+    const oversized = rawMedia.filter((f) => f.size > MAX_MEDIA_BYTES);
+    if (oversized.length > 0) {
+      setPhotoQualityWarning('💡 One of your files is over 35 MB. Short 10–20 second video clips work best!');
+    }
+    const media = rawMedia.filter((f) => f.size <= MAX_MEDIA_BYTES);
+    if (media.length === 0) return;
+
     setSelectedPhotos((current) => [...current, ...media].slice(0, MAX_PHOTOS));
     if (photoInputRef.current) photoInputRef.current.value = '';
 

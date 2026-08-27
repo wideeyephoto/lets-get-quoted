@@ -4,8 +4,9 @@ import {
   buildAppleMapsNavUrl,
   formatBriefingStop,
   buildCrewMorningBriefingSms,
+  buildCrewDailyRunSheetText,
   type CrewDailyBriefing,
-} from '../src/lib/crew-briefing';
+} from '@/lib/crew-briefing';
 
 describe('Crew Morning Dispatch Briefing', () => {
   const sampleStops = [
@@ -79,5 +80,44 @@ describe('Crew Morning Dispatch Briefing', () => {
     const sms = buildCrewMorningBriefingSms(emptyBriefing);
     expect(sms).toContain('no scheduled stops');
     expect(sms).toContain('Enjoy your day!');
+  });
+
+  it('includes custom notes/instructions in morning SMS when provided', () => {
+    const briefingWithNote: CrewDailyBriefing = {
+      crewName: 'Dave Miller',
+      businessName: 'Apex Plumbing',
+      date: 'Monday, Aug 25',
+      stops: sampleStops,
+      customNote: 'Gate code is #8821. Rain expected at 2 PM, please finish roof first.',
+    };
+
+    const sms = buildCrewMorningBriefingSms(briefingWithNote);
+    expect(sms).toContain('📌 Note: Gate code is #8821.');
+    expect(sms).toContain('[J-101]');
+  });
+
+  it('generates rich multi-line run-sheet text for clipboard and printing', () => {
+    const briefing: CrewDailyBriefing = {
+      crewName: 'Dave Miller',
+      businessName: 'Apex Plumbing',
+      date: 'Monday, Aug 25',
+      stops: sampleStops,
+      portalUrl: 'https://apex.com/field',
+      customNote: 'Bring the 32ft extension ladder.',
+    };
+
+    const runSheet = buildCrewDailyRunSheetText(briefing);
+    expect(runSheet).toContain('DAILY DISPATCH RUN-SHEET: Monday, Aug 25');
+    expect(runSheet).toContain('Assigned: Dave Miller (Apex Plumbing)');
+    expect(runSheet).toContain('📌 DAILY NOTES:');
+    expect(runSheet).toContain('Bring the 32ft extension ladder.');
+    expect(runSheet).toContain('Stop #1 [J-101]');
+    expect(runSheet).toContain('⏰ Scheduled: 8:00 AM');
+    expect(runSheet).toContain('👤 Client: Alice Johnson');
+    expect(runSheet).toContain('📞 Phone: 248-555-0199');
+    expect(runSheet).toContain('📍 Address: 1418 S Main St, Royal Oak, MI 48067');
+    expect(runSheet).toContain('📝 Scope: Replace 40gal water heater');
+    expect(runSheet).toContain('Stop #2 [J-102]');
+    expect(runSheet).toContain('🔗 Crew Field Portal: https://apex.com/field');
   });
 });

@@ -321,6 +321,10 @@ export async function sendCrewMorningBriefingAction(formData: FormData) {
   const { supabase, accountId } = await requireOfficeContext('schedule.write');
   const dateKey = String(formData.get('dateKey') ?? '').trim();
   const crewId = String(formData.get('crewId') ?? '').trim() || null;
+  const customNote = String(formData.get('customNote') ?? '').trim() || null;
+  const selectedMemberIds = formData.getAll('memberId').map(String).filter(Boolean);
+  const includePortal = formData.get('includePortal') !== '0';
+
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) redirect('/dashboard/schedule');
 
   const settings = await getPlanAccountSettings(supabase, accountId);
@@ -331,13 +335,27 @@ export async function sendCrewMorningBriefingAction(formData: FormData) {
   });
 
   const crew = await listCrew(supabase, accountId, { activeOnly: true });
-  const targets = crewId ? crew.filter((c) => c.id === crewId) : crew;
+  let targets = crew;
+  if (selectedMemberIds.length > 0) {
+    targets = crew.filter((c) => selectedMemberIds.includes(c.id));
+  } else if (crewId) {
+    targets = crew.filter((c) => c.id === crewId);
+  }
 
   let briefedCount = 0;
+  let skippedNoPhone = 0;
+  let skippedNoJobs = 0;
+
   for (const member of targets) {
-    if (!member.phone) continue;
+    if (!member.phone) {
+      skippedNoPhone += 1;
+      continue;
+    }
     const phone = normalizeUsPhone(member.phone);
-    if (!phone) continue;
+    if (!phone) {
+      skippedNoPhone += 1;
+      continue;
+    }
 
     // Filter jobs assigned to this crew member
     let memberJobs = jobs;
@@ -347,7 +365,10 @@ export async function sendCrewMorningBriefingAction(formData: FormData) {
         memberJobs = jobs.filter((j) => assignedIds.includes(j.id));
       }
     }
-    if (memberJobs.length === 0) continue;
+    if (memberJobs.length === 0) {
+      skippedNoJobs += 1;
+      continue;
+    }
 
     const stops: CrewBriefingStop[] = memberJobs.map((j) => ({
       jobRef: `JOB-${j.id.slice(0, 6).toUpperCase()}`,
@@ -364,7 +385,8 @@ export async function sendCrewMorningBriefingAction(formData: FormData) {
       businessName,
       date: dateKey,
       stops,
-      portalUrl: 'https://letsgetquoted.com/field',
+      portalUrl: includePortal ? 'https://letsgetquoted.com/field' : null,
+      customNote,
     });
 
     const { enqueueSmsDelivery } = await import('@/lib/sms-delivery');
@@ -378,12 +400,18 @@ export async function sendCrewMorningBriefingAction(formData: FormData) {
       crewId: member.id,
       senderPurpose: 'lgq_dispatch',
       billingCategory: 'crew_message',
-      idempotencyKey: `crew-briefing:${member.id}:${dateKey}`,
+      idempotencyKey: `crew-briefing:${member.id}:${dateKey}:${Date.now()}`,
     });
 
     briefedCount += 1;
   }
 
   revalidatePlan();
-  redirect(planUrl(dateKey, crewId, { briefed: String(briefedCount) }));
+  const queryParams: Record<string, string> = {
+    briefed: String(briefedCount),
+  };
+  if (skippedNoPhone > 0) queryParams.skippedNoPhone = String(skippedNoPhone);
+  if (skippedNoJobs > 0) queryParams.skippedNoJobs = String(skippedNoJobs);
+
+  redirect(planUrl(dateKey, crewId, queryParams));
 }

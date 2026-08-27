@@ -306,10 +306,22 @@ export default function LeadDetailTabs({
           </div>
         )}
         <div className={styles.photos}>
-          {detail.photos.map((photo) => (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img key={photo.path} src={photo.url} alt="" loading="lazy" />
-          ))}
+          {detail.photos.map((photo) => {
+            const isVideo = photo.path.endsWith('.mp4') || photo.path.endsWith('.mov') || photo.path.endsWith('.webm') || photo.url.includes('video/');
+            return isVideo ? (
+              <video
+                key={photo.path}
+                src={photo.url}
+                controls
+                playsInline
+                preload="metadata"
+                style={{ width: '100%', maxHeight: '240px', borderRadius: '6px', objectFit: 'cover', background: '#000' }}
+              />
+            ) : (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img key={photo.path} src={photo.url} alt="" loading="lazy" />
+            );
+          })}
         </div>
         {detail.photoCount > detail.photos.length && (
           <p className={styles.muted}>

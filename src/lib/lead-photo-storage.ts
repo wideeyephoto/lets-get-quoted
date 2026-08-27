@@ -3,8 +3,16 @@ import { createAdminClient } from '@/lib/auth';
 import { assertStorageCapacity } from '@/lib/billing/storage-usage';
 
 const LEAD_PHOTOS_BUCKET = 'lead-photos';
-const MAX_PHOTO_BYTES = 6 * 1024 * 1024;
-const ALLOWED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/avif']);
+const MAX_PHOTO_BYTES = 35 * 1024 * 1024;
+const ALLOWED_TYPES = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/avif',
+  'video/mp4',
+  'video/quicktime',
+  'video/webm',
+]);
 
 async function ensureLeadPhotosBucket() {
   const admin = createAdminClient();
@@ -50,14 +58,16 @@ export async function uploadLeadPhoto(
   file: File,
   uploader: LeadPhotoUploader,
 ): Promise<string> {
-  if (!ALLOWED_TYPES.has(file.type)) throw new Error('Photos must be JPG, PNG, WebP, or AVIF.');
-  if (file.size > MAX_PHOTO_BYTES) throw new Error('Each photo must be 6 MB or smaller.');
+  if (!ALLOWED_TYPES.has(file.type)) throw new Error('Files must be JPG, PNG, WebP, AVIF, MP4, MOV, or WebM.');
+  if (file.size > MAX_PHOTO_BYTES) throw new Error('Each file must be 35 MB or smaller.');
   if (uploader === 'workspace') {
     await assertStorageCapacity(createAdminClient(), accountId, file.size);
   }
   await ensureLeadPhotosBucket();
 
-  const extension = file.type.split('/')[1] === 'jpeg' ? 'jpg' : file.type.split('/')[1];
+  let extension = file.type.split('/')[1] || 'bin';
+  if (file.type === 'image/jpeg') extension = 'jpg';
+  if (file.type === 'video/quicktime') extension = 'mov';
   const path = `${accountId}/${randomUUID()}.${extension}`;
   const { error } = await createAdminClient().storage
     .from(LEAD_PHOTOS_BUCKET)
