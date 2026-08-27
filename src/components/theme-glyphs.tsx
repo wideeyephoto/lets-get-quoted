@@ -57,11 +57,44 @@ export function DimGlyph() {
   );
 }
 
+/** Color vision safe (CVD) — clarity eye focus. */
+export function ClarityGlyph() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7Z" />
+      <circle cx="12" cy="12" r="3.2" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+/** Pure luminance & shape — split contrast square. */
+export function MonochromeGlyph() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+      <rect x="3.5" y="3.5" width="17" height="17" rx="3.5" stroke="currentColor" strokeWidth="2" />
+      <path d="M3.5 20.5 20.5 3.5M3.5 12h17" stroke="currentColor" strokeWidth="1.5" />
+    </svg>
+  );
+}
+
+/** Warm low-blue light — parchment document. */
+export function ParchmentGlyph() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M19 3H7a3 3 0 0 0-3 3v12a3 3 0 0 0 3 3h12a1 1 0 0 0 1-1V4a1 1 0 0 0-1-1Z" />
+      <path d="M8 7h8M8 11h8M8 15h5" strokeWidth="1.8" />
+    </svg>
+  );
+}
+
 export function ThemeGlyph({ name }: { name: ThemeChoice }) {
   if (name === 'sunlight') return <SunlightGlyph />;
   if (name === 'light') return <SunGlyph />;
   if (name === 'dim') return <DimGlyph />;
   if (name === 'dark') return <MoonGlyph />;
   if (name === 'onyx') return <OnyxGlyph />;
+  if (name === 'clarity') return <ClarityGlyph />;
+  if (name === 'monochrome') return <MonochromeGlyph />;
+  if (name === 'parchment') return <ParchmentGlyph />;
   return <AutoGlyph />;
 }

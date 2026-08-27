@@ -12,18 +12,21 @@ import {
 } from '@/lib/theme';
 
 describe('parseTheme', () => {
-  it('accepts only the five real values', () => {
+  it('accepts only the eight real values', () => {
     expect(parseTheme('onyx')).toBe('onyx');
     expect(parseTheme('dark')).toBe('dark');
     expect(parseTheme('dim')).toBe('dim');
     expect(parseTheme('light')).toBe('light');
     expect(parseTheme('sunlight')).toBe('sunlight');
+    expect(parseTheme('clarity')).toBe('clarity');
+    expect(parseTheme('monochrome')).toBe('monochrome');
+    expect(parseTheme('parchment')).toBe('parchment');
   });
 
   it('rejects anything else rather than guessing', () => {
     // The cookie is user-writable; a junk value must fall through to the
     // default, never render an undefined data-theme.
-    for (const raw of [null, undefined, '', 'Dark', 'DIM', 'LIGHT', 'ONYX', 'SUNLIGHT', 'auto', 'system', '1', 'true']) {
+    for (const raw of [null, undefined, '', 'Dark', 'DIM', 'LIGHT', 'ONYX', 'SUNLIGHT', 'CLARITY', 'MONOCHROME', 'PARCHMENT', 'auto', 'system', '1', 'true']) {
       expect(parseTheme(raw), String(raw)).toBeNull();
     }
   });
@@ -36,6 +39,9 @@ describe('resolveTheme', () => {
     expect(resolveTheme('dim', false)).toBe('dim');
     expect(resolveTheme('dark', true)).toBe('dark');
     expect(resolveTheme('onyx', true)).toBe('onyx');
+    expect(resolveTheme('clarity', true)).toBe('clarity');
+    expect(resolveTheme('monochrome', true)).toBe('monochrome');
+    expect(resolveTheme('parchment', true)).toBe('parchment');
   });
 
   it('follows the operating system when nothing has been chosen', () => {
@@ -53,12 +59,15 @@ describe('resolveTheme', () => {
 });
 
 describe('parseThemeChoice', () => {
-  it('accepts the six real answers', () => {
+  it('accepts the nine real answers', () => {
     expect(parseThemeChoice('sunlight')).toBe('sunlight');
     expect(parseThemeChoice('light')).toBe('light');
     expect(parseThemeChoice('dim')).toBe('dim');
     expect(parseThemeChoice('dark')).toBe('dark');
     expect(parseThemeChoice('onyx')).toBe('onyx');
+    expect(parseThemeChoice('clarity')).toBe('clarity');
+    expect(parseThemeChoice('monochrome')).toBe('monochrome');
+    expect(parseThemeChoice('parchment')).toBe('parchment');
     expect(parseThemeChoice('system')).toBe('system');
   });
 
@@ -79,7 +88,17 @@ describe('system as a choice', () => {
   });
 
   it('is the first option offered, and every option has a label', () => {
-    expect(THEME_CHOICES.map((c) => c.value)).toEqual(['system', 'sunlight', 'light', 'dim', 'dark', 'onyx']);
+    expect(THEME_CHOICES.map((c) => c.value)).toEqual([
+      'system',
+      'sunlight',
+      'light',
+      'dim',
+      'dark',
+      'onyx',
+      'clarity',
+      'monochrome',
+      'parchment',
+    ]);
     for (const c of THEME_CHOICES) expect(themeChoiceLabel(c.value)).toBe(c.label);
   });
 });
@@ -95,17 +114,24 @@ describe('themeCookieString', () => {
 });
 
 describe('nextTheme / otherTheme / label', () => {
-  it('cycles across the five themes: onyx -> dark -> dim -> light -> sunlight -> onyx', () => {
+  it('cycles across the eight themes: onyx -> dark -> dim -> light -> sunlight -> clarity -> monochrome -> parchment -> onyx', () => {
     expect(nextTheme('onyx')).toBe('dark');
     expect(nextTheme('dark')).toBe('dim');
     expect(nextTheme('dim')).toBe('light');
     expect(nextTheme('light')).toBe('sunlight');
-    expect(nextTheme('sunlight')).toBe('onyx');
+    expect(nextTheme('sunlight')).toBe('clarity');
+    expect(nextTheme('clarity')).toBe('monochrome');
+    expect(nextTheme('monochrome')).toBe('parchment');
+    expect(nextTheme('parchment')).toBe('onyx');
+
     expect(otherTheme('onyx')).toBe('dark');
     expect(otherTheme('dark')).toBe('dim');
     expect(otherTheme('dim')).toBe('light');
     expect(otherTheme('light')).toBe('sunlight');
-    expect(otherTheme('sunlight')).toBe('onyx');
+    expect(otherTheme('sunlight')).toBe('clarity');
+    expect(otherTheme('clarity')).toBe('monochrome');
+    expect(otherTheme('monochrome')).toBe('parchment');
+    expect(otherTheme('parchment')).toBe('onyx');
   });
 
   it('the label says what pressing it will DO, not what it currently is', () => {
@@ -113,6 +139,9 @@ describe('nextTheme / otherTheme / label', () => {
     expect(themeToggleLabel('dark')).toBe('Switch to dim mode');
     expect(themeToggleLabel('dim')).toBe('Switch to light mode');
     expect(themeToggleLabel('light')).toBe('Switch to sunlight mode');
-    expect(themeToggleLabel('sunlight')).toBe('Switch to onyx mode');
+    expect(themeToggleLabel('sunlight')).toBe('Switch to clarity mode');
+    expect(themeToggleLabel('clarity')).toBe('Switch to monochrome mode');
+    expect(themeToggleLabel('monochrome')).toBe('Switch to parchment mode');
+    expect(themeToggleLabel('parchment')).toBe('Switch to onyx mode');
   });
 });

@@ -454,7 +454,8 @@ export default async function SettingsPage({
                   </div>
                   <p className="workspace-details-copy" style={{ marginTop: '0.5rem', marginBottom: '0.9rem' }}>
                     Auto follows your phone or computer schedule. Sunlight is built for direct outdoor light, Light and Dim offer
-                    balanced daylight and soft slate contrast, Dark provides midnight focus, and Onyx delivers pure OLED black (WCAG AAA).
+                    balanced daytime clarity, Dark and Onyx provide deep midnight and OLED focus, Clarity ensures color-vision (CVD)
+                    safety, Monochrome maximizes pure luminance &amp; shape, and Parchment provides warm low-blue eye comfort.
                     There is also a switch in the bottom-left corner of every page to cycle through them on the fly.
                   </p>
                   <ThemeToggle />

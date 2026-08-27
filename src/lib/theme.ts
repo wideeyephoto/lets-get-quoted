@@ -12,11 +12,11 @@
 // localStorage instead and every page load flashes dark before correcting
 // itself, which is worse than not offering the setting.
 
-export type Theme = 'onyx' | 'dark' | 'dim' | 'light' | 'sunlight';
+export type Theme = 'onyx' | 'dark' | 'dim' | 'light' | 'sunlight' | 'clarity' | 'monochrome' | 'parchment';
 
 /**
  * What the PERSON picked, which is not the same as what gets rendered.
- * 'system' resolves to one of the other five at paint time; it is a standing
+ * 'system' resolves to one of the other eight at paint time; it is a standing
  * instruction ("follow the phone"), not a colour.
  */
 export type ThemeChoice = Theme | 'system';
@@ -43,7 +43,14 @@ export const THEME_SYSTEM_COOKIE = 'lgq-sys';
 export const THEME_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
 
 export function parseTheme(value: string | null | undefined): Theme | null {
-  return value === 'onyx' || value === 'dark' || value === 'dim' || value === 'light' || value === 'sunlight'
+  return value === 'onyx' ||
+    value === 'dark' ||
+    value === 'dim' ||
+    value === 'light' ||
+    value === 'sunlight' ||
+    value === 'clarity' ||
+    value === 'monochrome' ||
+    value === 'parchment'
     ? value
     : null;
 }
@@ -68,12 +75,15 @@ export function resolveTheme(cookieValue: string | null | undefined, systemPrefe
   return parseTheme(cookieValue) ?? (systemPrefersLight ? 'light' : 'dark');
 }
 
-/** Cycles across the five modes: onyx -> dark -> dim -> light -> sunlight -> onyx */
+/** Cycles across the eight modes: onyx -> dark -> dim -> light -> sunlight -> clarity -> monochrome -> parchment -> onyx */
 export function nextTheme(theme: Theme): Theme {
   if (theme === 'onyx') return 'dark';
   if (theme === 'dark') return 'dim';
   if (theme === 'dim') return 'light';
   if (theme === 'light') return 'sunlight';
+  if (theme === 'sunlight') return 'clarity';
+  if (theme === 'clarity') return 'monochrome';
+  if (theme === 'monochrome') return 'parchment';
   return 'onyx';
 }
 
@@ -87,16 +97,18 @@ export function themeToggleLabel(theme: Theme): string {
   if (theme === 'dark') return 'Switch to dim mode';
   if (theme === 'dim') return 'Switch to light mode';
   if (theme === 'light') return 'Switch to sunlight mode';
+  if (theme === 'sunlight') return 'Switch to clarity mode';
+  if (theme === 'clarity') return 'Switch to monochrome mode';
+  if (theme === 'monochrome') return 'Switch to parchment mode';
   return 'Switch to onyx mode';
 }
 
 /**
- * The six options, in the order they are drawn.
+ * The nine options, in the order they are drawn.
  *
- * Auto sits FIRST because it is the default state and the one you fall back to,
- * not an alternative bolted on the end — and because left-to-right the row
- * then reads auto → sunlight → light → dim → dark → onyx, which is the gradient
- * of highest brightness down to deepest OLED black.
+ * Auto sits FIRST because it is the default state and the one you fall back to.
+ * The standard lighting ramp comes first (Sunlight → Light → Dim → Dark → Onyx),
+ * followed by the specialized vision & accessibility suite (Clarity → Monochrome → Parchment).
  */
 export const THEME_CHOICES: { value: ThemeChoice; word: string; label: string }[] = [
   { value: 'system', word: 'Auto', label: 'Match my device' },
@@ -105,6 +117,9 @@ export const THEME_CHOICES: { value: ThemeChoice; word: string; label: string }[
   { value: 'dim', word: 'Dim', label: 'Soft slate contrast' },
   { value: 'dark', word: 'Dark', label: 'Midnight navy' },
   { value: 'onyx', word: 'Onyx', label: 'OLED pure black (AAA)' },
+  { value: 'clarity', word: 'Clarity', label: 'Color vision safe (CVD)' },
+  { value: 'monochrome', word: 'Mono', label: 'Pure luminance & shape' },
+  { value: 'parchment', word: 'Parchment', label: 'Warm low-blue light' },
 ];
 
 /** The accessible name for a control that is currently on `choice`. */
