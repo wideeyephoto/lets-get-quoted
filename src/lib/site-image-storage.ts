@@ -104,6 +104,45 @@ export async function uploadSiteImage(accountId: string, file: File): Promise<Si
   };
 }
 
+export async function uploadGeneratedSiteImage(
+  accountId: string,
+  input: { bytes: Buffer; fileName: string; mimeType: 'image/png' | 'image/webp'; alt: string },
+): Promise<SiteImage> {
+  if (input.bytes.byteLength > MAX_IMAGE_BYTES) {
+    throw new Error('The generated logo is too large to save. Try generating it again.');
+  }
+
+  await assertStorageCapacity(createAdminClient(), accountId, input.bytes.byteLength);
+  await ensureSiteImagesBucket();
+
+  const extension = input.mimeType === 'image/webp' ? 'webp' : 'png';
+  const safeName = input.fileName
+    .replace(/\.[^.]+$/, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 60) || 'ai-logo';
+  const storagePath = `${accountId}/${randomUUID()}-${safeName}.${extension}`;
+  const admin = createAdminClient();
+  const { error } = await admin.storage.from(SITE_IMAGES_BUCKET).upload(
+    storagePath,
+    input.bytes,
+    { contentType: input.mimeType, cacheControl: '31536000', upsert: false }
+  );
+
+  if (error) throw error;
+
+  const { data } = admin.storage.from(SITE_IMAGES_BUCKET).getPublicUrl(storagePath);
+  return {
+    id: `upload-${storagePath}`,
+    url: data.publicUrl,
+    alt: input.alt,
+    category: 'craft',
+    source: 'upload',
+    storagePath,
+  };
+}
+
 export async function importJobPhotoAsSiteImage(accountId: string, jobPhotoPath: string, alt: string): Promise<SiteImage> {
   if (!jobPhotoPath.startsWith(`${accountId}/`)) {
     throw new Error('Photo does not belong to this account.');

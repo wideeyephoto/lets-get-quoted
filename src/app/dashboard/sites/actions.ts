@@ -2,11 +2,12 @@
 
 import { revalidatePath } from 'next/cache';
 import { createAdminClient, requireOfficeContext } from '@/lib/auth';
-import { deleteSiteImage, importJobPhotoAsSiteImage, uploadSiteImage } from '@/lib/site-image-storage';
+import { deleteSiteImage, importJobPhotoAsSiteImage, uploadGeneratedSiteImage, uploadSiteImage } from '@/lib/site-image-storage';
 import { createSignedVideoUpload, deleteSiteVideo, siteVideoStoragePath, type SignedVideoUpload } from '@/lib/site-video-storage';
 import { createJobPhotoUrls } from '@/lib/job-photo-storage';
 import type { Site } from '@/lib/sites';
-import { callModel } from '@/lib/ai-model-call';
+import { callImageModel, callModel } from '@/lib/ai-model-call';
+import { buildAiLogoPrompt, isAiLogoDirection, type AiLogoDirection } from '@/lib/logo-image-prompt';
 import { SERVICE_ICON_GLYPHS } from '@/lib/templates/service-icons.data';
 import { normalizeDomain, verifyDomain } from '@/lib/domains';
 import { geocodeArea } from '@/lib/geocode';
@@ -905,3 +906,109 @@ export async function generateLogoTaglinesAction(params: {
   }
 }
 
+export type GeneratedAiLogo = {
+  id: string;
+  url: string;
+  storagePath: string;
+  direction: AiLogoDirection;
+  prompt: string;
+  createdAt: string;
+};
+
+export async function generateAiLogoAction(params: {
+  businessName?: string;
+  trade?: string | null;
+  tagline?: string | null;
+  establishedYear?: string | null;
+  accentColor?: string | null;
+  secondaryColor?: string | null;
+  emblem?: string | null;
+  direction?: string | null;
+  creativeBrief?: string | null;
+}): Promise<{ ok: boolean; image?: GeneratedAiLogo; message?: string }> {
+  try {
+    const { accountId } = await requireOfficeContext('settings.write');
+    const businessName = params.businessName?.trim().slice(0, 80) || '';
+    if (!businessName) return { ok: false, message: 'Add a business name before generating a logo.' };
+
+    const direction: AiLogoDirection = params.direction && isAiLogoDirection(params.direction)
+      ? params.direction
+      : 'art_director';
+    const prompt = buildAiLogoPrompt({
+      businessName,
+      trade: params.trade,
+      tagline: params.tagline,
+      establishedYear: params.establishedYear,
+      accentColor: params.accentColor,
+      secondaryColor: params.secondaryColor,
+      emblem: params.emblem,
+      direction,
+      creativeBrief: params.creativeBrief,
+    });
+
+    const response = await callImageModel(
+      {
+        model: process.env.OPENAI_IMAGE_MODEL?.trim() || 'gpt-image-2',
+        prompt,
+        n: 1,
+        size: '1536x1024',
+        quality: 'medium',
+        background: 'transparent',
+        output_format: 'png',
+        moderation: 'auto',
+        user: accountId,
+      },
+      { accountId, kind: 'site_copy' },
+    );
+
+    if (!response.ok) {
+      const requestId = response.headers.get('x-request-id');
+      const payload = await response.json().catch(() => null) as {
+        error?: { code?: string; type?: string; message?: string };
+      } | null;
+      console.error('AI logo generation failed', {
+        status: response.status,
+        requestId,
+        code: payload?.error?.code,
+        type: payload?.error?.type,
+      });
+      if (payload?.error?.code === 'moderation_blocked') {
+        return { ok: false, message: 'That brief could not be generated. Try describing the visual idea in more neutral brand language.' };
+      }
+      if (response.status === 429) {
+        return { ok: false, message: 'The AI studio is at capacity right now. Wait a moment and try again.' };
+      }
+      throw new Error(`Image model request failed (${response.status}).`);
+    }
+
+    const payload = await response.json() as { data?: Array<{ b64_json?: string }> };
+    const encoded = payload.data?.[0]?.b64_json;
+    if (!encoded) throw new Error('The image model returned no logo. Try generating another direction.');
+    const bytes = Buffer.from(encoded, 'base64');
+    if (bytes.byteLength === 0) throw new Error('The generated logo file was empty. Try again.');
+
+    const stored = await uploadGeneratedSiteImage(accountId, {
+      bytes,
+      mimeType: 'image/png',
+      fileName: `${businessName}-ai-logo`,
+      alt: `${businessName} AI-generated logo`,
+    });
+
+    return {
+      ok: true,
+      image: {
+        id: stored.id,
+        url: stored.url,
+        storagePath: stored.storagePath || '',
+        direction,
+        prompt,
+        createdAt: new Date().toISOString(),
+      },
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      message: error instanceof Error ? error.message : 'Could not generate a logo right now.',
+    };
+  }
+}

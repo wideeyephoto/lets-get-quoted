@@ -18,7 +18,9 @@ import { releaseUsageOverage, type UsageOverageHold } from '@/lib/billing/usage-
 
 /**
  * The one egress point for model calls, and therefore the one place an AI
- * writing draft can be spent.
+ * writing draft can be spent. Text responses and generated images both pass
+ * through this module so provider errors cannot silently bypass the same usage
+ * lease lifecycle.
  *
  * WHY THIS EXISTS. Ten modules each held their own copy of the same
  * `fetch('https://api.openai.com/v1/responses', ...)` — same endpoint, same
@@ -38,8 +40,10 @@ import { releaseUsageOverage, type UsageOverageHold } from '@/lib/billing/usage-
  * module's business and differ for good reasons.
  */
 
-/** What the OpenAI responses endpoint is given, minus the parts this owns. */
+/** What an OpenAI JSON endpoint is given, minus the parts this owns. */
 export type ModelRequestBody = Readonly<Record<string, unknown>>;
+
+type OpenAiEndpoint = 'responses' | 'images/generations';
 
 export class AiNotConfiguredError extends Error {
   constructor() {
@@ -62,7 +66,8 @@ export class AiDraftsExhaustedError extends Error {
  * differently on purpose, and a shared parser would have to grow a flag for each
  * of those differences.
  */
-export async function callModel(
+async function callOpenAiEndpoint(
+  endpoint: OpenAiEndpoint,
   body: ModelRequestBody,
   context: AiWritingContext,
   options: Readonly<{ apiKey?: string | null }> = {},
@@ -97,7 +102,7 @@ export async function callModel(
   }
 
   try {
-    const response = await fetch('https://api.openai.com/v1/responses', {
+    const response = await fetch(`https://api.openai.com/v1/${endpoint}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
       body: JSON.stringify(body),
@@ -121,4 +126,22 @@ export async function callModel(
     }
     throw error;
   }
+}
+
+/** Calls the Responses API through the shared provider and usage boundary. */
+export async function callModel(
+  body: ModelRequestBody,
+  context: AiWritingContext,
+  options: Readonly<{ apiKey?: string | null }> = {},
+): Promise<Response> {
+  return callOpenAiEndpoint('responses', body, context, options);
+}
+
+/** Calls the Image API through the shared provider and usage boundary. */
+export async function callImageModel(
+  body: ModelRequestBody,
+  context: AiWritingContext,
+  options: Readonly<{ apiKey?: string | null }> = {},
+): Promise<Response> {
+  return callOpenAiEndpoint('images/generations', body, context, options);
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useTransition } from 'react';
+import Image from 'next/image';
 import {
   generateLogoConcepts,
   generateLogoSvg,
@@ -11,8 +12,9 @@ import {
   type LogoColorMode,
   type GeneratedLogo,
 } from '@/lib/logo-creator';
+import { AI_LOGO_DIRECTIONS, type AiLogoDirection } from '@/lib/logo-image-prompt';
 import { SERVICE_ICON_GLYPHS } from '@/lib/templates/ServiceIcon';
-import { generateLogoTaglinesAction } from './actions';
+import { generateAiLogoAction, generateLogoTaglinesAction, type GeneratedAiLogo } from './actions';
 
 type Props = {
   open: boolean;
@@ -23,7 +25,7 @@ type Props = {
   onSelectLogo: (logoSvg: string, logoDataUri: string) => void;
 };
 
-type ViewTab = 'concepts' | 'mockups';
+type ViewTab = 'ai' | 'concepts' | 'mockups';
 type MockupType = 'truck' | 'uniform' | 'invoice' | 'mobile';
 
 export default function AiLogoCreatorModal({
@@ -44,12 +46,19 @@ export default function AiLogoCreatorModal({
   const [glyphPickerOpen, setGlyphPickerOpen] = useState(false);
   const [glyphSearch, setGlyphSearch] = useState('');
   const [activeFilter, setActiveFilter] = useState<LogoStyle | 'all'>('all');
-  const [activeTab, setActiveTab] = useState<ViewTab>('concepts');
+  const [activeTab, setActiveTab] = useState<ViewTab>('ai');
   const [selectedMockup, setSelectedMockup] = useState<MockupType>('truck');
   const [previewLogoIndex, setPreviewLogoIndex] = useState(0);
+  const [creativeBrief, setCreativeBrief] = useState('');
+  const [aiDirection, setAiDirection] = useState<AiLogoDirection>('art_director');
+  const [aiConcepts, setAiConcepts] = useState<GeneratedAiLogo[]>([]);
+  const [selectedAiLogoId, setSelectedAiLogoId] = useState<string | null>(null);
+  const [mockupUsesAi, setMockupUsesAi] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
   
   const [suggestedTaglines, setSuggestedTaglines] = useState<string[]>([]);
   const [isGeneratingAi, startAiTransition] = useTransition();
+  const [isGeneratingImage, startImageTransition] = useTransition();
   const [downloadingKit, setDownloadingKit] = useState(false);
 
   const concepts = useMemo(() => {
@@ -70,6 +79,7 @@ export default function AiLogoCreatorModal({
   }, [name, trade, tagline, year, accent, secondary, selectedGlyphKey, colorMode, activeFilter]);
 
   const activeMockupLogo = concepts[previewLogoIndex] ?? concepts[0];
+  const activeAiLogo = aiConcepts.find((concept) => concept.id === selectedAiLogoId) ?? aiConcepts[0] ?? null;
 
   if (!open) return null;
 
@@ -93,6 +103,83 @@ export default function AiLogoCreatorModal({
     });
   }
 
+  function handleGenerateAiLogo() {
+    setAiError(null);
+    startImageTransition(async () => {
+      const result = await generateAiLogoAction({
+        businessName: name,
+        trade,
+        tagline: tagline || null,
+        establishedYear: year || null,
+        accentColor: accent,
+        secondaryColor: secondary,
+        emblem: selectedGlyphKey,
+        direction: aiDirection,
+        creativeBrief: creativeBrief || null,
+      });
+
+      if (!result.ok || !result.image) {
+        setAiError(result.message || 'Could not generate a logo right now.');
+        return;
+      }
+
+      setAiConcepts((current) => [result.image!, ...current]);
+      setSelectedAiLogoId(result.image.id);
+    });
+  }
+
+  async function handleDownloadAiLogo(logo: GeneratedAiLogo) {
+    const fileName = `${name.toLowerCase().replace(/[^a-z0-9]+/g, '-') || 'brand'}-ai-logo.png`;
+    try {
+      const response = await fetch(logo.url);
+      if (!response.ok) throw new Error(`Download failed (${response.status})`);
+      const url = URL.createObjectURL(await response.blob());
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = fileName;
+      document.body.appendChild(anchor);
+      anchor.click();
+      document.body.removeChild(anchor);
+      URL.revokeObjectURL(url);
+    } catch {
+      window.open(logo.url, '_blank', 'noopener,noreferrer');
+    }
+  }
+
+  function renderMockupLogo(vectorMode: LogoColorMode = 'color') {
+    if (mockupUsesAi && activeAiLogo) {
+      return (
+        <Image
+          src={activeAiLogo.url}
+          alt={`${name} logo mockup`}
+          width={1536}
+          height={1024}
+          sizes="(max-width: 900px) 80vw, 520px"
+          style={{ display: 'block', width: '100%', height: 'auto', maxHeight: '190px', objectFit: 'contain' }}
+        />
+      );
+    }
+
+    return (
+      <div
+        style={{ width: '100%' }}
+        dangerouslySetInnerHTML={{
+          __html: generateLogoSvg({
+            businessName: name,
+            trade,
+            tagline: tagline || null,
+            establishedYear: year || null,
+            accentColor: accent,
+            secondaryColor: secondary,
+            iconGlyphKey: selectedGlyphKey,
+            style: activeMockupLogo.style,
+            colorMode: vectorMode,
+          }),
+        }}
+      />
+    );
+  }
+
   function handleDownloadSvg(logo: GeneratedLogo, suffix = '') {
     const blob = new Blob([logo.svg], { type: 'image/svg+xml;charset=utf-8' });
     const url = URL.createObjectURL(blob);
@@ -109,7 +196,7 @@ export default function AiLogoCreatorModal({
     return new Promise((resolve, reject) => {
       const blob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
       const url = URL.createObjectURL(blob);
-      const img = new Image();
+      const img = new window.Image();
       img.onload = () => {
         const canvas = document.createElement('canvas');
         canvas.width = width;
@@ -252,10 +339,10 @@ export default function AiLogoCreatorModal({
             </div>
             <div>
               <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 900, color: '#0f172a' }}>
-                AI Vector Logo & Brand Studio
+                AI Logo & Brand Studio
               </h2>
               <p style={{ margin: '2px 0 0', fontSize: '0.8rem', color: '#64748b' }}>
-                Professional multi-layer vector heraldry, curved heritage stamps & high-res print kits.
+                Generate original brand concepts, then prove them on your website, truck, and uniform.
               </p>
             </div>
           </div>
@@ -263,6 +350,23 @@ export default function AiLogoCreatorModal({
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             {/* View Tab Switcher */}
             <div style={{ background: '#e2e8f0', padding: '3px', borderRadius: '8px', display: 'flex', gap: '3px' }}>
+              <button
+                type="button"
+                onClick={() => setActiveTab('ai')}
+                style={{
+                  padding: '0.4rem 0.85rem',
+                  borderRadius: '6px',
+                  border: 'none',
+                  background: activeTab === 'ai' ? '#ffffff' : 'transparent',
+                  color: activeTab === 'ai' ? '#6d28d9' : '#64748b',
+                  fontWeight: 800,
+                  fontSize: '0.8rem',
+                  cursor: 'pointer',
+                  boxShadow: activeTab === 'ai' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                }}
+              >
+                ✦ AI Concept Lab
+              </button>
               <button
                 type="button"
                 onClick={() => setActiveTab('concepts')}
@@ -278,7 +382,7 @@ export default function AiLogoCreatorModal({
                   boxShadow: activeTab === 'concepts' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
                 }}
               >
-                🎨 Logo Concepts
+                ◇ Editable Vectors
               </button>
               <button
                 type="button"
@@ -295,7 +399,7 @@ export default function AiLogoCreatorModal({
                   boxShadow: activeTab === 'mockups' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
                 }}
               >
-                🚚 Real-World Proofs
+                🚚 Brand Mockups
               </button>
             </div>
 
@@ -343,7 +447,7 @@ export default function AiLogoCreatorModal({
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g. Maplewood Plumbing"
-                style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1.5px solid #cbd5e1', fontSize: '0.9rem', fontWeight: 600, boxSizing: 'border-box' }}
+                style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1.5px solid #cbd5e1', background: '#ffffff', color: '#0f172a', fontSize: '0.9rem', fontWeight: 600, boxSizing: 'border-box' }}
               />
             </div>
 
@@ -379,7 +483,7 @@ export default function AiLogoCreatorModal({
                 value={tagline}
                 placeholder="e.g. Heating, Cooling & Drain Experts"
                 onChange={(e) => setTagline(e.target.value)}
-                style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1.5px solid #cbd5e1', fontSize: '0.9rem', boxSizing: 'border-box' }}
+                style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1.5px solid #cbd5e1', background: '#ffffff', color: '#0f172a', fontSize: '0.9rem', boxSizing: 'border-box' }}
               />
 
               {/* AI Slogan Suggestions Pills */}
@@ -410,10 +514,93 @@ export default function AiLogoCreatorModal({
               )}
             </div>
 
+            {activeTab === 'ai' && (
+              <div
+                style={{
+                  padding: '0.9rem',
+                  borderRadius: '12px',
+                  background: 'linear-gradient(145deg, #faf5ff, #eef2ff)',
+                  border: '1px solid #ddd6fe',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.75rem',
+                }}
+              >
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 900, color: '#5b21b6', marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                    Creative Direction
+                  </label>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5px' }}>
+                    {AI_LOGO_DIRECTIONS.map((direction) => (
+                      <button
+                        key={direction.id}
+                        type="button"
+                        onClick={() => setAiDirection(direction.id)}
+                        title={direction.description}
+                        style={{
+                          padding: '0.45rem 0.5rem',
+                          borderRadius: '7px',
+                          border: aiDirection === direction.id ? '1.5px solid #7c3aed' : '1px solid #ddd6fe',
+                          background: aiDirection === direction.id ? '#ffffff' : 'rgba(255,255,255,0.55)',
+                          color: aiDirection === direction.id ? '#5b21b6' : '#475569',
+                          fontWeight: 800,
+                          fontSize: '0.72rem',
+                          textAlign: 'left',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        {direction.shortLabel}
+                      </button>
+                    ))}
+                  </div>
+                  <p style={{ margin: '5px 0 0', fontSize: '0.69rem', lineHeight: 1.35, color: '#6b7280' }}>
+                    {AI_LOGO_DIRECTIONS.find((direction) => direction.id === aiDirection)?.description}
+                  </p>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 900, color: '#5b21b6', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                    Art Director Brief <span style={{ fontWeight: 600, color: '#8b5cf6' }}>(optional)</span>
+                  </label>
+                  <textarea
+                    value={creativeBrief}
+                    maxLength={600}
+                    onChange={(event) => setCreativeBrief(event.target.value)}
+                    placeholder="Try: An alpine peak hidden inside a lightning bolt. Confident, premium, no generic house roofs."
+                    rows={3}
+                    style={{ width: '100%', resize: 'vertical', padding: '0.55rem 0.65rem', borderRadius: '8px', border: '1.5px solid #c4b5fd', background: '#ffffff', color: '#1e1b4b', fontSize: '0.8rem', lineHeight: 1.4, boxSizing: 'border-box' }}
+                  />
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleGenerateAiLogo}
+                  disabled={isGeneratingImage || !name.trim()}
+                  style={{
+                    width: '100%',
+                    padding: '0.7rem 0.9rem',
+                    border: 'none',
+                    borderRadius: '9px',
+                    background: isGeneratingImage ? '#a78bfa' : 'linear-gradient(135deg, #7c3aed, #4f46e5)',
+                    color: '#ffffff',
+                    fontWeight: 900,
+                    fontSize: '0.86rem',
+                    cursor: isGeneratingImage ? 'wait' : 'pointer',
+                    boxShadow: '0 7px 18px rgba(109,40,217,0.24)',
+                  }}
+                >
+                  {isGeneratingImage ? 'Creating an original direction…' : aiConcepts.length ? '✦ Generate Another Concept' : '✦ Generate My First AI Logo'}
+                </button>
+                <span style={{ fontSize: '0.66rem', color: '#6d28d9', textAlign: 'center', lineHeight: 1.35 }}>
+                  Transparent, high-resolution PNG. Generation can take up to two minutes.
+                </span>
+              </div>
+            )}
+
             {/* Trade Icon Glyph Picker */}
             <div>
               <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, color: '#334155', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Trade Emblem / Icon
+                {activeTab === 'ai' ? 'Emblem Inspiration' : 'Trade Emblem / Icon'}
               </label>
               <div
                 onClick={() => setGlyphPickerOpen(true)}
@@ -509,7 +696,7 @@ export default function AiLogoCreatorModal({
                 type="text"
                 value={year}
                 onChange={(e) => setYear(e.target.value)}
-                style={{ width: '100%', padding: '0.4rem 0.6rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem', boxSizing: 'border-box' }}
+                style={{ width: '100%', padding: '0.4rem 0.6rem', borderRadius: '6px', border: '1px solid #cbd5e1', background: '#ffffff', color: '#0f172a', fontSize: '0.85rem', boxSizing: 'border-box' }}
               />
             </div>
           </div>
@@ -527,8 +714,16 @@ export default function AiLogoCreatorModal({
                 alignItems: 'center',
               }}
             >
-              {/* Style Filter Tabs (in Concepts view) */}
-              {activeTab === 'concepts' ? (
+              {activeTab === 'ai' ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem' }}>
+                  <span style={{ padding: '3px 8px', borderRadius: '999px', background: '#f3e8ff', color: '#6d28d9', fontSize: '0.7rem', fontWeight: 900, letterSpacing: '0.04em' }}>
+                    GPT IMAGE
+                  </span>
+                  <span style={{ color: '#475569', fontSize: '0.78rem', fontWeight: 700 }}>
+                    {AI_LOGO_DIRECTIONS.find((direction) => direction.id === aiDirection)?.label}
+                  </span>
+                </div>
+              ) : activeTab === 'concepts' ? (
                 <div style={{ display: 'flex', gap: '0.4rem', overflowX: 'auto' }}>
                   <button
                     type="button"
@@ -601,7 +796,7 @@ export default function AiLogoCreatorModal({
               )}
 
               {/* Color Mode Switcher */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              {activeTab !== 'ai' ? <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                 <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 700 }}>Render Mode:</span>
                 <button
                   type="button"
@@ -651,12 +846,117 @@ export default function AiLogoCreatorModal({
                 >
                   ⚪ Decal
                 </button>
-              </div>
+              </div> : (
+                <span style={{ color: '#64748b', fontSize: '0.72rem', fontWeight: 700 }}>
+                  Transparent PNG • 1536 × 1024
+                </span>
+              )}
             </div>
 
             {/* Stage Content */}
             <div style={{ flex: 1, overflowY: 'auto', padding: '1.25rem' }}>
-              {activeTab === 'concepts' ? (
+              {activeTab === 'ai' ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  {aiError && (
+                    <div role="alert" style={{ padding: '0.75rem 0.9rem', borderRadius: '10px', border: '1px solid #fecaca', background: '#fff1f2', color: '#9f1239', fontSize: '0.82rem', fontWeight: 700, display: 'flex', justifyContent: 'space-between', gap: '1rem' }}>
+                      <span>{aiError}</span>
+                      <button type="button" onClick={() => setAiError(null)} style={{ border: 'none', background: 'transparent', color: '#9f1239', cursor: 'pointer', fontWeight: 900 }}>✕</button>
+                    </div>
+                  )}
+
+                  {isGeneratingImage && (
+                    <div style={{ minHeight: '180px', borderRadius: '16px', padding: '1.5rem', background: 'radial-gradient(circle at 20% 20%, rgba(167,139,250,0.42), transparent 40%), linear-gradient(135deg, #111827, #312e81)', color: '#ffffff', display: 'flex', alignItems: 'center', gap: '1rem', boxShadow: '0 18px 40px rgba(49,46,129,0.22)' }}>
+                      <div style={{ width: '52px', height: '52px', borderRadius: '16px', background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem' }}>✦</div>
+                      <div>
+                        <strong style={{ display: 'block', fontSize: '1.05rem', marginBottom: '0.35rem' }}>Your AI art director is building a fresh identity</strong>
+                        <span style={{ color: '#c4b5fd', fontSize: '0.8rem', lineHeight: 1.5 }}>Concept, silhouette, typography, and transparent production artwork are being resolved together. This can take up to two minutes.</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {aiConcepts.length === 0 && !isGeneratingImage ? (
+                    <div
+                      style={{
+                        minHeight: '500px',
+                        borderRadius: '20px',
+                        padding: '3rem',
+                        background: 'radial-gradient(circle at 14% 18%, rgba(168,85,247,0.34), transparent 28%), radial-gradient(circle at 84% 80%, rgba(37,99,235,0.28), transparent 32%), linear-gradient(145deg, #0f172a 0%, #1e1b4b 58%, #172554 100%)',
+                        color: '#ffffff',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        textAlign: 'center',
+                        boxShadow: '0 22px 55px rgba(15,23,42,0.24)',
+                        position: 'relative',
+                        overflow: 'hidden',
+                      }}
+                    >
+                      <span style={{ color: '#c4b5fd', fontSize: '0.72rem', fontWeight: 900, letterSpacing: '0.18em', textTransform: 'uppercase' }}>Generative Brand Intelligence</span>
+                      <h3 style={{ maxWidth: '620px', margin: '0.75rem 0 0.65rem', fontSize: 'clamp(1.8rem, 4vw, 3.25rem)', lineHeight: 1.02, letterSpacing: '-0.045em' }}>
+                        Start with a real idea.<br />Not another logo template.
+                      </h3>
+                      <p style={{ maxWidth: '570px', margin: 0, color: '#cbd5e1', fontSize: '0.92rem', lineHeight: 1.65 }}>
+                        AI image generation explores custom symbolism, typography, negative space, and personality from your actual brand brief—then gives you production-ready transparent artwork.
+                      </p>
+                      <div style={{ marginTop: '1.5rem', display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '0.55rem' }}>
+                        {['Original visual metaphor', 'Exact brand colors', 'Truck-to-favicon ready'].map((quality) => (
+                          <span key={quality} style={{ padding: '0.45rem 0.75rem', borderRadius: '999px', border: '1px solid rgba(255,255,255,0.16)', background: 'rgba(255,255,255,0.08)', color: '#e2e8f0', fontSize: '0.75rem', fontWeight: 700 }}>{quality}</span>
+                        ))}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleGenerateAiLogo}
+                        disabled={!name.trim()}
+                        style={{ marginTop: '1.75rem', padding: '0.8rem 1.15rem', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.2)', background: '#ffffff', color: '#4c1d95', fontSize: '0.88rem', fontWeight: 900, cursor: 'pointer', boxShadow: '0 10px 25px rgba(0,0,0,0.22)' }}
+                      >
+                        ✦ Generate {name.trim() ? `${name.trim()}'s` : 'My'} First Concept
+                      </button>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '1rem' }}>
+                      {aiConcepts.map((logo, index) => {
+                        const direction = AI_LOGO_DIRECTIONS.find((item) => item.id === logo.direction);
+                        const selected = activeAiLogo?.id === logo.id;
+                        return (
+                          <div key={logo.id} style={{ padding: '0.9rem', borderRadius: '15px', border: selected ? '2px solid #7c3aed' : '1px solid #dbe2ea', background: '#ffffff', boxShadow: selected ? '0 14px 32px rgba(109,40,217,0.14)' : '0 5px 15px rgba(15,23,42,0.06)' }}>
+                            <button type="button" onClick={() => setSelectedAiLogoId(logo.id)} style={{ display: 'block', width: '100%', padding: 0, border: 0, background: 'transparent', cursor: 'pointer', textAlign: 'left' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', marginBottom: '0.65rem' }}>
+                                <div>
+                                  <strong style={{ display: 'block', color: '#0f172a', fontSize: '0.83rem' }}>{direction?.label || 'AI concept'} {aiConcepts.length > 1 ? `#${aiConcepts.length - index}` : ''}</strong>
+                                  <span style={{ color: '#64748b', fontSize: '0.68rem' }}>Original AI concept • transparent PNG</span>
+                                </div>
+                                {selected && <span style={{ padding: '3px 7px', borderRadius: '999px', background: '#f3e8ff', color: '#6d28d9', fontSize: '0.65rem', fontWeight: 900 }}>SELECTED</span>}
+                              </div>
+                              <div style={{ position: 'relative', width: '100%', aspectRatio: '3 / 2', overflow: 'hidden', borderRadius: '11px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', backgroundImage: 'linear-gradient(45deg, #e2e8f0 25%, transparent 25%), linear-gradient(-45deg, #e2e8f0 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e2e8f0 75%), linear-gradient(-45deg, transparent 75%, #e2e8f0 75%)', backgroundSize: '22px 22px', backgroundPosition: '0 0, 0 11px, 11px -11px, -11px 0px' }}>
+                                <Image src={logo.url} alt={`${name} generated logo concept`} fill sizes="(max-width: 900px) 100vw, 50vw" style={{ objectFit: 'contain', padding: '0.75rem' }} />
+                              </div>
+                            </button>
+
+                            <div style={{ display: 'flex', gap: '0.45rem', flexWrap: 'wrap', marginTop: '0.75rem' }}>
+                              <button type="button" onClick={() => { onSelectLogo('', logo.url); onClose(); }} style={{ flex: 1, minWidth: '150px', padding: '0.58rem 0.7rem', borderRadius: '8px', border: 'none', background: 'linear-gradient(135deg, #7c3aed, #4f46e5)', color: '#ffffff', fontSize: '0.8rem', fontWeight: 900, cursor: 'pointer' }}>
+                                Apply to Website
+                              </button>
+                              <button type="button" onClick={() => void handleDownloadAiLogo(logo)} style={{ padding: '0.58rem 0.7rem', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#ffffff', color: '#334155', fontSize: '0.78rem', fontWeight: 800, cursor: 'pointer' }}>Download PNG</button>
+                              <button type="button" onClick={() => { setSelectedAiLogoId(logo.id); setMockupUsesAi(true); setActiveTab('mockups'); }} style={{ padding: '0.58rem 0.7rem', borderRadius: '8px', border: '1px solid #c4b5fd', background: '#faf5ff', color: '#6d28d9', fontSize: '0.78rem', fontWeight: 800, cursor: 'pointer' }}>See Mockups</button>
+                            </div>
+                            <details style={{ marginTop: '0.6rem' }}>
+                              <summary style={{ cursor: 'pointer', color: '#64748b', fontSize: '0.68rem', fontWeight: 700 }}>View the art-direction prompt</summary>
+                              <pre style={{ margin: '0.45rem 0 0', padding: '0.65rem', maxHeight: '150px', overflow: 'auto', whiteSpace: 'pre-wrap', borderRadius: '8px', background: '#f8fafc', color: '#475569', fontFamily: 'inherit', fontSize: '0.65rem', lineHeight: 1.45 }}>{logo.prompt}</pre>
+                            </details>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {aiConcepts.length > 0 && (
+                    <div style={{ padding: '0.7rem 0.85rem', borderRadius: '10px', border: '1px solid #dbeafe', background: '#eff6ff', color: '#1e40af', fontSize: '0.72rem', lineHeight: 1.5 }}>
+                      AI concepts are high-resolution transparent PNGs. For fully editable shapes and one-color decal exports, use the Editable Vectors tab.
+                    </div>
+                  )}
+                </div>
+              ) : activeTab === 'concepts' ? (
                 /* Grid of Concepts */
                 <div
                   style={{
@@ -797,19 +1097,38 @@ export default function AiLogoCreatorModal({
                 /* Real-World Mockup Proofing Studio */
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                   {/* Style selector for Mockups */}
-                  <div style={{ display: 'flex', gap: '0.5rem', background: '#ffffff', padding: '0.5rem 0.75rem', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', background: '#ffffff', padding: '0.5rem 0.75rem', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
                     <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#334155', alignSelf: 'center' }}>Test Logo Style:</span>
+                    {aiConcepts.slice(0, 3).map((logo, index) => (
+                      <button
+                        key={logo.id}
+                        type="button"
+                        onClick={() => { setSelectedAiLogoId(logo.id); setMockupUsesAi(true); }}
+                        style={{
+                          padding: '0.35rem 0.65rem',
+                          borderRadius: '6px',
+                          border: mockupUsesAi && activeAiLogo?.id === logo.id ? '1.5px solid #7c3aed' : '1px solid #c4b5fd',
+                          background: mockupUsesAi && activeAiLogo?.id === logo.id ? '#f3e8ff' : '#ffffff',
+                          color: '#6d28d9',
+                          fontSize: '0.75rem',
+                          fontWeight: 800,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        ✦ AI Concept {aiConcepts.length > 1 ? aiConcepts.length - index : ''}
+                      </button>
+                    ))}
                     {concepts.map((c, idx) => (
                       <button
                         key={c.id}
                         type="button"
-                        onClick={() => setPreviewLogoIndex(idx)}
+                        onClick={() => { setPreviewLogoIndex(idx); setMockupUsesAi(false); }}
                         style={{
                           padding: '0.35rem 0.65rem',
                           borderRadius: '6px',
-                          border: previewLogoIndex === idx ? '1.5px solid #2563eb' : '1px solid #cbd5e1',
-                          background: previewLogoIndex === idx ? '#eff6ff' : '#ffffff',
-                          color: previewLogoIndex === idx ? '#1d4ed8' : '#475569',
+                          border: !mockupUsesAi && previewLogoIndex === idx ? '1.5px solid #2563eb' : '1px solid #cbd5e1',
+                          background: !mockupUsesAi && previewLogoIndex === idx ? '#eff6ff' : '#ffffff',
+                          color: !mockupUsesAi && previewLogoIndex === idx ? '#1d4ed8' : '#475569',
                           fontSize: '0.75rem',
                           fontWeight: 700,
                           cursor: 'pointer',
@@ -865,20 +1184,9 @@ export default function AiLogoCreatorModal({
                             width: '80%',
                             filter: 'drop-shadow(0 8px 16px rgba(0,0,0,0.5))',
                           }}
-                          dangerouslySetInnerHTML={{
-                            __html: generateLogoSvg({
-                              businessName: name,
-                              trade,
-                              tagline: tagline || null,
-                              establishedYear: year || null,
-                              accentColor: accent,
-                              secondaryColor: secondary,
-                              iconGlyphKey: selectedGlyphKey,
-                              style: activeMockupLogo.style,
-                              colorMode: 'dark',
-                            }),
-                          }}
-                        />
+                        >
+                          {renderMockupLogo('dark')}
+                        </div>
 
                         {/* License / Phone Footer on Vehicle */}
                         <div style={{ marginTop: '1.25rem', display: 'flex', gap: '1.5rem', color: '#94a3b8', fontSize: '0.8rem', fontWeight: 800, letterSpacing: '0.1em' }}>
@@ -922,20 +1230,9 @@ export default function AiLogoCreatorModal({
                               maxWidth: '380px',
                               filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.8))',
                             }}
-                            dangerouslySetInnerHTML={{
-                              __html: generateLogoSvg({
-                                businessName: name,
-                                trade,
-                                tagline: tagline || null,
-                                establishedYear: year || null,
-                                accentColor: accent,
-                                secondaryColor: secondary,
-                                iconGlyphKey: selectedGlyphKey,
-                                style: activeMockupLogo.style,
-                                colorMode: 'dark',
-                              }),
-                            }}
-                          />
+                          >
+                            {renderMockupLogo('dark')}
+                          </div>
                         </div>
                         <span style={{ marginTop: '1rem', color: '#64748b', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.1em' }}>
                           LEFT CHEST UNIFORM EMBROIDERY
@@ -960,10 +1257,9 @@ export default function AiLogoCreatorModal({
                         }}
                       >
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #f1f5f9', paddingBottom: '1rem' }}>
-                          <div
-                            style={{ maxWidth: '340px' }}
-                            dangerouslySetInnerHTML={{ __html: activeMockupLogo.svg }}
-                          />
+                          <div style={{ width: '340px', maxWidth: '55%' }}>
+                            {renderMockupLogo('color')}
+                          </div>
                           <div style={{ textAlign: 'right' }}>
                             <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 900, color: '#0f172a' }}>OFFICIAL ESTIMATE</h3>
                             <span style={{ fontSize: '0.75rem', color: '#64748b' }}>#EST-2026-0842</span>
@@ -1010,7 +1306,7 @@ export default function AiLogoCreatorModal({
 
                         {/* Mobile Header Nav */}
                         <div style={{ padding: '12px 14px', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <div style={{ maxWidth: '160px' }} dangerouslySetInnerHTML={{ __html: activeMockupLogo.svg }} />
+                          <div style={{ width: '160px', maxHeight: '54px', overflow: 'hidden' }}>{renderMockupLogo('color')}</div>
                           <div style={{ fontSize: '1rem', color: '#0f172a' }}>☰</div>
                         </div>
 
@@ -1077,7 +1373,7 @@ export default function AiLogoCreatorModal({
                 value={glyphSearch}
                 placeholder="Search 45+ icons (e.g. wrench, faucet, flame, bolt, tree)..."
                 onChange={(e) => setGlyphSearch(e.target.value)}
-                style={{ width: '100%', padding: '0.45rem 0.75rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem', boxSizing: 'border-box' }}
+                style={{ width: '100%', padding: '0.45rem 0.75rem', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#ffffff', color: '#0f172a', fontSize: '0.85rem', boxSizing: 'border-box' }}
               />
             </div>
 
