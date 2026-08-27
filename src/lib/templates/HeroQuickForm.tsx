@@ -774,7 +774,6 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
     }
   }
 
-  const stepIndex = step === 'describe' ? 0 : step === 'qa' ? 1 : step === 'contact' ? 2 : 3;
   const isEmergency = Boolean(
     description &&
     /\b(burst\s*pipe|pipe\s*burst|flooding|water\s*pouring|leak(?:ing)?\s*everywhere|spraying\s*water|gushing|sewage\s*backup|smell\s*gas|gas\s*leak|no\s*heat|furnace\s*out)\b/i.test(description)

@@ -1,6 +1,5 @@
 'use client';
 
-import Image from 'next/image';
 import BrandLogo from '@/components/brand-logo';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
