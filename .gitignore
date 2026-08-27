@@ -45,3 +45,7 @@ FILES/
 # Scratch probes. Agents write these into the repo so `pg` resolves; they are
 # never part of the tree.
 scripts/tmp-*.mjs
+
+# Generated video/screen capture recording artifacts
+artifacts/
+

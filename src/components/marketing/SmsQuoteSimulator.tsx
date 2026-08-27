@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { useState } from 'react';
 import { APP_SIGNUP_URL } from '@/components/marketing/links';
 import styles from './sms-quote-simulator.module.css';
@@ -11,14 +12,35 @@ type Scenario = {
   homeownerMessage: string;
   aiResponse: string;
   quoteTitle: string;
-  laborLine: string;
-  materialLine: string;
+  quoteLines: string[];
   total: string;
   deposit: string;
   contractorToastText: string;
+  beforePhoto?: string;
+  afterPhoto?: string;
 };
 
 const SCENARIOS: Scenario[] = [
+  {
+    id: 'bath-to-shower',
+    name: '🚿 Tub-to-Shower Conversion',
+    trade: 'Bathroom Remodeling',
+    homeownerMessage:
+      'We want to replace this tub with a low-threshold shower for my mom. Same footprint, no plumbing move. Could you include a seat, grab bar, niche, and glass door?',
+    aiResponse:
+      'The request fits a standard 60-inch alcove conversion. I organized the photo, safety requirements, and finish selections into a contractor-ready quote draft:',
+    quoteTitle: '60-inch Low-Threshold Shower Conversion',
+    quoteLines: [
+      'Demolition, haul-away & plumbing prep: $1,650',
+      'Waterproofing, tile & installation labor: $2,950',
+      'Shower pan, glass & safety package: $3,500',
+    ],
+    total: '$8,100.00',
+    deposit: '$810.00',
+    contractorToastText: '🚿 $810.00 deposit paid! Michelle C. booked for final measure Thursday at 4:30 PM.',
+    beforePhoto: '/demo/bath-to-shower/before.png',
+    afterPhoto: '/demo/bath-to-shower/after.png',
+  },
   {
     id: 'pipe-emergency',
     name: '⚡ Burst Pipe Emergency',
@@ -27,8 +49,10 @@ const SCENARIOS: Scenario[] = [
     aiResponse:
       '🚨 We can dispatch a technician right away. We are currently 1.8 miles away on route. Upfront emergency diagnosis & repair estimate ready below:',
     quoteTitle: 'Emergency Pipe Repair & Shutoff',
-    laborLine: 'Emergency Labor & Pressure Testing: $240',
-    materialLine: 'Copper/PEX Couplings & Valve: $65',
+    quoteLines: [
+      'Emergency Labor & Pressure Testing: $240',
+      'Copper/PEX Couplings & Valve: $65',
+    ],
     total: '$305.00',
     deposit: '$150.00',
     contractorToastText: '⚡ $150.00 Deposit Paid via Apple Pay! Dana R. booked for 2:15 PM.',
@@ -41,8 +65,10 @@ const SCENARIOS: Scenario[] = [
     aiResponse:
       'Thanks for reaching out! Based on 250 sq ft cedar specifications in your area, here is your preliminary itemized estimate and 3D design slot:',
     quoteTitle: '250 sq ft Premium Cedar Deck',
-    laborLine: 'Demolition & Framing Labor: $3,200',
-    materialLine: 'Cedar Decking & Aluminum Railings: $4,450',
+    quoteLines: [
+      'Demolition & Framing Labor: $3,200',
+      'Cedar Decking & Aluminum Railings: $4,450',
+    ],
     total: '$7,650.00',
     deposit: '$500.00',
     contractorToastText: '🔨 $500.00 Design Deposit Paid! Sarah K. site visit confirmed.',
@@ -55,8 +81,10 @@ const SCENARIOS: Scenario[] = [
     aiResponse:
       'We have an HVAC tech in your neighborhood between 1:00 PM and 3:00 PM. Here is your capacitor & refrigerant diagnostic quote:',
     quoteTitle: 'AC System Diagnostic & Tune',
-    laborLine: 'System Diagnostic & Capacitor Check: $149',
-    materialLine: 'Capacitor Replacement & Coil Clean: $135',
+    quoteLines: [
+      'System Diagnostic & Capacitor Check: $149',
+      'Capacitor Replacement & Coil Clean: $135',
+    ],
     total: '$284.00',
     deposit: '$100.00',
     contractorToastText: '❄️ $100.00 Deposit Confirmed! Marcus T. added to afternoon route.',
@@ -69,8 +97,10 @@ const SCENARIOS: Scenario[] = [
     aiResponse:
       'Our tree crew has a woodchipper in your sector today. We can clear and haul the limb by 4:00 PM today:',
     quoteTitle: 'Emergency Tree Limb Removal & Haul',
-    laborLine: 'Chainsaw Crew Labor & Chipper: $275',
-    materialLine: 'Debris Disposal & Yard Sweep: $75',
+    quoteLines: [
+      'Chainsaw Crew Labor & Chipper: $275',
+      'Debris Disposal & Yard Sweep: $75',
+    ],
     total: '$350.00',
     deposit: '$150.00',
     contractorToastText: '🌳 $150.00 Paid via Apple Pay! Driveway job booked.',
@@ -109,7 +139,7 @@ export default function SmsQuoteSimulator() {
   };
 
   return (
-    <div className={styles.simulatorContainer}>
+    <div className={styles.simulatorContainer} data-reel-frame="simulator">
       <div className={styles.card}>
         {/* Left Column Narrative */}
         <div className={styles.narrativeCol}>
@@ -134,6 +164,7 @@ export default function SmsQuoteSimulator() {
                   type="button"
                   onClick={() => handleSelectScenario(s.id)}
                   className={`${styles.scenarioBtn} ${selectedId === s.id ? styles.scenarioBtnActive : ''}`}
+                  data-scenario-id={s.id}
                 >
                   {s.name}
                 </button>
@@ -159,7 +190,7 @@ export default function SmsQuoteSimulator() {
               <div className={`${styles.stepNumber} ${stage >= 3 ? styles.stepNumberDone : ''}`}>
                 {stage >= 3 ? '✓' : '3'}
               </div>
-              <span>3. Homeowner approves &amp; taps Pay deposit</span>
+              <span>3. Homeowner approves &amp; taps Apple Pay deposit</span>
             </div>
             <div className={`${styles.stepItem} ${stage >= 3 ? styles.stepItemActive : ''}`}>
               <div className={`${styles.stepNumber} ${stage >= 3 ? styles.stepNumberDone : ''}`}>
@@ -178,7 +209,7 @@ export default function SmsQuoteSimulator() {
 
         {/* Right Column Phone Simulation */}
         <div className={styles.phoneWrapper}>
-          <div className={styles.phoneFrame}>
+          <div className={styles.phoneFrame} data-reel-frame="phone">
             <div className={styles.phoneNotch} />
 
             {/* Contractor Toast Alert when Paid */}
@@ -203,6 +234,19 @@ export default function SmsQuoteSimulator() {
               {/* Homeowner message */}
               {stage >= 1 && (
                 <div className={styles.smsBubbleHomeowner}>
+                  {scenario.beforePhoto ? (
+                    <figure className={styles.projectPhoto}>
+                      <Image
+                        src={scenario.beforePhoto}
+                        alt="Existing bathtub alcove submitted with the homeowner's request"
+                        width={1456}
+                        height={1092}
+                        sizes="280px"
+                        priority
+                      />
+                      <figcaption>Existing bathroom · 1 photo</figcaption>
+                    </figure>
+                  ) : null}
                   {scenario.homeownerMessage}
                 </div>
               )}
@@ -214,13 +258,25 @@ export default function SmsQuoteSimulator() {
 
                   {/* Interactive Quote Card */}
                   <div className={styles.quoteCardPreview}>
+                    {scenario.afterPhoto ? (
+                      <figure className={styles.projectPhoto}>
+                        <Image
+                          src={scenario.afterPhoto}
+                          alt="Proposed low-threshold shower conversion in the same bathroom"
+                          width={1456}
+                          height={1092}
+                          sizes="280px"
+                          priority
+                        />
+                        <figcaption>Proposed finish · same footprint</figcaption>
+                      </figure>
+                    ) : null}
                     <div className={styles.quoteCardTitle}>{scenario.quoteTitle}</div>
-                    <div className={styles.quoteLine}>
-                      <span>{scenario.laborLine}</span>
-                    </div>
-                    <div className={styles.quoteLine}>
-                      <span>{scenario.materialLine}</span>
-                    </div>
+                    {scenario.quoteLines.map((line) => (
+                      <div className={styles.quoteLine} key={line}>
+                        <span>{line}</span>
+                      </div>
+                    ))}
                     <div
                       style={{
                         borderTop: '1px solid rgba(255, 255, 255, 0.1)',
@@ -242,8 +298,9 @@ export default function SmsQuoteSimulator() {
                         onClick={handlePayApplePay}
                         className={styles.applePayBtn}
                         aria-label="Pay deposit with Apple Pay"
+                        data-reel-action="pay-deposit"
                       >
-                        <span>Pay</span> Pay {scenario.deposit} Deposit
+                        <span>Apple Pay</span> &middot; Pay {scenario.deposit} Deposit
                       </button>
                     )}
 
@@ -265,6 +322,7 @@ export default function SmsQuoteSimulator() {
                 onClick={handlePlaySimulation}
                 disabled={isSimulating}
                 className={styles.simBtn}
+                data-reel-action="replay-flow"
               >
                 {isSimulating ? 'Simulating...' : '▶ Replay Flow'}
               </button>

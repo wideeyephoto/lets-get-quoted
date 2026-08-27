@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { SiteHeader, SiteFooter } from '@/components/flagship/site-chrome';
 import SmsQuoteSimulator from '@/components/marketing/SmsQuoteSimulator';
 import styles from '@/app/tools/tools.module.css';
+import chromeStyles from '@/components/flagship/flagship.module.css';
 
 export const metadata: Metadata = {
   title: 'Interactive SMS AI Quote & Apple Pay Simulation',
@@ -33,7 +34,7 @@ export default function DemoSmsQuotePage() {
   };
 
   return (
-    <main className={styles.page}>
+    <main className={`${styles.page} ${chromeStyles.root}`}>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}

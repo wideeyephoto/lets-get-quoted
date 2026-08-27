@@ -401,3 +401,11 @@ describe('picking a job gets the queue out of the way', () => {
     expect(QUEUE).toContain('if (armedJob || selectedJobId) setOpen(false);');
   });
 });
+
+describe('empty queue leaves the calendar the full width', () => {
+  it('returns children directly when no jobs are waiting to be scheduled', () => {
+    expect(BENCH).toContain('if (jobs.length === 0) {');
+    expect(BENCH).toContain('return <>{children}</>;');
+  });
+});
+

@@ -94,13 +94,24 @@ export default function ScheduleWorkbench({
     .sort((a, b) => queueRank(a.job) - queueRank(b.job) || a.index - b.index)
     .map((entry) => entry.job);
 
+  /**
+   * WHEN NOTHING IS WAITING TO BE SCHEDULED.
+   *
+   * The queue and the detail rail have no work to do, and rendering the multi-
+   * column workbench grid with an empty queue would squeeze the calendar into
+   * a 300px rail and render a blank "Pick a job" placeholder over the rest of
+   * the screen. When the queue is clear the calendar gets the full shell.
+   */
+  if (jobs.length === 0) {
+    return <>{children}</>;
+  }
+
   return (
     <div className="schedule-workbench">
       {/* selectedJobId is passed down so the queue can get out of the way of the
           panel it just opened — below 1024 both are full-screen overlays, and
           the job's details opened behind the list. */}
-      {jobs.length > 0 ? (
-        <UnscheduledQueue count={jobs.length} selectedJobId={selectedId}>
+      <UnscheduledQueue count={jobs.length} selectedJobId={selectedId}>
           <section className="panel workspace-section-card sched-queue-col" id="unscheduled-jobs">
             <div className="section-heading workspace-section-heading">
               <p className="eyebrow">Needs a date</p>
@@ -220,7 +231,6 @@ export default function ScheduleWorkbench({
             </p>
           </section>
         </UnscheduledQueue>
-      ) : null}
 
       {children}
 
