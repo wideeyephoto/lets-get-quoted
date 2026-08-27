@@ -1,3 +1,6 @@
+'use client';
+
+import { useState } from 'react';
 import SaveButton from '@/components/save-button';
 import ConfirmActionButton from '@/app/dashboard/jobs/[id]/ConfirmActionButton';
 import InsurancePreview from './InsurancePreview';
@@ -43,6 +46,7 @@ export default function InsuranceSection({
   saveAction: (formData: FormData) => Promise<void>;
   removeAction: () => Promise<void>;
 }) {
+  const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
   const state = insuranceState(record, todayKey);
   const note = ownerNote(state);
   const onFile = Boolean(record.path);
@@ -72,15 +76,34 @@ export default function InsuranceSection({
         <label htmlFor="ins-file">
           {onFile ? 'Replace the certificate' : 'Certificate of insurance'}
         </label>
-        <input
-          id="ins-file"
-          name="certificate"
-          type="file"
-          accept="application/pdf,image/jpeg,image/png,image/webp,image/heic"
-        />
-        {/* Said here because it is the thing people get wrong: a phone photo
-            of the paper certificate is a perfectly good answer. */}
-        <p className="field-note">A PDF from your agent, or a photo of the paper one. Up to 10 MB.</p>
+        <div className="ins-dropzone">
+          <input
+            id="ins-file"
+            name="certificate"
+            type="file"
+            className="ins-dropzone-input"
+            accept="application/pdf,image/jpeg,image/png,image/webp,image/heic"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              setSelectedFileName(file ? file.name : null);
+            }}
+          />
+          <svg className="ins-dropzone-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="17 8 12 3 7 8" />
+            <line x1="12" y1="3" x2="12" y2="15" />
+          </svg>
+          <span className="ins-dropzone-title">
+            {selectedFileName ? 'Certificate selected' : onFile ? 'Click or drag to replace certificate' : 'Click or drag certificate here'}
+          </span>
+          <span className="ins-dropzone-subtitle">
+            {selectedFileName ? (
+              <span className="ins-dropzone-selected">📄 {selectedFileName}</span>
+            ) : (
+              'A PDF from your agent, or a photo of the paper certificate. Up to 10 MB.'
+            )}
+          </span>
+        </div>
       </div>
 
       <div className="cost-form-row">

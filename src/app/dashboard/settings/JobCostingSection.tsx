@@ -42,10 +42,30 @@ function shortRate(value: number): string {
   return Number.isInteger(value) ? `$${value}` : `$${value.toFixed(2)}`;
 }
 
-function Hint({ text }: { text: string }) {
+function Hint({ id, text }: { id: string; text: string }) {
+  const [open, setOpen] = useState(false);
+  const popoverId = `jc-hint-${id}`;
   return (
-    <span className="jc-hint" tabIndex={0} role="note" aria-label={text} title={text}>
-      <span aria-hidden="true">?</span>
+    <span className="jc-hint-wrapper">
+      <button
+        type="button"
+        className={`jc-hint${open ? ' is-open' : ''}`}
+        aria-label={text}
+        aria-expanded={open}
+        aria-controls={popoverId}
+        title={text}
+        onClick={(e) => {
+          e.preventDefault();
+          setOpen((prev) => !prev);
+        }}
+      >
+        <span aria-hidden="true">?</span>
+      </button>
+      {open ? (
+        <span id={popoverId} className="jc-hint-popover" role="tooltip">
+          {text}
+        </span>
+      ) : null}
     </span>
   );
 }
@@ -161,7 +181,7 @@ export default function JobCostingSection({
         <div className="jc-block">
           <p className="jc-block-head">
             Added labor costs (%)
-            <Hint text="Also commonly called labor burden or loaded labor rate." />
+            <Hint id="burden" text="Also commonly called labor burden or loaded labor rate." />
           </p>
           <div className="jc-value-row">
             <span className="jc-value">{burden}%</span>
@@ -197,7 +217,7 @@ export default function JobCostingSection({
               does, in the order somebody reads them. */}
           <p className="jc-block-head">
             Low-margin warning
-            <Hint text="Compares each job's estimated profit margin against this number." />
+            <Hint id="margin" text="Compares each job's estimated profit margin against this number." />
           </p>
           <div className="jc-value-row">
             <span className="jc-value">{margin}%</span>
@@ -233,7 +253,7 @@ export default function JobCostingSection({
         <div className="jc-block jc-effect">
           <p className="jc-block-head">
             How this affects job cost
-            <Hint text="What a crew hour is costed at, and when a job gets a margin flag." />
+            <Hint id="effect" text="What a crew hour is costed at, and when a job gets a margin flag." />
           </p>
           <ul className="jc-effect-list">
             <li>

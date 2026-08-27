@@ -1,6 +1,6 @@
 /* GENERATED — do not edit. Source: src/app/globals.css
    Run: node scripts/build-css-subset.mjs
-   source-sha256: bf3ba051599f0ceb
+   source-sha256: 7161b39b4331784d
 
    globals.css with the rules that can only match inside /dashboard, /admin and
    /demo removed. Every route except those three imports this file; they import
@@ -6323,6 +6323,13 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
   height: 18px;
   margin-top: 0.1rem;
   accent-color: #ff8a3d;
+}
+
+/* ---- Quote builder (owner, job page) ---- */
+.quote-builder {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
 }
 /* Finished, proven, and nobody has asked to be paid for it. */
 .milestone-totals .is-ready strong { color: var(--ink-lime-1); }
@@ -14565,6 +14572,12 @@ body:not(:has(.app-main-sidenav)) .theme-fab {
 .jc-save-saved { color: var(--ink-green-11); }
 .jc-save-error { color: var(--ink-red-1); }
 .jc-example-part.is-total strong { color: var(--ink-green-11); font-size: 1.5rem; }
+.jc-hint:hover, .jc-hint:focus-visible, .jc-hint.is-open {
+  border-color: var(--accent);
+  color: var(--accent-ink);
+  background: rgba(255, 122, 33, 0.14);
+  outline: none;
+}
 .jc-tag.is-ok { border-color: var(--cedge-green-6); background: rgba(72, 199, 142, 0.12); color: var(--ink-green-11); }
 .jc-tag.is-warn { border-color: var(--cedge-amber-3); background: rgba(255, 209, 102, 0.12); color: var(--gold-ink); }
 .jc-effect-mark.is-money { border-color: var(--cedge-green-6); background: rgba(72, 199, 142, 0.1); color: var(--ink-green-11); }

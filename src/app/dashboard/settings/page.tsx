@@ -681,7 +681,16 @@ export default async function SettingsPage({
                       having every day's mileage measured from a mail counter. */}
                   <form action={updateBusinessAddressesAction} className="form-grid compact-form">
                     <div className="field full">
-                      <label htmlFor="operatingAddress">Operating location</label>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
+                        <label htmlFor="operatingAddress" style={{ margin: 0 }}>Operating location</label>
+                        {operatingAddress ? (
+                          hasServiceCenter ? (
+                            <span className="jc-tag is-ok" style={{ fontSize: '0.72rem', padding: '0.15rem 0.5rem' }}>✓ Route center verified</span>
+                          ) : (
+                            <span className="jc-tag is-warn" style={{ fontSize: '0.72rem', padding: '0.15rem 0.5rem' }}>⚠ Location unverified</span>
+                          )
+                        ) : null}
+                      </div>
                       {/* Verified-as-you-type rather than free text: a typo or a
                           city-only entry fails the precise-match test silently,
                           and the only symptom is a day whose mileage is short. */}
