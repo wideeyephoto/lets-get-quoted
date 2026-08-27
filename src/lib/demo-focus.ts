@@ -141,6 +141,7 @@ export function demoLeadDetails(): Record<string, LeadDetailDto> {
       location: cityOf(lead.address),
       estimateLabel: estimate ? `${formatMoney(estimate.min)}–${formatMoney(estimate.max)}` : null,
       textOnly: !lead.email,
+      visualAnalysis: null,
       contactLog: [],
       contactCount: 0,
       photos: [],

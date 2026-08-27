@@ -9,9 +9,9 @@ const AFTER_IMAGE = '/demo/bath-to-shower/after.png';
 const SCENE_DURATIONS = [5200, 6000, 7800, 5700, 5600] as const;
 
 const quoteItems = [
-  { label: 'Demo, haul-away & plumbing prep', price: '$1,650' },
-  { label: 'Waterproofing, tile & install labor', price: '$2,950' },
-  { label: 'Shower pan, glass & safety package', price: '$3,500' },
+  { label: 'Demo + plumbing prep', price: '$1,650' },
+  { label: 'Waterproof + tile install', price: '$2,950' },
+  { label: 'Pan, glass + safety kit', price: '$3,500' },
 ] as const;
 
 type BathToShowerReelProps = {
@@ -104,15 +104,15 @@ function SceneTwo() {
 
         <div className={styles.projectFacts}>
           <div><span>FOOTPRINT</span><strong>60&quot; alcove</strong></div>
-          <div><span>TIMELINE</span><strong>Next 30 days</strong></div>
+          <div><span>TIMELINE</span><strong>30 days</strong></div>
           <div><span>BUDGET</span><strong>$8k–$10k</strong></div>
         </div>
 
         <div className={styles.scopeTags}>
-          <span><CheckIcon />Low-threshold pan</span>
+          <span><CheckIcon />Low threshold</span>
           <span><CheckIcon />Grab bar + seat</span>
-          <span><CheckIcon />Glass enclosure</span>
-          <span><CheckIcon />Recessed niche</span>
+          <span><CheckIcon />Glass door</span>
+          <span><CheckIcon />Shower niche</span>
         </div>
       </div>
 
@@ -196,11 +196,11 @@ function SceneFour() {
           <div className={styles.avatarSmall}>LGQ</div>
           <div><strong>Alpine Bath Co.</strong><span>Quote delivered just now</span></div>
         </div>
-        <p>Hi Michelle — your bath-to-shower quote is ready.</p>
+        <p>Michelle — your quote is ready.</p>
         <div className={styles.previewTotal}>
           <span>Bath-to-shower conversion</span>
           <strong>$8,100</strong>
-          <small>$810 to reserve your project</small>
+          <small>$810 to book</small>
         </div>
         <button className={styles.approveButton} type="button">Approve &amp; reserve date</button>
       </div>
@@ -243,9 +243,9 @@ function SceneFive() {
         <div className={styles.appointmentCard}>
           <span>FINAL MEASURE</span>
           <strong>Thursday · 4:30 PM</strong>
-          <small>Automatically added to your schedule</small>
+          <small>Added to your schedule</small>
         </div>
-        <p><b>LET&apos;S GET QUOTED</b> · Quote faster. Win better work.</p>
+        <p><b>LET&apos;S GET QUOTED</b> · Quote faster.</p>
       </div>
     </section>
   );

@@ -6,7 +6,8 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { sendLeadNotificationEmail } from '@/lib/email';
 import { classifyEmail } from '@/lib/email-quality';
 import { createLead, getLeadTriage, LEAD_PRUNE_FLAGS, type Lead, type LeadTriage } from '@/lib/leads';
-import { deleteLeadPhotos, uploadLeadPhoto } from '@/lib/lead-photo-storage';
+import { deleteLeadPhotos, uploadLeadPhoto, createLeadPhotoUrls } from '@/lib/lead-photo-storage';
+import { analyzeLeadPhotos } from '@/lib/lead-photo-ai';
 import { isLeadVerificationValid } from '@/lib/lead-verification';
 import { loadLeadPhoneVerificationReadiness } from '@/lib/lead-phone-verification-readiness';
 import { normalizeUsPhone } from '@/lib/phone';
@@ -349,6 +350,29 @@ export async function POST(request: NextRequest) {
   const photoPaths: string[] = [];
   try {
     for (const photo of photos) photoPaths.push(await uploadLeadPhoto(site.account_id, photo, 'public_visitor'));
+
+    if (photoPaths.length > 0) {
+      try {
+        const photoUrls = await createLeadPhotoUrls(site.account_id, photoPaths);
+        if (photoUrls.length > 0) {
+          const visualAnalysis = await analyzeLeadPhotos({
+            accountId: site.account_id,
+            trade: siteContent.trade || null,
+            description: message,
+            photoUrls,
+          });
+          if (visualAnalysis) {
+            triage.visualAnalysis = visualAnalysis;
+            if ((visualAnalysis.urgency === 'emergency' || visualAnalysis.urgency === 'high') && !hasPruneFlag) {
+              triage.score = 'hot';
+            }
+          }
+        }
+      } catch (visErr) {
+        console.error('Visual photo inspection skipped on intake:', visErr);
+      }
+    }
+
     const lead = await createLead(admin, site.account_id, {
       name,
       phone,

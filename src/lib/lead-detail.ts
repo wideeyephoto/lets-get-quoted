@@ -3,6 +3,7 @@ import { formatLeadSource, getLead, getLeadTriage, LEAD_FLAG_LABELS, type LeadSc
 import { formatJobSchedule, formatMoney, getJob } from './jobs';
 import { createLeadPhotoLinks } from './lead-photo-storage';
 import { formatPhoneDashes } from './phone';
+import type { LeadVisualAnalysis } from './lead-photo-ai';
 import {
   JOB_STATUS_LABEL,
   estimateRangeLabel,
@@ -49,6 +50,9 @@ export type LeadDetailDto = {
   location: string | null;
   estimateLabel: string | null;
   textOnly: boolean;
+
+  /** Visual intelligence derived from lead photos. */
+  visualAnalysis?: LeadVisualAnalysis | null;
 
   contactLog: LeadContactEvent[];
   contactCount: number;
@@ -132,6 +136,7 @@ export async function loadLeadDetail(
     location: triage.location ?? null,
     estimateLabel: estimateRangeLabel(triage.estimate),
     textOnly: triage.contactPreference === 'text_only',
+    visualAnalysis: triage.visualAnalysis ?? null,
 
     // Newest first, and capped — a lead chased for a month can carry dozens.
     contactLog: (triage.contactLog ?? [])

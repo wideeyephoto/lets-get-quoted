@@ -50,6 +50,10 @@ export type AiWritingKind =
   | 'qualifier'
   /** Reading a receipt photo into numbers. Transcription, not writing. */
   | 'transcription'
+  /** Inspecting lead photos for equipment, damage, and parts pick-list. Inspection, not writing. */
+  | 'lead_photo_analysis'
+  /** Generating a Before & After case study for the website showcase. */
+  | 'showcase_case_study'
   /**
    * LGQ's own blog content.
    *
@@ -69,11 +73,13 @@ const BILLABLE: Readonly<Record<AiWritingKind, boolean>> = Object.freeze({
   quote_draft: true,
   change_order_draft: true,
   marketing_draft: true,
+  showcase_case_study: true,
   import_assist: false, // UNDECIDED - see the kind doc above
   site_copy: false, // UNDECIDED - see the kind doc above
   guard: false,
   qualifier: false,
   transcription: false,
+  lead_photo_analysis: false,
   platform_content: false,
 });
 

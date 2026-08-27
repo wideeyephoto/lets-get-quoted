@@ -1,9 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import type { LeadDetailDto } from '@/lib/lead-detail';
 import { isContactablePhone } from '@/lib/lead-queue';
+import type { LeadVisualAnalysis } from '@/lib/lead-photo-ai';
 import type { LeadViewItem } from './LeadsWorkspace';
 import { PropertyDossierCard } from '@/components/property-intel/PropertyDossierCard';
 import { PermitFeasibilityCard } from '@/components/permits/PermitFeasibilityCard';
@@ -61,6 +62,25 @@ export default function LeadDetailTabs({
   headingLevel?: 3 | 4;
 }) {
   const H = headingLevel;
+  const [copiedPickList, setCopiedPickList] = useState(false);
+
+  function copyPickListToClipboard(analysis: LeadVisualAnalysis) {
+    const lines = [
+      `SUPPLY HOUSE PICK-LIST:`,
+      `Project / Equipment: ${analysis.detectedEquipment.map((e) => [e.brand, e.type, e.specs].filter(Boolean).join(' ')).join(', ') || 'General Service'}`,
+      '',
+      ...analysis.suggestedPickList.map((item) => `• [${item.category}] ${item.name}${item.quantity ? ` (${item.quantity})` : ''}${item.notes ? ` — ${item.notes}` : ''}`),
+    ];
+    if (analysis.safetyOrCodeFlags.length > 0) {
+      lines.push('', 'CODE & SAFETY ITEMS:');
+      lines.push(...analysis.safetyOrCodeFlags.map((f) => `⚠️ ${f}`));
+    }
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(lines.join('\n'));
+      setCopiedPickList(true);
+      setTimeout(() => setCopiedPickList(false), 2500);
+    }
+  }
 
   if (tab === 'overview') {
     const contactablePhone = isContactablePhone(detail.phoneDigits);
@@ -120,6 +140,81 @@ export default function LeadDetailTabs({
             </p>
           )}
         </section>
+
+        {detail.visualAnalysis && (
+          <section className={styles.card} style={{ gridColumn: '1 / -1' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.4rem', flexWrap: 'wrap', gap: '0.4rem' }}>
+              <Head level={H}>📸 Visual AI Analysis &amp; Materials Pick-List</Head>
+              {detail.visualAnalysis.suggestedPickList.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => copyPickListToClipboard(detail.visualAnalysis!)}
+                  style={{
+                    fontSize: '0.74rem',
+                    fontWeight: 600,
+                    padding: '0.24rem 0.6rem',
+                    borderRadius: '5px',
+                    border: '1px solid var(--cedge-orange-66, rgba(255,122,33,0.4))',
+                    background: copiedPickList ? 'rgba(74,222,128,0.18)' : 'rgba(255,122,33,0.08)',
+                    color: copiedPickList ? 'var(--good, #22c55e)' : 'var(--accent-ink, #ff7a21)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {copiedPickList ? '✓ Copied to Clipboard!' : '📋 Copy Supply Pick-List'}
+                </button>
+              )}
+            </div>
+            <p style={{ fontSize: '0.86rem', color: 'var(--text)', marginBottom: '0.6rem', lineHeight: '1.45' }}>
+              <strong>Visual Summary:</strong> {detail.visualAnalysis.summary}
+            </p>
+            {detail.visualAnalysis.detectedEquipment.length > 0 && (
+              <div style={{ marginBottom: '0.6rem' }}>
+                <strong style={{ fontSize: '0.76rem', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--mute-t60)' }}>Detected Equipment</strong>
+                <div className={styles.chips} style={{ marginTop: '0.25rem' }}>
+                  {detail.visualAnalysis.detectedEquipment.map((eq, i) => (
+                    <span className={leadStyles.flagChip} key={i} style={{ background: 'rgba(96,165,250,.15)', color: 'var(--ink-sky-5)' }}>
+                      🏷️ {[eq.brand, eq.type, eq.specs].filter(Boolean).join(' ')} {eq.approxAgeYears ? `(~${eq.approxAgeYears} yrs old)` : ''}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+            {detail.visualAnalysis.observedIssues.length > 0 && (
+              <div style={{ marginBottom: '0.6rem' }}>
+                <strong style={{ fontSize: '0.76rem', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--mute-t60)' }}>Observed Damage &amp; Conditions</strong>
+                <ul style={{ margin: '0.2rem 0 0 1.2rem', padding: 0, fontSize: '0.82rem', color: 'var(--mute-t75)' }}>
+                  {detail.visualAnalysis.observedIssues.map((issue, i) => (
+                    <li key={i}>{issue}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {detail.visualAnalysis.suggestedPickList.length > 0 && (
+              <div style={{ marginBottom: '0.6rem' }}>
+                <strong style={{ fontSize: '0.76rem', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--mute-t60)' }}>Supply House Materials Pick-List</strong>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.4rem', marginTop: '0.3rem' }}>
+                  {detail.visualAnalysis.suggestedPickList.map((item, i) => (
+                    <div key={i} style={{ padding: '0.45rem 0.6rem', border: '1px solid var(--edge-t10)', borderRadius: '6px', fontSize: '0.78rem', background: 'rgba(var(--tint), .02)' }}>
+                      <span style={{ fontSize: '0.68rem', textTransform: 'uppercase', color: 'var(--mute-t50)', display: 'block' }}>{item.category}</span>
+                      <strong>{item.name}</strong> {item.quantity ? `(${item.quantity})` : ''}
+                      {item.notes && <div style={{ color: 'var(--mute-t50)', fontSize: '0.72rem', marginTop: '0.15rem' }}>{item.notes}</div>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {detail.visualAnalysis.safetyOrCodeFlags.length > 0 && (
+              <div style={{ marginTop: '0.4rem' }}>
+                <strong style={{ fontSize: '0.76rem', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--bad)' }}>⚠️ Code Compliance &amp; Safety Items</strong>
+                <ul style={{ margin: '0.2rem 0 0 1.2rem', padding: 0, fontSize: '0.82rem', color: 'var(--bad)' }}>
+                  {detail.visualAnalysis.safetyOrCodeFlags.map((note, i) => (
+                    <li key={i}>{note}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </section>
+        )}
       </div>
     );
   }
@@ -143,25 +238,20 @@ export default function LeadDetailTabs({
     return (
       <div className={styles.grid}>
         <section className={styles.card}>
-          <Head level={H}>{detail.projectType || 'Project request'}</Head>
-          {detail.message ? (
-            <p className={styles.quote}>{detail.message}</p>
-          ) : (
-            <p className={styles.muted}>They didn&rsquo;t write anything beyond the project type.</p>
-          )}
-          <Link className={styles.cardLink} href={`${base}/leads/${detail.id}?edit=client#lead-edit-modal`}>
-            Edit the details →
-          </Link>
-        </section>
-
-        <section className={styles.card}>
-          <Head level={H}>Where it came from</Head>
+          <Head level={H}>Project request</Head>
           <dl className={styles.defs}>
+            <div><dt>Type</dt><dd>{detail.projectType || 'General service'}</dd></div>
             <div><dt>Source</dt><dd>{detail.sourceLabel}</dd></div>
-            <div><dt>Page</dt><dd>{detail.sourcePage || 'Not recorded'}</dd></div>
-            <div><dt>Received</dt><dd>{detail.createdAtLabel}</dd></div>
-            <div><dt>Area</dt><dd>{detail.location || detail.address || 'Not given'}</dd></div>
+            {detail.sourcePage && <div><dt>From page</dt><dd>{detail.sourcePage}</dd></div>}
           </dl>
+          {detail.message ? (
+            <>
+              <p className={styles.label} style={{ marginTop: '0.8rem' }}>Customer message</p>
+              <blockquote className={styles.quote}>{detail.message}</blockquote>
+            </>
+          ) : (
+            <p className={styles.muted} style={{ marginTop: '0.8rem' }}>No written message left.</p>
+          )}
         </section>
       </div>
     );
@@ -169,21 +259,15 @@ export default function LeadDetailTabs({
 
   if (tab === 'activity') {
     return detail.contactLog.length === 0 ? (
-      <p className={styles.muted}>
-        Nobody has reached out yet.{' '}
-        <Link href={`${base}/leads/${detail.id}#lead-activity`}>Log a call or text →</Link>
-      </p>
+      <p className={styles.muted}>No touchpoints logged yet — log a call or text when you reach out.</p>
     ) : (
       <>
-        <ul className={styles.timeline}>
+        <ul className={styles.activityList}>
           {detail.contactLog.map((entry, index) => (
-            <li key={`${entry.at}-${index}`}>
-              <span className={styles.feedIcon} aria-hidden="true">•</span>
-              <span className={styles.timelineBody}>
-                <strong>{entry.label}</strong>
-                {entry.note ? <p>{entry.note}</p> : null}
-                <small>{entry.at}</small>
-              </span>
+            <li key={index}>
+              <strong>{entry.label}</strong>
+              <time>{entry.at}</time>
+              {entry.note && <p>{entry.note}</p>}
             </li>
           ))}
         </ul>
@@ -204,6 +288,23 @@ export default function LeadDetailTabs({
       <p className={styles.muted}>They didn&rsquo;t send any photos with this request.</p>
     ) : (
       <>
+        {detail.visualAnalysis && (
+          <div style={{ marginBottom: '1rem', padding: '0.85rem 1rem', border: '1px solid var(--edge-t12)', borderRadius: '8px', background: 'rgba(var(--tint), .025)' }}>
+            <strong style={{ fontSize: '0.86rem', color: 'var(--text)' }}>📸 AI Visual Inspection</strong>
+            <p style={{ margin: '0.3rem 0 0.5rem', fontSize: '0.82rem', color: 'var(--mute-t75)', lineHeight: '1.45' }}>
+              {detail.visualAnalysis.summary}
+            </p>
+            {detail.visualAnalysis.detectedEquipment.length > 0 && (
+              <div className={styles.chips} style={{ marginTop: '0.3rem' }}>
+                {detail.visualAnalysis.detectedEquipment.map((eq, i) => (
+                  <span className={leadStyles.flagChip} key={i} style={{ background: 'rgba(96,165,250,.15)', color: 'var(--ink-sky-5)' }}>
+                    🏷️ {[eq.brand, eq.type, eq.specs].filter(Boolean).join(' ')}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
         <div className={styles.photos}>
           {detail.photos.map((photo) => (
             // eslint-disable-next-line @next/next/no-img-element

@@ -3,6 +3,7 @@ import { createJob, deleteJob, getJob, parseQuoteItems, type Job, type QuoteItem
 import { findOrCreateClientId } from '@/lib/clients';
 import { normalizeClientChannelPreference } from '@/lib/client-channel';
 import { applyTestRecordFilter, type TestRecordOptions } from '@/lib/test-records';
+import type { LeadVisualAnalysis } from '@/lib/lead-photo-ai';
 
 export type LeadSource = 'website_form' | 'missed_call' | 'manual' | 'referral' | 'ai_voice';
 export type LeadStatus = 'new' | 'contacted' | 'quoted' | 'won' | 'lost';
@@ -41,6 +42,8 @@ export type LeadTriage = {
     authorityName: string;
     estimatedFee: number | null;
   };
+  /** Structured visual intelligence extracted from lead photos (equipment, damage, pick-list). */
+  visualAnalysis?: LeadVisualAnalysis | null;
   // 'text_only' = the homeowner asked not to be called — text first.
   //
   // A VOICE preference, and only that: it is about picking up the phone, and it

@@ -2,6 +2,9 @@
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { compressImage } from '@/lib/client-images';
+import { extractMediaDataUrls } from '@/lib/client-media-frames';
+import { assessImageQuality } from '@/lib/client-photo-quality';
+import { getTradePhotoTip } from '@/lib/trade-photo-tips';
 import { classifyEmail, suggestEmailFix } from '@/lib/email-quality';
 import { normalizeUsPhone } from '@/lib/phone';
 import { matchesServedCity } from '@/lib/service-area-match';
@@ -175,6 +178,9 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
 
   const [step, setStep] = useState<'describe' | 'qa' | 'contact' | 'result'>(wizardEnabled ? 'describe' : 'contact');
   const [chatQuestion, setChatQuestion] = useState('');
+  const [chatPhotoPrompt, setChatPhotoPrompt] = useState<string | null>(null);
+  const [qaFollowUpPhotos, setQaFollowUpPhotos] = useState<File[]>([]);
+  const qaPhotoInputRef = useRef<HTMLInputElement>(null);
   const [chatAnswer, setChatAnswer] = useState('');
   const [chatResponseId, setChatResponseId] = useState('');
   const [chatTurn, setChatTurn] = useState(0);
@@ -302,22 +308,46 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
   const introVideo = siteContent.introVideo;
 
   const [selectedPhotos, setSelectedPhotos] = useState<File[]>([]);
+  const [photoQualityWarning, setPhotoQualityWarning] = useState<string | null>(null);
+  const [visualObservation, setVisualObservation] = useState<string | null>(null);
 
-  function addPhotos(files: FileList | File[]) {
-    const images = Array.from(files).filter((file) => file.type.startsWith('image/'));
-    setSelectedPhotos((current) => [...current, ...images].slice(0, MAX_PHOTOS));
+  async function addPhotos(files: FileList | File[]) {
+    const media = Array.from(files).filter((file) => file.type.startsWith('image/') || file.type.startsWith('video/'));
+    setSelectedPhotos((current) => [...current, ...media].slice(0, MAX_PHOTOS));
     if (photoInputRef.current) photoInputRef.current.value = '';
+
+    for (const file of media) {
+      if (file.type.startsWith('image/')) {
+        try {
+          const quality = await assessImageQuality(file);
+          if (quality.tip) {
+            setPhotoQualityWarning(quality.tip);
+            break;
+          }
+        } catch {
+          // Quality check fallback
+        }
+      }
+    }
   }
 
   function removePhoto(index: number) {
-    setSelectedPhotos((current) => current.filter((_, photoIndex) => photoIndex !== index));
+    setSelectedPhotos((current) => {
+      const updated = current.filter((_, photoIndex) => photoIndex !== index);
+      if (updated.length === 0) setPhotoQualityWarning(null);
+      return updated;
+    });
   }
 
-  function applyChatResult(result: { type?: string; question?: string; responseId?: string; min?: number; max?: number; basis?: string; inArea?: boolean | null; excluded?: boolean; requiresSiteVisit?: boolean; requires_site_visit?: boolean; visitReason?: string; visit_reason?: string } | null) {
+  function applyChatResult(result: { type?: string; question?: string; photoPrompt?: string; responseId?: string; min?: number; max?: number; basis?: string; inArea?: boolean | null; excluded?: boolean; requiresSiteVisit?: boolean; requires_site_visit?: boolean; visitReason?: string; visit_reason?: string; visualObservation?: string } | null) {
+    if (typeof result?.visualObservation === 'string' && result.visualObservation) {
+      setVisualObservation(result.visualObservation.trim());
+    }
     if (result?.type === 'classic_fallback') {
       setClassicFallback(true);
       setEstimate(null);
       setChatQuestion('');
+      setChatPhotoPrompt(null);
       setChatAnswer('');
       setChatResponseId('');
       setStatus(null);
@@ -326,6 +356,7 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
     }
     if (result?.type === 'question' && result.question) {
       setChatQuestion(result.question);
+      setChatPhotoPrompt(typeof result.photoPrompt === 'string' ? result.photoPrompt.trim() : null);
       setChatResponseId(result.responseId ?? '');
       setChatTurn((current) => current + 1);
       setChatAnswer('');
@@ -375,6 +406,14 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
     setStatus(null);
     setIsClassifying(true);
     try {
+      let mediaUrls: string[] = [];
+      if (selectedPhotos.length > 0) {
+        try {
+          mediaUrls = await extractMediaDataUrls(selectedPhotos, 4);
+        } catch {
+          // Graceful fallback on frame extraction error
+        }
+      }
       const result = await classify({
         siteId: site.id,
         description: trimmedDescription,
@@ -384,6 +423,7 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
         businessSummary: site.tagline || site.headline || '',
         serviceArea: site.service_area || '',
         location: location.trim(),
+        ...(mediaUrls.length > 0 ? { images: mediaUrls } : {}),
       });
       applyChatResult(result);
     } catch {
@@ -399,16 +439,26 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
   async function handleChatAnswerSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const trimmedAnswer = chatAnswer.trim();
-    if (!trimmedAnswer) return;
+    if (!trimmedAnswer && qaFollowUpPhotos.length === 0) return;
     setIsClassifying(true);
     try {
+      let qaMediaUrls: string[] = [];
+      if (qaFollowUpPhotos.length > 0) {
+        try {
+          qaMediaUrls = await extractMediaDataUrls(qaFollowUpPhotos, 2);
+        } catch {
+          // Graceful fallback
+        }
+      }
       const result = await classify({
         siteId: site.id,
         previousResponseId: chatResponseId,
-        answer: trimmedAnswer,
+        answer: trimmedAnswer || 'Attached requested photo for visual inspection.',
         turn: chatTurn,
         maxQuestions: MAX_INTAKE_QUESTIONS,
+        ...(qaMediaUrls.length > 0 ? { images: qaMediaUrls } : {}),
       });
+      setQaFollowUpPhotos([]);
       applyChatResult(result);
     } catch {
       applyChatResult({ type: 'classic_fallback' });
@@ -513,6 +563,8 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
   // Chat state is reset — the AI thread can't be resumed after backtracking.
   function restartWizard() {
     setChatQuestion('');
+    setChatPhotoPrompt(null);
+    setQaFollowUpPhotos([]);
     setChatAnswer('');
     setChatResponseId('');
     setChatTurn(0);
@@ -520,6 +572,8 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
     setFit({ inArea: null, excluded: false });
     setTimeline(null);
     setStatus(null);
+    setVisualObservation(null);
+    setPhotoQualityWarning(null);
     setSentWithoutEstimate(false);
     setStep('describe');
   }
@@ -804,6 +858,39 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
               Heads up: <strong>{location.trim()}</strong> appears outside our primary service area. Travel fees or limited availability may apply.
             </p>
           )}
+          <div className={styles.heroFormPhotoRow} style={{ marginTop: '0.4rem', marginBottom: '0.6rem' }}>
+            <input
+              ref={photoInputRef}
+              className={styles.heroFormPhotoInput}
+              tabIndex={-1}
+              aria-hidden="true"
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/avif,video/mp4,video/quicktime,video/webm"
+              multiple
+              onChange={(event) => addPhotos(event.currentTarget.files ?? [])}
+            />
+            <button type="button" className={styles.heroFormPhotoButton} onClick={() => photoInputRef.current?.click()} disabled={selectedPhotos.length >= MAX_PHOTOS}>
+              {selectedPhotos.length > 0 ? `📷 Photos/Video attached (${selectedPhotos.length}/${MAX_PHOTOS})` : '📷 Add photos / video for AI visual analysis'}
+            </button>
+            {selectedPhotos.length > 0 && (
+              <div className={styles.heroFormPhotoList}>
+                {selectedPhotos.map((photo, index) => (
+                  <span className={styles.heroFormPhotoChip} key={`${photo.name}-${photo.lastModified}-${index}`}>
+                    {photo.name.length > 16 ? `${photo.name.slice(0, 13)}\u2026` : photo.name}
+                    <button type="button" onClick={() => removePhoto(index)} aria-label={`Remove ${photo.name}`}>×</button>
+                  </span>
+                ))}
+              </div>
+            )}
+            {photoQualityWarning && (
+              <p style={{ margin: '0.35rem 0 0', padding: '0.35rem 0.55rem', borderRadius: '6px', background: 'rgba(255, 209, 102, 0.14)', border: '1px solid var(--cedge-amber-12, rgba(255, 209, 102, 0.4))', fontSize: '0.74rem', color: 'var(--text)', lineHeight: '1.35' }}>
+                {photoQualityWarning}
+              </p>
+            )}
+            <p style={{ margin: '0.35rem 0 0', fontSize: '0.72rem', color: 'var(--mute-t70)', lineHeight: '1.35' }}>
+              {getTradePhotoTip(siteContent.trade, description)}
+            </p>
+          </div>
           <button type="submit" disabled={isClassifying}>{isClassifying ? thinking : 'Continue'}</button>
           {isEmergency && !isClassifying && (
             <button
@@ -820,24 +907,6 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
               ⚡ Urgent: Skip questions — go straight to contact details →
             </button>
           )}
-          {/* The escape hatch exists ONLY while a classification is in flight.
-              It used to sit here permanently as "Skip the estimate — just send
-              my details", and that was wrong twice over.
-
-              It bypassed validation: this is a type="button", so it ignored the
-              `required` above and a visitor who clicked it with an empty box
-              arrived at the contact step with nowhere left to say what they
-              wanted. The contractor got a name, a number and an address for a
-              job nobody had described.
-
-              And it framed the estimate as friction. Offering to skip a step
-              says that step is for the customer's benefit and costs nothing to
-              drop — when the description is the single most useful thing on the
-              form for the person receiving it.
-
-              While classifying it's a different offer: a hung AI call must not
-              trap anybody, and by then they HAVE described the job, because
-              submitting is what started the call. */}
           {isClassifying && (
             <button type="button" className={styles.heroFormRestart} onClick={skipTheEstimate}>
               Taking too long? Just send my details →
@@ -850,12 +919,67 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
         <div className={styles.heroFormStep} key="qa">
           <h2 className={styles.heroFormTitle}>{estimateLabel}</h2>
           <p className={styles.heroFormQaMeta}>Question {chatTurn} <span>· up to {MAX_INTAKE_QUESTIONS} total</span></p>
+          {visualObservation && (
+            <p className={styles.heroFormFitNote} style={{ marginTop: '0.2rem', marginBottom: '0.5rem' }}>
+              👁️ <strong>What we spotted:</strong> {visualObservation}
+            </p>
+          )}
           <p id="hqf-question" className={styles.heroFormQuestion}>{chatQuestion}</p>
+          
+          <input
+            ref={qaPhotoInputRef}
+            className={styles.heroFormPhotoInput}
+            tabIndex={-1}
+            aria-hidden="true"
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/avif,video/mp4,video/quicktime,video/webm"
+            onChange={(event) => {
+              if (event.currentTarget.files?.length) {
+                addPhotos(event.currentTarget.files);
+                setQaFollowUpPhotos((prev) => [...prev, ...Array.from(event.currentTarget.files!)]);
+              }
+            }}
+          />
+
+          {chatPhotoPrompt && (
+            <div style={{ marginBottom: '0.65rem', padding: '0.45rem 0.65rem', border: '1px dashed var(--cedge-orange-66, rgba(255,122,33,0.4))', borderRadius: '6px', background: 'rgba(255,122,33,0.06)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text)' }}>
+                  📸 <strong>Helpful photo:</strong> {chatPhotoPrompt}
+                </span>
+                <button
+                  type="button"
+                  style={{ fontSize: '0.72rem', padding: '0.25rem 0.55rem', borderRadius: '4px', background: 'var(--accent-ink, #ff7a21)', color: '#fff', border: 'none', cursor: 'pointer', flexShrink: 0 }}
+                  onClick={() => qaPhotoInputRef.current?.click()}
+                  disabled={selectedPhotos.length >= MAX_PHOTOS}
+                >
+                  Snap Photo
+                </button>
+              </div>
+            </div>
+          )}
+
+          {qaFollowUpPhotos.length > 0 && (
+            <div className={styles.heroFormPhotoList} style={{ marginBottom: '0.5rem' }}>
+              {qaFollowUpPhotos.map((photo, index) => (
+                <span className={styles.heroFormPhotoChip} key={`qa-${photo.name}-${index}`}>
+                  📷 Attached: {photo.name.length > 14 ? `${photo.name.slice(0, 11)}\u2026` : photo.name}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {photoQualityWarning && (
+            <p style={{ margin: '0 0 0.5rem', padding: '0.35rem 0.55rem', borderRadius: '6px', background: 'rgba(255, 209, 102, 0.14)', border: '1px solid var(--cedge-amber-12, rgba(255, 209, 102, 0.4))', fontSize: '0.74rem', color: 'var(--text)', lineHeight: '1.35' }}>
+              {photoQualityWarning}
+            </p>
+          )}
+
           <input
             aria-labelledby="hqf-question"
-            placeholder="Your answer"
+            placeholder={qaFollowUpPhotos.length > 0 ? "Add any details (or leave blank to submit photo)" : "Your answer"}
             maxLength={300}
-            required
+            required={qaFollowUpPhotos.length === 0}
             value={chatAnswer}
             onChange={(event) => setChatAnswer(event.target.value)}
           />

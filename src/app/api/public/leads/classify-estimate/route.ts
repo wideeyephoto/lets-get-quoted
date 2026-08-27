@@ -183,17 +183,27 @@ export async function POST(request: NextRequest) {
   // ends up with no number at all.
   const askingRules = questionsRemaining > 0
     ? `Ask short, simple follow-up questions one at a time to clarify the job's scope and quality/finish level. You may ask up to ${questionsRemaining} more question(s), but ask another ONLY while the answer would meaningfully change the price — the moment you can price the job confidently, stop and estimate. If an answer was vague ("not sure"), try ONE different angle on that detail, then move on rather than repeating it. ` +
-      'While still asking: {"type":"question","question":"<one short, plain-language question>"}. ' +
+      'While still asking: {"type":"question","question":"<one short, plain-language question>","photo_prompt":"<optional 2-8 word specific photo request e.g. Snap rating badge on side, or omit>"}. ' +
       'Once ready (or out of questions): '
     : 'You are OUT of questions — do NOT ask anything else. Even if details are vague, give your best-judgment range for the most common version of this job, priced toward the cheaper outcome. Respond ONLY with: ';
+  const rawImages: unknown[] = Array.isArray(body?.images) ? body.images : [];
+  const validImages = rawImages
+    .filter((img): img is string => typeof img === 'string' && img.startsWith('data:image/'))
+    .slice(0, 4);
+
+  const visualInstruction = validImages.length > 0
+    ? ' Images or video frames of the project are provided. Inspect them for equipment brand/model, existing damage, materials, and job difficulty. Do not ask questions about details clearly visible in the images, and account for visible difficulty in the estimate. You may optionally include "visual_observation":"<one brief sentence acknowledging what was spotted>" in your JSON response. '
+    : '';
+
   const instructions =
     "You help a local home-services business's website understand a project's scope before showing a rough price range." +
     businessContext +
     qualityContext +
+    visualInstruction +
     ' ' +
     'Respond with strict JSON only, no other text. ' +
     askingRules +
-    '{"type":"estimate","min":<number>,"max":<number>,"basis":"<short>","in_area":true|false|null,"excluded":true|false,"requires_site_visit":true|false,"visit_reason":"<short reason>"} — min/max is a realistic pre-visit price range in whole US dollars for THIS SPECIFIC JOB as this trade would actually charge for it in the US today, including typical labor and materials. ' +
+    '{"type":"estimate","min":<number>,"max":<number>,"basis":"<short>","in_area":true|false|null,"excluded":true|false,"requires_site_visit":true|false,"visit_reason":"<short reason>","visual_observation":"<optional short note>"} — min/max is a realistic pre-visit price range in whole US dollars for THIS SPECIFIC JOB as this trade would actually charge for it in the US today, including typical labor and materials. ' +
     'basis: a short plain-language phrase naming what you priced, under 60 characters, starting lowercase, no price in it (e.g. "a standard running-toilet repair", "a deep clean of a 2-bed home"). ' +
     'in_area: false ONLY when the visitor\'s stated location is clearly outside the served areas listed; true when it clearly matches or neighbors them; null when no location was given or you are unsure. ' +
     'excluded: true ONLY when the described work clearly matches something the business does NOT take on; otherwise false. Never refuse to estimate — always include min/max regardless of these two fields. ' +
@@ -207,6 +217,19 @@ export async function POST(request: NextRequest) {
       : 'When unsure between repair and replacement, price the repair.');
 
   try {
+    let inputPayload: unknown;
+    if (validImages.length > 0) {
+      const contentParts: Array<Record<string, unknown>> = [
+        { type: 'input_text', text: `${previousResponseId ? answer : description}\n\nRespond with json only.` },
+      ];
+      for (const imgUrl of validImages) {
+        contentParts.push({ type: 'input_image', image_url: imgUrl });
+      }
+      inputPayload = [{ role: 'user', content: contentParts }];
+    } else {
+      inputPayload = `${previousResponseId ? answer : description}\n\nRespond with json only.`;
+    }
+
     const response = await fetchProvider({
       method: 'POST',
       headers: {
@@ -219,7 +242,7 @@ export async function POST(request: NextRequest) {
         instructions,
         // OpenAI requires the word "json" to appear in the input when using
         // text.format: json_object — the instructions alone don't count.
-        input: `${previousResponseId ? answer : description}\n\nRespond with json only.`,
+        input: inputPayload,
         previous_response_id: previousResponseId || undefined,
         text: { format: { type: 'json_object' } },
       }),
@@ -229,14 +252,30 @@ export async function POST(request: NextRequest) {
     const payload = await response.json();
     let parsed = JSON.parse(extractOutputText(payload));
 
+    const visualObservation = typeof parsed.visual_observation === 'string'
+      ? parsed.visual_observation.trim().slice(0, 150)
+      : typeof parsed.observation === 'string'
+        ? parsed.observation.trim().slice(0, 150)
+        : undefined;
+
+    const photoPrompt = typeof parsed.photo_prompt === 'string'
+      ? parsed.photo_prompt.trim().slice(0, 100)
+      : undefined;
+
     if (parsed.type === 'question' && typeof parsed.question === 'string' && turn < maxQuestions) {
+      const questionResponse = {
+        type: 'question',
+        question: parsed.question.trim(),
+        responseId: payload.id,
+        ...(visualObservation ? { visualObservation } : {}),
+        ...(photoPrompt ? { photoPrompt } : {}),
+      };
       // Preserve the legacy response shape exactly while the gate is dark.
       if (!usageLease) {
-        return NextResponse.json({ type: 'question', question: parsed.question, responseId: payload.id });
+        return NextResponse.json(questionResponse);
       }
-      const question = parsed.question.trim();
-      if (question && typeof payload.id === 'string' && payload.id) {
-        return substantiveResponse({ type: 'question', question, responseId: payload.id });
+      if (typeof payload.id === 'string' && payload.id) {
+        return substantiveResponse(questionResponse);
       }
     }
 
@@ -292,13 +331,20 @@ export async function POST(request: NextRequest) {
       : {};
     if (band) {
       const basis = typeof parsed.basis === 'string' ? parsed.basis.trim().slice(0, 60) : '';
-      return substantiveResponse({ type: 'estimate', ...band, ...(basis ? { basis } : {}), ...fit, ...siteVisit });
+      return substantiveResponse({
+        type: 'estimate',
+        ...band,
+        ...(basis ? { basis } : {}),
+        ...(visualObservation ? { visualObservation } : {}),
+        ...fit,
+        ...siteVisit,
+      });
     }
     if (usageLease) {
       await releaseUsage('non_substantive_result');
       return NextResponse.json(classicFallback());
     }
-    return NextResponse.json({ ...fallback(), ...fit, ...siteVisit });
+    return NextResponse.json({ ...fallback(), ...(visualObservation ? { visualObservation } : {}), ...fit, ...siteVisit });
   } catch (error) {
     console.error('Estimate chat failed:', error);
     if (usageLease) {

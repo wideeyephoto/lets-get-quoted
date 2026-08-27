@@ -3,6 +3,8 @@ import { listServices } from '@/lib/services';
 import { parseQuoteItems } from '@/lib/jobs';
 import { getSiteContent } from '@/lib/site-content';
 import { callModel, AiDraftsExhaustedError } from '@/lib/ai-model-call';
+import { createLeadPhotoLinks } from '@/lib/lead-photo-storage';
+import { createJobPhotoLinks } from '@/lib/job-photo-storage';
 import {
   formatPriceBook, formatQuoteHistory, reconcileDraft, MAX_DRAFT_LINES, MAX_HISTORY_JOBS,
   type HistoricalQuote, type PriceBookEntry, type QuoteDraft, type RawDraft,
@@ -30,6 +32,8 @@ export type DraftContext = {
   history: HistoricalQuote[];
   refinement?: string | null;
   propertyIntel?: PropertyIntelligenceSummary | null;
+  /** Signed URLs or data URLs of job/lead photos to visually ground the quote */
+  photos?: string[];
 };
 
 export { QUICK_QUOTE_REFINE_CHIPS } from '@/lib/quote-draft';
@@ -38,7 +42,7 @@ export { QUICK_QUOTE_REFINE_CHIPS } from '@/lib/quote-draft';
  * Everything the drafter needs, in one place.
  *
  * Deliberately does NOT load the client's name, phone, email or address into the prompt.
- * Only verified geometric measurements (e.g. roof squares, footprint sq ft) are passed.
+ * Only verified geometric measurements (e.g. roof squares, footprint sq ft) and visual photos are passed.
  */
 export async function loadDraftContext(
   supabase: SupabaseClient,
@@ -48,7 +52,7 @@ export async function loadDraftContext(
 ): Promise<DraftContext | null> {
   const { data: job } = await supabase
     .from('jobs')
-    .select('id, scope, estimated_hours, address')
+    .select('id, scope, estimated_hours, address, photo_paths, lead_id')
     .eq('account_id', accountId)
     .eq('id', jobId)
     .maybeSingle();
@@ -76,6 +80,33 @@ export async function loadDraftContext(
       : Promise.resolve(null),
   ]);
 
+  let photoUrls: string[] = [];
+  const jobPhotoPaths = Array.isArray(job.photo_paths) ? (job.photo_paths as string[]) : [];
+  if (jobPhotoPaths.length > 0) {
+    try {
+      const links = await createJobPhotoLinks(accountId, jobPhotoPaths);
+      photoUrls = links.map((l) => l.url);
+    } catch {
+      // Photo signing fallback
+    }
+  } else if (job.lead_id) {
+    try {
+      const { data: leadRow } = await supabase
+        .from('leads')
+        .select('photo_paths')
+        .eq('account_id', accountId)
+        .eq('id', job.lead_id)
+        .maybeSingle();
+      const leadPhotoPaths = Array.isArray(leadRow?.photo_paths) ? (leadRow.photo_paths as string[]) : [];
+      if (leadPhotoPaths.length > 0) {
+        const links = await createLeadPhotoLinks(accountId, leadPhotoPaths);
+        photoUrls = links.map((l) => l.url);
+      }
+    } catch {
+      // Photo signing fallback
+    }
+  }
+
   const history: HistoricalQuote[] = (past ?? []).map((row) => ({
     scope: (row.scope as string | null) ?? null,
     total: Number(row.quoted_amount) || 0,
@@ -97,6 +128,7 @@ export async function loadDraftContext(
     history,
     refinement: refinement?.trim() || null,
     propertyIntel: summarizePropertyIntelligence(propertyIntel),
+    photos: photoUrls.slice(0, 4),
   };
 }
 
@@ -175,6 +207,9 @@ export function buildDraftInstructions(context: DraftContext): string {
     '- Do NOT pad. Every line must be work somebody actually does on this job; if you would struggle to justify it to the customer, leave it out. A line the contractor has to delete costs them more attention than one they have to add.',
     '- When a line matches a price-book service, put that service name in "service" EXACTLY as written above, and set "quantity" (hours, sqft, or how many of that flat job). The contractor\'s own price will be applied — your "amount" is only a sanity check.',
     '- When property dimensions are provided above, use the verified square footage, squares, and pitch for quantities and line items.',
+    context.photos && context.photos.length > 0
+      ? '- Attached job photos are provided. Inspect visible equipment tags, damage, materials, and working conditions to ground your line items, quantities, and price-book selections directly in what is visible.'
+      : '',
     '- When nothing in the book matches, omit "service" and price it yourself. Set priced_from to "history" whenever you leaned on their recent quotes above — including scaling one of them up or down — and "estimate" only when you priced it from general knowledge of the trade. Be honest about this; the contractor is shown which is which.',
     '- Prefer their own numbers over national averages. These are the prices this business actually gets in its own market.',
     '- Put genuinely optional work in "kind":"addon". Do not invent add-ons to make the quote look thorough.',
@@ -201,6 +236,17 @@ export async function draftQuote(context: DraftContext): Promise<QuoteDraft | nu
     'Draft the quote as JSON.',
   ].filter(Boolean).join('\n\n');
 
+  const content: Array<Record<string, unknown>> = [
+    { type: 'input_text', text: input },
+  ];
+  if (context.photos && context.photos.length > 0) {
+    for (const url of context.photos.slice(0, 4)) {
+      if (typeof url === 'string' && url.length > 5) {
+        content.push({ type: 'input_image', image_url: url });
+      }
+    }
+  }
+
   try {
     const response = await callModel({
       model: 'gpt-4o',
@@ -208,7 +254,7 @@ export async function draftQuote(context: DraftContext): Promise<QuoteDraft | nu
       // line nobody wrote down, which greedy decoding tends to skip.
       temperature: 0.2,
       instructions: buildDraftInstructions(context),
-      input,
+      input: content,
       text: { format: { type: 'json_object' } },
     }, { accountId: context.accountId, kind: 'quote_draft' });
     if (!response.ok) throw new Error(`OpenAI request failed: ${response.status}`);
