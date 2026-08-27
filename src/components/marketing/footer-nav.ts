@@ -1,4 +1,4 @@
-﻿/**
+/**
  * ONE FOOTER LINK SET, TWO FOOTERS THAT HAVE TO RENDER IT.
  *
  * The public site ships two footer components and cannot ship one:
@@ -36,6 +36,7 @@ export const FOOTER_PRIMARY: readonly FooterLink[] = [
   ['/compare', 'Compare'],
   ['/tools', 'Free Tools'],
   ['/resources', 'Resources'],
+  ['/changelog', 'Changelog'],
   ['/faq', 'FAQ'],
   ['/help', 'Help Center'],
   ['/founder', 'Founder'],

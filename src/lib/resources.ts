@@ -521,6 +521,86 @@ export const ARTICLES: Article[] = [
       { href: '/features/ai-intake', label: 'Two-way SMS platform', blurb: 'Send verified customer messages with high carrier deliverability.' },
     ],
   },
+  {
+    slug: 'ai-phone-receptionist-guide',
+    title: 'AI phone receptionists: Automate after-hours calls',
+    excerpt:
+      'Missing a homeowner call usually means losing the job to the next contractor on Google. Here is how 24/7 AI receptionists qualify leads without interruptions.',
+    category: 'Customer messaging',
+    readMinutes: 6,
+    datePublished: '2026-08-26',
+    body: [
+      { type: 'p', text: 'When a homeowner with a burst pipe or a leaking roof calls three contractors, they hire the first one who answers. If you are on a ladder or running a crew, answering every call is impossible — but letting calls roll to voicemail means losing thousands in high-margin emergency jobs.' },
+      { type: 'h2', text: 'Why traditional voicemail fails contractors' },
+      { type: 'p', text: 'Over 75% of homeowners hang up rather than leave a voicemail. They search Google, tap the next phone number, and book with whoever answers. Traditional call centers are expensive, unfamiliar with your specific trade pricing, and often take days to relay lead details.' },
+      { type: 'h2', text: 'How dedicated AI voice agents qualify leads live' },
+      { type: 'p', text: 'An AI receptionist gives your contracting business a dedicated local phone line that answers on the first ring, 24/7. It listens intelligently, asks trade-specific qualification questions (job scope, location, urgency, property type), and filters out spam callers.' },
+      { type: 'ul', items: [
+        'Instant emergency triage: Escalates burst pipes or power outages straight to your mobile phone.',
+        'Pricing guardrails: Gives approximate price ranges based on your pre-configured rate sheet.',
+        'Automatic transcription & CRM sync: Logs caller details, audio recordings, and project scope directly onto your lead board.',
+        'Instant SMS confirmation: Sends the homeowner a branded text with an online booking or estimate link before they call a competitor.',
+      ] },
+      { type: 'h2', text: 'Getting started with zero phone tree complexity' },
+      { type: 'p', text: 'With Let’s Get Quoted, you can provision a verified 10DLC business number in 3 steps, set your business hours, and activate AI call answering without expensive PBX hardware or answering service retainers.' },
+    ],
+    featureLinks: [
+      { href: '/features/ai-intake', label: '24/7 AI Receptionist', blurb: 'See how automated phone intake captures and qualifies homeowner leads.' },
+      { href: '/dashboard/voice-calls', label: 'Voice Assistant settings', blurb: 'Configure call triage rules and provision your dedicated local number.' },
+    ],
+  },
+  {
+    slug: 'crew-gps-geofenced-timesheets-guide',
+    title: 'Geofenced timesheets: Stop losing field labor margin',
+    excerpt:
+      'Travel time, inaccurate clock-ins, and messy routes eat away contractor margin. Here is how modern GPS geofencing and workbenches streamline field operations.',
+    category: 'Operations & crew',
+    readMinutes: 5,
+    datePublished: '2026-08-26',
+    body: [
+      { type: 'p', text: 'Labor is almost always a contractor’s single largest and most variable expense. When crews write estimated hours on paper timesheets or text end-of-day guesses, payroll inflation quickly erodes job margins.' },
+      { type: 'h2', text: 'The true cost of timesheet rounding' },
+      { type: 'p', text: 'Rounding clock-in and clock-out times by just 15 minutes per worker per day adds up to over $1,800 in unbilled labor costs per technician annually. Multiply that across a 5-person crew, and you are losing nearly $10,000 every year on work that was never performed.' },
+      { type: 'h2', text: 'How automated geofencing solves the problem' },
+      { type: 'p', text: 'Geofencing establishes a virtual perimeter around active job coordinates. When a crew member arrives at the job site, their smartphone detects their proximity and automatically logs the arrival time.' },
+      { type: 'ul', items: [
+        'Verified on-site clock-ins: Guarantees billable hours match physical presence on the property.',
+        'Roster privacy & battery optimization: Smart adaptive sampling tracks location only during transit and on-site shifts.',
+        'Drag-and-drop schedule dispatching: Move unscheduled work orders onto the calendar and dispatch driving directions directly to crew mobile portals.',
+      ] },
+      { type: 'p', text: 'Let’s Get Quoted unites the Schedule Workbench with live crew GPS tracking and automated timesheet auditing, giving trade business owners full operational clarity from dispatch to payroll.' },
+    ],
+    featureLinks: [
+      { href: '/features/scheduling', label: 'Schedule Workbench', blurb: 'Drag and drop jobs onto calendar slots with auto-adjusted queue widths.' },
+      { href: '/features/crew', label: 'Crew & Labor Management', blurb: 'Track live map locations, geofenced timesheets, and loaded labor costs.' },
+    ],
+  },
+  {
+    slug: 'clean-energy-rebates-permit-intel-guide',
+    title: 'Clean energy rebates & permit intel: Win quotes in 2026',
+    excerpt:
+      'Homeowners want IRA tax credits, utility rebates, and zero permit surprises. Here is how leading contractors present instant rebate deductions on quotes.',
+    category: 'Pricing & profit',
+    readMinutes: 6,
+    datePublished: '2026-08-26',
+    body: [
+      { type: 'p', text: 'High-ticket home improvement quotes are often delayed by two major homeowner hesitations: sticker shock and permitting uncertainty. Contractors who proactively calculate energy rebates and handle permit requirements win more bids at higher margins.' },
+      { type: 'h2', text: 'Leveraging Inflation Reduction Act (IRA) incentives' },
+      { type: 'p', text: 'Federal Section 25C Energy Efficient Home Improvement Credits allow homeowners to claim up to 30% of project costs (up to $2,000 for heat pumps and $1,200 for insulation, windows, and electrical panel upgrades). When you show the net post-rebate price side-by-side with the gross investment, homeowners sign faster.' },
+      { type: 'h2', text: 'Instant Permit Intel before sending the crew' },
+      { type: 'p', text: 'Municipal permit fees and inspection requirements vary wildly across neighboring cities and counties. Forgetting to factor in permit costs or failing to submit COI documentation can trigger stop-work orders and costly municipal fines.' },
+      { type: 'ul', items: [
+        'Automated jurisdiction lookups: Check local building department permit mandates by property address.',
+        'Aerial roof takeoff calculations: Measure square footage and slope pitch multipliers instantly via satellite data.',
+        'Itemized line-item rebate deductions: Present net out-of-pocket pricing directly on digital quotes with e-signature sign-off.',
+      ] },
+      { type: 'p', text: 'Let’s Get Quoted integrates North American permit intel, aerial takeoffs, and clean energy rebate calculators directly into every estimate, making your quotes standout as the most professional option in your market.' },
+    ],
+    featureLinks: [
+      { href: '/tools/estimate-generator', label: 'Free Estimate Generator', blurb: 'Calculate pitch multipliers, permit fees, and itemized materials.' },
+      { href: '/features/quotes', label: 'Itemized Quote Builder', blurb: 'Send interactive Good/Better/Best quotes with instant clean energy discounts.' },
+    ],
+  },
 ];
 
 export function getArticle(slug: string): Article | undefined {
