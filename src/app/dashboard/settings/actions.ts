@@ -164,7 +164,19 @@ export async function updateIntakeContentAction(input: {
   const current = getSiteContent(stored);
   const patch: Record<string, unknown> = {};
 
-  if (input.leadFilters) patch.leadFilters = { ...current.leadFilters, ...input.leadFilters };
+  if (input.leadFilters) {
+    const cleanFilters = { ...input.leadFilters };
+    if (cleanFilters.minJobAmount !== undefined) {
+      cleanFilters.minJobAmount = Math.max(0, Math.min(1_000_000, Math.round(Number(cleanFilters.minJobAmount) || 0)));
+    }
+    if (Array.isArray(cleanFilters.exclusions)) {
+      cleanFilters.exclusions = cleanFilters.exclusions
+        .map((s) => String(s).trim().slice(0, 80))
+        .filter(Boolean)
+        .slice(0, 10);
+    }
+    patch.leadFilters = { ...current.leadFilters, ...cleanFilters };
+  }
   if (input.emailField) patch.estimateRanges = { ...current.estimateRanges, emailField: input.emailField };
 
   const quoteForm: Record<string, unknown> = {};
@@ -440,7 +452,10 @@ export async function updateIntakeSettingsAction(formData: FormData) {
   const { supabase, accountId } = await requireOfficeContext('settings.write');
   const estimatePosture = normalizeEstimatePosture(formData.get('estimatePosture'));
   const thresholdRaw = Number(formData.get('highValueLeadAmount'));
-  const highValueLeadAmount = Number.isFinite(thresholdRaw) && thresholdRaw > 0 ? Math.round(thresholdRaw) : null;
+  const highValueLeadAmount =
+    Number.isFinite(thresholdRaw) && thresholdRaw > 0
+      ? Math.min(1_000_000, Math.max(1, Math.round(thresholdRaw)))
+      : null;
   const muteLowQualityLeads = formData.get('muteLowQualityLeads') === 'on';
 
   const { error } = await supabase

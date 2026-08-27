@@ -575,6 +575,7 @@ export default async function AutomationsPage() {
               cities={businessBasics.serviceAreas.cities.map((city) => city.trim()).filter(Boolean)}
               muteLowQualityLeads={muteLowQualityLeads}
               smartIntakeOn={smartIntakeOn}
+              customerTextingReady={customerTextingReady}
               preview={<IntakePreviewModal site={site as Site} compact />}
             />
           ) : null}

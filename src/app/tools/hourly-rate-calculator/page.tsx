@@ -72,6 +72,7 @@ export default function HourlyRateCalculatorPage() {
   const [helpersCount, setHelpersCount] = useState<number>(0);
   const [helperWage, setHelperWage] = useState<number>(24);
   const [profitMargin, setProfitMargin] = useState<number>(20);
+  const [copied, setCopied] = useState(false);
 
   const applyPreset = (preset: Preset) => {
     setTakeHomePay(preset.takeHomePay);
@@ -80,6 +81,25 @@ export default function HourlyRateCalculatorPage() {
     setHelpersCount(preset.helpersCount);
     setHelperWage(preset.helperWage);
     setProfitMargin(preset.profitMargin);
+  };
+
+  const handleCopyReport = () => {
+    const text = `=== CONTRACTOR HOURLY RATE & MARGIN BENCHMARK ===
+Target Take-Home Pay: ${formatCurrency(takeHomePay)}/yr
+Annual Operating Overhead: ${formatCurrency(overhead)}/yr
+Weekly Unbillable Hours: ${unbillableHours} hrs/week
+Target Profit Margin: ${profitMargin}%
+--------------------------------------------------
+REQUIRED BILLABLE RATE: ${formatCurrency(results.requiredHourlyRate)}/hr
+TARGET 8-HOUR DAY RATE: ${formatCurrency(results.targetDayRate)}/day
+BREAKEVEN RATE (0% Margin): ${formatCurrency(results.breakevenHourlyRate)}/hr
+ANNUAL GROSS TARGET: ${formatCurrency(results.grossRevenueTarget)}/year
+Generated via https://letsgetquoted.com/tools/hourly-rate-calculator`;
+
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    });
   };
 
   const results = useMemo(() => {

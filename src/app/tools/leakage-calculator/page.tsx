@@ -153,7 +153,151 @@ Generated via https://letsgetquoted.com/tools/leakage-calculator`;
       </section>
 
       <section className={styles.calculatorSection}>
-        <div className={styles.calcGrid}>
+        {/* Print-Only Executive Report Sheet */}
+        <div className={styles.printOnlyReport}>
+          <div className={styles.printReportHeader}>
+            <div>
+              <h1 className={styles.printReportTitle}>Contractor Cash Flow & Profit Leakage Audit</h1>
+              <div className={styles.printReportSub}>
+                Executive Financial Diagnostic &amp; Profit Recovery Analysis
+              </div>
+            </div>
+            <div className={styles.printMetaCard}>
+              <div className={styles.printDocBadge}>AUDIT REPORT</div>
+              <div className={styles.printMetaGrid}>
+                <div className={styles.printMetaRow}>
+                  <span className={styles.printMetaKey}>REF #:</span>
+                  <span className={styles.printMetaVal}>AUD-2026-LEAK</span>
+                </div>
+                <div className={styles.printMetaRow}>
+                  <span className={styles.printMetaKey}>DATE:</span>
+                  <span className={styles.printMetaVal}>Aug 27, 2026</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Executive KPI Summary */}
+          <div className={styles.printSummaryGrid}>
+            <div className={styles.printLeakageBox}>
+              <span className={styles.printBoxLabel}>🚨 TOTAL ANNUAL PROFIT LEAKAGE</span>
+              <strong className={styles.printBoxValDanger}>{formatCurrency(calculations.totalAnnualLeakage)} / yr</strong>
+              <span className={styles.printBoxSub}>Drained across unbilled labor, scope creep, and paper check collection</span>
+            </div>
+            <div className={styles.printRecoveryBox}>
+              <span className={styles.printBoxLabel}>💰 RECOVERABLE WITH LET’S GET QUOTED</span>
+              <strong className={styles.printBoxValSuccess}>+{formatCurrency(calculations.recoverableWithLGQ)} / yr</strong>
+              <span className={styles.printBoxSub}>Reclaimed via automated deposits, 1-tap change orders &amp; mobile pay</span>
+            </div>
+          </div>
+
+          {/* Baseline Operating Profile */}
+          <div className={styles.printSectionBlock}>
+            <h3 className={styles.printBlockTitle}>I. BASELINE OPERATIONAL PROFILE</h3>
+            <table className={styles.printDataTable}>
+              <thead>
+                <tr>
+                  <th>Operational Parameter</th>
+                  <th style={{ textAlign: 'right' }}>Baseline Value</th>
+                  <th style={{ textAlign: 'right' }}>Annualized Metric</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Annual Gross Revenue</td>
+                  <td style={{ textAlign: 'right', fontWeight: 700 }}>{formatCurrency(revenue)}</td>
+                  <td style={{ textAlign: 'right', color: '#64748b' }}>100% Volume</td>
+                </tr>
+                <tr>
+                  <td>Unbilled Scope Creep / Extras Rate</td>
+                  <td style={{ textAlign: 'right', fontWeight: 700 }}>{unbilledScopePct}% of projects</td>
+                  <td style={{ textAlign: 'right', color: '#b91c1c', fontWeight: 700 }}>-{formatCurrency(calculations.annualScopeLoss)}/yr</td>
+                </tr>
+                <tr>
+                  <td>Unbilled Supply House &amp; Parts Runs</td>
+                  <td style={{ textAlign: 'right', fontWeight: 700 }}>{supplyHouseHours} hrs / week</td>
+                  <td style={{ textAlign: 'right', color: '#b91c1c', fontWeight: 700 }}>-{formatCurrency(calculations.annualSupplyHouseLoss)}/yr</td>
+                </tr>
+                <tr>
+                  <td>Target Hourly Labor Billing Rate</td>
+                  <td style={{ textAlign: 'right', fontWeight: 700 }}>${hourlyBillingRate} / hour</td>
+                  <td style={{ textAlign: 'right', color: '#64748b' }}>50 Working Weeks</td>
+                </tr>
+                <tr>
+                  <td>In-Person Paper Check Pickup Trips</td>
+                  <td style={{ textAlign: 'right', fontWeight: 700 }}>{checkTripsPerMonth} trips / month</td>
+                  <td style={{ textAlign: 'right', color: '#b91c1c', fontWeight: 700 }}>-{formatCurrency(calculations.annualCheckChasingLoss)}/yr</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          {/* Itemized Loss Breakdown */}
+          <div className={styles.printSectionBlock}>
+            <h3 className={styles.printBlockTitle}>II. ITEMIZED PROFIT LEAKAGE ANALYSIS</h3>
+            <table className={styles.printDataTable}>
+              <thead>
+                <tr>
+                  <th style={{ width: '50%' }}>Leakage Category</th>
+                  <th style={{ width: '30%' }}>Root Cause</th>
+                  <th style={{ width: '20%', textAlign: 'right' }}>Annual Loss</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>Unbilled Scope Creep &amp; Modifications</strong></td>
+                  <td>Unsigned verbal requests, framing/fixture tweaks</td>
+                  <td style={{ textAlign: 'right', fontWeight: 800, color: '#0f172a' }}>{formatCurrency(calculations.annualScopeLoss)}</td>
+                </tr>
+                <tr>
+                  <td><strong>Supply House Traffic &amp; Travel</strong></td>
+                  <td>Unbilled windshield hours &amp; technician downtime</td>
+                  <td style={{ textAlign: 'right', fontWeight: 800, color: '#0f172a' }}>{formatCurrency(calculations.annualSupplyHouseLoss)}</td>
+                </tr>
+                <tr>
+                  <td><strong>Paper Check Chasing &amp; Deposit Drives</strong></td>
+                  <td>Vehicle gas, return trips, delayed deposit clearance</td>
+                  <td style={{ textAlign: 'right', fontWeight: 800, color: '#0f172a' }}>{formatCurrency(calculations.annualCheckChasingLoss)}</td>
+                </tr>
+                <tr>
+                  <td><strong>Net-30 Cash Flow Float &amp; Delayed Invoicing</strong></td>
+                  <td>Carrying material expenses before final settlement</td>
+                  <td style={{ textAlign: 'right', fontWeight: 800, color: '#0f172a' }}>{formatCurrency(calculations.annualCashFlowCost)}</td>
+                </tr>
+                <tr style={{ background: '#f8fafc', borderTop: '2px solid #0f172a' }}>
+                  <td><strong>TOTAL ANNUAL PROFIT EROSION</strong></td>
+                  <td><strong>Combined Bottom-Line Impact</strong></td>
+                  <td style={{ textAlign: 'right', fontWeight: 900, fontSize: 13, color: '#b91c1c' }}>{formatCurrency(calculations.totalAnnualLeakage)}/yr</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          {/* Strategic Action Plan */}
+          <div className={styles.printSectionBlock}>
+            <h3 className={styles.printBlockTitle}>III. STRATEGIC REVENUE RECOVERY PLAN</h3>
+            <div className={styles.printActionGrid}>
+              <div className={styles.printActionItem}>
+                <strong>1. 1-Tap Digital Change Orders:</strong> Require homeowner digital signature before performing extra work. Captures 100% of out-of-scope labor.
+              </div>
+              <div className={styles.printActionItem}>
+                <strong>2. Automated Upfront Deposits:</strong> Lock in 30%–50% materials deposit directly via Apple Pay/credit card before crew scheduling.
+              </div>
+              <div className={styles.printActionItem}>
+                <strong>3. Instant Text-to-Pay Settlement:</strong> Text signable invoices upon final walkthrough to eliminate paper check pickup drives and 30-day float.
+              </div>
+            </div>
+          </div>
+
+          {/* Footer & Signature */}
+          <div className={styles.printReportFooter}>
+            <div>✓ Prepared via Let’s Get Quoted • Financial Diagnostic Suite</div>
+            <div>https://letsgetquoted.com/tools/leakage-calculator</div>
+          </div>
+        </div>
+
+        {/* Interactive Screen View */}
+        <div className={`${styles.calcGrid} ${styles.screenOnly}`}>
           {/* Controls Column */}
           <div className={styles.controlsCol}>
             {/* Presets */}
@@ -199,7 +343,7 @@ Generated via https://letsgetquoted.com/tools/leakage-calculator`;
               <div className={styles.inputGroup}>
                 <div className={styles.inputHeader}>
                   <label htmlFor="leak-scope" className={styles.label}>
-                    Unbilled Scope Creep & Extra Materials
+                    Unbilled Scope Creep &amp; Extra Materials
                   </label>
                   <span className={styles.valueDisplay}>{unbilledScopePct}% of jobs</span>
                 </div>
@@ -331,11 +475,11 @@ Generated via https://letsgetquoted.com/tools/leakage-calculator`;
                   <span className={styles.summaryValue}>{formatCurrency(calculations.annualSupplyHouseLoss)}/yr</span>
                 </div>
                 <div className={styles.summaryItem}>
-                  <span>Paper Check Chasing & Trips</span>
+                  <span>Paper Check Chasing &amp; Trips</span>
                   <span className={styles.summaryValue}>{formatCurrency(calculations.annualCheckChasingLoss)}/yr</span>
                 </div>
                 <div className={styles.summaryItem}>
-                  <span>Cash Flow Float & Delayed Invoicing</span>
+                  <span>Cash Flow Float &amp; Delayed Invoicing</span>
                   <span className={styles.summaryValue}>{formatCurrency(calculations.annualCashFlowCost)}/yr</span>
                 </div>
               </div>
@@ -366,7 +510,7 @@ Generated via https://letsgetquoted.com/tools/leakage-calculator`;
                   Plug The Leaks on Flex ($0/mo) &rarr;
                 </a>
                 <div className={styles.microHint} style={{ textAlign: 'center', marginTop: 6 }}>
-                  No monthly fee · Automated deposits & digital change orders included
+                  No monthly fee · Automated deposits &amp; digital change orders included
                 </div>
               </div>
             </div>

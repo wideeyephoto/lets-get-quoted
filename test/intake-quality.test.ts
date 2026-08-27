@@ -75,6 +75,13 @@ describe('intakeQuality', () => {
     expect(intakeQuality({ ...bare, exclusionCount: 1 }).signals[1].detail).toContain('1 excluded job type —');
     expect(intakeQuality({ ...bare, exclusionCount: 3 }).signals[1].detail).toContain('3 excluded job types');
   });
+
+  it('excludes phone verification from active filters when customer texting is not operational', () => {
+    const unready = intakeQuality({ ...tuned, customerTextingReady: false });
+    expect(unready.filtersOn).toBe(2);
+    expect(unready.signals[0].detail).toContain('2 of 3 lead filters are active');
+    expect(unready.signals[2].detail).toContain('waiting for texting setup');
+  });
 });
 
 describe('groupStatus', () => {
@@ -83,6 +90,11 @@ describe('groupStatus', () => {
     expect(status.asks).toBe('Essentials complete');
     expect(status.filters).toBe('3 of 3 filters enabled');
     expect(status.preferences).toBe('2 of 3 set');
+  });
+
+  it('reflects inactive phone verification in groupStatus filters count when customer texting is unavailable', () => {
+    const status = groupStatus({ ...tuned, customerTextingReady: false });
+    expect(status.filters).toBe('2 of 3 filters enabled');
   });
 
   it('says "Phone only" when the intake never asks for an email', () => {

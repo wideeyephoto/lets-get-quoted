@@ -36,6 +36,8 @@ type Props = {
   muteLowQualityLeads: boolean;
   /** Smart Intake off means the classic form is running and none of this applies. */
   smartIntakeOn: boolean;
+  /** Whether dedicated texting is configured and operational. */
+  customerTextingReady?: boolean;
   /** The real preview modal's trigger, rendered into the right column. */
   preview?: ReactNode;
 };
@@ -77,6 +79,7 @@ export default function IntakeContentSection({
   cities,
   muteLowQualityLeads,
   smartIntakeOn,
+  customerTextingReady = true,
   preview,
 }: Props) {
   const [filters, setFilters] = useState(initialFilters);
@@ -131,6 +134,7 @@ export default function IntakeContentSection({
     exclusionCount: filters.exclusions.filter((item) => item.trim()).length,
     emailField,
     fullyBooked: filters.fullyBooked.enabled,
+    customerTextingReady,
   };
   // Read from what is SET, so a claim about lead quality changes the moment the
   // setting it describes does.
@@ -283,7 +287,21 @@ export default function IntakeContentSection({
               checked={filters.phoneVerification}
               onChange={(next) => patchFilters({ phoneVerification: next })}
               title="Verify phone numbers with a text code"
-              hint="The strongest junk filter — a 6-digit code before the intake submits. Skipped if texting isn’t configured."
+              hint={
+                customerTextingReady === false
+                  ? 'Configured, but inactive — an active dedicated texting number is required for verification codes.'
+                  : 'The strongest junk filter — texts a 6-digit code before the intake submits.'
+              }
+              detail={
+                customerTextingReady === false ? (
+                  <div className="iq-effect">
+                    <p style={{ margin: 0 }}>
+                      Phone verification is enabled, but homeowner verification texts cannot be delivered until customer texting is active.{' '}
+                      <Link href="/dashboard/messages?setup=1#texting-setup">Open Texting setup →</Link>
+                    </p>
+                  </div>
+                ) : undefined
+              }
             />
           </section>
 
@@ -415,15 +433,15 @@ export default function IntakeContentSection({
 
           <div className="iq-benefits">
             <div><span className="iq-bicon is-a" aria-hidden="true">◎</span><strong>Higher quality leads</strong><small>Serious, in-area homeowners rank first.</small></div>
-            <div><span className="iq-bicon is-b" aria-hidden="true">⛊</span><strong>Fewer unqualified jobs</strong><small>Filters flag junk and low-value requests.</small></div>
+            <div><span className="iq-bicon is-b" aria-hidden="true">⛊</span><strong>Less alert noise</strong><small>Filters flag junk and quiet down low-value alerts.</small></div>
             <div><span className="iq-bicon is-c" aria-hidden="true">⚡</span><strong>Faster response</strong><small>Instant estimates start the conversation.</small></div>
           </div>
 
           <div className="iq-effect">
             <div className="iq-effect-head">
-              <strong>How your settings affect lead quality</strong>
+              <strong>How your settings affect lead qualification</strong>
               <span className="iq-score">
-                Quality score <b className={`is-${quality.score.toLowerCase()}`}>{quality.score}</b>
+                Qualification coverage <b className={`is-${quality.score.toLowerCase()}`}>{quality.score}</b>
               </span>
             </div>
             {quality.signals.map((signal) => (

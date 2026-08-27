@@ -12,6 +12,7 @@ import {
   type AiIntakeUsageLease,
 } from '@/lib/billing/ai-intake-usage';
 import { isAiIntakeFlowKind } from '@/lib/ai-intake-thread';
+import { applyEstimateGuardrails } from '@/lib/estimate-guardrails';
 
 export const runtime = 'nodejs';
 
@@ -313,27 +314,35 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Sanity-gate the model's numbers; on anything incoherent, collect the
-    // lead without showing a price rather than showing a wrong one.
+    // Sanity-gate the model's numbers; on anything incoherent or safety-critical,
+    // collect the lead without showing a price rather than showing an unsafe one.
+    const guardrail = applyEstimateGuardrails({
+      minCents: band ? band.min * 100 : null,
+      maxCents: band ? band.max * 100 : null,
+      description,
+      exclusions,
+    });
+
     const fit = {
       inArea: parsed.in_area === true ? true : parsed.in_area === false ? false : null,
-      excluded: parsed.excluded === true,
+      excluded: parsed.excluded === true || (guardrail.withheldReason?.includes('excluded') ?? false),
     };
-    const siteVisit = (parsed.requires_site_visit === true || parsed.site_visit_required === true)
+    const siteVisit = (parsed.requires_site_visit === true || parsed.site_visit_required === true || guardrail.inspectionRequired)
       ? {
           requiresSiteVisit: true,
-          visitReason: typeof parsed.visit_reason === 'string'
+          visitReason: guardrail.withheldReason || (typeof parsed.visit_reason === 'string'
             ? parsed.visit_reason.trim().slice(0, 100)
             : typeof parsed.reason === 'string'
               ? parsed.reason.trim().slice(0, 100)
-              : 'On-site inspection required for accurate scope & access',
+              : 'On-site inspection required for accurate scope & access'),
         }
       : {};
-    if (band) {
+    if (guardrail.valid && guardrail.minCents !== undefined && guardrail.maxCents !== undefined) {
       const basis = typeof parsed.basis === 'string' ? parsed.basis.trim().slice(0, 60) : '';
       return substantiveResponse({
         type: 'estimate',
-        ...band,
+        min: Math.round(guardrail.minCents / 100),
+        max: Math.round(guardrail.maxCents / 100),
         ...(basis ? { basis } : {}),
         ...(visualObservation ? { visualObservation } : {}),
         ...fit,

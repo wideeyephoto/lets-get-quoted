@@ -26,6 +26,8 @@ export type IntakeQualityInput = {
   /** 'off' means the intake never asks for an email at all. */
   emailField: 'off' | 'optional' | 'required';
   fullyBooked: boolean;
+  /** Whether dedicated texting is configured and ready to text homeowners. */
+  customerTextingReady?: boolean;
 };
 
 export type IntakeQuality = {
@@ -42,10 +44,11 @@ const LABELS: Record<IntakeSignalTone, IntakeSignal['label']> = {
 };
 
 export function intakeQuality(input: IntakeQualityInput): IntakeQuality {
-  const filters = [input.askTimeline, input.serviceAreaGate, input.phoneVerification];
+  const isVerificationOperational = input.phoneVerification && input.customerTextingReady !== false;
+  const filters = [input.askTimeline, input.serviceAreaGate, isVerificationOperational];
   const filtersOn = filters.filter(Boolean).length;
 
-  // Fit: are the three qualification filters doing anything.
+  // Fit: are the qualification filters doing anything.
   const fitTone: IntakeSignalTone = filtersOn >= 2 ? 'strong' : filtersOn === 1 ? 'medium' : 'weak';
   const fit: IntakeSignal = {
     key: 'fit',
@@ -53,8 +56,8 @@ export function intakeQuality(input: IntakeQualityInput): IntakeQuality {
     title: filtersOn > 0 ? 'You’re filtering for fit' : 'Nothing is qualifying your leads',
     detail:
       filtersOn > 0
-        ? `${filtersOn} of ${filters.length} lead filters are enabled — leads get ranked on timeframe, area and whether the number is real.`
-        : 'Every inquiry arrives ranked the same, so a tyre-kicker sits level with a job starting Monday.',
+        ? `${filtersOn} of 3 lead filters are active — leads get ranked on timeframe, area and whether the number is verified.`
+        : 'Every inquiry arrives ranked the same, so a tire-kicker sits level with a job starting Monday.',
     tone: fitTone,
     label: LABELS[fitTone],
   };
@@ -84,20 +87,27 @@ export function intakeQuality(input: IntakeQualityInput): IntakeQuality {
 
   // Response: can you actually reach them, and do you know the number is real.
   const collectsEmail = input.emailField !== 'off';
-  const responseScore = (collectsEmail ? 1 : 0) + (input.phoneVerification ? 1 : 0);
+  const responseScore = (collectsEmail ? 1 : 0) + (isVerificationOperational ? 1 : 0);
   const responseTone: IntakeSignalTone = responseScore === 2 ? 'strong' : responseScore === 1 ? 'medium' : 'weak';
+
+  let responseDetail = 'A phone number is always collected, but nothing confirms it belongs to anyone.';
+  if (input.phoneVerification && input.customerTextingReady === false) {
+    responseDetail = collectsEmail
+      ? 'You collect an email and phone. Phone verification is switched on, but waiting for texting setup to deliver codes.'
+      : 'Phone verification is switched on, but waiting for texting setup to deliver verification codes.';
+  } else if (responseScore === 2) {
+    responseDetail = 'You collect an email and verify the phone, so you can reach them two ways and know the number is real.';
+  } else if (responseScore === 1) {
+    responseDetail = collectsEmail
+      ? 'You collect an email as well as a phone. Verifying the number would rule out the junk ones.'
+      : 'You verify the phone number. Asking for an email too gives you a second way to reach them.';
+  }
+
   const response: IntakeSignal = {
     key: 'response',
     icon: '✆',
     title: responseScore > 0 ? 'You’re ready to respond' : 'You only have an unverified phone number',
-    detail:
-      responseScore === 2
-        ? 'You collect an email and verify the phone, so you can reach them two ways and know the number is real.'
-        : responseScore === 1
-          ? collectsEmail
-            ? 'You collect an email as well as a phone. Verifying the number would rule out the junk ones.'
-            : 'You verify the phone number. Asking for an email too gives you a second way to reach them.'
-          : 'A phone number is always collected, but nothing confirms it belongs to anyone.',
+    detail: responseDetail,
     tone: responseTone,
     label: LABELS[responseTone],
   };
@@ -109,12 +119,13 @@ export function intakeQuality(input: IntakeQualityInput): IntakeQuality {
   // filters hard but can't reach anybody isn't a high-quality intake.
   const score: IntakeQuality['score'] = strong >= 2 && weak === 0 ? 'High' : weak >= 2 ? 'Low' : 'Medium';
 
-  return { score, filtersOn, filtersTotal: filters.length, signals };
+  return { score, filtersOn, filtersTotal: 3, signals };
 }
 
 /** The badge on each numbered group: what's set, counted rather than asserted. */
 export function groupStatus(input: IntakeQualityInput): { asks: string; filters: string; preferences: string } {
-  const filters = [input.askTimeline, input.serviceAreaGate, input.phoneVerification].filter(Boolean).length;
+  const isVerificationOperational = input.phoneVerification && input.customerTextingReady !== false;
+  const filters = [input.askTimeline, input.serviceAreaGate, isVerificationOperational].filter(Boolean).length;
   const preferences = [input.minJobAmount > 0, input.exclusionCount > 0, input.fullyBooked].filter(Boolean).length;
   return {
     asks: input.emailField === 'off' ? 'Phone only' : 'Essentials complete',
