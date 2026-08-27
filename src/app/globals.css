@@ -9441,13 +9441,15 @@ li + li { margin-top: 0.45rem; }
    Recess the grid instead and let the days be the white that lifts out of it —
    the same figure/ground relationship the dark theme already has, drawn the
    only way round that works on paper. */
-:root[data-theme='light'] .panel .calendar-grid {
+:root[data-theme='light'] .panel .calendar-grid,
+:root[data-theme='sunlight'] .panel .calendar-grid {
   padding: 6px;
   border-radius: 12px;
   background: #eff3f8;
   box-shadow: inset 0 1px 2px rgba(17, 27, 41, 0.07);
 }
-:root[data-theme='light'] .panel .calendar-cell {
+:root[data-theme='light'] .panel .calendar-cell,
+:root[data-theme='sunlight'] .panel .calendar-cell {
   background: #ffffff;
   /* A grid line, deliberately below the container tier: 35 day cells edged in
      near-black stop reading as a calendar and start reading as a spreadsheet. */
@@ -9455,20 +9457,25 @@ li + li { margin-top: 0.45rem; }
 }
 /* An empty day is still a day: it has to hold its place in the row, or a month
    that starts on a Saturday renders as one lone box floating above the grid. */
-:root[data-theme='light'] .panel .calendar-cell.empty {
+:root[data-theme='light'] .panel .calendar-cell.empty,
+:root[data-theme='sunlight'] .panel .calendar-cell.empty {
   background: #e7ecf3;
   border-color: transparent;
 }
-:root[data-theme='light'] .panel .calendar-weekday { color: rgba(var(--tint), 0.68); }
-:root[data-theme='light'] .panel .calendar-day-number { color: rgba(var(--tint), 0.72); }
+:root[data-theme='light'] .panel .calendar-weekday,
+:root[data-theme='sunlight'] .panel .calendar-weekday { color: rgba(var(--tint), 0.78); }
+:root[data-theme='light'] .panel .calendar-day-number,
+:root[data-theme='sunlight'] .panel .calendar-day-number { color: rgba(var(--tint), 0.85); }
 /* Today reads as a marker rather than a wash — a 7% orange fill is invisible on
    white, and "which day is it" is the one question the month always has to answer. */
-:root[data-theme='light'] .panel .calendar-cell.today {
+:root[data-theme='light'] .panel .calendar-cell.today,
+:root[data-theme='sunlight'] .panel .calendar-cell.today {
   border-color: #ff7a21;
   background: #fffaf6;
   box-shadow: inset 0 0 0 1px #ff7a21;
 }
-:root[data-theme='light'] .panel .calendar-cell.blocked {
+:root[data-theme='light'] .panel .calendar-cell.blocked,
+:root[data-theme='sunlight'] .panel .calendar-cell.blocked {
   background: repeating-linear-gradient(135deg, #dfe6ef 0 5px, #f6f8fb 5px 11px);
   border-color: #697d9b;
 }
@@ -10092,7 +10099,7 @@ li + li { margin-top: 0.45rem; }
   font: inherit;
   font-size: 0.86rem;
 }
-.calendar-agenda-search input::placeholder { color: var(--mute-t45); }
+.calendar-agenda-search input::placeholder { color: var(--muted-2); opacity: 0.88; }
 .calendar-agenda-search input:focus { outline: none; }
 .calendar-agenda-search:focus-within { border-color: var(--cedge-orange-38); }
 
@@ -13943,7 +13950,7 @@ button.inbox-thread-item {
   font-size: 0.95rem;
 }
 
-.client-search-bar input::placeholder { color: var(--mute-i42); }
+.client-search-bar input::placeholder { color: var(--muted-2); opacity: 0.88; }
 
 .client-search-bar input:focus-visible {
   outline: none;
@@ -15616,7 +15623,8 @@ button.inbox-thread-item {
   font-size: 0.92rem;
 }
 .field textarea { resize: vertical; min-height: 4.5rem; }
-.field input::placeholder { color: var(--mute-t40); }
+.field input::placeholder,
+.field textarea::placeholder { color: var(--muted-2); opacity: 0.88; }
 .field select option { background: var(--bg-3); color: var(--text); }
 
 .job-intake-description textarea,
@@ -32403,16 +32411,34 @@ a.ins-export-opt:focus-visible { outline: 2px solid rgba(255, 122, 33, 0.85); ou
 
 :root[data-theme='light'] .panel .sched-strip-day,
 :root[data-theme='light'] .panel .sched-mini-day,
-:root[data-theme='light'] .panel .sched-card {
+:root[data-theme='light'] .panel .sched-card,
+:root[data-theme='sunlight'] .panel .sched-strip-day,
+:root[data-theme='sunlight'] .panel .sched-mini-day,
+:root[data-theme='sunlight'] .panel .sched-card {
   background: #fff;
   border-color: rgba(17, 27, 41, 0.12);
 }
 
-:root[data-theme='light'] .panel .sched-mini-grid {
+:root[data-theme='light'] .panel .sched-mini-grid,
+:root[data-theme='sunlight'] .panel .sched-mini-grid {
   padding: 4px;
   border-radius: 12px;
   background: #eff3f8;
   box-shadow: inset 0 1px 2px rgba(17, 27, 41, 0.07);
+}
+
+:root[data-theme='onyx'] .panel .sched-strip-day,
+:root[data-theme='onyx'] .panel .sched-mini-day,
+:root[data-theme='onyx'] .panel .sched-card {
+  background: #000000;
+  border-color: rgba(255, 255, 255, 0.22);
+}
+
+:root[data-theme='parchment'] .panel .sched-strip-day,
+:root[data-theme='parchment'] .panel .sched-mini-day,
+:root[data-theme='parchment'] .panel .sched-card {
+  background: #241f19;
+  border-color: rgba(245, 237, 224, 0.16);
 }
 
 /* ==========================================================================
@@ -34116,12 +34142,36 @@ body[data-schedule-overlay="job"] .sched-queue {
 /* The fills are translucent over a dark panel. On the light theme the same
    alpha reads as a grey smudge, so they are lifted — the --job-line and
    --job-ink tokens are already theme-aware and need nothing here. */
-:root[data-theme='light'] .calendar-band-color-0 { --job-fill: rgba(255,138,61,.16); }
-:root[data-theme='light'] .calendar-band-color-1 { --job-fill: rgba(61,184,255,.14); }
-:root[data-theme='light'] .calendar-band-color-2 { --job-fill: rgba(76,190,120,.14); }
-:root[data-theme='light'] .calendar-band-color-3 { --job-fill: rgba(233,178,60,.16); }
-:root[data-theme='light'] .calendar-band-color-4 { --job-fill: rgba(255,112,163,.14); }
-:root[data-theme='light'] .calendar-band-color-5 { --job-fill: rgba(146,110,235,.14); }
+:root[data-theme='light'] .calendar-band-color-0,
+:root[data-theme='sunlight'] .calendar-band-color-0 { --job-fill: rgba(255,138,61,.16); }
+:root[data-theme='light'] .calendar-band-color-1,
+:root[data-theme='sunlight'] .calendar-band-color-1 { --job-fill: rgba(61,184,255,.14); }
+:root[data-theme='light'] .calendar-band-color-2,
+:root[data-theme='sunlight'] .calendar-band-color-2 { --job-fill: rgba(76,190,120,.14); }
+:root[data-theme='light'] .calendar-band-color-3,
+:root[data-theme='sunlight'] .calendar-band-color-3 { --job-fill: rgba(233,178,60,.16); }
+:root[data-theme='light'] .calendar-band-color-4,
+:root[data-theme='sunlight'] .calendar-band-color-4 { --job-fill: rgba(255,112,163,.14); }
+:root[data-theme='light'] .calendar-band-color-5,
+:root[data-theme='sunlight'] .calendar-band-color-5 { --job-fill: rgba(146,110,235,.14); }
+
+:root[data-theme='monochrome'] .calendar-band-color-0,
+:root[data-theme='monochrome'] .calendar-band-color-1,
+:root[data-theme='monochrome'] .calendar-band-color-2,
+:root[data-theme='monochrome'] .calendar-band-color-3,
+:root[data-theme='monochrome'] .calendar-band-color-4,
+:root[data-theme='monochrome'] .calendar-band-color-5 {
+  --job-line: #ffffff;
+  --job-fill: rgba(255, 255, 255, 0.14);
+  --job-ink: #ffffff;
+}
+
+:root[data-theme='parchment'] .calendar-band-color-0 { --job-line: #d97706; --job-fill: rgba(217, 119, 6, 0.22); --job-ink: #fbbf24; }
+:root[data-theme='parchment'] .calendar-band-color-1 { --job-line: #b45309; --job-fill: rgba(180, 83, 9, 0.20); --job-ink: #fde68a; }
+:root[data-theme='parchment'] .calendar-band-color-2 { --job-line: #65a30d; --job-fill: rgba(101, 163, 13, 0.20); --job-ink: #bef264; }
+:root[data-theme='parchment'] .calendar-band-color-3 { --job-line: #d97706; --job-fill: rgba(217, 119, 6, 0.20); --job-ink: #fde047; }
+:root[data-theme='parchment'] .calendar-band-color-4 { --job-line: #ea580c; --job-fill: rgba(234, 88, 12, 0.20); --job-ink: #fca5a5; }
+:root[data-theme='parchment'] .calendar-band-color-5 { --job-line: #c2410c; --job-fill: rgba(194, 65, 12, 0.20); --job-ink: #fed7aa; }
 
 /* ---- the range stepper --------------------------------------------------- */
 /* Day and Week step in local state, so these are buttons where the month nav
@@ -35413,9 +35463,20 @@ body[data-schedule-overlay="job"] .sched-queue {
 .calendar-job-status-in_progress{ --job-line: var(--rail-crew-1); --job-fill: rgba(61,184,255,.2);   --job-ink: var(--ink-sky-3); }
 .calendar-job-status-complete   { --job-line: var(--rail-crew-2); --job-fill: rgba(120,220,150,.2);  --job-ink: var(--ink-green-4); }
 .calendar-job-status-archived   { --job-line: rgba(var(--tint), 0.35); --job-fill: rgba(var(--tint), 0.07); --job-ink: var(--mute-i62); }
-:root[data-theme='light'] .calendar-job-status-new_lead    { --job-fill: rgba(233,178,60,.16); }
-:root[data-theme='light'] .calendar-job-status-in_progress { --job-fill: rgba(61,184,255,.14); }
-:root[data-theme='light'] .calendar-job-status-complete    { --job-fill: rgba(76,190,120,.14); }
+:root[data-theme='light'] .calendar-job-status-new_lead,
+:root[data-theme='sunlight'] .calendar-job-status-new_lead    { --job-fill: rgba(233,178,60,.16); }
+:root[data-theme='light'] .calendar-job-status-in_progress,
+:root[data-theme='sunlight'] .calendar-job-status-in_progress { --job-fill: rgba(61,184,255,.14); }
+:root[data-theme='light'] .calendar-job-status-complete,
+:root[data-theme='sunlight'] .calendar-job-status-complete    { --job-fill: rgba(76,190,120,.14); }
+
+:root[data-theme='monochrome'] .calendar-job-status-new_lead   { --job-line: #ffffff; --job-fill: rgba(255, 255, 255, 0.16); --job-ink: #ffffff; }
+:root[data-theme='monochrome'] .calendar-job-status-in_progress{ --job-line: #e4e4e7; --job-fill: rgba(228, 228, 231, 0.24); --job-ink: #ffffff; }
+:root[data-theme='monochrome'] .calendar-job-status-complete   { --job-line: #ffffff; --job-fill: rgba(255, 255, 255, 0.32); --job-ink: #ffffff; }
+
+:root[data-theme='parchment'] .calendar-job-status-new_lead    { --job-line: #d97706; --job-fill: rgba(217, 119, 6, 0.20); --job-ink: #fde047; }
+:root[data-theme='parchment'] .calendar-job-status-in_progress { --job-line: #b45309; --job-fill: rgba(180, 83, 9, 0.20); --job-ink: #fde68a; }
+:root[data-theme='parchment'] .calendar-job-status-complete    { --job-line: #65a30d; --job-fill: rgba(101, 163, 13, 0.20); --job-ink: #bef264; }
 
 /* ---- the Day view's own summary ------------------------------------------
    The one view about a single day was the only one that said nothing about it:
@@ -37336,7 +37397,7 @@ a.sms-cat-switch:focus-visible { outline: 2px solid var(--accent); outline-offse
   resize: vertical;
   transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
 }
-.date-choice-note textarea::placeholder { color: inherit; opacity: 0.42; font-weight: 500; }
+.date-choice-note textarea::placeholder { color: inherit; opacity: 0.72; font-weight: 500; }
 .date-choice-note textarea:hover { border-color: var(--cbrand-edge, var(--cedge-orange-29)); }
 .date-choice-note textarea:focus {
   outline: none;
@@ -37360,7 +37421,7 @@ a.sms-cat-switch:focus-visible { outline: 2px solid var(--accent); outline-offse
   resize: vertical;
   transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
 }
-.date-choice-alt .client-ask-form textarea::placeholder { color: inherit; opacity: 0.42; font-weight: 500; }
+.date-choice-alt .client-ask-form textarea::placeholder { color: inherit; opacity: 0.72; font-weight: 500; }
 .date-choice-alt .client-ask-form textarea:focus {
   outline: none;
   border-color: var(--cbrand, #ff8a3d);

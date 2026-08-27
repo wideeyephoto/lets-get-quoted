@@ -139,3 +139,18 @@ describe('the photo overlay labels', () => {
     expect(block).not.toContain('rgba(var(--tint), .7)');
   });
 });
+
+describe('placeholder and schedule theme contrast', () => {
+  it('ensures input placeholders use high-contrast muted tokens', () => {
+    expect(GLOBALS).toContain('.field input::placeholder,');
+    expect(GLOBALS).toContain('.field textarea::placeholder { color: var(--muted-2); opacity: 0.88; }');
+    expect(GLOBALS).toContain('.calendar-agenda-search input::placeholder { color: var(--muted-2); opacity: 0.88; }');
+    expect(GLOBALS).toContain('.client-search-bar input::placeholder { color: var(--muted-2); opacity: 0.88; }');
+  });
+
+  it('ensures calendar bands support sunlight, monochrome, and parchment', () => {
+    expect(GLOBALS).toContain(":root[data-theme='sunlight'] .calendar-band-color-0");
+    expect(GLOBALS).toContain(":root[data-theme='monochrome'] .calendar-band-color-0");
+    expect(GLOBALS).toContain(":root[data-theme='parchment'] .calendar-band-color-0");
+  });
+});

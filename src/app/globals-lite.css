@@ -1,6 +1,6 @@
 /* GENERATED — do not edit. Source: src/app/globals.css
    Run: node scripts/build-css-subset.mjs
-   source-sha256: e7b314c7e91cd8c7
+   source-sha256: bf3ba051599f0ceb
 
    globals.css with the rules that can only match inside /dashboard, /admin and
    /demo removed. Every route except those three imports this file; they import
@@ -5650,13 +5650,15 @@ li + li { margin-top: 0.45rem; }
    Recess the grid instead and let the days be the white that lifts out of it —
    the same figure/ground relationship the dark theme already has, drawn the
    only way round that works on paper. */
-:root[data-theme='light'] .panel .calendar-grid {
+:root[data-theme='light'] .panel .calendar-grid,
+:root[data-theme='sunlight'] .panel .calendar-grid {
   padding: 6px;
   border-radius: 12px;
   background: #eff3f8;
   box-shadow: inset 0 1px 2px rgba(17, 27, 41, 0.07);
 }
-:root[data-theme='light'] .panel .calendar-cell {
+:root[data-theme='light'] .panel .calendar-cell,
+:root[data-theme='sunlight'] .panel .calendar-cell {
   background: #ffffff;
   /* A grid line, deliberately below the container tier: 35 day cells edged in
      near-black stop reading as a calendar and start reading as a spreadsheet. */
@@ -5664,19 +5666,23 @@ li + li { margin-top: 0.45rem; }
 }
 /* An empty day is still a day: it has to hold its place in the row, or a month
    that starts on a Saturday renders as one lone box floating above the grid. */
-:root[data-theme='light'] .panel .calendar-cell.empty {
+:root[data-theme='light'] .panel .calendar-cell.empty,
+:root[data-theme='sunlight'] .panel .calendar-cell.empty {
   background: #e7ecf3;
   border-color: transparent;
 }
-:root[data-theme='light'] .panel .calendar-day-number { color: rgba(var(--tint), 0.72); }
+:root[data-theme='light'] .panel .calendar-day-number,
+:root[data-theme='sunlight'] .panel .calendar-day-number { color: rgba(var(--tint), 0.85); }
 /* Today reads as a marker rather than a wash — a 7% orange fill is invisible on
    white, and "which day is it" is the one question the month always has to answer. */
-:root[data-theme='light'] .panel .calendar-cell.today {
+:root[data-theme='light'] .panel .calendar-cell.today,
+:root[data-theme='sunlight'] .panel .calendar-cell.today {
   border-color: #ff7a21;
   background: #fffaf6;
   box-shadow: inset 0 0 0 1px #ff7a21;
 }
-:root[data-theme='light'] .panel .calendar-cell.blocked {
+:root[data-theme='light'] .panel .calendar-cell.blocked,
+:root[data-theme='sunlight'] .panel .calendar-cell.blocked {
   background: repeating-linear-gradient(135deg, #dfe6ef 0 5px, #f6f8fb 5px 11px);
   border-color: #697d9b;
 }
@@ -8321,7 +8327,8 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: var(--cedg
   font-size: 0.92rem;
 }
 .field textarea { resize: vertical; min-height: 4.5rem; }
-.field input::placeholder { color: var(--mute-t40); }
+.field input::placeholder,
+.field textarea::placeholder { color: var(--muted-2); opacity: 0.88; }
 .field select option { background: var(--bg-3); color: var(--text); }
 
 .past-clients-picker { padding: 0.85rem; border: 1px solid var(--cedge-amber-21); border-radius: 12px; background: rgba(255,209,102,0.035); }
@@ -15594,12 +15601,36 @@ select optgroup {
 /* The fills are translucent over a dark panel. On the light theme the same
    alpha reads as a grey smudge, so they are lifted — the --job-line and
    --job-ink tokens are already theme-aware and need nothing here. */
-:root[data-theme='light'] .calendar-band-color-0 { --job-fill: rgba(255,138,61,.16); }
-:root[data-theme='light'] .calendar-band-color-1 { --job-fill: rgba(61,184,255,.14); }
-:root[data-theme='light'] .calendar-band-color-2 { --job-fill: rgba(76,190,120,.14); }
-:root[data-theme='light'] .calendar-band-color-3 { --job-fill: rgba(233,178,60,.16); }
-:root[data-theme='light'] .calendar-band-color-4 { --job-fill: rgba(255,112,163,.14); }
-:root[data-theme='light'] .calendar-band-color-5 { --job-fill: rgba(146,110,235,.14); }
+:root[data-theme='light'] .calendar-band-color-0,
+:root[data-theme='sunlight'] .calendar-band-color-0 { --job-fill: rgba(255,138,61,.16); }
+:root[data-theme='light'] .calendar-band-color-1,
+:root[data-theme='sunlight'] .calendar-band-color-1 { --job-fill: rgba(61,184,255,.14); }
+:root[data-theme='light'] .calendar-band-color-2,
+:root[data-theme='sunlight'] .calendar-band-color-2 { --job-fill: rgba(76,190,120,.14); }
+:root[data-theme='light'] .calendar-band-color-3,
+:root[data-theme='sunlight'] .calendar-band-color-3 { --job-fill: rgba(233,178,60,.16); }
+:root[data-theme='light'] .calendar-band-color-4,
+:root[data-theme='sunlight'] .calendar-band-color-4 { --job-fill: rgba(255,112,163,.14); }
+:root[data-theme='light'] .calendar-band-color-5,
+:root[data-theme='sunlight'] .calendar-band-color-5 { --job-fill: rgba(146,110,235,.14); }
+
+:root[data-theme='monochrome'] .calendar-band-color-0,
+:root[data-theme='monochrome'] .calendar-band-color-1,
+:root[data-theme='monochrome'] .calendar-band-color-2,
+:root[data-theme='monochrome'] .calendar-band-color-3,
+:root[data-theme='monochrome'] .calendar-band-color-4,
+:root[data-theme='monochrome'] .calendar-band-color-5 {
+  --job-line: #ffffff;
+  --job-fill: rgba(255, 255, 255, 0.14);
+  --job-ink: #ffffff;
+}
+
+:root[data-theme='parchment'] .calendar-band-color-0 { --job-line: #d97706; --job-fill: rgba(217, 119, 6, 0.22); --job-ink: #fbbf24; }
+:root[data-theme='parchment'] .calendar-band-color-1 { --job-line: #b45309; --job-fill: rgba(180, 83, 9, 0.20); --job-ink: #fde68a; }
+:root[data-theme='parchment'] .calendar-band-color-2 { --job-line: #65a30d; --job-fill: rgba(101, 163, 13, 0.20); --job-ink: #bef264; }
+:root[data-theme='parchment'] .calendar-band-color-3 { --job-line: #d97706; --job-fill: rgba(217, 119, 6, 0.20); --job-ink: #fde047; }
+:root[data-theme='parchment'] .calendar-band-color-4 { --job-line: #ea580c; --job-fill: rgba(234, 88, 12, 0.20); --job-ink: #fca5a5; }
+:root[data-theme='parchment'] .calendar-band-color-5 { --job-line: #c2410c; --job-fill: rgba(194, 65, 12, 0.20); --job-ink: #fed7aa; }
 
 /* THE RAIL TOGGLE IS GONE, AND SO ARE ITS RULES.
    It sat in the calendar toolbar reading "Show jobs (10)" while the stat strip
@@ -15980,9 +16011,20 @@ select optgroup {
 .calendar-job-status-in_progress{ --job-line: var(--rail-crew-1); --job-fill: rgba(61,184,255,.2);   --job-ink: var(--ink-sky-3); }
 .calendar-job-status-complete   { --job-line: var(--rail-crew-2); --job-fill: rgba(120,220,150,.2);  --job-ink: var(--ink-green-4); }
 .calendar-job-status-archived   { --job-line: rgba(var(--tint), 0.35); --job-fill: rgba(var(--tint), 0.07); --job-ink: var(--mute-i62); }
-:root[data-theme='light'] .calendar-job-status-new_lead    { --job-fill: rgba(233,178,60,.16); }
-:root[data-theme='light'] .calendar-job-status-in_progress { --job-fill: rgba(61,184,255,.14); }
-:root[data-theme='light'] .calendar-job-status-complete    { --job-fill: rgba(76,190,120,.14); }
+:root[data-theme='light'] .calendar-job-status-new_lead,
+:root[data-theme='sunlight'] .calendar-job-status-new_lead    { --job-fill: rgba(233,178,60,.16); }
+:root[data-theme='light'] .calendar-job-status-in_progress,
+:root[data-theme='sunlight'] .calendar-job-status-in_progress { --job-fill: rgba(61,184,255,.14); }
+:root[data-theme='light'] .calendar-job-status-complete,
+:root[data-theme='sunlight'] .calendar-job-status-complete    { --job-fill: rgba(76,190,120,.14); }
+
+:root[data-theme='monochrome'] .calendar-job-status-new_lead   { --job-line: #ffffff; --job-fill: rgba(255, 255, 255, 0.16); --job-ink: #ffffff; }
+:root[data-theme='monochrome'] .calendar-job-status-in_progress{ --job-line: #e4e4e7; --job-fill: rgba(228, 228, 231, 0.24); --job-ink: #ffffff; }
+:root[data-theme='monochrome'] .calendar-job-status-complete   { --job-line: #ffffff; --job-fill: rgba(255, 255, 255, 0.32); --job-ink: #ffffff; }
+
+:root[data-theme='parchment'] .calendar-job-status-new_lead    { --job-line: #d97706; --job-fill: rgba(217, 119, 6, 0.20); --job-ink: #fde047; }
+:root[data-theme='parchment'] .calendar-job-status-in_progress { --job-line: #b45309; --job-fill: rgba(180, 83, 9, 0.20); --job-ink: #fde68a; }
+:root[data-theme='parchment'] .calendar-job-status-complete    { --job-line: #65a30d; --job-fill: rgba(101, 163, 13, 0.20); --job-ink: #bef264; }
 
 /* On the day view there is nowhere for it to go — its destination is the view
    you are already in — so it is a count rather than a control, and it has to
@@ -16722,7 +16764,7 @@ select optgroup {
   resize: vertical;
   transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
 }
-.date-choice-note textarea::placeholder { color: inherit; opacity: 0.42; font-weight: 500; }
+.date-choice-note textarea::placeholder { color: inherit; opacity: 0.72; font-weight: 500; }
 .date-choice-note textarea:hover { border-color: var(--cbrand-edge, var(--cedge-orange-29)); }
 .date-choice-note textarea:focus {
   outline: none;
@@ -16746,7 +16788,7 @@ select optgroup {
   resize: vertical;
   transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
 }
-.date-choice-alt .client-ask-form textarea::placeholder { color: inherit; opacity: 0.42; font-weight: 500; }
+.date-choice-alt .client-ask-form textarea::placeholder { color: inherit; opacity: 0.72; font-weight: 500; }
 .date-choice-alt .client-ask-form textarea:focus {
   outline: none;
   border-color: var(--cbrand, #ff8a3d);
