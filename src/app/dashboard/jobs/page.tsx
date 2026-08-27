@@ -19,6 +19,7 @@ import { JOBS_VIEW_COOKIE, MAP_THEME_COOKIE, mapViewCookie, normalizeJobsView, n
 import { JOB_STAGES, type QueueSort, type StageFilter } from '@/lib/job-queue';
 import JobsWorkspace, { type JobViewItem } from './JobsWorkspace';
 import AutomationLink from '@/components/automation-link';
+import WorkspaceDisclosure from '@/components/workspace-disclosure';
 
 export const metadata = { title: 'Jobs' };
 
@@ -269,11 +270,13 @@ export default async function JobsPage({
         </div>
       </div>
 
-      <details id="new-job" className="panel workspace-section-card workspace-details" open={shouldAutoOpenCreate(allJobs.length, searchParams.new)}>
-        <summary className="workspace-details-summary">
-          <span className="btn primary">+ New job</span>
-          <span className="workspace-details-copy">Create a job for approved work.</span>
-        </summary>
+      <WorkspaceDisclosure
+        id="new-job"
+        eyebrow="Direct intake"
+        title="Create a new job"
+        summary="Create a job for approved work."
+        defaultOpen={shouldAutoOpenCreate(allJobs.length, searchParams.new)}
+      >
         <form action={createJobAction} className="form-grid">
           <PastClientsPicker clients={pastClients} />
           <div className="field">
@@ -339,7 +342,7 @@ export default async function JobsPage({
             </button>
           </div>
         </form>
-      </details>
+      </WorkspaceDisclosure>
 
       {/* The Import & migrate accordion used to sit here. It moved to
           Settings → Business → Import & data, where every other importer

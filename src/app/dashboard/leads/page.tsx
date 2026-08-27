@@ -9,6 +9,7 @@ import { archiveLeadAction, createLeadAction, deleteLeadAction, setLeadLostAfter
 import DeleteLeadButton from './DeleteLeadButton';
 import { shouldAutoOpenCreate } from '@/lib/nav-helpers';
 import SaveButton from '@/components/save-button';
+import WorkspaceDisclosure from '@/components/workspace-disclosure';
 import { getMapPins } from '@/lib/map-pins';
 import { MAP_THEME_COOKIE, mapViewCookie, normalizeMapTheme, normalizeMapView } from '@/lib/dashboard-views';
 import LeadsWorkspace, { type LeadViewItem } from './LeadsWorkspace';
@@ -286,12 +287,13 @@ export default async function LeadsPage({ searchParams }: { searchParams: { add?
           protects. Gating this on leads.write would render a form to an office
           user that fails the moment they submit it. */}
       {role === 'owner' ? (
-      <section className="panel workspace-section-card">
-        <details id="add-lead" className="workspace-details" open={shouldAutoOpenCreate(leads.length, searchParams.add)}>
-          <summary className="workspace-details-summary">
-            <span className="btn primary">+ Add manual lead</span>
-            <span className="workspace-details-copy">Log a lead that came in by phone, in person, or referral.</span>
-          </summary>
+        <WorkspaceDisclosure
+          id="add-lead"
+          eyebrow="Manual intake"
+          title="Add a manual lead"
+          summary="Log a lead that came in by phone, in person, or referral."
+          defaultOpen={shouldAutoOpenCreate(leads.length, searchParams.add)}
+        >
           <form action={createLeadAction} className="form-grid">
             <div className="field">
               <label htmlFor="name">Name</label>
@@ -329,8 +331,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: { add?
               <SaveButton>Add lead</SaveButton>
             </div>
           </form>
-        </details>
-      </section>
+        </WorkspaceDisclosure>
       ) : null}
     </main>
   );
