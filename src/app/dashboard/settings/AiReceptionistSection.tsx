@@ -178,6 +178,36 @@ export default function AiReceptionistSection(props: Props) {
         </p>
       )}
 
+      {/* 2-Way Contractor & Crew AI Hotline Feature Notice */}
+      <div style={{
+        marginTop: '1.25rem',
+        marginBottom: '1.5rem',
+        padding: '1.15rem 1.25rem',
+        background: 'linear-gradient(135deg, rgba(88, 28, 135, 0.25), rgba(49, 46, 129, 0.25))',
+        border: '1px solid rgba(168, 85, 247, 0.35)',
+        borderRadius: '0.85rem',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.4rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <span style={{ fontSize: '1.25rem' }}>🎙️</span>
+            <strong style={{ color: '#f3f4f6', fontSize: '0.95rem' }}>2-Way Contractor &amp; Crew Hotline Included</strong>
+          </div>
+          <span style={{ fontSize: '0.72rem', padding: '0.2rem 0.5rem', background: '#9333ea', color: '#ffffff', borderRadius: '0.35rem', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.04em' }}>
+            Zero Extra Lines Needed
+          </span>
+        </div>
+        <p style={{ margin: 0, fontSize: '0.85rem', color: '#d1d5db', lineHeight: 1.55 }}>
+          Your shared business line doubles as your field team&apos;s personal dispatcher. When you or any registered crew member calls in, the AI recognizes the phone number and switches to <strong>Field Assistant Mode</strong>: verbally add leads, update job scopes, log time &amp; materials, and record change orders.
+        </p>
+        <div style={{ marginTop: '0.75rem', display: 'flex', alignItems: 'center', gap: '1.25rem', flexWrap: 'wrap', fontSize: '0.8rem', color: '#c084fc' }}>
+          <span>✓ Works on any mobile phone</span>
+          <span>✓ Uses your included AI Voice minutes</span>
+          <Link href="/dashboard/settings#team" style={{ color: '#e9d5ff', textDecoration: 'underline', fontWeight: 600 }}>
+            Manage Crew Phone Numbers →
+          </Link>
+        </div>
+      </div>
+
       <div className="voice-field">
         <span className="voice-label">Receptionist</span>
         <div className="voice-choices" role="group" aria-label="Receptionist status">

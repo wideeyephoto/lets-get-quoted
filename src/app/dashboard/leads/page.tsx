@@ -10,6 +10,7 @@ import DeleteLeadButton from './DeleteLeadButton';
 import { shouldAutoOpenCreate } from '@/lib/nav-helpers';
 import SaveButton from '@/components/save-button';
 import WorkspaceDisclosure from '@/components/workspace-disclosure';
+import VoiceCaptureButton from '@/components/ai/VoiceCaptureButton';
 import { getMapPins } from '@/lib/map-pins';
 import { MAP_THEME_COOKIE, mapViewCookie, normalizeMapTheme, normalizeMapView } from '@/lib/dashboard-views';
 import LeadsWorkspace, { type LeadViewItem } from './LeadsWorkspace';
@@ -294,6 +295,13 @@ export default async function LeadsPage({ searchParams }: { searchParams: { add?
           summary="Log a lead that came in by phone, in person, or referral."
           defaultOpen={shouldAutoOpenCreate(leads.length, searchParams.add)}
         >
+          <div style={{ marginBottom: '1.25rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.75rem 1rem', background: 'rgba(147, 51, 234, 0.08)', borderRadius: '0.75rem', border: '1px solid rgba(147, 51, 234, 0.2)' }}>
+            <div>
+              <strong style={{ display: 'block', fontSize: '0.9rem', color: '#f3f4f6' }}>Hands-Free Voice Intake</strong>
+              <span style={{ fontSize: '0.8rem', color: '#9ca3af' }}>Speak the customer name, phone, and project scope to fill with AI.</span>
+            </div>
+            <VoiceCaptureButton targetType="lead" label="🎙️ Voice Add Lead" />
+          </div>
           <form action={createLeadAction} className="form-grid">
             <div className="field">
               <label htmlFor="name">Name</label>

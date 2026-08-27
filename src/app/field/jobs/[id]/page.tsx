@@ -16,6 +16,7 @@ import FieldOfflineForm from '../../FieldOfflineForm';
 import FieldPhotos from '../../FieldPhotos';
 import ArrivalPanel from '@/components/arrival-panel';
 import NavigateButton from '@/components/navigate-button';
+import VoiceCaptureButton from '@/components/ai/VoiceCaptureButton';
 import ArrivalTracker from '@/components/arrival-tracker';
 import {
   arrivalPermissionsFromCrew, arrivalSettingsFromAccount, canShareLocation, describeArrivalOutcome,
@@ -162,6 +163,13 @@ export default async function FieldJobPage({ params, searchParams }: { params: {
         <p className="field-detail-ref">{job.ref} · {formatJobSchedule(job.scheduled_for, job.scheduled_time)}</p>
 
         <div className="field-actions-row">
+          <VoiceCaptureButton
+            targetType="job"
+            targetId={job.id}
+            contextTitle={job.client_name}
+            label="🎙️ Voice Note"
+            className="field-chip"
+          />
           {job.client_phone && arrivalPermissions.viewContact ? (
             <>
               <a className="field-chip" href={`tel:${job.client_phone}`}>📞 Call</a>

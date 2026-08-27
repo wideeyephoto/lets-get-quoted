@@ -6,6 +6,7 @@ import type { JobDetailDto } from '@/lib/job-detail';
 import type { JobViewItem } from './JobsWorkspace';
 import RecordPhotos from '../RecordPhotos';
 import ActionIcon from '@/components/action-icon';
+import VoiceCaptureButton from '@/components/ai/VoiceCaptureButton';
 import JobDetailTabs, { JOB_TABS, JobDetailSkeleton, marginClass, type JobTabId } from './JobDetailTabs';
 import { useJobDetail } from './use-job-detail';
 import { nextTabIndex } from '@/lib/tab-strip';
@@ -243,6 +244,12 @@ export default function FocusView({
               </div>
 
               <div className={styles.heroActionsJob}>
+                <VoiceCaptureButton
+                  targetType="job"
+                  targetId={selected.id}
+                  contextTitle={selected.clientName || selected.ref}
+                  label="🎙️ Voice Update"
+                />
                 <Link className="action-btn action-btn--lead" href={`${base}/jobs/${selected.id}`}>
                   <ActionIcon name="job" />
                   Open job →

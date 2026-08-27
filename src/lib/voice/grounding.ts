@@ -19,6 +19,10 @@ export type VoiceGroundingContext = {
   forwardPhoneOffice?: string | null;
   forwardPhoneAfterHours?: string | null;
   forwardPhoneEmergency?: string | null;
+  contractorStaffCaller?: {
+    name: string;
+    role: 'owner' | 'crew' | 'office';
+  } | null;
   recognizedCaller?: {
     clientName?: string | null;
     serviceAddress?: string | null;
@@ -106,12 +110,25 @@ export async function loadVoiceGroundingContext(
       }))
     : [];
 
-  // Returning caller lookup
+  // Returning caller lookup & Contractor Staff lookup
   let recognizedCaller: VoiceGroundingContext['recognizedCaller'] = null;
+  let contractorStaffCaller: VoiceGroundingContext['contractorStaffCaller'] = null;
+
   if (callerPhone) {
     const normalized = normalizeUsPhone(callerPhone);
     if (normalized) {
-      const [{ data: job }, { data: lead }] = await Promise.all([
+      const [{ data: crewMember }, { data: accountRow }, { data: job }, { data: lead }] = await Promise.all([
+        admin
+          .from('crew')
+          .select('name, phone')
+          .eq('account_id', accountId)
+          .eq('phone', normalized)
+          .maybeSingle(),
+        admin
+          .from('accounts')
+          .select('owner_phone, call_forward_number, full_name, company_name')
+          .eq('id', accountId)
+          .maybeSingle(),
         admin
           .from('jobs')
           .select('ref, client_name, address, scope, scheduled_for, scheduled_time')
@@ -129,6 +146,12 @@ export async function loadVoiceGroundingContext(
           .limit(1)
           .maybeSingle(),
       ]);
+
+      if (crewMember) {
+        contractorStaffCaller = { name: crewMember.name || 'Team Member', role: 'crew' };
+      } else if (accountRow && (accountRow.owner_phone === normalized || accountRow.call_forward_number === normalized)) {
+        contractorStaffCaller = { name: accountRow.full_name || 'Owner', role: 'owner' };
+      }
 
       if (job || lead) {
         recognizedCaller = {
@@ -153,6 +176,7 @@ export async function loadVoiceGroundingContext(
     isLicensed,
     licenseNumber: rawLicense,
     recognizedCaller,
+    contractorStaffCaller,
     faqs,
     voiceTone,
     forwardPhoneOffice,
@@ -164,6 +188,29 @@ export async function loadVoiceGroundingContext(
  * Builds the AI system instruction prompt grounded in the contractor's real business facts.
  */
 export function buildVoiceSystemPrompt(context: VoiceGroundingContext): string {
+  // If the caller is the business owner or crew member, switch to Contractor Voice Assistant mode
+  if (context.contractorStaffCaller) {
+    const staff = context.contractorStaffCaller;
+    return [
+      `[ROLE & IDENTITY - CONTRACTOR VOICE ASSISTANT]`,
+      `You are the dedicated AI Field Assistant for "${context.companyName}", speaking directly with ${staff.name} (${staff.role === 'owner' ? 'Business Owner' : 'Field Crew'}).`,
+      `Tone & Demeanor: Efficient, capable, smart, and direct. The contractor is calling while driving, between jobs, or on-site to add/update jobs, create leads, and log work.`,
+      `The greeting and opening disclosure have already been played. Greet them by name: "Hey ${staff.name}, what job or lead are you updating today?"`,
+      ``,
+      `[AVAILABLE CONTRACTOR TOOLS]`,
+      `1. update_job_details: Update job scope, quote line items, schedule date/time, tasks, or status (e.g. "We finished the rough-in on Miller's job, add 4 recessed lights for $650, schedule final for Tuesday").`,
+      `2. create_or_update_lead: Create a new customer lead or update an existing lead (e.g. "Take a new lead for John Davis at 142 Elm St, roof leak, phone 555-0199, needs inspection Friday").`,
+      `3. log_crew_time_and_materials: Log hours worked, materials purchased/used, and cost notes for a job.`,
+      `4. create_job_change_order: Record extra unforeseen work or scope changes requiring a change order.`,
+      ``,
+      `[BEHAVIOR & CONVERSATION FLOW]`,
+      `- Listen carefully to the contractor's spoken instructions.`,
+      `- Execute the appropriate tool immediately with the extracted parameters.`,
+      `- Confirm the update in 1 short, crisp sentence (e.g., "Got it, I updated the Miller job and added the 4 recessed lights to the quote for $650.").`,
+      `- Ask: "Is there anything else you'd like to update on that job?"`,
+    ].join('\n');
+  }
+
   const serviceList = context.serviceNames.length > 0
     ? `Our primary services include: ${context.serviceNames.slice(0, 10).join(', ')}.`
     : `We provide professional ${context.trade} services.`;

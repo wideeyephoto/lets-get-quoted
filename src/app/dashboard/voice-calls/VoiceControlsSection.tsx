@@ -19,6 +19,15 @@ interface VoiceControlsSectionProps extends VoiceStatusBannerProps {
 
 export const AI_CONTROLS = [
   {
+    id: 'contractor-hotline',
+    title: 'Contractor & Crew Voice Hotline',
+    badge: 'Field Voice Assistant',
+    badgeClass: styles.badgeLiveTool,
+    icon: '🎙️',
+    desc: 'When you or your registered crew call your business number, the AI recognizes your phone and switches to your Field Assistant — taking job updates, logging materials, and creating leads verbally.',
+    functionSignature: 'update_job_details + create_lead + log_crew_time_and_materials',
+  },
+  {
     id: 'in-call-booking',
     title: 'In-Call Appointment Booking',
     badge: 'Live SWAIG Tool',
@@ -190,10 +199,102 @@ export function VoiceCapabilitiesGrid() {
   );
 }
 
+export function ContractorHotlineShowcase({ dedicatedNumber }: { dedicatedNumber?: string | null }) {
+  return (
+    <section
+      style={{
+        margin: '1.75rem 0',
+        padding: '1.75rem 2rem',
+        background: 'linear-gradient(135deg, rgba(88, 28, 135, 0.45) 0%, rgba(30, 27, 75, 0.6) 100%)',
+        border: '1px solid rgba(168, 85, 247, 0.35)',
+        borderRadius: '1.25rem',
+        boxShadow: '0 12px 36px rgba(0, 0, 0, 0.25)',
+        position: 'relative',
+        overflow: 'hidden',
+      }}
+      aria-label="Contractor & Crew Shared Phone Hotline Showcase"
+    >
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.25rem' }}>
+        <div style={{ maxWidth: '680px' }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '0.25rem 0.75rem', background: 'rgba(168, 85, 247, 0.2)', border: '1px solid rgba(168, 85, 247, 0.4)', borderRadius: '2rem', fontSize: '0.78rem', color: '#e9d5ff', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '0.75rem' }}>
+            <span>⚡ Zero Extra Numbers Needed</span>
+            <span>·</span>
+            <span>2-Way Shared AI Rail</span>
+          </div>
+          <h2 style={{ fontSize: '1.45rem', fontWeight: 700, color: '#ffffff', margin: '0 0 0.5rem 0', letterSpacing: '-0.02em' }}>
+            🎙️ Contractor &amp; Crew Call-In Hotline
+          </h2>
+          <p style={{ margin: 0, fontSize: '0.95rem', color: '#d1d5db', lineHeight: 1.6 }}>
+            Your business phone line doubles as your field crew&apos;s 24/7 personal dispatcher. When you or any registered team member calls your shared business number, the AI recognizes the caller ID and switches into <strong>Field Assistant Mode</strong>.
+          </p>
+        </div>
+
+        {dedicatedNumber ? (
+          <div style={{ background: 'rgba(0, 0, 0, 0.35)', border: '1px solid rgba(255, 255, 255, 0.12)', padding: '1rem 1.25rem', borderRadius: '0.85rem', textAlign: 'center' }}>
+            <span style={{ display: 'block', fontSize: '0.75rem', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Your Shared Hotline</span>
+            <strong style={{ display: 'block', fontSize: '1.25rem', color: '#a855f7', marginTop: '0.25rem' }}>{displayPhone(dedicatedNumber)}</strong>
+            <span style={{ display: 'block', fontSize: '0.75rem', color: '#4ade80', marginTop: '0.25rem' }}>✓ Auto-Recognizes Crew</span>
+          </div>
+        ) : null}
+      </div>
+
+      {/* 3-Step Flow Diagram */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem', marginTop: '1.25rem' }}>
+        <div style={{ background: 'rgba(15, 23, 42, 0.65)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '0.85rem', padding: '1.15rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.5rem' }}>
+            <span style={{ background: '#9333ea', color: '#fff', width: '24px', height: '24px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 700 }}>1</span>
+            <strong style={{ color: '#f3f4f6', fontSize: '0.9rem' }}>Call From Your Phone</strong>
+          </div>
+          <p style={{ margin: 0, fontSize: '0.82rem', color: '#9ca3af', lineHeight: 1.45 }}>
+            Call the business line from the owner mobile or any registered crew phone while driving or on-site.
+          </p>
+        </div>
+
+        <div style={{ background: 'rgba(15, 23, 42, 0.65)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '0.85rem', padding: '1.15rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.5rem' }}>
+            <span style={{ background: '#9333ea', color: '#fff', width: '24px', height: '24px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 700 }}>2</span>
+            <strong style={{ color: '#f3f4f6', fontSize: '0.9rem' }}>AI Greets You By Name</strong>
+          </div>
+          <p style={{ margin: 0, fontSize: '0.82rem', color: '#9ca3af', lineHeight: 1.45 }}>
+            <em>&quot;Hey Dave, what job or lead are you updating today?&quot;</em> — ready for your verbal instructions.
+          </p>
+        </div>
+
+        <div style={{ background: 'rgba(15, 23, 42, 0.65)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '0.85rem', padding: '1.15rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.5rem' }}>
+            <span style={{ background: '#9333ea', color: '#fff', width: '24px', height: '24px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 700 }}>3</span>
+            <strong style={{ color: '#f3f4f6', fontSize: '0.9rem' }}>Instant CRM Updates</strong>
+          </div>
+          <p style={{ margin: 0, fontSize: '0.82rem', color: '#9ca3af', lineHeight: 1.45 }}>
+            Speak scope changes, quote prices, hours, or materials. AI commits updates and confirms back in 1 sentence.
+          </p>
+        </div>
+      </div>
+
+      {/* Examples & Links */}
+      <div style={{ marginTop: '1.5rem', paddingTop: '1.25rem', borderTop: '1px solid rgba(255, 255, 255, 0.08)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
+        <div style={{ fontSize: '0.82rem', color: '#d1d5db' }}>
+          <strong style={{ color: '#c084fc' }}>Example Spoken Commands:</strong> &quot;Add 4 recessed LED lights on Miller&apos;s job for $650&quot; · &quot;Take a new lead for Bob on Elm St&quot; · &quot;Log 4 hrs and $180 materials for J-104&quot;
+        </div>
+        <div style={{ display: 'flex', gap: '0.75rem' }}>
+          <Link
+            href="/dashboard/settings#team"
+            className="btn secondary"
+            style={{ fontSize: '0.82rem', padding: '0.4rem 0.85rem' }}
+          >
+            👥 Manage Crew Numbers →
+          </Link>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export default function VoiceControlsSection(props: VoiceControlsSectionProps) {
   return (
     <div>
       <VoiceStatusBanner {...props} />
+      <ContractorHotlineShowcase dedicatedNumber={props.dedicatedNumber} />
       <VoiceCapabilitiesGrid />
     </div>
   );

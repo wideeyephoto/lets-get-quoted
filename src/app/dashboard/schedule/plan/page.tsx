@@ -91,6 +91,8 @@ export default async function PlanDayPage({
     stranded?: string;
     geocoded?: string;
     briefed?: string;
+    urgent?: string;
+    scheduled?: string;
     skippedNoPhone?: string;
     skippedNoJobs?: string;
   };

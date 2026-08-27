@@ -10,6 +10,7 @@ import { archiveLeadAction, snoozeLeadAction, updateLeadStatusAction } from './a
 import { useLeadDetail } from './use-lead-detail';
 import { nextTabIndex } from '@/lib/tab-strip';
 import LeadDetailTabs, { LEAD_TABS, LeadDetailSkeleton, type LeadTabId } from './LeadDetailTabs';
+import VoiceCaptureButton from '@/components/ai/VoiceCaptureButton';
 import styles from '../focus.module.css';
 import leadStyles from './leads.module.css';
 
@@ -242,6 +243,12 @@ export default function LeadFocusView({
                   </div>
 
                   <div className={styles.heroActions}>
+                    <VoiceCaptureButton
+                      targetType="lead"
+                      targetId={selected.id}
+                      contextTitle={selected.name}
+                      label="🎙️ Voice Update"
+                    />
                     {selected.phone && (
                       <a className={`btn ${selected.textOnly ? 'secondary' : 'primary'}`} href={`tel:${selected.phone}`}>
                         📞 Call

@@ -54,6 +54,8 @@ export type AiWritingKind =
   | 'lead_photo_analysis'
   /** Generating a Before & After case study for the website showcase. */
   | 'showcase_case_study'
+  /** Parsing contractor spoken voice dictations for leads and jobs. */
+  | 'contractor_voice_assist'
   /**
    * LGQ's own blog content.
    *
@@ -74,6 +76,7 @@ const BILLABLE: Readonly<Record<AiWritingKind, boolean>> = Object.freeze({
   change_order_draft: true,
   marketing_draft: true,
   showcase_case_study: true,
+  contractor_voice_assist: false,
   import_assist: false, // UNDECIDED - see the kind doc above
   site_copy: false, // UNDECIDED - see the kind doc above
   guard: false,

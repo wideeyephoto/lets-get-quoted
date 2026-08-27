@@ -4,6 +4,7 @@ import { useState, useTransition, type ReactNode } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import type { JobDetailLayout } from '@/lib/dashboard-views';
 import { setJobDetailLayoutAction } from '@/app/dashboard/view-actions';
+import VoiceCaptureButton from '@/components/ai/VoiceCaptureButton';
 
 export type JobDetailTab = 'overview' | 'financials' | 'execution' | 'selections' | 'settings';
 
@@ -72,7 +73,7 @@ export default function JobDetailWorkspace({
   return (
     <div className="job-workspace-container">
       {/* View Switcher Controls */}
-      <div className="job-layout-bar">
+      <div className="job-layout-bar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div className="job-layout-toggle-group" role="radiogroup" aria-label="Job page layout style">
           <button
             type="button"
@@ -106,6 +107,13 @@ export default function JobDetailWorkspace({
             <span>Classic Stack</span>
           </button>
         </div>
+
+        <VoiceCaptureButton
+          targetType="job"
+          targetId={_jobId}
+          contextTitle="Job Details"
+          label="🎙️ Voice Job Update"
+        />
       </div>
 
       {layout === 'tabs' ? (

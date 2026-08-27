@@ -7,6 +7,9 @@ import { resolveJurisdiction } from '@/lib/location-context/jurisdiction-resolve
 import { evaluatePermitRequirement } from '@/lib/permit-intel/requirement-engine';
 import { calculateCleanEnergyRebates, type CleanEnergyWorkCategory } from '@/lib/rebates/clean-energy-rebate-engine';
 import type { JurisdictionDiscipline } from '@/lib/location-context/types';
+import { createJobFeedEvent } from '@/lib/job-feed';
+import { parseQuoteItems, saveQuoteItems, type QuoteItem } from '@/lib/jobs';
+import { createLead, scheduleLeadQuoteVisit } from '@/lib/leads';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -459,6 +462,236 @@ export async function POST(request: Request) {
       return NextResponse.json({
         response: 'Federal tax credits and local utility rebates are available for qualifying high-efficiency upgrades. Would you like our specialist to give you a full estimate?',
       });
+    }
+  }
+
+  // --- CONTRACTOR AI VOICE ASSISTANT TOOLS ---
+
+  if (fnName === 'update_job_details' || fnName === 'update_job_scope') {
+    const jobRefOrClient = String(args.job_ref_or_client || args.client_name || args.job_id || '').trim();
+    const newScope = String(args.scope || args.scope_addition || '').trim();
+    const status = String(args.status || '').trim();
+    const scheduledDate = String(args.scheduled_date || args.scheduled_for || '').trim();
+    const scheduledTime = String(args.scheduled_time || '').trim();
+    const lineItemLabel = String(args.line_item_label || args.item_name || '').trim();
+    const lineItemPrice = Number(args.line_item_price || args.price || 0);
+
+    if (!jobRefOrClient) {
+      return NextResponse.json({ response: 'Which customer or job reference number would you like me to update?' });
+    }
+
+    try {
+      // Find matching job
+      const { data: jobs } = await admin
+        .from('jobs')
+        .select('id, ref, client_name, scope, quote_items, scheduled_for, scheduled_time')
+        .eq('account_id', accountId)
+        .or(`ref.ilike.%${jobRefOrClient}%,client_name.ilike.%${jobRefOrClient}%`)
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      const targetJob = jobs?.[0];
+      if (!targetJob) {
+        return NextResponse.json({
+          response: `I couldn't find an active job matching "${jobRefOrClient}". Could you clarify the customer name or job ID?`,
+        });
+      }
+
+      const updates: Record<string, unknown> = {
+        updated_at: new Date().toISOString(),
+      };
+
+      if (newScope) {
+        updates.scope = targetJob.scope ? `${targetJob.scope}\n• ${newScope}` : newScope;
+      }
+      if (scheduledDate) {
+        updates.scheduled_for = scheduledDate;
+        if (scheduledTime) updates.scheduled_time = scheduledTime;
+      }
+      if (status && ['new_lead', 'in_progress', 'complete'].includes(status)) {
+        updates.status = status;
+      }
+
+      await admin.from('jobs').update(updates).eq('id', targetJob.id);
+
+      // If a quote item was provided
+      if (lineItemLabel && lineItemPrice > 0) {
+        const existingItems = parseQuoteItems(targetJob.quote_items);
+        const updatedItems: QuoteItem[] = [
+          ...existingItems,
+          {
+            id: `voice-${Date.now()}`,
+            label: lineItemLabel,
+            amount: lineItemPrice,
+            kind: 'base',
+            selected: true,
+            recommended: false,
+          },
+        ];
+        await saveQuoteItems(admin, accountId, targetJob.id, updatedItems);
+      }
+
+      // Add feed event
+      await createJobFeedEvent(admin, accountId, targetJob.id, {
+        kind: 'job_update',
+        title: 'Voice Call Update',
+        body: `Updated over phone: ${[newScope, scheduledDate ? `Scheduled for ${scheduledDate}` : '', lineItemLabel ? `Added "${lineItemLabel}" ($${lineItemPrice})` : ''].filter(Boolean).join(' · ')}`,
+        visibility: 'internal',
+      });
+
+      return NextResponse.json({
+        response: `Got it! I've updated the ${targetJob.ref} job for ${targetJob.client_name}.${scheduledDate ? ` Scheduled for ${scheduledDate}.` : ''} Is there anything else on this job?`,
+      });
+    } catch (err) {
+      console.error('Error in update_job_details SWAIG tool:', err);
+      return NextResponse.json({ response: 'I encountered an issue saving that job update. Could you repeat the changes?' });
+    }
+  }
+
+  if (fnName === 'create_or_update_lead') {
+    const name = String(args.name || args.caller_name || '').trim();
+    const phone = String(args.phone || args.caller_phone || '').trim();
+    const address = String(args.address || args.service_address || '').trim() || null;
+    const projectType = String(args.project_type || args.scope || '').trim() || 'Phone Lead';
+    const notes = String(args.notes || args.message || '').trim() || null;
+    const requestedDate = String(args.requested_date || '').trim();
+
+    if (!name) {
+      return NextResponse.json({ response: 'What is the customer\'s name for the new lead?' });
+    }
+
+    try {
+      const lead = await createLead(admin, accountId, {
+        source: 'ai_voice',
+        name,
+        phone: phone || null,
+        address,
+        projectType,
+        message: notes,
+        triage: {
+          score: 'hot',
+          flags: ['contractor_voice_phone'],
+          contactPreference: 'any',
+        },
+      });
+
+      if (requestedDate) {
+        await scheduleLeadQuoteVisit(admin, accountId, lead.id, {
+          scheduledFor: requestedDate,
+          scheduledTime: '09:00',
+          durationMinutes: 60,
+          notes: null,
+          confirmationTextSentAt: null,
+        });
+      }
+
+      return NextResponse.json({
+        response: `I've created a new lead for ${name}${address ? ` at ${address}` : ''}.${requestedDate ? ` Quote visit set for ${requestedDate}.` : ''}`,
+      });
+    } catch (err) {
+      console.error('Error in create_or_update_lead SWAIG tool:', err);
+      return NextResponse.json({ response: 'Could not create that lead right now. Please try again.' });
+    }
+  }
+
+  if (fnName === 'log_crew_time_and_materials') {
+    const jobRefOrClient = String(args.job_ref_or_client || args.client_name || '').trim();
+    const hours = Number(args.hours || 0);
+    const materialDesc = String(args.materials || args.material_description || '').trim();
+    const materialAmount = Number(args.material_cost || args.amount || 0);
+
+    if (!jobRefOrClient) {
+      return NextResponse.json({ response: 'Which job are you logging time or materials for?' });
+    }
+
+    try {
+      const { data: jobs } = await admin
+        .from('jobs')
+        .select('id, ref, client_name')
+        .eq('account_id', accountId)
+        .or(`ref.ilike.%${jobRefOrClient}%,client_name.ilike.%${jobRefOrClient}%`)
+        .limit(1);
+
+      const targetJob = jobs?.[0];
+      if (!targetJob) {
+        return NextResponse.json({ response: `Could not find a job matching "${jobRefOrClient}".` });
+      }
+
+      if (hours > 0) {
+        await admin.from('costs').insert({
+          account_id: accountId,
+          job_id: targetJob.id,
+          type: 'labor',
+          description: 'Voice logged labor',
+          hours,
+        });
+      }
+
+      if (materialAmount > 0 || materialDesc) {
+        await admin.from('costs').insert({
+          account_id: accountId,
+          job_id: targetJob.id,
+          type: 'material',
+          description: materialDesc || 'Voice logged materials',
+          amount: materialAmount || null,
+        });
+      }
+
+      await createJobFeedEvent(admin, accountId, targetJob.id, {
+        kind: 'job_update',
+        title: 'Logged Time & Materials',
+        body: `Logged by phone: ${hours > 0 ? `${hours} hrs` : ''} ${materialAmount > 0 ? `$${materialAmount} materials (${materialDesc})` : ''}`,
+        visibility: 'internal',
+      });
+
+      return NextResponse.json({
+        response: `Logged ${hours > 0 ? `${hours} hours` : ''} ${materialAmount > 0 ? `and $${materialAmount} in materials` : ''} on the ${targetJob.client_name} job.`,
+      });
+    } catch (err) {
+      console.error('Error in log_crew_time_and_materials SWAIG tool:', err);
+      return NextResponse.json({ response: 'Failed to log those costs. Please try again.' });
+    }
+  }
+
+  if (fnName === 'create_job_change_order') {
+    const jobRefOrClient = String(args.job_ref_or_client || args.client_name || '').trim();
+    const title = String(args.title || 'Extra Work Found').trim();
+    const description = String(args.description || args.note || '').trim();
+
+    try {
+      const { data: jobs } = await admin
+        .from('jobs')
+        .select('id, ref, client_name')
+        .eq('account_id', accountId)
+        .or(`ref.ilike.%${jobRefOrClient}%,client_name.ilike.%${jobRefOrClient}%`)
+        .limit(1);
+
+      const targetJob = jobs?.[0];
+      if (!targetJob) {
+        return NextResponse.json({ response: `Could not find a job matching "${jobRefOrClient}".` });
+      }
+
+      await admin.from('change_orders').insert({
+        account_id: accountId,
+        job_id: targetJob.id,
+        title,
+        description: description || null,
+        status: 'draft',
+      });
+
+      await createJobFeedEvent(admin, accountId, targetJob.id, {
+        kind: 'job_update',
+        title: `Change Order Raised: ${title}`,
+        body: description || 'Extra work recorded via voice call.',
+        visibility: 'internal',
+      });
+
+      return NextResponse.json({
+        response: `I've created a draft change order "${title}" on ${targetJob.client_name}'s job for office review.`,
+      });
+    } catch (err) {
+      console.error('Error in create_job_change_order SWAIG tool:', err);
+      return NextResponse.json({ response: 'Failed to create the change order. Please try again.' });
     }
   }
 
