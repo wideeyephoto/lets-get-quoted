@@ -631,10 +631,10 @@ export default function FlagshipHome() {
             headline, the buttons and the product frame. */}
         <TradeOrbit />
         <div className="hero-copy" data-rise>
-          <p className="eyebrow"><span>✦</span> CONTRACTOR SOFTWARE—STARTING WITH A FREE WEBSITE</p>
-          <h1>Launch your contractor website.<br /><em>Run every job behind it.</em></h1>
+          <p className="eyebrow"><span>✦</span> CONTRACTOR AI SUITE—STARTING WITH A FREE WEBSITE</p>
+          <h1>Let AI qualify the lead.<br /><em>You win the right work.</em></h1>
           <p className="hero-sub">
-            Tell us your trade and location. We’ll build an <strong>editable website with instant estimates</strong>—then keep every lead, quote, schedule, message, and payment connected.
+            Launch a contractor website that collects photos, asks the right questions, and turns inquiries into quote-ready opportunities—then keeps every quote, schedule, message, and payment connected.
           </p>
           <div className="hero-actions">
             <a className="button primary" href="https://app.letsgetquoted.com/start?goal=build_site&source=home_hero" ref={heroCtaRef}>{SIGNUP_LABEL} <span>→</span></a>

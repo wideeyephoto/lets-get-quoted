@@ -14,12 +14,12 @@ export const BRAND_POSITIONING = {
   valueProposition:
     'Let’s Get Quoted is one connected system for winning the job, running it, and getting paid—starting with a free contractor website.',
   hero: {
-    eyebrow: 'CONTRACTOR SOFTWARE—STARTING WITH A FREE WEBSITE',
-    headline: 'From first click to final payment. Run it all in one place.',
-    headlinePart1: 'From first click to final payment.',
-    headlinePart2: 'Run it all in one place.',
+    eyebrow: 'CONTRACTOR AI SUITE—STARTING WITH A FREE WEBSITE',
+    headline: 'Let AI qualify the lead. You win the right work.',
+    headlinePart1: 'Let AI qualify the lead.',
+    headlinePart2: 'You win the right work.',
     supportingCopy:
-      'Build your website, qualify leads, send quotes, schedule work, manage your crew, and collect payment without switching tools.',
+      'Launch a contractor website that collects photos, asks the right questions, and turns inquiries into quote-ready opportunities—then keeps every quote, schedule, message, and payment connected.',
     primaryCta: 'Build my free site',
     secondaryCta: 'See the full workflow',
   },

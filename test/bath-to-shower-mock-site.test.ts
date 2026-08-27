@@ -37,9 +37,13 @@ describe('bath-to-shower mock product site', () => {
   });
 
   it('uses swipe, keyboard, and progress navigation without visible playback controls', () => {
+    expect(intakeSlideshow).toContain('const SLIDE_DURATION = 1250');
+    expect(intakeSlideshow).toContain('(current + 1) % slides.length');
     expect(intakeSlideshow).toContain('onPointerDown');
     expect(intakeSlideshow).toContain('onPointerMove');
     expect(intakeSlideshow).toContain('onPointerUp');
+    expect(intakeSlideshow).toContain('getBoundingClientRect()');
+    expect(intakeSlideshow).toContain('tappedRightHalf ? 1 : -1');
     expect(intakeSlideshow).toContain('Go to slide');
     expect(intakeSlideshow).toContain("event.key === 'ArrowRight'");
     expect(intakeSlideshow).toContain('aria-label="Previous slide"');

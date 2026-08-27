@@ -4,7 +4,7 @@ import Image from 'next/image';
 import { useEffect, useRef, useState } from 'react';
 import styles from './ai-intake-slideshow.module.css';
 
-const SLIDE_DURATION = 4200;
+const SLIDE_DURATION = 1250;
 
 function MediaSlide() {
   return (
@@ -289,11 +289,7 @@ export default function AiIntakeSlideshow({ autoStart = false }: AiIntakeSlidesh
   useEffect(() => {
     if (!isPlaying || !isInView || !pageVisible) return;
     const timer = window.setTimeout(() => {
-      if (slide === slides.length - 1) {
-        setIsPlaying(false);
-      } else {
-        setSlide((current) => current + 1);
-      }
+      setSlide((current) => (current + 1) % slides.length);
     }, SLIDE_DURATION);
     return () => window.clearTimeout(timer);
   }, [isInView, isPlaying, pageVisible, slide]);
@@ -301,22 +297,32 @@ export default function AiIntakeSlideshow({ autoStart = false }: AiIntakeSlidesh
   const CurrentSlide = slides[slide];
   const goToSlide = (nextSlide: number) => {
     setIsPlaying(false);
-    setSlide(Math.max(0, Math.min(slides.length - 1, nextSlide)));
+    setSlide((nextSlide + slides.length) % slides.length);
   };
 
-  const finishSwipe = (event: React.PointerEvent<HTMLDivElement>) => {
+  const finishPointerGesture = (event: React.PointerEvent<HTMLDivElement>) => {
     const start = dragStartRef.current;
     if (!start || start.pointerId !== event.pointerId) return;
 
     const deltaX = event.clientX - start.x;
     const deltaY = event.clientY - start.y;
     const isHorizontalSwipe = Math.abs(deltaX) >= 42 && Math.abs(deltaX) > Math.abs(deltaY) * 1.15;
+    const isTap = Math.abs(deltaX) < 12 && Math.abs(deltaY) < 12;
 
     dragStartRef.current = null;
     setDragOffset(0);
     setIsDragging(false);
 
-    if (isHorizontalSwipe) goToSlide(slide + (deltaX < 0 ? 1 : -1));
+    if (isHorizontalSwipe) {
+      goToSlide(slide + (deltaX < 0 ? 1 : -1));
+      return;
+    }
+
+    if (isTap) {
+      const bounds = event.currentTarget.getBoundingClientRect();
+      const tappedRightHalf = event.clientX >= bounds.left + bounds.width / 2;
+      goToSlide(slide + (tappedRightHalf ? 1 : -1));
+    }
   };
 
   const cancelSwipe = () => {
@@ -359,7 +365,7 @@ export default function AiIntakeSlideshow({ autoStart = false }: AiIntakeSlidesh
           setIsDragging(true);
           setDragOffset(Math.max(-72, Math.min(72, deltaX * 0.35)));
         }}
-        onPointerUp={(event) => finishSwipe(event)}
+        onPointerUp={(event) => finishPointerGesture(event)}
         role="region"
         tabIndex={0}
       >
@@ -373,7 +379,6 @@ export default function AiIntakeSlideshow({ autoStart = false }: AiIntakeSlidesh
         <button
           aria-label="Previous slide"
           className={`${styles.edgeArrow} ${styles.edgeArrowPrevious}`}
-          disabled={slide === 0}
           onClick={() => goToSlide(slide - 1)}
           onPointerDown={(event) => event.stopPropagation()}
           type="button"
@@ -383,7 +388,6 @@ export default function AiIntakeSlideshow({ autoStart = false }: AiIntakeSlidesh
         <button
           aria-label="Next slide"
           className={`${styles.edgeArrow} ${styles.edgeArrowNext}`}
-          disabled={slide === slides.length - 1}
           onClick={() => goToSlide(slide + 1)}
           onPointerDown={(event) => event.stopPropagation()}
           type="button"
