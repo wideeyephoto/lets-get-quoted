@@ -634,7 +634,7 @@ export default function FlagshipHome() {
           <p className="eyebrow"><span>✦</span> FULL CONTRACTOR AI SUITE—THE ONLY SOFTWARE YOU NEED TO RUN YOUR BUSINESS</p>
           <h1>Let AI qualify the lead.<br /><em>You win the right work.</em></h1>
           <p className="hero-sub">
-            Launch a contractor website that collects photos, asks the right questions, and turns inquiries into quote-ready opportunities—then keeps every quote, schedule, message, and payment connected.
+            Capture better leads, run every job, and stay on top of costs, payments, and profitability—all from one connected platform.
           </p>
           <div className="hero-actions">
             <a className="button primary" href="https://app.letsgetquoted.com/start?goal=build_site&source=home_hero" ref={heroCtaRef}>{SIGNUP_LABEL} <span>→</span></a>
