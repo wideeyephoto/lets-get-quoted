@@ -56,4 +56,14 @@ describe('bath-to-shower mock product site', () => {
     expect(intakeSlideshow).toContain('BOOKING HANDOFF');
     expect((intakeSlideshow.match(/function \w+Slide\(/g) ?? [])).toHaveLength(10);
   });
+
+  it('opens on the homeowner photo story and keeps booking as the finale', () => {
+    const sequence = intakeSlideshow.slice(intakeSlideshow.indexOf('const slides = ['));
+
+    expect(sequence.indexOf('MediaSlide')).toBeLessThan(sequence.indexOf('PhotoCoachSlide'));
+    expect(sequence.indexOf('PhotoCoachSlide')).toBeLessThan(sequence.indexOf('VisionSlide'));
+    expect(sequence.indexOf('RankingSlide')).toBeLessThan(sequence.indexOf('VoiceSlide'));
+    expect(sequence.indexOf('VoiceSlide')).toBeLessThan(sequence.indexOf('PresetSlide'));
+    expect(sequence.indexOf('PresetSlide')).toBeLessThan(sequence.indexOf('BookingSlide'));
+  });
 });

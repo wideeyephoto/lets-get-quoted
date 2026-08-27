@@ -10,7 +10,7 @@ function PresetSlide() {
   return (
     <section className={`${styles.slide} ${styles.setupSlide}`}>
       <div className={styles.slideHeading}>
-        <span>01 · SETUP</span>
+        <span>09 · CONTRACTOR CONTROLS</span>
         <h2>Teach the intake your trade in one click.</h2>
         <p>Load the right questions, job minimum, exclusions, and photo prompt together.</p>
       </div>
@@ -41,7 +41,7 @@ function VoiceSlide() {
   return (
     <section className={`${styles.slide} ${styles.voiceSlide}`}>
       <div className={styles.slideHeading}>
-        <span>02 · ANY CHANNEL</span>
+        <span>08 · EVERY CHANNEL</span>
         <h2>The lead can talk, text, or type.</h2>
         <p>The shared AI line turns a natural conversation into structured intake.</p>
       </div>
@@ -88,7 +88,7 @@ function MediaSlide() {
 
       <div className={styles.storyCopy}>
         <div className={styles.slideHeading}>
-          <span>03 · LIVE PHOTO CAPTURE</span>
+          <span>01 · LIVE PHOTO CAPTURE</span>
           <h2>She shows the job. AI checks the shot.</h2>
           <p>Michelle gets useful guidance before the photo ever reaches the contractor.</p>
         </div>
@@ -123,7 +123,7 @@ function PhotoCoachSlide() {
 
       <div className={styles.storyCopy}>
         <div className={styles.slideHeading}>
-          <span>04 · GUIDED FOLLOW-UP</span>
+          <span>02 · GUIDED FOLLOW-UP</span>
           <h2>The next photo answers a price-changing question.</h2>
           <p>The AI asks for one precise detail instead of making Michelle guess what matters.</p>
         </div>
@@ -153,7 +153,7 @@ function VisionSlide() {
       </div>
       <div className={styles.visionContent}>
         <div className={styles.slideHeading}>
-          <span>05 · MULTIMODAL VISION</span>
+          <span>03 · MULTIMODAL VISION</span>
           <h2>The AI sees what the homeowner forgot to type.</h2>
         </div>
         <div className={styles.observationCard}>
@@ -170,7 +170,7 @@ function QuestionsSlide() {
   return (
     <section className={`${styles.slide} ${styles.questionsSlide}`}>
       <div className={styles.slideHeading}>
-        <span>06 · ADAPTIVE QUESTIONS</span>
+        <span>04 · ADAPTIVE QUESTIONS</span>
         <h2>Ask only what can change the scope or price.</h2>
         <p>One short question at a time, up to six—and the AI stops early as soon as it is confident.</p>
       </div>
@@ -194,7 +194,7 @@ function IntelligenceSlide() {
   return (
     <section className={`${styles.slide} ${styles.intelligenceSlide}`}>
       <div className={styles.slideHeading}>
-        <span>07 · LEAD INTELLIGENCE</span>
+        <span>06 · LEAD INTELLIGENCE</span>
         <h2>The contractor opens a lead—not a mystery.</h2>
         <p>Vision converts the homeowner media into practical field and supply-house context.</p>
       </div>
@@ -214,7 +214,7 @@ function TrustTransferSlide() {
   return (
     <section className={`${styles.slide} ${styles.guardrailSlide}`}>
       <div className={styles.slideHeading}>
-        <span>08 · THE TRUST TRANSFER</span>
+        <span>05 · THE TRUST TRANSFER</span>
         <h2>Answer now. Hand the trust to the contractor next.</h2>
         <p>A useful ballpark proves the homeowner was heard.</p>
       </div>
@@ -240,7 +240,7 @@ function RankingSlide() {
   return (
     <section className={`${styles.slide} ${styles.rankingSlide}`}>
       <div className={styles.slideHeading}>
-        <span>09 · PREMIUM LEAD SIGNALS</span>
+        <span>07 · PREMIUM LEAD SIGNALS</span>
         <h2>High-expectation homeowners feel the difference.</h2>
         <p>Fit, timing, and project value become one honest priority.</p>
       </div>
@@ -294,15 +294,15 @@ function BookingSlide() {
 }
 
 const slides = [
-  PresetSlide,
-  VoiceSlide,
   MediaSlide,
   PhotoCoachSlide,
   VisionSlide,
   QuestionsSlide,
-  IntelligenceSlide,
   TrustTransferSlide,
+  IntelligenceSlide,
   RankingSlide,
+  VoiceSlide,
+  PresetSlide,
   BookingSlide,
 ] as const;
 
