@@ -53,10 +53,15 @@ describe('Estimate Generator Route & Metadata Integrity', () => {
     expect(cssSource).toContain('.estimateTable');
   });
 
-  it('implements dedicated print stylesheet with form border removal and page-break isolation', () => {
+  it('implements dedicated print stylesheet with form border removal, clean header, and chrome suppression', () => {
     expect(cssSource).toContain('@media print');
     expect(cssSource).toContain('break-inside: avoid !important;');
     expect(cssSource).toContain('display: table !important;');
+    expect(cssSource).toContain(':global(.public-topbar)');
+    expect(cssSource).toContain(':global(.theme-fab)');
+    expect(cssSource).toContain(':global(.marketing-footer)');
+    expect(cssSource).toContain('.estimateTopRow');
+    expect(cssSource).toContain('.estimateMetaGrid');
   });
 
   it('includes contextual quote conversion CTA with attributed link', () => {

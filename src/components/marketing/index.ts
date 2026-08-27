@@ -42,5 +42,9 @@ export type { FaqItem } from './faq-list';
 export { default as RealProof, CustomerProof } from './real-proof';
 export type { RealProofProps, CustomerStory } from './real-proof';
 
+export { default as AllFeaturesModal } from './AllFeaturesModal';
+export type { AllFeaturesModalProps } from './AllFeaturesModal';
+
 export { CtaLink, APP_SIGNUP_URL, DEMO_URL, FEATURES_URL, SECONDARY_SIGNUP_LABEL } from './links';
 export type { CtaLinkSpec } from './links';
+

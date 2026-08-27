@@ -23,6 +23,7 @@ import JobRecordStages from './job-record-stages';
 import ProductTour from './ProductTour';
 import LaunchBanner from '@/components/marketing/launch-banner';
 import ThemeFab from '@/components/theme-fab';
+import AllFeaturesModal from '@/components/marketing/AllFeaturesModal';
 
 /**
  * The Product page, in the standalone site's visual language.
@@ -244,15 +245,12 @@ export default function FeaturesPage() {
           Build your website, qualify leads, send quotes, schedule work, manage your crew, and collect payment without switching tools.
         </p>
         <div className="hero-actions">
-          {/* Was the app ROOT, which is the sign-in screen — the biggest button
-              on the page promised a site and delivered a password field. */}
           <a className="button primary" href={SIGNUP_URL}>
             {SIGNUP_LABEL} <span aria-hidden="true">→</span>
           </a>
-          <a className="button secondary" href="#flagship-index">
-            See the workflow
-          </a>
+          <AllFeaturesModal triggerLabel="See all our features" triggerVariant="secondary" />
         </div>
+
 
         {/* The plan range stays beside the primary action and comes from the
             same canonical catalog as /pricing. */}
@@ -399,14 +397,14 @@ export default function FeaturesPage() {
 
         <JobRecordStages />
 
-        {/* The back office had a card in the five until this pass, and this is
-            the section that actually shows it — so the link belongs here rather
-            than in a sixth card restating the four stages above it. */}
-        <p className="everything-more">
+        <p className="everything-more" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1.25rem', flexWrap: 'wrap' }}>
           <Link href="/features/back-office">
             See everything the back office runs <span aria-hidden="true">→</span>
           </Link>
+          <span aria-hidden="true" style={{ opacity: 0.35 }}>·</span>
+          <AllFeaturesModal triggerLabel="Browse full 100+ feature catalog" triggerVariant="text" />
         </p>
+
       </section>
 
       {/* THE OBJECTIONS, ANSWERED WHERE THEY ARE RAISED.

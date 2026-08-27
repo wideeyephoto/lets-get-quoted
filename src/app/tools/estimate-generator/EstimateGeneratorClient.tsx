@@ -539,8 +539,8 @@ export default function EstimateGeneratorClient() {
 
           <div className={styles.estimateMetaBox}>
             <div className={styles.estimateMetaGrid}>
-              <div style={{ marginBottom: 6 }}>
-                <label style={{ fontSize: 11, fontWeight: 700, color: '#687e8d', display: 'block' }}>
+              <div className={styles.estimateMetaItem}>
+                <label className={styles.estimateMetaLabel}>
                   Estimate #
                 </label>
                 <input
@@ -552,8 +552,8 @@ export default function EstimateGeneratorClient() {
                   aria-label="Estimate Reference Number"
                 />
               </div>
-              <div>
-                <label style={{ fontSize: 11, fontWeight: 700, color: '#687e8d', display: 'block' }}>
+              <div className={styles.estimateMetaItem}>
+                <label className={styles.estimateMetaLabel}>
                   Estimate Date
                 </label>
                 <input
@@ -767,14 +767,16 @@ export default function EstimateGeneratorClient() {
                         className={styles.itemDescInput}
                         aria-label="Item description"
                       />
-                      <label style={{ fontSize: 11, color: '#64748b', display: 'flex', alignItems: 'center', gap: 3, whiteSpace: 'nowrap', cursor: 'pointer' }}>
+                      <label className={styles.optionalCheckboxLabel}>
                         <input
                           type="checkbox"
                           checked={Boolean(item.isOptional)}
                           onChange={(e) => updateItem(item.id, 'isOptional', e.target.checked)}
                           aria-label="Optional item toggle"
                         />
-                        Optional
+                        <span className={item.isOptional ? styles.optionalBadge : styles.optionalText}>
+                          {item.isOptional ? 'Optional' : 'Optional'}
+                        </span>
                       </label>
                     </div>
                   </td>
@@ -869,10 +871,10 @@ export default function EstimateGeneratorClient() {
             />
 
             {/* Payment Milestone Schedule Expander */}
-            <div className={styles.milestoneScheduleBox}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+            <div className={`${styles.milestoneScheduleBox} ${!estimate.milestonesEnabled ? styles.hideOnPrint : ''}`}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: estimate.milestonesEnabled ? 6 : 0 }}>
                 <strong style={{ fontSize: 13, color: '#334155' }}>💳 Payment Milestone Schedule</strong>
-                <label style={{ fontSize: 12, fontWeight: 700, color: '#2563eb', display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
+                <label className={styles.hideOnPrint} style={{ fontSize: 12, fontWeight: 700, color: '#2563eb', display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
                   <input
                     type="checkbox"
                     checked={estimate.milestonesEnabled}

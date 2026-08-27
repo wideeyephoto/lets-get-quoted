@@ -1,6 +1,6 @@
 /* GENERATED — do not edit. Source: src/app/globals.css
    Run: node scripts/build-css-subset.mjs
-   source-sha256: 6d664ca43cc9b94e
+   source-sha256: 893b658731b4986d
 
    globals.css with the rules that can only match inside /dashboard, /admin and
    /demo removed. Every route except those three imports this file; they import
@@ -9588,7 +9588,21 @@ a.ropsrow-fact:hover { text-decoration: underline; }
 }
 
 @media print {
-  header.topbar, .nav-panel, .no-print, .quote-request-alert { display: none !important; }
+  header.topbar,
+  header.public-topbar,
+  .sidenav,
+  .sidenav-mobilebar,
+  .sidenav-scrim,
+  .theme-fab,
+  .marketing-footer,
+  footer.marketing-footer,
+  .skip-link,
+  .shell-skip-link,
+  .nav-panel,
+  .no-print,
+  .quote-request-alert {
+    display: none !important;
+  }
   body { background: #fff !important; }
   .statement-page { padding: 0 !important; }
   .statement-doc { box-shadow: none; border-radius: 0; max-width: none; padding: 0; }

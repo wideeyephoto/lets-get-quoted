@@ -18023,7 +18023,21 @@ a.ropsrow-fact:hover { text-decoration: underline; }
 .quote-recommend { color: #b45309; font-size: 0.8rem; font-weight: 600; }
 
 @media print {
-  header.topbar, .nav-panel, .no-print, .quote-request-alert { display: none !important; }
+  header.topbar,
+  header.public-topbar,
+  .sidenav,
+  .sidenav-mobilebar,
+  .sidenav-scrim,
+  .theme-fab,
+  .marketing-footer,
+  footer.marketing-footer,
+  .skip-link,
+  .shell-skip-link,
+  .nav-panel,
+  .no-print,
+  .quote-request-alert {
+    display: none !important;
+  }
   body { background: #fff !important; }
   .statement-page { padding: 0 !important; }
   .statement-doc { box-shadow: none; border-radius: 0; max-width: none; padding: 0; }

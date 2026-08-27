@@ -630,6 +630,48 @@
   min-width: 180px;
 }
 
+.estimateMetaGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.estimateMetaItem {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.estimateMetaLabel {
+  font-size: 11px;
+  font-weight: 700;
+  color: #687e8d;
+  display: block;
+  margin-bottom: 2px;
+}
+
+.optionalCheckboxLabel {
+  font-size: 11px;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.optionalBadge {
+  display: none;
+}
+
+.optionalText {
+  display: inline;
+}
+
+.hideOnPrint {
+  /* only active in print */
+}
+
 .estimateBillTo {
   background: #f8fafc;
   padding: 16px;
@@ -1254,6 +1296,14 @@
     gap: 10px;
   }
 
+  .estimateMetaItem {
+    align-items: flex-start;
+  }
+
+  .estimateMetaLabel {
+    text-align: left;
+  }
+
   .billToGrid {
     grid-template-columns: 1fr;
     gap: 10px;
@@ -1340,6 +1390,7 @@
     min-height: auto !important;
   }
 
+  /* Completely suppress all web chrome, navs, heroes, actions, and SEO blocks */
   .hero,
   .editorHeaderBar,
   .sampleBanner,
@@ -1347,7 +1398,21 @@
   .printActions,
   .postActionCta,
   .seoSection,
-  .permitBox {
+  .permitBox,
+  .tierTabsRow,
+  .packageModeBar,
+  .hideOnPrint,
+  :global(.public-topbar),
+  :global(.topbar),
+  :global(.sidenav),
+  :global(.sidenav-mobilebar),
+  :global(.sidenav-scrim),
+  :global(.theme-fab),
+  :global(.marketing-footer),
+  :global(footer.marketing-footer),
+  :global(.skip-link),
+  :global(.shell-skip-link),
+  :global(.quote-request-alert) {
     display: none !important;
   }
 
@@ -1365,11 +1430,98 @@
     border-radius: 0 !important;
   }
 
+  /* Clean, authoritative 2-column header row in print */
+  .estimateTopRow {
+    display: flex !important;
+    flex-direction: row !important;
+    justify-content: space-between !important;
+    align-items: flex-start !important;
+    gap: 24px !important;
+    padding-bottom: 16px !important;
+    border-bottom: 2px solid #0c202d !important;
+    margin-bottom: 16px !important;
+  }
+
+  .estimateDocTitle {
+    font-size: 26px !important;
+    font-weight: 900 !important;
+    letter-spacing: -0.5px !important;
+    color: #0c202d !important;
+    margin: 0 0 6px 0 !important;
+  }
+
+  .contractorInputsRow {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 12px !important;
+  }
+
+  .estimateMetaBox {
+    text-align: right !important;
+    min-width: 180px !important;
+    width: auto !important;
+    margin: 0 !important;
+  }
+
+  .estimateMetaGrid {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-end !important;
+    gap: 6px !important;
+  }
+
+  .estimateMetaItem {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-end !important;
+    margin-bottom: 4px !important;
+  }
+
+  .estimateMetaLabel {
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    color: #687e8d !important;
+    display: block !important;
+    margin-bottom: 2px !important;
+    text-align: right !important;
+  }
+
+  /* Bill To / Prepared For Box */
+  .estimateBillTo {
+    background: #f8fafc !important;
+    border: 1px solid #e1e7ec !important;
+    border-radius: 6px !important;
+    padding: 10px 14px !important;
+    margin-bottom: 16px !important;
+  }
+
+  .billToGrid {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 12px !important;
+  }
+
   /* Force clean desktop table on print even on mobile device */
   .estimateTable {
     display: table !important;
     width: 100% !important;
     margin: 16px 0 !important;
+  }
+
+  .estimateTable th {
+    background: #f0f4f7 !important;
+    color: #0c202d !important;
+    border-bottom: 2px solid #cbd5e1 !important;
+    padding: 8px 10px !important;
+    font-size: 12px !important;
+    font-weight: 800 !important;
+  }
+
+  .estimateTable td {
+    border-bottom: 1px solid #e2e8f0 !important;
+    padding: 10px !important;
+    font-size: 13px !important;
+    color: #0c202d !important;
   }
 
   .estimateTable th:last-child,
@@ -1384,8 +1536,7 @@
   .itemDescInput,
   .itemNumInput,
   .itemSelect,
-  .estimateFieldText,
-  .totalPercentInput {
+  .estimateFieldText {
     border: none !important;
     background: transparent !important;
     padding: 0 !important;
@@ -1397,6 +1548,46 @@
     min-height: auto !important;
   }
 
+  .totalPercentInput {
+    border: none !important;
+    background: transparent !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    color: #0c202d !important;
+    font-size: 14px !important;
+    appearance: none !important;
+    -webkit-appearance: none !important;
+    min-height: auto !important;
+    width: auto !important;
+    max-width: 32px !important;
+    text-align: center !important;
+    font-weight: 700 !important;
+  }
+
+  /* Clean up WebKit date picker in print */
+  input[type="date"]::-webkit-calendar-picker-indicator {
+    display: none !important;
+    -webkit-appearance: none !important;
+  }
+
+  .optionalCheckboxLabel input {
+    display: none !important;
+  }
+
+  .optionalText {
+    display: none !important;
+  }
+
+  .optionalBadge {
+    display: inline-block !important;
+    font-size: 10px !important;
+    font-weight: 800 !important;
+    color: #475569 !important;
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 4px !important;
+    padding: 1px 4px !important;
+  }
+
   .termsTextarea {
     border: 1px solid #e1e7ec !important;
     background: #fafbfc !important;
@@ -1405,6 +1596,19 @@
     overflow: visible !important;
     resize: none !important;
     font-size: 12px !important;
+    color: #1e293b !important;
+  }
+
+  .milestoneScheduleBox {
+    background: #f8fafc !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 6px !important;
+    padding: 10px 12px !important;
+    margin-top: 12px !important;
+  }
+
+  .milestoneScheduleBox label {
+    display: none !important;
   }
 
   .estimateTopRow,
@@ -1412,7 +1616,8 @@
   .estimateTable tr,
   .totalsBox,
   .termsAndTotalsGrid,
-  .tierComparisonGrid {
+  .tierComparisonGrid,
+  .milestoneScheduleBox {
     break-inside: avoid !important;
     page-break-inside: avoid !important;
   }
