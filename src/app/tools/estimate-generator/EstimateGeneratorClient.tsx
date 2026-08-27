@@ -47,6 +47,7 @@ export default function EstimateGeneratorClient() {
   } | null>(null);
 
   const [loadingPermit, setLoadingPermit] = useState(false);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
   const copyTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Load initial draft from localStorage after mount
@@ -349,6 +350,39 @@ export default function EstimateGeneratorClient() {
     setEstimate(fresh);
     clearEstimateDraft();
     setStatusMessage('Created new blank estimate.');
+  };
+
+  const handleDownloadPdf = async () => {
+    try {
+      setDownloadingPdf(true);
+      setStatusMessage('Generating professional PDF...');
+      const res = await fetch('/api/tools/estimate-pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ estimate, totals }),
+      });
+      if (!res.ok) throw new Error('Failed to generate PDF');
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const rawNum = estimate.estimateNumber?.trim() || 'estimate';
+      const safeNum = rawNum.replace(/[^a-zA-Z0-9_-]/g, '_');
+      a.download = `Estimate-${safeNum}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      setStatusMessage('Estimate PDF downloaded successfully.');
+    } catch (err: any) {
+      console.error('PDF download error:', err);
+      setStatusMessage('Direct PDF download failed, opening browser print dialog...');
+      if (typeof window !== 'undefined') {
+        window.print();
+      }
+    } finally {
+      setDownloadingPdf(false);
+    }
   };
 
   const handlePrint = () => {
@@ -1244,6 +1278,16 @@ export default function EstimateGeneratorClient() {
         {/* Action Bar */}
         <div className={styles.printActions}>
           <div className={styles.actionButtonsCluster}>
+            <button
+              type="button"
+              onClick={handleDownloadPdf}
+              disabled={downloadingPdf}
+              className={styles.printBtn}
+              style={{ background: '#ff6a24', borderColor: '#ea580c', color: '#ffffff', fontWeight: 800 }}
+              title="Download clean 1-page PDF document"
+            >
+              {downloadingPdf ? '⏳ Generating PDF...' : '📥 Download PDF'}
+            </button>
             <button type="button" onClick={handlePrint} className={styles.printBtn}>
               🖨️ Print / Save as PDF
             </button>

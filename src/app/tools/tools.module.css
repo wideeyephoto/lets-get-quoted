@@ -1755,15 +1755,28 @@
 /* Dedicated Print Stylesheet */
 @media print {
   @page {
+    size: letter portrait;
     margin: 0.35in;
-    size: auto;
+  }
+
+  .screenOnly {
+    display: none !important;
+  }
+
+  .printOnly {
+    display: block !important;
   }
 
   .page {
+    background: #fff !important;
+    color: #0f172a !important;
+    padding: 0 !important;
+    min-height: auto !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
-
+  .hero,
+  .editorHeaderBar,
   .sampleBanner,
   .actionBtnRow,
   .printActions,

@@ -55,6 +55,12 @@ describe('Estimate Generator Route & Metadata Integrity', () => {
 
   it('implements dedicated print stylesheet with form border removal, clean header, and chrome suppression', () => {
     expect(cssSource).toContain('@media print');
+    expect(cssSource).toContain('size: letter portrait;');
+    expect(cssSource).toContain('margin: 0.35in;');
+    expect(cssSource).toContain('.screenOnly');
+    expect(cssSource).toContain('.printOnly');
+    expect(cssSource).toContain('.hero');
+    expect(cssSource).toContain('.editorHeaderBar');
     expect(cssSource).toContain('break-inside: avoid !important;');
     expect(cssSource).toContain('display: table !important;');
     expect(cssSource).toContain(':global(.public-topbar)');
