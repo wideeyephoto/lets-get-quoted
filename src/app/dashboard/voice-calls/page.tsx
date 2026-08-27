@@ -12,7 +12,7 @@ import {
 import { formatCallLength } from '@/lib/voice/call-formatting';
 import { convertVoiceCallToQuoteDraftAction } from './actions';
 import VoiceCallsLiveRefresher from './VoiceCallsLiveRefresher';
-import { VoiceStatusBanner, VoiceCapabilitiesGrid } from './VoiceControlsSection';
+import { VoiceStatusBanner, VoiceCapabilitiesGrid, ContractorHotlineShowcase } from './VoiceControlsSection';
 import VoiceSimulatorSandbox from './VoiceSimulatorSandbox';
 import VoiceHealthWidget from './VoiceHealthWidget';
 import styles from './voice-calls.module.css';
@@ -168,6 +168,14 @@ export default async function VoiceCallsPage({
           </div>
 
           <div className={styles.analyticsCard}>
+            <span className={styles.analyticsLabel}>Leads &amp; Quotes Created</span>
+            <span className={styles.analyticsValue} style={{ color: counters.leadsGeneratedCount > 0 ? '#4ade80' : '#fff' }}>
+              {counters.leadsGeneratedCount}
+            </span>
+            <span className={styles.analyticsSubtext}>AI-originated opportunities</span>
+          </div>
+
+          <div className={styles.analyticsCard}>
             <span className={styles.analyticsLabel}>Avg Call Length</span>
             <span className={styles.analyticsValue}>{formatCallLength(counters.avgDurationSeconds)}</span>
             <span className={styles.analyticsSubtext}>Across {counters.totalCount} calls</span>
@@ -275,7 +283,7 @@ export default async function VoiceCallsPage({
               { id: 'needs_callback', label: 'Needs Callback', count: counters.needsCallback },
               { id: 'urgent', label: 'Urgent', count: counters.urgent },
               { id: 'transferred', label: 'Transferred', count: counters.transferred },
-              { id: 'completed', label: 'Resolved', count: 0 },
+              { id: 'completed', label: 'Resolved', count: counters.resolvedCount },
             ].map((tab) => {
               const isActive = currentTab === tab.id;
               return (
@@ -413,6 +421,20 @@ export default async function VoiceCallsPage({
                       ) : null}
                     </div>
                     <div className={styles.footerRight}>
+                      {call.callerNumber ? (
+                        <a
+                          href={`tel:${call.callerNumber}`}
+                          className={styles.linkButton}
+                          style={{
+                            fontWeight: 600,
+                            color: '#4ade80',
+                            textDecoration: 'none',
+                          }}
+                          title={`Direct call ${call.callerNumber}`}
+                        >
+                          📞 Call Now
+                        </a>
+                      ) : null}
                       <form
                         action={async (formData: FormData) => {
                           'use server';
@@ -443,7 +465,7 @@ export default async function VoiceCallsPage({
                         </Link>
                       ) : null}
                       <Link href={`/dashboard/voice-calls/${call.id}`} className={styles.linkButton} style={{ fontWeight: 700 }}>
-                        View Details & Transcript →
+                        View Details &amp; Transcript →
                       </Link>
                     </div>
                   </div>
@@ -466,7 +488,10 @@ export default async function VoiceCallsPage({
         voiceTone={(voiceSettings?.voice_tone as string) || 'professional'}
       />
 
-      {/* AI Voice Assistant Active Controls & Status Matrix (8 Capability Cards) */}
+      {/* Contractor & Crew 2-Way Field Voice Hotline */}
+      <ContractorHotlineShowcase dedicatedNumber={dedicatedNumber} />
+
+      {/* AI Voice Assistant Active Controls & Status Matrix (9 Capability Cards) */}
       <VoiceCapabilitiesGrid />
     </div>
   );

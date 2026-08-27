@@ -142,6 +142,7 @@ export type VoiceWorkspaceCounters = Readonly<{
   urgent: number;
   transferred: number;
   completedToday: number;
+  resolvedCount: number;
   totalCount: number;
   totalAiMinutes: number;
   avgDurationSeconds: number;
@@ -157,6 +158,7 @@ export const EMPTY_WORKSPACE_COUNTERS: VoiceWorkspaceCounters = {
   urgent: 0,
   transferred: 0,
   completedToday: 0,
+  resolvedCount: 0,
   totalCount: 0,
   totalAiMinutes: 0,
   avgDurationSeconds: 0,
@@ -381,6 +383,7 @@ export async function loadVoiceWorkspaceQueue(
     let urgent = 0;
     let transferred = 0;
     let completedToday = 0;
+    let resolvedCount = 0;
     let totalAiSeconds = 0;
     let handledCount = 0;
     let emergencyCount = 0;
@@ -393,6 +396,9 @@ export async function loadVoiceWorkspaceQueue(
       if (item.workflow.urgency === 'urgent' || item.workflow.urgency === 'emergency') urgent += 1;
       if (item.workflow.urgency === 'emergency') emergencyCount += 1;
       if (item.leadId || item.workflow.disposition === 'converted') leadsGeneratedCount += 1;
+      if (item.workflow.disposition === 'resolved' || item.workflow.disposition === 'converted' || item.workflow.disposition === 'contacted') {
+        resolvedCount += 1;
+      }
 
       if (item.outcome === 'transfer_attempted' || item.outcome === 'transferred_and_answered' || item.outcome === 'transferred') {
         transferred += 1;
@@ -435,6 +441,7 @@ export async function loadVoiceWorkspaceQueue(
       urgent,
       transferred,
       completedToday,
+      resolvedCount,
       totalCount: dateFilteredItems.length,
       totalAiMinutes,
       avgDurationSeconds,
