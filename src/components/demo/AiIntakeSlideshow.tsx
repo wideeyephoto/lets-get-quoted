@@ -82,11 +82,42 @@ function VisionSlide() {
     <section className={`${styles.slide} ${styles.visionSlide}`}>
       <div className={styles.visionPhoto}>
         <Image
-          alt="Bath-to-shower lead video frame analyzed by AI"
+          alt="Bath-to-shower lead video frame analyzed by AI with simulated LiDAR 3D spatial scan"
           fill
           sizes="(max-width: 700px) 92vw, 430px"
           src="/demo/bath-to-shower/before.png"
         />
+        {/* Simulated LiDAR 3D Spatial Scan Overlay */}
+        <div aria-hidden="true" className={styles.lidarOverlay}>
+          <div className={styles.lidarGrid} />
+          <div className={styles.lidarPointCloud}>
+            <span className={styles.lidarPoint} style={{ top: '34%', left: '22%' }} />
+            <span className={styles.lidarPoint} style={{ top: '40%', left: '46%' }} />
+            <span className={styles.lidarPoint} style={{ top: '48%', left: '72%' }} />
+            <span className={styles.lidarPoint} style={{ top: '58%', left: '28%' }} />
+            <span className={styles.lidarPoint} style={{ top: '64%', left: '54%' }} />
+            <span className={styles.lidarPoint} style={{ top: '70%', left: '78%' }} />
+            <span className={styles.lidarPoint} style={{ top: '80%', left: '38%' }} />
+            <span className={styles.lidarPoint} style={{ top: '84%', left: '62%' }} />
+          </div>
+          <div className={styles.lidarLaserWave} />
+
+          {/* Spatial Dimension Anchors */}
+          <div className={styles.lidarMeasureWidth}>
+            <i>◀</i>
+            <span>60.2&quot; ALCOVE SPAN</span>
+            <i>▶</i>
+          </div>
+          <div className={styles.lidarMeasureHeight}>
+            <i>▲</i>
+            <span>14.5&quot;</span>
+            <i>▼</i>
+          </div>
+          <div className={styles.lidarBadge}>
+            <i className={styles.lidarDot} />
+            <span>LiDAR 3D MESH · 120k PTS/SEC</span>
+          </div>
+        </div>
         <span>VIDEO FRAME 2 / 3</span>
       </div>
       <div className={styles.visionContent}>

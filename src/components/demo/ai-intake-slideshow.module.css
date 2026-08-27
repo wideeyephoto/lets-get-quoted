@@ -329,7 +329,165 @@
 .visionPhoto { position: relative; height: 48%; overflow: hidden; }
 .visionPhoto img { object-fit: cover; }
 .visionPhoto::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(3, 12, 25, 0.08), rgba(3, 12, 25, 0.72)); }
-.visionPhoto > span { position: absolute; z-index: 2; right: 1.15rem; bottom: 0.95rem; padding: 0.45rem 0.7rem; border-radius: 999px; background: rgba(4, 17, 31, 0.85); color: #7cf5bd; font-size: 0.75rem; font-weight: 850; letter-spacing: 0.1em; }
+.visionPhoto > span { position: absolute; z-index: 3; right: 1.15rem; bottom: 0.95rem; padding: 0.45rem 0.7rem; border-radius: 999px; background: rgba(4, 17, 31, 0.85); color: #7cf5bd; font-size: 0.75rem; font-weight: 850; letter-spacing: 0.1em; }
+
+/* LiDAR 3D Spatial Scan Simulation */
+.lidarOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.lidarGrid {
+  position: absolute;
+  inset: 12% -15% -25% -15%;
+  background-image:
+    linear-gradient(to right, rgba(94, 214, 160, 0.22) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(94, 214, 160, 0.22) 1px, transparent 1px);
+  background-size: 22px 22px;
+  transform: perspective(340px) rotateX(48deg);
+  transform-origin: center bottom;
+  opacity: 0.68;
+}
+
+.lidarPointCloud {
+  position: absolute;
+  inset: 0;
+}
+
+.lidarPoint {
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #00f5d4;
+  box-shadow: 0 0 8px 1px #00f5d4;
+  animation: lidarPulse 1.8s ease-in-out infinite alternate;
+}
+
+.lidarPoint:nth-child(even) {
+  background: #ffb703;
+  box-shadow: 0 0 8px 1px #ffb703;
+  animation-duration: 2.2s;
+  animation-delay: 0.4s;
+}
+
+@keyframes lidarPulse {
+  0% { transform: scale(0.85); opacity: 0.5; }
+  100% { transform: scale(1.35); opacity: 1; }
+}
+
+.lidarLaserWave {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2.5px;
+  background: linear-gradient(90deg, transparent 0%, rgba(0, 245, 212, 0.8) 20%, #ffffff 50%, rgba(0, 245, 212, 0.8) 80%, transparent 100%);
+  box-shadow: 0 0 16px 3px rgba(0, 245, 212, 0.85);
+  animation: lidarSweep 2.4s ease-in-out infinite alternate;
+}
+
+@keyframes lidarSweep {
+  0% { top: 12%; }
+  100% { top: 88%; }
+}
+
+.lidarMeasureWidth {
+  position: absolute;
+  top: 48%;
+  left: 18%;
+  width: 64%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1.5px dashed rgba(0, 245, 212, 0.8);
+  border-bottom: 1.5px dashed rgba(0, 245, 212, 0.8);
+  padding: 0.25rem 0.4rem;
+  background: rgba(4, 18, 32, 0.78);
+  backdrop-filter: blur(4px);
+  border-radius: 4px;
+}
+
+.lidarMeasureWidth span {
+  color: #c9ffe5;
+  font-size: 0.72rem;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  font-variant-numeric: tabular-nums;
+}
+
+.lidarMeasureWidth i {
+  color: #00f5d4;
+  font-size: 0.6rem;
+  font-style: normal;
+}
+
+.lidarMeasureHeight {
+  position: absolute;
+  top: 55%;
+  right: 12%;
+  height: 28%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  border-left: 1.5px dashed rgba(255, 183, 3, 0.85);
+  border-right: 1.5px dashed rgba(255, 183, 3, 0.85);
+  padding: 0.25rem 0.35rem;
+  background: rgba(4, 18, 32, 0.78);
+  backdrop-filter: blur(4px);
+  border-radius: 4px;
+}
+
+.lidarMeasureHeight span {
+  color: #ffe8a3;
+  font-size: 0.68rem;
+  font-weight: 850;
+  letter-spacing: 0.05em;
+  font-variant-numeric: tabular-nums;
+}
+
+.lidarMeasureHeight i {
+  color: #ffb703;
+  font-size: 0.55rem;
+  font-style: normal;
+}
+
+.lidarBadge {
+  position: absolute;
+  top: 0.85rem;
+  left: 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.28rem 0.65rem;
+  border-radius: 999px;
+  background: rgba(4, 18, 32, 0.88);
+  border: 1px solid rgba(0, 245, 212, 0.4);
+  backdrop-filter: blur(6px);
+  color: #00f5d4;
+  font-size: 0.68rem;
+  font-weight: 850;
+  letter-spacing: 0.06em;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.lidarDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #00f5d4;
+  box-shadow: 0 0 8px #00f5d4;
+  animation: lidarDotPulse 1.2s ease-in-out infinite;
+}
+
+@keyframes lidarDotPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.3; transform: scale(0.7); }
+}
+
 .visionContent { padding: 1.25rem 1.85rem 1.6rem; }
 .visionContent .slideHeading h2 { max-width: 12ch; font-size: clamp(1.85rem, 4.5vw, 2.65rem); }
 .observationCard { display: grid; gap: 0.35rem; margin-top: 0.85rem; padding: 0.85rem 1rem; border: 1px solid rgba(124, 245, 189, 0.25); border-radius: 0.85rem; background: rgba(124, 245, 189, 0.09); }

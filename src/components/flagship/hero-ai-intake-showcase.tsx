@@ -1,18 +1,16 @@
 'use client';
 
-import AiIntakeSlideshow from '@/components/demo/AiIntakeSlideshow';
+import HeroIntakeStory from '@/components/flagship/HeroIntakeStory';
 
 /**
  * Homepage hero product surface.
  *
- * The surrounding homepage owns the headline, CTAs, decorative treatment, and
- * proof strip. This component only replaces the previous screenshot carousel
- * with the interactive AI-intake story.
+ * Mounts the condensed, high-retention HeroIntakeStory product sequence.
  */
 export default function HeroAiIntakeShowcase() {
   return (
     <div className="hero-showcase">
-      <AiIntakeSlideshow autoStart />
+      <HeroIntakeStory />
     </div>
   );
 }
