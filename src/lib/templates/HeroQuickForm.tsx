@@ -806,11 +806,6 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
 
       {bookedNote && step !== 'result' && <p className={styles.heroFormBooked}>{bookedNote}</p>}
 
-      {smartIntakeActive && (
-        <div className={styles.heroFormProgress} aria-hidden="true">
-          {[0, 1, 2].map((index) => <span key={index} data-active={index <= Math.min(stepIndex, 2)} />)}
-        </div>
-      )}
 
       {smartIntakeActive && (
         <nav className={styles.heroFormStepper} aria-label="Quote progress">

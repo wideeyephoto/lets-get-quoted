@@ -10,6 +10,7 @@ import {
   clientJobDashboardText,
   quoteUpdatedText,
   crewAssignmentText,
+  crewPhoneVerificationCodeText,
   crewScheduleSelectedText,
   inboxReplyText,
   jobUpdateText,
@@ -430,7 +431,7 @@ export async function sendCrewPhoneVerificationCodeSms(input: {
 }): Promise<string> {
   const to = normalizeUsPhone(input.phone);
   if (!to) throw new Error('Invalid phone number.');
-  const body = `${input.businessName}: Your 6-digit verification code for Voice Assistant & Field Access is ${input.code}. Reply STOP to opt out.`;
+  const body = crewPhoneVerificationCodeText({ businessName: input.businessName, code: input.code });
   return queueAccountSms({
     accountId: input.accountId,
     phone: to,

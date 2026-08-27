@@ -68,6 +68,10 @@ export function ownerVerificationCodeText(input: { code: string }): string {
   return `Your Let’s Get Quoted verification code is ${input.code}. Enter this code in your Texting Setup to verify your mobile number. Reply STOP to opt out.`;
 }
 
+export function crewPhoneVerificationCodeText(input: { businessName: string; code: string }): string {
+  return `${input.businessName}: Your 6-digit verification code for Voice Assistant & Field Access is ${input.code}. Reply STOP to opt out.`;
+}
+
 export function ownerVoiceEmergencyAlertText(input: {
   businessName: string;
   callerNumber: string | null;
