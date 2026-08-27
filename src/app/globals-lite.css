@@ -1,6 +1,6 @@
 /* GENERATED — do not edit. Source: src/app/globals.css
    Run: node scripts/build-css-subset.mjs
-   source-sha256: 17d72e86de5f6253
+   source-sha256: b6f77656d594fa3f
 
    globals.css with the rules that can only match inside /dashboard, /admin and
    /demo removed. Every route except those three imports this file; they import
@@ -141,6 +141,7 @@
      clears 4.5:1, which is what the 10px uppercase eyebrow needs, not just the
      3:1 an icon does. */
   --nav-work: #ff791f;
+  --nav-intake: #38bdf8;
   --nav-team: #40c9f4;
   --nav-money: #44e0a4;
   --nav-grow: #b89afb;
@@ -2540,6 +2541,21 @@ h3 {
   overflow-x: hidden;
   margin: 0 -0.2rem;
   padding: 0 0.2rem;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.12) transparent;
+}
+.sidenav-nav::-webkit-scrollbar {
+  width: 4px;
+}
+.sidenav-nav::-webkit-scrollbar-track {
+  background: transparent;
+}
+.sidenav-nav::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+}
+.sidenav-nav::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
 }
 
 /* A leading line icon on every nav row. Sits dimmer than the label at rest and
@@ -2588,6 +2604,13 @@ h3 {
   font-size: 0.92rem;
   line-height: 1.15;
   transition: background 0.15s ease, color 0.15s ease;
+}
+.sidenav-link .sidenav-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .sidenav-link:hover { background: rgba(var(--tint), 0.06); color: var(--text); }
 .sidenav-link:hover .sidenav-ic { color: var(--dim-grey-1-1); }
@@ -2712,6 +2735,7 @@ h3 {
    (.sidenav-link[data-state='on'] .sidenav-ic) and the demo rail's locked
    preview grey are all (0,3,0) against the (0,1,0) that carries the accent. */
 .sidenav-group--work { --section-accent: var(--nav-work); }
+.sidenav-group--intake { --section-accent: var(--nav-intake); }
 .sidenav-group--team { --section-accent: var(--nav-team); }
 .sidenav-group--money { --section-accent: var(--nav-money); }
 .sidenav-group--grow { --section-accent: var(--nav-grow); }

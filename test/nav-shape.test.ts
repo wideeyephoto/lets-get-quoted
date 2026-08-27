@@ -45,14 +45,10 @@ describe('Automations is a primary nav item', () => {
     expect(SHELL).toMatch(/\{ href: '\/dashboard\/automations', label: 'Automations'/);
   });
 
-  it('sits in Grow, above Messages', () => {
-    const grow = SHELL.slice(SHELL.indexOf("{ label: 'Grow'"));
-    const line = grow.slice(0, grow.indexOf(']'));
-    const automationsAt = line.indexOf("'/dashboard/automations'");
-    const messagesAt = line.indexOf("'/dashboard/messages'");
-    expect(automationsAt).toBeGreaterThan(-1);
-    expect(messagesAt).toBeGreaterThan(-1);
-    expect(automationsAt).toBeLessThan(messagesAt);
+  it('sits in Marketing & AI', () => {
+    const marketing = SHELL.slice(SHELL.indexOf("label: 'Marketing & AI'"));
+    const line = marketing.slice(0, marketing.indexOf(']'));
+    expect(line).toContain("'/dashboard/automations'");
   });
 
   /**
@@ -63,9 +59,6 @@ describe('Automations is a primary nav item', () => {
     expect(ICONS).toContain("'/dashboard/automations':");
     const entry = ICONS.slice(ICONS.indexOf("'/dashboard/automations':"));
     const path = entry.slice(0, entry.indexOf('\n'));
-    // AUTOMATIONS_BOLT_PATH is a filled silhouette and the rail's shell sets
-    // fill:none;stroke:currentColor — reusing it here would draw a 1.7px
-    // outline of a solid shape, which at 18px is a smudge.
     expect(path).not.toContain('M13 2 4.5 13.5H11l-1 8.5L19.5 10H13z');
   });
 
@@ -79,10 +72,9 @@ describe('Automations is a primary nav item', () => {
   // NAV_GROUPS. A row that moved in one and not the other shows a prospect a
   // product that does not exist.
   it('moved in the demo rail too', () => {
-    const grow = DEMO_RAIL.slice(DEMO_RAIL.indexOf("label: 'Grow'"));
-    const items = grow.slice(0, grow.indexOf('],'));
+    const marketing = DEMO_RAIL.slice(DEMO_RAIL.indexOf("label: 'Marketing & AI'"));
+    const items = marketing.slice(0, marketing.indexOf('],'));
     expect(items).toContain("label: 'Automations'");
-    expect(items.indexOf("label: 'Automations'")).toBeLessThan(items.indexOf("label: 'Messages'"));
   });
 });
 
@@ -234,26 +226,12 @@ describe('support does not float over the product', () => {
  * ONE COLOUR PER SECTION, AND IT REACHES THE RAIL.
  *
  * The rail's four cards each own a hue, worn by the eyebrow and the row icons
- * and by nothing else. Two things make that quietly breakable, which is why it
- * is pinned here rather than left to the eye:
- *
- * 1. The colour arrives through an INHERITED VARIABLE consumed in the fallback
- *    slot of the base rules (`var(--section-accent, <old value>)`). Rewriting
- *    either rule to set a colour outright takes the accent off the rail without
- *    breaking anything a typecheck or a render test would notice.
- * 2. `.sidenav-glabel` has a light-theme rule at (0,3,0). An accent written as
- *    `.sidenav-group .sidenav-glabel` is (0,2,0) — it would apply in dark and
- *    revert to grey in light, which is a bug nobody sees unless they switch
- *    themes on the one screen it affects.
- *
- * Measured on the rendered rail: eyebrow/icon contrast is 5.7–10.9:1 across
- * both themes (the rail keeps the dark chrome in Harbour, so there is one
- * ground, not two).
+ * and by nothing else.
  */
 describe('the rail is colour-coded by section', () => {
   const ACCENTS = [
     ['work', '#ff791f'],
-    ['team', '#40c9f4'],
+    ['intake', '#38bdf8'],
     ['money', '#44e0a4'],
     ['grow', '#b89afb'],
   ] as const;

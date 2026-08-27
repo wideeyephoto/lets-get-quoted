@@ -56,50 +56,24 @@ const baseNavItems: { href: string; label: string; hint?: string }[] = [
   { href: '/', label: 'Home' },
   { href: '/dashboard', label: 'Dashboard' },
   { href: '/dashboard/leads', label: 'Leads', hint: 'New & website leads' },
+  { href: '/dashboard/messages', label: 'Customer Messages', hint: 'Two-way customer texts' },
   { href: '/dashboard/jobs', label: 'Jobs', hint: 'Quotes · Invoices · Payments' },
-  { href: '/dashboard/clients', label: 'Clients', hint: 'Customer profiles & history' },
   { href: '/dashboard/schedule', label: 'Schedule', hint: 'Calendar & unscheduled work' },
-  { href: '/dashboard/schedule/booking', label: 'Online Booking', hint: 'Lets customers book an available time through your website.' },
-  { href: '/dashboard/quick-stops', label: 'Quick Stops', hint: 'Lets customers pay to be fitted in sooner.' },
-  { href: '/dashboard/recurring', label: 'Recurring', hint: 'Repeating jobs & auto-billing' },
-  { href: '/dashboard/cash-flow', label: 'Cash flow', hint: 'Upcoming bills, payroll & projected balance' },
-  { href: '/dashboard/services', label: 'Price book', hint: 'Saved services & prices' },
-  // Crew and hours are one destination, not two. They were split across a
-  // "Crew" page and a "Payroll" page that could only be reached from a link
-  // buried in the roster header — and neither could answer "who worked, on
-  // what, for how much" without a page load between the halves.
   { href: '/dashboard/crew', label: 'Crew & Labor', hint: 'Your team, their hours & pay' },
-  // A PRODUCT, NOT AN ACCOUNT SETTING. This was a sublink hanging off Account in
-  // the footer — the strip reserved for the things that are not the day's work —
-  // pointing at a tab inside Settings. It is the machinery that answers leads,
-  // chases quotes and asks for reviews while nobody is watching, so it sits with
-  // the other things that talk to customers on your behalf, above them because
-  // it does the talking without being asked.
+  { href: '/dashboard/clients', label: 'Clients', hint: 'Customer profiles & history' },
+  { href: '/dashboard/quick-stops', label: 'Quick Stops', hint: 'Lets customers pay to be fitted in sooner.' },
+  { href: '/dashboard/schedule/booking', label: 'Online Booking', hint: 'Lets customers book an available time through your website.' },
+  { href: '/dashboard/voice-calls', label: '24/7 AI Receptionist', hint: '24/7 AI receptionist, live booking & call log' },
+  { href: '/dashboard/insights', label: 'Reports & Insights', hint: 'Sales activity & revenue trends' },
+  { href: '/dashboard/recurring', label: 'Recurring Jobs', hint: 'Repeating jobs & auto-billing' },
+  { href: '/dashboard/services', label: 'Price Book', hint: 'Saved services & prices' },
+  { href: '/dashboard/cash-flow', label: 'Cash Flow', hint: 'Upcoming bills, payroll & projected balance' },
   { href: '/dashboard/automations', label: 'Automations', hint: 'The follow-ups, reminders and review asks that run without you' },
-  { href: '/dashboard/voice-calls', label: 'AI Voice Assistant', hint: '24/7 AI receptionist, live booking & call log' },
-  { href: '/dashboard/messages', label: 'Messages', hint: 'Two-way customer texts' },
-  // One destination, not two. "Marketing" (the composer) and "Calendar" (the
-  // seasonal topics) were the same workflow split across two pages that linked
-  // to each other in both directions — and the nav item called "Calendar" sat
-  // four rows under Schedule, which is the actual calendar.
   { href: '/dashboard/marketing', label: 'Marketing', hint: 'Seasonal topics, email & text campaigns' },
-  // A sub-item, the same way Online Booking sits under Schedule. Writing posts
-  // used to mean opening the website builder and expanding one section among a
-  // dozen, which made it feel like editing a website rather than doing
-  // marketing — which is what it is.
   { href: '/dashboard/marketing/blog', label: 'Blog', hint: 'Posts for your website' },
-  // Rebook is NOT a rail item. It reached the rail as a destination but it is a
-  // reason to send something, so it is surfaced on the Marketing overview
-  // instead. The page itself is still at /dashboard/rebook, still linked from
-  // there and from the dashboard.
-  { href: '/dashboard/insights', label: 'Insights', hint: 'Sales activity & revenue trends' },
   { href: '/dashboard/reviews', label: 'Reviews', hint: 'Ratings & private feedback' },
   { href: '/dashboard/sites', label: 'Website' },
   { href: '/dashboard/settings', label: 'Account' },
-  // Beside Account in the rail's footer rather than in a group. It is not part
-  // of the day's work, and it needs to be findable from every page — the only
-  // support route from inside the product used to be an email address on the
-  // account-suspended page, which you reach by being suspended.
   { href: '/dashboard/help', label: 'Help', hint: 'Ask us a question and track the answer' },
 ];
 
@@ -119,6 +93,7 @@ function isActiveNav(pathname: string, href: string): boolean {
 
 const FLOW_CLASS: Record<string, string> = {
   '/dashboard/leads': ' flow-link flow-start',
+  '/dashboard/messages': ' flow-link flow-mid',
   '/dashboard/jobs': ' flow-link flow-mid',
   '/dashboard/schedule': ' flow-link flow-end',
 };
@@ -131,24 +106,52 @@ const FLOW_CLASS: Record<string, string> = {
 //
 // Dashboard is not in a group either: it is rendered BELOW all of them, with a
 // rule above it — see the note at the `renderSideLink('/dashboard', …)` call.
-// This comment used to say it sat above the groups, which stopped being true
-// when it moved and is the kind of stale note that gets read as the spec.
 //
 // `accent` is the group's hue, carried as a class rather than a style so the
 // value itself stays in globals.css — see --nav-work and the .sidenav-group--*
-// block there. Spelled out rather than derived from the label because a group
-// that ever gets a two-word name would otherwise emit a class with a space in
-// it and silently lose its accent.
+// block there.
 const NAV_GROUPS: { label: string; accent: string; hrefs: string[] }[] = [
-  { label: 'Work', accent: 'work', hrefs: ['/dashboard/leads', '/dashboard/jobs', '/dashboard/schedule', '/dashboard/schedule/booking', '/dashboard/quick-stops', '/dashboard/clients'] },
-  { label: 'Team', accent: 'team', hrefs: ['/dashboard/crew'] },
-  // Insights first, cash flow last — the group reads backwards in time. What
-  // happened, what repeats, what things cost, then what the balance does next.
-  { label: 'Money', accent: 'money', hrefs: ['/dashboard/insights', '/dashboard/recurring', '/dashboard/services', '/dashboard/cash-flow'] },
-  // Automations leads the group: it is the only row here that reaches customers
-  // without somebody pressing something, so it is what the rest of Grow runs on
-  // top of.
-  { label: 'Grow', accent: 'grow', hrefs: ['/dashboard/automations', '/dashboard/voice-calls', '/dashboard/messages', '/dashboard/marketing', '/dashboard/marketing/blog', '/dashboard/reviews'] },
+  {
+    label: 'Work',
+    accent: 'work',
+    hrefs: [
+      '/dashboard/leads',
+      '/dashboard/messages',
+      '/dashboard/jobs',
+      '/dashboard/schedule',
+      '/dashboard/crew',
+      '/dashboard/clients',
+    ],
+  },
+  {
+    label: 'Intake Channels',
+    accent: 'intake',
+    hrefs: [
+      '/dashboard/quick-stops',
+      '/dashboard/schedule/booking',
+      '/dashboard/voice-calls',
+    ],
+  },
+  {
+    label: 'Billing & Cash',
+    accent: 'money',
+    hrefs: [
+      '/dashboard/insights',
+      '/dashboard/recurring',
+      '/dashboard/services',
+      '/dashboard/cash-flow',
+    ],
+  },
+  {
+    label: 'Marketing & AI',
+    accent: 'grow',
+    hrefs: [
+      '/dashboard/automations',
+      '/dashboard/marketing',
+      '/dashboard/marketing/blog',
+      '/dashboard/reviews',
+    ],
+  },
 ];
 
 type AccountStatus = {
@@ -846,16 +849,12 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
       const isNew = !active && isSectionNew(newestByHref[href], navSeen[href]);
       const state =
         href === '/dashboard/quick-stops' ? quickStopState : href === '/dashboard/schedule/booking' ? bookingState : 'unknown';
-      // Quick Stops wears its logo instead of an icon and a word. The wordmark
-      // carries its own pin, so the line icon goes with the text — side by side
-      // the row would show two pins in 150px.
-      const brand = href === '/dashboard/quick-stops';
       return (
         <Link
           href={href}
           key={href}
           data-tour-id={`nav:${href}`}
-          className={`sidenav-link${brand ? ' sidenav-link-brand' : ''}${extraClass ? ` ${extraClass}` : ''}${active ? ' active' : ''}`}
+          className={`sidenav-link${extraClass ? ` ${extraClass}` : ''}${active ? ' active' : ''}`}
           // Which row you are standing on was said in color and in nothing
           // else, so a screen reader had no way to know — 18 identical links.
           aria-current={active ? 'page' : undefined}
@@ -865,20 +864,8 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
           data-state={state !== 'unknown' && NAV_STATE_PILL[href] ? state : undefined}
           title={item.hint}
         >
-          {brand ? (
-            <Image
-              src="/brand/quick-stops-wordmark.png"
-              alt={item.label}
-              width={287}
-              height={50}
-              className="sidenav-brandmark"
-            />
-          ) : (
-            <>
-              <NavIcon href={href} />
-              <span>{item.label}</span>
-            </>
-          )}
+          <NavIcon href={href} />
+          <span className="sidenav-label">{item.label}</span>
           {/* The two automations that can put work on your calendar without you
               touching anything. Both switches are pages deep, so the rail says
               which way they are set from wherever you happen to be. */}
@@ -889,12 +876,6 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
           ) : null}
           {/* Ahead of the numbers, so the badge cluster reads left to right as
               "is there news, then how much". */}
-          {/* EVERY BADGE SAYS WHAT IT IS, IN TEXT.
-              The row read "Leads New 3 12" to a screen reader — four things,
-              none of them explained — and the explanations were all sitting in
-              `title` attributes on these spans, where a phone cannot hover and
-              an accessible name does not look. The digits are now decoration
-              beside a real label. See navAttentionLabel in lib/nav-helpers. */}
           {isNew ? (
             <span className="sidenav-unseen" title={newLabelByHref[href]}>
               <span aria-hidden="true">New</span>
@@ -906,8 +887,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
               <span aria-hidden="true">{attentionDigits(href, count)}</span>
               <span className="sr-only">{navAttentionLabel(href, count) ?? `${count} need your attention`}</span>
             </span>
-          ) : null}
-          {total && total.count > 0 ? (
+          ) : total && total.count > 0 ? (
             <span className="sidenav-total" title={total.title}>
               <span aria-hidden="true">{total.count}</span>
               <span className="sr-only">{total.title}</span>
@@ -925,7 +905,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
           </Link>
           {/* The two things a contractor starts the day with were both behind
               the Menu button on a phone — the one device they actually start the
-              day on. Plan my day is icon-only here because its meaning survives
+              day on. Plan Day is icon-only here because its meaning survives
               the icon and the words do not survive the width; + New keeps its
               word because a bare plus could add anything. */}
           {isLoggedIn ? (
@@ -934,8 +914,8 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
               <Link
                 href="/dashboard/schedule/plan"
                 className={`mobilebar-plan${pathname.startsWith('/dashboard/schedule/plan') ? ' active' : ''}`}
-                aria-label="Plan my day"
-                title="Plan my day"
+                aria-label="Plan Day"
+                title="Plan Day"
               >
                 <ActionIcon name="plan" />
               </Link>
@@ -984,7 +964,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
             {businessName ? <p className="sidenav-bizname" title={businessName}>{businessName}</p> : null}
             <SmartSearch variant="rail" onOpenChange={setIsSearchOpen} />
             {/* The two things a contractor starts the day with, on one row.
-                Plan my day is the wider of the two because it carries three
+                Plan Day is the wider of the two because it carries three
                 words; "+ New" only ever says one, so it takes what it needs and
                 gives the rest back rather than both being forced to half. */}
             <div className="sidenav-actions">
@@ -994,7 +974,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
                 title="Order today's stops into the shortest sensible route"
               >
                 <ActionIcon name="plan" />
-                Plan my day
+                Plan Day
               </Link>
               <div className="sidenav-new-wrap" ref={railNewRef}>
                 <button

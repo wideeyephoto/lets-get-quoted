@@ -55,52 +55,38 @@ const GROUPS: { label: string; accent: string; items: DemoItem[] }[] = [
     accent: 'work',
     items: [
       { icon: '/dashboard/leads', label: 'Leads', href: '/demo/leads' },
+      { icon: '/dashboard/messages', label: 'Customer Messages', href: '/demo/messages' },
       { icon: '/dashboard/jobs', label: 'Jobs', href: '/demo/jobs' },
       { icon: '/dashboard/schedule', label: 'Schedule', href: '/demo/schedule' },
-      { icon: '/dashboard/schedule/booking', label: 'Online Booking', href: '/demo/schedule/booking' },
-      { icon: '/dashboard/quick-stops', label: 'Quick Stops', href: '/demo/quick-stops', brand: true },
+      { icon: '/dashboard/crew', label: 'Crew & Labor', href: '/demo/crew' },
       { icon: '/dashboard/clients', label: 'Clients', href: '/demo/clients' },
     ],
   },
   {
-    label: 'Team',
-    accent: 'team',
-    // Hours & pay is a TAB inside Crew & Labor in the live app, not its own rail
-    // row — /demo/payroll still exists and the Crew page links to it.
+    label: 'Intake Channels',
+    accent: 'intake',
     items: [
-      { icon: '/dashboard/crew', label: 'Crew & Labor', href: '/demo/crew' },
+      { icon: '/dashboard/quick-stops', label: 'Quick Stops', href: '/demo/quick-stops' },
+      { icon: '/dashboard/schedule/booking', label: 'Online Booking', href: '/demo/schedule/booking' },
+      { icon: '/dashboard/voice-calls', label: '24/7 AI Receptionist', href: '/demo/settings' },
     ],
   },
   {
-    label: 'Money',
+    label: 'Billing & Cash',
     accent: 'money',
     items: [
-      // Same order as NAV_GROUPS in app-shell — two sidebars that drift apart
-      // is the thing the demo exists not to do.
-      { icon: '/dashboard/insights', label: 'Insights', href: '/demo/insights' },
-      { icon: '/dashboard/recurring', label: 'Recurring', href: '/demo/recurring' },
-      { icon: '/dashboard/services', label: 'Price book', href: '/demo/services' },
-      { icon: '/dashboard/cash-flow', label: 'Cash flow', href: '/demo/cash-flow' },
+      { icon: '/dashboard/insights', label: 'Reports & Insights', href: '/demo/insights' },
+      { icon: '/dashboard/recurring', label: 'Recurring Jobs', href: '/demo/recurring' },
+      { icon: '/dashboard/services', label: 'Price Book', href: '/demo/services' },
+      { icon: '/dashboard/cash-flow', label: 'Cash Flow', href: '/demo/cash-flow' },
     ],
   },
   {
-    label: 'Grow',
+    label: 'Marketing & AI',
     accent: 'grow',
     items: [
-      // Leads the group here too. It was a sublink under Account in both rails;
-      // moving it in one and not the other is exactly the drift the note at the
-      // top of GROUPS exists to prevent. /demo has no automations page of its
-      // own, so it points at the demo settings screen — the same place the row
-      // pointed before, now under the right heading.
       { icon: '/dashboard/automations', label: 'Automations', href: '/demo/settings' },
-      { icon: '/dashboard/voice-calls', label: 'AI Voice Assistant', href: '/demo/settings' },
-      { icon: '/dashboard/messages', label: 'Messages', href: '/demo/messages' },
-      // The demo's marketing area mirrors the real one's shape now, so the rail
-      // points at its overview exactly as the live rail does. The old
-      // /demo/campaigns URL redirects into it.
       { icon: '/dashboard/marketing', label: 'Marketing', href: '/demo/marketing' },
-      // Rebook is a section on Marketing in the real app, not a rail row, and
-      // /demo/rebook is reached the same way — from the Marketing page.
       { icon: '/dashboard/reviews', label: 'Reviews', href: '/demo/reviews' },
     ],
   },
@@ -221,7 +207,7 @@ export default function DemoSidebar() {
               title="Order today's stops into the shortest sensible route"
             >
               <ActionIcon name="plan" />
-              Plan my day
+              Plan Day
             </Link>
             <a href={APP_SIGNUP_URL} className="sidenav-new" title="Create a free account to add work">
               <span className="sidenav-new-plus" aria-hidden="true">+</span> New
