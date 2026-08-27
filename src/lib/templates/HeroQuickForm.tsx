@@ -839,25 +839,7 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
               }
             }}
           />
-          {askLocation && (
-            <Field icon="pin" label="Town or city where the work is" filled={Boolean(location.trim())}>
-              <input
-                placeholder={locationPlaceholder}
-                autoComplete="address-level2"
-                maxLength={80}
-                required={!demo}
-                aria-invalid={status?.tone === 'error' ? 'true' : undefined}
-                aria-describedby={status ? 'hqf-status' : undefined}
-                value={location}
-                onChange={(event) => setLocation(event.target.value)}
-              />
-            </Field>
-          )}
-          {askLocation && location.trim() && !/^\d{5}(?:-\d{4})?$/.test(location.trim()) && configuredCities.length > 0 && matchesServedCity(location, configuredCities) === false && (
-            <p className={styles.heroFormFitNote}>
-              Heads up: <strong>{location.trim()}</strong> appears outside our primary service area. Travel fees or limited availability may apply.
-            </p>
-          )}
+
           <div className={styles.heroFormPhotoRow} style={{ marginTop: '0.4rem', marginBottom: '0.6rem' }}>
             <input
               ref={photoInputRef}
@@ -891,6 +873,26 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
               {getTradePhotoTip(siteContent.trade, description)}
             </p>
           </div>
+
+          {askLocation && (
+            <Field icon="pin" label="Town or city where the work is" filled={Boolean(location.trim())}>
+              <input
+                placeholder={locationPlaceholder}
+                autoComplete="address-level2"
+                maxLength={80}
+                required={!demo}
+                aria-invalid={status?.tone === 'error' ? 'true' : undefined}
+                aria-describedby={status ? 'hqf-status' : undefined}
+                value={location}
+                onChange={(event) => setLocation(event.target.value)}
+              />
+            </Field>
+          )}
+          {askLocation && location.trim() && !/^\d{5}(?:-\d{4})?$/.test(location.trim()) && configuredCities.length > 0 && matchesServedCity(location, configuredCities) === false && (
+            <p className={styles.heroFormFitNote}>
+              Heads up: <strong>{location.trim()}</strong> appears outside our primary service area. Travel fees or limited availability may apply.
+            </p>
+          )}
           <button type="submit" disabled={isClassifying}>{isClassifying ? thinking : 'Continue'}</button>
           {isEmergency && !isClassifying && (
             <button
