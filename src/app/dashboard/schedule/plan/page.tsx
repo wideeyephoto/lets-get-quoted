@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { requireOfficeContext } from '@/lib/auth';
-import { listCrew } from '@/lib/crew';
+import { listCrew, listCrewAssignmentsForJobs, loadLastCrewBriefingHistory, type CrewBriefingHistory } from '@/lib/crew';
 import { getDayPlanPrefs } from '@/lib/day-plan-prefs';
 import { coordOf, type LatLng } from '@/lib/distance';
 import { driveMatrix, DRIVE_MATRIX_MAX_POINTS } from '@/lib/drive-time';
@@ -15,7 +15,9 @@ import {
 } from '@/lib/route-plan-day';
 import { listDayRouteStops, listSavedPlaces, toPlanStop as routeStopToPlanStop } from '@/lib/route-stops';
 import { listUpcomingBlocks } from '@/lib/availability-blocks';
+import { outlookByDay } from '@/lib/weather-data';
 import type { DayPlanPayload, DriveMatrixPayload } from '@/lib/day-plan-view';
+import type { CrewBriefingStop } from '@/lib/crew-briefing';
 import SaveButton from '@/components/save-button';
 import WorkingHoursPanel from '@/components/working-hours-panel';
 import OpenActionOnHash from '@/app/dashboard/leads/[leadId]/OpenActionOnHash';
@@ -27,8 +29,9 @@ import { DEFAULT_ESTIMATE_MINUTES, draftOfferBody, rankOfferSuggestions, timeFro
 import DayPlanner from './DayPlanner';
 import type { StopArrivalProps } from './StopArrival';
 import PlanDayControls from './PlanDayControls';
+import BriefCrewModal from './BriefCrewModal';
 import EstimateOffers, { type OfferSuggestionView, type OfferView } from './EstimateOffers';
-import { geocodeDayAction, notifyMovedClientsAction, sendCrewMorningBriefingAction } from './actions';
+import { geocodeDayAction, notifyMovedClientsAction } from './actions';
 import { sendArrivalOwnerTo, setArrivalStatusOwnerTo } from '@/app/dashboard/jobs/[id]/arrival-actions';
 import { createAdminClient } from '@/lib/auth';
 import { arrivalSettingsFromAccount, formatArrivalWindow, DEFAULT_ARRIVAL_TEMPLATE } from '@/lib/arrival';
@@ -88,6 +91,8 @@ export default async function PlanDayPage({
     stranded?: string;
     geocoded?: string;
     briefed?: string;
+    skippedNoPhone?: string;
+    skippedNoJobs?: string;
   };
 }) {
   const { supabase, accountId } = await requireOfficeContext('jobs.read', 'schedule.write');
@@ -110,6 +115,10 @@ export default async function PlanDayPage({
     resolveDayAnchor(supabase, accountId, crewId, settings),
   ]);
 
+  const assignmentsByJob = await listCrewAssignmentsForJobs(supabase, accountId, jobs.map((job) => job.id)).catch(
+    () => ({} as Record<string, string[]>),
+  );
+
   // Supply stops route exactly like jobs — same coordinates, same minutes, same
   // proposed arrival — so from here down there's no distinction to make.
   const stops = [
@@ -123,6 +132,45 @@ export default async function PlanDayPage({
   ];
   const routable = stops.filter((stop) => stop.lat != null && stop.lng != null);
   const unroutable = stops.filter((stop) => stop.lat == null || stop.lng == null);
+
+  const jobMap = new Map(jobs.map((j) => [j.id, j]));
+  const routeStopMap = new Map(dayRouteStops.map((rs) => [`rs:${rs.id}`, rs]));
+  const briefingStops: CrewBriefingStop[] = routable.map((stop) => {
+    const job = jobMap.get(stop.id);
+    if (job) {
+      return {
+        jobRef: `JOB-${job.id.slice(0, 6).toUpperCase()}`,
+        clientName: job.client_name,
+        address: job.address || '',
+        phone: job.client_phone,
+        scheduledTime: stop.scheduledTime ? formatTimeLabel(parseTimeMinutes(stop.scheduledTime) ?? 0) : null,
+        lat: stop.lat,
+        lng: stop.lng,
+      };
+    }
+    const rs = routeStopMap.get(stop.id);
+    if (rs) {
+      return {
+        jobRef: `STOP-${rs.id.slice(0, 6).toUpperCase()}`,
+        clientName: rs.label || 'Supply Stop',
+        address: rs.address || '',
+        phone: null,
+        scheduledTime: stop.scheduledTime ? formatTimeLabel(parseTimeMinutes(stop.scheduledTime) ?? 0) : null,
+        notes: rs.note,
+        lat: stop.lat,
+        lng: stop.lng,
+      };
+    }
+    return {
+      jobRef: `STOP-${stop.id.slice(0, 6).toUpperCase()}`,
+      clientName: stop.label || 'Stop',
+      address: stop.address || '',
+      phone: null,
+      scheduledTime: stop.scheduledTime ? formatTimeLabel(parseTimeMinutes(stop.scheduledTime) ?? 0) : null,
+      lat: stop.lat,
+      lng: stop.lng,
+    };
+  });
 
   // One drive-matrix lookup for the whole day, covering every pair of stops. That
   // single request is what makes dragging free: any order the contractor tries
@@ -189,6 +237,25 @@ export default async function PlanDayPage({
     .eq('account_id', accountId)
     .eq('arrival_date', dateKey)
     .in('status', ['confirmed', 'en_route', 'arrived', 'completed']);
+
+  let weatherSummary: string | null = null;
+  try {
+    const weatherOutlook = await outlookByDay(
+      supabase,
+      accountId,
+      anchor.coord ? { lat: anchor.coord.lat, lng: anchor.coord.lng } : { lat: null, lng: null }
+    );
+    const dayWeather = weatherOutlook[dateKey];
+    if (dayWeather) {
+      weatherSummary = dayWeather.reasons.length > 0
+        ? `${dayWeather.summary} (${dayWeather.reasons.join(', ')})`
+        : dayWeather.summary;
+    }
+  } catch {
+    // Weather is advisory
+  }
+
+  const lastBriefing = await loadLastCrewBriefingHistory(supabase, accountId, dateKey);
 
   // Leads sitting close to a hole in today's route.
   //
@@ -409,21 +476,44 @@ export default async function PlanDayPage({
           </div>
           <PlanDayControls dateKey={dateKey} crewId={crewId} crew={crew.map((m) => ({ id: m.id, name: m.name }))} />
           {routable.length > 0 ? (
-            <form action={sendCrewMorningBriefingAction} style={{ display: 'inline-block' }}>
-              <input type="hidden" name="dateKey" value={dateKey} />
-              {crewId ? <input type="hidden" name="crewId" value={crewId} /> : null}
-              <button type="submit" className="btn ghost" title="Text daily run-sheet with Google Maps routes to scheduled crew">
-                📱 Brief crew
-              </button>
-            </form>
+            <BriefCrewModal
+              dateKey={dateKey}
+              dateLabel={dayLabel(dateKey)}
+              businessName={businessName}
+              crew={crew.map((m) => ({
+                id: m.id,
+                name: m.name,
+                phone: m.phone,
+                roleLabel: m.role_label,
+              }))}
+              activeCrewId={crewId}
+              stops={briefingStops}
+              assignmentsByJob={assignmentsByJob}
+              homeBaseAddress={anchor.address}
+              weatherSummary={weatherSummary}
+              lastBriefing={lastBriefing}
+              portalUrl="https://letsgetquoted.com/field"
+            />
           ) : null}
           <Link href="/dashboard/schedule" className="btn ghost plan-back">Back to calendar</Link>
         </div>
       </header>
 
       {searchParams.briefed !== undefined ? (
-        <p className="plan-flash good">
-          Sent morning dispatch briefing SMS with Google Maps routes to {searchParams.briefed} crew {searchParams.briefed === '1' ? 'member' : 'members'}.
+        <p className={`plan-flash ${Number(searchParams.briefed) > 0 ? 'good' : 'warn'}`}>
+          {Number(searchParams.briefed) > 0
+            ? `${
+                searchParams.urgent === '1'
+                  ? 'Sent URGENT schedule update SMS'
+                  : searchParams.scheduled === '1'
+                  ? 'Scheduled morning dispatch briefing SMS for 7:00 AM'
+                  : 'Sent morning dispatch briefing SMS with Google Maps routes'
+              } to ${searchParams.briefed} crew ${searchParams.briefed === '1' ? 'member' : 'members'}.${
+                Number(searchParams.skippedNoPhone) > 0
+                  ? ` (${searchParams.skippedNoPhone} member${searchParams.skippedNoPhone === '1' ? '' : 's'} skipped: no mobile number on file)`
+                  : ''
+              }`
+            : 'Could not send dispatch SMS: none of the selected crew members have a valid mobile phone number on file. Update phone numbers in Settings → Crew or use the Copy/Print options.'}
         </p>
       ) : null}
       {blockedReason ? (

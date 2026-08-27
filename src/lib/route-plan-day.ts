@@ -47,10 +47,11 @@ export type PlanJobRow = {
   estimated_hours: number | null;
   status: string;
   appointment_confirmed_at: string | null;
+  scope?: string | null;
 };
 
 const JOB_FIELDS_BASE =
-  'id, client_name, client_phone, address, lat, lng, scheduled_for, scheduled_time, estimated_hours, status, appointment_confirmed_at';
+  'id, client_name, client_phone, address, lat, lng, scheduled_for, scheduled_time, estimated_hours, status, appointment_confirmed_at, scope';
 const JOB_FIELDS = `${JOB_FIELDS_BASE}, scheduled_until`;
 
 /**

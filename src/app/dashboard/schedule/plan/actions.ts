@@ -14,7 +14,7 @@ import { isRouteStopId, normalizeManualKind, rememberPlace, routeStopUuid } from
 import { savePreferredLast } from '@/lib/day-plan-prefs';
 import { listCrew, listJobIdsForCrew } from '@/lib/crew';
 import { loadBusinessName } from '@/lib/business-name';
-import { buildCrewMorningBriefingSms, type CrewBriefingStop } from '@/lib/crew-briefing';
+import { buildCrewMorningBriefingSms, type CrewBriefingStop, type NavProvider } from '@/lib/crew-briefing';
 
 // The plan page is force-dynamic, but Next still serves a route's last RSC
 // payload from the client router cache on navigation — so a server action that
@@ -317,11 +317,36 @@ export async function setPreferredLastAction(dateKey: string, crewId: string | n
   revalidatePlan();
 }
 
+export async function updateCrewPhoneQuickAction(crewId: string, phone: string) {
+  const { supabase, accountId } = await requireOfficeContext('schedule.write');
+  const normalized = normalizeUsPhone(phone);
+  if (!normalized) {
+    return { ok: false, error: 'Please enter a valid 10-digit US phone number.' };
+  }
+  const { error } = await supabase
+    .from('crew')
+    .update({ phone: normalized })
+    .eq('id', crewId)
+    .eq('account_id', accountId);
+
+  if (error) {
+    return { ok: false, error: error.message || 'Failed to update phone number.' };
+  }
+  revalidatePlan();
+  return { ok: true, phone: normalized };
+}
+
 export async function sendCrewMorningBriefingAction(formData: FormData) {
   const { supabase, accountId } = await requireOfficeContext('schedule.write');
   const dateKey = String(formData.get('dateKey') ?? '').trim();
   const crewId = String(formData.get('crewId') ?? '').trim() || null;
   const customNote = String(formData.get('customNote') ?? '').trim() || null;
+  const weatherSummary = String(formData.get('weatherSummary') ?? '').trim() || null;
+  const navProvider = (String(formData.get('navProvider') ?? 'google') as NavProvider) || 'google';
+  const includeFullRoute = formData.get('includeFullRoute') !== '0';
+  const isUrgentUpdate = formData.get('isUrgentUpdate') === '1';
+  const includeMaterialsChecklist = formData.get('includeMaterialsChecklist') === '1';
+  const scheduledTiming = (String(formData.get('scheduledTiming') ?? 'now') as 'now' | 'scheduled_7am') || 'now';
   const selectedMemberIds = formData.getAll('memberId').map(String).filter(Boolean);
   const includePortal = formData.get('includePortal') !== '0';
 
@@ -376,6 +401,7 @@ export async function sendCrewMorningBriefingAction(formData: FormData) {
       address: j.address || '',
       phone: j.client_phone,
       scheduledTime: j.scheduled_time,
+      scope: j.scope,
       lat: j.lat,
       lng: j.lng,
     }));
@@ -387,6 +413,12 @@ export async function sendCrewMorningBriefingAction(formData: FormData) {
       stops,
       portalUrl: includePortal ? 'https://letsgetquoted.com/field' : null,
       customNote,
+      weatherSummary,
+      navProvider,
+      includeFullRoute,
+      isUrgentUpdate,
+      includeMaterialsChecklist,
+      scheduledTiming,
     });
 
     const { enqueueSmsDelivery } = await import('@/lib/sms-delivery');
@@ -410,6 +442,8 @@ export async function sendCrewMorningBriefingAction(formData: FormData) {
   const queryParams: Record<string, string> = {
     briefed: String(briefedCount),
   };
+  if (isUrgentUpdate) queryParams.urgent = '1';
+  if (scheduledTiming === 'scheduled_7am') queryParams.scheduled = '1';
   if (skippedNoPhone > 0) queryParams.skippedNoPhone = String(skippedNoPhone);
   if (skippedNoJobs > 0) queryParams.skippedNoJobs = String(skippedNoJobs);
 

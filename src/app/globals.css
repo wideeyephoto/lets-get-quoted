@@ -39375,3 +39375,560 @@ a.sms-cat-switch:focus-visible { outline: 2px solid var(--accent); outline-offse
   border-color: var(--rule-t12);
   background: rgba(var(--tint), 0.025);
 }
+
+/* ---- Morning Crew Dispatch Briefing Modal & Run-Sheet ---------------- */
+.brief-crew-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-weight: 500;
+}
+.brief-crew-trigger-inner {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.brief-crew-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.15rem;
+  height: 1.15rem;
+  padding: 0 0.3rem;
+  border-radius: 999px;
+  background: var(--accent, #3b82f6);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.brief-crew-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  width: 100%;
+  max-width: 38rem;
+  color: var(--ink-neutral-1, #e5e7eb);
+}
+
+.brief-crew-header-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid var(--rule-t12, rgba(255, 255, 255, 0.08));
+  flex-wrap: wrap;
+}
+.brief-crew-day-title {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--ink-neutral-1, #f3f4f6);
+}
+.brief-crew-day-subtitle {
+  margin: 0.2rem 0 0;
+  font-size: 0.82rem;
+  color: var(--mute-i56, rgba(255, 255, 255, 0.6));
+}
+.brief-crew-quick-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.brief-copy-btn.is-copied {
+  background: rgba(34, 197, 94, 0.15);
+  border-color: rgba(34, 197, 94, 0.4);
+  color: #4ade80;
+}
+
+.brief-crew-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.brief-crew-section.compact {
+  gap: 0.35rem;
+}
+.brief-crew-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+.brief-crew-section-title {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--ink-neutral-1, #f3f4f6);
+}
+.brief-crew-section-meta {
+  margin-left: 0.35rem;
+  font-size: 0.8rem;
+  color: var(--mute-i56, rgba(255, 255, 255, 0.55));
+}
+.brief-crew-section-desc {
+  font-size: 0.78rem;
+  color: var(--mute-i56, rgba(255, 255, 255, 0.6));
+  line-height: 1.35;
+}
+.brief-crew-select-tools {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+  color: var(--mute-i56, rgba(255, 255, 255, 0.6));
+}
+.brief-crew-select-tools .text-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--accent, #60a5fa);
+  cursor: pointer;
+  font-size: 0.78rem;
+}
+.brief-crew-select-tools .text-btn:hover {
+  text-decoration: underline;
+}
+
+.brief-crew-roster {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  max-height: 12rem;
+  overflow-y: auto;
+  padding: 0.25rem 0;
+}
+.brief-crew-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: 8px;
+  background: rgba(var(--tint, 255, 255, 255), 0.03);
+  border: 1px solid var(--edge-t07, rgba(255, 255, 255, 0.08));
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.brief-crew-card:hover {
+  background: rgba(var(--tint, 255, 255, 255), 0.06);
+}
+.brief-crew-card.is-selected {
+  background: rgba(var(--tint, 255, 255, 255), 0.08);
+  border-color: rgba(var(--accent-rgb, 96, 165, 250), 0.35);
+}
+.brief-crew-card.has-warning {
+  border-color: rgba(234, 179, 8, 0.25);
+}
+.brief-crew-checkbox {
+  width: 1.1rem;
+  height: 1.1rem;
+  accent-color: var(--accent, #3b82f6);
+  cursor: pointer;
+}
+.brief-crew-card-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+.brief-crew-card-top {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.brief-crew-member-name {
+  font-weight: 500;
+  font-size: 0.9rem;
+  color: var(--ink-neutral-1, #f9fafb);
+}
+.brief-crew-member-role {
+  font-size: 0.72rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  background: rgba(var(--tint, 255, 255, 255), 0.08);
+  color: var(--mute-i56, rgba(255, 255, 255, 0.7));
+}
+.brief-crew-stops-pill {
+  margin-left: auto;
+  font-size: 0.75rem;
+  color: var(--mute-i56, rgba(255, 255, 255, 0.6));
+}
+.brief-crew-card-contact {
+  font-size: 0.78rem;
+}
+.brief-crew-phone-valid {
+  color: var(--mute-i56, rgba(255, 255, 255, 0.7));
+}
+.brief-crew-phone-missing {
+  color: #facc15;
+}
+.phone-indicator {
+  font-size: 0.75rem;
+  font-weight: bold;
+}
+.phone-indicator.ok {
+  color: #22c55e;
+}
+.phone-indicator.warn {
+  color: #eab308;
+}
+
+.brief-crew-empty-roster {
+  padding: 1rem;
+  border-radius: 8px;
+  background: rgba(var(--tint, 255, 255, 255), 0.025);
+  border: 1px dashed var(--rule-t12, rgba(255, 255, 255, 0.12));
+  font-size: 0.85rem;
+}
+.brief-crew-warning-inline {
+  margin: 0.4rem 0 0;
+  font-size: 0.78rem;
+  color: #facc15;
+  line-height: 1.35;
+}
+
+.brief-crew-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.brief-crew-textarea {
+  width: 100%;
+  padding: 0.6rem 0.75rem;
+  border-radius: 6px;
+  border: 1px solid var(--edge-t07, rgba(255, 255, 255, 0.12));
+  background: rgba(var(--tint, 255, 255, 255), 0.04);
+  color: var(--ink-neutral-1, #f3f4f6);
+  font-size: 0.85rem;
+  font-family: inherit;
+  resize: vertical;
+}
+.brief-crew-textarea:focus {
+  outline: none;
+  border-color: var(--accent, #60a5fa);
+  box-shadow: 0 0 0 1px var(--accent, #60a5fa);
+}
+
+.brief-crew-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.82rem;
+  color: var(--ink-neutral-2, #e5e7eb);
+  cursor: pointer;
+}
+.brief-crew-checkbox-label input {
+  accent-color: var(--accent, #3b82f6);
+}
+
+.brief-crew-preview-select {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+  color: var(--mute-i56, rgba(255, 255, 255, 0.6));
+}
+.brief-crew-preview-select select {
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  background: rgba(var(--tint, 255, 255, 255), 0.06);
+  border: 1px solid var(--rule-t12, rgba(255, 255, 255, 0.12));
+  color: var(--ink-neutral-1, #f3f4f6);
+  font-size: 0.78rem;
+}
+
+.brief-crew-sms-preview-bubble {
+  padding: 0.85rem;
+  border-radius: 10px;
+  background: rgba(var(--tint, 255, 255, 255), 0.035);
+  border: 1px solid var(--rule-t12, rgba(255, 255, 255, 0.1));
+}
+.brief-crew-sms-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: var(--mute-i56, rgba(255, 255, 255, 0.5));
+  margin-bottom: 0.5rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+.brief-crew-sms-body {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: var(--font-mono, monospace, sans-serif);
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: var(--ink-neutral-1, #e5e7eb);
+}
+
+.brief-crew-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--rule-t12, rgba(255, 255, 255, 0.08));
+  flex-wrap: wrap;
+}
+.brief-crew-footer-status {
+  font-size: 0.8rem;
+  flex: 1;
+}
+.brief-footer-warn {
+  color: #facc15;
+}
+.brief-footer-ready {
+  color: var(--mute-i56, rgba(255, 255, 255, 0.7));
+}
+.brief-crew-footer-buttons {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.brief-send-btn {
+  font-weight: 600;
+}
+
+.brief-crew-weather-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.55rem 0.85rem;
+  border-radius: 8px;
+  background: rgba(59, 130, 246, 0.08);
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  font-size: 0.82rem;
+}
+.brief-crew-weather-info {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+.brief-crew-weather-icon {
+  font-size: 1.1rem;
+}
+.brief-crew-weather-text {
+  color: var(--ink-neutral-1, #e5e7eb);
+}
+.brief-crew-weather-btn {
+  white-space: nowrap;
+  font-size: 0.75rem;
+  padding: 0.2rem 0.55rem;
+}
+
+.brief-crew-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0.25rem 0 0.4rem;
+}
+.brief-crew-preset-pill {
+  background: rgba(var(--tint, 255, 255, 255), 0.04);
+  border: 1px solid var(--rule-t12, rgba(255, 255, 255, 0.1));
+  border-radius: 999px;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.74rem;
+  color: var(--mute-i56, rgba(255, 255, 255, 0.75));
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.brief-crew-preset-pill:hover {
+  background: rgba(var(--accent-rgb, 59, 130, 246), 0.15);
+  border-color: rgba(var(--accent-rgb, 59, 130, 246), 0.35);
+  color: #fff;
+}
+
+.brief-crew-card-checkbox-label {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  padding: 0.2rem;
+}
+.brief-crew-phone-missing-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+.brief-crew-add-phone-btn {
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+.brief-crew-inline-phone-form {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.2rem;
+}
+.brief-crew-inline-phone-input {
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  border: 1px solid var(--accent, #3b82f6);
+  background: rgba(0, 0, 0, 0.3);
+  color: #fff;
+  font-size: 0.8rem;
+  width: 9rem;
+}
+.brief-crew-error-text {
+  margin: 0.2rem 0 0;
+  font-size: 0.72rem;
+  color: #ef4444;
+}
+
+.brief-crew-options-grid {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem 1.5rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: 8px;
+  background: rgba(var(--tint, 255, 255, 255), 0.02);
+  border: 1px solid var(--rule-t12, rgba(255, 255, 255, 0.06));
+}
+.brief-crew-option-select-label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+  color: var(--ink-neutral-2, #e5e7eb);
+}
+.brief-crew-option-select-label .option-title {
+  font-weight: 500;
+}
+.brief-crew-select {
+  padding: 0.25rem 0.6rem;
+  border-radius: 4px;
+  background: rgba(var(--tint, 255, 255, 255), 0.06);
+  border: 1px solid var(--rule-t12, rgba(255, 255, 255, 0.12));
+  color: var(--ink-neutral-1, #f3f4f6);
+  font-size: 0.8rem;
+}
+
+.brief-crew-char-meta {
+  font-size: 0.75rem;
+  color: var(--mute-i56, rgba(255, 255, 255, 0.45));
+}
+
+.brief-crew-alt-channels {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  flex-wrap: wrap;
+}
+.brief-crew-alt-label {
+  font-size: 0.75rem;
+  color: var(--mute-i56, rgba(255, 255, 255, 0.5));
+}
+.brief-channel-btn {
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.75rem;
+  padding: 0.25rem 0.55rem;
+}
+.brief-channel-btn.whatsapp:hover {
+  background: rgba(37, 211, 102, 0.15);
+  border-color: rgba(37, 211, 102, 0.4);
+  color: #25d366;
+}
+.brief-channel-btn.imessage:hover {
+  background: rgba(59, 130, 246, 0.15);
+  border-color: rgba(59, 130, 246, 0.4);
+  color: #60a5fa;
+}
+
+.brief-crew-history-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.85rem;
+  border-radius: 8px;
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  font-size: 0.8rem;
+  color: var(--ink-neutral-1, #e5e7eb);
+}
+.brief-crew-history-banner .history-icon {
+  font-size: 1rem;
+}
+.brief-crew-badge.was-briefed {
+  background: #10b981;
+  color: #000;
+  font-weight: 700;
+}
+
+.brief-crew-mode-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.brief-crew-toggle-pill.urgent {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.75rem;
+  border-radius: 999px;
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #fca5a5;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.brief-crew-toggle-pill.urgent:hover,
+.brief-crew-toggle-pill.urgent.active {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: #ef4444;
+  color: #fff;
+}
+
+.brief-crew-timing-selector {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(var(--tint, 255, 255, 255), 0.04);
+  border: 1px solid var(--rule-t12, rgba(255, 255, 255, 0.1));
+  border-radius: 999px;
+  padding: 0.15rem;
+  gap: 0.15rem;
+}
+.brief-crew-timing-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  color: var(--mute-i56, rgba(255, 255, 255, 0.7));
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.brief-crew-timing-pill input[type="radio"] {
+  display: none;
+}
+.brief-crew-timing-pill:hover {
+  color: #fff;
+}
+.brief-crew-timing-pill.active {
+  background: var(--accent, #3b82f6);
+  color: #fff;
+  font-weight: 500;
+}
+
+.brief-crew-sms-preview-bubble.is-urgent {
+  border-color: rgba(239, 68, 68, 0.4);
+  background: rgba(239, 68, 68, 0.05);
+}
+.brief-footer-ready.urgent {
+  color: #fca5a5;
+}
+
+
+

@@ -577,3 +577,45 @@ export async function setCrewArrivalPermissions(
     .is('deleted_at', null);
   if (error && !isMissingColumn(error)) throw error;
 }
+
+export type CrewBriefingHistory = {
+  dispatchedAt: string;
+  recipientCount: number;
+  isUrgent?: boolean;
+};
+
+/**
+ * Loads the most recent crew dispatch event for this account and date.
+ */
+export async function loadLastCrewBriefingHistory(
+  supabase: SupabaseClient,
+  accountId: string,
+  dateKey: string
+): Promise<CrewBriefingHistory | null> {
+  try {
+    const { data, error } = await supabase
+      .from('sms_events')
+      .select('id, created_at, body, idempotency_key')
+      .eq('account_id', accountId)
+      .eq('event_type', 'crew_briefing')
+      .like('idempotency_key', `crew-briefing:%:${dateKey}:%`)
+      .order('created_at', { ascending: false })
+      .limit(10);
+
+    if (error || !data || data.length === 0) return null;
+
+    const latestTime = new Date(data[0].created_at).getTime();
+    const batch = data.filter((row) => Math.abs(new Date(row.created_at).getTime() - latestTime) < 60000);
+    const sampleBody = data[0].body || '';
+    const isUrgent = sampleBody.includes('🚨 URGENT');
+
+    return {
+      dispatchedAt: data[0].created_at,
+      recipientCount: batch.length,
+      isUrgent,
+    };
+  } catch {
+    return null;
+  }
+}
+

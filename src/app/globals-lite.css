@@ -1,6 +1,6 @@
 /* GENERATED — do not edit. Source: src/app/globals.css
    Run: node scripts/build-css-subset.mjs
-   source-sha256: 7161b39b4331784d
+   source-sha256: 6d664ca43cc9b94e
 
    globals.css with the rules that can only match inside /dashboard, /admin and
    /demo removed. Every route except those three imports this file; they import
@@ -17598,3 +17598,17 @@ select optgroup {
 /* The top-up disclosure itself is now the link target. A deep link can open it
    directly instead of landing on a closed wrapper that needs a second click. */
 #settings-panel-plan details#buy-credits > summary { min-height: 2.5rem; }
+.brief-copy-btn.is-copied {
+  background: rgba(34, 197, 94, 0.15);
+  border-color: rgba(34, 197, 94, 0.4);
+  color: #4ade80;
+}
+.brief-crew-card.is-selected {
+  background: rgba(var(--tint, 255, 255, 255), 0.08);
+  border-color: rgba(var(--accent-rgb, 96, 165, 250), 0.35);
+}
+
+.brief-crew-sms-preview-bubble.is-urgent {
+  border-color: rgba(239, 68, 68, 0.4);
+  background: rgba(239, 68, 68, 0.05);
+}

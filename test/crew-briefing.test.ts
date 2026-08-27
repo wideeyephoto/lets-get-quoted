@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import {
   buildGoogleMapsNavUrl,
   buildAppleMapsNavUrl,
+  buildWazeNavUrl,
+  buildFullDayRouteNavUrl,
   formatBriefingStop,
   buildCrewMorningBriefingSms,
   buildCrewDailyRunSheetText,
@@ -119,5 +121,74 @@ describe('Crew Morning Dispatch Briefing', () => {
     expect(runSheet).toContain('📝 Scope: Replace 40gal water heater');
     expect(runSheet).toContain('Stop #2 [J-102]');
     expect(runSheet).toContain('🔗 Crew Field Portal: https://apex.com/field');
+  });
+
+  it('builds valid Waze navigation URLs', () => {
+    const wazeUrl = buildWazeNavUrl('1418 S Main St, Royal Oak, MI', 42.4895, -83.1446);
+    expect(wazeUrl).toContain('waze.com/ul');
+    expect(wazeUrl).toContain('ll=42.4895,-83.1446');
+  });
+
+  it('generates full-day multi-stop route URLs linking all destinations', () => {
+    const fullRouteUrl = buildFullDayRouteNavUrl(sampleStops, '500 Shop St, Detroit, MI', 'google');
+    expect(fullRouteUrl).toContain('https://www.google.com/maps/dir/');
+    expect(fullRouteUrl).toContain('500%20Shop%20St');
+    expect(fullRouteUrl).toContain('1418%20S%20Main%20St');
+    expect(fullRouteUrl).toContain('3200%20Crooks%20Rd');
+  });
+
+  it('incorporates weather forecast and full route link into morning dispatch SMS', () => {
+    const briefingWithWeather: CrewDailyBriefing = {
+      crewName: 'Dave Miller',
+      businessName: 'Apex Plumbing',
+      date: 'Monday, Aug 25',
+      stops: sampleStops,
+      weatherSummary: '74°F / 58°F · 10% rain chance · Mostly Sunny',
+      includeFullRoute: true,
+      homeBaseAddress: 'Shop HQ',
+    };
+
+    const sms = buildCrewMorningBriefingSms(briefingWithWeather);
+    expect(sms).toContain('🌤️ Weather: 74°F / 58°F · 10% rain chance · Mostly Sunny');
+    expect(sms).toContain('🚗 Full Route (All Stops):');
+    expect(sms).toContain('https://www.google.com/maps/dir/');
+  });
+
+  it('formats urgent mid-day schedule updates with high-visibility alerts', () => {
+    const urgentBriefing: CrewDailyBriefing = {
+      crewName: 'Dave Miller',
+      businessName: 'Apex Plumbing',
+      date: 'Monday, Aug 25',
+      stops: sampleStops,
+      isUrgentUpdate: true,
+      customNote: 'Customer at stop 1 had a water main burst. Moved to first priority.',
+    };
+
+    const sms = buildCrewMorningBriefingSms(urgentBriefing);
+    expect(sms).toContain('🚨 URGENT SCHEDULE UPDATE from Apex Plumbing!');
+    expect(sms).toContain('📌 Note: Customer at stop 1 had a water main burst.');
+
+    const runSheet = buildCrewDailyRunSheetText(urgentBriefing);
+    expect(runSheet).toContain('🚨 URGENT DISPATCH RUN-SHEET: Monday, Aug 25');
+  });
+
+  it('aggregates truck packing & materials checklist in run-sheet and SMS', () => {
+    const briefingWithMaterials: CrewDailyBriefing = {
+      crewName: 'Dave Miller',
+      businessName: 'Apex Plumbing',
+      date: 'Monday, Aug 25',
+      stops: sampleStops,
+      includeMaterialsChecklist: true,
+    };
+
+    const sms = buildCrewMorningBriefingSms(briefingWithMaterials);
+    expect(sms).toContain('🧰 Truck Packing & Scopes:');
+    expect(sms).toContain('1) Replace 40gal water heater');
+    expect(sms).toContain('2) Sump pump backup installation');
+
+    const runSheet = buildCrewDailyRunSheetText(briefingWithMaterials);
+    expect(runSheet).toContain('🧰 TRUCK PACKING & MATERIALS CHECKLIST:');
+    expect(runSheet).toContain('[ ] Stop #1 (Alice Johnson): Replace 40gal water heater');
+    expect(runSheet).toContain('[ ] Stop #2 (Bob Williams): Sump pump backup installation');
   });
 });
