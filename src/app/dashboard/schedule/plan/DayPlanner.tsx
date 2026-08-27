@@ -249,7 +249,15 @@ export default function DayPlanner({ payload, mapsApiKey, arrivalByJobId }: Prop
     [payload.rescheduleAvailable, byId, savingByStopId],
   );
 
-  const openOffer = useCallback((stopId: string) => setOfferFor(stopId), []);
+  const openOffer = useCallback((stopId: string) => {
+    setOfferFor(stopId);
+    setTimeout(() => {
+      const panel = document.getElementById('reschedule-offer-panel') || document.querySelector('.resched-panel');
+      if (panel) {
+        panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    }, 60);
+  }, []);
 
   const canDrag = useCallback(
     (stopId: string) => {
@@ -1228,7 +1236,12 @@ function StopRow({
             <button
               type="button"
               className="plan-badge warn is-action"
-              onClick={onOfferMove}
+              draggable={false}
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation();
+                onOfferMove();
+              }}
               title="This stop is still being worked after your day ends. Ask the customer to take another day — they see the new dates and reply, and nothing moves until they do."
             >
               Cannot be finished today — ask them to move

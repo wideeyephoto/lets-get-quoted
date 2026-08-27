@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import Link from 'next/link';
 // useFormState, not useActionState: this is React 18 (Next 14), where the hook
 // still lives in react-dom. Same shape, same place EstimateOffers gets it.
 import { useFormState, useFormStatus } from 'react-dom';
@@ -49,6 +50,7 @@ function Submit({ disabled }: { disabled: boolean }) {
 }
 
 export default function RescheduleOffer({ jobId, stopLabel, dateKey, crewId, businessName, saved, onClose }: Props) {
+  const panelRef = useRef<HTMLDivElement | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [suggestions, setSuggestions] = useState<RescheduleDaySuggestionView[]>([]);
@@ -62,6 +64,10 @@ export default function RescheduleOffer({ jobId, stopLabel, dateKey, crewId, bus
   const [edited, setEdited] = useState<string | null>(null);
 
   const [state, action] = useFormState(sendRescheduleOfferAction, IDLE_RESCHEDULE_STATE);
+
+  useEffect(() => {
+    panelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -105,7 +111,7 @@ export default function RescheduleOffer({ jobId, stopLabel, dateKey, crewId, bus
   const cost = discountAmount(quotedAmount, discount);
 
   return (
-    <div className="resched-panel" role="dialog" aria-label={`Ask ${stopLabel} to move day`}>
+    <div id="reschedule-offer-panel" ref={panelRef} className="resched-panel" role="dialog" aria-label={`Ask ${stopLabel} to move day`}>
       <div className="resched-head">
         <div>
           <p className="eyebrow">Ask them to move</p>
@@ -124,13 +130,25 @@ export default function RescheduleOffer({ jobId, stopLabel, dateKey, crewId, bus
 
       {loading ? <p className="resched-loading">Looking for a day you&rsquo;re already over that way…</p> : null}
 
-      {loadError ? <p className="payment-banner muted resched-alert">{loadError}</p> : null}
+      {loadError ? (
+        <div className="payment-banner muted resched-alert">
+          <p style={{ margin: '0 0 0.5rem' }}>{loadError}</p>
+          <Link href={`/dashboard/jobs/${jobId}`} className="btn secondary" style={{ display: 'inline-block' }}>
+            Open job to move date manually
+          </Link>
+        </div>
+      ) : null}
 
       {!loading && !loadError && suggestions.length === 0 ? (
-        <p className="payment-banner muted resched-alert">
-          Nothing in the next three weeks puts you near this address, so there&rsquo;s no honest reason to offer them a
-          move. Leave it where it is.
-        </p>
+        <div className="payment-banner muted resched-alert">
+          <p style={{ margin: '0 0 0.5rem' }}>
+            Nothing in the next three weeks puts you near this address, so there&rsquo;s no cluster route to offer them a
+            move automatically.
+          </p>
+          <Link href={`/dashboard/jobs/${jobId}`} className="btn secondary" style={{ display: 'inline-block' }}>
+            Open job to move date manually
+          </Link>
+        </div>
       ) : null}
 
       {selected ? (
