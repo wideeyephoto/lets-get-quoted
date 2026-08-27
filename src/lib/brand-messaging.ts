@@ -14,7 +14,7 @@ export const BRAND_POSITIONING = {
   valueProposition:
     'Let’s Get Quoted is one connected system for winning the job, running it, and getting paid—starting with a free contractor website.',
   hero: {
-    eyebrow: 'CONTRACTOR AI SUITE—STARTING WITH A FREE WEBSITE',
+    eyebrow: 'FULL CONTRACTOR AI SUITE—THE ONLY SOFTWARE YOU NEED TO RUN YOUR BUSINESS',
     headline: 'Let AI qualify the lead. You win the right work.',
     headlinePart1: 'Let AI qualify the lead.',
     headlinePart2: 'You win the right work.',

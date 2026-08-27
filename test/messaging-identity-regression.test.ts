@@ -30,7 +30,7 @@ describe('Problem 1: Product Identity and Message Hierarchy', () => {
 
   describe('Homepage hero alignment', () => {
     it('carries the unified hero copy and CTAs', () => {
-      expect(HOME).toContain('CONTRACTOR AI SUITE—STARTING WITH A FREE WEBSITE');
+      expect(HOME).toContain('FULL CONTRACTOR AI SUITE—THE ONLY SOFTWARE YOU NEED TO RUN YOUR BUSINESS');
       expect(HOME).toContain('Let AI qualify the lead.<br /><em>You win the right work.</em>');
       expect(HOME).toContain(
         'Launch a contractor website that collects photos, asks the right questions, and turns inquiries into quote-ready opportunities',

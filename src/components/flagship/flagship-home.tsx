@@ -631,7 +631,7 @@ export default function FlagshipHome() {
             headline, the buttons and the product frame. */}
         <TradeOrbit />
         <div className="hero-copy" data-rise>
-          <p className="eyebrow"><span>✦</span> CONTRACTOR AI SUITE—STARTING WITH A FREE WEBSITE</p>
+          <p className="eyebrow"><span>✦</span> FULL CONTRACTOR AI SUITE—THE ONLY SOFTWARE YOU NEED TO RUN YOUR BUSINESS</p>
           <h1>Let AI qualify the lead.<br /><em>You win the right work.</em></h1>
           <p className="hero-sub">
             Launch a contractor website that collects photos, asks the right questions, and turns inquiries into quote-ready opportunities—then keeps every quote, schedule, message, and payment connected.
