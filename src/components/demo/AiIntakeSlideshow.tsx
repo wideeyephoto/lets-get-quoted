@@ -4,72 +4,7 @@ import Image from 'next/image';
 import { useEffect, useRef, useState } from 'react';
 import styles from './ai-intake-slideshow.module.css';
 
-const SLIDE_DURATION = 4800;
-
-function PresetSlide() {
-  return (
-    <section className={`${styles.slide} ${styles.setupSlide}`}>
-      <div className={styles.slideHeading}>
-        <span>09 · CONTRACTOR CONTROLS</span>
-        <h2>Teach the intake your trade in one click.</h2>
-        <p>Load the right questions, job minimum, exclusions, and photo prompt together.</p>
-      </div>
-
-      <div className={styles.presetPanel}>
-        <div className={styles.presetChips}>
-          <span className={styles.chipActive}>General remodeling</span>
-          <span>Plumbing</span>
-          <span>HVAC</span>
-        </div>
-        <div className={styles.loadedNotice}><i>✓</i> General Contracting preset loaded</div>
-        <div className={styles.settingRows}>
-          <div><span>Minimum job</span><strong>$1,000</strong></div>
-          <div><span>Smart questions</span><strong>2 required</strong></div>
-          <div><span>Trade exclusions</span><strong>3 suggested</strong></div>
-          <div><span>Photo prompt</span><strong>Current room layout</strong></div>
-        </div>
-        <div className={styles.qualityRow}>
-          <span>Qualification coverage</span>
-          <strong>HIGH</strong>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function VoiceSlide() {
-  return (
-    <section className={`${styles.slide} ${styles.voiceSlide}`}>
-      <div className={styles.slideHeading}>
-        <span>08 · EVERY CHANNEL</span>
-        <h2>The lead can talk, text, or type.</h2>
-        <p>The shared AI line turns a natural conversation into structured intake.</p>
-      </div>
-
-      <div className={styles.channelRow}>
-        <span>Website</span><span>Text</span><span className={styles.chipActive}>AI phone line</span>
-      </div>
-      <div className={`${styles.insightBadge} ${styles.firstImpressionBadge}`}>
-        <b>50 ms</b>
-        <span>That is how quickly people form a visual first impression.</span>
-        <small>Lindgaard et al.</small>
-      </div>
-      <div className={styles.callCard}>
-        <div className={styles.callTop}>
-          <span className={styles.waveform}>|||||||||</span>
-          <span>00:38</span>
-        </div>
-        <blockquote>“Tub out. Low-threshold shower. Keep the plumbing wall. Hoping for next month.”</blockquote>
-        <div className={styles.parsedGrid}>
-          <span><small>PROJECT</small><b>Bath conversion</b></span>
-          <span><small>TIMELINE</small><b>Within 30 days</b></span>
-          <span><small>URGENCY</small><b>Warm lead</b></span>
-          <span><small>NEXT ACTION</small><b>Request photos</b></span>
-        </div>
-      </div>
-    </section>
-  );
-}
+const SLIDE_DURATION = 4200;
 
 function MediaSlide() {
   return (
@@ -89,8 +24,11 @@ function MediaSlide() {
       <div className={styles.storyCopy}>
         <div className={styles.slideHeading}>
           <span>01 · LIVE PHOTO CAPTURE</span>
-          <h2>She shows the job. AI checks the shot.</h2>
-          <p>Michelle gets useful guidance before the photo ever reaches the contractor.</p>
+          <h2>See the job before you call.</h2>
+          <p>Michelle sends the photos. AI checks the details.</p>
+        </div>
+        <div className={styles.channelProof} aria-label="One intake across every contact channel">
+          <span>AI PHONE</span><span>TEXT</span><span>WEB</span><b>ONE INTAKE</b>
         </div>
         <div className={styles.captureStatus}><i /> CAMERA READY · ANALYZING LIVE</div>
         <div className={styles.captureChecks}>
@@ -124,8 +62,8 @@ function PhotoCoachSlide() {
       <div className={styles.storyCopy}>
         <div className={styles.slideHeading}>
           <span>02 · GUIDED FOLLOW-UP</span>
-          <h2>The next photo answers a price-changing question.</h2>
-          <p>The AI asks for one precise detail instead of making Michelle guess what matters.</p>
+          <h2>Get the photo that could change the price.</h2>
+          <p>AI guides her to the tub edge and floor transition.</p>
         </div>
         <div className={styles.capturedNotice}><i>✓</i><span><small>REQUESTED ANGLE</small><strong>Captured and understood</strong></span></div>
         <div className={styles.detectedDetails}>
@@ -133,7 +71,7 @@ function PhotoCoachSlide() {
           <span><i>✓</i> Floor transition clear</span>
           <span><i>✓</i> Entry condition documented</span>
         </div>
-        <div className={styles.mediaAnswered}><strong>3 questions</strong><span>answered from the photos—so the intake will not ask them again.</span></div>
+        <div className={styles.mediaAnswered}><strong>3 details confirmed</strong><span>from one guided photo.</span></div>
       </div>
     </section>
   );
@@ -153,13 +91,14 @@ function VisionSlide() {
       </div>
       <div className={styles.visionContent}>
         <div className={styles.slideHeading}>
-          <span>03 · MULTIMODAL VISION</span>
-          <h2>The AI sees what the homeowner forgot to type.</h2>
+          <span>03 · JOB INTELLIGENCE</span>
+          <h2>Open a lead—not a mystery.</h2>
+          <p>Scope, risks, and materials are already organized.</p>
         </div>
         <div className={styles.observationCard}>
-          <small>WHAT WE SPOTTED</small>
-          <strong>60-inch alcove tub. Controls on the left wall. Clear front access.</strong>
-          <span>Three questions answered from the media—so the intake will not ask them again.</span>
+          <small>AI PHOTO SUMMARY</small>
+          <strong>60-inch alcove tub · left-wall valve · tile surround</strong>
+          <span>High step-over observed · low-threshold base suggested · grab-bar backing to confirm</span>
         </div>
       </div>
     </section>
@@ -172,7 +111,7 @@ function QuestionsSlide() {
       <div className={styles.slideHeading}>
         <span>04 · ADAPTIVE QUESTIONS</span>
         <h2>Ask only what can change the scope or price.</h2>
-        <p>One short question at a time, up to six—and the AI stops early as soon as it is confident.</p>
+        <p>Everything visible in the photos is skipped.</p>
       </div>
 
       <div className={styles.questionPanel}>
@@ -182,7 +121,7 @@ function QuestionsSlide() {
         <small>QUESTION 4 · PRICE-CHANGING DETAIL</small>
         <strong>Are the drain and shower controls staying on their current wall?</strong>
         <div className={styles.answerChoices}><span className={styles.answerSelected}>Yes</span><span>No</span><span>Not sure</span></div>
-        <div className={styles.autoAnswered}>✓ Alcove width skipped—already visible in the video</div>
+        <div className={styles.autoAnswered}>✓ 2 questions skipped—already answered by the photos</div>
         <div className={styles.questionFooter}><span>Confidence <b>88%</b></span><strong>Ready to estimate early</strong></div>
       </div>
       <div className={styles.escapeRow}><span>Urgent job? Skip to contact details</span><span>Skip questions · show ballpark</span></div>
@@ -190,22 +129,59 @@ function QuestionsSlide() {
   );
 }
 
-function IntelligenceSlide() {
+function QuoteDraftSlide() {
   return (
-    <section className={`${styles.slide} ${styles.intelligenceSlide}`}>
+    <section className={`${styles.slide} ${styles.quoteDraftSlide}`}>
       <div className={styles.slideHeading}>
-        <span>06 · LEAD INTELLIGENCE</span>
-        <h2>The contractor opens a lead—not a mystery.</h2>
-        <p>Vision converts the homeowner media into practical field and supply-house context.</p>
+        <span>05 · AI QUOTE DRAFT</span>
+        <h2>Build the first draft in one click.</h2>
+        <p>Lines fill from your price book, past jobs, and photos.</p>
       </div>
 
-      <div className={styles.intelPanel}>
-        <div><small>DETECTED</small><strong>60&quot; steel alcove tub</strong><span>Left-wall valve · tile surround</span></div>
-        <div><small>OBSERVED ISSUE</small><strong>High step-over</strong><span>Limited support at entry</span></div>
-        <div><small>PICK LIST</small><strong>Low-threshold pan</strong><span>Grab bar · seat · glass kit</span></div>
-        <div><small>SAFETY / CODE</small><strong>Backing required</strong><span>Confirm grab-bar anchoring</span></div>
+      <div className={styles.quoteForm} aria-label="AI-created quote draft">
+        <div className={styles.quoteFormTop}>
+          <span><i /> AI DRAFT COMPLETE</span>
+          <strong>Bath-to-shower conversion</strong>
+        </div>
+        <div className={styles.intakeFields}>
+          <div><small>PROJECT</small><strong>60&quot; alcove conversion</strong><span>FROM PHOTOS</span></div>
+          <div><small>CONFIGURATION</small><strong>Left-wall valve · low threshold</strong><span>AI INTAKE</span></div>
+        </div>
+        <div className={styles.quoteColumns} aria-hidden="true"><span>LINE ITEM</span><span>SOURCE</span><span>AMOUNT</span></div>
+        <div className={styles.quoteLines}>
+          <div><strong>Demo + disposal</strong><span className={styles.sourceHistory}>PAST JOBS</span><b>$850</b></div>
+          <div><strong>Low-threshold shower base</strong><span className={styles.sourceBook}>PRICE BOOK</span><b>$1,150</b></div>
+          <div><strong>Waterproof wall system</strong><span className={styles.sourceBook}>PRICE BOOK</span><b>$1,900</b></div>
+          <div><strong>Valve + trim allowance</strong><span className={styles.sourceSupplier}>SUPPLIER REF</span><b>$650</b></div>
+        </div>
+        <div className={styles.quoteFormBottom}><span>+ 3 more lines filled</span><strong>Draft total <b>$8,420</b></strong></div>
       </div>
-      <div className={styles.intelFooter}><span>URGENCY · MEDIUM</span><strong>92% visual confidence</strong></div>
+    </section>
+  );
+}
+
+function ReviewSlide() {
+  return (
+    <section className={`${styles.slide} ${styles.reviewSlide}`}>
+      <div className={styles.slideHeading}>
+        <span>06 · CONTRACTOR REVIEW</span>
+        <h2>Nothing goes out without you.</h2>
+        <p>Review every number, margin, and assumption.</p>
+      </div>
+
+      <div className={styles.reviewPanel}>
+        <div className={styles.reviewTop}>
+          <div><small>QUOTE DRAFT #Q-1048</small><strong>Michelle Carter</strong></div>
+          <div><small>DRAFT TOTAL</small><strong>$8,420</strong></div>
+        </div>
+        <div className={styles.reviewRows}>
+          <div><span><i>✓</i><b>Waterproof wall system</b></span><small>YOUR PRICE BOOK</small><strong>$1,900</strong></div>
+          <div><span><i>!</i><b>Glass door allowance</b></span><small>CHECK THIS PRICE</small><strong>$1,250</strong></div>
+          <div><span><i>✓</i><b>Installation labor</b></span><small>PAST JOBS</small><strong>$2,350</strong></div>
+        </div>
+        <div className={styles.marginRow}><span><small>PROJECTED MARGIN</small><strong>36%</strong></span><b>Margin protected</b></div>
+        <div className={styles.reviewAction}><span>2 prices need review</span><strong>APPROVE BALLPARK →</strong></div>
+      </div>
     </section>
   );
 }
@@ -214,51 +190,20 @@ function TrustTransferSlide() {
   return (
     <section className={`${styles.slide} ${styles.guardrailSlide}`}>
       <div className={styles.slideHeading}>
-        <span>05 · THE TRUST TRANSFER</span>
-        <h2>Answer now. Hand the trust to the contractor next.</h2>
-        <p>A useful ballpark proves the homeowner was heard.</p>
+        <span>07 · GUARDED BALLPARK</span>
+        <h2>Give a useful answer while the lead is hot.</h2>
+        <p>A guarded ballpark earns trust before your first call.</p>
       </div>
 
       <div className={styles.estimatePanel}>
-        <div className={styles.estimateTop}><span>INSTANT, GUARDED BALLPARK</span><strong>$7,600 – $9,200</strong></div>
-        <div className={styles.trustFlow}>
-          <span><b>AI</b> creates the first impression</span>
-          <i>→</i>
-          <span><b>YOU</b> take the relationship</span>
+        <div className={styles.estimateRecipient}><span>MC</span><div><small>PREPARED FOR</small><strong>Michelle Carter</strong></div><b>READY</b></div>
+        <div className={styles.estimateTop}><span>YOUR PROJECT BALLPARK</span><strong>$7,600 – $9,200</strong></div>
+        <div className={styles.estimateIncludes}>
+          <span><i>✓</i> Based on your photos</span>
+          <span><i>✓</i> Contractor guardrails applied</span>
         </div>
-        <div className={styles.evidenceCards} aria-label="Research-backed outcomes">
-          <div><strong>+15–20%</strong><span>customer satisfaction potential</span><small>AI personalization · McKinsey</small></div>
-          <div><strong>+5–8%</strong><span>revenue potential</span><small>AI personalization · McKinsey</small></div>
-        </div>
-        <div className={styles.safetyRule}><b>TRUST NEEDS GUARDRAILS</b><span>61% say AI makes trust more important (Salesforce). Price bounds and site-visit rules keep the contractor in control.</span></div>
-      </div>
-    </section>
-  );
-}
-
-function RankingSlide() {
-  return (
-    <section className={`${styles.slide} ${styles.rankingSlide}`}>
-      <div className={styles.slideHeading}>
-        <span>07 · PREMIUM LEAD SIGNALS</span>
-        <h2>High-expectation homeowners feel the difference.</h2>
-        <p>Fit, timing, and project value become one honest priority.</p>
-      </div>
-
-      <div className={`${styles.insightBadge} ${styles.premiumBadge}`}>
-        <b>TABLE STAKES</b>
-        <span>Top-tier clients expect personalized experiences—not generic follow-up.</span>
-        <small>BCG–Altagamma, 2024</small>
-      </div>
-      <div className={styles.rankCard}>
-        <div className={styles.rankPerson}><span>MC</span><div><strong>Michelle Carter</strong><small>Bath-to-shower conversion</small></div><b>HOT · HIGH VALUE</b></div>
-        <div className={styles.rankSignals}>
-          <span><i>✓</i> In service area</span>
-          <span><i>✓</i> Starting within 30 days</span>
-          <span><i>✓</i> Phone verified</span>
-          <span><i>✓</i> Value above $8k threshold</span>
-        </div>
-        <div className={styles.alertRow}><span>Owner alert sent</span><strong>Low-quality leads stay quiet</strong></div>
+        <div className={styles.safetyRule}><b>FINAL PRICE AFTER SITE VISIT</b><span>Your contractor will confirm measurements, selections, and site conditions.</span></div>
+        <div className={styles.trustHandoff}><span><i /> Owner notified</span><strong>Personal follow-up is next</strong></div>
       </div>
     </section>
   );
@@ -278,9 +223,9 @@ function BookingSlide() {
       <div className={styles.bookingShade} />
       <div className={styles.bookingContent}>
         <div className={styles.slideHeading}>
-          <span>10 · BOOKING HANDOFF</span>
-          <h2>End the intake with a next step.</h2>
-          <p>The homeowner can choose an arrival window while the job is still top of mind.</p>
+          <span>08 · BOOKING HANDOFF</span>
+          <h2>Turn interest into a booked visit.</h2>
+          <p>Michelle chooses a time. You arrive prepared.</p>
         </div>
         <div className={styles.bookingCard}>
           <div><span>ESTIMATE READY</span><strong>$7,600 – $9,200</strong></div>
@@ -298,11 +243,9 @@ const slides = [
   PhotoCoachSlide,
   VisionSlide,
   QuestionsSlide,
+  QuoteDraftSlide,
+  ReviewSlide,
   TrustTransferSlide,
-  IntelligenceSlide,
-  RankingSlide,
-  VoiceSlide,
-  PresetSlide,
   BookingSlide,
 ] as const;
 

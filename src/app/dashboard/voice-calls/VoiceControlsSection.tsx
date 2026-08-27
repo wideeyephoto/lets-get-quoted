@@ -172,25 +172,21 @@ export function VoiceCapabilitiesGrid() {
     <section className={styles.controlsSection} aria-label="AI Voice Assistant Controls and Capabilities">
       <div className={styles.controlsHeader}>
         <div className={styles.controlsHeaderTitle}>
-          <h2>Controls & Capabilities Granted to AI Voice Assistant</h2>
-          <p>The autonomous tools, safety guards, and verified data sources available to your receptionist on live calls.</p>
+          <h2>Voice Assistant Capabilities &amp; Safety Guards</h2>
+          <p>The autonomous tools, safety escalations, and verified business data sources active on your live phone line.</p>
         </div>
       </div>
 
-      <div className={styles.controlsGrid}>
+      <div className={styles.capabilitiesList}>
         {AI_CONTROLS.map((control) => (
-          <div key={control.id} className={styles.controlCard}>
-            <div>
-              <div className={styles.controlCardTop}>
-                <div className={styles.controlIconWrapper}>{control.icon}</div>
+          <div key={control.id} className={styles.capabilityItem}>
+            <div className={styles.capabilityIcon}>{control.icon}</div>
+            <div className={styles.capabilityContent}>
+              <div className={styles.capabilityHeader}>
+                <h3 className={styles.capabilityTitle}>{control.title}</h3>
                 <span className={`${styles.controlBadge} ${control.badgeClass}`}>{control.badge}</span>
               </div>
-              <h3 className={styles.controlTitle}>{control.title}</h3>
-              <p className={styles.controlDesc}>{control.desc}</p>
-            </div>
-            <div className={styles.controlMeta}>
-              <span>Function</span>
-              <span>{control.functionSignature}</span>
+              <p className={styles.capabilityDesc}>{control.desc}</p>
             </div>
           </div>
         ))}

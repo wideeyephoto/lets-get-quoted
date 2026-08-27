@@ -739,35 +739,43 @@ export function getHeaderButtonStyle(content: Record<string, unknown> | null | u
   return getSiteContent(content).headerButtonStyle || 'match';
 }
 
-export type QuoteFormStyle = 'glow' | 'clean' | 'glass' | 'bold';
+export type QuoteFormStyle = 'clean' | 'bold' | 'glass' | 'glow';
 
-export const QUOTE_FORM_STYLES = [
-  {
-    key: 'glow',
-    label: 'Electric Glow',
-    desc: 'Luminous multi-color neon gradient border with animated radiant aura.',
-  },
+export type QuoteFormStyleOption = {
+  key: QuoteFormStyle;
+  label: string;
+  desc: string;
+  badge?: string;
+};
+
+export const QUOTE_FORM_STYLES: readonly QuoteFormStyleOption[] = [
   {
     key: 'clean',
     label: 'Clean & Crisp',
-    desc: 'Understated minimalist card with crisp hairline borders and soft shadow.',
-  },
-  {
-    key: 'glass',
-    label: 'Frosted Glass',
-    desc: 'Translucent glassmorphism with backdrop blur and soft ambient glow.',
+    badge: 'Recommended',
+    desc: 'Clear and trustworthy — best for most businesses.',
   },
   {
     key: 'bold',
     label: 'Bold Accent',
-    desc: 'Structured high-contrast framing with top accent stripe and solid fields.',
+    desc: 'Makes the estimate stand out with crisp framing.',
+  },
+  {
+    key: 'glass',
+    label: 'Frosted Glass',
+    desc: 'Best over photography with adaptive frosted blur.',
+  },
+  {
+    key: 'glow',
+    label: 'Electric Glow',
+    desc: 'High-energy modern look with brand-tuned radiant ring.',
   },
 ] as const;
 
 export const QUOTE_FORM_STYLE_KEYS = new Set<string>(QUOTE_FORM_STYLES.map((style) => style.key));
 
 export function getQuoteFormStyle(content: Record<string, unknown> | null | undefined): QuoteFormStyle {
-  return (getSiteContent(content).quoteFormStyle as QuoteFormStyle) || 'glow';
+  return (getSiteContent(content).quoteFormStyle as QuoteFormStyle) || 'clean';
 }
 
 export type SiteQuoteFormContent = {
@@ -1636,7 +1644,7 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
     headerButtonStyle: HEADER_BUTTON_STYLE_KEYS.has(toString(root.headerButtonStyle)) ? toString(root.headerButtonStyle) : '',
     colorScheme: COLOR_SCHEMES.some((scheme) => scheme.key === root.colorScheme) ? toString(root.colorScheme) : '',
     wordmarkStyle: WORDMARK_STYLES.some((style) => style.key === root.wordmarkStyle) ? toString(root.wordmarkStyle) : '',
-    quoteFormStyle: QUOTE_FORM_STYLE_KEYS.has(toString(root.quoteFormStyle)) ? (toString(root.quoteFormStyle) as QuoteFormStyle) : 'glow',
+    quoteFormStyle: QUOTE_FORM_STYLE_KEYS.has(toString(root.quoteFormStyle)) ? (toString(root.quoteFormStyle) as QuoteFormStyle) : 'clean',
     projectShowcase: {
       // On by default so existing Care sites keep their work band; the owner can
       // toggle it off to hide the whole section.

@@ -67,12 +67,14 @@ export default function VoiceSimulatorSandbox({
   companyName = 'Our Company',
   trade = 'Contractor',
   voiceTone: _voiceTone = 'professional',
+  defaultOpen = false,
 }: {
   companyName?: string;
   trade?: string;
   voiceTone?: string;
+  defaultOpen?: boolean;
 }) {
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(defaultOpen);
   const [selectedPreset, setSelectedPreset] = useState('booking');
   const [customPrompt, setCustomPrompt] = useState(PRESETS[0]!.prompt);
   const [callerPhone] = useState('(555) 019-2834');

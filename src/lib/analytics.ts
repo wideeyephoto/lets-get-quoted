@@ -133,3 +133,57 @@ export type ConsentDecision = 'granted' | 'denied';
 export function readConsent(raw: string | null): ConsentDecision | null {
   return raw === 'granted' || raw === 'denied' ? raw : null;
 }
+
+export type QuoteFunnelStep = 'form_impression' | 'form_started' | 'first_step_completed' | 'contact_submitted';
+
+export type QuoteFunnelPayload = {
+  step: QuoteFunnelStep;
+  formStyle: string;
+  template: string;
+  colorScheme?: string;
+  device: 'mobile' | 'desktop';
+  siteId?: string;
+};
+
+export function trackQuoteFunnelStep(payload: QuoteFunnelPayload): void {
+  if (typeof window === 'undefined') return;
+
+  // Custom DOM event for telemetry & testing
+  try {
+    const event = new CustomEvent('lgq:quote-funnel', { detail: payload });
+    window.dispatchEvent(event);
+  } catch {
+    // ignore
+  }
+
+  // Google Analytics 4 (if loaded & consented)
+  const win = window as unknown as { gtag?: (...args: unknown[]) => void; fbq?: (...args: unknown[]) => void };
+  if (typeof win.gtag === 'function') {
+    try {
+      win.gtag('event', `quote_${payload.step}`, {
+        event_category: 'quote_intake',
+        form_style: payload.formStyle,
+        template: payload.template,
+        color_scheme: payload.colorScheme || 'default',
+        device_type: payload.device,
+        site_id: payload.siteId || '',
+      });
+    } catch {
+      // ignore
+    }
+  }
+
+  // Meta Pixel (if loaded & consented)
+  if (typeof win.fbq === 'function') {
+    try {
+      if (payload.step === 'form_started') {
+        win.fbq('trackCustom', 'QuoteFormStarted', { formStyle: payload.formStyle, template: payload.template });
+      } else if (payload.step === 'contact_submitted') {
+        win.fbq('track', 'Lead', { content_name: `Quote - ${payload.formStyle}`, value: 0, currency: 'USD' });
+      }
+    } catch {
+      // ignore
+    }
+  }
+}
+

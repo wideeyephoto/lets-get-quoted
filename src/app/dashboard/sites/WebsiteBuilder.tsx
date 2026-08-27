@@ -2110,7 +2110,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, mess
                 >
                   <div className={styles.formStylePicker} role="radiogroup" aria-label="Instant quote form appearance">
                     {QUOTE_FORM_STYLES.map((st) => {
-                      const selected = (siteContent.quoteFormStyle || 'glow') === st.key;
+                      const selected = (siteContent.quoteFormStyle || 'clean') === st.key;
                       return (
                         <button
                           type="button"
@@ -2127,7 +2127,10 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, mess
                             <div className={styles.formStyleMiniBtn} />
                           </div>
                           <div className={styles.formStyleInfo}>
-                            <strong>{st.label}</strong>
+                            <strong>
+                              {st.label}
+                              {st.badge && <span className={styles.formStyleBadge}>{st.badge}</span>}
+                            </strong>
                             <small>{st.desc}</small>
                           </div>
                         </button>
@@ -2259,33 +2262,30 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, mess
                       )}
                       <div className={styles.formField} id="bf-quote-form-style">
                         <span>Instant quote form appearance</span>
-                        <div className={styles.formStylePicker} role="radiogroup" aria-label="Instant quote form appearance">
-                          {QUOTE_FORM_STYLES.map((st) => {
-                            const selected = (siteContent.quoteFormStyle || 'glow') === st.key;
-                            return (
-                              <button
-                                type="button"
-                                key={st.key}
-                                role="radio"
-                                aria-checked={selected}
-                                className={`${styles.formStyleTile}${selected ? ` ${styles.formStyleTileOn}` : ''}`}
-                                onClick={() => updateSiteContent({ quoteFormStyle: st.key })}
-                              >
-                                <div className={styles.formStyleMiniCard} data-preview-style={st.key}>
-                                  <div className={styles.formStyleMiniBar} />
-                                  <div className={styles.formStyleMiniLine} />
-                                  <div className={styles.formStyleMiniInput} />
-                                  <div className={styles.formStyleMiniBtn} />
-                                </div>
-                                <div className={styles.formStyleInfo}>
-                                  <strong>{st.label}</strong>
-                                  <small>{st.desc}</small>
-                                </div>
-                              </button>
-                            );
-                          })}
+                        <div className={styles.formStyleLinkCard}>
+                          <div>
+                            <strong>
+                              {QUOTE_FORM_STYLES.find((s) => s.key === (siteContent.quoteFormStyle || 'clean'))?.label || 'Clean & Crisp'}
+                              {QUOTE_FORM_STYLES.find((s) => s.key === (siteContent.quoteFormStyle || 'clean'))?.badge && (
+                                <span className={styles.formStyleBadge}>
+                                  {QUOTE_FORM_STYLES.find((s) => s.key === (siteContent.quoteFormStyle || 'clean'))?.badge}
+                                </span>
+                              )}
+                            </strong>
+                            <small>{QUOTE_FORM_STYLES.find((s) => s.key === (siteContent.quoteFormStyle || 'clean'))?.desc || 'Clear and trustworthy — best for most businesses'}</small>
+                          </div>
+                          <button
+                            type="button"
+                            className={styles.formStyleLinkBtn}
+                            onClick={() => {
+                              setActiveTab('design');
+                              setOpenSection('quoteFormStyle');
+                            }}
+                          >
+                            Customize in Design →
+                          </button>
                         </div>
-                        <small className={styles.fieldHint}>Choose the visual look and framing of the estimate card on your homepage.</small>
+                        <small className={styles.fieldHint}>Visual styling and framing for the estimate card is configured under Brand &amp; Design.</small>
                       </div>
                       <div className={styles.contentSubhead}><strong>Thank-you video</strong><small>optional</small></div>
                       <IntroVideoField

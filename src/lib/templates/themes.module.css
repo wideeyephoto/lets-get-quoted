@@ -223,93 +223,77 @@
 .contactActions { display: flex; flex-wrap: wrap; align-items: center; gap: 1.25rem; }
 
 /* Hero quick-capture form — kept compact so it renders above the fold */
-.heroQuickForm { position: relative; z-index: 2; display: grid; gap: .65rem; width: min(400px, 100%); margin-top: 1.5rem; padding: 1.2rem 1.25rem 1.35rem; border-radius: var(--theme-radius, 10px); background: rgba(255,255,255,.97); color: #17140f; box-shadow: 0 20px 45px -18px rgba(0,0,0,.5); }
-/* Live, animated gradient border on the intake card — a thin rotating ring that
-   shimmers in a vibrant purple/blue gradient (indigo → royal blue → purple → electric cyan).
+.heroQuickForm { position: relative; z-index: 2; display: grid; gap: .65rem; width: min(400px, 100%); margin-top: 1.5rem; padding: 1.2rem 1.25rem 1.35rem; border-radius: var(--theme-radius, 10px); background: rgba(255,255,255,.97); color: #17140f; box-shadow: 0 14px 34px -10px rgba(0,0,0,.12); }
+/* Live, animated gradient border on the intake card — rotating ring dynamically
+   built from the site's accent color so it always harmonizes with the brand.
    The mask cuts out the centre so only the crisp 2px ring shows; @property
    lets the conic angle animate (degrades to a static ring where unsupported). */
 @property --lgqBorderAngle { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
-.heroQuickForm::before {
+.heroQuickForm[data-form-style='glow']::before {
   content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 2px;
-  background: conic-gradient(from var(--lgqBorderAngle), #6366f1, #3b82f6, #8b5cf6, #38bdf8, #a855f7, #2563eb, #6366f1);
+  background: conic-gradient(
+    from var(--lgqBorderAngle),
+    var(--theme-accent, #2563eb),
+    color-mix(in srgb, var(--theme-accent, #2563eb) 65%, #ffffff 35%),
+    color-mix(in srgb, var(--theme-accent, #2563eb) 85%, #000000 15%),
+    color-mix(in srgb, var(--theme-accent, #2563eb) 45%, #ffffff 55%),
+    color-mix(in srgb, var(--theme-accent, #2563eb) 90%, #000000 10%),
+    var(--theme-accent, #2563eb)
+  );
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); mask-composite: exclude;
   animation: lgqBorderSpin 4s linear infinite; pointer-events: none;
 }
 @keyframes lgqBorderSpin { to { --lgqBorderAngle: 360deg; } }
-@media (prefers-reduced-motion: reduce) { .heroQuickForm::before { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .heroQuickForm[data-form-style='glow']::before { animation: none; } }
 
 /* --- Instant Quote Form 4 Appearance Styles ------------------------------- */
 
-/* 1. Electric Glow (glow — default) */
-.heroQuickForm[data-form-style='glow'],
+/* 1. Clean & Crisp (clean — default across new sites) */
+.heroQuickForm[data-form-style='clean'],
 .heroQuickForm:not([data-form-style]) {
-  box-shadow: 0 20px 45px -18px rgba(0,0,0,.5), 0 0 28px -10px color-mix(in srgb, var(--theme-accent, #6366f1) 35%, transparent);
-}
-
-/* 2. Clean & Crisp (clean) */
-.heroQuickForm[data-form-style='clean'] {
   border: 1px solid color-mix(in srgb, currentColor 14%, #cbd5e1);
   background: #ffffff;
   box-shadow: 0 14px 34px -10px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.04);
 }
-.heroQuickForm[data-form-style='clean']::before {
+.heroQuickForm[data-form-style='clean']::before,
+.heroQuickForm:not([data-form-style])::before {
   content: none !important;
   display: none !important;
   animation: none !important;
 }
 .heroQuickForm[data-form-style='clean'] input,
 .heroQuickForm[data-form-style='clean'] select,
-.heroQuickForm[data-form-style='clean'] textarea {
+.heroQuickForm[data-form-style='clean'] textarea,
+.heroQuickForm:not([data-form-style]) input,
+.heroQuickForm:not([data-form-style]) select,
+.heroQuickForm:not([data-form-style]) textarea {
   border: 1px solid #d1d5db;
   background: #fbfbfc;
 }
 .heroQuickForm[data-form-style='clean'] input:focus,
 .heroQuickForm[data-form-style='clean'] select:focus,
-.heroQuickForm[data-form-style='clean'] textarea:focus {
+.heroQuickForm[data-form-style='clean'] textarea:focus,
+.heroQuickForm:not([data-form-style]) input:focus,
+.heroQuickForm:not([data-form-style]) select:focus,
+.heroQuickForm:not([data-form-style]) textarea:focus {
   border-color: var(--theme-accent, #2563eb);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--theme-accent, #2563eb) 22%, transparent);
 }
 
-/* 3. Frosted Glass (glass) */
-.heroQuickForm[data-form-style='glass'] {
-  background: rgba(255, 255, 255, 0.82);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.65);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85), 0 20px 50px -15px rgba(0, 0, 0, 0.28), 0 0 35px -10px color-mix(in srgb, var(--theme-accent, #2563eb) 28%, transparent);
-}
-.heroQuickForm[data-form-style='glass']::before {
-  content: none !important;
-  display: none !important;
-  animation: none !important;
-}
-.heroQuickForm[data-form-style='glass'] input,
-.heroQuickForm[data-form-style='glass'] select,
-.heroQuickForm[data-form-style='glass'] textarea {
-  background: rgba(255, 255, 255, 0.6);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.5);
-}
-.heroQuickForm[data-form-style='glass'] .heroFormChip {
-  background: rgba(255, 255, 255, 0.5);
-  border-color: rgba(255, 255, 255, 0.5);
-}
-
-/* 4. Bold Accent (bold) */
+/* 2. Bold Accent (bold) */
 .heroQuickForm[data-form-style='bold'] {
   position: relative;
   overflow: hidden;
-  border: 2px solid color-mix(in srgb, var(--theme-accent) 45%, #cbd5e1);
-  box-shadow: 0 18px 45px -12px rgba(0, 0, 0, 0.26), 0 4px 14px -3px color-mix(in srgb, var(--theme-accent) 30%, transparent);
+  border: 1.5px solid color-mix(in srgb, var(--theme-accent) 35%, #cbd5e1);
+  box-shadow: 0 14px 36px -12px rgba(0, 0, 0, 0.18), 0 3px 10px -2px color-mix(in srgb, var(--theme-accent) 22%, transparent);
   background: #ffffff;
 }
 .heroQuickForm[data-form-style='bold']::before {
   content: '' !important;
   position: absolute !important;
   inset: 0 0 auto 0 !important;
-  height: 5px !important;
+  height: 4px !important;
   padding: 0 !important;
   border-radius: var(--theme-radius, 10px) var(--theme-radius, 10px) 0 0 !important;
   background: var(--theme-accent) !important;
@@ -321,11 +305,47 @@
 .heroQuickForm[data-form-style='bold'] input,
 .heroQuickForm[data-form-style='bold'] select,
 .heroQuickForm[data-form-style='bold'] textarea {
-  border: 2px solid color-mix(in srgb, var(--theme-accent) 25%, #94a3b8);
+  border: 1.5px solid color-mix(in srgb, var(--theme-accent) 20%, #94a3b8);
   font-weight: 600;
 }
 .heroQuickForm[data-form-style='bold'] button[type='submit'] {
-  box-shadow: 0 4px 0 color-mix(in srgb, var(--theme-accent) 70%, #000);
+  box-shadow: 0 3px 0 color-mix(in srgb, var(--theme-accent) 65%, #000);
+}
+
+/* 3. Frosted Glass (glass) */
+.heroQuickForm[data-form-style='glass'] {
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1.5px solid color-mix(in srgb, var(--theme-accent, #2563eb) 28%, rgba(255, 255, 255, 0.65));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 18px 45px -15px rgba(0, 0, 0, 0.22), 0 0 30px -10px color-mix(in srgb, var(--theme-accent, #2563eb) 25%, transparent);
+}
+@supports not (backdrop-filter: blur(10px)) {
+  .heroQuickForm[data-form-style='glass'] {
+    background: rgba(255, 255, 255, 0.96);
+  }
+}
+.heroQuickForm[data-form-style='glass']::before {
+  content: none !important;
+  display: none !important;
+  animation: none !important;
+}
+.heroQuickForm[data-form-style='glass'] input,
+.heroQuickForm[data-form-style='glass'] select,
+.heroQuickForm[data-form-style='glass'] textarea {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+}
+.heroQuickForm[data-form-style='glass'] .heroFormChip {
+  background: rgba(255, 255, 255, 0.6);
+  border-color: rgba(255, 255, 255, 0.6);
+}
+
+/* 4. Electric Glow (glow) */
+.heroQuickForm[data-form-style='glow'] {
+  box-shadow: 0 20px 45px -18px rgba(0,0,0,.5), 0 0 28px -10px color-mix(in srgb, var(--theme-accent, #2563eb) 35%, transparent);
 }
 
 /* Dark mode and dark-theme specific overrides for all 4 form styles */
@@ -509,10 +529,12 @@
 
 /* Progressive micro-stepper across the top of Smart Intake */
 .heroFormStepper { display: flex; align-items: center; justify-content: space-between; gap: .35rem; padding: .4rem .65rem; margin-bottom: .35rem; background: color-mix(in srgb, var(--theme-accent) 8%, currentColor 4%); border: 1px solid color-mix(in srgb, var(--theme-accent) 25%, currentColor 15%); border-radius: calc(var(--theme-radius, 8px) * .5); font-size: .72rem; font-weight: 700; color: color-mix(in srgb, currentColor 68%, transparent); }
-.heroFormStepDot { display: inline-flex; align-items: center; gap: .25rem; color: color-mix(in srgb, currentColor 65%, transparent); transition: color .2s ease; }
+.heroFormStepDot { display: inline-flex; align-items: center; gap: .3rem; color: color-mix(in srgb, currentColor 65%, transparent); transition: color .2s ease; }
 .heroFormStepDotActive { color: var(--theme-accent, #2563eb); font-weight: 800; }
-.heroFormStepDotComplete { color: #16a34a; }
-.heroFormStepNum { display: inline-grid; place-items: center; width: 1.15rem; height: 1.15rem; border-radius: 50%; background: currentColor; color: #fff; font-size: .65rem; font-weight: 900; }
+.heroFormStepDotComplete { color: #16a34a; font-weight: 700; }
+.heroFormStepNum { display: inline-grid; place-items: center; width: 1.25rem; height: 1.25rem; border-radius: 50%; background: color-mix(in srgb, currentColor 14%, transparent); color: currentColor; border: 1px solid color-mix(in srgb, currentColor 22%, transparent); font-size: .65rem; font-weight: 900; line-height: 1; transition: all .2s ease; }
+.heroFormStepDotActive .heroFormStepNum { background: var(--theme-accent, #2563eb); color: var(--theme-on-accent, #ffffff); border-color: transparent; box-shadow: 0 1px 4px color-mix(in srgb, var(--theme-accent, #2563eb) 40%, transparent); }
+.heroFormStepDotComplete .heroFormStepNum { background: #16a34a; color: #ffffff; border-color: transparent; }
 .heroFormStepDivider { flex: 1; height: 1.5px; background: color-mix(in srgb, currentColor 20%, transparent); }
 
 /* Instant Booking CTA & Trust Callout */
@@ -1255,16 +1277,18 @@
 .vistaBrandMark { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 9px; background: var(--theme-accent); color: var(--theme-on-accent, #111); flex: none; }
 .headerPhone { justify-self: end; font-family: var(--font-mono); font-size: .82rem; font-weight: 500; letter-spacing: .04em; transition: color .2s ease; }
 .headerPhone:hover { color: var(--theme-accent); }
-.forgeHero { position: relative; overflow: hidden; min-height: min(850px, 92svh); display: flex; align-items: flex-end; padding: clamp(7rem, 14vw, 12rem) 6vw 8vh; }
+.forgeHero { position: relative; overflow: hidden; min-height: min(850px, 92svh); display: flex; align-items: center; padding: clamp(6.5rem, 10vw, 8.5rem) 6vw clamp(3rem, 6vh, 4.5rem); }
 .heroImage { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; animation: heroKenBurns 22s ease-in-out infinite alternate; }
 /* Slow Ken Burns push on hero photography (Forge/Vista full-bleed, Guild framed).
    Transform-only so it can't trigger the throttled-iframe opacity stall. */
 @keyframes heroKenBurns { from { transform: scale(1.03); } to { transform: scale(1.12); } }
 @media (prefers-reduced-motion: reduce) { .heroImage, .guildHeroFrame > img { animation: none; } }
-.forgeScrim { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(10,10,9,.94) 0%, rgba(10,10,9,.58) 52%, rgba(10,10,9,.16) 100%), linear-gradient(0deg, rgba(10,10,9,.65) 0%, rgba(10,10,9,.2) 50%, transparent 100%), repeating-linear-gradient(90deg, rgba(243,240,231,.035) 0 1px, transparent 1px 88px); }
-.forgeHeroCopy { position: relative; z-index: 1; width: min(830px, 82vw); }
-.forgeHeroCopy h1 { max-width: 11ch; margin-bottom: 1.25rem; font-family: var(--theme-display); font-size: clamp(3.35rem, 9vw, 7.5rem); font-weight: 900; line-height: .95; letter-spacing: -.01em; text-transform: uppercase; }
-.heroText { max-width: 36rem; margin-bottom: 2rem; color: rgba(255,255,255,.86); font-size: 1.25rem; line-height: 1.55; }
+.forgeScrim { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(10,10,9,.94) 0%, rgba(10,10,9,.68) 52%, rgba(10,10,9,.25) 100%), linear-gradient(0deg, rgba(10,10,9,.65) 0%, rgba(10,10,9,.2) 50%, transparent 100%), repeating-linear-gradient(90deg, rgba(243,240,231,.035) 0 1px, transparent 1px 88px); }
+.forgeHeroCopy { position: relative; z-index: 1; width: 100%; max-width: 1320px; display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(360px, 420px); gap: clamp(2rem, 4.5vw, 4rem); align-items: center; }
+.forgeHeroTextColumn { display: flex; flex-direction: column; }
+.forgeHeroTextColumn h1, .forgeHeroCopy h1 { max-width: 11ch; margin-bottom: 1.1rem; font-family: var(--theme-display); font-size: clamp(2.9rem, 6vw, 5.4rem); font-weight: 900; line-height: .95; letter-spacing: -.01em; text-transform: uppercase; }
+.forgeHeroTextColumn .heroText, .forgeHeroCopy .heroText { max-width: 34rem; margin-bottom: 1.5rem; color: rgba(255,255,255,.86); font-size: 1.18rem; line-height: 1.5; }
+.forgeHeroCopy .heroQuickForm { margin-top: 0; justify-self: end; width: 100%; max-width: 420px; }
 .forgeIndex { position: absolute; z-index: 1; right: 4vw; bottom: 5vh; font-family: var(--font-mono); font-size: .78rem; font-weight: 500; letter-spacing: .1em; color: rgba(255,255,255,.6); }
 .forgeTrust { display: grid; grid-template-columns: repeat(3, 1fr); padding: 0 4vw; border-block: 1px solid var(--c-line); }
 .forgeTrust > div { position: relative; min-height: 124px; display: flex; flex-direction: column; justify-content: center; gap: .45rem; padding: 2.25rem 2vw 1.75rem; border-right: 1px solid var(--c-line); transition: background .2s ease, border-color .2s ease; }
@@ -1611,10 +1635,11 @@
   .navLinks { display: none; }
   .forgeHeader, .guildHeader, .vistaHeader { grid-template-columns: 1fr auto; padding-inline: 1.25rem; }
   .headerPhone, .guildQuote, .vistaMenu { grid-column: 2; }
-  .forgeHero { min-height: 78svh; padding: 7rem 1.25rem 3rem; }
-  .forgeHeroCopy { width: 100%; }
-  .forgeHeroCopy h1 { font-size: 3.35rem; line-height: .9; }
-  .heroText { font-size: 1rem; }
+  .forgeHero { min-height: 75svh; padding: 6.5rem 1.25rem 2.5rem; align-items: flex-end; }
+  .forgeHeroCopy { display: flex; flex-direction: column; width: 100%; gap: 1rem; }
+  .forgeHeroCopy .heroQuickForm { margin-top: 1rem; width: 100%; max-width: 100%; }
+  .forgeHeroTextColumn h1, .forgeHeroCopy h1 { font-size: 3.25rem; line-height: .9; margin-bottom: .85rem; }
+  .forgeHeroTextColumn .heroText, .forgeHeroCopy .heroText { font-size: 1rem; margin-bottom: 1rem; }
   .forgeIndex { display: none; }
   .forgeTrust { grid-template-columns: 1fr; padding: 0; }
   .forgeTrust > div { min-height: 92px; padding-inline: 1.25rem; border-right: 0; border-bottom: 1px solid #353531; }

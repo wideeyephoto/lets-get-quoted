@@ -59,11 +59,13 @@ export default function ForgeTemplate({ site }: TemplateProps) {
         <HeroImageCycle images={getHeroImages(site.content, heroImage)} video={getHeroVideo(site.content)} className={styles.heroImage} alt="Home construction work" />
         <div className={styles.forgeScrim} />
         <div className={styles.forgeHeroCopy}>
-          <p className={styles.kicker} data-edit="heroEyebrow">{heroEyebrow || 'Done right. Every time.'}</p>
-          <h1>{site.headline || 'Serious work. Solid results.'}</h1>
-          <p className={styles.heroText}>{site.tagline || `Trusted service across ${site.service_area || 'your community'}.`}</p>
+          <div className={styles.forgeHeroTextColumn}>
+            <p className={styles.kicker} data-edit="heroEyebrow">{heroEyebrow || 'Done right. Every time.'}</p>
+            <h1>{site.headline || 'Serious work. Solid results.'}</h1>
+            <p className={styles.heroText}>{site.tagline || `Trusted service across ${site.service_area || 'your community'}.`}</p>
+            <SiteProofStrip site={site} />
+          </div>
           <HeroQuickForm site={site} />
-          <SiteProofStrip site={site} />
         </div>
         {heroBadge && (
           <div className={styles.forgeBadge} data-parallax="0.12" data-edit="heroBadge">

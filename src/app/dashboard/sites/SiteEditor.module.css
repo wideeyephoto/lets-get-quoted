@@ -1485,3 +1485,57 @@ a.blogGenerateBtn { display: block; text-align: center; text-decoration: none; l
   color: var(--muted-2);
   line-height: 1.35;
 }
+
+.formStyleBadge {
+  display: inline-block;
+  margin-left: .45rem;
+  font-size: .65rem;
+  font-weight: 700;
+  padding: .12rem .4rem;
+  border-radius: 4px;
+  background: color-mix(in srgb, #16a34a 18%, transparent);
+  color: #16a34a;
+  border: 1px solid color-mix(in srgb, #16a34a 35%, transparent);
+  vertical-align: middle;
+}
+
+.formStyleLinkCard {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: .75rem .95rem;
+  border-radius: 10px;
+  background: rgba(var(--tint), .04);
+  border: 1px solid var(--edge-t14);
+  margin-top: .4rem;
+}
+.formStyleLinkCard strong {
+  display: block;
+  font-size: .88rem;
+  font-weight: 700;
+  color: var(--text);
+}
+.formStyleLinkCard small {
+  display: block;
+  font-size: .75rem;
+  color: var(--muted-2);
+  margin-top: .15rem;
+}
+.formStyleLinkBtn {
+  font-size: .78rem;
+  font-weight: 700;
+  padding: .45rem .85rem;
+  border-radius: 8px;
+  background: color-mix(in srgb, #ff7a21 12%, transparent);
+  color: #ff7a21;
+  border: 1px solid color-mix(in srgb, #ff7a21 35%, transparent);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background .15s ease, border-color .15s ease;
+}
+.formStyleLinkBtn:hover {
+  background: color-mix(in srgb, #ff7a21 22%, transparent);
+  border-color: #ff7a21;
+}
+

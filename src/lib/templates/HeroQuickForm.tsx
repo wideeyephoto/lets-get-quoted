@@ -11,6 +11,7 @@ import { HoneypotField } from '@/components/honeypot-field';
 import { DEFAULT_FULLY_BOOKED_MESSAGE, getEstimateButtonLabel, getPublishedRatingBadge, getSiteContent, isFullyBookedActive } from '@/lib/site-content';
 import type { Site } from '@/lib/sites';
 import { getOrCreateAiIntakeThread } from '@/lib/ai-intake-thread';
+import { trackQuoteFunnelStep } from '@/lib/analytics';
 import IntroVideo from './IntroVideo';
 import styles from './themes.module.css';
 
@@ -129,8 +130,10 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
   const formRef = useRef<HTMLFormElement>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
   const startedAt = useRef(Date.now());
+  const hasImpressionTrackedRef = useRef(false);
+  const hasStartedTrackedRef = useRef(false);
   const siteContent = getSiteContent(site.content);
-  const formStyle = siteContent.quoteFormStyle || 'glow';
+  const formStyle = siteContent.quoteFormStyle || 'clean';
   const quoteForm = siteContent.quoteForm;
   const emailRequired = quoteForm.emailRequired;
   const estimateLabel = getEstimateButtonLabel(quoteForm);
@@ -186,6 +189,35 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
   const [chatAnswer, setChatAnswer] = useState('');
   const [chatResponseId, setChatResponseId] = useState('');
   const [chatTurn, setChatTurn] = useState(0);
+
+  // Track form impression on mount
+  useEffect(() => {
+    if (!hasImpressionTrackedRef.current) {
+      hasImpressionTrackedRef.current = true;
+      trackQuoteFunnelStep({
+        step: 'form_impression',
+        formStyle,
+        template: (site as unknown as { template?: string }).template || 'forge',
+        colorScheme: siteContent.colorScheme,
+        device: typeof window !== 'undefined' && window.innerWidth <= 768 ? 'mobile' : 'desktop',
+        siteId: site.id,
+      });
+    }
+  }, [formStyle, site, siteContent.colorScheme]);
+
+  function markFormStarted() {
+    if (!hasStartedTrackedRef.current) {
+      hasStartedTrackedRef.current = true;
+      trackQuoteFunnelStep({
+        step: 'form_started',
+        formStyle,
+        template: (site as unknown as { template?: string }).template || 'forge',
+        colorScheme: siteContent.colorScheme,
+        device: typeof window !== 'undefined' && window.innerWidth <= 768 ? 'mobile' : 'desktop',
+        siteId: site.id,
+      });
+    }
+  }
 
   // Sync across duplicate forms on the same page (e.g. hero and footer).
   useEffect(() => {
@@ -409,10 +441,14 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
       setStatus({ tone: 'error', text: "Tell us what you need done." });
       return;
     }
-    if (askLocation && !location.trim()) {
-      setStatus({ tone: 'error', text: 'Add the town or city where the work is so we can confirm we serve your area.' });
-      return;
-    }
+    trackQuoteFunnelStep({
+      step: 'first_step_completed',
+      formStyle,
+      template: (site as unknown as { template?: string }).template || 'forge',
+      colorScheme: siteContent.colorScheme,
+      device: typeof window !== 'undefined' && window.innerWidth <= 768 ? 'mobile' : 'desktop',
+      siteId: site.id,
+    });
     setStatus(null);
     setIsClassifying(true);
     try {
@@ -746,6 +782,15 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
       const result = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(result.error || 'Unable to send your request.');
 
+      trackQuoteFunnelStep({
+        step: 'contact_submitted',
+        formStyle,
+        template: (site as unknown as { template?: string }).template || 'forge',
+        colorScheme: siteContent.colorScheme,
+        device: typeof window !== 'undefined' && window.innerWidth <= 768 ? 'mobile' : 'desktop',
+        siteId: site.id,
+      });
+
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('lgq:lead-submitted', { detail: { siteId: site.id } }));
       }
@@ -826,7 +871,9 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
 
       {step === 'describe' && (
         <div className={styles.heroFormStep} key="describe">
-          <h2 className={styles.heroFormTitle}>{estimateLabel}</h2>
+          <h2 className={styles.heroFormTitle}>
+            {smartIntakeActive ? (quoteForm.formHeading?.trim() || 'Get a ballpark estimate') : estimateLabel}
+          </h2>
           {isEmergency && (
             <div className={styles.heroFormEmergencyAlert} role="alert">
               <span aria-hidden="true">🚨</span>
@@ -841,7 +888,11 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
               </div>
             </div>
           )}
-          <p className={styles.heroFormNote}>Tell us about the job. We may ask up to {MAX_INTAKE_QUESTIONS} quick questions, then collect contact details before showing your range.</p>
+          <p className={styles.heroFormNote}>
+            {smartIntakeActive
+              ? 'Tell us what you need. We’ll ask up to 3 quick questions and show a price range—usually in about a minute.'
+              : 'Tell us about the job and we’ll get back to you as soon as possible with a personalized quote.'}
+          </p>
           {avgReplyMs && <span className={styles.heroFormReplyChip}><span aria-hidden="true">⚡</span> Typically replies within {formatReplyTime(avgReplyMs)}</span>}
           <textarea
             aria-label="Describe your project"
@@ -852,7 +903,10 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
             aria-invalid={status?.tone === 'error' ? 'true' : undefined}
             aria-describedby={status ? 'hqf-status' : undefined}
             value={description}
-            onChange={(event) => setDescription(event.target.value)}
+            onChange={(event) => {
+              markFormStarted();
+              setDescription(event.target.value);
+            }}
             onKeyDown={(event) => {
               if (event.key === 'Enter' && !event.shiftKey) {
                 event.preventDefault();
@@ -861,57 +915,9 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
             }}
           />
 
-          <div className={styles.heroFormPhotoRow} style={{ marginTop: '0.4rem', marginBottom: '0.6rem' }}>
-            <input
-              ref={photoInputRef}
-              className={styles.heroFormPhotoInput}
-              tabIndex={-1}
-              aria-hidden="true"
-              type="file"
-              accept="image/jpeg,image/png,image/webp,image/avif,video/mp4,video/quicktime,video/webm"
-              multiple
-              onChange={(event) => addPhotos(event.currentTarget.files ?? [])}
-            />
-            <button type="button" className={styles.heroFormPhotoButton} onClick={() => photoInputRef.current?.click()} disabled={selectedPhotos.length >= MAX_PHOTOS}>
-              {selectedPhotos.length > 0 ? `📷 Photos/Video attached (${selectedPhotos.length}/${MAX_PHOTOS})` : '📷 Add photos / video for AI visual analysis'}
-            </button>
-            {selectedPhotos.length > 0 && (
-              <div className={styles.heroFormPhotoList}>
-                {selectedPhotos.map((photo, index) => (
-                  <span className={styles.heroFormPhotoChip} key={`${photo.name}-${photo.lastModified}-${index}`}>
-                    {photo.name.length > 16 ? `${photo.name.slice(0, 13)}\u2026` : photo.name}
-                    <button type="button" onClick={() => removePhoto(index)} aria-label={`Remove ${photo.name}`}>×</button>
-                  </span>
-                ))}
-              </div>
-            )}
-            {photoQualityWarning && (
-              <p className={styles.heroFormPhotoWarning}>
-                {photoQualityWarning}
-              </p>
-            )}
-          </div>
-
-          {askLocation && (
-            <Field icon="pin" label="Town or city where the work is" filled={Boolean(location.trim())}>
-              <input
-                placeholder={locationPlaceholder}
-                autoComplete="address-level2"
-                maxLength={80}
-                required={!demo}
-                aria-invalid={status?.tone === 'error' ? 'true' : undefined}
-                aria-describedby={status ? 'hqf-status' : undefined}
-                value={location}
-                onChange={(event) => setLocation(event.target.value)}
-              />
-            </Field>
-          )}
-          {askLocation && location.trim() && !/^\d{5}(?:-\d{4})?$/.test(location.trim()) && configuredCities.length > 0 && matchesServedCity(location, configuredCities) === false && (
-            <p className={styles.heroFormFitNote}>
-              Heads up: <strong>{location.trim()}</strong> appears outside our primary service area. Travel fees or limited availability may apply.
-            </p>
-          )}
-          <button type="submit" disabled={isClassifying}>{isClassifying ? thinking : 'Continue'}</button>
+          <button type="submit" disabled={isClassifying}>
+            {isClassifying ? thinking : (smartIntakeActive ? 'Start my estimate' : 'Continue')}
+          </button>
           {isEmergency && !isClassifying && (
             <button
               type="button"
@@ -937,7 +943,9 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
 
       {step === 'qa' && (
         <div className={styles.heroFormStep} key="qa">
-          <h2 className={styles.heroFormTitle}>{estimateLabel}</h2>
+          <h2 className={styles.heroFormTitle}>
+            {smartIntakeActive ? (quoteForm.formHeading?.trim() || 'Get a ballpark estimate') : estimateLabel}
+          </h2>
           <p className={styles.heroFormQaMeta}>Question {chatTurn} <span>· up to {MAX_INTAKE_QUESTIONS} total</span></p>
           {visualObservation && (
             <p className={styles.heroFormFitNote} style={{ marginTop: '0.2rem', marginBottom: '0.5rem' }}>
@@ -953,6 +961,7 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
             aria-hidden="true"
             type="file"
             accept="image/jpeg,image/png,image/webp,image/avif,video/mp4,video/quicktime,video/webm"
+            multiple
             onChange={(event) => {
               if (event.currentTarget.files?.length) {
                 addPhotos(event.currentTarget.files);
@@ -960,6 +969,35 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
               }
             }}
           />
+
+          <div className={styles.heroFormPhotoRow} style={{ marginTop: '0.4rem', marginBottom: '0.4rem' }}>
+            <button
+              type="button"
+              className={styles.heroFormPhotoButton}
+              onClick={() => qaPhotoInputRef.current?.click()}
+              disabled={selectedPhotos.length >= MAX_PHOTOS}
+            >
+              {selectedPhotos.length > 0 ? `📷 Photos/Video attached (${selectedPhotos.length}/${MAX_PHOTOS})` : '📷 Add a photo or short video (optional)'}
+            </button>
+            <small style={{ display: 'block', marginTop: '0.2rem', fontSize: '0.72rem', color: 'color-mix(in srgb, currentColor 65%, transparent)' }}>
+              Helps us estimate more accurately
+            </small>
+            {selectedPhotos.length > 0 && (
+              <div className={styles.heroFormPhotoList} style={{ marginTop: '0.35rem' }}>
+                {selectedPhotos.map((photo, index) => (
+                  <span className={styles.heroFormPhotoChip} key={`qa-sel-${photo.name}-${index}`}>
+                    {photo.name.length > 16 ? `${photo.name.slice(0, 13)}\u2026` : photo.name}
+                    <button type="button" onClick={() => removePhoto(index)} aria-label={`Remove ${photo.name}`}>×</button>
+                  </span>
+                ))}
+              </div>
+            )}
+            {photoQualityWarning && (
+              <p className={styles.heroFormPhotoWarning}>
+                {photoQualityWarning}
+              </p>
+            )}
+          </div>
 
           {chatPhotoPrompt && (
             <div className={styles.heroFormQaPhotoPrompt}>
@@ -986,27 +1024,16 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
             </div>
           )}
 
-          {photoQualityWarning && (
-            <p className={styles.heroFormPhotoWarning} style={{ margin: '0 0 0.5rem' }}>
-              {photoQualityWarning}
-            </p>
-          )}
-
           <input
             aria-labelledby="hqf-question"
-            placeholder={qaFollowUpPhotos.length > 0 ? "Add any details (or leave blank to submit photo)" : "Your answer"}
+            placeholder={qaFollowUpPhotos.length > 0 || selectedPhotos.length > 0 ? "Add any details (or leave blank to submit photos)" : "Your answer"}
             maxLength={300}
-            required={qaFollowUpPhotos.length === 0}
+            required={qaFollowUpPhotos.length === 0 && selectedPhotos.length === 0}
             value={chatAnswer}
             onChange={(event) => setChatAnswer(event.target.value)}
           />
           <button type="submit" disabled={isClassifying}>{isClassifying ? thinking : 'Next'}</button>
-          {/* Two different asks. This one still wants a number, so it costs an
-              AI call and is disabled while one is running. */}
           <button type="button" className={styles.heroFormRestart} onClick={skipToEstimate} disabled={isClassifying}>Skip the questions — show my ballpark →</button>
-          {/* This one wants out. No network, and deliberately only surfaced
-              while a call is in flight — that's when the wait it answers is
-              actually happening, and the step has enough buttons otherwise. */}
           {isClassifying && (
             <button type="button" className={styles.heroFormRestart} onClick={skipTheEstimate}>
               Taking too long? Just send my details →
@@ -1022,9 +1049,6 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
           {classicFallback && (
             <p className={styles.heroFormNote}>The instant estimate isn&apos;t available right now. Your project details are saved here—send the normal quote request and {site.company_name} can follow up directly.</p>
           )}
-          {/* The price already exists at this point — it is deliberately held
-              back until the details are in. Saying so plainly, and once, turns
-              the form from a toll gate into the last step of something. */}
           {smartIntakeActive && estimate ? (
             <div className={styles.heroFormReady}>
               <span className={styles.heroFormReadyMark} aria-hidden="true">✓</span>
@@ -1038,10 +1062,6 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
           )}
           <div className={styles.heroQuickFormRow}>
             <Field icon="user" label="Your name" filled={Boolean(name.trim())}>
-              {/* `required` is dropped in the preview along with the JS checks.
-                  Leaving it would hand the block to the BROWSER, which refuses
-                  to submit before onSubmit ever runs — the owner would click
-                  and get "Please fill out this field" with no way past it. */}
               <input name="name" placeholder="Jane Homeowner" autoComplete="name" maxLength={100} required={!demo} value={name} onChange={(event) => setName(event.target.value)} />
             </Field>
             <Field
@@ -1052,9 +1072,6 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
               <input
                 name="contact"
                 type={smartIntakeActive ? 'tel' : emailRequired ? 'email' : 'text'}
-                // An example, not the label again. A placeholder that repeats
-                // the field name is a wasted line and tells nobody what shape
-                // the answer should be.
                 placeholder={smartIntakeActive ? '(248) 555-0199' : emailRequired ? 'you@email.com' : '(248) 555-0199'}
                 autoComplete={smartIntakeActive ? 'tel' : emailRequired ? 'email' : 'tel'}
                 maxLength={160}
@@ -1070,6 +1087,25 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
               />
             </Field>
           </div>
+          {askLocation && (
+            <Field icon="pin" label="Town or city where the work is" filled={Boolean(location.trim())}>
+              <input
+                placeholder={locationPlaceholder}
+                autoComplete="address-level2"
+                maxLength={80}
+                required={!demo}
+                aria-invalid={status?.tone === 'error' ? 'true' : undefined}
+                aria-describedby={status ? 'hqf-status' : undefined}
+                value={location}
+                onChange={(event) => setLocation(event.target.value)}
+              />
+            </Field>
+          )}
+          {askLocation && location.trim() && !/^\d{5}(?:-\d{4})?$/.test(location.trim()) && configuredCities.length > 0 && matchesServedCity(location, configuredCities) === false && (
+            <p className={styles.heroFormFitNote}>
+              Heads up: <strong>{location.trim()}</strong> appears outside our primary service area. Travel fees or limited availability may apply.
+            </p>
+          )}
           {askTimeline && (
             <div className={styles.heroFormChoice} role="group" aria-label="When do you need this done?">
               <span className={styles.heroFormChoiceLabel}>When do you need this done?</span>

@@ -43,18 +43,17 @@ describe('bath-to-shower mock product site', () => {
     expect(reel).not.toContain('<button className={styles.approveButton}');
   });
 
-  it('covers the complete AI intake story in ten slides', () => {
-    expect(intakeSlideshow).toContain('General Contracting preset loaded');
-    expect(intakeSlideshow).toContain('AI phone line');
-    expect(intakeSlideshow).toContain('MULTIMODAL VISION');
+  it('covers the complete AI intake story in eight slides', () => {
+    expect(intakeSlideshow).toContain('AI PHONE');
+    expect(intakeSlideshow).toContain('JOB INTELLIGENCE');
     expect(intakeSlideshow).toContain('ADAPTIVE QUESTIONS');
-    expect(intakeSlideshow).toContain('LEAD INTELLIGENCE');
-    expect(intakeSlideshow).toContain('THE TRUST TRANSFER');
-    expect(intakeSlideshow).toContain('PREMIUM LEAD SIGNALS');
-    expect(intakeSlideshow).toContain('+15–20%');
-    expect(intakeSlideshow).toContain('BCG–Altagamma, 2024');
+    expect(intakeSlideshow).toContain('AI QUOTE DRAFT');
+    expect(intakeSlideshow).toContain('CONTRACTOR REVIEW');
+    expect(intakeSlideshow).toContain('GUARDED BALLPARK');
     expect(intakeSlideshow).toContain('BOOKING HANDOFF');
-    expect((intakeSlideshow.match(/function \w+Slide\(/g) ?? [])).toHaveLength(10);
+    expect((intakeSlideshow.match(/function \w+Slide\(/g) ?? [])).toHaveLength(8);
+    expect(mockSite).toContain('Watch the 34-sec journey');
+    expect(mockSite).toContain('Replay all 8 slides');
   });
 
   it('opens on the homeowner photo story and keeps booking as the finale', () => {
@@ -62,8 +61,23 @@ describe('bath-to-shower mock product site', () => {
 
     expect(sequence.indexOf('MediaSlide')).toBeLessThan(sequence.indexOf('PhotoCoachSlide'));
     expect(sequence.indexOf('PhotoCoachSlide')).toBeLessThan(sequence.indexOf('VisionSlide'));
-    expect(sequence.indexOf('RankingSlide')).toBeLessThan(sequence.indexOf('VoiceSlide'));
-    expect(sequence.indexOf('VoiceSlide')).toBeLessThan(sequence.indexOf('PresetSlide'));
-    expect(sequence.indexOf('PresetSlide')).toBeLessThan(sequence.indexOf('BookingSlide'));
+    expect(sequence.indexOf('VisionSlide')).toBeLessThan(sequence.indexOf('QuestionsSlide'));
+    expect(sequence.indexOf('QuestionsSlide')).toBeLessThan(sequence.indexOf('QuoteDraftSlide'));
+    expect(sequence.indexOf('QuoteDraftSlide')).toBeLessThan(sequence.indexOf('ReviewSlide'));
+    expect(sequence.indexOf('ReviewSlide')).toBeLessThan(sequence.indexOf('TrustTransferSlide'));
+    expect(sequence.indexOf('TrustTransferSlide')).toBeLessThan(sequence.indexOf('BookingSlide'));
+  });
+
+  it('shows intake details filling a sourced quote before contractor approval', () => {
+    expect(intakeSlideshow).toContain('Build the first draft in one click.');
+    expect(intakeSlideshow).toContain('60&quot; alcove conversion');
+    expect(intakeSlideshow).toContain('Low-threshold shower base');
+    expect(intakeSlideshow).toContain('PRICE BOOK');
+    expect(intakeSlideshow).toContain('PAST JOBS');
+    expect(intakeSlideshow).toContain('SUPPLIER REF');
+    expect(intakeSlideshow).toContain('Draft total <b>$8,420</b>');
+    expect(intakeSlideshow).toContain('Nothing goes out without you.');
+    expect(intakeSlideshow).toContain('2 prices need review');
+    expect(intakeSlideshow).not.toContain('LIVE HOME DEPOT');
   });
 });

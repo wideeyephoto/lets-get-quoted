@@ -27,8 +27,8 @@ const workflowSteps = [
   },
   {
     number: '04',
-    title: 'Transfer the trust—not just the lead',
-    copy: 'A guarded ballpark creates confidence now; the full context lets the contractor own what happens next.',
+    title: 'Draft, review, and book',
+    copy: 'One click builds the quote draft. You control every number before the homeowner sees a guarded ballpark.',
   },
 ] as const;
 
@@ -59,12 +59,12 @@ export default function BathContractorMockSite() {
             <span className={styles.eyebrow}>YOUR WEBSITE MAKES THE INTRODUCTION</span>
             <h1>Let AI impress. You build the relationship.</h1>
             <p className={styles.heroLead}>
-              Your site listens, scopes, and gives a guarded ballpark while interest is high—then
-              hands you a homeowner who already feels understood.
+              The intake sees the job, asks only what matters, and builds a review-ready quote
+              draft from the details—so you can answer fast without giving up control.
             </p>
 
             <div className={styles.heroActions}>
-              <a className={styles.primaryButton} href="#reel">Watch the 48-sec journey <span>▶</span></a>
+              <a className={styles.primaryButton} href="#reel">Watch the 34-sec journey <span>▶</span></a>
               <a className={styles.textLink} href="#workflow">Why the estimate works <span>↓</span></a>
             </div>
 
@@ -81,7 +81,7 @@ export default function BathContractorMockSite() {
                 <span>LIVE AI INTAKE · HOMEPAGE HERO CONCEPT</span>
                 <strong>One lead—from first click to booked visit</strong>
               </div>
-              <span className={styles.duration}>00:48</span>
+              <span className={styles.duration}>00:34</span>
             </div>
             <AiIntakeSlideshow autoStart />
             <p className={styles.reelNote}>
@@ -97,16 +97,16 @@ export default function BathContractorMockSite() {
           <i />
           <span>Adaptive scoping questions</span>
           <i />
-          <span>Guardrails and booking handoff</span>
+          <span>AI quote drafting and review</span>
         </section>
 
         <section className={styles.workflowSection} id="workflow">
           <div className={styles.sectionHeading}>
             <span className={styles.eyebrow}>ONE CONTINUOUS STORY</span>
-            <h2>Ten new intake wins. One homeowner journey.</h2>
+            <h2>Eight intake moments. One homeowner journey.</h2>
             <p>
-              The slideshow follows one bath-to-shower request from setup and first contact
-              through visual analysis, a research-backed trust moment, lead priority, and booking.
+              The slideshow follows one bath-to-shower request from the first useful photo
+              through visual analysis, a filled quote draft, contractor review, and booking.
             </p>
           </div>
 
@@ -163,9 +163,9 @@ export default function BathContractorMockSite() {
           <div>
             <span className={styles.eyebrow}>FROM LEAD TO BOOKED</span>
             <h2>Let the technology impress. Let the contractor connect.</h2>
-            <p>Ten slides. One trust-building journey from first impression to booked visit.</p>
+            <p>Eight slides. One trust-building journey from first impression to booked visit.</p>
           </div>
-          <a className={styles.quoteButton} href="#reel">Replay all 10 slides <span>↗</span></a>
+          <a className={styles.quoteButton} href="#reel">Replay all 8 slides <span>↗</span></a>
         </section>
       </main>
 

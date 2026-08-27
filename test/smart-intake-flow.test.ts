@@ -21,13 +21,13 @@ describe('Smart Intake homeowner flow', () => {
     expect(CLASSIFIER).toContain('const questionsRemaining = maxQuestions - turn');
   });
 
-  it('collects location on the description screen before classification', () => {
+  it('collects location progressively on the contact screen rather than blocking step 1', () => {
     const describe = HERO.indexOf("{step === 'describe' && (");
-    const qa = HERO.indexOf("{step === 'qa' && (", describe + 1);
+    const contact = HERO.indexOf("{step === 'contact' && (", describe + 1);
     const location = HERO.indexOf('label="Town or city where the work is"');
     expect(describe).toBeGreaterThanOrEqual(0);
-    expect(location).toBeGreaterThan(describe);
-    expect(location).toBeLessThan(qa);
+    expect(contact).toBeGreaterThan(describe);
+    expect(location).toBeGreaterThan(contact);
     expect(HERO).toContain('location: location.trim()');
   });
 

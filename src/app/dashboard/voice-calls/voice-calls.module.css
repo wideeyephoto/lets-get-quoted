@@ -34,6 +34,67 @@
   margin: 0;
 }
 
+.mainNavTabs {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem;
+  background: var(--bg-card, rgba(255, 255, 255, 0.03));
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
+  border-radius: 12px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.mainNavTabs::-webkit-scrollbar {
+  display: none;
+}
+
+.mainNavTab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1.15rem;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--mute-t62, #94a3b8);
+  text-decoration: none;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+
+.mainNavTab:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.mainNavTabActive {
+  color: #fff;
+  background: rgba(59, 130, 246, 0.15);
+  border-color: rgba(59, 130, 246, 0.35);
+}
+
+.navBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.12rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+}
+
+.tabViewContent {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
 .statsGrid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -559,47 +620,66 @@
   margin: 0.2rem 0 0 0;
 }
 
-.controlsGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 1rem;
-}
-
-.controlCard {
+.capabilitiesList {
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
   gap: 0.75rem;
-  padding: 1.15rem;
-  border-radius: 12px;
-  background: var(--bg-card, rgba(255, 255, 255, 0.03));
-  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
-  transition: all 0.2s ease;
 }
 
-.controlCard:hover {
-  border-color: rgba(59, 130, 246, 0.35);
-  background: rgba(255, 255, 255, 0.04);
-  transform: translateY(-2px);
-}
-
-.controlCardTop {
+.capabilityItem {
   display: flex;
-  justify-content: space-between;
   align-items: flex-start;
-  gap: 0.5rem;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  border-radius: 10px;
+  background: var(--bg-card, rgba(255, 255, 255, 0.02));
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.06));
+  transition: all 0.15s ease;
 }
 
-.controlIconWrapper {
-  width: 36px;
-  height: 36px;
+.capabilityItem:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.capabilityIcon {
+  font-size: 1.35rem;
+  width: 40px;
+  height: 40px;
   border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.25rem;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
+}
+
+.capabilityContent {
+  flex: 1;
+  min-width: 0;
+}
+
+.capabilityHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.3rem;
+}
+
+.capabilityTitle {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text, #fff);
+  margin: 0;
+}
+
+.capabilityDesc {
+  font-size: 0.83rem;
+  line-height: 1.45;
+  color: var(--mute-t62, #94a3b8);
+  margin: 0;
 }
 
 .controlBadge {
@@ -633,31 +713,6 @@
   background: rgba(168, 85, 247, 0.15);
   border: 1px solid rgba(168, 85, 247, 0.3);
   color: #c084fc;
-}
-
-.controlTitle {
-  font-size: 0.95rem;
-  font-weight: 700;
-  color: var(--text, #fff);
-  margin: 0.25rem 0 0 0;
-}
-
-.controlDesc {
-  font-size: 0.8rem;
-  line-height: 1.45;
-  color: var(--mute-t62, #94a3b8);
-  margin: 0;
-}
-
-.controlMeta {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding-top: 0.6rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
-  font-size: 0.74rem;
-  color: var(--mute-t62, #64748b);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
 .healthWidget {
