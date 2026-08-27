@@ -597,10 +597,12 @@ export default function EstimateGeneratorClient() {
 
         {/* Trade & Municipal Permit Intelligence Embed */}
         <div className={styles.permitBox}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-              <span style={{ fontSize: 12, fontWeight: 750, color: '#094886' }}>Trade Discipline:</span>
-              <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 12, fontWeight: 800, color: '#0369a1', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Trade Discipline:
+              </span>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                 {[
                   { id: 'roofing', label: 'Roofing' },
                   { id: 'electrical', label: 'Electrical' },
@@ -609,26 +611,31 @@ export default function EstimateGeneratorClient() {
                   { id: 'heat_pump', label: '⚡ Heat Pump' },
                   { id: 'solar_pv', label: '☀️ Solar PV' },
                   { id: 'ev_charger', label: '🔌 EV Charger' },
-                ].map((t) => (
-                  <button
-                    key={t.id}
-                    type="button"
-                    onClick={() => handleFieldChange('selectedTrade', t.id as EstimateData['selectedTrade'])}
-                    style={{
-                      background: estimate.selectedTrade === t.id ? '#0066cc' : '#ffffff',
-                      color: estimate.selectedTrade === t.id ? '#ffffff' : '#334e68',
-                      border: '1px solid #bcd7f5',
-                      borderRadius: 6,
-                      padding: '5px 10px',
-                      fontSize: 12,
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                      minHeight: 34,
-                    }}
-                  >
-                    {t.label}
-                  </button>
-                ))}
+                ].map((t) => {
+                  const isSelected = estimate.selectedTrade === t.id;
+                  return (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => handleFieldChange('selectedTrade', t.id as EstimateData['selectedTrade'])}
+                      style={{
+                        background: isSelected ? '#ff6a24' : '#ffffff',
+                        color: isSelected ? '#ffffff' : '#334155',
+                        border: isSelected ? '1px solid #ea580c' : '1px solid #cbd5e1',
+                        borderRadius: 8,
+                        padding: '6px 12px',
+                        fontSize: 12,
+                        fontWeight: 750,
+                        cursor: 'pointer',
+                        minHeight: 34,
+                        boxShadow: isSelected ? '0 2px 8px rgba(255, 106, 36, 0.25)' : 'none',
+                        transition: 'all 0.15s ease',
+                      }}
+                    >
+                      {t.label}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -637,30 +644,33 @@ export default function EstimateGeneratorClient() {
                 <span
                   style={{
                     fontSize: 11,
-                    fontWeight: 750,
-                    padding: '4px 8px',
-                    borderRadius: 4,
-                    background: permitData.decision === 'required' ? '#e1f5fe' : '#e8f5e9',
-                    color: permitData.decision === 'required' ? '#0277bd' : '#2e7d32',
+                    fontWeight: 800,
+                    padding: '5px 10px',
+                    borderRadius: 6,
+                    background: permitData.decision === 'required' ? '#e0f2fe' : '#dcfce7',
+                    color: permitData.decision === 'required' ? '#0369a1' : '#15803d',
+                    border: permitData.decision === 'required' ? '1px solid #bae6fd' : '1px solid #bbf7d0',
                   }}
                 >
                   {permitData.decision === 'required' ? '🏛️ City Permit Required' : '✓ No Permit Needed'}
                 </span>
-                <span style={{ fontSize: 12, fontWeight: 800, color: '#094886' }}>
+                <span style={{ fontSize: 13, fontWeight: 800, color: '#0c4a6e' }}>
                   Est. Municipal Fee: {formatCurrency(permitData.estimatedFee)}
                 </span>
                 <button
                   type="button"
                   onClick={addPermitItemToEstimate}
                   style={{
-                    background: '#094886',
+                    background: '#0284c7',
                     color: '#ffffff',
                     border: 'none',
-                    borderRadius: 4,
-                    padding: '4px 8px',
-                    fontSize: 11,
-                    fontWeight: 700,
+                    borderRadius: 6,
+                    padding: '6px 12px',
+                    fontSize: 12,
+                    fontWeight: 800,
                     cursor: 'pointer',
+                    boxShadow: '0 2px 6px rgba(2, 132, 199, 0.3)',
+                    transition: 'all 0.15s ease',
                   }}
                 >
                   + Add Permit to Estimate
@@ -669,11 +679,12 @@ export default function EstimateGeneratorClient() {
                   <span
                     style={{
                       fontSize: 11,
-                      fontWeight: 750,
-                      padding: '4px 8px',
-                      borderRadius: 4,
+                      fontWeight: 800,
+                      padding: '5px 10px',
+                      borderRadius: 6,
                       background: '#fef3c7',
                       color: '#92400e',
+                      border: '1px solid #fde68a',
                     }}
                   >
                     ⚡ IRA 25C Rebate: {formatCurrency(rebateData.federalCredit)} Credit
@@ -681,8 +692,8 @@ export default function EstimateGeneratorClient() {
                 )}
               </div>
             ) : loadingPermit ? (
-              <span style={{ fontSize: 12, color: '#094886', fontStyle: 'italic' }}>
-                🔍 Checking municipal building codes...
+              <span style={{ fontSize: 12, color: '#0369a1', fontStyle: 'italic', fontWeight: 600 }}>
+                🔍 Checking municipal building codes &amp; permit requirements...
               </span>
             ) : null}
           </div>
@@ -690,13 +701,13 @@ export default function EstimateGeneratorClient() {
 
         {/* Multi-Tier Package Tab Selector (if in 3-Tier Mode) */}
         {estimate.mode === 'multi_tier' && (
-          <div style={{ marginBottom: 20 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-              <span style={{ fontSize: 13, fontWeight: 800, color: '#334155', textTransform: 'uppercase' }}>
+          <div style={{ marginBottom: 24 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+              <span style={{ fontSize: 13, fontWeight: 850, color: '#1e293b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                 ⭐ Package Tier Selector:
               </span>
               <span style={{ fontSize: 12, color: '#64748b' }}>
-                Editing: <strong>{activeTier?.name}</strong>
+                Editing: <strong style={{ color: '#0f172a' }}>{activeTier?.name}</strong>
               </span>
             </div>
 
@@ -716,7 +727,7 @@ export default function EstimateGeneratorClient() {
                     }`}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-                      <strong style={{ fontSize: 14, color: isActive ? '#0f172a' : '#475569' }}>{t.name}</strong>
+                      <strong style={{ fontSize: 15, color: isActive ? '#0f172a' : '#334155' }}>{t.name}</strong>
                       <span
                         className={`${styles.tierBadgeRibbon} ${
                           isRec ? styles.ribbonRecommended : t.id === 'best' ? styles.ribbonBest : styles.ribbonStandard
@@ -726,7 +737,7 @@ export default function EstimateGeneratorClient() {
                       </span>
                     </div>
                     <span style={{ fontSize: 12, color: '#64748b' }}>{t.items.length} items included</span>
-                    <strong style={{ fontSize: 15, color: '#0f172a', marginTop: 4 }}>
+                    <strong style={{ fontSize: 17, color: '#0f172a', marginTop: 4 }}>
                       {formatCurrency(tTotals.grandTotal)}
                     </strong>
                   </button>
@@ -758,7 +769,7 @@ export default function EstimateGeneratorClient() {
               return (
                 <tr key={item.id} style={{ background: isDisc ? '#fef2f2' : undefined }}>
                   <td>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <input
                         type="text"
                         value={item.description}
@@ -818,7 +829,7 @@ export default function EstimateGeneratorClient() {
                       aria-label="Unit price"
                     />
                   </td>
-                  <td style={{ textAlign: 'right', fontWeight: 800, color: isDisc ? '#dc2626' : '#0c202d' }}>
+                  <td style={{ textAlign: 'right', fontWeight: 800, color: isDisc ? '#dc2626' : '#0f172a' }}>
                     {isDisc ? `-${formatCurrency(itemTotal)}` : formatCurrency(itemTotal)}
                   </td>
                   <td style={{ textAlign: 'center' }}>
@@ -827,7 +838,6 @@ export default function EstimateGeneratorClient() {
                         type="button"
                         onClick={() => removeItem(item.id)}
                         className={styles.cardRemoveBtn}
-                        style={{ width: 32, height: 32, fontSize: 14 }}
                         title="Delete line item"
                       >
                         ✕
@@ -839,6 +849,107 @@ export default function EstimateGeneratorClient() {
             })}
           </tbody>
         </table>
+
+        {/* Mobile Stacked Card View (< 768px) */}
+        <div className={styles.mobileItemList}>
+          {activeItems.map((item) => {
+            const qty = clampQuantity(item.quantity, 1);
+            const price = clampUnitPrice(item.unitPrice, 0);
+            const itemTotal = qty * price;
+            const isDisc = item.isDiscount || item.type === 'Discount';
+
+            return (
+              <div key={item.id} className={styles.mobileItemCard} style={{ background: isDisc ? '#fef2f2' : undefined }}>
+                <div className={styles.mobileCardHeader}>
+                  <input
+                    type="text"
+                    value={item.description}
+                    onChange={(e) => updateItem(item.id, 'description', e.target.value)}
+                    placeholder="Item description (e.g. Master Tech Labor)"
+                    className={styles.itemDescInput}
+                    aria-label="Item description"
+                  />
+                  {activeItems.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removeItem(item.id)}
+                      className={styles.cardRemoveBtn}
+                      title="Delete line item"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <select
+                    value={item.type}
+                    onChange={(e) => updateItem(item.id, 'type', e.target.value)}
+                    className={styles.itemSelect}
+                    aria-label="Item category"
+                  >
+                    <option value="Labor">Labor</option>
+                    <option value="Material">Material</option>
+                    <option value="Equipment">Equipment</option>
+                    <option value="Permit">Permit</option>
+                    <option value="Discount">Discount</option>
+                  </select>
+
+                  <label className={styles.optionalCheckboxLabel}>
+                    <input
+                      type="checkbox"
+                      checked={Boolean(item.isOptional)}
+                      onChange={(e) => updateItem(item.id, 'isOptional', e.target.checked)}
+                      aria-label="Optional item toggle"
+                    />
+                    <span className={item.isOptional ? styles.optionalBadge : styles.optionalText}>
+                      {item.isOptional ? 'Optional' : 'Optional'}
+                    </span>
+                  </label>
+                </div>
+
+                <div className={styles.mobileCardNumbers}>
+                  <div>
+                    <label style={{ fontSize: 11, fontWeight: 700, color: '#64748b', display: 'block', marginBottom: 2 }}>
+                      Qty
+                    </label>
+                    <input
+                      type="number"
+                      min="0.01"
+                      step="any"
+                      value={item.quantity}
+                      onChange={(e) => updateItem(item.id, 'quantity', e.target.value)}
+                      className={styles.itemNumInput}
+                      style={{ width: '100%', textAlign: 'center' }}
+                      aria-label="Quantity"
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 11, fontWeight: 700, color: '#64748b', display: 'block', marginBottom: 2 }}>
+                      Unit Price ($)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="any"
+                      value={item.unitPrice}
+                      onChange={(e) => updateItem(item.id, 'unitPrice', e.target.value)}
+                      className={styles.itemNumInput}
+                      style={{ width: '100%', textAlign: 'right' }}
+                      aria-label="Unit price"
+                    />
+                  </div>
+                  <div className={styles.mobileItemTotal}>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b' }}>Total</span>
+                    <strong style={{ color: isDisc ? '#dc2626' : '#0f172a' }}>
+                      {isDisc ? `-${formatCurrency(itemTotal)}` : formatCurrency(itemTotal)}
+                    </strong>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
 
         {/* Action Button Row */}
         <div className={styles.actionBtnRow}>
@@ -858,7 +969,7 @@ export default function EstimateGeneratorClient() {
         {/* Terms, Tax, Deposit & Totals Grid */}
         <div className={styles.termsAndTotalsGrid}>
           <div>
-            <label style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', color: '#687e8d', display: 'block', marginBottom: 6 }}>
+            <label style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: 6, letterSpacing: '0.5px' }}>
               Terms, Conditions &amp; Warranty Notes
             </label>
             <textarea
@@ -872,9 +983,9 @@ export default function EstimateGeneratorClient() {
 
             {/* Payment Milestone Schedule Expander */}
             <div className={`${styles.milestoneScheduleBox} ${!estimate.milestonesEnabled ? styles.hideOnPrint : ''}`}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: estimate.milestonesEnabled ? 6 : 0 }}>
-                <strong style={{ fontSize: 13, color: '#334155' }}>💳 Payment Milestone Schedule</strong>
-                <label className={styles.hideOnPrint} style={{ fontSize: 12, fontWeight: 700, color: '#2563eb', display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: estimate.milestonesEnabled ? 8 : 0 }}>
+                <strong style={{ fontSize: 13, color: '#1e293b' }}>💳 Payment Milestone Schedule</strong>
+                <label className={styles.hideOnPrint} style={{ fontSize: 12, fontWeight: 750, color: '#ff6a24', display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer' }}>
                   <input
                     type="checkbox"
                     checked={estimate.milestonesEnabled}
@@ -889,7 +1000,7 @@ export default function EstimateGeneratorClient() {
                   {totals.milestones?.map((m, idx) => (
                     <div key={idx} className={styles.milestoneRow}>
                       <span>{m.name}</span>
-                      <strong>{formatCurrency(m.amount)} ({m.percentage}%)</strong>
+                      <strong style={{ color: '#0f172a' }}>{formatCurrency(m.amount)} ({m.percentage}%)</strong>
                     </div>
                   ))}
                 </div>
@@ -900,7 +1011,7 @@ export default function EstimateGeneratorClient() {
           <div className={styles.totalsBox}>
             <div className={styles.totalLine}>
               <span>Subtotal:</span>
-              <strong style={{ color: '#0c202d' }}>{formatCurrency(totals.subtotal)}</strong>
+              <strong style={{ color: '#0f172a', fontSize: 15 }}>{formatCurrency(totals.subtotal)}</strong>
             </div>
 
             {totals.discountTotal > 0 && (
@@ -942,23 +1053,23 @@ export default function EstimateGeneratorClient() {
                   value={estimate.depositPct}
                   onChange={(e) => handleFieldChange('depositPct', clampPercentage(e.target.value))}
                   className={styles.totalPercentInput}
-                  style={{ border: '1px solid #a3e5ce' }}
+                  style={{ border: '1px solid #6ee7b7' }}
                   aria-label="Deposit percentage"
                 />
                 %):
               </span>
-              <strong>{formatCurrency(totals.depositDue)}</strong>
+              <span>{formatCurrency(totals.depositDue)}</span>
             </div>
           </div>
         </div>
 
         {/* Multi-Tier Side-by-Side Comparison Grid (if in 3-Tier Mode) */}
         {estimate.mode === 'multi_tier' && (
-          <div style={{ marginTop: 32, paddingTop: 24, borderTop: '2px dashed #e2e8f0' }}>
-            <h3 style={{ fontSize: 18, fontWeight: 900, color: '#0f172a', margin: '0 0 4px' }}>
+          <div style={{ marginTop: 36, paddingTop: 28, borderTop: '2px dashed #e2e8f0' }}>
+            <h3 style={{ fontSize: 18, fontWeight: 900, color: '#0f172a', margin: '0 0 6px' }}>
               📊 Package Comparison Summary (Customer Preview)
             </h3>
-            <p style={{ fontSize: 13, color: '#64748b', margin: '0 0 16px' }}>
+            <p style={{ fontSize: 13, color: '#64748b', margin: '0 0 18px' }}>
               This side-by-side view shows how your 3 tiers compare for the client to choose their preferred option.
             </p>
 
@@ -975,13 +1086,15 @@ export default function EstimateGeneratorClient() {
                           position: 'absolute',
                           top: -12,
                           right: 16,
-                          background: '#2563eb',
+                          background: '#ff6a24',
                           color: '#ffffff',
-                          fontSize: 11,
+                          fontSize: 10,
                           fontWeight: 800,
-                          padding: '3px 10px',
+                          padding: '4px 10px',
                           borderRadius: 999,
                           textTransform: 'uppercase',
+                          letterSpacing: '0.5px',
+                          boxShadow: '0 2px 6px rgba(255, 106, 36, 0.35)',
                         }}
                       >
                         ⭐ Most Popular
@@ -995,14 +1108,14 @@ export default function EstimateGeneratorClient() {
                     <ul className={styles.tierCardItemsList}>
                       {t.items.map((it) => (
                         <li key={it.id} className={styles.tierCardItem}>
-                          <span style={{ color: '#16a34a' }}>✓</span>
+                          <span style={{ color: '#16a34a', fontWeight: 800 }}>✓</span>
                           <span>{it.description || 'Service component'}</span>
                         </li>
                       ))}
                     </ul>
 
-                    <div style={{ marginTop: 'auto', paddingTop: 12, borderTop: '1px solid #e2e8f0', fontSize: 12, color: '#64748b' }}>
-                      Deposit required: <strong>{formatCurrency(tTotals.depositDue)}</strong>
+                    <div style={{ marginTop: 'auto', paddingTop: 14, borderTop: '1px solid #f1f5f9', fontSize: 12, color: '#64748b' }}>
+                      Deposit required: <strong style={{ color: '#0f172a' }}>{formatCurrency(tTotals.depositDue)}</strong>
                     </div>
                   </div>
                 );
@@ -1020,16 +1133,15 @@ export default function EstimateGeneratorClient() {
             <button
               type="button"
               onClick={handleCopySummary}
-              className={styles.copyBtn}
-              style={{ background: copied ? '#e0fbf0' : '#f0f4f7' }}
+              className={`${styles.copyBtn} ${copied ? styles.copyBtnCopied : ''}`}
             >
               {copied ? '✓ Copied to Clipboard!' : '📋 Copy Text Summary'}
             </button>
           </div>
 
-          <div style={{ fontSize: 13, color: '#687e8d' }}>
+          <div style={{ fontSize: 13, color: '#64748b' }}>
             Save this estimate, text it for approval, and collect a deposit:{' '}
-            <Link href={signupUrl} style={{ color: '#ff6a24', fontWeight: 800 }}>
+            <Link href={signupUrl} style={{ color: '#ff6a24', fontWeight: 800, textDecoration: 'underline' }}>
               Try Let’s Get Quoted ($0/mo Flex) &rarr;
             </Link>
           </div>

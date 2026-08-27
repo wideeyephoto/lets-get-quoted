@@ -23,9 +23,7 @@ export default function VoiceCaptureButton({
 }: VoiceCaptureButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
 
-  const defaultLabel = targetType === 'lead'
-    ? (targetId ? '🎙️ Voice Update' : '🎙️ Voice Add Lead')
-    : '🎙️ Voice Job Update';
+  const buttonLabel = label || (targetId ? 'Voice Update' : (targetType === 'lead' ? 'Voice Add Lead' : 'Voice Update'));
 
   return (
     <>
@@ -36,7 +34,7 @@ export default function VoiceCaptureButton({
         title="Speak to add or update details with AI"
       >
         <span className={styles.triggerIcon}>🎙️</span>
-        <span>{label || (targetId ? 'Voice Update' : (targetType === 'lead' ? 'Voice Add Lead' : 'Voice Update'))}</span>
+        <span>{buttonLabel}</span>
       </button>
 
       {isOpen && (

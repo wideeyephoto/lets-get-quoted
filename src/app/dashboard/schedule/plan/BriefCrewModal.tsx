@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, useTransition } from 'react';
+import { useCallback, useMemo, useState, useTransition } from 'react';
 import ModalDialog, { CloseOnSuccess } from '@/components/modal-dialog';
 import SaveButton from '@/components/save-button';
 import {
@@ -94,24 +94,27 @@ export default function BriefCrewModal({
   const [isUpdatingPhone, startPhoneTransition] = useTransition();
 
   // Filter stops per crew member based on assignment records
-  const getMemberStops = (memberId: string): CrewBriefingStop[] => {
-    if (roster.length <= 1) return stops;
-    const assignedJobIds = new Set(
-      Object.entries(assignmentsByJob)
-        .filter(([, memberIds]) => memberIds.includes(memberId))
-        .map(([jobId]) => jobId)
-    );
+  const getMemberStops = useCallback(
+    (memberId: string): CrewBriefingStop[] => {
+      if (roster.length <= 1) return stops;
+      const assignedJobIds = new Set(
+        Object.entries(assignmentsByJob)
+          .filter(([, memberIds]) => memberIds.includes(memberId))
+          .map(([jobId]) => jobId)
+      );
 
-    if (assignedJobIds.size > 0) {
-      return stops.filter((stop) => {
-        const idPart = stop.jobRef.replace(/^JOB-/, '').toLowerCase();
-        return Array.from(assignedJobIds).some((jid) =>
-          jid.toLowerCase().startsWith(idPart) || jid.toLowerCase().includes(idPart)
-        );
-      });
-    }
-    return stops;
-  };
+      if (assignedJobIds.size > 0) {
+        return stops.filter((stop) => {
+          const idPart = stop.jobRef.replace(/^JOB-/, '').toLowerCase();
+          return Array.from(assignedJobIds).some((jid) =>
+            jid.toLowerCase().startsWith(idPart) || jid.toLowerCase().includes(idPart)
+          );
+        });
+      }
+      return stops;
+    },
+    [roster.length, stops, assignmentsByJob]
+  );
 
   // Preview member selection
   const activeMembersList = useMemo(() => {
@@ -139,7 +142,7 @@ export default function BriefCrewModal({
 
   const previewStops = useMemo(() => {
     return getMemberStops(currentPreviewMember.id);
-  }, [currentPreviewMember.id, stops, assignmentsByJob, roster.length]);
+  }, [currentPreviewMember.id, getMemberStops]);
 
   // Generate live preview text
   const previewSms = useMemo(() => {

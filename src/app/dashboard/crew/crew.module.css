@@ -142,7 +142,7 @@
   min-width: 0;
 }
 
-.filters { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: end; }
+.filters { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: flex-end; }
 .filtersToggle {
   min-height: 2.5rem;
   padding: 0.45rem 0.7rem;
@@ -392,7 +392,7 @@
   grid-column: 1 / -1;
   display: flex;
   flex-wrap: wrap;
-  align-items: end;
+  align-items: flex-end;
   gap: 0.6rem;
   margin-top: 0.55rem;
   padding-top: 0.6rem;
@@ -1293,7 +1293,7 @@
 .payToolbar {
   display: flex;
   flex-wrap: wrap;
-  align-items: end;
+  align-items: flex-end;
   gap: 0.5rem;
   margin-bottom: 0.7rem;
 }
@@ -2221,7 +2221,7 @@
 
 /* The gear sits at the end of the filter row, aligned with the selects rather
    than with their little uppercase captions. */
-.filterGear { display: flex; align-items: end; margin-left: auto; padding-bottom: 0.05rem; }
+.filterGear { display: flex; align-items: flex-end; margin-left: auto; padding-bottom: 0.05rem; }
 
 /* --- cards --- */
 

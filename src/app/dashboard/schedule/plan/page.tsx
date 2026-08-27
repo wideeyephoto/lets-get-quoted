@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { requireOfficeContext } from '@/lib/auth';
-import { listCrew, listCrewAssignmentsForJobs, loadLastCrewBriefingHistory, type CrewBriefingHistory } from '@/lib/crew';
+import { listCrew, listCrewAssignmentsForJobs, loadLastCrewBriefingHistory } from '@/lib/crew';
 import { getDayPlanPrefs } from '@/lib/day-plan-prefs';
 import { coordOf, type LatLng } from '@/lib/distance';
 import { driveMatrix, DRIVE_MATRIX_MAX_POINTS } from '@/lib/drive-time';

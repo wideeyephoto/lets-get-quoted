@@ -7,10 +7,45 @@ import { applyVoiceJobAction, applyVoiceLeadAction } from '@/app/dashboard/voice
 import styles from './voice-capture.module.css';
 
 // Type definitions for Web Speech API
-interface IWindow extends Window {
-  SpeechRecognition?: any;
-  webkitSpeechRecognition?: any;
+interface SpeechRecognitionResultItem {
+  transcript: string;
 }
+
+interface SpeechRecognitionResultList {
+  length: number;
+  [index: number]: {
+    [index: number]: SpeechRecognitionResultItem;
+  };
+}
+
+interface SpeechRecognitionEvent {
+  results: SpeechRecognitionResultList;
+}
+
+interface SpeechRecognitionErrorEvent {
+  error: string;
+}
+
+interface SpeechRecognitionInstance {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  onstart: (() => void) | null;
+  onresult: ((event: SpeechRecognitionEvent) => void) | null;
+  onerror: ((event: SpeechRecognitionErrorEvent) => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+}
+
+interface SpeechRecognitionConstructor {
+  new (): SpeechRecognitionInstance;
+}
+
+type WindowWithSpeech = {
+  SpeechRecognition?: SpeechRecognitionConstructor;
+  webkitSpeechRecognition?: SpeechRecognitionConstructor;
+};
 
 export type VoiceCaptureModalProps = {
   isOpen: boolean;
@@ -41,11 +76,11 @@ export default function VoiceCaptureModal({
   const [editedLead, setEditedLead] = useState<ParsedLeadVoiceData>({});
   const [editedJob, setEditedJob] = useState<ParsedJobVoiceData>({});
 
-  const recognitionRef = useRef<any>(null);
+  const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const win = window as unknown as IWindow;
+    const win = window as unknown as WindowWithSpeech;
     const SpeechClass = win.SpeechRecognition || win.webkitSpeechRecognition;
     if (!SpeechClass) {
       setIsSpeechSupported(false);
@@ -66,7 +101,7 @@ export default function VoiceCaptureModal({
 
   const startListening = () => {
     setErrorMessage(null);
-    const win = window as unknown as IWindow;
+    const win = window as unknown as WindowWithSpeech;
     const SpeechClass = win.SpeechRecognition || win.webkitSpeechRecognition;
 
     if (!SpeechClass) {
@@ -84,7 +119,7 @@ export default function VoiceCaptureModal({
         setIsListening(true);
       };
 
-      recognition.onresult = (event: any) => {
+      recognition.onresult = (event: SpeechRecognitionEvent) => {
         let currentTranscript = '';
         for (let i = 0; i < event.results.length; i++) {
           currentTranscript += event.results[i][0].transcript + ' ';
@@ -92,7 +127,7 @@ export default function VoiceCaptureModal({
         setTranscript(currentTranscript.trim());
       };
 
-      recognition.onerror = (event: any) => {
+      recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
         console.warn('Speech recognition error:', event.error);
         if (event.error === 'not-allowed') {
           setErrorMessage('Microphone access denied. Please allow mic permissions in your browser or type below.');
@@ -300,7 +335,7 @@ export default function VoiceCaptureModal({
 
               {!isSpeechSupported && (
                 <p style={{ fontSize: '0.8rem', color: '#9ca3af', margin: 0 }}>
-                  💡 Microphone speech recognition isn't supported in this browser; you can type or paste your notes above!
+                  💡 Microphone speech recognition isn&apos;t supported in this browser; you can type or paste your notes above!
                 </p>
               )}
             </div>
