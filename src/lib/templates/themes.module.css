@@ -238,6 +238,153 @@
 }
 @keyframes lgqBorderSpin { to { --lgqBorderAngle: 360deg; } }
 @media (prefers-reduced-motion: reduce) { .heroQuickForm::before { animation: none; } }
+
+/* --- Instant Quote Form 4 Appearance Styles ------------------------------- */
+
+/* 1. Electric Glow (glow — default) */
+.heroQuickForm[data-form-style='glow'],
+.heroQuickForm:not([data-form-style]) {
+  box-shadow: 0 20px 45px -18px rgba(0,0,0,.5), 0 0 28px -10px color-mix(in srgb, var(--theme-accent, #6366f1) 35%, transparent);
+}
+
+/* 2. Clean & Crisp (clean) */
+.heroQuickForm[data-form-style='clean'] {
+  border: 1px solid color-mix(in srgb, currentColor 14%, #cbd5e1);
+  background: #ffffff;
+  box-shadow: 0 14px 34px -10px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.04);
+}
+.heroQuickForm[data-form-style='clean']::before {
+  content: none !important;
+  display: none !important;
+  animation: none !important;
+}
+.heroQuickForm[data-form-style='clean'] input,
+.heroQuickForm[data-form-style='clean'] select,
+.heroQuickForm[data-form-style='clean'] textarea {
+  border: 1px solid #d1d5db;
+  background: #fbfbfc;
+}
+.heroQuickForm[data-form-style='clean'] input:focus,
+.heroQuickForm[data-form-style='clean'] select:focus,
+.heroQuickForm[data-form-style='clean'] textarea:focus {
+  border-color: var(--theme-accent, #2563eb);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--theme-accent, #2563eb) 22%, transparent);
+}
+
+/* 3. Frosted Glass (glass) */
+.heroQuickForm[data-form-style='glass'] {
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85), 0 20px 50px -15px rgba(0, 0, 0, 0.28), 0 0 35px -10px color-mix(in srgb, var(--theme-accent, #2563eb) 28%, transparent);
+}
+.heroQuickForm[data-form-style='glass']::before {
+  content: none !important;
+  display: none !important;
+  animation: none !important;
+}
+.heroQuickForm[data-form-style='glass'] input,
+.heroQuickForm[data-form-style='glass'] select,
+.heroQuickForm[data-form-style='glass'] textarea {
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+}
+.heroQuickForm[data-form-style='glass'] .heroFormChip {
+  background: rgba(255, 255, 255, 0.5);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+/* 4. Bold Accent (bold) */
+.heroQuickForm[data-form-style='bold'] {
+  position: relative;
+  overflow: hidden;
+  border: 2px solid color-mix(in srgb, var(--theme-accent) 45%, #cbd5e1);
+  box-shadow: 0 18px 45px -12px rgba(0, 0, 0, 0.26), 0 4px 14px -3px color-mix(in srgb, var(--theme-accent) 30%, transparent);
+  background: #ffffff;
+}
+.heroQuickForm[data-form-style='bold']::before {
+  content: '' !important;
+  position: absolute !important;
+  inset: 0 0 auto 0 !important;
+  height: 5px !important;
+  padding: 0 !important;
+  border-radius: var(--theme-radius, 10px) var(--theme-radius, 10px) 0 0 !important;
+  background: var(--theme-accent) !important;
+  animation: none !important;
+  mask: none !important;
+  -webkit-mask: none !important;
+  pointer-events: none !important;
+}
+.heroQuickForm[data-form-style='bold'] input,
+.heroQuickForm[data-form-style='bold'] select,
+.heroQuickForm[data-form-style='bold'] textarea {
+  border: 2px solid color-mix(in srgb, var(--theme-accent) 25%, #94a3b8);
+  font-weight: 600;
+}
+.heroQuickForm[data-form-style='bold'] button[type='submit'] {
+  box-shadow: 0 4px 0 color-mix(in srgb, var(--theme-accent) 70%, #000);
+}
+
+/* Dark mode and dark-theme specific overrides for all 4 form styles */
+.site[data-mode='dark'] .heroQuickForm[data-form-style='clean'],
+.forge .heroQuickForm[data-form-style='clean'],
+.guild[data-mode='dark'] .heroQuickForm[data-form-style='clean'],
+.vista[data-mode='dark'] .heroQuickForm[data-form-style='clean'],
+.handy[data-mode='dark'] .heroQuickForm[data-form-style='clean'],
+.coat[data-mode='dark'] .heroQuickForm[data-form-style='clean'],
+.fixit[data-mode='dark'] .heroQuickForm[data-form-style='clean'],
+.reno[data-mode='dark'] .heroQuickForm[data-form-style='clean'],
+.shine[data-mode='dark'] .heroQuickForm[data-form-style='clean'] {
+  background: rgba(18, 24, 34, 0.96);
+  border-color: rgba(255, 255, 255, 0.14);
+  color: #f3f4f6;
+  box-shadow: 0 20px 50px -15px rgba(0, 0, 0, 0.7);
+}
+
+.site[data-mode='dark'] .heroQuickForm[data-form-style='glass'],
+.forge .heroQuickForm[data-form-style='glass'],
+.guild[data-mode='dark'] .heroQuickForm[data-form-style='glass'],
+.vista[data-mode='dark'] .heroQuickForm[data-form-style='glass'],
+.handy[data-mode='dark'] .heroQuickForm[data-form-style='glass'],
+.coat[data-mode='dark'] .heroQuickForm[data-form-style='glass'],
+.fixit[data-mode='dark'] .heroQuickForm[data-form-style='glass'],
+.reno[data-mode='dark'] .heroQuickForm[data-form-style='glass'],
+.shine[data-mode='dark'] .heroQuickForm[data-form-style='glass'] {
+  background: rgba(15, 23, 42, 0.74);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #f8fafc;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 24px 55px -12px rgba(0, 0, 0, 0.75), 0 0 35px -10px color-mix(in srgb, var(--theme-accent) 35%, transparent);
+}
+
+.site[data-mode='dark'] .heroQuickForm[data-form-style='glass'] input,
+.site[data-mode='dark'] .heroQuickForm[data-form-style='glass'] select,
+.site[data-mode='dark'] .heroQuickForm[data-form-style='glass'] textarea,
+.forge .heroQuickForm[data-form-style='glass'] input,
+.forge .heroQuickForm[data-form-style='glass'] textarea,
+.guild[data-mode='dark'] .heroQuickForm[data-form-style='glass'] input,
+.guild[data-mode='dark'] .heroQuickForm[data-form-style='glass'] textarea {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+}
+
+.site[data-mode='dark'] .heroQuickForm[data-form-style='bold'],
+.forge .heroQuickForm[data-form-style='bold'],
+.guild[data-mode='dark'] .heroQuickForm[data-form-style='bold'],
+.vista[data-mode='dark'] .heroQuickForm[data-form-style='bold'],
+.handy[data-mode='dark'] .heroQuickForm[data-form-style='bold'],
+.coat[data-mode='dark'] .heroQuickForm[data-form-style='bold'],
+.fixit[data-mode='dark'] .heroQuickForm[data-form-style='bold'],
+.reno[data-mode='dark'] .heroQuickForm[data-form-style='bold'],
+.shine[data-mode='dark'] .heroQuickForm[data-form-style='bold'] {
+  background: rgba(14, 19, 27, 0.96);
+  border-color: color-mix(in srgb, var(--theme-accent) 55%, rgba(255, 255, 255, 0.18));
+  color: #ffffff;
+  box-shadow: 0 22px 55px -12px rgba(0, 0, 0, 0.75), 0 4px 14px -3px color-mix(in srgb, var(--theme-accent) 35%, transparent);
+}
 /* The card's heading carries a CLASS, not a bare h2, so this lands at (0,2,0).
    A bare `.heroQuickForm h2` is (0,1,1) — exactly the specificity of a section
    rule like `.forgeContact h2`, and the section rules come later in the file, so

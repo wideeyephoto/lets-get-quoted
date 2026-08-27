@@ -1350,3 +1350,138 @@ a.blogGenerateBtn { display: block; text-align: center; text-decoration: none; l
   background: rgba(var(--tint), .04);
   border: 1px solid var(--edge-t10);
 }
+
+/* Instant Quote Form Appearance Picker */
+.formStylePicker {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .6rem;
+  margin-top: .4rem;
+}
+@media (max-width: 600px) {
+  .formStylePicker {
+    grid-template-columns: 1fr;
+  }
+}
+.formStyleTile {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: .75rem;
+  align-items: center;
+  padding: .75rem .85rem;
+  border: 1.5px solid var(--edge-t14);
+  border-radius: 11px;
+  background: rgba(var(--tint), .03);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color .15s ease, background .15s ease, transform .15s ease;
+}
+.formStyleTile:hover {
+  border-color: var(--edge-t34);
+  background: rgba(var(--tint), .06);
+  transform: translateY(-1px);
+}
+.formStyleTileOn {
+  border-color: #ff7a21;
+  background: color-mix(in srgb, #ff7a21 12%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, #ff7a21 50%, transparent);
+}
+.formStyleTileOn .formStyleInfo strong {
+  color: var(--ink-mod-orange-4);
+}
+.formStyleMiniCard {
+  width: 44px;
+  height: 52px;
+  border-radius: 6px;
+  padding: 4px 5px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  background: #181f2a;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 4px 10px rgba(0,0,0,.35);
+  flex-shrink: 0;
+}
+.formStyleMiniCard[data-preview-style='glow'] {
+  border: 1.5px solid transparent;
+  background-image: linear-gradient(#181f2a, #181f2a), conic-gradient(from 0deg, #6366f1, #3b82f6, #8b5cf6, #38bdf8, #6366f1);
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+  box-shadow: 0 0 10px rgba(99, 102, 241, 0.4);
+}
+.formStyleMiniCard[data-preview-style='clean'] {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  box-shadow: 0 3px 8px rgba(0,0,0,.12);
+}
+.formStyleMiniCard[data-preview-style='clean'] .formStyleMiniBar {
+  background: #e2e8f0;
+}
+.formStyleMiniCard[data-preview-style='clean'] .formStyleMiniLine {
+  background: #94a3b8;
+}
+.formStyleMiniCard[data-preview-style='clean'] .formStyleMiniInput {
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+}
+.formStyleMiniCard[data-preview-style='glass'] {
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.5), 0 4px 12px rgba(0,0,0,.25);
+}
+.formStyleMiniCard[data-preview-style='bold'] {
+  background: #ffffff;
+  border: 1.5px solid #ff7a21;
+  border-top: 3.5px solid #ff7a21;
+}
+.formStyleMiniCard[data-preview-style='bold'] .formStyleMiniLine {
+  background: #0f172a;
+}
+.formStyleMiniCard[data-preview-style='bold'] .formStyleMiniInput {
+  background: #ffffff;
+  border: 1px solid #94a3b8;
+}
+
+.formStyleMiniBar {
+  height: 2px;
+  width: 100%;
+  border-radius: 2px;
+  background: var(--theme-accent, #ff7a21);
+}
+.formStyleMiniLine {
+  height: 3px;
+  width: 70%;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.7);
+}
+.formStyleMiniInput {
+  height: 8px;
+  width: 100%;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 0.5px solid rgba(255, 255, 255, 0.2);
+}
+.formStyleMiniBtn {
+  height: 7px;
+  width: 100%;
+  border-radius: 2px;
+  background: #ff7a21;
+}
+.formStyleInfo {
+  display: grid;
+  gap: .15rem;
+  min-width: 0;
+}
+.formStyleInfo strong {
+  font-size: .86rem;
+  font-weight: 800;
+  color: var(--text);
+  line-height: 1.25;
+}
+.formStyleInfo small {
+  font-size: .72rem;
+  color: var(--muted-2);
+  line-height: 1.35;
+}

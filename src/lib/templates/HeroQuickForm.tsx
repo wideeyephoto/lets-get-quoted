@@ -130,6 +130,7 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
   const photoInputRef = useRef<HTMLInputElement>(null);
   const startedAt = useRef(Date.now());
   const siteContent = getSiteContent(site.content);
+  const formStyle = siteContent.quoteFormStyle || 'glow';
   const quoteForm = siteContent.quoteForm;
   const emailRequired = quoteForm.emailRequired;
   const estimateLabel = getEstimateButtonLabel(quoteForm);
@@ -800,6 +801,7 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
       className={styles.heroQuickForm}
       onSubmit={step === 'describe' ? handleDescribeContinue : step === 'qa' ? handleChatAnswerSubmit : step === 'contact' ? handleContactSubmit : (event) => event.preventDefault()}
       data-edit={smartIntakeActive ? 'estimate' : 'quoteForm'}
+      data-form-style={formStyle}
     >
       <HoneypotField />
 

@@ -739,6 +739,37 @@ export function getHeaderButtonStyle(content: Record<string, unknown> | null | u
   return getSiteContent(content).headerButtonStyle || 'match';
 }
 
+export type QuoteFormStyle = 'glow' | 'clean' | 'glass' | 'bold';
+
+export const QUOTE_FORM_STYLES = [
+  {
+    key: 'glow',
+    label: 'Electric Glow',
+    desc: 'Luminous multi-color neon gradient border with animated radiant aura.',
+  },
+  {
+    key: 'clean',
+    label: 'Clean & Crisp',
+    desc: 'Understated minimalist card with crisp hairline borders and soft shadow.',
+  },
+  {
+    key: 'glass',
+    label: 'Frosted Glass',
+    desc: 'Translucent glassmorphism with backdrop blur and soft ambient glow.',
+  },
+  {
+    key: 'bold',
+    label: 'Bold Accent',
+    desc: 'Structured high-contrast framing with top accent stripe and solid fields.',
+  },
+] as const;
+
+export const QUOTE_FORM_STYLE_KEYS = new Set<string>(QUOTE_FORM_STYLES.map((style) => style.key));
+
+export function getQuoteFormStyle(content: Record<string, unknown> | null | undefined): QuoteFormStyle {
+  return (getSiteContent(content).quoteFormStyle as QuoteFormStyle) || 'glow';
+}
+
 export type SiteQuoteFormContent = {
   // Whether the FULL multi-field quote form renders at #contact. Off by
   // default — the smart-intake capture takes its place so visitors always
@@ -890,8 +921,10 @@ export type NormalizedSiteContent = {
   headerButtonStyle: string;
   // Full-page color scheme key ('' = the theme's own palette). See COLOR_SCHEMES.
   colorScheme: string;
-  // Company-name wordmark display treatment ('' = plain). See WORDMARK_STYLES.
+    // Company-name wordmark display treatment ('' = plain). See WORDMARK_STYLES.
   wordmarkStyle: string;
+  // Instant quote form appearance style ('glow' | 'clean' | 'glass' | 'bold').
+  quoteFormStyle: QuoteFormStyle;
   projectShowcase: SiteProjectShowcaseContent;
   /** The video bands. One set of content each, six arrangements each. */
   videoSections: SiteVideoSectionContent[];
@@ -1603,6 +1636,7 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
     headerButtonStyle: HEADER_BUTTON_STYLE_KEYS.has(toString(root.headerButtonStyle)) ? toString(root.headerButtonStyle) : '',
     colorScheme: COLOR_SCHEMES.some((scheme) => scheme.key === root.colorScheme) ? toString(root.colorScheme) : '',
     wordmarkStyle: WORDMARK_STYLES.some((style) => style.key === root.wordmarkStyle) ? toString(root.wordmarkStyle) : '',
+    quoteFormStyle: QUOTE_FORM_STYLE_KEYS.has(toString(root.quoteFormStyle)) ? (toString(root.quoteFormStyle) as QuoteFormStyle) : 'glow',
     projectShowcase: {
       // On by default so existing Care sites keep their work band; the owner can
       // toggle it off to hide the whole section.

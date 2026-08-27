@@ -1,34 +1,34 @@
 import type { Metadata } from 'next';
 import Image from 'next/image';
-import BathToShowerReel from '@/components/demo/BathToShowerReel';
+import AiIntakeSlideshow from '@/components/demo/AiIntakeSlideshow';
 import styles from './mock-site.module.css';
 
 export const metadata: Metadata = {
-  title: "Let's Get Quoted | Bath-to-shower walkthrough",
-  description: 'A mock product site showing how a contractor turns a bath lead into a booked job.',
+  title: "Let's Get Quoted | AI intake slideshow",
+  description: 'A mock product site showing the complete AI intake journey for a bath-to-shower lead.',
   robots: { index: false, follow: false },
 };
 
 const workflowSteps = [
   {
     number: '01',
-    title: 'The lead arrives with context',
-    copy: 'Customer photos, job type, budget, and timing land together—ready to scope.',
+    title: 'Capture every way they reach you',
+    copy: 'Website, text, voice, photos, and video all land in one structured intake.',
   },
   {
     number: '02',
-    title: 'The scope becomes a price',
-    copy: 'Build the line items, protect the margin, and present one clear project total.',
+    title: 'Inspect before anyone calls back',
+    copy: 'AI vision spots layout, equipment, issues, and the media details that matter.',
   },
   {
     number: '03',
-    title: 'The customer sees the outcome',
-    copy: 'Send a visual quote that connects the price to the bathroom they want.',
+    title: 'Ask fewer, smarter questions',
+    copy: 'The intake skips what it can see and stops the moment it can price confidently.',
   },
   {
     number: '04',
-    title: 'The deposit books the job',
-    copy: 'Approval, payment, and the final-measure appointment happen in the same flow.',
+    title: 'Rank it and hand off the next step',
+    copy: 'Guardrails protect the estimate, fit signals set priority, and booking stays connected.',
   },
 ] as const;
 
@@ -56,57 +56,57 @@ export default function BathContractorMockSite() {
       <main>
         <section className={styles.hero} id="walkthrough">
           <div className={styles.heroCopy}>
-            <span className={styles.eyebrow}>32-SECOND PRODUCT WALKTHROUGH</span>
-            <h1>Show the job. Send the price. Book the work.</h1>
+            <span className={styles.eyebrow}>50-SECOND AI INTAKE SLIDESHOW</span>
+            <h1>Every lead arrives scoped, ranked, and ready.</h1>
             <p className={styles.heroLead}>
-              Watch a bath-to-shower lead become an $8,100 quote, an $810 deposit,
-              and a booked project—without a spreadsheet or a round of phone tag.
+              Watch AI listen to the homeowner, inspect photos and video, ask only the
+              questions that matter, and hand the right job to the contractor.
             </p>
 
             <div className={styles.heroActions}>
-              <a className={styles.primaryButton} href="#reel">Watch the walkthrough <span>▶</span></a>
+              <a className={styles.primaryButton} href="#reel">Watch the AI intake <span>▶</span></a>
               <a className={styles.textLink} href="#workflow">See the workflow <span>↓</span></a>
             </div>
 
             <div className={styles.proofRow} aria-label="Walkthrough outcomes">
-              <span><b>4 min</b> quote built</span>
-              <span><b>$810</b> deposit collected</span>
-              <span><b>1 flow</b> lead to schedule</span>
+              <span><b>6</b> photo or video uploads</span>
+              <span><b>6 max</b> smart questions</span>
+              <span><b>1 flow</b> intake to booking</span>
             </div>
           </div>
 
           <div className={styles.reelColumn} id="reel">
             <div className={styles.reelHeader}>
               <div>
-                <span>REAL JOB FLOW</span>
-                <strong>Bath-to-shower conversion</strong>
+                <span>AI INTAKE · INSTALLED TODAY</span>
+                <strong>Bath-to-shower lead</strong>
               </div>
-              <span className={styles.duration}>00:32</span>
+              <span className={styles.duration}>00:48</span>
             </div>
-            <BathToShowerReel variant="embed" autoplay={false} />
+            <AiIntakeSlideshow />
             <p className={styles.reelNote}>
-              Press play when you are ready. The walkthrough pauses when it leaves the screen.
+              Press play when you are ready. Use the arrows to linger on any feature.
             </p>
           </div>
         </section>
 
         <section className={styles.signalStrip} aria-label="Product promises">
-          <span>Lead context included</span>
+          <span>Voice, text, and web intake</span>
           <i />
-          <span>Margin visible to you</span>
+          <span>Photo and video vision</span>
           <i />
-          <span>Customer-ready quote</span>
+          <span>Adaptive scoping questions</span>
           <i />
-          <span>Deposit and schedule connected</span>
+          <span>Guardrails and booking handoff</span>
         </section>
 
         <section className={styles.workflowSection} id="workflow">
           <div className={styles.sectionHeading}>
             <span className={styles.eyebrow}>ONE CONTINUOUS STORY</span>
-            <h2>The embed earns its space because every scene moves the job forward.</h2>
+            <h2>Ten new intake wins. One homeowner journey.</h2>
             <p>
-              No dashboard tour. No feature dump. One believable contractor moment from
-              the first notification to money in the account.
+              The slideshow follows one bath-to-shower request from setup and first contact
+              through visual analysis, safe pricing, lead priority, and booking.
             </p>
           </div>
 
@@ -144,15 +144,15 @@ export default function BathContractorMockSite() {
           </div>
 
           <div className={styles.proofCopy}>
-            <span className={styles.eyebrow}>SELL THE OUTCOME</span>
-            <h2>A quote should make the finished job feel real.</h2>
+            <span className={styles.eyebrow}>SEE MORE BEFORE THE CALLBACK</span>
+            <h2>The AI sees more than a photo.</h2>
             <p>
-              Customers are not buying line items. They are buying safer access, easier
-              cleaning, and a bathroom that works. The visual proposal keeps that outcome
-              next to the scope and price.
+              Photos and video become a visual summary, detected equipment, observed issues,
+              a supply-house pick list, safety flags, urgency, and confidence—grounded only
+              in what the customer actually sent.
             </p>
             <blockquote>
-              “The customer understood the job before I ever had to explain the estimate.”
+              “Before I open the lead, I know what they want, what they sent, and what needs follow-up.”
               <cite>— Mock remodeler testimonial</cite>
             </blockquote>
           </div>
@@ -161,10 +161,10 @@ export default function BathContractorMockSite() {
         <section className={styles.quoteSection} id="start">
           <div>
             <span className={styles.eyebrow}>FROM LEAD TO BOOKED</span>
-            <h2>Your next quote can look this clear.</h2>
-            <p>Bring the photos. Set the price. Let the customer say yes.</p>
+            <h2>Your new AI intake deserves the spotlight.</h2>
+            <p>Ten slides. One real contractor story. Every feature installed today.</p>
           </div>
-          <a className={styles.quoteButton} href="#reel">Replay the 32-second flow <span>↗</span></a>
+          <a className={styles.quoteButton} href="#reel">Replay all 10 slides <span>↗</span></a>
         </section>
       </main>
 

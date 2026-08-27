@@ -4,13 +4,14 @@ import { describe, expect, it } from 'vitest';
 const mockSite = readFileSync('src/app/demo/reel/mock-site/page.tsx', 'utf8');
 const reel = readFileSync('src/components/demo/BathToShowerReel.tsx', 'utf8');
 const reelStyles = readFileSync('src/components/demo/bath-to-shower-reel.module.css', 'utf8');
+const intakeSlideshow = readFileSync('src/components/demo/AiIntakeSlideshow.tsx', 'utf8');
 
 describe('bath-to-shower mock product site', () => {
-  it('embeds the live reel inside a contractor-focused product landing page', () => {
+  it('embeds the AI intake slideshow inside a contractor-focused product landing page', () => {
     expect(mockSite).toContain("LET&apos;S GET QUOTED");
-    expect(mockSite).toContain('<BathToShowerReel variant="embed" autoplay={false} />');
-    expect(mockSite).toContain('Show the job. Send the price. Book the work.');
-    expect(mockSite).toContain('Your next quote can look this clear.');
+    expect(mockSite).toContain('<AiIntakeSlideshow />');
+    expect(mockSite).toContain('Every lead arrives scoped, ranked, and ready.');
+    expect(mockSite).toContain('Your new AI intake deserves the spotlight.');
   });
 
   it('preserves the reel design scale in an inline aspect-ratio container', () => {
@@ -30,5 +31,17 @@ describe('bath-to-shower mock product site', () => {
     expect(reel).toContain('IntersectionObserver');
     expect(reel).not.toContain('<button className={styles.sendButton}');
     expect(reel).not.toContain('<button className={styles.approveButton}');
+  });
+
+  it('covers the complete AI intake story in ten slides', () => {
+    expect(intakeSlideshow).toContain('General Contracting preset loaded');
+    expect(intakeSlideshow).toContain('AI phone line');
+    expect(intakeSlideshow).toContain('MULTIMODAL VISION');
+    expect(intakeSlideshow).toContain('ADAPTIVE QUESTIONS');
+    expect(intakeSlideshow).toContain('LEAD INTELLIGENCE');
+    expect(intakeSlideshow).toContain('ESTIMATE GUARDRAILS');
+    expect(intakeSlideshow).toContain('QUALIFY + PRIORITIZE');
+    expect(intakeSlideshow).toContain('BOOKING HANDOFF');
+    expect((intakeSlideshow.match(/function \w+Slide\(/g) ?? [])).toHaveLength(10);
   });
 });

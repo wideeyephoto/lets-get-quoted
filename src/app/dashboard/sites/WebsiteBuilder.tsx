@@ -6,7 +6,7 @@ import type { SiteImage } from '@/lib/site-images';
 import { getSiteGallery, STOCK_SITE_IMAGES } from '@/lib/site-images';
 import { getSiteContent, getTradeGlyphOptions, getUnreviewedGeneratedSections, glyphForContent, mergeSiteContent, COLOR_SCHEMES, getColorScheme, HEADER_STYLES,
   MENU_BUTTON_STYLES,
-  BLOG_STYLES, BUTTON_STYLES, HEADER_BUTTON_STYLES, WORDMARK_STYLES, HERO_BADGE_PRESETS, HERO_BADGE_STYLES, IMAGE_SLOT_LABELS, MAX_EXTRA_HERO_IMAGES, PROJECT_SHOWCASE_STYLES, MAX_PROJECT_SHOWCASE_ITEMS, DEFAULT_PROJECT_SHOWCASE_PLACEHOLDERS, DEFAULT_PROJECT_SHOWCASE_EYEBROW, DEFAULT_PROJECT_SHOWCASE_TITLE, STOCK_PROJECT_SHOWCASE_EYEBROW, STOCK_PROJECT_SHOWCASE_TITLE, VIDEO_SECTION_STYLES, videoStyleCapacity, videoSectionKey, MAX_VIDEO_SECTIONS, DEFAULT_VIDEOS_NAV_LABEL, type NormalizedSiteContent, type SiteProjectShowcaseContent, type SiteVideoSectionContent, type SiteBlogContent, type SiteAnnouncementContent, type SiteBeforeAfterContent, type SiteServicesContent, type SiteHowItWorksContent, type SiteFaqContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteShowcaseItem, type SiteStatItem, type SiteStatsContent, type SiteTestimonialItem, type SiteStickyCallBarContent, type SiteChatButtonContent, type SiteAnalyticsContent, type SiteTestimonialsContent, type SiteTrustBadgesContent, type SiteWhyUsContent, type SiteLegalContent } from '@/lib/site-content';
+  BLOG_STYLES, BUTTON_STYLES, HEADER_BUTTON_STYLES, WORDMARK_STYLES, QUOTE_FORM_STYLES, type QuoteFormStyle, HERO_BADGE_PRESETS, HERO_BADGE_STYLES, IMAGE_SLOT_LABELS, MAX_EXTRA_HERO_IMAGES, PROJECT_SHOWCASE_STYLES, MAX_PROJECT_SHOWCASE_ITEMS, DEFAULT_PROJECT_SHOWCASE_PLACEHOLDERS, DEFAULT_PROJECT_SHOWCASE_EYEBROW, DEFAULT_PROJECT_SHOWCASE_TITLE, STOCK_PROJECT_SHOWCASE_EYEBROW, STOCK_PROJECT_SHOWCASE_TITLE, VIDEO_SECTION_STYLES, videoStyleCapacity, videoSectionKey, MAX_VIDEO_SECTIONS, DEFAULT_VIDEOS_NAV_LABEL, type NormalizedSiteContent, type SiteProjectShowcaseContent, type SiteVideoSectionContent, type SiteBlogContent, type SiteAnnouncementContent, type SiteBeforeAfterContent, type SiteServicesContent, type SiteHowItWorksContent, type SiteFaqContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteShowcaseItem, type SiteStatItem, type SiteStatsContent, type SiteTestimonialItem, type SiteStickyCallBarContent, type SiteChatButtonContent, type SiteAnalyticsContent, type SiteTestimonialsContent, type SiteTrustBadgesContent, type SiteWhyUsContent, type SiteLegalContent } from '@/lib/site-content';
 import { generatePrivacyPolicy, generateTermsOfService } from '@/lib/legal/legal-copy';
 import { AVAILABLE_TEMPLATES } from '@/lib/templates/types';
 import ServiceIcon, { SERVICE_ICON_KEYS } from '@/lib/templates/ServiceIcon';
@@ -62,6 +62,8 @@ const OPEN_TARGETS: Record<string, { tab: BuilderTab; card: string }> = {
   logo: { tab: 'design', card: 'logo' },
   typography: { tab: 'design', card: 'typography' },
   theme: { tab: 'design', card: 'theme' },
+  quoteFormStyle: { tab: 'design', card: 'quoteFormStyle' },
+  intakeStyle: { tab: 'page', card: 'estimate' },
 };
 
 // Heading font choices. The webfont options reuse faces the app already loads
@@ -2100,6 +2102,41 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, mess
                   </div>
                 </SectionCard>
 
+                <SectionCard
+                  title="Instant quote form appearance"
+                  description="Choose the visual framing and style for your instant estimate card."
+                  open={openSection === 'quoteFormStyle'}
+                  onToggleOpen={() => toggleSection('quoteFormStyle')}
+                >
+                  <div className={styles.formStylePicker} role="radiogroup" aria-label="Instant quote form appearance">
+                    {QUOTE_FORM_STYLES.map((st) => {
+                      const selected = (siteContent.quoteFormStyle || 'glow') === st.key;
+                      return (
+                        <button
+                          type="button"
+                          key={st.key}
+                          role="radio"
+                          aria-checked={selected}
+                          className={`${styles.formStyleTile}${selected ? ` ${styles.formStyleTileOn}` : ''}`}
+                          onClick={() => updateSiteContent({ quoteFormStyle: st.key })}
+                        >
+                          <div className={styles.formStyleMiniCard} data-preview-style={st.key}>
+                            <div className={styles.formStyleMiniBar} />
+                            <div className={styles.formStyleMiniLine} />
+                            <div className={styles.formStyleMiniInput} />
+                            <div className={styles.formStyleMiniBtn} />
+                          </div>
+                          <div className={styles.formStyleInfo}>
+                            <strong>{st.label}</strong>
+                            <small>{st.desc}</small>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <small className={styles.fieldHint}>Controls the look and feel of the hero Instant Estimate card across all themes and devices.</small>
+                </SectionCard>
+
               </div>
             )}
 
@@ -2220,6 +2257,36 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, mess
                       {siteContent.quoteForm.enabled && (
                         <label className={styles.formField}><span>What visitors see the form called</span><input type="text" maxLength={40} value={siteContent.quoteForm.formHeading} onChange={(event) => updateQuoteForm({ ...siteContent.quoteForm, formHeading: event.target.value })} placeholder="Request an Estimate" /><small className={styles.fieldHint}>The heading on the hero capture and the button in your header. The classic form replies later rather than pricing on the spot, so avoid wording that promises an instant number.</small></label>
                       )}
+                      <div className={styles.formField} id="bf-quote-form-style">
+                        <span>Instant quote form appearance</span>
+                        <div className={styles.formStylePicker} role="radiogroup" aria-label="Instant quote form appearance">
+                          {QUOTE_FORM_STYLES.map((st) => {
+                            const selected = (siteContent.quoteFormStyle || 'glow') === st.key;
+                            return (
+                              <button
+                                type="button"
+                                key={st.key}
+                                role="radio"
+                                aria-checked={selected}
+                                className={`${styles.formStyleTile}${selected ? ` ${styles.formStyleTileOn}` : ''}`}
+                                onClick={() => updateSiteContent({ quoteFormStyle: st.key })}
+                              >
+                                <div className={styles.formStyleMiniCard} data-preview-style={st.key}>
+                                  <div className={styles.formStyleMiniBar} />
+                                  <div className={styles.formStyleMiniLine} />
+                                  <div className={styles.formStyleMiniInput} />
+                                  <div className={styles.formStyleMiniBtn} />
+                                </div>
+                                <div className={styles.formStyleInfo}>
+                                  <strong>{st.label}</strong>
+                                  <small>{st.desc}</small>
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                        <small className={styles.fieldHint}>Choose the visual look and framing of the estimate card on your homepage.</small>
+                      </div>
                       <div className={styles.contentSubhead}><strong>Thank-you video</strong><small>optional</small></div>
                       <IntroVideoField
                         video={siteContent.introVideo}
