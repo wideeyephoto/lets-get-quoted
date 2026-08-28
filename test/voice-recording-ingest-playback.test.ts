@@ -15,6 +15,9 @@ const ACCOUNT_ID = '11111111-1111-4111-8111-111111111111';
 const CALL_ID = 'call-12345';
 const PROVIDER_CALL_ID = 'p-call-123';
 
+const TEST_BASIC_AUTH = 'testuser:testpass';
+const VALID_AUTH_HEADER = `Basic ${Buffer.from(TEST_BASIC_AUTH).toString('base64')}`;
+
 describe('voice recording status ingest webhook (/api/voice/recording-status)', () => {
   let updates: Record<string, unknown>[] = [];
 
@@ -32,13 +35,57 @@ describe('voice recording status ingest webhook (/api/voice/recording-status)', 
 
   beforeEach(() => {
     updates = [];
+    process.env.LGQ_VOICE_RECEIPT_BASIC = TEST_BASIC_AUTH;
     mockCreateAdminClient.mockReturnValue(mockAdmin);
+  });
+
+  it('rejects unauthenticated callbacks with 401', async () => {
+    const req = new Request('http://localhost/api/voice/recording-status', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ call_id: PROVIDER_CALL_ID, recording_status: 'completed' }),
+    });
+
+    const res = await recordingStatusHandler(req);
+    expect(res.status).toBe(401);
+    const data = await res.json();
+    expect(data.error).toBe('Unauthorized');
+  });
+
+  it('rejects callbacks with invalid credentials with 401', async () => {
+    const req = new Request('http://localhost/api/voice/recording-status', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Basic ' + Buffer.from('wrong:creds').toString('base64'),
+      },
+      body: JSON.stringify({ call_id: PROVIDER_CALL_ID, recording_status: 'completed' }),
+    });
+
+    const res = await recordingStatusHandler(req);
+    expect(res.status).toBe(401);
+  });
+
+  it('returns 503 if voice receipt auth is not configured', async () => {
+    delete process.env.LGQ_VOICE_RECEIPT_BASIC;
+
+    const req = new Request('http://localhost/api/voice/recording-status', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ call_id: PROVIDER_CALL_ID, recording_status: 'completed' }),
+    });
+
+    const res = await recordingStatusHandler(req);
+    expect(res.status).toBe(503);
   });
 
   it('rejects callbacks without a call id', async () => {
     const req = new Request('http://localhost/api/voice/recording-status', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: VALID_AUTH_HEADER,
+      },
       body: JSON.stringify({ recording_status: 'completed' }),
     });
 
@@ -51,7 +98,10 @@ describe('voice recording status ingest webhook (/api/voice/recording-status)', 
   it('ingests completed recording metadata into voice_calls', async () => {
     const req = new Request('http://localhost/api/voice/recording-status', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: VALID_AUTH_HEADER,
+      },
       body: JSON.stringify({
         call_id: PROVIDER_CALL_ID,
         recording_status: 'completed',
@@ -79,7 +129,10 @@ describe('voice recording status ingest webhook (/api/voice/recording-status)', 
   it('rejects recording callbacks containing invalid or untrusted URL schemes', async () => {
     const req = new Request('http://localhost/api/voice/recording-status', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: VALID_AUTH_HEADER,
+      },
       body: JSON.stringify({
         call_id: PROVIDER_CALL_ID,
         recording_status: 'completed',

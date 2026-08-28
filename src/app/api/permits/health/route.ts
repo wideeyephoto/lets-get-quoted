@@ -64,18 +64,18 @@ export async function GET() {
         consentGateEnforced: true,
       },
       providerAdapters: {
-        bsaAccessMyGov: 'active',
-        accelaCitizenAccess: 'active',
-        openGovPlc: 'active',
-        openDataGis: 'active',
+        bsaAccessMyGov: 'mock_pilot',
+        accelaCitizenAccess: 'in_development',
+        openGovPlc: 'in_development',
+        openDataGis: 'in_development',
       },
       webhookRouters: {
-        status: 'ready',
+        status: process.env.PERMIT_WEBHOOK_SECRET ? 'configured' : 'unconfigured',
         providers: ['bsa', 'accela', 'opengov'],
       },
       credentialsVault: {
         status: 'active',
-        encryption: 'AES-256 / Supabase Vault',
+        storage: 'application_database',
       },
     },
   });

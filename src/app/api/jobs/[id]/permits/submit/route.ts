@@ -71,15 +71,23 @@ export async function POST(
       );
     }
 
+    const licenseNumber = (payload?.qualifyingLicenseNumber || '').trim();
+    if (!licenseNumber) {
+      return NextResponse.json(
+        { error: 'A valid qualifying contractor license number is required before permit filing.' },
+        { status: 400 },
+      );
+    }
+
     const submissionResult = await executePermitSubmission(
       supabase,
       membership.accountId,
       params.id,
       {
         contractorAuthorized: true,
-        authorizedByName: payload.authorizedByName || user.email || 'Contractor Licensee',
-        authorizedByEmail: user.email || 'contractor@example.com',
-        qualifyingLicenseNumber: payload.qualifyingLicenseNumber || '2101234567',
+        authorizedByName: payload.authorizedByName || user.email?.split('@')[0] || 'Contractor Licensee',
+        authorizedByEmail: user.email || '',
+        qualifyingLicenseNumber: licenseNumber,
         agreedToSection23a: true,
         notes: payload.notes,
         idempotencyKey: payload.idempotencyKey,

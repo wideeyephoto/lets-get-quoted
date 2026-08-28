@@ -42,7 +42,7 @@ const BSA_MUNICIPALITY_UIDS: Record<string, { uid: string; name: string }> = {
 };
 
 /**
- * Sample verified historical permit fixtures for the Royal Oak pilot demonstration.
+ * Sample historical permit fixtures for demonstration/pilot mock testing.
  */
 const SAMPLE_ROYAL_OAK_HISTORY: ExternalPermitRecord[] = [
   {
@@ -57,7 +57,7 @@ const SAMPLE_ROYAL_OAK_HISTORY: ExternalPermitRecord[] = [
     contractorName: 'Motor City Roofing & Siding LLC',
     provider: 'bsa_accessmygov',
     sourceUrl: 'https://www.accessmygov.com/?uid=1349',
-    confidence: 'verified',
+    confidence: 'medium',
   },
   {
     permitNumber: 'PM-2021-1104',
@@ -71,7 +71,7 @@ const SAMPLE_ROYAL_OAK_HISTORY: ExternalPermitRecord[] = [
     contractorName: 'Royal Oak Heating & Cooling Inc',
     provider: 'bsa_accessmygov',
     sourceUrl: 'https://www.accessmygov.com/?uid=1349',
-    confidence: 'verified',
+    confidence: 'medium',
   },
   {
     permitNumber: 'PB-2018-0912',
@@ -85,7 +85,7 @@ const SAMPLE_ROYAL_OAK_HISTORY: ExternalPermitRecord[] = [
     contractorName: 'Oakland Custom Carpentry',
     provider: 'bsa_accessmygov',
     sourceUrl: 'https://www.accessmygov.com/?uid=1349',
-    confidence: 'verified',
+    confidence: 'medium',
   },
 ];
 
@@ -129,8 +129,8 @@ export class BsaPermitProvider implements PermitHistoryProvider {
         sourceUrl: portalSearchUrl,
         retrievedAt: new Date().toISOString(),
         effectiveDate: '2026-08-26',
-        confidence: isRoyalOak ? 'verified' : 'medium',
-        isAuthoritative: true,
+        confidence: 'medium',
+        isAuthoritative: false,
       },
       portalSearchUrl,
     };

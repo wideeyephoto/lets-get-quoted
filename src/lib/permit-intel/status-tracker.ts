@@ -60,23 +60,13 @@ export async function syncPermitCaseStatus(
   const history = await getPropertyPermitHistory(job.address);
   const records = history.records || [];
 
-  // Match remote record by external permit number or recent roofing permit
-  let matchedRecord = records.find(
+  // Match remote record strictly by external permit number
+  const matchedRecord = records.find(
     (r) =>
       permitCase.externalPermitNumber &&
       (r.permitNumber.toLowerCase() === permitCase.externalPermitNumber.toLowerCase() ||
         r.permitNumber.includes(permitCase.externalPermitNumber)),
   );
-
-  if (!matchedRecord && records.length > 0) {
-    // If exact reference isn't matched, check if a newly issued permit appears for the trade
-    matchedRecord = records.find(
-      (r) =>
-        r.permitType.toLowerCase().includes('roof') ||
-        r.permitType.toLowerCase().includes('building') ||
-        (r.description && r.description.toLowerCase().includes('roof')),
-    );
-  }
 
   let newStatus: PermitApplicationStatus = previousStatus;
   let newPermitNumber = permitCase.externalPermitNumber;
@@ -179,9 +169,12 @@ export async function processInboundPermitWebhook(
   payload: Record<string, unknown>,
   secretHeader?: string | null,
 ): Promise<{ success: boolean; message: string; jobId?: string }> {
-  // Validate secret if configured
-  const expectedSecret = process.env.PERMIT_WEBHOOK_SECRET;
-  if (expectedSecret && secretHeader !== expectedSecret) {
+  // Validate secret (fail-closed if unconfigured or mismatched)
+  const expectedSecret = (process.env.PERMIT_WEBHOOK_SECRET || '').trim();
+  if (!expectedSecret) {
+    throw new Error('Permit webhook secret is not configured.');
+  }
+  if (!secretHeader || secretHeader !== expectedSecret) {
     throw new Error('Unauthorized permit webhook secret.');
   }
 

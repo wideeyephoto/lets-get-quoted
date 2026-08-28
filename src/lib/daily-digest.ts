@@ -243,6 +243,12 @@ export async function runDailyDigests(now: Date = new Date()): Promise<DigestRun
     } catch (err) {
       failed++;
       console.error(`Daily digest failed for account ${accountId}:`, err instanceof Error ? err.message : err);
+      // Revert date stamp on error so the daily digest is not permanently suppressed for the day
+      try {
+        await admin.from('accounts').update({ last_digest_date: null }).eq('id', accountId);
+      } catch {
+        // best effort revert
+      }
     }
   }
 

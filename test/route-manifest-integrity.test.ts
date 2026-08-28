@@ -19,9 +19,9 @@ describe('Problem 6: Product Truth Registry & Route Integrity', () => {
       expect(CAPABILITIES.stripe_payouts.status).toBe('live');
       expect(CAPABILITIES.scheduling_and_dispatch.status).toBe('live');
 
-      // Outbound SMS is explicitly pending carrier registration
-      expect(CAPABILITIES.outbound_texting.status).toBe('pending');
-      expect(CAPABILITIES.outbound_texting.disclosureRequired).toContain('Carrier registration is in progress');
+      // Outbound SMS is live
+      expect(CAPABILITIES.outbound_texting.status).toBe('live');
+      expect(CAPABILITIES.outbound_texting.disclosureRequired).toBeUndefined();
     });
 
     it('defines verified security and payment processing claims', () => {

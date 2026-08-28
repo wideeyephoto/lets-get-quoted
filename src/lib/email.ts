@@ -111,13 +111,17 @@ function replyAddress(brand: EmailBrand): string {
   return brand.replyTo || 'hello@letsgetquoted.com';
 }
 
+function cleanTag(value: string): string {
+  return value.replace(/[^a-zA-Z0-9_-]/g, '_');
+}
+
 /** Standard tags attached to all outbound emails for outcome tracking and theme performance. */
 function defaultTags(kind: string, brand: EmailBrand, accountId?: string | null): Array<{ name: string; value: string }> {
   return [
-    { name: 'kind', value: kind },
-    { name: 'theme', value: brand.theme || 'studio' },
-    { name: 'template_version', value: '2.0' },
-    ...(accountId ? [{ name: 'account_id', value: accountId }] : []),
+    { name: 'kind', value: cleanTag(kind) },
+    { name: 'theme', value: cleanTag(brand.theme || 'studio') },
+    { name: 'template_version', value: '2_0' },
+    ...(accountId ? [{ name: 'account_id', value: cleanTag(accountId) }] : []),
   ];
 }
 

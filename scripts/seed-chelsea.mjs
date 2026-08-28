@@ -491,7 +491,8 @@ async function main() {
     await client.query(`delete from clients where account_id = $1`, [account.id]);
     console.log('✓ Teardown complete.');
 
-    // 2. Prepare bulk rows (with test_marker = null for immediate visibility)
+    // 2. Prepare bulk rows (with test_marker = 'seed_chelsea' for safe synthetic isolation)
+    const SEED_TEST_MARKER = 'seed_chelsea';
     const clientRows = [];
     const jobRows = [];
     const linkRows = [];
@@ -507,7 +508,7 @@ async function main() {
       const clientId = randomUUID();
 
       clientRows.push([
-        clientId, account.id, person.name, person.phone, person.email, person.address, record.createdAt, record.createdAt, null
+        clientId, account.id, person.name, person.phone, person.email, person.address, record.createdAt, record.createdAt, SEED_TEST_MARKER
       ]);
 
       let mainJobId = null;
@@ -533,19 +534,19 @@ async function main() {
           record.priorJob.service.scope, 'complete', 'referral', record.priorJob.amount, record.priorJob.service.hours[0],
           record.priorJob.scheduledFor, null, record.priorJob.startedAt,
           priorQuoteItems, person.name, record.priorJob.startedAt, 'typed',
-          person.lat, person.lng, record.priorJob.createdAt, record.priorJob.createdAt, null
+          person.lat, person.lng, record.priorJob.createdAt, record.priorJob.createdAt, SEED_TEST_MARKER
         ]);
 
         const priorInvoiceRef = `INV-CLEAN-${invoiceSeq++}`;
         invoiceRows.push([
           priorInvoiceId, account.id, priorJobId, priorInvoiceRef, 'paid', record.priorJob.amount,
-          record.priorJob.invoiceCreatedAt, person.name, record.priorJob.invoiceCreatedAt, null
+          record.priorJob.invoiceCreatedAt, person.name, record.priorJob.invoiceCreatedAt, SEED_TEST_MARKER
         ]);
 
         paymentRows.push([
           account.id, priorJobId, priorInvoiceId, 'final', 'Cleaning service payment', record.priorJob.amount,
           'paid', record.priorJob.invoiceCreatedAt, record.priorJob.paidAt,
-          Number((record.priorJob.amount * 0.02).toFixed(2)), 0.02, null
+          Number((record.priorJob.amount * 0.02).toFixed(2)), 0.02, SEED_TEST_MARKER
         ]);
       }
 
@@ -569,7 +570,7 @@ async function main() {
           record.service.scope, record.job.status, record.leadSource, record.job.quotedAmount, record.hours,
           record.job.scheduledFor, record.job.scheduledTime, record.job.startedAt,
           quoteItems, record.job.quoteSignerName, record.job.quoteSignedAt, record.job.quoteSignatureMethod,
-          person.lat, person.lng, record.job.createdAt, record.job.createdAt, null
+          person.lat, person.lng, record.job.createdAt, record.job.createdAt, SEED_TEST_MARKER
         ]);
 
         linkRows.push([
@@ -583,13 +584,13 @@ async function main() {
 
           invoiceRows.push([
             invoiceId, account.id, mainJobId, invoiceRef, record.invoice.status, record.invoice.total,
-            record.invoice.signedAt, record.invoice.signerName, record.invoice.createdAt, null
+            record.invoice.signedAt, record.invoice.signerName, record.invoice.createdAt, SEED_TEST_MARKER
           ]);
 
           paymentRows.push([
             account.id, mainJobId, invoiceId, record.payment.kind, record.payment.label,
             record.payment.amount, record.payment.status, record.payment.requestedAt,
-            record.payment.paidAt, record.payment.platformFee, record.payment.feeRate, null
+            record.payment.paidAt, record.payment.platformFee, record.payment.feeRate, SEED_TEST_MARKER
           ]);
         }
       }
@@ -625,7 +626,7 @@ async function main() {
       leadRows.push([
         account.id, clientId, record.leadSource, person.name, person.phone, person.email,
         person.address, record.message, record.service.name, record.leadStatus, mainJobId,
-        person.lat, person.lng, record.createdAt, record.createdAt, record.createdAt, null, JSON.stringify(triage)
+        person.lat, person.lng, record.createdAt, record.createdAt, record.createdAt, SEED_TEST_MARKER, JSON.stringify(triage)
       ]);
     }
 

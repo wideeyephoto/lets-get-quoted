@@ -56,9 +56,7 @@ export default function ContactPage() {
           </ul>
           <p>
             A person reads every message and replies by email — there is no ticket robot in
-            between. If your question is about texting, note that automatic texts are still
-            going through carrier registration; the <Link href="/faq">FAQ</Link> covers what
-            that does and does not affect.
+            between.
           </p>
           <p>
             <strong>Please don&rsquo;t send payment details.</strong> Never put a card number,

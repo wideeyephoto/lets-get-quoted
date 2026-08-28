@@ -104,7 +104,7 @@ const VIDEO_LAYOUTS: VideoLayoutDef[] = [
 ];
 
 export default function WebsiteMediaStudioShowcase() {
-  const [activeLayout, setActiveLayout] = useState<VideoLayoutKey>('split');
+  const [activeLayout, setActiveLayout] = useState<VideoLayoutKey>('hero');
   const [sliderPos, setSliderPos] = useState<number>(50);
   const [isSplitPlaying, setIsSplitPlaying] = useState<boolean>(false);
   const [isStoryPlaying, setIsStoryPlaying] = useState<boolean>(false);
@@ -115,6 +115,25 @@ export default function WebsiteMediaStudioShowcase() {
   const storyVideoRef = useRef<HTMLVideoElement>(null);
 
   const currentLayout = VIDEO_LAYOUTS.find((l) => l.key === activeLayout) || VIDEO_LAYOUTS[0];
+
+  function getViewportUrl(key: VideoLayoutKey) {
+    switch (key) {
+      case 'hero':
+        return 'greenvalleylawncare.com · layout: hero';
+      case 'split':
+        return 'cedarcreekwoodworking.com · layout: split';
+      case 'story':
+        return 'fairviewroofing.com · layout: story';
+      case 'reel':
+        return 'precisiontradecraft.com · layout: reel';
+      case 'testimonial':
+        return 'fairviewroofing.com · layout: testimonial';
+      case 'process':
+        return 'cedarcreekwoodworking.com · layout: process';
+      default:
+        return `cedarcreekservices.com · layout: ${key}`;
+    }
+  }
 
   function toggleSplitPlay() {
     if (!splitVideoRef.current) return;
@@ -231,7 +250,7 @@ export default function WebsiteMediaStudioShowcase() {
                 <span className={styles.dot} />
                 <span className={styles.dot} />
               </div>
-              <span className={styles.viewportUrl}>cedarcreekroofing.com · layout: {activeLayout}</span>
+              <span className={styles.viewportUrl}>{getViewportUrl(activeLayout)}</span>
             </div>
 
             <div className={styles.mockContent}>
@@ -243,18 +262,18 @@ export default function WebsiteMediaStudioShowcase() {
                     muted
                     playsInline
                     className={styles.heroBgVideo}
-                    src="/media/website-builder/studio/roofer-inspecting-shingles.mp4"
-                    poster="/media/website-builder/studio/roofer-inspecting-shingles-poster.jpg"
+                    src="/media/website-builder/studio/zero-turn-mower-loop.mp4"
+                    poster="/media/website-builder/studio/zero-turn-mower-poster.jpg"
                   />
                   <div className={styles.heroLoopScrim} />
                   <div className={styles.heroLoopOverlay}>
                     <span className={styles.videoOverlayBadge}>● Live Video Background Loop</span>
                     <div style={{ color: 'var(--flare)', fontSize: '0.72rem', fontWeight: 800, textTransform: 'uppercase' }}>
-                      Premier Roofing &amp; Siding
+                      Green Valley Turf &amp; Grounds
                     </div>
-                    <h4 className={styles.heroLoopHeading}>Built to Last Through Every Storm</h4>
+                    <h4 className={styles.heroLoopHeading}>Built for Clean Cuts &amp; Perfect Stripes</h4>
                     <p className={styles.heroLoopText}>
-                      Full roof replacements, emergency leak repairs, and seamless gutters in Fairview.
+                      Precision lawn maintenance, seasonal cleanups, and commercial turf management in Fairview.
                     </p>
                     <span className={styles.heroLoopBtn}>Get Instant Estimate &rarr;</span>
                   </div>
@@ -287,10 +306,10 @@ export default function WebsiteMediaStudioShowcase() {
                     </span>
                   </div>
                   <div className={styles.splitCopy}>
-                    <span className={styles.splitEyebrow}>Meet The Crew</span>
+                    <span className={styles.splitEyebrow}>Meet The Craftsman</span>
                     <h4 className={styles.splitHeading}>Honest Work, Guaranteed Craftsmanship</h4>
                     <p className={styles.splitDesc}>
-                      Dana explains how our intake inspection works and why we leave jobsites cleaner than we found them.
+                      Dana explains how our custom millwork process works and why we leave jobsites cleaner than we found them.
                     </p>
                     <button
                       type="button"
@@ -365,12 +384,12 @@ export default function WebsiteMediaStudioShowcase() {
                       muted
                       playsInline
                       className={styles.realReelVideo}
-                      src="/media/website-builder/lawn-and-order/lawn-and-order-mobile-scroll.mp4"
-                      poster="/media/website-builder/lawn-and-order/lawn-and-order-mobile-hero.jpg"
+                      src="/media/website-builder/studio/zero-turn-mower-loop.mp4"
+                      poster="/media/website-builder/studio/zero-turn-mower-poster.jpg"
                     />
                     <div className={styles.reelOverlay}>
                       <span className={styles.reelTimeBadge}>● Live Reel · 0:42</span>
-                      <span className={styles.reelTitle}>Jobsite Progress</span>
+                      <span className={styles.reelTitle}>Lawn Striping</span>
                     </div>
                   </div>
                   <div className={styles.reelCard} style={{ background: '#192841' }}>
@@ -415,8 +434,8 @@ export default function WebsiteMediaStudioShowcase() {
                       muted
                       playsInline
                       className={styles.realVideoPlayer}
-                      src="/videos/lets-get-quoted-hero-video-paced.mp4"
-                      poster="/features/client-esignature.jpg"
+                      src="/media/website-builder/studio/roofer-inspecting-shingles.mp4"
+                      poster="/media/website-builder/studio/roofer-inspecting-shingles-poster.jpg"
                     />
                     <span className={styles.videoDurationTag}>0:45</span>
                   </div>
@@ -439,8 +458,8 @@ export default function WebsiteMediaStudioShowcase() {
                       muted
                       playsInline
                       className={styles.realVideoPlayer}
-                      src="/videos/lets-get-quoted-hero-video-paced.mp4"
-                      poster="/features/online-booking.jpg"
+                      src="/media/website-builder/studio/craftsman-woodworking.mp4"
+                      poster="/media/website-builder/studio/craftsman-woodworking-poster.jpg"
                     />
                     <span className={styles.videoDurationTag}>1:30</span>
                   </div>
@@ -449,13 +468,13 @@ export default function WebsiteMediaStudioShowcase() {
                       <span className={styles.stepNumber}>1</span> Instant 60-Sec Estimate
                     </div>
                     <div className={styles.stepRow}>
-                      <span className={styles.stepNumber}>2</span> On-Site Drone Inspection
+                      <span className={styles.stepNumber}>2</span> Material &amp; Scope Walkthrough
                     </div>
                     <div className={styles.stepRow}>
                       <span className={styles.stepNumber}>3</span> E-Sign Quote &amp; Deposit
                     </div>
                     <div className={styles.stepRow}>
-                      <span className={styles.stepNumber}>4</span> 1-Day Installation
+                      <span className={styles.stepNumber}>4</span> Custom Build &amp; Clean Reveal
                     </div>
                   </div>
                 </div>

@@ -128,13 +128,8 @@ const FAQ_GROUPS: FaqGroup[] = [
       },
       {
         id: 'can-i-text-customers',
-        // THE BANNER AND THIS ANSWER USED TO DISAGREE.
-        // Every public page carries a notice saying automatic texts are not
-        // sending yet; this answer said "Yes" and described them working. The
-        // one page a contractor opens specifically to check what is real was
-        // the page contradicting the notice above it.
         q: 'Can I text my customers?',
-        a: 'This is the one part of the product that is not switched on yet. Outbound texting is still going through carrier registration, so automatic messages — quote links, arrival windows, payment requests and review asks — are not sending today. Everything they attach to is built and working, and they start flowing once registration completes. When it does: two-way SMS keeps every conversation in one inbox, with built-in opt-out handling (STOP/START/HELP). Obtaining consent to text your customers remains your responsibility.',
+        a: 'Yes. Two-way SMS keeps every conversation in one inbox, with automatic texts for quote approvals, arrival windows, payment requests, and review asks, plus built-in opt-out handling (STOP/START/HELP). Obtaining consent to text your customers remains your responsibility.',
       },
       {
         id: 'crew-access',

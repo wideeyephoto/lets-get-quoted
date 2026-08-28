@@ -151,7 +151,7 @@ export async function executePermitSubmission(
   const datePrefix = submissionTimestamp.slice(0, 10).replace(/-/g, '');
   const externalRef = `SUB-${datePrefix}-${jobId.slice(0, 6).toUpperCase()}`;
 
-  // Advance permit case status to 'submitted'
+  // Advance permit case status to 'submitted' (ready for municipal intake)
   const updatedCase = await updatePermitCase(
     supabase,
     accountId,
@@ -159,7 +159,7 @@ export async function executePermitSubmission(
     {
       applicationStatus: 'submitted',
       externalPermitNumber: externalRef,
-      notes: `Submitted by ${auth.authorizedByName} (${auth.authorizedByEmail}) under License #${auth.qualifyingLicenseNumber}`,
+      notes: `Submission packet recorded by ${auth.authorizedByName} (${auth.authorizedByEmail}) under License #${auth.qualifyingLicenseNumber}. Internal reference: ${externalRef}`,
     },
     userEmail,
   );
@@ -168,8 +168,8 @@ export async function executePermitSubmission(
   try {
     await createJobFeedEvent(supabase, accountId, jobId, {
       kind: 'permit_submission_dispatched',
-      title: 'Permit Application Submitted',
-      body: `Building permit application officially submitted to ${application.authority.name} (Ref: ${externalRef}). Authorized by ${auth.authorizedByName}.`,
+      title: 'Permit Application Packet Prepared',
+      body: `Building permit application packet prepared for ${application.authority.name} (Ref: ${externalRef}). Authorized by ${auth.authorizedByName}.`,
       author: userEmail,
       visibility: 'internal',
       meta: {

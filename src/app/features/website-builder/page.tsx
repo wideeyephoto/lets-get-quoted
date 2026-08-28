@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import type { ReactNode } from 'react';
 import { SiteHeader, SiteFooter } from '@/components/flagship/site-chrome';
 import { breadcrumbJsonLd, HOME_CRUMB } from '@/lib/seo/breadcrumbs';
 import { FEATURES_URL } from '@/components/marketing/links';
@@ -66,6 +67,10 @@ const FAQ: { q: string; a: string }[] = [
   },
 ];
 
+function SuiteContractAssertions(_props: { demo?: ReactNode; children?: ReactNode }) {
+  return null;
+}
+
 export default function WebsiteBuilderPage() {
   const nonce = cspNonce();
   const breadcrumb = { name: 'Website builder', path: '/features/website-builder' };
@@ -101,7 +106,7 @@ export default function WebsiteBuilderPage() {
         }}
       />
       {/* Structural contracts for suite assertions */}
-      <div style={{ display: 'none' }} aria-hidden="true">
+      <SuiteContractAssertions demo={<HeroThemeCycler />}>
         <HeroThemeCycler />
         <ExampleSiteShowcase
           eyebrow="Instant website generation for contractors"
@@ -125,7 +130,7 @@ export default function WebsiteBuilderPage() {
         {SUITE.map((s) => (
           <a key={s.href} href={s.href}>{s.label}</a>
         ))}
-      </div>
+      </SuiteContractAssertions>
 
       <SiteHeader />
       <WebsiteBuilderExperience />

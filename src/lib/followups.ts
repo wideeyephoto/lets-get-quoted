@@ -210,6 +210,19 @@ export async function runStalledQuoteFollowups(now = new Date()): Promise<Follow
         continue;
       }
 
+      // Quarantine synthetic/test data: never nudge fake test jobs or example domains
+      const jobRecord = job as Record<string, unknown>;
+      const rawEmail = ((job.client_email || link.client_email || '') as string).toLowerCase().trim();
+      if (
+        jobRecord.test_marker != null ||
+        rawEmail.endsWith('@example.com') ||
+        rawEmail.endsWith('@example.org') ||
+        rawEmail.endsWith('@example.net')
+      ) {
+        skipped++;
+        continue;
+      }
+
       // Belt-and-suspenders: never nudge an already-approved quote.
       const { data: approved } = await admin
         .from('job_feed')

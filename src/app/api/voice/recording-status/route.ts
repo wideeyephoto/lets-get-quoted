@@ -19,7 +19,10 @@ function isValidRecordingUrl(urlStr: string): boolean {
 export async function POST(req: Request) {
   try {
     const authCheck = verifyVoiceReceiptAuthorization(req);
-    if (!authCheck.ok && authCheck.reason === 'mismatch') {
+    if (!authCheck.ok && authCheck.reason === 'not_configured') {
+      return NextResponse.json({ error: 'not_configured' }, { status: 503 });
+    }
+    if (!authCheck.ok) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
