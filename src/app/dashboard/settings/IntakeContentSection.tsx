@@ -4,7 +4,8 @@ import Link from 'next/link';
 import { useEffect, useRef, useState, useTransition, type ReactNode } from 'react';
 import type { SiteEstimateRangesContent, SiteLeadFiltersContent } from '@/lib/site-content';
 import { intakeQuality, groupStatus } from '@/lib/intake-quality';
-import { TRADE_INTAKE_PRESETS, type TradeIntakePreset } from '@/lib/trade-intake-presets';
+import { getTradeIntakePresetsList, matchTradePreset, type TradeIntakePreset } from '@/lib/trade-intake-presets';
+import { useWorkspaceTrade } from '@/app/dashboard/WorkspaceTradeContext';
 import { updateIntakeContentAction } from './actions';
 
 /**
@@ -83,6 +84,9 @@ export default function IntakeContentSection({
   customerTextingReady = true,
   preview,
 }: Props) {
+  const activeTrade = useWorkspaceTrade();
+  const matchedPreset = matchTradePreset(activeTrade);
+  const presetsList = getTradeIntakePresetsList();
   const [filters, setFilters] = useState(initialFilters);
   const [emailField, setEmailField] = useState(initialEmailField);
   const [save, setSave] = useState<SaveState>('idle');
@@ -183,17 +187,21 @@ export default function IntakeContentSection({
               {appliedPresetName && <span className="iq-preset-success">✓ {appliedPresetName} preset loaded</span>}
             </div>
             <div className="iq-presets-list">
-              {Object.values(TRADE_INTAKE_PRESETS).map((preset) => (
-                <button
-                  key={preset.id}
-                  type="button"
-                  onClick={() => applyTradePreset(preset)}
-                  className="iq-preset-chip"
-                  title={preset.description}
-                >
-                  {preset.name}
-                </button>
-              ))}
+              {presetsList.map((preset) => {
+                const isRecommended = matchedPreset?.id === preset.id;
+                return (
+                  <button
+                    key={preset.id}
+                    type="button"
+                    onClick={() => applyTradePreset(preset)}
+                    className={`iq-preset-chip ${isRecommended ? 'iq-preset-recommended' : ''}`}
+                    title={`${preset.description}${isRecommended ? ' (Matches your business profile)' : ''}`}
+                  >
+                    {preset.name}
+                    {isRecommended && <span className="iq-preset-star" aria-hidden="true"> ★</span>}
+                  </button>
+                );
+              })}
             </div>
           </div>
 

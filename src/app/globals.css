@@ -30575,6 +30575,16 @@ a.ins-export-opt:focus-visible { outline: 2px solid rgba(255, 122, 33, 0.85); ou
   background: rgba(255, 122, 33, 0.15);
   color: var(--accent);
 }
+.iq-preset-chip.iq-preset-recommended {
+  border-color: var(--accent);
+  background: rgba(255, 122, 33, 0.12);
+  color: var(--accent);
+  font-weight: 700;
+}
+.iq-preset-star {
+  color: #ff9800;
+  font-size: 0.8rem;
+}
 .iq-exclusions-suggestions {
   display: grid; gap: 0.3rem; margin-top: 0.35rem;
 }

@@ -13,6 +13,7 @@ import {
 } from '@/lib/billing/ai-intake-usage';
 import { isAiIntakeFlowKind } from '@/lib/ai-intake-thread';
 import { applyEstimateGuardrails } from '@/lib/estimate-guardrails';
+import { matchTradePreset } from '@/lib/trade-intake-presets';
 
 export const runtime = 'nodejs';
 
@@ -171,30 +172,36 @@ export async function POST(request: NextRequest) {
   };
 
   const questionsRemaining = maxQuestions - turn;
+  const activeTradePreset = matchTradePreset(siteContent.trade || businessSummary || businessName);
+
   // Free context from the site's own profile (already stored, no extra AI call) —
   // helps the model tailor questions/classification to this specific trade and
   // region instead of asking generically. Only needed on the first turn; once
   // chained via previous_response_id the model already has this in context.
-  const businessContext = !previousResponseId && (businessName || businessSummary || serviceArea)
-    ? ` This business is "${businessName || 'unknown'}"${businessSummary ? ` (${businessSummary})` : ''}${serviceArea ? `, serving ${serviceArea}` : ''}. Use this to inform what kind of work is likely being described.`
+  const businessContext = !previousResponseId && (businessName || businessSummary || serviceArea || siteContent.trade)
+    ? ` This business is in the ${activeTradePreset.name} trade ("${businessName || 'unknown'}"${businessSummary ? ` - ${businessSummary}` : ''}${serviceArea ? `, serving ${serviceArea}` : ''}). Use this trade context to inform pricing, questions, and typical scope standards.`
     : '';
   const qualityContext = !previousResponseId ? `${areaContext}${exclusionContext}${locationContext}` : '';
+
   // Out of questions? The model gets NO option to ask again — vague answers
   // ("not sure", "no") otherwise make it keep probing forever and the visitor
   // ends up with no number at all.
   const askingRules = questionsRemaining > 0
     ? `Ask short, simple follow-up questions one at a time to clarify the job's scope and quality/finish level. You may ask up to ${questionsRemaining} more question(s), but ask another ONLY while the answer would meaningfully change the price — the moment you can price the job confidently, stop and estimate. If an answer was vague ("not sure"), try ONE different angle on that detail, then move on rather than repeating it. ` +
-      'While still asking: {"type":"question","question":"<one short, plain-language question>","photo_prompt":"<optional 2-8 word specific photo request e.g. Snap rating badge on side, or omit>"}. ' +
+      `While still asking: {"type":"question","question":"<one short, plain-language question>","photo_prompt":"<optional 2-8 word specific photo request relevant to this trade: ${activeTradePreset.photoGuidance}>"}. ` +
       'Once ready (or out of questions): '
     : 'You are OUT of questions — do NOT ask anything else. Even if details are vague, give your best-judgment range for the most common version of this job, priced toward the cheaper outcome. Respond ONLY with: ';
+
   const rawImages: unknown[] = Array.isArray(body?.images) ? body.images : [];
   const validImages = rawImages
     .filter((img): img is string => typeof img === 'string' && img.startsWith('data:image/'))
     .slice(0, 4);
 
   const visualInstruction = validImages.length > 0
-    ? ' Images or video frames of the project are provided. Inspect them for equipment brand/model, existing damage, materials, and job difficulty. Do not ask questions about details clearly visible in the images, and account for visible difficulty in the estimate. You may optionally include "visual_observation":"<one brief sentence acknowledging what was spotted>" in your JSON response. '
+    ? ` Images or video frames of the project are provided. Inspect them for equipment technical specs (${activeTradePreset.equipmentSpecs.join(', ')}), existing damage, materials, and job difficulty. Do not ask questions about details clearly visible in the images, and account for visible difficulty in the estimate. You may optionally include "visual_observation":"<one brief sentence acknowledging what was spotted, e.g. 'Spotted a 40-gal atmospheric gas water heater with minor corrosion at the inlet nipple'>" in your JSON response. `
     : '';
+
+  const siteVisitTriggersStr = activeTradePreset.siteVisitTriggers.join('; ');
 
   const instructions =
     "You help a local home-services business's website understand a project's scope before showing a rough price range." +
@@ -208,9 +215,9 @@ export async function POST(request: NextRequest) {
     'basis: a short plain-language phrase naming what you priced, under 60 characters, starting lowercase, no price in it (e.g. "a standard running-toilet repair", "a deep clean of a 2-bed home"). ' +
     'in_area: false ONLY when the visitor\'s stated location is clearly outside the served areas listed; true when it clearly matches or neighbors them; null when no location was given or you are unsure. ' +
     'excluded: true ONLY when the described work clearly matches something the business does NOT take on; otherwise false. Never refuse to estimate — always include min/max regardless of these two fields. ' +
-    'requires_site_visit: true ONLY when the job involves high-complexity structural work, whole-home repiping (e.g. 50+ ft galvanized pipe across multiple floors), main sewer excavations, panel replacements, or full roof tear-offs that cannot be accurately priced without in-person inspection. For these, min/max must reflect true full-scope baseline price floors (e.g. multi-story repipes start at $3,500-$8,000+), never trivial patch repair numbers. ' +
+    `requires_site_visit: true ONLY when the job involves high-complexity structural work or major unknown variables that cannot be accurately priced without in-person inspection. For ${activeTradePreset.name}, key site-visit triggers include: ${siteVisitTriggersStr}. For these, min/max must reflect true full-scope baseline price floors, never trivial patch repair numbers. ` +
     'Price the described job itself, not a generic project category: cleaning one 150 sq ft room is a low-cost routine service call, not a renovation. ' +
-    'For active emergencies (burst pipes, severe flooding, gas leaks), account for emergency response/dispatch diagnostic fees. ' +
+    'For active emergencies (burst pipes, severe flooding, gas leaks, complete power outage), account for emergency response/dispatch diagnostic fees. ' +
     postureBias + ' ' +
     'Round to natural amounts (e.g. 120-220, 850-1500, 4000-7500). ' +
     (questionsRemaining > 0

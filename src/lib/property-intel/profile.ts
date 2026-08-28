@@ -75,10 +75,10 @@ export function matchTradeFamilies(trade?: string | null): TradeFamily[] {
   if (/\b(?:paint(?:ing|er|ers)?|stain(?:ing|er)?|drywall|sheetrock|plaster(?:ing)?|stucco)\b/i.test(text)) matched.push('finishing');
   if (/\b(?:floor(?:ing|s|er)?|hardwood|carpet(?:ing)?|tile|tiling|laminate|vinyl plank|epoxy)\b/i.test(text)) matched.push('flooring');
   if (/\b(?:insulat(?:ion|or|ors)?|weatheriz(?:ation|e)?|attic|crawlspace encapsulation)\b/i.test(text)) matched.push('insulation');
-  if (/\b(?:window (?:installation|replacement|installer|install)|glazi(?:er|ers|ng)?|glass repair|glass replacement)\b/i.test(text)) matched.push('window_installation');
+  if (/\b(?:window(?:s)?\s*(?:&|and|\/)?\s*door(?:s)?|window (?:installation|replacement|installer|install)|door (?:installation|replacement|installer|install)|glazi(?:er|ers|ng)?|glass repair|glass replacement)\b/i.test(text)) matched.push('window_installation');
   if (/\b(?:window cleaning|deck(?:s|ing)?|fence|fencing|pressure wash(?:ing)?|power wash(?:ing)?)\b/i.test(text)) matched.push('outdoor_maintenance');
   if (/\b(?:landscap(?:e|ing|er|ers)?|lawn(?: care| service)?|mow(?:ing)?|tree(?: service| care)?|irrigation|hardscape|patio|paver)\b/i.test(text)) matched.push('landscaping');
-  if (/\b(?:general contractor(?:s)?|builder(?:s)?|remodel(?:ing|er|ers)?|handyman|renovat(?:ion|or|ors)?|restoration)\b/i.test(text)) matched.push('general');
+  if (/\b(?:general contractor(?:s)?|builder(?:s)?|remodel(?:ing|er|ers|s)?|handyman|renovat(?:ion|ions|or|ors|e|ing)?|restoration(?:s)?)\b/i.test(text)) matched.push('general');
 
   return matched.length > 0 ? matched : ['unknown'];
 }

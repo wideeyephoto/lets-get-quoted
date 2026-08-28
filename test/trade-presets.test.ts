@@ -8,7 +8,7 @@ describe('trade-intake-presets', () => {
     expect(matchTradePreset('Roof Replacement & Gutters').id).toBe('roofing');
     expect(matchTradePreset('Licensed Electrician').id).toBe('electrical');
     expect(matchTradePreset('Lawn Care and Landscaping').id).toBe('landscaping');
-    expect(matchTradePreset('Interior Painting').id).toBe('painting');
+    expect(matchTradePreset('Interior Painting').id).toBe('finishing');
     expect(matchTradePreset('Custom Home Renovations').id).toBe('general');
     expect(matchTradePreset(null).id).toBe('general');
   });
