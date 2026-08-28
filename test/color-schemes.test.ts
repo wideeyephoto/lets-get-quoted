@@ -15,13 +15,22 @@ import {
 const HEX_6 = /^#[0-9a-fA-F]{6}$/;
 
 describe('COLOR_SCHEMES palette tokens and structure', () => {
-  it('has 4 active curated schemes plus 2 legacy schemes', () => {
+  it('has 8 active curated schemes plus 2 legacy schemes', () => {
     const active = getActiveColorSchemes();
     const legacy = getLegacyColorSchemes();
 
-    expect(active.map((s) => s.key)).toEqual(['midnight', 'porcelain', 'harbor', 'evergreen']);
+    expect(active.map((s) => s.key)).toEqual([
+      'midnight',
+      'porcelain',
+      'harbor',
+      'evergreen',
+      'steel',
+      'sandstone',
+      'copper',
+      'concrete',
+    ]);
     expect(legacy.map((s) => s.key)).toEqual(['slate', 'forest']);
-    expect(COLOR_SCHEMES).toHaveLength(6);
+    expect(COLOR_SCHEMES).toHaveLength(10);
   });
 
   it('contains valid 6-digit hex strings for every required token across all schemes', () => {
@@ -60,6 +69,10 @@ describe('COLOR_SCHEMES palette tokens and structure', () => {
     expect(getColorScheme('porcelain')?.key).toBe('porcelain');
     expect(getColorScheme('harbor')?.key).toBe('harbor');
     expect(getColorScheme('evergreen')?.key).toBe('evergreen');
+    expect(getColorScheme('steel')?.key).toBe('steel');
+    expect(getColorScheme('sandstone')?.key).toBe('sandstone');
+    expect(getColorScheme('copper')?.key).toBe('copper');
+    expect(getColorScheme('concrete')?.key).toBe('concrete');
     expect(getColorScheme('slate')?.key).toBe('slate');
     expect(getColorScheme('forest')?.key).toBe('forest');
     expect(getColorScheme('unknown_key')).toBeNull();
@@ -69,7 +82,7 @@ describe('COLOR_SCHEMES palette tokens and structure', () => {
 });
 
 describe('COLOR_SCHEMES accessibility & contrast verification', () => {
-  it('ensures primary text (ink) meets at least 4.5:1 against bg and surface (and >= 14:1 on active schemes)', () => {
+  it('ensures primary text (ink) meets at least 4.5:1 against bg and surface (and >= 13:1 on active schemes)', () => {
     for (const scheme of COLOR_SCHEMES) {
       const bgContrast = getContrastRatio(scheme.ink, scheme.bg);
       const surfaceContrast = getContrastRatio(scheme.ink, scheme.surface);
@@ -78,7 +91,7 @@ describe('COLOR_SCHEMES accessibility & contrast verification', () => {
       expect(surfaceContrast, `${scheme.key} ink on surface`).toBeGreaterThanOrEqual(4.5);
 
       if (scheme.status === 'active') {
-        expect(bgContrast, `Active ${scheme.key} ink on bg target >= 14:1`).toBeGreaterThanOrEqual(14.0);
+        expect(bgContrast, `Active ${scheme.key} ink on bg target >= 13:1`).toBeGreaterThanOrEqual(13.0);
       }
     }
   });

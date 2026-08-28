@@ -1759,7 +1759,8 @@
 .guildHeroCopy h1 { margin-bottom: 1.5rem; font-family: var(--theme-display); font-size: clamp(3rem, 6vw, 5.75rem); font-weight: 500; line-height: .99; letter-spacing: -.015em; }
 .guildHeroMedia { position: relative; display: grid; grid-template-columns: 1.5fr 1fr; grid-template-rows: 1fr 1fr; grid-template-areas: 'p1 p3' 'p1 p2'; gap: clamp(.6rem, 1.4vw, 1rem); align-self: center; align-items: stretch; height: min(560px, 68vh); }
 .guildHeroFrame { grid-area: p1; position: relative; border-radius: 16px; overflow: hidden; box-shadow: 0 40px 90px -50px rgba(45,34,22,.45), inset 0 0 0 1px rgba(255,255,255,.15); }
-.guildHeroFrame > img { width: 100%; height: 100%; object-fit: cover; animation: heroKenBurns 27s ease-in-out infinite alternate; }
+.guildHeroFrame > img, .guildHeroFrame > video, .guildHeroFrame .heroCycle { width: 100%; height: 100%; object-fit: cover; display: block; }
+.guildHeroFrame > img { animation: heroKenBurns 27s ease-in-out infinite alternate; }
 /* Bottom-right accent photo. */
 .guildHeroInset { grid-area: p2; position: relative; margin: 0; border-radius: 12px; overflow: hidden; border: 6px solid var(--c-surface); box-shadow: 0 30px 60px -30px rgba(45,34,22,.5), inset 0 0 0 1px rgba(255,255,255,.12); }
 .guildHeroInset img { display: block; width: 100%; height: 100%; object-fit: cover; transition: transform .6s cubic-bezier(.22, .61, .36, 1); }
@@ -2069,14 +2070,15 @@
 .careHeroActions { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
 .careHeroMedia { position: relative; display: flex; justify-content: center; align-items: center; }
 .careHeroCircle { position: relative; z-index: 1; width: min(420px, 84%); aspect-ratio: 1; border-radius: 50%; padding: 14px; background: var(--care-grad); box-shadow: 0 40px 80px -42px rgba(30,203,214,.6); animation: carePulse 5.5s ease-in-out infinite; }
-.careHeroCircle img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; transition: transform .5s ease; }
-.careHeroCircle:hover img { transform: scale(1.06); }
+.careHeroCircle img, .careHeroCircle video, .careHeroImg { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; transition: transform .5s ease; display: block; }
+.careHeroCircle .heroCycle { width: 100%; height: 100%; display: block; border-radius: 50%; overflow: hidden; }
+.careHeroCircle:hover img, .careHeroCircle:hover video, .careHeroCircle:hover .careHeroImg { transform: scale(1.06); }
 /* Slow orbiting dashed ring around the photo circle for extra life. */
 .careHeroCircle::after { content: ''; position: absolute; inset: -16px; border-radius: 50%; border: 2px dashed var(--theme-accent); opacity: .4; pointer-events: none; animation: careSpin 26s linear infinite; }
 @keyframes careSpin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .careHeroCircle::after { animation: none; } }
 @keyframes carePulse { 0%, 100% { transform: scale(1); box-shadow: 0 40px 80px -42px rgba(30,203,214,.55); } 50% { transform: scale(1.03); box-shadow: 0 48px 96px -40px rgba(30,203,214,.8); } }
-@media (prefers-reduced-motion: reduce) { .careHeroCircle { animation: none; } .careHeroCircle img { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .careHeroCircle { animation: none; } .careHeroCircle img, .careHeroCircle video, .careHeroImg { transition: none; } }
 .careDot1 { position: absolute; z-index: 0; width: 92px; height: 92px; border-radius: 50%; background: var(--care-grad); opacity: .9; top: 2%; left: 6%; animation: careFloat 6s ease-in-out infinite; }
 .careDot2 { position: absolute; z-index: 0; width: 42px; height: 42px; border-radius: 50%; background: var(--care-grad); top: -4%; left: 28%; animation: careFloat 5s ease-in-out infinite .6s; }
 @keyframes careFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-14px); } }

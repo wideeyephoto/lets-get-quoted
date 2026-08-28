@@ -44,7 +44,7 @@ describe('Problem 1: Product Identity and Message Hierarchy', () => {
       expect(HOME).toContain('{HOME_HERO.headlinePart2}');
       expect(HOME).toContain('{HOME_HERO.supportingCopy}');
       expect(HOME).toContain('{HOME_HERO.secondaryCta}');
-      expect(HOME).toContain('href="/features#tour"');
+      expect(HOME).toContain('href="/features"');
       expect(HOME).toContain('{SIGNUP_LABEL}');
       expect(HOME).toContain('AI photo &amp; smart intake');
       expect(HOME).toContain('Instant quote drafts with profit guardrails');

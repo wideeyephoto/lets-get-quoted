@@ -741,6 +741,18 @@
 .schemeSwatch i[data-scheme='evergreen'] {
   background: linear-gradient(135deg, #10251a 0 50%, #9bd35a 50% 100%);
 }
+.schemeSwatch i[data-scheme='steel'] {
+  background: linear-gradient(135deg, #1e242c 0 50%, #38bdf8 50% 100%);
+}
+.schemeSwatch i[data-scheme='sandstone'] {
+  background: linear-gradient(135deg, #e6e1d8 0 50%, #c2410c 50% 100%);
+}
+.schemeSwatch i[data-scheme='copper'] {
+  background: linear-gradient(135deg, #201a17 0 50%, #fb923c 50% 100%);
+}
+.schemeSwatch i[data-scheme='concrete'] {
+  background: linear-gradient(135deg, #dde3ea 0 50%, #0284c7 50% 100%);
+}
 .schemeSwatch i[data-scheme='slate'] {
   background: linear-gradient(135deg, #eceff3 0 50%, #2f9e8f 50% 100%);
 }

@@ -123,7 +123,7 @@ export default function HandyTemplate({ site, galleryImages = [] }: TemplateProp
           <span className={styles.careDot1} aria-hidden="true" />
           <span className={styles.careDot2} aria-hidden="true" />
           <div className={styles.careHeroCircle}>
-            <HeroImageCycle images={getHeroImages(site.content, heroImage)} video={getHeroVideo(site.content)} alt="A friendly professional ready to help" />
+            <HeroImageCycle images={getHeroImages(site.content, heroImage)} video={getHeroVideo(site.content)} className={styles.careHeroImg} alt="A friendly professional ready to help" />
           </div>
         </div>
       </section>
