@@ -153,4 +153,15 @@ describe('placeholder and schedule theme contrast', () => {
     expect(GLOBALS).toContain(":root[data-theme='monochrome'] .calendar-band-color-0");
     expect(GLOBALS).toContain(":root[data-theme='parchment'] .calendar-band-color-0");
   });
+
+  it('ensures sunlight mode has daylight slate background and full paper ink ramp', () => {
+    expect(GLOBALS).toContain(":root[data-theme='sunlight'] {");
+    expect(GLOBALS).toContain('--bg: #eef2f6;');
+    expect(GLOBALS).toContain('--text: #0a0f1d;');
+    expect(GLOBALS).toContain('--muted: #1e293b;');
+    expect(GLOBALS).toContain('--ink-neutral-1: #0f1a28;');
+    expect(GLOBALS).toContain('--ink-orange-1: #a0531a;');
+    expect(GLOBALS).toContain(':root[data-theme=\'sunlight\'] .sidenav-wordmark');
+  });
 });
+

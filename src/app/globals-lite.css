@@ -1,6 +1,6 @@
 /* GENERATED — do not edit. Source: src/app/globals.css
    Run: node scripts/build-css-subset.mjs
-   source-sha256: 0e4c20668d37f909
+   source-sha256: 96ebf232beeeeaf1
 
    globals.css with the rules that can only match inside /dashboard, /admin and
    /demo removed. Every route except those three imports this file; they import
@@ -337,29 +337,30 @@
 
 /* SUNLIGHT — True Full Light / High-Contrast Day
    ---------------------------------------------------------------------------
-   A 100% full-light canvas for bright daylight and direct sun on mobile screens.
-   Both canvas and chrome are light (#f8fafc / #ffffff), and text is deep carbon
-   (#0f172a) for maximum daytime legibility (16.5:1). */
+   A calibrated full-light canvas for bright daylight and direct outdoor clarity.
+   Eliminates blinding glare with a balanced daylight slate ground (#eef2f6),
+   crisp white panels (#ffffff), and rich carbon text (#0a0f1d / #1e293b) with
+   full high-contrast paper ink ramp across all components and navigation chrome. */
 :root[data-theme='sunlight'] {
   color-scheme: light;
   --tint: 15, 23, 42;
   --shade: 15, 23, 42;
   --ink-rgb: 15, 23, 42;
-  --grey-1: 71, 85, 105;
+  --grey-1: 66, 79, 99;
   --grey-2: 51, 65, 85;
   --grey-3: 51, 65, 85;
   --grey-4: 30, 41, 59;
-  --grey-5: 71, 85, 105;
-  --grey-6: 15, 23, 42;
-  --bg: #f8fafc;
+  --grey-5: 66, 79, 99;
+  --grey-6: 10, 15, 29;
+  --bg: #eef2f6;
   --bg-2: #ffffff;
-  --bg-3: #f1f5f9;
+  --bg-3: #e2e8f0;
   --bg-elevated: #ffffff;
-  --bg-soft: rgba(15, 23, 42, 0.04);
-  --line: rgba(15, 23, 42, 0.14);
-  --text: #0f172a;
-  --muted: #334155;
-  --muted-2: #475569;
+  --bg-soft: rgba(15, 23, 42, 0.05);
+  --line: rgba(15, 23, 42, 0.16);
+  --text: #0a0f1d;
+  --muted: #1e293b;
+  --muted-2: #334155;
   --on-accent: #ffffff;
   --accent: #d95d00;
   --accent-paper: #c2410c;
@@ -375,19 +376,279 @@
   --cap-busy: #b45309;
   --cap-full: #c2410c;
   --cap-over: #b91c1c;
-  --cap-unknown: #64748b;
-  --gold-ink: #92400e;
+  --cap-unknown: #55606e;
+  --gold-ink: #7a5200;
   --on-active: #0f172a;
-  --shadow-strong: rgba(15, 23, 42, 0.16);
+  --shadow-strong: rgba(15, 23, 42, 0.18);
   --shadow-soft: rgba(15, 23, 42, 0.08);
-  --ground-1: #f1f5f9;
-  --ground-2: #e2e8f0;
+  --ground-1: #e2e8f0;
+  --ground-2: #cbd5e1;
   --panel-rgb: 255, 255, 255;
   --chrome-rgb: 255, 255, 255;
-  --chrome: rgba(255, 255, 255, 0.95);
-  --chrome-soft: rgba(255, 255, 255, 0.88);
+  --chrome: rgba(255, 255, 255, 0.96);
+  --chrome-soft: rgba(255, 255, 255, 0.90);
   --chrome-solid: #ffffff;
+
+  /* --- Paper ink palette on root sunlight --------------------------------- */
+  --ink-amber-1: #886016;
+  --ink-amber-2: #7b6614;
+  --ink-amber-3: #7e6514;
+  --ink-amber-4: #826315;
+  --ink-amber-5: #7f6415;
+  --ink-amber-6: #896016;
+  --ink-amber-7: #866116;
+  --ink-amber-8: #876116;
+  --ink-blue: #2361d4;
+  --ink-blue-2: #17518f;
+  --ink-green-1: #1f7739;
+  --ink-green-2: #1d7648;
+  --ink-green-3: #137838;
+  --ink-green-4: #147830;
+  --ink-green-5: #177748;
+  --ink-green-6: #1c7743;
+  --ink-green-7: #1e7651;
+  --ink-green-8: #137833;
+  --ink-green-9: #137834;
+  --ink-green-10: #13773a;
+  --ink-green-11: #1d7650;
+  --ink-green-12: #16764e;
+  --ink-green-13: #0f7038;
+  --ink-lime-1: #4f7213;
+  --ink-lime-2: #517213;
+  --ink-mint: #137560;
+  --ink-neutral-1: #0f1a28;
+  --ink-neutral-2: #0f1a28;
+  --ink-neutral-3: #323a4b;
+  --ink-neutral-4: #0f1a28;
+  --ink-neutral-5: #323a4b;
+  --ink-neutral-6: #323a4b;
+  --ink-neutral-7: #323a4b;
+  --ink-neutral-8: #323a4b;
+  --ink-neutral-9: #0f1a28;
+  --ink-neutral-10: #0f1a28;
+  --ink-neutral-11: #323a4b;
+  --ink-neutral-12: #323a4b;
+  --ink-neutral-13: #323a4b;
+  --ink-neutral-14: #0f1a28;
+  --ink-neutral-15: #0f1a28;
+  --ink-neutral-16: #0f1a28;
+  --ink-orange-1: #a0531a;
+  --ink-orange-2: #a3511b;
+  --ink-orange-3: #9c5619;
+  --ink-orange-4: #9e541a;
+  --ink-orange-5: #8a5f17;
+  --ink-orange-6: #9d551a;
+  --ink-orange-7: #a3511b;
+  --ink-orange-8: #a54f1b;
+  --ink-orange-9: #915c18;
+  --ink-orange-10: #a1531a;
+  --ink-orange-11: #945a18;
+  --ink-orange-12: #9f541a;
+  --ink-orange-13: #9e541a;
+  --ink-orange-14: #975919;
+  --ink-orange-15: #925b18;
+  --ink-pink-1: #c5205e;
+  --ink-pink-2: #c72732;
+  --ink-red-1: #c0341f;
+  --ink-red-2: #ca2121;
+  --ink-red-3: #ca2121;
+  --ink-red-4: #ca2121;
+  --ink-red-5: #ca2121;
+  --ink-red-6: #ca2121;
+  --ink-red-7: #ca2121;
+  --ink-sky-1: #196f98;
+  --ink-sky-2: #196e9b;
+  --ink-sky-3: #196e9a;
+  --ink-sky-4: #1a6da3;
+  --ink-sky-5: #1e68ba;
+  --ink-sky-6: #186f96;
+  --ink-sky-7: #1c6caa;
+  --ink-sky-8: #196f98;
+  --ink-sky-9: #2a6e90;
+  --ink-sky-10: #187091;
+  --ink-teal-1: #157280;
+  --ink-teal-2: #1b727e;
+  --ink-violet-1: #7b44e1;
+  --ink-violet-2: #893bdf;
+  --ink-violet-3: #7249e1;
+  --ink-violet-4: #6b4ce2;
+  --ink-violet-5: #6d3fd6;
+
+  --rail-crew-0: #d1590a;
+  --rail-crew-1: #1783c4;
+  --rail-crew-2: #1f9d63;
+  --rail-crew-3: #c08a00;
+  --rail-crew-4: #d8437c;
+  --rail-crew-5: #7c5ae0;
+  --rail-new: #c08a00;
+  --rail-progress: #d1590a;
+  --rail-complete: #1f9d63;
+
+  --mute-t20: #505d77;
+  --mute-t22: #4e5c76;
+  --mute-i32: #49556d;
+  --mute-t32: #49556d;
+  --mute-i34: #48546c;
+  --mute-i35: #48546b;
+  --mute-t35: #48546b;
+  --mute-t36: #47536a;
+  --mute-i40: #455067;
+  --mute-t40: #455067;
+  --mute-i42: #445065;
+  --mute-t42: #445065;
+  --mute-i44: #434f64;
+  --mute-i45: #434f64;
+  --mute-t45: #434f64;
+  --mute-i46: #424d63;
+  --mute-t46: #424d63;
+  --mute-i48: #414c62;
+  --mute-t48: #414c62;
+  --mute-i50: #404b60;
+  --mute-t50: #404b60;
+  --mute-i52: #3f4a5e;
+  --mute-t52: #3f4a5e;
+  --mute-i54: #3f4a5e;
+  --mute-i55: #3e485d;
+  --mute-t55: #3e485d;
+  --mute-i56: #3e485d;
+  --mute-t56: #3e485d;
+  --mute-i58: #3d475b;
+  --mute-t58: #3d475b;
+  --mute-i60: #3c465a;
+  --mute-t60: #3c465a;
+  --mute-i62: #3b4659;
+  --mute-t62: #3b4659;
+
+  --mute-g432: #49556d;
+  --mute-g434: #48546c;
+  --mute-g350: #404b60;
+  --mute-g255: #3e485d;
+  --mute-g355: #3e485d;
+  --mute-g458: #3d475b;
+  --mute-g260: #3c465a;
+  --mute-g360: #3c465a;
+  --mute-g160: #3c465a;
+  --mute-g262: #3b4659;
+  --mute-g362: #3b4659;
+  --mute-g270: #384254;
+  --mute-g470: #384254;
+  --mute-g370: #384254;
+  --mute-g570: #384254;
+  --mute-g272: #374052;
+  --mute-g275: #364051;
+  --mute-g575: #364051;
+  --mute-g580: #343d4f;
+
+  --ink-mod-green-1: #137749;
+  --ink-mod-red-1: #ca2121;
+  --ink-mod-grey-1: #0f1a28;
+  --ink-mod-grey-2: #323a4b;
+  --ink-mod-grey-3: #0f1a28;
+  --ink-mod-grey-4: #323a4b;
+  --ink-mod-grey-5: #323a4b;
+  --ink-mod-grey-6: #323a4b;
+  --ink-mod-grey-7: #323a4b;
+  --ink-mod-grey-8: #323a4b;
+  --ink-mod-orange-1: #a0531a;
+  --ink-mod-amber-1: #846215;
+  --ink-mod-green-2: #17764b;
+  --ink-mod-grey-9: #0f1a28;
+  --ink-mod-grey-10: #323a4b;
+  --ink-mod-red-2: #be371f;
+  --ink-mod-grey-11: #323a4b;
+  --ink-mod-grey-12: #323a4b;
+  --ink-mod-grey-13: #323a4b;
+  --ink-mod-grey-14: #323a4b;
+  --ink-mod-grey-15: #0f1a28;
+  --ink-mod-grey-16: #0f1a28;
+  --ink-mod-orange-2: #9a5719;
+  --ink-mod-orange-3: #9e541a;
+  --ink-mod-grey-17: #323a4b;
+  --ink-mod-grey-18: #323a4b;
+  --ink-mod-red-3: #ca2121;
+  --ink-mod-grey-19: #0f1a28;
+  --ink-mod-grey-20: #0f1a28;
+  --ink-mod-orange-4: #a3511b;
+  --ink-mod-amber-2: #876116;
+  --ink-mod-grey-21: #323a4b;
+  --ink-mod-green-3: #22764b;
+  --ink-mod-orange-5: #a54f1b;
+  --ink-mod-orange-6: #a1521a;
+  --ink-mod-orange-7: #b73f1e;
+  --ink-mod-grey-22: #323a4b;
+  --ink-mod-grey-23: #323a4b;
+  --ink-mod-grey-24: #323a4b;
+  --ink-mod-orange-8: #8d5e17;
+  --ink-mod-orange-9: #8b5f17;
+  --ink-mod-grey-25: #323a4b;
+  --ink-mod-grey-26: #0f1a28;
+  --ink-mod-sky-1: #2066c3;
+  --ink-mod-orange-10: #9e541a;
+  --ink-mod-grey-27: #0f1a28;
+  --ink-mod-grey-28: #0f1a28;
+  --ink-mod-grey-29: #0f1a28;
+
+  --dim-amber-1-11: #846215;
+  --dim-amber-1-15: #846215;
+  --dim-amber-1-17: #846215;
+  --dim-amber-1-19: #846215;
+  --dim-amber-1-20: #846215;
+  --dim-orange-1-2: #a3511b;
+  --dim-grey-1-1: #0f1a28;
+  --dim-grey-1-2: #0f1a28;
+  --dim-grey-1-3: #0f1a28;
+  --dim-green-2-3: #1f7739;
+  --dim-red-2: #c0341f;
+  --dim-green-5: #1c764c;
+  --dim-orange-3-2: #a54f1b;
+  --dim-orange-3-4: #a54f1b;
+  --dim-orange-3-6: #a54f1b;
+  --dim-orange-4-2: #a0531a;
+  --dim-orange-4-3: #a0531a;
+  --dim-amber-2-2: #826315;
+  --dim-sky-6: #1d69b5;
+  --dim-amber-4: #886016;
+  --dim-grey-2: #323a4b;
+
+  --edge-t05: #31445b;
+  --edge-t07: #31445b;
+  --edge-t08: #31445b;
+  --edge-t09: #31445b;
+  --edge-t10: #28384b;
+  --edge-t11: #28384b;
+  --edge-t12: #28384b;
+  --edge-t13: #28384b;
+  --edge-t14: #1f2a39;
+  --edge-t15: #1f2a39;
+  --edge-t16: #1f2a39;
+  --edge-t17: #1f2a39;
+  --edge-t18: #1f2a39;
+  --edge-t20: #1f2a39;
+  --edge-t22: #1f2a39;
+  --edge-t24: #1f2a39;
+  --edge-t25: #1f2a39;
+  --edge-t26: #1f2a39;
+  --edge-t28: #1f2a39;
+  --edge-t30: #1f2a39;
+  --edge-t32: #1f2a39;
+  --edge-t34: #1f2a39;
+  --edge-t35: #1f2a39;
+  --edge-t40: #1f2a39;
+  --edge-t50: #1f2a39;
+  --edge-t90: #1f2a39;
+  --edge-g14: #31445b;
+  --edge-g16: #31445b;
+  --edge-g18: #28384b;
+  --edge-g20: #28384b;
+  --edge-g22: #28384b;
+  --edge-g24: #1f2a39;
+  --edge-g25: #1f2a39;
+  --edge-g26: #1f2a39;
+  --edge-g28: #1f2a39;
 }
+
+
+
 
 /* CLARITY — Color Vision Deficiency Safe (Okabe-Ito CUD Standard)
    ---------------------------------------------------------------------------
@@ -2365,6 +2626,10 @@ h3 {
 :root[data-theme='light'] .sidenav-wordmark {
   background: #16202b;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+}
+:root[data-theme='sunlight'] .sidenav-wordmark {
+  background: #ffffff;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08);
 }
 
 /* Marketing rail: the "Create Free Account" CTA fills the foot, matching the

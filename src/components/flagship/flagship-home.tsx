@@ -10,11 +10,13 @@ import { COMMAND_CENTER_SCREENS } from '@/components/command-center-deck';
 import HeroAiIntakeShowcase from './hero-ai-intake-showcase';
 import { HOME_FAQS } from '@/lib/home-faqs';
 import { BRAND_POSITIONING } from '@/lib/brand-messaging';
-import { PLAN_PRICE_OPTIONS, STRIPE_PROCESSING_NOTE } from '@/lib/pricing';
+import { STRIPE_PROCESSING_NOTE } from '@/lib/pricing';
 import { TRADES } from '@/lib/trades';
 import styles from './flagship.module.css';
 import LaunchBanner from '@/components/marketing/launch-banner';
 import ThemeFab from '@/components/theme-fab';
+import IntegrationTrustStrip from '@/components/marketing/IntegrationTrustStrip';
+import InteractiveQuoteUpsellDemo from '@/components/marketing/InteractiveQuoteUpsellDemo';
 
 const TradeOrbit = dynamic(() => import('./trade-orbit'), { ssr: true });
 const CommandCenterDeck = dynamic(() => import('@/components/command-center-deck'), { ssr: true });
@@ -667,6 +669,9 @@ export default function FlagshipHome() {
         ))}
       </section>
 
+      {/* VERIFIED PLATFORM INTEGRATIONS & TRUST */}
+      <IntegrationTrustStrip />
+
       <section className="flagships" id="flagships" data-track>
         <Glare />
         <div className="section-intro" data-rise>
@@ -817,6 +822,9 @@ export default function FlagshipHome() {
         </div>
       </section>
 
+      {/* INTERACTIVE MULTI-TIER QUOTE & UPSELL DEMO */}
+      <InteractiveQuoteUpsellDemo />
+
       {/* ONE SECTION, NOT TWO. This was the largest duplication on the page.
 
           "One system from quote to review" NAMED eight capabilities in a
@@ -895,43 +903,23 @@ export default function FlagshipHome() {
         </div>
       </section>
 
-      {/* The four plan summaries are projected from the canonical billing
-          catalog. The full calculator and allowance detail live on /pricing. */}
+      {/* Option B: Ultra-clean Zero-Risk Pricing Hook. Full calculator and plan comparison live on /pricing. */}
       <section className="pricing-band" id="pricing">
         <Glare />
         <div className="price-zero" data-plane="back"><span>$</span><strong>0</strong><small>/ MONTH</small></div>
         <div className="pricing-copy" data-rise>
-          <p className="eyebrow"><span>✦</span> FOUR PLANS. START AT $0.</p>
+          <p className="eyebrow"><span>✦</span> ZERO-RISK PRICING</p>
           <h2>Start free.<br /><em>Upgrade when the math works.</em></h2>
-          <p>Flex is $0/month plus a 1.25% LGQ platform fee. Paid plans trade a predictable base price for a lower fee and more included capacity.</p>
-          <div className="pricing-points"><span>✓ Free onboarding</span><span>✓ No contract</span><span>✓ Core workflow on every plan</span><span>✓ Fee set by your plan</span></div>
+          <p>Launch your website, qualify leads, and run your core workflow for $0/month. No setup fees, no monthly bills, and no contracts.</p>
+          <div className="pricing-points"><span>✓ Free contractor website</span><span>✓ $0 monthly base price</span><span>✓ No contract or setup fee</span><span>✓ Direct Stripe payouts</span></div>
 
-          <ul className="fee-tiers" aria-label="LGQ base plans and platform fees">
-            {PLAN_PRICE_OPTIONS.map((plan) => (
-              <li key={plan.id}><b>{plan.platformFee}</b><small>{plan.name} · {plan.monthlyPrice}</small></li>
-            ))}
-          </ul>
-          <p className="fee-note">
-            The LGQ fee applies to eligible service subtotal collected through LGQ. Your rate changes when you change plans—not when you cross a volume bracket.
-          </p>
-
-          {/* The price is where the decision actually gets made, and this band
-              had nothing to press — you read "$0 / month", agreed with it, and
-              then scrolled on looking for somewhere to act.
-
-              Two buttons now, because the calculator that used to sit above
-              them is gone: the visitor who wanted to work out their own number
-              needs somewhere to go, and a sentence-ending text link is not it.
-              Secondary, so the primary action still reads as the primary one. */}
           <div className="pricing-actions">
             <Link className="button primary" href="/pricing">
-              Compare plans <span aria-hidden="true">→</span>
+              Compare plans &amp; calculate savings <span aria-hidden="true">→</span>
             </Link>
           </div>
           <small className="pricing-fineprint">
-            Card payments run through <b>Stripe Checkout</b>, so card details are entered on
-            Stripe&apos;s own page and never reach our servers. Stripe&apos;s processing fee
-            ({STRIPE_PROCESSING_NOTE}) are separate from the LGQ prices above.
+            Flex starts at $0/month plus a 1.25% LGQ platform fee on eligible payments collected through LGQ. Paid plans lower your fee to as low as 0.10% and add included team capacity. Card payments settle directly to your bank via <b>Stripe Checkout</b> ({STRIPE_PROCESSING_NOTE}).
           </small>
         </div>
       </section>

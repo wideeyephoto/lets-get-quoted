@@ -1,0 +1,655 @@
+.section {
+  position: relative;
+  width: 100%;
+  padding: 90px clamp(16px, 5vw, 60px);
+  background: #081622;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.container {
+  max-width: 1240px;
+  margin: 0 auto;
+  position: relative;
+  z-index: 2;
+}
+
+.head {
+  text-align: center;
+  max-width: 780px;
+  margin: 0 auto 48px;
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--orange, #ff6a24);
+  margin-bottom: 12px;
+}
+
+.eyebrow span {
+  font-size: 13px;
+}
+
+.title {
+  font-size: clamp(32px, 4.4vw, 54px);
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  color: #f3f7f8;
+  margin: 0 0 16px;
+}
+
+.title em {
+  font-style: normal;
+  color: #7997a6;
+}
+
+.subtitle {
+  font-size: clamp(15px, 1.8vw, 18px);
+  line-height: 1.6;
+  color: #9eb5c2;
+  margin: 0;
+}
+
+/* Trade Switcher Bar */
+.tradeSwitcher {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 36px;
+  flex-wrap: wrap;
+}
+
+.tradeTab {
+  appearance: none;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(174, 199, 211, 0.18);
+  border-radius: 999px;
+  padding: 8px 18px;
+  color: #a2b7c4;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tradeTab:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #f3f7f8;
+}
+
+.tradeTab.active {
+  background: var(--orange, #ff6a24);
+  border-color: var(--orange, #ff6a24);
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(255, 106, 36, 0.35);
+}
+
+/* Main Grid */
+.layout {
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 32px;
+  align-items: start;
+}
+
+@media (max-width: 960px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Phone / Quote Frame */
+.quotePhone {
+  background: #0b1f2d;
+  border: 1px solid rgba(174, 199, 211, 0.2);
+  border-radius: 24px;
+  padding: 24px clamp(16px, 3vw, 28px);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.phoneHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(174, 199, 211, 0.14);
+  padding-bottom: 16px;
+  margin-bottom: 20px;
+}
+
+.companyBadge {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.companyLogo {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--orange, #ff6a24);
+  color: #ffffff;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  font-size: 14px;
+}
+
+.companyName {
+  font-size: 14px;
+  font-weight: 700;
+  color: #f3f7f8;
+  line-height: 1.2;
+}
+
+.quoteNumber {
+  font-size: 11px;
+  font-family: var(--font-geist-mono), monospace;
+  color: #8fa6b4;
+}
+
+.statusPill {
+  font-size: 10px;
+  font-weight: 700;
+  font-family: var(--font-geist-mono), monospace;
+  letter-spacing: 0.08em;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: rgba(34, 197, 94, 0.14);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  color: #4ade80;
+}
+
+/* Tier Selection */
+.tierLabel {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #8fa6b4;
+  margin: 0 0 12px;
+}
+
+.tiersGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 22px;
+}
+
+@media (max-width: 600px) {
+  .tiersGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.tierCard {
+  appearance: none;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(174, 199, 211, 0.16);
+  border-radius: 14px;
+  padding: 12px 10px;
+  text-align: left;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.tierCard:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(174, 199, 211, 0.3);
+}
+
+.tierCard.selectedTier {
+  background: linear-gradient(145deg, rgba(255, 106, 36, 0.14), rgba(255, 106, 36, 0.04));
+  border-color: var(--orange, #ff6a24);
+  box-shadow: 0 0 0 1px var(--orange, #ff6a24);
+}
+
+.popularBadge {
+  position: absolute;
+  top: -8px;
+  right: 10px;
+  background: var(--orange, #ff6a24);
+  color: white;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  padding: 2px 6px;
+  border-radius: 999px;
+  text-transform: uppercase;
+}
+
+.tierName {
+  font-size: 13px;
+  font-weight: 700;
+  color: #f3f7f8;
+  margin-bottom: 4px;
+}
+
+.tierPrice {
+  font-size: 17px;
+  font-weight: 800;
+  color: #f3f7f8;
+  font-variant-numeric: tabular-nums;
+}
+
+.tierSummary {
+  font-size: 11px;
+  color: #8fa6b4;
+  margin-top: 4px;
+  line-height: 1.35;
+}
+
+/* Add-ons list */
+.addonsSection {
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(174, 199, 211, 0.12);
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 22px;
+}
+
+.addonsHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.addonsTitle {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #f3f7f8;
+  margin: 0;
+}
+
+.addonsHint {
+  font-size: 11px;
+  color: var(--orange, #ff6a24);
+  font-weight: 600;
+}
+
+.addonList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.addonItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.addonItem:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.addonItem.checked {
+  background: rgba(255, 106, 36, 0.08);
+  border-color: rgba(255, 106, 36, 0.28);
+}
+
+.addonLeft {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.customCheckbox {
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  border: 1.5px solid rgba(174, 199, 211, 0.4);
+  display: grid;
+  place-items: center;
+  color: white;
+  font-size: 12px;
+  font-weight: 800;
+  transition: all 0.15s ease;
+}
+
+.addonItem.checked .customCheckbox {
+  background: var(--orange, #ff6a24);
+  border-color: var(--orange, #ff6a24);
+}
+
+.addonText {
+  display: flex;
+  flex-direction: column;
+}
+
+.addonName {
+  font-size: 13px;
+  font-weight: 600;
+  color: #f3f7f8;
+}
+
+.addonDesc {
+  font-size: 11px;
+  color: #8fa6b4;
+}
+
+.addonPrice {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--orange, #ff6a24);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Payment Terms & Live Total */
+.paymentSection {
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.01));
+  border: 1px solid rgba(174, 199, 211, 0.16);
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.totalRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 14px;
+}
+
+.totalLabel {
+  font-size: 14px;
+  font-weight: 700;
+  color: #f3f7f8;
+}
+
+.totalAmount {
+  font-size: 26px;
+  font-weight: 800;
+  color: #f3f7f8;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.paymentModeTabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.payTab {
+  appearance: none;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(174, 199, 211, 0.16);
+  border-radius: 8px;
+  padding: 8px 10px;
+  color: #8fa6b4;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.15s ease;
+}
+
+.payTab.activePayTab {
+  background: rgba(255, 106, 36, 0.16);
+  border-color: var(--orange, #ff6a24);
+  color: #ffffff;
+}
+
+.planScheduleNote {
+  font-size: 12px;
+  color: #a2b8c5;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 8px 12px;
+  border-radius: 8px;
+  line-height: 1.4;
+}
+
+.planScheduleNote strong {
+  color: #4ade80;
+}
+
+/* E-Signature Box */
+.eSignArea {
+  margin-top: 18px;
+}
+
+.signInputRow {
+  display: flex;
+  gap: 10px;
+}
+
+@media (max-width: 500px) {
+  .signInputRow {
+    flex-direction: column;
+  }
+}
+
+.signInput {
+  flex: 1;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(174, 199, 211, 0.24);
+  border-radius: 10px;
+  padding: 10px 14px;
+  color: #f3f7f8;
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.signInput:focus {
+  border-color: var(--orange, #ff6a24);
+}
+
+.signBtn {
+  appearance: none;
+  background: var(--orange, #ff6a24);
+  border: none;
+  border-radius: 10px;
+  padding: 10px 20px;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+
+.signBtn:hover {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+}
+
+.signedConfirmation {
+  background: rgba(34, 197, 94, 0.12);
+  border: 1px solid rgba(34, 197, 94, 0.35);
+  border-radius: 12px;
+  padding: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.signedLeft {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.signedCheck {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #22c55e;
+  color: #ffffff;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  font-size: 14px;
+}
+
+.signedTitle {
+  font-size: 13px;
+  font-weight: 700;
+  color: #f3f7f8;
+}
+
+.signedTime {
+  font-size: 11px;
+  color: #86efac;
+  font-family: var(--font-geist-mono), monospace;
+}
+
+.resetBtn {
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #d1e2ec;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.resetBtn:hover {
+  color: #ffffff;
+  border-color: #ffffff;
+}
+
+/* Right Side: Contractor Upsell Insights */
+.insightColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.insightCard {
+  background: linear-gradient(135deg, rgba(16, 36, 48, 0.7) 0%, rgba(10, 24, 34, 0.9) 100%);
+  border: 1px solid rgba(174, 199, 211, 0.18);
+  border-radius: 20px;
+  padding: 28px 24px;
+  backdrop-filter: blur(10px);
+}
+
+.insightCardHead {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.insightIcon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: rgba(255, 106, 36, 0.15);
+  border: 1px solid rgba(255, 106, 36, 0.3);
+  color: var(--orange, #ff6a24);
+  display: grid;
+  place-items: center;
+}
+
+.insightIcon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.insightHeadline {
+  font-size: 18px;
+  font-weight: 700;
+  color: #f3f7f8;
+  margin: 0;
+}
+
+.insightPillRow {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+}
+
+.metricPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(255, 106, 36, 0.12);
+  border: 1px solid rgba(255, 106, 36, 0.3);
+  color: #ff9153;
+}
+
+.insightBody {
+  font-size: 14.5px;
+  line-height: 1.65;
+  color: #a5b9c5;
+  margin: 0 0 16px;
+}
+
+.benefitList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0 0 24px;
+  padding: 0;
+  list-style: none;
+}
+
+.benefitList li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 13.5px;
+  color: #d1e1eb;
+  line-height: 1.5;
+}
+
+.benefitList li i {
+  font-style: normal;
+  color: #4ade80;
+  font-weight: 800;
+  margin-top: 1px;
+}
+
+.featureLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--orange, #ff6a24);
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: gap 0.2s ease;
+}
+
+.featureLink:hover {
+  gap: 10px;
+  text-decoration: underline;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
