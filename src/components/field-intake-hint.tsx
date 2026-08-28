@@ -28,11 +28,12 @@ const CONFIGS: Record<FieldIntakePage, FieldIntakeConfig> = {
   jobs: {
     pillLabel: 'Voice & Text-to-Job',
     title: '🎙️ Voice & Text-to-Job',
-    tag: 'Notes & costs',
-    description: 'Text your shared number to log internal site notes, material expenses, or punch list tasks directly to the job timeline.',
+    tag: 'Owner & Crew',
+    description: 'You and your registered crew members can text or send voice memos to your shared number to log site notes, material costs, gate codes, or punch list items.',
     examples: [
       '"Gate code for Smith job on Main St is 4821."',
       '"Used $75 of cement and $40 dump fee on the Miller job."',
+      '"Done with framing on Smith job, starting drywall tomorrow."',
       '"Add task for J-102: pick up 4 bags of grout."',
     ],
   },
@@ -60,10 +61,11 @@ const CONFIGS: Record<FieldIntakePage, FieldIntakeConfig> = {
     pillLabel: 'Voice & Text-to-Crew',
     title: '🎙️ Voice & Text-to-Crew',
     tag: 'Field assignments',
-    description: 'Assign crew members to jobs or adjust team coverage from anywhere by voice or text.',
+    description: 'Assign crew from the road. Registered crew members can also message your shared number to log job site updates and expenses.',
     examples: [
       '"Assign Mike and Dave to the Smith job tomorrow."',
       '"Put Alex on the Main St roof repair."',
+      'Crew text: "Finished tile prep on J-101"',
     ],
   },
 };

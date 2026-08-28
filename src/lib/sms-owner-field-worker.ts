@@ -3,6 +3,9 @@ import 'server-only';
 import { GoogleGenAI, Type, type FunctionDeclaration, type Part } from '@google/genai';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
+  formatCrewCostConfirmation,
+  formatCrewNoteConfirmation,
+  formatCrewTaskConfirmation,
   formatFieldAmbiguityClarification,
   formatFieldClientConfirmation,
   formatFieldCostConfirmation,
@@ -10,10 +13,12 @@ import {
   formatFieldLeadConfirmation,
   formatFieldNoteConfirmation,
   formatFieldScheduleConfirmation,
+  formatFieldTaskCompletedConfirmation,
   formatFieldTaskConfirmation,
   sanitizeGsm7Text,
 } from '@/lib/sms-field-templates';
 import type { SmsInboundActionClaim } from '@/lib/sms-inbound-action-worker';
+import { normalizeUsPhone } from '@/lib/phone';
 
 export interface OwnerFieldActionResult {
   handled: boolean;
@@ -24,11 +29,14 @@ export interface OwnerFieldActionResult {
   errorMessage?: string;
 }
 
+export type FieldIntakeActionResult = OwnerFieldActionResult;
+
 type AssistantFunctionDeclaration = Omit<FunctionDeclaration, 'parameters'> & {
   parameters: NonNullable<FunctionDeclaration['parameters']>;
 };
 
-export const OWNER_FIELD_TOOLS_DECLARATION: AssistantFunctionDeclaration[] = [
+// Common tool declarations accessible to both Crew and Owner
+const COMMON_FIELD_TOOLS: AssistantFunctionDeclaration[] = [
   {
     name: 'append_internal_note',
     description: 'Logs an internal note, progress update, gate code, or site observation to the job timeline (kept strictly private from customer-facing scope).',
@@ -41,7 +49,7 @@ export const OWNER_FIELD_TOOLS_DECLARATION: AssistantFunctionDeclaration[] = [
         },
         note: {
           type: Type.STRING,
-          description: 'The internal note or observation from the contractor.',
+          description: 'The internal note or observation from the field.',
         },
       },
       required: ['jobId', 'note'],
@@ -49,7 +57,7 @@ export const OWNER_FIELD_TOOLS_DECLARATION: AssistantFunctionDeclaration[] = [
   },
   {
     name: 'log_cost',
-    description: 'Logs a job cost (material expense, dump fee, receipt, labor) against a specific job for accurate margin tracking.',
+    description: 'Logs a job cost (material expense, dump fee, receipt, supply purchase) against a specific job for accurate margin tracking.',
     parameters: {
       type: Type.OBJECT,
       properties: {
@@ -91,6 +99,57 @@ export const OWNER_FIELD_TOOLS_DECLARATION: AssistantFunctionDeclaration[] = [
       required: ['jobId', 'title'],
     },
   },
+  {
+    name: 'complete_job_task',
+    description: 'Marks an existing checklist / punch list task completed on the job.',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        jobId: {
+          type: Type.STRING,
+          description: 'The exact ID of the target job.',
+        },
+        title: {
+          type: Type.STRING,
+          description: 'The title or keywords of the completed task (e.g. "Rough-in plumbing", "Framing").',
+        },
+      },
+      required: ['jobId', 'title'],
+    },
+  },
+  {
+    name: 'report_ambiguity',
+    description: 'Call when multiple records could match the reference, asking the sender to clarify.',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        candidateJobIds: {
+          type: Type.ARRAY,
+          items: { type: Type.STRING },
+          description: 'List of matching job IDs that are ambiguous.',
+        },
+      },
+      required: ['candidateJobIds'],
+    },
+  },
+  {
+    name: 'no_action',
+    description: 'Call when the text message is not a job/lead/client/crew command (e.g. casual conversational chatter).',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        reason: {
+          type: Type.STRING,
+          description: 'Brief reason why no action was taken.',
+        },
+      },
+      required: ['reason'],
+    },
+  },
+];
+
+// Owner-only administrative tools
+const OWNER_ONLY_TOOLS: AssistantFunctionDeclaration[] = [
   {
     name: 'reschedule_job',
     description: 'Reschedules a job or estimate visit to a new date and optional time.',
@@ -187,35 +246,15 @@ export const OWNER_FIELD_TOOLS_DECLARATION: AssistantFunctionDeclaration[] = [
       required: ['clientName'],
     },
   },
-  {
-    name: 'report_ambiguity',
-    description: 'Call when multiple records could match the reference, asking the contractor to clarify.',
-    parameters: {
-      type: Type.OBJECT,
-      properties: {
-        candidateJobIds: {
-          type: Type.ARRAY,
-          items: { type: Type.STRING },
-          description: 'List of matching job IDs that are ambiguous.',
-        },
-      },
-      required: ['candidateJobIds'],
-    },
-  },
-  {
-    name: 'no_action',
-    description: 'Call when the text message is not a job/lead/client/crew command (e.g. casual conversational chatter).',
-    parameters: {
-      type: Type.OBJECT,
-      properties: {
-        reason: {
-          type: Type.STRING,
-          description: 'Brief reason why no action was taken.',
-        },
-      },
-      required: ['reason'],
-    },
-  },
+];
+
+export const CREW_FIELD_TOOLS_DECLARATION: AssistantFunctionDeclaration[] = COMMON_FIELD_TOOLS;
+
+export const OWNER_FIELD_TOOLS_DECLARATION: AssistantFunctionDeclaration[] = [
+  ...COMMON_FIELD_TOOLS.filter((t) => t.name !== 'report_ambiguity' && t.name !== 'no_action'),
+  ...OWNER_ONLY_TOOLS,
+  COMMON_FIELD_TOOLS.find((t) => t.name === 'report_ambiguity')!,
+  COMMON_FIELD_TOOLS.find((t) => t.name === 'no_action')!,
 ];
 
 interface JobSummaryContext {
@@ -242,6 +281,7 @@ interface ClientSummaryContext {
 interface CrewSummaryContext {
   id: string;
   name: string;
+  phone: string | null;
   roleLabel: string | null;
 }
 
@@ -288,7 +328,7 @@ async function fetchAuthenticatedAudioPart(
 }
 
 /**
- * Asynchronously processes an owner field intake task claimed from the queue.
+ * Asynchronously processes an inbound field intake task (Owner or Crew) claimed from the queue.
  */
 export async function processOwnerFieldClaim(
   claim: SmsInboundActionClaim,
@@ -318,10 +358,10 @@ export async function processOwnerFieldClaim(
     return { handled: false, outcome: 'no_action', errorMessage: 'GEMINI_API_KEY is not configured' };
   }
 
-  // Load contractor business name
+  // Load contractor business account details
   const { data: account } = await admin
     .from('accounts')
-    .select('id, business_name')
+    .select('id, business_name, alert_phone')
     .eq('id', accountId)
     .maybeSingle();
 
@@ -329,7 +369,7 @@ export async function processOwnerFieldClaim(
     ? account.business_name
     : "Let's Get Quoted";
 
-  // Load active contractor jobs, clients, and crew for fuzzy matching
+  // Load active contractor jobs, clients, and crew for fuzzy matching and role determination
   const [rawJobs, rawClients, rawCrew] = await Promise.all([
     admin
       .from('jobs')
@@ -345,7 +385,7 @@ export async function processOwnerFieldClaim(
       .limit(25),
     admin
       .from('crew')
-      .select('id, name, role_label')
+      .select('id, name, phone, role_label')
       .eq('account_id', accountId)
       .eq('active', true)
       .limit(25),
@@ -375,16 +415,51 @@ export async function processOwnerFieldClaim(
   const activeCrew: CrewSummaryContext[] = (rawCrew.data ?? []).map((cr) => ({
     id: cr.id,
     name: cr.name ?? '',
+    phone: cr.phone ?? null,
     roleLabel: cr.role_label ?? null,
   }));
+
+  // Identify sender role: Owner vs Crew Member
+  const normalizedFrom = normalizeUsPhone(claim.fromNumber || rawReceipt.from_number);
+  const normalizedOwnerPhone = normalizeUsPhone(account?.alert_phone ?? '');
+  const matchedCrew = activeCrew.find((cr) => normalizeUsPhone(cr.phone ?? '') === normalizedFrom);
+
+  const isCrew = Boolean(matchedCrew && normalizedFrom !== normalizedOwnerPhone);
+  const callerRole = isCrew ? 'crew' : 'owner';
+  const callerName = isCrew ? (matchedCrew?.name || 'Crew Member') : 'Owner';
 
   const ai = new GoogleGenAI({ apiKey });
   const todayStr = new Date().toISOString().slice(0, 10);
 
-  const systemInstruction = `You are the field voice/text AI assistant for the contractor business "${businessName}".
-A contractor / business owner is sending a text or voice memo from the road/job site to update their leads, jobs, schedule, clients, or crew.
+  const availableTools = isCrew ? CREW_FIELD_TOOLS_DECLARATION : OWNER_FIELD_TOOLS_DECLARATION;
 
+  const roleInstruction = isCrew
+    ? `You are processing a field text or voice update from registered Crew Member "${callerName}" (${matchedCrew?.roleLabel || 'Field Team'}).
+CREW CAPABILITIES:
+- "append_internal_note": To log progress notes, job observations, gate codes, or site conditions on a job.
+- "log_cost": To log material expenses, supply purchases, dump fees, or receipts for a job.
+- "add_job_task": To add a checklist task or punch list item for a job.
+- "complete_job_task": To mark a punch list / checklist task finished on a job (e.g. "Done with framing on Smith").
+- "report_ambiguity": If multiple jobs could match the reference.
+- "no_action": If conversational or non-job chatter.`
+    : `You are processing a field text or voice update from the Business Owner / General Contractor.
+OWNER CAPABILITIES:
+- "append_internal_note": Log field notes or gate codes on jobs.
+- "log_cost": Log material/dump costs on jobs.
+- "add_job_task": Add punch list tasks on jobs.
+- "complete_job_task": Mark punch list tasks done.
+- "reschedule_job": Reschedule jobs/estimates.
+- "update_client": Update client info/notes.
+- "assign_crew": Assign crew to jobs.
+- "create_lead": Ingest new prospective client inquiries.
+- "report_ambiguity": If multiple jobs match.
+- "no_action": Conversational.`;
+
+  const systemInstruction = `You are the field voice/text AI assistant for the contractor business "${businessName}".
 CURRENT DATE: ${todayStr}
+SENDER: ${callerName} (${callerRole.toUpperCase()})
+
+${roleInstruction}
 
 ACTIVE CONTRACTOR JOBS ON FILE:
 ${JSON.stringify(activeJobs, null, 2)}
@@ -396,17 +471,9 @@ ACTIVE CREW:
 ${JSON.stringify(activeCrew, null, 2)}
 
 INSTRUCTIONS:
-1. Identify the contractor's intent and target record:
-   - "append_internal_note": If dictating a field note, gate code, or site update on a job.
-   - "log_cost": If logging a material cost, dump fee, or receipt (e.g. "used $75 of cement on Smith").
-   - "add_job_task": If adding a checklist task or punch list item (e.g. "pick up grout for 124 Main").
-   - "reschedule_job": If rescheduling a job/estimate (e.g. "move Smith job to Friday at 10am").
-   - "update_client": If updating client contact info or notes (e.g. "update phone for Dave Miller to 555-1234").
-   - "assign_crew": If assigning crew to a job (e.g. "assign Mike to Smith job tomorrow").
-   - "create_lead": If capturing a new prospect or client inquiry (e.g. "Met Dave at 124 Main St, wants roof quote").
-   - "report_ambiguity": If multiple jobs/clients match (e.g. two jobs for "Miller").
-   - "no_action": If conversational greeting or non-command inquiry.
-2. In addition to calling the tool, transcribe the contractor's voice/text accurately.`;
+1. Accurately identify the target job or client record from the message context.
+2. Select and invoke the single most appropriate tool function call.
+3. Transcribe and execute field actions faithfully.`;
 
   const parts: Part[] = [];
   let isVoiceMemo = false;
@@ -427,9 +494,9 @@ INSTRUCTIONS:
   }
 
   if (rawBody) {
-    parts.push({ text: `Contractor message: "${rawBody}"` });
+    parts.push({ text: `${callerName} message: "${rawBody}"` });
   } else if (isVoiceMemo) {
-    parts.push({ text: 'Contractor sent a voice memo. Transcribe and execute any field actions requested.' });
+    parts.push({ text: `${callerName} sent a voice memo. Transcribe and execute any field actions requested.` });
   }
 
   if (parts.length === 0) {
@@ -442,7 +509,7 @@ INSTRUCTIONS:
       contents: [{ role: 'user', parts }],
       config: {
         systemInstruction,
-        tools: [{ functionDeclarations: OWNER_FIELD_TOOLS_DECLARATION }],
+        tools: [{ functionDeclarations: availableTools }],
         temperature: 0.1,
       },
     });
@@ -468,14 +535,23 @@ INSTRUCTIONS:
     const clientName = targetJob?.clientName ?? 'Client';
 
     if (toolName === 'append_internal_note') {
-      confirmationText = formatFieldNoteConfirmation(ref, clientName);
+      confirmationText = isCrew
+        ? formatCrewNoteConfirmation(ref, clientName, callerName)
+        : formatFieldNoteConfirmation(ref, clientName);
     } else if (toolName === 'log_cost') {
       const amount = Number(args.amount ?? 0);
       const label = String(args.label ?? 'material');
-      confirmationText = formatFieldCostConfirmation(ref, clientName, amount, label);
+      confirmationText = isCrew
+        ? formatCrewCostConfirmation(ref, clientName, amount, label, callerName)
+        : formatFieldCostConfirmation(ref, clientName, amount, label);
     } else if (toolName === 'add_job_task') {
       const title = String(args.title ?? 'Task');
-      confirmationText = formatFieldTaskConfirmation(ref, clientName, title);
+      confirmationText = isCrew
+        ? formatCrewTaskConfirmation(ref, clientName, title, callerName)
+        : formatFieldTaskConfirmation(ref, clientName, title);
+    } else if (toolName === 'complete_job_task') {
+      const title = String(args.title ?? 'Task');
+      confirmationText = formatFieldTaskCompletedConfirmation(ref, clientName, title, isCrew ? callerName : undefined);
     } else if (toolName === 'reschedule_job') {
       const when = String(args.scheduled_for ?? 'scheduled date');
       confirmationText = formatFieldScheduleConfirmation(ref, clientName, when);
@@ -523,7 +599,7 @@ INSTRUCTIONS:
       confirmationText,
     };
   } catch (err) {
-    console.error('Owner field intake processing error:', err);
+    console.error('Field intake processing error:', err);
     return {
       handled: false,
       outcome: 'error',
@@ -531,3 +607,5 @@ INSTRUCTIONS:
     };
   }
 }
+
+export const processFieldIntakeClaim = processOwnerFieldClaim;

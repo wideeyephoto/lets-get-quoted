@@ -7,48 +7,100 @@
   gap: 24px;
 }
 
-/* Tab Bar */
+/* Tab Bar Container */
+.tabBarContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: radial-gradient(circle at 10% 20%, rgba(80, 227, 189, 0.05), transparent 40%),
+              linear-gradient(180deg, #0c202d 0%, #071520 100%);
+  border: 1px solid rgba(174, 199, 211, 0.22);
+  border-radius: 18px;
+  padding: 12px 14px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+}
+
+.tabBarLabel {
+  font-size: 11px;
+  font-weight: 850;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: #8fa6b5;
+  margin-left: 4px;
+}
+
 .tabBar {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  background: rgba(12, 32, 45, 0.6);
-  padding: 6px;
-  border-radius: 14px;
-  border: 1px solid rgba(174, 199, 211, 0.15);
-  backdrop-filter: blur(10px);
 }
 
 .tabBtn {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 8px;
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: 10px;
+  background: #081722;
+  border: 1px solid rgba(174, 199, 211, 0.22);
+  border-radius: 12px;
   padding: 8px 14px;
-  color: #a7bcc8;
+  color: #d1e2eb;
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 750;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
   white-space: nowrap;
 }
 
 .tabBtn:hover {
-  color: #f5f0e7;
-  background: rgba(255, 255, 255, 0.05);
+  background: #112838;
+  border-color: rgba(80, 227, 189, 0.5);
+  color: #ffffff;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.45), 0 0 14px rgba(80, 227, 189, 0.2);
+}
+
+.tabBtn:active {
+  transform: translateY(0);
 }
 
 .tabActive {
-  background: #122836 !important;
+  background: linear-gradient(135deg, #0e3b4d 0%, #092634 100%) !important;
+  border-color: #50e3bd !important;
   color: #50e3bd !important;
-  border-color: rgba(80, 227, 189, 0.3) !important;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 4px 18px rgba(80, 227, 189, 0.28), inset 0 1px 0 rgba(80, 227, 189, 0.4) !important;
 }
 
-.tabIcon {
-  font-size: 15px;
+.tabIconWrapper {
+  font-size: 14px;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
+}
+
+.tabActive .tabIconWrapper {
+  background: rgba(80, 227, 189, 0.15);
+  border-color: rgba(80, 227, 189, 0.4);
+}
+
+.tabLabel {
+  letter-spacing: 0.2px;
+}
+
+.tabIndicator {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #50e3bd;
+  box-shadow: 0 0 6px #50e3bd;
+  margin-left: 2px;
 }
 
 /* Scenario Header */

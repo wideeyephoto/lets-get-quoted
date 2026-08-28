@@ -24,6 +24,13 @@ export function formatFieldNoteConfirmation(ref: string, clientName: string): st
   return sanitizeGsm7Text(`[LGQ] ${cleanRef} (${cleanName}): Logged field note.`);
 }
 
+export function formatCrewNoteConfirmation(ref: string, clientName: string, crewName: string): string {
+  const cleanRef = sanitizeGsm7Text(ref);
+  const cleanName = sanitizeGsm7Text(clientName);
+  const cleanCrew = sanitizeGsm7Text(crewName);
+  return sanitizeGsm7Text(`[LGQ] ${cleanRef} (${cleanName}): Logged field note from ${cleanCrew}.`);
+}
+
 export function formatFieldCostConfirmation(
   ref: string,
   clientName: string,
@@ -36,6 +43,20 @@ export function formatFieldCostConfirmation(
   return sanitizeGsm7Text(`[LGQ] ${cleanRef} (${cleanName}): Logged $${amount.toFixed(2)} ${cleanCat} cost.`);
 }
 
+export function formatCrewCostConfirmation(
+  ref: string,
+  clientName: string,
+  amount: number,
+  category: string,
+  crewName: string,
+): string {
+  const cleanRef = sanitizeGsm7Text(ref);
+  const cleanName = sanitizeGsm7Text(clientName);
+  const cleanCat = sanitizeGsm7Text(category || 'material');
+  const cleanCrew = sanitizeGsm7Text(crewName);
+  return sanitizeGsm7Text(`[LGQ] ${cleanRef} (${cleanName}): Logged $${amount.toFixed(2)} ${cleanCat} cost from ${cleanCrew}.`);
+}
+
 export function formatFieldTaskConfirmation(
   ref: string,
   clientName: string,
@@ -45,6 +66,32 @@ export function formatFieldTaskConfirmation(
   const cleanName = sanitizeGsm7Text(clientName);
   const cleanTask = sanitizeGsm7Text(taskTitle).slice(0, 50);
   return sanitizeGsm7Text(`[LGQ] ${cleanRef} (${cleanName}): Added task "${cleanTask}".`);
+}
+
+export function formatCrewTaskConfirmation(
+  ref: string,
+  clientName: string,
+  taskTitle: string,
+  crewName: string,
+): string {
+  const cleanRef = sanitizeGsm7Text(ref);
+  const cleanName = sanitizeGsm7Text(clientName);
+  const cleanTask = sanitizeGsm7Text(taskTitle).slice(0, 40);
+  const cleanCrew = sanitizeGsm7Text(crewName);
+  return sanitizeGsm7Text(`[LGQ] ${cleanRef} (${cleanName}): Added task "${cleanTask}" from ${cleanCrew}.`);
+}
+
+export function formatFieldTaskCompletedConfirmation(
+  ref: string,
+  clientName: string,
+  taskTitle: string,
+  crewName?: string,
+): string {
+  const cleanRef = sanitizeGsm7Text(ref);
+  const cleanName = sanitizeGsm7Text(clientName);
+  const cleanTask = sanitizeGsm7Text(taskTitle).slice(0, 40);
+  const fromClause = crewName ? ` by ${sanitizeGsm7Text(crewName)}` : '';
+  return sanitizeGsm7Text(`[LGQ] ${cleanRef} (${cleanName}): Marked task "${cleanTask}" completed${fromClause}.`);
 }
 
 export function formatFieldLeadConfirmation(clientName: string): string {

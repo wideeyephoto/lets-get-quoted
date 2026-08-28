@@ -49,35 +49,6 @@ type Scenario = {
 
 const SCENARIOS: Scenario[] = [
   {
-    id: 'change-order',
-    tabLabel: 'Quote Change Order',
-    icon: '💰',
-    title: 'Add Quote Line Items & Recalculate Totals',
-    badge: 'Change Order Auto-Calculated',
-    badgeType: 'quote',
-    description:
-      'Spotted extra work on-site? Text your platform number with the price and description. Gemini updates the job estimate and calculates total pricing in seconds.',
-    contractorSender: 'You (Alert Phone)',
-    contractorInputType: 'text',
-    contractorText: 'Add $450 to Miller job for extra 12/2 Romex line and GFCI outlet in pantry',
-    aiResponse:
-      '✅ Updated Job J-104 (Miller - 124 Main St): Added $450.00 Electrical Line Item. Total quote updated from $2,800 to $3,250. View: lgq.co/j/104',
-    jobRecord: {
-      jobNumber: 'J-104',
-      clientName: 'Miller Residence',
-      address: '124 Main St, Royal Oak, MI',
-      status: 'Quote Updated',
-      statusColor: '#10b981',
-      badgeText: 'Updated via SMS 2s ago',
-      previousAmount: '$2,800.00',
-      totalAmount: '$3,250.00',
-      lineItems: [
-        { label: 'Kitchen Subpanel & Circuit Setup', amount: '$2,800.00' },
-        { label: 'Extra 12/2 Romex & Pantry GFCI (via SMS)', amount: '$450.00', isNew: true },
-      ],
-    },
-  },
-  {
     id: 'voice-memo',
     tabLabel: 'Voice Memo MMS',
     icon: '🎙️',
@@ -107,6 +78,35 @@ const SCENARIOS: Scenario[] = [
         timestamp: 'Today at 3:14 PM · Alert Phone (248) 555-0199',
       },
       tasks: [{ text: 'Drywall crew arrives Thursday 8:00 AM', done: false }],
+    },
+  },
+  {
+    id: 'change-order',
+    tabLabel: 'Quote Change Order',
+    icon: '💰',
+    title: 'Add Quote Line Items & Recalculate Totals',
+    badge: 'Change Order Auto-Calculated',
+    badgeType: 'quote',
+    description:
+      'Spotted extra work on-site? Text your platform number with the price and description. Gemini updates the job estimate and calculates total pricing in seconds.',
+    contractorSender: 'You (Alert Phone)',
+    contractorInputType: 'text',
+    contractorText: 'Add $450 to Miller job for extra 12/2 Romex line and GFCI outlet in pantry',
+    aiResponse:
+      '✅ Updated Job J-104 (Miller - 124 Main St): Added $450.00 Electrical Line Item. Total quote updated from $2,800 to $3,250. View: lgq.co/j/104',
+    jobRecord: {
+      jobNumber: 'J-104',
+      clientName: 'Miller Residence',
+      address: '124 Main St, Royal Oak, MI',
+      status: 'Quote Updated',
+      statusColor: '#10b981',
+      badgeText: 'Updated via SMS 2s ago',
+      previousAmount: '$2,800.00',
+      totalAmount: '$3,250.00',
+      lineItems: [
+        { label: 'Kitchen Subpanel & Circuit Setup', amount: '$2,800.00' },
+        { label: 'Extra 12/2 Romex & Pantry GFCI (via SMS)', amount: '$450.00', isNew: true },
+      ],
     },
   },
   {
@@ -199,29 +199,33 @@ const SCENARIOS: Scenario[] = [
 ];
 
 export default function TextToRecordSimulator() {
-  const [activeScenarioId, setActiveScenarioId] = useState<string>('change-order');
+  const [activeScenarioId, setActiveScenarioId] = useState<string>('voice-memo');
   const scenario = SCENARIOS.find((s) => s.id === activeScenarioId) || SCENARIOS[0];
 
   return (
     <div className={styles.simulatorWrapper}>
       {/* Scenario Selector Tabs */}
-      <div className={styles.tabBar} role="tablist" aria-label="Field Intake Scenarios">
-        {SCENARIOS.map((s) => {
-          const isActive = s.id === activeScenarioId;
-          return (
-            <button
-              key={s.id}
-              type="button"
-              role="tab"
-              aria-selected={isActive}
-              className={`${styles.tabBtn} ${isActive ? styles.tabActive : ''}`}
-              onClick={() => setActiveScenarioId(s.id)}
-            >
-              <span className={styles.tabIcon}>{s.icon}</span>
-              <span className={styles.tabLabel}>{s.tabLabel}</span>
-            </button>
-          );
-        })}
+      <div className={styles.tabBarContainer}>
+        <div className={styles.tabBarLabel}>Interactive Field Scenarios:</div>
+        <div className={styles.tabBar} role="tablist" aria-label="Field Intake Scenarios">
+          {SCENARIOS.map((s) => {
+            const isActive = s.id === activeScenarioId;
+            return (
+              <button
+                key={s.id}
+                type="button"
+                role="tab"
+                aria-selected={isActive}
+                className={`${styles.tabBtn} ${isActive ? styles.tabActive : ''}`}
+                onClick={() => setActiveScenarioId(s.id)}
+              >
+                <span className={styles.tabIconWrapper}>{s.icon}</span>
+                <span className={styles.tabLabel}>{s.tabLabel}</span>
+                {isActive && <span className={styles.tabIndicator} aria-hidden="true" />}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Scenario Description Header */}
