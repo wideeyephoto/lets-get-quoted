@@ -8854,3 +8854,89 @@
   font-size: 12px;
   line-height: 1.35;
 }
+
+/* ===========================================================================
+   §111 — /how-it-works CONTRAST GUARD
+
+   The dark flagship restyle and the later paper-section patch both remain in
+   this generator. These final rules make the intended surface pairing
+   explicit, so an earlier card background or heading colour cannot leak back
+   through the cascade. The four tokens below are contrast-checked against the
+   actual rendered surfaces, including the orange gradient's lightest stop.
+   =========================================================================== */
+
+.root:global(.hiq-page) {
+  --hiq-on-accent: #07131d;
+  --hiq-copy-on-dark: #c0c3ca;
+  --hiq-copy-on-light: #4a5a63;
+  --hiq-link-on-light: #b23a10;
+}
+
+/* Saturated orange needs dark ink. White measures 2.01–2.86:1 across the
+   resting, hover and mobile fills; this ink remains above 6.5:1. */
+.root :global(.hiq-button),
+.root :global(.hiq-answers button) {
+  color: var(--hiq-on-accent);
+}
+.root :global(.site-menu-cta),
+.root :global(.mobile-cta) {
+  color: var(--ink-on-orange, #3d1200);
+}
+
+/* The final paper treatment clears every visual property inherited from the
+   earlier dark glass cards, rather than only replacing their top border. */
+.root :global(.hiq-trust) { color: #10242f; }
+.root :global(.hiq-trust .hiq-split h2),
+.root :global(.hiq-trust-list dt) { color: #10242f; }
+.root :global(.hiq-trust-list > div) {
+  padding: 18px 0 0;
+  border: 0;
+  border-top: 2px solid rgba(16, 36, 47, .24);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+.root :global(.hiq-trust-list > div:hover) {
+  transform: none;
+  border-color: rgba(16, 36, 47, .42);
+  box-shadow: none;
+}
+.root :global(.hiq-trust-list dd),
+.root :global(.hiq-trust .hiq-split p) { color: var(--hiq-copy-on-light); }
+.root :global(.hiq-trust .hiq-inlinelink-light) { color: var(--hiq-link-on-light); }
+.root :global(.hiq-trust .hiq-inlinelink-light:hover) { color: #8f2d0c; }
+
+/* The link owns the light journey-card surface. The surrounding li must be
+   neutral or its old navy glass fill composites through the translucent card. */
+.root :global(.hiq-journey) { color: #10242f; }
+.root :global(.hiq-journey-title),
+.root :global(.hiq-journey-rail strong) { color: #10242f; }
+.root :global(.hiq-journey-rail li),
+.root :global(.hiq-journey-rail li[data-done="true"]) {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+.root :global(.hiq-journey-rail li:hover) { transform: none; }
+.root :global(.hiq-journey-n) {
+  background: #ffffff;
+  color: var(--hiq-link-on-light);
+}
+.root :global(.hiq-journey-body) { color: var(--hiq-copy-on-light); }
+
+/* Muted copy in the opportunity and text-alert bands sits on navy, not paper. */
+.root :global(.hiq-opps .hiq-split p),
+.root :global(.hiq-value-label),
+.root :global(.hiq-example) { color: var(--hiq-copy-on-dark); }
+.root :global(.hiq-opps .hiq-eyebrow-dark),
+.root :global(.hiq-text .hiq-eyebrow-dark) { color: #ff7137; }
+
+/* The component outlines are meaningful affordances, and the light paper
+   bands need a dark focus ring instead of the site's yellow-on-navy ring. */
+.root :global(.hiq-textlink),
+.root :global(.hiq-answers .hiq-later) { border-color: rgba(255, 255, 255, .4); }
+.root :global(.hiq-answers .hiq-later:hover) { border-color: rgba(255, 255, 255, .55); }
+.root :global(.hiq-trust *:focus-visible),
+.root :global(.hiq-journey *:focus-visible) { outline-color: #10242f; }

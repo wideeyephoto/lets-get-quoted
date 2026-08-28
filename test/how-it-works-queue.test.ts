@@ -31,6 +31,7 @@ const PHONE = stripJs(read('src/app/how-it-works/text-alert-demo.tsx'));
 const NAV = stripJs(read('src/app/how-it-works/section-nav.tsx'));
 const CHROME = stripJs(read('src/components/flagship/site-chrome.tsx'));
 const CSS = stripCss(read('src/components/flagship/flagship.module.css'));
+const GENERATOR = read('scripts/generate-flagship-css.mjs');
 
 /** Everything a reader actually sees, across the page and its three widgets. */
 const COPY = [PAGE, CARDS, PHONE].join('\n');
@@ -48,6 +49,26 @@ function mediaAround(needle: string): string {
   const open = CSS.lastIndexOf('@media', at);
   expect(open).toBeGreaterThan(-1);
   return CSS.slice(open, CSS.indexOf('\n', at));
+}
+
+/** WCAG relative luminance and contrast ratio for fixed design-token pairs. */
+function contrast(foreground: string, background: string): number {
+  const luminance = (hex: string) => {
+    const channels = [1, 3, 5].map(
+      (start) => Number.parseInt(hex.slice(start, start + 2), 16) / 255,
+    );
+    const [red, green, blue] = channels.map((channel) =>
+      channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4,
+    );
+    return 0.2126 * red + 0.7152 * green + 0.0722 * blue;
+  };
+
+  const foregroundLuminance = luminance(foreground);
+  const backgroundLuminance = luminance(background);
+  return (
+    (Math.max(foregroundLuminance, backgroundLuminance) + 0.05) /
+    (Math.min(foregroundLuminance, backgroundLuminance) + 0.05)
+  );
 }
 
 describe('what the page is allowed to claim', () => {
@@ -353,6 +374,49 @@ describe('the stylesheet', () => {
 
   it('gives every demo button a 44px touch target', () => {
     expect(CSS).toMatch(/\.hiq-answers button\)[^{]*\{[^}]*min-height: 44px/);
+  });
+
+  it('keeps the audited text pairs above WCAG AA contrast', () => {
+    const normalTextPairs = [
+      // Primary CTA rest and hover gradient stops.
+      ['#07131d', '#ff7137'],
+      ['#07131d', '#ff8c4a'],
+      ['#07131d', '#ff7d47'],
+      ['#07131d', '#ffa066'],
+      // Mobile menu CTA, light-section copy/link, and dark-section muted copy.
+      ['#3d1200', '#ff6a24'],
+      ['#4a5a63', '#f3efe7'],
+      ['#b23a10', '#f3efe7'],
+      ['#c0c3ca', '#08131f'],
+    ] as const;
+
+    for (const [foreground, background] of normalTextPairs) {
+      expect(contrast(foreground, background), `${foreground} on ${background}`).toBeGreaterThanOrEqual(4.5);
+    }
+    expect(contrast('#10242f', '#f3efe7')).toBeGreaterThanOrEqual(3);
+  });
+
+  it('keeps the contrast guard in both the generator and its generated output', () => {
+    for (const source of [GENERATOR, CSS]) {
+      for (const declaration of [
+        '--hiq-on-accent: #07131d',
+        '--hiq-copy-on-dark: #c0c3ca',
+        '--hiq-copy-on-light: #4a5a63',
+        '--hiq-link-on-light: #b23a10',
+      ]) {
+        expect(source).toContain(declaration);
+      }
+    }
+
+    const guard = CSS.slice(CSS.lastIndexOf('--hiq-on-accent: #07131d'));
+    expect(guard).toContain('.root :global(.hiq-button),');
+    expect(guard).toContain('color: var(--hiq-on-accent)');
+    expect(guard).toContain('.root :global(.hiq-trust-list > div)');
+    expect(guard).toContain('background: transparent');
+    expect(guard).toContain('.root :global(.hiq-journey-rail strong) { color: #10242f; }');
+    expect(guard).toContain('.root :global(.hiq-opps .hiq-split p)');
+    expect(guard).toContain('.root :global(.hiq-trust *:focus-visible)');
+    expect(guard).toContain('outline-color: #10242f');
   });
 
   it('stacks to one column on a phone and two on a tablet', () => {
