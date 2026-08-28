@@ -18,6 +18,10 @@ import {
   QUOTE_FORM_WIDTHS,
   QUOTE_FORM_WIDTH_KEYS,
   getQuoteFormWidth,
+  QUOTE_FORM_TRUST_CUES,
+  DEFAULT_QUOTE_FORM_TRUST_ITEMS,
+  QUOTE_FORM_TRUST_CUE_KEYS,
+  getQuoteFormTrustCues,
   getSiteContent,
   mergeSiteContent,
   type QuoteFormStyle,
@@ -247,6 +251,32 @@ describe('Instant Quote Form Appearance Styles & Intake Flow', () => {
     expect(forgeCode).toContain('forgeHeroTextColumn');
   });
 
+  it('defines selectable trust reassurance cues and helper resolution', () => {
+    expect(QUOTE_FORM_TRUST_CUES.length).toBeGreaterThanOrEqual(5);
+    const keys = QUOTE_FORM_TRUST_CUES.map((c) => c.key);
+    expect(keys).toContain('private');
+    expect(keys).toContain('fastReply');
+    expect(keys).toContain('noObligation');
+    expect(keys).toContain('insured');
+    expect(keys).toContain('noHiddenFees');
+
+    // Default returns 3 standard cues
+    const defaultCues = getQuoteFormTrustCues({});
+    expect(defaultCues).toHaveLength(3);
+    expect(defaultCues.map((c) => c.key)).toEqual(['private', 'fastReply', 'noObligation']);
+
+    // Disabled returns empty
+    const disabledCues = getQuoteFormTrustCues({ quoteFormTrust: false });
+    expect(disabledCues).toHaveLength(0);
+
+    // Custom selection
+    const customCues = getQuoteFormTrustCues({
+      quoteFormTrust: true,
+      quoteFormTrustItems: ['private', 'insured', 'noHiddenFees'],
+    });
+    expect(customCues.map((c) => c.key)).toEqual(['private', 'insured', 'noHiddenFees']);
+  });
+
   it('ensures WebsiteBuilder exposes complete quote form customization pickers', () => {
     const builderCode = readFileSync(join(process.cwd(), 'src/app/dashboard/sites/WebsiteBuilder.tsx'), 'utf-8');
     expect(builderCode).toContain('QUOTE_FORM_STYLES');
@@ -255,6 +285,7 @@ describe('Instant Quote Form Appearance Styles & Intake Flow', () => {
     expect(builderCode).toContain('QUOTE_FORM_STEPPERS');
     expect(builderCode).toContain('QUOTE_FORM_BADGES');
     expect(builderCode).toContain('QUOTE_FORM_WIDTHS');
+    expect(builderCode).toContain('QUOTE_FORM_TRUST_CUES');
     expect(builderCode).toContain('quoteFormStyle');
     expect(builderCode).toContain('quoteFormFieldBg');
     expect(builderCode).toContain('quoteFormRadius');
@@ -262,6 +293,7 @@ describe('Instant Quote Form Appearance Styles & Intake Flow', () => {
     expect(builderCode).toContain('quoteFormBadge');
     expect(builderCode).toContain('quoteFormWidth');
     expect(builderCode).toContain('quoteFormTrust');
+    expect(builderCode).toContain('quoteFormTrustItems');
     expect(builderCode).toContain('quoteFormStep1Photos');
     expect(builderCode).toContain('formStyleBadge');
     expect(builderCode).toContain('formStyleLinkCard');

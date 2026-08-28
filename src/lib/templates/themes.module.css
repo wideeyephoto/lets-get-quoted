@@ -914,7 +914,7 @@
 .heroFormVideo { display: grid; gap: .35rem; }
 .heroFormVideoTitle { margin: 0; font-size: .78rem; font-weight: 800; color: #17140f; }
 .heroFormVideoFrame { position: relative; aspect-ratio: 16 / 9; overflow: hidden; border-radius: calc(var(--theme-radius, 8px) * .6); border: 1px solid #d8d3c6; background: #0d0d0f; }
-.heroFormVideoFrame iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.heroFormVideoFrame iframe, .heroFormVideoFrame video { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; object-fit: cover; }
 .heroQuickForm .heroFormVideoPoster { position: absolute; inset: 0; display: grid; place-items: center; margin: 0; padding: 0; min-height: 0; border-radius: 0; background: #0d0d0f; cursor: pointer; }
 .heroFormVideoPoster img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: .72; }
 /* Fallback colour matters here: this now also renders inside the CLASSIC quote
@@ -2902,11 +2902,139 @@
 .site[data-badge-style='dark'] .vistaBadge strong, .site[data-badge-style='darkglass'] .vistaBadge strong,
 .site[data-badge-style='dark'] .vistaBadge small, .site[data-badge-style='darkglass'] .vistaBadge small,
 .site[data-badge-style='dark'] .renoBadge small, .site[data-badge-style='darkglass'] .renoBadge small { color: #fff; }
-/* Accent icon chips on dark (matches the soft treatment; the other themes'
-   badges already carry an accent circle by default). */
-.site[data-badge-style='dark'] .coatHeroBadgeIcon, .site[data-badge-style='darkglass'] .coatHeroBadgeIcon,
-.site[data-badge-style='dark'] .fixitHeroCardIcon, .site[data-badge-style='darkglass'] .fixitHeroCardIcon,
-.site[data-badge-style='dark'] .guildBadge .guildBadgeIcon, .site[data-badge-style='darkglass'] .guildBadge .guildBadgeIcon { background: color-mix(in srgb, var(--theme-accent) 46%, transparent); color: #fff; }
+/* Accent, Gold trust, and Aurora glass hero-badge styles */
+.site[data-badge-style='accent'] .shineBadge,
+.site[data-badge-style='accent'] .coatHeroBadge,
+.site[data-badge-style='accent'] .fixitHeroCard,
+.site[data-badge-style='accent'] .guildBadge,
+.site[data-badge-style='accent'] .forgeBadge,
+.site[data-badge-style='accent'] .vistaBadge,
+.site[data-badge-style='accent'] .renoBadge {
+  background: color-mix(in srgb, var(--theme-accent) 82%, #080c14);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  border: 1px solid color-mix(in srgb, var(--theme-accent) 60%, rgba(255,255,255,.5));
+  box-shadow: 0 22px 46px -22px color-mix(in srgb, var(--theme-accent) 55%, transparent);
+  color: var(--theme-on-accent, #fff);
+}
+.site[data-badge-style='accent'] .shineBadge strong,
+.site[data-badge-style='accent'] .shineBadge small,
+.site[data-badge-style='accent'] .shineBadgeCustomers strong,
+.site[data-badge-style='accent'] .shineBadgeCustomers small,
+.site[data-badge-style='accent'] .coatHeroBadge strong,
+.site[data-badge-style='accent'] .coatHeroBadge small,
+.site[data-badge-style='accent'] .fixitHeroCard strong,
+.site[data-badge-style='accent'] .fixitHeroCard small,
+.site[data-badge-style='accent'] .guildBadge strong,
+.site[data-badge-style='accent'] .guildBadge span,
+.site[data-badge-style='accent'] .forgeBadge strong,
+.site[data-badge-style='accent'] .forgeBadge small,
+.site[data-badge-style='accent'] .vistaBadge strong,
+.site[data-badge-style='accent'] .vistaBadge small,
+.site[data-badge-style='accent'] .renoBadge strong,
+.site[data-badge-style='accent'] .renoBadge small { color: var(--theme-on-accent, #fff); }
+.site[data-badge-style='accent'] .coatHeroBadgeIcon,
+.site[data-badge-style='accent'] .fixitHeroCardIcon,
+.site[data-badge-style='accent'] .guildBadge .guildBadgeIcon,
+.site[data-badge-style='accent'] .forgeBadgeIcon,
+.site[data-badge-style='accent'] .vistaBadgeIcon,
+.site[data-badge-style='accent'] .renoBadgeHex,
+.site[data-badge-style='accent'] .shineBadgeIcon {
+  background: rgba(255,255,255,.24);
+  color: #fff;
+}
+
+/* Gold foil / Metallic trust style */
+.site[data-badge-style='gold'] .shineBadge,
+.site[data-badge-style='gold'] .coatHeroBadge,
+.site[data-badge-style='gold'] .fixitHeroCard,
+.site[data-badge-style='gold'] .guildBadge,
+.site[data-badge-style='gold'] .forgeBadge,
+.site[data-badge-style='gold'] .vistaBadge,
+.site[data-badge-style='gold'] .renoBadge {
+  background: linear-gradient(135deg, rgba(26, 20, 10, .92), rgba(14, 10, 5, .96));
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  border: 1.5px solid color-mix(in srgb, #f59e0b 72%, rgba(255,255,255,.4));
+  box-shadow: 0 22px 48px -20px rgba(217,119,6,.45), inset 0 1px 0 rgba(255,230,150,.25);
+  color: #fff;
+}
+.site[data-badge-style='gold'] .shineBadge strong,
+.site[data-badge-style='gold'] .shineBadgeCustomers strong,
+.site[data-badge-style='gold'] .coatHeroBadge strong,
+.site[data-badge-style='gold'] .fixitHeroCard strong,
+.site[data-badge-style='gold'] .guildBadge strong,
+.site[data-badge-style='gold'] .guildBadge span,
+.site[data-badge-style='gold'] .forgeBadge strong,
+.site[data-badge-style='gold'] .vistaBadge strong,
+.site[data-badge-style='gold'] .renoBadge strong { color: #fff; }
+.site[data-badge-style='gold'] .shineBadge small,
+.site[data-badge-style='gold'] .shineBadgeCustomers small,
+.site[data-badge-style='gold'] .coatHeroBadge small,
+.site[data-badge-style='gold'] .fixitHeroCard small,
+.site[data-badge-style='gold'] .forgeBadge small,
+.site[data-badge-style='gold'] .vistaBadge small,
+.site[data-badge-style='gold'] .renoBadge small { color: #fbbf24; }
+.site[data-badge-style='gold'] .coatHeroBadgeIcon,
+.site[data-badge-style='gold'] .fixitHeroCardIcon,
+.site[data-badge-style='gold'] .guildBadge .guildBadgeIcon,
+.site[data-badge-style='gold'] .forgeBadgeIcon,
+.site[data-badge-style='gold'] .vistaBadgeIcon,
+.site[data-badge-style='gold'] .renoBadgeHex,
+.site[data-badge-style='gold'] .shineBadgeIcon {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #1a1205;
+  font-weight: 900;
+  box-shadow: 0 0 12px rgba(245,158,11,.45);
+}
+
+/* Aurora iridescent glass style */
+.site[data-badge-style='aurora'] .shineBadge,
+.site[data-badge-style='aurora'] .coatHeroBadge,
+.site[data-badge-style='aurora'] .fixitHeroCard,
+.site[data-badge-style='aurora'] .guildBadge,
+.site[data-badge-style='aurora'] .forgeBadge,
+.site[data-badge-style='aurora'] .vistaBadge,
+.site[data-badge-style='aurora'] .renoBadge {
+  background: rgba(14, 20, 32, .75);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  border: 1.5px solid transparent;
+  background-image: linear-gradient(rgba(14, 20, 32, .85), rgba(14, 20, 32, .85)), linear-gradient(135deg, #38bdf8, #818cf8 50%, #f472b6);
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+  box-shadow: 0 22px 48px -20px rgba(56,189,248,.38);
+  color: #fff;
+}
+.site[data-badge-style='aurora'] .shineBadge strong,
+.site[data-badge-style='aurora'] .shineBadgeCustomers strong,
+.site[data-badge-style='aurora'] .coatHeroBadge strong,
+.site[data-badge-style='aurora'] .fixitHeroCard strong,
+.site[data-badge-style='aurora'] .guildBadge strong,
+.site[data-badge-style='aurora'] .guildBadge span,
+.site[data-badge-style='aurora'] .forgeBadge strong,
+.site[data-badge-style='aurora'] .vistaBadge strong,
+.site[data-badge-style='aurora'] .renoBadge strong { color: #fff; }
+.site[data-badge-style='aurora'] .shineBadge small,
+.site[data-badge-style='aurora'] .shineBadgeCustomers small,
+.site[data-badge-style='aurora'] .coatHeroBadge small,
+.site[data-badge-style='aurora'] .fixitHeroCard small,
+.site[data-badge-style='aurora'] .forgeBadge small,
+.site[data-badge-style='aurora'] .vistaBadge small,
+.site[data-badge-style='aurora'] .renoBadge small { color: #cbd5e1; }
+.site[data-badge-style='aurora'] .coatHeroBadgeIcon,
+.site[data-badge-style='aurora'] .fixitHeroCardIcon,
+.site[data-badge-style='aurora'] .guildBadge .guildBadgeIcon,
+.site[data-badge-style='aurora'] .forgeBadgeIcon,
+.site[data-badge-style='aurora'] .vistaBadgeIcon,
+.site[data-badge-style='aurora'] .renoBadgeHex,
+.site[data-badge-style='aurora'] .shineBadgeIcon {
+  background: linear-gradient(135deg, #38bdf8, #818cf8);
+  color: #fff;
+  font-weight: 800;
+  box-shadow: 0 0 12px rgba(56,189,248,.45);
+}
+
 
 /* ── Hero headline readability & shadow treatments (data-hero-shadow) ── */
 .site[data-hero-shadow='soft'] .forgeHeroTextColumn h1,

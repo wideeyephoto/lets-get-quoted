@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import type { SiteIntroVideoContent } from '@/lib/site-content';
-import { parseYouTubeUrl, youTubeEmbedSrc, youTubeThumbnail } from '@/lib/youtube';
+import { parseVideoSource, videoPoster } from '@/lib/video-source';
+import { youTubeEmbedSrc } from '@/lib/youtube';
 import styles from './themes.module.css';
 
 // The owner's short intro, played on the "request sent" screen.
@@ -23,7 +24,7 @@ import styles from './themes.module.css';
 //    autoplay plays, and the unmute control turns it into sound in one tap.
 
 export default function IntroVideo({ video }: { video: SiteIntroVideoContent }) {
-  const parsed = parseYouTubeUrl(video.url);
+  const source = parseVideoSource(video.url);
 
   // Autoplaying video at someone who has asked their OS for less motion is the
   // exact thing that setting exists to stop. They get the same video behind a
@@ -36,39 +37,60 @@ export default function IntroVideo({ video }: { video: SiteIntroVideoContent }) 
     if (query.matches) setAutoplay(false);
   }, []);
 
-  if (!video.enabled || !parsed) return null;
+  if (!video.enabled || !source) return null;
 
   const playing = autoplay || started;
+  const poster = videoPoster({ url: video.url, posterUrl: video.posterUrl || '' });
 
   return (
     <section className={styles.heroFormVideo} aria-label={video.title}>
       <p className={styles.heroFormVideoTitle}>{video.title}</p>
       <div className={styles.heroFormVideoFrame}>
-        {playing ? (
-          <iframe
-            src={youTubeEmbedSrc(parsed, { autoplay: true })}
-            title={video.title}
-            loading="lazy"
-            // autoplay must be granted explicitly to a cross-origin frame, or the
-            // player's own autoplay=1 is ignored and it sits on the poster.
-            allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
-            // allow-popups and allow-top-navigation are deliberately absent: with
-            // them, YouTube's chrome can leave the page. Without them it cannot.
-            // allow-same-origin is safe here precisely because the frame is
-            // cross-origin — it grants YouTube its own origin, not ours.
-            sandbox="allow-scripts allow-same-origin allow-presentation"
-            allowFullScreen
-          />
+        {source.kind === 'youtube' ? (
+          playing ? (
+            <iframe
+              src={youTubeEmbedSrc(source.video, { autoplay: true })}
+              title={video.title}
+              loading="lazy"
+              // autoplay must be granted explicitly to a cross-origin frame, or the
+              // player's own autoplay=1 is ignored and it sits on the poster.
+              allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+              // allow-popups and allow-top-navigation are deliberately absent: with
+              // them, YouTube's chrome can leave the page. Without them it cannot.
+              // allow-same-origin is safe here precisely because the frame is
+              // cross-origin — it grants YouTube its own origin, not ours.
+              sandbox="allow-scripts allow-same-origin allow-presentation"
+              allowFullScreen
+            />
+          ) : (
+            <button type="button" className={styles.heroFormVideoPoster} onClick={() => setStarted(true)}>
+              {poster ? (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img src={poster} alt="" loading="lazy" />
+              ) : null}
+              <span className={styles.heroFormVideoPlay} aria-hidden="true" />
+              <span className={styles.heroFormVideoPosterLabel}>Play video</span>
+            </button>
+          )
         ) : (
-          <button type="button" className={styles.heroFormVideoPoster} onClick={() => setStarted(true)}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={youTubeThumbnail(parsed)} alt="" loading="lazy" />
-            <span className={styles.heroFormVideoPlay} aria-hidden="true" />
-            <span className={styles.heroFormVideoPosterLabel}>Play video</span>
-          </button>
+          <video
+            src={source.url}
+            poster={poster || undefined}
+            controls
+            autoPlay={autoplay}
+            muted={autoplay}
+            playsInline
+            preload="metadata"
+          />
         )}
       </div>
-      {playing ? <small className={styles.heroFormVideoHint}>Starts muted — tap the speaker in the player for sound.</small> : null}
+      {playing ? (
+        <small className={styles.heroFormVideoHint}>
+          {source.kind === 'youtube'
+            ? 'Starts muted — tap the speaker in the player for sound.'
+            : 'Starts muted — use the video controls for sound.'}
+        </small>
+      ) : null}
     </section>
   );
 }

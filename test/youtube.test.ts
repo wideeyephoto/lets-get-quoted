@@ -135,4 +135,28 @@ describe('intro video content', () => {
     expect(smart.estimateRanges.enabled).toBe(true);
     expect(isIntroVideoLive(smart.introVideo)).toBe(true);
   });
+
+  it('supports direct video file uploads from phone or computer', () => {
+    const uploadedMp4 = getSiteContent({
+      introVideo: {
+        enabled: true,
+        url: 'https://example-storage.supabase.co/storage/v1/object/public/site-videos/welcome.mp4',
+        posterUrl: 'https://example-storage.supabase.co/storage/v1/object/public/site-images/welcome-poster.jpg',
+        title: 'Thank you for requesting a quote!',
+        duration: 42,
+      },
+    });
+    expect(isIntroVideoLive(uploadedMp4.introVideo)).toBe(true);
+    expect(uploadedMp4.introVideo.posterUrl).toBe('https://example-storage.supabase.co/storage/v1/object/public/site-images/welcome-poster.jpg');
+    expect(uploadedMp4.introVideo.duration).toBe(42);
+
+    const uploadedMov = getSiteContent({
+      introVideo: {
+        enabled: true,
+        url: 'https://example-storage.supabase.co/storage/v1/object/public/site-videos/phone-selfie.mov',
+      },
+    });
+    expect(isIntroVideoLive(uploadedMov.introVideo)).toBe(true);
+  });
 });
+

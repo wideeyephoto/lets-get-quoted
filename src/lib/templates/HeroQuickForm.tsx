@@ -8,7 +8,7 @@ import { classifyEmail, suggestEmailFix } from '@/lib/email-quality';
 import { normalizeUsPhone } from '@/lib/phone';
 import { matchesServedCity } from '@/lib/service-area-match';
 import { HoneypotField } from '@/components/honeypot-field';
-import { DEFAULT_FULLY_BOOKED_MESSAGE, getEstimateButtonLabel, getPublishedRatingBadge, getSiteContent, isFullyBookedActive } from '@/lib/site-content';
+import { DEFAULT_FULLY_BOOKED_MESSAGE, getEstimateButtonLabel, getPublishedRatingBadge, getQuoteFormTrustCues, getSiteContent, isFullyBookedActive } from '@/lib/site-content';
 import type { Site } from '@/lib/sites';
 import { getOrCreateAiIntakeThread } from '@/lib/ai-intake-thread';
 import { trackQuoteFunnelStep } from '@/lib/analytics';
@@ -142,7 +142,7 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
   const formWidth = siteContent.quoteFormWidth || 'standard';
   const formSubtitle = siteContent.quoteFormSubtitle || '';
   const formButtonText = siteContent.quoteFormButtonText || '';
-  const formTrust = siteContent.quoteFormTrust !== false;
+  const trustCues = getQuoteFormTrustCues(siteContent);
   const formStep1Photos = siteContent.quoteFormStep1Photos === true;
   const quoteForm = siteContent.quoteForm;
   const emailRequired = quoteForm.emailRequired;
@@ -1019,11 +1019,13 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
             {!isClassifying && <span className={styles.heroFormBtnArrow} aria-hidden="true">→</span>}
           </button>
 
-          {formTrust && (
+          {trustCues.length > 0 && (
             <div className={styles.heroFormTrustStrip}>
-              <span><span aria-hidden="true">🔒</span> 100% Private</span>
-              <span><span aria-hidden="true">⚡</span> Fast Reply</span>
-              <span><span aria-hidden="true">✓</span> Free &amp; No Obligation</span>
+              {trustCues.map((cue) => (
+                <span key={cue.key}>
+                  <span aria-hidden="true">{cue.icon}</span> {cue.defaultText}
+                </span>
+              ))}
             </div>
           )}
 

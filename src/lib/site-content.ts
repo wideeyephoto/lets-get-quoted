@@ -8,7 +8,6 @@ import {
 import { normalizePostStatus, type StoredPostStatus } from '@/lib/marketing-status';
 import { isSocialPlatformId, normalizeSocialUrl } from '@/lib/socials';
 import { parseVideoSource } from '@/lib/video-source';
-import { parseYouTubeUrl } from '@/lib/youtube';
 
 export type SiteSectionKey = 'showcase' | 'testimonials' | 'faqs';
 
@@ -591,36 +590,53 @@ const BLOG_LAYOUT_KEYS = new Set<string>(BLOG_STYLES.map((style) => style.key));
 // Floating hero badge — the small trust chip shown on the hero of photo-badge
 // templates (Fixit today). Owners pick one of these presets or hide it; the
 // preset key drives the icon/title/subtitle so the template stays declarative.
-export type SiteHeroBadgeContent = { preset: string; showStats: boolean; style: string; customLabel: string; secondPreset: string; secondCustomLabel: string };
+export type SiteHeroBadgeContent = {
+  preset: string;
+  showStats: boolean;
+  style: string;
+  customIcon: string;
+  customLabel: string;
+  customSubtitle: string;
+  secondPreset: string;
+  secondCustomIcon: string;
+  secondCustomLabel: string;
+  secondCustomSubtitle: string;
+};
 
 export const HERO_BADGE_PRESETS = [
   { key: 'estimates', icon: '$', title: 'Free Estimates', subtitle: 'No-obligation quotes', label: 'Free estimates' },
   { key: 'licensed', icon: '✓', title: 'Licensed & Insured', subtitle: 'Fully vetted pros', label: 'Licensed & insured' },
   { key: 'sameday', icon: '⚡', title: 'Same-Day Service', subtitle: 'Fast response', label: 'Same-day service' },
+  { key: 'emergency', icon: '🚨', title: '24/7 Emergency Service', subtitle: 'Fast on-call dispatch', label: '24/7 emergency service' },
+  { key: 'insured', icon: '🛡️', title: '$2M Liability Insured', subtitle: 'Bonded & vetted pros', label: '$2M liability insured' },
   { key: 'financing', icon: '%', title: 'Financing Available', subtitle: 'Flexible plans', label: 'Financing available' },
   { key: 'guarantee', icon: '♥', title: 'Satisfaction Guaranteed', subtitle: 'Guaranteed work', label: 'Satisfaction guaranteed' },
+  { key: 'experience', icon: '🏆', title: '20+ Years Experience', subtitle: 'Family owned & operated', label: '20+ years experience' },
   { key: 'local', icon: '⌂', title: 'Locally Owned', subtitle: 'In your community', label: 'Locally owned' },
   { key: 'fivestar', icon: '★', title: '5-Star Rated', subtitle: 'Loved by homeowners', label: '5-star rated' },
   { key: 'upfront', icon: '≡', title: 'Upfront Pricing', subtitle: 'No surprises', label: 'Upfront pricing' },
+  { key: 'fixedprice', icon: '🏷️', title: 'Fixed-Price Guarantee', subtitle: 'No hidden fees', label: 'Fixed-price guarantee' },
   { key: 'warranty', icon: '◆', title: 'Warranty Included', subtitle: 'Backed in writing', label: 'Warranty included' },
 ] as const;
 
 export type HeroBadgePreset = { key: string; icon: string; title: string; subtitle: string; label: string };
 
-// The three visual treatments for the floating hero badge.
-// Hero badge treatments (data-badge-style). Two light-background + two
-// dark-background looks. 'solid'/'soft' are the original light styles (kept so
-// existing sites are unchanged); 'dark'/'darkglass' are their dark counterparts.
+// The visual treatments for the floating hero badge.
+// Hero badge treatments (data-badge-style). Light, light glass, dark, dark glass,
+// theme accent, gold trust foil, and aurora iridescent glass.
 export const HERO_BADGE_STYLES = [
   { key: 'solid', label: 'Light' },
   { key: 'soft', label: 'Light glass' },
   { key: 'dark', label: 'Dark' },
   { key: 'darkglass', label: 'Dark glass' },
+  { key: 'accent', label: 'Theme accent' },
+  { key: 'gold', label: 'Gold trust' },
+  { key: 'aurora', label: 'Aurora glass' },
 ] as const;
 
 // 'outline' is a legacy style kept valid (so older sites keep it) but no longer
 // offered in the picker.
-const HERO_BADGE_STYLE_KEYS = new Set<string>([...HERO_BADGE_STYLES.map((style) => style.key), 'outline']);
+export const HERO_BADGE_STYLE_KEYS = new Set<string>([...HERO_BADGE_STYLES.map((style) => style.key), 'outline']);
 
 // Selectable header styles, each rendered in the template's own skin via
 // data-header on the root. '' = the theme's built-in header (untouched). More
@@ -1195,6 +1211,61 @@ export function getQuoteFormWidth(content: Record<string, unknown> | null | unde
   return (getSiteContent(content).quoteFormWidth as QuoteFormWidth) || 'standard';
 }
 
+export type QuoteFormTrustCueKey = 'private' | 'fastReply' | 'noObligation' | 'insured' | 'noHiddenFees';
+
+export type QuoteFormTrustCueOption = {
+  key: QuoteFormTrustCueKey;
+  icon: string;
+  label: string;
+  defaultText: string;
+};
+
+export const QUOTE_FORM_TRUST_CUES: readonly QuoteFormTrustCueOption[] = [
+  {
+    key: 'private',
+    icon: '🔒',
+    label: '100% Private',
+    defaultText: '100% Private',
+  },
+  {
+    key: 'fastReply',
+    icon: '⚡',
+    label: 'Fast Reply',
+    defaultText: 'Fast Reply',
+  },
+  {
+    key: 'noObligation',
+    icon: '✓',
+    label: 'Free & No Obligation',
+    defaultText: 'Free & No Obligation',
+  },
+  {
+    key: 'insured',
+    icon: '🛡️',
+    label: 'Licensed & Insured',
+    defaultText: 'Licensed & Insured',
+  },
+  {
+    key: 'noHiddenFees',
+    icon: '🏷️',
+    label: 'No Hidden Fees',
+    defaultText: 'No Hidden Fees',
+  },
+] as const;
+
+export const DEFAULT_QUOTE_FORM_TRUST_ITEMS: readonly QuoteFormTrustCueKey[] = ['private', 'fastReply', 'noObligation'];
+
+export const QUOTE_FORM_TRUST_CUE_KEYS = new Set<string>(QUOTE_FORM_TRUST_CUES.map((c) => c.key));
+
+export function getQuoteFormTrustCues(content: Record<string, unknown> | null | undefined): QuoteFormTrustCueOption[] {
+  const site = getSiteContent(content);
+  if (site.quoteFormTrust === false) return [];
+  const selectedKeys = site.quoteFormTrustItems && site.quoteFormTrustItems.length > 0
+    ? new Set(site.quoteFormTrustItems)
+    : new Set(DEFAULT_QUOTE_FORM_TRUST_ITEMS);
+  return QUOTE_FORM_TRUST_CUES.filter((cue) => selectedKeys.has(cue.key));
+}
+
 export type SiteQuoteFormContent = {
   // Whether the FULL multi-field quote form renders at #contact. Off by
   // default — the smart-intake capture takes its place so visitors always
@@ -1251,10 +1322,13 @@ export type SiteEstimateRangesContent = {
 // form couldn't have one.
 export type SiteIntroVideoContent = {
   enabled: boolean;
-  /** Whatever the owner pasted; parsed to a video id at render (lib/youtube). */
+  /** A YouTube link or uploaded video file URL. */
   url: string;
+  posterUrl?: string;
   /** Heading above the player. */
   title: string;
+  playbackWarning?: string;
+  duration?: number;
 };
 
 export const DEFAULT_INTRO_VIDEO_TITLE = 'While you wait — a quick hello';
@@ -1263,7 +1337,7 @@ export const DEFAULT_INTRO_VIDEO_TITLE = 'While you wait — a quick hello';
 // nothing rather than an empty frame — the owner is never watching this screen
 // themselves, so a broken embed here could sit in front of customers for weeks.
 export function isIntroVideoLive(video: SiteIntroVideoContent): boolean {
-  return video.enabled && parseYouTubeUrl(video.url) !== null;
+  return video.enabled && parseVideoSource(video.url) !== null;
 }
 
 // Owner controls that prune low-quality website leads before they cost time.
@@ -1370,6 +1444,8 @@ export type NormalizedSiteContent = {
   quoteFormButtonText: string;
   // Show trust reassurance strip below submit button.
   quoteFormTrust: boolean;
+  // Selected trust reassurance items displayed under submit button.
+  quoteFormTrustItems?: QuoteFormTrustCueKey[];
   // Enable photo attachment directly on Step 1.
   quoteFormStep1Photos: boolean;
   projectShowcase: SiteProjectShowcaseContent;
@@ -1998,7 +2074,10 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
       // isIntroVideoLive(), asked at the point of render.
       enabled: toBoolean(introVideo.enabled),
       url: toString(introVideo.url).slice(0, 300),
+      posterUrl: toString(introVideo.posterUrl).slice(0, 300),
       title: toString(introVideo.title, DEFAULT_INTRO_VIDEO_TITLE).slice(0, 60),
+      playbackWarning: toString(introVideo.playbackWarning).slice(0, 300),
+      duration: Math.max(0, Math.round(toPositiveNumber(introVideo.duration, 0))),
     },
     phonePublic: root.phonePublic !== false,
     leadFilters: {
@@ -2094,6 +2173,9 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
     quoteFormSubtitle: toString(root.quoteFormSubtitle).slice(0, 200),
     quoteFormButtonText: toString(root.quoteFormButtonText).slice(0, 40),
     quoteFormTrust: root.quoteFormTrust !== false,
+    quoteFormTrustItems: Array.isArray(root.quoteFormTrustItems)
+      ? root.quoteFormTrustItems.filter((k): k is QuoteFormTrustCueKey => typeof k === 'string' && QUOTE_FORM_TRUST_CUE_KEYS.has(k))
+      : undefined,
     quoteFormStep1Photos: toBoolean(root.quoteFormStep1Photos),
     projectShowcase: {
       // On by default so existing Care sites keep their work band; the owner can
@@ -2139,13 +2221,17 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
       preset: toString(heroBadge.preset, 'estimates'),
       showStats: heroBadge.showStats !== false,
       style: HERO_BADGE_STYLE_KEYS.has(toString(heroBadge.style)) ? toString(heroBadge.style) : 'soft',
+      customIcon: toString(heroBadge.customIcon).slice(0, 10),
       customLabel: toString(heroBadge.customLabel).slice(0, 40),
+      customSubtitle: toString(heroBadge.customSubtitle).slice(0, 50),
       // The second/extra floating badge: 'default' keeps each template's built-in
       // one (Shine "500+ customers", Guild "Proudly local", Fixit's auto second),
       // 'none' hides it, or a preset key / 'custom' picks a specific badge. Falls
       // back from the legacy showStats boolean so old sites keep their choice.
       secondPreset: toString(heroBadge.secondPreset) || (heroBadge.showStats === false ? 'none' : 'default'),
+      secondCustomIcon: toString(heroBadge.secondCustomIcon).slice(0, 10),
       secondCustomLabel: toString(heroBadge.secondCustomLabel).slice(0, 40),
+      secondCustomSubtitle: toString(heroBadge.secondCustomSubtitle).slice(0, 50),
     },
     images: parseImageSlots(images),
     sectionOrder: parseSectionOrder(root.sectionOrder, videoSections),
@@ -2684,13 +2770,15 @@ export function getHeroBadge(content: Record<string, unknown> | null | undefined
   if (heroBadge.preset === 'none') return null;
   if (heroBadge.preset === 'custom') {
     const title = heroBadge.customLabel.trim();
-    return title ? { key: 'custom', icon: '✓', title, subtitle: '', label: title } : null;
+    const icon = heroBadge.customIcon.trim() || '✓';
+    const subtitle = heroBadge.customSubtitle.trim();
+    return title ? { key: 'custom', icon, title, subtitle, label: title } : null;
   }
   return HERO_BADGE_PRESETS.find((badge) => badge.key === heroBadge.preset) ?? HERO_BADGE_PRESETS[0];
 }
 
-// The chosen badge treatment ('solid' | 'outline' | 'soft'); set on the template
-// root as data-badge-style so one rule restyles every template's hero badge.
+// The chosen badge treatment ('solid' | 'soft' | 'dark' | 'darkglass' | 'accent' | 'gold' | 'aurora');
+// set on the template root as data-badge-style so one rule restyles every template's hero badge.
 export function getHeroBadgeStyle(content: Record<string, unknown> | null | undefined): string {
   return getSiteContent(content).heroBadge.style;
 }
@@ -2713,7 +2801,9 @@ export function getHeroSecondBadge(content: Record<string, unknown> | null | und
   if (preset === 'none') return { mode: 'none' };
   if (preset === 'custom') {
     const title = heroBadge.secondCustomLabel.trim();
-    return title ? { mode: 'badge', badge: { key: 'custom', icon: '✓', title, subtitle: '', label: title } } : { mode: 'default' };
+    const icon = heroBadge.secondCustomIcon.trim() || '★';
+    const subtitle = heroBadge.secondCustomSubtitle.trim();
+    return title ? { mode: 'badge', badge: { key: 'custom', icon, title, subtitle, label: title } } : { mode: 'default' };
   }
   const found = HERO_BADGE_PRESETS.find((badge) => badge.key === preset);
   return found ? { mode: 'badge', badge: found } : { mode: 'default' };

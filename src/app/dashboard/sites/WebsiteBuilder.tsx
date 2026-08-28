@@ -6,7 +6,7 @@ import type { SiteImage } from '@/lib/site-images';
 import { getSiteGallery, STOCK_SITE_IMAGES } from '@/lib/site-images';
 import { getSiteContent, getTradeGlyphOptions, getUnreviewedGeneratedSections, glyphForContent, mergeSiteContent, COLOR_SCHEMES, getActiveColorSchemes, getColorScheme, HEADER_STYLES,
   MENU_BUTTON_STYLES,
-  BLOG_STYLES, BUTTON_STYLES, HEADER_BUTTON_STYLES, WORDMARK_STYLES, HERO_TEXT_SHADOW_STYLES, QUOTE_FORM_STYLES, QUOTE_FORM_FIELD_BGS, QUOTE_FORM_RADII, QUOTE_FORM_STEPPERS, QUOTE_FORM_BADGES, QUOTE_FORM_WIDTHS, HERO_BADGE_PRESETS, HERO_BADGE_STYLES, IMAGE_SLOT_LABELS, MAX_EXTRA_HERO_IMAGES, PROJECT_SHOWCASE_STYLES, MAX_PROJECT_SHOWCASE_ITEMS, DEFAULT_PROJECT_SHOWCASE_PLACEHOLDERS, DEFAULT_PROJECT_SHOWCASE_EYEBROW, DEFAULT_PROJECT_SHOWCASE_TITLE, STOCK_PROJECT_SHOWCASE_EYEBROW, STOCK_PROJECT_SHOWCASE_TITLE, VIDEO_SECTION_STYLES, videoStyleCapacity, videoSectionKey, MAX_VIDEO_SECTIONS, DEFAULT_VIDEOS_NAV_LABEL, type NormalizedSiteContent, type SiteHeroTextShadowStyle, type SiteProjectShowcaseContent, type SiteVideoSectionContent, type SiteBlogContent, type SiteAnnouncementContent, type SiteBeforeAfterContent, type SiteServicesContent, type SiteHowItWorksContent, type SiteFaqContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteShowcaseItem, type SiteStatItem, type SiteStatsContent, type SiteTestimonialItem, type SiteStickyCallBarContent, type SiteChatButtonContent, type SiteAnalyticsContent, type SiteTestimonialsContent, type SiteTrustBadgesContent, type SiteWhyUsContent, type SiteLegalContent } from '@/lib/site-content';
+  BLOG_STYLES, BUTTON_STYLES, HEADER_BUTTON_STYLES, WORDMARK_STYLES, HERO_TEXT_SHADOW_STYLES, QUOTE_FORM_STYLES, QUOTE_FORM_FIELD_BGS, QUOTE_FORM_RADII, QUOTE_FORM_STEPPERS, QUOTE_FORM_BADGES, QUOTE_FORM_WIDTHS, QUOTE_FORM_TRUST_CUES, DEFAULT_QUOTE_FORM_TRUST_ITEMS, HERO_BADGE_PRESETS, HERO_BADGE_STYLES, IMAGE_SLOT_LABELS, MAX_EXTRA_HERO_IMAGES, PROJECT_SHOWCASE_STYLES, MAX_PROJECT_SHOWCASE_ITEMS, DEFAULT_PROJECT_SHOWCASE_PLACEHOLDERS, DEFAULT_PROJECT_SHOWCASE_EYEBROW, DEFAULT_PROJECT_SHOWCASE_TITLE, STOCK_PROJECT_SHOWCASE_EYEBROW, STOCK_PROJECT_SHOWCASE_TITLE, VIDEO_SECTION_STYLES, videoStyleCapacity, videoSectionKey, MAX_VIDEO_SECTIONS, DEFAULT_VIDEOS_NAV_LABEL, type NormalizedSiteContent, type SiteHeroTextShadowStyle, type SiteProjectShowcaseContent, type SiteVideoSectionContent, type SiteBlogContent, type SiteAnnouncementContent, type SiteBeforeAfterContent, type SiteServicesContent, type SiteHowItWorksContent, type SiteFaqContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteShowcaseItem, type SiteStatItem, type SiteStatsContent, type SiteTestimonialItem, type SiteStickyCallBarContent, type SiteChatButtonContent, type SiteAnalyticsContent, type SiteTestimonialsContent, type SiteTrustBadgesContent, type SiteWhyUsContent, type SiteLegalContent, type QuoteFormRadius, type QuoteFormWidth, type QuoteFormStepper, type QuoteFormBadge } from '@/lib/site-content';
 import { generatePrivacyPolicy, generateTermsOfService } from '@/lib/legal/legal-copy';
 import { AVAILABLE_TEMPLATES } from '@/lib/templates/types';
 import ServiceIcon, { SERVICE_ICON_KEYS } from '@/lib/templates/ServiceIcon';
@@ -2207,8 +2207,8 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, mess
                   </div>
 
                   <hr className={styles.logoDivider} />
-                  <div className={styles.contentSubhead}><strong>Field background</strong><small>Choose light/white or dark background for input fields and textareas.</small></div>
-                  <div className={styles.footerPicker} role="radiogroup" aria-label="Field background">
+                  <div className={styles.contentSubhead}><strong>Field background</strong><small>Light, dark, or theme default input fields.</small></div>
+                  <div className={styles.segmented} role="radiogroup" aria-label="Field background" style={{ width: '100%', display: 'flex' }}>
                     {QUOTE_FORM_FIELD_BGS.map((bg) => {
                       const selected = (siteContent.quoteFormFieldBg || 'auto') === bg.key;
                       return (
@@ -2217,78 +2217,70 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, mess
                           key={bg.key}
                           role="radio"
                           aria-checked={selected}
-                          className={`${styles.footerPickerBtn}${selected ? ` ${styles.footerPickerBtnOn}` : ''}`}
+                          style={{ flex: 1, textAlign: 'center', fontSize: '.8rem', fontWeight: 600 }}
+                          className={selected ? styles.activeSegment : ''}
                           onClick={() => updateSiteContent({ quoteFormFieldBg: bg.key })}
                         >
-                          <strong>{bg.label}</strong>
-                          <small>{bg.desc}</small>
+                          {bg.key === 'light' ? '⚪ Light / White' : bg.key === 'dark' ? '⚫ Dark / Subtle' : '🪄 Theme default'}
                         </button>
                       );
                     })}
                   </div>
 
                   <hr className={styles.logoDivider} />
-                  <div className={styles.contentSubhead}><strong>Card corner rounding</strong><small>Choose how rounded the card corners and borders appear.</small></div>
-                  <div className={styles.footerPicker} role="radiogroup" aria-label="Card corner rounding">
-                    {QUOTE_FORM_RADII.map((r) => {
-                      const selected = (siteContent.quoteFormRadius || 'default') === r.key;
-                      return (
-                        <button
-                          type="button"
-                          key={r.key}
-                          role="radio"
-                          aria-checked={selected}
-                          className={`${styles.footerPickerBtn}${selected ? ` ${styles.footerPickerBtnOn}` : ''}`}
-                          onClick={() => updateSiteContent({ quoteFormRadius: r.key })}
-                        >
-                          <strong>{r.label}</strong>
-                          <small>{r.desc}</small>
-                        </button>
-                      );
-                    })}
+                  <div className={styles.contentSubhead}><strong>Fine-tune layout &amp; styling</strong><small>Corner curves, card width, and progress indicators.</small></div>
+                  <div className={styles.formColumns}>
+                    <label className={styles.formField}>
+                      <span>Card corners</span>
+                      <select
+                        value={siteContent.quoteFormRadius || 'default'}
+                        onChange={(event) => updateSiteContent({ quoteFormRadius: event.target.value as QuoteFormRadius })}
+                      >
+                        {QUOTE_FORM_RADII.map((r) => (
+                          <option key={r.key} value={r.key}>{r.label}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className={styles.formField}>
+                      <span>Card width</span>
+                      <select
+                        value={siteContent.quoteFormWidth || 'standard'}
+                        onChange={(event) => updateSiteContent({ quoteFormWidth: event.target.value as QuoteFormWidth })}
+                      >
+                        {QUOTE_FORM_WIDTHS.map((w) => (
+                          <option key={w.key} value={w.key}>{w.label}</option>
+                        ))}
+                      </select>
+                    </label>
                   </div>
 
-                  <hr className={styles.logoDivider} />
-                  <div className={styles.contentSubhead}><strong>Stepper &amp; progress style</strong><small>Choose the progress indicator displayed at the top of the card.</small></div>
-                  <div className={styles.footerPicker} role="radiogroup" aria-label="Stepper style">
-                    {QUOTE_FORM_STEPPERS.map((st) => {
-                      const selected = (siteContent.quoteFormStepper || 'badges') === st.key;
-                      return (
-                        <button
-                          type="button"
-                          key={st.key}
-                          role="radio"
-                          aria-checked={selected}
-                          className={`${styles.footerPickerBtn}${selected ? ` ${styles.footerPickerBtnOn}` : ''}`}
-                          onClick={() => updateSiteContent({ quoteFormStepper: st.key })}
-                        >
-                          <strong>{st.label}</strong>
-                          <small>{st.desc}</small>
-                        </button>
-                      );
-                    })}
+                  <div className={styles.formColumns} style={{ marginTop: '.4rem' }}>
+                    <label className={styles.formField}>
+                      <span>Progress indicator</span>
+                      <select
+                        value={siteContent.quoteFormStepper || 'badges'}
+                        onChange={(event) => updateSiteContent({ quoteFormStepper: event.target.value as QuoteFormStepper })}
+                      >
+                        {QUOTE_FORM_STEPPERS.map((st) => (
+                          <option key={st.key} value={st.key}>{st.label}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className={styles.formField}>
+                      <span>Eyebrow badge</span>
+                      <select
+                        value={siteContent.quoteFormBadge || 'sparkle'}
+                        onChange={(event) => updateSiteContent({ quoteFormBadge: event.target.value as QuoteFormBadge })}
+                      >
+                        {QUOTE_FORM_BADGES.map((b) => (
+                          <option key={b.key} value={b.key}>
+                            {b.icon ? `${b.icon} ` : ''}{b.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
                   </div>
 
-                  <hr className={styles.logoDivider} />
-                  <div className={styles.contentSubhead}><strong>Eyebrow badge</strong><small>Badge pill displayed above the form heading.</small></div>
-                  <div className={styles.footerPicker} role="radiogroup" aria-label="Eyebrow badge">
-                    {QUOTE_FORM_BADGES.map((b) => {
-                      const selected = (siteContent.quoteFormBadge || 'sparkle') === b.key;
-                      return (
-                        <button
-                          type="button"
-                          key={b.key}
-                          role="radio"
-                          aria-checked={selected}
-                          className={`${styles.footerPickerBtn}${selected ? ` ${styles.footerPickerBtnOn}` : ''}`}
-                          onClick={() => updateSiteContent({ quoteFormBadge: b.key })}
-                        >
-                          <strong>{b.icon ? `${b.icon} ` : ''}{b.label}</strong>
-                          <small>{b.desc}</small>
-                        </button>
-                      );
-                    })}
-                  </div>
                   {siteContent.quoteFormBadge === 'custom' && (
                     <label className={styles.formField} style={{ marginTop: '.4rem' }}>
                       <span>Custom badge text</span>
@@ -2303,29 +2295,8 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, mess
                   )}
 
                   <hr className={styles.logoDivider} />
-                  <div className={styles.contentSubhead}><strong>Card width &amp; layout</strong><small>Control the width and touch targets on desktop and tablets.</small></div>
-                  <div className={styles.footerPicker} role="radiogroup" aria-label="Card width">
-                    {QUOTE_FORM_WIDTHS.map((w) => {
-                      const selected = (siteContent.quoteFormWidth || 'standard') === w.key;
-                      return (
-                        <button
-                          type="button"
-                          key={w.key}
-                          role="radio"
-                          aria-checked={selected}
-                          className={`${styles.footerPickerBtn}${selected ? ` ${styles.footerPickerBtnOn}` : ''}`}
-                          onClick={() => updateSiteContent({ quoteFormWidth: w.key })}
-                        >
-                          <strong>{w.label}</strong>
-                          <small>{w.desc}</small>
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  <hr className={styles.logoDivider} />
-                  <div className={styles.contentSubhead}><strong>Custom wording &amp; button</strong><small>Customize the heading, subtitle, and CTA button text.</small></div>
-                  <div className={styles.formFieldGroup}>
+                  <div className={styles.contentSubhead}><strong>Wording &amp; Call-to-Action</strong><small>Customize the form headings and button text.</small></div>
+                  <div className={styles.formColumns}>
                     <label className={styles.formField}>
                       <span>Form heading</span>
                       <input
@@ -2334,16 +2305,6 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, mess
                         value={siteContent.quoteForm.formHeading || ''}
                         onChange={(event) => updateQuoteForm({ ...siteContent.quoteForm, formHeading: event.target.value })}
                         placeholder="Get a ballpark estimate"
-                      />
-                    </label>
-                    <label className={styles.formField}>
-                      <span>Subtitle / Explainer note</span>
-                      <input
-                        type="text"
-                        maxLength={200}
-                        value={siteContent.quoteFormSubtitle || ''}
-                        onChange={(event) => updateSiteContent({ quoteFormSubtitle: event.target.value })}
-                        placeholder="Tell us what you need. We’ll ask up to 3 quick questions..."
                       />
                     </label>
                     <label className={styles.formField}>
@@ -2357,9 +2318,19 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, mess
                       />
                     </label>
                   </div>
+                  <label className={styles.formField} style={{ marginTop: '.4rem' }}>
+                    <span>Subtitle / Explainer note</span>
+                    <input
+                      type="text"
+                      maxLength={200}
+                      value={siteContent.quoteFormSubtitle || ''}
+                      onChange={(event) => updateSiteContent({ quoteFormSubtitle: event.target.value })}
+                      placeholder="Tell us what you need. We’ll ask up to 3 quick questions..."
+                    />
+                  </label>
 
                   <hr className={styles.logoDivider} />
-                  <div className={styles.contentSubhead}><strong>Features &amp; Trust</strong><small>Additional confidence cues and photo capture options.</small></div>
+                  <div className={styles.contentSubhead}><strong>Features &amp; Trust</strong><small>Reassurance cues and photo attachments.</small></div>
                   <div className={styles.toggleGroup}>
                     <label className={styles.toggleRow}>
                       <input
@@ -2369,18 +2340,43 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, mess
                       />
                       <span>
                         <strong>Show trust reassurance strip</strong>
-                        <small>Displays &ldquo;🔒 100% Private · ⚡ Fast Reply · ✓ Free &amp; No Obligation&rdquo; under the button.</small>
+                        <small>Displays confidence cues directly under the submit button.</small>
                       </span>
                     </label>
-                    <label className={styles.toggleRow}>
+
+                    {siteContent.quoteFormTrust !== false && (
+                      <div className={styles.trustCuesList}>
+                        {QUOTE_FORM_TRUST_CUES.map((cue) => {
+                          const currentItems = siteContent.quoteFormTrustItems ?? [...DEFAULT_QUOTE_FORM_TRUST_ITEMS];
+                          const isChecked = currentItems.includes(cue.key);
+                          return (
+                            <label key={cue.key} className={styles.trustCueItem}>
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={(e) => {
+                                  const next = e.target.checked
+                                    ? [...currentItems, cue.key]
+                                    : currentItems.filter((k) => k !== cue.key);
+                                  updateSiteContent({ quoteFormTrustItems: next });
+                                }}
+                              />
+                              <span>{cue.icon} {cue.label}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    <label className={styles.toggleRow} style={{ marginTop: '.5rem' }}>
                       <input
                         type="checkbox"
                         checked={siteContent.quoteFormStep1Photos === true}
                         onChange={(event) => updateSiteContent({ quoteFormStep1Photos: event.target.checked })}
                       />
                       <span>
-                        <strong>Allow photo upload on Step 1</strong>
-                        <small>Shows the photo attachment button immediately on the initial description screen.</small>
+                        <strong>Let customers attach photos upfront</strong>
+                        <small>Adds a photo upload button to the first screen so customers can show their problem immediately.</small>
                       </span>
                     </label>
                   </div>
@@ -2724,7 +2720,13 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, mess
                                   <select id="hero-badge-preset" value={siteContent.heroBadge.preset} onChange={(event) => updateSiteContent({ heroBadge: { ...siteContent.heroBadge, preset: event.target.value } })}>{HERO_BADGE_PRESETS.map((badge) => <option key={badge.key} value={badge.key}>{badge.title}</option>)}<option value="custom">Custom badge…</option><option value="none">No badge</option></select>
                                   <small className={styles.fieldHint}>The floating trust chip on your hero photo (Fixit, Shine, Coat &amp; more).</small>
                                   {siteContent.heroBadge.preset === 'custom' && (
-                                    <input value={siteContent.heroBadge.customLabel} maxLength={40} onChange={(event) => updateSiteContent({ heroBadge: { ...siteContent.heroBadge, customLabel: event.target.value } })} placeholder="e.g. Clear Quotes. Quality Work." />
+                                    <div className={styles.customBadgeFields}>
+                                      <div className={styles.customBadgeRow}>
+                                        <input value={siteContent.heroBadge.customIcon || ''} maxLength={4} className={styles.customBadgeIconInput} onChange={(event) => updateSiteContent({ heroBadge: { ...siteContent.heroBadge, customIcon: event.target.value } })} placeholder="Icon (e.g. ✓, ★, 🏆, 🛡️)" title="Badge icon" aria-label="Custom badge icon" />
+                                        <input value={siteContent.heroBadge.customLabel} maxLength={40} onChange={(event) => updateSiteContent({ heroBadge: { ...siteContent.heroBadge, customLabel: event.target.value } })} placeholder="Badge title (e.g. Veteran Owned)" aria-label="Custom badge title" />
+                                      </div>
+                                      <input value={siteContent.heroBadge.customSubtitle || ''} maxLength={50} onChange={(event) => updateSiteContent({ heroBadge: { ...siteContent.heroBadge, customSubtitle: event.target.value } })} placeholder="Subtitle (optional, e.g. 10% Military Discount)" aria-label="Custom badge subtitle" />
+                                    </div>
                                   )}
                                 </div>
                                 <label className={styles.formField}><span>Badge style</span><select value={siteContent.heroBadge.style} onChange={(event) => updateSiteContent({ heroBadge: { ...siteContent.heroBadge, style: event.target.value } })}>{HERO_BADGE_STYLES.map((style) => <option key={style.key} value={style.key}>{style.label}</option>)}</select></label>
@@ -2738,7 +2740,13 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, mess
                                   </select>
                                   <small className={styles.fieldHint}>The second chip beside your hero photo (Shine, Fixit &amp; Guild).</small>
                                   {siteContent.heroBadge.secondPreset === 'custom' && (
-                                    <input value={siteContent.heroBadge.secondCustomLabel} maxLength={40} onChange={(event) => updateSiteContent({ heroBadge: { ...siteContent.heroBadge, secondCustomLabel: event.target.value } })} placeholder="e.g. Family Owned" />
+                                    <div className={styles.customBadgeFields}>
+                                      <div className={styles.customBadgeRow}>
+                                        <input value={siteContent.heroBadge.secondCustomIcon || ''} maxLength={4} className={styles.customBadgeIconInput} onChange={(event) => updateSiteContent({ heroBadge: { ...siteContent.heroBadge, secondCustomIcon: event.target.value } })} placeholder="Icon (e.g. ★, ⚡, 🛡️)" title="Second badge icon" aria-label="Custom second badge icon" />
+                                        <input value={siteContent.heroBadge.secondCustomLabel} maxLength={40} onChange={(event) => updateSiteContent({ heroBadge: { ...siteContent.heroBadge, secondCustomLabel: event.target.value } })} placeholder="Badge title (e.g. Family Owned)" aria-label="Custom second badge title" />
+                                      </div>
+                                      <input value={siteContent.heroBadge.secondCustomSubtitle || ''} maxLength={50} onChange={(event) => updateSiteContent({ heroBadge: { ...siteContent.heroBadge, secondCustomSubtitle: event.target.value } })} placeholder="Subtitle (optional, e.g. 3 Generations)" aria-label="Custom second badge subtitle" />
+                                    </div>
                                   )}
                                 </div>
                               </SectionCard>

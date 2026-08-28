@@ -66,6 +66,10 @@
 .formField select option { background: var(--bg-3); }
 .formField small { color: var(--muted-2); font-weight: 400; line-height: 1.4; }
 .formColumns { display: grid; grid-template-columns: 1fr 1fr; gap: .8rem; }
+.customBadgeFields { display: grid; gap: .5rem; margin-top: .4rem; padding: .65rem; border-radius: 8px; background: rgba(var(--tint), .035); border: 1px solid var(--edge-t12); }
+.customBadgeRow { display: grid; grid-template-columns: 74px minmax(0, 1fr); gap: .5rem; }
+.customBadgeIconInput { text-align: center; font-size: 1.15rem; font-weight: 700; }
+
 
 /* Setup · Business basics — "spotlight" the two fields that drive the whole site
    (company name + trade), then preview the name in the chosen font/style. */
@@ -1686,4 +1690,143 @@ a.blogGenerateBtn { display: block; text-align: center; text-decoration: none; l
   background: color-mix(in srgb, #ff7a21 22%, transparent);
   border-color: #ff7a21;
 }
+
+/* Thank-you / Intro Video Field */
+.introVideoWrap {
+  display: grid;
+  gap: .85rem;
+  margin-top: .4rem;
+}
+.introVideoUploadBlock {
+  display: grid;
+  gap: .6rem;
+}
+.introVideoFileCard {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: .85rem;
+  border-radius: 10px;
+  background: rgba(var(--tint), .035);
+  border: 1px solid var(--edge-t14);
+}
+.introVideoThumbWrap {
+  position: relative;
+  width: 120px;
+  aspect-ratio: 16 / 9;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #000;
+  flex: none;
+}
+.introVideoThumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.introVideoNoThumb {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  color: #fff;
+  font-size: .75rem;
+  text-align: center;
+}
+.introVideoDurationBadge {
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, .75);
+  color: #fff;
+  font-size: .65rem;
+  font-weight: 700;
+}
+.introVideoMeta {
+  display: grid;
+  gap: .25rem;
+  flex: 1;
+  min-width: 0;
+}
+.introVideoMeta strong {
+  font-size: .88rem;
+  color: var(--text);
+}
+.introVideoMeta small {
+  color: var(--muted-2);
+  font-size: .74rem;
+  line-height: 1.35;
+}
+.introVideoActions {
+  display: flex;
+  gap: .5rem;
+  margin-top: .35rem;
+}
+.introVideoDropzone {
+  display: grid;
+  gap: .5rem;
+  padding: 1.25rem;
+  border: 1px dashed var(--edge-t20);
+  border-radius: 10px;
+  background: rgba(var(--tint), .02);
+  text-align: center;
+  justify-items: center;
+}
+.introVideoPreview {
+  display: flex;
+  align-items: center;
+  gap: .85rem;
+  margin-top: .5rem;
+  padding: .65rem;
+  border-radius: 8px;
+  background: rgba(var(--tint), .035);
+  border: 1px solid var(--edge-t12);
+}
+.introVideoPreview img {
+  width: 100px;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: 5px;
+  flex: none;
+}
+.introVideoPreview div {
+  display: grid;
+  gap: .15rem;
+}
+.introVideoPreview strong {
+  font-size: .84rem;
+  color: var(--text);
+}
+.introVideoPreview small {
+  font-size: .72rem;
+  color: var(--muted-2);
+}
+
+.trustCuesList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .45rem .95rem;
+  padding: .65rem .85rem;
+  margin-top: .4rem;
+  border-radius: 8px;
+  background: rgba(var(--tint), .03);
+  border: 1px solid var(--edge-t10);
+}
+.trustCueItem {
+  display: inline-flex;
+  align-items: center;
+  gap: .45rem;
+  font-size: .8rem;
+  font-weight: 500;
+  color: var(--text);
+  cursor: pointer;
+  user-select: none;
+}
+.trustCueItem input {
+  accent-color: #ff7a21;
+}
+
+
 
