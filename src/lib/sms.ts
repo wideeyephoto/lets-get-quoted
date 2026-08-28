@@ -10,6 +10,7 @@ import {
   clientJobDashboardText,
   quoteUpdatedText,
   crewAssignmentText,
+  crewWelcomeText,
   crewPhoneVerificationCodeText,
   crewScheduleSelectedText,
   inboxReplyText,
@@ -1112,6 +1113,65 @@ export async function sendCrewAssignmentSms(params: {
 }) {
   const body = crewAssignmentText(params);
   return deliverCrewSms({ accountId: params.accountId, crewId: params.crewId, phone: params.phone, eventType: 'crew_assigned', body, idempotencyKey: params.idempotencyKey });
+}
+
+/**
+ * Sends a welcome/onboarding SMS to a newly registered crew member or subcontractor
+ * letting them know they can text/voice in job updates, site notes, and receipt photos.
+ */
+export async function sendCrewWelcomeSms(params: {
+  accountId: string;
+  crewId: string;
+  phone: string;
+  crewName: string;
+  businessName: string;
+}): Promise<{ status: 'queued' | 'opted_out' | 'failed'; eventId?: string }> {
+  const normalized = normalizeUsPhone(params.phone) ?? params.phone.trim();
+  if (await isPhoneOptedOut(params.accountId, normalized)) {
+    return { status: 'opted_out' };
+  }
+
+  const body = crewWelcomeText({
+    crewName: params.crewName,
+    businessName: params.businessName,
+  });
+
+  try {
+    const eventId = await queueAccountSms({
+      accountId: params.accountId,
+      phone: normalized,
+      body,
+      messageKind: 'crew-welcome',
+      category: 'crew_message',
+      context: 'crew',
+      eventType: 'crew_welcome',
+      crewId: params.crewId,
+      senderPurpose: 'lgq_shared',
+      idempotencyKey: `crew-welcome:${params.crewId}`,
+    });
+    return { status: 'queued', eventId };
+  } catch (sendError) {
+    const reason = sendError instanceof Error ? sendError.message : 'SMS delivery failed.';
+    console.error(`Crew welcome SMS failed for crew ${params.crewId}:`, reason);
+    return { status: 'failed' };
+  }
+}
+
+/**
+ * Returns the company's active shared field texting line, or null if unprovisioned.
+ */
+export async function getSharedFieldPhoneNumber(admin = createAdminClient()): Promise<string | null> {
+  const { data } = await admin
+    .from('sms_sender_numbers')
+    .select('e164_number')
+    .eq('purpose', 'lgq_shared')
+    .eq('provisioning_status', 'active')
+    .eq('assignment_state', 'assigned')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  return data?.e164_number ? String(data.e164_number) : null;
 }
 
 export async function sendCrewScheduleSelectedSms(params: {

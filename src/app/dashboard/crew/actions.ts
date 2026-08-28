@@ -25,7 +25,7 @@ import { countLaborEntriesForCrew, countPayRecordsForCrew, laborEntryLockReason 
 import { deleteCrewPhotos, isCrewPhotoFile, uploadCrewPhoto, validateCrewPhotoFile } from '@/lib/crew-photo-storage';
 import { createCost, getJob } from '@/lib/jobs';
 import { createJobFeedEvent } from '@/lib/job-feed';
-import { ensureSmsConsentBaseline, sendCrewAssignmentSms } from '@/lib/sms';
+import { ensureSmsConsentBaseline, sendCrewAssignmentSms, sendCrewWelcomeSms } from '@/lib/sms';
 import { revokeCrewAccess, sendCrewMagicLink, stampCrewInvite } from '@/lib/crew-auth';
 
 function optionalText(value: FormDataEntryValue | null): string | undefined {
@@ -135,6 +135,16 @@ export async function createCrewAction(_previous: CreateCrewState, formData: For
     // Seed a baseline consent row so a future STOP from this crew number has a
     // row to flip (the inbound handler only updates existing rows). Best-effort.
     await ensureSmsConsentBaseline(accountId, phone).catch(() => {});
+
+    // Send welcome onboarding SMS introducing the shared number for field intake
+    const businessName = await loadBusinessName(supabase, accountId);
+    await sendCrewWelcomeSms({
+      accountId,
+      crewId: member.id,
+      phone,
+      crewName: member.name,
+      businessName,
+    }).catch(() => {});
 
     if (isCrewPhotoFile(photo)) {
       const photoPath = await uploadCrewPhoto(accountId, member.id, photo);

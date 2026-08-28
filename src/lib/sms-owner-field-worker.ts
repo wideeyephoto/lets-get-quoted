@@ -5,6 +5,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import {
   formatCrewCostConfirmation,
   formatCrewNoteConfirmation,
+  formatCrewReceiptConfirmation,
   formatCrewTaskConfirmation,
   formatFieldAmbiguityClarification,
   formatFieldClientConfirmation,
@@ -12,6 +13,9 @@ import {
   formatFieldCrewConfirmation,
   formatFieldLeadConfirmation,
   formatFieldNoteConfirmation,
+  formatFieldQuoteSentConfirmation,
+  formatFieldQuoteWithSendPrompt,
+  formatFieldReceiptConfirmation,
   formatFieldScheduleConfirmation,
   formatFieldTaskCompletedConfirmation,
   formatFieldTaskConfirmation,
@@ -67,15 +71,23 @@ const COMMON_FIELD_TOOLS: AssistantFunctionDeclaration[] = [
         },
         amount: {
           type: Type.NUMBER,
-          description: 'Dollar amount of the cost (e.g. 75 for $75.00).',
+          description: 'Dollar amount of the cost (e.g. 75 for $75.00 or extracted receipt total).',
         },
         label: {
           type: Type.STRING,
-          description: 'Description of the expense (e.g. "3 bags of cement", "Dump fee").',
+          description: 'Description of the expense (e.g. "3 bags of cement", "Dump fee", "Home Depot: 2x4s and screws").',
         },
         costType: {
           type: Type.STRING,
           description: 'Cost category: "material", "labor", "sub", "receipt", or "other".',
+        },
+        vendor: {
+          type: Type.STRING,
+          description: 'Store or vendor name if extracted from receipt photo (e.g. "Home Depot", "Lowe\'s", "Ferguson").',
+        },
+        itemsSummary: {
+          type: Type.STRING,
+          description: 'Concise summary of items purchased from receipt photo (e.g. "2x4s and deck screws").',
         },
       },
       required: ['jobId', 'amount', 'label'],
@@ -246,6 +258,42 @@ const OWNER_ONLY_TOOLS: AssistantFunctionDeclaration[] = [
       required: ['clientName'],
     },
   },
+  {
+    name: 'add_quote_line_item',
+    description: 'Adds an extra line item or change order to an existing job quote and recalculates total.',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        jobId: {
+          type: Type.STRING,
+          description: 'The exact ID of the target job.',
+        },
+        amount: {
+          type: Type.NUMBER,
+          description: 'Dollar amount of the line item (e.g. 450 for $450.00).',
+        },
+        description: {
+          type: Type.STRING,
+          description: 'Description of the additional work or change order.',
+        },
+      },
+      required: ['jobId', 'amount', 'description'],
+    },
+  },
+  {
+    name: 'send_client_quote_link',
+    description: 'Sends an SMS to the customer with their updated quote approval link (triggered when owner replies "SEND", "YES", "SEND IT", "TEXT CLIENT").',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        jobId: {
+          type: Type.STRING,
+          description: 'The exact ID of the target job.',
+        },
+      },
+      required: ['jobId'],
+    },
+  },
 ];
 
 export const CREW_FIELD_TOOLS_DECLARATION: AssistantFunctionDeclaration[] = COMMON_FIELD_TOOLS;
@@ -285,10 +333,10 @@ interface CrewSummaryContext {
   roleLabel: string | null;
 }
 
-async function fetchAuthenticatedAudioPart(
+async function fetchAuthenticatedMediaPart(
   url: string,
   provider: string,
-): Promise<{ mimeType: string; data: string } | null> {
+): Promise<{ mimeType: string; data: string; kind: 'audio' | 'image' } | null> {
   try {
     const headers: Record<string, string> = {};
 
@@ -307,22 +355,41 @@ async function fetchAuthenticatedAudioPart(
     const res = await fetch(url, { headers, signal: AbortSignal.timeout(10000) });
     if (!res.ok) return null;
 
-    const contentType = (res.headers.get('content-type') || 'audio/mp4').split(';')[0].trim();
+    let contentType = (res.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
+
+    // Fallback detection from extension if content-type header is generic or missing
+    if (!contentType || contentType === 'application/octet-stream') {
+      if (url.match(/\.(jpg|jpeg)(\?.*)?$/i)) contentType = 'image/jpeg';
+      else if (url.match(/\.png(\?.*)?$/i)) contentType = 'image/png';
+      else if (url.match(/\.webp(\?.*)?$/i)) contentType = 'image/webp';
+      else if (url.match(/\.heic(\?.*)?$/i)) contentType = 'image/heic';
+      else if (url.match(/\.(mp3|m4a|wav|aac|ogg|amr|webm)(\?.*)?$/i)) contentType = 'audio/mp4';
+      else contentType = 'image/jpeg'; // MMS default
+    }
+
     const arrayBuffer = await res.arrayBuffer();
 
     // Enforce 20MB limit for inline Gemini multimodal payload
     if (arrayBuffer.byteLength > 20 * 1024 * 1024) {
-      console.warn('Audio attachment exceeds 20MB limit, skipping.');
+      console.warn('Media attachment exceeds 20MB limit, skipping.');
       return null;
     }
 
     const buffer = Buffer.from(arrayBuffer);
+    const isImage = contentType.startsWith('image/');
+    const isAudio = contentType.startsWith('audio/');
+
+    if (!isImage && !isAudio) {
+      return null;
+    }
+
     return {
       mimeType: contentType,
       data: buffer.toString('base64'),
+      kind: isImage ? 'image' : 'audio',
     };
   } catch (err) {
-    console.error('Failed to fetch authenticated audio part:', err);
+    console.error('Failed to fetch authenticated media part:', err);
     return null;
   }
 }
@@ -340,9 +407,9 @@ export async function processOwnerFieldClaim(
     .eq('id', claim.providerEventId ? claim.taskId : '')
     .maybeSingle();
 
-  const rawReceipt = receipt || {
+  // Fallback to claim context if receipt table query differs in test mocks
+  const rawReceipt = receipt ?? {
     id: claim.taskId,
-    provider: claim.provider,
     account_id: claim.accountId,
     from_number: claim.fromNumber,
     message_body: '',
@@ -350,7 +417,7 @@ export async function processOwnerFieldClaim(
   };
 
   const accountId = claim.accountId;
-  const rawBody = String(rawReceipt.message_body ?? '').trim();
+  const rawBody = (rawReceipt.message_body || '').trim();
   const mediaUrls = Array.isArray(rawReceipt.media_urls) ? (rawReceipt.media_urls as string[]) : [];
 
   const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
@@ -358,10 +425,10 @@ export async function processOwnerFieldClaim(
     return { handled: false, outcome: 'no_action', errorMessage: 'GEMINI_API_KEY is not configured' };
   }
 
-  // Load contractor business account details
+  // Determine sender role: Alert Phone (Owner) vs Crew Member
   const { data: account } = await admin
     .from('accounts')
-    .select('id, business_name, alert_phone')
+    .select('id, business_name, alert_phone, owner_name')
     .eq('id', accountId)
     .maybeSingle();
 
@@ -419,45 +486,28 @@ export async function processOwnerFieldClaim(
     roleLabel: cr.role_label ?? null,
   }));
 
-  // Identify sender role: Owner vs Crew Member
-  const normalizedFrom = normalizeUsPhone(claim.fromNumber || rawReceipt.from_number);
-  const normalizedOwnerPhone = normalizeUsPhone(account?.alert_phone ?? '');
-  const matchedCrew = activeCrew.find((cr) => normalizeUsPhone(cr.phone ?? '') === normalizedFrom);
+  const senderNormalized = normalizeUsPhone(claim.fromNumber);
+  const ownerAlertNormalized = account?.alert_phone ? normalizeUsPhone(account.alert_phone) : null;
+  const isOwner = !!(ownerAlertNormalized && senderNormalized === ownerAlertNormalized);
 
-  const isCrew = Boolean(matchedCrew && normalizedFrom !== normalizedOwnerPhone);
-  const callerRole = isCrew ? 'crew' : 'owner';
-  const callerName = isCrew ? (matchedCrew?.name || 'Crew Member') : 'Owner';
+  const matchedCrew = !isOwner
+    ? activeCrew.find((c) => c.phone && normalizeUsPhone(c.phone) === senderNormalized)
+    : null;
+  const isCrew = !!matchedCrew;
+  const callerName = isOwner ? (account?.owner_name || 'Owner') : (matchedCrew?.name || 'Field Crew');
 
   const ai = new GoogleGenAI({ apiKey });
   const todayStr = new Date().toISOString().slice(0, 10);
 
-  const availableTools = isCrew ? CREW_FIELD_TOOLS_DECLARATION : OWNER_FIELD_TOOLS_DECLARATION;
+  const availableTools = isOwner ? OWNER_FIELD_TOOLS_DECLARATION : CREW_FIELD_TOOLS_DECLARATION;
 
-  const roleInstruction = isCrew
-    ? `You are processing a field text or voice update from registered Crew Member "${callerName}" (${matchedCrew?.roleLabel || 'Field Team'}).
-CREW CAPABILITIES:
-- "append_internal_note": To log progress notes, job observations, gate codes, or site conditions on a job.
-- "log_cost": To log material expenses, supply purchases, dump fees, or receipts for a job.
-- "add_job_task": To add a checklist task or punch list item for a job.
-- "complete_job_task": To mark a punch list / checklist task finished on a job (e.g. "Done with framing on Smith").
-- "report_ambiguity": If multiple jobs could match the reference.
-- "no_action": If conversational or non-job chatter.`
-    : `You are processing a field text or voice update from the Business Owner / General Contractor.
-OWNER CAPABILITIES:
-- "append_internal_note": Log field notes or gate codes on jobs.
-- "log_cost": Log material/dump costs on jobs.
-- "add_job_task": Add punch list tasks on jobs.
-- "complete_job_task": Mark punch list tasks done.
-- "reschedule_job": Reschedule jobs/estimates.
-- "update_client": Update client info/notes.
-- "assign_crew": Assign crew to jobs.
-- "create_lead": Ingest new prospective client inquiries.
-- "report_ambiguity": If multiple jobs match.
-- "no_action": Conversational.`;
+  const roleInstruction = isOwner
+    ? `You are an AI assistant for the business owner of "${businessName}". You have full authority to append notes, log costs, add tasks, complete tasks, reschedule jobs, update client profiles, assign crew, or create new leads.`
+    : `You are an AI assistant for field crew member "${callerName}" at "${businessName}". You can append internal job notes, log material/labor expenses, add punch list tasks, and mark assigned tasks complete.`;
 
-  const systemInstruction = `You are the field voice/text AI assistant for the contractor business "${businessName}".
+  const systemInstruction = `You are Let's Get Quoted's autonomous AI field intake worker for "${businessName}".
 CURRENT DATE: ${todayStr}
-SENDER: ${callerName} (${callerRole.toUpperCase()})
+SENDER: ${callerName}
 
 ${roleInstruction}
 
@@ -471,36 +521,46 @@ ACTIVE CREW:
 ${JSON.stringify(activeCrew, null, 2)}
 
 INSTRUCTIONS:
-1. Accurately identify the target job or client record from the message context.
-2. Select and invoke the single most appropriate tool function call.
-3. Transcribe and execute field actions faithfully.`;
+1. Accurately identify the target job or client record from the message context (name, street address, job reference, or today's schedule).
+2. RECEIPT & EXPENSE OCR RULES:
+   - When an image attachment is provided (store receipt, supply invoice, dump/gas slip):
+     a) OCR the store/vendor name (e.g. Home Depot, Lowe's, Ferguson, ABC Supply), total dollar amount (including tax), and concise item summary.
+     b) Match to the target job named in the caption, or if only 1 active job is scheduled today, default to that job.
+     c) Invoke log_cost with the extracted amount, vendor, itemsSummary, and label (e.g. "<Vendor>: <itemsSummary>").
+     d) If multiple active jobs are open and no job is specified, invoke report_ambiguity with the candidate job IDs.
+3. Select and invoke the single most appropriate tool function call.
+4. Transcribe and execute field actions faithfully.`;
 
   const parts: Part[] = [];
   let isVoiceMemo = false;
+  let hasImage = false;
 
   for (const url of mediaUrls) {
-    if (url.match(/\.(mp3|m4a|wav|aac|ogg|amr|webm)(\?.*)?$/i) || url.includes('/recordings/') || url.includes('/media/')) {
-      const audioPart = await fetchAuthenticatedAudioPart(url, claim.provider);
-      if (audioPart) {
-        parts.push({
-          inlineData: {
-            mimeType: audioPart.mimeType,
-            data: audioPart.data,
-          },
-        });
-        isVoiceMemo = true;
-      }
+    const mediaPart = await fetchAuthenticatedMediaPart(url, claim.provider);
+    if (mediaPart) {
+      parts.push({
+        inlineData: {
+          mimeType: mediaPart.mimeType,
+          data: mediaPart.data,
+        },
+      });
+      if (mediaPart.kind === 'audio') isVoiceMemo = true;
+      if (mediaPart.kind === 'image') hasImage = true;
     }
   }
 
   if (rawBody) {
     parts.push({ text: `${callerName} message: "${rawBody}"` });
+  } else if (hasImage) {
+    parts.push({
+      text: `${callerName} sent a receipt/photo attachment. Extract store vendor, total amount with tax, purchased items, and log the material cost against the target job.`,
+    });
   } else if (isVoiceMemo) {
     parts.push({ text: `${callerName} sent a voice memo. Transcribe and execute any field actions requested.` });
   }
 
   if (parts.length === 0) {
-    return { handled: false, outcome: 'no_action', errorMessage: 'No text or audio content' };
+    return { handled: false, outcome: 'no_action', errorMessage: 'No text, image, or audio content' };
   }
 
   try {
@@ -541,9 +601,17 @@ INSTRUCTIONS:
     } else if (toolName === 'log_cost') {
       const amount = Number(args.amount ?? 0);
       const label = String(args.label ?? 'material');
-      confirmationText = isCrew
-        ? formatCrewCostConfirmation(ref, clientName, amount, label, callerName)
-        : formatFieldCostConfirmation(ref, clientName, amount, label);
+      const vendor = args.vendor ? String(args.vendor) : undefined;
+      const itemsSummary = args.itemsSummary ? String(args.itemsSummary) : undefined;
+      if (vendor) {
+        confirmationText = isCrew
+          ? formatCrewReceiptConfirmation(ref, clientName, amount, vendor, callerName)
+          : formatFieldReceiptConfirmation(ref, clientName, amount, vendor, itemsSummary);
+      } else {
+        confirmationText = isCrew
+          ? formatCrewCostConfirmation(ref, clientName, amount, label, callerName)
+          : formatFieldCostConfirmation(ref, clientName, amount, label);
+      }
     } else if (toolName === 'add_job_task') {
       const title = String(args.title ?? 'Task');
       confirmationText = isCrew
@@ -566,6 +634,13 @@ INSTRUCTIONS:
     } else if (toolName === 'create_lead') {
       const leadName = String(args.clientName ?? 'New Prospect');
       confirmationText = formatFieldLeadConfirmation(leadName);
+    } else if (toolName === 'add_quote_line_item') {
+      const amount = Number(args.amount ?? 0);
+      const currentQuoted = targetJob?.quotedAmount ?? 0;
+      const totalAmount = currentQuoted + amount;
+      confirmationText = formatFieldQuoteWithSendPrompt(ref, clientName, amount, totalAmount);
+    } else if (toolName === 'send_client_quote_link') {
+      confirmationText = formatFieldQuoteSentConfirmation(ref, clientName, targetJob?.clientPhone);
     } else if (toolName === 'report_ambiguity') {
       const candidateIds = Array.isArray(args.candidateJobIds) ? (args.candidateJobIds as string[]) : [];
       const candidates = activeJobs

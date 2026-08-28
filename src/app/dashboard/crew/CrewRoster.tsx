@@ -6,6 +6,7 @@ import Link from 'next/link';
 import CrewWorkHistory from '@/components/crew-work-history';
 import SaveButton from '@/components/save-button';
 import AddressAutocomplete from '@/components/address-autocomplete';
+import SaveFieldContactButton from '@/components/SaveFieldContactButton';
 import ViewGear, { type ViewOption } from '@/components/view-gear';
 import ConfirmActionButton from '@/app/dashboard/jobs/[id]/ConfirmActionButton';
 import { setCrewOverviewAction, setRosterViewAction } from '@/app/dashboard/view-actions';
@@ -999,6 +1000,9 @@ export default function CrewRoster({
                 <li><Link href="/dashboard/crew?tab=hours">Review hours &amp; pay</Link></li>
                 <li><Link href="/dashboard/crew?tab=jobs">Labor by job</Link></li>
                 <li><Link href="/dashboard/schedule/plan">Plan today&apos;s route</Link></li>
+                <li style={{ marginTop: '0.5rem' }}>
+                  <SaveFieldContactButton size="small" label="Save Field Line (.vcf)" />
+                </li>
               </ul>
             </section>
           </aside>

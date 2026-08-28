@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
+import SaveFieldContactButton from '@/components/SaveFieldContactButton';
 import styles from './field-intake-hint.module.css';
 
 export type FieldIntakePage = 'leads' | 'jobs' | 'schedule' | 'clients' | 'crew';
@@ -133,7 +134,7 @@ export default function FieldIntakeHint({
           </div>
 
           <div className={styles.popoverFooter}>
-            <span style={{ color: '#64748b' }}>Texts securely update your record.</span>
+            <SaveFieldContactButton size="small" label="Save Field Line (.vcf)" />
             <Link href="/features/text-to-record" className={styles.learnMoreLink}>
               How it works →
             </Link>

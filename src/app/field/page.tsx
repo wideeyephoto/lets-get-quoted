@@ -7,6 +7,8 @@ import { arrivalSettingsFromAccount, formatClockTime } from '@/lib/arrival';
 import { accountToday } from '@/lib/route-plan-day';
 import { departurePlans, type DeparturePlan } from '@/lib/departure-plan';
 import { KIND_EMOJI, KIND_LABEL, listDayRouteStops, type RouteStop as DayRouteStop } from '@/lib/route-stops';
+import { getSharedFieldPhoneNumber } from '@/lib/sms';
+import { displayPhone } from '@/lib/phone';
 import NavigateButton from '@/components/navigate-button';
 import FieldHeader from './FieldHeader';
 import FieldPwa from './FieldPwa';
@@ -226,6 +228,8 @@ export default async function FieldHomePage() {
     },
   );
   const planById = new Map(plans.map((plan) => [plan.id, plan]));
+  const sharedPhoneRaw = await getSharedFieldPhoneNumber();
+  const sharedPhoneDisplay = sharedPhoneRaw ? displayPhone(sharedPhoneRaw) : null;
 
   return (
     <>
@@ -233,6 +237,26 @@ export default async function FieldHomePage() {
       <main className="field-main">
         <h1 className="field-greeting">Hi {firstName} 👋</h1>
         <FieldPwa />
+
+        {/* Quick Texting Field Tip */}
+        <div className="field-textintake-tip">
+          <div className="field-textintake-tip-header">
+            <span className="field-textintake-tip-badge">📱 Voice & Text Field Intake</span>
+            <span className="field-textintake-tip-sub">No app needed</span>
+          </div>
+          <p>
+            On-site or driving? Text or voice memo site updates, gate codes, tasks, or receipt photos to{' '}
+            {sharedPhoneRaw ? (
+              <a href={`sms:${sharedPhoneRaw}`} className="field-textintake-phone">
+                <strong>{sharedPhoneDisplay}</strong>
+              </a>
+            ) : (
+              <strong>our company line</strong>
+            )}
+            .
+          </p>
+        </div>
+
         {/* Pull today's job pages into the cache while there's still signal, so
             the scope, address and checklist survive the drive into the valley
             with no bars. See public/sw.js.

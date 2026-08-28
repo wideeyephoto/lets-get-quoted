@@ -4,7 +4,8 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { requireOfficeContext } from '@/lib/auth';
 import { getJob } from '@/lib/jobs';
-import { ensureSmsConsentBaseline } from '@/lib/sms';
+import { ensureSmsConsentBaseline, sendCrewWelcomeSms } from '@/lib/sms';
+import { loadBusinessName } from '@/lib/business-name';
 import { saveCrewStartAddress } from '@/lib/crew';
 import {
   cancelSubcontractorRequest,
@@ -83,6 +84,15 @@ export async function createSubcontractorAction(
     if (serviceAddress) await saveCrewStartAddress(supabase, accountId, data.id as string, serviceAddress);
 
     await ensureSmsConsentBaseline(accountId, values.phone, 'subcontractor_added').catch(() => {});
+
+    const businessName = await loadBusinessName(supabase, accountId);
+    await sendCrewWelcomeSms({
+      accountId,
+      crewId: data.id as string,
+      phone: values.phone,
+      crewName: values.name,
+      businessName,
+    }).catch(() => {});
 
     revalidateDispatch();
     return {

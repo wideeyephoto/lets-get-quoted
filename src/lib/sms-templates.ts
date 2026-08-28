@@ -142,6 +142,13 @@ export function crewAssignmentText(input: {
   return `Hi ${input.crewName}, ${input.businessName} assigned you to job ${input.jobRef} — ${input.clientName}${addressNote}.${scheduledNote} Reply STOP to opt out.`;
 }
 
+export function crewWelcomeText(input: {
+  crewName: string;
+  businessName: string;
+}): string {
+  return `Hi ${input.crewName}! ${input.businessName} added you to their team on Let's Get Quoted. You can text this number anytime from the job site with progress updates, gate codes, or material receipt photos. Reply STOP to opt out.`;
+}
+
 export function crewScheduleSelectedText(input: {
   crewName: string;
   businessName: string;

@@ -11187,6 +11187,51 @@ a.ropsrow-fact:hover { text-decoration: underline; }
 }
 .arrival-outcome-form { display: flex; flex-direction: column; gap: 0.6rem; }
 
+/* -- Field: Voice & Text Intake Tip ------------------------------ */
+.field-textintake-tip {
+  margin: 0 0 1.2rem;
+  padding: 0.9rem 1.1rem;
+  border: 1px solid var(--cedge-blue-24, rgba(59, 130, 246, 0.24));
+  border-radius: 14px;
+  background: rgba(59, 130, 246, 0.06);
+  color: inherit;
+}
+.field-textintake-tip-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.35rem;
+}
+.field-textintake-tip-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #60a5fa;
+}
+.field-textintake-tip-sub {
+  font-size: 0.74rem;
+  color: rgba(var(--tint), 0.55);
+}
+.field-textintake-tip p {
+  margin: 0;
+  font-size: 0.84rem;
+  line-height: 1.45;
+  color: rgba(var(--tint), 0.85);
+}
+.field-textintake-tip a.field-textintake-phone {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: #93c5fd;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 /* -- Field: my pay ------------------------------------------------ */
 /* The crew member's own hours and money. Reuses the field shell, so  */
 /* only what is genuinely new to this screen lives here.              */
