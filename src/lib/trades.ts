@@ -2003,6 +2003,489 @@ export const TRADES: Trade[] = [
     payer: 'customer',
     relatedSlugs: ['window-tinting', 'mobile-mechanics'],
   },
+  {
+    slug: 'concrete-leveling',
+    name: 'Concrete Leveling Companies',
+    work: 'concrete leveling & polyjacking',
+    headline: 'Concrete leveling websites that turn sunken slabs into instant jobs.',
+    subhead:
+      'Quote polyurethane foam lifting and mudjacking for sidewalks, driveways, and pool decks, take deposits online, and showcase fast same-day results.',
+    pains: [
+      { title: 'Quote by square footage and void depth', body: 'Estimate polyurethane injection ports and foam volume for sunken porches and pool decks on your phone in minutes.' },
+      { title: 'Fast same-day turnaround pitch', body: 'Highlight that polyjacking allows immediate foot and vehicle traffic compared to tearing out and repouring concrete.' },
+      { title: 'Before/after leveling galleries', body: 'Showcase dramatic trip-hazard eliminations and lifted pool decks that sell homeowners and commercial managers.' },
+    ],
+    services: ['Polyurethane foam slab lifting', 'Sidewalk & walkway leveling', 'Driveway slab stabilization', 'Pool deck foam raising', 'Void filling & soil stabilization', 'Trip hazard elimination'],
+    templateIds: ['carbon', 'fixit'],
+    metaTitle: 'Website & Software for Concrete Leveling',
+    metaDescription:
+      'A concrete leveling website with foam lifting quotes, before/after galleries, deposits, and Stripe payments. Plans start at $0/month with Flex.',
+    relatedSlugs: ['concrete', 'foundation-repair'],
+  },
+  {
+    slug: 'paver-sealing',
+    name: 'Paver Sealing & Sanding Companies',
+    work: 'paver sealing & restoration',
+    headline: 'Paver sealing websites where the wet-look finish sells the restoration.',
+    subhead:
+      'Quote paver washing, polymeric sand replacement, and solvent sealers by square footage, take deposits online, and turn driveways into recurring maintenance.',
+    pains: [
+      { title: 'Quote cleaning, sand, and sealer tiers', body: 'Calculate multi-stage restoration packages (standard wash, polymeric sand, high-gloss wet-look sealer) in seconds.' },
+      { title: 'Deposit on specialty sealers', body: 'Collect deposits covering commercial solvent-based acrylic or breathable urethane sealers before pressure washing.' },
+      { title: 'Automated 2-year reseal reminders', body: 'Keep patio and driveway customers on a 24-month recurring reseal schedule with automated rebooking invites.' },
+    ],
+    services: ['Paver pressure washing', 'Polymeric sand replacement', 'Wet-look gloss paver sealing', 'Natural finish penetrating seal', 'Efflorescence & stain removal', 'Paver joint stabilization'],
+    templateIds: ['shine', 'reno'],
+    metaTitle: 'Website & Software for Paver Sealing',
+    metaDescription:
+      'A paver sealing website with per-sq-ft quotes, sand replacement options, deposits, and Stripe payments. Plans start at $0/month with Flex.',
+    relatedSlugs: ['pressure-washing', 'hardscaping', 'sealcoating'],
+  },
+  {
+    slug: 'pole-barns',
+    name: 'Pole Barn & Post-Frame Builders',
+    work: 'pole barn & post-frame construction',
+    headline: 'Pole barn websites that turn acreage plans into signed post-frame builds.',
+    subhead:
+      'Quote custom pole barns, agricultural shops, and barndominium shells with dimension options, take staged milestone deposits, and showcase your builds.',
+    pains: [
+      { title: 'Quote post-frame dimensions fast', body: 'Select standard 30x40, 40x60, or custom footprints with truss spacing, overhangs, and metal siding colors on site.' },
+      { title: 'Stage large project milestone billing', body: 'Collect upfront engineering deposits, followed by milestone payments at post setting, truss framing, and metal skinning.' },
+      { title: 'High-definition building portfolio', body: 'Galleries showing agricultural barns, hobby workshops, and residential barndominiums close high-ticket contracts.' },
+    ],
+    services: ['Custom post-frame pole barns', 'Agricultural machine sheds', 'Barndominium shell builds', 'Commercial post-frame shops', 'Equestrian barns & stables', 'Concrete slab & door packages'],
+    templateIds: ['carbon', 'professional'],
+    metaTitle: 'Website & Software for Pole Barn Builders',
+    metaDescription:
+      'A pole barn builder website with dimension quotes, staged milestone payments, and Stripe payments. Plans start at $0/month with Flex.',
+    relatedSlugs: ['shed-builders', 'deck-builders', 'concrete'],
+  },
+  {
+    slug: 'farm-fencing',
+    name: 'Agricultural & Farm Fencing Companies',
+    work: 'agricultural & farm fencing',
+    headline: 'Farm fencing websites that quote the whole perimeter by the linear foot.',
+    subhead:
+      'Quote post-and-rail, vinyl equine, and woven wire fencing with gate options, take deposits on posts and wire, and lock pasture install dates.',
+    pains: [
+      { title: 'Quote pasture runs and gates fast', body: 'Calculate per-foot pricing for 3-rail, 4-rail, high-tensile electric, and wire mesh fencing directly from the truck.' },
+      { title: 'Deposit on lumber and wire rolls', body: 'Collect upfront deposits to secure truckloads of treated posts and fence rolls before driving posts.' },
+      { title: 'Equine safety documentation', body: 'Highlight horse-safe rounded corners, no-climb mesh, and heavy-duty farm gates to win livestock owners.' },
+    ],
+    services: ['Post and rail wood fence', 'Vinyl equine horse fencing', 'Woven wire livestock fence', 'High-tensile & electric fence', 'Pasture & driveway farm gates', 'Corner bracing & post driving'],
+    templateIds: ['carbon', 'handy'],
+    metaTitle: 'Website & Software for Farm Fencing Contractors',
+    metaDescription:
+      'A farm fencing website with per-foot pasture quotes, gate options, deposits, and Stripe payments. Plans start at $0/month with Flex.',
+    relatedSlugs: ['fencing', 'land-clearing'],
+  },
+  {
+    slug: 'stump-grinding',
+    name: 'Stump Grinding Specialists',
+    work: 'tree stump grinding',
+    headline: 'Stump grinding websites that book the removal by diameter in seconds.',
+    subhead:
+      'Quote stump removals by inch diameter with surface root add-ons, book arrival windows online, and take tap-to-pay the moment the stump is ground to mulch.',
+    pains: [
+      { title: 'Quote by stump diameter online', body: 'Customers enter stump width in inches and select root or backfill add-ons for instant accurate estimates.' },
+      { title: 'Fill tight neighborhood routes', body: 'Online booking stacks stump jobs in nearby neighborhoods so your machine stays working all day.' },
+      { title: 'Tap-to-pay at the curb', body: 'Take card, debit, or Apple Pay the second the machine is back on the trailer and the lawn is raked.' },
+    ],
+    services: ['Residential stump grinding', 'Large root flare & surface pruning', 'Mulch backfill & leveling', 'Tight-access gated yard grinding', 'Commercial lot stump clearance', 'Utility clearance grinding'],
+    templateIds: ['handy', 'fixit'],
+    metaTitle: 'Website & Software for Stump Grinding Services',
+    metaDescription:
+      'A stump grinding website with per-inch estimates, online booking, tap-to-pay, and Stripe payments. Plans start at $0/month with Flex.',
+    relatedSlugs: ['tree-services', 'landscapers'],
+  },
+  {
+    slug: 'dog-fencing',
+    name: 'Underground Dog Fence Companies',
+    work: 'underground dog fence installation',
+    headline: 'Dog fence websites that book the pet containment install and training.',
+    subhead:
+      'Quote invisible underground pet fences by acreage with collar packages, take hardware deposits, and guide dog owners through gentle training schedules.',
+    pains: [
+      { title: 'Quote perimeter acreage in minutes', body: 'Price 1/2 acre, 1 acre, or custom multi-acre wire boundaries with waterproof splices and surge protection.' },
+      { title: 'Hardware deposits up front', body: 'Collect deposits covering smart containment collars, base transmitters, and wire spools before trenching.' },
+      { title: 'Gentle training session booking', body: 'Schedule follow-up pet boundary training sessions online so owners know their pets are safely contained.' },
+    ],
+    services: ['Underground hidden dog fence', 'Smart rechargeable collars', 'Multi-acre boundary trenching', 'Driveway wire transitions', 'Pet boundary flag training', 'Wire break repair & locating'],
+    templateIds: ['handy', 'modern'],
+    metaTitle: 'Website & Software for Dog Fence Installers',
+    metaDescription:
+      'An underground dog fence website with acreage quotes, collar options, deposits, and Stripe payments. Plans start at $0/month with Flex.',
+    relatedSlugs: ['fencing', 'electricians'],
+  },
+  {
+    slug: 'outdoor-audio',
+    name: 'Outdoor Audio & Entertainment Companies',
+    work: 'outdoor audio & landscape sound installation',
+    headline: 'Outdoor audio websites where backyard sound systems sell the lifestyle.',
+    subhead:
+      'Quote landscape speaker packages, buried subwoofers, and weather-proof TVs with smart control options, collect deposits, and showcase luxury backyards.',
+    pains: [
+      { title: 'Quote tiered landscape audio packages', body: 'Combine satellite speakers, in-ground subwoofers, multi-channel outdoor amps, and direct-burial cabling in seconds.' },
+      { title: 'Deposit on high-end audio gear', body: 'Collect upfront deposits covering waterproof speakers, outdoor TVs, and streaming amps before ordering.' },
+      { title: 'Showcase concealed landscape sound', body: 'Galleries showing discreet bollard speakers nestled into garden beds and outdoor pergolas convert patio lovers.' },
+    ],
+    services: ['Landscape satellite speakers', 'In-ground subwoofers', 'Multi-zone outdoor amplifiers', 'Weatherproof outdoor 4K TVs', 'Poolside sound integration', 'WiFi streaming & app control'],
+    templateIds: ['modern', 'carbon'],
+    metaTitle: 'Website & Software for Outdoor Audio Installers',
+    metaDescription:
+      'An outdoor audio website with landscape sound package quotes, gear deposits, and Stripe payments. Plans start at $0/month with Flex.',
+    relatedSlugs: ['smart-home-av', 'landscape-lighting'],
+  },
+  {
+    slug: 'gate-automation',
+    name: 'Automated Gate Companies',
+    work: 'automated gate installation & repair',
+    headline: 'Automated gate websites that quote electric openers and access controls.',
+    subhead:
+      'Quote swing, slide, and solar gate operators with keypad pedestals and safety sensors, schedule service calls online, and collect deposits on installs.',
+    pains: [
+      { title: 'Quote custom gate opener packages', body: 'Itemize solar vs AC gate motors, safety loop detectors, photo eyes, and keypad pedestals in minutes.' },
+      { title: 'Deposit on motor and operator hardware', body: 'Collect deposits covering heavy-duty commercial or residential gate actuators before install day.' },
+      { title: 'Emergency gate repair dispatch', body: 'AI intake captures stuck or off-track gate emergencies 24/7 and queues diagnostic windows.' },
+    ],
+    services: ['Automatic swing gate operators', 'Slide gate motor installation', 'Solar powered gate systems', 'Wireless keypad access pedestals', 'Magnetic locks & safety sensors', 'Emergency gate operator repair'],
+    templateIds: ['carbon', 'fixit'],
+    metaTitle: 'Website & Software for Automated Gate Companies',
+    metaDescription:
+      'An automated gate website with operator package quotes, access options, deposits, and Stripe payments. Plans start at $0/month with Flex.',
+    relatedSlugs: ['ironwork-and-railings', 'garage-doors', 'electricians'],
+  },
+  {
+    slug: 'generator-maintenance',
+    name: 'Generator Service & Maintenance Companies',
+    work: 'generator maintenance & testing',
+    headline: 'Generator service websites that lock recurring annual maintenance plans.',
+    subhead:
+      'Quote annual standby generator tune-ups, load bank testing, and battery replacements, auto-bill recurring service plans, and respond to storm outages.',
+    pains: [
+      { title: 'Auto-bill annual maintenance memberships', body: 'Annual generator inspection contracts schedule and charge the card on file automatically before hurricane and winter storm seasons.' },
+      { title: 'Quote maintenance tiers on site', body: 'Itemize synthetic oil changes, spark plugs, air/oil filters, battery testing, and valve lash adjustments in seconds.' },
+      { title: 'Detailed digital inspection reports', body: 'Attach multi-point checklist readings (frequency, voltage, battery cranking amps) directly to invoices.' },
+    ],
+    services: ['Annual standby generator tune-up', 'Synthetic oil & filter service', 'Battery replacement & load test', 'Valve lash adjustment & tune', 'Transfer switch inspection', 'Emergency outage response'],
+    templateIds: ['professional', 'fixit'],
+    metaTitle: 'Website & Software for Generator Maintenance',
+    metaDescription:
+      'A generator service website with recurring maintenance plans, multi-point inspection quotes, and Stripe. Plans start at $0/month with Flex.',
+    relatedSlugs: ['generators', 'electricians'],
+  },
+  {
+    slug: 'water-filtration',
+    name: 'Water Filtration Companies',
+    work: 'water filtration & reverse osmosis',
+    headline: 'Water filtration websites that quote clean water systems and salt delivery.',
+    subhead:
+      'Quote whole-home filtration, reverse osmosis drinking systems, and UV purifiers from water test results, collect deposits, and auto-bill filter change routes.',
+    pains: [
+      { title: 'Quote systems from water test results', body: 'Input hardness, iron, chlorine, or sulfur levels and generate tailored multi-stage filtration quotes in seconds.' },
+      { title: 'Deposit on high-value purification gear', body: 'Collect upfront deposits on whole-house carbon tanks and commercial RO systems before installation.' },
+      { title: 'Recurring filter & salt delivery routes', body: 'Auto-charge replacement RO membrane filters and monthly water softener salt deliveries to saved cards.' },
+    ],
+    services: ['Whole-home carbon filtration', 'Reverse osmosis drinking systems', 'Water softener installation', 'UV microbiological disinfection', 'Iron & sulfur filtration tanks', 'Recurring filter & salt delivery'],
+    templateIds: ['shine', 'handy'],
+    metaTitle: 'Website & Software for Water Filtration Companies',
+    metaDescription:
+      'A water filtration website with water test quotes, equipment deposits, recurring salt routes, and Stripe. Plans start at $0/month with Flex.',
+    relatedSlugs: ['well-water', 'plumbers'],
+  },
+  {
+    slug: 'crawlspace-encapsulation',
+    name: 'Crawlspace Encapsulation Companies',
+    work: 'crawlspace encapsulation & waterproofing',
+    headline: 'Crawlspace websites that turn humid moisture issues into dry, sealed homes.',
+    subhead:
+      'Quote 20-mil vapor barriers, smart commercial dehumidifiers, and sump pumps with clear scope, collect staged deposits, and offer payment plans.',
+    pains: [
+      { title: 'Quote full encapsulation packages', body: 'Calculate vapor barrier square footage, foundation wall insulation, drainage matting, and dehumidifier sizing on site.' },
+      { title: 'Finance five-figure crawlspace jobs', body: '0%-interest payment plans make total moisture sealing and mold treatment accessible for homeowners.' },
+      { title: 'Attach humidity inspection photos', body: 'Show before/after photos of damp standing water transformed into a clean, bright, sealed crawlspace.' },
+    ],
+    services: ['20-mil reinforced vapor barrier', 'Crawlspace dehumidifier install', 'Sump pump & drainage systems', 'Crawlspace wall foam insulation', 'Vent sealing & door weatherproofing', 'Mold treatment & wood cleaning'],
+    templateIds: ['carbon', 'professional'],
+    metaTitle: 'Website & Software for Crawlspace Encapsulation',
+    metaDescription:
+      'A crawlspace encapsulation website with moisture quotes, payment plans, and Stripe payments. Plans start at $0/month with Flex.',
+    relatedSlugs: ['basement-waterproofing', 'insulation', 'mold-remediation'],
+  },
+  {
+    slug: 'hardwood-refinishing',
+    name: 'Hardwood Floor Refinishing Companies',
+    work: 'hardwood floor refinishing & sanding',
+    headline: 'Hardwood refinishing websites where gleaming floors sell the restoration.',
+    subhead:
+      'Quote dustless floor sanding, custom stain matching, and polyurethane finishes by square footage, take material deposits, and let before/after floors close jobs.',
+    pains: [
+      { title: 'Quote by square foot and finish type', body: 'Calculate dustless sanding, custom stain color samples, and commercial water-based vs oil-based poly in seconds.' },
+      { title: 'Deposit before reserving sanding dates', body: 'Collect deposits to hold floor crew dates and purchase specialty finishes before machines arrive.' },
+      { title: 'Before/after photos of scratched oak', body: 'Show dramatic transformations of pet-scratched, sun-faded floors refinished to modern natural and Nordic tones.' },
+    ],
+    services: ['Dustless hardwood floor sanding', 'Custom stain color matching', 'Commercial polyurethane coats', 'Screen & recoat buffing', 'Hardwood board repair & lace-in', 'Staircase tread sanding & stain'],
+    templateIds: ['reno', 'modern'],
+    metaTitle: 'Website & Software for Hardwood Refinishers',
+    metaDescription:
+      'A hardwood refinishing website with square-foot quotes, stain options, deposits, and Stripe payments. Plans start at $0/month with Flex.',
+    relatedSlugs: ['flooring', 'finish-carpentry'],
+  },
+  {
+    slug: 'grout-restoration',
+    name: 'Grout & Tile Restoration Companies',
+    work: 'grout & tile restoration',
+    headline: 'Grout restoration websites that turn stained tiles into fresh floors.',
+    subhead:
+      'Quote deep steam extraction, color sealing, shower regrouting, and silicone recaulking by square footage, take deposits, and get paid upon completion.',
+    pains: [
+      { title: 'Quote color sealing and regrouting on site', body: 'Itemize deep steam cleaning, permanent color seal barriers, and shower caulk replacement in minutes.' },
+      { title: 'Highlight savings over tile replacement', body: 'Demonstrate how grout restoration restores like-new appearance for a fraction of the cost and disruption of a full remodel.' },
+      { title: 'Showcase sparkling bathroom before/afters', body: 'Before-and-after photos of discolored grout restored to uniform designer colors convert customers fast.' },
+    ],
+    services: ['Tile & grout deep steam cleaning', 'Grout color sealing & stain proofing', 'Shower regrouting & tile repair', 'Silicone recaulking & mildew seal', 'Natural stone cleaning & sealing', 'Commercial tile floor restoration'],
+    templateIds: ['shine', 'coat'],
+    metaTitle: 'Website & Software for Grout Restoration',
+    metaDescription:
+      'A grout restoration website with per-room quotes, color seal options, deposits, and Stripe payments. Plans start at $0/month with Flex.',
+    relatedSlugs: ['tile', 'bathroom-remodelers'],
+  },
+  {
+    slug: 'wine-cellars',
+    name: 'Custom Wine Cellar Builders',
+    work: 'custom wine cellar design & construction',
+    headline: 'Wine cellar websites where bespoke craftsmanship sells luxury storage.',
+    subhead:
+      'Quote custom wine racking, climate cooling systems, and insulated frameless glass with 3D options, collect staged deposits, and showcase high-end cellars.',
+    pains: [
+      { title: 'Quote custom millwork and cooling units', body: 'Combine bottle capacity, mahogany/metal racking, dedicated refrigeration units, and insulated glass doors.' },
+      { title: 'Stage bespoke luxury deposits', body: 'Collect upfront design deposits, followed by milestone payments at vapor barrier prep, racking fabrication, and glass install.' },
+      { title: 'Sell with luxury visual portfolios', body: 'Showcase modern backlit acrylic racks, under-stair wine enclosures, and custom residential tasting rooms.' },
+    ],
+    services: ['Custom residential wine cellars', 'Under-stair wine displays', 'Dedicated cellar cooling units', 'Frameless insulated glass doors', 'Custom mahogany & metal racking', 'LED backlight display walls'],
+    templateIds: ['modern', 'carbon'],
+    metaTitle: 'Website & Software for Wine Cellar Builders',
+    metaDescription:
+      'A custom wine cellar website with bespoke quotes, cooling options, staged deposits, and Stripe. Plans start at $0/month with Flex.',
+    relatedSlugs: ['cabinetry', 'glass-and-mirrors', 'remodelers'],
+  },
+  {
+    slug: 'saunas',
+    name: 'Custom Sauna & Steam Room Builders',
+    work: 'custom sauna & steam room installation',
+    headline: 'Sauna builder websites that turn wellness visions into warm reality.',
+    subhead:
+      'Quote custom indoor and outdoor cedar saunas, traditional and infrared heaters, and steam showers, collect staged deposits, and book install dates.',
+    pains: [
+      { title: 'Quote cedar dimensions and heater options', body: 'Itemize western red cedar tongue-and-groove, Harvia electric or wood-fired heaters, and glass front walls.' },
+      { title: 'Deposit on imported cedar and heaters', body: 'Collect upfront deposits covering specialty sauna lumber and Finnish heater equipment before fabrication.' },
+      { title: 'Showcase luxury backyard and spa saunas', body: 'Galleries showing outdoor barrel saunas, modern glass-front indoor cabins, and custom steam rooms close high-ticket sales.' },
+    ],
+    services: ['Custom indoor cedar saunas', 'Outdoor barrel & cabin saunas', 'Traditional Finnish wood heaters', 'Electric smart sauna heaters', 'Infrared sauna cabins', 'Commercial steam rooms'],
+    templateIds: ['modern', 'reno'],
+    metaTitle: 'Website & Software for Sauna Builders',
+    metaDescription:
+      'A custom sauna website with dimension quotes, heater options, deposits, and Stripe payments. Plans start at $0/month with Flex.',
+    relatedSlugs: ['finish-carpentry', 'electricians', 'bathroom-remodelers'],
+  },
+  {
+    slug: 'pet-waste-removal',
+    name: 'Pet Waste Removal Services',
+    work: 'pet waste removal & yard scooping',
+    headline: 'Pet waste removal websites that fill recurring route schedules on autopilot.',
+    subhead:
+      'Sell weekly, bi-weekly, and one-time yard cleanups that charge cards on file automatically, book online in 60 seconds, and run dense neighborhood routes.',
+    pains: [
+      { title: 'Recurring route billing on autopilot', body: 'Weekly subscribers are auto-charged per visit or monthly on saved cards, syncing seamlessly with your geographic route.' },
+      { title: '60-second online signup by dog count', body: 'Homeowners select dog count, visit frequency, and yard size to start service instantly without phone tag.' },
+      { title: 'Automated on-the-way and gate-closed texts', body: 'Send automated SMS notifications when arriving and a photo confirmation that the gate is latched shut.' },
+    ],
+    services: ['Weekly yard waste scooping', 'Bi-weekly pet waste service', 'Spring one-time deep cleanout', 'Yard sanitization & deodorizing', 'Commercial HOA dog park service', 'Waste station maintenance'],
+    templateIds: ['shine', 'handy'],
+    metaTitle: 'Website & Software for Pet Waste Removal',
+    metaDescription:
+      'A pet waste removal website with online booking, recurring route billing, and Stripe card-on-file payments. Plans start at $0/month with Flex.',
+    relatedSlugs: ['lawn-care', 'bin-cleaning'],
+  },
+  {
+    slug: 'parking-lot-striping',
+    name: 'Parking Lot Striping Companies',
+    work: 'parking lot striping & pavement marking',
+    headline: 'Parking lot striping websites that quote stalls, arrows, and ADA compliance.',
+    subhead:
+      'Quote commercial parking stall striping, handicap stencils, and fire lanes by line count and footage, schedule night shifts online, and auto-bill property managers.',
+    pains: [
+      { title: 'Quote stalls and stencils in minutes', body: 'Calculate standard stalls, double lines, ADA blue/yellow stalls, directional arrows, and curb footage directly on site.' },
+      { title: 'Win repeat property manager contracts', body: 'Attach ADA compliance layouts, fire lane regulations, and night-shift scheduling directly to proposals.' },
+      { title: 'Get paid promptly on B2B terms', body: 'Send digital payment links or receive ACH bank payments the morning after overnight line striping is complete.' },
+    ],
+    services: ['Parking stall line restriping', 'New layout lot striping', 'ADA handicap stall stenciling', 'Fire lane red curb painting', 'Directional arrows & stop bars', 'Concrete wheel stop installation'],
+    templateIds: ['carbon', 'professional'],
+    metaTitle: 'Website & Software for Parking Lot Stripers',
+    metaDescription:
+      'A parking lot striping website with per-stall quotes, ADA compliance layouts, and Stripe payments. Plans start at $0/month with Flex.',
+    payer: 'client',
+    relatedSlugs: ['sealcoating', 'paving', 'commercial-cleaning'],
+  },
+  {
+    slug: 'wildlife-removal',
+    name: 'Wildlife Removal & Exclusion Companies',
+    work: 'humane wildlife removal & exclusion',
+    headline: 'Wildlife removal websites that book the inspection and seal the attic.',
+    subhead:
+      'Capture urgent animal-in-attic calls 24/7, quote humane trapping, one-way doors, and full home exclusion, take deposits, and get paid on safety sign-off.',
+    pains: [
+      { title: 'Win urgent scratching-in-attic calls', body: 'AI intake captures raccoon, squirrel, or bat sounds 24/7 and books immediate inspection windows.' },
+      { title: 'Quote multi-stage exclusion packages', body: 'Itemize inspection fee, humane trapping, one-way exit doors, roofline metal flashing seals, and attic sanitization.' },
+      { title: 'Attach entry-point roof photos', body: 'Show homeowners photos of chewed soffits, torn gable vents, and exclusion repairs directly on quotes.' },
+    ],
+    services: ['Raccoon & squirrel attic removal', 'Bat exclusion & guano cleanup', 'One-way exclusion door install', 'Roofline & soffit entry sealing', 'Attic sanitization & deodorizing', 'Dead animal removal & deodorizing'],
+    templateIds: ['fixit', 'professional'],
+    metaTitle: 'Website & Software for Wildlife Removal',
+    metaDescription:
+      'A wildlife removal website with 24/7 emergency intake, exclusion quotes, deposits, and Stripe payments. Plans start at $0/month with Flex.',
+    relatedSlugs: ['pest-control', 'insulation', 'chimney-sweep'],
+  },
+  {
+    slug: 'dry-ice-blasting',
+    name: 'Dry Ice Blasting Companies',
+    work: 'dry ice blasting & industrial cleaning',
+    headline: 'Dry ice blasting websites where non-abrasive results sell the job.',
+    subhead:
+      'Quote vehicle undercarriages, fire restoration, and industrial equipment degreasing by machine hour, collect mobilization deposits, and showcase spotless metal.',
+    pains: [
+      { title: 'Quote high-ticket dry ice hours', body: 'Calculate pellet volume, diesel air compressor mobilization, and machine hourly blasting rates in minutes.' },
+      { title: 'Highlight non-abrasive & chemical-free benefits', body: 'Demonstrate how dry ice sublimes on contact without water, grit, or chemical residue—safe for electrical and delicate surfaces.' },
+      { title: 'Stunning classic car & mold before/afters', body: 'Galleries showing OEM vehicle undercarriages, factory machinery, and fire-charred wood restored to bare clean surfaces.' },
+    ],
+    services: ['Classic car undercarriage detailing', 'Fire & smoke soot removal', 'Attic & basement mold blasting', 'Industrial machinery degreasing', 'Electrical cabinet dry cleaning', 'Food processing plant sanitation'],
+    templateIds: ['carbon', 'shine'],
+    metaTitle: 'Website & Software for Dry Ice Blasters',
+    metaDescription:
+      'A dry ice blasting website with hourly quotes, mobilization deposits, project galleries, and Stripe. Plans start at $0/month with Flex.',
+    payer: 'client',
+    relatedSlugs: ['pressure-washing', 'mold-remediation', 'auto-detailing'],
+  },
+  {
+    slug: 'mobile-pet-grooming',
+    name: 'Mobile Pet Grooming Services',
+    work: 'mobile pet grooming',
+    headline: 'Mobile grooming websites that keep your van route booked weeks ahead.',
+    subhead:
+      'Let pet owners select breed and package options, book driveway grooming windows online, auto-charge cards on file, and turn one groom into a 4-week regular.',
+    pains: [
+      { title: 'Book breed-specific packages online', body: 'Pet owners pick full haircut vs bath & brush, add deshedding or teeth cleaning, and choose open arrival windows.' },
+      { title: 'Card-on-file recurring appointments', body: 'Auto-rebook standing 4, 6, or 8-week grooming slots and charge the card on file right at the curb.' },
+      { title: 'Eliminate grooming salon stress', body: 'Highlight 1-on-1 cage-free comfort right in the driveway to win dedicated, high-paying pet parents.' },
+    ],
+    services: ['Full mobile dog haircuts', 'Bath, blow dry & brush out', 'De-shedding furminator treatments', 'Nail trimming & Dremel grinding', 'Ear cleaning & teeth brushing', 'Puppy & senior pet gentle grooms'],
+    templateIds: ['shine', 'handy'],
+    metaTitle: 'Website & Software for Mobile Groomers',
+    metaDescription:
+      'A mobile pet grooming website with online booking, breed packages, card-on-file billing, and Stripe. Plans start at $0/month with Flex.',
+    payer: 'customer',
+    relatedSlugs: ['pet-waste-removal', 'auto-detailing'],
+  },
+  {
+    slug: 'small-engine-repair',
+    name: 'Mobile Small Engine Repair Companies',
+    work: 'small engine & lawn mower repair',
+    headline: 'Small engine websites that book the driveway tune-up and get paid on site.',
+    subhead:
+      'Book riding mower, generator, and snowblower repairs in the driveway, quote parts and labor from your phone, and accept tap-to-pay when the engine purrs.',
+    pains: [
+      { title: 'Book driveway repair windows online', body: 'Homeowners select equipment type (riding mower, zero-turn, generator, snowblower) and book open arrival slots.' },
+      { title: 'Quote carburetor rebuilds and tune-ups fast', body: 'Save standard tune-up packages (oil, filter, spark plugs, blade sharpening) to a price book for 60-second quoting.' },
+      { title: 'Tap-to-pay at the trailer', body: 'Accept credit card, debit, or Apple Pay the second the mower starts on the first pull.' },
+    ],
+    services: ['Riding mower & zero-turn tune-ups', 'Carburetor cleaning & rebuilds', 'Mower blade sharpening & balance', 'Snowblower seasonal pre-checks', 'Portable generator tune-ups', 'Drive belt & cable replacement'],
+    templateIds: ['fixit', 'handy'],
+    metaTitle: 'Website & Software for Small Engine Repair',
+    metaDescription:
+      'A small engine repair website with driveway booking, tune-up package quotes, tap-to-pay, and Stripe. Plans start at $0/month with Flex.',
+    payer: 'customer',
+    relatedSlugs: ['mobile-mechanics', 'lawn-care'],
+  },
+  {
+    slug: 'rv-repair',
+    name: 'Mobile RV Repair Technicians',
+    work: 'mobile RV & camper repair',
+    headline: 'Mobile RV repair websites that book campground service and get paid dockside.',
+    subhead:
+      'Book mobile diagnostic calls at campgrounds or driveways, quote A/C, slide-out, and propane repairs on-site, and collect card or tap-to-pay before packing up.',
+    pains: [
+      { title: 'Book mobile campground dispatch', body: 'RV owners enter camper year/make/model and campground lot number to reserve diagnostic arrival windows.' },
+      { title: 'Deposit on specialty RV parts', body: 'Collect upfront deposits on replacement RV air conditioners, water heaters, and slide-out motors before ordering.' },
+      { title: 'Get paid on site', body: 'Take credit card or send instant pay links at the camper door the second appliances test working.' },
+    ],
+    services: ['Rooftop RV A/C service & replacement', 'Slide-out mechanism repair', 'Propane furnace & water heater diagnostics', 'RV rubber roof resealing & leak repair', 'Solar panel & lithium battery upgrades', 'Electrical 12V / 120V troubleshooting'],
+    templateIds: ['fixit', 'carbon'],
+    metaTitle: 'Website & Software for Mobile RV Techs',
+    metaDescription:
+      'A mobile RV repair website with campground booking, diagnostic fee deposits, tap-to-pay, and Stripe. Plans start at $0/month with Flex.',
+    payer: 'customer',
+    relatedSlugs: ['mobile-mechanics', 'appliance-repair', 'marine-services'],
+  },
+  {
+    slug: 'golf-cart-service',
+    name: 'Golf Cart Service & Customization Companies',
+    work: 'golf cart customization & repair',
+    headline: 'Golf cart websites that book lithium upgrades and neighborhood service.',
+    subhead:
+      'Quote lithium battery conversions, lift kits, and custom seating with options, book mobile tune-ups in the driveway, and collect deposits on upgrade parts.',
+    pains: [
+      { title: 'Quote high-ticket lithium conversions', body: 'Combine lithium battery packs, high-output controllers, onboard chargers, and installation labor in seconds.' },
+      { title: 'Deposit on custom cart accessories', body: 'Collect deposits covering lift kits, custom wheel sets, and marine soundbars before ordering.' },
+      { title: 'Mobile community service routes', body: 'Schedule mobile brake checks, tire rotations, and battery maintenance routes across golf cart communities.' },
+    ],
+    services: ['Lithium battery pack conversions', 'Lift kits, wheels & off-road tires', 'Custom seat upholstery & tops', 'Street legal light & turn signal kits', 'Speed controller & motor upgrades', 'Mobile brake & suspension service'],
+    templateIds: ['carbon', 'shine'],
+    metaTitle: 'Website & Software for Golf Cart Services',
+    metaDescription:
+      'A golf cart service website with lithium conversion quotes, accessory deposits, and Stripe payments. Plans start at $0/month with Flex.',
+    payer: 'customer',
+    relatedSlugs: ['small-engine-repair', 'auto-detailing'],
+  },
+  {
+    slug: 'mobile-knife-sharpening',
+    name: 'Mobile Knife & Tool Sharpening Services',
+    work: 'mobile knife & blade sharpening',
+    headline: 'Mobile sharpening websites that pack your culinary and market routes.',
+    subhead:
+      'Quote chef knives, fabric shears, and garden tools per blade, let customers book mobile stops online, and collect tap-to-pay when the edge shaves hair.',
+    pains: [
+      { title: 'Quote by blade type and count', body: 'Calculate per-knife pricing for Japanese chef knives, serrated bread knives, grooming shears, and mower blades in seconds.' },
+      { title: 'Book neighborhood & market drop-offs', body: 'Online booking lets home cooks and restaurant chefs drop blades at your sharpening van without waiting in line.' },
+      { title: 'Tap-to-pay at the van counter', body: 'Accept instant contactless card or Apple Pay payment the second blades are tested on test paper.' },
+    ],
+    services: ['Culinary & chef knife sharpening', 'Fabric & grooming shear sharpening', 'Lawn mower blade grinding', 'Chisels & woodworking tool edges', 'Japanese waterstone hand polishing', 'Commercial restaurant knife service'],
+    templateIds: ['shine', 'fixit'],
+    metaTitle: 'Website & Software for Knife Sharpeners',
+    metaDescription:
+      'A mobile knife sharpening website with per-blade quotes, mobile route booking, tap-to-pay, and Stripe. Plans start at $0/month with Flex.',
+    payer: 'customer',
+    relatedSlugs: ['handyman', 'small-engine-repair'],
+  },
+  {
+    slug: 'event-rentals',
+    name: 'Party Tent & Event Rental Companies',
+    work: 'party tent & event equipment rentals',
+    headline: 'Event rental websites that lock weekend dates with holding deposits.',
+    subhead:
+      'Quote high-peak party tents, tables, chairs, and dance floors with package options, collect holding deposits, and schedule delivery and takedown.',
+    pains: [
+      { title: 'Quote event packages with add-ons', body: 'Combine tent sizes (20x20, 20x40), white padded chairs, banquet tables, string lighting, and patio heaters in minutes.' },
+      { title: 'Lock event dates with holding deposits', body: 'Collect deposits at booking to reserve high-demand graduation, wedding, and holiday inventory.' },
+      { title: 'Automated delivery & takedown scheduling', body: 'Schedule Thursday/Friday delivery and Sunday/Monday takedown routes with automated client reminders.' },
+    ],
+    services: ['High-peak frame party tents', 'Tables, banquet & cocktail seating', 'White resin wedding chairs', 'Portable dance floor rental', 'Tent sidewalls & perimeter lighting', 'Commercial outdoor patio heaters'],
+    templateIds: ['modern', 'professional'],
+    metaTitle: 'Website & Software for Event Rental Companies',
+    metaDescription:
+      'An event rental website with party tent package quotes, reservation deposits, and Stripe payments. Plans start at $0/month with Flex.',
+    payer: 'customer',
+    relatedSlugs: ['holiday-lighting', 'movers'],
+  },
 ];
 
 export function getTrade(slug: string): Trade | undefined {
