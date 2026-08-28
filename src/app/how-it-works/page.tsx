@@ -215,6 +215,11 @@ function Receipt({
 export default function HowItWorksPage() {
   return (
     <main className={`${styles.root} hiq-page`}>
+      {/* Dynamic ambient backdrop glow orbs */}
+      <div className="hiq-ambient hiq-ambient-one" aria-hidden="true" />
+      <div className="hiq-ambient hiq-ambient-two" aria-hidden="true" />
+      <div className="hiq-ambient hiq-ambient-three" aria-hidden="true" />
+
       {/* The page had no skip link before the header, and the header comes
           first in the DOM — a skip link written after it is not one. */}
       <a className="skip-link" href="#main-content">Skip to content</a>
@@ -233,7 +238,10 @@ export default function HowItWorksPage() {
           ------------------------------------------------------------------ */}
       <section className="hiq-hero" id="main-content" aria-labelledby="hiq-title">
         <div className="hiq-hero-copy">
-          <p className="hiq-eyebrow">THE 5-STEP CONTRACTOR WORKFLOW</p>
+          <div className="hiq-eyebrow-chip">
+            <span aria-hidden="true">✦</span>
+            <p className="hiq-eyebrow">THE 5-STEP CONTRACTOR WORKFLOW</p>
+          </div>
           <h1 id="hiq-title">
             From first click to <em>final payment.</em>
           </h1>
@@ -247,6 +255,11 @@ export default function HowItWorksPage() {
             <Link className="hiq-textlink" href={DEMO_URL}>
               Explore the demo
             </Link>
+          </div>
+          <div className="hiq-hero-chips-row" aria-label="Key contractor features">
+            <span className="hiq-hero-chip"><span className="hiq-hero-chip-check">✓</span> AI Lead Scoring &amp; Ranking</span>
+            <span className="hiq-hero-chip"><span className="hiq-hero-chip-check">✓</span> 24/7 Smart Intake</span>
+            <span className="hiq-hero-chip"><span className="hiq-hero-chip-check">✓</span> 1 Connected Record</span>
           </div>
         </div>
 
@@ -415,13 +428,29 @@ export default function HowItWorksPage() {
             </p>
           </div>
 
-          {/* THE FIVE-CARD RAIL THAT USED TO BE HERE IS GONE.
-              It named Quote + sign, Schedule, Crew, Payment and Review — which
-              is beats 4, 5 and 6 of the journey printed a second time, 1,900px
-              after the rail that names all six. On a 9,700px phone page, saying
-              the same sequence twice is the repetition the page was criticised
-              for. The journey rail carries the sequence; this section carries
-              the sentence that makes it matter, and the way through to it. */}
+          <div className="hiq-bridge-grid">
+            <div className="hiq-bridge-card">
+              <span className="hiq-bridge-num">01</span>
+              <h3>Instant Estimator</h3>
+              <p>Intake turns homeowner project scope into real contractor trade estimates.</p>
+            </div>
+            <div className="hiq-bridge-card">
+              <span className="hiq-bridge-num">02</span>
+              <h3>Intelligent Priority</h3>
+              <p>Lead scoring prioritizes trade fit, route proximity, and hot readiness.</p>
+            </div>
+            <div className="hiq-bridge-card">
+              <span className="hiq-bridge-num">03</span>
+              <h3>1-Tap Conversion</h3>
+              <p>Turn incoming leads into itemized quotes with deposit collection and e-sign.</p>
+            </div>
+            <div className="hiq-bridge-card">
+              <span className="hiq-bridge-num">04</span>
+              <h3>Seamless Payout</h3>
+              <p>Schedule dispatch, message clients via portal, and collect balance via Stripe.</p>
+            </div>
+          </div>
+
           <div className="hiq-actions hiq-bridge-actions">
             <Link className="hiq-button" href="/features/back-office">
               Explore the connected back office <span aria-hidden="true">→</span>
