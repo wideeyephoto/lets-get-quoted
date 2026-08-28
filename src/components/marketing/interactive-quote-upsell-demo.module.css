@@ -653,3 +653,26 @@
   from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+@media (max-width: 760px) {
+  .tradeTab,
+  .payTab,
+  .signBtn,
+  .resetBtn,
+  .featureLink {
+    min-height: 44px;
+    touch-action: manipulation;
+  }
+
+  .tradeTab,
+  .featureLink {
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .signInput,
+  .addonItem {
+    min-height: 44px;
+    box-sizing: border-box;
+  }
+}

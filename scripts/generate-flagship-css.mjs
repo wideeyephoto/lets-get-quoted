@@ -3073,8 +3073,9 @@ const TWEAKS = `
    and clear of the card's own padding. Still sticky: the whole reason this
    moved. */
 @media (max-width: 1100px) {
-  /* 3 x 34px node + 2 x 22px gap = 146; half is 73. */
-  .root :global(.step-rail) { --rail-half: 73px; }
+  /* 3 x 44px node + 2 x 22px gap = 176; half is 88. The nodes stay at the
+     minimum comfortable touch size even when the rail moves to the edge. */
+  .root :global(.step-rail) { --rail-half: 88px; }
   .root :global(.step-rail ol) {
     left: auto;
     right: 0;
@@ -3087,7 +3088,7 @@ const TWEAKS = `
      summary" in step 02's paragraph. */
   .root :global(.feature-step) { padding-right: 54px; }
   .root :global(.step-rail li + li)::before { top: -22px; height: 22px; }
-  .root :global(.step-rail button) { width: 34px; height: 34px; font-size: 10.5px; }
+  .root :global(.step-rail button) { width: 44px; height: 44px; font-size: 10.5px; }
   .root :global(.step-rail li[data-state="current"] button) { box-shadow: 0 0 0 4px rgba(255, 106, 36, .12); }
 }
 
@@ -5862,11 +5863,19 @@ const TWEAKS = `
   }
 
   .root :global(.site-menu) {
-    position: fixed;
-    top: 58px;
+    /* The header's backdrop-filter establishes a containing block for fixed
+       descendants. A fixed top/bottom drawer therefore measured itself against
+       the 58px header and collapsed to a one-row scroll strip. Keep the drawer
+       anchored to the sticky header, then size it explicitly to the remaining
+       dynamic viewport. */
+    position: absolute;
+    top: 100%;
     left: 0;
     right: 0;
-    bottom: 0;
+    bottom: auto;
+    height: calc(100vh - 58px);
+    height: calc(100dvh - 58px);
+    box-sizing: border-box;
     background: rgba(7, 19, 29, 0.98);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);

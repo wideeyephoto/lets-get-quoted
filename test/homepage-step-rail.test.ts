@@ -48,12 +48,12 @@ describe('the step rail clears the section intro', () => {
 
   it('sets a half-height that matches the nodes and gaps at each width', () => {
     // Desktop: 3 x 46px node + 2 x 34px gap = 206, half 103.
-    // <=1100px:  3 x 34px node + 2 x 22px gap = 146, half  73.
+    // <=1100px: 3 x 44px node + 2 x 22px gap = 176, half 88.
     expect(GEN_CODE).toContain('--rail-half: 103px;');
-    expect(GEN_CODE).toContain('--rail-half: 73px;');
+    expect(GEN_CODE).toContain('--rail-half: 88px;');
     expect(GEN_CODE).toMatch(/\.step-rail button\)\s*\{[^}]*width: 46px;\s*\n\s*height: 46px;/);
     expect(GEN_CODE).toMatch(/gap: 34px;/);
-    expect(GEN_CODE).toMatch(/\.step-rail button\)\s*\{ width: 34px; height: 34px;/);
+    expect(GEN_CODE).toMatch(/\.step-rail button\)\s*\{ width: 44px; height: 44px;/);
     expect(GEN_CODE).toMatch(/gap: 22px;/);
   });
 
@@ -70,7 +70,7 @@ describe('the step rail clears the section intro', () => {
     // Catches the edit that never ran `node scripts/generate-flagship-css.mjs`.
     expect(CSS).toContain('top: calc(50vh - var(--rail-half));');
     expect(CSS).toContain('--rail-half: 103px;');
-    expect(CSS).toContain('--rail-half: 73px;');
+    expect(CSS).toContain('--rail-half: 88px;');
     expect(CSS).not.toMatch(/\.step-rail ol\)[^}]*translateY\(-50%\)/);
   });
 });

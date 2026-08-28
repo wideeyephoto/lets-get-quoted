@@ -568,6 +568,13 @@
   outline-offset: 2px;
 }
 
+@media (max-width: 760px) {
+  .replayBtn {
+    min-height: 44px;
+    touch-action: manipulation;
+  }
+}
+
 /* Prefers Reduced Motion */
 @media (prefers-reduced-motion: reduce) {
   .photoWrapper {

@@ -8,7 +8,11 @@ function read(filePath: string) {
 
 describe('Problem 7: Mobile Density & Persistent Chrome', () => {
   const flagshipCss = read('src/components/flagship/flagship.module.css');
+  const flagshipGenerator = read('scripts/generate-flagship-css.mjs');
   const siteChrome = read('src/components/flagship/site-chrome.tsx');
+  const workflowCss = read('src/components/flagship/hero-connected-workflow.module.css');
+  const intakeCss = read('src/components/flagship/hero-intake-story.module.css');
+  const quoteDemoCss = read('src/components/marketing/interactive-quote-upsell-demo.module.css');
   const assistantCss = read('src/components/marketing/marketing-ai-assistant.module.css');
   const assistantCode = read('src/components/marketing/MarketingAiAssistant.tsx');
   const pricingCss = read('src/app/pricing/pricing.module.css');
@@ -31,6 +35,13 @@ describe('Problem 7: Mobile Density & Persistent Chrome', () => {
       expect(siteChrome).toContain("e.key === 'Tab'");
       expect(siteChrome).toContain('toggleRef.current?.focus()');
       expect(siteChrome).toContain("window.dispatchEvent(new CustomEvent('lgq-menu-toggle'");
+    });
+
+    it('sizes the drawer to the viewport below the filtered sticky header', () => {
+      for (const css of [flagshipGenerator, flagshipCss]) {
+        expect(css).toMatch(/\.site-menu\)\s*\{[\s\S]*?position:\s*absolute;[\s\S]*?top:\s*100%;[\s\S]*?height:\s*calc\(100dvh - 58px\)/);
+        expect(css).not.toMatch(/\.site-menu\)\s*\{\s*position:\s*fixed;\s*top:\s*58px;/);
+      }
     });
   });
 
@@ -77,6 +88,17 @@ describe('Problem 7: Mobile Density & Persistent Chrome', () => {
   describe('Touch Targets & Cognitive Density', () => {
     it('enforces 44px minimum tap target height on primary buttons and links', () => {
       expect(flagshipCss).toMatch(/min-height:\s*48px/);
+    });
+
+    it('keeps the live homepage demo controls at least 44px tall on phones', () => {
+      expect(workflowCss).toMatch(/\.tradePill,[\s\S]*?\.actionBtnNext,[\s\S]*?\.replayBtn\s*\{[\s\S]*?min-height:\s*44px/);
+      expect(intakeCss).toMatch(/@media\s*\(max-width:\s*760px\)[\s\S]*?\.replayBtn\s*\{[\s\S]*?min-height:\s*44px/);
+      expect(quoteDemoCss).toMatch(/\.tradeTab,[\s\S]*?\.payTab,[\s\S]*?\.signBtn,[\s\S]*?\.resetBtn,[\s\S]*?\.featureLink\s*\{[\s\S]*?min-height:\s*44px/);
+    });
+
+    it('keeps the sticky homepage step rail controls at least 44px square', () => {
+      expect(flagshipGenerator).toMatch(/\.step-rail button\)\s*\{\s*width:\s*44px;\s*height:\s*44px/);
+      expect(flagshipCss).toMatch(/\.step-rail button\)\s*\{\s*width:\s*44px;\s*height:\s*44px/);
     });
 
     it('reduces section vertical padding to 56–72px on mobile screens', () => {
