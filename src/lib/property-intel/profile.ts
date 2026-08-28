@@ -66,19 +66,19 @@ export function matchTradeFamilies(trade?: string | null): TradeFamily[] {
   if (!text) return ['unknown'];
 
   const matched: TradeFamily[] = [];
-  if (/\b(?:roof(?:ing|er|ers)?|gutter(?:s|ing)?|chimney(?:s)?)\b/i.test(text)) matched.push('roofing');
+  if (/\b(?:roof(?:ing|er|ers)?|gutter(?:s|ing)?|chimney(?:s)?|commercial[- ]roofing)\b/i.test(text)) matched.push('roofing');
   if (/\b(?:siding|cladding)\b/i.test(text)) matched.push('siding');
-  if (/\b(?:solar|photovoltaic|clean energy)\b/i.test(text)) matched.push('solar');
-  if (/\b(?:plumb(?:ing|er|ers)?|pipe(?:s|r|rs|fitting|fitter)?|drain(?:s|age)?|septic|sewer(?:s)?|water heater(?:s)?)\b/i.test(text)) matched.push('plumbing');
-  if (/\b(?:hvac|heat(?:ing|er|ers)?|furnace(?:s)?|air condition(?:ing|er|ers)?|a\/c|cooling|ventilation|duct(?:s|work| cleaning)?)\b/i.test(text)) matched.push('hvac');
-  if (/\b(?:electric(?:al|ian|ians)?|wiring|lighting|generator(?:s)?)\b/i.test(text)) matched.push('electrical');
-  if (/\b(?:paint(?:ing|er|ers)?|stain(?:ing|er)?|drywall|sheetrock|plaster(?:ing)?|stucco)\b/i.test(text)) matched.push('finishing');
-  if (/\b(?:floor(?:ing|s|er)?|hardwood|carpet(?:ing)?|tile|tiling|laminate|vinyl plank|epoxy)\b/i.test(text)) matched.push('flooring');
-  if (/\b(?:insulat(?:ion|or|ors)?|weatheriz(?:ation|e)?|attic|crawlspace encapsulation)\b/i.test(text)) matched.push('insulation');
-  if (/\b(?:window(?:s)?\s*(?:&|and|\/)?\s*door(?:s)?|window (?:installation|replacement|installer|install)|door (?:installation|replacement|installer|install)|glazi(?:er|ers|ng)?|glass repair|glass replacement)\b/i.test(text)) matched.push('window_installation');
-  if (/\b(?:window cleaning|deck(?:s|ing)?|fence|fencing|pressure wash(?:ing)?|power wash(?:ing)?)\b/i.test(text)) matched.push('outdoor_maintenance');
-  if (/\b(?:landscap(?:e|ing|er|ers)?|lawn(?: care| service)?|mow(?:ing)?|tree(?: service| care)?|irrigation|hardscape|patio|paver)\b/i.test(text)) matched.push('landscaping');
-  if (/\b(?:general contractor(?:s)?|builder(?:s)?|remodel(?:ing|er|ers|s)?|handyman|renovat(?:ion|ions|or|ors|e|ing)?|restoration(?:s)?)\b/i.test(text)) matched.push('general');
+  if (/\b(?:solar|photovoltaic|clean energy|solar[- ]batter(?:y|ies))\b/i.test(text)) matched.push('solar');
+  if (/\b(?:plumb(?:ing|er|ers)?|pipe(?:s|r|rs|fitting|fitter)?|drain(?:s|age| cleaning)?|septic|septic[- ]pumping|sewer(?:s)?|trenchless|water heater(?:s)?|backflow|water[- ]filtration)\b/i.test(text)) matched.push('plumbing');
+  if (/\b(?:hvac|heat(?:ing|er|ers)?|furnace(?:s)?|air condition(?:ing|er|ers)?|a\/c|cooling|ventilation|duct(?:s|work| cleaning)?|mini[- ]split|geothermal)\b/i.test(text)) matched.push('hvac');
+  if (/\b(?:electric(?:al|ian|ians)?|wiring|lighting|generator(?:s)?|ev[- ]charger|smart[- ]home|audio|gate[- ]automation)\b/i.test(text)) matched.push('electrical');
+  if (/\b(?:paint(?:ing|er|ers)?|stain(?:ing|er)?|drywall|sheetrock|plaster(?:ing)?|stucco|venetian|cabinet[- ]refinishing|wallpaper)\b/i.test(text)) matched.push('finishing');
+  if (/\b(?:floor(?:ing|s|er)?|hardwood|carpet(?:ing)?|tile|tiling|laminate|vinyl plank|epoxy|grout|floor[- ]care)\b/i.test(text)) matched.push('flooring');
+  if (/\b(?:insulat(?:ion|or|ors)?|weatheriz(?:ation|e)?|attic|crawlspace|radon|asbestos|mold|biohazard)\b/i.test(text)) matched.push('insulation');
+  if (/\b(?:window(?:s)?\s*(?:&|and|\/)?\s*door(?:s)?|window (?:installation|replacement|installer|install)|door (?:installation|replacement|installer|install)|glazi(?:er|ers|ng)?|glass|storefront|awning|screen)\b/i.test(text)) matched.push('window_installation');
+  if (/\b(?:window cleaning|deck(?:s|ing)?|fence|fencing|pressure wash(?:ing)?|power wash(?:ing)?|sealcoat|paver[- ]seal|striping|bin[- ]clean|pet[- ]waste|graffiti|dry[- ]ice)\b/i.test(text)) matched.push('outdoor_maintenance');
+  if (/\b(?:landscap(?:e|ing|er|ers)?|lawn(?: care| service)?|mow(?:ing)?|tree(?: service| care)?|stump|irrigation|hardscape|patio|paver|turf|pool|court|dock|seawall|greenhouse|farm[- ]fenc)\b/i.test(text)) matched.push('landscaping');
+  if (/\b(?:general contractor(?:s)?|builder(?:s)?|remodel(?:ing|er|ers|s)?|handyman|renovat(?:ion|ions|or|ors|e|ing)?|restoration(?:s)?|pole[- ]barn|shed|kitchen|bath|theater|sauna|cellar|demolition)\b/i.test(text)) matched.push('general');
 
   return matched.length > 0 ? matched : ['unknown'];
 }
