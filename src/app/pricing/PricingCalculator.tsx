@@ -43,8 +43,8 @@ function money(value: number) {
 function signupHref(plan: PlanId, billing: BillingCycle) {
   return buildStartUrl({
     goal: 'choose_plan',
-    plan: plan as 'flex' | 'starter' | 'growth' | 'scale',
-    billing: billing as 'monthly' | 'annual',
+    plan,
+    billing,
     source: 'pricing',
   });
 }

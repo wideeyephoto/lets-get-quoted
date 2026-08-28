@@ -6,6 +6,8 @@
  * and directs users to their promised destination based on account state.
  */
 
+import { BILLING_PLAN_IDS, type BillingPlanId } from '@/lib/billing/catalog';
+
 export type SignupGoal =
   | 'build_site'
   | 'choose_plan'
@@ -24,7 +26,7 @@ export type SignupFeature =
   | 'cash_flow'
   | 'recurring';
 
-export type SignupPlan = 'flex' | 'starter' | 'growth' | 'scale';
+export type SignupPlan = BillingPlanId;
 export type SignupBilling = 'monthly' | 'annual';
 
 export type SignupSource =
@@ -66,7 +68,7 @@ const VALID_FEATURES = new Set<SignupFeature>([
   'cash_flow',
   'recurring',
 ]);
-const VALID_PLANS = new Set<SignupPlan>(['flex', 'starter', 'growth', 'scale']);
+const VALID_PLANS = new Set<SignupPlan>(BILLING_PLAN_IDS);
 const VALID_BILLING = new Set<SignupBilling>(['monthly', 'annual']);
 
 /**
@@ -90,7 +92,8 @@ export function parseSignupIntent(
   const feature: SignupFeature | null =
     rawFeature && VALID_FEATURES.has(rawFeature as SignupFeature) ? (rawFeature as SignupFeature) : null;
 
-  const rawPlan = get('plan')?.toLowerCase();
+  const rawPlanValue = get('plan')?.toLowerCase();
+  const rawPlan = rawPlanValue === 'starter' ? 'solo' : rawPlanValue;
   const plan: SignupPlan | null = rawPlan && VALID_PLANS.has(rawPlan as SignupPlan) ? (rawPlan as SignupPlan) : null;
 
   const rawBilling = get('billing')?.toLowerCase();

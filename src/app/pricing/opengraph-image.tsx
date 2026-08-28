@@ -9,15 +9,15 @@ import { ogCard, OG_SIZE, OG_CONTENT_TYPE } from '@/lib/og-card';
    anyway. Nothing here touches a Node API: this card is drawn from static copy. */
 export const runtime = 'edge';
 
-export const alt = 'Let’s Get Quoted contractor software pricing — Flex, Solo, Growth, and Scale';
+export const alt = 'Your whole contracting business from $0/month — Let’s Get Quoted pricing';
 export const size = OG_SIZE;
 export const contentType = OG_CONTENT_TYPE;
 
 export default function Image() {
   return ogCard({
-    eyebrow: 'Pricing',
-    title: 'Powerful contractor software at a surprisingly reasonable price.',
-    subtitle: 'Start at $0/month with Flex. Reach a 0.1% LGQ platform fee with Scale.',
-    tag: 'Four plans · one clear path',
+    eyebrow: 'Your whole business · One connected system',
+    title: 'Your whole contracting business. From $0/month.',
+    subtitle: 'Website, quoting, booking, texting, invoices, payments, and QuickBooks sync—connected from day one.',
+    tag: 'Flex · Solo · Growth · Scale',
   });
 }

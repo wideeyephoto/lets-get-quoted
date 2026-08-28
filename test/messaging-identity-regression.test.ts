@@ -105,8 +105,13 @@ describe('Problem 1: Product Identity and Message Hierarchy', () => {
 
   describe('Pricing page alignment', () => {
     it('frames plans as scalable capacity for the same connected system', () => {
-      expect(PRICING).toContain('One connected system · Scalable pricing');
-      expect(PRICING).toContain('One connected system for your whole contracting business');
+      expect(PRICING).toContain('YOUR WHOLE BUSINESS · ONE CONNECTED SYSTEM');
+      expect(PRICING).toContain('Your whole contracting business. <em>From $0/month.</em>');
+      expect(PRICING).toContain(
+        'From an AI-powered website and instant quoting to client texting, booking, invoices, payments, and QuickBooks sync—<em>everything connected from day one.</em>',
+      );
+      expect(PRICING).toContain('Full Contractor Business Platform');
+      expect(PRICING).toContain('Every plan includes the full contractor business platform.');
     });
   });
 

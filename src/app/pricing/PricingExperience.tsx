@@ -1,976 +1,561 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
-import { useId, useMemo, useState, type ReactNode } from 'react';
+import { useState, type CSSProperties } from 'react';
 import { buildStartUrl } from '@/lib/signup-intent';
-import PricingCalculator from './PricingCalculator';
+import { rankPlanCosts } from './pricing-ranking';
 import {
-  ADD_ONS,
   COMPARISON_ROWS,
+  CREW_USER_ADD_ON_AVAILABLE,
+  CREW_USER_ADD_ON_ELIGIBLE_PLANS,
+  CREW_USER_ADD_ON_MONTHLY,
   PLANS,
   PRICING_FAQS,
-  annualPlanCost,
-  planCrossover,
   type BillingCycle,
   type PlanId,
-  type PricingPlan,
 } from './pricing-catalog';
-import styles from './pricing.module.css';
 
-const CARD_DIFFERENTIATORS: Record<PlanId, readonly string[]> = {
-  flex: [
-    'No monthly subscription — 100% free when work slows down',
-    '1 office user + 2 crew users with full job & invoice dispatch',
-    'Custom-domain contractor website with standard lead capture forms',
-  ],
-  solo: [
-    '0.50% lower platform fee (pays for itself around $56k/yr)',
-    '2 office users + 2 crew users included',
-    '500 monthly text credits & 300 AI credits',
-  ],
-  growth: [
-    '0.25% platform fee for rapidly growing invoice volume',
-    '5 office users + 10 crew users with team scheduling',
-    '1,500 monthly text credits & 750 AI credits',
-  ],
-  scale: [
-    '0.10% lowest platform fee for maximum margin efficiency',
-    '15 office users + 50 crew users included',
-    '3,000 monthly text credits, 1,500 AI credits & 250 GB storage',
-  ],
-};
-
-const PLAN_AUDIENCE_TAGS: Record<PlanId, string> = {
-  flex: 'Seasonal / Starting Out',
-  solo: 'Owner-Operator',
-  growth: 'Growing Team · Most Popular',
-  scale: 'High-Volume Operations',
-};
-
-const RECOMMENDER_PRESETS = [
-  {
-    label: 'Solo Handyman',
-    sublabel: '$35k/yr · 1 user',
-    teamSize: 'solo' as const,
-    volume: 35_000,
-    needsTexting: false,
-  },
-  {
-    label: 'Owner-Operator Electrician',
-    sublabel: '$150k/yr · 2 users',
-    teamSize: 'small' as const,
-    volume: 150_000,
-    needsTexting: true,
-  },
-  {
-    label: 'Growing Remodeling Crew',
-    sublabel: '$600k/yr · 5 users',
-    teamSize: 'growth' as const,
-    volume: 600_000,
-    needsTexting: true,
-  },
-  {
-    label: 'High-Volume Roofing',
-    sublabel: '$1.8M/yr · 12 users',
-    teamSize: 'scale' as const,
-    volume: 1_800_000,
-    needsTexting: true,
-  },
+const activity = [
+  { label: 'Quote accepted', value: '$8,420', symbol: '✓', tone: 'orange' },
+  { label: 'Crew dispatched', value: '8:30 AM', symbol: '→', tone: 'yellow' },
+  { label: 'Invoice paid', value: '+$2,840', symbol: '↑', tone: 'mint' },
 ];
 
-const COMPARISON_CATEGORIES = [
-  { id: 'all', label: 'All features (18)' },
-  { id: 'fees', label: 'Fees & Seats (5)' },
-  { id: 'core', label: 'Leads & Quotes (5)' },
-  { id: 'comms', label: 'Messaging & Phone (5)' },
-  { id: 'ai', label: 'AI, Storage & QBO (3)' },
+const features = [
+  ['01', 'Win the work', 'Launch your contractor website, capture instant estimates and send quotes with e-signatures.'],
+  ['02', 'Run the job', 'Schedule work, dispatch crews and keep job notes, hours and progress in one place.'],
+  ['03', 'Get paid and synced', 'Send invoices, collect payments and keep QuickBooks connected to the same workflow.'],
+];
+
+const money = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
+
+function feeLabel(value: number) {
+  return `${value.toFixed(2)}%`;
+}
+
+const plans = PLANS.map((plan, rank) => {
+  const annualBilled = plan.id === 'flex' ? 0 : plan.annualMonthly * 12;
+  return {
+    ...plan,
+    name: plan.id === 'flex' ? 'Flex / Seasonal' : plan.name,
+    shortName: plan.name,
+    annualBilled,
+    annualSavings: plan.monthly * 12 - annualBilled,
+    fee: feeLabel(plan.paymentFeePct),
+    rate: plan.paymentFeePct / 100,
+    storage: `${plan.storageGb} GB`,
+    textAllowance: plan.id === 'flex'
+      ? '50 one-time starter text credits'
+      : `${plan.textCredits.replace('/month', '')} text credits/month`,
+    aiAllowance: plan.id === 'flex'
+      ? `${money.format(plan.aiCredits)} one-time starter AI Credits`
+      : `${money.format(plan.aiCredits)} AI Credits/month`,
+    rank,
+  };
+});
+
+const scenarios = [
+  { label: 'Solo handyman', detail: '$35k/yr · 1 office · no crew', volume: 35000, office: 1, crew: 0, usage: 'starter' },
+  { label: 'Owner-operator', detail: '$150k/yr · 2 office · 1 crew', volume: 150000, office: 2, crew: 1, usage: 'ongoing' },
+  { label: 'Growing crew', detail: '$600k/yr · 3 office · 6 crew', volume: 600000, office: 3, crew: 6, usage: 'high' },
+  { label: 'High-volume roofing', detail: '$1.8M/yr · 8 office · 25 crew', volume: 1800000, office: 8, crew: 25, usage: 'scale' },
 ] as const;
 
-type ComparisonCategory = (typeof COMPARISON_CATEGORIES)[number]['id'];
+const usageOptions = [
+  { value: 'starter', label: 'Starter credits', detail: 'Occasional use · one-time balances', minimumRank: 0 },
+  { value: 'ongoing', label: 'Ongoing monthly', detail: 'Up to 500 texts + 300 AI credits', minimumRank: 1 },
+  { value: 'high', label: 'Automation-heavy', detail: 'Up to 1,500 texts + 750 AI credits', minimumRank: 2 },
+  { value: 'scale', label: 'High-volume automation', detail: 'Up to 3,000 texts + 1,500 AI credits', minimumRank: 3 },
+] as const;
 
-const ROW_CATEGORY_MAP: Record<string, ComparisonCategory> = {
-  'LGQ platform fee': 'fees',
-  'Office / admin users': 'fees',
-  'Crew-only users': 'fees',
-  'Operating locations for one legal business': 'fees',
-  'Usage beyond included limits': 'fees',
-
-  'Leads, clients, quotes, jobs & invoices': 'core',
-  'Standard quote-form submissions': 'core',
-  'Lead capture after AI limit': 'core',
-  'Custom-domain connections': 'core',
-  'Free onboarding + quick tour': 'core',
-
-  'Business number': 'comms',
-  'Basic call forwarding & voicemail': 'comms',
-  'Text credits': 'comms',
-  'Marketing email sends': 'comms',
-  'Transactional emails': 'comms',
-
-  'AI credits': 'ai',
-  'File & photo storage': 'ai',
-  'QuickBooks Online': 'ai',
-};
-
-function price(plan: PricingPlan, billing: BillingCycle): number {
-  return billing === 'annual' ? plan.annualMonthly : plan.monthly;
-}
-
-function paymentFee(plan: PricingPlan): string {
-  const digits = plan.paymentFeePct === 0.1 ? 1 : 2;
-  return `${plan.paymentFeePct.toFixed(digits)}%`;
-}
-
-function money(value: number): string {
-  return value.toLocaleString('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    maximumFractionDigits: 0,
-  });
-}
-
-function getPlan(planId: PlanId): PricingPlan {
-  const plan = PLANS.find((item) => item.id === planId);
-  if (!plan) throw new Error(`Unknown pricing plan: ${planId}`);
-  return plan;
-}
-
-function signupHref(plan: PlanId, billing: BillingCycle) {
-  return buildStartUrl({
-    goal: 'choose_plan',
-    plan: plan as 'flex' | 'starter' | 'growth' | 'scale',
-    billing: billing as 'monthly' | 'annual',
-    source: 'pricing',
-  });
-}
-
-function InfoBubble({ label, children }: { label: string; children: ReactNode }) {
-  const [open, setOpen] = useState(false);
-  const bubbleId = useId();
-  return (
-    <span className={styles.infoBubbleWrapper}>
-      <button
-        type="button"
-        className={styles.infoBubbleTrigger}
-        aria-label={`Learn more about ${label}`}
-        aria-expanded={open}
-        aria-controls={bubbleId}
-        onClick={() => setOpen((v) => !v)}
-      >
-        i
-      </button>
-      {open && (
-        <span id={bubbleId} className={styles.infoBubbleContent} role="tooltip">
-          {children}
-        </span>
-      )}
-    </span>
-  );
-}
+type UsageLevel = (typeof usageOptions)[number]['value'];
 
 export default function PricingExperience() {
-  // Billing default is Monthly (lower commitment comparison)
+  const [annualVolume, setAnnualVolume] = useState(75000);
+  const [officeUsers, setOfficeUsers] = useState(1);
+  const [crewUsers, setCrewUsers] = useState(0);
+  const [usageLevel, setUsageLevel] = useState<UsageLevel>('ongoing');
   const [billing, setBilling] = useState<BillingCycle>('monthly');
-
-  // Unified 3-Input Recommender State
-  const [recommenderTeam, setRecommenderTeam] = useState<'solo' | 'small' | 'growth' | 'scale'>('solo');
-  const [recommenderVolume, setRecommenderVolume] = useState<number>(75_000);
-  const [recommenderTexting, setRecommenderTexting] = useState<boolean>(true);
-
-  // Expanded Sections
-  const [showCalculator, setShowCalculator] = useState<boolean>(false);
-  const [comparisonCategory, setComparisonCategory] = useState<ComparisonCategory>('all');
-  const [showAllFaqs, setShowAllFaqs] = useState<boolean>(false);
-
-  // Derive seat count number from selection
-  const seatsNum = useMemo(() => {
-    switch (recommenderTeam) {
-      case 'solo': return 1;
-      case 'small': return 2;
-      case 'growth': return 5;
-      case 'scale': return 15;
-    }
-  }, [recommenderTeam]);
-
-  // Exact Dynamic Crossover Calculations
-  const crossovers = useMemo(() => {
-    const flex = PLANS[0];
-    const solo = PLANS[1];
-    const growth = PLANS[2];
-    const scale = PLANS[3];
+  const minimumUsageRank = usageOptions.find((option) => option.value === usageLevel)?.minimumRank ?? 0;
+  const planEstimates = plans.map((plan) => {
+    const annualFee = Math.round(annualVolume * 100 * plan.rate) / 100;
+    const canAddCrewSeats = CREW_USER_ADD_ON_AVAILABLE
+      && CREW_USER_ADD_ON_ELIGIBLE_PLANS.includes(plan.id);
+    const extraCrewUsers = canAddCrewSeats ? Math.max(0, crewUsers - plan.crewUsers) : 0;
+    const officeCapacityFits = officeUsers <= plan.officeUsers;
+    const crewCapacityFits = crewUsers <= plan.crewUsers || canAddCrewSeats;
+    const usageFits = plan.rank >= minimumUsageRank;
+    const eligible = officeCapacityFits && crewCapacityFits && usageFits;
+    const seatAddOnMonthly = extraCrewUsers * CREW_USER_ADD_ON_MONTHLY;
+    const subscriptionAnnual = (billing === 'annual' ? plan.annualBilled : plan.monthly * 12) + seatAddOnMonthly * 12;
+    const displayMonthly = billing === 'annual' ? plan.annualMonthly : plan.monthly;
     return {
-      flexToSolo: planCrossover(flex, solo, billing, false),
-      soloToGrowth: planCrossover(solo, growth, billing, false),
-      growthToScale: planCrossover(growth, scale, billing, false),
+      ...plan,
+      annualFee,
+      subscriptionAnnual,
+      displayMonthly,
+      monthlyWithSeats: displayMonthly + seatAddOnMonthly,
+      annualTotal: annualFee + subscriptionAnnual,
+      extraCrewUsers,
+      seatAddOnMonthly,
+      eligible,
     };
-  }, [billing]);
+  });
+  const ranking = rankPlanCosts(planEstimates.map((plan) => ({
+    planId: plan.id,
+    annualCost: plan.eligible ? plan.annualTotal : null,
+  })));
+  const recommendation = planEstimates.find((plan) => plan.id === ranking.winner?.planId) ?? planEstimates[planEstimates.length - 1];
+  const runnerUp = planEstimates.find((plan) => plan.id === ranking.runnerUp?.planId);
+  const annualSavings = runnerUp ? Math.max(0, runnerUp.annualTotal - recommendation.annualTotal) : 0;
+  const examplePayment = 5000;
+  const exampleLgqFee = examplePayment * recommendation.rate;
+  const exampleStripeFee = examplePayment * 0.029 + 0.30;
+  const examplePayout = examplePayment - exampleLgqFee - exampleStripeFee;
+  const checkoutUrl = (planId: PlanId) => {
+    const checkoutBilling = planId === 'flex' ? 'monthly' : billing;
+    return buildStartUrl({
+      goal: 'choose_plan',
+      plan: planId,
+      billing: checkoutBilling,
+      source: 'pricing',
+    });
+  };
+  const isScenarioSelected = (scenario: (typeof scenarios)[number]) =>
+    annualVolume === scenario.volume && officeUsers === scenario.office && crewUsers === scenario.crew && usageLevel === scenario.usage;
+  const clampVolume = (value: number) => Math.min(5000000, Math.max(0, Number.isFinite(value) ? value : 0));
+  const updateExactVolume = (value: number) => {
+    setAnnualVolume(Math.round(clampVolume(value)));
+  };
+  const updateSliderVolume = (value: number) => {
+    setAnnualVolume(Math.round(clampVolume(value) / 5000) * 5000);
+  };
+  const updateSeats = (kind: 'office' | 'crew', value: number) => {
+    if (kind === 'office') setOfficeUsers(Math.min(15, Math.max(1, value)));
+    else setCrewUsers(Math.min(75, Math.max(0, value)));
+  };
 
-  // Recommendation Engine Logic respecting billing cycle
-  const recommendation = useMemo(() => {
-    // 1. Minimum plan by seat capacity
-    let minPlanBySeats: PlanId = 'flex';
-    if (seatsNum > 5) minPlanBySeats = 'scale';
-    else if (seatsNum > 2) minPlanBySeats = 'growth';
-    else if (seatsNum > 1) minPlanBySeats = 'solo';
-    else minPlanBySeats = recommenderTexting ? 'solo' : 'flex';
-
-    // 2. Cost-based evaluation across eligible plans
-    let winnerId: PlanId = 'flex';
-    let reason = '';
-    let closestAlternative = '';
-    let crossoverNote = '';
-
-    const { flexToSolo, soloToGrowth, growthToScale } = crossovers;
-
-    if (minPlanBySeats === 'scale' || recommenderVolume >= growthToScale) {
-      winnerId = 'scale';
-      if (seatsNum > 5) {
-        reason = `You need ${seatsNum} team seats. Scale includes 15 office users, 50 crew users, and the lowest 0.1% platform fee.`;
-      } else {
-        reason = `At ${money(recommenderVolume)}/year collected, Scale's 0.1% platform fee saves more on processing than any other tier.`;
-      }
-      closestAlternative = billing === 'annual'
-        ? 'Growth ($99/mo billed annually + 0.25%, but higher fee on high volume)'
-        : 'Growth ($129/mo + 0.25%, but higher fee on high volume)';
-      crossoverNote = `Scale is the most cost-effective tier whenever annual collections exceed ${money(growthToScale)}.`;
-    } else if (minPlanBySeats === 'growth' || recommenderVolume >= soloToGrowth) {
-      winnerId = 'growth';
-      if (seatsNum > 2) {
-        reason = `You selected ${seatsNum} team seats and collect ~${money(recommenderVolume)}/year. Growth includes 5 office seats and a low 0.25% platform fee.`;
-      } else {
-        reason = `At ${money(recommenderVolume)}/year collected, Growth's 0.25% fee saves enough on processing to offset the base subscription.`;
-      }
-      closestAlternative = recommenderVolume < soloToGrowth
-        ? (billing === 'annual' ? 'Solo ($35/mo billed annually, max 2 office seats)' : 'Solo ($39/mo, max 2 office seats)')
-        : (billing === 'annual' ? `Scale ($299/mo billed annually, lowest 0.1% fee above ${money(growthToScale)}/yr)` : `Scale ($329/mo, lowest 0.1% fee above ${money(growthToScale)}/yr)`);
-      crossoverNote = recommenderVolume < growthToScale
-        ? `If your volume grows past ${money(growthToScale)}/year, Scale becomes lower overall cost.`
-        : `Growth is optimal for teams up to 5 office users under ${money(growthToScale)}/year.`;
-    } else if (minPlanBySeats === 'solo' || recommenderVolume >= flexToSolo || recommenderTexting) {
-      winnerId = 'solo';
-      if (recommenderTexting && recommenderVolume < flexToSolo) {
-        reason = `You need 2-way business texting & AI intake. Solo includes 500 monthly text credits and 2 office seats.`;
-      } else {
-        reason = `At ${money(recommenderVolume)}/year collected, Solo's 0.50% fee saves more on invoices than Flex's 1.25% rate.`;
-      }
-      closestAlternative = 'Flex ($0/mo base, 1.25% fee, starter credits only)';
-      crossoverNote = `If your collections exceed ${money(soloToGrowth)}/year, Growth's 0.25% fee becomes more economical.`;
-    } else {
-      winnerId = 'flex';
-      reason = `You have 1 user and collect under ${money(flexToSolo)}/year. Flex gives you a $0/mo base with 1.25% fee and zero fixed bills in slow months.`;
-      closestAlternative = billing === 'annual'
-        ? 'Solo ($35/mo billed annually with 0.50% fee & 500 texts/mo)'
-        : 'Solo ($39/mo with 0.50% fee & 500 texts/mo)';
-      crossoverNote = `If your collections grow beyond ${money(flexToSolo)}/year, Solo saves you money on fees.`;
-    }
-
-    const winner = getPlan(winnerId);
-    const annualTotalCost = annualPlanCost(winner, billing, recommenderVolume, false);
-    const monthlyEffective = Math.round(annualTotalCost / 12);
-    const fixedBaseMonthly = price(winner, billing);
-    const feeMonthly = Math.round((recommenderVolume * (winner.paymentFeePct / 100)) / 12);
-
-    return {
-      winner,
-      reason,
-      monthlyEffective,
-      fixedBaseMonthly,
-      feeMonthly,
-      closestAlternative,
-      crossoverNote,
-    };
-  }, [recommenderVolume, recommenderTexting, seatsNum, billing, crossovers]);
+  const heroSignupUrl = buildStartUrl({ goal: 'build_site', source: 'pricing' });
+  const footerSignupUrl = buildStartUrl({ goal: 'build_site', source: 'pricing_footer' });
 
   return (
-    <>
-      {/* 1. Pricing Hero with 2-Column Pricing Proof Card */}
-      <section className={styles.hero}>
-        <div className={styles.heroContainer}>
-          <div className={styles.heroTwoColGrid}>
-            {/* Left Column: Headline, Explanation & CTAs */}
-            <div className={styles.heroLeftCol}>
-              <p className={styles.heroEyebrow}>One connected system · Scalable pricing</p>
-              <h1>Start at $0. Lower your platform fee as you grow.</h1>
-              <p className={styles.heroLead}>
-                One connected system for your whole contracting business—from your custom website and instant quoting to
-                field dispatch and QuickBooks-synced payments.
-              </p>
+    <div className="lgq-pricing-v2">
+      <div className="site-shell">
+        <div className="ambient ambient-one" aria-hidden="true" />
+        <div className="ambient ambient-two" aria-hidden="true" />
+        <section className="hero" aria-labelledby="hero-title">
+        <div className="hero-copy">
+          <p className="eyebrow">
+            <span className="pulse-dot" aria-hidden="true" />
+            YOUR WHOLE BUSINESS · ONE CONNECTED SYSTEM
+          </p>
+          <h1 id="hero-title">
+            Your whole contracting business. <em>From $0/month.</em>
+          </h1>
+          <p className="hero-description">
+            From an AI-powered website and instant quoting to client texting, booking, invoices, payments, and QuickBooks sync—<em>everything connected from day one.</em>
+          </p>
 
-              <div className={styles.heroActions}>
-                <a className={styles.primaryButton} href="#plans">
-                  See plans &darr;
-                </a>
-                <a className={styles.secondaryButton} href="#recommender">
-                  Find my plan &rarr;
-                </a>
-              </div>
-
-              {/* Trust Signals Strip */}
-              <div className={styles.heroTrustSignals}>
-                <span>🔒 256-Bit SSL</span>
-                <span>💳 Stripe Certified</span>
-                <span>⚡ Cancel Anytime</span>
-                <span>🛡️ 30-Day Guarantee</span>
-              </div>
-            </div>
-
-            {/* Right Column: Pricing Proof Card */}
-            <div className={styles.heroRightCol}>
-              <div className={styles.pricingProofCard} role="region" aria-label="Pricing Promise & Proof">
-                <div className={styles.proofCardHeader}>
-                  <div>
-                    <span className={styles.proofBadge}>THE PRICING PROMISE</span>
-                    <strong className={styles.proofHeadline}>$0 Starting Base · Pay Less As You Grow</strong>
-                  </div>
-                  <span className={styles.proofPriceTag}>$0<small>/mo</small></span>
-                </div>
-
-                {/* Visual Fee Progression */}
-                <div className={styles.feeProgressionBar} aria-label="Platform Fee Progression">
-                  <div className={styles.progressionStep}>
-                    <span className={styles.stepPlan}>Flex</span>
-                    <strong className={styles.stepFee}>1.25%</strong>
-                  </div>
-                  <span className={styles.progressionArrow}>&rarr;</span>
-                  <div className={styles.progressionStep}>
-                    <span className={styles.stepPlan}>Solo</span>
-                    <strong className={styles.stepFee}>0.50%</strong>
-                  </div>
-                  <span className={styles.progressionArrow}>&rarr;</span>
-                  <div className={styles.progressionStep}>
-                    <span className={styles.stepPlan}>Growth</span>
-                    <strong className={styles.stepFee}>0.25%</strong>
-                  </div>
-                  <span className={styles.progressionArrow}>&rarr;</span>
-                  <div className={styles.progressionStep}>
-                    <span className={styles.stepPlan}>Scale</span>
-                    <strong className={styles.stepFee}>0.10%</strong>
-                  </div>
-                </div>
-
-                {/* 2x2 Benefits Grid */}
-                <div className={styles.proofBenefitsGrid}>
-                  <div className={styles.proofBenefitItem}>
-                    <span className={styles.proofCheck}>✓</span>
-                    <span>Free Contractor Website &amp; Custom Domain</span>
-                  </div>
-                  <div className={styles.proofBenefitItem}>
-                    <span className={styles.proofCheck}>✓</span>
-                    <span>Unlimited Core Records (Quotes, Jobs, Invoices)</span>
-                  </div>
-                  <div className={styles.proofBenefitItem}>
-                    <span className={styles.proofCheck}>✓</span>
-                    <span>1-Click QuickBooks Online 2-Way Sync</span>
-                  </div>
-                  <div className={styles.proofBenefitItem}>
-                    <span className={styles.proofCheck}>✓</span>
-                    <span>Next-Day Stripe Connect Bank Payouts</span>
-                  </div>
-                </div>
-
-                {/* The Complete Pricing Formula Box */}
-                <div className={styles.formulaBoxInner}>
-                  <span className={styles.formulaBadge}>The Complete Pricing Formula</span>
-                  <p className={styles.formulaText}>
-                    Your cost is the <strong>plan subscription</strong> plus an <strong>LGQ platform fee</strong> on eligible payments.
-                    Stripe processing is separate.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 2. Compact Plan & Price Summary (Immediately Below Hero) */}
-      <section className={styles.plansSection} id="plans">
-        <div className={styles.sectionHeaderSplit}>
-          <div>
-            <p className={styles.sectionEyebrow}>TRANSPARENT PLANS</p>
-            <h2>Simple, honest pricing for every stage.</h2>
-            <p>Every plan includes your website, unlimited core records, and QuickBooks sync.</p>
-          </div>
-
-          {/* Billing Cycle Toggle with Guarantee Badge */}
-          <div className={styles.billingToggleWrapper}>
-            <div className={styles.billingToggle} role="group" aria-label="Billing cycle">
-              <button
-                type="button"
-                className={billing === 'monthly' ? styles.billingActive : styles.billingInactive}
-                aria-pressed={billing === 'monthly'}
-                onClick={() => setBilling('monthly')}
-              >
-                Monthly billing
-              </button>
-              <button
-                type="button"
-                className={billing === 'annual' ? styles.billingActive : styles.billingInactive}
-                aria-pressed={billing === 'annual'}
-                onClick={() => setBilling('annual')}
-              >
-                Annual billing <span className={styles.savePill}>Save up to $360/yr</span>
-              </button>
-            </div>
-            {billing === 'annual' && (
-              <span className={styles.annualGuaranteeNotice}>
-                🛡️ 30-Day Money-Back Guarantee on Annual Prepayments
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* Social Proof & Results Banner */}
-        <div className={styles.contractorProofStrip}>
-          <div className={styles.proofStatItem}>
-            <strong>$24M+</strong>
-            <span>Contractor Quotes Processed</span>
-          </div>
-          <div className={styles.proofStatDivider} />
-          <div className={styles.proofStatItem}>
-            <strong>$2,100/yr</strong>
-            <span>Avg Saved vs Legacy CRMs</span>
-          </div>
-          <div className={styles.proofStatDivider} />
-          <div className={styles.proofStatItem}>
-            <strong>99.9%</strong>
-            <span>SMS &amp; Inbound Uptime</span>
-          </div>
-          <div className={styles.proofStatDivider} />
-          <div className={styles.proofStatItem}>
-            <strong>4.9 / 5.0</strong>
-            <span>Verified Contractor Satisfaction</span>
-          </div>
-        </div>
-
-        {/* Plan Cards Grid */}
-        <div className={styles.planCardGrid}>
-          {PLANS.map((plan) => {
-            const isMatch = recommendation.winner.id === plan.id;
-            const cardPrice = price(plan, billing);
-            const annualTotal = plan.annualMonthly * 12;
-            const annualSavings = (plan.monthly - plan.annualMonthly) * 12;
-
-            return (
-              <article
-                key={plan.id}
-                className={`${styles.planCard} ${plan.featured ? styles.planCardFeatured : ''} ${isMatch ? styles.planCardMatch : ''}`}
-              >
-                {isMatch && <span className={styles.matchRibbon}>Recommended Match</span>}
-                {plan.featured && !isMatch && <span className={styles.popularRibbon}>Most Popular</span>}
-
-                <div className={styles.planCardHeader}>
-                  <span className={styles.planAudienceTag}>{PLAN_AUDIENCE_TAGS[plan.id]}</span>
-                  <h3 className={styles.planName}>{plan.name}</h3>
-                  <p className={styles.planPromiseText}>{plan.promise}</p>
-                </div>
-
-                {/* Price and Explicit Commitment */}
-                <div className={styles.priceContainer}>
-                  <div className={styles.priceNumberRow}>
-                    <strong className={styles.priceBig}>${cardPrice}</strong>
-                    <span className={styles.priceCadence}>/month</span>
-                  </div>
-
-                  {plan.id === 'flex' ? (
-                    <p className={styles.commitmentText}>$0 monthly base · pay only when you get paid</p>
-                  ) : billing === 'annual' ? (
-                    <p className={styles.commitmentText}>
-                      ${annualTotal.toLocaleString()} billed annually — equivalent to ${plan.annualMonthly}/month{' '}
-                      <strong style={{ color: '#50e3bd' }}>(Save ${annualSavings}/yr)</strong>
-                    </p>
-                  ) : (
-                    <p className={styles.commitmentText}>${plan.monthly} month-to-month · cancel anytime</p>
-                  )}
-                </div>
-
-                {/* Platform Fee Callout */}
-                <div className={styles.feeCallout}>
-                  <span className={styles.feeLabel}>LGQ Platform Fee</span>
-                  <strong className={styles.feeValue}>{paymentFee(plan)}</strong>
-                  <InfoBubble label={`${plan.name} platform fee`}>
-                    Applied only to eligible payments successfully collected through LGQ. Stripe processing is separate.
-                  </InfoBubble>
-                </div>
-
-                {/* Included Capacity */}
-                <div className={styles.capacityBadge}>
-                  👥 <strong>{plan.officeUsers} Office</strong> + <strong>{plan.crewUsers} Crew</strong> users
-                </div>
-
-                {/* 3 Meaningful Differentiators */}
-                <ul className={styles.differentiatorList}>
-                  {CARD_DIFFERENTIATORS[plan.id].map((diff) => (
-                    <li key={diff}>
-                      <span className={styles.diffCheck}>✓</span>
-                      <span>{diff}</span>
-                    </li>
-                  ))}
-                </ul>
-
-                {/* Telecom activation disclosure note */}
-                <p className={styles.cardTelecomDisclaimer}>
-                  *10DLC carrier registration, campaign vetting, and dedicated phone number rental are separate telecom fees paid directly to carriers.
-                </p>
-
-                {/* Single Contextual CTA */}
-                <a
-                  href={signupHref(plan.id, billing)}
-                  className={plan.featured || isMatch ? styles.primaryButton : styles.planButton}
-                  style={{ width: '100%', marginTop: 'auto' }}
-                >
-                  {plan.id === 'flex' ? 'Start with Flex' : `Choose ${plan.name}`} &rarr;
-                </a>
-              </article>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* 3. One Guided Plan Recommender */}
-      <section className={styles.recommenderSection} id="recommender">
-        <div className={styles.sectionHeader}>
-          <p className={styles.sectionEyebrow}>ONE GUIDED RECOMMENDER</p>
-          <h2>Which plan fits your business?</h2>
-          <p>Answer 3 quick questions to calculate your exact fees and match the right team capacity.</p>
-        </div>
-
-        {/* Quick Scenario Preset Chips */}
-        <div className={styles.presetChips} role="group" aria-label="Quick preset scenarios">
-          <span className={styles.presetLabel}>Quick scenarios:</span>
-          {RECOMMENDER_PRESETS.map((preset) => {
-            const isMatch =
-              recommenderTeam === preset.teamSize &&
-              recommenderVolume === preset.volume &&
-              recommenderTexting === preset.needsTexting;
-            return (
-              <button
-                key={preset.label}
-                type="button"
-                className={isMatch ? styles.presetChipActive : styles.presetChip}
-                onClick={() => {
-                  setRecommenderTeam(preset.teamSize);
-                  setRecommenderVolume(preset.volume);
-                  setRecommenderTexting(preset.needsTexting);
-                }}
-              >
-                <strong>{preset.label}</strong>
-                <small>{preset.sublabel}</small>
-              </button>
-            );
-          })}
-        </div>
-
-        <div className={styles.recommenderGrid}>
-          {/* 3 Decision Inputs */}
-          <div className={styles.recommenderInputsCard}>
-            <h3 className={styles.recommenderInputTitle}>1. Team &amp; Office Users</h3>
-            <div className={styles.inputOptionGroup} role="radiogroup" aria-label="Team size">
-              <button
-                type="button"
-                className={recommenderTeam === 'solo' ? styles.optionBtnActive : styles.optionBtn}
-                aria-checked={recommenderTeam === 'solo'}
-                role="radio"
-                onClick={() => setRecommenderTeam('solo')}
-              >
-                <strong>1 User</strong>
-                <small>Solo Operator</small>
-              </button>
-              <button
-                type="button"
-                className={recommenderTeam === 'small' ? styles.optionBtnActive : styles.optionBtn}
-                aria-checked={recommenderTeam === 'small'}
-                role="radio"
-                onClick={() => setRecommenderTeam('small')}
-              >
-                <strong>2–3 Users</strong>
-                <small>Small Office</small>
-              </button>
-              <button
-                type="button"
-                className={recommenderTeam === 'growth' ? styles.optionBtnActive : styles.optionBtn}
-                aria-checked={recommenderTeam === 'growth'}
-                role="radio"
-                onClick={() => setRecommenderTeam('growth')}
-              >
-                <strong>4–8 Users</strong>
-                <small>Growing Crew</small>
-              </button>
-              <button
-                type="button"
-                className={recommenderTeam === 'scale' ? styles.optionBtnActive : styles.optionBtn}
-                aria-checked={recommenderTeam === 'scale'}
-                role="radio"
-                onClick={() => setRecommenderTeam('scale')}
-              >
-                <strong>9+ Users</strong>
-                <small>High Volume</small>
-              </button>
-            </div>
-
-            <h3 className={styles.recommenderInputTitle} style={{ marginTop: '24px' }}>
-              2. Annual Payments Collected via LGQ
-            </h3>
-            <div className={styles.volumeDisplayRow}>
-              <strong className={styles.volumeAmount}>{money(recommenderVolume)} / year</strong>
-              <span className={styles.volumeMonthlyEquiv}>~{money(recommenderVolume / 12)} / month</span>
-            </div>
-            <input
-              type="range"
-              min={10_000}
-              max={2_500_000}
-              step={10_000}
-              value={recommenderVolume}
-              onChange={(e) => setRecommenderVolume(Number(e.target.value))}
-              className={styles.volumeSlider}
-              aria-label="Annual payments collected"
-            />
-            <div className={styles.sliderTickMarks}>
-              <span onClick={() => setRecommenderVolume(40_000)}>$40k</span>
-              <span onClick={() => setRecommenderVolume(150_000)}>$150k</span>
-              <span onClick={() => setRecommenderVolume(350_000)}>$350k</span>
-              <span onClick={() => setRecommenderVolume(600_000)}>$600k</span>
-              <span onClick={() => setRecommenderVolume(1_500_000)}>$1.5M+</span>
-            </div>
-
-            <h3 className={styles.recommenderInputTitle} style={{ marginTop: '24px' }}>
-              3. Business Texting &amp; AI Intake
-            </h3>
-            <div className={styles.inputOptionGroup} role="radiogroup" aria-label="Messaging needs">
-              <button
-                type="button"
-                className={!recommenderTexting ? styles.optionBtnActive : styles.optionBtn}
-                aria-checked={!recommenderTexting}
-                role="radio"
-                onClick={() => setRecommenderTexting(false)}
-              >
-                <strong>Starter Credits</strong>
-                <small>Standard web quote form only</small>
-              </button>
-              <button
-                type="button"
-                className={recommenderTexting ? styles.optionBtnActive : styles.optionBtn}
-                aria-checked={recommenderTexting}
-                role="radio"
-                onClick={() => setRecommenderTexting(true)}
-              >
-                <strong>2-Way Texting &amp; AI Intake</strong>
-                <small>Automated text &amp; instant AI estimates</small>
-              </button>
-            </div>
-          </div>
-
-          {/* Unified Recommendation Result Card */}
-          <div className={styles.recommenderResultCard}>
-            <div className={styles.resultHeader}>
-              <span className={styles.resultBadge}>★ Recommended Fit</span>
-              <h3 className={styles.resultHeadline}>{recommendation.winner.name} fits your business</h3>
-              <p className={styles.resultReason}>{recommendation.reason}</p>
-            </div>
-
-            <div className={styles.resultCostBlock}>
-              <div className={styles.resultCostMain}>
-                <span className={styles.costLabel}>Estimated LGQ Monthly Cost</span>
-                <strong className={styles.costValue}>~{money(recommendation.monthlyEffective)}<small>/mo</small></strong>
-              </div>
-              <div className={styles.resultCostBreakdown}>
-                <div>
-                  <span>Base Subscription</span>
-                  <strong>${recommendation.fixedBaseMonthly}/mo</strong>
-                </div>
-                <div>
-                  <span>LGQ Platform Fee</span>
-                  <strong>{paymentFee(recommendation.winner)} (~{money(recommendation.feeMonthly)}/mo)</strong>
-                </div>
-              </div>
-              <small className={styles.costExclusionDisclaimer}>
-                *Stripe processing, carrier registration, phone-number rental, and applicable taxes are excluded.
-              </small>
-            </div>
-
-            <div className={styles.resultInsights}>
-              <div className={styles.insightItem}>
-                <span className={styles.insightLabel}>Closest Alternative:</span>
-                <p className={styles.insightValue}>{recommendation.closestAlternative}</p>
-              </div>
-              <div className={styles.insightItem}>
-                <span className={styles.insightLabel}>Crossover Insight:</span>
-                <p className={styles.insightValue}>{recommendation.crossoverNote}</p>
-              </div>
-            </div>
-
-            <a
-              href={signupHref(recommendation.winner.id, billing)}
-              className={styles.resultCtaButton}
-            >
-              {recommendation.winner.id === 'flex' ? 'Start Free on Flex' : `Continue with ${recommendation.winner.name}`} &rarr;
+          <div className="hero-actions">
+            <a className="button button-primary" href={heroSignupUrl}>
+              Start free — $0/month <span aria-hidden="true">→</span>
+            </a>
+            <a className="button button-secondary" href="#calculator">
+              Calculate my best plan <span aria-hidden="true">↓</span>
             </a>
           </div>
-        </div>
-      </section>
 
-      {/* 4. What Every Plan Includes */}
-      <section className={styles.includedSection} id="included">
-        <div className={styles.includedHeader}>
-          <p className={styles.sectionEyebrow}>INCLUDED ON EVERY PLAN</p>
-          <h2>No Nickel-and-Diming for Core Business Tools</h2>
-        </div>
+          <ul className="assurances" aria-label="Included with every plan">
+            <li>Website included</li>
+            <li>Unlimited core records</li>
+            <li>QuickBooks sync</li>
+          </ul>
 
-        <div className={styles.includedGrid}>
-          <div className={styles.includedCard}>
-            <span className={styles.includedIcon}>📋</span>
-            <strong>Unlimited Core Records</strong>
-            <p>Leads, customers, job history, quotes, invoices, and standard quote forms stay unlimited on every plan.</p>
-          </div>
-          <div className={styles.includedCard}>
-            <span className={styles.includedIcon}>🌐</span>
-            <strong>Free Contractor Website</strong>
-            <p>Connect your custom domain with fast mobile SEO, instant estimate intake, and customer self-booking.</p>
-          </div>
-          <div className={styles.includedCard}>
-            <span className={styles.includedIcon}>⚡</span>
-            <strong>QuickBooks Online Sync</strong>
-            <p>1-Click bi-directional synchronization for invoices, line items, customers, and payments reconciliation.</p>
-          </div>
-          <div className={styles.includedCard}>
-            <span className={styles.includedIcon}>💳</span>
-            <strong>Stripe Certified Payments</strong>
-            <p>Bank-grade direct deposits, Apple Pay / Google Pay, card-on-file, and automated review collection.</p>
-          </div>
-        </div>
-      </section>
-
-      {/* 5. Optional Cost Calculator & Payment Example */}
-      <div id="savings-calculator" style={{ scrollMarginTop: '80px' }} />
-      <section className={styles.calculatorSection} id="calculator">
-        <div className={styles.sectionHeaderSplit}>
-          <div>
-            <p className={styles.sectionEyebrow}>INTERACTIVE MATH &amp; EXAMPLES</p>
-            <h2>Run your custom payment scenarios</h2>
-            <p>See exactly how platform fees and subscriptions compare across all 4 plans as your revenue scales.</p>
-          </div>
-          <button
-            type="button"
-            className={styles.secondaryButton}
-            onClick={() => setShowCalculator((v) => !v)}
-            aria-expanded={showCalculator}
-            aria-controls="pricing-calculator-section"
-          >
-            {showCalculator ? 'Collapse calculator ▲' : 'Open interactive calculator ▼'}
-          </button>
-        </div>
-
-        {/* Real-World Payment Math Example */}
-        <div className={styles.paymentExampleCard}>
-          <div className={styles.exampleHeader}>
-            <span className={styles.exampleBadge}>Real-World Payment Example</span>
-            <strong>How fees work on a $5,000 completed customer job</strong>
-          </div>
-          <div className={styles.exampleCols}>
-            <div className={styles.exampleColItem}>
-              <span className={styles.exampleColLabel}>Customer Pays</span>
-              <strong className={styles.exampleColVal}>$5,000.00</strong>
-              <small>Credit card or Apple Pay</small>
-            </div>
-            <span className={styles.exampleMathOp}>&minus;</span>
-            <div className={styles.exampleColItem}>
-              <span className={styles.exampleColLabel}>LGQ Fee on Growth (0.25%)</span>
-              <strong className={styles.exampleColVal} style={{ color: '#ffd166' }}>$12.50</strong>
-              <small>0.25% platform fee</small>
-            </div>
-            <span className={styles.exampleMathOp}>&minus;</span>
-            <div className={styles.exampleColItem}>
-              <span className={styles.exampleColLabel}>Stripe Processing (2.9% + 30¢)</span>
-              <strong className={styles.exampleColVal} style={{ color: '#9db0bd' }}>$145.30</strong>
-              <small>Standard card processing</small>
-            </div>
-            <span className={styles.exampleMathOp}>=</span>
-            <div className={styles.exampleColItemFeatured}>
-              <span className={styles.exampleColLabel}>Your Direct Bank Payout</span>
-              <strong className={styles.exampleColValFeatured}>$4,842.20</strong>
-              <small style={{ color: '#50e3bd' }}>Next-day bank deposit</small>
-            </div>
-          </div>
-        </div>
-
-        {showCalculator && (
-          <div id="pricing-calculator-section" className={styles.calculatorWrapper}>
-            <PricingCalculator
-              billing={billing}
-              volume={recommenderVolume}
-              officeUsers={seatsNum}
-              onBillingChange={(b) => setBilling(b)}
-              onVolumeChange={(v) => setRecommenderVolume(v)}
-              onOfficeUsersChange={(u) => {
-                if (u <= 1) setRecommenderTeam('solo');
-                else if (u <= 3) setRecommenderTeam('small');
-                else if (u <= 8) setRecommenderTeam('growth');
-                else setRecommenderTeam('scale');
-              }}
-            />
-          </div>
-        )}
-      </section>
-
-      {/* 6. Detailed Feature Comparison & Allowances */}
-      <section className={styles.compareSection} id="comparison">
-        <details className={styles.disclosure}>
-          <summary className={styles.disclosureSummary}>
+          <div className="momentum-note" aria-label="Start free and scale when ready">
+            <span aria-hidden="true">↗</span>
             <div>
-              <span className={styles.sectionEyebrow}>DETAILED ALLOWANCES</span>
-              <h3 style={{ margin: '4px 0 0', fontSize: '20px', color: '#ffffff' }}>
-                Full feature comparison &amp; plan limits
-              </h3>
-              <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#9db0bd' }}>
-                Click to inspect line-by-line allowances, team seats, messaging credits, and optional add-ons.
-              </p>
+              <strong>Start free. Keep the momentum.</strong>
+              <small>Your tools stay connected as the work picks up.</small>
             </div>
-            <span className={styles.disclosurePlus}>+</span>
-          </summary>
+          </div>
+        </div>
 
-          <div className={styles.disclosureBody}>
-            <div className={styles.categoryTabs} role="tablist" aria-label="Feature categories">
-              {COMPARISON_CATEGORIES.map((cat) => (
-                <button
-                  key={cat.id}
-                  type="button"
-                  role="tab"
-                  aria-selected={comparisonCategory === cat.id}
-                  className={comparisonCategory === cat.id ? styles.categoryTabActive : styles.categoryTab}
-                  onClick={() => setComparisonCategory(cat.id)}
-                >
-                  {cat.label}
-                </button>
+        <div className="pricing-visual" aria-label="Flex Seasonal followed by the Solo, Growth and Scale subscription plans">
+          <div className="visual-orbit orbit-one" aria-hidden="true" />
+          <div className="visual-orbit orbit-two" aria-hidden="true" />
+          <div className="visual-heading">
+            <div>
+              <span className="visual-kicker"><i aria-hidden="true" /> PLANS THAT FIT THE SEASON</span>
+              <h2>Start flexible. Subscribe when it pays.</h2>
+            </div>
+            <div className="starting-price">
+              <strong>$0</strong>
+              <span>/mo to start</span>
+            </div>
+          </div>
+
+          <div className="activity-strip" aria-label="Example business activity">
+            {activity.map((item) => (
+              <div className={`activity-event tone-${item.tone}`} key={item.label}>
+                <span className="activity-mark" aria-hidden="true">{item.symbol}</span>
+                <div>
+                  <small>{item.label}</small>
+                  <strong>{item.value}</strong>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="plan-architecture">
+            <article className="flex-plan-card">
+              <div className="plan-card-heading">
+                <span>FLEX / SEASONAL</span>
+                <i>PAY AS YOU GO</i>
+              </div>
+              <div className="flex-base-price"><strong>$0</strong><span>/month</span></div>
+              <p><span className="flex-rate">1.25% LGQ platform fee</span>No monthly subscription. Pay the platform fee only on the eligible service subtotal.</p>
+            </article>
+
+            <div className="plan-bridge" aria-hidden="true">
+              <span>UPGRADE <br />WHEN IT PAYS</span>
+              <i>→</i>
+            </div>
+
+            <div className="subscription-group">
+              <div className="subscription-heading">
+                <span>SUBSCRIPTION PLANS</span>
+                <small>LOWER FIXED FEES</small>
+              </div>
+              {plans.filter((plan) => plan.id !== 'flex').map((plan) => (
+                <article className={`subscription-plan plan-${plan.id}`} key={`graphic-${plan.id}`}>
+                  <div><span>{plan.name}</span><small>{plan.audience}</small></div>
+                  <strong>${plan.monthly}<small>/mo</small></strong>
+                  <em>{plan.fee}<small> fee</small></em>
+                </article>
               ))}
             </div>
-
-            <div className={styles.tableScroll} tabIndex={0}>
-              <table className={styles.comparisonTable}>
-                <caption className={styles.srOnly}>Detailed comparison of Flex, Solo, Growth, and Scale</caption>
-                <thead>
-                  <tr>
-                    <th scope="col">Feature</th>
-                    {PLANS.map((plan) => (
-                      <th scope="col" key={plan.id}>
-                        {plan.name}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {COMPARISON_ROWS.filter(([label]) => {
-                    if (comparisonCategory === 'all') return true;
-                    return ROW_CATEGORY_MAP[label] === comparisonCategory;
-                  }).map(([label, ...values]) => (
-                    <tr key={label}>
-                      <th scope="row">{label}</th>
-                      {values.map((val, idx) => (
-                        <td key={`${label}-${PLANS[idx].id}`}>{val}</td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Margin-safe Top-ups */}
-            <div style={{ marginTop: '28px' }}>
-              <h4 style={{ fontSize: '16px', color: '#ffd166', margin: '0 0 8px' }}>
-                Optional Usage Top-Ups (Margin-Safe &amp; Opt-in Only)
-              </h4>
-              <p style={{ fontSize: '13px', color: '#9db0bd', margin: '0 0 14px' }}>
-                No surprise overages — extra usage is off unless you switch it on and set your own spending limit, at a price you see before you pay.
-              </p>
-              <div className={styles.addOnList}>
-                {ADD_ONS.map((item) => (
-                  <div key={item.label} className={styles.addOnItem}>
-                    <span>
-                      <strong>{item.label}</strong>
-                      <small style={{ display: 'block', color: '#9db0bd', fontSize: '12px' }}>{item.eligibility}</small>
-                    </span>
-                    <b style={{ color: '#50e3bd' }}>{item.price}</b>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Competitor Benchmarking Link */}
-            <div className={styles.competitorLinkBanner}>
-              <div>
-                <strong>Want to see how Let&apos;s Get Quoted compares to Jobber, Housecall Pro, or ServiceTitan?</strong>
-                <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#9db0bd' }}>
-                  View transparent competitor list pricing and side-by-side feature breakdowns on our comparison hub.
-                </p>
-              </div>
-              <Link href="/compare" className={styles.secondaryButton}>
-                See Competitor Comparisons &rarr;
-              </Link>
-            </div>
           </div>
+
+          <div className="connected-core">
+            <div>
+              <span>Website</span>
+              <span>Quotes</span>
+              <span>Jobs</span>
+              <span>Invoices</span>
+              <span>Payments</span>
+            </div>
+            <strong>Full Contractor Business Platform</strong>
+          </div>
+
+          <p className="pricing-formula">
+            LGQ platform fee applies to the discount-adjusted eligible service subtotal. Subscription and Stripe processing are separate.
+          </p>
+        </div>
+      </section>
+
+      <section className="trust-strip" aria-label="Support, security and plan flexibility">
+        <p>BUILT FOR CONTRACTOR CONFIDENCE</p>
+        <div className="trust-card-text-only"><span>Dedicated trade desk<br /><b>US-based phone &amp; chat support</b></span></div>
+        <div className="trust-card-text-only"><span>Protected in transit<br /><b>HTTPS + TLS 1.3</b></span></div>
+        <div><strong>PCI</strong><span>Payments powered by Stripe<br /><b>PCI DSS Level 1 provider</b></span></div>
+        <div><strong>FLEX</strong><span>Plan flexibility<br /><b>Upgrade now · downgrade at renewal</b></span></div>
+      </section>
+
+      <section className="page-section calculator-section" id="calculator" aria-labelledby="calculator-title">
+        <span className="anchor-target" id="recommender" aria-hidden="true" />
+        <span className="anchor-target" id="savings-calculator" aria-hidden="true" />
+        <div className="calculator-intro">
+          <p className="section-kicker">ONE GUIDED RECOMMENDER</p>
+          <h2 id="calculator-title">Find the plan that actually fits.</h2>
+          <p>Match the right team capacity, messaging allowance and payment fee—not merely the lowest subscription.</p>
+
+          <div className="scenario-presets" aria-label="Quick contractor scenarios">
+            {scenarios.map((scenario) => (
+              <button
+                className={isScenarioSelected(scenario) ? 'selected' : ''}
+                type="button"
+                key={scenario.label}
+                aria-pressed={isScenarioSelected(scenario)}
+                onClick={() => {
+                  setAnnualVolume(scenario.volume);
+                  setOfficeUsers(scenario.office);
+                  setCrewUsers(scenario.crew);
+                  setUsageLevel(scenario.usage);
+                }}
+              >
+                <strong>{scenario.label}</strong><span>{scenario.detail}</span>
+              </button>
+            ))}
+          </div>
+
+          <fieldset className="seat-picker">
+            <legend>1. Team capacity</legend>
+            <div className="seat-picker-grid">
+              <div className="seat-counter">
+                <span>Office / admin users</span>
+                <div>
+                  <button type="button" aria-label="Remove one office user" onClick={() => updateSeats('office', officeUsers - 1)}>−</button>
+                  <output aria-label={`${officeUsers} office ${officeUsers === 1 ? 'user' : 'users'}`}>{officeUsers}</output>
+                  <button type="button" aria-label="Add one office user" onClick={() => updateSeats('office', officeUsers + 1)}>+</button>
+                </div>
+                <small>Choose a plan with enough included office seats.</small>
+              </div>
+              <div className="seat-counter">
+                <span>Crew-only users</span>
+                <div>
+                  <button type="button" aria-label="Remove one crew user" onClick={() => updateSeats('crew', crewUsers - 1)}>−</button>
+                  <output aria-label={`${crewUsers} crew ${crewUsers === 1 ? 'user' : 'users'}`}>{crewUsers}</output>
+                  <button type="button" aria-label="Add one crew user" onClick={() => updateSeats('crew', crewUsers + 1)}>+</button>
+                </div>
+                <small>Extra crew seats on Solo+ are $5/month each.</small>
+              </div>
+            </div>
+          </fieldset>
+
+          <div className="calculator-control">
+            <div className="control-label">
+              <label htmlFor="volume-exact">2. Annual eligible service subtotal collected through LGQ</label>
+              <div className="volume-input">
+                <span aria-hidden="true">$</span>
+                <input
+                  id="volume-exact"
+                  type="text"
+                  inputMode="numeric"
+                  value={money.format(annualVolume)}
+                  aria-label="Exact annual eligible service subtotal"
+                  onChange={(event) => updateExactVolume(Number(event.target.value.replace(/\D/g, '')))}
+                />
+                <small>/year</small>
+              </div>
+            </div>
+            <input
+              id="volume"
+              type="range"
+              min="0"
+              max="5000000"
+              step="5000"
+              value={annualVolume}
+              aria-label="Annual eligible service subtotal collected through LGQ"
+              onChange={(event) => updateSliderVolume(Number(event.target.value))}
+              style={{ '--range-progress': `${annualVolume / 50000}%` } as CSSProperties}
+            />
+            <div className="range-labels"><span>$0</span><span>≈ ${money.format(annualVolume / 12)}/month</span><span>$5M+</span></div>
+          </div>
+
+          <fieldset className="messaging-picker">
+            <legend>3. Monthly messaging and AI usage</legend>
+            {usageOptions.map((option) => (
+              <button
+                className={usageLevel === option.value ? 'selected' : ''}
+                type="button"
+                key={option.value}
+                onClick={() => setUsageLevel(option.value)}
+                aria-pressed={usageLevel === option.value}
+              >
+                <strong>{option.label}</strong><span>{option.detail}</span>
+              </button>
+            ))}
+          </fieldset>
+
+          <div className="billing-toggle" role="group" aria-label="Billing cycle">
+            <button className={billing === 'monthly' ? 'selected' : ''} type="button" onClick={() => setBilling('monthly')} aria-pressed={billing === 'monthly'}>Monthly billing</button>
+            <button className={billing === 'annual' ? 'selected' : ''} type="button" onClick={() => setBilling('annual')} aria-pressed={billing === 'annual'}>Annual billing <span>Save up to $360/yr</span></button>
+          </div>
+
+          <div className="plan-price-strip" aria-label="Monthly subscription prices">
+            {planEstimates.map((plan) => (
+              <div key={`price-${plan.id}`}>
+                <span>{plan.shortName}</span>
+                <strong>{plan.displayMonthly === 0 ? '$0' : `$${plan.displayMonthly}`}<small>/mo</small></strong>
+                <em>{plan.fee} fee</em>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="calculator-results">
+          <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+            Recommended plan: {recommendation.name}. Estimated annual LGQ cost ${money.format(recommendation.annualTotal)}.
+          </p>
+          <div className="result-topline"><span>YOUR LIVE RECOMMENDATION</span><i><b />CALCULATED</i></div>
+          <article className="result-primary">
+            <span>Best cost among plans that fit your capacity</span>
+            <strong className="result-plan-name">{recommendation.name}</strong>
+            <small>{recommendation.monthlyWithSeats === 0 ? '$0/month' : `$${recommendation.monthlyWithSeats}/month`} · {recommendation.fee} platform fee · {recommendation.officeUsers} office + {recommendation.crewUsers} crew included</small>
+            <a className="result-cta" href={checkoutUrl(recommendation.id)}>Continue with {recommendation.shortName} <span aria-hidden="true">→</span></a>
+            {billing === 'annual' && recommendation.annualBilled > 0 && (
+              <small className="result-billing-note"><strong>${money.format(recommendation.annualBilled)} base plan billed today.</strong> Crew-seat add-ons renew monthly.</small>
+            )}
+          </article>
+          <div className="result-grid">
+            <article>
+              <span>Estimated annual LGQ cost</span>
+              <strong>${money.format(recommendation.annualTotal)}</strong>
+              <small>base subscription + crew seats + LGQ platform fee</small>
+            </article>
+            <article>
+              <span>Included plan capacity</span>
+              <strong>{recommendation.textAllowance}</strong>
+              <small>{recommendation.aiAllowance} · {recommendation.storage}</small>
+            </article>
+          </div>
+          <div className="plan-comparison-list">
+            {planEstimates.map((plan) => (
+              <div className={plan.id === recommendation.id ? 'recommended' : !plan.eligible ? 'not-eligible' : ''} key={`estimate-${plan.id}`}>
+                <span>{plan.shortName}</span>
+                <i>{plan.monthlyWithSeats === 0 ? '$0/mo' : `$${plan.monthlyWithSeats}/mo`} + {plan.fee}</i>
+                <strong>{!plan.eligible ? 'does not fit' : `$${money.format(plan.annualTotal)}/yr`}</strong>
+              </div>
+            ))}
+          </div>
+          <div className="result-message">
+            <span aria-hidden="true">↗</span>
+            <p><strong>{recommendation.name} fits your office seats, crew and usage.</strong> {recommendation.extraCrewUsers > 0 ? `Estimate includes ${recommendation.extraCrewUsers} extra crew seat${recommendation.extraCrewUsers === 1 ? '' : 's'} at $5/month each. ` : ''}{annualSavings > 0 ? `It saves about $${money.format(annualSavings)} per year versus the next-lowest plan that also fits.` : 'It is the first plan with enough included office capacity.'}</p>
+          </div>
+
+          <div className="payment-waterfall">
+            <div><span>REAL-WORLD PAYMENT EXAMPLE</span><strong>$5,000 eligible service subtotal paid by card</strong></div>
+            <dl>
+              <div><dt>Eligible service subtotal</dt><dd>$5,000.00</dd></div>
+              <div><dt>LGQ fee on {recommendation.shortName} ({recommendation.fee})</dt><dd>−${exampleLgqFee.toFixed(2)}</dd></div>
+              <div><dt>Stripe example (2.9% + 30¢)</dt><dd>−${exampleStripeFee.toFixed(2)}</dd></div>
+              <div className="payout"><dt>Estimated bank payout</dt><dd>${examplePayout.toFixed(2)}</dd></div>
+            </dl>
+            <p>LGQ fees exclude separately stated sales tax, tips, refunds and credits. Stripe pricing may vary. Carrier and phone-number fees are separate.</p>
+          </div>
+        </div>
+      </section>
+
+      <section className="page-section tier-section" id="plans" aria-labelledby="tiers-title">
+        <div className="section-heading">
+          <p className="section-kicker">CORE PLATFORM · CAPACITY THAT SCALES</p>
+          <h2 id="tiers-title">Choose the capacity that fits the work.</h2>
+          <p>Every plan includes the full contractor business platform. Seats, messaging, AI allowances and storage scale with your operation.</p>
+        </div>
+
+        <div className="proof-metrics" aria-label="Verified plan facts">
+          <div><strong>$0</strong><span>Monthly base price on Flex</span></div>
+          <div><strong>0.10%</strong><span>Lowest LGQ platform fee</span></div>
+          <div><strong>Unlimited</strong><span>Core business records</span></div>
+          <div><strong>1 + 1</strong><span>Domain and QuickBooks connection</span></div>
+        </div>
+
+        <div className="plans-billing-bar">
+          <span>Show plan pricing:</span>
+          <div className="billing-toggle" role="group" aria-label="Plan card billing cycle">
+            <button className={billing === 'monthly' ? 'selected' : ''} type="button" onClick={() => setBilling('monthly')} aria-pressed={billing === 'monthly'}>Monthly</button>
+            <button className={billing === 'annual' ? 'selected' : ''} type="button" onClick={() => setBilling('annual')} aria-pressed={billing === 'annual'}>Annual <span>Save up to $360</span></button>
+          </div>
+        </div>
+
+        <div className="tier-grid">
+          {planEstimates.map((plan, index) => (
+            <article className={`tier-card ${plan.id === recommendation.id ? 'tier-card-featured' : ''}`} key={`detail-${plan.id}`}>
+              <div className="tier-card-topline"><span>0{index + 1}</span>{plan.id === recommendation.id ? <i>YOUR RECOMMENDED FIT</i> : plan.id === 'growth' ? <i>MOST POPULAR</i> : null}</div>
+              <p>{plan.name}</p>
+              <strong>{plan.displayMonthly === 0 ? '$0' : `$${plan.displayMonthly}`}</strong>
+              <small>/month</small>
+              {billing === 'annual' && plan.annualBilled > 0 && <small className="annual-note">${money.format(plan.annualBilled)} billed today · save ${plan.annualSavings}/yr</small>}
+              <em>+ {plan.fee} LGQ platform fee</em>
+              <b>{plan.audience}</b>
+              <ul className="plan-allowances">
+                <li>{plan.officeUsers} office + {plan.crewUsers} crew users</li>
+                <li>{plan.textAllowance}</li>
+                <li>{plan.aiAllowance}</li>
+                <li>{plan.storage} storage</li>
+              </ul>
+              <a href={checkoutUrl(plan.id)}>{plan.id === 'flex' ? 'Start with Flex' : `Choose ${plan.shortName}`} <span aria-hidden="true">→</span></a>
+            </article>
+          ))}
+        </div>
+        <p className="tier-disclosure">Every plan includes unlimited leads, clients, quotes, jobs, invoices and standard quote-form submissions, plus one custom-domain and one QuickBooks Online connection. Flex balances are one-time; paid-plan allowances reset monthly and do not roll over. No surprise overages: extra usage is off by default and only activates if you switch it on and set a spending limit. Carrier registration, dedicated-number lease, Stripe processing, taxes and top-ups are separate.</p>
+
+        <details className="full-comparison" id="comparison">
+          <summary>View the full plan allowance comparison <span aria-hidden="true">+</span></summary>
+          <div className="comparison-table-wrap" tabIndex={0}>
+            <table>
+              <caption>Detailed comparison of Flex, Solo, Growth and Scale</caption>
+              <thead>
+                <tr><th scope="col">Plan detail</th>{plans.map((plan) => <th scope="col" key={`heading-${plan.id}`}>{plan.shortName}</th>)}</tr>
+              </thead>
+              <tbody>
+                {COMPARISON_ROWS.map(([label, ...values]) => (
+                  <tr key={label}>
+                    <th scope="row">{label}</th>
+                    {values.map((value, index) => <td key={`${label}-${plans[index].id}`}>{value}</td>)}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p>Additional crew seats on Solo, Growth and Scale are $5/month each and renew until canceled. Additional office seats are not currently available.</p>
         </details>
       </section>
 
-      {/* 7. Short FAQ (Top 6 Purchasing Questions) & Final CTA */}
-      <section className={styles.faqSection} id="faq">
-        <div className={styles.sectionHeader}>
-          <p className={styles.sectionEyebrow}>FREQUENTLY ASKED QUESTIONS</p>
-          <h2>Questions contractors ask before starting</h2>
-          <p>Clear answers without the sales runaround.</p>
+      <section className="page-section included-section" id="included" aria-labelledby="included-title">
+        <div className="included-heading">
+          <div className="section-heading">
+            <p className="section-kicker">FULL CONTRACTOR PLATFORM · EVERY PLAN</p>
+            <h2 id="included-title">The foundation stays with you.</h2>
+          </div>
+          <p>Your website, unlimited core records and QuickBooks connection stay together. Included seats and monthly usage allowances expand by plan.</p>
         </div>
 
-        <div className={styles.faqGrid}>
-          {(showAllFaqs ? PRICING_FAQS : PRICING_FAQS.slice(0, 6)).map((item) => (
-            <details key={item.q} className={styles.faqItem}>
-              <summary className={styles.faqSummary}>
-                <span>{item.q}</span>
-                <span className={styles.faqIcon}>+</span>
-              </summary>
-              <p className={styles.faqAnswer}>{item.a}</p>
-            </details>
+        <div className="product-stage product-real-stage">
+          <figure>
+            <Image src="/features/back-office-insights.png" width="1000" height="684" sizes="(max-width: 680px) 100vw, 60vw" alt="Let's Get Quoted back-office Insights dashboard showing revenue, cash position and job performance" />
+            <figcaption>Actual Let&apos;s Get Quoted Insights interface</figcaption>
+          </figure>
+          <div className="product-proof-copy">
+            <span>REAL LGQ PRODUCT VIEW</span>
+            <h3>See the whole business—not another disconnected tool.</h3>
+            <p>Revenue, cash position, job value and performance live beside the jobs, schedule, clients and payments that create them.</p>
+            <Link href="/features/back-office">Explore the connected back office <i aria-hidden="true">→</i></Link>
+          </div>
+        </div>
+
+        <div className="feature-grid">
+          {features.map(([number, title, description]) => (
+            <article className="feature-card" key={number}>
+              <span>{number}</span>
+              <div className="feature-icon" aria-hidden="true">✓</div>
+              <h3>{title}</h3>
+              <p>{description}</p>
+            </article>
           ))}
         </div>
 
-        <div style={{ textAlign: 'center', marginTop: '24px' }}>
-          <button
-            type="button"
-            className={styles.faqMoreButton}
-            onClick={() => setShowAllFaqs((v) => !v)}
-          >
-            {showAllFaqs ? 'Show fewer questions' : `Show all ${PRICING_FAQS.length} pricing questions`}
-          </button>
-        </div>
+        <Link className="feature-link" href="/features">Explore the full feature set <span aria-hidden="true">→</span></Link>
+      </section>
 
-        {/* Final Conversion CTA with Trust Badges */}
-        <div className={styles.finalCta}>
-          <div className={styles.finalCtaContent}>
-            <p className={styles.sectionEyebrow}>START WINNING MORE JOBS</p>
-            <h2>From first click to final payment. Run it all in one place.</h2>
-            <p>
-              Start free on Flex with $0 monthly base, or pick the plan with the team seats and messaging capacity you need.
-            </p>
-            <div className={styles.heroActions} style={{ justifyContent: 'center' }}>
-              <a
-                href={buildStartUrl({ goal: 'build_site', source: 'pricing_footer' })}
-                className={styles.primaryButton}
-              >
-                Build my free site &rarr;
-              </a>
-              <Link href="/contact" className={styles.secondaryButton}>
-                Talk to our team
-              </Link>
-            </div>
-            <div className={styles.finalTrustStrip}>
-              <span>🔒 256-Bit SSL Encryption</span>
-              <span>•</span>
-              <span>💳 Stripe PCI Level 1</span>
-              <span>•</span>
-              <span>⚡ Cancel Anytime</span>
-              <span>•</span>
-              <span>🛡️ 30-Day Guarantee</span>
-            </div>
-          </div>
+      <section className="page-section faq-section" id="faq" aria-labelledby="faq-title">
+        <div className="section-heading">
+          <p className="section-kicker">PRICING QUESTIONS</p>
+          <h2 id="faq-title">Clear answers. No fine-print maze.</h2>
+        </div>
+        <div className="faq-list">
+          {PRICING_FAQS.map(({ q, a }, index) => (
+            <details key={q} open={index === 0}>
+              <summary><span>{String(index + 1).padStart(2, '0')}</span>{q}<i aria-hidden="true">+</i></summary>
+              <p>{a}</p>
+            </details>
+          ))}
         </div>
       </section>
-    </>
+
+      <section className="closing-section" aria-labelledby="closing-title">
+        <div className="closing-glow" aria-hidden="true" />
+        <p className="section-kicker">READY WHEN YOU ARE</p>
+        <h2 id="closing-title">Build your site. Send your first quote today.</h2>
+        <p>Start on Flex / Seasonal with no monthly subscription. Your website, quotes, jobs, invoices and payments are ready to work together.</p>
+        <div className="hero-actions closing-actions">
+          <a className="button button-primary" href={footerSignupUrl}>Build my free site <span aria-hidden="true">→</span></a>
+          <Link className="button button-secondary" href="/contact">Talk to our team</Link>
+        </div>
+        <div className="closing-proof"><span>✓ $0 monthly subscription on Flex</span><span>✓ Unlimited core records</span><span>✓ Flexible plan changes</span></div>
+      </section>
+      </div>
+    </div>
   );
 }
-

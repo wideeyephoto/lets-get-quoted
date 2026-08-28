@@ -1,6 +1,13 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { PLANS, COMPARISON_ROWS, planCrossover, annualPlanCost, type BillingCycle } from '@/app/pricing/pricing-catalog';
+import {
+  PLANS,
+  COMPARISON_ROWS,
+  PRICING_FAQS,
+  planCrossover,
+  annualPlanCost,
+  type BillingCycle,
+} from '@/app/pricing/pricing-catalog';
 import { BILLING_PLANS } from '@/lib/billing/catalog';
 
 const PRICING_EXPERIENCE = readFileSync('src/app/pricing/PricingExperience.tsx', 'utf8');
@@ -112,49 +119,68 @@ describe('Pricing Improvements: Crossovers & Entitlement Integrity', () => {
     });
   });
 
-  describe('Hero Proof Object, Exclusions & Trust Signals (#4, #5, #8, #9, #10, #11, #12, #14)', () => {
-    it('displays revised hero headline and See plans CTA', () => {
-      expect(PRICING_EXPERIENCE).toContain('Start at $0. Lower your platform fee as you grow.');
-      expect(PRICING_EXPERIENCE).toContain('See plans &darr;');
-    });
-
-    it('includes fee progression visual in proof card', () => {
-      expect(PRICING_EXPERIENCE).toContain('Flex');
-      expect(PRICING_EXPERIENCE).toContain('1.25%');
-      expect(PRICING_EXPERIENCE).toContain('0.50%');
-      expect(PRICING_EXPERIENCE).toContain('0.25%');
-      expect(PRICING_EXPERIENCE).toContain('0.10%');
-    });
-
-    it('states exclusion of Stripe, carrier fees, and taxes beside estimates', () => {
-      expect(PRICING_EXPERIENCE).toContain('Estimated LGQ Monthly Cost');
+  describe('Hero, pricing disclosure, and trust integrity', () => {
+    it('locks the approved hero promise and its two conversion paths', () => {
       expect(PRICING_EXPERIENCE).toContain(
-        '*Stripe processing, carrier registration, phone-number rental, and applicable taxes are excluded.',
+        'Your whole contracting business. <em>From $0/month.</em>',
+      );
+      expect(PRICING_EXPERIENCE).toContain(
+        'From an AI-powered website and instant quoting to client texting, booking, invoices, payments, and QuickBooks sync—<em>everything connected from day one.</em>',
+      );
+      expect(PRICING_EXPERIENCE).toContain('Start free — $0/month');
+      expect(PRICING_EXPERIENCE).toContain('Calculate my best plan');
+      expect(PRICING_EXPERIENCE).toContain('href="#calculator"');
+    });
+
+    it('shows all four catalog platform-fee tiers in the visual and plan cards', () => {
+      expect(PLANS.map((plan) => plan.paymentFeePct)).toEqual([1.25, 0.5, 0.25, 0.1]);
+      expect(PRICING_EXPERIENCE).toContain('const plans = PLANS.map');
+      expect(PRICING_EXPERIENCE).toContain('fee: feeLabel(plan.paymentFeePct)');
+      expect(PRICING_EXPERIENCE).toContain('plan-${plan.id}');
+      expect(PRICING_EXPERIENCE).toContain('FLEX / SEASONAL');
+      expect(PRICING_EXPERIENCE).toContain('SUBSCRIPTION PLANS');
+    });
+
+    it('states the fee basis and all material exclusions beside the estimates and cards', () => {
+      expect(PRICING_EXPERIENCE).toContain(
+        'LGQ platform fee applies to the discount-adjusted eligible service subtotal. Subscription and Stripe processing are separate.',
+      );
+      expect(PRICING_EXPERIENCE).toContain(
+        'LGQ fees exclude separately stated sales tax, tips, refunds and credits. Stripe pricing may vary. Carrier and phone-number fees are separate.',
+      );
+      expect(PRICING_EXPERIENCE).toContain(
+        'Carrier registration, dedicated-number lease, Stripe processing, taxes and top-ups are separate.',
       );
     });
 
-    it('surfaces 30-day money back guarantee with annual billing', () => {
-      expect(PRICING_EXPERIENCE).toContain('30-Day Money-Back Guarantee on Annual Prepayments');
-    });
-
-    it('discloses carrier and messaging activation costs beside cards', () => {
-      expect(PRICING_EXPERIENCE).toContain(
-        '*10DLC carrier registration, campaign vetting, and dedicated phone number rental are separate telecom fees paid directly to carriers.',
+    it('keeps the annual-plan guarantee precise instead of promising a blanket refund', () => {
+      const guarantee = PRICING_FAQS.find((item) => item.q === 'What is the annual-plan guarantee?');
+      expect(guarantee?.a).toBe(
+        'Once per verified business, the first annual base plan may be converted within 30 days. The refund is the annual prepayment minus one normal month-to-month base charge. LGQ platform fees are not recalculated retroactively, and consumed add-ons, carrier costs, Stripe fees, taxes, and custom work are excluded.',
       );
+      expect(PRICING_EXPERIENCE).toContain('PRICING_FAQS.map');
+      expect(PRICING_EXPERIENCE).not.toContain('30-Day Money-Back Guarantee');
     });
 
-    it('includes a real-world payment math example', () => {
-      expect(PRICING_EXPERIENCE).toContain('Real-World Payment Example');
-      expect(PRICING_EXPERIENCE).toContain('$5,000.00');
-      expect(PRICING_EXPERIENCE).toContain('$12.50');
-      expect(PRICING_EXPERIENCE).toContain('$145.30');
-      expect(PRICING_EXPERIENCE).toContain('$4,842.20');
+    it('renders a dynamic payment waterfall without hard-coding one plan fee', () => {
+      expect(PRICING_EXPERIENCE).toContain('REAL-WORLD PAYMENT EXAMPLE');
+      expect(PRICING_EXPERIENCE).toContain('$5,000 eligible service subtotal paid by card');
+      expect(PRICING_EXPERIENCE).toContain('examplePayment * recommendation.rate');
+      expect(PRICING_EXPERIENCE).toContain('examplePayment * 0.029 + 0.30');
+      expect(PRICING_EXPERIENCE).toContain('Estimated bank payout');
     });
 
-    it('renders security and trust signals near CTAs', () => {
-      expect(PRICING_EXPERIENCE).toContain('256-Bit SSL');
-      expect(PRICING_EXPERIENCE).toContain('Stripe Certified');
-      expect(PRICING_EXPERIENCE).toContain('Cancel Anytime');
+    it('uses support, transport, payment-provider, and plan-change trust claims accurately', () => {
+      expect(PRICING_EXPERIENCE).toContain('US-based phone &amp; chat support');
+      expect(PRICING_EXPERIENCE).toContain('HTTPS + TLS 1.3');
+      expect(PRICING_EXPERIENCE).toContain('Payments powered by Stripe');
+      expect(PRICING_EXPERIENCE).toContain('PCI DSS Level 1 provider');
+      expect(PRICING_EXPERIENCE).toContain('Upgrade now · downgrade at renewal');
+
+      expect(PRICING_EXPERIENCE).not.toContain('256-Bit SSL');
+      expect(PRICING_EXPERIENCE).not.toContain('Stripe Certified');
+      expect(PRICING_EXPERIENCE).not.toContain('Pause or switch plans anytime');
+      expect(PRICING_EXPERIENCE).not.toContain('Cancel Anytime');
     });
   });
 });

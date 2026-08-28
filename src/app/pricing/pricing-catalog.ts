@@ -2,6 +2,7 @@ import {
   BILLING_PLANS,
   ENTERPRISE_PRICING,
   PRICING_CATALOG_VERSION,
+  SELLABLE_TOP_UP_IDS,
   TOP_UPS,
   TOP_UPS_WITHHELD,
   formatUsdFromCents,
@@ -27,6 +28,10 @@ export type PricingPlan = {
   officeUsers: number;
   crewUsers: number;
   textCredits: string;
+  allowanceCadence: 'one_time' | 'monthly';
+  marketingEmailSends: number;
+  aiCredits: number;
+  storageGb: number;
   messagingSummary: string;
   forwardingMinutes: number;
   voiceMinutes: number;
@@ -35,6 +40,9 @@ export type PricingPlan = {
 };
 
 export const OFFICE_USER_ADD_ON_MONTHLY = 15;
+export const CREW_USER_ADD_ON_MONTHLY = TOP_UPS.crew_user.priceCents / 100;
+export const CREW_USER_ADD_ON_AVAILABLE = SELLABLE_TOP_UP_IDS.includes('crew_user');
+export const CREW_USER_ADD_ON_ELIGIBLE_PLANS = TOP_UPS.crew_user.eligiblePlans;
 
 export const PLANS: readonly PricingPlan[] = [
   {
@@ -50,6 +58,10 @@ export const PLANS: readonly PricingPlan[] = [
     officeUsers: BILLING_PLANS.flex.allowances.officeUsers,
     crewUsers: BILLING_PLANS.flex.allowances.crewUsers,
     textCredits: '50 one-time starter credits',
+    allowanceCadence: BILLING_PLANS.flex.allowances.cadence,
+    marketingEmailSends: BILLING_PLANS.flex.allowances.marketingEmailSends,
+    aiCredits: BILLING_PLANS.flex.allowances.aiIntakeCredits + BILLING_PLANS.flex.allowances.aiWritingDrafts,
+    storageGb: BILLING_PLANS.flex.allowances.storageGb,
     messagingSummary: '50 starter text credits · dedicated number after carrier approval',
     forwardingMinutes: BILLING_PLANS.flex.allowances.forwardingMinutes,
     voiceMinutes: BILLING_PLANS.flex.voice.includedMinutes,
@@ -78,6 +90,10 @@ export const PLANS: readonly PricingPlan[] = [
     officeUsers: BILLING_PLANS.solo.allowances.officeUsers,
     crewUsers: BILLING_PLANS.solo.allowances.crewUsers,
     textCredits: '500/month',
+    allowanceCadence: BILLING_PLANS.solo.allowances.cadence,
+    marketingEmailSends: BILLING_PLANS.solo.allowances.marketingEmailSends,
+    aiCredits: BILLING_PLANS.solo.allowances.aiIntakeCredits + BILLING_PLANS.solo.allowances.aiWritingDrafts,
+    storageGb: BILLING_PLANS.solo.allowances.storageGb,
     messagingSummary: '500 text credits/month · dedicated number after carrier approval',
     forwardingMinutes: BILLING_PLANS.solo.allowances.forwardingMinutes,
     voiceMinutes: BILLING_PLANS.solo.voice.includedMinutes,
@@ -106,6 +122,10 @@ export const PLANS: readonly PricingPlan[] = [
     officeUsers: BILLING_PLANS.growth.allowances.officeUsers,
     crewUsers: BILLING_PLANS.growth.allowances.crewUsers,
     textCredits: '1,500/month',
+    allowanceCadence: BILLING_PLANS.growth.allowances.cadence,
+    marketingEmailSends: BILLING_PLANS.growth.allowances.marketingEmailSends,
+    aiCredits: BILLING_PLANS.growth.allowances.aiIntakeCredits + BILLING_PLANS.growth.allowances.aiWritingDrafts,
+    storageGb: BILLING_PLANS.growth.allowances.storageGb,
     messagingSummary: '1,500 text credits/month · dedicated number after carrier approval',
     forwardingMinutes: BILLING_PLANS.growth.allowances.forwardingMinutes,
     voiceMinutes: BILLING_PLANS.growth.voice.includedMinutes,
@@ -134,6 +154,10 @@ export const PLANS: readonly PricingPlan[] = [
     officeUsers: BILLING_PLANS.scale.allowances.officeUsers,
     crewUsers: BILLING_PLANS.scale.allowances.crewUsers,
     textCredits: '3,000/month',
+    allowanceCadence: BILLING_PLANS.scale.allowances.cadence,
+    marketingEmailSends: BILLING_PLANS.scale.allowances.marketingEmailSends,
+    aiCredits: BILLING_PLANS.scale.allowances.aiIntakeCredits + BILLING_PLANS.scale.allowances.aiWritingDrafts,
+    storageGb: BILLING_PLANS.scale.allowances.storageGb,
     messagingSummary: '3,000 text credits/month · dedicated number after carrier approval',
     forwardingMinutes: BILLING_PLANS.scale.allowances.forwardingMinutes,
     voiceMinutes: BILLING_PLANS.scale.voice.includedMinutes,

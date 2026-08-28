@@ -6,6 +6,8 @@ import {
   buildStartUrl,
   resolveDestination,
 } from '@/lib/signup-intent';
+import { BILLING_PLAN_IDS } from '@/lib/billing/catalog';
+import { parsePlanIntent } from '@/lib/plan-intent';
 
 const LOGIN_PAGE = readFileSync('src/app/login/page.tsx', 'utf8');
 const WELCOME_PAGE = readFileSync('src/app/welcome/page.tsx', 'utf8');
@@ -59,6 +61,32 @@ describe('Problem 4: Preserving Signup Intent & Continuity', () => {
       expect(parsed.plan).toBe('growth');
       expect(parsed.billing).toBe('annual');
       expect(parsed.source).toBe('pricing');
+    });
+
+    it('round-trips every canonical pricing plan through signup and paid-plan parsing', () => {
+      for (const plan of BILLING_PLAN_IDS) {
+        const url = buildStartUrl({
+          goal: 'choose_plan',
+          plan,
+          billing: 'annual',
+          source: 'pricing',
+        });
+        const parsed = parseSignupIntent(new URL(url).searchParams);
+
+        expect(parsed.plan).toBe(plan);
+        if (plan === 'flex') {
+          expect(parsePlanIntent(parsed.plan, parsed.billing)).toBeNull();
+        } else {
+          expect(parsePlanIntent(parsed.plan, parsed.billing)).toEqual({
+            planCode: plan,
+            billingInterval: 'annual',
+          });
+        }
+      }
+    });
+
+    it('normalizes the legacy Starter label to canonical Solo', () => {
+      expect(parseSignupIntent({ plan: 'starter', billing: 'monthly' }).plan).toBe('solo');
     });
 
     it('serializes and parses feature intent', () => {
