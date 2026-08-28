@@ -9,12 +9,8 @@
  * fails with "you're importing a component that needs next/headers". See the
  * note at the top of app/home-next/page.tsx, which is where that happened. */
 
-export { default as FeatureDetailLayout } from './feature-detail-layout';
-export type {
-  FeatureDetailLayoutProps,
-  FeatureDetailCard,
-  FeatureProofPoint,
-} from './feature-detail-layout';
+// FeatureDetailLayout is server-only (reads CSP nonce) and must be imported
+// directly from './feature-detail-layout' rather than this barrel.
 
 export { default as MarketingCta } from './marketing-cta';
 export type { MarketingCtaProps } from './marketing-cta';

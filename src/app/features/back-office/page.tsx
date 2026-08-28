@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { ExampleFrame, FeatureDetailLayout, ShotSlider, type Shot } from '@/components/marketing';
+import ExampleFrame from '@/components/marketing/example-frame';
+import FeatureDetailLayout from '@/components/marketing/feature-detail-layout';
+import ShotSlider, { type Shot } from '@/components/marketing/shot-slider';
 import { FEATURE_PRICING_NOTE, FLEX_PRICE, STRIPE_PROCESSING_NOTE } from '@/lib/pricing';
 import {
   DEFAULT_PLAN,

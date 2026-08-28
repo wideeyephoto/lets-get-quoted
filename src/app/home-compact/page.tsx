@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import HeroDashboard from '@/components/hero-dashboard';
-import { ExampleFrame } from '@/components/marketing';
+import ExampleFrame from '@/components/marketing/example-frame';
 import { PLAN_PRICE_OPTIONS } from '@/lib/pricing';
 import styles from './home-compact.module.css';
 

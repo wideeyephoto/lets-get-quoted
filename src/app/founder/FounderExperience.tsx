@@ -2,13 +2,9 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
-import {
-  APP_SIGNUP_URL,
-  CtaLink,
-  MARKETING_MAIN_ID,
-  MARKETING_PAGE_CLASS,
-  MarketingCta,
-} from '@/components/marketing';
+import { APP_SIGNUP_URL, CtaLink } from '@/components/marketing/links';
+import { MARKETING_MAIN_ID, MARKETING_PAGE_CLASS } from '@/components/marketing/marketing-page';
+import MarketingCta from '@/components/marketing/marketing-cta';
 import SiteFooter from '@/components/site-footer';
 import StickyCta from '@/components/sticky-cta';
 import styles from './founder.module.css';

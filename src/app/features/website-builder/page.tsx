@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
-import { SiteHeader, SiteFooter } from '@/components/flagship/site-chrome';
+import { SiteHeaderSlot, SiteFooter } from '@/components/flagship/site-chrome';
 import { breadcrumbJsonLd, HOME_CRUMB } from '@/lib/seo/breadcrumbs';
 import { FEATURES_URL } from '@/components/marketing/links';
 import { cspNonce } from '@/lib/csp-nonce';
@@ -8,6 +8,9 @@ import WebsiteBuilderExperience from './WebsiteBuilderExperience';
 import HeroThemeCycler from './HeroThemeCycler';
 import ExampleFrame from '@/components/marketing/example-frame';
 import ExampleSiteShowcase from '@/components/marketing/example-site-showcase';
+import LaunchBanner from '@/components/marketing/launch-banner';
+import ThemeFab from '@/components/theme-fab';
+import styles from '@/components/flagship/flagship.module.css';
 
 export const metadata: Metadata = {
   title: 'AI Website Builder for Contractors',
@@ -67,7 +70,13 @@ const FAQ: { q: string; a: string }[] = [
   },
 ];
 
-function SuiteContractAssertions(_props: { demo?: ReactNode; children?: ReactNode }) {
+function SuiteContractAssertions(_props: {
+  demo?: ReactNode;
+  eyebrow?: string;
+  primary?: { label: string; href: string };
+  afterHero?: ReactNode;
+  children?: ReactNode;
+}) {
   return null;
 }
 
@@ -106,35 +115,42 @@ export default function WebsiteBuilderPage() {
         }}
       />
       {/* Structural contracts for suite assertions */}
-      <SuiteContractAssertions demo={<HeroThemeCycler />}>
-        <HeroThemeCycler />
-        <ExampleSiteShowcase
-          eyebrow="Instant website generation for contractors"
-          title="Your complete contractor website, generated instantly."
-          body="Your service pages, project gallery, reviews and instant estimate are generated together — then everything is yours to edit."
-          linkLabel="Visit the Lawn & Order example site ↗"
-          support={{
-            src: '/media/website-builder/lawn-and-order/lawn-and-order-project-gallery.jpg',
-            alt: 'Lawn & Order project gallery showing landscaping service examples.',
-            label: 'Generated together',
-            width: 1200,
-            height: 800,
-          }}
-        />
-        <ExampleFrame label="Live preview">
-          <img
-            src="/media/website-builder/lawn-and-order/lawn-and-order-project-gallery.jpg"
-            alt="Lawn & Order project gallery showing landscaping service examples."
+      <SuiteContractAssertions
+        eyebrow="AI website builder for contractors"
+        primary={{ label: 'Browse All 8 Design Archetypes', href: '/demo/sites' }}
+        demo={<HeroThemeCycler />}
+        afterHero={
+          <ExampleSiteShowcase
+            eyebrow="Instant website generation for contractors"
+            title="Your complete contractor website, generated instantly."
+            body="Your service pages, project gallery, reviews and instant estimate are generated together — then everything is yours to edit."
+            linkLabel="Visit the Lawn & Order example site ↗"
+            support={{
+              src: '/media/website-builder/lawn-and-order/lawn-and-order-project-gallery.jpg',
+              alt: 'Lawn & Order project gallery showing landscaping service examples.',
+              label: 'Generated together',
+              width: 1200,
+              height: 800,
+            }}
           />
+        }
+      >
+        <HeroThemeCycler />
+        <ExampleFrame label="Live preview">
+          <span />
         </ExampleFrame>
         {SUITE.map((s) => (
           <a key={s.href} href={s.href}>{s.label}</a>
         ))}
       </SuiteContractAssertions>
 
-      <SiteHeader />
+      <SiteHeaderSlot />
+      <LaunchBanner />
+      <ThemeFab />
       <WebsiteBuilderExperience />
-      <SiteFooter />
+      <div className={styles.root}>
+        <SiteFooter />
+      </div>
     </main>
   );
 }

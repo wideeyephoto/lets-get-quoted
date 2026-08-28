@@ -27,6 +27,7 @@ import WebsiteFeaturePreview from './WebsiteFeaturePreview';
 import LaunchBanner from '@/components/marketing/launch-banner';
 import ThemeFab from '@/components/theme-fab';
 import AllFeaturesModal from '@/components/marketing/AllFeaturesModal';
+import themeStyles from './features-theme.module.css';
 
 const FEATURES_URL = 'https://letsgetquoted.com/features';
 const FEATURES_DESCRIPTION =
@@ -292,37 +293,42 @@ export default function FeaturesPage() {
         nonce={cspNonce()}
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <main className={`${styles.root} inner-site feature-index-page`}>
-      <a className="skip-link" href="#main-content">
-        Skip to content
-      </a>
-      <SiteHeader />
-      <LaunchBanner offsetHeader />
-      <ThemeFab />
+      <div className={themeStyles.featuresTheme}>
+        <div className={themeStyles.siteShell}>
+          <div className={`${themeStyles.ambient} ${themeStyles.ambientOne}`} />
+          <div className={`${themeStyles.ambient} ${themeStyles.ambientTwo}`} />
+          <div className={`${themeStyles.ambient} ${themeStyles.ambientThree}`} />
+          <main className={`${styles.root} inner-site feature-index-page`}>
+          <a className="skip-link" href="#main-content">
+            Skip to content
+          </a>
+          <SiteHeader />
+          <LaunchBanner offsetHeader />
+          <ThemeFab />
 
-      {/* Two columns, not one. The copy keeps the left and the thread takes the
-          right; every child is placed explicitly in the grid rather than
-          wrapped in a column div, because .index-hero > h1 and
-          .index-hero > p:not(.eyebrow) are load-bearing selectors in the
-          generated sheet and a wrapper would silently drop both. */}
-      <section className="index-hero index-hero-beside" id="main-content">
-        <p className="eyebrow">
-          <span aria-hidden="true">✦</span> ONE JOB RECORD. EVERY STEP CONNECTED.
-        </p>
-        <h1>
-          From website lead to paid job—<em>without stitching together six tools.</em>
-        </h1>
-        <p>
-          Your website, AI intake, quotes, scheduling, crew, customer updates, and payments all work from the same job record.
-        </p>
-        <div className="hero-actions">
-          <a className="button primary" href={FEATURE_SIGNUP_URL}>
-            Build my free site <span aria-hidden="true">→</span>
-          </a>
-          <a className="button secondary" href="#tour">
-            Watch one job move
-          </a>
-        </div>
+          {/* Two columns, not one. The copy keeps the left and the thread takes the
+              right; every child is placed explicitly in the grid rather than
+              wrapped in a column div, because .index-hero > h1 and
+              .index-hero > p:not(.eyebrow) are load-bearing selectors in the
+              generated sheet and a wrapper would silently drop both. */}
+          <section className="index-hero index-hero-beside" id="main-content">
+            <p className="eyebrow">
+              <span aria-hidden="true">✦</span> ONE JOB RECORD. EVERY STEP CONNECTED.
+            </p>
+            <h1>
+              From website lead to paid job—<em>without stitching together six tools.</em>
+            </h1>
+            <p>
+              Your website, AI intake, quotes, scheduling, crew, customer updates, and payments all work from the same job record.
+            </p>
+            <div className="hero-actions">
+              <a className="button primary" href={FEATURE_SIGNUP_URL}>
+                Build my free site <span aria-hidden="true">→</span>
+              </a>
+              <a className="button secondary" href="#tour">
+                Watch one job move
+              </a>
+            </div>
 
         {/* The plan range stays beside the primary action and comes from the
             same canonical catalog as /pricing. */}
@@ -645,6 +651,8 @@ export default function FeaturesPage() {
       />
       <SiteFooter />
       </main>
+        </div>
+      </div>
     </>
   );
 }
