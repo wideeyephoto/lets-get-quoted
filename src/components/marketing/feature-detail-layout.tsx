@@ -233,6 +233,7 @@ export default function FeatureDetailLayout({
       <LaunchBanner offsetHeader />
 
       <section className="detail-hero" id="main-content">
+        <i className="glare" data-on="true" aria-hidden="true" />
         <div className="detail-hero-copy">
           {backLink ? (
             <Link href={backLink.href} className="detail-back">
@@ -287,6 +288,7 @@ export default function FeatureDetailLayout({
 
       {story || benefits.length ? (
         <section className="detail-story" id={storyId}>
+          <i className="glare" data-tone="cream" data-on="true" aria-hidden="true" />
           {story ? (
             <div>
               <p className="eyebrow">
@@ -315,6 +317,7 @@ export default function FeatureDetailLayout({
 
       {steps.length ? (
         <section className="detail-process">
+          <i className="glare" data-on="true" aria-hidden="true" />
           <div className="detail-process-head">
             <p className="eyebrow">
               <span aria-hidden="true">✦</span> {stepsEyebrow}

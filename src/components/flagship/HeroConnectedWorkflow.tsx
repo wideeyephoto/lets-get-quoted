@@ -252,14 +252,22 @@ export default function HeroConnectedWorkflow() {
             </div>
 
             <div className={styles.stageRowBottom}>
-              <span style={{ color: '#ffc44d' }}>✓ AI scope verified with profit margin</span>
-              <button
-                type="button"
-                className={styles.actionBtnNext}
-                onClick={() => setActiveStep(1)}
-              >
-                Draft Quote →
-              </button>
+              <span style={{ color: '#ffc44d', fontWeight: 600 }}>✓ AI scope verified with profit margin</span>
+              <div className={styles.actionBtnWrapper}>
+                <span className={`${styles.waveRing} ${styles.wave1}`} aria-hidden="true" />
+                <span className={`${styles.waveRing} ${styles.wave2}`} aria-hidden="true" />
+                <span className={`${styles.waveRing} ${styles.wave3}`} aria-hidden="true" />
+                <button
+                  type="button"
+                  className={styles.actionBtnNext}
+                  onClick={() => setActiveStep(1)}
+                  aria-label="Next Step: Draft Quote"
+                >
+                  <span className={styles.btnPulseDot} aria-hidden="true" />
+                  <span className={styles.btnText}>Draft Quote</span>
+                  <span className={styles.btnArrow} aria-hidden="true">→</span>
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -292,14 +300,22 @@ export default function HeroConnectedWorkflow() {
             </div>
 
             <div className={styles.stageRowBottom}>
-              <span style={{ color: '#8d9cae' }}>Digital Signature: Eleanor M. (iPhone)</span>
-              <button
-                type="button"
-                className={styles.actionBtnNext}
-                onClick={() => setActiveStep(2)}
-              >
-                Dispatch Crew →
-              </button>
+              <span style={{ color: '#8d9cae', fontWeight: 500 }}>Digital Signature: Eleanor M. (iPhone)</span>
+              <div className={styles.actionBtnWrapper}>
+                <span className={`${styles.waveRing} ${styles.wave1}`} aria-hidden="true" />
+                <span className={`${styles.waveRing} ${styles.wave2}`} aria-hidden="true" />
+                <span className={`${styles.waveRing} ${styles.wave3}`} aria-hidden="true" />
+                <button
+                  type="button"
+                  className={styles.actionBtnNext}
+                  onClick={() => setActiveStep(2)}
+                  aria-label="Next Step: Dispatch Crew"
+                >
+                  <span className={styles.btnPulseDot} aria-hidden="true" />
+                  <span className={styles.btnText}>Dispatch Crew</span>
+                  <span className={styles.btnArrow} aria-hidden="true">→</span>
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -332,14 +348,21 @@ export default function HeroConnectedWorkflow() {
             </div>
 
             <div className={styles.stageRowBottom}>
-              <span style={{ color: '#8d9cae' }}>Direct deposit initiated to Chase Business</span>
-              <button
-                type="button"
-                className={styles.replayBtn}
-                onClick={() => setActiveStep(0)}
-              >
-                Replay Tour ↺
-              </button>
+              <span style={{ color: '#8d9cae', fontWeight: 500 }}>Direct deposit initiated to Chase Business</span>
+              <div className={styles.actionBtnWrapper}>
+                <span className={`${styles.waveRingMint} ${styles.wave1}`} aria-hidden="true" />
+                <span className={`${styles.waveRingMint} ${styles.wave2}`} aria-hidden="true" />
+                <button
+                  type="button"
+                  className={styles.replayBtn}
+                  onClick={() => setActiveStep(0)}
+                  aria-label="Replay interactive tour"
+                >
+                  <span className={styles.btnPulseDotMint} aria-hidden="true" />
+                  <span className={styles.btnText}>Replay Tour</span>
+                  <span className={styles.replayIcon} aria-hidden="true">↺</span>
+                </button>
+              </div>
             </div>
           </div>
         )}

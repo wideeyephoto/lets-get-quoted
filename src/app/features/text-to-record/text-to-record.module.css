@@ -35,12 +35,15 @@
 
 /* Comparison Table */
 .comparisonCard {
-  background: radial-gradient(circle at top right, rgba(255, 106, 36, 0.05), transparent 40%),
+  background: radial-gradient(circle at top right, rgba(255, 106, 36, 0.1), transparent 45%),
               linear-gradient(180deg, #0c202d 0%, #07131d 100%);
-  border: 1px solid rgba(174, 199, 211, 0.2);
+  border: 1px solid rgba(255, 113, 55, 0.32);
   border-radius: 20px;
   padding: clamp(16px, 3vw, 32px);
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+  box-shadow:
+    0 24px 60px rgba(0, 0, 0, 0.55),
+    0 0 30px rgba(255, 113, 55, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
   overflow-x: auto;
 }
 
@@ -112,19 +115,27 @@
 }
 
 .playbookCard {
-  background: #081722;
-  border: 1px solid rgba(174, 199, 211, 0.16);
+  background: linear-gradient(150deg, rgba(12, 28, 44, 0.95), rgba(6, 18, 30, 0.98));
+  border: 1px solid rgba(255, 113, 55, 0.24);
   border-radius: 16px;
   padding: 24px;
   display: flex;
   flex-direction: column;
   gap: 14px;
-  transition: transform 0.2s ease, border-color 0.2s ease;
+  box-shadow:
+    0 14px 34px rgba(0, 0, 0, 0.3),
+    0 0 18px -4px rgba(255, 113, 55, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  transition: transform 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease;
 }
 
 .playbookCard:hover {
-  transform: translateY(-3px);
-  border-color: rgba(80, 227, 189, 0.4);
+  transform: translateY(-4px);
+  border-color: rgba(255, 113, 55, 0.55);
+  box-shadow:
+    0 22px 50px rgba(0, 0, 0, 0.42),
+    0 0 28px rgba(255, 113, 55, 0.25),
+    inset 0 1px 0 rgba(255, 200, 150, 0.22);
 }
 
 .playbookHeader {

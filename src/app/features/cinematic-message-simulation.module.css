@@ -8,40 +8,251 @@
   flex-direction: column;
   align-items: center;
   width: 100%;
+  position: relative;
 }
+
+/* ---- Trade Selector Bar ------------------------------------------------ */
+
+.sim .tradeBar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  width: 100%;
+  max-width: 460px;
+  margin-bottom: 14px;
+  padding: 4px;
+  border-radius: 14px;
+  background: rgba(13, 27, 39, 0.75);
+  border: 1px solid rgba(126, 183, 214, 0.18);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+  position: relative;
+  z-index: 4;
+}
+
+.sim .tradeTab {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border-radius: 9px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #8da4b2;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 650;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.sim .tradeTab:hover {
+  color: #e2eff7;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.sim .tradeTabActive {
+  color: #fff;
+  background: linear-gradient(180deg, rgba(255, 106, 36, 0.22) 0%, rgba(255, 106, 36, 0.12) 100%);
+  border-color: rgba(255, 106, 36, 0.45);
+  box-shadow: 0 0 12px rgba(255, 106, 36, 0.25);
+}
+
+.sim .tradeTabIcon {
+  font-size: 12px;
+  line-height: 1;
+}
+
+.sim .tradeTabLabel {
+  letter-spacing: 0.01em;
+}
+
+.sim .tradeActiveGlow {
+  position: absolute;
+  bottom: -4px;
+  left: 20%;
+  right: 20%;
+  height: 2px;
+  border-radius: 2px;
+  background: #ff7137;
+  box-shadow: 0 0 8px #ff7137;
+}
+
+/* ---- Stage Container ---------------------------------------------------- */
 
 .sim .stage {
   position: relative;
   width: 100%;
-  max-width: 440px;
+  max-width: 450px;
 }
 
-/* Subtle glow behind the card */
+/* Multi-Spectrum Ambient Glows behind the card */
 .sim .glow {
   position: absolute;
   z-index: 0;
-  inset: -10% -14% -6%;
-  border-radius: 40px;
-  background: radial-gradient(circle at 50% 45%, rgba(38, 160, 204, 0.18), transparent 65%);
-  filter: blur(28px);
+  inset: -14% -16% -10%;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 50% 40%,
+    rgba(255, 106, 36, 0.18) 0%,
+    rgba(38, 160, 204, 0.16) 45%,
+    rgba(16, 185, 129, 0.08) 70%,
+    transparent 80%
+  );
+  filter: blur(40px);
+  pointer-events: none;
+  animation: glowBreathe 8s ease-in-out infinite alternate;
+}
+
+.sim .glowSecondary {
+  position: absolute;
+  z-index: 0;
+  width: 220px;
+  height: 220px;
+  bottom: -15%;
+  right: -12%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(16, 185, 129, 0.15) 0%, transparent 70%);
+  filter: blur(35px);
   pointer-events: none;
 }
 
-/* The Job Record Card container */
+@keyframes glowBreathe {
+  0% {
+    transform: scale(0.96) translate(0, 0);
+    opacity: 0.85;
+  }
+  100% {
+    transform: scale(1.05) translate(4px, -6px);
+    opacity: 1;
+  }
+}
+
+/* ---- Floating 3D Micro-Badges ------------------------------------------- */
+
+.sim .floatingPill {
+  position: absolute;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 12px;
+  background: rgba(11, 23, 34, 0.92);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(126, 183, 214, 0.3);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.1) inset,
+    0 12px 28px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+  animation: floatDrift 5s ease-in-out infinite alternate;
+}
+
+.sim .floatingPillTop {
+  top: -16px;
+  right: -18px;
+  animation-delay: 0s;
+}
+
+.sim .floatingPillBottom {
+  bottom: -14px;
+  left: -20px;
+  animation-delay: -2.5s;
+}
+
+@keyframes floatDrift {
+  0% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  100% {
+    transform: translateY(-8px) rotate(0.8deg);
+  }
+}
+
+.sim .floatingPill[data-tone='mint'] {
+  border-color: rgba(16, 185, 129, 0.45);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.1) inset,
+    0 12px 30px rgba(0, 0, 0, 0.45),
+    0 0 20px rgba(16, 185, 129, 0.18);
+}
+
+.sim .floatingPill[data-tone='mint'] strong {
+  color: #4ee0bc;
+}
+
+.sim .floatingPill[data-tone='orange'] {
+  border-color: rgba(255, 106, 36, 0.45);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.1) inset,
+    0 12px 30px rgba(0, 0, 0, 0.45),
+    0 0 20px rgba(255, 106, 36, 0.2);
+}
+
+.sim .floatingPill[data-tone='orange'] strong {
+  color: #ff9359;
+}
+
+.sim .floatingPill[data-tone='cyan'] {
+  border-color: rgba(0, 210, 255, 0.45);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.1) inset,
+    0 12px 30px rgba(0, 0, 0, 0.45),
+    0 0 20px rgba(0, 210, 255, 0.18);
+}
+
+.sim .floatingPill[data-tone='cyan'] strong {
+  color: #72e3ff;
+}
+
+.sim .floatingPillIcon {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.sim .floatingPillContent {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.sim .floatingPillContent strong {
+  font-size: 10.5px;
+  font-weight: 750;
+  letter-spacing: -0.01em;
+}
+
+.sim .floatingPillContent small {
+  font-size: 9px;
+  color: #8da4b2;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* ---- The Job Record Card Container -------------------------------------- */
+
 .sim .jobCard {
   position: relative;
   z-index: 1;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 11px;
   width: 100%;
-  padding: 16px 18px 14px;
-  border: 1px solid rgba(126, 183, 214, 0.22);
-  border-radius: 22px;
-  background: linear-gradient(180deg, rgba(13, 27, 39, 0.98) 0%, rgba(8, 17, 25, 0.99) 100%);
+  padding: 18px 20px 16px;
+  border: 1px solid rgba(126, 183, 214, 0.28);
+  border-radius: 24px;
+  background: linear-gradient(180deg, rgba(13, 27, 39, 0.96) 0%, rgba(8, 17, 25, 0.98) 100%);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.08) inset,
-    0 24px 60px rgba(0, 0, 0, 0.45);
+    0 1px 0 rgba(255, 255, 255, 0.1) inset,
+    0 24px 64px -12px rgba(0, 0, 0, 0.6),
+    0 0 40px -10px rgba(38, 160, 204, 0.18);
 }
 
 /* ---- Card Header -------------------------------------------------------- */
@@ -51,8 +262,8 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
-  padding-bottom: 11px;
-  border-bottom: 1px solid rgba(126, 183, 214, 0.14);
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(126, 183, 214, 0.16);
 }
 
 .sim .jobMeta {
@@ -74,8 +285,12 @@
 }
 
 .sim .jobId {
-  font-weight: 750;
-  color: #8fa8b7;
+  font-weight: 800;
+  color: #9cbdd0;
+  background: rgba(126, 183, 214, 0.12);
+  padding: 1px 5px;
+  border-radius: 4px;
+  border: 1px solid rgba(126, 183, 214, 0.2);
 }
 
 .sim .jobDivider {
@@ -83,19 +298,19 @@
 }
 
 .sim .jobClient {
-  font-weight: 600;
-  color: #a6bcc8;
+  font-weight: 650;
+  color: #c0d5e1;
 }
 
 .sim .jobArea {
-  color: #6d8491;
+  color: #7c93a0;
 }
 
 .sim .tradeTitle {
-  font-size: 13.5px;
-  font-weight: 750;
+  font-size: 14px;
+  font-weight: 800;
   letter-spacing: -0.01em;
-  color: #ecf3f6;
+  color: #f3f8fa;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -107,12 +322,12 @@
   align-items: center;
   gap: 6px;
   flex: 0 0 auto;
-  padding: 4px 10px;
+  padding: 4px 11px;
   border-radius: 999px;
   border: 1px solid rgba(126, 183, 214, 0.28);
   background: rgba(126, 183, 214, 0.08);
-  font-size: 10.5px;
-  font-weight: 700;
+  font-size: 11px;
+  font-weight: 750;
   letter-spacing: 0.02em;
   color: #b8ccda;
   white-space: nowrap;
@@ -128,20 +343,55 @@
 
 .sim .statusBadge[data-tone='sent'] {
   border-color: rgba(90, 165, 255, 0.45);
-  background: rgba(22, 104, 227, 0.16);
+  background: rgba(22, 104, 227, 0.18);
   color: #bad8ff;
+  box-shadow: 0 0 10px rgba(90, 165, 255, 0.25);
 }
 
 .sim .statusBadge[data-tone='held'] {
   border-color: rgba(62, 196, 237, 0.45);
-  background: rgba(30, 150, 195, 0.16);
+  background: rgba(30, 150, 195, 0.18);
   color: #8ee3f8;
+  box-shadow: 0 0 10px rgba(62, 196, 237, 0.25);
 }
 
 .sim .statusBadge[data-tone='booked'] {
-  border-color: rgba(80, 227, 189, 0.5);
-  background: rgba(80, 227, 189, 0.14);
-  color: #72efcf;
+  border-color: rgba(80, 227, 189, 0.55);
+  background: rgba(80, 227, 189, 0.18);
+  color: #50e3bd;
+  box-shadow: 0 0 12px rgba(80, 227, 189, 0.35);
+}
+
+/* Play/Pause Toggle */
+.sim .headerControls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
+.sim .playPauseToggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border-radius: 7px;
+  border: 1px solid rgba(126, 183, 214, 0.3);
+  background: rgba(126, 183, 214, 0.12);
+  color: #e2f0f8;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.sim .playPauseToggle:hover {
+  background: rgba(255, 106, 36, 0.25);
+  border-color: rgba(255, 106, 36, 0.5);
+  color: #fff;
+  transform: scale(1.08);
+  box-shadow: 0 0 10px rgba(255, 106, 36, 0.35);
 }
 
 /* ---- 5-Step Workflow Stepper -------------------------------------------- */
@@ -163,8 +413,8 @@
   position: relative;
   display: flex;
   align-items: flex-start;
-  gap: 11px;
-  padding-bottom: 9px;
+  gap: 12px;
+  padding-bottom: 10px;
 }
 
 .sim .stepItem:last-child {
@@ -178,8 +428,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 17px;
-  height: 17px;
+  width: 19px;
+  height: 19px;
   margin-top: 1px;
   border-radius: 50%;
   border: 1.5px solid rgba(126, 183, 214, 0.25);
@@ -193,19 +443,19 @@
 .sim .stepItem:not(:last-child) .node::after {
   content: '';
   position: absolute;
-  top: 17px;
+  top: 19px;
   left: 50%;
   transform: translateX(-50%);
   width: 1.5px;
   height: calc(100% + 2px);
-  min-height: 12px;
+  min-height: 14px;
   background: rgba(126, 183, 214, 0.16);
   transition: background 0.3s ease;
 }
 
 .sim .nodeDot {
-  width: 4px;
-  height: 4px;
+  width: 5px;
+  height: 5px;
   border-radius: 50%;
   background: currentColor;
 }
@@ -213,50 +463,73 @@
 /* Completed Stage */
 .sim .stepItem[data-state='completed'] .node {
   border-color: #50e3bd;
-  background: rgba(80, 227, 189, 0.16);
+  background: rgba(80, 227, 189, 0.18);
   color: #50e3bd;
-  box-shadow: 0 0 8px rgba(80, 227, 189, 0.28);
+  box-shadow: 0 0 10px rgba(80, 227, 189, 0.35);
 }
 
 .sim .stepItem[data-state='completed']:not(:last-child) .node::after {
-  background: #2b7d6b;
+  background: linear-gradient(180deg, #50e3bd 0%, #2b7d6b 100%);
+  box-shadow: 0 0 6px rgba(80, 227, 189, 0.3);
 }
 
 .sim .stepItem[data-state='completed'] .stepLabel {
-  color: #e5f0f4;
-  font-weight: 700;
+  color: #f3f8fa;
+  font-weight: 750;
 }
 
 .sim .stepItem[data-state='completed'] .stepDetail {
-  color: #92abb8;
+  color: #a0b8c6;
 }
 
 /* Active Stage */
 .sim .stepItem[data-state='active'] .node {
-  border-color: #3b82f6;
-  background: rgba(59, 130, 246, 0.2);
-  color: #60a5fa;
+  border-color: #38bdf8;
+  background: rgba(56, 189, 248, 0.22);
+  color: #38bdf8;
   animation: pulseNode 1.6s infinite ease-in-out;
 }
 
 @keyframes pulseNode {
-  0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4); }
-  50% { transform: scale(1.08); box-shadow: 0 0 0 4px rgba(59, 130, 246, 0); }
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.45);
+  }
+  50% {
+    transform: scale(1.1);
+    box-shadow: 0 0 0 5px rgba(56, 189, 248, 0);
+  }
 }
 
 .sim .stepItem[data-state='active'] .stepLabel {
-  color: #93c5fd;
-  font-weight: 700;
+  color: #7dd3fc;
+  font-weight: 750;
 }
 
 .sim .stepItem[data-state='pending'] {
-  opacity: 0.48;
+  opacity: 0.45;
+}
+
+.sim .interactiveStep {
+  cursor: pointer;
+  border-radius: 8px;
+  padding: 2px 6px;
+  transition: all 0.18s ease;
+}
+
+.sim .interactiveStep:hover {
+  background: rgba(126, 183, 214, 0.08);
+}
+
+.sim .interactiveStep:focus-visible {
+  outline: 2px solid #ff7137;
+  outline-offset: 2px;
 }
 
 .sim .stepContent {
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 2px;
   min-width: 0;
   flex: 1 1 auto;
 }
@@ -269,36 +542,78 @@
 }
 
 .sim .stepLabel {
-  font-size: 12px;
-  font-weight: 650;
+  font-size: 12.5px;
+  font-weight: 700;
   letter-spacing: -0.01em;
-  color: #b3c7d3;
+  color: #b8ccd8;
   transition: color 0.3s ease;
 }
 
 .sim .stepSource {
   font-family: var(--font-geist-mono), ui-monospace, monospace;
   font-size: 8.5px;
+  font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  padding: 1px 6px;
+  padding: 1px 7px;
   border-radius: 4px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  color: #7994a3;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #8fa8b7;
+}
+
+.sim .stepMetaRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 }
 
 .sim .stepDetail {
-  font-size: 10.5px;
-  color: #6b8290;
+  font-size: 11px;
+  color: #748b98;
   line-height: 1.35;
   transition: color 0.3s ease;
+}
+
+/* Micro-Tag Badges on Steps */
+.sim .microTagMint {
+  font-size: 9px;
+  font-weight: 750;
+  color: #50e3bd;
+  background: rgba(80, 227, 189, 0.12);
+  border: 1px solid rgba(80, 227, 189, 0.3);
+  padding: 1px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.sim .microTagCyan {
+  font-size: 9px;
+  font-weight: 750;
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  padding: 1px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.sim .microTagYellow {
+  font-size: 9px;
+  font-weight: 750;
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.12);
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  padding: 1px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
 }
 
 /* ---- Active Event Toast ------------------------------------------------- */
 
 .sim .eventSlot {
-  min-height: 38px;
+  min-height: 40px;
   display: flex;
   align-items: center;
 }
@@ -309,10 +624,11 @@
   justify-content: space-between;
   gap: 10px;
   width: 100%;
-  padding: 6px 11px;
-  border-radius: 10px;
-  border: 1px solid rgba(80, 227, 189, 0.35);
-  background: linear-gradient(90deg, rgba(80, 227, 189, 0.12) 0%, rgba(41, 173, 214, 0.08) 100%);
+  padding: 7px 12px;
+  border-radius: 11px;
+  border: 1px solid rgba(80, 227, 189, 0.4);
+  background: linear-gradient(90deg, rgba(80, 227, 189, 0.14) 0%, rgba(41, 173, 214, 0.1) 100%);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
   animation: slideInBanner 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
@@ -321,13 +637,25 @@
 }
 
 @keyframes slideInBanner {
-  from { opacity: 0; transform: translateY(4px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes fadeOutBanner {
-  from { opacity: 1; transform: translateY(0); }
-  to { opacity: 0; transform: translateY(-4px); }
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
 }
 
 .sim .eventSurface {
@@ -336,7 +664,7 @@
   gap: 5px;
   font-family: var(--font-geist-mono), ui-monospace, monospace;
   font-size: 9px;
-  font-weight: 700;
+  font-weight: 750;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: #50e3bd;
@@ -352,13 +680,13 @@
 }
 
 .sim .eventBody strong {
-  font-size: 11px;
-  font-weight: 700;
+  font-size: 11.5px;
+  font-weight: 750;
   color: #f0f7f9;
 }
 
 .sim .eventBody small {
-  font-size: 9.5px;
+  font-size: 10px;
   color: #a2c1ce;
 }
 
@@ -367,9 +695,9 @@
 .sim .smsFooter {
   display: flex;
   flex-direction: column;
-  gap: 5px;
-  padding-top: 9px;
-  border-top: 1px solid rgba(126, 183, 214, 0.12);
+  gap: 6px;
+  padding-top: 11px;
+  border-top: 1px solid rgba(126, 183, 214, 0.14);
 }
 
 .sim .smsHeader {
@@ -379,105 +707,74 @@
   gap: 8px;
 }
 
-.sim .headerControls {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex: 0 0 auto;
-}
-
-.sim .playPauseToggle {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  padding: 0;
-  border-radius: 6px;
-  border: 1px solid rgba(126, 183, 214, 0.25);
-  background: rgba(126, 183, 214, 0.1);
-  color: #cde4f2;
-  font-size: 10px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.sim .playPauseToggle:hover {
-  background: rgba(126, 183, 214, 0.22);
-  border-color: rgba(126, 183, 214, 0.45);
-  color: #fff;
-  transform: scale(1.05);
-}
-
-.sim .interactiveStep {
-  cursor: pointer;
-  border-radius: 6px;
-  padding-left: 2px;
-  padding-right: 4px;
-  transition: background-color 0.15s ease;
-}
-
-.sim .interactiveStep:hover {
-  background: rgba(126, 183, 214, 0.08);
-}
-
-.sim .interactiveStep:focus-visible {
-  outline: 2px solid rgba(255, 113, 55, 0.6);
-  outline-offset: 2px;
-}
-
 .sim .smsBadge {
   font-family: var(--font-geist-mono), ui-monospace, monospace;
   font-size: 8.5px;
-  font-weight: 700;
+  font-weight: 750;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: #698393;
+  color: #7995a5;
 }
 
 .sim .smsDelivered {
   font-size: 9.5px;
-  font-weight: 600;
+  font-weight: 650;
   color: #50e3bd;
 }
 
 .sim .smsBubble {
-  padding: 8px 11px;
-  border-radius: 12px;
-  background: linear-gradient(180deg, #112737 0%, #0c1f2e 100%);
-  border: 1px solid rgba(126, 183, 214, 0.18);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset;
+  padding: 9px 12px;
+  border-radius: 13px;
+  background: linear-gradient(180deg, #102636 0%, #0b1d2a 100%);
+  border: 1px solid rgba(126, 183, 214, 0.22);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.05) inset;
 }
 
 .sim .smsBubble p {
   margin: 0;
-  font-size: 11px;
-  line-height: 1.45;
-  color: #d1e2eb;
+  font-size: 11.5px;
+  line-height: 1.48;
+  color: #d6e6ef;
 }
 
 .sim .smsLink {
-  color: #ffaa70;
-  font-weight: 650;
+  color: #ff9e61;
+  font-weight: 700;
   text-decoration: underline;
   text-underline-offset: 2px;
 }
 
-/* ---- Mobile / Reduced Viewports ----------------------------------------- */
+/* ---- Mobile & Responsive Tweaks ----------------------------------------- */
+
+@media (max-width: 1040px) {
+  .sim .floatingPill {
+    display: none;
+  }
+}
 
 @media (max-width: 768px) {
+  .sim .tradeBar {
+    gap: 4px;
+    margin-bottom: 10px;
+  }
+
+  .sim .tradeTab {
+    padding: 4px 7px;
+    font-size: 10px;
+  }
+
   .sim .jobCard {
-    padding: 13px 14px 11px;
-    gap: 8px;
+    padding: 14px 15px 12px;
+    gap: 9px;
     border-radius: 18px;
   }
 
   .sim .stepItem {
-    padding-bottom: 7px;
+    padding-bottom: 8px;
   }
 
   .sim .eventSlot {
-    min-height: 32px;
+    min-height: 34px;
   }
 }
 

@@ -376,34 +376,273 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
   font-size: 11px;
+  padding-top: 4px;
+}
+
+/* Radiating Wave Action Button System */
+.actionBtnWrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  isolation: isolate;
+  flex-shrink: 0;
+}
+
+.actionBtnWrapper::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 999px;
+  background: radial-gradient(ellipse at center, rgba(255, 113, 55, 0.45) 0%, rgba(255, 196, 77, 0.18) 55%, transparent 75%);
+  filter: blur(6px);
+  z-index: -2;
+  pointer-events: none;
+  animation: auraBreathe 2.4s ease-in-out infinite;
+}
+
+@keyframes auraBreathe {
+  0%, 100% {
+    opacity: 0.6;
+    transform: scale(0.98);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+}
+
+.waveRing {
+  position: absolute;
+  inset: -3px;
+  border-radius: 999px;
+  border: 2px solid rgba(255, 120, 50, 0.85);
+  box-shadow: 0 0 14px rgba(255, 113, 55, 0.6), inset 0 0 8px rgba(255, 196, 77, 0.4);
+  pointer-events: none;
+  z-index: -1;
+  opacity: 0;
+  animation: radiateWave 2.4s cubic-bezier(0.2, 0.8, 0.25, 1) infinite;
+}
+
+.waveRingMint {
+  position: absolute;
+  inset: -3px;
+  border-radius: 999px;
+  border: 2px solid rgba(78, 224, 188, 0.85);
+  box-shadow: 0 0 14px rgba(78, 224, 188, 0.6), inset 0 0 8px rgba(78, 224, 188, 0.3);
+  pointer-events: none;
+  z-index: -1;
+  opacity: 0;
+  animation: radiateWave 2.4s cubic-bezier(0.2, 0.8, 0.25, 1) infinite;
+}
+
+.wave1 {
+  animation-delay: 0s;
+}
+
+.wave2 {
+  animation-delay: 0.8s;
+}
+
+.wave3 {
+  animation-delay: 1.6s;
+}
+
+@keyframes radiateWave {
+  0% {
+    transform: scale(0.96);
+    opacity: 0.95;
+    border-width: 2.5px;
+  }
+  45% {
+    opacity: 0.55;
+  }
+  100% {
+    transform: scale(1.38, 1.95);
+    opacity: 0;
+    border-width: 1px;
+  }
 }
 
 .actionBtnNext {
-  background: linear-gradient(135deg, #ff7137, #ffc44d);
-  color: #071722;
-  border: none;
-  border-radius: 6px;
-  padding: 6px 12px;
-  font-size: 11px;
-  font-weight: 800;
-  cursor: pointer;
-  transition: transform 120ms ease;
+  position: relative;
+  z-index: 1;
+  display: inline-flex !important;
+  align-items: center;
+  gap: 8px;
+  background: linear-gradient(135deg, #ff7137 0%, #ff9738 50%, #ffc44d 100%) !important;
+  color: #051420 !important;
+  border: 1px solid rgba(255, 255, 255, 0.7) !important;
+  border-radius: 999px !important;
+  padding: 7px 16px 7px 13px !important;
+  font-family: inherit;
+  font-size: 11.5px !important;
+  font-weight: 850 !important;
+  letter-spacing: 0.02em;
+  line-height: 1 !important;
+  cursor: pointer !important;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
+  box-shadow:
+    0 0 0 1px rgba(255, 113, 55, 0.5),
+    0 4px 18px rgba(255, 113, 55, 0.45),
+    inset 0 1px 1.5px rgba(255, 255, 255, 0.6) !important;
+  transition: all 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  overflow: hidden;
+  text-align: center !important;
+}
+
+.actionBtnNext::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -120%;
+  width: 80%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.5), transparent);
+  transform: skewX(-20deg);
+  animation: btnShimmer 3s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes btnShimmer {
+  0%, 20% {
+    left: -120%;
+  }
+  60%, 100% {
+    left: 180%;
+  }
 }
 
 .actionBtnNext:hover {
-  transform: translateY(-1px);
+  transform: translateY(-1.5px) scale(1.04);
+  box-shadow:
+    0 0 0 2px rgba(255, 196, 77, 0.8),
+    0 6px 26px rgba(255, 113, 55, 0.7),
+    inset 0 1px 2px rgba(255, 255, 255, 0.8) !important;
+  background: linear-gradient(135deg, #ff8149 0%, #ffa747 50%, #ffd068 100%) !important;
+}
+
+.actionBtnNext:active {
+  transform: translateY(1px) scale(0.97);
+}
+
+.btnPulseDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #071722;
+  box-shadow: 0 0 6px rgba(7, 23, 34, 0.5);
+  flex-shrink: 0;
+  animation: dotFlash 1.4s ease-in-out infinite;
+}
+
+@keyframes dotFlash {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+  50% {
+    transform: scale(1.35);
+    opacity: 1;
+    background: #02090e;
+  }
+}
+
+.btnText {
+  white-space: nowrap;
+}
+
+.btnArrow {
+  font-size: 13px;
+  font-weight: 900;
+  display: inline-block;
+  transition: transform 160ms ease;
+  animation: arrowNudge 1.6s ease-in-out infinite;
+}
+
+@keyframes arrowNudge {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(3px);
+  }
+}
+
+.actionBtnNext:hover .btnArrow {
+  transform: translateX(4px);
+  animation: none;
 }
 
 .replayBtn {
-  background: rgba(255, 255, 255, 0.1);
-  color: #f7f7f4;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 6px;
-  padding: 6px 12px;
-  font-size: 11px;
-  font-weight: 700;
-  cursor: pointer;
+  position: relative;
+  z-index: 1;
+  display: inline-flex !important;
+  align-items: center;
+  gap: 7px;
+  background: rgba(78, 224, 188, 0.16) !important;
+  color: #4ee0bc !important;
+  border: 1.5px solid rgba(78, 224, 188, 0.65) !important;
+  border-radius: 999px !important;
+  padding: 7px 16px 7px 13px !important;
+  font-family: inherit;
+  font-size: 11.5px !important;
+  font-weight: 800 !important;
+  line-height: 1 !important;
+  cursor: pointer !important;
+  box-shadow:
+    0 0 16px rgba(78, 224, 188, 0.25),
+    inset 0 1px 1px rgba(78, 224, 188, 0.3) !important;
+  transition: all 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  overflow: hidden;
+  text-align: center !important;
+}
+
+.replayBtn:hover {
+  transform: translateY(-1.5px) scale(1.04);
+  background: rgba(78, 224, 188, 0.28) !important;
+  border-color: #4ee0bc !important;
+  box-shadow: 0 0 24px rgba(78, 224, 188, 0.5) !important;
+  color: #ffffff !important;
+}
+
+.replayBtn:active {
+  transform: translateY(1px) scale(0.97);
+}
+
+.btnPulseDotMint {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #4ee0bc;
+  box-shadow: 0 0 8px #4ee0bc;
+  flex-shrink: 0;
+  animation: dotFlashMint 1.2s ease-in-out infinite;
+}
+
+@keyframes dotFlashMint {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1.4);
+    opacity: 1;
+    box-shadow: 0 0 12px #4ee0bc;
+  }
+}
+
+.replayIcon {
+  font-size: 13px;
+  font-weight: 900;
+  display: inline-block;
+  transition: transform 350ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.replayBtn:hover .replayIcon {
+  transform: rotate(-180deg);
 }
 
 @media (max-width: 900px) {
@@ -428,5 +667,15 @@
     display: inline-flex;
     align-items: center;
     padding: 9px 14px;
+  }
+
+  .stageRowBottom {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .actionBtnWrapper {
+    align-self: flex-end;
   }
 }

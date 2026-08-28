@@ -2070,6 +2070,87 @@
   .lgq-pricing-v2 .mobile-nav { right: 16px; }
 }
 
+/* Hotter Content Borders & Background Motion Refinements */
+.lgq-pricing-v2 .pricing-visual {
+  border: 1px solid rgba(255, 113, 55, 0.42);
+  box-shadow:
+    0 36px 85px rgba(0, 0, 0, 0.52),
+    0 0 35px rgba(255, 113, 55, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    inset 0 0 24px -8px rgba(255, 113, 55, 0.12);
+}
+
+.lgq-pricing-v2 .tier {
+  border: 1px solid rgba(255, 113, 55, 0.28);
+  box-shadow:
+    0 16px 32px rgba(0, 0, 0, 0.28),
+    0 0 18px -4px rgba(255, 113, 55, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.lgq-pricing-v2 .tier:hover {
+  border-color: rgba(255, 113, 55, 0.58);
+  box-shadow:
+    0 22px 48px rgba(0, 0, 0, 0.4),
+    0 0 28px rgba(255, 113, 55, 0.28),
+    inset 0 1px 0 rgba(255, 200, 150, 0.25);
+}
+
+.lgq-pricing-v2 .subscription-plan {
+  border: 1px solid rgba(255, 113, 55, 0.2);
+  background: linear-gradient(110deg, rgba(255, 255, 255, 0.06), rgba(255, 113, 55, 0.04));
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.lgq-pricing-v2 .subscription-plan:hover {
+  border-color: rgba(255, 113, 55, 0.5);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28), 0 0 18px rgba(255, 113, 55, 0.2);
+}
+
+.lgq-pricing-v2 .calculator-results {
+  border: 1px solid rgba(255, 113, 55, 0.38);
+  box-shadow:
+    0 36px 75px rgba(0, 0, 0, 0.45),
+    0 0 35px rgba(255, 113, 55, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+
+.lgq-pricing-v2 .plan-card {
+  border: 1px solid rgba(255, 113, 55, 0.24);
+  box-shadow:
+    0 16px 36px rgba(0, 0, 0, 0.3),
+    0 0 20px -6px rgba(255, 113, 55, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  transition: all 220ms ease;
+}
+
+.lgq-pricing-v2 .plan-card:hover {
+  border-color: rgba(255, 113, 55, 0.55);
+  box-shadow:
+    0 24px 55px rgba(0, 0, 0, 0.45),
+    0 0 30px rgba(255, 113, 55, 0.28),
+    inset 0 1px 0 rgba(255, 200, 150, 0.25);
+  transform: translateY(-4px);
+}
+
+.lgq-pricing-v2 .plan-card.recommended {
+  border-color: rgba(255, 113, 55, 0.58);
+  box-shadow:
+    0 24px 60px rgba(0, 0, 0, 0.45),
+    0 0 32px rgba(255, 113, 55, 0.24),
+    inset 0 1px 0 rgba(255, 200, 150, 0.3);
+}
+
+.lgq-pricing-v2 .site-shell::before {
+  animation: pricingGridBreathe 14s ease-in-out infinite alternate;
+}
+
+@keyframes pricingGridBreathe {
+  0% { opacity: 0.16; }
+  50% { opacity: 0.28; }
+  100% { opacity: 0.18; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .lgq-pricing-v2 { scroll-behavior: auto; }
   .lgq-pricing-v2, .lgq-pricing-v2 *, .lgq-pricing-v2 *::before, .lgq-pricing-v2 *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }

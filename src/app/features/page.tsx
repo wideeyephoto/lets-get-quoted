@@ -300,6 +300,7 @@ export default function FeaturesPage() {
           <div className={`${themeStyles.ambient} ${themeStyles.ambientOne}`} />
           <div className={`${themeStyles.ambient} ${themeStyles.ambientTwo}`} />
           <div className={`${themeStyles.ambient} ${themeStyles.ambientThree}`} />
+          <div className={`${themeStyles.ambient} ${themeStyles.ambientFour}`} />
           <main className={`${styles.root} inner-site feature-index-page`}>
           <a className="skip-link" href="#main-content">
             Skip to content

@@ -6633,6 +6633,199 @@ const TWEAKS = `
 .root :global(.hiq-answers .hiq-later:hover) { border-color: rgba(255, 255, 255, .55); }
 .root :global(.hiq-trust *:focus-visible),
 .root :global(.hiq-journey *:focus-visible) { outline-color: #10242f; }
+
+/* ===========================================================================
+   §112 — HOTTER CONTENT BORDERS & DYNAMIC BACKGROUND MOTION
+
+   Vibrant, energetic container perimeters with subtle warm ambient luminescence,
+   dual-tone rim lighting, and dimensional specular highlights, paired with
+   hardware-accelerated dynamic background motion behind content containers.
+   =========================================================================== */
+
+/* ---- Variable definitions on root ---------------------------------------- */
+.root {
+  --line-hot: rgba(255, 113, 55, 0.28);
+  --line-warm: rgba(255, 196, 77, 0.22);
+  --glow-ambient: 0 0 24px -4px rgba(255, 106, 36, 0.18);
+  --glow-card-hover: 0 18px 45px rgba(0, 0, 0, 0.45), 0 0 28px -2px rgba(255, 106, 36, 0.32), inset 0 1px 0 rgba(255, 200, 150, 0.28);
+}
+
+/* ---- 1. Hotter Showcase & Product Frames --------------------------------- */
+.root :global(.showcase-frame) {
+  border: 1px solid rgba(255, 113, 55, 0.32);
+  box-shadow:
+    0 35px 90px -25px rgba(0, 0, 0, 0.75),
+    0 0 30px -4px rgba(255, 106, 36, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    inset 0 0 20px -6px rgba(255, 106, 36, 0.1);
+}
+
+.root :global(.product-frame),
+.root :global(.builder-frame),
+.root :global(.intake-frame),
+.root :global(.route-frame) {
+  border: 1px solid rgba(255, 113, 55, 0.28);
+  box-shadow:
+    0 24px 60px rgba(0, 0, 0, 0.48),
+    0 0 26px -6px rgba(255, 106, 36, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+
+.root :global(.lead-card),
+.root :global(.quick-card),
+.root :global(.phone-shell) {
+  border: 1px solid rgba(255, 113, 55, 0.3);
+  box-shadow:
+    0 16px 40px rgba(0, 0, 0, 0.38),
+    0 0 22px -5px rgba(255, 106, 36, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+/* ---- 2. Hotter Suite Grid & Feature Cards -------------------------------- */
+.root :global(.suite-grid article) {
+  border: 1px solid rgba(255, 113, 55, 0.22);
+  background: linear-gradient(150deg, rgba(16, 36, 48, 0.9), rgba(7, 19, 29, 0.97));
+  box-shadow:
+    0 12px 30px rgba(0, 0, 0, 0.32),
+    0 0 18px -4px rgba(255, 106, 36, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  transition: transform 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease;
+}
+
+.root :global(.suite-grid article:hover) {
+  border-color: rgba(255, 106, 36, 0.55);
+  box-shadow:
+    0 18px 45px rgba(0, 0, 0, 0.45),
+    0 0 30px -2px rgba(255, 106, 36, 0.34),
+    inset 0 1px 0 rgba(255, 200, 150, 0.3);
+}
+
+.root :global(.feature-step.is-active) {
+  border-color: rgba(255, 106, 36, 0.45);
+  box-shadow:
+    0 18px 48px rgba(0, 0, 0, 0.42),
+    0 0 28px -6px rgba(255, 106, 36, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+/* ---- 3. Hotter Trust Strips & Metric Cells ------------------------------- */
+.root :global(.trust-strip span) {
+  border: 1px solid rgba(255, 106, 36, 0.22);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22), 0 0 16px -4px rgba(255, 106, 36, 0.12);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.root :global(.trust-strip span:hover) {
+  border-color: rgba(255, 106, 36, 0.5);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3), 0 0 24px -2px rgba(255, 106, 36, 0.26);
+  transform: translateY(-2px);
+}
+
+/* ---- 4. Hotter Client Experience Consoles -------------------------------- */
+.root :global(.client-product .text-console),
+.root :global(.client-product .portal-window) {
+  border: 1px solid rgba(255, 113, 55, 0.28);
+  box-shadow:
+    0 26px 65px rgba(0, 0, 0, 0.5),
+    0 0 28px -6px rgba(255, 106, 36, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+
+/* ---- 5. Hotter Details & FAQ Accordions ---------------------------------- */
+.root :global(.home-faq-list details) {
+  border: 1px solid rgba(255, 113, 55, 0.24);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.root :global(.home-faq-list details[open]) {
+  border-color: rgba(255, 106, 36, 0.52);
+  box-shadow: 0 14px 38px rgba(0, 0, 0, 0.34), 0 0 24px -4px rgba(255, 106, 36, 0.22);
+}
+
+/* ---- 6. Hotter Detail Page Cards ----------------------------------------- */
+.root :global(.detail-benefits article),
+.root :global(.process-steps article) {
+  border: 1px solid rgba(255, 113, 55, 0.24);
+  box-shadow:
+    0 12px 32px rgba(0, 0, 0, 0.28),
+    0 0 18px -6px rgba(255, 106, 36, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  transition: all 0.22s ease;
+}
+
+.root :global(.detail-benefits article:hover),
+.root :global(.process-steps article:hover) {
+  border-color: rgba(255, 106, 36, 0.55);
+  box-shadow:
+    0 18px 45px rgba(0, 0, 0, 0.4),
+    0 0 28px -2px rgba(255, 106, 36, 0.28);
+  transform: translateY(-3px);
+}
+
+/* ---- 7. Dynamic Background Motion & Radiance Halos ----------------------- */
+.root :global(.glare)::before {
+  background: linear-gradient(
+    105deg,
+    transparent 0%,
+    rgba(255, 255, 255, .03) 22%,
+    rgba(255, 140, 70, .1) 48%,
+    rgba(255, 210, 120, .08) 54%,
+    rgba(255, 255, 255, .03) 78%,
+    transparent 100%
+  );
+  filter: blur(28px);
+}
+
+.root :global(.glare)::after {
+  background: linear-gradient(
+    105deg,
+    transparent 0%,
+    rgba(255, 106, 36, .09) 35%,
+    rgba(255, 196, 77, .07) 65%,
+    transparent 100%
+  );
+  filter: blur(36px);
+}
+
+.root :global(.visual-stage) {
+  position: relative;
+}
+
+.root :global(.visual-stage::before) {
+  content: "";
+  position: absolute;
+  inset: -24px;
+  border-radius: 32px;
+  background: radial-gradient(circle at 50% 45%, rgba(255, 106, 36, 0.24) 0%, rgba(255, 196, 77, 0.1) 42%, transparent 70%);
+  filter: blur(42px);
+  pointer-events: none;
+  z-index: -1;
+  animation: stageRadiancePulse 10s ease-in-out infinite alternate;
+}
+
+.root :global(.hero)::after {
+  animation: heroGridBreathe 12s ease-in-out infinite alternate;
+}
+
+@keyframes stageRadiancePulse {
+  0% { transform: scale(0.96) translate3d(0, 0, 0); opacity: 0.7; }
+  50% { transform: scale(1.06) translate3d(12px, -8px, 0); opacity: 1; }
+  100% { transform: scale(0.98) translate3d(-10px, 10px, 0); opacity: 0.75; }
+}
+
+@keyframes heroGridBreathe {
+  0% { opacity: 0.18; }
+  50% { opacity: 0.32; }
+  100% { opacity: 0.22; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .root :global(.visual-stage::before),
+  .root :global(.hero)::after {
+    animation: none;
+  }
+}
 `;
 
 const HEADER = `/* GENERATED — do not edit. Run \`node scripts/generate-flagship-css.mjs\`.
