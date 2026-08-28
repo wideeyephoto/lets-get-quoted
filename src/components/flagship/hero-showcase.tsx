@@ -61,7 +61,7 @@ const SHOTS: Shot[] = [
     alt: 'The website builder: a live, editable preview of the published page, with its headline, photo and instant-estimate form.',
     callouts: [
       { kicker: '24/7 LEAD CAPTURE', text: 'Instant estimate form built-in' },
-      { kicker: 'READY TO PUBLISH', text: 'Pre-configured for 49 trades' },
+      { kicker: 'READY TO PUBLISH', text: 'Pre-configured for 76 trades' },
     ],
   },
   {

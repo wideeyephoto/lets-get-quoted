@@ -1116,6 +1116,429 @@ export const TRADES: Trade[] = [
       volumeLabel: 'Estimated in-season monthly card volume',
     },
   },
+  {
+    slug: 'hardscaping',
+    name: 'Hardscaping Contractors',
+    work: 'hardscaping & outdoor living',
+    headline: 'Hardscaping websites that turn paver patios into signed builds.',
+    subhead:
+      'Quote paver patios, outdoor kitchens, and retaining walls with itemized materials, collect staged deposits, and showcase your best outdoor transformations.',
+    pains: [
+      { title: 'Quote high-ticket builds fast', body: 'Send itemized, branded quotes with paver choices, lighting add-ons, and outdoor kitchen options right from the yard.' },
+      { title: 'Stage large project deposits', body: 'Collect upfront deposits to secure stone and pavers, followed by milestone payments at excavation, base prep, and final joint sand.' },
+      { title: 'Sell with outdoor portfolios', body: 'Photo-first project galleries let prospective clients see your fire pits, retaining walls, and custom patios in stunning high resolution.' },
+    ],
+    services: ['Paver patios & walkways', 'Retaining & seating walls', 'Outdoor kitchens & BBQs', 'Fire pits & fireplaces', 'Pergolas & pavilions', 'Permeable pavers'],
+    templateIds: ['carbon', 'reno'],
+    metaTitle: 'Website & Software for Hardscaping Contractors',
+    metaDescription:
+      'A hardscaping website with instant estimates, itemized quotes, staged deposits, and Stripe payments. Plans start at $0/month with Flex.',
+    relatedSlugs: ['landscapers', 'concrete'],
+  },
+  {
+    slug: 'artificial-turf',
+    name: 'Artificial Turf Installers',
+    work: 'artificial turf installation',
+    headline: 'Artificial turf websites that quote by the square foot and book installs.',
+    subhead:
+      'Quote lawns, putting greens, and pet turf by square footage with turf grade options, take upfront material deposits, and showcase evergreen transformations.',
+    pains: [
+      { title: 'Quote square footage on site', body: 'Save per-square-foot turf options, base prep, and infill pricing to build detailed quotes in minutes.' },
+      { title: 'Deposit before ordering turf', body: 'Collect upfront deposits on custom turf rolls and base material so you never float inventory costs.' },
+      { title: 'Before/after galleries that sell', body: 'Show mud-to-green transformations that convince homeowners and pet owners to switch.' },
+    ],
+    services: ['Residential turf lawns', 'Backyard putting greens', 'Pet & dog turf systems', 'Playground turf', 'Commercial turf', 'Turf maintenance & infill'],
+    templateIds: ['handy', 'modern'],
+    metaTitle: 'Website & Software for Artificial Turf Installers',
+    metaDescription:
+      'An artificial turf website with per-square-foot estimates, material deposits, project galleries, and Stripe payments. Plans start at $0/month.',
+    relatedSlugs: ['landscapers', 'lawn-care'],
+  },
+  {
+    slug: 'landscape-lighting',
+    name: 'Landscape Lighting Contractors',
+    work: 'landscape & architectural lighting',
+    headline: 'Landscape lighting websites that showcase night-time drama.',
+    subhead:
+      'Quote low-voltage architectural and path lighting packages on-site, offer fixture upgrade tiers, and turn installs into recurring service contracts.',
+    pains: [
+      { title: 'Sell the night-time visual', body: 'A photo-first gallery highlighting illuminated trees, path lights, and facade uplights sells the visual package.' },
+      { title: 'Quote fixture tiers in seconds', body: 'Offer bronze vs brass fixture packages and smart control upgrades with instant line-item pricing.' },
+      { title: 'Annual maintenance memberships', body: 'Auto-charge seasonal bulb checks, timer adjustments, and fixture cleaning on saved cards.' },
+    ],
+    services: ['Architectural uplighting', 'Path & garden lights', 'Deck & patio lighting', 'Smart WiFi controllers', 'LED retrofits', 'Maintenance plans'],
+    templateIds: ['modern', 'shine'],
+    metaTitle: 'Website & Software for Landscape Lighting',
+    metaDescription:
+      'A landscape lighting website with package quotes, photo galleries, recurring service plans, and Stripe payments. Plans start at $0/month with Flex.',
+    relatedSlugs: ['electricians', 'holiday-lighting'],
+  },
+  {
+    slug: 'land-clearing',
+    name: 'Land Clearing Contractors',
+    work: 'land clearing & forestry mulching',
+    headline: 'Land clearing websites that quote acreage and lock machine schedules.',
+    subhead:
+      'Quote forestry mulching, brush clearing, and lot preparation by the acre or day rate, take mobilization deposits, and keep heavy equipment rolling.',
+    pains: [
+      { title: 'Quote acreage and day rates', body: 'Build itemized quotes for forestry mulching, tree shear, and brush mowing directly from the field.' },
+      { title: 'Mobilization deposits up front', body: 'Collect deposits covering heavy equipment transport and fuel before hauling machines to site.' },
+      { title: 'Photo documentation of site lines', body: 'Attach survey maps, boundary markers, and before/after clearing photos to quotes and job records.' },
+    ],
+    services: ['Forestry mulching', 'Lot & acreage clearing', 'Brush & undergrowth removal', 'Right-of-way clearing', 'Retention pond clearing', 'Stump shearing'],
+    templateIds: ['carbon', 'professional'],
+    metaTitle: 'Website & Software for Land Clearing Contractors',
+    metaDescription:
+      'A land clearing website with instant estimates, acreage quotes, mobilization deposits, and Stripe payments. Plans start at $0/month with Flex.',
+    relatedSlugs: ['excavation', 'tree-services'],
+  },
+  {
+    slug: 'screen-enclosures',
+    name: 'Screen Enclosure Companies',
+    work: 'screen enclosures & lanais',
+    headline: 'Screen enclosure websites that quote pool cages and lanai wraps.',
+    subhead:
+      'Quote pool enclosures, rescreening, and motorized screens with material options, take staged deposits, and fill your install calendar.',
+    pains: [
+      { title: 'Quote rescreens and new builds', body: 'Itemize standard mesh vs pet screen vs tuff screen per panel or linear foot in seconds.' },
+      { title: 'Deposit before ordering extrusions', body: 'Collect deposits for custom aluminum extrusions and specialty screens prior to fabrication.' },
+      { title: 'Catch storm repair demand', body: 'AI intake captures hurricane or storm wind damage leads 24/7 and queues urgent panel repairs.' },
+    ],
+    services: ['Pool cage enclosures', 'Lanai & patio screens', 'Full enclosure rescreening', 'Motorized roll-down screens', 'Pet screen upgrades', 'Storm & frame repair'],
+    templateIds: ['handy', 'reno'],
+    metaTitle: 'Website & Software for Screen Enclosure Companies',
+    metaDescription:
+      'A screen enclosure website with instant estimates, per-panel quotes, deposits, and Stripe payments. Plans start at $0/month with Flex.',
+    relatedSlugs: ['deck-builders', 'gutters'],
+  },
+  {
+    slug: 'basement-waterproofing',
+    name: 'Basement Waterproofing Contractors',
+    work: 'basement waterproofing',
+    headline: 'Waterproofing websites that turn wet basements into signed fixes.',
+    subhead:
+      'Capture emergency seepage calls 24/7, quote interior drains and sump pump systems with clear scope, and offer payment plans on five-figure jobs.',
+    pains: [
+      { title: 'Win urgent flood calls 24/7', body: 'AI intake captures active basement leaks and wet crawlspace inquiries any hour and flags urgent leads.' },
+      { title: 'Quote drainage systems clearly', body: 'Itemize French drains, dual sump pumps, battery backups, and vapor barriers with clear warranties.' },
+      { title: 'Finance high-ticket repairs', body: '0%-interest payment plans make major basement waterproofing systems accessible for homeowners.' },
+    ],
+    services: ['Interior French drains', 'Dual sump pump systems', 'Battery backup pumps', 'Vapor barrier membranes', 'Exterior waterproofing', 'Dehumidification systems'],
+    templateIds: ['carbon', 'professional'],
+    metaTitle: 'Website & Software for Basement Waterproofers',
+    metaDescription:
+      'A basement waterproofing website with 24/7 lead capture, itemized drainage quotes, payment plans, and Stripe. Plans start at $0/month with Flex.',
+    relatedSlugs: ['foundation-repair', 'water-damage-restoration'],
+  },
+  {
+    slug: 'glass-and-mirrors',
+    name: 'Glass & Mirror Companies',
+    work: 'glass & shower door installation',
+    headline: 'Glass & mirror websites where frameless clarity closes the job.',
+    subhead:
+      'Quote frameless shower doors, custom mirrors, and glass railings with hardware choices, collect upfront glass deposits, and showcase stunning bathrooms.',
+    pains: [
+      { title: 'Quote custom glass on site', body: 'Configure glass thickness, hardware finishes, and protective coating options into itemized quotes in minutes.' },
+      { title: 'Deposit on custom-tempered orders', body: 'Collect deposits covering fabricated tempered glass before placing orders with the glass plant.' },
+      { title: 'Portfolio that sells luxury', body: 'High-res galleries of frameless enclosures and custom gym mirrors prove your fit and finish.' },
+    ],
+    services: ['Frameless shower doors', 'Custom vanity & gym mirrors', 'Glass railing systems', 'Wine cellar glass', 'Tabletops & shelves', 'Commercial storefronts'],
+    templateIds: ['modern', 'reno'],
+    metaTitle: 'Website & Software for Glass & Mirror Companies',
+    metaDescription:
+      'A glass & mirror website with itemized quotes, hardware options, deposits, and Stripe payments. Plans start at $0/month with Flex.',
+    relatedSlugs: ['window-installers', 'remodelers'],
+  },
+  {
+    slug: 'ironwork-and-railings',
+    name: 'Ironwork & Railing Contractors',
+    work: 'custom ironwork & metal fabrication',
+    headline: 'Ironwork websites that let custom metalcraft sell the project.',
+    subhead:
+      'Quote custom railings, driveway gates, and security doors with finish options, take shop-time deposits, and stage payments across fabrication and install.',
+    pains: [
+      { title: 'Quote custom fabrication easily', body: 'Itemize design, steel or aluminum material, powder coating, and on-site welding installation.' },
+      { title: 'Deposit before buying steel', body: 'Collect upfront deposits to cover raw steel and shop cutting time before striking the first arc.' },
+      { title: 'Showcase craftsmanship', body: 'A photo-first portfolio displaying custom stair railings, ornamental gates, and spiral stairs.' },
+    ],
+    services: ['Custom stair railings', 'Driveway & garden gates', 'Ornamental security doors', 'Balcony & porch railings', 'Spiral staircases', 'Powder-coated aluminum'],
+    templateIds: ['carbon', 'modern'],
+    metaTitle: 'Website & Software for Ironwork Contractors',
+    metaDescription:
+      'An ironwork website with custom fabrication quotes, deposits, staged payments, and Stripe payments. Plans start at $0/month with Flex.',
+    relatedSlugs: ['fencing', 'deck-builders'],
+  },
+  {
+    slug: 'radon-mitigation',
+    name: 'Radon Mitigation Contractors',
+    work: 'radon mitigation & testing',
+    headline: 'Radon mitigation websites that close real estate inspection deadlines.',
+    subhead:
+      'Capture time-sensitive real estate leads 24/7, quote active sub-slab mitigation systems on the spot, and get paid before the closing date.',
+    pains: [
+      { title: 'Win the real estate inspection rush', body: 'Fast online booking and instant estimates help agents and home buyers resolve radon contingencies on tight deadlines.' },
+      { title: 'Quote standardized system installs', body: 'Select foundation type, piping route, and fan location from your price book and send a quote in 60 seconds.' },
+      { title: 'Get paid at test verification', body: 'Send digital pay links or auto-charge cards on file as soon as the post-mitigation test confirms safe levels.' },
+    ],
+    services: ['Active sub-slab depressurization', 'Continuous radon testing', 'Crawlspace membrane encapsulation', 'Radon fan replacements', 'Sump pump lid seals', 'Commercial radon mitigation'],
+    templateIds: ['professional', 'fixit'],
+    metaTitle: 'Website & Software for Radon Mitigation Companies',
+    metaDescription:
+      'A radon mitigation website with 24/7 lead capture, fast quotes, online booking, and Stripe payments. Plans start at $0/month with Flex.',
+    relatedSlugs: ['home-inspectors', 'insulation'],
+  },
+  {
+    slug: 'smart-home-av',
+    name: 'Smart Home & Audio Visual Installers',
+    work: 'smart home & audio visual installation',
+    headline: 'Smart home websites that quote the whole system and book installs.',
+    subhead:
+      'Quote home theaters, multi-room audio, security cameras, and network cabling with tiered hardware options, collect deposits, and bill support plans.',
+    pains: [
+      { title: 'Quote complex hardware packages', body: 'Combine speakers, amplifiers, cameras, and labor into transparent tiered packages (Good/Better/Best).' },
+      { title: 'Deposit on high-value gear', body: 'Collect upfront deposits to cover AV receivers, smart panels, and surveillance hardware before ordering.' },
+      { title: 'Recurring remote support plans', body: 'Offer monthly network monitoring and firmware support memberships auto-billed via Stripe.' },
+    ],
+    services: ['Home theater systems', 'Whole-home audio', 'Security cameras & CCTV', 'Smart lighting automation', 'Mesh WiFi & structured cabling', 'Motorized shades integration'],
+    templateIds: ['carbon', 'modern'],
+    metaTitle: 'Website & Software for Smart Home & AV Installers',
+    metaDescription:
+      'A smart home & AV website with tiered package quotes, equipment deposits, support plans, and Stripe payments. Plans start at $0/month with Flex.',
+    relatedSlugs: ['electricians', 'locksmiths'],
+  },
+  {
+    slug: 'fire-protection',
+    name: 'Fire Protection Companies',
+    work: 'fire protection & sprinkler service',
+    headline: 'Fire protection websites that lock recurring inspection contracts.',
+    subhead:
+      'Quote fire sprinkler systems, backflow testing, and alarms, schedule compliance inspections online, and auto-bill recurring testing contracts.',
+    pains: [
+      { title: 'Recurring compliance inspections', body: 'Annual and semi-annual NFPA inspection contracts schedule and auto-bill themselves without administrative hassle.' },
+      { title: 'Quote sprinkler repairs on site', body: 'Send branded quotes for pipe repair, valve replacement, or head relocation right from the riser room.' },
+      { title: 'Digital inspection reports & invoices', body: 'Attach compliance certificates to invoices and receive card or ACH bank payments promptly.' },
+    ],
+    services: ['Fire sprinkler inspections', 'Backflow preventer testing', 'Fire alarm system testing', 'Fire extinguisher service', 'Kitchen hood suppression', 'Emergency pipe repairs'],
+    templateIds: ['professional', 'carbon'],
+    metaTitle: 'Website & Software for Fire Protection Companies',
+    metaDescription:
+      'A fire protection website with compliance inspection booking, recurring billing, quotes, and Stripe payments. Plans start at $0/month with Flex.',
+    payer: 'client',
+    relatedSlugs: ['plumbers', 'electricians'],
+  },
+  {
+    slug: 'ev-chargers',
+    name: 'EV Charger Installers',
+    work: 'EV charger installation',
+    headline: 'EV charger websites that book the install before delivery day.',
+    subhead:
+      'Quote Level 2 home chargers and commercial stations, capture homeowner rebates, collect deposits on panel work, and get paid upon commissioning.',
+    pains: [
+      { title: 'Quote standard installs fast', body: 'Price 240V NEMA 14-50 outlets vs hardwired Level 2 chargers with distance-based wiring add-ons in 60 seconds.' },
+      { title: 'Deposit on panel upgrades', body: 'Collect deposits upfront when a 200A service upgrade or subpanel is required before installing the charger.' },
+      { title: 'Photo-based remote assessments', body: 'Homeowners upload photos of their breaker panel and garage layout during intake for fast pre-qualification.' },
+    ],
+    services: ['Level 2 home chargers', 'Tesla wall connectors', 'Commercial charging stations', 'Electrical panel upgrades', 'Load management systems', 'Utility rebate documentation'],
+    templateIds: ['carbon', 'fixit'],
+    metaTitle: 'Website & Software for EV Charger Installers',
+    metaDescription:
+      'An EV charger installation website with instant estimates, photo intake, deposits, and Stripe payments. Plans start at $0/month with Flex.',
+    relatedSlugs: ['electricians', 'solar'],
+  },
+  {
+    slug: 'cabinet-refinishing',
+    name: 'Cabinet Refinishing Companies',
+    work: 'cabinet refinishing & painting',
+    headline: 'Cabinet refinishing websites where the finish sells the remodel.',
+    subhead:
+      'Quote kitchen cabinets by door and drawer count, let homeowners choose factory finishes and colors, collect deposits, and showcase stunning before/afters.',
+    pains: [
+      { title: 'Quote by door and drawer count', body: 'Calculate quotes in minutes based on total openings, finish type (paint vs stain), and optional new hardware.' },
+      { title: 'Lock the schedule with a deposit', body: 'Collect a deposit to order specialty lacquer and schedule the spray shop crew.' },
+      { title: 'Stunning kitchen before/afters', body: 'Before-and-after sliders highlight dramatic oak-to-white transformations that close clients instantly.' },
+    ],
+    services: ['Cabinet spray painting', 'Factory lacquer finishes', 'Cabinet door refacing', 'Hardware replacement & drilling', 'Island accent painting', 'Built-in bookcase painting'],
+    templateIds: ['coat', 'modern'],
+    metaTitle: 'Website & Software for Cabinet Refinishers',
+    metaDescription:
+      'A cabinet refinishing website with per-door quotes, finish options, deposits, and before/after galleries. Plans start at $0/month with Flex.',
+    relatedSlugs: ['painters', 'cabinetry'],
+  },
+  {
+    slug: 'custom-closets',
+    name: 'Custom Closet Companies',
+    work: 'custom closet & storage design',
+    headline: 'Custom closet websites that turn messy storage into booked builds.',
+    subhead:
+      'Quote walk-in closets, pantry systems, and garage storage with modular finish options, collect upfront deposits, and stage payments across install.',
+    pains: [
+      { title: 'Quote modular configurations', body: 'Itemize hanging sections, drawer towers, shoe shelves, and jewelry trays so customers can customize their budget.' },
+      { title: 'Deposit on fabricated parts', body: 'Collect deposits covering custom CNC cabinetry parts and hardware before production begins.' },
+      { title: 'Showcase clean organization', body: 'High-definition portfolios of walk-ins, pantries, and mudrooms inspire homeowners to transform their homes.' },
+    ],
+    services: ['Walk-in closet systems', 'Reach-in closet organizers', 'Custom pantry shelving', 'Garage storage & workbenches', 'Mudroom lockers & drop zones', 'Home office built-ins'],
+    templateIds: ['modern', 'reno'],
+    metaTitle: 'Website & Software for Custom Closet Companies',
+    metaDescription:
+      'A custom closet website with itemized quotes, modular options, deposits, and Stripe payments. Plans start at $0/month with Flex.',
+    relatedSlugs: ['cabinetry', 'remodelers'],
+  },
+  {
+    slug: 'finish-carpentry',
+    name: 'Finish Carpenters',
+    work: 'finish carpentry & millwork',
+    headline: 'Finish carpentry websites that let precision craftsmanship sell the job.',
+    subhead:
+      'Quote crown molding, wainscoting, and interior doors by the linear foot, take deposits before purchasing lumber, and get paid when the trim is set.',
+    pains: [
+      { title: 'Quote by the linear foot or room', body: 'Save per-foot pricing for crown, baseboards, and coffered ceilings to build branded quotes in minutes.' },
+      { title: 'Deposit on custom millwork orders', body: 'Collect deposits to cover custom wood profiles, interior doors, and lumber orders prior to delivery.' },
+      { title: 'Showcase fine detail work', body: 'Detail-focused photo galleries highlight tight miters, custom mantels, and elegant accent walls.' },
+    ],
+    services: ['Crown molding & baseboards', 'Wainscoting & board and batten', 'Interior door installation', 'Custom fireplace mantels', 'Coffered & wood slat ceilings', 'Custom staircase trim'],
+    templateIds: ['reno', 'carbon'],
+    metaTitle: 'Website & Software for Finish Carpenters',
+    metaDescription:
+      'A finish carpentry website with per-foot estimates, millwork quotes, deposits, and Stripe payments. Plans start at $0/month with Flex.',
+    relatedSlugs: ['cabinetry', 'remodelers'],
+  },
+  {
+    slug: 'wallpaper-installers',
+    name: 'Wallpaper Installers',
+    work: 'wallpaper & wallcovering installation',
+    headline: 'Wallpaper websites where seamless pattern matching wins the job.',
+    subhead:
+      'Quote accent walls and commercial vinyl by the roll or square foot, book installation dates online, and collect payment the moment the paper is hung.',
+    pains: [
+      { title: 'Quote by the roll or square foot', body: 'Calculate paper requirements, pattern repeats, and prep work into clear, itemized quotes on site.' },
+      { title: 'Lock dates with a deposit', body: 'Hold installation windows so your schedule stays reliable and designers lock in your time.' },
+      { title: 'High-end design showcase', body: 'Photo galleries displaying luxury grasscloth, complex murals, and commercial vinyl build instant designer trust.' },
+    ],
+    services: ['Residential wallpaper hanging', 'Accent walls & powder rooms', 'Murals & panoramic wallcovering', 'Grasscloth & specialty materials', 'Commercial vinyl wallcovering', 'Wallpaper removal & wall prep'],
+    templateIds: ['coat', 'modern'],
+    metaTitle: 'Website & Software for Wallpaper Installers',
+    metaDescription:
+      'A wallpaper installer website with per-roll quotes, online booking, project galleries, and Stripe payments. Plans start at $0/month with Flex.',
+    relatedSlugs: ['painters', 'drywall'],
+  },
+  {
+    slug: 'bin-cleaning',
+    name: 'Trash Bin Cleaning Services',
+    work: 'trash & dumpster bin cleaning',
+    headline: 'Bin-cleaning websites that keep curbside recurring routes full.',
+    subhead:
+      'Sell monthly, bi-monthly, and quarterly can sanitizing plans that bill cards on file automatically on trash day without administrative headaches.',
+    pains: [
+      { title: 'Recurring route billing on autopilot', body: 'Subscribers are auto-charged per visit or monthly, syncing seamlessly with your neighborhood trash route.' },
+      { title: 'Curbside instant signups', body: 'Neighborhood homeowners scan a QR code or visit your site to choose their schedule and enter card details in under 2 minutes.' },
+      { title: 'Automated service day reminders', body: 'SMS notifications alert homeowners to leave cans out after trash pickup for immediate washing.' },
+    ],
+    services: ['Curbside trash bin cleaning', 'Recycle bin sanitizing', 'Yard waste can washing', 'Commercial dumpster deodorizing', 'HOA community cleanouts', 'High-pressure wash & sanitize'],
+    templateIds: ['shine', 'handy'],
+    metaTitle: 'Website & Software for Trash Bin Cleaners',
+    metaDescription:
+      'A trash bin cleaning website with recurring route billing, online signups, and Stripe card-on-file payments. Plans start at $0/month with Flex.',
+    relatedSlugs: ['pressure-washing', 'cleaning-services'],
+  },
+  {
+    slug: 'solar-panel-cleaning',
+    name: 'Solar Panel Cleaning Companies',
+    work: 'solar panel cleaning & bird proofing',
+    headline: 'Solar cleaning websites that book recurring washes and critter guards.',
+    subhead:
+      'Quote pure deionized water panel washes by panel count, quote critter mesh guard installations on-site, and auto-bill seasonal maintenance plans.',
+    pains: [
+      { title: 'Quote by panel count instantly', body: 'Price 15, 30, or 50 panel systems with optional second-story or steep roof add-ons in seconds.' },
+      { title: 'High-ticket bird guard upsells', body: 'Send branded quotes for critter mesh and pigeon proofing right from the roof edge and get them e-signed.' },
+      { title: 'Seasonal cleaning memberships', body: 'Keep solar arrays generating peak output with bi-annual recurring wash plans that charge automatically.' },
+    ],
+    services: ['Deionized pure water washing', 'Bird proofing & critter guards', 'Pigeon nest removal & sanitize', 'Thermal imaging inspection', 'Commercial rooftop solar cleaning', 'Bi-annual maintenance plans'],
+    templateIds: ['shine', 'carbon'],
+    metaTitle: 'Website & Software for Solar Panel Cleaners',
+    metaDescription:
+      'A solar panel cleaning website with per-panel estimates, bird proofing quotes, recurring billing, and Stripe. Plans start at $0/month with Flex.',
+    relatedSlugs: ['solar', 'window-cleaning', 'gutters'],
+  },
+  {
+    slug: 'mobile-mechanics',
+    name: 'Mobile Mechanics',
+    work: 'mobile auto repair',
+    headline: 'Mobile mechanic websites that book the driveway repair and get paid on site.',
+    subhead:
+      'Book diagnostics and routine services online, send itemized repair quotes from the driveway, and collect card or tap-to-pay before packing your tools.',
+    pains: [
+      { title: 'Book diagnostic windows online', body: 'Customers select their vehicle year/make/model and grab an open arrival window without endless phone tag.' },
+      { title: 'Quote repairs in the driveway', body: 'Build branded quotes with parts and labor markups on your phone and get instant customer approval.' },
+      { title: 'Tap-to-pay at the vehicle', body: 'Accept credit card, debit, or Apple Pay the second the repair is tested—no chasing invoices later.' },
+    ],
+    services: ['Mobile diagnostics & check engine', 'Brake pad & rotor replacement', 'Battery, starter & alternator', 'Spark plugs & ignition coils', 'Serpentine belts & cooling', 'Pre-purchase vehicle inspections'],
+    templateIds: ['fixit', 'carbon'],
+    metaTitle: 'Website & Software for Mobile Mechanics',
+    metaDescription:
+      'A mobile mechanic website with online booking, driveway estimates, tap-to-pay, and Stripe payments. Plans start at $0/month with Flex.',
+    payer: 'customer',
+    relatedSlugs: ['auto-detailing', 'appliance-repair'],
+  },
+  {
+    slug: 'paintless-dent-repair',
+    name: 'Paintless Dent Repair Services',
+    work: 'paintless dent repair',
+    headline: 'PDR websites that turn door dings and hail storms into booked jobs.',
+    subhead:
+      'Let customers upload photos for quick estimates, quote door dings and hail damage on-site, and collect card or tap-to-pay the moment the panel is smooth.',
+    pains: [
+      { title: 'Photo estimate intake 24/7', body: 'Customers snap and upload dent photos online so you can quote ballparks before driving to the vehicle.' },
+      { title: 'Handle hail catastrophe surges', body: 'Storm response lead capture qualifies multi-panel hail claims and queues estimates efficiently.' },
+      { title: 'Instant tap-to-pay on site', body: 'Take payment immediately after massaging out the dent at the customer’s home or workplace.' },
+    ],
+    services: ['Door ding & dent removal', 'Hail damage restoration', 'Crease & body line repair', 'Bumper dent repair', 'Lease return dent touch-ups', 'Mobile & shop-based PDR'],
+    templateIds: ['carbon', 'shine'],
+    metaTitle: 'Website & Software for Paintless Dent Repair',
+    metaDescription:
+      'A paintless dent repair website with photo estimates, mobile booking, tap-to-pay, and Stripe payments. Plans start at $0/month with Flex.',
+    payer: 'customer',
+    relatedSlugs: ['auto-detailing', 'mobile-mechanics'],
+  },
+  {
+    slug: 'window-tinting',
+    name: 'Window Tinting & PPF Services',
+    work: 'window tinting & paint protection',
+    headline: 'Window tinting websites where film packages and booking convert.',
+    subhead:
+      'Showcase ceramic tint and PPF packages, let customers book vehicle slots online with deposits, and turn one car into a lifelong enthusiast client.',
+    pains: [
+      { title: 'Tiered package selection (Carbon/Ceramic)', body: 'Customers pick their film quality, shade percentage, and coverage areas with instant price calculation.' },
+      { title: 'Deposits to hold shop bays', body: 'Require a deposit at online booking to prevent no-shows from leaving your film plotter and bay idle.' },
+      { title: 'Showcase flawless installs', body: 'High-gloss photos and video galleries highlight clean edges, ceramic gloss, and rock-chip protection.' },
+    ],
+    services: ['Ceramic automotive window tint', 'Carbon & dyed window film', 'Paint Protection Film (PPF)', 'Ceramic paint coating', 'Residential window tinting', 'Commercial architectural film'],
+    templateIds: ['carbon', 'shine'],
+    metaTitle: 'Website & Software for Window Tinting & PPF',
+    metaDescription:
+      'A window tinting website with package selectors, bay booking, deposits, and Stripe payments. Plans start at $0/month with Flex.',
+    payer: 'customer',
+    relatedSlugs: ['auto-detailing', 'paintless-dent-repair'],
+  },
+  {
+    slug: 'marine-services',
+    name: 'Marine & Boat Services',
+    work: 'marine service & boat detailing',
+    headline: 'Marine service websites that book dockside repairs and seasonal routes.',
+    subhead:
+      'Quote hull detailing, winterization, and marine electronics by vessel length, take deposits on heavy service, and keep boaters on seasonal maintenance.',
+    pains: [
+      { title: 'Quote by vessel length and boat type', body: 'Calculate gelcoat oxidation removal, wash packages, and bottom paint by linear foot in seconds.' },
+      { title: 'Fill seasonal spring & fall routes', body: 'Online booking packs your winterization, shrink-wrapping, and spring commissioning calendar before the frost.' },
+      { title: 'Get paid dockside', body: 'Send digital payment links or take cards right at the slip or marina with instant Stripe settlement.' },
+    ],
+    services: ['Gelcoat restoration & ceramic', 'Hull washing & waxing', 'Winterization & shrink-wrap', 'Spring commissioning', 'Marine electronics & audio', 'Outboard & engine maintenance'],
+    templateIds: ['shine', 'professional'],
+    metaTitle: 'Website & Software for Boat & Marine Services',
+    metaDescription:
+      'A marine service website with per-foot boat quotes, seasonal booking, deposits, and Stripe payments. Plans start at $0/month with Flex.',
+    payer: 'customer',
+    relatedSlugs: ['auto-detailing', 'mobile-mechanics'],
+  },
 ];
 
 export function getTrade(slug: string): Trade | undefined {

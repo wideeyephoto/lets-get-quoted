@@ -70,11 +70,11 @@ describe('the directory is 49 links and not a search box', () => {
     expect(CSS).not.toMatch(/\.tradeList\s+li\s*\{[^}]*display:\s*none/);
   });
 
-  it('points at every one of the 54 trade URLs', () => {
+  it('points at every one of the 76 trade URLs', () => {
     expect(FINDER).toContain('href={`/for/${entry.trade.slug}`}');
     const filed = TRADE_CATEGORIES.flatMap((category) => category.slugs);
     expect(new Set(filed).size).toBe(TRADES.length);
-    expect(TRADES).toHaveLength(54);
+    expect(TRADES).toHaveLength(76);
   });
 
   it('keeps the descriptive anchor text — the trade name and what it does', () => {
@@ -241,7 +241,7 @@ describe('the trust strip', () => {
      advertising the old number. */
   it('counts the trades rather than claiming a number', () => {
     expect(strip).not.toContain('49 trades supported');
-    expect(TRADES.length).toBe(54);
+    expect(TRADES.length).toBe(76);
   });
 
   /* No customer counts, no ratings, no processed-payment totals, no logos.
