@@ -5423,6 +5423,7 @@
   .root :global(.index-hero-beside > .eyebrow),
   .root :global(.index-hero-beside > h1),
   .root :global(.index-hero-beside > p:not(.eyebrow)),
+  .root :global(.index-hero-beside > p.index-hero-fee),
   .root :global(.index-hero-beside > .hero-actions),
   .root :global(.index-hero-beside > .hero-thread) { grid-column: 1; grid-row: auto; }
   .root :global(.index-hero-beside > h1) { font-size: clamp(34px, 5.4vw, 48px); }
@@ -7270,11 +7271,15 @@
 /* The hero grid gains a row. It was 1fr auto auto auto auto 1fr — six rows
    with the last a spacer — and the note needs a real one of its own before
    that spacer, or it lands in the implicit row under the thread. */
-.root :global(.index-hero-beside) { grid-template-rows: 1fr auto auto auto auto auto 1fr; }
+@media (min-width: 1041px) {
+  .root :global(.index-hero-beside) { grid-template-rows: 1fr auto auto auto auto auto 1fr; }
+  .root :global(.index-hero-beside > p.index-hero-fee) {
+    grid-column: 1;
+    grid-row: 6;
+  }
+}
 
 .root :global(.index-hero-beside > p.index-hero-fee) {
-  grid-column: 1;
-  grid-row: 6;
   max-width: 52ch;
   margin: 18px 0 0;
   font-size: 13.5px;
@@ -7282,6 +7287,14 @@
   /* Quieter than the lede and still over 7:1 on the hero's ground: this is the
      fine print being legible, not the fine print shouting. */
   color: #9db0bd;
+}
+
+@media (max-width: 1040px) {
+  .root :global(.index-hero-beside > p.index-hero-fee) {
+    grid-column: 1;
+    grid-row: auto;
+    margin-top: 14px;
+  }
 }
 .root :global(.index-hero-fee a) {
   color: #ffb37a;

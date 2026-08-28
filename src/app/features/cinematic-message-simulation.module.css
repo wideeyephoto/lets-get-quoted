@@ -1,490 +1,435 @@
-/* The /features hero simulation.
+/* The /features hero: Job Record Workflow Simulation.
  *
- * EVERYTHING IS SCOPED UNDER .sim, AND THAT IS NOT TIDINESS. The page renders
- * inside flagship.module.css's `.root`, which re-declares Tailwind's preflight
- * within its own scope: `.root p, .root ol { margin: 0 }`, `.root ul, .root ol
- * { list-style: none }`, `.root button { background: none; border: 0; padding:
- * 0 }`, `.root h1..h6 { font-size: inherit }`. Those are all (0,1,1), which a
- * bare module class at (0,1,0) LOSES to outright — the Replay button that used
- * to sit under the panel would have had no border and no padding, and nothing
- * about that failure is visible in the source. `.sim .replay` was (0,2,0) and
- * won honestly. That button is gone, but the scoping stays: every rule below is
- * up against the same reset.
- *
- * The colors are the shell's where the shell has one (--ink, --mint, --muted)
- * and stated here where it does not: there is no electric blue in the flagship
- * palette, and #1668e3 under white is 5.1:1, which is the reason it is that
- * blue and not the brighter one. */
+ * Scoped under .sim to beat flagship.module.css's preflight resets.
+ */
 
 .sim {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 14px;
   width: 100%;
 }
-
-/* ---- the shell ----------------------------------------------------------
- *
- * Phone-INSPIRED. A rounded slab with a status line and a composer, in the
- * page's own navy — not a rendering of anybody's handset, and deliberately
- * without the notch, the buttons or the branded proportions that would make it
- * one. */
 
 .sim .stage {
   position: relative;
   width: 100%;
-  max-width: 390px;
+  max-width: 440px;
 }
 
-/* Static, and that is the point: a glow that breathes is a loop, and there is
-   already one thing moving on this panel. */
+/* Subtle glow behind the card */
 .sim .glow {
   position: absolute;
   z-index: 0;
-  inset: -14% -18% -8%;
-  border-radius: 50%;
-  background: radial-gradient(circle at 50% 42%, rgba(41, 173, 214, 0.22), transparent 62%);
-  filter: blur(26px);
+  inset: -10% -14% -6%;
+  border-radius: 40px;
+  background: radial-gradient(circle at 50% 45%, rgba(38, 160, 204, 0.18), transparent 65%);
+  filter: blur(28px);
   pointer-events: none;
 }
 
-.sim .phone {
+/* The Job Record Card container */
+.sim .jobCard {
   position: relative;
   z-index: 1;
   display: flex;
   flex-direction: column;
-  /* A ceiling, not a height. The column it sits in is about 502px wide and the
-     band around it is not tall; below that the content decides, so a short
-     viewport never clips the composer or the bar under it. */
-  max-height: 618px;
-  padding: 14px 13px 11px;
+  gap: 10px;
+  width: 100%;
+  padding: 16px 18px 14px;
   border: 1px solid rgba(126, 183, 214, 0.22);
-  border-radius: 30px;
-  background: linear-gradient(180deg, #0b1620 0%, #060e15 100%);
+  border-radius: 22px;
+  background: linear-gradient(180deg, rgba(13, 27, 39, 0.98) 0%, rgba(8, 17, 25, 0.99) 100%);
   box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.05) inset,
-    0 30px 70px rgba(0, 0, 0, 0.5);
+    0 1px 0 rgba(255, 255, 255, 0.08) inset,
+    0 24px 60px rgba(0, 0, 0, 0.45);
 }
 
-/* ---- the header, which is a record and not a chat title ------------------ */
+/* ---- Card Header -------------------------------------------------------- */
 
-.sim .head {
+.sim .cardHeader {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: 10px;
-  padding: 2px 4px 11px;
+  gap: 12px;
+  padding-bottom: 11px;
   border-bottom: 1px solid rgba(126, 183, 214, 0.14);
 }
 
-.sim .headWho {
+.sim .jobMeta {
   display: flex;
-  min-width: 0;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
+  min-width: 0;
 }
 
-.sim .headWho b {
-  font-size: 13px;
-  font-weight: 750;
-  letter-spacing: -0.01em;
-  color: #e7f1f5;
-}
-
-.sim .headWho small {
+.sim .metaTop {
+  display: flex;
+  align-items: center;
+  gap: 5px;
   font-family: var(--font-geist-mono), ui-monospace, monospace;
-  font-size: 9.5px;
-  letter-spacing: 0.08em;
+  font-size: 10px;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: #7d95a2;
 }
 
-/* Permanent. Each dashboard card leaves this changed, which is the whole
-   argument: the overlay is the event, the pill is the record. */
-.sim .status {
-  flex: 0 0 auto;
-  padding: 5px 10px;
-  border: 1px solid rgba(126, 183, 214, 0.28);
-  border-radius: 999px;
-  font-size: 10.5px;
+.sim .jobId {
   font-weight: 750;
-  letter-spacing: 0.02em;
-  color: #b9cbd5;
-  white-space: nowrap;
-  transition: color 0.3s ease, border-color 0.3s ease, background-color 0.3s ease;
+  color: #8fa8b7;
 }
 
-.sim .status[data-tone='held'] {
-  border-color: rgba(168, 204, 255, 0.45);
-  background: rgba(22, 104, 227, 0.16);
-  color: #cbe0ff;
+.sim .jobDivider {
+  color: #405764;
 }
 
-.sim .status[data-tone='booked'] {
-  border-color: rgba(80, 227, 189, 0.5);
-  background: rgba(80, 227, 189, 0.12);
-  color: #7ff0d3;
+.sim .jobClient {
+  font-weight: 600;
+  color: #a6bcc8;
 }
 
-/* ---- the job context, pinned ---------------------------------------------
- *
- * Product context, not a message. It sits above the transcript, inside its own
- * recessed block, because these three lines are what the software already knew
- * before the first text went out. */
-
-.sim .context {
-  margin-top: 11px;
-  padding: 9px 11px 10px;
-  border: 1px solid rgba(126, 183, 214, 0.12);
-  border-radius: 14px;
-  background: rgba(126, 183, 214, 0.05);
+.sim .jobArea {
+  color: #6d8491;
 }
 
-.sim .contextLabel {
-  display: block;
-  margin-bottom: 6px;
-  font-family: var(--font-geist-mono), ui-monospace, monospace;
-  font-size: 8.8px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: #6f8a99;
-}
-
-.sim .context ul {
-  display: grid;
-  gap: 4px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.sim .context li {
-  position: relative;
-  margin: 0;
-  padding-left: 13px;
-  font-size: 11.5px;
-  line-height: 1.4;
-  color: #adc1cd;
-}
-
-.sim .context li::before {
-  content: '';
-  position: absolute;
-  top: 6px;
-  left: 0;
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: rgba(80, 227, 189, 0.7);
-}
-
-/* ---- the transcript ------------------------------------------------------
- *
- * Sent messages only. Anything the customer did happens in their dashboard and
- * is drawn over this, never in it. */
-
-/* The area a card may cover, and the only one. Its own positioned box rather
-   than the phone, so an overlay cannot sit over the header — which is the one
-   thing that has to stay readable while a card is up, because it is what the
-   card is about to change.
-
-   The min-height is room for all three messages, reserved from the start.
-   Without it the phone would grow by a bubble's height twice while somebody is
-   reading it, and the caption and Replay under it would step down the page
-   each time. Measured against the three real bodies at 390px — the longest is
-   three lines — with headroom for a wrap.
-
-   justify-content: flex-end is why the first text arrives at the BOTTOM, next
-   to the composer, the way one does on a phone. It is set here and not on the
-   list because a percentage height on the list resolves against a parent whose
-   own height comes from min-height, which is exactly the case where browsers
-   disagree about whether it is definite. */
-.sim .thread {
-  position: relative;
-  display: flex;
-  flex: 1 1 auto;
-  flex-direction: column;
-  justify-content: flex-end;
-  /* Measured, not guessed: the empty phone was 548px and the full one 576px at
-     1280, so the reserve was 28px short and the caption under it stepped down
-     the page twice per run. */
-  min-height: 326px;
-  overflow: hidden;
-  padding: 14px 2px 0;
-}
-
-.sim .transcript {
-  transition: opacity 0.32s ease, filter 0.32s ease;
-}
-
-/* Behind a card, and only while one is up. Enough to say "read this instead",
-   not enough to hide what it is on top of. */
-.sim .transcript[data-dim='true'] {
-  opacity: 0.34;
-  filter: blur(1.2px);
-}
-
-.sim .rows {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.sim .row {
-  display: flex;
-  flex-direction: column;
-  /* Sent, so right. The side is the direction, and there is only one side on
-     this panel because there is only one direction. */
-  align-items: flex-end;
-  margin: 0;
-}
-
-/* Whole bubbles, never typed out character by character: this is a message
-   arriving, and a message arrives all at once.
-
-   An animation rather than a transition, because a row is MOUNTED when it
-   arrives — there is no previous state for a transition to run from. The
-   unarmed panel is the finished one, so this only ever runs on the client. */
-.sim [data-armed='true'] .row {
-  animation: rowIn 0.47s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-@keyframes rowIn {
-  from {
-    opacity: 0;
-    transform: translateY(16px) scale(0.97);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-
-.sim .bubble {
-  max-width: 86%;
-  margin: 0;
-  padding: 10px 13px 11px;
-  /* No tail. The corner does the work, and a tail on the overlay cards is
-     exactly the confusion this panel exists to avoid. */
-  border-radius: 18px 18px 6px 18px;
-  /* 5.1:1 under #fff. The brighter blues in this family are prettier and do
-     not pass. */
-  background: #1668e3;
-  color: #ffffff;
-  font-size: 12.5px;
-  line-height: 1.5;
-  letter-spacing: 0.005em;
-  box-shadow: 0 10px 22px rgba(11, 62, 141, 0.34);
-}
-
-.sim .link {
-  color: #d7e8ff;
-  text-decoration: underline;
-  text-underline-offset: 0.16em;
-  overflow-wrap: anywhere;
-}
-
-.sim .sent {
-  margin: 5px 4px 0;
-  font-size: 9.5px;
-  letter-spacing: 0.04em;
-  color: #6f8a99;
-}
-
-/* ---- what happened in the dashboard --------------------------------------
- *
- * Centred over the thread, outside the message list, and gone again. It takes
- * no part in the transcript's layout — absolutely positioned over it — because
- * the moment one of these sits in the flow it reads as a message, which is the
- * one thing about the product it must not say. */
-
-.sim .cardWrap {
-  position: absolute;
-  z-index: 3;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 18px;
-  pointer-events: none;
-}
-
-.sim .card {
-  width: 100%;
-  max-width: 268px;
-  padding: 13px 15px 14px;
-  border: 1px solid rgba(80, 227, 189, 0.42);
-  border-radius: 16px;
-  background: rgba(9, 32, 36, 0.9);
-  -webkit-backdrop-filter: blur(9px);
-  backdrop-filter: blur(9px);
-  box-shadow: 0 20px 44px rgba(0, 0, 0, 0.5);
-  text-align: left;
-}
-
-.sim [data-armed='true'] .card[data-state='in'] {
-  animation: cardIn 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-/* Upward, so it reads as being filed rather than dismissed. */
-.sim [data-armed='true'] .card[data-state='out'] {
-  animation: cardOut 0.38s ease-in both;
-}
-
-@keyframes cardIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px) scale(0.97);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-
-@keyframes cardOut {
-  from {
-    opacity: 1;
-    transform: none;
-  }
-  to {
-    opacity: 0;
-    transform: translateY(-12px);
-  }
-}
-
-.sim .cardLabel {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 8px;
-  font-family: var(--font-geist-mono), ui-monospace, monospace;
-  font-size: 8.8px;
-  font-weight: 700;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-  color: #50e3bd;
-}
-
-.sim .cardLabel svg {
-  flex: 0 0 auto;
-}
-
-.sim .card strong {
-  display: flex;
-  align-items: baseline;
-  gap: 7px;
+.sim .tradeTitle {
   font-size: 13.5px;
   font-weight: 750;
   letter-spacing: -0.01em;
-  color: #eafaf5;
+  color: #ecf3f6;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.sim .tick {
-  color: #50e3bd;
-  font-size: 12px;
+/* Status Badge */
+.sim .statusBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(126, 183, 214, 0.28);
+  background: rgba(126, 183, 214, 0.08);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #b8ccda;
+  white-space: nowrap;
+  transition: all 0.3s ease;
 }
 
-.sim .card small {
-  display: block;
-  margin-top: 4px;
-  font-size: 11.5px;
-  line-height: 1.45;
-  color: #a6c4bd;
+.sim .statusDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
 }
 
-/* ---- the bottom of the shell -------------------------------------------- */
+.sim .statusBadge[data-tone='sent'] {
+  border-color: rgba(90, 165, 255, 0.45);
+  background: rgba(22, 104, 227, 0.16);
+  color: #bad8ff;
+}
 
-.sim .composer {
+.sim .statusBadge[data-tone='held'] {
+  border-color: rgba(62, 196, 237, 0.45);
+  background: rgba(30, 150, 195, 0.16);
+  color: #8ee3f8;
+}
+
+.sim .statusBadge[data-tone='booked'] {
+  border-color: rgba(80, 227, 189, 0.5);
+  background: rgba(80, 227, 189, 0.14);
+  color: #72efcf;
+}
+
+/* ---- 5-Step Workflow Stepper -------------------------------------------- */
+
+.sim .stepperWrap {
+  padding: 4px 0 2px;
+}
+
+.sim .stepper {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sim .stepItem {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  padding-bottom: 9px;
+}
+
+.sim .stepItem:last-child {
+  padding-bottom: 0;
+}
+
+/* Node indicator with connecting line */
+.sim .node {
+  position: relative;
+  z-index: 2;
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-top: 12px;
-  padding-top: 11px;
-  border-top: 1px solid rgba(126, 183, 214, 0.14);
-}
-
-.sim .composerBox {
-  flex: 1 1 auto;
-  padding: 8px 12px;
-  border: 1px solid rgba(126, 183, 214, 0.16);
-  border-radius: 999px;
-  font-size: 11.5px;
-  color: #5f7a8a;
-}
-
-.sim .composerSend {
-  display: grid;
-  flex: 0 0 auto;
-  place-items: center;
-  width: 26px;
-  height: 26px;
+  justify-content: center;
+  width: 17px;
+  height: 17px;
+  margin-top: 1px;
   border-radius: 50%;
-  background: rgba(22, 104, 227, 0.28);
-  color: #cbe0ff;
-  font-size: 12px;
+  border: 1.5px solid rgba(126, 183, 214, 0.25);
+  background: #09151f;
+  color: #556c7a;
+  transition: all 0.3s ease;
+  flex-shrink: 0;
 }
 
-.sim .homeBar {
-  width: 108px;
+/* The vertical connecting line between stages */
+.sim .stepItem:not(:last-child) .node::after {
+  content: '';
+  position: absolute;
+  top: 17px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 1.5px;
+  height: calc(100% + 2px);
+  min-height: 12px;
+  background: rgba(126, 183, 214, 0.16);
+  transition: background 0.3s ease;
+}
+
+.sim .nodeDot {
+  width: 4px;
   height: 4px;
-  margin: 10px auto 2px;
-  border-radius: 999px;
-  background: rgba(126, 183, 214, 0.26);
+  border-radius: 50%;
+  background: currentColor;
 }
 
-/* The panel used to carry a caption ("blue bubbles are SMS…") and a row holding
-   a demo link and a Replay button. All three are gone — .caption, .actions and
-   .replay went with them rather than being left here for a class nobody
-   renders. The phone is the whole panel now. */
-
-/* ---- pausing ------------------------------------------------------------
- *
- * The timers stop on their own when the panel scrolls away or the tab goes to
- * the background; this stops the CSS that is already mid-flight with them, so
- * a card does not finish fading while nobody is watching and reappear finished. */
-
-.sim [data-paused='true'] .card,
-.sim [data-paused='true'] .row {
-  animation-play-state: paused;
+/* Completed Stage */
+.sim .stepItem[data-state='completed'] .node {
+  border-color: #50e3bd;
+  background: rgba(80, 227, 189, 0.16);
+  color: #50e3bd;
+  box-shadow: 0 0 8px rgba(80, 227, 189, 0.28);
 }
 
-/* ---- less motion --------------------------------------------------------
- *
- * The finished state, immediately: three messages, booked, and no cards at all
- * — the component never mounts one, so there is nothing here to hide. Nothing
- * transitions, including the status pill, which would otherwise animate its
- * color on the first paint. */
-
-@media (prefers-reduced-motion: reduce) {
-  .sim .row,
-  .sim .card,
-  .sim .transcript,
-  .sim .status {
-    transition: none;
-    animation: none;
-  }
-  .sim [data-armed='true'] .row {
-    opacity: 1;
-    transform: none;
-    animation: none;
-  }
+.sim .stepItem[data-state='completed']:not(:last-child) .node::after {
+  background: #2b7d6b;
 }
 
-@media (max-width: 480px) {
-  .sim .stage {
-    max-width: 100%;
+.sim .stepItem[data-state='completed'] .stepLabel {
+  color: #e5f0f4;
+  font-weight: 700;
+}
+
+.sim .stepItem[data-state='completed'] .stepDetail {
+  color: #92abb8;
+}
+
+/* Active Stage */
+.sim .stepItem[data-state='active'] .node {
+  border-color: #3b82f6;
+  background: rgba(59, 130, 246, 0.2);
+  color: #60a5fa;
+  animation: pulseNode 1.6s infinite ease-in-out;
+}
+
+@keyframes pulseNode {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4); }
+  50% { transform: scale(1.08); box-shadow: 0 0 0 4px rgba(59, 130, 246, 0); }
+}
+
+.sim .stepItem[data-state='active'] .stepLabel {
+  color: #93c5fd;
+  font-weight: 700;
+}
+
+.sim .stepItem[data-state='pending'] {
+  opacity: 0.48;
+}
+
+.sim .stepContent {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.sim .stepLabelRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.sim .stepLabel {
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  color: #b3c7d3;
+  transition: color 0.3s ease;
+}
+
+.sim .stepSource {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 8.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  color: #7994a3;
+}
+
+.sim .stepDetail {
+  font-size: 10.5px;
+  color: #6b8290;
+  line-height: 1.35;
+  transition: color 0.3s ease;
+}
+
+/* ---- Active Event Toast ------------------------------------------------- */
+
+.sim .eventSlot {
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+}
+
+.sim .eventBanner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  padding: 6px 11px;
+  border-radius: 10px;
+  border: 1px solid rgba(80, 227, 189, 0.35);
+  background: linear-gradient(90deg, rgba(80, 227, 189, 0.12) 0%, rgba(41, 173, 214, 0.08) 100%);
+  animation: slideInBanner 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.sim .eventBanner[data-leaving='true'] {
+  animation: fadeOutBanner 0.32s ease forwards;
+}
+
+@keyframes slideInBanner {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeOutBanner {
+  from { opacity: 1; transform: translateY(0); }
+  to { opacity: 0; transform: translateY(-4px); }
+}
+
+.sim .eventSurface {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #50e3bd;
+  white-space: nowrap;
+}
+
+.sim .eventBody {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+  text-align: right;
+}
+
+.sim .eventBody strong {
+  font-size: 11px;
+  font-weight: 700;
+  color: #f0f7f9;
+}
+
+.sim .eventBody small {
+  font-size: 9.5px;
+  color: #a2c1ce;
+}
+
+/* ---- Supporting Customer SMS Notification -------------------------------- */
+
+.sim .smsFooter {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding-top: 9px;
+  border-top: 1px solid rgba(126, 183, 214, 0.12);
+}
+
+.sim .smsHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.sim .smsBadge {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #698393;
+}
+
+.sim .smsDelivered {
+  font-size: 9.5px;
+  font-weight: 600;
+  color: #50e3bd;
+}
+
+.sim .smsBubble {
+  padding: 8px 11px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #112737 0%, #0c1f2e 100%);
+  border: 1px solid rgba(126, 183, 214, 0.18);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset;
+}
+
+.sim .smsBubble p {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.45;
+  color: #d1e2eb;
+}
+
+.sim .smsLink {
+  color: #ffaa70;
+  font-weight: 650;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* ---- Mobile / Reduced Viewports ----------------------------------------- */
+
+@media (max-width: 768px) {
+  .sim .jobCard {
+    padding: 13px 14px 11px;
+    gap: 8px;
+    border-radius: 18px;
   }
-  .sim .phone {
-    padding: 12px 11px 10px;
-    border-radius: 26px;
+
+  .sim .stepItem {
+    padding-bottom: 7px;
   }
-  .sim .bubble {
-    max-width: 92%;
+
+  .sim .eventSlot {
+    min-height: 32px;
   }
 }

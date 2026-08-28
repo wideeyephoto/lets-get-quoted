@@ -166,7 +166,7 @@ export default function ProductTour() {
   }, [playing, near]);
 
   return (
-    <section className="tour-band" aria-labelledby="tour-title" ref={sectionRef}>
+    <section className="tour-band" id="tour" aria-labelledby="tour-title" ref={sectionRef}>
       <h2 className="sr-only" id="tour-title">
         A recording of the dashboard
       </h2>

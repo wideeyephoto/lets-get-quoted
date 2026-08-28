@@ -50,9 +50,9 @@ describe('Problem 1: Product Identity and Message Hierarchy', () => {
 
   describe('Features / Product page alignment', () => {
     it('frames the suite as the connected system from website lead to paid job', () => {
-      expect(FEATURES).toContain('Everything connected from <em>website lead to paid job.</em>');
-      expect(FEATURES).toContain('THE CONNECTED CONTRACTOR SYSTEM');
-      expect(FEATURES).toContain('{SIGNUP_LABEL}');
+      expect(FEATURES).toContain('From website lead to paid job—<em>without stitching together six tools.</em>');
+      expect(FEATURES).toContain('ONE JOB RECORD. EVERY STEP CONNECTED.');
+      expect(FEATURES).toContain('Build my free site');
     });
   });
 

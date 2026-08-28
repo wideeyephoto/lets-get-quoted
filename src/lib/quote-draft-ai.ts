@@ -4,8 +4,8 @@ import { listServices } from '@/lib/services';
 import { parseQuoteItems } from '@/lib/jobs';
 import { getAuthoritativeTrade } from '@/lib/workspace-trade';
 import { callModel, AiDraftsExhaustedError } from '@/lib/ai-model-call';
-import { createLeadPhotoLinks } from '@/lib/lead-photo-storage';
-import { createJobPhotoLinks } from '@/lib/job-photo-storage';
+import { createLeadPhotoUrls } from '@/lib/lead-photo-storage';
+import { createJobPhotoUrls } from '@/lib/job-photo-storage';
 import {
   formatPriceBook, formatQuoteHistory, reconcileDraft, MAX_DRAFT_LINES, MAX_HISTORY_JOBS,
   type HistoricalQuote, type PriceBookEntry, type QuoteDraft, type RawDraft,
@@ -83,7 +83,7 @@ export async function loadDraftContext(
   let photoUrls: string[] = [];
   const jobPhotoPaths = Array.isArray(job.photo_paths) ? (job.photo_paths as string[]) : [];
   if (jobPhotoPaths.length > 0) {
-    photoUrls = await createJobPhotoLinks(supabase, accountId, jobId, jobPhotoPaths);
+    photoUrls = await createJobPhotoUrls(accountId, jobPhotoPaths);
   } else if (job.lead_id) {
     const { data: lead } = await supabase
       .from('leads')
@@ -93,7 +93,7 @@ export async function loadDraftContext(
       .maybeSingle();
     const leadPhotoPaths = Array.isArray(lead?.photo_paths) ? (lead?.photo_paths as string[]) : [];
     if (leadPhotoPaths.length > 0) {
-      photoUrls = await createLeadPhotoLinks(supabase, accountId, job.lead_id, leadPhotoPaths);
+      photoUrls = await createLeadPhotoUrls(accountId, leadPhotoPaths);
     }
   }
 

@@ -236,36 +236,31 @@ export default function FeaturesPage() {
           generated sheet and a wrapper would silently drop both. */}
       <section className="index-hero index-hero-beside" id="main-content">
         <p className="eyebrow">
-          <span aria-hidden="true">✦</span> THE CONNECTED CONTRACTOR SYSTEM
+          <span aria-hidden="true">✦</span> ONE JOB RECORD. EVERY STEP CONNECTED.
         </p>
         <h1>
-          Everything connected from <em>website lead to paid job.</em>
+          From website lead to paid job—<em>without stitching together six tools.</em>
         </h1>
         <p>
-          Build your website, qualify leads, send quotes, schedule work, manage your crew, and collect payment without switching tools.
+          Your website, AI intake, quotes, scheduling, crew, customer updates, and payments all work from the same job record.
         </p>
         <div className="hero-actions">
           <a className="button primary" href={SIGNUP_URL}>
-            {SIGNUP_LABEL} <span aria-hidden="true">→</span>
+            Build my free site <span aria-hidden="true">→</span>
           </a>
-          <AllFeaturesModal triggerLabel="See all our features" triggerVariant="secondary" />
+          <a className="button secondary" href="#tour">
+            Watch one job move
+          </a>
         </div>
-
 
         {/* The plan range stays beside the primary action and comes from the
             same canonical catalog as /pricing. */}
         <p className="index-hero-fee">
-          Flex starts at {FLEX_PRICE.monthlyPrice} plus {FLEX_PRICE.platformFee}. Paid plans lower the LGQ
-          platform fee as far as {LOWEST_PLATFORM_FEE}.{' '}
-          <Link href="/pricing">Compare exact prices and limits</Link>
+          Start free. No card required. Flex includes a 1.25% platform fee.{' '}
+          <Link href="/pricing">See pricing</Link>
         </p>
 
-        {/* One job MOVING, rather than one job printed.
-            The panel is a client component because everything difficult about
-            it is behavioural — see CinematicMessageSimulation. It keeps the
-            .hero-thread class because that is what places it in this grid, and
-            adds .hero-thread-sim, which takes the old panel's chrome back off:
-            the shell is the phone now, not the box around it. */}
+        {/* One connected Job Record workflow simulation */}
         <CinematicMessageSimulation />
       </section>
 
