@@ -13,9 +13,10 @@ const POPULAR_TRADE_SLUGS = [
   'landscapers',
   'painters',
   'hvac',
-  'general-contractors',
-  'handymen',
   'remodelers',
+  'handyman',
+  'flooring',
+  'concrete',
 ];
 
 const SAMPLE_CITIES = ['Austin, TX', 'Denver, CO', 'Miami, FL', 'Chicago, IL', 'Phoenix, AZ', 'Charlotte, NC'];
@@ -27,9 +28,10 @@ const TRADE_SAMPLE_PROJECTS: Record<string, { jobType: string; timeline: string;
   landscapers: { jobType: 'Full Sod Installation & Drip Irrigation Zone', timeline: 'This Month', est: '$4,200–$6,000' },
   painters: { jobType: 'Interior Whole-Home Repaint (4 Bed / 2.5 Bath)', timeline: 'Within 3 Weeks', est: '$5,000–$7,500' },
   hvac: { jobType: 'High-Efficiency Heat Pump & Ductwork Upgrade', timeline: 'Next Week', est: '$8,000–$11,500' },
-  'general-contractors': { jobType: 'Master Bathroom & Kitchen Open-Concept Remodel', timeline: 'Next Month', est: '$25,000–$40,000' },
-  handymen: { jobType: 'Drywall Patching, Fixtures & Exterior Door Install', timeline: 'This Weekend', est: '$850–$1,400' },
+  handyman: { jobType: 'Drywall Patching, Fixtures & Exterior Door Install', timeline: 'This Weekend', est: '$850–$1,400' },
   remodelers: { jobType: 'Custom Kitchen Cabinetry & Quartz Countertops', timeline: 'Flexible', est: '$18,000–$28,000' },
+  flooring: { jobType: 'Hardwood Installation & Subfloor Prep', timeline: 'Next 2 Weeks', est: '$6,500–$9,800' },
+  concrete: { jobType: 'Stamped Concrete Patio & Driveway Extension', timeline: 'This Month', est: '$7,200–$11,000' },
 };
 
 export default function TradeWebsiteGenerator() {
