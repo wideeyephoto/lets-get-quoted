@@ -227,20 +227,21 @@ export async function runAssistantConversation(
     const functionCalls = initialResponse.functionCalls;
 
     if (functionCalls && functionCalls.length > 0) {
-      // Add the model's tool-call response to conversation history
-      const modelParts: Part[] = [];
-      for (const fc of functionCalls) {
-        modelParts.push({
-          functionCall: {
-            name: fc.name,
-            args: fc.args,
-          },
+      // Add the model's tool-call response to conversation history (preserves thoughtSignature and full candidate parts)
+      const candidateContent = initialResponse.candidates?.[0]?.content;
+      if (candidateContent) {
+        formattedContents.push(candidateContent);
+      } else {
+        formattedContents.push({
+          role: 'model',
+          parts: functionCalls.map((fc) => ({
+            functionCall: {
+              name: fc.name,
+              args: fc.args,
+            },
+          })),
         });
       }
-      formattedContents.push({
-        role: 'model',
-        parts: modelParts,
-      });
 
       // Execute each tool call
       const functionResponseParts: Part[] = [];
@@ -268,6 +269,7 @@ export async function runAssistantConversation(
             functionResponse: {
               name: toolName,
               response: { output: result.data },
+              ...(fc.id ? { id: fc.id } : {}),
             },
           });
         } catch (err: unknown) {
@@ -284,6 +286,7 @@ export async function runAssistantConversation(
             functionResponse: {
               name: toolName,
               response: { error: errorMessage },
+              ...(fc.id ? { id: fc.id } : {}),
             },
           });
         }
