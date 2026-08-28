@@ -20,6 +20,7 @@ import CinematicMessageSimulation from './CinematicMessageSimulation';
 import styles from '@/components/flagship/flagship.module.css';
 import JobRecordStages from './job-record-stages';
 import ProductTour from './ProductTour';
+import WebsiteFeaturePreview from './WebsiteFeaturePreview';
 import LaunchBanner from '@/components/marketing/launch-banner';
 import ThemeFab from '@/components/theme-fab';
 import AllFeaturesModal from '@/components/marketing/AllFeaturesModal';
@@ -120,92 +121,101 @@ const FAQ: { q: string; a: string }[] = [
  * Renaming an id here breaks a homepage link silently. There is a test that
  * asserts every homepage anchor resolves to an id on this page.
  */
-type Flagship = {
+type WebsiteCapability = {
+  title: string;
+  body: string;
+};
+
+type WebsiteFeature = {
+  id: string;
+  eyebrow: string;
+  title: string;
+  description: string;
+  capabilities: WebsiteCapability[];
+  demoHref: string;
+  deepHref: string;
+};
+
+const WEBSITE_FEATURE: WebsiteFeature = {
+  id: 'website-builder',
+  eyebrow: 'BUILD THE FRONT DOOR',
+  title: 'A complete contractor website, generated in minutes.',
+  description:
+    'Tell us your business name, trade, and service area. LGQ generates your service pages, local pages, FAQs, trust content, and instant estimate—ready to edit and publish.',
+  capabilities: [
+    {
+      title: 'Generated trade and local pages',
+      body: 'Services, town pages, FAQs, and intake questions written for your trade.',
+    },
+    {
+      title: 'Editable themes and layout sections',
+      body: 'Brand colors, typography, project galleries, video, and flexible sections.',
+    },
+    {
+      title: 'Automatic local SEO and structured data',
+      body: 'LocalBusiness, review, and breadcrumb JSON-LD for Google search presence.',
+    },
+    {
+      title: 'Instant estimate connected to the job',
+      body: 'Requests arrive with scope, photos, budget, and urgency ready to quote.',
+    },
+  ],
+  demoHref: '/demo/sites',
+  deepHref: '/features/website-builder',
+};
+
+type WorkflowFeature = {
   number: string;
   id: string;
   title: string;
   body: string;
   href: string;
   kicker: string;
-  /**
-   * WHAT THE FEATURE HANDS YOU, in the software's own nouns.
-   *
-   * Each card was a number, a label, a sentence and 65px of nothing — five
-   * claims a visitor had to take on faith, on a page whose whole argument is
-   * that the parts connect. These are not benefits restated; they are the
-   * things that exist in the product once the feature runs, which is the
-   * shortest honest way to show a feature on a page with no screenshots.
-   */
   produces: [string, string, string];
+  actionLabel: string;
 };
 
-/* THE FIVE ARE THE JOURNEY NOW, IN THE ORDER A JOB ACTUALLY MOVES.
- *
- * The heading over them has always promised "win better leads, quote faster,
- * keep the crew moving, and get paid" — and quoting, scheduling and getting
- * paid had no card of their own. Three of the four things the heading sells
- * were inside a card called "Connected back office", while position 03, in the
- * middle of the run, was Quick Stops: a real feature, and one that happens
- * BETWEEN jobs rather than during one. A visitor reading down for "how do I
- * send a quote" found the sales pitch for a route add-on instead.
- *
- * So the five are the five stages, Quick Stops has its own band underneath
- * (where being a different KIND of thing is the point rather than a break in
- * the sequence), and the back office is the cream section below — which is
- * what that section already shows.
- *
- * THE IDS DID NOT ALL SURVIVE, and that is deliberate rather than careless:
- * `back-office` and `quick-stops` are no longer FLAGSHIPS entries. The homepage
- * links at BOTH by path (/features/back-office, /features/quick-stops), never
- * by fragment, so nothing breaks; the one fragment the homepage uses is
- * #website-builder, which is still here. The Quick Stops band still carries
- * id="quick-stops" so an old link lands somewhere true.
- */
-const FLAGSHIPS: Flagship[] = [
+/* THE WORKFLOW STAGES THAT RUN BEHIND THE FRONT DOOR */
+const WORKFLOW_FEATURES: WorkflowFeature[] = [
   {
     number: '01',
-    id: 'website-builder',
-    title: 'Website',
-    body: 'Launch a complete, editable contractor site with the instant estimate wired in from day one.',
-    href: '/features/website-builder',
-    kicker: 'BUILD THE FRONT DOOR',
-    produces: ['Trade-matched pages', 'Instant estimate form', 'Your own domain'],
-  },
-  {
-    number: '02',
     id: 'smart-intake',
     title: 'AI intake',
     body: 'Ask the follow-up questions your trade needs, write the job summary, and surface the leads worth answering first.',
     href: '/features/ai-intake',
     kicker: 'QUALIFY THE OPPORTUNITY',
     produces: ['A written job summary', 'Budget and urgency read', 'Leads ranked by value'],
+    actionLabel: 'Explore AI Intake',
   },
   {
-    number: '03',
+    number: '02',
     id: 'quotes',
     title: 'Quotes and approvals',
     body: 'Send an itemized quote with optional add-ons, take the signature on a phone, and collect the deposit before the truck moves.',
     href: '/features/quotes',
     kicker: 'PRICE IT AND GET IT SIGNED',
     produces: ['Itemized quote with add-ons', 'E-signature on a phone', 'Deposit before scheduling'],
+    actionLabel: 'Explore Quotes',
   },
   {
-    number: '04',
+    number: '03',
     id: 'scheduling',
     title: 'Scheduling and crew',
     body: 'Turn an approved quote into a booked day, assign who is going, and plan the route without retyping the job.',
     href: '/features/scheduling',
     kicker: 'PUT IT ON THE CALENDAR',
     produces: ['Approved quote → booked day', 'Crew assigned and tracked', 'Today’s route, planned'],
+    actionLabel: 'Explore Scheduling',
   },
   {
-    number: '05',
+    number: '04',
     id: 'client-portal',
     title: 'Customer texts and payments',
     body: 'Two-way texting, on-my-way alerts, and one link where the homeowner approves, follows and pays.',
     href: '/features/client-portal',
     kicker: 'KEEP THEM INFORMED AND GET PAID',
     produces: ['Two-way texting', 'On-my-way alerts', 'Deposits, balances and plans'],
+    actionLabel: 'Explore Customer Portal',
   },
 ];
 
@@ -285,37 +295,66 @@ export default function FeaturesPage() {
       <section className="flagship-index" id="flagship-index">
         <div className="index-heading">
           <p className="eyebrow">
-            <span aria-hidden="true">✦</span> FIVE CONNECTED ADVANTAGES
+            <span aria-hidden="true">✦</span> FROM FRONT DOOR TO FINAL PAYMENT
           </p>
-          {/* Was "Each feature is useful alone. Together, they change the
-              business." — true, and about the software rather than about the
-              reader. This says what the five features are FOR, in the order a
-              job actually moves. */}
           <h2>
-            Win better leads, quote faster,
+            Start with the website.
             <br />
-            <em>keep the crew moving, and get paid.</em>
+            <em>Run every job behind it.</em>
           </h2>
+          <p className="index-subheading">
+            Attract the homeowner, qualify the work, send the quote, schedule the crew, and collect payment without rebuilding the job.
+          </p>
         </div>
-        <div className="feature-link-grid">
-          {FLAGSHIPS.map(({ number, id, title, body, href, kicker, produces }) => (
-            /* The id is on the link itself, so a visitor arriving from the
-               homepage lands on the card rather than near it. scroll-margin-top
-               keeps it clear of the sticky header — see §96. */
+
+        {/* FEATURED WEBSITE BLOCK */}
+        <article
+          className="website-featured"
+          id={WEBSITE_FEATURE.id}
+          aria-labelledby="website-featured-title"
+        >
+          <div className="website-featured-copy">
+            <p className="eyebrow">{WEBSITE_FEATURE.eyebrow}</p>
+            <h3 id="website-featured-title">{WEBSITE_FEATURE.title}</h3>
+            <p>{WEBSITE_FEATURE.description}</p>
+
+            <ul className="website-capabilities" aria-label="Website builder capabilities">
+              {WEBSITE_FEATURE.capabilities.map((capability) => (
+                <li key={capability.title}>
+                  <strong>{capability.title}</strong>
+                  <span>{capability.body}</span>
+                </li>
+              ))}
+            </ul>
+
+            <div className="website-featured-actions">
+              <Link className="button primary" href={WEBSITE_FEATURE.demoHref}>
+                Preview site templates <span aria-hidden="true">→</span>
+              </Link>
+              <Link className="button secondary" href={WEBSITE_FEATURE.deepHref}>
+                Explore the website builder <span aria-hidden="true">→</span>
+              </Link>
+            </div>
+          </div>
+
+          <WebsiteFeaturePreview />
+        </article>
+
+        {/* FOUR WORKFLOW STAGES */}
+        <div className="feature-link-grid workflow-feature-grid">
+          {WORKFLOW_FEATURES.map(({ number, id, title, body, href, kicker, produces, actionLabel }) => (
             <Link href={href} key={id} id={id}>
               <span>{number}</span>
               <small>{kicker}</small>
               <h3>{title}</h3>
               <p>{body}</p>
-              {/* A list, not three styled spans: read aloud it is "three items,
-                  a written job summary, …", which is the whole point of it. */}
               <ul className="feature-produces" aria-label={`What ${title} gives you`}>
                 {produces.map((item) => (
                   <li key={item}>{item}</li>
                 ))}
               </ul>
               <b>
-                Explore feature <span aria-hidden="true">→</span>
+                {actionLabel} <span aria-hidden="true">→</span>
               </b>
             </Link>
           ))}

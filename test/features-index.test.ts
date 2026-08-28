@@ -94,28 +94,41 @@ describe('the proof strip proves things we can actually show', () => {
   });
 });
 
-describe('the five cards are the five stages of a job', () => {
-  const FLAG = CODE.slice(CODE.indexOf('const FLAGSHIPS'), CODE.indexOf('export default'));
-  const ids = [...FLAG.matchAll(/id: '([a-z-]+)'/g)].map((m) => m[1]);
+describe('the features section leads with the website and connects the four workflow stages', () => {
+  const SITE_FEATURE = CODE.slice(CODE.indexOf('const WEBSITE_FEATURE'), CODE.indexOf('const WORKFLOW_FEATURES'));
+  const WORKFLOW = CODE.slice(CODE.indexOf('const WORKFLOW_FEATURES'), CODE.indexOf('export default'));
+  const workflowIds = [...WORKFLOW.matchAll(/id: '([a-z-]+)'/g)].map((m) => m[1]);
 
-  it('runs website → intake → quotes → scheduling → customer', () => {
-    expect(ids).toEqual(['website-builder', 'smart-intake', 'quotes', 'scheduling', 'client-portal']);
+  it('runs website block → intake → quotes → scheduling → customer portal', () => {
+    expect(SITE_FEATURE).toContain("id: 'website-builder'");
+    expect(workflowIds).toEqual(['smart-intake', 'quotes', 'scheduling', 'client-portal']);
+  });
+
+  it('renders the featured Website block before the workflow features grid', () => {
+    expect(CODE).toContain('<article');
+    expect(CODE).toContain('className="website-featured"');
+    expect(CODE).toContain('id={WEBSITE_FEATURE.id}');
+    expect(CODE).toContain('<WebsiteFeaturePreview />');
+    expect(CODE.indexOf('className="website-featured"')).toBeLessThan(CODE.indexOf('workflow-feature-grid'));
+  });
+
+  it('offers both site preview and deep-dive destinations for the website', () => {
+    expect(SITE_FEATURE).toContain("demoHref: '/demo/sites'");
+    expect(SITE_FEATURE).toContain("deepHref: '/features/website-builder'");
+    expect(CODE).toContain('href={WEBSITE_FEATURE.demoHref}');
+    expect(CODE).toContain('href={WEBSITE_FEATURE.deepHref}');
   });
 
   it('gives quoting a card, which the heading has always promised', () => {
-    expect(FLAG).toContain("title: 'Quotes and approvals'");
-    expect(FLAG).toContain("href: '/features/quotes'");
-    expect(CODE).toContain('quote faster');
+    expect(WORKFLOW).toContain("title: 'Quotes and approvals'");
+    expect(WORKFLOW).toContain("href: '/features/quotes'");
   });
 
   it('takes Quick Stops out of the sequence and gives it a band', () => {
-    // A Quick Stop is not a stage of a job; it is a second, smaller job sold
-    // into the gap between two of them, and in position 03 it broke a sequence
-    // on the page that sells the sequence.
-    expect(FLAG).not.toContain("id: 'quick-stops'");
+    expect(WORKFLOW).not.toContain("id: 'quick-stops'");
     expect(CODE).toContain('<section className="route-band" id="quick-stops"');
     expect(CODE).toContain("href=\"/features/quick-stops\"");
-    // Below the five, not above them.
+    // Below the flagship index, not above it.
     expect(CODE.indexOf('className="flagship-index"')).toBeLessThan(CODE.indexOf('className="route-band"'));
   });
 
@@ -333,3 +346,38 @@ describe('the product tour', () => {
     expect(TOUR).not.toMatch(/\b(testimonial|case study|our customer|success story)\b/i);
   });
 });
+
+describe('the website feature preview and accessibility', () => {
+  const PREVIEW_SRC = strip(read('src/app/features/WebsiteFeaturePreview.tsx'));
+
+  it('uses static next/image captures without client JS', () => {
+    expect(PREVIEW_SRC).toContain('next/image');
+    expect(PREVIEW_SRC).not.toContain("'use client'");
+    expect(PREVIEW_SRC).not.toContain('<iframe');
+  });
+
+  it('preview assets exist on disk and are nonempty', () => {
+    const desktopPath = 'public/media/website-builder/lawn-and-order/lawn-and-order-desktop-hero.jpg';
+    const mobilePath = 'public/media/website-builder/lawn-and-order/lawn-and-order-mobile-hero.jpg';
+    expect(statSync(desktopPath).size).toBeGreaterThan(10_000);
+    expect(statSync(mobilePath).size).toBeGreaterThan(10_000);
+  });
+
+  it('maintains proper accessibility semantics on the preview', () => {
+    expect(PREVIEW_SRC).toContain('<figure');
+    expect(PREVIEW_SRC).not.toContain('aria-hidden="true"');
+    expect(PREVIEW_SRC).toContain('<figcaption className="sr-only">');
+  });
+
+  it('has no nested anchors in the featured website block', () => {
+    const featuredBlock = CODE.slice(CODE.indexOf('className="website-featured"'), CODE.indexOf('workflow-feature-grid'));
+    // The outer element is an article rather than a parent Link/a wrapping child Links
+    expect(CODE).toContain('<article');
+    expect(CODE).toContain('className="website-featured"');
+    expect(CODE).not.toMatch(/<Link\b[^>]*className="website-featured"/);
+    expect(CODE).not.toMatch(/<a\b[^>]*className="website-featured"/);
+    expect(featuredBlock).not.toMatch(/<Link\b[^>]*>(?:(?!<\/Link>)[\s\S])*?<Link\b/);
+    expect(featuredBlock).not.toMatch(/<a\b[^>]*>(?:(?!<\/a>)[\s\S])*?<a\b/);
+  });
+});
+

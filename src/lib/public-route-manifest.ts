@@ -28,7 +28,7 @@ export const PUBLIC_ROUTE_MANIFEST: PublicRouteDefinition[] = [
   },
   {
     path: '/features',
-    expectedH1Pattern: /One Connected System/i,
+    expectedH1Pattern: /website lead to paid job/i,
     requiredAnchorIds: ['flagship-index', 'quick-stops', 'faq'],
     requiresAuth: false,
     category: 'marketing',

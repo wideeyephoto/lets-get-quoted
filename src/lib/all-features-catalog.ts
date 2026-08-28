@@ -36,7 +36,7 @@ export const ALL_FEATURES_CATALOG: FeatureCatalogCategory[] = [
       },
       {
         id: 'templates-themes',
-        name: '20+ Industry Design Templates',
+        name: 'Trade-Specific Design Themes',
         desc: 'Handcrafted design themes tailored for every trade with curated typography and color schemes.',
         tags: ['Design', 'Themes'],
         subBullets: [

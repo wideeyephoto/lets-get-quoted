@@ -1704,6 +1704,190 @@
 
 .root :global(.feature-link-grid a>b) { position:absolute; bottom:28px; color:#dfe7ea; font-size:10px; }
 
+/* FEATURED WEBSITE BLOCK */
+.root :global(.website-featured) {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(340px, 0.95fr);
+  gap: clamp(32px, 5vw, 64px);
+  align-items: center;
+  margin-bottom: 48px;
+  padding: clamp(28px, 4vw, 44px);
+  border: 1px solid #233b47;
+  border-radius: 18px;
+  background: linear-gradient(145deg, rgba(16, 40, 51, 0.65), rgba(10, 27, 37, 0.85));
+  scroll-margin-top: 100px;
+}
+
+.root :global(.website-featured-copy .eyebrow) {
+  color: var(--orange);
+  font-size: 10px;
+  letter-spacing: 1.3px;
+  font-weight: 850;
+  margin: 0 0 12px;
+}
+
+.root :global(.website-featured-copy h3) {
+  font-size: clamp(26px, 3.2vw, 38px);
+  letter-spacing: -1.2px;
+  line-height: 1.15;
+  margin: 0 0 16px;
+}
+
+.root :global(.website-featured-copy > p:not(.eyebrow)) {
+  color: #9ab0bc;
+  font-size: 15px;
+  line-height: 1.65;
+  margin: 0 0 28px;
+  max-width: 600px;
+}
+
+.root :global(.website-capabilities) {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px 24px;
+  list-style: none;
+  padding: 0;
+  margin: 0 0 32px;
+}
+
+.root :global(.website-capabilities li) {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.root :global(.website-capabilities strong) {
+  font-size: 14px;
+  font-weight: 700;
+  color: #e2ebf0;
+}
+
+.root :global(.website-capabilities span) {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: #839aa6;
+}
+
+.root :global(.website-featured-actions) {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+.root :global(.website-featured-actions a.button) {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 22px;
+  font-size: 13.5px;
+  font-weight: 700;
+  border-radius: 8px;
+  text-decoration: none;
+  transition: transform .15s ease, background .15s ease, border-color .15s ease;
+}
+
+.root :global(.website-featured-actions a.button.primary) {
+  background: var(--orange);
+  color: #ffffff;
+  border: 1px solid var(--orange);
+}
+
+.root :global(.website-featured-actions a.button.primary:hover) {
+  transform: translateY(-2px);
+  filter: brightness(1.08);
+}
+
+.root :global(.website-featured-actions a.button.secondary) {
+  background: rgba(255, 255, 255, 0.05);
+  color: #e2ebf0;
+  border: 1px solid #2e4a57;
+}
+
+.root :global(.website-featured-actions a.button.secondary:hover) {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: #436575;
+  transform: translateY(-2px);
+}
+
+/* WORKFLOW FEATURE GRID (2x2 on desktop, 1-col on mobile) */
+.root :global(.workflow-feature-grid) {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.root :global(.workflow-feature-grid a),
+.root :global(.workflow-feature-grid a:nth-child(4)),
+.root :global(.workflow-feature-grid a:nth-child(5)) {
+  grid-column: auto;
+  min-height: 280px;
+}
+
+/* Light Theme Adjustments */
+:global(:root[data-theme='light']) .root :global(.website-featured) {
+  border-color: #d6d0c5;
+  background: linear-gradient(145deg, #fdfbf6, #f4eee3);
+  box-shadow: 0 10px 30px rgba(20, 29, 33, 0.06);
+}
+
+:global(:root[data-theme='light']) .root :global(.website-featured-copy h3) {
+  color: var(--ink);
+}
+
+:global(:root[data-theme='light']) .root :global(.website-featured-copy > p:not(.eyebrow)) {
+  color: #556268;
+}
+
+:global(:root[data-theme='light']) .root :global(.website-capabilities strong) {
+  color: #17242c;
+}
+
+:global(:root[data-theme='light']) .root :global(.website-capabilities span) {
+  color: #607179;
+}
+
+:global(:root[data-theme='light']) .root :global(.website-featured-actions a.button.secondary) {
+  background: #ffffff;
+  color: #17242c;
+  border-color: #cbc4b8;
+}
+
+:global(:root[data-theme='light']) .root :global(.website-featured-actions a.button.secondary:hover) {
+  background: #f8f6f0;
+  border-color: #a89f92;
+}
+
+@media (max-width: 900px) {
+  .root :global(.website-featured) {
+    grid-template-columns: 1fr;
+    gap: 36px;
+  }
+}
+
+@media (max-width: 640px) {
+  .root :global(.workflow-feature-grid) {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .root :global(.website-capabilities) {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .root :global(.website-featured-actions) {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .root :global(.website-featured-actions a.button) {
+    width: 100%;
+  }
+}
+
 .root :global(.everything-index) { color:var(--ink); background:radial-gradient(circle at 88% 10%,rgba(255,106,36,.12),transparent 28%),var(--cream); }
 
 .root :global(.everything-index .index-heading>p:last-child) { color:#747873; }

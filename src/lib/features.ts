@@ -45,7 +45,7 @@ export const FEATURE_CATEGORIES: FeatureCategory[] = [
     intro: 'A professional site on your own domain, live in minutes — no web guy.',
     features: [
       { id: 'hosted-website', name: 'Hosted contractor website', desc: 'Publish a polished marketing site on your own domain, publish or unpublish anytime.', favorite: true },
-      { id: 'templates', name: '15+ design templates', desc: 'Distinct layouts, motion, and hero styles for every trade.' },
+      { id: 'templates', name: 'Trade-matched design themes', desc: 'Distinct layouts, motion, and hero styles for every trade.' },
       /* VIDEO WAS MISSING FROM THIS CATALOG ENTIRELY, which meant a shipped
          feature — six section layouts, uploads, codec and size checking — was
          absent from /features, the homepage grid and every capability list that
