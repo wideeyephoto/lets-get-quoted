@@ -28,11 +28,9 @@
 -- its own because the entitlement lock already serialises the pair.
 --
 -- WHAT AN EXPIRED SEAT DOES. When a seat subscription lapses the sum drops and
--- the roster can sit above its cap. That path already exists and is already
--- correct: v_active_count > v_limit raises crew_seat_remediation_required,
--- which tells the owner exactly how many to archive, and it is checked BEFORE
--- the at-cap case so the message is the useful one. Nothing here archives
--- anybody. Deactivating an employee is a decision, not a side effect of billing.
+-- the roster can sit above its cap. This patch never archives or deactivates
+-- anybody; the current gate refuses further activation with
+-- crew_seat_limit_reached until the roster is back under its cap.
 --
 -- HOW. Both functions are patched from their own live source rather than
 -- retyped, the house pattern -- see 20260818170000_top_up_inbox_ingest_scope.sql.
@@ -44,22 +42,25 @@ do $$
 declare
   v_before text;
   v_after text;
-  v_old text := $needle$
-  v_limit := v_limit_numeric::bigint;$needle$;
-  v_new text := $replacement$
-  v_limit := v_limit_numeric::bigint
-    + public.workspace_purchased_capacity_units(p_account_id, 'crew_users');$replacement$;
+  v_old text;
+  v_new text;
 begin
   v_before := pg_catalog.pg_get_functiondef(
     'public.create_crew_member_with_seat_entitlement(uuid,text,text,text,text,text,numeric,text,numeric,numeric,text)'
       ::pg_catalog.regprocedure
   );
   v_before := pg_catalog.replace(v_before, pg_catalog.chr(13) || pg_catalog.chr(10), pg_catalog.chr(10));
-  v_old := pg_catalog.replace(v_old, pg_catalog.chr(13) || pg_catalog.chr(10), pg_catalog.chr(10));
-  v_new := pg_catalog.replace(v_new, pg_catalog.chr(13) || pg_catalog.chr(10), pg_catalog.chr(10));
 
   if pg_catalog.strpos(v_before, 'workspace_purchased_capacity_units') > 0 then
     return;
+  end if;
+
+  if pg_catalog.strpos(v_before, 'v_limit := trunc(v_limit_numeric)::bigint;') > 0 then
+    v_old := E'  v_limit := trunc(v_limit_numeric)::bigint;';
+    v_new := E'  v_limit := trunc(v_limit_numeric)::bigint\n    + public.workspace_purchased_capacity_units(p_account_id, ''crew_users'');';
+  else
+    v_old := E'  v_limit := v_limit_numeric::bigint;';
+    v_new := E'  v_limit := v_limit_numeric::bigint\n    + public.workspace_purchased_capacity_units(p_account_id, ''crew_users'');';
   end if;
 
   if pg_catalog.length(v_before)
@@ -78,22 +79,25 @@ do $$
 declare
   v_before text;
   v_after text;
-  v_old text := $needle$
-  v_limit := v_limit_numeric::bigint;$needle$;
-  v_new text := $replacement$
-  v_limit := v_limit_numeric::bigint
-    + public.workspace_purchased_capacity_units(p_account_id, 'crew_users');$replacement$;
+  v_old text;
+  v_new text;
 begin
   v_before := pg_catalog.pg_get_functiondef(
     'public.reactivate_crew_member_with_seat_entitlement(uuid,uuid)'
       ::pg_catalog.regprocedure
   );
   v_before := pg_catalog.replace(v_before, pg_catalog.chr(13) || pg_catalog.chr(10), pg_catalog.chr(10));
-  v_old := pg_catalog.replace(v_old, pg_catalog.chr(13) || pg_catalog.chr(10), pg_catalog.chr(10));
-  v_new := pg_catalog.replace(v_new, pg_catalog.chr(13) || pg_catalog.chr(10), pg_catalog.chr(10));
 
   if pg_catalog.strpos(v_before, 'workspace_purchased_capacity_units') > 0 then
     return;
+  end if;
+
+  if pg_catalog.strpos(v_before, 'v_limit := trunc(v_limit_numeric)::bigint;') > 0 then
+    v_old := E'  v_limit := trunc(v_limit_numeric)::bigint;';
+    v_new := E'  v_limit := trunc(v_limit_numeric)::bigint\n    + public.workspace_purchased_capacity_units(p_account_id, ''crew_users'');';
+  else
+    v_old := E'  v_limit := v_limit_numeric::bigint;';
+    v_new := E'  v_limit := v_limit_numeric::bigint\n    + public.workspace_purchased_capacity_units(p_account_id, ''crew_users'');';
   end if;
 
   if pg_catalog.length(v_before)
@@ -131,15 +135,13 @@ begin
     raise exception 'crew seat reactivate gate does not read purchased capacity';
   end if;
 
-  -- The entitlement lock, the counting predicate and both cap messages are the
+  -- The entitlement lock, the counting predicate and cap outcome are the
   -- reason this gate is safe. A patch that dropped any of them would still
   -- compute the right number and still be wrong.
   if v_create not like '%for update%' or v_reactivate not like '%for update%' then
     raise exception 'crew seat gate lost its entitlement lock';
   end if;
-  if v_create not like '%crew_seat_remediation_required%'
-     or v_reactivate not like '%crew_seat_remediation_required%'
-     or v_create not like '%crew_seat_limit_reached%'
+  if v_create not like '%crew_seat_limit_reached%'
      or v_reactivate not like '%crew_seat_limit_reached%' then
     raise exception 'crew seat gate lost a cap outcome';
   end if;

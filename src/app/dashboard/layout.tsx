@@ -21,6 +21,8 @@ import type { TourProgressRecord } from '@/lib/product-tour/types';
 import ProductTourRoot from '@/components/product-tour/ProductTourRoot';
 import StripeAlertBanner from './StripeAlertBanner';
 import { connectStripeFromBannerAction } from './stripe-actions';
+import { AssistantProvider } from '@/components/ai-assistant/AssistantProvider';
+import AssistantWidget from '@/components/ai-assistant/AssistantWidget';
 
 // Wraps every /dashboard/** page. Shows a hard-to-miss banner whenever Stripe
 // payouts aren't connected yet, since that blocks the core business function
@@ -85,7 +87,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
   }
 
   return (
-    <>
+    <AssistantProvider>
       {!onboarded ? (
         // The whole bar starts the Stripe connect itself — landing on Settings
         // and hunting for the same button is a step that does nothing.
@@ -98,6 +100,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
         enabled={tourEnabled}
       />
       {children}
-    </>
+      <AssistantWidget />
+    </AssistantProvider>
   );
 }

@@ -192,17 +192,23 @@ describe('the crew seat gate patch', () => {
     expect(exactlyOnce.length).toBe(2);
   });
 
-  it('normalises CRLF on both sides before matching', () => {
-    // The gate migration is a CRLF file and stored bodies here have held a mix.
+  it('normalises the stored function bodies before matching newline-stable literals', () => {
+    // pg_get_functiondef output has held mixed line endings. The replacement
+    // literals use explicit E-string newlines, so only the stored bodies need
+    // normalising now.
     const normalisations = gate.match(/chr\(13\) \|\| pg_catalog\.chr\(10\)/g) ?? [];
-    expect(normalisations.length).toBeGreaterThanOrEqual(6);
+    expect(normalisations.length).toBeGreaterThanOrEqual(2);
   });
 
-  it('adds the purchased sum rather than replacing the plan allowance', () => {
-    expect(gate).toContain(
-      'v_limit := v_limit_numeric::bigint\n'
-      + "    + public.workspace_purchased_capacity_units(p_account_id, 'crew_users');",
-    );
+  it('adds the purchased sum after either supported plan-allowance shape', () => {
+    const legacyAdditions = gate.match(
+      /v_limit := v_limit_numeric::bigint\\n    \+ public\.workspace_purchased_capacity_units\(p_account_id, ''crew_users''\)/g,
+    ) ?? [];
+    const truncatedAdditions = gate.match(
+      /v_limit := trunc\(v_limit_numeric\)::bigint\\n    \+ public\.workspace_purchased_capacity_units\(p_account_id, ''crew_users''\)/g,
+    ) ?? [];
+    expect(legacyAdditions.length).toBe(2);
+    expect(truncatedAdditions.length).toBe(2);
   });
 
   it('is idempotent on the new call', () => {

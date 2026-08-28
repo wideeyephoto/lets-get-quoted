@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { TRADES, getTrade, indefiniteArticle, lowerTradeName, type Trade } from '@/lib/trades';
+import { TRADES, getTrade, indefiniteArticle, lowerTradeName } from '@/lib/trades';
 import { AVAILABLE_TEMPLATES } from '@/lib/templates/types';
 import { FAVORITE_FEATURES, FEATURE_COUNT } from '@/lib/features';
 import { buildSignupUrl } from '@/components/marketing/links';

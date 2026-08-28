@@ -1,6 +1,5 @@
-import { TRADES, getTrade, type Trade } from './trades';
+import { getTrade, type Trade } from './trades';
 import { TRADE_CATEGORIES } from './trade-categories';
-import { ARTICLES, type Article } from './resources';
 
 export type TopicClusterLink = {
   href: string;
