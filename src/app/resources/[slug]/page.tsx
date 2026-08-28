@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { ARTICLES, getArticle, formatArticleDate, relatedArticles } from '@/lib/resources';
 import { breadcrumbJsonLd, HOME_CRUMB } from '@/lib/seo/breadcrumbs';
+import flagshipStyles from '@/components/flagship/flagship.module.css';
 import { SiteHeader, SiteFooter } from '@/components/flagship/site-chrome';
 import LaunchBanner from '@/components/marketing/launch-banner';
 import ThemeFab from '@/components/theme-fab';
@@ -116,15 +117,16 @@ export default function ArticlePage({ params }: { params: { slug: string } }) {
         <div className={`${resourceStyles.ambient} ${resourceStyles.ambientOne}`} aria-hidden="true" />
         <div className={`${resourceStyles.ambient} ${resourceStyles.ambientTwo}`} aria-hidden="true" />
 
-        <a className="skip-link" href="#main-content">
-          Skip to content
-        </a>
+        <div className={flagshipStyles.root}>
+          <a className="skip-link" href="#main-content">
+            Skip to content
+          </a>
 
-        <SiteHeader />
-        <LaunchBanner offsetHeader />
-        <ThemeFab />
+          <SiteHeader />
+          <LaunchBanner offsetHeader />
+          <ThemeFab />
 
-        <main id="main-content" className={guideStyles.articleContainer}>
+          <main id="main-content" className={guideStyles.articleContainer}>
           <Link href="/resources" className={guideStyles.backLink}>
             <span aria-hidden="true">←</span> All guides &amp; resources
           </Link>
@@ -303,6 +305,7 @@ export default function ArticlePage({ params }: { params: { slug: string } }) {
         </main>
 
         <SiteFooter />
+        </div>
       </div>
     </div>
   );

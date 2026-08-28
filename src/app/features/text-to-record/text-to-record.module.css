@@ -1,0 +1,281 @@
+/* Text to the Record Page Custom Styles */
+
+.customSection {
+  margin: 48px auto;
+  max-width: 1100px;
+  padding: 0 16px;
+  width: 100%;
+}
+
+.sectionEyebrow {
+  font-size: 12px;
+  font-weight: 850;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: #ff6a24;
+  margin-bottom: 8px;
+  display: block;
+}
+
+.sectionTitle {
+  font-size: clamp(24px, 3.2vw, 36px);
+  font-weight: 900;
+  color: #f5f0e7;
+  line-height: 1.2;
+  margin: 0 0 16px;
+}
+
+.sectionLede {
+  font-size: 16px;
+  color: #a7bcc8;
+  line-height: 1.6;
+  max-width: 780px;
+  margin: 0 0 32px;
+}
+
+/* Comparison Table */
+.comparisonCard {
+  background: radial-gradient(circle at top right, rgba(255, 106, 36, 0.05), transparent 40%),
+              linear-gradient(180deg, #0c202d 0%, #07131d 100%);
+  border: 1px solid rgba(174, 199, 211, 0.2);
+  border-radius: 20px;
+  padding: clamp(16px, 3vw, 32px);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+  overflow-x: auto;
+}
+
+.compareTable {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  min-width: 600px;
+}
+
+.compareTable th {
+  padding: 14px 16px;
+  font-size: 13px;
+  font-weight: 850;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #8fa6b5;
+  border-bottom: 2px solid rgba(174, 199, 211, 0.15);
+}
+
+.compareTable th.highlightCol {
+  color: #50e3bd;
+  background: rgba(80, 227, 189, 0.08);
+  border-top-left-radius: 10px;
+  border-top-right-radius: 10px;
+}
+
+.compareTable td {
+  padding: 16px;
+  font-size: 14px;
+  color: #d1e2eb;
+  border-bottom: 1px solid rgba(174, 199, 211, 0.1);
+  vertical-align: middle;
+}
+
+.compareTable tr:last-child td {
+  border-bottom: none;
+}
+
+.compareTable td.highlightCell {
+  background: rgba(80, 227, 189, 0.05);
+  font-weight: 750;
+  color: #f5f0e7;
+}
+
+.checkIcon {
+  color: #10b981;
+  font-weight: 900;
+  margin-right: 6px;
+}
+
+.crossIcon {
+  color: #ef4444;
+  font-weight: 900;
+  margin-right: 6px;
+}
+
+.warnIcon {
+  color: #f59e0b;
+  font-weight: 900;
+  margin-right: 6px;
+}
+
+/* Trade Playbooks Grid */
+.playbooksGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+.playbookCard {
+  background: #081722;
+  border: 1px solid rgba(174, 199, 211, 0.16);
+  border-radius: 16px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.playbookCard:hover {
+  transform: translateY(-3px);
+  border-color: rgba(80, 227, 189, 0.4);
+}
+
+.playbookHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.playbookIcon {
+  font-size: 24px;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(174, 199, 211, 0.15);
+}
+
+.playbookTrade {
+  font-size: 17px;
+  font-weight: 800;
+  color: #f5f0e7;
+  margin: 0;
+}
+
+.playbookQuote {
+  background: rgba(5, 13, 20, 0.7);
+  border-left: 3px solid #ff6a24;
+  border-radius: 0 8px 8px 0;
+  padding: 10px 14px;
+  font-size: 13px;
+  color: #f5f0e7;
+  font-style: italic;
+  margin: 0;
+  line-height: 1.45;
+}
+
+.playbookResult {
+  font-size: 13px;
+  color: #a7bcc8;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.playbookResult strong {
+  color: #50e3bd;
+}
+
+/* Security & Carrier Guard Strip */
+.trustBanner {
+  background: linear-gradient(135deg, rgba(12, 32, 45, 0.8) 0%, rgba(7, 19, 29, 0.95) 100%);
+  border: 1px solid rgba(80, 227, 189, 0.2);
+  border-radius: 20px;
+  padding: 32px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 28px;
+  align-items: center;
+}
+
+@media (max-width: 768px) {
+  .trustBanner {
+    grid-template-columns: 1fr;
+    padding: 20px;
+  }
+}
+
+.trustCol {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.trustTag {
+  font-size: 11px;
+  font-weight: 850;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #50e3bd;
+}
+
+.trustTitle {
+  font-size: 22px;
+  font-weight: 850;
+  color: #f5f0e7;
+  margin: 0;
+}
+
+.trustText {
+  font-size: 14px;
+  color: #a7bcc8;
+  line-height: 1.55;
+  margin: 0;
+}
+
+.trustList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.trustItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 13px;
+  color: #d1e2eb;
+  line-height: 1.45;
+}
+
+.trustCheck {
+  color: #50e3bd;
+  font-size: 15px;
+  font-weight: 900;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+/* FAQ Accordion Grid */
+.faqGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+  max-width: 900px;
+}
+
+.faqItem {
+  background: #081722;
+  border: 1px solid rgba(174, 199, 211, 0.16);
+  border-radius: 12px;
+  padding: 18px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.faqQuestion {
+  font-size: 16px;
+  font-weight: 800;
+  color: #f5f0e7;
+  margin: 0;
+}
+
+.faqAnswer {
+  font-size: 14px;
+  color: #a7bcc8;
+  line-height: 1.6;
+  margin: 0;
+}

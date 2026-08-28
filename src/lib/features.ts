@@ -147,6 +147,7 @@ export const FEATURE_CATEGORIES: FeatureCategory[] = [
     intro: 'Run the work and see real margin — from the office or the truck.',
     features: [
       { id: 'job-pipeline', name: 'Job pipeline', desc: 'New → in progress → complete, with refs, scope, and photos.' },
+      { id: 'text-to-record', name: 'Text to the Record & Voice Intake', desc: 'Update quotes, append voice notes, and add punch lists simply by texting or sending voice memos to your platform number.', favorite: true },
       { id: 'job-costing', name: 'Job costing & margin', desc: 'Log materials and labor; see profit before you invoice.' },
       { id: 'activity-timeline', name: 'Activity timeline', desc: 'Per-job feed with client-visible and internal events.' },
       { id: 'crew-roster', name: 'Crew roster', desc: 'Roles, hourly rates, and photos.' },

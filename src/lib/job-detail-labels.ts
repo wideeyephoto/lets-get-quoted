@@ -79,6 +79,8 @@ export const FEED_KIND_LABEL: Record<string, string> = {
   client_link_revoked: 'Client link',
   review_requested: 'Review request',
   quote_followup: 'Quote follow-up',
+  field_sms_update: 'Field text note',
+  field_voice_note: 'Field voice memo',
 };
 
 export const FEED_KIND_ICON: Record<string, string> = {
@@ -106,6 +108,8 @@ export const FEED_KIND_ICON: Record<string, string> = {
   client_link_revoked: '×',
   review_requested: '⭐',
   quote_followup: '↻',
+  field_sms_update: '💬',
+  field_voice_note: '🎙️',
 };
 
 export function marginTier(margin: number): 'margin-good' | 'margin-ok' | 'margin-bad' {

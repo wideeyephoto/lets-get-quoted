@@ -127,7 +127,7 @@
 
 /* Hero Section */
 .hero {
-  padding: clamp(36px, 6vw, 72px) 0 clamp(28px, 4vw, 48px);
+  padding: clamp(88px, 9vw, 120px) 0 clamp(28px, 4vw, 48px);
   text-align: center;
   max-width: 900px;
   margin: 0 auto;
@@ -364,7 +364,7 @@
 /* Command Center: Search & Filter Toolbar */
 .finderShell {
   position: sticky;
-  top: 76px;
+  top: 96px;
   z-index: 20;
   background: rgba(8, 23, 42, 0.85);
   backdrop-filter: blur(20px);
