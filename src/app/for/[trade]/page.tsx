@@ -11,7 +11,9 @@ import { cspNonce } from '@/lib/csp-nonce';
 import SiteFooter from '@/components/site-footer';
 import TradeRoiCalculator from './TradeRoiCalculator';
 import TradeTopicCluster from './TradeTopicCluster';
+import TradeDefinitiveSuite from './TradeDefinitiveSuite';
 import { getTradeTopicCluster } from '@/lib/trade-clusters';
+import { getDefinitiveTradeData } from '@/lib/trade-deep-data';
 
 export function generateStaticParams() {
   return TRADES.map((trade) => ({ trade: trade.slug }));
@@ -46,6 +48,7 @@ export default function TradePage({ params }: { params: { trade: string } }) {
 
   const cluster = getTradeTopicCluster(trade);
   const relatedTrades = cluster.relatedTrades;
+  const definitiveData = getDefinitiveTradeData(trade.slug);
 
   const name = lowerTradeName(trade.name);
   const an = indefiniteArticle(trade.work);
@@ -58,9 +61,27 @@ export default function TradePage({ params }: { params: { trade: string } }) {
     { name: trade.name, path: `/for/${trade.slug}` },
   ]);
 
+  const faqJsonLd = definitiveData?.faqs?.length
+    ? {
+        '@context': 'https://schema.org',
+        '@type': 'FAQPage',
+        mainEntity: definitiveData.faqs.map((faq) => ({
+          '@type': 'Question',
+          name: faq.question,
+          acceptedAnswer: {
+            '@type': 'Answer',
+            text: faq.answer,
+          },
+        })),
+      }
+    : null;
+
   return (
     <main className="marketing-shell" id="main-content">
       <script type="application/ld+json" nonce={cspNonce()} dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbs) }} />
+      {faqJsonLd ? (
+        <script type="application/ld+json" nonce={cspNonce()} dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
+      ) : null}
       <div className="ambient-glow ambient-glow-a" aria-hidden="true" />
 
       <section className="hero-copy trade-hero">
@@ -95,6 +116,8 @@ export default function TradePage({ params }: { params: { trade: string } }) {
       </section>
 
       <TradeRoiCalculator trade={trade} />
+
+      <TradeDefinitiveSuite trade={trade} />
 
       <section className="section-block">
         <div className="section-heading">
