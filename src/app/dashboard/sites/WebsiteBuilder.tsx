@@ -6,7 +6,7 @@ import type { SiteImage } from '@/lib/site-images';
 import { getSiteGallery, STOCK_SITE_IMAGES } from '@/lib/site-images';
 import { getSiteContent, getTradeGlyphOptions, getUnreviewedGeneratedSections, glyphForContent, mergeSiteContent, COLOR_SCHEMES, getColorScheme, HEADER_STYLES,
   MENU_BUTTON_STYLES,
-  BLOG_STYLES, BUTTON_STYLES, HEADER_BUTTON_STYLES, WORDMARK_STYLES, QUOTE_FORM_STYLES, HERO_BADGE_PRESETS, HERO_BADGE_STYLES, IMAGE_SLOT_LABELS, MAX_EXTRA_HERO_IMAGES, PROJECT_SHOWCASE_STYLES, MAX_PROJECT_SHOWCASE_ITEMS, DEFAULT_PROJECT_SHOWCASE_PLACEHOLDERS, DEFAULT_PROJECT_SHOWCASE_EYEBROW, DEFAULT_PROJECT_SHOWCASE_TITLE, STOCK_PROJECT_SHOWCASE_EYEBROW, STOCK_PROJECT_SHOWCASE_TITLE, VIDEO_SECTION_STYLES, videoStyleCapacity, videoSectionKey, MAX_VIDEO_SECTIONS, DEFAULT_VIDEOS_NAV_LABEL, type NormalizedSiteContent, type SiteProjectShowcaseContent, type SiteVideoSectionContent, type SiteBlogContent, type SiteAnnouncementContent, type SiteBeforeAfterContent, type SiteServicesContent, type SiteHowItWorksContent, type SiteFaqContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteShowcaseItem, type SiteStatItem, type SiteStatsContent, type SiteTestimonialItem, type SiteStickyCallBarContent, type SiteChatButtonContent, type SiteAnalyticsContent, type SiteTestimonialsContent, type SiteTrustBadgesContent, type SiteWhyUsContent, type SiteLegalContent } from '@/lib/site-content';
+  BLOG_STYLES, BUTTON_STYLES, HEADER_BUTTON_STYLES, WORDMARK_STYLES, QUOTE_FORM_STYLES, QUOTE_FORM_FIELD_BGS, QUOTE_FORM_RADII, HERO_BADGE_PRESETS, HERO_BADGE_STYLES, IMAGE_SLOT_LABELS, MAX_EXTRA_HERO_IMAGES, PROJECT_SHOWCASE_STYLES, MAX_PROJECT_SHOWCASE_ITEMS, DEFAULT_PROJECT_SHOWCASE_PLACEHOLDERS, DEFAULT_PROJECT_SHOWCASE_EYEBROW, DEFAULT_PROJECT_SHOWCASE_TITLE, STOCK_PROJECT_SHOWCASE_EYEBROW, STOCK_PROJECT_SHOWCASE_TITLE, VIDEO_SECTION_STYLES, videoStyleCapacity, videoSectionKey, MAX_VIDEO_SECTIONS, DEFAULT_VIDEOS_NAV_LABEL, type NormalizedSiteContent, type SiteProjectShowcaseContent, type SiteVideoSectionContent, type SiteBlogContent, type SiteAnnouncementContent, type SiteBeforeAfterContent, type SiteServicesContent, type SiteHowItWorksContent, type SiteFaqContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteShowcaseItem, type SiteStatItem, type SiteStatsContent, type SiteTestimonialItem, type SiteStickyCallBarContent, type SiteChatButtonContent, type SiteAnalyticsContent, type SiteTestimonialsContent, type SiteTrustBadgesContent, type SiteWhyUsContent, type SiteLegalContent } from '@/lib/site-content';
 import { generatePrivacyPolicy, generateTermsOfService } from '@/lib/legal/legal-copy';
 import { AVAILABLE_TEMPLATES } from '@/lib/templates/types';
 import ServiceIcon, { SERVICE_ICON_KEYS } from '@/lib/templates/ServiceIcon';
@@ -2108,6 +2108,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, mess
                   open={openSection === 'quoteFormStyle'}
                   onToggleOpen={() => toggleSection('quoteFormStyle')}
                 >
+                  <div className={styles.contentSubhead}><strong>Framing style</strong><small>Card border, glow, and backdrop treatment.</small></div>
                   <div className={styles.formStylePicker} role="radiogroup" aria-label="Instant quote form appearance">
                     {QUOTE_FORM_STYLES.map((st) => {
                       const selected = (siteContent.quoteFormStyle || 'clean') === st.key;
@@ -2137,7 +2138,49 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, mess
                       );
                     })}
                   </div>
-                  <small className={styles.fieldHint}>Controls the look and feel of the hero Instant Estimate card across all themes and devices.</small>
+
+                  <hr className={styles.logoDivider} />
+                  <div className={styles.contentSubhead}><strong>Field background</strong><small>Choose light/white or dark background for input fields and textareas.</small></div>
+                  <div className={styles.footerPicker} role="radiogroup" aria-label="Field background">
+                    {QUOTE_FORM_FIELD_BGS.map((bg) => {
+                      const selected = (siteContent.quoteFormFieldBg || 'auto') === bg.key;
+                      return (
+                        <button
+                          type="button"
+                          key={bg.key}
+                          role="radio"
+                          aria-checked={selected}
+                          className={`${styles.footerPickerBtn}${selected ? ` ${styles.footerPickerBtnOn}` : ''}`}
+                          onClick={() => updateSiteContent({ quoteFormFieldBg: bg.key })}
+                        >
+                          <strong>{bg.label}</strong>
+                          <small>{bg.desc}</small>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <hr className={styles.logoDivider} />
+                  <div className={styles.contentSubhead}><strong>Card corner rounding</strong><small>Choose how rounded the card corners and borders appear.</small></div>
+                  <div className={styles.footerPicker} role="radiogroup" aria-label="Card corner rounding">
+                    {QUOTE_FORM_RADII.map((r) => {
+                      const selected = (siteContent.quoteFormRadius || 'default') === r.key;
+                      return (
+                        <button
+                          type="button"
+                          key={r.key}
+                          role="radio"
+                          aria-checked={selected}
+                          className={`${styles.footerPickerBtn}${selected ? ` ${styles.footerPickerBtnOn}` : ''}`}
+                          onClick={() => updateSiteContent({ quoteFormRadius: r.key })}
+                        >
+                          <strong>{r.label}</strong>
+                          <small>{r.desc}</small>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <small className={styles.fieldHint}>Controls the look, framing, and field appearance of the hero Instant Estimate card across all themes and devices.</small>
                 </SectionCard>
 
               </div>
@@ -2266,6 +2309,8 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, mess
                           <div>
                             <strong>
                               {QUOTE_FORM_STYLES.find((s) => s.key === (siteContent.quoteFormStyle || 'clean'))?.label || 'Clean & Crisp'}
+                              {' · '}
+                              {QUOTE_FORM_FIELD_BGS.find((s) => s.key === (siteContent.quoteFormFieldBg || 'auto'))?.label || 'Theme default'}
                               {QUOTE_FORM_STYLES.find((s) => s.key === (siteContent.quoteFormStyle || 'clean'))?.badge && (
                                 <span className={styles.formStyleBadge}>
                                   {QUOTE_FORM_STYLES.find((s) => s.key === (siteContent.quoteFormStyle || 'clean'))?.badge}
@@ -2285,7 +2330,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, mess
                             Customize in Design →
                           </button>
                         </div>
-                        <small className={styles.fieldHint}>Visual styling and framing for the estimate card is configured under Brand &amp; Design.</small>
+                        <small className={styles.fieldHint}>Visual styling, framing, and field backgrounds for the estimate card are configured under Brand &amp; Design.</small>
                       </div>
                       <div className={styles.contentSubhead}><strong>Thank-you video</strong><small>optional</small></div>
                       <IntroVideoField

@@ -3,9 +3,17 @@ import {
   QUOTE_FORM_STYLES,
   QUOTE_FORM_STYLE_KEYS,
   getQuoteFormStyle,
+  QUOTE_FORM_FIELD_BGS,
+  QUOTE_FORM_FIELD_BG_KEYS,
+  getQuoteFormFieldBg,
+  QUOTE_FORM_RADII,
+  QUOTE_FORM_RADIUS_KEYS,
+  getQuoteFormRadius,
   getSiteContent,
   mergeSiteContent,
   type QuoteFormStyle,
+  type QuoteFormFieldBg,
+  type QuoteFormRadius,
 } from '@/lib/site-content';
 import { trackQuoteFunnelStep } from '@/lib/analytics';
 import { readFileSync } from 'fs';
@@ -25,6 +33,89 @@ describe('Instant Quote Form Appearance Styles & Intake Flow', () => {
       expect(style.desc).toBeTruthy();
       expect(QUOTE_FORM_STYLE_KEYS.has(style.key)).toBe(true);
     }
+  });
+
+  it('defines field background options including light/white for high-contrast readability', () => {
+    expect(QUOTE_FORM_FIELD_BGS.length).toBeGreaterThanOrEqual(3);
+    const keys = QUOTE_FORM_FIELD_BGS.map((b) => b.key);
+    expect(keys).toContain('light');
+    expect(keys).toContain('dark');
+    expect(keys).toContain('auto');
+    expect(QUOTE_FORM_FIELD_BG_KEYS.has('light')).toBe(true);
+    expect(QUOTE_FORM_FIELD_BG_KEYS.has('dark')).toBe(true);
+    expect(QUOTE_FORM_FIELD_BG_KEYS.has('auto')).toBe(true);
+  });
+
+  it('defaults getQuoteFormFieldBg to auto when unset or empty', () => {
+    expect(getQuoteFormFieldBg(null)).toBe('auto');
+    expect(getQuoteFormFieldBg(undefined)).toBe('auto');
+    expect(getQuoteFormFieldBg({})).toBe('auto');
+    expect(getQuoteFormFieldBg({ quoteFormFieldBg: '' })).toBe('auto');
+  });
+
+  it('normalizes valid field background settings accurately', () => {
+    const bgs: QuoteFormFieldBg[] = ['light', 'dark', 'auto'];
+    for (const bg of bgs) {
+      const content = getSiteContent({ quoteFormFieldBg: bg });
+      expect(content.quoteFormFieldBg).toBe(bg);
+      expect(getQuoteFormFieldBg({ quoteFormFieldBg: bg })).toBe(bg);
+    }
+  });
+
+  it('safely falls back to auto for unknown field background values', () => {
+    const content = getSiteContent({ quoteFormFieldBg: 'invalid-nonexistent-bg' });
+    expect(content.quoteFormFieldBg).toBe('auto');
+    expect(getQuoteFormFieldBg({ quoteFormFieldBg: 'invalid-nonexistent-bg' })).toBe('auto');
+  });
+
+  it('merges quoteFormFieldBg updates correctly', () => {
+    const initial = { company_name: 'Apex Plumbing', quoteFormFieldBg: 'auto' };
+    const updated = mergeSiteContent(initial, { quoteFormFieldBg: 'light' });
+    expect(getQuoteFormFieldBg(updated)).toBe('light');
+
+    const darkUpdated = mergeSiteContent(updated, { quoteFormFieldBg: 'dark' });
+    expect(getQuoteFormFieldBg(darkUpdated)).toBe('dark');
+  });
+
+  it('defines card corner radius options including soft, pill, sharp, and default', () => {
+    expect(QUOTE_FORM_RADII).toHaveLength(4);
+    const keys = QUOTE_FORM_RADII.map((r) => r.key);
+    expect(keys).toEqual(['default', 'soft', 'pill', 'sharp']);
+    expect(QUOTE_FORM_RADIUS_KEYS.has('default')).toBe(true);
+    expect(QUOTE_FORM_RADIUS_KEYS.has('soft')).toBe(true);
+    expect(QUOTE_FORM_RADIUS_KEYS.has('pill')).toBe(true);
+    expect(QUOTE_FORM_RADIUS_KEYS.has('sharp')).toBe(true);
+  });
+
+  it('defaults getQuoteFormRadius to default when unset or empty', () => {
+    expect(getQuoteFormRadius(null)).toBe('default');
+    expect(getQuoteFormRadius(undefined)).toBe('default');
+    expect(getQuoteFormRadius({})).toBe('default');
+    expect(getQuoteFormRadius({ quoteFormRadius: '' })).toBe('default');
+  });
+
+  it('normalizes valid card corner radius settings accurately', () => {
+    const radii: QuoteFormRadius[] = ['default', 'soft', 'pill', 'sharp'];
+    for (const r of radii) {
+      const content = getSiteContent({ quoteFormRadius: r });
+      expect(content.quoteFormRadius).toBe(r);
+      expect(getQuoteFormRadius({ quoteFormRadius: r })).toBe(r);
+    }
+  });
+
+  it('safely falls back to default for unknown card corner radius values', () => {
+    const content = getSiteContent({ quoteFormRadius: 'invalid-nonexistent-radius' });
+    expect(content.quoteFormRadius).toBe('default');
+    expect(getQuoteFormRadius({ quoteFormRadius: 'invalid-nonexistent-radius' })).toBe('default');
+  });
+
+  it('merges quoteFormRadius updates correctly', () => {
+    const initial = { company_name: 'Apex Plumbing', quoteFormRadius: 'default' };
+    const updated = mergeSiteContent(initial, { quoteFormRadius: 'pill' });
+    expect(getQuoteFormRadius(updated)).toBe('pill');
+
+    const softUpdated = mergeSiteContent(updated, { quoteFormRadius: 'soft' });
+    expect(getQuoteFormRadius(softUpdated)).toBe('soft');
   });
 
   it('defaults getQuoteFormStyle to clean when unset or empty', () => {
@@ -58,20 +149,35 @@ describe('Instant Quote Form Appearance Styles & Intake Flow', () => {
     expect(getQuoteFormStyle(boldUpdated)).toBe('bold');
   });
 
-  it('ensures HeroQuickForm passes data-form-style to the root form and uses clean fallback', () => {
+  it('ensures HeroQuickForm passes data-form-style, data-field-bg, and data-form-radius to the root form', () => {
     const heroCode = readFileSync(join(process.cwd(), 'src/lib/templates/HeroQuickForm.tsx'), 'utf-8');
     expect(heroCode).toContain('data-form-style={formStyle}');
+    expect(heroCode).toContain('data-field-bg={fieldBg}');
+    expect(heroCode).toContain('data-form-radius={formRadius}');
     expect(heroCode).toContain("siteContent.quoteFormStyle || 'clean'");
+    expect(heroCode).toContain("siteContent.quoteFormFieldBg || 'auto'");
+    expect(heroCode).toContain("siteContent.quoteFormRadius || 'default'");
+    expect(heroCode).toContain('heroFormEyebrowBadge');
+    expect(heroCode).toContain('AI Instant Estimate');
+    expect(heroCode).toContain('heroFormBtnArrow');
     expect(heroCode).toContain('Start my estimate');
     expect(heroCode).toContain('Tell us what you need. We’ll ask up to 3 quick questions and show a price range—usually in about a minute.');
   });
 
-  it('ensures themes.module.css contains high-contrast stepper numbers and brand-aware glow', () => {
+  it('ensures themes.module.css contains high-contrast stepper, shimmer, and corner radius styles', () => {
     const cssCode = readFileSync(join(process.cwd(), 'src/lib/templates/themes.module.css'), 'utf-8');
     expect(cssCode).toContain("data-form-style='glow'");
     expect(cssCode).toContain("data-form-style='clean'");
     expect(cssCode).toContain("data-form-style='glass'");
     expect(cssCode).toContain("data-form-style='bold'");
+    expect(cssCode).toContain("data-field-bg='light'");
+    expect(cssCode).toContain("data-field-bg='dark'");
+    expect(cssCode).toContain("data-form-radius='sharp'");
+    expect(cssCode).toContain("data-form-radius='soft'");
+    expect(cssCode).toContain("data-form-radius='pill'");
+    expect(cssCode).toContain('heroBtnShimmer');
+    expect(cssCode).toContain('heroFormEyebrowBadge');
+    expect(cssCode).toContain('sparklePulse');
     // Brand-aware glow uses var(--theme-accent)
     expect(cssCode).toContain('var(--theme-accent)');
     // High-contrast stepper
@@ -88,10 +194,14 @@ describe('Instant Quote Form Appearance Styles & Intake Flow', () => {
     expect(forgeCode).toContain('forgeHeroTextColumn');
   });
 
-  it('ensures WebsiteBuilder exposes the quoteFormStyle picker in Design tab and link in Page tab', () => {
+  it('ensures WebsiteBuilder exposes quoteFormStyle, fieldBg, and quoteFormRadius pickers', () => {
     const builderCode = readFileSync(join(process.cwd(), 'src/app/dashboard/sites/WebsiteBuilder.tsx'), 'utf-8');
     expect(builderCode).toContain('QUOTE_FORM_STYLES');
+    expect(builderCode).toContain('QUOTE_FORM_FIELD_BGS');
+    expect(builderCode).toContain('QUOTE_FORM_RADII');
     expect(builderCode).toContain('quoteFormStyle');
+    expect(builderCode).toContain('quoteFormFieldBg');
+    expect(builderCode).toContain('quoteFormRadius');
     expect(builderCode).toContain('formStyleBadge');
     expect(builderCode).toContain('formStyleLinkCard');
   });

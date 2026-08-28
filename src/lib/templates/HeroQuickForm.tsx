@@ -134,6 +134,8 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
   const hasStartedTrackedRef = useRef(false);
   const siteContent = getSiteContent(site.content);
   const formStyle = siteContent.quoteFormStyle || 'clean';
+  const fieldBg = siteContent.quoteFormFieldBg || 'auto';
+  const formRadius = siteContent.quoteFormRadius || 'default';
   const quoteForm = siteContent.quoteForm;
   const emailRequired = quoteForm.emailRequired;
   const estimateLabel = getEstimateButtonLabel(quoteForm);
@@ -847,6 +849,8 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
       onSubmit={step === 'describe' ? handleDescribeContinue : step === 'qa' ? handleChatAnswerSubmit : step === 'contact' ? handleContactSubmit : (event) => event.preventDefault()}
       data-edit={smartIntakeActive ? 'estimate' : 'quoteForm'}
       data-form-style={formStyle}
+      data-field-bg={fieldBg}
+      data-form-radius={formRadius}
     >
       <HoneypotField />
 
@@ -871,6 +875,12 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
 
       {step === 'describe' && (
         <div className={styles.heroFormStep} key="describe">
+          {smartIntakeActive && (
+            <div className={styles.heroFormEyebrowBadge}>
+              <span className={styles.heroFormSparkleIcon} aria-hidden="true">✨</span>
+              <span>AI Instant Estimate</span>
+            </div>
+          )}
           <h2 className={styles.heroFormTitle}>
             {smartIntakeActive ? (quoteForm.formHeading?.trim() || 'Get a ballpark estimate') : estimateLabel}
           </h2>
@@ -916,7 +926,8 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
           />
 
           <button type="submit" disabled={isClassifying}>
-            {isClassifying ? thinking : (smartIntakeActive ? 'Start my estimate' : 'Continue')}
+            <span>{isClassifying ? thinking : (smartIntakeActive ? 'Start my estimate' : 'Continue')}</span>
+            {!isClassifying && <span className={styles.heroFormBtnArrow} aria-hidden="true">→</span>}
           </button>
           {isEmergency && !isClassifying && (
             <button
@@ -943,6 +954,12 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
 
       {step === 'qa' && (
         <div className={styles.heroFormStep} key="qa">
+          {smartIntakeActive && (
+            <div className={styles.heroFormEyebrowBadge}>
+              <span className={styles.heroFormSparkleIcon} aria-hidden="true">✨</span>
+              <span>AI Clarification</span>
+            </div>
+          )}
           <h2 className={styles.heroFormTitle}>
             {smartIntakeActive ? (quoteForm.formHeading?.trim() || 'Get a ballpark estimate') : estimateLabel}
           </h2>
@@ -952,7 +969,9 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
               👁️ <strong>What we spotted:</strong> {visualObservation}
             </p>
           )}
-          <p id="hqf-question" className={styles.heroFormQuestion}>{chatQuestion}</p>
+          <div className={styles.heroFormQuestionBubble}>
+            <p id="hqf-question" className={styles.heroFormQuestion}>{chatQuestion}</p>
+          </div>
           
           <input
             ref={qaPhotoInputRef}
@@ -1032,7 +1051,10 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
             value={chatAnswer}
             onChange={(event) => setChatAnswer(event.target.value)}
           />
-          <button type="submit" disabled={isClassifying}>{isClassifying ? thinking : 'Next'}</button>
+          <button type="submit" disabled={isClassifying}>
+            <span>{isClassifying ? thinking : 'Next'}</span>
+            {!isClassifying && <span className={styles.heroFormBtnArrow} aria-hidden="true">→</span>}
+          </button>
           <button type="button" className={styles.heroFormRestart} onClick={skipToEstimate} disabled={isClassifying}>Skip the questions — show my ballpark →</button>
           {isClassifying && (
             <button type="button" className={styles.heroFormRestart} onClick={skipTheEstimate}>

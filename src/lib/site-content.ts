@@ -778,6 +778,75 @@ export function getQuoteFormStyle(content: Record<string, unknown> | null | unde
   return (getSiteContent(content).quoteFormStyle as QuoteFormStyle) || 'clean';
 }
 
+export type QuoteFormFieldBg = 'auto' | 'light' | 'dark';
+
+export type QuoteFormFieldBgOption = {
+  key: QuoteFormFieldBg;
+  label: string;
+  desc: string;
+};
+
+export const QUOTE_FORM_FIELD_BGS: readonly QuoteFormFieldBgOption[] = [
+  {
+    key: 'light',
+    label: 'Light / White',
+    desc: 'Crisp white fields with dark text — stands out clearly on all backgrounds and dark color schemes.',
+  },
+  {
+    key: 'dark',
+    label: 'Dark / Subtle',
+    desc: 'Dark tinted fields matching dark and glass backgrounds.',
+  },
+  {
+    key: 'auto',
+    label: 'Theme default',
+    desc: 'Follows each template and color scheme’s default styling.',
+  },
+] as const;
+
+export const QUOTE_FORM_FIELD_BG_KEYS = new Set<string>(QUOTE_FORM_FIELD_BGS.map((bg) => bg.key));
+
+export function getQuoteFormFieldBg(content: Record<string, unknown> | null | undefined): QuoteFormFieldBg {
+  return (getSiteContent(content).quoteFormFieldBg as QuoteFormFieldBg) || 'auto';
+}
+
+export type QuoteFormRadius = 'default' | 'sharp' | 'soft' | 'pill';
+
+export type QuoteFormRadiusOption = {
+  key: QuoteFormRadius;
+  label: string;
+  desc: string;
+};
+
+export const QUOTE_FORM_RADII: readonly QuoteFormRadiusOption[] = [
+  {
+    key: 'default',
+    label: 'Theme default',
+    desc: 'Standard curve matching the template design.',
+  },
+  {
+    key: 'soft',
+    label: 'Soft Rounded',
+    desc: 'Modern 18px rounded corners with smooth framing.',
+  },
+  {
+    key: 'pill',
+    label: 'Ultra Curved',
+    desc: 'Sleek 26px pill curves for a modern app aesthetic.',
+  },
+  {
+    key: 'sharp',
+    label: 'Crisp & Sharp',
+    desc: 'Clean 4px corners for an ultra-structured architectural look.',
+  },
+] as const;
+
+export const QUOTE_FORM_RADIUS_KEYS = new Set<string>(QUOTE_FORM_RADII.map((r) => r.key));
+
+export function getQuoteFormRadius(content: Record<string, unknown> | null | undefined): QuoteFormRadius {
+  return (getSiteContent(content).quoteFormRadius as QuoteFormRadius) || 'default';
+}
+
 export type SiteQuoteFormContent = {
   // Whether the FULL multi-field quote form renders at #contact. Off by
   // default — the smart-intake capture takes its place so visitors always
@@ -933,6 +1002,10 @@ export type NormalizedSiteContent = {
   wordmarkStyle: string;
   // Instant quote form appearance style ('glow' | 'clean' | 'glass' | 'bold').
   quoteFormStyle: QuoteFormStyle;
+  // Field background for form inputs/textareas ('auto' | 'light' | 'dark').
+  quoteFormFieldBg: QuoteFormFieldBg;
+  // Card corner radius shape ('default' | 'sharp' | 'soft' | 'pill').
+  quoteFormRadius: QuoteFormRadius;
   projectShowcase: SiteProjectShowcaseContent;
   /** The video bands. One set of content each, six arrangements each. */
   videoSections: SiteVideoSectionContent[];
@@ -1645,6 +1718,8 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
     colorScheme: COLOR_SCHEMES.some((scheme) => scheme.key === root.colorScheme) ? toString(root.colorScheme) : '',
     wordmarkStyle: WORDMARK_STYLES.some((style) => style.key === root.wordmarkStyle) ? toString(root.wordmarkStyle) : '',
     quoteFormStyle: QUOTE_FORM_STYLE_KEYS.has(toString(root.quoteFormStyle)) ? (toString(root.quoteFormStyle) as QuoteFormStyle) : 'clean',
+    quoteFormFieldBg: QUOTE_FORM_FIELD_BG_KEYS.has(toString(root.quoteFormFieldBg)) ? (toString(root.quoteFormFieldBg) as QuoteFormFieldBg) : 'auto',
+    quoteFormRadius: QUOTE_FORM_RADIUS_KEYS.has(toString(root.quoteFormRadius)) ? (toString(root.quoteFormRadius) as QuoteFormRadius) : 'default',
     projectShowcase: {
       // On by default so existing Care sites keep their work band; the owner can
       // toggle it off to hide the whole section.
