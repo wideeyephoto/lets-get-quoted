@@ -2908,6 +2908,135 @@
 .site[data-badge-style='dark'] .fixitHeroCardIcon, .site[data-badge-style='darkglass'] .fixitHeroCardIcon,
 .site[data-badge-style='dark'] .guildBadge .guildBadgeIcon, .site[data-badge-style='darkglass'] .guildBadge .guildBadgeIcon { background: color-mix(in srgb, var(--theme-accent) 46%, transparent); color: #fff; }
 
+/* ── Hero headline readability & shadow treatments (data-hero-shadow) ── */
+.site[data-hero-shadow='soft'] .forgeHeroTextColumn h1,
+.site[data-hero-shadow='soft'] .forgeHeroTextColumn .heroText,
+.site[data-hero-shadow='soft'] .forgeHeroTextColumn .kicker,
+.site[data-hero-shadow='soft'] .forgeHeroCopy h1,
+.site[data-hero-shadow='soft'] .forgeHeroCopy .heroText,
+.site[data-hero-shadow='soft'] .forgeHeader .brand strong,
+.site[data-hero-shadow='soft'] .forgeHeader a,
+.site[data-hero-shadow='soft'] .careHeroCopy h1,
+.site[data-hero-shadow='soft'] .careHeroText,
+.site[data-hero-shadow='soft'] .careEyebrow,
+.site[data-hero-shadow='soft'] .coatHeroCopy h1,
+.site[data-hero-shadow='soft'] .coatHeroText,
+.site[data-hero-shadow='soft'] .coatEyebrowLight,
+.site[data-hero-shadow='soft'] .fixitHeroCopy h1,
+.site[data-hero-shadow='soft'] .fixitHeroText,
+.site[data-hero-shadow='soft'] .fixitEyebrow,
+.site[data-hero-shadow='soft'] .renoHeroCopy h1,
+.site[data-hero-shadow='soft'] .renoHeroText,
+.site[data-hero-shadow='soft'] .renoEyebrow,
+.site[data-hero-shadow='soft'] .shineHeroCopy h1,
+.site[data-hero-shadow='soft'] .shineHeroText,
+.site[data-hero-shadow='soft'] .shineEyebrow,
+.site[data-hero-shadow='soft'] .guildHeroCopy h1,
+.site[data-hero-shadow='soft'] .guildHeroCopy .heroText,
+.site[data-hero-shadow='soft'] .guildHeroCopy .kicker,
+.site[data-hero-shadow='soft'] .vistaHeroCopy h1,
+.site[data-hero-shadow='soft'] .vistaHeroCopy .heroText,
+.site[data-hero-shadow='soft'] .vistaHeroCopy .kicker {
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.75), 0 1px 3px rgba(0, 0, 0, 0.85);
+}
+
+.site[data-hero-shadow='bold'] .forgeHeroTextColumn h1,
+.site[data-hero-shadow='bold'] .forgeHeroTextColumn .heroText,
+.site[data-hero-shadow='bold'] .forgeHeroTextColumn .kicker,
+.site[data-hero-shadow='bold'] .forgeHeroCopy h1,
+.site[data-hero-shadow='bold'] .forgeHeroCopy .heroText,
+.site[data-hero-shadow='bold'] .forgeHeader .brand strong,
+.site[data-hero-shadow='bold'] .forgeHeader a,
+.site[data-hero-shadow='bold'] .careHeroCopy h1,
+.site[data-hero-shadow='bold'] .careHeroText,
+.site[data-hero-shadow='bold'] .careEyebrow,
+.site[data-hero-shadow='bold'] .coatHeroCopy h1,
+.site[data-hero-shadow='bold'] .coatHeroText,
+.site[data-hero-shadow='bold'] .coatEyebrowLight,
+.site[data-hero-shadow='bold'] .fixitHeroCopy h1,
+.site[data-hero-shadow='bold'] .fixitHeroText,
+.site[data-hero-shadow='bold'] .fixitEyebrow,
+.site[data-hero-shadow='bold'] .renoHeroCopy h1,
+.site[data-hero-shadow='bold'] .renoHeroText,
+.site[data-hero-shadow='bold'] .renoEyebrow,
+.site[data-hero-shadow='bold'] .shineHeroCopy h1,
+.site[data-hero-shadow='bold'] .shineHeroText,
+.site[data-hero-shadow='bold'] .shineEyebrow,
+.site[data-hero-shadow='bold'] .guildHeroCopy h1,
+.site[data-hero-shadow='bold'] .guildHeroCopy .heroText,
+.site[data-hero-shadow='bold'] .guildHeroCopy .kicker,
+.site[data-hero-shadow='bold'] .vistaHeroCopy h1,
+.site[data-hero-shadow='bold'] .vistaHeroCopy .heroText,
+.site[data-hero-shadow='bold'] .vistaHeroCopy .kicker {
+  text-shadow: 0 4px 16px rgba(0, 0, 0, 0.95), 0 2px 4px rgba(0, 0, 0, 1), 0 0 2px rgba(0, 0, 0, 0.95);
+}
+
+.site[data-hero-shadow='glow'] .forgeHeroTextColumn h1,
+.site[data-hero-shadow='glow'] .forgeHeroTextColumn .heroText,
+.site[data-hero-shadow='glow'] .forgeHeroTextColumn .kicker,
+.site[data-hero-shadow='glow'] .forgeHeroCopy h1,
+.site[data-hero-shadow='glow'] .forgeHeroCopy .heroText,
+.site[data-hero-shadow='glow'] .forgeHeader .brand strong,
+.site[data-hero-shadow='glow'] .forgeHeader a,
+.site[data-hero-shadow='glow'] .careHeroCopy h1,
+.site[data-hero-shadow='glow'] .careHeroText,
+.site[data-hero-shadow='glow'] .careEyebrow,
+.site[data-hero-shadow='glow'] .coatHeroCopy h1,
+.site[data-hero-shadow='glow'] .coatHeroText,
+.site[data-hero-shadow='glow'] .coatEyebrowLight,
+.site[data-hero-shadow='glow'] .fixitHeroCopy h1,
+.site[data-hero-shadow='glow'] .fixitHeroText,
+.site[data-hero-shadow='glow'] .fixitEyebrow,
+.site[data-hero-shadow='glow'] .renoHeroCopy h1,
+.site[data-hero-shadow='glow'] .renoHeroText,
+.site[data-hero-shadow='glow'] .renoEyebrow,
+.site[data-hero-shadow='glow'] .shineHeroCopy h1,
+.site[data-hero-shadow='glow'] .shineHeroText,
+.site[data-hero-shadow='glow'] .shineEyebrow,
+.site[data-hero-shadow='glow'] .guildHeroCopy h1,
+.site[data-hero-shadow='glow'] .guildHeroCopy .heroText,
+.site[data-hero-shadow='glow'] .guildHeroCopy .kicker,
+.site[data-hero-shadow='glow'] .vistaHeroCopy h1,
+.site[data-hero-shadow='glow'] .vistaHeroCopy .heroText,
+.site[data-hero-shadow='glow'] .vistaHeroCopy .kicker {
+  text-shadow: 0 0 14px rgba(0, 0, 0, 0.95), 0 0 28px rgba(0, 0, 0, 0.9), 0 2px 4px rgba(0, 0, 0, 0.95);
+}
+
+.site[data-hero-shadow='scrim'] .forgeHeroTextColumn,
+.site[data-hero-shadow='scrim'] .careHeroCopy,
+.site[data-hero-shadow='scrim'] .coatHeroCopy,
+.site[data-hero-shadow='scrim'] .fixitHeroCopy,
+.site[data-hero-shadow='scrim'] .renoHeroCopy,
+.site[data-hero-shadow='scrim'] .shineHeroCopy,
+.site[data-hero-shadow='scrim'] .guildHeroCopy,
+.site[data-hero-shadow='scrim'] .vistaHeroCopy {
+  background: rgba(10, 12, 16, 0.72);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  padding: clamp(1.2rem, 3vw, 2.2rem);
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 24px 48px -18px rgba(0, 0, 0, 0.75);
+}
+.site[data-hero-shadow='scrim'] .forgeHeroTextColumn h1,
+.site[data-hero-shadow='scrim'] .forgeHeroTextColumn .heroText,
+.site[data-hero-shadow='scrim'] .careHeroCopy h1,
+.site[data-hero-shadow='scrim'] .careHeroText,
+.site[data-hero-shadow='scrim'] .coatHeroCopy h1,
+.site[data-hero-shadow='scrim'] .coatHeroText,
+.site[data-hero-shadow='scrim'] .fixitHeroCopy h1,
+.site[data-hero-shadow='scrim'] .fixitHeroText,
+.site[data-hero-shadow='scrim'] .renoHeroCopy h1,
+.site[data-hero-shadow='scrim'] .renoHeroText,
+.site[data-hero-shadow='scrim'] .shineHeroCopy h1,
+.site[data-hero-shadow='scrim'] .shineHeroText,
+.site[data-hero-shadow='scrim'] .guildHeroCopy h1,
+.site[data-hero-shadow='scrim'] .guildHeroCopy .heroText,
+.site[data-hero-shadow='scrim'] .vistaHeroCopy h1,
+.site[data-hero-shadow='scrim'] .vistaHeroCopy .heroText {
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+}
+
 /* Same detailing as the other themes' badges: accent rail + haloed icon. */
 .forgeBadge, .vistaBadge, .renoBadge { overflow: hidden; transition: box-shadow .3s ease; }
 .forgeBadge::before, .vistaBadge::before, .renoBadge::before {

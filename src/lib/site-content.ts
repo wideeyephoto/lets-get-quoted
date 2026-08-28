@@ -691,6 +691,23 @@ export function getWordmarkStyle(content: Record<string, unknown> | null | undef
   return getSiteContent(content).wordmarkStyle;
 }
 
+// Legibility and shadow treatments for hero headlines and header text, applied
+// via data-hero-shadow on the root. 'none' = clean default text.
+export const HERO_TEXT_SHADOW_STYLES = [
+  { key: 'none', label: 'None (clean text)' },
+  { key: 'soft', label: 'Soft shadow (subtle legibility)' },
+  { key: 'bold', label: 'Bold drop shadow (high contrast)' },
+  { key: 'glow', label: 'Dark glow (360° aura)' },
+  { key: 'scrim', label: 'Frosted dark backdrop panel' },
+] as const;
+
+export type SiteHeroTextShadowStyle = (typeof HERO_TEXT_SHADOW_STYLES)[number]['key'];
+export const HERO_TEXT_SHADOW_STYLE_KEYS = new Set<string>(HERO_TEXT_SHADOW_STYLES.map((style) => style.key));
+
+export function getHeroTextShadow(content: Record<string, unknown> | null | undefined): SiteHeroTextShadowStyle {
+  return getSiteContent(content).heroTextShadow;
+}
+
 // Full-page color schemes. A theme owns layout/type/motion; a scheme owns the
 // whole palette through a small shared token set the templates consume
 // (--c-bg / --c-surface / --c-ink / --c-muted / --c-line / --c-deep /
@@ -1329,8 +1346,10 @@ export type NormalizedSiteContent = {
   headerButtonStyle: string;
   // Full-page color scheme key ('' = the theme's own palette). See COLOR_SCHEMES.
   colorScheme: string;
-    // Company-name wordmark display treatment ('' = plain). See WORDMARK_STYLES.
+  // Company-name wordmark display treatment ('' = plain). See WORDMARK_STYLES.
   wordmarkStyle: string;
+  // Hero headline readability and shadow treatment ('none' | 'soft' | 'bold' | 'glow' | 'scrim').
+  heroTextShadow: SiteHeroTextShadowStyle;
   // Instant quote form appearance style ('glow' | 'clean' | 'glass' | 'bold').
   quoteFormStyle: QuoteFormStyle;
   // Field background for form inputs/textareas ('auto' | 'light' | 'dark').
@@ -2064,6 +2083,7 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
     headerButtonStyle: HEADER_BUTTON_STYLE_KEYS.has(toString(root.headerButtonStyle)) ? toString(root.headerButtonStyle) : '',
     colorScheme: COLOR_SCHEMES.some((scheme) => scheme.key === root.colorScheme) ? toString(root.colorScheme) : '',
     wordmarkStyle: WORDMARK_STYLES.some((style) => style.key === root.wordmarkStyle) ? toString(root.wordmarkStyle) : '',
+    heroTextShadow: HERO_TEXT_SHADOW_STYLE_KEYS.has(toString(root.heroTextShadow)) ? (toString(root.heroTextShadow) as SiteHeroTextShadowStyle) : 'none',
     quoteFormStyle: QUOTE_FORM_STYLE_KEYS.has(toString(root.quoteFormStyle)) ? (toString(root.quoteFormStyle) as QuoteFormStyle) : 'clean',
     quoteFormFieldBg: QUOTE_FORM_FIELD_BG_KEYS.has(toString(root.quoteFormFieldBg)) ? (toString(root.quoteFormFieldBg) as QuoteFormFieldBg) : 'auto',
     quoteFormRadius: QUOTE_FORM_RADIUS_KEYS.has(toString(root.quoteFormRadius)) ? (toString(root.quoteFormRadius) as QuoteFormRadius) : 'default',
