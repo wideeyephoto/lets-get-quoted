@@ -5,12 +5,15 @@
   border-radius: 1.45rem;
   background: #071527;
   box-shadow: 0 2rem 5rem rgba(0, 0, 0, 0.3);
+  container-type: inline-size;
+  container-name: slideshow;
 }
 
 .stage {
   position: relative;
   width: 100%;
-  aspect-ratio: 4 / 5;
+  aspect-ratio: 4 / 4.9;
+  min-height: 490px;
   overflow: hidden;
   outline: none;
   color: #f8fbff;
@@ -644,17 +647,18 @@
 
 .bookingPhoto { position: absolute; inset: 0; }
 .bookingPhoto img { object-fit: cover; }
-.bookingShade { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(3, 12, 25, 0.22), #071527 60%, #071527); }
-.bookingContent { position: absolute; z-index: 2; left: 1.85rem; right: 1.85rem; bottom: 1.6rem; }
-.bookingContent .slideHeading h2 { font-size: clamp(2rem, 5vw, 3rem); }
-.bookingCard { margin-top: 0.95rem; padding: 1.1rem 1.25rem; border: 1px solid rgba(124, 245, 189, 0.25); border-radius: 1rem; background: rgba(5, 21, 35, 0.94); backdrop-filter: blur(12px); }
+.bookingShade { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(3, 12, 25, 0.22), rgba(7, 21, 39, 0.85) 45%, #071527 80%, #071527 100%); }
+.bookingContent { position: absolute; z-index: 2; left: 1.35rem; right: 1.35rem; bottom: 1.25rem; }
+.bookingContent .slideHeading h2 { font-size: clamp(1.55rem, 3.5vw, 2.2rem); line-height: 1.1; margin: 0 0 0.25rem; }
+.bookingContent .slideHeading p { font-size: 0.85rem; line-height: 1.35; margin: 0.3rem 0 0; }
+.bookingCard { margin-top: 0.65rem; padding: 0.85rem 1rem; border: 1px solid rgba(124, 245, 189, 0.25); border-radius: 0.85rem; background: rgba(5, 21, 35, 0.94); backdrop-filter: blur(12px); }
 .bookingCard > div:first-child { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
-.bookingCard > div:first-child span { color: #7cf5bd; font-size: 0.75rem; font-weight: 900; letter-spacing: 0.1em; }
-.bookingCard > div:first-child strong { font-size: 1.35rem; font-weight: 850; }
-.bookingCard > small { display: block; margin-top: 0.4rem; color: rgba(240, 248, 255, 0.8); font-size: 0.8125rem; }
-.timeChoices { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.45rem; margin-top: 0.75rem; }
-.timeChoices span { padding: 0.55rem 0.45rem; border: 1px solid rgba(255, 255, 255, 0.16); border-radius: 0.6rem; color: rgba(255, 255, 255, 0.88); text-align: center; font-size: 0.8125rem; font-weight: 800; }
-.bookingCard > b { display: block; margin-top: 0.75rem; padding: 0.75rem; border-radius: 0.65rem; background: #ff6b35; text-align: center; font-size: 0.875rem; font-weight: 800; }
+.bookingCard > div:first-child span { color: #7cf5bd; font-size: 0.72rem; font-weight: 900; letter-spacing: 0.1em; }
+.bookingCard > div:first-child strong { font-size: 1.15rem; font-weight: 850; }
+.bookingCard > small { display: block; margin-top: 0.3rem; color: rgba(240, 248, 255, 0.8); font-size: 0.78rem; }
+.timeChoices { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.4rem; margin-top: 0.55rem; }
+.timeChoices span { padding: 0.45rem 0.35rem; border: 1px solid rgba(255, 255, 255, 0.16); border-radius: 0.55rem; color: rgba(255, 255, 255, 0.88); text-align: center; font-size: 0.78rem; font-weight: 800; }
+.bookingCard > b { display: block; margin-top: 0.55rem; padding: 0.6rem; border-radius: 0.6rem; background: #ff6b35; text-align: center; font-size: 0.82rem; font-weight: 800; }
 
 .slideCount { position: absolute; z-index: 4; top: 1.35rem; right: 1.35rem; color: rgba(255, 255, 255, 0.75); font-size: 0.75rem; font-weight: 850; font-variant-numeric: tabular-nums; letter-spacing: 0.08em; }
 
@@ -754,8 +758,8 @@
   to { opacity: 1; transform: translateX(0); }
 }
 
-@media (min-width: 701px) {
-  .stage { aspect-ratio: 16 / 10; }
+@media (min-width: 1180px) {
+  .stage { aspect-ratio: 16 / 10.5; min-height: 480px; }
 
   .slide {
     display: grid;
@@ -771,7 +775,8 @@
   .guardrailSlide .slideHeading h2,
   .rankingSlide .slideHeading h2 {
     max-width: 13ch;
-    font-size: clamp(1.9rem, 3.15vw, 2.65rem);
+    font-size: clamp(1.8rem, 2.3vw, 2.5rem);
+    line-height: 1.08;
   }
 
   .slideHeading p,
@@ -780,7 +785,7 @@
   .guardrailSlide .slideHeading p,
   .rankingSlide .slideHeading p {
     max-width: 34ch;
-    font-size: 0.92rem;
+    font-size: 0.9rem;
   }
 
   .setupSlide .slideHeading,
@@ -816,24 +821,25 @@
       linear-gradient(180deg, rgba(3, 12, 25, 0.08), rgba(3, 12, 25, 0.45));
   }
   .storyCopy {
-    top: 50%;
-    right: auto;
-    bottom: auto;
+    top: auto;
+    bottom: 1.5rem;
     left: 2rem;
-    width: 48%;
-    transform: translateY(-50%);
+    right: auto;
+    width: min(48%, 24rem);
+    transform: none;
   }
-  .storyCopy .slideHeading h2 { max-width: 13ch; font-size: clamp(1.9rem, 3.15vw, 2.55rem); }
-  .storyCopy .slideHeading p { max-width: 35ch; font-size: 0.9rem; }
+  .storyCopy .slideHeading h2 { max-width: 13ch; font-size: clamp(1.8rem, 2.3vw, 2.45rem); }
+  .storyCopy .slideHeading p { max-width: 35ch; font-size: 0.88rem; }
   .coachSlide .storyCopy {
     top: 1.35rem;
+    bottom: auto;
     width: min(50%, 22rem);
     transform: none;
   }
   .coachSlide .storyCopy .slideHeading h2 {
     max-width: 15ch;
     margin-top: 0.5rem;
-    font-size: clamp(1.85rem, 2.8vw, 2.25rem);
+    font-size: clamp(1.75rem, 2.2vw, 2.2rem);
   }
   .coachSlide .storyCopy .slideHeading p { margin-top: 0.5rem; }
   .coachSlide .capturedNotice,
@@ -909,7 +915,7 @@
   .visionSlide { grid-template-columns: minmax(0, 0.86fr) minmax(0, 1.14fr); }
   .visionPhoto { height: 100%; }
   .visionContent { padding: 1.6rem 1.85rem; }
-  .visionContent .slideHeading h2 { max-width: 13ch; font-size: clamp(1.9rem, 3.15vw, 2.65rem); }
+  .visionContent .slideHeading h2 { max-width: 13ch; font-size: clamp(1.8rem, 2.3vw, 2.45rem); }
 
   .questionsSlide { grid-template-rows: 1fr auto; }
   .questionsSlide .slideHeading { grid-row: 1 / 3; }
@@ -924,8 +930,24 @@
   .bookingSlide { display: block; padding: 0; }
   .bookingPhoto { left: 40%; }
   .bookingShade { background: linear-gradient(90deg, #071527 0%, #071527 38%, rgba(7, 21, 39, 0.92) 50%, rgba(7, 21, 39, 0.2) 100%); }
-  .bookingContent { top: 50%; right: 45%; bottom: auto; left: 2rem; transform: translateY(-50%); }
-  .bookingContent .slideHeading h2 { font-size: clamp(1.9rem, 3.15vw, 2.65rem); }
+  .bookingContent {
+    top: auto;
+    bottom: 1.5rem;
+    left: 2rem;
+    right: auto;
+    width: min(48%, 24rem);
+    transform: none;
+  }
+  .bookingContent .slideHeading h2 { font-size: clamp(1.7rem, 2.2vw, 2.35rem); line-height: 1.08; }
+  .bookingCard {
+    margin-top: 0.75rem;
+    padding: 0.95rem 1.15rem;
+  }
+  .bookingCard > b {
+    margin-top: 0.6rem;
+    padding: 0.65rem;
+    font-size: 0.85rem;
+  }
 
   .settingRows div,
   .parsedGrid b,

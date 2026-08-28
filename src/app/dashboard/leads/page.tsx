@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { createAdminClient, requireOfficeContext } from '@/lib/auth';
+import { getAuthoritativeTrade } from '@/lib/workspace-trade';
+import { WorkspaceTradeProvider } from '@/app/dashboard/WorkspaceTradeContext';
 import AddressAutocomplete from '@/components/address-autocomplete';
 import { expireStaleLeads, formatDuration, formatElapsedTime, formatLeadSource, getAverageRequestResponseMs, getLeadLostAfterDays, getLeadTriage, isLeadSnoozed, LEAD_FLAG_LABELS, LEAD_LOST_AFTER_CHOICES, LEAD_LOST_NEVER, leadLostAfterLabel, LEADS_VIEW_COOKIE, listLeads, normalizeLeadsView } from '@/lib/leads';
 import { estimateRangeLabel, leadCityLabel, leadScoreLabel, leadStageLabel } from '@/lib/lead-detail-labels';
@@ -155,6 +157,8 @@ export default async function LeadsPage({ searchParams }: { searchParams: { add?
     .filter(({ triage }) => !triage.archived && isLeadSnoozed(triage, now))
     .map(({ lead }) => toViewItem(lead));
 
+  const authoritativeTrade = await getAuthoritativeTrade(createAdminClient(), accountId);
+
   return (
     <main className="wide-shell workspace-shell">
       <section className="panel workspace-section-card" data-tour-id="leads:workspace">
@@ -166,7 +170,9 @@ export default async function LeadsPage({ searchParams }: { searchParams: { add?
             stage — without the title contradicting the navigation. */}
         <div className="section-heading workspace-section-heading"><p className="eyebrow">Work pipeline</p><h1>Leads</h1></div>
         {leads.length === 0 ? <p className="empty-state">No leads yet. Website requests will appear here — or <Link href="/dashboard/leads?add=1#add-lead">add a lead manually</Link>.</p> : (
-          <LeadsWorkspace leads={viewLeads} snoozedLeads={snoozedViewLeads} initialView={initialView} mapView={mapView} mapTheme={mapTheme} mapPins={mapPins} ownerControls={role === 'owner'} />
+          <WorkspaceTradeProvider trade={authoritativeTrade}>
+            <LeadsWorkspace leads={viewLeads} snoozedLeads={snoozedViewLeads} initialView={initialView} mapView={mapView} mapTheme={mapTheme} mapPins={mapPins} ownerControls={role === 'owner'} />
+          </WorkspaceTradeProvider>
         )}
       </section>
 

@@ -1,7 +1,8 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { createAdminClient } from '@/lib/auth';
 import { listServices } from '@/lib/services';
 import { parseQuoteItems } from '@/lib/jobs';
-import { getSiteContent } from '@/lib/site-content';
+import { getAuthoritativeTrade } from '@/lib/workspace-trade';
 import { callModel, AiDraftsExhaustedError } from '@/lib/ai-model-call';
 import { createLeadPhotoLinks } from '@/lib/lead-photo-storage';
 import { createJobPhotoLinks } from '@/lib/job-photo-storage';
@@ -12,6 +13,7 @@ import {
 import {
   getPropertyIntelligence,
   summarizePropertyIntelligence,
+  resolveProfileFromSummary,
   type PropertyIntelligenceSummary,
 } from '@/lib/property-intel';
 
@@ -58,12 +60,10 @@ export async function loadDraftContext(
     .maybeSingle();
   if (!job) return null;
 
-  const [services, { data: site }, { data: past }, propertyIntel] = await Promise.all([
+  const admin = createAdminClient();
+  const [services, trade, { data: past }, propertyIntel] = await Promise.all([
     listServices(supabase, accountId, { activeOnly: true }),
-    // The trade lives in the website's content, not on the account — it's the
-    // owner's own words for what they do ("window cleaning", "roofing"), which
-    // is exactly the context that stops a drain job being priced like a remodel.
-    supabase.from('sites').select('content').eq('account_id', accountId).limit(1).maybeSingle(),
+    getAuthoritativeTrade(admin, accountId),
     // Recent priced work, newest first — what this business actually charges,
     // which beats what the trade charges nationally every time.
     supabase
@@ -83,27 +83,17 @@ export async function loadDraftContext(
   let photoUrls: string[] = [];
   const jobPhotoPaths = Array.isArray(job.photo_paths) ? (job.photo_paths as string[]) : [];
   if (jobPhotoPaths.length > 0) {
-    try {
-      const links = await createJobPhotoLinks(accountId, jobPhotoPaths);
-      photoUrls = links.map((l) => l.url);
-    } catch {
-      // Photo signing fallback
-    }
+    photoUrls = await createJobPhotoLinks(supabase, accountId, jobId, jobPhotoPaths);
   } else if (job.lead_id) {
-    try {
-      const { data: leadRow } = await supabase
-        .from('leads')
-        .select('photo_paths')
-        .eq('account_id', accountId)
-        .eq('id', job.lead_id)
-        .maybeSingle();
-      const leadPhotoPaths = Array.isArray(leadRow?.photo_paths) ? (leadRow.photo_paths as string[]) : [];
-      if (leadPhotoPaths.length > 0) {
-        const links = await createLeadPhotoLinks(accountId, leadPhotoPaths);
-        photoUrls = links.map((l) => l.url);
-      }
-    } catch {
-      // Photo signing fallback
+    const { data: lead } = await supabase
+      .from('leads')
+      .select('photo_paths')
+      .eq('account_id', accountId)
+      .eq('id', job.lead_id)
+      .maybeSingle();
+    const leadPhotoPaths = Array.isArray(lead?.photo_paths) ? (lead?.photo_paths as string[]) : [];
+    if (leadPhotoPaths.length > 0) {
+      photoUrls = await createLeadPhotoLinks(supabase, accountId, job.lead_id, leadPhotoPaths);
     }
   }
 
@@ -116,7 +106,7 @@ export async function loadDraftContext(
   return {
     accountId,
     scope: ((job.scope as string | null) ?? '').trim(),
-    trade: getSiteContent(site?.content as Record<string, unknown> | null).trade.trim() || null,
+    trade,
     estimatedHours: job.estimated_hours == null ? null : Number(job.estimated_hours),
     services: services.map((service) => ({
       id: service.id,
@@ -148,41 +138,74 @@ export function buildDraftInstructions(context: DraftContext): string {
   const book = formatPriceBook(context.services);
   const history = formatQuoteHistory(context.history);
 
-  const propertyLines = context.propertyIntel
-    ? [
-        'VERIFIED PROPERTY & ROOF MEASUREMENTS (Use for accurate quantities and sizing):',
-        context.propertyIntel.yearBuilt
-          ? `- Year Built: ${context.propertyIntel.yearBuilt}${context.propertyIntel.isPre1978LeadRisk ? ' (Pre-1978 structure: consider EPA Lead-Safe certified protocols if disturbing painted surfaces/pipes)' : ''}`
-          : '',
-        context.propertyIntel.livingAreaSqFt
-          ? `- Interior Living Area: ${context.propertyIntel.livingAreaSqFt.toLocaleString()} sq ft`
-          : '',
-        context.propertyIntel.lotSizeAcres || context.propertyIntel.lotSizeSqFt
-          ? `- Total Lot Size: ${context.propertyIntel.lotSizeAcres ? `${context.propertyIntel.lotSizeAcres} acres` : ''}${context.propertyIntel.lotSizeSqFt ? ` (${context.propertyIntel.lotSizeSqFt.toLocaleString()} sq ft)` : ''}`
-          : '',
-        context.propertyIntel.stories ? `- Stories: ${context.propertyIntel.stories}` : '',
-        context.propertyIntel.bedrooms || context.propertyIntel.bathrooms
-          ? `- Layout: ${context.propertyIntel.bedrooms ?? '?'} beds / ${context.propertyIntel.bathrooms ?? '?'} baths`
-          : '',
-        context.propertyIntel.heatingFuel ? `- Heating Fuel: ${context.propertyIntel.heatingFuel}` : '',
-        context.propertyIntel.foundationType ? `- Foundation: ${context.propertyIntel.foundationType}` : '',
-        context.propertyIntel.totalRoofAreaSqFt
-          ? `- Total Roof Area: ${context.propertyIntel.totalRoofAreaSqFt.toLocaleString()} sq ft (${context.propertyIntel.roofingSquares ?? Math.round(context.propertyIntel.totalRoofAreaSqFt / 100)} roofing squares)`
-          : '',
-        context.propertyIntel.groundFootprintSqFt
-          ? `- Building Ground Footprint: ${context.propertyIntel.groundFootprintSqFt.toLocaleString()} sq ft`
-          : '',
-        context.propertyIntel.dominantPitch
-          ? `- Roof Pitch: ${context.propertyIntel.dominantPitch}${context.propertyIntel.isSteep ? ' (Steep slope - include steep safety/labor adder if applicable)' : ''}`
-          : '',
-        context.propertyIntel.complexityLabel
-          ? `- Roof Complexity: ${context.propertyIntel.complexityLabel}`
-          : '',
-        context.propertyIntel.solarPanelCapacity
-          ? `- Max Solar Capacity: ~${context.propertyIntel.solarPanelCapacity} panels`
-          : '',
-      ].filter(Boolean).join('\n')
-    : '';
+  let propertyLines = '';
+  if (context.propertyIntel) {
+    const profile = resolveProfileFromSummary(context.propertyIntel, context.trade, context.scope);
+    const lines: string[] = ['VERIFIED PROPERTY SPECS (Use for structural context and sizing):'];
+
+    // Lead screening alert (injected when trigger is met, independent of section visibility)
+    if (context.propertyIntel.yearBuilt) {
+      lines.push(
+        `- Year Built: ${context.propertyIntel.yearBuilt}${
+          profile.needsLeadScreening
+            ? ' (Pre-1978 build: scope plausibly disturbs paint; note EPA RRP lead-safe containment assumptions)'
+            : ''
+        }`
+      );
+    }
+
+    if (profile.primarySections.includes('building_specs')) {
+      if (context.propertyIntel.livingAreaSqFt) {
+        lines.push(`- Finished Living Area: ${context.propertyIntel.livingAreaSqFt.toLocaleString()} sq ft`);
+      }
+      if (context.propertyIntel.stories) lines.push(`- Stories: ${context.propertyIntel.stories}`);
+      if (context.propertyIntel.bedrooms || context.propertyIntel.bathrooms) {
+        lines.push(`- Layout: ${context.propertyIntel.bedrooms ?? '?'} beds / ${context.propertyIntel.bathrooms ?? '?'} baths`);
+      }
+    }
+
+    if (profile.primarySections.includes('mep_systems')) {
+      if (context.propertyIntel.foundationType) lines.push(`- Foundation: ${context.propertyIntel.foundationType}`);
+      if (context.propertyIntel.heatingFuel) lines.push(`- Heating Fuel: ${context.propertyIntel.heatingFuel}`);
+    }
+
+    if (profile.primarySections.includes('roof_geometry')) {
+      if (context.propertyIntel.totalRoofAreaSqFt) {
+        lines.push(
+          `- Total Roof Area: ${context.propertyIntel.totalRoofAreaSqFt.toLocaleString()} sq ft (${context.propertyIntel.roofingSquares ?? Math.round(context.propertyIntel.totalRoofAreaSqFt / 100)} roofing squares)`
+        );
+      }
+      if (context.propertyIntel.dominantPitch) {
+        lines.push(
+          `- Roof Pitch: ${context.propertyIntel.dominantPitch}${
+            context.propertyIntel.isSteep ? ' (Steep slope - access safety/labor difficulty consideration)' : ''
+          }`
+        );
+      }
+      if (context.propertyIntel.complexityLabel) {
+        lines.push(`- Roof Complexity: ${context.propertyIntel.complexityLabel}`);
+      }
+    }
+
+    if (profile.primarySections.includes('solar_energy') && context.propertyIntel.solarPanelCapacity) {
+      lines.push(`- Max Solar Capacity: ~${context.propertyIntel.solarPanelCapacity} panels`);
+    }
+
+    if (profile.primarySections.includes('site_lot')) {
+      if (context.propertyIntel.lotSizeAcres || context.propertyIntel.lotSizeSqFt) {
+        lines.push(
+          `- Total Lot Size: ${context.propertyIntel.lotSizeAcres ? `${context.propertyIntel.lotSizeAcres} acres` : ''}${context.propertyIntel.lotSizeSqFt ? ` (${context.propertyIntel.lotSizeSqFt.toLocaleString()} sq ft)` : ''}`
+        );
+      }
+      if (context.propertyIntel.groundFootprintSqFt) {
+        lines.push(`- Building Ground Footprint: ${context.propertyIntel.groundFootprintSqFt.toLocaleString()} sq ft`);
+      }
+    }
+
+    if (lines.length > 1) {
+      propertyLines = lines.join('\n');
+    }
+  }
 
   return [
     `You draft an itemized quote for a ${context.trade || 'home services'} contractor to review before they send it.`,
@@ -206,7 +229,12 @@ export function buildDraftInstructions(context: DraftContext): string {
     `  A quick service call is 1-2 lines. Substantial work (a replacement, a repipe, a re-roof) is 4-8 lines covering the real components a tradesperson knows it takes: access and demolition, materials, labour, fixtures or units, permits and inspection where that trade requires them, and making good afterwards. Never more than ${MAX_DRAFT_LINES}.`,
     '- Do NOT pad. Every line must be work somebody actually does on this job; if you would struggle to justify it to the customer, leave it out. A line the contractor has to delete costs them more attention than one they have to add.',
     '- When a line matches a price-book service, put that service name in "service" EXACTLY as written above, and set "quantity" (hours, sqft, or how many of that flat job). The contractor\'s own price will be applied — your "amount" is only a sanity check.',
-    '- When property dimensions are provided above, use the verified square footage, squares, and pitch for quantities and line items.',
+    '- SCOPE-CONSCIOUS MEASUREMENT APPLICATION:',
+    '  * Raw property dimensions provide structural context, not direct line-item quantities.',
+    '  * Living Area is total finished interior floor space; it must NOT be used as paintable wall area or single-room square footage.',
+    '  * Roof Squares and Pitch reflect 3D roof surface geometry; use them ONLY for roofing, shingle replacement, and solar scopes. Pitch informs safety and access difficulty; roof squares must NOT price gutters, siding, or interior work.',
+    '  * Foundation type and heating fuel indicate equipment accessibility and utility types; they do NOT substitute for Manual J HVAC load sizing.',
+    '  * For pre-1978 properties, include EPA RRP lead-safe containment/testing assumptions ONLY when the scope plausibly disturbs painted surfaces.',
     context.photos && context.photos.length > 0
       ? '- Attached job photos are provided. Inspect visible equipment tags, damage, materials, and working conditions to ground your line items, quantities, and price-book selections directly in what is visible.'
       : '',

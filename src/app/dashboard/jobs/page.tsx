@@ -1,4 +1,6 @@
-import { requireOfficeContext } from '@/lib/auth';
+import { createAdminClient, requireOfficeContext } from '@/lib/auth';
+import { getAuthoritativeTrade } from '@/lib/workspace-trade';
+import { WorkspaceTradeProvider } from '@/app/dashboard/WorkspaceTradeContext';
 import AddressAutocomplete from '@/components/address-autocomplete';
 import ScheduledDatePicker from '@/components/scheduled-date-picker';
 import TimeSlotSelect from '@/components/time-slot-select';
@@ -231,6 +233,8 @@ export default async function JobsPage({
   const { data: jobsAcct } = await supabase.from('accounts').select('quote_followups_enabled').eq('id', accountId).maybeSingle();
   const followupsOn = Boolean(jobsAcct?.quote_followups_enabled);
 
+  const authoritativeTrade = await getAuthoritativeTrade(createAdminClient(), accountId);
+
   return (
     <main className="wide-shell workspace-shell">
       <section className="panel workspace-section-card" data-tour-id="jobs:workspace">
@@ -242,17 +246,19 @@ export default async function JobsPage({
             legend row (same as leads); the workspace also owns the empty state.
             Quote follow-ups rides along so it sits beside the View gear rather
             than floating under the title on its own line. */}
-        <JobsWorkspace
-          jobs={jobItems}
-          initialView={jobsView}
-          initialStatus={initialStageFrom(searchParams.status)}
-          initialSort={initialSortFrom(searchParams.owing)}
-          mapView={mapView}
-          mapTheme={mapTheme}
-          mapPins={mapPins}
-          todayKey={todayKey}
-          toolbarAccessory={<AutomationLink id="followups" label="Quote follow-ups" on={followupsOn} />}
-        />
+        <WorkspaceTradeProvider trade={authoritativeTrade}>
+          <JobsWorkspace
+            jobs={jobItems}
+            initialView={jobsView}
+            initialStatus={initialStageFrom(searchParams.status)}
+            initialSort={initialSortFrom(searchParams.owing)}
+            mapView={mapView}
+            mapTheme={mapTheme}
+            mapPins={mapPins}
+            todayKey={todayKey}
+            toolbarAccessory={<AutomationLink id="followups" label="Quote follow-ups" on={followupsOn} />}
+          />
+        </WorkspaceTradeProvider>
       </section>
 
       <div className="stat-ticker panel">

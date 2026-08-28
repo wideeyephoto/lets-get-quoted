@@ -1,6 +1,6 @@
 /* GENERATED — do not edit. Source: src/app/globals.css
    Run: node scripts/build-css-subset.mjs
-   source-sha256: 964b28502ea4864c
+   source-sha256: a810f7594116502c
 
    globals.css with the rules that can only match inside /dashboard, /admin and
    /demo removed. Every route except those three imports this file; they import
@@ -5203,6 +5203,8 @@ li + li { margin-top: 0.45rem; }
 }
 
 .marketing-footer { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 2rem 0 3rem; color: var(--mute-t52); font-size: .82rem; }
+.marketing-footer-brand { display: flex; flex-direction: column; gap: 0.2rem; }
+.footer-slogan { font-size: .82rem; color: var(--mute-t52); margin: 0; font-weight: 500; }
 .marketing-footer nav { display: flex; gap: 1rem; }
 .marketing-footer a { color: rgba(var(--tint), .76); }
 

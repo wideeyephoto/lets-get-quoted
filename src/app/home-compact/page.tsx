@@ -120,7 +120,12 @@ export default function HomeCompactPage() {
       </main>
 
       <footer className={styles.foot}>
-        <span>© 2026 Let’s Get Quoted</span>
+        <div>
+          <p style={{ margin: '0 0 4px', fontSize: '12px', color: '#94a3b8', fontWeight: 500 }}>
+            Built thoughtfully, for thoughtful contractors
+          </p>
+          <span>© 2026 Let’s Get Quoted</span>
+        </div>
         <nav className={styles.footLinks} aria-label="Footer">
           <Link href="/features">Features</Link>
           <Link href="/pricing">Pricing</Link>

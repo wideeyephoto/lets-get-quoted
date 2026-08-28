@@ -14,7 +14,10 @@ export default function SiteFooter() {
   return (
     <>
       <footer className="marketing-footer">
-        <span>© {year} Let&apos;s Get Quoted</span>
+        <div className="marketing-footer-brand">
+          <p className="footer-slogan">Built thoughtfully, for thoughtful contractors</p>
+          <span>© {year} Let&apos;s Get Quoted</span>
+        </div>
         {/* flexWrap is inline because the shared `.marketing-footer nav` rule is a
             single non-wrapping row, and this list is now long enough to run off a
             narrow screen. Belongs in the stylesheet; lives here until it can go

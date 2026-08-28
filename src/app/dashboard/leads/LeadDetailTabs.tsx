@@ -27,7 +27,7 @@ import leadStyles from './leads.module.css';
 
 export const LEAD_TABS = [
   { id: 'overview', label: 'Overview' },
-  { id: 'property', label: 'Property & Roof' },
+  { id: 'property', label: 'Property Intel' },
   { id: 'request', label: 'Request' },
   { id: 'activity', label: 'Activity' },
   { id: 'photos', label: 'Photos' },
@@ -224,7 +224,10 @@ export default function LeadDetailTabs({
       <div style={{ maxWidth: '720px' }}>
         {detail.address ? (
           <>
-            <PropertyDossierCard address={detail.address} />
+            <PropertyDossierCard
+              address={detail.address}
+              scope={[detail.projectType, detail.message].filter(Boolean).join(' ')}
+            />
             <PermitFeasibilityCard address={detail.address} isLead={true} />
           </>
         ) : (

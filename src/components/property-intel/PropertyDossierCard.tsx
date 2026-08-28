@@ -1,13 +1,17 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useId } from 'react';
 import type { PropertyIntelligence } from '@/lib/property-intel/types';
+import { resolveProfileFromIntel, type PropertySection } from '@/lib/property-intel/profile';
+import { useWorkspaceTrade } from '@/app/dashboard/WorkspaceTradeContext';
 import styles from './PropertyDossierCard.module.css';
 
 export type PropertyDossierCardProps = {
   address: string | null | undefined;
   lat?: number | null;
   lng?: number | null;
+  trade?: string | null;
+  scope?: string | null;
   initialData?: PropertyIntelligence | null;
   className?: string;
   onApplyRoofSquares?: (squares: number) => void;
@@ -17,6 +21,8 @@ export function PropertyDossierCard({
   address,
   lat,
   lng,
+  trade: tradeProp,
+  scope,
   initialData,
   className = '',
   onApplyRoofSquares,
@@ -25,8 +31,13 @@ export function PropertyDossierCard({
   const [loading, setLoading] = useState<boolean>(!initialData && Boolean(address || (lat != null && lng != null)));
   const [error, setError] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<'street' | 'satellite'>('street');
+  const [showSecondary, setShowSecondary] = useState<boolean>(false);
   const [showSegments, setShowSegments] = useState<boolean>(false);
   const [imageFailed, setImageFailed] = useState<boolean>(false);
+  const secondaryDrawerId = useId();
+
+  const contextTrade = useWorkspaceTrade();
+  const activeTrade = tradeProp ?? contextTrade ?? null;
 
   useEffect(() => {
     setImageFailed(false);
@@ -87,7 +98,6 @@ export function PropertyDossierCard({
     return null;
   }
 
-  // Generate a direct Google Maps URL as a resilient escape hatch
   const gmapsQuery = encodeURIComponent(
     address || (lat != null && lng != null ? `${lat},${lng}` : '')
   );
@@ -151,9 +161,10 @@ export function PropertyDossierCard({
 
   const { streetView, satellite, roof, specs, lat: resolvedLat, lng: resolvedLng } = intel;
   const currentImageUrl = activeView === 'street' && streetView.available ? streetView.imageUrl : satellite.imageUrl;
-  const isPre1978 = specs?.yearBuilt != null && specs.yearBuilt < 1978;
   const hasImagery = Boolean(currentImageUrl) && !imageFailed;
   const hasNeitherRoofNorSpecs = !roof && !specs;
+
+  const profile = resolveProfileFromIntel(intel, activeTrade, scope);
 
   return (
     <div className={`${styles.container} ${className}`}>
@@ -270,194 +281,63 @@ export function PropertyDossierCard({
         </div>
 
         <div className={styles.overlayTopRight}>
-          {roof?.isSteep && (
+          {roof?.isSteep && profile.primarySections.includes('roof_geometry') && (
             <span className={`${styles.warningBadge} ${styles.warningBadgeAmber}`}>
               <span>⚠️</span> Steep Slope ({roof.dominantPitchRatio})
             </span>
           )}
-          {isPre1978 && (
+          {profile.isPre1978 && (
             <span className={`${styles.warningBadge} ${styles.warningBadgeRose}`}>
-              <span>🛡️</span> Built {specs?.yearBuilt} (Lead Paint Rule)
+              <span>🛡️</span> Built {specs?.yearBuilt} (Pre-1978 Screening)
             </span>
           )}
         </div>
       </div>
 
       <div className={styles.body}>
-        {/* Core Specs Grid (RentCast / County Assessor) */}
-        {specs && (
-          <div className={styles.section}>
-            <div className={styles.sectionHeader}>
-              <span>Building & Parcel Specs</span>
-              {specs.ownerOccupied != null && (
-                <span className={styles.sectionSubtext}>
-                  {specs.ownerOccupied ? 'Owner-occupied' : 'Rental / Non-owner occupied'}
-                </span>
-              )}
-            </div>
-            <div className={styles.specsGrid}>
-              {/* Year Built */}
-              <div className={styles.specCard}>
-                <div className={styles.specLabel}>Year Built</div>
-                <div className={styles.specValue}>
-                  {specs.yearBuilt ?? 'Unknown'}
-                </div>
-                <div className={styles.specSubtext}>
-                  {isPre1978 ? 'Pre-1978 structure' : 'Modern build'}
-                </div>
-              </div>
+        {/* Primary Sections (Ordered by trade and scope relevance) */}
+        {profile.primarySections.map((section) => (
+          <SectionRenderer
+            key={section}
+            section={section}
+            intel={intel}
+            showSegments={showSegments}
+            setShowSegments={setShowSegments}
+            onApplyRoofSquares={onApplyRoofSquares}
+          />
+        ))}
 
-              {/* Finished Living Area */}
-              <div className={styles.specCard}>
-                <div className={styles.specLabel}>Living Area</div>
-                <div className={styles.specValue}>
-                  {specs.squareFootage ? (
-                    <>
-                      {specs.squareFootage.toLocaleString()} <span className={styles.specValueUnit}>ft²</span>
-                    </>
-                  ) : (
-                    'N/A'
-                  )}
-                </div>
-                <div className={styles.specSubtext}>
-                  {specs.stories ? `${specs.stories} Story` : 'Finished area'}
-                </div>
-              </div>
-
-              {/* Lot Size */}
-              <div className={styles.specCard}>
-                <div className={styles.specLabel}>Lot Size</div>
-                <div className={styles.specValue}>
-                  {specs.lotSizeAcres ? (
-                    <>
-                      {specs.lotSizeAcres} <span className={styles.specValueUnit}>ac</span>
-                    </>
-                  ) : specs.lotSizeSqFt ? (
-                    <>
-                      {specs.lotSizeSqFt.toLocaleString()} <span className={styles.specValueUnit}>ft²</span>
-                    </>
-                  ) : (
-                    'N/A'
-                  )}
-                </div>
-                <div className={styles.specSubtext}>
-                  {specs.lotSizeSqFt ? `${specs.lotSizeSqFt.toLocaleString()} ft² total` : 'Parcel size'}
-                </div>
-              </div>
-
-              {/* Layout / Rooms */}
-              <div className={styles.specCard}>
-                <div className={styles.specLabel}>Layout</div>
-                <div className={styles.specValue}>
-                  {specs.bedrooms ?? '?'} bd / {specs.bathrooms ?? '?'} ba
-                </div>
-                <div className={styles.specSubtext}>
-                  {specs.heatingFuel ? `${specs.heatingFuel} Heat` : specs.foundationType ? `${specs.foundationType} base` : 'Residential'}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Roof & Solar Measurements (Google Solar) */}
-        {roof && (
-          <div className={styles.section}>
-            <div className={styles.sectionHeader}>
-              <span>Roof & Geometric Measurements</span>
-            </div>
-            <div className={styles.specsGrid}>
-              {/* Roofing Squares */}
-              <div className={styles.specCard}>
-                <div className={styles.specLabel}>Roof Area</div>
-                <div className={styles.specValue}>
-                  {roof.roofingSquares}{' '}
-                  <span className={styles.specValueUnit}>sq ({roof.totalAreaSqFt.toLocaleString()} ft²)</span>
-                </div>
-                {onApplyRoofSquares && (
-                  <button
-                    type="button"
-                    onClick={() => onApplyRoofSquares(roof.roofingSquares)}
-                    className={styles.applyBtn}
-                  >
-                    Use {roof.roofingSquares} sq in quote →
-                  </button>
-                )}
-              </div>
-
-              {/* Dominant Pitch */}
-              <div className={styles.specCard}>
-                <div className={styles.specLabel}>Pitch / Slope</div>
-                <div className={styles.specValue}>
-                  {roof.dominantPitchRatio}
-                  {roof.isSteep && (
-                    <span className={styles.pitchPill}>
-                      Steep
-                    </span>
-                  )}
-                </div>
-                <div className={styles.specSubtext}>
-                  Max {roof.maxPitchDegrees}°
-                </div>
-              </div>
-
-              {/* Footprint */}
-              <div className={styles.specCard}>
-                <div className={styles.specLabel}>Ground Footprint</div>
-                <div className={styles.specValue}>
-                  {roof.groundAreaSqFt.toLocaleString()}{' '}
-                  <span className={styles.specValueUnit}>ft²</span>
-                </div>
-                <div className={styles.specSubtext}>
-                  Foundation level
-                </div>
-              </div>
-
-              {/* Solar / Sunshine */}
-              <div className={styles.specCard}>
-                <div className={styles.specLabel}>Sunshine & Solar</div>
-                <div className={styles.specValue}>
-                  {roof.maxSunshineHoursPerYear.toLocaleString()}{' '}
-                  <span className={styles.specValueUnit}>hrs/yr</span>
-                </div>
-                <div className={styles.specSubtext}>
-                  Max {roof.solarPotentialPanels} panels
-                </div>
-              </div>
-            </div>
-
-            {/* Roof Complexity Bar */}
-            <div className={styles.complexityBar}>
-              <span className={styles.complexityLabel}>
-                Structure: <strong className={styles.complexityValue}>{roof.complexityLabel}</strong>
-              </span>
-              {roof.segments.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setShowSegments(!showSegments)}
-                  className={styles.facetToggleBtn}
-                >
-                  {showSegments ? 'Hide Facets' : `View ${roof.segments.length} Facets`}
-                  <span style={{ fontSize: '0.625rem' }}>{showSegments ? '▲' : '▼'}</span>
-                </button>
-              )}
-            </div>
-
-            {/* Segment Drill-down */}
-            {showSegments && roof.segments.length > 0 && (
-              <div className={styles.facetList}>
-                {roof.segments.map((seg, idx) => (
-                  <div key={idx} className={styles.facetItem}>
-                    <div className={styles.facetItemLeft}>
-                      <span className={styles.facetIndex}>#{idx + 1}</span>
-                      <span className={styles.facetHeading}>
-                        {seg.compassDirection} ({seg.azimuthDegrees}°)
-                      </span>
-                      <span className={styles.facetPitch}>{seg.pitchRatio}</span>
-                    </div>
-                    <span className={styles.facetArea}>
-                      {seg.areaSqFt} ft²
-                    </span>
-                  </div>
+        {/* Secondary Drawer (Only renders if data exists in secondary sections) */}
+        {profile.secondarySections.length > 0 && (
+          <div className={styles.secondarySectionWrap}>
+            <button
+              type="button"
+              id={`${secondaryDrawerId}-btn`}
+              aria-expanded={showSecondary}
+              aria-controls={secondaryDrawerId}
+              onClick={() => setShowSecondary((prev) => !prev)}
+              className={styles.secondaryToggleBtn}
+            >
+              {showSecondary
+                ? '▲ Hide Additional Property Details'
+                : `▼ View Additional Property Details (${profile.secondarySections.length} available)`}
+            </button>
+            {showSecondary && (
+              <div
+                id={secondaryDrawerId}
+                role="region"
+                aria-labelledby={`${secondaryDrawerId}-btn`}
+                className={styles.secondaryContent}
+              >
+                {profile.secondarySections.map((section) => (
+                  <SectionRenderer
+                    key={section}
+                    section={section}
+                    intel={intel}
+                    showSegments={showSegments}
+                    setShowSegments={setShowSegments}
+                    onApplyRoofSquares={onApplyRoofSquares}
+                  />
                 ))}
               </div>
             )}
@@ -497,4 +377,264 @@ export function PropertyDossierCard({
       </div>
     </div>
   );
+}
+
+function SectionRenderer({
+  section,
+  intel,
+  showSegments,
+  setShowSegments,
+  onApplyRoofSquares,
+}: {
+  section: PropertySection;
+  intel: PropertyIntelligence;
+  showSegments: boolean;
+  setShowSegments: React.Dispatch<React.SetStateAction<boolean>>;
+  onApplyRoofSquares?: (sq: number) => void;
+}) {
+  const { specs, roof } = intel;
+
+  switch (section) {
+    case 'building_specs':
+      if (!specs) return null;
+      return (
+        <div className={styles.section}>
+          <div className={styles.sectionHeader}>
+            <span>Building & Structure Specs</span>
+            {specs.ownerOccupied != null && (
+              <span className={styles.sectionSubtext}>
+                {specs.ownerOccupied ? 'Owner-occupied' : 'Rental / Non-owner occupied'}
+              </span>
+            )}
+          </div>
+          <div className={styles.specsGrid}>
+            <div className={styles.specCard}>
+              <div className={styles.specLabel}>Year Built</div>
+              <div className={styles.specValue}>
+                {specs.yearBuilt ?? 'Unknown'}
+              </div>
+              <div className={styles.specSubtext}>
+                {specs.yearBuilt && specs.yearBuilt < 1978 ? 'Pre-1978 build' : 'Modern build'}
+              </div>
+            </div>
+
+            <div className={styles.specCard}>
+              <div className={styles.specLabel}>Living Area</div>
+              <div className={styles.specValue}>
+                {specs.squareFootage ? (
+                  <>
+                    {specs.squareFootage.toLocaleString()} <span className={styles.specValueUnit}>ft²</span>
+                  </>
+                ) : (
+                  'N/A'
+                )}
+              </div>
+              <div className={styles.specSubtext}>
+                {specs.stories ? `${specs.stories} Story` : 'Finished area'}
+              </div>
+            </div>
+
+            <div className={styles.specCard}>
+              <div className={styles.specLabel}>Layout</div>
+              <div className={styles.specValue}>
+                {specs.bedrooms ?? '?'} bd / {specs.bathrooms ?? '?'} ba
+              </div>
+              <div className={styles.specSubtext}>
+                {specs.propertyType ?? 'Residential'}
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+
+    case 'mep_systems':
+      if (!specs || (!specs.foundationType && !specs.heatingFuel && !specs.coolingType)) return null;
+      return (
+        <div className={styles.section}>
+          <div className={styles.sectionHeader}>
+            <span>Mechanical & Foundation</span>
+          </div>
+          <div className={styles.specsGrid}>
+            {specs.foundationType && (
+              <div className={styles.specCard}>
+                <div className={styles.specLabel}>Foundation</div>
+                <div className={styles.specValue}>{specs.foundationType}</div>
+                <div className={styles.specSubtext}>Structural base</div>
+              </div>
+            )}
+            {specs.heatingFuel && (
+              <div className={styles.specCard}>
+                <div className={styles.specLabel}>Heating Fuel</div>
+                <div className={styles.specValue}>{specs.heatingFuel}</div>
+                <div className={styles.specSubtext}>Primary heat fuel</div>
+              </div>
+            )}
+            {specs.coolingType && (
+              <div className={styles.specCard}>
+                <div className={styles.specLabel}>Cooling</div>
+                <div className={styles.specValue}>{specs.coolingType}</div>
+                <div className={styles.specSubtext}>Cooling system</div>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+
+    case 'roof_geometry':
+      if (!roof || roof.roofingSquares === 0) return null;
+      return (
+        <div className={styles.section}>
+          <div className={styles.sectionHeader}>
+            <span>Roof & Aerial Geometry</span>
+          </div>
+          <div className={styles.specsGrid}>
+            <div className={styles.specCard}>
+              <div className={styles.specLabel}>Roof Area</div>
+              <div className={styles.specValue}>
+                {roof.roofingSquares}{' '}
+                <span className={styles.specValueUnit}>sq ({roof.totalAreaSqFt.toLocaleString()} ft²)</span>
+              </div>
+              {onApplyRoofSquares && (
+                <button
+                  type="button"
+                  onClick={() => onApplyRoofSquares(roof.roofingSquares)}
+                  className={styles.applyBtn}
+                >
+                  Use {roof.roofingSquares} sq in quote →
+                </button>
+              )}
+            </div>
+
+            <div className={styles.specCard}>
+              <div className={styles.specLabel}>Dominant Pitch</div>
+              <div className={styles.specValue}>
+                {roof.dominantPitchRatio}
+                {roof.isSteep && (
+                  <span className={styles.pitchPill}>
+                    Steep
+                  </span>
+                )}
+              </div>
+              <div className={styles.specSubtext}>
+                Max slope {roof.maxPitchDegrees}°
+              </div>
+            </div>
+          </div>
+
+          <div className={styles.complexityBar}>
+            <span className={styles.complexityLabel}>
+              Geometry: <strong className={styles.complexityValue}>{roof.complexityLabel}</strong>
+            </span>
+            {roof.segments.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setShowSegments(!showSegments)}
+                className={styles.facetToggleBtn}
+              >
+                {showSegments ? 'Hide Facets' : `View ${roof.segments.length} Facets`}
+                <span style={{ fontSize: '0.625rem' }}>{showSegments ? '▲' : '▼'}</span>
+              </button>
+            )}
+          </div>
+
+          {showSegments && roof.segments.length > 0 && (
+            <div className={styles.facetList}>
+              {roof.segments.map((seg, idx) => (
+                <div key={idx} className={styles.facetItem}>
+                  <div className={styles.facetItemLeft}>
+                    <span className={styles.facetIndex}>#{idx + 1}</span>
+                    <span className={styles.facetHeading}>
+                      {seg.compassDirection} ({seg.azimuthDegrees}°)
+                    </span>
+                    <span className={styles.facetPitch}>{seg.pitchRatio}</span>
+                  </div>
+                  <span className={styles.facetArea}>
+                    {seg.areaSqFt} ft²
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      );
+
+    case 'solar_energy':
+      if (!roof || (roof.maxSunshineHoursPerYear === 0 && roof.solarPotentialPanels === 0)) return null;
+      return (
+        <div className={styles.section}>
+          <div className={styles.sectionHeader}>
+            <span>Solar & Sunshine Intel</span>
+          </div>
+          <div className={styles.specsGrid}>
+            <div className={styles.specCard}>
+              <div className={styles.specLabel}>Sunshine Exposure</div>
+              <div className={styles.specValue}>
+                {roof.maxSunshineHoursPerYear.toLocaleString()}{' '}
+                <span className={styles.specValueUnit}>hrs/yr</span>
+              </div>
+              <div className={styles.specSubtext}>
+                Annual sunlight potential
+              </div>
+            </div>
+
+            <div className={styles.specCard}>
+              <div className={styles.specLabel}>Panel Capacity</div>
+              <div className={styles.specValue}>
+                ~{roof.solarPotentialPanels} panels
+              </div>
+              <div className={styles.specSubtext}>
+                Theoretical roof capacity
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+
+    case 'site_lot':
+      if (!specs?.lotSizeSqFt && !specs?.lotSizeAcres && !roof?.groundAreaSqFt) return null;
+      return (
+        <div className={styles.section}>
+          <div className={styles.sectionHeader}>
+            <span>Site & Parcel Footprint</span>
+          </div>
+          <div className={styles.specsGrid}>
+            {(specs?.lotSizeAcres || specs?.lotSizeSqFt) && (
+              <div className={styles.specCard}>
+                <div className={styles.specLabel}>Lot Size</div>
+                <div className={styles.specValue}>
+                  {specs.lotSizeAcres ? (
+                    <>
+                      {specs.lotSizeAcres} <span className={styles.specValueUnit}>ac</span>
+                    </>
+                  ) : (
+                    <>
+                      {specs.lotSizeSqFt?.toLocaleString()} <span className={styles.specValueUnit}>ft²</span>
+                    </>
+                  )}
+                </div>
+                <div className={styles.specSubtext}>
+                  {specs.lotSizeSqFt ? `${specs.lotSizeSqFt.toLocaleString()} ft² total` : 'Parcel size'}
+                </div>
+              </div>
+            )}
+
+            {roof?.groundAreaSqFt && (
+              <div className={styles.specCard}>
+                <div className={styles.specLabel}>Ground Footprint</div>
+                <div className={styles.specValue}>
+                  {roof.groundAreaSqFt.toLocaleString()}{' '}
+                  <span className={styles.specValueUnit}>ft²</span>
+                </div>
+                <div className={styles.specSubtext}>
+                  Foundation level
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+
+    default:
+      return null;
+  }
 }

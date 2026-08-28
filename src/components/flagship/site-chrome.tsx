@@ -391,6 +391,7 @@ export function SiteFooter() {
         <p className="footer-legal">
           {FOOTER_LEGAL.map(([href, label]) => <a key={href} href={href}>{label}</a>)}
         </p>
+        <p className="footer-slogan">Built thoughtfully, for thoughtful contractors</p>
         <span>© 2026 Let’s Get Quoted</span>
       </footer>
       {!signedIn && <MarketingAiAssistant />}

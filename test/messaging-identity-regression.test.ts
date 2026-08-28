@@ -33,7 +33,7 @@ describe('Problem 1: Product Identity and Message Hierarchy', () => {
       expect(HOME).toContain('FULL CONTRACTOR AI SUITE—THE ONLY SOFTWARE YOU NEED TO RUN YOUR BUSINESS');
       expect(HOME).toContain('Let AI qualify the lead.<br /><em>You win the right work.</em>');
       expect(HOME).toContain(
-        'Launch a contractor website that collects photos, asks the right questions, and turns inquiries into quote-ready opportunities',
+        'Capture better leads, run every job, and stay on top of costs, payments, and profitability—all from one connected platform.',
       );
       expect(HOME).toContain('Explore a live demo');
       expect(HOME).toContain('{SIGNUP_LABEL}');

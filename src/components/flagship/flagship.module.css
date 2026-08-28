@@ -4473,6 +4473,16 @@
   text-decoration: none;
 }
 .root :global(.footer-legal a:hover) { color: #cfdbe2; text-decoration: underline; }
+.root :global(.footer-slogan) {
+  grid-column: 1 / -1;
+  text-align: center;
+  color: #7e949f;
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  margin: 14px 0 0;
+  opacity: 0.9;
+}
 
 /* ===========================================================================
    §98 — THE FEATURES PAGE STOPS READING AS A BROCHURE

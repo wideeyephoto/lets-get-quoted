@@ -19,7 +19,7 @@ import styles from '../focus.module.css';
 
 export const JOB_TABS = [
   { id: 'overview', label: 'Overview' },
-  { id: 'property', label: 'Property & Roof' },
+  { id: 'property', label: 'Property Intel' },
   { id: 'permits', label: 'Permits' },
   { id: 'timeline', label: 'Timeline' },
   { id: 'checklist', label: 'Checklist' },
@@ -116,7 +116,10 @@ export default function JobDetailTabs({
       <div style={{ maxWidth: '720px' }}>
         {detail.address ? (
           <>
-            <PropertyDossierCard address={detail.address} />
+            <PropertyDossierCard
+              address={detail.address}
+              scope={detail.scope}
+            />
             <PermitFeasibilityCard address={detail.address} />
           </>
         ) : (

@@ -141,7 +141,7 @@ describe('Property Intelligence - Summarizer & Quote AI Context', () => {
     expect(summary?.foundationType).toBe('Crawlspace');
   });
 
-  it('injects verified property dimensions into buildDraftInstructions', () => {
+  it('injects verified property dimensions into buildDraftInstructions based on scope', () => {
     const summary = summarizePropertyIntelligence(sampleIntel);
     const draftContext: DraftContext = {
       accountId: 'acc-123',
@@ -157,15 +157,13 @@ describe('Property Intelligence - Summarizer & Quote AI Context', () => {
     };
 
     const instructions = buildDraftInstructions(draftContext);
-    expect(instructions).toContain('VERIFIED PROPERTY & ROOF MEASUREMENTS');
+    expect(instructions).toContain('VERIFIED PROPERTY SPECS');
     expect(instructions).toContain('Year Built: 1968');
-    expect(instructions).toContain('Pre-1978 structure: consider EPA Lead-Safe');
-    expect(instructions).toContain('Interior Living Area: 2,400 sq ft');
-    expect(instructions).toContain('Total Lot Size: 0.28 acres (12,196 sq ft)');
+    expect(instructions).toContain('Pre-1978 build: scope plausibly disturbs paint');
+    expect(instructions).toContain('Finished Living Area: 2,400 sq ft');
     expect(instructions).toContain('Stories: 2');
     expect(instructions).toContain('Layout: 4 beds / 2.5 baths');
     expect(instructions).toContain('3,240 sq ft (32.4 roofing squares)');
-    expect(instructions).toContain('1,650 sq ft');
     expect(instructions).toContain('8/12 (Steep slope');
   });
 
@@ -181,7 +179,7 @@ describe('Property Intelligence - Summarizer & Quote AI Context', () => {
     };
 
     const instructions = buildDraftInstructions(draftContext);
-    expect(instructions).not.toContain('VERIFIED PROPERTY & ROOF MEASUREMENTS');
+    expect(instructions).not.toContain('VERIFIED PROPERTY SPECS');
     expect(instructions).toContain('You draft an itemized quote for a plumbing contractor');
   });
 });
