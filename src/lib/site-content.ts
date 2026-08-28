@@ -742,6 +742,8 @@ export type ColorScheme = {
   surface: string;
   ink: string;
   muted: string;
+  surfaceInk?: string;
+  surfaceMuted?: string;
   line: string;
   controlLine: string;
 
@@ -944,6 +946,48 @@ export const COLOR_SCHEMES: ColorScheme[] = [
     accent: '#09090b',
     onAccent: '#ffffff',
     accentText: '#09090b',
+  },
+  {
+    key: 'blueprint',
+    label: 'Blueprint — deep slate canvas + pure white',
+    tone: 'dark',
+    status: 'active',
+    mood: 'High Contrast · Blueprint',
+    bg: '#0f172a',
+    surface: '#ffffff',
+    ink: '#f8fafc',
+    muted: '#94a3b8',
+    surfaceInk: '#09090b',
+    surfaceMuted: '#475569',
+    line: '#334155',
+    controlLine: '#64748b',
+    deep: '#080c14',
+    onDeep: '#ffffff',
+    onPhoto: '#ffffff',
+    accent: '#2563eb',
+    onAccent: '#ffffff',
+    accentText: '#38bdf8',
+  },
+  {
+    key: 'alabaster',
+    label: 'Alabaster — warm linen + terracotta',
+    tone: 'light',
+    status: 'active',
+    mood: 'Light · Warm Linen',
+    bg: '#fbf9f5',
+    surface: '#ffffff',
+    ink: '#1c1917',
+    muted: '#57534e',
+    surfaceInk: '#1c1917',
+    surfaceMuted: '#57534e',
+    line: '#e7e2d8',
+    controlLine: '#78716c',
+    deep: '#1c1917',
+    onDeep: '#fbf9f5',
+    onPhoto: '#fbf9f5',
+    accent: '#c2410c',
+    onAccent: '#ffffff',
+    accentText: '#9a3412',
   },
   {
     key: 'slate',

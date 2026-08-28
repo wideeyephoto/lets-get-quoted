@@ -1938,8 +1938,8 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, mess
                                     <div className={styles.mockBody}>
                                       <div className={styles.mockCard} style={{ background: scheme.surface, border: `1px solid ${scheme.line}` }}>
                                         <div>
-                                          <div className={styles.mockLineTitle} style={{ background: scheme.ink }} />
-                                          <div className={styles.mockLineBody} style={{ background: scheme.muted }} />
+                                          <div className={styles.mockLineTitle} style={{ background: scheme.surfaceInk || scheme.ink }} />
+                                          <div className={styles.mockLineBody} style={{ background: scheme.surfaceMuted || scheme.muted }} />
                                         </div>
                                         <span className={styles.mockCta} style={{ background: scheme.accent }} />
                                       </div>

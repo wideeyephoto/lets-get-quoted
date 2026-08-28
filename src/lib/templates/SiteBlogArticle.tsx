@@ -47,6 +47,8 @@ export default function SiteBlogArticle({ site, post }: { site: Site; post: Site
       '--c-surface': scheme.surface,
       '--c-ink': scheme.ink,
       '--c-muted': scheme.muted,
+      '--c-surface-ink': scheme.surfaceInk || scheme.ink,
+      '--c-surface-muted': scheme.surfaceMuted || scheme.muted,
       '--c-line': scheme.line,
       '--c-control-line': scheme.controlLine,
       '--c-deep': scheme.deep,

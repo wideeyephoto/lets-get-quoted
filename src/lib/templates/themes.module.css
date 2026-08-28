@@ -2065,8 +2065,8 @@
 .careHeroCards { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.6rem; }
 .careMiniCard { padding: .8rem 1.1rem; border-radius: 12px; background: var(--c-surface); box-shadow: 0 16px 34px -22px rgba(51,61,71,.34); border: 1px solid var(--c-line); transition: transform .2s ease, box-shadow .2s ease; }
 .careMiniCard:hover { transform: translateY(-2px); box-shadow: 0 20px 40px -20px rgba(51,61,71,.45); }
-.careMiniCard strong { display: block; font-size: .92rem; font-weight: 700; color: var(--c-ink); }
-.careMiniCard small { font-size: .76rem; color: var(--c-muted); }
+.careMiniCard strong { display: block; font-size: .92rem; font-weight: 700; color: var(--c-surface-ink, var(--c-ink)); }
+.careMiniCard small { font-size: .76rem; color: var(--c-surface-muted, var(--c-muted)); }
 .careHeroActions { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
 .careHeroMedia { position: relative; display: flex; justify-content: center; align-items: center; }
 .careHeroCircle { position: relative; z-index: 1; width: min(420px, 84%); aspect-ratio: 1; border-radius: 50%; padding: 14px; background: var(--care-grad); box-shadow: 0 40px 80px -42px rgba(30,203,214,.6); animation: carePulse 5.5s ease-in-out infinite; }
@@ -2090,7 +2090,7 @@
 .careWhy { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(2rem, 5vw, 4rem); align-items: center; padding: clamp(3rem, 7vw, 6rem) clamp(1.25rem, 5vw, 4rem); }
 .careWhyMedia { position: relative; display: flex; justify-content: center; align-items: center; }
 .careWhyCard { padding: clamp(1.5rem, 3vw, 2.5rem); border-radius: 18px; background: var(--c-surface); border: 1px solid var(--c-line); box-shadow: 0 20px 45px -25px rgba(0,0,0,.12); }
-.careWhyCard h2 { font-family: var(--theme-display); font-weight: 700; font-size: clamp(1.7rem, 3.4vw, 2.5rem); line-height: 1.12; color: var(--c-ink); margin: 0 0 1.2rem; }
+.careWhyCard h2 { font-family: var(--theme-display); font-weight: 700; font-size: clamp(1.7rem, 3.4vw, 2.5rem); line-height: 1.12; color: var(--c-surface-ink, var(--c-ink)); margin: 0 0 1.2rem; }
 .careCheckList { display: grid; gap: .85rem; margin: 0; padding: 0; list-style: none; }
 .careCheckList li { display: flex; align-items: flex-start; gap: .7rem; font-size: .98rem; font-weight: 500; color: #4a5560; }
 .careCheck { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; width: 24px; height: 24px; border-radius: 7px; background: color-mix(in srgb, var(--theme-accent) 16%, transparent); color: var(--care-text-teal); font-size: .72rem; font-weight: 900; margin-top: 1px; }
@@ -2209,11 +2209,11 @@
   border-color: var(--c-line);
 }
 .handy .serviceCard:hover { border-color: color-mix(in srgb, var(--theme-accent) 40%, transparent); box-shadow: 0 26px 52px -26px color-mix(in srgb, var(--theme-accent) 42%, transparent); }
-.handy .serviceCard h3 { color: var(--c-ink); }
-.handy .serviceCard p { color: var(--c-muted); }
+.handy .serviceCard h3 { color: var(--c-surface-ink, var(--c-ink)); }
+.handy .serviceCard p { color: var(--c-surface-muted, var(--c-muted)); }
 .handy .serviceIcon { background: color-mix(in srgb, var(--theme-accent) 13%, transparent); color: var(--care-text-teal); }
 .handy .statItem { background: var(--c-surface); border-radius: 14px; padding: 1.4rem 1rem; }
-.handy .statValue { color: var(--c-ink); }
+.handy .statValue { color: var(--c-surface-ink, var(--c-ink)); }
 
 @media (max-width: 900px) {
   .careHero, .careWhy, .careEstimate, .careContact { grid-template-columns: 1fr; }
@@ -2272,7 +2272,7 @@
    share --c-deep (Foundry's maroon), so a scheme repalettes both together. */
 .coat {
   --c-bg: #fff; --c-surface: #f4f3f6; --c-ink: #1b1a1f; --c-muted: #6a6870; --c-line: #ececf1; --c-deep: #3a080b; --c-on-deep: #fff;
-  --coat-ink: var(--c-ink); --coat-muted: var(--c-muted); --coat-surface: var(--c-surface); --coat-maroon: var(--c-deep);
+  --coat-ink: var(--c-surface-ink, var(--c-ink)); --coat-muted: var(--c-surface-muted, var(--c-muted)); --coat-surface: var(--c-surface); --coat-maroon: var(--c-deep);
   background: var(--c-bg); color: var(--c-ink); font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
 }
 .coatHeader { position: sticky; top: 0; z-index: 30; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 1.5rem; padding: .85rem clamp(1.25rem, 4vw, 3.5rem); background: color-mix(in srgb, var(--c-bg) 94%, transparent); backdrop-filter: blur(10px); border-bottom: 1px solid var(--c-line); }
@@ -2405,7 +2405,7 @@
    footer bar is the only deep ground (--c-deep). */
 .fixit {
   --c-bg: #fff; --c-surface: #f5f5f7; --c-ink: #2b2b30; --c-muted: #6a6a72; --c-line: #ececef; --c-deep: #201f24; --c-on-deep: #fff;
-  --fx-ink: var(--c-ink); --fx-muted: var(--c-muted); --fx-surface: var(--c-surface);
+  --fx-ink: var(--c-surface-ink, var(--c-ink)); --fx-muted: var(--c-surface-muted, var(--c-muted)); --fx-surface: var(--c-surface);
   background: var(--c-bg); color: var(--c-ink); font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
 }
 .fixitHeader { position: sticky; top: 0; z-index: 30; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 1.5rem; padding: .85rem clamp(1.25rem, 4vw, 3.5rem); background: color-mix(in srgb, var(--c-bg) 95%, transparent); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); border-bottom: 1px solid var(--c-line); }
@@ -2517,7 +2517,7 @@
    usages follow a scheme. Header/body use --c-bg; hero + footer are --c-deep. */
 .reno {
   --c-bg: #fff; --c-surface: #f4f5f7; --c-ink: #26303c; --c-muted: #667180; --c-line: #e6e8ec; --c-deep: #1b2431; --c-on-deep: #fff;
-  --rn-navy: var(--c-deep); --rn-ink: var(--c-ink); --rn-muted: var(--c-muted); --rn-surface: var(--c-surface);
+  --rn-navy: var(--c-deep); --rn-ink: var(--c-surface-ink, var(--c-ink)); --rn-muted: var(--c-surface-muted, var(--c-muted)); --rn-surface: var(--c-surface);
   background: var(--c-bg); color: var(--c-ink); font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
 }
 .renoHeader { position: sticky; top: 0; z-index: 30; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 1.5rem; padding: .8rem clamp(1.25rem, 4vw, 3.5rem); background: color-mix(in srgb, var(--c-bg) 96%, transparent); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); border-bottom: 3px solid var(--theme-accent); }
@@ -2639,7 +2639,7 @@
    Defaults below reproduce Shine's native navy-and-white palette. */
 .shine {
   --c-bg: #fff; --c-surface: #f2f3f5; --c-ink: #14202e; --c-muted: #5c6675; --c-line: #e7e9ed; --c-deep: #0f1b2d; --c-on-deep: #fff;
-  --sh-navy: var(--c-deep); --sh-ink: var(--c-ink); --sh-muted: var(--c-muted); --sh-surface: var(--c-surface);
+  --sh-navy: var(--c-deep); --sh-ink: var(--c-surface-ink, var(--c-ink)); --sh-muted: var(--c-surface-muted, var(--c-muted)); --sh-surface: var(--c-surface);
   background: var(--c-bg); color: var(--c-ink); font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
 }
 /* CTA edge block header: no right padding — the booking CTA is a full-height
