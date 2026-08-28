@@ -6,7 +6,7 @@ import { SIGNUP_LABEL, SIGNUP_URL } from '@/components/flagship/site-chrome';
 const HOME = readFileSync('src/components/flagship/flagship-home.tsx', 'utf8');
 const FEATURES = readFileSync('src/app/features/page.tsx', 'utf8');
 const HOW_IT_WORKS = readFileSync('src/app/how-it-works/page.tsx', 'utf8');
-const FOR_TRADES = readFileSync('src/app/for/page.tsx', 'utf8');
+const FOR_TRADES = readFileSync('src/app/for/ForExperience.tsx', 'utf8');
 const PRICING = readFileSync('src/app/pricing/PricingExperience.tsx', 'utf8');
 const SITE_CHROME = readFileSync('src/components/flagship/site-chrome.tsx', 'utf8');
 const ROOT_LAYOUT = readFileSync('src/app/layout.tsx', 'utf8');
@@ -98,7 +98,7 @@ describe('Problem 1: Product Identity and Message Hierarchy', () => {
 
   describe('Trade pages alignment', () => {
     it('presents the connected contractor system preconfigured for the trade', () => {
-      expect(FOR_TRADES).toContain('The connected contractor system—preconfigured for your trade.');
+      expect(FOR_TRADES).toContain('Your trade. Your workflow.');
       expect(FOR_TRADES).toContain('Build my free site');
     });
   });
