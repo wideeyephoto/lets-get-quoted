@@ -753,6 +753,12 @@
 .schemeSwatch i[data-scheme='concrete'] {
   background: linear-gradient(135deg, #dde3ea 0 50%, #0284c7 50% 100%);
 }
+.schemeSwatch i[data-scheme='snow'] {
+  background: linear-gradient(135deg, #ffffff 0 50%, #2563eb 50% 100%);
+}
+.schemeSwatch i[data-scheme='tuxedo'] {
+  background: linear-gradient(135deg, #09090b 0 50%, #ffffff 50% 100%);
+}
 .schemeSwatch i[data-scheme='slate'] {
   background: linear-gradient(135deg, #eceff3 0 50%, #2f9e8f 50% 100%);
 }

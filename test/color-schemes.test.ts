@@ -15,7 +15,7 @@ import {
 const HEX_6 = /^#[0-9a-fA-F]{6}$/;
 
 describe('COLOR_SCHEMES palette tokens and structure', () => {
-  it('has 8 active curated schemes plus 2 legacy schemes', () => {
+  it('has 10 active curated schemes plus 2 legacy schemes', () => {
     const active = getActiveColorSchemes();
     const legacy = getLegacyColorSchemes();
 
@@ -28,9 +28,11 @@ describe('COLOR_SCHEMES palette tokens and structure', () => {
       'sandstone',
       'copper',
       'concrete',
+      'snow',
+      'tuxedo',
     ]);
     expect(legacy.map((s) => s.key)).toEqual(['slate', 'forest']);
-    expect(COLOR_SCHEMES).toHaveLength(10);
+    expect(COLOR_SCHEMES).toHaveLength(12);
   });
 
   it('contains valid 6-digit hex strings for every required token across all schemes', () => {
@@ -73,6 +75,8 @@ describe('COLOR_SCHEMES palette tokens and structure', () => {
     expect(getColorScheme('sandstone')?.key).toBe('sandstone');
     expect(getColorScheme('copper')?.key).toBe('copper');
     expect(getColorScheme('concrete')?.key).toBe('concrete');
+    expect(getColorScheme('snow')?.key).toBe('snow');
+    expect(getColorScheme('tuxedo')?.key).toBe('tuxedo');
     expect(getColorScheme('slate')?.key).toBe('slate');
     expect(getColorScheme('forest')?.key).toBe('forest');
     expect(getColorScheme('unknown_key')).toBeNull();
