@@ -26,6 +26,7 @@ import { removeJobScheduleAction, scheduleJobAction, textCrewJobDateAction, togg
 import { useModal } from './use-modal';
 import { addDaysToDateKey, formatJobSchedule, formatJobTime, formatMoney, weekdayOfDateKey } from '@/lib/jobs';
 import { loadOverWindow } from '@/lib/schedule-load';
+import FieldIntakeHint from '@/components/field-intake-hint';
 
 const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -1146,7 +1147,8 @@ export default function ScheduleCalendar({
         ) : (
           monthNav
         )}
-        <div className="calendar-toolbar-actions">
+        <div className="calendar-toolbar-actions" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <FieldIntakeHint page="schedule" compact />
           <CalendarViewMenu
             value={calendarView}
             onChange={setCalendarView}

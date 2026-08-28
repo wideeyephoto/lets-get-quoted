@@ -4,9 +4,12 @@ import {
   processOwnerFieldClaim,
 } from '@/lib/sms-owner-field-worker';
 import {
+  formatFieldClientConfirmation,
   formatFieldCostConfirmation,
+  formatFieldCrewConfirmation,
   formatFieldLeadConfirmation,
   formatFieldNoteConfirmation,
+  formatFieldScheduleConfirmation,
   formatFieldTaskConfirmation,
   sanitizeGsm7Text,
 } from '@/lib/sms-field-templates';
@@ -52,6 +55,18 @@ describe('GSM-7 Confirmation Templates', () => {
     const leadConfirm = formatFieldLeadConfirmation('Jane Doe');
     expect(leadConfirm).toBe('[LGQ] Created new lead for Jane Doe.');
     expect(leadConfirm.length).toBeLessThanOrEqual(160);
+
+    const schedConfirm = formatFieldScheduleConfirmation('J-101', 'John Smith', '2026-09-01');
+    expect(schedConfirm).toBe('[LGQ] J-101 (John Smith): Scheduled for 2026-09-01.');
+    expect(schedConfirm.length).toBeLessThanOrEqual(160);
+
+    const clientConfirm = formatFieldClientConfirmation('Dave Miller');
+    expect(clientConfirm).toBe('[LGQ] Updated client profile for Dave Miller.');
+    expect(clientConfirm.length).toBeLessThanOrEqual(160);
+
+    const crewConfirm = formatFieldCrewConfirmation('J-101', 'John Smith', 'Mike');
+    expect(crewConfirm).toBe('[LGQ] Assigned Mike to J-101 (John Smith).');
+    expect(crewConfirm.length).toBeLessThanOrEqual(160);
   });
 });
 
@@ -63,11 +78,24 @@ describe('Owner Field Intake Claim Worker (Async & Atomic)', () => {
     process.env = { ...originalEnv, GEMINI_API_KEY: 'test-gemini-key' };
   });
 
-  it('declares all required refined intent tools', () => {
+  function createMockQueryBuilder(resolvedData: unknown = []) {
+    const builder: Record<string, unknown> = {};
+    builder.select = vi.fn().mockReturnValue(builder);
+    builder.eq = vi.fn().mockReturnValue(builder);
+    builder.order = vi.fn().mockReturnValue(builder);
+    builder.limit = vi.fn().mockResolvedValue({ data: resolvedData, error: null });
+    builder.maybeSingle = vi.fn().mockResolvedValue({ data: resolvedData, error: null });
+    return builder;
+  }
+
+  it('declares all required refined intent tools including leads, jobs, schedule, clients, crew', () => {
     const toolNames = OWNER_FIELD_TOOLS_DECLARATION.map((t) => t.name);
     expect(toolNames).toContain('append_internal_note');
     expect(toolNames).toContain('log_cost');
     expect(toolNames).toContain('add_job_task');
+    expect(toolNames).toContain('reschedule_job');
+    expect(toolNames).toContain('update_client');
+    expect(toolNames).toContain('assign_crew');
     expect(toolNames).toContain('create_lead');
     expect(toolNames).toContain('report_ambiguity');
     expect(toolNames).toContain('no_action');
@@ -112,60 +140,31 @@ describe('Owner Field Intake Claim Worker (Async & Atomic)', () => {
       rpc: mockRpc,
       from: vi.fn((table: string) => {
         if (table === 'sms_webhook_receipts') {
-          return {
-            select: vi.fn().mockReturnValue({
-              eq: vi.fn().mockReturnValue({
-                maybeSingle: vi.fn().mockResolvedValue({
-                  data: {
-                    id: taskId,
-                    provider: 'signalwire',
-                    account_id: accountId,
-                    from_number: '+15551234567',
-                    message_body: 'Gate code for Smith job on Main St is 4821',
-                    media_urls: [],
-                  },
-                  error: null,
-                }),
-              }),
-            }),
-          };
+          return createMockQueryBuilder({
+            id: taskId,
+            provider: 'signalwire',
+            account_id: accountId,
+            from_number: '+15551234567',
+            message_body: 'Gate code for Smith job on Main St is 4821',
+            media_urls: [],
+          });
         }
         if (table === 'accounts') {
-          return {
-            select: vi.fn().mockReturnValue({
-              eq: vi.fn().mockReturnValue({
-                maybeSingle: vi.fn().mockResolvedValue({
-                  data: { id: accountId, business_name: 'Acme General Contracting' },
-                  error: null,
-                }),
-              }),
-            }),
-          };
+          return createMockQueryBuilder({ id: accountId, business_name: 'Acme General Contracting' });
         }
         if (table === 'jobs') {
-          return {
-            select: vi.fn().mockReturnValue({
-              eq: vi.fn().mockReturnValue({
-                order: vi.fn().mockReturnValue({
-                  limit: vi.fn().mockResolvedValue({
-                    data: [
-                      {
-                        id: jobId,
-                        ref: 'J-101',
-                        client_name: 'John Smith',
-                        address: '124 Main St',
-                        status: 'in_progress',
-                        quoted_amount: 2500,
-                      },
-                    ],
-                    error: null,
-                  }),
-                }),
-              }),
-            }),
-          };
+          return createMockQueryBuilder([
+            {
+              id: jobId,
+              ref: 'J-101',
+              client_name: 'John Smith',
+              address: '124 Main St',
+              status: 'in_progress',
+              quoted_amount: 2500,
+            },
+          ]);
         }
-        return { select: vi.fn() };
+        return createMockQueryBuilder([]);
       }),
     } as unknown as Parameters<typeof processOwnerFieldClaim>[1];
 
@@ -186,7 +185,7 @@ describe('Owner Field Intake Claim Worker (Async & Atomic)', () => {
     });
   });
 
-  it('processes log_cost and formats GSM-7 material cost confirmation', async () => {
+  it('processes reschedule_job intent correctly', async () => {
     const accountId = '11111111-1111-4111-8111-111111111111';
     const taskId = '22222222-2222-4222-8222-222222222222';
     const claimToken = '33333333-3333-4333-8333-333333333333';
@@ -196,7 +195,7 @@ describe('Owner Field Intake Claim Worker (Async & Atomic)', () => {
       taskId,
       claimToken,
       provider: 'signalwire',
-      providerEventId: 'ev-101',
+      providerEventId: 'ev-102',
       accountId,
       senderNumberId: '55555555-5555-4555-8555-555555555555',
       senderPurpose: 'lgq_shared',
@@ -204,22 +203,21 @@ describe('Owner Field Intake Claim Worker (Async & Atomic)', () => {
     };
 
     mockGenerateContent.mockResolvedValueOnce({
-      text: 'Used $75 of cement on Smith job',
+      text: 'Reschedule Smith to Friday 2026-09-04',
       functionCalls: [
         {
-          name: 'log_cost',
+          name: 'reschedule_job',
           args: {
             jobId,
-            amount: 75,
-            label: '3 bags of cement',
-            costType: 'material',
+            scheduled_for: '2026-09-04',
+            scheduled_time: '10:00',
           },
         },
       ],
     });
 
     const mockRpc = vi.fn().mockResolvedValue({
-      data: { target_id: jobId, intent: 'log_cost' },
+      data: { target_id: jobId, intent: 'reschedule_job' },
       error: null,
     });
 
@@ -227,53 +225,24 @@ describe('Owner Field Intake Claim Worker (Async & Atomic)', () => {
       rpc: mockRpc,
       from: vi.fn((table: string) => {
         if (table === 'sms_webhook_receipts') {
-          return {
-            select: vi.fn().mockReturnValue({
-              eq: vi.fn().mockReturnValue({
-                maybeSingle: vi.fn().mockResolvedValue({
-                  data: {
-                    id: taskId,
-                    provider: 'signalwire',
-                    account_id: accountId,
-                    from_number: '+15551234567',
-                    message_body: 'Used $75 of cement on the Smith job',
-                    media_urls: [],
-                  },
-                  error: null,
-                }),
-              }),
-            }),
-          };
+          return createMockQueryBuilder({
+            id: taskId,
+            provider: 'signalwire',
+            account_id: accountId,
+            from_number: '+15551234567',
+            message_body: 'Move Smith job to Friday Sept 4th at 10am',
+            media_urls: [],
+          });
         }
         if (table === 'accounts') {
-          return {
-            select: vi.fn().mockReturnValue({
-              eq: vi.fn().mockReturnValue({
-                maybeSingle: vi.fn().mockResolvedValue({
-                  data: { id: accountId, business_name: 'Acme' },
-                  error: null,
-                }),
-              }),
-            }),
-          };
+          return createMockQueryBuilder({ id: accountId, business_name: 'Acme' });
         }
         if (table === 'jobs') {
-          return {
-            select: vi.fn().mockReturnValue({
-              eq: vi.fn().mockReturnValue({
-                order: vi.fn().mockReturnValue({
-                  limit: vi.fn().mockResolvedValue({
-                    data: [
-                      { id: jobId, ref: 'J-101', client_name: 'John Smith', address: '124 Main St' },
-                    ],
-                    error: null,
-                  }),
-                }),
-              }),
-            }),
-          };
+          return createMockQueryBuilder([
+            { id: jobId, ref: 'J-101', client_name: 'John Smith', address: '124 Main St' },
+          ]);
         }
-        return { select: vi.fn() };
+        return createMockQueryBuilder([]);
       }),
     } as unknown as Parameters<typeof processOwnerFieldClaim>[1];
 
@@ -281,12 +250,12 @@ describe('Owner Field Intake Claim Worker (Async & Atomic)', () => {
 
     expect(result.handled).toBe(true);
     expect(result.outcome).toBe('completed');
-    expect(result.intent).toBe('log_cost');
-    expect(result.confirmationText).toBe('[LGQ] J-101 (John Smith): Logged $75.00 3 bags of cement cost.');
+    expect(result.intent).toBe('reschedule_job');
+    expect(result.confirmationText).toBe('[LGQ] J-101 (John Smith): Scheduled for 2026-09-04.');
 
     expect(mockRpc).toHaveBeenCalledWith('apply_owner_field_action', expect.objectContaining({
-      p_intent: 'log_cost',
-      p_params: expect.objectContaining({ amount: 75 }),
+      p_intent: 'reschedule_job',
+      p_params: expect.objectContaining({ scheduled_for: '2026-09-04' }),
     }));
   });
 });

@@ -4,9 +4,12 @@ import { GoogleGenAI, Type, type FunctionDeclaration, type Part } from '@google/
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
   formatFieldAmbiguityClarification,
+  formatFieldClientConfirmation,
   formatFieldCostConfirmation,
+  formatFieldCrewConfirmation,
   formatFieldLeadConfirmation,
   formatFieldNoteConfirmation,
+  formatFieldScheduleConfirmation,
   formatFieldTaskConfirmation,
   sanitizeGsm7Text,
 } from '@/lib/sms-field-templates';
@@ -89,6 +92,76 @@ export const OWNER_FIELD_TOOLS_DECLARATION: AssistantFunctionDeclaration[] = [
     },
   },
   {
+    name: 'reschedule_job',
+    description: 'Reschedules a job or estimate visit to a new date and optional time.',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        jobId: {
+          type: Type.STRING,
+          description: 'The exact ID of the target job.',
+        },
+        scheduled_for: {
+          type: Type.STRING,
+          description: 'New scheduled date in YYYY-MM-DD format.',
+        },
+        scheduled_time: {
+          type: Type.STRING,
+          description: 'New arrival time in HH:MM format (optional).',
+        },
+      },
+      required: ['jobId', 'scheduled_for'],
+    },
+  },
+  {
+    name: 'update_client',
+    description: 'Updates client contact information (phone, email, address) or adds notes to their client profile.',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        client_id: {
+          type: Type.STRING,
+          description: 'The exact ID of the client.',
+        },
+        phone: {
+          type: Type.STRING,
+          description: 'Updated phone number (optional).',
+        },
+        email: {
+          type: Type.STRING,
+          description: 'Updated email address (optional).',
+        },
+        address: {
+          type: Type.STRING,
+          description: 'Updated address (optional).',
+        },
+        notes: {
+          type: Type.STRING,
+          description: 'Notes to append to client profile (optional).',
+        },
+      },
+      required: ['client_id'],
+    },
+  },
+  {
+    name: 'assign_crew',
+    description: 'Assigns a crew member to a specific job.',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        jobId: {
+          type: Type.STRING,
+          description: 'The exact ID of the target job.',
+        },
+        crew_id: {
+          type: Type.STRING,
+          description: 'The exact ID of the crew member to assign.',
+        },
+      },
+      required: ['jobId', 'crew_id'],
+    },
+  },
+  {
     name: 'create_lead',
     description: 'Captures a new prospect or client inquiry dictated from the road into the leads pipeline.',
     parameters: {
@@ -116,7 +189,7 @@ export const OWNER_FIELD_TOOLS_DECLARATION: AssistantFunctionDeclaration[] = [
   },
   {
     name: 'report_ambiguity',
-    description: 'Call when multiple jobs could match the reference (e.g. two jobs for "Smith"), asking the contractor to clarify.',
+    description: 'Call when multiple records could match the reference, asking the contractor to clarify.',
     parameters: {
       type: Type.OBJECT,
       properties: {
@@ -131,7 +204,7 @@ export const OWNER_FIELD_TOOLS_DECLARATION: AssistantFunctionDeclaration[] = [
   },
   {
     name: 'no_action',
-    description: 'Call when the text message is not a job command or field update (e.g. casual conversational chatter).',
+    description: 'Call when the text message is not a job/lead/client/crew command (e.g. casual conversational chatter).',
     parameters: {
       type: Type.OBJECT,
       properties: {
@@ -158,10 +231,20 @@ interface JobSummaryContext {
   scheduledTime: string | null;
 }
 
-/**
- * Safely downloads MMS audio attachment using authenticated provider credentials
- * when fetching from carrier endpoints, enforcing 20MB limit and audio MIME type.
- */
+interface ClientSummaryContext {
+  id: string;
+  name: string;
+  phone: string | null;
+  email: string | null;
+  address: string | null;
+}
+
+interface CrewSummaryContext {
+  id: string;
+  name: string;
+  roleLabel: string | null;
+}
+
 async function fetchAuthenticatedAudioPart(
   url: string,
   provider: string,
@@ -246,15 +329,29 @@ export async function processOwnerFieldClaim(
     ? account.business_name
     : "Let's Get Quoted";
 
-  // Load active contractor jobs for fuzzy matching
-  const { data: rawJobs } = await admin
-    .from('jobs')
-    .select('id, ref, client_name, client_phone, address, scope, status, quoted_amount, scheduled_for, scheduled_time')
-    .eq('account_id', accountId)
-    .order('updated_at', { ascending: false })
-    .limit(25);
+  // Load active contractor jobs, clients, and crew for fuzzy matching
+  const [rawJobs, rawClients, rawCrew] = await Promise.all([
+    admin
+      .from('jobs')
+      .select('id, ref, client_name, client_phone, address, scope, status, quoted_amount, scheduled_for, scheduled_time')
+      .eq('account_id', accountId)
+      .order('updated_at', { ascending: false })
+      .limit(25),
+    admin
+      .from('clients')
+      .select('id, name, phone, email, address')
+      .eq('account_id', accountId)
+      .order('updated_at', { ascending: false })
+      .limit(25),
+    admin
+      .from('crew')
+      .select('id, name, role_label')
+      .eq('account_id', accountId)
+      .eq('active', true)
+      .limit(25),
+  ]);
 
-  const activeJobs: JobSummaryContext[] = (rawJobs ?? []).map((j) => ({
+  const activeJobs: JobSummaryContext[] = (rawJobs.data ?? []).map((j) => ({
     id: j.id,
     ref: j.ref,
     clientName: j.client_name ?? '',
@@ -267,25 +364,48 @@ export async function processOwnerFieldClaim(
     scheduledTime: j.scheduled_time ?? null,
   }));
 
+  const activeClients: ClientSummaryContext[] = (rawClients.data ?? []).map((c) => ({
+    id: c.id,
+    name: c.name ?? '',
+    phone: c.phone ?? null,
+    email: c.email ?? null,
+    address: c.address ?? null,
+  }));
+
+  const activeCrew: CrewSummaryContext[] = (rawCrew.data ?? []).map((cr) => ({
+    id: cr.id,
+    name: cr.name ?? '',
+    roleLabel: cr.role_label ?? null,
+  }));
+
   const ai = new GoogleGenAI({ apiKey });
   const todayStr = new Date().toISOString().slice(0, 10);
 
   const systemInstruction = `You are the field voice/text AI assistant for the contractor business "${businessName}".
-A contractor / business owner is sending a text or voice memo from the road/job site to update their job records.
+A contractor / business owner is sending a text or voice memo from the road/job site to update their leads, jobs, schedule, clients, or crew.
 
 CURRENT DATE: ${todayStr}
 
 ACTIVE CONTRACTOR JOBS ON FILE:
 ${JSON.stringify(activeJobs, null, 2)}
 
+ACTIVE CLIENTS:
+${JSON.stringify(activeClients, null, 2)}
+
+ACTIVE CREW:
+${JSON.stringify(activeCrew, null, 2)}
+
 INSTRUCTIONS:
-1. Identify the contractor's intent and target job:
-   - "append_internal_note": If the contractor is dictating a field note, gate code, or site update.
-   - "log_cost": If they mention material expense or cost (e.g. "used $75 of cement", "dump run was $120").
-   - "add_job_task": If adding a checklist task or punch list item (e.g. "pick up grout").
-   - "create_lead": If capturing a new prospect/customer inquiry.
-   - "report_ambiguity": If multiple jobs match (e.g. two jobs for "Miller").
-   - "no_action": If conversational greeting or non-job inquiry.
+1. Identify the contractor's intent and target record:
+   - "append_internal_note": If dictating a field note, gate code, or site update on a job.
+   - "log_cost": If logging a material cost, dump fee, or receipt (e.g. "used $75 of cement on Smith").
+   - "add_job_task": If adding a checklist task or punch list item (e.g. "pick up grout for 124 Main").
+   - "reschedule_job": If rescheduling a job/estimate (e.g. "move Smith job to Friday at 10am").
+   - "update_client": If updating client contact info or notes (e.g. "update phone for Dave Miller to 555-1234").
+   - "assign_crew": If assigning crew to a job (e.g. "assign Mike to Smith job tomorrow").
+   - "create_lead": If capturing a new prospect or client inquiry (e.g. "Met Dave at 124 Main St, wants roof quote").
+   - "report_ambiguity": If multiple jobs/clients match (e.g. two jobs for "Miller").
+   - "no_action": If conversational greeting or non-command inquiry.
 2. In addition to calling the tool, transcribe the contractor's voice/text accurately.`;
 
   const parts: Part[] = [];
@@ -309,7 +429,7 @@ INSTRUCTIONS:
   if (rawBody) {
     parts.push({ text: `Contractor message: "${rawBody}"` });
   } else if (isVoiceMemo) {
-    parts.push({ text: 'Contractor sent a voice memo. Transcribe and execute any field job actions requested.' });
+    parts.push({ text: 'Contractor sent a voice memo. Transcribe and execute any field actions requested.' });
   }
 
   if (parts.length === 0) {
@@ -356,6 +476,17 @@ INSTRUCTIONS:
     } else if (toolName === 'add_job_task') {
       const title = String(args.title ?? 'Task');
       confirmationText = formatFieldTaskConfirmation(ref, clientName, title);
+    } else if (toolName === 'reschedule_job') {
+      const when = String(args.scheduled_for ?? 'scheduled date');
+      confirmationText = formatFieldScheduleConfirmation(ref, clientName, when);
+    } else if (toolName === 'update_client') {
+      const targetClient = activeClients.find((c) => c.id === args.client_id);
+      const cName = targetClient?.name ?? 'Client';
+      confirmationText = formatFieldClientConfirmation(cName);
+    } else if (toolName === 'assign_crew') {
+      const targetCrew = activeCrew.find((cr) => cr.id === args.crew_id);
+      const crewName = targetCrew?.name ?? 'Crew member';
+      confirmationText = formatFieldCrewConfirmation(ref, clientName, crewName);
     } else if (toolName === 'create_lead') {
       const leadName = String(args.clientName ?? 'New Prospect');
       confirmationText = formatFieldLeadConfirmation(leadName);

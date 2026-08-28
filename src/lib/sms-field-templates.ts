@@ -52,6 +52,25 @@ export function formatFieldLeadConfirmation(clientName: string): string {
   return sanitizeGsm7Text(`[LGQ] Created new lead for ${cleanName}.`);
 }
 
+export function formatFieldScheduleConfirmation(ref: string, clientName: string, when: string): string {
+  const cleanRef = sanitizeGsm7Text(ref);
+  const cleanName = sanitizeGsm7Text(clientName);
+  const cleanWhen = sanitizeGsm7Text(when);
+  return sanitizeGsm7Text(`[LGQ] ${cleanRef} (${cleanName}): Scheduled for ${cleanWhen}.`);
+}
+
+export function formatFieldClientConfirmation(clientName: string): string {
+  const cleanName = sanitizeGsm7Text(clientName);
+  return sanitizeGsm7Text(`[LGQ] Updated client profile for ${cleanName}.`);
+}
+
+export function formatFieldCrewConfirmation(ref: string, clientName: string, crewName: string): string {
+  const cleanRef = sanitizeGsm7Text(ref);
+  const cleanName = sanitizeGsm7Text(clientName);
+  const cleanCrew = sanitizeGsm7Text(crewName);
+  return sanitizeGsm7Text(`[LGQ] Assigned ${cleanCrew} to ${cleanRef} (${cleanName}).`);
+}
+
 export function formatFieldAmbiguityClarification(candidates: Array<{ ref: string; address?: string | null }>): string {
   const summary = candidates
     .map((c) => `${c.ref}${c.address ? ` (${c.address})` : ''}`)

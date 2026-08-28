@@ -26,6 +26,7 @@ import LaborByJob from './LaborByJob';
 import CrewPeriodBar from './CrewPeriodBar';
 import TimeClockCard from './TimeClockCard';
 import AddPersonMenu from './AddPersonMenu';
+import FieldIntakeHint from '@/components/field-intake-hint';
 import styles from './crew.module.css';
 
 export const metadata = { title: 'Crew & Labor' };
@@ -284,6 +285,7 @@ export default async function CrewLaborPage({
               </svg>
               <span>Manage Seats &amp; Staff</span>
             </Link>
+            <FieldIntakeHint page="crew" />
             {tab === 'team' ? (
               <AddPersonMenu
                 employeeHref="/dashboard/crew?tab=people&add=1"

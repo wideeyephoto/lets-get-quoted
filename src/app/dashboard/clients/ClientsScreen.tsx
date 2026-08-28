@@ -7,6 +7,7 @@ import type { ClientsView } from '@/lib/dashboard-views';
 import type { DuplicateGroup } from '@/lib/client-duplicates';
 import pageStyles from './clients-page.module.css';
 import ClientHeaderActions from './ClientHeaderActions';
+import FieldIntakeHint from '@/components/field-intake-hint';
 
 /**
  * The customer book, given its rows.
@@ -66,7 +67,8 @@ export default function ClientsScreen({
         </div>
 
         {readOnly ? null : (
-          <div className={pageStyles.heroActions}>
+          <div className={pageStyles.heroActions} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <FieldIntakeHint page="clients" />
             <ClientHeaderActions basePath={basePath} />
           </div>
         )}
