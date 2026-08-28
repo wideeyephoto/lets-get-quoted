@@ -95,6 +95,7 @@ const NAV = [
      sells video in a benefit and an answer, which is the right weight for a
      feature of the thing rather than the thing. */
   ['/features/website-builder', 'Website'],
+  ['/features/text-to-record', 'Text-to-Record'],
   ['/how-it-works', 'How it works'],
   ['/for', 'For your trade'],
   ['/pricing', 'Pricing'],

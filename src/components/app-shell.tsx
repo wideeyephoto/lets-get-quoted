@@ -276,6 +276,8 @@ const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), selec
  */
 const PUBLIC_NAV = [
   ['/features', 'Features'],
+  ['/features/website-builder', 'Website'],
+  ['/features/text-to-record', 'Text-to-Record'],
   ['/how-it-works', 'How it works'],
   ['/for', 'For your trade'],
   ['/pricing', 'Pricing'],
