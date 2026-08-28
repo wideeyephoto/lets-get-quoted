@@ -459,6 +459,51 @@ export default function CompetitorDetailPage({ params }: Props) {
           </div>
         </section>
 
+        {/* Trade Solutions Cross-Links */}
+        <section className={styles.faqSection} aria-label="Trade-specific solutions">
+          <div className={styles.sectionHeader}>
+            <span className={styles.kicker}>Tailored Solutions</span>
+            <h2>Built &amp; Pre-configured for Your Trade</h2>
+            <p>
+              Explore how Let’s Get Quoted gives contractors in your trade a free marketing website, 24/7 AI scoping,
+              instant estimates, and fast payments from $0/month.
+            </p>
+          </div>
+
+          <div className={styles.diffGrid}>
+            <Link href="/for/plumbers" className={styles.diffCard} style={{ textDecoration: 'none' }}>
+              <h3 className={styles.diffTitle}>Plumbers &rarr;</h3>
+              <p className={styles.diffDesc}>24/7 emergency dispatch, water heater scoping, and same-day flat-rate diagnostics.</p>
+            </Link>
+            <Link href="/for/electricians" className={styles.diffCard} style={{ textDecoration: 'none' }}>
+              <h3 className={styles.diffTitle}>Electricians &rarr;</h3>
+              <p className={styles.diffDesc}>Panel upgrade scoping questionnaires, EV charger intake, and instant mobile quotes.</p>
+            </Link>
+            <Link href="/for/hvac" className={styles.diffCard} style={{ textDecoration: 'none' }}>
+              <h3 className={styles.diffTitle}>HVAC Contractors &rarr;</h3>
+              <p className={styles.diffDesc}>System changeout proposals, seasonal tune-up self-scheduling, and Good/Better/Best tiers.</p>
+            </Link>
+            <Link href="/for/roofers" className={styles.diffCard} style={{ textDecoration: 'none' }}>
+              <h3 className={styles.diffTitle}>Roofers &rarr;</h3>
+              <p className={styles.diffDesc}>Storm damage intake, roof square calculators, and deposit-gated calendar bookings.</p>
+            </Link>
+            <Link href="/for/landscapers" className={styles.diffCard} style={{ textDecoration: 'none' }}>
+              <h3 className={styles.diffTitle}>Landscapers &rarr;</h3>
+              <p className={styles.diffDesc}>Hardscaping &amp; patio estimates, sod calculators, and recurring monthly maintenance billing.</p>
+            </Link>
+            <Link href="/for/remodelers" className={styles.diffCard} style={{ textDecoration: 'none' }}>
+              <h3 className={styles.diffTitle}>Remodelers &rarr;</h3>
+              <p className={styles.diffDesc}>Kitchen &amp; bath proposals, staged milestone progress payments, and interactive client portals.</p>
+            </Link>
+          </div>
+
+          <div style={{ textAlign: 'center', marginTop: '24px' }}>
+            <Link href="/for" className={styles.btnSecondary}>
+              Explore all 150 supported contractor trades &rarr;
+            </Link>
+          </div>
+        </section>
+
         {/* Closing CTA */}
         <section className={styles.ctaBand}>
           <span className={styles.badge}>Zero Risk Guarantee</span>

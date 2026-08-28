@@ -341,6 +341,85 @@ export default function EstimateGeneratorPage() {
                 </Link>
               </div>
             </div>
+
+            {/* Trade Solutions Cross-Links */}
+            <div className={styles.seoBlock}>
+              <div className={styles.seoBlockHeader}>
+                <span className={styles.seoKicker}>Trade Solutions</span>
+                <h2 className={styles.seoTitle}>Pre-Configured Estimate Systems for Your Trade</h2>
+                <p className={styles.seoLead}>
+                  Discover dedicated websites, instant pricing calculators, and mobile quoting software tailored to your trade.
+                </p>
+              </div>
+
+              <div className={styles.crossToolsGrid}>
+                <Link href="/for/roofers" className={styles.crossToolCard}>
+                  <div>
+                    <h3 className={styles.crossToolTitle}>🏠 Roofers</h3>
+                    <p className={styles.crossToolDesc}>
+                      Roof square estimators, storm damage intake, and deposit-gated calendar scheduling.
+                    </p>
+                  </div>
+                  <span className={styles.crossToolLink}>Explore Roofing Software &rarr;</span>
+                </Link>
+
+                <Link href="/for/plumbers" className={styles.crossToolCard}>
+                  <div>
+                    <h3 className={styles.crossToolTitle}>🔧 Plumbers</h3>
+                    <p className={styles.crossToolDesc}>
+                      24/7 emergency leak intake, water heater changeout proposals, and instant mobile deposits.
+                    </p>
+                  </div>
+                  <span className={styles.crossToolLink}>Explore Plumbing Software &rarr;</span>
+                </Link>
+
+                <Link href="/for/electricians" className={styles.crossToolCard}>
+                  <div>
+                    <h3 className={styles.crossToolTitle}>⚡ Electricians</h3>
+                    <p className={styles.crossToolDesc}>
+                      200A panel upgrade scoping, EV charger installation estimates, and digital e-signatures.
+                    </p>
+                  </div>
+                  <span className={styles.crossToolLink}>Explore Electrical Software &rarr;</span>
+                </Link>
+
+                <Link href="/for/hvac" className={styles.crossToolCard}>
+                  <div>
+                    <h3 className={styles.crossToolTitle}>❄️ HVAC Contractors</h3>
+                    <p className={styles.crossToolDesc}>
+                      Heat pump and AC changeout quotes with Good, Better, Best proposal tiering.
+                    </p>
+                  </div>
+                  <span className={styles.crossToolLink}>Explore HVAC Software &rarr;</span>
+                </Link>
+
+                <Link href="/for/landscapers" className={styles.crossToolCard}>
+                  <div>
+                    <h3 className={styles.crossToolTitle}>🌿 Landscapers</h3>
+                    <p className={styles.crossToolDesc}>
+                      Hardscaping patio quotes, sod installation calculators, and recurring lawn care plans.
+                    </p>
+                  </div>
+                  <span className={styles.crossToolLink}>Explore Landscaping Software &rarr;</span>
+                </Link>
+
+                <Link href="/for/remodelers" className={styles.crossToolCard}>
+                  <div>
+                    <h3 className={styles.crossToolTitle}>🔨 Remodelers</h3>
+                    <p className={styles.crossToolDesc}>
+                      Kitchen and bathroom remodeling bids with staged milestone payments and client portals.
+                    </p>
+                  </div>
+                  <span className={styles.crossToolLink}>Explore Remodeling Software &rarr;</span>
+                </Link>
+              </div>
+
+              <div style={{ textAlign: 'center', marginTop: '28px' }}>
+                <Link href="/for" className={styles.btnSecondary} style={{ display: 'inline-block', padding: '12px 24px', borderRadius: '10px', background: 'rgba(174, 199, 211, 0.1)', color: '#f5f0e7', textDecoration: 'none', fontWeight: '700' }}>
+                  Explore all 150 supported contractor trades &rarr;
+                </Link>
+              </div>
+            </div>
           </div>
         </section>
       </main>

@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { completeFirstRunAction } from './actions';
 import { seedSiteFromFirstRunAction } from './seed-actions';
+import { trackSignupConversion } from '@/lib/google-tag';
 
 type TradeOption = { slug: string; name: string };
 
@@ -78,6 +79,7 @@ export default function WelcomeForm({
         return;
       }
 
+      trackSignupConversion();
       setBuilding(true);
       const seeded = await seedSiteFromFirstRunAction();
 

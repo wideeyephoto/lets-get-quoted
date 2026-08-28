@@ -178,6 +178,43 @@ export default function ArticlePage({ params }: { params: { slug: string } }) {
         </section>
       ) : null}
 
+      <section className="section-block" aria-labelledby="trades-playbook-title">
+        <div className="section-heading">
+          <p className="eyebrow">Trade Solutions</p>
+          <h2 id="trades-playbook-title">Put this playbook to work in your trade</h2>
+          <p>Explore software, instant estimate calculators, and website templates pre-configured for your trade.</p>
+        </div>
+        <div className="feature-grid">
+          <Link href="/for/roofers" className="feature-card" style={{ textDecoration: 'none' }}>
+            <h3>Roofers &rarr;</h3>
+            <p>Storm damage intake, roof square calculators &amp; deposit payments.</p>
+          </Link>
+          <Link href="/for/plumbers" className="feature-card" style={{ textDecoration: 'none' }}>
+            <h3>Plumbers &rarr;</h3>
+            <p>24/7 emergency dispatch, water heater scoping &amp; flat-rate pricing.</p>
+          </Link>
+          <Link href="/for/electricians" className="feature-card" style={{ textDecoration: 'none' }}>
+            <h3>Electricians &rarr;</h3>
+            <p>Panel upgrade quotes, EV charger scoping &amp; instant e-signatures.</p>
+          </Link>
+          <Link href="/for/hvac" className="feature-card" style={{ textDecoration: 'none' }}>
+            <h3>HVAC Contractors &rarr;</h3>
+            <p>System changeouts, seasonal tune-up booking &amp; Good/Better/Best tiers.</p>
+          </Link>
+          <Link href="/for/landscapers" className="feature-card" style={{ textDecoration: 'none' }}>
+            <h3>Landscapers &rarr;</h3>
+            <p>Hardscaping quotes, sod install calculators &amp; recurring lawn billing.</p>
+          </Link>
+          <Link href="/for/remodelers" className="feature-card" style={{ textDecoration: 'none' }}>
+            <h3>Remodelers &rarr;</h3>
+            <p>Kitchen &amp; bath proposals, milestone progress billing &amp; client portals.</p>
+          </Link>
+        </div>
+        <div className="mid-cta">
+          <Link href="/for" className="btn secondary">Explore all 150 supported trades &rarr;</Link>
+        </div>
+      </section>
+
       <section className="cta-band">
         <div className="cta-band-inner">
           <p className="eyebrow">Ready when you are</p>

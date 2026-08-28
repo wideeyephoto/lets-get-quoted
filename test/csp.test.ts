@@ -130,7 +130,7 @@ describe('buildCsp', () => {
     }
   });
 
-  it('lets a contractor’s own analytics tags report home, once consented', () => {
+  it('lets analytics and ads tags report home, once consented', () => {
     // script-src needs no entry — the tags are injected by our own nonced
     // bundle, so 'strict-dynamic' covers them. These are only where they SEND.
     const connect = parse(buildCsp({ nonce: 'n', supabaseOrigin: SUPABASE })).get('connect-src')!;
@@ -138,6 +138,11 @@ describe('buildCsp', () => {
       'https://www.googletagmanager.com',
       'https://www.google-analytics.com',
       'https://*.google-analytics.com',
+      'https://www.googleadservices.com',
+      'https://*.googleadservices.com',
+      'https://googleads.g.doubleclick.net',
+      'https://*.doubleclick.net',
+      'https://www.google.com',
       'https://connect.facebook.net',
     ]) {
       expect(connect).toContain(host);

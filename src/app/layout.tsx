@@ -7,6 +7,7 @@ import { AppShell } from '@/components/app-shell';
 import { AppShellProvider } from '@/components/app-shell-provider';
 import ThemeSync from '@/components/theme-sync';
 import SpeculationRules from '@/components/speculation-rules';
+import GoogleTag from '@/components/google-tag';
 import { parseThemeChoice, resolveTheme, THEME_COOKIE, THEME_SYSTEM_COOKIE } from '@/lib/theme';
 /**
  * THE BASE SHEET, NOT THE WHOLE ONE.
@@ -140,6 +141,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     // person asked for. They differ exactly when the choice is 'system', and
     // the controls need the second one to show Auto as selected.
     <html lang="en" data-theme={theme} data-theme-choice={isStandaloneSite ? 'dark' : choice}>
+      <head>
+        {isStandaloneSite ? null : <GoogleTag />}
+      </head>
       <body className={`${bodyFont.variable} ${displayFont.variable} ${monoFont.variable} ${GeistSans.variable}`}>
         {/* A contractor's public site is not themed by the owner's preference,
             so it must not be corrected towards the visitor's device either. */}

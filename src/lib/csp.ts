@@ -132,6 +132,13 @@ const ANALYTICS_ENDPOINTS = [
   // GA4 shards its collection endpoint per region.
   'https://*.google-analytics.com',
   'https://*.analytics.google.com',
+  // Google Ads conversion and remarketing endpoints
+  'https://www.googleadservices.com',
+  'https://*.googleadservices.com',
+  'https://googleads.g.doubleclick.net',
+  'https://*.doubleclick.net',
+  'https://www.google.com',
+  'https://adservice.google.com',
   'https://connect.facebook.net',
   'https://www.facebook.com',
 ];

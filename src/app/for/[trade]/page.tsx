@@ -10,6 +10,8 @@ import { breadcrumbJsonLd, HOME_CRUMB } from '@/lib/seo/breadcrumbs';
 import { cspNonce } from '@/lib/csp-nonce';
 import SiteFooter from '@/components/site-footer';
 import TradeRoiCalculator from './TradeRoiCalculator';
+import TradeTopicCluster from './TradeTopicCluster';
+import { getTradeTopicCluster } from '@/lib/trade-clusters';
 
 export function generateStaticParams() {
   return TRADES.map((trade) => ({ trade: trade.slug }));
@@ -42,9 +44,8 @@ export default function TradePage({ params }: { params: { trade: string } }) {
     .map((id) => AVAILABLE_TEMPLATES.find((template) => template.id === id))
     .filter((template): template is NonNullable<typeof template> => Boolean(template));
 
-  const relatedTrades = (trade.relatedSlugs ?? [])
-    .map(getTrade)
-    .filter((t): t is Trade => Boolean(t));
+  const cluster = getTradeTopicCluster(trade);
+  const relatedTrades = cluster.relatedTrades;
 
   const name = lowerTradeName(trade.name);
   const an = indefiniteArticle(trade.work);
@@ -135,6 +136,8 @@ export default function TradePage({ params }: { params: { trade: string } }) {
           </div>
         </section>
       ) : null}
+
+      <TradeTopicCluster trade={trade} />
 
       {relatedTrades.length > 0 ? (
         <section className="section-block">
