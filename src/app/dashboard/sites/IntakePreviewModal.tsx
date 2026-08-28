@@ -6,7 +6,7 @@ import HeroQuickForm from '@/lib/templates/HeroQuickForm';
 import { templateFontVars } from '@/lib/templates/fonts';
 import themeStyles from '@/lib/templates/themes.module.css';
 import { getColorScheme, getSiteContent, mergeSiteContent } from '@/lib/site-content';
-import { readableOnAccent } from '@/lib/templates/theme-color';
+import { readableAccentText, readableOnAccent } from '@/lib/templates/theme-color';
 import type { Site } from '@/lib/sites';
 
 // "Preview Smart Intake" — the tuners above this decide what a homeowner
@@ -67,10 +67,26 @@ export default function IntakePreviewModal({ site, compact = false }: { site: Si
     }),
   };
   const scheme = getColorScheme(siteContent.colorScheme);
+  const defaultAccent = '#2563eb';
+  const effectiveAccent = site.accent_override || scheme?.accent || defaultAccent;
   const themeStyle = {
-    '--theme-accent': site.accent_override || scheme?.accent || '#2563eb',
+    '--theme-accent': effectiveAccent,
     '--theme-on-accent': site.accent_override ? readableOnAccent(site.accent_override) : scheme?.onAccent || '#ffffff',
+    '--theme-accent-text': site.accent_override
+      ? readableAccentText(site.accent_override, [scheme?.bg || '#0e1116', scheme?.surface || '#191d25'])
+      : (scheme?.accentText || defaultAccent),
     ...(site.header_font ? { '--theme-display': site.header_font } : {}),
+    ...(scheme ? {
+      '--c-bg': scheme.bg,
+      '--c-surface': scheme.surface,
+      '--c-ink': scheme.ink,
+      '--c-muted': scheme.muted,
+      '--c-line': scheme.line,
+      '--c-control-line': scheme.controlLine,
+      '--c-deep': scheme.deep,
+      '--c-on-deep': scheme.onDeep,
+      '--c-on-photo': scheme.onPhoto,
+    } : {}),
   } as CSSProperties;
 
   return (

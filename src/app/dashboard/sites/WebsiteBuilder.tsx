@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState, useTransition, type CSSProper
 import type { Site, TemplateType } from '@/lib/sites';
 import type { SiteImage } from '@/lib/site-images';
 import { getSiteGallery, STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getSiteContent, getTradeGlyphOptions, getUnreviewedGeneratedSections, glyphForContent, mergeSiteContent, COLOR_SCHEMES, getColorScheme, HEADER_STYLES,
+import { getSiteContent, getTradeGlyphOptions, getUnreviewedGeneratedSections, glyphForContent, mergeSiteContent, COLOR_SCHEMES, getActiveColorSchemes, getLegacyColorSchemes, getColorScheme, HEADER_STYLES,
   MENU_BUTTON_STYLES,
   BLOG_STYLES, BUTTON_STYLES, HEADER_BUTTON_STYLES, WORDMARK_STYLES, QUOTE_FORM_STYLES, QUOTE_FORM_FIELD_BGS, QUOTE_FORM_RADII, QUOTE_FORM_STEPPERS, QUOTE_FORM_BADGES, QUOTE_FORM_WIDTHS, HERO_BADGE_PRESETS, HERO_BADGE_STYLES, IMAGE_SLOT_LABELS, MAX_EXTRA_HERO_IMAGES, PROJECT_SHOWCASE_STYLES, MAX_PROJECT_SHOWCASE_ITEMS, DEFAULT_PROJECT_SHOWCASE_PLACEHOLDERS, DEFAULT_PROJECT_SHOWCASE_EYEBROW, DEFAULT_PROJECT_SHOWCASE_TITLE, STOCK_PROJECT_SHOWCASE_EYEBROW, STOCK_PROJECT_SHOWCASE_TITLE, VIDEO_SECTION_STYLES, videoStyleCapacity, videoSectionKey, MAX_VIDEO_SECTIONS, DEFAULT_VIDEOS_NAV_LABEL, type NormalizedSiteContent, type SiteProjectShowcaseContent, type SiteVideoSectionContent, type SiteBlogContent, type SiteAnnouncementContent, type SiteBeforeAfterContent, type SiteServicesContent, type SiteHowItWorksContent, type SiteFaqContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteShowcaseItem, type SiteStatItem, type SiteStatsContent, type SiteTestimonialItem, type SiteStickyCallBarContent, type SiteChatButtonContent, type SiteAnalyticsContent, type SiteTestimonialsContent, type SiteTrustBadgesContent, type SiteWhyUsContent, type SiteLegalContent } from '@/lib/site-content';
 import { generatePrivacyPolicy, generateTermsOfService } from '@/lib/legal/legal-copy';
@@ -1877,34 +1877,99 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, mess
                   <div className={styles.cardGroupLabel}>Color</div>
                   <div className={styles.formField}>
                     <span>Color scheme</span>
-                    <div className={styles.schemeSwatches} role="group" aria-label="Full color schemes">
-                      <button
-                        type="button"
-                        className={`${styles.schemeSwatch}${!siteContent.colorScheme ? ` ${styles.schemeSwatchActive}` : ''}`}
-                        onClick={() => updateSiteContent({ colorScheme: '' })}
-                        aria-pressed={!siteContent.colorScheme}
-                      >
-                        <span className={styles.schemeChip} style={{ background: 'linear-gradient(135deg, #3b4250 0 50%, #e9ebef 50% 100%)' }} />
-                        <small>Theme default</small>
-                      </button>
-                      {COLOR_SCHEMES.map((scheme) => {
-                        const selected = siteContent.colorScheme === scheme.key;
-                        return (
-                          <button
-                            key={scheme.key}
-                            type="button"
-                            className={`${styles.schemeSwatch}${selected ? ` ${styles.schemeSwatchActive}` : ''}`}
-                            onClick={() => updateSiteContent({ colorScheme: scheme.key })}
-                            title={scheme.label}
-                            aria-label={`${scheme.label}${selected ? ' (selected)' : ''}`}
-                            aria-pressed={selected}
-                          >
-                            <span className={styles.schemeChip} style={{ background: `linear-gradient(135deg, ${scheme.bg} 0 38%, ${scheme.deep} 38% 66%, ${scheme.accent} 66% 100%)` }} />
-                            <small>{scheme.label.split(' — ')[0]}</small>
-                          </button>
-                        );
-                      })}
-                    </div>
+                    {(() => {
+                      const currentTemplateConfig = AVAILABLE_TEMPLATES.find((t) => t.id === site.template) || AVAILABLE_TEMPLATES[0];
+                      const activeSchemes = getActiveColorSchemes();
+                      const currentKey = siteContent.colorScheme;
+                      const isLegacy = COLOR_SCHEMES.some((s) => s.key === currentKey && s.status === 'legacy');
+                      const shownSchemes = isLegacy
+                        ? [...activeSchemes, COLOR_SCHEMES.find((s) => s.key === currentKey)!]
+                        : activeSchemes;
+
+                      return (
+                        <>
+                          <div className={styles.schemeSwatches} role="group" aria-label="Full color schemes">
+                            <button
+                              type="button"
+                              className={`${styles.schemeSwatch}${!siteContent.colorScheme ? ` ${styles.schemeSwatchActive}` : ''}`}
+                              onClick={() => updateSiteContent({ colorScheme: '' })}
+                              aria-pressed={!siteContent.colorScheme}
+                              aria-label="Theme default — template built-in palette"
+                            >
+                              <div className={styles.schemeMockup} style={{ background: '#0f1319' }}>
+                                <div className={styles.mockHeader} style={{ background: '#080a0d' }}>
+                                  <span style={{ width: 12, height: 2, background: '#eef2f7', borderRadius: 1, display: 'inline-block' }} />
+                                </div>
+                                <div className={styles.mockBody}>
+                                  <div className={styles.mockCard} style={{ background: '#171c24', border: '1px solid #252c37' }}>
+                                    <div>
+                                      <div className={styles.mockLineTitle} style={{ background: '#eef2f7' }} />
+                                      <div className={styles.mockLineBody} style={{ background: '#94a1b2' }} />
+                                    </div>
+                                    <span className={styles.mockCta} style={{ background: currentTemplateConfig.accent || '#f0b429' }} />
+                                  </div>
+                                </div>
+                              </div>
+                              <div className={styles.schemeMeta}>
+                                <span className={styles.schemeTitle}>Theme default</span>
+                                <span className={styles.schemeMood}>Template built-in</span>
+                              </div>
+                            </button>
+
+                            {shownSchemes.map((scheme) => {
+                              const selected = siteContent.colorScheme === scheme.key;
+                              const isLegacyScheme = scheme.status === 'legacy';
+                              return (
+                                <button
+                                  key={scheme.key}
+                                  type="button"
+                                  className={`${styles.schemeSwatch}${selected ? ` ${styles.schemeSwatchActive}` : ''}`}
+                                  onClick={() => updateSiteContent({ colorScheme: scheme.key })}
+                                  title={scheme.label}
+                                  aria-label={`${scheme.label}${isLegacyScheme ? ' (Legacy palette)' : ''}${selected ? ' (selected)' : ''}`}
+                                  aria-pressed={selected}
+                                >
+                                  {isLegacyScheme && <span className={styles.legacyBadge}>Legacy</span>}
+                                  <div className={styles.schemeMockup} style={{ background: scheme.bg }}>
+                                    <div className={styles.mockHeader} style={{ background: scheme.deep }}>
+                                      <span style={{ width: 12, height: 2, background: scheme.onDeep, borderRadius: 1, display: 'inline-block' }} />
+                                    </div>
+                                    <div className={styles.mockBody}>
+                                      <div className={styles.mockCard} style={{ background: scheme.surface, border: `1px solid ${scheme.line}` }}>
+                                        <div>
+                                          <div className={styles.mockLineTitle} style={{ background: scheme.ink }} />
+                                          <div className={styles.mockLineBody} style={{ background: scheme.muted }} />
+                                        </div>
+                                        <span className={styles.mockCta} style={{ background: scheme.accent }} />
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <div className={styles.schemeMeta}>
+                                    <span className={styles.schemeTitle}>{scheme.label.split(' — ')[0]}</span>
+                                    <span className={styles.schemeMood}>{scheme.mood || (scheme.tone === 'dark' ? 'Dark' : 'Light')}</span>
+                                  </div>
+                                </button>
+                              );
+                            })}
+                          </div>
+
+                          {isLegacy && (
+                            <div className={styles.legacyCallout}>
+                              <div>
+                                <strong>Legacy palette in use:</strong> Site is using <em>{getColorScheme(currentKey)?.label.split(' — ')[0]}</em>. We recommend upgrading to <strong>{currentKey === 'slate' ? 'Harbor' : 'Evergreen'}</strong> for enhanced contrast.
+                              </div>
+                              <button
+                                type="button"
+                                className={styles.legacySwitchBtn}
+                                onClick={() => updateSiteContent({ colorScheme: currentKey === 'slate' ? 'harbor' : 'evergreen' })}
+                              >
+                                Switch to {currentKey === 'slate' ? 'Harbor' : 'Evergreen'}
+                              </button>
+                            </div>
+                          )}
+                        </>
+                      );
+                    })()}
                   </div>
 
                   {(() => {
@@ -1913,6 +1978,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, mess
                     const schemeDefaultAccent = activeScheme?.accent || currentTemplateConfig?.accent || '#f0b429';
                     const hasCustomAccent = Boolean(site.accent_override && site.accent_override.trim() && site.accent_override.toLowerCase() !== schemeDefaultAccent.toLowerCase());
                     const effectiveAccent = site.accent_override || schemeDefaultAccent;
+                    const baseName = activeScheme ? activeScheme.label.split(' — ')[0] : `${currentTemplateConfig.name} default`;
 
                     return (
                       <div className={styles.formField}>
@@ -1921,7 +1987,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, mess
                             <span>Accent color</span>
                             <span className={styles.accentStatusBadge} data-custom={hasCustomAccent}>
                               <span className={styles.accentDot} style={{ background: effectiveAccent }} />
-                              {hasCustomAccent ? 'Custom override' : 'Matching scheme'}
+                              {hasCustomAccent ? `${baseName} base · Custom accent` : 'Matching scheme'}
                             </span>
                           </div>
                           {hasCustomAccent && (
@@ -1968,7 +2034,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, mess
                         </div>
                         <small className={styles.fieldHint}>
                           {hasCustomAccent
-                            ? 'Custom accent is active and colors buttons, badges, and highlights independently of the brand color scheme.'
+                            ? `Custom accent is active and colors buttons, badges, and highlights independently of the ${baseName} color scheme.`
                             : `Using ${activeScheme ? `${activeScheme.label.split(' — ')[0]} scheme` : `${currentTemplateConfig.name} theme`} default accent (${schemeDefaultAccent}). Tap any swatch or color picker to set an independent custom override.`}
                         </small>
                       </div>

@@ -15,7 +15,7 @@ import SiteAnnouncementBar from './SiteAnnouncementBar';
 import SiteHeaderUtilityBar from './SiteHeaderUtilityBar';
 import ScrollReveal from './ScrollReveal';
 import Parallax from './Parallax';
-import { readableOnAccent } from './theme-color';
+import { readableAccentText, readableOnAccent } from './theme-color';
 import { templateFontVars } from './fonts';
 import styles from './themes.module.css';
 
@@ -23,12 +23,7 @@ import styles from './themes.module.css';
 // service', 'Free estimates', 'Satisfaction guaranteed'] shown on EVERY Care
 // site. Those are specific, verifiable claims the contractor never made — a
 // business that charges for estimates was advertising free ones. It now renders
-// the owner's own trust badges (Your page → Trust badges) and hides entirely
-// when they haven't set any.
-
-// Care — a fresh home-services look modeled on the Hocare aesthetic: cyan→green
-// gradients, worker photos in gradient circles with floating dots, rounded
-// white cards on light blue-gray sections, teal CTAs, a dark navy footer.
+// ONLY the claims selected in the builder.
 export default function HandyTemplate({ site, galleryImages = [] }: TemplateProps) {
   const heroImage = site.hero_url || STOCK_SITE_IMAGES[1].url;
   const aboutImage = getSlotImage(site.content, 'about', STOCK_SITE_IMAGES[3].url);
@@ -36,13 +31,30 @@ export default function HandyTemplate({ site, galleryImages = [] }: TemplateProp
 
   const content = getSiteContent(site.content);
   const scheme = getColorScheme(content.colorScheme);
+  const defaultAccent = '#12c2c9';
+  const effectiveAccent = site.accent_override || scheme?.accent || defaultAccent;
   const themeStyle = {
-    '--theme-accent': site.accent_override || scheme?.accent || '#12c2c9',
+    '--theme-accent': effectiveAccent,
     '--theme-on-accent': site.accent_override ? readableOnAccent(site.accent_override) : (scheme?.onAccent || '#062b2e'),
+    '--theme-accent-text': site.accent_override
+      ? readableAccentText(site.accent_override, [scheme?.bg || '#f4fafb', scheme?.surface || '#ffffff'])
+      : (scheme?.accentText || defaultAccent),
     '--theme-radius': '10px',
     '--theme-display': site.header_font || 'var(--font-care), "Segoe UI", system-ui, sans-serif',
     ...(content.brandFont ? { '--brand-font': content.brandFont } : {}),
-    ...(scheme ? { '--c-bg': scheme.bg, '--c-surface': scheme.surface, '--c-ink': scheme.ink, '--c-muted': scheme.muted, '--c-line': scheme.line, '--c-deep': scheme.deep, '--c-on-deep': scheme.onDeep, background: scheme.bg, color: scheme.ink } : {}),
+    ...(scheme ? {
+      '--c-bg': scheme.bg,
+      '--c-surface': scheme.surface,
+      '--c-ink': scheme.ink,
+      '--c-muted': scheme.muted,
+      '--c-line': scheme.line,
+      '--c-control-line': scheme.controlLine,
+      '--c-deep': scheme.deep,
+      '--c-on-deep': scheme.onDeep,
+      '--c-on-photo': scheme.onPhoto,
+      background: scheme.bg,
+      color: scheme.ink,
+    } : {}),
   } as CSSProperties;
 
   const headlineWords = (site.headline || 'Exceptional Home Service').trim().split(/\s+/);

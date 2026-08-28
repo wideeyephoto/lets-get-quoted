@@ -699,25 +699,152 @@ export function getWordmarkStyle(content: Record<string, unknown> | null | undef
 // 'deep' is the inverted contrast ground a theme uses for hero/header/footer
 // chrome; 'onDeep' is text on it.
 export type ColorScheme = {
-  key: string; label: string;
-  bg: string; surface: string; ink: string; muted: string; line: string;
-  deep: string; onDeep: string; accent: string; onAccent: string;
+  key: string;
+  label: string;
+  tone: 'light' | 'dark';
+  status: 'active' | 'legacy';
+  mood?: string;
+
+  bg: string;
+  surface: string;
+  ink: string;
+  muted: string;
+  line: string;
+  controlLine: string;
+
+  deep: string;
+  onDeep: string;
+  onPhoto: string;
+
+  accent: string;
+  onAccent: string;
+  accentText: string;
 };
 
 export const COLOR_SCHEMES: ColorScheme[] = [
-  { key: 'midnight', label: 'Midnight — near-black + soft blue',
-    bg: '#0e1116', surface: '#191d25', ink: '#eef1f5', muted: '#99a2b0', line: '#272d38',
-    deep: '#080a0d', onDeep: '#eef1f5', accent: '#6ea8ff', onAccent: '#0b0e13' },
-  { key: 'porcelain', label: 'Porcelain — warm white + clay',
-    bg: '#f7f5f1', surface: '#ffffff', ink: '#1b1d20', muted: '#6c7076', line: '#e7e3db',
-    deep: '#1f2124', onDeep: '#f6f4ef', accent: '#c76b4a', onAccent: '#ffffff' },
-  { key: 'slate', label: 'Slate — cool grey + teal',
-    bg: '#eceff3', surface: '#ffffff', ink: '#1a2230', muted: '#5d6b7e', line: '#dce2ea',
-    deep: '#1d2734', onDeep: '#eef2f7', accent: '#2f9e8f', onAccent: '#ffffff' },
-  { key: 'forest', label: 'Forest — deep green + lime',
-    bg: '#0f1512', surface: '#182019', ink: '#e9f0ea', muted: '#95a79a', line: '#26332a',
-    deep: '#0a0f0c', onDeep: '#e9f0ea', accent: '#8fd14f', onAccent: '#0d130a' },
+  {
+    key: 'midnight',
+    label: 'Midnight — near-black + soft blue',
+    tone: 'dark',
+    status: 'active',
+    mood: 'Dark · Modern',
+    bg: '#0e1116',
+    surface: '#191d25',
+    ink: '#eef1f5',
+    muted: '#99a2b0',
+    line: '#272d38',
+    controlLine: '#5b6676',
+    deep: '#080a0d',
+    onDeep: '#eef1f5',
+    onPhoto: '#eef1f5',
+    accent: '#6ea8ff',
+    onAccent: '#0b0e13',
+    accentText: '#6ea8ff',
+  },
+  {
+    key: 'porcelain',
+    label: 'Porcelain — warm white + clay',
+    tone: 'light',
+    status: 'active',
+    mood: 'Light · Warm',
+    bg: '#f7f5f1',
+    surface: '#ffffff',
+    ink: '#1b1d20',
+    muted: '#62666c',
+    line: '#e7e3db',
+    controlLine: '#88847d',
+    deep: '#1f2124',
+    onDeep: '#f6f4ef',
+    onPhoto: '#f3f0e7',
+    accent: '#c76b4a',
+    onAccent: '#111111',
+    accentText: '#98462e',
+  },
+  {
+    key: 'harbor',
+    label: 'Harbor — crisp cool white + navy',
+    tone: 'light',
+    status: 'active',
+    mood: 'Light · Crisp',
+    bg: '#f4f7fb',
+    surface: '#ffffff',
+    ink: '#142033',
+    muted: '#5b6878',
+    line: '#dce4ec',
+    controlLine: '#7f8c9e',
+    deep: '#102a43',
+    onDeep: '#f4f7fb',
+    onPhoto: '#f3f0e7',
+    accent: '#2563eb',
+    onAccent: '#ffffff',
+    accentText: '#1d4ed8',
+  },
+  {
+    key: 'evergreen',
+    label: 'Evergreen — deep green + lime',
+    tone: 'dark',
+    status: 'active',
+    mood: 'Dark · Natural',
+    bg: '#10251a',
+    surface: '#193424',
+    ink: '#edf5ef',
+    muted: '#a1b4a6',
+    line: '#264731',
+    controlLine: '#527c60',
+    deep: '#08150e',
+    onDeep: '#edf5ef',
+    onPhoto: '#edf5ef',
+    accent: '#9bd35a',
+    onAccent: '#10200e',
+    accentText: '#9bd35a',
+  },
+  {
+    key: 'slate',
+    label: 'Slate — cool grey + teal',
+    tone: 'light',
+    status: 'legacy',
+    mood: 'Light · Legacy',
+    bg: '#eceff3',
+    surface: '#ffffff',
+    ink: '#1a2230',
+    muted: '#5d6b7e',
+    line: '#dce2ea',
+    controlLine: '#7f8c9e',
+    deep: '#1d2734',
+    onDeep: '#eef2f7',
+    onPhoto: '#f3f0e7',
+    accent: '#2f9e8f',
+    onAccent: '#111111',
+    accentText: '#1b6b60',
+  },
+  {
+    key: 'forest',
+    label: 'Forest — deep green + lime',
+    tone: 'dark',
+    status: 'legacy',
+    mood: 'Dark · Legacy',
+    bg: '#0f1512',
+    surface: '#182019',
+    ink: '#e9f0ea',
+    muted: '#95a79a',
+    line: '#26332a',
+    controlLine: '#4e7358',
+    deep: '#0a0f0c',
+    onDeep: '#e9f0ea',
+    onPhoto: '#e9f0ea',
+    accent: '#8fd14f',
+    onAccent: '#0d130a',
+    accentText: '#8fd14f',
+  },
 ];
+
+export function getActiveColorSchemes(): ColorScheme[] {
+  return COLOR_SCHEMES.filter((scheme) => scheme.status === 'active');
+}
+
+export function getLegacyColorSchemes(): ColorScheme[] {
+  return COLOR_SCHEMES.filter((scheme) => scheme.status === 'legacy');
+}
 
 export function getColorScheme(key: string | null | undefined): ColorScheme | null {
   return COLOR_SCHEMES.find((scheme) => scheme.key === key) || null;

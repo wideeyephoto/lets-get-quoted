@@ -15,7 +15,7 @@ import SiteAnnouncementBar from './SiteAnnouncementBar';
 import SiteHeaderUtilityBar from './SiteHeaderUtilityBar';
 import ScrollReveal from './ScrollReveal';
 import Parallax from './Parallax';
-import { readableOnAccent } from './theme-color';
+import { readableAccentText, readableOnAccent } from './theme-color';
 import { templateFontVars } from './fonts';
 import styles from './themes.module.css';
 
@@ -46,15 +46,28 @@ export default function ShineTemplate({ site, galleryImages = [] }: TemplateProp
   // supersedes the light/dark toggle (data-mode is dropped below so its rules
   // don't fight the scheme). The accent picker still wins over a scheme's accent.
   const scheme = getColorScheme(content.colorScheme);
+  const defaultAccent = '#ffd60a';
+  const effectiveAccent = site.accent_override || scheme?.accent || defaultAccent;
   const themeStyle = {
-    '--theme-accent': site.accent_override || scheme?.accent || '#ffd60a',
+    '--theme-accent': effectiveAccent,
     '--theme-on-accent': site.accent_override ? readableOnAccent(site.accent_override) : (scheme?.onAccent || '#0f1b2d'),
+    '--theme-accent-text': site.accent_override
+      ? readableAccentText(site.accent_override, [scheme?.bg || '#0b1320', scheme?.surface || '#121d2f'])
+      : (scheme?.accentText || defaultAccent),
     '--theme-display': site.header_font || 'var(--font-display), system-ui, sans-serif',
     ...(content.brandFont ? { '--brand-font': content.brandFont } : {}),
     ...(scheme ? {
-      '--c-bg': scheme.bg, '--c-surface': scheme.surface, '--c-ink': scheme.ink,
-      '--c-muted': scheme.muted, '--c-line': scheme.line, '--c-deep': scheme.deep,
-      '--c-on-deep': scheme.onDeep, background: scheme.bg, color: scheme.ink,
+      '--c-bg': scheme.bg,
+      '--c-surface': scheme.surface,
+      '--c-ink': scheme.ink,
+      '--c-muted': scheme.muted,
+      '--c-line': scheme.line,
+      '--c-control-line': scheme.controlLine,
+      '--c-deep': scheme.deep,
+      '--c-on-deep': scheme.onDeep,
+      '--c-on-photo': scheme.onPhoto,
+      background: scheme.bg,
+      color: scheme.ink,
     } : {}),
   } as CSSProperties;
 

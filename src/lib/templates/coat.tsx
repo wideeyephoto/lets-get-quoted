@@ -15,7 +15,7 @@ import SiteAnnouncementBar from './SiteAnnouncementBar';
 import SiteHeaderUtilityBar from './SiteHeaderUtilityBar';
 import ScrollReveal from './ScrollReveal';
 import Parallax from './Parallax';
-import { readableOnAccent } from './theme-color';
+import { readableAccentText, readableOnAccent } from './theme-color';
 import { templateFontVars } from './fonts';
 import styles from './themes.module.css';
 
@@ -24,8 +24,8 @@ import styles from './themes.module.css';
 // rounded cards, and a dark "call us now" footer bar. Distinctive hero /
 // header / footer; the mid-page content reuses the shared sections.
 export default function CoatTemplate({ site, galleryImages = [] }: TemplateProps) {
-  const gallery = galleryImages.length > 0 ? galleryImages : STOCK_SITE_IMAGES.slice(0, 4);
-  const heroImage = site.hero_url || STOCK_SITE_IMAGES[1].url;
+  const gallery = galleryImages.length > 0 ? galleryImages : STOCK_SITE_IMAGES;
+  const heroImage = site.hero_url || gallery[0]?.url || STOCK_SITE_IMAGES[0].url;
   // Second shot for the hero collage — a distinct image so the two cards differ.
   const secondImage = getSlotImage(
     site.content,
@@ -40,12 +40,29 @@ export default function CoatTemplate({ site, galleryImages = [] }: TemplateProps
   // Coat had no built-in second badge, so 'default' renders nothing here.
   const secondBadge = getHeroSecondBadge(site.content);
   const scheme = getColorScheme(content.colorScheme);
+  const defaultAccent = '#e5322a';
+  const effectiveAccent = site.accent_override || scheme?.accent || defaultAccent;
   const themeStyle = {
-    '--theme-accent': site.accent_override || scheme?.accent || '#e5322a',
+    '--theme-accent': effectiveAccent,
     '--theme-on-accent': site.accent_override ? readableOnAccent(site.accent_override) : (scheme?.onAccent || '#ffffff'),
+    '--theme-accent-text': site.accent_override
+      ? readableAccentText(site.accent_override, [scheme?.bg || '#1a1412', scheme?.surface || '#271f1b'])
+      : (scheme?.accentText || defaultAccent),
     '--theme-display': site.header_font || 'var(--font-display), system-ui, sans-serif',
     ...(content.brandFont ? { '--brand-font': content.brandFont } : {}),
-    ...(scheme ? { '--c-bg': scheme.bg, '--c-surface': scheme.surface, '--c-ink': scheme.ink, '--c-muted': scheme.muted, '--c-line': scheme.line, '--c-deep': scheme.deep, '--c-on-deep': scheme.onDeep, background: scheme.bg, color: scheme.ink } : {}),
+    ...(scheme ? {
+      '--c-bg': scheme.bg,
+      '--c-surface': scheme.surface,
+      '--c-ink': scheme.ink,
+      '--c-muted': scheme.muted,
+      '--c-line': scheme.line,
+      '--c-control-line': scheme.controlLine,
+      '--c-deep': scheme.deep,
+      '--c-on-deep': scheme.onDeep,
+      '--c-on-photo': scheme.onPhoto,
+      background: scheme.bg,
+      color: scheme.ink,
+    } : {}),
   } as CSSProperties;
 
   return (

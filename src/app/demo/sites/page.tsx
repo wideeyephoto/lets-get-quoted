@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { AVAILABLE_TEMPLATES } from '@/lib/templates/types';
-import { COLOR_SCHEMES } from '@/lib/site-content';
+import { getActiveColorSchemes } from '@/lib/site-content';
 import ThemeIcon from '@/app/dashboard/sites/ThemeIcon';
 import themeStyles from '@/app/dashboard/sites/SiteEditor.module.css';
 import DemoVideoStudio from './DemoVideoStudio';
@@ -47,6 +47,7 @@ export default function DemoSitesPage() {
   // The iframe reloads on this; debounced so dragging the color picker doesn't
   // reload on every frame.
   const [appliedAccent, setAppliedAccent] = useState(accent);
+  const activeSchemes = getActiveColorSchemes();
 
   useEffect(() => {
     if (!HEX.test(accent)) return;
@@ -109,11 +110,28 @@ export default function DemoSitesPage() {
               className={`${themeStyles.schemeSwatch}${!scheme ? ` ${themeStyles.schemeSwatchActive}` : ''}`}
               onClick={() => setScheme('')}
               aria-pressed={!scheme}
+              aria-label="Theme default — template built-in"
             >
-              <span className={themeStyles.schemeChip} style={{ background: 'linear-gradient(135deg, #3b4250 0 50%, #e9ebef 50% 100%)' }} />
-              <small>Theme default</small>
+              <div className={themeStyles.schemeMockup} style={{ background: '#0f1319' }}>
+                <div className={themeStyles.mockHeader} style={{ background: '#080a0d' }}>
+                  <span style={{ width: 12, height: 2, background: '#eef2f7', borderRadius: 1, display: 'inline-block' }} />
+                </div>
+                <div className={themeStyles.mockBody}>
+                  <div className={themeStyles.mockCard} style={{ background: '#171c24', border: '1px solid #252c37' }}>
+                    <div>
+                      <div className={themeStyles.mockLineTitle} style={{ background: '#eef2f7' }} />
+                      <div className={themeStyles.mockLineBody} style={{ background: '#94a1b2' }} />
+                    </div>
+                    <span className={themeStyles.mockCta} style={{ background: current?.accent || '#ff7a21' }} />
+                  </div>
+                </div>
+              </div>
+              <div className={themeStyles.schemeMeta}>
+                <span className={themeStyles.schemeTitle}>Theme default</span>
+                <span className={themeStyles.schemeMood}>Template built-in</span>
+              </div>
             </button>
-            {COLOR_SCHEMES.map((s) => {
+            {activeSchemes.map((s) => {
               const selected = scheme === s.key;
               return (
                 <button
@@ -125,8 +143,24 @@ export default function DemoSitesPage() {
                   aria-label={`${s.label}${selected ? ' (selected)' : ''}`}
                   aria-pressed={selected}
                 >
-                  <span className={themeStyles.schemeChip} style={{ background: `linear-gradient(135deg, ${s.bg} 0 38%, ${s.deep} 38% 66%, ${s.accent} 66% 100%)` }} />
-                  <small>{s.label.split(' — ')[0]}</small>
+                  <div className={themeStyles.schemeMockup} style={{ background: s.bg }}>
+                    <div className={themeStyles.mockHeader} style={{ background: s.deep }}>
+                      <span style={{ width: 12, height: 2, background: s.onDeep, borderRadius: 1, display: 'inline-block' }} />
+                    </div>
+                    <div className={themeStyles.mockBody}>
+                      <div className={themeStyles.mockCard} style={{ background: s.surface, border: `1px solid ${s.line}` }}>
+                        <div>
+                          <div className={themeStyles.mockLineTitle} style={{ background: s.ink }} />
+                          <div className={themeStyles.mockLineBody} style={{ background: s.muted }} />
+                        </div>
+                        <span className={themeStyles.mockCta} style={{ background: s.accent }} />
+                      </div>
+                    </div>
+                  </div>
+                  <div className={themeStyles.schemeMeta}>
+                    <span className={themeStyles.schemeTitle}>{s.label.split(' — ')[0]}</span>
+                    <span className={themeStyles.schemeMood}>{s.mood || (s.tone === 'dark' ? 'Dark' : 'Light')}</span>
+                  </div>
                 </button>
               );
             })}

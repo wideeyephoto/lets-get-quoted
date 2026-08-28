@@ -735,6 +735,12 @@
 .schemeSwatch i[data-scheme='porcelain'] {
   background: linear-gradient(135deg, #f7f5f1 0 50%, #c76b4a 50% 100%);
 }
+.schemeSwatch i[data-scheme='harbor'] {
+  background: linear-gradient(135deg, #f4f7fb 0 50%, #2563eb 50% 100%);
+}
+.schemeSwatch i[data-scheme='evergreen'] {
+  background: linear-gradient(135deg, #10251a 0 50%, #9bd35a 50% 100%);
+}
 .schemeSwatch i[data-scheme='slate'] {
   background: linear-gradient(135deg, #eceff3 0 50%, #2f9e8f 50% 100%);
 }

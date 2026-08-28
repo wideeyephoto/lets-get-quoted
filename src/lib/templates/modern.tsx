@@ -15,7 +15,7 @@ import SiteAnnouncementBar from './SiteAnnouncementBar';
 import SiteHeaderUtilityBar from './SiteHeaderUtilityBar';
 import ScrollReveal from './ScrollReveal';
 import Parallax from './Parallax';
-import { readableOnAccent } from './theme-color';
+import { readableAccentText, readableOnAccent } from './theme-color';
 import { templateFontVars } from './fonts';
 import styles from './themes.module.css';
 
@@ -29,12 +29,29 @@ export default function VistaTemplate({ site }: TemplateProps) {
   // above it — additive, never changing a page that has no title set.
   const secondBadge = getHeroSecondBadge(site.content);
   const scheme = getColorScheme(content.colorScheme);
+  const defaultAccent = '#35dd9e';
+  const effectiveAccent = site.accent_override || scheme?.accent || defaultAccent;
   const themeStyle = {
-    '--theme-accent': site.accent_override || scheme?.accent || '#35dd9e',
+    '--theme-accent': effectiveAccent,
     '--theme-on-accent': site.accent_override ? readableOnAccent(site.accent_override) : (scheme?.onAccent || '#111'),
+    '--theme-accent-text': site.accent_override
+      ? readableAccentText(site.accent_override, [scheme?.bg || '#0f1115', scheme?.surface || '#171a20'])
+      : (scheme?.accentText || defaultAccent),
     '--theme-display': site.header_font || 'var(--font-display), Arial Black, Helvetica, sans-serif',
     ...(content.brandFont ? { '--brand-font': content.brandFont } : {}),
-    ...(scheme ? { '--c-bg': scheme.bg, '--c-surface': scheme.surface, '--c-ink': scheme.ink, '--c-muted': scheme.muted, '--c-line': scheme.line, '--c-deep': scheme.deep, '--c-on-deep': scheme.onDeep, background: scheme.bg, color: scheme.ink } : {}),
+    ...(scheme ? {
+      '--c-bg': scheme.bg,
+      '--c-surface': scheme.surface,
+      '--c-ink': scheme.ink,
+      '--c-muted': scheme.muted,
+      '--c-line': scheme.line,
+      '--c-control-line': scheme.controlLine,
+      '--c-deep': scheme.deep,
+      '--c-on-deep': scheme.onDeep,
+      '--c-on-photo': scheme.onPhoto,
+      background: scheme.bg,
+      color: scheme.ink,
+    } : {}),
   } as CSSProperties;
 
   return (

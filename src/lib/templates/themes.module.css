@@ -1580,14 +1580,14 @@
 /* Forge on the --c-* scheme tokens. It inverts the usual relationship: the body
    is the dark ground (--c-bg) and the work slab is the LIGHT contrast ground
    (--c-deep = bone). The photo hero keeps its own dark scrim + light text
-   regardless of scheme (photo legibility), so it isn't tokenized. */
+   regardless of scheme (photo legibility) via --c-on-photo. */
 .forge {
-  --c-bg: #10100f; --c-surface: #1a1a17; --c-ink: #f3f0e7; --c-muted: var(--c-muted); --c-line: var(--c-line); --c-deep: #ebe7dc; --c-on-deep: #151514;
+  --c-bg: #10100f; --c-surface: #1a1a17; --c-ink: #f3f0e7; --c-muted: var(--c-muted); --c-line: var(--c-line); --c-control-line: #5b6676; --c-deep: #ebe7dc; --c-on-deep: #151514; --c-on-photo: #f3f0e7;
   background: var(--c-bg); color: var(--c-ink); font-family: var(--font-forge-body), Arial, sans-serif; --theme-radius: 2px;
 }
 /* Light mode flips body and slab; header + hero keep light text over the photo. */
-.forge[data-mode='light'] { --c-bg: #ebe7dc; --c-ink: #151514; --c-muted: #68645b; --c-line: #c9c3b5; --c-deep: #17140f; --c-on-deep: #f3f0e7; }
-.forge[data-mode='light'] .forgeHeader, .forge[data-mode='light'] .forgeHero { color: #f3f0e7; }
+.forge[data-mode='light'] { --c-bg: #ebe7dc; --c-ink: #151514; --c-muted: #68645b; --c-line: #c9c3b5; --c-control-line: #88847d; --c-deep: #17140f; --c-on-deep: #f3f0e7; }
+.forgeHeader, .forgeHero { color: var(--c-on-photo, #f3f0e7); }
 .forge .kicker { font-family: var(--font-mono); font-size: .7rem; font-weight: 500; letter-spacing: .18em; }
 .forgeHeader { position: sticky; top: 0; z-index: 30; margin-bottom: -84px; background: linear-gradient(180deg, rgba(10,10,9,.78), rgba(10,10,9,.32) 70%, transparent); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; min-height: 84px; padding: 0 4vw; border-bottom: 1px solid rgba(255,255,255,.16); }
 .forgeHeaderActions { display: inline-flex; align-items: center; gap: 1rem; justify-self: end; }

@@ -4,7 +4,7 @@ import { getColorScheme, getPublishedFaqs, getPublishedServices, getPublishedSho
 import BlogReadingProgress from './BlogReadingProgress';
 import ServiceIcon from './ServiceIcon';
 import SiteFooter from './SiteFooter';
-import { readableOnAccent } from './theme-color';
+import { readableAccentText, readableOnAccent } from './theme-color';
 import { templateFontVars } from './fonts';
 import styles from './themes.module.css';
 import { cspNonce } from '@/lib/csp-nonce';
@@ -32,12 +32,27 @@ export default function SiteBlogArticle({ site, post }: { site: Site; post: Site
   const paragraphs = post.body.split(/\n{2,}/).map((block) => block.trim()).filter(Boolean);
   const content = getSiteContent(site.content);
   const scheme = getColorScheme(content.colorScheme);
+  const defaultAccent = '#2563eb';
+  const effectiveAccent = site.accent_override || scheme?.accent || defaultAccent;
   const themeStyle = {
-    '--theme-accent': site.accent_override || scheme?.accent || '#2563eb',
+    '--theme-accent': effectiveAccent,
     '--theme-on-accent': site.accent_override ? readableOnAccent(site.accent_override) : (scheme?.onAccent || '#ffffff'),
+    '--theme-accent-text': site.accent_override
+      ? readableAccentText(site.accent_override, [scheme?.bg || '#ffffff', scheme?.surface || '#ffffff'])
+      : (scheme?.accentText || defaultAccent),
     ...(site.header_font ? { '--theme-display': site.header_font } : {}),
     ...(content.brandFont ? { '--brand-font': content.brandFont } : {}),
-    ...(scheme ? { '--c-bg': scheme.bg, '--c-surface': scheme.surface, '--c-ink': scheme.ink, '--c-muted': scheme.muted, '--c-line': scheme.line, '--c-deep': scheme.deep, '--c-on-deep': scheme.onDeep } : {}),
+    ...(scheme ? {
+      '--c-bg': scheme.bg,
+      '--c-surface': scheme.surface,
+      '--c-ink': scheme.ink,
+      '--c-muted': scheme.muted,
+      '--c-line': scheme.line,
+      '--c-control-line': scheme.controlLine,
+      '--c-deep': scheme.deep,
+      '--c-on-deep': scheme.onDeep,
+      '--c-on-photo': scheme.onPhoto,
+    } : {}),
   } as CSSProperties;
   const themeClass = THEME_CLASS[site.template] || 'forge';
   const date = formatBlogDate(post.date);
