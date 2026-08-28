@@ -4,10 +4,10 @@ import { AVAILABLE_TEMPLATES } from '@/lib/templates/types';
 import { TITLE_MAX, DESCRIPTION_MAX } from '@/lib/seo/marketing-seo';
 
 describe('trade records integrity', () => {
-  it('contains exactly 76 unique trades', () => {
-    expect(TRADES).toHaveLength(76);
+  it('contains exactly 100 unique trades', () => {
+    expect(TRADES).toHaveLength(100);
     const slugs = TRADES.map((t) => t.slug);
-    expect(new Set(slugs).size).toBe(76);
+    expect(new Set(slugs).size).toBe(100);
   });
 
   it('every trade has complete required fields', () => {
