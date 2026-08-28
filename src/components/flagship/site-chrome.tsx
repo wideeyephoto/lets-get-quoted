@@ -40,7 +40,7 @@ const LOGIN_URL = 'https://app.letsgetquoted.com/login';
  * largest buttons on the page already said. Exported so no page has to retype
  * either half of the pair.
  */
-export const SIGNUP_LABEL = 'Build my free site';
+export const SIGNUP_LABEL = 'Create Free Account';
 
 /**
  * Is somebody already signed in?

@@ -97,7 +97,7 @@ export default function HomeEditorialPage() {
           <Link href="/pricing">Pricing</Link>
         </nav>
         <a className={styles.barCta} href={APP}>
-          Build my free site
+          Create Free Account
         </a>
       </header>
 

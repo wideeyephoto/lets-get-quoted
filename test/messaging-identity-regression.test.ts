@@ -117,7 +117,7 @@ describe('Problem 1: Product Identity and Message Hierarchy', () => {
     });
 
     it('maintains consistent signup label and signed-in dashboard swap', () => {
-      expect(SIGNUP_LABEL).toBe('Build my free site');
+      expect(SIGNUP_LABEL).toBe('Create Free Account');
       expect(SIGNUP_URL).toContain('https://app.letsgetquoted.com/start?');
       expect(SIGNUP_URL).toContain('goal=build_site');
       expect(SITE_CHROME).toContain("label: 'Dashboard'");

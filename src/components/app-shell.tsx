@@ -295,7 +295,7 @@ function getPrimaryAction(isLoggedIn = false, pathname: string | null = null) {
   if (pathname?.startsWith('/help')) {
     return { href: APP_LOGIN_URL, label: 'Sign in to Dashboard' };
   }
-  return { href: APP_SIGNUP_URL, label: 'Build my free site' };
+  return { href: APP_SIGNUP_URL, label: 'Create Free Account' };
 }
 
 export function AppShell({ children, forceStandaloneSite = false }: { children: ReactNode; forceStandaloneSite?: boolean }) {

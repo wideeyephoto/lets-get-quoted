@@ -71,7 +71,7 @@ export default function MarketingHeader({
             })}
           </nav>
           <a href={APP_SIGNUP_URL} className={`btn primary ${styles.headerCta}`}>
-            Build my free site
+            Create Free Account
           </a>
         </div>
       </header>
