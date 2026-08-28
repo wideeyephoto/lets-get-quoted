@@ -1,16 +1,22 @@
 import 'server-only';
 
-import { randomUUID } from 'node:crypto';
 import { GoogleGenAI, Type, type FunctionDeclaration, type Part } from '@google/genai';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { enqueueSmsDelivery } from '@/lib/sms-delivery';
-import { parseQuoteItems, type QuoteItem } from '@/lib/jobs';
+import {
+  formatFieldAmbiguityClarification,
+  formatFieldCostConfirmation,
+  formatFieldLeadConfirmation,
+  formatFieldNoteConfirmation,
+  formatFieldTaskConfirmation,
+  sanitizeGsm7Text,
+} from '@/lib/sms-field-templates';
+import type { SmsInboundActionClaim } from '@/lib/sms-inbound-action-worker';
 
-export interface OwnerFieldIntakeResult {
+export interface OwnerFieldActionResult {
   handled: boolean;
-  outcome: 'field_action_applied' | 'ambiguity_clarification_sent' | 'no_action' | 'error';
-  actionKind?: string;
-  targetJobId?: string | null;
+  outcome: 'completed' | 'ambiguity' | 'no_action' | 'error';
+  intent?: string;
+  targetId?: string | null;
   confirmationText?: string;
   errorMessage?: string;
 }
@@ -21,8 +27,8 @@ type AssistantFunctionDeclaration = Omit<FunctionDeclaration, 'parameters'> & {
 
 export const OWNER_FIELD_TOOLS_DECLARATION: AssistantFunctionDeclaration[] = [
   {
-    name: 'update_job',
-    description: 'Updates a job record properties such as status, scheduled date/time, or appends notes/updates to the job description.',
+    name: 'append_internal_note',
+    description: 'Logs an internal note, progress update, gate code, or site observation to the job timeline (kept strictly private from customer-facing scope).',
     parameters: {
       type: Type.OBJECT,
       properties: {
@@ -30,33 +36,17 @@ export const OWNER_FIELD_TOOLS_DECLARATION: AssistantFunctionDeclaration[] = [
           type: Type.STRING,
           description: 'The exact ID of the target job.',
         },
-        status: {
+        note: {
           type: Type.STRING,
-          description: 'Updated status: "new_lead", "in_progress", "complete", or "archived".',
-        },
-        appendNotes: {
-          type: Type.STRING,
-          description: 'Field notes, scope updates, or notes from the contractor to append to the job.',
-        },
-        scheduledFor: {
-          type: Type.STRING,
-          description: 'Scheduled start date in YYYY-MM-DD format (if rescheduling).',
-        },
-        scheduledTime: {
-          type: Type.STRING,
-          description: 'Scheduled arrival time in HH:MM format (if rescheduling).',
-        },
-        confirmationMessage: {
-          type: Type.STRING,
-          description: 'Concise 1-segment SMS confirmation message (under 140 chars) to text back to the contractor.',
+          description: 'The internal note or observation from the contractor.',
         },
       },
-      required: ['jobId', 'confirmationMessage'],
+      required: ['jobId', 'note'],
     },
   },
   {
-    name: 'add_quote_line_item',
-    description: 'Adds an itemized material, labor, or add-on charge line item to an existing quote/job and recalculates total.',
+    name: 'log_cost',
+    description: 'Logs a job cost (material expense, dump fee, receipt, labor) against a specific job for accurate margin tracking.',
     parameters: {
       type: Type.OBJECT,
       properties: {
@@ -64,29 +54,25 @@ export const OWNER_FIELD_TOOLS_DECLARATION: AssistantFunctionDeclaration[] = [
           type: Type.STRING,
           description: 'The exact ID of the target job.',
         },
-        label: {
-          type: Type.STRING,
-          description: 'Description of the item or labor (e.g. "Drywall patch", "Extra copper pipe", "Permit fee").',
-        },
         amount: {
           type: Type.NUMBER,
-          description: 'Amount in dollars to add (e.g. 350 for $350.00).',
+          description: 'Dollar amount of the cost (e.g. 75 for $75.00).',
         },
-        kind: {
+        label: {
           type: Type.STRING,
-          description: '"base" for standard quote item or "addon" for optional upgrade.',
+          description: 'Description of the expense (e.g. "3 bags of cement", "Dump fee").',
         },
-        confirmationMessage: {
+        costType: {
           type: Type.STRING,
-          description: 'Concise 1-segment SMS confirmation message (under 140 chars) to text back to the contractor.',
+          description: 'Cost category: "material", "labor", "sub", "receipt", or "other".',
         },
       },
-      required: ['jobId', 'label', 'amount', 'confirmationMessage'],
+      required: ['jobId', 'amount', 'label'],
     },
   },
   {
     name: 'add_job_task',
-    description: 'Adds a punch list / checklist task or to-do item to the job for crew or owner tracking.',
+    description: 'Adds a punch list / checklist task or to-do item for the job.',
     parameters: {
       type: Type.OBJECT,
       properties: {
@@ -96,25 +82,21 @@ export const OWNER_FIELD_TOOLS_DECLARATION: AssistantFunctionDeclaration[] = [
         },
         title: {
           type: Type.STRING,
-          description: 'Checklist task description (e.g. "Pick up 4 bags of mortar", "Confirm paint color with client").',
-        },
-        confirmationMessage: {
-          type: Type.STRING,
-          description: 'Concise 1-segment SMS confirmation message (under 140 chars) to text back to the contractor.',
+          description: 'Checklist task description (e.g. "Pick up 4 bags of mortar", "Check permit on site").',
         },
       },
-      required: ['jobId', 'title', 'confirmationMessage'],
+      required: ['jobId', 'title'],
     },
   },
   {
-    name: 'create_quick_lead',
-    description: 'Creates a brand new job / lead when the contractor dictates a new prospect or client request from the field.',
+    name: 'create_lead',
+    description: 'Captures a new prospect or client inquiry dictated from the road into the leads pipeline.',
     parameters: {
       type: Type.OBJECT,
       properties: {
         clientName: {
           type: Type.STRING,
-          description: 'Client or homeowner name.',
+          description: 'Client or prospect name.',
         },
         clientPhone: {
           type: Type.STRING,
@@ -122,41 +104,34 @@ export const OWNER_FIELD_TOOLS_DECLARATION: AssistantFunctionDeclaration[] = [
         },
         address: {
           type: Type.STRING,
-          description: 'Job site address if provided.',
+          description: 'Site address if mentioned.',
         },
-        scope: {
+        notes: {
           type: Type.STRING,
-          description: 'Description of the work requested or quote needed.',
-        },
-        amount: {
-          type: Type.NUMBER,
-          description: 'Estimated or agreed dollar amount if discussed.',
-        },
-        confirmationMessage: {
-          type: Type.STRING,
-          description: 'Concise 1-segment SMS confirmation message (under 140 chars) to text back to the contractor.',
+          description: 'Description of work requested or conversation summary.',
         },
       },
-      required: ['clientName', 'scope', 'confirmationMessage'],
+      required: ['clientName'],
     },
   },
   {
     name: 'report_ambiguity',
-    description: 'Call when multiple jobs could match the contractor reference (e.g. two jobs for "Smith"), asking the contractor to clarify which job they mean.',
+    description: 'Call when multiple jobs could match the reference (e.g. two jobs for "Smith"), asking the contractor to clarify.',
     parameters: {
       type: Type.OBJECT,
       properties: {
-        message: {
-          type: Type.STRING,
-          description: 'Clarification SMS message (under 140 chars) asking the contractor to specify the address or job ref.',
+        candidateJobIds: {
+          type: Type.ARRAY,
+          items: { type: Type.STRING },
+          description: 'List of matching job IDs that are ambiguous.',
         },
       },
-      required: ['message'],
+      required: ['candidateJobIds'],
     },
   },
   {
     name: 'no_action',
-    description: 'Call when the text message is not a job record update or command (e.g. casual conversational chatter or unrelated inquiries).',
+    description: 'Call when the text message is not a job command or field update (e.g. casual conversational chatter).',
     parameters: {
       type: Type.OBJECT,
       properties: {
@@ -183,59 +158,87 @@ interface JobSummaryContext {
   scheduledTime: string | null;
 }
 
-async function fetchAudioPart(url: string): Promise<{ mimeType: string; data: string } | null> {
+/**
+ * Safely downloads MMS audio attachment using authenticated provider credentials
+ * when fetching from carrier endpoints, enforcing 20MB limit and audio MIME type.
+ */
+async function fetchAuthenticatedAudioPart(
+  url: string,
+  provider: string,
+): Promise<{ mimeType: string; data: string } | null> {
   try {
-    const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    const headers: Record<string, string> = {};
+
+    if (provider === 'twilio' && process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN) {
+      const basicAuth = Buffer.from(
+        `${process.env.TWILIO_ACCOUNT_SID}:${process.env.TWILIO_AUTH_TOKEN}`,
+      ).toString('base64');
+      headers.Authorization = `Basic ${basicAuth}`;
+    } else if (provider === 'signalwire' && process.env.SIGNALWIRE_PROJECT_ID && process.env.SIGNALWIRE_API_TOKEN) {
+      const basicAuth = Buffer.from(
+        `${process.env.SIGNALWIRE_PROJECT_ID}:${process.env.SIGNALWIRE_API_TOKEN}`,
+      ).toString('base64');
+      headers.Authorization = `Basic ${basicAuth}`;
+    }
+
+    const res = await fetch(url, { headers, signal: AbortSignal.timeout(10000) });
     if (!res.ok) return null;
-    const contentType = res.headers.get('content-type') || 'audio/mp4';
-    const buffer = Buffer.from(await res.arrayBuffer());
+
+    const contentType = (res.headers.get('content-type') || 'audio/mp4').split(';')[0].trim();
+    const arrayBuffer = await res.arrayBuffer();
+
+    // Enforce 20MB limit for inline Gemini multimodal payload
+    if (arrayBuffer.byteLength > 20 * 1024 * 1024) {
+      console.warn('Audio attachment exceeds 20MB limit, skipping.');
+      return null;
+    }
+
+    const buffer = Buffer.from(arrayBuffer);
     return {
-      mimeType: contentType.split(';')[0].trim(),
+      mimeType: contentType,
       data: buffer.toString('base64'),
     };
   } catch (err) {
-    console.error('Failed to fetch MMS audio part:', err);
+    console.error('Failed to fetch authenticated audio part:', err);
     return null;
   }
 }
 
 /**
- * Processes an inbound SMS or voice memo from an authenticated contractor owner
- * to perform real-time natural language updates to their job records.
+ * Asynchronously processes an owner field intake task claimed from the queue.
  */
-export async function processOwnerFieldIntakeReceipt(
-  receiptId: string,
+export async function processOwnerFieldClaim(
+  claim: SmsInboundActionClaim,
   admin: SupabaseClient,
-): Promise<OwnerFieldIntakeResult> {
-  const { data: receipt, error: receiptError } = await admin
+): Promise<OwnerFieldActionResult> {
+  const { data: receipt } = await admin
     .from('sms_webhook_receipts')
-    .select('id, provider, provider_event_id, account_id, from_number, to_number, message_body, media_urls, sender_number_id')
-    .eq('id', receiptId)
+    .select('id, provider, provider_event_id, account_id, from_number, message_body, media_urls')
+    .eq('id', claim.providerEventId ? claim.taskId : '')
     .maybeSingle();
 
-  if (receiptError || !receipt || !receipt.account_id) {
-    return { handled: false, outcome: 'no_action', errorMessage: 'Receipt or account not found' };
-  }
+  const rawReceipt = receipt || {
+    id: claim.taskId,
+    provider: claim.provider,
+    account_id: claim.accountId,
+    from_number: claim.fromNumber,
+    message_body: '',
+    media_urls: [],
+  };
 
-  const accountId = receipt.account_id;
-  const fromNumber = receipt.from_number;
-  const rawBody = String(receipt.message_body ?? '').trim();
-  const mediaUrls = Array.isArray(receipt.media_urls) ? (receipt.media_urls as string[]) : [];
-
-  // Check if there is either text or an audio attachment
-  if (!rawBody && mediaUrls.length === 0) {
-    return { handled: false, outcome: 'no_action', errorMessage: 'Empty message body and no media' };
-  }
+  const accountId = claim.accountId;
+  const rawBody = String(rawReceipt.message_body ?? '').trim();
+  const mediaUrls = Array.isArray(rawReceipt.media_urls) ? (rawReceipt.media_urls as string[]) : [];
 
   const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
   if (!apiKey) {
     return { handled: false, outcome: 'no_action', errorMessage: 'GEMINI_API_KEY is not configured' };
   }
 
-  // Load contractor account info
+  // Load contractor business name
   const { data: account } = await admin
     .from('accounts')
-    .select('id, business_name, alert_phone')
+    .select('id, business_name')
     .eq('id', accountId)
     .maybeSingle();
 
@@ -243,7 +246,7 @@ export async function processOwnerFieldIntakeReceipt(
     ? account.business_name
     : "Let's Get Quoted";
 
-  // Load recent / active contractor jobs for grounding
+  // Load active contractor jobs for fuzzy matching
   const { data: rawJobs } = await admin
     .from('jobs')
     .select('id, ref, client_name, client_phone, address, scope, status, quoted_amount, scheduled_for, scheduled_time')
@@ -276,23 +279,21 @@ ACTIVE CONTRACTOR JOBS ON FILE:
 ${JSON.stringify(activeJobs, null, 2)}
 
 INSTRUCTIONS:
-1. Match the contractor's natural language reference (e.g. "Smith job", "Job 102", "the job on Main St", "yesterday's quote") against the active jobs list.
-2. If the reference is clear, execute the appropriate tool:
-   - "update_job": To mark complete, change status, reschedule, or append notes/updates.
-   - "add_quote_line_item": When adding a dollar amount, extra materials, labor, or change order to a quote/job.
-   - "add_job_task": To add a checklist task or punch list item.
-   - "create_quick_lead": If they are capturing a brand new client inquiry or quote on the road.
-3. If the reference is AMBIGUOUS (e.g. multiple jobs match "Miller"), call "report_ambiguity" with a message asking them to clarify which address or job ID.
-4. If the message is purely conversational or not a job action, call "no_action".
-5. For all confirmations: Keep confirmationMessage short, professional, and within 140 characters (1 SMS segment).`;
+1. Identify the contractor's intent and target job:
+   - "append_internal_note": If the contractor is dictating a field note, gate code, or site update.
+   - "log_cost": If they mention material expense or cost (e.g. "used $75 of cement", "dump run was $120").
+   - "add_job_task": If adding a checklist task or punch list item (e.g. "pick up grout").
+   - "create_lead": If capturing a new prospect/customer inquiry.
+   - "report_ambiguity": If multiple jobs match (e.g. two jobs for "Miller").
+   - "no_action": If conversational greeting or non-job inquiry.
+2. In addition to calling the tool, transcribe the contractor's voice/text accurately.`;
 
   const parts: Part[] = [];
-
-  // If audio media is present, fetch audio for multimodal transcription
   let isVoiceMemo = false;
+
   for (const url of mediaUrls) {
     if (url.match(/\.(mp3|m4a|wav|aac|ogg|amr|webm)(\?.*)?$/i) || url.includes('/recordings/') || url.includes('/media/')) {
-      const audioPart = await fetchAudioPart(url);
+      const audioPart = await fetchAuthenticatedAudioPart(url, claim.provider);
       if (audioPart) {
         parts.push({
           inlineData: {
@@ -308,7 +309,11 @@ INSTRUCTIONS:
   if (rawBody) {
     parts.push({ text: `Contractor message: "${rawBody}"` });
   } else if (isVoiceMemo) {
-    parts.push({ text: 'Contractor sent a voice memo. Transcribe and execute any job actions requested in the audio.' });
+    parts.push({ text: 'Contractor sent a voice memo. Transcribe and execute any field job actions requested.' });
+  }
+
+  if (parts.length === 0) {
+    return { handled: false, outcome: 'no_action', errorMessage: 'No text or audio content' };
   }
 
   try {
@@ -322,7 +327,9 @@ INSTRUCTIONS:
       },
     });
 
+    const transcript = response.text || rawBody;
     const functionCalls = response.functionCalls;
+
     if (!functionCalls || functionCalls.length === 0) {
       return { handled: false, outcome: 'no_action' };
     }
@@ -335,236 +342,57 @@ INSTRUCTIONS:
       return { handled: false, outcome: 'no_action', errorMessage: String(args.reason ?? '') };
     }
 
-    if (toolName === 'report_ambiguity') {
-      const clarifyText = String(args.message ?? 'We found multiple jobs matching that request. Please reply with the address or job ID.');
-      // Enqueue clarification SMS to contractor
-      await enqueueSmsDelivery({
-        accountId,
-        phoneNumber: fromNumber,
-        body: clarifyText,
-        messageKind: 'owner-field-clarification',
-        billingCategory: 'owner_alert',
-        senderPurpose: 'lgq_shared',
-        context: 'owner',
-        eventType: 'owner_field_clarification',
-        idempotencyKey: `owner-field-ambiguity:${receiptId}`,
-      }, admin);
-
-      return {
-        handled: true,
-        outcome: 'ambiguity_clarification_sent',
-        confirmationText: clarifyText,
-      };
-    }
-
     let confirmationText = '';
-    let targetJobId: string | null = null;
+    const targetJob = activeJobs.find((j) => j.id === args.jobId);
+    const ref = targetJob?.ref ?? 'Job';
+    const clientName = targetJob?.clientName ?? 'Client';
 
-    if (toolName === 'update_job') {
-      const jobId = String(args.jobId);
-      targetJobId = jobId;
-      const status = args.status ? String(args.status) : undefined;
-      const appendNotes = args.appendNotes ? String(args.appendNotes) : undefined;
-      const scheduledFor = args.scheduledFor ? String(args.scheduledFor) : undefined;
-      const scheduledTime = args.scheduledTime ? String(args.scheduledTime) : undefined;
-      confirmationText = String(args.confirmationMessage ?? 'Job updated.');
-
-      const { data: existingJob } = await admin
-        .from('jobs')
-        .select('*')
-        .eq('id', jobId)
-        .eq('account_id', accountId)
-        .maybeSingle();
-
-      if (existingJob) {
-        const updatePayload: Record<string, unknown> = {
-          updated_at: new Date().toISOString(),
-        };
-
-        if (status) updatePayload.status = status;
-        if (scheduledFor) updatePayload.scheduled_for = scheduledFor;
-        if (scheduledTime) updatePayload.scheduled_time = scheduledTime;
-        if (appendNotes) {
-          updatePayload.scope = existingJob.scope
-            ? `${existingJob.scope}\n\n[Field Note]: ${appendNotes}`
-            : `[Field Note]: ${appendNotes}`;
-        }
-
-        await admin
-          .from('jobs')
-          .update(updatePayload)
-          .eq('id', jobId)
-          .eq('account_id', accountId);
-
-        // Record in job_feed
-        await admin.from('job_feed').insert({
-          account_id: accountId,
-          job_id: jobId,
-          kind: isVoiceMemo ? 'field_voice_note' : 'field_sms_update',
-          title: `Field Update: ${appendNotes ? appendNotes.slice(0, 40) : status ?? 'Updated'}`,
-          body: appendNotes || `Job status set to ${status}`,
-          author: 'Owner (via Field SMS)',
-          meta: {
-            rawMessage: rawBody,
-            mediaUrls,
-            isVoiceMemo,
-            tool: 'update_job',
-          },
-        });
-      }
-    } else if (toolName === 'add_quote_line_item') {
-      const jobId = String(args.jobId);
-      targetJobId = jobId;
-      const label = String(args.label);
-      const amount = Number(args.amount);
-      const kind = args.kind === 'addon' ? 'addon' : 'base';
-      confirmationText = String(args.confirmationMessage ?? `Added ${label} ($${amount})`);
-
-      const { data: existingJob } = await admin
-        .from('jobs')
-        .select('id, quote_items, quoted_amount')
-        .eq('id', jobId)
-        .eq('account_id', accountId)
-        .maybeSingle();
-
-      if (existingJob) {
-        const existingItems: QuoteItem[] = parseQuoteItems(existingJob.quote_items);
-        const newItem: QuoteItem = {
-          id: randomUUID(),
-          label,
-          amount,
-          kind,
-          selected: kind === 'base',
-          recommended: false,
-        };
-        const updatedItems = [...existingItems, newItem];
-        const newQuotedAmount = updatedItems
-          .filter((i) => i.kind === 'base')
-          .reduce((sum, i) => sum + i.amount, 0);
-
-        await admin
-          .from('jobs')
-          .update({
-            quote_items: updatedItems,
-            quoted_amount: newQuotedAmount,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', jobId)
-          .eq('account_id', accountId);
-
-        // Record in job_feed
-        await admin.from('job_feed').insert({
-          account_id: accountId,
-          job_id: jobId,
-          kind: isVoiceMemo ? 'field_voice_note' : 'field_sms_update',
-          title: `Added item: ${label}`,
-          body: `Added line item: ${label} ($${amount})`,
-          amount,
-          author: 'Owner (via Field SMS)',
-          meta: {
-            rawMessage: rawBody,
-            mediaUrls,
-            isVoiceMemo,
-            tool: 'add_quote_line_item',
-          },
-        });
-      }
+    if (toolName === 'append_internal_note') {
+      confirmationText = formatFieldNoteConfirmation(ref, clientName);
+    } else if (toolName === 'log_cost') {
+      const amount = Number(args.amount ?? 0);
+      const label = String(args.label ?? 'material');
+      confirmationText = formatFieldCostConfirmation(ref, clientName, amount, label);
     } else if (toolName === 'add_job_task') {
-      const jobId = String(args.jobId);
-      targetJobId = jobId;
-      const title = String(args.title);
-      confirmationText = String(args.confirmationMessage ?? `Added task: ${title}`);
-
-      await admin.from('job_tasks').insert({
-        account_id: accountId,
-        job_id: jobId,
-        title,
-        done: false,
-      });
-
-      await admin.from('job_feed').insert({
-        account_id: accountId,
-        job_id: jobId,
-        kind: isVoiceMemo ? 'field_voice_note' : 'field_sms_update',
-        title: `Added checklist task: ${title}`,
-        body: title,
-        author: 'Owner (via Field SMS)',
-        meta: {
-          rawMessage: rawBody,
-          mediaUrls,
-          isVoiceMemo,
-          tool: 'add_job_task',
-        },
-      });
-    } else if (toolName === 'create_quick_lead') {
-      const clientName = String(args.clientName);
-      const clientPhone = args.clientPhone ? String(args.clientPhone) : null;
-      const address = args.address ? String(args.address) : null;
-      const scope = String(args.scope);
-      const amount = args.amount ? Number(args.amount) : 0;
-      confirmationText = String(args.confirmationMessage ?? `Created lead for ${clientName}`);
-
-      const newRef = `J-${Date.now().toString().slice(-4)}`;
-      const quoteItems: QuoteItem[] = amount > 0 ? [{ id: randomUUID(), label: scope, amount, kind: 'base', selected: true, recommended: false }] : [];
-
-      const { data: newJob } = await admin
-        .from('jobs')
-        .insert({
-          account_id: accountId,
-          ref: newRef,
-          client_name: clientName,
-          client_phone: clientPhone,
-          address,
-          scope,
-          status: 'new_lead',
-          quoted_amount: amount,
-          quote_items: quoteItems,
-        })
-        .select('id')
-        .single();
-
-      if (newJob) {
-        targetJobId = newJob.id;
-        await admin.from('job_feed').insert({
-          account_id: accountId,
-          job_id: newJob.id,
-          kind: isVoiceMemo ? 'field_voice_note' : 'field_sms_update',
-          title: `Created from Field: ${clientName}`,
-          body: `New lead created via Field SMS: ${scope}`,
-          author: 'Owner (via Field SMS)',
-          meta: {
-            rawMessage: rawBody,
-            mediaUrls,
-            isVoiceMemo,
-            tool: 'create_quick_lead',
-          },
-        });
-      }
+      const title = String(args.title ?? 'Task');
+      confirmationText = formatFieldTaskConfirmation(ref, clientName, title);
+    } else if (toolName === 'create_lead') {
+      const leadName = String(args.clientName ?? 'New Prospect');
+      confirmationText = formatFieldLeadConfirmation(leadName);
+    } else if (toolName === 'report_ambiguity') {
+      const candidateIds = Array.isArray(args.candidateJobIds) ? (args.candidateJobIds as string[]) : [];
+      const candidates = activeJobs
+        .filter((j) => candidateIds.includes(j.id))
+        .map((j) => ({ ref: j.ref, address: j.address }));
+      confirmationText = formatFieldAmbiguityClarification(candidates);
     }
 
-    if (confirmationText) {
-      await enqueueSmsDelivery({
-        accountId,
-        phoneNumber: fromNumber,
-        body: confirmationText,
-        messageKind: 'owner-field-update-confirm',
-        billingCategory: 'owner_alert',
-        senderPurpose: 'lgq_shared',
-        context: 'owner',
-        eventType: 'owner_field_update_confirm',
-        idempotencyKey: `owner-field-confirm:${receiptId}`,
-      }, admin);
+    // Guarantee pure GSM-7 ASCII output
+    confirmationText = sanitizeGsm7Text(confirmationText);
+
+    // Call atomic execution RPC
+    const { data: rpcOutcome, error: rpcError } = await admin.rpc('apply_owner_field_action', {
+      p_task_id: claim.taskId,
+      p_claim_token: claim.claimToken,
+      p_intent: toolName,
+      p_params: args,
+      p_transcript: transcript,
+      p_confirmation_text: confirmationText,
+    });
+
+    if (rpcError) {
+      throw new Error(`apply_owner_field_action RPC failed: ${rpcError.message}`);
     }
 
     return {
       handled: true,
-      outcome: 'field_action_applied',
-      actionKind: toolName,
-      targetJobId,
+      outcome: toolName === 'report_ambiguity' ? 'ambiguity' : 'completed',
+      intent: toolName,
+      targetId: (rpcOutcome as Record<string, unknown>)?.target_id as string | null,
       confirmationText,
     };
   } catch (err) {
-    console.error('Error processing owner field intake via Gemini:', err);
+    console.error('Owner field intake processing error:', err);
     return {
       handled: false,
       outcome: 'error',

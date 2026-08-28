@@ -18,7 +18,6 @@ import {
   type ParsedInboundWebhook,
 } from '@/lib/sms-webhook-ingress';
 import { processSmsInboundActionReceipt } from '@/lib/sms-inbound-action-worker';
-import { processOwnerFieldIntakeReceipt } from '@/lib/sms-owner-field-worker';
 import { logWebhookFailure } from '@/lib/webhook-failures';
 
 export const runtime = 'nodejs';
@@ -304,17 +303,6 @@ export async function POST(request: Request) {
       // Deliberately BEFORE the notice: a redelivery must find no notice claim,
       // or the retry would be answered while its action is still unfinished.
       return emptyTwiml(503);
-    }
-
-    if (ingress.senderPurpose === 'lgq_shared' && ingress.accountId) {
-      try {
-        const ownerIntake = await processOwnerFieldIntakeReceipt(ingress.receiptId, admin);
-        if (ownerIntake.handled) {
-          return emptyTwiml();
-        }
-      } catch (error) {
-        console.error('Owner field intake worker failed:', error);
-      }
     }
 
     // Routed and applied. The action ran; the notice tells the sender where the

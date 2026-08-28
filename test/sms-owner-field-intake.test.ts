@@ -1,17 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   OWNER_FIELD_TOOLS_DECLARATION,
-  processOwnerFieldIntakeReceipt,
+  processOwnerFieldClaim,
 } from '@/lib/sms-owner-field-worker';
-
-// Mock enqueueSmsDelivery
-vi.mock('@/lib/sms-delivery', () => ({
-  enqueueSmsDelivery: vi.fn().mockResolvedValue({
-    eventId: '00000000-0000-4000-8000-000000000099',
-    state: 'queued',
-    created: true,
-  }),
-}));
+import {
+  formatFieldCostConfirmation,
+  formatFieldLeadConfirmation,
+  formatFieldNoteConfirmation,
+  formatFieldTaskConfirmation,
+  sanitizeGsm7Text,
+} from '@/lib/sms-field-templates';
+import type { SmsInboundActionClaim } from '@/lib/sms-inbound-action-worker';
 
 // Mock GoogleGenAI
 const mockGenerateContent = vi.fn();
@@ -28,7 +27,35 @@ vi.mock('@google/genai', async () => {
   };
 });
 
-describe('Owner Field Intake Worker (Voice/Text-to-Job)', () => {
+describe('GSM-7 Confirmation Templates', () => {
+  it('sanitizes curly quotes, em-dashes and emojis to pure GSM-7 ASCII', () => {
+    const raw = '“Hello”—here’s the gate code: 1234 🚪';
+    const clean = sanitizeGsm7Text(raw);
+    expect(clean).toBe('"Hello"-here\'s the gate code: 1234');
+    // Ensure no characters outside printable ASCII (0x20 - 0x7E)
+    expect(/^[\x20-\x7E]+$/.test(clean)).toBe(true);
+  });
+
+  it('formats deterministic ASCII confirmation strings under 160 chars', () => {
+    const noteConfirm = formatFieldNoteConfirmation('J-101', 'John Smith');
+    expect(noteConfirm).toBe('[LGQ] J-101 (John Smith): Logged field note.');
+    expect(noteConfirm.length).toBeLessThanOrEqual(160);
+
+    const costConfirm = formatFieldCostConfirmation('J-101', 'John Smith', 75, 'material');
+    expect(costConfirm).toBe('[LGQ] J-101 (John Smith): Logged $75.00 material cost.');
+    expect(costConfirm.length).toBeLessThanOrEqual(160);
+
+    const taskConfirm = formatFieldTaskConfirmation('J-101', 'John Smith', 'Pick up 4 bags of mortar');
+    expect(taskConfirm).toBe('[LGQ] J-101 (John Smith): Added task "Pick up 4 bags of mortar".');
+    expect(taskConfirm.length).toBeLessThanOrEqual(160);
+
+    const leadConfirm = formatFieldLeadConfirmation('Jane Doe');
+    expect(leadConfirm).toBe('[LGQ] Created new lead for Jane Doe.');
+    expect(leadConfirm.length).toBeLessThanOrEqual(160);
+  });
+});
+
+describe('Owner Field Intake Claim Worker (Async & Atomic)', () => {
   const originalEnv = process.env;
 
   beforeEach(() => {
@@ -36,44 +63,53 @@ describe('Owner Field Intake Worker (Voice/Text-to-Job)', () => {
     process.env = { ...originalEnv, GEMINI_API_KEY: 'test-gemini-key' };
   });
 
-  it('declares all required tool schemas for field operations', () => {
+  it('declares all required refined intent tools', () => {
     const toolNames = OWNER_FIELD_TOOLS_DECLARATION.map((t) => t.name);
-    expect(toolNames).toContain('update_job');
-    expect(toolNames).toContain('add_quote_line_item');
+    expect(toolNames).toContain('append_internal_note');
+    expect(toolNames).toContain('log_cost');
     expect(toolNames).toContain('add_job_task');
-    expect(toolNames).toContain('create_quick_lead');
+    expect(toolNames).toContain('create_lead');
     expect(toolNames).toContain('report_ambiguity');
     expect(toolNames).toContain('no_action');
   });
 
-  it('applies update_job tool (status, notes) and queues confirmation SMS', async () => {
+  it('processes append_internal_note and invokes atomic RPC apply_owner_field_action', async () => {
     const accountId = '11111111-1111-4111-8111-111111111111';
-    const jobId = '22222222-2222-4222-8222-222222222222';
-    const receiptId = '33333333-3333-4333-8333-333333333333';
+    const taskId = '22222222-2222-4222-8222-222222222222';
+    const claimToken = '33333333-3333-4333-8333-333333333333';
+    const jobId = '44444444-4444-4444-8444-444444444444';
+
+    const claim: SmsInboundActionClaim = {
+      taskId,
+      claimToken,
+      provider: 'signalwire',
+      providerEventId: 'ev-100',
+      accountId,
+      senderNumberId: '55555555-5555-4555-8555-555555555555',
+      senderPurpose: 'lgq_shared',
+      fromNumber: '+15551234567',
+    };
 
     mockGenerateContent.mockResolvedValueOnce({
+      text: 'Gate code for the Smith job is 4821',
       functionCalls: [
         {
-          name: 'update_job',
+          name: 'append_internal_note',
           args: {
             jobId,
-            status: 'complete',
-            appendNotes: 'Customer very happy with trim paint.',
-            confirmationMessage: '✅ Updated Job J-101 (Smith): Marked complete & saved note.',
+            note: 'Gate code is 4821',
           },
         },
       ],
     });
 
-    const updateJobMock = vi.fn().mockReturnValue({
-      eq: vi.fn().mockReturnValue({
-        eq: vi.fn().mockResolvedValue({ data: null, error: null }),
-      }),
+    const mockRpc = vi.fn().mockResolvedValue({
+      data: { target_id: jobId, intent: 'append_internal_note' },
+      error: null,
     });
 
-    const insertJobFeedMock = vi.fn().mockResolvedValue({ data: null, error: null });
-
     const mockAdmin = {
+      rpc: mockRpc,
       from: vi.fn((table: string) => {
         if (table === 'sms_webhook_receipts') {
           return {
@@ -81,15 +117,12 @@ describe('Owner Field Intake Worker (Voice/Text-to-Job)', () => {
               eq: vi.fn().mockReturnValue({
                 maybeSingle: vi.fn().mockResolvedValue({
                   data: {
-                    id: receiptId,
+                    id: taskId,
                     provider: 'signalwire',
-                    provider_event_id: 'ev-1',
                     account_id: accountId,
                     from_number: '+15551234567',
-                    to_number: '+19479412323',
-                    message_body: 'Finished the Smith job on Main St, client was super happy with the trim',
+                    message_body: 'Gate code for Smith job on Main St is 4821',
                     media_urls: [],
-                    sender_number_id: '44444444-4444-4444-8444-444444444444',
                   },
                   error: null,
                 }),
@@ -102,279 +135,7 @@ describe('Owner Field Intake Worker (Voice/Text-to-Job)', () => {
             select: vi.fn().mockReturnValue({
               eq: vi.fn().mockReturnValue({
                 maybeSingle: vi.fn().mockResolvedValue({
-                  data: {
-                    id: accountId,
-                    business_name: 'Acme Contracting',
-                    alert_phone: '+15551234567',
-                  },
-                  error: null,
-                }),
-              }),
-            }),
-          };
-        }
-        if (table === 'jobs') {
-          return {
-            select: vi.fn((fields: string) => {
-              if (fields === '*') {
-                return {
-                  eq: vi.fn().mockReturnValue({
-                    eq: vi.fn().mockReturnValue({
-                      maybeSingle: vi.fn().mockResolvedValue({
-                        data: {
-                          id: jobId,
-                          ref: 'J-101',
-                          client_name: 'John Smith',
-                          scope: 'Interior Painting',
-                          status: 'in_progress',
-                          quoted_amount: 1500,
-                          quote_items: [{ id: 'item-1', label: 'Paint walls', amount: 1500, kind: 'base' }],
-                        },
-                        error: null,
-                      }),
-                    }),
-                  }),
-                };
-              }
-              return {
-                eq: vi.fn().mockReturnValue({
-                  order: vi.fn().mockReturnValue({
-                    limit: vi.fn().mockResolvedValue({
-                      data: [
-                        {
-                          id: jobId,
-                          ref: 'J-101',
-                          client_name: 'John Smith',
-                          client_phone: '+15559876543',
-                          address: '124 Main St',
-                          scope: 'Interior Painting',
-                          status: 'in_progress',
-                          quoted_amount: 1500,
-                          scheduled_for: '2026-08-28',
-                          scheduled_time: '09:00',
-                        },
-                      ],
-                      error: null,
-                    }),
-                  }),
-                }),
-              };
-            }),
-            update: updateJobMock,
-          };
-        }
-        if (table === 'job_feed') {
-          return {
-            insert: insertJobFeedMock,
-          };
-        }
-        return { select: vi.fn() };
-      }),
-    } as unknown as Parameters<typeof processOwnerFieldIntakeReceipt>[1];
-
-    const result = await processOwnerFieldIntakeReceipt(receiptId, mockAdmin);
-
-    expect(result.handled).toBe(true);
-    expect(result.outcome).toBe('field_action_applied');
-    expect(result.actionKind).toBe('update_job');
-    expect(result.targetJobId).toBe(jobId);
-    expect(result.confirmationText).toContain('✅ Updated Job J-101 (Smith)');
-
-    expect(updateJobMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        status: 'complete',
-        scope: expect.stringContaining('[Field Note]: Customer very happy with trim paint.'),
-      }),
-    );
-    expect(insertJobFeedMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        account_id: accountId,
-        job_id: jobId,
-        kind: 'field_sms_update',
-      }),
-    );
-  });
-
-  it('applies add_quote_line_item and recalculates total quoted amount', async () => {
-    const accountId = '11111111-1111-4111-8111-111111111111';
-    const jobId = '22222222-2222-4222-8222-222222222222';
-    const receiptId = '33333333-3333-4333-8333-333333333333';
-
-    mockGenerateContent.mockResolvedValueOnce({
-      functionCalls: [
-        {
-          name: 'add_quote_line_item',
-          args: {
-            jobId,
-            label: 'Extra copper pipe & fittings',
-            amount: 350,
-            kind: 'base',
-            confirmationMessage: '✅ Added $350 Extra copper pipe & fittings to J-101. Total: $1,850.',
-          },
-        },
-      ],
-    });
-
-    const updateJobMock = vi.fn().mockReturnValue({
-      eq: vi.fn().mockReturnValue({
-        eq: vi.fn().mockResolvedValue({ data: null, error: null }),
-      }),
-    });
-
-    const insertJobFeedMock = vi.fn().mockResolvedValue({ data: null, error: null });
-
-    const mockAdmin = {
-      from: vi.fn((table: string) => {
-        if (table === 'sms_webhook_receipts') {
-          return {
-            select: vi.fn().mockReturnValue({
-              eq: vi.fn().mockReturnValue({
-                maybeSingle: vi.fn().mockResolvedValue({
-                  data: {
-                    id: receiptId,
-                    provider: 'signalwire',
-                    provider_event_id: 'ev-1',
-                    account_id: accountId,
-                    from_number: '+15551234567',
-                    to_number: '+19479412323',
-                    message_body: 'Add $350 for extra copper pipe to the Smith job',
-                    media_urls: [],
-                    sender_number_id: '44444444-4444-4444-8444-444444444444',
-                  },
-                  error: null,
-                }),
-              }),
-            }),
-          };
-        }
-        if (table === 'accounts') {
-          return {
-            select: vi.fn().mockReturnValue({
-              eq: vi.fn().mockReturnValue({
-                maybeSingle: vi.fn().mockResolvedValue({
-                  data: {
-                    id: accountId,
-                    business_name: 'Acme Plumbing',
-                    alert_phone: '+15551234567',
-                  },
-                  error: null,
-                }),
-              }),
-            }),
-          };
-        }
-        if (table === 'jobs') {
-          return {
-            select: vi.fn((fields: string) => {
-              if (fields.includes('quote_items')) {
-                return {
-                  eq: vi.fn().mockReturnValue({
-                    eq: vi.fn().mockReturnValue({
-                      maybeSingle: vi.fn().mockResolvedValue({
-                        data: {
-                          id: jobId,
-                          quote_items: [{ id: 'item-1', label: 'Rough-in plumbing', amount: 1500, kind: 'base' }],
-                          quoted_amount: 1500,
-                        },
-                        error: null,
-                      }),
-                    }),
-                  }),
-                };
-              }
-              return {
-                eq: vi.fn().mockReturnValue({
-                  order: vi.fn().mockReturnValue({
-                    limit: vi.fn().mockResolvedValue({
-                      data: [
-                        {
-                          id: jobId,
-                          ref: 'J-101',
-                          client_name: 'John Smith',
-                          address: '124 Main St',
-                          status: 'in_progress',
-                          quoted_amount: 1500,
-                        },
-                      ],
-                      error: null,
-                    }),
-                  }),
-                }),
-              };
-            }),
-            update: updateJobMock,
-          };
-        }
-        if (table === 'job_feed') {
-          return {
-            insert: insertJobFeedMock,
-          };
-        }
-        return { select: vi.fn() };
-      }),
-    } as unknown as Parameters<typeof processOwnerFieldIntakeReceipt>[1];
-
-    const result = await processOwnerFieldIntakeReceipt(receiptId, mockAdmin);
-
-    expect(result.handled).toBe(true);
-    expect(result.outcome).toBe('field_action_applied');
-    expect(result.actionKind).toBe('add_quote_line_item');
-
-    expect(updateJobMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        quoted_amount: 1850,
-        quote_items: expect.arrayContaining([
-          expect.objectContaining({ label: 'Extra copper pipe & fittings', amount: 350 }),
-        ]),
-      }),
-    );
-  });
-
-  it('handles ambiguity by queuing clarification SMS without modifying DB', async () => {
-    const accountId = '11111111-1111-4111-8111-111111111111';
-    const receiptId = '33333333-3333-4333-8333-333333333333';
-
-    mockGenerateContent.mockResolvedValueOnce({
-      functionCalls: [
-        {
-          name: 'report_ambiguity',
-          args: {
-            message: '⚠️ We found 2 Smith jobs (124 Main St and 88 Oak Ave). Reply with the address to apply this note.',
-          },
-        },
-      ],
-    });
-
-    const mockAdmin = {
-      from: vi.fn((table: string) => {
-        if (table === 'sms_webhook_receipts') {
-          return {
-            select: vi.fn().mockReturnValue({
-              eq: vi.fn().mockReturnValue({
-                maybeSingle: vi.fn().mockResolvedValue({
-                  data: {
-                    id: receiptId,
-                    provider: 'signalwire',
-                    provider_event_id: 'ev-1',
-                    account_id: accountId,
-                    from_number: '+15551234567',
-                    to_number: '+19479412323',
-                    message_body: 'Add $100 to Smith',
-                    media_urls: [],
-                    sender_number_id: '44444444-4444-4444-8444-444444444444',
-                  },
-                  error: null,
-                }),
-              }),
-            }),
-          };
-        }
-        if (table === 'accounts') {
-          return {
-            select: vi.fn().mockReturnValue({
-              eq: vi.fn().mockReturnValue({
-                maybeSingle: vi.fn().mockResolvedValue({
-                  data: { id: accountId, business_name: 'Acme', alert_phone: '+15551234567' },
+                  data: { id: accountId, business_name: 'Acme General Contracting' },
                   error: null,
                 }),
               }),
@@ -388,8 +149,14 @@ describe('Owner Field Intake Worker (Voice/Text-to-Job)', () => {
                 order: vi.fn().mockReturnValue({
                   limit: vi.fn().mockResolvedValue({
                     data: [
-                      { id: 'j1', ref: 'J-1', client_name: 'Bob Smith', address: '124 Main St' },
-                      { id: 'j2', ref: 'J-2', client_name: 'Alice Smith', address: '88 Oak Ave' },
+                      {
+                        id: jobId,
+                        ref: 'J-101',
+                        client_name: 'John Smith',
+                        address: '124 Main St',
+                        status: 'in_progress',
+                        quoted_amount: 2500,
+                      },
                     ],
                     error: null,
                   }),
@@ -400,31 +167,64 @@ describe('Owner Field Intake Worker (Voice/Text-to-Job)', () => {
         }
         return { select: vi.fn() };
       }),
-    } as unknown as Parameters<typeof processOwnerFieldIntakeReceipt>[1];
+    } as unknown as Parameters<typeof processOwnerFieldClaim>[1];
 
-    const result = await processOwnerFieldIntakeReceipt(receiptId, mockAdmin);
+    const result = await processOwnerFieldClaim(claim, mockAdmin);
 
     expect(result.handled).toBe(true);
-    expect(result.outcome).toBe('ambiguity_clarification_sent');
-    expect(result.confirmationText).toContain('⚠️ We found 2 Smith jobs');
+    expect(result.outcome).toBe('completed');
+    expect(result.intent).toBe('append_internal_note');
+    expect(result.confirmationText).toBe('[LGQ] J-101 (John Smith): Logged field note.');
+
+    expect(mockRpc).toHaveBeenCalledWith('apply_owner_field_action', {
+      p_task_id: taskId,
+      p_claim_token: claimToken,
+      p_intent: 'append_internal_note',
+      p_params: { jobId, note: 'Gate code is 4821' },
+      p_transcript: 'Gate code for the Smith job is 4821',
+      p_confirmation_text: '[LGQ] J-101 (John Smith): Logged field note.',
+    });
   });
 
-  it('returns handled: false when no_action is called for casual chatter', async () => {
+  it('processes log_cost and formats GSM-7 material cost confirmation', async () => {
     const accountId = '11111111-1111-4111-8111-111111111111';
-    const receiptId = '33333333-3333-4333-8333-333333333333';
+    const taskId = '22222222-2222-4222-8222-222222222222';
+    const claimToken = '33333333-3333-4333-8333-333333333333';
+    const jobId = '44444444-4444-4444-8444-444444444444';
+
+    const claim: SmsInboundActionClaim = {
+      taskId,
+      claimToken,
+      provider: 'signalwire',
+      providerEventId: 'ev-101',
+      accountId,
+      senderNumberId: '55555555-5555-4555-8555-555555555555',
+      senderPurpose: 'lgq_shared',
+      fromNumber: '+15551234567',
+    };
 
     mockGenerateContent.mockResolvedValueOnce({
+      text: 'Used $75 of cement on Smith job',
       functionCalls: [
         {
-          name: 'no_action',
+          name: 'log_cost',
           args: {
-            reason: 'Message is casual greeting, no job update requested',
+            jobId,
+            amount: 75,
+            label: '3 bags of cement',
+            costType: 'material',
           },
         },
       ],
     });
 
+    const mockRpc = vi.fn().mockResolvedValue({
+      data: { target_id: jobId, intent: 'log_cost' },
+      error: null,
+    });
+
     const mockAdmin = {
+      rpc: mockRpc,
       from: vi.fn((table: string) => {
         if (table === 'sms_webhook_receipts') {
           return {
@@ -432,15 +232,12 @@ describe('Owner Field Intake Worker (Voice/Text-to-Job)', () => {
               eq: vi.fn().mockReturnValue({
                 maybeSingle: vi.fn().mockResolvedValue({
                   data: {
-                    id: receiptId,
+                    id: taskId,
                     provider: 'signalwire',
-                    provider_event_id: 'ev-1',
                     account_id: accountId,
                     from_number: '+15551234567',
-                    to_number: '+19479412323',
-                    message_body: 'Hey how is the weather today?',
+                    message_body: 'Used $75 of cement on the Smith job',
                     media_urls: [],
-                    sender_number_id: '44444444-4444-4444-8444-444444444444',
                   },
                   error: null,
                 }),
@@ -453,7 +250,7 @@ describe('Owner Field Intake Worker (Voice/Text-to-Job)', () => {
             select: vi.fn().mockReturnValue({
               eq: vi.fn().mockReturnValue({
                 maybeSingle: vi.fn().mockResolvedValue({
-                  data: { id: accountId, business_name: 'Acme', alert_phone: '+15551234567' },
+                  data: { id: accountId, business_name: 'Acme' },
                   error: null,
                 }),
               }),
@@ -465,7 +262,12 @@ describe('Owner Field Intake Worker (Voice/Text-to-Job)', () => {
             select: vi.fn().mockReturnValue({
               eq: vi.fn().mockReturnValue({
                 order: vi.fn().mockReturnValue({
-                  limit: vi.fn().mockResolvedValue({ data: [], error: null }),
+                  limit: vi.fn().mockResolvedValue({
+                    data: [
+                      { id: jobId, ref: 'J-101', client_name: 'John Smith', address: '124 Main St' },
+                    ],
+                    error: null,
+                  }),
                 }),
               }),
             }),
@@ -473,11 +275,18 @@ describe('Owner Field Intake Worker (Voice/Text-to-Job)', () => {
         }
         return { select: vi.fn() };
       }),
-    } as unknown as Parameters<typeof processOwnerFieldIntakeReceipt>[1];
+    } as unknown as Parameters<typeof processOwnerFieldClaim>[1];
 
-    const result = await processOwnerFieldIntakeReceipt(receiptId, mockAdmin);
+    const result = await processOwnerFieldClaim(claim, mockAdmin);
 
-    expect(result.handled).toBe(false);
-    expect(result.outcome).toBe('no_action');
+    expect(result.handled).toBe(true);
+    expect(result.outcome).toBe('completed');
+    expect(result.intent).toBe('log_cost');
+    expect(result.confirmationText).toBe('[LGQ] J-101 (John Smith): Logged $75.00 3 bags of cement cost.');
+
+    expect(mockRpc).toHaveBeenCalledWith('apply_owner_field_action', expect.objectContaining({
+      p_intent: 'log_cost',
+      p_params: expect.objectContaining({ amount: 75 }),
+    }));
   });
 });
