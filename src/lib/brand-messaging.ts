@@ -15,13 +15,13 @@ export const BRAND_POSITIONING = {
     'Let’s Get Quoted is one connected system for winning the job, running it, and getting paid—starting with a free contractor website.',
   hero: {
     eyebrow: 'FULL CONTRACTOR AI SUITE—THE ONLY SOFTWARE YOU NEED TO RUN YOUR BUSINESS',
-    headline: 'Let AI qualify the lead. You win the right work.',
-    headlinePart1: 'Let AI qualify the lead.',
-    headlinePart2: 'You win the right work.',
+    headline: 'A better front door. A smoother back office.',
+    headlinePart1: 'A better front door.',
+    headlinePart2: 'A smoother back office.',
     supportingCopy:
-      'Launch a contractor website that collects photos, asks the right questions, and turns inquiries into quote-ready opportunities—then keeps every quote, schedule, message, and payment connected.',
+      'Turn better leads into better-run jobs. Build your contractor website for free, then manage intake, quotes, scheduling, crews, customer updates, and payments in one connected system.',
     primaryCta: 'Build my free site',
-    secondaryCta: 'See the full workflow',
+    secondaryCta: 'Watch one job move',
   },
   workflowSteps: [
     {
@@ -39,12 +39,12 @@ export const BRAND_POSITIONING = {
       step: 2,
       id: 'intake',
       name: 'Qualified lead',
-      kicker: 'QUALIFY THE OPPORTUNITY',
-      title: 'AI intake and lead ranking',
+      kicker: 'AI PHOTO INTAKE + LEAD QUALIFICATION',
+      title: 'Let AI qualify the lead. You win the right work.',
       description:
-        'Ask the right trade questions, estimate job value, and surface promising jobs worth answering first.',
+        'Turn photos and homeowner answers into a clear project summary—with scope, urgency, location, value, and potential risks organized before you call.',
       href: '/features/ai-intake',
-      produces: ['A written job summary', 'Budget and urgency read', 'Leads ranked by value'],
+      produces: ['Photo-grounded project summaries', 'Leads prioritized by fit and urgency', 'Quote drafts with profit guardrails'],
     },
     {
       step: 3,

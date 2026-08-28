@@ -53,6 +53,8 @@ describe('the price is stated where the decision is made', () => {
     expect(HERO).toContain('{LOWEST_PLATFORM_FEE}');
     expect(FLEX_PRICE.platformFee).toBe('1.25%');
     expect(LOWEST_PLATFORM_FEE).toBe('0.10%');
+    expect(HERO).toContain('{LOWEST_FEE_PLAN.name}');
+    expect(HERO).not.toContain('on Pro');
   });
 
   it('says the fee applies only to a payment, and links to the detail', () => {
@@ -102,6 +104,13 @@ describe('the features section leads with the website and connects the four work
   it('runs website block → intake → quotes → scheduling → customer portal', () => {
     expect(SITE_FEATURE).toContain("id: 'website-builder'");
     expect(workflowIds).toEqual(['smart-intake', 'quotes', 'scheduling', 'client-portal']);
+  });
+
+  it('moves the previous homepage AI promise into the intake workflow card', () => {
+    expect(CODE).toContain('const AI_INTAKE_WORKFLOW = BRAND_POSITIONING.workflowSteps[1]');
+    expect(WORKFLOW).toContain('title: AI_INTAKE_WORKFLOW.title');
+    expect(WORKFLOW).toContain('body: AI_INTAKE_WORKFLOW.description');
+    expect(WORKFLOW).toContain('produces: AI_INTAKE_WORKFLOW.produces');
   });
 
   it('renders the featured Website block before the workflow features grid', () => {
@@ -160,6 +169,29 @@ describe('the objections are answered on the page that raises them', () => {
     // No `name`: an exclusive accordion closes what you were reading and hides
     // every other answer from the browser's own find-in-page.
     expect(CODE).not.toMatch(/<details[^>]*\sname=/);
+  });
+});
+
+describe('features metadata and acquisition attribution', () => {
+  it('owns its social metadata rather than inheriting the homepage URL and image', () => {
+    expect(CODE).toContain("const FEATURES_URL = 'https://letsgetquoted.com/features'");
+    expect(CODE).toContain('url: FEATURES_URL');
+    expect(CODE).toContain("url: '/product/jobs.webp'");
+    expect(CODE).toContain("images: ['/product/jobs.webp']");
+  });
+
+  it('publishes structured product and visible FAQ data', () => {
+    expect(CODE).toContain("'@type': 'SoftwareApplication'");
+    expect(CODE).toContain("'@type': 'FAQPage'");
+    expect(CODE).toContain('mainEntity: FAQ.map');
+    expect(CODE).toContain('nonce={cspNonce()}');
+  });
+
+  it('attributes conversion CTAs to the feature page and avoids stale catalog counts', () => {
+    expect(CODE).toContain("buildSignupUrl({ source: 'feature_page' })");
+    expect(CODE).toContain('href={FEATURE_SIGNUP_URL}');
+    expect(CODE).toContain('triggerLabel="Browse the full feature catalog"');
+    expect(CODE).not.toContain('100+ feature catalog');
   });
 });
 

@@ -403,10 +403,12 @@ export function PageCTA({
   kicker = "THE FULL CONTRACTOR SUITE IS READY",
   title = "Build the front door. Connect everything behind it.",
   body = "Create your site, qualify better leads and run every job from one place.",
+  href = SIGNUP_URL,
 }: {
   kicker?: string;
   title?: string;
   body?: string;
+  href?: string;
 }) {
   return (
     <section className="page-cta">
@@ -414,7 +416,7 @@ export function PageCTA({
       <p className="eyebrow"><span>✦</span> {kicker}</p>
       <h2>{title}</h2>
       <p>{body}</p>
-      <a className="button primary light" href={SIGNUP_URL}>{SIGNUP_LABEL} <span>→</span></a>
+      <a className="button primary light" href={href}>{SIGNUP_LABEL} <span>→</span></a>
       <small>No card required · Flex starts at $0/month + 1.25%</small>
     </section>
   );

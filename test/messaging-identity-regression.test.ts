@@ -25,17 +25,26 @@ describe('Problem 1: Product Identity and Message Hierarchy', () => {
         'Scheduled work',
         'Payment',
       ]);
+      expect(BRAND_POSITIONING.hero).toMatchObject({
+        eyebrow: 'FULL CONTRACTOR AI SUITE—THE ONLY SOFTWARE YOU NEED TO RUN YOUR BUSINESS',
+        headline: 'A better front door. A smoother back office.',
+        headlinePart1: 'A better front door.',
+        headlinePart2: 'A smoother back office.',
+        secondaryCta: 'Watch one job move',
+      });
     });
   });
 
   describe('Homepage hero alignment', () => {
     it('carries the unified hero copy and CTAs', () => {
-      expect(HOME).toContain('FULL CONTRACTOR AI SUITE—THE ONLY SOFTWARE YOU NEED TO RUN YOUR BUSINESS');
-      expect(HOME).toContain('Let AI qualify the lead.<br /><em>You win the right work.</em>');
-      expect(HOME).toContain(
-        'Capture better leads, run every job, and stay on top of costs, payments, and profitability—all from one connected platform.',
-      );
-      expect(HOME).toContain('Explore a live demo');
+      expect(HOME).toContain("import { BRAND_POSITIONING } from '@/lib/brand-messaging'");
+      expect(HOME).toContain('const HOME_HERO = BRAND_POSITIONING.hero');
+      expect(HOME).toContain('{HOME_HERO.eyebrow}');
+      expect(HOME).toContain('{HOME_HERO.headlinePart1}');
+      expect(HOME).toContain('{HOME_HERO.headlinePart2}');
+      expect(HOME).toContain('{HOME_HERO.supportingCopy}');
+      expect(HOME).toContain('{HOME_HERO.secondaryCta}');
+      expect(HOME).toContain('href="/features#tour"');
       expect(HOME).toContain('{SIGNUP_LABEL}');
       expect(HOME).toContain('AI photo &amp; smart intake');
       expect(HOME).toContain('Instant quote drafts with profit guardrails');
@@ -43,6 +52,7 @@ describe('Problem 1: Product Identity and Message Hierarchy', () => {
     });
 
     it('removes outdated unaligned headline copy', () => {
+      expect(HOME).not.toContain('Let AI qualify the lead.<br /><em>You win the right work.</em>');
       expect(HOME).not.toContain('From first click to final payment.<br /><em>Run it all in one place.</em>');
       expect(HOME).not.toContain('Run your contracting business.<br /><em>All in one place.</em>');
     });
@@ -53,6 +63,16 @@ describe('Problem 1: Product Identity and Message Hierarchy', () => {
       expect(FEATURES).toContain('From website lead to paid job—<em>without stitching together six tools.</em>');
       expect(FEATURES).toContain('ONE JOB RECORD. EVERY STEP CONNECTED.');
       expect(FEATURES).toContain('Build my free site');
+      expect(BRAND_POSITIONING.workflowSteps[1]).toMatchObject({
+        kicker: 'AI PHOTO INTAKE + LEAD QUALIFICATION',
+        title: 'Let AI qualify the lead. You win the right work.',
+        produces: [
+          'Photo-grounded project summaries',
+          'Leads prioritized by fit and urgency',
+          'Quote drafts with profit guardrails',
+        ],
+      });
+      expect(FEATURES).toContain('title: AI_INTAKE_WORKFLOW.title');
     });
   });
 

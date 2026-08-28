@@ -9,7 +9,9 @@ import { SiteFooter, SiteHeader } from './site-chrome';
 import { COMMAND_CENTER_SCREENS } from '@/components/command-center-deck';
 import HeroAiIntakeShowcase from './hero-ai-intake-showcase';
 import { HOME_FAQS } from '@/lib/home-faqs';
+import { BRAND_POSITIONING } from '@/lib/brand-messaging';
 import { PLAN_PRICE_OPTIONS, STRIPE_PROCESSING_NOTE } from '@/lib/pricing';
+import { TRADES } from '@/lib/trades';
 import styles from './flagship.module.css';
 import LaunchBanner from '@/components/marketing/launch-banner';
 import ThemeFab from '@/components/theme-fab';
@@ -23,6 +25,8 @@ const CommandCenterDeck = dynamic(() => import('@/components/command-center-deck
    it — "Start free" at the price, "Create my account" at the close, and
    whatever the header said above both. */
 import { SIGNUP_LABEL } from './site-chrome';
+
+const HOME_HERO = BRAND_POSITIONING.hero;
 
 /**
  * THREE DECLARED PLANES.
@@ -112,7 +116,7 @@ const features: Feature[] = [
     kicker: "ONE-CLICK AI WEBSITE",
     title: "Go from no website to ready for business—in one click.",
     body: "Start with a complete contractor site, then edit every word, service and service area before you publish.",
-    proof: ["Your own domain", "Built for 49 contractor trades", "Edit everything before you publish"],
+    proof: ["Your own domain", `Built for ${TRADES.length} contractor trades`, "Edit everything before you publish"],
     input: "Three business basics",
     output: "A complete, editable site",
     href: "/features/website-builder",
@@ -631,14 +635,14 @@ export default function FlagshipHome() {
             headline, the buttons and the product frame. */}
         <TradeOrbit />
         <div className="hero-copy" data-rise>
-          <p className="eyebrow"><span>✦</span> FULL CONTRACTOR AI SUITE—THE ONLY SOFTWARE YOU NEED TO RUN YOUR BUSINESS</p>
-          <h1>Let AI qualify the lead.<br /><em>You win the right work.</em></h1>
+          <p className="eyebrow"><span>✦</span> {HOME_HERO.eyebrow}</p>
+          <h1>{HOME_HERO.headlinePart1}<br /><em>{HOME_HERO.headlinePart2}</em></h1>
           <p className="hero-sub">
-            Capture better leads, run every job, and stay on top of costs, payments, and profitability—all from one connected platform.
+            {HOME_HERO.supportingCopy}
           </p>
           <div className="hero-actions">
             <a className="button primary" href="https://app.letsgetquoted.com/start?goal=build_site&source=home_hero" ref={heroCtaRef}>{SIGNUP_LABEL} <span>→</span></a>
-            <Link className="button secondary" href="/demo">Explore a live demo</Link>
+            <Link className="button secondary" href="/features#tour">{HOME_HERO.secondaryCta}</Link>
           </div>
           <ul className="hero-proof-list" aria-label="Key contractor capabilities">
             <li><i>✓</i> AI photo &amp; smart intake</li>

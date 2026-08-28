@@ -5,15 +5,18 @@ import {
   PageCTA,
   SiteFooter,
   SiteHeader,
-  SIGNUP_URL,
 } from '@/components/flagship/site-chrome';
 import {
   FLEX_PRICE,
   LOWEST_PLATFORM_FEE,
+  PLAN_PRICE_OPTIONS,
   PLAN_FEE_RANGE_LABEL,
   PUBLIC_PRICING_SUMMARY,
   STRIPE_PROCESSING_NOTE,
 } from '@/lib/pricing';
+import { BRAND_POSITIONING } from '@/lib/brand-messaging';
+import { buildSignupUrl } from '@/lib/signup-intent';
+import { cspNonce } from '@/lib/csp-nonce';
 import { FEATURE_COUNT } from '@/lib/features';
 import { TRADES } from '@/lib/trades';
 import CinematicMessageSimulation from './CinematicMessageSimulation';
@@ -24,6 +27,13 @@ import WebsiteFeaturePreview from './WebsiteFeaturePreview';
 import LaunchBanner from '@/components/marketing/launch-banner';
 import ThemeFab from '@/components/theme-fab';
 import AllFeaturesModal from '@/components/marketing/AllFeaturesModal';
+
+const FEATURES_URL = 'https://letsgetquoted.com/features';
+const FEATURES_DESCRIPTION =
+  'One connected system for contractors: free website, AI intake, quotes, scheduling, crews, and Stripe payments. Plans start at $0/month.';
+const FEATURE_SIGNUP_URL = buildSignupUrl({ source: 'feature_page' });
+const LOWEST_FEE_PLAN = PLAN_PRICE_OPTIONS[PLAN_PRICE_OPTIONS.length - 1];
+const AI_INTAKE_WORKFLOW = BRAND_POSITIONING.workflowSteps[1];
 
 /**
  * The Product page, in the standalone site's visual language.
@@ -51,9 +61,27 @@ import AllFeaturesModal from '@/components/marketing/AllFeaturesModal';
 
 export const metadata: Metadata = {
   title: 'Contractor Software & Features',
-  description:
-    'One connected system for contractors: free website, AI intake, quotes, scheduling, crews, and Stripe payments. Plans start at $0/month.',
-  alternates: { canonical: 'https://letsgetquoted.com/features' },
+  description: FEATURES_DESCRIPTION,
+  alternates: { canonical: FEATURES_URL },
+  openGraph: {
+    type: 'website',
+    url: FEATURES_URL,
+    siteName: "Let's Get Quoted",
+    title: 'Contractor Software & Features · Let’s Get Quoted',
+    description: FEATURES_DESCRIPTION,
+    images: [{
+      url: '/product/jobs.webp',
+      width: 1600,
+      height: 1000,
+      alt: 'The Let’s Get Quoted contractor job workflow',
+    }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Contractor Software & Features · Let’s Get Quoted',
+    description: FEATURES_DESCRIPTION,
+    images: ['/product/jobs.webp'],
+  },
 };
 
 /**
@@ -107,6 +135,34 @@ const FAQ: { q: string; a: string }[] = [
     a: 'Yes, and most people do. The site and the instant estimate are useful on their own from the first day. Quotes, scheduling, crew, texting and payments are already in the same account waiting — you turn to them when you need them, not when a plan says you have to.',
   },
 ];
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'SoftwareApplication',
+      name: "Let's Get Quoted",
+      url: FEATURES_URL,
+      applicationCategory: 'BusinessApplication',
+      operatingSystem: 'Web',
+      description: FEATURES_DESCRIPTION,
+      offers: {
+        '@type': 'Offer',
+        price: '0',
+        priceCurrency: 'USD',
+        description: PUBLIC_PRICING_SUMMARY,
+      },
+    },
+    {
+      '@type': 'FAQPage',
+      mainEntity: FAQ.map((item) => ({
+        '@type': 'Question',
+        name: item.q,
+        acceptedAnswer: { '@type': 'Answer', text: item.a },
+      })),
+    },
+  ],
+};
 
 /**
  * THE `id` IS PART OF THE CONTRACT, NOT DECORATION.
@@ -171,7 +227,7 @@ type WorkflowFeature = {
   body: string;
   href: string;
   kicker: string;
-  produces: [string, string, string];
+  produces: readonly [string, string, string];
   actionLabel: string;
 };
 
@@ -180,11 +236,11 @@ const WORKFLOW_FEATURES: WorkflowFeature[] = [
   {
     number: '01',
     id: 'smart-intake',
-    title: 'AI intake',
-    body: 'Ask the follow-up questions your trade needs, write the job summary, and surface the leads worth answering first.',
-    href: '/features/ai-intake',
-    kicker: 'QUALIFY THE OPPORTUNITY',
-    produces: ['A written job summary', 'Budget and urgency read', 'Leads ranked by value'],
+    title: AI_INTAKE_WORKFLOW.title,
+    body: AI_INTAKE_WORKFLOW.description,
+    href: AI_INTAKE_WORKFLOW.href,
+    kicker: AI_INTAKE_WORKFLOW.kicker,
+    produces: AI_INTAKE_WORKFLOW.produces,
     actionLabel: 'Explore AI Intake',
   },
   {
@@ -230,7 +286,13 @@ const WORKFLOW_FEATURES: WorkflowFeature[] = [
 
 export default function FeaturesPage() {
   return (
-    <main className={`${styles.root} inner-site feature-index-page`}>
+    <>
+      <script
+        type="application/ld+json"
+        nonce={cspNonce()}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <main className={`${styles.root} inner-site feature-index-page`}>
       <a className="skip-link" href="#main-content">
         Skip to content
       </a>
@@ -254,7 +316,7 @@ export default function FeaturesPage() {
           Your website, AI intake, quotes, scheduling, crew, customer updates, and payments all work from the same job record.
         </p>
         <div className="hero-actions">
-          <a className="button primary" href={SIGNUP_URL}>
+          <a className="button primary" href={FEATURE_SIGNUP_URL}>
             Build my free site <span aria-hidden="true">→</span>
           </a>
           <a className="button secondary" href="#tour">
@@ -265,7 +327,7 @@ export default function FeaturesPage() {
         {/* The plan range stays beside the primary action and comes from the
             same canonical catalog as /pricing. */}
         <p className="index-hero-fee">
-          Flex starts at {FLEX_PRICE.platformFee} platform fee (or as low as {LOWEST_PLATFORM_FEE} on Pro) on collected payments. Free to build &amp; quote.{' '}
+          Flex starts at {FLEX_PRICE.platformFee} platform fee (or as low as {LOWEST_PLATFORM_FEE} on {LOWEST_FEE_PLAN.name}) on collected payments. Free to build &amp; quote.{' '}
           <Link href="/pricing">Compare exact prices and limits</Link>
         </p>
 
@@ -545,7 +607,7 @@ export default function FeaturesPage() {
             See everything the back office runs <span aria-hidden="true">→</span>
           </Link>
           <span aria-hidden="true" style={{ opacity: 0.35 }}>·</span>
-          <AllFeaturesModal triggerLabel="Browse full 100+ feature catalog" triggerVariant="text" />
+          <AllFeaturesModal triggerLabel="Browse the full feature catalog" triggerVariant="text" />
         </p>
 
       </section>
@@ -579,8 +641,10 @@ export default function FeaturesPage() {
       <PageCTA
         title="Start with the website. Grow into the whole system."
         body={`${PUBLIC_PRICING_SUMMARY} See /pricing for included capacity, add-ons, and fee terms.`}
+        href={FEATURE_SIGNUP_URL}
       />
       <SiteFooter />
-    </main>
+      </main>
+    </>
   );
 }

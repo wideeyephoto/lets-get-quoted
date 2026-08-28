@@ -14,6 +14,7 @@ const WELCOME_ACTIONS = readFileSync('src/app/welcome/actions.ts', 'utf8');
 const START_PAGE = readFileSync('src/app/start/page.tsx', 'utf8');
 const SITE_CHROME = readFileSync('src/components/flagship/site-chrome.tsx', 'utf8');
 const FLAGSHIP_HOME = readFileSync('src/components/flagship/flagship-home.tsx', 'utf8');
+const FEATURES_PAGE = readFileSync('src/app/features/page.tsx', 'utf8');
 const TRADE_GENERATOR = readFileSync('src/components/marketing/TradeWebsiteGenerator.tsx', 'utf8');
 const PRICING_EXPERIENCE = readFileSync('src/app/pricing/PricingExperience.tsx', 'utf8');
 
@@ -169,6 +170,8 @@ describe('Problem 4: Preserving Signup Intent & Continuity', () => {
       expect(SITE_CHROME).toContain('https://app.letsgetquoted.com/start?goal=build_site&source=nav');
       expect(FLAGSHIP_HOME).toContain('https://app.letsgetquoted.com/start?goal=build_site&source=home_hero');
       expect(FLAGSHIP_HOME).toContain('https://app.letsgetquoted.com/start?goal=build_site&source=footer');
+      expect(FEATURES_PAGE).toContain("buildSignupUrl({ source: 'feature_page' })");
+      expect(FEATURES_PAGE).toContain('href={FEATURE_SIGNUP_URL}');
     });
 
     it('wires website generator and pricing CTAs to buildStartUrl', () => {
