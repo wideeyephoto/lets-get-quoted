@@ -72,7 +72,7 @@ export function parseThemeChoice(value: string | null | undefined): ThemeChoice 
  * what the app has always been, and ThemeSync corrects it in the same session.
  */
 export function resolveTheme(cookieValue: string | null | undefined, systemPrefersLight = false): Theme {
-  return parseTheme(cookieValue) ?? (systemPrefersLight ? 'light' : 'dark');
+  return parseTheme(cookieValue) ?? (systemPrefersLight ? 'sunlight' : 'dark');
 }
 
 /** Cycles across the eight modes: onyx -> dark -> dim -> light -> sunlight -> clarity -> monochrome -> parchment -> onyx */
@@ -95,7 +95,7 @@ export function otherTheme(theme: Theme): Theme {
 export function themeToggleLabel(theme: Theme): string {
   if (theme === 'onyx') return 'Switch to dark mode';
   if (theme === 'dark') return 'Switch to dim mode';
-  if (theme === 'dim') return 'Switch to light mode';
+  if (theme === 'dim') return 'Switch to workbench mode';
   if (theme === 'light') return 'Switch to sunlight mode';
   if (theme === 'sunlight') return 'Switch to clarity mode';
   if (theme === 'clarity') return 'Switch to monochrome mode';
@@ -107,19 +107,19 @@ export function themeToggleLabel(theme: Theme): string {
  * The nine options, in the order they are drawn.
  *
  * Auto sits FIRST because it is the default state and the one you fall back to.
- * The standard lighting ramp comes first (Sunlight → Light → Dim → Dark → Onyx),
+ * The standard lighting ramp comes first (Sunlight → Workbench → Dim → Dark → Onyx),
  * followed by the specialized vision & accessibility suite (Clarity → Monochrome → Parchment).
  */
 export const THEME_CHOICES: { value: ThemeChoice; word: string; label: string }[] = [
   { value: 'system', word: 'Auto', label: 'Match my device' },
   { value: 'sunlight', word: 'Sunlight', label: 'High-contrast daylight' },
-  { value: 'light', word: 'Light', label: 'Soft daylight (workbench)' },
+  { value: 'light', word: 'Workbench', label: 'Dark shell, soft cards (workbench)' },
   { value: 'dim', word: 'Dim', label: 'Soft slate contrast' },
   { value: 'dark', word: 'Dark', label: 'Midnight navy' },
   { value: 'onyx', word: 'Onyx', label: 'OLED pure black (AAA)' },
   { value: 'clarity', word: 'Clarity', label: 'Color vision safe (CVD)' },
   { value: 'monochrome', word: 'Mono', label: 'Pure luminance & shape' },
-  { value: 'parchment', word: 'Parchment', label: 'Warm low-blue light' },
+  { value: 'parchment', word: 'Parchment', label: 'Warm paper light mode' },
 ];
 
 /** The accessible name for a control that is currently on `choice`. */

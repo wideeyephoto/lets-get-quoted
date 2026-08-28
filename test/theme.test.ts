@@ -45,9 +45,9 @@ describe('resolveTheme', () => {
   });
 
   it('follows the operating system when nothing has been chosen', () => {
-    expect(resolveTheme(null, true)).toBe('light');
+    expect(resolveTheme(null, true)).toBe('sunlight');
     expect(resolveTheme(null, false)).toBe('dark');
-    expect(resolveTheme(undefined, true)).toBe('light');
+    expect(resolveTheme(undefined, true)).toBe('sunlight');
   });
 
   it('falls back to dark on the server, where the OS is unknowable', () => {
@@ -83,7 +83,7 @@ describe('system as a choice', () => {
     // The caller passes null for 'system'; the cookie value itself is never a
     // theme, which is the whole reason parseTheme keeps rejecting it.
     expect(parseTheme('system')).toBeNull();
-    expect(resolveTheme(null, true)).toBe('light');
+    expect(resolveTheme(null, true)).toBe('sunlight');
     expect(resolveTheme(null, false)).toBe('dark');
   });
 
@@ -137,7 +137,7 @@ describe('nextTheme / otherTheme / label', () => {
   it('the label says what pressing it will DO, not what it currently is', () => {
     expect(themeToggleLabel('onyx')).toBe('Switch to dark mode');
     expect(themeToggleLabel('dark')).toBe('Switch to dim mode');
-    expect(themeToggleLabel('dim')).toBe('Switch to light mode');
+    expect(themeToggleLabel('dim')).toBe('Switch to workbench mode');
     expect(themeToggleLabel('light')).toBe('Switch to sunlight mode');
     expect(themeToggleLabel('sunlight')).toBe('Switch to clarity mode');
     expect(themeToggleLabel('clarity')).toBe('Switch to monochrome mode');

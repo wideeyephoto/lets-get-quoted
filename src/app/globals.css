@@ -31,105 +31,50 @@
   --grey-4: 200, 212, 228;
   --grey-5: 147, 164, 184;
   --grey-6: 232, 238, 246;
-  --bg: #06131f;
+  --bg: #07131f;
   /* The two grounds under the page: a panel well and a raised card. */
-  --bg-2: #0b1220;
+  --bg-2: #0b1422;
   --bg-3: #101c2b;
-  --bg-elevated: rgba(8, 18, 31, 0.82);
+  --bg-elevated: rgba(16, 28, 43, 0.85);
   --bg-soft: rgba(var(--tint), 0.04);
   --line: rgba(var(--tint), 0.12);
   --text: #f7f5ef;
-  --muted: #c8d0dc;
+  --muted: #b8c4d2;
   /* The dimmer of the two secondary greys, used for captions and hints. */
-  --muted-2: #93a4b8;
+  --muted-2: #8596aa;
   /* Ink that sits ON the accent. The accent doesn't change between themes, so
      neither does this. */
   --on-accent: #180c02;
   --accent: #ff7a21;
-  /* The accent, for TEXT and glyphs that may land on paper.
-     Defined as `var(--accent)` rather than as the literal `#ff7a21`, so
-     swapping a site from --accent to --accent-paper is a provable no-op in
-     dark — the resolved value is the same declaration, not a copy of it that
-     can drift. Only the light theme re-points it.
-     Deliberately NOT --accent-ink: that token's dark value is #ff9d5c, so
-     adopting it would quietly move the dark theme, which is the one thing this
-     pass is not allowed to do. */
+  --accent-2: #ff9d5c;
+  --accent-end: #ff9d5c;
   --accent-paper: var(--accent);
-  --accent-2: #ffd166;
-  /* "Newly arrived", as distinct from the accent's "this wants you today". Two
-     oranges on one rail row make neither of them urgent, so the news badge steps
-     out of the accent's way and the count keeps it. Dark and light need
-     genuinely different greens here — a green bright enough to read on navy is
-     a highlighter pen on white. */
+  --accent-ink: #ff9d5c;
+  --accent-gradient: linear-gradient(180deg, var(--accent), var(--accent-end));
+  --ambient-glow: radial-gradient(circle at top, rgba(255, 122, 33, var(--glow-a, 0.18)), transparent 30%), radial-gradient(circle at 80% 20%, rgba(255, 209, 102, var(--glow-b, 0.12)), transparent 18%);
+  --planning: #7c3aed;
+  --planning-end: #4f169f;
+  --planning-gradient: linear-gradient(180deg, #7c3aed 0%, #6320c9 55%, #4f169f 100%);
+  --planning-glow: radial-gradient(135% 120% at 50% 118%, rgba(214, 176, 255, 0.42) 0%, rgba(168, 85, 247, 0.2) 42%, transparent 70%);
+  --planning-shadow: 0 0 9px rgba(180, 120, 255, 0.6), 0 0 24px rgba(147, 51, 234, 0.42), 0 0 62px rgba(124, 40, 220, 0.3), 0 14px 46px -14px rgba(120, 40, 210, 0.5), inset 0 1px 0 rgba(233, 219, 255, 0.5), inset 0 -20px 38px -24px rgba(214, 186, 255, 0.5);
+  --assistant-accent: linear-gradient(135deg, #7c3aed 0%, #ec4899 55%, #f59e0b 100%);
+  --assistant-shadow: 0 4px 14px rgba(124, 58, 237, 0.32);
+  --glow-a: 0.08;
+  --glow-b: 0.05;
   --fresh: #4fd39a;
-  /* The counterpart to --tint. Where --tint is "the colour that lifts a surface
-     off this theme's ground", --shade is "the colour that pushes one behind it"
-     — shadows, scrims, wells. On a dark ground that is black; on a light one
-     black reads as soot, so it becomes the palette's own deep navy, which at
-     the same alpha lands as a shadow rather than a smudge. */
   --shade: 0, 0, 0;
-  /* Status, as INK. These four are pale on purpose — they were picked to be
-     read on navy, which is why every one of them measured under 1.5:1 on white.
-     A status colour has to mean the same thing in both themes and be legible in
-     both, and no single hex does that, so each gets a real value per theme:
-     bright and desaturated on the dark ground, deep and saturated on the light
-     one. The MEANING is the token; the hex is just how it lands.
-     Fills and gradients keep their own literals — a green chip's wash is not
-     its text.
-
-     THESE FIVE WERE WRITTEN AS `--good: var(--good)` AND SHIPPED THAT WAY. A
-     custom property that references itself is invalid, so every one of them
-     resolved to nothing on the DEFAULT theme — the token existed only under
-     [data-theme='light'] below. Anything using `color: var(--good)` silently
-     inherited its parent's colour instead, which is why "Website: Live" in the
-     top bar stopped being green: the same commit that introduced the tokens
-     also swapped that label from #34d399 over to var(--good).
-     Nothing errors, nothing logs, and a status colour just quietly stops
-     meaning anything — check a computed value, not the stylesheet. */
   --good: #7fe0b2;
   --warn: #ffd591;
   --bad: #ffb4a7;
   --info: #a9c8ff;
-  /* HOW FULL A DAY IS — the month calendar's five-step ramp.
-     Its own scale rather than --good/--warn/--bad, because those three are a
-     verdict (is this thing all right) and these five are a quantity (how much
-     of the day is left). Green to red, in the order they run. --bad is a soft
-     salmon that reads as "notice" against the canvas; an overbooked day is not
-     a notice, so `over` gets a red that carries. Consumed through
-     lib/schedule-capacity — never used raw. */
   --cap-open: #55c98a;
   --cap-light: #b6e94f;
   --cap-busy: #f5c542;
   --cap-full: #ff8a3d;
   --cap-over: #ff6b57;
-  /* OFF the ramp, deliberately. A day carrying work of unstated length is not a
-     sixth level of "how full" — it is the one day the ramp cannot answer for —
-     so it takes a neutral rather than a hue, and the cell wears a hatch and a
-     "?" as well. See capacityLevel in lib/schedule-capacity. */
   --cap-unknown: #9aa4b2;
-  /* The gold used as a label/eyebrow. --accent-2 stays hue for gradients and
-     washes; this is the same idea when it has to be read as words. */
   --gold-ink: #ffd166;
-  /* The accent when it has to be READ rather than filled: 'Selected lead',
-     'Hot', a highlighted figure. Orange tints that glow on navy sit at 2:1 on
-     paper, so light gets a burnt version at the same meaning. */
-  --accent-ink: #ff9d5c;
-  /* Ink on the active nav row, which is an accent WASH rather than a solid
-     accent — so --on-accent (built for solid orange) is wrong here. */
   --on-active: #fff;
-  /* THE RAIL'S FOUR SECTIONS, one hue each.
-     Work keeps the brand orange (it is the day's work, and the accent already
-     means "this wants you"); the other three step away from it so Team, Money
-     and Grow are told apart before a single label is read. Consumed ONLY
-     through --section-accent on .sidenav-group--* — never referenced by a row,
-     because the moment one item picks its own the section stops being a
-     section. See the .sidenav-group--* block.
-     No light-theme counterpart on purpose: Harbour flips the content SHEETS to
-     paper and leaves the chrome dark (--chrome is a deep navy in both themes),
-     so the rail these are drawn on never changes ground. Measured against the
-     lighter of the two grounds (#1b232e): 6.1, 8.2, 9.4 and 6.8:1 — every one
-     clears 4.5:1, which is what the 10px uppercase eyebrow needs, not just the
-     3:1 an icon does. */
   --nav-work: #ff791f;
   --nav-intake: #38bdf8;
   --nav-team: #40c9f4;
@@ -137,8 +82,6 @@
   --nav-grow: #b89afb;
   --shadow-strong: rgba(0, 0, 0, 0.55);
   --shadow-soft: rgba(0, 0, 0, 0.32);
-  /* The page ground, and the chrome (rail / top bar) that sits a shade apart
-     from it. */
   --ground-1: #07111d;
   --ground-2: #0d1724;
   --panel-rgb: 8, 18, 31;
@@ -150,23 +93,7 @@
   color: var(--text);
 }
 
-/* Light. Only the tokens are redefined — no component rule below knows which
-   theme it is in, which is the property that keeps the two from drifting.
-
-   The tint is a deep navy rather than pure black: the same hue family as the
-   dark ground, so the greys it makes read as part of this app rather than as
-   a generic grey scale. Shadows go much softer, because a dark shadow that
-   looked like depth on a dark ground looks like dirt on a light one. */
-/* HARBOUR — the canvas.
-   ---------------------------------------------------------------------------
-   Not a light theme in the usual sense: the PAGE stays dark and the CONTAINERS
-   flip to light. Paper on a workbench. The rail, the page titles and the rest
-   of the chrome keep their light-on-dark treatment untouched; only the content
-   sheets invert, in the block below this one.
-
-   So this half is still a dark theme and its tokens say so — --tint is white,
-   because a lift on the canvas is still a white lift. `color-scheme: dark`
-   because the scrollbars and form controls out here sit on the canvas. */
+/* Light / Workbench. Shell is #202A36 and cards flip to off-white #F7F8FA. */
 :root[data-theme='light'] {
   color-scheme: dark;
   --tint: 255, 255, 255;
@@ -177,27 +104,39 @@
   --grey-4: 183, 195, 210;
   --grey-5: 157, 171, 189;
   --grey-6: 222, 231, 240;
-  --bg: #1e2733;
-  --bg-2: #202a37;
-  --bg-3: #26313f;
-  --bg-elevated: rgba(32, 42, 55, 0.86);
+  --bg: #202a36;
+  --bg-2: #242e3b;
+  --bg-3: #2a3645;
+  --bg-elevated: rgba(32, 42, 54, 0.86);
   --text: #f0f4f8;
   --muted: #b7c3d0;
   --muted-2: #9dabbd;
+  --accent: #f97316;
+  --accent-2: #fdba74;
+  --accent-end: #fdba74;
+  --accent-paper: var(--accent);
+  --accent-ink: #fdba74;
+  --accent-gradient: linear-gradient(180deg, var(--accent), var(--accent-end));
+  --ambient-glow: radial-gradient(circle at top, rgba(249, 115, 22, var(--glow-a, 0.08)), transparent 30%), radial-gradient(circle at 80% 20%, rgba(253, 186, 116, var(--glow-b, 0.05)), transparent 18%);
+  --planning: #7c3aed;
+  --planning-end: #6d28d9;
+  --planning-gradient: linear-gradient(180deg, #8b5cf6 0%, #6d28d9 100%);
+  --planning-glow: radial-gradient(135% 120% at 50% 118%, rgba(139, 92, 246, 0.3) 0%, transparent 70%);
+  --planning-shadow: 0 4px 18px rgba(109, 40, 217, 0.35);
+  --assistant-accent: linear-gradient(135deg, #7c3aed 0%, #ec4899 55%, #f59e0b 100%);
+  --assistant-shadow: 0 4px 14px rgba(124, 58, 237, 0.32);
   --shade: 0, 0, 0;
   --shadow-strong: rgba(0, 0, 0, 0.5);
   --shadow-soft: rgba(0, 0, 0, 0.3);
   --ground-1: #1a222d;
   --ground-2: #242e3b;
-  --panel-rgb: 32, 42, 55;
+  --panel-rgb: 32, 42, 54;
   --chrome-rgb: 26, 34, 45;
   --chrome: rgba(26, 34, 45, 0.9);
   --chrome-soft: rgba(26, 34, 45, 0.8);
   --chrome-solid: rgba(26, 34, 45, 0.96);
   --glow-a: 0.05;
   --glow-b: 0.04;
-  /* Status and ink ON THE CANVAS take the bright values — same meanings, the
-     dark theme's rendering of them. The sheets take the deep ones below. */
   --good: #7fe0b2;
   --warn: #ffd591;
   --bad: #ffb4a7;
@@ -209,49 +148,55 @@
   --cap-over: #ff6b57;
   --cap-unknown: #9aa4b2;
   --gold-ink: #ffd166;
-  --accent-ink: #ff9d5c;
-  /* White, exactly as in dark. The active row's wash is still the brand orange
-     out here — the canvas did not change the accent, only the ground — so its
-     ink must not drift blue. */
   --on-active: #fff;
   --fresh: #4fd39a;
 }
 
-/* DIM / TWILIGHT — the in-between canvas.
-   ---------------------------------------------------------------------------
-   A soft slate-charcoal ground that sits between the high-contrast midnight
-   Dark theme (#06131f) and the light Harbour theme. Built for lower eye strain
-   in moderate indoor light. Surfaces lift with white alpha tokens (--tint is
-   white) on a slate background. */
+/* DIM — Noticeably lighter and less blue than Dark (#1A2430 / #243140). */
 :root[data-theme='dim'] {
   color-scheme: dark;
   --tint: 255, 255, 255;
-  --ink-rgb: 242, 246, 250;
+  --ink-rgb: 232, 237, 243;
   --grey-1: 152, 175, 204;
   --grey-2: 188, 202, 220;
   --grey-3: 182, 198, 216;
   --grey-4: 192, 206, 224;
   --grey-5: 148, 166, 188;
   --grey-6: 226, 234, 244;
-  --bg: #121d2b;
-  --bg-2: #182638;
-  --bg-3: #1f3046;
-  --bg-elevated: rgba(24, 38, 56, 0.88);
+  --bg: #1a2430;
+  --bg-2: #243140;
+  --bg-3: #2d3d4f;
+  --bg-elevated: rgba(36, 49, 64, 0.94);
   --bg-soft: rgba(var(--tint), 0.05);
   --line: rgba(var(--tint), 0.11);
-  --text: #f0f4f8;
-  --muted: #b8c6d6;
-  --muted-2: #8c9eb4;
+  --text: #e8edf3;
+  --muted: #aab6c4;
+  --muted-2: #8493a5;
+  --accent: #e97830;
+  --accent-2: #f59e66;
+  --accent-end: #f59e66;
+  --accent-paper: var(--accent);
+  --accent-ink: #f59e66;
+  --accent-gradient: linear-gradient(180deg, var(--accent), var(--accent-end));
+  --ambient-glow: radial-gradient(circle at top, rgba(233, 120, 48, var(--glow-a, 0.12)), transparent 30%), radial-gradient(circle at 80% 20%, rgba(245, 158, 102, var(--glow-b, 0.08)), transparent 18%);
+  --planning: #7c3aed;
+  --planning-end: #6d28d9;
+  --planning-gradient: linear-gradient(180deg, #8b5cf6 0%, #6d28d9 100%);
+  --planning-glow: radial-gradient(135% 120% at 50% 118%, rgba(139, 92, 246, 0.3) 0%, transparent 70%);
+  --planning-shadow: 0 4px 18px rgba(109, 40, 217, 0.35);
+  --assistant-accent: linear-gradient(135deg, #7c3aed 0%, #ec4899 55%, #f59e0b 100%);
+  --assistant-shadow: 0 4px 14px rgba(124, 58, 237, 0.32);
+  --on-accent: #110903;
   --shade: 0, 0, 0;
   --shadow-strong: rgba(0, 0, 0, 0.48);
   --shadow-soft: rgba(0, 0, 0, 0.28);
-  --ground-1: #0f1926;
-  --ground-2: #162436;
-  --panel-rgb: 24, 38, 56;
-  --chrome-rgb: 16, 26, 38;
-  --chrome: rgba(16, 26, 38, 0.90);
-  --chrome-soft: rgba(16, 26, 38, 0.80);
-  --chrome-solid: rgba(16, 26, 38, 0.96);
+  --ground-1: #16202c;
+  --ground-2: #1e2a38;
+  --panel-rgb: 36, 49, 64;
+  --chrome-rgb: 22, 32, 44;
+  --chrome: rgba(22, 32, 44, 0.92);
+  --chrome-soft: rgba(22, 32, 44, 0.82);
+  --chrome-solid: #16202c;
   --glow-a: 0.05;
   --glow-b: 0.04;
   --good: #72dcab;
@@ -265,16 +210,11 @@
   --cap-over: #ff6b57;
   --cap-unknown: #9aa4b2;
   --gold-ink: #ffd166;
-  --accent-ink: #ff9d5c;
   --on-active: #fff;
   --fresh: #4fd39a;
 }
 
-/* ONYX — Pure OLED Black / Ultra High-Contrast Dark (WCAG AAA)
-   ---------------------------------------------------------------------------
-   True #000000 pitch black ground for maximum contrast (21:1 pure white-to-black),
-   OLED battery efficiency, and low-vision accessibility. Ambient glow is
-   replaced by crisp 1px structural borders and high-visibility status ink. */
+/* ONYX — Pure OLED Black / Ultra High-Contrast Dark with softer borders */
 :root[data-theme='onyx'] {
   color-scheme: dark;
   --tint: 255, 255, 255;
@@ -287,16 +227,16 @@
   --grey-6: 240, 245, 255;
   --bg: #000000;
   --bg-2: #09090b;
-  --bg-3: #111114;
-  --bg-elevated: rgba(14, 14, 16, 0.96);
+  --bg-3: #101012;
+  --bg-elevated: rgba(16, 16, 18, 0.96);
   --bg-soft: rgba(var(--tint), 0.08);
-  --line: rgba(var(--tint), 0.22);
-  --text: #ffffff;
-  --muted: #d4d4d8;
-  --muted-2: #a1a1aa;
+  --line: rgba(var(--tint), 0.12);
+  --text: #fafafa;
+  --muted: #c4c4cc;
+  --muted-2: #92929c;
   --shade: 0, 0, 0;
   --shadow-strong: rgba(0, 0, 0, 0.85);
-  --shadow-soft: rgba(0, 0, 0, 0.55);
+  --shadow-soft: rgba(0, 0, 0, 0.45);
   --ground-1: #000000;
   --ground-2: #08080a;
   --panel-rgb: 9, 9, 11;
@@ -304,11 +244,22 @@
   --chrome: rgba(0, 0, 0, 0.96);
   --chrome-soft: rgba(0, 0, 0, 0.88);
   --chrome-solid: #000000;
-  --glow-a: 0.08;
-  --glow-b: 0.06;
+  --glow-a: 0.06;
+  --glow-b: 0.04;
   --accent: #ff8800;
+  --accent-2: #ffb347;
+  --accent-end: #ffb347;
   --accent-paper: var(--accent);
   --accent-ink: #ffa33a;
+  --accent-gradient: linear-gradient(180deg, var(--accent), var(--accent-end));
+  --ambient-glow: radial-gradient(circle at top, rgba(255, 136, 0, var(--glow-a, 0.08)), transparent 30%);
+  --planning: #8b5cf6;
+  --planning-end: #5b21b6;
+  --planning-gradient: linear-gradient(180deg, #8b5cf6 0%, #5b21b6 100%);
+  --planning-glow: radial-gradient(135% 120% at 50% 118%, rgba(139, 92, 246, 0.35) 0%, transparent 70%);
+  --planning-shadow: 0 0 16px rgba(139, 92, 246, 0.4);
+  --assistant-accent: linear-gradient(135deg, #7c3aed 0%, #ec4899 55%, #f59e0b 100%);
+  --assistant-shadow: 0 4px 14px rgba(124, 58, 237, 0.32);
   --on-accent: #000000;
   --good: #4ade80;
   --warn: #fde047;
@@ -325,12 +276,7 @@
   --fresh: #4ade80;
 }
 
-/* SUNLIGHT — True Full Light / High-Contrast Day
-   ---------------------------------------------------------------------------
-   A calibrated full-light canvas for bright daylight and direct outdoor clarity.
-   Eliminates blinding glare with a balanced daylight slate ground (#eef2f6),
-   crisp white panels (#ffffff), and rich carbon text (#0a0f1d / #1e293b) with
-   full high-contrast paper ink ramp across all components and navigation chrome. */
+/* SUNLIGHT — True Full Light / Soft Daylight Borders (#CBD5E1) */
 :root[data-theme='sunlight'] {
   color-scheme: light;
   --tint: 15, 23, 42;
@@ -346,16 +292,26 @@
   --bg-2: #ffffff;
   --bg-3: #e2e8f0;
   --bg-elevated: #ffffff;
-  --bg-soft: rgba(15, 23, 42, 0.05);
-  --line: rgba(15, 23, 42, 0.16);
-  --text: #0a0f1d;
-  --muted: #1e293b;
-  --muted-2: #334155;
+  --bg-soft: rgba(15, 23, 42, 0.04);
+  --line: #cbd5e1;
+  --text: #0f172a;
+  --muted: #475569;
+  --muted-2: #64748b;
   --on-accent: #ffffff;
-  --accent: #d95d00;
-  --accent-paper: #c2410c;
-  --accent-ink: #c2410c;
-  --accent-2: #b45309;
+  --accent: #c94f00;
+  --accent-2: #e66a19;
+  --accent-end: #e66a19;
+  --accent-paper: #c94f00;
+  --accent-ink: #c94f00;
+  --accent-gradient: linear-gradient(180deg, var(--accent), var(--accent-end));
+  --ambient-glow: radial-gradient(circle at top, rgba(201, 79, 0, var(--glow-a, 0.04)), transparent 30%);
+  --planning: #6d28d9;
+  --planning-end: #4c1d95;
+  --planning-gradient: linear-gradient(180deg, #7c3aed 0%, #6d28d9 100%);
+  --planning-glow: radial-gradient(135% 120% at 50% 118%, rgba(109, 40, 217, 0.15) 0%, transparent 70%);
+  --planning-shadow: 0 4px 14px rgba(109, 40, 217, 0.25);
+  --assistant-accent: linear-gradient(135deg, #7c3aed 0%, #ec4899 55%, #f59e0b 100%);
+  --assistant-shadow: 0 4px 14px rgba(124, 58, 237, 0.32);
   --fresh: #047857;
   --good: #047857;
   --warn: #b45309;
@@ -369,8 +325,8 @@
   --cap-unknown: #55606e;
   --gold-ink: #7a5200;
   --on-active: #0f172a;
-  --shadow-strong: rgba(15, 23, 42, 0.18);
-  --shadow-soft: rgba(15, 23, 42, 0.08);
+  --shadow-strong: rgba(15, 23, 42, 0.08);
+  --shadow-soft: rgba(15, 23, 42, 0.04);
   --ground-1: #e2e8f0;
   --ground-2: #cbd5e1;
   --panel-rgb: 255, 255, 255;
@@ -389,7 +345,7 @@
   --ink-amber-7: #866116;
   --ink-amber-8: #876116;
   --ink-blue: #2361d4;
-  --ink-blue-2: #17518f;
+  --ink-blue-2: #17518f;  /* was #6aa8ee */
   --ink-green-1: #1f7739;
   --ink-green-2: #1d7648;
   --ink-green-3: #137838;
@@ -402,7 +358,7 @@
   --ink-green-10: #13773a;
   --ink-green-11: #1d7650;
   --ink-green-12: #16764e;
-  --ink-green-13: #0f7038;
+  --ink-green-13: #0f7038;  /* was #4ade80 */
   --ink-lime-1: #4f7213;
   --ink-lime-2: #517213;
   --ink-mint: #137560;
@@ -462,7 +418,7 @@
   --ink-violet-2: #893bdf;
   --ink-violet-3: #7249e1;
   --ink-violet-4: #6b4ce2;
-  --ink-violet-5: #6d3fd6;
+  --ink-violet-5: #6d3fd6;  /* was #a78bfa */
 
   --rail-crew-0: #d1590a;
   --rail-crew-1: #1783c4;
@@ -600,66 +556,58 @@
   --dim-amber-4: #886016;
   --dim-grey-2: #323a4b;
 
-  --edge-t05: #31445b;
-  --edge-t07: #31445b;
-  --edge-t08: #31445b;
-  --edge-t09: #31445b;
-  --edge-t10: #28384b;
-  --edge-t11: #28384b;
-  --edge-t12: #28384b;
-  --edge-t13: #28384b;
-  --edge-t14: #1f2a39;
-  --edge-t15: #1f2a39;
-  --edge-t16: #1f2a39;
-  --edge-t17: #1f2a39;
-  --edge-t18: #1f2a39;
-  --edge-t20: #1f2a39;
-  --edge-t22: #1f2a39;
-  --edge-t24: #1f2a39;
-  --edge-t25: #1f2a39;
-  --edge-t26: #1f2a39;
-  --edge-t28: #1f2a39;
-  --edge-t30: #1f2a39;
-  --edge-t32: #1f2a39;
-  --edge-t34: #1f2a39;
-  --edge-t35: #1f2a39;
-  --edge-t40: #1f2a39;
-  --edge-t50: #1f2a39;
-  --edge-t90: #1f2a39;
-  --edge-g14: #31445b;
-  --edge-g16: #31445b;
-  --edge-g18: #28384b;
-  --edge-g20: #28384b;
-  --edge-g22: #28384b;
-  --edge-g24: #1f2a39;
-  --edge-g25: #1f2a39;
-  --edge-g26: #1f2a39;
-  --edge-g28: #1f2a39;
+  --edge-t05: #e2e8f0;
+  --edge-t07: #e2e8f0;
+  --edge-t08: #cbd5e1;
+  --edge-t09: #cbd5e1;
+  --edge-t10: #cbd5e1;
+  --edge-t11: #cbd5e1;
+  --edge-t12: #cbd5e1;
+  --edge-t13: #cbd5e1;
+  --edge-t14: #cbd5e1;
+  --edge-t15: #cbd5e1;
+  --edge-t16: #cbd5e1;
+  --edge-t17: #cbd5e1;
+  --edge-t18: #cbd5e1;
+  --edge-t20: #cbd5e1;
+  --edge-t22: #cbd5e1;
+  --edge-t24: #cbd5e1;
+  --edge-t25: #cbd5e1;
+  --edge-t26: #cbd5e1;
+  --edge-t28: #cbd5e1;
+  --edge-t30: #cbd5e1;
+  --edge-t32: #cbd5e1;
+  --edge-t34: #cbd5e1;
+  --edge-t35: #cbd5e1;
+  --edge-t40: #cbd5e1;
+  --edge-t50: #cbd5e1;
+  --edge-t90: #cbd5e1;
+  --edge-g14: #cbd5e1;
+  --edge-g16: #cbd5e1;
+  --edge-g18: #cbd5e1;
+  --edge-g20: #cbd5e1;
+  --edge-g22: #cbd5e1;
+  --edge-g24: #cbd5e1;
+  --edge-g25: #cbd5e1;
+  --edge-g26: #cbd5e1;
+  --edge-g28: #cbd5e1;
 }
 
-
-
-
-/* CLARITY — Color Vision Deficiency Safe (Okabe-Ito CUD Standard)
-   ---------------------------------------------------------------------------
-   Engineered for Red-Green Color Blindness (Deuteranopia & Protanopia), which
-   accounts for ~99% of all color deficiency. Replaces green-vs-red with
-   Okabe-Ito Cerulean Sky Blue (--good) vs. Magenta-Vermilion (--bad) vs.
-   Amber Gold (--warn), keeping every status 100% distinguishable. */
+/* CLARITY — Color Vision Deficiency Safe (Okabe-Ito Standard: Blue / Yellow / Vermilion / Purple) */
 :root[data-theme='clarity'] {
   color-scheme: dark;
   --tint: 255, 255, 255;
-  --ink-rgb: 242, 246, 252;
+  --ink-rgb: 248, 250, 252;
   --grey-1: 155, 175, 205;
   --grey-2: 190, 205, 225;
   --grey-3: 185, 200, 220;
   --grey-4: 195, 210, 230;
   --grey-5: 150, 170, 195;
   --grey-6: 230, 238, 250;
-  --bg: #09131f;
-  --bg-2: #0f1c2d;
-  --bg-3: #16263b;
-  --bg-elevated: rgba(15, 28, 45, 0.92);
+  --bg: #08131f;
+  --bg-2: #0c1929;
+  --bg-3: #102033;
+  --bg-elevated: rgba(16, 32, 51, 0.94);
   --bg-soft: rgba(var(--tint), 0.05);
   --line: rgba(var(--tint), 0.16);
   --text: #f8fafc;
@@ -668,74 +616,98 @@
   --shade: 0, 0, 0;
   --shadow-strong: rgba(0, 0, 0, 0.6);
   --shadow-soft: rgba(0, 0, 0, 0.35);
-  --ground-1: #07101a;
-  --ground-2: #0e1927;
-  --panel-rgb: 15, 28, 45;
-  --chrome-rgb: 7, 16, 26;
-  --chrome: rgba(7, 16, 26, 0.94);
-  --chrome-soft: rgba(7, 16, 26, 0.84);
-  --chrome-solid: #07101a;
+  --ground-1: #060e18;
+  --ground-2: #0a1624;
+  --panel-rgb: 16, 32, 51;
+  --chrome-rgb: 8, 19, 31;
+  --chrome: rgba(8, 19, 31, 0.94);
+  --chrome-soft: rgba(8, 19, 31, 0.84);
+  --chrome-solid: #08131f;
   --glow-a: 0.06;
   --glow-b: 0.05;
-  --accent: #38bdf8;
+  --accent: #56b4e9;
+  --accent-2: #8ecdf0;
+  --accent-end: #8ecdf0;
   --accent-paper: var(--accent);
-  --accent-ink: #7dd3fc;
+  --accent-ink: #8ecdf0;
+  --accent-gradient: linear-gradient(180deg, var(--accent), var(--accent-end));
+  --ambient-glow: radial-gradient(circle at top, rgba(86, 180, 233, var(--glow-a, 0.14)), transparent 30%), radial-gradient(circle at 80% 20%, rgba(240, 228, 66, var(--glow-b, 0.08)), transparent 18%);
+  --planning: #cc79a7;
+  --planning-end: #7a315d;
+  --planning-gradient: linear-gradient(180deg, #cc79a7 0%, #9e4b7b 55%, #7a315d 100%);
+  --planning-glow: radial-gradient(135% 120% at 50% 118%, rgba(204, 121, 167, 0.35) 0%, transparent 70%);
+  --planning-shadow: 0 0 9px rgba(204, 121, 167, 0.6), 0 0 24px rgba(158, 75, 123, 0.42), 0 0 62px rgba(122, 49, 93, 0.3), 0 14px 46px -14px rgba(122, 49, 93, 0.5), inset 0 1px 0 rgba(245, 214, 233, 0.5), inset 0 -20px 38px -24px rgba(240, 189, 219, 0.5);
+  --assistant-accent: linear-gradient(135deg, #56b4e9 0%, #cc79a7 55%, #f0e442 100%);
+  --assistant-shadow: 0 4px 14px rgba(86, 180, 233, 0.32);
   --on-accent: #081a2e;
-  --good: #38bdf8;
-  --warn: #fde047;
-  --bad: #f43f5e;
-  --info: #c084fc;
-  --cap-open: #38bdf8;
-  --cap-light: #67e8f9;
-  --cap-busy: #fde047;
-  --cap-full: #fb923c;
-  --cap-over: #f43f5e;
+  --good: #56b4e9;
+  --warn: #f0e442;
+  --bad: #ff6b4a;
+  --info: #cc79a7;
+  --cap-open: #56b4e9;
+  --cap-light: #8ecdf0;
+  --cap-busy: #f0e442;
+  --cap-full: #ff6b4a;
+  --cap-over: #d55e00;
   --cap-unknown: #94a3b8;
-  --gold-ink: #fde047;
+  --gold-ink: #f0e442;
   --on-active: #ffffff;
-  --fresh: #38bdf8;
+  --fresh: #56b4e9;
+  --nav-work: #56b4e9;
+  --nav-intake: #8ecdf0;
+  --nav-team: #cc79a7;
+  --nav-money: #56b4e9;
+  --nav-grow: #f0e442;
 }
 
-/* MONOCHROME — Pure Luminance & Structural Shape (Achromatopsia & E-Ink)
-   ---------------------------------------------------------------------------
-   Zero reliance on color hues. States and hierarchies are communicated via
-   pure luminance contrast (18:1+), stroke weights, and structural shapes. */
+/* MONOCHROME — Pure Luminance & Grayscale Ramps */
 :root[data-theme='monochrome'] {
   color-scheme: dark;
   --tint: 255, 255, 255;
-  --ink-rgb: 255, 255, 255;
+  --ink-rgb: 250, 250, 250;
   --grey-1: 170, 170, 175;
   --grey-2: 215, 215, 220;
   --grey-3: 200, 200, 205;
   --grey-4: 225, 225, 230;
   --grey-5: 160, 160, 165;
   --grey-6: 245, 245, 250;
-  --bg: #0d0d0e;
-  --bg-2: #161618;
-  --bg-3: #202023;
-  --bg-elevated: rgba(22, 22, 24, 0.95);
+  --bg: #0b0b0c;
+  --bg-2: #121215;
+  --bg-3: #18181b;
+  --bg-elevated: rgba(24, 24, 27, 0.96);
   --bg-soft: rgba(var(--tint), 0.08);
-  --line: rgba(var(--tint), 0.24);
-  --text: #ffffff;
-  --muted: #d4d4d8;
-  --muted-2: #a1a1aa;
+  --line: rgba(var(--tint), 0.20);
+  --text: #fafafa;
+  --muted: #bfc0c7;
+  --muted-2: #8e8e96;
   --shade: 0, 0, 0;
   --shadow-strong: rgba(0, 0, 0, 0.8);
   --shadow-soft: rgba(0, 0, 0, 0.45);
-  --ground-1: #080809;
-  --ground-2: #121214;
-  --panel-rgb: 22, 22, 24;
-  --chrome-rgb: 8, 8, 9;
-  --chrome: rgba(8, 8, 9, 0.95);
-  --chrome-soft: rgba(8, 8, 9, 0.85);
-  --chrome-solid: #080809;
-  --glow-a: 0.07;
-  --glow-b: 0.05;
-  --accent: #ffffff;
-  --accent-paper: var(--accent);
+  --ground-1: #070708;
+  --ground-2: #0f0f11;
+  --panel-rgb: 24, 24, 27;
+  --chrome-rgb: 11, 11, 12;
+  --chrome: rgba(11, 11, 12, 0.95);
+  --chrome-soft: rgba(11, 11, 12, 0.85);
+  --chrome-solid: #0b0b0c;
+  --glow-a: 0.05;
+  --glow-b: 0.03;
+  --accent: #f4f4f5;
+  --accent-2: #a1a1aa;
+  --accent-end: #a1a1aa;
+  --accent-paper: #ffffff;
   --accent-ink: #ffffff;
+  --accent-gradient: linear-gradient(180deg, var(--accent), var(--accent-end));
+  --ambient-glow: radial-gradient(circle at top, rgba(255, 255, 255, var(--glow-a, 0.05)), transparent 30%);
+  --planning: #71717a;
+  --planning-end: #3f3f46;
+  --planning-gradient: linear-gradient(180deg, #71717a 0%, #52525b 55%, #3f3f46 100%);
+  --planning-glow: radial-gradient(135% 120% at 50% 118%, rgba(228, 228, 231, 0.2) 0%, transparent 70%);
+  --planning-shadow: 0 0 9px rgba(228, 228, 231, 0.3), 0 0 24px rgba(161, 161, 170, 0.2), 0 0 62px rgba(113, 113, 122, 0.15), 0 14px 46px -14px rgba(82, 82, 91, 0.4), inset 0 1px 0 rgba(250, 250, 250, 0.4), inset 0 -20px 38px -24px rgba(212, 212, 216, 0.3);
+  --assistant-accent: linear-gradient(135deg, #f4f4f5 0%, #a1a1aa 55%, #52525b 100%);
+  --assistant-shadow: 0 4px 14px rgba(255, 255, 255, 0.2);
   --on-accent: #000000;
-  --good: #ffffff;
+  --good: #fafafa;
   --warn: #e4e4e7;
   --bad: #ffffff;
   --info: #d4d4d8;
@@ -748,61 +720,260 @@
   --gold-ink: #ffffff;
   --on-active: #000000;
   --fresh: #ffffff;
+  --nav-work: #f4f4f5;
+  --nav-intake: #e4e4e7;
+  --nav-team: #d4d4d8;
+  --nav-money: #a1a1aa;
+  --nav-grow: #71717a;
 }
 
-/* PARCHMENT — Warm Sepia / Low-Blue Light & Eye Comfort
-   ---------------------------------------------------------------------------
-   A warm espresso ground (#1a1612) and unbleached parchment ink (#f5ede0).
-   Eliminates cool blue wavelengths (450nm) to reduce photophobia, eye strain,
-   and glare during late-night quoting. */
+/* PARCHMENT — Warm Paper Light Theme (#F1E4CC ground / #FFF7E6 cards / #30261B ink) */
 :root[data-theme='parchment'] {
-  color-scheme: dark;
-  --tint: 245, 237, 224;
-  --ink-rgb: 245, 237, 224;
-  --grey-1: 195, 180, 165;
-  --grey-2: 225, 215, 200;
-  --grey-3: 215, 205, 190;
-  --grey-4: 235, 225, 210;
-  --grey-5: 180, 165, 150;
-  --grey-6: 250, 245, 235;
-  --bg: #1a1612;
-  --bg-2: #241f19;
-  --bg-3: #2e2821;
-  --bg-elevated: rgba(36, 31, 25, 0.94);
-  --bg-soft: rgba(var(--tint), 0.06);
-  --line: rgba(var(--tint), 0.14);
-  --text: #f5ede0;
-  --muted: #d6c7b2;
-  --muted-2: #a89882;
-  --shade: 10, 8, 6;
-  --shadow-strong: rgba(10, 8, 6, 0.7);
-  --shadow-soft: rgba(10, 8, 6, 0.4);
-  --ground-1: #14110e;
-  --ground-2: #1e1a15;
-  --panel-rgb: 36, 31, 25;
-  --chrome-rgb: 20, 17, 14;
-  --chrome: rgba(20, 17, 14, 0.95);
-  --chrome-soft: rgba(20, 17, 14, 0.85);
-  --chrome-solid: #14110e;
-  --glow-a: 0.06;
-  --glow-b: 0.05;
-  --accent: #d97706;
-  --accent-paper: var(--accent);
-  --accent-ink: #fbbf24;
-  --on-accent: #1a1612;
-  --good: #84cc16;
-  --warn: #fbbf24;
-  --bad: #f87171;
-  --info: #fb923c;
-  --cap-open: #84cc16;
-  --cap-light: #a3e635;
-  --cap-busy: #fbbf24;
-  --cap-full: #f97316;
-  --cap-over: #f87171;
-  --cap-unknown: #a89882;
-  --gold-ink: #fbbf24;
-  --on-active: #ffffff;
-  --fresh: #84cc16;
+  color-scheme: light;
+  --tint: 48, 38, 27;
+  --shade: 48, 38, 27;
+  --ink-rgb: 48, 38, 27;
+  --grey-1: 107, 91, 73;
+  --grey-2: 85, 71, 56;
+  --grey-3: 85, 71, 56;
+  --grey-4: 55, 45, 34;
+  --grey-5: 107, 91, 73;
+  --grey-6: 30, 24, 17;
+  --bg: #f1e4cc;
+  --bg-2: #fff7e6;
+  --bg-3: #e8d8bc;
+  --bg-elevated: #fff7e6;
+  --bg-soft: rgba(48, 38, 27, 0.05);
+  --line: rgba(75, 60, 42, 0.15);
+  --text: #30261b;
+  --muted: #6b5b49;
+  --muted-2: #8c7b67;
+  --shade: 48, 38, 27;
+  --shadow-strong: rgba(48, 38, 27, 0.14);
+  --shadow-soft: rgba(48, 38, 27, 0.06);
+  --ground-1: #e8d8bc;
+  --ground-2: #dfcfb2;
+  --panel-rgb: 255, 247, 230;
+  --chrome-rgb: 255, 247, 230;
+  --chrome: rgba(255, 247, 230, 0.94);
+  --chrome-soft: rgba(255, 247, 230, 0.85);
+  --chrome-solid: #fff7e6;
+  --glow-a: 0.04;
+  --glow-b: 0.03;
+  --accent: #a84c00;
+  --accent-2: #d97706;
+  --accent-end: #d97706;
+  --accent-paper: #a84c00;
+  --accent-ink: #a84c00;
+  --accent-gradient: linear-gradient(180deg, var(--accent), var(--accent-end));
+  --ambient-glow: radial-gradient(circle at top, rgba(168, 76, 0, var(--glow-a, 0.04)), transparent 30%);
+  --planning: #6d28d9;
+  --planning-end: #5b21b6;
+  --planning-gradient: linear-gradient(180deg, #7c3aed 0%, #5b21b6 100%);
+  --planning-glow: radial-gradient(135% 120% at 50% 118%, rgba(109, 40, 217, 0.15) 0%, transparent 70%);
+  --planning-shadow: 0 4px 14px rgba(109, 40, 217, 0.2);
+  --assistant-accent: linear-gradient(135deg, #a84c00 0%, #d97706 55%, #b45309 100%);
+  --assistant-shadow: 0 4px 14px rgba(168, 76, 0, 0.25);
+  --on-accent: #ffffff;
+  --good: #2d6a4f;
+  --warn: #b45309;
+  --bad: #9f1239;
+  --info: #854d0e;
+  --cap-open: #2d6a4f;
+  --cap-light: #52796f;
+  --cap-busy: #b45309;
+  --cap-full: #a84c00;
+  --cap-over: #9f1239;
+  --cap-unknown: #8c7b67;
+  --gold-ink: #92400e;
+  --on-active: #30261b;
+  --fresh: #2d6a4f;
+
+  /* --- Paper ink palette on root parchment -------------------------------- */
+  --ink-amber-1: #886016;
+  --ink-amber-2: #7b6614;
+  --ink-amber-3: #7e6514;
+  --ink-amber-4: #826315;
+  --ink-amber-5: #7f6415;
+  --ink-amber-6: #896016;
+  --ink-amber-7: #866116;
+  --ink-amber-8: #876116;
+  --ink-blue: #17518f;
+  --ink-blue-2: #17518f;
+  --ink-green-1: #1f7739;
+  --ink-green-2: #1d7648;
+  --ink-green-3: #137838;
+  --ink-green-4: #147830;
+  --ink-green-5: #177748;
+  --ink-green-6: #1c7743;
+  --ink-green-7: #1e7651;
+  --ink-green-8: #137833;
+  --ink-green-9: #137834;
+  --ink-green-10: #13773a;
+  --ink-green-11: #1d7650;
+  --ink-green-12: #16764e;
+  --ink-green-13: #0f7038;
+  --ink-lime-1: #4f7213;
+  --ink-lime-2: #517213;
+  --ink-mint: #137560;
+  --ink-neutral-1: #30261b;
+  --ink-neutral-2: #30261b;
+  --ink-neutral-3: #4b3d2f;
+  --ink-neutral-4: #30261b;
+  --ink-neutral-5: #4b3d2f;
+  --ink-neutral-6: #4b3d2f;
+  --ink-neutral-7: #4b3d2f;
+  --ink-neutral-8: #4b3d2f;
+  --ink-neutral-9: #30261b;
+  --ink-neutral-10: #30261b;
+  --ink-neutral-11: #4b3d2f;
+  --ink-neutral-12: #4b3d2f;
+  --ink-neutral-13: #4b3d2f;
+  --ink-neutral-14: #30261b;
+  --ink-neutral-15: #30261b;
+  --ink-neutral-16: #30261b;
+  --ink-orange-1: #a0531a;
+  --ink-orange-2: #a3511b;
+  --ink-orange-3: #9c5619;
+  --ink-orange-4: #9e541a;
+  --ink-orange-5: #8a5f17;
+  --ink-orange-6: #9d551a;
+  --ink-orange-7: #a3511b;
+  --ink-orange-8: #a54f1b;
+  --ink-orange-9: #915c18;
+  --ink-orange-10: #a1531a;
+  --ink-orange-11: #945a18;
+  --ink-orange-12: #9f541a;
+  --ink-orange-13: #9e541a;
+  --ink-orange-14: #975919;
+  --ink-orange-15: #925b18;
+  --ink-pink-1: #a81c51;
+  --ink-pink-2: #aa242f;
+  --ink-red-1: #a32b1a;
+  --ink-red-2: #aa1e1e;
+  --ink-red-3: #aa1e1e;
+  --ink-red-4: #aa1e1e;
+  --ink-red-5: #aa1e1e;
+  --ink-red-6: #aa1e1e;
+  --ink-red-7: #aa1e1e;
+  --ink-sky-1: #196f98;
+  --ink-sky-2: #196e9b;
+  --ink-sky-3: #196e9a;
+  --ink-sky-4: #1a6da3;
+  --ink-sky-5: #1e68ba;
+  --ink-sky-6: #186f96;
+  --ink-sky-7: #1c6caa;
+  --ink-sky-8: #196f98;
+  --ink-sky-9: #2a6e90;
+  --ink-sky-10: #187091;
+  --ink-teal-1: #157280;
+  --ink-teal-2: #1b727e;
+  --ink-violet-1: #6a34cc;
+  --ink-violet-2: #722fc2;
+  --ink-violet-3: #623acb;
+  --ink-violet-4: #5a3ac9;
+  --ink-violet-5: #5e32be;
+
+  --rail-crew-0: #a84c00;
+  --rail-crew-1: #17518f;
+  --rail-crew-2: #2d6a4f;
+  --rail-crew-3: #b45309;
+  --rail-crew-4: #a81c51;
+  --rail-crew-5: #6a34cc;
+  --rail-new: #b45309;
+  --rail-progress: #a84c00;
+  --rail-complete: #2d6a4f;
+
+  --mute-t20: #6b5b49;
+  --mute-t22: #6b5b49;
+  --mute-i32: #6b5b49;
+  --mute-t32: #6b5b49;
+  --mute-i34: #6b5b49;
+  --mute-i35: #6b5b49;
+  --mute-t35: #6b5b49;
+  --mute-t36: #6b5b49;
+  --mute-i40: #5c4d3d;
+  --mute-t40: #5c4d3d;
+  --mute-i42: #5c4d3d;
+  --mute-t42: #5c4d3d;
+  --mute-i44: #5c4d3d;
+  --mute-i45: #5c4d3d;
+  --mute-t45: #5c4d3d;
+  --mute-i46: #5c4d3d;
+  --mute-t46: #5c4d3d;
+  --mute-i48: #4b3d2f;
+  --mute-t48: #4b3d2f;
+  --mute-i50: #4b3d2f;
+  --mute-t50: #4b3d2f;
+  --mute-i52: #4b3d2f;
+  --mute-t52: #4b3d2f;
+  --mute-i54: #4b3d2f;
+  --mute-i55: #4b3d2f;
+  --mute-t55: #4b3d2f;
+  --mute-i56: #4b3d2f;
+  --mute-t56: #4b3d2f;
+  --mute-i58: #30261b;
+  --mute-t58: #30261b;
+  --mute-i60: #30261b;
+  --mute-t60: #30261b;
+  --mute-i62: #30261b;
+  --mute-t62: #30261b;
+
+  --mute-g432: #6b5b49;
+  --mute-g434: #6b5b49;
+  --mute-g350: #5c4d3d;
+  --mute-g255: #5c4d3d;
+  --mute-g355: #5c4d3d;
+  --mute-g458: #4b3d2f;
+  --mute-g260: #4b3d2f;
+  --mute-g360: #4b3d2f;
+  --mute-g160: #4b3d2f;
+  --mute-g262: #30261b;
+  --mute-g362: #30261b;
+  --mute-g270: #30261b;
+  --mute-g470: #30261b;
+  --mute-g370: #30261b;
+  --mute-g570: #30261b;
+  --mute-g272: #30261b;
+  --mute-g275: #30261b;
+  --mute-g575: #30261b;
+  --mute-g580: #30261b;
+
+  --edge-t05: rgba(75, 60, 42, 0.10);
+  --edge-t07: rgba(75, 60, 42, 0.12);
+  --edge-t08: rgba(75, 60, 42, 0.14);
+  --edge-t09: rgba(75, 60, 42, 0.15);
+  --edge-t10: rgba(75, 60, 42, 0.15);
+  --edge-t11: rgba(75, 60, 42, 0.15);
+  --edge-t12: rgba(75, 60, 42, 0.15);
+  --edge-t13: rgba(75, 60, 42, 0.15);
+  --edge-t14: rgba(75, 60, 42, 0.15);
+  --edge-t15: rgba(75, 60, 42, 0.15);
+  --edge-t16: rgba(75, 60, 42, 0.15);
+  --edge-t17: rgba(75, 60, 42, 0.15);
+  --edge-t18: rgba(75, 60, 42, 0.15);
+  --edge-t20: rgba(75, 60, 42, 0.15);
+  --edge-t22: rgba(75, 60, 42, 0.15);
+  --edge-t24: rgba(75, 60, 42, 0.15);
+  --edge-t25: rgba(75, 60, 42, 0.15);
+  --edge-t26: rgba(75, 60, 42, 0.15);
+  --edge-t28: rgba(75, 60, 42, 0.15);
+  --edge-t30: rgba(75, 60, 42, 0.15);
+  --edge-t32: rgba(75, 60, 42, 0.15);
+  --edge-t34: rgba(75, 60, 42, 0.15);
+  --edge-t35: rgba(75, 60, 42, 0.15);
+  --edge-t40: rgba(75, 60, 42, 0.15);
+  --edge-t50: rgba(75, 60, 42, 0.15);
+  --edge-t90: rgba(75, 60, 42, 0.15);
+  --edge-g14: rgba(75, 60, 42, 0.15);
+  --edge-g16: rgba(75, 60, 42, 0.15);
+  --edge-g18: rgba(75, 60, 42, 0.15);
+  --edge-g20: rgba(75, 60, 42, 0.15);
+  --edge-g22: rgba(75, 60, 42, 0.15);
+  --edge-g24: rgba(75, 60, 42, 0.15);
+  --edge-g25: rgba(75, 60, 42, 0.15);
+  --edge-g26: rgba(75, 60, 42, 0.15);
+  --edge-g28: rgba(75, 60, 42, 0.15);
 }
 
 /* THE INK PALETTE.
@@ -1472,78 +1643,70 @@
    opens from paper is paper. */
 :root[data-theme='light'] .panel,
 :root[data-theme='sunlight'] .panel,
+:root[data-theme='parchment'] .panel,
 :root[data-theme='light'] .feature-card,
 :root[data-theme='sunlight'] .feature-card,
+:root[data-theme='parchment'] .feature-card,
 :root[data-theme='light'] .bset-master,
 :root[data-theme='sunlight'] .bset-master,
+:root[data-theme='parchment'] .bset-master,
 :root[data-theme='light'] .bset-card,
 :root[data-theme='sunlight'] .bset-card,
+:root[data-theme='parchment'] .bset-card,
 :root[data-theme='light'] .bset-summary-item,
 :root[data-theme='sunlight'] .bset-summary-item,
+:root[data-theme='parchment'] .bset-summary-item,
 :root[data-theme='light'] .bset-section,
 :root[data-theme='sunlight'] .bset-section,
+:root[data-theme='parchment'] .bset-section,
 :root[data-theme='light'] .bset-preview,
 :root[data-theme='sunlight'] .bset-preview,
+:root[data-theme='parchment'] .bset-preview,
 :root[data-theme='light'] .bset-preview-toggle,
 :root[data-theme='sunlight'] .bset-preview-toggle,
+:root[data-theme='parchment'] .bset-preview-toggle,
 :root[data-theme='light'] .bset-recurring,
 :root[data-theme='sunlight'] .bset-recurring,
+:root[data-theme='parchment'] .bset-recurring,
 :root[data-theme='light'] .schedule-popover-panel,
 :root[data-theme='sunlight'] .schedule-popover-panel,
+:root[data-theme='parchment'] .schedule-popover-panel,
 :root[data-theme='light'] .schedule-crew-picker-panel,
 :root[data-theme='sunlight'] .schedule-crew-picker-panel,
+:root[data-theme='parchment'] .schedule-crew-picker-panel,
 :root[data-theme='light'] .schedule-crew-card-panel,
 :root[data-theme='sunlight'] .schedule-crew-card-panel,
+:root[data-theme='parchment'] .schedule-crew-card-panel,
 :root[data-theme='light'] .schedule-crew-quick-panel,
 :root[data-theme='sunlight'] .schedule-crew-quick-panel,
+:root[data-theme='parchment'] .schedule-crew-quick-panel,
 :root[data-theme='light'] .calendar-view-panel,
 :root[data-theme='sunlight'] .calendar-view-panel,
+:root[data-theme='parchment'] .calendar-view-panel,
 :root[data-theme='light'] .crew-assign-panel,
 :root[data-theme='sunlight'] .crew-assign-panel,
+:root[data-theme='parchment'] .crew-assign-panel,
 :root[data-theme='light'] .plan-stop-menu,
 :root[data-theme='sunlight'] .plan-stop-menu,
+:root[data-theme='parchment'] .plan-stop-menu,
 :root[data-theme='light'] .recurring-menu-pop,
 :root[data-theme='sunlight'] .recurring-menu-pop,
+:root[data-theme='parchment'] .recurring-menu-pop,
 :root[data-theme='light'] .bset-dots-pop,
 :root[data-theme='sunlight'] .bset-dots-pop,
+:root[data-theme='parchment'] .bset-dots-pop,
 :root[data-theme='light'] .client-modal,
 :root[data-theme='sunlight'] .client-modal,
+:root[data-theme='parchment'] .client-modal,
 :root[data-theme='light'] .unsaved-guard-panel,
 :root[data-theme='sunlight'] .unsaved-guard-panel,
-/* .bset-tipcard shares a rule with .bset-recurring below (both paint
-   `background: var(--bset-card)`, white on paper) but only the sibling was ever
-   added to this list, so two boxes declared on the same line rendered with
-   different ink.
-
-   .bset itself is deliberately NOT here. It was, briefly: the Booking / Quick
-   Stops WRAPPER was added to fix bare text inside it, which also painted it
-   white — and then the paint was cancelled further down while the ink stayed,
-   which is worse than either. Measured on paper: .bset-head p at 1.32:1 and the
-   "View booking page" link at 1.16:1, plus .bset-savebar — a deliberately dark
-   bar — inheriting near-black ink and disappearing entirely on Booking.
-
-   Under Harbour a full-width layout region is DESK, not paper; only what stands
-   on a sheet takes the deep ink. That is the same call .book-scope's chrome
-   makes at the foot of this file, for the same reason. So .bset keeps canvas
-   ink, and every white surface inside it is on this list in its own right. */
+:root[data-theme='parchment'] .unsaved-guard-panel,
 :root[data-theme='light'] .bset-tipcard,
-:root[data-theme='sunlight'] .bset-tipcard {
+:root[data-theme='sunlight'] .bset-tipcard,
+:root[data-theme='parchment'] .bset-tipcard {
   color-scheme: light;
   --tint: 17, 27, 41;
-  /* Near-black, not the navy. `rgba(var(--ink-rgb), α)` is how ~300 declarations
-     write secondary text, and the alpha is the one thing a token cannot reach.
-     The arithmetic is unforgiving: at α .55 even PURE BLACK only buys 4.76:1 on
-     white, and #0f1a28 buys 3.89:1 — so the ink has to spend nearly all of its
-     range here or every one of those declarations stays under the bar. A trace
-     of blue is all that survives, which is as much as the alpha can afford. */
   --ink-rgb: 2, 6, 14;
-  /* Deliberately darker than a straight mirror of the dark greys. Secondary
-     text is written as `rgba(grey, 0.8)` all over the app, and the SAME alpha
-     buys much less contrast on paper than on navy — the dark theme's ground is
-     far from its ink, the light theme's is not. Measured before this: "Crew
-     member", "Heat", "+5 more" all landed at 3.7–4.2:1, i.e. legible but under
-     the bar. Darkening the tokens fixes every one of those at once, instead of
-     hunting alphas one declaration at a time. */
   --grey-1: 66, 79, 99;
   --grey-2: 56, 68, 86;
   --grey-3: 58, 70, 88;
@@ -1551,103 +1714,74 @@
   --grey-5: 66, 79, 97;
   --grey-6: 40, 52, 70;
   --bg: #eff2f7;
-  --bg-2: #ffffff;
-  --bg-3: #ffffff;
-  --bg-elevated: rgba(255, 255, 255, 0.92);
-  --text: #0f1a28;
-  --muted: #323a4b;
-  --muted-2: #465269;
+  --bg-2: #f7f8fa;
+  --bg-3: #eef1f4;
+  --bg-elevated: #f7f8fa;
+  --text: #162033;
+  --muted: #566274;
+  --muted-2: #717d8e;
   --fresh: #0d7a52;
   --shade: 24, 36, 54;
   --good: #0a6b47;
   --warn: #8a5300;
   --bad: #a8331f;
   --info: #1d4ed8;
-  /* The same five bands on paper. Lime and yellow are the ones that cannot
-     survive the flip untouched — #b6e94f and #f5c542 on white are a highlighter
-     pen, invisible as a 5px bar and worse as a legend swatch — so both drop to
-     a value that holds its edge on a sheet. The HUES are unchanged, which is
-     what keeps "the lime one" meaning the same thing in both themes. */
   --cap-open: #1f7739;
   --cap-light: #5a8a10;
   --cap-busy: #9a6600;
   --cap-full: #c2410c;
   --cap-over: #a8331f;
-  /* Darker than the dark theme's, for the same reason every colour in this
-     block is: it has to hold its edge against a sheet rather than a slab. */
   --cap-unknown: #55606e;
   --gold-ink: #7a5200;
-  /* Harbour's blue, in its deep value — the accent has to change value between
-     the canvas and a sheet for the same reason --good does. The HUE is the
-     brand; the value is just how it lands on what it is standing on. */
-  --accent-ink: #0369a1;
-  /* Same deep blue on paper. #ff7a21 as TEXT on a white sheet measures 2.61:1
-     — under AA for body text, and the reason the Quick Stops disclosure chevron
-     was the last thing failing on that page. */
-  --accent-paper: #0369a1;
-  --on-active: #0b5680;
+  --accent-ink: #c2410c;
+  --accent-paper: #ea580c;
+  --on-active: #0f172a;
   --shadow-strong: rgba(17, 27, 41, 0.18);
   --shadow-soft: rgba(17, 27, 41, 0.1);
   --ground-1: #eef1f7;
   --ground-2: #f6f8fb;
-  --panel-rgb: 255, 255, 255;
-  --chrome-rgb: 255, 255, 255;
-  --chrome: rgba(255, 255, 255, 0.88);
-  --chrome-soft: rgba(255, 255, 255, 0.8);
-  --chrome-solid: rgba(255, 255, 255, 0.95);
+  --panel-rgb: 247, 248, 250;
+  --chrome-rgb: 247, 248, 250;
+  --chrome: rgba(247, 248, 250, 0.88);
+  --chrome-soft: rgba(247, 248, 250, 0.8);
+  --chrome-solid: #f7f8fa;
   --glow-a: 0.07;
   --glow-b: 0.05;
-  /* Paint the sheet itself. --bg-elevated already resolves to white above, but
-     stating it here means the sheet does not depend on which of the several
-     panel rules in this file happens to win. */
-  background: #ffffff;
+  background: #f7f8fa;
   color: var(--text);
-  /* The sheet's own edge, and the one border a contractor sees on every screen.
-     It was #dfe4ea — 1.28:1, which is a suggestion of an edge rather than one.
-     Near-black at 1px is a drawn line: it reads in daylight, and it is what
-     actually separates one card from the next when a page is a grid of them.
-     Same value as --edge-t14 and up, so a sheet and the blocks inside it are
-     edged in one colour rather than two that nearly match. */
-  border-color: #1f2a39;
-  --line: #28384b;
-  /* Lifted off the canvas rather than sitting flush on it. Black, not the ink:
-     this shadow falls on the DARK side of the boundary. */
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.28), 0 14px 34px -14px rgba(0, 0, 0, 0.55);
+  border-color: #e2e8f0;
+  --line: #e2e8f0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15), 0 14px 34px -14px rgba(0, 0, 0, 0.35);
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
 
   /* The ink palette, on paper. Same hue, value inverted. */
-  /* amber — gold / caution */
-  --ink-amber-1: #886016;  /* was #ffc65c */
-  --ink-amber-2: #7b6614;  /* was #fde68a */
-  --ink-amber-3: #7e6514;  /* was #fcd34d */
-  --ink-amber-4: #826315;  /* was #fbbf24 */
-  --ink-amber-5: #7f6415;  /* was #ffdf82 */
-  --ink-amber-6: #896016;  /* was #ffb020 */
-  --ink-amber-7: #866116;  /* was #f0d49a */
-  --ink-amber-8: #876116;  /* was #ffe0a3 */
-  /* blue — periwinkle */
-  --ink-blue: #2361d4;  /* was #cfe0ff */
-  --ink-blue-2: #17518f;  /* was #6aa8ee */
-  /* green — go / complete */
-  --ink-green-1: #1f7739;  /* was #78dc96 */
-  --ink-green-2: #1d7648;  /* was #6fdca4 */
-  --ink-green-3: #137838;  /* was #86efac */
-  --ink-green-4: #147830;  /* was #94efae */
-  --ink-green-5: #177748;  /* was #7fe6b4 */
-  --ink-green-6: #1c7743;  /* was #7ee0a8 */
-  --ink-green-7: #1e7651;  /* was #5fd6a4 */
-  --ink-green-8: #137833;  /* was #5cf08a */
-  --ink-green-9: #137834;  /* was #7bffa6 */
-  --ink-green-10: #13773a;  /* was #39e07a */
-  --ink-green-11: #1d7650;  /* was #4fd39a */
-  --ink-green-12: #16764e;  /* was #6fe4b3 */
-  --ink-green-13: #0f7038;  /* was #4ade80 */
-  /* lime — margin healthy */
-  --ink-lime-1: #4f7213;  /* was #bef264 */
-  --ink-lime-2: #517213;  /* was #d9f99d */
-  /* mint — money in */
-  --ink-mint: #137560;  /* was #19d6ae */
+  --ink-amber-1: #886016;
+  --ink-amber-2: #7b6614;
+  --ink-amber-3: #7e6514;
+  --ink-amber-4: #826315;
+  --ink-amber-5: #7f6415;
+  --ink-amber-6: #896016;
+  --ink-amber-7: #866116;
+  --ink-amber-8: #876116;
+  --ink-blue: #2361d4;
+  --ink-blue-2: #17518f;
+  --ink-green-1: #1f7739;
+  --ink-green-2: #1d7648;
+  --ink-green-3: #137838;
+  --ink-green-4: #147830;
+  --ink-green-5: #177748;
+  --ink-green-6: #1c7743;
+  --ink-green-7: #1e7651;
+  --ink-green-8: #137833;
+  --ink-green-9: #137834;
+  --ink-green-10: #13773a;
+  --ink-green-11: #1d7650;
+  --ink-green-12: #16764e;
+  --ink-green-13: #0f7038;
+  --ink-lime-1: #4f7213;
+  --ink-lime-2: #517213;
+  --ink-mint: #137560;
   /* neutral — greys standing in for text — these join the text ramp, they are not a hue */
   --ink-neutral-1: #0f1a28;  /* was #f4f6f8 */
   --ink-neutral-2: #0f1a28;  /* was #e7ecf3 */
@@ -2325,12 +2459,13 @@
 html, body { margin: 0; min-height: 100%; }
 body {
   font-family: var(--font-body);
-  /* The two accent glows are hue and belong in both themes; the ground under
-     them is the thing that flips. In light the glows are dialled right back —
-     an orange wash that reads as warmth on navy reads as a stain on paper. */
+  /* The ambient glow radial gradients are defined per-theme via --ambient-glow,
+     neutralized in Mono and mapped to CVD-safe hues in Clarity. */
   background:
-    radial-gradient(circle at top, rgba(255, 122, 33, var(--glow-a, 0.18)), transparent 30%),
-    radial-gradient(circle at 80% 20%, rgba(255, 209, 102, var(--glow-b, 0.12)), transparent 18%),
+    var(--ambient-glow,
+      radial-gradient(circle at top, rgba(255, 122, 33, var(--glow-a, 0.18)), transparent 30%),
+      radial-gradient(circle at 80% 20%, rgba(255, 209, 102, var(--glow-b, 0.12)), transparent 18%)
+    ),
     linear-gradient(180deg, var(--ground-1) 0%, var(--ground-2) 48%, var(--ground-1) 100%);
 }
 a { color: inherit; text-decoration: none; }
@@ -2754,13 +2889,13 @@ h3 {
   padding: 0.6rem 0.75rem;
   border: 0;
   border-radius: 12px;
-  background: linear-gradient(180deg, var(--accent), #ff9440);
+  background: var(--accent-gradient, linear-gradient(180deg, var(--accent), var(--accent-2)));
   color: var(--on-accent);
   font-family: inherit;
   font-size: 0.92rem;
   font-weight: 700;
   cursor: pointer;
-  box-shadow: 0 12px 26px -12px rgba(255, 122, 33, 0.6);
+  box-shadow: 0 12px 26px -12px rgba(0, 0, 0, 0.45);
   transition: filter 0.15s ease;
 }
 .sidenav-new:hover { filter: brightness(1.05); }
@@ -3738,9 +3873,9 @@ h3 {
 }
 .settings-tab:hover { background: rgba(var(--tint), 0.05); color: var(--text); }
 .settings-tab.active {
-  background: linear-gradient(180deg, var(--accent), #ff9440);
+  background: var(--accent-gradient, linear-gradient(180deg, var(--accent), var(--accent-2)));
   color: var(--on-accent);
-  box-shadow: 0 10px 22px -12px rgba(255, 122, 33, 0.7);
+  box-shadow: 0 10px 22px -12px rgba(0, 0, 0, 0.45);
 }
 .settings-tab-ic {
   width: 1.1rem;
@@ -7362,13 +7497,12 @@ h3 {
   font-size: 0.78rem;
   font-weight: 700;
   white-space: nowrap;
-  color: white;
-  background: linear-gradient(135deg, #7c3aed 0%, #ec4899 55%, #f59e0b 100%);
-  box-shadow: 0 4px 14px rgba(124, 58, 237, 0.32);
+  background: var(--assistant-accent, linear-gradient(135deg, #7c3aed 0%, #ec4899 55%, #f59e0b 100%));
+  box-shadow: var(--assistant-shadow, 0 4px 14px rgba(124, 58, 237, 0.32));
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
-.website-nav-badge:hover { transform: translateY(-1px) scale(1.03); box-shadow: 0 6px 18px rgba(236, 72, 153, 0.42); }
+.website-nav-badge:hover { transform: translateY(-1px) scale(1.03); box-shadow: var(--assistant-shadow, 0 6px 18px rgba(236, 72, 153, 0.42)); }
 
 /* Once the site is actually live the badge stops selling and starts reporting:
    a neutral pill with slow equaliser bars. The gradient above stays for the
@@ -7669,12 +7803,12 @@ p { line-height: 1.6; color: var(--muted); }
 .btn.secondary { border-color: var(--edge-t18); background: rgba(var(--tint), 0.04); }
 .btn.qb { background: #2CA01C; color: white; }
 .btn.fun {
-  background: linear-gradient(135deg, #7c3aed 0%, #ec4899 55%, #f59e0b 100%);
+  background: var(--assistant-accent, linear-gradient(135deg, #7c3aed 0%, #ec4899 55%, #f59e0b 100%));
   color: white;
   transition: transform 0.15s ease, box-shadow 0.15s ease;
-  box-shadow: 0 4px 14px rgba(124, 58, 237, 0.35);
+  box-shadow: var(--assistant-shadow, 0 4px 14px rgba(124, 58, 237, 0.35));
 }
-.btn.fun:hover { transform: translateY(-2px) scale(1.03); box-shadow: 0 6px 20px rgba(236, 72, 153, 0.45); }
+.btn.fun:hover { transform: translateY(-2px) scale(1.03); box-shadow: var(--assistant-shadow, 0 6px 20px rgba(236, 72, 153, 0.45)); }
 ul { padding-left: 1.2rem; color: var(--muted); }
 li + li { margin-top: 0.45rem; }
 
@@ -9936,7 +10070,7 @@ li + li { margin-top: 0.45rem; }
   transition: background .12s ease, border-color .12s ease;
 }
 .schedule-drop-times button:hover { border-color: var(--cedge-orange-5); }
-.schedule-drop-times button.active { background: linear-gradient(180deg,#ff7a21,#ff9440); color: var(--on-accent); border-color: transparent; }
+.schedule-drop-times button.active { background: var(--accent-gradient, linear-gradient(180deg,#ff7a21,#ff9d5c)); color: var(--on-accent); border-color: transparent; }
 .schedule-drop-custom { display: flex; align-items: center; justify-content: space-between; gap: .8rem; color: var(--ink-neutral-6); font-size: .82rem; font-weight: 600; }
 .schedule-drop-custom input { padding: .5rem .6rem; border-radius: 8px; border: 1px solid var(--edge-t16); background: rgba(var(--tint), .05); color: var(--text); font: inherit; }
 .schedule-drop-actions { display: flex; justify-content: flex-end; gap: .6rem; }
@@ -13328,7 +13462,13 @@ a.job-actions-item:focus-visible { background: rgba(var(--tint), 0.07); }
 
 .funnel-bar-leads { background: linear-gradient(90deg, #8ba5d6, #6f8dc9); }
 .funnel-bar-quoted { background: linear-gradient(90deg, #ffd166, #f0b73e); }
-.funnel-bar-won { background: linear-gradient(90deg, var(--accent, #ff7a21), #ff9d4d); }
+.funnel-bar-won { background: linear-gradient(90deg, var(--accent, #ff7a21), var(--accent-2, #ff9d5c)); }
+:root[data-theme='clarity'] .funnel-bar-leads { background: #8ecdf0; }
+:root[data-theme='clarity'] .funnel-bar-quoted { background: #f0e442; }
+:root[data-theme='clarity'] .funnel-bar-won { background: #56b4e9; }
+:root[data-theme='monochrome'] .funnel-bar-leads { background: #71717a; }
+:root[data-theme='monochrome'] .funnel-bar-quoted { background: #a1a1aa; }
+:root[data-theme='monochrome'] .funnel-bar-won { background: #ffffff; }
 
 .funnel-stage-rate {
   display: inline-block;
@@ -23335,18 +23475,12 @@ button.plan-badge.warn.is-action:focus-visible { outline: 2px solid rgba(255, 12
   position: relative;
   isolation: isolate;
   overflow: hidden;
-  border-color: var(--cedge-violet-2);
+  border-color: var(--planning, var(--cedge-violet-2));
   color: #fff;
   background:
-    radial-gradient(135% 120% at 50% 118%, rgba(214, 176, 255, 0.42) 0%, rgba(168, 85, 247, 0.2) 42%, transparent 70%),
-    linear-gradient(180deg, #7c3aed 0%, #6320c9 55%, #4f169f 100%);
-  box-shadow:
-    0 0 9px rgba(180, 120, 255, 0.6),
-    0 0 24px rgba(147, 51, 234, 0.42),
-    0 0 62px rgba(124, 40, 220, 0.3),
-    0 14px 46px -14px rgba(120, 40, 210, 0.5),
-    inset 0 1px 0 rgba(233, 219, 255, 0.5),
-    inset 0 -20px 38px -24px rgba(214, 186, 255, 0.5);
+    var(--planning-glow, radial-gradient(135% 120% at 50% 118%, rgba(214, 176, 255, 0.42) 0%, rgba(168, 85, 247, 0.2) 42%, transparent 70%)),
+    var(--planning-gradient, linear-gradient(180deg, #7c3aed 0%, #6320c9 55%, #4f169f 100%));
+  box-shadow: var(--planning-shadow, 0 0 9px rgba(180, 120, 255, 0.6), 0 0 24px rgba(147, 51, 234, 0.42), 0 0 62px rgba(124, 40, 220, 0.3), 0 14px 46px -14px rgba(120, 40, 210, 0.5));
 }
 
 /* Texture, so the fill isn't flat paint. Two hatches, no asset to ship. */
@@ -23381,16 +23515,44 @@ button.plan-badge.warn.is-action:focus-visible { outline: 2px solid rgba(255, 12
 }
 
 .action-btn--plan:hover {
-  border-color: var(--cedge-violet-3);
+  border-color: var(--planning, var(--cedge-violet-3));
   background:
-    radial-gradient(135% 120% at 50% 118%, rgba(224, 195, 255, 0.5) 0%, rgba(178, 105, 255, 0.24) 42%, transparent 70%),
-    linear-gradient(180deg, #8b4bf0 0%, #6f2ada 55%, #591cb4 100%);
-  box-shadow:
-    0 0 26px rgba(186, 130, 255, 0.58),
-    0 0 72px rgba(147, 51, 234, 0.38),
-    0 20px 60px -20px rgba(124, 40, 220, 0.7),
-    inset 0 1px 0 rgba(240, 229, 255, 0.6),
-    inset 0 -20px 38px -24px rgba(224, 200, 255, 0.55);
+    var(--planning-glow, radial-gradient(135% 120% at 50% 118%, rgba(224, 195, 255, 0.5) 0%, rgba(178, 105, 255, 0.24) 42%, transparent 70%)),
+    var(--planning-gradient, linear-gradient(180deg, #8b4bf0 0%, #6f2ada 55%, #591cb4 100%));
+  box-shadow: var(--planning-shadow);
+  transform: translateY(-1px);
+}
+
+:root[data-theme='monochrome'] .action-btn--lead {
+  background: var(--accent-gradient);
+  color: var(--on-accent);
+  box-shadow: 0 12px 30px -14px rgba(255, 255, 255, 0.4);
+}
+:root[data-theme='monochrome'] .action-btn--money-in {
+  background: linear-gradient(135deg, #71717a 0%, #a1a1aa 100%);
+  color: #ffffff;
+  box-shadow: 0 12px 32px -12px rgba(255, 255, 255, 0.3);
+}
+:root[data-theme='monochrome'] .action-btn--money-out {
+  border-color: rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+}
+
+:root[data-theme='clarity'] .action-btn--lead {
+  background: var(--accent-gradient);
+  color: var(--on-accent);
+  box-shadow: 0 12px 30px -14px rgba(86, 180, 233, 0.6);
+}
+:root[data-theme='clarity'] .action-btn--money-in {
+  background: linear-gradient(135deg, #56b4e9 0%, #8ecdf0 100%);
+  color: #08131f;
+  box-shadow: 0 12px 32px -12px rgba(86, 180, 233, 0.6);
+}
+:root[data-theme='clarity'] .action-btn--money-out {
+  border-color: rgba(255, 107, 74, 0.4);
+  background: rgba(255, 107, 74, 0.12);
+  color: #ff6b4a;
 }
 
 /* A button that pulses on its own is exactly what reduced-motion is asking you
@@ -27841,7 +28003,7 @@ a.bset-card { color: inherit; text-decoration: none; }
 .es-day-chip:hover { border-color: var(--edge-t35); color: var(--text); }
 .es-day-chip.is-on {
   border-color: var(--accent);
-  background: linear-gradient(180deg, var(--accent), #ff9440);
+  background: var(--accent-gradient, linear-gradient(180deg, var(--accent), var(--accent-2)));
   color: var(--on-accent);
 }
 
@@ -28421,12 +28583,14 @@ a.bset-card { color: inherit; text-decoration: none; }
 
 .theme-choice-glyph { display: block; width: 0.85rem; height: 0.85rem; flex: 0 0 auto; }
 .theme-choice-glyph svg { display: block; width: 100%; height: 100%; }
-.theme-choice-opt[data-choice='sunlight'] .theme-choice-glyph { color: #ff8800; }
-.theme-choice-opt[data-choice='light'] .theme-choice-glyph { color: #f5a300; }
-.theme-choice-opt[data-choice='onyx'] .theme-choice-glyph { color: #ffffff; }
-.theme-choice-opt[data-choice='clarity'] .theme-choice-glyph { color: #38bdf8; }
-.theme-choice-opt[data-choice='monochrome'] .theme-choice-glyph { color: #e4e4e7; }
-.theme-choice-opt[data-choice='parchment'] .theme-choice-glyph { color: #f59e0b; }
+.theme-choice-opt[data-choice='sunlight'] .theme-choice-glyph { color: #c94f00; }
+.theme-choice-opt[data-choice='light'] .theme-choice-glyph { color: #f97316; }
+.theme-choice-opt[data-choice='dim'] .theme-choice-glyph { color: #e97830; }
+.theme-choice-opt[data-choice='dark'] .theme-choice-glyph { color: #ff7a21; }
+.theme-choice-opt[data-choice='onyx'] .theme-choice-glyph { color: #ff8800; }
+.theme-choice-opt[data-choice='clarity'] .theme-choice-glyph { color: #56b4e9; }
+.theme-choice-opt[data-choice='monochrome'] .theme-choice-glyph { color: #fafafa; }
+.theme-choice-opt[data-choice='parchment'] .theme-choice-glyph { color: #a84c00; }
 .theme-choice-word { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* --- The floating switch, bottom-left, EVERY width --------------------------
@@ -28476,12 +28640,14 @@ a.bset-card { color: inherit; text-decoration: none; }
 
 .theme-fab-glyph { display: block; width: 24px; height: 24px; }
 .theme-fab-glyph svg { display: block; width: 100%; height: 100%; }
-.theme-fab-glyph[data-theme-glyph='sunlight'] { color: #ff8800; }
-.theme-fab-glyph[data-theme-glyph='light'] { color: #f5a300; }
-.theme-fab-glyph[data-theme-glyph='onyx'] { color: #ffffff; }
-.theme-fab-glyph[data-theme-glyph='clarity'] { color: #38bdf8; }
-.theme-fab-glyph[data-theme-glyph='monochrome'] { color: #e4e4e7; }
-.theme-fab-glyph[data-theme-glyph='parchment'] { color: #f59e0b; }
+.theme-fab-glyph[data-theme-glyph='sunlight'] { color: #c94f00; }
+.theme-fab-glyph[data-theme-glyph='light'] { color: #f97316; }
+.theme-fab-glyph[data-theme-glyph='dim'] { color: #e97830; }
+.theme-fab-glyph[data-theme-glyph='dark'] { color: #ff7a21; }
+.theme-fab-glyph[data-theme-glyph='onyx'] { color: #ff8800; }
+.theme-fab-glyph[data-theme-glyph='clarity'] { color: #56b4e9; }
+.theme-fab-glyph[data-theme-glyph='monochrome'] { color: #fafafa; }
+.theme-fab-glyph[data-theme-glyph='parchment'] { color: #a84c00; }
 
 /* On Auto. Small, and it never changes what the tap does — it is there so
    "why did it go dark on its own?" has an answer on screen. */
@@ -32867,12 +33033,16 @@ a.ins-export-opt:focus-visible { outline: 2px solid rgba(255, 122, 33, 0.85); ou
 
 :root[data-theme='light'] .panel .sched-strip-day,
 :root[data-theme='light'] .panel .sched-mini-day,
-:root[data-theme='light'] .panel .sched-card,
+:root[data-theme='light'] .panel .sched-card {
+  background: #f7f8fa;
+  border-color: #e2e8f0;
+}
+
 :root[data-theme='sunlight'] .panel .sched-strip-day,
 :root[data-theme='sunlight'] .panel .sched-mini-day,
 :root[data-theme='sunlight'] .panel .sched-card {
-  background: #fff;
-  border-color: rgba(17, 27, 41, 0.12);
+  background: #ffffff;
+  border-color: #cbd5e1;
 }
 
 :root[data-theme='light'] .panel .sched-mini-grid,
@@ -32893,8 +33063,14 @@ a.ins-export-opt:focus-visible { outline: 2px solid rgba(255, 122, 33, 0.85); ou
 :root[data-theme='parchment'] .panel .sched-strip-day,
 :root[data-theme='parchment'] .panel .sched-mini-day,
 :root[data-theme='parchment'] .panel .sched-card {
-  background: #241f19;
-  border-color: rgba(245, 237, 224, 0.16);
+  background: #fff7e6;
+  border-color: rgba(75, 60, 42, 0.15);
+}
+:root[data-theme='parchment'] .panel .sched-mini-grid {
+  padding: 4px;
+  border-radius: 12px;
+  background: #e8d8bc;
+  box-shadow: inset 0 1px 2px rgba(48, 38, 27, 0.08);
 }
 
 /* ==========================================================================
@@ -34611,6 +34787,13 @@ body[data-schedule-overlay="job"] .sched-queue {
 :root[data-theme='light'] .calendar-band-color-5,
 :root[data-theme='sunlight'] .calendar-band-color-5 { --job-fill: rgba(146,110,235,.14); }
 
+:root[data-theme='clarity'] .calendar-band-color-0 { --job-line: #56b4e9; --job-fill: rgba(86, 180, 233, 0.20); --job-ink: #56b4e9; }
+:root[data-theme='clarity'] .calendar-band-color-1 { --job-line: #8ecdf0; --job-fill: rgba(142, 205, 240, 0.20); --job-ink: #8ecdf0; }
+:root[data-theme='clarity'] .calendar-band-color-2 { --job-line: #f0e442; --job-fill: rgba(240, 228, 66, 0.20); --job-ink: #f0e442; }
+:root[data-theme='clarity'] .calendar-band-color-3 { --job-line: #ff6b4a; --job-fill: rgba(255, 107, 74, 0.20); --job-ink: #ff6b4a; }
+:root[data-theme='clarity'] .calendar-band-color-4 { --job-line: #cc79a7; --job-fill: rgba(204, 121, 167, 0.20); --job-ink: #cc79a7; }
+:root[data-theme='clarity'] .calendar-band-color-5 { --job-line: #d55e00; --job-fill: rgba(213, 94, 0, 0.20); --job-ink: #d55e00; }
+
 :root[data-theme='monochrome'] .calendar-band-color-0,
 :root[data-theme='monochrome'] .calendar-band-color-1,
 :root[data-theme='monochrome'] .calendar-band-color-2,
@@ -34622,12 +34805,12 @@ body[data-schedule-overlay="job"] .sched-queue {
   --job-ink: #ffffff;
 }
 
-:root[data-theme='parchment'] .calendar-band-color-0 { --job-line: #d97706; --job-fill: rgba(217, 119, 6, 0.22); --job-ink: #fbbf24; }
-:root[data-theme='parchment'] .calendar-band-color-1 { --job-line: #b45309; --job-fill: rgba(180, 83, 9, 0.20); --job-ink: #fde68a; }
-:root[data-theme='parchment'] .calendar-band-color-2 { --job-line: #65a30d; --job-fill: rgba(101, 163, 13, 0.20); --job-ink: #bef264; }
-:root[data-theme='parchment'] .calendar-band-color-3 { --job-line: #d97706; --job-fill: rgba(217, 119, 6, 0.20); --job-ink: #fde047; }
-:root[data-theme='parchment'] .calendar-band-color-4 { --job-line: #ea580c; --job-fill: rgba(234, 88, 12, 0.20); --job-ink: #fca5a5; }
-:root[data-theme='parchment'] .calendar-band-color-5 { --job-line: #c2410c; --job-fill: rgba(194, 65, 12, 0.20); --job-ink: #fed7aa; }
+:root[data-theme='parchment'] .calendar-band-color-0 { --job-line: #a84c00; --job-fill: rgba(168, 76, 0, 0.15); --job-ink: #a84c00; }
+:root[data-theme='parchment'] .calendar-band-color-1 { --job-line: #17518f; --job-fill: rgba(23, 81, 143, 0.15); --job-ink: #17518f; }
+:root[data-theme='parchment'] .calendar-band-color-2 { --job-line: #2d6a4f; --job-fill: rgba(45, 106, 79, 0.15); --job-ink: #2d6a4f; }
+:root[data-theme='parchment'] .calendar-band-color-3 { --job-line: #b45309; --job-fill: rgba(180, 83, 9, 0.15); --job-ink: #b45309; }
+:root[data-theme='parchment'] .calendar-band-color-4 { --job-line: #a81c51; --job-fill: rgba(168, 28, 81, 0.15); --job-ink: #a81c51; }
+:root[data-theme='parchment'] .calendar-band-color-5 { --job-line: #6a34cc; --job-fill: rgba(106, 52, 204, 0.15); --job-ink: #6a34cc; }
 
 /* ---- the range stepper --------------------------------------------------- */
 /* Day and Week step in local state, so these are buttons where the month nav
@@ -35926,13 +36109,17 @@ body[data-schedule-overlay="job"] .sched-queue {
 :root[data-theme='light'] .calendar-job-status-complete,
 :root[data-theme='sunlight'] .calendar-job-status-complete    { --job-fill: rgba(76,190,120,.14); }
 
+:root[data-theme='clarity'] .calendar-job-status-new_lead    { --job-line: #f0e442; --job-fill: rgba(240, 228, 66, 0.20); --job-ink: #f0e442; }
+:root[data-theme='clarity'] .calendar-job-status-in_progress { --job-line: #56b4e9; --job-fill: rgba(86, 180, 233, 0.20); --job-ink: #56b4e9; }
+:root[data-theme='clarity'] .calendar-job-status-complete    { --job-line: #8ecdf0; --job-fill: rgba(142, 205, 240, 0.20); --job-ink: #8ecdf0; }
+
 :root[data-theme='monochrome'] .calendar-job-status-new_lead   { --job-line: #ffffff; --job-fill: rgba(255, 255, 255, 0.16); --job-ink: #ffffff; }
 :root[data-theme='monochrome'] .calendar-job-status-in_progress{ --job-line: #e4e4e7; --job-fill: rgba(228, 228, 231, 0.24); --job-ink: #ffffff; }
 :root[data-theme='monochrome'] .calendar-job-status-complete   { --job-line: #ffffff; --job-fill: rgba(255, 255, 255, 0.32); --job-ink: #ffffff; }
 
-:root[data-theme='parchment'] .calendar-job-status-new_lead    { --job-line: #d97706; --job-fill: rgba(217, 119, 6, 0.20); --job-ink: #fde047; }
-:root[data-theme='parchment'] .calendar-job-status-in_progress { --job-line: #b45309; --job-fill: rgba(180, 83, 9, 0.20); --job-ink: #fde68a; }
-:root[data-theme='parchment'] .calendar-job-status-complete    { --job-line: #65a30d; --job-fill: rgba(101, 163, 13, 0.20); --job-ink: #bef264; }
+:root[data-theme='parchment'] .calendar-job-status-new_lead    { --job-line: #b45309; --job-fill: rgba(180, 83, 9, 0.15); --job-ink: #b45309; }
+:root[data-theme='parchment'] .calendar-job-status-in_progress { --job-line: #a84c00; --job-fill: rgba(168, 76, 0, 0.15); --job-ink: #a84c00; }
+:root[data-theme='parchment'] .calendar-job-status-complete    { --job-line: #2d6a4f; --job-fill: rgba(45, 106, 79, 0.15); --job-ink: #2d6a4f; }
 
 /* ---- the Day view's own summary ------------------------------------------
    The one view about a single day was the only one that said nothing about it:

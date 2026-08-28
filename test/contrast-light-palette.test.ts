@@ -148,20 +148,93 @@ describe('placeholder and schedule theme contrast', () => {
     expect(GLOBALS).toContain('.client-search-bar input::placeholder { color: var(--muted-2); opacity: 0.88; }');
   });
 
-  it('ensures calendar bands support sunlight, monochrome, and parchment', () => {
+  it('ensures calendar bands support sunlight, clarity, monochrome, and parchment', () => {
     expect(GLOBALS).toContain(":root[data-theme='sunlight'] .calendar-band-color-0");
+    expect(GLOBALS).toContain(":root[data-theme='clarity'] .calendar-band-color-0");
     expect(GLOBALS).toContain(":root[data-theme='monochrome'] .calendar-band-color-0");
     expect(GLOBALS).toContain(":root[data-theme='parchment'] .calendar-band-color-0");
   });
 
-  it('ensures sunlight mode has daylight slate background and full paper ink ramp', () => {
+  it('ensures sunlight mode has daylight slate background and soft #cbd5e1 borders', () => {
     expect(GLOBALS).toContain(":root[data-theme='sunlight'] {");
     expect(GLOBALS).toContain('--bg: #eef2f6;');
-    expect(GLOBALS).toContain('--text: #0a0f1d;');
-    expect(GLOBALS).toContain('--muted: #1e293b;');
+    expect(GLOBALS).toContain('--text: #0f172a;');
+    expect(GLOBALS).toContain('--muted: #475569;');
+    expect(GLOBALS).toContain('--line: #cbd5e1;');
+    expect(GLOBALS).toContain('--accent: #c94f00;');
+    expect(GLOBALS).toContain('--accent-end: #e66a19;');
+    expect(GLOBALS).toContain('--accent-gradient: linear-gradient(180deg, var(--accent), var(--accent-end));');
     expect(GLOBALS).toContain('--ink-neutral-1: #0f1a28;');
     expect(GLOBALS).toContain('--ink-orange-1: #a0531a;');
     expect(GLOBALS).toContain(':root[data-theme=\'sunlight\'] .sidenav-wordmark');
+  });
+
+  it('ensures parchment mode is a genuine warm paper light theme', () => {
+    expect(GLOBALS).toContain(":root[data-theme='parchment'] {");
+    expect(GLOBALS).toContain('color-scheme: light;');
+    expect(GLOBALS).toContain('--bg: #f1e4cc;');
+    expect(GLOBALS).toContain('--bg-2: #fff7e6;');
+    expect(GLOBALS).toContain('--text: #30261b;');
+    expect(GLOBALS).toContain('--muted: #6b5b49;');
+    expect(GLOBALS).toContain('--accent: #a84c00;');
+    expect(GLOBALS).toContain('--accent-end: #d97706;');
+    expect(GLOBALS).toContain('--accent-gradient: linear-gradient(180deg, var(--accent), var(--accent-end));');
+  });
+
+  it('ensures dim mode is lighter and less blue than dark', () => {
+    expect(GLOBALS).toContain(":root[data-theme='dim'] {");
+    expect(GLOBALS).toContain('--bg: #1a2430;');
+    expect(GLOBALS).toContain('--bg-2: #243140;');
+    expect(GLOBALS).toContain('--text: #e8edf3;');
+    expect(GLOBALS).toContain('--muted: #aab6c4;');
+    expect(GLOBALS).toContain('--accent: #e97830;');
+    expect(GLOBALS).toContain('--accent-end: #f59e66;');
+    expect(GLOBALS).toContain('--accent-gradient: linear-gradient(180deg, var(--accent), var(--accent-end));');
+  });
+
+  it('ensures clarity uses CVD-safe Okabe-Ito system consistently without orange/green', () => {
+    expect(GLOBALS).toContain(":root[data-theme='clarity'] {");
+    expect(GLOBALS).toContain('--bg: #08131f;');
+    expect(GLOBALS).toContain('--bg-3: #102033;');
+    expect(GLOBALS).toContain('--text: #f8fafc;');
+    expect(GLOBALS).toContain('--accent: #56b4e9;');
+    expect(GLOBALS).toContain('--accent-end: #8ecdf0;');
+    expect(GLOBALS).toContain('--accent-gradient: linear-gradient(180deg, var(--accent), var(--accent-end));');
+    expect(GLOBALS).toContain('--warn: #f0e442;');
+    expect(GLOBALS).toContain('--bad: #ff6b4a;');
+    expect(GLOBALS).toContain('--info: #cc79a7;');
+  });
+
+  it('ensures monochrome uses pure grayscale ramps', () => {
+    expect(GLOBALS).toContain(":root[data-theme='monochrome'] {");
+    expect(GLOBALS).toContain('--bg: #0b0b0c;');
+    expect(GLOBALS).toContain('--bg-3: #18181b;');
+    expect(GLOBALS).toContain('--text: #fafafa;');
+    expect(GLOBALS).toContain('--muted: #bfc0c7;');
+    expect(GLOBALS).toContain('--accent: #f4f4f5;');
+    expect(GLOBALS).toContain('--accent-end: #a1a1aa;');
+    expect(GLOBALS).toContain('--accent-gradient: linear-gradient(180deg, var(--accent), var(--accent-end));');
+  });
+
+  it('ensures all primary action gradients are configured per theme', () => {
+    expect(GLOBALS).toContain('.sidenav-new {');
+    expect(GLOBALS).toContain('background: var(--accent-gradient, linear-gradient(180deg, var(--accent), var(--accent-2)));');
+    expect(GLOBALS).toContain('.settings-tab.active {');
+    expect(GLOBALS).toContain('.es-day-chip.is-on {');
+  });
+
+  it('ensures semantic tokens are defined and properly neutralized/remapped in mono and clarity', () => {
+    expect(GLOBALS).toContain('--ambient-glow:');
+    expect(GLOBALS).toContain('--planning: #7c3aed;');
+    expect(GLOBALS).toContain('--planning: #cc79a7;');
+    expect(GLOBALS).toContain('--planning: #71717a;');
+    expect(GLOBALS).toContain('--assistant-accent: linear-gradient(135deg, #7c3aed 0%, #ec4899 55%, #f59e0b 100%);');
+    expect(GLOBALS).toContain('--assistant-accent: linear-gradient(135deg, #56b4e9 0%, #cc79a7 55%, #f0e442 100%);');
+    expect(GLOBALS).toContain('--assistant-accent: linear-gradient(135deg, #f4f4f5 0%, #a1a1aa 55%, #52525b 100%);');
+    expect(GLOBALS).toContain('.action-btn--plan {');
+    expect(GLOBALS).toContain('border-color: var(--planning');
+    expect(GLOBALS).toContain('.website-nav-badge {');
+    expect(GLOBALS).toContain('background: var(--assistant-accent');
   });
 });
 

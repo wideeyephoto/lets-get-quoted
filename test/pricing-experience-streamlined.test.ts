@@ -107,6 +107,19 @@ describe('Production pricing decision experience', () => {
       expect(planCrossover(solo, growth, 'annual', false)).toBe(307_200);
       expect(planCrossover(growth, scale, 'annual', false)).toBe(1_600_000);
     });
+
+    it('surfaces fee crossover milestones and competitor benchmark comparisons in the recommender', () => {
+      expect(PRICING_EXPERIENCE).toContain('UPGRADE BREAKEVEN MILESTONES:');
+      expect(PRICING_EXPERIENCE).toContain('Solo beats Flex fee');
+      expect(PRICING_EXPERIENCE).toContain('Growth beats Solo fee');
+      expect(PRICING_EXPERIENCE).toContain('Scale beats Growth fee');
+      expect(PRICING_EXPERIENCE).toContain('COMPARE VS LEGACY FIELD SOFTWARE');
+      expect(PRICING_EXPERIENCE).toContain('estimateCompetitorAnnualCost(activeCompetitor, officeUsers)');
+      expect(PRICING_EXPERIENCE).toContain('Keep more profit with Let&apos;s Get Quoted');
+      expect(PRICING_EXPERIENCE).toContain('waterfall-presets');
+      expect(PRICING_EXPERIENCE).toContain('waterfall-methods');
+      expect(PRICING_EXPERIENCE).toContain('ACH Bank Transfer (0.8% max $5)');
+    });
   });
 
   describe('plan, proof, and conversion architecture', () => {

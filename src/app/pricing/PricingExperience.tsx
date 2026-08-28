@@ -7,11 +7,13 @@ import { buildStartUrl } from '@/lib/signup-intent';
 import { rankPlanCosts } from './pricing-ranking';
 import {
   COMPARISON_ROWS,
+  COMPETITOR_BENCHMARKS,
   CREW_USER_ADD_ON_AVAILABLE,
   CREW_USER_ADD_ON_ELIGIBLE_PLANS,
   CREW_USER_ADD_ON_MONTHLY,
   PLANS,
   PRICING_FAQS,
+  estimateCompetitorAnnualCost,
   type BillingCycle,
   type PlanId,
 } from './pricing-catalog';
@@ -132,6 +134,11 @@ export default function PricingExperience() {
   const [isWorkflowReplaying, setIsWorkflowReplaying] = useState(true);
   const [recommendationPulse, setRecommendationPulse] = useState(false);
 
+  // Dynamic Payment Waterfall & Competitor State
+  const [samplePayment, setSamplePayment] = useState(5000);
+  const [sampleMethod, setSampleMethod] = useState<'card' | 'ach'>('card');
+  const [selectedCompetitorId, setSelectedCompetitorId] = useState<string>('jobber');
+
   const minimumUsageRank = usageOptions.find((option) => option.value === usageLevel)?.minimumRank ?? 0;
   const planEstimates = plans.map((plan) => {
     const annualFee = Math.round(annualVolume * 100 * plan.rate) / 100;
@@ -164,10 +171,19 @@ export default function PricingExperience() {
   const recommendation = planEstimates.find((plan) => plan.id === ranking.winner?.planId) ?? planEstimates[planEstimates.length - 1];
   const runnerUp = planEstimates.find((plan) => plan.id === ranking.runnerUp?.planId);
   const annualSavings = runnerUp ? Math.max(0, runnerUp.annualTotal - recommendation.annualTotal) : 0;
-  const examplePayment = 5000;
+  
+  // Dynamic Payment Waterfall Calculation
+  const examplePayment = samplePayment;
   const exampleLgqFee = examplePayment * recommendation.rate;
-  const exampleStripeFee = examplePayment * 0.029 + 0.30;
+  const exampleStripeFee = sampleMethod === 'card'
+    ? examplePayment * 0.029 + 0.30
+    : Math.min(5.00, examplePayment * 0.008);
   const examplePayout = examplePayment - exampleLgqFee - exampleStripeFee;
+
+  // Competitor Comparison Calculation
+  const activeCompetitor = COMPETITOR_BENCHMARKS.find((c) => c.id === selectedCompetitorId) ?? COMPETITOR_BENCHMARKS[0];
+  const competitorAnnualCost = estimateCompetitorAnnualCost(activeCompetitor, officeUsers);
+  const competitorSavings = Math.max(0, competitorAnnualCost - recommendation.annualTotal);
 
   const prevRecRef = useRef<PlanId>(recommendation.id);
 
@@ -479,7 +495,7 @@ export default function PricingExperience() {
                   <output aria-label={`${officeUsers} office ${officeUsers === 1 ? 'user' : 'users'}`}>{officeUsers}</output>
                   <button type="button" aria-label="Add one office user" onClick={() => updateSeats('office', officeUsers + 1)}>+</button>
                 </div>
-                <small>Choose a plan with enough included office seats.</small>
+                <small>Choose a plan with enough included office seats (dashboard, quotes, invoices &amp; QuickBooks).</small>
               </div>
               <div className="seat-counter">
                 <span>Crew-only users</span>
@@ -488,7 +504,7 @@ export default function PricingExperience() {
                   <output aria-label={`${crewUsers} crew ${crewUsers === 1 ? 'user' : 'users'}`}>{crewUsers}</output>
                   <button type="button" aria-label="Add one crew user" onClick={() => updateSeats('crew', crewUsers + 1)}>+</button>
                 </div>
-                <small>Extra crew seats on Solo+ are $5/month each.</small>
+                <small>Extra crew seats on Solo+ are $5/month each (mobile app for time clock &amp; job notes).</small>
               </div>
             </div>
           </fieldset>
@@ -521,6 +537,36 @@ export default function PricingExperience() {
               style={{ '--range-progress': `${annualVolume / 50000}%` } as CSSProperties}
             />
             <div className="range-labels"><span>$0</span><span>≈ ${money.format(annualVolume / 12)}/month</span><span>$5M+</span></div>
+
+            <div className="slider-crossover-milestones" aria-label="Fee crossover upgrade milestones">
+              <span className="crossover-title">UPGRADE BREAKEVEN MILESTONES:</span>
+              <div className="milestone-pills">
+                <button
+                  type="button"
+                  className={`milestone-pill ${annualVolume >= 56000 ? 'active' : ''}`}
+                  onClick={() => setAnnualVolume(56000)}
+                  title="At $56k/yr volume, Solo's 0.50% fee beats Flex's 1.25% fee"
+                >
+                  <strong>$56k/yr</strong><span>Solo beats Flex fee</span>
+                </button>
+                <button
+                  type="button"
+                  className={`milestone-pill ${annualVolume >= 307200 ? 'active' : ''}`}
+                  onClick={() => setAnnualVolume(307200)}
+                  title="At $307k/yr volume, Growth's 0.25% fee beats Solo's 0.50% fee"
+                >
+                  <strong>$307k/yr</strong><span>Growth beats Solo fee</span>
+                </button>
+                <button
+                  type="button"
+                  className={`milestone-pill ${annualVolume >= 1600000 ? 'active' : ''}`}
+                  onClick={() => setAnnualVolume(1600000)}
+                  title="At $1.6M/yr volume, Scale's 0.10% fee beats Growth's 0.25% fee"
+                >
+                  <strong>$1.6M/yr</strong><span>Scale beats Growth fee</span>
+                </button>
+              </div>
+            </div>
           </div>
 
           <fieldset className="messaging-picker">
@@ -560,10 +606,20 @@ export default function PricingExperience() {
           </p>
           <div className="result-topline"><span>YOUR LIVE RECOMMENDATION</span><i><b />CALCULATED</i></div>
           <article className={`result-primary ${recommendationPulse ? 'recommendation-pulse' : ''}`}>
+            <div className="result-fit-tags" aria-label="Fit factors for recommendation">
+              <span className="fit-tag">✓ Lowest total cost for volume</span>
+              <span className="fit-tag">✓ {officeUsers} office + {crewUsers} crew capacity</span>
+              <span className="fit-tag">✓ {recommendation.fee} platform fee</span>
+            </div>
             <span>Best cost among plans that fit your capacity</span>
             <strong className="result-plan-name numeric-transition-field" key={`name-${recommendation.id}`}>{recommendation.name}</strong>
             <small>{recommendation.monthlyWithSeats === 0 ? '$0/month' : `$${recommendation.monthlyWithSeats}/month`} · {recommendation.fee} platform fee · {recommendation.officeUsers} office + {recommendation.crewUsers} crew included</small>
             <a className="result-cta" href={checkoutUrl(recommendation.id)}>Continue with {recommendation.shortName} <span aria-hidden="true">→</span></a>
+            {recommendation.id !== 'flex' && (
+              <a className="result-alt-link" href={checkoutUrl('flex')}>
+                Or start free on Flex ($0/mo) and upgrade when ready <span aria-hidden="true">→</span>
+              </a>
+            )}
             {billing === 'annual' && recommendation.annualBilled > 0 && (
               <small className="result-billing-note"><strong>${money.format(recommendation.annualBilled)} base plan billed today.</strong> Crew-seat add-ons renew monthly.</small>
             )}
@@ -579,6 +635,59 @@ export default function PricingExperience() {
               <strong key={`text-${recommendation.textAllowance}`}>{recommendation.textAllowance}</strong>
               <small>{recommendation.aiAllowance} · {recommendation.storage}</small>
             </article>
+          </div>
+
+          <div className="competitor-savings-box" role="region" aria-label="Estimated savings versus legacy software">
+            <div className="competitor-savings-header">
+              <div>
+                <span className="competitor-tag">COMPARE VS LEGACY FIELD SOFTWARE</span>
+                <strong>Keep more profit with Let&apos;s Get Quoted</strong>
+              </div>
+              <div className="competitor-toggle" role="group" aria-label="Select competitor to compare">
+                {COMPETITOR_BENCHMARKS.map((comp) => (
+                  <button
+                    key={comp.id}
+                    type="button"
+                    className={selectedCompetitorId === comp.id ? 'selected' : ''}
+                    onClick={() => setSelectedCompetitorId(comp.id)}
+                    aria-pressed={selectedCompetitorId === comp.id}
+                  >
+                    {comp.name.split(' ')[0]}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="competitor-savings-body">
+              <div className="competitor-cost-row">
+                <div className="comp-item">
+                  <small>{activeCompetitor.name}</small>
+                  <strong>~${money.format(competitorAnnualCost)}<small>/yr</small></strong>
+                  <em>${activeCompetitor.monthlyBase}/mo base + ${activeCompetitor.perUserMonthly}/mo per seat</em>
+                </div>
+                <div className="comp-arrow" aria-hidden="true">vs</div>
+                <div className="comp-item lgq-pick">
+                  <small>LGQ {recommendation.shortName}</small>
+                  <strong>${money.format(recommendation.annualTotal)}<small>/yr</small></strong>
+                  <em>Base + seats + {recommendation.fee} platform fee</em>
+                </div>
+              </div>
+              {competitorSavings > 0 ? (
+                <div className="competitor-savings-callout">
+                  <span aria-hidden="true">✓</span>
+                  <div>
+                    <strong>Save ~${money.format(competitorSavings)}/year with Let&apos;s Get Quoted</strong>
+                    <small>No expensive per-seat penalties. Website, quotes, invoicing and QuickBooks sync included.</small>
+                  </div>
+                </div>
+              ) : (
+                <div className="competitor-savings-callout">
+                  <span aria-hidden="true">✓</span>
+                  <div>
+                    <strong>Full contractor platform with no extra website, dispatch or QuickBooks add-on bills.</strong>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="plan-comparison-header">
@@ -659,11 +768,47 @@ export default function PricingExperience() {
           </div>
 
           <div className="payment-waterfall">
-            <div><span>REAL-WORLD PAYMENT EXAMPLE</span><strong>$5,000 eligible service subtotal paid by card</strong></div>
+            <div className="waterfall-header">
+              <span>REAL-WORLD PAYMENT EXAMPLE</span>
+              <strong>{examplePayment === 5000 && sampleMethod === 'card' ? '$5,000 eligible service subtotal paid by card' : `$${money.format(examplePayment)} eligible service subtotal paid by ${sampleMethod === 'card' ? 'card' : 'ACH bank transfer'}`}</strong>
+            </div>
+            <div className="waterfall-controls" aria-label="Customize example payment amount and method">
+              <div className="waterfall-presets" role="group" aria-label="Example job size presets">
+                {[1500, 5000, 20000].map((amt) => (
+                  <button
+                    key={amt}
+                    type="button"
+                    className={`waterfall-btn ${samplePayment === amt ? 'selected' : ''}`}
+                    onClick={() => setSamplePayment(amt)}
+                    aria-pressed={samplePayment === amt}
+                  >
+                    ${money.format(amt)}
+                  </button>
+                ))}
+              </div>
+              <div className="waterfall-methods" role="group" aria-label="Payment method">
+                <button
+                  type="button"
+                  className={`waterfall-btn ${sampleMethod === 'card' ? 'selected' : ''}`}
+                  onClick={() => setSampleMethod('card')}
+                  aria-pressed={sampleMethod === 'card'}
+                >
+                  Card (2.9% + 30¢)
+                </button>
+                <button
+                  type="button"
+                  className={`waterfall-btn ${sampleMethod === 'ach' ? 'selected' : ''}`}
+                  onClick={() => setSampleMethod('ach')}
+                  aria-pressed={sampleMethod === 'ach'}
+                >
+                  ACH Bank Transfer (0.8% max $5)
+                </button>
+              </div>
+            </div>
             <dl>
-              <div><dt>Eligible service subtotal</dt><dd>$5,000.00</dd></div>
+              <div><dt>Eligible service subtotal</dt><dd>${money.format(examplePayment)}.00</dd></div>
               <div><dt>LGQ fee on {recommendation.shortName} ({recommendation.fee})</dt><dd>−${exampleLgqFee.toFixed(2)}</dd></div>
-              <div><dt>Stripe example (2.9% + 30¢)</dt><dd>−${exampleStripeFee.toFixed(2)}</dd></div>
+              <div><dt>{sampleMethod === 'card' ? 'Stripe example (2.9% + 30¢)' : 'Stripe ACH example (0.8% capped at $5)'}</dt><dd>−${exampleStripeFee.toFixed(2)}</dd></div>
               <div className="payout"><dt>Estimated bank payout</dt><dd>${examplePayout.toFixed(2)}</dd></div>
             </dl>
             <p>LGQ fees exclude separately stated sales tax, tips, refunds and credits. Stripe pricing may vary. Carrier and phone-number fees are separate.</p>
