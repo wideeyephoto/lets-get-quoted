@@ -106,10 +106,37 @@ const VIDEO_LAYOUTS: VideoLayoutDef[] = [
 export default function WebsiteMediaStudioShowcase() {
   const [activeLayout, setActiveLayout] = useState<VideoLayoutKey>('split');
   const [sliderPos, setSliderPos] = useState<number>(50);
+  const [isSplitPlaying, setIsSplitPlaying] = useState<boolean>(false);
+  const [isStoryPlaying, setIsStoryPlaying] = useState<boolean>(false);
+
   const sliderFrameRef = useRef<HTMLDivElement>(null);
   const isDraggingRef = useRef<boolean>(false);
+  const splitVideoRef = useRef<HTMLVideoElement>(null);
+  const storyVideoRef = useRef<HTMLVideoElement>(null);
 
   const currentLayout = VIDEO_LAYOUTS.find((l) => l.key === activeLayout) || VIDEO_LAYOUTS[0];
+
+  function toggleSplitPlay() {
+    if (!splitVideoRef.current) return;
+    if (splitVideoRef.current.paused) {
+      splitVideoRef.current.play();
+      setIsSplitPlaying(true);
+    } else {
+      splitVideoRef.current.pause();
+      setIsSplitPlaying(false);
+    }
+  }
+
+  function toggleStoryPlay() {
+    if (!storyVideoRef.current) return;
+    if (storyVideoRef.current.paused) {
+      storyVideoRef.current.play();
+      setIsStoryPlaying(true);
+    } else {
+      storyVideoRef.current.pause();
+      setIsStoryPlaying(false);
+    }
+  }
 
   function updateSliderFromClientX(clientX: number) {
     const frame = sliderFrameRef.current;
@@ -180,7 +207,11 @@ export default function WebsiteMediaStudioShowcase() {
               type="button"
               role="tab"
               aria-selected={activeLayout === layout.key}
-              onClick={() => setActiveLayout(layout.key)}
+              onClick={() => {
+                setActiveLayout(layout.key);
+                setIsSplitPlaying(false);
+                setIsStoryPlaying(false);
+              }}
               className={`${styles.layoutTab} ${activeLayout === layout.key ? styles.layoutTabActive : ''}`}
             >
               <span className={styles.layoutIcon}>{layout.icon}</span>
@@ -206,23 +237,54 @@ export default function WebsiteMediaStudioShowcase() {
             <div className={styles.mockContent}>
               {activeLayout === 'hero' && (
                 <div className={styles.heroLoopPreview}>
-                  <span className={styles.videoOverlayBadge}>● Background Video Loop</span>
-                  <div style={{ color: 'var(--flare)', fontSize: '0.72rem', fontWeight: 800, textTransform: 'uppercase' }}>
-                    Premier Roofing &amp; Siding
+                  <video
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                    className={styles.heroBgVideo}
+                    src="/media/website-builder/studio/roofer-inspecting-shingles.mp4"
+                    poster="/media/website-builder/studio/roofer-inspecting-shingles-poster.jpg"
+                  />
+                  <div className={styles.heroLoopScrim} />
+                  <div className={styles.heroLoopOverlay}>
+                    <span className={styles.videoOverlayBadge}>● Live Video Background Loop</span>
+                    <div style={{ color: 'var(--flare)', fontSize: '0.72rem', fontWeight: 800, textTransform: 'uppercase' }}>
+                      Premier Roofing &amp; Siding
+                    </div>
+                    <h4 className={styles.heroLoopHeading}>Built to Last Through Every Storm</h4>
+                    <p className={styles.heroLoopText}>
+                      Full roof replacements, emergency leak repairs, and seamless gutters in Fairview.
+                    </p>
+                    <span className={styles.heroLoopBtn}>Get Instant Estimate &rarr;</span>
                   </div>
-                  <h4 className={styles.heroLoopHeading}>Built to Last Through Every Storm</h4>
-                  <p className={styles.heroLoopText}>
-                    Full roof replacements, emergency leak repairs, and seamless gutters in Fairview.
-                  </p>
-                  <span className={styles.heroLoopBtn}>Get Instant Estimate &rarr;</span>
                 </div>
               )}
 
               {activeLayout === 'split' && (
                 <div className={styles.splitPreview}>
-                  <div className={styles.videoScreenMock}>
-                    <div className={styles.playCircle}>▶</div>
-                    <span className={styles.videoDurationTag}>1:14</span>
+                  <div
+                    className={styles.videoScreenWrapper}
+                    onClick={toggleSplitPlay}
+                    title="Click to play / pause video clip"
+                  >
+                    <video
+                      ref={splitVideoRef}
+                      src="/media/website-builder/studio/craftsman-woodworking.mp4"
+                      poster="/media/website-builder/studio/craftsman-woodworking-poster.jpg"
+                      playsInline
+                      loop
+                      muted
+                      className={styles.realVideoPlayer}
+                    />
+                    {!isSplitPlaying && (
+                      <div className={styles.playOverlay}>
+                        <div className={styles.playCircle}>▶</div>
+                      </div>
+                    )}
+                    <span className={styles.videoDurationTag}>
+                      {isSplitPlaying ? 'Playing' : '0:05'}
+                    </span>
                   </div>
                   <div className={styles.splitCopy}>
                     <span className={styles.splitEyebrow}>Meet The Crew</span>
@@ -230,6 +292,13 @@ export default function WebsiteMediaStudioShowcase() {
                     <p className={styles.splitDesc}>
                       Dana explains how our intake inspection works and why we leave jobsites cleaner than we found them.
                     </p>
+                    <button
+                      type="button"
+                      onClick={toggleSplitPlay}
+                      className={styles.miniVideoControlBtn}
+                    >
+                      {isSplitPlaying ? '⏸ Pause Clip' : '▶ Play Full Video'}
+                    </button>
                   </div>
                 </div>
               )}
@@ -247,14 +316,41 @@ export default function WebsiteMediaStudioShowcase() {
                     </div>
                   </div>
                   <div className={styles.storyMediaRow}>
-                    <div className={styles.videoScreenMock}>
-                      <div className={styles.playCircle}>▶</div>
-                      <span className={styles.videoDurationTag}>2:05</span>
+                    <div
+                      className={styles.videoScreenWrapper}
+                      onClick={toggleStoryPlay}
+                      title="Click to play project walkthrough"
+                    >
+                      <video
+                        ref={storyVideoRef}
+                        src="/media/website-builder/studio/roofer-inspecting-shingles.mp4"
+                        poster="/media/website-builder/studio/roofer-inspecting-shingles-poster.jpg"
+                        playsInline
+                        loop
+                        muted
+                        className={styles.realVideoPlayer}
+                      />
+                      {!isStoryPlaying && (
+                        <div className={styles.playOverlay}>
+                          <div className={styles.playCircle}>▶</div>
+                        </div>
+                      )}
+                      <span className={styles.videoDurationTag}>
+                        {isStoryPlaying ? 'Playing' : '0:05'}
+                      </span>
                     </div>
                     <div style={{ fontSize: '0.78rem', color: '#94a3b8', display: 'flex', flexDirection: 'column', gap: 6 }}>
                       <span>✓ Full deck inspection &amp; tear-off</span>
                       <span>✓ Heavy architectural shingles</span>
                       <span>✓ Lifetime leak-free warranty</span>
+                      <button
+                        type="button"
+                        onClick={toggleStoryPlay}
+                        className={styles.miniVideoControlBtn}
+                        style={{ marginTop: 8 }}
+                      >
+                        {isStoryPlaying ? '⏸ Pause Walkthrough' : '▶ Play Walkthrough'}
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -262,25 +358,66 @@ export default function WebsiteMediaStudioShowcase() {
 
               {activeLayout === 'reel' && (
                 <div className={styles.reelsGrid}>
-                  <div className={styles.reelCard}>
-                    <span style={{ fontSize: '0.65rem', color: '#38bdf8', fontFamily: 'var(--font-mono)' }}>0:42</span>
-                    <span className={styles.reelTitle}>Copper Valley Install</span>
+                  <div className={`${styles.reelCard} ${styles.reelCardVideo}`}>
+                    <video
+                      autoPlay
+                      loop
+                      muted
+                      playsInline
+                      className={styles.realReelVideo}
+                      src="/media/website-builder/lawn-and-order/lawn-and-order-mobile-scroll.mp4"
+                      poster="/media/website-builder/lawn-and-order/lawn-and-order-mobile-hero.jpg"
+                    />
+                    <div className={styles.reelOverlay}>
+                      <span className={styles.reelTimeBadge}>● Live Reel · 0:42</span>
+                      <span className={styles.reelTitle}>Jobsite Progress</span>
+                    </div>
                   </div>
                   <div className={styles.reelCard} style={{ background: '#192841' }}>
-                    <span style={{ fontSize: '0.65rem', color: '#38bdf8', fontFamily: 'var(--font-mono)' }}>0:38</span>
-                    <span className={styles.reelTitle}>Storm Damage Fix</span>
+                    <video
+                      autoPlay
+                      loop
+                      muted
+                      playsInline
+                      className={styles.realReelVideo}
+                      src="/media/website-builder/studio/roofer-inspecting-shingles.mp4"
+                      poster="/media/website-builder/studio/roofer-inspecting-shingles-poster.jpg"
+                    />
+                    <div className={styles.reelOverlay}>
+                      <span className={styles.reelTimeBadge}>0:38</span>
+                      <span className={styles.reelTitle}>Rooftop Inspection</span>
+                    </div>
                   </div>
                   <div className={styles.reelCard} style={{ background: '#1c2e3d' }}>
-                    <span style={{ fontSize: '0.65rem', color: '#38bdf8', fontFamily: 'var(--font-mono)' }}>0:54</span>
-                    <span className={styles.reelTitle}>Final Reveal</span>
+                    <video
+                      autoPlay
+                      loop
+                      muted
+                      playsInline
+                      className={styles.realReelVideo}
+                      src="/media/website-builder/studio/craftsman-woodworking.mp4"
+                      poster="/media/website-builder/studio/craftsman-woodworking-poster.jpg"
+                    />
+                    <div className={styles.reelOverlay}>
+                      <span className={styles.reelTimeBadge}>0:54</span>
+                      <span className={styles.reelTitle}>Wood Framing Craft</span>
+                    </div>
                   </div>
                 </div>
               )}
 
               {activeLayout === 'testimonial' && (
                 <div className={styles.testimonialCardMock}>
-                  <div className={styles.videoScreenMock} style={{ aspectRatio: '1 / 1' }}>
-                    <div className={styles.playCircle} style={{ width: 32, height: 32, fontSize: '0.75rem' }}>▶</div>
+                  <div className={styles.videoScreenWrapper} style={{ aspectRatio: '1 / 1' }}>
+                    <video
+                      autoPlay
+                      loop
+                      muted
+                      playsInline
+                      className={styles.realVideoPlayer}
+                      src="/videos/lets-get-quoted-hero-video-paced.mp4"
+                      poster="/features/client-esignature.jpg"
+                    />
                     <span className={styles.videoDurationTag}>0:45</span>
                   </div>
                   <div>
@@ -295,8 +432,16 @@ export default function WebsiteMediaStudioShowcase() {
 
               {activeLayout === 'process' && (
                 <div className={styles.processStepsMock}>
-                  <div className={styles.videoScreenMock}>
-                    <div className={styles.playCircle}>▶</div>
+                  <div className={styles.videoScreenWrapper}>
+                    <video
+                      autoPlay
+                      loop
+                      muted
+                      playsInline
+                      className={styles.realVideoPlayer}
+                      src="/videos/lets-get-quoted-hero-video-paced.mp4"
+                      poster="/features/online-booking.jpg"
+                    />
                     <span className={styles.videoDurationTag}>1:30</span>
                   </div>
                   <div className={styles.stepList}>

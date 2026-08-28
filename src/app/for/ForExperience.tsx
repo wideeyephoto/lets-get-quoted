@@ -5,8 +5,9 @@ import Link from 'next/link';
 import { TRADES } from '@/lib/trades';
 import { TRADE_CATEGORIES } from '@/lib/trade-categories';
 import { seasonalTrades } from '@/lib/trade-collections';
+import { FLEX_PRICE, LOWEST_PLATFORM_FEE } from '@/lib/pricing';
 import { APP_SIGNUP_URL } from '@/components/marketing/links';
-import styles from './for-mockup.module.css';
+import styles from './for.module.css';
 
 const money = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
 
@@ -35,8 +36,8 @@ interface HeroTradeDemo {
 }
 
 const HERO_TRADES: Record<string, HeroTradeDemo> = {
-  plumbers: {
-    id: 'plumbers',
+  plumbing: {
+    id: 'plumbing',
     name: 'Plumbing & Drains',
     companyName: 'Apex Flow Plumbing & Mechanical',
     domainUrl: 'apexflowplumbing.letsgetquoted.site/estimate',
@@ -97,8 +98,8 @@ const HERO_TRADES: Record<string, HeroTradeDemo> = {
     customerName: 'Marcus Vance',
     customerAddress: '884 Meadow View Dr · 5.8 mi',
   },
-  roofers: {
-    id: 'roofers',
+  roofing: {
+    id: 'roofing',
     name: 'Roofing & Gutters',
     companyName: 'Summit Shield Roofing & Exteriors',
     domainUrl: 'summitshieldroofs.com/estimate',
@@ -128,21 +129,21 @@ const HERO_TRADES: Record<string, HeroTradeDemo> = {
     customerName: 'Robert & Emily Chen',
     customerAddress: '204 Whispering Pines · 4.1 mi',
   },
-  electricians: {
-    id: 'electricians',
+  electrical: {
+    id: 'electrical',
     name: 'Electrical & Solar',
     companyName: 'VoltCraft Master Electric & EV',
     domainUrl: 'voltcraftenergy.site/panel-upgrade',
     badge: 'HOT LEAD · PANEL UPGRADE',
     icon: '⚡',
     serviceTitle: '200A Service Upgrade + Tesla Level 2 EV Charger',
-    unitLabel: 'Circuit Scope',
+    unitLabel: 'Dedicated Circuits Scope',
     defaultUnits: 4,
     unitStep: 1,
     minUnits: 1,
     maxUnits: 12,
     baseRate: 650,
-    unitSuffix: 'dedicated circuits',
+    unitSuffix: 'circuits',
     defaultOptions: [
       { name: 'Square D QO 200A 42-Space Main Breaker Panel', cost: 1950, checked: true },
       { name: 'Tesla Universal Wall Connector 48A (60A Breaker)', cost: 750, checked: true },
@@ -159,8 +160,8 @@ const HERO_TRADES: Record<string, HeroTradeDemo> = {
     customerName: 'David Sterling',
     customerAddress: '512 Oakwood Lane · 2.9 mi',
   },
-  landscapers: {
-    id: 'landscapers',
+  landscaping: {
+    id: 'landscaping',
     name: 'Landscaping & Hardscape',
     companyName: 'Stone & Timber Outdoor Living',
     domainUrl: 'stoneandtimber.site/quote',
@@ -189,6 +190,99 @@ const HERO_TRADES: Record<string, HeroTradeDemo> = {
     dispatchTime: 'Thursday · 8:00 AM',
     customerName: 'Jessica Morales',
     customerAddress: '730 Highland Crest · 6.2 mi',
+  },
+  painting: {
+    id: 'painting',
+    name: 'Painting & Finishes',
+    companyName: 'Precision Coat Pro Painters',
+    domainUrl: 'precisioncoatpros.com/interior',
+    badge: 'TURNKEY · HIGH TICKET',
+    icon: '🎨',
+    serviceTitle: 'Whole-Home Interior Repaint + Cabinet Spray',
+    unitLabel: 'Home Rooms Count',
+    defaultUnits: 5,
+    unitStep: 1,
+    minUnits: 2,
+    maxUnits: 12,
+    baseRate: 780,
+    unitSuffix: 'rooms',
+    defaultOptions: [
+      { name: 'Sherwin-Williams Emerald Urethane Trim & Doors', cost: 1200, checked: true },
+      { name: 'Full Kitchen Cabinet Factory Spray (24 Doors/Drawers)', cost: 2400, checked: true },
+      { name: 'Drywall Patching & Popcorn Ceiling Texture Removal', cost: 650, checked: false },
+    ],
+    quoteItems: [
+      { name: 'Sherwin-Williams SuperPaint Interior (Walls/Ceilings)', qty: '5 rooms', total: 3900 },
+      { name: 'Kitchen cabinet spray prep, degrease, prime & 2 coats', qty: '1 kitchen', total: 2400 },
+      { name: 'Floor masking, plastic drape & 3-pro painter crew', qty: '4 days', total: 1800 },
+    ],
+    crewTech: 'Painting Crew Bravo (Lead: Andrei)',
+    vanNumber: 'Spray Rig Van #05',
+    dispatchTime: 'Tuesday · 8:00 AM',
+    customerName: 'Claire Redfield',
+    customerAddress: '914 Willow Creek Blvd · 4.8 mi',
+  },
+  remodeling: {
+    id: 'remodeling',
+    name: 'Remodeling & Builds',
+    companyName: 'Artisan Design / Build Contractors',
+    domainUrl: 'artisandesignbuild.com/bathrooms',
+    badge: 'LUXURY · HIGH TICKET',
+    icon: '🔨',
+    serviceTitle: 'Master Bathroom Suite & Walk-In Tile Shower',
+    unitLabel: 'Bathroom Size (Sq Ft)',
+    defaultUnits: 120,
+    unitStep: 10,
+    minUnits: 60,
+    maxUnits: 300,
+    baseRate: 140,
+    unitSuffix: 'sq ft',
+    defaultOptions: [
+      { name: 'Schluter Kerdi Waterproofing System with Linear Drain', cost: 2800, checked: true },
+      { name: 'Custom Dual Vanity with Quartz Countertops & Sinks', cost: 3400, checked: true },
+      { name: 'Frameless Heavy Glass Shower Enclosure (3/8" Glass)', cost: 1650, checked: true },
+    ],
+    quoteItems: [
+      { name: 'Walk-in shower tile build + Schluter waterproofing', qty: '1 suite', total: 8800 },
+      { name: 'Dual vanity plumbing re-route & Moen fixtures', qty: '1 pkg', total: 3400 },
+      { name: 'Demo, drywall, heated floor wiring & carpenter finish', qty: '2 wks', total: 7200 },
+    ],
+    crewTech: 'Lead Carpenter Brian & Team',
+    vanNumber: 'Tool Trailer + Truck #06',
+    dispatchTime: 'Monday · 7:30 AM',
+    customerName: 'Greg & Lisa Thornton',
+    customerAddress: '1109 Lakeview Terrace · 3.1 mi',
+  },
+  pressurewashing: {
+    id: 'pressurewashing',
+    name: 'Pressure & Soft Wash',
+    companyName: 'HydroClean Pro Exterior Wash',
+    domainUrl: 'hydrocleanpros.site/book',
+    badge: 'SAME-DAY · RESIDENTIAL',
+    icon: '💧',
+    serviceTitle: 'Whole-House SoftWash & Concrete Surface Clean',
+    unitLabel: 'House Footprint (Sq Ft)',
+    defaultUnits: 2600,
+    unitStep: 100,
+    minUnits: 1000,
+    maxUnits: 5000,
+    baseRate: 0.22,
+    unitSuffix: 'sq ft',
+    defaultOptions: [
+      { name: 'Low-Pressure House SoftWash (Vinyl/Stucco/Brick)', cost: 380, checked: true },
+      { name: 'Surface Cleaner Driveway & Walkway Deep Wash', cost: 220, checked: true },
+      { name: 'Roof Algae Treatment (Gloecapsa Magma Removal)', cost: 350, checked: false },
+    ],
+    quoteItems: [
+      { name: 'Exterior house wash with biodegradable surfactant', qty: '2,600 sq ft', total: 572 },
+      { name: 'Driveway, front porch & sidewalk surface wash', qty: '1 lot', total: 220 },
+      { name: 'Post-treatment plant wash & window rinse rinse', qty: '1 job', total: 80 },
+    ],
+    crewTech: 'Zack P. (SoftWash Specialist)',
+    vanNumber: 'Rig Van #08 (Hot Water Unit)',
+    dispatchTime: 'Today · 2:00 PM – 4:00 PM',
+    customerName: 'Brendan Vance',
+    customerAddress: '430 Pinecrest Dr · 1.9 mi',
   },
 };
 
@@ -246,8 +340,8 @@ const FAQS = [
   },
 ];
 
-export default function ForMockupExperience() {
-  const [selectedHeroTradeKey, setSelectedHeroTradeKey] = useState<string>('plumbers');
+export default function ForExperience() {
+  const [selectedHeroTradeKey, setSelectedHeroTradeKey] = useState<string>('plumbing');
   const [activeSimulatorTab, setActiveSimulatorTab] = useState<'intake' | 'quote' | 'dispatch' | 'payout'>('intake');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -256,7 +350,7 @@ export default function ForMockupExperience() {
   const [selectedTier, setSelectedTier] = useState<'good' | 'better' | 'best'>('better');
 
   // Live Simulator state for the hero
-  const heroData = HERO_TRADES[selectedHeroTradeKey] || HERO_TRADES.plumbers;
+  const heroData = HERO_TRADES[selectedHeroTradeKey] || HERO_TRADES.plumbing;
   const [unitCount, setUnitCount] = useState<number>(heroData.defaultUnits);
   const [options, setOptions] = useState(heroData.defaultOptions);
   const [quoteSigned, setQuoteSigned] = useState(false);
@@ -360,31 +454,7 @@ export default function ForMockupExperience() {
       <div className={styles.ambientOne} aria-hidden="true" />
       <div className={styles.ambientTwo} aria-hidden="true" />
 
-      {/* Nav */}
-      <header className={styles.siteNav}>
-        <Link className={styles.brandLockup} href="/">
-          <span className={styles.brandMark} aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" width="18" height="18">
-              <path d="M4 14.5L9.5 20 20 4" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </span>
-          <span className={styles.brandName}>Let’s Get Quoted</span>
-        </Link>
-
-        <nav className={styles.navLinks} aria-label="Main Navigation">
-          <Link href="/features/website-builder">Website</Link>
-          <Link href="/how-it-works">How it works</Link>
-          <Link href="/for-mockup" aria-current="page" className={styles.activeNav}>For your trade</Link>
-          <Link href="/pricing">Pricing</Link>
-          <Link href="/founder">Founder</Link>
-          <a href="https://app.letsgetquoted.com/login">Sign in</a>
-          <a href={APP_SIGNUP_URL} className={styles.navCta}>
-            Build my free site <span aria-hidden="true">→</span>
-          </a>
-        </nav>
-      </header>
-
-      <main className={styles.pageContainer}>
+      <div className={styles.pageContainer}>
         {/* =========================================================================
             1. HERO SECTION: SPLIT 2-COL WITH ENHANCED LUXURY TRADE ENGINE SIMULATOR
             ========================================================================= */}
@@ -413,7 +483,7 @@ export default function ForMockupExperience() {
             <ul className={styles.assurances} aria-label="Included with every trade plan">
               <li>✓ Trade website included</li>
               <li>✓ Pre-loaded service menu</li>
-              <li>✓ Flex plan is $0/month</li>
+              <li>✓ Flex plan is {FLEX_PRICE.monthlyPrice}</li>
               <li>✓ Direct Stripe payouts</li>
             </ul>
 
@@ -421,7 +491,7 @@ export default function ForMockupExperience() {
               <span aria-hidden="true">↗</span>
               <div>
                 <strong>Seasonal trade? Pay $0/month in the off-season.</strong>
-                <small>Flex base fee is $0/mo. Never pay a $300/mo software bill during quiet winter months.</small>
+                <small>Flex base fee is {FLEX_PRICE.monthlyPrice}. Never pay a $300/mo software bill during quiet winter months.</small>
               </div>
             </div>
           </div>
@@ -731,7 +801,7 @@ export default function ForMockupExperience() {
                         <strong>+${money.format(calculatedSubtotal)}.00</strong>
                       </div>
                       <div className={`${styles.waterfallRow} ${styles.feeRow}`}>
-                        <span>Flex Platform Fee (1.25%)</span>
+                        <span>Flex Platform Fee ({FLEX_PRICE.platformFee})</span>
                         <strong className={styles.feeText}>-${flexFee.toFixed(2)}</strong>
                       </div>
                       <div className={`${styles.waterfallRow} ${styles.feeRow}`}>
@@ -748,7 +818,7 @@ export default function ForMockupExperience() {
                     </div>
 
                     <div className={styles.growthUpgradeCallout}>
-                      <span>💡 On the <strong>Growth Plan</strong> (0.25% fee), you keep <strong>+${(flexFee - growthFee).toFixed(2)} more</strong> on this single job.</span>
+                      <span>💡 On the <strong>Growth Plan</strong> ({LOWEST_PLATFORM_FEE} fee), you keep <strong>+${(flexFee - growthFee).toFixed(2)} more</strong> on this single job.</span>
                     </div>
                   </div>
                 )}
@@ -770,7 +840,7 @@ export default function ForMockupExperience() {
             <span>Pre-tuned service catalogs</span>
           </div>
           <div className={styles.proofItem}>
-            <strong className={styles.proofMetric}>$0 / Month</strong>
+            <strong className={styles.proofMetric}>{FLEX_PRICE.monthlyPrice}</strong>
             <span>Flex plan with no monthly bill</span>
           </div>
           <div className={styles.proofItem}>
@@ -870,7 +940,7 @@ export default function ForMockupExperience() {
                 Competitors like Jobber and ServiceTitan charge $250–$400+ every single month regardless of whether you have 30 jobs or zero jobs in the off-season.
               </p>
               <p className={styles.seasonalBody}>
-                On the <strong>Let’s Get Quoted Flex Plan ($0/month)</strong>, you only pay a 1.25% fee when you collect card payments from homeowners. During quiet winter or off-season months, your base subscription is <strong>$0.00</strong>.
+                On the <strong>Let’s Get Quoted Flex Plan ({FLEX_PRICE.monthlyPrice})</strong>, you only pay a {FLEX_PRICE.platformFee} fee when you collect card payments from homeowners. During quiet winter or off-season months, your base subscription is <strong>$0.00</strong>.
               </p>
 
               <div className={styles.seasonalTradeTags}>
@@ -933,7 +1003,7 @@ export default function ForMockupExperience() {
                 <div className={`${styles.compareCol} ${styles.lgqCol}`}>
                   <span className={styles.colLabel}>LGQ Flex ($0/mo base)</span>
                   <strong className={styles.colPrice}>${money.format(lgqFlexAnnualFee)}<small>/yr</small></strong>
-                  <span className={styles.colDesc}>1.25% only when paid · $0 off-season</span>
+                  <span className={styles.colDesc}>{FLEX_PRICE.platformFee} only when paid · $0 off-season</span>
                 </div>
               </div>
 
@@ -1145,7 +1215,7 @@ export default function ForMockupExperience() {
             <p className={styles.eyebrow}>READY WHEN YOU ARE</p>
             <h2>Start on Flex for your trade. Upgrade only when the math works.</h2>
             <p className={styles.closingSub}>
-              Flex is $0/month with zero monthly subscription bills. Paid plans lower the payment fee as low as 0.25% as your crew grows.
+              Flex is {FLEX_PRICE.monthlyPrice} with zero monthly subscription bills. Paid plans lower the payment fee as low as {LOWEST_PLATFORM_FEE} as your crew grows.
             </p>
             <div className={styles.closingButtonsRow}>
               <a className={styles.btnPrimary} href={APP_SIGNUP_URL}>
@@ -1158,7 +1228,7 @@ export default function ForMockupExperience() {
             <p className={styles.closingFine}>No credit card required to start · Instant setup in under 3 minutes</p>
           </div>
         </section>
-      </main>
+      </div>
     </div>
   );
 }

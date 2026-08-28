@@ -169,18 +169,42 @@
 /* Layout Mock Previews */
 .heroLoopPreview {
   position: relative;
-  min-height: 240px;
+  min-height: 260px;
   border-radius: 12px;
-  background: linear-gradient(180deg, rgba(15, 23, 42, 0.7) 0%, rgba(15, 23, 42, 0.95) 100%),
-    radial-gradient(circle at center, #1e293b 0%, #0f172a 100%);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   text-align: center;
   padding: 2rem 1.5rem;
-  border: 1px dashed rgba(255, 122, 33, 0.4);
+  border: 1px solid rgba(255, 122, 33, 0.4);
   overflow: hidden;
+  box-shadow: 0 0 30px rgba(255, 122, 33, 0.15);
+}
+
+.heroBgVideo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.38;
+}
+
+.heroLoopScrim {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center, rgba(15, 23, 42, 0.65) 0%, rgba(15, 23, 42, 0.95) 100%),
+    linear-gradient(180deg, rgba(8, 12, 20, 0.4) 0%, rgba(8, 12, 20, 0.8) 100%);
+}
+
+.heroLoopOverlay {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
 }
 
 .videoOverlayBadge {
@@ -191,9 +215,10 @@
   font-family: var(--font-mono, monospace);
   padding: 0.2rem 0.5rem;
   border-radius: 6px;
-  background: rgba(0, 0, 0, 0.7);
+  background: rgba(0, 0, 0, 0.75);
   color: #38bdf8;
   border: 1px solid rgba(56, 189, 248, 0.3);
+  z-index: 3;
 }
 
 .heroLoopHeading {
@@ -220,40 +245,74 @@
   color: #ffffff;
   font-size: 0.78rem;
   font-weight: 700;
+  box-shadow: 0 0 15px rgba(255, 122, 33, 0.4);
 }
 
 /* Split View Preview */
 .splitPreview {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1.15fr 1fr;
   gap: 1.25rem;
   align-items: center;
 }
 
-.videoScreenMock {
+.videoScreenWrapper {
   position: relative;
   aspect-ratio: 16 / 10;
   border-radius: 10px;
-  background: #1e293b;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #0f172a;
+  border: 1px solid rgba(255, 255, 255, 0.15);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   color: #ffffff;
   overflow: hidden;
+  cursor: pointer;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.5);
+  transition: transform 180ms ease, border-color 180ms ease;
+}
+
+.videoScreenWrapper:hover {
+  border-color: rgba(255, 122, 33, 0.6);
+  transform: scale(1.01);
+}
+
+.realVideoPlayer {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.playOverlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.35);
+  transition: background 150ms ease;
+}
+
+.videoScreenWrapper:hover .playOverlay {
+  background: rgba(0, 0, 0, 0.2);
 }
 
 .playCircle {
-  width: 40px;
-  height: 40px;
+  width: 42px;
+  height: 42px;
   border-radius: 50%;
-  background: rgba(255, 122, 33, 0.9);
+  background: rgba(255, 122, 33, 0.95);
   color: #ffffff;
   display: grid;
   place-items: center;
   font-size: 1rem;
-  box-shadow: 0 4px 15px rgba(255, 122, 33, 0.4);
+  box-shadow: 0 4px 20px rgba(255, 122, 33, 0.6);
+  transition: transform 150ms ease;
+}
+
+.videoScreenWrapper:hover .playCircle {
+  transform: scale(1.08);
 }
 
 .videoDurationTag {
@@ -261,17 +320,42 @@
   bottom: 8px;
   right: 8px;
   font-size: 0.65rem;
-  padding: 0.15rem 0.4rem;
+  padding: 0.15rem 0.45rem;
   border-radius: 4px;
-  background: rgba(0, 0, 0, 0.75);
+  background: rgba(0, 0, 0, 0.85);
   color: #f1f5f9;
   font-family: var(--font-mono, monospace);
+  font-weight: 700;
+  z-index: 2;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.miniVideoControlBtn {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: rgba(255, 122, 33, 0.12);
+  border: 1px solid rgba(255, 122, 33, 0.4);
+  color: var(--flare, #ff7a21);
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+
+.miniVideoControlBtn:hover {
+  background: rgba(255, 122, 33, 0.25);
+  border-color: var(--flare, #ff7a21);
+  color: #ffffff;
 }
 
 .splitCopy {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
+  gap: 0.5rem;
 }
 
 .splitEyebrow {
@@ -328,8 +412,9 @@
 
 .storyMediaRow {
   display: grid;
-  grid-template-columns: 1.4fr 1fr;
+  grid-template-columns: 1.3fr 1fr;
   gap: 1rem;
+  align-items: center;
 }
 
 /* Reels Preview */
@@ -345,19 +430,46 @@
   border-radius: 10px;
   background: #1e293b;
   border: 1px solid rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+
+.reelCardVideo {
+  border-color: rgba(56, 189, 248, 0.4);
+  box-shadow: 0 0 15px rgba(56, 189, 248, 0.2);
+}
+
+.realReelVideo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.reelOverlay {
+  position: absolute;
+  inset: 0;
   padding: 0.6rem;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  overflow: hidden;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.6) 0%, transparent 40%, rgba(0, 0, 0, 0.85) 100%);
+  z-index: 2;
+}
+
+.reelTimeBadge {
+  font-size: 0.65rem;
+  color: #38bdf8;
+  font-family: var(--font-mono, monospace);
+  font-weight: 700;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
 }
 
 .reelTitle {
-  font-size: 0.72rem;
-  font-weight: 700;
+  font-size: 0.75rem;
+  font-weight: 750;
   color: #ffffff;
-  z-index: 1;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.9);
 }
 
 /* Testimonial Preview */

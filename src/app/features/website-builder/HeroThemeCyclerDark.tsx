@@ -15,9 +15,9 @@ import styles from './hero-theme-cycler-dark.module.css';
 
 const FRAME_WIDTH = 1280;
 
-export default function HeroThemeCycler() {
+export default function HeroThemeCyclerDark() {
   const [index, setIndex] = useState(0);
-  const [playing, setPlaying] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(true);
   const [showFrame, setShowFrame] = useState(false);
   const [box, setBox] = useState<{ scale: number; frameHeight: number } | null>(null);
 
@@ -30,10 +30,8 @@ export default function HeroThemeCycler() {
   // Check reduced motion
   useEffect(() => {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      setPlaying(false);
+      setIsPlaying(false);
       setShowFrame(true);
-    } else {
-      setPlaying(true);
     }
   }, []);
 
@@ -54,13 +52,13 @@ export default function HeroThemeCycler() {
 
   // Automatic cycling timer
   useEffect(() => {
-    if (!playing) return;
+    if (!isPlaying) return;
 
     let visible = !document.hidden;
     let onScreen = false;
 
     const tick = () => {
-      if (playing && visible && onScreen && !manualStep) {
+      if (isPlaying && visible && onScreen && !manualStep) {
         setIndex((value) => (value + 1) % THEME_CYCLE_STEPS.length);
       }
     };
@@ -85,11 +83,11 @@ export default function HeroThemeCycler() {
       document.removeEventListener('visibilitychange', onVisibility);
       observer.disconnect();
     };
-  }, [playing, manualStep]);
+  }, [isPlaying, manualStep]);
 
   // Current active step (either manual selection or auto cycle step)
-  const step = manualStep || themeCycleAt(index * DWELL_MS).step;
-  const previewSrc = `/themes/${step.templateId}?scheme=${encodeURIComponent(step.schemeKey)}&accent=${encodeURIComponent(step.accent)}`;
+  const currentStep = manualStep || themeCycleAt(index * DWELL_MS).step;
+  const previewSrc = `/themes/${currentStep.templateId}?scheme=${encodeURIComponent(currentStep.schemeKey)}&accent=${encodeURIComponent(currentStep.accent)}`;
 
   const handleSelectTemplate = (templateId: string) => {
     const stepIndex = THEME_CYCLE_STEPS.findIndex((s) => s.templateId === templateId);
@@ -103,7 +101,7 @@ export default function HeroThemeCycler() {
     const targetScheme = THEME_CYCLE_SCHEMES.find((s) => s.key === schemeKey);
     if (targetScheme) {
       setManualStep({
-        ...step,
+        ...currentStep,
         schemeKey: targetScheme.key,
         schemeLabel: targetScheme.label,
       });
@@ -112,8 +110,6 @@ export default function HeroThemeCycler() {
 
   return (
     <div className={styles.pickerContainer} ref={rootRef}>
-      <span className={styles.srOnly}>The theme picker cycling through contractor designs</span>
-
       {/* Top Window Bar */}
       <div className={styles.pickerTopBar}>
         <div className={styles.windowDots}>
@@ -124,7 +120,7 @@ export default function HeroThemeCycler() {
 
         <div className={styles.addressBar}>
           <span className={styles.sslBadge}>🔒 SSL LIVE</span>
-          <span>{step.templateName.toLowerCase()}.letsgetquoted.com</span>
+          <span>{currentStep.templateName.toLowerCase()}.letsgetquoted.com</span>
         </div>
 
         <div className={styles.cycleControlRow}>
@@ -134,14 +130,14 @@ export default function HeroThemeCycler() {
             onClick={() => {
               if (manualStep) {
                 setManualStep(null);
-                setPlaying(true);
+                setIsPlaying(true);
               } else {
-                setPlaying(!playing);
+                setIsPlaying(!isPlaying);
               }
             }}
-            title={playing && !manualStep ? 'Pause automatic preview cycling' : 'Resume auto cycle'}
+            title={isPlaying && !manualStep ? 'Pause automatic preview cycling' : 'Resume auto cycle'}
           >
-            {playing && !manualStep ? '⏸ Pause' : '▶ Auto-Cycle'}
+            {isPlaying && !manualStep ? '⏸ Pause' : '▶ Auto-Cycle'}
           </button>
         </div>
       </div>
@@ -159,7 +155,7 @@ export default function HeroThemeCycler() {
 
             <div className={styles.themeGrid}>
               {THEME_CYCLE_STEPS.map((option) => {
-                const isSelected = option.templateId === step.templateId;
+                const isSelected = option.templateId === currentStep.templateId;
                 return (
                   <button
                     key={option.templateId}
@@ -185,12 +181,12 @@ export default function HeroThemeCycler() {
           <div className={styles.controlSection}>
             <div className={styles.controlLabel}>
               <span>Color System</span>
-              <small>{step.schemeLabel}</small>
+              <small>{currentStep.schemeLabel}</small>
             </div>
 
             <div className={styles.schemeGrid}>
               {THEME_CYCLE_SCHEMES.slice(0, 8).map((scheme) => {
-                const isSelected = scheme.key === step.schemeKey;
+                const isSelected = scheme.key === currentStep.schemeKey;
                 return (
                   <button
                     key={scheme.key || 'default'}
@@ -215,9 +211,9 @@ export default function HeroThemeCycler() {
             <div className={styles.accentLeft}>
               <span
                 className={styles.accentDot}
-                style={{ backgroundColor: step.accent }}
+                style={{ backgroundColor: currentStep.accent }}
               />
-              <span className={styles.accentHex}>{step.accent}</span>
+              <span className={styles.accentHex}>{currentStep.accent}</span>
             </div>
             <Link href="/demo/sites" className={styles.galleryLink}>
               Full Gallery ↗
@@ -232,7 +228,7 @@ export default function HeroThemeCycler() {
               <iframe
                 key={previewSrc}
                 src={previewSrc}
-                title={`${step.templateName} contractor website preview`}
+                title={`${currentStep.templateName} contractor website preview`}
                 className={styles.previewFrame}
                 style={{
                   width: FRAME_WIDTH,

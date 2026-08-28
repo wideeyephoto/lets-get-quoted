@@ -1,1065 +1,1974 @@
-/* /for — the trade hub.
- *
- * A premium-dark surface with its own palette, scoped to this page. The rest of
- * the marketing site draws on globals' theme tokens; this page pins its own
- * because it is a designed sheet rather than a themed one — the navy, the warm
- * white and the safety orange are the design, not a skin over it. Nothing here
- * leaks: every rule is a CSS-module class.
- *
- * WHY NOT globals.css. The previous version of this page was built entirely out
- * of shared marketing classes — .hero-copy, .section-block, .trade-*. Restyling
- * those to the mockup would have restyled /pricing, /faq, /founder and the 49
- * trade detail pages with them. What IS still shared is the chrome: the fixed
- * header (public-header-layout), SiteFooter, and the skip link.
- *
- * ON CONTRAST. #FF5A12 is 5.9:1 on #071521, so it is safe as text and as a
- * border. It is 3.1:1 against white, which is NOT — so the filled orange button
- * carries the navy as its ink, not white. That is the one place the mockup's
- * "safety-orange CTA" and WCAG AA disagree, and this is the reading that
- * satisfies both.
- */
-
-/* The palette, on BOTH — .ground is a sibling of .page, not a descendant, so a
-   custom property declared only on .page is invisible to it. That mistake is
-   silent and it is not subtle: `background: …, var(--ground)` fell back to
-   transparent, the two orange washes landed on the body's own navy, and the
-   whole page rendered brown. */
-.page,
-.ground {
-  --ground: #071521;
-  --card: #0d1c2a;
-  --card-2: #112332;
-  --edge: #263949;
-  --edge-soft: rgba(38, 57, 73, 0.6);
-  --ink: #f5f0e8;
-  --ink-2: #b9c3cb;
-  --flare: #ff5a12;
-  --flare-soft: rgba(255, 90, 18, 0.14);
-}
-
-/**
- * THE BACKSTOP AGAINST HORIZONTAL OVERFLOW — and the reason it lives out here.
- *
- * Something has to stop a long unbroken word (a trade name, a URL) widening the
- * document rather than wrapping. That guard used to sit on .page, and .page is
- * 1280px wide and centred, so it cut at the edge of the text column: the hero
- * art is flush against that edge and its drop-shadows reach ~105px past the
- * image, so the warm rim came off in a hard vertical line down the right-hand
- * side. The guard doing exactly what it was asked to, to the wrong thing.
- *
- * (The first repair was overflow-clip-margin on .page, which extends the paint
- * region and leaves the clip on layout alone. It does not work here for two
- * separate reasons, both measured rather than guessed: the margin is only
- * applied when the box clips in BOTH directions, so paired with `overflow-x:
- * clip` it computes to a length and moves nothing; and content inside the
- * margin is by definition no longer clipped, so it starts counting towards the
- * document width again and the guard leaks by exactly the margin. Safari does
- * not implement the property at all.)
- *
- * So the guard moves out one level, to a full-bleed box. It clips at the
- * viewport edge instead of the column edge, which means the glow is shown for
- * as long as there is screen to show it on, and what is cut is cut at the edge
- * of the display, where there was nothing to see. .page needs no overflow rule
- * of its own — it is free to paint.
- *
- * x only, and `clip` rather than `hidden`: hidden on one axis turns the other
- * into a scroll container, and clipping y would kill page scrolling outright.
- */
-.frame {
-  overflow-x: clip;
-}
-
-.page {
+.pageWrapper {
   position: relative;
-  /* 1280, not 1180. The hero art is 58% of this row, so every pixel of measure
-     is 0.58 of a pixel of device shot — and widening the page is how the shot
-     grows without taking the width off the headline, which the brief pins at
-     40–45%. At 1440 this still leaves 80px of margin down each side. */
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2.5rem 1.25rem 4rem;
-  color: var(--ink);
-  /* No overflow rule here on purpose — the hero's shadows have to be allowed
-     out of this box. .frame above is what keeps the document from widening. */
+  isolation: isolate;
+  min-height: 100svh;
+  overflow-x: clip;
+  background:
+    radial-gradient(circle at 84% 28%, rgba(255, 113, 55, 0.22) 0, rgba(255, 113, 55, 0.04) 28%, transparent 48%),
+    radial-gradient(circle at 70% 80%, rgba(78, 224, 188, 0.14), transparent 34%),
+    linear-gradient(118deg, #071722 0%, #0b1422 46%, #291b1b 72%, #3b231c 100%);
+  color: var(--text, #f0f4f8);
+  font-family: inherit;
 }
 
-/* The navy, full-bleed. The <main> is 1180px wide and centred, so painting the
-   ground on it would leave the body's own near-navy showing down both margins.
-   Fixed and behind everything, the same trick globals' .ambient-glow uses. */
-.ground {
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  background: var(--ground);
-  /* The sheen below is oversized so its drift never exposes an edge; clipping it
-     here is what stops that overhang becoming page width. */
-  overflow: hidden;
-}
-
-/**
- * THE SHIMMER — the navy breathing, not a second colour.
- *
- * This started as two viewport-sized orange washes and had to come out: at
- * 0.16 alpha over 5,000px they stopped being a highlight and became the page
- * colour, and being fixed they were a vignette that never moved. Both faults
- * were about being STATIC and STRONG.
- *
- * So: a third of the alpha, and always moving. Two soft lobes drifting across
- * each other on a slow cycle, out of phase, so the light never repeats the same
- * arrangement in the time anybody spends on the page. At 0.055 the navy is
- * still unambiguously navy; what reads is depth rather than a tint.
- *
- * TRANSFORM AND OPACITY ONLY. The blur is rasterised once and the layer is then
- * composited — animating the gradient's own position would re-blur a
- * full-viewport surface every frame, which is the version of this that heats a
- * phone up.
- */
-.ground::before,
-.ground::after {
-  content: '';
+.pageWrapper::before {
   position: absolute;
-  /* Oversized deliberately: the drift moves ±4%, and an element that ended at
-     the viewport edge would slide a hard edge into view. */
-  inset: -25%;
-  will-change: transform, opacity;
+  z-index: -1;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.027) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.027) 1px, transparent 1px);
+  background-size: 54px 54px;
+  mask-image: linear-gradient(90deg, transparent, black 42%, black 100%);
+  content: '';
+  pointer-events: none;
 }
 
-.ground::before {
-  background: radial-gradient(38% 34% at 26% 24%, rgba(255, 90, 18, 0.055), transparent 68%);
-  filter: blur(60px);
-  animation: ground-drift-a 46s ease-in-out infinite alternate;
+.ambientOne {
+  position: absolute;
+  top: 6%;
+  right: 2%;
+  width: 480px;
+  height: 480px;
+  border-radius: 50%;
+  background: #ff7137;
+  filter: blur(95px);
+  opacity: 0.32;
+  pointer-events: none;
+  z-index: 0;
+  animation: driftOne 12s ease-in-out infinite alternate;
 }
 
-.ground::after {
-  background: radial-gradient(34% 30% at 74% 70%, rgba(255, 90, 18, 0.04), transparent 66%);
-  filter: blur(70px);
-  /* Longer, and not a multiple of the other — two cycles that share a factor
-     re-synchronise, and a shimmer that repeats on a beat reads as a loop. */
-  animation: ground-drift-b 61s ease-in-out infinite alternate;
+.ambientTwo {
+  position: absolute;
+  top: 55%;
+  left: 2%;
+  width: 420px;
+  height: 420px;
+  border-radius: 50%;
+  background: #4ee0bc;
+  filter: blur(90px);
+  opacity: 0.18;
+  pointer-events: none;
+  z-index: 0;
+  animation: driftTwo 15s ease-in-out infinite alternate;
 }
 
-@keyframes ground-drift-a {
-  from { transform: translate3d(-3%, -2%, 0) scale(1); opacity: 0.75; }
-  to { transform: translate3d(3%, 2.5%, 0) scale(1.12); opacity: 1; }
+@keyframes driftOne {
+  0% { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(-30px, 40px) scale(1.1); }
 }
 
-@keyframes ground-drift-b {
-  from { transform: translate3d(2.5%, 2%, 0) scale(1.08); opacity: 1; }
-  to { transform: translate3d(-2%, -2.5%, 0) scale(1); opacity: 0.7; }
+@keyframes driftTwo {
+  0% { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(40px, -30px) scale(1.08); }
 }
 
-/* ---------------------------------------------------------------- */
-/* Shared page furniture                                             */
-/* ---------------------------------------------------------------- */
+/* Page Body Container */
+.pageContainer {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(48px, 8vw, 96px);
+  max-width: 1320px;
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0 auto;
+  padding: clamp(24px, 4vw, 48px) clamp(16px, 4vw, 40px) 96px;
+  position: relative;
+  z-index: 1;
+}
+
+/* Hero */
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+  align-items: center;
+  gap: clamp(24px, 4vw, 56px);
+  padding-top: clamp(12px, 2vw, 32px);
+  max-width: 100%;
+}
+
+.heroCopy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+}
 
 .eyebrow {
-  margin: 0 0 0.7rem;
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: var(--flare);
-}
-
-.section {
-  margin-top: 4.5rem;
-}
-
-.sectionHead {
-  max-width: 44rem;
-  margin-bottom: 2rem;
-}
-
-.sectionHead h2 {
-  font-family: var(--font-display);
-  font-size: clamp(1.75rem, 3.4vw, 2.5rem);
-  line-height: 1.08;
-  letter-spacing: -0.02em;
-  margin: 0;
-  color: var(--ink);
-  max-width: 22ch;
-}
-
-.sectionHead p {
-  margin: 0.85rem 0 0;
-  font-size: 1rem;
-  line-height: 1.65;
-  color: var(--ink-2);
-  max-width: 56ch;
-}
-
-/* Buttons. Deliberately not globals' .btn: that one is a hollow orange ring
-   everywhere on the site, and this page's primary action is the filled slab the
-   mockup calls for. Both sit in a 48px target. */
-.btn {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  min-height: 48px;
-  padding: 0.85rem 1.4rem;
-  border-radius: 10px;
-  border: 1px solid transparent;
-  font-size: 0.98rem;
-  font-weight: 700;
-  letter-spacing: 0.005em;
-  text-align: center;
-  transition: background-color 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
+  gap: 8px;
+  margin: 0 0 12px;
+  color: #ffd166;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
 }
 
-.btnPrimary {
-  background: var(--flare);
-  /* Navy ink, not white — see the contrast note at the top. 5.9:1. */
-  color: #071521;
-  box-shadow: 0 10px 30px rgba(255, 90, 18, 0.22);
+.pulseDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #4ee0bc;
+  box-shadow: 0 0 10px #4ee0bc;
+  animation: pulseGlow 2s infinite ease-in-out;
 }
 
-.btnPrimary:hover {
-  background: #ff6c2c;
-  box-shadow: 0 12px 34px rgba(255, 90, 18, 0.3);
-}
-
-.btnGhost {
-  background: var(--card-2);
-  border-color: var(--edge);
-  color: var(--ink);
-}
-
-.btnGhost:hover {
-  border-color: #3a5164;
-  background: #15293a;
-}
-
-/* One focus ring for the whole page, on every interactive thing. Orange on
-   navy is 5.9:1, and the offset keeps it clear of the element's own border. */
-.page a:focus-visible,
-.page button:focus-visible,
-.page input:focus-visible {
-  outline: 2px solid var(--flare);
-  outline-offset: 3px;
-  border-radius: 6px;
-}
-
-/* ---------------------------------------------------------------- */
-/* 2 — the split hero                                                */
-/* ---------------------------------------------------------------- */
-
-.hero {
-  position: relative;
-  display: grid;
-  /* 42/58. The copy column is the narrower one on purpose: at 1280px it lands
-     at ~510px, which holds the headline in three lines without a river. */
-  grid-template-columns: minmax(0, 42fr) minmax(0, 58fr);
-  /* Tighter than the 2.5rem it opened at — the devices read as belonging to the
-     sentence beside them rather than as a second column of the page. */
-  gap: 1.75rem;
-  align-items: center;
-  padding-top: 1.5rem;
+@keyframes pulseGlow {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.35); opacity: 0.65; }
 }
 
 .heroCopy h1 {
-  font-family: var(--font-display);
-  /* Overrides globals' h1, which is clamp(2.6rem, 5vw, 5rem) at max-width 11ch
-     — that rule is written for the homepage's four-word hero and would put this
-     headline on six lines. */
-  font-size: clamp(2.05rem, 4.1vw, 3.15rem);
-  line-height: 1.06;
-  letter-spacing: -0.025em;
   margin: 0;
-  max-width: 15ch;
-  color: var(--ink);
+  font-size: clamp(32px, 4.2vw, 50px);
+  font-weight: 900;
+  line-height: 1.08;
+  letter-spacing: -0.03em;
+  color: #ffffff;
 }
 
-.heroLede {
-  margin: 1.15rem 0 0;
-  font-size: 1.12rem;
-  line-height: 1.6;
-  color: var(--ink-2);
-  max-width: 40ch;
-}
-
-.heroCtas {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.8rem;
-  margin-top: 1.9rem;
-}
-
-.heroFine {
-  margin: 1.4rem 0 0;
-  font-size: 0.85rem;
-  line-height: 1.6;
-  color: var(--ink-2);
-  max-width: 46ch;
-}
-
-.heroFine a {
-  color: var(--flare);
-  font-weight: 600;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-
-/* NO max-width AND NO AUTO MARGIN ON THIS BOX. Both were tried and both broke
-   it in the same way: .heroArt is a grid item, grid items are stretched to
-   their track by default, and an auto margin cancels that stretch and sizes the
-   item to its content instead. Its content is a panel that is `width: 100%` of
-   this box and whose height is an aspect-ratio of that width — a circular
-   question the browser answers with zero. Measured: the hero panel rendered
-   2x2px. The cap belongs on the panel, where it has a real width to cap. */
-.heroArt {
-  position: relative;
-  display: flex;
-  justify-content: flex-end;
-}
-
-/**
- * THE BLOOM BEHIND THE HERO PANEL — atmosphere, not a halo.
- *
- * Both layers sit BEHIND the panel and now reach PAST it on every side, which
- * is the one thing that changed when the cut-out became a solid photograph.
- * Tucked inside its edges, as they were, they were two animated gradients
- * rendering underneath an opaque rectangle sixty times a second and visible
- * from nowhere. What reads now is warm light spilling out from behind the
- * panel — the page's own color tying it to the sheet rather than an outline
- * tracing it.
- *
- * They scroll away with the hero, which is the difference between a highlight
- * and a tint on the whole page.
- *
- * Two of them, breathing out of phase and at different speeds, because one
- * pulsing ellipse is a heartbeat — the eye locks onto the beat and it becomes
- * the thing you are looking at instead of the product.
- */
-.heroArt::before,
-.heroArt::after {
-  content: '';
-  position: absolute;
-  border-radius: 999px;
-  z-index: 0;
-  will-change: transform, opacity;
-}
-
-.heroArt::before {
-  inset: -7% -9% -11% -7%;
-  background: radial-gradient(circle, rgba(255, 90, 18, 0.26), transparent 66%);
-  filter: blur(52px);
-  animation: hero-bloom 11s ease-in-out infinite alternate;
-}
-
-/* The core: tighter, warmer, and thrown low and left, which is where the
-   estimate card sits. Light has a source, and the violet card reads as lit from
-   behind rather than as a sticker on a photo. */
-.heroArt::after {
-  inset: 34% 42% -16% -14%;
-  background: radial-gradient(circle, rgba(255, 138, 61, 0.24), transparent 70%);
-  filter: blur(44px);
-  animation: hero-core 17s ease-in-out infinite alternate;
-}
-
-@keyframes hero-bloom {
-  from { transform: scale(0.94); opacity: 0.72; }
-  to { transform: scale(1.07); opacity: 1; }
-}
-
-@keyframes hero-core {
-  from { transform: translate3d(-2%, 1.5%, 0) scale(1.04); opacity: 1; }
-  to { transform: translate3d(2%, -1.5%, 0) scale(0.92); opacity: 0.6; }
-}
-
-/**
- * WHAT WENT WITH THE DEVICE SHOT, and why none of it came back.
- *
- * .heroShot carried eight drop-shadows and a thirteen-second drift, and
- * HeroParallax wrapped it to lag it behind the page on scroll. All three were
- * written for one thing: a flat cut-out on transparency, which has no rectangle
- * for box-shadow to trace and looks pasted on if it holds perfectly still in
- * front of two breathing glows.
- *
- * The panel that replaced it is a photograph with a rounded edge, a real
- * shadow, and a live interface inside it. It does not need faked depth — and
- * it must not be moved, because it now contains three buttons. The parallax
- * drifted them under the pointer for the whole of every scroll; Playwright
- * could not land a click on "Show estimate" at all, retrying for thirty seconds
- * against coordinates that were stale by the time it used them. A person aiming
- * at that button has the same problem and no retry loop.
- *
- * Sizing moved up to .heroArt, which is now the box the panel fills.
- */
-
-/* ---------------------------------------------------------------- */
-/* 3 — the trust strip                                               */
-/* ---------------------------------------------------------------- */
-
-/* Five statements about the product, each of which is checkable. No counts of
-   customers, no ratings, no logos — there is nothing here we could not show a
-   sceptic where to verify. */
-.trust {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem 1.6rem;
-  margin: 3rem 0 0;
-  padding: 1.05rem 1.4rem;
-  list-style: none;
-  border: 1px solid var(--edge-soft);
-  border-radius: 14px;
-  background: var(--card);
-}
-
-.trust li {
-  display: flex;
-  align-items: center;
-  gap: 0.55rem;
-  margin: 0;
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: var(--ink-2);
-}
-
-.trust svg {
-  flex: 0 0 auto;
-  width: 15px;
-  height: 15px;
-  color: var(--flare);
-}
-
-/* ---------------------------------------------------------------- */
-/* 4 — four core benefits                                            */
-/* ---------------------------------------------------------------- */
-
-.benefits {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 1rem;
-}
-
-/* A link, not an article. Display:block so the anchor fills the card and the
-   hit area is the whole of it rather than the two words at the top. */
-.benefit {
+.heroCopy h1 em {
+  font-style: normal;
+  background: linear-gradient(135deg, #ffd166, #ff7137);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
   display: block;
-  padding: 1.5rem 1.35rem;
-  border: 1px solid var(--edge-soft);
-  border-radius: 16px;
-  background: var(--card);
-  text-decoration: none;
-  transition: border-color 0.16s ease, background-color 0.16s ease, transform 0.16s ease;
 }
 
-.benefit:hover {
-  border-color: rgba(255, 90, 18, 0.4);
-  background: var(--card-2);
-  transform: translateY(-2px);
-}
-
-.benefitMark {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 38px;
-  height: 38px;
-  margin-bottom: 1rem;
-  border-radius: 10px;
-  background: var(--flare-soft);
-  color: var(--flare);
-}
-
-.benefitMark svg {
-  width: 19px;
-  height: 19px;
-}
-
-.benefit h3 {
-  font-family: var(--font-display);
-  font-size: 1.05rem;
-  font-weight: 700;
-  letter-spacing: -0.01em;
-  margin: 0 0 0.5rem;
-  color: var(--ink);
-}
-
-.benefit p {
-  margin: 0;
-  font-size: 0.9rem;
+.heroDescription {
+  max-width: 38rem;
+  margin: 18px 0 0;
+  font-size: clamp(14.5px, 1.4vw, 16.5px);
   line-height: 1.6;
-  color: var(--ink-2);
+  color: #c0c3ca;
 }
 
-/* The arrow sits inside the heading rather than in a corner, so the card reads
-   as a link at the point where its name is. */
-.benefit h3 i,
-.step b i {
-  font-style: normal;
-  color: var(--flare);
-  transition: transform 0.16s ease;
-}
-
-.benefit:hover h3,
-.step a:hover b {
-  text-decoration: underline;
-  text-underline-offset: 4px;
-}
-
-.benefit:hover h3 i,
-.step a:hover b i {
-  display: inline-block;
-  transform: translateX(3px);
-}
-
-/* ---------------------------------------------------------------- */
-/* 5 — featured trades                                               */
-/* ---------------------------------------------------------------- */
-
-.featured {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 1rem;
-}
-
-.featuredCard {
+.heroActions {
   display: flex;
-  flex-direction: column;
-  gap: 0.45rem;
-  min-height: 44px;
-  padding: 1.25rem 1.2rem;
-  border: 1px solid var(--edge-soft);
-  border-radius: 16px;
-  background: var(--card);
-  transition: border-color 0.16s ease, transform 0.16s ease, background-color 0.16s ease;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+  margin-top: 28px;
 }
 
-.featuredCard:hover {
-  border-color: rgba(255, 90, 18, 0.5);
-  background: var(--card-2);
+.btnPrimary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 13px 24px;
+  border-radius: 9999px;
+  background: linear-gradient(135deg, #ff7137, #f95700);
+  color: #ffffff;
+  font-size: 14.5px;
+  font-weight: 800;
+  text-decoration: none;
+  box-shadow: 0 8px 24px rgba(255, 113, 55, 0.4);
+  transition: transform 180ms ease, box-shadow 180ms ease;
+}
+
+.btnPrimary:hover {
   transform: translateY(-2px);
+  box-shadow: 0 12px 32px rgba(255, 113, 55, 0.55);
 }
 
-.featuredCard h3 {
-  font-family: var(--font-display);
-  font-size: 1rem;
+.btnSecondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 13px 22px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+  font-size: 14.5px;
   font-weight: 700;
-  letter-spacing: -0.01em;
-  margin: 0;
-  color: var(--ink);
+  text-decoration: none;
+  transition: background 180ms ease, border-color 180ms ease;
 }
 
-.featuredCard span {
-  font-size: 0.8rem;
-  line-height: 1.5;
-  color: var(--ink-2);
+.btnSecondary:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.3);
 }
 
-.featuredCard em {
-  margin-top: 0.35rem;
-  font-style: normal;
-  font-size: 0.8rem;
-  font-weight: 700;
-  color: var(--flare);
-}
-
-/* ---------------------------------------------------------------- */
-/* 5b — seasonal trades                                              */
-/* ---------------------------------------------------------------- */
-
-.seasonalGrid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 1rem;
-}
-
-.seasonalCard {
+.assurances {
   display: flex;
-  flex-direction: column;
-  gap: 0.45rem;
-  min-height: 44px;
-  padding: 1.25rem 1.2rem;
-  border: 1px solid var(--edge-soft);
-  border-radius: 16px;
-  background: var(--card);
-  transition: border-color 0.16s ease, transform 0.16s ease, background-color 0.16s ease;
+  flex-wrap: wrap;
+  gap: 18px;
+  list-style: none;
+  padding: 0;
+  margin: 24px 0 0;
+  font-size: 13px;
+  color: #e2e8f0;
+  font-weight: 600;
 }
 
-.seasonalCard:hover {
-  border-color: rgba(255, 90, 18, 0.5);
-  background: var(--card-2);
-  transform: translateY(-2px);
-}
-
-.seasonalCardHead {
+.momentumNote {
   display: flex;
   align-items: flex-start;
-  justify-content: space-between;
-  gap: 0.5rem;
+  gap: 12px;
+  margin-top: 24px;
+  padding: 12px 18px;
+  border-radius: 14px;
+  background: rgba(78, 224, 188, 0.08);
+  border: 1px solid rgba(78, 224, 188, 0.25);
+  font-size: 13px;
 }
 
-.seasonalCard h3 {
-  font-family: var(--font-display);
-  font-size: 1rem;
-  font-weight: 700;
-  letter-spacing: -0.01em;
-  margin: 0;
-  color: var(--ink);
+.momentumNote span {
+  font-size: 18px;
+  color: #4ee0bc;
+  font-weight: bold;
 }
 
-.seasonalBadge {
-  font-size: 0.72rem;
-  font-weight: 600;
-  padding: 0.15rem 0.45rem;
-  border-radius: 6px;
-  background: var(--flare-soft);
-  color: var(--flare);
-  white-space: nowrap;
+.momentumNote strong {
+  display: block;
+  color: #ffffff;
 }
 
-.seasonalCard span {
-  font-size: 0.8rem;
-  line-height: 1.5;
-  color: var(--ink-2);
+.momentumNote small {
+  color: #c0c3ca;
 }
 
-.seasonalCard em {
-  margin-top: auto;
-  padding-top: 0.35rem;
-  font-style: normal;
-  font-size: 0.8rem;
-  font-weight: 700;
-  color: var(--flare);
-}
-
-/**
- * MOTION IS OPTIONAL, AND ALL OF IT.
- *
- * Four ambient animations run on this page with nothing to trigger them — two
- * on the background, two behind the hero art — so for somebody who has asked
- * their system for less motion there is no way to stop them and nothing they
- * did to start them. That is the exact case this media query exists for.
- *
- * Held at a resting frame rather than removed: `animation: none` snaps each
- * layer back to its authored inset and full opacity, so the glow and the
- * shimmer are still there and simply do not move. The drop-shadows on the
- * image are untouched — depth is not motion.
- */
-@media (prefers-reduced-motion: reduce) {
-  .featuredCard:hover,
-  .seasonalCard:hover { transform: none; }
-
-  /* The hero panel stands its own animations down in
-     intake-simulator.module.css, and never starts the transcript at all. */
-  .ground::before,
-  .ground::after,
-  .heroArt::before,
-  .heroArt::after {
-    animation: none;
-  }
-}
-
-/* ---------------------------------------------------------------- */
-/* 6 — product proof                                                 */
-/* ---------------------------------------------------------------- */
-
-.proof {
-  padding: 2.5rem 2rem;
-  border: 1px solid var(--edge);
-  border-radius: 22px;
-  background:
-    radial-gradient(38rem 22rem at 88% 0%, rgba(255, 90, 18, 0.09), transparent 65%),
-    var(--card);
-}
-
-.proofHead {
-  max-width: 46rem;
-}
-
-.proofHead h2 {
-  font-family: var(--font-display);
-  font-size: clamp(1.7rem, 3.2vw, 2.35rem);
-  line-height: 1.1;
-  letter-spacing: -0.02em;
-  margin: 0;
-  color: var(--ink);
-  max-width: 20ch;
-}
-
-.proofHead p {
-  margin: 0.9rem 0 0;
-  font-size: 1rem;
-  line-height: 1.65;
-  color: var(--ink-2);
-  max-width: 58ch;
-}
-
-.proofCta {
-  margin-top: 1.6rem;
-}
-
-/* The four steps. An ordered list because the order is the content — you cannot
-   approve a quote you were never sent. The arrows between them are decoration
-   and are hidden; the numbers are real and are read. */
-.steps {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.9rem;
-  margin: 2.4rem 0 0;
-  padding: 0;
-  list-style: none;
-  counter-reset: step;
-}
-
-.step {
+/* =========================================================================
+   ENHANCED HERO VISUAL STAGE & FLOATING BADGES
+   ========================================================================= */
+.heroVisualWrapper {
   position: relative;
-  margin: 0;
-  border: 1px solid var(--edge-soft);
-  border-radius: 14px;
-  background: var(--card-2);
-  transition: border-color 0.16s ease, transform 0.16s ease;
-}
-
-.step:hover {
-  border-color: rgba(255, 90, 18, 0.4);
-  transform: translateY(-2px);
-}
-
-/* Padding lives on the anchor, not the <li>, so the whole step is the target.
-   The counter and the chevron stay on the <li>, which is what positions them. */
-.step a {
-  display: block;
-  padding: 1.2rem 1.1rem;
-  text-decoration: none;
-}
-
-.step a::before {
-  counter-increment: step;
-  content: counter(step);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 26px;
-  height: 26px;
-  margin-bottom: 0.75rem;
-  border-radius: 8px;
-  background: var(--flare-soft);
-  color: var(--flare);
-  font-size: 0.8rem;
-  font-weight: 700;
-}
-
-/* The chevron between steps. Absolute so it cannot add a column or push the
-   grid wider than its track; hidden once the steps stop being a row. */
-.step:not(:last-child)::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  right: -0.62rem;
-  width: 7px;
-  height: 7px;
-  border-top: 2px solid var(--edge);
-  border-right: 2px solid var(--edge);
-  transform: translateY(-50%) rotate(45deg);
-}
-
-.step b {
-  display: block;
-  font-family: var(--font-display);
-  font-size: 0.98rem;
-  font-weight: 700;
-  letter-spacing: -0.01em;
-  color: var(--ink);
-}
-
-.step span {
-  display: block;
-  margin-top: 0.4rem;
-  font-size: 0.85rem;
-  line-height: 1.55;
-  color: var(--ink-2);
-}
-
-/* ---------------------------------------------------------------- */
-/* 7 — the directory                                                 */
-/* ---------------------------------------------------------------- */
-
-.finder {
-  display: grid;
-  gap: 1rem;
-  margin-bottom: 2rem;
-}
-
-.searchLabel {
-  display: block;
-  margin-bottom: 0.5rem;
-  font-size: 0.8rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--ink-2);
-}
-
-.searchField {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  max-width: 30rem;
-  padding: 0 0.9rem;
-  border: 1px solid var(--edge);
-  border-radius: 10px;
-  background: var(--card);
-}
-
-.searchField:focus-within {
-  border-color: var(--flare);
-}
-
-.searchField svg {
-  flex: 0 0 auto;
-  width: 17px;
-  height: 17px;
-  color: var(--ink-2);
-}
-
-.searchField input {
-  flex: 1 1 auto;
+  width: 100%;
+  max-width: 100%;
+  padding: 14px 0;
+  box-sizing: border-box;
   min-width: 0;
-  min-height: 46px;
-  border: 0;
-  background: transparent;
-  color: var(--ink);
-  font: inherit;
-  font-size: 0.95rem;
 }
 
-.searchField input::placeholder { color: rgba(185, 195, 203, 0.65); }
-.searchField input:focus { outline: none; }
-
-/* The whole field takes the ring, not the bare input inside it. */
-.searchField:focus-within {
-  outline: 2px solid var(--flare);
-  outline-offset: 3px;
-}
-
-.cats {
+.floatingStatBadge {
+  position: absolute;
+  z-index: 10;
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  border-radius: 12px;
+  background: rgba(8, 23, 42, 0.94);
+  border: 1px solid rgba(247, 247, 244, 0.18);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.5), 0 0 20px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(20px);
+  pointer-events: none;
+  animation: floatBadge 6s ease-in-out infinite alternate;
 }
 
-.cat {
-  min-height: 44px;
-  padding: 0.6rem 1rem;
-  border: 1px solid var(--edge);
-  border-radius: 999px;
-  background: var(--card);
-  color: var(--ink-2);
-  font-size: 0.85rem;
-  font-weight: 600;
-  white-space: nowrap;
-  transition: border-color 0.16s ease, color 0.16s ease, background-color 0.16s ease;
+@keyframes floatBadge {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(-8px); }
 }
 
-.cat:hover { border-color: #3a5164; color: var(--ink); }
-
-.cat[aria-pressed='true'] {
-  border-color: var(--flare);
-  background: var(--flare-soft);
-  color: var(--flare);
+.topRightStat {
+  top: -8px;
+  right: 4px;
+  animation-delay: -1s;
 }
 
-.count {
-  margin: 0 0 1.4rem;
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--ink-2);
+.bottomLeftStat {
+  bottom: -8px;
+  left: 4px;
+  animation-delay: -3.5s;
 }
 
-.group + .group { margin-top: 2rem; }
-
-.group h3 {
-  font-family: var(--font-display);
-  font-size: 0.8rem;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  margin: 0 0 0.9rem;
-  color: var(--ink-2);
-}
-
-.tradeList {
+.statIconWrap {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.6rem;
-  margin: 0;
-  padding: 0;
-  list-style: none;
+  place-items: center;
+  font-size: 13px;
+  font-weight: 800;
 }
 
-.tradeList li { margin: 0; }
+.mintGlow {
+  background: rgba(78, 224, 188, 0.16);
+  color: #4ee0bc;
+  border: 1px solid rgba(78, 224, 188, 0.35);
+  box-shadow: 0 0 12px rgba(78, 224, 188, 0.25);
+}
 
-.tradeList a {
+.orangeGlow {
+  background: rgba(255, 113, 55, 0.16);
+  color: #ff7137;
+  border: 1px solid rgba(255, 113, 55, 0.35);
+  box-shadow: 0 0 12px rgba(255, 113, 55, 0.25);
+}
+
+.floatingStatBadge strong {
+  display: block;
+  font-size: 12px;
+  font-weight: 750;
+  color: #fff;
+  white-space: nowrap;
+}
+
+.floatingStatBadge small {
+  display: block;
+  font-size: 10.5px;
+  color: #c0c3ca;
+  white-space: nowrap;
+}
+
+/* Main Trade Engine Stage */
+.tradeEngineCard {
+  position: relative;
+  border-radius: 22px;
+  border: 1px solid rgba(247, 247, 244, 0.16);
+  background: radial-gradient(circle at 80% 20%, rgba(255, 113, 55, 0.14), transparent 45%),
+              linear-gradient(155deg, rgba(22, 39, 67, 0.92), rgba(8, 23, 42, 0.98));
+  box-shadow: 0 32px 80px rgba(0, 0, 0, 0.55), 0 0 50px rgba(255, 113, 55, 0.1), 0 0 0 1px rgba(255, 255, 255, 0.08) inset;
+  backdrop-filter: blur(32px);
+  padding: clamp(14px, 2.2vw, 22px);
   display: flex;
   flex-direction: column;
-  gap: 0.2rem;
-  min-height: 62px;
-  height: 100%;
-  padding: 0.75rem 0.9rem;
-  border: 1px solid var(--edge-soft);
-  border-radius: 11px;
-  background: var(--card);
-  transition: border-color 0.14s ease, background-color 0.14s ease;
+  gap: 14px;
+  overflow: hidden;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
-.tradeList a:hover {
-  border-color: rgba(255, 90, 18, 0.5);
-  background: var(--card-2);
+.visualOrbit {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 0;
 }
 
-.tradeList b {
-  font-size: 0.88rem;
-  font-weight: 700;
-  letter-spacing: -0.01em;
-  color: var(--ink);
+.orbitOne {
+  top: -80px;
+  right: -80px;
+  width: 240px;
+  height: 240px;
+  background: radial-gradient(circle, rgba(255, 113, 55, 0.22) 0%, transparent 70%);
+  filter: blur(40px);
 }
 
-.tradeList span {
-  font-size: 0.75rem;
-  line-height: 1.45;
-  color: var(--ink-2);
+.orbitTwo {
+  bottom: -60px;
+  left: -60px;
+  width: 200px;
+  height: 200px;
+  background: radial-gradient(circle, rgba(78, 224, 188, 0.16) 0%, transparent 70%);
+  filter: blur(40px);
 }
 
-.empty {
+/* Browser Chrome Header */
+.browserWindowHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 4px 6px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  position: relative;
+  z-index: 2;
+  flex-wrap: wrap;
+}
+
+.windowDots {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+
+.dotRed { background: #ff5f56; }
+.dotYellow { background: #ffbd2e; }
+.dotGreen { background: #27c93f; }
+
+.browserDomainPill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: rgba(4, 15, 26, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 11px;
+  color: #c9d2db;
+  font-family: monospace;
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sslLock {
+  font-size: 10px;
+  color: #4ee0bc;
+}
+
+.domainText {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.btnTourToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #e2e8f0;
+  font-size: 11px;
+  font-weight: 650;
+  cursor: pointer;
+  transition: all 150ms ease;
+  white-space: nowrap;
+}
+
+.btnTourToggle:hover {
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.btnTourTouring {
+  background: rgba(78, 224, 188, 0.18) !important;
+  color: #4ee0bc !important;
+  border-color: rgba(78, 224, 188, 0.4) !important;
+}
+
+/* Trade Switcher Pills - Clean Wrap Grid (NO LATERAL SCROLL) */
+.tradePillSelector {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  position: relative;
+  z-index: 2;
+  width: 100%;
+}
+
+.tradePillBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 11px;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(8, 23, 42, 0.65);
+  color: #c0c3ca;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 160ms ease;
+  flex: 1 1 auto;
+}
+
+.tradePillBtn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+.tradePillBtnActive {
+  background: linear-gradient(135deg, rgba(255, 113, 55, 0.28), rgba(255, 196, 77, 0.22));
+  color: #fff;
+  border-color: #ffd166;
+  box-shadow: 0 0 14px rgba(255, 196, 77, 0.25);
+}
+
+.simulatorHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: 14px;
+  position: relative;
+  z-index: 2;
+}
+
+.simTitleGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.companyMetaRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.simBadge {
+  display: inline-block;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: #ffd166;
+  background: rgba(255, 196, 77, 0.12);
+  border: 1px solid rgba(255, 196, 77, 0.3);
+  padding: 2px 7px;
+  border-radius: 5px;
+}
+
+.simCompanyName {
+  font-size: 12px;
+  color: #c0c3ca;
+  font-weight: 600;
+}
+
+.simTitleGroup h3 {
   margin: 0;
-  padding: 1.6rem;
-  border: 1px dashed var(--edge);
+  font-size: clamp(16px, 1.8vw, 19px);
+  color: #fff;
+  font-weight: 750;
+  letter-spacing: -0.01em;
+}
+
+.simTabControls {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  background: rgba(3, 19, 31, 0.7);
+  padding: 4px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.simTab {
+  padding: 7px 6px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: #c0c3ca;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 160ms ease;
+  text-align: center;
+}
+
+.simTab:hover {
+  color: #fff;
+}
+
+.simTabActive {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+.simulatorViewPane {
+  min-height: 290px;
+  position: relative;
+  z-index: 2;
+}
+
+.fadeIn {
+  animation: paneFade 220ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes paneFade {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Simulator View Elements */
+.intakeStepBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  font-size: 11.5px;
+}
+
+.intakeStepTag {
+  color: #4ee0bc;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+}
+
+.intakeTime {
+  color: #c0c3ca;
+}
+
+.intakeSliderGroup {
+  background: rgba(8, 23, 42, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 14px;
-  font-size: 0.95rem;
-  color: var(--ink-2);
+  padding: 12px 16px;
+  margin-bottom: 12px;
 }
 
-.empty a { color: var(--flare); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
-
-.note {
-  margin: 2rem 0 0;
-  font-size: 0.9rem;
-  color: var(--ink-2);
+.sliderLabelRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  font-size: 13.5px;
 }
 
-.note a { color: var(--flare); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+.sliderLabelRow strong {
+  color: #ffd166;
+  font-size: 14.5px;
+}
 
-/* ---------------------------------------------------------------- */
-/* 8 — closing CTA                                                   */
-/* ---------------------------------------------------------------- */
+.rangeInput {
+  width: 100%;
+  accent-color: #ff7137;
+  cursor: pointer;
+}
 
-.closing {
+.intakeOptionsList {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-bottom: 14px;
+}
+
+.optionsTitle {
+  font-size: 11.5px;
+  font-weight: 750;
+  color: #c0c3ca;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.optionCheckRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  cursor: pointer;
+  transition: all 140ms ease;
+  font-size: 12.5px;
+}
+
+.optionCheckRow:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.optionSelected {
+  background: rgba(255, 113, 55, 0.08);
+  border-color: rgba(255, 113, 55, 0.3);
+}
+
+.optionName {
+  flex: 1;
+  color: #f7f7f4;
+}
+
+.optionCost {
+  color: #4ee0bc;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.estimateResultBox {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  background: linear-gradient(135deg, rgba(8, 23, 42, 0.9), rgba(22, 39, 67, 0.7));
+  border: 1px solid rgba(255, 196, 77, 0.28);
+  border-radius: 16px;
+  padding: 12px 16px;
+}
+
+.calcPriceCol {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.resultKicker {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: #ffd166;
+}
+
+.calcRange {
+  font-size: clamp(19px, 2.5vw, 23px);
+  color: #fff;
+  font-weight: 800;
+}
+
+.calcPriceCol small {
+  font-size: 11px;
+  color: #c0c3ca;
+}
+
+.btnDemoAction {
+  padding: 9px 16px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #ff7137, #f95700);
+  color: #fff;
+  border: none;
+  font-size: 12.5px;
+  font-weight: 750;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(255, 113, 55, 0.35);
+  transition: all 160ms ease;
+  white-space: nowrap;
+}
+
+.btnDemoAction:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(255, 113, 55, 0.5);
+}
+
+.btnDemoSent {
+  background: #4ee0bc !important;
+  color: #071722 !important;
+  box-shadow: 0 4px 16px rgba(78, 224, 188, 0.35);
+}
+
+/* Quote View & Tier Switcher */
+.proposalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.tierToggleStrip {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  background: rgba(4, 15, 26, 0.6);
+  padding: 3px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  margin-bottom: 10px;
+}
+
+.tierBtn {
+  padding: 5px 8px;
+  border-radius: 7px;
+  border: none;
+  background: transparent;
+  color: #c0c3ca;
+  font-size: 11px;
+  font-weight: 650;
+  cursor: pointer;
+  transition: all 140ms ease;
+  text-align: center;
+}
+
+.tierBtn:hover {
+  color: #fff;
+}
+
+.tierBtnActive {
+  background: rgba(255, 196, 77, 0.15);
+  border: 1px solid rgba(255, 196, 77, 0.35);
+  color: #ffd166;
+  font-weight: 750;
+}
+
+.signatureStampBox {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: rgba(78, 224, 188, 0.08);
+  border: 1px dashed rgba(78, 224, 188, 0.35);
+  border-radius: 10px;
+  padding: 8px 12px;
+  margin-bottom: 10px;
+}
+
+.signedStampCursive {
+  font-family: 'Brush Script MT', 'Segoe Script', cursive, sans-serif;
+  font-size: 20px;
+  color: #4ee0bc;
+}
+
+.signedStampMeta {
+  font-size: 10px;
+  color: #c0c3ca;
+}
+
+.proposalNumber {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: #ffd166;
+}
+
+.proposalHeader h4 {
+  margin: 4px 0 2px;
+  font-size: 16px;
+  color: #fff;
+}
+
+.customerMeta {
+  margin: 0;
+  font-size: 12px;
+  color: #c0c3ca;
+}
+
+.statusPending {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: #ffd166;
+  background: rgba(255, 196, 77, 0.12);
+  border: 1px solid rgba(255, 196, 77, 0.3);
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+
+.statusSigned {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: #4ee0bc;
+  background: rgba(78, 224, 188, 0.12);
+  border: 1px solid rgba(78, 224, 188, 0.3);
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+
+.quoteLineItems {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.lineItemRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: rgba(8, 23, 42, 0.45);
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.itemDetails strong {
+  display: block;
+  font-size: 13px;
+  color: #fff;
+}
+
+.itemDetails small {
+  font-size: 11px;
+  color: #c0c3ca;
+}
+
+.itemPrice {
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.quoteSummaryFooter {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  background: rgba(8, 23, 42, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  padding: 12px 16px;
+}
+
+.quoteTotalsCol {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.totalRow {
+  font-size: 13px;
+  color: #c0c3ca;
+  display: flex;
+  gap: 8px;
+}
+
+.totalRow strong {
+  color: #fff;
+  font-size: 15px;
+}
+
+.depositRow {
+  font-size: 12px;
+  color: #4ee0bc;
+  display: flex;
+  gap: 6px;
+}
+
+.btnSignDemo {
+  padding: 10px 18px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #ff7137, #f95700);
+  color: #fff;
+  border: none;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 160ms ease;
+}
+
+.btnSigned {
+  background: #4ee0bc !important;
+  color: #071722 !important;
+}
+
+/* Dispatch View */
+.dispatchCard {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.dispatchHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.crewAvatarIcon {
+  font-size: 28px;
+  background: rgba(255, 255, 255, 0.08);
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.dispatchKicker {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: #ffd166;
+}
+
+.dispatchHeader h4 {
+  margin: 2px 0 0;
+  font-size: 16px;
+  color: #fff;
+}
+
+.vanTag {
+  font-size: 11px;
+  color: #4ee0bc;
+}
+
+.timeBadge {
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 6px 12px;
+  border-radius: 8px;
+  color: #fff;
+}
+
+.jobRouteDetails {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: rgba(8, 23, 42, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 14px;
+  padding: 12px 14px;
+}
+
+.routeStep {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.stepDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ff7137;
+  margin-top: 6px;
+}
+
+.routeStep strong {
+  font-size: 13px;
+  color: #fff;
+}
+
+.routeStep p {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: #c0c3ca;
+}
+
+.crewQuickActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.actionPill {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #c0c3ca;
+}
+
+.actionPillReady {
+  background: rgba(78, 224, 188, 0.12);
+  border-color: rgba(78, 224, 188, 0.3);
+  color: #4ee0bc;
+  margin-left: auto;
+}
+
+/* Payout View */
+.payoutHeader {
+  margin-bottom: 14px;
+}
+
+.payoutKicker {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: #4ee0bc;
+}
+
+.payoutHeader h4 {
+  margin: 4px 0 2px;
+  font-size: 20px;
+  color: #fff;
+  font-weight: 800;
+}
+
+.payoutHeader p {
+  margin: 0;
+  font-size: 12px;
+  color: #c0c3ca;
+}
+
+.payoutWaterfall {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: rgba(8, 23, 42, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+}
+
+.waterfallRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  color: #c0c3ca;
+}
+
+.waterfallRow strong {
+  color: #fff;
+}
+
+.feeRow {
+  color: #ff9b9b;
+}
+
+.totalDepositRow {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding-top: 10px;
+  margin-top: 4px;
+}
+
+.totalDepositRow strong {
+  color: #fff;
+  font-size: 14px;
+}
+
+.totalDepositRow small {
+  display: block;
+  color: #c0c3ca;
+  font-size: 11px;
+}
+
+.depositAmount {
+  font-size: 18px !important;
+  color: #4ee0bc !important;
+  font-weight: 900;
+}
+
+.growthUpgradeCallout {
+  font-size: 12px;
+  color: #ffd166;
+  background: rgba(255, 196, 77, 0.08);
+  border: 1px solid rgba(255, 196, 77, 0.2);
+  padding: 8px 12px;
+  border-radius: 10px;
+}
+
+.simFooterNote {
+  font-size: 11px;
+  color: #c0c3ca;
+  text-align: center;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding-top: 12px;
+}
+
+/* Proof Strip */
+.proofStrip {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 16px;
+  padding: 24px clamp(16px, 3vw, 32px);
+  border-radius: 20px;
+  background: rgba(8, 23, 42, 0.6);
+  border: 1px solid rgba(247, 247, 244, 0.14);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.25);
+  backdrop-filter: blur(20px);
+}
+
+.proofItem {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: center;
+}
+
+.proofMetric {
+  font-size: clamp(18px, 2.2vw, 22px);
+  color: #fff;
+  font-weight: 800;
+}
+
+.proofItem span {
+  font-size: 12px;
+  color: #c0c3ca;
+}
+
+/* Four Pillars Section */
+.featuresSection {
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+}
+
+.sectionHeaderCenter {
+  text-align: center;
+  max-width: 760px;
+  margin: 0 auto;
+}
+
+.sectionHeaderCenter h2 {
+  margin: 6px 0 12px;
+  font-size: clamp(28px, 4vw, 42px);
+  font-weight: 900;
+  color: #fff;
+  letter-spacing: -0.02em;
+}
+
+.sectionSubtitle {
+  margin: 0;
+  font-size: clamp(15px, 1.6vw, 17px);
+  color: #c0c3ca;
+  line-height: 1.55;
+}
+
+.fourPillarsGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+}
+
+.pillarCard {
+  position: relative;
+  border-radius: 22px;
+  background: linear-gradient(160deg, rgba(22, 39, 67, 0.7), rgba(8, 23, 42, 0.85));
+  border: 1px solid rgba(247, 247, 244, 0.14);
+  padding: 28px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.pillarCard:hover {
+  transform: translateY(-4px);
+  border-color: rgba(255, 196, 77, 0.4);
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.4);
+}
+
+.pillarNumber {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  color: #ffd166;
+}
+
+.pillarIcon {
+  font-size: 32px;
+}
+
+.pillarCard h3 {
+  margin: 0;
+  font-size: 19px;
+  color: #fff;
+  font-weight: 750;
+}
+
+.pillarCard p {
+  margin: 0;
+  font-size: 14px;
+  color: #c0c3ca;
+  line-height: 1.5;
+}
+
+.pillarChecks {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  color: #e2e8f0;
+}
+
+.pillarChecks li {
+  position: relative;
+  padding-left: 16px;
+}
+
+.pillarChecks li::before {
+  content: '✓';
+  position: absolute;
+  left: 0;
+  color: #4ee0bc;
+  font-weight: bold;
+}
+
+/* Seasonal Advantage Section */
+.seasonalAdvantageSection {
+  border-radius: 28px;
+  background: radial-gradient(circle at 10% 20%, rgba(78, 224, 188, 0.12), transparent 45%),
+              linear-gradient(135deg, rgba(8, 23, 42, 0.95), rgba(22, 39, 67, 0.8));
+  border: 1px solid rgba(78, 224, 188, 0.25);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+  padding: clamp(24px, 5vw, 48px);
+}
+
+.seasonalGridLayout {
+  display: grid;
+  grid-template-columns: 1fr 1.15fr;
+  gap: clamp(32px, 5vw, 56px);
+  align-items: center;
+}
+
+.seasonalCopySide {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.seasonalPillBadge {
+  align-self: flex-start;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  color: #4ee0bc;
+  background: rgba(78, 224, 188, 0.12);
+  border: 1px solid rgba(78, 224, 188, 0.3);
+  padding: 4px 10px;
+  border-radius: 9999px;
+}
+
+.seasonalCopySide h2 {
+  margin: 0;
+  font-size: clamp(26px, 3.5vw, 36px);
+  font-weight: 900;
+  color: #fff;
+  line-height: 1.15;
+}
+
+.seasonalLede {
+  margin: 0;
+  font-size: 16px;
+  color: #f7f7f4;
+  line-height: 1.5;
+}
+
+.seasonalBody {
+  margin: 0;
+  font-size: 14px;
+  color: #c0c3ca;
+  line-height: 1.55;
+}
+
+.seasonalTradeTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.tagChip {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #e2e8f0;
+}
+
+.seasonalCalcCard {
+  background: rgba(3, 19, 31, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 22px;
+  padding: clamp(20px, 3.5vw, 32px);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.calcCardHeader h3 {
+  margin: 0 0 4px;
+  font-size: 18px;
+  color: #fff;
+}
+
+.calcSub {
+  font-size: 12px;
+  color: #c0c3ca;
+}
+
+.calcSlidersContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.calcSliderBlock {
+  background: rgba(8, 23, 42, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 14px;
+  padding: 12px 16px;
+}
+
+.calcLabelLine {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+
+.calcLabelLine strong {
+  color: #ffd166;
+  font-size: 15px;
+}
+
+.rangeHints {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: #c0c3ca;
+  margin-top: 4px;
+}
+
+.calcComparisonResults {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.compareCol {
+  padding: 14px;
+  border-radius: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.competitorCol {
+  background: rgba(255, 80, 80, 0.08);
+  border: 1px solid rgba(255, 80, 80, 0.2);
+}
+
+.competitorCol .colPrice {
+  color: #ff9b9b;
+}
+
+.lgqCol {
+  background: rgba(78, 224, 188, 0.1);
+  border: 1px solid rgba(78, 224, 188, 0.3);
+}
+
+.lgqCol .colPrice {
+  color: #4ee0bc;
+}
+
+.colLabel {
+  font-size: 11px;
+  font-weight: 750;
+  text-transform: uppercase;
+  color: #c0c3ca;
+}
+
+.colPrice {
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.colPrice small {
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.colDesc {
+  font-size: 11px;
+  color: #c0c3ca;
+}
+
+.savingsHighlightBanner {
+  background: linear-gradient(135deg, rgba(78, 224, 188, 0.15), rgba(255, 196, 77, 0.12));
+  border: 1px solid rgba(78, 224, 188, 0.4);
+  border-radius: 16px;
+  padding: 16px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.savingsKicker {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  color: #ffd166;
+}
+
+.savingsAmount {
+  font-size: clamp(24px, 3.5vw, 30px);
+  color: #4ee0bc;
+  font-weight: 900;
+}
+
+.savingsHighlightBanner small {
+  font-size: 11px;
+  color: #e2e8f0;
+}
+
+/* Directory Section */
+.directorySection {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.directoryControlsBar {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.searchInputWrapper {
+  position: relative;
+  width: 100%;
+}
+
+.searchIcon {
+  position: absolute;
+  left: 18px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 20px;
+  color: #c0c3ca;
+  pointer-events: none;
+}
+
+.directorySearchInput {
+  width: 100%;
+  padding: 16px 44px 16px 50px;
+  border-radius: 16px;
+  background: rgba(8, 23, 42, 0.7);
+  border: 1px solid rgba(247, 247, 244, 0.14);
+  color: #fff;
+  font-size: 15px;
+  outline: none;
+  transition: all 180ms ease;
+}
+
+.directorySearchInput:focus {
+  border-color: #ffd166;
+  box-shadow: 0 0 0 3px rgba(255, 196, 77, 0.2);
+}
+
+.clearSearchBtn {
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  color: #fff;
+  cursor: pointer;
+}
+
+.categoryPillsRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.categoryPill {
+  padding: 8px 16px;
+  border-radius: 9999px;
+  background: rgba(8, 23, 42, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #c0c3ca;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 160ms ease;
+}
+
+.categoryPill:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+.categoryPillActive {
+  background: linear-gradient(135deg, rgba(255, 113, 55, 0.25), rgba(255, 196, 77, 0.2));
+  border-color: #ffd166;
+  color: #fff;
+  box-shadow: 0 2px 12px rgba(255, 196, 77, 0.2);
+}
+
+.directoryResultsMeta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  color: #c0c3ca;
+}
+
+.tradesCardsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 20px;
+}
+
+.tradeDirectoryCard {
+  border-radius: 20px;
+  background: linear-gradient(155deg, rgba(22, 39, 67, 0.65), rgba(8, 23, 42, 0.8));
+  border: 1px solid rgba(247, 247, 244, 0.14);
+  padding: 22px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  text-decoration: none;
+  transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.tradeDirectoryCard:hover {
+  transform: translateY(-3px);
+  border-color: rgba(255, 196, 77, 0.35);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.35);
+}
+
+.tradeCardTop {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.tradeIconBox {
+  font-size: 26px;
+  background: rgba(255, 255, 255, 0.06);
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.tradeCategoryTag {
+  font-size: 11px;
+  color: #c0c3ca;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.tradeName {
+  margin: 0;
+  font-size: 17px;
+  color: #fff;
+  font-weight: 750;
+}
+
+.tradeSeasonChip {
+  margin-left: auto;
+  font-size: 10px;
+  font-weight: 700;
+  color: #4ee0bc;
+  background: rgba(78, 224, 188, 0.1);
+  border: 1px solid rgba(78, 224, 188, 0.25);
+  padding: 3px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+.tradeHeadline {
+  margin: 0;
+  font-size: 13px;
+  color: #cbd5e1;
+  line-height: 1.45;
+}
+
+.tradeServicesTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.srvTag {
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  color: #c0c3ca;
+}
+
+.srvTagMore {
+  color: #ffd166;
+  background: rgba(255, 196, 77, 0.08);
+}
+
+.tradeCardFooter {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding-top: 12px;
+  margin-top: auto;
+  font-size: 12px;
+}
+
+.avgTicketNote {
+  color: #c0c3ca;
+}
+
+.tradeLink {
+  color: #ffd166;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.customTradeCallout {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  background: rgba(8, 23, 42, 0.7);
+  border: 1px dashed rgba(255, 196, 77, 0.35);
+  border-radius: 20px;
+  padding: 24px 28px;
+  margin-top: 12px;
+}
+
+.customTradeIcon {
+  font-size: 36px;
+}
+
+.customTradeCallout strong {
+  display: block;
+  font-size: 16px;
+  color: #fff;
+  margin-bottom: 2px;
+}
+
+.customTradeCallout p {
+  margin: 0;
+  font-size: 13px;
+  color: #c0c3ca;
+}
+
+.customTradeCallout a {
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+/* Testimonials */
+.testimonialsSection {
+  display: flex;
+  flex-direction: column;
+  gap: 36px;
+}
+
+.testimonialsGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+
+.testimonialCard {
+  border-radius: 22px;
+  background: linear-gradient(160deg, rgba(22, 39, 67, 0.65), rgba(8, 23, 42, 0.8));
+  border: 1px solid rgba(247, 247, 244, 0.14);
+  padding: 28px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.testimonialHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.tradeBadgeTag {
+  font-size: 11px;
+  font-weight: 800;
+  color: #ffd166;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.metricPill {
+  font-size: 11px;
+  font-weight: 700;
+  color: #4ee0bc;
+  background: rgba(78, 224, 188, 0.1);
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+
+.testimonialQuote {
+  margin: 0;
+  font-size: 14px;
+  color: #f7f7f4;
+  line-height: 1.6;
+  font-style: italic;
+}
+
+.testimonialAuthorBlock {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: auto;
+}
+
+.authorAvatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ff7137, #ffd166);
+  color: #071722;
+  font-weight: 800;
+  display: grid;
+  place-items: center;
+  font-size: 16px;
+}
+
+.testimonialAuthorBlock strong {
+  display: block;
+  font-size: 14px;
+  color: #fff;
+}
+
+.authorBiz {
+  display: block;
+  font-size: 12px;
+  color: #cbd5e1;
+}
+
+.authorLoc {
+  font-size: 11px;
+  color: #c0c3ca;
+}
+
+/* FAQ */
+.faqSection {
+  display: flex;
+  flex-direction: column;
+  gap: 36px;
+}
+
+.faqAccordionList {
+  max-width: 860px;
+  margin: 0 auto;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.faqItem {
+  border-radius: 16px;
+  background: rgba(8, 23, 42, 0.6);
+  border: 1px solid rgba(247, 247, 244, 0.14);
+  overflow: hidden;
+  transition: all 180ms ease;
+}
+
+.faqOpen {
+  border-color: rgba(255, 196, 77, 0.35);
+  background: rgba(22, 39, 67, 0.7);
+}
+
+.faqQuestionBtn {
+  width: 100%;
+  padding: 18px 22px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+  gap: 16px;
+}
+
+.faqToggleIcon {
+  font-size: 20px;
+  color: #ffd166;
+  font-weight: bold;
+}
+
+.faqAnswerPane {
+  padding: 0 22px 20px;
+}
+
+.faqAnswerPane p {
+  margin: 0;
+  font-size: 14px;
+  color: #c0c3ca;
+  line-height: 1.6;
+}
+
+/* Closing CTA Card */
+.closingCtaCard {
+  position: relative;
+  border-radius: 28px;
+  background: radial-gradient(circle at 50% 0%, rgba(255, 113, 55, 0.25), transparent 60%),
+              linear-gradient(145deg, rgba(22, 39, 67, 0.9), rgba(8, 23, 42, 0.95));
+  border: 1px solid rgba(255, 113, 55, 0.35);
+  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.45);
+  padding: clamp(36px, 6vw, 64px) clamp(20px, 4vw, 48px);
+  text-align: center;
+  overflow: hidden;
+}
+
+.closingContent {
+  position: relative;
+  z-index: 2;
+  max-width: 680px;
+  margin: 0 auto;
   display: flex;
   flex-direction: column;
   align-items: center;
-  text-align: center;
-  margin-top: 4.5rem;
-  padding: 3rem 2rem;
-  border: 1px solid var(--edge);
-  border-radius: 22px;
-  background:
-    radial-gradient(34rem 20rem at 50% 0%, rgba(255, 90, 18, 0.13), transparent 70%),
-    var(--card);
+  gap: 16px;
 }
 
-.closing h2 {
-  font-family: var(--font-display);
-  font-size: clamp(1.7rem, 3.2vw, 2.35rem);
-  line-height: 1.1;
-  letter-spacing: -0.02em;
+.closingContent h2 {
   margin: 0;
-  max-width: 22ch;
-  color: var(--ink);
+  font-size: clamp(28px, 4vw, 42px);
+  font-weight: 900;
+  color: #fff;
+  letter-spacing: -0.02em;
 }
 
-.closing p {
-  margin: 0.9rem 0 0;
-  max-width: 48ch;
-  font-size: 1rem;
-  line-height: 1.65;
-  color: var(--ink-2);
+.closingSub {
+  margin: 0;
+  font-size: 16px;
+  color: #c0c3ca;
+  line-height: 1.5;
 }
 
-.closingCtas {
+.closingButtonsRow {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 0.8rem;
-  margin-top: 1.8rem;
+  gap: 14px;
+  margin-top: 8px;
 }
 
-/* ---------------------------------------------------------------- */
-/* Responsive                                                        */
-/* ---------------------------------------------------------------- */
-
-@media (max-width: 1080px) {
-  .tradeList { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.closingFine {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: #c0c3ca;
 }
 
-@media (max-width: 980px) {
-  /* Copy first, art second — the source order already says so, so the hero only
-     has to stop being two columns. */
+/* Responsive */
+@media (max-width: 1120px) {
   .hero {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 2rem;
-    padding-top: 0.5rem;
+    grid-template-columns: 1fr;
   }
-
-  .heroCopy h1 { max-width: 18ch; }
-  .heroLede { max-width: 52ch; }
-  /* The panel caps itself at 620 in its own module; this is what centers it in
-     the column rather than leaving it hard against the right edge. */
-  .heroArt { justify-content: center; }
-
-  .benefits,
-  .featured,
-  .seasonalGrid,
-  .steps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-
-  /* The chevron points along a row. In a 2x2 grid the second item's arrow would
-     point off the right edge at nothing. */
-  .step:not(:last-child)::after { display: none; }
+  .fourPillarsGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .testimonialsGrid {
+    grid-template-columns: 1fr;
+  }
+  .seasonalGridLayout {
+    grid-template-columns: 1fr;
+  }
+  .proofStrip {
+    grid-template-columns: repeat(3, 1fr);
+  }
 }
 
-@media (max-width: 760px) {
-  .page { padding: 1.75rem 1rem 3rem; }
-  .section { margin-top: 3.25rem; }
-  .proof { padding: 1.75rem 1.25rem; }
-  .closing { margin-top: 3.25rem; padding: 2.25rem 1.25rem; }
-
-  .tradeList { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-
-  /* Six category names plus "All trades" will not wrap into fewer than three
-     rows on a phone, and three rows of chips is a screenful before the list
-     starts. One row that scrolls sideways, with the padding that keeps the
-     focus ring off the clip edge. */
-  .cats {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    padding: 4px 4px 8px;
-    margin: -4px -4px -8px;
-    scrollbar-width: thin;
+@media (max-width: 768px) {
+  .topRightStat, .bottomLeftStat {
+    display: none;
   }
-
-  .cat { scroll-snap-align: start; }
-}
-
-@media (max-width: 560px) {
-  .heroCopy h1 { max-width: none; }
-  .heroLede { max-width: none; }
-
-  /* Stacked, and full width — two 48px buttons side by side at 320px leaves
-     each of them holding "Build my free" on one line and "site" on the next. */
-  .heroCtas,
-  .closingCtas { flex-direction: column; align-items: stretch; }
-  .heroCtas .btn,
-  .closingCtas .btn { width: 100%; }
-
-  .benefits,
-  .featured,
-  .seasonalGrid,
-  .steps,
-  .tradeList { grid-template-columns: minmax(0, 1fr); }
-
-  .trust { gap: 0.65rem 1.2rem; padding: 1rem 1.1rem; }
+  .proofStrip {
+    grid-template-columns: 1fr 1fr;
+  }
+  .fourPillarsGrid {
+    grid-template-columns: 1fr;
+  }
+  .customTradeCallout {
+    flex-direction: column;
+    text-align: center;
+  }
+  .customTradeCallout a {
+    margin-left: 0;
+    width: 100%;
+  }
+  .simTabControls {
+    grid-template-columns: 1fr 1fr;
+  }
+  .calcComparisonResults {
+    grid-template-columns: 1fr;
+  }
 }

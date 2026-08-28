@@ -1,673 +1,1050 @@
-/* /founder — only the pieces globals has no class for.
- *
- * Same discipline as src/app/home-next/home-next.module.css: `.fx-page`,
- * `.marketing-shell`, `.panel`, `.section-block`, `.eyebrow`, `.btn`,
- * `.actions` and `.cta-band` all come from globals.css unchanged, and
- * globals.css is never edited.
- *
- * THE PORTRAIT IS REAL NOW.
- *
- * This file used to carry a drawn placeholder — .portraitSlot as a gradient
- * box with a "Portrait to come" note over it — built so that the real
- * photograph could be dropped in without the layout moving. That worked: the
- * swap was one element, because every rule that shapes the picture (the crop,
- * the grayscale, the mask that melts it into the copy) was already on the
- * class rather than on the div. The rules below are those same rules, now
- * applying to a next/image <img>.
- *
- * WHAT WENT AWAY WITH THE REBUILD, so nobody goes looking for it:
- *   - .travel / .origin / .fields / .stops / .chips / .stays — the
- *     field-by-field diagram of one intake row moving between five tables. It
- *     was accurate and it was the longest thing on the page; the five-step
- *     .flow below says the same journey in a fifth of the height.
- *   - .catalogue / .catRow / .catNum / .catTitle / .catCount — twelve rows
- *     reprinting the whole feature index beside the $0 dial. That is
- *     /pricing's job, and the model section now links there instead.
- *   - .portraitQuote — a pull quote laid across the hero's seam. The hero
- *     carries three terms now (.heroPoints), which is the more useful thing
- *     to put in that space.
- */
+/* Founder Styles - Dark Luxury Contractor Tech Theme */
 
-/**
- * A hook on <main>, and the only reason it exists.
- *
- * `.section-block` is a global class shared by every marketing route, and this
- * page needs it tighter on a phone. Scoping the override through .page keeps
- * that change on /founder instead of quietly reflowing /pricing and /faq.
- *
- * It must declare something real: an empty rule is dropped by the CSS module
- * pipeline, `styles.page` comes back undefined, and the class list on <main>
- * renders the literal string "undefined".
- */
 .page {
   display: block;
+  position: relative;
+  isolation: isolate;
+  min-height: 100svh;
+  color: var(--ink, #f7f7f4);
 }
 
-/* ---- hero ---------------------------------------------------------------- */
-
-/* globals sets h1 to clamp(2.6rem, 5vw, 5rem) with max-width: 11ch — tuned for
-   a four-word homepage slogan. This headline is a full sentence; at that size
-   it stacks into a tower and pushes everything else off the first screen. */
-.title {
-  font-size: clamp(1.75rem, 3.1vw, 2.85rem);
-  line-height: 1.1;
-  max-width: 20ch;
-  margin: 0.3rem 0 0.9rem;
-}
-
-/* ---- the portrait-led hero ----------------------------------------------
-   Copy left, a face on the right bleeding to the edge of the card.
-   ------------------------------------------------------------------------ */
-.portraitHero {
+/* ---- Hero Section ---- */
+.heroGrid {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 0.78fr);
+  grid-template-columns: minmax(0, 1.18fr) minmax(400px, 0.82fr);
   align-items: center;
-  margin: 1.4rem 0 3rem;
-  border: 1px solid var(--edge-t08);
-  border-radius: 20px;
-  background: var(--bg-2);
-  /* clip, not hidden: it rounds the portrait's corners without making this a
-     scroll container. */
-  overflow: clip;
-  isolation: isolate;
+  gap: clamp(32px, 5vw, 64px);
+  padding: clamp(48px, 6vh, 80px) 0 clamp(48px, 6vh, 72px);
 }
 
-.portraitCopy {
+.heroLeft {
   position: relative;
-  z-index: 1;
-  padding: clamp(1.5rem, 3.6vw, 3.2rem);
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
 }
 
-.eyebrowRow {
+.founderEyebrowRow {
   display: inline-flex;
   align-items: center;
-  gap: 0.65rem;
+  gap: 12px;
+  margin-bottom: 20px;
 }
 
-.founderMiniAvatar {
-  display: none;
-  width: 32px;
-  height: 32px;
-  border-radius: 999px;
-  overflow: hidden;
-  border: 1.5px solid var(--cedge-orange-2);
-  flex-shrink: 0;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
-}
-
-.avatarImg {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: center 15%;
-  filter: grayscale(1);
-}
-
-.portraitHero .title {
-  max-width: 17ch;
-  margin: 0.45rem 0 1rem;
-}
-
-.portraitHero .lede { max-width: 44ch; }
-
-/**
- * The accent half of the headline, in the brand orange rather than the gold
- * the rest of the page uses for emphasis.
- *
- * --gold-ink exists because it survives a theme flip; this hero is dark-only
- * and the headline is the one place on the page that should agree with the
- * button underneath it. Measured rather than assumed: #ff7a21 on this card's
- * #0b1220 is 7.1:1, well past the 4.5 it would need even as body text, and
- * this is display type.
- *
- * font-style: normal because italic display type at this weight reads as a
- * typo — the emphasis is carried by color alone.
- */
-.portraitHero .title em {
-  font-style: normal;
-  color: var(--accent);
-}
-
-.portraitFrame {
+.miniAvatarBadge {
   position: relative;
-  align-self: stretch;
-  min-height: 30rem;
-  margin: 0;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 2px solid var(--orange, #ff7137);
+  box-shadow: 0 0 16px rgba(255, 113, 55, 0.35);
+  flex-shrink: 0;
 }
-
-/**
- * The photograph.
- *
- * Absolutely positioned and object-fit: cover, so a 1122×1402 portrait fills
- * whatever box the hero's grid gives it without next/image's intrinsic
- * width/height dictating the layout. object-position keeps the face in frame
- * as the box gets wider than it is tall.
- */
-.portraitSlot {
-  position: absolute;
-  inset: 0;
+.miniAvatarImg {
   width: 100%;
   height: 100%;
   object-fit: cover;
   object-position: center 18%;
-  /* Black and white. A color photograph in this corner competes with the one
-     orange line the hero is built around — and this shot has orange tool
-     handles across the pegboard behind the subject, which is exactly the
-     collision. */
-  filter: grayscale(1) contrast(1.04);
-  /* Melts into the copy rather than butting against it. A MASK rather than a
-     gradient overlay so there is no background color to keep in sync — the
-     photograph fades to transparent and the card's own background shows
-     through, whatever that background becomes. */
-  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 38%);
-  mask-image: linear-gradient(90deg, transparent 0%, #000 38%);
+  filter: grayscale(1) contrast(1.05);
 }
 
-/* An anchor, not a button — the primary action beside it is the one that
-   should look pressable. min-height 44px is the touch target, not the text. */
-.readStory {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  min-height: 44px;
-  font-weight: 700;
-  color: var(--text);
-  border-bottom: 1px solid var(--edge-t16);
+.pulseDot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--mint, #4ee0bc);
+  box-shadow: 0 0 12px var(--mint, #4ee0bc);
+  margin-right: 6px;
+  animation: pulse 2s infinite;
 }
-.readStory:hover { color: var(--gold-ink); border-bottom-color: var(--cedge-orange-2); }
 
-/* ---- the three terms under the hero buttons ------------------------------ */
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.85); }
+}
 
-/* A list because they are three separate facts. globals styles bare <ul> for
-   prose — a left pad and a bullet — so it has to be told otherwise. */
-.heroPoints {
-  list-style: none;
-  margin: 1.5rem 0 0;
-  padding: 1.1rem 0 0;
-  border-top: 1px solid var(--edge-t08);
+.heroTitle {
+  margin: 0;
+  font-size: clamp(40px, 4.2vw, 66px);
+  font-weight: 650;
+  letter-spacing: -0.05em;
+  line-height: 1.02;
+  text-shadow: 0 16px 40px rgba(0, 0, 0, 0.3);
+  text-wrap: balance;
+  color: #fff;
+}
+
+.heroTitle em {
+  position: relative;
+  display: inline-block;
+  color: transparent;
+  background: linear-gradient(100deg, var(--yellow, #ffc44d), var(--orange, #ff7137) 64%, #ff9564);
+  background-clip: text;
+  -webkit-background-clip: text;
+  font-style: normal;
+  font-weight: inherit;
+}
+
+.heroLede {
+  max-width: 600px;
+  margin: 22px 0 0;
+  color: #c4d1de;
+  font-size: clamp(17px, 1.3vw, 20px);
+  line-height: 1.58;
+}
+
+.heroActions {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem 1.4rem;
-}
-.heroPoints > li + li { margin-top: 0; }
-
-.heroPoint {
-  display: flex;
   align-items: center;
-  gap: 0.45rem;
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--muted-2);
+  gap: 14px;
+  margin-top: 34px;
 }
 
-/* Decorative — the list already says these are three things, and the tick adds
-   nothing a screen reader needs. aria-hidden in the markup. */
-.heroTick {
-  color: var(--gold-ink);
-  font-size: 0.8rem;
-}
-
-/* The story section is what "Read my story" jumps to, and the site header is
-   fixed over the top of it. */
-.storyAnchor { scroll-margin-top: 6rem; }
-
-@media (max-width: 860px) {
-  /* One column, copy first. The portrait is framed cleanly in the hero card on mobile
-     so the founder photo is visibly clear and prominent without being masked into blackness. */
-  .portraitHero {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .founderMiniAvatar {
-    display: inline-flex;
-  }
-
-  .portraitFrame {
-    min-height: 0;
-    aspect-ratio: 16 / 11;
-    margin: 0 clamp(1rem, 3.5vw, 1.8rem) clamp(1.2rem, 4vw, 2rem);
-    border-radius: 16px;
-    overflow: hidden;
-    border: 1px solid var(--edge-t12);
-    box-shadow: 0 8px 24px -8px rgba(0, 0, 0, 0.45);
-  }
-
-  .portraitSlot {
-    -webkit-mask-image: none;
-    mask-image: none;
-    object-position: center 16%;
-  }
-}
-
-/* ---- prose --------------------------------------------------------------- */
-
-.lede {
-  font-size: 1.05rem;
-  line-height: 1.55;
-  color: var(--muted);
-  max-width: 56ch;
-  margin: 0;
-}
-
-/* Body paragraphs in the letter sections. Two of these stacked is the whole of
-   "Where it started" — the measure matters more than the size. */
-.prose {
-  margin: 1.1rem 0 0;
-  font-size: 0.97rem;
-  line-height: 1.65;
-  color: var(--muted);
-  max-width: 62ch;
-}
-
-/* ---- the signature ------------------------------------------------------- */
-
-.signature {
-  display: flex;
+.storyLinkBtn {
+  display: inline-flex;
+  min-height: 52px;
   align-items: center;
-  gap: 0.75rem;
-  margin-top: 1.6rem;
-  padding-top: 1.3rem;
-  border-top: 1px solid var(--edge-t08);
-}
-
-/* The monogram. A letter in a ring — a signature at the foot of the promise,
-   not a stand-in for a face. The face is at the top of the page. */
-.monogram {
-  flex: none;
-  display: grid;
-  place-items: center;
-  width: 46px;
-  height: 46px;
+  gap: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.04);
   border-radius: 999px;
-  font-family: var(--font-display);
-  font-size: 1.15rem;
-  font-weight: 800;
-  color: var(--gold-ink);
-  border: 1px solid var(--cedge-orange-2);
-  background: rgba(255, 122, 33, 0.09);
-}
-
-.signatureName {
-  display: block;
+  padding: 0 24px;
+  font-size: 15px;
   font-weight: 700;
-  color: var(--text);
-  line-height: 1.2;
+  color: #dbe4ee;
+  text-decoration: none;
+  backdrop-filter: blur(10px);
+  transition: all 180ms ease;
 }
-
-.signatureRole {
-  display: block;
-  font-family: var(--font-mono), monospace;
-  font-size: 0.66rem;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--muted-2);
-  margin-top: 0.2rem;
-}
-
-/* ---- the promise panel --------------------------------------------------- */
-
-.promise {
-  min-width: 0;
-  margin-top: 1.4rem;
-}
-
-/* globals styles bare <blockquote> for prose inside articles; this one leads a
-   section and needs its own size and rule. */
-.quote {
-  margin: 1.4rem 0 0;
-  padding-left: 1rem;
-  border-left: 2px solid var(--cedge-orange-2);
-  font-family: var(--font-display);
-  font-size: clamp(1.05rem, 1.6vw, 1.3rem);
-  line-height: 1.4;
-  color: var(--text);
-  max-width: 52ch;
-}
-
-.pledges {
-  list-style: none;
-  margin: 1.3rem 0 0;
-  padding: 0;
-  display: grid;
-  gap: 0.55rem;
-}
-.pledges > li + li { margin-top: 0; }
-
-.pledge {
-  display: flex;
-  align-items: baseline;
-  gap: 0.6rem;
-  font-size: 0.88rem;
-  line-height: 1.45;
-  color: var(--muted-2);
-}
-
-.pledgeNum {
-  flex: none;
-  font-family: var(--font-mono), monospace;
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  color: var(--gold-ink);
-}
-
-/* The forward-looking paragraph. Set apart from the promise above it, because
-   the promise is about shipped behavior and this one is not — see the note on
-   DIRECTION in page.tsx. The rule is a visual seam between "what is true" and
-   "where this is going". */
-.direction {
-  margin: 1.3rem 0 0;
-  padding-top: 1.2rem;
-  border-top: 1px dashed var(--edge-t08);
-  font-size: 0.9rem;
-  line-height: 1.6;
-  color: var(--muted-2);
-  max-width: 62ch;
-}
-
-/* ---- section heads ------------------------------------------------------- */
-
-.sectionHead { max-width: 46rem; }
-.sectionHead h2 { max-width: 26ch; }
-
-/* A standfirst under a section head. */
-.sectionLede {
-  margin: 0.7rem 0 0;
-  font-size: 0.95rem;
-  line-height: 1.6;
-  color: var(--muted);
-  max-width: 60ch;
-}
-
-/* ---- the card grids (what felt broken, and the principles) --------------- */
-
-/* Both are card grids. globals styles bare <ol>/<ul> for prose — a left pad, a
-   bullet and 0.45rem between items — so they have to be told otherwise. */
-.cards {
-  list-style: none;
-  margin: 1.4rem 0 0;
-  padding: 0;
-  display: grid;
-  gap: 0.9rem;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
-}
-.cards > li + li { margin-top: 0; }
-
-.card {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.45rem;
-  padding: 1.15rem 1.2rem 1.25rem;
-  border: 1px solid var(--line);
-  border-radius: 18px;
-  background: var(--bg-elevated);
-  transition: border-color 0.2s ease, transform 0.2s ease;
-}
-.card:hover {
-  border-color: var(--edge-t18);
+.storyLinkBtn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 196, 77, 0.4);
+  color: #fff;
   transform: translateY(-2px);
 }
 
-.cardNum {
-  font-family: var(--font-mono), monospace;
-  font-size: 0.78rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  color: var(--gold-ink);
-}
-
-/* globals sets h3 to 1.2rem, which is right for a section sub-head and loud
-   for a card title inside a grid of four. */
-.cardTitle {
-  font-size: 1rem;
-  line-height: 1.3;
-  font-weight: 700;
-  color: var(--text);
-  margin: 0;
-}
-
-.cardBody {
-  margin: 0;
-  font-size: 0.88rem;
-  line-height: 1.55;
-  color: var(--muted-2);
-}
-
-/* ---- the five-step flow -------------------------------------------------- */
-
-/**
- * Request → Qualified lead → Accepted quote → Scheduled job → Payment.
- *
- * auto-fit with a 10rem floor rather than `repeat(5, 1fr)`: five columns of
- * text at 1180px is 200px each, which is fine, but the same rule at 900px is
- * 160px and the two-word titles start hyphenating. This lets it fall to three,
- * then two, then one as the room runs out.
- */
-.flow {
-  list-style: none;
-  margin: 1.5rem 0 0;
-  padding: 0;
-  display: grid;
-  gap: 0.75rem;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 10.5rem), 1fr));
-  counter-reset: none;
-}
-.flow > li + li { margin-top: 0; }
-
-.flowStep {
-  position: relative;
-  min-width: 0;
+.assurancesList {
   display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  padding: 1rem 1.05rem 1.1rem;
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  background: var(--bg-elevated);
+  flex-wrap: wrap;
+  gap: 12px 20px;
+  margin: 26px 0 0;
+  padding: 0;
+  list-style: none;
 }
-
-/**
- * The arrow between steps, and why it is a pseudo-element.
- *
- * It is punctuation for the eye only: the <ol> already tells assistive tech
- * these are ordered stages, and a literal "→" between list items would be read
- * out five times. CSS content on a ::after is not in the accessibility tree in
- * any browser that matters here, so it stays silent.
- *
- * Hidden on the last child AND whenever the grid has wrapped — which cannot be
- * detected in CSS, so the arrows simply go at the width where the row stops
- * being one row. Below that the vertical stack reads as a sequence on its own.
- */
-@media (min-width: 1000px) {
-  .flowStep:not(:last-child)::after {
-    content: '→';
-    position: absolute;
-    top: 50%;
-    right: -0.55rem;
-    transform: translate(50%, -50%);
-    color: var(--edge-t18);
-    font-size: 0.9rem;
-    line-height: 1;
-    pointer-events: none;
-  }
-}
-
-.flowNum {
-  font-family: var(--font-mono), monospace;
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  color: var(--gold-ink);
-}
-
-.flowTitle {
-  margin: 0;
-  font-size: 0.95rem;
-  line-height: 1.25;
-  font-weight: 700;
-  color: var(--text);
-}
-
-.flowBody {
-  margin: 0;
-  font-size: 0.83rem;
-  line-height: 1.5;
-  color: var(--muted-2);
-}
-
-/* The one gap in the chain, said out loud. Quieter than the steps and set off
-   from them, because it is a caveat rather than a sixth stage. */
-.flowNote {
-  margin: 1.1rem 0 0;
-  padding-left: 0.9rem;
-  border-left: 2px solid var(--edge-t08);
-  font-size: 0.83rem;
-  line-height: 1.6;
-  color: var(--muted-2);
-  max-width: 62ch;
-}
-
-/* ---- the $0 band --------------------------------------------------------- */
-
-/* Dial over copy on a phone, side by side once there is room. 900 matches
-   PriceZeroDial's own step-down, so the circle shrinks in the same frame that
-   the row splits into two columns. No overflow: hidden anywhere in here — the
-   dial's outer bloom is meant to bleed past the edge the way .cta-band's
-   does. */
-.zeroBand {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: clamp(1.4rem, 4vw, 2.6rem);
-  align-items: center;
-}
-
-.zeroDial {
-  justify-self: center;
-}
-
-.zeroCopy {
-  min-width: 0;
-}
-
-@media (min-width: 900px) {
-  .zeroBand {
-    grid-template-columns: auto minmax(0, 1fr);
-  }
-}
-
-.zeroNote {
-  margin: 1.15rem 0 0;
-  font-size: 0.82rem;
-  line-height: 1.55;
-  color: var(--muted-2);
-  max-width: 58ch;
-}
-
-/* Where the twelve-row catalogue used to be. One link to the page that owns
-   those numbers, sized as a touch target rather than a run of body text. */
-.pricingLink {
+.assuranceItem {
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
-  min-height: 44px;
-  margin-top: 0.4rem;
-  font-size: 0.9rem;
+  gap: 8px;
+  font-size: 13px;
   font-weight: 700;
-  color: var(--text);
-  border-bottom: 1px solid var(--edge-t16);
+  color: #b8c8d8;
 }
-.pricingLink:hover { color: var(--gold-ink); border-bottom-color: var(--cedge-orange-2); }
+.assuranceTick {
+  color: var(--mint, #4ee0bc);
+  font-weight: 900;
+}
 
-/* ---- responsive ---------------------------------------------------------- */
+/* ---- Hero Visual Framed Card ---- */
+.heroVisual {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
 
-/**
- * MOBILE LENGTH IS A FEATURE OF THIS PAGE, so the rules below are not just
- * "smaller text on a phone" — they are the difference between a letter and a
- * scroll. Measured in a real browser at 390×844, section by section:
- *
- *                      before this block     after
- *   hero                     847px            824px
- *   the five steps          1123px            911px
- *   "what felt broken"       726px            674px
- *   "who I am building for" 1100px            960px
- *   -------------------------------------------------
- *   whole page              7153px           6683px
- *
- * For scale: the page this replaced measured 8011px at the same width, so the
- * rebuild plus this block is -1328px, about a sixth of the scroll.
- *
- * The copy is untouched. Everything here is chrome: card padding, the gaps
- * between rows, and the borders around things that do not need a box once
- * they are the only thing on the line.
- */
-@media (max-width: 720px) {
-  .lede { font-size: 1rem; }
-  .prose { font-size: 0.94rem; margin-top: 0.85rem; }
-  .cards { gap: 0.6rem; margin-top: 1.1rem; }
-  .card { padding: 0.9rem 1rem 1rem; gap: 0.3rem; }
-  .cardBody { font-size: 0.85rem; line-height: 1.5; }
-  .flowStep { padding: 0.9rem 1rem 1rem; }
-  .promise { padding: 1.1rem 1.15rem 1.25rem; }
-  .quote { margin-top: 1.1rem; }
-  .heroPoints { margin-top: 1.1rem; padding-top: 0.9rem; }
+.portraitGlowBack {
+  position: absolute;
+  inset: -20px;
+  background: radial-gradient(circle, rgba(255, 113, 55, 0.22) 0%, rgba(255, 196, 77, 0.08) 45%, transparent 70%);
+  filter: blur(40px);
+  pointer-events: none;
+  z-index: 0;
+}
 
-  /* The page's own sections only. globals gives .section-block a 1.5rem pad and
-     a 1.25rem top margin, which is right on a desktop grid and is 7 × 68px of
-     rounded-corner air on a phone. Scoped through .page so this cannot reach
-     the CTA band or any other page. */
-  .page :global(.section-block) {
-    margin-top: 0.85rem;
-    padding: 1.15rem 1.1rem 1.25rem;
-    border-radius: 22px;
+.portraitEnclosure {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 440px;
+  aspect-ratio: 4 / 5;
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: linear-gradient(160deg, rgba(20, 36, 60, 0.9), rgba(5, 16, 28, 0.96));
+  overflow: hidden;
+  box-shadow: 0 32px 70px rgba(0, 0, 0, 0.5), 0 0 40px rgba(255, 113, 55, 0.12);
+}
+
+.portraitImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 20%;
+  filter: grayscale(1) contrast(1.06);
+}
+
+.cornerBracketTopLeft {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  width: 22px;
+  height: 22px;
+  border-top: 2.5px solid var(--orange, #ff7137);
+  border-left: 2.5px solid var(--orange, #ff7137);
+  z-index: 3;
+}
+.cornerBracketBottomRight {
+  position: absolute;
+  bottom: 14px;
+  right: 14px;
+  width: 22px;
+  height: 22px;
+  border-bottom: 2.5px solid var(--orange, #ff7137);
+  border-right: 2.5px solid var(--orange, #ff7137);
+  z-index: 3;
+}
+
+.portraitTag {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 11px;
+  border-radius: 999px;
+  background: rgba(6, 20, 36, 0.9);
+  border: 1px solid rgba(78, 224, 188, 0.4);
+  font-family: var(--font-geist-mono, monospace);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: #ffffff;
+  backdrop-filter: blur(12px);
+}
+.statusLiveDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--mint, #4ee0bc);
+  box-shadow: 0 0 8px var(--mint, #4ee0bc);
+}
+
+.portraitOverlayCaption {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 34px 22px 20px;
+  background: linear-gradient(to top, rgba(3, 15, 26, 0.98) 0%, rgba(3, 15, 26, 0.75) 50%, transparent 100%);
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+}
+.portraitName {
+  font-size: 20px;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: -0.02em;
+}
+.portraitSub {
+  font-family: var(--font-geist-mono, monospace);
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--yellow, #ffc44d);
+  letter-spacing: 0.1em;
+  margin-top: 2px;
+}
+
+/* Floating Toasts */
+.floatingToast1 {
+  position: absolute;
+  top: 36px;
+  left: -24px;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 16px;
+  border-radius: 14px;
+  background: rgba(6, 20, 36, 0.96);
+  border: 1px solid rgba(255, 113, 55, 0.45);
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(18px);
+  animation: toast-float 5s ease-in-out infinite;
+}
+.toastContent {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.toastKicker {
+  color: var(--yellow, #ffc44d);
+  font-family: var(--font-geist-mono, monospace);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+.toastValue {
+  font-size: 13px;
+  font-weight: 750;
+  color: #ffffff;
+  white-space: nowrap;
+}
+.toastIconOrange {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  place-items: center;
+  border-radius: 8px;
+  background: var(--orange, #ff7137);
+  color: #071722;
+  font-weight: 900;
+  font-size: 14px;
+}
+
+.floatingToast2 {
+  position: absolute;
+  bottom: 28px;
+  right: -20px;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 16px;
+  border-radius: 14px;
+  background: rgba(6, 20, 36, 0.96);
+  border: 1px solid rgba(78, 224, 188, 0.45);
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(18px);
+  animation: toast-float 5.4s ease-in-out infinite -2.5s;
+}
+.toastIconMint {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  place-items: center;
+  border-radius: 8px;
+  background: var(--mint, #4ee0bc);
+  color: #071722;
+  font-weight: 900;
+  font-size: 14px;
+}
+
+@keyframes toast-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-7px); }
+}
+
+/* ---- Founder Commitments Strip ---- */
+.founderBeliefsStrip {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  overflow: hidden;
+  margin: 32px 0 60px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.25);
+}
+.beliefCell {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 20px;
+  background: rgba(6, 18, 30, 0.92);
+}
+.beliefCell strong {
+  font-family: var(--font-geist-mono, monospace);
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--yellow, #ffc44d);
+}
+.beliefCell span {
+  font-size: 12px;
+  color: #9cb1c5;
+  line-height: 1.4;
+}
+.beliefCell span b {
+  color: #ffffff;
+  font-weight: 700;
+}
+
+/* ---- Section Wrappers ---- */
+.sectionWrap {
+  padding: clamp(56px, 7vh, 84px) 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+.sectionHeading h2 {
+  margin: 10px 0 0;
+  font-size: clamp(32px, 3.8vw, 54px);
+  font-weight: 700;
+  letter-spacing: -0.045em;
+  line-height: 1.05;
+  color: #fff;
+}
+.sectionLede {
+  max-width: 720px;
+  margin: 20px 0 0;
+  color: #b7c5d4;
+  font-size: clamp(16px, 1.25vw, 19px);
+  line-height: 1.6;
+}
+
+/* ---- Chapter 1: Origin Story Narrative ---- */
+.originStoryGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(360px, 0.85fr);
+  gap: clamp(32px, 4.5vw, 60px);
+  align-items: center;
+  margin-top: 40px;
+}
+.originStoryText {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.originStoryText p {
+  margin: 0;
+  color: #c4d1de;
+  font-size: clamp(16px, 1.2vw, 18px);
+  line-height: 1.68;
+}
+.originStoryText p strong {
+  color: #fff;
+}
+
+.originManifestoCard {
+  border: 1px solid rgba(255, 196, 77, 0.35);
+  border-radius: 22px;
+  background: radial-gradient(circle at 15% 15%, rgba(255, 196, 77, 0.12), transparent 45%), linear-gradient(150deg, #102136, #071526);
+  padding: clamp(28px, 3.5vw, 40px);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+.manifestoCardKicker {
+  color: var(--yellow, #ffc44d);
+  font-family: var(--font-geist-mono, monospace);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  margin: 0 0 16px;
+}
+.manifestoCardQuote {
+  margin: 0;
+  font-size: clamp(18px, 1.5vw, 22px);
+  font-weight: 650;
+  line-height: 1.45;
+  color: #f7f7f4;
+  letter-spacing: -0.02em;
+}
+.manifestoCardQuote em {
+  font-style: normal;
+  color: var(--mint, #4ee0bc);
+}
+.manifestoCardFooter {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.09);
+}
+.manifestoAvatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 1.5px solid var(--orange, #ff7137);
+  object-fit: cover;
+  filter: grayscale(1);
+}
+.manifestoAuthorInfo strong {
+  display: block;
+  font-size: 14px;
+  font-weight: 800;
+  color: #fff;
+}
+.manifestoAuthorInfo span {
+  display: block;
+  font-family: var(--font-geist-mono, monospace);
+  font-size: 10px;
+  color: var(--orange, #ff7137);
+  letter-spacing: 0.08em;
+}
+
+/* ---- The 3 Core Frustrations ---- */
+.brokenGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+  margin-top: 48px;
+}
+.brokenCard {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  border-radius: 22px;
+  background: linear-gradient(155deg, rgba(22, 38, 64, 0.95), rgba(7, 21, 38, 0.98));
+  padding: 30px 26px;
+  box-shadow: 0 24px 50px rgba(0, 0, 0, 0.25);
+  transition: all 220ms ease;
+}
+.brokenCard:hover {
+  transform: translateY(-4px);
+  border-color: rgba(255, 196, 77, 0.4);
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.35), 0 0 30px rgba(255, 113, 55, 0.1);
+}
+.brokenCardNum {
+  font-family: var(--font-geist-mono, monospace);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: var(--yellow, #ffc44d);
+  margin-bottom: 18px;
+}
+.brokenCardTitle {
+  margin: 0;
+  font-size: 21px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.25;
+  color: #fff;
+}
+.brokenCardBody {
+  margin: 12px 0 0;
+  color: #aebecd;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* ---- Tool-Sprawl Cost Calculator ---- */
+.sprawlCalcContainer {
+  margin-top: 48px;
+  border: 1px solid rgba(255, 113, 55, 0.38);
+  border-radius: 24px;
+  background: radial-gradient(circle at 10% 15%, rgba(255, 113, 55, 0.14), transparent 45%), linear-gradient(150deg, #13243d, #071526);
+  padding: clamp(28px, 4vw, 48px);
+  box-shadow: 0 32px 75px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.sprawlCalcHeader {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 20px;
+  margin-bottom: 32px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+.sprawlHeaderLeft {
+  max-width: 650px;
+}
+.sprawlHeaderKicker {
+  color: var(--orange, #ff7137);
+  font-family: var(--font-geist-mono, monospace);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  margin: 0 0 8px;
+}
+.sprawlHeaderTitle {
+  margin: 0;
+  font-size: clamp(24px, 2.8vw, 36px);
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  color: #fff;
+}
+.sprawlHeaderSub {
+  margin: 10px 0 0;
+  color: #bdcad8;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.sprawlQuickToggle {
+  display: flex;
+  gap: 8px;
+}
+.sprawlToggleBtn {
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-family: var(--font-geist-mono, monospace);
+  font-size: 11px;
+  font-weight: 700;
+  color: #aebecf;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  cursor: pointer;
+  transition: all 160ms ease;
+}
+.sprawlToggleBtn:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+.sprawlGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.18fr) minmax(360px, 0.82fr);
+  gap: clamp(24px, 3.5vw, 36px);
+  align-items: stretch;
+}
+
+.sprawlToolList {
+  display: grid;
+  gap: 10px;
+}
+
+.sprawlToolItem {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 18px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  cursor: pointer;
+  user-select: none;
+  transition: all 180ms ease;
+}
+.sprawlToolItem:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 196, 77, 0.3);
+}
+.sprawlToolItemSelected {
+  background: linear-gradient(135deg, rgba(255, 113, 55, 0.12), rgba(255, 196, 77, 0.05));
+  border-color: rgba(255, 113, 55, 0.45);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+}
+
+.sprawlCheckbox {
+  display: grid;
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  place-items: center;
+  border-radius: 6px;
+  border: 1.5px solid rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.04);
+  color: #071722;
+  font-size: 13px;
+  font-weight: 900;
+  transition: all 160ms ease;
+}
+.sprawlCheckboxChecked {
+  border-color: var(--orange, #ff7137);
+  background: var(--orange, #ff7137);
+}
+
+.sprawlToolIcon {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.sprawlToolInfo {
+  flex: 1;
+  min-width: 0;
+}
+.sprawlToolName {
+  display: block;
+  font-size: 14px;
+  font-weight: 750;
+  color: #fff;
+  letter-spacing: -0.01em;
+}
+.sprawlToolSub {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  color: #9cb1c5;
+}
+
+.sprawlToolCost {
+  font-family: var(--font-geist-mono, monospace);
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--yellow, #ffc44d);
+  white-space: nowrap;
+}
+
+/* Right Summary Card */
+.sprawlResultsCard {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  border-radius: 18px;
+  border: 1px solid rgba(78, 224, 188, 0.35);
+  background: radial-gradient(circle at 88% 10%, rgba(78, 224, 188, 0.15), transparent 40%), linear-gradient(155deg, #0a1b2d, #051221);
+  padding: 28px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
+}
+
+.sprawlResultsTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 22px;
+}
+.sprawlResultsTag {
+  font-family: var(--font-geist-mono, monospace);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: #ff7b7b;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(255, 90, 90, 0.15);
+  border: 1px solid rgba(255, 90, 90, 0.3);
+}
+
+.sprawlTotalRow {
+  margin-bottom: 20px;
+}
+.sprawlTotalLabel {
+  display: block;
+  font-size: 13px;
+  color: #aebecf;
+  font-weight: 600;
+}
+.sprawlBigPrice {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  margin-top: 6px;
+  font-size: clamp(38px, 4vw, 54px);
+  font-weight: 700;
+  letter-spacing: -0.05em;
+  color: #ff8e6b;
+  line-height: 1;
+}
+.sprawlBigPrice small {
+  font-size: 16px;
+  color: #bdcad8;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+.sprawlAnnualPill {
+  display: inline-block;
+  margin-top: 8px;
+  font-family: var(--font-geist-mono, monospace);
+  font-size: 12px;
+  font-weight: 750;
+  color: #ff9999;
+}
+
+.sprawlRetypeBox {
+  margin: 18px 0;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: rgba(255, 113, 55, 0.08);
+  border: 1px solid rgba(255, 113, 55, 0.25);
+  font-size: 13px;
+  line-height: 1.5;
+  color: #e5edf5;
+}
+.sprawlRetypeBox strong {
+  color: var(--yellow, #ffc44d);
+}
+
+.sprawlContrastLgq {
+  padding-top: 18px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  margin-top: auto;
+}
+.sprawlContrastHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.sprawlContrastLabel {
+  font-family: var(--font-geist-mono, monospace);
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--mint, #4ee0bc);
+  letter-spacing: 0.08em;
+}
+.sprawlZeroNumber {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--mint, #4ee0bc);
+}
+.sprawlZeroNumber small {
+  font-size: 12px;
+  color: #9cb1c5;
+}
+.sprawlBenefitList {
+  list-style: none;
+  padding: 0;
+  margin: 10px 0 18px;
+  display: grid;
+  gap: 6px;
+  font-size: 12px;
+  color: #c4d1de;
+}
+.sprawlBenefitItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.sprawlBenefitItem i {
+  color: var(--mint, #4ee0bc);
+  font-style: normal;
+  font-weight: 900;
+}
+
+.sprawlCtaBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 46px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 850;
+  color: #071722;
+  background: var(--yellow, #ffc44d);
+  box-shadow: 0 10px 25px rgba(255, 196, 77, 0.2);
+  transition: all 180ms ease;
+  text-decoration: none;
+}
+.sprawlCtaBtn:hover {
+  background: #ffcf6b;
+  transform: translateY(-2px);
+  box-shadow: 0 14px 30px rgba(255, 196, 77, 0.3);
+}
+
+/* ---- Chapter 2: Manifesto Quote & Principles ---- */
+.manifestoQuote {
+  margin: 40px 0 0;
+  padding: 30px clamp(24px, 4vw, 40px);
+  border-radius: 20px;
+  border-left: 4px solid var(--orange, #ff7137);
+  background: linear-gradient(135deg, rgba(255, 113, 55, 0.12), rgba(255, 196, 77, 0.04));
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: clamp(20px, 2.2vw, 28px);
+  font-weight: 600;
+  line-height: 1.45;
+  color: #f7f7f4;
+  letter-spacing: -0.02em;
+}
+
+.principlesGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-top: 36px;
+}
+.principleCard {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 18px;
+  background: linear-gradient(150deg, rgba(20, 36, 60, 0.95), rgba(7, 19, 34, 0.98));
+  padding: 26px;
+  display: flex;
+  flex-direction: column;
+  transition: all 180ms ease;
+}
+.principleCard:hover {
+  border-color: rgba(78, 224, 188, 0.4);
+  transform: translateY(-3px);
+}
+.principleNum {
+  font-family: var(--font-geist-mono, monospace);
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--mint, #4ee0bc);
+  margin-bottom: 16px;
+}
+.principleTitle {
+  margin: 0 0 10px;
+  font-size: 18px;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: -0.02em;
+}
+.principleBody {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: #aebecf;
+}
+
+/* ---- Chapter 3: Promise, Pledges & Founder Signature ---- */
+.promiseCard {
+  margin-top: 40px;
+  border: 1px solid rgba(255, 196, 77, 0.35);
+  border-radius: 24px;
+  background: linear-gradient(155deg, rgba(24, 40, 68, 0.95), rgba(7, 20, 36, 0.98));
+  padding: clamp(32px, 4.5vw, 56px);
+  box-shadow: 0 30px 70px rgba(0, 0, 0, 0.35);
+}
+
+.pledgeList {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin: 32px 0;
+  padding: 0;
+  list-style: none;
+}
+.pledgeBox {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.035);
+  padding: 18px;
+}
+.pledgeBoxNum {
+  font-family: var(--font-geist-mono, monospace);
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--yellow, #ffc44d);
+}
+.pledgeBoxText {
+  font-size: 14px;
+  font-weight: 750;
+  color: #f0f4f8;
+}
+
+.directionNote {
+  margin: 28px 0 0;
+  padding-top: 24px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.12);
+  color: #b0c0d1;
+  font-size: 15px;
+  line-height: 1.65;
+}
+
+.signatureRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 24px;
+  margin-top: 36px;
+  padding-top: 28px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.founderSig {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.founderMonogram {
+  display: grid;
+  width: 52px;
+  height: 52px;
+  place-items: center;
+  border-radius: 50%;
+  font-size: 22px;
+  font-weight: 900;
+  color: var(--yellow, #ffc44d);
+  background: rgba(255, 196, 77, 0.12);
+  border: 2px solid var(--yellow, #ffc44d);
+  box-shadow: 0 0 20px rgba(255, 196, 77, 0.25);
+}
+.founderSigText strong {
+  display: block;
+  font-size: 18px;
+  font-weight: 800;
+  color: #fff;
+}
+.founderSigText span {
+  display: block;
+  margin-top: 2px;
+  font-family: var(--font-geist-mono, monospace);
+  font-size: 11px;
+  color: var(--orange, #ff7137);
+  letter-spacing: 0.08em;
+}
+
+.founderTagline {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #c4d1de;
+  font-family: var(--font-geist-mono, monospace);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+/* ---- Responsive Breakpoints ---- */
+@media (max-width: 1080px) {
+  .heroGrid {
+    grid-template-columns: 1fr;
+    padding-top: 40px;
+  }
+  .heroVisual {
+    order: -1;
+    max-width: 480px;
+    margin: 0 auto 20px;
+  }
+  .originStoryGrid {
+    grid-template-columns: 1fr;
+  }
+  .brokenGrid {
+    grid-template-columns: 1fr;
+  }
+  .sprawlGrid {
+    grid-template-columns: 1fr;
+  }
+  .principlesGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .pledgeList {
+    grid-template-columns: 1fr;
+  }
+  .founderBeliefsStrip {
+    grid-template-columns: 1fr 1fr;
   }
 }
 
-/**
- * THE FIVE STEPS, ON A PHONE.
- *
- * 430px rather than 720: above it the grid still fits two or three columns and
- * the steps genuinely are cards side by side. At 429 and below it is a single
- * column, and five bordered boxes stacked vertically is 695px of chrome around
- * five short paragraphs. Here each step becomes a row — the number in a narrow
- * gutter, the title beside it, the sentence underneath — separated by hairlines
- * instead of wrapped in boxes.
- *
- * That covers every phone anyone actually holds: 375 (SE), 390 (14/15), 393
- * (Pixel), 414 (Plus) and 428 (Pro Max) are all under it.
- */
-@media (max-width: 430px) {
-  .flow {
-    gap: 0;
-    margin-top: 1.1rem;
-    border-top: 1px solid var(--edge-t08);
+@media (max-width: 680px) {
+  .heroGrid {
+    padding: 30px 0 40px;
   }
-
-  .flowStep {
-    display: grid;
-    grid-template-columns: 1.85rem minmax(0, 1fr);
-    align-items: baseline;
-    column-gap: 0.5rem;
-    row-gap: 0.15rem;
-    padding: 0.7rem 0 0.75rem;
-    border: 0;
-    border-bottom: 1px solid var(--edge-t08);
-    border-radius: 0;
-    background: none;
+  .heroTitle {
+    font-size: clamp(34px, 8.5vw, 44px);
   }
-
-  .flowNum { grid-column: 1; grid-row: 1; }
-  .flowTitle { grid-column: 2; grid-row: 1; }
-  .flowBody { grid-column: 2; grid-row: 2; }
-
-  /* The headline is six lines at 390px at the desktop minimum. One step down
-     is four, and four lines of a sentence still reads as a sentence. */
-  .portraitHero .title { font-size: 1.6rem; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .card { transition: border-color 0.2s ease; }
-  .card:hover { transform: none; }
+  .heroLede {
+    font-size: 16px;
+  }
+  .floatingToast1, .floatingToast2 {
+    display: none;
+  }
+  .sectionWrap {
+    padding: 48px 0;
+  }
+  .sectionHeading h2 {
+    font-size: clamp(28px, 7vw, 38px);
+  }
+  .principlesGrid {
+    grid-template-columns: 1fr;
+  }
+  .founderBeliefsStrip {
+    grid-template-columns: 1fr;
+  }
 }

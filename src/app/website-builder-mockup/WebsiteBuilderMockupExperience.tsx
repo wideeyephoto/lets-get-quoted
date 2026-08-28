@@ -1,142 +1,10 @@
 'use client';
 
-import { useState, useMemo } from 'react';
 import Link from 'next/link';
-import SiteCustomizerSandbox from '@/components/marketing/SiteCustomizerSandbox';
 import WebsiteMediaStudioShowcase from '@/components/marketing/WebsiteMediaStudioShowcase';
 import WebsiteCapabilityMatrix from '@/components/marketing/WebsiteCapabilityMatrix';
+import HeroThemeCyclerDark from './HeroThemeCyclerDark';
 import styles from './website-builder-mockup.module.css';
-
-interface TradeData {
-  id: string;
-  name: string;
-  shortName: string;
-  icon: string;
-  title: string;
-  subtitle: string;
-  services: string[];
-  unitName: string;
-  minUnits: number;
-  maxUnits: number;
-  defaultUnits: number;
-  unitStep: number;
-  baseRatePerUnit: number;
-  multiplierLow: number;
-  multiplierHigh: number;
-}
-
-const TRADES: TradeData[] = [
-  {
-    id: 'roofing',
-    name: 'Roofing & Gutters',
-    shortName: 'Roofing',
-    icon: '🏠',
-    title: 'Certified Roofing Experts in Fairview',
-    subtitle: 'From emergency leak repairs to architectural shingle installations. Get an instant quote in 60 seconds.',
-    services: ['Architectural Shingles', 'Emergency Leak Repair', 'Seamless Gutters', 'Storm Damage Assessment'],
-    unitName: 'Roof Size (Sq Ft)',
-    minUnits: 1000,
-    maxUnits: 4500,
-    defaultUnits: 2200,
-    unitStep: 100,
-    baseRatePerUnit: 4.8,
-    multiplierLow: 0.9,
-    multiplierHigh: 1.25,
-  },
-  {
-    id: 'plumbing',
-    name: 'Plumbing & Drains',
-    shortName: 'Plumbing',
-    icon: '🔧',
-    title: 'Precision Plumbing & Water Solutions',
-    subtitle: 'Fast dispatch for leak emergencies, water heater replacements, and whole-home repiping.',
-    services: ['Tankless Water Heaters', 'Hydro-Jetting Drain Clean', 'Whole-Home Repiping', 'Bathroom Rough-Ins'],
-    unitName: 'Fixtures & Work Scope',
-    minUnits: 1,
-    maxUnits: 12,
-    defaultUnits: 3,
-    unitStep: 1,
-    baseRatePerUnit: 450,
-    multiplierLow: 0.85,
-    multiplierHigh: 1.3,
-  },
-  {
-    id: 'hvac',
-    name: 'Heating & Cooling (HVAC)',
-    shortName: 'HVAC',
-    icon: '❄️',
-    title: 'High-Efficiency Climate Control',
-    subtitle: 'Stay comfortable year-round with heat pump retrofits, AC maintenance, and furnace installs.',
-    services: ['Heat Pump Retrofits', 'AC System Replacement', 'Furnace Tune-Ups', 'Ductless Mini-Splits'],
-    unitName: 'Home Size (Sq Ft)',
-    minUnits: 800,
-    maxUnits: 4000,
-    defaultUnits: 2000,
-    unitStep: 100,
-    baseRatePerUnit: 3.8,
-    multiplierLow: 0.9,
-    multiplierHigh: 1.35,
-  },
-  {
-    id: 'electrical',
-    name: 'Electrical & Solar',
-    shortName: 'Electrical',
-    icon: '⚡',
-    title: 'Licensed Master Electricians',
-    subtitle: 'Safe, code-compliant panel upgrades, EV fast charger setups, and smart home wiring.',
-    services: ['200A Panel Upgrades', 'Level 2 EV Chargers', 'Whole-Home Rewiring', 'Generator Interlocks'],
-    unitName: 'Service Capacity / Circuits',
-    minUnits: 1,
-    maxUnits: 20,
-    defaultUnits: 4,
-    unitStep: 1,
-    baseRatePerUnit: 380,
-    multiplierLow: 0.9,
-    multiplierHigh: 1.25,
-  },
-  {
-    id: 'landscaping',
-    name: 'Landscaping & Hardscape',
-    shortName: 'Landscaping',
-    icon: '🌿',
-    title: 'Custom Hardscapes & Outdoor Living',
-    subtitle: 'Transform your outdoor property with custom stone pavers, retaining walls, and sod installation.',
-    services: ['Paver Patios & Walkways', 'Stone Retaining Walls', 'Sod & Irrigation Systems', 'Outdoor Kitchens'],
-    unitName: 'Coverage Area (Sq Ft)',
-    minUnits: 200,
-    maxUnits: 2500,
-    defaultUnits: 800,
-    unitStep: 50,
-    baseRatePerUnit: 14.5,
-    multiplierLow: 0.88,
-    multiplierHigh: 1.3,
-  },
-  {
-    id: 'remodeling',
-    name: 'Kitchen & Bath Remodeling',
-    shortName: 'Remodeling',
-    icon: '🔨',
-    title: 'Luxury Kitchen & Bath Renovations',
-    subtitle: 'Full-service design and build remodeling with transparent milestone pricing and 3D previews.',
-    services: ['Custom Kitchens', 'Master Bath Ensuites', 'Finished Basements', 'Custom Cabinetry'],
-    unitName: 'Room Footprint (Sq Ft)',
-    minUnits: 80,
-    maxUnits: 600,
-    defaultUnits: 220,
-    unitStep: 20,
-    baseRatePerUnit: 95,
-    multiplierLow: 0.85,
-    multiplierHigh: 1.4,
-  },
-];
-
-const COLOR_PALETTES = [
-  { id: 'ember', name: 'Ember Orange', hex: '#ff7137' },
-  { id: 'mint', name: 'Electric Emerald', hex: '#4ee0bc' },
-  { id: 'blue', name: 'Pacific Blue', hex: '#67b7ff' },
-  { id: 'gold', name: 'Bold Gold', hex: '#ffc44d' },
-  { id: 'purple', name: 'Royal Violet', hex: '#b388ff' },
-];
 
 const FAQS = [
   {
@@ -165,33 +33,7 @@ const FAQS = [
   },
 ];
 
-const money = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
-
 export default function WebsiteBuilderMockupExperience() {
-  const [selectedTradeId, setSelectedTradeId] = useState('roofing');
-  const [selectedPaletteHex, setSelectedPaletteHex] = useState('#ff7137');
-  const [viewportMode, setViewportMode] = useState<'desktop' | 'mobile'>('desktop');
-  const [calcUnits, setCalcUnits] = useState<number>(2200);
-
-  const currentTrade = useMemo(() => {
-    return TRADES.find((t) => t.id === selectedTradeId) || TRADES[0];
-  }, [selectedTradeId]);
-
-  const handleTradeChange = (trade: TradeData) => {
-    setSelectedTradeId(trade.id);
-    setCalcUnits(trade.defaultUnits);
-  };
-
-  const estimatePriceRange = useMemo(() => {
-    const rawTotal = calcUnits * currentTrade.baseRatePerUnit;
-    const low = Math.round((rawTotal * currentTrade.multiplierLow) / 50) * 50;
-    const high = Math.round((rawTotal * currentTrade.multiplierHigh) / 50) * 50;
-    return {
-      low: `$${money.format(low)}`,
-      high: `$${money.format(high)}`,
-    };
-  }, [calcUnits, currentTrade]);
-
   return (
     <div className={styles.wrapper}>
       <div className={styles.siteShell}>
@@ -274,8 +116,8 @@ export default function WebsiteBuilderMockupExperience() {
                 >
                   Build My Free Site <span>→</span>
                 </Link>
-                <a href="#interactive-sandbox" className={styles.btnSecondary}>
-                  Test Interactive Sandbox ↓
+                <a href="#video-studio" className={styles.btnSecondary}>
+                  Explore Video Studio ↓
                 </a>
               </div>
 
@@ -285,171 +127,8 @@ export default function WebsiteBuilderMockupExperience() {
               </div>
             </div>
 
-            {/* Right: Live Interactive Website Simulator */}
-            <div className={styles.simulatorCard}>
-              <div className={styles.simHeader}>
-                <div className={styles.simDots}>
-                  <span className={`${styles.simDot} ${styles.simDotRed}`} />
-                  <span className={`${styles.simDot} ${styles.simDotYellow}`} />
-                  <span className={`${styles.simDot} ${styles.simDotGreen}`} />
-                </div>
-
-                <div className={styles.simDomainBar}>
-                  <span className={styles.simSslBadge}>🔒 SSL</span>
-                  <span>cedarcreekroofing.com</span>
-                </div>
-
-                <div className={styles.simViewportToggle}>
-                  <button
-                    type="button"
-                    onClick={() => setViewportMode('desktop')}
-                    className={`${styles.simViewportBtn} ${viewportMode === 'desktop' ? styles.active : ''}`}
-                    title="Desktop Preview"
-                  >
-                    🖥️ Desktop
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setViewportMode('mobile')}
-                    className={`${styles.simViewportBtn} ${viewportMode === 'mobile' ? styles.active : ''}`}
-                    title="Mobile Preview"
-                  >
-                    📱 Mobile
-                  </button>
-                </div>
-              </div>
-
-              {/* Controls Bar: Trade Switcher & Palette Picker */}
-              <div className={styles.simControlsBar}>
-                <div className={styles.tradeTabGroup}>
-                  {TRADES.map((trade) => (
-                    <button
-                      key={trade.id}
-                      type="button"
-                      onClick={() => handleTradeChange(trade)}
-                      className={`${styles.tradeTabBtn} ${selectedTradeId === trade.id ? styles.active : ''}`}
-                    >
-                      <span>{trade.icon}</span> {trade.shortName}
-                    </button>
-                  ))}
-                </div>
-
-                <div className={styles.paletteSelector}>
-                  <span className={styles.paletteLabel}>Accent:</span>
-                  {COLOR_PALETTES.map((palette) => (
-                    <button
-                      key={palette.id}
-                      type="button"
-                      onClick={() => setSelectedPaletteHex(palette.hex)}
-                      className={`${styles.paletteDot} ${selectedPaletteHex === palette.hex ? styles.active : ''}`}
-                      style={{ backgroundColor: palette.hex }}
-                      title={palette.name}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              {/* Simulated Website Canvas */}
-              <div
-                className={`${styles.simSiteStage} ${viewportMode === 'mobile' ? styles.mobileView : ''}`}
-              >
-                {/* Simulated Header */}
-                <div className={styles.mockHeader}>
-                  <div className={styles.mockBrand}>
-                    <div
-                      className={styles.mockLogoIcon}
-                      style={{ backgroundColor: selectedPaletteHex }}
-                    >
-                      {currentTrade.icon}
-                    </div>
-                    <span className={styles.mockBrandText}>Cedar Creek {currentTrade.shortName}</span>
-                  </div>
-
-                  {viewportMode === 'desktop' && (
-                    <div className={styles.mockNavPills}>
-                      <span>Services</span>
-                      <span>About</span>
-                      <span>Reviews</span>
-                      <span>Area</span>
-                    </div>
-                  )}
-
-                  <button
-                    type="button"
-                    className={styles.mockQuoteBtn}
-                    style={{ backgroundColor: selectedPaletteHex }}
-                  >
-                    Instant Estimate
-                  </button>
-                </div>
-
-                {/* Simulated Hero Grid */}
-                <div className={styles.mockHeroGrid}>
-                  <div>
-                    <span
-                      className={styles.mockBadge}
-                      style={{ color: selectedPaletteHex, borderColor: selectedPaletteHex }}
-                    >
-                      ✦ Licensed & Insured Contractor
-                    </span>
-                    <h2 className={styles.mockTitle}>{currentTrade.title}</h2>
-                    <p className={styles.mockSubtitle}>{currentTrade.subtitle}</p>
-
-                    <div className={styles.mockServicesList}>
-                      {currentTrade.services.map((srv) => (
-                        <span key={srv} className={styles.mockServiceTag}>
-                          ✓ {srv}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Simulated Instant Estimator Widget */}
-                  <div className={styles.mockEstimatorBox}>
-                    <div className={styles.estimatorHeader}>
-                      <span className={styles.estimatorTitle}>
-                        <span>⚡</span> Instant Project Calculator
-                      </span>
-                      <span className={styles.estimatorLivePill}>Live Widget</span>
-                    </div>
-
-                    <div className={styles.sliderRow}>
-                      <div className={styles.sliderLabelRow}>
-                        <span>{currentTrade.unitName}</span>
-                        <strong style={{ color: selectedPaletteHex }}>
-                          {money.format(calcUnits)}
-                        </strong>
-                      </div>
-                      <input
-                        type="range"
-                        min={currentTrade.minUnits}
-                        max={currentTrade.maxUnits}
-                        step={currentTrade.unitStep}
-                        value={calcUnits}
-                        onChange={(e) => setCalcUnits(Number(e.target.value))}
-                        className={styles.calcSlider}
-                        style={{ accentColor: selectedPaletteHex }}
-                      />
-                    </div>
-
-                    <div className={styles.estimatePriceResult}>
-                      <span className={styles.estimateLabel}>Estimated Range:</span>
-                      <span className={styles.estimateRange}>
-                        {estimatePriceRange.low} – {estimatePriceRange.high}
-                      </span>
-                    </div>
-
-                    <button
-                      type="button"
-                      className={styles.mockIntakeBtn}
-                      style={{ backgroundColor: selectedPaletteHex }}
-                    >
-                      Lock In Estimate &amp; Book Visit →
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
+            {/* Right: Live Authentic Theme Cycler inside Dark Luxury Glass Frame */}
+            <HeroThemeCyclerDark />
           </section>
 
           {/* =================================================================
@@ -458,34 +137,26 @@ export default function WebsiteBuilderMockupExperience() {
           <section className={styles.proofStrip} aria-label="Key Platform Proof Points">
             <div className={styles.proofCard}>
               <div className={styles.proofNumber}>60s</div>
-              <h3 className={styles.proofTitle}>Instant AI Generation</h3>
-              <p className={styles.proofDesc}>
-                Answer 3 simple questions to generate a complete, high-converting 5-page site.
-              </p>
+              <div className={styles.proofLabel}>Instant Generation</div>
+              <div className={styles.proofDetail}>Ready to review and publish in one sitting</div>
             </div>
 
             <div className={styles.proofCard}>
               <div className={styles.proofNumber}>18+</div>
-              <h3 className={styles.proofTitle}>Contractor Trade Profiles</h3>
-              <p className={styles.proofDesc}>
-                Tailored service checklists, intake logic, and terminology for your specialty.
-              </p>
+              <div className={styles.proofLabel}>Contractor Trades</div>
+              <div className={styles.proofDetail}>Pre-built service packages &amp; trade intake formulas</div>
             </div>
 
             <div className={styles.proofCard}>
               <div className={styles.proofNumber}>$0/mo</div>
-              <h3 className={styles.proofTitle}>Included On Flex Plan</h3>
-              <p className={styles.proofDesc}>
-                Full website builder, domain hosting, and intake forms with zero monthly fee.
-              </p>
+              <div className={styles.proofLabel}>Flex Plan Hosting</div>
+              <div className={styles.proofDetail}>Website builder &amp; domain hosting included free</div>
             </div>
 
             <div className={styles.proofCard}>
               <div className={styles.proofNumber}>100%</div>
-              <h3 className={styles.proofTitle}>Editable &amp; Owned by You</h3>
-              <p className={styles.proofDesc}>
-                Bring your own domain, edit every word, and retain complete control of your brand.
-              </p>
+              <div className={styles.proofLabel}>Editable &amp; Owned</div>
+              <div className={styles.proofDetail}>Your domain, your brand, your customer data</div>
             </div>
           </section>
 
@@ -495,14 +166,14 @@ export default function WebsiteBuilderMockupExperience() {
           <section className={`${styles.sectionBlock} ${styles.journeySection}`} aria-labelledby="journey-heading">
             <div className={styles.sectionHead}>
               <div className={styles.sectionEyebrow}>
-                <span>✦</span> One Connected System
+                <span>✦</span> The Connected Contractor Engine
               </div>
               <h2 id="journey-heading" className={styles.sectionTitle}>
-                Other builders stop at &ldquo;submit.&rdquo; <em>Yours keeps the job moving.</em>
+                More than a static website. <em>A complete intake pipeline.</em>
               </h2>
               <p className={styles.sectionSubtitle}>
-                The details a homeowner enters on your website stay with the job record—flowing
-                seamlessly into your quotes, dispatch schedule, client portal, and Stripe invoices.
+                Generic website builders give you an empty contact form. Let’s Get Quoted turns
+                every visitor into a structured, quote-ready job record with trade specifics.
               </p>
             </div>
 
@@ -664,29 +335,9 @@ export default function WebsiteBuilderMockupExperience() {
           </section>
 
           {/* =================================================================
-              INTERACTIVE SANDBOX SECTION
-              ================================================================= */}
-          <section id="interactive-sandbox" className={styles.sectionBlock} aria-labelledby="sandbox-heading">
-            <div className={styles.sectionHead}>
-              <div className={styles.sectionEyebrow}>
-                <span>✦</span> Interactive Builder Sandbox
-              </div>
-              <h2 id="sandbox-heading" className={styles.sectionTitle}>
-                Test drive the customizer right now.
-              </h2>
-              <p className={styles.sectionSubtitle}>
-                Type your company name, select your trade, pick an archetype theme, and watch the
-                design re-render live in real time.
-              </p>
-            </div>
-
-            <SiteCustomizerSandbox />
-          </section>
-
-          {/* =================================================================
               MEDIA STUDIO SHOWCASE (6 VIDEO LAYOUTS)
               ================================================================= */}
-          <section className={styles.sectionBlock} aria-labelledby="video-heading">
+          <section id="video-studio" className={styles.sectionBlock} aria-labelledby="video-heading">
             <div className={styles.sectionHead}>
               <div className={styles.sectionEyebrow}>
                 <span>✦</span> 6 Video Layout Archetypes

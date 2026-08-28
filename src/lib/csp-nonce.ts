@@ -1,4 +1,3 @@
-import { headers } from 'next/headers';
 import { cspHeaderName } from '@/lib/csp';
 
 // Deliberately NOT in lib/csp.ts. That module is imported by middleware, which
@@ -8,22 +7,14 @@ import { cspHeaderName } from '@/lib/csp';
 // The nonce for THIS request, read back out of the CSP header the middleware
 // already set.
 //
-// Next stamps its own <script> tags automatically, so the app looks fully
-// covered — but a <script> written by hand in JSX gets nothing, and script-src
-// governs EVERY script element, `application/ld+json` included. Measured on the
-// running app: 19 of 20 scripts on the homepage carried a nonce, and the one
-// that didn't was the structured data.
-//
-// That matters more than it sounds. JSON-LD failing is silent by construction:
-// the page renders perfectly, nothing errors, and the only symptom is Google
-// quietly losing the LocalBusiness markup on every published contractor site.
-// It would be found weeks later, in the rankings.
-//
 // Returns undefined rather than throwing when there's no header (a route the
 // middleware matcher skips, or a test). React drops an undefined attribute, and
 // under report-only that's the status quo either way.
 export function cspNonce(): string | undefined {
+  if (typeof window !== 'undefined') return undefined;
   try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-require-imports
+    const { headers } = require('next/headers');
     const header = headers().get(cspHeaderName());
     return header?.match(/'nonce-([^']+)'/)?.[1];
   } catch {

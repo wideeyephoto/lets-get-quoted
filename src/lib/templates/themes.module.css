@@ -1607,7 +1607,7 @@
 .vistaBrandMark { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 9px; background: var(--theme-accent); color: var(--theme-on-accent, #111); flex: none; }
 .headerPhone { justify-self: end; font-family: var(--font-mono); font-size: .82rem; font-weight: 500; letter-spacing: .04em; transition: color .2s ease; }
 .headerPhone:hover { color: var(--theme-accent); }
-.forgeHero { position: relative; overflow: hidden; min-height: min(850px, 92svh); display: flex; align-items: center; padding: clamp(6.5rem, 10vw, 8.5rem) 6vw clamp(3rem, 6vh, 4.5rem); }
+.forgeHero { position: relative; overflow: hidden; min-height: min(850px, 92svh); display: flex; align-items: center; justify-content: center; padding: clamp(6.5rem, 10vw, 8.5rem) 6vw clamp(3rem, 6vh, 4.5rem); }
 .heroImage { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; animation: heroKenBurns 22s ease-in-out infinite alternate; }
 /* Slow Ken Burns push on hero photography (Forge/Vista full-bleed, Guild framed).
    Transform-only so it can't trigger the throttled-iframe opacity stall. */
