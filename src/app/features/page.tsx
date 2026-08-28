@@ -5,12 +5,10 @@ import {
   PageCTA,
   SiteFooter,
   SiteHeader,
-  SIGNUP_LABEL,
   SIGNUP_URL,
 } from '@/components/flagship/site-chrome';
 import {
   FLEX_PRICE,
-  LOWEST_PLATFORM_FEE,
   PLAN_FEE_RANGE_LABEL,
   PUBLIC_PRICING_SUMMARY,
   STRIPE_PROCESSING_NOTE,

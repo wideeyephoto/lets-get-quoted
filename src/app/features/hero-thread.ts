@@ -1,4 +1,4 @@
-import { clientJobDashboardText, jobUpdateText, paymentText } from '@/lib/sms-templates';
+import { clientJobDashboardText, jobUpdateText } from '@/lib/sms-templates';
 
 /**
  * The script for the hero Job Record simulation on /features.

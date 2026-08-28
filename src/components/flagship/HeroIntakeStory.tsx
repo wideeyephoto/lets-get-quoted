@@ -21,7 +21,6 @@ export default function HeroIntakeStory() {
   const [pulse, setPulse] = useState(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
-  const startTimeRef = useRef<number>(0);
   const elapsedRef = useRef<number>(0);
 
   // Check reduced motion

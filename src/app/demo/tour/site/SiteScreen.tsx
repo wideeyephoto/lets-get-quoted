@@ -6,7 +6,6 @@ import DemoTourFrame from '@/components/demo/DemoTourFrame';
 import {
   TOUR_STEPS,
   DEMO_TOUR_CONTRACTOR,
-  DEMO_TOUR_JOB,
 } from '@/lib/demo-tour-data';
 import styles from '../tour.module.css';
 
