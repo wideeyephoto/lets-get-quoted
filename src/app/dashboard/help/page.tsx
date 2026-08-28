@@ -10,6 +10,7 @@ import {
   type SupportFormError,
 } from '@/lib/support-portal';
 import { ARTICLES } from '@/lib/resources';
+import { MANUAL_ARTICLES } from '@/lib/help/user-manual';
 import { HelpTourRestartButton } from '@/components/product-tour/ProductTourLauncher';
 import { openSupportCaseAction } from './actions';
 import styles from './help.module.css';
@@ -51,6 +52,22 @@ export default async function HelpPage({ searchParams }: { searchParams: { error
       </header>
 
       {errorMessage ? <p className={`${styles.banner} ${styles.err}`} role="alert">{errorMessage}</p> : null}
+
+      <section className={styles.manualCallout} aria-labelledby="dashboard-manual-heading">
+        <div className={styles.manualMark} aria-hidden="true">?</div>
+        <div className={styles.manualCopy}>
+          <p className={styles.manualEyebrow}>Dashboard user manual</p>
+          <h2 id="dashboard-manual-heading">Learn every workflow, from first lead to final payment</h2>
+          <p>
+            Search {MANUAL_ARTICLES.length} task-focused guides with setup steps, best practices, customer-facing details,
+            and troubleshooting for owners, office staff, and crew.
+          </p>
+        </div>
+        <div className={styles.manualActions}>
+          <Link href="/help/manual" className="btn primary">Open user manual</Link>
+          <Link href="/help/manual/first-30-minutes" className={styles.manualStart}>Start with the first 30 minutes →</Link>
+        </div>
+      </section>
 
       {/* Instant self-service guides */}
       <section className={styles.guidesSection} aria-labelledby="help-guides-heading">

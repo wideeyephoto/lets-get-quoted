@@ -689,6 +689,7 @@ export default function HelpCenter() {
               <span>Help Center</span>
             </div>
             <div className={styles.subNavLinks}>
+              <Link href="/help/manual" className={styles.subNavLink}>User Manual</Link>
               <a href="#ai-troubleshooter" className={styles.subNavLink}>Troubleshoot</a>
               <a href="#common-fixes" className={styles.subNavLink}>Common Fixes</a>
               <a href="#knowledge-hub" className={styles.subNavLink}>Guides</a>
@@ -789,6 +790,9 @@ export default function HelpCenter() {
 
         {/* Quick Secondary Navigation Links */}
         <div className={styles.heroSecondaryRow}>
+          <Link href="/help/manual" className={styles.heroSecondaryAction}>
+            Dashboard user manual →
+          </Link>
           <a href="#knowledge-hub" className={styles.heroSecondaryAction}>
             Browse all guides →
           </a>

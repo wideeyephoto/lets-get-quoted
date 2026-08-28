@@ -21,6 +21,40 @@
 .ok { border: 1px solid var(--cedge-green-30, rgba(74, 222, 128, 0.3)); background: rgba(74, 222, 128, 0.1); }
 .err { border: 1px solid var(--cedge-orange-30); background: rgba(255, 122, 33, 0.1); }
 
+.manualCallout {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 1rem;
+  margin: 0 0 1.25rem;
+  padding: 1.15rem;
+  overflow: hidden;
+  border: 1px solid var(--cedge-orange-30);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 92% 0%, rgba(255, 122, 33, 0.12), transparent 15rem),
+    rgba(var(--panel-rgb), 0.95);
+}
+
+.manualMark {
+  display: grid;
+  width: 46px;
+  height: 46px;
+  place-items: center;
+  border-radius: 13px;
+  background: rgba(255, 122, 33, 0.14);
+  color: var(--accent, #ff5a12);
+  font-size: 1.25rem;
+  font-weight: 850;
+}
+
+.manualEyebrow { margin: 0 0 0.2rem; color: var(--accent, #ff5a12); font-size: 0.68rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
+.manualCopy h2 { margin: 0; font-size: 1rem; line-height: 1.35; }
+.manualCopy > p:last-child { margin: 0.25rem 0 0; max-width: 46rem; color: var(--muted); font-size: 0.8rem; line-height: 1.5; }
+.manualActions { display: flex; flex-direction: column; align-items: stretch; gap: 0.45rem; min-width: 210px; text-align: center; }
+.manualStart { color: var(--ink-sky-1); font-size: 0.75rem; font-weight: 650; text-decoration: none; }
+.manualStart:hover { text-decoration: underline; }
+
 /* --- the list of requests ------------------------------------------------- */
 
 .sectionTitle {
@@ -248,6 +282,8 @@
 }
 
 @media (max-width: 560px) {
+  .manualCallout { grid-template-columns: auto minmax(0, 1fr); }
+  .manualActions { grid-column: 1 / -1; width: 100%; }
   .case { grid-template-columns: minmax(0, 1fr); }
   .status { justify-self: start; }
 }
