@@ -2486,6 +2486,496 @@ export const TRADES: Trade[] = [
     payer: 'customer',
     relatedSlugs: ['holiday-lighting', 'movers'],
   },
+  {
+    slug: 'docks-and-seawalls',
+    name: 'Dock & Seawall Contractors',
+    work: 'dock building & marine construction',
+    headline: 'Marine dock websites that turn waterfront visions into signed builds.',
+    subhead:
+      'Quote custom boat docks, floating docks, and rip-rap seawalls by linear foot with marine pilings, take staged deposits, and showcase coastal builds.',
+    pains: [
+      { title: 'Quote marine framing and piling driving', body: 'Itemize marine-treated pilings, composite decking, dock cleats, and rip-rap stone per linear foot in minutes.' },
+      { title: 'Stage coastal build milestone payments', body: 'Collect mobilization deposits, progress payments after piling jetting, and balance on final electrical and gangway sign-off.' },
+      { title: 'Waterfront project portfolio', body: 'Showcase fixed wood docks, aluminum gangways, and protected seawall shorelines that win waterfront homeowners.' },
+    ],
+    services: ['Custom fixed wooden docks', 'Aluminum floating docks', 'Rip-rap stone seawall repair', 'Dock piling driving & jetting', 'Composite marine decking', 'Dock lighting & shore power pedestals'],
+    templateIds: ['carbon', 'professional'],
+    metaTitle: 'Website & Software for Dock Builders',
+    metaDescription:
+      'A dock and seawall website with linear-foot quotes, staged milestone payments, project galleries, and Stripe. Plans start at $0/month with Flex.',
+    relatedSlugs: ['deck-builders', 'boat-lifts', 'marine-services'],
+  },
+  {
+    slug: 'boat-lifts',
+    name: 'Boat Lift Companies',
+    work: 'boat lift installation & service',
+    headline: 'Boat lift websites that book the lift install and seasonal service.',
+    subhead:
+      'Quote hydraulic, cradle, and personal watercraft lifts by boat weight capacity with solar options, take equipment deposits, and schedule seasonal service.',
+    pains: [
+      { title: 'Quote by vessel weight and cradle size', body: 'Select 4,000lb, 10,000lb, or 20,000lb capacities with canopy covers and remote key fobs in seconds.' },
+      { title: 'Deposit on heavy marine equipment', body: 'Collect upfront deposits covering aluminum cradle lifts and solar power units before dock delivery.' },
+      { title: 'Seasonal cable inspection routes', body: 'Auto-rebook spring cable tensioning and fall winterization checks directly to saved customer cards.' },
+    ],
+    services: ['Hydraulic boat lift installs', 'Cradle lift cable & motor service', 'PWC & jet ski drive-on ports', 'Solar powered lift charging kits', 'Custom aluminum canopy covers', 'Emergency lift cable replacement'],
+    templateIds: ['professional', 'fixit'],
+    metaTitle: 'Website & Software for Boat Lift Companies',
+    metaDescription:
+      'A boat lift website with capacity quotes, equipment deposits, seasonal service routes, and Stripe. Plans start at $0/month with Flex.',
+    payer: 'customer',
+    relatedSlugs: ['docks-and-seawalls', 'marine-services'],
+  },
+  {
+    slug: 'hot-tub-services',
+    name: 'Hot Tub Moving & Service Companies',
+    work: 'hot tub moving & spa maintenance',
+    headline: 'Hot tub websites that book the spa move and automate water routes.',
+    subhead:
+      'Quote hot tub relocations by distance and crane access, sell weekly water care routes on saved cards, and book leak diagnostics in the driveway.',
+    pains: [
+      { title: 'Quote moves by access hurdles and distance', body: 'Itemize flat dollies, backyard stairs, crane assistance, and mileage into instant moving quotes.' },
+      { title: 'Weekly spa water care on autopilot', body: 'Charge saved cards weekly or monthly for water chemistry balancing, filter washes, and sanitizer refills.' },
+      { title: 'Tap-to-pay at the spa deck', body: 'Take card, debit, or Apple Pay the moment the heater element is replaced and the tub reaches 104 degrees.' },
+    ],
+    services: ['Residential hot tub moving', 'Crane hot tub placement', 'Weekly spa water maintenance', 'Heater & pump repair diagnostics', 'Seasonal drain, clean & refill', 'Custom insulated cover replacement'],
+    templateIds: ['shine', 'handy'],
+    metaTitle: 'Website & Software for Hot Tub Services',
+    metaDescription:
+      'A hot tub service website with moving quotes, weekly water care billing, tap-to-pay, and Stripe. Plans start at $0/month with Flex.',
+    payer: 'customer',
+    relatedSlugs: ['pool-services', 'movers', 'electricians'],
+  },
+  {
+    slug: 'backflow-testing',
+    name: 'Backflow Testing Companies',
+    work: 'backflow testing & irrigation blowout',
+    headline: 'Backflow websites that pack your annual testing and blowout routes.',
+    subhead:
+      'Quote annual certified backflow device testing and fall compressor blowouts, submit municipal test reports automatically, and take tap-to-pay at the curb.',
+    pains: [
+      { title: 'Fill dense seasonal blowout routes', body: 'Neighborhood online booking stacks 20+ irrigation blowouts per day using commercial air compressors.' },
+      { title: 'Automated municipal test filing', body: 'Attach certified backflow test gauge readings directly to customer receipts and city water district portals.' },
+      { title: 'Annual backflow test reminders', body: 'Auto-send annual test due notices 30 days before city compliance deadlines to capture repeat revenue.' },
+    ],
+    services: ['Certified backflow prevention test', 'Commercial air compressor blowout', 'Backflow rebuild & relief valve kit', 'Municipal compliance report filing', 'Sprinkler manifold winter prep', 'Emergency backflow freeze repair'],
+    templateIds: ['fixit', 'handy'],
+    metaTitle: 'Website & Software for Backflow Testers',
+    metaDescription:
+      'A backflow testing website with annual testing routes, municipal report attachments, and Stripe. Plans start at $0/month with Flex.',
+    relatedSlugs: ['irrigation', 'plumbers'],
+  },
+  {
+    slug: 'greenhouses',
+    name: 'Custom Greenhouse Builders',
+    work: 'custom greenhouse & solarium construction',
+    headline: 'Greenhouse websites where year-round growing structures sell the craft.',
+    subhead:
+      'Quote residential glass greenhouses, polycarbonate hobby houses, and solariums with ventilation options, take staged deposits, and schedule builds.',
+    pains: [
+      { title: 'Quote greenhouse dimensions and glazing', body: 'Itemize tempered glass vs twin-wall polycarbonate, cedar/aluminum framing, and automated louvers in seconds.' },
+      { title: 'Deposit on glazing and framing kits', body: 'Collect upfront deposits covering structural framing and custom tempered glass before cutting begins.' },
+      { title: 'Stunning botanical portfolios', body: 'High-definition photos showing interior plant staging, misting lines, and automated climate fans inspire gardeners.' },
+    ],
+    services: ['Custom glass solariums', 'Twin-wall polycarbonate greenhouses', 'Cedar timber frame greenhouses', 'Automated ridge vent openers', 'Misting & irrigation systems', 'Concrete stem wall foundations'],
+    templateIds: ['modern', 'reno'],
+    metaTitle: 'Website & Software for Greenhouse Builders',
+    metaDescription:
+      'A greenhouse builder website with dimension quotes, glazing options, deposits, and Stripe payments. Plans start at $0/month with Flex.',
+    relatedSlugs: ['shed-builders', 'deck-builders'],
+  },
+  {
+    slug: 'outdoor-kitchens',
+    name: 'Outdoor Kitchen Builders',
+    work: 'outdoor kitchen & BBQ island construction',
+    headline: 'Outdoor kitchen websites where luxury backyard cooking sells the build.',
+    subhead:
+      'Quote custom BBQ islands, wood-fired pizza ovens, and granite bar counters with appliance drop-in options, take staged deposits, and showcase gourmet backyards.',
+    pains: [
+      { title: 'Quote custom island layouts with appliances', body: 'Itemize steel framing, stone veneer, granite counters, drop-in gas grills, and outdoor refrigerators on site.' },
+      { title: 'Stage luxury milestone billing', body: 'Collect upfront design deposits, milestone payments at framing/rough plumbing, and final balance upon countertop set.' },
+      { title: 'Gourmet entertainment portfolios', body: 'Galleries of illuminated outdoor kitchens with pizza ovens and bar seating convert homeowners immediately.' },
+    ],
+    services: ['Custom stone BBQ islands', 'Wood-fired pizza ovens', 'Drop-in stainless grill installation', 'Outdoor bar & granite countertops', 'Outdoor kitchen plumbing & gas', 'Under-counter refrigerators & sinks'],
+    templateIds: ['carbon', 'modern'],
+    metaTitle: 'Website & Software for Outdoor Kitchens',
+    metaDescription:
+      'An outdoor kitchen website with BBQ island quotes, appliance options, deposits, and Stripe payments. Plans start at $0/month with Flex.',
+    relatedSlugs: ['hardscaping', 'gas-fitters', 'countertops'],
+  },
+  {
+    slug: 'grain-bins',
+    name: 'Grain Bin & Silo Builders',
+    work: 'grain bin & agricultural silo construction',
+    headline: 'Grain bin websites that turn agricultural storage bids into signed builds.',
+    subhead:
+      'Quote commercial and farm grain bins by bushel capacity with drying floors and auger packages, stage progress payments, and showcase farm builds.',
+    pains: [
+      { title: 'Quote by bushel size and ring count', body: 'Calculate concrete pad specs, galvanized corrugated rings, aeration fans, and sweep augers in minutes.' },
+      { title: 'Stage agricultural build milestone payments', body: 'Collect mobilization deposits, progress payments at bin jacking, and final balance after fan and ladder testing.' },
+      { title: 'Farm storage portfolio', body: 'Showcase multi-bin grain setups, commercial elevator leg installations, and hopper bottom bins that win growers.' },
+    ],
+    services: ['Corrugated steel grain bins', 'Hopper bottom storage bins', 'Full aeration drying floors', 'Unload sweep auger systems', 'Bin jacking & ring replacement', 'Grain temperature monitoring cables'],
+    templateIds: ['carbon', 'professional'],
+    metaTitle: 'Website & Software for Grain Bin Builders',
+    metaDescription:
+      'A grain bin builder website with bushel capacity quotes, staged milestone payments, and Stripe. Plans start at $0/month with Flex.',
+    payer: 'client',
+    relatedSlugs: ['pole-barns', 'concrete'],
+  },
+  {
+    slug: 'oil-tank-removal',
+    name: 'Oil Tank Removal Companies',
+    work: 'oil tank removal & soil remediation',
+    headline: 'Oil tank removal websites that quote the pull and certify the soil.',
+    subhead:
+      'Quote underground and basement heating oil tank decommissioning with municipal permits, take mobilization deposits, and issue environmental closure certs.',
+    pains: [
+      { title: 'Quote tank removal and pump-out fast', body: 'Itemize sludge pumping, excavation, tank cutting/cleaning, scrap disposal, and clean soil backfill on your phone.' },
+      { title: 'Win real estate closing contingencies', body: 'Fast 24/7 intake helps homebuyers and sellers remove unpermitted buried oil tanks before contract deadlines.' },
+      { title: 'Attach municipal closure reports', body: 'Deliver state environmental certs and lab soil test readings directly with digital invoices for prompt payment.' },
+    ],
+    services: ['Underground oil tank excavation', 'Basement oil tank removal', 'Sludge & residual oil pump-out', 'Soil core sampling & lab testing', 'Environmental closure certs', 'Clean backfill & lawn grading'],
+    templateIds: ['professional', 'carbon'],
+    metaTitle: 'Website & Software for Oil Tank Removal',
+    metaDescription:
+      'An oil tank removal website with excavation quotes, soil test attachments, and Stripe payments. Plans start at $0/month with Flex.',
+    payer: 'client',
+    relatedSlugs: ['demolition', 'excavation'],
+  },
+  {
+    slug: 'historic-masonry',
+    name: 'Historic Masonry & Tuckpointing Companies',
+    work: 'historic masonry & lime mortar tuckpointing',
+    headline: 'Historic masonry websites where heritage preservation sells the craft.',
+    subhead:
+      'Quote lime mortar repointing, brownstone patching, and historic brick matching by square footage, take artisan deposits, and showcase preserved heritage.',
+    pains: [
+      { title: 'Quote breathable lime mortar restoration', body: 'Calculate mortar joint grinding, custom sand/lime color matching, and hand-tuckpointing per square foot.' },
+      { title: 'Deposit on custom historic brick & lime', body: 'Collect deposits covering salvaged antique bricks, hydraulic lime, and specialty consolidation washes.' },
+      { title: 'Historic preservation portfolios', body: 'Detailed before/after macro photos of crumbly 19th-century mortar restored to crisp struck joints close owners.' },
+    ],
+    services: ['Historic lime mortar tuckpointing', 'Brownstone patching & sculpting', 'Antique brick matching & relaying', 'Mortar joint raking & repointing', 'Stone consolidant application', 'Chimney historic rebuilds'],
+    templateIds: ['coat', 'professional'],
+    metaTitle: 'Website & Software for Historic Masonry',
+    metaDescription:
+      'A historic masonry website with square-foot lime mortar quotes, artisan deposits, and Stripe payments. Plans start at $0/month with Flex.',
+    relatedSlugs: ['masonry', 'chimney-sweep'],
+  },
+  {
+    slug: 'storefront-glass',
+    name: 'Commercial Storefront Glass Companies',
+    work: 'commercial storefront glass & door repair',
+    headline: 'Storefront glass websites that book emergency board-up and replace doors.',
+    subhead:
+      'Capture broken commercial glass calls 24/7, quote laminated storefront glass and commercial door pivots on site, and invoice property managers directly.',
+    pains: [
+      { title: 'Win 24/7 commercial board-up calls', body: 'Emergency intake captures retail break-in and storm damage calls any hour and dispatches board-up techs.' },
+      { title: 'Quote commercial glass & door pivots fast', body: 'Itemize 1/4" laminated safety glass, aluminum door closers, and panic exit hardware from the truck.' },
+      { title: 'Direct insurance & B2B invoicing', body: 'Send digital payment links or submit insurance claim invoices the moment security glass is installed.' },
+    ],
+    services: ['Emergency 24/7 board-up service', 'Storefront safety glass replacement', 'Commercial door pivot & hinge repair', 'Concealed door closer installation', 'Panic bar & exit device hardware', 'Aluminum entrance framing'],
+    templateIds: ['carbon', 'fixit'],
+    metaTitle: 'Website & Software for Storefront Glass',
+    metaDescription:
+      'A storefront glass website with 24/7 emergency intake, commercial door quotes, and Stripe payments. Plans start at $0/month with Flex.',
+    payer: 'client',
+    relatedSlugs: ['glass-and-mirrors', 'locksmiths'],
+  },
+  {
+    slug: 'solar-batteries',
+    name: 'Solar Battery Storage Installers',
+    work: 'solar battery backup & energy storage',
+    headline: 'Solar battery websites that quote whole-home backup and lock incentives.',
+    subhead:
+      'Quote Tesla Powerwall and Enphase batteries with backup load calculations, guide homeowners through energy tax credits, and stage install milestone payments.',
+    pains: [
+      { title: 'Quote battery capacity and backup panels', body: 'Calculate whole-home vs critical load backup, kilowatt-hour storage needs, and smart gateway wiring in minutes.' },
+      { title: 'Highlight tax credits & emergency peace of mind', body: 'Proposals automatically calculate federal clean energy tax credits to make storage systems financially attractive.' },
+      { title: 'Stage electrical install milestone billing', body: 'Collect deposits covering battery units, followed by balance upon municipal permit inspection and utility sign-off.' },
+    ],
+    services: ['Whole-home battery backup', 'Tesla Powerwall installation', 'Enphase IQ battery systems', 'Critical load subpanel wiring', 'Solar inverter battery retrofits', 'Smart energy management gateways'],
+    templateIds: ['modern', 'carbon'],
+    metaTitle: 'Website & Software for Solar Battery Installers',
+    metaDescription:
+      'A solar battery website with kWh capacity quotes, tax credit calculations, deposits, and Stripe. Plans start at $0/month with Flex.',
+    relatedSlugs: ['solar', 'generators', 'electricians'],
+  },
+  {
+    slug: 'central-vacuums',
+    name: 'Central Vacuum Companies',
+    work: 'central vacuum installation & repair',
+    headline: 'Central vacuum websites that book the in-wall install and repair clogs.',
+    subhead:
+      'Quote in-wall central vacuum systems, retractable hide-a-hose retrofits, and power units with inlet counts, collect deposits, and book service calls.',
+    pains: [
+      { title: 'Quote new builds and retrofits by inlet count', body: 'Combine main power units, in-wall 2" PVC piping, wall inlet valves, and hide-a-hose kits in seconds.' },
+      { title: 'Deposit before ordering power units', body: 'Collect upfront deposits covering high-suction hybrid power units and electric powerhead kits.' },
+      { title: 'Fast service call booking for low suction', body: 'Online booking lets homeowners schedule quick pipe clog clearing and motor carbon brush replacements.' },
+    ],
+    services: ['Central vacuum new construction', 'Retractable hide-a-hose installs', 'Power unit replacement & upgrades', 'In-wall pipe clog clearing', 'Garage utility valve additions', 'Electric powerhead attachments'],
+    templateIds: ['handy', 'modern'],
+    metaTitle: 'Website & Software for Central Vacuums',
+    metaDescription:
+      'A central vacuum website with inlet-count quotes, equipment deposits, clog repair booking, and Stripe. Plans start at $0/month with Flex.',
+    relatedSlugs: ['electricians', 'appliance-repair'],
+  },
+  {
+    slug: 'septic-pumping',
+    name: 'Septic Pumping Companies',
+    work: 'septic tank pumping & grease trap service',
+    headline: 'Septic pumping websites that book the pump-out and automate reminders.',
+    subhead:
+      'Quote septic tank pumping by gallon capacity with riser digging options, schedule vacuum trucks online, and auto-bill recurring 3-year maintenance reminders.',
+    pains: [
+      { title: 'Quote by tank gallons and lid depth', body: 'Price 1,000, 1,500, or 2,000 gallon tanks with locating and digging add-ons directly on your phone.' },
+      { title: 'Recurring 3-year pump-out reminders', body: 'Automated rebook messages sent every 36 months keep homeowner septic tanks pumped before backups occur.' },
+      { title: 'Tap-to-pay at the tank lid', body: 'Accept credit card, debit, or Apple Pay the moment the tank is vacuumed clean and the effluent filter is washed.' },
+    ],
+    services: ['Residential septic tank pumping', 'Commercial grease trap pumping', 'Effluent filter cleaning & inspection', 'Septic tank locating & lid digging', 'Riser & heavy-duty lid installation', 'Emergency septic backup pumping'],
+    templateIds: ['fixit', 'carbon'],
+    metaTitle: 'Website & Software for Septic Pumping',
+    metaDescription:
+      'A septic pumping website with gallon-based quotes, automated 3-year rebooking, tap-to-pay, and Stripe. Plans start at $0/month with Flex.',
+    relatedSlugs: ['septic', 'plumbers'],
+  },
+  {
+    slug: 'home-theaters',
+    name: 'Custom Home Theater Companies',
+    work: 'custom home theater & media room installation',
+    headline: 'Home theater websites where cinematic entertainment sells the room.',
+    subhead:
+      'Quote 4K laser projectors, acoustic panelling, and Dolby Atmos audio with seating options, collect staged electronics deposits, and showcase dream theaters.',
+    pains: [
+      { title: 'Quote complete cinema packages', body: 'Combine acoustic wall treatments, 4K HDR laser projectors, motorized micro-perf screens, and AV receiver gear.' },
+      { title: 'Deposit on high-end electronics', body: 'Collect upfront deposits covering expensive projection gear, architectural speakers, and tiered cinema seating.' },
+      { title: 'Sell the immersive cinema experience', body: 'High-definition portfolios of star ceilings, ambient LED perimeter lighting, and plush velvet media rooms close deals.' },
+    ],
+    services: ['4K laser projector & screen setup', 'Dolby Atmos surround sound', 'Acoustic wall paneling & bass traps', 'Tiered motorized theater seating', 'Fiber optic star ceiling panels', 'Smart lighting & one-touch control'],
+    templateIds: ['modern', 'carbon'],
+    metaTitle: 'Website & Software for Home Theaters',
+    metaDescription:
+      'A custom home theater website with cinema package quotes, electronics deposits, and Stripe payments. Plans start at $0/month with Flex.',
+    relatedSlugs: ['smart-home-av', 'outdoor-audio', 'electricians'],
+  },
+  {
+    slug: 'fireplace-restoration',
+    name: 'Fireplace Restoration Companies',
+    work: 'fireplace restoration & chimney liners',
+    headline: 'Fireplace websites that quote the gas insert and reline the flue.',
+    subhead:
+      'Quote stainless steel chimney liners, direct-vent gas inserts, and stone hearth rebuilds, take deposits on fireplace units, and book camera safety checks.',
+    pains: [
+      { title: 'Quote gas inserts and flue liners fast', body: 'Itemize direct-vent gas units, flexible stainless steel liner kits, top sealing dampers, and hearth stone on site.' },
+      { title: 'Deposit before ordering fireplace units', body: 'Collect upfront deposits covering specialty direct-vent inserts and custom glass doors before installation.' },
+      { title: 'Before/after fireplace makeovers', body: 'Galleries showing 1970s drafty brick fireplaces converted into modern, efficient stone gas centerpieces.' },
+    ],
+    services: ['Direct-vent gas insert installs', 'Stainless steel chimney liner kits', 'Firebox refractory brick rebuilds', 'Top-sealing energy dampers', 'Stone hearth & mantel upgrades', 'Draft & smoke chamber parging'],
+    templateIds: ['reno', 'fixit'],
+    metaTitle: 'Website & Software for Fireplace Restoration',
+    metaDescription:
+      'A fireplace restoration website with gas insert quotes, liner options, deposits, and Stripe payments. Plans start at $0/month with Flex.',
+    relatedSlugs: ['chimney-sweep', 'gas-fitters', 'historic-masonry'],
+  },
+  {
+    slug: 'drop-ceilings',
+    name: 'Acoustical Drop Ceiling Contractors',
+    work: 'acoustical drop ceiling installation',
+    headline: 'Drop ceiling websites that quote grids, tiles, and sound control fast.',
+    subhead:
+      'Quote commercial grid suspended ceilings, acoustic sound baffles, and basement drop tiles by square footage, take material deposits, and schedule crews.',
+    pains: [
+      { title: 'Quote by square foot and grid spec', body: 'Calculate main tees, cross tees, wall angle, wire hangers, and 2x2 or 2x4 acoustic tiles on your tablet in minutes.' },
+      { title: 'Deposit on commercial tile pallets', body: 'Collect upfront deposits covering Armstrong or USG acoustic ceiling tiles and grid metal before job start.' },
+      { title: 'Commercial office & basement portfolios', body: 'Showcase clean office grid installations and modern residential basement drop ceilings with integrated LED panels.' },
+    ],
+    services: ['Commercial acoustic grid ceilings', 'Basement suspended drop ceilings', 'Sound absorption baffles & clouds', 'Drop-in flat panel LED lighting', 'Damaged ceiling tile replacement', 'Cleanroom & moisture resistant tile'],
+    templateIds: ['carbon', 'professional'],
+    metaTitle: 'Website & Software for Drop Ceiling Contractors',
+    metaDescription:
+      'A drop ceiling contractor website with square-foot grid quotes, tile options, deposits, and Stripe. Plans start at $0/month with Flex.',
+    payer: 'client',
+    relatedSlugs: ['drywall', 'finish-carpentry'],
+  },
+  {
+    slug: 'asbestos-abatement',
+    name: 'Asbestos & Lead Abatement Companies',
+    work: 'asbestos & lead paint abatement',
+    headline: 'Asbestos abatement websites that turn hazmat hazards into clear air.',
+    subhead:
+      'Quote certified asbestos pipe, floor tile, and lead paint removal with negative air containment, take mobilization deposits, and issue clearance certificates.',
+    pains: [
+      { title: 'Win urgent real estate & renovation closures', body: 'Fast 24/7 intake captures dangerous asbestos discoveries during home remodeling and schedules immediate inspection.' },
+      { title: 'Quote multi-phase containment protocols', body: 'Itemize 6-mil poly containment barriers, HEPA negative air machines, certified disposal manifests, and third-party testing.' },
+      { title: 'Digital air clearance documentation', body: 'Attach independent laboratory air clearance test passes directly to final digital invoices for prompt payment.' },
+    ],
+    services: ['Asbestos pipe insulation removal', 'Vinyl asbestos floor tile abatement', 'Popcorn ceiling asbestos removal', 'Lead paint stabilization & removal', 'HEPA negative pressure containment', 'Certified hazardous waste disposal'],
+    templateIds: ['professional', 'carbon'],
+    metaTitle: 'Website & Software for Asbestos Abatement',
+    metaDescription:
+      'An asbestos abatement website with containment quotes, third-party clearance certificates, and Stripe. Plans start at $0/month with Flex.',
+    payer: 'client',
+    relatedSlugs: ['demolition', 'mold-remediation'],
+  },
+  {
+    slug: 'biohazard-remediation',
+    name: 'Biohazard & Trauma Cleanup Companies',
+    work: 'biohazard & trauma scene cleanup',
+    headline: 'Biohazard websites that provide discreet, 24/7 certified decontamination.',
+    subhead:
+      'Capture emergency trauma, unattended death, and severe hoarding inquiries 24/7, quote certified remediation with clear protocols, and bill insurance directly.',
+    pains: [
+      { title: 'Discreet 24/7 emergency response', body: 'Compassionate, confidential AI intake takes urgent emergency calls at any hour and dispatches certified cleanup teams.' },
+      { title: 'Itemize full hospital-grade protocols', body: 'Quote OSHA-compliant biological cleanup, ozone/hydroxyl treatments, structural deodorization, and bio-waste disposal.' },
+      { title: 'Direct insurance billing support', body: 'Submit detailed line-item decontamination manifests and clearance documentation directly to homeowners insurance carriers.' },
+    ],
+    services: ['Trauma & crime scene decontamination', 'Unattended death remediation', 'Severe hoarding cleanup & haul-off', 'Odor neutralization & ozone treatment', 'Medical waste disposal & transport', 'Commercial biological disinfection'],
+    templateIds: ['professional', 'carbon'],
+    metaTitle: 'Website & Software for Biohazard Cleaners',
+    metaDescription:
+      'A biohazard cleanup website with 24/7 confidential intake, certified protocol quotes, and direct insurance billing. Plans start at $0/month.',
+    payer: 'client',
+    relatedSlugs: ['water-damage-restoration', 'junk-removal', 'mold-remediation'],
+  },
+  {
+    slug: 'graffiti-removal',
+    name: 'Graffiti Removal Companies',
+    work: 'graffiti removal & surface protection',
+    headline: 'Graffiti removal websites that book rapid response and protect masonry.',
+    subhead:
+      'Quote chemical washes and mobile blast removal by square footage, sell recurring anti-graffiti coating contracts to property managers, and get paid on site.',
+    pains: [
+      { title: 'Fast emergency dispatch for business storefronts', body: 'Store owners upload vandalism photos for instant square-foot removal estimates and same-day dispatch.' },
+      { title: 'Sell sacrificial barrier coatings', body: 'Quote protective anti-graffiti coatings on brick and concrete that allow future taggings to wash off with simple hot water.' },
+      { title: 'B2B property management retainers', body: 'Auto-bill monthly commercial route sweeps that inspect and eliminate graffiti across shopping centers.' },
+    ],
+    services: ['Non-destructive graffiti chemical wash', 'Brick & concrete paint removal', 'Sacrificial anti-graffiti coatings', 'Permanent hydrophobic barrier sealers', 'Commercial property monthly sweeps', 'Metal & glass tag buffing'],
+    templateIds: ['carbon', 'shine'],
+    metaTitle: 'Website & Software for Graffiti Removal',
+    metaDescription:
+      'A graffiti removal website with photo-estimate quotes, property manager retainers, and Stripe payments. Plans start at $0/month with Flex.',
+    payer: 'client',
+    relatedSlugs: ['pressure-washing', 'commercial-cleaning'],
+  },
+  {
+    slug: 'odor-removal',
+    name: 'Odor Removal & Decontamination Companies',
+    work: 'odor removal & smoke decontamination',
+    headline: 'Odor removal websites that eliminate tough smells and certify fresh air.',
+    subhead:
+      'Quote thermal fogging, commercial hydroxyl treatments, and ozone decontamination for smoke, pet, and rental turnovers, and take card payment on site.',
+    pains: [
+      { title: 'Quote whole-home deodorization by room count', body: 'Calculate thermal fogging, ozone chamber treatments, and HVAC duct decontamination on your phone in minutes.' },
+      { title: 'Win real estate & landlord rental turnovers', body: 'Fast turnaround service eliminates years of heavy cigarette smoke, pet urine, or cooking odors before showings.' },
+      { title: 'Tap-to-pay the second air tests clean', body: 'Take credit card or send instant digital invoices as soon as molecular vapor treatments complete.' },
+    ],
+    services: ['Cigarette smoke odor removal', 'Pet urine subfloor deodorization', 'Commercial hydroxyl air treatments', 'Ozone machine room decontamination', 'HVAC duct thermal chemical fogging', 'Rental turnover deep air scrub'],
+    templateIds: ['shine', 'professional'],
+    metaTitle: 'Website & Software for Odor Removal',
+    metaDescription:
+      'An odor removal website with whole-home deodorization quotes, rental turnover booking, and Stripe. Plans start at $0/month with Flex.',
+    payer: 'customer',
+    relatedSlugs: ['air-duct-cleaning', 'water-damage-restoration'],
+  },
+  {
+    slug: 'commercial-floor-care',
+    name: 'Commercial Carpet & Floor Care Companies',
+    work: 'commercial floor care & carpet extraction',
+    headline: 'Commercial floor care websites that lock recurring facility retainers.',
+    subhead:
+      'Quote hot water carpet extraction, low-moisture encapsulation, and VCT stripping/waxing by square footage, auto-bill monthly retainers, and dispatch crews.',
+    pains: [
+      { title: 'Quote high-square-footage facilities fast', body: 'Calculate multi-thousand square-foot office carpet extraction and VCT tile stripping and waxing in seconds.' },
+      { title: 'Auto-bill recurring facility maintenance', body: 'Monthly, quarterly, and semi-annual floor buffing contracts charge commercial clients automatically via ACH or card.' },
+      { title: 'Night & weekend shift scheduling', body: 'Online schedule coordination lets facility managers select after-hours cleaning windows without disrupting workday staff.' },
+    ],
+    services: ['Commercial carpet truckmount extraction', 'Low-moisture carpet encapsulation', 'VCT vinyl tile strip & high-gloss wax', 'Concrete floor scrub & buff', 'Grout line commercial extraction', 'Scheduled quarterly maintenance plans'],
+    templateIds: ['shine', 'professional'],
+    metaTitle: 'Website & Software for Commercial Floor Care',
+    metaDescription:
+      'A commercial floor care website with square-foot quotes, recurring facility retainers, and Stripe payments. Plans start at $0/month with Flex.',
+    payer: 'client',
+    relatedSlugs: ['commercial-cleaning', 'carpet-cleaning'],
+  },
+  {
+    slug: 'hydraulic-hose-repair',
+    name: 'Mobile Hydraulic Hose Repair Companies',
+    work: 'mobile hydraulic hose repair',
+    headline: 'Hydraulic hose websites that book the field dispatch and stop downtime.',
+    subhead:
+      'Capture urgent blown hose calls from excavators and cranes 24/7, quote on-site custom crimping and call-out fees, and take tap-to-pay right on the dirt.',
+    pains: [
+      { title: 'Win high-urgency job site breakdowns', body: '24/7 dispatch intake routes urgent calls from construction superintendents with blown hydraulic lines.' },
+      { title: 'Quote custom hose specs and call-out fees', body: 'Itemize mobile dispatch fee, hose PSI rating (2-wire, 4-spiral), flange fittings, and hydraulic fluid refills.' },
+      { title: 'Tap-to-pay on the job site', body: 'Accept corporate credit card or tap-to-pay right beside the excavator before the machine returns to work.' },
+    ],
+    services: ['24/7 on-site mobile hose crimping', 'Excavator & loader hydraulic lines', 'High-pressure 4-spiral wire hoses', 'Custom hydraulic fittings & adapters', 'Hydraulic fluid cleanup & top-off', 'Fleet preventative line audits'],
+    templateIds: ['carbon', 'fixit'],
+    metaTitle: 'Website & Software for Hydraulic Hose Techs',
+    metaDescription:
+      'A mobile hydraulic hose website with 24/7 emergency dispatch, custom crimping quotes, and Stripe payments. Plans start at $0/month with Flex.',
+    payer: 'client',
+    relatedSlugs: ['mobile-mechanics', 'heavy-rigging'],
+  },
+  {
+    slug: 'mobile-welding',
+    name: 'Mobile Welding & Fabrication Companies',
+    work: 'mobile welding & metal fabrication',
+    headline: 'Mobile welding websites that quote the field fix and weld on site.',
+    subhead:
+      'Quote structural steel repair, excavator bucket hardfacing, and custom iron railings on-site, collect deposits on metal stock, and get paid on safety sign-off.',
+    pains: [
+      { title: 'Quote on-site welding and fabrication fast', body: 'Itemize rig mobilization, certified welder hourly rate, steel plate/tubing stock, and consumables in minutes.' },
+      { title: 'Deposit on raw steel and metal orders', body: 'Collect upfront deposits covering structural beams, plate steel, and custom railing components before cutting.' },
+      { title: 'Showcase certified structural repairs', body: 'Galleries showing heavy equipment bucket rebuilds, trailer tongue repairs, and custom ornamental gates win bids.' },
+    ],
+    services: ['On-site mobile stick & MIG welding', 'Heavy equipment bucket hardfacing', 'Structural steel beam & column welding', 'Trailer hitch & frame reinforcement', 'Custom iron fence & gate repair', 'Stainless steel & aluminum welding'],
+    templateIds: ['carbon', 'fixit'],
+    metaTitle: 'Website & Software for Mobile Welders',
+    metaDescription:
+      'A mobile welding website with on-site rig quotes, material deposits, tap-to-pay, and Stripe payments. Plans start at $0/month with Flex.',
+    payer: 'client',
+    relatedSlugs: ['ironwork-and-railings', 'heavy-rigging'],
+  },
+  {
+    slug: 'heavy-rigging',
+    name: 'Safe & Heavy Equipment Rigging Companies',
+    work: 'safe moving & heavy equipment rigging',
+    headline: 'Heavy rigging websites that quote the big moves with precision and care.',
+    subhead:
+      'Quote gun safe moves, commercial machinery rigging, and medical equipment transport with stair and crane options, and collect holding deposits online.',
+    pains: [
+      { title: 'Quote by weight, stairs, and crane access', body: 'Calculate custom transport quotes for 1,000lb+ gun safes, CNC milling machines, and commercial pizza ovens.' },
+      { title: 'Lock specialized rigging crew dates', body: 'Collect deposits at booking to reserve specialized hydraulic trailers, stair-climbing dollies, and rigger crews.' },
+      { title: 'Showcase zero-damage heavy moves', body: 'Photos and videos of heavy equipment maneuvered through tight doorways without a scratch build total client trust.' },
+    ],
+    services: ['Gun safe & vault door moving', 'Industrial CNC machine rigging', 'Commercial bakery & pizza oven moves', 'Medical & laboratory device transport', 'Stair-climbing motorized dolly moves', 'Crane & gantry rigging hoisting'],
+    templateIds: ['carbon', 'professional'],
+    metaTitle: 'Website & Software for Heavy Rigging',
+    metaDescription:
+      'A heavy equipment rigging website with weight-based quotes, stair options, deposits, and Stripe payments. Plans start at $0/month with Flex.',
+    payer: 'client',
+    relatedSlugs: ['movers', 'mobile-welding'],
+  },
+  {
+    slug: 'aircraft-detailing',
+    name: 'Aircraft Detailing Companies',
+    work: 'aircraft detailing & brightwork polishing',
+    headline: 'Aircraft detailing websites where mirror-polished brightwork closes private jets.',
+    subhead:
+      'Quote turboprop and private jet wash, de-ice boot sealant, brightwork mirror polishing, and interior ceramic coatings by airframe model, and collect hangar deposits.',
+    pains: [
+      { title: 'Quote by airframe model and wing span', body: 'Select Cirrus SR22, King Air, Citation, or Gulfstream airframe templates for instant multi-stage detailing quotes.' },
+      { title: 'Deposit on certified aviation ceramics', body: 'Collect upfront deposits covering FAA-approved ceramic coatings and specialty multi-stage brightwork polish.' },
+      { title: 'Showcase mirror-shine brightwork metal', body: 'High-definition macro portfolios of leading edges, spinners, and engine inlets polished to flawless reflection.' },
+    ],
+    services: ['Private jet exterior wash & dry', 'Brightwork metal mirror polishing', 'Pneumatic de-ice boot prep & seal', 'Aviation ceramic paint protection', 'Leather interior deep clean & conditioning', 'Cockpit glass & screen detailing'],
+    templateIds: ['shine', 'carbon'],
+    metaTitle: 'Website & Software for Aircraft Detailing',
+    metaDescription:
+      'An aircraft detailing website with airframe quotes, brightwork options, deposits, and Stripe payments. Plans start at $0/month with Flex.',
+    payer: 'client',
+    relatedSlugs: ['auto-detailing', 'marine-services'],
+  },
 ];
 
 export function getTrade(slug: string): Trade | undefined {

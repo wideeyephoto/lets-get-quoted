@@ -37,7 +37,7 @@ const CARDS = [
     slug: 'website-builder',
     eyebrow: 'AI WEBSITE BUILDER',
     title: 'A contractor website that turns visits into ready-to-quote jobs.',
-    foot: 'Minutes, not weeks · 125 trades · Your domain stays yours',
+    foot: 'Minutes, not weeks · 150 trades · Your domain stays yours',
   },
   {
     slug: 'ai-intake',
