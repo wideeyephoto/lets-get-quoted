@@ -3380,6 +3380,7 @@ const TWEAKS = `
   .root :global(.index-hero-beside > .eyebrow),
   .root :global(.index-hero-beside > h1),
   .root :global(.index-hero-beside > p:not(.eyebrow)),
+  .root :global(.index-hero-beside > p.index-hero-fee),
   .root :global(.index-hero-beside > .hero-actions),
   .root :global(.index-hero-beside > .hero-thread) { grid-column: 1; grid-row: auto; }
   .root :global(.index-hero-beside > h1) { font-size: clamp(34px, 5.4vw, 48px); }

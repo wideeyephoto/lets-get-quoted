@@ -379,6 +379,53 @@
   gap: 8px;
 }
 
+.sim .headerControls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
+.sim .playPauseToggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border-radius: 6px;
+  border: 1px solid rgba(126, 183, 214, 0.25);
+  background: rgba(126, 183, 214, 0.1);
+  color: #cde4f2;
+  font-size: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.sim .playPauseToggle:hover {
+  background: rgba(126, 183, 214, 0.22);
+  border-color: rgba(126, 183, 214, 0.45);
+  color: #fff;
+  transform: scale(1.05);
+}
+
+.sim .interactiveStep {
+  cursor: pointer;
+  border-radius: 6px;
+  padding-left: 2px;
+  padding-right: 4px;
+  transition: background-color 0.15s ease;
+}
+
+.sim .interactiveStep:hover {
+  background: rgba(126, 183, 214, 0.08);
+}
+
+.sim .interactiveStep:focus-visible {
+  outline: 2px solid rgba(255, 113, 55, 0.6);
+  outline-offset: 2px;
+}
+
 .sim .smsBadge {
   font-family: var(--font-geist-mono), ui-monospace, monospace;
   font-size: 8.5px;
@@ -433,3 +480,4 @@
     min-height: 32px;
   }
 }
+

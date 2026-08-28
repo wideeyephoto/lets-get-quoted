@@ -9,9 +9,9 @@
 
 .strip {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-  gap: 14px;
-  padding: 20px 24px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+  padding: 16px 20px;
   background: linear-gradient(135deg, rgba(16, 36, 48, 0.72) 0%, rgba(8, 20, 29, 0.88) 100%);
   border: 1px solid rgba(174, 199, 211, 0.16);
   border-radius: 16px;
@@ -22,13 +22,14 @@
 
 .card {
   display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 12px 14px;
+  align-items: flex-start;
+  gap: 11px;
+  padding: 12px 11px;
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.02);
   border: 1px solid rgba(255, 255, 255, 0.04);
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  min-width: 0;
 }
 
 .card:hover {
@@ -39,62 +40,66 @@
 
 .iconWrap {
   flex-shrink: 0;
-  width: 38px;
-  height: 38px;
+  width: 34px;
+  height: 34px;
+  margin-top: 1px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 10px;
+  border-radius: 9px;
   background: linear-gradient(135deg, rgba(255, 106, 36, 0.14) 0%, rgba(255, 106, 36, 0.04) 100%);
   border: 1px solid rgba(255, 106, 36, 0.22);
   color: var(--orange, #ff6a24);
 }
 
 .iconWrap svg {
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
 }
 
 .textGroup {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  flex: 1;
 }
 
 .title {
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 700;
   color: #f3f7f8;
   letter-spacing: -0.01em;
   line-height: 1.25;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .subtitle {
   font-size: 11px;
   color: #8fa6b4;
-  line-height: 1.35;
-  margin-top: 2px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.38;
+  margin-top: 3px;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1080px) {
   .strip {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 12px;
+  }
+  .card {
+    padding: 12px 14px;
+    gap: 12px;
   }
 }
 
-@media (max-width: 580px) {
+@media (max-width: 640px) {
   .strip {
     grid-template-columns: 1fr;
     padding: 14px;
     gap: 10px;
   }
   .card {
-    padding: 10px 12px;
+    padding: 12px 14px;
+    gap: 12px;
   }
 }
+
+

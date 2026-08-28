@@ -46,6 +46,49 @@ const FINAL: Frame = {
   smsIndex: HERO_SMS.length - 1,
 };
 
+const STAGE_PRESETS: Frame[] = [
+  // Stage 1: Request received
+  {
+    completedStages: 1,
+    statusIndex: 0,
+    eventId: 0,
+    eventLeaving: false,
+    smsIndex: 0,
+  },
+  // Stage 2: Qualified
+  {
+    completedStages: 2,
+    statusIndex: 0,
+    eventId: 0,
+    eventLeaving: false,
+    smsIndex: 0,
+  },
+  // Stage 3: Quote approved
+  {
+    completedStages: 3,
+    statusIndex: 1,
+    eventId: 1,
+    eventLeaving: false,
+    smsIndex: 0,
+  },
+  // Stage 4: Tue 9-11 booked
+  {
+    completedStages: 4,
+    statusIndex: 2,
+    eventId: 2,
+    eventLeaving: false,
+    smsIndex: 1,
+  },
+  // Stage 5: $2,125 deposit paid
+  {
+    completedStages: 5,
+    statusIndex: 3,
+    eventId: 3,
+    eventLeaving: false,
+    smsIndex: 1,
+  },
+];
+
 const EVENT_EXIT = 360;
 
 const STEPS: { at: number; frame: Frame }[] = (() => {
@@ -176,6 +219,8 @@ export default function CinematicMessageSimulation() {
     if (timerRef.current === null) return;
     elapsedRef.current += performance.now() - sinceRef.current;
     clearTimer();
+    runningRef.current = false;
+    setPlaying(false);
   }, []);
 
   const start = useCallback(() => {
@@ -187,6 +232,14 @@ export default function CinematicMessageSimulation() {
     setFrame(REST);
     run();
   }, [run]);
+
+  const selectStage = (stageIndex: number) => {
+    hold();
+    setFinished(false);
+    if (stageIndex >= 0 && stageIndex < STAGE_PRESETS.length) {
+      setFrame(STAGE_PRESETS[stageIndex]);
+    }
+  };
 
   useEffect(() => {
     const query = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -252,9 +305,9 @@ export default function CinematicMessageSimulation() {
 
   useEffect(() => () => clearTimer(), []);
 
-  const currentStatus = HERO_STATUS[frame.statusIndex];
+  const currentStatus = HERO_STATUS[Math.min(frame.statusIndex, HERO_STATUS.length - 1)];
   const activeEvent = frame.eventId ? HERO_EVENTS[frame.eventId - 1] : null;
-  const currentSms = HERO_SMS[frame.smsIndex];
+  const currentSms = HERO_SMS[Math.min(frame.smsIndex, HERO_SMS.length - 1)];
 
   return (
     <div className={`hero-thread hero-thread-sim ${styles.sim}`} ref={rootRef}>
@@ -282,13 +335,24 @@ export default function CinematicMessageSimulation() {
               </div>
               <strong className={styles.tradeTitle}>{HERO_THREAD_TRADE}</strong>
             </div>
-            <span className={styles.statusBadge} data-tone={currentStatus.tone}>
-              <span className={styles.statusDot} />
-              {currentStatus.label}
-            </span>
+            <div className={styles.headerControls}>
+              <span className={styles.statusBadge} data-tone={currentStatus.tone}>
+                <span className={styles.statusDot} />
+                {currentStatus.label}
+              </span>
+              <button
+                type="button"
+                className={styles.playPauseToggle}
+                onClick={playing ? hold : start}
+                title={playing ? 'Pause workflow simulation' : 'Replay workflow simulation'}
+                aria-label={playing ? 'Pause workflow' : 'Replay workflow'}
+              >
+                {playing ? '⏸' : '▶'}
+              </button>
+            </div>
           </div>
 
-          {/* 5-Step Unified Workflow Stepper */}
+          {/* Interactive 5-Step Unified Workflow Stepper */}
           <div className={styles.stepperWrap}>
             <ol className={styles.stepper}>
               {WORKFLOW_STAGES.map((stage, idx) => {
@@ -299,8 +363,17 @@ export default function CinematicMessageSimulation() {
                 return (
                   <li
                     key={stage.id}
-                    className={styles.stepItem}
+                    className={`${styles.stepItem} ${styles.interactiveStep}`}
                     data-state={isCompleted ? 'completed' : isCurrent ? 'active' : 'pending'}
+                    onClick={() => selectStage(idx)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === ' ' || e.key === 'Enter') {
+                        e.preventDefault();
+                        selectStage(idx);
+                      }
+                    }}
                   >
                     <span className={styles.node}>
                       {isCompleted ? (

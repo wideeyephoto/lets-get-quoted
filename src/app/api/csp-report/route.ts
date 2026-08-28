@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/auth';
 import { checkRateLimit, clientIpFrom } from '@/lib/rate-limit';
 
+export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 // Where the report-only CSP sends what it *would* have blocked. This is the whole

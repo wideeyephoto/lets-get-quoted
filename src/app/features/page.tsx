@@ -27,6 +27,8 @@ import WebsiteFeaturePreview from './WebsiteFeaturePreview';
 import LaunchBanner from '@/components/marketing/launch-banner';
 import ThemeFab from '@/components/theme-fab';
 import AllFeaturesModal from '@/components/marketing/AllFeaturesModal';
+import FeaturesToolSprawlCalculator from './FeaturesToolSprawlCalculator';
+import FeaturesCatalogExplorer from './FeaturesCatalogExplorer';
 import themeStyles from './features-theme.module.css';
 
 const FEATURES_URL = 'https://letsgetquoted.com/features';
@@ -469,6 +471,9 @@ export default function FeaturesPage() {
         </ul>
       </section>
 
+      {/* 5-APP SOFTWARE SPRAWL & ROI SAVINGS CALCULATOR */}
+      <FeaturesToolSprawlCalculator />
+
       {/* AI BREAKTHROUGHS & FIELD DISPATCH SUITE */}
       <section className="breakthroughs-band" id="breakthroughs" aria-labelledby="breakthroughs-title" style={{ padding: '4rem 1.5rem', maxWidth: '1200px', margin: '0 auto' }}>
         <div className="index-heading">
@@ -523,6 +528,9 @@ export default function FeaturesPage() {
           </Link>
         </div>
       </section>
+
+      {/* 56-FEATURE COMPLETE CATALOG EXPLORER */}
+      <FeaturesCatalogExplorer />
 
       {/* INTERACTIVE FREE CONTRACTOR TOOLS SHOWCASE */}
       <section className="tools-showcase-band" id="contractor-tools" aria-labelledby="tools-showcase-title" style={{ padding: '4rem 1.5rem', maxWidth: '1200px', margin: '0 auto' }}>
