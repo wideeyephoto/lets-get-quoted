@@ -14,12 +14,12 @@ export const BRAND_POSITIONING = {
   valueProposition:
     'Let’s Get Quoted is one connected system for winning the job, running it, and getting paid—starting with a free contractor website.',
   hero: {
-    eyebrow: 'FULL CONTRACTOR AI SUITE—THE ONLY SOFTWARE YOU NEED TO RUN YOUR BUSINESS',
-    headline: 'A better front door. A smoother back office.',
-    headlinePart1: 'A better front door.',
-    headlinePart2: 'A smoother back office.',
+    eyebrow: 'THE INTELLIGENT BACK OFFICE FOR CONTRACTORS',
+    headline: 'Know your next best move. Every step of the way.',
+    headlinePart1: 'Know your next best move.',
+    headlinePart2: 'Every step of the way.',
     supportingCopy:
-      'Turn better leads into better-run jobs. Build your contractor website for free, then manage intake, quotes, scheduling, crews, customer updates, and payments in one connected system.',
+      'LGQ is the intelligent back office that guides contractors from first lead to final payment—helping you operate smarter, protect profit, and grow with confidence.',
     primaryCta: 'Build my free site',
     secondaryCta: 'Watch one job move',
   },
