@@ -1052,3 +1052,32 @@
     grid-template-columns: 1fr;
   }
 }
+
+.page :global(.section-block) {
+  padding: 48px 0;
+}
+
+.readStory,
+.pricingLink {
+  min-height: 44px;
+}
+
+@media (max-width: 430px) {
+  .flowStep {
+    grid-template-columns: 1.85rem minmax(0, 1fr);
+    border: 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .heroCard,
+  .principleCard,
+  .brokenCard,
+  .toolCard,
+  .btnPrimary,
+  .btnSecondary {
+    transform: none !important;
+    transition: none !important;
+  }
+}
