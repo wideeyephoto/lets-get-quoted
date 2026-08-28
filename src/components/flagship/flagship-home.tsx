@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { SiteFooter, SiteHeader } from './site-chrome';
 import { COMMAND_CENTER_SCREENS } from '@/components/command-center-deck';
 import HeroAiIntakeShowcase from './hero-ai-intake-showcase';
+import HeroConnectedWorkflow from './HeroConnectedWorkflow';
 import { HOME_FAQS } from '@/lib/home-faqs';
 import { BRAND_POSITIONING } from '@/lib/brand-messaging';
 import { STRIPE_PROCESSING_NOTE } from '@/lib/pricing';
@@ -637,7 +638,10 @@ export default function FlagshipHome() {
             headline, the buttons and the product frame. */}
         <TradeOrbit />
         <div className="hero-copy" data-rise>
-          <p className="eyebrow"><span>✦</span> {HOME_HERO.eyebrow}</p>
+          <p className="eyebrow">
+            <span className="pulse-dot" aria-hidden="true" />
+            {HOME_HERO.eyebrow}
+          </p>
           <h1>{HOME_HERO.headlinePart1}<br /><em>{HOME_HERO.headlinePart2}</em></h1>
           <p className="hero-sub">
             {HOME_HERO.supportingCopy}
@@ -646,15 +650,23 @@ export default function FlagshipHome() {
             <a className="button primary" href="https://app.letsgetquoted.com/start?goal=build_site&source=home_hero" ref={heroCtaRef}>{SIGNUP_LABEL} <span>→</span></a>
             <Link className="button secondary" href="/features">{HOME_HERO.secondaryCta}</Link>
           </div>
-          <ul className="hero-proof-list" aria-label="Key contractor capabilities">
+          <ul className="assurances" aria-label="Included with Let's Get Quoted">
             <li><i>✓</i> AI photo &amp; smart intake</li>
             <li><i>✓</i> Instant quote drafts with profit guardrails</li>
             <li><i>✓</i> Connected schedule, crew &amp; payments</li>
           </ul>
+
+          <div className="momentum-note" aria-label="Built for trade businesses">
+            <span aria-hidden="true">↗</span>
+            <div>
+              <strong>Built for solo operators &amp; multi-crew trades.</strong>
+              <small>Plumbing, HVAC, roofing, electrical, landscaping &amp; remodelers.</small>
+            </div>
+          </div>
         </div>
 
         <div className="hero-product">
-          <HeroAiIntakeShowcase />
+          <HeroConnectedWorkflow />
         </div>
       </section>
 
@@ -671,6 +683,51 @@ export default function FlagshipHome() {
 
       {/* VERIFIED PLATFORM INTEGRATIONS & TRUST */}
       <IntegrationTrustStrip />
+
+      {/* DEDICATED PRODUCT EXPERIENCE SECTION: AI PHOTO INTAKE & SCOPE SCANNER */}
+      <section
+        id="product-demo"
+        data-track
+        style={{
+          position: 'relative',
+          padding: '90px clamp(24px, 5vw, 86px) 100px',
+          overflow: 'hidden',
+          background: 'radial-gradient(circle at 50% 30%, rgba(255, 106, 36, 0.08), transparent 60%), linear-gradient(180deg, #07131d 0%, #0a1b2d 100%)',
+          borderTop: '1px solid rgba(255, 255, 255, 0.06)',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
+        }}
+      >
+        <Glare />
+        <div className="section-intro" data-rise style={{ maxWidth: '920px', margin: '0 auto 48px', textAlign: 'center' }}>
+          <p className="eyebrow" style={{ justifyContent: 'center', display: 'flex', alignItems: 'center' }}>
+            <span className="pulse-dot" aria-hidden="true" />
+            PROPRIETARY AI INTAKE · SEE SCOPE BEFORE YOU ROLL A TRUCK
+          </p>
+          <h2 style={{ fontSize: 'clamp(32px, 3.8vw, 54px)', lineHeight: 1.04, margin: '12px 0 18px', fontWeight: 850 }}>
+            Turn homeowner photos into<br />
+            <em style={{ color: 'var(--orange, #ff6a24)', fontStyle: 'normal' }}>
+              quote-ready project summaries.
+            </em>
+          </h2>
+          <p style={{ fontSize: '18px', color: '#b6c5cf', lineHeight: 1.6, maxWidth: '680px', margin: '0 auto' }}>
+            No more blind site visits or lost weekends quoting tire-kickers. Let your website capture the photos, extract alcove dimensions, detect job risks, and draft profitable estimates automatically.
+          </p>
+        </div>
+
+        <div style={{ maxWidth: '640px', margin: '0 auto' }} data-rise>
+          <HeroAiIntakeShowcase />
+        </div>
+
+        <div style={{ textAlign: 'center', marginTop: '42px' }} data-rise>
+          <a
+            className="button primary"
+            href="https://app.letsgetquoted.com/start?goal=build_site&source=home_demo"
+            style={{ margin: '0 auto', display: 'inline-flex' }}
+          >
+            Build your contractor website free <span aria-hidden="true">→</span>
+          </a>
+        </div>
+      </section>
 
       <section className="flagships" id="flagships" data-track>
         <Glare />

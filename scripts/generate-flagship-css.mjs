@@ -6425,6 +6425,118 @@ const TWEAKS = `
     radial-gradient(circle at 84% 32%, rgba(65, 127, 153, 0.14), transparent 38%),
     linear-gradient(180deg, #0d1722 0%, #10202e 100%);
 }
+
+/* PRICING-STYLE HERO DESIGN ENHANCEMENTS */
+.root :global(.hero h1 em) {
+  position: relative;
+  display: inline-block;
+  color: transparent;
+  background: linear-gradient(100deg, var(--yellow, #ffd76b), var(--orange, #ff6a24) 64%, #ff9564);
+  background-clip: text;
+  -webkit-background-clip: text;
+  font-style: normal;
+  font-weight: inherit;
+}
+
+.root :global(.hero h1 em)::after {
+  position: absolute;
+  right: 0;
+  bottom: -8px;
+  left: 3px;
+  height: 5px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--orange, #ff6a24), var(--yellow, #ffd76b), transparent 94%);
+  box-shadow: 0 0 20px rgba(255, 106, 36, 0.35);
+  content: '';
+  transform: rotate(-1.5deg) scaleX(0.96);
+  transform-origin: left;
+}
+
+.root :global(.pulse-dot) {
+  position: relative;
+  width: 7px;
+  height: 7px;
+  flex: 0 0 7px;
+  border-radius: 50%;
+  background: var(--mint, #50e3bd);
+  box-shadow: 0 0 14px var(--mint, #50e3bd);
+  display: inline-block;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+
+.root :global(.pulse-dot)::after {
+  position: absolute;
+  inset: -5px;
+  border: 1px solid rgba(80, 227, 189, 0.72);
+  border-radius: inherit;
+  animation: heroPulsePing 2.2s ease-out infinite;
+  content: '';
+}
+
+@keyframes heroPulsePing {
+  0% { transform: scale(0.6); opacity: 0.9; }
+  75%, 100% { transform: scale(2.4); opacity: 0; }
+}
+
+.root :global(.assurances) {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px 20px;
+  margin: 24px 0 0;
+  padding: 0;
+  color: #c7cbd2;
+  font-size: 14px;
+  list-style: none;
+}
+
+.root :global(.assurances li::before) {
+  margin-right: 6px;
+  color: var(--mint, #50e3bd);
+  content: '✓';
+  font-weight: 850;
+}
+
+.root :global(.momentum-note) {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 24px;
+  border: 1px solid rgba(80, 227, 189, 0.18);
+  border-radius: 14px;
+  background: linear-gradient(110deg, rgba(80, 227, 189, 0.09), rgba(255, 215, 107, 0.04));
+  padding: 11px 14px;
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.12);
+}
+
+.root :global(.momentum-note > span) {
+  display: grid;
+  width: 31px;
+  height: 31px;
+  place-items: center;
+  border-radius: 10px;
+  color: #071722;
+  background: var(--mint, #50e3bd);
+  box-shadow: 0 0 22px rgba(80, 227, 189, 0.25);
+  font-weight: 800;
+  font-size: 15px;
+}
+
+.root :global(.momentum-note > div) {
+  display: grid;
+  gap: 2px;
+}
+
+.root :global(.momentum-note strong) {
+  font-size: 14px;
+  color: #f7f7f4;
+}
+
+.root :global(.momentum-note small) {
+  color: #b2bac4;
+  font-size: 12px;
+  line-height: 1.35;
+}
 `;
 
 const HEADER = `/* GENERATED — do not edit. Run \`node scripts/generate-flagship-css.mjs\`.
