@@ -1,6 +1,6 @@
 import { cspHeaderName } from '@/lib/csp';
 
-declare const __non_webpack_require__: any;
+declare const __non_webpack_require__: NodeRequire;
 
 // Deliberately NOT in lib/csp.ts. That module is imported by middleware, which
 // runs in the Edge runtime, and next/headers is a server-only API — putting this
@@ -15,8 +15,9 @@ declare const __non_webpack_require__: any;
 export function cspNonce(): string | undefined {
   if (typeof window !== 'undefined') return undefined;
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const req: any = typeof __non_webpack_require__ !== 'undefined' ? __non_webpack_require__ : eval('require');
+    const req = (typeof __non_webpack_require__ !== 'undefined' ? __non_webpack_require__ : eval('require')) as (
+      id: string,
+    ) => { headers: () => { get: (name: string) => string | null } };
     const { headers } = req('next/headers');
     const header = headers().get(cspHeaderName());
     return header?.match(/'nonce-([^']+)'/)?.[1];
