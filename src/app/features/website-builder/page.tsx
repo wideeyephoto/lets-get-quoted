@@ -4,6 +4,8 @@ import FeatureDetailLayout from '@/components/marketing/feature-detail-layout';
 import ExampleFrame from '@/components/marketing/example-frame';
 import ExampleSiteShowcase from '@/components/marketing/example-site-showcase';
 import SiteCustomizerSandbox from '@/components/marketing/SiteCustomizerSandbox';
+import WebsiteMediaStudioShowcase from '@/components/marketing/WebsiteMediaStudioShowcase';
+import WebsiteCapabilityMatrix from '@/components/marketing/WebsiteCapabilityMatrix';
 import HeroThemeCycler from './HeroThemeCycler';
 import { TRADES } from '@/lib/trades';
 import { PUBLIC_PRICING_SUMMARY } from '@/lib/pricing';
@@ -485,6 +487,14 @@ export default function WebsiteBuilderPage() {
 
       <section className="section-block" style={{ margin: '48px 0' }}>
         <SiteCustomizerSandbox />
+      </section>
+
+      <section className="section-block" style={{ margin: '48px 0' }}>
+        <WebsiteMediaStudioShowcase />
+      </section>
+
+      <section className="section-block" style={{ margin: '48px 0' }}>
+        <WebsiteCapabilityMatrix />
       </section>
 
       {/* ------------------------------------------------------------------

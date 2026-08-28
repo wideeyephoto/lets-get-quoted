@@ -1,0 +1,226 @@
+.matrixContainer {
+  margin: 3.5rem 0 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.matrixHeader {
+  text-align: left;
+  max-width: 52rem;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 122, 33, 0.35);
+  background: rgba(255, 122, 33, 0.08);
+  color: var(--flare, #ff7a21);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.matrixTitle {
+  margin: 0.75rem 0 0.5rem;
+  font-size: clamp(1.6rem, 2.5vw, 2.2rem);
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  color: var(--text, #ffffff);
+  line-height: 1.15;
+}
+
+.matrixSubtitle {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--mute, #94a3b8);
+}
+
+/* Category Filter Tabs */
+.categoryTabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding-bottom: 0.5rem;
+}
+
+.categoryTab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 1rem;
+  border-radius: 999px;
+  border: 1px solid var(--line, rgba(255, 255, 255, 0.1));
+  background: var(--bg-elevated, #12161f);
+  color: var(--mute, #94a3b8);
+  font-size: 0.84rem;
+  font-weight: 650;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.categoryTab:hover {
+  border-color: rgba(255, 255, 255, 0.25);
+  color: var(--text, #ffffff);
+}
+
+.categoryTabActive {
+  border-color: var(--flare, #ff7a21) !important;
+  background: rgba(255, 122, 33, 0.1) !important;
+  color: #ffffff !important;
+}
+
+.countChip {
+  font-size: 0.7rem;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text, #e2e8f0);
+}
+
+/* Feature Cards Grid */
+.featureGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr));
+  gap: 1.25rem;
+}
+
+.featureCard {
+  border: 1px solid var(--line, rgba(255, 255, 255, 0.08));
+  border-radius: 16px;
+  background: var(--bg-elevated, #12161f);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 1.25rem;
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.featureCard:hover {
+  border-color: rgba(255, 122, 33, 0.3);
+  transform: translateY(-2px);
+}
+
+.cardHead {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.cardTopRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.cardIcon {
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.tagGroup {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.tag {
+  font-size: 0.65rem;
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #94a3b8;
+  font-weight: 600;
+}
+
+.cardTitle {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--text, #ffffff);
+  letter-spacing: -0.01em;
+}
+
+.cardDesc {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.55;
+  color: var(--mute, #94a3b8);
+}
+
+.bulletList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding-top: 0.85rem;
+}
+
+.bulletItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: #cbd5e1;
+}
+
+.bulletCheck {
+  color: var(--good, #50e3bd);
+  font-weight: 800;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+/* Bottom summary note */
+.matrixFooter {
+  padding: 1.25rem 1.5rem;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--line, rgba(255, 255, 255, 0.06));
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.footerText {
+  font-size: 0.85rem;
+  color: var(--mute, #94a3b8);
+  margin: 0;
+}
+
+.footerLink {
+  color: var(--flare, #ff7a21);
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.footerLink:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 768px) {
+  .matrixHeader {
+    text-align: left;
+  }
+  .featureGrid {
+    grid-template-columns: 1fr;
+  }
+}

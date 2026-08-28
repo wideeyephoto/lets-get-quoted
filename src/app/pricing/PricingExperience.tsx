@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { useState, type CSSProperties } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { buildStartUrl } from '@/lib/signup-intent';
 import { rankPlanCosts } from './pricing-ranking';
 import {
@@ -22,10 +22,55 @@ const activity = [
   { label: 'Invoice paid', value: '+$2,840', symbol: '↑', tone: 'mint' },
 ];
 
-const features = [
-  ['01', 'Win the work', 'Launch your contractor website, capture instant estimates and send quotes with e-signatures.'],
-  ['02', 'Run the job', 'Schedule work, dispatch crews and keep job notes, hours and progress in one place.'],
-  ['03', 'Get paid and synced', 'Send invoices, collect payments and keep QuickBooks connected to the same workflow.'],
+const featureCards = [
+  {
+    number: '01',
+    title: 'Win the work',
+    description: 'Launch your contractor website, capture instant estimates and send quotes with e-signatures.',
+    href: '/features/quotes',
+    ctaText: 'Explore quotes & website',
+  },
+  {
+    number: '02',
+    title: 'Run the job',
+    description: 'Schedule work, dispatch crews and keep job notes, hours and progress in one place.',
+    href: '/features/dispatch',
+    ctaText: 'Explore dispatch & scheduling',
+  },
+  {
+    number: '03',
+    title: 'Get paid and synced',
+    description: 'Send invoices, collect payments and keep QuickBooks connected to the same workflow.',
+    href: '/features/payments',
+    ctaText: 'Explore payments & QuickBooks',
+  },
+];
+
+const walkthroughSteps = [
+  {
+    badge: '01 · REVENUE & PROFIT',
+    title: 'Real-Time Insights Dashboard',
+    summary: 'See monthly gross revenue, unbilled receivables, and job profitability side-by-side with cash collected.',
+    metric: 'Real-time revenue & margin tracking',
+  },
+  {
+    badge: '02 · CREW DISPATCH',
+    title: 'Integrated Field Scheduling',
+    summary: 'Coordinate schedules, dispatch crews to job locations, and keep notes and photos attached directly to the work order.',
+    metric: 'Live team status & route visibility',
+  },
+  {
+    badge: '03 · CASH COLLECTION',
+    title: 'Instant Quote-to-Invoice Payment',
+    summary: 'Send Good/Better/Best proposals with online signatures, capture initial deposits, and bill balances seamlessly upon completion.',
+    metric: 'Direct Stripe payout to your bank',
+  },
+  {
+    badge: '04 · AUTOMATED BOOKS',
+    title: 'Two-Way QuickBooks Online Sync',
+    summary: 'Clients, invoices, payments, and sales tax automatically sync to QuickBooks in real time without manual reconciliation.',
+    metric: 'Zero double-entry bookkeeping',
+  },
 ];
 
 const money = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
@@ -77,6 +122,16 @@ export default function PricingExperience() {
   const [crewUsers, setCrewUsers] = useState(0);
   const [usageLevel, setUsageLevel] = useState<UsageLevel>('ongoing');
   const [billing, setBilling] = useState<BillingCycle>('monthly');
+
+  // Interaction State
+  const [highlightedPlanId, setHighlightedPlanId] = useState<PlanId | null>(null);
+  const [expandedPlans, setExpandedPlans] = useState<Record<string, boolean>>({});
+  const [comparedPlanId, setComparedPlanId] = useState<PlanId | null>(null);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxStep, setLightboxStep] = useState(0);
+  const [isWorkflowReplaying, setIsWorkflowReplaying] = useState(true);
+  const [recommendationPulse, setRecommendationPulse] = useState(false);
+
   const minimumUsageRank = usageOptions.find((option) => option.value === usageLevel)?.minimumRank ?? 0;
   const planEstimates = plans.map((plan) => {
     const annualFee = Math.round(annualVolume * 100 * plan.rate) / 100;
@@ -113,6 +168,52 @@ export default function PricingExperience() {
   const exampleLgqFee = examplePayment * recommendation.rate;
   const exampleStripeFee = examplePayment * 0.029 + 0.30;
   const examplePayout = examplePayment - exampleLgqFee - exampleStripeFee;
+
+  const prevRecRef = useRef<PlanId>(recommendation.id);
+
+  // Trigger one short glow pulse whenever the calculated winner changes
+  useEffect(() => {
+    if (prevRecRef.current !== recommendation.id) {
+      prevRecRef.current = recommendation.id;
+      setRecommendationPulse(true);
+      const timer = setTimeout(() => {
+        setRecommendationPulse(false);
+      }, 1600);
+      return () => clearTimeout(timer);
+    }
+  }, [recommendation.id]);
+
+  // Handle Lightbox key navigation
+  useEffect(() => {
+    if (!lightboxOpen) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setLightboxOpen(false);
+      if (event.key === 'ArrowRight') setLightboxStep((s) => (s + 1) % walkthroughSteps.length);
+      if (event.key === 'ArrowLeft') setLightboxStep((s) => (s - 1 + walkthroughSteps.length) % walkthroughSteps.length);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [lightboxOpen]);
+
+  // Section Scroll Reveal Observer
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('IntersectionObserver' in window)) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('is-revealed');
+            observer.unobserve(entry.target);
+          }
+        });
+      },
+      { threshold: 0.1 },
+    );
+    const elements = document.querySelectorAll('.reveal-section');
+    elements.forEach((el) => observer.observe(el));
+    return () => observer.disconnect();
+  }, []);
+
   const checkoutUrl = (planId: PlanId) => {
     const checkoutBilling = planId === 'flex' ? 'monthly' : billing;
     return buildStartUrl({
@@ -122,6 +223,7 @@ export default function PricingExperience() {
       source: 'pricing',
     });
   };
+
   const isScenarioSelected = (scenario: (typeof scenarios)[number]) =>
     annualVolume === scenario.volume && officeUsers === scenario.office && crewUsers === scenario.crew && usageLevel === scenario.usage;
   const clampVolume = (value: number) => Math.min(5000000, Math.max(0, Number.isFinite(value) ? value : 0));
@@ -136,15 +238,39 @@ export default function PricingExperience() {
     else setCrewUsers(Math.min(75, Math.max(0, value)));
   };
 
+  const scrollToPlan = (planId: PlanId) => {
+    setHighlightedPlanId(planId);
+    const target = document.getElementById(`detail-${planId}`);
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setTimeout(() => {
+        setHighlightedPlanId((curr) => (curr === planId ? null : curr));
+      }, 2600);
+    }
+  };
+
+  const togglePlanDetails = (planId: string) => {
+    setExpandedPlans((prev) => ({ ...prev, [planId]: !prev[planId] }));
+  };
+
+  const replayWorkflow = () => {
+    setIsWorkflowReplaying(false);
+    requestAnimationFrame(() => {
+      setIsWorkflowReplaying(true);
+    });
+  };
+
   const heroSignupUrl = buildStartUrl({ goal: 'build_site', source: 'pricing' });
   const footerSignupUrl = buildStartUrl({ goal: 'build_site', source: 'pricing_footer' });
+
+  const activeComparedPlan = comparedPlanId ? planEstimates.find((p) => p.id === comparedPlanId) : null;
 
   return (
     <div className="lgq-pricing-v2">
       <div className="site-shell">
         <div className="ambient ambient-one" aria-hidden="true" />
         <div className="ambient ambient-two" aria-hidden="true" />
-        <section className="hero" aria-labelledby="hero-title">
+        <section className="hero reveal-section is-revealed" aria-labelledby="hero-title">
         <div className="hero-copy">
           <p className="eyebrow">
             <span className="pulse-dot" aria-hidden="true" />
@@ -195,9 +321,22 @@ export default function PricingExperience() {
             </div>
           </div>
 
-          <div className="activity-strip" aria-label="Example business activity">
-            {activity.map((item) => (
-              <div className={`activity-event tone-${item.tone}`} key={item.label}>
+          <div
+            className={`activity-strip ${isWorkflowReplaying ? 'workflow-animating' : 'workflow-settled'}`}
+            aria-label="Workflow demonstration: Quote accepted to Crew dispatched to Invoice paid. Click to replay."
+            role="button"
+            tabIndex={0}
+            onClick={replayWorkflow}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                replayWorkflow();
+              }
+            }}
+            title="Click to replay sequential workflow animation"
+          >
+            {activity.map((item, idx) => (
+              <div className={`activity-event tone-${item.tone} activity-step-${idx + 1}`} key={item.label}>
                 <span className="activity-mark" aria-hidden="true">{item.symbol}</span>
                 <div>
                   <small>{item.label}</small>
@@ -208,19 +347,38 @@ export default function PricingExperience() {
           </div>
 
           <div className="plan-architecture">
-            <article className="flex-plan-card">
+            <article
+              className="flex-plan-card hero-plan-trigger"
+              role="button"
+              tabIndex={0}
+              onClick={() => scrollToPlan('flex')}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  scrollToPlan('flex');
+                }
+              }}
+              aria-label="Click to jump to Flex plan details"
+              title="Click to highlight and view Flex plan details"
+            >
               <div className="plan-card-heading">
                 <span>FLEX / SEASONAL</span>
                 <i>PAY AS YOU GO</i>
               </div>
               <div className="flex-base-price"><strong>$0</strong><span>/month</span></div>
               <p><span className="flex-rate">1.25% LGQ platform fee</span>No monthly subscription. Pay the platform fee only on the eligible service subtotal.</p>
+              <span className="hero-plan-jump-hint" aria-hidden="true">View plan breakdown ↓</span>
             </article>
 
-            <div className="plan-bridge" aria-hidden="true">
+            <a
+              className="plan-bridge plan-bridge-link"
+              href="#calculator"
+              aria-label="Calculate your best plan in the recommender"
+              title="Calculate recommended plan"
+            >
               <span>UPGRADE <br />WHEN IT PAYS</span>
               <i>→</i>
-            </div>
+            </a>
 
             <div className="subscription-group">
               <div className="subscription-heading">
@@ -228,7 +386,21 @@ export default function PricingExperience() {
                 <small>LOWER FIXED FEES</small>
               </div>
               {plans.filter((plan) => plan.id !== 'flex').map((plan) => (
-                <article className={`subscription-plan plan-${plan.id}`} key={`graphic-${plan.id}`}>
+                <article
+                  className={`subscription-plan hero-plan-trigger plan-${plan.id}`}
+                  key={`graphic-${plan.id}`}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => scrollToPlan(plan.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      scrollToPlan(plan.id);
+                    }
+                  }}
+                  aria-label={`Click to jump to ${plan.name} plan details`}
+                  title={`Click to highlight and view ${plan.name} plan details`}
+                >
                   <div><span>{plan.name}</span><small>{plan.audience}</small></div>
                   <strong>${plan.monthly}<small>/mo</small></strong>
                   <em>{plan.fee}<small> fee</small></em>
@@ -254,15 +426,23 @@ export default function PricingExperience() {
         </div>
       </section>
 
-      <section className="trust-strip" aria-label="Support, security and plan flexibility">
+      <section className="trust-strip reveal-section" aria-label="Support, security and plan flexibility">
         <p>BUILT FOR CONTRACTOR CONFIDENCE</p>
-        <div className="trust-card-text-only"><span>Dedicated trade desk<br /><b>US-based phone &amp; chat support</b></span></div>
-        <div className="trust-card-text-only"><span>Protected in transit<br /><b>HTTPS + TLS 1.3</b></span></div>
-        <div><strong>PCI</strong><span>Payments powered by Stripe<br /><b>PCI DSS Level 1 provider</b></span></div>
-        <div><strong>FLEX</strong><span>Plan flexibility<br /><b>Upgrade now · downgrade at renewal</b></span></div>
+        <Link className="trust-card-link trust-card-text-only" href="/contact" aria-label="Dedicated trade desk: US-based phone and chat support">
+          <span>Dedicated trade desk<br /><b>US-based phone &amp; chat support ↗</b></span>
+        </Link>
+        <Link className="trust-card-link trust-card-text-only" href="/security" aria-label="Protected in transit: HTTPS and TLS 1.3">
+          <span>Protected in transit<br /><b>HTTPS + TLS 1.3 ↗</b></span>
+        </Link>
+        <Link className="trust-card-link" href="/features/payments" aria-label="Payments powered by Stripe: PCI DSS Level 1 provider">
+          <strong>PCI</strong><span>Payments powered by Stripe<br /><b>PCI DSS Level 1 provider ↗</b></span>
+        </Link>
+        <a className="trust-card-link" href="#faq" aria-label="Plan flexibility: Upgrade now, downgrade at renewal">
+          <strong>FLEX</strong><span>Plan flexibility<br /><b>Upgrade now · downgrade at renewal ↓</b></span>
+        </a>
       </section>
 
-      <section className="page-section calculator-section" id="calculator" aria-labelledby="calculator-title">
+      <section className="page-section calculator-section reveal-section" id="calculator" aria-labelledby="calculator-title">
         <span className="anchor-target" id="recommender" aria-hidden="true" />
         <span className="anchor-target" id="savings-calculator" aria-hidden="true" />
         <div className="calculator-intro">
@@ -379,9 +559,9 @@ export default function PricingExperience() {
             Recommended plan: {recommendation.name}. Estimated annual LGQ cost ${money.format(recommendation.annualTotal)}.
           </p>
           <div className="result-topline"><span>YOUR LIVE RECOMMENDATION</span><i><b />CALCULATED</i></div>
-          <article className="result-primary">
+          <article className={`result-primary ${recommendationPulse ? 'recommendation-pulse' : ''}`}>
             <span>Best cost among plans that fit your capacity</span>
-            <strong className="result-plan-name">{recommendation.name}</strong>
+            <strong className="result-plan-name numeric-transition-field" key={`name-${recommendation.id}`}>{recommendation.name}</strong>
             <small>{recommendation.monthlyWithSeats === 0 ? '$0/month' : `$${recommendation.monthlyWithSeats}/month`} · {recommendation.fee} platform fee · {recommendation.officeUsers} office + {recommendation.crewUsers} crew included</small>
             <a className="result-cta" href={checkoutUrl(recommendation.id)}>Continue with {recommendation.shortName} <span aria-hidden="true">→</span></a>
             {billing === 'annual' && recommendation.annualBilled > 0 && (
@@ -391,24 +571,88 @@ export default function PricingExperience() {
           <div className="result-grid">
             <article>
               <span>Estimated annual LGQ cost</span>
-              <strong>${money.format(recommendation.annualTotal)}</strong>
+              <strong className="numeric-transition-field" key={`annual-${recommendation.annualTotal}`}>${money.format(recommendation.annualTotal)}</strong>
               <small>base subscription + crew seats + LGQ platform fee</small>
             </article>
             <article>
               <span>Included plan capacity</span>
-              <strong>{recommendation.textAllowance}</strong>
+              <strong key={`text-${recommendation.textAllowance}`}>{recommendation.textAllowance}</strong>
               <small>{recommendation.aiAllowance} · {recommendation.storage}</small>
             </article>
           </div>
-          <div className="plan-comparison-list">
-            {planEstimates.map((plan) => (
-              <div className={plan.id === recommendation.id ? 'recommended' : !plan.eligible ? 'not-eligible' : ''} key={`estimate-${plan.id}`}>
-                <span>{plan.shortName}</span>
-                <i>{plan.monthlyWithSeats === 0 ? '$0/mo' : `$${plan.monthlyWithSeats}/mo`} + {plan.fee}</i>
-                <strong>{!plan.eligible ? 'does not fit' : `$${money.format(plan.annualTotal)}/yr`}</strong>
-              </div>
-            ))}
+
+          <div className="plan-comparison-header">
+            <span>COMPARE WITH OTHER PLANS (CLICK TO INSPECT)</span>
           </div>
+
+          <div className="plan-comparison-list" role="region" aria-label="Plan comparison against recommendation">
+            {planEstimates.map((plan) => {
+              const isRec = plan.id === recommendation.id;
+              const isSelected = plan.id === comparedPlanId;
+              return (
+                <button
+                  type="button"
+                  className={`plan-comparison-row-btn ${isRec ? 'recommended' : !plan.eligible ? 'not-eligible' : ''} ${isSelected ? 'active-compare' : ''}`}
+                  key={`estimate-${plan.id}`}
+                  onClick={() => setComparedPlanId(isSelected ? null : plan.id)}
+                  aria-expanded={isSelected}
+                  aria-controls={`comparator-panel-${plan.id}`}
+                  aria-label={`Compare ${plan.shortName} (${!plan.eligible ? 'does not fit' : `$${money.format(plan.annualTotal)}/yr`}) against recommended ${recommendation.shortName}`}
+                >
+                  <span className="compare-name">{plan.shortName}</span>
+                  <i className="compare-rate">{plan.monthlyWithSeats === 0 ? '$0/mo' : `$${plan.monthlyWithSeats}/mo`} + {plan.fee}</i>
+                  <strong className="compare-cost">{!plan.eligible ? 'does not fit' : `$${money.format(plan.annualTotal)}/yr`}</strong>
+                  <span className="compare-badge" aria-hidden="true">{isRec ? 'Current pick' : isSelected ? 'Close comparison ✕' : 'Click to compare →'}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {activeComparedPlan && (
+            <div
+              id={`comparator-panel-${activeComparedPlan.id}`}
+              className="live-plan-comparator"
+              role="region"
+              aria-label={`Comparison breakdown between ${activeComparedPlan.name} and recommended ${recommendation.name}`}
+            >
+              <div className="comparator-head">
+                <strong>Comparing {recommendation.shortName} (Recommended) vs {activeComparedPlan.shortName}</strong>
+                <button type="button" onClick={() => setComparedPlanId(null)} aria-label="Close comparison view">✕</button>
+              </div>
+              <div className="comparator-grid">
+                <div>
+                  <small>Annual Cost Delta</small>
+                  <strong>
+                    {activeComparedPlan.id === recommendation.id
+                      ? 'Best match'
+                      : !activeComparedPlan.eligible
+                      ? 'Capacity limit exceeded'
+                      : activeComparedPlan.annualTotal >= recommendation.annualTotal
+                      ? `+$${money.format(activeComparedPlan.annualTotal - recommendation.annualTotal)}/yr higher`
+                      : `-$${money.format(recommendation.annualTotal - activeComparedPlan.annualTotal)}/yr lower`}
+                  </strong>
+                </div>
+                <div>
+                  <small>Fee Percentage</small>
+                  <strong>{activeComparedPlan.fee} vs {recommendation.fee}</strong>
+                </div>
+                <div>
+                  <small>Office Seats</small>
+                  <strong>{activeComparedPlan.officeUsers} included ({officeUsers <= activeComparedPlan.officeUsers ? 'Fits team' : `Short ${officeUsers - activeComparedPlan.officeUsers} seat`})</strong>
+                </div>
+                <div>
+                  <small>Crew Seats</small>
+                  <strong>{activeComparedPlan.crewUsers} included</strong>
+                </div>
+              </div>
+              <div className="comparator-actions">
+                <a className="button button-secondary compare-cta" href={checkoutUrl(activeComparedPlan.id)}>
+                  Choose {activeComparedPlan.shortName} <span aria-hidden="true">→</span>
+                </a>
+              </div>
+            </div>
+          )}
+
           <div className="result-message">
             <span aria-hidden="true">↗</span>
             <p><strong>{recommendation.name} fits your office seats, crew and usage.</strong> {recommendation.extraCrewUsers > 0 ? `Estimate includes ${recommendation.extraCrewUsers} extra crew seat${recommendation.extraCrewUsers === 1 ? '' : 's'} at $5/month each. ` : ''}{annualSavings > 0 ? `It saves about $${money.format(annualSavings)} per year versus the next-lowest plan that also fits.` : 'It is the first plan with enough included office capacity.'}</p>
@@ -427,7 +671,7 @@ export default function PricingExperience() {
         </div>
       </section>
 
-      <section className="page-section tier-section" id="plans" aria-labelledby="tiers-title">
+      <section className="page-section tier-section reveal-section" id="plans" aria-labelledby="tiers-title">
         <div className="section-heading">
           <p className="section-kicker">CORE PLATFORM · CAPACITY THAT SCALES</p>
           <h2 id="tiers-title">Choose the capacity that fits the work.</h2>
@@ -450,24 +694,67 @@ export default function PricingExperience() {
         </div>
 
         <div className="tier-grid">
-          {planEstimates.map((plan, index) => (
-            <article className={`tier-card ${plan.id === recommendation.id ? 'tier-card-featured' : ''}`} key={`detail-${plan.id}`}>
-              <div className="tier-card-topline"><span>0{index + 1}</span>{plan.id === recommendation.id ? <i>YOUR RECOMMENDED FIT</i> : plan.id === 'growth' ? <i>MOST POPULAR</i> : null}</div>
-              <p>{plan.name}</p>
-              <strong>{plan.displayMonthly === 0 ? '$0' : `$${plan.displayMonthly}`}</strong>
-              <small>/month</small>
-              {billing === 'annual' && plan.annualBilled > 0 && <small className="annual-note">${money.format(plan.annualBilled)} billed today · save ${plan.annualSavings}/yr</small>}
-              <em>+ {plan.fee} LGQ platform fee</em>
-              <b>{plan.audience}</b>
-              <ul className="plan-allowances">
-                <li>{plan.officeUsers} office + {plan.crewUsers} crew users</li>
-                <li>{plan.textAllowance}</li>
-                <li>{plan.aiAllowance}</li>
-                <li>{plan.storage} storage</li>
-              </ul>
-              <a href={checkoutUrl(plan.id)}>{plan.id === 'flex' ? 'Start with Flex' : `Choose ${plan.shortName}`} <span aria-hidden="true">→</span></a>
-            </article>
-          ))}
+          {planEstimates.map((plan, index) => {
+            const isRec = plan.id === recommendation.id;
+            const isHighlighted = highlightedPlanId === plan.id;
+            const isExpanded = !!expandedPlans[plan.id];
+            return (
+              <article
+                className={`tier-card ${isRec ? 'tier-card-featured' : ''} ${isHighlighted ? 'tier-card-highlighted' : ''} ${recommendationPulse && isRec ? 'recommendation-pulse' : ''}`}
+                key={`detail-${plan.id}`}
+                id={`detail-${plan.id}`}
+              >
+                <div className="tier-card-topline">
+                  <span>0{index + 1}</span>
+                  {isRec ? <i>YOUR RECOMMENDED FIT</i> : plan.id === 'growth' ? <i>MOST POPULAR</i> : null}
+                </div>
+                <p>{plan.name}</p>
+                <strong>{plan.displayMonthly === 0 ? '$0' : `$${plan.displayMonthly}`}</strong>
+                <small>/month</small>
+                {billing === 'annual' && plan.annualBilled > 0 && (
+                  <small className="annual-note">
+                    ${money.format(plan.annualBilled)} billed today · save ${plan.annualSavings}/yr
+                  </small>
+                )}
+                <em>+ {plan.fee} LGQ platform fee</em>
+                <b>{plan.audience}</b>
+                <ul className="plan-allowances">
+                  <li>{plan.officeUsers} office + {plan.crewUsers} crew users</li>
+                  <li>{plan.textAllowance}</li>
+                  <li>{plan.aiAllowance}</li>
+                  <li>{plan.storage} storage</li>
+                </ul>
+
+                <button
+                  type="button"
+                  className="tier-details-toggle"
+                  aria-expanded={isExpanded}
+                  aria-controls={`tier-features-drawer-${plan.id}`}
+                  onClick={() => togglePlanDetails(plan.id)}
+                  aria-label={`${isExpanded ? 'Hide' : 'Show'} detailed features for ${plan.name}`}
+                >
+                  <span>{isExpanded ? 'Hide full plan inclusions' : 'See all plan details & features'}</span>
+                  <i aria-hidden="true">{isExpanded ? '−' : '+'}</i>
+                </button>
+
+                {isExpanded && (
+                  <div id={`tier-features-drawer-${plan.id}`} className="tier-expanded-drawer">
+                    <h6>Included with {plan.shortName}:</h6>
+                    <ul className="tier-expanded-features">
+                      {plan.features.map((feature) => (
+                        <li key={feature}>{feature}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                <a href={checkoutUrl(plan.id)}>
+                  {plan.id === 'flex' ? 'Start with Flex' : `Choose ${plan.shortName}`}{' '}
+                  <span aria-hidden="true">→</span>
+                </a>
+              </article>
+            );
+          })}
         </div>
         <p className="tier-disclosure">Every plan includes unlimited leads, clients, quotes, jobs, invoices and standard quote-form submissions, plus one custom-domain and one QuickBooks Online connection. Flex balances are one-time; paid-plan allowances reset monthly and do not roll over. No surprise overages: extra usage is off by default and only activates if you switch it on and set a spending limit. Carrier registration, dedicated-number lease, Stripe processing, taxes and top-ups are separate.</p>
 
@@ -493,7 +780,7 @@ export default function PricingExperience() {
         </details>
       </section>
 
-      <section className="page-section included-section" id="included" aria-labelledby="included-title">
+      <section className="page-section included-section reveal-section" id="included" aria-labelledby="included-title">
         <div className="included-heading">
           <div className="section-heading">
             <p className="section-kicker">FULL CONTRACTOR PLATFORM · EVERY PLAN</p>
@@ -503,33 +790,152 @@ export default function PricingExperience() {
         </div>
 
         <div className="product-stage product-real-stage">
-          <figure>
-            <Image src="/features/back-office-insights.png" width="1000" height="684" sizes="(max-width: 680px) 100vw, 60vw" alt="Let's Get Quoted back-office Insights dashboard showing revenue, cash position and job performance" />
+          <figure
+            className="product-screenshot-trigger"
+            role="button"
+            tabIndex={0}
+            onClick={() => setLightboxOpen(true)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                setLightboxOpen(true);
+              }
+            }}
+            aria-label="Click to enlarge real product view and open interactive feature walkthrough"
+            title="Click to open full product view lightbox and guided walkthrough"
+          >
+            <Image
+              src="/features/back-office-insights.png"
+              width={1000}
+              height={684}
+              sizes="(max-width: 680px) 100vw, 60vw"
+              alt="Let's Get Quoted back-office Insights dashboard showing revenue, cash position and job performance"
+            />
+            <span className="screenshot-zoom-badge" aria-hidden="true">
+              <span>🔍</span> Click to enlarge &amp; guided tour
+            </span>
             <figcaption>Actual Let&apos;s Get Quoted Insights interface</figcaption>
           </figure>
           <div className="product-proof-copy">
             <span>REAL LGQ PRODUCT VIEW</span>
             <h3>See the whole business—not another disconnected tool.</h3>
             <p>Revenue, cash position, job value and performance live beside the jobs, schedule, clients and payments that create them.</p>
-            <Link href="/features/back-office">Explore the connected back office <i aria-hidden="true">→</i></Link>
+            <div className="product-proof-actions">
+              <button type="button" className="button button-primary" onClick={() => setLightboxOpen(true)}>
+                Open interactive walkthrough <span aria-hidden="true">🔍</span>
+              </button>
+              <Link className="product-sub-link" href="/features/back-office">
+                Explore the connected back office <i aria-hidden="true">→</i>
+              </Link>
+            </div>
           </div>
         </div>
 
         <div className="feature-grid">
-          {features.map(([number, title, description]) => (
-            <article className="feature-card" key={number}>
-              <span>{number}</span>
+          {featureCards.map((card) => (
+            <Link className="feature-card feature-card-interactive" href={card.href} key={card.number} aria-label={`${card.title}: ${card.description}`}>
+              <span>{card.number}</span>
               <div className="feature-icon" aria-hidden="true">✓</div>
-              <h3>{title}</h3>
-              <p>{description}</p>
-            </article>
+              <h3>{card.title}</h3>
+              <p>{card.description}</p>
+              <span className="feature-card-cta">
+                {card.ctaText} <i aria-hidden="true">→</i>
+              </span>
+            </Link>
           ))}
         </div>
 
         <Link className="feature-link" href="/features">Explore the full feature set <span aria-hidden="true">→</span></Link>
       </section>
 
-      <section className="page-section faq-section" id="faq" aria-labelledby="faq-title">
+      {/* Product Screenshot Lightbox & Guided Walkthrough Modal */}
+      {lightboxOpen && (
+        <div
+          className="product-lightbox-backdrop"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="lightbox-title"
+          onClick={() => setLightboxOpen(false)}
+        >
+          <div
+            className="product-lightbox-dialog"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="lightbox-header">
+              <div>
+                <span className="lightbox-tag">PRODUCT WALKTHROUGH · INSIGHTS &amp; BACK OFFICE</span>
+                <h3 id="lightbox-title">{walkthroughSteps[lightboxStep].title}</h3>
+              </div>
+              <button
+                type="button"
+                className="lightbox-close-btn"
+                onClick={() => setLightboxOpen(false)}
+                aria-label="Close product view walkthrough"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="lightbox-image-wrap">
+              <Image
+                src="/features/back-office-insights.png"
+                width={1200}
+                height={820}
+                sizes="(max-width: 1200px) 100vw, 1200px"
+                alt="Enlarged view of Let's Get Quoted Insights dashboard"
+                className="lightbox-img"
+              />
+            </div>
+
+            <div className="lightbox-tour-bar">
+              <div className="tour-step-indicators" role="tablist" aria-label="Walkthrough steps">
+                {walkthroughSteps.map((step, idx) => (
+                  <button
+                    type="button"
+                    key={step.badge}
+                    className={`tour-step-pill ${idx === lightboxStep ? 'active' : ''}`}
+                    onClick={() => setLightboxStep(idx)}
+                    role="tab"
+                    aria-selected={idx === lightboxStep}
+                  >
+                    <span>{step.badge}</span>
+                  </button>
+                ))}
+              </div>
+
+              <div className="tour-content">
+                <p>{walkthroughSteps[lightboxStep].summary}</p>
+                <div className="tour-highlight">
+                  <span aria-hidden="true">✓</span>
+                  <strong>{walkthroughSteps[lightboxStep].metric}</strong>
+                </div>
+              </div>
+
+              <div className="lightbox-nav-controls">
+                <button
+                  type="button"
+                  className="button button-secondary"
+                  onClick={() => setLightboxStep((s) => (s - 1 + walkthroughSteps.length) % walkthroughSteps.length)}
+                  aria-label="Previous walkthrough step"
+                >
+                  ← Prev
+                </button>
+                <span>{lightboxStep + 1} / {walkthroughSteps.length}</span>
+                <button
+                  type="button"
+                  className="button button-secondary"
+                  onClick={() => setLightboxStep((s) => (s + 1) % walkthroughSteps.length)}
+                  aria-label="Next walkthrough step"
+                >
+                  Next →
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <section className="page-section faq-section reveal-section" id="faq" aria-labelledby="faq-title">
         <div className="section-heading">
           <p className="section-kicker">PRICING QUESTIONS</p>
           <h2 id="faq-title">Clear answers. No fine-print maze.</h2>
@@ -544,7 +950,7 @@ export default function PricingExperience() {
         </div>
       </section>
 
-      <section className="closing-section" aria-labelledby="closing-title">
+      <section className="closing-section reveal-section" aria-labelledby="closing-title">
         <div className="closing-glow" aria-hidden="true" />
         <p className="section-kicker">READY WHEN YOU ARE</p>
         <h2 id="closing-title">Build your site. Send your first quote today.</h2>
