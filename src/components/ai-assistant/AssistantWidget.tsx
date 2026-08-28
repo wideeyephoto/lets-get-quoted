@@ -99,14 +99,9 @@ export default function AssistantWidget() {
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isMac, setIsMac] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    setIsMac(typeof window !== 'undefined' && /Mac|iPod|iPhone|iPad/.test(navigator.userAgent));
-  }, []);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -230,15 +225,14 @@ export default function AssistantWidget() {
         type="button"
         className={styles.floatingTrigger}
         onClick={toggleAssistant}
-        aria-label="Open AI Assistant"
+        aria-label="Open Help Assistant"
       >
         <span className={styles.triggerIcon}>
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3L12 3z" />
           </svg>
         </span>
-        <span>AI Helper</span>
-        <span className={styles.kbdHint}>{isMac ? '⌘K' : 'Ctrl+K'}</span>
+        <span>Help</span>
       </button>
 
       {/* Assistant Modal / Drawer */}

@@ -603,6 +603,86 @@
   border-radius: 26px !important;
 }
 
+/* Card Width / Density Options */
+.heroQuickForm[data-form-width='compact'] {
+  width: 380px !important;
+  max-width: 100% !important;
+}
+.heroQuickForm[data-form-width='standard'] {
+  width: 440px !important;
+  max-width: 100% !important;
+}
+.heroQuickForm[data-form-width='roomy'] {
+  width: 500px !important;
+  max-width: 100% !important;
+  padding: 1.6rem 1.6rem 1.8rem !important;
+}
+
+/* Stepper Progress Bar Style */
+.heroFormProgressBar {
+  width: 100%;
+  height: 4px;
+  background: color-mix(in srgb, currentColor 12%, transparent);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: .85rem;
+}
+.heroFormProgressFill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--theme-accent, #2563eb), color-mix(in srgb, var(--theme-accent, #2563eb) 75%, #ffffff));
+  box-shadow: 0 0 10px -1px color-mix(in srgb, var(--theme-accent, #2563eb) 65%, transparent);
+  transition: width .35s cubic-bezier(.22, .61, .36, 1);
+}
+
+/* Stepper Minimal Dots Style */
+.heroFormMinimalDots {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .45rem;
+  margin-bottom: .75rem;
+}
+.heroFormMinimalDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: color-mix(in srgb, currentColor 22%, transparent);
+  transition: transform .2s ease, background .2s ease;
+}
+.heroFormMinimalDotActive {
+  width: 20px;
+  border-radius: 999px;
+  background: var(--theme-accent, #2563eb);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--theme-accent, #2563eb) 65%, transparent);
+}
+.heroFormMinimalDotComplete {
+  background: var(--theme-accent, #2563eb);
+  opacity: .85;
+}
+
+/* Trust Reassurance Strip */
+.heroFormTrustStrip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .65rem;
+  flex-wrap: wrap;
+  margin-top: .6rem;
+  padding-top: .55rem;
+  border-top: 1px dashed color-mix(in srgb, currentColor 14%, transparent);
+  font-size: .68rem;
+  font-weight: 700;
+  letter-spacing: .02em;
+  color: inherit;
+  opacity: .75;
+}
+.heroFormTrustStrip span {
+  display: inline-flex;
+  align-items: center;
+  gap: .22rem;
+}
+
 /* AI Sparkle Eyebrow Badge */
 .heroFormEyebrowBadge {
   display: inline-flex;

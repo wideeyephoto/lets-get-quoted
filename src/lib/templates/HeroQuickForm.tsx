@@ -136,6 +136,14 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
   const formStyle = siteContent.quoteFormStyle || 'clean';
   const fieldBg = siteContent.quoteFormFieldBg || 'auto';
   const formRadius = siteContent.quoteFormRadius || 'default';
+  const formStepper = siteContent.quoteFormStepper || 'badges';
+  const formBadge = siteContent.quoteFormBadge || 'sparkle';
+  const formBadgeText = siteContent.quoteFormBadgeText || '';
+  const formWidth = siteContent.quoteFormWidth || 'standard';
+  const formSubtitle = siteContent.quoteFormSubtitle || '';
+  const formButtonText = siteContent.quoteFormButtonText || '';
+  const formTrust = siteContent.quoteFormTrust !== false;
+  const formStep1Photos = siteContent.quoteFormStep1Photos === true;
   const quoteForm = siteContent.quoteForm;
   const emailRequired = quoteForm.emailRequired;
   const estimateLabel = getEstimateButtonLabel(quoteForm);
@@ -842,6 +850,70 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
     </span>
   );
 
+  function renderEyebrowBadge(defaultLabel: string, defaultIcon = '✨') {
+    if (formBadge === 'none') return null;
+    let icon = defaultIcon;
+    let label = defaultLabel;
+    if (formBadge === 'lightning') {
+      icon = '⚡';
+      label = '60-Second Quote';
+    } else if (formBadge === 'free') {
+      icon = '✓';
+      label = 'Free & Instant Estimate';
+    } else if (formBadge === 'rating') {
+      icon = '⭐';
+      label = 'Top-Rated Contractor';
+    } else if (formBadge === 'custom' && formBadgeText.trim()) {
+      icon = '🏷️';
+      label = formBadgeText.trim();
+    }
+    return (
+      <div className={styles.heroFormEyebrowBadge}>
+        <span className={styles.heroFormSparkleIcon} aria-hidden="true">{icon}</span>
+        <span>{label}</span>
+      </div>
+    );
+  }
+
+  function renderStepper() {
+    if (!smartIntakeActive || formStepper === 'none') return null;
+
+    if (formStepper === 'bar') {
+      const pct = step === 'describe' ? 33 : step === 'qa' ? 66 : 100;
+      return (
+        <div className={styles.heroFormProgressBar} role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label="Quote progress">
+          <div className={styles.heroFormProgressFill} style={{ width: `${pct}%` }} />
+        </div>
+      );
+    }
+
+    if (formStepper === 'minimal') {
+      return (
+        <div className={styles.heroFormMinimalDots} aria-label="Quote progress">
+          <span className={`${styles.heroFormMinimalDot} ${step === 'describe' ? styles.heroFormMinimalDotActive : styles.heroFormMinimalDotComplete}`} />
+          <span className={`${styles.heroFormMinimalDot} ${step === 'qa' ? styles.heroFormMinimalDotActive : step === 'contact' || step === 'result' ? styles.heroFormMinimalDotComplete : ''}`} />
+          <span className={`${styles.heroFormMinimalDot} ${step === 'contact' ? styles.heroFormMinimalDotActive : step === 'result' ? styles.heroFormMinimalDotComplete : ''}`} />
+        </div>
+      );
+    }
+
+    return (
+      <nav className={styles.heroFormStepper} aria-label="Quote progress">
+        <span className={`${styles.heroFormStepDot} ${step === 'describe' ? styles.heroFormStepDotActive : styles.heroFormStepDotComplete}`}>
+          <span className={styles.heroFormStepNum}>1</span> Project
+        </span>
+        <span className={styles.heroFormStepDivider} aria-hidden="true" />
+        <span className={`${styles.heroFormStepDot} ${step === 'qa' ? styles.heroFormStepDotActive : step === 'contact' || step === 'result' ? styles.heroFormStepDotComplete : ''}`}>
+          <span className={styles.heroFormStepNum}>2</span> Details
+        </span>
+        <span className={styles.heroFormStepDivider} aria-hidden="true" />
+        <span className={`${styles.heroFormStepDot} ${step === 'contact' ? styles.heroFormStepDotActive : step === 'result' ? styles.heroFormStepDotComplete : ''}`}>
+          <span className={styles.heroFormStepNum}>3</span> Ballpark
+        </span>
+      </nav>
+    );
+  }
+
   return (
     <form
       ref={formRef}
@@ -851,36 +923,18 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
       data-form-style={formStyle}
       data-field-bg={fieldBg}
       data-form-radius={formRadius}
+      data-form-width={formWidth}
+      data-form-stepper={formStepper}
     >
       <HoneypotField />
 
       {bookedNote && step !== 'result' && <p className={styles.heroFormBooked}>{bookedNote}</p>}
 
-
-      {smartIntakeActive && (
-        <nav className={styles.heroFormStepper} aria-label="Quote progress">
-          <span className={`${styles.heroFormStepDot} ${step === 'describe' ? styles.heroFormStepDotActive : styles.heroFormStepDotComplete}`}>
-            <span className={styles.heroFormStepNum}>1</span> Project
-          </span>
-          <span className={styles.heroFormStepDivider} aria-hidden="true" />
-          <span className={`${styles.heroFormStepDot} ${step === 'qa' ? styles.heroFormStepDotActive : step === 'contact' || step === 'result' ? styles.heroFormStepDotComplete : ''}`}>
-            <span className={styles.heroFormStepNum}>2</span> Details
-          </span>
-          <span className={styles.heroFormStepDivider} aria-hidden="true" />
-          <span className={`${styles.heroFormStepDot} ${step === 'contact' ? styles.heroFormStepDotActive : step === 'result' ? styles.heroFormStepDotComplete : ''}`}>
-            <span className={styles.heroFormStepNum}>3</span> Ballpark
-          </span>
-        </nav>
-      )}
+      {renderStepper()}
 
       {step === 'describe' && (
         <div className={styles.heroFormStep} key="describe">
-          {smartIntakeActive && (
-            <div className={styles.heroFormEyebrowBadge}>
-              <span className={styles.heroFormSparkleIcon} aria-hidden="true">✨</span>
-              <span>AI Instant Estimate</span>
-            </div>
-          )}
+          {smartIntakeActive && renderEyebrowBadge('AI Instant Estimate', '✨')}
           <h2 className={styles.heroFormTitle}>
             {smartIntakeActive ? (quoteForm.formHeading?.trim() || 'Get a ballpark estimate') : estimateLabel}
           </h2>
@@ -899,9 +953,11 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
             </div>
           )}
           <p className={styles.heroFormNote}>
-            {smartIntakeActive
-              ? 'Tell us what you need. We’ll ask up to 3 quick questions and show a price range—usually in about a minute.'
-              : 'Tell us about the job and we’ll get back to you as soon as possible with a personalized quote.'}
+            {formSubtitle.trim()
+              ? formSubtitle.trim()
+              : smartIntakeActive
+                ? 'Tell us what you need. We’ll ask up to 3 quick questions and show a price range—usually in about a minute.'
+                : 'Tell us about the job and we’ll get back to you as soon as possible with a personalized quote.'}
           </p>
           {avgReplyMs && <span className={styles.heroFormReplyChip}><span aria-hidden="true">⚡</span> Typically replies within {formatReplyTime(avgReplyMs)}</span>}
           <textarea
@@ -925,10 +981,52 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
             }}
           />
 
+          {formStep1Photos && (
+            <div className={styles.heroFormPhotoRow} style={{ marginTop: '0.4rem', marginBottom: '0.4rem' }}>
+              <input
+                ref={photoInputRef}
+                className={styles.heroFormPhotoInput}
+                tabIndex={-1}
+                aria-hidden="true"
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/avif"
+                multiple
+                onChange={(event) => addPhotos(event.currentTarget.files ?? [])}
+              />
+              <button
+                type="button"
+                className={styles.heroFormPhotoButton}
+                onClick={() => photoInputRef.current?.click()}
+                disabled={selectedPhotos.length >= MAX_PHOTOS}
+              >
+                {selectedPhotos.length > 0 ? `📷 Photos attached (${selectedPhotos.length}/${MAX_PHOTOS})` : '📷 Attach photo (optional)'}
+              </button>
+              {selectedPhotos.length > 0 && (
+                <div className={styles.heroFormPhotoList} style={{ marginTop: '0.35rem' }}>
+                  {selectedPhotos.map((photo, index) => (
+                    <span className={styles.heroFormPhotoChip} key={`desc-p-${photo.name}-${index}`}>
+                      {photo.name.length > 16 ? `${photo.name.slice(0, 13)}\u2026` : photo.name}
+                      <button type="button" onClick={() => removePhoto(index)} aria-label={`Remove ${photo.name}`}>×</button>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           <button type="submit" disabled={isClassifying}>
-            <span>{isClassifying ? thinking : (smartIntakeActive ? 'Start my estimate' : 'Continue')}</span>
+            <span>{isClassifying ? thinking : formButtonText.trim() ? formButtonText.trim() : (smartIntakeActive ? 'Start my estimate' : 'Continue')}</span>
             {!isClassifying && <span className={styles.heroFormBtnArrow} aria-hidden="true">→</span>}
           </button>
+
+          {formTrust && (
+            <div className={styles.heroFormTrustStrip}>
+              <span><span aria-hidden="true">🔒</span> 100% Private</span>
+              <span><span aria-hidden="true">⚡</span> Fast Reply</span>
+              <span><span aria-hidden="true">✓</span> Free &amp; No Obligation</span>
+            </div>
+          )}
+
           {isEmergency && !isClassifying && (
             <button
               type="button"
@@ -954,12 +1052,7 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
 
       {step === 'qa' && (
         <div className={styles.heroFormStep} key="qa">
-          {smartIntakeActive && (
-            <div className={styles.heroFormEyebrowBadge}>
-              <span className={styles.heroFormSparkleIcon} aria-hidden="true">✨</span>
-              <span>AI Clarification</span>
-            </div>
-          )}
+          {smartIntakeActive && renderEyebrowBadge('AI Clarification', '✨')}
           <h2 className={styles.heroFormTitle}>
             {smartIntakeActive ? (quoteForm.formHeading?.trim() || 'Get a ballpark estimate') : estimateLabel}
           </h2>

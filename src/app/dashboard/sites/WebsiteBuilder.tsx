@@ -6,7 +6,7 @@ import type { SiteImage } from '@/lib/site-images';
 import { getSiteGallery, STOCK_SITE_IMAGES } from '@/lib/site-images';
 import { getSiteContent, getTradeGlyphOptions, getUnreviewedGeneratedSections, glyphForContent, mergeSiteContent, COLOR_SCHEMES, getColorScheme, HEADER_STYLES,
   MENU_BUTTON_STYLES,
-  BLOG_STYLES, BUTTON_STYLES, HEADER_BUTTON_STYLES, WORDMARK_STYLES, QUOTE_FORM_STYLES, QUOTE_FORM_FIELD_BGS, QUOTE_FORM_RADII, HERO_BADGE_PRESETS, HERO_BADGE_STYLES, IMAGE_SLOT_LABELS, MAX_EXTRA_HERO_IMAGES, PROJECT_SHOWCASE_STYLES, MAX_PROJECT_SHOWCASE_ITEMS, DEFAULT_PROJECT_SHOWCASE_PLACEHOLDERS, DEFAULT_PROJECT_SHOWCASE_EYEBROW, DEFAULT_PROJECT_SHOWCASE_TITLE, STOCK_PROJECT_SHOWCASE_EYEBROW, STOCK_PROJECT_SHOWCASE_TITLE, VIDEO_SECTION_STYLES, videoStyleCapacity, videoSectionKey, MAX_VIDEO_SECTIONS, DEFAULT_VIDEOS_NAV_LABEL, type NormalizedSiteContent, type SiteProjectShowcaseContent, type SiteVideoSectionContent, type SiteBlogContent, type SiteAnnouncementContent, type SiteBeforeAfterContent, type SiteServicesContent, type SiteHowItWorksContent, type SiteFaqContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteShowcaseItem, type SiteStatItem, type SiteStatsContent, type SiteTestimonialItem, type SiteStickyCallBarContent, type SiteChatButtonContent, type SiteAnalyticsContent, type SiteTestimonialsContent, type SiteTrustBadgesContent, type SiteWhyUsContent, type SiteLegalContent } from '@/lib/site-content';
+  BLOG_STYLES, BUTTON_STYLES, HEADER_BUTTON_STYLES, WORDMARK_STYLES, QUOTE_FORM_STYLES, QUOTE_FORM_FIELD_BGS, QUOTE_FORM_RADII, QUOTE_FORM_STEPPERS, QUOTE_FORM_BADGES, QUOTE_FORM_WIDTHS, HERO_BADGE_PRESETS, HERO_BADGE_STYLES, IMAGE_SLOT_LABELS, MAX_EXTRA_HERO_IMAGES, PROJECT_SHOWCASE_STYLES, MAX_PROJECT_SHOWCASE_ITEMS, DEFAULT_PROJECT_SHOWCASE_PLACEHOLDERS, DEFAULT_PROJECT_SHOWCASE_EYEBROW, DEFAULT_PROJECT_SHOWCASE_TITLE, STOCK_PROJECT_SHOWCASE_EYEBROW, STOCK_PROJECT_SHOWCASE_TITLE, VIDEO_SECTION_STYLES, videoStyleCapacity, videoSectionKey, MAX_VIDEO_SECTIONS, DEFAULT_VIDEOS_NAV_LABEL, type NormalizedSiteContent, type SiteProjectShowcaseContent, type SiteVideoSectionContent, type SiteBlogContent, type SiteAnnouncementContent, type SiteBeforeAfterContent, type SiteServicesContent, type SiteHowItWorksContent, type SiteFaqContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteShowcaseItem, type SiteStatItem, type SiteStatsContent, type SiteTestimonialItem, type SiteStickyCallBarContent, type SiteChatButtonContent, type SiteAnalyticsContent, type SiteTestimonialsContent, type SiteTrustBadgesContent, type SiteWhyUsContent, type SiteLegalContent } from '@/lib/site-content';
 import { generatePrivacyPolicy, generateTermsOfService } from '@/lib/legal/legal-copy';
 import { AVAILABLE_TEMPLATES } from '@/lib/templates/types';
 import ServiceIcon, { SERVICE_ICON_KEYS } from '@/lib/templates/ServiceIcon';
@@ -2180,7 +2180,145 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, mess
                       );
                     })}
                   </div>
-                  <small className={styles.fieldHint}>Controls the look, framing, and field appearance of the hero Instant Estimate card across all themes and devices.</small>
+
+                  <hr className={styles.logoDivider} />
+                  <div className={styles.contentSubhead}><strong>Stepper &amp; progress style</strong><small>Choose the progress indicator displayed at the top of the card.</small></div>
+                  <div className={styles.footerPicker} role="radiogroup" aria-label="Stepper style">
+                    {QUOTE_FORM_STEPPERS.map((st) => {
+                      const selected = (siteContent.quoteFormStepper || 'badges') === st.key;
+                      return (
+                        <button
+                          type="button"
+                          key={st.key}
+                          role="radio"
+                          aria-checked={selected}
+                          className={`${styles.footerPickerBtn}${selected ? ` ${styles.footerPickerBtnOn}` : ''}`}
+                          onClick={() => updateSiteContent({ quoteFormStepper: st.key })}
+                        >
+                          <strong>{st.label}</strong>
+                          <small>{st.desc}</small>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <hr className={styles.logoDivider} />
+                  <div className={styles.contentSubhead}><strong>Eyebrow badge</strong><small>Badge pill displayed above the form heading.</small></div>
+                  <div className={styles.footerPicker} role="radiogroup" aria-label="Eyebrow badge">
+                    {QUOTE_FORM_BADGES.map((b) => {
+                      const selected = (siteContent.quoteFormBadge || 'sparkle') === b.key;
+                      return (
+                        <button
+                          type="button"
+                          key={b.key}
+                          role="radio"
+                          aria-checked={selected}
+                          className={`${styles.footerPickerBtn}${selected ? ` ${styles.footerPickerBtnOn}` : ''}`}
+                          onClick={() => updateSiteContent({ quoteFormBadge: b.key })}
+                        >
+                          <strong>{b.icon ? `${b.icon} ` : ''}{b.label}</strong>
+                          <small>{b.desc}</small>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {siteContent.quoteFormBadge === 'custom' && (
+                    <label className={styles.formField} style={{ marginTop: '.4rem' }}>
+                      <span>Custom badge text</span>
+                      <input
+                        type="text"
+                        maxLength={50}
+                        value={siteContent.quoteFormBadgeText || ''}
+                        onChange={(event) => updateSiteContent({ quoteFormBadgeText: event.target.value })}
+                        placeholder="e.g. ⚡ Fast Estimate in 60s"
+                      />
+                    </label>
+                  )}
+
+                  <hr className={styles.logoDivider} />
+                  <div className={styles.contentSubhead}><strong>Card width &amp; layout</strong><small>Control the width and touch targets on desktop and tablets.</small></div>
+                  <div className={styles.footerPicker} role="radiogroup" aria-label="Card width">
+                    {QUOTE_FORM_WIDTHS.map((w) => {
+                      const selected = (siteContent.quoteFormWidth || 'standard') === w.key;
+                      return (
+                        <button
+                          type="button"
+                          key={w.key}
+                          role="radio"
+                          aria-checked={selected}
+                          className={`${styles.footerPickerBtn}${selected ? ` ${styles.footerPickerBtnOn}` : ''}`}
+                          onClick={() => updateSiteContent({ quoteFormWidth: w.key })}
+                        >
+                          <strong>{w.label}</strong>
+                          <small>{w.desc}</small>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <hr className={styles.logoDivider} />
+                  <div className={styles.contentSubhead}><strong>Custom wording &amp; button</strong><small>Customize the heading, subtitle, and CTA button text.</small></div>
+                  <div className={styles.formFieldGroup}>
+                    <label className={styles.formField}>
+                      <span>Form heading</span>
+                      <input
+                        type="text"
+                        maxLength={40}
+                        value={siteContent.quoteForm.formHeading || ''}
+                        onChange={(event) => updateQuoteForm({ ...siteContent.quoteForm, formHeading: event.target.value })}
+                        placeholder="Get a ballpark estimate"
+                      />
+                    </label>
+                    <label className={styles.formField}>
+                      <span>Subtitle / Explainer note</span>
+                      <input
+                        type="text"
+                        maxLength={200}
+                        value={siteContent.quoteFormSubtitle || ''}
+                        onChange={(event) => updateSiteContent({ quoteFormSubtitle: event.target.value })}
+                        placeholder="Tell us what you need. We’ll ask up to 3 quick questions..."
+                      />
+                    </label>
+                    <label className={styles.formField}>
+                      <span>Submit button label</span>
+                      <input
+                        type="text"
+                        maxLength={40}
+                        value={siteContent.quoteFormButtonText || ''}
+                        onChange={(event) => updateSiteContent({ quoteFormButtonText: event.target.value })}
+                        placeholder="Start my estimate"
+                      />
+                    </label>
+                  </div>
+
+                  <hr className={styles.logoDivider} />
+                  <div className={styles.contentSubhead}><strong>Features &amp; Trust</strong><small>Additional confidence cues and photo capture options.</small></div>
+                  <div className={styles.toggleGroup}>
+                    <label className={styles.toggleRow}>
+                      <input
+                        type="checkbox"
+                        checked={siteContent.quoteFormTrust !== false}
+                        onChange={(event) => updateSiteContent({ quoteFormTrust: event.target.checked })}
+                      />
+                      <span>
+                        <strong>Show trust reassurance strip</strong>
+                        <small>Displays &ldquo;🔒 100% Private · ⚡ Fast Reply · ✓ Free &amp; No Obligation&rdquo; under the button.</small>
+                      </span>
+                    </label>
+                    <label className={styles.toggleRow}>
+                      <input
+                        type="checkbox"
+                        checked={siteContent.quoteFormStep1Photos === true}
+                        onChange={(event) => updateSiteContent({ quoteFormStep1Photos: event.target.checked })}
+                      />
+                      <span>
+                        <strong>Allow photo upload on Step 1</strong>
+                        <small>Shows the photo attachment button immediately on the initial description screen.</small>
+                      </span>
+                    </label>
+                  </div>
+
+                  <small className={styles.fieldHint} style={{ marginTop: '.75rem' }}>Full real-time preview of your instant estimate card and all adjustments is shown live on the right.</small>
                 </SectionCard>
 
               </div>

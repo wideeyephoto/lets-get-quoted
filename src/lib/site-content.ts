@@ -847,6 +847,134 @@ export function getQuoteFormRadius(content: Record<string, unknown> | null | und
   return (getSiteContent(content).quoteFormRadius as QuoteFormRadius) || 'default';
 }
 
+export type QuoteFormStepper = 'badges' | 'bar' | 'minimal' | 'none';
+
+export type QuoteFormStepperOption = {
+  key: QuoteFormStepper;
+  label: string;
+  desc: string;
+};
+
+export const QUOTE_FORM_STEPPERS: readonly QuoteFormStepperOption[] = [
+  {
+    key: 'badges',
+    label: 'Numbered steps',
+    desc: '1-2-3 pill step indicators across the top.',
+  },
+  {
+    key: 'bar',
+    label: 'Progress bar',
+    desc: 'Smooth continuous line that fills as you advance.',
+  },
+  {
+    key: 'minimal',
+    label: 'Minimal dots',
+    desc: 'Compact glowing dot markers.',
+  },
+  {
+    key: 'none',
+    label: 'Hidden',
+    desc: 'No stepper for a minimal, single-focus card.',
+  },
+] as const;
+
+export const QUOTE_FORM_STEPPER_KEYS = new Set<string>(QUOTE_FORM_STEPPERS.map((s) => s.key));
+
+export function getQuoteFormStepper(content: Record<string, unknown> | null | undefined): QuoteFormStepper {
+  return (getSiteContent(content).quoteFormStepper as QuoteFormStepper) || 'badges';
+}
+
+export type QuoteFormBadge = 'sparkle' | 'lightning' | 'free' | 'rating' | 'custom' | 'none';
+
+export type QuoteFormBadgeOption = {
+  key: QuoteFormBadge;
+  label: string;
+  desc: string;
+  icon?: string;
+  defaultText?: string;
+};
+
+export const QUOTE_FORM_BADGES: readonly QuoteFormBadgeOption[] = [
+  {
+    key: 'sparkle',
+    label: 'AI Instant Estimate',
+    desc: 'Glowing AI sparkle pill badge.',
+    icon: '✨',
+    defaultText: 'AI Instant Estimate',
+  },
+  {
+    key: 'lightning',
+    label: '60-Second Quote',
+    desc: 'High-urgency speed badge.',
+    icon: '⚡',
+    defaultText: '60-Second Quote',
+  },
+  {
+    key: 'free',
+    label: 'Free & Instant Estimate',
+    desc: 'Reassurance badge emphasizing zero cost.',
+    icon: '✓',
+    defaultText: 'Free & Instant Estimate',
+  },
+  {
+    key: 'rating',
+    label: 'Top-Rated Contractor',
+    desc: 'Social proof badge.',
+    icon: '⭐',
+    defaultText: 'Top-Rated Contractor',
+  },
+  {
+    key: 'custom',
+    label: 'Custom badge text',
+    desc: 'Type your own custom badge text.',
+    icon: '🏷️',
+    defaultText: 'Custom Badge',
+  },
+  {
+    key: 'none',
+    label: 'Hidden',
+    desc: 'No eyebrow badge above the title.',
+  },
+] as const;
+
+export const QUOTE_FORM_BADGE_KEYS = new Set<string>(QUOTE_FORM_BADGES.map((b) => b.key));
+
+export function getQuoteFormBadge(content: Record<string, unknown> | null | undefined): QuoteFormBadge {
+  return (getSiteContent(content).quoteFormBadge as QuoteFormBadge) || 'sparkle';
+}
+
+export type QuoteFormWidth = 'compact' | 'standard' | 'roomy';
+
+export type QuoteFormWidthOption = {
+  key: QuoteFormWidth;
+  label: string;
+  desc: string;
+};
+
+export const QUOTE_FORM_WIDTHS: readonly QuoteFormWidthOption[] = [
+  {
+    key: 'compact',
+    label: 'Compact (380px)',
+    desc: 'Tighter card width for smaller screens & dense layouts.',
+  },
+  {
+    key: 'standard',
+    label: 'Standard (440px)',
+    desc: 'Balanced width matching all template heroes.',
+  },
+  {
+    key: 'roomy',
+    label: 'Roomy (500px)',
+    desc: 'Spacious card with larger inputs and touch targets.',
+  },
+] as const;
+
+export const QUOTE_FORM_WIDTH_KEYS = new Set<string>(QUOTE_FORM_WIDTHS.map((w) => w.key));
+
+export function getQuoteFormWidth(content: Record<string, unknown> | null | undefined): QuoteFormWidth {
+  return (getSiteContent(content).quoteFormWidth as QuoteFormWidth) || 'standard';
+}
+
 export type SiteQuoteFormContent = {
   // Whether the FULL multi-field quote form renders at #contact. Off by
   // default — the smart-intake capture takes its place so visitors always
@@ -1006,6 +1134,22 @@ export type NormalizedSiteContent = {
   quoteFormFieldBg: QuoteFormFieldBg;
   // Card corner radius shape ('default' | 'sharp' | 'soft' | 'pill').
   quoteFormRadius: QuoteFormRadius;
+  // Stepper indicator style ('badges' | 'bar' | 'minimal' | 'none').
+  quoteFormStepper: QuoteFormStepper;
+  // Eyebrow badge preset ('sparkle' | 'lightning' | 'free' | 'rating' | 'custom' | 'none').
+  quoteFormBadge: QuoteFormBadge;
+  // Custom eyebrow badge text when quoteFormBadge === 'custom'.
+  quoteFormBadgeText: string;
+  // Card width & layout density ('compact' | 'standard' | 'roomy').
+  quoteFormWidth: QuoteFormWidth;
+  // Custom subtitle note override (blank = default explainer).
+  quoteFormSubtitle: string;
+  // Custom CTA button label override (blank = 'Start my estimate').
+  quoteFormButtonText: string;
+  // Show trust reassurance strip below submit button.
+  quoteFormTrust: boolean;
+  // Enable photo attachment directly on Step 1.
+  quoteFormStep1Photos: boolean;
   projectShowcase: SiteProjectShowcaseContent;
   /** The video bands. One set of content each, six arrangements each. */
   videoSections: SiteVideoSectionContent[];
@@ -1720,6 +1864,14 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
     quoteFormStyle: QUOTE_FORM_STYLE_KEYS.has(toString(root.quoteFormStyle)) ? (toString(root.quoteFormStyle) as QuoteFormStyle) : 'clean',
     quoteFormFieldBg: QUOTE_FORM_FIELD_BG_KEYS.has(toString(root.quoteFormFieldBg)) ? (toString(root.quoteFormFieldBg) as QuoteFormFieldBg) : 'auto',
     quoteFormRadius: QUOTE_FORM_RADIUS_KEYS.has(toString(root.quoteFormRadius)) ? (toString(root.quoteFormRadius) as QuoteFormRadius) : 'default',
+    quoteFormStepper: QUOTE_FORM_STEPPER_KEYS.has(toString(root.quoteFormStepper)) ? (toString(root.quoteFormStepper) as QuoteFormStepper) : 'badges',
+    quoteFormBadge: QUOTE_FORM_BADGE_KEYS.has(toString(root.quoteFormBadge)) ? (toString(root.quoteFormBadge) as QuoteFormBadge) : 'sparkle',
+    quoteFormBadgeText: toString(root.quoteFormBadgeText).slice(0, 50),
+    quoteFormWidth: QUOTE_FORM_WIDTH_KEYS.has(toString(root.quoteFormWidth)) ? (toString(root.quoteFormWidth) as QuoteFormWidth) : 'standard',
+    quoteFormSubtitle: toString(root.quoteFormSubtitle).slice(0, 200),
+    quoteFormButtonText: toString(root.quoteFormButtonText).slice(0, 40),
+    quoteFormTrust: root.quoteFormTrust !== false,
+    quoteFormStep1Photos: toBoolean(root.quoteFormStep1Photos),
     projectShowcase: {
       // On by default so existing Care sites keep their work band; the owner can
       // toggle it off to hide the whole section.

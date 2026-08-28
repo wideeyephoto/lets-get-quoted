@@ -9,11 +9,23 @@ import {
   QUOTE_FORM_RADII,
   QUOTE_FORM_RADIUS_KEYS,
   getQuoteFormRadius,
+  QUOTE_FORM_STEPPERS,
+  QUOTE_FORM_STEPPER_KEYS,
+  getQuoteFormStepper,
+  QUOTE_FORM_BADGES,
+  QUOTE_FORM_BADGE_KEYS,
+  getQuoteFormBadge,
+  QUOTE_FORM_WIDTHS,
+  QUOTE_FORM_WIDTH_KEYS,
+  getQuoteFormWidth,
   getSiteContent,
   mergeSiteContent,
   type QuoteFormStyle,
   type QuoteFormFieldBg,
   type QuoteFormRadius,
+  type QuoteFormStepper,
+  type QuoteFormBadge,
+  type QuoteFormWidth,
 } from '@/lib/site-content';
 import { trackQuoteFunnelStep } from '@/lib/analytics';
 import { readFileSync } from 'fs';
@@ -118,6 +130,36 @@ describe('Instant Quote Form Appearance Styles & Intake Flow', () => {
     expect(getQuoteFormRadius(softUpdated)).toBe('soft');
   });
 
+  it('defines stepper options and normalizes correctly', () => {
+    expect(QUOTE_FORM_STEPPERS).toHaveLength(4);
+    const keys = QUOTE_FORM_STEPPERS.map((s) => s.key);
+    expect(keys).toEqual(['badges', 'bar', 'minimal', 'none']);
+
+    expect(getQuoteFormStepper(null)).toBe('badges');
+    expect(getQuoteFormStepper({ quoteFormStepper: 'bar' })).toBe('bar');
+    expect(getQuoteFormStepper({ quoteFormStepper: 'invalid' })).toBe('badges');
+  });
+
+  it('defines eyebrow badge options and normalizes correctly', () => {
+    expect(QUOTE_FORM_BADGES).toHaveLength(6);
+    const keys = QUOTE_FORM_BADGES.map((b) => b.key);
+    expect(keys).toEqual(['sparkle', 'lightning', 'free', 'rating', 'custom', 'none']);
+
+    expect(getQuoteFormBadge(null)).toBe('sparkle');
+    expect(getQuoteFormBadge({ quoteFormBadge: 'lightning' })).toBe('lightning');
+    expect(getQuoteFormBadge({ quoteFormBadge: 'invalid' })).toBe('sparkle');
+  });
+
+  it('defines card width options and normalizes correctly', () => {
+    expect(QUOTE_FORM_WIDTHS).toHaveLength(3);
+    const keys = QUOTE_FORM_WIDTHS.map((w) => w.key);
+    expect(keys).toEqual(['compact', 'standard', 'roomy']);
+
+    expect(getQuoteFormWidth(null)).toBe('standard');
+    expect(getQuoteFormWidth({ quoteFormWidth: 'roomy' })).toBe('roomy');
+    expect(getQuoteFormWidth({ quoteFormWidth: 'invalid' })).toBe('standard');
+  });
+
   it('defaults getQuoteFormStyle to clean when unset or empty', () => {
     expect(getQuoteFormStyle(null)).toBe('clean');
     expect(getQuoteFormStyle(undefined)).toBe('clean');
@@ -149,22 +191,27 @@ describe('Instant Quote Form Appearance Styles & Intake Flow', () => {
     expect(getQuoteFormStyle(boldUpdated)).toBe('bold');
   });
 
-  it('ensures HeroQuickForm passes data-form-style, data-field-bg, and data-form-radius to the root form', () => {
+  it('ensures HeroQuickForm passes data-form-style, data-field-bg, data-form-radius, data-form-width, and data-form-stepper', () => {
     const heroCode = readFileSync(join(process.cwd(), 'src/lib/templates/HeroQuickForm.tsx'), 'utf-8');
     expect(heroCode).toContain('data-form-style={formStyle}');
     expect(heroCode).toContain('data-field-bg={fieldBg}');
     expect(heroCode).toContain('data-form-radius={formRadius}');
+    expect(heroCode).toContain('data-form-width={formWidth}');
+    expect(heroCode).toContain('data-form-stepper={formStepper}');
     expect(heroCode).toContain("siteContent.quoteFormStyle || 'clean'");
     expect(heroCode).toContain("siteContent.quoteFormFieldBg || 'auto'");
     expect(heroCode).toContain("siteContent.quoteFormRadius || 'default'");
+    expect(heroCode).toContain("siteContent.quoteFormStepper || 'badges'");
+    expect(heroCode).toContain("siteContent.quoteFormBadge || 'sparkle'");
+    expect(heroCode).toContain("siteContent.quoteFormWidth || 'standard'");
     expect(heroCode).toContain('heroFormEyebrowBadge');
-    expect(heroCode).toContain('AI Instant Estimate');
+    expect(heroCode).toContain('heroFormProgressBar');
+    expect(heroCode).toContain('heroFormMinimalDots');
+    expect(heroCode).toContain('heroFormTrustStrip');
     expect(heroCode).toContain('heroFormBtnArrow');
-    expect(heroCode).toContain('Start my estimate');
-    expect(heroCode).toContain('Tell us what you need. We’ll ask up to 3 quick questions and show a price range—usually in about a minute.');
   });
 
-  it('ensures themes.module.css contains high-contrast stepper, shimmer, and corner radius styles', () => {
+  it('ensures themes.module.css contains high-contrast stepper, shimmer, widths, and trust strip styles', () => {
     const cssCode = readFileSync(join(process.cwd(), 'src/lib/templates/themes.module.css'), 'utf-8');
     expect(cssCode).toContain("data-form-style='glow'");
     expect(cssCode).toContain("data-form-style='clean'");
@@ -175,6 +222,12 @@ describe('Instant Quote Form Appearance Styles & Intake Flow', () => {
     expect(cssCode).toContain("data-form-radius='sharp'");
     expect(cssCode).toContain("data-form-radius='soft'");
     expect(cssCode).toContain("data-form-radius='pill'");
+    expect(cssCode).toContain("data-form-width='compact'");
+    expect(cssCode).toContain("data-form-width='standard'");
+    expect(cssCode).toContain("data-form-width='roomy'");
+    expect(cssCode).toContain('heroFormProgressBar');
+    expect(cssCode).toContain('heroFormMinimalDots');
+    expect(cssCode).toContain('heroFormTrustStrip');
     expect(cssCode).toContain('heroBtnShimmer');
     expect(cssCode).toContain('heroFormEyebrowBadge');
     expect(cssCode).toContain('sparklePulse');
@@ -194,14 +247,22 @@ describe('Instant Quote Form Appearance Styles & Intake Flow', () => {
     expect(forgeCode).toContain('forgeHeroTextColumn');
   });
 
-  it('ensures WebsiteBuilder exposes quoteFormStyle, fieldBg, and quoteFormRadius pickers', () => {
+  it('ensures WebsiteBuilder exposes complete quote form customization pickers', () => {
     const builderCode = readFileSync(join(process.cwd(), 'src/app/dashboard/sites/WebsiteBuilder.tsx'), 'utf-8');
     expect(builderCode).toContain('QUOTE_FORM_STYLES');
     expect(builderCode).toContain('QUOTE_FORM_FIELD_BGS');
     expect(builderCode).toContain('QUOTE_FORM_RADII');
+    expect(builderCode).toContain('QUOTE_FORM_STEPPERS');
+    expect(builderCode).toContain('QUOTE_FORM_BADGES');
+    expect(builderCode).toContain('QUOTE_FORM_WIDTHS');
     expect(builderCode).toContain('quoteFormStyle');
     expect(builderCode).toContain('quoteFormFieldBg');
     expect(builderCode).toContain('quoteFormRadius');
+    expect(builderCode).toContain('quoteFormStepper');
+    expect(builderCode).toContain('quoteFormBadge');
+    expect(builderCode).toContain('quoteFormWidth');
+    expect(builderCode).toContain('quoteFormTrust');
+    expect(builderCode).toContain('quoteFormStep1Photos');
     expect(builderCode).toContain('formStyleBadge');
     expect(builderCode).toContain('formStyleLinkCard');
   });
