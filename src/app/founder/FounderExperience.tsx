@@ -169,12 +169,12 @@ export default function FounderExperience() {
             </div>
 
             <h1 id="founder-title" className={styles.heroTitle}>
-              I built Let’s Get Quoted so a one-truck business can look—and run—like{' '}
-              <em>a much bigger company.</em>
+              Great craftsmanship shouldn’t lose jobs to mediocre competitors with a{' '}
+              <em>better website and faster follow-up.</em>
             </h1>
 
             <p className={styles.heroLede}>
-              I built Let’s Get Quoted to turn a strong first impression into a cleaner lead, a faster quote, and a contracting business that is genuinely easier to run.
+              I built Let’s Get Quoted so a one-truck contracting business can look—and run—like a much bigger company, with cleaner intake, faster quotes, and professional client communication from the first click.
             </p>
 
             <div className={styles.heroActions}>
@@ -224,18 +224,18 @@ export default function FounderExperience() {
 
             {/* Floating Metric Toasts */}
             <div className={styles.floatingToast1} aria-hidden="true">
-              <span className={styles.toastIconOrange}>0</span>
+              <span className={styles.toastIconOrange}>⚡</span>
               <div className={styles.toastContent}>
-                <span className={styles.toastKicker}>TOOL SPRAWL</span>
-                <span className={styles.toastValue}>Single Connected System</span>
+                <span className={styles.toastKicker}>INSTANT LAUNCH</span>
+                <span className={styles.toastValue}>Live Website in 5 Mins</span>
               </div>
             </div>
 
             <div className={styles.floatingToast2} aria-hidden="true">
-              <span className={styles.toastIconMint}>✓</span>
+              <span className={styles.toastIconMint}>100%</span>
               <div className={styles.toastContent}>
-                <span className={styles.toastKicker}>FEATURE PARITY</span>
-                <span className={styles.toastValue}>100% Unlocked for 1 Truck</span>
+                <span className={styles.toastKicker}>FEATURE ACCESS</span>
+                <span className={styles.toastValue}>Full Toolkit on Day 1</span>
               </div>
             </div>
           </div>

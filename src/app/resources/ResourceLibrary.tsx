@@ -3,8 +3,7 @@
 import Link from 'next/link';
 import { useId, useState } from 'react';
 import { ARTICLES, ARTICLE_CATEGORIES, formatArticleDate } from '@/lib/resources';
-import forStyles from '../for/for.module.css';
-import guideStyles from './guide.module.css';
+import styles from './resources.module.css';
 
 const CATEGORY_ICONS: Record<string, string> = {
   'Pricing & profit': '💰',
@@ -15,7 +14,7 @@ const CATEGORY_ICONS: Record<string, string> = {
   'Customer messaging': '📱',
 };
 
-// Searched text, built once at module scope — these are facts about static data.
+// Searched text, built once at module scope — static data facts.
 const INDEX = new Map(
   ARTICLES.map((article) => [
     article.slug,
@@ -42,126 +41,184 @@ export default function ResourceLibrary() {
     <>
       {/* Featured Spotlight Card when browsing all */}
       {!filtering && spotlight ? (
-        <div className={guideStyles.spotlightCard}>
+        <article className={styles.spotlightCard} aria-labelledby="spotlight-title">
           <div>
-            <span className={guideStyles.spotlightBadge}>
+            <div className={styles.spotlightBadge}>
               <span aria-hidden="true">★</span> Featured Contractor Playbook
-            </span>
-            <h2 className={guideStyles.spotlightTitle}>{spotlight.title}</h2>
-            <p className={guideStyles.spotlightExcerpt}>{spotlight.excerpt}</p>
-            <span className="resource-meta">
-              {spotlight.category} · {spotlight.readMinutes} min read
-            </span>
+            </div>
+            <h2 id="spotlight-title" className={styles.spotlightTitle}>
+              {spotlight.title}
+            </h2>
+            <p className={styles.spotlightExcerpt}>{spotlight.excerpt}</p>
+            <div className={styles.spotlightMeta}>
+              <span className={styles.spotlightMetaTag}>
+                <span aria-hidden="true">{CATEGORY_ICONS[spotlight.category] ?? '📄'}</span>
+                {spotlight.category}
+              </span>
+              <span>·</span>
+              <span>{spotlight.readMinutes} min read</span>
+              <span>·</span>
+              <span>Updated {formatArticleDate(spotlight.datePublished)}</span>
+            </div>
           </div>
-          <div>
-            <Link href={`/resources/${spotlight.slug}`} className="btn primary" style={{ whiteSpace: 'nowrap' }}>
-              Read playbook →
+          <div className={styles.spotlightAction}>
+            <Link href={`/resources/${spotlight.slug}`} className={styles.btnPrimary}>
+              Read playbook <span aria-hidden="true">→</span>
             </Link>
           </div>
-        </div>
+        </article>
       ) : null}
 
-      <div className={forStyles.finder}>
-        <div>
-          <label className={forStyles.searchLabel} htmlFor={searchId}>
-            Search the guides
-          </label>
-          <div className={forStyles.searchField}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+      {/* Sticky Command Bar: Search & Category Filter */}
+      <section className={styles.finderShell} aria-label="Search and filter contractor guides">
+        <div className={styles.searchRow}>
+          <div className={styles.searchField}>
+            <svg
+              className={styles.searchIcon}
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              aria-hidden="true"
+            >
               <circle cx="11" cy="11" r="6.5" />
               <path d="M16 16l4.5 4.5" strokeLinecap="round" />
             </svg>
+            <label htmlFor={searchId} className="sr-only">
+              Search contractor guides
+            </label>
             <input
               id={searchId}
               type="search"
+              className={styles.searchInput}
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Deposits, margin, 10DLC, reviews, scheduling…"
+              placeholder="Search guides: deposits, profit margin, 10DLC, e-signatures, reviews..."
               autoComplete="off"
             />
             {query ? (
               <button
                 type="button"
+                className={styles.clearBtn}
                 onClick={() => setQuery('')}
                 aria-label="Clear search"
-                style={{ background: 'transparent', border: 'none', color: 'var(--muted)', cursor: 'pointer', padding: '0 4px', fontSize: '1.1rem' }}
+                title="Clear search"
               >
-                ×
+                ✕ Clear
               </button>
             ) : null}
           </div>
         </div>
 
-        <div className={forStyles.cats} role="group" aria-label="Filter by topic">
+        {/* Category Pill Filters */}
+        <div className={styles.categoryStrip} role="group" aria-label="Filter guides by topic">
           <button
             type="button"
-            className={forStyles.cat}
+            className={`${styles.categoryPill} ${category === 'all' ? styles.categoryPillActive : ''}`}
             aria-pressed={category === 'all'}
             onClick={() => setCategory('all')}
           >
-            All guides ({ARTICLES.length})
+            All guides <span className={styles.categoryCountBadge}>{ARTICLES.length}</span>
           </button>
-          {ARTICLE_CATEGORIES.map((label) => (
-            <button
-              key={label}
-              type="button"
-              className={forStyles.cat}
-              aria-pressed={category === label}
-              onClick={() => setCategory(label)}
-            >
-              <span aria-hidden="true" style={{ marginRight: '4px' }}>
-                {CATEGORY_ICONS[label] ?? '📄'}
-              </span>
-              {label}
-            </button>
-          ))}
+          {ARTICLE_CATEGORIES.map((label) => {
+            const count = ARTICLES.filter((a) => a.category === label).length;
+            const isActive = category === label;
+            return (
+              <button
+                key={label}
+                type="button"
+                className={`${styles.categoryPill} ${isActive ? styles.categoryPillActive : ''}`}
+                aria-pressed={isActive}
+                onClick={() => setCategory(label)}
+              >
+                <span className={styles.categoryIcon} aria-hidden="true">
+                  {CATEGORY_ICONS[label] ?? '📄'}
+                </span>
+                {label}
+                <span className={styles.categoryCountBadge}>{count}</span>
+              </button>
+            );
+          })}
         </div>
-      </div>
+      </section>
 
-      <p className={forStyles.count}>
-        {filtering ? `${shown} of ${ARTICLES.length} guides` : `All ${ARTICLES.length} guides`}
-      </p>
-      <p className="sr-only" role="status" aria-live="polite">
-        {shown} of {ARTICLES.length} guides shown
-      </p>
-
-      <div className="feature-grid fav-grid">
-        {ARTICLES.map((article) => (
-          <Link
-            key={article.slug}
-            href={`/resources/${article.slug}`}
-            className="feature-card fav-card resource-card"
-            hidden={!shows(article.slug, article.category)}
-          >
-            <span className="fav-card-tag">
-              <span aria-hidden="true" style={{ marginRight: '4px' }}>
-                {CATEGORY_ICONS[article.category] ?? '📄'}
-              </span>
-              {article.category}
-            </span>
-            <h3>{article.title}</h3>
-            <p>{article.excerpt}</p>
-            <span className="resource-meta">
-              {formatArticleDate(article.datePublished)} · {article.readMinutes} min read
-            </span>
-          </Link>
-        ))}
-      </div>
-
-      {shown === 0 ? (
-        <div style={{ textAlign: 'center', padding: '2.5rem 1rem' }}>
-          <p className={forStyles.count} style={{ fontSize: '1.05rem', marginBottom: '1rem' }}>
-            No guides match &ldquo;{query}&rdquo;.
-          </p>
+      {/* Results Status Header */}
+      <div className={styles.statusBar}>
+        <span className={styles.resultsCount}>
+          {filtering ? (
+            <>
+              Showing <strong>{shown}</strong> of <strong>{ARTICLES.length}</strong> guides
+              {category !== 'all' ? ` in ${category}` : ''}
+              {term ? ` matching "${query}"` : ''}
+            </>
+          ) : (
+            <>Showing all <strong>{ARTICLES.length}</strong> contractor playbooks & guides</>
+          )}
+        </span>
+        {filtering ? (
           <button
             type="button"
-            className="btn secondary"
+            className={styles.clearBtn}
             onClick={() => {
               setQuery('');
               setCategory('all');
             }}
           >
-            Reset filters & show all guides
+            Reset all filters
+          </button>
+        ) : null}
+      </div>
+
+      {/* Resource Grid */}
+      <div className={styles.grid}>
+        {ARTICLES.map((article) => (
+          <Link
+            key={article.slug}
+            href={`/resources/${article.slug}`}
+            className={styles.card}
+            hidden={!shows(article.slug, article.category)}
+          >
+            <div>
+              <div className={styles.cardHeader}>
+                <span className={styles.cardCategory}>
+                  <span aria-hidden="true">{CATEGORY_ICONS[article.category] ?? '📄'}</span>
+                  {article.category}
+                </span>
+                <span className={styles.cardReadTime}>{article.readMinutes} min read</span>
+              </div>
+              <h3 className={styles.cardTitle}>{article.title}</h3>
+              <p className={styles.cardExcerpt}>{article.excerpt}</p>
+            </div>
+            <div className={styles.cardFooter}>
+              <span>{formatArticleDate(article.datePublished)}</span>
+              <span className={styles.cardLinkText}>
+                Read guide <span aria-hidden="true">→</span>
+              </span>
+            </div>
+          </Link>
+        ))}
+      </div>
+
+      {/* Empty State when zero results */}
+      {shown === 0 ? (
+        <div className={styles.emptyState}>
+          <div className={styles.emptyIcon} aria-hidden="true">
+            🔍
+          </div>
+          <h3 className={styles.emptyTitle}>No matching contractor guides found</h3>
+          <p className={styles.emptyDesc}>
+            We couldn’t find any guides matching &ldquo;{query}&rdquo;
+            {category !== 'all' ? ` in ${category}` : ''}. Try another search term or browse all categories.
+          </p>
+          <button
+            type="button"
+            className={styles.btnSecondary}
+            onClick={() => {
+              setQuery('');
+              setCategory('all');
+            }}
+          >
+            Show all {ARTICLES.length} guides
           </button>
         </div>
       ) : null}
