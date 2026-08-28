@@ -149,7 +149,8 @@ export function resolvePropertyIntelProfile(input: {
     }
   }
 
-  const isPre1978 = Boolean(input.yearBuilt && input.yearBuilt > 0 && input.yearBuilt < 1978);
+  const numYear = Number(input.yearBuilt);
+  const isPre1978 = Boolean(Number.isFinite(numYear) && numYear > 0 && numYear < 1978);
   const needsLeadScreening = isPre1978 && SCOPE_PATTERNS.disturbs_paint.test(scopeText);
 
   return {
