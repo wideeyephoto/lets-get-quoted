@@ -67,10 +67,8 @@ export const CAPABILITIES: Record<string, CapabilityTruth> = {
   outbound_texting: {
     id: 'outbound_texting',
     name: '2-Way Business Texting (SMS/MMS)',
-    status: 'pending',
+    status: 'live',
     description: 'Automated SMS dispatches for quote approvals, arrival windows, and review requests.',
-    knownLimitations: 'Undergoing 10DLC carrier registration with mobile networks.',
-    disclosureRequired: 'Carrier registration is in progress; automated outgoing SMS dispatches are not sending live messages today.',
   },
   ai_voice_receptionist: {
     id: 'ai_voice_receptionist',
