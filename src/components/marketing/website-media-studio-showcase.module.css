@@ -207,20 +207,6 @@
   justify-content: center;
 }
 
-.videoOverlayBadge {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  font-size: 0.68rem;
-  font-family: var(--font-mono, monospace);
-  padding: 0.2rem 0.5rem;
-  border-radius: 6px;
-  background: rgba(0, 0, 0, 0.75);
-  color: #38bdf8;
-  border: 1px solid rgba(56, 189, 248, 0.3);
-  z-index: 3;
-}
-
 .heroLoopHeading {
   font-size: 1.25rem;
   font-weight: 800;

@@ -267,7 +267,6 @@ export default function WebsiteMediaStudioShowcase() {
                   />
                   <div className={styles.heroLoopScrim} />
                   <div className={styles.heroLoopOverlay}>
-                    <span className={styles.videoOverlayBadge}>● Live Video Background Loop</span>
                     <div style={{ color: 'var(--flare)', fontSize: '0.72rem', fontWeight: 800, textTransform: 'uppercase' }}>
                       Green Valley Turf &amp; Grounds
                     </div>
