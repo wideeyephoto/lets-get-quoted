@@ -1,4 +1,5 @@
 import EmailThemeSection from '@/app/dashboard/marketing/EmailThemeSection';
+import { DEMO_COMPANY_NAME } from '@/lib/demo-data';
 
 export const metadata = { title: 'Email themes — Live Demo' };
 
@@ -15,12 +16,12 @@ export default function DemoEmailThemesPage() {
         </div>
       </section>
       <EmailThemeSection
-        businessName="Lawn & Order Landscapers"
-        accent="#d65316"
+        businessName={DEMO_COMPANY_NAME}
+        accent="#2f9e5c"
         logoUrl={null}
         currentTheme="studio"
         websiteTemplate="handy"
-        userEmail="demo-owner@lawnandorder.example.com"
+        userEmail="dana@evergreenlawn.example.com"
       />
     </main>
   );

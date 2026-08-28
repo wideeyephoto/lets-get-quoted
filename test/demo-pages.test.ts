@@ -8,10 +8,11 @@ import { listCrew, listCrewAssignmentsForJobs } from '@/lib/crew';
 import { listJobs } from '@/lib/jobs';
 import { getMapPins } from '@/lib/map-pins';
 import { getReviewsSummary } from '@/lib/reviews';
-import { loadRecipients } from '@/lib/campaigns';
+import { loadRecipients, listCampaigns, loadListHealth } from '@/lib/campaigns';
 import { listRebookCandidates } from '@/lib/rebook';
 import { buildRecurringView } from '@/lib/recurring-view';
 import { loadBlogWorkspace } from '@/lib/site-blog';
+import { resolvePayrollRange } from '@/lib/payroll';
 
 /**
  * The demo runs the REAL builders against a fixture client, which is the whole
@@ -65,8 +66,15 @@ describe('every builder the demo runs can be answered by the fixture client', ()
     await expect(getReviewsSummary(demoSupabase, DEMO_ACCOUNT_ID)).resolves.toBeDefined();
   });
 
-  it('marketing recipients and rebook candidates', async () => {
-    await expect(loadRecipients(demoSupabase, DEMO_ACCOUNT_ID)).resolves.toBeDefined();
+  it('marketing campaigns, list health, and recommendations', async () => {
+    const [recipients, campaigns, listHealth] = await Promise.all([
+      loadRecipients(demoSupabase, DEMO_ACCOUNT_ID),
+      listCampaigns(demoSupabase, DEMO_ACCOUNT_ID),
+      loadListHealth(demoSupabase, DEMO_ACCOUNT_ID),
+    ]);
+    expect(Array.isArray(recipients)).toBe(true);
+    expect(Array.isArray(campaigns)).toBe(true);
+    expect(listHealth).toBeDefined();
     await expect(listRebookCandidates(demoSupabase, DEMO_ACCOUNT_ID)).resolves.toBeDefined();
   });
 
@@ -76,5 +84,37 @@ describe('every builder the demo runs can be answered by the fixture client', ()
 
   it('blog workspace', async () => {
     await expect(loadBlogWorkspace(demoSupabase, DEMO_ACCOUNT_ID, ROOT_DOMAIN)).resolves.toBeDefined();
+  });
+
+  it('payroll period resolutions', () => {
+    const periods = ['this-week', 'last-week', 'this-month', 'last-month'] as const;
+    for (const p of periods) {
+      const res = resolvePayrollRange(p);
+      expect(res.startIso).toBeTruthy();
+      expect(res.endIso).toBeTruthy();
+      expect(res.label).toBeTruthy();
+    }
+  });
+
+  it('demo tour structure and step continuity', async () => {
+    const { TOUR_STEPS, DEMO_SHOWCASE_WORKFLOW } = await import('@/lib/demo-tour-data');
+    expect(TOUR_STEPS.length).toBe(6);
+    for (let i = 0; i < TOUR_STEPS.length; i++) {
+      const step = TOUR_STEPS[i];
+      expect(step.step).toBe(i + 1);
+      expect(step.href).toBe(`/demo/tour/${step.slug}`);
+      if (i > 0) {
+        expect(step.prevHref).toBe(TOUR_STEPS[i - 1].href);
+      } else {
+        expect(step.prevHref).toBeNull();
+      }
+      if (i < TOUR_STEPS.length - 1) {
+        expect(step.nextHref).toBe(TOUR_STEPS[i + 1].href);
+      } else {
+        expect(step.nextHref).toBeNull();
+      }
+    }
+    expect(DEMO_SHOWCASE_WORKFLOW.company.name).toBe('Evergreen Lawn & Landscape');
+    expect(DEMO_SHOWCASE_WORKFLOW.job.lineItems.length).toBeGreaterThan(0);
   });
 });

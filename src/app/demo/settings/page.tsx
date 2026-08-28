@@ -113,25 +113,55 @@ export default function DemoSettingsPage() {
           },
           {
             id: 'automations',
-            label: 'Automations',
+            label: 'Automations & AI',
+            anchors: ['ai-receptionist', 'automations', 'lead-scoring', 'follow-ups'],
             content: (
-              <section className="panel workspace-section-card">
-                <div className="section-heading workspace-section-heading">
-                  <p className="eyebrow">Runs without you</p>
-                  <h2>What the app does on its own</h2>
-                </div>
-                <p className="workspace-card-copy">
-                  Each of these is a switch with a plain description of exactly what it sends and when:
-                  review requests after a finished job, follow-ups on quotes nobody has answered, appointment
-                  reminders, a daily digest, missed-call texts, arrival updates, and the AI that
-                  reads and scores incoming leads.
-                </p>
-                <p className="workspace-card-copy">
-                  Every one is off until you turn it on, and each says what a customer will actually receive
-                  before you do.{' '}
-                  <Link href="/demo">The dashboard shows which are running and what they did.</Link>
-                </p>
-              </section>
+              <div className="workspace-section-group" id="automations">
+                <section className="panel workspace-section-card" id="ai-receptionist">
+                  <div className="section-heading workspace-section-heading">
+                    <p className="eyebrow">24/7 AI Receptionist</p>
+                    <h2>Never miss a high-value caller</h2>
+                  </div>
+                  <p className="workspace-card-copy">
+                    Answers incoming calls 24/7 with a natural voice tuned specifically for your trade. It gathers
+                    project details, provides preliminary price ranges from your price book, answers common questions,
+                    and books available arrival windows directly into your schedule while you are on site or after hours.
+                  </p>
+                  <p className="workspace-card-copy">
+                    Every call generates a full audio recording, real-time transcription, and a structured summary with
+                    extracted contact info, project scope, and urgency score delivered straight to your inbox and messages rail.
+                  </p>
+                </section>
+
+                <section className="panel workspace-section-card" id="lead-scoring">
+                  <div className="section-heading workspace-section-heading">
+                    <p className="eyebrow">AI Lead Intake &amp; Scoring</p>
+                    <h2>Instant triage and route matching</h2>
+                  </div>
+                  <p className="workspace-card-copy">
+                    When homeowners submit an estimate request online, AI parses their notes, photos, and project scope.
+                    It computes an instant preliminary range, checks route proximity against your existing scheduled jobs,
+                    and delivers a pre-scored HOT/WARM/COLD lead (e.g. 94/100) so you know exactly which leads to quote first.
+                  </p>
+                </section>
+
+                <section className="panel workspace-section-card" id="follow-ups">
+                  <div className="section-heading workspace-section-heading">
+                    <p className="eyebrow">Customer Communication Workflows</p>
+                    <h2>What the app sends on its own</h2>
+                  </div>
+                  <p className="workspace-card-copy">
+                    Each communication automation is a toggle with plain-English rules:
+                    automated 5-minute missed-call text backs, on-my-way arrival tracking links for crews,
+                    courteous quote follow-up sequences for unanswered proposals, automated appointment reminders,
+                    and post-job Google review requests.
+                  </p>
+                  <p className="workspace-card-copy">
+                    Every workflow is configurable, and each shows what a customer will actually receive before it sends.{' '}
+                    <Link href="/demo">The dashboard displays active automation history and impact in real time.</Link>
+                  </p>
+                </section>
+              </div>
             ),
           },
           {

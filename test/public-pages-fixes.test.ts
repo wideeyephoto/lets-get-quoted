@@ -79,7 +79,7 @@ describe('P2: Demo Automations Link & Route', () => {
   });
 
   it('demo automations route redirects to /demo/settings', () => {
-    expect(demoAutoCode).toContain("redirect('/demo/settings')");
+    expect(demoAutoCode).toMatch(/redirect\('\/demo\/settings(#automations)?'\)/);
   });
 });
 

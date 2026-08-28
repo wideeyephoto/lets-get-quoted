@@ -68,7 +68,7 @@ const GROUPS: { label: string; accent: string; items: DemoItem[] }[] = [
     items: [
       { icon: '/dashboard/quick-stops', label: 'Quick Stops', href: '/demo/quick-stops' },
       { icon: '/dashboard/schedule/booking', label: 'Online Booking', href: '/demo/schedule/booking' },
-      { icon: '/dashboard/voice-calls', label: '24/7 AI Receptionist', href: '/demo/settings' },
+      { icon: '/dashboard/voice-calls', label: '24/7 AI Receptionist', href: '/demo/settings#automations' },
     ],
   },
   {
@@ -85,7 +85,7 @@ const GROUPS: { label: string; accent: string; items: DemoItem[] }[] = [
     label: 'Marketing & AI',
     accent: 'grow',
     items: [
-      { icon: '/dashboard/automations', label: 'Automations', href: '/demo/settings' },
+      { icon: '/dashboard/automations', label: 'Automations', href: '/demo/settings#automations' },
       { icon: '/dashboard/marketing', label: 'Marketing', href: '/demo/marketing' },
       { icon: '/dashboard/reviews', label: 'Reviews', href: '/demo/reviews' },
     ],

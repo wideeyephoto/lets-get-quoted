@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { Icon } from '@/app/dashboard/schedule/booking/icons';
 import { WEEKDAY_LABELS, formatWindowClock } from '@/lib/booking-availability';
 import { DEMO_BOOKING, DEMO_SITE_HOST } from '@/lib/demo-data';
@@ -38,9 +39,9 @@ export default function DemoBookingPage() {
           </h1>
           <p>Customers request a preferred arrival window. You confirm the final time.</p>
         </div>
-        <span className="btn secondary bset-head-cta" aria-disabled="true">
-          View booking page <Icon name="external" />
-        </span>
+        <Link href="/demo/tour/site" className="btn secondary bset-head-cta" aria-label="View demo contractor website booking flow">
+          View customer booking <Icon name="external" />
+        </Link>
       </header>
 
       <section className="bset-master">

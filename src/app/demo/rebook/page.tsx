@@ -1,5 +1,5 @@
 import { listRebookCandidates, REBOOK_DAY_OPTIONS, DEFAULT_REBOOK_DAYS } from '@/lib/rebook';
-import { DEMO_ACCOUNT_ID } from '@/lib/demo-data';
+import { DEMO_ACCOUNT_ID, DEMO_COMPANY_NAME } from '@/lib/demo-data';
 import { demoSupabase } from '@/lib/demo-rows';
 import RebookScreen from '@/app/dashboard/rebook/RebookScreen';
 
@@ -27,8 +27,8 @@ export default async function DemoRebookPage({ searchParams }: { searchParams: {
       days={days}
       // Both set, so a visitor sees the working page rather than the two
       // "finish setting this up" states a fresh account would see.
-      businessName="Northline Exteriors"
-      mailingAddress="1421 Maple Street, Royal Oak, MI 48067"
+      businessName={DEMO_COMPANY_NAME}
+      mailingAddress="1418 Maplewood Ave, Royal Oak, MI 48067"
       basePath="/demo"
       readOnly
     />

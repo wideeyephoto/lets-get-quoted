@@ -1,7 +1,9 @@
+import Link from 'next/link';
 import type { Service } from '@/lib/services';
 import { formatUnitPrice, glyphsForServices, priceBookStats, unitSuffix } from '@/lib/price-book';
 import ServiceIcon from '@/lib/templates/ServiceIcon';
 import PriceBookStats from '@/components/price-book-stats';
+import { DEMO_ACCOUNT_ID } from '@/lib/demo-data';
 import { APP_SIGNUP_URL } from '@/components/marketing/links';
 
 export const metadata = { title: 'Price book — Live Demo' };
@@ -21,7 +23,7 @@ function demoService(
 ): Service {
   return {
     id,
-    account_id: 'demo',
+    account_id: DEMO_ACCOUNT_ID,
     name,
     description,
     unit_price,
@@ -48,11 +50,13 @@ const DEMO_SERVICES: Service[] = [
   demoService('svc-11', 'Fertilization treatment', 75, 'visit', 'Season-appropriate granular feed with spot weed control.', 11),
 ];
 
-export default function DemoServicesPage() {
-  const services = DEMO_SERVICES;
-  const active = services.filter((s) => s.active);
+export default function DemoServicesPage({ searchParams }: { searchParams?: { filter?: string } }) {
+  const filter = searchParams?.filter === 'archived' ? 'archived' : 'active';
+  const services = filter === 'active' ? DEMO_SERVICES.filter((s) => s.active) : DEMO_SERVICES.filter((s) => !s.active);
+  const activeCount = DEMO_SERVICES.filter((s) => s.active).length;
+  const archivedCount = DEMO_SERVICES.filter((s) => !s.active).length;
   const glyphs = glyphsForServices(services.map((s) => s.name));
-  const stats = priceBookStats(active.map((s) => s.unit_price));
+  const stats = priceBookStats(DEMO_SERVICES.filter((s) => s.active).map((s) => s.unit_price));
 
   return (
     <main className="wide-shell workspace-shell">
@@ -70,35 +74,55 @@ export default function DemoServicesPage() {
 
       <section className="panel workspace-section-card">
         <div className="section-heading workspace-section-heading compact-heading">
-          <p className="eyebrow">Services{active.length > 0 ? ` · ${active.length} active` : ''}</p>
+          <p className="eyebrow">Services{activeCount > 0 ? ` · ${activeCount} active` : ''}</p>
         </div>
 
-        <div className="status-tabs workspace-status-tabs">
-          <span className="status-tab active">Active ({active.length})</span>
-          <span className="status-tab">Archived (0)</span>
+        <div className="status-tabs workspace-status-tabs" role="tablist" aria-label="Service status filter">
+          <Link
+            href="/demo/services?filter=active"
+            className={`status-tab${filter === 'active' ? ' active' : ''}`}
+            role="tab"
+            aria-selected={filter === 'active'}
+          >
+            Active ({activeCount})
+          </Link>
+          <Link
+            href="/demo/services?filter=archived"
+            className={`status-tab${filter === 'archived' ? ' active' : ''}`}
+            role="tab"
+            aria-selected={filter === 'archived'}
+          >
+            Archived ({archivedCount})
+          </Link>
         </div>
 
-        <div className="service-list">
-          {services.map((service, index) => (
-            <div key={service.id} className="service-row">
-              <div className="service-row-top">
-                <span className="service-glyph"><ServiceIcon name={glyphs[index]} /></span>
-                <div className="service-row-main">
-                  <span className="service-price">
-                    {formatUnitPrice(service.unit_price)}
-                    {unitSuffix(service.unit) ? <span className="service-price-unit">{unitSuffix(service.unit)}</span> : null}
-                  </span>
-                  <strong className="service-name">{service.name}</strong>
+        {services.length === 0 ? (
+          <p className="empty-state" style={{ padding: '2rem 1rem' }}>
+            No archived services. All configured services are active and ready for quotes, proposals, and online booking.
+          </p>
+        ) : (
+          <div className="service-list">
+            {services.map((service, index) => (
+              <div key={service.id} className="service-row">
+                <div className="service-row-top">
+                  <span className="service-glyph"><ServiceIcon name={glyphs[index]} /></span>
+                  <div className="service-row-main">
+                    <span className="service-price">
+                      {formatUnitPrice(service.unit_price)}
+                      {unitSuffix(service.unit) ? <span className="service-price-unit">{unitSuffix(service.unit)}</span> : null}
+                    </span>
+                    <strong className="service-name">{service.name}</strong>
+                  </div>
+                </div>
+                {service.description ? <p className="service-desc">{service.description}</p> : null}
+                <div className="service-row-actions">
+                  <span className="btn secondary" aria-disabled="true">Edit</span>
+                  <button type="button" className="btn secondary" disabled>Archive</button>
                 </div>
               </div>
-              {service.description ? <p className="service-desc">{service.description}</p> : null}
-              <div className="service-row-actions">
-                <span className="btn secondary" aria-disabled="true">Edit</span>
-                <button type="button" className="btn secondary" disabled>Archive</button>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </section>
 
       <section className="panel workspace-section-card demo-locked-card">

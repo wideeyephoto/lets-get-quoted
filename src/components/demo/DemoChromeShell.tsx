@@ -11,12 +11,12 @@ export default function DemoChromeShell({ children }: { children: ReactNode }) {
   const isTour = pathname?.startsWith('/demo/tour');
   const isStandaloneSimulator = pathname?.startsWith('/demo/sms-quote');
   const isStandaloneReel = pathname?.startsWith('/demo/reel');
+  const isStandaloneCustomizer = pathname?.startsWith('/demo/customize');
 
-  // These two experiences own their own chrome. The lifecycle tour simulates
-  // both sides of a job, while the SMS quote route is a self-contained
-  // marketing simulator with SiteHeader/SiteFooter. Wrapping either in the
-  // dashboard rail produces two navigation systems in the same frame.
-  if (isTour || isStandaloneSimulator || isStandaloneReel) {
+  // These experiences own their own chrome (marketing headers, interactive full-frame
+  // simulators, or guided lifecycle tours). Wrapping them in the dashboard rail
+  // produces nested navigation systems in the same frame.
+  if (isTour || isStandaloneSimulator || isStandaloneReel || isStandaloneCustomizer) {
     return <div className="demo-tour-shell">{children}</div>;
   }
 

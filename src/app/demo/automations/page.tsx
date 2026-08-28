@@ -6,5 +6,5 @@ import { redirect } from 'next/navigation';
  * links to /demo/automations do not 404.
  */
 export default function DemoAutomationsRedirect() {
-  redirect('/demo/settings');
+  redirect('/demo/settings#automations');
 }

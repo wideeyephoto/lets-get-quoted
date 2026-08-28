@@ -9,6 +9,7 @@ import {
 } from '@/components/flagship/site-chrome';
 import {
   FLEX_PRICE,
+  LOWEST_PLATFORM_FEE,
   PLAN_FEE_RANGE_LABEL,
   PUBLIC_PRICING_SUMMARY,
   STRIPE_PROCESSING_NOTE,
@@ -254,8 +255,8 @@ export default function FeaturesPage() {
         {/* The plan range stays beside the primary action and comes from the
             same canonical catalog as /pricing. */}
         <p className="index-hero-fee">
-          Start free. No card required. Flex includes a 1.25% platform fee.{' '}
-          <Link href="/pricing">See pricing</Link>
+          Flex starts at {FLEX_PRICE.platformFee} platform fee (or as low as {LOWEST_PLATFORM_FEE} on Pro) on collected payments. Free to build &amp; quote.{' '}
+          <Link href="/pricing">Compare exact prices and limits</Link>
         </p>
 
         {/* One connected Job Record workflow simulation */}

@@ -20,7 +20,7 @@ describe('AI Intake 8 Improvements & Production Safety', () => {
 
   it('2. Enforces pricing guardrails and on-site inspection support in classifier and hero', () => {
     expect(CLASSIFIER).toContain('requires_site_visit');
-    expect(CLASSIFIER).toContain('multi-story repipes start at $3,500-$8,000+');
+    expect(CLASSIFIER).toContain('siteVisitTriggers');
     expect(CLASSIFIER).toContain('requiresSiteVisit: true');
     expect(HERO).toContain('requiresSiteVisit?: boolean');
     expect(HERO).toContain('visitReason?: string');

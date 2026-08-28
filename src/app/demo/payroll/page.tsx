@@ -1,9 +1,11 @@
+import Link from 'next/link';
 import { formatMoney } from '@/lib/jobs';
 import {
   PAYROLL_PERIODS,
   resolvePayrollRange,
   summarizePayrollCosts,
   type PayrollCostRow,
+  type PayrollPeriod,
 } from '@/lib/payroll';
 import type { CrewMember } from '@/lib/crew';
 import { DEMO_CREW } from '@/lib/demo-data';
@@ -13,12 +15,11 @@ export const metadata = { title: 'Payroll — Live Demo' };
 
 export const dynamic = 'force-dynamic';
 
-// Fictional hours logged by each active crew member this pay period, split
-// across the jobs they worked. Amount is hours × the member's hourly rate —
-// exactly what the real field app stores as each labor entry's cost. Kept
-// inline so the /demo section stays 100% static with zero backend calls.
+// Fictional hours logged by each active crew member, scaled by pay period.
+// Amount is hours × the member's hourly rate — exactly what the real field app
+// stores as each labor entry's cost.
 type CrewHoursEntry = { jobId: string; hours: number };
-const DEMO_CREW_HOURS: Record<string, CrewHoursEntry[]> = {
+const BASE_HOURS: Record<string, CrewHoursEntry[]> = {
   'crew-1': [ // Mike Torres — Crew Lead
     { jobId: 'job-9', hours: 24 },
     { jobId: 'job-10', hours: 18 },
@@ -37,18 +38,25 @@ const DEMO_CREW_HOURS: Record<string, CrewHoursEntry[]> = {
   ],
 };
 
-// Turn the inline hours into the same labor-cost rows the real payroll rollup
-// consumes, so this demo reuses the production summarizePayrollCosts helper.
-function buildDemoCostRows(crew: CrewMember[]): PayrollCostRow[] {
+const PERIOD_MULTIPLIERS: Record<PayrollPeriod, number> = {
+  'this-week': 1.0,
+  'last-week': 0.95,
+  'this-month': 3.8,
+  'last-month': 4.1,
+};
+
+function buildDemoCostRows(crew: CrewMember[], period: PayrollPeriod): PayrollCostRow[] {
+  const mult = PERIOD_MULTIPLIERS[period] ?? 1.0;
   const rows: PayrollCostRow[] = [];
   for (const member of crew) {
-    for (const entry of DEMO_CREW_HOURS[member.id] ?? []) {
+    for (const entry of BASE_HOURS[member.id] ?? []) {
+      const scaledHours = Math.round(entry.hours * mult);
       rows.push({
         crew_id: member.id,
         crew_name: member.name,
         crew_role_label: member.role_label,
-        hours: entry.hours,
-        amount: entry.hours * member.hourly_rate,
+        hours: scaledHours,
+        amount: scaledHours * member.hourly_rate,
         job_id: entry.jobId,
       });
     }
@@ -63,10 +71,19 @@ function rangeLabel(startIso: string, endIso: string): string {
   return `${fmt(start)} – ${fmt(end)}`;
 }
 
-export default function DemoPayrollPage() {
+export default function DemoPayrollPage({
+  searchParams,
+}: {
+  searchParams?: { period?: string };
+}) {
+  const validPeriods = PAYROLL_PERIODS.map((p) => p.id);
+  const period: PayrollPeriod = (validPeriods.includes(searchParams?.period as PayrollPeriod)
+    ? searchParams?.period
+    : 'this-week') as PayrollPeriod;
+
   const activeCrew = DEMO_CREW.filter((member) => member.active);
-  const { rows, totalHours, totalPay } = summarizePayrollCosts(buildDemoCostRows(activeCrew));
-  const { startIso, endIso, label } = resolvePayrollRange('this-week');
+  const { rows, totalHours, totalPay } = summarizePayrollCosts(buildDemoCostRows(activeCrew, period));
+  const { startIso, endIso, label } = resolvePayrollRange(period);
 
   return (
     <main className="wide-shell workspace-shell">
@@ -84,15 +101,17 @@ export default function DemoPayrollPage() {
 
       <section className="panel workspace-section-card">
         <div className="section-heading workspace-section-heading compact-heading rebook-heading">
-          <div className="status-tabs workspace-status-tabs">
+          <div className="status-tabs workspace-status-tabs" role="tablist" aria-label="Pay period selection">
             {PAYROLL_PERIODS.map((option) => (
-              <span
+              <Link
                 key={option.id}
-                className={`status-tab${option.id === 'this-week' ? ' active' : ''}`}
-                aria-disabled="true"
+                href={`/demo/payroll?period=${option.id}`}
+                className={`status-tab${option.id === period ? ' active' : ''}`}
+                role="tab"
+                aria-selected={option.id === period}
               >
                 {option.label}
-              </span>
+              </Link>
             ))}
           </div>
           <button type="button" className="btn ghost" disabled>
