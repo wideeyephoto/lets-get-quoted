@@ -288,7 +288,7 @@ export default function TextToJobWorkspace({
   function handleCopyNumber() {
     navigator.clipboard.writeText(fieldPhoneNumber.replace(/[^\d+]/g, ''));
     setCopiedNumber(true);
-    setNotification(`📋 Copied Sparky field hotline (${fieldPhoneNumber}) to clipboard!`);
+    setNotification(`📋 Copied field hotline number (${fieldPhoneNumber}) to clipboard!`);
     setTimeout(() => {
       setCopiedNumber(false);
       setNotification(null);
@@ -487,12 +487,12 @@ export default function TextToJobWorkspace({
           </button>
           <a
             href={`data:text/vcard;charset=utf-8,${encodeURIComponent(
-              `BEGIN:VCARD\nVERSION:3.0\nFN:${businessTitle} Sparky Field Hotline\nTEL;TYPE=CELL:${fieldPhoneNumber}\nNOTE:Text-to-Job with Sparky AI Ingest\nEND:VCARD`
+              `BEGIN:VCARD\nVERSION:3.0\nFN:${businessTitle} Field Hotline\nTEL;TYPE=CELL:${fieldPhoneNumber}\nNOTE:Text-to-Job Field Ingest Hotline\nEND:VCARD`
             )}`}
-            download="sparky-field-hotline.vcf"
+            download="field-hotline.vcf"
             className={styles.vcardBtn}
           >
-            📱 Save Sparky Hotline (.vcf)
+            📱 Save Field Hotline (.vcf)
           </a>
         </div>
       </div>
