@@ -1593,44 +1593,279 @@
 }
 
 /* ==========================================================================
-   Printable Truck Sun-Visor Card Modal & Preview (Optimized for Screenshot)
+   Printable Truck Sun-Visor Card Modal & Preview (Optimized for Screenshot & PDF)
    ========================================================================== */
-.printModalCard {
-  max-width: 680px;
-  width: 95vw;
-}
-
-.printableCardBox {
-  position: relative;
-  background: #ffffff;
-  color: #0f172a;
-  border-radius: 16px;
+.modalCard {
+  background: #0d1b2a;
+  border: 1px solid rgba(255, 122, 33, 0.35);
+  border-radius: 20px;
   padding: 24px;
+  max-width: 620px;
+  width: 92vw;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.75);
   display: flex;
   flex-direction: column;
   gap: 16px;
-  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45);
-  border: 2px solid #e2e8f0;
-  margin: 10px 0;
+  animation: modalPop 0.2s ease-out;
+  color: #f5f0e7;
 }
 
+.printModalCard {
+  max-width: 720px;
+  width: 95vw;
+  background: linear-gradient(180deg, #0d1b2a 0%, #071018 100%);
+  border: 1px solid rgba(255, 122, 33, 0.4);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.85);
+}
+
+.modalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.modalTitleGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.modalTitle {
+  font-size: 19px;
+  font-weight: 900;
+  color: #f5f0e7;
+  margin: 0;
+  font-family: var(--font-display, inherit);
+  letter-spacing: -0.02em;
+}
+
+.modalSubtitle {
+  font-size: 13px;
+  color: #94a3b8;
+  margin: 0;
+  line-height: 1.45;
+}
+
+.modalSubtitle strong {
+  color: #ff8e42;
+}
+
+/* Customizer Toolbar */
+.cardCustomizerRow {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr auto;
+  gap: 12px;
+  align-items: flex-end;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+
+@media (max-width: 640px) {
+  .cardCustomizerRow {
+    grid-template-columns: 1fr;
+  }
+}
+
+.cardCustomizerGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cardCustomizerLabel {
+  font-size: 11px;
+  font-weight: 700;
+  color: #8fa6b5;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.cardCustomizerInput,
+.cardCustomizerSelect {
+  background: #060e17;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  padding: 8px 12px;
+  color: #f5f0e7;
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+  transition: all 0.15s ease;
+}
+
+.cardCustomizerInput:focus,
+.cardCustomizerSelect:focus {
+  border-color: #ff7a21;
+  box-shadow: 0 0 0 2px rgba(255, 122, 33, 0.2);
+}
+
+.themeTogglePillRow {
+  display: flex;
+  gap: 4px;
+  background: #060e17;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 3px;
+  border-radius: 8px;
+}
+
+.themeToggleBtn {
+  background: transparent;
+  border: none;
+  color: #8fa6b5;
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  font-family: inherit;
+}
+
+.themeToggleBtnActive {
+  background: rgba(255, 122, 33, 0.2);
+  color: #ff8e42;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* Printable Physical Card Box */
+.printableCardBox {
+  position: relative;
+  border-radius: 16px;
+  padding: 24px 24px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin: 4px 0;
+  transition: all 0.2s ease;
+}
+
+/* Laminated White Card Mode */
+.printableCardLaminated {
+  background: #ffffff;
+  color: #0f172a;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.1);
+  border: 2px solid #cbd5e1;
+}
+
+.printableCardLaminated .cardTopHeader {
+  border-bottom: 2px solid #0f172a;
+}
+
+.printableCardLaminated .cardCompanyTitle {
+  color: #0f172a;
+}
+
+.printableCardLaminated .cardTradeSub {
+  color: #64748b;
+}
+
+.printableCardLaminated .cardHotlineTag {
+  color: #ea580c;
+  background: #fff7ed;
+  border: 1px solid #fdba74;
+}
+
+.printableCardLaminated .cardPhraseBox {
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+}
+
+.printableCardLaminated .cardPhraseBoxWide {
+  background: #fffbeb;
+  border-color: #fde68a;
+}
+
+.printableCardLaminated .cardPhraseLabel {
+  color: #ea580c;
+}
+
+.printableCardLaminated .cardPhraseText {
+  color: #1e293b;
+}
+
+.printableCardLaminated .cardFooterRules {
+  color: #475569;
+  border-top: 1px solid #e2e8f0;
+}
+
+/* Stealth Dark Card Mode */
+.printableCardStealth {
+  background: linear-gradient(135deg, #0f1f2e 0%, #08121c 100%);
+  color: #f5f0e7;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(255, 122, 33, 0.2);
+  border: 2px solid rgba(255, 122, 33, 0.4);
+}
+
+.printableCardStealth .cardTopHeader {
+  border-bottom: 2px solid rgba(255, 122, 33, 0.4);
+}
+
+.printableCardStealth .cardCompanyTitle {
+  color: #f5f0e7;
+}
+
+.printableCardStealth .cardTradeSub {
+  color: #94a3b8;
+}
+
+.printableCardStealth .cardHotlineTag {
+  color: #ff8e42;
+  background: rgba(255, 122, 33, 0.15);
+  border: 1px solid rgba(255, 122, 33, 0.45);
+}
+
+.printableCardStealth .cardPhraseBox {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.printableCardStealth .cardPhraseBoxWide {
+  background: rgba(255, 122, 33, 0.08);
+  border-color: rgba(255, 122, 33, 0.3);
+}
+
+.printableCardStealth .cardPhraseLabel {
+  color: #ff8e42;
+}
+
+.printableCardStealth .cardPhraseText {
+  color: #f5f0e7;
+}
+
+.printableCardStealth .cardFooterRules {
+  color: #94a3b8;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Visor Clip Tab */
 .visorNotch {
   position: absolute;
   top: -1px;
   left: 50%;
   transform: translateX(-50%);
-  width: 54px;
-  height: 8px;
-  background: #cbd5e1;
-  border-radius: 0 0 6px 6px;
+  width: 68px;
+  height: 9px;
+  background: #94a3b8;
+  border-radius: 0 0 8px 8px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  overflow: hidden;
+}
+
+.visorClipShine {
+  width: 100%;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.7);
 }
 
 .cardTopHeader {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  border-bottom: 2px solid #0f172a;
-  padding-bottom: 12px;
+  padding-bottom: 10px;
   gap: 10px;
   flex-wrap: wrap;
 }
@@ -1639,29 +1874,26 @@
   font-size: 18px;
   font-weight: 900;
   margin: 0;
-  color: #0f172a;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.015em;
 }
 
 .cardTradeSub {
   font-size: 11px;
-  color: #64748b;
   font-weight: 700;
   display: flex;
   gap: 5px;
   align-items: center;
   margin-top: 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .cardHotlineTag {
   font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 900;
-  color: #ea580c;
-  background: #fff7ed;
   padding: 4px 10px;
   border-radius: 6px;
-  border: 1px solid #fdba74;
   white-space: nowrap;
 }
 
@@ -1678,10 +1910,8 @@
 }
 
 .cardPhraseBox {
-  background: #f8fafc;
-  border: 1px solid #cbd5e1;
   border-radius: 8px;
-  padding: 10px;
+  padding: 10px 12px;
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -1689,21 +1919,17 @@
 
 .cardPhraseBoxWide {
   grid-column: 1 / -1;
-  background: #fffbeb;
-  border-color: #fde68a;
 }
 
 .cardPhraseLabel {
   font-size: 10px;
   font-weight: 900;
   text-transform: uppercase;
-  color: #ea580c;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
 }
 
 .cardPhraseText {
   font-size: 12px;
-  color: #1e293b;
   margin: 0;
   line-height: 1.4;
   font-weight: 600;
@@ -1713,18 +1939,16 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 11px;
-  color: #475569;
-  border-top: 1px solid #e2e8f0;
+  font-size: 10.5px;
   padding-top: 10px;
   flex-wrap: wrap;
   gap: 8px;
 }
 
 .cardPoweredBy {
-  font-size: 10px;
+  font-size: 9.5px;
   font-weight: 800;
-  color: #94a3b8;
+  opacity: 0.8;
   text-transform: uppercase;
 }
 
@@ -1734,21 +1958,22 @@
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
-  padding-top: 10px;
-  border-top: 1px solid var(--line, rgba(255, 255, 255, 0.08));
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .printActionBtn {
   background: #ff7a21;
   color: #0b1520;
   border: none;
-  font-size: 13px;
-  font-weight: 800;
-  padding: 10px 18px;
+  font-size: 13.5px;
+  font-weight: 850;
+  padding: 10px 20px;
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.15s ease;
   font-family: inherit;
+  box-shadow: 0 4px 14px rgba(255, 122, 33, 0.3);
 }
 
 .printActionBtn:hover {
@@ -1757,7 +1982,7 @@
 }
 
 .copyCheatBtn {
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.15);
   color: #f5f0e7;
   font-size: 13px;
@@ -1770,7 +1995,8 @@
 }
 
 .copyCheatBtn:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.25);
 }
 
 .closeActionBtn {
@@ -1781,6 +2007,7 @@
   font-weight: 700;
   padding: 10px 14px;
   cursor: pointer;
+  transition: all 0.15s ease;
 }
 
 .closeActionBtn:hover {
@@ -1795,5 +2022,7 @@
     box-shadow: none;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
+    page-break-inside: avoid;
+    break-inside: avoid;
   }
 }

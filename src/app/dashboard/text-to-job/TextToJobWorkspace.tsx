@@ -219,6 +219,74 @@ export interface TextToJobWorkspaceProps {
   crewCount: number;
 }
 
+const TRADE_PHRASES: Record<string, {
+  changeOrder: string;
+  milestone: string;
+  punchList: string;
+  newLead: string;
+  receipts: string;
+}> = {
+  Electrical: {
+    changeOrder: '“Add $450 to Miller job for extra 12/2 Romex line and pantry GFCI”',
+    milestone: '“Miller 200A service upgrade passed rough inspection. Schedule drywall.”',
+    punchList: '“Punch list for Smith: 1) label breaker panel 2) test master bedroom arc-faults”',
+    newLead: '“New lead: Dave Miller 248-555-0812 burning smell in main panel needs emergency visit”',
+    receipts: '“Supply house receipt ($184.20 Square D breakers & Romex wire)”',
+  },
+  HVAC: {
+    changeOrder: '“Add $285 to Johnson job for 45/5 dual capacitor and 2 lbs R-410A refrigerant”',
+    milestone: '“Carrier furnace install complete and pressure tested. Ready for final inspection.”',
+    punchList: '“Punch list for Davis: 1) install Ecobee thermostat 2) seal plenum ductwork”',
+    newLead: '“New lead: Sarah Jenkins 248-555-0991 AC blowing warm air needs repair ASAP”',
+    receipts: '“Johnstone Supply receipt ($340 filter driers and recovery tank)”',
+  },
+  Plumbing: {
+    changeOrder: '“Add $350 to Roberts job for extra 3/4 PEX loop and pressure regulator valve”',
+    milestone: '“Rough plumbing inspection passed on Elm St. Drywall crew cleared to hang.”',
+    punchList: '“Punch list for Miller: 1) caulk master shower surround 2) test garbage disposal”',
+    newLead: '“New lead: Tom Clark 248-555-0122 main sewer line backup needs emergency snake”',
+    receipts: '“Ferguson receipt ($148.50 SharkBite valves & PVC fittings)”',
+  },
+  Roofing: {
+    changeOrder: '“Add $550 change order for 4 sheets CDX plywood decking rot repair on Johnson roof”',
+    milestone: '“Tear-off and ice & water shield complete. Shingle crew starts tomorrow 7am.”',
+    punchList: '“Punch list for Smith: 1) magnet sweep driveway for nails 2) seal chimney flashing”',
+    newLead: '“New lead: Rachel Adams 248-555-0433 active roof leak in attic needs tarping”',
+    receipts: '“ABC Supply receipt ($1,240 CertainTeed Landmark shingles & drip edge)”',
+  },
+  'General Contractor': {
+    changeOrder: '“Add $1,200 to Henderson kitchen for custom quartz overhang and waterfall edge”',
+    milestone: '“Rough framing & MEP passed inspection on Oak St. Insulation scheduled Friday.”',
+    punchList: '“Punch list for Wilson: 1) touch up hallway baseboard paint 2) adjust soft-close cabinet hinges”',
+    newLead: '“New lead: Mark Vance 248-555-0774 full master bathroom remodel needs estimate”',
+    receipts: '“Home Depot receipt ($485 drywall sheets & Schluter Ditra membrane)”',
+  },
+  Landscaping: {
+    changeOrder: '“Add $650 to Miller job for 5 yards dark mulch and 12 boxwood shrubs”',
+    milestone: '“Grading and paver patio base compacted. Paver installation starts Thursday.”',
+    punchList: '“Punch list for Taylor: 1) edge front walkways 2) adjust sprinkler zone 3 timers”',
+    newLead: '“New lead: Karen White 248-555-0319 spring cleanup and retaining wall rebuild”',
+    receipts: '“Nursery invoice ($890 sod rolls, fertilizer, and edging stone)”',
+  },
+  Painting: {
+    changeOrder: '“Add $380 to Davis job for 2 coats satin enamel on all interior doors and trim”',
+    milestone: '“Drywall patching & primer coat complete. Color coat starts tomorrow 8am.”',
+    punchList: '“Punch list for Parker: 1) touch up ceiling seam 2) razor scrape window glass”',
+    newLead: '“New lead: Greg Scott 248-555-0642 exterior whole-home repaint estimate”',
+    receipts: '“Sherwin-Williams receipt ($290 Duration interior satin & blue tape)”',
+  },
+};
+
+const AVAILABLE_TRADES = [
+  'Electrical',
+  'HVAC',
+  'Plumbing',
+  'Roofing',
+  'General Contractor',
+  'Landscaping',
+  'Painting',
+];
+
 export default function TextToJobWorkspace({
   account,
   crewMembers = [],
@@ -244,6 +312,18 @@ export default function TextToJobWorkspace({
   const [showSimModal, setShowSimModal] = useState<boolean>(false);
   const [showPrintModal, setShowPrintModal] = useState<boolean>(false);
 
+  // Visor Card Customizer State
+  const [printBizName, setPrintBizName] = useState(
+    account?.company_name || 'Apex Contracting & Trade Pro'
+  );
+  const [printTrade, setPrintTrade] = useState(
+    account?.trade && AVAILABLE_TRADES.includes(account.trade) ? account.trade : 'Electrical'
+  );
+  const [cardTheme, setCardTheme] = useState<'laminated' | 'stealth'>('laminated');
+
+  const selectedPhrases =
+    TRADE_PHRASES[printTrade] || TRADE_PHRASES['General Contractor'] || TRADE_PHRASES['Electrical'];
+
   function handlePrintVisorCard() {
     if (typeof window !== 'undefined') {
       window.print();
@@ -251,22 +331,22 @@ export default function TextToJobWorkspace({
   }
 
   function handleCopyVisorCheatsheet() {
-    const text = `📱 ${businessTitle} Field Ingest Hotline: ${fieldPhoneNumber}
+    const text = `📱 ${printBizName || businessTitle} Field Ingest Hotline: ${fieldPhoneNumber}
 
 1. CHANGE ORDERS & QUOTES:
-   "Add $[Amount] to [Client Name] for [Materials & Labor]"
+   ${selectedPhrases.changeOrder}
 
 2. MILESTONES & INSPECTIONS:
-   "[Client Name] passed [Rough/Final] inspection. Schedule crew [Day]."
+   ${selectedPhrases.milestone}
 
 3. PUNCH LIST TASKS:
-   "Punch list for [Client]: 1)... 2)... 3)..."
+   ${selectedPhrases.punchList}
 
 4. EMERGENCY LEADS:
-   "New lead: [Name], [Phone], [Service needed], [When]"
+   ${selectedPhrases.newLead}
 
 5. RECEIPTS & EXPENSES:
-   Snap photo of supply house receipt or site damage to auto-attach.
+   ${selectedPhrases.receipts}
 
 🛡️ 15-Min SMS Undo: Reply UNDO within 15 minutes to revert.`;
     navigator.clipboard.writeText(text);
@@ -1309,7 +1389,7 @@ export default function TextToJobWorkspace({
                 <span className={styles.badge}>🪪 Truck Visor &amp; Glovebox Guide</span>
                 <h3 className={styles.modalTitle}>Printable Quick-Reference Card</h3>
                 <p className={styles.modalSubtitle}>
-                  Formatted for easy screenshot (<strong>Win + Shift + S</strong> / <strong>Cmd + Shift + 4</strong>) or 1-click print for your truck sun visor.
+                  Formatted for easy screenshot (<strong>Win + Shift + S</strong> / <strong>Cmd + Shift + 4</strong>) or 1-click printer export for your truck sun visor.
                 </p>
               </div>
               <button
@@ -1322,21 +1402,85 @@ export default function TextToJobWorkspace({
               </button>
             </div>
 
+            {/* Customizer Toolbar */}
+            <div className={styles.cardCustomizerRow}>
+              <div className={styles.cardCustomizerGroup}>
+                <label htmlFor="visor-biz-input" className={styles.cardCustomizerLabel}>
+                  Company Name:
+                </label>
+                <input
+                  id="visor-biz-input"
+                  type="text"
+                  value={printBizName}
+                  onChange={(e) => setPrintBizName(e.target.value)}
+                  className={styles.cardCustomizerInput}
+                  placeholder="Your Company Name"
+                />
+              </div>
+
+              <div className={styles.cardCustomizerGroup}>
+                <label htmlFor="visor-trade-select" className={styles.cardCustomizerLabel}>
+                  Trade Phrases:
+                </label>
+                <select
+                  id="visor-trade-select"
+                  value={printTrade}
+                  onChange={(e) => setPrintTrade(e.target.value)}
+                  className={styles.cardCustomizerSelect}
+                >
+                  {AVAILABLE_TRADES.map((trade) => (
+                    <option key={trade} value={trade}>
+                      {trade}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className={styles.cardCustomizerGroup}>
+                <span className={styles.cardCustomizerLabel}>Card Theme:</span>
+                <div className={styles.themeTogglePillRow}>
+                  <button
+                    type="button"
+                    onClick={() => setCardTheme('laminated')}
+                    className={`${styles.themeToggleBtn} ${cardTheme === 'laminated' ? styles.themeToggleBtnActive : ''}`}
+                  >
+                    ☀️ Laminated White
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCardTheme('stealth')}
+                    className={`${styles.themeToggleBtn} ${cardTheme === 'stealth' ? styles.themeToggleBtnActive : ''}`}
+                  >
+                    🌙 Stealth Dark
+                  </button>
+                </div>
+              </div>
+            </div>
+
             {/* High-Contrast Printable Physical Card */}
-            <div className={styles.printableCardBox} id="printable-truck-card">
-              <div className={styles.visorNotch} title="Visor Clip Slot" />
-              
+            <div
+              className={`${styles.printableCardBox} ${
+                cardTheme === 'stealth' ? styles.printableCardStealth : styles.printableCardLaminated
+              }`}
+              id="printable-truck-card"
+            >
+              <div className={styles.visorNotch} title="Visor Clip Slot">
+                <div className={styles.visorClipShine} />
+              </div>
+
               <div className={styles.cardTopHeader}>
                 <div>
-                  <h4 className={styles.cardCompanyTitle}>{businessTitle}</h4>
+                  <h4 className={styles.cardCompanyTitle}>{printBizName || businessTitle}</h4>
                   <div className={styles.cardTradeSub}>
-                    <span>{account?.trade || 'Contractor'}</span>
+                    <span>{printTrade}</span>
                     <span>&bull;</span>
                     <span>Text-to-Job Field Guide</span>
                   </div>
                 </div>
                 <div className={styles.cardHotlineTag}>
-                  <span>📱 Text: {fieldPhoneNumber}</span>
+                  <span>
+                    📱 Text: {isQualified ? fieldPhoneNumber : '🔒 Setup Alert Phone to Unlock'}
+                  </span>
                 </div>
               </div>
 
@@ -1344,42 +1488,42 @@ export default function TextToJobWorkspace({
                 <div className={styles.cardPhraseBox}>
                   <span className={styles.cardPhraseLabel}>1. Change Orders &amp; Quotes</span>
                   <p className={styles.cardPhraseText}>
-                    &ldquo;Add $[Amount] to [Client] for [Materials &amp; Labor]&rdquo;
+                    {selectedPhrases.changeOrder}
                   </p>
                 </div>
 
                 <div className={styles.cardPhraseBox}>
                   <span className={styles.cardPhraseLabel}>2. Milestones &amp; Inspections</span>
                   <p className={styles.cardPhraseText}>
-                    &ldquo;[Client] passed [Rough/Final] inspection. Schedule crew [Day].&rdquo;
+                    {selectedPhrases.milestone}
                   </p>
                 </div>
 
                 <div className={styles.cardPhraseBox}>
                   <span className={styles.cardPhraseLabel}>3. Punch List Tasks</span>
                   <p className={styles.cardPhraseText}>
-                    &ldquo;Punch list for [Client]: 1) [Task 1] 2) [Task 2]&rdquo;
+                    {selectedPhrases.punchList}
                   </p>
                 </div>
 
                 <div className={styles.cardPhraseBox}>
                   <span className={styles.cardPhraseLabel}>4. Emergency Leads</span>
                   <p className={styles.cardPhraseText}>
-                    &ldquo;New lead: [Name], [Phone], [Service needed]&rdquo;
+                    {selectedPhrases.newLead}
                   </p>
                 </div>
 
                 <div className={`${styles.cardPhraseBox} ${styles.cardPhraseBoxWide}`}>
                   <span className={styles.cardPhraseLabel}>5. Receipts &amp; Job Photos</span>
                   <p className={styles.cardPhraseText}>
-                    &ldquo;Snap receipt photo at supply house or site damage photo to auto-attach.&rdquo;
+                    {selectedPhrases.receipts}
                   </p>
                 </div>
               </div>
 
               <div className={styles.cardFooterRules}>
                 <span>↺ <strong>15-Min SMS Undo:</strong> Reply <code>UNDO</code> to revert any change.</span>
-                <span className={styles.cardPoweredBy}>Sparky Field Hotline</span>
+                <span className={styles.cardPoweredBy}>Sparky Field Hotline &bull; Let&apos;s Get Quoted</span>
               </div>
             </div>
 
