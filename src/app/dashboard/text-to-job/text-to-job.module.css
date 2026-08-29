@@ -273,6 +273,24 @@
   transform: translateY(-1px);
 }
 
+.bottomHotlineBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  background: var(--bg-2, #102234);
+  border: 1px solid var(--line, rgba(255, 255, 255, 0.08));
+  border-radius: 12px;
+  padding: 14px 18px;
+}
+
+.bottomHotlineLeft {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 /* ==========================================================================
    Metrics Strip (Single Row)
    ========================================================================== */

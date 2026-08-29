@@ -546,15 +546,6 @@ export default function TextToJobWorkspace({
           <button type="button" onClick={handleCopyNumber} className={styles.copyBtn}>
             {copiedNumber ? '✓ Copied Number' : `📋 Copy ${fieldPhoneNumber}`}
           </button>
-          <a
-            href={`data:text/vcard;charset=utf-8,${encodeURIComponent(
-              `BEGIN:VCARD\nVERSION:3.0\nFN:${businessTitle} Field Hotline\nTEL;TYPE=CELL:${fieldPhoneNumber}\nNOTE:Text-to-Job Field Ingest Hotline\nEND:VCARD`
-            )}`}
-            download="field-hotline.vcf"
-            className={styles.vcardBtn}
-          >
-            📱 Save Field Hotline (.vcf)
-          </a>
         </div>
       </div>
 
@@ -1059,6 +1050,30 @@ export default function TextToJobWorkspace({
           </Link>
         </div>
       )}
+
+      {/* Bottom Hotline Card (.vcf Download) */}
+      <div className={styles.bottomHotlineBar}>
+        <div className={styles.bottomHotlineLeft}>
+          <span style={{ fontSize: '22px' }}>📱</span>
+          <div>
+            <strong style={{ color: '#f5f0e7', fontSize: '13px' }}>
+              Save {fieldPhoneNumber} to Phonebook (.vcf)
+            </strong>
+            <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: '#8fa6b5' }}>
+              Download the contact card to make hands-free voice dictation with Siri and Android Auto instant.
+            </p>
+          </div>
+        </div>
+        <a
+          href={`data:text/vcard;charset=utf-8,${encodeURIComponent(
+            `BEGIN:VCARD\nVERSION:3.0\nFN:${businessTitle} Field Hotline\nTEL;TYPE=CELL:${fieldPhoneNumber}\nNOTE:Text-to-Job Field Ingest Hotline\nEND:VCARD`
+          )}`}
+          download="field-hotline.vcf"
+          className={styles.vcardBtn}
+        >
+          📱 Save Field Hotline (.vcf)
+        </a>
+      </div>
 
       {/* Simulator Modal Popup */}
       {showSimModal && (
