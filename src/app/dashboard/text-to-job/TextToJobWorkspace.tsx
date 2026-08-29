@@ -1417,14 +1417,6 @@ export default function TextToJobWorkspace({
           <button type="button" onClick={() => setShowSimModal(true)} className={styles.unifiedActionBtnPrimary}>
             ⚡ Test a Note
           </button>
-          <button type="button" onClick={() => setShowPrintModal(true)} className={styles.unifiedActionBtnSecondary}>
-            🪪 Visor Card
-          </button>
-          {!isDedicatedNumber && (
-            <Link href="/dashboard/settings" className={styles.unifiedDedicatedLink}>
-              ⭐ Dedicated #
-            </Link>
-          )}
         </div>
       </div>
 
