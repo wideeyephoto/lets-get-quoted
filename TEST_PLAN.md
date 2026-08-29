@@ -257,6 +257,14 @@ stripe trigger charge.refunded
   bracket. Alert emails are best-effort (a Resend failure is swallowed so it
   can't make Stripe retry the event). Remaining gap: no SMS alert, and no
   automatic retry/reversal handling for a failed destination transfer.
+- ✅ RESOLVED (2026-08-29): Base plan subscription cancellation & restore lifecycle
+  tested and verified live on production with an active Solo plan ($39/mo).
+  `cancelBasePlanSubscriptionAtPeriodEnd()` safely schedules period-end termination
+  (`cancel_at_period_end: true`), pre-writes audit event `subscription_cancellation_requested`
+  to `account_events`, transmits idempotency key with state token, and Stripe webhook
+  `customer.subscription.updated` is ingested into `billing_events`. Solo plan remains
+  active through the end of the paid period without renewal. Detailed run log:
+  [docs/subscription-cancellation-live-test-2026-08-29.md](docs/subscription-cancellation-live-test-2026-08-29.md).
 - ❌ QuickBooks OAuth two-way sync (CSV export is the only path today)
 - ❌ Twilio missed-call text-back + AI (Claude) text intake
 - ❌ Wisetack financing integration (schema has a dormant `finance_plans`

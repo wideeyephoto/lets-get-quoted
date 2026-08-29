@@ -4,6 +4,7 @@ import ExampleFrame from '@/components/marketing/example-frame';
 import QuickStopPanel from '@/components/quick-stop-panel';
 import { QuickStopIcon } from '@/components/quick-stop-icons';
 import QuickStopHeroSimulation from './QuickStopHeroSimulation';
+import QuickStopJourneySequence from './QuickStopJourneySequence';
 import { FEATURE_PRICING_NOTE, STRIPE_PROCESSING_NOTE } from '@/lib/pricing';
 import {
   QUICK_STOP_STATUS_LABEL,
@@ -149,29 +150,6 @@ const PROMISES = [
   'You set the time',
   'You set the priority visit fee',
   'The window is confirmed when the fee is paid',
-] as const;
-
-const FLOW = [
-  {
-    icon: 'route',
-    title: 'We find the right jobs',
-    body: 'Customers near your route that day are offered it — plus anyone inside a priority area you have drawn, which is how you say “this neighbourhood is worth the extra drive”.',
-  },
-  {
-    icon: 'bell',
-    title: 'You get the request',
-    body: 'The job, the address, the customer’s details and how far off your route they are — texted and emailed to you the moment it lands.',
-  },
-  {
-    icon: 'tag',
-    title: 'You set the terms',
-    body: 'Pick the arrival window and the priority visit fee that makes the detour worth taking. Or decline, and it stays an ordinary lead.',
-  },
-  {
-    icon: 'check',
-    title: 'They pay the visit fee',
-    body: 'The fee reserves the window and nothing else — the work is quoted and invoiced as usual. Or they skip it and carry on as a normal inquiry. Either way you keep the lead.',
-  },
 ] as const;
 
 /* Answers checked against the product: the fee band, the detour limit, the
@@ -389,23 +367,7 @@ export default function QuickStopsPage() {
             </span>
           </p>
 
-          <h3 className={styles.flowTitle}>The flow, start to finish</h3>
-          <ol className={styles.flow}>
-            {FLOW.map((step, index) => (
-              <li key={step.title} className={styles.flowStep}>
-                <span className={styles.flowBadge}>
-                  <QuickStopIcon name={step.icon} className={styles.flowIcon} />
-                  {/* Rhythm, not information — the heading carries the meaning
-                      and "1 We find the right jobs" read aloud is noise. */}
-                  <span className={styles.flowNum} aria-hidden="true">
-                    {index + 1}
-                  </span>
-                </span>
-                <strong>{step.title}</strong>
-                <p>{step.body}</p>
-              </li>
-            ))}
-          </ol>
+          <QuickStopJourneySequence />
         </section>
       }
       cta={{

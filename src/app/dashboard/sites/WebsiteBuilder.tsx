@@ -6,7 +6,7 @@ import type { SiteImage } from '@/lib/site-images';
 import { getSiteGallery, STOCK_SITE_IMAGES } from '@/lib/site-images';
 import { getSiteContent, getTradeGlyphOptions, getUnreviewedGeneratedSections, glyphForContent, mergeSiteContent, COLOR_SCHEMES, getActiveColorSchemes, getColorScheme, HEADER_STYLES,
   MENU_BUTTON_STYLES,
-  BLOG_STYLES, BUTTON_STYLES, HEADER_BUTTON_STYLES, WORDMARK_STYLES, HERO_TEXT_SHADOW_STYLES, QUOTE_FORM_STYLES, QUOTE_FORM_FIELD_BGS, QUOTE_FORM_RADII, QUOTE_FORM_STEPPERS, QUOTE_FORM_BADGES, QUOTE_FORM_WIDTHS, QUOTE_FORM_TRUST_CUES, DEFAULT_QUOTE_FORM_TRUST_ITEMS, HERO_BADGE_PRESETS, HERO_BADGE_STYLES, IMAGE_SLOT_LABELS, MAX_EXTRA_HERO_IMAGES, PROJECT_SHOWCASE_STYLES, MAX_PROJECT_SHOWCASE_ITEMS, DEFAULT_PROJECT_SHOWCASE_PLACEHOLDERS, DEFAULT_PROJECT_SHOWCASE_EYEBROW, DEFAULT_PROJECT_SHOWCASE_TITLE, STOCK_PROJECT_SHOWCASE_EYEBROW, STOCK_PROJECT_SHOWCASE_TITLE, VIDEO_SECTION_STYLES, videoStyleCapacity, videoSectionKey, MAX_VIDEO_SECTIONS, DEFAULT_VIDEOS_NAV_LABEL, type NormalizedSiteContent, type SiteHeroTextShadowStyle, type SiteProjectShowcaseContent, type SiteVideoSectionContent, type SiteBlogContent, type SiteAnnouncementContent, type SiteBeforeAfterContent, type SiteServicesContent, type SiteHowItWorksContent, type SiteFaqContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteShowcaseItem, type SiteStatItem, type SiteStatsContent, type SiteTestimonialItem, type SiteStickyCallBarContent, type SiteChatButtonContent, type SiteAnalyticsContent, type SiteTestimonialsContent, type SiteTrustBadgesContent, type SiteWhyUsContent, type SiteLegalContent, type QuoteFormRadius, type QuoteFormWidth, type QuoteFormStepper, type QuoteFormBadge } from '@/lib/site-content';
+  BLOG_STYLES, BUTTON_STYLES, HEADER_BUTTON_STYLES, WORDMARK_STYLES, HERO_TEXT_SHADOW_STYLES, QUOTE_FORM_STYLES, QUOTE_FORM_FIELD_BGS, QUOTE_FORM_RADII, QUOTE_FORM_STEPPERS, QUOTE_FORM_BADGES, QUOTE_FORM_WIDTHS, QUOTE_FORM_TRUST_CUES, DEFAULT_QUOTE_FORM_TRUST_ITEMS, HERO_BADGE_PRESETS, HERO_BADGE_STYLES, IMAGE_SLOT_LABELS, MAX_EXTRA_HERO_IMAGES, PROJECT_SHOWCASE_STYLES, MAX_PROJECT_SHOWCASE_ITEMS, DEFAULT_PROJECT_SHOWCASE_PLACEHOLDERS, DEFAULT_PROJECT_SHOWCASE_EYEBROW, DEFAULT_PROJECT_SHOWCASE_TITLE, STOCK_PROJECT_SHOWCASE_EYEBROW, STOCK_PROJECT_SHOWCASE_TITLE, QUICK_STOP_SECTION_STYLES, VIDEO_SECTION_STYLES, videoStyleCapacity, videoSectionKey, MAX_VIDEO_SECTIONS, DEFAULT_VIDEOS_NAV_LABEL, type NormalizedSiteContent, type SiteHeroTextShadowStyle, type SiteProjectShowcaseContent, type SiteVideoSectionContent, type SiteBlogContent, type SiteAnnouncementContent, type SiteBeforeAfterContent, type SiteServicesContent, type SiteQuickStopContent, type SiteQuickStopStyle, type SiteHowItWorksContent, type SiteFaqContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteShowcaseItem, type SiteStatItem, type SiteStatsContent, type SiteTestimonialItem, type SiteStickyCallBarContent, type SiteChatButtonContent, type SiteAnalyticsContent, type SiteTestimonialsContent, type SiteTrustBadgesContent, type SiteWhyUsContent, type SiteLegalContent, type QuoteFormRadius, type QuoteFormWidth, type QuoteFormStepper, type QuoteFormBadge } from '@/lib/site-content';
 import { generatePrivacyPolicy, generateTermsOfService } from '@/lib/legal/legal-copy';
 import { AVAILABLE_TEMPLATES } from '@/lib/templates/types';
 import ServiceIcon, { SERVICE_ICON_KEYS } from '@/lib/templates/ServiceIcon';
@@ -64,6 +64,7 @@ const OPEN_TARGETS: Record<string, { tab: BuilderTab; card: string }> = {
   theme: { tab: 'design', card: 'theme' },
   quoteFormStyle: { tab: 'design', card: 'quoteFormStyle' },
   intakeStyle: { tab: 'page', card: 'estimate' },
+  quickStop: { tab: 'page', card: 'quickStop' },
 };
 
 // Heading font choices. The webfont options reuse faces the app already loads
@@ -127,6 +128,7 @@ const SECTION_CATEGORY_MAP: Record<string, PageSectionCategory> = {
   hero: 'top',
   announcement: 'top',
   services: 'work',
+  quickStop: 'work',
   showcase: 'work',
   beforeAfter: 'work',
   video: 'work',
@@ -495,8 +497,9 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, mess
   // review is not a section the owner has filled in, and ticking the box for it
   // told them they were done when they were one click from publishing it.
   const hasLiveSection =
-    (siteContent.services.enabled && siteContent.services.items.some((svc) => svc.title.trim())) ||
+    (siteContent.services.enabled && siteContent.services.items.length > 0) ||
     (siteContent.howItWorks.enabled && siteContent.howItWorks.steps.some((step) => step.title.trim())) ||
+    (siteContent.quickStop.enabled && siteContent.quickStop.items.length > 0) ||
     (siteContent.showcase.enabled && siteContent.showcase.items.length > 0) ||
     (siteContent.projectShowcase.enabled && siteContent.projectShowcase.items.length > 0) ||
     (siteContent.faqs.enabled && siteContent.faqs.items.some((faq) => faq.question.trim() && faq.answer.trim())) ||
@@ -702,6 +705,8 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, mess
     const SECTION_TARGETS: Record<string, string> = {
       header: 'header',
       'our-services': 'services',
+      'quick-stop': 'quickStop',
+      quickStop: 'quickStop',
       'how-it-works': 'howItWorks',
       showcase: 'showcase',
       reviews: 'testimonials',
@@ -1420,6 +1425,10 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, mess
 
   const updateServices = useCallback((services: SiteServicesContent) => {
     updateSiteContent({ services });
+  }, [updateSiteContent]);
+
+  const updateQuickStop = useCallback((quickStop: SiteQuickStopContent) => {
+    updateSiteContent({ quickStop });
   }, [updateSiteContent]);
 
   const updateHowItWorks = useCallback((howItWorks: SiteHowItWorksContent) => {
@@ -2766,6 +2775,231 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, mess
                                   ))}
                                 </div>
                                 {siteContent.services.items.length < 15 && <button type="button" className={styles.secondaryAction} onClick={() => { const id = createContentId('svc'); updateServices({ ...siteContent.services, enabled: true, items: [...siteContent.services.items, { id, icon: 'spark', title: '', description: '' }] }); setEditingItemId(id); }}>Add service</button>}
+                              </SectionCard>
+                            )}
+
+                            {isSectionVisible('quickStop', 'quick stop priority visits same day next day route gap small fixes repairs diagnostics micro visits') && (
+                              <SectionCard
+                                reorder={reorderProps('quickStop', 'Quick Stop priority visits')}
+                                title="Quick Stop priority visits"
+                                description="Explain your fast route-gap visit service for small fixes, diagnostics, and quick repairs with fixed upfront fees."
+                                evidence="Surfacing same-day and next-day route-gap slots captures high-intent homeowners with urgent small tasks who can't wait weeks."
+                                enabled={siteContent.quickStop.enabled}
+                                onToggleEnabled={(value) => updateQuickStop({ ...siteContent.quickStop, enabled: value })}
+                                {...contentHint(siteContent.quickStop.enabled, siteContent.quickStop.items.length, 'feature', 'features')}
+                                open={openSection === 'quickStop'}
+                                onToggleOpen={() => toggleSection('quickStop')}
+                              >
+                                <label className={styles.formField}>
+                                  <span>Presentation style</span>
+                                  <select
+                                    value={siteContent.quickStop.style}
+                                    onChange={(event) =>
+                                      updateQuickStop({
+                                        ...siteContent.quickStop,
+                                        style: event.target.value as SiteQuickStopStyle,
+                                      })
+                                    }
+                                  >
+                                    {QUICK_STOP_SECTION_STYLES.map((st) => (
+                                      <option key={st.key} value={st.key}>
+                                        {st.label} — {st.desc}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </label>
+                                <label className={styles.formField}>
+                                  <span>Top badge / banner pill</span>
+                                  <input
+                                    value={siteContent.quickStop.badgeText}
+                                    maxLength={50}
+                                    onChange={(event) =>
+                                      updateQuickStop({ ...siteContent.quickStop, badgeText: event.target.value })
+                                    }
+                                    placeholder="⚡ 15–45 min priority visits"
+                                  />
+                                </label>
+                                <label className={styles.formField}>
+                                  <span>Eyebrow tag</span>
+                                  <input
+                                    value={siteContent.quickStop.eyebrow}
+                                    maxLength={60}
+                                    onChange={(event) =>
+                                      updateQuickStop({ ...siteContent.quickStop, eyebrow: event.target.value })
+                                    }
+                                    placeholder="⚡ Same-Day & Next-Day Route Gaps"
+                                  />
+                                </label>
+                                <label className={styles.formField}>
+                                  <span>Section headline</span>
+                                  <input
+                                    value={siteContent.quickStop.title}
+                                    maxLength={120}
+                                    onChange={(event) =>
+                                      updateQuickStop({ ...siteContent.quickStop, title: event.target.value })
+                                    }
+                                    placeholder="Need a Quick Fix? We Squeeze Small Jobs into Our Route"
+                                  />
+                                </label>
+                                <label className={styles.formField}>
+                                  <span>Explanation text</span>
+                                  <textarea
+                                    rows={2}
+                                    value={siteContent.quickStop.intro}
+                                    maxLength={400}
+                                    onChange={(event) =>
+                                      updateQuickStop({ ...siteContent.quickStop, intro: event.target.value })
+                                    }
+                                    placeholder="Have a small repair or quick diagnostic? Quick Stops let us swing by between scheduled jobs for a flat priority visit fee."
+                                  />
+                                </label>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                                  <label className={styles.formField}>
+                                    <span>Flat fee note</span>
+                                    <input
+                                      value={siteContent.quickStop.feeNote}
+                                      maxLength={80}
+                                      onChange={(event) =>
+                                        updateQuickStop({ ...siteContent.quickStop, feeNote: event.target.value })
+                                      }
+                                      placeholder="Flat priority visit fee · Fixed upfront"
+                                    />
+                                  </label>
+                                  <label className={styles.formField}>
+                                    <span>CTA button label</span>
+                                    <input
+                                      value={siteContent.quickStop.ctaLabel}
+                                      maxLength={40}
+                                      onChange={(event) =>
+                                        updateQuickStop({ ...siteContent.quickStop, ctaLabel: event.target.value })
+                                      }
+                                      placeholder="Request a Quick Stop"
+                                    />
+                                  </label>
+                                </div>
+                                <label className={styles.formField}>
+                                  <span>CTA button link target</span>
+                                  <input
+                                    value={siteContent.quickStop.ctaHref}
+                                    maxLength={120}
+                                    onChange={(event) =>
+                                      updateQuickStop({ ...siteContent.quickStop, ctaHref: event.target.value })
+                                    }
+                                    placeholder="#contact"
+                                  />
+                                </label>
+
+                                <div className={styles.contentSubhead}>
+                                  <strong>Quick Stop Features &amp; Steps</strong>
+                                  <small>{siteContent.quickStop.items.length}/6</small>
+                                </div>
+
+                                <div className={styles.stackList}>
+                                  {siteContent.quickStop.items.map((item, index) => (
+                                    <StackItem
+                                      key={item.id}
+                                      title={item.title.trim() || `Item ${index + 1}`}
+                                      meta={item.badge}
+                                      editing={editingItemId === item.id}
+                                      onEdit={() => setEditingItemId(item.id)}
+                                      onSave={saveItem}
+                                      onRemove={() =>
+                                        updateQuickStop({
+                                          ...siteContent.quickStop,
+                                          items: siteContent.quickStop.items.filter((qs) => qs.id !== item.id),
+                                        })
+                                      }
+                                    >
+                                      <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr', gap: '0.75rem' }}>
+                                        <label className={styles.formField}>
+                                          <span>Icon</span>
+                                          <input
+                                            value={item.icon}
+                                            maxLength={6}
+                                            onChange={(event) =>
+                                              updateQuickStop({
+                                                ...siteContent.quickStop,
+                                                items: siteContent.quickStop.items.map((qs) =>
+                                                  qs.id === item.id ? { ...qs, icon: event.target.value } : qs
+                                                ),
+                                              })
+                                            }
+                                            placeholder="⚡"
+                                          />
+                                        </label>
+                                        <label className={styles.formField}>
+                                          <span>Badge tag</span>
+                                          <input
+                                            value={item.badge ?? ''}
+                                            maxLength={30}
+                                            onChange={(event) =>
+                                              updateQuickStop({
+                                                ...siteContent.quickStop,
+                                                items: siteContent.quickStop.items.map((qs) =>
+                                                  qs.id === item.id ? { ...qs, badge: event.target.value } : qs
+                                                ),
+                                              })
+                                            }
+                                            placeholder="Fast Arrival"
+                                          />
+                                        </label>
+                                      </div>
+                                      <label className={styles.formField}>
+                                        <span>Feature title</span>
+                                        <input
+                                          value={item.title}
+                                          maxLength={80}
+                                          onChange={(event) =>
+                                            updateQuickStop({
+                                              ...siteContent.quickStop,
+                                              items: siteContent.quickStop.items.map((qs) =>
+                                                qs.id === item.id ? { ...qs, title: event.target.value } : qs
+                                              ),
+                                            })
+                                          }
+                                          placeholder="Route-Gap Scheduling"
+                                        />
+                                      </label>
+                                      <label className={styles.formField}>
+                                        <span>Feature description</span>
+                                        <input
+                                          value={item.description}
+                                          maxLength={200}
+                                          onChange={(event) =>
+                                            updateQuickStop({
+                                              ...siteContent.quickStop,
+                                              items: siteContent.quickStop.items.map((qs) =>
+                                                qs.id === item.id ? { ...qs, description: event.target.value } : qs
+                                              ),
+                                            })
+                                          }
+                                          placeholder="We fit you into existing route gaps today or tomorrow."
+                                        />
+                                      </label>
+                                    </StackItem>
+                                  ))}
+                                </div>
+
+                                {siteContent.quickStop.items.length < 6 && (
+                                  <button
+                                    type="button"
+                                    className={styles.secondaryAction}
+                                    onClick={() => {
+                                      const id = createContentId('qs');
+                                      updateQuickStop({
+                                        ...siteContent.quickStop,
+                                        enabled: true,
+                                        items: [
+                                          ...siteContent.quickStop.items,
+                                          { id, icon: '⚡', title: '', description: '', badge: '' },
+                                        ],
+                                      });
+                                      setEditingItemId(id);
+                                    }}
+                                  >
+                                    Add item
+                                  </button>
+                                )}
                               </SectionCard>
                             )}
 

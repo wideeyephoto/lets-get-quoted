@@ -611,23 +611,21 @@ describe('the quick stops page', () => {
     expect(SRC).toContain('has no opinion about what you charge for the work');
   });
 
-  it('describes the flow once, in the four beats the dashboard uses', () => {
-    // It was seven, then three in the layout's own steps band. It is now the
-    // same four a signed-in contractor reads on /dashboard/quick-stops — and
-    // the layout's band is gone, because two flows and a six-rung lifecycle
-    // ladder is one story told three times.
+  it('describes the flow via the 4-turn QuickStopJourneySequence visual', () => {
     expect(SRC).not.toContain('stepsTitle=');
     expect(SRC).not.toContain('steps={[');
-    const flow = SRC.slice(SRC.indexOf('const FLOW = ['), SRC.indexOf('export default'));
-    expect([...flow.matchAll(/title: '/g)].length).toBe(4);
+    expect(SRC).toContain('<QuickStopJourneySequence />');
+    const JOURNEY = readFileSync('src/app/features/quick-stops/QuickStopJourneySequence.tsx', 'utf8');
+    const steps = JOURNEY.slice(JOURNEY.indexOf('const STEPS: SequenceStep[] = ['), JOURNEY.indexOf('export default'));
+    expect([...steps.matchAll(/tag: 'Turn /g)].length).toBe(4);
     const benefits = SRC.slice(SRC.indexOf('benefits={['), SRC.indexOf('afterBenefits={'));
     expect([...benefits.matchAll(/title: '/g)].length).toBe(3);
   });
 
-  it('carries the two facts the old three beats did not', () => {
-    // The reason the four are worth the swap rather than a restyle of the three.
-    expect(SRC).toContain('priority area you have drawn');
-    expect(SRC).toContain('texted and emailed to you the moment it lands');
+  it('carries the two facts in the sequence flow', () => {
+    const JOURNEY = readFileSync('src/app/features/quick-stops/QuickStopJourneySequence.tsx', 'utf8');
+    expect(JOURNEY).toContain('priority area you have drawn');
+    expect(JOURNEY).toContain('texted and emailed to you the moment it lands');
   });
 
   it('quotes no earnings figure at all', () => {

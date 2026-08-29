@@ -19,7 +19,7 @@
 // over ninety days of history to decorate a panel would be absurd. So this is
 // honest about being the first half — see `needsAiCheck`.
 
-import { QUICK_STOP_EXCLUSIONS, screenHardExclusions } from './quick-stop-qualify';
+import { QUICK_STOP_EXCLUSIONS, screenHardExclusions } from './quick-stop-exclusions';
 import { looksLikeTestRecord } from './test-data-markers';
 
 export type CandidateSource = 'lead' | 'job';

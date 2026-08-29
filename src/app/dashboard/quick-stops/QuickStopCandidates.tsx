@@ -1,3 +1,6 @@
+'use client';
+
+import { useState } from 'react';
 import Link from 'next/link';
 import {
   CANDIDATE_AI_NOTE,
@@ -7,6 +10,7 @@ import {
 } from '@/lib/quick-stop-candidates';
 import type { ScreeningSummary } from '@/lib/quick-stop-screenings';
 import { quickStopFunnel, quickStopFunnelSentence } from '@/lib/quick-stop-funnel';
+import { buildQuickStopPitch } from '@/lib/quick-stop-pitch';
 
 const SHOW = 6;
 
@@ -44,6 +48,9 @@ export default function QuickStopCandidates({
   enabled,
   reachable,
   results,
+  businessName = 'Your Business',
+  bookingUrl = '',
+  daysAhead = 1,
 }: {
   report: CandidateReport;
   screenings: ScreeningSummary;
@@ -53,7 +60,33 @@ export default function QuickStopCandidates({
   enabled: boolean;
   reachable: number;
   results?: QuickStopResults;
+  businessName?: string;
+  bookingUrl?: string;
+  daysAhead?: number;
 }) {
+  const [pitchOpen, setPitchOpen] = useState(false);
+  const [copiedType, setCopiedType] = useState<'sms' | 'email' | null>(null);
+
+  const pitch = buildQuickStopPitch({
+    businessName: businessName || 'Your Business',
+    bookingUrl: bookingUrl || 'https://letsgetquoted.com',
+    minFeeCents,
+    daysAhead,
+  });
+
+  const handleCopy = async (type: 'sms' | 'email') => {
+    try {
+      const textToCopy = type === 'sms' ? pitch.sms : `${pitch.subject}\n\n${pitch.body}`;
+      if (typeof navigator !== 'undefined' && navigator.clipboard) {
+        await navigator.clipboard.writeText(textToCopy);
+        setCopiedType(type);
+        setTimeout(() => setCopiedType(null), 3000);
+      }
+    } catch {
+      // Clipboard write failed
+    }
+  };
+
   const rules = quickStopRuleReference();
   const funnel = quickStopFunnel(report);
   const count = report.eligible.length;
@@ -365,6 +398,12 @@ export default function QuickStopCandidates({
                 </span>
               ))}
             </div>
+            {report.topReasons.some((r) => r.label.toLowerCase().includes('long') || r.label.toLowerCase().includes('visit')) ? (
+              <p style={{ marginTop: '0.65rem', fontSize: '0.8rem', color: 'var(--muted)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                <span>💡 Tip:</span>
+                <span>Work longer than {maxVisitMinutes}m was excluded. You can adjust your maximum visit duration in the <Link href="/dashboard/quick-stops?tab=settings#quick-stop-setup" style={{ color: '#ff9a52', textDecoration: 'underline' }}>Settings tab</Link>.</span>
+              </p>
+            ) : null}
           </div>
         ) : null}
 
@@ -375,10 +414,55 @@ export default function QuickStopCandidates({
               <p>
                 Quick Stops appear on your booking page, but past clients often don&rsquo;t check your website when a small repair pops up. You have <strong>{reachable}</strong> past {reachable === 1 ? 'client' : 'clients'} you can announce Quick Stops to via email or SMS.
               </p>
+              <div style={{ marginTop: '0.75rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={() => setPitchOpen(!pitchOpen)}
+                  className="btn secondary"
+                  style={{ minHeight: '38px', fontSize: '0.82rem', padding: '0.35rem 0.85rem' }}
+                >
+                  {pitchOpen ? 'Hide Pitch Preview' : '👁️ Preview Customer Pitch'}
+                </button>
+                <Link href="/dashboard/marketing/campaigns?draft=extra-stop#new-campaign" className="btn primary" style={{ minHeight: '38px', fontSize: '0.82rem', padding: '0.35rem 0.85rem' }}>
+                  Create Announcement Campaign →
+                </Link>
+              </div>
             </div>
-            <Link href="/dashboard/marketing/campaigns?draft=extra-stop#new-campaign" className="btn primary">
-              Promote Quick Stops →
-            </Link>
+
+            {pitchOpen ? (
+              <div style={{ marginTop: '1rem', padding: '1rem', background: 'rgba(var(--tint, 255,255,255), 0.04)', borderRadius: '10px', border: '1px solid var(--edge-t10, rgba(255,255,255,0.1))', width: '100%' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                  <h4 style={{ margin: 0, fontSize: '0.9rem', color: '#ff9a52' }}>📱 SMS Announcement Template</h4>
+                  <button
+                    type="button"
+                    onClick={() => handleCopy('sms')}
+                    className="btn ghost"
+                    style={{ minHeight: '32px', padding: '0.2rem 0.6rem', fontSize: '0.75rem' }}
+                  >
+                    {copiedType === 'sms' ? '✓ Copied SMS' : '📋 Copy SMS'}
+                  </button>
+                </div>
+                <div style={{ padding: '0.75rem', background: 'rgba(0,0,0,0.25)', borderRadius: '8px', fontSize: '0.84rem', fontFamily: 'monospace', whiteSpace: 'pre-wrap', marginBottom: '1rem' }}>
+                  {pitch.sms}
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                  <h4 style={{ margin: 0, fontSize: '0.9rem', color: '#ff9a52' }}>✉️ Email Announcement Template</h4>
+                  <button
+                    type="button"
+                    onClick={() => handleCopy('email')}
+                    className="btn ghost"
+                    style={{ minHeight: '32px', padding: '0.2rem 0.6rem', fontSize: '0.75rem' }}
+                  >
+                    {copiedType === 'email' ? '✓ Copied Email' : '📋 Copy Email'}
+                  </button>
+                </div>
+                <div style={{ padding: '0.75rem', background: 'rgba(0,0,0,0.25)', borderRadius: '8px', fontSize: '0.84rem', fontFamily: 'monospace', whiteSpace: 'pre-wrap' }}>
+                  <strong>Subject: {pitch.subject}</strong>
+                  <div style={{ marginTop: '0.5rem', whiteSpace: 'pre-wrap' }}>{pitch.body}</div>
+                </div>
+              </div>
+            ) : null}
           </div>
         ) : null}
 

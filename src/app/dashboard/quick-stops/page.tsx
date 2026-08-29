@@ -483,6 +483,9 @@ export default async function QuickStopsPage({ searchParams }: { searchParams: {
         maxVisitMinutes={settings.maxVisitMinutes}
         enabled={settings.enabled}
         results={resultsMetrics}
+        businessName={businessName}
+        bookingUrl={bookingUrl ?? ''}
+        daysAhead={settings.daysAhead}
       />
     </>
   );

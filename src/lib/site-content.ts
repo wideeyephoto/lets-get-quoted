@@ -531,6 +531,77 @@ export type SiteHowItWorksContent = {
   steps: SiteProcessStep[];
 };
 
+// ── Quick Stop (Priority Visits) Homeowner Section ────────────────────────
+export type SiteQuickStopStyle = 'cards' | 'banner' | 'timeline' | 'comparison';
+
+export type SiteQuickStopItem = {
+  id: string;
+  icon: string;
+  title: string;
+  description: string;
+  badge?: string;
+};
+
+export type SiteQuickStopContent = {
+  enabled: boolean;
+  style: SiteQuickStopStyle;
+  eyebrow: string;
+  title: string;
+  intro: string;
+  badgeText: string;
+  feeNote: string;
+  ctaLabel: string;
+  ctaHref: string;
+  items: SiteQuickStopItem[];
+};
+
+export const DEFAULT_QUICK_STOP_EYEBROW = '⚡ Same-Day & Next-Day Route Gaps';
+export const DEFAULT_QUICK_STOP_TITLE = 'Need a Quick Fix? We Squeeze Small Jobs into Our Route';
+export const DEFAULT_QUICK_STOP_INTRO = 'Have a small repair, quick diagnostic, or minor adjustment? Quick Stops let us swing by between scheduled jobs for a flat priority visit fee with no surprise callout charges.';
+export const DEFAULT_QUICK_STOP_BADGE = '⚡ 15–45 min priority visits';
+export const DEFAULT_QUICK_STOP_FEE_NOTE = 'Flat priority visit fee · Fixed upfront';
+export const DEFAULT_QUICK_STOP_CTA = 'Request a Quick Stop';
+
+export const QUICK_STOP_SECTION_STYLES = [
+  { key: 'cards', label: 'Feature Cards', desc: '3 or 4 highlight cards breaking down benefits and key features.' },
+  { key: 'banner', label: 'Express Ribbon', desc: 'A high-impact banner with route status and instant booking.' },
+  { key: 'timeline', label: '4-Step Flow', desc: 'A connected step-by-step roadmap from request to completion.' },
+  { key: 'comparison', label: 'Quick Stop vs. Project', desc: 'A side-by-side comparison table contrasting Quick Stops with major jobs.' },
+] as const;
+
+export const QUICK_STOP_STYLE_KEYS = new Set<string>(QUICK_STOP_SECTION_STYLES.map((s) => s.key));
+
+export const DEFAULT_QUICK_STOP_ITEMS: SiteQuickStopItem[] = [
+  {
+    id: 'qs-1',
+    icon: '⚡',
+    title: 'Small Repairs & Diagnostics',
+    description: 'Designed specifically for quick 15–45 min fixes, shutoffs, minor leaks, and on-site troubleshooting.',
+    badge: 'Quick Scope',
+  },
+  {
+    id: 'qs-2',
+    icon: '🗺️',
+    title: 'Route-Gap Scheduling',
+    description: 'We fit you into existing route gaps today or tomorrow so you don’t have to wait weeks for service.',
+    badge: 'Fast Arrival',
+  },
+  {
+    id: 'qs-3',
+    icon: '🏷️',
+    title: 'Transparent Flat Visit Fee',
+    description: 'Upfront priority visit fee approved before we roll. No surprise hourly spikes or mystery fees.',
+    badge: 'Upfront Price',
+  },
+  {
+    id: 'qs-4',
+    icon: '📱',
+    title: 'Live 15-Minute ETA Updates',
+    description: 'Real-time text message alerts when your technician is en route with an accurate arrival window.',
+    badge: 'Direct Updates',
+  },
+];
+
 // Blog posts (AI-drafted, owner-published). Stored in content so there's no
 // separate table/migration; a post is public only when status === 'published'.
 export type SiteBlogPost = {
@@ -1534,6 +1605,7 @@ export type NormalizedSiteContent = {
   /** The video bands. One set of content each, six arrangements each. */
   videoSections: SiteVideoSectionContent[];
   services: SiteServicesContent;
+  quickStop: SiteQuickStopContent;
   howItWorks: SiteHowItWorksContent;
   blog: SiteBlogContent;
   heroBadge: SiteHeroBadgeContent;
@@ -1868,6 +1940,20 @@ function parseServices(value: unknown): SiteServiceItem[] {
   }));
 }
 
+function parseQuickStopItems(value: unknown): SiteQuickStopItem[] {
+  if (!Array.isArray(value)) return DEFAULT_QUICK_STOP_ITEMS.map((item) => ({ ...item }));
+
+  const items = value.filter(isRecord).slice(0, 6).map((item, index) => ({
+    id: toString(item.id, `qs-${index + 1}`),
+    icon: toString(item.icon, '⚡'),
+    title: toString(item.title),
+    description: toString(item.description),
+    badge: typeof item.badge === 'string' && item.badge.trim() ? item.badge.trim() : undefined,
+  }));
+
+  return items.length > 0 ? items : DEFAULT_QUICK_STOP_ITEMS.map((item) => ({ ...item }));
+}
+
 // Absent on every site that exists, which parses to an empty url — "use the
 // photos" — so nothing about the eight templates' heroes changes until an owner
 // deliberately sets one.
@@ -2045,6 +2131,7 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
   const introBlock = isRecord(root.introBlock) ? root.introBlock : {};
   const projectShowcase = isRecord(root.projectShowcase) ? root.projectShowcase : {};
   const services = isRecord(root.services) ? root.services : {};
+  const quickStop = isRecord(root.quickStop) ? root.quickStop : {};
   const howItWorks = isRecord(root.howItWorks) ? root.howItWorks : {};
   const blog = isRecord(root.blog) ? root.blog : {};
   const heroBadge = isRecord(root.heroBadge) ? root.heroBadge : {};
@@ -2274,6 +2361,18 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
       title: toString(services.title, DEFAULT_SERVICES_TITLE),
       intro: toString(services.intro),
       items: parseServices(services.items),
+    },
+    quickStop: {
+      enabled: toBoolean(quickStop.enabled),
+      style: QUICK_STOP_STYLE_KEYS.has(toString(quickStop.style)) ? (toString(quickStop.style) as SiteQuickStopStyle) : 'cards',
+      eyebrow: toString(quickStop.eyebrow, DEFAULT_QUICK_STOP_EYEBROW).slice(0, 60),
+      title: toString(quickStop.title, DEFAULT_QUICK_STOP_TITLE).slice(0, 120),
+      intro: toString(quickStop.intro, DEFAULT_QUICK_STOP_INTRO).slice(0, 400),
+      badgeText: toString(quickStop.badgeText, DEFAULT_QUICK_STOP_BADGE).slice(0, 50),
+      feeNote: toString(quickStop.feeNote, DEFAULT_QUICK_STOP_FEE_NOTE).slice(0, 80),
+      ctaLabel: toString(quickStop.ctaLabel, DEFAULT_QUICK_STOP_CTA).slice(0, 40),
+      ctaHref: toString(quickStop.ctaHref, '#contact').slice(0, 120),
+      items: parseQuickStopItems(quickStop.items),
     },
     howItWorks: {
       enabled: toBoolean(howItWorks.enabled),
@@ -2778,6 +2877,11 @@ export function getPublishedServices(content: Record<string, unknown> | null | u
   return services.enabled && items.length > 0 ? { ...services, items } : null;
 }
 
+export function getPublishedQuickStop(content: Record<string, unknown> | null | undefined): SiteQuickStopContent | null {
+  const quickStop = getSiteContent(content).quickStop;
+  return quickStop.enabled && quickStop.title.trim() ? quickStop : null;
+}
+
 export function getPublishedHowItWorks(content: Record<string, unknown> | null | undefined): SiteHowItWorksContent | null {
   const howItWorks = getSiteContent(content).howItWorks;
   const steps = howItWorks.steps.filter((step) => step.title.trim());
@@ -2913,6 +3017,7 @@ export function getSlotImage(content: Record<string, unknown> | null | undefined
 // builder's "Page order" panel. Default array order = the default page order.
 export const REORDERABLE_SECTIONS = [
   { key: 'services', label: 'Services' },
+  { key: 'quickStop', label: 'Quick Stop priority visits' },
   { key: 'showcase', label: 'Showcase gallery' },
   { key: 'video', label: 'Video' },
   { key: 'testimonials', label: 'Testimonials' },

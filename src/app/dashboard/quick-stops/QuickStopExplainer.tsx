@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { QuickStopIcon } from '@/components/quick-stop-icons';
+import QuickStopJourneySequence from '@/app/features/quick-stops/QuickStopJourneySequence';
 
 // The pitch for Quick Stop, shown while it's switched off — the page would
 // otherwise be an empty queue and a single link, which explains nothing about
@@ -24,19 +25,6 @@ export type ExplainerProps = {
 // draw the same four steps for a logged-out visitor without a second copy of
 // the path data.
 const Icon = QuickStopIcon;
-
-function Step({ n, icon, title, children }: { n: number; icon: string; title: string; children: React.ReactNode }) {
-  return (
-    <li className="es-step">
-      <span className="es-step-badge">
-        <Icon name={icon} className="es-step-icon" />
-        <span className="es-step-num">{n}</span>
-      </span>
-      <strong>{title}</strong>
-      <p>{children}</p>
-    </li>
-  );
-}
 
 function Benefit({ icon, tone, title, children }: { icon: string; tone: string; title: string; children: React.ReactNode }) {
   return (
@@ -166,71 +154,7 @@ export default function QuickStopExplainer({
         </aside>
       </section>
 
-      <section className="es-block">
-        <h3 className="es-block-title">The flow, start to finish</h3>
-        <ol className="es-steps">
-          {/* "Only customers already near your route" contradicted a feature on
-              the same page: priority areas exist precisely to let somebody
-              further out qualify, and an owner who set one up would have found
-              this sentence saying it could not happen. */}
-          <Step n={1} icon="route" title="We find the right jobs">
-            Customers near your route that day are offered it — plus anyone inside a priority area you&apos;ve
-            drawn, which is how you say &ldquo;this neighbourhood is worth the extra drive&rdquo;.
-          </Step>
-          <Step n={2} icon="bell" title="You get the request">
-            The job, the address, the customer&apos;s details and how far off your route they are — texted and emailed
-            to you the moment it lands.
-          </Step>
-          <Step n={3} icon="tag" title="You set the terms">
-            Pick the arrival window and the priority visit fee that makes the detour worth taking. Or decline, and it
-            stays an ordinary lead.
-          </Step>
-          <Step n={4} icon="check" title="They pay the visit fee">
-            The fee reserves the window and nothing else — the work is quoted and invoiced as usual. Or they skip it and
-            carry on as a normal inquiry. Either way you keep the lead.
-          </Step>
-        </ol>
-      </section>
-
-      <div className="es-split">
-        <section className="es-block">
-          <h3 className="es-block-title">What the customer sees</h3>
-          <div className="es-phone" role="img" aria-label="Preview of the message a customer receives">
-            <p className="es-phone-from">
-              <span className="es-phone-avatar" aria-hidden="true">{businessName.slice(0, 1)}</span>
-              {businessName}
-            </p>
-            <p className="es-phone-bubble">We&apos;re in your area today. Want us out sooner?</p>
-            <p className="es-phone-sub">Pay a priority visit fee for faster service, or carry on as a normal inquiry.</p>
-            <p className="es-phone-choice primary">
-              Pay for faster service <span aria-hidden="true">→</span>
-              <small>booked once payment clears</small>
-            </p>
-            <p className="es-phone-choice">
-              Carry on as normal <span aria-hidden="true">→</span>
-              <small>treated as an ordinary lead</small>
-            </p>
-            <p className="es-phone-foot"><Icon name="shield" /> Always optional. Never booked automatically.</p>
-          </div>
-        </section>
-
-        <section className="es-block">
-          <h3 className="es-block-title">An example</h3>
-          <div className="es-example">
-            <p className="es-example-job">Kitchen faucet repair</p>
-            <ul className="es-example-facts">
-              <li><Icon name="pin" /> 12 minutes from your last job</li>
-              <li><Icon name="clock" /> Customer free after 5:30 PM</li>
-            </ul>
-            <div className="es-example-offer-box">
-              <p className="es-example-label">Your offer</p>
-              <p className="es-example-offer">6:30 – 7:15 PM</p>
-              <p className="es-example-fee">${typicalFee}<span>Priority visit fee</span></p>
-            </div>
-            <p className="es-example-note">If they pass, the lead stays yours as a normal inquiry.</p>
-          </div>
-        </section>
-      </div>
+      <QuickStopJourneySequence />
 
       <section className="es-block">
         <h3 className="es-block-title">Why contractors turn it on</h3>

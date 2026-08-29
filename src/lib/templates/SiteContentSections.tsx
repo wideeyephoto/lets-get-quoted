@@ -12,6 +12,7 @@ import {
   getPublishedHowItWorks,
   getPublishedServiceAreas,
   getPublishedServices,
+  getPublishedQuickStop,
   getPublishedShowcase,
   getPublishedStats,
   getPublishedStickyCallBar,
@@ -28,6 +29,7 @@ import FilmstripScroller from './FilmstripScroller';
 import ProjectShowcase from './ProjectShowcase';
 import TestimonialSlider from './TestimonialSlider';
 import SiteServices from './SiteServices';
+import SiteQuickStopSection from './SiteQuickStopSection';
 import SiteProcess from './SiteProcess';
 import SiteVideoSection from './SiteVideoSection';
 import SiteChatButton from './SiteChatButton';
@@ -56,6 +58,7 @@ function formatBlogDate(iso: string): string {
 
 export default function SiteContentSections({ site, galleryImages = [] }: SiteContentSectionsProps) {
   const services = getPublishedServices(site.content);
+  const quickStop = getPublishedQuickStop(site.content);
   const howItWorks = getPublishedHowItWorks(site.content);
   const showcaseContent = getPublishedShowcase(site.content);
   const testimonials = getPublishedTestimonials(site.content);
@@ -110,7 +113,7 @@ export default function SiteContentSections({ site, galleryImages = [] }: SiteCo
     projectShownItems.some((item) => item.source === 'upload'),
   );
 
-  const hasInFlowSections = Boolean(services || howItWorks || showcase || testimonials || faqs || serviceAreas || stats || beforeAfter || blog || projectShowcase || videoSections.length > 0);
+  const hasInFlowSections = Boolean(services || quickStop || howItWorks || showcase || testimonials || faqs || serviceAreas || stats || beforeAfter || blog || projectShowcase || videoSections.length > 0);
 
   // The chat button has to be in this test too. It renders at the end of this
   // component, so a site with no in-flow sections and no sticky bar — a brand
@@ -140,6 +143,7 @@ export default function SiteContentSections({ site, galleryImages = [] }: SiteCo
   // order so rearranging the builder's "Page order" list reflows the page.
   const sectionBlocks: Record<string, ReactNode> = {
     services: services && <SiteServices title={services.title} intro={services.intro} items={services.items} />,
+    quickStop: quickStop && <SiteQuickStopSection {...quickStop} />,
     projectShowcase: projectShowcase && (
       <section className={isHaven ? styles.careWorks : styles.projectBand} id="project-showcase" aria-label="Project showcase">
         <ProjectShowcase

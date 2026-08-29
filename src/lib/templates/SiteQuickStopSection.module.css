@@ -1,0 +1,401 @@
+.quickStopSection {
+  position: relative;
+  padding: clamp(3rem, 6vw, 5.5rem) clamp(1.25rem, 5vw, 4rem);
+  color: var(--c-ink, currentColor);
+}
+
+.quickStopHeader {
+  text-align: center;
+  max-width: 720px;
+  margin: 0 auto 2.5rem;
+}
+
+.kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0 0 0.6rem;
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--theme-accent, #ff7a21);
+}
+
+.quickStopHeader h2 {
+  font-family: var(--theme-display, inherit);
+  font-weight: 800;
+  font-size: clamp(1.9rem, 4vw, 3rem);
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  margin: 0 0 0.8rem;
+  text-wrap: balance;
+}
+
+.quickStopHeader p {
+  font-size: clamp(0.95rem, 1.3vw, 1.1rem);
+  line-height: 1.6;
+  color: var(--c-muted, color-mix(in srgb, currentColor 70%, transparent));
+  margin: 0;
+}
+
+.badgePill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--theme-accent, #ff7a21) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--theme-accent, #ff7a21) 30%, transparent);
+  color: var(--theme-accent, #ff7a21);
+  font-size: 0.76rem;
+  font-weight: 800;
+  margin-bottom: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* ── STYLE 1: CARDS (Feature Pillar Grid) ────────────────────────── */
+.cardsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
+  gap: 1.25rem;
+  max-width: 1140px;
+  margin: 0 auto;
+}
+
+.featureCard {
+  display: flex;
+  flex-direction: column;
+  padding: 1.6rem 1.4rem;
+  border-radius: 16px;
+  background: var(--c-surface, rgba(255, 255, 255, 0.04));
+  border: 1px solid var(--c-line, rgba(255, 255, 255, 0.1));
+  box-shadow: 0 16px 36px -20px rgba(0, 0, 0, 0.25);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.featureCard:hover {
+  transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--theme-accent, #ff7a21) 50%, transparent);
+  box-shadow: 0 24px 48px -20px color-mix(in srgb, var(--theme-accent, #ff7a21) 25%, transparent);
+}
+
+.cardHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.cardIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--theme-accent, #ff7a21) 15%, transparent);
+  color: var(--theme-accent, #ff7a21);
+  font-size: 1.35rem;
+}
+
+.cardBadge {
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--c-ink, currentColor) 8%, transparent);
+  color: var(--c-muted, color-mix(in srgb, currentColor 65%, transparent));
+}
+
+.featureCard h3 {
+  margin: 0 0 0.5rem;
+  font-size: 1.12rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.featureCard p {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.55;
+  color: var(--c-muted, color-mix(in srgb, currentColor 70%, transparent));
+}
+
+.cardsFooter {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  margin-top: 2.25rem;
+  text-align: center;
+}
+
+.feeNote {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--c-muted, color-mix(in srgb, currentColor 70%, transparent));
+}
+
+/* ── STYLE 2: BANNER (Express Route Highlight Ribbon) ────────────── */
+.bannerContainer {
+  max-width: 1100px;
+  margin: 0 auto;
+  border-radius: 20px;
+  padding: clamp(1.75rem, 4vw, 3rem);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--theme-accent, #ff7a21) 12%, var(--c-surface, #121820)), var(--c-surface, #121820));
+  border: 1px solid color-mix(in srgb, var(--theme-accent, #ff7a21) 35%, transparent);
+  box-shadow: 0 26px 52px -24px rgba(0, 0, 0, 0.4);
+}
+
+.bannerGrid {
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: clamp(1.5rem, 4vw, 3rem);
+  align-items: center;
+}
+
+.bannerLeft h3 {
+  font-family: var(--theme-display, inherit);
+  font-size: clamp(1.6rem, 3.2vw, 2.4rem);
+  font-weight: 800;
+  line-height: 1.12;
+  margin: 0.4rem 0 0.8rem;
+  letter-spacing: -0.02em;
+}
+
+.bannerLeft p {
+  font-size: 0.98rem;
+  line-height: 1.6;
+  color: var(--c-muted, color-mix(in srgb, currentColor 75%, transparent));
+  margin: 0 0 1.4rem;
+}
+
+.bannerActions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.bannerRight {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  padding: 1.25rem 1.4rem;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--c-bg, #0b1017) 60%, transparent);
+  border: 1px solid color-mix(in srgb, var(--c-line, rgba(255,255,255,0.1)) 70%, transparent);
+}
+
+.bannerBullet {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.bulletIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--theme-accent, #ff7a21) 20%, transparent);
+  color: var(--theme-accent, #ff7a21);
+  font-size: 0.75rem;
+  font-weight: 900;
+  margin-top: 1px;
+}
+
+/* ── STYLE 3: TIMELINE (Connected 4-Step Process Flow) ───────────── */
+.timelineWrapper {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.timelineGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(230px, 100%), 1fr));
+  gap: 1.5rem;
+  position: relative;
+}
+
+.timelineStep {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: 1.5rem 1.25rem;
+  border-radius: 14px;
+  background: var(--c-surface, rgba(255, 255, 255, 0.04));
+  border: 1px solid var(--c-line, rgba(255, 255, 255, 0.1));
+}
+
+.stepNumber {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--theme-accent, #ff7a21);
+  color: var(--theme-on-accent, #fff);
+  font-size: 1rem;
+  font-weight: 800;
+  margin-bottom: 0.9rem;
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--theme-accent, #ff7a21) 20%, transparent);
+}
+
+.timelineStep h3 {
+  margin: 0 0 0.4rem;
+  font-size: 1.08rem;
+  font-weight: 700;
+}
+
+.timelineStep p {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: var(--c-muted, color-mix(in srgb, currentColor 70%, transparent));
+}
+
+/* ── STYLE 4: COMPARISON (Quick Stop vs. Standard Project Table) ─── */
+.comparisonDeck {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  max-width: 980px;
+  margin: 0 auto;
+}
+
+.compareCard {
+  padding: clamp(1.5rem, 3vw, 2.25rem);
+  border-radius: 18px;
+  background: var(--c-surface, rgba(255, 255, 255, 0.04));
+  border: 1px solid var(--c-line, rgba(255, 255, 255, 0.1));
+  display: flex;
+  flex-direction: column;
+}
+
+.compareFeatured {
+  border-color: var(--theme-accent, #ff7a21);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--theme-accent, #ff7a21) 8%, var(--c-surface, #121820)), var(--c-surface, #121820));
+  box-shadow: 0 24px 50px -22px color-mix(in srgb, var(--theme-accent, #ff7a21) 28%, transparent);
+}
+
+.compareHeader {
+  margin-bottom: 1.25rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--c-line, rgba(255, 255, 255, 0.1));
+}
+
+.compareHeader h3 {
+  margin: 0.35rem 0 0.3rem;
+  font-size: 1.35rem;
+  font-weight: 800;
+}
+
+.compareHeader p {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--c-muted, color-mix(in srgb, currentColor 70%, transparent));
+}
+
+.compareList {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1.5rem;
+  display: grid;
+  gap: 0.85rem;
+  flex: 1;
+}
+
+.compareItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.compareIcon {
+  flex-shrink: 0;
+  font-weight: 900;
+  font-size: 0.85rem;
+  color: var(--theme-accent, #ff7a21);
+  margin-top: 1px;
+}
+
+.compareDim {
+  color: var(--c-muted, color-mix(in srgb, currentColor 60%, transparent));
+}
+
+/* ── Primary Action Button ────────────────────────────────────────── */
+.ctaBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 46px;
+  padding: 0.65rem 1.4rem;
+  border-radius: var(--theme-radius, 10px);
+  background: var(--theme-accent, #ff7a21);
+  color: var(--theme-on-accent, #fff);
+  font-weight: 700;
+  font-size: 0.94rem;
+  text-decoration: none;
+  transition: transform 0.18s ease, filter 0.18s ease, box-shadow 0.18s ease;
+  box-shadow: 0 14px 28px -14px color-mix(in srgb, var(--theme-accent, #ff7a21) 70%, transparent);
+}
+
+.ctaBtn:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.06);
+  box-shadow: 0 18px 34px -14px color-mix(in srgb, var(--theme-accent, #ff7a21) 85%, transparent);
+}
+
+.ctaSecondaryBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 46px;
+  padding: 0.65rem 1.3rem;
+  border-radius: var(--theme-radius, 10px);
+  border: 1.5px solid var(--c-line, currentColor);
+  background: transparent;
+  color: inherit;
+  font-weight: 700;
+  font-size: 0.92rem;
+  text-decoration: none;
+  transition: background 0.18s ease;
+}
+
+.ctaSecondaryBtn:hover {
+  background: color-mix(in srgb, currentColor 8%, transparent);
+}
+
+/* ── Responsive rules ─────────────────────────────────────────────── */
+@media (max-width: 860px) {
+  .bannerGrid {
+    grid-template-columns: 1fr;
+  }
+  .comparisonDeck {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .featureCard,
+  .ctaBtn,
+  .ctaSecondaryBtn {
+    transition: none;
+    transform: none !important;
+  }
+}

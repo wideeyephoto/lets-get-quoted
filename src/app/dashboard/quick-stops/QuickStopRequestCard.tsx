@@ -36,12 +36,22 @@ export type CardRequest = {
   arrival_start: string | null;
   arrival_end: string | null;
   response_deadline_at: string | null;
+  payment_deadline_at?: string | null;
+  offer_sent_at?: string | null;
+  paid_at?: string | null;
+  en_route_at?: string | null;
+  arrived_at?: string | null;
+  completed_at?: string | null;
+  canceled_at?: string | null;
+  contractor_note?: string | null;
+  cancel_reason?: string | null;
   proposed_arrival_date: string | null;
   proposed_arrival_start: string | null;
   proposed_arrival_end: string | null;
   diagnostic_conversion: 'proposed' | 'approved' | 'declined' | null;
   diagnostic_proposed_cents: number | null;
   created_at: string;
+  updated_at?: string;
 };
 
 export type CardRoute = {
@@ -49,6 +59,8 @@ export type CardRoute = {
   detourMinutes: number | null;
   routeExtensionMinutes: number | null;
   anchorLabel: string | null;
+  recommendedStart?: string | null;
+  recommendedEnd?: string | null;
 };
 
 export type CardDefaults = { earliest: string; latest: string; minFeeDollars: number; maxFeeDollars: number };
@@ -69,19 +81,59 @@ function formatTime12(time24: string): string {
   return `${h12}${m !== 0 ? `:${String(m).padStart(2, '0')}` : ''} ${period}`;
 }
 
-function useCountdown(deadlineIso: string | null): string | null {
+export function playQuickStopAlertChime() {
+  try {
+    if (typeof window === 'undefined') return;
+    const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    if (!AudioContextClass) return;
+    const ctx = new AudioContextClass();
+    const now = ctx.currentTime;
+
+    // Gentle tone 1: 587.33 Hz (D5)
+    const osc1 = ctx.createOscillator();
+    const gain1 = ctx.createGain();
+    osc1.type = 'sine';
+    osc1.frequency.setValueAtTime(587.33, now);
+    gain1.gain.setValueAtTime(0.15, now);
+    gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+    osc1.connect(gain1);
+    gain1.connect(ctx.destination);
+    osc1.start(now);
+    osc1.stop(now + 0.35);
+
+    // Harmonious tone 2: 880.00 Hz (A5)
+    const osc2 = ctx.createOscillator();
+    const gain2 = ctx.createGain();
+    osc2.type = 'sine';
+    osc2.frequency.setValueAtTime(880.0, now + 0.12);
+    gain2.gain.setValueAtTime(0.2, now + 0.12);
+    gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
+    osc2.connect(gain2);
+    gain2.connect(ctx.destination);
+    osc2.start(now + 0.12);
+    osc2.stop(now + 0.55);
+  } catch {
+    // AudioContext blocked or not supported
+  }
+}
+
+function useCountdown(deadlineIso: string | null): { text: string | null; isUrgent: boolean; ms: number } {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     if (!deadlineIso) return;
     const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
   }, [deadlineIso]);
-  if (!deadlineIso) return null;
+  if (!deadlineIso) return { text: null, isUrgent: false, ms: 0 };
   const ms = new Date(deadlineIso).getTime() - now;
-  if (ms <= 0) return 'passed';
+  if (ms <= 0) return { text: 'passed', isUrgent: true, ms: 0 };
   const mins = Math.floor(ms / 60000);
   const secs = Math.floor((ms % 60000) / 1000);
-  return `${mins}:${String(secs).padStart(2, '0')}`;
+  return {
+    text: `${mins}:${String(secs).padStart(2, '0')}`,
+    isUrgent: ms < 10 * 60 * 1000,
+    ms,
+  };
 }
 
 const todayKey = () => new Date().toISOString().slice(0, 10);
@@ -142,11 +194,31 @@ export default function QuickStopRequestCard({
     return key === addDaysKey(todayKey(), 1) ? `Tomorrow · ${label}` : label;
   })();
 
+  // Real-time polling when awaiting customer payment so the status automatically updates to Confirmed upon Stripe payment
+  useEffect(() => {
+    if (readOnly || request.status !== 'awaiting_customer_payment') return;
+    const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        router.refresh();
+      }
+    }, 12000);
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        router.refresh();
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
+  }, [readOnly, request.status, router]);
+
   // Deterministic recommended offer
-  const recommendedDate = request.requested_date || todayKey();
+  const recommendedDate = request.requested_date || request.arrival_date || todayKey();
   const recommendedMinutes = request.ai_visit_minutes || 35;
-  const recommendedStart = defaults.earliest || '14:00';
-  const recommendedEnd = defaults.latest || '16:00';
+  const recommendedStart = route?.recommendedStart || defaults.earliest || '14:00';
+  const recommendedEnd = route?.recommendedEnd || defaults.latest || '16:00';
   const recommendedFee = Math.max(defaults.minFeeDollars, 145);
 
   function applyRecommendation() {
@@ -195,6 +267,51 @@ export default function QuickStopRequestCard({
     }
   }
 
+  const auditTimeline = [
+    request.created_at && {
+      icon: '📝',
+      label: 'Request received from customer',
+      time: new Date(request.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
+      date: new Date(request.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+    },
+    request.offer_sent_at && {
+      icon: '💬',
+      label: `Offer sent (${money(request.fee_cents)})`,
+      time: new Date(request.offer_sent_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
+      date: new Date(request.offer_sent_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+    },
+    request.paid_at && {
+      icon: '💳',
+      label: 'Customer paid fee (Confirmed)',
+      time: new Date(request.paid_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
+      date: new Date(request.paid_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+    },
+    request.en_route_at && {
+      icon: '🚗',
+      label: 'Marked en route',
+      time: new Date(request.en_route_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
+      date: new Date(request.en_route_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+    },
+    request.arrived_at && {
+      icon: '📍',
+      label: 'Arrived on site',
+      time: new Date(request.arrived_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
+      date: new Date(request.arrived_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+    },
+    request.completed_at && {
+      icon: '✓',
+      label: 'Visit completed',
+      time: new Date(request.completed_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
+      date: new Date(request.completed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+    },
+    request.canceled_at && {
+      icon: '✕',
+      label: `Canceled${request.cancel_reason ? `: ${request.cancel_reason}` : ''}`,
+      time: new Date(request.canceled_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
+      date: new Date(request.canceled_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+    },
+  ].filter(Boolean) as Array<{ icon: string; label: string; time: string; date: string }>;
+
   return (
     <section className="panel workspace-section-card" style={{ marginBottom: '1rem' }}>
       <div
@@ -205,22 +322,36 @@ export default function QuickStopRequestCard({
           <p className="eyebrow">Quick Stop · {QUICK_STOP_STATUS_LABEL[request.status]}</p>
           <h2 style={{ margin: 0 }}>{request.ai_summary || request.intake?.issue || 'Quick Stop request'}</h2>
         </div>
-        {countdown ? (
-          <span
-            style={{
-              whiteSpace: 'nowrap',
-              fontWeight: 800,
-              fontSize: '.8rem',
-              padding: '.25rem .6rem',
-              borderRadius: 999,
-              border: '1px solid',
-              borderColor: countdown === 'passed' ? 'rgba(255,122,33,.5)' : 'rgba(255,209,102,.5)',
-              color: countdown === 'passed' ? '#ff9a52' : '#ffd166',
-            }}
-          >
-            {countdown === 'passed' ? 'Response window passed' : `⏱ ${countdown} to respond`}
-          </span>
-        ) : null}
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+          {isOpen ? (
+            <button
+              type="button"
+              onClick={playQuickStopAlertChime}
+              className="btn ghost"
+              style={{ minHeight: '32px', padding: '0.2rem 0.5rem', fontSize: '0.75rem', color: 'var(--muted)' }}
+              title="Test request notification chime"
+            >
+              🔔 Test alert
+            </button>
+          ) : null}
+          {countdown.text ? (
+            <span
+              style={{
+                whiteSpace: 'nowrap',
+                fontWeight: 800,
+                fontSize: '.8rem',
+                padding: '.25rem .6rem',
+                borderRadius: 999,
+                border: '1px solid',
+                borderColor: countdown.text === 'passed' || countdown.isUrgent ? 'rgba(255,122,33,.6)' : 'rgba(255,209,102,.5)',
+                color: countdown.text === 'passed' || countdown.isUrgent ? '#ff9a52' : '#ffd166',
+                background: countdown.isUrgent && countdown.text !== 'passed' ? 'rgba(255,122,33,.12)' : 'transparent',
+              }}
+            >
+              {countdown.text === 'passed' ? 'Response window passed' : `⏱ ${countdown.text} to respond`}
+            </span>
+          ) : null}
+        </div>
       </div>
 
       {/* Recommended Offer Banner for Open Requests */}
@@ -245,7 +376,7 @@ export default function QuickStopRequestCard({
               Recommended: {requestedDayLabel}, {formatTime12(recommendedStart)}–{formatTime12(recommendedEnd)} · ${recommendedFee}
             </strong>
             <p style={{ margin: '0.2rem 0 0', fontSize: '0.8rem', color: 'var(--muted)' }}>
-              ~{recommendedMinutes}-minute visit · {route?.detourMinutes != null ? `${route.detourMinutes}-min route impact` : 'fits schedule'}
+              ~{recommendedMinutes}-minute visit · {route?.anchorLabel ? `slotted after ${route.anchorLabel}` : route?.detourMinutes != null ? `${route.detourMinutes}-min route impact` : 'fits schedule'}
             </p>
           </div>
           <button
@@ -296,16 +427,28 @@ export default function QuickStopRequestCard({
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
             <p className="job-meta" style={{ margin: 0, flex: 1 }}>{request.address || '—'}</p>
             {request.address ? (
-              <a
-                href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(request.address)}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="btn secondary"
-                style={{ minHeight: '36px', padding: '0.2rem 0.55rem', fontSize: '0.78rem', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}
-                title="Navigate in Google Maps"
-              >
-                🗺️ Navigate
-              </a>
+              <div style={{ display: 'inline-flex', gap: '0.35rem' }}>
+                <a
+                  href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(request.address)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn secondary"
+                  style={{ minHeight: '36px', padding: '0.2rem 0.55rem', fontSize: '0.78rem', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}
+                  title="Navigate with Google Maps"
+                >
+                  🗺️ Google Maps
+                </a>
+                <a
+                  href={`https://maps.apple.com/?daddr=${encodeURIComponent(request.address)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn secondary"
+                  style={{ minHeight: '36px', padding: '0.2rem 0.55rem', fontSize: '0.78rem', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}
+                  title="Navigate with Apple Maps"
+                >
+                  🧭 Apple Maps
+                </a>
+              </div>
             ) : null}
           </div>
         </div>
@@ -688,6 +831,27 @@ export default function QuickStopRequestCard({
           ) : null}
         </>
       )}
+
+      {/* Communication & Touchpoint Audit Trail */}
+      {auditTimeline.length > 0 ? (
+        <details className="qs-touchpoint-history" style={{ marginTop: '1rem', paddingTop: '0.75rem', borderTop: '1px solid var(--edge-t10, rgba(255,255,255,0.08))' }}>
+          <summary style={{ cursor: 'pointer', fontSize: '0.82rem', color: 'var(--muted)', userSelect: 'none', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+            <span>🕒 Activity &amp; Communication Log</span>
+            <small style={{ marginLeft: 'auto', opacity: 0.75 }}>{auditTimeline.length} events</small>
+          </summary>
+          <div style={{ marginTop: '0.65rem', display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+            {auditTimeline.map((item, idx) => (
+              <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.78rem', color: 'var(--muted)' }}>
+                <span aria-hidden="true" style={{ fontSize: '0.85rem' }}>{item.icon}</span>
+                <span style={{ color: 'var(--text)' }}>{item.label}</span>
+                <span style={{ marginLeft: 'auto', fontSize: '0.74rem', opacity: 0.7 }}>
+                  {item.date} · {item.time}
+                </span>
+              </div>
+            ))}
+          </div>
+        </details>
+      ) : null}
     </section>
   );
 }

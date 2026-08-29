@@ -90,6 +90,9 @@ const nextConfig = {
       { source: '/api/cron/extra-stop-sweep', destination: '/api/cron/quick-stop-sweep', permanent: true },
       // "Text-to-Record" became "Text-to-Job".
       { source: '/features/text-to-record', destination: '/features/text-to-job', permanent: true },
+      // Convenience shortcuts for quick-stops feature page.
+      { source: '/quickstops', destination: '/features/quick-stops', permanent: true },
+      { source: '/quick-stops', destination: '/features/quick-stops', permanent: true },
       // The campaign composer moved onto the seasonal-calendar page when the two
       // became one destination. Here rather than as a redirect() in a page
       // component: that renders, and by the time the redirect throws Next has

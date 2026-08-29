@@ -19,6 +19,8 @@ export type QuickStopRoute = {
   routeExtensionMinutes: number | null;
   // What we measured from, for the card's label ("from your 3:00 PM stop").
   anchorLabel: string | null;
+  recommendedStart?: string | null;
+  recommendedEnd?: string | null;
 };
 
 function localDateKey(timeZone: string, date = new Date()): string {
@@ -165,16 +167,17 @@ export async function computeQuickStopRoute(
     .order('scheduled_time', { ascending: true });
 
   const rows = (stops ?? []) as ScheduledStop[];
-  const candidates: Array<{ coord: LatLng; label: string | null }> = [];
+  const candidates: Array<{ coord: LatLng; label: string | null; scheduledTime: string | null }> = [];
   for (const row of rows) {
     const coord = coordOf(row);
-    if (coord) candidates.push({ coord, label: timeLabel(row.scheduled_time) });
+    if (coord) candidates.push({ coord, label: timeLabel(row.scheduled_time), scheduledTime: row.scheduled_time });
   }
 
   // Closest by straight line. That ordering is also what decides which single
   // stop is worth spending a drive-time lookup on below.
   let anchor: LatLng | null = null;
   let anchorTimeLabel: string | null = null;
+  let anchorScheduledTime: string | null = null;
   let bestMiles = Number.POSITIVE_INFINITY;
   for (const candidate of candidates) {
     const miles = haversineMiles(candidate.coord, target);
@@ -182,6 +185,7 @@ export async function computeQuickStopRoute(
       bestMiles = miles;
       anchor = candidate.coord;
       anchorTimeLabel = candidate.label;
+      anchorScheduledTime = candidate.scheduledTime;
     }
   }
 
@@ -223,6 +227,7 @@ export async function computeQuickStopRoute(
         miles = legs[bestLeg]!.miles;
         minutes = legs[bestLeg]!.minutes;
         anchorLabel = candidates[bestLeg].label ? `your ${candidates[bestLeg].label} stop` : anchorLabel;
+        anchorScheduledTime = candidates[bestLeg].scheduledTime;
       }
     }
   } else if (opts.driveTime) {
@@ -239,7 +244,27 @@ export async function computeQuickStopRoute(
   const visit = opts.visitMinutes && opts.visitMinutes > 0 ? opts.visitMinutes : 0;
   const routeExtensionMinutes = detourMinutes + visit;
 
-  return { detourMiles, detourMinutes, routeExtensionMinutes, anchorLabel };
+  // Calculate intelligent recommended arrival window from the anchor stop
+  let recommendedStart: string | null = null;
+  let recommendedEnd: string | null = null;
+  if (anchorScheduledTime) {
+    const [h, m] = anchorScheduledTime.split(':').map(Number);
+    if (Number.isFinite(h)) {
+      const anchorMins = h * 60 + (m || 0);
+      const estJobDuration = 60; // standard estimated duration for previous job
+      const startMins = Math.min(20 * 60, Math.max(8 * 60, Math.ceil((anchorMins + estJobDuration + detourMinutes) / 15) * 15));
+      const endMins = Math.min(21 * 60, startMins + 120);
+      const toHHMM = (totalM: number) => {
+        const hh = Math.floor(totalM / 60);
+        const mm = totalM % 60;
+        return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
+      };
+      recommendedStart = toHHMM(startMins);
+      recommendedEnd = toHHMM(endMins);
+    }
+  }
+
+  return { detourMiles, detourMinutes, routeExtensionMinutes, anchorLabel, recommendedStart, recommendedEnd };
 }
 
 /**
