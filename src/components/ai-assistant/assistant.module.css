@@ -118,28 +118,76 @@
   gap: 6px;
 }
 
-.lightningIconBtn {
-  background: rgba(251, 191, 36, 0.12);
-  border: 1px solid rgba(251, 191, 36, 0.3);
-  color: #fbbf24;
-  width: 30px;
-  height: 30px;
+.clearTextBtn {
+  background: rgba(30, 41, 59, 0.7);
+  border: 1px solid rgba(129, 140, 248, 0.2);
+  color: #94a3b8;
+  padding: 4px 10px;
   border-radius: 8px;
+  font-size: 11.5px;
+  font-weight: 600;
   cursor: pointer;
+  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  font-family: inherit;
+}
+
+.clearTextBtn:hover {
+  color: #f8fafc;
+  border-color: rgba(165, 180, 252, 0.4);
+  background: rgba(79, 70, 229, 0.25);
+  transform: translateY(-1px);
+}
+
+.clearConfirmGroup {
   display: flex;
   align-items: center;
-  justify-content: center;
+  gap: 6px;
+  background: rgba(15, 23, 42, 0.95);
+  padding: 3px 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  animation: fadeIn 0.15s ease-out;
+}
+
+.clearConfirmText {
+  font-size: 11px;
+  font-weight: 600;
+  color: #f87171;
+}
+
+.clearConfirmYesBtn {
+  background: #ef4444;
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  padding: 2px 7px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  font-family: inherit;
+}
+
+.clearConfirmYesBtn:hover {
+  background: #dc2626;
+}
+
+.clearConfirmNoBtn {
+  background: transparent;
+  color: #94a3b8;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  padding: 2px 7px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
   transition: all 0.15s ease;
+  font-family: inherit;
 }
 
-.lightningIconBtn:hover {
-  background: rgba(251, 191, 36, 0.25);
-  transform: scale(1.08);
-}
-
-.lightningGlyph {
-  font-size: 14px;
-  line-height: 1;
+.clearConfirmNoBtn:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .iconButton {

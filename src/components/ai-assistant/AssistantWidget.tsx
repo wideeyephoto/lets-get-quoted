@@ -100,6 +100,7 @@ export default function AssistantWidget() {
   const [input, setInput] = useState('');
   const [attachedImage, setAttachedImage] = useState<AssistantMessageImage | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -299,19 +300,46 @@ export default function AssistantWidget() {
                 <div className={styles.titleText}>Sparky</div>
               </div>
               <div className={styles.headerControls}>
-                <button
-                  type="button"
-                  className={styles.lightningIconBtn}
-                  onClick={handleClearHistory}
-                  title="Clear chat"
-                  aria-label="Clear chat"
-                >
-                  <span className={styles.lightningGlyph}>⚡</span>
-                </button>
+                {showClearConfirm ? (
+                  <div className={styles.clearConfirmGroup}>
+                    <span className={styles.clearConfirmText}>Clear chat?</span>
+                    <button
+                      type="button"
+                      className={styles.clearConfirmYesBtn}
+                      onClick={() => {
+                        handleClearHistory();
+                        setShowClearConfirm(false);
+                      }}
+                    >
+                      Clear
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.clearConfirmNoBtn}
+                      onClick={() => setShowClearConfirm(false)}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    className={styles.clearTextBtn}
+                    onClick={() => setShowClearConfirm(true)}
+                    title="Clear chat history"
+                    aria-label="Clear chat"
+                  >
+                    Clear chat
+                  </button>
+                )}
+
                 <button
                   type="button"
                   className={styles.iconButton}
-                  onClick={closeAssistant}
+                  onClick={() => {
+                    setShowClearConfirm(false);
+                    closeAssistant();
+                  }}
                   title="Close"
                   aria-label="Close"
                 >
