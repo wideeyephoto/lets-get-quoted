@@ -11,3 +11,10 @@ After changing code:
 - Stage only task-related files with `git add -- <explicit paths>`. Never use `git add .` or `git add -A`.
 - If the task is complete and relevant checks pass, create a descriptive commit with `git commit -m`. Do not create an empty commit.
 - Never push, deploy, amend, rebase, reset, clean, or discard changes unless explicitly requested.
+
+## Sparky & Messaging Invariants
+
+- **No "Sparky" in SMS / Messages**: The name "Sparky" must never appear inside any outbound or inbound SMS message payload, carrier confirmation receipt, or client-facing text. Use clean transactional formatting (e.g. `[LGQ]` or `[Business Name]`).
+- **Internal Concept Only**: "Sparky" is an in-app and marketing conceptual AI assistant persona for contractors ("Text Sparky from the truck"). Contact cards (.vcf) are named `[Business Name] Field Hotline`.
+- **100% White-Labeled**: Homeowners and external clients must never see or hear the name "Sparky". All customer-facing messages and portals use the contractor's business name.
+
