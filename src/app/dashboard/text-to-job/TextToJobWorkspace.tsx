@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import SparkyAvatar from '@/components/mascot/SparkyAvatar';
 import styles from './text-to-job.module.css';
 
 export type ExtractedItem = {
@@ -471,15 +472,23 @@ export default function TextToJobWorkspace({
 
   return (
     <div className={styles.container}>
-      {/* Header */}
+      {/* Clean Hero Header with Sparky Avatar */}
       <div className={styles.header}>
         <div className={styles.headerLeft}>
-          <span className={styles.badge}>✦ Sparky · Field Ingest &amp; Intelligence Engine</span>
-          <h1 className={styles.title}>Text-to-Job Dashboard</h1>
-          <p className={styles.subtitle}>
-            Just send a message by voice or text to Sparky, your smart assistant, and he&apos;ll organize
-            things, submit and update job records, change orders, punch lists, and schedule slots automatically.
-          </p>
+          <div className={styles.sparkyHeaderRow}>
+            <SparkyAvatar size="lg" status="online" trade={account?.trade || 'general'} />
+            <div>
+              <div className={styles.sparkyBadgeRow}>
+                <span className={styles.badge}>✦ Sparky · Smart AI Contractor Assistant</span>
+                <span className={styles.livePill}><span className={styles.liveDot} /> Voice &amp; SMS Ingress Active</span>
+              </div>
+              <h1 className={styles.title}>Text-to-Job Dashboard</h1>
+              <p className={styles.subtitle}>
+                Just send a message by voice or text to Sparky, your smart assistant, and he&apos;ll organize
+                things, submit and update job records, change orders, punch lists, and schedule slots automatically.
+              </p>
+            </div>
+          </div>
         </div>
         <div className={styles.headerActions}>
           <button type="button" onClick={handleCopyNumber} className={styles.copyBtn}>
@@ -497,72 +506,36 @@ export default function TextToJobWorkspace({
         </div>
       </div>
 
-      {/* AI Terms of Service & Accuracy Acknowledgment Banner */}
-      <div className={styles.tosBanner}>
-        <div className={styles.tosLeft}>
-          <span className={styles.tosIcon}>⚖️</span>
-          <div>
-            <h4 className={styles.tosTitle}>AI Field Intake Terms of Service &amp; Accuracy Policy</h4>
-            <p className={styles.tosText}>
-              Text-to-Job uses Gemini Multimodal AI to transcribe audio and parse change orders with
-              calibrated high confidence (&gt;99%). Because AI models may occasionally misinterpret audio
-              or trade jargon, <strong>the contractor is responsible for verifying extracted quotes, change orders, and line items prior to client delivery and billing</strong>.
-              All operations include a <strong>15-minute SMS rollback window (Reply UNDO)</strong> and zero destructive guesses.
-            </p>
-          </div>
-        </div>
-        <div className={styles.tosBtnGroup}>
-          {tosAcknowledged ? (
-            <span className={styles.tosBadgeApproved}>
-              ✓ TOS &amp; Accuracy Policy Acknowledged
-            </span>
-          ) : (
-            <button
-              type="button"
-              onClick={() => {
-                setTosAcknowledged(true);
-                setNotification('✓ AI Field Intake Terms of Service acknowledged and saved.');
-                setTimeout(() => setNotification(null), 3500);
-              }}
-              className={styles.tosAckBtn}
-            >
-              Acknowledge &amp; Enable
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Hotline & Telephony Guard Strip */}
+      {/* Hotline & Security Bar */}
       <div className={styles.hotlineStrip}>
         <div className={styles.hotlineCol}>
-          <span className={styles.hotlineLabel}>Dedicated Platform Texting Number</span>
+          <span className={styles.hotlineLabel}>Your Dedicated Text &amp; Call Line</span>
           <div className={styles.hotlineValue}>
             <span className={styles.hotlinePhoneHighlight}>{fieldPhoneNumber}</span>
-            <span className={styles.liveDot} title="Online &amp; Ingress Active" />
           </div>
           <small className={styles.hotlineSub}>
-            Text or call this number from any verified phone. Save as <em>&ldquo;{businessTitle} Sparky&rdquo;</em>.
+            Text or call from your cell phone. Saves to your phone as <em>&ldquo;{businessTitle} Field Hotline&rdquo;</em>.
           </small>
         </div>
 
         <div className={styles.hotlineCol}>
-          <span className={styles.hotlineLabel}>Master Account Whitelist</span>
+          <span className={styles.hotlineLabel}>Authorized Sender (You)</span>
           <div className={styles.hotlineValue}>
             <span>{alertPhone}</span>
             <span className={styles.verifiedShield}>🛡️ Verified Owner</span>
           </div>
           <small className={styles.hotlineSub}>
-            Primary phone number authenticated for quote modifications, approvals, and mutations.
+            Your cell phone is authenticated to update quotes, line items, and schedule dates directly from the truck.
           </small>
         </div>
 
         <div className={styles.hotlineCol}>
-          <span className={styles.hotlineLabel}>Sparky AI Ingress Telephony</span>
+          <span className={styles.hotlineLabel}>Safety Invariant</span>
           <div className={styles.hotlineValue}>
-            <span className={styles.latencyBadge}>~1.4s Gemini Multimodal</span>
+            <span className={styles.latencyBadge}>⏱️ 15-Min SMS Rollback</span>
           </div>
           <small className={styles.hotlineSub}>
-            10DLC carrier-verified transactional SMS &amp; MMS multimodal audio ingress.
+            Made a typo? Simply reply <strong>UNDO</strong> to immediately revert any change order or line item.
           </small>
         </div>
       </div>
@@ -570,7 +543,7 @@ export default function TextToJobWorkspace({
       {/* Notification Toast */}
       {notification && <div className={styles.notificationToast}>{notification}</div>}
 
-      {/* 4 Pillars Summary Grid */}
+      {/* 4 Pillars Summary Grid - Contractor Friendly */}
       <div className={styles.pillarsGrid}>
         <Link href="/dashboard/jobs" className={`${styles.pillarCard} ${styles.pillarJobs}`}>
           <div className={styles.pillarHead}>
@@ -581,10 +554,10 @@ export default function TextToJobWorkspace({
             1. Jobs &amp; Quotes <span>&rarr;</span>
           </h3>
           <p className={styles.pillarDesc}>
-            Change orders, line items, deposits, and timeline milestones.
+            Change orders, materials, receipts, and client approval totals.
           </p>
           <div className={styles.pillarTarget}>
-            <span>Mutates:</span> <code>jobs</code>, <code>quote_line_items</code>
+            <span>Auto-Updates:</span> Quote Total &amp; Job Log
           </div>
         </Link>
 
@@ -594,29 +567,29 @@ export default function TextToJobWorkspace({
             <span className={styles.pillarCount}>{leadCount} Leads</span>
           </div>
           <h3 className={styles.pillarTitle}>
-            2. Leads &amp; CRM <span>&rarr;</span>
+            2. Leads &amp; Clients <span>&rarr;</span>
           </h3>
           <p className={styles.pillarDesc}>
-            Customer intake, urgency scoring, phone tags, and address lookup.
+            New customer intake, address lookup, and callback triage.
           </p>
           <div className={styles.pillarTarget}>
-            <span>Mutates:</span> <code>leads</code>, <code>contacts</code>, <code>lead_tags</code>
+            <span>Auto-Creates:</span> Lead File &amp; Contacts
           </div>
         </Link>
 
         <Link href="/dashboard/schedule" className={`${styles.pillarCard} ${styles.pillarSchedule}`}>
           <div className={styles.pillarHead}>
             <span className={styles.pillarIcon}>📅</span>
-            <span className={styles.pillarCount}>Real-Time</span>
+            <span className={styles.pillarCount}>Live Calendar</span>
           </div>
           <h3 className={styles.pillarTitle}>
-            3. Schedule &amp; Route <span>&rarr;</span>
+            3. Schedule &amp; Calendar <span>&rarr;</span>
           </h3>
           <p className={styles.pillarDesc}>
-            Arrival windows, duration blocks, route density, and calendar slots.
+            Arrival windows, duration blocks, and inspection slots.
           </p>
           <div className={styles.pillarTarget}>
-            <span>Mutates:</span> <code>schedule_occurrences</code>, <code>calendar</code>
+            <span>Auto-Schedules:</span> Arrival Windows
           </div>
         </Link>
 
@@ -626,13 +599,13 @@ export default function TextToJobWorkspace({
             <span className={styles.pillarCount}>{crewCount} Techs</span>
           </div>
           <h3 className={styles.pillarTitle}>
-            4. Crew &amp; Tasks <span>&rarr;</span>
+            4. Crew &amp; Checklists <span>&rarr;</span>
           </h3>
           <p className={styles.pillarDesc}>
-            Punch lists, field checklists, assignments, and photo proof.
+            Punch lists, task assignments, and site photo proof.
           </p>
           <div className={styles.pillarTarget}>
-            <span>Mutates:</span> <code>crew_assignments</code>, <code>crew_tasks</code>
+            <span>Auto-Dispatches:</span> Crew Punch Lists
           </div>
         </Link>
       </div>
