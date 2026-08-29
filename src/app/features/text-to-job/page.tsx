@@ -11,7 +11,7 @@ import PhotoScopeEstimator from '@/components/marketing/PhotoScopeEstimator';
 import UndoTimeMachine from '@/components/marketing/UndoTimeMachine';
 import SunVisorCardGenerator from '@/components/marketing/SunVisorCardGenerator';
 import LiveSmsSandbox from '@/components/marketing/LiveSmsSandbox';
-import { TRADES } from '@/lib/trades';
+import TradePlaybooksFilter from '@/components/marketing/TradePlaybooksFilter';
 import styles from './text-to-job.module.css';
 
 export const metadata: Metadata = {
@@ -43,51 +43,6 @@ export const metadata: Metadata = {
     images: ['/features/og-text-to-job.jpg'],
   },
 };
-
-const TRADE_PLAYBOOKS = [
-  {
-    icon: '⚡',
-    trade: 'Electricians',
-    quote: '“Add $450 to Miller for extra 12/2 Romex line and GFCI in pantry.”',
-    result:
-      'Instantly appends electrical materials & labor to quote J-104, recalculates tax, and pushes new total to the client approval draft.',
-  },
-  {
-    icon: '🔧',
-    trade: 'Plumbers',
-    quote: '“Rough inspection passed at 124 Main. Need drywall crew Thursday 8am.”',
-    result:
-      'Transcribes voice memo, updates milestone status to Inspection Passed, and queues drywall crew arrival task in the team calendar.',
-  },
-  {
-    icon: '🏠',
-    trade: 'Roofing & Siding',
-    quote: '“Add 4 sheets 1/2-inch CDX plywood rot repair ($320) to Johnson roof.”',
-    result:
-      'Attaches decking change order to active job record J-92 with photo timestamp before shingles go on.',
-  },
-  {
-    icon: '❄️',
-    trade: 'HVAC Technicians',
-    quote: '“Replaced 45/5 dual capacitor on Carrier unit for Smith. Added 2 lbs R-410A.”',
-    result:
-      'Updates equipment maintenance history, itemizes refrigerant charge, and drafts $285 invoice ready for instant payment link.',
-  },
-  {
-    icon: '🔨',
-    trade: 'General Remodeling',
-    quote: '“Punch list for crew: 1) Caulk exterior siding trim 2) Paint hallway baseboards.”',
-    result:
-      'Creates interactive checklist tasks on the crew field app with individual checkbox sign-offs.',
-  },
-  {
-    icon: '🌳',
-    trade: 'Landscaping & Tree Care',
-    quote: '“New lead: Dave Miller 248-555-0812 oak limb removal estimate Tuesday 9am.”',
-    result:
-      'Parses caller contact info, tags tree removal service, and blocks out a 30-minute estimate window on the route.',
-  },
-];
 
 const FAQS = [
   {
@@ -157,7 +112,9 @@ export default function TextToJobPage() {
           label="Live SMS & Voice Memo Field Intake Simulator"
           note="Simulate real contractor field messages: change orders, audio progress notes, punch lists, safety disambiguation, and quick lead intake."
         >
-          <TextToRecordSimulator />
+          <div id="simulator-frame">
+            <TextToRecordSimulator />
+          </div>
         </ExampleFrame>
       }
       proof={[
@@ -395,29 +352,9 @@ export default function TextToJobPage() {
             </div>
           </section>
 
-          {/* Trade Playbooks Grid */}
+          {/* Interactive Trade Playbooks with Live Filter & Simulator Jump */}
           <section className={styles.customSection}>
-            <span className={styles.sectionEyebrow}>Field Playbooks Across {TRADES.length} Trades</span>
-            <h3 className={styles.sectionTitle}>Built for the real language of job sites.</h3>
-            <p className={styles.sectionLede}>
-              Whether you’re an electrician talking about Romex and 200-amp panels or a roofer adding CDX
-              plywood sheets, Gemini understands your trade’s vocabulary.
-            </p>
-
-            <div className={styles.playbooksGrid}>
-              {TRADE_PLAYBOOKS.map((playbook, idx) => (
-                <div key={idx} className={styles.playbookCard}>
-                  <div className={styles.playbookHeader}>
-                    <span className={styles.playbookIcon}>{playbook.icon}</span>
-                    <h4 className={styles.playbookTrade}>{playbook.trade}</h4>
-                  </div>
-                  <p className={styles.playbookQuote}>{playbook.quote}</p>
-                  <p className={styles.playbookResult}>
-                    <strong>Instant Action:</strong> {playbook.result}
-                  </p>
-                </div>
-              ))}
-            </div>
+            <TradePlaybooksFilter />
           </section>
 
           {/* Steering Wheel Voice Cheatsheet Section */}
