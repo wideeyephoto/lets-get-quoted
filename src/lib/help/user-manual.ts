@@ -1930,6 +1930,16 @@ export const MANUAL_ARTICLES: ManualArticle[] = [
         ],
       },
       {
+        title: 'Send MMS photos for automated takeoffs and receipts',
+        bullets: [
+          'Receipt & Supply OCR: Snap a photo of your Home Depot/Lowes register receipt. Gemini OCR itemizes line items and recalculates live job gross profit margins.',
+          'Photo-to-Scope Change Orders: Text a photo of site damage (e.g. rotted subfloor, cracked pipe). Gemini visual detection outlines the defect, estimates replacement materials, and drafts an approval text for the homeowner.',
+          'Inspection Green Tags: Photograph signed building inspection stickers on the framing to instantly verify milestones and unblock subsequent trades.',
+          'Equipment Nameplates: Snap water heater or HVAC model/serial plates to auto-pull specs and populate replacement estimate drafts.',
+          'Client Progress Proof: Finished job photos are instantly synced to the homeowner’s portal and archived for warranty protection.',
+        ],
+      },
+      {
         title: 'Understand the 15-minute rollback safety invariant',
         paragraphs: [
           'If you make a typo or dictate an accidental change, simply reply "UNDO" within 15 minutes to atomic rollback the database to its previous state with zero data loss.',

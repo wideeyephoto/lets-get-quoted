@@ -186,7 +186,7 @@ export default function TextToJobWorkspace({
   leadCount,
   crewCount,
 }: TextToJobWorkspaceProps) {
-  const [activeTab, setActiveTab] = useState<'feed' | 'senders' | 'simulator' | 'rules'>('feed');
+  const [activeTab, setActiveTab] = useState<'feed' | 'senders' | 'photos' | 'simulator' | 'rules'>('feed');
   const [messages, setMessages] = useState<InboundMessage[]>(SAMPLE_INBOUND_MESSAGES);
   const [selectedMsgId, setSelectedMsgId] = useState<string>(SAMPLE_INBOUND_MESSAGES[0].id);
   const [notification, setNotification] = useState<string | null>(null);
@@ -482,7 +482,14 @@ export default function TextToJobWorkspace({
           onClick={() => setActiveTab('senders')}
           className={`${styles.tabBtn} ${activeTab === 'senders' ? styles.tabActive : ''}`}
         >
-          <span>📱 Authorized Phone Numbers ({1 + activeCrewList.length})</span>
+          <span>👥 Authorized Phones ({1 + activeCrewList.length})</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('photos')}
+          className={`${styles.tabBtn} ${activeTab === 'photos' ? styles.tabActive : ''}`}
+        >
+          <span>📸 Photo &amp; Voice Guide</span>
         </button>
         <button
           type="button"
@@ -786,7 +793,107 @@ export default function TextToJobWorkspace({
         </div>
       )}
 
-      {/* TAB 3: Live Field Simulator Sandbox */}
+      {/* TAB 3: What You Can Text & Snap (Photo & Voice Intelligence Guide) */}
+      {activeTab === 'photos' && (
+        <div className={styles.simulatorBox}>
+          <div>
+            <h3 style={{ fontSize: '18px', fontWeight: 900, margin: '0 0 4px 0', color: '#f5f0e7' }}>
+              📸 MMS Photo &amp; Voice Intelligence Capabilities
+            </h3>
+            <p style={{ fontSize: '13px', color: '#a7bcc8', margin: 0 }}>
+              Text or snap any of these 5 photo types to <strong>{fieldPhoneNumber}</strong> to automate field ingestion:
+            </p>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '14px', marginTop: '16px' }}>
+            <div style={{ background: 'rgba(4, 11, 18, 0.85)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(174, 199, 211, 0.18)' }}>
+              <div style={{ fontSize: '14px', fontWeight: 800, color: '#50e3bd', marginBottom: '6px' }}>
+                1. 🧾 Supply Receipts &amp; Expense OCR
+              </div>
+              <p style={{ fontSize: '12px', color: '#d1e2eb', margin: '0 0 8px 0', lineHeight: 1.45 }}>
+                Snap a picture of a receipt at Home Depot, Lowes, or Ferguson.
+              </p>
+              <div style={{ fontSize: '11px', color: '#94a3b8', background: 'rgba(255,255,255,0.04)', padding: '8px', borderRadius: '6px' }}>
+                ✓ OCR itemizes part numbers, quantities, &amp; tax.<br />
+                ✓ Auto-splits items between multiple active jobs.<br />
+                ✓ Updates live Job Gross Profit Margin in real-time.
+              </div>
+            </div>
+
+            <div style={{ background: 'rgba(4, 11, 18, 0.85)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(174, 199, 211, 0.18)' }}>
+              <div style={{ fontSize: '14px', fontWeight: 800, color: '#38bdf8', marginBottom: '6px' }}>
+                2. 🔍 Site Damage &amp; Change Orders
+              </div>
+              <p style={{ fontSize: '12px', color: '#d1e2eb', margin: '0 0 8px 0', lineHeight: 1.45 }}>
+                Text a photo of rot, charred wiring, or broken pipes: <em>“Found this on Miller”</em>.
+              </p>
+              <div style={{ fontSize: '11px', color: '#94a3b8', background: 'rgba(255,255,255,0.04)', padding: '8px', borderRadius: '6px' }}>
+                ✓ Gemini detects defect boundaries &amp; area.<br />
+                ✓ Drafts itemized Change Order with material takeoff.<br />
+                ✓ Stages 1-tap client approval link with photo attached.
+              </div>
+            </div>
+
+            <div style={{ background: 'rgba(4, 11, 18, 0.85)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(174, 199, 211, 0.18)' }}>
+              <div style={{ fontSize: '14px', fontWeight: 800, color: '#86efac', marginBottom: '6px' }}>
+                3. 📸 Inspection Tags &amp; Green Cards
+              </div>
+              <p style={{ fontSize: '12px', color: '#d1e2eb', margin: '0 0 8px 0', lineHeight: 1.45 }}>
+                Snap the building inspector’s signed green permit tag on the framing or meter.
+              </p>
+              <div style={{ fontSize: '11px', color: '#94a3b8', background: 'rgba(255,255,255,0.04)', padding: '8px', borderRadius: '6px' }}>
+                ✓ Reads inspector signature, date, &amp; pass status.<br />
+                ✓ Advances milestone stage (e.g. Rough Passed).<br />
+                ✓ Auto-alerts the next trade crew on the schedule.
+              </div>
+            </div>
+
+            <div style={{ background: 'rgba(4, 11, 18, 0.85)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(174, 199, 211, 0.18)' }}>
+              <div style={{ fontSize: '14px', fontWeight: 800, color: '#f59e0b', marginBottom: '6px' }}>
+                4. 🏷️ Equipment Serial &amp; Nameplates
+              </div>
+              <p style={{ fontSize: '12px', color: '#d1e2eb', margin: '0 0 8px 0', lineHeight: 1.45 }}>
+                Text a picture of a customer's rusted water heater or AC data plate.
+              </p>
+              <div style={{ fontSize: '11px', color: '#94a3b8', background: 'rgba(255,255,255,0.04)', padding: '8px', borderRadius: '6px' }}>
+                ✓ Extracts exact model, serial #, tonnage, &amp; BTUs.<br />
+                ✓ Matches replacement units against your Price Book.<br />
+                ✓ Pre-fills equipment replacement estimate draft.
+              </div>
+            </div>
+
+            <div style={{ background: 'rgba(4, 11, 18, 0.85)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(174, 199, 211, 0.18)' }}>
+              <div style={{ fontSize: '14px', fontWeight: 800, color: '#ec4899', marginBottom: '6px' }}>
+                5. 🌟 Client Progress &amp; Warranty Proof
+              </div>
+              <p style={{ fontSize: '12px', color: '#d1e2eb', margin: '0 0 8px 0', lineHeight: 1.45 }}>
+                Text finished tile, roof, or paint photos with the job name.
+              </p>
+              <div style={{ fontSize: '11px', color: '#94a3b8', background: 'rgba(255,255,255,0.04)', padding: '8px', borderRadius: '6px' }}>
+                ✓ Immediately syncs to customer’s private portal.<br />
+                ✓ Creates timestamped proof for change orders.<br />
+                ✓ Permanently stored for warranty dispute defense.
+              </div>
+            </div>
+
+            <div style={{ background: 'rgba(4, 11, 18, 0.85)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(174, 199, 211, 0.18)' }}>
+              <div style={{ fontSize: '14px', fontWeight: 800, color: '#a78bfa', marginBottom: '6px' }}>
+                6. 🎙️ Hands-Free Driving Audio Memos
+              </div>
+              <p style={{ fontSize: '12px', color: '#d1e2eb', margin: '0 0 8px 0', lineHeight: 1.45 }}>
+                Send a 15-second voice memo via Apple iMessage or Android Messages.
+              </p>
+              <div style={{ fontSize: '11px', color: '#94a3b8', background: 'rgba(255,255,255,0.04)', padding: '8px', borderRadius: '6px' }}>
+                ✓ Suppresses diesel truck, engine, &amp; tool noise.<br />
+                ✓ Extracts change orders, line items, &amp; dates.<br />
+                ✓ 15-minute rollback window (Reply UNDO).
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 4: Live Field Simulator Sandbox */}
       {activeTab === 'simulator' && (
         <div className={styles.simulatorBox}>
           <div>
