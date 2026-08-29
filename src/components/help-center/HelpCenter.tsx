@@ -649,7 +649,7 @@ export default function HelpCenter() {
     } else if (val.includes('stripe') || val.includes('deposit') || val.includes('payout')) {
       setTicketDeflection('Stripe Connect deposits customer funds on a standard 2-business-day rolling schedule (initial payout takes 7-14 days for verification).');
     } else if (val.includes('domain') || val.includes('dns') || val.includes('godaddy') || val.includes('squarespace')) {
-      setTicketDeflection('Point root domain A record to 76.76.21.21 and CNAME www to cname.letsgetquoted.com in your registrar DNS.');
+      setTicketDeflection('Point root domain A record to 76.76.21.21 and CNAME www to domains.letsgetquoted.com in your registrar DNS.');
     } else {
       setTicketDeflection(null);
     }

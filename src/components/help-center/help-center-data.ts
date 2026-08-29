@@ -182,11 +182,11 @@ export const COMMON_FIX_ARTICLES: Article[] = [
       <ol>
         <li>Log into your registrar (GoDaddy, Namecheap, Google Domains / Squarespace).</li>
         <li>Create an <strong>A Record</strong> with Host: <code>@</code> pointing to IP: <code>76.76.21.21</code>.</li>
-        <li>Create a <strong>CNAME Record</strong> with Host: <code>www</code> pointing to <code>cname.letsgetquoted.com</code>.</li>
+        <li>Create a <strong>CNAME Record</strong> with Host: <code>www</code> pointing to <code>domains.letsgetquoted.com</code>.</li>
         <li>Remove any competing A records or domain parking redirects.</li>
       </ol>
       <h4>SSL Generation:</h4>
-      <p>Our edge servers issue a free auto-renewing Let&apos;s Encrypt SSL certificate within <strong>15 minutes</strong> of DNS propagation.</p>
+      <p>Our edge servers issue a free auto-renewing Let&apos;s Encrypt SSL certificate automatically once DNS propagation is verified.</p>
     `
   },
   {
@@ -383,14 +383,14 @@ export const KNOWLEDGE_BASE: KnowledgeCategory[] = [
               <tr>
                 <td><strong>CNAME</strong></td>
                 <td><code>www</code></td>
-                <td><code>cname.letsgetquoted.com</code></td>
+                <td><code>domains.letsgetquoted.com</code></td>
                 <td>Automatic / 3600</td>
               </tr>
             </tbody>
           </table>
 
           <div class="calloutInfo">
-            <strong>Automatic SSL Provisioning:</strong> Once DNS records propagate, our cloud edge automatically provisions and renews a free 256-bit Let's Encrypt SSL certificate within 15 minutes.
+            <strong>Automatic SSL Provisioning:</strong> Once DNS records propagate and are verified, our cloud edge automatically provisions and renews a free 256-bit Let's Encrypt SSL certificate.
           </div>
         `
       }

@@ -19,6 +19,7 @@ function searchableText(article: ManualArticleSummary, chapter?: ManualChapter):
     article.keywords.join(' '),
     article.prerequisites.join(' '),
     article.audiences.join(' '),
+    article.searchText ?? '',
     chapter?.title ?? '',
   ]
     .join(' ')

@@ -44,28 +44,28 @@ const TIERS: readonly BillingPlanId[] = ['flex', 'solo', 'growth', 'scale'];
 
 const TIER_FEATURES: Record<BillingPlanId, readonly string[]> = {
   flex: [
-    '1.50% platform fee',
+    '1.25% platform fee',
     '1 Office + 2 Crew seats included',
     'Website message-button connect',
     'Free custom SEO website',
   ],
   solo: [
-    '1.00% lower platform fee',
-    '1 Office + 3 Crew seats included',
-    '500 texts + 300 AI credits/mo',
+    '0.50% platform fee',
+    '2 Office + 2 Crew seats included',
+    '500 texts + 250 AI credits/mo',
     'Custom domain & SEO website',
   ],
   growth: [
-    '0.25% low platform fee',
+    '0.25% platform fee',
     '5 Office + 10 Crew seats included',
-    '1,500 texts + 750 AI credits/mo',
+    '1,500 texts + 500 AI credits/mo',
     'Team dispatch & scheduling',
   ],
   scale: [
-    '0.10% lowest platform fee',
+    '0.10% platform fee',
     '15 Office + 50 Crew seats included',
-    '3,000 texts + 1,500 AI credits/mo',
-    '250 GB photo & file storage',
+    '3,000 texts + 1,000 AI credits/mo',
+    '100 GB photo & file storage',
   ],
 };
 

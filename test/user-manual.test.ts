@@ -91,4 +91,75 @@ describe('dashboard user manual', () => {
     expect(dashboardHelp).toContain('href="/help/manual"');
     expect(dashboardHelp).toContain('href="/help/manual/first-30-minutes"');
   });
+
+  it('includes all 5 new articles and adheres to verified technical truths', () => {
+    expect(MANUAL_ARTICLES).toHaveLength(51);
+
+    const newSlugs = [
+      'turn-on-the-customer-portal',
+      'set-up-your-own-text-alerts',
+      'install-the-field-app-and-work-without-signal',
+      'manage-your-marketing-list-and-opt-outs',
+      'cancel-your-plan-or-delete-your-account',
+    ];
+    for (const slug of newSlugs) {
+      expect(getManualArticle(slug), `Article ${slug} should exist`).toBeDefined();
+      expect(getManualFieldNotes(slug), `Field notes for ${slug} should exist`).toBeDefined();
+    }
+
+    // Custom domain verification: never cname.letsgetquoted.com, always domains.letsgetquoted.com
+    const websiteArticle = getManualArticle('build-and-publish-your-website');
+    expect(JSON.stringify(websiteArticle)).toContain('domains.letsgetquoted.com');
+    expect(JSON.stringify(websiteArticle)).not.toContain('cname.letsgetquoted.com');
+
+    // Platform fee verification
+    const stripeArticle = getManualArticle('connect-stripe-and-get-paid');
+    expect(JSON.stringify(stripeArticle)).toContain('125 bps (1.25%)');
+    expect(JSON.stringify(stripeArticle)).toContain('50 bps (0.50%)');
+    expect(JSON.stringify(stripeArticle)).toContain('25 bps (0.25%)');
+    expect(JSON.stringify(stripeArticle)).toContain('10 bps (0.10%)');
+
+    // Chargeback verification
+    const refundArticle = getManualArticle('manage-refunds-and-payment-problems');
+    expect(JSON.stringify(refundArticle)).toContain('dispute_due_by');
+    expect(JSON.stringify(refundArticle)).toContain('support@letsgetquoted.com');
+
+    // Irreversible actions warnings
+    const jobArticle = getManualArticle('manage-the-job-workspace');
+    expect(JSON.stringify(jobArticle)).toContain('cannot be undone');
+    const clientArticle = getManualArticle('manage-client-records');
+    expect(JSON.stringify(clientArticle)).toContain('cannot be undone');
+    const deletePlanArticle = getManualArticle('cancel-your-plan-or-delete-your-account');
+    expect(JSON.stringify(deletePlanArticle)).toContain('cannot be undone');
+  });
+
+  it('precomputes search text and successfully indexes core task keywords', () => {
+    const summaries = getManualArticleSummaries();
+    expect(summaries.every((s) => typeof s.searchText === 'string' && s.searchText.length > 20)).toBe(true);
+
+    const indexedTerms = [
+      'delete',
+      'discount',
+      'undo',
+      'password',
+      'print',
+      'decline',
+      'offline',
+      'cancel',
+      'weather alerts',
+      'magic link',
+    ];
+
+    for (const term of indexedTerms) {
+      const matchCount = summaries.filter(
+        (s) =>
+          s.searchText?.toLowerCase().includes(term) ||
+          s.title.toLowerCase().includes(term) ||
+          s.summary.toLowerCase().includes(term) ||
+          s.keywords.some((k) => k.toLowerCase().includes(term)),
+      ).length;
+      expect(matchCount, `Search indexing should match term: "${term}"`).toBeGreaterThan(0);
+    }
+  });
 });
+
