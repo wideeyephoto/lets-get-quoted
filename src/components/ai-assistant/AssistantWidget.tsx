@@ -411,7 +411,7 @@ export default function AssistantWidget() {
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Footer Input Area with Option B Styling */}
+            {/* Footer Input Area */}
             <div className={styles.footerContainer}>
               <form onSubmit={handleSubmit} className={styles.inputForm}>
                 <input
@@ -420,7 +420,7 @@ export default function AssistantWidget() {
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   placeholder="Ask Sparky..."
-                  className={styles.textInput}
+                  className={styles.inputField}
                   disabled={isLoading}
                 />
                 <button
@@ -434,15 +434,6 @@ export default function AssistantWidget() {
                   </svg>
                 </button>
               </form>
-
-              {/* Hanging Brass Dog Tag (Option B Signature) */}
-              <div className={styles.brassTagAnchor} aria-hidden="true">
-                <div className={styles.splitRing} />
-                <div className={styles.brassMedallion} title="Sparky · Official Shop Dog Tag">
-                  <span className={styles.brassLightning}>⚡</span>
-                  <span className={styles.brassText}>SPARKY</span>
-                </div>
-              </div>
             </div>
           </div>
         </>
