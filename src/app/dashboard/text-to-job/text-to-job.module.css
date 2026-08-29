@@ -1766,19 +1766,13 @@
   color: #f5f0e7;
 }
 
+/* Native Print Styles */
 @media print {
-  body * {
-    visibility: hidden;
-  }
-  .printableCardBox, .printableCardBox * {
-    visibility: visible;
-  }
   .printableCardBox {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-    border: 2px solid #000;
+    position: relative;
+    border: 1px solid #000;
     box-shadow: none;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 }

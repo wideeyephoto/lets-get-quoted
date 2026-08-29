@@ -91,7 +91,7 @@ export default async function TextToJobDashboardPage() {
     };
   });
 
-  const rawSharedNumber = process.env.NEXT_PUBLIC_SHARED_FIELD_PHONE || process.env.SIGNALWIRE_FROM_NUMBER || '+19479412323';
+  const rawSharedNumber = process.env.SIGNALWIRE_FROM_NUMBER || '+19479412323';
   const isQualified = Boolean(account?.alert_phone && account.alert_phone.replace(/\D/g, '').length >= 10);
 
   return (
