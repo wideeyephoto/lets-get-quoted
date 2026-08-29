@@ -694,7 +694,17 @@ export default function TextToJobWorkspace({
                   <span className={styles.liveDot} /> {totalAuthorizedDevices} Whitelisted Devices
                 </span>
               </div>
-              <h1 className={styles.title}>Text-to-Job Dashboard</h1>
+              <div className={styles.headerTitleRow}>
+                <h1 className={styles.title}>Text-to-Job Dashboard</h1>
+                <button
+                  type="button"
+                  onClick={() => setShowPrintModal(true)}
+                  className={styles.headerQuickGuideBtn}
+                  title="Open Printable Visor Card & Quick Commands Guide"
+                >
+                  🪪 Quick Commands / Visor Card
+                </button>
+              </div>
               <p className={styles.subtitle}>
                 Just send a message by voice or text to Sparky, your smart assistant, and he&apos;ll organize
                 things, submit and update job records, change orders, punch lists, and schedule slots automatically.
