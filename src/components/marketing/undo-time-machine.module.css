@@ -15,6 +15,12 @@
   gap: 26px;
 }
 
+:root[data-theme='light'] .wrapper {
+  background: #ffffff;
+  border-color: #fde68a;
+  box-shadow: 0 12px 36px rgba(245, 158, 11, 0.08);
+}
+
 .headerRow {
   display: flex;
   flex-direction: column;
@@ -35,6 +41,12 @@
   width: fit-content;
 }
 
+:root[data-theme='light'] .badge {
+  background: #fef3c7;
+  color: #b45309;
+  border-color: #fde68a;
+}
+
 .title {
   font-size: clamp(22px, 2.8vw, 30px);
   font-weight: 900;
@@ -44,11 +56,19 @@
   line-height: 1.25;
 }
 
+:root[data-theme='light'] .title {
+  color: #0f172a;
+}
+
 .subtitle {
   font-size: 14.5px;
   color: #a7bcc8;
   line-height: 1.5;
   margin: 0;
+}
+
+:root[data-theme='light'] .subtitle {
+  color: #475569;
 }
 
 /* Machine Grid */
@@ -76,6 +96,11 @@
   gap: 14px;
 }
 
+:root[data-theme='light'] .phoneBox {
+  background: #091e2b;
+  border-color: #0f344d;
+}
+
 .chatBubbleSent {
   background: #0284c7;
   color: #fff;
@@ -84,6 +109,7 @@
   font-size: 13px;
   align-self: flex-end;
   max-width: 85%;
+  line-height: 1.4;
 }
 
 .chatBubbleAi {
@@ -98,6 +124,7 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
+  line-height: 1.4;
 }
 
 /* Rollback Action Section */
@@ -112,6 +139,11 @@
   gap: 16px;
 }
 
+:root[data-theme='light'] .rollbackCard {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+}
+
 .countdownBar {
   display: flex;
   justify-content: space-between;
@@ -122,11 +154,24 @@
   border-radius: 10px;
 }
 
+:root[data-theme='light'] .countdownBar {
+  background: #fffbeb;
+  border-color: #fde68a;
+}
+
+:root[data-theme='light'] .countdownBar span:first-child {
+  color: #92400e !important;
+}
+
 .countdownTimer {
   font-family: var(--font-mono), ui-monospace, monospace;
   font-size: 18px;
   font-weight: 900;
   color: #fbbf24;
+}
+
+:root[data-theme='light'] .countdownTimer {
+  color: #d97706;
 }
 
 .stateDisplay {
@@ -139,10 +184,23 @@
   gap: 8px;
 }
 
+:root[data-theme='light'] .stateDisplay {
+  background: #ffffff;
+  border-color: #e2e8f0;
+}
+
 .stateRow {
   display: flex;
   justify-content: space-between;
   font-size: 12.5px;
+}
+
+:root[data-theme='light'] .stateRow span {
+  color: #64748b !important;
+}
+
+:root[data-theme='light'] .stateRow strong {
+  color: #0f172a !important;
 }
 
 .undoActionBtn {
@@ -159,9 +217,10 @@
   justify-content: center;
   gap: 8px;
   box-shadow: 0 4px 16px rgba(245, 158, 11, 0.35);
-  transition: transform 0.15s ease;
+  transition: all 0.2s ease;
 }
 
 .undoActionBtn:hover {
-  transform: translateY(-1px);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(245, 158, 11, 0.45);
 }

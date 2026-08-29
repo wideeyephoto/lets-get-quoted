@@ -15,6 +15,12 @@
   gap: 26px;
 }
 
+:root[data-theme='light'] .wrapper {
+  background: #ffffff;
+  border-color: #fdba74;
+  box-shadow: 0 12px 36px rgba(234, 88, 12, 0.08);
+}
+
 .headerRow {
   display: flex;
   justify-content: space-between;
@@ -43,6 +49,12 @@
   width: fit-content;
 }
 
+:root[data-theme='light'] .badge {
+  background: #fff7ed;
+  color: #c2410c;
+  border-color: #fed7aa;
+}
+
 .title {
   font-size: clamp(22px, 2.8vw, 30px);
   font-weight: 900;
@@ -52,11 +64,19 @@
   line-height: 1.25;
 }
 
+:root[data-theme='light'] .title {
+  color: #0f172a;
+}
+
 .subtitle {
   font-size: 14.5px;
   color: #a7bcc8;
   line-height: 1.5;
   margin: 0;
+}
+
+:root[data-theme='light'] .subtitle {
+  color: #475569;
 }
 
 /* Card Generator Layout */
@@ -84,6 +104,11 @@
   gap: 16px;
 }
 
+:root[data-theme='light'] .controlsCol {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+}
+
 .inputField {
   display: flex;
   flex-direction: column;
@@ -96,6 +121,16 @@
   color: #f5f0e7;
 }
 
+:root[data-theme='light'] .inputLabel {
+  color: #1e293b;
+}
+
+.phoneInputRow {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
 .textInput, .selectInput {
   background: #081622;
   border: 1px solid rgba(174, 199, 211, 0.25);
@@ -104,6 +139,45 @@
   color: #fff;
   font-size: 13.5px;
   outline: none;
+  width: 100%;
+  transition: all 0.2s ease;
+}
+
+:root[data-theme='light'] .textInput,
+:root[data-theme='light'] .selectInput {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+
+.textInput:focus, .selectInput:focus {
+  border-color: #ff8e42;
+  box-shadow: 0 0 0 3px rgba(255, 106, 36, 0.2);
+}
+
+.copyPhoneBtn {
+  flex-shrink: 0;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
+  color: #d1e2eb;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+:root[data-theme='light'] .copyPhoneBtn {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #334155;
+}
+
+.copyPhoneBtn:hover {
+  background: rgba(255, 106, 36, 0.2);
+  border-color: #ff8e42;
+  color: #ff8e42;
 }
 
 .printBtn {
@@ -121,10 +195,17 @@
   gap: 8px;
   box-shadow: 0 4px 16px rgba(255, 106, 36, 0.35);
   margin-top: 8px;
+  transition: all 0.2s ease;
+}
+
+.printBtn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(255, 106, 36, 0.45);
 }
 
 /* Printable Physical Card Preview */
 .printableCardPreview {
+  position: relative;
   background: #ffffff;
   color: #0f172a;
   border-radius: 16px;
@@ -136,12 +217,24 @@
   border: 2px solid #e2e8f0;
 }
 
+.visorNotch {
+  position: absolute;
+  top: -1px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 54px;
+  height: 8px;
+  background: #cbd5e1;
+  border-radius: 0 0 6px 6px;
+}
+
 .cardTopHeader {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
   border-bottom: 2px solid #0f172a;
   padding-bottom: 12px;
+  gap: 10px;
 }
 
 .cardCompanyTitle {
@@ -149,23 +242,42 @@
   font-weight: 900;
   margin: 0;
   color: #0f172a;
+  letter-spacing: -0.01em;
+}
+
+.cardTradeSub {
+  font-size: 11px;
+  color: #64748b;
+  font-weight: 700;
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  margin-top: 2px;
 }
 
 .cardHotlineTag {
   font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 900;
   color: #ea580c;
   background: #fff7ed;
-  padding: 3px 8px;
+  padding: 4px 10px;
   border-radius: 6px;
   border: 1px solid #fdba74;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.hotlineTagIcon {
+  font-size: 12px;
 }
 
 .cardPhrasesGrid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  gap: 10px;
 }
 
 .cardPhraseBox {
@@ -178,12 +290,22 @@
   gap: 4px;
 }
 
+.cardPhraseBoxWide {
+  grid-column: 1 / -1;
+  background: #fffbeb;
+  border-color: #fde68a;
+}
+
 .cardPhraseLabel {
   font-size: 10px;
   font-weight: 900;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: #64748b;
+}
+
+.cardPhraseBoxWide .cardPhraseLabel {
+  color: #b45309;
 }
 
 .cardPhraseText {
@@ -202,6 +324,13 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.cardPoweredBy {
+  font-weight: 700;
+  color: #059669;
 }
 
 /* Native Print Styles */

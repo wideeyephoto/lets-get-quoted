@@ -15,6 +15,12 @@
   gap: 26px;
 }
 
+:root[data-theme='light'] .wrapper {
+  background: #ffffff;
+  border-color: #bfdbfe;
+  box-shadow: 0 12px 36px rgba(59, 130, 246, 0.08);
+}
+
 .headerRow {
   display: flex;
   justify-content: space-between;
@@ -43,6 +49,12 @@
   width: fit-content;
 }
 
+:root[data-theme='light'] .badge {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border-color: #bfdbfe;
+}
+
 .title {
   font-size: clamp(22px, 2.8vw, 30px);
   font-weight: 900;
@@ -52,11 +64,19 @@
   line-height: 1.25;
 }
 
+:root[data-theme='light'] .title {
+  color: #0f172a;
+}
+
 .subtitle {
   font-size: 14.5px;
   color: #a7bcc8;
   line-height: 1.5;
   margin: 0;
+}
+
+:root[data-theme='light'] .subtitle {
+  color: #475569;
 }
 
 /* System Switcher Tabs */
@@ -68,6 +88,11 @@
   border-radius: 12px;
   border: 1px solid rgba(174, 199, 211, 0.15);
   width: fit-content;
+}
+
+:root[data-theme='light'] .systemSwitcher {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
 }
 
 .systemBtn {
@@ -85,10 +110,14 @@
   transition: all 0.15s ease;
 }
 
+:root[data-theme='light'] .systemBtn {
+  color: #475569;
+}
+
 .systemBtnActive {
-  background: #3b82f6;
-  color: #ffffff;
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.35);
+  background: #3b82f6 !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.35) !important;
 }
 
 /* Wizard Grid */
@@ -122,6 +151,11 @@
   align-items: flex-start;
 }
 
+:root[data-theme='light'] .stepCard {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+}
+
 .stepNum {
   width: 28px;
   height: 28px;
@@ -150,11 +184,19 @@
   margin: 0;
 }
 
+:root[data-theme='light'] .stepTitle {
+  color: #0f172a;
+}
+
 .stepDesc {
   font-size: 12px;
   color: #a7bcc8;
   line-height: 1.45;
   margin: 0;
+}
+
+:root[data-theme='light'] .stepDesc {
+  color: #475569;
 }
 
 .voiceSample {
@@ -166,6 +208,12 @@
   font-size: 12px;
   color: #50e3bd;
   margin-top: 4px;
+}
+
+:root[data-theme='light'] .voiceSample {
+  background: #ecfdf5;
+  border-left-color: #10b981;
+  color: #047857;
 }
 
 /* CarPlay / Android Auto Display Preview */
@@ -180,6 +228,11 @@
   gap: 16px;
   box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.8), 0 8px 30px rgba(0, 0, 0, 0.6);
   position: relative;
+}
+
+:root[data-theme='light'] .carplayDisplay {
+  background: #091e2b;
+  border-color: #0f344d;
 }
 
 .carplayStatusBar {
@@ -245,4 +298,10 @@
   justify-content: center;
   gap: 8px;
   box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4);
+  transition: all 0.2s ease;
+}
+
+.shortcutActionBtn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.5);
 }

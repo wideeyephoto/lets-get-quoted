@@ -8,6 +8,7 @@ export default function SunVisorCardGenerator() {
   const [businessName, setBusinessName] = useState('Apex Electric & Contracting');
   const [selectedTrade, setSelectedTrade] = useState('Electrical');
   const [fieldPhone, setFieldPhone] = useState('(248) 555-0199');
+  const [copied, setCopied] = useState(false);
 
   function handlePrint() {
     if (typeof window !== 'undefined') {
@@ -15,11 +16,19 @@ export default function SunVisorCardGenerator() {
     }
   }
 
+  function handleCopyPhone() {
+    if (typeof window !== 'undefined') {
+      navigator.clipboard.writeText(fieldPhone.replace(/[^\d+]/g, ''));
+      setCopied(true);
+      setTimeout(() => setCopied(false), 3000);
+    }
+  }
+
   return (
     <div className={styles.wrapper}>
       <div className={styles.headerRow}>
         <div className={styles.titleGroup}>
-          <span className={styles.badge}>📄 Sun-Visor Glovebox Card Generator</span>
+          <span className={styles.badge}>🪪 Printable Truck Sun-Visor Glovebox Card</span>
           <h3 className={styles.title}>
             Print a laminated quick-reference card for your truck cab.
           </h3>
@@ -70,32 +79,50 @@ export default function SunVisorCardGenerator() {
             <label htmlFor="sunvisor-phone" className={styles.inputLabel}>
               Dedicated Texting Hotline:
             </label>
-            <input
-              id="sunvisor-phone"
-              type="text"
-              value={fieldPhone}
-              onChange={(e) => setFieldPhone(e.target.value)}
-              className={styles.textInput}
-              placeholder="(248) 555-0199"
-              aria-label="Dedicated Texting Hotline"
-            />
+            <div className={styles.phoneInputRow}>
+              <input
+                id="sunvisor-phone"
+                type="text"
+                value={fieldPhone}
+                onChange={(e) => setFieldPhone(e.target.value)}
+                className={styles.textInput}
+                placeholder="(248) 555-0199"
+                aria-label="Dedicated Texting Hotline"
+              />
+              <button
+                type="button"
+                onClick={handleCopyPhone}
+                className={styles.copyPhoneBtn}
+                title="Copy phone number to clipboard"
+              >
+                {copied ? '✓ Copied' : '📋 Copy'}
+              </button>
+            </div>
           </div>
 
           <button type="button" onClick={handlePrint} className={styles.printBtn}>
-            🖨️ Print Sun-Visor Cheatsheet Card
+            <span>🖨️</span>
+            <span>Print Sun-Visor Cheatsheet Card</span>
           </button>
         </div>
 
         {/* Right: Printable Card Preview */}
         <div className={styles.printableCardPreview}>
+          <div className={styles.visorNotch} title="Visor Clip Slot" />
+          
           <div className={styles.cardTopHeader}>
             <div>
               <h4 className={styles.cardCompanyTitle}>{businessName || 'Your Business Name'}</h4>
-              <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 700 }}>
-                {selectedTrade} &middot; Text-to-Job Field Quick Card
-              </span>
+              <div className={styles.cardTradeSub}>
+                <span>{selectedTrade}</span>
+                <span>&bull;</span>
+                <span>Text-to-Job Field Guide</span>
+              </div>
             </div>
-            <div className={styles.cardHotlineTag}>📱 Text: {fieldPhone || '(248) 555-0199'}</div>
+            <div className={styles.cardHotlineTag}>
+              <span className={styles.hotlineTagIcon}>📱</span>
+              <span>Text: {fieldPhone || '(248) 555-0199'}</span>
+            </div>
           </div>
 
           <div className={styles.cardPhrasesGrid}>
@@ -126,11 +153,18 @@ export default function SunVisorCardGenerator() {
                 “New lead: [Name], [Phone], [Service needed], [When]”
               </p>
             </div>
+
+            <div className={`${styles.cardPhraseBox} ${styles.cardPhraseBoxWide}`}>
+              <span className={styles.cardPhraseLabel}>5. Receipts &amp; Photos</span>
+              <p className={styles.cardPhraseText}>
+                “Snap receipt at register or photo of site damage to auto-attach to job file.”
+              </p>
+            </div>
           </div>
 
           <div className={styles.cardFooterRules}>
-            <span>↺ <strong>Rollback Rule:</strong> Reply <code>UNDO</code> within 15 mins to revert any field change.</span>
-            <span>Powered by Gemini AI</span>
+            <span>↺ <strong>Rollback Safety:</strong> Reply <code>UNDO</code> within 15 mins to revert any change.</span>
+            <span className={styles.cardPoweredBy}>Powered by Gemini AI</span>
           </div>
         </div>
       </div>
