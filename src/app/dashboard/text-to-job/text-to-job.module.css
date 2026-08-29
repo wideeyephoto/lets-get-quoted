@@ -1,0 +1,738 @@
+/* Text-to-Job Dashboard Styles */
+
+.container {
+  padding: 24px 32px 64px;
+  max-width: 1360px;
+  margin: 0 auto;
+  color: #f5f0e7;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+@media (max-width: 768px) {
+  .container {
+    padding: 16px 16px 48px;
+    gap: 20px;
+  }
+}
+
+/* Header Area */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.headerLeft {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 760px;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 106, 36, 0.12);
+  border: 1px solid rgba(255, 106, 36, 0.35);
+  color: #ff8e42;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 999px;
+  width: fit-content;
+}
+
+.title {
+  font-size: clamp(24px, 3vw, 32px);
+  font-weight: 900;
+  color: #f5f0e7;
+  letter-spacing: -0.02em;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.subtitle {
+  font-size: 14px;
+  color: #a7bcc8;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.vcardBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: linear-gradient(135deg, #ff6a24, #f43f5e);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
+  padding: 10px 18px;
+  border-radius: 10px;
+  text-decoration: none;
+  box-shadow: 0 4px 16px rgba(255, 106, 36, 0.35);
+  border: none;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.vcardBtn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(255, 106, 36, 0.5);
+}
+
+/* Hotline & Telephony Guard Strip */
+.hotlineStrip {
+  background: linear-gradient(165deg, rgba(13, 31, 48, 0.85), rgba(7, 18, 29, 0.95));
+  border: 1px solid rgba(80, 227, 189, 0.25);
+  border-radius: 16px;
+  padding: 18px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.hotlineItem {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.hotlineLabel {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #7da0b3;
+}
+
+.hotlineVal {
+  font-size: 15px;
+  font-weight: 850;
+  color: #f5f0e7;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hotlineHighlight {
+  color: #50e3bd;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 16px;
+}
+
+.statusPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: #10b981;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+/* 4-Pillar Matrix Grid */
+.matrixSection {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.matrixSectionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.sectionHeading {
+  font-size: 16px;
+  font-weight: 850;
+  color: #f5f0e7;
+  letter-spacing: -0.01em;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.matrixGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+@media (max-width: 1024px) {
+  .matrixGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .matrixGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.pillarCard {
+  background: linear-gradient(170deg, rgba(14, 33, 50, 0.95), rgba(7, 17, 27, 0.98));
+  border: 1px solid rgba(174, 199, 211, 0.15);
+  border-radius: 16px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.pillarCard:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.4);
+}
+
+.pillarCardJobs {
+  border-color: rgba(255, 113, 55, 0.35);
+}
+.pillarCardJobs:hover {
+  border-color: rgba(255, 113, 55, 0.7);
+}
+
+.pillarCardLeads {
+  border-color: rgba(139, 92, 246, 0.35);
+}
+.pillarCardLeads:hover {
+  border-color: rgba(139, 92, 246, 0.7);
+}
+
+.pillarCardSchedule {
+  border-color: rgba(56, 189, 248, 0.35);
+}
+.pillarCardSchedule:hover {
+  border-color: rgba(56, 189, 248, 0.7);
+}
+
+.pillarCardCrew {
+  border-color: rgba(80, 227, 189, 0.35);
+}
+.pillarCardCrew:hover {
+  border-color: rgba(80, 227, 189, 0.7);
+}
+
+.pillarHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.pillarIcon {
+  font-size: 20px;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.pillarCountBadge {
+  font-size: 11px;
+  font-weight: 850;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.07);
+  color: #d1e2eb;
+}
+
+.pillarTitle {
+  font-size: 16px;
+  font-weight: 850;
+  color: #f5f0e7;
+  margin: 0;
+}
+
+.pillarStat {
+  font-size: 22px;
+  font-weight: 900;
+  color: #fff;
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+
+.pillarDesc {
+  font-size: 12px;
+  color: #9cb1c0;
+  line-height: 1.45;
+  margin: 0;
+  flex-grow: 1;
+}
+
+.storageTargetBox {
+  margin-top: 4px;
+  padding: 8px 10px;
+  background: rgba(4, 11, 18, 0.85);
+  border: 1px solid rgba(174, 199, 211, 0.1);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.storageTargetLabel {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: #648194;
+  letter-spacing: 0.06em;
+}
+
+.storageTargetTables {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 11px;
+  color: #50e3bd;
+}
+
+.pillarLink {
+  font-size: 12px;
+  font-weight: 800;
+  color: #ff8e42;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+}
+.pillarLink:hover {
+  text-decoration: underline;
+}
+
+/* Tab Navigation */
+.tabNav {
+  display: flex;
+  gap: 8px;
+  border-bottom: 1px solid rgba(174, 199, 211, 0.15);
+  padding-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.tabBtn {
+  background: transparent;
+  border: 1px solid transparent;
+  color: #9cb1c0;
+  font-size: 13px;
+  font-weight: 800;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.15s ease;
+}
+
+.tabBtn:hover {
+  color: #f5f0e7;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.tabBtnActive {
+  background: rgba(255, 106, 36, 0.12);
+  border-color: rgba(255, 106, 36, 0.35);
+  color: #ff8e42;
+}
+
+/* Feed & Inspector Layout */
+.workspaceLayout {
+  display: grid;
+  grid-template-columns: 1.1fr 1.3fr;
+  gap: 20px;
+}
+
+@media (max-width: 900px) {
+  .workspaceLayout {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Inbound Feed Column */
+.feedCol {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.feedList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.feedCard {
+  background: linear-gradient(165deg, rgba(12, 28, 44, 0.9), rgba(6, 17, 27, 0.95));
+  border: 1px solid rgba(174, 199, 211, 0.14);
+  border-radius: 14px;
+  padding: 16px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  position: relative;
+}
+
+.feedCard:hover {
+  border-color: rgba(255, 113, 55, 0.4);
+  transform: translateY(-2px);
+  background: linear-gradient(165deg, rgba(15, 36, 56, 0.95), rgba(8, 20, 32, 0.98));
+}
+
+.feedCardActive {
+  border-color: #ff6a24;
+  box-shadow: 0 0 20px rgba(255, 106, 36, 0.25);
+  background: linear-gradient(165deg, rgba(18, 42, 66, 0.98), rgba(9, 23, 36, 1));
+}
+
+.feedHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.feedTypePill {
+  font-size: 11px;
+  font-weight: 850;
+  padding: 2px 8px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.feedTypeVoice {
+  background: rgba(139, 92, 246, 0.15);
+  color: #c4b5fd;
+  border: 1px solid rgba(139, 92, 246, 0.3);
+}
+
+.feedTypeText {
+  background: rgba(56, 189, 248, 0.15);
+  color: #7dd3fc;
+  border: 1px solid rgba(56, 189, 248, 0.3);
+}
+
+.feedTime {
+  font-size: 11px;
+  color: #7da0b3;
+}
+
+.feedRawMsg {
+  font-size: 13px;
+  color: #e2eff7;
+  line-height: 1.45;
+  margin: 0;
+  font-style: italic;
+}
+
+.feedPillRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.miniPill {
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #a7bcc8;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* 4-Pillar Extraction Drawer / Inspector */
+.inspectorCol {
+  background: linear-gradient(165deg, rgba(12, 30, 48, 0.95), rgba(6, 16, 26, 0.98));
+  border: 1px solid rgba(255, 113, 55, 0.28);
+  border-radius: 18px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
+}
+
+.inspectorHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  border-bottom: 1px solid rgba(174, 199, 211, 0.12);
+  padding-bottom: 16px;
+}
+
+.inspectorTitleBox {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.inspectorTitle {
+  font-size: 17px;
+  font-weight: 850;
+  color: #f5f0e7;
+  margin: 0;
+}
+
+.inspectorSubtitle {
+  font-size: 12px;
+  color: #8fa6b5;
+  margin: 0;
+}
+
+.audioPlayBtn {
+  background: rgba(139, 92, 246, 0.2);
+  border: 1px solid rgba(139, 92, 246, 0.4);
+  color: #c4b5fd;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 6px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.audioPlayBtn:hover {
+  background: rgba(139, 92, 246, 0.35);
+}
+
+/* Checklist Groups */
+.checklistGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: rgba(4, 12, 20, 0.7);
+  border: 1px solid rgba(174, 199, 211, 0.1);
+  border-radius: 12px;
+  padding: 14px;
+}
+
+.checklistGroupHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 850;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.checklistGroupJobs {
+  color: #ff8e42;
+}
+.checklistGroupLeads {
+  color: #c4b5fd;
+}
+.checklistGroupSchedule {
+  color: #7dd3fc;
+}
+.checklistGroupCrew {
+  color: #50e3bd;
+}
+
+.targetTableTag {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 10px;
+  color: #7da0b3;
+  text-transform: lowercase;
+}
+
+.checkItemsList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.checkItemRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.15s ease;
+}
+
+.checkItemRow:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.checkItemDisabled {
+  opacity: 0.45;
+  text-decoration: line-through;
+}
+
+.customCheckbox {
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  border: 1.5px solid #ff7a21;
+  background: rgba(255, 122, 33, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 900;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.customCheckboxUnchecked {
+  border-color: rgba(174, 199, 211, 0.3);
+  background: rgba(255, 255, 255, 0.02);
+  color: transparent;
+}
+
+.checkItemContent {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex-grow: 1;
+}
+
+.checkItemTitle {
+  font-size: 13px;
+  font-weight: 750;
+  color: #f5f0e7;
+}
+
+.checkItemDetail {
+  font-size: 11px;
+  color: #9cb1c0;
+}
+
+.mutationBadge {
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(80, 227, 189, 0.12);
+  color: #50e3bd;
+  width: fit-content;
+}
+
+/* Inspector Bottom Actions */
+.inspectorFooter {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(174, 199, 211, 0.12);
+  flex-wrap: wrap;
+}
+
+.applyBtn {
+  background: #10b981;
+  color: #061912;
+  font-size: 13px;
+  font-weight: 900;
+  padding: 10px 20px;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);
+  transition: transform 0.15s ease;
+}
+
+.applyBtn:hover {
+  transform: translateY(-2px);
+}
+
+.resetBtn {
+  background: transparent;
+  border: 1px solid rgba(174, 199, 211, 0.2);
+  color: #a7bcc8;
+  font-size: 12px;
+  font-weight: 750;
+  padding: 8px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.resetBtn:hover {
+  color: #fff;
+  border-color: rgba(174, 199, 211, 0.4);
+}
+
+/* Simulator Console */
+.simulatorBox {
+  background: linear-gradient(165deg, rgba(12, 28, 44, 0.95), rgba(6, 17, 27, 0.98));
+  border: 1px solid rgba(255, 113, 55, 0.25);
+  border-radius: 18px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.simInputRow {
+  display: flex;
+  gap: 12px;
+}
+
+.simInput {
+  flex-grow: 1;
+  background: rgba(4, 11, 18, 0.9);
+  border: 1px solid rgba(174, 199, 211, 0.2);
+  border-radius: 10px;
+  padding: 12px 16px;
+  color: #f5f0e7;
+  font-size: 14px;
+  outline: none;
+}
+
+.simInput:focus {
+  border-color: #ff6a24;
+}
+
+.simSendBtn {
+  background: #ff6a24;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 850;
+  padding: 0 20px;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+}

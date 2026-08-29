@@ -5,6 +5,14 @@ import Link from 'next/link';
 import { APP_SIGNUP_URL } from '@/components/marketing/links';
 import styles from './text-to-record-simulator.module.css';
 
+type ExtractedPillarItem = {
+  id: string;
+  pillar: 'Jobs' | 'Leads' | 'Schedule' | 'Crew';
+  title: string;
+  detail: string;
+  table: string;
+};
+
 type Scenario = {
   id: string;
   tabLabel: string;
@@ -29,6 +37,7 @@ type Scenario = {
   aiResponse: string;
   followUpText?: string;
   aiFollowUpResponse?: string;
+  pillars: ExtractedPillarItem[];
   jobRecord: {
     jobNumber: string;
     clientName: string;
@@ -79,6 +88,29 @@ const SCENARIOS: Scenario[] = [
       '“Rough-in plumbing inspected and passed on Elm St. Waiting on drywall crew Thursday 8 AM.”',
     aiResponse:
       '🎙️ Logged Voice Memo to Job J-108 (Wilson - 428 Elm). Milestone: Rough Inspection Passed. Next task queued: Drywall crew on-site Thursday 8:00 AM.',
+    pillars: [
+      {
+        id: 'vm-p1',
+        pillar: 'Jobs',
+        title: 'Milestone: Rough Inspection Passed',
+        detail: 'Logged timestamped inspection clearance to activity feed',
+        table: 'job_activity_feed',
+      },
+      {
+        id: 'vm-p2',
+        pillar: 'Schedule',
+        title: 'Reserve Window: Thursday 8:00 AM',
+        detail: 'Drywall & insulation logistics window blocked',
+        table: 'schedule_occurrences',
+      },
+      {
+        id: 'vm-p3',
+        pillar: 'Crew',
+        title: 'Assign Crew: Mike T. (Van #2)',
+        detail: 'Drywall hanging task pushed to crew mobile feed',
+        table: 'crew_assignments',
+      },
+    ],
     jobRecord: {
       jobNumber: 'J-108',
       clientName: 'Wilson Kitchen Remodel',
@@ -121,6 +153,29 @@ const SCENARIOS: Scenario[] = [
     },
     aiResponse:
       '🧾 Logged $148.50 Home Depot receipt (3/4in PEX & SharkBite fittings) to Job J-104 (Miller).\nJob Material Costs: $620.00 | Total Quote: $3,250.00\nGross Profit: $2,630.00 (80.9% Margin).',
+    pillars: [
+      {
+        id: 'rc-p1',
+        pillar: 'Jobs',
+        title: 'Add Job Material Expense ($148.50)',
+        detail: 'Itemized 3/4" PEX & SharkBite fittings OCR extraction',
+        table: 'quote_line_items',
+      },
+      {
+        id: 'rc-p2',
+        pillar: 'Jobs',
+        title: 'Recalculate Real-Time Gross Margin (80.9%)',
+        detail: 'Profit: $2,630.00 on $3,250.00 revenue',
+        table: 'jobs.profit_margin',
+      },
+      {
+        id: 'rc-p3',
+        pillar: 'Schedule',
+        title: 'Timestamp OCR Receipt at Royal Oak Site',
+        detail: 'Attached verified photo proof to job folder',
+        table: 'receipt_logs',
+      },
+    ],
     jobRecord: {
       jobNumber: 'J-104',
       clientName: 'Miller Residence',
@@ -157,6 +212,29 @@ const SCENARIOS: Scenario[] = [
     followUpText: 'SEND',
     aiFollowUpResponse:
       '🚀 Updated quote approval link sent to Dave Miller ((248) 555-0123). Homeowner viewed notice will alert your phone.',
+    pillars: [
+      {
+        id: 'co-p1',
+        pillar: 'Jobs',
+        title: 'Add Quote Line Item (+$450.00)',
+        detail: 'Extra 12/2 Romex & Pantry GFCI itemized',
+        table: 'quote_line_items',
+      },
+      {
+        id: 'co-p2',
+        pillar: 'Jobs',
+        title: 'Recalculate Quote Total ($2,800 → $3,250)',
+        detail: 'Tax & deposit amounts auto-rebalanced',
+        table: 'jobs.quoted_amount',
+      },
+      {
+        id: 'co-p3',
+        pillar: 'Leads',
+        title: 'Stage Client Approval SMS Link',
+        detail: 'Ready to send 1-tap authorization to Dave Miller',
+        table: 'client_notifications',
+      },
+    ],
     jobRecord: {
       jobNumber: 'J-104',
       clientName: 'Miller Residence',
@@ -187,6 +265,36 @@ const SCENARIOS: Scenario[] = [
       'Add punch list to Johnson: 1) Caulk exterior siding trim 2) Replace hallway GFCI plate 3) Touch up baseboard paint',
     aiResponse:
       '✅ Added 3 tasks to Job J-92 (Johnson - 88 Birch Ln): 1) Caulk exterior trim 2) Replace GFCI plate 3) Touch up paint. Pushed to crew feed.',
+    pillars: [
+      {
+        id: 'pl-p1',
+        pillar: 'Crew',
+        title: 'Task 1: Caulk Exterior Siding Trim',
+        detail: 'Pushed to field crew app checklist with sign-off',
+        table: 'crew_tasks',
+      },
+      {
+        id: 'pl-p2',
+        pillar: 'Crew',
+        title: 'Task 2: Replace Hallway GFCI Plate',
+        detail: 'Assigned to electrical trim punch list',
+        table: 'crew_tasks',
+      },
+      {
+        id: 'pl-p3',
+        pillar: 'Crew',
+        title: 'Task 3: Touch Up Baseboard Paint',
+        detail: 'Assigned to paint crew finishing checklist',
+        table: 'crew_tasks',
+      },
+      {
+        id: 'pl-p4',
+        pillar: 'Jobs',
+        title: 'Append Walkthrough Note to Activity Feed',
+        detail: 'Johnson final walkthrough milestone logged',
+        table: 'job_activity_feed',
+      },
+    ],
     jobRecord: {
       jobNumber: 'J-92',
       clientName: 'Johnson Exterior & Trim',
@@ -218,6 +326,29 @@ const SCENARIOS: Scenario[] = [
     followUpText: '1',
     aiFollowUpResponse:
       '✅ Marked Job J-84 (Smith - 84 Pine St) as COMPLETED. Final invoice draft ($1,200.00) ready for one-tap review.',
+    pillars: [
+      {
+        id: 'sh-p1',
+        pillar: 'Jobs',
+        title: 'Disambiguate Smith (84 Pine vs 19 Oak)',
+        detail: 'Matched exact project context before executing mutation',
+        table: 'safety_guard',
+      },
+      {
+        id: 'sh-p2',
+        pillar: 'Jobs',
+        title: 'Mark Job J-84 Status: COMPLETED',
+        detail: 'Milestone updated and closed on schedule board',
+        table: 'jobs.status',
+      },
+      {
+        id: 'sh-p3',
+        pillar: 'Jobs',
+        title: 'Draft Final Invoice ($1,200.00)',
+        detail: 'Payment link generated for instant client collection',
+        table: 'invoices',
+      },
+    ],
     jobRecord: {
       jobNumber: 'J-84',
       clientName: 'Smith Siding Repair',
@@ -244,6 +375,29 @@ const SCENARIOS: Scenario[] = [
       'New lead: Dave Miller, 248-555-0812, master bedroom roof leak around chimney, needs estimate Tuesday morning',
     aiResponse:
       '🚀 Created New Lead J-112: Dave Miller (248-555-0812). Chimney flashing / roof leak. Scheduled for Tuesday 9:30 AM estimate.',
+    pillars: [
+      {
+        id: 'ql-p1',
+        pillar: 'Leads',
+        title: 'Create Staged Lead: Dave Miller',
+        detail: 'Phone: (248) 555-0812 · Chimney Flashing / Roof Leak',
+        table: 'leads',
+      },
+      {
+        id: 'ql-p2',
+        pillar: 'Leads',
+        title: 'Triage Urgency: High Priority Water Leak',
+        detail: 'Tagged emergency repair window',
+        table: 'lead_tags',
+      },
+      {
+        id: 'ql-p3',
+        pillar: 'Schedule',
+        title: 'Stage 30-min Estimate Window: Tuesday 9:30 AM',
+        detail: 'Placed on Royal Oak East route cluster',
+        table: 'calendar_slots',
+      },
+    ],
     jobRecord: {
       jobNumber: 'J-112',
       clientName: 'Dave Miller (New Lead)',
@@ -265,6 +419,7 @@ export default function TextToRecordSimulator() {
   const [activeScenarioId, setActiveScenarioId] = useState<string>('voice-memo');
   const [isPlayingVoice, setIsPlayingVoice] = useState(false);
   const [voiceSeconds, setVoiceSeconds] = useState(9);
+  const [disabledItemIds, setDisabledItemIds] = useState<Record<string, boolean>>({});
 
   const scenario = SCENARIOS.find((s) => s.id === activeScenarioId) || SCENARIOS[0];
 
@@ -298,201 +453,156 @@ export default function TextToRecordSimulator() {
       utterance.pitch = 0.95;
       utterance.onend = () => {
         setIsPlayingVoice(false);
-        setVoiceSeconds(9);
       };
       utterance.onerror = () => {
         setIsPlayingVoice(false);
-        setVoiceSeconds(9);
       };
       window.speechSynthesis.speak(utterance);
     }
-
-    const interval = setInterval(() => {
-      setVoiceSeconds((prev) => {
-        if (prev <= 1) {
-          clearInterval(interval);
-          setIsPlayingVoice(false);
-          return 9;
-        }
-        return prev - 1;
-      });
-    }, 1000);
   }
+
+  function togglePillarItem(id: string) {
+    setDisabledItemIds((prev) => ({
+      ...prev,
+      [id]: !prev[id],
+    }));
+  }
+
+  const activePillarCount = scenario.pillars.filter((p) => !disabledItemIds[p.id]).length;
 
   return (
     <div className={styles.simulatorWrapper}>
-      {/* Scenario Selector Tabs */}
+      {/* Tab Navigation */}
       <div className={styles.tabBarContainer}>
-        <div className={styles.tabBarLabel}>Interactive Field Scenarios:</div>
-        <div className={styles.tabBar} role="tablist" aria-label="Field Intake Scenarios">
-          {SCENARIOS.map((s) => {
-            const isActive = s.id === activeScenarioId;
+        <span className={styles.tabBarLabel}>Select Real-World Contractor Field Scenario:</span>
+        <div className={styles.tabBar}>
+          {SCENARIOS.map((sc) => {
+            const isActive = sc.id === activeScenarioId;
             return (
               <button
-                key={s.id}
+                key={sc.id}
                 type="button"
-                role="tab"
-                aria-selected={isActive}
                 className={`${styles.tabBtn} ${isActive ? styles.tabActive : ''}`}
-                onClick={() => setActiveScenarioId(s.id)}
+                onClick={() => setActiveScenarioId(sc.id)}
               >
-                <span className={styles.tabIconWrapper}>{s.icon}</span>
-                <span className={styles.tabLabel}>{s.tabLabel}</span>
-                {isActive && <span className={styles.tabIndicator} aria-hidden="true" />}
+                <span className={styles.tabIconWrapper}>{sc.icon}</span>
+                <span>{sc.tabLabel}</span>
               </button>
             );
           })}
         </div>
       </div>
 
-      {/* Scenario Description Header */}
-      <div className={styles.scenarioHeader}>
-        <div className={styles.scenarioMeta}>
-          <span className={`${styles.badge} ${styles[`badge_${scenario.badgeType}`]}`}>
-            {scenario.badge}
-          </span>
-          <h3 className={styles.scenarioTitle}>{scenario.title}</h3>
-          <p className={styles.scenarioDesc}>{scenario.description}</p>
-        </div>
-      </div>
-
-      {/* Dual Pane Layout: Phone SMS Left / Live Job Record Right */}
-      <div className={styles.dualPane}>
-        {/* Left Column: Phone Messages Interface */}
+      {/* Main Workspace Frame */}
+      <div className={styles.workspaceFrame}>
+        {/* Left Column: Phone / SMS Interface */}
         <div className={styles.phoneColumn}>
           <div className={styles.phoneDevice}>
-            {/* Phone Speaker & Dynamic Island */}
-            <div className={styles.phoneTopBar}>
-              <span className={styles.phoneTime}>9:41</span>
-              <div className={styles.phoneIsland}></div>
-              <div className={styles.phoneSignals}>
-                <span>5G</span>
-                <span>100%</span>
+            {/* Phone Top Notch / Status Bar */}
+            <div className={styles.phoneHeader}>
+              <div className={styles.notch}></div>
+              <div className={styles.carrierInfo}>
+                <span>9:41</span>
+                <span>LTE 5G</span>
+              </div>
+              <div className={styles.recipientHeader}>
+                <div className={styles.recipientAvatar}>⚡</div>
+                <div className={styles.recipientName}>Let’s Get Quoted Intake</div>
+                <div className={styles.recipientPhone}>(248) 555-0199 · Platform Number</div>
               </div>
             </div>
 
-            {/* Messages Header */}
-            <div className={styles.chatHeader}>
-              <div className={styles.chatAvatar}>HQ</div>
-              <div className={styles.chatInfo}>
-                <span className={styles.chatTitle}>Let’s Get Quoted AI</span>
-                <span className={styles.chatSub}>Dedicated Field Line · (888) 555-0140</span>
-              </div>
-            </div>
-
-            {/* Chat Thread */}
-            <div className={styles.chatBody}>
-              <div className={styles.chatDate}>Today · Alert Phone Verified</div>
-
-              {/* Contractor Message: Text, Voice Memo, or Receipt Photo */}
-              {scenario.contractorInputType === 'text' && (
-                <div className={`${styles.bubble} ${styles.contractorBubble}`}>
-                  <div className={styles.bubbleSender}>{scenario.contractorSender}</div>
-                  <div className={styles.bubbleText}>{scenario.contractorText}</div>
-                  <div className={styles.bubbleTime}>9:41 AM · Sent</div>
-                </div>
-              )}
-
+            {/* Chat Messages Stream */}
+            <div className={styles.chatStream}>
+              {/* Scenario 1: Voice Memo Playback */}
               {scenario.contractorInputType === 'voice' && (
-                <div className={`${styles.bubble} ${styles.contractorVoiceBubble}`}>
-                  <div className={styles.bubbleSender}>{scenario.contractorSender}</div>
+                <div className={styles.bubbleContractor}>
+                  <div className={styles.senderTag}>You (Voice Memo MMS)</div>
                   <div className={styles.voicePlayer}>
                     <button
                       type="button"
-                      className={`${styles.voicePlayBtn} ${isPlayingVoice ? styles.voicePlaying : ''}`}
                       onClick={toggleVoicePlayback}
-                      aria-label={isPlayingVoice ? 'Pause Voice Memo' : 'Play Voice Memo'}
+                      className={styles.playIconBtn}
+                      aria-label="Play Voice Memo"
                     >
-                      {isPlayingVoice ? '❚❚' : '▶'}
+                      {isPlayingVoice ? '⏸' : '▶'}
                     </button>
-                    <div className={styles.waveformContainer}>
-                      <div className={`${styles.waveformBars} ${isPlayingVoice ? styles.waveformActive : ''}`}>
-                        <span style={{ height: '35%' }}></span>
-                        <span style={{ height: '70%' }}></span>
-                        <span style={{ height: '100%' }}></span>
-                        <span style={{ height: '80%' }}></span>
-                        <span style={{ height: '55%' }}></span>
-                        <span style={{ height: '90%' }}></span>
-                        <span style={{ height: '40%' }}></span>
-                        <span style={{ height: '75%' }}></span>
-                        <span style={{ height: '95%' }}></span>
-                        <span style={{ height: '60%' }}></span>
-                        <span style={{ height: '30%' }}></span>
-                      </div>
-                      <span className={styles.voiceDuration}>
-                        {isPlayingVoice ? `0:0${voiceSeconds}` : scenario.voiceAudioDuration}
-                      </span>
+                    <div className={styles.waveformGraphic}>
+                      <span style={{ height: '40%' }}></span>
+                      <span style={{ height: '70%' }}></span>
+                      <span style={{ height: '100%' }}></span>
+                      <span style={{ height: '60%' }}></span>
+                      <span style={{ height: '85%' }}></span>
+                      <span style={{ height: '35%' }}></span>
+                      <span style={{ height: '90%' }}></span>
+                      <span style={{ height: '50%' }}></span>
                     </div>
+                    <span className={styles.audioDuration}>
+                      {isPlayingVoice ? `0:0${voiceSeconds}` : scenario.voiceAudioDuration}
+                    </span>
                   </div>
-                  <div className={styles.voiceTranscriptBox}>
-                    <span className={styles.transcriptTag}>Audio MMS:</span>
-                    <p className={styles.transcriptText}>{scenario.voiceTranscript}</p>
-                  </div>
-                  <div className={styles.bubbleTime}>9:41 AM · Sent</div>
+                  <small className={styles.audioHint}>
+                    {isPlayingVoice ? '🔊 Playing realistic audio...' : 'Tap ▶ to hear Gemini audio processing'}
+                  </small>
                 </div>
               )}
 
+              {/* Scenario 2: Receipt OCR Attachment */}
               {scenario.contractorInputType === 'receipt' && scenario.receiptDetails && (
-                <div className={`${styles.bubble} ${styles.contractorReceiptBubble}`}>
-                  <div className={styles.bubbleSender}>{scenario.contractorSender}</div>
-                  <div className={styles.bubbleText}>{scenario.contractorText}</div>
-                  
-                  {/* Scanned Receipt Card Mockup */}
-                  <div className={styles.receiptCard}>
-                    <div className={styles.receiptBanner}>{scenario.receiptDetails.vendor}</div>
-                    <div className={styles.receiptDate}>{scenario.receiptDetails.date}</div>
-                    <div className={styles.receiptDivider} />
-                    <div className={styles.receiptItemsList}>
+                <div className={styles.bubbleContractor}>
+                  <div className={styles.senderTag}>You (Receipt MMS Photo)</div>
+                  <div className={styles.receiptPaper}>
+                    <div className={styles.receiptHeader}>
+                      <strong>{scenario.receiptDetails.vendor}</strong>
+                      <span>{scenario.receiptDetails.date}</span>
+                    </div>
+                    <div className={styles.receiptItems}>
                       {scenario.receiptDetails.items.map((item, idx) => (
-                        <div key={idx} className={styles.receiptRow}>
-                          <span className={styles.receiptItemName}>{item.name}</span>
-                          <span className={styles.receiptItemPrice}>{item.price}</span>
+                        <div key={idx} className={styles.receiptItem}>
+                          <span>{item.name}</span>
+                          <span>{item.price}</span>
                         </div>
                       ))}
                     </div>
-                    <div className={styles.receiptDivider} />
-                    <div className={styles.receiptRow}>
-                      <span>Subtotal</span>
-                      <span>{scenario.receiptDetails.subtotal}</span>
-                    </div>
-                    <div className={styles.receiptRow}>
-                      <span>Sales Tax</span>
-                      <span>{scenario.receiptDetails.tax}</span>
-                    </div>
                     <div className={styles.receiptTotalRow}>
                       <span>TOTAL CHARGED</span>
-                      <span>{scenario.receiptDetails.total}</span>
-                    </div>
-                    <div className={styles.receiptBadge}>
-                      <span>⚡ Vision OCR Extracted</span>
+                      <strong>{scenario.receiptDetails.total}</strong>
                     </div>
                   </div>
-
-                  <div className={styles.bubbleTime}>9:41 AM · Sent via MMS</div>
+                  <p className={styles.bubbleCaption}>{scenario.contractorText}</p>
                 </div>
               )}
 
-              {/* AI Confirmation Reply */}
-              <div className={`${styles.bubble} ${styles.aiBubble}`}>
-                <div className={styles.bubbleSender}>AI Intake Assistant</div>
-                <div className={styles.bubbleText} style={{ whiteSpace: 'pre-line' }}>
-                  {scenario.aiResponse}
+              {/* Scenario 3, 4, 5: Standard Contractor SMS */}
+              {scenario.contractorInputType === 'text' && scenario.contractorText && (
+                <div className={styles.bubbleContractor}>
+                  <div className={styles.senderTag}>{scenario.contractorSender}</div>
+                  <p className={styles.bubbleText}>{scenario.contractorText}</p>
                 </div>
-                <div className={styles.bubbleTime}>9:41 AM · Verified & Applied</div>
+              )}
+
+              {/* Gemini AI Platform Response */}
+              <div className={styles.bubbleAi}>
+                <div className={styles.aiSenderTag}>
+                  <span className={styles.aiGlowDot}></span>
+                  Let’s Get Quoted AI (1.4s)
+                </div>
+                <p className={styles.aiResponseText}>{scenario.aiResponse}</p>
               </div>
 
-              {/* Multi-turn Actionable Follow-up (e.g. Reply SEND or Ambiguity Disambiguation) */}
-              {scenario.followUpText && (
+              {/* Optional Interactive Follow-up */}
+              {scenario.followUpText && scenario.aiFollowUpResponse && (
                 <>
-                  <div className={`${styles.bubble} ${styles.contractorBubble}`}>
-                    <div className={styles.bubbleSender}>{scenario.contractorSender}</div>
-                    <div className={styles.bubbleText}>{scenario.followUpText}</div>
-                    <div className={styles.bubbleTime}>9:42 AM · Sent</div>
+                  <div className={styles.bubbleContractor}>
+                    <div className={styles.senderTag}>{scenario.contractorSender}</div>
+                    <p className={styles.bubbleText}>{scenario.followUpText}</p>
                   </div>
-                  <div className={`${styles.bubble} ${styles.aiBubble}`}>
-                    <div className={styles.bubbleSender}>AI Intake Assistant</div>
-                    <div className={styles.bubbleText}>{scenario.aiFollowUpResponse}</div>
-                    <div className={styles.bubbleTime}>9:42 AM · Verified & Applied</div>
+                  <div className={styles.bubbleAi}>
+                    <div className={styles.aiSenderTag}>
+                      <span className={styles.aiGlowDot}></span>
+                      Let’s Get Quoted AI (1.1s)
+                    </div>
+                    <p className={styles.aiResponseText}>{scenario.aiFollowUpResponse}</p>
                   </div>
                 </>
               )}
@@ -508,7 +618,7 @@ export default function TextToRecordSimulator() {
           </div>
         </div>
 
-        {/* Right Column: Live Job Record Card */}
+        {/* Right Column: Live Job Record Card & 4-Pillar Checklist */}
         <div className={styles.recordColumn}>
           <div className={styles.recordCard}>
             <div className={styles.recordHeader}>
@@ -530,6 +640,56 @@ export default function TextToRecordSimulator() {
               <span className={styles.pulseDot}></span>
               <span>{scenario.jobRecord.badgeText}</span>
             </div>
+
+            {/* Interactive 4-Pillar Extraction Checklist (Uncheck to Exclude) */}
+            {scenario.pillars && scenario.pillars.length > 0 && (
+              <div className={styles.pillarChecklistSection}>
+                <div className={styles.pillarChecklistHeader}>
+                  <span className={styles.pillarChecklistTitle}>
+                    ⚡ 4-Pillar Extraction Checklist
+                  </span>
+                  <span className={styles.pillarChecklistCounter}>
+                    ✓ {activePillarCount} of {scenario.pillars.length} syncing to database
+                  </span>
+                </div>
+
+                <div className={styles.pillarList}>
+                  {scenario.pillars.map((p) => {
+                    const isExcluded = Boolean(disabledItemIds[p.id]);
+                    return (
+                      <div
+                        key={p.id}
+                        onClick={() => togglePillarItem(p.id)}
+                        className={`${styles.pillarRow} ${isExcluded ? styles.pillarRowDisabled : ''}`}
+                      >
+                        <div
+                          className={`${styles.pillarCheckbox} ${
+                            isExcluded ? styles.pillarCheckboxUnchecked : ''
+                          }`}
+                        >
+                          {!isExcluded ? '✓' : ''}
+                        </div>
+                        <div className={styles.pillarContent}>
+                          <div
+                            style={{
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                            }}
+                          >
+                            <span className={styles.pillarItemTitle}>
+                              [{p.pillar}] {p.title}
+                            </span>
+                            <span className={styles.pillarTargetBadge}>{p.table}</span>
+                          </div>
+                          <span className={styles.pillarItemDetail}>{p.detail}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* Line Items & Total Math (for Quote changes) */}
             {scenario.jobRecord.lineItems && (

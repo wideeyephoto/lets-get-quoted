@@ -386,6 +386,7 @@ describe('the wiring, as source', () => {
       'src/app/dashboard/sites/actions.ts',
       'src/app/dashboard/sites/page.tsx',
       'src/app/dashboard/sites/preview/page.tsx',
+      'src/app/dashboard/text-to-job/page.tsx',
       'src/app/dashboard/voice-actions.ts',
       'src/app/dashboard/voice-calls/[callId]/page.tsx',
       'src/app/dashboard/voice-calls/actions.ts',

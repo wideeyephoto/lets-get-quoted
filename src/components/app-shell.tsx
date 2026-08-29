@@ -60,6 +60,7 @@ const baseNavItems: { href: string; label: string; hint?: string }[] = [
   { href: '/dashboard/schedule', label: 'Schedule', hint: 'Calendar & unscheduled work' },
   { href: '/dashboard/crew', label: 'Crew & Labor', hint: 'Your team, their hours & pay' },
   { href: '/dashboard/clients', label: 'Clients', hint: 'Customer profiles & history' },
+  { href: '/dashboard/text-to-job', label: 'Text-to-Job', hint: 'SMS & voice memos straight to job files' },
   { href: '/dashboard/quick-stops', label: 'Quick Stops', hint: 'Lets customers pay to be fitted in sooner.' },
   { href: '/dashboard/schedule/booking', label: 'Online Booking', hint: 'Lets customers book an available time through your website.' },
   { href: '/dashboard/voice-calls', label: '24/7 AI Receptionist', hint: '24/7 AI receptionist, live booking & call log' },
@@ -126,6 +127,7 @@ const NAV_GROUPS: { label: string; accent: string; hrefs: string[] }[] = [
     label: 'Intake Channels',
     accent: 'intake',
     hrefs: [
+      '/dashboard/text-to-job',
       '/dashboard/quick-stops',
       '/dashboard/schedule/booking',
       '/dashboard/voice-calls',
