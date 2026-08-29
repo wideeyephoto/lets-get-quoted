@@ -11,6 +11,15 @@
 export const TERMS_VERSION = '2026-08-29';
 export const TERMS_EFFECTIVE_DATE = 'August 29, 2026';
 
+// Known active terms versions that satisfy the first-run gate so active contractor accounts
+// are not bounced into an unexpected /welcome redirect loop during point updates.
+export const VALID_TERMS_VERSIONS = new Set([
+  '2026-08-03',
+  '2026-08-16',
+  '2026-08-28',
+  '2026-08-29',
+]);
+
 // What ensureAccountMembership names a brand-new account before anyone has said
 // who they are. Treated as "not set" by the first-run screen so the field starts
 // empty rather than making someone delete a placeholder.
@@ -37,7 +46,8 @@ export type FirstRunAccount = {
 export function needsFirstRun(account: FirstRunAccount | null | undefined): boolean {
   if (!account) return false; // unknown account — see the note in requireOwnerContext
   if (!account.terms_accepted_at) return true;
-  return account.terms_version !== TERMS_VERSION;
+  if (!account.terms_version) return true;
+  return !VALID_TERMS_VERSIONS.has(account.terms_version);
 }
 
 /**
