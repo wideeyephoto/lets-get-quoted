@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import SparkyAvatar from '@/components/mascot/SparkyAvatar';
 import styles from './text-to-job.module.css';
@@ -583,6 +583,40 @@ export default function TextToJobWorkspace({
     filteredMessages[0] ||
     messages[0];
 
+  // Keyboard Shortcuts: Escape to close modals, Arrow keys to browse messages
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        setShowPrintModal(false);
+        setShowSimModal(false);
+      }
+      if (
+        !showPrintModal &&
+        !showSimModal &&
+        document.activeElement?.tagName !== 'INPUT' &&
+        document.activeElement?.tagName !== 'TEXTAREA' &&
+        document.activeElement?.tagName !== 'SELECT'
+      ) {
+        if (e.key === 'ArrowDown') {
+          const currentIndex = filteredMessages.findIndex((m) => m.id === selectedMsgId);
+          if (currentIndex < filteredMessages.length - 1) {
+            e.preventDefault();
+            setSelectedMsgId(filteredMessages[currentIndex + 1].id);
+          }
+        } else if (e.key === 'ArrowUp') {
+          const currentIndex = filteredMessages.findIndex((m) => m.id === selectedMsgId);
+          if (currentIndex > 0) {
+            e.preventDefault();
+            setSelectedMsgId(filteredMessages[currentIndex - 1].id);
+          }
+        }
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showPrintModal, showSimModal, filteredMessages, selectedMsgId]);
+
   const fieldPhoneNumber = isQualified
     ? isDedicatedNumber && account?.call_tracking_number
       ? formatUsPhone(account.call_tracking_number)
@@ -1063,6 +1097,24 @@ export default function TextToJobWorkspace({
                         ? '📅'
                         : '👷';
 
+                    const linkHref =
+                      item.pillar === 'jobs'
+                        ? '/dashboard/jobs'
+                        : item.pillar === 'leads'
+                        ? '/dashboard/leads'
+                        : item.pillar === 'schedule'
+                        ? '/dashboard/schedule'
+                        : '/dashboard/crew';
+
+                    const linkText =
+                      item.pillar === 'jobs'
+                        ? '↗ Open Quote'
+                        : item.pillar === 'leads'
+                        ? '↗ Open Lead'
+                        : item.pillar === 'schedule'
+                        ? '↗ Calendar'
+                        : '↗ Crew Task';
+
                     return (
                       <div
                         key={item.id}
@@ -1083,6 +1135,14 @@ export default function TextToJobWorkspace({
                             <span className={styles.receiptLineIcon}>{icon}</span>
                             <strong className={styles.receiptLineTitle}>{item.title}</strong>
                             <span className={styles.receiptMutation}>{item.mutation}</span>
+                            <Link
+                              href={linkHref}
+                              onClick={(e) => e.stopPropagation()}
+                              className={styles.receiptItemDeepLink}
+                              title={`Jump to ${linkText}`}
+                            >
+                              {linkText}
+                            </Link>
                           </div>
                           <p className={styles.receiptLineDesc}>{item.detail}</p>
                         </div>
@@ -1095,8 +1155,23 @@ export default function TextToJobWorkspace({
               {/* Actions Footer */}
               <div className={styles.receiptFooter}>
                 <div className={styles.receiptFooterActionRow}>
-                  <button type="button" onClick={handleApply} className={styles.applyBtn}>
-                    ✓ Apply Updates to {selectedMessage.matchedJobRef || 'Job File'}
+                  <button
+                    type="button"
+                    onClick={handleApply}
+                    disabled={selectedMessage.extractedItems.filter((i) => i.enabled).length === 0}
+                    className={`${styles.applyBtn} ${
+                      selectedMessage.extractedItems.filter((i) => i.enabled).length === 0
+                        ? styles.applyBtnDisabled
+                        : ''
+                    }`}
+                  >
+                    {selectedMessage.extractedItems.filter((i) => i.enabled).length === 0
+                      ? 'Select updates above to apply'
+                      : `✓ Apply ${selectedMessage.extractedItems.filter((i) => i.enabled).length} ${
+                          selectedMessage.extractedItems.filter((i) => i.enabled).length === 1
+                            ? 'Update'
+                            : 'Updates'
+                        } to ${selectedMessage.matchedJobRef || 'Job File'}`}
                   </button>
                 </div>
                 <div className={styles.receiptFooterNote}>
@@ -1390,9 +1465,17 @@ export default function TextToJobWorkspace({
           ========================================================================= */}
       <div className={styles.unifiedBottomBar}>
         <div className={styles.unifiedBarLeft}>
-          <span className={styles.unifiedPhoneBadge}>
+          <button
+            type="button"
+            onClick={handleCopyNumber}
+            className={styles.unifiedPhoneBadgeBtn}
+            title="Click to copy field hotline number"
+          >
             📱 {fieldPhoneNumber}
-          </span>
+            <span className={styles.copySmallHint}>
+              {copiedNumber ? '✓ Copied' : '📋 Copy'}
+            </span>
+          </button>
           <span className={styles.unifiedUndoBadge} title="Reply UNDO within 15 minutes to revert any action">
             ⏱️ 15-Min Undo Active
           </span>
