@@ -16,6 +16,7 @@ import CommunicationsPanel from './home/CommunicationsPanel';
 import SalesPipeline from './home/SalesPipeline';
 import CashPreview from './home/CashPreview';
 import BestNextOpportunity from './home/BestNextOpportunity';
+import FounderHelpButton from '@/components/founder-help-button';
 
 export default function DashboardHomeScreen({
   home,
@@ -106,9 +107,12 @@ export default function DashboardHomeScreen({
 
       {!onboardingComplete ? (
         <section className="panel workspace-section-card onboarding-panel">
-          <div className="section-heading workspace-section-heading">
-            <p className="eyebrow">Get set up</p>
-            <h2>Onboarding checklist</h2>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '8px' }}>
+            <div className="section-heading workspace-section-heading" style={{ marginBottom: 0 }}>
+              <p className="eyebrow">Get set up</p>
+              <h2>Onboarding checklist</h2>
+            </div>
+            <FounderHelpButton />
           </div>
           <ChecklistTourInvitation />
           <p className="onboarding-progress-note">

@@ -267,7 +267,7 @@ export default function WebsiteMediaStudioShowcase() {
                   />
                   <div className={styles.heroLoopScrim} />
                   <div className={styles.heroLoopOverlay}>
-                    <div style={{ color: 'var(--flare)', fontSize: '0.72rem', fontWeight: 800, textTransform: 'uppercase' }}>
+                    <div style={{ color: 'var(--flare)', fontSize: '0.72rem', fontWeight: 800, textTransform: 'uppercase', textShadow: '0 1px 8px rgba(0, 0, 0, 0.95)' }}>
                       Green Valley Turf &amp; Grounds
                     </div>
                     <h4 className={styles.heroLoopHeading}>Built for Clean Cuts &amp; Perfect Stripes</h4>

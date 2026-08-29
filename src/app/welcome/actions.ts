@@ -17,6 +17,7 @@ import {
 } from '@/lib/terms';
 
 import { resolveDestination, type SignupGoal, type SignupFeature } from '@/lib/signup-intent';
+import { sendFounderSignupAlert } from '@/lib/founder-alerts';
 
 export type FirstRunResult =
   | { ok: true; destinationPath: string; planCheckoutPath: string | null }
@@ -101,6 +102,16 @@ export async function completeFirstRunAction(input: {
   }
 
   revalidatePath('/dashboard');
+
+  // Asynchronously alert founder of new contractor activation
+  void sendFounderSignupAlert({
+    accountId,
+    businessName: input.businessName,
+    trade: requested || 'General',
+    postalCode: input.postalCode,
+    plan: input.plan || null,
+    billing: input.billing || null,
+  });
 
   const intent = resolvePlanIntent(input);
   const destinationPath = resolveDestination({

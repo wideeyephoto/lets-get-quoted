@@ -1,0 +1,157 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import styles from './features-theme.module.css';
+
+interface PulseEvent {
+  id: string;
+  trade: string;
+  icon: string;
+  location: string;
+  action: string;
+  highlight: string;
+  value: string;
+  timeAgo: string;
+  featureHref: string;
+}
+
+const PULSE_EVENTS: PulseEvent[] = [
+  {
+    id: 'evt-1',
+    trade: 'Electrical',
+    icon: '⚡',
+    location: 'Royal Oak, MI',
+    action: 'AI scanned 4 panel photos → Drafted 200A upgrade quote',
+    highlight: 'Quote e-signed & deposit paid',
+    value: '$3,850',
+    timeAgo: 'Just now',
+    featureHref: '#smart-intake',
+  },
+  {
+    id: 'evt-2',
+    trade: 'HVAC',
+    icon: '❄️',
+    location: 'Austin, TX',
+    action: 'AI Voice Receptionist answered 24/7 emergency hotline',
+    highlight: 'Condenser issue qualified & routed',
+    value: '$1,420',
+    timeAgo: '3m ago',
+    featureHref: '#breakthroughs',
+  },
+  {
+    id: 'evt-3',
+    trade: 'Remodeling',
+    icon: '🔨',
+    location: 'Denver, CO',
+    action: 'Morning dispatch sent with tool checklist & gate code',
+    highlight: '4-man crew on site',
+    value: '3 jobs active',
+    timeAgo: '5m ago',
+    featureHref: '#scheduling',
+  },
+  {
+    id: 'evt-4',
+    trade: 'Plumbing',
+    icon: '🚰',
+    location: 'Tampa, FL',
+    action: 'Quick Stop accepted on return route (+0.6 mi detour)',
+    highlight: 'Same-day visit fee collected',
+    value: '+$165',
+    timeAgo: '7m ago',
+    featureHref: '#quick-stops',
+  },
+  {
+    id: 'evt-5',
+    trade: 'Roofing',
+    icon: '🏠',
+    location: 'Phoenix, AZ',
+    action: 'Storm damage quote sent with multi-tier material add-ons',
+    highlight: 'Customer selected Premium Shingles',
+    value: '$11,200',
+    timeAgo: '10m ago',
+    featureHref: '#quotes',
+  },
+  {
+    id: 'evt-6',
+    trade: 'Landscaping',
+    icon: '🌱',
+    location: 'Charlotte, NC',
+    action: 'Generated 1-click trade website with local SEO & instant estimate',
+    highlight: 'Published to custom domain',
+    value: 'Live in 2 min',
+    timeAgo: '12m ago',
+    featureHref: '#website-builder',
+  },
+];
+
+export default function LiveFieldPulse() {
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
+
+  useEffect(() => {
+    if (isPaused) return;
+    const interval = setInterval(() => {
+      setActiveIndex((prev) => (prev + 1) % PULSE_EVENTS.length);
+    }, 4200);
+    return () => clearInterval(interval);
+  }, [isPaused]);
+
+  const current = PULSE_EVENTS[activeIndex];
+
+  return (
+    <aside
+      className={styles.pulseContainer}
+      aria-label="Live platform activity and simulated field updates"
+      onMouseEnter={() => setIsPaused(true)}
+      onMouseLeave={() => setIsPaused(false)}
+    >
+      <div className={styles.pulseInner}>
+        <div className={styles.pulseStatusBadge}>
+          <span className={styles.pulseLiveDot} aria-hidden="true" />
+          <span className={styles.pulseStatusText}>LIVE FIELD COPILOT</span>
+          <span className={styles.pulseStatusSub}>Simulated Real-Time Activity</span>
+        </div>
+
+        <div className={styles.pulseEventWrapper}>
+          <a
+            href={current.featureHref}
+            className={styles.pulseEventCard}
+            key={current.id}
+            title="Click to view related feature"
+          >
+            <div className={styles.pulseEventIconWrap}>
+              <span className={styles.pulseEventIcon} aria-hidden="true">{current.icon}</span>
+            </div>
+            <div className={styles.pulseEventDetails}>
+              <div className={styles.pulseEventMeta}>
+                <span className={styles.pulseEventLocation}>📍 {current.location}</span>
+                <span className={styles.pulseEventDot} aria-hidden="true">·</span>
+                <span className={styles.pulseEventTrade}>{current.trade}</span>
+                <span className={styles.pulseEventDot} aria-hidden="true">·</span>
+                <span className={styles.pulseEventTime}>{current.timeAgo}</span>
+              </div>
+              <p className={styles.pulseEventAction}>
+                {current.action} &mdash; <strong className={styles.pulseEventHighlight}>{current.highlight}</strong>
+              </p>
+            </div>
+            <div className={styles.pulseEventValueBadge}>
+              <span>{current.value}</span>
+            </div>
+          </a>
+        </div>
+
+        <div className={styles.pulseControls} aria-label="Activity carousel controls">
+          {PULSE_EVENTS.map((evt, idx) => (
+            <button
+              key={evt.id}
+              type="button"
+              className={`${styles.pulseDotBtn} ${idx === activeIndex ? styles.pulseDotActive : ''}`}
+              onClick={() => setActiveIndex(idx)}
+              aria-label={`View update from ${evt.location}`}
+            />
+          ))}
+        </div>
+      </div>
+    </aside>
+  );
+}

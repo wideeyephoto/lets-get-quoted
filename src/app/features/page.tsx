@@ -29,6 +29,10 @@ import ThemeFab from '@/components/theme-fab';
 import AllFeaturesModal from '@/components/marketing/AllFeaturesModal';
 import FeaturesToolSprawlCalculator from './FeaturesToolSprawlCalculator';
 import FeaturesCatalogExplorer from './FeaturesCatalogExplorer';
+import LiveFieldPulse from './LiveFieldPulse';
+import CompanionPhotoScopeDemo from './CompanionPhotoScopeDemo';
+import CompanionRouteDemo from './CompanionRouteDemo';
+import CompanionHUD from './CompanionHUD';
 import themeStyles from './features-theme.module.css';
 
 const FEATURES_URL = 'https://letsgetquoted.com/features';
@@ -356,6 +360,9 @@ export default function FeaturesPage() {
         ))}
       </section>
 
+      {/* LIVE FIELD PULSE: Real-time simulated contractor actions & co-pilot activity */}
+      <LiveFieldPulse />
+
       {/* THE PRODUCT, MOVING, BEFORE THE PAGE DESCRIBES IT FIVE MORE TIMES.
           Directly above "Five connected advantages", which is the last moment
           before the page turns into a list of claims. Nothing here autoplays
@@ -470,6 +477,9 @@ export default function FeaturesPage() {
             <small>The window is confirmed when the visit fee clears, not before.</small>
           </li>
         </ul>
+
+        {/* Interactive Companion Quick Stops Route Detour Demo */}
+        <CompanionRouteDemo />
       </section>
 
       {/* 5-APP SOFTWARE SPRAWL & ROI SAVINGS CALCULATOR */}
@@ -529,6 +539,9 @@ export default function FeaturesPage() {
           </Link>
         </div>
       </section>
+
+      {/* Interactive AI Companion Photo Scope Estimator Demo */}
+      <CompanionPhotoScopeDemo />
 
       {/* 56-FEATURE COMPLETE CATALOG EXPLORER */}
       <FeaturesCatalogExplorer />
@@ -658,6 +671,10 @@ export default function FeaturesPage() {
         body={`${PUBLIC_PRICING_SUMMARY} See /pricing for included capacity, add-ons, and fee terms.`}
         href={FEATURE_SIGNUP_URL}
       />
+
+      {/* 24/7 Interactive AI Contractor Field Companion */}
+      <CompanionHUD />
+
       <SiteFooter />
       </main>
         </div>

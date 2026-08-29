@@ -88,11 +88,12 @@ export async function buildDashboardHome(
     : null;
 
   const onboardingSteps: OnboardingStep[] = [
-    { key: 'login', label: 'Add a backup sign-in method', description: "So you're never locked out of your business.", done: linkedMethodCount > 1, href: `${basePath}/settings`, cta: 'Add a backup method' },
-    { key: 'website', label: 'Build your website', description: 'Design and publish your contractor site — the fun part!', done: sitePublished, href: `${basePath}/sites`, cta: 'Build your site' },
-    { key: 'stripe', label: 'Connect Stripe payouts', description: 'Get paid directly for deposits and stage payments.', done: onboarded, href: `${basePath}/settings`, cta: 'Connect Stripe' },
+    { key: 'website', label: 'Build and launch your website', description: 'Design and publish your free contractor site — customize your trade photos and services.', done: sitePublished, href: `${basePath}/sites`, cta: 'Build your site' },
+    { key: 'text-to-record', label: 'Save dispatch line & try Text-to-Record', description: 'Save the company field texting line to your phone contacts and text your first job update.', done: sitePublished || jobs.length > 0, href: `/features/text-to-record`, cta: 'Try Text-to-Record' },
+    { key: 'stripe', label: 'Connect Stripe payouts', description: 'Get paid directly for client deposits and stage payments.', done: onboarded, href: `${basePath}/settings`, cta: 'Connect Stripe' },
     { key: 'clients', label: 'Import your customers', description: 'Bring your existing customer list over from a spreadsheet.', done: (clientCount ?? 0) > 0, href: `${basePath}/clients/import`, cta: 'Import customers' },
-    { key: 'first-job', label: 'Create your first job', description: 'Turn a lead into a quote and get the work on your calendar.', done: jobs.length > 0, href: `${basePath}/jobs`, cta: 'Create a job' },
+    { key: 'first-job', label: 'Create your first job & quote', description: 'Turn a lead into an interactive quote and get the work on your calendar.', done: jobs.length > 0, href: `${basePath}/jobs`, cta: 'Create a job' },
+    { key: 'login', label: 'Add a backup sign-in method', description: "So you're never locked out of your business.", done: linkedMethodCount > 1, href: `${basePath}/settings`, cta: 'Add a backup method' },
   ];
   const completedStepCount = onboardingSteps.filter((step) => step.done).length;
 

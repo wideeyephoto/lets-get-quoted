@@ -188,14 +188,15 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-  opacity: 0.85;
+  opacity: 1;
 }
 
 .heroLoopScrim {
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at center, rgba(15, 23, 42, 0.65) 0%, rgba(15, 23, 42, 0.95) 100%),
-    linear-gradient(180deg, rgba(8, 12, 20, 0.4) 0%, rgba(8, 12, 20, 0.8) 100%);
+  background: radial-gradient(circle at center, rgba(15, 23, 42, 0.25) 0%, rgba(15, 23, 42, 0.6) 100%),
+    linear-gradient(180deg, rgba(8, 12, 20, 0.15) 0%, rgba(8, 12, 20, 0.45) 100%);
+  pointer-events: none;
 }
 
 .heroLoopOverlay {
@@ -205,6 +206,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.85);
 }
 
 .heroLoopHeading {
@@ -212,13 +214,15 @@
   font-weight: 800;
   color: #ffffff;
   margin: 0.5rem 0 0.3rem;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.95);
 }
 
 .heroLoopText {
   font-size: 0.82rem;
-  color: #94a3b8;
+  color: #f1f5f9;
   max-width: 36ch;
   margin: 0 0 1rem;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.95);
 }
 
 .heroLoopBtn {
