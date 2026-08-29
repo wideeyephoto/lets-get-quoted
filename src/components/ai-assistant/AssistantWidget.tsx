@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAssistant } from './AssistantProvider';
-import type { ActionCard, AssistantMessage } from '@/lib/ai-assistant/types';
+import type { ActionCard, AssistantMessage, AssistantMessageImage } from '@/lib/ai-assistant/types';
 import SparkyAvatar from '@/components/mascot/SparkyAvatar';
 import styles from './assistant.module.css';
 
@@ -14,6 +14,9 @@ interface ContextInfo {
   label: string;
   prompts: string[];
 }
+
+const SPARKY_INTRO_MESSAGE =
+  "Hey! I'm Sparky, your AI sidekick. I can draft quotes, add job change orders, check unpaid invoices, look up your schedule, or analyze supply receipts and site photos you attach here. What can I take off your plate?";
 
 export default function AssistantWidget() {
   const { isOpen, closeAssistant, toggleAssistant, initialPrompt, clearInitialPrompt } = useAssistant();
@@ -27,13 +30,11 @@ export default function AssistantWidget() {
       return {
         type: 'job',
         id: jobMatch[1],
-        label: 'Active Job File',
+        label: 'Active Job Record',
         prompts: [
-          'Add a $250 add-on line item for gutter guards',
-          'Add checklist task: Pick up materials from depot',
-          'Reschedule this job to tomorrow at 9 AM',
-          'Mark this job complete',
-          'Summarize this quote and items',
+          'What is the current status of this job?',
+          'Add a line item ($450 for drywall patch)',
+          'Add a punch list task: Clean work area',
         ],
       };
     }
@@ -43,48 +44,47 @@ export default function AssistantWidget() {
       return {
         type: 'client',
         id: clientMatch[1],
-        label: 'Client Profile',
+        label: 'Active Client',
         prompts: [
-          'Draft a new $1,200 quote for this client',
-          'Show this client’s past job history',
-          'What is this client’s address and phone number?',
+          'What jobs has this client had with us?',
+          'Draft a new quote for this client',
+          'Look up client phone & address',
         ],
       };
     }
 
-    if (pathname.includes('/cash-flow')) {
-      return {
-        type: 'cash_flow',
-        label: 'Invoices & Cash Flow',
-        prompts: [
-          'Who owes unpaid invoices right now?',
-          'What is my total outstanding revenue?',
-          'Business performance summary',
-        ],
-      };
-    }
-
-    if (pathname.includes('/schedule')) {
+    if (pathname.startsWith('/dashboard/schedule')) {
       return {
         type: 'schedule',
-        label: 'Calendar & Schedule',
+        label: 'Schedule Board',
         prompts: [
-          'What jobs are scheduled this week?',
-          'Do I have any open slots this Friday?',
-          'Show upcoming job dates',
+          'What jobs are scheduled for today?',
+          'Who is assigned to tomorrow’s route?',
+          'Find the next open booking slot',
+        ],
+      };
+    }
+
+    if (pathname.startsWith('/dashboard/finance') || pathname.startsWith('/dashboard/cash-flow')) {
+      return {
+        type: 'cash_flow',
+        label: 'Cash Flow & Money',
+        prompts: [
+          'Which invoices are currently unpaid?',
+          'How much revenue was collected this month?',
+          'Show me overdue customer balances',
         ],
       };
     }
 
     return {
       type: 'general',
-      label: 'Workspace',
+      label: 'Contractor Dashboard',
       prompts: [
-        'Draft a $1,500 quote for deck repair',
-        'Who owes unpaid invoices?',
-        'What jobs are scheduled this week?',
-        'Search clients',
-        'Business performance summary',
+        'Draft a new quote ($1,200 for repair work)',
+        'Check what invoices are unpaid',
+        'Who is on the schedule today?',
+        'Look up recent clients',
       ],
     };
   }, [pathname]);
@@ -93,19 +93,60 @@ export default function AssistantWidget() {
     {
       id: 'welcome',
       role: 'assistant',
-      content: "I’ve got the details. Tell me what happened and I’ll handle the paperwork.",
+      content: SPARKY_INTRO_MESSAGE,
       createdAt: new Date().toISOString(),
     },
   ]);
   const [input, setInput] = useState('');
+  const [attachedImage, setAttachedImage] = useState<AssistantMessageImage | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, []);
+
+  const handleImageFile = useCallback((file: File) => {
+    if (!file.type.startsWith('image/')) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const dataUrl = event.target?.result as string;
+      if (dataUrl) {
+        setAttachedImage({
+          data: dataUrl,
+          mimeType: file.type || 'image/jpeg',
+          previewUrl: dataUrl,
+        });
+      }
+    };
+    reader.readAsDataURL(file);
+  }, []);
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      handleImageFile(file);
+    }
+    e.target.value = '';
+  };
+
+  const handlePaste = (e: React.ClipboardEvent) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.startsWith('image/')) {
+        const file = items[i].getAsFile();
+        if (file) {
+          handleImageFile(file);
+          e.preventDefault();
+          break;
+        }
+      }
+    }
+  };
 
   useEffect(() => {
     if (isOpen) {
@@ -117,25 +158,31 @@ export default function AssistantWidget() {
   }, [isOpen, scrollToBottom]);
 
   const handleSendMessage = useCallback(
-    async (textToSend: string) => {
+    async (textToSend: string, imageToSend?: AssistantMessageImage | null) => {
       const trimmed = textToSend.trim();
-      if (!trimmed || isLoading) return;
+      const img = imageToSend ?? attachedImage;
+      if ((!trimmed && !img) || isLoading) return;
 
       const userMsg: AssistantMessage = {
         id: `user-${Date.now()}`,
         role: 'user',
-        content: trimmed,
+        content: trimmed || (img ? 'Attached photo / receipt' : ''),
+        image: img || undefined,
+        imageUrl: img?.previewUrl,
         createdAt: new Date().toISOString(),
       };
 
       setMessages((prev) => [...prev, userMsg]);
       setInput('');
+      setAttachedImage(null);
       setIsLoading(true);
 
       try {
         const payloadMessages = [...messages, userMsg].map((m) => ({
           role: m.role as 'user' | 'assistant',
           content: m.content,
+          image: m.image,
+          imageUrl: m.imageUrl,
         }));
 
         const res = await fetch('/api/dashboard/ai-assistant', {
@@ -191,7 +238,7 @@ export default function AssistantWidget() {
         setTimeout(scrollToBottom, 50);
       }
     },
-    [activeContext, isLoading, messages, pathname, router, scrollToBottom],
+    [activeContext, attachedImage, isLoading, messages, pathname, router, scrollToBottom],
   );
 
   // If opened with an initial prompt from another page/component
@@ -204,7 +251,7 @@ export default function AssistantWidget() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    handleSendMessage(input);
+    handleSendMessage(input, attachedImage);
   };
 
   const handleClearHistory = () => {
@@ -212,25 +259,10 @@ export default function AssistantWidget() {
       {
         id: 'welcome',
         role: 'assistant',
-        content: "I’ve got the details. Tell me what happened and I’ll handle the paperwork.",
+        content: SPARKY_INTRO_MESSAGE,
         createdAt: new Date().toISOString(),
       },
     ]);
-  };
-
-  // Option B top quick action buttons
-  const handleQuickAction = (action: 'quote' | 'note' | 'unpaid') => {
-    if (action === 'quote') {
-      if (activeContext.type === 'client') {
-        handleSendMessage('Draft a new quote for this client');
-      } else {
-        handleSendMessage('Draft a new quote (e.g. $1,200 for repair work)');
-      }
-    } else if (action === 'note') {
-      handleSendMessage('Log a quick job note and update punch list');
-    } else if (action === 'unpaid') {
-      handleSendMessage('Check what invoices are unpaid right now');
-    }
   };
 
   return (
@@ -290,55 +322,6 @@ export default function AssistantWidget() {
               </div>
             </div>
 
-            {/* Quick Actions Bar (Short & Direct) */}
-            <div className={styles.quickActionsBar} role="toolbar" aria-label="Quick actions">
-              <button
-                type="button"
-                className={styles.actionCardBtn}
-                onClick={() => handleQuickAction('quote')}
-                disabled={isLoading}
-              >
-                <span className={styles.actionIcon}>
-                  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                    <polyline points="14 2 14 8 20 8" />
-                    <line x1="16" y1="13" x2="8" y2="13" />
-                  </svg>
-                </span>
-                <span>Draft quote</span>
-              </button>
-
-              <button
-                type="button"
-                className={styles.actionCardBtn}
-                onClick={() => handleQuickAction('note')}
-                disabled={isLoading}
-              >
-                <span className={styles.actionIcon}>
-                  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
-                    <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
-                  </svg>
-                </span>
-                <span>Job note</span>
-              </button>
-
-              <button
-                type="button"
-                className={styles.actionCardBtn}
-                onClick={() => handleQuickAction('unpaid')}
-                disabled={isLoading}
-              >
-                <span className={styles.actionIcon}>
-                  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2">
-                    <circle cx="12" cy="12" r="10" />
-                    <path d="M12 6v12M15 9.5a2.5 2.5 0 0 0-5 0c0 3 5 2 5 5a2.5 2.5 0 0 1-5 0" />
-                  </svg>
-                </span>
-                <span>Unpaid</span>
-              </button>
-            </div>
-
             {/* Active Context Banner */}
             {activeContext.type !== 'general' && (
               <div className={styles.contextBar}>
@@ -361,6 +344,17 @@ export default function AssistantWidget() {
                       <SparkyAvatar size={28} expression="avatar" bordered={false} alt="Sparky" />
                     </div>
                   )}
+
+                  {/* Render User Uploaded Photo */}
+                  {(msg.imageUrl || msg.image?.previewUrl || msg.image?.data) ? (
+                    <div className={styles.messageImageWrapper}>
+                      <img
+                        src={msg.imageUrl || msg.image?.previewUrl || msg.image?.data}
+                        alt="Uploaded photo"
+                        className={styles.messageImage}
+                      />
+                    </div>
+                  ) : null}
 
                   <div className={msg.role === 'user' ? styles.userBubble : styles.assistantBubble}>
                     {msg.content}
@@ -411,22 +405,70 @@ export default function AssistantWidget() {
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Footer Input Area */}
-            <div className={styles.footerContainer}>
+            {/* Footer Input Area with Image Upload */}
+            <div className={styles.footerContainer} onPaste={handlePaste}>
+              {attachedImage ? (
+                <div className={styles.attachedImageChip}>
+                  <div className={styles.attachedThumbnailWrap}>
+                    <img
+                      src={attachedImage.previewUrl || attachedImage.data}
+                      alt="Attached upload"
+                      className={styles.attachedThumbnail}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setAttachedImage(null)}
+                      className={styles.removeImageBtn}
+                      title="Remove image"
+                      aria-label="Remove image"
+                    >
+                      <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <path d="M18 6 6 18M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                  <div className={styles.attachedMeta}>
+                    <span className={styles.attachedBadge}>📷 Image Attached</span>
+                    <span className={styles.attachedHint}>Sparky can read receipts, plates &amp; damage</span>
+                  </div>
+                </div>
+              ) : null}
+
               <form onSubmit={handleSubmit} className={styles.inputForm}>
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className={styles.attachBtn}
+                  title="Upload receipt or job photo"
+                  aria-label="Upload image"
+                  disabled={isLoading}
+                >
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="3" y="3" width="18" height="18" rx="3" ry="3" />
+                    <circle cx="8.5" cy="8.5" r="1.5" />
+                    <polyline points="21 15 16 10 5 21" />
+                  </svg>
+                </button>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  accept="image/*"
+                  onChange={handleFileInputChange}
+                  style={{ display: 'none' }}
+                />
                 <input
                   ref={inputRef}
                   type="text"
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  placeholder="Ask Sparky..."
+                  placeholder={attachedImage ? 'Add a note (optional)...' : 'Ask Sparky or attach photo...'}
                   className={styles.inputField}
                   disabled={isLoading}
                 />
                 <button
                   type="submit"
                   className={styles.sendButton}
-                  disabled={!input.trim() || isLoading}
+                  disabled={(!input.trim() && !attachedImage) || isLoading}
                   aria-label="Send message to Sparky"
                 >
                   <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">

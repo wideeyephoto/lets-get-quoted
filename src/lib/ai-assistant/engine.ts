@@ -150,13 +150,19 @@ Your Capabilities & Tools:
 11. "navigate_to": Direct the user to specific pages (jobs, schedule, clients, settings, cash flow, sites, automations, sms).
 
 Guidelines:
+- You have multimodal vision capabilities. When the contractor attaches an image (receipts, equipment nameplates, site damage, punch list items, or sketches), inspect the visual details, extract line items, prices, equipment specs or dimensions, and execute or recommend suitable tools.
 - Be concise, professional, friendly, and action-oriented. Contractors want quick execution and direct feedback.
 - When creating or modifying quotes, confirm the updated figures (e.g. new total price, newly added item, updated date).
 - Always execute appropriate tools to retrieve or mutate live workspace database records.`;
 }
 
 export async function runAssistantConversation(
-  messages: Array<{ role: 'user' | 'assistant'; content: string }>,
+  messages: Array<{
+    role: 'user' | 'assistant';
+    content: string;
+    image?: { data: string; mimeType: string; previewUrl?: string };
+    imageUrl?: string;
+  }>,
   ctx: AssistantContext,
   toolCtx: ToolExecutionContext,
 ): Promise<{
@@ -182,7 +188,7 @@ export async function runAssistantConversation(
       message: {
         id: `msg-${Date.now()}`,
         role: 'assistant',
-        content: `I'm Sparky, your contractor AI sidekick! To enable live natural-language actions (like creating quotes, checking unpaid invoices, and looking up clients), please configure \`GEMINI_API_KEY\` in your \`.env.local\` file.`,
+        content: `I'm Sparky, your contractor AI sidekick! To enable live natural-language and photo actions (like analyzing receipts, creating quotes, and looking up clients), please configure \`GEMINI_API_KEY\` in your \`.env.local\` file.`,
         createdAt: new Date().toISOString(),
       },
       actionCards: [
@@ -200,13 +206,49 @@ export async function runAssistantConversation(
   const ai = new GoogleGenAI({ apiKey });
   const systemInstruction = buildSystemInstruction(enrichedCtx);
 
-  // Format messages into Google GenAI contents format
+  // Format messages into Google GenAI contents format (including multimodal image parts)
   const formattedContents: Content[] = [];
 
   for (const msg of messages) {
+    const parts: Part[] = [];
+
+    if (msg.content && msg.content.trim()) {
+      parts.push({ text: msg.content.trim() });
+    }
+
+    if (msg.image) {
+      let base64Clean = msg.image.data;
+      let mimeType = msg.image.mimeType || 'image/jpeg';
+      if (base64Clean.includes(';base64,')) {
+        const split = base64Clean.split(';base64,');
+        mimeType = split[0].replace('data:', '');
+        base64Clean = split[1];
+      }
+      parts.push({
+        inlineData: {
+          mimeType,
+          data: base64Clean,
+        },
+      });
+    } else if (msg.imageUrl && msg.imageUrl.startsWith('data:image/')) {
+      const split = msg.imageUrl.split(';base64,');
+      if (split.length === 2) {
+        parts.push({
+          inlineData: {
+            mimeType: split[0].replace('data:', ''),
+            data: split[1],
+          },
+        });
+      }
+    }
+
+    if (parts.length === 0) {
+      parts.push({ text: '...' });
+    }
+
     formattedContents.push({
       role: msg.role === 'user' ? 'user' : 'model',
-      parts: [{ text: msg.content }],
+      parts,
     });
   }
 

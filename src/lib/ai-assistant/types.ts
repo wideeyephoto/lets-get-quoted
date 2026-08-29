@@ -30,10 +30,18 @@ export interface AssistantToolCall {
   status?: 'pending' | 'done' | 'error';
 }
 
+export interface AssistantMessageImage {
+  data: string; // Base64 data (without or with data: prefix)
+  mimeType: string;
+  previewUrl?: string;
+}
+
 export interface AssistantMessage {
   id: string;
   role: MessageRole;
   content: string;
+  image?: AssistantMessageImage;
+  imageUrl?: string;
   toolCalls?: AssistantToolCall[];
   actionCards?: ActionCard[];
   createdAt: string;
@@ -62,6 +70,8 @@ export interface AssistantRequestBody {
   messages: Array<{
     role: 'user' | 'assistant';
     content: string;
+    image?: AssistantMessageImage;
+    imageUrl?: string;
   }>;
   currentPath?: string;
   activeRecord?: ActiveRecordContext;
