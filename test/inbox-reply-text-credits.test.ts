@@ -46,7 +46,9 @@ const carrierRejects = () => vi.spyOn(globalThis, 'fetch').mockResolvedValue(
   new Response(JSON.stringify({ message: 'carrier said no' }), { status: 400 }),
 );
 
-const send = (category: 'customer_message' | 'owner_alert' = 'customer_message') =>
+import type { SmsBillingCategory } from '@/lib/sms-billing-policy';
+
+const send = (category: SmsBillingCategory = 'customer_message') =>
   sendProviderMessage('+15551230000', 'On my way.', { accountId: ACCOUNT, category });
 
 const rpcNames = () => rpc.mock.calls.map((c) => c[0]);

@@ -6,8 +6,8 @@ describe('marginVerdict and Margin Sentinel Logic', () => {
   it('detects a healthy job operating above target margin floor', () => {
     const job = { quoted_amount: 5000 };
     const costs = [
-      { id: '1', account_id: 'a', job_id: 'j', type: 'material' as const, category: 'Materials', description: 'Paint', amount: 1000, burden_amount: null, crew_id: null, crew_name: null, crew_role_label: null, supplier: 'Sherwin', receipt_url: null, cost_source: 'receipt' as const, hours: null, rate: null, created_at: '2026-08-28' },
-      { id: '2', account_id: 'a', job_id: 'j', type: 'labor' as const, category: 'Labor', description: 'Labor', amount: 1500, burden_amount: 600, crew_id: null, crew_name: null, crew_role_label: null, supplier: null, receipt_url: null, cost_source: 'clocked' as const, hours: 50, rate: 30, created_at: '2026-08-28' },
+      { id: '1', account_id: 'a', job_id: 'j', type: 'material' as const, category: 'Materials', description: 'Paint', amount: 1000, burden_amount: 0, crew_id: null, crew_name: null, crew_role_label: null, supplier: 'Sherwin', receipt_url: null, client_charge_payment_id: null, client_charge_requested_at: null, cost_source: 'receipt' as const, hours: null, rate: null, created_at: '2026-08-28' },
+      { id: '2', account_id: 'a', job_id: 'j', type: 'labor' as const, category: 'Labor', description: 'Labor', amount: 1500, burden_amount: 600, crew_id: null, crew_name: null, crew_role_label: null, supplier: null, receipt_url: null, client_charge_payment_id: null, client_charge_requested_at: null, cost_source: 'clocked' as const, hours: 50, rate: 30, created_at: '2026-08-28' },
     ];
 
     const margin = computeMargin(job, costs);
@@ -31,7 +31,7 @@ describe('marginVerdict and Margin Sentinel Logic', () => {
   it('triggers below floor warning when margin dips below floor (e.g. 10% vs 15% floor)', () => {
     const job = { quoted_amount: 1000 };
     const costs = [
-      { id: '1', account_id: 'a', job_id: 'j', type: 'material' as const, category: 'Materials', description: 'Drywall', amount: 900, burden_amount: null, crew_id: null, crew_name: null, crew_role_label: null, supplier: 'Yard', receipt_url: null, cost_source: 'receipt' as const, hours: null, rate: null, created_at: '2026-08-28' },
+      { id: '1', account_id: 'a', job_id: 'j', type: 'material' as const, category: 'Materials', description: 'Drywall', amount: 900, burden_amount: 0, crew_id: null, crew_name: null, crew_role_label: null, supplier: 'Yard', receipt_url: null, client_charge_payment_id: null, client_charge_requested_at: null, cost_source: 'receipt' as const, hours: null, rate: null, created_at: '2026-08-28' },
     ];
 
     const margin = computeMargin(job, costs);
@@ -53,7 +53,7 @@ describe('marginVerdict and Margin Sentinel Logic', () => {
   it('triggers loss alert when costs exceed quoted revenue', () => {
     const job = { quoted_amount: 1000 };
     const costs = [
-      { id: '1', account_id: 'a', job_id: 'j', type: 'material' as const, category: 'Materials', description: 'Equipment repair', amount: 1350, burden_amount: null, crew_id: null, crew_name: null, crew_role_label: null, supplier: 'Rental Co', receipt_url: null, cost_source: 'supplier_invoice' as const, hours: null, rate: null, created_at: '2026-08-28' },
+      { id: '1', account_id: 'a', job_id: 'j', type: 'material' as const, category: 'Materials', description: 'Equipment repair', amount: 1350, burden_amount: 0, crew_id: null, crew_name: null, crew_role_label: null, supplier: 'Rental Co', receipt_url: null, client_charge_payment_id: null, client_charge_requested_at: null, cost_source: 'supplier_invoice' as const, hours: null, rate: null, created_at: '2026-08-28' },
     ];
 
     const margin = computeMargin(job, costs);
@@ -73,15 +73,15 @@ describe('marginVerdict and Margin Sentinel Logic', () => {
 
   it('correctly weighs cost confidence evidence by dollar amount', () => {
     const costs = [
-      { amount: 50, burdenAmount: 0, source: 'estimated' as const },
-      { amount: 50, burdenAmount: 0, source: 'estimated' as const },
-      { amount: 900, burdenAmount: 0, source: 'receipt' as const },
+      { amount: 300, burdenAmount: 0, source: 'receipt' as const },
+      { amount: 200, burdenAmount: 80, source: 'clocked' as const },
+      { amount: 500, burdenAmount: 0, source: 'estimated' as const },
     ];
 
     const confidence = costConfidence(costs);
-    expect(confidence.total).toBe(1000);
-    expect(confidence.evidenced).toBe(900);
-    expect(confidence.estimated).toBe(100);
-    expect(confidence.evidencedPct).toBe(0.9); // 90% evidence despite 2 out of 3 rows being estimated
+    expect(confidence.total).toBe(1080);
+    expect(confidence.evidenced).toBe(580);
+    expect(confidence.estimated).toBe(500);
+    expect(Math.round(confidence.evidencedPct * 100)).toBe(54);
   });
 });
