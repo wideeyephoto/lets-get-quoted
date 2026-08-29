@@ -2286,13 +2286,49 @@
 
 /* Native Print Styles */
 @media print {
+  .topQualificationBanner,
+  .header,
+  .workspaceGrid,
+  .setupAdvancedSection,
+  .unifiedBottomBar,
+  .notificationToast,
+  .modalHeader,
+  .cardCustomizerRow,
+  .printModalActions {
+    display: none !important;
+  }
+
+  .modalOverlay {
+    position: static !important;
+    background: transparent !important;
+    backdrop-filter: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    display: block !important;
+  }
+
+  .modalCard,
+  .printModalCard {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    animation: none !important;
+  }
+
   .printableCardBox {
     position: relative;
-    border: 1px solid #000;
-    box-shadow: none;
+    width: 100% !important;
+    max-width: 6.8in !important;
+    margin: 0.2in auto !important;
+    border: 2px solid #0f172a !important;
+    box-shadow: none !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
-    page-break-inside: avoid;
-    break-inside: avoid;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
   }
 }

@@ -329,9 +329,205 @@ export default function TextToJobWorkspace({
     TRADE_PHRASES[printTrade] || TRADE_PHRASES['General Contractor'] || TRADE_PHRASES['Electrical'];
 
   function handlePrintVisorCard() {
-    if (typeof window !== 'undefined') {
+    if (typeof window === 'undefined') return;
+
+    const printWindow = window.open('', '_blank', 'width=800,height=600');
+    if (!printWindow) {
       window.print();
+      return;
     }
+
+    const isStealth = cardTheme === 'stealth';
+    const biz = printBizName || businessTitle;
+    const phoneDisplay = isQualified ? fieldPhoneNumber : 'Alert Phone Setup Required';
+
+    const cardHtml = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>${biz} - Quick Reference Visor Card</title>
+  <style>
+    @page {
+      size: landscape;
+      margin: 0.35in;
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: ${isStealth ? '#0a1018' : '#ffffff'};
+      color: ${isStealth ? '#f5f0e7' : '#0f172a'};
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 20px;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    .card {
+      width: 100%;
+      max-width: 680px;
+      background: ${isStealth ? '#0f1f2e' : '#ffffff'};
+      color: ${isStealth ? '#f5f0e7' : '#0f172a'};
+      border: 2px solid ${isStealth ? '#ff7a21' : '#0f172a'};
+      border-radius: 14px;
+      padding: 20px 24px;
+      position: relative;
+    }
+    .notch {
+      position: absolute;
+      top: -2px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 60px;
+      height: 8px;
+      background: #94a3b8;
+      border-radius: 0 0 6px 6px;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      border-bottom: 2px solid ${isStealth ? 'rgba(255, 122, 33, 0.4)' : '#0f172a'};
+      padding-bottom: 10px;
+      margin-bottom: 12px;
+    }
+    .biz-title {
+      font-size: 18px;
+      font-weight: 900;
+      color: ${isStealth ? '#f5f0e7' : '#0f172a'};
+      letter-spacing: -0.02em;
+    }
+    .trade-sub {
+      font-size: 11px;
+      font-weight: 700;
+      color: ${isStealth ? '#94a3b8' : '#64748b'};
+      text-transform: uppercase;
+      margin-top: 2px;
+    }
+    .hotline-tag {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 12.5px;
+      font-weight: 900;
+      color: ${isStealth ? '#ff8e42' : '#ea580c'};
+      background: ${isStealth ? 'rgba(255, 122, 33, 0.15)' : '#fff7ed'};
+      border: 1px solid ${isStealth ? '#ff7a21' : '#fdba74'};
+      padding: 4px 10px;
+      border-radius: 6px;
+      white-space: nowrap;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .phrase-box {
+      border: 1px solid ${isStealth ? 'rgba(255, 255, 255, 0.15)' : '#cbd5e1'};
+      background: ${isStealth ? 'rgba(255, 255, 255, 0.04)' : '#f8fafc'};
+      border-radius: 8px;
+      padding: 8px 10px;
+    }
+    .phrase-box.wide {
+      grid-column: 1 / -1;
+      background: ${isStealth ? 'rgba(255, 122, 33, 0.08)' : '#fffbeb'};
+      border-color: ${isStealth ? 'rgba(255, 122, 33, 0.3)' : '#fde68a'};
+    }
+    .phrase-label {
+      font-size: 9.5px;
+      font-weight: 900;
+      text-transform: uppercase;
+      color: ${isStealth ? '#ff8e42' : '#ea580c'};
+      letter-spacing: 0.05em;
+      margin-bottom: 3px;
+      display: block;
+    }
+    .phrase-text {
+      font-size: 11.5px;
+      font-weight: 600;
+      line-height: 1.35;
+      color: ${isStealth ? '#f5f0e7' : '#1e293b'};
+    }
+    .footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-top: 1px solid ${isStealth ? 'rgba(255, 255, 255, 0.1)' : '#e2e8f0'};
+      padding-top: 8px;
+      font-size: 10px;
+      color: ${isStealth ? '#94a3b8' : '#475569'};
+    }
+    .footer strong {
+      color: ${isStealth ? '#ff8e42' : '#0f172a'};
+    }
+    .footer-right {
+      font-weight: 800;
+      text-transform: uppercase;
+      opacity: 0.75;
+    }
+    @media print {
+      body {
+        padding: 0;
+        background: transparent;
+      }
+      .card {
+        box-shadow: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="notch"></div>
+    <div class="header">
+      <div>
+        <div class="biz-title">${biz}</div>
+        <div class="trade-sub">${printTrade} &bull; Text-to-Job Field Guide</div>
+      </div>
+      <div class="hotline-tag">📱 Text: ${phoneDisplay}</div>
+    </div>
+    <div class="grid">
+      <div class="phrase-box">
+        <span class="phrase-label">1. Change Orders &amp; Quotes</span>
+        <div class="phrase-text">${selectedPhrases.changeOrder}</div>
+      </div>
+      <div class="phrase-box">
+        <span class="phrase-label">2. Milestones &amp; Inspections</span>
+        <div class="phrase-text">${selectedPhrases.milestone}</div>
+      </div>
+      <div class="phrase-box">
+        <span class="phrase-label">3. Punch List Tasks</span>
+        <div class="phrase-text">${selectedPhrases.punchList}</div>
+      </div>
+      <div class="phrase-box">
+        <span class="phrase-label">4. Emergency Leads</span>
+        <div class="phrase-text">${selectedPhrases.newLead}</div>
+      </div>
+      <div class="phrase-box wide">
+        <span class="phrase-label">5. Receipts &amp; Job Photos</span>
+        <div class="phrase-text">${selectedPhrases.receipts}</div>
+      </div>
+    </div>
+    <div class="footer">
+      <div>↺ <strong>15-Min SMS Undo:</strong> Reply <code>UNDO</code> to revert any change.</div>
+      <div class="footer-right">Sparky Field Hotline &bull; Let's Get Quoted</div>
+    </div>
+  </div>
+  <script>
+    window.onload = function() {
+      window.print();
+    };
+  </script>
+</body>
+</html>`;
+
+    printWindow.document.open();
+    printWindow.document.write(cardHtml);
+    printWindow.document.close();
   }
 
   function handleCopyVisorCheatsheet() {
