@@ -540,6 +540,26 @@ export default function TextToJobWorkspace({
 
   return (
     <div className={styles.container}>
+      {/* 0. Top Alert Banner When Unqualified */}
+      {!isQualified && (
+        <div className={styles.topQualificationBanner}>
+          <div className={styles.topQualificationLeft}>
+            <span className={styles.topQualificationIcon}>🔒</span>
+            <div>
+              <strong className={styles.topQualificationTitle}>
+                Field Hotline Locked — Cell Phone Setup Required
+              </strong>
+              <p className={styles.topQualificationText}>
+                To protect against spam and whitelist your phone, connect your mobile number in Notifications. Once saved, your field hotline unlocks immediately.
+              </p>
+            </div>
+          </div>
+          <Link href="/dashboard/automations#urgent-lead-sms" className={styles.topQualificationBtn}>
+            📱 Connect Cell Phone &rarr;
+          </Link>
+        </div>
+      )}
+
       {/* 1. Clean Hero Header */}
       <div className={styles.header}>
         <div className={styles.headerLeft}>
@@ -579,8 +599,8 @@ export default function TextToJobWorkspace({
               {copiedNumber ? '✓ Copied Number' : `📋 Copy ${fieldPhoneNumber}`}
             </button>
           ) : (
-            <Link href="/dashboard/settings" className={styles.verifyBtn}>
-              📱 Connect Cell Phone to Unlock →
+            <Link href="/dashboard/automations#urgent-lead-sms" className={styles.verifyBtn}>
+              📱 Connect Cell Phone →
             </Link>
           )}
         </div>
@@ -876,8 +896,8 @@ export default function TextToJobWorkspace({
                   To prevent internet spam and scrapers, your field hotline is locked until you connect your cell phone. Once saved, your phone is instantly whitelisted.
                 </p>
               </div>
-              <Link href="/dashboard/settings" className={styles.verifyBtn}>
-                📱 Add Mobile Phone in Settings &rarr;
+              <Link href="/dashboard/automations#urgent-lead-sms" className={styles.verifyBtn}>
+                📱 Add Mobile Phone in Notifications &rarr;
               </Link>
             </div>
           )}
@@ -937,7 +957,7 @@ export default function TextToJobWorkspace({
                 <Link href="/dashboard/crew?tab=people&add=1" className={styles.vcardBtn}>
                   + Add Crew Member
                 </Link>
-                <Link href="/dashboard/settings" className={styles.resetBtn}>
+                <Link href="/dashboard/automations#urgent-lead-sms" className={styles.resetBtn}>
                   Manage Alert Phone
                 </Link>
               </div>
@@ -983,8 +1003,8 @@ export default function TextToJobWorkspace({
                           <span className={styles.liveDot} /> Verified &amp; Active
                         </span>
                       ) : (
-                        <Link href="/dashboard/settings" style={{ color: '#f59e0b', fontSize: '12px', fontWeight: 700, textDecoration: 'none' }}>
-                          ⚠️ Add in Settings &rarr;
+                        <Link href="/dashboard/automations#urgent-lead-sms" style={{ color: '#f59e0b', fontSize: '12px', fontWeight: 700, textDecoration: 'none' }}>
+                          ⚠️ Connect in Notifications &rarr;
                         </Link>
                       )}
                     </td>
@@ -1096,7 +1116,7 @@ export default function TextToJobWorkspace({
                   📱 Download .vcf Card
                 </a>
               ) : (
-                <Link href="/dashboard/settings" className={styles.verifyBtn} style={{ marginTop: '10px', display: 'inline-block' }}>
+                <Link href="/dashboard/automations#urgent-lead-sms" className={styles.verifyBtn} style={{ marginTop: '10px', display: 'inline-block' }}>
                   📱 Setup Alert Phone to Download
                 </Link>
               )}
