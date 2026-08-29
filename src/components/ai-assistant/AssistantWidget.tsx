@@ -2,9 +2,9 @@
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { useAssistant } from './AssistantProvider';
-import type { ActionCard, AssistantMessage, AssistantMessageImage } from '@/lib/ai-assistant/types';
+import type { AssistantMessage, AssistantMessageImage } from '@/lib/ai-assistant/types';
 import SparkyAvatar from '@/components/mascot/SparkyAvatar';
 import CompanionPickerModal from './CompanionPickerModal';
 import styles from './assistant.module.css';
@@ -15,9 +15,6 @@ interface ContextInfo {
   label: string;
   prompts: string[];
 }
-
-const SPARKY_INTRO_MESSAGE =
-  "Hey! I'm your AI sidekick. I can draft quotes, add job change orders, check unpaid invoices, look up your schedule, or analyze supply receipts and site photos you attach here. What can I take off your plate?";
 
 export default function AssistantWidget() {
   const {
@@ -32,7 +29,6 @@ export default function AssistantWidget() {
     openCompanionPicker,
   } = useAssistant();
   const pathname = usePathname() || '';
-  const router = useRouter();
 
   // Detect active screen context from current pathname
   const activeContext: ContextInfo = useMemo(() => {
@@ -444,7 +440,7 @@ export default function AssistantWidget() {
 
             {/* Messages Feed */}
             <div className={styles.messageFeed}>
-              {messages.map((msg, index) => (
+              {messages.map((msg) => (
                 <div
                   key={msg.id}
                   className={msg.role === 'user' ? styles.userMessageRow : styles.assistantMessageRow}
