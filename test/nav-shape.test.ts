@@ -312,7 +312,7 @@ describe('the rail is colour-coded by section', () => {
   /** The labels stay neutral. Eighteen coloured words is not a rail. */
   it('colours the icons and the eyebrow, not the link text', () => {
     const rule = GLOBALS.slice(GLOBALS.indexOf('.sidenav-link {'), GLOBALS.indexOf('.sidenav-link:hover'));
-    expect(rule).toContain('color: rgba(var(--ink-rgb), 0.72);');
+    expect(rule).toContain('color: rgba(var(--ink-rgb), 0.90);');
     expect(rule).not.toContain('--section-accent');
     // And the card itself is still the same neutral for all four.
     expect(GLOBALS).not.toMatch(/\.sidenav-group--\w+\s*\{[^}]*background/);

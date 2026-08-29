@@ -2835,10 +2835,7 @@ h3 {
   padding: 0 0.35rem;
   font-size: 0.78rem;
   font-weight: 600;
-  /* 0.62 of a light grey measured 4.03:1 on the rail, which stays dark in both
-     palettes — so the light theme's solid override never applies here and the
-     alpha is doing all the work. */
-  color: rgba(var(--grey-2), 0.82);
+  color: rgba(var(--ink-rgb), 0.90);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -3022,7 +3019,7 @@ h3 {
   min-height: 44px;
   padding: 0.45rem 0.6rem;
   border-radius: 12px;
-  color: rgba(var(--ink-rgb), 0.72);
+  color: rgba(var(--ink-rgb), 0.90);
   font-size: 0.92rem;
   line-height: 1.15;
   transition: background 0.15s ease, color 0.15s ease;
@@ -3213,7 +3210,7 @@ h3 {
      its exact relationship to the icon it hangs under. */
   padding: 0.42rem 0.6rem 0.42rem 1.45rem;
   border-radius: 10px;
-  color: var(--mute-i58);
+  color: rgba(var(--ink-rgb), 0.82);
   font-size: 0.86rem;
   transition: background 0.15s ease, color 0.15s ease;
 }
@@ -7544,7 +7541,7 @@ h3 {
   white-space: nowrap;
   font-size: 0.68rem;
   font-weight: 600;
-  color: var(--muted-2);
+  color: rgba(var(--ink-rgb), 0.78);
 }
 
 .website-nav-badge.live:hover {
