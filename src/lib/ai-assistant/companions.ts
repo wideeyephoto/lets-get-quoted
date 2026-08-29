@@ -1,4 +1,4 @@
-export type CompanionId = 'sparky' | 'diesel';
+export type CompanionId = 'sparky' | 'diesel' | 'nova';
 
 export interface CompanionTradeOption {
   id: string;
@@ -59,6 +59,19 @@ export const COMPANIONS: CompanionProfile[] = [
     badgeLabel: 'Site Foreman',
     introMessage:
       "Diesel here. Let's get down to business. I'll track your punch lists, calculate material overages, manage job change orders, and keep your crews organized. What job are we tackling?",
+  },
+  {
+    id: 'nova',
+    name: 'Nova',
+    role: 'Alive Energy Orb',
+    species: 'Neural Plasma Orb',
+    tagline: 'Fluid, living iridescent energy orb pulsing with real-time intelligence.',
+    avatarSrc: '/brand/companions/nova.jpg',
+    thinkingSrc: '/brand/companions/nova.jpg',
+    accentColor: '#a855f7',
+    badgeLabel: 'Energy Orb',
+    introMessage:
+      "Nova active. Fluid intelligence linked. I'm ready to calculate job scopes, track punch lists, process receipts, or look up your schedule. What are we working on?",
   },
 ];
 
