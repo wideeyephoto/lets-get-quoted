@@ -235,7 +235,7 @@ export async function getClientStatement(supabase: SupabaseClient, accountId: st
   });
 
   const totalQuoted = statementJobs.reduce((sum, job) => sum + job.quoted, 0);
-  const totalPaid = payments.filter((p) => p.status === 'paid').reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+  const totalPaid = statementJobs.reduce((sum, job) => sum + job.paid, 0);
 
   const statementPayments: StatementPayment[] = payments.map((payment) => ({
     id: payment.id as string,
