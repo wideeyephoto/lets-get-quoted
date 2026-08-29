@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { requireOfficeContext } from '@/lib/auth';
-import TextToJobWorkspace, { type InboundMessage } from './TextToJobWorkspace';
+import { isCrewPhoneVerified, resolveCrewPhoneVerification } from '@/lib/crew-verification';
+import TextToJobWorkspace, { type InboundMessage, type CrewRow } from './TextToJobWorkspace';
 
 export const metadata: Metadata = {
   title: 'Text-to-Job Dashboard | SMS & Voice Memo Field Intake',
@@ -25,7 +26,7 @@ export default async function TextToJobDashboardPage() {
       .maybeSingle(),
     supabase
       .from('crew')
-      .select('id, name, phone, role_label, active')
+      .select('id, name, phone, role_label, active, user_id, last_signed_in_at, phone_verified_at, phone_verified')
       .eq('account_id', accountId)
       .order('name'),
     supabase
@@ -45,6 +46,20 @@ export default async function TextToJobDashboardPage() {
       .order('created_at', { ascending: false })
       .limit(20),
   ]);
+
+  const mappedCrew: CrewRow[] = (crewRows || []).map((c) => {
+    const verified = isCrewPhoneVerified(c);
+    const verificationInfo = resolveCrewPhoneVerification(c);
+    return {
+      id: c.id,
+      name: c.name,
+      phone: c.phone,
+      role_label: c.role_label,
+      active: c.active !== false,
+      phoneVerified: verified,
+      verificationReason: verificationInfo.reason,
+    };
+  });
 
   const realMessages: InboundMessage[] = (feedRows || []).map((row) => {
     const jobTitle = (row.jobs as unknown as { title?: string } | null)?.title;
@@ -82,7 +97,7 @@ export default async function TextToJobDashboardPage() {
   return (
     <TextToJobWorkspace
       account={account}
-      crewMembers={crewRows || []}
+      crewMembers={mappedCrew}
       initialMessages={realMessages.length > 0 ? realMessages : undefined}
       isDedicatedNumber={Boolean(account?.call_tracking_number)}
       sharedPhoneNumber={rawSharedNumber}

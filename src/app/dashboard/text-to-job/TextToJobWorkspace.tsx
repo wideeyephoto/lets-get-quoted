@@ -33,6 +33,8 @@ export type CrewRow = {
   phone: string | null;
   role_label: string | null;
   active: boolean;
+  phoneVerified?: boolean;
+  verificationReason?: 'signed_in' | 'verified_sms' | 'owner_verified' | 'unverified';
 };
 
 const SAMPLE_INBOUND_MESSAGES: InboundMessage[] = [
@@ -155,40 +157,31 @@ const SAMPLE_INBOUND_MESSAGES: InboundMessage[] = [
       {
         id: 'item-3-3',
         pillar: 'jobs',
-        title: 'Stage: Final Walkthrough Ready',
-        detail: 'Ready for client sign-off and final invoice release',
+        title: 'Milestone: Ready for Final Walkthrough',
+        detail: 'Trigger punch list clearance audit stamp',
         targetTable: 'job_activity_feed',
-        mutation: 'Walkthrough Ready',
+        mutation: 'Status: Walkthrough Ready',
         enabled: true,
       },
     ],
   },
   {
     id: 'msg-4',
-    sender: 'Crew Phone (Carlos M.)',
+    sender: 'Alert Phone (Owner)',
     type: 'receipt',
-    time: 'Aug 26 · 11:30 AM',
+    time: 'Aug 26 · 11:20 AM',
     rawText:
-      'Receipt photo attached: Home Depot #2704 ($184.20) for Romex wire and breaker boxes allocated to J-104 Miller.',
-    confidence: 99.1,
+      'Supply House receipt $184.50 — 2x Romex 250ft 12/2 wire rolls for Miller electrical rough-in.',
+    confidence: 99.4,
     matchedJobRef: 'Job J-104 (Miller)',
     extractedItems: [
       {
         id: 'item-4-1',
         pillar: 'jobs',
-        title: 'Material Expense: Home Depot #2704 ($184.20)',
-        detail: 'Itemized 250ft 12/2 Romex wire + 2x 20A breakers',
-        targetTable: 'costs',
-        mutation: 'Job Costs: $820 → $1,004.20',
-        enabled: true,
-      },
-      {
-        id: 'item-4-2',
-        pillar: 'jobs',
-        title: 'Live Gross Profit Recalculated',
-        detail: 'Real-time job margin adjusted on J-104',
-        targetTable: 'jobs',
-        mutation: 'Margin: 74.8% → 72.9%',
+        title: '+$184.50 Job Supply Cost Logged',
+        detail: 'Supply House · 2x Romex 250ft 12/2 wire rolls',
+        targetTable: 'job_costs',
+        mutation: 'Job Profitability Updated',
         enabled: true,
       },
     ],
@@ -207,7 +200,7 @@ function formatUsPhone(phone?: string | null): string {
   return phone;
 }
 
-interface TextToJobWorkspaceProps {
+export interface TextToJobWorkspaceProps {
   account: {
     business_name: string | null;
     company_name: string | null;
@@ -231,8 +224,8 @@ export default function TextToJobWorkspace({
   crewMembers = [],
   initialMessages,
   isDedicatedNumber = false,
-  sharedPhoneNumber = '+19479412323',
-  isQualified = false,
+  sharedPhoneNumber,
+  isQualified = true,
   activeJobCount,
   leadCount,
   crewCount,
@@ -302,6 +295,8 @@ export default function TextToJobWorkspace({
       phone: '(248) 555-0188',
       role_label: 'Lead Tech (Van #1)',
       active: true,
+      phoneVerified: true,
+      verificationReason: 'verified_sms',
     },
     {
       id: 'default-crew-2',
@@ -309,11 +304,15 @@ export default function TextToJobWorkspace({
       phone: '(248) 555-0192',
       role_label: 'Drywall & Framing Tech',
       active: true,
+      phoneVerified: true,
+      verificationReason: 'owner_verified',
     },
   ];
 
   const activeCrewList = crewMembers.length > 0 ? crewMembers : defaultCrew;
-  const totalAuthorizedDevices = (isQualified ? 1 : 0) + activeCrewList.filter((c) => c.active && Boolean(c.phone)).length;
+  const verifiedCrewCount = activeCrewList.filter((c) => c.active && Boolean(c.phone) && c.phoneVerified).length;
+  const totalAuthorizedDevices = (isQualified ? 1 : 0) + verifiedCrewCount;
+  const unverifiedCrewCount = activeCrewList.filter((c) => c.active && Boolean(c.phone) && !c.phoneVerified).length;
 
   function toggleItem(msgId: string, itemId: string) {
     setMessages((prev) =>
@@ -903,7 +902,13 @@ export default function TextToJobWorkspace({
             <div className={styles.shieldStatsGrid}>
               <div className={styles.shieldStatBox}>
                 <span className={styles.shieldStatLabel}>Whitelisted Phones</span>
-                <strong className={styles.shieldStatVal}>{totalAuthorizedDevices} Devices</strong>
+                <strong className={styles.shieldStatVal}>{totalAuthorizedDevices} Verified</strong>
+              </div>
+              <div className={styles.shieldStatBox}>
+                <span className={styles.shieldStatLabel}>Pending Verification</span>
+                <strong className={styles.shieldStatVal} style={{ color: unverifiedCrewCount > 0 ? '#f59e0b' : '#8fa6b5' }}>
+                  {unverifiedCrewCount} {unverifiedCrewCount === 1 ? 'Device' : 'Devices'}
+                </strong>
               </div>
               <div className={styles.shieldStatBox}>
                 <span className={styles.shieldStatLabel}>Anti-Spam Filter</span>
@@ -974,8 +979,8 @@ export default function TextToJobWorkspace({
                     </td>
                     <td>
                       {isQualified ? (
-                        <span className={styles.senderStatusActive}>
-                          <span className={styles.liveDot} /> Active
+                        <span className={styles.senderStatusActive} title="Verified primary account phone">
+                          <span className={styles.liveDot} /> Verified &amp; Active
                         </span>
                       ) : (
                         <Link href="/dashboard/settings" style={{ color: '#f59e0b', fontSize: '12px', fontWeight: 700, textDecoration: 'none' }}>
@@ -1015,9 +1020,32 @@ export default function TextToJobWorkspace({
                         </span>
                       </td>
                       <td>
-                        <span className={styles.senderStatusActive}>
-                          <span className={styles.liveDot} /> {crew.active ? 'Active' : 'Inactive'}
-                        </span>
+                        {!crew.active ? (
+                          <span style={{ color: '#64748b', fontSize: '12px' }}>Inactive</span>
+                        ) : crew.phoneVerified ? (
+                          <span
+                            className={styles.senderStatusActive}
+                            title={
+                              crew.verificationReason === 'verified_sms'
+                                ? 'Verified via SMS OTP code'
+                                : crew.verificationReason === 'signed_in'
+                                ? 'Authenticated field app user'
+                                : 'Verified by owner'
+                            }
+                          >
+                            <span className={styles.liveDot} /> Verified &amp; Authorized
+                          </span>
+                        ) : crew.phone ? (
+                          <Link
+                            href="/dashboard/crew?tab=people"
+                            className={styles.senderVerifyLink}
+                            title="Unverified phone number - click to verify in Crew Roster"
+                          >
+                            <span>⚠️ Verify in Crew</span> &rarr;
+                          </Link>
+                        ) : (
+                          <span style={{ color: '#64748b', fontSize: '12px' }}>No phone on file</span>
+                        )}
                       </td>
                     </tr>
                   ))}

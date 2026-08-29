@@ -197,6 +197,7 @@ export async function updateVoiceSettingsAction(
 
   revalidatePath('/dashboard/settings');
   revalidatePath('/dashboard/automations');
+  revalidatePath('/dashboard/text-to-job');
   return { saved: true, droppedDays: dropped };
 }
 

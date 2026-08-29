@@ -173,6 +173,7 @@ export async function createCrewAction(_previous: CreateCrewState, formData: For
     // so one revalidate is what makes the new person appear without a reload.
     revalidatePath('/dashboard/crew');
     revalidatePath('/dashboard/schedule');
+    revalidatePath('/dashboard/text-to-job');
 
     const inviteNote =
       invite === 'sent'
@@ -256,6 +257,7 @@ export async function updateCrewAction(crewId: string, formData: FormData) {
   revalidatePath('/dashboard/jobs');
   revalidatePath('/dashboard/schedule');
   revalidatePath('/dashboard/voice-calls');
+  revalidatePath('/dashboard/text-to-job');
 }
 
 export async function updateCrewPhotoAction(crewId: string, formData: FormData) {
@@ -310,6 +312,7 @@ export async function setCrewActiveAction(
 
   revalidatePath('/dashboard/crew');
   revalidatePath('/dashboard/jobs');
+  revalidatePath('/dashboard/text-to-job');
   return { status: 'saved', message: '' };
 }
 
@@ -652,5 +655,6 @@ export async function toggleCrewPhoneVerifiedAction(
 
   revalidatePath('/dashboard/crew');
   revalidatePath('/dashboard/voice-calls');
+  revalidatePath('/dashboard/text-to-job');
   return { ok: true };
 }

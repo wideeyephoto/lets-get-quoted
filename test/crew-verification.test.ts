@@ -87,4 +87,49 @@ describe('Crew Phone Verification Security', () => {
     const isExpired = isLeadVerificationValid(phone, code, Date.now() - 1000, token);
     expect(isExpired).toBe(false);
   });
+
+  it('filters authorized devices for Text-to-Job whitelist based strictly on verified phone status', () => {
+    const crewRoster = [
+      {
+        id: 'crew-1',
+        name: 'Carlos M.',
+        phone: '248-555-0101',
+        active: true,
+        phone_verified_at: '2026-08-20T10:00:00Z',
+      },
+      {
+        id: 'crew-2',
+        name: 'Dave K.',
+        phone: '248-555-0102',
+        active: true,
+        user_id: 'user-dave',
+        last_signed_in_at: '2026-08-28T09:00:00Z',
+      },
+      {
+        id: 'crew-3',
+        name: 'Pending Tech',
+        phone: '248-555-0103',
+        active: true,
+        phone_verified: false,
+        phone_verified_at: null,
+        user_id: null,
+      },
+      {
+        id: 'crew-4',
+        name: 'Inactive Tech',
+        phone: '248-555-0104',
+        active: false,
+        phone_verified: true,
+      },
+    ];
+
+    const verifiedCrew = crewRoster.filter((c) => c.active && Boolean(c.phone) && isCrewPhoneVerified(c));
+    const pendingCrew = crewRoster.filter((c) => c.active && Boolean(c.phone) && !isCrewPhoneVerified(c));
+
+    expect(verifiedCrew.map((c) => c.id)).toEqual(['crew-1', 'crew-2']);
+    expect(pendingCrew.map((c) => c.id)).toEqual(['crew-3']);
+    expect(verifiedCrew.length).toBe(2);
+    expect(pendingCrew.length).toBe(1);
+  });
 });
+
