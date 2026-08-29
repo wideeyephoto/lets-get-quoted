@@ -575,9 +575,6 @@ export default function TextToJobWorkspace({
           </div>
         </div>
         <div className={styles.headerActions}>
-          <button type="button" onClick={() => setShowSimModal(true)} className={styles.testBtn}>
-            ⚡ Test a Note
-          </button>
           {isQualified ? (
             <button type="button" onClick={handleCopyNumber} className={styles.copyBtn}>
               {copiedNumber ? '✓ Copied Number' : `📋 Copy ${fieldPhoneNumber}`}
@@ -1122,31 +1119,40 @@ export default function TextToJobWorkspace({
         </div>
       )}
 
-      {/* Bottom Hotline Card (.vcf Download) */}
-      {isQualified && (
-        <div className={styles.bottomHotlineBar}>
-          <div className={styles.bottomHotlineLeft}>
-            <span style={{ fontSize: '22px' }}>📱</span>
-            <div>
-              <strong style={{ color: '#f5f0e7', fontSize: '13px' }}>
-                Save {fieldPhoneNumber} to Phonebook (.vcf)
-              </strong>
-              <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: '#8fa6b5' }}>
-                Download the contact card to make hands-free voice dictation with Siri and Android Auto instant.
-              </p>
-            </div>
+      {/* Bottom Hotline Card (.vcf Download & Test Simulator) */}
+      <div className={styles.bottomHotlineBar}>
+        <div className={styles.bottomHotlineLeft}>
+          <span style={{ fontSize: '22px' }}>📱</span>
+          <div>
+            <strong style={{ color: '#f5f0e7', fontSize: '13px' }}>
+              {isQualified
+                ? `Field Hotline: ${fieldPhoneNumber}`
+                : 'Interactive Field Ingest Simulator'}
+            </strong>
+            <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: '#8fa6b5' }}>
+              {isQualified
+                ? 'Save this contact card to phonebook or test custom field notes in the simulator.'
+                : 'Test how Sparky extracts change orders, punch lists, and schedule slots from text.'}
+            </p>
           </div>
-          <a
-            href={`data:text/vcard;charset=utf-8,${encodeURIComponent(
-              `BEGIN:VCARD\nVERSION:3.0\nFN:${businessTitle} Field Hotline\nTEL;TYPE=CELL:${rawCallableNumber}\nNOTE:Text-to-Job Field Ingest Hotline\nEND:VCARD`
-            )}`}
-            download="field-hotline.vcf"
-            className={styles.vcardBtn}
-          >
-            📱 Save Field Hotline (.vcf)
-          </a>
         </div>
-      )}
+        <div className={styles.bottomActions}>
+          <button type="button" onClick={() => setShowSimModal(true)} className={styles.testBtn}>
+            ⚡ Test a Note
+          </button>
+          {isQualified && (
+            <a
+              href={`data:text/vcard;charset=utf-8,${encodeURIComponent(
+                `BEGIN:VCARD\nVERSION:3.0\nFN:${businessTitle} Field Hotline\nTEL;TYPE=CELL:${rawCallableNumber}\nNOTE:Text-to-Job Field Ingest Hotline\nEND:VCARD`
+              )}`}
+              download="field-hotline.vcf"
+              className={styles.vcardBtn}
+            >
+              📱 Save Hotline (.vcf)
+            </a>
+          )}
+        </div>
+      </div>
 
       {/* Simulator Modal Popup */}
       {showSimModal && (
