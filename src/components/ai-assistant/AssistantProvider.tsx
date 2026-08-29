@@ -1,6 +1,8 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, type ReactNode } from 'react';
+
+import { getCompanion, type CompanionProfile, type CompanionId, DEFAULT_COMPANION_ID } from '@/lib/ai-assistant/companions';
 
 interface AssistantContextType {
   isOpen: boolean;
@@ -9,13 +11,56 @@ interface AssistantContextType {
   toggleAssistant: () => void;
   initialPrompt: string | null;
   clearInitialPrompt: () => void;
+  companionId: CompanionId;
+  companionTrade: string;
+  companion: CompanionProfile;
+  setCompanion: (id: CompanionId, trade?: string) => void;
+  isCompanionPickerOpen: boolean;
+  openCompanionPicker: () => void;
+  closeCompanionPicker: () => void;
 }
 
 const AssistantContext = createContext<AssistantContextType | null>(null);
 
+const STORAGE_KEY_ID = 'copilot_companion_id';
+const STORAGE_KEY_TRADE = 'copilot_companion_trade';
+
 export function AssistantProvider({ children }: { children: ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
   const [initialPrompt, setInitialPrompt] = useState<string | null>(null);
+  const [companionId, setCompanionIdState] = useState<CompanionId>(DEFAULT_COMPANION_ID);
+  const [companionTrade, setCompanionTradeState] = useState<string>('general');
+  const [isCompanionPickerOpen, setIsCompanionPickerOpen] = useState(false);
+
+  // Initialize from localStorage on mount
+  useEffect(() => {
+    try {
+      const savedId = localStorage.getItem(STORAGE_KEY_ID) as CompanionId | null;
+      const savedTrade = localStorage.getItem(STORAGE_KEY_TRADE);
+      if (savedId) {
+        setCompanionIdState(savedId);
+      }
+      if (savedTrade) {
+        setCompanionTradeState(savedTrade);
+      }
+    } catch {
+      // ignore storage access errors
+    }
+  }, []);
+
+  const setCompanion = useCallback((id: CompanionId, trade?: string) => {
+    setCompanionIdState(id);
+    try {
+      localStorage.setItem(STORAGE_KEY_ID, id);
+    } catch {}
+
+    if (trade) {
+      setCompanionTradeState(trade);
+      try {
+        localStorage.setItem(STORAGE_KEY_TRADE, trade);
+      } catch {}
+    }
+  }, []);
 
   const openAssistant = useCallback((prompt?: string) => {
     if (prompt) {
@@ -37,20 +82,36 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
     setInitialPrompt(null);
   }, []);
 
+  const openCompanionPicker = useCallback(() => {
+    setIsCompanionPickerOpen(true);
+  }, []);
+
+  const closeCompanionPicker = useCallback(() => {
+    setIsCompanionPickerOpen(false);
+  }, []);
+
+  const companion = useMemo(() => {
+    return getCompanion(companionId, companionTrade);
+  }, [companionId, companionTrade]);
+
   // Global keyboard shortcut: Cmd+K / Ctrl+K to toggle, Escape to close
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
         setIsOpen((prev) => !prev);
-      } else if (e.key === 'Escape' && isOpen) {
-        setIsOpen(false);
+      } else if (e.key === 'Escape') {
+        if (isCompanionPickerOpen) {
+          setIsCompanionPickerOpen(false);
+        } else if (isOpen) {
+          setIsOpen(false);
+        }
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen]);
+  }, [isOpen, isCompanionPickerOpen]);
 
   return (
     <AssistantContext.Provider
@@ -61,6 +122,13 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
         toggleAssistant,
         initialPrompt,
         clearInitialPrompt,
+        companionId,
+        companionTrade,
+        companion,
+        setCompanion,
+        isCompanionPickerOpen,
+        openCompanionPicker,
+        closeCompanionPicker,
       }}
     >
       {children}

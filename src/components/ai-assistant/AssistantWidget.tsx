@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useAssistant } from './AssistantProvider';
 import type { ActionCard, AssistantMessage, AssistantMessageImage } from '@/lib/ai-assistant/types';
 import SparkyAvatar from '@/components/mascot/SparkyAvatar';
+import CompanionPickerModal from './CompanionPickerModal';
 import styles from './assistant.module.css';
 
 interface ContextInfo {
@@ -16,10 +17,20 @@ interface ContextInfo {
 }
 
 const SPARKY_INTRO_MESSAGE =
-  "Hey! I'm Sparky, your AI sidekick. I can draft quotes, add job change orders, check unpaid invoices, look up your schedule, or analyze supply receipts and site photos you attach here. What can I take off your plate?";
+  "Hey! I'm your AI sidekick. I can draft quotes, add job change orders, check unpaid invoices, look up your schedule, or analyze supply receipts and site photos you attach here. What can I take off your plate?";
 
 export default function AssistantWidget() {
-  const { isOpen, closeAssistant, toggleAssistant, initialPrompt, clearInitialPrompt } = useAssistant();
+  const {
+    isOpen,
+    closeAssistant,
+    toggleAssistant,
+    initialPrompt,
+    clearInitialPrompt,
+    companionId,
+    companionTrade,
+    companion,
+    openCompanionPicker,
+  } = useAssistant();
   const pathname = usePathname() || '';
   const router = useRouter();
 
@@ -93,7 +104,7 @@ export default function AssistantWidget() {
     {
       id: 'welcome',
       role: 'assistant',
-      content: SPARKY_INTRO_MESSAGE,
+      content: companion.introMessage,
       createdAt: new Date().toISOString(),
     },
   ]);
@@ -101,6 +112,23 @@ export default function AssistantWidget() {
   const [attachedImage, setAttachedImage] = useState<AssistantMessageImage | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
+
+  // Update initial welcome message if companion changes and chat is untouched
+  useEffect(() => {
+    setMessages((prev) => {
+      if (prev.length === 1 && prev[0].id === 'welcome') {
+        return [
+          {
+            id: 'welcome',
+            role: 'assistant',
+            content: companion.introMessage,
+            createdAt: new Date().toISOString(),
+          },
+        ];
+      }
+      return prev;
+    });
+  }, [companion]);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -110,66 +138,27 @@ export default function AssistantWidget() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, []);
 
-  const handleImageFile = useCallback((file: File) => {
-    if (!file.type.startsWith('image/')) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const dataUrl = event.target?.result as string;
-      if (dataUrl) {
-        setAttachedImage({
-          data: dataUrl,
-          mimeType: file.type || 'image/jpeg',
-          previewUrl: dataUrl,
-        });
-      }
-    };
-    reader.readAsDataURL(file);
-  }, []);
-
-  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      handleImageFile(file);
-    }
-    e.target.value = '';
-  };
-
-  const handlePaste = (e: React.ClipboardEvent) => {
-    const items = e.clipboardData?.items;
-    if (!items) return;
-    for (let i = 0; i < items.length; i++) {
-      if (items[i].type.startsWith('image/')) {
-        const file = items[i].getAsFile();
-        if (file) {
-          handleImageFile(file);
-          e.preventDefault();
-          break;
-        }
-      }
-    }
-  };
-
   useEffect(() => {
     if (isOpen) {
-      setTimeout(() => {
-        inputRef.current?.focus();
-        scrollToBottom();
-      }, 100);
+      scrollToBottom();
+      inputRef.current?.focus();
     }
-  }, [isOpen, scrollToBottom]);
+  }, [isOpen, messages, scrollToBottom]);
 
+  // Handle outside messages or prompts passed via openAssistant(prompt)
   const handleSendMessage = useCallback(
-    async (textToSend: string, imageToSend?: AssistantMessageImage | null) => {
-      const trimmed = textToSend.trim();
-      const img = imageToSend ?? attachedImage;
-      if ((!trimmed && !img) || isLoading) return;
+    async (textToSend?: string, imageToAttach?: AssistantMessageImage | null) => {
+      const promptText = (textToSend !== undefined ? textToSend : input).trim();
+      const imgPayload = imageToAttach !== undefined ? imageToAttach : attachedImage;
 
+      if (!promptText && !imgPayload) return;
+
+      const userMessageId = `user-${Date.now()}`;
       const userMsg: AssistantMessage = {
-        id: `user-${Date.now()}`,
+        id: userMessageId,
         role: 'user',
-        content: trimmed || (img ? 'Attached photo / receipt' : ''),
-        image: img || undefined,
-        imageUrl: img?.previewUrl,
+        content: promptText,
+        imageUrl: imgPayload?.previewUrl || imgPayload?.data,
         createdAt: new Date().toISOString(),
       };
 
@@ -179,70 +168,56 @@ export default function AssistantWidget() {
       setIsLoading(true);
 
       try {
-        const payloadMessages = [...messages, userMsg].map((m) => ({
-          role: m.role as 'user' | 'assistant',
-          content: m.content,
-          image: m.image,
-          imageUrl: m.imageUrl,
-        }));
-
-        const res = await fetch('/api/dashboard/ai-assistant', {
+        const response = await fetch('/api/ai-assistant/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            messages: payloadMessages,
-            currentPath: pathname,
-            activeRecord: activeContext.id
+            messages: [...messages, userMsg],
+            context: {
+              pathname,
+              screenContext: activeContext,
+            },
+            image: imgPayload
               ? {
-                  type: activeContext.type,
-                  id: activeContext.id,
+                  data: imgPayload.data,
+                  mimeType: imgPayload.mimeType,
                 }
               : undefined,
           }),
         });
 
-        const json = await res.json();
-
-        if (json.ok && json.message) {
-          setMessages((prev) => [...prev, json.message]);
-
-          // If action updated current job, refresh page data seamlessly
-          const hasMutatingAction = json.actionCards?.some((c: ActionCard) =>
-            ['job_updated', 'quote_item_added', 'task_created', 'expense_logged'].includes(c.type),
-          );
-          if (hasMutatingAction) {
-            router.refresh();
-          }
-        } else {
-          setMessages((prev) => [
-            ...prev,
-            {
-              id: `err-${Date.now()}`,
-              role: 'assistant',
-              content: json.error || 'Sorry, I ran into a hiccup with that. Tell me again?',
-              createdAt: new Date().toISOString(),
-            },
-          ]);
+        if (!response.ok) {
+          throw new Error(`Server returned ${response.status}`);
         }
+
+        const data = await response.json();
+        const assistantMsg: AssistantMessage = {
+          id: `assistant-${Date.now()}`,
+          role: 'assistant',
+          content: data.reply || "I couldn't process that command right now. Could you try rephrasing?",
+          actionCards: data.actionCards,
+          createdAt: new Date().toISOString(),
+        };
+
+        setMessages((prev) => [...prev, assistantMsg]);
       } catch (err) {
+        console.error('Assistant error:', err);
         setMessages((prev) => [
           ...prev,
           {
             id: `err-${Date.now()}`,
             role: 'assistant',
-            content: 'Connection glitch while checking in. Tap to retry or message me again.',
+            content: `I'm having a little trouble connecting right now. You can still use the regular dashboard tools while I get back on line!`,
             createdAt: new Date().toISOString(),
           },
         ]);
       } finally {
         setIsLoading(false);
-        setTimeout(scrollToBottom, 50);
       }
     },
-    [activeContext, attachedImage, isLoading, messages, pathname, router, scrollToBottom],
+    [input, attachedImage, messages, pathname, activeContext]
   );
 
-  // If opened with an initial prompt from another page/component
   useEffect(() => {
     if (initialPrompt && isOpen) {
       handleSendMessage(initialPrompt);
@@ -260,10 +235,55 @@ export default function AssistantWidget() {
       {
         id: 'welcome',
         role: 'assistant',
-        content: SPARKY_INTRO_MESSAGE,
+        content: companion.introMessage,
         createdAt: new Date().toISOString(),
       },
     ]);
+  };
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert('Please upload a valid image file (JPEG, PNG, WebP).');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setAttachedImage({
+        data: reader.result as string,
+        mimeType: file.type,
+        previewUrl: URL.createObjectURL(file),
+      });
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
+  const handlePaste = (e: React.ClipboardEvent) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.startsWith('image/')) {
+        const file = items[i].getAsFile();
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = () => {
+            setAttachedImage({
+              data: reader.result as string,
+              mimeType: file.type,
+              previewUrl: URL.createObjectURL(file),
+            });
+          };
+          reader.readAsDataURL(file);
+          e.preventDefault();
+          break;
+        }
+      }
+    }
   };
 
   return (
@@ -275,42 +295,68 @@ export default function AssistantWidget() {
             type="button"
             className={styles.floatingTrigger}
             onClick={toggleAssistant}
-            aria-label="Open Sparky AI"
+            aria-label={`Open ${companion.name} Copilot`}
           >
             <div className={styles.triggerAvatarWrap}>
-              <SparkyAvatar size={34} expression="avatar" status="online" bordered={false} alt="Sparky" />
+              <SparkyAvatar
+                companionId={companionId}
+                trade={companionTrade}
+                size={34}
+                expression="avatar"
+                status="online"
+                bordered={false}
+                alt={companion.name}
+              />
             </div>
             <div className={styles.triggerInfo}>
-              <span className={styles.triggerName}>Sparky</span>
-              <span className={styles.triggerBadge}>AI Copilot</span>
+              <span className={styles.triggerName}>Copilot</span>
+              <span className={styles.triggerBadge}>{companion.name}</span>
             </div>
           </button>
         </div>
       ) : null}
 
+      {/* Companion Avatar Picker Modal */}
+      <CompanionPickerModal />
+
       {/* Assistant Modal / Drawer */}
       {isOpen ? (
         <>
           <div className={styles.overlay} onClick={closeAssistant} aria-hidden="true" />
-          <div className={styles.panel} role="dialog" aria-label="Sparky AI Assistant">
+          <div className={styles.panel} role="dialog" aria-label={`${companion.name} Copilot`}>
             {/* Top Accent Rim */}
             <div className={styles.topAccentRim} />
 
             {/* Header (Polished & Brand-Aligned) */}
             <div className={styles.header}>
               <div className={styles.headerTitle}>
-                <div className={styles.headerAvatarWrap}>
+                <div
+                  className={styles.headerAvatarWrap}
+                  onClick={openCompanionPicker}
+                  title="Click to switch companion avatar"
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      openCompanionPicker();
+                    }
+                  }}
+                >
                   <SparkyAvatar
+                    companionId={companionId}
+                    trade={companionTrade}
                     size={36}
                     expression={isLoading ? 'thinking' : 'avatar'}
                     status={isLoading ? 'thinking' : 'online'}
-                    alt="Sparky"
+                    alt={companion.name}
                   />
+                  <span className={styles.headerAvatarBadge} title="Change Companion">✦</span>
                 </div>
                 <div className={styles.headerMeta}>
                   <div className={styles.titleRow}>
-                    <span className={styles.titleText}>Sparky</span>
-                    <span className={styles.copilotBadge}>AI Sidekick</span>
+                    <span className={styles.titleText}>{companion.name}</span>
+                    <span className={styles.copilotBadge}>{companion.badgeLabel}</span>
                   </div>
                   <div className={styles.statusRow}>
                     <span className={styles.statusDotLive} />
@@ -322,6 +368,16 @@ export default function AssistantWidget() {
               </div>
 
               <div className={styles.headerControls}>
+                <button
+                  type="button"
+                  className={styles.switchCompanionBtn}
+                  onClick={openCompanionPicker}
+                  title="Switch your AI Copilot companion avatar"
+                >
+                  <span>✦</span>
+                  <span>Avatar</span>
+                </button>
+
                 {showClearConfirm ? (
                   <div className={styles.clearConfirmGroup}>
                     <span className={styles.clearConfirmText}>Reset chat?</span>
@@ -395,7 +451,14 @@ export default function AssistantWidget() {
                 >
                   {msg.role === 'assistant' && (
                     <div className={styles.avatarGutter}>
-                      <SparkyAvatar size={28} expression="avatar" bordered={false} alt="Sparky" />
+                      <SparkyAvatar
+                        companionId={companionId}
+                        trade={companionTrade}
+                        size={28}
+                        expression="avatar"
+                        bordered={false}
+                        alt={companion.name}
+                      />
                     </div>
                   )}
 
@@ -478,7 +541,15 @@ export default function AssistantWidget() {
               {isLoading ? (
                 <div className={styles.assistantMessageRow}>
                   <div className={styles.avatarGutter}>
-                    <SparkyAvatar size={28} expression="thinking" status="thinking" bordered={false} alt="Sparky thinking" />
+                    <SparkyAvatar
+                      companionId={companionId}
+                      trade={companionTrade}
+                      size={28}
+                      expression="thinking"
+                      status="thinking"
+                      bordered={false}
+                      alt={`${companion.name} thinking`}
+                    />
                   </div>
                   <div className={styles.toolRunning}>
                     <div className={styles.typingDots}>
@@ -486,7 +557,7 @@ export default function AssistantWidget() {
                       <span />
                       <span />
                     </div>
-                    <span className={styles.toolRunningText}>Sparky is calculating...</span>
+                    <span className={styles.toolRunningText}>{companion.name} is calculating...</span>
                   </div>
                 </div>
               ) : null}
@@ -517,7 +588,7 @@ export default function AssistantWidget() {
                   </div>
                   <div className={styles.attachedMeta}>
                     <span className={styles.attachedBadge}>📷 Image Attached</span>
-                    <span className={styles.attachedHint}>Sparky can read receipts, plates &amp; damage</span>
+                    <span className={styles.attachedHint}>{companion.name} can read receipts, plates &amp; damage</span>
                   </div>
                 </div>
               ) : null}
@@ -549,7 +620,7 @@ export default function AssistantWidget() {
                   type="text"
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  placeholder={attachedImage ? 'Add a note or instruction...' : 'Ask Sparky or paste photo/receipt...'}
+                  placeholder={attachedImage ? 'Add a note or instruction...' : `Ask anything or tell ${companion.name} what to add to a job...`}
                   className={styles.inputField}
                   disabled={isLoading}
                 />
@@ -557,7 +628,7 @@ export default function AssistantWidget() {
                   type="submit"
                   className={`${styles.sendButton} ${input.trim() || attachedImage ? styles.sendButtonActive : ''}`}
                   disabled={(!input.trim() && !attachedImage) || isLoading}
-                  aria-label="Send message to Sparky"
+                  aria-label={`Send message to ${companion.name}`}
                 >
                   <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
                     <line x1="22" y1="2" x2="11" y2="13" />

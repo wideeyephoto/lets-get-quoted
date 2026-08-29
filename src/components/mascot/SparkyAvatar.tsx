@@ -2,6 +2,8 @@ import React from 'react';
 import Image from 'next/image';
 import styles from './SparkyAvatar.module.css';
 
+import { getCompanion } from '@/lib/ai-assistant/companions';
+
 export type SparkyExpression = 'avatar' | 'thinking' | 'success' | 'action';
 export type SparkyTrade =
   | 'general'
@@ -19,6 +21,8 @@ export type SparkySize = 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl' | number;
 export type SparkyStatus = 'online' | 'thinking' | 'idle' | 'none';
 
 interface SparkyAvatarProps {
+  companionId?: string;
+  customSrc?: string;
   expression?: SparkyExpression;
   trade?: SparkyTrade | string;
   size?: SparkySize;
@@ -72,23 +76,31 @@ const SIZE_MAP: Record<'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl', number> = {
 };
 
 export default function SparkyAvatar({
+  companionId,
+  customSrc,
   expression = 'avatar',
   trade = 'general',
   size = 'md',
   status = 'none',
   showSparkle = false,
   className = '',
-  alt = "Sparky - Contractor AI Sidekick",
+  alt = 'Copilot - Contractor AI Sidekick',
   priority = false,
   bordered = true,
 }: SparkyAvatarProps) {
   const pixelSize = typeof size === 'number' ? size : SIZE_MAP[size] || 36;
   
-  // If trade avatar is available and expression is default avatar, use trade gear
-  const tradeKey = (trade || '').toLowerCase();
-  let imageSrc = EXPRESSION_SRC[expression] || EXPRESSION_SRC.avatar;
-  if (expression === 'avatar' && TRADE_AVATAR_SRC[tradeKey]) {
-    imageSrc = TRADE_AVATAR_SRC[tradeKey];
+  let imageSrc = customSrc || EXPRESSION_SRC[expression] || EXPRESSION_SRC.avatar;
+
+  if (companionId && companionId !== 'sparky') {
+    const companion = getCompanion(companionId);
+    imageSrc = companion.avatarSrc;
+  } else {
+    // If trade avatar is available and expression is default avatar, use trade gear
+    const tradeKey = (trade || '').toLowerCase();
+    if (expression === 'avatar' && TRADE_AVATAR_SRC[tradeKey]) {
+      imageSrc = TRADE_AVATAR_SRC[tradeKey];
+    }
   }
 
   return (
