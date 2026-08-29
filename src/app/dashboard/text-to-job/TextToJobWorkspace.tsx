@@ -45,42 +45,42 @@ const SAMPLE_INBOUND_MESSAGES: InboundMessage[] = [
       '“Rough plumbing passed inspection at 124 Main. Need Mike and drywall crew Thursday 8am. Added $450 extra PEX lines to Miller quote.”',
     audioDuration: '0:14',
     confidence: 99.6,
-    matchedJobRef: 'J-104 (Miller)',
+    matchedJobRef: 'Job J-104 (Miller)',
     extractedItems: [
       {
         id: 'item-1-1',
         pillar: 'jobs',
-        title: 'Add Quote Change Order (+$450.00)',
-        detail: 'Extra 3/4" PEX lines and rough-in fittings to Miller J-104',
+        title: '+$450.00 Quote Change Order',
+        detail: 'Extra 3/4" PEX lines and rough-in fittings added to Miller quote',
         targetTable: 'quote_line_items',
-        mutation: 'Quote Total: $3,250 → $3,700',
+        mutation: 'Quote: $3,250 → $3,700',
         enabled: true,
       },
       {
         id: 'item-1-2',
         pillar: 'jobs',
-        title: 'Update Milestone: Rough Inspection Passed',
-        detail: 'Logged timestamped inspection clearance to activity feed',
+        title: 'Milestone: Rough Inspection Passed',
+        detail: 'Logged timestamped inspection clearance to job activity feed',
         targetTable: 'job_activity_feed',
-        mutation: 'Status: In Progress → Rough Passed',
+        mutation: 'Status: Rough Passed',
         enabled: true,
       },
       {
         id: 'item-1-3',
         pillar: 'schedule',
-        title: 'Reserve Schedule Slot: Thursday 8:00 AM',
-        detail: 'Drywall & insulation crew arrival window (East cluster)',
+        title: 'Schedule Arrival: Thursday 8:00 AM',
+        detail: 'Drywall & insulation crew arrival window reserved',
         targetTable: 'schedule_occurrences',
-        mutation: 'Slot: Thu 8:00 AM - 12:00 PM',
+        mutation: 'Slot: Thu 8:00 AM',
         enabled: true,
       },
       {
         id: 'item-1-4',
         pillar: 'crew',
         title: 'Assign Crew: Mike T. (Van #2)',
-        detail: 'Drywall hanging & rough patching assignment with push alert',
+        detail: 'Drywall hanging assignment with push alert',
         targetTable: 'crew_assignments',
-        mutation: 'Assigned: Mike T. (Lead Tech)',
+        mutation: 'Assigned: Mike T.',
         enabled: true,
       },
     ],
@@ -98,28 +98,28 @@ const SAMPLE_INBOUND_MESSAGES: InboundMessage[] = [
       {
         id: 'item-2-1',
         pillar: 'leads',
-        title: 'Create Staged Lead: Dave Miller',
+        title: 'New Lead: Dave Miller',
         detail: 'Phone: (248) 555-0812 · Service: Oak Limb Removal',
         targetTable: 'leads',
-        mutation: 'New Lead Created · Urgency: High',
+        mutation: 'Lead Created · High Urgency',
         enabled: true,
       },
       {
         id: 'item-2-2',
         pillar: 'leads',
-        title: 'Tag Hazard Severity: Emergency Priority',
-        detail: 'Tree branch touching electrical service line',
+        title: 'Tag: Urgent Safety Hazard',
+        detail: 'Tree branch touching electrical service line near roof',
         targetTable: 'lead_tags',
-        mutation: 'Tag: Urgent / Safety Hazard',
+        mutation: 'Tagged: Priority Hazard',
         enabled: true,
       },
       {
         id: 'item-2-3',
         pillar: 'schedule',
-        title: 'Block 30-min Estimate Window: Tuesday 9:30 AM',
+        title: 'Estimate Window: Tuesday 9:30 AM',
         detail: 'Route clustered with Royal Oak morning route',
         targetTable: 'calendar_slots',
-        mutation: 'Route Density: 94% Match',
+        mutation: 'Route Match: 94%',
         enabled: true,
       },
     ],
@@ -132,13 +132,13 @@ const SAMPLE_INBOUND_MESSAGES: InboundMessage[] = [
     rawText:
       'Johnson punch list done: 1) caulked exterior siding trim 2) painted baseboards in hallway. Ready for final walkthrough.',
     confidence: 99.7,
-    matchedJobRef: 'J-92 (Johnson)',
+    matchedJobRef: 'Job J-92 (Johnson)',
     extractedItems: [
       {
         id: 'item-3-1',
         pillar: 'crew',
-        title: 'Mark Task Completed: Caulk Exterior Siding Trim',
-        detail: 'Signed off by Carlos M. on site',
+        title: 'Task Done: Caulk Exterior Siding',
+        detail: 'Completed and signed off by Carlos M.',
         targetTable: 'crew_tasks',
         mutation: 'Status: Completed',
         enabled: true,
@@ -146,8 +146,8 @@ const SAMPLE_INBOUND_MESSAGES: InboundMessage[] = [
       {
         id: 'item-3-2',
         pillar: 'crew',
-        title: 'Mark Task Completed: Paint Hallway Baseboards',
-        detail: 'Signed off by Carlos M. on site',
+        title: 'Task Done: Paint Hallway Baseboards',
+        detail: 'Completed and signed off by Carlos M.',
         targetTable: 'crew_tasks',
         mutation: 'Status: Completed',
         enabled: true,
@@ -155,10 +155,10 @@ const SAMPLE_INBOUND_MESSAGES: InboundMessage[] = [
       {
         id: 'item-3-3',
         pillar: 'jobs',
-        title: 'Append Walkthrough Note to Activity Feed',
-        detail: 'Ready for client final sign-off & invoice release',
+        title: 'Stage: Final Walkthrough Ready',
+        detail: 'Ready for client sign-off and final invoice release',
         targetTable: 'job_activity_feed',
-        mutation: 'Audit Note: 2 Punch Items Logged',
+        mutation: 'Walkthrough Ready',
         enabled: true,
       },
     ],
@@ -171,13 +171,13 @@ const SAMPLE_INBOUND_MESSAGES: InboundMessage[] = [
     rawText:
       'Receipt photo attached: Home Depot #2704 ($184.20) for Romex wire and breaker boxes allocated to J-104 Miller.',
     confidence: 99.1,
-    matchedJobRef: 'J-104 (Miller)',
+    matchedJobRef: 'Job J-104 (Miller)',
     extractedItems: [
       {
         id: 'item-4-1',
         pillar: 'jobs',
-        title: 'Log Material Expense: Home Depot #2704 ($184.20)',
-        detail: 'OCR itemized 250ft 12/2 Romex + 2x 20A Square D Breakers',
+        title: 'Material Expense: Home Depot #2704 ($184.20)',
+        detail: 'Itemized 250ft 12/2 Romex wire + 2x 20A breakers',
         targetTable: 'costs',
         mutation: 'Job Costs: $820 → $1,004.20',
         enabled: true,
@@ -185,8 +185,8 @@ const SAMPLE_INBOUND_MESSAGES: InboundMessage[] = [
       {
         id: 'item-4-2',
         pillar: 'jobs',
-        title: 'Update Live Job Profit Margin',
-        detail: 'Real-time gross margin recalculation on J-104',
+        title: 'Live Gross Profit Recalculated',
+        detail: 'Real-time job margin adjusted on J-104',
         targetTable: 'jobs',
         mutation: 'Margin: 74.8% → 72.9%',
         enabled: true,
@@ -217,13 +217,12 @@ export default function TextToJobWorkspace({
   leadCount,
   crewCount,
 }: TextToJobWorkspaceProps) {
-  const [activeTab, setActiveTab] = useState<'feed' | 'senders' | 'photos' | 'simulator' | 'rules' | 'siri'>('feed');
+  const [activeTab, setActiveTab] = useState<'feed' | 'senders' | 'playground'>('feed');
   const [feedFilter, setFeedFilter] = useState<'all' | 'voice' | 'sms' | 'leads' | 'crew'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [messages, setMessages] = useState<InboundMessage[]>(SAMPLE_INBOUND_MESSAGES);
   const [selectedMsgId, setSelectedMsgId] = useState<string>(SAMPLE_INBOUND_MESSAGES[0].id);
   const [notification, setNotification] = useState<string | null>(null);
-  const [tosAcknowledged, setTosAcknowledged] = useState<boolean>(true);
   const [copiedNumber, setCopiedNumber] = useState<boolean>(false);
   const [isPlayingAudio, setIsPlayingAudio] = useState<boolean>(false);
 
@@ -233,13 +232,11 @@ export default function TextToJobWorkspace({
   );
 
   const filteredMessages = messages.filter((m) => {
-    // Category filter
     if (feedFilter === 'voice' && m.type !== 'voice') return false;
     if (feedFilter === 'sms' && m.type !== 'sms' && m.type !== 'receipt') return false;
     if (feedFilter === 'leads' && !m.extractedItems.some((i) => i.pillar === 'leads')) return false;
     if (feedFilter === 'crew' && !m.extractedItems.some((i) => i.pillar === 'crew')) return false;
 
-    // Search query
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       const matchesText = m.rawText.toLowerCase().includes(q);
@@ -263,6 +260,25 @@ export default function TextToJobWorkspace({
   const alertPhone = account?.alert_phone || '(248) 555-0123';
   const businessTitle = account?.business_name || account?.company_name || 'Your Company';
 
+  const defaultCrew: CrewRow[] = [
+    {
+      id: 'default-crew-1',
+      name: 'Carlos M.',
+      phone: '(248) 555-0188',
+      role_label: 'Lead Tech (Van #1)',
+      active: true,
+    },
+    {
+      id: 'default-crew-2',
+      name: 'Mike T.',
+      phone: '(248) 555-0192',
+      role_label: 'Drywall & Framing Tech',
+      active: true,
+    },
+  ];
+
+  const activeCrewList = crewMembers.length > 0 ? crewMembers : defaultCrew;
+
   function toggleItem(msgId: string, itemId: string) {
     setMessages((prev) =>
       prev.map((msg) => {
@@ -281,7 +297,7 @@ export default function TextToJobWorkspace({
   function handleApply() {
     const enabledCount = selectedMessage.extractedItems.filter((i) => i.enabled).length;
     setNotification(
-      `✓ Successfully applied ${enabledCount} checked items across the 4 pillars to ${selectedMessage.matchedJobRef || 'records'}.`
+      `✓ Applied ${enabledCount} verified updates to ${selectedMessage.matchedJobRef || 'records'}.`
     );
     setTimeout(() => setNotification(null), 4000);
   }
@@ -299,19 +315,12 @@ export default function TextToJobWorkspace({
   function toggleAudio() {
     setIsPlayingAudio((prev) => !prev);
     if (!isPlayingAudio) {
-      setNotification('▶ Playing audio transcript with noise-suppressed diesel filter...');
+      setNotification('▶ Playing audio transcript with background noise filter...');
       setTimeout(() => {
         setIsPlayingAudio(false);
         setNotification(null);
       }, 5000);
     }
-  }
-
-  function handlePreset(preset: string) {
-    setSimText(preset);
-    setActiveTab('simulator');
-    setNotification('⚡ Preset loaded into Simulator sandbox. Click "Run Simulator" to test!');
-    setTimeout(() => setNotification(null), 3500);
   }
 
   function handleSimulate() {
@@ -331,17 +340,17 @@ export default function TextToJobWorkspace({
         {
           id: `sim-lead-1`,
           pillar: 'leads',
-          title: 'Create Staged Lead: Sarah Jenkins',
+          title: 'New Lead: Sarah Jenkins',
           detail: 'Phone: (248) 555-0991 · Service: Main Drain Backup',
           targetTable: 'leads',
-          mutation: 'New Lead Created · Emergency Urgency',
+          mutation: 'Lead Created · Emergency Priority',
           enabled: true,
         },
         {
           id: `sim-lead-2`,
           pillar: 'schedule',
           title: 'Emergency Priority Dispatch Slot',
-          detail: 'Auto-clustered within 4.2 miles of Van #1',
+          detail: 'Auto-clustered within 4 miles of Van #1',
           targetTable: 'calendar_slots',
           mutation: 'Scheduled: Today 11:30 AM',
           enabled: true,
@@ -353,7 +362,7 @@ export default function TextToJobWorkspace({
         {
           id: `sim-roof-1`,
           pillar: 'jobs',
-          title: 'Add Change Order: 4 Sheets Plywood Rot Repair (+$550.00)',
+          title: '+$550.00 Change Order: Plywood Rot Repair',
           detail: 'CDX 1/2" exterior subdecking replacement and fasteners',
           targetTable: 'quote_line_items',
           mutation: 'Total: $8,400 → $8,950',
@@ -362,10 +371,10 @@ export default function TextToJobWorkspace({
         {
           id: `sim-roof-2`,
           pillar: 'jobs',
-          title: 'Append Photo Proof to Job Activity Feed',
-          detail: 'Timestamped sub-fascia water damage evidence filed',
+          title: 'Attached Photo Proof to Job Timeline',
+          detail: 'Timestamped sub-fascia water damage photo filed',
           targetTable: 'job_activity_feed',
-          mutation: 'Audit Trail: 1 Photo Attached',
+          mutation: '1 Photo Stored',
           enabled: true,
         },
       ];
@@ -375,7 +384,7 @@ export default function TextToJobWorkspace({
         {
           id: `sim-punch-1`,
           pillar: 'crew',
-          title: 'Mark Task Completed: Touch Up Kitchen Paint',
+          title: 'Task Done: Touch Up Kitchen Paint',
           detail: 'Carlos M. sign-off',
           targetTable: 'crew_tasks',
           mutation: 'Status: Completed',
@@ -384,7 +393,7 @@ export default function TextToJobWorkspace({
         {
           id: `sim-punch-2`,
           pillar: 'crew',
-          title: 'Mark Task Completed: Fix Loose Door Latch',
+          title: 'Task Done: Fix Loose Door Latch',
           detail: 'Carlos M. sign-off',
           targetTable: 'crew_tasks',
           mutation: 'Status: Completed',
@@ -393,10 +402,10 @@ export default function TextToJobWorkspace({
         {
           id: `sim-punch-3`,
           pillar: 'jobs',
-          title: 'Update Milestone: Final Walkthrough Ready',
-          detail: 'Customer notification draft ready for release',
+          title: 'Stage: Final Walkthrough Ready',
+          detail: 'Customer notification ready for release',
           targetTable: 'jobs',
-          mutation: 'Stage: Walkthrough Ready',
+          mutation: 'Walkthrough Ready',
           enabled: true,
         },
       ];
@@ -405,28 +414,28 @@ export default function TextToJobWorkspace({
         {
           id: `sim-hvac-1`,
           pillar: 'jobs',
-          title: 'Add HVAC Line Items ($285.00 Total)',
+          title: '+$285.00 Repair Line Items Added',
           detail: '45/5 Dual Capacitor + 2 lbs R-410A Refrigerant itemization',
           targetTable: 'quote_line_items',
-          mutation: 'Draft Invoice Ready: $285.00',
+          mutation: 'Invoice Ready: $285.00',
           enabled: true,
         },
         {
           id: `sim-hvac-2`,
           pillar: 'jobs',
-          title: 'Update Equipment Maintenance History',
-          detail: 'Carrier Outdoor Unit Serial #CR-4409 logged',
+          title: 'Carrier Outdoor Unit Serial #CR-4409 Logged',
+          detail: 'Updated equipment maintenance history',
           targetTable: 'job_activity_feed',
-          mutation: 'Equipment Record Updated',
+          mutation: 'History Stored',
           enabled: true,
         },
         {
           id: `sim-hvac-3`,
           pillar: 'crew',
-          title: 'Mark Work Completed & Sign Off',
-          detail: 'Technician service ticket finalized',
+          title: 'Work Completed on Site',
+          detail: 'Technician service ticket signed off',
           targetTable: 'crew_tasks',
-          mutation: 'Status: Completed on Site',
+          mutation: 'Status: Completed',
           enabled: true,
         },
       ];
@@ -446,33 +455,13 @@ export default function TextToJobWorkspace({
     setMessages([newSimMsg, ...messages]);
     setSelectedMsgId(newSimMsg.id);
     setActiveTab('feed');
-    setNotification(`⚡ Simulated field command parsed into ${newExtractedItems.length} toggleable items!`);
+    setNotification(`⚡ Field note parsed! Created ${newExtractedItems.length} verified updates.`);
     setTimeout(() => setNotification(null), 4000);
   }
 
-  // Combined authorized senders list
-  const defaultCrew: CrewRow[] = [
-    {
-      id: 'crew-1',
-      name: 'Carlos Mendoza',
-      phone: '(248) 555-0177',
-      role_label: 'Lead Electrician',
-      active: true,
-    },
-    {
-      id: 'crew-2',
-      name: 'Mike Trombley',
-      phone: '(248) 555-0188',
-      role_label: 'Drywall & Framing Tech',
-      active: true,
-    },
-  ];
-
-  const activeCrewList = crewMembers.length > 0 ? crewMembers : defaultCrew;
-
   return (
     <div className={styles.container}>
-      {/* Clean Hero Header with Sparky Avatar */}
+      {/* 1. Clean Hero Header */}
       <div className={styles.header}>
         <div className={styles.headerLeft}>
           <div className={styles.sparkyHeaderRow}>
@@ -480,7 +469,7 @@ export default function TextToJobWorkspace({
             <div>
               <div className={styles.sparkyBadgeRow}>
                 <span className={styles.badge}>✦ Sparky · Smart AI Contractor Assistant</span>
-                <span className={styles.livePill}><span className={styles.liveDot} /> Voice &amp; SMS Ingress Active</span>
+                <span className={styles.livePill}><span className={styles.liveDot} /> Active &amp; Ready</span>
               </div>
               <h1 className={styles.title}>Text-to-Job Dashboard</h1>
               <p className={styles.subtitle}>
@@ -506,118 +495,44 @@ export default function TextToJobWorkspace({
         </div>
       </div>
 
-      {/* Hotline & Security Bar */}
-      <div className={styles.hotlineStrip}>
-        <div className={styles.hotlineCol}>
-          <span className={styles.hotlineLabel}>Your Dedicated Text &amp; Call Line</span>
-          <div className={styles.hotlineValue}>
-            <span className={styles.hotlinePhoneHighlight}>{fieldPhoneNumber}</span>
-          </div>
-          <small className={styles.hotlineSub}>
-            Text or call from your cell phone. Saves to your phone as <em>&ldquo;{businessTitle} Field Hotline&rdquo;</em>.
-          </small>
-        </div>
-
-        <div className={styles.hotlineCol}>
-          <span className={styles.hotlineLabel}>Authorized Sender (You)</span>
-          <div className={styles.hotlineValue}>
-            <span>{alertPhone}</span>
-            <span className={styles.verifiedShield}>🛡️ Verified Owner</span>
-          </div>
-          <small className={styles.hotlineSub}>
-            Your cell phone is authenticated to update quotes, line items, and schedule dates directly from the truck.
-          </small>
-        </div>
-
-        <div className={styles.hotlineCol}>
-          <span className={styles.hotlineLabel}>Safety Invariant</span>
-          <div className={styles.hotlineValue}>
-            <span className={styles.latencyBadge}>⏱️ 15-Min SMS Rollback</span>
-          </div>
-          <small className={styles.hotlineSub}>
-            Made a typo? Simply reply <strong>UNDO</strong> to immediately revert any change order or line item.
-          </small>
+      {/* 2. Sleek Metrics & Status Strip (Single Row) */}
+      <div className={styles.metricsStrip}>
+        <Link href="/dashboard/jobs" className={styles.metricPill}>
+          <span className={styles.metricIcon}>📁</span>
+          <span className={styles.metricLabel}>Quotes &amp; Costs:</span>
+          <strong>{activeJobCount} Active Jobs</strong>
+        </Link>
+        <Link href="/dashboard/leads" className={styles.metricPill}>
+          <span className={styles.metricIcon}>👤</span>
+          <span className={styles.metricLabel}>CRM:</span>
+          <strong>{leadCount} Leads</strong>
+        </Link>
+        <Link href="/dashboard/schedule" className={styles.metricPill}>
+          <span className={styles.metricIcon}>📅</span>
+          <span className={styles.metricLabel}>Schedule:</span>
+          <strong>Live Calendar</strong>
+        </Link>
+        <Link href="/dashboard/crew" className={styles.metricPill}>
+          <span className={styles.metricIcon}>👷</span>
+          <span className={styles.metricLabel}>Crew Tasks:</span>
+          <strong>{crewCount} Techs</strong>
+        </Link>
+        <div className={styles.undoPill}>
+          <span>⏱️ 15-Min SMS Undo</span>
         </div>
       </div>
 
       {/* Notification Toast */}
       {notification && <div className={styles.notificationToast}>{notification}</div>}
 
-      {/* 4 Pillars Summary Grid - Contractor Friendly */}
-      <div className={styles.pillarsGrid}>
-        <Link href="/dashboard/jobs" className={`${styles.pillarCard} ${styles.pillarJobs}`}>
-          <div className={styles.pillarHead}>
-            <span className={styles.pillarIcon}>📁</span>
-            <span className={styles.pillarCount}>{activeJobCount} Active</span>
-          </div>
-          <h3 className={styles.pillarTitle}>
-            1. Jobs &amp; Quotes <span>&rarr;</span>
-          </h3>
-          <p className={styles.pillarDesc}>
-            Change orders, materials, receipts, and client approval totals.
-          </p>
-          <div className={styles.pillarTarget}>
-            <span>Auto-Updates:</span> Quote Total &amp; Job Log
-          </div>
-        </Link>
-
-        <Link href="/dashboard/leads" className={`${styles.pillarCard} ${styles.pillarLeads}`}>
-          <div className={styles.pillarHead}>
-            <span className={styles.pillarIcon}>👤</span>
-            <span className={styles.pillarCount}>{leadCount} Leads</span>
-          </div>
-          <h3 className={styles.pillarTitle}>
-            2. Leads &amp; Clients <span>&rarr;</span>
-          </h3>
-          <p className={styles.pillarDesc}>
-            New customer intake, address lookup, and callback triage.
-          </p>
-          <div className={styles.pillarTarget}>
-            <span>Auto-Creates:</span> Lead File &amp; Contacts
-          </div>
-        </Link>
-
-        <Link href="/dashboard/schedule" className={`${styles.pillarCard} ${styles.pillarSchedule}`}>
-          <div className={styles.pillarHead}>
-            <span className={styles.pillarIcon}>📅</span>
-            <span className={styles.pillarCount}>Live Calendar</span>
-          </div>
-          <h3 className={styles.pillarTitle}>
-            3. Schedule &amp; Calendar <span>&rarr;</span>
-          </h3>
-          <p className={styles.pillarDesc}>
-            Arrival windows, duration blocks, and inspection slots.
-          </p>
-          <div className={styles.pillarTarget}>
-            <span>Auto-Schedules:</span> Arrival Windows
-          </div>
-        </Link>
-
-        <Link href="/dashboard/crew" className={`${styles.pillarCard} ${styles.pillarCrew}`}>
-          <div className={styles.pillarHead}>
-            <span className={styles.pillarIcon}>👷</span>
-            <span className={styles.pillarCount}>{crewCount} Techs</span>
-          </div>
-          <h3 className={styles.pillarTitle}>
-            4. Crew &amp; Checklists <span>&rarr;</span>
-          </h3>
-          <p className={styles.pillarDesc}>
-            Punch lists, task assignments, and site photo proof.
-          </p>
-          <div className={styles.pillarTarget}>
-            <span>Auto-Dispatches:</span> Crew Punch Lists
-          </div>
-        </Link>
-      </div>
-
-      {/* Navigation Tabs */}
+      {/* 3. Consolidated Navigation Tabs (3 Core Tabs) */}
       <div className={styles.tabNav}>
         <button
           type="button"
           onClick={() => setActiveTab('feed')}
           className={`${styles.tabBtn} ${activeTab === 'feed' ? styles.tabActive : ''}`}
         >
-          <span>📥 Inbound Field Stream</span>
+          <span>📥 Inbound Messages &amp; Job Receipts</span>
           <span className={styles.tabBadge}>{messages.length}</span>
         </button>
         <button
@@ -625,63 +540,42 @@ export default function TextToJobWorkspace({
           onClick={() => setActiveTab('senders')}
           className={`${styles.tabBtn} ${activeTab === 'senders' ? styles.tabActive : ''}`}
         >
-          <span>👥 Authorized Phones ({1 + activeCrewList.length})</span>
+          <span>👥 Who Can Text (Authorized Senders)</span>
         </button>
         <button
           type="button"
-          onClick={() => setActiveTab('photos')}
-          className={`${styles.tabBtn} ${activeTab === 'photos' ? styles.tabActive : ''}`}
+          onClick={() => setActiveTab('playground')}
+          className={`${styles.tabBtn} ${activeTab === 'playground' ? styles.tabActive : ''}`}
         >
-          <span>📸 Photo &amp; OCR Guide</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab('simulator')}
-          className={`${styles.tabBtn} ${activeTab === 'simulator' ? styles.tabActive : ''}`}
-        >
-          <span>⚡ Live Field Simulator</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab('rules')}
-          className={`${styles.tabBtn} ${activeTab === 'rules' ? styles.tabActive : ''}`}
-        >
-          <span>🛡️ Safety &amp; Rollback Rules</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab('siri')}
-          className={`${styles.tabBtn} ${activeTab === 'siri' ? styles.tabActive : ''}`}
-        >
-          <span>🎙️ Siri &amp; Hands-Free Setup</span>
+          <span>⚡ Try It Out &amp; Siri Setup</span>
         </button>
       </div>
 
-      {/* TAB 1: Inbound Message Feed & Itemized 4-Pillar Inspector */}
+      {/* TAB 1: Inbound Messages Stream & Receipt-Style Inspector */}
       {activeTab === 'feed' && (
         <div className={styles.workspaceGrid}>
-          {/* Left Column: Inbound Messages Feed */}
+          {/* Left Column: Inbound Messages Stream */}
           <div className={styles.feedCard}>
             <div className={styles.feedCardHeader}>
-              <h3 className={styles.feedCardTitle}>Recent Field Messages</h3>
-              <span className={styles.feedCount}>{filteredMessages.length} Shown</span>
+              <h3 className={styles.feedCardTitle}>Recent Field Notes</h3>
+              <span className={styles.feedCount}>{filteredMessages.length} Messages</span>
             </div>
 
-            {/* Quick Category Filters & Search */}
+            {/* Quick Filter Pills */}
             <div className={styles.feedFilters}>
               <button
                 type="button"
                 onClick={() => setFeedFilter('all')}
                 className={`${styles.filterBtn} ${feedFilter === 'all' ? styles.filterBtnActive : ''}`}
               >
-                All Messages
+                All
               </button>
               <button
                 type="button"
                 onClick={() => setFeedFilter('voice')}
                 className={`${styles.filterBtn} ${feedFilter === 'voice' ? styles.filterBtnActive : ''}`}
               >
-                🎙️ Voice MMS
+                🎙️ Voice Memos
               </button>
               <button
                 type="button"
@@ -747,7 +641,7 @@ export default function TextToJobWorkspace({
                           </span>
                         )}
                         <span className={styles.feedConfidenceBadge}>
-                          {msg.confidence}% Match
+                          ✓ {msg.confidence}% Confidence
                         </span>
                       </div>
                     </div>
@@ -757,31 +651,26 @@ export default function TextToJobWorkspace({
             </div>
           </div>
 
-          {/* Right Column: Itemized 4-Pillar Extraction Inspector */}
+          {/* Right Column: Receipt-Style Job File Inspector */}
           {selectedMessage && (
-            <div className={styles.inspectorCard}>
-              <div className={styles.inspectorHeader}>
-                <div className={styles.inspectorTitleGroup}>
-                  <span className={styles.inspectorEyebrow}>4-Pillar Extraction Checklist</span>
-                  <h3 className={styles.inspectorTitle}>
-                    {selectedMessage.matchedJobRef
-                      ? `Extracted Data for ${selectedMessage.matchedJobRef}`
-                      : 'Extracted Entities'}
+            <div className={styles.receiptCard}>
+              <div className={styles.receiptHeader}>
+                <div>
+                  <span className={styles.receiptBadge}>Job File Updates</span>
+                  <h3 className={styles.receiptTitle}>
+                    {selectedMessage.matchedJobRef || 'Field Intake'}
                   </h3>
+                  <p className={styles.receiptSubtitle}>
+                    Received {selectedMessage.time} from {selectedMessage.sender}
+                  </p>
                 </div>
-                <span className={styles.inspectorConfidence}>
-                  ✓ {selectedMessage.confidence}% AI Confidence
-                </span>
+                <div className={styles.receiptConfidencePill}>
+                  ✓ {selectedMessage.confidence}% Verified
+                </div>
               </div>
 
               {/* Inbound Audio Player / Snippet Box */}
               <div className={styles.inboundPreviewBox}>
-                <div className={styles.inboundPreviewHead}>
-                  <span className={styles.inboundPreviewSender}>
-                    Inbound from: <strong>{selectedMessage.sender}</strong>
-                  </span>
-                  <span className={styles.inboundPreviewTime}>{selectedMessage.time}</span>
-                </div>
                 <p className={styles.inboundPreviewText}>{selectedMessage.rawText}</p>
                 {selectedMessage.type === 'voice' && (
                   <div className={styles.audioPlayerStrip}>
@@ -802,61 +691,54 @@ export default function TextToJobWorkspace({
                       <span className={`${styles.waveformBar} ${isPlayingAudio ? styles.waveformBarActive : ''}`} style={{ height: '90%' }}></span>
                       <span className={`${styles.waveformBar} ${isPlayingAudio ? styles.waveformBarActive : ''}`} style={{ height: '50%' }}></span>
                     </div>
-                    <span className={styles.audioFilteredTag}>🔇 Diesel Noise Filtered</span>
+                    <span className={styles.audioFilteredTag}>🔇 Noise Filtered</span>
                   </div>
                 )}
               </div>
 
-              {/* Itemized 4-Pillar Checkbox Checklist */}
-              <div className={styles.checklistSection}>
-                <div className={styles.checklistHead}>
-                  <span className={styles.checklistTitle}>
-                    Itemized Entities (Uncheck to Exclude from Database)
-                  </span>
-                  <span className={styles.checklistCounter}>
+              {/* Itemized Job Receipt Lines */}
+              <div className={styles.receiptLinesSection}>
+                <div className={styles.receiptLinesHead}>
+                  <span>Itemized Changes</span>
+                  <span>
                     {selectedMessage.extractedItems.filter((i) => i.enabled).length} of{' '}
-                    {selectedMessage.extractedItems.length} Checked
+                    {selectedMessage.extractedItems.length} Applied
                   </span>
                 </div>
 
-                <div className={styles.checklistItems}>
+                <div className={styles.receiptLinesList}>
                   {selectedMessage.extractedItems.map((item) => {
-                    const pillarBadgeClass =
+                    const icon =
                       item.pillar === 'jobs'
-                        ? styles.itemPillarJobs
+                        ? '💼'
                         : item.pillar === 'leads'
-                        ? styles.itemPillarLeads
+                        ? '👤'
                         : item.pillar === 'schedule'
-                        ? styles.itemPillarSchedule
-                        : styles.itemPillarCrew;
+                        ? '📅'
+                        : '👷';
 
                     return (
                       <div
                         key={item.id}
                         onClick={() => toggleItem(selectedMessage.id, item.id)}
-                        className={`${styles.checklistItemRow} ${
-                          !item.enabled ? styles.checklistItemDisabled : ''
+                        className={`${styles.receiptLineRow} ${
+                          !item.enabled ? styles.receiptLineDisabled : ''
                         }`}
                       >
                         <div
-                          className={`${styles.customCheckbox} ${
-                            item.enabled ? styles.customCheckboxChecked : ''
+                          className={`${styles.receiptCheck} ${
+                            item.enabled ? styles.receiptCheckOn : ''
                           }`}
                         >
                           {item.enabled ? '✓' : ''}
                         </div>
-                        <div className={styles.itemMeta}>
-                          <div className={styles.itemTitleRow}>
-                            <span className={`${styles.itemPillarBadge} ${pillarBadgeClass}`}>
-                              {item.pillar.toUpperCase()}
-                            </span>
-                            <span className={styles.itemTitle}>{item.title}</span>
-                            <span className={styles.itemMutationPill}>{item.mutation}</span>
+                        <div className={styles.receiptLineContent}>
+                          <div className={styles.receiptLineTitleRow}>
+                            <span className={styles.receiptLineIcon}>{icon}</span>
+                            <strong className={styles.receiptLineTitle}>{item.title}</strong>
+                            <span className={styles.receiptMutation}>{item.mutation}</span>
                           </div>
-                          <p className={styles.itemDetail}>{item.detail}</p>
-                          <span className={styles.itemTargetTable}>
-                            Target Table: <code>{item.targetTable}</code>
-                          </span>
+                          <p className={styles.receiptLineDesc}>{item.detail}</p>
                         </div>
                       </div>
                     );
@@ -864,44 +746,29 @@ export default function TextToJobWorkspace({
                 </div>
               </div>
 
-              {/* Bottom Actions */}
-              <div className={styles.inspectorFooter}>
+              {/* Actions Footer */}
+              <div className={styles.receiptFooter}>
                 <button type="button" onClick={handleApply} className={styles.applyBtn}>
-                  ✓ Apply Checked Items to {selectedMessage.matchedJobRef || 'Records'}
+                  ✓ Apply Updates to {selectedMessage.matchedJobRef || 'Job File'}
                 </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setMessages((prev) =>
-                      prev.map((msg) =>
-                        msg.id === selectedMessage.id
-                          ? {
-                              ...msg,
-                              extractedItems: msg.extractedItems.map((i) => ({ ...i, enabled: true })),
-                            }
-                          : msg
-                      )
-                    )
-                  }
-                  className={styles.resetBtn}
-                >
-                  Reset All Checks
-                </button>
+                <div className={styles.receiptFooterNote}>
+                  <span>🛡️ 15-minute SMS rollback active (Reply <strong>UNDO</strong> to revert)</span>
+                </div>
               </div>
             </div>
           )}
         </div>
       )}
 
-      {/* TAB 2: Authorized Phone Numbers Whitelist Matrix */}
+      {/* TAB 2: Who Can Text (Authorized Senders Whitelist) */}
       {activeTab === 'senders' && (
         <div className={styles.sendersContainer}>
           <div className={styles.sendersCard}>
             <div className={styles.sendersHeader}>
               <div className={styles.sendersTitleGroup}>
-                <h3 className={styles.sendersTitle}>Authorized Phone Numbers Whitelist</h3>
+                <h3 className={styles.sendersTitle}>Authorized Phone Numbers</h3>
                 <p className={styles.sendersSubtitle}>
-                  Only verified phone numbers listed below can text <strong>{fieldPhoneNumber}</strong> to execute job changes. Unrecognized numbers receive safe default responses.
+                  Only verified phone numbers listed below can text <strong>{fieldPhoneNumber}</strong> to update job files. Unrecognized numbers are routed safely to your Lead Inbox.
                 </p>
               </div>
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
@@ -918,22 +785,22 @@ export default function TextToJobWorkspace({
               <table className={styles.sendersTable}>
                 <thead>
                   <tr>
-                    <th>Authorized Person / Role</th>
-                    <th>Cell Phone Number</th>
-                    <th>System Role</th>
-                    <th>Permitted 4-Pillars</th>
-                    <th>Ingest Status</th>
+                    <th>Authorized Person</th>
+                    <th>Cell Phone</th>
+                    <th>Role</th>
+                    <th>Permissions</th>
+                    <th>Status</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {/* 1. Account Owner / Alert Phone */}
+                  {/* Owner */}
                   <tr>
                     <td>
                       <div className={styles.senderNameCell}>
                         <div className={styles.senderAvatar}>👑</div>
                         <div>
                           <strong>{businessTitle} (Owner)</strong>
-                          <div style={{ fontSize: '11px', color: '#8fa6b5' }}>Primary Alert Phone</div>
+                          <div style={{ fontSize: '11px', color: '#8fa6b5' }}>Primary Account Phone</div>
                         </div>
                       </div>
                     </td>
@@ -945,17 +812,17 @@ export default function TextToJobWorkspace({
                     </td>
                     <td>
                       <span className={styles.senderPillarsTag} style={{ color: '#ff8e42' }}>
-                        All 4 Pillars (Quotes, Leads, Schedule, Crew)
+                        All (Quotes, Leads, Schedule, Crew)
                       </span>
                     </td>
                     <td>
                       <span className={styles.senderStatusActive}>
-                        <span className={styles.liveDot} /> Whitelisted &amp; Active
+                        <span className={styles.liveDot} /> Active
                       </span>
                     </td>
                   </tr>
 
-                  {/* 2. Crew Members */}
+                  {/* Crew Members */}
                   {activeCrewList.map((crew) => (
                     <tr key={crew.id}>
                       <td>
@@ -981,12 +848,12 @@ export default function TextToJobWorkspace({
                       </td>
                       <td>
                         <span className={styles.senderPillarsTag} style={{ color: '#50e3bd' }}>
-                          Progress Memos, Punch Lists, Receipts
+                          Punch Lists, Notes, Receipts
                         </span>
                       </td>
                       <td>
                         <span className={styles.senderStatusActive}>
-                          <span className={styles.liveDot} /> Enabled ({crew.active ? 'Active' : 'Inactive'})
+                          <span className={styles.liveDot} /> {crew.active ? 'Active' : 'Inactive'}
                         </span>
                       </td>
                     </tr>
@@ -995,13 +862,12 @@ export default function TextToJobWorkspace({
               </table>
             </div>
 
-            {/* Security Notice Box */}
             <div className={styles.senderSecurityNotice}>
               <span style={{ fontSize: '22px' }}>🛡️</span>
               <div>
-                <strong style={{ color: '#f5f0e7' }}>Zero Destructive Guesses &amp; Ingress Guard:</strong>
+                <strong style={{ color: '#f5f0e7' }}>Zero Destructive Guesses:</strong>
                 <p style={{ margin: '4px 0 0 0' }}>
-                  If a homeowner, subcontractor, or stranger texts <strong>{fieldPhoneNumber}</strong>, the system never executes changes to active quotes or schedule. Instead, it treats unrecognized inbound messages as customer inquiries and places them in your Lead Inbox for manual review.
+                  If a customer or unknown caller texts <strong>{fieldPhoneNumber}</strong>, the system will never mutate existing job quotes. It places the inquiry safely in your Lead Inbox.
                 </p>
               </div>
             </div>
@@ -1009,309 +875,123 @@ export default function TextToJobWorkspace({
         </div>
       )}
 
-      {/* TAB 3: Photo & Voice Intelligence Guide */}
-      {activeTab === 'photos' && (
-        <div className={styles.guideGrid}>
-          <div className={styles.guideCard}>
-            <div className={styles.guideCardHead}>
-              <span style={{ fontSize: '20px' }}>🧾</span>
-              <h4 className={styles.guideCardTitle}>1. Supply Receipts &amp; Expense OCR</h4>
+      {/* TAB 3: Try It Out & Siri Setup Playground */}
+      {activeTab === 'playground' && (
+        <div className={styles.playgroundContainer}>
+          {/* Live Simulator Card */}
+          <div className={styles.simulatorBox}>
+            <div className={styles.simHeader}>
+              <span className={styles.badge}>⚡ Live Test Sandbox</span>
+              <h3 className={styles.simTitle}>Test Any Field Note Right Here</h3>
+              <p className={styles.simSubtitle}>
+                Type or dictate a note below to see how Sparky creates change orders, punch list tasks, and schedule slots.
+              </p>
             </div>
-            <p className={styles.guideCardDesc}>
-              Snap a picture of a receipt at Home Depot, Lowes, or supply house.
-            </p>
-            <div className={styles.guideChecklist}>
-              ✓ OCR itemizes part numbers, quantities, &amp; tax.<br />
-              ✓ Auto-splits items between multiple active jobs.<br />
-              ✓ Updates live Job Gross Profit Margin in real-time.
+
+            <div className={styles.simInputRow}>
+              <input
+                type="text"
+                value={simText}
+                onChange={(e) => setSimText(e.target.value)}
+                placeholder="e.g. Add $450 to Miller job for extra romex, schedule inspection Thursday 9am"
+                className={styles.simInput}
+              />
+              <button type="button" onClick={handleSimulate} className={styles.simSendBtn}>
+                ⚡ Test This Note
+              </button>
             </div>
-            <div className={styles.guideActionRow}>
+
+            <div className={styles.presetsRow}>
+              <span className={styles.presetLabel}>Quick Presets:</span>
               <button
                 type="button"
                 onClick={() =>
-                  handlePreset('Receipt Home Depot $184.20 for Romex and breakers on Miller J-104')
+                  setSimText('Add $550 change order for 4 sheets plywood rot repair on Johnson roof.')
                 }
-                className={styles.guideTestBtn}
+                className={styles.presetBtn}
               >
-                ⚡ Test in Sandbox
+                Roofing Change Order ($550)
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  setSimText('New lead: Sarah Jenkins 248-555-0991 emergency main drain backup needs estimate ASAP.')
+                }
+                className={styles.presetBtn}
+              >
+                Plumbing Emergency Lead
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  setSimText('Final punch list for Smith: 1) touch up kitchen paint 2) fix loose door latch.')
+                }
+                className={styles.presetBtn}
+              >
+                Remodeling Punch List
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  setSimText('Replace 45/5 capacitor on Carrier AC for Smith. Added 2 lbs R-410A refrigerant. Quote $285 total.')
+                }
+                className={styles.presetBtn}
+              >
+                HVAC Repair ($285)
               </button>
             </div>
           </div>
 
-          <div className={styles.guideCard}>
-            <div className={styles.guideCardHead}>
-              <span style={{ fontSize: '20px' }}>🔍</span>
-              <h4 className={styles.guideCardTitle}>2. Site Damage &amp; Change Orders</h4>
+          {/* Siri & Hands-Free Setup Card */}
+          <div className={styles.siriCard}>
+            <div className={styles.siriHeader}>
+              <span className={styles.badge}>🎙️ 1-Minute Setup</span>
+              <h3 className={styles.siriTitle}>Hands-Free Voice Dictation While Driving</h3>
+              <p className={styles.siriSubtitle}>
+                Keep your hands on the wheel and eyes on the road. Dictate updates directly into your truck&apos;s Apple CarPlay or Android Auto.
+              </p>
             </div>
-            <p className={styles.guideCardDesc}>
-              Text a photo of subfloor rot or charred wiring: <em>“Found this on Johnson”</em>.
-            </p>
-            <div className={styles.guideChecklist}>
-              ✓ Gemini Vision detects defect boundaries &amp; area.<br />
-              ✓ Drafts itemized Change Order with material takeoff.<br />
-              ✓ Stages 1-tap client approval link with photo attached.
-            </div>
-            <div className={styles.guideActionRow}>
-              <button
-                type="button"
-                onClick={() =>
-                  handlePreset('Add $550 change order for 4 sheets plywood rot repair on Johnson roof')
-                }
-                className={styles.guideTestBtn}
-              >
-                ⚡ Test in Sandbox
-              </button>
-            </div>
-          </div>
 
-          <div className={styles.guideCard}>
-            <div className={styles.guideCardHead}>
-              <span style={{ fontSize: '20px' }}>📸</span>
-              <h4 className={styles.guideCardTitle}>3. Inspection Tags &amp; Green Cards</h4>
-            </div>
-            <p className={styles.guideCardDesc}>
-              Snap the building inspector’s signed green permit tag on framing or meter.
-            </p>
-            <div className={styles.guideChecklist}>
-              ✓ Reads inspector signature, date, &amp; pass status.<br />
-              ✓ Advances milestone stage (e.g. Rough Passed).<br />
-              ✓ Auto-alerts the next trade crew on the schedule.
-            </div>
-            <div className={styles.guideActionRow}>
-              <button
-                type="button"
-                onClick={() =>
-                  handlePreset('Rough plumbing passed inspection at 124 Main. Schedule drywall Thursday 8am')
-                }
-                className={styles.guideTestBtn}
-              >
-                ⚡ Test in Sandbox
-              </button>
-            </div>
-          </div>
+            <div className={styles.siriGuideGrid}>
+              <div className={styles.siriStepCard}>
+                <span className={styles.siriStepNum}>Step 1</span>
+                <h4 className={styles.siriStepTitle}>Save the Contact Card</h4>
+                <p className={styles.siriStepText}>
+                  Save phone number <strong>{fieldPhoneNumber}</strong> to your phone as <strong>Field Line</strong>.
+                </p>
+                <a
+                  href={`data:text/vcard;charset=utf-8,${encodeURIComponent(
+                    `BEGIN:VCARD\nVERSION:3.0\nFN:${businessTitle} Field Hotline\nTEL;TYPE=CELL:${fieldPhoneNumber}\nNOTE:Text-to-Job Field Ingest Hotline\nEND:VCARD`
+                  )}`}
+                  download="field-hotline.vcf"
+                  className={styles.vcardBtn}
+                  style={{ marginTop: '10px', display: 'inline-block' }}
+                >
+                  📱 Download .vcf Card
+                </a>
+              </div>
 
-          <div className={styles.guideCard}>
-            <div className={styles.guideCardHead}>
-              <span style={{ fontSize: '20px' }}>🏷️</span>
-              <h4 className={styles.guideCardTitle}>4. Equipment Serial &amp; Nameplates</h4>
-            </div>
-            <p className={styles.guideCardDesc}>
-              Text a picture of a customer&apos;s rusted water heater or AC data plate.
-            </p>
-            <div className={styles.guideChecklist}>
-              ✓ Extracts exact model, serial #, tonnage, &amp; BTUs.<br />
-              ✓ Matches replacement units against your Price Book.<br />
-              ✓ Pre-fills equipment replacement estimate draft.
-            </div>
-            <div className={styles.guideActionRow}>
-              <button
-                type="button"
-                onClick={() =>
-                  handlePreset('Replace Carrier AC 45/5 capacitor and 2 lbs R-410A refrigerant for Smith $285')
-                }
-                className={styles.guideTestBtn}
-              >
-                ⚡ Test in Sandbox
-              </button>
-            </div>
-          </div>
+              <div className={styles.siriStepCard}>
+                <span className={styles.siriStepNum}>Step 2</span>
+                <h4 className={styles.siriStepTitle}>Apple Siri Voice Command</h4>
+                <p className={styles.siriStepText}>
+                  Press your steering wheel voice button and say:
+                </p>
+                <div className={styles.siriCommandSnippet}>
+                  &ldquo;Hey Siri, text Field Line: Added $450 extra PEX lines to Miller job.&rdquo;
+                </div>
+              </div>
 
-          <div className={styles.guideCard}>
-            <div className={styles.guideCardHead}>
-              <span style={{ fontSize: '20px' }}>🌟</span>
-              <h4 className={styles.guideCardTitle}>5. Client Progress &amp; Warranty Proof</h4>
-            </div>
-            <p className={styles.guideCardDesc}>
-              Text finished tile, roof, or paint photos with the job name.
-            </p>
-            <div className={styles.guideChecklist}>
-              ✓ Immediately syncs to customer’s private portal.<br />
-              ✓ Creates timestamped proof for change orders.<br />
-              ✓ Permanently stored for warranty dispute defense.
-            </div>
-            <div className={styles.guideActionRow}>
-              <button
-                type="button"
-                onClick={() =>
-                  handlePreset('Johnson punch list done: 1) caulked siding 2) painted hallway baseboards')
-                }
-                className={styles.guideTestBtn}
-              >
-                ⚡ Test in Sandbox
-              </button>
-            </div>
-          </div>
-
-          <div className={styles.guideCard}>
-            <div className={styles.guideCardHead}>
-              <span style={{ fontSize: '20px' }}>🎙️</span>
-              <h4 className={styles.guideCardTitle}>6. Hands-Free Driving Audio Memos</h4>
-            </div>
-            <p className={styles.guideCardDesc}>
-              Send a 15-second voice memo via Apple iMessage or Android Messages.
-            </p>
-            <div className={styles.guideChecklist}>
-              ✓ Suppresses diesel truck, engine, &amp; tool noise.<br />
-              ✓ Extracts change orders, line items, &amp; dates.<br />
-              ✓ 15-minute rollback window (Reply UNDO).
-            </div>
-            <div className={styles.guideActionRow}>
-              <button
-                type="button"
-                onClick={() =>
-                  handlePreset('New lead: Sarah Jenkins 248-555-0991 emergency main drain backup ASAP')
-                }
-                className={styles.guideTestBtn}
-              >
-                ⚡ Test in Sandbox
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* TAB 4: Live Field Simulator Sandbox */}
-      {activeTab === 'simulator' && (
-        <div className={styles.simulatorBox}>
-          <div className={styles.simHeader}>
-            <h3 className={styles.simTitle}>
-              Test Any Field Command in the Sparky Sandbox
-            </h3>
-            <p className={styles.simSubtitle}>
-              Type or dictate any trade scenario to test how Sparky&apos;s 4-pillar neural engine extracts entities.
-            </p>
-          </div>
-
-          <div className={styles.simInputRow}>
-            <input
-              type="text"
-              value={simText}
-              onChange={(e) => setSimText(e.target.value)}
-              placeholder="e.g. Add $450 to Miller job for extra romex, schedule inspection Thursday 9am"
-              className={styles.simInput}
-            />
-            <button type="button" onClick={handleSimulate} className={styles.simSendBtn}>
-              ⚡ Run Simulator
-            </button>
-          </div>
-
-          <div className={styles.presetsRow}>
-            <span className={styles.presetLabel}>Trade Presets:</span>
-            <button
-              type="button"
-              onClick={() =>
-                setSimText('Add $550 change order for 4 sheets plywood rot repair on Johnson roof.')
-              }
-              className={styles.presetBtn}
-            >
-              Roofing Change Order ($550)
-            </button>
-            <button
-              type="button"
-              onClick={() =>
-                setSimText('New lead: Sarah Jenkins 248-555-0991 emergency main drain backup needs estimate ASAP.')
-              }
-              className={styles.presetBtn}
-            >
-              Plumbing Emergency Lead
-            </button>
-            <button
-              type="button"
-              onClick={() =>
-                setSimText('Final punch list for Smith: 1) touch up kitchen paint 2) fix loose door latch.')
-              }
-              className={styles.presetBtn}
-            >
-              Remodeling Punch List
-            </button>
-            <button
-              type="button"
-              onClick={() =>
-                setSimText('Replace 45/5 capacitor on Carrier AC for Smith. Added 2 lbs R-410A refrigerant. Quote $285 total.')
-              }
-              className={styles.presetBtn}
-            >
-              HVAC Repair ($285)
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* TAB 5: Safety Invariants & Rollback Rules */}
-      {activeTab === 'rules' && (
-        <div className={styles.safetyGrid}>
-          <div className={styles.safetyCard}>
-            <div className={styles.safetyCardHead}>
-              <span className={styles.safetyIcon}>🔄</span>
-              <h4 className={styles.safetyCardTitle}>1. 15-Minute SMS Undo Rollback</h4>
-            </div>
-            <p className={styles.safetyCardText}>
-              Every SMS confirmation receipt includes a 15-minute rollback window. Simply reply <span className={styles.safetyHighlight}>UNDO</span> from your phone to immediately revert any change order, task, or status update made in error.
-            </p>
-          </div>
-
-          <div className={styles.safetyCard}>
-            <div className={styles.safetyCardHead}>
-              <span className={styles.safetyIcon}>🎯</span>
-              <h4 className={styles.safetyCardTitle}>2. Zero Destructive Guesses Invariant</h4>
-            </div>
-            <p className={styles.safetyCardText}>
-              If you have two active jobs with the same name (e.g. &ldquo;Smith - 84 Pine&rdquo; vs &ldquo;Smith - 19 Oak&rdquo;), Sparky never assumes. He texts back numbered options and pauses until you reply with 1 or 2.
-            </p>
-          </div>
-
-          <div className={styles.safetyCard}>
-            <div className={styles.safetyCardHead}>
-              <span className={styles.safetyIcon}>🔒</span>
-              <h4 className={styles.safetyCardTitle}>3. Immutable Audit Trail Feed</h4>
-            </div>
-            <p className={styles.safetyCardText}>
-              Every voice recording audio file, raw SMS text, and OCR receipt is permanently attached to the job activity feed with exact timestamps for client dispute protection.
-            </p>
-          </div>
-
-          <div className={styles.safetyCard}>
-            <div className={styles.safetyCardHead}>
-              <span className={styles.safetyIcon}>📶</span>
-              <h4 className={styles.safetyCardTitle}>4. 10DLC Carrier Transactional Delivery</h4>
-            </div>
-            <p className={styles.safetyCardText}>
-              All outbound confirmations are routed through registered A2P 10DLC carrier trust conduits, ensuring zero carrier spam filtering and &lt;1.5 second delivery latency.
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* TAB 6: Siri & Hands-Free Setup */}
-      {activeTab === 'siri' && (
-        <div className={styles.siriGuideGrid}>
-          <div className={styles.siriStepCard}>
-            <span className={styles.siriStepNum}>Step 1</span>
-            <h4 className={styles.siriStepTitle}>Save Contact as &ldquo;Sparky&rdquo;</h4>
-            <p className={styles.siriStepText}>
-              Download the .vcf contact card above or create a new contact in your phone named <strong>Sparky</strong> with phone number <strong>{fieldPhoneNumber}</strong>.
-            </p>
-          </div>
-
-          <div className={styles.siriStepCard}>
-            <span className={styles.siriStepNum}>Step 2</span>
-            <h4 className={styles.siriStepTitle}>Apple Siri Voice Command</h4>
-            <p className={styles.siriStepText}>
-              While driving, hold your steering wheel voice button or say &ldquo;Hey Siri&rdquo;:
-            </p>
-            <div className={styles.siriCommandSnippet}>
-              &ldquo;Hey Siri, text Sparky: Added $350 extra drywall to Miller job.&rdquo;
-            </div>
-          </div>
-
-          <div className={styles.siriStepCard}>
-            <span className={styles.siriStepNum}>Step 3</span>
-            <h4 className={styles.siriStepTitle}>Android Assistant Setup</h4>
-            <p className={styles.siriStepText}>
-              On Google Assistant or Android Auto, dictate directly:
-            </p>
-            <div className={styles.siriCommandSnippet}>
-              &ldquo;Hey Google, send a text to Sparky: Miller rough plumbing passed.&rdquo;
+              <div className={styles.siriStepCard}>
+                <span className={styles.siriStepNum}>Step 3</span>
+                <h4 className={styles.siriStepTitle}>Google Assistant / Android Auto</h4>
+                <p className={styles.siriStepText}>
+                  On Android, dictate naturally:
+                </p>
+                <div className={styles.siriCommandSnippet}>
+                  &ldquo;Hey Google, send a text to Field Line: Miller rough inspection passed.&rdquo;
+                </div>
+              </div>
             </div>
           </div>
         </div>
