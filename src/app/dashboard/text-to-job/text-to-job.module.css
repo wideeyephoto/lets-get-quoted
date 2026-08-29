@@ -640,6 +640,30 @@
   margin: 0;
 }
 
+.receiptHeaderRight {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.openJobLink {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #f5f0e7;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 6px;
+  text-decoration: none;
+  transition: all 0.15s ease;
+}
+
+.openJobLink:hover {
+  background: rgba(255, 122, 33, 0.15);
+  border-color: #ff7a21;
+  color: #ff7a21;
+}
+
 .receiptConfidencePill {
   background: rgba(34, 197, 94, 0.12);
   border: 1px solid rgba(34, 197, 94, 0.3);
@@ -848,7 +872,14 @@
   padding-top: 14px;
 }
 
+.receiptFooterActionRow {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 .applyBtn {
+  flex: 1;
   background: #ff7a21;
   color: #0b1520;
   font-size: 14px;
@@ -865,6 +896,25 @@
 .applyBtn:hover {
   background: #ff8e42;
   transform: translateY(-1px);
+}
+
+.undoBtn {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #8fa6b5;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 10px 14px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: inherit;
+}
+
+.undoBtn:hover {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.35);
+  color: #f87171;
 }
 
 .receiptFooterNote {

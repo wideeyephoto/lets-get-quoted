@@ -312,6 +312,20 @@ export default function TextToJobWorkspace({
     setTimeout(() => setNotification(null), 4000);
   }
 
+  function handleSimulateUndo() {
+    setMessages((prev) =>
+      prev.map((msg) => {
+        if (msg.id !== selectedMessage.id) return msg;
+        return {
+          ...msg,
+          extractedItems: msg.extractedItems.map((item) => ({ ...item, enabled: false })),
+        };
+      })
+    );
+    setNotification(`↩ Undone via SMS: All updates from this note were reverted.`);
+    setTimeout(() => setNotification(null), 4500);
+  }
+
   function handleCopyNumber() {
     navigator.clipboard.writeText(fieldPhoneNumber.replace(/[^\d+]/g, ''));
     setCopiedNumber(true);
@@ -323,13 +337,37 @@ export default function TextToJobWorkspace({
   }
 
   function toggleAudio() {
-    setIsPlayingAudio((prev) => !prev);
-    if (!isPlayingAudio) {
+    if (isPlayingAudio) {
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+      setIsPlayingAudio(false);
+      return;
+    }
+
+    setIsPlayingAudio(true);
+    const spokenText = selectedMessage.rawText.replace(/^[“"']|[”"']$/g, '');
+
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(spokenText);
+      utterance.rate = 1.0;
+      utterance.pitch = 0.95;
+      utterance.onend = () => {
+        setIsPlayingAudio(false);
+        setNotification(null);
+      };
+      utterance.onerror = () => {
+        setIsPlayingAudio(false);
+      };
+      window.speechSynthesis.speak(utterance);
+      setNotification(`▶ Playing voice note audio...`);
+    } else {
       setNotification('▶ Playing audio transcript with background noise filter...');
       setTimeout(() => {
         setIsPlayingAudio(false);
         setNotification(null);
-      }, 5000);
+      }, 4000);
     }
   }
 
@@ -709,8 +747,13 @@ export default function TextToJobWorkspace({
                     Received {selectedMessage.time} from {selectedMessage.sender}
                   </p>
                 </div>
-                <div className={styles.receiptConfidencePill}>
-                  ✓ {selectedMessage.confidence}% Verified
+                <div className={styles.receiptHeaderRight}>
+                  <Link href="/dashboard/jobs" className={styles.openJobLink}>
+                    Open Job ↗
+                  </Link>
+                  <div className={styles.receiptConfidencePill}>
+                    ✓ {selectedMessage.confidence}% Verified
+                  </div>
                 </div>
               </div>
 
@@ -736,7 +779,7 @@ export default function TextToJobWorkspace({
                       <span className={`${styles.waveformBar} ${isPlayingAudio ? styles.waveformBarActive : ''}`} style={{ height: '90%' }}></span>
                       <span className={`${styles.waveformBar} ${isPlayingAudio ? styles.waveformBarActive : ''}`} style={{ height: '50%' }}></span>
                     </div>
-                    <span className={styles.audioFilteredTag}>🔇 Noise Filtered</span>
+                    <span className={styles.audioFilteredTag}>🔇 Spoken Transcript</span>
                   </div>
                 )}
               </div>
@@ -793,9 +836,14 @@ export default function TextToJobWorkspace({
 
               {/* Actions Footer */}
               <div className={styles.receiptFooter}>
-                <button type="button" onClick={handleApply} className={styles.applyBtn}>
-                  ✓ Apply Updates to {selectedMessage.matchedJobRef || 'Job File'}
-                </button>
+                <div className={styles.receiptFooterActionRow}>
+                  <button type="button" onClick={handleApply} className={styles.applyBtn}>
+                    ✓ Apply Updates to {selectedMessage.matchedJobRef || 'Job File'}
+                  </button>
+                  <button type="button" onClick={handleSimulateUndo} className={styles.undoBtn}>
+                    ↩ Simulate Replying &ldquo;UNDO&rdquo; via SMS
+                  </button>
+                </div>
                 <div className={styles.receiptFooterNote}>
                   <span>🛡️ 15-minute SMS rollback active (Reply <strong>UNDO</strong> to revert)</span>
                 </div>
