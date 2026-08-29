@@ -446,6 +446,16 @@ export const MANUAL_FIELD_NOTES: Record<string, ManualFieldNotes> = {
       'Sample records reconcile on both sides without duplicate creation.',
     ],
   },
+  'configure-text-to-job-and-field-intake': {
+    useWhen: 'You or your crew want to update quotes, log milestones, send punch lists, or track material receipts directly from the road.',
+    bestPractice: 'Save the hotline to your mobile contacts and use natural trade voice dictation through Siri or Android Auto.',
+    watchFor: 'Always review quotes and customer-facing change order totals before sending final invoices.',
+    completionChecks: [
+      'The company dispatch number is saved in mobile contacts as "Job Intake".',
+      'Owner and crew mobile numbers are whitelisted in the Authorized Phone Numbers matrix.',
+      'A test voice memo or change order SMS was processed and verified on a test job.',
+    ],
+  },
   'find-help-and-contact-support': {
     useWhen: 'A workflow is unclear, a known fix did not work, or the support team needs evidence to investigate an issue.',
     bestPractice: 'Search by the task first, then send one reproducible issue with record, timing, expectation, and observed result.',

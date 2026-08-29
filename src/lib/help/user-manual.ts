@@ -1885,6 +1885,64 @@ export const MANUAL_ARTICLES: ManualArticle[] = [
     ],
     related: ['set-up-business-texting', 'qualify-and-contact-a-lead', 'manage-plan-usage-and-credits'],
   },
+  {
+    slug: 'configure-text-to-job-and-field-intake',
+    chapterId: 'intake',
+    order: 6,
+    title: 'Configure Text-to-Job & Hands-Free Field Dictation',
+    summary: 'Update quotes, log milestones, add punch lists, and upload receipt photos simply by texting or voice-memo dictation from the truck.',
+    outcome: 'You and your crew will keep job files 100% updated in real-time from the road without logging into an app or typing on site.',
+    audiences: ['Owner', 'Crew', 'Office staff'],
+    readMinutes: 7,
+    routes: [
+      { label: 'Text-to-Job Dashboard', href: '/dashboard/text-to-job' },
+      { label: 'Messages', href: '/dashboard/messages' },
+    ],
+    prerequisites: ['Owner Alert Phone or Crew Member Whitelist entry', 'Dedicated Platform Texting Number'],
+    keywords: [
+      'text to job',
+      'voice memo',
+      'dictate',
+      'siri',
+      'carplay',
+      'punch list',
+      'change order',
+      'receipt photo',
+      'undo rollback',
+      'audio intake',
+    ],
+    sections: [
+      {
+        title: 'Save the field dispatch hotline',
+        steps: [
+          'Open Text-to-Job Dashboard to view your business hotline number.',
+          'Tap "Save Contact (.vcf)" on your mobile phone to save it as "Job Intake" in iOS or Google Contacts.',
+          'Set up Apple Siri ("Hey Siri, text Job Intake") or Android Auto Google Assistant for hands-free steering wheel dictation.',
+        ],
+      },
+      {
+        title: 'Dictate four core job pillars from the road',
+        bullets: [
+          'Quote Change Orders: Text "Add $450 to Miller job for extra 12/2 Romex line" to update estimate totals and stage customer approval.',
+          'Milestones & Activity: Send a voice memo "Rough plumbing passed on Elm St" to log an audit timestamp and reserve drywall crew.',
+          'Crew Punch Lists: Text multi-item to-do items to push checklist tasks to the crew field app.',
+          'Receipt Photos: Snap a photo of a supply receipt at the register to OCR itemize costs and track gross profit margin.',
+        ],
+      },
+      {
+        title: 'Understand the 15-minute rollback safety invariant',
+        paragraphs: [
+          'If you make a typo or dictate an accidental change, simply reply "UNDO" within 15 minutes to atomic rollback the database to its previous state with zero data loss.',
+        ],
+      },
+    ],
+    customerView: 'Customers receive clean, formatted 1-tap quote approval SMS links when you text "SEND" after adding a change order.',
+    troubleshooting: [
+      { problem: 'A text from an unlisted number does not update a job.', fix: 'For security, unrecognized numbers are safely routed to the Leads inbox as inquiries. Ensure your number and crew phone numbers are enabled in the Authorized Phone Numbers list.' },
+      { problem: 'A voice memo was unclear.', fix: 'Gemini filters background truck idle and wind noise, but if the voice recording was cut off, the AI will prompt for a 1/2 clarifying text before modifying live jobs.' },
+    ],
+    related: ['configure-ai-receptionist', 'plan-a-day-and-dispatch-crew', 'create-and-send-an-invoice'],
+  },
 
   {
     slug: 'manage-office-access-and-security',

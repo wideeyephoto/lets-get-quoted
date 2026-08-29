@@ -116,6 +116,15 @@ export const QUICK_ACTIONS: SearchResultItem[] = [
     iconName: 'message',
   },
   {
+    id: 'action-text-to-job',
+    section: 'actions',
+    title: 'Text-to-Job & Voice Field Intake',
+    subtitle: 'Dictate quotes, change orders & punch lists from the truck via SMS/voice',
+    badge: { label: 'AI Field Ingest', tone: 'success' },
+    href: '/dashboard/text-to-job',
+    iconName: 'job',
+  },
+  {
     id: 'action-online-booking',
     section: 'actions',
     title: 'Online Booking Settings',
