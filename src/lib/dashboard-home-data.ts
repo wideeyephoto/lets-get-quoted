@@ -184,6 +184,13 @@ export async function buildDashboardHome(
     loadCommunications(supabase, accountId, basePath),
   ]);
 
+  const jobsNeedingInfo = jobs.filter(
+    (job) =>
+      job.status !== 'archived' &&
+      job.status !== 'complete' &&
+      (!job.address || (!job.client_phone && !job.client_email) || job.quoted_amount <= 0),
+  );
+
   const priorityQueue = buildPriorityQueue({
     leadStats,
     schedulingIssues,
@@ -192,6 +199,7 @@ export async function buildDashboardHome(
     outstanding,
     openQuotes,
     followupsOn,
+    jobsNeedingInfoCount: jobsNeedingInfo.length,
     basePath,
   });
 

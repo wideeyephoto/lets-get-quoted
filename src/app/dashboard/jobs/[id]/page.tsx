@@ -634,6 +634,35 @@ export default async function JobDetailPage({
               </span>
             ) : null}
           </div>
+          {/* Missing Critical Information Alert Banner */}
+          {(!job.address || (!job.client_phone && !job.client_email) || job.quoted_amount <= 0) && job.status !== 'archived' && job.status !== 'complete' ? (
+            <div className="job-missing-info-banner" role="alert">
+              <div className="job-missing-info-head">
+                <span className="job-missing-info-badge">⚠️ Needs Information</span>
+                <span className="job-missing-info-title">This job has missing details before work or billing can proceed:</span>
+              </div>
+              <ul className="job-missing-info-list">
+                {!job.address ? (
+                  <li>
+                    <span>📍 <strong>Missing site address</strong> — add address for routing, arrival texts, and directions.</span>
+                    <Link href={`/dashboard/jobs/${job.id}?edit=client#job-details`} className="job-missing-fix-link">Add address →</Link>
+                  </li>
+                ) : null}
+                {!job.client_phone && !job.client_email ? (
+                  <li>
+                    <span>📞 <strong>Missing customer contact</strong> — add phone or email so quotes and automated updates reach the client.</span>
+                    <Link href={`/dashboard/jobs/${job.id}?edit=client#job-details`} className="job-missing-fix-link">Add contact →</Link>
+                  </li>
+                ) : null}
+                {job.quoted_amount <= 0 ? (
+                  <li>
+                    <span>💰 <strong>No quote amount priced</strong> — proposal value is currently $0.00.</span>
+                    <Link href={`/dashboard/jobs/${job.id}#quote-breakdown`} className="job-missing-fix-link">Price quote →</Link>
+                  </li>
+                ) : null}
+              </ul>
+            </div>
+          ) : null}
           {/* ONE control looks like a control. Everything on this row used to be
               offered at once — "Request payment" in primary orange beside "Job
               started" beside a dominant "Mark Job Completed", on a job whose

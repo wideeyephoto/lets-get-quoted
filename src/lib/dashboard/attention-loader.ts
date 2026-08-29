@@ -11,6 +11,8 @@ export function buildPriorityQueue(input: {
   outstanding: { total: number; count: number };
   openQuotes: { total: number; count: number };
   followupsOn: boolean;
+  jobsNeedingInfoCount?: number;
+  unreviewedFieldIntakeCount?: number;
   basePath?: string;
 }): Loadable<PriorityQueueSummary> {
   const {
@@ -21,6 +23,8 @@ export function buildPriorityQueue(input: {
     outstanding,
     openQuotes,
     followupsOn,
+    jobsNeedingInfoCount = 0,
+    unreviewedFieldIntakeCount = 0,
     basePath = '/dashboard',
   } = input;
 
@@ -69,6 +73,28 @@ export function buildPriorityQueue(input: {
       amount: outstanding.total,
       href: `${basePath}/jobs?owing=1`,
       cta: 'Chase payment',
+    });
+  }
+
+  // 5. Jobs missing critical information
+  if (jobsNeedingInfoCount > 0) {
+    needsAttention.push({
+      key: 'jobs-needing-info',
+      label: `${jobsNeedingInfoCount} job${jobsNeedingInfoCount === 1 ? '' : 's'} missing critical details`,
+      detail: 'Missing site address, customer phone/email, or pricing before work or invoices can proceed.',
+      href: `${basePath}/jobs`,
+      cta: 'Complete job details',
+    });
+  }
+
+  // 6. Field intake dictated from the truck needing office verification
+  if (unreviewedFieldIntakeCount > 0) {
+    needsAttention.push({
+      key: 'field-intake-review',
+      label: `${unreviewedFieldIntakeCount} field item${unreviewedFieldIntakeCount === 1 ? '' : 's'} dictated from the truck`,
+      detail: 'Recent voice memos or change orders received via Text-to-Job ready for office verification.',
+      href: `${basePath}/text-to-job`,
+      cta: 'Verify field intake',
     });
   }
 

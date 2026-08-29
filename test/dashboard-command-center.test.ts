@@ -64,6 +64,30 @@ describe('Priority Queue builder', () => {
       expect(queue.data.waitingOnCustomer[0].detail).toContain('Automatic SMS follow-ups are active');
     }
   });
+
+  it('includes jobs missing critical info and unverified field intake items in priority queue', () => {
+    const queue = buildPriorityQueue({
+      leadStats: { open: 0, needsYou: 0, waitingOnCustomer: 0, new: 0, contacted: 0, quoted: 0, fromWebsite: 0 },
+      schedulingIssues: { needsCrew: [], missingTime: [], unscheduled: [], all: [] },
+      schedulingIssueCount: 0,
+      stuckScheduleCount: 0,
+      outstanding: { total: 0, count: 0 },
+      openQuotes: { total: 0, count: 0 },
+      followupsOn: false,
+      jobsNeedingInfoCount: 3,
+      unreviewedFieldIntakeCount: 2,
+    });
+
+    expect(queue.kind).toBe('ready');
+    if (queue.kind === 'ready') {
+      expect(queue.data.needsAttention).toHaveLength(2);
+      expect(queue.data.needsAttention[0].label).toBe('3 jobs missing critical details');
+      expect(queue.data.needsAttention[0].cta).toBe('Complete job details');
+      expect(queue.data.needsAttention[1].label).toBe('2 field items dictated from the truck');
+      expect(queue.data.needsAttention[1].href).toBe('/dashboard/text-to-job');
+      expect(queue.data.needsAttention[1].cta).toBe('Verify field intake');
+    }
+  });
 });
 
 describe('Today Schedule timeline', () => {
