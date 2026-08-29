@@ -31,9 +31,34 @@ function rlsBlind(name: string, client: 'admin' | 'session'): boolean {
   return name === 'accounts' && client === 'session' && currentRole === 'office';
 }
 
+/**
+ * The account row now arrives EMBEDDED in the membership read.
+ *
+ * The guards ask for `memberships` with `accounts(*)` rather than issuing a
+ * second query keyed on the first one's answer, so the double has to hand the
+ * account back the same way. Tests keep setting `rows.accounts` as the one knob
+ * — the embed is assembled here, so every case below still configures exactly
+ * what it did before.
+ *
+ * rlsBlind still applies, and that is the point of doing it here rather than in
+ * the fixtures. If somebody changed the membership read to use the SESSION
+ * client, an office user's embedded account would come back null, the
+ * suspension gate would read that as "not suspended", and the suspended-office
+ * test below is what catches it.
+ */
+function withEmbeddedAccount(name: string, client: 'admin' | 'session', list: unknown[]): unknown[] {
+  if (name !== 'memberships') return list;
+  return list.map((row) => ({
+    ...(row as Record<string, unknown>),
+    accounts: rlsBlind('accounts', client) ? null : (rows.accounts ?? null),
+  }));
+}
+
 function table(name: string, client: 'admin' | 'session' = 'admin') {
   const chain: Record<string, unknown> = {};
-  for (const method of ['select', 'eq', 'order', 'limit', 'is']) chain[method] = () => chain;
+  let selected = '';
+  chain.select = (columns?: string) => { selected = columns ?? ''; return chain; };
+  for (const method of ['eq', 'order', 'limit', 'is']) chain[method] = () => chain;
   chain.maybeSingle = () => Promise.resolve(
     rlsBlind(name, client)
       ? { data: null, error: null }
@@ -47,8 +72,19 @@ function table(name: string, client: 'admin' | 'session' = 'admin') {
     return Object.assign(Promise.resolve({ error: null }), after);
   };
   chain.delete = () => chain;
-  (chain as { then: unknown }).then = (r: (v: unknown) => unknown) =>
-    r({ data: rows[`${name}:list`] ?? [], error: rows[`${name}:error`] ?? null });
+  (chain as { then: unknown }).then = (r: (v: unknown) => unknown) => {
+    // PostgREST answers PGRST200 for an embed it cannot resolve while its
+    // schema cache is stale, and it fails the WHOLE query when it does. Only
+    // the embedded form fails; the same read without accounts(*) succeeds,
+    // which is exactly the fallback the guard depends on.
+    if (rows[`${name}:embedError`] && selected.includes('accounts(*)')) {
+      return r({ data: null, error: { code: 'PGRST200', message: 'could not find a relationship' } });
+    }
+    return r({
+      data: withEmbeddedAccount(name, client, (rows[`${name}:list`] as unknown[]) ?? []),
+      error: rows[`${name}:error`] ?? null,
+    });
+  };
   return chain;
 }
 
@@ -59,10 +95,30 @@ vi.mock('@supabase/supabase-js', () => ({
   createClient: () => ({ from: (name: string) => table(name, 'admin') }),
 }));
 vi.mock('next/headers', () => ({ headers: () => new Headers(), cookies: () => ({ get: () => undefined }) }));
+/**
+ * No JWKS fetch from a unit test.
+ *
+ * The guards verify the session token locally against a cached key set, and
+ * `signingKeys()` returning null is its documented "no keys to supply" path —
+ * supabase-js is then asked to sort it out, which here is the mock below. The
+ * fetch itself has its own test; this one is about who the guards let through.
+ */
+vi.mock('@/lib/auth-jwks', () => ({ signingKeys: () => Promise.resolve(null) }));
+
 vi.mock('@/lib/supabase-server', () => ({
   createSupabaseServerClient: () => ({
     from: (name: string) => table(name, 'session'),
-    auth: { getUser: () => Promise.resolve({ data: { user: currentUser } }) },
+    auth: {
+      getUser: () => Promise.resolve({ data: { user: currentUser } }),
+      // What the guards actually call. getClaims verifies the signature against
+      // the key set instead of posting the token to /auth/v1/user, so a double
+      // that only models getUser is a double of code that no longer runs.
+      getClaims: () => Promise.resolve(
+        currentUser
+          ? { data: { claims: { sub: currentUser.id, email: currentUser.email } }, error: null }
+          : { data: null, error: null },
+      ),
+    },
   }),
 }));
 
@@ -89,12 +145,17 @@ const redirectOf = async (run: () => Promise<unknown>): Promise<string | null> =
   }
 };
 
-const asOffice = (capabilities: string[]) => {
+const asOffice = (capabilities: string[], memberCapabilities: string[] = capabilities) => {
   currentRole = 'office';
   rows['memberships:list'] = [{ account_id: ACCOUNT, role: 'office' }];
   rows.memberships = { account_id: ACCOUNT, role: 'office' };
+  // Two DIFFERENT lists on purpose. office_capabilities is what the account has
+  // switched on; office_member_capabilities is what this person was granted.
+  // Seeding them identically -- which is what they defaulted to -- makes a guard
+  // that reads the account-wide catalog instead of the per-member grant return
+  // the right answer for the wrong reason, and no test can tell.
   rows['office_capabilities:list'] = capabilities.map((capability) => ({ capability }));
-  rows['office_member_capabilities:list'] = capabilities.map((capability) => ({ capability }));
+  rows['office_member_capabilities:list'] = memberCapabilities.map((capability) => ({ capability }));
   // Settled, unsuspended, terms accepted.
   rows.accounts = { suspended_at: null, terms_accepted_at: '2026-01-01', terms_version: TERMS_VERSION, timezone: 'UTC' };
 };
@@ -138,6 +199,17 @@ describe('requireOwnerContext still means owner, nobody else', () => {
     expect(await redirectOf(() => requireOwnerContext())).toBe('/welcome');
   });
 
+  it('still lets an owner in when the account EMBED fails', async () => {
+    // The one way folding the two reads into one could be WORSE than leaving
+    // them apart. A stale PostgREST schema cache fails the whole query, so
+    // without the un-embedded fallback the guard would see no membership at
+    // all and send every owner to /login -- a total lockout in place of the
+    // graceful degradation a separate account read used to give.
+    asOwner();
+    rows['memberships:embedError'] = true;
+    expect(await redirectOf(() => requireOwnerContext())).toBeNull();
+  });
+
   it('still fails OPEN on the pre-migration shape', async () => {
     // `acct` null means the read failed or the column does not exist yet. The
     // inverse default would turn one mis-ordered deploy into every owner locked
@@ -161,6 +233,22 @@ describe('requireOfficeContext', () => {
     asOffice(['leads.read']);
     expect(await redirectOf(() => requireOfficeContext('leads.read', 'leads.write')))
       .toBe('/dashboard/leads');
+  });
+
+  it('holds only what the member was GRANTED, not the whole enabled catalog', async () => {
+    // 26 files pair requireOfficeContext with createAdminClient(), which bypasses
+    // RLS -- on those surfaces this capability check is the ONLY authorization
+    // boundary. A guard reading office_capabilities instead of the per-member
+    // grant hands every office user everything the account has enabled.
+    asOffice(['leads.read', 'jobs.read'], ['leads.read']);
+    expect(await redirectOf(() => requireOfficeContext('jobs.read'))).toBe('/dashboard/leads');
+  });
+
+  it('still admits the capability that member WAS granted', async () => {
+    // The other half: narrowing to the per-member grant must not refuse work
+    // the bookkeeper was actually given.
+    asOffice(['leads.read', 'jobs.read'], ['leads.read']);
+    expect(await redirectOf(() => requireOfficeContext('leads.read'))).toBeNull();
   });
 
   it('sends somebody holding nothing to the holding page, not into a loop', async () => {
@@ -191,6 +279,18 @@ describe('requireOfficeContext', () => {
     // service role for exactly this reason.
     asOffice(['leads.read']);
     rows.accounts = { suspended_at: '2026-08-01', terms_accepted_at: '2026-01-01', terms_version: TERMS_VERSION };
+    expect(await redirectOf(() => requireOfficeContext('leads.read'))).toBe('/account-suspended');
+  });
+
+  it('still blocks a SUSPENDED office account when the account EMBED fails', async () => {
+    // The owner lockout fallback must not quietly disable the gate for everyone
+    // else. accounts(*) failing means a stale PostgREST schema cache -- the
+    // window right after a migration, and it fails for every user at once. A
+    // null account row reads as "not suspended", which is precisely the hole
+    // the service-role read exists to close.
+    asOffice(['leads.read']);
+    rows.accounts = { suspended_at: '2026-08-01', terms_accepted_at: '2026-01-01', terms_version: TERMS_VERSION };
+    rows['memberships:embedError'] = true;
     expect(await redirectOf(() => requireOfficeContext('leads.read'))).toBe('/account-suspended');
   });
 
