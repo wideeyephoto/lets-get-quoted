@@ -312,6 +312,10 @@ export default function TextToJobWorkspace({
   const [showSimModal, setShowSimModal] = useState<boolean>(false);
   const [showPrintModal, setShowPrintModal] = useState<boolean>(false);
 
+  // Setup & Advanced Accordions
+  const [showWhitelistAccordion, setShowWhitelistAccordion] = useState<boolean>(false);
+  const [showSiriAccordion, setShowSiriAccordion] = useState<boolean>(false);
+
   // Visor Card Customizer State
   const [printBizName, setPrintBizName] = useState(
     account?.company_name || 'Apex Contracting & Trade Pro'
@@ -690,8 +694,7 @@ export default function TextToJobWorkspace({
                 </button>
               </div>
               <p className={styles.subtitle}>
-                Just send a message by voice or text to Sparky, your smart assistant, and he&apos;ll organize
-                things, submit and update job records, change orders, punch lists, and schedule slots automatically.
+                Text or dictate notes from the road—Sparky updates quotes, punch lists, and schedules instantly.
               </p>
             </div>
           </div>
@@ -926,371 +929,375 @@ export default function TextToJobWorkspace({
         </div>
 
       {/* =========================================================================
-          Setup & Advanced Configuration (Who Can Text & Hands-Free Setup)
+          Setup & Advanced Configuration (Collapsible Accordions)
           ========================================================================= */}
       <div className={styles.setupAdvancedSection}>
         <div className={styles.setupAdvancedHeader}>
           <div className={styles.setupAdvancedTitleGroup}>
-            <span className={styles.badge}>⚙️ Setup &amp; Advanced</span>
-            <h2 className={styles.setupAdvancedTitle}>Field Line Whitelist &amp; Driving Setup</h2>
+            <span className={styles.badge}>⚙️ Setup &amp; Preferences</span>
+            <h2 className={styles.setupAdvancedTitle}>Field Line Setup &amp; Driving Voice Guide</h2>
             <p className={styles.setupAdvancedSubtitle}>
-              Manage authorized crew phone numbers, anti-spam security shield, and Siri / Google Assistant hands-free steering wheel dictation.
+              Manage authorized crew phone numbers, anti-spam protections, or Apple CarPlay &amp; Android Auto voice dictation.
             </p>
           </div>
         </div>
 
-        {/* Who Can Text (Authorized Senders Whitelist) */}
-        <div className={styles.sendersContainer}>
-          {/* Qualification Alert if unverified */}
-          {!isQualified && (
-            <div className={styles.qualificationWarningCard}>
-              <span style={{ fontSize: '24px' }}>🔒</span>
-              <div style={{ flex: 1 }}>
-                <strong style={{ color: '#f5f0e7', fontSize: '15px' }}>
-                  Alert Phone Setup Required to Unlock Your Hotline
-                </strong>
-                <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#cbd5e1', lineHeight: 1.4 }}>
-                  To prevent internet spam and scrapers, your field hotline is locked until you connect your cell phone. Once saved, your phone is instantly whitelisted.
-                </p>
+        <div className={styles.accordionGroup}>
+          {/* Accordion 1: Authorized Phone Whitelist */}
+          <div className={styles.accordionCard}>
+            <button
+              type="button"
+              onClick={() => setShowWhitelistAccordion(!showWhitelistAccordion)}
+              className={styles.accordionHeaderBtn}
+              aria-expanded={showWhitelistAccordion}
+            >
+              <div className={styles.accordionHeaderLeft}>
+                <span className={styles.accordionIcon}>🛡️</span>
+                <div>
+                  <strong className={styles.accordionTitle}>
+                    Who Can Text &amp; Anti-Spam Security Shield
+                  </strong>
+                  <p className={styles.accordionSubtitle}>
+                    {totalAuthorizedDevices} Whitelisted Devices &bull; Zero Job Mutations on Unknown Callers &bull; 100% Anti-Spam Protected
+                  </p>
+                </div>
               </div>
-              <Link href="/dashboard/automations#urgent-lead-sms" className={styles.verifyBtn}>
-                📱 Add Mobile Phone in Notifications &rarr;
-              </Link>
-            </div>
-          )}
+              <span className={styles.accordionChevron}>
+                {showWhitelistAccordion ? '▲ Hide Whitelist' : '▼ Manage Senders'}
+              </span>
+            </button>
 
-          {/* Anti-Spam Security Shield Metrics Banner */}
-          <div className={styles.shieldMetricsCard}>
-            <div className={styles.shieldMetricsHeader}>
-              <span className={styles.shieldIcon}>🛡️</span>
-              <div>
-                <h4 className={styles.shieldTitle}>
-                  {isDedicatedNumber
-                    ? 'Dedicated Line Security & Whitelist'
-                    : 'Shared Platform Line Anti-Spam Shield'}
-                </h4>
-                <p className={styles.shieldDesc}>
-                  {isDedicatedNumber
-                    ? `Your private local business number accepts customer inquiries into your Inbox, while restricting internal job mutations to your ${totalAuthorizedDevices} authorized phones below.`
-                    : `To prevent web scrapers and spam bots from touching your accounting, only the ${totalAuthorizedDevices} verified phone numbers below can text ${fieldPhoneNumber} to update job records. All stranger texts are safely blocked.`}
-                </p>
+            {showWhitelistAccordion && (
+              <div className={styles.accordionBody}>
+                {/* Qualification Alert if unverified */}
+                {!isQualified && (
+                  <div className={styles.qualificationWarningCard}>
+                    <span style={{ fontSize: '24px' }}>🔒</span>
+                    <div style={{ flex: 1 }}>
+                      <strong style={{ color: '#f5f0e7', fontSize: '15px' }}>
+                        Alert Phone Setup Required to Unlock Your Hotline
+                      </strong>
+                      <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#cbd5e1', lineHeight: 1.4 }}>
+                        To prevent internet spam and scrapers, your field hotline is locked until you connect your cell phone. Once saved, your phone is instantly whitelisted.
+                      </p>
+                    </div>
+                    <Link href="/dashboard/automations#urgent-lead-sms" className={styles.verifyBtn}>
+                      📱 Add Mobile Phone in Notifications &rarr;
+                    </Link>
+                  </div>
+                )}
+
+                {/* Anti-Spam Security Shield Metrics Banner */}
+                <div className={styles.shieldMetricsCard}>
+                  <div className={styles.shieldMetricsHeader}>
+                    <span className={styles.shieldIcon}>🛡️</span>
+                    <div>
+                      <h4 className={styles.shieldTitle}>
+                        {isDedicatedNumber
+                          ? 'Dedicated Line Security & Whitelist'
+                          : 'Shared Platform Line Anti-Spam Shield'}
+                      </h4>
+                      <p className={styles.shieldDesc}>
+                        {isDedicatedNumber
+                          ? `Your private local business number accepts customer inquiries into your Inbox, while restricting internal job mutations to your ${totalAuthorizedDevices} authorized phones below.`
+                          : `To prevent web scrapers and spam bots from touching your accounting, only the ${totalAuthorizedDevices} verified phone numbers below can text ${fieldPhoneNumber} to update job records. All stranger texts are safely blocked.`}
+                      </p>
+                    </div>
+                  </div>
+                  <div className={styles.shieldStatsGrid}>
+                    <div className={styles.shieldStatBox}>
+                      <span className={styles.shieldStatLabel}>Whitelisted Phones</span>
+                      <strong className={styles.shieldStatVal}>{totalAuthorizedDevices} Verified</strong>
+                    </div>
+                    <div className={styles.shieldStatBox}>
+                      <span className={styles.shieldStatLabel}>Pending Verification</span>
+                      <strong className={styles.shieldStatVal} style={{ color: unverifiedCrewCount > 0 ? '#f59e0b' : '#8fa6b5' }}>
+                        {unverifiedCrewCount} {unverifiedCrewCount === 1 ? 'Device' : 'Devices'}
+                      </strong>
+                    </div>
+                    <div className={styles.shieldStatBox}>
+                      <span className={styles.shieldStatLabel}>Anti-Spam Filter</span>
+                      <strong className={styles.shieldStatVal} style={{ color: '#4ade80' }}>
+                        ✓ 100% Protected
+                      </strong>
+                    </div>
+                    <div className={styles.shieldStatBox}>
+                      <span className={styles.shieldStatLabel}>Unknown Caller Policy</span>
+                      <strong className={styles.shieldStatVal} style={{ color: '#38bdf8' }}>
+                        Zero Job Mutations
+                      </strong>
+                    </div>
+                  </div>
+                </div>
+
+                <div className={styles.sendersCard}>
+                  <div className={styles.sendersHeader}>
+                    <div className={styles.sendersTitleGroup}>
+                      <h3 className={styles.sendersTitle}>Authorized Phone Numbers</h3>
+                      <p className={styles.sendersSubtitle}>
+                        Only verified phone numbers listed below can text <strong>{fieldPhoneNumber}</strong> to update job files. Unrecognized numbers are routed safely to your Lead Inbox.
+                      </p>
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                      <Link href="/dashboard/crew?tab=people&add=1" className={styles.vcardBtn}>
+                        + Add Crew Member
+                      </Link>
+                      <Link href="/dashboard/automations#urgent-lead-sms" className={styles.resetBtn}>
+                        Manage Alert Phone
+                      </Link>
+                    </div>
+                  </div>
+
+                  <div className={styles.sendersTableWrap}>
+                    <table className={styles.sendersTable}>
+                      <thead>
+                        <tr>
+                          <th>Authorized Person</th>
+                          <th>Cell Phone</th>
+                          <th>Role</th>
+                          <th>Permissions</th>
+                          <th>Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {/* Owner */}
+                        <tr>
+                          <td>
+                            <div className={styles.senderNameCell}>
+                              <div className={styles.senderAvatar}>👑</div>
+                              <div>
+                                <strong>{businessTitle} (Owner)</strong>
+                                <div style={{ fontSize: '11px', color: '#8fa6b5' }}>Primary Account Phone</div>
+                              </div>
+                            </div>
+                          </td>
+                          <td>
+                            <span className={styles.senderPhoneTag}>{alertPhone}</span>
+                          </td>
+                          <td>
+                            <span className={styles.senderRoleBadge}>Owner / Admin</span>
+                          </td>
+                          <td>
+                            <span className={styles.senderPillarsTag} style={{ color: '#ff8e42' }}>
+                              All (Quotes, Leads, Schedule, Crew)
+                            </span>
+                          </td>
+                          <td>
+                            {isQualified ? (
+                              <span className={styles.senderStatusActive} title="Verified primary account phone">
+                                <span className={styles.liveDot} /> Verified &amp; Active
+                              </span>
+                            ) : (
+                              <Link href="/dashboard/automations#urgent-lead-sms" style={{ color: '#f59e0b', fontSize: '12px', fontWeight: 700, textDecoration: 'none' }}>
+                                ⚠️ Connect in Notifications &rarr;
+                              </Link>
+                            )}
+                          </td>
+                        </tr>
+
+                        {/* Crew Members */}
+                        {activeCrewList.map((crew) => (
+                          <tr key={crew.id}>
+                            <td>
+                              <div className={styles.senderNameCell}>
+                                <div className={styles.senderAvatar}>👷</div>
+                                <div>
+                                  <strong>{crew.name}</strong>
+                                  <div style={{ fontSize: '11px', color: '#8fa6b5' }}>
+                                    {crew.role_label || 'Field Technician'}
+                                  </div>
+                                </div>
+                              </div>
+                            </td>
+                            <td>
+                              <span className={styles.senderPhoneTag}>
+                                {crew.phone ? formatUsPhone(crew.phone) : '(No phone on file)'}
+                              </span>
+                            </td>
+                            <td>
+                              <span className={styles.senderRoleBadge}>
+                                {crew.role_label || 'Field Tech'}
+                              </span>
+                            </td>
+                            <td>
+                              <span className={styles.senderPillarsTag} style={{ color: '#50e3bd' }}>
+                                Punch Lists, Notes, Receipts
+                              </span>
+                            </td>
+                            <td>
+                              {!crew.active ? (
+                                <span style={{ color: '#64748b', fontSize: '12px' }}>Inactive</span>
+                              ) : crew.phoneVerified ? (
+                                <span
+                                  className={styles.senderStatusActive}
+                                  title={
+                                    crew.verificationReason === 'verified_sms'
+                                      ? 'Verified via SMS OTP code'
+                                      : crew.verificationReason === 'signed_in'
+                                      ? 'Authenticated field app user'
+                                      : 'Verified by owner'
+                                  }
+                                >
+                                  <span className={styles.liveDot} /> Verified &amp; Authorized
+                                </span>
+                              ) : crew.phone ? (
+                                <Link
+                                  href="/dashboard/crew?tab=people"
+                                  className={styles.senderVerifyLink}
+                                  title="Unverified phone number - click to verify in Crew Roster"
+                                >
+                                  <span>⚠️ Verify in Crew</span> &rarr;
+                                </Link>
+                              ) : (
+                                <span style={{ color: '#64748b', fontSize: '12px' }}>No phone on file</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div className={styles.senderSecurityNotice}>
+                    <span style={{ fontSize: '22px' }}>🛡️</span>
+                    <div>
+                      <strong style={{ color: '#f5f0e7' }}>Zero Destructive Guesses:</strong>
+                      <p style={{ margin: '4px 0 0 0' }}>
+                        If a customer or unknown caller texts <strong>{fieldPhoneNumber}</strong>, the system will never mutate existing job quotes. It places the inquiry safely in your Lead Inbox.
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </div>
-            </div>
-            <div className={styles.shieldStatsGrid}>
-              <div className={styles.shieldStatBox}>
-                <span className={styles.shieldStatLabel}>Whitelisted Phones</span>
-                <strong className={styles.shieldStatVal}>{totalAuthorizedDevices} Verified</strong>
-              </div>
-              <div className={styles.shieldStatBox}>
-                <span className={styles.shieldStatLabel}>Pending Verification</span>
-                <strong className={styles.shieldStatVal} style={{ color: unverifiedCrewCount > 0 ? '#f59e0b' : '#8fa6b5' }}>
-                  {unverifiedCrewCount} {unverifiedCrewCount === 1 ? 'Device' : 'Devices'}
-                </strong>
-              </div>
-              <div className={styles.shieldStatBox}>
-                <span className={styles.shieldStatLabel}>Anti-Spam Filter</span>
-                <strong className={styles.shieldStatVal} style={{ color: '#4ade80' }}>
-                  ✓ 100% Protected
-                </strong>
-              </div>
-              <div className={styles.shieldStatBox}>
-                <span className={styles.shieldStatLabel}>Unknown Caller Policy</span>
-                <strong className={styles.shieldStatVal} style={{ color: '#38bdf8' }}>
-                  Zero Job Mutations
-                </strong>
-              </div>
-            </div>
+            )}
           </div>
 
-          <div className={styles.sendersCard}>
-            <div className={styles.sendersHeader}>
-              <div className={styles.sendersTitleGroup}>
-                <h3 className={styles.sendersTitle}>Authorized Phone Numbers</h3>
-                <p className={styles.sendersSubtitle}>
-                  Only verified phone numbers listed below can text <strong>{fieldPhoneNumber}</strong> to update job files. Unrecognized numbers are routed safely to your Lead Inbox.
-                </p>
+          {/* Accordion 2: Siri & Hands-Free Setup */}
+          <div className={styles.accordionCard}>
+            <button
+              type="button"
+              onClick={() => setShowSiriAccordion(!showSiriAccordion)}
+              className={styles.accordionHeaderBtn}
+              aria-expanded={showSiriAccordion}
+            >
+              <div className={styles.accordionHeaderLeft}>
+                <span className={styles.accordionIcon}>🎙️</span>
+                <div>
+                  <strong className={styles.accordionTitle}>
+                    Apple Siri &amp; Google Assistant Hands-Free Driving
+                  </strong>
+                  <p className={styles.accordionSubtitle}>
+                    1-Minute Setup &bull; Dictate updates directly into Apple CarPlay or Android Auto while driving
+                  </p>
+                </div>
               </div>
-              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                <Link href="/dashboard/crew?tab=people&add=1" className={styles.vcardBtn}>
-                  + Add Crew Member
-                </Link>
-                <Link href="/dashboard/automations#urgent-lead-sms" className={styles.resetBtn}>
-                  Manage Alert Phone
-                </Link>
-              </div>
-            </div>
+              <span className={styles.accordionChevron}>
+                {showSiriAccordion ? '▲ Hide Guide' : '▼ View Voice Setup'}
+              </span>
+            </button>
 
-            <div className={styles.sendersTableWrap}>
-              <table className={styles.sendersTable}>
-                <thead>
-                  <tr>
-                    <th>Authorized Person</th>
-                    <th>Cell Phone</th>
-                    <th>Role</th>
-                    <th>Permissions</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {/* Owner */}
-                  <tr>
-                    <td>
-                      <div className={styles.senderNameCell}>
-                        <div className={styles.senderAvatar}>👑</div>
-                        <div>
-                          <strong>{businessTitle} (Owner)</strong>
-                          <div style={{ fontSize: '11px', color: '#8fa6b5' }}>Primary Account Phone</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td>
-                      <span className={styles.senderPhoneTag}>{alertPhone}</span>
-                    </td>
-                    <td>
-                      <span className={styles.senderRoleBadge}>Owner / Admin</span>
-                    </td>
-                    <td>
-                      <span className={styles.senderPillarsTag} style={{ color: '#ff8e42' }}>
-                        All (Quotes, Leads, Schedule, Crew)
-                      </span>
-                    </td>
-                    <td>
+            {showSiriAccordion && (
+              <div className={styles.accordionBody}>
+                <div className={styles.siriGuideGrid}>
+                  <div className={styles.siriStepCard}>
+                    <span className={styles.siriStepNum}>Step 1</span>
+                    <h4 className={styles.siriStepTitle}>Save Contact Card</h4>
+                    <p className={styles.siriStepText}>
+                      Save phone number <strong>{fieldPhoneNumber}</strong> to your phone as <strong>Field Line</strong>.
+                    </p>
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '10px' }}>
                       {isQualified ? (
-                        <span className={styles.senderStatusActive} title="Verified primary account phone">
-                          <span className={styles.liveDot} /> Verified &amp; Active
-                        </span>
+                        <a
+                          href={`data:text/vcard;charset=utf-8,${encodeURIComponent(
+                            `BEGIN:VCARD\nVERSION:3.0\nFN:${businessTitle} Field Hotline\nTEL;TYPE=CELL:${rawCallableNumber}\nNOTE:Text-to-Job Field Ingest Hotline\nEND:VCARD`
+                          )}`}
+                          download="field-hotline.vcf"
+                          className={styles.vcardBtn}
+                        >
+                          📱 Download .vcf Card
+                        </a>
                       ) : (
-                        <Link href="/dashboard/automations#urgent-lead-sms" style={{ color: '#f59e0b', fontSize: '12px', fontWeight: 700, textDecoration: 'none' }}>
-                          ⚠️ Connect in Notifications &rarr;
+                        <Link href="/dashboard/automations#urgent-lead-sms" className={styles.verifyBtn}>
+                          📱 Setup Alert Phone to Download
                         </Link>
                       )}
-                    </td>
-                  </tr>
+                      <button
+                        type="button"
+                        onClick={() => setShowPrintModal(true)}
+                        className={styles.printCardBtn}
+                      >
+                        🪪 Printable Visor Card
+                      </button>
+                    </div>
+                  </div>
 
-                  {/* Crew Members */}
-                  {activeCrewList.map((crew) => (
-                    <tr key={crew.id}>
-                      <td>
-                        <div className={styles.senderNameCell}>
-                          <div className={styles.senderAvatar}>👷</div>
-                          <div>
-                            <strong>{crew.name}</strong>
-                            <div style={{ fontSize: '11px', color: '#8fa6b5' }}>
-                              {crew.role_label || 'Field Technician'}
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                      <td>
-                        <span className={styles.senderPhoneTag}>
-                          {crew.phone ? formatUsPhone(crew.phone) : '(No phone on file)'}
-                        </span>
-                      </td>
-                      <td>
-                        <span className={styles.senderRoleBadge}>
-                          {crew.role_label || 'Field Tech'}
-                        </span>
-                      </td>
-                      <td>
-                        <span className={styles.senderPillarsTag} style={{ color: '#50e3bd' }}>
-                          Punch Lists, Notes, Receipts
-                        </span>
-                      </td>
-                      <td>
-                        {!crew.active ? (
-                          <span style={{ color: '#64748b', fontSize: '12px' }}>Inactive</span>
-                        ) : crew.phoneVerified ? (
-                          <span
-                            className={styles.senderStatusActive}
-                            title={
-                              crew.verificationReason === 'verified_sms'
-                                ? 'Verified via SMS OTP code'
-                                : crew.verificationReason === 'signed_in'
-                                ? 'Authenticated field app user'
-                                : 'Verified by owner'
-                            }
-                          >
-                            <span className={styles.liveDot} /> Verified &amp; Authorized
-                          </span>
-                        ) : crew.phone ? (
-                          <Link
-                            href="/dashboard/crew?tab=people"
-                            className={styles.senderVerifyLink}
-                            title="Unverified phone number - click to verify in Crew Roster"
-                          >
-                            <span>⚠️ Verify in Crew</span> &rarr;
-                          </Link>
-                        ) : (
-                          <span style={{ color: '#64748b', fontSize: '12px' }}>No phone on file</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  <div className={styles.siriStepCard}>
+                    <span className={styles.siriStepNum}>Step 2</span>
+                    <h4 className={styles.siriStepTitle}>Apple Siri Voice Command</h4>
+                    <p className={styles.siriStepText}>
+                      Press your steering wheel voice button and say:
+                    </p>
+                    <div className={styles.siriCommandSnippet}>
+                      &ldquo;Hey Siri, text Field Line: Added $450 extra PEX lines to Miller job.&rdquo;
+                    </div>
+                  </div>
 
-            <div className={styles.senderSecurityNotice}>
-              <span style={{ fontSize: '22px' }}>🛡️</span>
-              <div>
-                <strong style={{ color: '#f5f0e7' }}>Zero Destructive Guesses:</strong>
-                <p style={{ margin: '4px 0 0 0' }}>
-                  If a customer or unknown caller texts <strong>{fieldPhoneNumber}</strong>, the system will never mutate existing job quotes. It places the inquiry safely in your Lead Inbox.
-                </p>
+                  <div className={styles.siriStepCard}>
+                    <span className={styles.siriStepNum}>Step 3</span>
+                    <h4 className={styles.siriStepTitle}>Google Assistant / Android Auto</h4>
+                    <p className={styles.siriStepText}>
+                      On Android, dictate naturally:
+                    </p>
+                    <div className={styles.siriCommandSnippet}>
+                      &ldquo;Hey Google, send a text to Field Line: Miller rough inspection passed.&rdquo;
+                    </div>
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Siri & Hands-Free Setup */}
-        <div className={styles.siriCard}>
-          <div className={styles.siriHeader}>
-            <span className={styles.badge}>🎙️ 1-Minute Setup</span>
-            <h3 className={styles.siriTitle}>Hands-Free Voice Dictation While Driving</h3>
-            <p className={styles.siriSubtitle}>
-              Keep your hands on the wheel and eyes on the road. Dictate updates directly into your truck&apos;s Apple CarPlay or Android Auto.
-            </p>
-          </div>
-
-          <div className={styles.siriGuideGrid}>
-            <div className={styles.siriStepCard}>
-              <span className={styles.siriStepNum}>Step 1</span>
-              <h4 className={styles.siriStepTitle}>Save Contact Card</h4>
-              <p className={styles.siriStepText}>
-                Save phone number <strong>{fieldPhoneNumber}</strong> to your phone as <strong>Field Line</strong>.
-              </p>
-              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '10px' }}>
-                {isQualified ? (
-                  <a
-                    href={`data:text/vcard;charset=utf-8,${encodeURIComponent(
-                      `BEGIN:VCARD\nVERSION:3.0\nFN:${businessTitle} Field Hotline\nTEL;TYPE=CELL:${rawCallableNumber}\nNOTE:Text-to-Job Field Ingest Hotline\nEND:VCARD`
-                    )}`}
-                    download="field-hotline.vcf"
-                    className={styles.vcardBtn}
-                  >
-                    📱 Download .vcf Card
-                  </a>
-                ) : (
-                  <Link href="/dashboard/automations#urgent-lead-sms" className={styles.verifyBtn}>
-                    📱 Setup Alert Phone to Download
-                  </Link>
-                )}
-                <button
-                  type="button"
-                  onClick={() => setShowPrintModal(true)}
-                  className={styles.printCardBtn}
-                >
-                  🪪 Printable Visor Card (PDF / Screenshot)
-                </button>
-              </div>
-            </div>
-
-            <div className={styles.siriStepCard}>
-              <span className={styles.siriStepNum}>Step 2</span>
-              <h4 className={styles.siriStepTitle}>Apple Siri Voice Command</h4>
-              <p className={styles.siriStepText}>
-                Press your steering wheel voice button and say:
-              </p>
-              <div className={styles.siriCommandSnippet}>
-                &ldquo;Hey Siri, text Field Line: Added $450 extra PEX lines to Miller job.&rdquo;
-              </div>
-            </div>
-
-            <div className={styles.siriStepCard}>
-              <span className={styles.siriStepNum}>Step 3</span>
-              <h4 className={styles.siriStepTitle}>Google Assistant / Android Auto</h4>
-              <p className={styles.siriStepText}>
-                On Android, dictate naturally:
-              </p>
-              <div className={styles.siriCommandSnippet}>
-                &ldquo;Hey Google, send a text to Field Line: Miller rough inspection passed.&rdquo;
-              </div>
-            </div>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Bottom Metrics & Status Strip */}
-      <div className={styles.metricsStrip}>
-        <Link href="/dashboard/jobs" className={styles.metricPill}>
-          <span className={styles.metricIcon}>📁</span>
-          <span className={styles.metricLabel}>Quotes &amp; Costs:</span>
-          <strong>{activeJobCount} Active Jobs</strong>
-        </Link>
-        <Link href="/dashboard/leads" className={styles.metricPill}>
-          <span className={styles.metricIcon}>👤</span>
-          <span className={styles.metricLabel}>CRM:</span>
-          <strong>{leadCount} Leads</strong>
-        </Link>
-        <Link href="/dashboard/schedule" className={styles.metricPill}>
-          <span className={styles.metricIcon}>📅</span>
-          <span className={styles.metricLabel}>Schedule:</span>
-          <strong>Live Calendar</strong>
-        </Link>
-        <Link href="/dashboard/crew" className={styles.metricPill}>
-          <span className={styles.metricIcon}>👷</span>
-          <span className={styles.metricLabel}>Crew Tasks:</span>
-          <strong>{crewCount} Techs</strong>
-        </Link>
-        <div className={styles.undoPill}>
-          <span>⏱️ 15-Min SMS Undo</span>
+      {/* =========================================================================
+          Unified Cockpit Command Footer Bar
+          ========================================================================= */}
+      <div className={styles.unifiedBottomBar}>
+        <div className={styles.unifiedBarLeft}>
+          <span className={styles.unifiedPhoneBadge}>
+            📱 {fieldPhoneNumber}
+          </span>
+          <span className={styles.unifiedUndoBadge} title="Reply UNDO within 15 minutes to revert any action">
+            ⏱️ 15-Min Undo Active
+          </span>
         </div>
-      </div>
 
-      {/* Upgrade Banner for Shared Line Users (Placed at Bottom) */}
-      {!isDedicatedNumber && (
-        <div className={styles.upgradeCallout}>
-          <div className={styles.upgradeCalloutLeft}>
-            <span className={styles.upgradeStarIcon}>⭐</span>
-            <div>
-              <strong className={styles.upgradeCalloutTitle}>
-                Want homeowners to text your business directly?
-              </strong>
-              <p className={styles.upgradeCalloutText}>
-                Your shared line is protected for internal crew notes only. Upgrade to a dedicated 2-way number to put on your truck decals, website, and Google listing so clients can text you too.
-              </p>
-            </div>
-          </div>
-          <Link href="/dashboard/settings" className={styles.upgradeCalloutBtn}>
-            Claim Dedicated Number &rarr;
+        <div className={styles.unifiedBarCenter}>
+          <Link href="/dashboard/jobs" className={styles.unifiedStatLink}>
+            📁 <strong>{activeJobCount}</strong> Jobs
+          </Link>
+          <Link href="/dashboard/leads" className={styles.unifiedStatLink}>
+            👤 <strong>{leadCount}</strong> Leads
+          </Link>
+          <Link href="/dashboard/schedule" className={styles.unifiedStatLink}>
+            📅 Calendar
+          </Link>
+          <Link href="/dashboard/crew" className={styles.unifiedStatLink}>
+            👷 <strong>{crewCount}</strong> Crew
           </Link>
         </div>
-      )}
 
-      {/* Bottom Hotline Card (.vcf Download & Test Simulator) */}
-      <div className={styles.bottomHotlineBar}>
-        <div className={styles.bottomHotlineLeft}>
-          <span style={{ fontSize: '22px' }}>📱</span>
-          <div>
-            <strong style={{ color: '#f5f0e7', fontSize: '13px' }}>
-              {isQualified
-                ? `Field Hotline: ${fieldPhoneNumber}`
-                : 'Interactive Field Ingest Simulator'}
-            </strong>
-            <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: '#8fa6b5' }}>
-              {isQualified
-                ? 'Save this contact card to phonebook or test custom field notes in the simulator.'
-                : 'Test how Sparky extracts change orders, punch lists, and schedule slots from text.'}
-            </p>
-          </div>
-        </div>
-        <div className={styles.bottomActions}>
-          <button type="button" onClick={() => setShowPrintModal(true)} className={styles.printCardBtn}>
-            🪪 Printable Visor Card
-          </button>
-          <button type="button" onClick={() => setShowSimModal(true)} className={styles.testBtn}>
+        <div className={styles.unifiedBarRight}>
+          <button type="button" onClick={() => setShowSimModal(true)} className={styles.unifiedActionBtnPrimary}>
             ⚡ Test a Note
           </button>
-          {isQualified && (
-            <a
-              href={`data:text/vcard;charset=utf-8,${encodeURIComponent(
-                `BEGIN:VCARD\nVERSION:3.0\nFN:${businessTitle} Field Hotline\nTEL;TYPE=CELL:${rawCallableNumber}\nNOTE:Text-to-Job Field Ingest Hotline\nEND:VCARD`
-              )}`}
-              download="field-hotline.vcf"
-              className={styles.vcardBtn}
-            >
-              📱 Save Hotline (.vcf)
-            </a>
+          <button type="button" onClick={() => setShowPrintModal(true)} className={styles.unifiedActionBtnSecondary}>
+            🪪 Visor Card
+          </button>
+          {!isDedicatedNumber && (
+            <Link href="/dashboard/settings" className={styles.unifiedDedicatedLink}>
+              ⭐ Dedicated #
+            </Link>
           )}
         </div>
       </div>
