@@ -1077,6 +1077,104 @@
   color: #ff8e42;
 }
 
+/* Audio Noise EQ Filter Visualizer */
+.noiseFilterBox {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(80, 227, 189, 0.2);
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin-top: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.noiseFilterTitle {
+  font-size: 10px;
+  font-weight: 850;
+  text-transform: uppercase;
+  color: #50e3bd;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.noiseEqTrack {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 18px;
+}
+
+.noiseBarRaw {
+  flex: 1;
+  background: rgba(239, 68, 68, 0.6);
+  border-radius: 2px;
+}
+
+.noiseBarClean {
+  flex: 1;
+  background: #50e3bd;
+  border-radius: 2px;
+}
+
+/* QR Code Demo Section */
+.qrDemoBanner {
+  background: linear-gradient(135deg, rgba(255, 106, 36, 0.12), rgba(14, 165, 233, 0.08));
+  border: 1px dashed rgba(255, 106, 36, 0.35);
+  border-radius: 12px;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.qrIconWrapper {
+  font-size: 28px;
+  background: #000;
+  border-radius: 8px;
+  padding: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.qrMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.qrTitle {
+  font-size: 12px;
+  font-weight: 850;
+  color: #f5f0e7;
+}
+
+.qrSubtitle {
+  font-size: 11px;
+  color: #a7bcc8;
+  line-height: 1.35;
+}
+
+.qrActionLink {
+  color: #ff8e42;
+  font-weight: 800;
+  text-decoration: none;
+  font-size: 11px;
+  margin-top: 2px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.qrActionLink:hover {
+  text-decoration: underline;
+}
+
 /* Footer Action Bar */
 .recordFooter {
   display: flex;

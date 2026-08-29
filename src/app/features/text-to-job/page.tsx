@@ -2,6 +2,8 @@ import type { Metadata } from 'next';
 import FeatureDetailLayout from '@/components/marketing/feature-detail-layout';
 import ExampleFrame from '@/components/marketing/example-frame';
 import TextToRecordSimulator from '@/components/marketing/TextToRecordSimulator';
+import TextToJobDataBeams from '@/components/marketing/TextToJobDataBeams';
+import ScrapLumberComparison from '@/components/marketing/ScrapLumberComparison';
 import { TRADES } from '@/lib/trades';
 import styles from './text-to-job.module.css';
 
@@ -178,6 +180,16 @@ export default function TextToJobPage() {
       ]}
       afterBenefits={
         <>
+          {/* Live Interactive 4-Pillar Data Beams Neural Conduit */}
+          <section className={styles.customSection}>
+            <TextToJobDataBeams />
+          </section>
+
+          {/* Before & After Scrap Lumber vs. Digital File Comparison */}
+          <section className={styles.customSection}>
+            <ScrapLumberComparison />
+          </section>
+
           {/* Visual Multimodal Architecture Pipeline */}
           <section className={styles.customSection}>
             <span className={styles.sectionEyebrow}>How The Field Engine Works</span>

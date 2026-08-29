@@ -34,6 +34,7 @@ type Scenario = {
   };
   voiceAudioDuration?: string;
   voiceTranscript?: string;
+  voiceLanguage?: string;
   aiResponse: string;
   followUpText?: string;
   aiFollowUpResponse?: string;
@@ -125,6 +126,65 @@ const SCENARIOS: Scenario[] = [
         timestamp: 'Today at 3:14 PM · Alert Phone (248) 555-0199',
       },
       tasks: [{ text: 'Drywall crew arrives Thursday 8:00 AM', done: false }],
+    },
+  },
+  {
+    id: 'bilingual-spanish',
+    tabLabel: 'Bilingual Spanish Voice',
+    icon: '🌐',
+    title: 'Spanish Voice Memo to English Job File',
+    badge: 'Real-Time Spanish AI Audio Translation',
+    badgeType: 'voice',
+    description:
+      'Crew members send voice memos in Spanish. Gemini transcribes, translates to clean English on the job record, and replies in Spanish with an instant SMS confirmation.',
+    contractorSender: 'Carlos (Crew Van #3)',
+    contractorInputType: 'voice',
+    voiceAudioDuration: '0:11',
+    voiceLanguage: 'es-US',
+    voiceTranscript:
+      '“Inspección aprobada en 124 Main. Necesitamos instaladores de paneles de yeso el jueves a las 8am. Faltan 2 cajas de tornillos.”',
+    aiResponse:
+      '🌐 [Auto-Translated from Spanish] Logged to Job J-104 (Miller - 124 Main):\n• Milestone: Rough Inspection Passed\n• Supply Note: 2 boxes drywall screws added\n• Queued task: Drywall hanging Thursday 8:00 AM.\n\nSMS reply sent to Carlos: "✓ Inspección registrada y materiales agregados."',
+    pillars: [
+      {
+        id: 'sp-p1',
+        pillar: 'Jobs',
+        title: 'Milestone & Materials: Rough Inspection Passed',
+        detail: 'Logged English audit note + 2 boxes drywall screws to feed',
+        table: 'job_activity_feed',
+      },
+      {
+        id: 'sp-p2',
+        pillar: 'Schedule',
+        title: 'Reserve Window: Thursday 8:00 AM',
+        detail: 'Drywall crew logistics window blocked',
+        table: 'schedule_occurrences',
+      },
+      {
+        id: 'sp-p3',
+        pillar: 'Crew',
+        title: 'Spanish SMS Confirmation Receipt to Carlos',
+        detail: 'Replying in native language: "✓ Inspección registrada"',
+        table: 'crew_notifications',
+      },
+    ],
+    jobRecord: {
+      jobNumber: 'J-104',
+      clientName: 'Miller Residence',
+      address: '124 Main St, Royal Oak, MI',
+      status: 'Rough Inspection Passed',
+      statusColor: '#10b981',
+      badgeText: 'Spanish Audio → English Ledger',
+      voiceFeed: {
+        duration: '0:11 Spanish MMS Audio',
+        transcript:
+          '“Inspección aprobada en 124 Main. Necesitamos instaladores de paneles de yeso el jueves a las 8am. Faltan 2 cajas de tornillos.”',
+        timestamp: 'Today at 4:02 PM · Crew Phone (Carlos)',
+      },
+      tasks: [
+        { text: 'Drywall hanging crew arrival Thursday 8:00 AM', done: false },
+        { text: 'Supply run: Pick up 2 boxes drywall screws', done: false },
+      ],
     },
   },
   {
@@ -442,13 +502,18 @@ export default function TextToRecordSimulator() {
     }
 
     setIsPlayingVoice(true);
-    setVoiceSeconds(9);
+    setVoiceSeconds(scenario.id === 'bilingual-spanish' ? 11 : 9);
 
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(
-        "Rough-in plumbing inspected and passed on Elm Street. Waiting on drywall crew Thursday 8 AM."
-      );
+      const textToSpeak =
+        scenario.id === 'bilingual-spanish'
+          ? 'Inspección aprobada en 124 Main. Necesitamos instaladores de paneles de yeso el jueves a las 8am.'
+          : 'Rough-in plumbing inspected and passed on Elm Street. Waiting on drywall crew Thursday 8 AM.';
+      const utterance = new SpeechSynthesisUtterance(textToSpeak);
+      if (scenario.id === 'bilingual-spanish') {
+        utterance.lang = 'es-US';
+      }
       utterance.rate = 1.05;
       utterance.pitch = 0.95;
       utterance.onend = () => {
@@ -514,10 +579,10 @@ export default function TextToRecordSimulator() {
 
             {/* Chat Messages Stream */}
             <div className={styles.chatStream}>
-              {/* Scenario 1: Voice Memo Playback */}
+              {/* Scenario 1 & Bilingual Voice Playback */}
               {scenario.contractorInputType === 'voice' && (
                 <div className={styles.bubbleContractor}>
-                  <div className={styles.senderTag}>You (Voice Memo MMS)</div>
+                  <div className={styles.senderTag}>{scenario.contractorSender}</div>
                   <div className={styles.voicePlayer}>
                     <button
                       type="button"
@@ -541,6 +606,22 @@ export default function TextToRecordSimulator() {
                       {isPlayingVoice ? `0:0${voiceSeconds}` : scenario.voiceAudioDuration}
                     </span>
                   </div>
+
+                  {/* Noise Filter EQ Visualizer */}
+                  <div className={styles.noiseFilterBox}>
+                    <div className={styles.noiseFilterTitle}>
+                      <span>🔇 Gemini Truck Cab Noise Filter</span>
+                      <span>{isPlayingVoice ? 'Active Filter: ON' : 'Noise Floor: -42dB'}</span>
+                    </div>
+                    <div className={styles.noiseEqTrack}>
+                      <div className={styles.noiseBarClean} style={{ height: isPlayingVoice ? '80%' : '30%' }} />
+                      <div className={styles.noiseBarClean} style={{ height: isPlayingVoice ? '95%' : '40%' }} />
+                      <div className={styles.noiseBarRaw} style={{ height: isPlayingVoice ? '20%' : '75%' }} title="Filtered Truck Idle" />
+                      <div className={styles.noiseBarClean} style={{ height: isPlayingVoice ? '85%' : '35%' }} />
+                      <div className={styles.noiseBarRaw} style={{ height: isPlayingVoice ? '15%' : '60%' }} title="Filtered Wind Noise" />
+                    </div>
+                  </div>
+
                   <small className={styles.audioHint}>
                     {isPlayingVoice ? '🔊 Playing realistic audio...' : 'Tap ▶ to hear Gemini audio processing'}
                   </small>
@@ -829,6 +910,20 @@ export default function TextToRecordSimulator() {
                 <span className={styles.safetyText}>{scenario.jobRecord.safetyNotice}</span>
               </div>
             )}
+
+            {/* Scan to Test On Real Phone Quick Action */}
+            <div className={styles.qrDemoBanner}>
+              <div className={styles.qrIconWrapper}>📱</div>
+              <div className={styles.qrMeta}>
+                <span className={styles.qrTitle}>Test Live From Your Real Mobile Phone</span>
+                <span className={styles.qrSubtitle}>
+                  Text your platform alert number directly to see how fast Gemini responds.
+                </span>
+                <a href="sms:+12485550199?body=Add%20$450%20to%20Miller%20job%20for%20extra%20Romex%20line" className={styles.qrActionLink}>
+                  Tap to launch pre-filled SMS on your phone &rarr;
+                </a>
+              </div>
+            </div>
 
             {/* Action Bar */}
             <div className={styles.recordFooter}>

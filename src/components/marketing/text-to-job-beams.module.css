@@ -1,0 +1,356 @@
+/* Text-to-Job Data Beams Conduit Styles */
+
+.wrapper {
+  width: 100%;
+  max-width: 1140px;
+  margin: 0 auto;
+  background: radial-gradient(circle at 50% 0%, rgba(255, 106, 36, 0.12), transparent 60%),
+              linear-gradient(180deg, #091a27 0%, #05101a 100%);
+  border: 1px solid rgba(255, 113, 55, 0.3);
+  border-radius: 24px;
+  padding: clamp(20px, 3.5vw, 36px);
+  box-shadow:
+    0 24px 60px rgba(0, 0, 0, 0.6),
+    0 0 40px rgba(255, 113, 55, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Header & Controls */
+.headerRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.titleArea {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 640px;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 106, 36, 0.15);
+  border: 1px solid rgba(255, 106, 36, 0.4);
+  color: #ff8e42;
+  font-size: 11px;
+  font-weight: 850;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 4px 10px;
+  border-radius: 999px;
+  width: fit-content;
+}
+
+.title {
+  font-size: clamp(20px, 2.5vw, 28px);
+  font-weight: 900;
+  color: #f5f0e7;
+  letter-spacing: -0.02em;
+  margin: 0;
+  line-height: 1.25;
+}
+
+.subtitle {
+  font-size: 14px;
+  color: #a7bcc8;
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* Scenario Buttons Strip */
+.scenarioStrip {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.scenarioBtn {
+  background: #081722;
+  border: 1px solid rgba(174, 199, 211, 0.2);
+  border-radius: 10px;
+  padding: 8px 14px;
+  color: #d1e2eb;
+  font-size: 12.5px;
+  font-weight: 750;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.18s ease;
+}
+
+.scenarioBtn:hover {
+  background: #102534;
+  border-color: rgba(255, 113, 55, 0.5);
+  color: #fff;
+  transform: translateY(-2px);
+}
+
+.scenarioBtnActive {
+  background: linear-gradient(135deg, rgba(255, 106, 36, 0.2), rgba(244, 63, 94, 0.15));
+  border-color: #ff7a21;
+  color: #ff8e42;
+  box-shadow: 0 0 16px rgba(255, 106, 36, 0.3);
+}
+
+/* Central Conduit Diagram Grid */
+.conduitGrid {
+  display: grid;
+  grid-template-columns: 1fr 80px 1.4fr;
+  gap: 16px;
+  align-items: center;
+}
+
+@media (max-width: 900px) {
+  .conduitGrid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+}
+
+/* Left: Inbound Message Bubble Card */
+.inboundCard {
+  background: linear-gradient(165deg, rgba(14, 33, 50, 0.95), rgba(7, 18, 29, 0.98));
+  border: 1px solid rgba(174, 199, 211, 0.2);
+  border-radius: 18px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+  position: relative;
+}
+
+.inboundHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.inboundTypeTag {
+  font-size: 11px;
+  font-weight: 850;
+  padding: 3px 8px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(255, 106, 36, 0.15);
+  color: #ff8e42;
+  border: 1px solid rgba(255, 106, 36, 0.3);
+}
+
+.inboundSender {
+  font-size: 11px;
+  color: #7da0b3;
+}
+
+.rawSpeechBox {
+  background: rgba(4, 11, 18, 0.85);
+  border-left: 3px solid #ff6a24;
+  border-radius: 0 10px 10px 0;
+  padding: 12px 14px;
+  font-size: 13.5px;
+  color: #f5f0e7;
+  font-style: italic;
+  line-height: 1.45;
+  margin: 0;
+}
+
+.inboundFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #7da0b3;
+}
+
+.confidencePill {
+  color: #50e3bd;
+  font-weight: 800;
+}
+
+/* Center: Gemini Neural Prism */
+.prismCol {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+@media (max-width: 900px) {
+  .prismCol {
+    flex-direction: row;
+    gap: 12px;
+  }
+}
+
+.prismOrb {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, #ff8e42, #7c3aed 60%, #061726);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  box-shadow:
+    0 0 30px rgba(255, 113, 55, 0.5),
+    0 0 60px rgba(124, 58, 237, 0.3),
+    inset 0 1px 2px rgba(255, 255, 255, 0.6);
+  animation: pulseGlow 3s infinite alternate ease-in-out;
+  cursor: pointer;
+}
+
+@keyframes pulseGlow {
+  0% {
+    transform: scale(0.96);
+    box-shadow: 0 0 20px rgba(255, 113, 55, 0.4), 0 0 40px rgba(124, 58, 237, 0.2);
+  }
+  100% {
+    transform: scale(1.04);
+    box-shadow: 0 0 36px rgba(255, 113, 55, 0.7), 0 0 70px rgba(124, 58, 237, 0.5);
+  }
+}
+
+.prismLabel {
+  font-size: 10px;
+  font-weight: 850;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #a78bfa;
+  margin-top: 8px;
+  text-align: center;
+}
+
+/* Right: 4 Pillar Laser Targets */
+.pillarsCol {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.targetCard {
+  background: linear-gradient(160deg, rgba(12, 28, 44, 0.95), rgba(6, 16, 26, 0.98));
+  border: 1px solid rgba(174, 199, 211, 0.15);
+  border-radius: 12px;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+  position: relative;
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+.targetCard:hover {
+  transform: translateX(4px);
+}
+
+.targetCardJobs {
+  border-left: 4px solid #ff6a24;
+}
+.targetCardLeads {
+  border-left: 4px solid #a78bfa;
+}
+.targetCardSchedule {
+  border-left: 4px solid #38bdf8;
+}
+.targetCardCrew {
+  border-left: 4px solid #50e3bd;
+}
+
+.targetLeft {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.targetIcon {
+  font-size: 18px;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.targetMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.targetName {
+  font-size: 13px;
+  font-weight: 800;
+  color: #f5f0e7;
+}
+
+.targetDetail {
+  font-size: 11.5px;
+  color: #9cb1c0;
+}
+
+.targetRight {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.targetTableTag {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 10px;
+  color: #7da0b3;
+}
+
+.targetMutationPill {
+  font-size: 11px;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: rgba(80, 227, 189, 0.12);
+  color: #50e3bd;
+}
+
+/* Footer Status Bar */
+.bottomStatusBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(4, 11, 18, 0.85);
+  border: 1px solid rgba(174, 199, 211, 0.12);
+  border-radius: 12px;
+  padding: 12px 18px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.statusItem {
+  font-size: 12px;
+  color: #a7bcc8;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.statusItem strong {
+  color: #f5f0e7;
+}

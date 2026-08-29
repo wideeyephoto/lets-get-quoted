@@ -1,0 +1,238 @@
+/* Scrap Lumber Comparison Styles */
+
+.wrapper {
+  width: 100%;
+  max-width: 1140px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.headerRow {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-align: center;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.eyebrow {
+  font-size: 11px;
+  font-weight: 850;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: #ff6a24;
+}
+
+.title {
+  font-size: clamp(22px, 3vw, 32px);
+  font-weight: 900;
+  color: #f5f0e7;
+  letter-spacing: -0.02em;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.subtitle {
+  font-size: 15px;
+  color: #a7bcc8;
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* Comparison Deck */
+.comparisonDeck {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+@media (max-width: 800px) {
+  .comparisonDeck {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Left Card: Scrap Lumber */
+.lumberCard {
+  background: radial-gradient(circle at 80% 20%, rgba(180, 83, 9, 0.15), transparent 60%),
+              linear-gradient(175deg, #1a1510 0%, #0d0b08 100%);
+  border: 1px dashed rgba(245, 158, 11, 0.35);
+  border-radius: 20px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
+  position: relative;
+}
+
+.lumberHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.lumberBadge {
+  font-size: 11px;
+  font-weight: 850;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(239, 68, 68, 0.15);
+  color: #fca5a5;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.lumberWoodBlock {
+  background: #2b2118;
+  border: 2px solid #523e2b;
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.6);
+  position: relative;
+  font-family: 'Courier New', Courier, monospace;
+}
+
+.scribbleText {
+  color: #d6c7b2;
+  font-size: 13.5px;
+  line-height: 1.6;
+  font-weight: 700;
+  margin: 0;
+  text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.8);
+}
+
+.coffeeStain {
+  position: absolute;
+  right: 14px;
+  bottom: 10px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 3px solid rgba(120, 53, 15, 0.25);
+  background: rgba(120, 53, 15, 0.08);
+  pointer-events: none;
+}
+
+.lumberWarningsList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.lumberWarningItem {
+  font-size: 12.5px;
+  color: #fca5a5;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  line-height: 1.4;
+}
+
+/* Right Card: Text-to-Job */
+.textToJobCard {
+  background: radial-gradient(circle at 10% 20%, rgba(80, 227, 189, 0.08), transparent 50%),
+              linear-gradient(175deg, #0d2838 0%, #061520 100%);
+  border: 1px solid rgba(80, 227, 189, 0.35);
+  border-radius: 20px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow:
+    0 16px 40px rgba(0, 0, 0, 0.45),
+    0 0 30px rgba(80, 227, 189, 0.15);
+  position: relative;
+}
+
+.ttjHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.ttjBadge {
+  font-size: 11px;
+  font-weight: 850;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(80, 227, 189, 0.15);
+  color: #50e3bd;
+  border: 1px solid rgba(80, 227, 189, 0.35);
+}
+
+.ttjPreviewBlock {
+  background: rgba(4, 12, 19, 0.85);
+  border: 1px solid rgba(174, 199, 211, 0.15);
+  border-radius: 12px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ttjJobHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.ttjJobRef {
+  font-size: 12px;
+  font-weight: 850;
+  color: #ff8e42;
+}
+
+.ttjJobStatus {
+  font-size: 11px;
+  font-weight: 800;
+  color: #50e3bd;
+}
+
+.ttjLineItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  color: #f5f0e7;
+  padding: 6px 0;
+  border-top: 1px solid rgba(174, 199, 211, 0.1);
+  border-bottom: 1px solid rgba(174, 199, 211, 0.1);
+}
+
+.ttjLineTotal {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 14px;
+  font-weight: 850;
+  color: #50e3bd;
+}
+
+.ttjBenefitsList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.ttjBenefitItem {
+  font-size: 12.5px;
+  color: #d1e2eb;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  line-height: 1.4;
+}
+
+.checkIcon {
+  color: #50e3bd;
+  font-weight: 900;
+}
