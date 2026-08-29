@@ -98,7 +98,7 @@ export default function TextToJobPage() {
           <em>Run your business by simply texting or calling Sparky.</em>
         </>
       }
-      lede="No app download, no passwords, and no typing with work gloves. Run your business completely by texting or calling Sparky at your platform number—he updates job records, recalculates quote totals, files site photos, dispatches punch lists, and texts back instant confirmation in seconds."
+      lede="Just send a message by voice or text to Sparky, your smart assistant, and he'll organize things, submit and update job files, recalculate quote totals, file site photos, dispatch punch lists, and text back instant confirmation in seconds."
       heroNote="Zero app fatigue · Run everything by text & phone · Carrier-verified & authenticated · Instant SMS confirmation"
       heroChips={[
         '⚡ No App Download Needed',

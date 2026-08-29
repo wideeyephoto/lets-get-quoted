@@ -5,7 +5,7 @@ import TextToJobWorkspace from './TextToJobWorkspace';
 export const metadata: Metadata = {
   title: 'Text-to-Job Dashboard | SMS & Voice Memo Field Intake',
   description:
-    'Review field SMS and voice memo intakes, audit extracted entities across Jobs, Leads, Schedule, and Crew, and manage authorized phone numbers and TOS acknowledgment.',
+    'Send messages by voice or text to Sparky, your smart assistant, and he will organize things, submit and update job records, change orders, punch lists, and schedule slots automatically.',
 };
 
 export default async function TextToJobDashboardPage() {

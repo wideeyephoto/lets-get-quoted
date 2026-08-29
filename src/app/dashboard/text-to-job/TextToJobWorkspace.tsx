@@ -477,8 +477,8 @@ export default function TextToJobWorkspace({
           <span className={styles.badge}>✦ Sparky · Field Ingest &amp; Intelligence Engine</span>
           <h1 className={styles.title}>Text-to-Job Dashboard</h1>
           <p className={styles.subtitle}>
-            Review SMS &amp; voice memos from the road, see how Sparky extracted entities across the
-            4 pillars, and manage authorized phone numbers and accuracy terms.
+            Just send a message by voice or text to Sparky, your smart assistant, and he&apos;ll organize
+            things, submit and update job records, change orders, punch lists, and schedule slots automatically.
           </p>
         </div>
         <div className={styles.headerActions}>
