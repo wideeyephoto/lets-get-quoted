@@ -1222,7 +1222,7 @@ export default function TextToJobWorkspace({
             </button>
 
             {showWhitelistAccordion && (
-              <div className={styles.accordionBody}>
+              <div id="whitelist-accordion-body" className={styles.accordionBody}>
                 {/* Simple alert if unverified */}
                 {!isQualified && (
                   <div className={styles.qualificationWarningCard}>
