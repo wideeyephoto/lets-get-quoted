@@ -647,20 +647,6 @@ export default function TextToJobWorkspace({
     setTimeout(() => setNotification(null), 4000);
   }
 
-  function handleSimulateUndo() {
-    setMessages((prev) =>
-      prev.map((msg) => {
-        if (msg.id !== selectedMessage.id) return msg;
-        return {
-          ...msg,
-          extractedItems: msg.extractedItems.map((item) => ({ ...item, enabled: false })),
-        };
-      })
-    );
-    setNotification(`↩ Undone via SMS: All updates from this note were reverted.`);
-    setTimeout(() => setNotification(null), 4500);
-  }
-
   function handleCopyNumber() {
     if (!isQualified) {
       setNotification('⚠️ Please add your cell phone in Settings first to unlock your field hotline number.');
@@ -1111,9 +1097,6 @@ export default function TextToJobWorkspace({
                 <div className={styles.receiptFooterActionRow}>
                   <button type="button" onClick={handleApply} className={styles.applyBtn}>
                     ✓ Apply Updates to {selectedMessage.matchedJobRef || 'Job File'}
-                  </button>
-                  <button type="button" onClick={handleSimulateUndo} className={styles.undoBtn}>
-                    ↩ Simulate Replying &ldquo;UNDO&rdquo; via SMS
                   </button>
                 </div>
                 <div className={styles.receiptFooterNote}>
