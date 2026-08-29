@@ -312,9 +312,17 @@ type SupabaseServerClient = ReturnType<typeof createSupabaseServerClient>;
  *
  * `getUser()` posts the access token to /auth/v1/user and waits for the Auth
  * server on every single call — on a page load, on every server action. This
- * project signs its tokens with ES256 (see the ki<d> in /auth/v1/.well-known/
- * jwks.json), so the signature can be checked here with WebCrypto against a
- * cached public key and no network at all. `getClaims` is supabase-js's own
+ * project signs its tokens with ES256, so the signature can be checked here with
+ * WebCrypto against a cached public key and no network at all.
+ *
+ * VERIFIED, not assumed, on 2026-08-29: an unauthenticated GET to
+ * /auth/v1/.well-known/jwks.json returns exactly one key — kty EC, crv P-256,
+ * alg ES256, key_ops ["verify"]. This matters more than it looks. On the legacy
+ * HS256 shared secret `getClaims` finds no signing key and falls back to
+ * `getUser()` internally, so this function would cost getSession() + getUser()
+ * plus a wasted JWKS fetch — strictly MORE work than the single getUser() it
+ * replaces, with no test or build able to notice. Re-check this endpoint before
+ * trusting the speedup on any other project. `getClaims` is supabase-js's own
  * supported path for that, and it still reads the session through getSession(),
  * so the near-expiry refresh is untouched.
  *
@@ -347,7 +355,10 @@ async function verifiedUser(
   supabase: SupabaseServerClient,
 ): Promise<{ id: string; email: string | null } | null> {
   const read = async (keys: Awaited<ReturnType<typeof signingKeys>>) =>
-    supabase.auth.getClaims(undefined, keys ? { keys } : {});
+    // `{ jwks }`, not `{ keys }`: auth-js 2.110.5 marks the flat `keys` option
+    // deprecated in favour of it, and a removed option would fail OPEN into the
+    // library's own fetch rather than loudly.
+    supabase.auth.getClaims(undefined, keys ? { jwks: { keys } } : {});
 
   let { data, error } = await read(await signingKeys());
   if (error) {
@@ -509,7 +520,39 @@ const loadSessionMember = perRequest(async () => {
     rows = await readMemberRows(admin, user.id);
   }
 
-  return { supabase, user, member: chooseMemberRow(rows) };
+  const member = chooseMemberRow(rows);
+
+  /**
+   * The embed did not answer, so pay for the account row on its own.
+   *
+   * readMemberRows falls back to a plain membership read when the embed fails,
+   * and that fallback carries `accounts: null`. For an OWNER that is the
+   * graceful degradation it was written to be: applyAccountGates reads a missing
+   * row as "carry on", which is what stops a stale PostgREST schema cache from
+   * locking every owner out.
+   *
+   * For an OFFICE user it is not graceful, it is the gate going quiet. The row
+   * is read with the SERVICE ROLE precisely so an office user cannot keep
+   * working inside a workspace staff has suspended -- `accounts` has `acc_read`
+   * as `is_owner(id)`, so their own read returns nothing and a null row reads as
+   * "not suspended". Passing null through here would reinstate the exact hole
+   * the service-role read exists to close, and would do it for every user at
+   * once, in the window right after a migration.
+   *
+   * So: one extra round trip, and only when the embed did not answer. If this
+   * read fails too, acct stays null and the gates fail open exactly as they did
+   * before the port -- no worse than what it replaced, and no quieter.
+   */
+  if (member?.account_id && !embeddedAccount(member)) {
+    const { data: fallbackAccount } = await admin
+      .from('accounts')
+      .select('*')
+      .eq('id', member.account_id)
+      .maybeSingle();
+    if (fallbackAccount) member.accounts = fallbackAccount;
+  }
+
+  return { supabase, user, member };
 });
 
 // Shared guard for server components/actions that require a logged-in owner.

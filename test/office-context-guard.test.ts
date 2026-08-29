@@ -145,12 +145,17 @@ const redirectOf = async (run: () => Promise<unknown>): Promise<string | null> =
   }
 };
 
-const asOffice = (capabilities: string[]) => {
+const asOffice = (capabilities: string[], memberCapabilities: string[] = capabilities) => {
   currentRole = 'office';
   rows['memberships:list'] = [{ account_id: ACCOUNT, role: 'office' }];
   rows.memberships = { account_id: ACCOUNT, role: 'office' };
+  // Two DIFFERENT lists on purpose. office_capabilities is what the account has
+  // switched on; office_member_capabilities is what this person was granted.
+  // Seeding them identically -- which is what they defaulted to -- makes a guard
+  // that reads the account-wide catalog instead of the per-member grant return
+  // the right answer for the wrong reason, and no test can tell.
   rows['office_capabilities:list'] = capabilities.map((capability) => ({ capability }));
-  rows['office_member_capabilities:list'] = capabilities.map((capability) => ({ capability }));
+  rows['office_member_capabilities:list'] = memberCapabilities.map((capability) => ({ capability }));
   // Settled, unsuspended, terms accepted.
   rows.accounts = { suspended_at: null, terms_accepted_at: '2026-01-01', terms_version: TERMS_VERSION, timezone: 'UTC' };
 };
@@ -230,6 +235,22 @@ describe('requireOfficeContext', () => {
       .toBe('/dashboard/leads');
   });
 
+  it('holds only what the member was GRANTED, not the whole enabled catalog', async () => {
+    // 26 files pair requireOfficeContext with createAdminClient(), which bypasses
+    // RLS -- on those surfaces this capability check is the ONLY authorization
+    // boundary. A guard reading office_capabilities instead of the per-member
+    // grant hands every office user everything the account has enabled.
+    asOffice(['leads.read', 'jobs.read'], ['leads.read']);
+    expect(await redirectOf(() => requireOfficeContext('jobs.read'))).toBe('/dashboard/leads');
+  });
+
+  it('still admits the capability that member WAS granted', async () => {
+    // The other half: narrowing to the per-member grant must not refuse work
+    // the bookkeeper was actually given.
+    asOffice(['leads.read', 'jobs.read'], ['leads.read']);
+    expect(await redirectOf(() => requireOfficeContext('leads.read'))).toBeNull();
+  });
+
   it('sends somebody holding nothing to the holding page, not into a loop', async () => {
     asOffice([]);
     expect(await redirectOf(() => requireOfficeContext('leads.read'))).toBe('/office-access');
@@ -258,6 +279,18 @@ describe('requireOfficeContext', () => {
     // service role for exactly this reason.
     asOffice(['leads.read']);
     rows.accounts = { suspended_at: '2026-08-01', terms_accepted_at: '2026-01-01', terms_version: TERMS_VERSION };
+    expect(await redirectOf(() => requireOfficeContext('leads.read'))).toBe('/account-suspended');
+  });
+
+  it('still blocks a SUSPENDED office account when the account EMBED fails', async () => {
+    // The owner lockout fallback must not quietly disable the gate for everyone
+    // else. accounts(*) failing means a stale PostgREST schema cache -- the
+    // window right after a migration, and it fails for every user at once. A
+    // null account row reads as "not suspended", which is precisely the hole
+    // the service-role read exists to close.
+    asOffice(['leads.read']);
+    rows.accounts = { suspended_at: '2026-08-01', terms_accepted_at: '2026-01-01', terms_version: TERMS_VERSION };
+    rows['memberships:embedError'] = true;
     expect(await redirectOf(() => requireOfficeContext('leads.read'))).toBe('/account-suspended');
   });
 

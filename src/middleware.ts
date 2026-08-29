@@ -111,6 +111,7 @@ export async function middleware(request: NextRequest) {
   );
 
   let signedIn = false;
+  let verifiedSignedIn = false;
 
   if (hasAuthCookie) {
     const supabase = createServerClient(
@@ -154,22 +155,63 @@ export async function middleware(request: NextRequest) {
     // with one is answered from the cookie. Between them the common case costs
     // no round trip to Supabase Auth either way.
     //
-    // What is given up is JWT signature verification, and it costs nothing here
-    // because NONE of the four decisions below is a security boundary. Each one
-    // only picks a destination, and every destination re-checks for itself:
-    // requireOwnerContext() verifies the token signature against the cached JWKS
-    // (see verifiedUser in lib/auth), and every /dashboard route reaches it — 42 of
-    // the 44 pages call it directly, and the two that do not are bare redirects
-    // sitting under a layout that does. Server actions call it themselves, which is
-    // the check that actually matters, since an action is a public endpoint that no
-    // middleware verdict protects. A forged cookie buys a redirect to a page that
-    // then rejects it.
+    // What is given up is JWT signature verification, and it costs little here
+    // because none of the REMAINING decisions below is a security boundary. Each
+    // only picks a destination, and every destination re-checks for itself. Both
+    // dashboard guards route through verifiedUser() in lib/auth, which checks the
+    // ES256 signature against the cached key set.
+    //
+    // Counted rather than remembered, on 2026-08-29: of the 56 pages under
+    // /dashboard, 43 call requireOfficeContext and 11 call requireOwnerContext;
+    // the 6 calling neither sit under a layout whose requireDashboardShellContext
+    // does. (The claim this replaced said "42 of the 44 pages call
+    // requireOwnerContext directly" — written before office seats landed, and
+    // wrong in both the count and the function it named.) Server actions call a
+    // guard themselves, which is the check that actually matters, since an action
+    // is a public endpoint no middleware verdict protects.
+    //
+    // So a forged cookie buys a redirect to a page that then rejects it. The one
+    // exception is /login, where "rejects it" means redirecting back here — which
+    // is why that single decision pays to verify, immediately below.
     const {
       data: { session },
     } = await supabase.auth.getSession();
     // Presence only. Reading session.user.<prop> on the server trips supabase-js's
     // "insecure user object" warning proxy, and nothing here needs a claim.
     signedIn = Boolean(session);
+
+    // ── /login is the one redirect here that can close a loop ───────────────
+    // getSession() proves the cookie PARSES and has not expired. It verifies no
+    // signature, so a corrupt, foreign-project or forged sb-*-auth-token reads
+    // as signed in — and every dashboard guard disagrees, because verifiedUser()
+    // checks the ES256 signature and sends the visitor to /login. Forwarding
+    // them off /login on presence alone makes that /login -> /dashboard ->
+    // /login forever, and there is no way out: the sign-in form is the page
+    // being redirected away from, and /auth/signout is POST-only so a looping
+    // browser can never reach it. On main today getUser() rejects such a token
+    // over the network, so this trap is created by the pairing rather than by
+    // either change alone.
+    //
+    // So this ONE decision pays for certainty. getClaims() verifies locally
+    // against auth-js's module-scoped JWKS cache, costing no network after the
+    // first request in the isolate, and it runs only on /login rather than on
+    // every request. Every other decision below stays on presence, where being
+    // wrong only picks a destination that re-checks for itself.
+    if (signedIn && request.nextUrl.pathname === '/login') {
+      const { data: verified, error: verifyError } = await supabase.auth.getClaims();
+      verifiedSignedIn = Boolean(!verifyError && verified?.claims?.sub);
+
+      // A token that cannot be verified is dead weight: it will never satisfy a
+      // guard, and while the browser keeps presenting it the no-cookie fast path
+      // above can never go cold for this visitor. Drop it on the way past.
+      if (!verifiedSignedIn) {
+        for (const cookie of request.cookies.getAll()) {
+          if (cookie.name.startsWith('sb-') && cookie.name.includes('-auth-token')) {
+            response.cookies.delete(cookie.name);
+          }
+        }
+      }
+    }
   }
 
   // A signed-in contractor who lands on the marketing homepage wants their
@@ -182,7 +224,7 @@ export async function middleware(request: NextRequest) {
 
   // A signed-in contractor requesting /login (or /login?intent=signup) is already
   // authenticated. Forward them to next, welcome with intent params, or dashboard.
-  if (signedIn && request.nextUrl.pathname === '/login') {
+  if (verifiedSignedIn && request.nextUrl.pathname === '/login') {
     const rawNext = request.nextUrl.searchParams.get('next');
     const plan = request.nextUrl.searchParams.get('plan');
     const billing = request.nextUrl.searchParams.get('billing');

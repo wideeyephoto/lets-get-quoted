@@ -5,16 +5,25 @@ import { normalizeSupabaseUrl } from '@/lib/supabase-url';
  *
  * WHY THIS EXISTS AT ALL, given supabase-js caches JWKS itself.
  *
- * It caches them on the CLIENT INSTANCE (`this.jwks`), and this app builds a
- * fresh client per request — `createSupabaseServerClient()` reads the request's
- * cookies, so it cannot be a singleton. So the library's cache never survives a
- * request, and `getClaims()` on its own would fetch the JWKS every time: the
- * same network round trip to the same host that `getUser()` was making, just to
- * a different path. Nothing would have been saved.
+ * NOT for the reason this comment used to give. It claimed the library cached
+ * per client instance (`this.jwks`) and that a fresh client per request would
+ * therefore refetch every time. That is FALSE for the version pinned here:
+ * auth-js 2.110.5 keeps a module-scoped `GLOBAL_JWKS`, keyed by storageKey and
+ * shared by every client in the process, on the same 10-minute TTL this module
+ * picks. Bare `getClaims()` would already cost one fetch per cold start.
  *
- * `getClaims(jwt, { keys })` lets the caller supply the keys, which is the seam
- * this module fills. Cached at module scope, so it survives across requests
- * served by the same instance and costs one fetch per cold start.
+ * What this module actually buys is CONTROL OF THE FETCH. The library issues its
+ * JWKS request through the same global `fetch` Next patches in the server
+ * runtime, with no cache directive — so Next's data cache may answer it and pin
+ * a key set past any TTL, which is the failure that once made a worker reprocess
+ * one row ten times and report success. The fetch below passes
+ * `cache: 'no-store'` for that reason, and adds an explicit `force` path so a
+ * rotation can be healed deliberately rather than waited out.
+ *
+ * `getClaims(jwt, { keys })` is the seam that lets a caller supply them. Note
+ * the supplied set is consulted FIRST and the library falls through to its own
+ * cache and network on a kid miss, so a stale set here degrades to the library's
+ * behaviour rather than failing shut.
  *
  * The keys are PUBLIC — this is a public key set, published unauthenticated at
  * a well-known URL. Caching it holds nothing secret in memory.
