@@ -4,6 +4,8 @@ import ExampleFrame from '@/components/marketing/example-frame';
 import TextToRecordSimulator from '@/components/marketing/TextToRecordSimulator';
 import TextToJobDataBeams from '@/components/marketing/TextToJobDataBeams';
 import ScrapLumberComparison from '@/components/marketing/ScrapLumberComparison';
+import ChangeOrderLeakageCalculator from '@/components/marketing/ChangeOrderLeakageCalculator';
+import SteeringWheelCheatsheet from '@/components/marketing/SteeringWheelCheatsheet';
 import { TRADES } from '@/lib/trades';
 import styles from './text-to-job.module.css';
 
@@ -188,6 +190,11 @@ export default function TextToJobPage() {
           {/* Before & After Scrap Lumber vs. Digital File Comparison */}
           <section className={styles.customSection}>
             <ScrapLumberComparison />
+          </section>
+
+          {/* Interactive Change Order Profit Leakage ROI Calculator */}
+          <section className={styles.customSection}>
+            <ChangeOrderLeakageCalculator />
           </section>
 
           {/* Visual Multimodal Architecture Pipeline */}
@@ -380,6 +387,11 @@ export default function TextToJobPage() {
                 </div>
               ))}
             </div>
+          </section>
+
+          {/* Steering Wheel Voice Cheatsheet Section */}
+          <section className={styles.customSection}>
+            <SteeringWheelCheatsheet />
           </section>
 
           {/* Carrier Security & Trust Architecture */}

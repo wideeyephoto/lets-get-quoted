@@ -1,0 +1,129 @@
+/* Steering Wheel Voice Cheatsheet Styles */
+
+.wrapper {
+  width: 100%;
+  max-width: 1140px;
+  margin: 0 auto;
+  background: radial-gradient(circle at 80% 20%, rgba(80, 227, 189, 0.08), transparent 50%),
+              linear-gradient(180deg, #0a1e2d 0%, #05101a 100%);
+  border: 1px solid rgba(80, 227, 189, 0.25);
+  border-radius: 24px;
+  padding: clamp(20px, 3.5vw, 36px);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.55);
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.headerRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.titleGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 720px;
+}
+
+.badge {
+  font-size: 11px;
+  font-weight: 850;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(80, 227, 189, 0.15);
+  color: #50e3bd;
+  border: 1px solid rgba(80, 227, 189, 0.35);
+  width: fit-content;
+}
+
+.title {
+  font-size: clamp(22px, 2.8vw, 30px);
+  font-weight: 900;
+  color: #f5f0e7;
+  letter-spacing: -0.02em;
+  margin: 0;
+  line-height: 1.25;
+}
+
+.subtitle {
+  font-size: 14.5px;
+  color: #a7bcc8;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.cheatsheetGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 16px;
+}
+
+.cheatCard {
+  background: rgba(4, 11, 18, 0.85);
+  border: 1px solid rgba(174, 199, 211, 0.15);
+  border-radius: 16px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+
+.cheatCard:hover {
+  transform: translateY(-2px);
+  border-color: rgba(80, 227, 189, 0.4);
+}
+
+.cheatCardHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.cheatCategory {
+  font-size: 12.5px;
+  font-weight: 850;
+  color: #ff8e42;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cheatPillarTag {
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #9cb1c0;
+}
+
+.voiceExampleBox {
+  background: rgba(0, 0, 0, 0.45);
+  border-left: 3px solid #50e3bd;
+  border-radius: 0 8px 8px 0;
+  padding: 10px 12px;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 12.5px;
+  color: #f5f0e7;
+  line-height: 1.45;
+  margin: 0;
+}
+
+.cheatResult {
+  font-size: 11.5px;
+  color: #a7bcc8;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.cheatResult strong {
+  color: #50e3bd;
+}

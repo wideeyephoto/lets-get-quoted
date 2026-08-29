@@ -1175,6 +1175,119 @@
   text-decoration: underline;
 }
 
+/* Perspective Switcher */
+.perspectiveBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(5, 14, 22, 0.85);
+  border: 1px solid rgba(174, 199, 211, 0.18);
+  border-radius: 12px;
+  padding: 6px 12px;
+}
+
+.perspectiveLabel {
+  font-size: 11.5px;
+  font-weight: 800;
+  color: #7da0b3;
+}
+
+.perspectiveToggleGroup {
+  display: flex;
+  gap: 6px;
+}
+
+.perspectiveBtn {
+  background: #081722;
+  border: 1px solid rgba(174, 199, 211, 0.2);
+  border-radius: 8px;
+  padding: 4px 10px;
+  font-size: 11.5px;
+  font-weight: 750;
+  color: #d1e2eb;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.perspectiveBtnActive {
+  background: #ff6a24;
+  color: #fff;
+  border-color: #ff6a24;
+  box-shadow: 0 2px 8px rgba(255, 106, 36, 0.35);
+}
+
+/* Homeowner Approval Bubble */
+.bubbleHomeowner {
+  background: #1e3a8a;
+  border: 1px solid #3b82f6;
+  border-radius: 14px;
+  padding: 12px 14px;
+  color: #eff6ff;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.applePayBtn {
+  background: #000;
+  border: 1px solid #fff;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 850;
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+/* Live Mic Pulsing */
+.micBtnActive {
+  background: #ef4444 !important;
+  color: #fff !important;
+  animation: pulseMic 1.2s infinite alternate ease-in-out;
+}
+
+@keyframes pulseMic {
+  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+  100% { transform: scale(1.15); box-shadow: 0 0 12px 6px rgba(239, 68, 68, 0.4); }
+}
+
+/* Receipt Bounding Box Interactive Highlighter */
+.receiptItemSplit {
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  transition: background 0.15s ease;
+}
+
+.receiptItemSplit:hover {
+  background: rgba(80, 227, 189, 0.15);
+}
+
+.splitTagMiller {
+  font-size: 8.5px;
+  font-weight: 850;
+  padding: 1px 4px;
+  border-radius: 3px;
+  background: rgba(16, 185, 129, 0.2);
+  color: #059669;
+  margin-left: 4px;
+}
+
+.splitTagSmith {
+  font-size: 8.5px;
+  font-weight: 850;
+  padding: 1px 4px;
+  border-radius: 3px;
+  background: rgba(59, 130, 246, 0.2);
+  color: #2563eb;
+  margin-left: 4px;
+}
+
 /* Footer Action Bar */
 .recordFooter {
   display: flex;

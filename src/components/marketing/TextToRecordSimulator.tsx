@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { APP_SIGNUP_URL } from '@/components/marketing/links';
 import styles from './text-to-record-simulator.module.css';
@@ -27,7 +27,7 @@ type Scenario = {
   receiptDetails?: {
     vendor: string;
     date: string;
-    items: { name: string; price: string }[];
+    items: { name: string; price: string; allocatedJob?: string }[];
     subtotal: string;
     tax: string;
     total: string;
@@ -38,6 +38,12 @@ type Scenario = {
   aiResponse: string;
   followUpText?: string;
   aiFollowUpResponse?: string;
+  homeownerSms?: {
+    recipient: string;
+    phone: string;
+    messageText: string;
+    approvalAmount: string;
+  };
   pillars: ExtractedPillarItem[];
   jobRecord: {
     jobNumber: string;
@@ -188,6 +194,68 @@ const SCENARIOS: Scenario[] = [
     },
   },
   {
+    id: 'change-order',
+    tabLabel: 'Quote Change Order',
+    icon: '💰',
+    title: 'Add Quote Line Items & Recalculate Totals',
+    badge: 'Change Order Auto-Calculated',
+    badgeType: 'quote',
+    description:
+      'Spotted extra work on-site? Text your platform number with the price and description. Gemini updates the job estimate and lets you text the customer approval link with 1 tap.',
+    contractorSender: 'You (Alert Phone)',
+    contractorInputType: 'text',
+    contractorText: 'Add $450 to Miller job for extra 12/2 Romex line and GFCI outlet in pantry',
+    aiResponse:
+      '✅ Added $450.00 Electrical Line Item to Job J-104 (Miller). Total quote updated from $2,800 to $3,250.\nReply SEND to text approval link to homeowner.',
+    followUpText: 'SEND',
+    aiFollowUpResponse:
+      '🚀 Updated quote approval link sent to Dave Miller ((248) 555-0123). Homeowner viewed notice will alert your phone.',
+    homeownerSms: {
+      recipient: 'Dave Miller (Homeowner)',
+      phone: '(248) 555-0123',
+      messageText:
+        'Hi Dave, Apex Electric added Change Order #1 ($450.00 for pantry 12/2 Romex line & GFCI outlet). Tap here to review & authorize with 1 tap: letsgetquoted.com/q/j-104-co1',
+      approvalAmount: '$450.00',
+    },
+    pillars: [
+      {
+        id: 'co-p1',
+        pillar: 'Jobs',
+        title: 'Add Quote Line Item (+$450.00)',
+        detail: 'Extra 12/2 Romex & Pantry GFCI itemized',
+        table: 'quote_line_items',
+      },
+      {
+        id: 'co-p2',
+        pillar: 'Jobs',
+        title: 'Recalculate Quote Total ($2,800 → $3,250)',
+        detail: 'Tax & deposit amounts auto-rebalanced',
+        table: 'jobs.quoted_amount',
+      },
+      {
+        id: 'co-p3',
+        pillar: 'Leads',
+        title: 'Stage Client Approval SMS Link',
+        detail: 'Ready to send 1-tap authorization to Dave Miller',
+        table: 'client_notifications',
+      },
+    ],
+    jobRecord: {
+      jobNumber: 'J-104',
+      clientName: 'Miller Residence',
+      address: '124 Main St, Royal Oak, MI',
+      status: 'Quote Sent to Client',
+      statusColor: '#10b981',
+      badgeText: '1-Tap Quote Delivery Sent',
+      previousAmount: '$2,800.00',
+      totalAmount: '$3,250.00',
+      lineItems: [
+        { label: 'Kitchen Subpanel & Circuit Setup', amount: '$2,800.00' },
+        { label: 'Extra 12/2 Romex & Pantry GFCI (via SMS)', amount: '$450.00', isNew: true },
+      ],
+    },
+  },
+  {
     id: 'receipt-ocr',
     tabLabel: 'Receipt & Expense OCR',
     icon: '🧾',
@@ -203,9 +271,9 @@ const SCENARIOS: Scenario[] = [
       vendor: 'THE HOME DEPOT #2741',
       date: 'Today · 2:45 PM',
       items: [
-        { name: '3/4" x 100ft Blue PEX-A Tubing', price: '$84.90' },
-        { name: 'SharkBite 3/4" Brass Tee (x4)', price: '$43.60' },
-        { name: 'Oatey Pipe Clamps & Fasteners', price: '$11.20' },
+        { name: '3/4" x 100ft Blue PEX-A Tubing', price: '$84.90', allocatedJob: 'Miller (J-104)' },
+        { name: 'SharkBite 3/4" Brass Tee (x4)', price: '$43.60', allocatedJob: 'Miller (J-104)' },
+        { name: 'Oatey Pipe Clamps & Fasteners', price: '$11.20', allocatedJob: 'Smith (J-88)' },
       ],
       subtotal: '$139.70',
       tax: '$8.80',
@@ -253,61 +321,6 @@ const SCENARIOS: Scenario[] = [
           { label: 'Electrical Subpanel & Romex 12/2', amount: '$471.50', vendor: 'City Electric' },
         ],
       },
-    },
-  },
-  {
-    id: 'change-order',
-    tabLabel: 'Quote Change Order',
-    icon: '💰',
-    title: 'Add Quote Line Items & Recalculate Totals',
-    badge: 'Change Order Auto-Calculated',
-    badgeType: 'quote',
-    description:
-      'Spotted extra work on-site? Text your platform number with the price and description. Gemini updates the job estimate and lets you text the customer approval link with 1 tap.',
-    contractorSender: 'You (Alert Phone)',
-    contractorInputType: 'text',
-    contractorText: 'Add $450 to Miller job for extra 12/2 Romex line and GFCI outlet in pantry',
-    aiResponse:
-      '✅ Added $450.00 Electrical Line Item to Job J-104 (Miller). Total quote updated from $2,800 to $3,250.\nReply SEND to text approval link to homeowner.',
-    followUpText: 'SEND',
-    aiFollowUpResponse:
-      '🚀 Updated quote approval link sent to Dave Miller ((248) 555-0123). Homeowner viewed notice will alert your phone.',
-    pillars: [
-      {
-        id: 'co-p1',
-        pillar: 'Jobs',
-        title: 'Add Quote Line Item (+$450.00)',
-        detail: 'Extra 12/2 Romex & Pantry GFCI itemized',
-        table: 'quote_line_items',
-      },
-      {
-        id: 'co-p2',
-        pillar: 'Jobs',
-        title: 'Recalculate Quote Total ($2,800 → $3,250)',
-        detail: 'Tax & deposit amounts auto-rebalanced',
-        table: 'jobs.quoted_amount',
-      },
-      {
-        id: 'co-p3',
-        pillar: 'Leads',
-        title: 'Stage Client Approval SMS Link',
-        detail: 'Ready to send 1-tap authorization to Dave Miller',
-        table: 'client_notifications',
-      },
-    ],
-    jobRecord: {
-      jobNumber: 'J-104',
-      clientName: 'Miller Residence',
-      address: '124 Main St, Royal Oak, MI',
-      status: 'Quote Sent to Client',
-      statusColor: '#10b981',
-      badgeText: '1-Tap Quote Delivery Sent',
-      previousAmount: '$2,800.00',
-      totalAmount: '$3,250.00',
-      lineItems: [
-        { label: 'Kitchen Subpanel & Circuit Setup', amount: '$2,800.00' },
-        { label: 'Extra 12/2 Romex & Pantry GFCI (via SMS)', amount: '$450.00', isNew: true },
-      ],
     },
   },
   {
@@ -476,10 +489,14 @@ const SCENARIOS: Scenario[] = [
 ];
 
 export default function TextToRecordSimulator() {
-  const [activeScenarioId, setActiveScenarioId] = useState<string>('voice-memo');
+  const [activeScenarioId, setActiveScenarioId] = useState<string>('change-order');
+  const [perspective, setPerspective] = useState<'contractor' | 'homeowner'>('contractor');
   const [isPlayingVoice, setIsPlayingVoice] = useState(false);
   const [voiceSeconds, setVoiceSeconds] = useState(9);
   const [disabledItemIds, setDisabledItemIds] = useState<Record<string, boolean>>({});
+  const [isRecordingLive, setIsRecordingLive] = useState(false);
+  const [liveTranscript, setLiveTranscript] = useState<string>('');
+  const [homeownerApproved, setHomeownerApproved] = useState(false);
 
   const scenario = SCENARIOS.find((s) => s.id === activeScenarioId) || SCENARIOS[0];
 
@@ -490,6 +507,7 @@ export default function TextToRecordSimulator() {
     }
     setIsPlayingVoice(false);
     setVoiceSeconds(9);
+    setHomeownerApproved(false);
   }, [activeScenarioId]);
 
   function toggleVoicePlayback() {
@@ -526,6 +544,79 @@ export default function TextToRecordSimulator() {
     }
   }
 
+  // Live Browser Web Speech Recognition
+  function toggleLiveMic() {
+    if (typeof window === 'undefined') return;
+
+    const win = window as unknown as {
+      SpeechRecognition?: new () => {
+        continuous: boolean;
+        interimResults: boolean;
+        lang: string;
+        onstart: () => void;
+        onresult: (e: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void;
+        onend: () => void;
+        onerror: () => void;
+        start: () => void;
+      };
+      webkitSpeechRecognition?: new () => {
+        continuous: boolean;
+        interimResults: boolean;
+        lang: string;
+        onstart: () => void;
+        onresult: (e: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void;
+        onend: () => void;
+        onerror: () => void;
+        start: () => void;
+      };
+    };
+
+    const SpeechRec = win.SpeechRecognition || win.webkitSpeechRecognition;
+
+    if (!SpeechRec) {
+      alert(
+        'Speech recognition is active in Chrome, Safari, and Edge. Try speaking: "Add $450 to Miller job for extra romex line".'
+      );
+      return;
+    }
+
+    if (isRecordingLive) {
+      setIsRecordingLive(false);
+      return;
+    }
+
+    try {
+      const recognition = new SpeechRec();
+      recognition.continuous = false;
+      recognition.interimResults = true;
+      recognition.lang = 'en-US';
+
+      recognition.onstart = () => {
+        setIsRecordingLive(true);
+        setLiveTranscript('Listening to your mic...');
+      };
+
+      recognition.onresult = (event) => {
+        const transcript = Array.from(event.results)
+          .map((result) => result[0]?.transcript || '')
+          .join('');
+        setLiveTranscript(`“${transcript}”`);
+      };
+
+      recognition.onend = () => {
+        setIsRecordingLive(false);
+      };
+
+      recognition.onerror = () => {
+        setIsRecordingLive(false);
+      };
+
+      recognition.start();
+    } catch {
+      setIsRecordingLive(false);
+    }
+  }
+
   function togglePillarItem(id: string) {
     setDisabledItemIds((prev) => ({
       ...prev,
@@ -537,6 +628,31 @@ export default function TextToRecordSimulator() {
 
   return (
     <div className={styles.simulatorWrapper}>
+      {/* Perspective Switcher */}
+      <div className={styles.perspectiveBar}>
+        <span className={styles.perspectiveLabel}>View Real-Time Interaction As:</span>
+        <div className={styles.perspectiveToggleGroup}>
+          <button
+            type="button"
+            onClick={() => setPerspective('contractor')}
+            className={`${styles.perspectiveBtn} ${
+              perspective === 'contractor' ? styles.perspectiveBtnActive : ''
+            }`}
+          >
+            📱 Contractor Phone (What you send)
+          </button>
+          <button
+            type="button"
+            onClick={() => setPerspective('homeowner')}
+            className={`${styles.perspectiveBtn} ${
+              perspective === 'homeowner' ? styles.perspectiveBtnActive : ''
+            }`}
+          >
+            👤 Homeowner Phone (What Dave Miller sees)
+          </button>
+        </div>
+      </div>
+
       {/* Tab Navigation */}
       <div className={styles.tabBarContainer}>
         <span className={styles.tabBarLabel}>Select Real-World Contractor Field Scenario:</span>
@@ -571,129 +687,198 @@ export default function TextToRecordSimulator() {
                 <span>LTE 5G</span>
               </div>
               <div className={styles.recipientHeader}>
-                <div className={styles.recipientAvatar}>⚡</div>
-                <div className={styles.recipientName}>Let’s Get Quoted Intake</div>
-                <div className={styles.recipientPhone}>(248) 555-0199 · Platform Number</div>
+                <div className={styles.recipientAvatar}>
+                  {perspective === 'contractor' ? '⚡' : '🔨'}
+                </div>
+                <div className={styles.recipientName}>
+                  {perspective === 'contractor'
+                    ? 'Let’s Get Quoted Intake'
+                    : 'Apex Electric & Plumbing'}
+                </div>
+                <div className={styles.recipientPhone}>
+                  {perspective === 'contractor'
+                    ? '(248) 555-0199 · Platform Number'
+                    : 'Dave Miller (Homeowner)'}
+                </div>
               </div>
             </div>
 
             {/* Chat Messages Stream */}
             <div className={styles.chatStream}>
-              {/* Scenario 1 & Bilingual Voice Playback */}
-              {scenario.contractorInputType === 'voice' && (
-                <div className={styles.bubbleContractor}>
-                  <div className={styles.senderTag}>{scenario.contractorSender}</div>
-                  <div className={styles.voicePlayer}>
+              {perspective === 'homeowner' ? (
+                /* Homeowner Perspective View */
+                <div className={styles.bubbleHomeowner}>
+                  <div style={{ fontSize: '11px', fontWeight: 800, color: '#93c5fd' }}>
+                    Apex Electric &middot; Quote Change Order Notice
+                  </div>
+                  <p style={{ margin: 0, fontSize: '13px', lineHeight: 1.45 }}>
+                    {scenario.homeownerSms?.messageText ||
+                      'Hi Dave, Apex Electric added Change Order #1 ($450.00 for pantry 12/2 Romex line & GFCI outlet). Tap below to authorize:'}
+                  </p>
+
+                  <div style={{ background: '#0f172a', padding: '10px 12px', borderRadius: '10px', marginTop: '4px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: 800 }}>
+                      <span>Change Order Total:</span>
+                      <span style={{ color: '#50e3bd' }}>
+                        {scenario.homeownerSms?.approvalAmount || '$450.00'}
+                      </span>
+                    </div>
+
                     <button
                       type="button"
-                      onClick={toggleVoicePlayback}
-                      className={styles.playIconBtn}
-                      aria-label="Play Voice Memo"
+                      onClick={() => setHomeownerApproved(true)}
+                      className={styles.applePayBtn}
                     >
-                      {isPlayingVoice ? '⏸' : '▶'}
+                      {homeownerApproved ? '✓ Authorized & Paid via Apple Pay' : 'Pay 1-Tap Authorize & Pay Deposit'}
                     </button>
-                    <div className={styles.waveformGraphic}>
-                      <span style={{ height: '40%' }}></span>
-                      <span style={{ height: '70%' }}></span>
-                      <span style={{ height: '100%' }}></span>
-                      <span style={{ height: '60%' }}></span>
-                      <span style={{ height: '85%' }}></span>
-                      <span style={{ height: '35%' }}></span>
-                      <span style={{ height: '90%' }}></span>
-                      <span style={{ height: '50%' }}></span>
-                    </div>
-                    <span className={styles.audioDuration}>
-                      {isPlayingVoice ? `0:0${voiceSeconds}` : scenario.voiceAudioDuration}
-                    </span>
                   </div>
 
-                  {/* Noise Filter EQ Visualizer */}
-                  <div className={styles.noiseFilterBox}>
-                    <div className={styles.noiseFilterTitle}>
-                      <span>🔇 Gemini Truck Cab Noise Filter</span>
-                      <span>{isPlayingVoice ? 'Active Filter: ON' : 'Noise Floor: -42dB'}</span>
+                  {homeownerApproved && (
+                    <div style={{ fontSize: '11px', color: '#86efac', fontWeight: 800, textAlign: 'center', marginTop: '4px' }}>
+                      ⚡ Instant confirmation alert sent to contractor steering wheel!
                     </div>
-                    <div className={styles.noiseEqTrack}>
-                      <div className={styles.noiseBarClean} style={{ height: isPlayingVoice ? '80%' : '30%' }} />
-                      <div className={styles.noiseBarClean} style={{ height: isPlayingVoice ? '95%' : '40%' }} />
-                      <div className={styles.noiseBarRaw} style={{ height: isPlayingVoice ? '20%' : '75%' }} title="Filtered Truck Idle" />
-                      <div className={styles.noiseBarClean} style={{ height: isPlayingVoice ? '85%' : '35%' }} />
-                      <div className={styles.noiseBarRaw} style={{ height: isPlayingVoice ? '15%' : '60%' }} title="Filtered Wind Noise" />
-                    </div>
-                  </div>
-
-                  <small className={styles.audioHint}>
-                    {isPlayingVoice ? '🔊 Playing realistic audio...' : 'Tap ▶ to hear Gemini audio processing'}
-                  </small>
+                  )}
                 </div>
-              )}
-
-              {/* Scenario 2: Receipt OCR Attachment */}
-              {scenario.contractorInputType === 'receipt' && scenario.receiptDetails && (
-                <div className={styles.bubbleContractor}>
-                  <div className={styles.senderTag}>You (Receipt MMS Photo)</div>
-                  <div className={styles.receiptPaper}>
-                    <div className={styles.receiptHeader}>
-                      <strong>{scenario.receiptDetails.vendor}</strong>
-                      <span>{scenario.receiptDetails.date}</span>
-                    </div>
-                    <div className={styles.receiptItems}>
-                      {scenario.receiptDetails.items.map((item, idx) => (
-                        <div key={idx} className={styles.receiptItem}>
-                          <span>{item.name}</span>
-                          <span>{item.price}</span>
-                        </div>
-                      ))}
-                    </div>
-                    <div className={styles.receiptTotalRow}>
-                      <span>TOTAL CHARGED</span>
-                      <strong>{scenario.receiptDetails.total}</strong>
-                    </div>
-                  </div>
-                  <p className={styles.bubbleCaption}>{scenario.contractorText}</p>
-                </div>
-              )}
-
-              {/* Scenario 3, 4, 5: Standard Contractor SMS */}
-              {scenario.contractorInputType === 'text' && scenario.contractorText && (
-                <div className={styles.bubbleContractor}>
-                  <div className={styles.senderTag}>{scenario.contractorSender}</div>
-                  <p className={styles.bubbleText}>{scenario.contractorText}</p>
-                </div>
-              )}
-
-              {/* Gemini AI Platform Response */}
-              <div className={styles.bubbleAi}>
-                <div className={styles.aiSenderTag}>
-                  <span className={styles.aiGlowDot}></span>
-                  Let’s Get Quoted AI (1.4s)
-                </div>
-                <p className={styles.aiResponseText}>{scenario.aiResponse}</p>
-              </div>
-
-              {/* Optional Interactive Follow-up */}
-              {scenario.followUpText && scenario.aiFollowUpResponse && (
+              ) : (
+                /* Contractor Perspective View */
                 <>
-                  <div className={styles.bubbleContractor}>
-                    <div className={styles.senderTag}>{scenario.contractorSender}</div>
-                    <p className={styles.bubbleText}>{scenario.followUpText}</p>
-                  </div>
+                  {/* Scenario 1 & Bilingual Voice Playback */}
+                  {scenario.contractorInputType === 'voice' && (
+                    <div className={styles.bubbleContractor}>
+                      <div className={styles.senderTag}>{scenario.contractorSender}</div>
+                      <div className={styles.voicePlayer}>
+                        <button
+                          type="button"
+                          onClick={toggleVoicePlayback}
+                          className={styles.playIconBtn}
+                          aria-label="Play Voice Memo"
+                        >
+                          {isPlayingVoice ? '⏸' : '▶'}
+                        </button>
+                        <div className={styles.waveformGraphic}>
+                          <span style={{ height: '40%' }}></span>
+                          <span style={{ height: '70%' }}></span>
+                          <span style={{ height: '100%' }}></span>
+                          <span style={{ height: '60%' }}></span>
+                          <span style={{ height: '85%' }}></span>
+                          <span style={{ height: '35%' }}></span>
+                          <span style={{ height: '90%' }}></span>
+                          <span style={{ height: '50%' }}></span>
+                        </div>
+                        <span className={styles.audioDuration}>
+                          {isPlayingVoice ? `0:0${voiceSeconds}` : scenario.voiceAudioDuration}
+                        </span>
+                      </div>
+
+                      {/* Noise Filter EQ Visualizer */}
+                      <div className={styles.noiseFilterBox}>
+                        <div className={styles.noiseFilterTitle}>
+                          <span>🔇 Gemini Truck Cab Noise Filter</span>
+                          <span>{isPlayingVoice ? 'Active Filter: ON' : 'Noise Floor: -42dB'}</span>
+                        </div>
+                        <div className={styles.noiseEqTrack}>
+                          <div className={styles.noiseBarClean} style={{ height: isPlayingVoice ? '80%' : '30%' }} />
+                          <div className={styles.noiseBarClean} style={{ height: isPlayingVoice ? '95%' : '40%' }} />
+                          <div className={styles.noiseBarRaw} style={{ height: isPlayingVoice ? '20%' : '75%' }} title="Filtered Truck Idle" />
+                          <div className={styles.noiseBarClean} style={{ height: isPlayingVoice ? '85%' : '35%' }} />
+                          <div className={styles.noiseBarRaw} style={{ height: isPlayingVoice ? '15%' : '60%' }} title="Filtered Wind Noise" />
+                        </div>
+                      </div>
+
+                      <small className={styles.audioHint}>
+                        {isPlayingVoice ? '🔊 Playing realistic audio...' : 'Tap ▶ to hear Gemini audio processing'}
+                      </small>
+                    </div>
+                  )}
+
+                  {/* Scenario 2: Receipt OCR Attachment with Multi-Job Split */}
+                  {scenario.contractorInputType === 'receipt' && scenario.receiptDetails && (
+                    <div className={styles.bubbleContractor}>
+                      <div className={styles.senderTag}>You (Receipt MMS Photo)</div>
+                      <div className={styles.receiptPaper}>
+                        <div className={styles.receiptHeader}>
+                          <strong>{scenario.receiptDetails.vendor}</strong>
+                          <span>{scenario.receiptDetails.date}</span>
+                        </div>
+                        <div className={styles.receiptItems}>
+                          {scenario.receiptDetails.items.map((item, idx) => (
+                            <div key={idx} className={`${styles.receiptItem} ${styles.receiptItemSplit}`}>
+                              <span>
+                                {item.name}
+                                {item.allocatedJob?.includes('Miller') && (
+                                  <span className={styles.splitTagMiller}>Job: Miller</span>
+                                )}
+                                {item.allocatedJob?.includes('Smith') && (
+                                  <span className={styles.splitTagSmith}>Job: Smith</span>
+                                )}
+                              </span>
+                              <span>{item.price}</span>
+                            </div>
+                          ))}
+                        </div>
+                        <div className={styles.receiptTotalRow}>
+                          <span>TOTAL CHARGED</span>
+                          <strong>{scenario.receiptDetails.total}</strong>
+                        </div>
+                      </div>
+                      <p className={styles.bubbleCaption}>{scenario.contractorText}</p>
+                    </div>
+                  )}
+
+                  {/* Scenario 3, 4, 5: Standard Contractor SMS */}
+                  {scenario.contractorInputType === 'text' && scenario.contractorText && (
+                    <div className={styles.bubbleContractor}>
+                      <div className={styles.senderTag}>{scenario.contractorSender}</div>
+                      <p className={styles.bubbleText}>{scenario.contractorText}</p>
+                    </div>
+                  )}
+
+                  {/* Gemini AI Platform Response */}
                   <div className={styles.bubbleAi}>
                     <div className={styles.aiSenderTag}>
                       <span className={styles.aiGlowDot}></span>
-                      Let’s Get Quoted AI (1.1s)
+                      Let’s Get Quoted AI (1.4s)
                     </div>
-                    <p className={styles.aiResponseText}>{scenario.aiFollowUpResponse}</p>
+                    <p className={styles.aiResponseText}>{scenario.aiResponse}</p>
                   </div>
+
+                  {/* Optional Interactive Follow-up */}
+                  {scenario.followUpText && scenario.aiFollowUpResponse && (
+                    <>
+                      <div className={styles.bubbleContractor}>
+                        <div className={styles.senderTag}>{scenario.contractorSender}</div>
+                        <p className={styles.bubbleText}>{scenario.followUpText}</p>
+                      </div>
+                      <div className={styles.bubbleAi}>
+                        <div className={styles.aiSenderTag}>
+                          <span className={styles.aiGlowDot}></span>
+                          Let’s Get Quoted AI (1.1s)
+                        </div>
+                        <p className={styles.aiResponseText}>{scenario.aiFollowUpResponse}</p>
+                      </div>
+                    </>
+                  )}
                 </>
               )}
             </div>
 
-            {/* Phone Input Bar */}
+            {/* Phone Input Bar with Real Mic Recording */}
             <div className={styles.chatInputBar}>
               <span className={styles.attachBtn}>📷</span>
-              <span className={styles.micBtn}>🎙️</span>
-              <div className={styles.inputMock}>Text or voice memo...</div>
+              <button
+                type="button"
+                onClick={toggleLiveMic}
+                className={`${styles.micBtn} ${isRecordingLive ? styles.micBtnActive : ''}`}
+                title="Tap to speak live with your microphone"
+                style={{ border: 'none', cursor: 'pointer', background: 'transparent' }}
+              >
+                🎙️
+              </button>
+              <div className={styles.inputMock}>
+                {isRecordingLive
+                  ? '🔴 Listening to your voice...'
+                  : liveTranscript || 'Text or tap 🎙️ to dictate...'}
+              </div>
               <span className={styles.sendMock}>↑</span>
             </div>
           </div>
@@ -919,7 +1104,10 @@ export default function TextToRecordSimulator() {
                 <span className={styles.qrSubtitle}>
                   Text your platform alert number directly to see how fast Gemini responds.
                 </span>
-                <a href="sms:+12485550199?body=Add%20$450%20to%20Miller%20job%20for%20extra%20Romex%20line" className={styles.qrActionLink}>
+                <a
+                  href="sms:+12485550199?body=Add%20$450%20to%20Miller%20job%20for%20extra%20Romex%20line"
+                  className={styles.qrActionLink}
+                >
                   Tap to launch pre-filled SMS on your phone &rarr;
                 </a>
               </div>
