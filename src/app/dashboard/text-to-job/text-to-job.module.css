@@ -142,6 +142,42 @@
   letter-spacing: 0.02em;
 }
 
+.unqualifiedPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  color: #fbbf24;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 3px 10px;
+  border-radius: 999px;
+  letter-spacing: 0.02em;
+}
+
+.verifyBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 800;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  text-decoration: none;
+  font-family: inherit;
+  background: #f59e0b;
+  color: #0b1520;
+  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.28);
+}
+
+.verifyBtn:hover {
+  background: #fbbf24;
+  transform: translateY(-1px);
+}
+
 .title {
   font-size: clamp(22px, 2.8vw, 30px);
   font-weight: 900;
@@ -948,6 +984,17 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+.qualificationWarningCard {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  border-radius: 12px;
+  padding: 16px 20px;
+  flex-wrap: wrap;
 }
 
 .shieldMetricsCard {

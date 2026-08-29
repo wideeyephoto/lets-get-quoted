@@ -76,12 +76,17 @@ export default async function TextToJobDashboardPage() {
     };
   });
 
+  const rawSharedNumber = process.env.NEXT_PUBLIC_SHARED_FIELD_PHONE || process.env.SIGNALWIRE_FROM_NUMBER || '+19479412323';
+  const isQualified = Boolean(account?.alert_phone && account.alert_phone.replace(/\D/g, '').length >= 10);
+
   return (
     <TextToJobWorkspace
       account={account}
       crewMembers={crewRows || []}
       initialMessages={realMessages.length > 0 ? realMessages : undefined}
       isDedicatedNumber={Boolean(account?.call_tracking_number)}
+      sharedPhoneNumber={rawSharedNumber}
+      isQualified={isQualified}
       activeJobCount={jobCount ?? 0}
       leadCount={leadCount ?? 0}
       crewCount={crewRows?.length ?? 0}

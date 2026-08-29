@@ -195,6 +195,18 @@ const SAMPLE_INBOUND_MESSAGES: InboundMessage[] = [
   },
 ];
 
+function formatUsPhone(phone?: string | null): string {
+  if (!phone) return '(947) 941-2323';
+  const cleaned = phone.replace(/\D/g, '');
+  if (cleaned.length === 11 && cleaned.startsWith('1')) {
+    return `(${cleaned.slice(1, 4)}) ${cleaned.slice(4, 7)}-${cleaned.slice(7)}`;
+  }
+  if (cleaned.length === 10) {
+    return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6)}`;
+  }
+  return phone;
+}
+
 interface TextToJobWorkspaceProps {
   account: {
     business_name: string | null;
@@ -207,6 +219,8 @@ interface TextToJobWorkspaceProps {
   crewMembers?: CrewRow[];
   initialMessages?: InboundMessage[];
   isDedicatedNumber?: boolean;
+  sharedPhoneNumber?: string;
+  isQualified?: boolean;
   activeJobCount: number;
   leadCount: number;
   crewCount: number;
@@ -217,6 +231,8 @@ export default function TextToJobWorkspace({
   crewMembers = [],
   initialMessages,
   isDedicatedNumber = false,
+  sharedPhoneNumber = '+19479412323',
+  isQualified = false,
   activeJobCount,
   leadCount,
   crewCount,
@@ -264,9 +280,19 @@ export default function TextToJobWorkspace({
     filteredMessages[0] ||
     messages[0];
 
-  const fieldPhoneNumber =
-    account?.call_tracking_number || account?.phone || '(248) 555-0199';
-  const alertPhone = account?.alert_phone || '(248) 555-0123';
+  const fieldPhoneNumber = isQualified
+    ? isDedicatedNumber && account?.call_tracking_number
+      ? formatUsPhone(account.call_tracking_number)
+      : formatUsPhone(sharedPhoneNumber || '+19479412323')
+    : '🔒 Setup Alert Phone to Unlock';
+
+  const rawCallableNumber = isQualified
+    ? isDedicatedNumber && account?.call_tracking_number
+      ? account.call_tracking_number
+      : sharedPhoneNumber || '+19479412323'
+    : '';
+
+  const alertPhone = account?.alert_phone ? formatUsPhone(account.alert_phone) : '(No cell phone set)';
   const businessTitle = account?.business_name || account?.company_name || 'Your Company';
 
   const defaultCrew: CrewRow[] = [
@@ -287,7 +313,7 @@ export default function TextToJobWorkspace({
   ];
 
   const activeCrewList = crewMembers.length > 0 ? crewMembers : defaultCrew;
-  const totalAuthorizedDevices = 1 + activeCrewList.filter((c) => c.active && Boolean(c.phone)).length;
+  const totalAuthorizedDevices = (isQualified ? 1 : 0) + activeCrewList.filter((c) => c.active && Boolean(c.phone)).length;
 
   function toggleItem(msgId: string, itemId: string) {
     setMessages((prev) =>
@@ -327,9 +353,14 @@ export default function TextToJobWorkspace({
   }
 
   function handleCopyNumber() {
-    navigator.clipboard.writeText(fieldPhoneNumber.replace(/[^\d+]/g, ''));
+    if (!isQualified) {
+      setNotification('⚠️ Please add your cell phone in Settings first to unlock your field hotline number.');
+      setTimeout(() => setNotification(null), 4000);
+      return;
+    }
+    navigator.clipboard.writeText(rawCallableNumber.replace(/[^\d+]/g, ''));
     setCopiedNumber(true);
-    setNotification(`📋 Copied field hotline number (${fieldPhoneNumber}) to clipboard!`);
+    setNotification(`📋 Copied real field hotline (${fieldPhoneNumber}) to clipboard!`);
     setTimeout(() => {
       setCopiedNumber(false);
       setNotification(null);
@@ -522,9 +553,13 @@ export default function TextToJobWorkspace({
                   <span className={styles.dedicatedPill}>
                     ⭐ Dedicated 2-Way Line
                   </span>
-                ) : (
+                ) : isQualified ? (
                   <span className={styles.sharedPill}>
-                    🔒 Shared Platform Line
+                    🔒 Shared Platform Line ({fieldPhoneNumber})
+                  </span>
+                ) : (
+                  <span className={styles.unqualifiedPill}>
+                    ⚠️ Mobile Whitelist Setup Required
                   </span>
                 )}
                 <span className={styles.livePill}>
@@ -543,9 +578,15 @@ export default function TextToJobWorkspace({
           <button type="button" onClick={() => setShowSimModal(true)} className={styles.testBtn}>
             ⚡ Test a Note
           </button>
-          <button type="button" onClick={handleCopyNumber} className={styles.copyBtn}>
-            {copiedNumber ? '✓ Copied Number' : `📋 Copy ${fieldPhoneNumber}`}
-          </button>
+          {isQualified ? (
+            <button type="button" onClick={handleCopyNumber} className={styles.copyBtn}>
+              {copiedNumber ? '✓ Copied Number' : `📋 Copy ${fieldPhoneNumber}`}
+            </button>
+          ) : (
+            <Link href="/dashboard/settings" className={styles.verifyBtn}>
+              📱 Connect Cell Phone to Unlock →
+            </Link>
+          )}
         </div>
       </div>
 
@@ -827,6 +868,24 @@ export default function TextToJobWorkspace({
       {/* TAB 2: Who Can Text (Authorized Senders Whitelist) */}
       {activeTab === 'senders' && (
         <div className={styles.sendersContainer}>
+          {/* Qualification Alert if unverified */}
+          {!isQualified && (
+            <div className={styles.qualificationWarningCard}>
+              <span style={{ fontSize: '24px' }}>🔒</span>
+              <div style={{ flex: 1 }}>
+                <strong style={{ color: '#f5f0e7', fontSize: '15px' }}>
+                  Alert Phone Setup Required to Unlock Your Hotline
+                </strong>
+                <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#cbd5e1', lineHeight: 1.4 }}>
+                  To prevent internet spam and scrapers, your field hotline is locked until you connect your cell phone. Once saved, your phone is instantly whitelisted.
+                </p>
+              </div>
+              <Link href="/dashboard/settings" className={styles.verifyBtn}>
+                📱 Add Mobile Phone in Settings &rarr;
+              </Link>
+            </div>
+          )}
+
           {/* Anti-Spam Security Shield Metrics Banner */}
           <div className={styles.shieldMetricsCard}>
             <div className={styles.shieldMetricsHeader}>
@@ -840,7 +899,7 @@ export default function TextToJobWorkspace({
                 <p className={styles.shieldDesc}>
                   {isDedicatedNumber
                     ? `Your private local business number accepts customer inquiries into your Inbox, while restricting internal job mutations to your ${totalAuthorizedDevices} authorized phones below.`
-                    : `To prevent web scrapers and spam bots from touching your accounting, only the ${totalAuthorizedDevices} verified phone numbers below can update job records. All stranger texts are safely blocked.`}
+                    : `To prevent web scrapers and spam bots from touching your accounting, only the ${totalAuthorizedDevices} verified phone numbers below can text ${fieldPhoneNumber} to update job records. All stranger texts are safely blocked.`}
                 </p>
               </div>
             </div>
@@ -917,9 +976,15 @@ export default function TextToJobWorkspace({
                       </span>
                     </td>
                     <td>
-                      <span className={styles.senderStatusActive}>
-                        <span className={styles.liveDot} /> Active
-                      </span>
+                      {isQualified ? (
+                        <span className={styles.senderStatusActive}>
+                          <span className={styles.liveDot} /> Active
+                        </span>
+                      ) : (
+                        <Link href="/dashboard/settings" style={{ color: '#f59e0b', fontSize: '12px', fontWeight: 700, textDecoration: 'none' }}>
+                          ⚠️ Add in Settings &rarr;
+                        </Link>
+                      )}
                     </td>
                   </tr>
 
@@ -939,7 +1004,7 @@ export default function TextToJobWorkspace({
                       </td>
                       <td>
                         <span className={styles.senderPhoneTag}>
-                          {crew.phone || '(No phone on file)'}
+                          {crew.phone ? formatUsPhone(crew.phone) : '(No phone on file)'}
                         </span>
                       </td>
                       <td>
@@ -994,16 +1059,22 @@ export default function TextToJobWorkspace({
               <p className={styles.siriStepText}>
                 Save phone number <strong>{fieldPhoneNumber}</strong> to your phone as <strong>Field Line</strong>.
               </p>
-              <a
-                href={`data:text/vcard;charset=utf-8,${encodeURIComponent(
-                  `BEGIN:VCARD\nVERSION:3.0\nFN:${businessTitle} Field Hotline\nTEL;TYPE=CELL:${fieldPhoneNumber}\nNOTE:Text-to-Job Field Ingest Hotline\nEND:VCARD`
-                )}`}
-                download="field-hotline.vcf"
-                className={styles.vcardBtn}
-                style={{ marginTop: '10px', display: 'inline-block' }}
-              >
-                📱 Download .vcf Card
-              </a>
+              {isQualified ? (
+                <a
+                  href={`data:text/vcard;charset=utf-8,${encodeURIComponent(
+                    `BEGIN:VCARD\nVERSION:3.0\nFN:${businessTitle} Field Hotline\nTEL;TYPE=CELL:${rawCallableNumber}\nNOTE:Text-to-Job Field Ingest Hotline\nEND:VCARD`
+                  )}`}
+                  download="field-hotline.vcf"
+                  className={styles.vcardBtn}
+                  style={{ marginTop: '10px', display: 'inline-block' }}
+                >
+                  📱 Download .vcf Card
+                </a>
+              ) : (
+                <Link href="/dashboard/settings" className={styles.verifyBtn} style={{ marginTop: '10px', display: 'inline-block' }}>
+                  📱 Setup Alert Phone to Download
+                </Link>
+              )}
             </div>
 
             <div className={styles.siriStepCard}>
@@ -1052,28 +1123,30 @@ export default function TextToJobWorkspace({
       )}
 
       {/* Bottom Hotline Card (.vcf Download) */}
-      <div className={styles.bottomHotlineBar}>
-        <div className={styles.bottomHotlineLeft}>
-          <span style={{ fontSize: '22px' }}>📱</span>
-          <div>
-            <strong style={{ color: '#f5f0e7', fontSize: '13px' }}>
-              Save {fieldPhoneNumber} to Phonebook (.vcf)
-            </strong>
-            <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: '#8fa6b5' }}>
-              Download the contact card to make hands-free voice dictation with Siri and Android Auto instant.
-            </p>
+      {isQualified && (
+        <div className={styles.bottomHotlineBar}>
+          <div className={styles.bottomHotlineLeft}>
+            <span style={{ fontSize: '22px' }}>📱</span>
+            <div>
+              <strong style={{ color: '#f5f0e7', fontSize: '13px' }}>
+                Save {fieldPhoneNumber} to Phonebook (.vcf)
+              </strong>
+              <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: '#8fa6b5' }}>
+                Download the contact card to make hands-free voice dictation with Siri and Android Auto instant.
+              </p>
+            </div>
           </div>
+          <a
+            href={`data:text/vcard;charset=utf-8,${encodeURIComponent(
+              `BEGIN:VCARD\nVERSION:3.0\nFN:${businessTitle} Field Hotline\nTEL;TYPE=CELL:${rawCallableNumber}\nNOTE:Text-to-Job Field Ingest Hotline\nEND:VCARD`
+            )}`}
+            download="field-hotline.vcf"
+            className={styles.vcardBtn}
+          >
+            📱 Save Field Hotline (.vcf)
+          </a>
         </div>
-        <a
-          href={`data:text/vcard;charset=utf-8,${encodeURIComponent(
-            `BEGIN:VCARD\nVERSION:3.0\nFN:${businessTitle} Field Hotline\nTEL;TYPE=CELL:${fieldPhoneNumber}\nNOTE:Text-to-Job Field Ingest Hotline\nEND:VCARD`
-          )}`}
-          download="field-hotline.vcf"
-          className={styles.vcardBtn}
-        >
-          📱 Save Field Hotline (.vcf)
-        </a>
-      </div>
+      )}
 
       {/* Simulator Modal Popup */}
       {showSimModal && (
