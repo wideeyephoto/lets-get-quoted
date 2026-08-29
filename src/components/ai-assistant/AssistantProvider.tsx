@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, type ReactNode } from 'react';
 
-import { getCompanion, type CompanionProfile, type CompanionId, DEFAULT_COMPANION_ID } from '@/lib/ai-assistant/companions';
+import { getCompanion, type CompanionProfile, type CompanionId, DEFAULT_COMPANION_ID, COMPANIONS } from '@/lib/ai-assistant/companions';
 
 interface AssistantContextType {
   isOpen: boolean;
@@ -37,8 +37,10 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
     try {
       const savedId = localStorage.getItem(STORAGE_KEY_ID) as CompanionId | null;
       const savedTrade = localStorage.getItem(STORAGE_KEY_TRADE);
-      if (savedId) {
+      if (savedId && COMPANIONS.some((c) => c.id === savedId)) {
         setCompanionIdState(savedId);
+      } else {
+        setCompanionIdState(DEFAULT_COMPANION_ID);
       }
       if (savedTrade) {
         setCompanionTradeState(savedTrade);

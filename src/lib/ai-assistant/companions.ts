@@ -1,4 +1,4 @@
-export type CompanionId = 'sparky' | 'diesel' | 'rusty' | 'echo' | 'beacon';
+export type CompanionId = 'sparky' | 'diesel';
 
 export interface CompanionTradeOption {
   id: string;
@@ -59,45 +59,6 @@ export const COMPANIONS: CompanionProfile[] = [
     badgeLabel: 'Site Foreman',
     introMessage:
       "Diesel here. Let's get down to business. I'll track your punch lists, calculate material overages, manage job change orders, and keep your crews organized. What job are we tackling?",
-  },
-  {
-    id: 'rusty',
-    name: 'Rusty',
-    role: 'Fast Estimating AI',
-    species: 'Red Fox',
-    tagline: 'Clever, numbers-driven sidekick specializing in quick quotes & margin math.',
-    avatarSrc: '/brand/companions/rusty.jpg',
-    thinkingSrc: '/brand/companions/rusty.jpg',
-    accentColor: '#ea580c',
-    badgeLabel: 'Estimating Pro',
-    introMessage:
-      "Hey there! Rusty at your service. I crunch scope measurements, calculate profit margins, and turn site notes into finished client estimates in seconds. What do you need quoted or updated?",
-  },
-  {
-    id: 'echo',
-    name: 'Echo',
-    role: 'Building Code & Inspection AI',
-    species: 'Inspector Owl',
-    tagline: 'Meticulous inspector focused on compliance, scopes, and punch-list details.',
-    avatarSrc: '/brand/companions/echo.jpg',
-    thinkingSrc: '/brand/companions/echo.jpg',
-    accentColor: '#10b981',
-    badgeLabel: 'Code & Safety',
-    introMessage:
-      "Greetings. I'm Echo, your inspection and scope copilot. I verify code standards, review change orders, cross-reference trade specs, and file thorough job documentation. How can I assist?",
-  },
-  {
-    id: 'beacon',
-    name: 'Beacon',
-    role: 'Modern Cyber Copilot',
-    species: 'Digital AI Orb',
-    tagline: 'Sleek, minimalist, high-speed neural companion for precision workflow automation.',
-    avatarSrc: '/brand/companions/beacon.png',
-    thinkingSrc: '/brand/companions/beacon.png',
-    accentColor: '#38bdf8',
-    badgeLabel: 'Cyber Copilot',
-    introMessage:
-      "Beacon active. Real-time telemetry linked. Ready to analyze job records, synchronize photos, process invoices, or execute workflow commands. What is your objective?",
   },
 ];
 
