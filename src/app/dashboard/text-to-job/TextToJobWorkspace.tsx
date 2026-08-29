@@ -230,7 +230,6 @@ export default function TextToJobWorkspace({
   leadCount,
   crewCount,
 }: TextToJobWorkspaceProps) {
-  const [activeTab, setActiveTab] = useState<'feed' | 'senders' | 'siri'>('feed');
   const [feedFilter, setFeedFilter] = useState<'all' | 'voice' | 'sms' | 'leads' | 'crew'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [messages, setMessages] = useState<InboundMessage[]>(
@@ -563,7 +562,6 @@ export default function TextToJobWorkspace({
 
     setMessages([newSimMsg, ...messages]);
     setSelectedMsgId(newSimMsg.id);
-    setActiveTab('feed');
     setShowSimModal(false);
     setNotification(`⚡ Field note test added to feed! Created ${newExtractedItems.length} verified updates.`);
     setTimeout(() => setNotification(null), 4000);
@@ -636,35 +634,8 @@ export default function TextToJobWorkspace({
       {/* Notification Toast */}
       {notification && <div className={styles.notificationToast}>{notification}</div>}
 
-      {/* 2. Consolidated Navigation Tabs */}
-      <div className={styles.tabNav}>
-        <button
-          type="button"
-          onClick={() => setActiveTab('feed')}
-          className={`${styles.tabBtn} ${activeTab === 'feed' ? styles.tabActive : ''}`}
-        >
-          <span>📥 Inbound Messages &amp; Job Receipts</span>
-          <span className={styles.tabBadge}>{messages.length}</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab('senders')}
-          className={`${styles.tabBtn} ${activeTab === 'senders' ? styles.tabActive : ''}`}
-        >
-          <span>👥 Who Can Text ({totalAuthorizedDevices} Whitelisted Devices)</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab('siri')}
-          className={`${styles.tabBtn} ${activeTab === 'siri' ? styles.tabActive : ''}`}
-        >
-          <span>🎙️ Siri &amp; Hands-Free Driving Setup</span>
-        </button>
-      </div>
-
-      {/* TAB 1: Inbound Messages Stream & Receipt-Style Inspector */}
-      {activeTab === 'feed' && (
-        <div className={styles.workspaceGrid}>
+      {/* Primary Workspace: Inbound Messages Stream & Receipt-Style Inspector */}
+      <div className={styles.workspaceGrid}>
           {/* Left Column: Inbound Messages Stream */}
           <div className={styles.feedCard}>
             <div className={styles.feedCardHeader}>
@@ -879,10 +850,22 @@ export default function TextToJobWorkspace({
             </div>
           )}
         </div>
-      )}
 
-      {/* TAB 2: Who Can Text (Authorized Senders Whitelist) */}
-      {activeTab === 'senders' && (
+      {/* =========================================================================
+          Setup & Advanced Configuration (Who Can Text & Hands-Free Setup)
+          ========================================================================= */}
+      <div className={styles.setupAdvancedSection}>
+        <div className={styles.setupAdvancedHeader}>
+          <div className={styles.setupAdvancedTitleGroup}>
+            <span className={styles.badge}>⚙️ Setup &amp; Advanced</span>
+            <h2 className={styles.setupAdvancedTitle}>Field Line Whitelist &amp; Driving Setup</h2>
+            <p className={styles.setupAdvancedSubtitle}>
+              Manage authorized crew phone numbers, anti-spam security shield, and Siri / Google Assistant hands-free steering wheel dictation.
+            </p>
+          </div>
+        </div>
+
+        {/* Who Can Text (Authorized Senders Whitelist) */}
         <div className={styles.sendersContainer}>
           {/* Qualification Alert if unverified */}
           {!isQualified && (
@@ -1084,10 +1067,8 @@ export default function TextToJobWorkspace({
             </div>
           </div>
         </div>
-      )}
 
-      {/* TAB 3: Siri & Hands-Free Setup */}
-      {activeTab === 'siri' && (
+        {/* Siri & Hands-Free Setup */}
         <div className={styles.siriCard}>
           <div className={styles.siriHeader}>
             <span className={styles.badge}>🎙️ 1-Minute Setup</span>
@@ -1153,7 +1134,7 @@ export default function TextToJobWorkspace({
             </div>
           </div>
         </div>
-      )}
+      </div>
 
       {/* Bottom Metrics & Status Strip */}
       <div className={styles.metricsStrip}>
