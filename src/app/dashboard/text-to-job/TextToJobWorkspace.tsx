@@ -677,22 +677,6 @@ export default function TextToJobWorkspace({
             <div>
               <div className={styles.sparkyBadgeRow}>
                 <span className={styles.badge}>✦ Sparky · Smart AI Contractor Assistant</span>
-                {isDedicatedNumber ? (
-                  <span className={styles.dedicatedPill}>
-                    ⭐ Dedicated 2-Way Line
-                  </span>
-                ) : isQualified ? (
-                  <span className={styles.sharedPill}>
-                    🔒 Shared Platform Line ({fieldPhoneNumber})
-                  </span>
-                ) : (
-                  <span className={styles.unqualifiedPill}>
-                    ⚠️ Mobile Whitelist Setup Required
-                  </span>
-                )}
-                <span className={styles.livePill}>
-                  <span className={styles.liveDot} /> {totalAuthorizedDevices} Whitelisted Devices
-                </span>
               </div>
               <div className={styles.headerTitleRow}>
                 <h1 className={styles.title}>Text-to-Job Dashboard</h1>
