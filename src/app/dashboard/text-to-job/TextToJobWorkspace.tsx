@@ -602,37 +602,10 @@ export default function TextToJobWorkspace({
         )}
       </div>
 
-      {/* 2. Sleek Metrics & Status Strip (Single Row) */}
-      <div className={styles.metricsStrip}>
-        <Link href="/dashboard/jobs" className={styles.metricPill}>
-          <span className={styles.metricIcon}>📁</span>
-          <span className={styles.metricLabel}>Quotes &amp; Costs:</span>
-          <strong>{activeJobCount} Active Jobs</strong>
-        </Link>
-        <Link href="/dashboard/leads" className={styles.metricPill}>
-          <span className={styles.metricIcon}>👤</span>
-          <span className={styles.metricLabel}>CRM:</span>
-          <strong>{leadCount} Leads</strong>
-        </Link>
-        <Link href="/dashboard/schedule" className={styles.metricPill}>
-          <span className={styles.metricIcon}>📅</span>
-          <span className={styles.metricLabel}>Schedule:</span>
-          <strong>Live Calendar</strong>
-        </Link>
-        <Link href="/dashboard/crew" className={styles.metricPill}>
-          <span className={styles.metricIcon}>👷</span>
-          <span className={styles.metricLabel}>Crew Tasks:</span>
-          <strong>{crewCount} Techs</strong>
-        </Link>
-        <div className={styles.undoPill}>
-          <span>⏱️ 15-Min SMS Undo</span>
-        </div>
-      </div>
-
       {/* Notification Toast */}
       {notification && <div className={styles.notificationToast}>{notification}</div>}
 
-      {/* 3. Consolidated Navigation Tabs */}
+      {/* 2. Consolidated Navigation Tabs */}
       <div className={styles.tabNav}>
         <button
           type="button"
@@ -1142,6 +1115,33 @@ export default function TextToJobWorkspace({
           </div>
         </div>
       )}
+
+      {/* Bottom Metrics & Status Strip */}
+      <div className={styles.metricsStrip}>
+        <Link href="/dashboard/jobs" className={styles.metricPill}>
+          <span className={styles.metricIcon}>📁</span>
+          <span className={styles.metricLabel}>Quotes &amp; Costs:</span>
+          <strong>{activeJobCount} Active Jobs</strong>
+        </Link>
+        <Link href="/dashboard/leads" className={styles.metricPill}>
+          <span className={styles.metricIcon}>👤</span>
+          <span className={styles.metricLabel}>CRM:</span>
+          <strong>{leadCount} Leads</strong>
+        </Link>
+        <Link href="/dashboard/schedule" className={styles.metricPill}>
+          <span className={styles.metricIcon}>📅</span>
+          <span className={styles.metricLabel}>Schedule:</span>
+          <strong>Live Calendar</strong>
+        </Link>
+        <Link href="/dashboard/crew" className={styles.metricPill}>
+          <span className={styles.metricIcon}>👷</span>
+          <span className={styles.metricLabel}>Crew Tasks:</span>
+          <strong>{crewCount} Techs</strong>
+        </Link>
+        <div className={styles.undoPill}>
+          <span>⏱️ 15-Min SMS Undo</span>
+        </div>
+      </div>
 
       {/* Upgrade Banner for Shared Line Users (Placed at Bottom) */}
       {!isDedicatedNumber && (
