@@ -40,8 +40,13 @@ export default function PrivacyPolicyPage() {
               photos, and customer correspondence submitted by or on behalf of contractors.
             </li>
             <li>
+              <strong>Sparky Text, Photo &amp; Voice Memo Data:</strong> Text messages, voice recordings, material receipts, and site
+              photos transmitted to Sparky via SMS, MMS, or in-app voice to update job files, sort photos, and draft quotes.
+              <em>Users must not transmit unencrypted credit card numbers, CVVs, or Social Security numbers via SMS.</em>
+            </li>
+            <li>
               <strong>AI Voice &amp; Telephony Data:</strong> Inbound and outbound call metadata (calling numbers, call duration,
-              timestamps), audio recordings where enabled, and machine-generated transcripts created by our AI Voice Receptionist.
+              timestamps), audio recordings where enabled, and machine-generated transcripts created by our 24/7 AI Voice Dispatcher.
             </li>
             <li>
               <strong>Workforce, GPS &amp; Dispatch Information:</strong> Crew member names, phone numbers, roles, timeclock
@@ -64,8 +69,8 @@ export default function PrivacyPolicyPage() {
             <li>Provide, operate, and maintain contractor workspaces, scheduling tools, and published websites.</li>
             <li>Process customer inquiries, quote requests, appointment bookings, and Quick Stop priority reservations.</li>
             <li>
-              Power generative AI features (including automated drafting, estimate calculations, call transcription, and inquiry
-              triage) through secure enterprise API endpoints.
+              Power Sparky and generative AI features (including automated quote drafting, estimate calculations, photo tagging, call transcription, and inquiry
+              triage) through secure enterprise API endpoints with zero-data-retention for model training.
             </li>
             <li>Deliver automated and transactional SMS/MMS messages, voice calls, and transactional/marketing emails.</li>
             <li>Verify business identity and register messaging brand profiles with carrier 10DLC registries.</li>

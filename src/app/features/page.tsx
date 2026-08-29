@@ -33,6 +33,7 @@ import LiveFieldPulse from './LiveFieldPulse';
 import CompanionPhotoScopeDemo from './CompanionPhotoScopeDemo';
 import CompanionRouteDemo from './CompanionRouteDemo';
 import CompanionHUD from './CompanionHUD';
+import HighTechShowcase from '@/components/marketing/HighTechShowcase';
 import themeStyles from './features-theme.module.css';
 
 const FEATURES_URL = 'https://letsgetquoted.com/features';
@@ -484,6 +485,9 @@ export default function FeaturesPage() {
 
       {/* 5-APP SOFTWARE SPRAWL & ROI SAVINGS CALCULATOR */}
       <FeaturesToolSprawlCalculator />
+
+      {/* 2026 NEXT-GEN HIGH-TECH & AI INNOVATIONS SHOWCASE */}
+      <HighTechShowcase />
 
       {/* AI BREAKTHROUGHS & FIELD DISPATCH SUITE */}
       <section className="breakthroughs-band" id="breakthroughs" aria-labelledby="breakthroughs-title" style={{ padding: '4rem 1.5rem', maxWidth: '1200px', margin: '0 auto' }}>

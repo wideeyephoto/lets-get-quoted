@@ -783,12 +783,12 @@ export default function TextToRecordSimulator() {
                 </div>
                 <div className={styles.recipientName}>
                   {perspective === 'contractor'
-                    ? 'Let’s Get Quoted Intake'
+                    ? 'Sparky ⚡ · AI Sidekick'
                     : 'Apex Electric & Plumbing'}
                 </div>
                 <div className={styles.recipientPhone}>
                   {perspective === 'contractor'
-                    ? '(248) 555-0199 · Platform Number'
+                    ? '(248) 555-0199 · Sparky Direct Line'
                     : 'Dave Miller (Homeowner)'}
                 </div>
               </div>

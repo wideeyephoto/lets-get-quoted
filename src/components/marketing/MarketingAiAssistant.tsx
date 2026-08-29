@@ -167,6 +167,27 @@ const FOLLOW_UP_MAP: Record<string, string[]> = {
 
 const KNOWLEDGE_BASE: FaqItem[] = [
   {
+    id: 'sparky',
+    title: 'Who is Sparky and how does he work?',
+    keywords: [
+      'sparky',
+      'sidekick',
+      'assistant',
+      'copilot',
+      'ai assistant',
+      'brain dump',
+      'text sparky',
+      'call sparky',
+      'photo sorting',
+      'reminders',
+      'no app',
+    ],
+    answer:
+      'Sparky is your AI contractor sidekick! You don’t even need to open an app—text or call Sparky to draft quotes, file site photos, reschedule jobs, check unpaid invoices, and set reminders. When you walk up to an estimate, just brain-dump your thoughts to Sparky and he’ll sort it out for you.',
+    ctaText: 'Meet Sparky & See Live Demo',
+    ctaHref: '/features/sparky',
+  },
+  {
     id: 'what-is-lgq',
     title: 'What is Let’s Get Quoted?',
     keywords: [
@@ -606,18 +627,18 @@ export default function MarketingAiAssistant() {
   // Contextual page guidance
   const pageGreeting = useMemo(() => {
     if (pathname?.startsWith('/pricing')) {
-      return 'Looking for the right plan? Calculate your card volume fees below or compare your annual savings on Flex ($0/mo).';
+      return '⚡ Hi, I\'m Sparky! Looking for the right plan? Calculate your card volume fees below or compare your annual savings on Flex ($0/mo).';
     }
     if (pathname?.startsWith('/compare')) {
-      return 'Switching from Jobber or Housecall Pro takes under 10 minutes via CSV with zero contracts and $0 upfront setup.';
+      return '⚡ Hi, I\'m Sparky! Switching from Jobber or Housecall Pro takes under 10 minutes via CSV with zero contracts and $0 upfront setup.';
     }
     if (pathname?.startsWith('/features/website-builder')) {
-      return 'Choose from 20 trade-tested website templates with custom domain connection, Google Reviews, and SSL included.';
+      return '⚡ Hi, I\'m Sparky! Choose from 20 trade-tested website templates with custom domain connection, Google Reviews, and SSL included.';
     }
     if (pathname?.startsWith('/features/ai-intake') || pathname?.startsWith('/features/quick-stops')) {
-      return 'Quick Stops match small emergency leads directly to your crew’s live route so you book extra revenue on the way home.';
+      return '⚡ Hi, I\'m Sparky! Quick Stops match small emergency leads directly to your crew’s live route so you book extra revenue on the way home.';
     }
-    return '👋 Hi! Ask anything about plans, instant quotes, QuickBooks sync, or switching. Tap a quick question or use the tools below:';
+    return '⚡ Hi, I\'m Sparky! Ask me anything about plans, instant quotes, QuickBooks sync, or switching. Tap a quick question or use the tools below:';
   }, [pathname]);
 
   // Plan recommendation logic derived directly from product truth catalog
@@ -738,13 +759,13 @@ export default function MarketingAiAssistant() {
             type="button"
             onClick={() => setIsOpen(true)}
             className={styles.floatingTrigger}
-            aria-label="Open AI Product Assistant"
+            aria-label="Open Sparky AI Product Assistant"
             aria-expanded={isOpen}
             aria-controls="marketing-ai-assistant-drawer"
           >
             <span className={styles.sparkleIcon}>✦</span>
             <div className={styles.triggerText}>
-              <span className={styles.triggerTitle}>Ask AI Helper</span>
+              <span className={styles.triggerTitle}>Ask Sparky</span>
             </div>
           </button>
         )}
@@ -756,14 +777,14 @@ export default function MarketingAiAssistant() {
             ref={drawerRef}
             className={styles.drawer}
             role="dialog"
-            aria-label="Let’s Get Quoted AI Helper"
+            aria-label="Sparky - Let’s Get Quoted AI Assistant"
           >
           {/* Header */}
           <div className={styles.drawerHeader}>
             <div className={styles.headerLeft}>
               <div className={styles.avatar}>✦</div>
               <div className={styles.botInfo}>
-                <span className={styles.botName}>Let’s Get Quoted Assistant</span>
+                <span className={styles.botName}>Sparky · Let’s Get Quoted AI</span>
                 <span className={styles.botStatus}>
                   <span className={styles.statusDot} /> Online · Instant Answers
                 </span>

@@ -18,6 +18,7 @@ import LaunchBanner from '@/components/marketing/launch-banner';
 import ThemeFab from '@/components/theme-fab';
 import IntegrationTrustStrip from '@/components/marketing/IntegrationTrustStrip';
 import InteractiveQuoteUpsellDemo from '@/components/marketing/InteractiveQuoteUpsellDemo';
+import HighTechShowcase from '@/components/marketing/HighTechShowcase';
 
 const TradeOrbit = dynamic(() => import('./trade-orbit'), { ssr: true });
 const CommandCenterDeck = dynamic(() => import('@/components/command-center-deck'), { ssr: true });
@@ -683,6 +684,9 @@ export default function FlagshipHome() {
 
       {/* VERIFIED PLATFORM INTEGRATIONS & TRUST */}
       <IntegrationTrustStrip />
+
+      {/* 2026 NEXT-GEN HIGH-TECH & AI INNOVATIONS SHOWCASE */}
+      <HighTechShowcase />
 
       {/* DEDICATED PRODUCT EXPERIENCE SECTION: AI PHOTO INTAKE & SCOPE SCANNER */}
       <section

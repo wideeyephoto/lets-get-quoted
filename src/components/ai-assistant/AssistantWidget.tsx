@@ -93,7 +93,7 @@ export default function AssistantWidget() {
     {
       id: 'welcome',
       role: 'assistant',
-      content: "Hi! I'm your contractor AI Assistant. I have live awareness of your active workspace and screen. What would you like to do?",
+      content: "⚡ Hey there, I'm Sparky! Your AI contractor sidekick. Walking up to an estimate? Just tell me everything you're thinking (scope, materials, labor, add-ons) and I'll sort it out into a send-ready quote for you! You can also text site photos & notes to your business line, check unpaid invoices, or reschedule jobs. What can I tackle for you today?",
       createdAt: new Date().toISOString(),
     },
   ]);
@@ -212,7 +212,7 @@ export default function AssistantWidget() {
       {
         id: 'welcome',
         role: 'assistant',
-        content: "History cleared. How can I help you with this screen or workspace?",
+        content: "⚡ History cleared. I'm Sparky — ready for your next question or command!",
         createdAt: new Date().toISOString(),
       },
     ]);
@@ -225,21 +225,21 @@ export default function AssistantWidget() {
         type="button"
         className={styles.floatingTrigger}
         onClick={toggleAssistant}
-        aria-label="Open Help Assistant"
+        aria-label="Open Sparky AI Assistant"
       >
         <span className={styles.triggerIcon}>
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3L12 3z" />
           </svg>
         </span>
-        <span>Help</span>
+        <span>Sparky</span>
       </button>
 
       {/* Assistant Modal / Drawer */}
       {isOpen ? (
         <>
           <div className={styles.overlay} onClick={closeAssistant} aria-hidden="true" />
-          <div className={styles.panel} role="dialog" aria-label="AI Contractor Assistant">
+          <div className={styles.panel} role="dialog" aria-label="Sparky - Contractor AI Assistant">
             {/* Header */}
             <div className={styles.header}>
               <div className={styles.headerTitle}>
@@ -249,8 +249,8 @@ export default function AssistantWidget() {
                   </svg>
                 </div>
                 <div>
-                  <div className={styles.titleText}>Contractor AI Assistant</div>
-                  <div className={styles.headerSubtitle}>Powered by Gemini 3.7 Flash</div>
+                  <div className={styles.titleText}>Sparky</div>
+                  <div className={styles.headerSubtitle}>Contractor AI Sidekick · Gemini 3.7 Flash</div>
                 </div>
               </div>
               <div className={styles.headerControls}>
@@ -364,8 +364,8 @@ export default function AssistantWidget() {
                 className={styles.inputField}
                 placeholder={
                   activeContext.type === 'job'
-                    ? "Command for this job (e.g. 'Add $300 add-on for tile', 'Reschedule')..."
-                    : "Ask or command (e.g. 'Draft $1,200 quote for Sarah')..."
+                    ? "Ask Sparky for this job (e.g. 'Add $300 add-on for tile', 'Reschedule')..."
+                    : "Ask Sparky anything (e.g. 'Draft $1,200 quote for Sarah', 'Who owes money?')..."
                 }
                 value={input}
                 onChange={(e) => setInput(e.target.value)}

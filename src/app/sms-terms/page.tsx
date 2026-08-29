@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { TERMS_EFFECTIVE_DATE } from '@/lib/terms';
 import styles from '../legal.module.css';
 
 export const metadata: Metadata = {
@@ -38,7 +39,7 @@ export default function SmsTermsPage() {
           govern every text message sent through the Let&apos;s Get Quoted platform &mdash; both messages we send to
           contractors who use the software, and messages contractors send to their own customers through it.
         </p>
-        <span className={styles.effectiveDate}>Effective August 6, 2026</span>
+        <span className={styles.effectiveDate}>Effective {TERMS_EFFECTIVE_DATE}</span>
       </header>
 
       <div className={styles.legalContent}>
@@ -84,6 +85,12 @@ export default function SmsTermsPage() {
           <p>
             <strong>Crew</strong> &mdash; job assignments, schedule changes and sign-in links, sent to crew members
             added to a contractor&apos;s account by that contractor.
+          </p>
+          <p>
+            <strong>Sparky AI Sidekick &amp; Text-to-Job</strong> &mdash; inbound and outbound operational messages between
+            authenticated contractors and Sparky (field voice memos, site photo attachments, punch list additions, change orders,
+            estimate brain dumps, scheduled follow-up alerts, and transactional confirmation receipts). Standard carrier SMS/MMS is
+            unencrypted; users must never send credit card numbers, CVVs, or Social Security numbers via text.
           </p>
           <p>
             <strong>Review requests</strong> &mdash; a single request after a completed job, offering both a public

@@ -124,8 +124,9 @@ CONTEXTUAL INSTRUCTIONS FOR ACTIVE RECORD:
 `;
   }
 
-  return `You are the intelligent in-app AI assistant for the contractor product "Let's Get Quoted".
+  return `You are Sparky (⚡), the witty, sharp, and highly capable in-app AI contractor sidekick for the contractor platform "Let's Get Quoted".
 You are assisting an authenticated contractor / business operator inside their live dashboard.
+Introduce yourself as Sparky if asked.
 
 Current Workspace Context:
 - Business Name: "${ctx.businessName || 'Contractor Workspace'}"
@@ -149,7 +150,7 @@ Your Capabilities & Tools:
 11. "navigate_to": Direct the user to specific pages (jobs, schedule, clients, settings, cash flow, sites, automations, sms).
 
 Guidelines:
-- Be concise, professional, and action-oriented. Contractors want quick execution and direct feedback.
+- Be concise, professional, friendly, and action-oriented. Contractors want quick execution and direct feedback.
 - When creating or modifying quotes, confirm the updated figures (e.g. new total price, newly added item, updated date).
 - Always execute appropriate tools to retrieve or mutate live workspace database records.`;
 }
@@ -181,13 +182,13 @@ export async function runAssistantConversation(
       message: {
         id: `msg-${Date.now()}`,
         role: 'assistant',
-        content: `I'm your contractor AI Assistant! To enable live natural-language actions (like creating quotes, checking unpaid invoices, and looking up clients), please configure \`GEMINI_API_KEY\` in your \`.env.local\` file.`,
+        content: `I'm Sparky, your contractor AI sidekick! To enable live natural-language actions (like creating quotes, checking unpaid invoices, and looking up clients), please configure \`GEMINI_API_KEY\` in your \`.env.local\` file.`,
         createdAt: new Date().toISOString(),
       },
       actionCards: [
         {
           type: 'navigation',
-          title: 'Configure AI Assistant',
+          title: 'Configure Sparky (AI Assistant)',
           description: 'Add GEMINI_API_KEY to your environment variables to enable live agentic tools.',
           linkUrl: '/dashboard/settings',
           linkLabel: 'Open Settings',

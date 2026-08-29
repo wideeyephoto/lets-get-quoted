@@ -5,24 +5,24 @@ import { TRADES } from '@/lib/trades';
 import styles from './ai-voice.module.css';
 
 export const metadata: Metadata = {
-  title: 'AI Voice Assistant & 24/7 Phone Receptionist',
+  title: 'Sparky Voice Dispatcher · 24/7 AI Receptionist for Contractors',
   description:
-    'Never miss a contractor lead while on a roof or behind the wheel. 24/7 AI phone answering, trade-tailored lead qualification, audio transcripts, and hands-free voice notes.',
+    'Meet Sparky: your 24/7 AI phone receptionist and dispatcher. Sparky answers every homeowner call, qualifies job urgency, transcribes audio, and dispatches leads to your truck.',
   alternates: { canonical: 'https://letsgetquoted.com/features/ai-voice' },
   openGraph: {
     type: 'website',
     url: 'https://letsgetquoted.com/features/ai-voice',
     siteName: "Let's Get Quoted",
-    title: 'Your 24/7 AI Phone Receptionist & Hands-Free Voice Assistant',
+    title: 'Sparky Voice Dispatcher · 24/7 AI Receptionist for Contractors',
     description:
-      'Answer every incoming call, qualify homeowner project details, transcribe audio, and draft quotes hands-free while driving.',
-    images: [{ url: '/features/og-voice.jpg', width: 1200, height: 630, alt: 'Let’s Get Quoted Contractor Voice AI' }],
+      'Answer every incoming call, qualify homeowner project details, transcribe audio, and dispatch quotes hands-free with Sparky.',
+    images: [{ url: '/features/og-voice.jpg', width: 1200, height: 630, alt: 'Sparky AI Voice Dispatcher for Contractors' }],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Your 24/7 AI Phone Receptionist & Hands-Free Voice Assistant',
+    title: 'Sparky Voice Dispatcher · 24/7 AI Receptionist for Contractors',
     description:
-      'Answer every incoming call, qualify homeowner project details, transcribe audio, and draft quotes hands-free while driving.',
+      'Answer every incoming call, qualify homeowner project details, transcribe audio, and dispatch quotes hands-free with Sparky.',
     images: ['/features/og-voice.jpg'],
   },
 };
@@ -32,7 +32,7 @@ function VoiceSimulator() {
     <div className={styles.voiceSimulator}>
       <div className={styles.callHeader}>
         <div className={styles.callerInfo}>
-          <span className={styles.callBadge}>24/7 AI Receptionist · Live Call</span>
+          <span className={styles.callBadge}>⚡ Sparky · 24/7 AI Dispatcher &amp; Receptionist</span>
           <h4 className={styles.callerName}>Homeowner: Sarah Jenkins</h4>
           <span className={styles.callerSub}>Royal Oak, MI · (248) 555-0192</span>
         </div>
@@ -58,7 +58,7 @@ function VoiceSimulator() {
           <span style={{ height: '55%' }}></span>
           <span style={{ height: '30%' }}></span>
         </div>
-        <span className={styles.audioLabel}>AI Voice Engine active · Speech-to-text recording</span>
+        <span className={styles.audioLabel}>Sparky Voice Engine active · Speech-to-text recording</span>
       </div>
 
       {/* Real-time Transcription Stream */}
@@ -67,7 +67,7 @@ function VoiceSimulator() {
           <strong>Sarah (Caller):</strong> &ldquo;Hi, our main circuit breaker tripped twice this morning and we smell a faint burning odor near the basement panel. Can someone come out today?&rdquo;
         </div>
         <div className={`${styles.bubble} ${styles.aiBubble}`}>
-          <strong>AI Receptionist:</strong> &ldquo;I can get an emergency priority alert to our master electrician right now. Does the panel feel warm to the touch, and what brand is the breaker box if you know?&rdquo;
+          <strong>Sparky (AI Dispatcher):</strong> &ldquo;I can get an emergency priority alert to our master electrician right now. Does the panel feel warm to the touch, and what brand is the breaker box if you know?&rdquo;
         </div>
         <div className={`${styles.bubble} ${styles.callerBubble}`}>
           <strong>Sarah (Caller):</strong> &ldquo;It’s a Square D 200-amp box. It feels slightly warm on the left side.&rdquo;
@@ -81,9 +81,9 @@ function VoiceSimulator() {
           <span className={styles.priorityHot}>Urgent · Same-Day Fit</span>
         </div>
         <ul className={styles.extractedFacts}>
-          <li><strong>Trade & Issue:</strong> Electrical · Tripping main breaker + burning odor</li>
+          <li><strong>Trade &amp; Issue:</strong> Electrical · Tripping main breaker + burning odor</li>
           <li><strong>Equipment:</strong> Square D 200A basement panel</li>
-          <li><strong>Action Taken:</strong> Audio transcribed, phone verified, priority SMS dispatched to your truck</li>
+          <li><strong>Action Taken:</strong> Audio transcribed, phone verified, priority SMS dispatched by Sparky to your truck</li>
         </ul>
       </div>
     </div>
@@ -92,73 +92,73 @@ function VoiceSimulator() {
 
 const FAQ = [
   {
-    q: 'How does the 24/7 AI Phone Receptionist work?',
-    a: 'You get a dedicated phone line or forward your existing business number when you’re busy. The AI answers immediately in a natural voice, asks trade-specific questions, transcribes the conversation, and delivers a structured lead summary to your dashboard and mobile phone via SMS.',
+    q: 'How does Sparky work as our 24/7 AI Phone Receptionist & Dispatcher?',
+    a: 'You get a dedicated phone line or forward your existing business number when you’re busy. Sparky answers immediately in a warm, natural voice, asks trade-specific diagnostic questions, transcribes the conversation, and delivers a structured lead summary to your dashboard and mobile phone via SMS dispatch alert.',
   },
   {
-    q: 'Can I talk to my app while driving to draft quotes or notes?',
-    a: 'Yes. With Hands-Free Voice Actions, you tap the microphone button on your phone and speak normally (e.g. "Draft quote for 40 linear feet of copper gutter replacement, $1,400 labor, $850 materials"). The AI formats it directly into an itemized quote draft ready for your approval.',
+    q: 'Can I call or talk to Sparky while driving to draft quotes or notes?',
+    a: 'Yes! With Hands-Free Voice Actions, you can call Sparky or tap the microphone button on your phone and speak normally (e.g. "Draft quote for 40 linear feet of copper gutter replacement, $1,400 labor, $850 materials"). Sparky formats it directly into an itemized quote draft ready for your approval.',
   },
   {
-    q: 'Does it understand accents and technical contractor terminology?',
-    a: 'Yes. The voice engine is trained specifically on blue-collar trade vocabularies—from 200-amp panels and Romex wiring to architectural shingles, PEX manifold lines, and tonnage calculations.',
+    q: 'Does Sparky understand accents and technical contractor terminology?',
+    a: 'Yes. Sparky is fine-tuned specifically on blue-collar trade vocabularies—from 200-amp panels and Romex wiring to architectural shingles, PEX manifold lines, and tonnage calculations.',
   },
   {
     q: 'What happens if a homeowner demands to speak to a human?',
-    a: 'The AI gracefully informs them that you are currently on a job site with your hands full, collects their exact urgency and callback window, and triggers an urgent priority alert directly to your personal phone.',
+    a: 'Sparky gracefully informs them that you are currently on a job site with your hands on tools, collects their exact urgency and callback window, and triggers an urgent priority alert directly to your personal phone.',
   },
   {
-    q: 'Do I get the actual audio recording as well as the text?',
-    a: 'Yes. Every incoming call and voice note includes both the audio playback clip and the timestamped, searchable text transcript.',
+    q: 'Do I get the actual audio recording as well as the text transcript?',
+    a: 'Yes. Every incoming call and voice note includes both the full audio playback clip and the timestamped, searchable text transcript logged right into the client’s file.',
   },
 ];
 
 export default function AiVoicePage() {
   return (
     <FeatureDetailLayout
-      breadcrumb={{ name: 'AI Voice Assistant', path: '/features/ai-voice' }}
-      eyebrow="AI Voice Assistant & 24/7 Phone Receptionist"
+      breadcrumb={{ name: 'AI Voice Dispatcher', path: '/features/ai-voice' }}
+      eyebrow="✦ MEET SPARKY · 24/7 AI VOICE DISPATCHER &amp; RECEPTIONIST"
       title={
         <>
-          Answer every customer call. <em>Even when your hands are on the tools.</em>
+          Meet Sparky: your 24/7 Voice Dispatcher. <em>Answer every call, even while on the tools.</em>
         </>
       }
-      lede="Never lose a high-value job because you couldn't pick up the phone. Our 24/7 AI Voice Receptionist qualifies callers, records transcripts, and lets you dictate job notes hands-free from the truck."
-      heroNote="Dedicated phone number · 2-way call forwarding · Audio recording + instant transcripts"
-      heroChips={['24/7 Phone Answering', 'Trade-Specific Follow-ups', 'Hands-Free Field Dictation']}
-      primary={{ label: 'Try Voice in the Demo', href: '/demo/voice' }}
+      lede="Never lose a high-value job because you couldn't pick up the phone. Sparky acts as your 24/7 AI Voice Receptionist and Dispatcher: he qualifies callers, records transcripts, dispatches urgent leads, and lets you dictate job notes hands-free from the truck."
+      heroNote="Dedicated phone line · 2-way call forwarding · Audio recording + instant transcripts · Included on eligible plans"
+      heroChips={['⚡ Sparky 24/7 Voice Dispatcher', '⚡ Trade-Specific Follow-ups', '⚡ Hands-Free Truck Dictation']}
+      primary={{ label: 'Try Sparky Voice in Demo', href: '/demo/voice' }}
       secondary={{ label: 'See all features', href: '/features' }}
       demo={
         <ExampleFrame
-          label="Live Call Qualifying & Real-Time Transcription"
-          note="Simulated incoming homeowner emergency call. The voice assistant qualifies the urgency, diagnoses the panel type, and notifies the contractor instantly."
+          label="Live Call Qualifying & Real-Time Sparky Dispatching"
+          note="Simulated incoming homeowner emergency call. Sparky qualifies the urgency, diagnoses the panel type, and dispatches the priority alert to the contractor instantly."
         >
           <VoiceSimulator />
         </ExampleFrame>
       }
       proof={[
-        { title: 'Zero Missed Calls', body: 'Answers in 2 rings 24/7/365, even on weekends and holidays.' },
-        { title: 'Hands-Free Dictation', body: 'Speak quotes and job notes while driving between sites.' },
+        { title: 'Zero Missed Calls', body: 'Sparky answers in 2 rings 24/7/365, even on weekends and holidays.' },
+        { title: 'Hands-Free Dictation', body: 'Speak quotes and job notes to Sparky while driving between sites.' },
         { title: 'Trade Vocabulary', body: `Trained on terminology across all ${TRADES.length} contractor trades.` },
-        { title: 'Audio & Transcripts', body: 'Full audio playback and searchable text logged to the job record.' },
+        { title: 'Audio & Transcripts', body: 'Full audio playback and searchable text logged by Sparky to the job record.' },
       ]}
       story={{
         eyebrow: 'Contractors lose 30% of incoming jobs to voicemail',
         title: 'The first contractor to answer gets the job.',
-        body: 'Homeowners with an urgent repair call down Google listings until someone answers. If you’re under a sink, on a roof, or on a highway, you can’t pick up. Our AI voice engine answers immediately, speaks professionally with trade knowledge, collects photos and specs, and routes high-margin work directly to your mobile.',
+        body: 'Homeowners with an urgent repair call down Google listings until someone answers. If you’re under a sink, on a roof, or on a highway, you can’t pick up. Sparky answers immediately, speaks professionally with trade knowledge, collects photos and specs, and dispatches high-margin work directly to your mobile.',
       }}
       benefits={[
         {
-          title: '24/7 AI Phone Receptionist',
-          body: 'Answers in a warm, natural voice. Asks the specific follow-up questions your trade requires to know if the job is worth driving for.',
+          title: '24/7 AI Phone Receptionist & Dispatcher',
+          body: 'Sparky answers in a warm, natural voice. He asks the specific follow-up questions your trade requires to know if the job is worth driving for and dispatches priority SMS alerts.',
         },
         {
-          title: 'Hands-Free Voice Actions in the Field',
-          body: 'Tap the mic on your dashboard to dictate site notes, record labor hours, or generate an itemized quote draft without typing a word.',
+          title: 'Hands-Free Voice Actions with Sparky',
+          body: 'Call Sparky or tap the mic on your dashboard to dictate site notes, record labor hours, or generate an itemized quote draft without typing a word.',
         },
         {
           title: 'Audio Transcripts & Instant Extraction',
-          body: 'Every conversation is transcribed, summarized into key job parameters, and synced straight to your client and lead pipeline.',
+          body: 'Sparky transcribes every conversation, summarizes key job parameters, and syncs them straight to your client and lead pipeline.',
         },
       ]}
       stepsEyebrow="From phone ring to scheduled job"
@@ -166,14 +166,14 @@ export default function AiVoicePage() {
       steps={[
         {
           title: '01 · Homeowner calls your business line',
-          body: 'The call is routed to your AI receptionist with zero latency. It greets them using your business name.',
+          body: 'The call routes to Sparky with zero latency. Sparky greets them using your business name.',
         },
         {
-          title: '02 · AI qualifies the project scope',
+          title: '02 · Sparky qualifies the project scope',
           body: 'Asks for address, urgency, equipment age, and job symptoms based on your trade rules.',
         },
         {
-          title: '03 · Instant notification to your phone',
+          title: '03 · Sparky dispatches an alert to your phone',
           body: 'You receive an urgent SMS with the caller’s info, transcription summary, and scored priority.',
         },
         {
@@ -182,14 +182,14 @@ export default function AiVoicePage() {
         },
       ]}
       cta={{
-        title: 'Never lose another job to voicemail.',
-        note: 'AI Voice assistant & phone line included on eligible plans. Standard voicemail takes over when credits run out.',
+        title: 'Put Sparky on dispatch for your business.',
+        note: 'Sparky voice assistant & phone line included on eligible plans. Standard voicemail takes over when credits run out.',
       }}
     >
       <section className="section-block" aria-labelledby="voice-faq-title" style={{ margin: '48px 0' }}>
         <div>
           <p className="eyebrow">Before you turn it on</p>
-          <h2 id="voice-faq-title">The questions contractors ask us.</h2>
+          <h2 id="voice-faq-title">Frequently asked questions about Sparky Voice Dispatcher.</h2>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1.5rem' }}>

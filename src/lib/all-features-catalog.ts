@@ -392,6 +392,20 @@ export const ALL_FEATURES_CATALOG: FeatureCatalogCategory[] = [
     intro: 'Speak naturally while driving or on-site to create leads, update line items, or draft change orders hands-free.',
     features: [
       {
+        id: 'sparky-ai-sidekick',
+        name: 'Sparky In-App AI Sidekick',
+        desc: 'In-app AI assistant with live screen awareness. Text Sparky site photos, notes, and voice memos—he sorts them to the right job and reminds you later.',
+        tags: ['AI Sidekick', 'Text-to-Job', 'Photo Sorting', 'Voice & Text'],
+        subBullets: [
+          'Text-to-Job photo & note sorting: text site photos or receipts via SMS and Sparky files them directly into the right job record.',
+          'Automated follow-up reminders: tell Sparky when to remind you to send quotes, order materials, or follow up with clients.',
+          'In-context workspace awareness pre-hydrates active job and client files on your screen.',
+          'Natural language quote builder calculates line items, materials, labor, and add-on up-sells.',
+          'Live punch list updater adds and manages tasks on active jobs on the fly.',
+          'Cash flow watchdog queries overdue invoices and dispatches 1-tap SMS payment links.',
+        ],
+      },
+      {
         id: 'speech-to-action',
         name: 'Speech-to-Action Field Dictation',
         desc: 'Transcribes spoken audio into clean, structured database updates using specialized trade prompts.',
