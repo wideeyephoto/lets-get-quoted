@@ -278,6 +278,20 @@ export default async function FieldHomePage() {
           <span aria-hidden="true">›</span>
         </Link>
 
+        {/* End-of-Day Dictated Inputs & Voice Log */}
+        <Link href="/field/dictate" className="field-paylink" style={{ borderLeft: '4px solid #ff6a24' }}>
+          <span>
+            <strong style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span>🎙️ Dictated Inputs &amp; Tasks</span>
+              <span style={{ fontSize: '10px', background: 'rgba(255,106,36,0.2)', color: '#ff8e42', padding: '1px 6px', borderRadius: '4px' }}>
+                End of Day Wrap-Up
+              </span>
+            </strong>
+            Review voice memos, check off punch lists &amp; submit daily summary
+          </span>
+          <span aria-hidden="true">›</span>
+        </Link>
+
         {/* routeItems, not jobs: a day can legitimately be one dump run and
             nothing else, and "you have no assigned jobs" would have hidden the
             only thing on it. */}

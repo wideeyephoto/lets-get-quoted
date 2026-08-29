@@ -1,0 +1,305 @@
+/* Crew Field Text-to-Job & Dictation Styles */
+
+.container {
+  padding: 16px;
+  max-width: 680px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  color: #f5f0e7;
+}
+
+/* Hotline Action Banner */
+.hotlineCard {
+  background: radial-gradient(circle at 10% 20%, rgba(255, 106, 36, 0.15), transparent 50%),
+              linear-gradient(175deg, #0e273c 0%, #061421 100%);
+  border: 1px solid rgba(255, 113, 55, 0.35);
+  border-radius: 18px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.hotlineHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.hotlineBadge {
+  font-size: 11px;
+  font-weight: 850;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(255, 106, 36, 0.15);
+  color: #ff8e42;
+  border: 1px solid rgba(255, 106, 36, 0.35);
+}
+
+.hotlineStatus {
+  font-size: 11px;
+  font-weight: 800;
+  color: #50e3bd;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.hotlineMain {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.hotlineTitle {
+  font-size: 16px;
+  font-weight: 900;
+  color: #f5f0e7;
+  margin: 0;
+}
+
+.hotlineNumber {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 22px;
+  font-weight: 900;
+  color: #50e3bd;
+  letter-spacing: -0.01em;
+}
+
+.hotlineSub {
+  font-size: 12px;
+  color: #9cb1c0;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.hotlineActionsGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.actionBtnSms {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: #ff6a24;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 850;
+  padding: 12px;
+  border-radius: 12px;
+  text-decoration: none;
+  border: none;
+  box-shadow: 0 4px 14px rgba(255, 106, 36, 0.35);
+  text-align: center;
+}
+
+.actionBtnVcard {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(174, 199, 211, 0.25);
+  color: #d1e2eb;
+  font-size: 13px;
+  font-weight: 750;
+  padding: 12px;
+  border-radius: 12px;
+  text-decoration: none;
+  text-align: center;
+}
+
+/* Language Toggle */
+.langBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(5, 15, 25, 0.75);
+  border: 1px solid rgba(174, 199, 211, 0.15);
+  border-radius: 12px;
+  padding: 8px 12px;
+  font-size: 12px;
+}
+
+.langToggleBtn {
+  background: #0d273c;
+  border: 1px solid rgba(80, 227, 189, 0.3);
+  color: #50e3bd;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 4px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+/* End of Day Wrap-Up Box */
+.eodSection {
+  background: linear-gradient(165deg, rgba(12, 28, 44, 0.95), rgba(6, 17, 27, 0.98));
+  border: 1px solid rgba(80, 227, 189, 0.25);
+  border-radius: 18px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.eodHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.eodTitle {
+  font-size: 15px;
+  font-weight: 850;
+  color: #f5f0e7;
+  margin: 0;
+}
+
+.eodBadge {
+  font-size: 11px;
+  font-weight: 800;
+  color: #ff8e42;
+  background: rgba(255, 106, 36, 0.12);
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+
+.feedList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.feedItemCard {
+  background: rgba(4, 11, 18, 0.85);
+  border: 1px solid rgba(174, 199, 211, 0.15);
+  border-radius: 12px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.feedItemHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.feedItemType {
+  font-size: 11px;
+  font-weight: 800;
+  color: #50e3bd;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.feedItemTime {
+  font-size: 11px;
+  color: #7da0b3;
+}
+
+.feedItemText {
+  font-size: 13.5px;
+  color: #f5f0e7;
+  margin: 0;
+  line-height: 1.45;
+  font-style: italic;
+}
+
+.extractedPills {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border-top: 1px solid rgba(174, 199, 211, 0.1);
+  padding-top: 8px;
+}
+
+.taskCheckboxRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.taskCheckbox {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  border: 1.5px solid #50e3bd;
+  background: rgba(80, 227, 189, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #50e3bd;
+  font-size: 12px;
+  font-weight: 900;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.taskCheckboxUnchecked {
+  border-color: rgba(174, 199, 211, 0.3);
+  background: transparent;
+  color: transparent;
+}
+
+.taskMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.taskTitle {
+  font-size: 12.5px;
+  font-weight: 750;
+  color: #f5f0e7;
+}
+
+.taskDetail {
+  font-size: 11px;
+  color: #8fa6b5;
+}
+
+.eodSubmitBtn {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #061912;
+  font-size: 14px;
+  font-weight: 900;
+  padding: 14px;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.35);
+  margin-top: 6px;
+}
+
+.eodSubmitBtn:hover {
+  transform: translateY(-1px);
+}
+
+.toastSuccess {
+  background: rgba(16, 185, 129, 0.2);
+  border: 1px solid rgba(16, 185, 129, 0.5);
+  color: #50e3bd;
+  font-size: 12.5px;
+  font-weight: 800;
+  padding: 12px 14px;
+  border-radius: 10px;
+  text-align: center;
+}
