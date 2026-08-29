@@ -33,39 +33,53 @@ function VisionInspectorSimulator() {
       <div className={styles.visionHeader}>
         <div>
           <span className={styles.visionBadge}>✦ Multimodal AI Vision Engine</span>
-          <h4 className={styles.visionTitle}>Photo Scope & Damage Diagnostic</h4>
+          <h4 className={styles.visionTitle}>Photo Scope &amp; Equipment Diagnostic</h4>
         </div>
         <span className={styles.confidencePill}>98.4% Detection Confidence</span>
       </div>
 
       <div className={styles.photoGrid}>
-        {/* Photo Box 1: Electrical / HVAC / Plumbing */}
+        {/* Photo Box 1: Equipment Model OCR */}
         <div className={styles.photoBox}>
           <div className={styles.photoPlaceholder}>
-            <span className={styles.photoIcon}>📸</span>
-            <span className={styles.photoLabel}>furnace-model-plate.jpg</span>
-            <div className={styles.detectionBox} style={{ top: '25%', left: '20%', width: '55%', height: '45%' }}>
-              <span className={styles.detectionLabel}>Rating Plate: Carrier 59TP6B</span>
+            <div className={styles.cameraHudCornerTopLeft}></div>
+            <div className={styles.cameraHudCornerTopRight}></div>
+            <div className={styles.cameraHudCornerBottomLeft}></div>
+            <div className={styles.cameraHudCornerBottomRight}></div>
+            <span className={styles.scanTargetIcon}>🎯</span>
+            <span className={styles.photoLabel}>furnace-rating-plate.jpg</span>
+            <div className={styles.detectionBox} style={{ top: '22%', left: '16%', width: '68%', height: '52%' }}>
+              <span className={styles.detectionLabel}>OCR: Carrier 59TP6B · Gas 80k BTU</span>
             </div>
           </div>
           <div className={styles.photoMeta}>
-            <b>Equipment Model Identified</b>
-            <small>Carrier Performance 96% AFUE, 80,000 BTU, Gas, 2014</small>
+            <div className={styles.metaRow}>
+              <b>Equipment Identified:</b>
+              <span className={styles.metaTag}>Carrier Performance 96%</span>
+            </div>
+            <small>80,000 BTU &middot; Variable-Speed 2-Stage &middot; Manufactured 2014</small>
           </div>
         </div>
 
-        {/* Photo Box 2: Scope / Damage */}
+        {/* Photo Box 2: Defect / Corrosion Diagnostic */}
         <div className={styles.photoBox}>
           <div className={styles.photoPlaceholder}>
-            <span className={styles.photoIcon}>📸</span>
-            <span className={styles.photoLabel}>heat-exchanger-rust.jpg</span>
-            <div className={styles.detectionBox} style={{ top: '35%', left: '30%', width: '40%', height: '40%' }}>
-              <span className={styles.detectionLabel}>Flame Rollout / Rust Cracking</span>
+            <div className={styles.cameraHudCornerTopLeft}></div>
+            <div className={styles.cameraHudCornerTopRight}></div>
+            <div className={styles.cameraHudCornerBottomLeft}></div>
+            <div className={styles.cameraHudCornerBottomRight}></div>
+            <span className={styles.scanTargetIcon}>🔍</span>
+            <span className={styles.photoLabel}>secondary-coil-rust.jpg</span>
+            <div className={styles.detectionBoxDefect} style={{ top: '30%', left: '24%', width: '52%', height: '48%' }}>
+              <span className={styles.detectionLabelDefect}>Hazard: Severe Flame Rollout Corrosion</span>
             </div>
           </div>
           <div className={styles.photoMeta}>
-            <b>Diagnostic Finding</b>
-            <small>Severe corrosion on secondary coil; flagged for replacement</small>
+            <div className={styles.metaRow}>
+              <b>Diagnostic Finding:</b>
+              <span className={styles.metaTagDanger}>Coil Failure Imminent</span>
+            </div>
+            <small>Corrosion breach on heat exchanger; replacement flagged for client safety</small>
           </div>
         </div>
       </div>
@@ -73,7 +87,7 @@ function VisionInspectorSimulator() {
       {/* Extracted Scope & Pick-List */}
       <div className={styles.pickListContainer}>
         <div className={styles.pickListHead}>
-          <span className={styles.pickListTitle}>Generated Material Pick-List & Scope</span>
+          <span className={styles.pickListTitle}>Generated Material Pick-List &amp; Scope</span>
           <span className={styles.groundedPrice}>Estimated Scope: $4,800 – $6,200</span>
         </div>
         <ul className={styles.pickListItems}>
@@ -83,7 +97,7 @@ function VisionInspectorSimulator() {
           </li>
           <li>
             <span className={styles.itemCheck}>✓</span>
-            <span><strong>Flue & Venting:</strong> 2-pipe PVC concentric vent kit (2-inch diameter)</span>
+            <span><strong>Flue &amp; Venting:</strong> 2-pipe PVC concentric vent kit (2-inch diameter)</span>
           </li>
           <li>
             <span className={styles.itemCheck}>✓</span>

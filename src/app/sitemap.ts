@@ -17,7 +17,7 @@ const FEATURE_SLUGS = [
   'ai-intake',
   'ai-voice',
   'ai-vision',
-  'text-to-record',
+  'text-to-job',
   'dispatch',
   'quick-stops',
   'client-portal',

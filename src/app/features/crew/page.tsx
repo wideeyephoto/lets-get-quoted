@@ -32,6 +32,119 @@ export const metadata: Metadata = {
   },
 };
 
+import styles from '@/components/marketing/suite-feature-page.module.css';
+
+const CREW_FLOW = [
+  {
+    step: 'Step 1',
+    title: 'Passwordless mobile field app for every crew member',
+    body: 'Crew members tap an instant magic link—no app store downloads or forgotten passwords. They see customer names, scopes, lockbox codes, and address maps.',
+    mock: (
+      <div className={styles.shotMockContainer}>
+        <div className={styles.shotMockHeader}>
+          <span className={styles.shotMockTitle}>Field View &middot; Marcus T.</span>
+          <span className={styles.shotBadgeGood}>Stop #1 &middot; Active</span>
+        </div>
+        <dl className={styles.shotKeyValues}>
+          <div className={styles.shotKeyRow}>
+            <dt>Job</dt>
+            <dd>Whitfield Reroof &middot; 118 Ridgeline Dr</dd>
+          </div>
+          <div className={styles.shotKeyRow}>
+            <dt>Access & Safety</dt>
+            <dd>Gate code #4921 &middot; Watch for dog in yard</dd>
+          </div>
+          <div className={styles.shotKeyRow}>
+            <dt>Scope</dt>
+            <dd>24 sq architectural shingles + 4 sheets CDX</dd>
+          </div>
+        </dl>
+      </div>
+    ),
+  },
+  {
+    step: 'Step 2',
+    title: 'Jobsite time clock & on-site material logging',
+    body: 'Clock in when arriving and log materials purchased at supply houses. Receipts are photographed on site so nothing is lost in the truck.',
+    mock: (
+      <div className={styles.shotMockContainer}>
+        <div className={styles.shotMockHeader}>
+          <span className={styles.shotMockTitle}>Shift Tracker &middot; Job #1042</span>
+          <span className={styles.shotBadgeGood}>Clocked In (8:47 AM)</span>
+        </div>
+        <dl className={styles.shotKeyValues}>
+          <div className={styles.shotKeyRow}>
+            <dt>Labor Logged Today</dt>
+            <dd>Marcus (6.5h) + Tanya (7.0h) &middot; $648.00</dd>
+          </div>
+          <div className={styles.shotKeyRow}>
+            <dt>Materials On Site</dt>
+            <dd>ABC Supply Invoice #892 &middot; $4,120.00</dd>
+          </div>
+          <div className={styles.shotKeyRow}>
+            <dt>Photos Attached</dt>
+            <dd style={{ color: '#50e3bd' }}>3 Progress Photos Logged</dd>
+          </div>
+        </dl>
+      </div>
+    ),
+  },
+  {
+    step: 'Step 3',
+    title: 'Real-time job profit margin before invoicing',
+    body: 'Cost is what the crew actually logged; margin is quoted revenue minus logged cost. Spot margin leaks while the job is active rather than a week later.',
+    mock: (
+      <div className={styles.shotMockContainer}>
+        <div className={styles.shotMockHeader}>
+          <span className={styles.shotMockTitle}>Job Costing &middot; Profit Analytics</span>
+          <span className={styles.shotBadgeGood}>56.2% Net Margin</span>
+        </div>
+        <dl className={styles.shotKeyValues}>
+          <div className={styles.shotKeyRow}>
+            <dt>Quoted Price</dt>
+            <dd>$10,880.00</dd>
+          </div>
+          <div className={styles.shotKeyRow}>
+            <dt>Total Actual Cost</dt>
+            <dd style={{ color: '#ff8e42' }}>−$4,768.00 (Labor + Materials)</dd>
+          </div>
+          <div className={styles.shotKeyRow}>
+            <dt>Net Job Margin</dt>
+            <dd style={{ color: '#50e3bd', fontWeight: 800 }}>+$6,112.00 Profit</dd>
+          </div>
+        </dl>
+      </div>
+    ),
+  },
+  {
+    step: 'Step 4',
+    title: 'Pay period rollups & export for payroll',
+    body: 'Hours and pay roll up by crew member and pay period automatically. Mark shifts reviewed and export clean summaries for bookkeeping.',
+    mock: (
+      <div className={styles.shotMockContainer}>
+        <div className={styles.shotMockHeader}>
+          <span className={styles.shotMockTitle}>Payroll Summary &middot; Aug 15–31</span>
+          <span className={styles.shotBadgeGood}>Reviewed</span>
+        </div>
+        <dl className={styles.shotKeyValues}>
+          <div className={styles.shotKeyRow}>
+            <dt>Marcus Thorne ($48/hr)</dt>
+            <dd>78.5 hrs &middot; $3,768.00</dd>
+          </div>
+          <div className={styles.shotKeyRow}>
+            <dt>Tanya Davis ($42/hr)</dt>
+            <dd>80.0 hrs &middot; $3,360.00</dd>
+          </div>
+          <div className={styles.shotKeyRow}>
+            <dt>Payroll Action</dt>
+            <dd style={{ color: '#50e3bd' }}>CSV Export &middot; Ready for Direct Deposit</dd>
+          </div>
+        </dl>
+      </div>
+    ),
+  },
+];
+
 export default function CrewFeaturePage() {
   return (
     <SuiteFeaturePage
@@ -94,6 +207,32 @@ export default function CrewFeaturePage() {
           body: 'Logged labor and materials against the quoted total, per job. A line with no cost recorded is treated as unknown rather than as zero — a missing cost showing 100% margin is exactly how a bad number gets believed.',
         },
       ]}
+      afterBenefits={
+        <section className="section-block" id="the-screens" aria-labelledby="screens-title">
+          <div className={styles.shotsHead}>
+            <p className="eyebrow">The field app and labor management flow</p>
+            <h2 id="screens-title">Keep the trucks moving and watch real profits on site.</h2>
+            <p>
+              Passwordless crew login, live time tracking, receipt capture, and real-time job margin analytics.
+            </p>
+          </div>
+
+          <ol className={styles.shots}>
+            {CREW_FLOW.map((shot) => (
+              <li className={styles.shot} key={shot.step}>
+                <div className={styles.shotCopy}>
+                  <span className={styles.shotStep}>{shot.step}</span>
+                  <h3 className={styles.shotTitle}>{shot.title}</h3>
+                  <p className={styles.shotBody}>{shot.body}</p>
+                </div>
+                <div className={styles.shotMedia}>
+                  {shot.mock}
+                </div>
+              </li>
+            ))}
+          </ol>
+        </section>
+      }
       stepsEyebrow="From assigned to paid out"
       stepsTitle="Four steps, and the office types none of them."
       steps={[

@@ -7,7 +7,128 @@ import SuiteFeaturePage, {
   PanelNote,
   PanelRows,
 } from '@/components/marketing/suite-feature-page';
+import styles from '@/components/marketing/suite-feature-page.module.css';
 import { CAPACITY_LEVELS } from '@/lib/schedule-capacity';
+
+type FlowStep = {
+  step: string;
+  title: string;
+  body: string;
+  mock?: React.ReactNode;
+  image?: { src: string; alt: string; width: number; height: number };
+};
+
+const SCHEDULING_FLOW: FlowStep[] = [
+  {
+    step: 'Step 1',
+    title: 'Self-service booking from your website',
+    body: 'Homeowners select from arrival windows you actually have capacity for. Requests arrive with full customer specs, addresses, and photos attached.',
+    mock: (
+      <div className={styles.shotMockContainer}>
+        <div className={styles.shotMockHeader}>
+          <span className={styles.shotMockTitle}>Online Booking Widget &middot; Client Self-Serve</span>
+          <span className={styles.shotBadgeGood}>Live on Website</span>
+        </div>
+        <dl className={styles.shotKeyValues}>
+          <div className={styles.shotKeyRow}>
+            <dt>Service Requested</dt>
+            <dd>200A Electrical Panel Assessment</dd>
+          </div>
+          <div className={styles.shotKeyRow}>
+            <dt>Selected Arrival Window</dt>
+            <dd style={{ color: '#50e3bd' }}>Wed Sep 16 &middot; 8:00 – 11:00 AM</dd>
+          </div>
+          <div className={styles.shotKeyRow}>
+            <dt>Client Details &amp; Photos</dt>
+            <dd>Address, breaker photo &amp; scope attached</dd>
+          </div>
+        </dl>
+      </div>
+    ),
+  },
+  {
+    step: 'Step 2',
+    title: 'Visual capacity scoring across the month',
+    body: 'Every day is scored by booked hours against your team’s limit. The color ramp flags open days and overbooked slots before you promise a date.',
+    mock: (
+      <div className={styles.shotMockContainer}>
+        <div className={styles.shotMockHeader}>
+          <span className={styles.shotMockTitle}>Calendar Day Capacity &middot; Tue Sep 15</span>
+          <span className={styles.shotBadgeGood}>Room (4.5 / 8 hrs)</span>
+        </div>
+        <dl className={styles.shotKeyValues}>
+          <div className={styles.shotKeyRow}>
+            <dt>Morning (8–12 PM)</dt>
+            <dd>Whitfield Reroof &middot; 3.5 hrs</dd>
+          </div>
+          <div className={styles.shotKeyRow}>
+            <dt>Afternoon (1–3 PM)</dt>
+            <dd>Open Slot &middot; 2.0 hrs available</dd>
+          </div>
+          <div className={styles.shotKeyRow}>
+            <dt>Late (3–5 PM)</dt>
+            <dd>Quick Stop &middot; 1.0 hr booked</dd>
+          </div>
+        </dl>
+      </div>
+    ),
+  },
+  {
+    step: 'Step 3',
+    title: 'Text up to three windows and let them pick',
+    body: 'Send 3 arrival options by text. When the customer picks one, it writes itself onto the job record and notifies the assigned crew automatically.',
+    mock: (
+      <div className={styles.shotMockContainer}>
+        <div className={styles.shotMockHeader}>
+          <span className={styles.shotMockTitle}>SMS Option Picker &middot; 1-Tap Booking</span>
+          <span className={styles.shotBadgeGood}>Confirmed</span>
+        </div>
+        <dl className={styles.shotKeyValues}>
+          <div className={styles.shotKeyRow}>
+            <dt>Option 1: Tue 8–10 AM</dt>
+            <dd>Sent</dd>
+          </div>
+          <div className={styles.shotKeyRow}>
+            <dt>Option 2: Wed 12–2 PM</dt>
+            <dd style={{ color: '#50e3bd' }}>✓ Picked by Homeowner</dd>
+          </div>
+          <div className={styles.shotKeyRow}>
+            <dt>Option 3: Thu 8–10 AM</dt>
+            <dd>Sent</dd>
+          </div>
+        </dl>
+      </div>
+    ),
+  },
+  {
+    step: 'Step 4',
+    title: 'Real-time on-my-way ETA and weather guard',
+    body: 'Send departure updates with a live tracking link. Rain, freeze, and wind warnings flag outdoor jobs so you can decide before trucks roll.',
+    mock: (
+      <div className={styles.shotMockContainer}>
+        <div className={styles.shotMockHeader}>
+          <span className={styles.shotMockTitle}>Field Dispatch &middot; Job #1042</span>
+          <span className={styles.shotBadgeFlag}>Weather Alert: Rain (70%)</span>
+        </div>
+        <dl className={styles.shotKeyValues}>
+          <div className={styles.shotKeyRow}>
+            <dt>On-My-Way SMS</dt>
+            <dd>Sent 7:48 AM &middot; Marcus En Route</dd>
+          </div>
+          <div className={styles.shotKeyRow}>
+            <dt>Live Arrival Window</dt>
+            <dd>8:15 – 8:30 AM (12 min drive)</dd>
+          </div>
+          <div className={styles.shotKeyRow}>
+            <dt>Action Required</dt>
+            <dd>Flags exterior work &middot; Never auto-moves</dd>
+          </div>
+        </dl>
+      </div>
+    ),
+  },
+];
+
 import { FEATURE_PRICING_NOTE, STRIPE_PROCESSING_NOTE } from '@/lib/pricing';
 
 export const metadata: Metadata = {
@@ -99,6 +220,43 @@ export default function SchedulingFeaturePage() {
           body: 'Reminders go out ahead of the job and the customer can reply “C” to confirm. On-my-way texts are sent from the field when the tech actually leaves — the words are theirs to edit, the promised window is not.',
         },
       ]}
+      afterBenefits={
+        <section className="section-block" id="the-screens" aria-labelledby="screens-title">
+          <div className={styles.shotsHead}>
+            <p className="eyebrow">The calendar and booking flow</p>
+            <h2 id="screens-title">Built for the real day, not an empty calendar.</h2>
+            <p>
+              Arrival windows rather than unrealistic minutes, scored day capacity, and online booking from your site.
+            </p>
+          </div>
+
+          <ol className={styles.shots}>
+            {SCHEDULING_FLOW.map((shot) => (
+              <li className={styles.shot} key={shot.step}>
+                <div className={styles.shotCopy}>
+                  <span className={styles.shotStep}>{shot.step}</span>
+                  <h3 className={styles.shotTitle}>{shot.title}</h3>
+                  <p className={styles.shotBody}>{shot.body}</p>
+                </div>
+                <div className={styles.shotMedia}>
+                  {shot.image ? (
+                    <img
+                      src={shot.image.src}
+                      alt={shot.image.alt}
+                      width={shot.image.width}
+                      height={shot.image.height}
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  ) : (
+                    shot.mock
+                  )}
+                </div>
+              </li>
+            ))}
+          </ol>
+        </section>
+      }
       stepsEyebrow="From approved to on the calendar"
       stepsTitle="Four steps, and none of them is a phone call."
       steps={[

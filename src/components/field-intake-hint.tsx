@@ -136,7 +136,7 @@ export default function FieldIntakeHint({
 
           <div className={styles.popoverFooter}>
             <SaveFieldContactButton size="small" label="Save Field Line (.vcf)" />
-            <Link href="/features/text-to-record" className={styles.learnMoreLink}>
+            <Link href="/features/text-to-job" className={styles.learnMoreLink}>
               How it works →
             </Link>
           </div>

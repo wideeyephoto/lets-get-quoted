@@ -32,6 +32,127 @@ export const metadata: Metadata = {
   },
 };
 
+import styles from '@/components/marketing/suite-feature-page.module.css';
+
+type FlowStep = {
+  step: string;
+  title: string;
+  body: string;
+  mock?: React.ReactNode;
+  image?: { src: string; alt: string; width: number; height: number };
+};
+
+const REVIEWS_FLOW: FlowStep[] = [
+  {
+    step: 'Step 1',
+    title: 'Automatic post-job review request',
+    body: 'Triggered when the work wraps. Every customer receives the honest dual-route choice: post a public review or share private feedback.',
+    mock: (
+      <div className={styles.shotMockContainer}>
+        <div className={styles.shotMockHeader}>
+          <span className={styles.shotMockTitle}>Post-Job Review Request &middot; Dual Route</span>
+          <span className={styles.shotBadgeGood}>Google Policy Compliant</span>
+        </div>
+        <dl className={styles.shotKeyValues}>
+          <div className={styles.shotKeyRow}>
+            <dt>Public Google Review</dt>
+            <dd style={{ color: '#50e3bd' }}>1-Tap direct to your Google Business profile</dd>
+          </div>
+          <div className={styles.shotKeyRow}>
+            <dt>Private Owner Feedback</dt>
+            <dd>Direct confidential message to your inbox</dd>
+          </div>
+          <div className={styles.shotKeyRow}>
+            <dt>Compliance Guarantee</dt>
+            <dd>No star-rating gating &middot; Protects your Google ranking</dd>
+          </div>
+        </dl>
+      </div>
+    ),
+  },
+  {
+    step: 'Step 2',
+    title: 'Google review website sync & rich snippet SEO',
+    body: 'Authentic Google reviews sync to your hosted website with schema markup, boosting search ranking and buyer confidence.',
+    mock: (
+      <div className={styles.shotMockContainer}>
+        <div className={styles.shotMockHeader}>
+          <span className={styles.shotMockTitle}>Website Review Widget &middot; Google Verified</span>
+          <span className={styles.shotBadgeGood}>4.9 ★ (84 Reviews)</span>
+        </div>
+        <dl className={styles.shotKeyValues}>
+          <div className={styles.shotKeyRow}>
+            <dt>Recent Feedback</dt>
+            <dd>&ldquo;Fastest quote and cleanest crew in Royal Oak!&rdquo;</dd>
+          </div>
+          <div className={styles.shotKeyRow}>
+            <dt>Schema Markup</dt>
+            <dd>JSON-LD AggregateRating active</dd>
+          </div>
+          <div className={styles.shotKeyRow}>
+            <dt>Attribution</dt>
+            <dd style={{ color: '#50e3bd' }}>Verified Homeowner &middot; Job #1048</dd>
+          </div>
+        </dl>
+      </div>
+    ),
+  },
+  {
+    step: 'Step 3',
+    title: 'Private feedback resolution hub',
+    body: 'Private notes route to your dashboard so you can resolve minor snags directly with the client before they ever become public complaints.',
+    mock: (
+      <div className={styles.shotMockContainer}>
+        <div className={styles.shotMockHeader}>
+          <span className={styles.shotMockTitle}>Private Customer Note &middot; Dana W.</span>
+          <span className={styles.shotBadgeFlag}>Needs Follow-up</span>
+        </div>
+        <dl className={styles.shotKeyValues}>
+          <div className={styles.shotKeyRow}>
+            <dt>Message</dt>
+            <dd>&ldquo;Great job on the heater, small puddle left in laundry.&rdquo;</dd>
+          </div>
+          <div className={styles.shotKeyRow}>
+            <dt>Resolution</dt>
+            <dd>Crew dispatched to dry &middot; Resolved in 20 min</dd>
+          </div>
+          <div className={styles.shotKeyRow}>
+            <dt>Outcome</dt>
+            <dd style={{ color: '#50e3bd' }}>5-Star Google review posted later</dd>
+          </div>
+        </dl>
+      </div>
+    ),
+  },
+  {
+    step: 'Step 4',
+    title: '1-Tap rebooking & seasonal marketing',
+    body: 'Reach out to past clients for annual checkups or seasonal maintenance. Live reach counts, consent filters, and STOP handling run automatically.',
+    mock: (
+      <div className={styles.shotMockContainer}>
+        <div className={styles.shotMockHeader}>
+          <span className={styles.shotMockTitle}>Autumn Gutter Clean Campaign</span>
+          <span className={styles.shotBadgeGood}>142 Reachable</span>
+        </div>
+        <dl className={styles.shotKeyValues}>
+          <div className={styles.shotKeyRow}>
+            <dt>Audience</dt>
+            <dd>Past roofing & gutter clients (last 12 mo)</dd>
+          </div>
+          <div className={styles.shotKeyRow}>
+            <dt>Opt-Out Protection</dt>
+            <dd>STOP & consent strictly enforced</dd>
+          </div>
+          <div className={styles.shotKeyRow}>
+            <dt>Response Rate</dt>
+            <dd style={{ color: '#50e3bd', fontWeight: 800 }}>18 Booked Appointments</dd>
+          </div>
+        </dl>
+      </div>
+    ),
+  },
+];
+
 export default function ReviewsFeaturePage() {
   return (
     <SuiteFeaturePage
@@ -43,10 +164,6 @@ export default function ReviewsFeaturePage() {
         </>
       }
       lede="The request goes out when the job is actually finished, and every customer is offered the same two things: post a public review, or tell you privately. Then the customers you already have become the ones you book next."
-      /* The two rules this page lives by, above the button rather than in the
-         sentence under it. Both are enforced in code, not policy: the routing
-         function is never given the rating, and STOP is checked before any
-         send. */
       heroChips={['No star-rating gating', 'STOP and consent enforced', 'Sent when the job is finished']}
       heroNote="No review gating. The routes offered do not depend on how happy somebody is, because screening by star rating breaks Google’s rules and puts your profile at risk."
       primary={{ label: 'Open the live reviews screen', href: '/demo/reviews' }}
@@ -97,6 +214,43 @@ export default function ReviewsFeaturePage() {
           body: 'Campaigns to everyone, past, repeat or lapsed customers, with live reach counts before you send. Rebook invites for the ones who are due. All of it threaded into the same two-way SMS inbox.',
         },
       ]}
+      afterBenefits={
+        <section className="section-block" id="the-screens" aria-labelledby="screens-title">
+          <div className={styles.shotsHead}>
+            <p className="eyebrow">The review and rebooking engine</p>
+            <h2 id="screens-title">Build your reputation honestly and keep past clients coming back.</h2>
+            <p>
+              Dual-route feedback, Google review syncing, complaint prevention, and seasonal rebooking campaigns.
+            </p>
+          </div>
+
+          <ol className={styles.shots}>
+            {REVIEWS_FLOW.map((shot) => (
+              <li className={styles.shot} key={shot.step}>
+                <div className={styles.shotCopy}>
+                  <span className={styles.shotStep}>{shot.step}</span>
+                  <h3 className={styles.shotTitle}>{shot.title}</h3>
+                  <p className={styles.shotBody}>{shot.body}</p>
+                </div>
+                <div className={styles.shotMedia}>
+                  {shot.image ? (
+                    <img
+                      src={shot.image.src}
+                      alt={shot.image.alt}
+                      width={shot.image.width}
+                      height={shot.image.height}
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  ) : (
+                    shot.mock
+                  )}
+                </div>
+              </li>
+            ))}
+          </ol>
+        </section>
+      }
       stepsEyebrow="From finished job to the next one"
       stepsTitle="Four steps that run off the work you already did."
       steps={[

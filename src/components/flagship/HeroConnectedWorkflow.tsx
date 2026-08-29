@@ -214,7 +214,7 @@ export default function HeroConnectedWorkflow() {
         <div className={`${styles.activityEvent} ${styles.toneTeal}`}>
           <span className={styles.activityMark}>03</span>
           <div className={styles.activityContent}>
-            <small>Text to Record</small>
+            <small>Text-to-Job</small>
             <strong>{trade.quoteTotal}</strong>
           </div>
         </div>
@@ -232,7 +232,7 @@ export default function HeroConnectedWorkflow() {
         {[
           { idx: 0, num: '01', title: 'Smart Intake', sub: 'Photo AI & Scope' },
           { idx: 1, num: '02', title: 'Instant Quote', sub: 'E-Sign & Deposit' },
-          { idx: 2, num: '03', title: 'Text to Record', sub: 'Voice Memo & SMS' },
+          { idx: 2, num: '03', title: 'Text-to-Job', sub: 'Voice Memo & SMS' },
           { idx: 3, num: '04', title: 'Dispatch & Pay', sub: 'Route & Stripe Sync' },
         ].map((step) => (
           <button
@@ -357,15 +357,15 @@ export default function HeroConnectedWorkflow() {
           </div>
         )}
 
-        {/* STAGE 3: TEXT TO THE RECORD (VOICE & SMS FIELD INTAKE) */}
+        {/* STAGE 3: TEXT-TO-JOB (VOICE & SMS FIELD INTAKE) */}
         {activeStep === 2 && (
           <div>
             <div className={styles.stageRowTop}>
               <span className={styles.fieldActionBadge}>
                 {trade.fieldBadge}
               </span>
-              <Link href="/features/text-to-record" className={styles.fieldFeatureLink}>
-                Learn Text to Record →
+              <Link href="/features/text-to-job" className={styles.fieldFeatureLink}>
+                Learn Text-to-Job →
               </Link>
             </div>
 

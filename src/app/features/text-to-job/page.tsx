@@ -3,35 +3,35 @@ import FeatureDetailLayout from '@/components/marketing/feature-detail-layout';
 import ExampleFrame from '@/components/marketing/example-frame';
 import TextToRecordSimulator from '@/components/marketing/TextToRecordSimulator';
 import { TRADES } from '@/lib/trades';
-import styles from './text-to-record.module.css';
+import styles from './text-to-job.module.css';
 
 export const metadata: Metadata = {
-  title: 'Text to the Record · AI Voice & Text-to-Job Field Intake',
+  title: 'Text-to-Job · AI Voice & Text-to-Job Field Intake',
   description:
     'Update contractor job records, quotes, punch lists, and voice notes straight from the truck. Send an SMS or voice memo—Gemini AI updates the exact job file instantly.',
-  alternates: { canonical: 'https://letsgetquoted.com/features/text-to-record' },
+  alternates: { canonical: 'https://letsgetquoted.com/features/text-to-job' },
   openGraph: {
     type: 'website',
-    url: 'https://letsgetquoted.com/features/text-to-record',
+    url: 'https://letsgetquoted.com/features/text-to-job',
     siteName: "Let's Get Quoted",
-    title: 'Text to the Record · AI Voice & Text-to-Job Field Intake',
+    title: 'Text-to-Job · AI Voice & Text-to-Job Field Intake',
     description:
       'Keep job records, quotes, and punch lists 100% updated from the road. Just send a text or voice memo to your platform number.',
     images: [
       {
-        url: '/features/og-text-to-record.jpg',
+        url: '/features/og-text-to-job.jpg',
         width: 1200,
         height: 630,
-        alt: 'Let’s Get Quoted Text to the Record for Contractors',
+        alt: 'Let’s Get Quoted Text-to-Job for Contractors',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Text to the Record · AI Voice & Text-to-Job Field Intake',
+    title: 'Text-to-Job · AI Voice & Text-to-Job Field Intake',
     description:
       'Keep job records, quotes, and punch lists 100% updated from the road. Just send a text or voice memo to your platform number.',
-    images: ['/features/og-text-to-record.jpg'],
+    images: ['/features/og-text-to-job.jpg'],
   },
 };
 
@@ -82,7 +82,7 @@ const TRADE_PLAYBOOKS = [
 
 const FAQS = [
   {
-    q: 'How does Text to the Record know which job I am talking about?',
+    q: 'How does Text-to-Job know which job I am talking about?',
     a: 'Gemini cross-references your incoming text or voice memo with your active jobs, today’s schedule, recent quotes, and client names. If you say "Miller", "124 Main", or "J-104", it accurately maps to the correct record.',
   },
   {
@@ -107,10 +107,10 @@ const FAQS = [
   },
 ];
 
-export default function TextToRecordPage() {
+export default function TextToJobPage() {
   return (
     <FeatureDetailLayout
-      breadcrumb={{ name: 'Text to the Record', path: '/features/text-to-record' }}
+      breadcrumb={{ name: 'Text-to-Job', path: '/features/text-to-job' }}
       eyebrow="AI Voice & Text-to-Job Field Intake"
       title={
         <>
@@ -156,7 +156,7 @@ export default function TextToRecordPage() {
       story={{
         eyebrow: 'Where contractor revenue and job notes disappear',
         title: 'The most expensive notes are the ones written on scrap 2x4s and forgotten.',
-        body: 'You’re on-site and spot an extra $400 in materials. Or the building inspector signs off while you’re packing the truck. You tell yourself you’ll log it on your computer at 9:00 PM—but by then, the scrap lumber note is lost, the change order goes unbilled, and your crew is left guessing. Text to the Record turns every text and voice memo into an instant, permanent update to the job file while your hands are still dirty.',
+        body: 'You’re on-site and spot an extra $400 in materials. Or the building inspector signs off while you’re packing the truck. You tell yourself you’ll log it on your computer at 9:00 PM—but by then, the scrap lumber note is lost, the change order goes unbilled, and your crew is left guessing. Text-to-Job turns every text and voice memo into an instant, permanent update to the job file while your hands are still dirty.',
       }}
       benefits={[
         {
@@ -178,6 +178,76 @@ export default function TextToRecordPage() {
       ]}
       afterBenefits={
         <>
+          {/* Visual Multimodal Architecture Pipeline */}
+          <section className={styles.customSection}>
+            <span className={styles.sectionEyebrow}>How The Field Engine Works</span>
+            <h3 className={styles.sectionTitle}>From dirty hands on site to an updated file in 3 seconds.</h3>
+            <p className={styles.sectionLede}>
+              See how Gemini AI transcribes rough audio, validates customer context, and mutates live job records without logging into an app.
+            </p>
+
+            <div className={styles.pipelineGrid}>
+              <div className={styles.pipelineCard}>
+                <div className={styles.pipelineStep}>01 · Ingest</div>
+                <div className={styles.pipelineIconBox}>🎙️</div>
+                <h4 className={styles.pipelineCardTitle}>Voice MMS or SMS</h4>
+                <p className={styles.pipelineCardBody}>
+                  Record a 15-second voice memo or send a quick text via Apple iMessage or Android Messages.
+                </p>
+                <div className={styles.pipelineDetailBox}>
+                  <div className={styles.waveformMini}>
+                    <span style={{ height: '30%' }}></span>
+                    <span style={{ height: '80%' }}></span>
+                    <span style={{ height: '100%' }}></span>
+                    <span style={{ height: '60%' }}></span>
+                    <span style={{ height: '90%' }}></span>
+                    <span style={{ height: '40%' }}></span>
+                  </div>
+                  <small>Diesel & power tool noise filtered</small>
+                </div>
+              </div>
+
+              <div className={styles.pipelineCard}>
+                <div className={styles.pipelineStep}>02 · Context Match</div>
+                <div className={styles.pipelineIconBox}>⚡</div>
+                <h4 className={styles.pipelineCardTitle}>Trade AI Resolution</h4>
+                <p className={styles.pipelineCardBody}>
+                  Gemini matches caller intent against active jobs, today’s schedule, and open quotes.
+                </p>
+                <div className={styles.pipelineDetailBox}>
+                  <div className={styles.matchPill}>Matched: Miller &middot; J-104</div>
+                  <small>Zero destructive guessing invariant</small>
+                </div>
+              </div>
+
+              <div className={styles.pipelineCard}>
+                <div className={styles.pipelineStep}>03 · Mutation</div>
+                <div className={styles.pipelineIconBox}>📊</div>
+                <h4 className={styles.pipelineCardTitle}>Live Quote Math</h4>
+                <p className={styles.pipelineCardBody}>
+                  Recalculates line items, labor hours, and client portal totals inside an atomic transaction.
+                </p>
+                <div className={styles.pipelineDetailBox}>
+                  <div className={styles.totalPill}>+$450 &rarr; New Total $3,750</div>
+                  <small>Synced across office & mobile</small>
+                </div>
+              </div>
+
+              <div className={styles.pipelineCard}>
+                <div className={styles.pipelineStep}>04 · Receipt</div>
+                <div className={styles.pipelineIconBox}>📱</div>
+                <h4 className={styles.pipelineCardTitle}>Instant SMS Receipt</h4>
+                <p className={styles.pipelineCardBody}>
+                  Contractor receives a 1-segment confirmation receipt with a 1-tap review link.
+                </p>
+                <div className={styles.pipelineDetailBox}>
+                  <div className={styles.receiptPill}>✓ J-104 Updated (1.4s)</div>
+                  <small>Carrier-verified 10DLC delivery</small>
+                </div>
+              </div>
+            </div>
+          </section>
+
           {/* Comparison Table Section */}
           <section className={styles.customSection}>
             <span className={styles.sectionEyebrow}>How It Compares</span>
@@ -185,7 +255,7 @@ export default function TextToRecordPage() {
               Stop losing $1,500/month in unbilled field changes.
             </h3>
             <p className={styles.sectionLede}>
-              See how Text to the Record compares to traditional scrap lumber notes, generic CRM apps,
+              See how Text-to-Job compares to traditional scrap lumber notes, generic CRM apps,
               and memory.
             </p>
 
@@ -196,7 +266,7 @@ export default function TextToRecordPage() {
                     <th>Capability</th>
                     <th>Scrap Lumber & Memory</th>
                     <th>Generic CRM Mobile Apps</th>
-                    <th className={styles.highlightCol}>Let’s Get Quoted: Text to Record</th>
+                    <th className={styles.highlightCol}>Let’s Get Quoted: Text-to-Job</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -351,7 +421,7 @@ export default function TextToRecordPage() {
           {/* FAQ Section */}
           <section className={styles.customSection}>
             <span className={styles.sectionEyebrow}>Common Questions</span>
-            <h3 className={styles.sectionTitle}>Everything you need to know about Text to the Record.</h3>
+            <h3 className={styles.sectionTitle}>Everything you need to know about Text-to-Job.</h3>
             <div className={styles.faqGrid}>
               {FAQS.map((faq, idx) => (
                 <div key={idx} className={styles.faqItem}>

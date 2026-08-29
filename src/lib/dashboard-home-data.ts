@@ -89,7 +89,7 @@ export async function buildDashboardHome(
 
   const onboardingSteps: OnboardingStep[] = [
     { key: 'website', label: 'Build and launch your website', description: 'Design and publish your free contractor site — customize your trade photos and services.', done: sitePublished, href: `${basePath}/sites`, cta: 'Build your site' },
-    { key: 'text-to-record', label: 'Save dispatch line & try Text-to-Record', description: 'Save the company field texting line to your phone contacts and text your first job update.', done: sitePublished || jobs.length > 0, href: `/features/text-to-record`, cta: 'Try Text-to-Record' },
+    { key: 'text-to-job', label: 'Save dispatch line & try Text-to-Job', description: 'Save the company field texting line to your phone contacts and text your first job update.', done: sitePublished || jobs.length > 0, href: `/features/text-to-job`, cta: 'Try Text-to-Job' },
     { key: 'stripe', label: 'Connect Stripe payouts', description: 'Get paid directly for client deposits and stage payments.', done: onboarded, href: `${basePath}/settings`, cta: 'Connect Stripe' },
     { key: 'clients', label: 'Import your customers', description: 'Bring your existing customer list over from a spreadsheet.', done: (clientCount ?? 0) > 0, href: `${basePath}/clients/import`, cta: 'Import customers' },
     { key: 'first-job', label: 'Create your first job & quote', description: 'Turn a lead into an interactive quote and get the work on your calendar.', done: jobs.length > 0, href: `${basePath}/jobs`, cta: 'Create a job' },

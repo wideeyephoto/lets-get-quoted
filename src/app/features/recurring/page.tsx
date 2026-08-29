@@ -32,28 +32,138 @@ export const metadata: Metadata = {
   },
 };
 
+import styles from '@/components/marketing/suite-feature-page.module.css';
+
+type FlowStep = {
+  step: string;
+  title: string;
+  body: string;
+  mock?: React.ReactNode;
+  image?: { src: string; alt: string; width: number; height: number };
+};
+
+const RECURRING_FLOW: FlowStep[] = [
+  {
+    step: 'Step 1',
+    title: 'Recurring service cadence & agreement builder',
+    body: 'Set weekly, bi-weekly, or monthly visits at fixed rates. Cap the plan at a fixed number of visits (e.g. 12-month contract) or leave it open-ended.',
+    mock: (
+      <div className={styles.shotMockContainer}>
+        <div className={styles.shotMockHeader}>
+          <span className={styles.shotMockTitle}>Recurring Service Cadence &middot; Alvarez</span>
+          <span className={styles.shotBadgeGood}>Active Agreement</span>
+        </div>
+        <dl className={styles.shotKeyValues}>
+          <div className={styles.shotKeyRow}>
+            <dt>Frequency &amp; Day</dt>
+            <dd style={{ color: '#50e3bd' }}>Bi-Weekly &middot; Every other Tuesday</dd>
+          </div>
+          <div className={styles.shotKeyRow}>
+            <dt>Per-Visit Rate</dt>
+            <dd>$180.00 / visit (Auto-billed to card)</dd>
+          </div>
+          <div className={styles.shotKeyRow}>
+            <dt>Contract Term</dt>
+            <dd>24 Visits (12-month capped maintenance)</dd>
+          </div>
+        </dl>
+      </div>
+    ),
+  },
+  {
+    step: 'Step 2',
+    title: 'Automated calendar job generation',
+    body: 'Every cycle automatically spawns a real scheduled job with scope, property details, and assigned crew tasks without re-entering details.',
+    mock: (
+      <div className={styles.shotMockContainer}>
+        <div className={styles.shotMockHeader}>
+          <span className={styles.shotMockTitle}>Auto-Generated Visit &middot; Cycle #8 of 24</span>
+          <span className={styles.shotBadgeGood}>Scheduled &middot; Tue 9 AM</span>
+        </div>
+        <dl className={styles.shotKeyValues}>
+          <div className={styles.shotKeyRow}>
+            <dt>Client & Property</dt>
+            <dd>Alvarez &middot; 482 Elmwood Ave</dd>
+          </div>
+          <div className={styles.shotKeyRow}>
+            <dt>Scope</dt>
+            <dd>Bi-weekly lawn & shrub maintenance</dd>
+          </div>
+          <div className={styles.shotKeyRow}>
+            <dt>Calendar Impact</dt>
+            <dd>Counts toward day capacity automatically</dd>
+          </div>
+        </dl>
+      </div>
+    ),
+  },
+  {
+    step: 'Step 3',
+    title: 'Itemized auto-charge per visit',
+    body: 'Charges run against the card saved when the plan was approved. Homeowners receive an itemized receipt per visit that passes accountant muster.',
+    mock: (
+      <div className={styles.shotMockContainer}>
+        <div className={styles.shotMockHeader}>
+          <span className={styles.shotMockTitle}>Automated Stripe Charge &middot; Alvarez</span>
+          <span className={styles.shotBadgeGood}>$180.00 Paid</span>
+        </div>
+        <dl className={styles.shotKeyValues}>
+          <div className={styles.shotKeyRow}>
+            <dt>Card on File</dt>
+            <dd>Mastercard &middot;&middot;&middot;&middot; 8812</dd>
+          </div>
+          <div className={styles.shotKeyRow}>
+            <dt>Invoice Reference</dt>
+            <dd>#REC-2026-0814 &middot; Emailed</dd>
+          </div>
+          <div className={styles.shotKeyRow}>
+            <dt>Contractor Payout</dt>
+            <dd style={{ color: '#50e3bd' }}>Direct Stripe transfer</dd>
+          </div>
+        </dl>
+      </div>
+    ),
+  },
+  {
+    step: 'Step 4',
+    title: 'Smart decline recovery & card update links',
+    body: 'Lapsed or expired cards trigger automated recovery retries and secure card-update links, saving hours of awkward payment chasing calls.',
+    mock: (
+      <div className={styles.shotMockContainer}>
+        <div className={styles.shotMockHeader}>
+          <span className={styles.shotMockTitle}>Dunning Recovery &middot; Expired Card</span>
+          <span className={styles.shotBadgeFlag}>Auto-Recovery Active</span>
+        </div>
+        <dl className={styles.shotKeyValues}>
+          <div className={styles.shotKeyRow}>
+            <dt>Decline Classification</dt>
+            <dd>Expired card &middot; retry postponed</dd>
+          </div>
+          <div className={styles.shotKeyRow}>
+            <dt>Automated Action</dt>
+            <dd>Magic link sent to customer mobile</dd>
+          </div>
+          <div className={styles.shotKeyRow}>
+            <dt>Status</dt>
+            <dd style={{ color: '#50e3bd' }}>Updated by customer in 14 min</dd>
+          </div>
+        </dl>
+      </div>
+    ),
+  },
+];
+
 export default function RecurringFeaturePage() {
   return (
     <SuiteFeaturePage
       breadcrumb={{ name: 'Recurring', path: '/features/recurring' }}
       eyebrow="Recurring work + auto-billing"
-      /* "It books and bills itself" was one word too strong. Each cycle does
-         create its own scheduled job and its own charge with nobody touching
-         it — but the job lands on the calendar to be ASSIGNED like any other
-         work, and a contractor who reads "books itself" and then finds an
-         unassigned job on Tuesday has been told something slightly untrue by a
-         page that is otherwise careful. "Schedules and bills itself" is the
-         part that is fully automatic. */
       title={
         <>
           Set the plan once. <em>It schedules and bills itself.</em>
         </>
       }
       lede="A maintenance customer should be a schedule, not a reminder to invoice. Set the cadence and every cycle creates its own scheduled job and its own itemized charge, against a card the customer already saved."
-      /* The three things somebody wants to know before automating a charge
-         against a customer's card, all of which were in the FAQ at the bottom
-         of the page: that they can stop it, that a decline is handled, and
-         that the crew still gets assigned by a person. */
       heroChips={['Pause or cancel any time', 'Declines retried and chased', 'You still assign the crew']}
       heroNote="Weekly, every other week or monthly. Cap a plan at a set number of visits, or leave it running until somebody stops it."
       primary={{ label: 'See live recurring plans', href: '/demo/recurring' }}
@@ -106,6 +216,43 @@ export default function RecurringFeaturePage() {
           body: 'Cap a plan at a fixed number of visits when that is what you sold — twelve months, say — so it ends where you said it would rather than running until somebody notices.',
         },
       ]}
+      afterBenefits={
+        <section className="section-block" id="the-screens" aria-labelledby="screens-title">
+          <div className={styles.shotsHead}>
+            <p className="eyebrow">The recurring maintenance flow</p>
+            <h2 id="screens-title">Predictable revenue with zero monthly re-typing.</h2>
+            <p>
+              Cadence contracts, automatic calendar appointments, Stripe card charges, and smart decline recovery.
+            </p>
+          </div>
+
+          <ol className={styles.shots}>
+            {RECURRING_FLOW.map((shot) => (
+              <li className={styles.shot} key={shot.step}>
+                <div className={styles.shotCopy}>
+                  <span className={styles.shotStep}>{shot.step}</span>
+                  <h3 className={styles.shotTitle}>{shot.title}</h3>
+                  <p className={styles.shotBody}>{shot.body}</p>
+                </div>
+                <div className={styles.shotMedia}>
+                  {shot.image ? (
+                    <img
+                      src={shot.image.src}
+                      alt={shot.image.alt}
+                      width={shot.image.width}
+                      height={shot.image.height}
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  ) : (
+                    shot.mock
+                  )}
+                </div>
+              </li>
+            ))}
+          </ol>
+        </section>
+      }
       stepsEyebrow="From one job to a plan"
       stepsTitle="Four steps, then it runs without you."
       steps={[

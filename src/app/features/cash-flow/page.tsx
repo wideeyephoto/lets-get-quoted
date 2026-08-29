@@ -33,6 +33,103 @@ export const metadata: Metadata = {
   },
 };
 
+import styles from '@/components/marketing/suite-feature-page.module.css';
+
+const CASH_FLOW_FLOW = [
+  {
+    step: 'Step 1',
+    title: '14-Day and 30-day forward cash horizon',
+    body: 'Dated movements of money applied forward from today’s balance. See deposits arriving, supplier bills, and crew payroll in one timeline.',
+    image: {
+      src: '/features/back-office-insights.png',
+      alt: 'Financial insights dashboard showing cash position, revenue vs costs, and invoice aging.',
+      width: 1000,
+      height: 684,
+    },
+  },
+  {
+    step: 'Step 2',
+    title: 'Confirmed vs expected revenue separation',
+    body: 'Hard deposits in hand are kept strictly apart from pending balances. Read realistic conservative cash positions without doing spreadsheet gymnastics.',
+    mock: (
+      <div className={styles.shotMockContainer}>
+        <div className={styles.shotMockHeader}>
+          <span className={styles.shotMockTitle}>Revenue Waterfall &middot; Next 14 Days</span>
+          <span className={styles.shotBadgeGood}>$19,720 Confirmed</span>
+        </div>
+        <dl className={styles.shotKeyValues}>
+          <div className={styles.shotKeyRow}>
+            <dt>Confirmed In Hand (Stripe)</dt>
+            <dd style={{ color: '#50e3bd' }}>+$14,280.00</dd>
+          </div>
+          <div className={styles.shotKeyRow}>
+            <dt>Signed Deposits Scheduled</dt>
+            <dd style={{ color: '#50e3bd' }}>+$5,440.00 (Whitfield)</dd>
+          </div>
+          <div className={styles.shotKeyRow}>
+            <dt>Pending Unsigned Quotes</dt>
+            <dd style={{ color: '#8fa6b5' }}>$8,320.00 (Excluded from base)</dd>
+          </div>
+        </dl>
+      </div>
+    ),
+  },
+  {
+    step: 'Step 3',
+    title: 'Proactive buffer dip alert before payroll day',
+    body: 'The engine warns you when a projected balance will dip below your safety threshold within 7 days, giving you time to chase a balance or stage a vendor invoice.',
+    mock: (
+      <div className={styles.shotMockContainer}>
+        <div className={styles.shotMockHeader}>
+          <span className={styles.shotMockTitle}>Buffer Safety Guard &middot; Alert Active</span>
+          <span className={styles.shotBadgeFlag}>Dip on Friday (3 Days)</span>
+        </div>
+        <dl className={styles.shotKeyValues}>
+          <div className={styles.shotKeyRow}>
+            <dt>Safety Buffer Target</dt>
+            <dd>$8,000.00</dd>
+          </div>
+          <div className={styles.shotKeyRow}>
+            <dt>Projected Balance Fri</dt>
+            <dd style={{ color: '#ff8e42', fontWeight: 800 }}>$5,740.00 (−$2,260 under)</dd>
+          </div>
+          <div className={styles.shotKeyRow}>
+            <dt>Recommended Action</dt>
+            <dd style={{ color: '#50e3bd' }}>1-Tap SMS: Request Whitfield balance ($5,440)</dd>
+          </div>
+        </dl>
+      </div>
+    ),
+  },
+  {
+    step: 'Step 4',
+    title: '1-Click QuickBooks & CPA export at tax time',
+    body: 'Cash-basis profit and loss by year, expenses categorized by trade code, and QuickBooks-ready CSV files built from original job records.',
+    mock: (
+      <div className={styles.shotMockContainer}>
+        <div className={styles.shotMockHeader}>
+          <span className={styles.shotMockTitle}>Financial Export &middot; Year-to-Date</span>
+          <span className={styles.shotBadgeGood}>Reconciled</span>
+        </div>
+        <dl className={styles.shotKeyValues}>
+          <div className={styles.shotKeyRow}>
+            <dt>Cash-Basis P&L</dt>
+            <dd>PDF Report &middot; Generated in 1 tap</dd>
+          </div>
+          <div className={styles.shotKeyRow}>
+            <dt>Categorized Expenses</dt>
+            <dd>Materials, Labor, Vehicle, Permits</dd>
+          </div>
+          <div className={styles.shotKeyRow}>
+            <dt>Accountant Package</dt>
+            <dd style={{ color: '#50e3bd' }}>Clean CSV &middot; Zero spreadsheet reconciliation</dd>
+          </div>
+        </dl>
+      </div>
+    ),
+  },
+];
+
 export default function CashFlowFeaturePage() {
   return (
     <SuiteFeaturePage
@@ -44,9 +141,6 @@ export default function CashFlowFeaturePage() {
         </>
       }
       lede="Deposits and balances you are owed, payroll and bills you owe — dated and projected forward from today’s balance. The week you cannot cover payroll becomes a warning rather than a Friday morning discovery."
-      /* The two things somebody needs before they will read a forecast: that
-         it wants no bank credentials, and that it is not pretending to be
-         accounting. Both were answered in the FAQ, 4,000px down. */
       heroChips={['No bank connection', 'Forecasting, not bookkeeping', 'Confirmed and expected, marked apart']}
       heroNote="Built from money the product already knows about: approved quotes, deposits, installments, recurring visits, logged hours and the bills you enter. Nothing here is a guess about your industry."
       primary={{ label: 'Open the live forecast', href: '/demo/cash-flow' }}
@@ -100,6 +194,43 @@ export default function CashFlowFeaturePage() {
           body: 'Cash-basis profit and loss by year, expenses by category, CSV export and a QuickBooks-ready file — built from the same records the work ran on, so nothing has to be reconciled by hand first.',
         },
       ]}
+      afterBenefits={
+        <section className="section-block" id="the-screens" aria-labelledby="screens-title">
+          <div className={styles.shotsHead}>
+            <p className="eyebrow">The cash flow and forecasting engine</p>
+            <h2 id="screens-title">Forecast your cash position before money moves.</h2>
+            <p>
+              Dated balances, confirmed vs expected revenue, automated buffer alerts, and CPA-ready reports.
+            </p>
+          </div>
+
+          <ol className={styles.shots}>
+            {CASH_FLOW_FLOW.map((shot) => (
+              <li className={styles.shot} key={shot.step}>
+                <div className={styles.shotCopy}>
+                  <span className={styles.shotStep}>{shot.step}</span>
+                  <h3 className={styles.shotTitle}>{shot.title}</h3>
+                  <p className={styles.shotBody}>{shot.body}</p>
+                </div>
+                <div className={styles.shotMedia}>
+                  {shot.image ? (
+                    <img
+                      src={shot.image.src}
+                      alt={shot.image.alt}
+                      width={shot.image.width}
+                      height={shot.image.height}
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  ) : (
+                    shot.mock
+                  )}
+                </div>
+              </li>
+            ))}
+          </ol>
+        </section>
+      }
       stepsEyebrow="From records you already have"
       stepsTitle="Four inputs, and three of them are already there."
       steps={[

@@ -39,6 +39,127 @@ export const metadata: Metadata = {
   },
 };
 
+import styles from '@/components/marketing/suite-feature-page.module.css';
+
+type FlowStep = {
+  step: string;
+  title: string;
+  body: string;
+  mock?: React.ReactNode;
+  image?: { src: string; alt: string; width: number; height: number };
+};
+
+const PAYMENTS_FLOW: FlowStep[] = [
+  {
+    step: 'Step 1',
+    title: '1-Tap deposit checkout via Stripe',
+    body: 'Homeowners pay directly from the approved quote on mobile with Apple Pay, Google Pay, or Credit Card. Funds route directly to your Stripe account.',
+    mock: (
+      <div className={styles.shotMockContainer}>
+        <div className={styles.shotMockHeader}>
+          <span className={styles.shotMockTitle}>Hosted Deposit Checkout &middot; Apple Pay &amp; Cards</span>
+          <span className={styles.shotBadgeGood}>Stripe Connected</span>
+        </div>
+        <dl className={styles.shotKeyValues}>
+          <div className={styles.shotKeyRow}>
+            <dt>Deposit Required (50%)</dt>
+            <dd style={{ color: '#50e3bd' }}>$5,440.00</dd>
+          </div>
+          <div className={styles.shotKeyRow}>
+            <dt>Payment Methods</dt>
+            <dd>Apple Pay, Google Pay, Visa/MC, ACH</dd>
+          </div>
+          <div className={styles.shotKeyRow}>
+            <dt>Contractor Payout</dt>
+            <dd>2-day rolling payout to your bank</dd>
+          </div>
+        </dl>
+      </div>
+    ),
+  },
+  {
+    step: 'Step 2',
+    title: '0%-interest payment plans with saved card auto-billing',
+    body: 'Split larger contracts into a deposit and scheduled monthly installments. It is zero-interest, zero-credit-check, and charges the saved card on schedule.',
+    mock: (
+      <div className={styles.shotMockContainer}>
+        <div className={styles.shotMockHeader}>
+          <span className={styles.shotMockTitle}>0%-Interest Installments &middot; Whitfield</span>
+          <span className={styles.shotBadgeGood}>4 Installments @ $1,360</span>
+        </div>
+        <dl className={styles.shotKeyValues}>
+          <div className={styles.shotKeyRow}>
+            <dt>Approved Scope</dt>
+            <dd>$10,880.00 Total (0% interest, no lender)</dd>
+          </div>
+          <div className={styles.shotKeyRow}>
+            <dt>Deposit Paid</dt>
+            <dd style={{ color: '#50e3bd' }}>$5,440.00 captured Tue</dd>
+          </div>
+          <div className={styles.shotKeyRow}>
+            <dt>Auto-Billing Schedule</dt>
+            <dd>Monthly charges against saved card</dd>
+          </div>
+        </dl>
+      </div>
+    ),
+  },
+  {
+    step: 'Step 3',
+    title: 'Capped-fee ACH bank transfer for jobs $1,500+',
+    body: 'Bank debit is presented automatically when the flat fee beats a card percentage. Saves meaningful processing dollars on big-ticket remodels.',
+    mock: (
+      <div className={styles.shotMockContainer}>
+        <div className={styles.shotMockHeader}>
+          <span className={styles.shotMockTitle}>Automatic Fee Optimization &middot; Quote J-104 ($10,880)</span>
+          <span className={styles.shotBadgeGood}>ACH Capped Rate</span>
+        </div>
+        <dl className={styles.shotKeyValues}>
+          <div className={styles.shotKeyRow}>
+            <dt>Standard Card Fee (2.9% + 30¢)</dt>
+            <dd style={{ color: '#ef4444' }}>~$315.82</dd>
+          </div>
+          <div className={styles.shotKeyRow}>
+            <dt>Direct Bank Debit (0.8% capped)</dt>
+            <dd style={{ color: '#50e3bd' }}>$5.00 capped</dd>
+          </div>
+          <div className={styles.shotKeyRow}>
+            <dt>Contractor Net Savings</dt>
+            <dd style={{ color: '#50e3bd', fontWeight: 800 }}>+$310.82 retained</dd>
+          </div>
+        </dl>
+      </div>
+    ),
+  },
+  {
+    step: 'Step 4',
+    title: 'Locked itemized invoices & immutable receipts',
+    body: 'Invoices lock instantly upon payment. Sequential references, tax breakdowns, and automated receipts eliminate bookkeeping errors at tax time.',
+    mock: (
+      <div className={styles.shotMockContainer}>
+        <div className={styles.shotMockHeader}>
+          <span className={styles.shotMockTitle}>Invoice #INV-2026-894 &middot; Whitfield</span>
+          <span className={styles.shotBadgeGood}>Paid in Full</span>
+        </div>
+        <dl className={styles.shotKeyValues}>
+          <div className={styles.shotKeyRow}>
+            <dt>Payment Method</dt>
+            <dd>Visa &middot;&middot;&middot;&middot; 4242 (Stripe)</dd>
+          </div>
+          <div className={styles.shotKeyRow}>
+            <dt>Receipt & PDF</dt>
+            <dd>Emailed + SMS link delivered</dd>
+          </div>
+          <div className={styles.shotKeyRow}>
+            <dt>Accounting Ledger</dt>
+            <dd>Locked &middot; QuickBooks sync ready</dd>
+          </div>
+        </dl>
+      </div>
+    ),
+  },
+];
+
 const ACH_LABEL = `$${ACH_MIN_AMOUNT.toLocaleString('en-US')}`;
 
 export default function PaymentsFeaturePage() {
@@ -58,10 +179,6 @@ export default function PaymentsFeaturePage() {
         'Applied only to eligible payments collected through LGQ',
       ]}
       heroNote={`Card numbers never touch us — Stripe holds them. Bank debit is offered automatically on payments of ${ACH_LABEL} or more, where a flat capped fee beats a card percentage.`}
-      /* No /demo/payments screen exists, so "See the payment flow" would be a
-         button that lands somewhere adjacent — worse than none. The contextual
-         action here is the thing the page is actually selling, pointed at
-         signup; the second action stays on the page rather than repeating it. */
       primary={{ label: 'Start taking deposits' }}
       secondary={{ label: 'Every way you can be paid', href: '#capabilities' }}
       demo={
@@ -113,6 +230,43 @@ export default function PaymentsFeaturePage() {
           body: 'Itemized invoices with tax, discounts and sequential references, downloadable as PDF and locked once paid. Cash and cheques are logged so they reconcile properly, and refunds and chargebacks are tracked rather than remembered.',
         },
       ]}
+      afterBenefits={
+        <section className="section-block" id="the-screens" aria-labelledby="screens-title">
+          <div className={styles.shotsHead}>
+            <p className="eyebrow">The checkout and payment flow</p>
+            <h2 id="screens-title">Get paid directly to Stripe with zero hassle.</h2>
+            <p>
+              Hosted deposits, 0% installments, capped-fee bank transfers, and locked accounting receipts.
+            </p>
+          </div>
+
+          <ol className={styles.shots}>
+            {PAYMENTS_FLOW.map((shot) => (
+              <li className={styles.shot} key={shot.step}>
+                <div className={styles.shotCopy}>
+                  <span className={styles.shotStep}>{shot.step}</span>
+                  <h3 className={styles.shotTitle}>{shot.title}</h3>
+                  <p className={styles.shotBody}>{shot.body}</p>
+                </div>
+                <div className={styles.shotMedia}>
+                  {shot.image ? (
+                    <img
+                      src={shot.image.src}
+                      alt={shot.image.alt}
+                      width={shot.image.width}
+                      height={shot.image.height}
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  ) : (
+                    shot.mock
+                  )}
+                </div>
+              </li>
+            ))}
+          </ol>
+        </section>
+      }
       stepsEyebrow="From approved to in the bank"
       stepsTitle="Four steps, and none of them is an emailed invoice."
       steps={[
