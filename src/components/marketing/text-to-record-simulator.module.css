@@ -1,10 +1,107 @@
-/* Text to the Record Simulator Styles */
-
-.simulatorWrapper {
-  width: 100%;
+/* Perspective & Sound Bar */
+.perspectiveBar {
   display: flex;
-  flex-direction: column;
-  gap: 24px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  background: rgba(12, 32, 45, 0.7);
+  border: 1px solid rgba(174, 199, 211, 0.2);
+  border-radius: 14px;
+  padding: 0.65rem 1rem;
+  flex-wrap: wrap;
+}
+
+:root[data-theme='light'] .perspectiveBar {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+}
+
+.perspectiveLabel {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #8fa6b5;
+}
+
+:root[data-theme='light'] .perspectiveLabel {
+  color: #64748b;
+}
+
+.perspectiveToggleGroup {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.perspectiveBtn {
+  padding: 0.45rem 0.85rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #cbd5e1;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+:root[data-theme='light'] .perspectiveBtn {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  color: #334155;
+}
+
+.perspectiveBtn:hover {
+  background: rgba(80, 227, 189, 0.15);
+  border-color: rgba(80, 227, 189, 0.4);
+  color: #ffffff;
+}
+
+:root[data-theme='light'] .perspectiveBtn:hover {
+  background: #f0fdf4;
+  border-color: #86efac;
+  color: #15803d;
+}
+
+.perspectiveBtnActive {
+  background: rgba(80, 227, 189, 0.22) !important;
+  border-color: #50e3bd !important;
+  color: #50e3bd !important;
+  box-shadow: 0 0 10px rgba(80, 227, 189, 0.25);
+}
+
+:root[data-theme='light'] .perspectiveBtnActive {
+  background: #ecfdf5 !important;
+  border-color: #10b981 !important;
+  color: #047857 !important;
+}
+
+.soundToggleBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  border-radius: 8px;
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  color: #38bdf8;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+:root[data-theme='light'] .soundToggleBtn {
+  background: #e0f2fe;
+  border-color: #7dd3fc;
+  color: #0369a1;
+}
+
+.soundToggleBtn:hover {
+  background: rgba(56, 189, 248, 0.25);
+  transform: scale(1.03);
 }
 
 /* Tab Bar Container */

@@ -488,6 +488,80 @@ const SCENARIOS: Scenario[] = [
   },
 ];
 
+function playSoundEffect(type: 'send' | 'receive' | 'mic_start' | 'mic_stop' | 'approved', soundEnabled = true) {
+  if (!soundEnabled || typeof window === 'undefined') return;
+  try {
+    const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+
+    if (type === 'send') {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(520, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.1);
+      gain.gain.setValueAtTime(0.12, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.12);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.12);
+    } else if (type === 'receive') {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(1046.5, ctx.currentTime);
+      osc.frequency.setValueAtTime(1318.5, ctx.currentTime + 0.08);
+      gain.gain.setValueAtTime(0.1, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.3);
+    } else if (type === 'approved') {
+      [523.25, 659.25, 783.99, 1046.5].forEach((freq, idx) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, ctx.currentTime + idx * 0.07);
+        gain.gain.setValueAtTime(0.09, ctx.currentTime + idx * 0.07);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + idx * 0.07 + 0.18);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(ctx.currentTime + idx * 0.07);
+        osc.stop(ctx.currentTime + idx * 0.07 + 0.18);
+      });
+    } else if (type === 'mic_start') {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(600, ctx.currentTime);
+      osc.frequency.setValueAtTime(800, ctx.currentTime + 0.05);
+      gain.gain.setValueAtTime(0.1, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.12);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.12);
+    } else if (type === 'mic_stop') {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(800, ctx.currentTime);
+      osc.frequency.setValueAtTime(500, ctx.currentTime + 0.05);
+      gain.gain.setValueAtTime(0.1, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.12);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.12);
+    }
+  } catch {
+    // Audio autoplay policy fallback
+  }
+}
+
 export default function TextToRecordSimulator() {
   const [activeScenarioId, setActiveScenarioId] = useState<string>('change-order');
   const [perspective, setPerspective] = useState<'contractor' | 'homeowner'>('contractor');
@@ -497,10 +571,11 @@ export default function TextToRecordSimulator() {
   const [isRecordingLive, setIsRecordingLive] = useState(false);
   const [liveTranscript, setLiveTranscript] = useState<string>('');
   const [homeownerApproved, setHomeownerApproved] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState(true);
 
   const scenario = SCENARIOS.find((s) => s.id === activeScenarioId) || SCENARIOS[0];
 
-  // Stop audio on tab switch
+  // Stop audio on tab switch & play subtle transition tone
   useEffect(() => {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       window.speechSynthesis.cancel();
@@ -508,7 +583,12 @@ export default function TextToRecordSimulator() {
     setIsPlayingVoice(false);
     setVoiceSeconds(9);
     setHomeownerApproved(false);
-  }, [activeScenarioId]);
+    playSoundEffect('send', soundEnabled);
+    const timer = setTimeout(() => {
+      playSoundEffect('receive', soundEnabled);
+    }, 280);
+    return () => clearTimeout(timer);
+  }, [activeScenarioId, soundEnabled]);
 
   function toggleVoicePlayback() {
     if (isPlayingVoice) {
@@ -594,6 +674,7 @@ export default function TextToRecordSimulator() {
       recognition.onstart = () => {
         setIsRecordingLive(true);
         setLiveTranscript('Listening to your mic...');
+        playSoundEffect('mic_start', soundEnabled);
       };
 
       recognition.onresult = (event) => {
@@ -605,6 +686,7 @@ export default function TextToRecordSimulator() {
 
       recognition.onend = () => {
         setIsRecordingLive(false);
+        playSoundEffect('mic_stop', soundEnabled);
       };
 
       recognition.onerror = () => {
@@ -651,6 +733,15 @@ export default function TextToRecordSimulator() {
             👤 Homeowner Phone (What Dave Miller sees)
           </button>
         </div>
+        <button
+          type="button"
+          onClick={() => setSoundEnabled((v) => !v)}
+          className={styles.soundToggleBtn}
+          aria-label={soundEnabled ? 'Mute simulated audio effects' : 'Unmute simulated audio effects'}
+          title={soundEnabled ? 'Sound effects enabled' : 'Sound effects muted'}
+        >
+          {soundEnabled ? '🔊 Sound: ON' : '🔇 Sound: OFF'}
+        </button>
       </div>
 
       {/* Tab Navigation */}
@@ -726,7 +817,10 @@ export default function TextToRecordSimulator() {
 
                     <button
                       type="button"
-                      onClick={() => setHomeownerApproved(true)}
+                      onClick={() => {
+                        setHomeownerApproved(true);
+                        playSoundEffect('approved', soundEnabled);
+                      }}
                       className={styles.applePayBtn}
                     >
                       {homeownerApproved ? '✓ Authorized & Paid via Apple Pay' : 'Pay 1-Tap Authorize & Pay Deposit'}

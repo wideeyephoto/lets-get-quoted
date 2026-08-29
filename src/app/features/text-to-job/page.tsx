@@ -10,6 +10,7 @@ import SiriHandsFreeWizard from '@/components/marketing/SiriHandsFreeWizard';
 import PhotoScopeEstimator from '@/components/marketing/PhotoScopeEstimator';
 import UndoTimeMachine from '@/components/marketing/UndoTimeMachine';
 import SunVisorCardGenerator from '@/components/marketing/SunVisorCardGenerator';
+import LiveSmsSandbox from '@/components/marketing/LiveSmsSandbox';
 import { TRADES } from '@/lib/trades';
 import styles from './text-to-job.module.css';
 
@@ -205,6 +206,11 @@ export default function TextToJobPage() {
           {/* Live Interactive 4-Pillar Data Beams Neural Conduit */}
           <section className={styles.customSection}>
             <TextToJobDataBeams />
+          </section>
+
+          {/* 1-Tap Live SMS Sandbox & Real Phone Tester */}
+          <section className={styles.customSection}>
+            <LiveSmsSandbox />
           </section>
 
           {/* Before & After Scrap Lumber vs. Digital File Comparison */}
