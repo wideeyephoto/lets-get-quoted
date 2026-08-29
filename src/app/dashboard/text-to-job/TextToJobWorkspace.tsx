@@ -206,6 +206,7 @@ interface TextToJobWorkspaceProps {
   } | null;
   crewMembers?: CrewRow[];
   initialMessages?: InboundMessage[];
+  isDedicatedNumber?: boolean;
   activeJobCount: number;
   leadCount: number;
   crewCount: number;
@@ -215,6 +216,7 @@ export default function TextToJobWorkspace({
   account,
   crewMembers = [],
   initialMessages,
+  isDedicatedNumber = false,
   activeJobCount,
   leadCount,
   crewCount,
@@ -285,6 +287,7 @@ export default function TextToJobWorkspace({
   ];
 
   const activeCrewList = crewMembers.length > 0 ? crewMembers : defaultCrew;
+  const totalAuthorizedDevices = 1 + activeCrewList.filter((c) => c.active && Boolean(c.phone)).length;
 
   function toggleItem(msgId: string, itemId: string) {
     setMessages((prev) =>
@@ -477,7 +480,18 @@ export default function TextToJobWorkspace({
             <div>
               <div className={styles.sparkyBadgeRow}>
                 <span className={styles.badge}>✦ Sparky · Smart AI Contractor Assistant</span>
-                <span className={styles.livePill}><span className={styles.liveDot} /> Active &amp; Ready</span>
+                {isDedicatedNumber ? (
+                  <span className={styles.dedicatedPill}>
+                    ⭐ Dedicated 2-Way Line
+                  </span>
+                ) : (
+                  <span className={styles.sharedPill}>
+                    🔒 Shared Platform Line
+                  </span>
+                )}
+                <span className={styles.livePill}>
+                  <span className={styles.liveDot} /> {totalAuthorizedDevices} Whitelisted Devices
+                </span>
               </div>
               <h1 className={styles.title}>Text-to-Job Dashboard</h1>
               <p className={styles.subtitle}>
@@ -505,6 +519,26 @@ export default function TextToJobWorkspace({
           </a>
         </div>
       </div>
+
+      {/* Upgrade Banner for Shared Line Users */}
+      {!isDedicatedNumber && (
+        <div className={styles.upgradeCallout}>
+          <div className={styles.upgradeCalloutLeft}>
+            <span className={styles.upgradeStarIcon}>⭐</span>
+            <div>
+              <strong className={styles.upgradeCalloutTitle}>
+                Want homeowners to text your business directly?
+              </strong>
+              <p className={styles.upgradeCalloutText}>
+                Your shared line is protected for internal crew notes only. Upgrade to a dedicated 2-way number to put on your truck decals, website, and Google listing so clients can text you too.
+              </p>
+            </div>
+          </div>
+          <Link href="/dashboard/settings" className={styles.upgradeCalloutBtn}>
+            Claim Dedicated Number &rarr;
+          </Link>
+        </div>
+      )}
 
       {/* 2. Sleek Metrics & Status Strip (Single Row) */}
       <div className={styles.metricsStrip}>
@@ -551,7 +585,7 @@ export default function TextToJobWorkspace({
           onClick={() => setActiveTab('senders')}
           className={`${styles.tabBtn} ${activeTab === 'senders' ? styles.tabActive : ''}`}
         >
-          <span>👥 Who Can Text (Authorized Senders)</span>
+          <span>👥 Who Can Text ({totalAuthorizedDevices} Whitelisted Devices)</span>
         </button>
         <button
           type="button"
@@ -774,6 +808,43 @@ export default function TextToJobWorkspace({
       {/* TAB 2: Who Can Text (Authorized Senders Whitelist) */}
       {activeTab === 'senders' && (
         <div className={styles.sendersContainer}>
+          {/* Anti-Spam Security Shield Metrics Banner */}
+          <div className={styles.shieldMetricsCard}>
+            <div className={styles.shieldMetricsHeader}>
+              <span className={styles.shieldIcon}>🛡️</span>
+              <div>
+                <h4 className={styles.shieldTitle}>
+                  {isDedicatedNumber
+                    ? 'Dedicated Line Security & Whitelist'
+                    : 'Shared Platform Line Anti-Spam Shield'}
+                </h4>
+                <p className={styles.shieldDesc}>
+                  {isDedicatedNumber
+                    ? `Your private local business number accepts customer inquiries into your Inbox, while restricting internal job mutations to your ${totalAuthorizedDevices} authorized phones below.`
+                    : `To prevent web scrapers and spam bots from touching your accounting, only the ${totalAuthorizedDevices} verified phone numbers below can update job records. All stranger texts are safely blocked.`}
+                </p>
+              </div>
+            </div>
+            <div className={styles.shieldStatsGrid}>
+              <div className={styles.shieldStatBox}>
+                <span className={styles.shieldStatLabel}>Whitelisted Phones</span>
+                <strong className={styles.shieldStatVal}>{totalAuthorizedDevices} Devices</strong>
+              </div>
+              <div className={styles.shieldStatBox}>
+                <span className={styles.shieldStatLabel}>Anti-Spam Filter</span>
+                <strong className={styles.shieldStatVal} style={{ color: '#4ade80' }}>
+                  ✓ 100% Protected
+                </strong>
+              </div>
+              <div className={styles.shieldStatBox}>
+                <span className={styles.shieldStatLabel}>Unknown Caller Policy</span>
+                <strong className={styles.shieldStatVal} style={{ color: '#38bdf8' }}>
+                  Zero Job Mutations
+                </strong>
+              </div>
+            </div>
+          </div>
+
           <div className={styles.sendersCard}>
             <div className={styles.sendersHeader}>
               <div className={styles.sendersTitleGroup}>

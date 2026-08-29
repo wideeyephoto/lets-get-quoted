@@ -81,6 +81,7 @@ export default async function TextToJobDashboardPage() {
       account={account}
       crewMembers={crewRows || []}
       initialMessages={realMessages.length > 0 ? realMessages : undefined}
+      isDedicatedNumber={Boolean(account?.call_tracking_number)}
       activeJobCount={jobCount ?? 0}
       leadCount={leadCount ?? 0}
       crewCount={crewRows?.length ?? 0}

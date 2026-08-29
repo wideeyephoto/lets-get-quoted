@@ -30,7 +30,7 @@
 }
 
 /* ==========================================================================
-   Header Area
+   Header Area & Line Mode Badges
    ========================================================================== */
 .header {
   display: flex;
@@ -65,7 +65,7 @@
 .sparkyBadgeRow {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   flex-wrap: wrap;
   margin-bottom: 6px;
 }
@@ -112,6 +112,34 @@
   padding: 4px 12px;
   border-radius: 999px;
   width: fit-content;
+}
+
+.dedicatedPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  color: #38bdf8;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 3px 10px;
+  border-radius: 999px;
+  letter-spacing: 0.02em;
+}
+
+.sharedPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #cbd5e1;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 999px;
+  letter-spacing: 0.02em;
 }
 
 .title {
@@ -185,6 +213,63 @@
 .vcardBtn:hover {
   border-color: #ff7a21;
   color: #ff7a21;
+  transform: translateY(-1px);
+}
+
+/* ==========================================================================
+   Upgrade Callout Banner (For Shared Line Users)
+   ========================================================================== */
+.upgradeCallout {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  background: linear-gradient(90deg, rgba(56, 189, 248, 0.1) 0%, rgba(16, 34, 52, 0.9) 100%);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  border-radius: 12px;
+  padding: 14px 18px;
+}
+
+.upgradeCalloutLeft {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  max-width: 850px;
+}
+
+.upgradeStarIcon {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.upgradeCalloutTitle {
+  font-size: 14px;
+  color: #f5f0e7;
+  display: block;
+}
+
+.upgradeCalloutText {
+  font-size: 12px;
+  color: #8fa6b5;
+  margin: 3px 0 0 0;
+  line-height: 1.4;
+}
+
+.upgradeCalloutBtn {
+  background: #38bdf8;
+  color: #0b1520;
+  font-size: 13px;
+  font-weight: 800;
+  padding: 8px 16px;
+  border-radius: 8px;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.upgradeCalloutBtn:hover {
+  background: #7dd3fc;
   transform: translateY(-1px);
 }
 
@@ -789,12 +874,79 @@
 }
 
 /* ==========================================================================
-   TAB 2: Authorized Senders (Whitelist Table)
+   TAB 2: Authorized Senders (Whitelist Table & Security Shield)
    ========================================================================== */
 .sendersContainer {
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+.shieldMetricsCard {
+  background: var(--bg-2, #102234);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  border-radius: 14px;
+  padding: 18px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.shieldMetricsHeader {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.shieldIcon {
+  font-size: 24px;
+  line-height: 1;
+}
+
+.shieldTitle {
+  font-size: 16px;
+  font-weight: 800;
+  margin: 0 0 3px 0;
+  color: #f5f0e7;
+}
+
+.shieldDesc {
+  font-size: 13px;
+  line-height: 1.45;
+  color: #8fa6b5;
+  margin: 0;
+}
+
+.shieldStatsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.shieldStatBox {
+  background: var(--bg, #0b1724);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.shieldStatLabel {
+  font-size: 11px;
+  color: #8fa6b5;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.shieldStatVal {
+  font-size: 14px;
+  font-weight: 800;
+  color: #f5f0e7;
 }
 
 .sendersCard {
