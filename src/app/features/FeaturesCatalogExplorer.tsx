@@ -20,6 +20,14 @@ const CATEGORY_MAP_TO_SLUG: Record<string, string> = {
   insights: '/features/cash-flow',
 };
 
+const FEATURE_DEEP_LINKS: Record<string, string> = {
+  'sparky-ai': '/features/sparky',
+  'text-to-job': '/features/text-to-job',
+  'ai-smart-intake': '/features/ai-intake',
+  'video-sections': '/features/website-builder',
+  'quick-stops': '/features/quick-stops',
+};
+
 export default function FeaturesCatalogExplorer() {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -46,7 +54,7 @@ export default function FeaturesCatalogExplorer() {
       );
     }).map((feature) => {
       const cat = FEATURE_CATEGORIES.find((c) => c.features.some((f) => f.id === feature.id))!;
-      const deepLink = CATEGORY_MAP_TO_SLUG[cat.slug] || '/features';
+      const deepLink = FEATURE_DEEP_LINKS[feature.id] || CATEGORY_MAP_TO_SLUG[cat.slug] || '/features';
       return {
         ...feature,
         categoryTitle: cat.title,

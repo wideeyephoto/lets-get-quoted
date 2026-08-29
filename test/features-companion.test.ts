@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 
 const read = (p: string) => readFileSync(p, 'utf8').replace(/\r\n/g, '\n');
 
-describe('features companion and live interactivity', () => {
+describe('features companion and live interactivity with sparky', () => {
   const PAGE = read('src/app/features/page.tsx');
   const HUD = read('src/app/features/CompanionHUD.tsx');
   const PULSE = read('src/app/features/LiveFieldPulse.tsx');
@@ -17,16 +17,19 @@ describe('features companion and live interactivity', () => {
     expect(PAGE).toContain('<CompanionRouteDemo />');
   });
 
-  it('provides section-aware contextual commentary in CompanionHUD', () => {
-    expect(HUD).toContain('24/7 FIELD COPILOT');
-    expect(HUD).toContain('AI PHOTO ESTIMATOR');
+  it('provides Sparky section-aware contextual commentary in CompanionHUD', () => {
+    expect(HUD).toContain('⚡ 24/7 SPARKY CO-PILOT');
+    expect(HUD).toContain('⚡ SPARKY VISION OCR');
     expect(HUD).toContain('QUICK ACTIONS');
     expect(HUD).toContain('PRESET_QUESTIONS');
     expect(HUD).toContain('60s Guided Tour');
+    expect(HUD).toContain('Sparky · 24/7 Field Co-Pilot');
+    expect(HUD).toContain('Ask Sparky ⚡');
+    expect(HUD).toContain('/features/sparky');
   });
 
-  it('streams realistic multi-trade events in LiveFieldPulse', () => {
-    expect(PULSE).toContain('LIVE FIELD COPILOT');
+  it('streams realistic multi-trade events in LiveFieldPulse with Sparky', () => {
+    expect(PULSE).toContain('⚡ LIVE SPARKY FIELD PULSE');
     expect(PULSE).toContain('Royal Oak, MI');
     expect(PULSE).toContain('Austin, TX');
     expect(PULSE).toContain('Denver, CO');
@@ -40,6 +43,7 @@ describe('features companion and live interactivity', () => {
     expect(PHOTO_DEMO).toContain('billOfMaterials');
     expect(PHOTO_DEMO).toContain('detectedSpecs');
     expect(PHOTO_DEMO).toContain('risksDetected');
+    expect(PHOTO_DEMO).toContain('Sparky · Field Vision OCR');
   });
 
   it('supports interactive route detour slider and priority fee settings in CompanionRouteDemo', () => {
@@ -49,3 +53,4 @@ describe('features companion and live interactivity', () => {
     expect(ROUTE_DEMO).toContain('Zero auto-booking');
   });
 });
+

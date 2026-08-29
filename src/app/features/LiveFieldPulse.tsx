@@ -21,7 +21,7 @@ const PULSE_EVENTS: PulseEvent[] = [
     trade: 'Electrical',
     icon: '⚡',
     location: 'Royal Oak, MI',
-    action: 'AI scanned 4 panel photos → Drafted 200A upgrade quote',
+    action: 'Sparky scanned 4 panel photos via OCR → Drafted 200A upgrade quote',
     highlight: 'Quote e-signed & deposit paid',
     value: '$3,850',
     timeAgo: 'Just now',
@@ -32,7 +32,7 @@ const PULSE_EVENTS: PulseEvent[] = [
     trade: 'HVAC',
     icon: '❄️',
     location: 'Austin, TX',
-    action: 'AI Voice Receptionist answered 24/7 emergency hotline',
+    action: 'Sparky AI Voice Receptionist answered 24/7 emergency hotline',
     highlight: 'Condenser issue qualified & routed',
     value: '$1,420',
     timeAgo: '3m ago',
@@ -43,7 +43,7 @@ const PULSE_EVENTS: PulseEvent[] = [
     trade: 'Remodeling',
     icon: '🔨',
     location: 'Denver, CO',
-    action: 'Morning dispatch sent with tool checklist & gate code',
+    action: 'Sparky sent morning dispatch with tool checklist & gate code',
     highlight: '4-man crew on site',
     value: '3 jobs active',
     timeAgo: '5m ago',
@@ -54,7 +54,7 @@ const PULSE_EVENTS: PulseEvent[] = [
     trade: 'Plumbing',
     icon: '🚰',
     location: 'Tampa, FL',
-    action: 'Quick Stop accepted on return route (+0.6 mi detour)',
+    action: 'Sparky matched Quick Stop on return route (+0.6 mi detour)',
     highlight: 'Same-day visit fee collected',
     value: '+$165',
     timeAgo: '7m ago',
@@ -65,7 +65,7 @@ const PULSE_EVENTS: PulseEvent[] = [
     trade: 'Roofing',
     icon: '🏠',
     location: 'Phoenix, AZ',
-    action: 'Storm damage quote sent with multi-tier material add-ons',
+    action: 'Sparky logged texted change order from ladder → Quote upgraded',
     highlight: 'Customer selected Premium Shingles',
     value: '$11,200',
     timeAgo: '10m ago',
@@ -76,7 +76,7 @@ const PULSE_EVENTS: PulseEvent[] = [
     trade: 'Landscaping',
     icon: '🌱',
     location: 'Charlotte, NC',
-    action: 'Generated 1-click trade website with local SEO & instant estimate',
+    action: 'Sparky generated 1-click trade website with local SEO & instant estimate',
     highlight: 'Published to custom domain',
     value: 'Live in 2 min',
     timeAgo: '12m ago',
@@ -108,7 +108,7 @@ export default function LiveFieldPulse() {
       <div className={styles.pulseInner}>
         <div className={styles.pulseStatusBadge}>
           <span className={styles.pulseLiveDot} aria-hidden="true" />
-          <span className={styles.pulseStatusText}>LIVE FIELD COPILOT</span>
+          <span className={styles.pulseStatusText}>⚡ LIVE SPARKY FIELD PULSE</span>
           <span className={styles.pulseStatusSub}>Simulated Real-Time Activity</span>
         </div>
 
