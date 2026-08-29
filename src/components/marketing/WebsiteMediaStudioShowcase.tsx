@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { useState, useRef } from 'react';
 import styles from './website-media-studio-showcase.module.css';
 
@@ -548,11 +549,12 @@ export default function WebsiteMediaStudioShowcase() {
             aria-label="Interactive before and after project showcase"
           >
             {/* After Image (Full background) */}
-            <img
-              src="/media/website-builder/lawn-and-order/lawn-and-order-project-gallery.jpg"
-              alt="Finished landscaped patio and manicured lawn after installation"
+            <Image
+              src="/media/website-builder/before-after/backyard-landscaping-after.png"
+              alt="Finished Kansas City backyard with new sod, a paver walkway, edged planting beds, and path lights"
               className={styles.baImgLayer}
-              loading="lazy"
+              fill
+              sizes="(max-width: 900px) 100vw, 42vw"
               draggable={false}
             />
 
@@ -561,12 +563,12 @@ export default function WebsiteMediaStudioShowcase() {
               className={styles.baBeforeClip}
               style={{ clipPath: `inset(0 ${100 - sliderPos}% 0 0)` }}
             >
-              <img
-                src="/media/website-builder/lawn-and-order/lawn-and-order-desktop-hero.jpg"
-                alt="Original yard site prior to excavation and grading"
+              <Image
+                src="/media/website-builder/before-after/backyard-landscaping-before.png"
+                alt="The same Kansas City backyard before renovation, with patchy grass, weeds, and a cracked concrete walkway"
                 className={styles.baImgLayer}
-                style={{ filter: 'grayscale(0.35) contrast(0.95)' }}
-                loading="lazy"
+                fill
+                sizes="(max-width: 900px) 100vw, 42vw"
                 draggable={false}
               />
             </div>
