@@ -181,10 +181,10 @@ describe('with the meter on', () => {
   });
 
   it('holds nothing at all for a category that does not bill', async () => {
-    // owner_alert is undecided and currently exempt - see sms-billing-policy.
+    // payment_message is undecided and currently exempt - see sms-billing-policy.
     rpc.mockResolvedValue({ data: 'res-1', error: null });
     carrierAccepts();
-    expect(await send('owner_alert')).toBe('SM123');
+    expect(await send('payment_message')).toBe('SM123');
     expect(rpc).not.toHaveBeenCalled();
   });
 

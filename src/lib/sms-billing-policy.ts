@@ -65,14 +65,13 @@ export type SmsBillingCategory =
 const BILLABLE: Readonly<Record<SmsBillingCategory, boolean>> = Object.freeze({
   customer_message: true,
   crew_message: true,
-  owner_alert: false, // UNDECIDED - see the category doc above
+  owner_alert: true, // Metered: outbound owner confirmations and receipts deduct 1 text credit
   payment_message: false, // UNDECIDED - see the category doc above
   verification: false,
 });
 
 /** Categories whose answer is a placeholder rather than a decision. */
 export const UNDECIDED_CATEGORIES: readonly SmsBillingCategory[] = Object.freeze([
-  'owner_alert',
   'payment_message',
 ]);
 

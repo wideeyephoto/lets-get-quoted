@@ -44,24 +44,22 @@ describe('what a workspace pays for', () => {
   it('exempts a lead verification code', () => {
     expect(bills('verification')).toBe(false);
   });
+
+  it('charges for owner alerts and field intake receipts', () => {
+    expect(bills('owner_alert')).toBe(true);
+  });
 });
 
 describe('the answers that are placeholders, not decisions', () => {
-  it('does not yet charge an owner to hear about their own business', () => {
-    // UNDECIDED. Costs the same at the carrier as any other segment, so
-    // exempting it is a real cost the platform absorbs.
-    expect(bills('owner_alert')).toBe(false);
-  });
-
   it('does not yet charge for pay links and card-update dunning', () => {
     // UNDECIDED. Metering these means a contractor who ran out of texts also
     // stops being able to collect.
     expect(bills('payment_message')).toBe(false);
   });
 
-  it('names both of them as undecided rather than leaving it to a comment', () => {
+  it('names undecided categories rather than leaving it to a comment', () => {
     // So a reader of the table can tell a settled `false` from a placeholder.
-    expect([...UNDECIDED_CATEGORIES].sort()).toEqual(['owner_alert', 'payment_message']);
+    expect([...UNDECIDED_CATEGORIES].sort()).toEqual(['payment_message']);
     for (const category of UNDECIDED_CATEGORIES) expect(bills(category)).toBe(false);
   });
 

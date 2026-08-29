@@ -666,6 +666,27 @@ INSTRUCTIONS:
       throw new Error(`apply_owner_field_action RPC failed: ${rpcError.message}`);
     }
 
+    // Meter 1 AI intake credit for the account
+    try {
+      const { data: resId } = await admin.rpc('reserve_usage_credits', {
+        p_account_id: claim.accountId,
+        p_resource_code: 'ai_intake_threads',
+        p_units: 1,
+        p_idempotency_key: `field-intake-ai-${claim.taskId}`,
+        p_operation_type: 'ai_intake',
+        p_expires_at: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+        p_metadata: { source: 'text_to_job_field_intake', taskId: claim.taskId },
+      });
+      if (resId && typeof resId === 'string') {
+        await admin.rpc('commit_usage_reservation', {
+          p_reservation_id: resId,
+          p_finalization_key: `field-intake-ai-commit-${claim.taskId}`,
+        });
+      }
+    } catch (billingErr) {
+      console.warn('AI credit metering warning (non-blocking):', billingErr);
+    }
+
     return {
       handled: true,
       outcome: toolName === 'report_ambiguity' ? 'ambiguity' : 'completed',
