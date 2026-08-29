@@ -934,10 +934,10 @@ export default function TextToJobWorkspace({
       <div className={styles.setupAdvancedSection}>
         <div className={styles.setupAdvancedHeader}>
           <div className={styles.setupAdvancedTitleGroup}>
-            <span className={styles.badge}>⚙️ Setup &amp; Preferences</span>
-            <h2 className={styles.setupAdvancedTitle}>Field Line Setup &amp; Driving Voice Guide</h2>
+            <span className={styles.badge}>⚙️ Team Access &amp; Voice Setup</span>
+            <h2 className={styles.setupAdvancedTitle}>Who Can Text Sparky &amp; Driving Voice Setup</h2>
             <p className={styles.setupAdvancedSubtitle}>
-              Manage authorized crew phone numbers, anti-spam protections, or Apple CarPlay &amp; Android Auto voice dictation.
+              Manage authorized crew phone numbers, or view 1-minute Siri &amp; Google Assistant steering wheel dictation setup.
             </p>
           </div>
         </div>
@@ -952,90 +952,47 @@ export default function TextToJobWorkspace({
               aria-expanded={showWhitelistAccordion}
             >
               <div className={styles.accordionHeaderLeft}>
-                <span className={styles.accordionIcon}>🛡️</span>
+                <span className={styles.accordionIcon}>👥</span>
                 <div>
                   <strong className={styles.accordionTitle}>
-                    Who Can Text &amp; Anti-Spam Security Shield
+                    Who Can Text Sparky (Team Phone Access)
                   </strong>
                   <p className={styles.accordionSubtitle}>
-                    {totalAuthorizedDevices} Whitelisted Devices &bull; Zero Job Mutations on Unknown Callers &bull; 100% Anti-Spam Protected
+                    {totalAuthorizedDevices} {totalAuthorizedDevices === 1 ? 'phone' : 'phones'} configured to send job updates directly to Sparky
                   </p>
                 </div>
               </div>
               <span className={styles.accordionChevron}>
-                {showWhitelistAccordion ? '▲ Hide Whitelist' : '▼ Manage Senders'}
+                {showWhitelistAccordion ? '▲ Hide Team Numbers' : '▼ Manage Team Numbers'}
               </span>
             </button>
 
             {showWhitelistAccordion && (
               <div className={styles.accordionBody}>
-                {/* Qualification Alert if unverified */}
+                {/* Simple alert if unverified */}
                 {!isQualified && (
                   <div className={styles.qualificationWarningCard}>
-                    <span style={{ fontSize: '24px' }}>🔒</span>
+                    <span style={{ fontSize: '24px' }}>📱</span>
                     <div style={{ flex: 1 }}>
                       <strong style={{ color: '#f5f0e7', fontSize: '15px' }}>
-                        Alert Phone Setup Required to Unlock Your Hotline
+                        Connect Your Cell Phone to Start Texting
                       </strong>
                       <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#cbd5e1', lineHeight: 1.4 }}>
-                        To prevent internet spam and scrapers, your field hotline is locked until you connect your cell phone. Once saved, your phone is instantly whitelisted.
+                        Add your mobile number so Sparky recognizes you when you text from the job site.
                       </p>
                     </div>
                     <Link href="/dashboard/automations#urgent-lead-sms" className={styles.verifyBtn}>
-                      📱 Add Mobile Phone in Notifications &rarr;
+                      📱 Connect Mobile Phone &rarr;
                     </Link>
                   </div>
                 )}
-
-                {/* Anti-Spam Security Shield Metrics Banner */}
-                <div className={styles.shieldMetricsCard}>
-                  <div className={styles.shieldMetricsHeader}>
-                    <span className={styles.shieldIcon}>🛡️</span>
-                    <div>
-                      <h4 className={styles.shieldTitle}>
-                        {isDedicatedNumber
-                          ? 'Dedicated Line Security & Whitelist'
-                          : 'Shared Platform Line Anti-Spam Shield'}
-                      </h4>
-                      <p className={styles.shieldDesc}>
-                        {isDedicatedNumber
-                          ? `Your private local business number accepts customer inquiries into your Inbox, while restricting internal job mutations to your ${totalAuthorizedDevices} authorized phones below.`
-                          : `To prevent web scrapers and spam bots from touching your accounting, only the ${totalAuthorizedDevices} verified phone numbers below can text ${fieldPhoneNumber} to update job records. All stranger texts are safely blocked.`}
-                      </p>
-                    </div>
-                  </div>
-                  <div className={styles.shieldStatsGrid}>
-                    <div className={styles.shieldStatBox}>
-                      <span className={styles.shieldStatLabel}>Whitelisted Phones</span>
-                      <strong className={styles.shieldStatVal}>{totalAuthorizedDevices} Verified</strong>
-                    </div>
-                    <div className={styles.shieldStatBox}>
-                      <span className={styles.shieldStatLabel}>Pending Verification</span>
-                      <strong className={styles.shieldStatVal} style={{ color: unverifiedCrewCount > 0 ? '#f59e0b' : '#8fa6b5' }}>
-                        {unverifiedCrewCount} {unverifiedCrewCount === 1 ? 'Device' : 'Devices'}
-                      </strong>
-                    </div>
-                    <div className={styles.shieldStatBox}>
-                      <span className={styles.shieldStatLabel}>Anti-Spam Filter</span>
-                      <strong className={styles.shieldStatVal} style={{ color: '#4ade80' }}>
-                        ✓ 100% Protected
-                      </strong>
-                    </div>
-                    <div className={styles.shieldStatBox}>
-                      <span className={styles.shieldStatLabel}>Unknown Caller Policy</span>
-                      <strong className={styles.shieldStatVal} style={{ color: '#38bdf8' }}>
-                        Zero Job Mutations
-                      </strong>
-                    </div>
-                  </div>
-                </div>
 
                 <div className={styles.sendersCard}>
                   <div className={styles.sendersHeader}>
                     <div className={styles.sendersTitleGroup}>
                       <h3 className={styles.sendersTitle}>Authorized Phone Numbers</h3>
                       <p className={styles.sendersSubtitle}>
-                        Only verified phone numbers listed below can text <strong>{fieldPhoneNumber}</strong> to update job files. Unrecognized numbers are routed safely to your Lead Inbox.
+                        When these phone numbers text <strong>{fieldPhoneNumber}</strong>, Sparky automatically links updates to the correct technician.
                       </p>
                     </div>
                     <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
@@ -1043,7 +1000,7 @@ export default function TextToJobWorkspace({
                         + Add Crew Member
                       </Link>
                       <Link href="/dashboard/automations#urgent-lead-sms" className={styles.resetBtn}>
-                        Manage Alert Phone
+                        Manage My Phone
                       </Link>
                     </div>
                   </div>
@@ -1052,7 +1009,7 @@ export default function TextToJobWorkspace({
                     <table className={styles.sendersTable}>
                       <thead>
                         <tr>
-                          <th>Authorized Person</th>
+                          <th>Team Member</th>
                           <th>Cell Phone</th>
                           <th>Role</th>
                           <th>Permissions</th>
@@ -1085,11 +1042,11 @@ export default function TextToJobWorkspace({
                           <td>
                             {isQualified ? (
                               <span className={styles.senderStatusActive} title="Verified primary account phone">
-                                <span className={styles.liveDot} /> Verified &amp; Active
+                                <span className={styles.liveDot} /> Active
                               </span>
                             ) : (
                               <Link href="/dashboard/automations#urgent-lead-sms" style={{ color: '#f59e0b', fontSize: '12px', fontWeight: 700, textDecoration: 'none' }}>
-                                ⚠️ Connect in Notifications &rarr;
+                                ⚠️ Connect &rarr;
                               </Link>
                             )}
                           </td>
@@ -1138,7 +1095,7 @@ export default function TextToJobWorkspace({
                                       : 'Verified by owner'
                                   }
                                 >
-                                  <span className={styles.liveDot} /> Verified &amp; Authorized
+                                  <span className={styles.liveDot} /> Active
                                 </span>
                               ) : crew.phone ? (
                                 <Link
@@ -1156,16 +1113,6 @@ export default function TextToJobWorkspace({
                         ))}
                       </tbody>
                     </table>
-                  </div>
-
-                  <div className={styles.senderSecurityNotice}>
-                    <span style={{ fontSize: '22px' }}>🛡️</span>
-                    <div>
-                      <strong style={{ color: '#f5f0e7' }}>Zero Destructive Guesses:</strong>
-                      <p style={{ margin: '4px 0 0 0' }}>
-                        If a customer or unknown caller texts <strong>{fieldPhoneNumber}</strong>, the system will never mutate existing job quotes. It places the inquiry safely in your Lead Inbox.
-                      </p>
-                    </div>
                   </div>
                 </div>
               </div>
