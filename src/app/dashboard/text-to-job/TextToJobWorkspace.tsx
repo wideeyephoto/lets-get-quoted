@@ -558,26 +558,6 @@ export default function TextToJobWorkspace({
         </div>
       </div>
 
-      {/* Upgrade Banner for Shared Line Users */}
-      {!isDedicatedNumber && (
-        <div className={styles.upgradeCallout}>
-          <div className={styles.upgradeCalloutLeft}>
-            <span className={styles.upgradeStarIcon}>⭐</span>
-            <div>
-              <strong className={styles.upgradeCalloutTitle}>
-                Want homeowners to text your business directly?
-              </strong>
-              <p className={styles.upgradeCalloutText}>
-                Your shared line is protected for internal crew notes only. Upgrade to a dedicated 2-way number to put on your truck decals, website, and Google listing so clients can text you too.
-              </p>
-            </div>
-          </div>
-          <Link href="/dashboard/settings" className={styles.upgradeCalloutBtn}>
-            Claim Dedicated Number &rarr;
-          </Link>
-        </div>
-      )}
-
       {/* 2. Sleek Metrics & Status Strip (Single Row) */}
       <div className={styles.metricsStrip}>
         <Link href="/dashboard/jobs" className={styles.metricPill}>
@@ -1057,6 +1037,26 @@ export default function TextToJobWorkspace({
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Upgrade Banner for Shared Line Users (Placed at Bottom) */}
+      {!isDedicatedNumber && (
+        <div className={styles.upgradeCallout}>
+          <div className={styles.upgradeCalloutLeft}>
+            <span className={styles.upgradeStarIcon}>⭐</span>
+            <div>
+              <strong className={styles.upgradeCalloutTitle}>
+                Want homeowners to text your business directly?
+              </strong>
+              <p className={styles.upgradeCalloutText}>
+                Your shared line is protected for internal crew notes only. Upgrade to a dedicated 2-way number to put on your truck decals, website, and Google listing so clients can text you too.
+              </p>
+            </div>
+          </div>
+          <Link href="/dashboard/settings" className={styles.upgradeCalloutBtn}>
+            Claim Dedicated Number &rarr;
+          </Link>
         </div>
       )}
 
