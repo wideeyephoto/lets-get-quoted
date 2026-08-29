@@ -235,28 +235,17 @@ export default function AssistantWidget() {
 
   return (
     <>
-      {/* Floating Trigger Capsule (Option B Style) */}
+      {/* Compact Floating Trigger (Zero Clutter) */}
       {!isOpen ? (
         <div className={styles.triggerWrapper}>
-          <div className={styles.ridingShotgunLabel} aria-hidden="true">
-            <span>Riding shotgun</span>
-            <svg viewBox="0 0 24 16" width="16" height="10" fill="none" stroke="currentColor" strokeWidth="1.5">
-              <path d="M2 2 C8 12, 16 12, 22 14 M18 10 L22 14 L18 15" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </div>
           <button
             type="button"
             className={styles.floatingTrigger}
             onClick={toggleAssistant}
-            aria-label="Open Sparky AI Assistant"
+            aria-label="Open Sparky AI"
           >
-            <div className={styles.triggerAvatar}>
-              <SparkyAvatar size={34} expression="avatar" status="online" bordered={false} alt="Sparky mascot" />
-            </div>
-            <div className={styles.triggerName}>Sparky</div>
-            <div className={styles.speechPill}>
-              <span>Need anything?</span>
-            </div>
+            <SparkyAvatar size={38} expression="avatar" status="online" bordered={false} alt="Sparky" />
+            <span className={styles.triggerName}>Sparky</span>
           </button>
         </div>
       ) : null}
@@ -265,28 +254,25 @@ export default function AssistantWidget() {
       {isOpen ? (
         <>
           <div className={styles.overlay} onClick={closeAssistant} aria-hidden="true" />
-          <div className={styles.panel} role="dialog" aria-label="Sparky - Your crew’s AI right hand">
-            {/* Header (Option B: Riding shotgun) */}
+          <div className={styles.panel} role="dialog" aria-label="Sparky AI Assistant">
+            {/* Header (Clean & Minimal) */}
             <div className={styles.header}>
               <div className={styles.headerTitle}>
                 <SparkyAvatar
-                  size={38}
+                  size={32}
                   expression={isLoading ? 'thinking' : 'avatar'}
                   status={isLoading ? 'thinking' : 'online'}
                   alt="Sparky"
                 />
-                <div>
-                  <div className={styles.titleText}>Sparky</div>
-                  <div className={styles.headerSubtitle}>Riding shotgun</div>
-                </div>
+                <div className={styles.titleText}>Sparky</div>
               </div>
               <div className={styles.headerControls}>
                 <button
                   type="button"
                   className={styles.lightningIconBtn}
                   onClick={handleClearHistory}
-                  title="Clear conversation / Reset Sparky"
-                  aria-label="Reset Sparky"
+                  title="Clear chat"
+                  aria-label="Clear chat"
                 >
                   <span className={styles.lightningGlyph}>⚡</span>
                 </button>
@@ -304,8 +290,8 @@ export default function AssistantWidget() {
               </div>
             </div>
 
-            {/* Option B Top Action Cards Bar */}
-            <div className={styles.quickActionsBar} role="toolbar" aria-label="Sparky quick actions">
+            {/* Quick Actions Bar (Short & Direct) */}
+            <div className={styles.quickActionsBar} role="toolbar" aria-label="Quick actions">
               <button
                 type="button"
                 className={styles.actionCardBtn}
@@ -313,14 +299,13 @@ export default function AssistantWidget() {
                 disabled={isLoading}
               >
                 <span className={styles.actionIcon}>
-                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2">
+                  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
                     <polyline points="14 2 14 8 20 8" />
                     <line x1="16" y1="13" x2="8" y2="13" />
-                    <line x1="16" y1="17" x2="8" y2="17" />
                   </svg>
                 </span>
-                <span>Draft a quote</span>
+                <span>Draft quote</span>
               </button>
 
               <button
@@ -330,12 +315,12 @@ export default function AssistantWidget() {
                 disabled={isLoading}
               >
                 <span className={styles.actionIcon}>
-                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2">
+                  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
                     <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
                   </svg>
                 </span>
-                <span>Log a job note</span>
+                <span>Job note</span>
               </button>
 
               <button
@@ -345,12 +330,12 @@ export default function AssistantWidget() {
                 disabled={isLoading}
               >
                 <span className={styles.actionIcon}>
-                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2">
+                  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2">
                     <circle cx="12" cy="12" r="10" />
                     <path d="M12 6v12M15 9.5a2.5 2.5 0 0 0-5 0c0 3 5 2 5 5a2.5 2.5 0 0 1-5 0" />
                   </svg>
                 </span>
-                <span>Check what’s unpaid</span>
+                <span>Unpaid</span>
               </button>
             </div>
 
@@ -361,7 +346,6 @@ export default function AssistantWidget() {
                   <span className={styles.contextDot} />
                   <span>{activeContext.label}</span>
                 </span>
-                <span className={styles.contextNotice}>Live screen context linked</span>
               </div>
             )}
 
@@ -374,7 +358,7 @@ export default function AssistantWidget() {
                 >
                   {msg.role === 'assistant' && (
                     <div className={styles.avatarGutter}>
-                      <SparkyAvatar size={30} expression="avatar" bordered={false} alt="Sparky" />
+                      <SparkyAvatar size={28} expression="avatar" bordered={false} alt="Sparky" />
                     </div>
                   )}
 
@@ -400,7 +384,7 @@ export default function AssistantWidget() {
                               className={styles.cardLink}
                               onClick={closeAssistant}
                             >
-                              <span>{card.linkLabel || 'View Details'}</span>
+                              <span>{card.linkLabel || 'View'}</span>
                               <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.5">
                                 <path d="M5 12h14M12 5l7 7-7 7" />
                               </svg>
@@ -416,11 +400,11 @@ export default function AssistantWidget() {
               {isLoading ? (
                 <div className={styles.assistantMessageRow}>
                   <div className={styles.avatarGutter}>
-                    <SparkyAvatar size={30} expression="thinking" status="thinking" bordered={false} alt="Sparky thinking" />
+                    <SparkyAvatar size={28} expression="thinking" status="thinking" bordered={false} alt="Sparky thinking" />
                   </div>
                   <div className={styles.toolRunning}>
                     <div className={styles.spinner} />
-                    <span>Sparky is on it... calculating & checking live records</span>
+                    <span>Sparky is on it...</span>
                   </div>
                 </div>
               ) : null}
@@ -433,10 +417,10 @@ export default function AssistantWidget() {
                 <input
                   ref={inputRef}
                   type="text"
-                  className={styles.inputField}
-                  placeholder="Message Sparky..."
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
+                  placeholder="Ask Sparky..."
+                  className={styles.textInput}
                   disabled={isLoading}
                 />
                 <button
