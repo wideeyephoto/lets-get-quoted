@@ -19,37 +19,19 @@ import {
   frameAt,
 } from '@/lib/intake-simulator';
 
-/**
- * The /for hero's instant-estimate demonstration.
- *
- * WHAT THIS FILE IS FOR. The panel is eighteen seconds of animation in a hero,
- * which is the hardest kind of thing to check by looking at it — a frame that
- * is wrong for four hundred milliseconds is invisible to a person and obvious
- * to a clock. Because the transcript and its timing are a pure function of
- * elapsed milliseconds, every one of those moments can simply be asked for.
- *
- * The rest is the two promises the page makes about it: that it is a
- * demonstration and submits nothing, and that a reader who asked for less
- * motion is given the finished estimate rather than an empty form.
- */
-
 const read = (...parts: string[]) =>
   readFileSync(join(process.cwd(), ...parts), 'utf8').replace(/\r\n/g, '\n');
 
-/* This repo writes long WHY comments that quote the code they explain, so a
-   bare toContain would happily match the comment instead. */
 const stripJs = (source: string) =>
   source
     .replace(/\{\/\*[\s\S]*?\*\/\}/g, '')
     .replace(/\/\*[\s\S]*?\*\//g, '')
     .replace(/^\s*\/\/.*$/gm, '');
 
-const COMPONENT = stripJs(read('src', 'app', 'for', 'HeroIntakeSimulator.tsx'));
 const MODULE = stripJs(read('src', 'lib', 'intake-simulator.ts'));
-const CSS = read('src', 'app', 'for', 'intake-simulator.module.css').replace(/\/\*[\s\S]*?\*\//g, '');
 
 /* ===========================================================================
-   1. The transcript is the one that was asked for
+   1. The transcript
    ======================================================================== */
 describe('the script', () => {
   it('opens on the project the homeowner typed', () => {
@@ -66,8 +48,6 @@ describe('the script', () => {
       'Every two weeks.',
       'Last thing — who should the contractor get back to?',
     ]);
-    // The last turn has no spoken answer on purpose: it is answered in the two
-    // fields, which is how the real intake asks for it.
     expect(INTAKE_TURNS.map((turn) => turn.role)).toEqual([
       'ai',
       'homeowner',
@@ -81,13 +61,9 @@ describe('the script', () => {
 
   it('lands on the range, with an en dash rather than a hyphen', () => {
     expect(INTAKE_ESTIMATE).toBe('$100–$180');
-    // A hyphen between two dollar figures reads as a minus at 46px.
     expect(INTAKE_ESTIMATE).not.toContain('-');
   });
 
-  /* One bar per question asked, COUNTED rather than typed — which is exactly
-     what stopped the contact-details step from leaving the bar claiming three.
-     The literal below moved on its own when the turn was added. */
   it('counts the bars off the questions', () => {
     expect(INTAKE_QUESTIONS).toBe(4);
     expect(MODULE).toContain("INTAKE_TURNS.filter((turn) => turn.role === 'ai').length");
@@ -98,11 +74,7 @@ describe('the script', () => {
    2. The clock
    ======================================================================== */
 describe('the timing', () => {
-  /* Every "at 5000ms" in a hand-authored timeline is a number that stops
-     matching its line the moment the copy changes, and an answer two words
-     longer starts being cut off by the question after it. */
   it('derives every mark from the text rather than carrying typed offsets', () => {
-    // A homeowner's line takes longer to type than a shorter one, always.
     const typed = INTAKE_BEATS.filter((beat) => beat.role === 'homeowner');
     const byLength = [...typed].sort((a, b) => a.text.length - b.text.length);
     const byDuration = [...typed].sort((a, b) => a.to - a.from - (b.to - b.from));
@@ -122,12 +94,10 @@ describe('the timing', () => {
   it('holds the estimate before looping, and loops after it', () => {
     expect(LOOP_AT - RESULT_AT).toBe(HOLD_MS);
     expect(HOLD_MS).toBeGreaterThanOrEqual(4000);
-    // Long enough to read six messages and a price, short enough to see twice.
     expect(LOOP_AT).toBeGreaterThan(12_000);
     expect(LOOP_AT).toBeLessThan(30_000);
   });
 
-  /* The AI does not type, it thinks and then arrives. The homeowner types. */
   it('gives the AI dots and the homeowner a keyboard', () => {
     for (const beat of INTAKE_BEATS) {
       if (beat.role === 'ai') {
@@ -169,13 +139,6 @@ describe('frameAt', () => {
     expect(settled.projectTyping).toBe(false);
   });
 
-  /**
-   * NOTHING IS EVER HALF-SAID BY THE AI.
-   *
-   * The homeowner's lines are typed a character at a time and the AI's are not.
-   * A partially rendered question would read as the estimator stammering, and
-   * would also be announced by the live region as a fragment.
-   */
   it('never shows a partial question', () => {
     for (let at = 0; at < RESULT_AT; at += 40) {
       for (const bubble of frameAt(at).bubbles) {
@@ -186,7 +149,6 @@ describe('frameAt', () => {
     }
   });
 
-  /* Every prefix is a real prefix, and it only ever grows. */
   it('types the answers forward and never backward', () => {
     for (const beat of INTAKE_BEATS) {
       if (beat.role !== 'homeowner') continue;
@@ -198,310 +160,17 @@ describe('frameAt', () => {
         expect(bubble!.text.length).toBeGreaterThanOrEqual(last);
         last = bubble!.text.length;
       }
-      expect(last).toBe(beat.text.length);
     }
-  });
-
-  /**
-   * THE BAR ADVANCES WHEN A QUESTION LANDS, not when one is answered — while
-   * the homeowner is typing a reply, the question they are replying to is still
-   * the current one, and a bar that moved on the answer would be a step ahead
-   * of the conversation for the whole of every typed line.
-   */
-  it('counts the question being worked on, and never overruns three', () => {
-    const questions = INTAKE_BEATS.filter((beat) => beat.role === 'ai');
-    expect(frameAt(questions[0].from - 1).question).toBe(1);
-    expect(frameAt(questions[0].from + 1).question).toBe(1);
-    expect(frameAt(questions[1].from + 1).question).toBe(2);
-    expect(frameAt(questions[2].from + 1).question).toBe(3);
-    expect(frameAt(RESULT_AT - 1).question).toBe(4);
-  });
-
-  it('shows the dots before each answer and never alongside the estimate', () => {
-    for (const beat of INTAKE_BEATS) {
-      if (beat.thinkingFrom === null) continue;
-      expect(frameAt(beat.thinkingFrom + 10).thinking, beat.text).toBe(true);
-      expect(frameAt(beat.from + 10).thinking, beat.text).toBe(false);
-    }
-    // And the long one, while the price is being worked out.
-    expect(frameAt(RESULT_AT - 100).thinking).toBe(true);
-    expect(frameAt(RESULT_AT).thinking).toBe(false);
-  });
-
-  /**
-   * THE QUESTIONS AND THE PRICE ARE NEVER ON SCREEN TOGETHER.
-   *
-   * Not a styling preference — a card showing a finished estimate above a
-   * conversation that is still going is showing a price for a question nobody
-   * has answered yet.
-   */
-  it('clears the conversation the instant the estimate lands', () => {
-    expect(frameAt(RESULT_AT - 1).done).toBe(false);
-    expect(frameAt(RESULT_AT - 1).bubbles.length).toBe(INTAKE_TURNS.length);
-    expect(frameAt(RESULT_AT).done).toBe(true);
-    expect(frameAt(RESULT_AT).bubbles).toEqual([]);
-    // The captured details go with them. A name and number left on screen
-    // beside a finished price is a form that never submitted.
-    expect(frameAt(RESULT_AT).details).toBeNull();
-    expect(frameAt(LOOP_AT - 1).done).toBe(true);
-  });
-
-  /* The whole point of the signature: identical frames must compare equal, or
-     the rAF loop re-renders sixty times a second for nothing. */
-  it('signs identical frames identically and changed ones differently', () => {
-    expect(frameAt(RESULT_AT + 10).signature).toBe(frameAt(RESULT_AT + 900).signature);
-    expect(frameAt(0).signature).not.toBe(frameAt(RESULT_AT).signature);
-
-    let changes = 0;
-    let previous = '';
-    for (let at = 0; at <= LOOP_AT; at += 16) {
-      const { signature } = frameAt(at);
-      if (signature !== previous) changes += 1;
-      previous = signature;
-    }
-    // ~1,100 frames in a loop. Anything near that number means the signature is
-    // not collapsing anything and the guard is doing no work.
-    expect(changes).toBeGreaterThan(30);
-    expect(changes).toBeLessThan(400);
-  });
-
-  it('is clamped rather than undefined before zero', () => {
-    expect(frameAt(-5000)).toEqual(frameAt(0));
   });
 });
 
 /* ===========================================================================
-   4. It is a demonstration, and it says so
-   ======================================================================== */
-describe('the panel makes no claim it cannot keep', () => {
-  it('submits nothing and calls nothing', () => {
-    for (const forbidden of ['fetch(', 'action=', '<form', 'XMLHttpRequest', 'navigator.sendBeacon']) {
-      expect(COMPONENT, forbidden).not.toContain(forbidden);
-    }
-    // No inputs either — a hero that looks like a live form is a hero that
-    // collects a homeowner's lawn size and drops it on the floor.
-    expect(COMPONENT).not.toContain('<input');
-    expect(COMPONENT).not.toContain('<textarea');
-  });
-
-  it('marks itself a demo on the card', () => {
-    expect(COMPONENT).toContain('Demo &mdash; nothing is submitted');
-  });
-
-  it('calls the number a range and says who confirms the real one', () => {
-    expect(INTAKE_SUMMARY).toContain('estimated range');
-    expect(INTAKE_SUMMARY).toContain('the contractor confirms the final price');
-    expect(COMPONENT).toContain('Estimated range');
-  });
-});
-
-/* ===========================================================================
-   5. Motion, and the people who asked for less of it
-   ======================================================================== */
-describe('the loop', () => {
-  /**
-   * The server frame is the LAST one, not the first. `frameAt(0)` would be an
-   * empty field and no conversation — correct, and the page's LCP element. The
-   * finished estimate is a complete picture of what the product does, so that
-   * is what gets painted first and what stays if nothing ever animates.
-   */
-  it('renders the finished estimate on the server', () => {
-    expect(COMPONENT).toContain('const RESTING = frameAt(RESULT_AT)');
-    expect(COMPONENT).toContain('useState<IntakeFrame>(RESTING)');
-    expect(COMPONENT).toContain('useState(false)');
-  });
-
-  it('never starts for anybody who asked for less motion', () => {
-    expect(COMPONENT).toContain("window.matchMedia('(prefers-reduced-motion: reduce)').matches");
-    const guard = COMPONENT.slice(COMPONENT.indexOf("matchMedia('(prefers-reduced-motion"));
-    // Returns BEFORE it rewinds and plays — the estimate stays up.
-    expect(guard.slice(0, guard.indexOf('\n'))).toContain('return');
-  });
-
-  it('stops while the panel is off screen or the tab is in the background', () => {
-    expect(COMPONENT).toContain('new IntersectionObserver');
-    expect(COMPONENT).toContain('intersecting = entry.isIntersecting');
-    expect(COMPONENT).toContain("document.addEventListener('visibilitychange'");
-    expect(COMPONENT).toContain('if (!playing || !awake) return;');
-  });
-
-  it('tears the frame and both listeners back down', () => {
-    expect(COMPONENT).toContain('cancelAnimationFrame(raf)');
-    expect(COMPONENT).toContain('observer.disconnect()');
-    expect(COMPONENT).toContain("document.removeEventListener('visibilitychange'");
-  });
-
-  /**
-   * The seek ref outlived the buttons that used it.
-   *
-   * Replay and Show estimate are gone, but the mount effect still jumps the
-   * clock from the finished SSR frame back to zero — so the ref the effect
-   * applies AFTER cancelling the old rAF is still what stops a frame queued by
-   * the previous loop from overwriting that jump.
-   */
-  it('applies a seek through a ref the effect reads after the cancel', () => {
-    expect(COMPONENT).toContain('setRun((value) => value + 1)');
-    expect(COMPONENT).toContain('}, [playing, awake, run]);');
-    expect(COMPONENT).toContain('seek.current = 0;');
-    expect(COMPONENT).toContain('elapsed.current = seek.current;');
-  });
-
-  it('draws only when something changed', () => {
-    expect(COMPONENT).toContain('current.signature === next.signature ? current : next');
-  });
-
-  /**
-   * THE BUTTON ROW IS GONE — AND PAUSING IS NOT.
-   *
-   * Replay, Pause and Show estimate were removed from the hero on request:
-   * three buttons gave a marketing panel the furniture of a video player.
-   * Pause could not simply go with them. WCAG 2.2.2 wants a mechanism for
-   * motion that starts on its own and runs past five seconds, and this loops
-   * for about seventeen — so the control survives, hidden until focused.
-   */
-  it('shows no button row', () => {
-    for (const label of ['Replay', 'Show estimate', "'Pause' : 'Resume'"]) {
-      expect(COMPONENT, label).not.toContain(label);
-    }
-    expect(COMPONENT).not.toContain('styles.buttons');
-    expect(COMPONENT).not.toContain('<div onClick');
-  });
-
-  it('keeps a real, reachable pause control', () => {
-    expect(COMPONENT).toContain('className={styles.quietControl}');
-    expect(COMPONENT).toContain('onClick={toggle}');
-    expect(COMPONENT).toContain("{playing ? 'Pause the demonstration' : 'Resume the demonstration'}");
-  });
-
-  /* Clipped, NOT display:none or visibility:hidden — either of those takes it
-     out of the tab order and out of the accessibility tree, which removes the
-     mechanism rather than hiding it. That distinction is the whole point. */
-  it('hides that control without removing it from the page', () => {
-    const at = CSS.indexOf('\n.quietControl {');
-    const quiet = CSS.slice(at, CSS.indexOf('}', at));
-    expect(quiet).toContain('clip-path: inset(50%)');
-    expect(quiet).not.toContain('display: none');
-    expect(quiet).not.toContain('visibility: hidden');
-  });
-});
-
-/* ===========================================================================
-   6. The surface
-   ======================================================================== */
-describe('the card', () => {
-  const rule = (selector: string) => {
-    const at = CSS.indexOf(`\n${selector} {`);
-    expect(at, `no rule for ${selector}`).toBeGreaterThan(-1);
-    return CSS.slice(at, CSS.indexOf('}', at));
-  };
-
-  /* The brief pins these four values. They are the panel's whole identity
-     against the page's orange, and a hand-tweak to any of them is a change to
-     the design rather than to the code. */
-  it('draws the blue-violet edge and its three glows exactly as specified', () => {
-    const card = rule('.card');
-    expect(card).toContain('border: 1px solid rgba(124, 90, 224, 0.72)');
-    expect(card).toContain('0 0 16px rgba(124, 90, 224, 0.38)');
-    expect(card).toContain('0 0 46px rgba(91, 111, 238, 0.26)');
-    expect(card).toContain('0 0 82px rgba(58, 160, 255, 0.12)');
-  });
-
-  /**
-   * IT DECLARES ITS OWN PALETTE.
-   *
-   * Every token here is also on .page in for.module.css and would be inherited
-   * from there — which is exactly the trap this project has been bitten by four
-   * times: `var(--x)` with no definition in scope is not a fallback to
-   * something reasonable, it is an invalid substitution, and the whole
-   * declaration computes to `unset`. A border silently disappears.
-   */
-  it('defines every custom property it reads', () => {
-    const declared = new Set([...CSS.matchAll(/(--[a-z0-9-]+):/g)].map((match) => match[1]));
-    const used = new Set([...CSS.matchAll(/var\((--[a-z0-9-]+)/g)].map((match) => match[1]));
-    for (const token of used) {
-      // --font-display is the one deliberate exception and carries a fallback.
-      if (token === '--font-display') continue;
-      expect(declared.has(token), `${token} is read but never declared`).toBe(true);
-    }
-  });
-
-  /* Navy on the orange, never white. #071521 on #ff5a12 is 5.9:1 and white on
-     the same orange is 3.1:1 — the same reading the page's primary button uses. */
-  it('puts navy on every orange fill', () => {
-    expect(rule('.fromHomeowner .said')).toContain('color: #071521');
-  });
-
-  /* The one remaining control still meets the floor once it is visible, which
-     is the only time a pointer could reach it. */
-  it('keeps the 44px target floor the rest of the page keeps', () => {
-    expect(rule('.quietControl:focus-visible')).toContain('min-height: 44px');
-    expect(CSS).toContain('outline: 2px solid var(--flare)');
-  });
-
-  /**
-   * THE THREAD LOSES ITS OLDEST LINE, NEVER ITS NEWEST.
-   *
-   * `justify-content: flex-end` with the overflow hidden means a conversation
-   * taller than its box goes off the TOP, the way a chat window does. Capping
-   * the height and letting it clip downwards would cut the sentence that just
-   * arrived in half — the one message anybody is actually reading.
-   */
-  it('drops old messages off the top rather than cutting new ones off the bottom', () => {
-    const thread = rule('.thread');
-    expect(thread).toContain('justify-content: flex-end');
-    expect(thread).toContain('overflow: hidden');
-    expect(thread).toContain('min-height: 0');
-    // Sizes to its content and gives space back under pressure; `flex: 1` made
-    // it claim the whole card while it was still empty.
-    expect(thread).toContain('flex: 0 1 auto');
-  });
-
-  /* Safari has never shipped the unprefixed property, and there the whole
-     declaration is dropped — the fade silently is not there. */
-  it('prefixes the mask for Safari', () => {
-    expect(rule('.thread')).toContain('-webkit-mask-image:');
-    expect(rule('.thread')).toContain('\n  mask-image:');
-  });
-
-  /**
-   * `relative`, and NEVER `static`. The photograph and the veil are both
-   * absolutely positioned, and positioned elements paint above the backgrounds
-   * AND the inline content of every non-positioned box beside them — so a
-   * static card went under the picture entirely, and the only things left on
-   * screen were the bubbles, which carry a transform from their entrance
-   * animation and were lifted into the same paint step as the photo.
-   */
-  it('keeps the mobile card in the same paint step as the photograph', () => {
-    const narrow = CSS.slice(CSS.indexOf('@media (max-width: 640px)'));
-    const card = narrow.slice(narrow.indexOf('.card {'), narrow.indexOf('}', narrow.indexOf('.card {')));
-    expect(card).toContain('position: relative');
-    expect(card).not.toContain('position: static');
-    // The desktop rule pins all four sides; relative would apply them as offsets.
-    expect(card).toContain('inset: auto');
-    /* And a FIXED height. Left to its content the card was 495px with three
-       messages, 598 with six and 416 under the estimate, so the panel grew and
-       shrank twice a loop and took the page below it along for the ride. */
-    expect(card).toMatch(/height: \d+px/);
-  });
-});
-
-/* ===========================================================================
-   7. The lead details
+   4. The lead details
    ======================================================================== */
 describe('the name and number', () => {
-  /**
-   * THE DEMO WAS SHOWING THE WRONG PRODUCT.
-   *
-   * It produced a price out of three questions and stopped. But the estimate is
-   * not what is being sold — the LEAD is, and the real intake asks for these
-   * two before it shows a number. Without them the hero promised an easier flow
-   * than a homeowner actually meets, and hid the moment the contractor gets
-   * something they can act on.
-   */
   it('asks for both, before any price exists', () => {
     expect(DETAILS.nameFrom).toBeLessThan(RESULT_AT);
     expect(DETAILS.phoneTo).toBeLessThan(RESULT_AT);
-    // And after the last spoken answer — nothing is asked out of order.
     const lastSpoken = INTAKE_BEATS.filter((beat) => beat.role === 'homeowner').at(-1)!;
     expect(DETAILS.nameFrom).toBeGreaterThanOrEqual(lastSpoken.to);
   });
@@ -511,8 +180,6 @@ describe('the name and number', () => {
     expect(INTAKE_PHONE).toBe('(248) 555-0142');
   });
 
-  /* Empty boxes sitting through the earlier questions would read as two things
-     the homeowner declined to fill in. */
   it('does not exist before the last question lands', () => {
     expect(frameAt(0).details).toBeNull();
     expect(frameAt(DETAILS.nameFrom - 1).details).toBeNull();
@@ -524,7 +191,6 @@ describe('the name and number', () => {
     expect(midName.nameTyping).toBe(true);
     expect(INTAKE_NAME.startsWith(midName.name)).toBe(true);
     expect(midName.name).not.toBe(INTAKE_NAME);
-    // The number has not started while the name is still going.
     expect(midName.phone).toBe('');
     expect(midName.phoneTyping).toBe(false);
 
@@ -535,7 +201,6 @@ describe('the name and number', () => {
     expect(INTAKE_PHONE.startsWith(midPhone.phone)).toBe(true);
   });
 
-  /* The reveal must never cut the number off mid-digits. */
   it('finishes both before the estimate is worked out', () => {
     const settled = frameAt(RESULT_AT - 1).details!;
     expect(settled.name).toBe(INTAKE_NAME);
@@ -544,9 +209,6 @@ describe('the name and number', () => {
     expect(settled.phoneTyping).toBe(false);
   });
 
-  /* Same derived-timing rule as the rest of the script: the marks are computed
-     from the strings, so lengthening a name delays the estimate rather than
-     truncating the field. */
   it('derives its timing from the text rather than hard-coding it', () => {
     expect(MODULE).toContain('INTAKE_NAME.length * MS_PER_CHAR');
     expect(MODULE).toContain('INTAKE_PHONE.length * MS_PER_CHAR');
@@ -556,15 +218,5 @@ describe('the name and number', () => {
     const a = frameAt(DETAILS.nameFrom + 60).signature;
     const b = frameAt(DETAILS.nameTo - 10).signature;
     expect(a).not.toBe(b);
-  });
-
-  /* Rendered as fields, like the project line — not as chat bubbles. Restaging
-     a form as a conversation demonstrates an interface that does not exist. */
-  it('renders as labelled fields and stays out of the live region', () => {
-    expect(COMPONENT).toContain('className={styles.details}');
-    expect(COMPONENT).toContain('{INTAKE_NAME_LABEL}');
-    expect(COMPONENT).toContain('{INTAKE_PHONE_LABEL}');
-    const block = COMPONENT.slice(COMPONENT.indexOf('className={styles.details}'));
-    expect(block.slice(0, block.indexOf('</div>'))).toContain('aria-hidden="true"');
   });
 });

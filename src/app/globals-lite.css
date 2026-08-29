@@ -1,6 +1,6 @@
 /* GENERATED — do not edit. Source: src/app/globals.css
    Run: node scripts/build-css-subset.mjs
-   source-sha256: 52269abdae6d3c0f
+   source-sha256: a6612d56d17203be
 
    globals.css with the rules that can only match inside /dashboard, /admin and
    /demo removed. Every route except those three imports this file; they import
@@ -8649,6 +8649,8 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: var(--cedg
   background: #16202b;
   color: #ffffff;
 }
+
+.job-list { display: flex; flex-direction: column; gap: 0.7rem; margin-top: 1rem; }
 .job-row {
   display: block;
   border: 1px solid var(--edge-t10);

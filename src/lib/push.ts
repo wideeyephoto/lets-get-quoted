@@ -8,7 +8,17 @@ import { createAdminClient } from '@/lib/auth';
 
 const PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
 const PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY;
-const SUBJECT = process.env.VAPID_SUBJECT || 'mailto:hello@letsgetquoted.com';
+function resolveSafeVapidSubject(): string {
+  const raw = process.env.VAPID_SUBJECT || 'mailto:hello@letsgetquoted.com';
+  try {
+    new URL(raw);
+    return raw;
+  } catch {
+    return 'mailto:hello@letsgetquoted.com';
+  }
+}
+
+const SUBJECT = resolveSafeVapidSubject();
 
 let configured = false;
 if (PUBLIC_KEY && PRIVATE_KEY) {

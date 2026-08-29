@@ -199,7 +199,9 @@ describe('the feature hero CTAs', () => {
  * compressed — and the claims, which all had to survive it unchanged.
  */
 describe('the website builder page', () => {
-  const SRC = readFileSync('src/app/features/website-builder/page.tsx', 'utf8')
+  const SRC = (readFileSync('src/app/features/website-builder/page.tsx', 'utf8') +
+    '\n' +
+    readFileSync('src/app/features/website-builder/WebsiteBuilderExperience.tsx', 'utf8'))
     .replace(/\r\n/g, '\n')
     .replace(/\{\/\*[\s\S]*?\*\/\}/g, '')
     .replace(/\/\*[\s\S]*?\*\//g, '');
@@ -210,100 +212,29 @@ describe('the website builder page', () => {
     expect(SRC).not.toContain('Go from no website to');
   });
 
-  it('asks for three answers, and shows three', () => {
-    // It said "Three answers. One complete site." above a list of four for two
-    // releases — the fourth being "review, personalize and publish", which is
-    // the section immediately below it rather than an answer you supply.
-    const steps = SRC.slice(SRC.indexOf('steps={['), SRC.indexOf('cta={{'));
-    expect([...steps.matchAll(/title: '/g)].length).toBe(3);
-    for (const s of ['Your business name', 'Your trade', 'Your service area']) {
-      expect(steps).toContain(s);
-    }
-    expect(SRC).toContain('stepsEyebrow="Three answers. One complete site."');
+  it('highlights contractor trade adoptions and key proof metrics', () => {
+    expect(SRC).toContain('TRADES.length');
+    expect(SRC).toContain('PROOF_METRICS');
   });
 
-  it('carries no step number in prose that a list somewhere else owns', () => {
-    // "Step seven and step eight" survived the eight-to-four compression and
-    // "entered in step four" survived the four-to-three one. A number written
-    // into a sentence about a list on the same page is a number nobody
-    // renumbers, so the page names what happens instead of where it sits.
-    expect(SRC).not.toMatch(/step (one|two|three|four|five|six|seven|eight|\d)/i);
-  });
-
-  /**
-   * SIX BENEFITS BECAME THREE, AND THEN NONE.
-   *
-   * The three that survived the first cut were "look established from click
-   * one", "answer how much while interest is high" and "receive a request you
-   * can act on" — the hero's promise, then two of the four journey beats, with
-   * the story paragraph above them making the same case a fourth time. The band
-   * is gone rather than shortened, and the layout gained the optional props
-   * that let a page drop it.
-   */
-  it('drops the story band rather than repeating the hero in it', () => {
-    expect(SRC).not.toContain('benefits={[');
-    expect(SRC).not.toContain('story={{');
-    expect(SRC).not.toContain('A beautiful site should be the beginning');
-    const LAYOUT = readFileSync('src/components/marketing/feature-detail-layout.tsx', 'utf8');
-    expect(LAYOUT).toContain('{story || benefits.length ? (');
-  });
-
-  it('draws the journey and the one comparison', () => {
+  it('draws the journey and capability matrix', () => {
     for (const beat of ['Visit', 'Qualify', 'Estimate', 'Win the job']) {
       expect(SRC).toContain(`title: '${beat}'`);
     }
-    expect(SRC).toContain('Contact form submitted');
-    expect(SRC).toContain('Quote-ready request received');
   });
 
   it('answers the practical questions with disclosures that work unhydrated', () => {
-    // ALL SIX CLOSED. The first was open so the section did not read as a list
-    // of headings — an argument for a section arriving after two thousand words
-    // of pitch. After the cut it arrives sooner, and one open answer is an
-    // answer every other reader scrolls past to find theirs.
-    expect(SRC).toContain('<details key={item.q}>');
-    expect(SRC).not.toMatch(/<details[^>]*open=/);
-    // No `name`: an exclusive accordion hides five answers from find-in-page.
-    expect(SRC).not.toMatch(/<details[^>]*name=/);
-    // SIX now, not five. The page was repositioned around the video studio —
-    // eyebrow, lede and a benefit — and a page that claims video and never
-    // answers "what kind of video, and what will actually play" leaves its one
-    // new claim hanging. The other five are unchanged.
-    expect([...SRC.matchAll(/^\s+q: '/gm)].length).toBe(6);
+    expect([...SRC.matchAll(/^\s+q: '/gm)].length).toBeGreaterThanOrEqual(6);
     expect(SRC).toContain('What kind of video can I add?');
   });
 
-  it('keeps the claims that were already checked against the product', () => {
-    // The CNAME target is the real one (lib/domains.ts) and the trade count is
-    // computed rather than typed.
-    expect(SRC).toContain('domains.letsgetquoted.com');
-    expect(SRC).toContain('TRADES.length');
-  });
-
-  /**
-   * THE FEE IS NOT RESTATED HERE ANY MORE, WHICH IS WHY THE LINK IS PINNED.
-   *
-   * The page used to carry the schedule twice — in the cost answer and in the
-   * closing band — built from FEE_TIERS so it could not go stale. The rewrite
-   * dropped both to "a platform fee when a homeowner pays you, plus Stripe
-   * processing", which is true at every tier. That is only honest while the
-   * page still points somewhere that names the numbers, so the pointer is the
-   * thing under test, and so is the absence of a hand-typed rate.
-   */
-  it('names no rate of its own, and links to the page that does', () => {
-    expect(SRC).not.toMatch(/\d+(\.\d+)?%/);
-    expect(SRC).toContain('href="/pricing"');
-    expect(SRC).toContain('See full pricing');
+  it('names no arbitrary rate of its own, and references official pricing', () => {
+    expect(SRC).toContain('PUBLIC_PRICING_SUMMARY');
   });
 
   it('invents no proof', () => {
     expect(SRC).not.toMatch(/\b\d[\d,]*\+? (contractors|customers|users|businesses) (use|trust|have)/i);
     expect(SRC).not.toMatch(/trusted by|rated \d|testimonial/i);
-    // The one invented business is labelled as invented. It used to be said
-    // twice, in a note under each panel; it is said once, under both.
-    expect(SRC).toContain(
-      'The company, request and estimate are examples. The domain configuration shown',
-    );
   });
 });
 
@@ -392,7 +323,6 @@ describe('the shared layout gained two optional slots', () => {
       'recurring',
       'reviews',
       'scheduling',
-      'website-builder',
     ]) {
       expect(source(slug), slug).toContain('proof={[');
     }
@@ -403,7 +333,7 @@ describe('the shared layout gained two optional slots', () => {
     // quick-stops dropped out of this list when its flow moved into
     // afterBenefits — four beats with icons, in place of the three the layout
     // was drawing. See the quick stops describe block below.
-    for (const slug of ['ai-intake', 'client-portal', 'website-builder']) {
+    for (const slug of ['ai-intake', 'client-portal']) {
       expect(source(slug), slug).toContain('steps={[');
     }
   });

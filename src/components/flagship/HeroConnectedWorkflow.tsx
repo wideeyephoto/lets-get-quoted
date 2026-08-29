@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import styles from './hero-connected-workflow.module.css';
 
 export type TradeId = 'plumbing' | 'hvac' | 'roofing' | 'electrical' | 'landscaping' | 'general';
@@ -15,6 +16,10 @@ export interface TradeData {
   leadValue: string;
   quoteTotal: string;
   depositAmount: string;
+  fieldBadge: string;
+  fieldTitle: string;
+  fieldVoiceMemo: string;
+  fieldAiConfirmation: string;
   crewName: string;
   dispatchTime: string;
   payoutAmount: string;
@@ -31,6 +36,10 @@ export const TRADES_DATA: Record<TradeId, TradeData> = {
     leadValue: '$3,800 – $4,600',
     quoteTotal: '$4,250.00',
     depositAmount: '$850.00',
+    fieldBadge: '🎙️ VOICE MEMO & CHANGE ORDER',
+    fieldTitle: 'Rough-in Passed · Dedicated 3/4" Gas Line Added',
+    fieldVoiceMemo: '"Rough-in passed by inspector on Elm. Adding $450 line item for dedicated 3/4 inch gas line upgrade."',
+    fieldAiConfirmation: '✅ Logged voice memo & updated quote to $4,250.00. Reply SEND to text approval link.',
     crewName: 'Mike & Dave (Van #3)',
     dispatchTime: 'Today · 8:30 AM',
     payoutAmount: '+$4,250.00',
@@ -45,6 +54,10 @@ export const TRADES_DATA: Record<TradeId, TradeData> = {
     leadValue: '$8,200 – $11,500',
     quoteTotal: '$9,840.00',
     depositAmount: '$2,460.00',
+    fieldBadge: '🎙️ VOICE MEMO & CHANGE ORDER',
+    fieldTitle: 'Frozen Coil Diagnosed · Added Duct Transition',
+    fieldVoiceMemo: '"Coil is completely iced over. Added $850 for custom sheet metal duct transition to the quote."',
+    fieldAiConfirmation: '✅ Added $850.00 duct transition. Total quote updated to $9,840.00.',
     crewName: 'Carlos & Jason (Van #1)',
     dispatchTime: 'Today · 9:15 AM',
     payoutAmount: '+$9,840.00',
@@ -59,6 +72,10 @@ export const TRADES_DATA: Record<TradeId, TradeData> = {
     leadValue: '$12,400 – $15,800',
     quoteTotal: '$14,200.00',
     depositAmount: '$4,260.00',
+    fieldBadge: '📸 MMS PHOTO & SCOPE UPDATE',
+    fieldTitle: 'Chimney Flashing Damage · Added Plywood Sheathing',
+    fieldVoiceMemo: '"Rotted decking around chimney. Texted photo + adding 4 sheets OSB and ice/water shield."',
+    fieldAiConfirmation: '✅ Extracted photo scope & added $600 decking allowance to J-104.',
     crewName: 'Roof Crew Alpha (6 Techs)',
     dispatchTime: 'Tomorrow · 7:00 AM',
     payoutAmount: '+$14,200.00',
@@ -73,6 +90,10 @@ export const TRADES_DATA: Record<TradeId, TradeData> = {
     leadValue: '$3,400 – $4,800',
     quoteTotal: '$4,150.00',
     depositAmount: '$1,000.00',
+    fieldBadge: '🎙️ VOICE MEMO & CHANGE ORDER',
+    fieldTitle: '200A Panel Passed · Added Garage EV Line',
+    fieldVoiceMemo: '"Main disconnect replaced. Adding $750 for 50A EV charger 6/3 Romex run in garage."',
+    fieldAiConfirmation: '✅ Added $750.00 EV circuit to quote. Margin verified at 82.4%.',
     crewName: 'Sarah K. (Service Truck #2)',
     dispatchTime: 'Today · 10:00 AM',
     payoutAmount: '+$4,150.00',
@@ -87,6 +108,10 @@ export const TRADES_DATA: Record<TradeId, TradeData> = {
     leadValue: '$7,500 – $9,800',
     quoteTotal: '$8,650.00',
     depositAmount: '$2,500.00',
+    fieldBadge: '🧾 RECEIPT OCR & EXPENSE LOG',
+    fieldTitle: 'Nursery Receipt · $480 Polymeric Sand & Edging',
+    fieldVoiceMemo: '"Snapping receipt at SiteOne for patio polymeric sand and steel edging spikes."',
+    fieldAiConfirmation: '✅ Logged $480.00 SiteOne receipt. Live project gross margin: 76.5%.',
     crewName: 'Grounds Crew B (4 Techs)',
     dispatchTime: 'Thursday · 8:00 AM',
     payoutAmount: '+$8,650.00',
@@ -101,6 +126,10 @@ export const TRADES_DATA: Record<TradeId, TradeData> = {
     leadValue: '$16,000 – $22,000',
     quoteTotal: '$18,500.00',
     depositAmount: '$5,550.00',
+    fieldBadge: '🎙️ VOICE MEMO & PUNCH LIST',
+    fieldTitle: 'Schluter Shower Waterproofing Passed',
+    fieldVoiceMemo: '"24-hour flood test passed on master shower pan. Scheduled tile crew for 7am tomorrow."',
+    fieldAiConfirmation: '✅ Appended voice note to Miller job & checked off waterproofing task.',
     crewName: 'Lead Carpenter Brian + Crew',
     dispatchTime: 'Monday · 7:30 AM',
     payoutAmount: '+$18,500.00',
@@ -154,7 +183,7 @@ export default function HeroConnectedWorkflow() {
         ))}
       </div>
 
-      {/* 3-Step Milestone Ticker */}
+      {/* 4-Step Milestone Ticker */}
       <div
         className={`${styles.activityStrip} ${isWorkflowReplaying ? 'workflow-animating' : 'workflow-settled'}`}
         role="button"
@@ -179,11 +208,18 @@ export default function HeroConnectedWorkflow() {
           <span className={styles.activityMark}>02</span>
           <div className={styles.activityContent}>
             <small>Quote Accepted</small>
+            <strong>{trade.depositAmount} Paid</strong>
+          </div>
+        </div>
+        <div className={`${styles.activityEvent} ${styles.toneTeal}`}>
+          <span className={styles.activityMark}>03</span>
+          <div className={styles.activityContent}>
+            <small>Text to Record</small>
             <strong>{trade.quoteTotal}</strong>
           </div>
         </div>
         <div className={`${styles.activityEvent} ${styles.toneMint}`}>
-          <span className={styles.activityMark}>03</span>
+          <span className={styles.activityMark}>04</span>
           <div className={styles.activityContent}>
             <small>Stripe &amp; QBO</small>
             <strong>{trade.payoutAmount}</strong>
@@ -196,7 +232,8 @@ export default function HeroConnectedWorkflow() {
         {[
           { idx: 0, num: '01', title: 'Smart Intake', sub: 'Photo AI & Scope' },
           { idx: 1, num: '02', title: 'Instant Quote', sub: 'E-Sign & Deposit' },
-          { idx: 2, num: '03', title: 'Dispatch & Pay', sub: 'Route & Stripe Sync' },
+          { idx: 2, num: '03', title: 'Text to Record', sub: 'Voice Memo & SMS' },
+          { idx: 3, num: '04', title: 'Dispatch & Pay', sub: 'Route & Stripe Sync' },
         ].map((step) => (
           <button
             key={step.idx}
@@ -309,7 +346,54 @@ export default function HeroConnectedWorkflow() {
                   type="button"
                   className={styles.actionBtnNext}
                   onClick={() => setActiveStep(2)}
-                  aria-label="Next Step: Dispatch Crew"
+                  aria-label="Next Step: Field Update"
+                >
+                  <span className={styles.btnPulseDot} aria-hidden="true" />
+                  <span className={styles.btnText}>Field Update</span>
+                  <span className={styles.btnArrow} aria-hidden="true">→</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* STAGE 3: TEXT TO THE RECORD (VOICE & SMS FIELD INTAKE) */}
+        {activeStep === 2 && (
+          <div>
+            <div className={styles.stageRowTop}>
+              <span className={styles.fieldActionBadge}>
+                {trade.fieldBadge}
+              </span>
+              <Link href="/features/text-to-record" className={styles.fieldFeatureLink}>
+                Learn Text to Record →
+              </Link>
+            </div>
+
+            <div className={styles.leadTitleText}>
+              {trade.fieldTitle}
+            </div>
+
+            <div className={styles.infoBoxField}>
+              <div className={styles.fieldVoiceSnippet}>
+                <span className={styles.waveformDot} />
+                <span className={styles.voiceText}>{trade.fieldVoiceMemo}</span>
+              </div>
+              <div className={styles.fieldAiResponse}>
+                {trade.fieldAiConfirmation}
+              </div>
+            </div>
+
+            <div className={styles.stageRowBottom}>
+              <span style={{ color: '#50e3bd', fontWeight: 600 }}>✓ Updated from the truck — no app download</span>
+              <div className={styles.actionBtnWrapper}>
+                <span className={`${styles.waveRing} ${styles.wave1}`} aria-hidden="true" />
+                <span className={`${styles.waveRing} ${styles.wave2}`} aria-hidden="true" />
+                <span className={`${styles.waveRing} ${styles.wave3}`} aria-hidden="true" />
+                <button
+                  type="button"
+                  className={styles.actionBtnNext}
+                  onClick={() => setActiveStep(3)}
+                  aria-label="Next Step: Dispatch & Pay"
                 >
                   <span className={styles.btnPulseDot} aria-hidden="true" />
                   <span className={styles.btnText}>Dispatch Crew</span>
@@ -320,8 +404,8 @@ export default function HeroConnectedWorkflow() {
           </div>
         )}
 
-        {/* STAGE 3: DISPATCH & STRIPE PAYOUT */}
-        {activeStep === 2 && (
+        {/* STAGE 4: DISPATCH & STRIPE PAYOUT */}
+        {activeStep === 3 && (
           <div>
             <div className={styles.stageRowTop}>
               <span className={styles.paidBadge}>

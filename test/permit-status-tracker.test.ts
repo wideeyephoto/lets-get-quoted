@@ -47,7 +47,7 @@ vi.mock('../src/lib/permit-intel/permit-workflow', () => {
     accountId: 'acc-1',
     jobId: 'job-1',
     applicationStatus: 'submitted',
-    externalPermitNumber: 'SUB-20260826-JOB1',
+    externalPermitNumber: 'PB26-0899',
   };
 
   return {
@@ -66,7 +66,7 @@ vi.mock('../src/lib/permit-intel/permit-workflow', () => {
         accountId: 'acc-1',
         jobId: 'job-1',
         applicationStatus: 'submitted',
-        externalPermitNumber: 'SUB-20260826-JOB1',
+        externalPermitNumber: 'PB26-0899',
       };
     },
   };
@@ -118,7 +118,7 @@ describe('Permit Status Tracking Engine & Webhooks', () => {
       mockJobId,
       expect.objectContaining({
         kind: 'permit_status_updated',
-        title: expect.stringContaining('Permit Issued'),
+        title: expect.stringContaining('Permit Status Updated'),
       }),
     );
   });
@@ -130,6 +130,7 @@ describe('Permit Status Tracking Engine & Webhooks', () => {
   });
 
   it('processes inbound municipal webhook and updates permit case', async () => {
+    process.env.PERMIT_WEBHOOK_SECRET = 'test_webhook_secret';
     const webhookRes = await processInboundPermitWebhook(
       mockSupabase,
       'bsa',
@@ -138,6 +139,7 @@ describe('Permit Status Tracking Engine & Webhooks', () => {
         permitNumber: 'PB26-0899',
         status: 'approved_issued',
       },
+      'test_webhook_secret',
     );
 
     expect(webhookRes.success).toBe(true);

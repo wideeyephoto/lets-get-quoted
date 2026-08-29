@@ -174,7 +174,7 @@ describe('Permit Submission Pipeline & Authorization Controls', () => {
       mockJobId,
       expect.objectContaining({
         kind: 'permit_submission_dispatched',
-        title: 'Permit Application Submitted',
+        title: 'Permit Application Packet Prepared',
       }),
     );
   });

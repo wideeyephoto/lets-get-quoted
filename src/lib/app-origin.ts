@@ -12,9 +12,20 @@
 // genuine Let's Get Quoted email, from our sending domain, to any address named,
 // carrying a VALID one-time sign-in token addressed to the attacker's server.
 // One click is a signed-in session in somebody else's hands. Reading the origin
-// from config leaves no parameter to poison.
+function resolveSafeAppOrigin(): string {
+  const raw = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
+  try {
+    const parsed = new URL(raw);
+    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+      return raw;
+    }
+  } catch {
+    // Fall back to default localhost origin on malformed / placeholder environment variable
+  }
+  return 'http://localhost:3010';
+}
 
-export const APP_ORIGIN = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
+export const APP_ORIGIN = resolveSafeAppOrigin();
 
 type PublicOriginEnvironment = Readonly<Record<string, string | undefined>>;
 

@@ -13,7 +13,7 @@ import Link from 'next/link';
 // question somebody actually has standing in a dead spot is "did I just lose
 // the hours I logged".
 
-export const dynamic = 'force-static';
+export const dynamic = 'force-dynamic';
 
 export const metadata = { title: 'Offline · Field app' };
 

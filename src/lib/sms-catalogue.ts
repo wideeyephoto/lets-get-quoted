@@ -12,6 +12,7 @@ import {
   crewAssignmentText,
   crewPhoneVerificationCodeText,
   crewScheduleSelectedText,
+  crewWelcomeText,
   inboxReplyText,
   jobUpdateText,
   leadDeclineText,
@@ -379,6 +380,17 @@ export const SMS_CATALOGUE: SmsCatalogueEntry[] = [
 
   // -- the crew --------------------------------------------------------------
   {
+    id: 'crew-welcome',
+    title: 'Crew member onboarding & field intake welcome',
+    trigger: 'A new crew member or subcontractor is invited to the workspace',
+    audience: 'crew',
+    control: always('Triggered on crew onboarding'),
+    body: crewWelcomeText({
+      crewName: 'Mike',
+      businessName: SAMPLE.business,
+    }),
+  },
+  {
     id: 'crew-assignment',
     title: 'Crew assigned',
     trigger: 'You put someone on a job',
@@ -680,6 +692,7 @@ export const CATALOGUE_SENDERS = [
   'sendCrewAssignmentSms',
   'sendCrewPhoneVerificationCodeSms',
   'sendCrewScheduleSelectedSms',
+  'sendCrewWelcomeSms',
   'sendEstimateOfferSms',
   'sendInboxReplySms',
   'sendJobUpdateSms',

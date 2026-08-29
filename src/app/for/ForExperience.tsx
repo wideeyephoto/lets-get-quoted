@@ -1191,13 +1191,14 @@ export default function ForExperience() {
                     type="button"
                     className={styles.faqQuestionBtn}
                     aria-expanded={isOpen}
+                    aria-controls={`for-faq-answer-${index}`}
                     onClick={() => setOpenFaq(isOpen ? null : index)}
                   >
                     <span>{faq.q}</span>
                     <span className={styles.faqToggleIcon} aria-hidden="true">{isOpen ? '−' : '+'}</span>
                   </button>
                   {isOpen && (
-                    <div className={styles.faqAnswerPane}>
+                    <div id={`for-faq-answer-${index}`} className={styles.faqAnswerPane}>
                       <p>{faq.a}</p>
                     </div>
                   )}

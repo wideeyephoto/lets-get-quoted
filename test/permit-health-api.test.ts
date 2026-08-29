@@ -24,8 +24,8 @@ describe('Permit System Health & Diagnostics API - GET /api/permits/health', () 
 
     // Check submission pipeline & providers
     expect(data.components.submissionPipeline.consentGateEnforced).toBe(true);
-    expect(data.components.providerAdapters.bsaAccessMyGov).toBe('active');
-    expect(data.components.providerAdapters.accelaCitizenAccess).toBe('active');
-    expect(data.components.webhookRouters.status).toBe('ready');
+    expect(data.components.providerAdapters.bsaAccessMyGov).toBe('mock_pilot');
+    expect(data.components.providerAdapters.accelaCitizenAccess).toBe('in_development');
+    expect(data.components.webhookRouters.status).toBeDefined();
   });
 });

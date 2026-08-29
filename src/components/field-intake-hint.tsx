@@ -107,6 +107,7 @@ export default function FieldIntakeHint({
         className={styles.hintPill}
         onClick={() => setOpen((prev) => !prev)}
         aria-expanded={open}
+        aria-controls={`hint-popover-${page}`}
         aria-label={`Learn how to update ${page} by voice or text`}
       >
         <span className={styles.hintIcon}>🎙️</span>
@@ -114,7 +115,7 @@ export default function FieldIntakeHint({
       </button>
 
       {open && (
-        <div className={styles.hintPopover} role="tooltip">
+        <div id={`hint-popover-${page}`} className={styles.hintPopover} role="tooltip">
           <div className={styles.popoverHeader}>
             <span className={styles.popoverTitle}>
               {config.title}
