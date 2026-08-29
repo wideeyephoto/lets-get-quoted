@@ -68,6 +68,7 @@ const baseNavItems: { href: string; label: string; hint?: string }[] = [
   { href: '/dashboard/recurring', label: 'Recurring Jobs', hint: 'Repeating jobs & auto-billing' },
   { href: '/dashboard/services', label: 'Price Book', hint: 'Saved services & prices' },
   { href: '/dashboard/cash-flow', label: 'Cash Flow', hint: 'Upcoming bills, payroll & projected balance' },
+  { href: '/dashboard/expenses', label: 'Expenses Ledger', hint: 'Cross-job supplier receipts, labor & costs' },
   { href: '/dashboard/automations', label: 'Automations', hint: 'The follow-ups, reminders and review asks that run without you' },
   { href: '/dashboard/marketing', label: 'Marketing', hint: 'Seasonal topics, email & text campaigns' },
   { href: '/dashboard/marketing/blog', label: 'Blog', hint: 'Posts for your website' },
@@ -141,6 +142,7 @@ const NAV_GROUPS: { label: string; accent: string; hrefs: string[] }[] = [
       '/dashboard/recurring',
       '/dashboard/services',
       '/dashboard/cash-flow',
+      '/dashboard/expenses',
     ],
   },
   {

@@ -10,6 +10,7 @@ import { createAdminClient } from '@/lib/auth';
 import { isJobAssignedToCrew } from '@/lib/crew';
 import { applyQuoteAcceptance, createJobFeedEvent } from '@/lib/job-feed';
 import { createCost } from '@/lib/jobs';
+import { evaluateAndTriggerMarginAlert } from '@/lib/margin-alerts';
 import { createJobTask, setJobTaskDone } from '@/lib/job-tasks';
 import { arrivalPermissionsFromCrew, arrivalSettingsFromAccount, MAX_ETA_MINUTES, MIN_ETA_MINUTES, type ArrivalStatus } from '@/lib/arrival';
 import { applyArrivalStatus, sendArrival } from '@/lib/arrival-send';
@@ -313,7 +314,7 @@ export async function logFieldTimeAction(jobId: string, formData: FormData) {
   // 'estimated': hours typed in after the fact are a recollection. Time the
   // clock measured is recorded as 'clocked' instead — the distinction is the
   // point of the field, and calling both "measured" would erase it.
-  await createCost(supabase, accountId, jobId, {
+  const cost = await createCost(supabase, accountId, jobId, {
     type: 'labor',
     description,
     crewId: crew.id,
@@ -322,6 +323,8 @@ export async function logFieldTimeAction(jobId: string, formData: FormData) {
     source: 'estimated',
     burdenPct: await resolveCrewBurdenPct(supabase, accountId, crew.id),
   });
+
+  await evaluateAndTriggerMarginAlert(supabase, accountId, jobId, cost);
 
   revalidatePath(`/field/jobs/${jobId}`);
   redirect(`/field/jobs/${jobId}?logged=time`);
@@ -342,13 +345,15 @@ export async function logFieldMaterialAction(jobId: string, formData: FormData) 
   // A crew member logging a material spend is standing at the counter with the
   // receipt in their hand, so 'receipt' is the honest default here — unlike the
   // owner's form, where the figure could have come from anywhere.
-  await createCost(supabase, accountId, jobId, {
+  const cost = await createCost(supabase, accountId, jobId, {
     type: 'material',
     description,
     amount,
     crewId: crew.id,
     source: normalizeCostSource(formData.get('costSource')) === 'estimated' ? 'estimated' : 'receipt',
   });
+
+  await evaluateAndTriggerMarginAlert(supabase, accountId, jobId, cost);
 
   revalidatePath(`/field/jobs/${jobId}`);
   redirect(`/field/jobs/${jobId}?logged=material`);

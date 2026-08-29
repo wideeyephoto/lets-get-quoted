@@ -208,7 +208,7 @@ export default function AssistantWidget() {
 
           // If action updated current job, refresh page data seamlessly
           const hasMutatingAction = json.actionCards?.some((c: ActionCard) =>
-            ['job_updated', 'quote_item_added', 'task_created'].includes(c.type),
+            ['job_updated', 'quote_item_added', 'task_created', 'expense_logged'].includes(c.type),
           );
           if (hasMutatingAction) {
             router.refresh();

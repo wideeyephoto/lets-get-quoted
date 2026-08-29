@@ -5,6 +5,8 @@ export type ActionCardType =
   | 'job_updated'
   | 'task_created'
   | 'quote_item_added'
+  | 'expense_logged'
+  | 'cost_analysis'
   | 'job_list'
   | 'client_list'
   | 'unpaid_invoices'

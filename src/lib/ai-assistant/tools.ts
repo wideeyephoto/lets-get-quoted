@@ -1,16 +1,28 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { Type, type FunctionDeclaration } from '@google/genai';
 import {
+  createCost,
   createJob,
   getJob,
+  listCosts,
   listJobs,
+  computeMargin,
+  formatMoney,
   parseQuoteItems,
   saveQuoteItems,
+  type CostType,
   type JobStatus,
   type QuoteItem,
 } from '@/lib/jobs';
 import { createJobTask, listJobTasks } from '@/lib/job-tasks';
 import { outstandingInvoices } from '@/lib/dashboard-money';
+import {
+  costConfidence,
+  DEFAULT_MIN_MARGIN_PCT,
+  marginVerdict,
+  normalizeCostSource,
+} from '@/lib/cost-truth';
+import { evaluateAndTriggerMarginAlert } from '@/lib/margin-alerts';
 import type { ActionCard, ActiveRecordContext } from './types';
 
 export interface ToolExecutionContext {
@@ -277,6 +289,53 @@ export const ASSISTANT_TOOLS_DECLARATION: AssistantFunctionDeclaration[] = [
     },
   },
   {
+    name: 'log_job_expense',
+    description: 'Logs a material, subcontractor, labor, or other job expense against the active job or a specified job ID, updating job margin and triggering margin health checks.',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        jobId: {
+          type: Type.STRING,
+          description: 'Job ID (optional; defaults to the active job currently viewed on screen)',
+        },
+        amount: {
+          type: Type.NUMBER,
+          description: 'Cost amount in dollars (e.g. 145.50 for $145.50)',
+        },
+        description: {
+          type: Type.STRING,
+          description: 'Description of the expense or purchased supplies (e.g. "Home Depot: 2x4s and deck screws", "Dump fee")',
+        },
+        type: {
+          type: Type.STRING,
+          description: 'Expense category: "material" (default), "sub" (subcontractor), "labor", or "other"',
+        },
+        supplier: {
+          type: Type.STRING,
+          description: 'Store, vendor or subcontractor name (e.g. "Home Depot", "ABC Supply", "Ferguson")',
+        },
+        costSource: {
+          type: Type.STRING,
+          description: 'Provenance of figure: "receipt" (default), "supplier_invoice", "price_book", or "estimated"',
+        },
+      },
+      required: ['amount', 'description'],
+    },
+  },
+  {
+    name: 'get_job_cost_analysis',
+    description: 'Retrieves complete financial intelligence for the active job or specified job ID: quoted revenue, itemized cost breakdown, loaded labor wages + burden, profit margin %, cost confidence evidence %, duplicate warnings, and margin floor health.',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        jobId: {
+          type: Type.STRING,
+          description: 'Job ID to analyze (optional; defaults to the active job on screen)',
+        },
+      },
+    },
+  },
+  {
     name: 'navigate_to',
     description: 'Provides direct in-app navigation link to a specific section or settings page in the dashboard.',
     parameters: {
@@ -284,7 +343,7 @@ export const ASSISTANT_TOOLS_DECLARATION: AssistantFunctionDeclaration[] = [
       properties: {
         destination: {
           type: Type.STRING,
-          description: 'Target section: "dashboard", "jobs", "schedule", "clients", "invoices", "cash_flow", "settings", "sites", "automations", "leads", "reviews", "crew", "marketing", or "sms_settings"',
+          description: 'Target section: "dashboard", "jobs", "schedule", "clients", "invoices", "cash_flow", "expenses", "settings", "sites", "automations", "leads", "reviews", "crew", "marketing", or "sms_settings"',
         },
         description: {
           type: Type.STRING,
@@ -875,6 +934,193 @@ export async function executeAssistantTool(
       };
     }
 
+    case 'log_job_expense': {
+      const targetJobId = (args.jobId as string) || (activeRecord?.type === 'job' ? activeRecord.id : null);
+      if (!targetJobId) {
+        throw new Error('No target job specified or detected on screen. Specify a job ref or open the job first.');
+      }
+
+      const existingJob = await getJob(supabase, accountId, targetJobId);
+      if (!existingJob) {
+        throw new Error(`Job not found for ID ${targetJobId}`);
+      }
+
+      const description = String(args.description ?? 'Job expense').trim();
+      const amount = Number(args.amount) || 0;
+      if (amount <= 0) {
+        throw new Error('Expense amount must be greater than $0.00.');
+      }
+
+      const rawType = String(args.type ?? 'material').toLowerCase();
+      const costType: CostType = (['material', 'labor', 'sub', 'other'].includes(rawType) ? rawType : 'material') as CostType;
+      const supplier = args.supplier ? String(args.supplier).trim() : null;
+      const costSource = normalizeCostSource(args.costSource ?? 'receipt');
+
+      const costInput = costType === 'labor'
+        ? {
+            type: 'labor' as const,
+            description,
+            hours: Number(args.hours) || 1,
+            rate: amount,
+            supplier,
+            source: costSource,
+          }
+        : {
+            type: costType as Exclude<CostType, 'labor'>,
+            description,
+            amount,
+            supplier,
+            source: costSource,
+          };
+
+      const createdCost = await createCost(supabase, accountId, targetJobId, costInput);
+
+      // Trigger proactive margin alert if newly logged cost pushes margin below threshold
+      const alertResult = await evaluateAndTriggerMarginAlert(supabase, accountId, targetJobId, createdCost);
+
+      const allCosts = await listCosts(supabase, accountId, targetJobId);
+      const margin = computeMargin(existingJob, allCosts);
+      const marginPct = Math.round(margin.margin * 100);
+
+      const linkUrl = `/dashboard/jobs/${targetJobId}?open=costs`;
+      const actionCard: ActionCard = {
+        type: 'expense_logged',
+        title: `Logged $${amount.toFixed(2)} (${createdCost.category}) on ${existingJob.ref}`,
+        description: `"${description}"${supplier ? ` from ${supplier}` : ''} • Updated Margin: ${marginPct}% (Profit: ${formatMoney(margin.profit)})`,
+        linkUrl,
+        linkLabel: 'View Job Costs',
+        badge: `-$${amount.toFixed(2)}`,
+        data: {
+          cost: createdCost,
+          margin,
+          alertTriggered: alertResult.triggered,
+        },
+      };
+
+      return {
+        data: {
+          costId: createdCost.id,
+          jobId: existingJob.id,
+          jobRef: existingJob.ref,
+          clientName: existingJob.client_name,
+          category: createdCost.category,
+          amount,
+          supplier,
+          source: createdCost.cost_source,
+          updatedTotalCost: margin.totalCost,
+          updatedProfit: margin.profit,
+          updatedMarginPct: marginPct,
+          marginAlertTriggered: alertResult.triggered,
+          marginAlertMessage: alertResult.message,
+        },
+        actionCard,
+      };
+    }
+
+    case 'get_job_cost_analysis': {
+      const targetJobId = (args.jobId as string) || (activeRecord?.type === 'job' ? activeRecord.id : null);
+      if (!targetJobId) {
+        throw new Error('No active job specified or detected on screen. Specify a job ID or open a job to analyze.');
+      }
+
+      const [existingJob, allCosts, { data: account }] = await Promise.all([
+        getJob(supabase, accountId, targetJobId),
+        listCosts(supabase, accountId, targetJobId),
+        supabase.from('accounts').select('min_margin_pct').eq('id', accountId).maybeSingle(),
+      ]);
+
+      if (!existingJob) {
+        throw new Error(`Job not found for ID ${targetJobId}`);
+      }
+
+      const minMarginPct = Number(account?.min_margin_pct) || DEFAULT_MIN_MARGIN_PCT;
+      const margin = computeMargin(existingJob, allCosts);
+      const marginPct = Math.round(margin.margin * 100);
+
+      const confidence = costConfidence(
+        allCosts.map((c) => ({
+          amount: Number(c.amount) || 0,
+          burdenAmount: Number(c.burden_amount) || 0,
+          source: c.cost_source,
+        })),
+      );
+
+      const verdict = marginVerdict({
+        revenue: margin.revenue,
+        totalCost: margin.totalCost,
+        minMarginPct,
+        evidencedPct: confidence.evidencedPct,
+      });
+
+      const materialsTotal = allCosts
+        .filter((c) => c.type === 'material' || c.type === 'receipt')
+        .reduce((sum, c) => sum + Number(c.amount || 0), 0);
+      const laborWagesTotal = allCosts
+        .filter((c) => c.type === 'labor')
+        .reduce((sum, c) => sum + Number(c.amount || 0), 0);
+      const laborBurdenTotal = allCosts
+        .filter((c) => c.type === 'labor')
+        .reduce((sum, c) => sum + Number(c.burden_amount || 0), 0);
+      const subsTotal = allCosts
+        .filter((c) => c.type === 'sub')
+        .reduce((sum, c) => sum + Number(c.amount || 0), 0);
+      const otherTotal = allCosts
+        .filter((c) => c.type === 'other')
+        .reduce((sum, c) => sum + Number(c.amount || 0), 0);
+
+      const linkUrl = `/dashboard/jobs/${targetJobId}?open=costs`;
+      const badgeText = verdict.losing
+        ? 'Loss Alert'
+        : verdict.below
+        ? `Below ${minMarginPct}% Floor`
+        : `${marginPct}% Healthy Margin`;
+
+      const actionCard: ActionCard = {
+        type: 'cost_analysis',
+        title: `Cost & Margin Analysis: ${existingJob.ref}`,
+        description: `Revenue: ${formatMoney(margin.revenue)} • Total Costs: ${formatMoney(margin.totalCost)} • Net Profit: ${formatMoney(margin.profit)} (${marginPct}% margin)`,
+        linkUrl,
+        linkLabel: 'Inspect Cost Breakdown',
+        badge: badgeText,
+        data: {
+          margin,
+          confidence,
+          verdict,
+          costsCount: allCosts.length,
+        },
+      };
+
+      return {
+        data: {
+          jobId: existingJob.id,
+          jobRef: existingJob.ref,
+          clientName: existingJob.client_name,
+          quotedRevenue: margin.revenue,
+          totalCosts: margin.totalCost,
+          netProfit: margin.profit,
+          marginPct,
+          targetMarginFloorPct: minMarginPct,
+          marginStatus: verdict.losing ? 'operating_loss' : verdict.below ? 'below_floor' : 'healthy',
+          verdictMessage: verdict.message,
+          costBreakdown: {
+            materials: Math.round(materialsTotal * 100) / 100,
+            laborWages: Math.round(laborWagesTotal * 100) / 100,
+            laborBurden: Math.round(laborBurdenTotal * 100) / 100,
+            laborTotal: Math.round((laborWagesTotal + laborBurdenTotal) * 100) / 100,
+            subcontractors: Math.round(subsTotal * 100) / 100,
+            other: Math.round(otherTotal * 100) / 100,
+          },
+          costConfidence: {
+            evidencedTotal: confidence.evidenced,
+            estimatedTotal: confidence.estimated,
+            evidenceRatioPct: Math.round(confidence.evidencedPct * 100),
+          },
+          itemizedCostsCount: allCosts.length,
+        },
+        actionCard,
+      };
+    }
+
     case 'navigate_to': {
       const destination = String(args.destination ?? 'dashboard').toLowerCase();
       const description = args.description ? String(args.description) : undefined;
@@ -886,6 +1132,7 @@ export async function executeAssistantTool(
         clients: { path: '/dashboard/clients', label: 'Clients Directory' },
         invoices: { path: '/dashboard/cash-flow', label: 'Invoices & Payments' },
         cash_flow: { path: '/dashboard/cash-flow', label: 'Cash Flow & Forecast' },
+        expenses: { path: '/dashboard/expenses', label: 'All Expenses Ledger' },
         settings: { path: '/dashboard/settings', label: 'Business Settings' },
         sites: { path: '/dashboard/sites', label: 'Website Builder' },
         automations: { path: '/dashboard/automations', label: 'SMS & Email Automations' },

@@ -656,7 +656,6 @@ export default function TextToJobWorkspace({
   const activeCrewList = crewMembers.length > 0 ? crewMembers : defaultCrew;
   const verifiedCrewCount = activeCrewList.filter((c) => c.active && Boolean(c.phone) && c.phoneVerified).length;
   const totalAuthorizedDevices = (isQualified ? 1 : 0) + verifiedCrewCount;
-  const unverifiedCrewCount = activeCrewList.filter((c) => c.active && Boolean(c.phone) && !c.phoneVerified).length;
 
   function toggleItem(msgId: string, itemId: string) {
     setMessages((prev) =>
@@ -1204,6 +1203,7 @@ export default function TextToJobWorkspace({
               onClick={() => setShowWhitelistAccordion(!showWhitelistAccordion)}
               className={styles.accordionHeaderBtn}
               aria-expanded={showWhitelistAccordion}
+              aria-controls={showWhitelistAccordion ? 'whitelist-accordion-body' : undefined}
             >
               <div className={styles.accordionHeaderLeft}>
                 <span className={styles.accordionIcon}>👥</span>
@@ -1380,6 +1380,7 @@ export default function TextToJobWorkspace({
               onClick={() => setShowSiriAccordion(!showSiriAccordion)}
               className={styles.accordionHeaderBtn}
               aria-expanded={showSiriAccordion}
+              aria-controls={showSiriAccordion ? 'siri-accordion-body' : undefined}
             >
               <div className={styles.accordionHeaderLeft}>
                 <span className={styles.accordionIcon}>🎙️</span>
@@ -1398,7 +1399,7 @@ export default function TextToJobWorkspace({
             </button>
 
             {showSiriAccordion && (
-              <div className={styles.accordionBody}>
+              <div id="siri-accordion-body" className={styles.accordionBody}>
                 <div className={styles.siriGuideGrid}>
                   <div className={styles.siriStepCard}>
                     <span className={styles.siriStepNum}>Step 1</span>

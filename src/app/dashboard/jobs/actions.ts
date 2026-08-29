@@ -13,6 +13,7 @@ import {
 import { findOmissions } from '@/lib/quote-guard-ai';
 import { listServices } from '@/lib/services';
 import { normalizeCostSource } from '@/lib/cost-truth';
+import { evaluateAndTriggerMarginAlert } from '@/lib/margin-alerts';
 import { readReceipt, type ReceiptRead } from '@/lib/receipt-ocr';
 import { redirect } from 'next/navigation';
 import { createAdminClient, requireOfficeContext, requireOwnerContext } from '@/lib/auth';
@@ -872,6 +873,8 @@ export async function createCostAction(jobId: string, formData: FormData) {
   const rawSource = normalizeCostSource(formData.get('costSource'));
   const source = rawSource === 'unspecified' ? 'estimated' : rawSource;
 
+  let createdCost: { id: string; amount: number; description: string; type: CostType } | null = null;
+
   if (type === 'labor') {
     const hours = parseAmount(formData.get('hours'));
     const rate = parseAmount(formData.get('rate'));
@@ -891,6 +894,7 @@ export async function createCostAction(jobId: string, formData: FormData) {
       source,
       burdenPct: await resolveCrewBurdenPct(supabase, accountId, crewId),
     });
+    createdCost = cost;
     await createJobFeedEvent(supabase, accountId, jobId, {
       kind: 'cost_added',
       title: 'Cost added',
@@ -914,6 +918,7 @@ export async function createCostAction(jobId: string, formData: FormData) {
       supplier: optionalText(formData.get('supplier')),
       source,
     });
+    createdCost = cost;
     await createJobFeedEvent(supabase, accountId, jobId, {
       kind: 'cost_added',
       title: 'Cost added',
@@ -923,6 +928,10 @@ export async function createCostAction(jobId: string, formData: FormData) {
       sourceTable: 'costs',
       sourceId: cost.id,
     });
+  }
+
+  if (createdCost) {
+    await evaluateAndTriggerMarginAlert(supabase, accountId, jobId, createdCost);
   }
 
   revalidatePath(`/dashboard/jobs/${jobId}`);

@@ -1,5 +1,5 @@
 import { GoogleGenAI, type Content, type Part } from '@google/genai';
-import { getJob, parseQuoteItems } from '@/lib/jobs';
+import { getJob, listCosts, computeMargin, parseQuoteItems } from '@/lib/jobs';
 import { listJobTasks } from '@/lib/job-tasks';
 import { ASSISTANT_TOOLS_DECLARATION, executeAssistantTool, type ToolExecutionContext } from './tools';
 import type { ActionCard, ActiveRecordContext, AssistantContext, AssistantMessage, AssistantToolCall } from './types';
@@ -28,12 +28,14 @@ export async function hydrateActiveRecordContext(
   if (jobMatch) {
     const jobId = jobMatch[1];
     try {
-      const [job, tasks] = await Promise.all([
+      const [job, tasks, costs] = await Promise.all([
         getJob(supabase, accountId, jobId),
         listJobTasks(supabase, accountId, jobId),
+        listCosts(supabase, accountId, jobId),
       ]);
 
       if (job) {
+        const margin = computeMargin(job, costs);
         return {
           type: 'job',
           id: job.id,
@@ -52,6 +54,10 @@ export async function hydrateActiveRecordContext(
             scheduledFor: job.scheduled_for,
             scheduledTime: job.scheduled_time,
             estimatedHours: job.estimated_hours,
+            totalCost: margin.totalCost,
+            profit: margin.profit,
+            marginPct: Math.round(margin.margin * 100),
+            loggedCostsCount: costs.length,
             tasks: tasks.map((t) => ({ id: t.id, title: t.title, done: t.done })),
           },
         };
@@ -139,20 +145,22 @@ ${activeRecordPrompt}
 Your Capabilities & Tools:
 1. "modify_active_job": Update status, scheduled date/time, estimated hours, or description on the active job.
 2. "add_quote_line_item": Add base work or add-on upsell line items to the active quote and recalculate totals.
-3. "add_job_task": Add punch list / checklist tasks to the active job.
-4. "get_active_record_details": Query deep details about the active record.
-5. "create_quote_or_job": Create new quotes/jobs from scratch with client contact info, scope, and pricing.
-6. "search_clients": Look up customer contact details and past job history.
-7. "search_jobs_and_quotes": Find jobs/quotes by client name, ref, or status.
-8. "get_unpaid_invoices_and_payments": Check outstanding amounts owed and overdue invoices.
-9. "get_schedule": Look up scheduled work for today, tomorrow, or upcoming windows.
-10. "get_business_summary": Provide high-level stats (active jobs, pending quotes, uncollected cash).
-11. "navigate_to": Direct the user to specific pages (jobs, schedule, clients, settings, cash flow, sites, automations, sms).
+3. "log_job_expense": Log material, subcontractor, labor, or supply expenses against jobs, updating profit margins.
+4. "get_job_cost_analysis": Retrieve deep financial intelligence, cost breakdown, labor wages + burden, profit margin %, and duplicate warnings for a job.
+5. "add_job_task": Add punch list / checklist tasks to the active job.
+6. "get_active_record_details": Query deep details about the active record.
+7. "create_quote_or_job": Create new quotes/jobs from scratch with client contact info, scope, and pricing.
+8. "search_clients": Look up customer contact details and past job history.
+9. "search_jobs_and_quotes": Find jobs/quotes by client name, ref, or status.
+10. "get_unpaid_invoices_and_payments": Check outstanding amounts owed and overdue invoices.
+11. "get_schedule": Look up scheduled work for today, tomorrow, or upcoming windows.
+12. "get_business_summary": Provide high-level stats (active jobs, pending quotes, uncollected cash).
+13. "navigate_to": Direct the user to specific pages (jobs, schedule, clients, expenses, settings, cash flow, sites, automations, sms).
 
 Guidelines:
-- You have multimodal vision capabilities. When the contractor attaches an image (receipts, equipment nameplates, site damage, punch list items, or sketches), inspect the visual details, extract line items, prices, equipment specs or dimensions, and execute or recommend suitable tools.
+- You have multimodal vision capabilities. When the contractor attaches an image (receipts, supplier invoices, equipment nameplates, site damage, punch list items, or sketches), inspect the visual details, extract line items, prices, supplier names, equipment specs or dimensions, and execute or recommend suitable tools (e.g. log_job_expense when viewing a receipt).
 - Be concise, professional, friendly, and action-oriented. Contractors want quick execution and direct feedback.
-- When creating or modifying quotes, confirm the updated figures (e.g. new total price, newly added item, updated date).
+- When creating or modifying quotes or logging expenses, confirm the updated figures (e.g. logged amount, new total costs, updated profit margin %).
 - Always execute appropriate tools to retrieve or mutate live workspace database records.`;
 }
 
