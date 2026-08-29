@@ -243,6 +243,37 @@ export default function TextToJobWorkspace({
   const [copiedNumber, setCopiedNumber] = useState<boolean>(false);
   const [isPlayingAudio, setIsPlayingAudio] = useState<boolean>(false);
   const [showSimModal, setShowSimModal] = useState<boolean>(false);
+  const [showPrintModal, setShowPrintModal] = useState<boolean>(false);
+
+  function handlePrintVisorCard() {
+    if (typeof window !== 'undefined') {
+      window.print();
+    }
+  }
+
+  function handleCopyVisorCheatsheet() {
+    const text = `📱 ${businessTitle} Field Ingest Hotline: ${fieldPhoneNumber}
+
+1. CHANGE ORDERS & QUOTES:
+   "Add $[Amount] to [Client Name] for [Materials & Labor]"
+
+2. MILESTONES & INSPECTIONS:
+   "[Client Name] passed [Rough/Final] inspection. Schedule crew [Day]."
+
+3. PUNCH LIST TASKS:
+   "Punch list for [Client]: 1)... 2)... 3)..."
+
+4. EMERGENCY LEADS:
+   "New lead: [Name], [Phone], [Service needed], [When]"
+
+5. RECEIPTS & EXPENSES:
+   Snap photo of supply house receipt or site damage to auto-attach.
+
+🛡️ 15-Min SMS Undo: Reply UNDO within 15 minutes to revert.`;
+    navigator.clipboard.writeText(text);
+    setNotification('📋 Copied text cheatsheet to clipboard!');
+    setTimeout(() => setNotification(null), 3500);
+  }
 
   // Simulator State
   const [simText, setSimText] = useState(
@@ -1073,22 +1104,30 @@ export default function TextToJobWorkspace({
               <p className={styles.siriStepText}>
                 Save phone number <strong>{fieldPhoneNumber}</strong> to your phone as <strong>Field Line</strong>.
               </p>
-              {isQualified ? (
-                <a
-                  href={`data:text/vcard;charset=utf-8,${encodeURIComponent(
-                    `BEGIN:VCARD\nVERSION:3.0\nFN:${businessTitle} Field Hotline\nTEL;TYPE=CELL:${rawCallableNumber}\nNOTE:Text-to-Job Field Ingest Hotline\nEND:VCARD`
-                  )}`}
-                  download="field-hotline.vcf"
-                  className={styles.vcardBtn}
-                  style={{ marginTop: '10px', display: 'inline-block' }}
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '10px' }}>
+                {isQualified ? (
+                  <a
+                    href={`data:text/vcard;charset=utf-8,${encodeURIComponent(
+                      `BEGIN:VCARD\nVERSION:3.0\nFN:${businessTitle} Field Hotline\nTEL;TYPE=CELL:${rawCallableNumber}\nNOTE:Text-to-Job Field Ingest Hotline\nEND:VCARD`
+                    )}`}
+                    download="field-hotline.vcf"
+                    className={styles.vcardBtn}
+                  >
+                    📱 Download .vcf Card
+                  </a>
+                ) : (
+                  <Link href="/dashboard/automations#urgent-lead-sms" className={styles.verifyBtn}>
+                    📱 Setup Alert Phone to Download
+                  </Link>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setShowPrintModal(true)}
+                  className={styles.printCardBtn}
                 >
-                  📱 Download .vcf Card
-                </a>
-              ) : (
-                <Link href="/dashboard/automations#urgent-lead-sms" className={styles.verifyBtn} style={{ marginTop: '10px', display: 'inline-block' }}>
-                  📱 Setup Alert Phone to Download
-                </Link>
-              )}
+                  🪪 Printable Visor Card (PDF / Screenshot)
+                </button>
+              </div>
             </div>
 
             <div className={styles.siriStepCard}>
@@ -1181,6 +1220,9 @@ export default function TextToJobWorkspace({
           </div>
         </div>
         <div className={styles.bottomActions}>
+          <button type="button" onClick={() => setShowPrintModal(true)} className={styles.printCardBtn}>
+            🪪 Printable Visor Card
+          </button>
           <button type="button" onClick={() => setShowSimModal(true)} className={styles.testBtn}>
             ⚡ Test a Note
           </button>
@@ -1271,6 +1313,105 @@ export default function TextToJobWorkspace({
                 className={styles.presetBtn}
               >
                 HVAC Repair ($285)
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Printable Sun-Visor Card Modal (Formatted for Easy Screenshot & PDF Print) */}
+      {showPrintModal && (
+        <div className={styles.modalOverlay} onClick={() => setShowPrintModal(false)}>
+          <div className={`${styles.modalCard} ${styles.printModalCard}`} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <div className={styles.modalTitleGroup}>
+                <span className={styles.badge}>🪪 Truck Visor &amp; Glovebox Guide</span>
+                <h3 className={styles.modalTitle}>Printable Quick-Reference Card</h3>
+                <p className={styles.modalSubtitle}>
+                  Formatted for easy screenshot (<strong>Win + Shift + S</strong> / <strong>Cmd + Shift + 4</strong>) or 1-click print for your truck sun visor.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowPrintModal(false)}
+                className={styles.modalCloseBtn}
+                aria-label="Close modal"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* High-Contrast Printable Physical Card */}
+            <div className={styles.printableCardBox} id="printable-truck-card">
+              <div className={styles.visorNotch} title="Visor Clip Slot" />
+              
+              <div className={styles.cardTopHeader}>
+                <div>
+                  <h4 className={styles.cardCompanyTitle}>{businessTitle}</h4>
+                  <div className={styles.cardTradeSub}>
+                    <span>{account?.trade || 'Contractor'}</span>
+                    <span>&bull;</span>
+                    <span>Text-to-Job Field Guide</span>
+                  </div>
+                </div>
+                <div className={styles.cardHotlineTag}>
+                  <span>📱 Text: {fieldPhoneNumber}</span>
+                </div>
+              </div>
+
+              <div className={styles.cardPhrasesGrid}>
+                <div className={styles.cardPhraseBox}>
+                  <span className={styles.cardPhraseLabel}>1. Change Orders &amp; Quotes</span>
+                  <p className={styles.cardPhraseText}>
+                    &ldquo;Add $[Amount] to [Client] for [Materials &amp; Labor]&rdquo;
+                  </p>
+                </div>
+
+                <div className={styles.cardPhraseBox}>
+                  <span className={styles.cardPhraseLabel}>2. Milestones &amp; Inspections</span>
+                  <p className={styles.cardPhraseText}>
+                    &ldquo;[Client] passed [Rough/Final] inspection. Schedule crew [Day].&rdquo;
+                  </p>
+                </div>
+
+                <div className={styles.cardPhraseBox}>
+                  <span className={styles.cardPhraseLabel}>3. Punch List Tasks</span>
+                  <p className={styles.cardPhraseText}>
+                    &ldquo;Punch list for [Client]: 1) [Task 1] 2) [Task 2]&rdquo;
+                  </p>
+                </div>
+
+                <div className={styles.cardPhraseBox}>
+                  <span className={styles.cardPhraseLabel}>4. Emergency Leads</span>
+                  <p className={styles.cardPhraseText}>
+                    &ldquo;New lead: [Name], [Phone], [Service needed]&rdquo;
+                  </p>
+                </div>
+
+                <div className={`${styles.cardPhraseBox} ${styles.cardPhraseBoxWide}`}>
+                  <span className={styles.cardPhraseLabel}>5. Receipts &amp; Job Photos</span>
+                  <p className={styles.cardPhraseText}>
+                    &ldquo;Snap receipt photo at supply house or site damage photo to auto-attach.&rdquo;
+                  </p>
+                </div>
+              </div>
+
+              <div className={styles.cardFooterRules}>
+                <span>↺ <strong>15-Min SMS Undo:</strong> Reply <code>UNDO</code> to revert any change.</span>
+                <span className={styles.cardPoweredBy}>Sparky Field Hotline</span>
+              </div>
+            </div>
+
+            {/* Modal Actions */}
+            <div className={styles.printModalActions}>
+              <button type="button" onClick={handlePrintVisorCard} className={styles.printActionBtn}>
+                🖨️ Print / Save as PDF
+              </button>
+              <button type="button" onClick={handleCopyVisorCheatsheet} className={styles.copyCheatBtn}>
+                📋 Copy Text Cheatsheet
+              </button>
+              <button type="button" onClick={() => setShowPrintModal(false)} className={styles.closeActionBtn}>
+                Done
               </button>
             </div>
           </div>

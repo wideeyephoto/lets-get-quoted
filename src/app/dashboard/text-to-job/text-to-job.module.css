@@ -262,7 +262,7 @@
   flex-wrap: wrap;
 }
 
-.testBtn, .copyBtn, .vcardBtn {
+.testBtn, .copyBtn, .vcardBtn, .printCardBtn {
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -285,6 +285,18 @@
 .testBtn:hover {
   background: #ff7a21;
   color: #0b1520;
+  transform: translateY(-1px);
+}
+
+.printCardBtn {
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  color: #38bdf8;
+}
+
+.printCardBtn:hover {
+  background: rgba(56, 189, 248, 0.22);
+  border-color: #38bdf8;
   transform: translateY(-1px);
 }
 
@@ -1517,4 +1529,216 @@
   background: rgba(255, 122, 33, 0.12);
   border-color: rgba(255, 122, 33, 0.35);
   color: #ff8e42;
+}
+
+/* ==========================================================================
+   Printable Truck Sun-Visor Card Modal & Preview (Optimized for Screenshot)
+   ========================================================================== */
+.printModalCard {
+  max-width: 680px;
+  width: 95vw;
+}
+
+.printableCardBox {
+  position: relative;
+  background: #ffffff;
+  color: #0f172a;
+  border-radius: 16px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45);
+  border: 2px solid #e2e8f0;
+  margin: 10px 0;
+}
+
+.visorNotch {
+  position: absolute;
+  top: -1px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 54px;
+  height: 8px;
+  background: #cbd5e1;
+  border-radius: 0 0 6px 6px;
+}
+
+.cardTopHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  border-bottom: 2px solid #0f172a;
+  padding-bottom: 12px;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.cardCompanyTitle {
+  font-size: 18px;
+  font-weight: 900;
+  margin: 0;
+  color: #0f172a;
+  letter-spacing: -0.01em;
+}
+
+.cardTradeSub {
+  font-size: 11px;
+  color: #64748b;
+  font-weight: 700;
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  margin-top: 2px;
+}
+
+.cardHotlineTag {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 13px;
+  font-weight: 900;
+  color: #ea580c;
+  background: #fff7ed;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid #fdba74;
+  white-space: nowrap;
+}
+
+.cardPhrasesGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+@media (max-width: 540px) {
+  .cardPhrasesGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.cardPhraseBox {
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cardPhraseBoxWide {
+  grid-column: 1 / -1;
+  background: #fffbeb;
+  border-color: #fde68a;
+}
+
+.cardPhraseLabel {
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+  color: #ea580c;
+  letter-spacing: 0.05em;
+}
+
+.cardPhraseText {
+  font-size: 12px;
+  color: #1e293b;
+  margin: 0;
+  line-height: 1.4;
+  font-weight: 600;
+}
+
+.cardFooterRules {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  color: #475569;
+  border-top: 1px solid #e2e8f0;
+  padding-top: 10px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.cardPoweredBy {
+  font-size: 10px;
+  font-weight: 800;
+  color: #94a3b8;
+  text-transform: uppercase;
+}
+
+.printModalActions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding-top: 10px;
+  border-top: 1px solid var(--line, rgba(255, 255, 255, 0.08));
+}
+
+.printActionBtn {
+  background: #ff7a21;
+  color: #0b1520;
+  border: none;
+  font-size: 13px;
+  font-weight: 800;
+  padding: 10px 18px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: inherit;
+}
+
+.printActionBtn:hover {
+  background: #ff8e42;
+  transform: translateY(-1px);
+}
+
+.copyCheatBtn {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #f5f0e7;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 10px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: inherit;
+}
+
+.copyCheatBtn:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.closeActionBtn {
+  background: transparent;
+  border: none;
+  color: #8fa6b5;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 10px 14px;
+  cursor: pointer;
+}
+
+.closeActionBtn:hover {
+  color: #f5f0e7;
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .printableCardBox, .printableCardBox * {
+    visibility: visible;
+  }
+  .printableCardBox {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    border: 2px solid #000;
+    box-shadow: none;
+  }
 }
