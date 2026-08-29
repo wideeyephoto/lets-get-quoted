@@ -736,3 +736,207 @@
   border: none;
   cursor: pointer;
 }
+
+/* TOS & Accuracy Acknowledgment Banner */
+.tosBanner {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.12), rgba(6, 18, 29, 0.95));
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  border-radius: 14px;
+  padding: 14px 18px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.tosLeft {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 840px;
+}
+
+.tosIcon {
+  font-size: 22px;
+  flex-shrink: 0;
+}
+
+.tosTitle {
+  font-size: 13px;
+  font-weight: 850;
+  color: #fef08a;
+  margin: 0 0 2px 0;
+}
+
+.tosText {
+  font-size: 12px;
+  color: #d1e2eb;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.tosBtnGroup {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.tosAckBtn {
+  background: #f59e0b;
+  color: #0b151e;
+  font-size: 12.5px;
+  font-weight: 850;
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.tosAckBtn:hover {
+  background: #fbbf24;
+  transform: translateY(-1px);
+}
+
+.tosBadgeApproved {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  color: #50e3bd;
+  font-size: 11.5px;
+  font-weight: 800;
+  padding: 6px 12px;
+  border-radius: 999px;
+}
+
+/* Authorized Senders Whitelist Card & Table */
+.sendersContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.sendersCard {
+  background: linear-gradient(165deg, rgba(12, 28, 44, 0.95), rgba(6, 17, 27, 0.98));
+  border: 1px solid rgba(174, 199, 211, 0.2);
+  border-radius: 18px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.sendersHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.sendersTitleGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sendersTitle {
+  font-size: 18px;
+  font-weight: 850;
+  color: #f5f0e7;
+  margin: 0;
+}
+
+.sendersSubtitle {
+  font-size: 13px;
+  color: #9cb1c0;
+  margin: 0;
+}
+
+.sendersTable {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.sendersTable th {
+  text-align: left;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #7da0b3;
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(174, 199, 211, 0.15);
+}
+
+.sendersTable td {
+  padding: 14px;
+  font-size: 13px;
+  color: #f5f0e7;
+  border-bottom: 1px solid rgba(174, 199, 211, 0.08);
+}
+
+.senderNameCell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 750;
+}
+
+.senderAvatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(255, 106, 36, 0.15);
+  border: 1px solid rgba(255, 106, 36, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+}
+
+.senderPhoneTag {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 12.5px;
+  color: #50e3bd;
+  font-weight: 700;
+}
+
+.senderRoleBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 750;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #d1e2eb;
+}
+
+.senderStatusActive {
+  color: #50e3bd;
+  font-weight: 800;
+  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.senderSecurityNotice {
+  background: rgba(4, 11, 18, 0.85);
+  border: 1px solid rgba(174, 199, 211, 0.12);
+  border-radius: 12px;
+  padding: 14px 18px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  font-size: 12.5px;
+  color: #a7bcc8;
+  line-height: 1.45;
+}
+
