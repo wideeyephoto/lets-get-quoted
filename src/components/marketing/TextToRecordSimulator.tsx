@@ -80,120 +80,6 @@ type Scenario = {
 
 const SCENARIOS: Scenario[] = [
   {
-    id: 'voice-memo',
-    tabLabel: 'Voice Memo MMS',
-    icon: '🎙️',
-    title: 'Log Audio Memos & Progress Notes',
-    badge: 'MMS Multimodal Audio AI',
-    badgeType: 'voice',
-    description:
-      'Send a quick 10-second voice memo while driving. Gemini transcribes the audio, extracts milestone updates, and attaches the recording to the job feed.',
-    contractorSender: 'You (Voice Memo MMS)',
-    contractorInputType: 'voice',
-    voiceAudioDuration: '0:09',
-    voiceTranscript:
-      '“Rough-in plumbing inspected and passed on Elm St. Waiting on drywall crew Thursday 8 AM.”',
-    aiResponse:
-      '🎙️ Logged Voice Memo to Job J-108 (Wilson - 428 Elm). Milestone: Rough Inspection Passed. Next task queued: Drywall crew on-site Thursday 8:00 AM.',
-    pillars: [
-      {
-        id: 'vm-p1',
-        pillar: 'Jobs',
-        title: 'Milestone: Rough Inspection Passed',
-        detail: 'Logged timestamped inspection clearance to activity feed',
-        table: 'job_activity_feed',
-      },
-      {
-        id: 'vm-p2',
-        pillar: 'Schedule',
-        title: 'Reserve Window: Thursday 8:00 AM',
-        detail: 'Drywall & insulation logistics window blocked',
-        table: 'schedule_occurrences',
-      },
-      {
-        id: 'vm-p3',
-        pillar: 'Crew',
-        title: 'Assign Crew: Mike T. (Van #2)',
-        detail: 'Drywall hanging task pushed to crew mobile feed',
-        table: 'crew_assignments',
-      },
-    ],
-    jobRecord: {
-      jobNumber: 'J-108',
-      clientName: 'Wilson Kitchen Remodel',
-      address: '428 Elm St, Birmingham, MI',
-      status: 'Rough Inspection Passed',
-      statusColor: '#3b82f6',
-      badgeText: 'Voice Memo Transcribed',
-      voiceFeed: {
-        duration: '0:09 MMS Audio',
-        transcript:
-          '“Rough-in plumbing inspected and passed on Elm St. Waiting on drywall crew Thursday 8 AM.”',
-        timestamp: 'Today at 3:14 PM · Alert Phone (248) 555-0199',
-      },
-      tasks: [{ text: 'Drywall crew arrives Thursday 8:00 AM', done: false }],
-    },
-  },
-  {
-    id: 'bilingual-spanish',
-    tabLabel: 'Bilingual Spanish Voice',
-    icon: '🌐',
-    title: 'Spanish Voice Memo to English Job File',
-    badge: 'Real-Time Spanish AI Audio Translation',
-    badgeType: 'voice',
-    description:
-      'Crew members send voice memos in Spanish. Gemini transcribes, translates to clean English on the job record, and replies in Spanish with an instant SMS confirmation.',
-    contractorSender: 'Carlos (Crew Van #3)',
-    contractorInputType: 'voice',
-    voiceAudioDuration: '0:11',
-    voiceLanguage: 'es-US',
-    voiceTranscript:
-      '“Inspección aprobada en 124 Main. Necesitamos instaladores de paneles de yeso el jueves a las 8am. Faltan 2 cajas de tornillos.”',
-    aiResponse:
-      '🌐 [Auto-Translated from Spanish] Logged to Job J-104 (Miller - 124 Main):\n• Milestone: Rough Inspection Passed\n• Supply Note: 2 boxes drywall screws added\n• Queued task: Drywall hanging Thursday 8:00 AM.\n\nSMS reply sent to Carlos: "✓ Inspección registrada y materiales agregados."',
-    pillars: [
-      {
-        id: 'sp-p1',
-        pillar: 'Jobs',
-        title: 'Milestone & Materials: Rough Inspection Passed',
-        detail: 'Logged English audit note + 2 boxes drywall screws to feed',
-        table: 'job_activity_feed',
-      },
-      {
-        id: 'sp-p2',
-        pillar: 'Schedule',
-        title: 'Reserve Window: Thursday 8:00 AM',
-        detail: 'Drywall crew logistics window blocked',
-        table: 'schedule_occurrences',
-      },
-      {
-        id: 'sp-p3',
-        pillar: 'Crew',
-        title: 'Spanish SMS Confirmation Receipt to Carlos',
-        detail: 'Replying in native language: "✓ Inspección registrada"',
-        table: 'crew_notifications',
-      },
-    ],
-    jobRecord: {
-      jobNumber: 'J-104',
-      clientName: 'Miller Residence',
-      address: '124 Main St, Royal Oak, MI',
-      status: 'Rough Inspection Passed',
-      statusColor: '#10b981',
-      badgeText: 'Spanish Audio → English Ledger',
-      voiceFeed: {
-        duration: '0:11 Spanish MMS Audio',
-        transcript:
-          '“Inspección aprobada en 124 Main. Necesitamos instaladores de paneles de yeso el jueves a las 8am. Faltan 2 cajas de tornillos.”',
-        timestamp: 'Today at 4:02 PM · Crew Phone (Carlos)',
-      },
-      tasks: [
-        { text: 'Drywall hanging crew arrival Thursday 8:00 AM', done: false },
-        { text: 'Supply run: Pick up 2 boxes drywall screws', done: false },
-      ],
-    },
-  },
-  {
     id: 'change-order',
     tabLabel: 'Quote Change Order',
     icon: '💰',
@@ -201,7 +87,7 @@ const SCENARIOS: Scenario[] = [
     badge: 'Change Order Auto-Calculated',
     badgeType: 'quote',
     description:
-      'Spotted extra work on-site? Text your platform number with the price and description. Gemini updates the job estimate and lets you text the customer approval link with 1 tap.',
+      'Spotted extra work on-site? Text your platform number with the price and description. Sparky updates the job estimate and lets you text the customer approval link with 1 tap.',
     contractorSender: 'You (Alert Phone)',
     contractorInputType: 'text',
     contractorText: 'Add $450 to Miller job for extra 12/2 Romex line and GFCI outlet in pantry',
@@ -256,6 +142,120 @@ const SCENARIOS: Scenario[] = [
     },
   },
   {
+    id: 'voice-memo',
+    tabLabel: 'Voice Memo MMS',
+    icon: '🎙️',
+    title: 'Log Audio Memos & Progress Notes',
+    badge: 'MMS Multimodal Audio AI',
+    badgeType: 'voice',
+    description:
+      'Send a quick 10-second voice memo while driving. Sparky transcribes the audio, extracts milestone updates, and attaches the recording to the job feed.',
+    contractorSender: 'You (Voice Memo MMS)',
+    contractorInputType: 'voice',
+    voiceAudioDuration: '0:09',
+    voiceTranscript:
+      '“Rough-in plumbing inspected and passed on Elm St. Waiting on drywall crew Thursday 8 AM.”',
+    aiResponse:
+      '🎙️ Logged Voice Memo to Job J-108 (Wilson - 428 Elm). Milestone: Rough Inspection Passed. Next task queued: Drywall crew on-site Thursday 8:00 AM.',
+    pillars: [
+      {
+        id: 'vm-p1',
+        pillar: 'Jobs',
+        title: 'Milestone: Rough Inspection Passed',
+        detail: 'Logged timestamped inspection clearance to activity feed',
+        table: 'job_activity_feed',
+      },
+      {
+        id: 'vm-p2',
+        pillar: 'Schedule',
+        title: 'Reserve Window: Thursday 8:00 AM',
+        detail: 'Drywall & insulation logistics window blocked',
+        table: 'schedule_occurrences',
+      },
+      {
+        id: 'vm-p3',
+        pillar: 'Crew',
+        title: 'Assign Crew: Mike T. (Van #2)',
+        detail: 'Drywall hanging task pushed to crew mobile feed',
+        table: 'crew_assignments',
+      },
+    ],
+    jobRecord: {
+      jobNumber: 'J-108',
+      clientName: 'Wilson Kitchen Remodel',
+      address: '428 Elm St, Birmingham, MI',
+      status: 'Rough Inspection Passed',
+      statusColor: '#3b82f6',
+      badgeText: 'Voice Memo Transcribed',
+      voiceFeed: {
+        duration: '0:09 MMS Audio',
+        transcript:
+          '“Rough-in plumbing inspected and passed on Elm St. Waiting on drywall crew Thursday 8 AM.”',
+        timestamp: 'Today at 3:14 PM · Alert Phone (248) 555-0199',
+      },
+      tasks: [{ text: 'Drywall crew arrives Thursday 8:00 AM', done: false }],
+    },
+  },
+  {
+    id: 'bilingual-spanish',
+    tabLabel: 'Bilingual Spanish Voice',
+    icon: '🌐',
+    title: 'Spanish Voice Memo to English Job File',
+    badge: 'Real-Time Spanish AI Audio Translation',
+    badgeType: 'voice',
+    description:
+      'Crew members send voice memos in Spanish. Sparky transcribes, translates to clean English on the job record, and replies in Spanish with an instant SMS confirmation.',
+    contractorSender: 'Carlos (Crew Van #3)',
+    contractorInputType: 'voice',
+    voiceAudioDuration: '0:11',
+    voiceLanguage: 'es-US',
+    voiceTranscript:
+      '“Inspección aprobada en 124 Main. Necesitamos instaladores de paneles de yeso el jueves a las 8am. Faltan 2 cajas de tornillos.”',
+    aiResponse:
+      '🌐 [Auto-Translated from Spanish] Logged to Job J-104 (Miller - 124 Main):\n• Milestone: Rough Inspection Passed\n• Supply Note: 2 boxes drywall screws added\n• Queued task: Drywall hanging Thursday 8:00 AM.\n\nSMS reply sent to Carlos: "✓ Inspección registrada y materiales agregados."',
+    pillars: [
+      {
+        id: 'sp-p1',
+        pillar: 'Jobs',
+        title: 'Milestone & Materials: Rough Inspection Passed',
+        detail: 'Logged English audit note + 2 boxes drywall screws to feed',
+        table: 'job_activity_feed',
+      },
+      {
+        id: 'sp-p2',
+        pillar: 'Schedule',
+        title: 'Reserve Window: Thursday 8:00 AM',
+        detail: 'Drywall crew logistics window blocked',
+        table: 'schedule_occurrences',
+      },
+      {
+        id: 'sp-p3',
+        pillar: 'Crew',
+        title: 'Spanish SMS Confirmation Receipt to Carlos',
+        detail: 'Replying in native language: "✓ Inspección registrada"',
+        table: 'crew_notifications',
+      },
+    ],
+    jobRecord: {
+      jobNumber: 'J-104',
+      clientName: 'Miller Residence',
+      address: '124 Main St, Royal Oak, MI',
+      status: 'Rough Inspection Passed',
+      statusColor: '#10b981',
+      badgeText: 'Spanish Audio → English Ledger',
+      voiceFeed: {
+        duration: '0:11 Spanish MMS Audio',
+        transcript:
+          '“Inspección aprobada en 124 Main. Necesitamos instaladores de paneles de yeso el jueves a las 8am. Faltan 2 cajas de tornillos.”',
+        timestamp: 'Today at 4:02 PM · Crew Phone (Carlos)',
+      },
+      tasks: [
+        { text: 'Drywall hanging crew arrival Thursday 8:00 AM', done: false },
+        { text: 'Supply run: Pick up 2 boxes drywall screws', done: false },
+      ],
+    },
+  },
+  {
     id: 'receipt-ocr',
     tabLabel: 'Receipt & Expense OCR',
     icon: '🧾',
@@ -263,7 +263,7 @@ const SCENARIOS: Scenario[] = [
     badge: 'MMS Vision OCR & Auto-Margin',
     badgeType: 'quote',
     description:
-      'Snap a picture of your Home Depot or supply receipt at the register. Gemini OCR extracts every item, matches the active job, and updates your real-time profit margin.',
+      'Snap a picture of your Home Depot or supply receipt at the register. Sparky OCR extracts every item, matches the active job, and updates your real-time profit margin.',
     contractorSender: 'You (Receipt Photo MMS)',
     contractorInputType: 'receipt',
     contractorText: 'Home Depot receipt for Miller - 124 Main',
@@ -331,7 +331,7 @@ const SCENARIOS: Scenario[] = [
     badge: 'Auto-Task Extraction',
     badgeType: 'task',
     description:
-      'Walk the job site and text to-do items. Gemini breaks down multi-item punch lists into discrete tasks assigned directly to your field crew.',
+      'Walk the job site and text to-do items. Sparky breaks down multi-item punch lists into discrete tasks assigned directly to your field crew.',
     contractorSender: 'You (Alert Phone)',
     contractorInputType: 'text',
     contractorText:
@@ -390,7 +390,7 @@ const SCENARIOS: Scenario[] = [
     badge: 'Disambiguation Safety',
     badgeType: 'safety',
     description:
-      'If two active jobs share a name, Gemini never guesses. It texts back clarifying options so you never accidentally modify or close the wrong job.',
+      'If two active jobs share a name, Sparky never guesses. He texts back clarifying options so you never accidentally modify or close the wrong job.',
     contractorSender: 'You (Alert Phone)',
     contractorInputType: 'text',
     contractorText: 'Mark Smith job complete',
@@ -429,7 +429,7 @@ const SCENARIOS: Scenario[] = [
       status: 'Completed (Ready to Invoice)',
       statusColor: '#10b981',
       badgeText: 'Safe Disambiguation Verified',
-      safetyNotice: 'Gemini resolved target job via prompt disambiguation before status mutation.',
+      safetyNotice: 'Sparky resolved target job via prompt disambiguation before status mutation.',
       totalAmount: '$1,200.00',
     },
   },
@@ -441,7 +441,7 @@ const SCENARIOS: Scenario[] = [
     badge: 'Instant Lead Creation',
     badgeType: 'lead',
     description:
-      'Got a quick referral or saw a neighbor while packing up? Text their name, number, and note. The system creates the lead and stages the estimate.',
+      'Got a quick referral or saw a neighbor while packing up? Text their name, number, and note. Sparky creates the lead and stages the estimate.',
     contractorSender: 'You (Alert Phone)',
     contractorInputType: 'text',
     contractorText:
@@ -710,9 +710,9 @@ export default function TextToRecordSimulator() {
 
   return (
     <div className={styles.simulatorWrapper}>
-      {/* Perspective Switcher */}
+      {/* Perspective & Sound Bar */}
       <div className={styles.perspectiveBar}>
-        <span className={styles.perspectiveLabel}>View Real-Time Interaction As:</span>
+        <span className={styles.perspectiveLabel}>Live Interaction View:</span>
         <div className={styles.perspectiveToggleGroup}>
           <button
             type="button"
@@ -721,7 +721,7 @@ export default function TextToRecordSimulator() {
               perspective === 'contractor' ? styles.perspectiveBtnActive : ''
             }`}
           >
-            📱 Contractor Phone (What you send)
+            📱 Contractor View (SMS to Sparky)
           </button>
           <button
             type="button"
@@ -730,7 +730,7 @@ export default function TextToRecordSimulator() {
               perspective === 'homeowner' ? styles.perspectiveBtnActive : ''
             }`}
           >
-            👤 Homeowner Phone (What Dave Miller sees)
+            👤 Homeowner View (Dave Miller)
           </button>
         </div>
         <button
@@ -746,7 +746,7 @@ export default function TextToRecordSimulator() {
 
       {/* Tab Navigation */}
       <div className={styles.tabBarContainer}>
-        <span className={styles.tabBarLabel}>Select Real-World Contractor Field Scenario:</span>
+        <span className={styles.tabBarLabel}>Select Contractor Field Scenario:</span>
         <div className={styles.tabBar}>
           {SCENARIOS.map((sc) => {
             const isActive = sc.id === activeScenarioId;
@@ -771,44 +771,47 @@ export default function TextToRecordSimulator() {
         <div className={styles.phoneColumn}>
           <div className={styles.phoneDevice}>
             {/* Phone Top Notch / Status Bar */}
-            <div className={styles.phoneHeader}>
-              <div className={styles.notch}></div>
-              <div className={styles.carrierInfo}>
-                <span>9:41</span>
-                <span>LTE 5G</span>
+            <div className={styles.phoneTopBar}>
+              <span>9:41</span>
+              <div className={styles.phoneIsland}></div>
+              <div className={styles.phoneSignals}>LTE 5G</div>
+            </div>
+
+            {/* Recipient Header */}
+            <div className={styles.chatHeader}>
+              <div className={styles.chatAvatar}>
+                {perspective === 'contractor' ? '⚡' : '🔨'}
               </div>
-              <div className={styles.recipientHeader}>
-                <div className={styles.recipientAvatar}>
-                  {perspective === 'contractor' ? '⚡' : '🔨'}
-                </div>
-                <div className={styles.recipientName}>
+              <div className={styles.chatInfo}>
+                <div className={styles.chatTitle}>
                   {perspective === 'contractor'
                     ? 'Sparky ⚡ · AI Sidekick'
                     : 'Apex Electric & Plumbing'}
                 </div>
-                <div className={styles.recipientPhone}>
+                <div className={styles.chatSub}>
                   {perspective === 'contractor'
-                    ? '(248) 555-0199 · Sparky Direct Line'
+                    ? '(248) 555-0199 · Active Verified Line'
                     : 'Dave Miller (Homeowner)'}
                 </div>
               </div>
             </div>
 
             {/* Chat Messages Stream */}
-            <div className={styles.chatStream}>
+            <div className={styles.chatBody}>
+              <div className={styles.chatDate}>Today · 3:14 PM</div>
               {perspective === 'homeowner' ? (
                 /* Homeowner Perspective View */
                 <div className={styles.bubbleHomeowner}>
                   <div style={{ fontSize: '11px', fontWeight: 800, color: '#93c5fd' }}>
                     Apex Electric &middot; Quote Change Order Notice
                   </div>
-                  <p style={{ margin: 0, fontSize: '13px', lineHeight: 1.45 }}>
+                  <p style={{ margin: 0, fontSize: '12px', lineHeight: 1.45 }}>
                     {scenario.homeownerSms?.messageText ||
                       'Hi Dave, Apex Electric added Change Order #1 ($450.00 for pantry 12/2 Romex line & GFCI outlet). Tap below to authorize:'}
                   </p>
 
-                  <div style={{ background: '#0f172a', padding: '10px 12px', borderRadius: '10px', marginTop: '4px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: 800 }}>
+                  <div style={{ background: '#0f172a', padding: '8px 10px', borderRadius: '8px', marginTop: '2px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontWeight: 800 }}>
                       <span>Change Order Total:</span>
                       <span style={{ color: '#50e3bd' }}>
                         {scenario.homeownerSms?.approvalAmount || '$450.00'}
@@ -828,7 +831,7 @@ export default function TextToRecordSimulator() {
                   </div>
 
                   {homeownerApproved && (
-                    <div style={{ fontSize: '11px', color: '#86efac', fontWeight: 800, textAlign: 'center', marginTop: '4px' }}>
+                    <div style={{ fontSize: '10.5px', color: '#86efac', fontWeight: 800, textAlign: 'center', marginTop: '2px' }}>
                       ⚡ Instant confirmation alert sent to contractor steering wheel!
                     </div>
                   )}
@@ -836,20 +839,20 @@ export default function TextToRecordSimulator() {
               ) : (
                 /* Contractor Perspective View */
                 <>
-                  {/* Scenario 1 & Bilingual Voice Playback */}
+                  {/* Scenario: Voice Playback */}
                   {scenario.contractorInputType === 'voice' && (
-                    <div className={styles.bubbleContractor}>
+                    <div className={styles.contractorBubble}>
                       <div className={styles.senderTag}>{scenario.contractorSender}</div>
                       <div className={styles.voicePlayer}>
                         <button
                           type="button"
                           onClick={toggleVoicePlayback}
-                          className={styles.playIconBtn}
+                          className={`${styles.voicePlayBtn} ${isPlayingVoice ? styles.voicePlaying : ''}`}
                           aria-label="Play Voice Memo"
                         >
                           {isPlayingVoice ? '⏸' : '▶'}
                         </button>
-                        <div className={styles.waveformGraphic}>
+                        <div className={styles.waveformBars}>
                           <span style={{ height: '40%' }}></span>
                           <span style={{ height: '70%' }}></span>
                           <span style={{ height: '100%' }}></span>
@@ -859,7 +862,7 @@ export default function TextToRecordSimulator() {
                           <span style={{ height: '90%' }}></span>
                           <span style={{ height: '50%' }}></span>
                         </div>
-                        <span className={styles.audioDuration}>
+                        <span className={styles.voiceDuration}>
                           {isPlayingVoice ? `0:0${voiceSeconds}` : scenario.voiceAudioDuration}
                         </span>
                       </div>
@@ -867,8 +870,8 @@ export default function TextToRecordSimulator() {
                       {/* Noise Filter EQ Visualizer */}
                       <div className={styles.noiseFilterBox}>
                         <div className={styles.noiseFilterTitle}>
-                          <span>🔇 Gemini Truck Cab Noise Filter</span>
-                          <span>{isPlayingVoice ? 'Active Filter: ON' : 'Noise Floor: -42dB'}</span>
+                          <span>🔇 Gemini Noise Filter</span>
+                          <span>{isPlayingVoice ? 'Filter: ON' : 'Floor: -42dB'}</span>
                         </div>
                         <div className={styles.noiseEqTrack}>
                           <div className={styles.noiseBarClean} style={{ height: isPlayingVoice ? '80%' : '30%' }} />
@@ -880,23 +883,23 @@ export default function TextToRecordSimulator() {
                       </div>
 
                       <small className={styles.audioHint}>
-                        {isPlayingVoice ? '🔊 Playing realistic audio...' : 'Tap ▶ to hear Gemini audio processing'}
+                        {isPlayingVoice ? '🔊 Playing realistic audio...' : 'Tap ▶ to hear audio processing'}
                       </small>
                     </div>
                   )}
 
-                  {/* Scenario 2: Receipt OCR Attachment with Multi-Job Split */}
+                  {/* Scenario: Receipt OCR Attachment with Multi-Job Split */}
                   {scenario.contractorInputType === 'receipt' && scenario.receiptDetails && (
-                    <div className={styles.bubbleContractor}>
+                    <div className={styles.contractorBubble}>
                       <div className={styles.senderTag}>You (Receipt MMS Photo)</div>
-                      <div className={styles.receiptPaper}>
-                        <div className={styles.receiptHeader}>
+                      <div className={styles.receiptCard}>
+                        <div className={styles.receiptBanner}>
                           <strong>{scenario.receiptDetails.vendor}</strong>
-                          <span>{scenario.receiptDetails.date}</span>
+                          <span className={styles.receiptDate}>{scenario.receiptDetails.date}</span>
                         </div>
-                        <div className={styles.receiptItems}>
+                        <div className={styles.receiptItemsList}>
                           {scenario.receiptDetails.items.map((item, idx) => (
-                            <div key={idx} className={`${styles.receiptItem} ${styles.receiptItemSplit}`}>
+                            <div key={idx} className={styles.receiptRow}>
                               <span>
                                 {item.name}
                                 {item.allocatedJob?.includes('Miller') && (
@@ -906,32 +909,32 @@ export default function TextToRecordSimulator() {
                                   <span className={styles.splitTagSmith}>Job: Smith</span>
                                 )}
                               </span>
-                              <span>{item.price}</span>
+                              <strong>{item.price}</strong>
                             </div>
                           ))}
                         </div>
                         <div className={styles.receiptTotalRow}>
-                          <span>TOTAL CHARGED</span>
-                          <strong>{scenario.receiptDetails.total}</strong>
+                          <span>TOTAL</span>
+                          <span>{scenario.receiptDetails.total}</span>
                         </div>
                       </div>
                       <p className={styles.bubbleCaption}>{scenario.contractorText}</p>
                     </div>
                   )}
 
-                  {/* Scenario 3, 4, 5: Standard Contractor SMS */}
+                  {/* Scenario: Standard Contractor SMS */}
                   {scenario.contractorInputType === 'text' && scenario.contractorText && (
-                    <div className={styles.bubbleContractor}>
+                    <div className={styles.contractorBubble}>
                       <div className={styles.senderTag}>{scenario.contractorSender}</div>
                       <p className={styles.bubbleText}>{scenario.contractorText}</p>
                     </div>
                   )}
 
-                  {/* Gemini AI Platform Response */}
-                  <div className={styles.bubbleAi}>
+                  {/* Sparky AI Platform Response */}
+                  <div className={styles.aiBubble}>
                     <div className={styles.aiSenderTag}>
                       <span className={styles.aiGlowDot}></span>
-                      Let’s Get Quoted AI (1.4s)
+                      Sparky AI Sidekick (1.4s)
                     </div>
                     <p className={styles.aiResponseText}>{scenario.aiResponse}</p>
                   </div>
@@ -939,14 +942,14 @@ export default function TextToRecordSimulator() {
                   {/* Optional Interactive Follow-up */}
                   {scenario.followUpText && scenario.aiFollowUpResponse && (
                     <>
-                      <div className={styles.bubbleContractor}>
+                      <div className={styles.contractorBubble}>
                         <div className={styles.senderTag}>{scenario.contractorSender}</div>
                         <p className={styles.bubbleText}>{scenario.followUpText}</p>
                       </div>
-                      <div className={styles.bubbleAi}>
+                      <div className={styles.aiBubble}>
                         <div className={styles.aiSenderTag}>
                           <span className={styles.aiGlowDot}></span>
-                          Let’s Get Quoted AI (1.1s)
+                          Sparky AI Sidekick (1.1s)
                         </div>
                         <p className={styles.aiResponseText}>{scenario.aiFollowUpResponse}</p>
                       </div>
@@ -964,13 +967,12 @@ export default function TextToRecordSimulator() {
                 onClick={toggleLiveMic}
                 className={`${styles.micBtn} ${isRecordingLive ? styles.micBtnActive : ''}`}
                 title="Tap to speak live with your microphone"
-                style={{ border: 'none', cursor: 'pointer', background: 'transparent' }}
               >
                 🎙️
               </button>
               <div className={styles.inputMock}>
                 {isRecordingLive
-                  ? '🔴 Listening to your voice...'
+                  ? '🔴 Listening to voice...'
                   : liveTranscript || 'Text or tap 🎙️ to dictate...'}
               </div>
               <span className={styles.sendMock}>↑</span>
@@ -1006,10 +1008,10 @@ export default function TextToRecordSimulator() {
               <div className={styles.pillarChecklistSection}>
                 <div className={styles.pillarChecklistHeader}>
                   <span className={styles.pillarChecklistTitle}>
-                    ⚡ 4-Pillar Extraction Checklist
+                    ⚡ 4-Pillar Database Sync
                   </span>
                   <span className={styles.pillarChecklistCounter}>
-                    ✓ {activePillarCount} of {scenario.pillars.length} syncing to database
+                    ✓ {activePillarCount} of {scenario.pillars.length} syncing
                   </span>
                 </div>
 
@@ -1190,27 +1192,10 @@ export default function TextToRecordSimulator() {
               </div>
             )}
 
-            {/* Scan to Test On Real Phone Quick Action */}
-            <div className={styles.qrDemoBanner}>
-              <div className={styles.qrIconWrapper}>📱</div>
-              <div className={styles.qrMeta}>
-                <span className={styles.qrTitle}>Test Live From Your Real Mobile Phone</span>
-                <span className={styles.qrSubtitle}>
-                  Text your platform alert number directly to see how fast Gemini responds.
-                </span>
-                <a
-                  href="sms:+12485550199?body=Add%20$450%20to%20Miller%20job%20for%20extra%20Romex%20line"
-                  className={styles.qrActionLink}
-                >
-                  Tap to launch pre-filled SMS on your phone &rarr;
-                </a>
-              </div>
-            </div>
-
             {/* Action Bar */}
             <div className={styles.recordFooter}>
               <span className={styles.footerNote}>
-                Syncs to Client Portal, Invoices & Crew in Real-Time
+                Syncs to Invoices, Client Portal & Crew
               </span>
               <Link href={APP_SIGNUP_URL} className={styles.recordActionBtn}>
                 Try on your phone →
