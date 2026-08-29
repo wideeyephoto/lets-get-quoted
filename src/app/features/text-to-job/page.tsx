@@ -113,6 +113,22 @@ const FAQS = [
     q: 'Do I need to download a separate mobile app?',
     a: 'No. It works directly inside your native Apple iMessage or Android Messages app. You can also use Siri or Google Assistant hands-free while driving.',
   },
+  {
+    q: 'What if bad cell service sends my text twice or I send an accidental duplicate?',
+    a: 'Every message is processed with an idempotency fingerprint hash. Duplicate transmissions within 60 seconds are automatically deduplicated so you never double-bill a change order or create duplicate line items.',
+  },
+  {
+    q: 'Can I remove items or deduct money via text (negative change orders)?',
+    a: 'Yes. Texting "Remove backsplash from Miller" or "Deduct $200 for homeowner supplied vanity" creates a negative line item, recalculates the quote downward, and logs the change order reason.',
+  },
+  {
+    q: 'What happens if I accidentally record background truck radio or pocket-dial a voice memo?',
+    a: 'If no actionable trade instructions or job names are detected, Gemini safely ignores the audio and sends a friendly notice: "No job changes detected — did you mean to log something?" without modifying any database records.',
+  },
+  {
+    q: 'Can my apprentices or subcontractors change customer pricing or send quotes directly?',
+    a: 'No. The Whitelist matrix enforces strict role-based controls. Crew members can log milestone notes, punch list items, and upload material receipts, but cannot authorize quote discounts or trigger client-facing financial links without owner approval.',
+  },
 ];
 
 export default function TextToJobPage() {
