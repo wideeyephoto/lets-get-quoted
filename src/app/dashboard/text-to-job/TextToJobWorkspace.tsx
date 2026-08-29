@@ -593,17 +593,13 @@ export default function TextToJobWorkspace({
             </div>
           </div>
         </div>
-        <div className={styles.headerActions}>
-          {isQualified ? (
+        {isQualified && (
+          <div className={styles.headerActions}>
             <button type="button" onClick={handleCopyNumber} className={styles.copyBtn}>
               {copiedNumber ? '✓ Copied Number' : `📋 Copy ${fieldPhoneNumber}`}
             </button>
-          ) : (
-            <Link href="/dashboard/automations#urgent-lead-sms" className={styles.verifyBtn}>
-              📱 Connect Cell Phone →
-            </Link>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* 2. Sleek Metrics & Status Strip (Single Row) */}
