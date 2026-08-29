@@ -1,0 +1,223 @@
+/* Printable Sun-Visor Glovebox Card Styles */
+
+.wrapper {
+  width: 100%;
+  max-width: 1140px;
+  margin: 0 auto;
+  background: radial-gradient(circle at 50% 10%, rgba(255, 106, 36, 0.1), transparent 50%),
+              linear-gradient(180deg, #102130 0%, #06111a 100%);
+  border: 1px solid rgba(255, 106, 36, 0.3);
+  border-radius: 24px;
+  padding: clamp(20px, 3.5vw, 36px);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.55);
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+}
+
+.headerRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.titleGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 760px;
+}
+
+.badge {
+  font-size: 11px;
+  font-weight: 850;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(255, 106, 36, 0.15);
+  color: #ff8e42;
+  border: 1px solid rgba(255, 106, 36, 0.35);
+  width: fit-content;
+}
+
+.title {
+  font-size: clamp(22px, 2.8vw, 30px);
+  font-weight: 900;
+  color: #f5f0e7;
+  letter-spacing: -0.02em;
+  margin: 0;
+  line-height: 1.25;
+}
+
+.subtitle {
+  font-size: 14.5px;
+  color: #a7bcc8;
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* Card Generator Layout */
+.generatorGrid {
+  display: grid;
+  grid-template-columns: 1fr 1.3fr;
+  gap: 24px;
+  align-items: stretch;
+}
+
+@media (max-width: 860px) {
+  .generatorGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Form Controls Column */
+.controlsCol {
+  background: rgba(4, 11, 18, 0.85);
+  border: 1px solid rgba(174, 199, 211, 0.15);
+  border-radius: 18px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.inputField {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.inputLabel {
+  font-size: 12px;
+  font-weight: 800;
+  color: #f5f0e7;
+}
+
+.textInput, .selectInput {
+  background: #081622;
+  border: 1px solid rgba(174, 199, 211, 0.25);
+  border-radius: 10px;
+  padding: 10px 14px;
+  color: #fff;
+  font-size: 13.5px;
+  outline: none;
+}
+
+.printBtn {
+  background: linear-gradient(135deg, #ff6a24, #ea580c);
+  color: #fff;
+  border: none;
+  font-size: 14px;
+  font-weight: 900;
+  padding: 14px;
+  border-radius: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 4px 16px rgba(255, 106, 36, 0.35);
+  margin-top: 8px;
+}
+
+/* Printable Physical Card Preview */
+.printableCardPreview {
+  background: #ffffff;
+  color: #0f172a;
+  border-radius: 16px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+  border: 2px solid #e2e8f0;
+}
+
+.cardTopHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  border-bottom: 2px solid #0f172a;
+  padding-bottom: 12px;
+}
+
+.cardCompanyTitle {
+  font-size: 18px;
+  font-weight: 900;
+  margin: 0;
+  color: #0f172a;
+}
+
+.cardHotlineTag {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 14px;
+  font-weight: 900;
+  color: #ea580c;
+  background: #fff7ed;
+  padding: 3px 8px;
+  border-radius: 6px;
+  border: 1px solid #fdba74;
+}
+
+.cardPhrasesGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.cardPhraseBox {
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cardPhraseLabel {
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #64748b;
+}
+
+.cardPhraseText {
+  font-size: 11px;
+  font-weight: 750;
+  color: #0f172a;
+  margin: 0;
+  line-height: 1.35;
+}
+
+.cardFooterRules {
+  border-top: 1px dashed #cbd5e1;
+  padding-top: 8px;
+  font-size: 10px;
+  color: #64748b;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* Native Print Styles */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .printableCardPreview, .printableCardPreview * {
+    visibility: visible;
+  }
+  .printableCardPreview {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    border: none;
+    box-shadow: none;
+  }
+}

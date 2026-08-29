@@ -1,0 +1,263 @@
+/* Photo-to-Scope & Material AI Estimator Styles */
+
+.wrapper {
+  width: 100%;
+  max-width: 1140px;
+  margin: 0 auto;
+  background: radial-gradient(circle at 85% 15%, rgba(16, 185, 129, 0.1), transparent 50%),
+              linear-gradient(180deg, #0e2434 0%, #071520 100%);
+  border: 1px solid rgba(80, 227, 189, 0.3);
+  border-radius: 24px;
+  padding: clamp(20px, 3.5vw, 36px);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.55);
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+}
+
+.headerRow {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 780px;
+}
+
+.badge {
+  font-size: 11px;
+  font-weight: 850;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(80, 227, 189, 0.15);
+  color: #50e3bd;
+  border: 1px solid rgba(80, 227, 189, 0.35);
+  width: fit-content;
+}
+
+.title {
+  font-size: clamp(22px, 2.8vw, 30px);
+  font-weight: 900;
+  color: #f5f0e7;
+  letter-spacing: -0.02em;
+  margin: 0;
+  line-height: 1.25;
+}
+
+.subtitle {
+  font-size: 14.5px;
+  color: #a7bcc8;
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* Photo Samples Selector Bar */
+.sampleBar {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.sampleTab {
+  background: rgba(4, 11, 18, 0.7);
+  border: 1px solid rgba(174, 199, 211, 0.18);
+  border-radius: 10px;
+  padding: 8px 14px;
+  font-size: 12.5px;
+  font-weight: 800;
+  color: #a7bcc8;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sampleTabActive {
+  background: #ff6a24;
+  color: #fff;
+  border-color: #ff6a24;
+  box-shadow: 0 2px 10px rgba(255, 106, 36, 0.35);
+}
+
+/* Inspector Layout */
+.inspectorGrid {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  gap: 24px;
+  align-items: stretch;
+}
+
+@media (max-width: 860px) {
+  .inspectorGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Photo Viewport & Laser Scanner */
+.photoViewport {
+  background: #02060b;
+  border: 1px solid rgba(174, 199, 211, 0.2);
+  border-radius: 18px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 14px;
+  position: relative;
+  overflow: hidden;
+  min-height: 320px;
+}
+
+.scannerOverlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #50e3bd;
+  box-shadow: 0 0 15px 4px rgba(80, 227, 189, 0.6);
+  animation: scanLaser 2.5s infinite alternate ease-in-out;
+}
+
+@keyframes scanLaser {
+  0% { top: 5%; }
+  100% { top: 90%; }
+}
+
+.photoCardContent {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  z-index: 1;
+}
+
+.photoHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.photoTag {
+  font-size: 11px;
+  font-weight: 850;
+  color: #50e3bd;
+  background: rgba(80, 227, 189, 0.15);
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+
+.photoGraphic {
+  background: radial-gradient(circle at 50% 50%, rgba(255, 106, 36, 0.1), transparent 70%),
+              rgba(10, 25, 38, 0.9);
+  border: 1px dashed rgba(80, 227, 189, 0.4);
+  border-radius: 12px;
+  padding: 24px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.boundingBadge {
+  background: rgba(80, 227, 189, 0.2);
+  border: 1px solid #50e3bd;
+  color: #50e3bd;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 4px 10px;
+  border-radius: 6px;
+}
+
+/* Material Breakdown Column */
+.materialsCol {
+  background: rgba(4, 11, 18, 0.85);
+  border: 1px solid rgba(174, 199, 211, 0.18);
+  border-radius: 18px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.materialsHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(174, 199, 211, 0.12);
+  padding-bottom: 12px;
+}
+
+.materialsTitle {
+  font-size: 15px;
+  font-weight: 850;
+  color: #f5f0e7;
+  margin: 0;
+}
+
+.scopeBox {
+  background: rgba(0, 0, 0, 0.4);
+  border-left: 3px solid #ff6a24;
+  border-radius: 0 8px 8px 0;
+  padding: 10px 14px;
+}
+
+.scopeText {
+  font-size: 12.5px;
+  color: #d1e2eb;
+  line-height: 1.45;
+  margin: 0;
+}
+
+.materialList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.materialRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 12px;
+}
+
+.materialName {
+  color: #f5f0e7;
+  font-weight: 750;
+}
+
+.materialCost {
+  color: #50e3bd;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-weight: 850;
+}
+
+.totalChangeOrderCard {
+  background: linear-gradient(135deg, rgba(255, 106, 36, 0.15), rgba(80, 227, 189, 0.15));
+  border: 1px solid rgba(255, 106, 36, 0.4);
+  border-radius: 12px;
+  padding: 12px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.totalLabel {
+  font-size: 13px;
+  font-weight: 850;
+  color: #f5f0e7;
+}
+
+.totalVal {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 20px;
+  font-weight: 900;
+  color: #ff8e42;
+}

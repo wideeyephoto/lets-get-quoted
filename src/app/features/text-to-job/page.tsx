@@ -6,6 +6,10 @@ import TextToJobDataBeams from '@/components/marketing/TextToJobDataBeams';
 import ScrapLumberComparison from '@/components/marketing/ScrapLumberComparison';
 import ChangeOrderLeakageCalculator from '@/components/marketing/ChangeOrderLeakageCalculator';
 import SteeringWheelCheatsheet from '@/components/marketing/SteeringWheelCheatsheet';
+import SiriHandsFreeWizard from '@/components/marketing/SiriHandsFreeWizard';
+import PhotoScopeEstimator from '@/components/marketing/PhotoScopeEstimator';
+import UndoTimeMachine from '@/components/marketing/UndoTimeMachine';
+import SunVisorCardGenerator from '@/components/marketing/SunVisorCardGenerator';
 import { TRADES } from '@/lib/trades';
 import styles from './text-to-job.module.css';
 
@@ -195,6 +199,11 @@ export default function TextToJobPage() {
           {/* Interactive Change Order Profit Leakage ROI Calculator */}
           <section className={styles.customSection}>
             <ChangeOrderLeakageCalculator />
+          </section>
+
+          {/* Gemini Vision Photo-to-Scope AI Estimator */}
+          <section className={styles.customSection}>
+            <PhotoScopeEstimator />
           </section>
 
           {/* Visual Multimodal Architecture Pipeline */}
@@ -392,6 +401,21 @@ export default function TextToJobPage() {
           {/* Steering Wheel Voice Cheatsheet Section */}
           <section className={styles.customSection}>
             <SteeringWheelCheatsheet />
+          </section>
+
+          {/* Siri & Android Auto Hands-Free Wizard */}
+          <section className={styles.customSection}>
+            <SiriHandsFreeWizard />
+          </section>
+
+          {/* Printable Sun-Visor Glovebox Card Generator */}
+          <section className={styles.customSection}>
+            <SunVisorCardGenerator />
+          </section>
+
+          {/* 15-Minute Undo Time-Machine Rollback Safety */}
+          <section className={styles.customSection}>
+            <UndoTimeMachine />
           </section>
 
           {/* Carrier Security & Trust Architecture */}
