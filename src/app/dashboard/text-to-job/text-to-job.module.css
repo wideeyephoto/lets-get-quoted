@@ -138,7 +138,7 @@
   flex-wrap: wrap;
 }
 
-.copyBtn, .vcardBtn {
+.testBtn, .copyBtn, .vcardBtn {
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -150,6 +150,18 @@
   transition: all 0.18s ease;
   text-decoration: none;
   font-family: inherit;
+}
+
+.testBtn {
+  background: rgba(255, 122, 33, 0.12);
+  color: #ff8e42;
+  border: 1px solid rgba(255, 122, 33, 0.35);
+}
+
+.testBtn:hover {
+  background: #ff7a21;
+  color: #0b1520;
+  transform: translateY(-1px);
 }
 
 .copyBtn {
@@ -262,7 +274,7 @@
 }
 
 /* ==========================================================================
-   Tab Navigation (3 Core Tabs)
+   Tab Navigation
    ========================================================================== */
 .tabNav {
   display: flex;
@@ -912,122 +924,8 @@
 }
 
 /* ==========================================================================
-   TAB 3: Try It Out & Siri Setup Playground
+   TAB 3: Siri & Hands-Free Setup Card
    ========================================================================== */
-.playgroundContainer {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.simulatorBox {
-  background: var(--bg-2, #102234);
-  border: 1px solid var(--line, rgba(255, 255, 255, 0.08));
-  border-radius: 14px;
-  padding: 22px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.simHeader {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.simTitle {
-  font-size: 18px;
-  font-weight: 900;
-  margin: 0;
-  color: var(--text, #f5f0e7);
-  font-family: var(--font-display, inherit);
-}
-
-.simSubtitle {
-  font-size: 13px;
-  color: var(--muted, #8fa6b5);
-  margin: 0;
-}
-
-.simInputRow {
-  display: flex;
-  gap: 10px;
-}
-
-@media (max-width: 640px) {
-  .simInputRow {
-    flex-direction: column;
-  }
-}
-
-.simInput {
-  flex: 1;
-  padding: 12px 16px;
-  background: var(--bg, #0b1724);
-  border: 1px solid var(--line, rgba(255, 255, 255, 0.12));
-  border-radius: 10px;
-  color: var(--text, #f5f0e7);
-  font-size: 14px;
-  outline: none;
-  font-family: inherit;
-}
-
-.simInput:focus {
-  border-color: #ff7a21;
-}
-
-.simSendBtn {
-  background: #ff7a21;
-  color: #0b1520;
-  border: none;
-  padding: 12px 22px;
-  font-size: 14px;
-  font-weight: 800;
-  border-radius: 10px;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  font-family: inherit;
-  white-space: nowrap;
-}
-
-.simSendBtn:hover {
-  background: #ff8e42;
-}
-
-.presetsRow {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.presetLabel {
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--muted, #8fa6b5);
-}
-
-.presetBtn {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  color: var(--text, #f5f0e7);
-  font-size: 12px;
-  font-weight: 600;
-  padding: 6px 12px;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  font-family: inherit;
-}
-
-.presetBtn:hover {
-  background: rgba(255, 122, 33, 0.12);
-  border-color: rgba(255, 122, 33, 0.35);
-  color: #ff8e42;
-}
-
-/* Siri Setup Card */
 .siriCard {
   background: var(--bg-2, #102234);
   border: 1px solid var(--line, rgba(255, 255, 255, 0.08));
@@ -1105,4 +1003,159 @@
   color: #f5f0e7;
   border-radius: 0 6px 6px 0;
   margin-top: 4px;
+}
+
+/* ==========================================================================
+   Simulator Modal Popup
+   ========================================================================== */
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: fadeIn 0.15s ease-out;
+}
+
+.modalCard {
+  background: #102234;
+  border: 1px solid rgba(255, 122, 33, 0.4);
+  border-radius: 16px;
+  padding: 24px;
+  max-width: 620px;
+  width: 100%;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  animation: scaleUp 0.18s ease-out;
+}
+
+@keyframes scaleUp {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.modalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.modalTitleGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.modalTitle {
+  font-size: 18px;
+  font-weight: 900;
+  color: var(--text, #f5f0e7);
+  margin: 0;
+  font-family: var(--font-display, inherit);
+}
+
+.modalSubtitle {
+  font-size: 13px;
+  color: var(--muted, #8fa6b5);
+  margin: 0;
+}
+
+.modalCloseBtn {
+  background: transparent;
+  border: none;
+  color: var(--muted, #8fa6b5);
+  font-size: 18px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+}
+
+.modalCloseBtn:hover {
+  color: #ff7a21;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.simInputRow {
+  display: flex;
+  gap: 10px;
+}
+
+@media (max-width: 640px) {
+  .simInputRow {
+    flex-direction: column;
+  }
+}
+
+.simInput {
+  flex: 1;
+  padding: 12px 16px;
+  background: var(--bg, #0b1724);
+  border: 1px solid var(--line, rgba(255, 255, 255, 0.12));
+  border-radius: 10px;
+  color: var(--text, #f5f0e7);
+  font-size: 14px;
+  outline: none;
+  font-family: inherit;
+}
+
+.simInput:focus {
+  border-color: #ff7a21;
+}
+
+.simSendBtn {
+  background: #ff7a21;
+  color: #0b1520;
+  border: none;
+  padding: 12px 22px;
+  font-size: 14px;
+  font-weight: 800;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+.simSendBtn:hover {
+  background: #ff8e42;
+}
+
+.presetsRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.presetLabel {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted, #8fa6b5);
+}
+
+.presetBtn {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--text, #f5f0e7);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: inherit;
+}
+
+.presetBtn:hover {
+  background: rgba(255, 122, 33, 0.12);
+  border-color: rgba(255, 122, 33, 0.35);
+  color: #ff8e42;
 }

@@ -217,7 +217,7 @@ export default function TextToJobWorkspace({
   leadCount,
   crewCount,
 }: TextToJobWorkspaceProps) {
-  const [activeTab, setActiveTab] = useState<'feed' | 'senders' | 'playground'>('feed');
+  const [activeTab, setActiveTab] = useState<'feed' | 'senders' | 'siri'>('feed');
   const [feedFilter, setFeedFilter] = useState<'all' | 'voice' | 'sms' | 'leads' | 'crew'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [messages, setMessages] = useState<InboundMessage[]>(SAMPLE_INBOUND_MESSAGES);
@@ -225,6 +225,7 @@ export default function TextToJobWorkspace({
   const [notification, setNotification] = useState<string | null>(null);
   const [copiedNumber, setCopiedNumber] = useState<boolean>(false);
   const [isPlayingAudio, setIsPlayingAudio] = useState<boolean>(false);
+  const [showSimModal, setShowSimModal] = useState<boolean>(false);
 
   // Simulator State
   const [simText, setSimText] = useState(
@@ -455,7 +456,8 @@ export default function TextToJobWorkspace({
     setMessages([newSimMsg, ...messages]);
     setSelectedMsgId(newSimMsg.id);
     setActiveTab('feed');
-    setNotification(`⚡ Field note parsed! Created ${newExtractedItems.length} verified updates.`);
+    setShowSimModal(false);
+    setNotification(`⚡ Field note test added to feed! Created ${newExtractedItems.length} verified updates.`);
     setTimeout(() => setNotification(null), 4000);
   }
 
@@ -480,6 +482,9 @@ export default function TextToJobWorkspace({
           </div>
         </div>
         <div className={styles.headerActions}>
+          <button type="button" onClick={() => setShowSimModal(true)} className={styles.testBtn}>
+            ⚡ Test a Note
+          </button>
           <button type="button" onClick={handleCopyNumber} className={styles.copyBtn}>
             {copiedNumber ? '✓ Copied Number' : `📋 Copy ${fieldPhoneNumber}`}
           </button>
@@ -525,7 +530,7 @@ export default function TextToJobWorkspace({
       {/* Notification Toast */}
       {notification && <div className={styles.notificationToast}>{notification}</div>}
 
-      {/* 3. Consolidated Navigation Tabs (3 Core Tabs) */}
+      {/* 3. Consolidated Navigation Tabs */}
       <div className={styles.tabNav}>
         <button
           type="button"
@@ -544,10 +549,10 @@ export default function TextToJobWorkspace({
         </button>
         <button
           type="button"
-          onClick={() => setActiveTab('playground')}
-          className={`${styles.tabBtn} ${activeTab === 'playground' ? styles.tabActive : ''}`}
+          onClick={() => setActiveTab('siri')}
+          className={`${styles.tabBtn} ${activeTab === 'siri' ? styles.tabActive : ''}`}
         >
-          <span>⚡ Try It Out &amp; Siri Setup</span>
+          <span>🎙️ Siri &amp; Hands-Free Driving Setup</span>
         </button>
       </div>
 
@@ -875,17 +880,81 @@ export default function TextToJobWorkspace({
         </div>
       )}
 
-      {/* TAB 3: Try It Out & Siri Setup Playground */}
-      {activeTab === 'playground' && (
-        <div className={styles.playgroundContainer}>
-          {/* Live Simulator Card */}
-          <div className={styles.simulatorBox}>
-            <div className={styles.simHeader}>
-              <span className={styles.badge}>⚡ Live Test Sandbox</span>
-              <h3 className={styles.simTitle}>Test Any Field Note Right Here</h3>
-              <p className={styles.simSubtitle}>
-                Type or dictate a note below to see how Sparky creates change orders, punch list tasks, and schedule slots.
+      {/* TAB 3: Siri & Hands-Free Setup */}
+      {activeTab === 'siri' && (
+        <div className={styles.siriCard}>
+          <div className={styles.siriHeader}>
+            <span className={styles.badge}>🎙️ 1-Minute Setup</span>
+            <h3 className={styles.siriTitle}>Hands-Free Voice Dictation While Driving</h3>
+            <p className={styles.siriSubtitle}>
+              Keep your hands on the wheel and eyes on the road. Dictate updates directly into your truck&apos;s Apple CarPlay or Android Auto.
+            </p>
+          </div>
+
+          <div className={styles.siriGuideGrid}>
+            <div className={styles.siriStepCard}>
+              <span className={styles.siriStepNum}>Step 1</span>
+              <h4 className={styles.siriStepTitle}>Save Contact Card</h4>
+              <p className={styles.siriStepText}>
+                Save phone number <strong>{fieldPhoneNumber}</strong> to your phone as <strong>Field Line</strong>.
               </p>
+              <a
+                href={`data:text/vcard;charset=utf-8,${encodeURIComponent(
+                  `BEGIN:VCARD\nVERSION:3.0\nFN:${businessTitle} Field Hotline\nTEL;TYPE=CELL:${fieldPhoneNumber}\nNOTE:Text-to-Job Field Ingest Hotline\nEND:VCARD`
+                )}`}
+                download="field-hotline.vcf"
+                className={styles.vcardBtn}
+                style={{ marginTop: '10px', display: 'inline-block' }}
+              >
+                📱 Download .vcf Card
+              </a>
+            </div>
+
+            <div className={styles.siriStepCard}>
+              <span className={styles.siriStepNum}>Step 2</span>
+              <h4 className={styles.siriStepTitle}>Apple Siri Voice Command</h4>
+              <p className={styles.siriStepText}>
+                Press your steering wheel voice button and say:
+              </p>
+              <div className={styles.siriCommandSnippet}>
+                &ldquo;Hey Siri, text Field Line: Added $450 extra PEX lines to Miller job.&rdquo;
+              </div>
+            </div>
+
+            <div className={styles.siriStepCard}>
+              <span className={styles.siriStepNum}>Step 3</span>
+              <h4 className={styles.siriStepTitle}>Google Assistant / Android Auto</h4>
+              <p className={styles.siriStepText}>
+                On Android, dictate naturally:
+              </p>
+              <div className={styles.siriCommandSnippet}>
+                &ldquo;Hey Google, send a text to Field Line: Miller rough inspection passed.&rdquo;
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Simulator Modal Popup */}
+      {showSimModal && (
+        <div className={styles.modalOverlay} onClick={() => setShowSimModal(false)}>
+          <div className={styles.modalCard} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <div className={styles.modalTitleGroup}>
+                <span className={styles.badge}>⚡ Test Sandbox</span>
+                <h3 className={styles.modalTitle}>Test a Field Note</h3>
+                <p className={styles.modalSubtitle}>
+                  Type or dictate a note to see how Sparky creates change orders, punch list tasks, and schedule slots.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowSimModal(false)}
+                className={styles.modalCloseBtn}
+                aria-label="Close modal"
+              >
+                ✕
+              </button>
             </div>
 
             <div className={styles.simInputRow}>
@@ -895,9 +964,10 @@ export default function TextToJobWorkspace({
                 onChange={(e) => setSimText(e.target.value)}
                 placeholder="e.g. Add $450 to Miller job for extra romex, schedule inspection Thursday 9am"
                 className={styles.simInput}
+                autoFocus
               />
               <button type="button" onClick={handleSimulate} className={styles.simSendBtn}>
-                ⚡ Test This Note
+                ⚡ Run Test
               </button>
             </div>
 
@@ -939,59 +1009,6 @@ export default function TextToJobWorkspace({
               >
                 HVAC Repair ($285)
               </button>
-            </div>
-          </div>
-
-          {/* Siri & Hands-Free Setup Card */}
-          <div className={styles.siriCard}>
-            <div className={styles.siriHeader}>
-              <span className={styles.badge}>🎙️ 1-Minute Setup</span>
-              <h3 className={styles.siriTitle}>Hands-Free Voice Dictation While Driving</h3>
-              <p className={styles.siriSubtitle}>
-                Keep your hands on the wheel and eyes on the road. Dictate updates directly into your truck&apos;s Apple CarPlay or Android Auto.
-              </p>
-            </div>
-
-            <div className={styles.siriGuideGrid}>
-              <div className={styles.siriStepCard}>
-                <span className={styles.siriStepNum}>Step 1</span>
-                <h4 className={styles.siriStepTitle}>Save the Contact Card</h4>
-                <p className={styles.siriStepText}>
-                  Save phone number <strong>{fieldPhoneNumber}</strong> to your phone as <strong>Field Line</strong>.
-                </p>
-                <a
-                  href={`data:text/vcard;charset=utf-8,${encodeURIComponent(
-                    `BEGIN:VCARD\nVERSION:3.0\nFN:${businessTitle} Field Hotline\nTEL;TYPE=CELL:${fieldPhoneNumber}\nNOTE:Text-to-Job Field Ingest Hotline\nEND:VCARD`
-                  )}`}
-                  download="field-hotline.vcf"
-                  className={styles.vcardBtn}
-                  style={{ marginTop: '10px', display: 'inline-block' }}
-                >
-                  📱 Download .vcf Card
-                </a>
-              </div>
-
-              <div className={styles.siriStepCard}>
-                <span className={styles.siriStepNum}>Step 2</span>
-                <h4 className={styles.siriStepTitle}>Apple Siri Voice Command</h4>
-                <p className={styles.siriStepText}>
-                  Press your steering wheel voice button and say:
-                </p>
-                <div className={styles.siriCommandSnippet}>
-                  &ldquo;Hey Siri, text Field Line: Added $450 extra PEX lines to Miller job.&rdquo;
-                </div>
-              </div>
-
-              <div className={styles.siriStepCard}>
-                <span className={styles.siriStepNum}>Step 3</span>
-                <h4 className={styles.siriStepTitle}>Google Assistant / Android Auto</h4>
-                <p className={styles.siriStepText}>
-                  On Android, dictate naturally:
-                </p>
-                <div className={styles.siriCommandSnippet}>
-                  &ldquo;Hey Google, send a text to Field Line: Miller rough inspection passed.&rdquo;
-                </div>
-              </div>
             </div>
           </div>
         </div>
