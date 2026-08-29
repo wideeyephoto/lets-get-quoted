@@ -155,14 +155,14 @@ describe('placeholder and schedule theme contrast', () => {
     expect(GLOBALS).toContain(":root[data-theme='parchment'] .calendar-band-color-0");
   });
 
-  it('ensures sunlight mode has daylight slate background and soft #cbd5e1 borders', () => {
+  it('ensures sunlight mode has daylight slate background and soft #e2e8f0 borders', () => {
     expect(GLOBALS).toContain(":root[data-theme='sunlight'] {");
-    expect(GLOBALS).toContain('--bg: #eef2f6;');
+    expect(GLOBALS).toContain('--bg: #f8fafc;');
     expect(GLOBALS).toContain('--text: #0f172a;');
     expect(GLOBALS).toContain('--muted: #475569;');
-    expect(GLOBALS).toContain('--line: #cbd5e1;');
-    expect(GLOBALS).toContain('--accent: #c94f00;');
-    expect(GLOBALS).toContain('--accent-end: #e66a19;');
+    expect(GLOBALS).toContain('--line: #e2e8f0;');
+    expect(GLOBALS).toContain('--accent: #ea580c;');
+    expect(GLOBALS).toContain('--accent-end: #f97316;');
     expect(GLOBALS).toContain('--accent-gradient: linear-gradient(180deg, var(--accent), var(--accent-end));');
     expect(GLOBALS).toContain('--ink-neutral-1: #0f1a28;');
     expect(GLOBALS).toContain('--ink-orange-1: #a0531a;');

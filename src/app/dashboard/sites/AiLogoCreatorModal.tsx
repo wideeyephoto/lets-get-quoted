@@ -22,6 +22,8 @@ type Props = {
   businessName: string;
   trade?: string | null;
   accentColor?: string | null;
+  aiCredits?: number | null;
+  onRefreshCredits?: () => void;
   onSelectLogo: (logoSvg: string, logoDataUri: string) => void;
 };
 
@@ -34,6 +36,8 @@ export default function AiLogoCreatorModal({
   businessName: initialName,
   trade,
   accentColor: initialAccent,
+  aiCredits,
+  onRefreshCredits,
   onSelectLogo,
 }: Props) {
   const [name, setName] = useState(initialName || "Let's Get Quoted");
@@ -99,6 +103,7 @@ export default function AiLogoCreatorModal({
         if (!tagline) {
           setTagline(res.taglines[0]);
         }
+        onRefreshCredits?.();
       }
     });
   }
@@ -125,6 +130,7 @@ export default function AiLogoCreatorModal({
 
       setAiConcepts((current) => [result.image!, ...current]);
       setSelectedAiLogoId(result.image.id);
+      onRefreshCredits?.();
     });
   }
 
@@ -338,9 +344,34 @@ export default function AiLogoCreatorModal({
               ✨
             </div>
             <div>
-              <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 900, color: '#0f172a' }}>
-                AI Logo & Brand Studio
-              </h2>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+                <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 900, color: '#0f172a' }}>
+                  AI Logo &amp; Brand Studio
+                </h2>
+                {typeof aiCredits === 'number' && (
+                  <span
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.35rem',
+                      padding: '0.25rem 0.6rem',
+                      borderRadius: '999px',
+                      background: aiCredits <= 25 ? '#fef3c7' : '#eff6ff',
+                      border: aiCredits <= 25 ? '1px solid #fde68a' : '1px solid #dbeafe',
+                      color: aiCredits <= 25 ? '#b45309' : '#1d4ed8',
+                      fontSize: '0.75rem',
+                      fontWeight: 700,
+                    }}
+                  >
+                    <span>⚡ {aiCredits.toLocaleString('en-US')} AI {aiCredits === 1 ? 'credit' : 'credits'}</span>
+                    {aiCredits <= 25 ? (
+                      <a href="/dashboard/settings#buy-credits" style={{ color: '#b45309', textDecoration: 'underline', marginLeft: '0.2rem' }}>
+                        + Top up
+                      </a>
+                    ) : null}
+                  </span>
+                )}
+              </div>
               <p style={{ margin: '2px 0 0', fontSize: '0.8rem', color: '#64748b' }}>
                 Generate original brand concepts, then prove them on your website, truck, and uniform.
               </p>
@@ -457,26 +488,33 @@ export default function AiLogoCreatorModal({
                 <label style={{ fontSize: '0.75rem', fontWeight: 800, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                   Tagline / Slogan
                 </label>
-                <button
-                  type="button"
-                  onClick={handleTriggerAiSlogans}
-                  disabled={isGeneratingAi}
-                  style={{
-                    background: 'linear-gradient(135deg, #eff6ff, #dbeafe)',
-                    border: '1px solid #bfdbfe',
-                    borderRadius: '6px',
-                    padding: '2px 8px',
-                    fontSize: '0.72rem',
-                    fontWeight: 700,
-                    color: '#1d4ed8',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                  }}
-                >
-                  {isGeneratingAi ? '⏳ Generating...' : '✨ AI Slogans'}
-                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <button
+                    type="button"
+                    onClick={handleTriggerAiSlogans}
+                    disabled={isGeneratingAi}
+                    style={{
+                      background: 'linear-gradient(135deg, #eff6ff, #dbeafe)',
+                      border: '1px solid #bfdbfe',
+                      borderRadius: '6px',
+                      padding: '2px 8px',
+                      fontSize: '0.72rem',
+                      fontWeight: 700,
+                      color: '#1d4ed8',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                    }}
+                  >
+                    {isGeneratingAi ? '⏳ Generating...' : '✨ AI Slogans'}
+                  </button>
+                  {typeof aiCredits === 'number' && (
+                    <span style={{ fontSize: '0.7rem', color: aiCredits <= 25 ? '#b45309' : '#64748b', fontWeight: 600 }}>
+                      ⚡ {aiCredits.toLocaleString('en-US')}
+                    </span>
+                  )}
+                </div>
               </div>
               <input
                 type="text"
@@ -591,9 +629,21 @@ export default function AiLogoCreatorModal({
                 >
                   {isGeneratingImage ? 'Creating an original direction…' : aiConcepts.length ? '✦ Generate Another Concept' : '✦ Generate My First AI Logo'}
                 </button>
-                <span style={{ fontSize: '0.66rem', color: '#6d28d9', textAlign: 'center', lineHeight: 1.35 }}>
-                  Transparent, high-resolution PNG. Generation can take up to two minutes.
-                </span>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '4px' }}>
+                  {typeof aiCredits === 'number' && (
+                    <span style={{ fontSize: '0.72rem', color: aiCredits <= 25 ? '#b45309' : '#6d28d9', fontWeight: 700 }}>
+                      ⚡ {aiCredits.toLocaleString('en-US')} AI {aiCredits === 1 ? 'credit' : 'credits'} available
+                      {aiCredits <= 25 ? (
+                        <a href="/dashboard/settings#buy-credits" style={{ color: '#b45309', textDecoration: 'underline', marginLeft: '0.25rem' }}>
+                          + Top up
+                        </a>
+                      ) : null}
+                    </span>
+                  )}
+                  <span style={{ fontSize: '0.66rem', color: '#6d28d9', textAlign: 'right', lineHeight: 1.35, flex: '1 1 auto' }}>
+                    Transparent, high-res PNG
+                  </span>
+                </div>
               </div>
             )}
 

@@ -185,22 +185,22 @@ export default function RecurringWorkspace({
 
       <section className="panel workspace-section-card">
         <div className="recurring-tabbar" role="tablist" aria-label="Recurring plans view">
-          {tabs.map((entry) => (
-            <button
-              key={entry.id}
-              type="button"
-              role="tab"
-              aria-selected={tab === entry.id}
-              className={`insight-window-tab${tab === entry.id ? ' is-active' : ''}`}
-              onClick={() => setTab(entry.id)}
-            >
-              {entry.label}
-            </button>
-          ))}
-          <div className="recurring-tabbar-action">
-            {gear}
-            {composer}
+          <div className="recurring-tabbar-tabs">
+            {tabs.map((entry) => (
+              <button
+                key={entry.id}
+                type="button"
+                role="tab"
+                aria-selected={tab === entry.id}
+                className={`insight-window-tab${tab === entry.id ? ' is-active' : ''}`}
+                onClick={() => setTab(entry.id)}
+              >
+                {entry.label}
+              </button>
+            ))}
           </div>
+          {gear ? <div className="recurring-tabbar-gear">{gear}</div> : null}
+          {composer ? <div className="recurring-tabbar-composer">{composer}</div> : null}
         </div>
 
         {tab === 'plans' ? (

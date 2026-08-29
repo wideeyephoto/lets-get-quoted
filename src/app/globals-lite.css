@@ -1,6 +1,6 @@
 /* GENERATED — do not edit. Source: src/app/globals.css
    Run: node scripts/build-css-subset.mjs
-   source-sha256: 07b7134fa3ab95a7
+   source-sha256: 6a7820d18ae8e6fa
 
    globals.css with the rules that can only match inside /dashboard, /admin and
    /demo removed. Every route except those three imports this file; they import
@@ -286,7 +286,7 @@
   --fresh: #4ade80;
 }
 
-/* SUNLIGHT — True Full Light / Soft Daylight Borders (#CBD5E1) */
+/* SUNLIGHT — True Full Light / Soft Daylight Borders (#E2E8F0) */
 :root[data-theme='sunlight'] {
   color-scheme: light;
   --tint: 15, 23, 42;
@@ -298,23 +298,23 @@
   --grey-4: 30, 41, 59;
   --grey-5: 66, 79, 99;
   --grey-6: 10, 15, 29;
-  --bg: #eef2f6;
+  --bg: #f8fafc;
   --bg-2: #ffffff;
-  --bg-3: #e2e8f0;
+  --bg-3: #f1f5f9;
   --bg-elevated: #ffffff;
-  --bg-soft: rgba(15, 23, 42, 0.04);
-  --line: #cbd5e1;
+  --bg-soft: rgba(15, 23, 42, 0.03);
+  --line: #e2e8f0;
   --text: #0f172a;
   --muted: #475569;
   --muted-2: #64748b;
   --on-accent: #ffffff;
-  --accent: #c94f00;
-  --accent-2: #e66a19;
-  --accent-end: #e66a19;
-  --accent-paper: #c94f00;
-  --accent-ink: #c94f00;
+  --accent: #ea580c;
+  --accent-2: #f97316;
+  --accent-end: #f97316;
+  --accent-paper: #ea580c;
+  --accent-ink: #ea580c;
   --accent-gradient: linear-gradient(180deg, var(--accent), var(--accent-end));
-  --ambient-glow: radial-gradient(circle at top, rgba(201, 79, 0, var(--glow-a, 0.04)), transparent 30%);
+  --ambient-glow: radial-gradient(circle at top, rgba(234, 88, 12, var(--glow-a, 0.05)), transparent 30%);
   --planning: #6d28d9;
   --planning-end: #4c1d95;
   --planning-gradient: linear-gradient(180deg, #7c3aed 0%, #6d28d9 100%);
@@ -333,16 +333,16 @@
   --cap-full: #c2410c;
   --cap-over: #b91c1c;
   --cap-unknown: #55606e;
-  --gold-ink: #7a5200;
+  --gold-ink: #b45309;
   --on-active: #0f172a;
-  --shadow-strong: rgba(15, 23, 42, 0.08);
-  --shadow-soft: rgba(15, 23, 42, 0.04);
-  --ground-1: #e2e8f0;
-  --ground-2: #cbd5e1;
+  --shadow-strong: 0 4px 6px -1px rgba(15, 23, 42, 0.08), 0 2px 4px -2px rgba(15, 23, 42, 0.04);
+  --shadow-soft: 0 1px 3px 0 rgba(15, 23, 42, 0.06), 0 1px 2px -1px rgba(15, 23, 42, 0.04);
+  --ground-1: #f1f5f9;
+  --ground-2: #e2e8f0;
   --panel-rgb: 255, 255, 255;
   --chrome-rgb: 255, 255, 255;
-  --chrome: rgba(255, 255, 255, 0.96);
-  --chrome-soft: rgba(255, 255, 255, 0.90);
+  --chrome: rgba(255, 255, 255, 0.98);
+  --chrome-soft: rgba(255, 255, 255, 0.92);
   --chrome-solid: #ffffff;
 
   /* --- Paper ink palette on root sunlight --------------------------------- */
@@ -6778,7 +6778,6 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
   background: rgba(var(--tint), 0.03);
 }
 .client-milestone.status-awaiting_payment { border-color: var(--cedge-teal-2); }
-.client-milestone.status-paid { opacity: 0.85; }
 .client-milestone-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
 .client-milestone-head h3 { margin: 0; font-size: 1.05rem; }
 .client-milestone-scope { margin: 0.25rem 0 0; font-size: 0.9rem; line-height: 1.55; color: var(--mute-t55); }
@@ -6796,7 +6795,6 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
   white-space: nowrap;
 }
 .client-milestone-status.status-awaiting_payment { background: rgba(56, 189, 248, 0.16); color: var(--ink-sky-1); }
-.client-milestone-status.status-paid { background: rgba(163, 230, 53, 0.16); color: var(--ink-lime-1); }
 .client-milestone-tasks { margin-top: 0.2rem; }
 .client-milestone-photos { display: flex; flex-direction: column; gap: 0.7rem; }
 .client-milestone-phase { margin: 0 0 0.35rem; font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--mute-t50); font-weight: 700; }
@@ -8646,8 +8644,6 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: var(--cedg
   background: #16202b;
   color: #ffffff;
 }
-
-.job-list { display: flex; flex-direction: column; gap: 0.7rem; margin-top: 1rem; }
 .job-row {
   display: block;
   border: 1px solid var(--edge-t10);
@@ -8693,6 +8689,9 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: var(--cedg
   color: var(--ink-green-1); font-size: 0.78rem; font-weight: 800;
 }
 .schedule-crew-picker-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.6rem; }
+
+/* Account "Danger zone" — delete account */
+.danger-zone { border-color: var(--cedge-red-8); }
 .job-meta { color: var(--mute-t60); font-size: 0.9rem; margin-top: 0.15rem; }
 .job-row .actions { margin: 0; align-items: center; justify-content: flex-end; }
 
@@ -9920,8 +9919,7 @@ a.ropsrow-fact:hover { text-decoration: underline; }
 .linklike.danger:hover { color: var(--ink-orange-1); }
 
 @media (max-width: 640px) {
-  .recurring-card { flex-direction: column; align-items: stretch; }
-  .recurring-card-actions { justify-content: space-between; }
+  .recurring-card-actions { justify-content: flex-start; gap: 0.5rem; }
 }
 
 @media (max-width: 560px) {
@@ -11989,7 +11987,91 @@ button.plan-badge.warn.is-action:focus-visible { outline: 2px solid rgba(255, 12
   background: radial-gradient(closest-side, rgba(255, 122, 33, 0.32), transparent 70%);
 }
 
+/* ---- the four-step flow ---- */
+/* A connector runs between the cards so it reads as one sequence: horizontal on
+   desktop, vertical once they stack. */
+.es-steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.4rem 1.1rem; }
+.es-step {
+  position: relative;
+  padding: 1.5rem 1rem 1rem;
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(255, 122, 33, 0.07), rgba(var(--tint), 0.025) 55%);
+  border: 1px solid var(--edge-t09);
+}
+.es-step::after {
+  content: '';
+  position: absolute; top: 50%; right: -1.1rem; width: 1.1rem; height: 2px;
+  background: linear-gradient(90deg, rgba(255, 122, 33, 0.55), rgba(255, 122, 33, 0.12));
+}
+.es-step:last-child::after { display: none; }
+.es-step-badge {
+  position: absolute; top: -1.05rem; left: 1rem;
+  display: inline-grid; place-items: center; width: 2.5rem; height: 2.5rem; border-radius: 14px;
+  background: linear-gradient(160deg, #ff9d4d, #ff7a21);
+  color: var(--bg); box-shadow: 0 8px 22px rgba(255, 122, 33, 0.4);
+}
+.es-step-icon { width: 1.3rem; height: 1.3rem; stroke-width: 2; }
+.es-step-num {
+  position: absolute; top: -0.35rem; right: -0.35rem;
+  display: grid; place-items: center; width: 1.15rem; height: 1.15rem; border-radius: 999px;
+  background: var(--bg); color: var(--accent-ink); font-size: 0.66rem; font-weight: 900;
+  border: 1px solid var(--cedge-orange-14);
+}
+.es-step strong { display: block; margin: 0.6rem 0 0.35rem; font-size: 0.97rem; color: var(--text); }
+.es-step p { margin: 0; font-size: 0.84rem; line-height: 1.55; color: var(--mute-t62); }
+
+/* ---- customer preview + example ---- */
+.es-split { display: grid; grid-template-columns: repeat(auto-fit, minmax(305px, 1fr)); gap: 1.1rem; }
+
 .es-phone { padding: 1rem; border-radius: 16px; border: 1px solid var(--edge-t12); background: linear-gradient(180deg, rgba(var(--tint), 0.05), rgba(3, 10, 18, 0.6)); }
+.es-phone-from { display: flex; align-items: center; gap: 0.5rem; margin: 0 0 0.6rem; font-size: 0.78rem; font-weight: 800; color: rgba(var(--tint), 0.7); }
+.es-phone-avatar { display: grid; place-items: center; width: 1.6rem; height: 1.6rem; border-radius: 8px; background: linear-gradient(160deg, #ff9d4d, #ff7a21); color: var(--bg); font-weight: 900; font-size: 0.8rem; }
+.es-phone-bubble { margin: 0 0 0.55rem; padding: 0.75rem 0.85rem; border-radius: 14px 14px 14px 4px; background: rgba(var(--tint), 0.1); font-size: 0.92rem; line-height: 1.45; color: var(--text); }
+.es-phone-sub { margin: 0 0 0.75rem; font-size: 0.8rem; color: var(--mute-t55); }
+.es-phone-choice {
+  display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;
+  margin: 0 0 0.5rem; padding: 0.68rem 0.8rem; border-radius: 11px;
+  border: 1px solid var(--edge-t13); font-size: 0.87rem; font-weight: 800; color: var(--ink-neutral-2);
+}
+.es-phone-choice small { margin-left: auto; font-size: 0.71rem; font-weight: 600; color: var(--mute-t50); }
+.es-phone-choice.primary {
+  border-color: var(--cedge-orange-14);
+  background: linear-gradient(180deg, rgba(255, 122, 33, 0.22), rgba(255, 122, 33, 0.08));
+  box-shadow: 0 6px 18px rgba(255, 122, 33, 0.16);
+}
+.es-phone-foot { display: flex; align-items: center; gap: 0.4rem; margin: 0.7rem 0 0; font-size: 0.73rem; color: var(--mute-t45); }
+.es-phone-foot svg { color: var(--good); }
+
+.es-example { padding: 1rem; border-radius: 16px; border: 1px solid var(--edge-t12); background: rgba(3, 10, 18, 0.5); }
+/* The same slab .es-earnings had, missed ten lines up the file. A 50%-opaque
+   near-black over the white sheet composites to mid-grey — measured on paper,
+   the example card's own text landed at 1.47:1 ("6:30 – 7:15 PM"), 2.13:1 and
+   2.30:1, and the whole card read as a disabled panel rather than an example.
+   Neutral paper here, not .es-earnings' warm tint: that block is the orange
+   money callout, this is a plain worked example. */
+:root[data-theme='light'] .es-example {
+  border-color: var(--edge-t12);
+  background: #f4f7fb;
+}
+.es-example-job { margin: 0 0 0.7rem; font-size: 1.05rem; font-weight: 800; color: var(--text); }
+.es-example-facts { list-style: none; margin: 0 0 0.9rem; padding: 0; display: grid; gap: 0.4rem; font-size: 0.85rem; color: rgba(var(--tint), 0.66); }
+.es-example-facts li { display: flex; align-items: center; gap: 0.5rem; }
+.es-example-facts svg { color: var(--accent-ink); width: 1.05rem; height: 1.05rem; }
+.es-example-offer-box { padding: 0.85rem; border-radius: 12px; border: 1px solid var(--cedge-orange-7); background: rgba(255, 122, 33, 0.09); }
+.es-example-label { margin: 0; font-size: 0.63rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--mute-t50); }
+.es-example-offer { margin: 0.25rem 0 0.35rem; font-size: 1.3rem; font-weight: 900; color: var(--ink-orange-6); }
+.es-example-fee { display: flex; align-items: baseline; gap: 0.45rem; margin: 0; font-size: 1.5rem; font-weight: 900; color: var(--text); }
+.es-example-fee span { font-size: 0.76rem; font-weight: 700; color: var(--mute-t55); }
+.es-example-note { margin: 0.7rem 0 0; font-size: 0.77rem; color: var(--mute-t45); }
+
+@media (max-width: 900px) {
+  .es-hero { grid-template-columns: minmax(0, 1fr); }
+  /* Stacked: the connector turns vertical so the sequence still reads. */
+  .es-step::after {
+    top: auto; right: auto; bottom: -1.25rem; left: 2.25rem; width: 2px; height: 1.25rem;
+    background: linear-gradient(180deg, rgba(255, 122, 33, 0.55), rgba(255, 122, 33, 0.12));
+  }
+}
 
 /* ---- Smart Intake: estimate strategy & alerts (section 3) ------------- */
 .intake-ai-lead { margin: 0 0 1rem; }
@@ -18128,4 +18210,60 @@ select optgroup {
 .brief-crew-sms-preview-bubble.is-urgent {
   border-color: rgba(239, 68, 68, 0.4);
   background: rgba(239, 68, 68, 0.05);
+}
+
+/* ============================================================================
+   SUNLIGHT / DAYLIGHT PALETTE & CONTRAST REFINEMENTS
+   ============================================================================ */
+:root[data-theme='sunlight'] .panel,
+:root[data-theme='sunlight'] .workspace-section-card {
+  background: #ffffff;
+  border-color: #e2e8f0;
+  box-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.05), 0 1px 2px -1px rgba(15, 23, 42, 0.03);
+}
+
+:root[data-theme='sunlight'] .settings-tab {
+  color: #475569;
+}
+
+:root[data-theme='sunlight'] .settings-tab:hover {
+  color: #0f172a;
+  background: rgba(255, 255, 255, 0.7);
+}
+
+:root[data-theme='sunlight'] .settings-tab.active {
+  background: #ffffff;
+  color: #ea580c;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.1), 0 1px 2px -1px rgba(15, 23, 42, 0.06);
+}
+
+:root[data-theme='sunlight'] .sidenav {
+  background: #ffffff;
+  border-right-color: #e2e8f0;
+}
+
+:root[data-theme='sunlight'] .sidenav-group-label {
+  color: #64748b;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+:root[data-theme='sunlight'] .sidenav-count,
+:root[data-theme='sunlight'] .sidenav-total {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #334155;
+}
+
+:root[data-theme='sunlight'] .sidenav-link:hover {
+  background: #f8fafc;
+  color: #0f172a;
+}
+
+:root[data-theme='sunlight'] .sidenav-link.active {
+  background: #f1f5f9;
+  color: #0f172a;
+  font-weight: 650;
+  box-shadow: inset 3px 0 0 #ea580c;
 }

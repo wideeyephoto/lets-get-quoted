@@ -29,12 +29,24 @@ export default async function SitesPage({ searchParams }: { searchParams?: Promi
   const { supabase, accountId } = await requireOfficeContext('settings.write');
   const justBuilt = params?.built === '1';
 
-  // Get site, images, and messaging registration / texting setup in parallel
-  const [site, uploadedImages, messagingSetup] = await Promise.all([
+  // Get site, images, messaging registration, and credit balances in parallel
+  const [site, uploadedImages, messagingSetup, balanceRes] = await Promise.all([
     getOrCreateSite(supabase, accountId),
     listUploadedSiteImages(accountId),
     loadMessagingSetup(accountId),
+    supabase
+      .from('workspace_usage_credit_balances')
+      .select('resource_code, available_units')
+      .eq('account_id', accountId),
   ]);
+
+  const balanceRows = balanceRes?.data;
+  const aiIntakeUnits = balanceRows?.find((r) => r.resource_code === 'ai_intake_threads')?.available_units;
+  const aiWritingUnits = balanceRows?.find((r) => r.resource_code === 'ai_writing_drafts')?.available_units;
+  const hasAiBalance = typeof aiIntakeUnits === 'number' || typeof aiWritingUnits === 'number';
+  const aiCredits = hasAiBalance
+    ? (typeof aiIntakeUnits === 'number' ? aiIntakeUnits : 0) + (typeof aiWritingUnits === 'number' ? aiWritingUnits : 0)
+    : null;
 
   return (
     // The one dashboard route that renders the contractor's own type: the
@@ -49,6 +61,7 @@ export default async function SitesPage({ searchParams }: { searchParams?: Promi
         messagingSetup={messagingSetup}
         justBuilt={justBuilt}
         openTarget={params?.open ?? null}
+        aiCredits={aiCredits}
       />
     </div>
   );

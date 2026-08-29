@@ -277,8 +277,13 @@ export default function AssistantWidget() {
             onClick={toggleAssistant}
             aria-label="Open Sparky AI"
           >
-            <SparkyAvatar size={38} expression="avatar" status="online" bordered={false} alt="Sparky" />
-            <span className={styles.triggerName}>Sparky</span>
+            <div className={styles.triggerAvatarWrap}>
+              <SparkyAvatar size={34} expression="avatar" status="online" bordered={false} alt="Sparky" />
+            </div>
+            <div className={styles.triggerInfo}>
+              <span className={styles.triggerName}>Sparky</span>
+              <span className={styles.triggerBadge}>AI Copilot</span>
+            </div>
           </button>
         </div>
       ) : null}
@@ -288,21 +293,38 @@ export default function AssistantWidget() {
         <>
           <div className={styles.overlay} onClick={closeAssistant} aria-hidden="true" />
           <div className={styles.panel} role="dialog" aria-label="Sparky AI Assistant">
-            {/* Header (Clean & Minimal) */}
+            {/* Top Accent Rim */}
+            <div className={styles.topAccentRim} />
+
+            {/* Header (Polished & Brand-Aligned) */}
             <div className={styles.header}>
               <div className={styles.headerTitle}>
-                <SparkyAvatar
-                  size={32}
-                  expression={isLoading ? 'thinking' : 'avatar'}
-                  status={isLoading ? 'thinking' : 'online'}
-                  alt="Sparky"
-                />
-                <div className={styles.titleText}>Sparky</div>
+                <div className={styles.headerAvatarWrap}>
+                  <SparkyAvatar
+                    size={36}
+                    expression={isLoading ? 'thinking' : 'avatar'}
+                    status={isLoading ? 'thinking' : 'online'}
+                    alt="Sparky"
+                  />
+                </div>
+                <div className={styles.headerMeta}>
+                  <div className={styles.titleRow}>
+                    <span className={styles.titleText}>Sparky</span>
+                    <span className={styles.copilotBadge}>AI Sidekick</span>
+                  </div>
+                  <div className={styles.statusRow}>
+                    <span className={styles.statusDotLive} />
+                    <span className={styles.statusLabel}>
+                      {isLoading ? 'Crunching numbers...' : 'Ready on site & office'}
+                    </span>
+                  </div>
+                </div>
               </div>
+
               <div className={styles.headerControls}>
                 {showClearConfirm ? (
                   <div className={styles.clearConfirmGroup}>
-                    <span className={styles.clearConfirmText}>Clear chat?</span>
+                    <span className={styles.clearConfirmText}>Reset chat?</span>
                     <button
                       type="button"
                       className={styles.clearConfirmYesBtn}
@@ -329,7 +351,10 @@ export default function AssistantWidget() {
                     title="Clear chat history"
                     aria-label="Clear chat"
                   >
-                    Clear chat
+                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                    </svg>
+                    <span>Clear</span>
                   </button>
                 )}
 
@@ -357,12 +382,13 @@ export default function AssistantWidget() {
                   <span className={styles.contextDot} />
                   <span>{activeContext.label}</span>
                 </span>
+                <span className={styles.contextNotice}>Context-aware assistance</span>
               </div>
             )}
 
             {/* Messages Feed */}
             <div className={styles.messageFeed}>
-              {messages.map((msg) => (
+              {messages.map((msg, index) => (
                 <div
                   key={msg.id}
                   className={msg.role === 'user' ? styles.userMessageRow : styles.assistantMessageRow}
@@ -373,49 +399,79 @@ export default function AssistantWidget() {
                     </div>
                   )}
 
-                  {/* Render User Uploaded Photo */}
-                  {(msg.imageUrl || msg.image?.previewUrl || msg.image?.data) ? (
-                    <div className={styles.messageImageWrapper}>
-                      <img
-                        src={msg.imageUrl || msg.image?.previewUrl || msg.image?.data}
-                        alt="Uploaded photo"
-                        className={styles.messageImage}
-                      />
+                  <div className={styles.messageContentCol}>
+                    {/* Render User Uploaded Photo */}
+                    {(msg.imageUrl || msg.image?.previewUrl || msg.image?.data) ? (
+                      <div className={styles.messageImageWrapper}>
+                        <img
+                          src={msg.imageUrl || msg.image?.previewUrl || msg.image?.data}
+                          alt="Uploaded photo"
+                          className={styles.messageImage}
+                        />
+                      </div>
+                    ) : null}
+
+                    <div className={msg.role === 'user' ? styles.userBubble : styles.assistantBubble}>
+                      {msg.content}
                     </div>
-                  ) : null}
 
-                  <div className={msg.role === 'user' ? styles.userBubble : styles.assistantBubble}>
-                    {msg.content}
-                  </div>
-
-                  {/* Render Action Cards */}
-                  {msg.actionCards && msg.actionCards.length > 0 ? (
-                    <div className={styles.cardList}>
-                      {msg.actionCards.map((card, idx) => (
-                        <div key={`${msg.id}-card-${idx}`} className={styles.actionCard}>
-                          <div className={styles.cardHeader}>
-                            <span className={styles.cardTitle}>{card.title}</span>
-                            {card.badge ? <span className={styles.cardBadge}>{card.badge}</span> : null}
-                          </div>
-                          {card.description ? (
-                            <div className={styles.cardDescription}>{card.description}</div>
-                          ) : null}
-                          {card.linkUrl ? (
-                            <Link
-                              href={card.linkUrl}
-                              className={styles.cardLink}
-                              onClick={closeAssistant}
-                            >
-                              <span>{card.linkLabel || 'View'}</span>
-                              <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                <path d="M5 12h14M12 5l7 7-7 7" />
-                              </svg>
-                            </Link>
-                          ) : null}
+                    {/* Render Starter Suggestions on Welcome Message */}
+                    {msg.id === 'welcome' && messages.length === 1 && (
+                      <div className={styles.starterSection}>
+                        <div className={styles.starterLabel}>
+                          <span className={styles.starterIcon}>⚡</span> Quick Starters
                         </div>
-                      ))}
-                    </div>
-                  ) : null}
+                        <div className={styles.starterGrid}>
+                          {activeContext.prompts.map((promptText, pIdx) => (
+                            <button
+                              key={`prompt-${pIdx}`}
+                              type="button"
+                              className={styles.starterChip}
+                              onClick={() => handleSendMessage(promptText)}
+                              disabled={isLoading}
+                            >
+                              <span className={styles.starterChipIcon}>
+                                {pIdx === 0 ? '📝' : pIdx === 1 ? '📋' : pIdx === 2 ? '📅' : '⚡'}
+                              </span>
+                              <span className={styles.starterChipText}>{promptText}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Render Action Cards */}
+                    {msg.actionCards && msg.actionCards.length > 0 ? (
+                      <div className={styles.cardList}>
+                        {msg.actionCards.map((card, idx) => (
+                          <div key={`${msg.id}-card-${idx}`} className={styles.actionCard}>
+                            <div className={styles.cardHeader}>
+                              <div className={styles.cardTitleWrap}>
+                                <span className={styles.cardIcon}>⚡</span>
+                                <span className={styles.cardTitle}>{card.title}</span>
+                              </div>
+                              {card.badge ? <span className={styles.cardBadge}>{card.badge}</span> : null}
+                            </div>
+                            {card.description ? (
+                              <div className={styles.cardDescription}>{card.description}</div>
+                            ) : null}
+                            {card.linkUrl ? (
+                              <Link
+                                href={card.linkUrl}
+                                className={styles.cardLink}
+                                onClick={closeAssistant}
+                              >
+                                <span>{card.linkLabel || 'View'}</span>
+                                <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                  <path d="M5 12h14M12 5l7 7-7 7" />
+                                </svg>
+                              </Link>
+                            ) : null}
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
                 </div>
               ))}
 
@@ -425,15 +481,19 @@ export default function AssistantWidget() {
                     <SparkyAvatar size={28} expression="thinking" status="thinking" bordered={false} alt="Sparky thinking" />
                   </div>
                   <div className={styles.toolRunning}>
-                    <div className={styles.spinner} />
-                    <span>Sparky is on it...</span>
+                    <div className={styles.typingDots}>
+                      <span />
+                      <span />
+                      <span />
+                    </div>
+                    <span className={styles.toolRunningText}>Sparky is calculating...</span>
                   </div>
                 </div>
               ) : null}
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Footer Input Area with Image Upload */}
+            {/* Footer Omni-Input Capsule Area */}
             <div className={styles.footerContainer} onPaste={handlePaste}>
               {attachedImage ? (
                 <div className={styles.attachedImageChip}>
@@ -462,17 +522,17 @@ export default function AssistantWidget() {
                 </div>
               ) : null}
 
-              <form onSubmit={handleSubmit} className={styles.inputForm}>
+              <form onSubmit={handleSubmit} className={styles.inputCapsule}>
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                   className={styles.attachBtn}
-                  title="Upload receipt or job photo"
+                  title="Attach job photo or supply receipt"
                   aria-label="Upload image"
                   disabled={isLoading}
                 >
-                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
-                    <rect x="3" y="3" width="18" height="18" rx="3" ry="3" />
+                  <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="3" y="3" width="18" height="18" rx="4" ry="4" />
                     <circle cx="8.5" cy="8.5" r="1.5" />
                     <polyline points="21 15 16 10 5 21" />
                   </svg>
@@ -489,18 +549,19 @@ export default function AssistantWidget() {
                   type="text"
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  placeholder={attachedImage ? 'Add a note (optional)...' : 'Ask Sparky or attach photo...'}
+                  placeholder={attachedImage ? 'Add a note or instruction...' : 'Ask Sparky or paste photo/receipt...'}
                   className={styles.inputField}
                   disabled={isLoading}
                 />
                 <button
                   type="submit"
-                  className={styles.sendButton}
+                  className={`${styles.sendButton} ${input.trim() || attachedImage ? styles.sendButtonActive : ''}`}
                   disabled={(!input.trim() && !attachedImage) || isLoading}
                   aria-label="Send message to Sparky"
                 >
-                  <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-                    <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+                  <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="22" y1="2" x2="11" y2="13" />
+                    <polygon points="22 2 15 22 11 13 2 9 22 2" fill="currentColor" />
                   </svg>
                 </button>
               </form>

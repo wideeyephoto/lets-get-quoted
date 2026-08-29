@@ -20,6 +20,7 @@ import { fetchStockPool, isPexelsConfigured } from '@/lib/stock/pexels';
 import type { ImageOrientation, PexelsSearchResult } from '@/lib/stock/types';
 import { getSiteContent, getUnreviewedGeneratedSections, preserveIntakeSettings } from '@/lib/site-content';
 import { preserveBlogPosts } from '@/lib/site-blog';
+import { matchesServedCity } from '@/lib/service-area-match';
 import {
   getOrCreateSite,
   updateSite,
@@ -1011,4 +1012,205 @@ export async function generateAiLogoAction(params: {
       message: error instanceof Error ? error.message : 'Could not generate a logo right now.',
     };
   }
+}
+
+export async function getAvailableAiCreditsAction(): Promise<number | null> {
+  try {
+    const { supabase, accountId } = await requireOfficeContext('settings.read');
+    const { data: balanceRows } = await supabase
+      .from('workspace_usage_credit_balances')
+      .select('resource_code, available_units')
+      .eq('account_id', accountId);
+
+    const aiIntakeUnits = balanceRows?.find((r) => r.resource_code === 'ai_intake_threads')?.available_units;
+    const aiWritingUnits = balanceRows?.find((r) => r.resource_code === 'ai_writing_drafts')?.available_units;
+    const hasAiBalance = typeof aiIntakeUnits === 'number' || typeof aiWritingUnits === 'number';
+    if (!hasAiBalance) return null;
+    return (typeof aiIntakeUnits === 'number' ? aiIntakeUnits : 0) + (typeof aiWritingUnits === 'number' ? aiWritingUnits : 0);
+  } catch {
+    return null;
+  }
+}
+
+export type NearbyCityCandidate = {
+  name: string;
+  miles?: number;
+};
+
+export type NearbyCitiesResult = {
+  ok: boolean;
+  centerPlace?: string;
+  radiusMiles?: number;
+  cities: string[];
+  candidates: NearbyCityCandidate[];
+  message?: string;
+};
+
+export async function suggestNearbyCitiesAction(options: {
+  baseLocation: string;
+  radiusMiles?: number;
+  existingCities?: string[];
+}): Promise<NearbyCitiesResult> {
+  const { accountId } = await requireOfficeContext('settings.read');
+  const base = (options.baseLocation || '').trim();
+  if (!base) {
+    return { ok: false, cities: [], candidates: [], message: 'Please provide a base city or ZIP code.' };
+  }
+
+  const radiusMiles = options.radiusMiles && Number.isFinite(options.radiusMiles)
+    ? Math.max(5, Math.min(100, Math.round(options.radiusMiles)))
+    : 35;
+
+  try {
+    const geo = await geocodeArea(base);
+    const resolvedCenter = geo.ok ? (geo.place || geo.label || base) : base;
+
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      const fallbackList = geo.ok && geo.place ? [geo.place] : [base];
+      return {
+        ok: true,
+        centerPlace: resolvedCenter,
+        radiusMiles,
+        cities: fallbackList,
+        candidates: fallbackList.map((c) => ({ name: c, miles: 0 })),
+      };
+    }
+
+    const instructions =
+      'You are a geographic data assistant. Given a base city/ZIP in the United States, list real, official neighboring municipalities, towns, townships, and suburbs ordered from closest to furthest within the driving radius.\n' +
+      'Rules:\n' +
+      '1. Format every place name with its 2-letter state postal abbreviation (e.g. "Royal Oak, MI", "Troy, MI", "Birmingham, MI").\n' +
+      '2. Only include real, legitimate municipality names within this exact geographic radius.\n' +
+      '3. Order strictly from closest to furthest by distance outward.\n' +
+      '4. Return a JSON object with a "candidates" array of objects with "name" (string) and "miles" (number, distance from base). Return 20 to 30 surrounding municipalities. Example: {"candidates": [{"name": "Berkley, MI", "miles": 2.2}, {"name": "Clawson, MI", "miles": 3.1}, {"name": "Huntington Woods, MI", "miles": 3.5}, {"name": "Birmingham, MI", "miles": 4.3}, {"name": "Ferndale, MI", "miles": 4.9}, {"name": "Troy, MI", "miles": 5.8}, ...]}.';
+
+    const input = `Base location: ${resolvedCenter}. Maximum driving radius: ${radiusMiles} miles. Return all surrounding towns and suburbs within this radius sorted outward.`;
+
+    const response = await callModel(
+      {
+        model: 'gpt-4o-mini',
+        temperature: 0.2,
+        instructions,
+        input,
+        text: { format: { type: 'json_object' } },
+      },
+      { accountId, kind: 'site_copy' } // Free/exempt kind - 0 AI credits charged
+    );
+
+    if (!response.ok) throw new Error(`Model request failed: ${response.status}`);
+    const payload = await response.json();
+    const parsed = JSON.parse(extractOutputText(payload)) as {
+      candidates?: Array<{ name?: unknown; miles?: unknown }>;
+      cities?: unknown[];
+    };
+
+    let candidates: NearbyCityCandidate[] = [];
+
+    if (Array.isArray(parsed.candidates) && parsed.candidates.length > 0) {
+      candidates = parsed.candidates
+        .map((c) => {
+          const name = typeof c?.name === 'string' ? c.name.trim() : '';
+          const miles = typeof c?.miles === 'number' && Number.isFinite(c.miles) ? Math.round(c.miles * 10) / 10 : undefined;
+          return { name, miles };
+        })
+        .filter((c) => c.name.length > 0 && c.name.length <= 60);
+    } else if (Array.isArray(parsed.cities)) {
+      candidates = parsed.cities
+        .map((c) => (typeof c === 'string' ? c.trim() : ''))
+        .filter((c) => c.length > 0 && c.length <= 60)
+        .map((name, i) => ({ name, miles: Math.round((i * 1.5 + 2) * 10) / 10 }));
+    }
+
+    // Deduplicate candidates preserving order
+    const seen = new Set<string>();
+    const deduplicatedCandidates: NearbyCityCandidate[] = [];
+    for (const c of candidates) {
+      const lower = c.name.toLowerCase().trim();
+      if (!seen.has(lower)) {
+        seen.add(lower);
+        deduplicatedCandidates.push(c);
+      }
+    }
+
+    const flatCities = deduplicatedCandidates.map((c) => c.name);
+
+    return {
+      ok: true,
+      centerPlace: resolvedCenter,
+      radiusMiles,
+      cities: flatCities,
+      candidates: deduplicatedCandidates,
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      cities: [],
+      candidates: [],
+      message: error instanceof Error ? error.message : 'Could not suggest cities right now.',
+    };
+  }
+}
+
+export type IntakeLocationTestResult = {
+  ok: boolean;
+  matched: boolean;
+  locationLabel: string;
+  matchedCity?: string;
+  resolvedPlace?: string;
+  message?: string;
+};
+
+export async function testIntakeLocationAction(params: {
+  testLocation: string;
+  servedCities: string[];
+}): Promise<IntakeLocationTestResult> {
+  const query = (params.testLocation || '').trim();
+  const served = (params.servedCities || []).map((c) => c.trim()).filter(Boolean);
+
+  if (!query) {
+    return { ok: false, matched: false, locationLabel: '', message: 'Enter a city or ZIP code to test.' };
+  }
+  if (served.length === 0) {
+    return { ok: true, matched: false, locationLabel: query, message: 'No cities currently configured in your service area.' };
+  }
+
+  // 1. Direct match check
+  if (matchesServedCity(query, served)) {
+    return {
+      ok: true,
+      matched: true,
+      locationLabel: query,
+      matchedCity: query,
+      message: `Matches "${query}" in your active service list. Smart Intake and quote forms will accept this customer.`,
+    };
+  }
+
+  // 2. Geocode / ZIP resolution check
+  try {
+    const geo = await geocodeArea(query);
+    if (geo.ok && (geo.place || geo.label)) {
+      const placeName = geo.place || geo.label || query;
+      const matched = matchesServedCity(placeName, served);
+      return {
+        ok: true,
+        matched,
+        locationLabel: geo.label || placeName,
+        matchedCity: matched ? placeName : undefined,
+        resolvedPlace: placeName,
+        message: matched
+          ? `Resolved to "${placeName}" which matches your service list. Smart Intake will accept this customer.`
+          : `Resolved to "${placeName}" which is outside your active service list.`,
+      };
+    }
+  } catch {
+    // geocode failure fallback
+  }
+
+  return {
+    ok: true,
+    matched: false,
+    locationLabel: query,
+    message: `"${query}" was not found in your active service list.`,
+  };
 }

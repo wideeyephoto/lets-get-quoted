@@ -10,7 +10,7 @@ import { getSiteContent, getTradeGlyphOptions, getUnreviewedGeneratedSections, g
 import { generatePrivacyPolicy, generateTermsOfService } from '@/lib/legal/legal-copy';
 import { AVAILABLE_TEMPLATES } from '@/lib/templates/types';
 import ServiceIcon, { SERVICE_ICON_KEYS } from '@/lib/templates/ServiceIcon';
-import { checkSubdomainAvailableAction, generateSiteTextAction, importJobPhotoToSiteImageAction, listCompletedJobPhotoOptionsAction, listCompletedJobReviewsAction, publishSiteAction, regenerateSeoCopyAction, regenerateStockImagesAction, syncClientReviewsToSiteAction, syncCompletedJobsToSiteAction, updateSiteAction, uploadSiteImageAction, verifyCustomDomainAction, type JobPhotoImportOption, type CompletedJobReviewOption } from './actions';
+import { checkSubdomainAvailableAction, generateSiteTextAction, getAvailableAiCreditsAction, importJobPhotoToSiteImageAction, listCompletedJobPhotoOptionsAction, listCompletedJobReviewsAction, publishSiteAction, regenerateSeoCopyAction, regenerateStockImagesAction, syncClientReviewsToSiteAction, syncCompletedJobsToSiteAction, updateSiteAction, uploadSiteImageAction, verifyCustomDomainAction, type JobPhotoImportOption, type CompletedJobReviewOption } from './actions';
 import { SEO_TITLE_MAX as SEO_TITLE_LIMIT, SEO_DESC_MAX as SEO_DESC_LIMIT } from '@/lib/seo/seo-copy';
 import { parseVerificationToken, verificationTokenProblem } from '@/lib/seo/search-console';
 // Shared with the first-run seed (lib/site-seed) so "Generate" here and the
@@ -35,6 +35,7 @@ import AnalyticsField from './AnalyticsField';
 import ThemeIcon from './ThemeIcon';
 import VideoStudio from './VideoStudio';
 import AiLogoCreatorModal from './AiLogoCreatorModal';
+import ServiceAreasField from './ServiceAreasField';
 import styles from './SiteEditor.module.css';
 
 type BuilderTab = 'business' | 'page' | 'design' | 'publish';
@@ -49,7 +50,31 @@ type WebsiteBuilderProps = {
   justBuilt?: boolean;
   /** `?open=<key>` — a card to open on arrival, for links from elsewhere. */
   openTarget?: string | null;
+  /** Real-time AI credit balance (Smart Intake & writing drafts combined). */
+  aiCredits?: number | null;
 };
+
+function AiCreditIndicator({
+  credits,
+  cost,
+}: {
+  credits: number | null | undefined;
+  cost?: number;
+}) {
+  if (typeof credits !== 'number') return null;
+  const isLow = credits <= 25;
+  return (
+    <span className={`${styles.aiCreditChip}${isLow ? ` ${styles.aiCreditChipLow}` : ''}`}>
+      <span>⚡ {credits.toLocaleString('en-US')} AI {credits === 1 ? 'credit' : 'credits'} available</span>
+      {cost ? <span>· {cost} credit per generation</span> : null}
+      {isLow ? (
+        <a href="/dashboard/settings#buy-credits" className={styles.aiCreditChipTopUp} title="Add more AI credits">
+          + Top up
+        </a>
+      ) : null}
+    </span>
+  );
+}
 
 // Where an `?open=` key lands: the tab that holds that card, and the card
 // itself. Deliberately a short allow-list rather than "open whatever the query
@@ -65,6 +90,8 @@ const OPEN_TARGETS: Record<string, { tab: BuilderTab; card: string }> = {
   quoteFormStyle: { tab: 'design', card: 'quoteFormStyle' },
   intakeStyle: { tab: 'page', card: 'estimate' },
   quickStop: { tab: 'page', card: 'quickStop' },
+  areas: { tab: 'page', card: 'serviceAreas' },
+  serviceAreas: { tab: 'page', card: 'serviceAreas' },
 };
 
 // Heading font choices. The webfont options reuse faces the app already loads
@@ -294,9 +321,10 @@ function siteUpdates(site: Site) {
   };
 }
 
-export default function WebsiteBuilder({ site: initialSite, uploadedImages, messagingSetup, justBuilt = false, openTarget = null }: WebsiteBuilderProps) {
+export default function WebsiteBuilder({ site: initialSite, uploadedImages, messagingSetup, justBuilt = false, openTarget = null, aiCredits = null }: WebsiteBuilderProps) {
   const [site, setSite] = useState(initialSite);
   const [siteImages, setSiteImages] = useState(uploadedImages);
+  const [availableAiCredits, setAvailableAiCredits] = useState<number | null>(aiCredits);
   const [jobPhotoOptions, setJobPhotoOptions] = useState<JobPhotoImportOption[]>([]);
   const [jobPhotosLoaded, setJobPhotosLoaded] = useState(false);
   const [internalReviewOptions, setInternalReviewOptions] = useState<CompletedJobReviewOption[]>([]);
@@ -306,6 +334,17 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, mess
   // the first paint would show the Setup tab for a frame and then jump.
   const deepLink = openTarget ? OPEN_TARGETS[openTarget] ?? null : null;
   const [activeTab, setActiveTab] = useState<BuilderTab>(deepLink?.tab ?? 'business');
+
+  const refreshAiCredits = useCallback(async () => {
+    try {
+      const credits = await getAvailableAiCreditsAction();
+      if (typeof credits === 'number') {
+        setAvailableAiCredits(credits);
+      }
+    } catch {
+      // Graceful fallback
+    }
+  }, []);
 
   // The Page tab opens with everything collapsed, deliberately.
   //
@@ -894,13 +933,14 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, mess
               ? ' Example stats are written but left switched OFF: nobody counted those numbers. Replace them with real ones to turn them on.'
               : ' Your own reviews and stats were left exactly as they are.';
         setMessage({ type: 'success', text: `Full example site generated — headline, services, FAQs, and your Google listing (SEO) are all filled in.${imagesNote}${examplesNote}` });
+        refreshAiCredits();
       } catch (error) {
         setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Unable to generate example content.' });
       } finally {
         setIsGeneratingText(false);
       }
     });
-  }, [site]);
+  }, [site, refreshAiCredits]);
 
   // Regenerate only the SEO title + description from the contractor's real data
   // (no AI/API needed). Each click rotates to a different valid variation and
@@ -915,13 +955,14 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, mess
         setSite((current) => ({ ...current, seo_title, seo_description }));
         setIsDirty(true);
         setMessage({ type: 'success', text: 'Fresh SEO title and description written from your business details. Edit them anytime, then save.' });
+        refreshAiCredits();
       } catch (error) {
         setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Could not regenerate SEO text right now.' });
       } finally {
         setIsRegeneratingSeo(false);
       }
     });
-  }, []);
+  }, [refreshAiCredits]);
 
   // Re-pick trade-relevant stock photos for every image role. Confirms first
   // (it changes several visible sections), keeps the owner's uploads, and only
@@ -945,13 +986,14 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, mess
         });
         setIsDirty(true);
         setMessage({ type: 'success', text: 'Fresh stock photos selected across your site. Your uploaded photos were kept. Save to publish the changes.' });
+        refreshAiCredits();
       } catch (error) {
         setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Could not regenerate stock images right now.' });
       } finally {
         setIsRegeneratingImages(false);
       }
     });
-  }, []);
+  }, [refreshAiCredits]);
 
   // When a photo is picked from the "Replace photo" popup, keep content.stockImages
   // in sync so attribution stays accurate: record a Pexels pick (with credit),
@@ -1728,6 +1770,16 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, mess
           ) : null}
         </div>
         <div className={styles.builderActions}>
+          {typeof availableAiCredits === 'number' ? (
+            <div className={`${styles.headerCreditBadge}${availableAiCredits <= 25 ? ` ${styles.headerCreditBadgeLow}` : ''}`}>
+              <span>⚡ {availableAiCredits.toLocaleString('en-US')} AI {availableAiCredits === 1 ? 'credit' : 'credits'}</span>
+              {availableAiCredits <= 25 ? (
+                <a href="/dashboard/settings#buy-credits" className={styles.aiCreditChipTopUp}>
+                  + Top up
+                </a>
+              ) : null}
+            </div>
+          ) : null}
           <button type="button" className="btn secondary" onClick={undo} disabled={historyRef.current.past.length === 0} title="Undo (Ctrl+Z)" aria-label="Undo last change">↩ Undo</button>
           <button type="button" className="btn secondary" onClick={redo} disabled={historyRef.current.future.length === 0} title="Redo (Ctrl+Shift+Z)" aria-label="Redo change">↪ Redo</button>
           <a href="/dashboard/sites/preview" target="_blank" rel="noopener noreferrer" className="btn secondary">Site Preview</a>
@@ -1743,37 +1795,15 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, mess
               save path either — isDirty is not cleared until the action has
               returned, so the button stays mounted for the whole round trip. */}
           {isDirty && (
-            <div className={styles.historyBtnGroup}>
-              <button
-                type="button"
-                className={styles.historyBtn}
-                onClick={undo}
-                disabled={historyRef.current.past.length === 0}
-                title="Undo (Ctrl+Z)"
-                aria-label="Undo"
-              >
-                ↺ Undo
-              </button>
-              <button
-                type="button"
-                className={styles.historyBtn}
-                onClick={redo}
-                disabled={historyRef.current.future.length === 0}
-                title="Redo (Ctrl+Y)"
-                aria-label="Redo"
-              >
-                ↷ Redo
-              </button>
-              <button
-                type="button"
-                className={styles.revertBtn}
-                onClick={handleRevert}
-                disabled={isPending}
-                title="Discard all unsaved edits"
-              >
-                ✕ Discard
-              </button>
-            </div>
+            <button
+              type="button"
+              className={styles.revertBtn}
+              onClick={handleRevert}
+              disabled={isPending}
+              title="Discard all unsaved edits"
+            >
+              ✕ Discard
+            </button>
           )}
           {isDirty && (
             <button type="button" className="btn primary" onClick={handleSave} disabled={isPending || !isDirty}>
@@ -1836,9 +1866,15 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, mess
                     <p className={styles.fieldHint} style={{ marginTop: '0.4rem' }}>Also editable under <a href="/dashboard/settings#business-basics">Settings &rarr; Business</a> — both stay in sync.</p>
                     <p className={styles.driversCaption}>Your headline, services, FAQs, service area, and Google listing are all generated from these.</p>
                   </div>
-                  <button type="button" className={`btn primary ${styles.aiButton}`} onClick={handleGenerateText} disabled={isGeneratingText}>
-                    {isGeneratingText ? 'Creating your tailored Website...' : '✨ Generate a full example site with AI'}
-                  </button>
+                  <div className={styles.aiButtonGroup}>
+                    <button type="button" className={`btn primary ${styles.aiButton}`} onClick={handleGenerateText} disabled={isGeneratingText}>
+                      {isGeneratingText ? 'Creating your tailored Website...' : '✨ Generate a full example site with AI'}
+                    </button>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.4rem' }}>
+                      <AiCreditIndicator credits={availableAiCredits} cost={1} />
+                      <small className={styles.fieldHint} style={{ margin: 0 }}>Instant full website generation</small>
+                    </div>
+                  </div>
                   <small className={styles.fieldHint}>Fills in your whole site — headline, services, FAQs, Google listing, and more — from these two fields. Watch it appear in the preview. Reviews and stats are filled with examples — swap in your real ones before you publish.</small>
                 </SectionCard>
 
@@ -2115,10 +2151,11 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, mess
                           );
                         })()}
                     <hr className={styles.logoDivider} />
-                    <div className={styles.imageSlotActions}>
+                    <div className={styles.imageSlotActions} style={{ alignItems: 'center', flexWrap: 'wrap' }}>
                       <button type="button" className={`${styles.secondaryAction} btn primary`} onClick={() => setShowLogoStudio(true)} style={{ background: '#2563eb', color: '#ffffff', border: 'none', fontWeight: 700 }}>
                         ✨ AI Logo Studio
                       </button>
+                      <AiCreditIndicator credits={availableAiCredits} />
                       <button type="button" className={styles.secondaryAction} onClick={() => openPicker('your logo', 'logo')}>{site.logo_url ? 'Replace photo' : 'Upload custom file'}</button>
                       {site.logo_url && <button type="button" className={styles.secondaryAction} onClick={() => handleChange('logo_url', null)}>Remove</button>}
                     </div>
@@ -2721,7 +2758,10 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, mess
                                     <strong>Stock photos</strong>
                                     <p className={styles.fieldHint}>Representative stock photos from Pexels. Replace any one with a photo of your own work anytime. This picks a fresh set for every image on your site and keeps your uploads.</p>
                                   </div>
-                                  <button type="button" className={styles.secondaryAction} onClick={handleRegenerateStockImages} disabled={isRegeneratingImages}>{isRegeneratingImages ? 'Finding photos…' : '✨ Regenerate all stock images'}</button>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', flexWrap: 'wrap' }}>
+                                    <button type="button" className={styles.secondaryAction} onClick={handleRegenerateStockImages} disabled={isRegeneratingImages}>{isRegeneratingImages ? 'Finding photos…' : '✨ Regenerate all stock images'}</button>
+                                    <AiCreditIndicator credits={availableAiCredits} />
+                                  </div>
                                 </div>
                                 <div className={styles.contentSubhead}><strong>Floating badges</strong></div>
                                 <div className={`${styles.formField}${flashField === 'heroBadge' ? ` ${styles.fieldFlash}` : ''}`} id="design-hero-badge">
@@ -3408,17 +3448,12 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, mess
 
                             {isSectionVisible('serviceAreas', 'cities you serve service areas towns locations coverage map') && (
                               <SectionCard reorder={reorderProps('serviceAreas', 'Cities you serve')} title="Cities you serve" description={'List the towns and neighborhoods you cover. The names become on-page keywords that help you rank for "[trade] in [city]" searches — and reassure homeowners you serve their area.'} evidence={'Visitors decide "do they even serve me?" in ~3 seconds — naming their town reassures them and matches local search.'} enabled={siteContent.serviceAreas.enabled} onToggleEnabled={(value) => updateServiceAreas({ ...siteContent.serviceAreas, enabled: value })} {...contentHint(siteContent.serviceAreas.enabled, siteContent.serviceAreas.cities.filter((city) => city.trim()).length, 'city', 'cities')} open={openSection === 'serviceAreas'} onToggleOpen={() => toggleSection('serviceAreas')}>
-                                <label className={styles.formField}><span>Section title</span><input value={siteContent.serviceAreas.title} onChange={(event) => updateServiceAreas({ ...siteContent.serviceAreas, title: event.target.value })} /></label>
-                                <label className={styles.formField}><span>Intro</span><input id="bf-area-intro" value={siteContent.serviceAreas.intro} onChange={(event) => updateServiceAreas({ ...siteContent.serviceAreas, intro: event.target.value })} /><small className={styles.fieldHint}>Also shown as your service area line in the footer.</small></label>
-                                <div className={styles.badgeList}>
-                                  {siteContent.serviceAreas.cities.map((city, index) => (
-                                    <div className={styles.badgeRow} key={index}>
-                                      <input className={styles.badgeInput} value={city} aria-label={`City ${index + 1}`} onChange={(event) => updateServiceAreas({ ...siteContent.serviceAreas, cities: siteContent.serviceAreas.cities.map((item, itemIndex) => itemIndex === index ? event.target.value : item) })} placeholder="e.g. Riverton" />
-                                      <button type="button" className={styles.badgeRemove} onClick={() => updateServiceAreas({ ...siteContent.serviceAreas, cities: siteContent.serviceAreas.cities.filter((_, itemIndex) => itemIndex !== index) })} aria-label={`Remove ${city || 'city'}`}>×</button>
-                                    </div>
-                                  ))}
-                                </div>
-                                <button type="button" className={styles.secondaryAction} onClick={() => updateServiceAreas({ ...siteContent.serviceAreas, enabled: true, cities: [...siteContent.serviceAreas.cities, ''] })}>Add city</button>
+                                <ServiceAreasField
+                                  content={siteContent.serviceAreas}
+                                  defaultZip={siteContent.zip}
+                                  defaultServiceArea={site.service_area}
+                                  onChange={updateServiceAreas}
+                                />
                               </SectionCard>
                             )}
 
@@ -3693,7 +3728,10 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, mess
                   </div>
                   <div className={styles.seoActions}>
                     <small className={styles.fieldHint}>A live preview of how your site can appear in Google. Edit either field, or let us write it from your business details.</small>
-                    <button type="button" className={styles.secondaryAction} onClick={handleRegenerateSeo} disabled={isRegeneratingSeo}>{isRegeneratingSeo ? 'Writing…' : '✨ Regenerate SEO text'}</button>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', flexWrap: 'wrap' }}>
+                      <button type="button" className={styles.secondaryAction} onClick={handleRegenerateSeo} disabled={isRegeneratingSeo}>{isRegeneratingSeo ? 'Writing…' : '✨ Regenerate SEO text'}</button>
+                      <AiCreditIndicator credits={availableAiCredits} />
+                    </div>
                   </div>
                   <label className={styles.formField}>
                     <span>SEO page title</span>
@@ -3856,6 +3894,8 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, mess
         businessName={site.company_name}
         trade={siteContent.trade}
         accentColor={site.accent_override}
+        aiCredits={availableAiCredits}
+        onRefreshCredits={refreshAiCredits}
         onSelectLogo={(_svg, dataUri) => {
           handleChange('logo_url', dataUri);
           updateSiteContent({ logoStyle: 'transparent' });

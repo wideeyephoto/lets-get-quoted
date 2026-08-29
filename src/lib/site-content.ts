@@ -220,6 +220,8 @@ export type SiteServiceAreasContent = {
   enabled: boolean;
   title: string;
   intro: string;
+  radiusMiles?: number;
+  baseZip?: string;
   cities: string[];
 };
 
@@ -2275,6 +2277,8 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
       enabled: serviceAreas.enabled !== false,
       title: toString(serviceAreas.title, DEFAULT_SERVICE_AREAS_TITLE),
       intro: toString(serviceAreas.intro, DEFAULT_SERVICE_AREAS_INTRO),
+      radiusMiles: typeof serviceAreas.radiusMiles === 'number' && Number.isFinite(serviceAreas.radiusMiles) ? Math.max(1, Math.min(150, Math.round(serviceAreas.radiusMiles))) : undefined,
+      baseZip: typeof serviceAreas.baseZip === 'string' ? serviceAreas.baseZip.trim().slice(0, 12) : undefined,
       cities: parseCities(serviceAreas.cities),
     },
     certifications: {
