@@ -42,8 +42,8 @@ describe('canonical paid base-plan recurring consent', () => {
   });
 
   it('moves the material platform Terms version and publishes matching billing disclosures', () => {
-    expect(TERMS_VERSION).toBe('2026-08-28');
-    expect(TERMS_EFFECTIVE_DATE).toBe('August 28, 2026');
+    expect(TERMS_VERSION).toBe('2026-08-29');
+    expect(TERMS_EFFECTIVE_DATE).toBe('August 29, 2026');
 
     const termsPath = fileURLToPath(new URL('../src/app/terms/page.tsx', import.meta.url));
     const terms = readFileSync(termsPath, 'utf8');

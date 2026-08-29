@@ -87,7 +87,7 @@ interface CrewDictateWorkspaceProps {
 }
 
 export default function CrewDictateWorkspace({
-  crewName,
+  crewName: _crewName,
   businessName,
   fieldPhoneNumber,
   crewPhone,

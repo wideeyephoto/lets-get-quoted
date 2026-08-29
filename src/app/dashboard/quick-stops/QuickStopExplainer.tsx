@@ -43,7 +43,7 @@ export default function QuickStopExplainer({
   minFeeDollars,
   stripeConnected,
   bookingUrl,
-  businessName,
+  businessName: _businessName,
 }: ExplainerProps) {
   // The MIDDLE of their fee range, not the top. Using the highest fee they've
   // configured would produce the most flattering number available, which is the

@@ -335,18 +335,11 @@
 
 /* Native Print Styles */
 @media print {
-  body * {
-    visibility: hidden;
-  }
-  .printableCardPreview, .printableCardPreview * {
-    visibility: visible;
-  }
   .printableCardPreview {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
+    position: relative;
     border: none;
     box-shadow: none;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 }

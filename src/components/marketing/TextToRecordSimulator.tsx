@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { APP_SIGNUP_URL } from '@/components/marketing/links';
 import styles from './text-to-record-simulator.module.css';

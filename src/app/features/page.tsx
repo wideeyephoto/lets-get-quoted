@@ -502,7 +502,20 @@ export default function FeaturesPage() {
             24/7 call answering, photo-grounded estimating, and automated morning crew briefings.
           </p>
         </div>
-        <div className="feature-link-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', marginTop: '2rem' }}>
+        <div className="feature-link-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', marginTop: '2rem' }}>
+          <Link href="/features/sparky" id="sparky-spotlight">
+            <span style={{ fontSize: '1.25rem', color: '#f59e0b' }}>⚡</span>
+            <small>AI CONTRACTOR SIDEKICK</small>
+            <h3>Meet Sparky™</h3>
+            <p>Run your business by simply texting, sending photos, or talking to Sparky. No app download needed.</p>
+            <ul className="feature-produces" aria-label="What Sparky gives you">
+              <li>SMS &amp; iMessage job management</li>
+              <li>Texted photos &amp; OCR auto-sorting</li>
+              <li>Walk-up estimate brain dumps</li>
+            </ul>
+            <b>Meet Sparky <span aria-hidden="true">→</span></b>
+          </Link>
+
           <Link href="/features/ai-voice" id="ai-voice-spotlight">
             <span style={{ fontSize: '1.25rem', color: '#0284c7' }}>🎙️</span>
             <small>24/7 AI RECEPTIONIST &amp; HOTLINE</small>

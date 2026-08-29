@@ -9,6 +9,9 @@ import {
   submitMessagingRegistrationApplication,
   validateMessagingApplication,
 } from '@/lib/messaging-number-provisioning';
+import { sendFounderMessagingApplicationAlert } from '@/lib/founder-alerts';
+import { sendMessagingApplicationSubmittedEmail } from '@/lib/email';
+import { MESSAGING_SETUP_FEE_USD } from '@/lib/billing/messaging-setup-checkout';
 import { logMessagingRegistrationActionFailure } from '@/lib/messaging-registration-action-failure';
 
 type ResultCode = 'submitted' | 'invalid' | 'save_failed';
@@ -126,6 +129,34 @@ export async function submitDedicatedNumberApplicationAction(formData: FormData)
         actorReference: userEmail || userId,
       });
     }
+
+    // Fire dual notifications (Admin / Founder alert + Contractor receipt)
+    sendFounderMessagingApplicationAlert({
+      applicationId: result.applicationId,
+      accountId,
+      businessName: validation.value.legalBusinessName,
+      dbaName: validation.value.dbaName,
+      businessType: validation.value.businessType,
+      contactName: validation.value.authorizedContactName,
+      contactEmail: validation.value.authorizedContactEmail || userEmail || '',
+      contactPhone: validation.value.authorizedContactPhone,
+      desiredAreaCode: validation.value.desiredAreaCode,
+      setupFeePaid: `${MESSAGING_SETUP_FEE_USD} (Paid)`,
+      einLastFour: einDigits.length === 9 ? einDigits.slice(-4) : null,
+      websiteUrl: validation.value.websiteUrl,
+    }).catch((err) => {
+      console.error('[founder-alert] Failed to send messaging application alert:', err);
+    });
+
+    sendMessagingApplicationSubmittedEmail({
+      accountId,
+      recipientEmail: validation.value.businessEmail || validation.value.authorizedContactEmail || userEmail || '',
+      businessName: validation.value.legalBusinessName,
+      desiredAreaCode: validation.value.desiredAreaCode,
+      amountPaid: MESSAGING_SETUP_FEE_USD,
+    }).catch((err) => {
+      console.error('[contractor-email] Failed to send messaging confirmation email:', err);
+    });
   } catch (error) {
     logMessagingRegistrationActionFailure({
       applicationId: null,

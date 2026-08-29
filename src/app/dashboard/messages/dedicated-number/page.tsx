@@ -24,11 +24,11 @@ const STATUS_COPY: Record<string, string> = {
 
 const RESULT_COPY = {
   done: {
-    submitted: 'Application submitted for staff review. No number was purchased and no charge was added.',
+    submitted: 'Application submitted for staff review. Your $49.99 one-time registration and setup fee has been confirmed.',
   },
   error: {
     invalid: 'Check the application fields and try again. Your entries were kept in this browser session.',
-    save_failed: 'We could not confirm that the application was saved. No purchase or charge was started. Your entries remain in this browser session; refresh before trying again.',
+    save_failed: 'We could not confirm that the application was saved. Your entries remain in this browser session; refresh before trying again.',
   },
 } as const;
 
@@ -111,7 +111,7 @@ export default async function DedicatedNumberApplicationPage({
   const doneMessage = submissionConfirmed
     ? RESULT_COPY.done.submitted
     : durableApplicationObserved
-      ? 'The application has a durable record. Its current status below is authoritative; no number was purchased and no charge was added.'
+      ? 'The application has a durable record. Its current status below is authoritative.'
       : null;
   const errorMessage = !canSubmit
     ? null
@@ -131,7 +131,7 @@ export default async function DedicatedNumberApplicationPage({
         <p>
           A dedicated local phone number enables 2-way customer texting from your Let&rsquo;s Get Quoted inbox and unlocks our AI Voice Receptionist plans.
           Let&rsquo;s Get Quoted handles 10DLC mobile carrier brand and campaign registration for you with verified deliverability.
-          Submitting does not charge you; carrier registration, number lease, and usage rates will be displayed for your explicit acceptance before any charges are incurred.
+          A one-time $49.99 setup fee covers carrier brand registration, TCR campaign vetting, and dedicated business number provisioning.
         </p>
       </header>
 

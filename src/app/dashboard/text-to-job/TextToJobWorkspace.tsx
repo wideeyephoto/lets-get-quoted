@@ -379,7 +379,7 @@ export default function TextToJobWorkspace({
             <span className={styles.liveDot} title="Online &amp; Ingress Active" />
           </div>
           <small className={styles.hotlineSub}>
-            Text this number from any authorized cell phone. Save as <em>"{businessTitle} Intake"</em>.
+            Text this number from any authorized cell phone. Save as <em>&ldquo;{businessTitle} Intake&rdquo;</em>.
           </small>
         </div>
 
@@ -853,7 +853,7 @@ export default function TextToJobWorkspace({
                 4. 🏷️ Equipment Serial &amp; Nameplates
               </div>
               <p style={{ fontSize: '12px', color: '#d1e2eb', margin: '0 0 8px 0', lineHeight: 1.45 }}>
-                Text a picture of a customer's rusted water heater or AC data plate.
+                Text a picture of a customer&apos;s rusted water heater or AC data plate.
               </p>
               <div style={{ fontSize: '11px', color: '#94a3b8', background: 'rgba(255,255,255,0.04)', padding: '8px', borderRadius: '6px' }}>
                 ✓ Extracts exact model, serial #, tonnage, &amp; BTUs.<br />
@@ -978,7 +978,7 @@ export default function TextToJobWorkspace({
                 2. Zero Destructive Guesses Invariant
               </div>
               <p style={{ fontSize: '12px', color: '#d1e2eb', margin: 0, lineHeight: 1.45 }}>
-                If you have two active jobs with the same name (e.g. "Smith - 84 Pine" vs "Smith - 19 Oak"), Gemini never guesses. It texts back numbered options and pauses until you reply with 1 or 2.
+                If you have two active jobs with the same name (e.g. &ldquo;Smith - 84 Pine&rdquo; vs &ldquo;Smith - 19 Oak&rdquo;), Gemini never guesses. It texts back numbered options and pauses until you reply with 1 or 2.
               </p>
             </div>
 

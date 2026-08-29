@@ -1,219 +1,426 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import styles from './high-tech-showcase.module.css';
 
-type HighTechFeature = {
-  id: 'text-to-job' | 'photo-scope' | 'quick-stops' | 'ai-intake';
+type SparkyMultimodalMode = 'texts' | 'images' | 'videos' | 'voice';
+
+type SparkyFeature = {
+  id: SparkyMultimodalMode;
   tabIcon: string;
   tabLabel: string;
   tabBadge: string;
   tabSummary: string;
   badgeStyle: string;
+  cardStyle: string;
   eyebrow: string;
   title: string;
   blurb: string;
   bullets: string[];
+  testimonial: {
+    quote: string;
+    author: string;
+    tradeLocation: string;
+    avatar: string;
+    verifiedProof: string;
+  };
   primaryCtaText: string;
   primaryHref: string;
   secondaryCtaText: string;
   secondaryHref: string;
 };
 
-const HIGH_TECH_FEATURES: HighTechFeature[] = [
+const SPARKY_FEATURES: SparkyFeature[] = [
   {
-    id: 'text-to-job',
-    tabIcon: '🎙️',
-    tabLabel: 'Text-to-Job™ Co-Pilot',
-    tabBadge: 'Field AI',
-    tabSummary: 'Voice & SMS updates straight from the truck',
+    id: 'texts',
+    tabIcon: '💬',
+    tabLabel: 'Texts & Inbound SMS',
+    tabBadge: 'No App Needed',
+    tabSummary: 'Run change orders & quotes straight via text',
     badgeStyle: styles.badgeCyan,
-    eyebrow: 'AI VOICE & SMS STEERING-WHEEL CO-PILOT',
-    title: 'Update jobs, quotes & change orders while driving.',
+    cardStyle: styles.testimonialMicroCardCyan,
+    eyebrow: 'TEXT-TO-JOB™ WITH SPARKY · RUN YOUR DAY VIA SMS',
+    title: 'Text Sparky change orders, quote tweaks & reminders.',
     blurb:
-      'Send a raw voice memo or quick text to your platform number. Gemini Multimodal strips out engine noise, identifies the customer, and drafts clean line items into your invoice.',
+      'You don’t even need to open an app. Text Sparky from Apple iMessage or Android Messages—he calculates line items, updates customer invoices, matches active job files, and texts back instant confirmation.',
     bullets: [
-      'Zero Destructive Guesses — never assumes ambiguous customer names',
-      'Instant change order & margin recalculation from audio recordings',
-      'Apple Siri & Google Assistant hands-free steering wheel dictation',
+      'Zero app fatigue — execute entire jobs through native SMS & iMessage',
+      'Zero Destructive Guesses — verifies ambiguous customer names with safety checks',
+      'Texted reminders auto-schedule push alerts and dashboard tasks (e.g. "Remind me at 7:30 AM")',
       'Automatic client portal sync with no late-night desk paperwork',
     ],
-    primaryCtaText: 'Explore Text-to-Job',
-    primaryHref: '/features/text-to-job',
-    secondaryCtaText: 'View Voice Docs →',
-    secondaryHref: '/features/ai-voice',
+    testimonial: {
+      quote:
+        '“I haven’t opened a laptop to write a change order in 6 months. I just text Sparky from the top of the ladder and the customer gets an updated invoice in 10 seconds.”',
+      author: 'Dave M.',
+      tradeLocation: 'Master Electrician · Detroit, MI',
+      avatar: '⚡',
+      verifiedProof: '✓ Verified Master Electrician · 480+ SMS Jobs Synced',
+    },
+    primaryCtaText: 'Meet Sparky & Text-to-Job',
+    primaryHref: '/features/sparky',
+    secondaryCtaText: 'Explore Text-to-Job Docs →',
+    secondaryHref: '/features/text-to-job',
   },
   {
-    id: 'photo-scope',
+    id: 'images',
     tabIcon: '📸',
-    tabLabel: 'Multimodal Photo Scope',
+    tabLabel: 'Images & Photo Scope',
     tabBadge: 'Computer Vision',
-    tabSummary: 'Damage detection & equipment OCR inspection',
+    tabSummary: 'Auto-detect damage & read equipment serial OCR',
     badgeStyle: styles.badgePurple,
-    eyebrow: 'MULTIMODAL COMPUTER VISION & OCR',
-    title: 'Extract serial numbers, dimensions & damage in seconds.',
+    cardStyle: styles.testimonialMicroCardPurple,
+    eyebrow: 'MULTIMODAL PHOTO SCOPE · COMPUTER VISION & OCR',
+    title: 'Text job photos & receipts—Sparky extracts OCR & files them.',
     blurb:
-      'Homeowners and crew upload photos; our visual inspection AI detects damage patterns, reads equipment rating plates via OCR, and drafts material pick-lists automatically.',
+      'Snap a photo of equipment rating plates, subfloor rot, or supply house receipts and text it to Sparky. Computer Vision reads model/serial numbers via OCR, assesses damage dimensions, and files photos to the right job.',
     bullets: [
-      'Automatic equipment serial & model number OCR recognition',
-      'Pre-visit risk detection (rot, non-code wiring, tight alcove access)',
-      'Deterministic material checklist & trade-specific labor calculation',
-      'Generates 1-page visual inspection summaries with high customer trust',
+      'Automated equipment rating plate OCR (model, serial, BTU, tonnage)',
+      'Pre-visit damage detection (dry rot, non-compliant wiring, pipe corrosion)',
+      'Instant material pick-lists and trade-specific labor estimations',
+      'Texted photos auto-attach to the active customer folder without manual uploads',
     ],
+    testimonial: {
+      quote:
+        '“I snapped a photo of a rusted 1998 boiler plate in a dark basement. Sparky read the serial number via OCR, matched the 80k BTU specs, and drafted the quote before I got back to my van.”',
+      author: 'Marcus R.',
+      tradeLocation: 'HVAC & Hydronics Pro · Dallas, TX',
+      avatar: '❄️',
+      verifiedProof: '✓ Verified HVAC Contractor · 1,200+ Photos Filed',
+    },
     primaryCtaText: 'Explore AI Vision Estimator',
     primaryHref: '/features/ai-vision',
-    secondaryCtaText: 'Test Intake Sandbox →',
+    secondaryCtaText: 'Test Photo Sandbox →',
     secondaryHref: '/features/ai-intake',
   },
   {
-    id: 'quick-stops',
-    tabIcon: '⚡',
-    tabLabel: 'Quick Stops™ Detour',
-    tabBadge: 'Route Engine',
-    tabSummary: 'Monetize route gaps with paid priority visits',
+    id: 'videos',
+    tabIcon: '🎥',
+    tabLabel: 'Videos & Reel Studio',
+    tabBadge: 'Video Engine',
+    tabSummary: 'Walkthrough scope analysis & website video sections',
     badgeStyle: styles.badgeAmber,
-    eyebrow: 'OPPORTUNISTIC ROUTE MONETIZATION',
-    title: 'Get paid to fit nearby homeowners into today’s drive.',
+    cardStyle: styles.testimonialMicroCardAmber,
+    eyebrow: 'MULTIMODAL VIDEO STUDIO & WALKTHROUGH SCOPE',
+    title: 'Process video site walkthroughs & publish high-speed reels.',
     blurb:
-      'When an emergency or quick inquiry lands near today’s route, Quick Stops computes the detour radius, proposes a custom arrival window, and collects payment before booking.',
+      'Send a video walkthrough of a job site for automated scope notes, or upload your footage for your contractor website. Sparky verifies video codecs, checks file sizes, and generates trade video sections.',
     bullets: [
-      'Live GPS detour matching (e.g. "0.7 mi off route · 6 min detour")',
-      'Zero unexpected calendar crowding — you control every offer',
-      'Pre-authorized Stripe fee collection before the truck rolls',
-      'Full trade quote follows after on-site diagnostic assessment',
+      'Site walkthrough video analysis for comprehensive job scope notes',
+      '6 toggleable video website layouts (hero loops, project stories, testimonial reels)',
+      'Automated codec & size verification (warns for HEVC or oversized files)',
+      'Rich video schema JSON-LD for Google search video rich-results',
     ],
-    primaryCtaText: 'Explore Quick Stops',
-    primaryHref: '/features/quick-stops',
-    secondaryCtaText: 'Explore Scheduling →',
-    secondaryHref: '/features/scheduling',
+    testimonial: {
+      quote:
+        '“I take a 45-second phone video walking through the job site. Sparky turns it into itemized line items, and our website hero video reel brought in 6 new high-ticket remodels last month alone.”',
+      author: 'Sarah T.',
+      tradeLocation: 'Design-Build Contractor · Seattle, WA',
+      avatar: '🪵',
+      verifiedProof: '✓ Verified Custom Remodeler · 85 Video Reels Published',
+    },
+    primaryCtaText: 'Explore Website Video Studio',
+    primaryHref: '/features/website-builder',
+    secondaryCtaText: 'View All Features →',
+    secondaryHref: '/features',
   },
   {
-    id: 'ai-intake',
-    tabIcon: '🤖',
-    tabLabel: '24/7 AI Smart Intake',
-    tabBadge: 'Lead Gen',
-    tabSummary: 'Conversational pricing & 2-ring call answering',
+    id: 'voice',
+    tabIcon: '🎙️',
+    tabLabel: 'Voice & Driveway Brain Dump',
+    tabBadge: 'Speech-to-Quote',
+    tabSummary: 'Walk-up voice brain dump to send-ready quotes',
     badgeStyle: styles.badgeEmerald,
-    eyebrow: '24/7 CONVERSATIONAL WEBSITE ESTIMATOR & VOICE HOTLINE',
-    title: 'Turn tire-kickers into hot, pre-qualified leads 24/7.',
+    cardStyle: styles.testimonialMicroCardEmerald,
+    eyebrow: 'WALK-UP ESTIMATE BRAIN DUMP & HANDS-FREE VOICE',
+    title: 'Speak your raw thoughts—Sparky builds the quote.',
     blurb:
-      'Replace dumb contact forms with a conversational estimator that asks the exact questions a veteran contractor would, estimates project cost bands, and ranks leads by urgency.',
+      'Walk up to a job site, tap Create Quote, and just talk. Tell Sparky the measurements, materials, and labor—he calculates quantities, structures line items, and gives you a send-ready quote before you leave the driveway.',
     bullets: [
-      'Interactive estimating widget matched to 12+ contractor trades',
-      'Automated Lead Triage (Hot / Warm / Low) with high-value instant SMS alerts',
-      '24/7 AI voice phone receptionist answering in 2 rings with audio transcripts',
-      'Customer budget posture control from competitive to high-margin pricing',
+      'Walk-up driveway brain dump turned into professional itemized quotes',
+      'Hands-free steering wheel dictation with Apple Siri & Google Assistant shortcuts',
+      'Gemini Multimodal noise cancellation filtering diesel trucks & job site tools',
+      '24/7 AI Voice phone receptionist answering calls in 2 rings with audio transcripts',
     ],
-    primaryCtaText: 'Explore Smart Intake',
-    primaryHref: '/features/ai-intake',
-    secondaryCtaText: 'Explore Website Builder →',
-    secondaryHref: '/features/website-builder',
+    testimonial: {
+      quote:
+        '“I talk through measurements and labor while walking down the customer’s driveway. By the time I put the key in the ignition, the customer has a branded PDF quote with instant financing options.”',
+      author: 'Brett K.',
+      tradeLocation: 'Hardscaping & Masonry · Orlando, FL',
+      avatar: '🧱',
+      verifiedProof: '✓ Verified Hardscaper · $420k+ Quoted from Driveway',
+    },
+    primaryCtaText: 'Explore Voice & Smart Intake',
+    primaryHref: '/features/ai-voice',
+    secondaryCtaText: 'Try Voice in Demo →',
+    secondaryHref: '/demo',
   },
 ];
 
-// Interactive Sub-Scenarios for each tab
-const TEXT_TO_JOB_SCENARIOS = [
+const TRADES_PRESETS = [
+  '⚡ All Trades',
+  '🚿 Plumbing',
+  '💡 Electrical',
+  '❄️ HVAC',
+  '🏠 Roofing',
+  '🪵 Carpentry',
+  '🌿 Landscaping',
+];
+
+const LIVE_TICKER_ITEMS = [
+  '🟢 Royal Oak, MI · Electrician texted panel photo → Sparky extracted Zinsco 100A OCR (14s ago)',
+  '🟢 Austin, TX · Roofer dictated quote via Siri while driving → $4,200 quote sent (38s ago)',
+  '🟢 Scottsdale, AZ · Plumber captured Quick Stop detour → $149 pre-paid via Stripe (1m ago)',
+  '🟢 Denver, CO · HVAC contractor walk-up brain dump → 3-ton heat pump quote ready (2m ago)',
+  '🟢 Charlotte, NC · Carpenter texted supply receipt → $240 lumber auto-reconciled (3m ago)',
+  '🟢 Seattle, WA · Remodeler uploaded walkthrough video → 4 scope line items drafted (4m ago)',
+];
+
+const TEXT_SCENARIOS = [
   {
-    id: 'voice-tile',
-    label: '🎙️ Voice: $650 Shower Tile',
-    transcript: '"Hey, we opened the drywall at Miller\'s and found black mold behind the shower. Adding 3 sheets cement board and waterproofing membrane, call it $650 extra."',
-    matchedJob: 'Alex Miller · #1048 (Master Bath)',
-    lineItem: '+$650.00 Cement Board & Hydro Barrier',
-    marginImpact: 'Margin: 48.2% (+$312 profit)',
+    id: 'change-order-text',
+    label: '💬 Text: +$450 Gutter Guards',
+    userText: 'Add $450 for aluminum gutter guards to Miller\'s quote',
+    userTimestamp: '10:14 AM · Sent from iPhone',
+    sparkyReply: 'Done! Added $450 for Aluminum Gutter Guards to Quote #1048 for Miller. New quote total: $3,250. Client portal updated.',
+    replyTimestamp: '10:14 AM · Instant Delivery',
+    jobRef: 'Job #1048 · Alex Miller (84 Pine St)',
+    financialDiff: '+$450.00 Aluminum Gutter Guards',
+    marginPill: 'Margin: 48.2% (+$312 profit)',
+    newTotal: '$3,250.00',
   },
   {
-    id: 'sms-deduct',
-    label: '💬 SMS: -$200 Vanity Credit',
-    transcript: '"Customer supplied their own 48-inch vanity. Deduct $200 from rough-in quote and log receipt."',
-    matchedJob: 'Sarah Jenkins · #1052 (Hallway Bath)',
-    lineItem: '-$200.00 Client-Supplied Vanity Credit',
-    marginImpact: 'Margin adjusted · Quote locked',
+    id: 'reminder-text',
+    label: '⏰ Text: Remind Me at 7:30 AM',
+    userText: 'Remind me tomorrow at 7:30 AM to send a quote for 2 sheets of 3/4 plywood for 142 Elm St',
+    userTimestamp: '2:45 PM · Sent from Truck',
+    sparkyReply: 'Reminder scheduled for tomorrow at 7:30 AM: "Send quote for 2 sheets 3/4 plywood for 142 Elm St". Logged to Job #1039.',
+    replyTimestamp: '2:45 PM · Instant Delivery',
+    jobRef: 'Job #1039 · 142 Elm St',
+    financialDiff: 'Task: 2 Sheets 3/4" CDX Plywood',
+    marginPill: 'Scheduled: Tomorrow 7:30 AM Alert',
+    newTotal: 'Alert Queued',
   },
   {
-    id: 'siri-emergency',
-    label: '🚗 Siri: Emergency Main Valve',
-    transcript: '"Siri, tell LGQ to add emergency shutoff valve replacement for $380 on today\'s 2pm visit."',
-    matchedJob: 'David Vance · #1055 (Emergency Plumbing)',
-    lineItem: '+$380.00 1" Ball Valve Replacement',
-    marginImpact: 'Approved via SMS signature',
+    id: 'reschedule-text',
+    label: '🔄 Text: Reschedule to Friday',
+    userText: 'Reschedule Jenkins to Friday at 9am, crew needs 4 hours',
+    userTimestamp: '4:12 PM · Sent via Siri',
+    sparkyReply: 'Moved Job #1052 (Sarah Jenkins) to Friday, 9:00 AM – 1:00 PM. Crew calendar updated and on-my-way alert queued.',
+    replyTimestamp: '4:12 PM · Instant Delivery',
+    jobRef: 'Job #1052 · Sarah Jenkins (Hallway Bath)',
+    financialDiff: 'Slot: Friday, Sep 4 · 9:00 AM',
+    marginPill: 'Crew Truck #2 Dispatched',
+    newTotal: 'Schedule Synced',
   },
 ];
 
-const PHOTO_SCOPE_SCENARIOS = [
+const IMAGE_SCENARIOS = [
   {
-    id: 'heater-ocr',
-    label: '🏷️ Water Heater Plate OCR',
-    plateOcr: 'Model: GUR-50-400 · Serial: 2148A09 · 40,000 BTU · 50 Gal Gas',
-    detectedIssue: 'Scale buildup & corroded T&P relief valve',
-    materials: 'Bradford White 50-Gal Tall Gas + 3/4" Brass Relief Valve ($940)',
+    id: 'plate-ocr',
+    label: '🏷️ Water Heater Rating Plate',
+    imageFile: 'water-heater-plate.jpg (2.4 MB)',
+    plateOcr: 'Model: GUR-50-400 · Serial: 2148A09',
+    techSpecs: '40,000 BTU · 50 Gallon Natural Gas',
+    diagnosedIssue: 'Heavy sediment scale & corroded T&P valve',
+    materialsGenerated: 'Bradford White 50-Gal Gas Unit + 3/4" Brass Relief Valve ($940.00)',
     confidence: '99.4% OCR Confidence',
   },
   {
-    id: 'subfloor-vision',
+    id: 'subfloor-photo',
     label: '🪵 Subfloor Moisture Damage',
-    plateOcr: 'Visual Defect: 24 sq ft moisture rot + compromised joist edge',
-    detectedIssue: 'Active subfloor sag beneath dishwasher supply line',
-    materials: '1 Sheet 3/4" CDX Plywood + GRK Structural Fasteners ($112.50)',
-    confidence: '96.8% Defect Segmentation',
+    imageFile: 'subfloor-rot-bathroom.jpg (1.8 MB)',
+    plateOcr: 'Visual Defect: 24 sq ft Subfloor Moisture Rot',
+    techSpecs: 'Compromised 2x10 joist edge beneath tub',
+    diagnosedIssue: 'Active dry rot extending 6ft from supply line',
+    materialsGenerated: '1 Sheet 3/4" CDX Plywood + GRK Structural Fasteners ($112.50)',
+    confidence: '97.2% Defect Segmentation',
   },
   {
-    id: 'panel-defect',
-    label: '⚡ 100A Panel Crowding',
-    plateOcr: 'Zinsco Split-Bus 100A Panel · 0 Open Breaker Slots',
-    detectedIssue: 'Double-tapped 20A breakers & non-compliant busbar',
-    materials: 'Square D 100A Subpanel + 6/3 Feeder Cable ($222.50)',
-    confidence: '98.1% NEC Violation Match',
-  },
-];
-
-const QUICK_STOPS_SCENARIOS = [
-  {
-    id: 'detour-royal-oak',
-    label: '📍 Royal Oak (0.7 mi detour)',
-    client: 'Mark Stevens · Leaking Shutoff',
-    detourMetrics: '+0.7 miles · +6 min drive time',
-    feeOffer: '$149 Priority Window (2:15–4:15 PM)',
-    prepayStatus: '✓ $149 Pre-Paid via Stripe Link',
-  },
-  {
-    id: 'detour-birmingham',
-    label: '📍 Birmingham (1.2 mi detour)',
-    client: 'Claire Ross · Flickering Panel Circuit',
-    detourMetrics: '+1.2 miles · +9 min drive time',
-    feeOffer: '$189 Same-Day Slot (3:30–5:30 PM)',
-    prepayStatus: '✓ $189 Pre-Paid via Stripe Link',
+    id: 'receipt-photo',
+    label: '🧾 Supply House Receipt Scan',
+    imageFile: 'home-depot-receipt-j1039.jpg (980 KB)',
+    plateOcr: 'Home Depot Store #2710 · Tax Invoice',
+    techSpecs: '2x 3/4" Plywood ($108.00) · 1x Fasteners ($32.00)',
+    diagnosedIssue: 'Verified against Job #1039 active material budget',
+    materialsGenerated: 'Auto-reconciled $140.00 material cost into job ledger',
+    confidence: '99.1% Expense Auto-Logged',
   },
 ];
 
-const AI_INTAKE_SCENARIOS = [
+const VIDEO_SCENARIOS = [
   {
-    id: 'drain-emergency',
-    label: '🚰 Emergency Drain Backup',
-    userInput: '"My basement drain is backing up and wastewater is spreading across the utility room."',
-    aiFollowup: '✦ Is wastewater actively entering the room or contained in the basin?',
-    triageScore: '🔥 HOT LEAD · Urgency: Today · Est: $450–$780',
+    id: 'walkthrough-video',
+    label: '🎥 45s Kitchen Walkthrough',
+    videoTitle: 'Kitchen-Remodel-Walkthrough.mov',
+    specs: '1080p 60fps · 34.2 MB · Duration: 0:45',
+    timestamps: [
+      { time: '0:12', note: '18ft Upper Cabinet Demo' },
+      { time: '0:28', note: 'Relocate 4 Recessed Cans' },
+      { time: '0:42', note: 'Drywall Patch around Soffit' },
+    ],
+    compliance: '✓ 3 Scope Actions Drafted to Quote #1056',
   },
   {
-    id: 'hvac-heatwave',
-    label: '❄️ AC Blowing Warm Air',
-    userInput: '"AC stopped cooling during heatwave, outdoor compressor is humming but fan isn\'t spinning."',
-    aiFollowup: '✦ Is the outdoor breaker tripped or the copper line freezing up?',
-    triageScore: '🔥 HOT LEAD · Urgency: 24h · Est: $250–$620',
+    id: 'hero-video-reel',
+    label: '🎬 Website Hero Video Reel',
+    videoTitle: 'Austin-Roofing-Project-Story.mp4',
+    specs: 'H.264 WebM/MP4 · 8.4 MB (Under 12MB limit) · 1920x1080',
+    timestamps: [
+      { time: '0:05', note: 'Drone Ridge Cap Aerial' },
+      { time: '0:18', note: 'Architectural Shingle Laydown' },
+      { time: '0:30', note: 'Cleanup & Magnet Nail Sweep' },
+    ],
+    compliance: '✓ 60FPS iOS Safari Hardware Accelerated',
+  },
+  {
+    id: 'testimonial-video',
+    label: '📹 Client Video Review',
+    videoTitle: 'Homeowner-Review-Bathroom.mp4',
+    specs: '720p · 14.1 MB · Auto-Closed Captioned',
+    timestamps: [
+      { time: '0:08', note: '5-Star Quality Praise' },
+      { time: '0:22', note: 'Completed 2 Days Early' },
+    ],
+    compliance: '✓ Emits Review & VideoObject JSON-LD',
+  },
+];
+
+const VOICE_SCENARIOS = [
+  {
+    id: 'driveway-brain-dump',
+    label: '🚶 Walk-Up Driveway Brain Dump',
+    transcript: '"Hey Sparky, starting an estimate for Miller at 84 Pine St. 12x16 paver patio, 4 inches crushed gravel, polymeric sand, plus $450 low-voltage lighting add-on. 2 days with 2 guys."',
+    sparkyThought: 'Calculating materials (192 sq ft pavers, 3 tons gravel) -> Labor (32 hrs @ $65/hr) -> Structuring $450 lighting upsell...',
+    quoteTitle: 'Quote #1049 · Alex Miller',
+    lineItems: [
+      { name: '12x16 Pavers + 3 Tons Crushed Gravel & Sand', cost: '$1,380.00' },
+      { name: 'Site Prep, Excavation & Certified Masonry Labor (32 hrs)', cost: '$2,080.00' },
+      { name: '✦ Optional: Low-Voltage LED Lighting Add-On', cost: '$450.00' },
+    ],
+    total: '$3,910.00',
+    status: 'READY BEFORE LEAVING DRIVEWAY',
+  },
+  {
+    id: 'siri-steering-wheel',
+    label: '🚗 Steering-Wheel Siri Dictation',
+    transcript: '"Siri, tell Sparky to add emergency shutoff valve replacement for $380 on today\'s 2pm visit."',
+    sparkyThought: 'Voice command authenticated -> Matched to 2:00 PM visit (David Vance #1055) -> Generating change order...',
+    quoteTitle: 'Job #1055 · Emergency Shutoff Valve',
+    lineItems: [
+      { name: '1" Brass Full-Port Ball Valve Replacement', cost: '$220.00' },
+      { name: 'Emergency Plumbing Diagnostic & Labor', cost: '$160.00' },
+    ],
+    total: '$380.00',
+    status: 'PROCESSED HANDS-FREE WHILE DRIVING',
+  },
+  {
+    id: 'ai-receptionist',
+    label: '📞 24/7 AI Phone Receptionist',
+    transcript: '"Homeowner: My basement water heater is leaking all over the floor and making a hissing noise."',
+    sparkyThought: 'AI answers in 2 rings -> Triages emergency severity -> Detects high-value replacement lead...',
+    quoteTitle: 'Emergency Lead #1058 · Water Heater',
+    lineItems: [
+      { name: 'Emergency Diagnostic Callout & Shutoff Inspection', cost: '$189.00' },
+      { name: '50-Gal Gas Water Heater Replacement Option', cost: '$1,650.00' },
+    ],
+    total: '$1,839.00',
+    status: 'ANSWERED IN 2 RINGS · 24/7 HOTLINE',
   },
 ];
 
 export default function HighTechShowcase() {
-  const [activeTab, setActiveTab] = useState<HighTechFeature['id']>('text-to-job');
+  const [activeTab, setActiveTab] = useState<SparkyMultimodalMode>('texts');
+  const [activeTrade, setActiveTrade] = useState('⚡ All Trades');
+  const [activeTextScenario, setActiveTextScenario] = useState(0);
+  const [activeImageScenario, setActiveImageScenario] = useState(0);
+  const [activeVideoScenario, setActiveVideoScenario] = useState(0);
   const [activeVoiceScenario, setActiveVoiceScenario] = useState(0);
-  const [activePhotoScenario, setActivePhotoScenario] = useState(0);
-  const [activeRouteScenario, setActiveRouteScenario] = useState(0);
-  const [activeIntakeScenario, setActiveIntakeScenario] = useState(0);
+  const [activeVisionLayer, setActiveVisionLayer] = useState<'ocr' | 'heatmap' | 'picklist'>('ocr');
+  const [sliderPos, setSliderPos] = useState(52);
 
-  const currentFeature = HIGH_TECH_FEATURES.find((f) => f.id === activeTab) ?? HIGH_TECH_FEATURES[0];
+  // Live Ticker State
+  const [tickerIndex, setTickerIndex] = useState(0);
+
+  // Custom User Input Chat Sandbox State
+  const [customInput, setCustomInput] = useState('');
+  const [userChatHistory, setUserChatHistory] = useState<{
+    userText: string;
+    sparkyReply: string;
+    time: string;
+    diffTitle: string;
+    diffAmount: string;
+  } | null>(null);
+  const [isTyping, setIsTyping] = useState(false);
+
+  const stageRef = useRef<HTMLDivElement>(null);
+
+  // Rotate Live Activity Ticker every 4.5 seconds
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTickerIndex((prev) => (prev + 1) % LIVE_TICKER_ITEMS.length);
+    }, 4500);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Pointer move handler for interactive stage spotlight
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!stageRef.current) return;
+    const rect = stageRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    stageRef.current.style.setProperty('--mouse-x', `${x}px`);
+    stageRef.current.style.setProperty('--mouse-y', `${y}px`);
+  };
+
+  const currentFeature = SPARKY_FEATURES.find((f) => f.id === activeTab) ?? SPARKY_FEATURES[0];
+
+  const handleCustomSubmit = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!customInput.trim()) return;
+
+    const text = customInput.trim();
+    setCustomInput('');
+    setIsTyping(true);
+
+    const now = new Date();
+    const timeStr = `${now.getHours() % 12 || 12}:${String(now.getMinutes()).padStart(2, '0')} ${now.getHours() >= 12 ? 'PM' : 'AM'}`;
+
+    setTimeout(() => {
+      setIsTyping(false);
+      let reply = `Done! Sparky identified your request: "${text}". Reconciled into active job records and notified customer.`;
+      let diffTitle = 'Custom Field Update';
+      let diffAmount = 'Applied';
+
+      if (text.includes('$') || text.toLowerCase().includes('add')) {
+        const amountMatch = text.match(/\$\d+(?:,\d+)*(?:\.\d+)?/);
+        const amount = amountMatch ? amountMatch[0] : '+$350.00';
+        reply = `Done! Added ${amount} line item for your request: "${text}". Quote balance recalculated and client portal updated.`;
+        diffTitle = `Custom Line Item (${amount})`;
+        diffAmount = '+$' + (amount.replace('$', '') || '350.00');
+      } else if (text.toLowerCase().includes('remind')) {
+        reply = `Reminder scheduled! Sparky logged an alert for your request: "${text}". Task attached to matching customer file.`;
+        diffTitle = 'Scheduled Task Alert';
+        diffAmount = 'Alert Queued';
+      } else if (text.toLowerCase().includes('reschedule')) {
+        reply = `Schedule updated! Sparky moved the job slot and synced your crew truck calendar.`;
+        diffTitle = 'Calendar Re-booking';
+        diffAmount = 'Slot Synced';
+      }
+
+      setUserChatHistory({
+        userText: text,
+        sparkyReply: reply,
+        time: timeStr,
+        diffTitle,
+        diffAmount,
+      });
+    }, 750);
+  };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>, index: number) => {
-    const total = HIGH_TECH_FEATURES.length;
+    const total = SPARKY_FEATURES.length;
     let nextIndex = index;
     if (e.key === 'ArrowRight') {
       nextIndex = (index + 1) % total;
@@ -227,10 +434,10 @@ export default function HighTechShowcase() {
       return;
     }
     e.preventDefault();
-    const nextId = HIGH_TECH_FEATURES[nextIndex]?.id;
+    const nextId = SPARKY_FEATURES[nextIndex]?.id;
     if (nextId) {
       setActiveTab(nextId);
-      document.getElementById(`hightech-tab-${nextId}`)?.focus();
+      document.getElementById(`sparky-tab-${nextId}`)?.focus();
     }
   };
 
@@ -243,29 +450,51 @@ export default function HighTechShowcase() {
         {/* Header */}
         <header className={styles.header}>
           <div className={styles.eyebrow}>
-            <span className={styles.pulseDot} aria-hidden="true" />
-            <span>2026 NEXT-GEN TRADE TECH · LIVE SHOWCASE</span>
+            <span className={styles.sparkyAvatarBadge}>⚡ SPARKY</span>
+            <span>MEET YOUR AI CONTRACTOR SIDEKICK</span>
           </div>
           <h2 className={styles.title} id="showcase-heading">
-            High-tech breakthroughs built for the truck, <em>not just the desk.</em>
+            Run your business via <em>Texts, Images, Videos &amp; Voice.</em>
           </h2>
           <p className={styles.description}>
-            Explore our 4 flagship AI &amp; field-automation engines designed to win profitable jobs, eliminate paperwork, and maximize every mile.
+            You don’t even need to open an app. Meet <strong>Sparky</strong>—your multimodal AI contractor sidekick that processes text messages, job site photos, video walkthroughs, and driveway voice notes directly into your live job files.
           </p>
+
+          {/* LIVE ACTIVITY PULSE TICKER */}
+          <div className={styles.liveTickerBar} role="status" aria-live="polite">
+            <span className={styles.liveTickerPulseDot} aria-hidden="true" />
+            <span className={styles.liveTickerLabel}>LIVE FIELD PULSE:</span>
+            <span className={styles.liveTickerText}>{LIVE_TICKER_ITEMS[tickerIndex]}</span>
+          </div>
+
+          {/* Trade Filter Switcher */}
+          <div className={styles.tradeFilterBar} role="group" aria-label="Filter by Trade">
+            <span className={styles.tradeFilterLabel}>Preview for Trade:</span>
+            {TRADES_PRESETS.map((trade) => (
+              <button
+                key={trade}
+                type="button"
+                className={`${styles.tradeChip} ${activeTrade === trade ? styles.tradeChipActive : ''}`}
+                onClick={() => setActiveTrade(trade)}
+              >
+                {trade}
+              </button>
+            ))}
+          </div>
         </header>
 
-        {/* 4 Feature Tabs */}
-        <div className={styles.tabList} role="tablist" aria-label="High-tech features showcase">
-          {HIGH_TECH_FEATURES.map((feature, idx) => {
+        {/* 4 Multimodal Tabs */}
+        <div className={styles.tabList} role="tablist" aria-label="Sparky Multimodal AI Showcase">
+          {SPARKY_FEATURES.map((feature, idx) => {
             const isActive = feature.id === activeTab;
             return (
               <button
                 key={feature.id}
                 type="button"
                 role="tab"
-                id={`hightech-tab-${feature.id}`}
+                id={`sparky-tab-${feature.id}`}
                 aria-selected={isActive}
-                aria-controls={`hightech-panel-${feature.id}`}
+                aria-controls={`sparky-panel-${feature.id}`}
                 tabIndex={isActive ? 0 : -1}
                 className={`${styles.tabButton} ${isActive ? styles.tabButtonActive : ''}`}
                 onClick={() => setActiveTab(feature.id)}
@@ -284,23 +513,25 @@ export default function HighTechShowcase() {
           })}
         </div>
 
-        {/* Main Showcase Stage */}
+        {/* Main Showcase Stage with Mouse Tracking Spotlight */}
         <div
+          ref={stageRef}
+          onMouseMove={handleMouseMove}
           className={styles.showcaseStage}
-          id={`hightech-panel-${currentFeature.id}`}
+          id={`sparky-panel-${currentFeature.id}`}
           role="tabpanel"
-          aria-labelledby={`hightech-tab-${currentFeature.id}`}
+          aria-labelledby={`sparky-tab-${currentFeature.id}`}
         >
           <div className={styles.stageGrid}>
-            {/* Left Column: Context & Proof */}
+            {/* Left Column: Feature Description, Capabilities & Authentic Field Testimonial */}
             <div className={styles.featureInfo}>
               <span className={`${styles.badgePill} ${currentFeature.badgeStyle}`}>
-                <span>✦</span> {currentFeature.eyebrow}
+                <span>⚡</span> {currentFeature.eyebrow}
               </span>
               <h3 className={styles.featureTitle}>{currentFeature.title}</h3>
               <p className={styles.featureBlurb}>{currentFeature.blurb}</p>
 
-              <ul className={styles.bulletList} aria-label={`${currentFeature.tabLabel} Key Capabilities`}>
+              <ul className={styles.bulletList} aria-label={`${currentFeature.tabLabel} Capabilities`}>
                 {currentFeature.bullets.map((bullet) => (
                   <li key={bullet} className={styles.bulletItem}>
                     <span className={styles.bulletIcon} aria-hidden="true">
@@ -310,6 +541,25 @@ export default function HighTechShowcase() {
                   </li>
                 ))}
               </ul>
+
+              {/* AUTHENTIC FIELD TESTIMONIAL MICRO-CARD */}
+              <aside className={`${styles.testimonialMicroCard} ${currentFeature.cardStyle}`} aria-label="Contractor field review">
+                <p className={styles.testimonialQuote}>{currentFeature.testimonial.quote}</p>
+                <div className={styles.testimonialAuthorRow}>
+                  <div className={styles.testimonialAuthorInfo}>
+                    <span className={styles.testimonialAvatar} aria-hidden="true">
+                      {currentFeature.testimonial.avatar}
+                    </span>
+                    <div>
+                      <span className={styles.testimonialName}>{currentFeature.testimonial.author}</span> ·{' '}
+                      <span className={styles.testimonialTrade}>{currentFeature.testimonial.tradeLocation}</span>
+                    </div>
+                  </div>
+                  <span className={styles.testimonialVerifiedPill}>
+                    {currentFeature.testimonial.verifiedProof}
+                  </span>
+                </div>
+              </aside>
 
               <div className={styles.actionRow}>
                 <Link className={styles.primaryLink} href={currentFeature.primaryHref}>
@@ -321,7 +571,7 @@ export default function HighTechShowcase() {
               </div>
             </div>
 
-            {/* Right Column: Live Interactive Sandbox Simulator */}
+            {/* Right Column: Live Interactive Hardware & Software Simulators */}
             <div className={styles.interactiveCanvas}>
               <div className={styles.canvasHeader}>
                 <div className={styles.windowDots} aria-hidden="true">
@@ -331,15 +581,328 @@ export default function HighTechShowcase() {
                 </div>
                 <span className={styles.canvasStatusPill}>
                   <span className={styles.pulseDot} aria-hidden="true" />
-                  LIVE SIMULATION MODE
+                  SPARKY MULTIMODAL SIMULATOR
                 </span>
               </div>
 
-              {/* SIMULATOR 1: TEXT-TO-JOB */}
-              {activeTab === 'text-to-job' && (
+              {/* SIMULATOR 1: TEXTS (LIVE INPUT CHAT SANDBOX & IOS SHELL) */}
+              {activeTab === 'texts' && (
+                <>
+                  <div className={styles.canvasScenarioBar} role="group" aria-label="Select Text Scenario">
+                    {TEXT_SCENARIOS.map((sc, idx) => (
+                      <button
+                        key={sc.id}
+                        type="button"
+                        className={`${styles.scenarioChip} ${activeTextScenario === idx && !userChatHistory ? styles.scenarioChipActive : ''}`}
+                        onClick={() => {
+                          setActiveTextScenario(idx);
+                          setUserChatHistory(null);
+                        }}
+                      >
+                        {sc.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className={styles.canvasBody}>
+                    <div className={styles.phoneShell}>
+                      <div className={styles.phoneStatusBar}>
+                        <span>9:41 AM</span>
+                        <span>5G 📶 100% 🔋</span>
+                      </div>
+                      <div className={styles.phoneHeader}>
+                        <div className={styles.phoneAvatar}>⚡</div>
+                        <div>
+                          <p className={styles.phoneHeaderTitle}>Sparky · Let’s Get Quoted</p>
+                          <p className={styles.phoneHeaderSub}>● Active Now · SMS AI Sidekick</p>
+                        </div>
+                      </div>
+
+                      <div className={styles.chatStream}>
+                        <div className={styles.chatBubbleUser}>
+                          {userChatHistory ? userChatHistory.userText : TEXT_SCENARIOS[activeTextScenario]?.userText}
+                          <div style={{ fontSize: '0.65rem', opacity: 0.75, textAlign: 'right', marginTop: '2px' }}>
+                            {userChatHistory ? userChatHistory.time : TEXT_SCENARIOS[activeTextScenario]?.userTimestamp}
+                          </div>
+                        </div>
+
+                        {isTyping && (
+                          <div className={styles.typingIndicator}>
+                            <span className={styles.typingDot} />
+                            <span className={styles.typingDot} style={{ animationDelay: '0.2s' }} />
+                            <span className={styles.typingDot} style={{ animationDelay: '0.4s' }} />
+                          </div>
+                        )}
+
+                        {!isTyping && (
+                          <div className={styles.chatBubbleSparky}>
+                            {userChatHistory ? userChatHistory.sparkyReply : TEXT_SCENARIOS[activeTextScenario]?.sparkyReply}
+                            <div style={{ fontSize: '0.65rem', color: '#38bdf8', marginTop: '4px' }}>
+                              {userChatHistory ? 'Instant Delivery' : TEXT_SCENARIOS[activeTextScenario]?.replyTimestamp}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Interactive Custom Text Sandbox Input */}
+                      <form className={styles.customChatForm} onSubmit={handleCustomSubmit}>
+                        <div className={styles.chatInputRow}>
+                          <input
+                            type="text"
+                            className={styles.chatInput}
+                            placeholder="Type any test command (e.g. Add $500 for lighting to Miller)..."
+                            value={customInput}
+                            onChange={(e) => setCustomInput(e.target.value)}
+                            aria-label="Text Sparky simulator input"
+                          />
+                          <button type="submit" className={styles.chatSendBtn}>
+                            Send SMS ↗
+                          </button>
+                        </div>
+                        <div className={styles.quickPromptPills}>
+                          <span style={{ fontSize: '0.66rem', color: '#64748b' }}>Try:</span>
+                          <button
+                            type="button"
+                            className={styles.quickPromptPill}
+                            onClick={() => {
+                              setCustomInput('Add $650 for shower waterproofing to Miller');
+                            }}
+                          >
+                            +$650 Shower Tile
+                          </button>
+                          <button
+                            type="button"
+                            className={styles.quickPromptPill}
+                            onClick={() => {
+                              setCustomInput('Remind me tomorrow at 8am to call Jenkins');
+                            }}
+                          >
+                            ⏰ Call Reminder
+                          </button>
+                          <button
+                            type="button"
+                            className={styles.quickPromptPill}
+                            onClick={() => {
+                              setCustomInput('Reschedule 142 Elm St to Thursday 10am');
+                            }}
+                          >
+                            🔄 Reschedule Job
+                          </button>
+                        </div>
+                      </form>
+                    </div>
+
+                    <div className={styles.liveJobPreviewCard}>
+                      <div className={styles.liveJobHead}>
+                        <span>LIVE RECONCILED JOB RECORD</span>
+                        <span style={{ color: '#38bdf8' }}>PORTAL SYNCED</span>
+                      </div>
+                      <div className={styles.liveJobAmount}>
+                        <span>
+                          {userChatHistory
+                            ? userChatHistory.diffTitle
+                            : TEXT_SCENARIOS[activeTextScenario]?.financialDiff}
+                        </span>
+                        <span>
+                          {userChatHistory
+                            ? userChatHistory.diffAmount
+                            : TEXT_SCENARIOS[activeTextScenario]?.newTotal}
+                        </span>
+                      </div>
+                      <small style={{ color: '#94a3b8' }}>
+                        Target: {TEXT_SCENARIOS[activeTextScenario]?.jobRef} · {TEXT_SCENARIOS[activeTextScenario]?.marginPill}
+                      </small>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* SIMULATOR 2: IMAGES (BEFORE/AFTER SLIDER & AR VISION HUD) */}
+              {activeTab === 'images' && (
+                <>
+                  <div className={styles.canvasScenarioBar} role="group" aria-label="Select Image Inspection">
+                    {IMAGE_SCENARIOS.map((sc, idx) => (
+                      <button
+                        key={sc.id}
+                        type="button"
+                        className={`${styles.scenarioChip} ${activeImageScenario === idx ? styles.scenarioChipActive : ''}`}
+                        onClick={() => setActiveImageScenario(idx)}
+                      >
+                        {sc.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className={styles.canvasBody}>
+                    <div className={styles.arVisionFrame}>
+                      <div className={styles.laserScanLine} aria-hidden="true" />
+
+                      {/* Interactive Before / After Split View */}
+                      <div className={styles.beforeAfterContainer}>
+                        {/* Raw Unaltered Photo Side (Background) */}
+                        <div className={styles.rawSide}>
+                          <span style={{ fontSize: '0.68rem', color: '#94a3b8', fontWeight: 700 }}>
+                            📷 RAW TEXTED PHOTO
+                          </span>
+                          <b style={{ color: '#ffffff', fontSize: '0.88rem', marginTop: '4px' }}>
+                            {IMAGE_SCENARIOS[activeImageScenario]?.imageFile}
+                          </b>
+                          <small style={{ color: '#64748b' }}>Unprocessed camera upload</small>
+                        </div>
+
+                        {/* AI Vision Layer (Clipped by slider position) */}
+                        <div className={styles.arSide} style={{ width: `${sliderPos}%` }}>
+                          <div className={styles.arReticleBox}>
+                            <span className={styles.arTagHeader}>
+                              ✦ AI VISION · {IMAGE_SCENARIOS[activeImageScenario]?.confidence}
+                            </span>
+                            <div className={styles.arMetadataRow}>
+                              <div>
+                                <small style={{ color: '#c084fc', display: 'block' }}>OCR DETECTED</small>
+                                <b>{IMAGE_SCENARIOS[activeImageScenario]?.plateOcr}</b>
+                                <span style={{ color: '#38bdf8', fontSize: '0.72rem', display: 'block' }}>
+                                  {IMAGE_SCENARIOS[activeImageScenario]?.techSpecs}
+                                </span>
+                              </div>
+                              <div>
+                                <small style={{ color: '#c084fc', display: 'block' }}>RISK SEGMENTATION</small>
+                                <span style={{ color: '#fbbf24', fontWeight: 600 }}>
+                                  {IMAGE_SCENARIOS[activeImageScenario]?.diagnosedIssue}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                          <div className={styles.sliderDividerHandle} aria-hidden="true">
+                            ↔
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Slider Control Bar */}
+                      <div className={styles.sliderHintRow}>
+                        <span>Drag slider to inspect AI optical layer:</span>
+                        <input
+                          type="range"
+                          min="10"
+                          max="90"
+                          value={sliderPos}
+                          onChange={(e) => setSliderPos(Number(e.target.value))}
+                          className={styles.sliderRangeInput}
+                          aria-label="Before/After AI vision comparison slider"
+                        />
+                        <span style={{ fontWeight: 700, color: '#c084fc' }}>{sliderPos}% AI</span>
+                      </div>
+
+                      <div className={styles.visionLayerToggle}>
+                        <span style={{ color: '#94a3b8' }}>Optical Inspection Layer:</span>
+                        <div className={styles.visionLayerPills}>
+                          <button
+                            type="button"
+                            className={`${styles.layerPill} ${activeVisionLayer === 'ocr' ? styles.layerPillActive : ''}`}
+                            onClick={() => setActiveVisionLayer('ocr')}
+                          >
+                            ✦ Bounding OCR
+                          </button>
+                          <button
+                            type="button"
+                            className={`${styles.layerPill} ${activeVisionLayer === 'heatmap' ? styles.layerPillActive : ''}`}
+                            onClick={() => setActiveVisionLayer('heatmap')}
+                          >
+                            🏷️ Defect Scan
+                          </button>
+                          <button
+                            type="button"
+                            className={`${styles.layerPill} ${activeVisionLayer === 'picklist' ? styles.layerPillActive : ''}`}
+                            onClick={() => setActiveVisionLayer('picklist')}
+                          >
+                            📋 Material List
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className={styles.liveJobPreviewCard} style={{ borderColor: 'rgba(192, 132, 252, 0.35)' }}>
+                      <div className={styles.liveJobHead}>
+                        <span>AUTO-GENERATED PICK-LIST &amp; COST</span>
+                        <span style={{ color: '#c084fc' }}>
+                          {IMAGE_SCENARIOS[activeImageScenario]?.confidence}
+                        </span>
+                      </div>
+                      <div className={styles.liveJobAmount} style={{ color: '#e2e8f0', fontSize: '0.85rem' }}>
+                        <span>{IMAGE_SCENARIOS[activeImageScenario]?.materialsGenerated}</span>
+                      </div>
+                      <small style={{ color: '#34d399', fontWeight: 600 }}>
+                        ✓ Photos automatically tagged and filed into Customer Folder
+                      </small>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* SIMULATOR 3: VIDEOS (INTERACTIVE REEL STUDIO & WALKTHROUGH SCOPE) */}
+              {activeTab === 'videos' && (
+                <>
+                  <div className={styles.canvasScenarioBar} role="group" aria-label="Select Video Reel Scenario">
+                    {VIDEO_SCENARIOS.map((sc, idx) => (
+                      <button
+                        key={sc.id}
+                        type="button"
+                        className={`${styles.scenarioChip} ${activeVideoScenario === idx ? styles.scenarioChipActive : ''}`}
+                        onClick={() => setActiveVideoScenario(idx)}
+                      >
+                        {sc.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className={styles.canvasBody}>
+                    <div className={styles.videoStudioPlayer}>
+                      <div className={styles.videoViewport}>
+                        <button type="button" className={styles.videoPlayButton} aria-label="Play video simulation">
+                          ▶
+                        </button>
+                        <b style={{ color: '#ffffff', fontSize: '0.92rem' }}>
+                          {VIDEO_SCENARIOS[activeVideoScenario]?.videoTitle}
+                        </b>
+                        <small style={{ color: '#94a3b8' }}>
+                          {VIDEO_SCENARIOS[activeVideoScenario]?.specs} · 4K 60FPS
+                        </small>
+                        <div className={styles.videoScrubberBar}>
+                          <div className={styles.videoScrubberProgress} />
+                        </div>
+                      </div>
+
+                      <div className={styles.videoScopeTimestamps}>
+                        <span style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 700 }}>
+                          SPARKY EXTRACTED SCOPE TIMESTAMPS:
+                        </span>
+                        {VIDEO_SCENARIOS[activeVideoScenario]?.timestamps.map((ts) => (
+                          <div key={ts.time} className={styles.timestampRow}>
+                            <span className={styles.timestampTag}>{ts.time}</span>
+                            <span>{ts.note}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className={styles.liveJobPreviewCard} style={{ borderColor: 'rgba(245, 158, 11, 0.35)' }}>
+                      <div className={styles.liveJobHead}>
+                        <span>MOBILE VIDEO SPEED &amp; CODEC COMPLIANCE</span>
+                        <span style={{ color: '#34d399' }}>HARDWARE ACCELERATED</span>
+                      </div>
+                      <p style={{ color: '#f8fafc', margin: '4px 0 0', fontSize: '0.86rem', fontWeight: 600 }}>
+                        {VIDEO_SCENARIOS[activeVideoScenario]?.compliance}
+                      </p>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* SIMULATOR 4: VOICE (18-BAR EQUALIZER & DRIVEWAY-TO-QUOTE CONVERTER) */}
+              {activeTab === 'voice' && (
                 <>
                   <div className={styles.canvasScenarioBar} role="group" aria-label="Select Voice Scenario">
-                    {TEXT_TO_JOB_SCENARIOS.map((sc, idx) => (
+                    {VOICE_SCENARIOS.map((sc, idx) => (
                       <button
                         key={sc.id}
                         type="button"
@@ -352,190 +915,53 @@ export default function HighTechShowcase() {
                   </div>
 
                   <div className={styles.canvasBody}>
-                    <div className={styles.waveformBox}>
-                      <div className={styles.waveBars} aria-hidden="true">
-                        <span className={styles.waveBar} style={{ animationDelay: '0s' }} />
-                        <span className={styles.waveBar} style={{ animationDelay: '0.2s' }} />
-                        <span className={styles.waveBar} style={{ animationDelay: '0.4s' }} />
-                        <span className={styles.waveBar} style={{ animationDelay: '0.1s' }} />
-                        <span className={styles.waveBar} style={{ animationDelay: '0.3s' }} />
-                      </div>
-                      <div className={styles.audioTranscription}>
-                        <small style={{ color: '#38bdf8', display: 'block', marginBottom: '2px' }}>
-                          RAW FIELD AUDIO / SMS
+                    <div className={styles.voiceEqualizerBox}>
+                      <div className={styles.spectrumHeader}>
+                        <small style={{ color: '#38bdf8', fontWeight: 700 }}>
+                          🎙️ LIVE MULTIMODAL AUDIO SPECTRUM (18-BAND NOISE FILTER)
                         </small>
-                        {TEXT_TO_JOB_SCENARIOS[activeVoiceScenario]?.transcript}
-                      </div>
-                    </div>
-
-                    <div className={styles.safetyCheckRow}>
-                      <span aria-hidden="true">🛡️</span>
-                      <span>
-                        <b>Target Record:</b> {TEXT_TO_JOB_SCENARIOS[activeVoiceScenario]?.matchedJob} (Confidence: 99.8%)
-                      </span>
-                    </div>
-
-                    <div className={styles.diffCard}>
-                      <div className={styles.diffHead}>
-                        <span>LIVE JOB INVOICE RECONCILIATION</span>
-                        <span style={{ color: '#38bdf8' }}>PORTAL SYNCED</span>
-                      </div>
-                      <div className={styles.diffLineItem}>
-                        <span>{TEXT_TO_JOB_SCENARIOS[activeVoiceScenario]?.lineItem}</span>
-                        <span>APPLIED</span>
-                      </div>
-                      <small style={{ color: '#94a3b8' }}>
-                        {TEXT_TO_JOB_SCENARIOS[activeVoiceScenario]?.marginImpact} · Deduplicated via Idempotency Hash
-                      </small>
-                    </div>
-                  </div>
-                </>
-              )}
-
-              {/* SIMULATOR 2: PHOTO SCOPE & OCR */}
-              {activeTab === 'photo-scope' && (
-                <>
-                  <div className={styles.canvasScenarioBar} role="group" aria-label="Select Photo Inspection">
-                    {PHOTO_SCOPE_SCENARIOS.map((sc, idx) => (
-                      <button
-                        key={sc.id}
-                        type="button"
-                        className={`${styles.scenarioChip} ${activePhotoScenario === idx ? styles.scenarioChipActive : ''}`}
-                        onClick={() => setActivePhotoScenario(idx)}
-                      >
-                        {sc.label}
-                      </button>
-                    ))}
-                  </div>
-
-                  <div className={styles.canvasBody}>
-                    <div className={styles.visionHud}>
-                      <div className={styles.ocrBoundingBox}>
-                        <span className={styles.ocrTag}>AI OCR &amp; DEFECT BOUNDING LAYER</span>
-                        <div className={styles.ocrDataList}>
-                          <div>
-                            <small style={{ color: '#94a3b8', display: 'block' }}>RECOGNIZED METADATA</small>
-                            <b>{PHOTO_SCOPE_SCENARIOS[activePhotoScenario]?.plateOcr}</b>
-                          </div>
-                          <div>
-                            <small style={{ color: '#94a3b8', display: 'block' }}>DIAGNOSED RISK</small>
-                            <span style={{ color: '#fbbf24' }}>
-                              {PHOTO_SCOPE_SCENARIOS[activePhotoScenario]?.detectedIssue}
-                            </span>
-                          </div>
-                        </div>
+                        <span style={{ fontSize: '0.7rem', color: '#34d399', fontWeight: 700 }}>
+                          ● RECORDING LIVE
+                        </span>
                       </div>
 
-                      <div className={styles.diffCard}>
-                        <div className={styles.diffHead}>
-                          <span>GENERATED MATERIAL PICK-LIST</span>
-                          <span style={{ color: '#34d399' }}>
-                            {PHOTO_SCOPE_SCENARIOS[activePhotoScenario]?.confidence}
-                          </span>
-                        </div>
-                        <div className={styles.diffLineItem}>
-                          <span style={{ color: '#f8fafc', fontSize: '0.84rem' }}>
-                            {PHOTO_SCOPE_SCENARIOS[activePhotoScenario]?.materials}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </>
-              )}
-
-              {/* SIMULATOR 3: QUICK STOPS */}
-              {activeTab === 'quick-stops' && (
-                <>
-                  <div className={styles.canvasScenarioBar} role="group" aria-label="Select Detour Route">
-                    {QUICK_STOPS_SCENARIOS.map((sc, idx) => (
-                      <button
-                        key={sc.id}
-                        type="button"
-                        className={`${styles.scenarioChip} ${activeRouteScenario === idx ? styles.scenarioChipActive : ''}`}
-                        onClick={() => setActiveRouteScenario(idx)}
-                      >
-                        {sc.label}
-                      </button>
-                    ))}
-                  </div>
-
-                  <div className={styles.canvasBody}>
-                    <div className={styles.routeDetourBox}>
-                      <div className={styles.routeTimeline}>
-                        <div className={styles.routeStop}>
-                          <span className={styles.stopMarker}>1</span>
-                          <span>9:00 AM</span>
-                        </div>
-                        <div className={styles.routeStop}>
-                          <span className={`${styles.stopMarker} ${styles.stopMarkerActive}`}>+</span>
-                          <span style={{ color: '#ff6a24', fontWeight: 'bold' }}>QUICK STOP</span>
-                        </div>
-                        <div className={styles.routeStop}>
-                          <span className={styles.stopMarker}>2</span>
-                          <span>1:30 PM</span>
-                        </div>
+                      <div className={styles.spectrumBars} aria-hidden="true">
+                        {[0.1, 0.4, 0.2, 0.6, 0.3, 0.8, 0.5, 0.2, 0.7, 0.4, 0.9, 0.3, 0.6, 0.2, 0.5, 0.7, 0.3, 0.1].map(
+                          (delay, i) => (
+                            <span
+                              key={i}
+                              className={styles.spectrumBar}
+                              style={{ animationDelay: `${delay}s` }}
+                            />
+                          ),
+                        )}
                       </div>
 
-                      <div className={styles.detourBadge}>
-                        ⚡ {QUICK_STOPS_SCENARIOS[activeRouteScenario]?.detourMetrics} off today&rsquo;s route
-                      </div>
-
-                      <div className={styles.diffCard}>
-                        <div className={styles.diffHead}>
-                          <span>MATCHED NEARBY INQUIRY</span>
-                          <span style={{ color: '#ff6a24' }}>
-                            {QUICK_STOPS_SCENARIOS[activeRouteScenario]?.feeOffer}
-                          </span>
-                        </div>
-                        <div className={styles.diffLineItem}>
-                          <span>{QUICK_STOPS_SCENARIOS[activeRouteScenario]?.client}</span>
-                        </div>
-                        <small style={{ color: '#34d399', fontWeight: 600 }}>
-                          {QUICK_STOPS_SCENARIOS[activeRouteScenario]?.prepayStatus}
-                        </small>
-                      </div>
-                    </div>
-                  </div>
-                </>
-              )}
-
-              {/* SIMULATOR 4: AI SMART INTAKE */}
-              {activeTab === 'ai-intake' && (
-                <>
-                  <div className={styles.canvasScenarioBar} role="group" aria-label="Select Intake Scenario">
-                    {AI_INTAKE_SCENARIOS.map((sc, idx) => (
-                      <button
-                        key={sc.id}
-                        type="button"
-                        className={`${styles.scenarioChip} ${activeIntakeScenario === idx ? styles.scenarioChipActive : ''}`}
-                        onClick={() => setActiveIntakeScenario(idx)}
-                      >
-                        {sc.label}
-                      </button>
-                    ))}
-                  </div>
-
-                  <div className={styles.canvasBody}>
-                    <div className={styles.diffCard}>
-                      <small style={{ color: '#94a3b8' }}>HOMEOWNER INQUIRY</small>
-                      <p style={{ color: '#f8fafc', margin: '4px 0 0', fontSize: '0.86rem' }}>
-                        {AI_INTAKE_SCENARIOS[activeIntakeScenario]?.userInput}
+                      <p style={{ color: '#cbd5e1', fontSize: '0.82rem', fontFamily: 'monospace', margin: 0 }}>
+                        {VOICE_SCENARIOS[activeVoiceScenario]?.transcript}
                       </p>
                     </div>
 
-                    <div className={styles.safetyCheckRow}>
-                      <span aria-hidden="true">✦</span>
-                      <span>{AI_INTAKE_SCENARIOS[activeIntakeScenario]?.aiFollowup}</span>
-                    </div>
-
-                    <div className={styles.diffCard} style={{ borderColor: 'rgba(52, 211, 153, 0.3)' }}>
-                      <div className={styles.diffHead}>
-                        <span>AUTOMATED LEAD TRIAGE</span>
-                        <span style={{ color: '#34d399' }}>HIGH VALUE ALERT</span>
+                    <div className={styles.drivewayQuoteCard}>
+                      <div className={styles.drivewayQuoteHead}>
+                        <span>{VOICE_SCENARIOS[activeVoiceScenario]?.quoteTitle}</span>
+                        <span style={{ color: '#34d399' }}>
+                          {VOICE_SCENARIOS[activeVoiceScenario]?.status}
+                        </span>
                       </div>
-                      <div className={styles.diffLineItem} style={{ color: '#38bdf8' }}>
-                        <span>{AI_INTAKE_SCENARIOS[activeIntakeScenario]?.triageScore}</span>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', margin: '4px 0' }}>
+                        {VOICE_SCENARIOS[activeVoiceScenario]?.lineItems.map((item) => (
+                          <div key={item.name} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', color: '#e2e8f0' }}>
+                            <span>{item.name}</span>
+                            <span style={{ fontWeight: 600 }}>{item.cost}</span>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className={styles.drivewayQuoteTotal}>
+                        <span>Total Quote Amount:</span>
+                        <span>{VOICE_SCENARIOS[activeVoiceScenario]?.total}</span>
                       </div>
                     </div>
                   </div>
@@ -547,16 +973,16 @@ export default function HighTechShowcase() {
           {/* Bottom Trust & Tech Benchmarks */}
           <div className={styles.bottomTrustRow}>
             <div className={styles.trustStat}>
-              <b>0.2s Audio Extraction</b>
-              <span>Powered by Gemini Multimodal Field Audio Model</span>
+              <b>⚡ Zero App Friction</b>
+              <span>Run quotes, jobs &amp; reminders directly through Apple iMessage &amp; Android SMS</span>
             </div>
             <div className={styles.trustStat}>
-              <b>Zero Destructive Guesses</b>
-              <span>Deterministic validation before modifying job records</span>
+              <b>📸 Multimodal Vision OCR</b>
+              <span>Reads equipment plates, logs receipts &amp; detects structural damage from photos</span>
             </div>
             <div className={styles.trustStat}>
-              <b>Stripe Pre-Auth Lock</b>
-              <span>Guaranteed payout clearing prior to truck departure</span>
+              <b>🎥 Video &amp; Voice Grounded</b>
+              <span>Analyzes walkthrough videos &amp; turns driveway brain dumps into send-ready quotes</span>
             </div>
           </div>
         </div>

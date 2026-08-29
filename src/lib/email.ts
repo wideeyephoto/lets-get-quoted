@@ -1344,3 +1344,152 @@ export async function sendSupportCaseCustomerEmail(input: {
     throw new Error(result.error.message);
   }
 }
+
+/**
+ * Dispatches a confirmation email and setup fee receipt to the contractor
+ * upon submitting their dedicated number / 10DLC application.
+ */
+export async function sendMessagingApplicationSubmittedEmail(input: {
+  accountId: string;
+  recipientEmail: string;
+  businessName: string;
+  desiredAreaCode: string;
+  amountPaid?: string;
+}): Promise<void> {
+  if (!process.env.RESEND_API_KEY) {
+    console.info('RESEND_API_KEY not configured; dedicated number application confirmation email skipped');
+    return;
+  }
+  const brand = await brandFor(input);
+  const amount = input.amountPaid || '$49.99';
+  const subject = `Application received: 2-way dedicated number for ${input.businessName}`;
+  const dashboardUrl = `${APP_ORIGIN}/dashboard/messages/dedicated-number`;
+  const result = await resend.emails.send({
+    from: "Let's Get Quoted <hello@letsgetquoted.com>",
+    to: input.recipientEmail,
+    subject,
+    html: renderBrandedEmail({
+      brand,
+      audience: 'account',
+      preheader: subject,
+      eyebrow: '2-WAY NUMBER SETUP & 10DLC REGISTRATION',
+      heading: 'We have received your application',
+      accountReplyText: 'Have questions about your application? Reply directly to this email.',
+      bodyHtml: `
+        <div style="padding:14px 18px;margin-bottom:16px;background:#f0fdf4;border:1px solid #86efac;border-radius:10px;color:#166534;font-weight:700">
+          ✓ One-Time Setup Fee Confirmed: ${escapeHtml(amount)}
+        </div>
+        <p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#1c2230">
+          Thank you for applying for a dedicated business phone number. Our team has received your registration details for <strong>${escapeHtml(input.businessName)}</strong> in area code <strong>(${escapeHtml(input.desiredAreaCode)})</strong>.
+        </p>
+        <p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#1c2230">
+          <strong>What happens next:</strong>
+        </p>
+        <ol style="margin:0 0 16px 20px;padding:0;font-size:14px;line-height:1.6;color:#374151">
+          <li style="margin-bottom:6px">LGQ staff reviews your business entity, website, and opt-in consent flow.</li>
+          <li style="margin-bottom:6px">We submit your brand and customer-care campaign to US mobile carrier registries (10DLC).</li>
+          <li style="margin-bottom:6px">Once carrier approval is granted (typically 1–3 business days), your dedicated number is provisioned and 2-way texting is instantly unlocked in your inbox.</li>
+        </ol>
+      `,
+      cta: { label: 'View Application Status', url: dashboardUrl },
+    }),
+    tags: defaultTags('messaging_application_submitted', brand, input.accountId),
+  });
+  if (result.error) {
+    console.error('Failed to send messaging application submitted email:', result.error);
+  }
+}
+
+/**
+ * Dispatches an automated status update email to the contractor when an admin
+ * updates their 10DLC registration status (e.g. action_required, active).
+ */
+export async function sendMessagingApplicationStatusEmail(input: {
+  accountId: string;
+  recipientEmail: string;
+  businessName: string;
+  status: 'action_required' | 'approved' | 'rejected' | 'active';
+  detail?: string | null;
+  purchasedNumber?: string | null;
+}): Promise<void> {
+  if (!process.env.RESEND_API_KEY) {
+    console.info('RESEND_API_KEY not configured; dedicated number status email skipped');
+    return;
+  }
+  const brand = await brandFor(input);
+  const dashboardUrl = `${APP_ORIGIN}/dashboard/messages/dedicated-number`;
+
+  let subject = `Update on your dedicated number application: ${input.businessName}`;
+  let heading = 'Application Update';
+  let eyebrow = 'DEDICATED NUMBER STATUS';
+  let bodyContent = '';
+
+  if (input.status === 'active' && input.purchasedNumber) {
+    subject = `🎉 Your dedicated number is active: ${input.purchasedNumber}`;
+    heading = 'Your dedicated texting number is ready!';
+    eyebrow = 'NUMBER ACTIVATED';
+    bodyContent = `
+      <div style="padding:16px 20px;margin-bottom:16px;background:#f0fdf4;border:1px solid #86efac;border-radius:10px;color:#166534;font-size:16px;font-weight:700">
+        Active Phone Number: ${escapeHtml(input.purchasedNumber)}
+      </div>
+      <p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#1c2230">
+        Carrier registration is complete. You can now send quotes, receive customer replies, and manage 2-way conversations directly from your Let's Get Quoted Messages inbox.
+      </p>
+    `;
+  } else if (input.status === 'action_required') {
+    subject = `Action required: Information needed for your dedicated number registration`;
+    heading = 'Action Required on Your Application';
+    eyebrow = 'INFORMATION NEEDED';
+    bodyContent = `
+      <div style="padding:14px 18px;margin-bottom:16px;background:#fffbeb;border:1px solid #fde68a;border-radius:10px;color:#92400e;font-weight:700">
+        Additional details required for carrier vetting
+      </div>
+      <p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#1c2230">
+        ${escapeHtml(input.detail || 'US mobile carrier registries requested additional information to complete your 10DLC brand registration.')}
+      </p>
+      <p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#1c2230">
+        Please visit your dashboard to review the notes and update your application.
+      </p>
+    `;
+  } else if (input.status === 'rejected') {
+    subject = `Notice regarding your dedicated number application: ${input.businessName}`;
+    heading = 'Application Not Approved';
+    eyebrow = 'REGISTRATION NOTICE';
+    bodyContent = `
+      <div style="padding:14px 18px;margin-bottom:16px;background:#fef2f2;border:1px solid #fecaca;border-radius:10px;color:#991b1b;font-weight:700">
+        Carrier registration could not be completed
+      </div>
+      <p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#1c2230">
+        ${escapeHtml(input.detail || 'The carrier registry was unable to verify the submitted business information.')}
+      </p>
+    `;
+  } else {
+    bodyContent = `
+      <p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#1c2230">
+        Your dedicated business number application status has been updated to: <strong>${escapeHtml(input.status)}</strong>.
+      </p>
+      ${input.detail ? `<p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#1c2230">${escapeHtml(input.detail)}</p>` : ''}
+    `;
+  }
+
+  const result = await resend.emails.send({
+    from: "Let's Get Quoted <hello@letsgetquoted.com>",
+    to: input.recipientEmail,
+    subject,
+    html: renderBrandedEmail({
+      brand,
+      audience: 'account',
+      preheader: subject,
+      eyebrow,
+      heading,
+      accountReplyText: 'Reply to this email if you need assistance from our support team.',
+      bodyHtml: bodyContent,
+      cta: { label: 'Open Messaging Dashboard', url: dashboardUrl },
+    }),
+    tags: defaultTags(`messaging_application_${input.status}`, brand, input.accountId),
+  });
+  if (result.error) {
+    console.error('Failed to send messaging application status email:', result.error);
+  }
+}
+

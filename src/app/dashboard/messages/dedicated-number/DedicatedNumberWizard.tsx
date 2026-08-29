@@ -695,6 +695,40 @@ export default function DedicatedNumberWizard({
           </details>
         </section>
 
+        {/* Setup Fee Summary */}
+        <section className={styles.card}>
+          <div className={styles.cardHeader}>
+            <div className={styles.complianceHeaderRow}>
+              <h2>Setup fee summary</h2>
+              <span className={styles.badgePill} style={{ background: '#ecfdf5', color: '#059669', borderColor: '#a7f3d0' }}>
+                $49.99 One-Time
+              </span>
+            </div>
+            <p className={styles.subtext}>
+              Covers complete US mobile carrier 10DLC registration, campaign vetting, and dedicated business number provisioning.
+            </p>
+          </div>
+
+          <div style={{ background: 'var(--surface-subtle, #f8fafc)', border: '1px solid var(--border-subtle, #e2e8f0)', borderRadius: '10px', padding: '16px 20px', marginTop: '12px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #e2e8f0', fontSize: '14px' }}>
+              <span>TCR Standard Brand Registration &amp; Carrier Vetting</span>
+              <span style={{ fontWeight: 600 }}>Included</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #e2e8f0', fontSize: '14px' }}>
+              <span>Dedicated Local Business Phone Number Provisioning</span>
+              <span style={{ fontWeight: 600 }}>Included</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #e2e8f0', fontSize: '14px' }}>
+              <span>2-Way Customer Messaging &amp; AI Voice Receptionist Setup</span>
+              <span style={{ fontWeight: 600 }}>Included</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0 4px', fontSize: '16px', fontWeight: 700 }}>
+              <span>Total One-Time Due Upon Application</span>
+              <span style={{ color: 'var(--accent, #ff6a24)' }}>$49.99</span>
+            </div>
+          </div>
+        </section>
+
         {/* Attestation & Submit */}
         <section className={styles.card}>
           <label className={styles.attestation}>
@@ -717,11 +751,11 @@ export default function DedicatedNumberWizard({
               ← Back to Contact
             </button>
             <button type="submit" className="btn primary">
-              Submit Application for Review
+              Pay $49.99 &amp; Submit Application →
             </button>
           </div>
           <p className={styles.note}>
-            Submission creates an application only. It does not purchase a number or add a charge.
+            Submission charges the $49.99 one-time carrier registration and setup fee and begins immediate staff and carrier review.
           </p>
         </section>
       </div>

@@ -77,7 +77,7 @@ export default function ScrapLumberComparison() {
             </div>
 
             <div className={styles.ttjLineItem}>
-              <span>4 Sheets 1/2" CDX Plywood + Romex Line</span>
+              <span>4 Sheets 1/2&quot; CDX Plywood + Romex Line</span>
               <strong>+$770.00</strong>
             </div>
 

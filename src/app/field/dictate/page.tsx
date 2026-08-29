@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 };
 
 export default async function CrewDictatePage() {
-  const { accountId, crew, businessName, businesses } = await requireCrewContext();
+  const { accountId: _accountId, crew, businessName, businesses } = await requireCrewContext();
   const sharedPhoneRaw = await getSharedFieldPhoneNumber();
   const sharedPhoneDisplay = sharedPhoneRaw ? displayPhone(sharedPhoneRaw) : '(248) 555-0199';
 
