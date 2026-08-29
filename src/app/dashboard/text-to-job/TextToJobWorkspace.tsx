@@ -205,6 +205,7 @@ interface TextToJobWorkspaceProps {
     call_tracking_number: string | null;
   } | null;
   crewMembers?: CrewRow[];
+  initialMessages?: InboundMessage[];
   activeJobCount: number;
   leadCount: number;
   crewCount: number;
@@ -213,6 +214,7 @@ interface TextToJobWorkspaceProps {
 export default function TextToJobWorkspace({
   account,
   crewMembers = [],
+  initialMessages,
   activeJobCount,
   leadCount,
   crewCount,
@@ -220,8 +222,12 @@ export default function TextToJobWorkspace({
   const [activeTab, setActiveTab] = useState<'feed' | 'senders' | 'siri'>('feed');
   const [feedFilter, setFeedFilter] = useState<'all' | 'voice' | 'sms' | 'leads' | 'crew'>('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [messages, setMessages] = useState<InboundMessage[]>(SAMPLE_INBOUND_MESSAGES);
-  const [selectedMsgId, setSelectedMsgId] = useState<string>(SAMPLE_INBOUND_MESSAGES[0].id);
+  const [messages, setMessages] = useState<InboundMessage[]>(
+    initialMessages && initialMessages.length > 0 ? initialMessages : SAMPLE_INBOUND_MESSAGES
+  );
+  const [selectedMsgId, setSelectedMsgId] = useState<string>(
+    (initialMessages && initialMessages.length > 0 ? initialMessages[0].id : SAMPLE_INBOUND_MESSAGES[0].id)
+  );
   const [notification, setNotification] = useState<string | null>(null);
   const [copiedNumber, setCopiedNumber] = useState<boolean>(false);
   const [isPlayingAudio, setIsPlayingAudio] = useState<boolean>(false);
