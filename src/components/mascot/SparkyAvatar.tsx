@@ -42,31 +42,6 @@ const EXPRESSION_SRC: Record<SparkyExpression, string> = {
   action: '/brand/sparky/sparky-action.jpg',
 };
 
-const TRADE_AVATAR_SRC: Record<string, string> = {
-  electrician: '/brand/sparky/sparky-electrician.jpg',
-  electrical: '/brand/sparky/sparky-electrician.jpg',
-  carpentry: '/brand/sparky/sparky-carpenter.jpg',
-  carpenter: '/brand/sparky/sparky-carpenter.jpg',
-  framing: '/brand/sparky/sparky-carpenter.jpg',
-  framer: '/brand/sparky/sparky-carpenter.jpg',
-  inspector: '/brand/sparky/sparky-inspector.jpg',
-  safety: '/brand/sparky/sparky-inspector.jpg',
-  hvac: '/brand/sparky/sparky-inspector.jpg',
-  general: '/brand/sparky/sparky-inspector.jpg',
-  lawncare: '/brand/sparky/sparky-lawncare.jpg',
-  'lawn-care': '/brand/sparky/sparky-lawncare.jpg',
-  landscaping: '/brand/sparky/sparky-lawncare.jpg',
-  landscape: '/brand/sparky/sparky-lawncare.jpg',
-  mowing: '/brand/sparky/sparky-lawncare.jpg',
-  grounds: '/brand/sparky/sparky-lawncare.jpg',
-  plumbing: '/brand/sparky/sparky-plumber.jpg',
-  plumber: '/brand/sparky/sparky-plumber.jpg',
-  pipefitter: '/brand/sparky/sparky-plumber.jpg',
-  roofing: '/brand/sparky/sparky-roofer.jpg',
-  roofer: '/brand/sparky/sparky-roofer.jpg',
-  masonry: '/brand/sparky/sparky-roofer.jpg',
-};
-
 const SIZE_MAP: Record<'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl', number> = {
   xs: 20,
   sm: 28,
@@ -79,7 +54,7 @@ const SIZE_MAP: Record<'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl', number> = {
 export default function SparkyAvatar({
   companionId,
   customSrc,
-  expression = 'avatar',
+  expression: _expression = 'avatar',
   trade = 'general',
   size = 'md',
   status = 'none',

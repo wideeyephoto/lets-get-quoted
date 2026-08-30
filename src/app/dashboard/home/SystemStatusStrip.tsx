@@ -55,7 +55,7 @@ export default function SystemStatusStrip({
                 {alert.actionLabel}
               </Link>
             </div>
-            <p className="workspace-card-copy" style={{ margin: 0, color: 'var(--text-muted, #9ca3af)', fontSize: '0.9rem' }}>
+            <p className="workspace-card-copy" style={{ margin: 0, color: 'var(--muted)', fontSize: '0.9rem' }}>
               {alert.description}
             </p>
           </div>

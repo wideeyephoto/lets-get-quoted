@@ -1,6 +1,6 @@
 /* GENERATED — do not edit. Source: src/app/globals.css
    Run: node scripts/build-css-subset.mjs
-   source-sha256: 916e16d23ff5aad7
+   source-sha256: 7073b7fa73673683
 
    globals.css with the rules that can only match inside /dashboard, /admin and
    /demo removed. Every route except those three imports this file; they import
@@ -26189,6 +26189,120 @@ body:not(:has(.app-main-sidenav)) .theme-fab {
   color: var(--text);
 }
 
+/* Four distinct stages instead of repeating the same draft total in two
+   unrelated cards. The heading names the journey; each tile names one state. */
+.mkt-pipeline-section {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.mkt-pipeline-section .eyebrow {
+  margin: 0 0 0.25rem;
+}
+
+.mkt-pipeline-tiles {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+
+.mkt-pipeline-note {
+  margin: 0;
+  font-size: 0.84rem;
+}
+
+.mkt-pipeline-note a {
+  color: var(--accent-ink);
+  font-weight: 700;
+}
+
+/* --- Overview layout ------------------------------------------------------ */
+.mkt-overview-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.9fr) minmax(0, 1fr);
+  gap: 1.1rem;
+  align-items: start;
+}
+
+.mkt-side {
+  display: grid;
+  gap: 1.1rem;
+  align-content: start;
+}
+
+/* Text, not a colour. The badge SAYS "Draft created" — the tint only repeats
+   what the words already carry, so it survives greyscale and colour blindness. */
+.mkt-rec-badge {
+  padding: 0.15rem 0.5rem;
+  border: 1px solid var(--cedge-green-3, var(--edge-t12));
+  border-radius: 999px;
+  background: rgba(74, 222, 128, 0.12);
+  color: var(--ok-ink, var(--text));
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.mkt-rec-title {
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.mkt-inline-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding-top: 0.85rem;
+}
+
+.mkt-inline-empty p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.55;
+}
+
+.mkt-inline-empty .btn {
+  padding-block: 0.65rem;
+}
+
+.mkt-blogsum-line {
+  margin: 0 0 0.8rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.mkt-email-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+  padding-block: 1.15rem;
+}
+
+.mkt-email-summary>div {
+  min-width: 0;
+}
+
+.mkt-email-summary .eyebrow {
+  margin: 0 0 0.2rem;
+}
+
+.mkt-email-summary h2 {
+  margin: 0;
+  font-size: 1.02rem;
+}
+
+.mkt-email-summary p:not(.eyebrow) {
+  margin: 0.25rem 0 0;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.mkt-email-summary .btn {
+  flex: 0 0 auto;
+}
+
 .mkt-filter.is-active {
   border-color: var(--accent);
   background: rgba(255, 122, 33, 0.14);
@@ -26238,6 +26352,116 @@ body:not(:has(.app-main-sidenav)) .theme-fab {
 .mkt-trade-drift.is-blocking {
   border-left-color: var(--bad);
   background: rgba(248, 113, 113, 0.12);
+}
+
+.mkt-perf-muted {
+  color: var(--mute-t58);
+}
+
+.mkt-perf-miss {
+  color: var(--gold-ink);
+  font-weight: 700;
+}
+
+/* --- Narrow --------------------------------------------------------------- */
+@media (max-width: 1000px) {
+  .mkt-overview-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .mkt-tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .mkt-pipeline-tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+
+  /* One column, and every action row stacks to full width rather than
+     squeezing two buttons into 320px. */
+  .mkt-tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.6rem;
+  }
+
+  .mkt-tile {
+    padding: 0.8rem 0.85rem;
+  }
+
+  .mkt-tile-value {
+    font-size: 1.5rem;
+  }
+
+  .mkt-overview-hero {
+    padding-block: 1.1rem;
+  }
+
+  .mkt-overview-hero .workspace-title {
+    font-size: clamp(1.85rem, 9vw, 2.35rem);
+  }
+
+  .mkt-editor-hero {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .mkt-priority {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.15rem;
+  }
+
+  .mkt-priority-metric {
+    padding: 1rem 0 0;
+    border-top: 1px solid var(--edge-t12);
+    border-left: 0;
+  }
+
+  .mkt-priority-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .mkt-priority-actions .btn {
+    width: 100%;
+  }
+
+  .mkt-rec-actions,
+  .mkt-status-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .mkt-rec-actions .btn,
+  .mkt-status-actions .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .mkt-post-row {
+    align-items: flex-start;
+  }
+
+  .mkt-coming-row {
+    grid-template-columns: 3.6rem minmax(0, 1fr);
+  }
+
+  .mkt-email-summary {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .mkt-email-summary .btn {
+    width: 100%;
+  }
+}
+
+@media (max-width: 360px) {
+  .mkt-pipeline-tiles {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .cash-marker:focus-visible .cash-marker-focus,

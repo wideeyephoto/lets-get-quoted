@@ -65,7 +65,7 @@ export const COMPANIONS: CompanionProfile[] = [
 
 export const DEFAULT_COMPANION_ID: CompanionId = 'assistant';
 
-export function getCompanion(id?: string | null, trade?: string | null): CompanionProfile {
+export function getCompanion(id?: string | null, _trade?: string | null): CompanionProfile {
   const normalizedId = id === 'nova' || id === 'sparky' ? 'assistant' : id;
   const match = COMPANIONS.find((c) => c.id === normalizedId) || COMPANIONS[0];
   return match;

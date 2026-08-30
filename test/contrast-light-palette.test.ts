@@ -15,6 +15,7 @@ const read = (...parts: string[]) =>
 
 const GLOBALS = read('src', 'app', 'globals.css');
 const BANNER = read('src', 'app', 'dashboard', 'BlogReminderBanner.tsx');
+const OPPORTUNITY = read('src', 'app', 'dashboard', 'home', 'BestNextOpportunity.tsx');
 
 /**
  * Read one token out of one theme block, so a test can compare two themes
@@ -123,6 +124,21 @@ describe('the blog reminder card', () => {
     for (const dead of ['#f59e0b 0%', '#ef4444 40%', '#a855f7 75%', '#3b82f6 100%']) {
       expect(BANNER).not.toContain(dead);
     }
+  });
+});
+
+describe('the Recommended Next Step opportunity banner', () => {
+  it('does not use hardcoded off-white or silver text colors in the component', () => {
+    expect(OPPORTUNITY).not.toContain('#f7f5ef');
+    expect(OPPORTUNITY).not.toContain('#c8d0dc');
+    expect(OPPORTUNITY).toContain('className="next-opportunity-headline"');
+    expect(OPPORTUNITY).toContain('className="next-opportunity-reason"');
+  });
+
+  it('declares theme-weighted rules for next-opportunity-panel in globals.css', () => {
+    expect(GLOBALS).toContain(':root[data-theme] .next-opportunity-panel {');
+    expect(GLOBALS).toContain('.next-opportunity-headline {');
+    expect(GLOBALS).toContain('.next-opportunity-reason {');
   });
 });
 

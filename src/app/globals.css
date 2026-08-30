@@ -23400,6 +23400,44 @@ button.inbox-thread-item {
   letter-spacing: 0.01em;
 }
 
+/* RECOMMENDED NEXT STEP BANNER:
+   Weighted with :root[data-theme] to sit on the panel without resetting in light
+   or dark themes. Uses background-image gradient overlay rather than background
+   shorthand so the panel fill stays intact underneath. */
+:root[data-theme] .next-opportunity-panel {
+  border: 1.5px solid var(--line, rgba(var(--tint), 0.12));
+  border-left: 4px solid var(--accent, #ff7a21);
+  background-image: linear-gradient(135deg, rgba(255, 122, 33, 0.08) 0%, rgba(139, 92, 246, 0.05) 100%);
+  box-shadow: 0 4px 20px rgba(var(--shade), 0.12);
+  padding: 1.25rem;
+}
+
+.next-opportunity-badge {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  background: var(--accent, #ff7a21);
+  color: var(--on-accent, #ffffff);
+}
+
+.next-opportunity-headline {
+  margin: 0 0 0.4rem;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.next-opportunity-reason {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
 .workspace-section-heading {
   margin-bottom: 1rem;
 }

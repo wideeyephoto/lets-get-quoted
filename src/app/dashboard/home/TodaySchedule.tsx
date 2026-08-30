@@ -72,8 +72,8 @@ export default function TodaySchedule({
                   alignItems: 'center',
                   padding: '0.75rem 1rem',
                   borderRadius: '8px',
-                  border: '1px solid var(--line, rgba(255,255,255,0.08))',
-                  background: 'rgba(255,255,255,0.02)',
+                  border: '1px solid var(--line)',
+                  background: 'var(--bg-soft)',
                   textDecoration: 'none',
                   color: 'inherit',
                   transition: 'border-color 0.15s ease, background 0.15s ease',
@@ -107,8 +107,8 @@ export default function TodaySchedule({
                           fontSize: '0.72rem',
                           padding: '0.15rem 0.4rem',
                           borderRadius: '999px',
-                          background: 'rgba(139, 92, 246, 0.18)',
-                          color: 'var(--cedge-violet-4, #c4b5fd)',
+                          background: 'rgba(139, 92, 246, 0.15)',
+                          color: 'var(--planning, #7c3aed)',
                         }}
                         title={`Assigned: ${item.assignedCrew.map((c) => c.name).join(', ')}`}
                       >

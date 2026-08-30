@@ -35,7 +35,7 @@ export default function CashPreview({
           marginTop: '0.5rem',
         }}
       >
-        <div style={{ padding: '0.85rem', borderRadius: '6px', border: '1px solid var(--line, rgba(255,255,255,0.08))', background: 'rgba(255,255,255,0.02)' }}>
+        <div style={{ padding: '0.85rem', borderRadius: '6px', border: '1px solid var(--line)', background: 'var(--bg-soft)' }}>
           <span style={{ fontSize: '0.78rem', color: 'var(--muted)', display: 'block' }}>
             Expected Incoming (14d)
           </span>
@@ -47,7 +47,7 @@ export default function CashPreview({
           </span>
         </div>
 
-        <div style={{ padding: '0.85rem', borderRadius: '6px', border: '1px solid var(--line, rgba(255,255,255,0.08))', background: 'rgba(255,255,255,0.02)' }}>
+        <div style={{ padding: '0.85rem', borderRadius: '6px', border: '1px solid var(--line)', background: 'var(--bg-soft)' }}>
           <span style={{ fontSize: '0.78rem', color: 'var(--muted)', display: 'block' }}>
             Outstanding Invoice Balance
           </span>
@@ -59,7 +59,7 @@ export default function CashPreview({
           </span>
         </div>
 
-        <div style={{ padding: '0.85rem', borderRadius: '6px', border: '1px solid var(--line, rgba(255,255,255,0.08))', background: 'rgba(255,255,255,0.02)' }}>
+        <div style={{ padding: '0.85rem', borderRadius: '6px', border: '1px solid var(--line)', background: 'var(--bg-soft)' }}>
           <span style={{ fontSize: '0.78rem', color: 'var(--muted)', display: 'block' }}>
             Net Expected Cash
           </span>

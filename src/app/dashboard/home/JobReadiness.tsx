@@ -51,8 +51,8 @@ export default function JobReadiness({
                 gap: '0.5rem',
                 padding: '0.65rem 0.85rem',
                 borderRadius: '6px',
-                border: '1px solid var(--line, rgba(255,255,255,0.08))',
-                background: 'rgba(255,255,255,0.02)',
+                border: '1px solid var(--line)',
+                background: 'var(--bg-soft)',
                 textDecoration: 'none',
                 color: 'inherit',
               }}

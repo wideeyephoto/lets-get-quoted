@@ -47,8 +47,8 @@ export default function SalesPipeline({
             style={{
               padding: '0.75rem',
               borderRadius: '6px',
-              border: '1px solid var(--line, rgba(255,255,255,0.08))',
-              background: 'rgba(255,255,255,0.02)',
+              border: '1px solid var(--line)',
+              background: 'var(--bg-soft)',
               display: 'flex',
               flexDirection: 'column',
               gap: '0.2rem',

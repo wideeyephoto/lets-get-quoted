@@ -27,7 +27,7 @@ export default function CrewStatus({
       </div>
 
       {clockedIn.length === 0 ? (
-        <div style={{ padding: '0.65rem 0.85rem', background: 'rgba(255,255,255,0.02)', borderRadius: '6px', border: '1px solid var(--line, rgba(255,255,255,0.08))' }}>
+        <div style={{ padding: '0.65rem 0.85rem', background: 'var(--bg-soft)', borderRadius: '6px', border: '1px solid var(--line)' }}>
           <strong style={{ fontSize: '0.92rem', color: 'var(--text)' }}>
             No crew currently clocked in
           </strong>
@@ -48,8 +48,8 @@ export default function CrewStatus({
                 gap: '0.5rem',
                 padding: '0.65rem 0.85rem',
                 borderRadius: '6px',
-                border: '1px solid var(--line, rgba(255,255,255,0.08))',
-                background: 'rgba(255,255,255,0.02)',
+                border: '1px solid var(--line)',
+                background: 'var(--bg-soft)',
               }}
             >
               <div>
