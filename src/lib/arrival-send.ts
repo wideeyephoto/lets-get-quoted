@@ -14,6 +14,7 @@ import {
   setArrivalStatus, startArrival, type TrackingRow,
 } from '@/lib/job-tracking';
 import { sendArrivalSms } from '@/lib/sms';
+import { sendJobsiteArrivalBriefingSms } from '@/lib/crew-onsite-briefing';
 
 // Orchestration for arrival management: everything that has to happen when
 // somebody says "I'm on my way", changes their mind, or gets there.
@@ -373,6 +374,22 @@ export async function applyArrivalStatus(
     author: input.actor.name,
     meta: { status: input.status, notified: notify, travelHours },
   });
+
+  // If a technician arrived on-site, trigger the on-site briefing text for special requests/cautions
+  if (input.status === 'arrived' && input.actor.crewId) {
+    sendJobsiteArrivalBriefingSms(
+      {
+        accountId: input.accountId,
+        jobId: input.jobId,
+        crewId: input.actor.crewId,
+        triggerSource: 'field_arrival',
+        now,
+      },
+      admin,
+    ).catch((err) => {
+      console.warn('On-site crew arrival briefing send non-blocking error:', err);
+    });
+  }
 
   return { ok: true, sms };
 }

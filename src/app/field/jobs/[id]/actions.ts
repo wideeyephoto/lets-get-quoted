@@ -17,6 +17,7 @@ import { applyArrivalStatus, sendArrival } from '@/lib/arrival-send';
 import { getActiveTracking, updateTechPosition } from '@/lib/job-tracking';
 import { clockIn, clockOut, getOpenShift } from '@/lib/time-clock-data';
 import { setCrewJobStatus } from '@/lib/crew-job-status';
+import { sendJobsiteArrivalBriefingSms } from '@/lib/crew-onsite-briefing';
 
 export async function assertAssigned(supabase: SupabaseClient, accountId: string, jobId: string, crewId: string) {
   if (!(await isJobAssignedToCrew(supabase, accountId, jobId, crewId))) {
@@ -229,6 +230,19 @@ export async function clockInFieldAction(jobId: string, formData?: FormData) {
 
   try {
     await clockIn(supabase, accountId, crew.id, jobId, Number(crew.hourly_rate) || 0, undefined, undefined, geofenceEvidence);
+
+    // Trigger on-site briefing text for special requests/cautions (idempotent 1/day)
+    sendJobsiteArrivalBriefingSms(
+      {
+        accountId,
+        jobId,
+        crewId: crew.id,
+        triggerSource: 'geofence_clock_in',
+      },
+      createAdminClient(),
+    ).catch((err) => {
+      console.warn('On-site crew clock-in briefing send non-blocking error:', err);
+    });
   } catch (error) {
     // Everything that can go wrong here is worth SAYING — "already clocked in
     // on another job" is the one a crew member actually hits, and a silent

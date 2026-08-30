@@ -1,6 +1,7 @@
 import React from 'react';
 import Image from 'next/image';
 import styles from './SparkyAvatar.module.css';
+import MiniFusionReactor from './MiniFusionReactor';
 
 import { getCompanion } from '@/lib/ai-assistant/companions';
 
@@ -106,6 +107,14 @@ export default function SparkyAvatar({
   const activeCompanion = getCompanion(companionId, trade);
   const companionName = activeCompanion?.name || 'AI Copilot';
 
+  const isReactor =
+    companionId === 'assistant' ||
+    companionId === 'nova' ||
+    customSrc === 'reactor' ||
+    imageSrc?.includes('spark.jpg') ||
+    imageSrc?.includes('energy-spark') ||
+    imageSrc?.includes('beacon.png');
+
   return (
     <div
       className={`${styles.container} ${bordered ? styles.bordered : ''} ${className}`}
@@ -114,15 +123,23 @@ export default function SparkyAvatar({
       aria-label={alt || `${companionName} - Contractor AI Sidekick`}
     >
       <div className={styles.imageWrapper}>
-        <Image
-          src={imageSrc}
-          alt={alt || `${companionName} avatar`}
-          width={pixelSize * 2} // 2x for sharp retina rendering
-          height={pixelSize * 2}
-          priority={priority}
-          className={styles.image}
-          unoptimized
-        />
+        {isReactor ? (
+          <MiniFusionReactor
+            size={pixelSize}
+            isThinking={status === 'thinking'}
+            alt={alt || `${companionName} - Mini Fusion Reactor`}
+          />
+        ) : (
+          <Image
+            src={imageSrc}
+            alt={alt || `${companionName} avatar`}
+            width={pixelSize * 2} // 2x for sharp retina rendering
+            height={pixelSize * 2}
+            priority={priority}
+            className={styles.image}
+            unoptimized
+          />
+        )}
       </div>
 
       {/* Online / Thinking Live Status Indicator */}

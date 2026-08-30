@@ -695,6 +695,76 @@ export async function POST(request: Request) {
     }
   }
 
+  if (fnName === 'append_job_caution_or_note' || fnName === 'add_caution_note') {
+    const jobRefOrClient = String(args.job_ref_or_client || args.client_name || args.job_id || '').trim();
+    const noteText = String(args.note || args.caution || args.message || '').trim();
+    const isCaution = Boolean(args.is_caution || noteText.toLowerCase().includes('caution') || noteText.toLowerCase().includes('warning') || noteText.toLowerCase().includes('dog') || noteText.toLowerCase().includes('gate'));
+
+    if (!jobRefOrClient) {
+      return NextResponse.json({ response: 'Which customer or job would you like to add this note or caution to?' });
+    }
+
+    if (!noteText) {
+      return NextResponse.json({ response: 'What is the note or caution you would like me to record?' });
+    }
+
+    try {
+      const { data: jobs } = await admin
+        .from('jobs')
+        .select('id, ref, client_name, client_id')
+        .eq('account_id', accountId)
+        .or(`ref.ilike.%${jobRefOrClient}%,client_name.ilike.%${jobRefOrClient}%`)
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      const targetJob = jobs?.[0];
+      if (!targetJob) {
+        return NextResponse.json({ response: `Could not find an active job matching "${jobRefOrClient}".` });
+      }
+
+      // Log internal caution or field note to job_feed
+      await createJobFeedEvent(admin, accountId, targetJob.id, {
+        kind: isCaution ? 'field_caution' : 'field_note',
+        title: isCaution ? 'Site Caution' : 'Internal Note',
+        body: noteText,
+        visibility: 'internal',
+        author: 'Contractor (Voice Assistant)',
+        meta: {
+          voiceLogged: true,
+          isCaution,
+        },
+      });
+
+      // If linked to a client, also append to persistent client notes
+      if (targetJob.client_id) {
+        const { data: client } = await admin
+          .from('clients')
+          .select('notes')
+          .eq('account_id', accountId)
+          .eq('id', targetJob.client_id)
+          .maybeSingle();
+
+        const currentNotes = (client?.notes as string | undefined) || '';
+        const updatedNotes = currentNotes
+          ? `${currentNotes}\n• ${noteText}`
+          : `• ${noteText}`;
+
+        await admin
+          .from('clients')
+          .update({ notes: updatedNotes, updated_at: new Date().toISOString() })
+          .eq('id', targetJob.client_id);
+      }
+
+      const label = isCaution ? 'caution note' : 'note';
+      return NextResponse.json({
+        response: `Got it, I added that ${label} to the ${targetJob.client_name} job. Our field crew will receive it in their arrival briefing.`,
+      });
+    } catch (err) {
+      console.error('Error in append_job_caution_or_note SWAIG tool:', err);
+      return NextResponse.json({ response: 'I could not save that note right now. Please try again.' });
+    }
+  }
+
   return NextResponse.json({
     response: "I've noted that for our team.",
   });

@@ -394,6 +394,32 @@ export const signalwireVoiceProvider: VoiceProvider = {
           web_hook_auth_user: plan.receiptAuthorization.username,
           web_hook_auth_password: plan.receiptAuthorization.password,
         });
+
+        swaigFunctions.push({
+          function: 'append_job_caution_or_note',
+          purpose: 'Add an internal note, safety warning, gate code, pet caution, or special request to a job or client record.',
+          argument: {
+            type: 'object',
+            properties: {
+              job_ref_or_client: {
+                type: 'string',
+                description: 'Customer name or job ID (e.g. Miller, 102, 142 Elm St).',
+              },
+              note: {
+                type: 'string',
+                description: 'The internal note, safety warning, gate code, pet caution, or special request.',
+              },
+              is_caution: {
+                type: 'boolean',
+                description: 'True if this is a safety caution or special attention warning.',
+              },
+            },
+            required: ['job_ref_or_client', 'note'],
+          },
+          web_hook_url: plan.swaigUrl,
+          web_hook_auth_user: plan.receiptAuthorization.username,
+          web_hook_auth_password: plan.receiptAuthorization.password,
+        });
       }
 
       mainSection.push({

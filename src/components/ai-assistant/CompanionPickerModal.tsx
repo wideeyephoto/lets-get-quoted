@@ -4,6 +4,7 @@ import React from 'react';
 import Image from 'next/image';
 import { useAssistant } from './AssistantProvider';
 import { COMPANIONS, type CompanionId, type CompanionProfile } from '@/lib/ai-assistant/companions';
+import MiniFusionReactor from '@/components/mascot/MiniFusionReactor';
 import styles from './companion-picker.module.css';
 
 export default function CompanionPickerModal() {
@@ -80,14 +81,22 @@ export default function CompanionPickerModal() {
                   }}
                 >
                   <div className={styles.avatarWrapper}>
-                    <Image
-                      src={comp.avatarSrc}
-                      alt={comp.name}
-                      width={64}
-                      height={64}
-                      className={styles.avatarImg}
-                      unoptimized
-                    />
+                    {comp.id === 'assistant' || comp.avatarSrc?.includes('spark') ? (
+                      <MiniFusionReactor
+                        size={60}
+                        interactive={true}
+                        alt={`${comp.name} Mini Fusion Reactor`}
+                      />
+                    ) : (
+                      <Image
+                        src={comp.avatarSrc}
+                        alt={comp.name}
+                        width={64}
+                        height={64}
+                        className={styles.avatarImg}
+                        unoptimized
+                      />
+                    )}
                     {isSelected && (
                       <span className={styles.activeCheck} title="Active Avatar">
                         ✓

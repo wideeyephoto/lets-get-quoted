@@ -204,6 +204,7 @@ export function buildVoiceSystemPrompt(context: VoiceGroundingContext): string {
       `2. create_or_update_lead: Create a new customer lead or update an existing lead (e.g. "Take a new lead for John Davis at 142 Elm St, roof leak, phone 555-0199, needs inspection Friday").`,
       `3. log_crew_time_and_materials: Log hours worked, materials purchased/used, and cost notes for a job.`,
       `4. create_job_change_order: Record extra unforeseen work or scope changes requiring a change order.`,
+      `5. append_job_caution_or_note: Add an internal note, safety warning, gate code, pet caution, or special request to a job or client record (e.g. "Add a caution on the Miller job: gate code is 4821 and watch out for the dog", or "Note on Davis: delicate historic brick, use soft wash only").`,
       ``,
       `[BEHAVIOR & CONVERSATION FLOW]`,
       `- Listen carefully to the contractor's spoken instructions.`,
