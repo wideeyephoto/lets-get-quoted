@@ -60,6 +60,17 @@ Whether those credentials are set in Production **cannot be determined from here
 Vercel Sensitive env vars are write-only. That is the first thing to check, and it is
 one question to the operator.
 
+What can be said from the repo: `GOOGLE_ADS_CLIENT_ID`, `GOOGLE_ADS_CLIENT_SECRET`,
+`GOOGLE_ADS_DEVELOPER_TOKEN`, `GOOGLE_ADS_REFRESH_TOKEN` and `GOOGLE_ADS_MCC_CUSTOMER_ID`
+appear in **exactly one file — `src/lib/google-ads-api.ts`, the code that reads them**.
+No `.env.example`, no doc, no deploy script, no CI config, no runbook mentions any of
+them. (The similarly-named `GOOGLE_ADS_PATTERN` in `analytics.ts` and
+`GOOGLE_ADS_SIGNUP_CONVERSION_ID` in `google-tag.ts` are unrelated.) A five-credential
+OAuth integration shipped with no setup record anywhere. That is not proof they are
+unset — Sensitive vars would not appear in the repo either way — but a feature whose
+paid fulfillment depends on credentials nobody wrote down should be assumed unfulfilled
+until the operator confirms otherwise.
+
 ## Second defect: the ads would point at a hostname that does not exist
 
 `ad-billing.ts:238` builds the campaign's landing page as
