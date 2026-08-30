@@ -45,6 +45,38 @@ function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
+type DbInvoiceRow = {
+  id: string;
+  ref: string | null;
+  job_id: string;
+  status: ReceivableItem['status'];
+  total: number | string;
+  discount_percent: number | string | null;
+  tax_rate: number | string | null;
+  created_at: string;
+};
+
+type DbPendingPaymentRow = {
+  id: string;
+  job_id: string;
+  invoice_id: string | null;
+  kind: string;
+  label: string | null;
+  amount: number | string;
+  status: ReceivableItem['status'];
+  requested_at: string;
+  homeowner_phone: string | null;
+  due_date: string | null;
+};
+
+type DbJobRow = {
+  id: string;
+  ref: string | null;
+  client_name: string | null;
+  client_phone: string | null;
+  client_email: string | null;
+};
+
 export async function loadReceivablesData(
   supabase: SupabaseClient,
   accountId: string,
@@ -58,7 +90,7 @@ export async function loadReceivablesData(
 
     // 1. Fetch all unpaid/open invoices for this account
     const [invoices, pendingPayments, jobsRes] = await Promise.all([
-      fetchAllPages<Record<string, unknown>>((from, to) =>
+      fetchAllPages<DbInvoiceRow>((from, to) =>
         supabase
           .from('invoices')
           .select('id, ref, job_id, status, total, discount_percent, tax_rate, created_at')
@@ -68,7 +100,7 @@ export async function loadReceivablesData(
           .order('created_at', { ascending: false })
           .range(from, to),
       ),
-      fetchAllPages<Record<string, unknown>>((from, to) =>
+      fetchAllPages<DbPendingPaymentRow>((from, to) =>
         supabase
           .from('payments')
           .select('id, job_id, invoice_id, kind, label, amount, status, requested_at, homeowner_phone, due_date')
@@ -78,7 +110,7 @@ export async function loadReceivablesData(
           .order('requested_at', { ascending: false })
           .range(from, to),
       ),
-      fetchAllPages<Record<string, unknown>>((from, to) =>
+      fetchAllPages<DbJobRow>((from, to) =>
         supabase
           .from('jobs')
           .select('id, ref, client_name, client_phone, client_email')

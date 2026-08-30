@@ -87,6 +87,33 @@ export function resolveLedgerDateWindow(range: string = '30d'): { start: string 
   return { start: startDate.toISOString(), end };
 }
 
+type DbPaymentRow = {
+  id: string;
+  account_id: string;
+  job_id: string;
+  invoice_id: string | null;
+  kind: PaymentKind | 'quick_stop' | 'subscription' | 'manual';
+  label: string;
+  amount: number | string;
+  status: PaymentStatus;
+  platform_fee: number | string | null;
+  fee_rate: number | string | null;
+  fee_basis_amount?: number | string | null;
+  stripe_checkout_session: string | null;
+  stripe_payment_intent: string | null;
+  async_payment_pending_at: string | null;
+  homeowner_phone: string | null;
+  requested_at: string;
+  paid_at: string | null;
+  refunded_amount: number | string | null;
+  charge_model: string | null;
+  disputed_at: string | null;
+  dispute_reason: string | null;
+  dispute_status: string | null;
+  payment_plan_id?: string | null;
+  due_date?: string | null;
+};
+
 export async function loadPaymentsLedgerData(
   supabase: SupabaseClient,
   accountId: string,
@@ -101,7 +128,7 @@ export async function loadPaymentsLedgerData(
     const { start } = resolveLedgerDateWindow(options.range || '30d');
 
     // Fetch all payments for this account to guarantee accurate metrics & client-side instant filtering
-    const paymentRows = await fetchAllPages<Record<string, unknown>>((from, to) => {
+    const paymentRows = await fetchAllPages<DbPaymentRow>((from, to) => {
       let query = supabase
         .from('payments')
         .select(`

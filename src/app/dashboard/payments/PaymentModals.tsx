@@ -151,9 +151,9 @@ export default function PaymentModals({
   // Client Statement state
   const [statementClient, setStatementClient] = useState('');
   const [statementData, setStatementData] = useState<{
-    jobs: Array<{ id: string; ref?: string; status?: string; address?: string }>;
-    invoices: Array<{ id: string; ref?: string; status?: string; total?: number }>;
-    payments: Array<{ id: string; label?: string; status?: string; amount?: number }>;
+    jobs: Array<{ id: string; ref?: string; client_name?: string; client_phone?: string | null; client_email?: string | null; created_at?: string }>;
+    invoices: Array<{ id: string; ref?: string; job_id?: string; status?: string; total?: number; created_at?: string }>;
+    payments: Array<{ id: string; job_id?: string; kind?: string; label?: string; amount?: number; status?: string; paid_at?: string | null; requested_at?: string }>;
   } | null>(null);
 
   // Payment Plan state

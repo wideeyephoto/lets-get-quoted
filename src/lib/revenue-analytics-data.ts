@@ -51,6 +51,25 @@ function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
+type DbAnalyticsPaymentRow = {
+  id: string;
+  job_id: string;
+  kind: string;
+  label: string | null;
+  amount: number | string;
+  status: string;
+  platform_fee: number | string | null;
+  refunded_amount: number | string | null;
+  charge_model: string | null;
+  paid_at: string | null;
+  requested_at: string;
+};
+
+type DbAnalyticsJobRow = {
+  id: string;
+  client_name: string | null;
+};
+
 export async function loadRevenueAnalyticsData(
   supabase: SupabaseClient,
   accountId: string,
@@ -61,7 +80,7 @@ export async function loadRevenueAnalyticsData(
     oneYearAgo.setUTCHours(0, 0, 0, 0);
 
     const [payments, jobsRes] = await Promise.all([
-      fetchAllPages<Record<string, unknown>>((from, to) =>
+      fetchAllPages<DbAnalyticsPaymentRow>((from, to) =>
         supabase
           .from('payments')
           .select('id, job_id, kind, label, amount, status, platform_fee, refunded_amount, charge_model, paid_at, requested_at')
@@ -71,7 +90,7 @@ export async function loadRevenueAnalyticsData(
           .order('paid_at', { ascending: true })
           .range(from, to),
       ),
-      fetchAllPages<Record<string, unknown>>((from, to) =>
+      fetchAllPages<DbAnalyticsJobRow>((from, to) =>
         supabase
           .from('jobs')
           .select('id, client_name')

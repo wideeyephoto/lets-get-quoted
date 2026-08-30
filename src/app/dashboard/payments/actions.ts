@@ -266,7 +266,7 @@ export async function issueRefundAction(formData: FormData): Promise<ActionState
 /**
  * Create an instant payment link for a job
  */
-export async function createInstantPayLinkAction(formData: FormData): Promise<ActionState> {
+export async function createInstantPayLinkAction(formData: FormData): Promise<ActionState<{ paymentId: string; payUrl: string }>> {
   try {
     const { supabase, accountId } = await requireOfficeContext('payments.write');
     const jobId = String(formData.get('jobId') || '').trim();
@@ -420,7 +420,11 @@ export async function generateFinancingQuoteAction(principal: number, customApr?
 /**
  * Load statement data for a customer
  */
-export async function getClientStatementDataAction(clientName: string): Promise<ActionState> {
+export async function getClientStatementDataAction(clientName: string): Promise<ActionState<{
+  jobs: Array<{ id: string; ref?: string; client_name?: string; client_phone?: string | null; client_email?: string | null; created_at?: string }>;
+  invoices: Array<{ id: string; ref?: string; job_id?: string; status?: string; total?: number; created_at?: string }>;
+  payments: Array<{ id: string; job_id?: string; kind?: string; label?: string; amount?: number; status?: string; paid_at?: string | null; requested_at?: string }>;
+}>> {
   try {
     const { supabase, accountId } = await requireOfficeContext('reports.read');
 
