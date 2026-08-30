@@ -774,7 +774,7 @@ export default function ManagedAdsScreen({
 
       {/* Streamlined Trust & Guarantees Bar */}
       <div className={styles.trustChipsBar}>
-        <span className={styles.trustChip}>💧 Weekly Drip ($185–$645/wk) or Auto-Refill Wallet</span>
+        <span className={styles.trustChip}>💧 Weekly Drip ($176–$616/wk) or Auto-Refill Wallet</span>
         <span className={styles.trustChip}>🛡️ Zero Agency Retainers ($0 vs $2,500/mo)</span>
         <span className={styles.trustChip}>⚡ &lt;60s Speed-to-Lead AI SMS</span>
         <span className={styles.trustChip}>🌦️ Weather Surge &amp; Capacity Guard</span>

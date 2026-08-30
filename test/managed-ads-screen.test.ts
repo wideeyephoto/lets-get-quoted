@@ -10,14 +10,12 @@ describe('Enhanced Managed Ads Dashboard Screen (/dashboard/marketing/ads)', () 
 
   it('renders comprehensive trust chips and AI recommendation strategy with weekly drip & auto-refill wallet', () => {
     expect(SCREEN_SRC).toContain('trustChipsBar');
-    expect(SCREEN_SRC).toContain('Weekly Drip');
-    expect(SCREEN_SRC).toContain('Auto-Refill Wallet ($250 Deposit)');
+    expect(SCREEN_SRC).toContain('Weekly Drip ($176–$616/wk) or Auto-Refill Wallet');
     expect(SCREEN_SRC).toContain('Zero Agency Retainers ($0 vs $2,500/mo)');
-    expect(SCREEN_SRC).toContain('60s Speed-to-Lead Auto-SMS');
-    expect(SCREEN_SRC).toContain('Weather Surge Protection');
-    expect(SCREEN_SRC).toContain('Fully-Booked Capacity Guard');
+    expect(SCREEN_SRC).toContain('&lt;60s Speed-to-Lead AI SMS');
+    expect(SCREEN_SRC).toContain('Weather Surge &amp; Capacity Guard');
     expect(SCREEN_SRC).toContain('Closed-Loop Revenue Sync');
-    expect(SCREEN_SRC).toContain('Cancel or Pause Anytime');
+    expect(SCREEN_SRC).toContain('Cancel Anytime');
     expect(SCREEN_SRC).toContain('Weekly Drip Allocation');
     expect(SCREEN_SRC).toContain('Why Weekly Drip Billing?');
   });
