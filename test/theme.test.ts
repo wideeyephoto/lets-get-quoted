@@ -35,7 +35,7 @@ describe('parseTheme', () => {
 });
 
 describe('resolveTheme', () => {
-  it('an explicit choice always wins over the system', () => {
+  it('an explicit choice always wins', () => {
     expect(resolveTheme('sunlight', false)).toBe('sunlight');
     expect(resolveTheme('light', false)).toBe('light');
     expect(resolveTheme('dim', false)).toBe('dim');
@@ -46,17 +46,21 @@ describe('resolveTheme', () => {
     expect(resolveTheme('parchment', true)).toBe('parchment');
   });
 
-  it('follows the operating system when nothing has been chosen', () => {
-    expect(resolveTheme(null, true)).toBe('sunlight');
+  it('defaults to dark when nothing has been chosen', () => {
     expect(resolveTheme(null, false)).toBe('dark');
-    expect(resolveTheme(undefined, true)).toBe('sunlight');
+    expect(resolveTheme(null, true)).toBe('dark');
+    expect(resolveTheme(undefined, true)).toBe('dark');
+    expect(resolveTheme(undefined, false)).toBe('dark');
   });
 
-  it('falls back to dark on the server, where the OS is unknowable', () => {
-    // The app has always been dark, so this is the no-surprise answer — and the
-    // toggle writes the cookie, so a light-mode user only meets it once.
+  it('falls back to dark for invalid or unselected values', () => {
     expect(resolveTheme(null)).toBe('dark');
     expect(resolveTheme('nonsense')).toBe('dark');
+  });
+
+  it('follows the operating system when explicitly set to system', () => {
+    expect(resolveTheme('system', true)).toBe('sunlight');
+    expect(resolveTheme('system', false)).toBe('dark');
   });
 });
 
@@ -80,26 +84,29 @@ describe('parseThemeChoice', () => {
   });
 });
 
-describe('system as a choice', () => {
-  it('renders whatever the device says, not a colour of its own', () => {
-    // The caller passes null for 'system'; the cookie value itself is never a
-    // theme, which is the whole reason parseTheme keeps rejecting it.
-    expect(parseTheme('system')).toBeNull();
-    expect(resolveTheme(null, true)).toBe('sunlight');
-    expect(resolveTheme(null, false)).toBe('dark');
-  });
-
-  it('is the first option offered, and every option has a label', () => {
+describe('THEME_CHOICES palette and order', () => {
+  it('begins with DARK -> WORKBENCH -> LIGHT -> DIM in exact order', () => {
     expect(THEME_CHOICES.map((c) => c.value)).toEqual([
-      'system',
-      'sunlight',
-      'light',
-      'dim',
       'dark',
+      'light',
+      'sunlight',
+      'dim',
+      'system',
       'onyx',
       'clarity',
       'monochrome',
       'parchment',
+    ]);
+    expect(THEME_CHOICES.map((c) => c.word)).toEqual([
+      'Dark',
+      'Workbench',
+      'Light',
+      'Dim',
+      'Auto',
+      'Onyx',
+      'Clarity',
+      'Mono',
+      'Parchment',
     ]);
     for (const c of THEME_CHOICES) expect(themeChoiceLabel(c.value)).toBe(c.label);
   });
@@ -107,39 +114,35 @@ describe('system as a choice', () => {
 
 describe('themeCookieString', () => {
   it('writes a year-long, path-wide, Lax cookie — the server has to see it on navigation', () => {
-    const cookie = themeCookieString('lgq-theme', 'system');
-    expect(cookie).toContain('lgq-theme=system');
+    const cookie = themeCookieString('lgq-theme', 'dark');
+    expect(cookie).toContain('lgq-theme=dark');
     expect(cookie).toContain('path=/');
     expect(cookie).toContain('max-age=31536000');
     expect(cookie).toContain('samesite=lax');
   });
 });
 
-describe('full palette cycle and one-tap visibility action', () => {
-  it('cycles across the eight themes: onyx -> dark -> dim -> light -> sunlight -> clarity -> monochrome -> parchment -> onyx', () => {
-    expect(nextTheme('onyx')).toBe('dark');
-    expect(nextTheme('dark')).toBe('dim');
-    expect(nextTheme('dim')).toBe('light');
+describe('exact theme rotation: DARK -> WORKBENCH -> LIGHT -> DIM -> DARK', () => {
+  it('rotates across the four primary modes in exact order', () => {
+    expect(nextTheme('dark')).toBe('light');
     expect(nextTheme('light')).toBe('sunlight');
-    expect(nextTheme('sunlight')).toBe('clarity');
-    expect(nextTheme('clarity')).toBe('monochrome');
-    expect(nextTheme('monochrome')).toBe('parchment');
-    expect(nextTheme('parchment')).toBe('onyx');
-
+    expect(nextTheme('sunlight')).toBe('dim');
+    expect(nextTheme('dim')).toBe('dark');
   });
 
-  it('takes every dark workspace straight to Sunlight in one press', () => {
-    for (const theme of ['onyx', 'dark', 'dim', 'light', 'clarity', 'monochrome'] as const) {
-      expect(otherTheme(theme), theme).toBe('sunlight');
-      expect(themeToggleLabel(theme), theme).toBe('Switch to sunlight mode');
-    }
+  it('otherTheme matches nextTheme rotation', () => {
+    expect(otherTheme('dark')).toBe('light');
+    expect(otherTheme('light')).toBe('sunlight');
+    expect(otherTheme('sunlight')).toBe('dim');
+    expect(otherTheme('dim')).toBe('dark');
+    expect(otherTheme('onyx')).toBe('dark');
   });
 
-  it('takes either bright paper workspace straight to Dark in one press', () => {
-    expect(otherTheme('sunlight')).toBe('dark');
-    expect(otherTheme('parchment')).toBe('dark');
-    expect(themeToggleLabel('sunlight')).toBe('Switch to dark mode');
-    expect(themeToggleLabel('parchment')).toBe('Switch to dark mode');
+  it('provides accessible action labels for each next state', () => {
+    expect(themeToggleLabel('dark')).toBe('Switch to Workbench theme');
+    expect(themeToggleLabel('light')).toBe('Switch to Light theme');
+    expect(themeToggleLabel('sunlight')).toBe('Switch to Dim theme');
+    expect(themeToggleLabel('dim')).toBe('Switch to Dark theme');
   });
 });
 

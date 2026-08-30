@@ -73,10 +73,12 @@ export default function TermsOfServicePage() {
           </p>
           <ul>
             <li>
-              <strong>SMS / TCPA Compliance:</strong> Telecommunications laws (including the Telephone Consumer Protection Act
+              <strong>SMS / TCPA Compliance &amp; Time Restrictions:</strong> Telecommunications laws (including the Telephone Consumer Protection Act
               and carrier 10DLC regulations) require recipient consent. Marketing messages require prior express written consent.
               You agree not to transmit messages to individuals who have not provided requisite consent or who have opted out.
-              Detailed message categories and carrier terms are set forth in our <Link href="/sms-terms">SMS Terms</Link>.
+              Automated marketing and non-emergency promotional communications are subject to calling and messaging quiet hours
+              (typically 8:00 PM to 8:00 AM) calculated based on the recipient&apos;s local time zone (or the account&apos;s registered local operating time zone).
+              Detailed message categories, quiet hours policies, and carrier terms are set forth in our <Link href="/sms-terms">SMS Terms</Link>.
             </li>
             <li>
               <strong>Email &amp; CAN-SPAM:</strong> When sending marketing or promotional emails through the Service, you are

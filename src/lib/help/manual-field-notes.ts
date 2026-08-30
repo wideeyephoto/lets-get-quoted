@@ -318,7 +318,7 @@ export const MANUAL_FIELD_NOTES: Record<string, ManualFieldNotes> = {
   },
   'configure-automations-safely': {
     useWhen: 'Setting up automated follow-ups, review requests, appointment reminders, and setting quiet hours.',
-    bestPractice: 'Enforce Quiet Hours (8 PM to 8 AM) so automated texts pause overnight and send in the morning.',
+    bestPractice: 'Enforce Quiet Hours (8 PM to 8 AM in recipient/operating local time zone) so automated texts pause overnight and send in the morning.',
     watchFor: 'Sending too many automated messages can trigger carrier spam filters or homeowner opt-outs.',
     completionChecks: [
       'Automation event triggers and delay timers are configured.',

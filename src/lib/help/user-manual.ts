@@ -1335,7 +1335,7 @@ export const MANUAL_ARTICLES: ManualArticle[] = [
         steps: [
           'Open Automations to review available event triggers: New Lead, Quote Sent, Job Completed, and Invoice Paid.',
           'Set automated delay timers (e.g. send review request 2 hours after job completion).',
-          'Enforce Quiet Hours (e.g. 8:00 PM to 8:00 AM) so automated texts are paused until morning.',
+          'Enforce Quiet Hours (e.g. 8:00 PM to 8:00 AM in the recipient\'s or account\'s local time zone) so automated texts are paused until morning.',
         ],
       },
       {
@@ -1347,7 +1347,7 @@ export const MANUAL_ARTICLES: ManualArticle[] = [
     ],
     customerView: 'Customers experience timely, natural follow-ups that feel personal rather than robotic.',
     troubleshooting: [
-      { problem: 'Automated text was delayed until morning.', fix: 'Quiet Hours settings prevent automated SMS delivery during nighttime hours. Messages queue and send automatically when quiet hours end.' },
+      { problem: 'Automated text was delayed until morning.', fix: 'Quiet Hours settings prevent automated SMS delivery during nighttime hours (evaluated in the recipient\'s or account\'s local time zone). Messages queue and send automatically when quiet hours end.' },
     ],
     related: ['configure-appointment-and-arrival-messages', 'request-and-manage-reviews', 'run-marketing-campaigns'],
   },

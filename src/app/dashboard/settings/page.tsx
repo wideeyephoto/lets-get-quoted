@@ -516,11 +516,7 @@ export default async function SettingsPage({
                     <h2>Theme &amp; contrast</h2>
                   </div>
                   <p className="workspace-details-copy" style={{ marginTop: '0.5rem', marginBottom: '0.9rem' }}>
-                    Auto follows your phone or computer schedule. Sunlight is built for bright daylight clarity, Light / Workbench and Dim offer
-                    soft, balanced workspaces, Dark and Onyx provide deep midnight and OLED focus, Clarity ensures color-blind (CVD)
-                    safety, Monochrome uses pure grayscale fills &amp; shapes, and Parchment provides a warm light paper canvas.
-                    The bottom-left button on every page is a one-tap visibility shortcut between Sunlight and Dark;
-                    use this picker for the full palette.
+                    Dark provides deep midnight focus, Workbench offers a dark shell with soft cards, Light is built for bright daylight clarity, and Dim offers warm graphite easy on the eyes. The bottom-left button on every page rotates between Dark, Workbench, Light, and Dim; use this picker for the full palette or Auto schedule.
                   </p>
                   <ThemeToggle />
                 </section>

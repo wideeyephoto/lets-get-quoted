@@ -122,12 +122,18 @@ export default function SmsTermsPage() {
         </section>
 
         <section className={styles.smsDisclosure}>
-          <h2>Message frequency and charges</h2>
+          <h2>Message frequency, time restrictions and charges</h2>
           <p>
             <strong>Message frequency varies</strong> and depends on the work in progress. As a guide: one message per
             sign-in code you request; typically one appointment reminder per scheduled visit; up to three follow-ups
             on an unanswered quote; one review request per completed job; and marketing messages only as often as your
             contractor chooses to send them.
+          </p>
+          <p>
+            <strong>Time restrictions &amp; Quiet hours:</strong> Automated, reminder, and promotional text messages are
+            restricted to permissible daytime hours (between 8:00 AM and 8:00 PM or 9:00 PM in the recipient&apos;s local
+            time zone, or the contractor&apos;s configured operating time zone). Any automated messages queued outside
+            these hours are held and delivered once permissible daytime hours resume in that time zone.
           </p>
           <p>
             <strong>Message and data rates may apply.</strong> Contact your wireless carrier for details about your

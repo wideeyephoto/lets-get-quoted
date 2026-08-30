@@ -21,6 +21,7 @@ import {
   getPublishedVideoSections,
   videoSectionKey,
   estimateReadingTime,
+  getSiteContent,
   getSlotImage,
   projectShowcaseHeadings,
 } from '@/lib/site-content';

@@ -38,7 +38,7 @@ function systemPrefersLight(): boolean {
 export function readStampedTheme(): { choice: ThemeChoice; theme: Theme } {
   const root = document.documentElement;
   return {
-    choice: parseThemeChoice(root.dataset.themeChoice) ?? 'system',
+    choice: parseThemeChoice(root.dataset.themeChoice) ?? 'dark',
     theme: parseTheme(root.dataset.theme) ?? 'dark',
   };
 }
@@ -62,7 +62,7 @@ function stampThemeColor(theme: Theme): void {
  */
 export function applyThemeChoice(choice: ThemeChoice): void {
   const root = document.documentElement;
-  const theme = resolveTheme(choice === 'system' ? null : choice, systemPrefersLight());
+  const theme = resolveTheme(choice, systemPrefersLight());
   root.dataset.theme = theme;
   root.dataset.themeChoice = choice;
   stampThemeColor(theme);

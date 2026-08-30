@@ -146,9 +146,9 @@ const THEME_INIT_SCRIPT = `
 function readServerTheme() {
   const isStandaloneSite = headers().get('x-lgq-standalone-site') === '1';
   const jar = cookies();
-  const choice = parseThemeChoice(jar.get(THEME_COOKIE)?.value) ?? 'system';
+  const choice = parseThemeChoice(jar.get(THEME_COOKIE)?.value) ?? 'dark';
   const systemPrefersLight = jar.get(THEME_SYSTEM_COOKIE)?.value === 'light';
-  const theme = isStandaloneSite ? 'dark' : resolveTheme(choice === 'system' ? null : choice, systemPrefersLight);
+  const theme = isStandaloneSite ? 'dark' : resolveTheme(choice, systemPrefersLight);
   return { choice, isStandaloneSite, theme } as const;
 }
 

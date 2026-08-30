@@ -23,6 +23,7 @@ import {
 } from '@/lib/multi-channel-ads';
 import { detectWeatherSurgeOpportunity } from '@/lib/weather-ad-surge';
 import { analyzeCustomAdFocus } from '@/lib/ad-custom-focus-ai';
+import CityAutocomplete from '@/components/city-autocomplete';
 import styles from './ManagedAdsScreen.module.css';
 
 type Props = {
@@ -1919,11 +1920,12 @@ export default function ManagedAdsScreen({
                     >
                       Target City
                     </label>
-                    <input
-                      type="text"
+                    <CityAutocomplete
+                      id="target-city-input"
                       value={city}
-                      onChange={(e) => setCity(e.target.value)}
-                      style={{ width: '100%', fontSize: '0.82rem', padding: '0.4rem 0.6rem' }}
+                      onChange={setCity}
+                      placeholder="e.g. Royal Oak, MI"
+                      style={{ fontSize: '0.82rem', padding: '0.4rem 0.6rem' }}
                     />
                   </div>
                   <div>
