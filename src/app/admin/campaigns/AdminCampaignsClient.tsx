@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import type { PlatformCampaignRecord } from '@/lib/admin-platform-campaigns';
-import { PLATFORM_AUDIENCES } from '@/lib/admin-platform-campaigns';
+import type { PlatformCampaignRecord } from '@/lib/admin-campaign-types';
+import { PLATFORM_AUDIENCES } from '@/lib/admin-campaign-types';
 import AdminCampaignComposer from './AdminCampaignComposer';
 import AdminCampaignHistory from './AdminCampaignHistory';
 import styles from '../admin.module.css';
@@ -19,7 +19,7 @@ export default function AdminCampaignsClient({
   initialCampaigns,
 }: Props) {
   const [activeTab, setActiveTab] = useState<'composer' | 'history' | 'audiences'>('composer');
-  const [campaigns, setCampaigns] = useState<PlatformCampaignRecord[]>(initialCampaigns);
+  const [campaigns] = useState<PlatformCampaignRecord[]>(initialCampaigns);
 
   return (
     <div>
@@ -66,7 +66,7 @@ export default function AdminCampaignsClient({
       {activeTab === 'history' && (
         <AdminCampaignHistory
           campaigns={campaigns}
-          onSelectCampaign={(selected) => {
+          onSelectCampaign={(_selected) => {
             // Switch to composer when re-using a campaign
             setActiveTab('composer');
           }}

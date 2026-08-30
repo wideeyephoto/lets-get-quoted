@@ -5,7 +5,7 @@ import {
   PLATFORM_AUDIENCES,
   type PlatformAudienceId,
   type PlatformCampaignInput,
-} from '@/lib/admin-platform-campaigns';
+} from '@/lib/admin-campaign-types';
 import {
   PLATFORM_CAMPAIGN_TEMPLATES,
   type PlatformCampaignTemplate,

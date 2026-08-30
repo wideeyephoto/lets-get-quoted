@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import type { PlatformCampaignRecord } from '@/lib/admin-platform-campaigns';
+import type { PlatformCampaignRecord } from '@/lib/admin-campaign-types';
 import styles from '../admin.module.css';
 
 type Props = {
