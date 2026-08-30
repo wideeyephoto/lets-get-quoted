@@ -84,6 +84,16 @@ export function checkAutoRefillTrigger(params: {
   };
 }
 
+export type AdSpendDailyEntry = {
+  date: string; // YYYY-MM-DD
+  spendCents: number;
+  clicks: number;
+  impressions: number;
+  conversions: number;
+  source: 'google_ads_api' | 'meta_ads_api' | 'scheduled_pacing';
+  recordedAt: string;
+};
+
 export type AdBudgetWalletState = {
   status: AdCampaignBillingStatus;
   fundingModel?: AdFundingModel;
@@ -103,6 +113,9 @@ export type AdBudgetWalletState = {
   lastPaymentAt: string | null;
   lastPaymentError: string | null;
   spendThisMonthCents: number;
+  totalSpendAllTimeCents?: number;
+  lastSpendSyncAt?: string | null;
+  dailySpendHistory?: AdSpendDailyEntry[];
   googleCampaignId?: string | null;
   googleCampaignResource?: string | null;
   provisioningStatus?: 'active' | 'paused' | 'simulated' | 'pending' | 'failed' | 'unconfigured';
@@ -129,6 +142,9 @@ export const DEFAULT_AD_WALLET_STATE: AdBudgetWalletState = {
   lastPaymentAt: null,
   lastPaymentError: null,
   spendThisMonthCents: 0,
+  totalSpendAllTimeCents: 0,
+  lastSpendSyncAt: null,
+  dailySpendHistory: [],
   googleCampaignId: null,
   googleCampaignResource: null,
   provisioningStatus: 'pending',
@@ -807,6 +823,217 @@ export async function processAllWalletAutoRefills(admin: SupabaseClient): Promis
 }
 
 /**
+ * Records an ad spend usage/consumption event for an account, decrementing
+ * the contractor's advertising balance, incrementing periodic spend totals,
+ * and checking whether an automated wallet refill is triggered.
+ */
+export async function recordAdSpendUsage(params: {
+  admin: SupabaseClient;
+  accountId: string;
+  spendCents: number;
+  clicks?: number;
+  impressions?: number;
+  conversions?: number;
+  date?: string;
+  source?: 'google_ads_api' | 'meta_ads_api' | 'scheduled_pacing';
+}): Promise<{
+  success: boolean;
+  newBalanceCents?: number;
+  spentThisMonthCents?: number;
+  refillTriggered?: boolean;
+  message: string;
+}> {
+  const {
+    admin,
+    accountId,
+    spendCents,
+    clicks = 0,
+    impressions = 0,
+    conversions = 0,
+    date = new Date().toISOString().slice(0, 10),
+    source = 'scheduled_pacing',
+  } = params;
+
+  if (spendCents <= 0) {
+    return { success: true, message: 'Zero spend to record.' };
+  }
+
+  const { data: site } = await admin
+    .from('sites')
+    .select('id, content')
+    .eq('account_id', accountId)
+    .maybeSingle();
+
+  if (!site) {
+    return { success: false, message: 'Site not found for account.' };
+  }
+
+  const content = (site.content as Record<string, unknown>) || {};
+  const adState = (content.adCampaign as AdBudgetWalletState) || DEFAULT_AD_WALLET_STATE;
+
+  if (adState.status !== 'active') {
+    return { success: false, message: `Campaign is not active (status: ${adState.status}).` };
+  }
+
+  const currentBalance = adState.walletBalanceCents ?? 25000;
+  const newBalance = Math.max(0, currentBalance - spendCents);
+  const newSpentThisMonth = (adState.spendThisMonthCents ?? 0) + spendCents;
+  const newTotalSpend = (adState.totalSpendAllTimeCents ?? 0) + spendCents;
+
+  const currentHistory = adState.dailySpendHistory || [];
+  const existingEntryIndex = currentHistory.findIndex((e) => e.date === date);
+
+  let updatedHistory: AdSpendDailyEntry[];
+  if (existingEntryIndex >= 0) {
+    const existing = currentHistory[existingEntryIndex];
+    updatedHistory = [...currentHistory];
+    updatedHistory[existingEntryIndex] = {
+      ...existing,
+      spendCents: existing.spendCents + spendCents,
+      clicks: existing.clicks + clicks,
+      impressions: existing.impressions + impressions,
+      conversions: existing.conversions + conversions,
+      recordedAt: new Date().toISOString(),
+    };
+  } else {
+    const newEntry: AdSpendDailyEntry = {
+      date,
+      spendCents,
+      clicks,
+      impressions,
+      conversions,
+      source,
+      recordedAt: new Date().toISOString(),
+    };
+    updatedHistory = [newEntry, ...currentHistory].slice(0, 90); // Retain last 90 days
+  }
+
+  await updateAccountAdBudgetState(admin, accountId, {
+    walletBalanceCents: newBalance,
+    spendThisMonthCents: newSpentThisMonth,
+    totalSpendAllTimeCents: newTotalSpend,
+    lastSpendSyncAt: new Date().toISOString(),
+    dailySpendHistory: updatedHistory,
+  });
+
+  let refillTriggered = false;
+  if (adState.fundingModel === 'auto_refill_wallet' && newBalance <= (adState.refillThresholdCents ?? 7500)) {
+    const refillRes = await executeWalletRefillCharge({
+      admin,
+      accountId,
+      reason: `Balance ($${(newBalance / 100).toFixed(2)}) depleted by ad spend below threshold ($${((adState.refillThresholdCents ?? 7500) / 100).toFixed(2)}).`,
+    });
+    refillTriggered = refillRes.refilled;
+  }
+
+  return {
+    success: true,
+    newBalanceCents: newBalance,
+    spentThisMonthCents: newSpentThisMonth,
+    refillTriggered,
+    message: `Recorded $${(spendCents / 100).toFixed(2)} ad spend. Remaining balance: $${(newBalance / 100).toFixed(2)}.`,
+  };
+}
+
+/**
+ * Synchronizes ad spend usage for an account by querying live Google Ads metrics
+ * or calculating scheduled daily pacing.
+ */
+export async function syncAccountAdSpendUsage(
+  admin: SupabaseClient,
+  accountId: string
+): Promise<{ success: boolean; spendRecordedCents: number; message: string }> {
+  const { data: site } = await admin
+    .from('sites')
+    .select('id, content')
+    .eq('account_id', accountId)
+    .maybeSingle();
+
+  if (!site) return { success: false, spendRecordedCents: 0, message: 'Site not found.' };
+
+  const content = (site.content as Record<string, unknown>) || {};
+  const adState = (content.adCampaign as AdBudgetWalletState) || DEFAULT_AD_WALLET_STATE;
+
+  if (adState.status !== 'active') {
+    return { success: true, spendRecordedCents: 0, message: 'Campaign is inactive.' };
+  }
+
+  const { fetchGoogleAdsCampaignDailySpend } = await import('@/lib/google-ads-api');
+
+  if (adState.googleCampaignId) {
+    const googleRes = await fetchGoogleAdsCampaignDailySpend(adState.googleCampaignId);
+    if (googleRes.success && googleRes.data.length > 0) {
+      const todayStr = new Date().toISOString().slice(0, 10);
+      const latest = googleRes.data.find((d) => d.date === todayStr) || googleRes.data[0];
+      if (latest && latest.spendCents > 0) {
+        const res = await recordAdSpendUsage({
+          admin,
+          accountId,
+          spendCents: latest.spendCents,
+          clicks: latest.clicks,
+          impressions: latest.impressions,
+          conversions: latest.conversions,
+          date: latest.date,
+          source: 'google_ads_api',
+        });
+        return { success: true, spendRecordedCents: latest.spendCents, message: res.message };
+      }
+    }
+  }
+
+  // Fallback to scheduled pacing model
+  const dailySpendRateCents = Math.round((adState.monthlyBudgetCents || 60000) / 30.4);
+  const estimatedClicks = Math.max(1, Math.round((dailySpendRateCents / 100) / 8.5));
+  const estimatedImpressions = Math.max(20, Math.round(estimatedClicks * 21));
+
+  const res = await recordAdSpendUsage({
+    admin,
+    accountId,
+    spendCents: dailySpendRateCents,
+    clicks: estimatedClicks,
+    impressions: estimatedImpressions,
+    conversions: Math.max(0, Math.round(estimatedClicks * 0.14)),
+    date: new Date().toISOString().slice(0, 10),
+    source: 'scheduled_pacing',
+  });
+
+  return { success: true, spendRecordedCents: dailySpendRateCents, message: res.message };
+}
+
+/**
+ * Worker function to sync ad spend consumption across all active campaigns.
+ */
+export async function processAllAdSpendSync(admin: SupabaseClient): Promise<{
+  processed: number;
+  totalSpendSyncedCents: number;
+  results: Record<string, unknown>[];
+}> {
+  const { data: sites } = await admin
+    .from('sites')
+    .select('id, account_id, content')
+    .not('content->adCampaign', 'is', null);
+
+  const results: Record<string, unknown>[] = [];
+  let totalSpendSyncedCents = 0;
+
+  for (const site of sites || []) {
+    const content = (site.content as Record<string, unknown>) || {};
+    const adState = (content.adCampaign as AdBudgetWalletState) || {};
+    if (adState.status === 'active') {
+      const res = await syncAccountAdSpendUsage(admin, site.account_id);
+      totalSpendSyncedCents += res.spendRecordedCents;
+      results.push({ accountId: site.account_id, ...res });
+    }
+  }
+
+  return {
+    processed: results.length,
+    totalSpendSyncedCents,
+    results,
+  };
+}
+
+/**
  * Persists ad budget state updates into the site/account record.
  */
 export async function updateAccountAdBudgetState(
@@ -841,3 +1068,4 @@ export async function updateAccountAdBudgetState(
     })
     .eq('id', site.id);
 }
+

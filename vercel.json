@@ -127,6 +127,14 @@
     {
       "path": "/api/cron/account-closure",
       "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/cron/ad-spend-sync",
+      "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/cron/ad-wallet-refill",
+      "schedule": "*/15 * * * *"
     }
   ]
 }

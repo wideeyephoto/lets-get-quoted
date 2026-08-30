@@ -818,25 +818,92 @@ export default function ManagedAdsScreen({
           {/* Tab 4: Budget & Billing */}
           {managementTab === 'billing' ? (
             <div className="panel workspace-section-card">
-              <h3 style={{ fontSize: '1rem', marginBottom: '0.5rem' }}>💳 Plan Details &amp; Funding Model</h3>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem', marginBottom: '1rem', fontSize: '0.82rem' }}>
+              <h3 style={{ fontSize: '1rem', marginBottom: '0.5rem' }}>💳 Continuous Ad Spend &amp; Balance Consumption</h3>
+              <p style={{ fontSize: '0.82rem', color: 'var(--muted)', margin: '0 0 1rem' }}>
+                Your ad spend is continuously deployed to Google &amp; Meta. Clicks are deducted daily from your available balance, and auto-refills trigger when balance falls below your threshold.
+              </p>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem', marginBottom: '1.25rem', fontSize: '0.82rem' }}>
                 <div style={{ background: 'rgba(255, 255, 255, 0.03)', padding: '0.65rem', borderRadius: '6px' }}>
-                  <span style={{ color: 'var(--muted)', display: 'block', fontSize: '0.72rem' }}>Funding Model</span>
-                  <strong>{initialWalletState?.fundingModel === 'auto_refill_wallet' || fundingModel === 'auto_refill_wallet' ? 'Auto-Refill Advertising Wallet' : 'Weekly Drip All-In Funding'}</strong>
+                  <span style={{ color: 'var(--muted)', display: 'block', fontSize: '0.72rem' }}>Available Ad Balance</span>
+                  <strong style={{ color: '#10b981', fontSize: '1.1rem' }}>
+                    ${initialWalletState?.walletBalanceCents !== undefined ? (initialWalletState.walletBalanceCents / 100).toFixed(2) : (fundingModel === 'auto_refill_wallet' ? walletDepositDollars.toFixed(2) : '—')}
+                  </strong>
+                  <span style={{ fontSize: '0.7rem', color: 'var(--muted)', display: 'block', marginTop: '0.2rem' }}>
+                    Auto-refills at &lt; ${( (initialWalletState?.refillThresholdCents || 7500) / 100).toFixed(2)}
+                  </span>
                 </div>
+
                 <div style={{ background: 'rgba(255, 255, 255, 0.03)', padding: '0.65rem', borderRadius: '6px' }}>
-                  <span style={{ color: 'var(--muted)', display: 'block', fontSize: '0.72rem' }}>Stripe Subscription</span>
-                  <code>{initialWalletState?.stripeSubscriptionId || 'active_sub'}</code>
+                  <span style={{ color: 'var(--muted)', display: 'block', fontSize: '0.72rem' }}>Consumed This Month</span>
+                  <strong style={{ fontSize: '1.1rem' }}>
+                    ${((initialWalletState?.spendThisMonthCents || 0) / 100).toFixed(2)}
+                  </strong>
+                  <span style={{ fontSize: '0.7rem', color: 'var(--muted)', display: 'block', marginTop: '0.2rem' }}>
+                    Max Monthly Cap: ${((initialWalletState?.maxMonthlySpendCents || (walletMaxMonthlySpendDollars * 100)) / 100).toFixed(2)}
+                  </span>
                 </div>
+
+                <div style={{ background: 'rgba(255, 255, 255, 0.03)', padding: '0.65rem', borderRadius: '6px' }}>
+                  <span style={{ color: 'var(--muted)', display: 'block', fontSize: '0.72rem' }}>Funding Model &amp; Status</span>
+                  <strong>{initialWalletState?.fundingModel === 'auto_refill_wallet' || fundingModel === 'auto_refill_wallet' ? 'Auto-Refilling Wallet' : 'Weekly Drip All-In'}</strong>
+                  <span style={{ fontSize: '0.7rem', color: isLiveActive ? '#10b981' : 'var(--muted)', display: 'block', marginTop: '0.2rem' }}>
+                    {isLiveActive ? '● Active & Consuming' : '○ Standby'}
+                  </span>
+                </div>
+
                 <div style={{ background: 'rgba(255, 255, 255, 0.03)', padding: '0.65rem', borderRadius: '6px' }}>
                   <span style={{ color: 'var(--muted)', display: 'block', fontSize: '0.72rem' }}>Google Campaign ID</span>
                   <code>{initialWalletState?.googleCampaignId || 'gads_auto_linked'}</code>
-                </div>
-                <div style={{ background: 'rgba(255, 255, 255, 0.03)', padding: '0.65rem', borderRadius: '6px' }}>
-                  <span style={{ color: 'var(--muted)', display: 'block', fontSize: '0.72rem' }}>Last Payment</span>
-                  <strong>{initialWalletState?.lastPaymentAt ? new Date(initialWalletState.lastPaymentAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'This billing cycle'}</strong>
+                  <span style={{ fontSize: '0.7rem', color: 'var(--muted)', display: 'block', marginTop: '0.2rem' }}>
+                    Last payment: {initialWalletState?.lastPaymentAt ? new Date(initialWalletState.lastPaymentAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'Recent'}
+                  </span>
                 </div>
               </div>
+
+              {/* Daily Spend Consumption Log Table */}
+              <div style={{ marginBottom: '1.25rem' }}>
+                <strong style={{ fontSize: '0.86rem', display: 'block', marginBottom: '0.5rem' }}>
+                  📊 Recent Daily Click Spend &amp; Consumption History
+                </strong>
+                {initialWalletState?.dailySpendHistory && initialWalletState.dailySpendHistory.length > 0 ? (
+                  <div style={{ overflowX: 'auto', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '6px' }}>
+                    <table style={{ width: '100%', fontSize: '0.78rem', borderCollapse: 'collapse', textAlign: 'left' }}>
+                      <thead>
+                        <tr style={{ background: 'rgba(255, 255, 255, 0.05)', borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>
+                          <th style={{ padding: '0.45rem 0.6rem' }}>Date</th>
+                          <th style={{ padding: '0.45rem 0.6rem' }}>Network</th>
+                          <th style={{ padding: '0.45rem 0.6rem' }}>Impressions</th>
+                          <th style={{ padding: '0.45rem 0.6rem' }}>Clicks</th>
+                          <th style={{ padding: '0.45rem 0.6rem' }}>Conversions</th>
+                          <th style={{ padding: '0.45rem 0.6rem' }}>Consumed Spend</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {initialWalletState.dailySpendHistory.slice(0, 7).map((entry) => (
+                          <tr key={entry.date} style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>
+                            <td style={{ padding: '0.45rem 0.6rem' }}>{entry.date}</td>
+                            <td style={{ padding: '0.45rem 0.6rem' }}>
+                              {entry.source === 'google_ads_api' ? 'Google Search' : entry.source === 'meta_ads_api' ? 'Meta Feed' : 'Daily Paced'}
+                            </td>
+                            <td style={{ padding: '0.45rem 0.6rem' }}>{entry.impressions.toLocaleString()}</td>
+                            <td style={{ padding: '0.45rem 0.6rem' }}>{entry.clicks}</td>
+                            <td style={{ padding: '0.45rem 0.6rem' }}>{entry.conversions}</td>
+                            <td style={{ padding: '0.45rem 0.6rem', color: '#f97316', fontWeight: 700 }}>
+                              -${(entry.spendCents / 100).toFixed(2)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p style={{ fontSize: '0.78rem', color: 'var(--muted)', margin: 0, padding: '0.65rem', background: 'rgba(255, 255, 255, 0.02)', borderRadius: '6px' }}>
+                    Daily click consumption is logged in real-time as Google and Meta report search clicks.
+                  </p>
+                )}
+              </div>
+
               <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1rem' }}>
                 <button
                   type="button"

@@ -660,3 +660,143 @@ async function fetchGoogleAdsAccessToken(config: GoogleAdsConfig): Promise<strin
 
   return data.access_token;
 }
+
+export type DailyAdMetric = {
+  date: string; // YYYY-MM-DD
+  costMicros: number;
+  spendCents: number;
+  clicks: number;
+  impressions: number;
+  conversions: number;
+};
+
+/**
+ * Fetches actual daily spend metrics for a campaign from Google Ads API.
+ */
+export async function fetchGoogleAdsCampaignDailySpend(
+  campaignId: string,
+  startDate?: string,
+  endDate?: string
+): Promise<{ success: boolean; data: DailyAdMetric[]; totalSpendCents: number; message?: string }> {
+  const config = getGoogleAdsConfig();
+  if (!isGoogleAdsConfigured() || !config.mccCustomerId) {
+    return {
+      success: true,
+      data: [],
+      totalSpendCents: 0,
+      message: 'Google Ads API not configured; fallback to scheduled daily pacing.',
+    };
+  }
+
+  try {
+    const token = await fetchGoogleAdsAccessToken(config);
+    const headers = buildGoogleAdsHeaders(config, token);
+    const customerId = (config.clientCustomerId || config.mccCustomerId).replace(/-/g, '');
+
+    const dateFilter = startDate && endDate
+      ? `AND segments.date BETWEEN '${startDate}' AND '${endDate}'`
+      : `AND segments.date DURING LAST_30_DAYS`;
+
+    const query = `
+      SELECT
+        campaign.id,
+        segments.date,
+        metrics.cost_micros,
+        metrics.clicks,
+        metrics.impressions,
+        metrics.conversions
+      FROM campaign
+      WHERE campaign.id = '${campaignId}'
+      ${dateFilter}
+      ORDER BY segments.date DESC
+    `;
+
+    const res = await fetch(`${GOOGLE_ADS_API_BASE_URL}/customers/${customerId}/googleAds:search`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ query }),
+    });
+
+    if (!res.ok) {
+      const errText = await res.text();
+      return { success: false, data: [], totalSpendCents: 0, message: `Google Ads Search API error: ${errText}` };
+    }
+
+    const json = await res.json();
+    const results = json.results || [];
+    let totalSpendCents = 0;
+
+    const data: DailyAdMetric[] = results.map((row: Record<string, unknown>) => {
+      const metrics = (row.metrics && typeof row.metrics === 'object' ? row.metrics : {}) as Record<string, unknown>;
+      const segments = (row.segments && typeof row.segments === 'object' ? row.segments : {}) as Record<string, unknown>;
+      const costMicros = Number(metrics.costMicros || metrics.cost_micros || 0);
+      const spendCents = Math.round(costMicros / 10000);
+      totalSpendCents += spendCents;
+      return {
+        date: typeof segments.date === 'string' ? segments.date : new Date().toISOString().slice(0, 10),
+        costMicros,
+        spendCents,
+        clicks: Number(metrics.clicks || 0),
+        impressions: Number(metrics.impressions || 0),
+        conversions: Number(metrics.conversions || 0),
+      };
+    });
+
+    return { success: true, data, totalSpendCents };
+  } catch (err: unknown) {
+    const errMsg = err instanceof Error ? err.message : String(err);
+    return { success: false, data: [], totalSpendCents: 0, message: errMsg };
+  }
+}
+
+/**
+ * Updates campaign status in Google Ads API (e.g. ENABLED, PAUSED, REMOVED).
+ */
+export async function updateGoogleAdsCampaignStatus(
+  campaignId: string,
+  status: 'ENABLED' | 'PAUSED' | 'REMOVED'
+): Promise<{ success: boolean; message?: string }> {
+  const config = getGoogleAdsConfig();
+  if (!isGoogleAdsConfigured() || !config.mccCustomerId) {
+    return {
+      success: true,
+      message: `Google Ads API unconfigured; status updated to ${status} in simulated environment.`,
+    };
+  }
+
+  try {
+    const token = await fetchGoogleAdsAccessToken(config);
+    const headers = buildGoogleAdsHeaders(config, token);
+    const customerId = (config.clientCustomerId || config.mccCustomerId).replace(/-/g, '');
+
+    const resourceName = `customers/${customerId}/campaigns/${campaignId}`;
+
+    const res = await fetch(`${GOOGLE_ADS_API_BASE_URL}/customers/${customerId}/campaigns:mutate`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        operations: [
+          {
+            updateMask: 'status',
+            update: {
+              resourceName,
+              status,
+            },
+          },
+        ],
+      }),
+    });
+
+    if (!res.ok) {
+      const errText = await res.text();
+      return { success: false, message: `Google Ads Mutate error: ${errText}` };
+    }
+
+    return { success: true };
+  } catch (err: unknown) {
+    const errMsg = err instanceof Error ? err.message : String(err);
+    return { success: false, message: errMsg };
+  }
+}
+
+

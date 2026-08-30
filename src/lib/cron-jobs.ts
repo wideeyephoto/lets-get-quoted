@@ -279,6 +279,20 @@ export const CRON_JOBS: CronJobSpec[] = [
     importance: 'housekeeping',
     consequence: 'Requested enterprise account closures stop draining their Stripe, QuickBooks, and storage disposal tasks.',
   },
+  {
+    job: 'ad-spend-sync',
+    label: 'Managed Ads daily spend sync',
+    schedule: '*/15 * * * *',
+    importance: 'money',
+    consequence: 'Daily Google Ads and Meta Ads search click spend stops syncing into contractor balances and continuous spend logs.',
+  },
+  {
+    job: 'ad-wallet-refill',
+    label: 'Managed Ads wallet auto-refill',
+    schedule: '*/15 * * * *',
+    importance: 'money',
+    consequence: 'Depleted ad wallet balances below threshold stop automatically charging Stripe and refilling ad spend.',
+  },
 ];
 
 export function cronJob(job: string): CronJobSpec | undefined {

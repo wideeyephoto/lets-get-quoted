@@ -378,4 +378,84 @@ describe('Ad Billing Synchronous Provisioning & Fulfillment', () => {
     expect(campaignState.walletBalanceCents).toBe(30000); // $50 + $250 = $300
     expect(campaignState.spendThisMonthCents).toBe(50000); // $250 + $250 = $500
   });
+
+  it('records continuous ad spend usage, decrements wallet balance, logs history, and triggers refill on threshold drop', async () => {
+    const { recordAdSpendUsage } = await import('@/lib/ad-billing');
+    const { getStripeClient } = await import('@/lib/stripe');
+    const stripe = getStripeClient();
+
+    let siteAdCampaignState: Record<string, unknown> = {
+      fundingModel: 'auto_refill_wallet',
+      status: 'active',
+      walletBalanceCents: 9000, // $90 (above $75 threshold)
+      refillThresholdCents: 7500, // $75
+      refillAmountCents: 25000, // $250
+      maxMonthlySpendCents: 100000,
+      spendThisMonthCents: 10000, // $100 spent
+      stripeCustomerId: 'cus_wallet_spend_user',
+      dailySpendHistory: [],
+    };
+
+    const mockAdmin: any = {
+      from: (table: string) => {
+        if (table === 'sites') {
+          return {
+            select: () => ({
+              eq: () => ({
+                maybeSingle: async () => ({
+                  data: {
+                    id: 'site_spend_user',
+                    account_id: 'acc_spend_user',
+                    content: {
+                      adCampaign: { ...siteAdCampaignState },
+                    },
+                  },
+                }),
+              }),
+            }),
+            update: (payload: any) => ({
+              eq: async () => {
+                siteAdCampaignState = { ...payload.content?.adCampaign };
+                return { error: null };
+              },
+            }),
+          };
+        }
+        return {
+          select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null }) }) }),
+        };
+      },
+    };
+
+    vi.spyOn(stripe.paymentMethods, 'list').mockResolvedValue({
+      data: [{ id: 'pm_card_valid_123' }],
+    } as any);
+
+    vi.spyOn(stripe.paymentIntents, 'create').mockResolvedValue({
+      id: 'pi_auto_refill_from_spend',
+      status: 'succeeded',
+    } as any);
+
+    // Spend $25 (drops balance from $90 to $65, which is < $75 threshold and triggers auto-refill of $250!)
+    const spendResult = await recordAdSpendUsage({
+      admin: mockAdmin,
+      accountId: 'acc_spend_user',
+      spendCents: 2500, // $25
+      clicks: 3,
+      impressions: 65,
+      conversions: 1,
+      date: '2026-08-30',
+      source: 'google_ads_api',
+    });
+
+    expect(spendResult.success).toBe(true);
+    expect(spendResult.refillTriggered).toBe(true); // Refill automatically triggered!
+    expect(siteAdCampaignState.dailySpendHistory).toBeDefined();
+    const history = siteAdCampaignState.dailySpendHistory as any[];
+    expect(history.length).toBe(1);
+    expect(history[0].spendCents).toBe(2500);
+    expect(history[0].clicks).toBe(3);
+    // New balance: $90 - $25 (spend) + $250 (refill) = $315 ($31500)
+    expect(siteAdCampaignState.walletBalanceCents).toBe(31500);
+  });
 });
