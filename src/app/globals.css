@@ -459,60 +459,60 @@
   --rail-progress: #d1590a;
   --rail-complete: #1f9d63;
 
-  --mute-t20: #505d77;
-  --mute-t22: #4e5c76;
-  --mute-i32: #49556d;
-  --mute-t32: #49556d;
-  --mute-i34: #48546c;
-  --mute-i35: #48546b;
-  --mute-t35: #48546b;
-  --mute-t36: #47536a;
-  --mute-i40: #455067;
-  --mute-t40: #455067;
-  --mute-i42: #445065;
-  --mute-t42: #445065;
-  --mute-i44: #434f64;
-  --mute-i45: #434f64;
-  --mute-t45: #434f64;
-  --mute-i46: #424d63;
-  --mute-t46: #424d63;
-  --mute-i48: #414c62;
-  --mute-t48: #414c62;
-  --mute-i50: #404b60;
-  --mute-t50: #404b60;
-  --mute-i52: #3f4a5e;
-  --mute-t52: #3f4a5e;
-  --mute-i54: #3f4a5e;
-  --mute-i55: #3e485d;
-  --mute-t55: #3e485d;
-  --mute-i56: #3e485d;
-  --mute-t56: #3e485d;
-  --mute-i58: #3d475b;
-  --mute-t58: #3d475b;
-  --mute-i60: #3c465a;
-  --mute-t60: #3c465a;
-  --mute-i62: #3b4659;
-  --mute-t62: #3b4659;
+  --mute-t20: #334155;
+  --mute-t22: #334155;
+  --mute-i32: #27364b;
+  --mute-t32: #27364b;
+  --mute-i34: #243246;
+  --mute-i35: #1e293b;
+  --mute-t35: #1e293b;
+  --mute-t36: #1e293b;
+  --mute-i40: #1e293b;
+  --mute-t40: #1e293b;
+  --mute-i42: #162033;
+  --mute-t42: #162033;
+  --mute-i44: #131c2d;
+  --mute-i45: #0f172a;
+  --mute-t45: #0f172a;
+  --mute-i46: #0f172a;
+  --mute-t46: #0f172a;
+  --mute-i48: #0f172a;
+  --mute-t48: #0f172a;
+  --mute-i50: #0b1120;
+  --mute-t50: #0b1120;
+  --mute-i52: #0b1120;
+  --mute-t52: #0b1120;
+  --mute-i54: #0b1120;
+  --mute-i55: #070d19;
+  --mute-t55: #070d19;
+  --mute-i56: #070d19;
+  --mute-t56: #070d19;
+  --mute-i58: #040812;
+  --mute-t58: #040812;
+  --mute-i60: #020617;
+  --mute-t60: #020617;
+  --mute-i62: #020617;
+  --mute-t62: #020617;
 
-  --mute-g432: #49556d;
-  --mute-g434: #48546c;
-  --mute-g350: #404b60;
-  --mute-g255: #3e485d;
-  --mute-g355: #3e485d;
-  --mute-g458: #3d475b;
-  --mute-g260: #3c465a;
-  --mute-g360: #3c465a;
-  --mute-g160: #3c465a;
-  --mute-g262: #3b4659;
-  --mute-g362: #3b4659;
-  --mute-g270: #384254;
-  --mute-g470: #384254;
-  --mute-g370: #384254;
-  --mute-g570: #384254;
-  --mute-g272: #374052;
-  --mute-g275: #364051;
-  --mute-g575: #364051;
-  --mute-g580: #343d4f;
+  --mute-g432: #27364b;
+  --mute-g434: #243246;
+  --mute-g350: #0b1120;
+  --mute-g255: #070d19;
+  --mute-g355: #070d19;
+  --mute-g458: #040812;
+  --mute-g260: #020617;
+  --mute-g360: #020617;
+  --mute-g160: #020617;
+  --mute-g262: #020617;
+  --mute-g362: #020617;
+  --mute-g270: #020617;
+  --mute-g470: #020617;
+  --mute-g370: #020617;
+  --mute-g570: #020617;
+  --mute-g272: #020617;
+  --mute-g275: #020617;
+  --mute-g575: #020617;
+  --mute-g580: #020617;
 
   --ink-mod-green-1: #137749;
   --ink-mod-red-1: #ca2121;
@@ -585,41 +585,41 @@
   --dim-amber-4: #886016;
   --dim-grey-2: #323a4b;
 
-  --edge-t05: rgba(var(--tint), 0.04);
-  --edge-t07: rgba(var(--tint), 0.04);
-  --edge-t08: rgba(var(--tint), 0.05);
-  --edge-t09: rgba(var(--tint), 0.06);
-  --edge-t10: rgba(var(--tint), 0.06);
-  --edge-t11: rgba(var(--tint), 0.07);
-  --edge-t12: rgba(var(--tint), 0.07);
-  --edge-t13: rgba(var(--tint), 0.08);
-  --edge-t14: rgba(var(--tint), 0.09);
-  --edge-t15: rgba(var(--tint), 0.09);
-  --edge-t16: rgba(var(--tint), 0.1);
-  --edge-t17: rgba(var(--tint), 0.11);
-  --edge-t18: rgba(var(--tint), 0.11);
-  --edge-t20: rgba(var(--tint), 0.12);
-  --edge-t22: rgba(var(--tint), 0.14);
-  --edge-t24: rgba(var(--tint), 0.15);
-  --edge-t25: rgba(var(--tint), 0.16);
-  --edge-t26: rgba(var(--tint), 0.16);
-  --edge-t28: rgba(var(--tint), 0.17);
-  --edge-t30: rgba(var(--tint), 0.19);
-  --edge-t32: rgba(var(--tint), 0.2);
-  --edge-t34: rgba(var(--tint), 0.21);
-  --edge-t35: rgba(var(--tint), 0.22);
-  --edge-t40: rgba(var(--tint), 0.25);
-  --edge-t50: rgba(var(--tint), 0.31);
-  --edge-t90: rgba(var(--tint), 0.42);
-  --edge-g14: rgba(var(--grey-1), 0.09);
-  --edge-g16: rgba(var(--grey-1), 0.1);
-  --edge-g18: rgba(var(--grey-1), 0.11);
-  --edge-g20: rgba(var(--grey-1), 0.12);
-  --edge-g22: rgba(var(--grey-1), 0.14);
-  --edge-g24: rgba(var(--grey-1), 0.15);
-  --edge-g25: rgba(var(--grey-1), 0.16);
-  --edge-g26: rgba(var(--grey-1), 0.16);
-  --edge-g28: rgba(var(--grey-1), 0.17);
+  --edge-t05: rgba(var(--tint), 0.08);
+  --edge-t07: rgba(var(--tint), 0.09);
+  --edge-t08: rgba(var(--tint), 0.10);
+  --edge-t09: rgba(var(--tint), 0.11);
+  --edge-t10: rgba(var(--tint), 0.12);
+  --edge-t11: rgba(var(--tint), 0.13);
+  --edge-t12: rgba(var(--tint), 0.15);
+  --edge-t13: rgba(var(--tint), 0.16);
+  --edge-t14: rgba(var(--tint), 0.18);
+  --edge-t15: rgba(var(--tint), 0.19);
+  --edge-t16: rgba(var(--tint), 0.20);
+  --edge-t17: rgba(var(--tint), 0.22);
+  --edge-t18: rgba(var(--tint), 0.23);
+  --edge-t20: rgba(var(--tint), 0.26);
+  --edge-t22: rgba(var(--tint), 0.28);
+  --edge-t24: rgba(var(--tint), 0.30);
+  --edge-t25: rgba(var(--tint), 0.32);
+  --edge-t26: rgba(var(--tint), 0.33);
+  --edge-t28: rgba(var(--tint), 0.35);
+  --edge-t30: rgba(var(--tint), 0.38);
+  --edge-t32: rgba(var(--tint), 0.40);
+  --edge-t34: rgba(var(--tint), 0.42);
+  --edge-t35: rgba(var(--tint), 0.44);
+  --edge-t40: rgba(var(--tint), 0.50);
+  --edge-t50: rgba(var(--tint), 0.60);
+  --edge-t90: rgba(var(--tint), 0.75);
+  --edge-g14: rgba(var(--grey-1), 0.18);
+  --edge-g16: rgba(var(--grey-1), 0.20);
+  --edge-g18: rgba(var(--grey-1), 0.23);
+  --edge-g20: rgba(var(--grey-1), 0.26);
+  --edge-g22: rgba(var(--grey-1), 0.28);
+  --edge-g24: rgba(var(--grey-1), 0.30);
+  --edge-g25: rgba(var(--grey-1), 0.32);
+  --edge-g26: rgba(var(--grey-1), 0.33);
+  --edge-g28: rgba(var(--grey-1), 0.35);
   --nav-work: #c2410c;
   --nav-intake: #0e63c4;
   --nav-team: #0f6b7a;
@@ -66939,90 +66939,217 @@ a.sms-cat-switch:focus-visible {
    SUNLIGHT / DAYLIGHT PALETTE & CONTRAST REFINEMENTS
    ============================================================================ */
 :root[data-theme='sunlight'] .panel,
-:root[data-theme='sunlight'] .workspace-section-card {
+:root[data-theme='sunlight'] .workspace-section-card,
+:root[data-theme='sunlight'] .bset-card,
+:root[data-theme='sunlight'] .bset-master,
+:root[data-theme='sunlight'] .bset-section,
+:root[data-theme='sunlight'] .bset-summary-item,
+:root[data-theme='sunlight'] .feature-card,
+:root[data-theme='sunlight'] .client-modal,
+:root[data-theme='sunlight'] .unsaved-guard-panel,
+:root[data-theme='sunlight'] .settings-panel-card,
+:root[data-theme='sunlight'] .payout-card,
+:root[data-theme='sunlight'] .quickbooks-box {
   background: #ffffff;
-  border-color: #e2e8f0;
-  box-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.05), 0 1px 2px -1px rgba(15, 23, 42, 0.03);
+  border: 1px solid #cbd5e1;
+  border-color: #cbd5e1;
+  box-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.08), 0 2px 6px -1px rgba(15, 23, 42, 0.05);
+}
+
+:root[data-theme='sunlight'] h1,
+:root[data-theme='sunlight'] h2,
+:root[data-theme='sunlight'] h3,
+:root[data-theme='sunlight'] h4,
+:root[data-theme='sunlight'] .section-heading h2,
+:root[data-theme='sunlight'] .workspace-section-heading h2,
+:root[data-theme='sunlight'] .compact-heading h2,
+:root[data-theme='sunlight'] .settings-heading h1 {
+  color: #020617;
+  font-weight: 750;
+}
+
+:root[data-theme='sunlight'] p,
+:root[data-theme='sunlight'] .workspace-card-copy,
+:root[data-theme='sunlight'] .section-desc,
+:root[data-theme='sunlight'] .settings-desc,
+:root[data-theme='sunlight'] .card-desc {
+  color: #1e293b;
+}
+
+:root[data-theme='sunlight'] .eyebrow,
+:root[data-theme='sunlight'] .section-eyebrow,
+:root[data-theme='sunlight'] .compact-heading .eyebrow {
+  color: #9a3412;
+  font-weight: 800;
+  letter-spacing: 0.07em;
 }
 
 :root[data-theme='sunlight'] .settings-shell .settings-tabnav,
-:root[data-theme='sunlight'] .settings-tabnav {
-  background: #f1f5f9;
-  border: 1px solid #e2e8f0;
-  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.04);
+:root[data-theme='sunlight'] .settings-tabnav,
+:root[data-theme='sunlight'] .tabnav {
+  background: #eef2f6;
+  border: 1px solid #cbd5e1;
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.06);
 }
 
 :root[data-theme='sunlight'] .settings-tab {
-  color: #475569;
+  color: #1e293b;
+  font-weight: 600;
 }
 
 :root[data-theme='sunlight'] .settings-tab:hover {
-  color: #0f172a;
-  background: rgba(255, 255, 255, 0.7);
+  color: #020617;
+  background: rgba(255, 255, 255, 0.85);
 }
 
 :root[data-theme='sunlight'] .settings-tab.active {
   background: #ffffff;
   color: #c2410c;
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  box-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.1), 0 1px 2px -1px rgba(15, 23, 42, 0.06);
+  font-weight: 700;
+  border: 1px solid #94a3b8;
+  box-shadow: 0 1px 4px 0 rgba(15, 23, 42, 0.12), 0 1px 2px -1px rgba(15, 23, 42, 0.08);
 }
 
 :root[data-theme='sunlight'] .sign-in-method-row {
   background: #f8fafc;
-  border-color: #e2e8f0;
-  box-shadow: 0 1px 2px 0 rgba(15, 23, 42, 0.03);
+  border: 1px solid #cbd5e1;
+  border-color: #cbd5e1;
+  box-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.05);
 }
 
 :root[data-theme='sunlight'] .sign-in-method-row:hover {
   background: #f1f5f9;
-  border-color: #cbd5e1;
+  border-color: #94a3b8;
+  box-shadow: 0 2px 6px 0 rgba(15, 23, 42, 0.08);
 }
 
 :root[data-theme='sunlight'] .sign-in-method-row .method-icon {
   background: #ffffff;
-  border: 1px solid #e2e8f0;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  border: 1px solid #cbd5e1;
+  color: #020617;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+}
+
+:root[data-theme='sunlight'] .sign-in-method-row .method-name {
+  color: #020617;
+  font-weight: 750;
+}
+
+:root[data-theme='sunlight'] .sign-in-method-row .method-detail {
+  color: #334155;
+  font-weight: 500;
 }
 
 :root[data-theme='sunlight'] .sign-in-method-badge.linked {
   background: #ecfdf5;
   color: #047857;
-  border: 1px solid #a7f3d0;
+  border: 1px solid #6ee7b7;
+  font-weight: 700;
 }
 
 :root[data-theme='sunlight'] .sign-in-method-badge.unlinked {
   background: #f1f5f9;
-  color: #64748b;
-  border: 1px solid #e2e8f0;
+  color: #334155;
+  border: 1px solid #cbd5e1;
+  font-weight: 650;
+}
+
+:root[data-theme='sunlight'] .btn.secondary,
+:root[data-theme='sunlight'] button.btn.secondary,
+:root[data-theme='sunlight'] .btn.outline {
+  background: #ffffff;
+  border: 1px solid #94a3b8;
+  color: #020617;
+  font-weight: 650;
+  box-shadow: 0 1px 2px 0 rgba(15, 23, 42, 0.06);
+}
+
+:root[data-theme='sunlight'] .btn.secondary:hover:not(:disabled),
+:root[data-theme='sunlight'] button.btn.secondary:hover:not(:disabled),
+:root[data-theme='sunlight'] .btn.outline:hover:not(:disabled) {
+  background: #f1f5f9;
+  border-color: #475569;
+  color: #000000;
+  box-shadow: 0 2px 5px 0 rgba(15, 23, 42, 0.12);
+}
+
+:root[data-theme='sunlight'] input:not([type='checkbox']):not([type='radio']):not([type='submit']):not([type='button']),
+:root[data-theme='sunlight'] select,
+:root[data-theme='sunlight'] textarea,
+:root[data-theme='sunlight'] .field input,
+:root[data-theme='sunlight'] .field select,
+:root[data-theme='sunlight'] .field textarea {
+  background: #ffffff;
+  border: 1px solid #94a3b8;
+  color: #020617;
+  font-weight: 500;
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.05);
+}
+
+:root[data-theme='sunlight'] input:focus,
+:root[data-theme='sunlight'] select:focus,
+:root[data-theme='sunlight'] textarea:focus,
+:root[data-theme='sunlight'] .field input:focus,
+:root[data-theme='sunlight'] .field select:focus,
+:root[data-theme='sunlight'] .field textarea:focus {
+  border-color: #ea580c;
+  outline: 2px solid rgba(234, 88, 12, 0.25);
+  box-shadow: 0 0 0 1px #ea580c;
+}
+
+:root[data-theme='sunlight'] label,
+:root[data-theme='sunlight'] .field label,
+:root[data-theme='sunlight'] .form-label {
+  color: #020617;
+  font-weight: 700;
 }
 
 :root[data-theme='sunlight'] .sidenav {
   background: #ffffff;
-  border-right-color: #e2e8f0;
+  border-right: 1px solid #cbd5e1;
+  border-right-color: #cbd5e1;
+  box-shadow: 1px 0 3px 0 rgba(15, 23, 42, 0.04);
 }
 
 :root[data-theme='sunlight'] .sidenav-group-label {
-  color: #64748b;
-  font-weight: 700;
-  letter-spacing: 0.06em;
+  color: #0f172a;
+  font-weight: 800;
+  letter-spacing: 0.07em;
 }
 
 :root[data-theme='sunlight'] .sidenav-count,
 :root[data-theme='sunlight'] .sidenav-total {
-  background: #f1f5f9;
-  border-color: #cbd5e1;
-  color: #334155;
+  background: #e2e8f0;
+  border: 1px solid #94a3b8;
+  border-color: #94a3b8;
+  color: #020617;
+  font-weight: 750;
+}
+
+:root[data-theme='sunlight'] .sidenav-link {
+  color: #1e293b;
+  font-weight: 600;
+}
+
+:root[data-theme='sunlight'] .sidenav-link svg,
+:root[data-theme='sunlight'] .sidenav-link .sidenav-icon {
+  color: #0f172a;
 }
 
 :root[data-theme='sunlight'] .sidenav-link:hover {
-  background: #f8fafc;
-  color: #0f172a;
+  background: #f1f5f9;
+  color: #020617;
 }
 
 :root[data-theme='sunlight'] .sidenav-link.active {
-  background: #f1f5f9;
-  color: #0f172a;
-  font-weight: 650;
+  background: #e2e8f0;
+  color: #020617;
+  font-weight: 700;
   box-shadow: inset 3px 0 0 #ea580c;
+}
+
+:root[data-theme='sunlight'] .sidenav-search input {
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  color: #020617;
 }

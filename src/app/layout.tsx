@@ -2,13 +2,13 @@ import type { Metadata, Viewport } from 'next';
 import { IBM_Plex_Sans, JetBrains_Mono, Space_Grotesk } from 'next/font/google';
 import { GeistSans } from 'geist/font/sans';
 import { cookies, headers } from 'next/headers';
-import Script from 'next/script';
 import type { ReactNode } from 'react';
 import { AppShell } from '@/components/app-shell';
 import { AppShellProvider } from '@/components/app-shell-provider';
 import SpeculationRules from '@/components/speculation-rules';
 import GoogleTag from '@/components/google-tag';
 import { ThemeProvider } from '@/components/use-theme';
+import { cspNonce } from '@/lib/csp-nonce';
 import {
   parseThemeChoice,
   resolveTheme,
@@ -154,6 +154,7 @@ export function generateViewport(): Viewport {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   const { choice, isStandaloneSite, theme } = readServerTheme();
+  const nonce = cspNonce();
   // Explicit choices and known system preferences are stamped during the
   // server render. On a first-ever visit there is no system mirror cookie yet,
   // so THEME_INIT_SCRIPT corrects that one unknowable guess synchronously,
@@ -176,14 +177,12 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       data-theme-choice={isStandaloneSite ? 'dark' : choice}
       suppressHydrationWarning
     >
-      <head>
-        {isStandaloneSite ? null : <GoogleTag />}
-      </head>
       <body className={`${bodyFont.variable} ${displayFont.variable} ${monoFont.variable} ${GeistSans.variable}`}>
         {isStandaloneSite ? null : (
-          <Script
+          <script
             id="lgq-theme-init"
-            strategy="beforeInteractive"
+            nonce={nonce}
+            suppressHydrationWarning
             dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }}
           />
         )}
@@ -197,6 +196,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             <AppShell forceStandaloneSite={isStandaloneSite}>{children}</AppShell>
           </AppShellProvider>
         </ThemeProvider>
+        {isStandaloneSite ? null : <GoogleTag />}
       </body>
     </html>
   );

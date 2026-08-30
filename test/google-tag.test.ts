@@ -1,4 +1,6 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import {
   DEFAULT_GOOGLE_TAG_ID,
   DEFAULT_SIGNUP_CONVERSION_SEND_TO,
@@ -8,7 +10,26 @@ import {
   trackSignupConversion,
 } from '@/lib/google-tag';
 
+const read = (...parts: string[]) =>
+  readFileSync(join(process.cwd(), ...parts), 'utf8').replace(/\r\n/g, '\n');
+
+const GOOGLE_TAG_CODE = read('src', 'components', 'google-tag.tsx');
+const ROOT_LAYOUT_CODE = read('src', 'app', 'layout.tsx');
+
 describe('google-tag defaults and configuration', () => {
+  it('loads nonced Google scripts after hydration from the document body', () => {
+    expect(GOOGLE_TAG_CODE).toContain("import Script from 'next/script';");
+    expect(GOOGLE_TAG_CODE).toContain('id="lgq-google-tag"');
+    expect(GOOGLE_TAG_CODE).toContain('id="lgq-google-tag-init"');
+    expect(GOOGLE_TAG_CODE.match(/strategy="afterInteractive"/g)).toHaveLength(2);
+    expect(GOOGLE_TAG_CODE).not.toMatch(/<script\b/);
+
+    const bodyStart = ROOT_LAYOUT_CODE.indexOf('<body');
+    const googleTag = ROOT_LAYOUT_CODE.indexOf('<GoogleTag />');
+    expect(bodyStart).toBeGreaterThan(-1);
+    expect(googleTag).toBeGreaterThan(bodyStart);
+  });
+
   it('uses default Google tag ID and conversion send_to', () => {
     expect(DEFAULT_GOOGLE_TAG_ID).toBe('AW-18400954668');
     expect(DEFAULT_SIGNUP_CONVERSION_SEND_TO).toBe('AW-18400954668/lyRGCLLH6-QcEKySocZE');

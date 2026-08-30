@@ -10,6 +10,7 @@ const GLOBALS = read('src', 'app', 'globals.css');
 const LAYOUT = read('src', 'app', 'layout.tsx');
 const SETTINGS = read('src', 'app', 'dashboard', 'settings', 'page.tsx');
 const USE_THEME = read('src', 'components', 'use-theme.ts');
+const SPECULATION_RULES = read('src', 'components', 'speculation-rules.tsx');
 
 describe('the floating visibility action', () => {
   it('is an ordinary action button, not a false binary switch', () => {
@@ -39,10 +40,12 @@ describe('the floating visibility action', () => {
 
 describe('first paint and browser chrome', () => {
   it('resolves Auto before hydration and acknowledges the intentional root stamp', () => {
-    expect(LAYOUT).toContain('strategy="beforeInteractive"');
     expect(LAYOUT).toContain('id="lgq-theme-init"');
+    expect(LAYOUT).toContain('nonce={nonce}');
+    expect(LAYOUT).toMatch(/id="lgq-theme-init"[\s\S]*?suppressHydrationWarning[\s\S]*?dangerouslySetInnerHTML/);
     expect(LAYOUT).toContain("window.matchMedia('(prefers-color-scheme: light)')");
     expect(LAYOUT).toContain('suppressHydrationWarning');
+    expect(SPECULATION_RULES).toMatch(/nonce=\{nonce\}[\s\S]*?suppressHydrationWarning/);
   });
 
   it('seeds one shared provider from the server-rendered choice', () => {

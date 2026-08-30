@@ -39,6 +39,7 @@ export default function SpeculationRules() {
     <script
       type="speculationrules"
       nonce={nonce}
+      suppressHydrationWarning
       dangerouslySetInnerHTML={{ __html: JSON.stringify(SPECULATION_RULES) }}
     />
   );

@@ -47,11 +47,15 @@ export default function ServiceAreasField({
   const [testResult, setTestResult] = useState<IntakeLocationTestResult | null>(null);
 
   const activeCities = (content.cities || []).map((c) => c.trim()).filter(Boolean);
+  // A primitive signature keeps the effect stable across unrelated renders,
+  // while still refreshing suggestions whenever the served-city list changes.
+  const activeCitiesKey = JSON.stringify(activeCities);
 
   // Auto-fetch surrounding candidate cities whenever base location or radius changes
   useEffect(() => {
     const loc = baseLocation.trim() || defaultZip.trim() || defaultServiceArea?.trim() || '';
     if (!loc) return;
+    const existingCities = JSON.parse(activeCitiesKey) as string[];
 
     const timer = setTimeout(() => {
       startLoadingTransition(async () => {
@@ -59,7 +63,7 @@ export default function ServiceAreasField({
           const res = await suggestNearbyCitiesAction({
             baseLocation: loc,
             radiusMiles: radius,
-            existingCities: activeCities,
+            existingCities,
           });
 
           if (res.ok && res.candidates && res.candidates.length > 0) {
@@ -74,7 +78,7 @@ export default function ServiceAreasField({
     }, 350);
 
     return () => clearTimeout(timer);
-  }, [baseLocation, radius, defaultZip, defaultServiceArea]);
+  }, [baseLocation, radius, defaultZip, defaultServiceArea, activeCitiesKey]);
 
   // Compute the remaining candidates that haven't been added or dismissed
   const dismissedLowerSet = new Set(dismissedCities.map((c) => c.toLowerCase().trim()));

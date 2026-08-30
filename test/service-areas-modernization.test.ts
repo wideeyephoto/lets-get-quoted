@@ -60,6 +60,13 @@ describe('Service Areas Modernization', () => {
     expect(FIELD_CODE).toContain('intakeTestWarn');
   });
 
+  it('refreshes nearby suggestions when the normalized served-city list changes', () => {
+    expect(FIELD_CODE).toContain('const activeCitiesKey = JSON.stringify(activeCities);');
+    expect(FIELD_CODE).toContain('const existingCities = JSON.parse(activeCitiesKey) as string[];');
+    expect(FIELD_CODE).toContain('existingCities,');
+    expect(FIELD_CODE).toMatch(/\[baseLocation, radius, defaultZip, defaultServiceArea, activeCitiesKey\]/);
+  });
+
   it('ensures suggestNearbyCitiesAction uses site_copy kind (0 AI credits charged)', () => {
     expect(ACTIONS_CODE).toContain('kind: \'site_copy\'');
   });
