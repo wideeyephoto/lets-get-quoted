@@ -201,21 +201,32 @@ as $$
   );
 $$;
 
-grant execute on function public.is_member(uuid) to authenticated;
-grant execute on function public.is_owner(uuid) to authenticated;
-grant execute on function public.is_crew(uuid) to authenticated;
-grant execute on function public.is_office(uuid) to authenticated;
-grant execute on function public.has_office_access(uuid) to authenticated;
-grant execute on function public.crew_on_job(uuid) to authenticated;
-grant execute on function public.crew_owns_crew_row(uuid) to authenticated;
+-- Strip the PUBLIC pseudo-role grant, then re-grant explicitly by role.
+--
+-- anon KEEPS execute, deliberately. These seven helpers are referenced by 62 RLS
+-- policies on anon-readable tables, so without execute a logged-out read raises
+-- "42501 permission denied for function is_owner" instead of returning zero rows.
+-- Verified against this database by applying the batch inside a transaction and
+-- querying as the real anon role: sites, accounts, jobs, invoices, payments,
+-- memberships, sms_consent and services all regressed from "0 rows" to 42501.
+--
+-- Revoking buys nothing. auth.uid() is NULL for anon, so every one of these
+-- returns false unconditionally -- they are an oracle that always says no.
+revoke all on function public.is_member(uuid) from public;
+revoke all on function public.is_owner(uuid) from public;
+revoke all on function public.is_crew(uuid) from public;
+revoke all on function public.is_office(uuid) from public;
+revoke all on function public.has_office_access(uuid) from public;
+revoke all on function public.crew_on_job(uuid) from public;
+revoke all on function public.crew_owns_crew_row(uuid) from public;
 
-revoke all on function public.is_member(uuid) from public, anon;
-revoke all on function public.is_owner(uuid) from public, anon;
-revoke all on function public.is_crew(uuid) from public, anon;
-revoke all on function public.is_office(uuid) from public, anon;
-revoke all on function public.has_office_access(uuid) from public, anon;
-revoke all on function public.crew_on_job(uuid) from public, anon;
-revoke all on function public.crew_owns_crew_row(uuid) from public, anon;
+grant execute on function public.is_member(uuid) to anon, authenticated;
+grant execute on function public.is_owner(uuid) to anon, authenticated;
+grant execute on function public.is_crew(uuid) to anon, authenticated;
+grant execute on function public.is_office(uuid) to anon, authenticated;
+grant execute on function public.has_office_access(uuid) to anon, authenticated;
+grant execute on function public.crew_on_job(uuid) to anon, authenticated;
+grant execute on function public.crew_owns_crew_row(uuid) to anon, authenticated;
 
 -- ----------------------------------------------------------------------------
 -- 4. Purge Singular and Plural quick_stop_priority_zone Policies
