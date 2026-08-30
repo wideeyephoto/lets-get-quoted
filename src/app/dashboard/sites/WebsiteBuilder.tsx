@@ -3439,6 +3439,41 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, mess
                                 <div className={styles.footerPicker} role="group" aria-label="Blog layout">
                                   {BLOG_STYLES.map((b) => (
                                     <button type="button" key={b.key} className={`${styles.footerPickerBtn}${siteContent.blog.layout === b.key ? ` ${styles.footerPickerBtnOn}` : ''}`} aria-pressed={siteContent.blog.layout === b.key} onClick={() => updateBlog({ ...siteContent.blog, layout: b.key })}>
+                                      <span className={styles.layoutWireframe} aria-hidden="true">
+                                        {b.key === 'grid' && (
+                                          <span className={styles.wireframeGrid}>
+                                            <span className={styles.wireframeGridCard} />
+                                            <span className={styles.wireframeGridCard} />
+                                            <span className={styles.wireframeGridCard} />
+                                          </span>
+                                        )}
+                                        {b.key === 'featured' && (
+                                          <span className={styles.wireframeFeatured}>
+                                            <span className={styles.wireframeFeaturedLead} />
+                                            <span className={styles.wireframeFeaturedList}>
+                                              <span className={styles.wireframeFeaturedRow} />
+                                              <span className={styles.wireframeFeaturedRow} />
+                                              <span className={styles.wireframeFeaturedRow} />
+                                            </span>
+                                          </span>
+                                        )}
+                                        {b.key === 'rows' && (
+                                          <span className={styles.wireframeRows}>
+                                            <span className={styles.wireframeRowItem}><span className={styles.wireframeRowThumb} /><span className={styles.wireframeRowLine} /></span>
+                                            <span className={styles.wireframeRowItem}><span className={styles.wireframeRowThumb} /><span className={styles.wireframeRowLine} /></span>
+                                            <span className={styles.wireframeRowItem}><span className={styles.wireframeRowThumb} /><span className={styles.wireframeRowLine} /></span>
+                                          </span>
+                                        )}
+                                        {b.key === 'magazine' && (
+                                          <span className={styles.wireframeMagazine}>
+                                            <span className={styles.wireframeMagazineLead} />
+                                            <span className={styles.wireframeMagazineSub}>
+                                              <span className={styles.wireframeMagazineCard} />
+                                              <span className={styles.wireframeMagazineCard} />
+                                            </span>
+                                          </span>
+                                        )}
+                                      </span>
                                       <strong>{b.label}</strong><small>{b.desc}</small>
                                     </button>
                                   ))}

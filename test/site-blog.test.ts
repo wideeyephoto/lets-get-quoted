@@ -86,3 +86,49 @@ describe('uniqueBlogSlug', () => {
     expect(uniqueBlogSlug('!!!', [])).toBe('post');
   });
 });
+
+describe('BLOG_STYLES', () => {
+  it('provides 4 distinct blog layout styles for users to choose from', async () => {
+    const { BLOG_STYLES } = await import('@/lib/site-content');
+    expect(BLOG_STYLES.map((s) => s.key)).toEqual(['grid', 'featured', 'rows', 'magazine']);
+    expect(BLOG_STYLES).toHaveLength(4);
+    for (const style of BLOG_STYLES) {
+      expect(style.label).toBeTruthy();
+      expect(style.desc).toBeTruthy();
+    }
+  });
+
+  it('accepts and normalizes all 4 blog layouts in site content', () => {
+    for (const key of ['grid', 'featured', 'rows', 'magazine']) {
+      const content = getSiteContent({ blog: { layout: key } });
+      expect(content.blog.layout).toBe(key);
+    }
+  });
+
+  it('falls back unknown blog layouts to grid', () => {
+    const content = getSiteContent({ blog: { layout: 'unknown-layout' } });
+    expect(content.blog.layout).toBe('grid');
+  });
+});
+
+describe('estimateReadingTime', () => {
+  it('handles null, undefined, and empty text gracefully', async () => {
+    const { estimateReadingTime } = await import('@/lib/site-content');
+    expect(estimateReadingTime(null)).toBe('1 min read');
+    expect(estimateReadingTime(undefined)).toBe('1 min read');
+    expect(estimateReadingTime('')).toBe('1 min read');
+    expect(estimateReadingTime('   ')).toBe('1 min read');
+  });
+
+  it('calculates reading time at ~200 words per minute', async () => {
+    const { estimateReadingTime } = await import('@/lib/site-content');
+    const shortText = 'This is a brief 10 word post about home improvement tips.';
+    expect(estimateReadingTime(shortText)).toBe('1 min read');
+
+    const twoHundredWords = Array(200).fill('word').join(' ');
+    expect(estimateReadingTime(twoHundredWords)).toBe('1 min read');
+
+    const fourHundredFiftyWords = Array(450).fill('word').join(' ');
+    expect(estimateReadingTime(fourHundredFiftyWords)).toBe('3 min read');
+  });
+});

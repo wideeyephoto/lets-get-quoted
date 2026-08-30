@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 import type { Site } from '@/lib/sites';
-import { getColorScheme, getPublishedFaqs, getPublishedServices, getPublishedShowcase, getPublishedTestimonials, getSiteContent, glyphForContent, type SiteBlogPost } from '@/lib/site-content';
+import { estimateReadingTime, getColorScheme, getPublishedFaqs, getPublishedServices, getPublishedShowcase, getPublishedTestimonials, getSiteContent, glyphForContent, type SiteBlogPost } from '@/lib/site-content';
 import BlogReadingProgress from './BlogReadingProgress';
 import ServiceIcon from './ServiceIcon';
 import SiteFooter from './SiteFooter';
@@ -83,9 +83,20 @@ export default function SiteBlogArticle({ site, post }: { site: Site; post: Site
     description: post.excerpt || undefined,
     datePublished: post.date || undefined,
     image: post.coverImage || site.hero_url || undefined,
-    author: { '@type': 'Organization', name: site.company_name || 'Local business' },
-    publisher: { '@type': 'Organization', name: site.company_name || 'Local business' },
-    mainEntityOfPage: `${base}/blog/${post.slug}`,
+    author: {
+      '@type': 'Organization',
+      name: site.company_name,
+      url: base,
+    },
+    publisher: {
+      '@type': 'Organization',
+      name: site.company_name,
+      url: base,
+    },
+    mainEntityOfPage: {
+      '@type': 'WebPage',
+      '@id': `${base}/blog/${encodeURIComponent(post.slug)}`,
+    },
   };
 
   return (
@@ -113,7 +124,10 @@ export default function SiteBlogArticle({ site, post }: { site: Site; post: Site
           </nav>
           <article>
             <header className={styles.blogArticleHead}>
-              {date && <time className={styles.blogArticleDate} dateTime={post.date}>{date}</time>}
+              <div className={styles.blogArticleMeta}>
+                {date && <time className={styles.blogArticleDate} dateTime={post.date}>{date}</time>}
+                <span className={styles.blogArticleReadTime}>· {estimateReadingTime(post.body)}</span>
+              </div>
               <h1>{post.title}</h1>
             </header>
             {post.coverImage && <img className={styles.blogArticleImg} src={post.coverImage} alt="" />}

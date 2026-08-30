@@ -20,7 +20,7 @@ import {
   getPublishedTestimonials,
   getPublishedVideoSections,
   videoSectionKey,
-  getSiteContent,
+  estimateReadingTime,
   getSlotImage,
   projectShowcaseHeadings,
 } from '@/lib/site-content';
@@ -277,9 +277,21 @@ export default function SiteContentSections({ site, galleryImages = [] }: SiteCo
       const posts = blog.posts.slice(0, 6);
       const card = (post: (typeof posts)[number]) => (
         <a key={post.id} className={styles.blogCard} href={`/blog/${post.slug}`}>
-          {post.coverImage && <img className={styles.blogCardImg} src={post.coverImage} alt="" loading="lazy" decoding="async" />}
+          {post.coverImage ? (
+            <div className={styles.blogCardImgWrap}>
+              <img className={styles.blogCardImg} src={post.coverImage} alt="" loading="lazy" decoding="async" />
+            </div>
+          ) : (
+            <div className={styles.blogCardFallbackImg}>
+              <span className={styles.blogCardFallbackIcon} aria-hidden="true">✍️</span>
+            </div>
+          )}
           <div className={styles.blogCardBody}>
-            {formatBlogDate(post.date) && <time className={styles.blogCardDate} dateTime={post.date}>{formatBlogDate(post.date)}</time>}
+            <div className={styles.blogMetaRow}>
+              {formatBlogDate(post.date) && <time className={styles.blogCardDate} dateTime={post.date}>{formatBlogDate(post.date)}</time>}
+              <span className={styles.blogCardReadTime}>· {estimateReadingTime(post.body || post.excerpt)}</span>
+              {post.trade && <span className={styles.blogCardTrade}>{post.trade}</span>}
+            </div>
             <h3>{post.title}</h3>
             {post.excerpt && <p>{post.excerpt}</p>}
             <span className={styles.blogCardMore}>Read more <span aria-hidden="true">→</span></span>
@@ -293,10 +305,16 @@ export default function SiteContentSections({ site, galleryImages = [] }: SiteCo
             {card(posts[0])}
             {posts.length > 1 && (
               <div className={styles.blogFeatureList}>
-                {posts.slice(1, 5).map((post) => (
+                {posts.slice(1, 5).map((post, idx) => (
                   <a key={post.id} className={styles.blogListRow} href={`/blog/${post.slug}`}>
-                    {formatBlogDate(post.date) && <time className={styles.blogCardDate} dateTime={post.date}>{formatBlogDate(post.date)}</time>}
-                    <h3>{post.title}</h3>
+                    <span className={styles.blogListIndex}>0{idx + 2}</span>
+                    <div className={styles.blogListContent}>
+                      <div className={styles.blogMetaRow}>
+                        {formatBlogDate(post.date) && <time className={styles.blogCardDate} dateTime={post.date}>{formatBlogDate(post.date)}</time>}
+                        <span className={styles.blogCardReadTime}>· {estimateReadingTime(post.body || post.excerpt)}</span>
+                      </div>
+                      <h3>{post.title}</h3>
+                    </div>
                   </a>
                 ))}
               </div>
@@ -308,14 +326,62 @@ export default function SiteContentSections({ site, galleryImages = [] }: SiteCo
           <div className={styles.blogRows} data-stagger>
             {posts.map((post) => (
               <a key={post.id} className={styles.blogRow} href={`/blog/${post.slug}`}>
-                {post.coverImage && <img className={styles.blogRowImg} src={post.coverImage} alt="" loading="lazy" decoding="async" />}
+                {post.coverImage ? (
+                  <div className={styles.blogRowImgWrap}>
+                    <img className={styles.blogRowImg} src={post.coverImage} alt="" loading="lazy" decoding="async" />
+                  </div>
+                ) : (
+                  <div className={styles.blogRowImgWrap}>
+                    <div className={styles.blogCardFallbackImg}>
+                      <span className={styles.blogCardFallbackIcon} aria-hidden="true">✍️</span>
+                    </div>
+                  </div>
+                )}
                 <div className={styles.blogCardBody}>
-                  {formatBlogDate(post.date) && <time className={styles.blogCardDate} dateTime={post.date}>{formatBlogDate(post.date)}</time>}
+                  <div className={styles.blogMetaRow}>
+                    {formatBlogDate(post.date) && <time className={styles.blogCardDate} dateTime={post.date}>{formatBlogDate(post.date)}</time>}
+                    <span className={styles.blogCardReadTime}>· {estimateReadingTime(post.body || post.excerpt)}</span>
+                    {post.trade && <span className={styles.blogCardTrade}>{post.trade}</span>}
+                  </div>
                   <h3>{post.title}</h3>
                   {post.excerpt && <p>{post.excerpt}</p>}
                 </div>
               </a>
             ))}
+          </div>
+        );
+      } else if (blog.layout === 'magazine' && posts.length > 0) {
+        body = (
+          <div className={styles.blogMagazine} data-stagger>
+            <a className={styles.blogMagazineLead} href={`/blog/${posts[0].slug}`}>
+              {posts[0].coverImage ? (
+                <div className={styles.blogMagazineLeadImgWrap}>
+                  <img className={styles.blogMagazineLeadImg} src={posts[0].coverImage} alt="" loading="lazy" decoding="async" />
+                </div>
+              ) : (
+                <div className={styles.blogMagazineLeadImgWrap}>
+                  <div className={styles.blogCardFallbackImg}>
+                    <span className={styles.blogCardFallbackIcon} aria-hidden="true">✍️</span>
+                  </div>
+                </div>
+              )}
+              <div className={styles.blogMagazineLeadBody}>
+                <div className={styles.blogFeaturedBadge}>★ Featured Story</div>
+                <div className={styles.blogMetaRow}>
+                  {formatBlogDate(posts[0].date) && <time className={styles.blogCardDate} dateTime={posts[0].date}>{formatBlogDate(posts[0].date)}</time>}
+                  <span className={styles.blogCardReadTime}>· {estimateReadingTime(posts[0].body || posts[0].excerpt)}</span>
+                  {posts[0].trade && <span className={styles.blogCardTrade}>{posts[0].trade}</span>}
+                </div>
+                <h3>{posts[0].title}</h3>
+                {posts[0].excerpt && <p>{posts[0].excerpt}</p>}
+                <span className={styles.blogCardMore}>Read featured story <span aria-hidden="true">→</span></span>
+              </div>
+            </a>
+            {posts.length > 1 && (
+              <div className={styles.blogMagazineSubGrid}>
+                {posts.slice(1, 6).map(card)}
+              </div>
+            )}
           </div>
         );
       } else {

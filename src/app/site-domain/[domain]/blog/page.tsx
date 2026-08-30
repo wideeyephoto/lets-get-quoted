@@ -19,7 +19,7 @@ export default async function CustomDomainBlogIndexPage({ params }: Props) {
   if (!site || !site.custom_domain_verified_at) notFound();
   const blog = getPublishedBlog(site.content);
   if (!blog) notFound();
-  return <SiteBlogIndex site={site} title={blog.title} intro={blog.intro} posts={blog.posts} />;
+  return <SiteBlogIndex site={site} title={blog.title} intro={blog.intro} posts={blog.posts} layout={blog.layout} />;
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {

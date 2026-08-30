@@ -661,6 +661,7 @@ export const BLOG_STYLES = [
   { key: 'grid', label: 'Card grid', desc: 'Even cover-photo cards — the scannable default.' },
   { key: 'featured', label: 'Featured + list', desc: 'A big lead post with the rest in a list beside it.' },
   { key: 'rows', label: 'List rows', desc: 'Horizontal thumbnail rows — editorial and compact.' },
+  { key: 'magazine', label: 'Magazine spotlight', desc: 'Full-width hero story banner followed by an editorial sub-grid.' },
 ] as const;
 const BLOG_LAYOUT_KEYS = new Set<string>(BLOG_STYLES.map((style) => style.key));
 
@@ -2566,6 +2567,16 @@ export function uniqueBlogSlug(title: string, existing: SiteBlogPost[], ignoreId
   let suffix = 2;
   while (taken.has(slug)) slug = `${base}-${suffix++}`;
   return slug;
+}
+
+/**
+ * Estimates reading time from body copy or excerpt (based on ~200 WPM).
+ */
+export function estimateReadingTime(text: string | null | undefined): string {
+  if (!text) return '1 min read';
+  const words = text.trim().split(/\s+/).filter(Boolean).length;
+  const minutes = Math.max(1, Math.ceil(words / 200));
+  return `${minutes} min read`;
 }
 
 // Forge, Guild and Vista each render a built-in "recent work" band. It used to
