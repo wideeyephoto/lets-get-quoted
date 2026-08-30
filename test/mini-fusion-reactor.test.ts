@@ -51,11 +51,11 @@ describe('Mini Fusion Reactor & Energy Spark Avatar', () => {
     expect(modalContent).toContain("comp.id === 'assistant'");
   });
 
-  it('resolves AI Assistant energy spark profile correctly', () => {
+  it('resolves AI Assistant energy orbit profile correctly', () => {
     const assistant = getCompanion('assistant');
     expect(assistant.id).toBe('assistant');
     expect(assistant.name).toBe('AI Assistant');
-    expect(assistant.badgeLabel).toBe('Energy Spark');
-    expect(assistant.species).toBe('Energy Spark');
+    expect(assistant.badgeLabel).toBe('Energy Orbit');
+    expect(assistant.species).toBe('Energy Orbit');
   });
 });

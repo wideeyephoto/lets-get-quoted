@@ -394,7 +394,7 @@ export const ALL_FEATURES_CATALOG: FeatureCatalogCategory[] = [
       {
         id: 'sparky-ai-sidekick',
         name: 'In-App AI Copilot & Trade Companions',
-        desc: 'In-app AI assistant with live screen awareness and customizable trade avatars (Sparky, Diesel, Echo, and AI Spark). Text site photos, notes, and voice memos—your copilot sorts them to the right job and reminds you later.',
+        desc: 'In-app AI assistant with live screen awareness and customizable avatars (Energy Orbit, Diesel, and Echo). Text site photos, notes, and voice memos—your copilot sorts them to the right job and reminds you later.',
         tags: ['AI Copilot', 'AI Sidekick', 'Text-to-Job', 'Photo Sorting', 'Voice & Text'],
         subBullets: [
           'Text-to-Job photo & note sorting: text site photos or receipts via SMS and your AI Copilot files them directly into the right job record.',

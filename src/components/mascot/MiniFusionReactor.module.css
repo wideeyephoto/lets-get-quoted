@@ -22,9 +22,9 @@
   border-radius: 50%;
   background: radial-gradient(
     circle,
-    rgba(0, 245, 255, 0.28) 0%,
-    rgba(251, 191, 36, 0.16) 45%,
-    rgba(14, 165, 233, 0.08) 70%,
+    rgba(37, 99, 235, 0.4) 0%,
+    rgba(30, 58, 138, 0.28) 45%,
+    rgba(15, 23, 42, 0.12) 70%,
     transparent 85%
   );
   filter: blur(4px);
@@ -41,20 +41,20 @@
   border-radius: 50%;
   background: conic-gradient(
     from 45deg,
-    #1e293b 0deg,
-    #334155 60deg,
-    #0f172a 120deg,
-    #475569 180deg,
-    #1e293b 240deg,
-    #334155 300deg,
-    #0f172a 360deg
+    #0f172a 0deg,
+    #1e293b 60deg,
+    #090d16 120deg,
+    #334155 180deg,
+    #0f172a 240deg,
+    #1e293b 300deg,
+    #090d16 360deg
   );
   box-shadow:
-    inset 0 1px 2px rgba(255, 255, 255, 0.35),
-    inset 0 -1px 2px rgba(0, 0, 0, 0.8),
-    0 2px 8px rgba(0, 0, 0, 0.7),
-    0 0 14px rgba(0, 245, 255, 0.25);
-  border: 1px solid rgba(56, 189, 248, 0.4);
+    inset 0 1px 2px rgba(255, 255, 255, 0.25),
+    inset 0 -1px 2px rgba(0, 0, 0, 0.85),
+    0 2px 8px rgba(0, 0, 0, 0.75),
+    0 0 14px rgba(29, 78, 216, 0.45);
+  border: 1px solid rgba(37, 99, 235, 0.45);
   padding: 6%;
   box-sizing: border-box;
   display: flex;
@@ -66,9 +66,9 @@
 /* Cardinal Notch LED Status Indicators */
 .notchLed {
   position: absolute;
-  background: #00f5ff;
+  background: #2563eb;
   border-radius: 2px;
-  box-shadow: 0 0 6px #00f5ff, 0 0 10px rgba(0, 245, 255, 0.8);
+  box-shadow: 0 0 6px #2563eb, 0 0 10px rgba(37, 99, 235, 0.85);
   animation: ledPulse 2s ease-in-out infinite alternate;
   z-index: 4;
 }
@@ -113,22 +113,22 @@
   border-radius: 50%;
   background: radial-gradient(
     circle at 50% 50%,
-    #020617 0%,
-    #091224 45%,
+    #0a192f 0%,
+    #061226 45%,
     #020817 75%,
     #000000 100%
   );
   overflow: hidden;
   box-shadow:
     inset 0 0 12px rgba(0, 0, 0, 0.95),
-    inset 0 0 6px rgba(0, 245, 255, 0.45);
-  border: 1px solid rgba(0, 245, 255, 0.35);
+    inset 0 0 8px rgba(29, 78, 216, 0.55);
+  border: 1px solid rgba(37, 99, 235, 0.45);
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-/* Swirling Plasma Vortex Layer 1 (Clockwise) */
+/* Swirling Plasma Vortex Layer 1 (Clockwise Dark / Royal Blue) */
 .plasmaVortexA {
   position: absolute;
   inset: -15%;
@@ -136,11 +136,11 @@
   background: conic-gradient(
     from 0deg,
     transparent 0deg,
-    rgba(0, 245, 255, 0.45) 45deg,
-    rgba(56, 189, 248, 0.75) 90deg,
-    rgba(251, 191, 36, 0.65) 150deg,
-    rgba(245, 158, 11, 0.85) 195deg,
-    rgba(168, 85, 247, 0.4) 260deg,
+    rgba(29, 78, 216, 0.6) 45deg,
+    rgba(37, 99, 235, 0.8) 90deg,
+    rgba(30, 58, 138, 0.7) 150deg,
+    rgba(23, 37, 84, 0.85) 195deg,
+    rgba(30, 64, 175, 0.5) 260deg,
     transparent 360deg
   );
   filter: blur(3px);
@@ -150,7 +150,7 @@
   z-index: 1;
 }
 
-/* Swirling Plasma Vortex Layer 2 (Counter-Clockwise Shear) */
+/* Swirling Plasma Vortex Layer 2 (Counter-Clockwise Deep Navy / Cobalt Shear) */
 .plasmaVortexB {
   position: absolute;
   inset: -15%;
@@ -158,10 +158,10 @@
   background: conic-gradient(
     from 180deg,
     transparent 0deg,
-    rgba(251, 191, 36, 0.5) 40deg,
-    rgba(245, 158, 11, 0.8) 100deg,
-    rgba(0, 245, 255, 0.7) 160deg,
-    rgba(14, 165, 233, 0.4) 220deg,
+    rgba(30, 58, 138, 0.65) 40deg,
+    rgba(23, 37, 84, 0.85) 100deg,
+    rgba(37, 99, 235, 0.75) 160deg,
+    rgba(29, 78, 216, 0.5) 220deg,
     transparent 360deg
   );
   filter: blur(4px);
@@ -178,7 +178,7 @@
   width: 100%;
   height: 100%;
   animation: spinClockwise 16s linear infinite;
-  filter: drop-shadow(0 0 3px rgba(0, 245, 255, 0.65));
+  filter: drop-shadow(0 0 3px rgba(37, 99, 235, 0.75));
   z-index: 2;
   pointer-events: none;
 }
@@ -190,7 +190,7 @@
   width: 100%;
   height: 100%;
   animation: spinCounterClockwise 10s linear infinite;
-  filter: drop-shadow(0 0 3px rgba(251, 191, 36, 0.6));
+  filter: drop-shadow(0 0 3px rgba(30, 64, 175, 0.7));
   z-index: 2;
   pointer-events: none;
 }
@@ -201,7 +201,7 @@
   inset: 0;
   width: 100%;
   height: 100%;
-  filter: drop-shadow(0 0 4px #00f5ff) drop-shadow(0 0 2px #ffffff);
+  filter: drop-shadow(0 0 4px #2563eb) drop-shadow(0 0 2px #60a5fa);
   z-index: 3;
   pointer-events: none;
   animation: lightningJitter 1.8s steps(2, start) infinite;
@@ -229,7 +229,7 @@
   inset: 0;
   width: 100%;
   height: 100%;
-  filter: drop-shadow(0 0 4px #fbbf24) drop-shadow(0 0 1px #fff);
+  filter: drop-shadow(0 0 4px #1d4ed8) drop-shadow(0 0 1px #3b82f6);
   z-index: 3;
   pointer-events: none;
   animation: lightningJitter 2.4s steps(2, start) infinite reverse;
@@ -257,7 +257,7 @@
   inset: 0;
   width: 100%;
   height: 100%;
-  filter: drop-shadow(0 0 3px #ffffff) drop-shadow(0 0 6px #00f5ff);
+  filter: drop-shadow(0 0 3px #ffffff) drop-shadow(0 0 6px #2563eb);
   z-index: 4;
   pointer-events: none;
   animation: microArcCrackle 0.28s steps(1, end) infinite;
@@ -274,32 +274,32 @@
 .spark1 {
   width: 7%;
   height: 7%;
-  background: #00f5ff;
-  box-shadow: 0 0 6px #00f5ff, 0 0 10px #ffffff;
+  background: #3b82f6;
+  box-shadow: 0 0 6px #2563eb, 0 0 10px #93c5fd;
   animation: orbit1 2.6s linear infinite;
 }
 
 .spark2 {
   width: 6%;
   height: 6%;
-  background: #fbbf24;
-  box-shadow: 0 0 6px #fbbf24, 0 0 8px #ffffff;
+  background: #1d4ed8;
+  box-shadow: 0 0 6px #1e40af, 0 0 8px #60a5fa;
   animation: orbit2 3.4s linear infinite reverse;
 }
 
 .spark3 {
   width: 5%;
   height: 5%;
-  background: #a855f7;
-  box-shadow: 0 0 5px #a855f7, 0 0 8px #38bdf8;
+  background: #2563eb;
+  box-shadow: 0 0 5px #1d4ed8, 0 0 8px #3b82f6;
   animation: orbit3 2.1s linear infinite;
 }
 
 .spark4 {
   width: 6%;
   height: 6%;
-  background: #ffffff;
-  box-shadow: 0 0 8px #ffffff, 0 0 12px #00f5ff;
+  background: #93c5fd;
+  box-shadow: 0 0 8px #60a5fa, 0 0 12px #1d4ed8;
   animation: orbit4 3.9s linear infinite;
 }
 
@@ -323,10 +323,11 @@
   border-radius: 50%;
   background: radial-gradient(
     circle at 50% 50%,
-    rgba(255, 255, 255, 0.95) 0%,
-    rgba(0, 245, 255, 0.85) 30%,
-    rgba(251, 191, 36, 0.6) 60%,
-    rgba(245, 158, 11, 0.25) 80%,
+    rgba(255, 255, 255, 0.9) 0%,
+    rgba(96, 165, 250, 0.8) 25%,
+    rgba(37, 99, 235, 0.85) 50%,
+    rgba(30, 58, 138, 0.6) 75%,
+    rgba(15, 23, 42, 0.2) 90%,
     transparent 100%
   );
   filter: blur(4px);
@@ -338,10 +339,10 @@
   position: absolute;
   inset: -60%;
   background:
-    linear-gradient(0deg, transparent 46%, #ffffff 49%, #00f5ff 51%, transparent 54%),
-    linear-gradient(90deg, transparent 46%, #ffffff 49%, #00f5ff 51%, transparent 54%),
-    linear-gradient(45deg, transparent 47%, rgba(251, 191, 36, 0.9) 49%, rgba(255, 255, 255, 0.9) 51%, transparent 53%),
-    linear-gradient(-45deg, transparent 47%, rgba(251, 191, 36, 0.9) 49%, rgba(255, 255, 255, 0.9) 51%, transparent 53%);
+    linear-gradient(0deg, transparent 46%, #ffffff 49%, #3b82f6 51%, transparent 54%),
+    linear-gradient(90deg, transparent 46%, #ffffff 49%, #3b82f6 51%, transparent 54%),
+    linear-gradient(45deg, transparent 47%, rgba(37, 99, 235, 0.9) 49%, rgba(255, 255, 255, 0.9) 51%, transparent 53%),
+    linear-gradient(-45deg, transparent 47%, rgba(37, 99, 235, 0.9) 49%, rgba(255, 255, 255, 0.9) 51%, transparent 53%);
   border-radius: 50%;
   animation: spinClockwise 8s linear infinite;
   mix-blend-mode: screen;
@@ -356,10 +357,10 @@
   border-radius: 50%;
   background: #ffffff;
   box-shadow:
-    0 0 8px #ffffff,
-    0 0 16px #00f5ff,
-    0 0 24px #fbbf24,
-    0 0 32px rgba(0, 245, 255, 0.9);
+    0 0 6px #ffffff,
+    0 0 12px #60a5fa,
+    0 0 20px #2563eb,
+    0 0 28px rgba(30, 64, 175, 0.9);
   animation: coreFlicker 0.4s ease-in-out infinite alternate;
 }
 
@@ -380,12 +381,12 @@
 }
 
 .hudText {
-  fill: #38bdf8;
+  fill: #60a5fa;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 7px;
   font-weight: 800;
   letter-spacing: 2px;
-  text-shadow: 0 0 5px rgba(56, 189, 248, 0.9);
+  text-shadow: 0 0 5px rgba(37, 99, 235, 0.9);
   opacity: 0.85;
 }
 
@@ -403,7 +404,7 @@
     ),
     radial-gradient(
       circle at 75% 82%,
-      rgba(0, 245, 255, 0.2) 0%,
+      rgba(37, 99, 235, 0.25) 0%,
       transparent 50%
     );
   box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.4);
@@ -418,7 +419,7 @@
 
 .reactorInteractive:hover .fusionCore {
   transform: scale(1.18);
-  filter: drop-shadow(0 0 8px #00f5ff);
+  filter: drop-shadow(0 0 8px #2563eb);
 }
 
 .reactorInteractive:hover .ambientGlow {
@@ -450,9 +451,9 @@
 .reactorThinking .ambientGlow {
   background: radial-gradient(
     circle,
-    rgba(251, 191, 36, 0.45) 0%,
-    rgba(0, 245, 255, 0.35) 45%,
-    rgba(245, 158, 11, 0.15) 70%,
+    rgba(37, 99, 235, 0.45) 0%,
+    rgba(29, 78, 216, 0.35) 45%,
+    rgba(30, 58, 138, 0.2) 70%,
     transparent 85%
   );
   animation-duration: 1.2s;
@@ -537,18 +538,18 @@
   }
   100% {
     transform: scale(1.25);
-    filter: brightness(1.45) drop-shadow(0 0 10px #fbbf24);
+    filter: brightness(1.4) drop-shadow(0 0 10px #2563eb);
   }
 }
 
 @keyframes ledPulse {
   0% {
     opacity: 0.7;
-    box-shadow: 0 0 4px #00f5ff;
+    box-shadow: 0 0 4px #2563eb;
   }
   100% {
     opacity: 1;
-    box-shadow: 0 0 8px #00f5ff, 0 0 12px rgba(0, 245, 255, 0.9);
+    box-shadow: 0 0 8px #2563eb, 0 0 12px rgba(37, 99, 235, 0.9);
   }
 }
 

@@ -71,20 +71,20 @@ export default function MiniFusionReactor({
               cx="50"
               cy="50"
               r="44"
-              stroke="#00f5ff"
+              stroke="#2563eb"
               strokeWidth="1.2"
               strokeDasharray="4 8"
-              strokeOpacity="0.75"
+              strokeOpacity="0.8"
             />
             {/* Stator Magnetic Coil Nodes */}
-            <circle cx="50" cy="6" r="2.2" fill="#00f5ff" />
-            <circle cx="94" cy="50" r="2.2" fill="#00f5ff" />
-            <circle cx="50" cy="94" r="2.2" fill="#00f5ff" />
-            <circle cx="6" cy="50" r="2.2" fill="#00f5ff" />
-            <circle cx="18.9" cy="18.9" r="1.5" fill="#38bdf8" />
-            <circle cx="81.1" cy="18.9" r="1.5" fill="#38bdf8" />
-            <circle cx="81.1" cy="81.1" r="1.5" fill="#38bdf8" />
-            <circle cx="18.9" cy="81.1" r="1.5" fill="#38bdf8" />
+            <circle cx="50" cy="6" r="2.2" fill="#3b82f6" />
+            <circle cx="94" cy="50" r="2.2" fill="#3b82f6" />
+            <circle cx="50" cy="94" r="2.2" fill="#3b82f6" />
+            <circle cx="6" cy="50" r="2.2" fill="#3b82f6" />
+            <circle cx="18.9" cy="18.9" r="1.5" fill="#1d4ed8" />
+            <circle cx="81.1" cy="18.9" r="1.5" fill="#1d4ed8" />
+            <circle cx="81.1" cy="81.1" r="1.5" fill="#1d4ed8" />
+            <circle cx="18.9" cy="81.1" r="1.5" fill="#1d4ed8" />
           </svg>
 
           {/* Inner Counter-Rotating Magnetic Pinch Ring */}
@@ -100,20 +100,20 @@ export default function MiniFusionReactor({
               cx="50"
               cy="50"
               r="34"
-              stroke="#fbbf24"
+              stroke="#1d4ed8"
               strokeWidth="0.9"
               strokeDasharray="6 6"
-              strokeOpacity="0.6"
+              strokeOpacity="0.7"
             />
-            <circle cx="50" cy="16" r="1.8" fill="#fbbf24" />
-            <circle cx="79.4" cy="33" r="1.8" fill="#fbbf24" />
-            <circle cx="79.4" cy="67" r="1.8" fill="#fbbf24" />
-            <circle cx="50" cy="84" r="1.8" fill="#fbbf24" />
-            <circle cx="20.6" cy="67" r="1.8" fill="#fbbf24" />
-            <circle cx="20.6" cy="33" r="1.8" fill="#fbbf24" />
+            <circle cx="50" cy="16" r="1.8" fill="#2563eb" />
+            <circle cx="79.4" cy="33" r="1.8" fill="#2563eb" />
+            <circle cx="79.4" cy="67" r="1.8" fill="#2563eb" />
+            <circle cx="50" cy="84" r="1.8" fill="#2563eb" />
+            <circle cx="20.6" cy="67" r="1.8" fill="#2563eb" />
+            <circle cx="20.6" cy="33" r="1.8" fill="#2563eb" />
           </svg>
 
-          {/* Dynamic Electric Plasma Lightning Arcs (Layer 1 - Primary Cyan Filaments) */}
+          {/* Dynamic Electric Plasma Lightning Arcs (Layer 1 - Primary Royal / Deep Blue Filaments) */}
           <svg
             className={styles.lightningLayerA}
             viewBox="0 0 100 100"
@@ -123,7 +123,7 @@ export default function MiniFusionReactor({
           >
             <path
               d="M50 50 L42 38 L48 32 L36 20 L30 14"
-              stroke="#00f5ff"
+              stroke="#2563eb"
               strokeWidth="1.4"
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -131,7 +131,7 @@ export default function MiniFusionReactor({
             />
             <path
               d="M50 50 L58 40 L54 30 L66 18 L76 16"
-              stroke="#a5f3fc"
+              stroke="#60a5fa"
               strokeWidth="1.2"
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -139,7 +139,7 @@ export default function MiniFusionReactor({
             />
             <path
               d="M50 50 L38 58 L32 54 L20 66 L14 74"
-              stroke="#38bdf8"
+              stroke="#1d4ed8"
               strokeWidth="1.3"
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -147,7 +147,7 @@ export default function MiniFusionReactor({
             />
             <path
               d="M50 50 L62 56 L58 66 L72 76 L82 82"
-              stroke="#00f5ff"
+              stroke="#3b82f6"
               strokeWidth="1.5"
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -155,7 +155,7 @@ export default function MiniFusionReactor({
             />
           </svg>
 
-          {/* Dynamic Electric Plasma Lightning Arcs (Layer 2 - Solar Gold / Amber Filaments) */}
+          {/* Dynamic Electric Plasma Lightning Arcs (Layer 2 - Deep Navy / Cobalt Filaments) */}
           <svg
             className={styles.lightningLayerB}
             viewBox="0 0 100 100"
@@ -165,7 +165,7 @@ export default function MiniFusionReactor({
           >
             <path
               d="M50 50 L60 42 L68 46 L78 36 L86 28"
-              stroke="#fbbf24"
+              stroke="#1e40af"
               strokeWidth="1.4"
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -173,7 +173,7 @@ export default function MiniFusionReactor({
             />
             <path
               d="M50 50 L44 60 L48 68 L36 78 L26 84"
-              stroke="#f59e0b"
+              stroke="#1d4ed8"
               strokeWidth="1.3"
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -181,7 +181,7 @@ export default function MiniFusionReactor({
             />
             <path
               d="M50 50 L38 42 L34 46 L22 38 L16 30"
-              stroke="#fde68a"
+              stroke="#3b82f6"
               strokeWidth="1.1"
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -189,7 +189,7 @@ export default function MiniFusionReactor({
             />
             <path
               d="M50 50 L64 58 L70 54 L82 64 L88 72"
-              stroke="#fbbf24"
+              stroke="#1e3a8a"
               strokeWidth="1.2"
               strokeLinecap="round"
               strokeLinejoin="round"

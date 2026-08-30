@@ -186,7 +186,7 @@ const KNOWLEDGE_BASE: FaqItem[] = [
       'no app',
     ],
     answer:
-      'Your AI Copilot is your 24/7 contractor sidekick—with customizable companions for your trade (including Sparky, Diesel, Echo, and modern AI Spark). You don’t even need to open an app: text or call your Copilot to draft quotes, file site photos, reschedule jobs, check unpaid invoices, and set reminders.',
+      'Your AI Copilot is your 24/7 contractor sidekick—with customizable avatars (including Energy Orbit, Diesel, and Echo). You don’t even need to open an app: text or call your Copilot to draft quotes, file site photos, reschedule jobs, check unpaid invoices, and set reminders.',
     ctaText: 'Explore AI Copilot & Demos',
     ctaHref: '/features/sparky',
   },

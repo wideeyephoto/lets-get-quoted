@@ -85,31 +85,22 @@ export default function SparkyAvatar({
   status = 'none',
   showSparkle = false,
   className = '',
-  alt = 'Copilot - Contractor AI Sidekick',
+  alt = 'AI Assistant - Contractor AI Sidekick',
   priority = false,
   bordered = true,
 }: SparkyAvatarProps) {
   const pixelSize = typeof size === 'number' ? size : SIZE_MAP[size] || 36;
   
-  let imageSrc = customSrc || EXPRESSION_SRC[expression] || EXPRESSION_SRC.avatar;
-
-  if (companionId && companionId !== 'sparky') {
-    const companion = getCompanion(companionId);
-    imageSrc = companion.avatarSrc;
-  } else {
-    // If trade avatar is available and expression is default avatar, use trade gear
-    const tradeKey = (trade || '').toLowerCase();
-    if (expression === 'avatar' && TRADE_AVATAR_SRC[tradeKey]) {
-      imageSrc = TRADE_AVATAR_SRC[tradeKey];
-    }
-  }
-
   const activeCompanion = getCompanion(companionId, trade);
-  const companionName = activeCompanion?.name || 'AI Copilot';
+  const companionName = activeCompanion?.name || 'AI Assistant';
+  const imageSrc = customSrc || activeCompanion.avatarSrc || EXPRESSION_SRC.avatar;
 
   const isReactor =
+    !companionId ||
     companionId === 'assistant' ||
+    companionId === 'sparky' ||
     companionId === 'nova' ||
+    activeCompanion.id === 'assistant' ||
     customSrc === 'reactor' ||
     imageSrc?.includes('spark.jpg') ||
     imageSrc?.includes('energy-spark') ||
