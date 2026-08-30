@@ -158,7 +158,14 @@ export default function ManagedAdsScreen({
   >('mobile');
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [managementTab, setManagementTab] = useState<'overview' | 'targeting' | 'creative' | 'billing'>('overview');
-  const [showManagementConsole, setShowManagementConsole] = useState<boolean>(Boolean(initialWalletState?.status === 'active'));
+  const [showManagementConsole, setShowManagementConsole] = useState<boolean>(Boolean(initialWalletState?.status === 'active' || initialWalletState?.status === 'paused'));
+  const [currentStatus, setCurrentStatus] = useState<string>(initialWalletState?.status || 'inactive');
+  const [isCancelScheduled, setIsCancelScheduled] = useState<boolean>(Boolean(initialWalletState?.cancelAtPeriodEnd));
+  const [actionLoading, setActionLoading] = useState<'pause' | 'resume' | 'cancel' | null>(null);
+  const [actionNotice, setActionNotice] = useState<string | null>(null);
+  const [smsAlertsEnabled, setSmsAlertsEnabled] = useState<boolean>(initialWalletState?.smsAlertsEnabled !== false);
+  const [smsAlertPhone, setSmsAlertPhone] = useState<string>(initialWalletState?.smsAlertPhone || initialPhone || '');
+  const [updatingSms, setUpdatingSms] = useState<boolean>(false);
 
   // Custom Specific Campaign Focus / Promotion (AI Smart Field)
   const [customFocus, setCustomFocus] = useState<string>('');
@@ -402,6 +409,8 @@ export default function ManagedAdsScreen({
               scheduleDays: selectedDays.join(','),
               startHour: allHours ? 0 : startHour,
               endHour: allHours ? 24 : endHour,
+              smsAlertsEnabled,
+              smsAlertPhone: smsAlertPhone.trim() || undefined,
               returnUrl: window.location.href,
             }
           : {
@@ -418,6 +427,8 @@ export default function ManagedAdsScreen({
               scheduleDays: selectedDays.join(','),
               startHour: allHours ? 0 : startHour,
               endHour: allHours ? 24 : endHour,
+              smsAlertsEnabled,
+              smsAlertPhone: smsAlertPhone.trim() || undefined,
               returnUrl: window.location.href,
             };
 
@@ -436,6 +447,30 @@ export default function ManagedAdsScreen({
       alert('Unable to connect to billing. Please try again.');
     } finally {
       setCheckoutLoading(false);
+    }
+  };
+
+  const handleToggleSmsAlerts = async (enabled: boolean) => {
+    setSmsAlertsEnabled(enabled);
+    setUpdatingSms(true);
+    try {
+      const res = await fetch('/api/stripe/ad-budget', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'update_sms_alerts',
+          smsAlertsEnabled: enabled,
+          smsAlertPhone: smsAlertPhone.trim() || undefined,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setActionNotice(enabled ? '📱 SMS billing alerts enabled.' : '🔕 SMS billing alerts disabled.');
+      }
+    } catch {
+      console.warn('Failed to update SMS alert preference.');
+    } finally {
+      setUpdatingSms(false);
     }
   };
 
@@ -460,6 +495,77 @@ export default function ManagedAdsScreen({
       alert('Unable to reach customer billing portal.');
     } finally {
       setPortalLoading(false);
+    }
+  };
+
+  const handlePauseCampaign = async () => {
+    if (!confirm('Are you sure you want to pause your ad campaigns? Live bidding will be suspended and your ad spend will pause.')) return;
+    setActionLoading('pause');
+    setActionNotice(null);
+    try {
+      const res = await fetch('/api/stripe/ad-budget', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'pause' }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setCurrentStatus('paused');
+        setActionNotice('⏸️ Ad campaigns paused. Live bidding is suspended.');
+      } else {
+        alert(data.message || data.error || 'Failed to pause campaign.');
+      }
+    } catch {
+      alert('Network error pausing campaign.');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleResumeCampaign = async () => {
+    setActionLoading('resume');
+    setActionNotice(null);
+    try {
+      const res = await fetch('/api/stripe/ad-budget', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'resume' }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setCurrentStatus('active');
+        setActionNotice('▶️ Ad campaigns resumed. Live bidding is active.');
+      } else {
+        alert(data.message || data.error || 'Failed to resume campaign.');
+      }
+    } catch {
+      alert('Network error resuming campaign.');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleCancelCampaign = async () => {
+    if (!confirm('Are you sure you want to cancel your AI Advertising subscription? Your campaigns will be paused and your subscription will end at the close of your current billing period.')) return;
+    setActionLoading('cancel');
+    setActionNotice(null);
+    try {
+      const res = await fetch('/api/stripe/ad-budget', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'cancel', immediate: false }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setIsCancelScheduled(true);
+        setActionNotice('❌ Subscription cancelled. Campaigns will stop at the end of the billing period.');
+      } else {
+        alert(data.message || data.error || 'Failed to cancel subscription.');
+      }
+    } catch {
+      alert('Network error cancelling subscription.');
+    } finally {
+      setActionLoading(null);
     }
   };
 
@@ -606,9 +712,17 @@ export default function ManagedAdsScreen({
             🚀 Launch &amp; Setup Wizard
           </button>
         </div>
-        {isLiveActive ? (
+        {currentStatus === 'active' && !isCancelScheduled ? (
           <span style={{ fontSize: '0.75rem', color: '#10b981', fontWeight: 700, background: 'rgba(16, 185, 129, 0.15)', padding: '0.2rem 0.6rem', borderRadius: '12px' }}>
             ● Live Campaign Running
+          </span>
+        ) : currentStatus === 'paused' ? (
+          <span style={{ fontSize: '0.75rem', color: '#f59e0b', fontWeight: 700, background: 'rgba(245, 158, 11, 0.15)', padding: '0.2rem 0.6rem', borderRadius: '12px' }}>
+            ⏸️ Bidding Paused
+          </span>
+        ) : isCancelScheduled ? (
+          <span style={{ fontSize: '0.75rem', color: '#ef4444', fontWeight: 700, background: 'rgba(239, 68, 68, 0.15)', padding: '0.2rem 0.6rem', borderRadius: '12px' }}>
+            ⏳ Cancelling at Period End
           </span>
         ) : initialWalletState?.status === 'pending_provisioning' ? (
           <span style={{ fontSize: '0.75rem', color: '#f97316', fontWeight: 700, background: 'rgba(249, 115, 22, 0.15)', padding: '0.2rem 0.6rem', borderRadius: '12px' }}>
@@ -904,7 +1018,75 @@ export default function ManagedAdsScreen({
                 )}
               </div>
 
-              <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1rem' }}>
+              {actionNotice ? (
+                <div style={{ background: 'rgba(249, 115, 22, 0.1)', border: '1px solid rgba(249, 115, 22, 0.3)', borderRadius: '6px', padding: '0.65rem 0.85rem', marginBottom: '1rem', fontSize: '0.82rem', color: 'var(--foreground)' }}>
+                  {actionNotice}
+                </div>
+              ) : null}
+
+              {isCancelScheduled ? (
+                <div style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '6px', padding: '0.65rem 0.85rem', marginBottom: '1rem', fontSize: '0.82rem', color: '#fca5a5' }}>
+                  ⏳ <strong>Cancellation Scheduled:</strong> Your subscription is set to end at the close of your current billing period. No further charges will occur.
+                </div>
+              ) : null}
+
+              {/* SMS Alerts Management Setting */}
+              <div style={{ background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '8px', padding: '0.85rem', marginBottom: '1rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
+                  <div>
+                    <strong style={{ fontSize: '0.86rem', display: 'block' }}>📱 SMS Billing &amp; Refill Alerts</strong>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--muted)', display: 'block', marginTop: '0.2rem' }}>
+                      Sends a text 24 hours before weekly renewals and instantly when ad wallet auto-refills occur.
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    className={`btn ${smsAlertsEnabled ? 'secondary' : 'ghost'}`}
+                    onClick={() => handleToggleSmsAlerts(!smsAlertsEnabled)}
+                    disabled={updatingSms}
+                    style={{ fontSize: '0.78rem', padding: '0.35rem 0.75rem' }}
+                  >
+                    {updatingSms ? 'Saving...' : smsAlertsEnabled ? '🔔 SMS Alerts: ON' : '🔕 SMS Alerts: OFF'}
+                  </button>
+                </div>
+              </div>
+
+              {/* In-App Management Actions */}
+              <div style={{ display: 'flex', gap: '0.65rem', marginTop: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                {currentStatus === 'active' ? (
+                  <button
+                    type="button"
+                    className="btn secondary"
+                    onClick={handlePauseCampaign}
+                    disabled={actionLoading !== null}
+                    style={{ fontSize: '0.82rem', borderColor: 'rgba(245, 158, 11, 0.4)' }}
+                  >
+                    {actionLoading === 'pause' ? 'Pausing Bidding...' : '⏸️ Pause Ad Bidding'}
+                  </button>
+                ) : currentStatus === 'paused' ? (
+                  <button
+                    type="button"
+                    className="btn primary"
+                    onClick={handleResumeCampaign}
+                    disabled={actionLoading !== null}
+                    style={{ fontSize: '0.82rem' }}
+                  >
+                    {actionLoading === 'resume' ? 'Resuming Bidding...' : '▶️ Resume Ad Bidding'}
+                  </button>
+                ) : null}
+
+                {!isCancelScheduled && (currentStatus === 'active' || currentStatus === 'paused') ? (
+                  <button
+                    type="button"
+                    className="btn ghost"
+                    onClick={handleCancelCampaign}
+                    disabled={actionLoading !== null}
+                    style={{ fontSize: '0.82rem', color: '#ef4444' }}
+                  >
+                    {actionLoading === 'cancel' ? 'Cancelling...' : '❌ Cancel Subscription'}
+                  </button>
+                ) : null}
+
                 <button
                   type="button"
                   className="btn secondary"
@@ -912,7 +1094,7 @@ export default function ManagedAdsScreen({
                   disabled={portalLoading}
                   style={{ fontSize: '0.82rem' }}
                 >
-                  {portalLoading ? 'Opening Portal...' : '⚙️ Manage Billing in Stripe Portal'}
+                  {portalLoading ? 'Opening Portal...' : '⚙️ Manage Payment in Stripe Portal'}
                 </button>
               </div>
             </div>
@@ -2048,6 +2230,44 @@ export default function ManagedAdsScreen({
               </div>
             </div>
           )}
+
+          {/* SMS Billing Alerts Opt-In Card */}
+          <div style={{ background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '8px', padding: '0.75rem', marginBottom: '1rem', textAlign: 'left' }}>
+            <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem', cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={smsAlertsEnabled}
+                onChange={(e) => setSmsAlertsEnabled(e.target.checked)}
+                style={{ marginTop: '0.2rem', accentColor: '#10b981' }}
+              />
+              <div style={{ fontSize: '0.8rem' }}>
+                <strong style={{ color: 'var(--foreground)' }}>📱 Send SMS billing alerts (24h before renewals &amp; on ad wallet refills)</strong>
+                <p style={{ margin: '0.2rem 0 0', color: 'var(--muted)', fontSize: '0.72rem' }}>
+                  Get an automated text 24 hours before your renewal processes and immediately whenever an automatic ad top-up occurs.
+                </p>
+              </div>
+            </label>
+            {smsAlertsEnabled && (
+              <div style={{ marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <span style={{ fontSize: '0.74rem', color: 'var(--muted)' }}>Alert Phone:</span>
+                <input
+                  type="tel"
+                  value={smsAlertPhone}
+                  onChange={(e) => setSmsAlertPhone(e.target.value)}
+                  placeholder="(555) 000-0000"
+                  style={{
+                    fontSize: '0.75rem',
+                    padding: '0.25rem 0.5rem',
+                    background: 'rgba(0,0,0,0.3)',
+                    border: '1px solid rgba(255,255,255,0.15)',
+                    borderRadius: '4px',
+                    color: 'var(--foreground)',
+                    width: '140px',
+                  }}
+                />
+              </div>
+            )}
+          </div>
 
           {/* Primary 1-Click Launch Button */}
           <button

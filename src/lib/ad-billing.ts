@@ -116,6 +116,9 @@ export type AdBudgetWalletState = {
   totalSpendAllTimeCents?: number;
   lastSpendSyncAt?: string | null;
   dailySpendHistory?: AdSpendDailyEntry[];
+  smsAlertsEnabled?: boolean;
+  smsAlertPhone?: string | null;
+  lastUpcomingPaymentAlertAt?: string | null;
   googleCampaignId?: string | null;
   googleCampaignResource?: string | null;
   provisioningStatus?: 'active' | 'paused' | 'simulated' | 'pending' | 'failed' | 'unconfigured';
@@ -145,6 +148,9 @@ export const DEFAULT_AD_WALLET_STATE: AdBudgetWalletState = {
   totalSpendAllTimeCents: 0,
   lastSpendSyncAt: null,
   dailySpendHistory: [],
+  smsAlertsEnabled: true,
+  smsAlertPhone: null,
+  lastUpcomingPaymentAlertAt: null,
   googleCampaignId: null,
   googleCampaignResource: null,
   provisioningStatus: 'pending',
@@ -175,6 +181,8 @@ export async function createAdBudgetCheckoutSession(params: {
   trade: string;
   city: string;
   customFocus?: string;
+  smsAlertsEnabled?: boolean;
+  smsAlertPhone?: string;
   returnUrl: string;
 }): Promise<{ url: string; sessionId: string }> {
   const {
@@ -194,6 +202,8 @@ export async function createAdBudgetCheckoutSession(params: {
     trade,
     city,
     customFocus,
+    smsAlertsEnabled = true,
+    smsAlertPhone,
     returnUrl,
   } = params;
 
@@ -348,6 +358,8 @@ export async function createAdBudgetCheckoutSession(params: {
       trade,
       city,
       custom_focus: customFocus || '',
+      sms_alerts_enabled: smsAlertsEnabled ? 'true' : 'false',
+      sms_alert_phone: smsAlertPhone || '',
     },
     ...(isWallet
       ? {
@@ -360,6 +372,8 @@ export async function createAdBudgetCheckoutSession(params: {
               refill_amount_dollars: String(refill),
               max_monthly_spend_dollars: String(maxMonthly),
               custom_focus: customFocus || '',
+              sms_alerts_enabled: smsAlertsEnabled ? 'true' : 'false',
+              sms_alert_phone: smsAlertPhone || '',
             },
           },
         }
@@ -369,6 +383,8 @@ export async function createAdBudgetCheckoutSession(params: {
               kind: 'ad_budget',
               city,
               custom_focus: customFocus || '',
+              sms_alerts_enabled: smsAlertsEnabled ? 'true' : 'false',
+              sms_alert_phone: smsAlertPhone || '',
             },
           },
         }),
@@ -518,6 +534,9 @@ export async function handleAdBudgetWebhookEvent(
       };
     }
 
+    const smsAlertsEnabled = session.metadata?.sms_alerts_enabled !== 'false';
+    const smsAlertPhone = session.metadata?.sms_alert_phone || null;
+
     // Synchronously await and verify campaign provisioning in Google Ads
     const provisioningResult = await provisionManagedSearchCampaign({
       accountId,
@@ -535,6 +554,8 @@ export async function handleAdBudgetWebhookEvent(
 
     await updateAccountAdBudgetState(admin, accountId, {
       ...statePayload,
+      smsAlertsEnabled,
+      smsAlertPhone,
       status: campaignStatus,
       lastPaymentAt: new Date().toISOString(),
       lastPaymentError: isProvisioned ? null : provisioningResult.message,
@@ -755,6 +776,34 @@ export async function executeWalletRefillCharge(params: {
         lastPaymentAt: new Date().toISOString(),
         lastPaymentError: null,
       });
+
+      if (adState.smsAlertsEnabled !== false) {
+        try {
+          const phone = await resolveContractorSmsPhone(admin, accountId, adState);
+          if (phone) {
+            const { data: account } = await admin
+              .from('accounts')
+              .select('business_name')
+              .eq('id', accountId)
+              .maybeSingle();
+
+            const businessName = (account?.business_name as string) || 'there';
+            const refillDollars = (actualRefillAdSpendCents / 100).toFixed(2);
+            const balanceDollars = (newBalance / 100).toFixed(2);
+            const body = `Hi ${businessName}, your Let's Get Quoted Ad Wallet balance dropped to $${(balance / 100).toFixed(2)}. We auto-refilled $${refillDollars} (new balance: $${balanceDollars}) to keep your Google Search ads continuously live.`;
+
+            const { sendProviderMessage, isSmsProviderConfigured } = await import('@/lib/sms-provider');
+            if (isSmsProviderConfigured()) {
+              await sendProviderMessage(phone, body, {
+                accountId: null, // System billing notification: NEVER deducts contractor text credits
+                category: 'payment_message',
+              });
+            }
+          }
+        } catch (smsErr) {
+          console.warn('Could not dispatch wallet auto-refill SMS alert:', smsErr);
+        }
+      }
 
       return {
         success: true,
@@ -1068,4 +1117,273 @@ export async function updateAccountAdBudgetState(
     })
     .eq('id', site.id);
 }
+
+/**
+ * Pauses an active ad campaign, suspending live bidding on Google/Meta
+ * and freezing continuous balance deductions.
+ */
+export async function pauseAdCampaign(
+  admin: SupabaseClient,
+  accountId: string
+): Promise<{ success: boolean; message: string }> {
+  const { data: site } = await admin
+    .from('sites')
+    .select('id, content')
+    .eq('account_id', accountId)
+    .maybeSingle();
+
+  if (!site) return { success: false, message: 'Site not found for account.' };
+
+  const content = (site.content as Record<string, unknown>) || {};
+  const adState = (content.adCampaign as AdBudgetWalletState) || DEFAULT_AD_WALLET_STATE;
+
+  if (adState.googleCampaignId) {
+    const { updateGoogleAdsCampaignStatus } = await import('@/lib/google-ads-api');
+    await updateGoogleAdsCampaignStatus(adState.googleCampaignId, 'PAUSED');
+  }
+
+  await updateAccountAdBudgetState(admin, accountId, {
+    status: 'paused',
+    provisioningStatus: 'paused',
+    provisioningMessage: 'Campaign bidding paused by contractor.',
+  });
+
+  return { success: true, message: 'Campaign paused successfully. Live ad bidding is suspended.' };
+}
+
+/**
+ * Resumes a paused ad campaign, re-enabling live bidding on Google/Meta
+ * and restoring active schedule pacing.
+ */
+export async function resumeAdCampaign(
+  admin: SupabaseClient,
+  accountId: string
+): Promise<{ success: boolean; message: string }> {
+  const { data: site } = await admin
+    .from('sites')
+    .select('id, content')
+    .eq('account_id', accountId)
+    .maybeSingle();
+
+  if (!site) return { success: false, message: 'Site not found for account.' };
+
+  const content = (site.content as Record<string, unknown>) || {};
+  const adState = (content.adCampaign as AdBudgetWalletState) || DEFAULT_AD_WALLET_STATE;
+
+  if (adState.googleCampaignId) {
+    const { updateGoogleAdsCampaignStatus } = await import('@/lib/google-ads-api');
+    await updateGoogleAdsCampaignStatus(adState.googleCampaignId, 'ENABLED');
+  }
+
+  await updateAccountAdBudgetState(admin, accountId, {
+    status: 'active',
+    provisioningStatus: 'active',
+    provisioningMessage: null,
+  });
+
+  return { success: true, message: 'Campaign resumed successfully. Live ad bidding is active.' };
+}
+
+/**
+ * Cancels an ad campaign subscription on Stripe and pauses active bidding.
+ */
+export async function cancelAdCampaign(
+  admin: SupabaseClient,
+  accountId: string,
+  cancelImmediately = false
+): Promise<{ success: boolean; message: string }> {
+  const { data: site } = await admin
+    .from('sites')
+    .select('id, content')
+    .eq('account_id', accountId)
+    .maybeSingle();
+
+  if (!site) return { success: false, message: 'Site not found for account.' };
+
+  const content = (site.content as Record<string, unknown>) || {};
+  const adState = (content.adCampaign as AdBudgetWalletState) || DEFAULT_AD_WALLET_STATE;
+
+  if (adState.stripeSubscriptionId) {
+    const stripe = getStripeClient();
+    try {
+      if (cancelImmediately) {
+        await stripe.subscriptions.cancel(adState.stripeSubscriptionId);
+      } else {
+        await stripe.subscriptions.update(adState.stripeSubscriptionId, {
+          cancel_at_period_end: true,
+        });
+      }
+    } catch (err) {
+      console.warn('Could not update Stripe subscription cancellation:', err);
+    }
+  }
+
+  if (adState.googleCampaignId) {
+    const { updateGoogleAdsCampaignStatus } = await import('@/lib/google-ads-api');
+    await updateGoogleAdsCampaignStatus(adState.googleCampaignId, 'PAUSED');
+  }
+
+  if (cancelImmediately) {
+    await updateAccountAdBudgetState(admin, accountId, {
+      status: 'inactive',
+      stripeSubscriptionId: null,
+      cancelAtPeriodEnd: false,
+      provisioningStatus: 'unconfigured',
+      provisioningMessage: 'Subscription cancelled.',
+    });
+    return { success: true, message: 'Campaign subscription cancelled immediately.' };
+  } else {
+    await updateAccountAdBudgetState(admin, accountId, {
+      cancelAtPeriodEnd: true,
+    });
+    return { success: true, message: 'Campaign subscription set to cancel at the end of the current billing cycle.' };
+  }
+}
+
+/**
+ * Resolves the contractor's SMS alert destination phone number.
+ */
+export async function resolveContractorSmsPhone(
+  admin: SupabaseClient,
+  accountId: string,
+  adState?: AdBudgetWalletState | null
+): Promise<string | null> {
+  if (adState?.smsAlertPhone) return adState.smsAlertPhone;
+
+  const { data: site } = await admin
+    .from('sites')
+    .select('content')
+    .eq('account_id', accountId)
+    .maybeSingle();
+
+  const sitePhone = (site?.content as Record<string, unknown>)?.phone as string | undefined;
+  if (sitePhone) return sitePhone;
+
+  const { data: account } = await admin
+    .from('accounts')
+    .select('alert_phone')
+    .eq('id', accountId)
+    .maybeSingle();
+
+  return (account?.alert_phone as string | null) || null;
+}
+
+/**
+ * Dispatches an SMS alert to a contractor 24 hours before their upcoming
+ * weekly/monthly AI Advertising renewal.
+ */
+export async function sendUpcomingPaymentSmsAlert(params: {
+  admin: SupabaseClient;
+  accountId: string;
+  amountDollars: number;
+  renewalDateStr: string;
+}): Promise<boolean> {
+  const { admin, accountId, amountDollars, renewalDateStr } = params;
+
+  const { data: site } = await admin
+    .from('sites')
+    .select('id, content')
+    .eq('account_id', accountId)
+    .maybeSingle();
+
+  if (!site) return false;
+  const content = (site.content as Record<string, unknown>) || {};
+  const adState = (content.adCampaign as AdBudgetWalletState) || DEFAULT_AD_WALLET_STATE;
+
+  if (adState.smsAlertsEnabled === false) return false;
+
+  const phone = await resolveContractorSmsPhone(admin, accountId, adState);
+  if (!phone) return false;
+
+  const { data: account } = await admin
+    .from('accounts')
+    .select('business_name')
+    .eq('id', accountId)
+    .maybeSingle();
+
+  const businessName = (account?.business_name as string) || 'there';
+  const body = `Hi ${businessName}, reminder that your Let's Get Quoted AI Ads renewal of $${amountDollars} will process in 24 hours (${renewalDateStr}) to keep your Google search ads active. Manage or pause anytime in your dashboard.`;
+
+  try {
+    const { sendProviderMessage, isSmsProviderConfigured } = await import('@/lib/sms-provider');
+    if (isSmsProviderConfigured()) {
+      await sendProviderMessage(phone, body, {
+        accountId: null, // System billing notification: NEVER deducts contractor text credits
+        category: 'payment_message',
+      });
+    }
+    return true;
+  } catch (err) {
+    console.warn('Failed to send upcoming payment SMS alert:', err);
+    return false;
+  }
+}
+
+/**
+ * Sweeps all active ad campaigns and dispatches 24-hour advance SMS notifications
+ * for upcoming subscription renewals to opted-in contractors.
+ */
+export async function processUpcomingPaymentSmsAlerts(admin: SupabaseClient): Promise<{
+  processed: number;
+  alertsSent: number;
+}> {
+  const { data: sites } = await admin
+    .from('sites')
+    .select('id, account_id, content')
+    .not('content->adCampaign', 'is', null);
+
+  let alertsSent = 0;
+  const now = Date.now();
+
+  for (const site of sites || []) {
+    const content = (site.content as Record<string, unknown>) || {};
+    const adState = (content.adCampaign as AdBudgetWalletState) || {};
+
+    if (
+      adState.status === 'active' &&
+      adState.smsAlertsEnabled !== false &&
+      adState.currentPeriodEnd
+    ) {
+      const periodEndMs = new Date(adState.currentPeriodEnd).getTime();
+      const diffMs = periodEndMs - now;
+
+      // 24 hours window (renewal within 0 to 26 hours)
+      const isWithin24Hours = diffMs > 0 && diffMs <= 26 * 60 * 60 * 1000;
+
+      // Ensure we haven't already alerted for this cycle in the last 48 hours
+      const lastSentMs = adState.lastUpcomingPaymentAlertAt
+        ? new Date(adState.lastUpcomingPaymentAlertAt).getTime()
+        : 0;
+      const alreadySentRecently = (now - lastSentMs) < 48 * 60 * 60 * 1000;
+
+      if (isWithin24Hours && !alreadySentRecently) {
+        const amountDollars = Math.round(
+          (adState.weeklyAmountCents || adState.totalMonthlyCents || 18500) / 100
+        );
+        const renewalDateStr = new Date(adState.currentPeriodEnd).toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+        });
+
+        const sent = await sendUpcomingPaymentSmsAlert({
+          admin,
+          accountId: site.account_id,
+          amountDollars,
+          renewalDateStr,
+        });
+
+        if (sent) {
+          alertsSent++;
+          await updateAccountAdBudgetState(admin, site.account_id, {
+            lastUpcomingPaymentAlertAt: new Date().toISOString(),
+          });
+        }
+      }
+    }
+  }
+
+  return { processed: sites?.length || 0, alertsSent };
+}
+
+
 

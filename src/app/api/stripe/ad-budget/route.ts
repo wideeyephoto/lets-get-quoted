@@ -31,6 +31,36 @@ export async function POST(request: Request) {
       return NextResponse.json({ url: portalUrl });
     }
 
+    if (body.action === 'pause') {
+      const { pauseAdCampaign } = await import('@/lib/ad-billing');
+      const res = await pauseAdCampaign(supabase, accountId);
+      return NextResponse.json(res);
+    }
+
+    if (body.action === 'resume') {
+      const { resumeAdCampaign } = await import('@/lib/ad-billing');
+      const res = await resumeAdCampaign(supabase, accountId);
+      return NextResponse.json(res);
+    }
+
+    if (body.action === 'cancel') {
+      const { cancelAdCampaign } = await import('@/lib/ad-billing');
+      const cancelImmediately = Boolean(body.immediate);
+      const res = await cancelAdCampaign(supabase, accountId, cancelImmediately);
+      return NextResponse.json(res);
+    }
+
+    if (body.action === 'update_sms_alerts') {
+      const smsAlertsEnabled = Boolean(body.smsAlertsEnabled);
+      const smsAlertPhone = typeof body.smsAlertPhone === 'string' ? body.smsAlertPhone.trim() : null;
+      const { updateAccountAdBudgetState } = await import('@/lib/ad-billing');
+      await updateAccountAdBudgetState(supabase, accountId, {
+        smsAlertsEnabled,
+        smsAlertPhone,
+      });
+      return NextResponse.json({ success: true, smsAlertsEnabled, smsAlertPhone });
+    }
+
     const { data: account } = await supabase
       .from('accounts')
       .select('business_name')
@@ -40,6 +70,8 @@ export async function POST(request: Request) {
     const businessName = (account?.business_name as string | null) || 'Contractor';
 
     const customFocus = typeof body.customFocus === 'string' && body.customFocus.trim() ? body.customFocus.trim() : undefined;
+    const smsAlertsEnabled = body.smsAlertsEnabled !== undefined ? Boolean(body.smsAlertsEnabled) : true;
+    const smsAlertPhone = typeof body.smsAlertPhone === 'string' && body.smsAlertPhone.trim() ? body.smsAlertPhone.trim() : undefined;
 
     const result = await createAdBudgetCheckoutSession({
       accountId,
@@ -57,6 +89,8 @@ export async function POST(request: Request) {
       trade,
       city,
       customFocus,
+      smsAlertsEnabled,
+      smsAlertPhone,
       returnUrl,
     });
 

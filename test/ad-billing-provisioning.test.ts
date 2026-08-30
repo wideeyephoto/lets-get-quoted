@@ -458,4 +458,143 @@ describe('Ad Billing Synchronous Provisioning & Fulfillment', () => {
     // New balance: $90 - $25 (spend) + $250 (refill) = $315 ($31500)
     expect(siteAdCampaignState.walletBalanceCents).toBe(31500);
   });
+
+  it('supports pausing, resuming, and cancelling active ad campaigns', async () => {
+    const { pauseAdCampaign, resumeAdCampaign, cancelAdCampaign } = await import('@/lib/ad-billing');
+    const { getStripeClient } = await import('@/lib/stripe');
+    const stripe = getStripeClient();
+
+    let campaignState: Record<string, unknown> = {
+      status: 'active',
+      googleCampaignId: '123456789',
+      stripeSubscriptionId: 'sub_test_pause_cancel',
+      cancelAtPeriodEnd: false,
+    };
+
+    const mockAdmin: any = {
+      from: (table: string) => {
+        if (table === 'sites') {
+          return {
+            select: () => ({
+              eq: () => ({
+                maybeSingle: async () => ({
+                  data: {
+                    id: 'site_test_pause',
+                    account_id: 'acc_test_pause',
+                    content: { adCampaign: { ...campaignState } },
+                  },
+                }),
+              }),
+            }),
+            update: (payload: any) => ({
+              eq: async () => {
+                campaignState = { ...payload.content?.adCampaign };
+                return { error: null };
+              },
+            }),
+          };
+        }
+        return {
+          select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null }) }) }),
+        };
+      },
+    };
+
+    vi.spyOn(stripe.subscriptions, 'update').mockResolvedValue({
+      id: 'sub_test_pause_cancel',
+      cancel_at_period_end: true,
+    } as any);
+
+    // 1. Pause
+    const pauseRes = await pauseAdCampaign(mockAdmin, 'acc_test_pause');
+    expect(pauseRes.success).toBe(true);
+    expect(campaignState.status).toBe('paused');
+
+    // 2. Resume
+    const resumeRes = await resumeAdCampaign(mockAdmin, 'acc_test_pause');
+    expect(resumeRes.success).toBe(true);
+    expect(campaignState.status).toBe('active');
+
+    // 3. Cancel (at period end)
+    const cancelRes = await cancelAdCampaign(mockAdmin, 'acc_test_pause', false);
+    expect(cancelRes.success).toBe(true);
+    expect(campaignState.cancelAtPeriodEnd).toBe(true);
+  });
+
+  it('sends 24-hour advance SMS notifications for upcoming renewals to opted-in contractors', async () => {
+    const { processUpcomingPaymentSmsAlerts } = await import('@/lib/ad-billing');
+    const smsModule = await import('@/lib/sms-provider');
+
+    const sendSpy = vi.spyOn(smsModule, 'sendProviderMessage').mockResolvedValue('simulated_msg_123');
+    vi.spyOn(smsModule, 'isSmsProviderConfigured').mockReturnValue(true);
+
+    const renewalDate = new Date(Date.now() + 18 * 60 * 60 * 1000).toISOString(); // In 18 hours
+
+    let siteState: Record<string, unknown> = {
+      status: 'active',
+      fundingModel: 'weekly_drip',
+      weeklyAmountCents: 18500,
+      currentPeriodEnd: renewalDate,
+      smsAlertsEnabled: true,
+      smsAlertPhone: '+15551234567',
+    };
+
+    const mockAdmin: any = {
+      from: (table: string) => {
+        if (table === 'sites') {
+          return {
+            select: () => ({
+              eq: () => ({
+                maybeSingle: async () => ({
+                  data: {
+                    id: 'site_sms_user',
+                    account_id: 'acc_sms_user',
+                    content: { phone: '+15551234567', adCampaign: { ...siteState } },
+                  },
+                }),
+              }),
+              not: () => Promise.resolve({
+                data: [
+                  {
+                    id: 'site_sms_user',
+                    account_id: 'acc_sms_user',
+                    content: { phone: '+15551234567', adCampaign: { ...siteState } },
+                  },
+                ],
+              }),
+            }),
+            update: (payload: any) => ({
+              eq: async () => {
+                siteState = { ...payload.content?.adCampaign };
+                return { error: null };
+              },
+            }),
+          };
+        }
+        if (table === 'accounts') {
+          return {
+            select: () => ({
+              eq: () => ({
+                maybeSingle: async () => ({
+                  data: { business_name: 'Apex Plumbing', alert_phone: '+15551234567' },
+                }),
+              }),
+            }),
+          };
+        }
+        return {
+          select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null }) }) }),
+        };
+      },
+    };
+
+    const res = await processUpcomingPaymentSmsAlerts(mockAdmin);
+    expect(res.alertsSent).toBe(1);
+    expect(sendSpy).toHaveBeenCalled();
+    const calledArgs = sendSpy.mock.calls[0];
+    expect(calledArgs[0]).toBe('+15551234567');
+    expect(calledArgs[1]).toContain('$185');
+    expect(calledArgs[1]).toContain('24 hours');
+    expect(calledArgs[2].accountId).toBeNull(); // Guaranteed unmetered: 0 user text credits consumed
+  });
 });
