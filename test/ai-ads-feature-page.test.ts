@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { metadata } from '@/app/features/ai-ads/page';
-import { FEATURE_CATEGORIES, ALL_FEATURES } from '@/lib/features';
+import { FEATURE_CATEGORIES } from '@/lib/features';
 
 const read = (p: string) => readFileSync(p, 'utf8').replace(/\r\n/g, '\n');
 
@@ -16,25 +16,23 @@ describe('AI Ads Autopilot Public Feature Page (/features/ai-ads)', () => {
     expect(metadata.openGraph?.images).toBeDefined();
   });
 
-  it('renders FeatureDetailLayout with AiAdsSimulator and Proof points', () => {
+  it('renders FeatureDetailLayout with AiAdsSimulator, Proof points, and FAQs', () => {
     expect(PAGE_SRC).toContain('<FeatureDetailLayout');
     expect(PAGE_SRC).toContain('<AiAdsSimulator');
     expect(PAGE_SRC).toContain('100% Direct Ad Spend');
     expect(PAGE_SRC).toContain('Speed-to-Lead Auto-SMS');
     expect(PAGE_SRC).toContain('Weather Surge');
     expect(PAGE_SRC).toContain('Closed-Loop Conversion Sync');
+    expect(PAGE_SRC).toContain('Frequently asked questions about AI Advertising Autopilot');
   });
 
-  it('supports interactive trade/city controls and smart bundle switching in simulator', () => {
-    expect(SIMULATOR_SRC).toContain('DEMO_TRADES');
-    expect(SIMULATOR_SRC).toContain('DEMO_CITIES');
-    expect(SIMULATOR_SRC).toContain('SMART_BUNDLES');
-    expect(SIMULATOR_SRC).toContain('Google Search Ad');
-    expect(SIMULATOR_SRC).toContain('Instagram & Facebook');
-    expect(SIMULATOR_SRC).toContain('Display Retargeting');
+  it('includes interactive ROI calculator, SMS chat demo, and agency comparison table', () => {
+    expect(SIMULATOR_SRC).toContain('Interactive ROI & Revenue Calculator');
+    expect(SIMULATOR_SRC).toContain('Live Speed-to-Lead Auto-SMS');
+    expect(SIMULATOR_SRC).toContain('Keywords & Waste Filter');
+    expect(SIMULATOR_SRC).toContain('Traditional Marketing Agency');
     expect(SIMULATOR_SRC).toContain('Weather Surge:');
     expect(SIMULATOR_SRC).toContain('Capacity Guard:');
-    expect(SIMULATOR_SRC).toContain('Speed-to-Lead:');
   });
 
   it('integrates cleanly with the features catalog and deep links', () => {

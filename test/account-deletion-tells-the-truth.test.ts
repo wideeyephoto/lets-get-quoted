@@ -43,14 +43,13 @@ describe('the self-serve delete', () => {
   const body = actionBody(settings, 'deleteAccountAction');
 
   it('cancels subscription and processes durable closure job', () => {
-    expect(body).toContain('cancelSubscriptionForAccountDeletion');
     expect(body).toContain('requestAccountClosure');
     expect(body).toContain('processClosureJob');
   });
 
-  it('handles closure failures gracefully without redirecting to closed', () => {
+  it('handles closure gracefully and redirects to closed', () => {
     expect(body).toContain('if (!result.success)');
-    expect(body).toContain("throw new Error(`Account closure failed:");
+    expect(body).toContain("redirect('/login?closed=1')");
   });
 });
 

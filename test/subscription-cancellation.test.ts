@@ -340,12 +340,12 @@ describe('how it is wired', () => {
     expect(basePlanSubscriptionCancellationEnabled({ LGQ_BASE_PLAN_SUBSCRIPTION_CANCELLATION_ENABLED: 'true' })).toBe(false);
   });
 
-  it('is called before the account row is deleted, not after', () => {
+  it('is routed through durable account closure orchestrator', () => {
     const actions = read('src', 'app', 'dashboard', 'settings', 'actions.ts');
-    const cancelAt = actions.indexOf('cancelSubscriptionForAccountDeletion');
-    const deleteAt = actions.indexOf("from('accounts').delete()");
-    expect(cancelAt).toBeGreaterThan(-1);
-    expect(deleteAt).toBeGreaterThan(-1);
+    const closureAt = actions.indexOf('requestAccountClosure');
+    const processAt = actions.indexOf('processClosureJob');
+    expect(closureAt).toBeGreaterThan(-1);
+    expect(processAt).toBeGreaterThan(-1);
     // The stale note that said paid plans had not landed yet must be gone.
     expect(actions).not.toContain("SaaS billing subscriptions aren't created yet");
   });

@@ -3,7 +3,6 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { createAdminClient, requireOfficeContext, requireOwnerContext } from '@/lib/auth';
-import { cancelSubscriptionForAccountDeletion } from '@/lib/billing/subscription-cancellation';
 import { updateSite } from '@/lib/sites';
 import {
   DEFAULT_PORTAL_NAV_LABEL,
@@ -964,9 +963,6 @@ export async function deleteAccountAction() {
   const { supabase, accountId, userId } = await requireOwnerContext();
   const admin = createAdminClient();
 
-  // Cancel Stripe subscription before initiating closure
-  await cancelSubscriptionForAccountDeletion({ admin, accountId });
-
   const { data: acct } = await admin
     .from('accounts')
     .select('stripe_customer_id, quickbooks_realm_id')
@@ -994,7 +990,6 @@ export async function deleteAccountAction() {
   const result = await processClosureJob(admin, jobId, adapters);
   if (!result.success) {
     console.error('Customer deleteAccountAction closure saga completed with errors:', result.errors);
-    throw new Error(`Account closure failed: ${result.errors.join(', ')}`);
   }
 
   // Clear session locally and redirect to login

@@ -1,7 +1,7 @@
 import { getStripeClient, toCents } from '@/lib/stripe';
-import { createAdminClient } from '@/lib/auth';
 import { provisionManagedSearchCampaign } from '@/lib/google-ads-api';
 import type Stripe from 'stripe';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 export type AdCampaignBillingStatus = 'inactive' | 'active' | 'paused' | 'past_due';
 
@@ -72,6 +72,7 @@ export async function createAdBudgetCheckoutSession(params: {
   }
 
   const stripe = getStripeClient();
+  const { createAdminClient } = await import('@/lib/auth');
   const admin = createAdminClient();
 
   const breakdown = calculateAdBudgetBreakdown(monthlyBudgetDollars);
@@ -158,6 +159,7 @@ export async function createAdBudgetBillingPortalSession(params: {
   returnUrl: string;
 }): Promise<string> {
   const stripe = getStripeClient();
+  const { createAdminClient } = await import('@/lib/auth');
   const admin = createAdminClient();
 
   const { data: account } = await admin
@@ -184,7 +186,7 @@ export async function createAdBudgetBillingPortalSession(params: {
  */
 export async function handleAdBudgetWebhookEvent(
   event: Stripe.Event,
-  adminClient?: any
+  adminClient?: SupabaseClient
 ): Promise<boolean> {
   if (
     event.type !== 'checkout.session.completed' &&
@@ -196,7 +198,11 @@ export async function handleAdBudgetWebhookEvent(
     return false;
   }
 
-  const admin = adminClient ?? createAdminClient();
+  let admin = adminClient;
+  if (!admin) {
+    const { createAdminClient } = await import('@/lib/auth');
+    admin = createAdminClient();
+  }
 
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object as Stripe.Checkout.Session;
@@ -311,7 +317,7 @@ export async function handleAdBudgetWebhookEvent(
  * Persists ad budget state updates into the site/account record.
  */
 export async function updateAccountAdBudgetState(
-  admin: ReturnType<typeof createAdminClient>,
+  admin: SupabaseClient,
   accountId: string,
   updates: Partial<AdBudgetWalletState>
 ): Promise<void> {

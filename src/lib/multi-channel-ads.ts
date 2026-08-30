@@ -1,4 +1,4 @@
-import { AD_PLATFORM_FEE_RATE } from './ad-billing';
+export const AD_PLATFORM_FEE_RATE = 0.15; // 15% Platform Management Fee
 
 export type MetaAdCopy = {
   primaryText: string;
