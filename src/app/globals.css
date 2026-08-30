@@ -4639,27 +4639,37 @@ h3 {
   justify-content: center;
   gap: 0.5rem;
   padding: 0.62rem 1rem;
-  border: 0;
+  border: 1px solid transparent;
   border-radius: 10px;
   background: transparent;
-  color: rgba(var(--ink-rgb), 0.66);
+  color: var(--muted, rgba(var(--ink-rgb), 0.72));
   font-family: inherit;
   font-size: 0.92rem;
-  font-weight: 600;
+  font-weight: 650;
   white-space: nowrap;
   cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
 
 .settings-tab:hover {
-  background: rgba(var(--tint), 0.05);
-  color: var(--text);
+  background: rgba(var(--tint), 0.08);
+  color: var(--text, #ffffff);
 }
 
 .settings-tab.active {
-  background: var(--accent-gradient, linear-gradient(180deg, var(--accent), var(--accent-2)));
-  color: var(--on-accent);
-  box-shadow: 0 10px 22px -12px rgba(0, 0, 0, 0.45);
+  background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%);
+  color: #ffffff !important;
+  font-weight: 750;
+  border: 1px solid #9a3412;
+  box-shadow: 0 4px 14px -2px rgba(234, 88, 12, 0.45);
+}
+
+.settings-tab.active span,
+.settings-tab.active svg,
+.settings-tab.active .settings-tab-ic {
+  color: #ffffff !important;
+  stroke: #ffffff !important;
+  fill: none !important;
 }
 
 .settings-tab-ic {
@@ -4668,7 +4678,7 @@ h3 {
   flex: none;
   fill: none;
   stroke: currentColor;
-  stroke-width: 1.7;
+  stroke-width: 1.8;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
@@ -38815,13 +38825,8 @@ button.plan-badge.warn.is-action:focus-visible {
    slots below them squeezed to nothing.
    One column here — the strip is a list of days you scroll, which is what it
    is on a phone too, so this is the shape it already knows how to be. */
-.sched-detail .client-schedule-calendar-grid {
-  grid-template-columns: minmax(0, 1fr);
-}
-
-.sched-detail .client-schedule-selected-list {
-  grid-template-columns: minmax(0, 1fr);
-}
+.sched-detail .client-schedule-calendar-grid { grid-template-columns: minmax(0, 1fr); }
+.sched-detail .client-schedule-selected-list { grid-template-columns: minmax(0, 1fr); }
 
 
 .schedule-map {
@@ -57812,9 +57817,7 @@ select optgroup {
 }
 
 @media (min-width: 1760px) {
-  .schedule-workbench {
-    grid-template-columns: minmax(300px, 340px) minmax(0, 1fr) minmax(320px, 380px);
-  }
+  .schedule-workbench { grid-template-columns: minmax(300px, 340px) minmax(0, 1fr) minmax(320px, 380px); }
 }
 
 @media (min-width: 1860px) {
@@ -69829,4 +69832,253 @@ a.sms-cat-switch:focus-visible {
 :root:not([data-theme]) .field-hint,
 :root:not([data-theme]) .field-sub {
   color: #94a3b8;
+}
+
+/* ============================================================================
+   SETTINGS TABS MULTI-THEME REFINEMENTS (ALL THEMES)
+   ============================================================================ */
+:root[data-theme='dark'] .settings-shell .settings-tabnav,
+:root[data-theme='dark'] .settings-tabnav,
+:root[data-theme='onyx'] .settings-shell .settings-tabnav,
+:root[data-theme='onyx'] .settings-tabnav,
+:root:not([data-theme]) .settings-shell .settings-tabnav,
+:root:not([data-theme]) .settings-tabnav {
+  background: #0e1219;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.4);
+}
+
+:root[data-theme='dark'] .settings-tab,
+:root[data-theme='onyx'] .settings-tab,
+:root:not([data-theme]) .settings-tab {
+  color: #cbd5e1;
+  font-weight: 600;
+}
+
+:root[data-theme='dark'] .settings-tab:hover,
+:root[data-theme='onyx'] .settings-tab:hover,
+:root:not([data-theme]) .settings-tab:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+:root[data-theme='dark'] .settings-tab.active,
+:root[data-theme='onyx'] .settings-tab.active,
+:root:not([data-theme]) .settings-tab.active {
+  background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%) !important;
+  color: #ffffff !important;
+  font-weight: 750 !important;
+  border: 1px solid #9a3412 !important;
+  box-shadow: 0 2px 10px rgba(234, 88, 12, 0.35) !important;
+}
+
+:root[data-theme='dark'] .settings-tab.active span,
+:root[data-theme='dark'] .settings-tab.active svg,
+:root[data-theme='dark'] .settings-tab.active .settings-tab-ic,
+:root[data-theme='onyx'] .settings-tab.active span,
+:root[data-theme='onyx'] .settings-tab.active svg,
+:root[data-theme='onyx'] .settings-tab.active .settings-tab-ic,
+:root:not([data-theme]) .settings-tab.active span,
+:root:not([data-theme]) .settings-tab.active svg,
+:root:not([data-theme]) .settings-tab.active .settings-tab-ic {
+  color: #ffffff !important;
+  stroke: #ffffff !important;
+  fill: none !important;
+}
+
+:root[data-theme='dim'] .settings-shell .settings-tabnav,
+:root[data-theme='dim'] .settings-tabnav {
+  background: #24211d;
+  border: 1px solid rgba(255, 246, 235, 0.14);
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.4);
+}
+
+:root[data-theme='dim'] .settings-tab {
+  color: #d1cbc1;
+  font-weight: 600;
+}
+
+:root[data-theme='dim'] .settings-tab:hover {
+  color: #efece6;
+  background: rgba(255, 246, 235, 0.08);
+}
+
+:root[data-theme='dim'] .settings-tab.active {
+  background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%) !important;
+  color: #ffffff !important;
+  font-weight: 750 !important;
+  border: 1px solid #9a3412 !important;
+  box-shadow: 0 2px 10px rgba(234, 88, 12, 0.35) !important;
+}
+
+:root[data-theme='dim'] .settings-tab.active span,
+:root[data-theme='dim'] .settings-tab.active svg,
+:root[data-theme='dim'] .settings-tab.active .settings-tab-ic {
+  color: #ffffff !important;
+  stroke: #ffffff !important;
+  fill: none !important;
+}
+
+:root[data-theme='light'] .settings-shell .settings-tabnav,
+:root[data-theme='light'] .settings-tabnav {
+  background: #1a1d26;
+  border: 1.5px solid #2e3446;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+:root[data-theme='light'] .settings-tab {
+  color: #cbd5e1;
+  font-weight: 600;
+}
+
+:root[data-theme='light'] .settings-tab:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+:root[data-theme='light'] .settings-tab.active {
+  background: linear-gradient(180deg, #ea580c 0%, #c2410c 100%) !important;
+  color: #ffffff !important;
+  font-weight: 750 !important;
+  border: 1px solid #9a3412 !important;
+  box-shadow: 0 2px 8px rgba(234, 88, 12, 0.35) !important;
+}
+
+:root[data-theme='light'] .settings-tab.active span,
+:root[data-theme='light'] .settings-tab.active svg,
+:root[data-theme='light'] .settings-tab.active .settings-tab-ic {
+  color: #ffffff !important;
+  stroke: #ffffff !important;
+  fill: none !important;
+}
+
+:root[data-theme='sunlight'] .settings-shell .settings-tabnav,
+:root[data-theme='sunlight'] .settings-tabnav {
+  background: #eef2f6;
+  border: 2px solid #090d16;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+:root[data-theme='sunlight'] .settings-tab {
+  color: #1e293b;
+  font-weight: 650;
+}
+
+:root[data-theme='sunlight'] .settings-tab:hover {
+  color: #090d16;
+  background: rgba(255, 255, 255, 0.85);
+}
+
+:root[data-theme='sunlight'] .settings-tab.active {
+  background: #ffffff !important;
+  color: #b43403 !important;
+  font-weight: 800 !important;
+  border: 2px solid #090d16 !important;
+  box-shadow: 0 1px 4px 0 rgba(0, 0, 0, 0.15) !important;
+}
+
+:root[data-theme='sunlight'] .settings-tab.active span,
+:root[data-theme='sunlight'] .settings-tab.active svg,
+:root[data-theme='sunlight'] .settings-tab.active .settings-tab-ic {
+  color: #b43403 !important;
+  stroke: #b43403 !important;
+  fill: none !important;
+}
+
+:root[data-theme='parchment'] .settings-shell .settings-tabnav,
+:root[data-theme='parchment'] .settings-tabnav {
+  background: #ede7dc;
+  border: 1px solid rgba(74, 58, 38, 0.25);
+  box-shadow: inset 0 1px 2px rgba(74, 58, 38, 0.06);
+}
+
+:root[data-theme='parchment'] .settings-tab {
+  color: #584f42;
+  font-weight: 650;
+}
+
+:root[data-theme='parchment'] .settings-tab:hover {
+  color: #241e17;
+  background: rgba(255, 253, 249, 0.6);
+}
+
+:root[data-theme='parchment'] .settings-tab.active {
+  background: #fffdf9 !important;
+  color: #8a3f08 !important;
+  font-weight: 800 !important;
+  border: 1px solid rgba(74, 58, 38, 0.25) !important;
+  box-shadow: 0 1px 3px rgba(74, 58, 38, 0.08) !important;
+}
+
+:root[data-theme='parchment'] .settings-tab.active span,
+:root[data-theme='parchment'] .settings-tab.active svg,
+:root[data-theme='parchment'] .settings-tab.active .settings-tab-ic {
+  color: #8a3f08 !important;
+  stroke: #8a3f08 !important;
+  fill: none !important;
+}
+
+:root[data-theme='clarity'] .settings-shell .settings-tabnav,
+:root[data-theme='clarity'] .settings-tabnav {
+  background: #ffffff;
+  border: 2px solid #0f172a;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+:root[data-theme='clarity'] .settings-tab {
+  color: #334155;
+  font-weight: 700;
+}
+
+:root[data-theme='clarity'] .settings-tab:hover {
+  color: #0f172a;
+  background: #f1f5f9;
+}
+
+:root[data-theme='clarity'] .settings-tab.active {
+  background: #0284c7 !important;
+  color: #ffffff !important;
+  font-weight: 800 !important;
+  border: 2px solid #0369a1 !important;
+  box-shadow: 0 2px 6px rgba(2, 132, 199, 0.35) !important;
+}
+
+:root[data-theme='clarity'] .settings-tab.active span,
+:root[data-theme='clarity'] .settings-tab.active svg,
+:root[data-theme='clarity'] .settings-tab.active .settings-tab-ic {
+  color: #ffffff !important;
+  stroke: #ffffff !important;
+  fill: none !important;
+}
+
+:root[data-theme='monochrome'] .settings-shell .settings-tabnav,
+:root[data-theme='monochrome'] .settings-tabnav {
+  background: #18181b;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+}
+
+:root[data-theme='monochrome'] .settings-tab {
+  color: #d4d4d8;
+  font-weight: 600;
+}
+
+:root[data-theme='monochrome'] .settings-tab:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+:root[data-theme='monochrome'] .settings-tab.active {
+  background: #ffffff !important;
+  color: #000000 !important;
+  font-weight: 850 !important;
+  border: 1px solid #ffffff !important;
+}
+
+:root[data-theme='monochrome'] .settings-tab.active span,
+:root[data-theme='monochrome'] .settings-tab.active svg,
+:root[data-theme='monochrome'] .settings-tab.active .settings-tab-ic {
+  color: #000000 !important;
+  stroke: #000000 !important;
+  fill: none !important;
 }
