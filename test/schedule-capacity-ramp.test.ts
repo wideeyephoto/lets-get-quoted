@@ -308,10 +308,34 @@ describe('the ramp is named on screen', () => {
       const declarations = CSS.match(new RegExp(`${token}:`, 'g')) ?? [];
       expect(declarations.length, token).toBeGreaterThanOrEqual(2);
     }
-    // Lime and yellow on white are a highlighter pen. The light theme must not
-    // simply inherit them.
-    expect(CSS).toContain('--cap-light: #b6e94f;');
-    expect(CSS).toContain('--cap-light: #5a8a10;');
+    // Lime and yellow on white are a highlighter pen, so the light grounds must
+    // restate the band rather than inherit it. Pinning the two hexes said that
+    // badly: it passed for as long as nobody touched the palette and would have
+    // gone on passing if a light theme had quietly adopted the dark lime under
+    // a different name. What matters is that every light ground carries a band
+    // dark enough to stand on a white sheet.
+    const capLight = (selector: string) => {
+      const start = CSS.indexOf(`\n${selector}`);
+      expect(start, selector).toBeGreaterThan(-1);
+      const found = CSS.slice(start, CSS.indexOf('\n}', start)).match(/--cap-light: (#[0-9a-f]{6});/i);
+      expect(found, `${selector} --cap-light`).not.toBeNull();
+      return found![1];
+    };
+    const luminance = (hex: string) =>
+      [1, 3, 5]
+        .map((i) => parseInt(hex.slice(i, i + 2), 16) / 255)
+        .map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4))
+        .reduce((sum, c, i) => sum + [0.2126, 0.7152, 0.0722][i] * c, 0);
+
+    const onDark = capLight(':root {');
+    expect(luminance(onDark)).toBeGreaterThan(0.5);
+
+    for (const light of [":root[data-theme='sunlight'] {", ":root[data-theme='parchment'] {"]) {
+      const band = capLight(light);
+      expect(band, light).not.toBe(onDark);
+      // 3:1 against the sheet it sits on, the floor for a non-text indicator.
+      expect(1.05 / (luminance(band) + 0.05), light).toBeGreaterThanOrEqual(3);
+    }
   });
 
   it('Month gets the capacity key and the other views keep the status key', () => {

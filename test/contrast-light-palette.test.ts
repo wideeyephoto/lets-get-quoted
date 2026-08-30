@@ -17,6 +17,49 @@ const GLOBALS = read('src', 'app', 'globals.css');
 const BANNER = read('src', 'app', 'dashboard', 'BlogReminderBanner.tsx');
 
 /**
+ * Read one token out of one theme block, so a test can compare two themes
+ * rather than assert two constants and hope they still mean something.
+ * Anchored to the block, because --bg is declared nine times in this file.
+ */
+const block = (selector: string) => {
+  const start = GLOBALS.indexOf(`\n${selector}`);
+  if (start === -1) throw new Error(`no such theme block: ${selector}`);
+  return GLOBALS.slice(start, GLOBALS.indexOf('\n}', start));
+};
+const token = (selector: string, name: string) => {
+  const found = block(selector).match(new RegExp(`--${name}: ([^;]+);`));
+  if (!found) throw new Error(`${selector} does not declare --${name}`);
+  return found[1].trim();
+};
+const rgb = (hex: string): [number, number, number] => {
+  const m = hex.match(/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
+  if (!m) throw new Error(`not a six-digit hex: ${hex}`);
+  return [parseInt(m[1], 16), parseInt(m[2], 16), parseInt(m[3], 16)];
+};
+/** HSL saturation, 0–1. The number that separates paper from tan. */
+const saturation = (hex: string) => {
+  const [r, g, b] = rgb(hex);
+  const hi = Math.max(r, g, b);
+  const lo = Math.min(r, g, b);
+  if (hi === lo) return 0;
+  const l = (hi + lo) / 2 / 255;
+  return (hi - lo) / 255 / (l > 0.5 ? 2 - (hi + lo) / 255 : (hi + lo) / 255);
+};
+/** Positive is warm (red over blue), negative is cool. */
+const warmth = (hex: string) => {
+  const [r, , b] = rgb(hex);
+  return r - b;
+};
+/** Relative luminance, WCAG. */
+const luminance = (hex: string) => {
+  const [r, g, b] = rgb(hex).map((c) => {
+    const s = c / 255;
+    return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+};
+
+/**
  * Three surfaces the schedule pass measured and left alone, all failing AA in
  * the LIGHT theme only. Each is the same shape of mistake — a colour decided
  * against the dark canvas and then asked to stand on a white sheet — and each
@@ -155,65 +198,125 @@ describe('placeholder and schedule theme contrast', () => {
     expect(GLOBALS).toContain(":root[data-theme='parchment'] .calendar-band-color-0");
   });
 
-  it('ensures sunlight mode has daylight slate background and soft #e2e8f0 borders', () => {
-    expect(GLOBALS).toContain(":root[data-theme='sunlight'] {");
-    expect(GLOBALS).toContain('--bg: #f8fafc;');
-    expect(GLOBALS).toContain('--text: #0f172a;');
-    expect(GLOBALS).toContain('--muted: #475569;');
-    expect(GLOBALS).toContain('--line: #e2e8f0;');
-    expect(GLOBALS).toContain('--accent: #ea580c;');
-    expect(GLOBALS).toContain('--accent-end: #f97316;');
+  it('ensures sunlight is daylight with a hairline border, not fog with a rule', () => {
+    const SUN = ":root[data-theme='sunlight'] {";
+    expect(token(SUN, 'bg')).toBe('#f4f6fa');
+    expect(token(SUN, 'bg-2')).toBe('#ffffff');
+    expect(token(SUN, 'text')).toBe('#0b0e14');
+    expect(token(SUN, 'muted')).toBe('#48505e');
+    expect(token(SUN, 'line')).toBe('#e6e9f0');
+    expect(token(SUN, 'accent')).toBe('#cb4a07');
     expect(GLOBALS).toContain('--accent-gradient: linear-gradient(180deg, var(--accent), var(--accent-end));');
     expect(GLOBALS).toContain('--ink-neutral-1: #0f1a28;');
-    expect(GLOBALS).toContain('--ink-orange-1: #a0531a;');
     expect(GLOBALS).toContain(':root[data-theme=\'sunlight\'] .sidenav-wordmark');
+
+    // The ground must sit BELOW the cards or the cards stop reading as cards.
+    // It used to be slate-200 with white on top, which is a lot of grey.
+    expect(luminance(token(SUN, 'bg'))).toBeLessThan(luminance(token(SUN, 'bg-2')));
+    expect(luminance(token(SUN, 'bg'))).toBeGreaterThan(0.8);
+
+    // White text sits on --accent wherever it is a button fill, so the accent
+    // is not free to brighten: 4.5:1 is the floor.
+    const onAccent = 1.05 / (luminance(token(SUN, 'accent')) + 0.05);
+    expect(onAccent).toBeGreaterThanOrEqual(4.5);
   });
 
-  it('ensures parchment mode is a genuine warm paper light theme', () => {
-    expect(GLOBALS).toContain(":root[data-theme='parchment'] {");
+  it('ensures parchment is paper, not tan', () => {
+    const PAPER = ":root[data-theme='parchment'] {";
     expect(GLOBALS).toContain('color-scheme: light;');
-    expect(GLOBALS).toContain('--bg: #f1e4cc;');
-    expect(GLOBALS).toContain('--bg-2: #fff7e6;');
-    expect(GLOBALS).toContain('--text: #30261b;');
-    expect(GLOBALS).toContain('--muted: #6b5b49;');
-    expect(GLOBALS).toContain('--accent: #a84c00;');
-    expect(GLOBALS).toContain('--accent-end: #d97706;');
+    expect(token(PAPER, 'bg')).toBe('#f5f0e7');
+    expect(token(PAPER, 'bg-2')).toBe('#fffdf9');
+    expect(token(PAPER, 'text')).toBe('#241e17');
+    expect(token(PAPER, 'muted')).toBe('#584f42');
+    expect(token(PAPER, 'accent')).toBe('#b4530a');
     expect(GLOBALS).toContain('--accent-gradient: linear-gradient(180deg, var(--accent), var(--accent-end));');
+
+    // Warm, obviously — but the warmth belongs to the ink and the shadow. The
+    // sheet itself is barely tinted. At 0.57 it was tan; real paper is low.
+    expect(warmth(token(PAPER, 'bg'))).toBeGreaterThan(0);
+    expect(saturation(token(PAPER, 'bg'))).toBeLessThan(0.45);
+    expect(warmth(token(PAPER, 'text'))).toBeGreaterThan(0);
+    // --shade is what carries the hue into the shadows now.
+    expect(token(PAPER, 'shade')).toBe('74, 58, 38');
   });
 
-  it('ensures dim mode is lighter and less blue than dark', () => {
-    expect(GLOBALS).toContain(":root[data-theme='dim'] {");
-    expect(GLOBALS).toContain('--bg: #1a2430;');
-    expect(GLOBALS).toContain('--bg-2: #243140;');
-    expect(GLOBALS).toContain('--text: #e8edf3;');
-    expect(GLOBALS).toContain('--muted: #aab6c4;');
-    expect(GLOBALS).toContain('--accent: #e97830;');
-    expect(GLOBALS).toContain('--accent-end: #f59e66;');
+  it('ensures dim is the warm room and dark is the cool one', () => {
+    const DIM = ":root[data-theme='dim'] {";
+    expect(token(DIM, 'bg')).toBe('#1c1a17');
+    expect(token(DIM, 'bg-2')).toBe('#24211d');
+    expect(token(DIM, 'text')).toBe('#efece6');
+    expect(token(DIM, 'muted')).toBe('#b0a99e');
+    expect(token(DIM, 'accent')).toBe('#f97d34');
     expect(GLOBALS).toContain('--accent-gradient: linear-gradient(180deg, var(--accent), var(--accent-end));');
+
+    // The reason Dim exists. It used to be Dark at a higher brightness, which
+    // is a number, not a reason — so this asserts the temperature split and
+    // the lightness one, and either regressing takes the theme's point away.
+    expect(warmth(token(DIM, 'bg'))).toBeGreaterThan(0);
+    expect(warmth(token(':root {', 'bg'))).toBeLessThan(0);
+    expect(luminance(token(DIM, 'bg'))).toBeGreaterThan(luminance(token(':root {', 'bg')));
+
+    // A warm ground needs a warm lift, or every edge goes blue against it.
+    expect(token(DIM, 'tint')).toBe('255, 246, 235');
   });
 
-  it('ensures clarity uses CVD-safe Okabe-Ito system consistently without orange/green', () => {
-    expect(GLOBALS).toContain(":root[data-theme='clarity'] {");
-    expect(GLOBALS).toContain('--bg: #08131f;');
-    expect(GLOBALS).toContain('--bg-3: #102033;');
-    expect(GLOBALS).toContain('--text: #f8fafc;');
-    expect(GLOBALS).toContain('--accent: #56b4e9;');
-    expect(GLOBALS).toContain('--accent-end: #8ecdf0;');
+  it('ensures every hue clarity carries is one of the Okabe-Ito eight', () => {
+    const CVD = ":root[data-theme='clarity'] {";
+    expect(token(CVD, 'bg')).toBe('#0b0c0e');
+    expect(token(CVD, 'bg-3')).toBe('#1a1b1f');
+    expect(token(CVD, 'text')).toBe('#f6f7f8');
+    expect(token(CVD, 'accent')).toBe('#56b4e9');
     expect(GLOBALS).toContain('--accent-gradient: linear-gradient(180deg, var(--accent), var(--accent-end));');
-    expect(GLOBALS).toContain('--warn: #f0e442;');
-    expect(GLOBALS).toContain('--bad: #ff6b4a;');
-    expect(GLOBALS).toContain('--info: #cc79a7;');
+
+    // The published set. Anything outside it has not been checked against a
+    // simulator by anybody, whatever it looks like on the author's monitor.
+    const OKABE_ITO = ['#e69f00', '#56b4e9', '#009e73', '#f0e442', '#0072b2', '#d55e00', '#cc79a7'];
+    for (const name of ['good', 'warn', 'bad', 'info', 'fresh',
+      'cap-open', 'cap-light', 'cap-busy', 'cap-full', 'cap-over',
+      'nav-work', 'nav-intake', 'nav-team', 'nav-money', 'nav-grow']) {
+      expect(OKABE_ITO, `--${name}`).toContain(token(CVD, name));
+    }
+
+    // --good was #56b4e9, the same value as --accent, so "healthy" and "brand"
+    // were one colour and the two could never be told apart.
+    expect(token(CVD, 'good')).not.toBe(token(CVD, 'accent'));
+
+    // Five rails drew in three colours for the same reason.
+    const rails = ['nav-work', 'nav-intake', 'nav-team', 'nav-money', 'nav-grow']
+      .map((n) => token(CVD, n));
+    expect(new Set(rails).size).toBe(5);
+
+    // The ground stays neutral: a blue canvas biases every hue judgment made
+    // on top of it, which is the one thing this theme exists to avoid.
+    expect(saturation(token(CVD, 'bg'))).toBeLessThan(0.15);
   });
 
-  it('ensures monochrome uses pure grayscale ramps', () => {
-    expect(GLOBALS).toContain(":root[data-theme='monochrome'] {");
-    expect(GLOBALS).toContain('--bg: #0b0b0c;');
-    expect(GLOBALS).toContain('--bg-3: #18181b;');
-    expect(GLOBALS).toContain('--text: #fafafa;');
-    expect(GLOBALS).toContain('--muted: #bfc0c7;');
-    expect(GLOBALS).toContain('--accent: #f4f4f5;');
-    expect(GLOBALS).toContain('--accent-end: #a1a1aa;');
+  it('ensures monochrome separates by luminance, the only channel it has left', () => {
+    const MONO = ":root[data-theme='monochrome'] {";
+    expect(token(MONO, 'bg')).toBe('#0a0a0b');
+    expect(token(MONO, 'bg-3')).toBe('#17171a');
+    expect(token(MONO, 'text')).toBe('#fafafa');
+    expect(token(MONO, 'muted')).toBe('#b4b4bb');
+    expect(token(MONO, 'accent')).toBe('#fafafa');
     expect(GLOBALS).toContain('--accent-gradient: linear-gradient(180deg, var(--accent), var(--accent-end));');
+
+    // "Pure luminance & shape" is what the picker promises, so the greys stay
+    // neutral: nothing here may lean warm or cool.
+    expect(token(MONO, 'tint')).toBe('255, 255, 255');
+    for (const name of ['bg', 'bg-2', 'bg-3', 'good', 'warn', 'bad', 'info']) {
+      expect(saturation(token(MONO, name)), `--${name}`).toBeLessThan(0.1);
+    }
+
+    // The defect this theme shipped with: --good #fafafa against --bad #ffffff
+    // is a 2% luminance gap, in the one theme where luminance is all there is.
+    // Every severity step now clears a visible distance from the next.
+    const ramp = ['good', 'info', 'warn', 'bad'].map((n) => luminance(token(MONO, n)));
+    const spread = [...ramp].sort((a, b) => a - b);
+    for (let i = 1; i < spread.length; i += 1) {
+      expect(spread[i] - spread[i - 1]).toBeGreaterThan(0.05);
+    }
+    // Attention scales with brightness: critical is the brightest thing here.
+    expect(luminance(token(MONO, 'bad'))).toBe(Math.max(...ramp));
   });
 
   it('ensures all primary action gradients are configured per theme', () => {
