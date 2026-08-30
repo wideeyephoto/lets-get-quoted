@@ -653,6 +653,7 @@ export default async function AutomationsPage() {
               greeting={(voiceSettings?.greeting as string | null) ?? ''}
               transferNumber={(voiceSettings?.transfer_number as string | null) ?? ''}
               alertPhone={(account?.alert_phone as string | null) ?? ''}
+              callForwardNumber={callForwardNumber}
               businessHours={(voiceSettings?.business_hours ?? {}) as Record<string, [string, string] | null>}
               timezone={accountTimeZone}
               entitled={voiceEntitlement?.enabled ?? false}

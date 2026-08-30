@@ -98,13 +98,13 @@ describe('canonical billing catalog', () => {
     expect(BILLING_PLANS.growth.voice).toMatchObject({
       monthlyPriceCents: 5_500,
       includedMinutes: 200,
-      concurrentCalls: 1,
+      concurrentCalls: 5,
       includedInBasePlan: false,
     });
     expect(BILLING_PLANS.scale.voice).toMatchObject({
       monthlyPriceCents: 0,
       includedMinutes: 100,
-      concurrentCalls: 3,
+      concurrentCalls: 10,
       includedInBasePlan: true,
       advancedRouting: true,
     });

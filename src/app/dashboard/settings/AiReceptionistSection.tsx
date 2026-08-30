@@ -32,6 +32,7 @@ type Props = {
   greeting: string;
   transferNumber: string;
   alertPhone?: string;
+  callForwardNumber?: string;
   voiceTone?: 'friendly' | 'professional' | 'urgent_dispatcher';
   businessHours: Hours;
   timezone: string;
@@ -173,9 +174,18 @@ export default function AiReceptionistSection(props: Props) {
           and place one test call. The signed call is the proof that calls really reach LGQ.
         </p>
       ) : (
-        <p className="voice-unsold">
-          Included: {props.concurrentCalls} simultaneous AI {props.concurrentCalls === 1 ? 'call' : 'calls'}.
-        </p>
+        <div className="voice-unsold">
+          <p style={{ margin: 0, fontWeight: 600 }}>
+            Call capacity: {props.concurrentCalls > 1 ? `${props.concurrentCalls} calls at a time` : '1 call at a time'}
+          </p>
+          <p style={{ margin: '0.25rem 0 0' }}>
+            {props.callForwardNumber && props.callForwardNumber.trim().length > 0 ? (
+              <>When the receptionist is already on {props.concurrentCalls > 1 ? `${props.concurrentCalls} calls` : 'a call'}, additional callers go to your normal forwarding number: {props.callForwardNumber}.</>
+            ) : (
+              <>No overflow number configured. Additional callers will hear that the line is unavailable. Add a normal forwarding number before turning on Answering.</>
+            )}
+          </p>
+        </div>
       )}
 
       {/* 2-Way Contractor & Crew AI Hotline Feature Notice */}

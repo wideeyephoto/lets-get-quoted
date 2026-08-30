@@ -1729,7 +1729,7 @@ export const MANUAL_ARTICLES: ManualArticle[] = [
     readMinutes: 6,
     routes: [{ label: 'Automations', href: '/dashboard/automations#ai-receptionist' }],
     prerequisites: ['Owner access', 'settings.write permission'],
-    keywords: ['ai receptionist', 'call routing', 'phone answering', 'automations', 'business hours', 'call transcripts'],
+    keywords: ['ai receptionist', 'call routing', 'phone answering', 'automations', 'business hours', 'call transcripts', 'simultaneous calls', 'overflow calls', 'call capacity'],
     sections: [
       {
         title: 'Settings location on Automations page',
@@ -1743,6 +1743,12 @@ export const MANUAL_ARTICLES: ManualArticle[] = [
           'Customize your AI phone greeting and business description.',
           'Define operating hours and after-hours call behavior.',
           'Set the emergency transfer number for urgent calls requiring live owner pickup.',
+        ],
+      },
+      {
+        title: 'Understand simultaneous calls and overflow',
+        paragraphs: [
+          'Flex, Solo, and Growth include five simultaneous AI calls. Scale includes ten. When all available AI call slots are occupied, new callers follow your normal forwarding configuration. Without a forwarding number, they hear that the line is unavailable.',
         ],
       },
       {
