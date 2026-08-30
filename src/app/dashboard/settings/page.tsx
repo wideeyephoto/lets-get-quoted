@@ -518,7 +518,8 @@ export default async function SettingsPage({
                     Auto follows your phone or computer schedule. Sunlight is built for bright daylight clarity, Light / Workbench and Dim offer
                     soft, balanced workspaces, Dark and Onyx provide deep midnight and OLED focus, Clarity ensures color-blind (CVD)
                     safety, Monochrome uses pure grayscale fills &amp; shapes, and Parchment provides a warm light paper canvas.
-                    There is also a switch in the bottom-left corner of every page to cycle through them on the fly.
+                    The bottom-left button on every page is a one-tap visibility shortcut between Sunlight and Dark;
+                    use this picker for the full palette.
                   </p>
                   <ThemeToggle />
                 </section>

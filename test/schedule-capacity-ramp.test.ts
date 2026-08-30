@@ -292,7 +292,8 @@ describe('the month cell is coloured by the band', () => {
    * time something is booked, and the bar underneath already says that.
    */
   it('today’s ring still wins over the band', () => {
-    expect(CSS.lastIndexOf('.sched-month-cell.today { border-color: var(--accent); }'))
+    const rings = [...CSS.matchAll(/\.sched-month-cell\.today\s*\{\s*border-color:\s*var\(--accent\);\s*\}/g)];
+    expect(rings.at(-1)?.index ?? -1)
       .toBeGreaterThan(CSS.indexOf(".sched-month-cell[data-load='over']"));
   });
 });

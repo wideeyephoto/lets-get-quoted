@@ -6,11 +6,11 @@ import { useTheme } from './use-theme';
 
 // The theme switch that is always on screen, bottom-left, on a phone.
 //
-// WHY IT IS FIXED AND NOT IN A MENU. The other one lives in the account menu at
-// the foot of the rail, and below 1080px that rail is a drawer — so on the one
-// device this app is actually used on, changing the theme was: tap Menu, scroll
-// the drawer, open the account menu, tap. That is a settings interaction, and
-// this is not a settings problem. A contractor steps out of a van into direct
+// WHY IT IS FIXED AND NOT ONLY IN SETTINGS. The full picker lives on the Account
+// page, and below 1080px the rail that reaches it is a drawer — so on the one
+// device this app is actually used on, changing the theme otherwise means
+// navigating away from the task. That is a settings interaction, and this is
+// not a settings problem. A contractor steps out of a van into direct
 // sun and cannot read the screen; the fix has to be one tap from wherever they
 // are, including mid-form, without opening anything that covers the page.
 //
@@ -19,7 +19,7 @@ import { useTheme } from './use-theme';
 // below 900px, the mobile bar owns the top, and page primaries sit inline.
 //
 // WHY ONE TAP. This control answers "I can't see the screen", not "I want to
-// configure my preferences". Auto stays available in the account menu, and
+// configure my preferences". Auto stays available in Settings, and
 // the badge below says when it's on so the state is never a mystery.
 
 export default function ThemeFab() {
@@ -33,10 +33,6 @@ export default function ThemeFab() {
     <button
       type="button"
       className={`theme-fab${choice === 'system' ? ' is-auto' : ''}`}
-      // A switch, and aria-checked tracks light exactly as the old rail control
-      // did, so a screen reader hears the same thing in both places.
-      role="switch"
-      aria-checked={theme === 'light'}
       aria-label={label}
       title={label}
       onClick={() => setChoice(next)}

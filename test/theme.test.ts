@@ -5,7 +5,9 @@ import {
   parseTheme,
   parseThemeChoice,
   resolveTheme,
+  THEME_COLORS,
   THEME_CHOICES,
+  themeColor,
   themeChoiceLabel,
   themeCookieString,
   themeToggleLabel,
@@ -113,7 +115,7 @@ describe('themeCookieString', () => {
   });
 });
 
-describe('nextTheme / otherTheme / label', () => {
+describe('full palette cycle and one-tap visibility action', () => {
   it('cycles across the eight themes: onyx -> dark -> dim -> light -> sunlight -> clarity -> monochrome -> parchment -> onyx', () => {
     expect(nextTheme('onyx')).toBe('dark');
     expect(nextTheme('dark')).toBe('dim');
@@ -124,24 +126,37 @@ describe('nextTheme / otherTheme / label', () => {
     expect(nextTheme('monochrome')).toBe('parchment');
     expect(nextTheme('parchment')).toBe('onyx');
 
-    expect(otherTheme('onyx')).toBe('dark');
-    expect(otherTheme('dark')).toBe('dim');
-    expect(otherTheme('dim')).toBe('light');
-    expect(otherTheme('light')).toBe('sunlight');
-    expect(otherTheme('sunlight')).toBe('clarity');
-    expect(otherTheme('clarity')).toBe('monochrome');
-    expect(otherTheme('monochrome')).toBe('parchment');
-    expect(otherTheme('parchment')).toBe('onyx');
   });
 
-  it('the label says what pressing it will DO, not what it currently is', () => {
-    expect(themeToggleLabel('onyx')).toBe('Switch to dark mode');
-    expect(themeToggleLabel('dark')).toBe('Switch to dim mode');
-    expect(themeToggleLabel('dim')).toBe('Switch to workbench mode');
-    expect(themeToggleLabel('light')).toBe('Switch to sunlight mode');
-    expect(themeToggleLabel('sunlight')).toBe('Switch to clarity mode');
-    expect(themeToggleLabel('clarity')).toBe('Switch to monochrome mode');
-    expect(themeToggleLabel('monochrome')).toBe('Switch to parchment mode');
-    expect(themeToggleLabel('parchment')).toBe('Switch to onyx mode');
+  it('takes every dark workspace straight to Sunlight in one press', () => {
+    for (const theme of ['onyx', 'dark', 'dim', 'light', 'clarity', 'monochrome'] as const) {
+      expect(otherTheme(theme), theme).toBe('sunlight');
+      expect(themeToggleLabel(theme), theme).toBe('Switch to sunlight mode');
+    }
+  });
+
+  it('takes either bright paper workspace straight to Dark in one press', () => {
+    expect(otherTheme('sunlight')).toBe('dark');
+    expect(otherTheme('parchment')).toBe('dark');
+    expect(themeToggleLabel('sunlight')).toBe('Switch to dark mode');
+    expect(themeToggleLabel('parchment')).toBe('Switch to dark mode');
+  });
+});
+
+describe('browser theme colors', () => {
+  it('tracks the canvas of every rendered theme', () => {
+    expect(THEME_COLORS).toEqual({
+      onyx: '#000000',
+      dark: '#070a11',
+      dim: '#1c1a17',
+      light: '#141519',
+      sunlight: '#f4f6fa',
+      clarity: '#0b0c0e',
+      monochrome: '#0a0a0b',
+      parchment: '#f5f0e7',
+    });
+    for (const [theme, color] of Object.entries(THEME_COLORS)) {
+      expect(themeColor(theme as keyof typeof THEME_COLORS)).toBe(color);
+    }
   });
 });

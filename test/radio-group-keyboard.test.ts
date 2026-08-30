@@ -155,6 +155,23 @@ describe('every payment radio group uses the hook, not hand-rolled attributes', 
   }
 });
 
+describe('the appearance palette honors the radio-group keyboard contract', () => {
+  const source = readFileSync(
+    join(process.cwd(), 'src/components/theme-toggle.tsx'), 'utf8');
+
+  it('uses the shared arrow-key and roving-tabindex behavior', () => {
+    expect(source).toContain('useRadioGroup');
+    expect(source).toContain('getOptionProps(option.value)');
+  });
+
+  it('does not override the role or checked state supplied by the hook', () => {
+    expect(source).not.toContain('role="radio"');
+    expect(source).not.toContain('aria-checked={on}');
+    expect(source).toContain('role="radiogroup"');
+    expect(source).toContain('aria-label="Appearance"');
+  });
+});
+
 describe('the groups built from native inputs are left alone', () => {
   /**
    * Four of the eight radiogroups use `<input type="radio">`. The browser

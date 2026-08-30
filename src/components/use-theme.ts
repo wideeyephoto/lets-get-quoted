@@ -1,10 +1,18 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import {
+  createContext,
+  createElement,
+  useContext,
+  useEffect,
+  useState,
+  type ReactNode,
+} from 'react';
 import {
   parseTheme,
   parseThemeChoice,
   resolveTheme,
+  themeColor,
   themeCookieString,
   THEME_COOKIE,
   THEME_SYSTEM_COOKIE,
@@ -14,12 +22,10 @@ import {
 
 // The one client-side owner of "what theme are we in".
 //
-// There are now two controls for this on screen at once — the floating switch
-// on a phone and the Auto/Light/Dark row in the account menu — and before this
-// existed each of them read <html data-theme> once on mount and never again, so
-// flipping one left the other showing the old answer. <html> is still the
-// source of truth (the server stamps it, so there is nothing to hydrate); this
-// module just makes every subscriber re-read it when it changes.
+// There are now two controls for this on screen at once — the floating action
+// and the full palette in Settings. <html> remains the paint-time source of
+// truth, while ThemeProvider gives every control the same render state and owns
+// the single pair of global listeners.
 
 const CHANGE_EVENT = 'lgq-theme-change';
 const SYSTEM_QUERY = '(prefers-color-scheme: light)';
@@ -42,6 +48,11 @@ export function rememberSystemPreference(): void {
   document.cookie = themeCookieString(THEME_SYSTEM_COOKIE, systemPrefersLight() ? 'light' : 'dark');
 }
 
+function stampThemeColor(theme: Theme): void {
+  document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]')
+    .forEach((meta) => meta.setAttribute('content', themeColor(theme)));
+}
+
 /**
  * Apply a choice: repaint, persist, and tell the other controls.
  *
@@ -51,22 +62,50 @@ export function rememberSystemPreference(): void {
  */
 export function applyThemeChoice(choice: ThemeChoice): void {
   const root = document.documentElement;
-  root.dataset.theme = resolveTheme(choice === 'system' ? null : choice, systemPrefersLight());
+  const theme = resolveTheme(choice === 'system' ? null : choice, systemPrefersLight());
+  root.dataset.theme = theme;
   root.dataset.themeChoice = choice;
+  stampThemeColor(theme);
   document.cookie = themeCookieString(THEME_COOKIE, choice);
   window.dispatchEvent(new Event(CHANGE_EVENT));
 }
 
-export function useTheme(): { choice: ThemeChoice; theme: Theme; setChoice: (choice: ThemeChoice) => void } {
-  // Dark is the render-time guess, matching the server's own fallback; the
-  // effect below corrects it from <html> before paint in practice, and these
-  // controls draw state rather than text, so there is nothing to flicker.
-  const [state, setState] = useState<{ choice: ThemeChoice; theme: Theme }>({ choice: 'system', theme: 'dark' });
+type ThemeContextValue = Readonly<{
+  choice: ThemeChoice;
+  theme: Theme;
+  setChoice: (choice: ThemeChoice) => void;
+}>;
+
+const ThemeContext = createContext<ThemeContextValue | null>(null);
+
+export function ThemeProvider({
+  children,
+  enabled,
+  initialChoice,
+  initialTheme,
+}: {
+  children: ReactNode;
+  enabled: boolean;
+  initialChoice: ThemeChoice;
+  initialTheme: Theme;
+}) {
+  const [state, setState] = useState<{ choice: ThemeChoice; theme: Theme }>({
+    choice: initialChoice,
+    theme: initialTheme,
+  });
 
   useEffect(() => {
+    if (!enabled) return;
+
     const sync = () => setState(readStampedTheme());
-    sync();
     window.addEventListener(CHANGE_EVENT, sync);
+
+    // The inline layout bootstrap has already corrected first paint. Re-read
+    // that stamp now so controls agree with it, and repeat the cookie write as
+    // a resilient fallback if scripts were reordered by an extension or CSP.
+    rememberSystemPreference();
+    if (readStampedTheme().choice === 'system') applyThemeChoice('system');
+    else sync();
 
     // Someone on Auto whose phone crosses into night mode while a page is open
     // should watch it change, not find out on their next navigation.
@@ -81,7 +120,17 @@ export function useTheme(): { choice: ThemeChoice; theme: Theme; setChoice: (cho
       window.removeEventListener(CHANGE_EVENT, sync);
       media.removeEventListener('change', onSystemChange);
     };
-  }, []);
+  }, [enabled]);
 
-  return { ...state, setChoice: applyThemeChoice };
+  return createElement(
+    ThemeContext.Provider,
+    { value: { ...state, setChoice: applyThemeChoice } },
+    children,
+  );
+}
+
+export function useTheme(): ThemeContextValue {
+  const value = useContext(ThemeContext);
+  if (!value) throw new Error('useTheme must be used inside ThemeProvider');
+  return value;
 }

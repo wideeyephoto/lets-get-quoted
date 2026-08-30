@@ -2,25 +2,33 @@
 
 import { THEME_CHOICES } from '@/lib/theme';
 import { ThemeGlyph } from './theme-glyphs';
+import { useRadioGroup } from './use-radio-group';
 import { useTheme } from './use-theme';
 
-// Appearance, in the account menu: Auto / Light / Dark.
+// Appearance, in Settings: Auto plus the complete eight-theme palette.
 //
 // It used to be a two-position switch, and a switch was the honest shape while
-// there were two answers. There are three now — "match my device" is a real
-// third state, not light-with-an-asterisk — and a switch cannot show three. A
+// there were two answers. There are nine now — "match my device" is a real
+// state, not light-with-an-asterisk — and a switch cannot show them. A
 // radio group can, and it also says which one is CURRENT rather than only which
 // one is next, which the floating switch on a phone deliberately does not.
 //
-// Three radios, not a <select>: the whole point of a settings row you meet by
+// Visible radios, not a <select>: the whole point of a settings row you meet by
 // accident is that it shows you the options exist.
 //
-// role="radiogroup" rather than a fieldset of inputs because this lives inside
-// a menu (role="menuitem" wrapper) where a form control's own label and focus
-// behavior would fight the menu's keyboard handling.
+// These are button radios because the selected option restyles its entire
+// compact segment. useRadioGroup supplies the native-radio keyboard contract:
+// one tab stop, arrow movement, Home/End, and selection following focus.
+
+const THEME_OPTION_VALUES = THEME_CHOICES.map((option) => option.value);
 
 export default function ThemeToggle() {
   const { choice, setChoice } = useTheme();
+  const { getOptionProps } = useRadioGroup({
+    options: THEME_OPTION_VALUES,
+    value: choice,
+    onChange: setChoice,
+  });
 
   return (
     <div className="theme-choice" role="radiogroup" aria-label="Appearance">
@@ -30,8 +38,7 @@ export default function ThemeToggle() {
           <button
             key={option.value}
             type="button"
-            role="radio"
-            aria-checked={on}
+            {...getOptionProps(option.value)}
             className={`theme-choice-opt${on ? ' is-on' : ''}`}
             data-choice={option.value}
             // Named explicitly rather than by the word beside the glyph: the
@@ -40,7 +47,6 @@ export default function ThemeToggle() {
             // is a radio some screen readers announce as nothing.
             aria-label={option.label}
             title={option.label}
-            onClick={() => setChoice(option.value)}
           >
             <span className="theme-choice-glyph" aria-hidden="true">
               <ThemeGlyph name={option.value} />

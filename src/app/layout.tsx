@@ -2,13 +2,22 @@ import type { Metadata, Viewport } from 'next';
 import { IBM_Plex_Sans, JetBrains_Mono, Space_Grotesk } from 'next/font/google';
 import { GeistSans } from 'geist/font/sans';
 import { cookies, headers } from 'next/headers';
+import Script from 'next/script';
 import type { ReactNode } from 'react';
 import { AppShell } from '@/components/app-shell';
 import { AppShellProvider } from '@/components/app-shell-provider';
-import ThemeSync from '@/components/theme-sync';
 import SpeculationRules from '@/components/speculation-rules';
 import GoogleTag from '@/components/google-tag';
-import { parseThemeChoice, resolveTheme, THEME_COOKIE, THEME_SYSTEM_COOKIE } from '@/lib/theme';
+import { ThemeProvider } from '@/components/use-theme';
+import {
+  parseThemeChoice,
+  resolveTheme,
+  themeColor,
+  THEME_COLORS,
+  THEME_COOKIE,
+  THEME_COOKIE_MAX_AGE,
+  THEME_SYSTEM_COOKIE,
+} from '@/lib/theme';
 /**
  * THE BASE SHEET, NOT THE WHOLE ONE.
  *
@@ -113,45 +122,81 @@ export const metadata: Metadata = {
   },
 };
 
-export const viewport: Viewport = {
-  themeColor: '#06131f',
-};
+const THEME_INIT_SCRIPT = `
+  (function () {
+    try {
+      var root = document.documentElement;
+      var prefersLight = window.matchMedia('(prefers-color-scheme: light)').matches;
+      document.cookie = '${THEME_SYSTEM_COOKIE}=' + (prefersLight ? 'light' : 'dark') + '; path=/; max-age=${THEME_COOKIE_MAX_AGE}; samesite=lax';
+      if (root.dataset.themeChoice !== 'system') return;
+      var theme = prefersLight ? 'sunlight' : 'dark';
+      root.dataset.theme = theme;
+      var color = ${JSON.stringify(THEME_COLORS)}[theme];
+      document.querySelectorAll('meta[name="theme-color"]').forEach(function (meta) {
+        meta.setAttribute('content', color);
+      });
+    } catch (_) {}
+  })();
+`;
+
+function readServerTheme() {
+  const isStandaloneSite = headers().get('x-lgq-standalone-site') === '1';
+  const jar = cookies();
+  const choice = parseThemeChoice(jar.get(THEME_COOKIE)?.value) ?? 'system';
+  const systemPrefersLight = jar.get(THEME_SYSTEM_COOKIE)?.value === 'light';
+  const theme = isStandaloneSite ? 'dark' : resolveTheme(choice === 'system' ? null : choice, systemPrefersLight);
+  return { choice, isStandaloneSite, theme } as const;
+}
+
+export function generateViewport(): Viewport {
+  return { themeColor: themeColor(readServerTheme().theme) };
+}
 
 export default function RootLayout({ children }: { children: ReactNode }) {
-  const isStandaloneSite = headers().get('x-lgq-standalone-site') === '1';
-  // Stamped during the render, not corrected afterwards by a script: the first
-  // paint is already the right theme, so there is no dark flash on the way to
-  // light. This layout already reads headers(), so the cookie costs nothing —
-  // the route was dynamic either way.
+  const { choice, isStandaloneSite, theme } = readServerTheme();
+  // Explicit choices and known system preferences are stamped during the
+  // server render. On a first-ever visit there is no system mirror cookie yet,
+  // so THEME_INIT_SCRIPT corrects that one unknowable guess synchronously,
+  // before paint rather than in a post-hydration effect.
   //
   // A contractor's PUBLIC site renders through this same layout and must not
   // inherit the owner's preference: their homeowners get the palette the site
   // was designed with, not whatever the plumber likes at 6am.
   //
   // "Auto" is resolved here too, from the mirror cookie the browser writes (see
-  // THEME_SYSTEM_COOKIE) — so following the device costs no flash either, from
-  // the second page load of the first visit onwards.
-  const jar = cookies();
-  const choice = parseThemeChoice(jar.get(THEME_COOKIE)?.value) ?? 'system';
-  const systemPrefersLight = jar.get(THEME_SYSTEM_COOKIE)?.value === 'light';
-  const theme = isStandaloneSite ? 'dark' : resolveTheme(choice === 'system' ? null : choice, systemPrefersLight);
-
+  // THEME_SYSTEM_COOKIE); the bootstrap covers the first page load and the
+  // server has the answer for every navigation after it.
   return (
     // data-theme is the color being rendered; data-theme-choice is what the
     // person asked for. They differ exactly when the choice is 'system', and
     // the controls need the second one to show Auto as selected.
-    <html lang="en" data-theme={theme} data-theme-choice={isStandaloneSite ? 'dark' : choice}>
+    <html
+      lang="en"
+      data-theme={theme}
+      data-theme-choice={isStandaloneSite ? 'dark' : choice}
+      suppressHydrationWarning
+    >
       <head>
         {isStandaloneSite ? null : <GoogleTag />}
       </head>
       <body className={`${bodyFont.variable} ${displayFont.variable} ${monoFont.variable} ${GeistSans.variable}`}>
-        {/* A contractor's public site is not themed by the owner's preference,
-            so it must not be corrected towards the visitor's device either. */}
-        {isStandaloneSite ? null : <ThemeSync />}
-        <SpeculationRules />
-        <AppShellProvider>
-          <AppShell forceStandaloneSite={isStandaloneSite}>{children}</AppShell>
-        </AppShellProvider>
+        {isStandaloneSite ? null : (
+          <Script
+            id="lgq-theme-init"
+            strategy="beforeInteractive"
+            dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }}
+          />
+        )}
+        <ThemeProvider
+          enabled={!isStandaloneSite}
+          initialChoice={isStandaloneSite ? 'dark' : choice}
+          initialTheme={theme}
+        >
+          <SpeculationRules />
+          <AppShellProvider>
+            <AppShell forceStandaloneSite={isStandaloneSite}>{children}</AppShell>
+          </AppShellProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

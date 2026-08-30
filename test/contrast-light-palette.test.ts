@@ -135,19 +135,19 @@ describe('the Insights priority badges', () => {
    * says one word.
    */
   it('inks the badges with tokens that flip', () => {
-    expect(GLOBALS).toContain('.ins-opp-pri.is-high { color: var(--ink-orange-7);');
-    expect(GLOBALS).toContain('.ins-opp-pri.is-medium { color: var(--ink-blue-2);');
-    expect(GLOBALS).toContain('.ins-opp-icon.is-low { color: var(--ink-violet-5);');
+    expect(GLOBALS).toMatch(/\.ins-opp-pri\.is-high\s*\{[^}]*color:\s*var\(--ink-orange-7\);/);
+    expect(GLOBALS).toMatch(/\.ins-opp-pri\.is-medium\s*\{[^}]*color:\s*var\(--ink-blue-2\);/);
+    expect(GLOBALS).toMatch(/\.ins-opp-icon\.is-low\s*\{[^}]*color:\s*var\(--ink-violet-5\);/);
   });
 
   /** The same two literals sat on eleven chips on the same page. Fixing the
    *  badge and leaving the chips beside it would have been the odd result. */
   it('leaves no raw hue literal on any .ins-chip', () => {
-    const chips = GLOBALS.match(/^\.ins-chip\.is-[a-z0-9]+ \{.*$/gm) ?? [];
+    const chips = GLOBALS.match(/\.ins-chip\.is-[a-z0-9]+\s*\{[^}]*\}/g) ?? [];
     expect(chips.length).toBeGreaterThan(10);
     for (const rule of chips) {
       expect(rule).not.toMatch(/color: (#[0-9a-f]{3,6}|var\(--accent\));/);
-      expect(rule).toMatch(/color: var\(--ink-[a-z0-9-]+\);/);
+      expect(rule).toMatch(/color:\s*var\(--ink-[a-z0-9-]+\);/);
     }
   });
 
@@ -159,9 +159,9 @@ describe('the Insights priority badges', () => {
     expect(GLOBALS).toContain('--ink-blue-2: #6aa8ee;');
     expect(GLOBALS).toContain('--ink-green-13: #4ade80;');
     expect(GLOBALS).toContain('--ink-violet-5: #a78bfa;');
-    expect(GLOBALS).toContain('--ink-blue-2: #17518f;  /* was #6aa8ee */');
-    expect(GLOBALS).toContain('--ink-green-13: #0f7038;  /* was #4ade80 */');
-    expect(GLOBALS).toContain('--ink-violet-5: #6d3fd6;  /* was #a78bfa */');
+    expect(GLOBALS).toContain('--ink-blue-2: #17518f;');
+    expect(GLOBALS).toContain('--ink-green-13: #0f7038;');
+    expect(GLOBALS).toContain('--ink-violet-5: #6d3fd6;');
   });
 });
 
@@ -173,10 +173,10 @@ describe('the photo overlay labels', () => {
    * dark pill: "Default image" 1.21:1, "Drag" 1.72:1.
    */
   it('pins its ink the way its background is pinned', () => {
-    const block = GLOBALS.slice(GLOBALS.indexOf('.photo-default-badge, .photo-drag-handle, .photo-make-default {'), GLOBALS.indexOf('.photo-thumb-remove {'));
-    expect(block).toContain('background: rgba(5,10,18,.72)');
-    expect(block).toContain('.photo-default-badge { top: .5rem; left: .5rem; padding: .24rem .5rem; color: #ffd166;');
-    expect(block).toContain('color: rgba(255,255,255,.78)');
+    const block = GLOBALS.slice(GLOBALS.indexOf('.photo-default-badge,'), GLOBALS.indexOf('.photo-thumb-remove {'));
+    expect(block).toMatch(/background:\s*rgba\(5,\s*10,\s*18,\s*\.72\)/);
+    expect(block).toMatch(/\.photo-default-badge\s*\{[^}]*color:\s*#ffd166;/);
+    expect(block).toMatch(/color:\s*rgba\(255,\s*255,\s*255,\s*\.78\)/);
     // The two tokens that flipped underneath it.
     expect(block).not.toContain('var(--gold-ink)');
     expect(block).not.toContain('rgba(var(--tint), .7)');
@@ -186,9 +186,9 @@ describe('the photo overlay labels', () => {
 describe('placeholder and schedule theme contrast', () => {
   it('ensures input placeholders use high-contrast muted tokens', () => {
     expect(GLOBALS).toContain('.field input::placeholder,');
-    expect(GLOBALS).toContain('.field textarea::placeholder { color: var(--muted-2); opacity: 0.88; }');
-    expect(GLOBALS).toContain('.calendar-agenda-search input::placeholder { color: var(--muted-2); opacity: 0.88; }');
-    expect(GLOBALS).toContain('.client-search-bar input::placeholder { color: var(--muted-2); opacity: 0.88; }');
+    expect(GLOBALS).toMatch(/\.field textarea::placeholder\s*\{[^}]*color:\s*var\(--muted-2\);[^}]*opacity:\s*0\.88;/);
+    expect(GLOBALS).toMatch(/\.calendar-agenda-search input::placeholder\s*\{[^}]*color:\s*var\(--muted-2\);[^}]*opacity:\s*0\.88;/);
+    expect(GLOBALS).toMatch(/\.client-search-bar input::placeholder\s*\{[^}]*color:\s*var\(--muted-2\);[^}]*opacity:\s*0\.88;/);
   });
 
   it('ensures calendar bands support sunlight, clarity, monochrome, and parchment', () => {
@@ -340,4 +340,3 @@ describe('placeholder and schedule theme contrast', () => {
     expect(GLOBALS).toContain('background: var(--assistant-accent');
   });
 });
-

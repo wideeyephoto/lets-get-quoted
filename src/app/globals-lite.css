@@ -1,6 +1,6 @@
 /* GENERATED — do not edit. Source: src/app/globals.css
    Run: node scripts/build-css-subset.mjs
-   source-sha256: fa581e2223c25029
+   source-sha256: a1a48686b0ec6866
 
    globals.css with the rules that can only match inside /dashboard, /admin and
    /demo removed. Every route except those three imports this file; they import
@@ -797,7 +797,6 @@
   --text: #241e17;
   --muted: #584f42;
   --muted-2: #7a7062;
-  --shade: 48, 38, 27;
   --shadow-strong: rgba(74, 58, 38, 0.16);
   --shadow-soft: rgba(74, 58, 38, 0.07);
   --ground-1: #ede7dc;
@@ -1679,7 +1678,7 @@
 
 }
 
-/* THE FLIP. One block re-themes every container's entire subtree.
+/* THE WORKBENCH FLIP. One block re-themes every paper container's subtree.
    ---------------------------------------------------------------------------
    Custom properties inherit, so redeclaring the surface tokens here re-points
    every `rgba(var(--tint), α)`, every `var(--text)` and every `var(--muted)`
@@ -1694,70 +1693,30 @@
    sheet's dark ink on top of it, so every one was black text on a black box at
    1.0:1. None of it shows in a screenshot — these surfaces only exist after a
    click, which is exactly how they all survived the first pass. A surface that
-   opens from paper is paper. */
+   opens from Workbench paper is paper. Sunlight and Parchment already define
+   complete root palettes; including them here would flatten both into the same
+   generic cool-grey card palette. */
 :root[data-theme='light'] .panel,
-:root[data-theme='sunlight'] .panel,
-:root[data-theme='parchment'] .panel,
 :root[data-theme='light'] .feature-card,
-:root[data-theme='sunlight'] .feature-card,
-:root[data-theme='parchment'] .feature-card,
 :root[data-theme='light'] .bset-master,
-:root[data-theme='sunlight'] .bset-master,
-:root[data-theme='parchment'] .bset-master,
 :root[data-theme='light'] .bset-card,
-:root[data-theme='sunlight'] .bset-card,
-:root[data-theme='parchment'] .bset-card,
 :root[data-theme='light'] .bset-summary-item,
-:root[data-theme='sunlight'] .bset-summary-item,
-:root[data-theme='parchment'] .bset-summary-item,
 :root[data-theme='light'] .bset-section,
-:root[data-theme='sunlight'] .bset-section,
-:root[data-theme='parchment'] .bset-section,
 :root[data-theme='light'] .bset-preview,
-:root[data-theme='sunlight'] .bset-preview,
-:root[data-theme='parchment'] .bset-preview,
 :root[data-theme='light'] .bset-preview-toggle,
-:root[data-theme='sunlight'] .bset-preview-toggle,
-:root[data-theme='parchment'] .bset-preview-toggle,
 :root[data-theme='light'] .bset-recurring,
-:root[data-theme='sunlight'] .bset-recurring,
-:root[data-theme='parchment'] .bset-recurring,
 :root[data-theme='light'] .schedule-popover-panel,
-:root[data-theme='sunlight'] .schedule-popover-panel,
-:root[data-theme='parchment'] .schedule-popover-panel,
 :root[data-theme='light'] .schedule-crew-picker-panel,
-:root[data-theme='sunlight'] .schedule-crew-picker-panel,
-:root[data-theme='parchment'] .schedule-crew-picker-panel,
 :root[data-theme='light'] .schedule-crew-card-panel,
-:root[data-theme='sunlight'] .schedule-crew-card-panel,
-:root[data-theme='parchment'] .schedule-crew-card-panel,
 :root[data-theme='light'] .schedule-crew-quick-panel,
-:root[data-theme='sunlight'] .schedule-crew-quick-panel,
-:root[data-theme='parchment'] .schedule-crew-quick-panel,
 :root[data-theme='light'] .calendar-view-panel,
-:root[data-theme='sunlight'] .calendar-view-panel,
-:root[data-theme='parchment'] .calendar-view-panel,
 :root[data-theme='light'] .crew-assign-panel,
-:root[data-theme='sunlight'] .crew-assign-panel,
-:root[data-theme='parchment'] .crew-assign-panel,
 :root[data-theme='light'] .plan-stop-menu,
-:root[data-theme='sunlight'] .plan-stop-menu,
-:root[data-theme='parchment'] .plan-stop-menu,
 :root[data-theme='light'] .recurring-menu-pop,
-:root[data-theme='sunlight'] .recurring-menu-pop,
-:root[data-theme='parchment'] .recurring-menu-pop,
 :root[data-theme='light'] .bset-dots-pop,
-:root[data-theme='sunlight'] .bset-dots-pop,
-:root[data-theme='parchment'] .bset-dots-pop,
 :root[data-theme='light'] .client-modal,
-:root[data-theme='sunlight'] .client-modal,
-:root[data-theme='parchment'] .client-modal,
 :root[data-theme='light'] .unsaved-guard-panel,
-:root[data-theme='sunlight'] .unsaved-guard-panel,
-:root[data-theme='parchment'] .unsaved-guard-panel,
-:root[data-theme='light'] .bset-tipcard,
-:root[data-theme='sunlight'] .bset-tipcard,
-:root[data-theme='parchment'] .bset-tipcard {
+:root[data-theme='light'] .bset-tipcard {
   color-scheme: light;
   --tint: 17, 27, 41;
   --ink-rgb: 2, 6, 14;
@@ -22844,10 +22803,10 @@ a.bset-card {
   white-space: nowrap;
 }
 
-/* --- Appearance: Auto / Light / Dark ----------------------------------------
-   A segmented row of three, because there are three answers and a sliding
-   two-position switch (which this was) cannot show a third. It lives on the
-   Account page now, not in the rail, and the selected segment is filled: a menu
+/* --- Appearance: Auto plus the full palette ---------------------------------
+   A segmented row of nine, because there are nine answers and a sliding
+   two-position switch cannot represent them. It lives on the Account page,
+   and the selected segment is filled: a menu
    item tells you where it goes, a setting has to tell you where it IS — which
    is the one thing the floating corner switch deliberately does not say.
 
@@ -22875,10 +22834,8 @@ a.bset-card {
   justify-content: center;
   gap: 0.3rem;
   min-width: 0;
-  /* 32px inside the menu, where the pointer is a mouse and the row above it is
-     the same height. The floating one below is the touch target. */
-  height: 1.85rem;
-  padding: 0 0.45rem;
+  min-height: 2.75rem;
+  padding: 0.45rem 0.7rem;
   border: 0;
   border-radius: 999px;
   background: none;
@@ -22961,8 +22918,8 @@ a.bset-card {
    Always on screen, one tap, no menu. See the note at its call site in
    app-shell.tsx for why it exists and why it lives in this corner.
 
-   It is not hidden on desktop. The row in the account menu is two clicks deep
-   and this is not a settings interaction — someone squinting at a screen in the
+   It is not hidden on desktop. The full picker on Account settings is navigation
+   away, and this is not a settings interaction — someone squinting at a screen in the
    wrong light needs the fix where their eye already is, not behind their own
    name. The menu keeps its copy because that is where Auto lives and where
    somebody LOOKING for the setting will go. */
@@ -26470,28 +26427,6 @@ select optgroup {
   line-height: 1.25;
 }
 
-@media (max-width: 640px) {
-
-  /* The site-wide floating switch sat on top of the first job card. Theme is
-     still available in Menu; on this task-heavy phone surface content wins. */
-  body:has(.schedule-shell) .theme-fab,
-  body:has(.workspace-shell) .theme-fab {
-    display: none;
-  }
-
-  .schedule-shell .sched-card-top {
-    align-items: flex-start;
-  }
-
-  .schedule-shell .sched-card-badge {
-    max-width: 62%;
-    white-space: normal;
-    overflow-wrap: anywhere;
-    text-align: right;
-    line-height: 1.25;
-  }
-}
-
 /* --- the chip stops truncating names ---------------------------------------
    .calendar-job-chip has carried `white-space: nowrap` since it was a one-line
    chip, and .calendar-job-chip-main added `text-overflow: ellipsis` on top. With
@@ -29814,7 +29749,7 @@ select optgroup {
 
 :root[data-theme='sunlight'] .settings-tab.active {
   background: #ffffff;
-  color: #ea580c;
+  color: #c2410c;
   border: 1px solid rgba(15, 23, 42, 0.08);
   box-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.1), 0 1px 2px -1px rgba(15, 23, 42, 0.06);
 }

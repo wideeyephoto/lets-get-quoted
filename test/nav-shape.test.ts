@@ -230,10 +230,10 @@ describe('support does not float over the product', () => {
  */
 describe('the rail is colour-coded by section', () => {
   const ACCENTS = [
-    ['work', '#ff791f'],
-    ['intake', '#38bdf8'],
-    ['money', '#44e0a4'],
-    ['grow', '#b89afb'],
+    ['work', '#ff7a21'],
+    ['intake', '#53b1fd'],
+    ['money', '#3dd68c'],
+    ['grow', '#b692f6'],
   ] as const;
 
   it('gives every group an accent and renders it as a class', () => {
@@ -253,8 +253,8 @@ describe('the rail is colour-coded by section', () => {
     for (const [name, hex] of ACCENTS) {
       for (const [sheet, css] of [['globals', GLOBALS], ['lite', LITE]] as const) {
         expect(css, `${sheet}: --nav-${name}`).toContain(`--nav-${name}: ${hex};`);
-        expect(css, `${sheet}: .sidenav-group--${name}`).toContain(
-          `.sidenav-group--${name} { --section-accent: var(--nav-${name}); }`,
+        expect(css, `${sheet}: .sidenav-group--${name}`).toMatch(
+          new RegExp(`\\.sidenav-group--${name}\\s*\\{\\s*--section-accent:\\s*var\\(--nav-${name}\\);\\s*\\}`),
         );
       }
     }
@@ -267,8 +267,8 @@ describe('the rail is colour-coded by section', () => {
       expect(css, `${sheet}: eyebrow`).toContain('color: var(--section-accent, rgba(var(--grey-3), 0.72));');
       // The light rule hands over to the same variable, or the accent is a
       // dark-theme-only feature.
-      expect(css, `${sheet}: eyebrow (light)`).toContain(
-        ":root[data-theme='light'] .sidenav-glabel { color: var(--section-accent, rgba(var(--grey-3), 0.85)); }",
+      expect(css, `${sheet}: eyebrow (light)`).toMatch(
+        /:root\[data-theme='light'\] \.sidenav-glabel\s*\{\s*color:\s*var\(--section-accent, rgba\(var\(--grey-3\), 0\.85\)\);\s*\}/,
       );
     }
   });
@@ -290,9 +290,9 @@ describe('the rail is colour-coded by section', () => {
    * — moving the accent block would not change any of them.
    */
   it('leaves the active row, the ON rows and the locked rows alone', () => {
-    expect(GLOBALS).toContain('.sidenav-link.active .sidenav-ic { color: var(--accent); }');
-    expect(GLOBALS).toContain(".sidenav-link[data-state='on'] .sidenav-ic { color: var(--ink-green-11); }");
-    expect(GLOBALS).toContain('.sidenav-link.preview .sidenav-ic { color: var(--mute-g432); }');
+    expect(GLOBALS).toMatch(/\.sidenav-link\.active \.sidenav-ic\s*\{\s*color:\s*var\(--accent\);\s*\}/);
+    expect(GLOBALS).toMatch(/\.sidenav-link\[data-state='on'\] \.sidenav-ic\s*\{\s*color:\s*var\(--ink-green-11\);\s*\}/);
+    expect(GLOBALS).toMatch(/\.sidenav-link\.preview \.sidenav-ic\s*\{\s*color:\s*var\(--mute-g432\);\s*\}/);
     // Schedule's active treatment is untouched: wash, left rail, ring.
     expect(GLOBALS).toContain('box-shadow: inset 3px 0 0 var(--accent), inset 0 0 0 1px rgba(255, 122, 33, 0.22);');
   });

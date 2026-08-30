@@ -68,8 +68,9 @@ export function parseThemeChoice(value: string | null | undefined): ThemeChoice 
  * their machine to light mode has already answered this question once and
  * shouldn't have to answer it again here. The OS preference reaches the server
  * through THEME_SYSTEM_COOKIE; on the very first request of a very first visit
- * that cookie doesn't exist yet, so the server falls back to dark — which is
- * what the app has always been, and ThemeSync corrects it in the same session.
+ * that cookie doesn't exist yet, so the server falls back to dark. The root
+ * layout's synchronous bootstrap script corrects that guess before first paint
+ * and writes the mirror for future server renders.
  */
 export function resolveTheme(cookieValue: string | null | undefined, systemPrefersLight = false): Theme {
   return parseTheme(cookieValue) ?? (systemPrefersLight ? 'sunlight' : 'dark');
@@ -87,20 +88,37 @@ export function nextTheme(theme: Theme): Theme {
   return 'onyx';
 }
 
+/**
+ * The one-tap visibility action is deliberately binary.
+ *
+ * The complete palette belongs in Settings. The floating control is for the
+ * moment someone walks into bright sun (or back into a dark room), so it must
+ * always land on a legible extreme in one press instead of walking through
+ * eight preference options.
+ */
 export function otherTheme(theme: Theme): Theme {
-  return nextTheme(theme);
+  return theme === 'sunlight' || theme === 'parchment' ? 'dark' : 'sunlight';
 }
 
-/** What the switch says it will do, for the label and the accessible name. */
+/** What the action says it will do, for its tooltip and accessible name. */
 export function themeToggleLabel(theme: Theme): string {
-  if (theme === 'onyx') return 'Switch to dark mode';
-  if (theme === 'dark') return 'Switch to dim mode';
-  if (theme === 'dim') return 'Switch to workbench mode';
-  if (theme === 'light') return 'Switch to sunlight mode';
-  if (theme === 'sunlight') return 'Switch to clarity mode';
-  if (theme === 'clarity') return 'Switch to monochrome mode';
-  if (theme === 'monochrome') return 'Switch to parchment mode';
-  return 'Switch to onyx mode';
+  return otherTheme(theme) === 'dark' ? 'Switch to dark mode' : 'Switch to sunlight mode';
+}
+
+/** Browser chrome should belong to the active palette, not stay midnight blue. */
+export const THEME_COLORS: Readonly<Record<Theme, string>> = {
+  onyx: '#000000',
+  dark: '#070a11',
+  dim: '#1c1a17',
+  light: '#141519',
+  sunlight: '#f4f6fa',
+  clarity: '#0b0c0e',
+  monochrome: '#0a0a0b',
+  parchment: '#f5f0e7',
+};
+
+export function themeColor(theme: Theme): string {
+  return THEME_COLORS[theme];
 }
 
 /**
