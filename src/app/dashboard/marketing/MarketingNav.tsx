@@ -20,8 +20,9 @@ import { usePathname } from 'next/navigation';
 const SECTIONS = [
   { path: '', label: 'Overview' },
   { path: '/campaigns', label: 'Campaigns' },
+  { path: '/links', label: 'Link & QR Builder' },
   { path: '/blog', label: 'Blog' },
-  { path: '/performance', label: 'Performance' },
+  { path: '/performance', label: 'Performance & ROI' },
 ];
 
 export default function MarketingNav({

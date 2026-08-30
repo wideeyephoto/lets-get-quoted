@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { normalizeSupabaseUrl } from '@/lib/supabase-url';
 import { buildCsp, cspHeaderName, generateNonce } from '@/lib/csp';
+import { safeNextPath } from '@/lib/app-origin';
 import {
   canonicalHostFor,
   isMarketingPath,
@@ -232,8 +233,9 @@ export async function middleware(request: NextRequest) {
     const city = request.nextUrl.searchParams.get('city');
 
     let destination = '/dashboard';
-    if (rawNext && rawNext.startsWith('/')) {
-      destination = rawNext;
+    const sanitizedNext = rawNext ? safeNextPath(rawNext, '') : '';
+    if (sanitizedNext) {
+      destination = sanitizedNext;
     } else if (plan || trade || city) {
       const p = new URLSearchParams();
       if (plan) p.set('plan', plan);

@@ -15,7 +15,7 @@ import {
   resendOnboardingAction,
   signOutAllSessionsAction,
   setAccountSyntheticAction,
-  deleteAccountAction,
+  closeAndAnonymizeAccountAction,
 } from './actions';
 
 function ConfirmSubmit({ phrase, label, danger = false }: { phrase: string; label: string; danger?: boolean }) {
@@ -255,18 +255,18 @@ export default function AccountActions({
               <>
                 {can('account.export') ? <div style={{ height: 1, background: 'rgba(248,113,113,0.15)', margin: '0.5rem 0' }} /> : null}
                 {confirmingDelete ? (
-                  <form action={deleteAccountAction.bind(null, accountId)} className={styles.formStack}>
-                    <label htmlFor="delete-confirmation" className={styles.formLabel}>Type the account number to permanently delete <strong>{businessName}</strong> and all its data. This cannot be undone.</label>
+                  <form action={closeAndAnonymizeAccountAction.bind(null, accountId)} className={styles.formStack}>
+                    <label htmlFor="delete-confirmation" className={styles.formLabel}>Type the account number to permanently close and anonymize <strong>{businessName}</strong>. This cannot be undone.</label>
                     <input id="delete-confirmation" className={styles.input} name="confirm" placeholder="Account number" autoComplete="off" />
                     <div className={styles.actionRow} style={{ marginTop: '0.3rem' }}>
-                      <button type="submit" className="btn danger">Delete permanently</button>
+                      <button type="submit" className="btn danger">Close &amp; Anonymize</button>
                       <button type="button" className="btn secondary" onClick={() => setConfirmingDelete(false)}>Cancel</button>
                     </div>
                   </form>
                 ) : (
                   <div>
-                    <p className={styles.formLabel} style={{ marginBottom: '0.4rem' }}>Permanent erasure</p>
-                    <button type="button" className="btn danger" onClick={() => setConfirmingDelete(true)}>Delete account…</button>
+                    <p className={styles.formLabel} style={{ marginBottom: '0.4rem' }}>Permanent closure &amp; anonymization</p>
+                    <button type="button" className="btn danger" onClick={() => setConfirmingDelete(true)}>Close account…</button>
                   </div>
                 )}
               </>

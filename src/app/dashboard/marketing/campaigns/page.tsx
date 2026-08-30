@@ -38,21 +38,27 @@ export default async function CampaignsPage({
 }) {
   const { supabase, accountId } = await requireOfficeContext('settings.write');
 
-  const [recipients, campaigns, listHealth, { data: accountRow }, { data: siteRow }, { data: serviceRows }, sentBeats, { data: balanceRows }] = await Promise.all([
+  const [recipients, campaigns, listHealth, { data: accountRow }, { data: siteRow }, { data: serviceRows }, sentBeats, { data: balanceRows }, { data: userData }] = await Promise.all([
     loadRecipients(supabase, accountId),
     listCampaigns(supabase, accountId),
     loadListHealth(supabase, accountId),
-    supabase.from('accounts').select('business_name, mailing_address').eq('id', accountId).maybeSingle(),
+    supabase.from('accounts').select('business_name, mailing_address, reply_to_email').eq('id', accountId).maybeSingle(),
     supabase.from('sites').select('company_name, published, subdomain, content, service_area').eq('account_id', accountId).maybeSingle(),
     supabase.from('services').select('id, name, created_at, active').eq('account_id', accountId).eq('active', true),
     loadSentBeats(supabase, accountId),
     supabase.from('workspace_usage_credit_balances').select('resource_code, available_units').eq('account_id', accountId),
+    supabase.auth.getUser(),
   ]);
 
   const emailUnits = balanceRows?.find((r) => r.resource_code === 'marketing_email_sends')?.available_units;
   const smsUnits = balanceRows?.find((r) => r.resource_code === 'text_segments')?.available_units;
   const availableEmailCredits = typeof emailUnits === 'number' && Number.isFinite(emailUnits) ? Math.max(0, emailUnits) : null;
   const availableSmsCredits = typeof smsUnits === 'number' && Number.isFinite(smsUnits) ? Math.max(0, smsUnits) : null;
+
+  const replyEmailReady = Boolean(
+    ((accountRow?.reply_to_email as string | null) ?? '').trim() ||
+    ((userData?.user?.email as string | null) ?? '').trim()
+  );
 
   const mailingAddress = resolveMarketingMailingAddress((accountRow?.mailing_address as string | null) ?? null);
   const businessName = (siteRow?.company_name as string) || (accountRow?.business_name as string) || 'your business';
@@ -126,6 +132,7 @@ export default async function CampaignsPage({
       view={view}
       reach={reach}
       mailingAddress={mailingAddress}
+      replyEmailReady={replyEmailReady}
       daysSinceLastSend={listHealth.daysSinceLastSend}
       unsubscribesSinceLastSend={listHealth.unsubscribesSinceLastSend}
       availableEmailCredits={availableEmailCredits}

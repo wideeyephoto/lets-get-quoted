@@ -115,6 +115,13 @@ describe('the overview chooses one account-aware priority', () => {
     hasBlog: true,
   };
 
+  it('surfaces missing reply-to email blocker before suggesting a campaign', () => {
+    const priority = chooseOverviewPriority({ ...input, replyEmailReady: false });
+    expect(priority.title).toBe('Add a customer reply email');
+    expect(priority.primary.href).toBe('/dashboard/settings#business-basics');
+    expect(priority.metricValue).toBe('Blocked');
+  });
+
   it('surfaces the legal setup blocker before suggesting a campaign', () => {
     const priority = chooseOverviewPriority({ ...input, mailingAddressReady: false });
     expect(priority.title).toBe('Add your mailing address');

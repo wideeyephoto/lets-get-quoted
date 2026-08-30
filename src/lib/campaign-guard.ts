@@ -34,6 +34,8 @@ export type GuardInput = {
   reachCount: number;
   /** CAN-SPAM requires one on marketing email. Null means we have none. */
   mailingAddress: string | null;
+  /** Whether the contractor has a reply email (custom or auth email) on file. */
+  replyEmailReady?: boolean;
   /** Days since the last campaign to this account's list, null if never. */
   daysSinceLastSend: number | null;
   /** Unsubscribes recorded since the last campaign went out. */
@@ -137,6 +139,16 @@ export function checkCampaign(input: GuardInput): CampaignFinding[] {
       severity: 'high',
       title: 'No mailing address on file',
       detail: 'US anti-spam law requires a physical postal address in marketing email. Add yours in Settings — the send is blocked until you do.',
+      source: 'check',
+    });
+  }
+
+  if (wantEmail && input.replyEmailReady === false) {
+    findings.push({
+      id: 'no-reply-email',
+      severity: 'high',
+      title: 'No customer reply email configured',
+      detail: 'Add your business email in Settings so homeowners can reply to your campaign.',
       source: 'check',
     });
   }

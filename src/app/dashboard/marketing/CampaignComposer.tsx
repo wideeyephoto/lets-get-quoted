@@ -46,6 +46,8 @@ type Props = {
   };
   /** CAN-SPAM postal address, or null when there isn't one on file. */
   mailingAddress: string | null;
+  /** Whether the contractor has a reply email (custom or auth email) on file. */
+  replyEmailReady?: boolean;
   daysSinceLastSend: number | null;
   unsubscribesSinceLastSend: number;
   availableEmailCredits?: number | null;
@@ -77,6 +79,7 @@ export default function CampaignComposer({
   reach,
   initial,
   mailingAddress,
+  replyEmailReady = true,
   daysSinceLastSend,
   unsubscribesSinceLastSend,
   availableEmailCredits,
@@ -146,10 +149,11 @@ export default function CampaignComposer({
         body,
         reachCount,
         mailingAddress,
+        replyEmailReady,
         daysSinceLastSend,
         unsubscribesSinceLastSend,
       }),
-    [channel, subject, body, reachCount, mailingAddress, daysSinceLastSend, unsubscribesSinceLastSend],
+    [channel, subject, body, reachCount, mailingAddress, replyEmailReady, daysSinceLastSend, unsubscribesSinceLastSend],
   );
 
   const findings = useMemo(() => rankFindings([...checks, ...(aiFindings ?? [])]), [checks, aiFindings]);
@@ -169,9 +173,11 @@ export default function CampaignComposer({
         ? 'Add a subject line for the email.'
         : wantEmail && !mailingAddress
           ? 'Marketing emails have to carry a postal address by law. Add yours in Settings first.'
-          : reachCount === 0
-            ? 'Nobody in this audience can be reached on the channel you picked.'
-            : null;
+          : wantEmail && replyEmailReady === false
+            ? 'Add a customer reply email in Settings so customer replies reach you.'
+            : reachCount === 0
+              ? 'Nobody in this audience can be reached on the channel you picked.'
+              : null;
   const canSend = sendBlockedReason === null;
 
   function runRead() {

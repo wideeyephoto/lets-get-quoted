@@ -112,6 +112,11 @@ describe('checkCampaign', () => {
     expect(ids({ ...clean, channel: 'sms', mailingAddress: null })).not.toContain('no-mailing-address');
   });
 
+  it('blocks an email with no customer reply email on file', () => {
+    expect(ids({ ...clean, replyEmailReady: false })).toContain('no-reply-email');
+    expect(ids({ ...clean, channel: 'sms', replyEmailReady: false })).not.toContain('no-reply-email');
+  });
+
   it('flags sending again within a week of the last one', () => {
     const found = checkCampaign({ ...clean, daysSinceLastSend: 3 });
     const crowding = found.find((f) => f.id === 'sent-recently');

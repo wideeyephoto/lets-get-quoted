@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import {
-  CONSENT_STORAGE_KEY, consentWording, hasAnalytics, normalizeGa4Id, normalizeMetaPixelId,
-  readConsent, shouldMeasure, type AnalyticsConfig, type ConsentDecision,
+  CONSENT_STORAGE_KEY, consentWording, hasAnalytics, normalizeGa4Id, normalizeGoogleAdsId,
+  normalizeMetaPixelId, normalizeTiktokPixelId, readConsent, shouldMeasure,
+  type AnalyticsConfig, type ConsentDecision,
 } from '@/lib/analytics';
+import { getOrCaptureAttribution } from '@/lib/attribution';
 import styles from './themes.module.css';
 
 // The contractor's own measurement tags, and the banner that gates them.
@@ -30,6 +32,8 @@ declare global {
     gtag?: (...args: unknown[]) => void;
     fbq?: ((...args: unknown[]) => void) & { callMethod?: (...args: unknown[]) => void; queue?: unknown[]; loaded?: boolean; version?: string; push?: unknown };
     _fbq?: unknown;
+    ttq?: { load: (id: string) => void; page: () => void; track: (event: string, params?: Record<string, unknown>) => void };
+    TiktokAnalyticsObject?: string;
   }
 }
 
@@ -42,9 +46,11 @@ function loadTags(config: AnalyticsConfig) {
   tagsLoaded = true;
 
   const ga4 = normalizeGa4Id(config.ga4);
+  const googleAds = normalizeGoogleAdsId(config.googleAdsId ?? '');
   const pixel = normalizeMetaPixelId(config.metaPixel);
+  const tiktok = normalizeTiktokPixelId(config.tiktokPixel ?? '');
 
-  if (ga4) {
+  if (ga4 || googleAds) {
     window.dataLayer = window.dataLayer || [];
     // `arguments`, not rest parameters, and the lint rule is suppressed rather
     // than satisfied. gtag.js inspects what it finds on dataLayer and expects
@@ -53,14 +59,17 @@ function loadTags(config: AnalyticsConfig) {
     // eslint-disable-next-line prefer-rest-params
     window.gtag = function gtag() { window.dataLayer!.push(arguments); };
     window.gtag('js', new Date());
-    window.gtag('config', ga4);
+
+    if (ga4) window.gtag('config', ga4);
+    if (googleAds) window.gtag('config', googleAds);
 
     // Injected by this script, which the CSP nonce already trusts, so
     // 'strict-dynamic' extends that trust here — no host allowlist needed for
     // script-src. The endpoints it then talks to DO need connect-src (lib/csp).
+    const primaryId = ga4 || googleAds;
     const s = document.createElement('script');
     s.async = true;
-    s.src = `https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(ga4)}`;
+    s.src = `https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(primaryId)}`;
     document.head.appendChild(s);
   }
 
@@ -81,6 +90,47 @@ function loadTags(config: AnalyticsConfig) {
     window.fbq!('init', pixel);
     window.fbq!('track', 'PageView');
   }
+
+  if (tiktok) {
+    /* eslint-disable */
+    (function (w: any, d: Document, t: string) {
+      w.TiktokAnalyticsObject = t;
+      var ttq = (w[t] = w[t] || []);
+      ttq.methods = [
+        'page', 'track', 'identify', 'instances', 'debug', 'on', 'off', 'once', 'ready', 'alias',
+        'group', 'enableCookie', 'disableCookie', 'holdConsent', 'revokeConsent', 'grantConsent',
+      ];
+      ttq.setAndDefer = function (t: any, e: any) {
+        t[e] = function () {
+          t.push([e].concat(Array.prototype.slice.call(arguments, 0)));
+        };
+      };
+      for (var i = 0; i < ttq.methods.length; i++) ttq.setAndDefer(ttq, ttq.methods[i]);
+      ttq.instance = function (t: any) {
+        for (var e = ttq._i[t] || [], n = 0; n < ttq.methods.length; n++) ttq.setAndDefer(e, ttq.methods[n]);
+        return e;
+      };
+      ttq.load = function (e: any, n: any) {
+        var r = 'https://analytics.tiktok.com/i18n/pixel/events.js', o = n && n.partner;
+        ttq._i = ttq._i || {};
+        ttq._i[e] = [];
+        ttq._i[e]._u = r;
+        ttq._t = ttq._t || {};
+        ttq._t[e] = +new Date();
+        ttq._o = ttq._o || {};
+        ttq._o[e] = o || {};
+        var a = d.createElement('script') as HTMLScriptElement;
+        a.type = 'text/javascript';
+        a.async = !0;
+        a.src = r + '?sdkid=' + e + '&lib=' + t;
+        var c = d.getElementsByTagName('script')[0];
+        c?.parentNode?.insertBefore(a, c) || d.head.appendChild(a);
+      };
+    })(window, document, 'ttq');
+    /* eslint-enable */
+    window.ttq?.load(tiktok);
+    window.ttq?.page();
+  }
 }
 
 export default function SiteAnalytics({ config }: { config: AnalyticsConfig }) {
@@ -88,6 +138,11 @@ export default function SiteAnalytics({ config }: { config: AnalyticsConfig }) {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
+    // First-party attribution (UTMs, click IDs, referral source) is captured in
+    // sessionStorage regardless of external ad tags, so internal inquiries retain
+    // the source campaign even if third-party pixels are disabled.
+    getOrCaptureAttribution();
+
     if (!hasAnalytics(config)) return;
     if (!shouldMeasure({ hostname: window.location.hostname, inFrame: window.self !== window.top })) return;
 

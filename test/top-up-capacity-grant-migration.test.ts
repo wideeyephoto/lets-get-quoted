@@ -136,7 +136,7 @@ describe('what this migration deliberately does not do', () => {
     // product can end a top-up subscription. So there is no exception now, and
     // the rule is the plain one -- no recurring_capacity SKU is sellable.
     const withheldCapacitySkus = Object.values(TOP_UPS)
-      .filter((sku) => sku.fulfillment === 'recurring_capacity' && sku.id !== 'crew_user')
+      .filter((sku) => sku.fulfillment === 'recurring_capacity' && sku.id in TOP_UPS_WITHHELD)
       .map((sku) => sku.id);
     expect(withheldCapacitySkus.length).toBeGreaterThan(0);
     for (const id of withheldCapacitySkus) {
@@ -144,6 +144,7 @@ describe('what this migration deliberately does not do', () => {
       expect(SELLABLE_TOP_UP_IDS).not.toContain(id);
     }
     expect(SELLABLE_TOP_UP_IDS).toContain('crew_user');
+    expect(SELLABLE_TOP_UP_IDS).toContain('ai_voice_flex');
   });
 
   it('says so in the file, so the next reader is not surprised', () => {

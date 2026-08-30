@@ -1025,7 +1025,12 @@ async function dispatchStripeEvent(
     // installments are recorded + notified synchronously by chargePlanInstallment
     // (which also records the decline). Skip both here so we don't double-notify.
     if (paymentId && !recurringPlanId && !paymentPlanId) {
-      console.log(`Payment intent failed for payment ${paymentId}:`, paymentIntent.last_payment_error);
+      const err = paymentIntent.last_payment_error;
+      console.log(`Payment intent failed for payment ${paymentId}:`, {
+        code: err?.code,
+        decline_code: err?.decline_code,
+        message: err?.message,
+      });
       const { transitioned } = await markLegacyPaymentFailed(admin, paymentId, {
         statuses: ['requested', 'processing'],
       });

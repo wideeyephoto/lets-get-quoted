@@ -455,17 +455,39 @@ export async function closeAndAnonymizeAccountAction(accountId: string, formData
   const { admin } = ctx;
   const typed = String(formData.get('confirm') ?? '').trim();
 
-  const { data: acct } = await admin.from('accounts').select('account_number').eq('id', accountId).maybeSingle();
+  const { data: acct } = await admin.from('accounts').select('account_number, stripe_customer_id, quickbooks_realm_id').eq('id', accountId).maybeSingle();
   const expected = acct ? String((acct as { account_number: number }).account_number ?? '') : '';
   if (!expected || typed !== expected) backTo(accountId, 'error=confirm');
 
-  const { executeAccountClosureSaga } = await import('@/lib/account-deletion-saga');
-  const result = await executeAccountClosureSaga(admin, accountId, ctx.adminEmail);
+  const { data: owners } = await admin.from('memberships').select('user_id').eq('account_id', accountId).eq('role', 'owner');
+  const ownerIds = (owners ?? []).map((m) => (m as { user_id: string }).user_id).filter(Boolean);
+
+  const { requestAccountClosure, processClosureJob, buildProductionClosureAdapters } = await import('@/lib/account-closure-orchestrator');
+  const { jobId } = await requestAccountClosure(admin, {
+    accountId,
+    requestedByUserId: null,
+    requestedByRole: 'admin',
+    vendorHandles: {
+      stripeCustomerId: (acct as { stripe_customer_id?: string })?.stripe_customer_id ?? null,
+      quickbooksRealmId: (acct as { quickbooks_realm_id?: string })?.quickbooks_realm_id ?? null,
+      storageFolderPrefix: accountId,
+      ownerUserIds: ownerIds,
+    },
+  });
+
+  const adapters = buildProductionClosureAdapters(admin);
+  const result = await processClosureJob(admin, jobId, adapters);
 
   if (!result.success) {
-    console.error('closeAndAnonymizeAccountAction failed with errors:', result.errors);
+    console.error('closeAndAnonymizeAccountAction completed with errors:', result.errors);
     backTo(accountId, 'error=delete_failed');
   }
+
+  const { error: scrubError } = await admin
+    .from('privacy_requests')
+    .update({ details: null })
+    .eq('account_id', accountId);
+  if (scrubError) console.error('privacy request scrub failed:', scrubError);
 
   await logAdminAction(admin, ctx, {
     action: 'account_delete',
@@ -474,9 +496,7 @@ export async function closeAndAnonymizeAccountAction(accountId: string, formData
     targetId: accountId,
     meta: {
       accountNumber: expected,
-      anonymized: result.anonymized,
-      retainedLedger: result.retainedLedger,
-      cleanedStorageFiles: result.cleanedStorageFiles,
+      closureJobId: jobId,
     },
   });
 

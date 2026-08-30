@@ -4,9 +4,10 @@ import { createAdminClient, requireOfficeContext } from '@/lib/auth';
 import { getAuthoritativeTrade } from '@/lib/workspace-trade';
 import { WorkspaceTradeProvider } from '@/app/dashboard/WorkspaceTradeContext';
 import AddressAutocomplete from '@/components/address-autocomplete';
-import { expireStaleLeads, formatDuration, formatElapsedTime, formatLeadSource, getAverageRequestResponseMs, getLeadLostAfterDays, getLeadTriage, isLeadSnoozed, LEAD_FLAG_LABELS, LEAD_LOST_AFTER_CHOICES, LEAD_LOST_NEVER, leadLostAfterLabel, LEADS_VIEW_COOKIE, listLeads, normalizeLeadsView } from '@/lib/leads';
+import { expireStaleLeads, formatDuration, formatElapsedTime, formatLeadAttribution, formatLeadSource, getAverageRequestResponseMs, getLeadLostAfterDays, getLeadTriage, isLeadSnoozed, LEAD_FLAG_LABELS, LEAD_LOST_AFTER_CHOICES, LEAD_LOST_NEVER, leadLostAfterLabel, LEADS_VIEW_COOKIE, listLeads, normalizeLeadsView } from '@/lib/leads';
 import { estimateRangeLabel, leadCityLabel, leadScoreLabel, leadStageLabel } from '@/lib/lead-detail-labels';
 import { autoCloseWarning, isSetAside, stageCounts, waitingFor } from '@/lib/lead-queue';
+import { classifyLeadChannel } from '@/lib/campaign-roi';
 import { archiveLeadAction, createLeadAction, deleteLeadAction, setLeadLostAfterDaysAction, unsnoozeLeadAction } from './actions';
 import DeleteLeadButton from './DeleteLeadButton';
 import { shouldAutoOpenCreate } from '@/lib/nav-helpers';
@@ -92,6 +93,8 @@ export default async function LeadsPage({ searchParams }: { searchParams: { add?
   const toViewItem = (lead: (typeof allLeads)[number]): LeadViewItem => {
     const triage = getLeadTriage(lead);
     const estimate = triage.estimate ?? null;
+    const attributionSummary = formatLeadAttribution(triage.attribution);
+
     return {
       id: lead.id,
       name: lead.name || 'Unnamed request',
@@ -109,7 +112,10 @@ export default async function LeadsPage({ searchParams }: { searchParams: { add?
       score: triage.score,
       hasTriage: Boolean(lead.triage),
       scoreLabel: leadScoreLabel(triage.score),
-      flags: triage.flags.filter((flag) => flag !== 'phone_verified').map((key) => ({ key, label: LEAD_FLAG_LABELS[key] || key })),
+      flags: [
+        ...triage.flags.filter((flag) => flag !== 'phone_verified').map((key) => ({ key, label: LEAD_FLAG_LABELS[key] || key })),
+        ...(attributionSummary ? [{ key: 'campaign', label: `${attributionSummary.isPaid ? '🎯 ' : '📱 '}${attributionSummary.headline}` }] : []),
+      ],
       textOnly: triage.contactPreference === 'text_only',
       estimate,
       estimateLabel: estimateRangeLabel(estimate),
@@ -136,6 +142,8 @@ export default async function LeadsPage({ searchParams }: { searchParams: { add?
         triage.snoozedUntil && isLeadSnoozed(triage, now)
           ? new Date(triage.snoozedUntil).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
           : null,
+      attributionChannel: triage.attribution ? classifyLeadChannel(triage.attribution) : 'direct',
+      campaignName: triage.attribution?.campaign ?? null,
     };
   };
 

@@ -22,18 +22,32 @@ export type AnalyticsConfig = {
   ga4: string;
   /** Meta (Facebook) pixel id — digits only. Empty = off. */
   metaPixel: string;
+  /** Google Ads conversion id, e.g. AW-123456789. Empty = off. */
+  googleAdsId?: string;
+  /** TikTok pixel id — alphanumeric, e.g. C1234567890ABCDEF. Empty = off. */
+  tiktokPixel?: string;
 };
 
 // G- then at least four alphanumerics. Google has never published a length, so
 // this stays deliberately loose at the top end rather than rejecting a valid id
 // on a guess.
 const GA4_PATTERN = /^G-[A-Z0-9]{4,16}$/;
+const GOOGLE_ADS_PATTERN = /^AW-\d{6,15}$/;
 const META_PIXEL_PATTERN = /^\d{6,20}$/;
+const TIKTOK_PIXEL_PATTERN = /^[A-Z0-9]{12,24}$/i;
 
 /** Uppercased and trimmed, or '' if it isn't a measurement id. */
 export function normalizeGa4Id(input: string): string {
   const value = String(input ?? '').trim().toUpperCase();
   return GA4_PATTERN.test(value) ? value : '';
+}
+
+/** Normalized Google Ads ID, e.g. AW-123456789. */
+export function normalizeGoogleAdsId(input: string): string {
+  const raw = String(input ?? '').trim().toUpperCase();
+  if (GOOGLE_ADS_PATTERN.test(raw)) return raw;
+  if (/^\d{6,15}$/.test(raw)) return `AW-${raw}`;
+  return '';
 }
 
 /**
@@ -58,8 +72,16 @@ export function normalizeMetaPixelId(input: string): string {
   return META_PIXEL_PATTERN.test(digits) ? digits : '';
 }
 
+/** Alphanumeric TikTok pixel id, trimmed or ''. */
+export function normalizeTiktokPixelId(input: string): string {
+  const raw = String(input ?? '').trim();
+  if (/[<>(){};='"/\\]/.test(raw)) return '';
+  const cleaned = raw.replace(/[^A-Za-z0-9]/g, '');
+  return TIKTOK_PIXEL_PATTERN.test(cleaned) ? cleaned.toUpperCase() : '';
+}
+
 /** An inline message for the builder, or '' when the value is fine. */
-export function analyticsIdProblem(kind: 'ga4' | 'metaPixel', input: string): string {
+export function analyticsIdProblem(kind: 'ga4' | 'metaPixel' | 'googleAds' | 'tiktokPixel', input: string): string {
   const raw = String(input ?? '').trim();
   if (!raw) return '';
   if (kind === 'ga4') {
@@ -68,28 +90,48 @@ export function analyticsIdProblem(kind: 'ga4' | 'metaPixel', input: string): st
     if (/^GTM-/i.test(raw)) return 'That’s a Google Tag Manager ID. Paste the Measurement ID from your Analytics property instead — it starts with G-.';
     return 'A Measurement ID looks like G-ABCD1234. Find it in Analytics under Admin → Data streams.';
   }
-  if (normalizeMetaPixelId(raw)) return '';
-  return 'A pixel ID is a long number, like 123456789012345. Find it in Meta Events Manager.';
+  if (kind === 'googleAds') {
+    if (normalizeGoogleAdsId(raw)) return '';
+    return 'A Google Ads ID looks like AW-123456789. Find it in Google Ads under Tools & Settings → Conversions.';
+  }
+  if (kind === 'metaPixel') {
+    if (normalizeMetaPixelId(raw)) return '';
+    return 'A pixel ID is a long number, like 123456789012345. Find it in Meta Events Manager.';
+  }
+  if (kind === 'tiktokPixel') {
+    if (normalizeTiktokPixelId(raw)) return '';
+    return 'A TikTok Pixel ID looks like C1234567890ABCDEF. Find it in TikTok Ads Manager under Assets → Events.';
+  }
+  return '';
 }
 
 export function hasAnalytics(config: AnalyticsConfig): boolean {
-  return Boolean(normalizeGa4Id(config.ga4) || normalizeMetaPixelId(config.metaPixel));
+  return Boolean(
+    normalizeGa4Id(config.ga4) ||
+    normalizeMetaPixelId(config.metaPixel) ||
+    normalizeGoogleAdsId(config.googleAdsId ?? '') ||
+    normalizeTiktokPixelId(config.tiktokPixel ?? '')
+  );
 }
 
 /**
  * What the banner has to be honest about.
  *
- * A Meta pixel is advertising tracking, not measurement, and a banner that says
+ * An ad pixel is advertising tracking, not measurement, and a banner that says
  * "just analytics" while loading one is the dark pattern this is meant to avoid.
  * So the wording is derived from what is actually configured rather than being
  * a fixed string.
  */
 export function consentWording(config: AnalyticsConfig): { body: string; kind: 'analytics' | 'ads' } {
-  const ads = Boolean(normalizeMetaPixelId(config.metaPixel));
+  const ads = Boolean(
+    normalizeMetaPixelId(config.metaPixel) ||
+    normalizeGoogleAdsId(config.googleAdsId ?? '') ||
+    normalizeTiktokPixelId(config.tiktokPixel ?? '')
+  );
   return ads
     ? {
         kind: 'ads',
-        body: 'We use cookies to see which pages bring in work, and to measure our ads on Facebook and Instagram. Say no and we won’t.',
+        body: 'We use cookies to see which pages bring in work, and to measure our ads on Google, Facebook, Instagram, or TikTok. Say no and we won’t.',
       }
     : {
         kind: 'analytics',
@@ -156,8 +198,13 @@ export function trackQuoteFunnelStep(payload: QuoteFunnelPayload): void {
     // ignore
   }
 
-  // Google Analytics 4 (if loaded & consented)
-  const win = window as unknown as { gtag?: (...args: unknown[]) => void; fbq?: (...args: unknown[]) => void };
+  // Google Analytics 4 & Google Ads (if loaded & consented)
+  const win = window as unknown as {
+    gtag?: (...args: unknown[]) => void;
+    fbq?: (...args: unknown[]) => void;
+    ttq?: { track: (event: string, params?: Record<string, unknown>) => void };
+  };
+
   if (typeof win.gtag === 'function') {
     try {
       win.gtag('event', `quote_${payload.step}`, {
@@ -168,6 +215,14 @@ export function trackQuoteFunnelStep(payload: QuoteFunnelPayload): void {
         device_type: payload.device,
         site_id: payload.siteId || '',
       });
+
+      if (payload.step === 'contact_submitted') {
+        win.gtag('event', 'conversion', {
+          send_to: 'default',
+          event_category: 'quote_intake',
+          event_label: payload.formStyle,
+        });
+      }
     } catch {
       // ignore
     }
@@ -180,6 +235,19 @@ export function trackQuoteFunnelStep(payload: QuoteFunnelPayload): void {
         win.fbq('trackCustom', 'QuoteFormStarted', { formStyle: payload.formStyle, template: payload.template });
       } else if (payload.step === 'contact_submitted') {
         win.fbq('track', 'Lead', { content_name: `Quote - ${payload.formStyle}`, value: 0, currency: 'USD' });
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  // TikTok Pixel (if loaded & consented)
+  if (win.ttq && typeof win.ttq.track === 'function') {
+    try {
+      if (payload.step === 'form_started') {
+        win.ttq.track('InitiateCheckout', { content_name: `Quote - ${payload.formStyle}` });
+      } else if (payload.step === 'contact_submitted') {
+        win.ttq.track('SubmitForm', { content_name: `Quote - ${payload.formStyle}` });
       }
     } catch {
       // ignore

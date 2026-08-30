@@ -10,6 +10,7 @@ import {
 } from '@/lib/marketing-overview';
 import type { CalendarView } from '@/lib/marketing-calendar-data';
 import { stateName } from '@/lib/marketing-calendar';
+import type { OverallRoiSummary } from '@/lib/campaign-roi';
 import MarketingNav from './MarketingNav';
 
 /**
@@ -25,6 +26,7 @@ type UpcomingPost = { id: string; title: string; publishAt: string };
 type Props = {
   view: CalendarView;
   mailingAddress: string | null;
+  replyEmailReady?: boolean;
   summary: ReturnType<typeof overviewSummary>;
   recommendations: PreparedRecommendation[];
   upcoming: UpcomingPost[];
@@ -33,6 +35,7 @@ type Props = {
   hasBlog: boolean;
   rebookDue: number;
   emailTheme: { currentTheme: string | null };
+  roiSummary?: OverallRoiSummary;
   basePath?: string;
   navOnly?: string[];
 };
@@ -40,6 +43,7 @@ type Props = {
 export default function MarketingOverviewScreen({
   view,
   mailingAddress,
+  replyEmailReady = true,
   summary,
   recommendations,
   upcoming,
@@ -47,6 +51,7 @@ export default function MarketingOverviewScreen({
   hasBlog,
   rebookDue,
   emailTheme,
+  roiSummary,
   basePath = '/dashboard',
   navOnly,
 }: Props) {
@@ -57,6 +62,7 @@ export default function MarketingOverviewScreen({
 
   const priority = chooseOverviewPriority({
     mailingAddressReady: Boolean(mailingAddress),
+    replyEmailReady,
     emailReachable: summary.audience.value,
     attentionCount: summary.attention.value,
     rebookDue,
@@ -257,6 +263,42 @@ export default function MarketingOverviewScreen({
           ) : null}
         </div>
       </div>
+
+      {roiSummary ? (
+        <section className="panel workspace-section-card" aria-labelledby="mkt-acquisition-title" style={{ marginTop: '1.25rem' }}>
+          <div className="section-heading workspace-section-heading compact-heading mkt-section-head">
+            <div>
+              <p className="eyebrow">Closed-Loop Acquisition</p>
+              <h2 id="mkt-acquisition-title">Ad &amp; Campaign Attribution</h2>
+            </div>
+            <Link href={at('/dashboard/marketing/performance')} className="mkt-section-link">
+              Full ROI report →
+            </Link>
+          </div>
+          <div className="mkt-pipeline-tiles" style={{ marginTop: '0.75rem' }}>
+            <Link href={at('/dashboard/marketing/performance')} className="panel mkt-tile">
+              <span className="mkt-tile-label">Attributed Leads</span>
+              <strong className="mkt-tile-value">{roiSummary.adAttributedLeads}</strong>
+              <span className="mkt-tile-note">{roiSummary.adAttributedPct}% from ad &amp; referral links</span>
+            </Link>
+            <Link href={at('/dashboard/marketing/performance')} className="panel mkt-tile">
+              <span className="mkt-tile-label">Won Ad Revenue</span>
+              <strong className="mkt-tile-value">${roiSummary.adAttributedRevenue.toLocaleString()}</strong>
+              <span className="mkt-tile-note">From converted campaigns</span>
+            </Link>
+            <Link href={at('/dashboard/marketing/performance')} className="panel mkt-tile">
+              <span className="mkt-tile-label">Ad Win Rate</span>
+              <strong className="mkt-tile-value">{roiSummary.adWinRatePct}%</strong>
+              <span className="mkt-tile-note">{roiSummary.overallWinRatePct}% pipeline average</span>
+            </Link>
+            <Link href={at('/dashboard/marketing/links')} className="panel mkt-tile">
+              <span className="mkt-tile-label">Link &amp; QR Builder</span>
+              <strong className="mkt-tile-value">Create</strong>
+              <span className="mkt-tile-note">Track social, search &amp; print</span>
+            </Link>
+          </div>
+        </section>
+      ) : null}
 
       <section className="panel workspace-section-card mkt-email-summary" aria-labelledby="mkt-email-theme-title">
         <div>

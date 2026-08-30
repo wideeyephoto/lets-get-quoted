@@ -125,11 +125,20 @@ function defaultTags(kind: string, brand: EmailBrand, accountId?: string | null)
   ];
 }
 
-// Resolve the account owner's login email — the contractor — for out-of-band
-// alerts (payout paused, chargeback opened) that shouldn't rely on them having
-// the dashboard open. Requires the admin client since the webhook has no
-// session. Returns null if the owner or their email can't be resolved.
+// Resolve the contractor's business email for out-of-band alerts (payout paused,
+// chargeback opened, website leads) that shouldn't rely on them having the
+// dashboard open. Checks accounts.reply_to_email first, then falls back to the
+// owner's auth email. Requires the admin client. Returns null if unresolvable.
 export async function getAccountOwnerEmail(admin: SupabaseClient, accountId: string): Promise<string | null> {
+  const { data: account } = await admin
+    .from('accounts')
+    .select('reply_to_email')
+    .eq('id', accountId)
+    .maybeSingle();
+  if (account?.reply_to_email?.trim()) {
+    return account.reply_to_email.trim();
+  }
+
   const { data: owner } = await admin
     .from('memberships')
     .select('user_id')

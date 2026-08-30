@@ -4,6 +4,8 @@ import { findOrCreateClientId } from '@/lib/clients';
 import { normalizeClientChannelPreference } from '@/lib/client-channel';
 import { applyTestRecordFilter, type TestRecordOptions } from '@/lib/test-records';
 import type { LeadVisualAnalysis } from '@/lib/lead-photo-ai';
+import { formatLeadAttribution, sanitizeAttribution, type LeadAttribution } from '@/lib/attribution';
+export { formatLeadAttribution, type LeadAttribution } from '@/lib/attribution';
 
 export type LeadSource = 'website_form' | 'missed_call' | 'manual' | 'referral' | 'ai_voice';
 export type LeadStatus = 'new' | 'contacted' | 'quoted' | 'won' | 'lost';
@@ -63,6 +65,8 @@ export type LeadTriage = {
   archived?: boolean;
   declinedReason?: string | null;
   contactLog?: LeadContactEntry[];
+  /** Marketing campaign, social source, or ad click attribution */
+  attribution?: LeadAttribution | null;
   /**
    * The quote as it was last sent, so undoing it is an edit rather than a
    * retype. See LeadQuoteDraft.
@@ -188,6 +192,7 @@ export function getLeadTriage(lead: Pick<Lead, 'triage'>): LeadTriage {
           .filter((entry): entry is LeadContactEntry => Boolean(entry) && typeof entry === 'object' && typeof entry.at === 'string' && typeof entry.label === 'string')
           .map((entry) => ({ at: entry.at, label: entry.label, ...(typeof entry.note === 'string' && entry.note ? { note: entry.note } : {}) }))
       : undefined,
+    attribution: sanitizeAttribution(triage.attribution) || undefined,
     /* PARSED HERE OR LOST EVERYWHERE.
        This function does not read the blob, it rebuilds it — and every triage
        write in the app is `{ ...getLeadTriage(lead), ...change }`. A field this

@@ -141,6 +141,9 @@ const ANALYTICS_ENDPOINTS = [
   'https://adservice.google.com',
   'https://connect.facebook.net',
   'https://www.facebook.com',
+  // TikTok Pixel endpoints
+  'https://analytics.tiktok.com',
+  'https://*.tiktok.com',
 ];
 
 export function buildCsp({ nonce, supabaseOrigin }: CspOptions): string {

@@ -3,9 +3,10 @@ import { APP_ORIGIN } from '@/lib/app-origin';
 import { createAdminClient } from '@/lib/auth';
 import { HONEYPOT_FIELD } from '@/components/honeypot-field';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { sendLeadNotificationEmail } from '@/lib/email';
+import { getAccountOwnerEmail, sendLeadNotificationEmail } from '@/lib/email';
 import { classifyEmail } from '@/lib/email-quality';
 import { createLead, getLeadTriage, LEAD_PRUNE_FLAGS, type Lead, type LeadTriage } from '@/lib/leads';
+import { parseAttribution, sanitizeAttribution } from '@/lib/attribution';
 import { deleteLeadPhotos, uploadLeadPhoto, createLeadPhotoUrls } from '@/lib/lead-photo-storage';
 import { analyzeLeadPhotos } from '@/lib/lead-photo-ai';
 import { isLeadVerificationValid } from '@/lib/lead-verification';
@@ -53,20 +54,17 @@ async function notifyOwner(
     // has always used APP_ORIGIN for the identical link; this was the outlier.
     const dashboardUrl = `${APP_ORIGIN}/dashboard/leads/${lead.id}`;
 
-    const { data: owner } = await admin.from('memberships').select('user_id').eq('account_id', site.account_id).eq('role', 'owner').limit(1).maybeSingle();
-    if (owner?.user_id) {
-      const { data: ownerUser } = await admin.auth.admin.getUserById(owner.user_id);
-      if (ownerUser.user?.email) {
-        await sendLeadNotificationEmail({
-          accountId: site.account_id,
-          recipientEmail: ownerUser.user.email,
-          businessName: site.company_name,
-          lead,
-          dashboardUrl,
-          highValue: alert.highValue,
-          estimate,
-        });
-      }
+    const recipientEmail = await getAccountOwnerEmail(admin, site.account_id);
+    if (recipientEmail) {
+      await sendLeadNotificationEmail({
+        accountId: site.account_id,
+        recipientEmail,
+        businessName: site.company_name,
+        lead,
+        dashboardUrl,
+        highValue: alert.highValue,
+        estimate,
+      });
     }
 
     // Urgent text to the owner's own mobile — high-value leads only, opt-in.
@@ -372,6 +370,23 @@ export async function POST(request: NextRequest) {
       } catch (visErr) {
         console.error('Visual photo inspection skipped on intake:', visErr);
       }
+    }
+
+    let attribution = null;
+    const rawAttribution = data.get('attribution');
+    if (typeof rawAttribution === 'string' && rawAttribution.trim()) {
+      try {
+        attribution = sanitizeAttribution(JSON.parse(rawAttribution));
+      } catch {
+        // ignore malformed JSON
+      }
+    }
+    if (!attribution) {
+      const referer = request.headers.get('referer') || '';
+      attribution = parseAttribution(referer, referer || undefined);
+    }
+    if (attribution) {
+      triage.attribution = attribution;
     }
 
     const lead = await createLead(admin, site.account_id, {

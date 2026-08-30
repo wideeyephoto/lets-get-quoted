@@ -175,6 +175,10 @@ export type SiteAnalyticsContent = {
   ga4: string;
   /** Meta (Facebook) pixel id — digits. */
   metaPixel: string;
+  /** Google Ads conversion id (AW-…). */
+  googleAdsId?: string;
+  /** TikTok pixel id (alphanumeric). */
+  tiktokPixel?: string;
 };
 
 // The floating "Message us" button. Opens the homeowner's own messaging app —
@@ -2222,6 +2226,8 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
       // nothing. A malformed id sitting in the column is inert.
       ga4: toString(analytics.ga4).slice(0, 24),
       metaPixel: toString(analytics.metaPixel).slice(0, 40),
+      googleAdsId: toString(analytics.googleAdsId).slice(0, 30),
+      tiktokPixel: toString(analytics.tiktokPixel).slice(0, 40),
     },
     ratingBadge: {
       enabled: toBoolean(ratingBadge.enabled),

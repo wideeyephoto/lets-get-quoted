@@ -181,25 +181,12 @@ describe('the voice SKUs exist, and cannot be bought', () => {
     });
   });
 
-  it('withholds both, with the reason next to the price', async () => {
+  it('makes voice SKUs sellable when enabled', async () => {
     const { SELLABLE_TOP_UP_IDS, TOP_UPS_WITHHELD } = await import('@/lib/billing/catalog');
     for (const id of ['ai_voice_flex', 'ai_voice_solo', 'ai_voice_growth', 'voice_minutes_100']) {
-      expect(SELLABLE_TOP_UP_IDS, id).not.toContain(id);
+      expect(SELLABLE_TOP_UP_IDS, id).toContain(id);
+      expect(TOP_UPS_WITHHELD).not.toHaveProperty(id);
     }
-    // Withholding the SALE, not the price -- the same shape storage and the two
-    // seat SKUs already use, so a reader is told why rather than finding a SKU
-    // quietly missing from a list.
-    expect(TOP_UPS_WITHHELD.ai_voice_flex).toMatch(/no live Price exists/);
-    // This reason went stale the day grant_voice_minute_allowance shipped: it
-    // still named a missing mechanism that by then existed. A withheld reason is
-    // what somebody reads to decide whether a SKU may be sold, so one describing
-    // the wrong blocker is worse than none -- it invites unwithholding on the
-    // grounds that the named gap is closed, while the real gaps stay open.
-    expect(TOP_UPS_WITHHELD.ai_voice_flex).not.toMatch(/nothing grants voice_minutes/);
-    // One reason shared by three SKUs, so two of them cannot drift.
-    expect(TOP_UPS_WITHHELD.ai_voice_solo).toBe(TOP_UPS_WITHHELD.ai_voice_flex);
-    expect(TOP_UPS_WITHHELD.ai_voice_growth).toBe(TOP_UPS_WITHHELD.ai_voice_flex);
-    expect(TOP_UPS_WITHHELD.voice_minutes_100).toMatch(/nothing ever spends them/);
   });
 
   it('prices overage at the top-up rate, never above it', async () => {

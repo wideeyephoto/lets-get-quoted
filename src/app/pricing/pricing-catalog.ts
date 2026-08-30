@@ -177,7 +177,7 @@ export const PLANS: readonly PricingPlan[] = [
   },
 ] as const;
 
-export const VOICE_PURCHASABLE = false;
+export const VOICE_PURCHASABLE = true;
 
 export const VOICE_PLANNED_PRICE_LABEL = 'Planned launch pricing from $55/month';
 

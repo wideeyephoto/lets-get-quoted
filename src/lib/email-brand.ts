@@ -37,6 +37,7 @@ export async function loadEmailBrand(
   const admin = client ?? createAdminClient();
   let row: BrandRow | null = null;
   let mailingAddress: string | null = null;
+  let replyTo: string | null = null;
 
   try {
     const [{ data: siteData }, { data: accountData }] = await Promise.all([
@@ -47,23 +48,27 @@ export async function loadEmailBrand(
         .maybeSingle(),
       admin
         .from('accounts')
-        .select('mailing_address')
+        .select('mailing_address, reply_to_email')
         .eq('id', accountId)
         .maybeSingle(),
     ]);
     row = (siteData as BrandRow) ?? null;
     mailingAddress = accountData?.mailing_address ? String(accountData.mailing_address).trim() : null;
+    const explicitReplyTo = accountData?.reply_to_email ? String(accountData.reply_to_email).trim() : null;
+    if (explicitReplyTo) {
+      replyTo = explicitReplyTo;
+    }
   } catch {
     row = null;
   }
 
   // The reply address is the point of the whole exercise — before this, a
   // customer hitting Reply on their plumber's invoice reached OUR inbox and the
-  // plumber never saw it. Best-effort, but tried first.
+  // plumber never saw it. An explicit account reply_to_email wins; otherwise we
+  // fall back to the owner's login email.
   // Deliberately NOT imported from ./email — that module imports this one, and
   // a cycle between them resolves to undefined at runtime in a way that only
   // shows up when an email is actually sent.
-  let replyTo: string | null = null;
   let senderName: string | null = null;
 
   try {
@@ -77,12 +82,14 @@ export async function loadEmailBrand(
       .maybeSingle();
     if (owner?.user_id) {
       const { data: ownerUser } = await admin.auth.admin.getUserById(owner.user_id);
-      replyTo = ownerUser?.user?.email ?? null;
+      if (!replyTo) {
+        replyTo = ownerUser?.user?.email ?? null;
+      }
       const meta = ownerUser?.user?.user_metadata;
       senderName = meta?.full_name || meta?.name || null;
     }
   } catch {
-    replyTo = null;
+    // If explicit replyTo wasn't already set, it stays null
   }
 
   const host = row?.custom_domain && row.custom_domain_verified_at

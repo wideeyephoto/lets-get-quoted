@@ -12,6 +12,7 @@ import { DEFAULT_FULLY_BOOKED_MESSAGE, getEstimateButtonLabel, getPublishedRatin
 import type { Site } from '@/lib/sites';
 import { getOrCreateAiIntakeThread } from '@/lib/ai-intake-thread';
 import { trackQuoteFunnelStep } from '@/lib/analytics';
+import { getOrCaptureAttribution } from '@/lib/attribution';
 import IntroVideo from './IntroVideo';
 import styles from './themes.module.css';
 
@@ -786,6 +787,11 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
       data.delete('photos');
       for (const photo of selectedPhotos.slice(0, MAX_PHOTOS)) {
         data.append('photos', await compressImage(photo, 1600, 0.8));
+      }
+
+      const attribution = getOrCaptureAttribution();
+      if (attribution) {
+        data.set('attribution', JSON.stringify(attribution));
       }
 
       const response = await fetch('/api/public/leads', { method: 'POST', body: data });

@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState, useTransition } from 'react';
+import Link from 'next/link';
 import SaveButton from '@/components/save-button';
 import {
   EMAIL_THEMES,
@@ -24,6 +25,7 @@ type Props = {
   currentTheme: string | null | undefined;
   websiteTemplate?: string | null;
   userEmail?: string | null;
+  replyToEmail?: string | null;
   saveAction?: (formData: FormData) => Promise<void>;
   sendTestAction?: (formData: FormData) => Promise<{ success: boolean; recipient: string }>;
 };
@@ -50,8 +52,8 @@ export default function EmailThemeSection(props: Props) {
     logoUrl: props.logoUrl,
     phone: '(555) 234-5678',
     siteUrl: 'https://yourbusiness.com',
-    replyTo: props.userEmail || 'hello@yourbusiness.com',
-  }), [props.businessName, props.accent, props.logoUrl, props.userEmail]);
+    replyTo: props.replyToEmail || props.userEmail || 'hello@yourbusiness.com',
+  }), [props.businessName, props.accent, props.logoUrl, props.replyToEmail, props.userEmail]);
 
   // Active envelope information for the selected preview tab & theme
   const activeEnvelope = useMemo(() => {
@@ -180,6 +182,13 @@ export default function EmailThemeSection(props: Props) {
           <div className={styles.envelopeMetaItem}>
             <span className={styles.envelopeLabel}>Reply-To:</span>
             <span className={styles.envelopeVal}>{activeEnvelope.replyTo}</span>
+            <Link
+              href="/dashboard/settings#business-basics"
+              style={{ fontSize: '0.72rem', marginLeft: '0.4rem', color: 'var(--accent, #3b82f6)', textDecoration: 'underline' }}
+              title="Change customer reply-to email in Settings"
+            >
+              Change
+            </Link>
           </div>
         </div>
         <div className={styles.envelopeRow}>

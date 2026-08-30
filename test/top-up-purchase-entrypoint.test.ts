@@ -231,7 +231,7 @@ describe('what may actually be sold', () => {
   it('sells every SKU the catalog says is sellable on this plan', async () => {
     for (const topUpId of SELLABLE_TOP_UP_IDS) {
       const sku = TOP_UPS[topUpId];
-      const planCode = sku.eligiblePlans.includes('growth') ? 'growth' : 'flex';
+      const planCode = sku.eligiblePlans.includes('growth') ? 'growth' : sku.eligiblePlans[0];
       const mock = mocks({ loadPlan: vi.fn().mockResolvedValue({ status: 'ready', planCode }) });
       await expect(executeTopUpPurchaseCheckout(
         form({ topUpId }),

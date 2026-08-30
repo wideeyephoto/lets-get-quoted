@@ -6,6 +6,7 @@ import { getEstimateButtonLabel, getSiteContent } from '@/lib/site-content';
 import type { Site } from '@/lib/sites';
 import AddressAutocomplete from '@/components/address-autocomplete';
 import { HoneypotField } from '@/components/honeypot-field';
+import { getOrCaptureAttribution } from '@/lib/attribution';
 import HeroQuickForm from '@/lib/templates/HeroQuickForm';
 import IntroVideo from '@/lib/templates/IntroVideo';
 import styles from './quote-request-form.module.css';
@@ -164,6 +165,11 @@ function QuoteRequestFormFull({ site }: QuoteRequestFormProps) {
       data.delete('photos');
       const photos = selectedPhotos.slice(0, MAX_PHOTOS);
       for (const photo of photos) data.append('photos', await compressImage(photo, 1600, 0.8));
+
+      const attribution = getOrCaptureAttribution();
+      if (attribution) {
+        data.set('attribution', JSON.stringify(attribution));
+      }
 
       await new Promise<void>((resolve, reject) => {
         const request = new XMLHttpRequest();

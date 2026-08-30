@@ -11,7 +11,7 @@ import {
   type SchedulableJob,
 } from '@/lib/jobs';
 import { loadBusinessName } from '@/lib/business-name';
-import { createLead, type Lead } from '@/lib/leads';
+import { createLead, type Lead, type LeadAttribution } from '@/lib/leads';
 import { getAccountOwnerEmail, sendLeadNotificationEmail, sendBookingConfirmationEmail } from '@/lib/email';
 import { checkRateLimitStrict } from '@/lib/rate-limit';
 import { bookingAvailabilityFromAccount, windowsForTimes, outsideWorkdayWindowTimes, type BookingAvailability } from '@/lib/booking-availability';
@@ -352,6 +352,8 @@ export type BookingInput = {
   alt?: BookingWindow | null;
   /** "Gate code is 1234, dog in the back" — for the person at the door, not for sales. */
   note: string | null;
+  /** Campaign, referral, or ad attribution */
+  attribution?: LeadAttribution | null;
 };
 
 // A self-serve booking becomes a warm, pre-scheduled lead the owner confirms —
@@ -387,6 +389,7 @@ export async function createBooking(admin: SupabaseClient, accountId: string, in
       flags: [],
       timeline: requested,
       ...(requestedAlt ? { timelineAlt: requestedAlt } : {}),
+      ...(input.attribution ? { attribution: input.attribution } : {}),
       contactPreference: 'any',
     },
   });

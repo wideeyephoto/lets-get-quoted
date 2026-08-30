@@ -144,6 +144,8 @@ describe('buildCsp', () => {
       'https://*.doubleclick.net',
       'https://www.google.com',
       'https://connect.facebook.net',
+      'https://analytics.tiktok.com',
+      'https://*.tiktok.com',
     ]) {
       expect(connect).toContain(host);
     }

@@ -5,7 +5,7 @@ import { requireOfficeContext } from '@/lib/auth';
 import PhotoGallery from '@/components/photo-gallery';
 import LeadRadiusMap from '@/components/lead-radius-map';
 import { createLeadPhotoLinks } from '@/lib/lead-photo-storage';
-import { expireStaleLeads, formatElapsedTime, formatLeadSource, getLead, getLeadTriage, isLeadSnoozed, LEAD_FLAG_LABELS, leadOverdueLabel, LEAD_LAYOUT_COOKIE, listLeads, type Lead, type LeadQuoteVisit } from '@/lib/leads';
+import { expireStaleLeads, formatElapsedTime, formatLeadAttribution, formatLeadSource, getLead, getLeadTriage, isLeadSnoozed, LEAD_FLAG_LABELS, leadOverdueLabel, LEAD_LAYOUT_COOKIE, listLeads, type Lead, type LeadQuoteVisit } from '@/lib/leads';
 import { expandScheduledJobs, formatJobSchedule, formatJobTime, listJobs, type Job, type QuoteItem, type ScheduledJobOccurrence } from '@/lib/jobs';
 import { normalizeBookingWeekdays } from '@/lib/booking-availability';
 import { LEAD_STATUS_LABEL } from '@/lib/lead-detail-labels';
@@ -161,6 +161,7 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
   const scheduleVisit = scheduleLeadQuoteVisitAction.bind(null, lead.id);
   const sendQuoteVisitOptions = sendLeadQuoteVisitOptionsAction.bind(null, lead.id);
   const triage = getLeadTriage(lead);
+  const attribution = formatLeadAttribution(triage.attribution);
   const overdueLabel = leadOverdueLabel(lead);
   const markLeadContacted = reopenLeadAction.bind(null, lead.id);
   const markLeadWon = updateLeadStatusAction.bind(null, lead.id, 'won');
@@ -302,6 +303,7 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
             {triage.contactPreference === 'text_only' && <span className={styles.textOnlyChip}>💬 Text only — asked not to be called</span>}
             {triage.flags.filter((flag) => flag !== 'phone_verified').map((flag) => <span className={styles.flagChip} key={flag}>{LEAD_FLAG_LABELS[flag] || flag}</span>)}
             {triage.flags.includes('phone_verified') && <span className={styles.verifiedChip}>✓ Phone verified</span>}
+            {attribution && <span className={styles.flagChip} title={attribution.detail || attribution.headline}>{attribution.isPaid ? '🎯 ' : '📱 '}{attribution.headline}</span>}
             {isLeadSnoozed(triage) && <span className={styles.flagChip}>Snoozed</span>}
             {triage.archived && <span className={styles.flagChip}>Archived</span>}
           </div>
@@ -369,6 +371,14 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
               <strong>{lead.address || 'Not provided'}</strong>
               <LeadRadiusMap address={lead.address} radiusMiles={10} size="mini" />
             </div>
+            {attribution && (
+              <div className={styles.heroContactItem}>
+                <span>Campaign attribution</span>
+                <strong>{attribution.headline}</strong>
+                {attribution.detail ? <small className={styles.contactWarn}>{attribution.detail}</small> : null}
+                {triage.attribution?.landingPage ? <small style={{ color: 'var(--muted)', fontSize: '0.75rem' }}>Landed on: {triage.attribution.landingPage}</small> : null}
+              </div>
+            )}
           </div>
           <div className={styles.heroRequestSummary}>
             <div className={styles.heroPhotoStack}>
@@ -502,6 +512,15 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
               </div>
               <div className={styles.timelineList}>
                 <div><span /> <p><strong>Website request received</strong><small>{new Date(lead.created_at).toLocaleString()}</small></p></div>
+                {attribution ? (
+                  <div>
+                    <span />
+                    <p>
+                      <strong>Campaign attribution: {attribution.headline}</strong>
+                      <small>{attribution.detail ? `${attribution.detail} · ` : ''}Visitor arrived via {attribution.channel} ad / campaign link</small>
+                    </p>
+                  </div>
+                ) : null}
                 {(triage.contactLog ?? []).map((entry, index) => (
                   <div key={`${entry.at}-${index}`}><span /> <p><strong>{entry.label}</strong><small>{new Date(entry.at).toLocaleString()}{entry.note ? ` — ${entry.note}` : ''}</small></p></div>
                 ))}

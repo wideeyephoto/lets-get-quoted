@@ -337,10 +337,15 @@ export async function sendCampaignAction(formData: FormData) {
   }
 
   const { businessName, mailingAddress } = await resolveSenderIdentity(supabase, accountId);
+  const brand = await loadEmailBrand(accountId, '', supabase);
+
   // CAN-SPAM: a marketing email must carry a physical postal address. Block the
   // email broadcast until one is on file (their own, or a platform fallback).
   if ((channel === 'email' || channel === 'both') && !mailingAddress) {
     throw new Error('Add your business mailing address in Settings before sending marketing emails — it’s required by anti-spam law.');
+  }
+  if ((channel === 'email' || channel === 'both') && !brand.replyTo) {
+    throw new Error('Add a customer reply email in Settings before sending marketing emails so customer replies reach you.');
   }
   const result = await sendCampaign(supabase, accountId, { channel, audience, subject, body, businessName, mailingAddress, beatId });
 
@@ -368,8 +373,9 @@ export async function sendTestEmailAction(formData: FormData) {
   if (!body) throw new Error('Write a message first.');
 
   const { data: userData } = await supabase.auth.getUser();
-  const to = userData.user?.email;
-  if (!to) throw new Error('No email on file to send a test to.');
+  const brand = await loadEmailBrand(accountId, '', supabase);
+  const to = brand.replyTo || userData.user?.email;
+  if (!to) throw new Error('No email on file to send a test to. Add a customer reply email in Settings.');
 
   const { businessName, mailingAddress } = await resolveSenderIdentity(supabase, accountId);
   await sendCampaignEmail({ recipientEmail: to, businessName, subject: `[Test] ${subject}`, body, accountId, mailingAddress });
@@ -394,9 +400,10 @@ export async function previewCampaignEmailAction(subject: string, body: string):
   if (!trimmed) return '';
 
   const { data: userData } = await supabase.auth.getUser();
+  const brand = await loadEmailBrand(accountId, '', supabase);
   const { businessName, mailingAddress } = await resolveSenderIdentity(supabase, accountId);
   return renderCampaignEmailHtml({
-    recipientEmail: userData.user?.email || 'you@example.com',
+    recipientEmail: brand.replyTo || userData.user?.email || 'you@example.com',
     businessName,
     subject: subject.trim() || '(no subject)',
     body: trimmed,

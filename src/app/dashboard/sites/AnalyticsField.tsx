@@ -24,14 +24,16 @@ export default function AnalyticsField({
   onChange: (next: SiteAnalyticsContent) => void;
 }) {
   const ga4Problem = analyticsIdProblem('ga4', analytics.ga4);
+  const googleAdsProblem = analyticsIdProblem('googleAds', analytics.googleAdsId ?? '');
   const pixelProblem = analyticsIdProblem('metaPixel', analytics.metaPixel);
+  const tiktokProblem = analyticsIdProblem('tiktokPixel', analytics.tiktokPixel ?? '');
   const live = hasAnalytics(analytics);
   const wording = consentWording(analytics);
 
   return (
     <>
       <p className={styles.fieldHint}>
-        Both optional, and both are <strong>your</strong> accounts — we only put the tags on your
+        All optional, and all are <strong>your</strong> accounts — we only put the tags on your
         site, we never see the numbers. Leave them empty and your site loads no tracking at all.
       </p>
 
@@ -52,7 +54,25 @@ export default function AnalyticsField({
       </label>
 
       <label className={styles.formField}>
-        <span>Meta (Facebook) pixel ID</span>
+        <span>Google Ads conversion ID</span>
+        <input
+          value={analytics.googleAdsId ?? ''}
+          maxLength={30}
+          spellCheck={false}
+          autoComplete="off"
+          placeholder="AW-123456789"
+          aria-invalid={Boolean(googleAdsProblem)}
+          onChange={(event) => onChange({ ...analytics, googleAdsId: event.target.value })}
+        />
+        {googleAdsProblem
+          ? <small className={styles.socialFieldError}>{googleAdsProblem}</small>
+          : <small className={styles.fieldHint}>
+              Fires conversion events when someone sends an estimate request from Google Search ads.
+            </small>}
+      </label>
+
+      <label className={styles.formField}>
+        <span>Meta (Facebook &amp; Instagram) pixel ID</span>
         <input
           value={analytics.metaPixel}
           maxLength={40}
@@ -65,8 +85,25 @@ export default function AnalyticsField({
         {pixelProblem
           ? <small className={styles.socialFieldError}>{pixelProblem}</small>
           : <small className={styles.fieldHint}>
-              Only worth adding if you run Facebook or Instagram ads — it&apos;s what tells you
-              which ads actually turned into jobs.
+              Tells you which Facebook and Instagram ads turned into real quote requests.
+            </small>}
+      </label>
+
+      <label className={styles.formField}>
+        <span>TikTok pixel ID</span>
+        <input
+          value={analytics.tiktokPixel ?? ''}
+          maxLength={40}
+          spellCheck={false}
+          autoComplete="off"
+          placeholder="C1234567890ABCDEF"
+          aria-invalid={Boolean(tiktokProblem)}
+          onChange={(event) => onChange({ ...analytics, tiktokPixel: event.target.value })}
+        />
+        {tiktokProblem
+          ? <small className={styles.socialFieldError}>{tiktokProblem}</small>
+          : <small className={styles.fieldHint}>
+              Measures quote requests and lead submissions from your TikTok campaigns.
             </small>}
       </label>
 
@@ -80,14 +117,14 @@ export default function AnalyticsField({
           </div>
           <p className={styles.fieldHint}>
             Nothing loads until someone taps <strong>That&apos;s fine</strong> — no tracking, no
-            cookies, no request to Google or Meta. That&apos;s the law in a lot of places and it&apos;s
+            cookies, no request to Google, Meta, or TikTok. That&apos;s the law in a lot of places and it&apos;s
             the right way round anyway, but it does mean your visitor numbers will be lower than a
             site that tracks everyone without asking.
           </p>
           {wording.kind === 'ads' && (
             <p className={styles.fieldHint}>
-              With the Meta pixel on, the banner has to say you&apos;re measuring ads — because you
-              are. If you don&apos;t run ads, clear that field and the wording goes back to plain
+              With an ad pixel configured, the banner says you&apos;re measuring ads — because you
+              are. If you don&apos;t run ads, clear those fields and the wording goes back to plain
               visitor numbers.
             </p>
           )}

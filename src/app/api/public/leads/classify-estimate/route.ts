@@ -14,6 +14,7 @@ import {
 import { isAiIntakeFlowKind } from '@/lib/ai-intake-thread';
 import { applyEstimateGuardrails } from '@/lib/estimate-guardrails';
 import { matchTradePreset } from '@/lib/trade-intake-presets';
+import { createContinuationToken, verifyContinuationToken, type EstimateContinuationTurn } from '@/lib/estimate-continuation-token';
 
 export const runtime = 'nodejs';
 
@@ -57,19 +58,22 @@ export async function POST(request: NextRequest) {
   const siteId = typeof body?.siteId === 'string' ? body.siteId.slice(0, 80) : '';
   const description = typeof body?.description === 'string' ? body.description.trim().slice(0, 500) : '';
   const answer = typeof body?.answer === 'string' ? body.answer.trim().slice(0, 300) : '';
-  const previousResponseId = typeof body?.previousResponseId === 'string' ? body.previousResponseId.slice(0, 120) : '';
+  const rawToken = typeof body?.continuationToken === 'string' ? body.continuationToken : (typeof body?.previousResponseId === 'string' ? body.previousResponseId : '');
+  const tokenData = verifyContinuationToken(rawToken, siteId);
+  const isContinuing = Boolean(tokenData);
+
   // Smart Intake asks for a shorter cap; Instant Booking keeps the legacy six
   // unless it opts in. One protocol, two deliberately different journeys.
   const maxQuestions = Number.isFinite(body?.maxQuestions)
     ? Math.max(1, Math.min(MAX_QUESTIONS, Math.round(Number(body.maxQuestions))))
     : MAX_QUESTIONS;
-  const turn = Number.isFinite(body?.turn) ? Math.max(0, Math.min(maxQuestions, Number(body.turn))) : 0;
+  const turn = tokenData?.turn ?? (Number.isFinite(body?.turn) ? Math.max(0, Math.min(maxQuestions, Number(body.turn))) : 0);
   const businessName = typeof body?.businessName === 'string' ? body.businessName.trim().slice(0, 120) : '';
   const businessSummary = typeof body?.businessSummary === 'string' ? body.businessSummary.trim().slice(0, 200) : '';
   const serviceArea = typeof body?.serviceArea === 'string' ? body.serviceArea.trim().slice(0, 120) : '';
   const visitorLocation = typeof body?.location === 'string' ? body.location.trim().slice(0, 120) : '';
 
-  if (!siteId || (!description && !previousResponseId)) {
+  if (!siteId || (!description && !isContinuing)) {
     return NextResponse.json({ error: 'Missing description.' }, { status: 400 });
   }
 
@@ -176,12 +180,11 @@ export async function POST(request: NextRequest) {
 
   // Free context from the site's own profile (already stored, no extra AI call) —
   // helps the model tailor questions/classification to this specific trade and
-  // region instead of asking generically. Only needed on the first turn; once
-  // chained via previous_response_id the model already has this in context.
-  const businessContext = !previousResponseId && (businessName || businessSummary || serviceArea || siteContent.trade)
+  // region instead of asking generically.
+  const businessContext = !isContinuing && (businessName || businessSummary || serviceArea || siteContent.trade)
     ? ` This business is in the ${activeTradePreset.name} trade ("${businessName || 'unknown'}"${businessSummary ? ` - ${businessSummary}` : ''}${serviceArea ? `, serving ${serviceArea}` : ''}). Use this trade context to inform pricing, questions, and typical scope standards.`
     : '';
-  const qualityContext = !previousResponseId ? `${areaContext}${exclusionContext}${locationContext}` : '';
+  const qualityContext = !isContinuing ? `${areaContext}${exclusionContext}${locationContext}` : '';
 
   // Out of questions? The model gets NO option to ask again — vague answers
   // ("not sure", "no") otherwise make it keep probing forever and the visitor
@@ -225,18 +228,22 @@ export async function POST(request: NextRequest) {
       : 'When unsure between repair and replacement, price the repair.');
 
   try {
-    let inputPayload: unknown;
+    const priorHistory: unknown[] = tokenData?.history ?? [];
+    let currentUserTurn: unknown;
+
     if (validImages.length > 0) {
       const contentParts: Array<Record<string, unknown>> = [
-        { type: 'input_text', text: `${previousResponseId ? answer : description}\n\nRespond with json only.` },
+        { type: 'input_text', text: `${isContinuing ? answer : description}\n\nRespond with json only.` },
       ];
       for (const imgUrl of validImages) {
         contentParts.push({ type: 'input_image', image_url: imgUrl });
       }
-      inputPayload = [{ role: 'user', content: contentParts }];
+      currentUserTurn = { role: 'user', content: contentParts };
     } else {
-      inputPayload = `${previousResponseId ? answer : description}\n\nRespond with json only.`;
+      currentUserTurn = { role: 'user', content: `${isContinuing ? answer : description}\n\nRespond with json only.` };
     }
+
+    const fullStatelessInput = [...priorHistory, currentUserTurn];
 
     const response = await fetchProvider({
       method: 'POST',
@@ -251,8 +258,9 @@ export async function POST(request: NextRequest) {
         instructions,
         // OpenAI requires the word "json" to appear in the input when using
         // text.format: json_object — the instructions alone don't count.
-        input: inputPayload,
-        previous_response_id: previousResponseId || undefined,
+        input: fullStatelessInput.length === 1 && typeof (fullStatelessInput[0] as { content?: unknown })?.content !== 'undefined'
+          ? (fullStatelessInput[0] as { content: unknown }).content
+          : fullStatelessInput,
         text: { format: { type: 'json_object' } },
       }),
     });
@@ -272,10 +280,21 @@ export async function POST(request: NextRequest) {
       : undefined;
 
     if (parsed.type === 'question' && typeof parsed.question === 'string' && turn < maxQuestions) {
+      const assistantOutputItems = Array.isArray(payload.output)
+        ? payload.output
+        : [{ type: 'message', role: 'assistant', content: [{ type: 'output_text', text: JSON.stringify(parsed) }] }];
+
+      const continuationToken = createContinuationToken({
+        siteId,
+        turn: turn + 1,
+        history: [...priorHistory, currentUserTurn, ...assistantOutputItems],
+      });
+
       const questionResponse = {
         type: 'question',
         question: parsed.question.trim(),
-        responseId: payload.id,
+        continuationToken,
+        responseId: continuationToken, // Backwards compatibility for existing clients
         ...(visualObservation ? { visualObservation } : {}),
         ...(photoPrompt ? { photoPrompt } : {}),
       };
@@ -283,9 +302,7 @@ export async function POST(request: NextRequest) {
       if (!usageLease) {
         return NextResponse.json(questionResponse);
       }
-      if (typeof payload.id === 'string' && payload.id) {
-        return substantiveResponse(questionResponse);
-      }
+      return substantiveResponse(questionResponse);
     }
 
     const readBand = (value: { min?: unknown; max?: unknown }) => {
@@ -299,6 +316,16 @@ export async function POST(request: NextRequest) {
     // that demands the estimate. A shown range is the whole point.
     let band = readBand(parsed);
     if (!band) {
+      const assistantOutputItems = Array.isArray(payload.output)
+        ? payload.output
+        : [{ type: 'message', role: 'assistant', content: [{ type: 'output_text', text: JSON.stringify(parsed) }] }];
+
+      const retryInput = [
+        ...fullStatelessInput,
+        ...assistantOutputItems,
+        { role: 'user', content: 'No more questions. Using everything discussed, give your best-judgment price range for the most common version of this job, priced toward the cheaper outcome. Respond with strict json only: {"type":"estimate","min":<number>,"max":<number>,"in_area":true|false|null,"excluded":true|false}.' },
+      ];
+
       const retryResponse = await fetchProvider({
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
@@ -307,8 +334,7 @@ export async function POST(request: NextRequest) {
           temperature: 0,
           store: false,
           instructions: 'No more questions. Using everything discussed, give your best-judgment price range for the most common version of this job, priced toward the cheaper outcome. Respond with strict json only: {"type":"estimate","min":<number>,"max":<number>,"in_area":true|false|null,"excluded":true|false}.',
-          input: 'Respond with the final estimate json now.',
-          previous_response_id: payload.id,
+          input: retryInput,
           text: { format: { type: 'json_object' } },
         }),
       });

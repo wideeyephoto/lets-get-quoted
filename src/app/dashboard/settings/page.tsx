@@ -294,9 +294,10 @@ export default async function SettingsPage({
 
   const { data: mailingSettings } = await supabase
     .from('accounts')
-    .select('mailing_address, operating_address, service_center_lat, service_center_lng')
+    .select('mailing_address, operating_address, service_center_lat, service_center_lng, reply_to_email')
     .eq('id', accountId)
     .maybeSingle();
+  const replyToEmail = ((mailingSettings?.reply_to_email as string | null) ?? '').trim();
   // Older values were typed into a textarea; a newline inside an <input> value
   // renders as nothing, so an existing address would look half-missing until the
   // owner retyped it.
@@ -640,6 +641,24 @@ export default async function SettingsPage({
                     <div className="field full">
                       <label htmlFor="companyName">Company name</label>
                       <input id="companyName" name="companyName" defaultValue={site?.company_name ?? ''} placeholder="Lawn &amp; Order Landscaping" />
+                    </div>
+                    <div className="field full">
+                      <label htmlFor="replyToEmail">Customer reply email</label>
+                      <input
+                        id="replyToEmail"
+                        name="replyToEmail"
+                        type="email"
+                        defaultValue={replyToEmail}
+                        placeholder={userData?.user?.email ? `Default: ${userData.user.email}` : 'office@yourcompany.com'}
+                      />
+                      <small className="field-hint">
+                        Where homeowner replies to your quotes, invoices, visit reminders, and campaigns will go.{' '}
+                        {userData?.user?.email ? (
+                          <>Leave blank to use your sign-in email (<strong>{userData.user.email}</strong>).</>
+                        ) : (
+                          <>Enter your business email so you receive customer replies.</>
+                        )}
+                      </small>
                     </div>
                     <div className="field">
                       <label htmlFor="trade">Field of work / trade</label>

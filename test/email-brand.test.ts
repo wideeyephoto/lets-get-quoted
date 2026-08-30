@@ -28,7 +28,7 @@ import {
   renderContractorAlertEmailHtml,
   renderDailyDigestEmailHtml,
 } from '../src/lib/email';
-import { recommendEmailTheme } from '../src/lib/email-brand';
+import { loadEmailBrand, recommendEmailTheme } from '../src/lib/email-brand';
 import {
   EMAIL_PREVIEW_TABS,
   renderSampleEmailPreviewSync,
@@ -319,5 +319,75 @@ describe('renderSampleEmailPreviewSync (all 5 themes x 5 preview tabs = 25 scena
         expect(preview.html.trimEnd().endsWith('</html>')).toBe(true);
       }
     }
+  });
+});
+
+describe('loadEmailBrand replyTo resolution hierarchy', () => {
+  function makeMockSupabase(tables: {
+    site?: any;
+    account?: any;
+    ownerId?: string | null;
+    ownerUser?: any;
+  }) {
+    return {
+      from: (table: string) => {
+        let result: any = null;
+        if (table === 'sites') result = tables.site ?? { company_name: 'Test Contractor' };
+        if (table === 'accounts') result = tables.account ?? { mailing_address: '123 St', reply_to_email: null };
+        if (table === 'memberships') result = tables.ownerId ? { user_id: tables.ownerId } : null;
+
+        const chain: any = {
+          select: () => chain,
+          eq: () => chain,
+          order: () => chain,
+          limit: () => chain,
+          maybeSingle: async () => ({ data: result }),
+        };
+        return chain;
+      },
+      auth: {
+        admin: {
+          getUserById: async (id: string) => ({
+            data: tables.ownerUser ?? (tables.ownerId ? { user: { email: 'login.owner@example.com' } } : null),
+          }),
+        },
+      },
+    } as any;
+  }
+
+  it('prioritizes accounts.reply_to_email when set', async () => {
+    const mockSupabase = makeMockSupabase({
+      account: { mailing_address: '123 St', reply_to_email: 'custom.office@plumber.com' },
+      ownerId: 'user-123',
+      ownerUser: { user: { email: 'login.owner@example.com' } },
+    });
+
+    const res = await loadEmailBrand('acc-1', 'Fallback', mockSupabase);
+    expect(res.replyTo).toBe('custom.office@plumber.com');
+  });
+
+  it('falls back to owner auth email when accounts.reply_to_email is empty', async () => {
+    const mockSupabase = makeMockSupabase({
+      account: { mailing_address: '123 St', reply_to_email: null },
+      ownerId: 'user-123',
+      ownerUser: {
+        user: { email: 'login.owner@example.com', user_metadata: { full_name: 'Bob Boss' } },
+      },
+    });
+
+    const res = await loadEmailBrand('acc-1', 'Fallback', mockSupabase);
+    expect(res.replyTo).toBe('login.owner@example.com');
+    expect(res.senderName).toBe('Bob Boss');
+  });
+
+  it('degrades to null when neither reply_to_email nor owner auth email is found', async () => {
+    const mockSupabase = makeMockSupabase({
+      account: null,
+      ownerId: null,
+      ownerUser: null,
+    });
+
+    const res = await loadEmailBrand('acc-1', 'Fallback', mockSupabase);
+    expect(res.replyTo).toBeNull();
   });
 });

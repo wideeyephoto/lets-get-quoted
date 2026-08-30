@@ -21,6 +21,7 @@ type Props = {
   view: CalendarView;
   reach: Record<CampaignAudience, Reach>;
   mailingAddress: string | null;
+  replyEmailReady?: boolean;
   daysSinceLastSend: number | null;
   unsubscribesSinceLastSend: number;
   availableEmailCredits?: number | null;
@@ -39,6 +40,7 @@ export default function CampaignsScreen({
   view,
   reach,
   mailingAddress,
+  replyEmailReady = true,
   daysSinceLastSend,
   unsubscribesSinceLastSend,
   availableEmailCredits,
@@ -90,6 +92,15 @@ export default function CampaignsScreen({
         </section>
       ) : null}
 
+      {replyEmailReady === false ? (
+        <section className="panel workspace-section-card flash-banner flash-warn">
+          <p>
+            You don&apos;t have a customer reply email on file — customer responses to your marketing won&apos;t reach you.{' '}
+            <Link href={`${basePath}/settings#business-basics`}>Add your customer reply email →</Link>
+          </p>
+        </section>
+      ) : null}
+
       <CampaignWorkspace
         campaigns={campaigns}
         hasRecipients={hasRecipients}
@@ -100,6 +111,7 @@ export default function CampaignsScreen({
           reach,
           initial: draft,
           mailingAddress,
+          replyEmailReady,
           daysSinceLastSend,
           unsubscribesSinceLastSend,
           availableEmailCredits,

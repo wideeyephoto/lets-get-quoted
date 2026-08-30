@@ -3185,15 +3185,9 @@ h3 {
    quote" opened the right section with its heading cut in half.
 
    One number, declared once, used by both. */
-:root {
-  --appbar-h: 0rem;
-}
+:root { --appbar-h: 0rem; }
 
-@media (max-width: 1080px) {
-  :root {
-    --appbar-h: 4.4rem;
-  }
-}
+@media (max-width: 1080px) { :root { --appbar-h: 4.4rem; } }
 
 /* THE FLOOR FOR EVERY ANCHOR IN THE LOGGED-IN APP.
    Anything with an id may be jumped to — by a subnav link, a #hash in a link
@@ -3201,9 +3195,7 @@ h3 {
    Deliberately weak (0,1,1) so the per-section rules below still win where a
    section needs more room; each of those adds var(--appbar-h) for the same
    reason. */
-.app-main-sidenav [id] {
-  scroll-margin-top: calc(var(--appbar-h) + 1rem);
-}
+.app-main-sidenav [id] { scroll-margin-top: calc(var(--appbar-h) + 1rem); }
 
 .sidenav {
   position: fixed;
@@ -23161,9 +23153,7 @@ button.inbox-thread-item {
   line-height: 1;
 }
 
-.job-schedule-alt[open]>summary::before {
-  content: '−';
-}
+.job-schedule-alt[open] > summary::before { content: '−'; }
 
 .job-schedule-alt>summary:hover,
 .job-schedule-alt>summary:focus-visible {

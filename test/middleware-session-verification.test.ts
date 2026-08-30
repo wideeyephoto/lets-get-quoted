@@ -104,6 +104,28 @@ describe('the /login forward requires a VERIFIED session, not a present one', ()
 
     expect(res.headers.get('location')).toBe('http://localhost:3010/dashboard/jobs');
   });
+
+  it('rejects protocol-relative open redirect vectors in ?next=', async () => {
+    state.session = signedInSession();
+    state.claims = { claims: { sub: 'user-1' } };
+
+    for (const vector of ['//evil.com', '/\\evil.com', 'https://evil.com', '//evil.com/phish']) {
+      const res = await middleware(
+        withAuthCookie(`http://localhost:3010/login?next=${encodeURIComponent(vector)}`),
+      );
+      expect(res.headers.get('location')).toBe('http://localhost:3010/dashboard');
+    }
+  });
+
+  it('falls back to welcome intent when ?next= is an invalid open redirect vector', async () => {
+    state.session = signedInSession();
+    state.claims = { claims: { sub: 'user-1' } };
+
+    const res = await middleware(
+      withAuthCookie('http://localhost:3010/login?next=//evil.com&plan=solo&trade=plumber'),
+    );
+    expect(res.headers.get('location')).toBe('http://localhost:3010/welcome?plan=solo&trade=plumber');
+  });
 });
 
 describe('verification is bought only where it is needed', () => {

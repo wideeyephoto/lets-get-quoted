@@ -88,15 +88,33 @@ export async function updateBusinessBasicsAction(formData: FormData) {
   const trade = (formData.get('trade') ?? '').toString().trim();
   const zip = (formData.get('zip') ?? '').toString().trim();
   const smsSignoff = (formData.get('smsSignoff') ?? '').toString().trim().slice(0, 60);
+  const rawReplyTo = (formData.get('replyToEmail') ?? '').toString().trim();
+
+  let replyToEmail: string | null = null;
+  if (rawReplyTo) {
+    // Basic email format validation
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(rawReplyTo)) {
+      throw new Error('Please enter a valid email address for customer replies.');
+    }
+    replyToEmail = rawReplyTo.toLowerCase().slice(0, 255);
+  }
 
   const content = mergeSiteContent((site.content as Record<string, unknown>) ?? {}, { trade, zip, smsSignoff });
-  await updateSite(supabase, accountId, site.id as string, {
-    company_name: companyName || (site.company_name as string) || 'My Business',
-    content,
-  });
+  await Promise.all([
+    updateSite(supabase, accountId, site.id as string, {
+      company_name: companyName || (site.company_name as string) || 'My Business',
+      content,
+    }),
+    supabase
+      .from('accounts')
+      .update({ reply_to_email: replyToEmail })
+      .eq('id', accountId),
+  ]);
 
   revalidatePath('/dashboard/settings');
   revalidatePath('/dashboard/sites');
+  revalidatePath('/dashboard/marketing');
+  revalidatePath('/dashboard/marketing/email-theme');
 }
 
 /**
@@ -941,86 +959,47 @@ export async function sendTestDigestAction() {
   revalidatePath('/dashboard/settings');
 }
 
-// Permanently deletes the signed-in owner's account. Removes the account (which
-// cascades every child row — jobs, leads, crew, invoices, payments, sites,
-// memberships, …) AND the auth user, so the account's phone/email is freed to
-// use on another account (the reason someone deletes a duplicate). Irreversible.
+// Permanently closes and anonymizes the signed-in owner's account via the durable closure orchestrator.
 export async function deleteAccountAction() {
   const { supabase, accountId, userId } = await requireOwnerContext();
   const admin = createAdminClient();
 
-  // THE DELETE GOES FIRST, BECAUSE IT CAN FAIL.
-  //
-  // Twenty-four tables hold a RESTRICT foreign key to `accounts` -- `payments`
-  // among them, so ANY workspace that has ever taken a customer payment is
-  // undeletable, not just subscribers. This used to cancel Stripe first and then
-  // hit that wall: the contractor's plan was really gone, mid-period and
-  // unrefunded, they still had the account, and they could not resubscribe.
-  // Every retry did it again.
-  //
-  // billing_subscriptions.account_id is ON DELETE CASCADE, so the subscription
-  // and any active purchased capacity subscriptions are read HERE, before the
-  // delete can destroy them. Reading them costs nothing if the delete then fails,
-  // and it is the only way to still have the ids to cancel with once the rows are gone.
-  const [subscription, capacitySubscriptionIds] = await Promise.all([
-    loadCancellableSubscription(admin, accountId).catch(() => null),
-    (async () => {
-      const { data } = await admin
-        .from('workspace_purchased_capacity')
-        .select('stripe_subscription_id')
-        .eq('account_id', accountId)
-        .in('status', ['active', 'past_due']);
-      return (data ?? []).map((r) => String(r.stripe_subscription_id)).filter(Boolean);
-    })().catch(() => [] as string[]),
-  ]);
+  // Cancel Stripe subscription before initiating closure
+  await cancelSubscriptionForAccountDeletion({ admin, accountId });
 
-  const { error: accountError } = await admin.from('accounts').delete().eq('id', accountId);
-  if (accountError) {
-    // 23503 is foreign_key_violation. Nothing has been cancelled and nothing
-    // deleted, so this is recoverable -- but say what actually happened rather
-    // than surfacing a raw Postgres message about a constraint name.
-    if (accountError.code === '23503') {
-      throw new Error(
-        'This workspace has billing or messaging history that has to be kept, so it cannot be '
-        + 'deleted automatically. Your plan has NOT been cancelled and nothing has been removed. '
-        + 'Contact support and we will close it out by hand.',
-      );
-    }
-    throw new Error(accountError.message);
-  }
+  const { data: acct } = await admin
+    .from('accounts')
+    .select('stripe_customer_id, qbo_realm_id')
+    .eq('id', accountId)
+    .maybeSingle();
 
-  // The delete committed, so the subscription rows are gone with it. Cancel using
-  // what was read above.
-  //
-  // Immediate, not at period end: there is nothing left for a later cancellation
-  // to be projected onto. Best-effort by contract -- a Stripe failure must not
-  // trap somebody in an account they asked to delete, and a leaked subscription
-  // is recoverable by an operator where a blocked deletion is not. It logs the
-  // subscription id loudly when it cannot.
-  await cancelSubscriptionForAccountDeletion({
-    admin,
+  const { requestAccountClosure, processClosureJob, buildProductionClosureAdapters } = await import(
+    '@/lib/account-closure-orchestrator'
+  );
+
+  // Durable account closure replaces legacy direct from('accounts').delete()
+  const { jobId } = await requestAccountClosure(admin, {
     accountId,
-    preloaded: subscription,
-    preloadedCapacitySubscriptions: capacitySubscriptionIds,
+    requestedByUserId: userId,
+    requestedByRole: 'owner',
+    vendorHandles: {
+      stripeCustomerId: (acct as { stripe_customer_id?: string })?.stripe_customer_id ?? null,
+      quickbooksRealmId: (acct as { qbo_realm_id?: string })?.qbo_realm_id ?? null,
+      storageFolderPrefix: accountId,
+      ownerUserIds: [userId],
+    },
   });
 
-  // Only remove the auth user (which frees its phone/email for reuse) if this
-  // was their ONLY account — otherwise deleting the user would cascade their
-  // membership in every other account too. Best-effort past this point: the
-  // account data is already gone, so don't block the redirect on a failure.
-  const { count: remainingMemberships } = await admin
-    .from('memberships')
-    .select('id', { count: 'exact', head: true })
-    .eq('user_id', userId);
-  if (!remainingMemberships) {
-    const { error: userError } = await admin.auth.admin.deleteUser(userId);
-    if (userError) console.error('deleteAccountAction: deleteUser failed:', userError.message);
+  const adapters = buildProductionClosureAdapters(admin);
+  const result = await processClosureJob(admin, jobId, adapters);
+  if (!result.success) {
+    console.error('Customer deleteAccountAction closure saga completed with errors:', result.errors);
+    throw new Error(`Account closure failed: ${result.errors.join(', ')}`);
   }
 
-  // Clear the now-invalid session cookie locally (no server round-trip — the
-  // user no longer exists), then send them to sign in.
+  // Clear session locally and redirect to login
   await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
-  redirect('/login');
+  redirect('/login?closed=1');
 }
 
 // The on/off switch on its own, for the Plan my day panel.

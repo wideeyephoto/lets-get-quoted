@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
-  normalizeGa4Id, normalizeMetaPixelId, analyticsIdProblem, hasAnalytics,
-  consentWording, shouldMeasure, readConsent,
+  normalizeGa4Id, normalizeMetaPixelId, normalizeGoogleAdsId, normalizeTiktokPixelId,
+  analyticsIdProblem, hasAnalytics, consentWording, shouldMeasure, readConsent,
 } from '@/lib/analytics';
 
 describe('GA4 measurement ids', () => {
@@ -30,6 +30,19 @@ describe('GA4 measurement ids', () => {
   });
 });
 
+describe('Google Ads conversion ids', () => {
+  it('accepts an AW- prefixed ID or bare digits', () => {
+    expect(normalizeGoogleAdsId('AW-123456789')).toBe('AW-123456789');
+    expect(normalizeGoogleAdsId('  aw-987654321 ')).toBe('AW-987654321');
+    expect(normalizeGoogleAdsId('123456789')).toBe('AW-123456789');
+  });
+
+  it('rejects invalid inputs and returns problem message', () => {
+    expect(normalizeGoogleAdsId('invalid-id')).toBe('');
+    expect(analyticsIdProblem('googleAds', 'invalid-id')).toContain('Tools & Settings');
+  });
+});
+
 describe('Meta pixel ids', () => {
   it('accepts a bare id', () => {
     expect(normalizeMetaPixelId('123456789012345')).toBe('123456789012345');
@@ -55,12 +68,27 @@ describe('Meta pixel ids', () => {
   });
 });
 
+describe('TikTok pixel ids', () => {
+  it('accepts an alphanumeric TikTok pixel id', () => {
+    expect(normalizeTiktokPixelId('C1234567890ABCDEF')).toBe('C1234567890ABCDEF');
+    expect(normalizeTiktokPixelId('  c9876543210fedcba  ')).toBe('C9876543210FEDCBA');
+  });
+
+  it('rejects pasted snippets or too short strings', () => {
+    expect(normalizeTiktokPixelId("<script>ttq.load('C123');</script>")).toBe('');
+    expect(normalizeTiktokPixelId('short')).toBe('');
+    expect(analyticsIdProblem('tiktokPixel', 'short')).toContain('TikTok Ads Manager');
+  });
+});
+
 describe('hasAnalytics', () => {
   it('is false until a valid id exists', () => {
     expect(hasAnalytics({ ga4: '', metaPixel: '' })).toBe(false);
     expect(hasAnalytics({ ga4: 'nonsense', metaPixel: '' })).toBe(false);
     expect(hasAnalytics({ ga4: 'G-ABCD1234', metaPixel: '' })).toBe(true);
     expect(hasAnalytics({ ga4: '', metaPixel: '123456789012345' })).toBe(true);
+    expect(hasAnalytics({ ga4: '', metaPixel: '', googleAdsId: 'AW-123456789' })).toBe(true);
+    expect(hasAnalytics({ ga4: '', metaPixel: '', tiktokPixel: 'C1234567890ABCDEF' })).toBe(true);
   });
 });
 
@@ -72,11 +100,15 @@ describe('consent wording follows what is actually configured', () => {
   });
 
   it('admits to ad tracking when a pixel is on', () => {
-    // A banner claiming "just analytics" while loading a Meta pixel is exactly
+    // A banner claiming "just analytics" while loading a Meta or TikTok pixel is exactly
     // the dark pattern the consent flow exists to avoid.
-    const w = consentWording({ ga4: 'G-ABCD1234', metaPixel: '123456789012345' });
-    expect(w.kind).toBe('ads');
-    expect(w.body).toMatch(/ads/i);
+    const wMeta = consentWording({ ga4: 'G-ABCD1234', metaPixel: '123456789012345' });
+    expect(wMeta.kind).toBe('ads');
+    expect(wMeta.body).toMatch(/ads/i);
+
+    const wTiktok = consentWording({ ga4: 'G-ABCD1234', metaPixel: '', tiktokPixel: 'C1234567890ABCDEF' });
+    expect(wTiktok.kind).toBe('ads');
+    expect(wTiktok.body).toMatch(/ads/i);
   });
 });
 

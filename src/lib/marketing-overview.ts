@@ -152,6 +152,7 @@ function contentActionFor(recommendation: PreparedRecommendation | null): Recomm
  */
 export function chooseOverviewPriority(input: {
   mailingAddressReady: boolean;
+  replyEmailReady?: boolean;
   emailReachable: number;
   attentionCount: number;
   rebookDue: number;
@@ -162,6 +163,18 @@ export function chooseOverviewPriority(input: {
   const keepPublishing: RecommendedAction = contentAction ?? (input.hasBlog
     ? { label: 'Manage blog', href: BLOG_HREF, primary: false }
     : { label: 'Set up your website', href: '/dashboard/sites', primary: false });
+
+  if (input.replyEmailReady === false) {
+    return {
+      title: 'Add a customer reply email',
+      description: 'Homeowners need an email address to reply to your estimates, invoices, and campaigns. Add your business email so customer messages reach you.',
+      primary: { label: 'Set reply email', href: '/dashboard/settings#business-basics', primary: true },
+      secondary: keepPublishing,
+      metricLabel: 'Email setup',
+      metricValue: 'Blocked',
+      metricNote: 'Reply email required',
+    };
+  }
 
   if (!input.mailingAddressReady) {
     return {

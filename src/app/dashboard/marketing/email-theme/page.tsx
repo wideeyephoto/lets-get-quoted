@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { requireOfficeContext } from '@/lib/auth';
 import { pickBusinessName } from '@/lib/business-name';
+import { loadEmailBrand } from '@/lib/email-brand';
 import EmailThemeSection from '../EmailThemeSection';
 import MarketingNav from '../MarketingNav';
 import { sendTestEmailThemeAction, updateEmailThemeAction } from '../actions';
@@ -10,7 +11,7 @@ export const metadata = { title: 'Email appearance' };
 
 export default async function MarketingEmailThemePage() {
   const { supabase, accountId } = await requireOfficeContext('settings.write');
-  const [{ data: site }, { data: account }, { data: userData }] = await Promise.all([
+  const [{ data: site }, { data: account }, { data: userData }, brand] = await Promise.all([
     supabase
       .from('sites')
       .select('company_name, accent_override, logo_url, email_theme, template')
@@ -18,6 +19,7 @@ export default async function MarketingEmailThemePage() {
       .maybeSingle(),
     supabase.from('accounts').select('business_name').eq('id', accountId).maybeSingle(),
     supabase.auth.getUser(),
+    loadEmailBrand(accountId, '', supabase),
   ]);
 
   return (
@@ -36,6 +38,7 @@ export default async function MarketingEmailThemePage() {
         currentTheme={(site?.email_theme as string | null) ?? null}
         websiteTemplate={(site?.template as string | null) ?? null}
         userEmail={userData?.user?.email ?? null}
+        replyToEmail={brand.replyTo}
         saveAction={updateEmailThemeAction}
         sendTestAction={sendTestEmailThemeAction}
       />

@@ -388,6 +388,8 @@ create table if not exists memberships (
   unique (account_id, user_id)
 );
 
+alter table memberships add column if not exists deactivated_at timestamptz;
+
 -- ----------------------------------------------------------------------------
 -- CREW  — roster members. NOTE: a crew member is not necessarily a login user.
 -- Owner adds them by name/phone; they may later be invited to an auth account.
@@ -1621,20 +1623,20 @@ create unique index if not exists email_suppression_account_email_idx on email_s
 -- (that would silently re-open crew access to whatever table it gates). Use
 -- is_owner() for owner-only tables and the crew helpers for crew-scoped ones.
 create or replace function is_member(acc uuid)
-returns boolean language sql stable security definer set search_path = public as $$
+returns boolean language sql stable security definer set search_path = pg_catalog, pg_temp as $$
   select exists (
-    select 1 from memberships m
-    join accounts a on a.id = m.account_id
-    where m.account_id = acc and m.user_id = auth.uid() and a.suspended_at is null
+    select 1 from public.memberships m
+    join public.accounts a on a.id = m.account_id
+    where m.account_id = acc and m.user_id = auth.uid() and a.suspended_at is null and m.deactivated_at is null
   );
 $$;
 
 create or replace function is_owner(acc uuid)
-returns boolean language sql stable security definer set search_path = public as $$
+returns boolean language sql stable security definer set search_path = pg_catalog, pg_temp as $$
   select exists (
-    select 1 from memberships m
-    join accounts a on a.id = m.account_id
-    where m.account_id = acc and m.user_id = auth.uid() and m.role = 'owner' and a.suspended_at is null
+    select 1 from public.memberships m
+    join public.accounts a on a.id = m.account_id
+    where m.account_id = acc and m.user_id = auth.uid() and m.role = 'owner' and a.suspended_at is null and m.deactivated_at is null
   );
 $$;
 
@@ -1645,11 +1647,11 @@ $$;
 
 -- The current auth user is a crew member (not owner) of this account.
 create or replace function is_crew(acc uuid)
-returns boolean language sql stable security definer set search_path = public as $$
+returns boolean language sql stable security definer set search_path = pg_catalog, pg_temp as $$
   select exists (
-    select 1 from memberships m
-    join accounts a on a.id = m.account_id
-    where m.account_id = acc and m.user_id = auth.uid() and m.role = 'crew' and a.suspended_at is null
+    select 1 from public.memberships m
+    join public.accounts a on a.id = m.account_id
+    where m.account_id = acc and m.user_id = auth.uid() and m.role = 'crew' and a.suspended_at is null and m.deactivated_at is null
   );
 $$;
 
@@ -1657,13 +1659,13 @@ $$;
 -- crew member is scoped to "only my jobs" at the DB level (previously enforced
 -- only in application code).
 create or replace function crew_on_job(j uuid)
-returns boolean language sql stable security definer set search_path = public as $$
+returns boolean language sql stable security definer set search_path = pg_catalog, pg_temp as $$
   select exists (
     select 1
-    from crew_assignments ca
-    join crew c on c.id = ca.crew_id
-    join jobs jb on jb.id = ca.job_id
-    join accounts a on a.id = jb.account_id
+    from public.crew_assignments ca
+    join public.crew c on c.id = ca.crew_id
+    join public.jobs jb on jb.id = ca.job_id
+    join public.accounts a on a.id = jb.account_id
     where ca.job_id = j and c.user_id = auth.uid() and a.suspended_at is null
   );
 $$;
@@ -1672,10 +1674,10 @@ $$;
 -- the current auth user. Lets crew see ONLY their own costs/assignments, not a
 -- coworker's pay rate or another crew's hours on a shared job.
 create or replace function crew_owns_crew_row(cid uuid)
-returns boolean language sql stable security definer set search_path = public as $$
+returns boolean language sql stable security definer set search_path = pg_catalog, pg_temp as $$
   select exists (
-    select 1 from crew c
-    join accounts a on a.id = c.account_id
+    select 1 from public.crew c
+    join public.accounts a on a.id = c.account_id
     where c.id = cid and c.user_id = auth.uid() and a.suspended_at is null
   );
 $$;

@@ -6,8 +6,6 @@ import { logAdminAction } from '@/lib/admin';
 
 export const dynamic = 'force-dynamic';
 
-// Comprehensive category registry of account-keyed tables for data portability / GDPR Article 15/20 & CCPA access requests.
-// Excludes internal platform secrets, raw auth credentials, and platform infrastructure keys.
 const ACCOUNT_DIRECT_TABLES = [
   'accounts',
   'sites',
@@ -16,6 +14,7 @@ const ACCOUNT_DIRECT_TABLES = [
   'jobs',
   'job_tasks',
   'job_milestones',
+  'job_feed',
   'change_orders',
   'warranties',
   'services',
@@ -27,17 +26,26 @@ const ACCOUNT_DIRECT_TABLES = [
   'payment_plans',
   'extra_stop_requests',
   'account_credits',
+  'voice_calls',
   'sms_messages',
   'sms_consent',
   'sms_consent_scopes',
   'review_invites',
   'email_suppression',
+  'messaging_registrations',
+  'office_invitations',
 ] as const;
+
+const TABLE_PRIMARY_KEYS: Record<string, string[]> = {
+  messaging_registrations: ['account_id'],
+  quickbooks_connections: ['account_id'],
+  sms_consent_scopes: ['phone_number', 'consent_scope'],
+};
 
 async function fetchAllRows(admin: SupabaseClient, table: string, column: string, value: string): Promise<unknown[]> {
   const rows: unknown[] = [];
   const BATCH = 500;
-  let offset = 0;
+  let lastId: string | null = null;
   let hasMore = true;
 
   while (hasMore) {
@@ -46,34 +54,43 @@ async function fetchAllRows(admin: SupabaseClient, table: string, column: string
       .select('*')
       .eq(column, value);
 
-    // Apply deterministic ordering for stable range pagination
     if (table === 'sms_consent_scopes') {
-      query = query.order('phone_number', { ascending: true });
-    } else {
-      query = query.order('id', { ascending: true });
-    }
-
-    const { data, error } = await query.range(offset, offset + BATCH - 1);
-
-    if (error) {
-      // If a table is not present or migrated in this specific environment, log and continue safely.
-      if (error.code === '42P01') {
-        console.warn(`Export table ${table} not found in database, skipping.`);
-        return [];
+      // Offset pagination fallback for composite primary key
+      query = query.order('phone_number', { ascending: true }).order('consent_scope', { ascending: true });
+      const { data, error } = await query.range(rows.length, rows.length + BATCH - 1);
+      if (error) {
+        if (error.code === '42P01') return [];
+        throw new Error(`Export failed on table ${table}: ${error.message}`);
       }
-      console.error(`Export table ${table} failed at offset ${offset}:`, error.message);
-      throw new Error(`Export failed on table ${table}: ${error.message}`);
-    }
-
-    if (data && data.length > 0) {
-      rows.push(...data);
-      if (data.length < BATCH) {
-        hasMore = false;
+      if (data && data.length > 0) {
+        rows.push(...data);
+        if (data.length < BATCH) hasMore = false;
       } else {
-        offset += BATCH;
+        hasMore = false;
       }
     } else {
-      hasMore = false;
+      // Keyset cursor pagination on id
+      query = query.order('id', { ascending: true }).limit(BATCH);
+      if (lastId) {
+        query = query.gt('id', lastId);
+      }
+
+      const { data, error } = await query;
+      if (error) {
+        if (error.code === '42P01') return [];
+        console.error(`Export table ${table} failed at cursor ${lastId}:`, error.message);
+        throw new Error(`Export failed on table ${table}: ${error.message}`);
+      }
+
+      if (data && data.length > 0) {
+        rows.push(...data);
+        lastId = (data[data.length - 1] as { id?: string })?.id ?? null;
+        if (data.length < BATCH || !lastId) {
+          hasMore = false;
+        }
+      } else {
+        hasMore = false;
+      }
     }
   }
 
@@ -83,23 +100,44 @@ async function fetchAllRows(admin: SupabaseClient, table: string, column: string
 async function fetchInvoiceItemsForInvoices(admin: SupabaseClient, invoiceIds: string[]): Promise<unknown[]> {
   if (invoiceIds.length === 0) return [];
   const rows: unknown[] = [];
-  const BATCH_SIZE = 100;
+  const BATCH_SIZE = 50;
+  const PAGE_SIZE = 500;
 
   for (let i = 0; i < invoiceIds.length; i += BATCH_SIZE) {
     const chunk = invoiceIds.slice(i, i + BATCH_SIZE);
-    const { data, error } = await admin
-      .from('invoice_items')
-      .select('*')
-      .in('invoice_id', chunk)
-      .order('id', { ascending: true });
+    let lastId: string | null = null;
+    let hasMore = true;
 
-    if (error) {
-      if (error.code === '42P01') return [];
-      console.error('Export invoice_items failed:', error.message);
-      throw new Error(`Export failed on table invoice_items: ${error.message}`);
+    while (hasMore) {
+      let query = admin
+        .from('invoice_items')
+        .select('*')
+        .in('invoice_id', chunk)
+        .order('id', { ascending: true })
+        .limit(PAGE_SIZE);
+
+      if (lastId) {
+        query = query.gt('id', lastId);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        if (error.code === '42P01') break;
+        console.error('Export invoice_items failed:', error.message);
+        throw new Error(`Export failed on table invoice_items: ${error.message}`);
+      }
+
+      if (data && data.length > 0) {
+        rows.push(...data);
+        lastId = (data[data.length - 1] as { id?: string })?.id ?? null;
+        if (data.length < PAGE_SIZE || !lastId) {
+          hasMore = false;
+        }
+      } else {
+        hasMore = false;
+      }
     }
-
-    if (data) rows.push(...data);
   }
 
   return rows;

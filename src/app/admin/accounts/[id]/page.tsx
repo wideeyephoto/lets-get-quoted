@@ -202,6 +202,16 @@ export default async function AdminAccountDetailPage({
             <span className={styles.muted}>unknown</span>
           )}
         </dd>
+        <dt>Customer reply email</dt>
+        <dd>
+          {a.reply_to_email ? (
+            <a href={`mailto:${String(a.reply_to_email)}`} className={styles.rowLink}>
+              {String(a.reply_to_email)}
+            </a>
+          ) : (
+            <span className={styles.muted}>Same as owner ({detail.ownerEmail || 'none'})</span>
+          )}
+        </dd>
         <dt>Phone</dt>
         <dd>
           {detail.site?.phone || String(a.alert_phone || '') ? (
