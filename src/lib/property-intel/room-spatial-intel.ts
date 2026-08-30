@@ -220,7 +220,7 @@ export function calculateMaterialCosts(
  */
 export function calculateSupplyHousePickList(
   summary: RoomDimensionsSummary,
-  scan?: RoomSpatialScan
+  _scan?: RoomSpatialScan
 ): SupplyHouseItem[] {
   const items: SupplyHouseItem[] = [];
 
