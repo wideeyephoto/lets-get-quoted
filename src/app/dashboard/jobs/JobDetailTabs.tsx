@@ -6,6 +6,7 @@ import type { JobViewItem } from './JobsWorkspace';
 import { PropertyDossierCard } from '@/components/property-intel/PropertyDossierCard';
 import { PermitWorkspace } from '@/components/permits/PermitWorkspace';
 import { PermitFeasibilityCard } from '@/components/permits/PermitFeasibilityCard';
+import { RoomScanViewer } from '@/components/property-intel/RoomScanViewer';
 import styles from '../focus.module.css';
 
 /**
@@ -121,9 +122,13 @@ export default function JobDetailTabs({
               scope={detail.scope}
             />
             <PermitFeasibilityCard address={detail.address} />
+            <RoomScanViewer />
           </>
         ) : (
-          <p className={styles.muted}>No address on file for this job to fetch property intelligence.</p>
+          <>
+            <p className={styles.muted}>No address on file for this job to fetch exterior property intelligence.</p>
+            <RoomScanViewer />
+          </>
         )}
       </div>
     );

@@ -16,6 +16,7 @@ import {
   resolveProfileFromSummary,
   type PropertyIntelligenceSummary,
 } from '@/lib/property-intel';
+import type { RoomDimensionsSummary } from '@/lib/property-intel/room-spatial-intel';
 
 // The model call behind "Draft this quote".
 //
@@ -34,6 +35,8 @@ export type DraftContext = {
   history: HistoricalQuote[];
   refinement?: string | null;
   propertyIntel?: PropertyIntelligenceSummary | null;
+  /** Verified 3D LiDAR room takeoffs (floor sqft, paintable wall sqft, ceiling, trim) */
+  roomSpatialScan?: RoomDimensionsSummary | null;
   /** Signed URLs or data URLs of job/lead photos to visually ground the quote */
   photos?: string[];
 };
@@ -207,6 +210,23 @@ export function buildDraftInstructions(context: DraftContext): string {
     }
   }
 
+  let roomScanLines = '';
+  if (context.roomSpatialScan) {
+    const scan = context.roomSpatialScan;
+    const rLines = [
+      `VERIFIED 3D LIDAR ROOM MEASUREMENTS:`,
+      `- Floor Area: ${scan.floorAreaSqFt} sq ft (use directly for flooring/tile/carpet quantities)`,
+      `- Net Paintable Wall Area: ${scan.netPaintableWallSqFt} sq ft (excl. ${scan.openingsAreaSqFt} sq ft doors/windows; use for paint/drywall quantities)`,
+      `- Ceiling Height: ${scan.ceilingHeightFt} ft`,
+      `- Baseboard Perimeter Trim: ${scan.baseboardLinearFt} lin ft (${scan.doorsCount} doors deducted)`,
+    ];
+    if (scan.primaryAlcoveSpanInches) {
+      rLines.push(`- Shower/Tub Alcove Span: ${scan.primaryAlcoveSpanInches.toFixed(1)}" (indicates standard 60" vs custom pan fit)`);
+      rLines.push(`- Total Tile Takeoff (Floor + Wet Walls): ${scan.tileAreaSqFt} sq ft`);
+    }
+    roomScanLines = rLines.join('\n');
+  }
+
   return [
     `You draft an itemized quote for a ${context.trade || 'home services'} contractor to review before they send it.`,
     'You are drafting FOR THE CONTRACTOR, not for their customer: be specific and practical, not reassuring.',
@@ -218,6 +238,7 @@ export function buildDraftInstructions(context: DraftContext): string {
     history ? `WHAT THEY HAVE CHARGED RECENTLY (their real quotes):\n${history}` : '',
     '',
     propertyLines ? `${propertyLines}\n` : '',
+    roomScanLines ? `${roomScanLines}\n` : '',
     'Return STRICT JSON only:',
     '{"lines":[{"label":"<what the line is>","service":"<exact price-book name, or omit>","quantity":<number|null>,',
     '"amount":<number>,"kind":"base"|"addon","priced_from":"book"|"history"|"estimate","note":"<short, optional>"}],',
@@ -230,6 +251,10 @@ export function buildDraftInstructions(context: DraftContext): string {
     '- Do NOT pad. Every line must be work somebody actually does on this job; if you would struggle to justify it to the customer, leave it out. A line the contractor has to delete costs them more attention than one they have to add.',
     '- When a line matches a price-book service, put that service name in "service" EXACTLY as written above, and set "quantity" (hours, sqft, or how many of that flat job). The contractor\'s own price will be applied — your "amount" is only a sanity check.',
     '- SCOPE-CONSCIOUS MEASUREMENT APPLICATION:',
+    '  * When verified 3D LiDAR room measurements are provided above, snap relevant line-item quantities DIRECTLY to these numbers:',
+    '    - Flooring/tile lines MUST use the Floor Area.',
+    '    - Wall painting/drywall lines MUST use the Net Paintable Wall Area.',
+    '    - Baseboard/trim lines MUST use the Baseboard Perimeter Trim linear feet.',
     '  * Raw property dimensions provide structural context, not direct line-item quantities.',
     '  * Living Area is total finished interior floor space; it must NOT be used as paintable wall area or single-room square footage.',
     '  * Roof Squares and Pitch reflect 3D roof surface geometry; use them ONLY for roofing, shingle replacement, and solar scopes. Pitch informs safety and access difficulty; roof squares must NOT price gutters, siding, or interior work.',

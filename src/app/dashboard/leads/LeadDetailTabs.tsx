@@ -8,6 +8,7 @@ import type { LeadVisualAnalysis } from '@/lib/lead-photo-ai';
 import type { LeadViewItem } from './LeadsWorkspace';
 import { PropertyDossierCard } from '@/components/property-intel/PropertyDossierCard';
 import { PermitFeasibilityCard } from '@/components/permits/PermitFeasibilityCard';
+import { RoomScanViewer } from '@/components/property-intel/RoomScanViewer';
 import styles from '../focus.module.css';
 import leadStyles from './leads.module.css';
 
@@ -229,9 +230,13 @@ export default function LeadDetailTabs({
               scope={[detail.projectType, detail.message].filter(Boolean).join(' ')}
             />
             <PermitFeasibilityCard address={detail.address} isLead={true} />
+            <RoomScanViewer />
           </>
         ) : (
-          <p className={styles.muted}>No address on file for this lead to fetch property intelligence.</p>
+          <>
+            <p className={styles.muted}>No address on file for this lead to fetch exterior property intelligence.</p>
+            <RoomScanViewer />
+          </>
         )}
       </div>
     );

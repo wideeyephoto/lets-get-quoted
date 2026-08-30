@@ -13,7 +13,7 @@ import { loadLeadPhoneVerificationReadiness } from '@/lib/lead-phone-verificatio
 import { normalizeUsPhone } from '@/lib/phone';
 import { getSiteContent, isFullyBookedActive } from '@/lib/site-content';
 import { sendOwnerHighValueLeadSms } from '@/lib/sms';
-import { checkRateLimit, clientIpFrom } from '@/lib/rate-limit';
+import { checkRateLimitStrict, clientIpFrom } from '@/lib/rate-limit';
 import { serviceAreaVerdict } from '@/lib/service-area-match';
 import { resolveJurisdiction } from '@/lib/location-context/jurisdiction-resolver';
 import { evaluatePermitRequirement } from '@/lib/permit-intel/requirement-engine';
@@ -132,8 +132,9 @@ export async function POST(request: NextRequest) {
   const admin = createAdminClient();
 
   // Durable per-IP cap on lead creation (photos + owner email/SMS + DB writes).
+  // Fail-closed so a database or limiter error blocks malicious floods rather than failing open.
   const ip = clientIpFrom(request.headers);
-  if (!(await checkRateLimit(admin, `lead:ip:${ip}`, 20, 60))) {
+  if (!(await checkRateLimitStrict(admin, `lead:ip:${ip}`, 20, 60))) {
     return NextResponse.json({ error: 'Too many requests — please wait a minute and try again.' }, { status: 429 });
   }
 

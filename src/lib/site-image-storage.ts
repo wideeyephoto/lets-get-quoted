@@ -5,7 +5,7 @@ import type { SiteImage } from '@/lib/site-images';
 
 const SITE_IMAGES_BUCKET = 'site-images';
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
-const ALLOWED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/avif']);
+const ALLOWED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 
 async function ensureSiteImagesBucket() {
   const admin = createAdminClient();
@@ -64,7 +64,7 @@ export async function listUploadedSiteImages(accountId: string): Promise<SiteIma
 
 export async function uploadSiteImage(accountId: string, file: File): Promise<SiteImage> {
   if (!ALLOWED_IMAGE_TYPES.has(file.type)) {
-    throw new Error('Upload a JPG, PNG, WebP, or AVIF image.');
+    throw new Error('Upload a JPG, PNG, or WebP image.');
   }
 
   if (file.size > MAX_IMAGE_BYTES) {

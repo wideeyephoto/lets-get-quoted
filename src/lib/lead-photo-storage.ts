@@ -8,7 +8,6 @@ const ALLOWED_TYPES = new Set([
   'image/jpeg',
   'image/png',
   'image/webp',
-  'image/avif',
   'video/mp4',
   'video/quicktime',
   'video/webm',
@@ -58,7 +57,7 @@ export async function uploadLeadPhoto(
   file: File,
   uploader: LeadPhotoUploader,
 ): Promise<string> {
-  if (!ALLOWED_TYPES.has(file.type)) throw new Error('Files must be JPG, PNG, WebP, AVIF, MP4, MOV, or WebM.');
+  if (!ALLOWED_TYPES.has(file.type)) throw new Error('Files must be JPG, PNG, WebP, MP4, MOV, or WebM.');
   if (file.size > MAX_PHOTO_BYTES) throw new Error('Each file must be 35 MB or smaller.');
   if (uploader === 'workspace') {
     await assertStorageCapacity(createAdminClient(), accountId, file.size);
