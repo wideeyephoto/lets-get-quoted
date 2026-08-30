@@ -1748,7 +1748,7 @@ export const MANUAL_ARTICLES: ManualArticle[] = [
       {
         title: 'Understand simultaneous calls and overflow',
         paragraphs: [
-          'Flex, Solo, and Growth include five simultaneous AI calls. Scale includes ten. When all available AI call slots are occupied, new callers follow your normal forwarding configuration. Without a forwarding number, they hear that the line is unavailable.',
+          'Flex, Solo, and Growth include one simultaneous AI call. Scale includes three. When all available AI call slots are occupied, new callers follow your normal forwarding configuration. Without a forwarding number, they hear that the line is unavailable.',
         ],
       },
       {

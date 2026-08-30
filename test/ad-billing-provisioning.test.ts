@@ -523,10 +523,9 @@ describe('Ad Billing Synchronous Provisioning & Fulfillment', () => {
 
   it('sends 24-hour advance SMS notifications for upcoming renewals to opted-in contractors', async () => {
     const { processUpcomingPaymentSmsAlerts } = await import('@/lib/ad-billing');
-    const smsModule = await import('@/lib/sms-provider');
+    const smsModule = await import('@/lib/sms');
 
-    const sendSpy = vi.spyOn(smsModule, 'sendProviderMessage').mockResolvedValue('simulated_msg_123');
-    vi.spyOn(smsModule, 'isSmsProviderConfigured').mockReturnValue(true);
+    const sendSpy = vi.spyOn(smsModule, 'sendUpcomingAdPaymentSms').mockResolvedValue(true);
 
     const renewalDate = new Date(Date.now() + 18 * 60 * 60 * 1000).toISOString(); // In 18 hours
 
@@ -591,10 +590,9 @@ describe('Ad Billing Synchronous Provisioning & Fulfillment', () => {
     const res = await processUpcomingPaymentSmsAlerts(mockAdmin);
     expect(res.alertsSent).toBe(1);
     expect(sendSpy).toHaveBeenCalled();
-    const calledArgs = sendSpy.mock.calls[0];
-    expect(calledArgs[0]).toBe('+15551234567');
-    expect(calledArgs[1]).toContain('$185');
-    expect(calledArgs[1]).toContain('24 hours');
-    expect(calledArgs[2].accountId).toBeNull(); // Guaranteed unmetered: 0 user text credits consumed
+    const calledArgs = sendSpy.mock.calls[0][0];
+    expect(calledArgs.phone).toBe('+15551234567');
+    expect(calledArgs.amountDollars).toBe(185);
+    expect(calledArgs.accountId).toBe('acc_sms_user');
   });
 });

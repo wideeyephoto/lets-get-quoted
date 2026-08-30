@@ -199,7 +199,7 @@ export const COMPARISON_ROWS = [
   ['Custom-domain connections', '1', '1', '1', '1'],
   ['Business number', 'Dedicated number (carrier registration required)', 'Dedicated number (carrier registration required)', 'Dedicated number (carrier registration required)', 'Dedicated number (carrier registration required)'],
   ['Basic call forwarding & voicemail', 'Standard routing', '100 min/month', '100 min/month', '200 min/month'],
-  ['AI calls answered at once', '5 with add-on', '5 with add-on', '5 with add-on', '10 included'],
+  ['AI calls answered at once', '1 with add-on', '1 with add-on', '1 with add-on', '3 included'],
   ['When all AI call slots are busy', 'Forward normally', 'Forward normally', 'Forward normally', 'Forward normally'],
   ['Text credits', '50 one-time starter credits', '500/month', '1,500/month', '3,000/month'],
   ['Marketing email sends', '100 one-time starter sends', '500/month', '2,500/month', '5,000/month'],
@@ -234,7 +234,7 @@ export const PRICING_FAQS = [
   },
   {
     q: 'Can the AI receptionist answer multiple calls at once?',
-    a: 'Flex, Solo, and Growth support five AI-handled calls at a time. Scale supports ten. When every AI call slot is occupied, additional callers are sent to your normal forwarding number. If no forwarding number is configured, they hear that the line is unavailable.',
+    a: 'Flex, Solo, and Growth support one AI-handled call at a time. Scale supports three. When every AI call slot is occupied, additional callers are sent to your normal forwarding number. If no forwarding number is configured, they hear that the line is unavailable.',
   },
   {
     q: 'How does Flex starter usage work?',

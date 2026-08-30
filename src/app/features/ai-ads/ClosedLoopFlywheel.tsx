@@ -185,7 +185,7 @@ export default function ClosedLoopFlywheel() {
           <div>
             <h4 className={styles.loopBannerTitle}>Continuous Machine Learning Feedback Loop</h4>
             <p className={styles.loopBannerDesc}>
-              Every won job uploaded teaches Google's bidding algorithm what your ideal high-margin customer looks like.
+              Every won job uploaded teaches Google&apos;s bidding algorithm what your ideal high-margin customer looks like.
             </p>
           </div>
         </div>

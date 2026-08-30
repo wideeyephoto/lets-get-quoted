@@ -2,6 +2,7 @@ import { createAdminClient } from '@/lib/auth';
 import { loadBusinessName } from '@/lib/business-name';
 import { normalizeUsPhone } from '@/lib/phone';
 import {
+  adWalletRefillText,
   appointmentReminderText,
   arrivalTimeChangedText,
   campaignText,
@@ -32,6 +33,7 @@ import {
   rebookInviteText,
   reviewRequestText,
   schedulingOptionsText,
+  upcomingAdPaymentAlertText,
   verificationCodeText,
   withOptOut,
 } from '@/lib/sms-templates';
@@ -1719,4 +1721,77 @@ export async function sendSpeedToLeadSms(params: {
     idempotencyKey: params.idempotencyKey,
   });
 }
+
+/**
+ * Dispatches an SMS alert when an advertising wallet balance auto-refills.
+ */
+export async function sendAdWalletRefillSms(params: {
+  accountId: string;
+  phone: string;
+  businessName: string;
+  refillDollars: string;
+  newBalanceDollars: string;
+  previousBalanceDollars: string;
+  idempotencyKey?: string;
+}): Promise<void> {
+  try {
+    const to = normalizeUsPhone(params.phone);
+    if (!to) return;
+    if (await isPhoneOptedOut(params.accountId, to)) return;
+    const body = adWalletRefillText({
+      businessName: params.businessName,
+      refillDollars: params.refillDollars,
+      newBalanceDollars: params.newBalanceDollars,
+      previousBalanceDollars: params.previousBalanceDollars,
+    });
+    await queueAccountSms({
+      accountId: params.accountId,
+      phone: to,
+      body,
+      messageKind: 'ad-wallet-refill',
+      category: 'payment_message',
+      context: 'owner',
+      idempotencyKey: params.idempotencyKey,
+    });
+  } catch (error) {
+    console.error('Ad wallet refill SMS alert failed:', error instanceof Error ? error.message : error);
+  }
+}
+
+/**
+ * Dispatches a 24-hour advance SMS notification for an upcoming ad budget subscription renewal.
+ */
+export async function sendUpcomingAdPaymentSms(params: {
+  accountId: string;
+  phone: string;
+  businessName: string;
+  amountDollars: number;
+  renewalDateStr: string;
+  idempotencyKey?: string;
+}): Promise<boolean> {
+  try {
+    const to = normalizeUsPhone(params.phone);
+    if (!to) return false;
+    if (await isPhoneOptedOut(params.accountId, to)) return false;
+    const body = upcomingAdPaymentAlertText({
+      businessName: params.businessName,
+      amountDollars: params.amountDollars,
+      renewalDateStr: params.renewalDateStr,
+    });
+    await queueAccountSms({
+      accountId: params.accountId,
+      phone: to,
+      body,
+      messageKind: 'ad-upcoming-payment-alert',
+      category: 'payment_message',
+      context: 'owner',
+      idempotencyKey: params.idempotencyKey,
+    });
+    return true;
+  } catch (error) {
+    console.error('Failed to send upcoming payment SMS alert:', error instanceof Error ? error.message : error);
+    return false;
+  }
+}
+
 

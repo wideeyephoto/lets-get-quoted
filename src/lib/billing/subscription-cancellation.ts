@@ -560,3 +560,21 @@ export async function cancelSubscriptionForAccountDeletion(input: {
     error: baseError,
   };
 }
+
+/**
+ * Cancels or schedules cancellation of an ad campaign subscription on Stripe.
+ */
+export async function cancelAdCampaignSubscription(
+  stripeSubscriptionId: string,
+  cancelImmediately = false,
+): Promise<void> {
+  const stripe = getStripeClient();
+  if (cancelImmediately) {
+    await stripe.subscriptions.cancel(stripeSubscriptionId);
+  } else {
+    await stripe.subscriptions.update(stripeSubscriptionId, {
+      cancel_at_period_end: true,
+    });
+  }
+}
+

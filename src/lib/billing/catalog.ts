@@ -111,7 +111,7 @@ export const BILLING_PLANS: Readonly<Record<BillingPlanId, BillingPlanDefinition
     voice: {
       monthlyPriceCents: 6_900,
       includedMinutes: 100,
-      concurrentCalls: 5,
+      concurrentCalls: 1,
       historyDays: 30,
       advancedRouting: false,
       includedInBasePlan: false,
@@ -147,7 +147,7 @@ export const BILLING_PLANS: Readonly<Record<BillingPlanId, BillingPlanDefinition
     voice: {
       monthlyPriceCents: 5_900,
       includedMinutes: 100,
-      concurrentCalls: 5,
+      concurrentCalls: 1,
       historyDays: 30,
       advancedRouting: false,
       includedInBasePlan: false,
@@ -177,7 +177,7 @@ export const BILLING_PLANS: Readonly<Record<BillingPlanId, BillingPlanDefinition
     voice: {
       monthlyPriceCents: 5_500,
       includedMinutes: 200,
-      concurrentCalls: 5,
+      concurrentCalls: 1,
       historyDays: 30,
       advancedRouting: false,
       includedInBasePlan: false,
@@ -207,7 +207,7 @@ export const BILLING_PLANS: Readonly<Record<BillingPlanId, BillingPlanDefinition
     voice: {
       monthlyPriceCents: 0,
       includedMinutes: 100,
-      concurrentCalls: 10,
+      concurrentCalls: 3,
       historyDays: 90,
       advancedRouting: true,
       includedInBasePlan: true,

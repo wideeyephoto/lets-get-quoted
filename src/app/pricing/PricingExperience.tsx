@@ -99,12 +99,12 @@ const plans = PLANS.map((plan, rank) => {
       ? `${money.format(plan.aiCredits)} one-time starter AI Credits`
       : `${money.format(plan.aiCredits)} AI Credits/month`,
     aiReceptionistAllowance: plan.id === 'scale'
-      ? 'AI Receptionist: 10 calls at a time · included'
+      ? 'AI Receptionist: 3 calls at a time · included'
       : plan.id === 'growth'
-        ? 'AI Receptionist: 5 calls at a time · $55/mo add-on'
+        ? 'AI Receptionist: 1 call at a time · $55/mo add-on'
         : plan.id === 'solo'
-          ? 'AI Receptionist: 5 calls at a time · $59/mo add-on'
-          : 'AI Receptionist: 5 calls at a time · $69/mo add-on',
+          ? 'AI Receptionist: 1 call at a time · $59/mo add-on'
+          : 'AI Receptionist: 1 call at a time · $69/mo add-on',
     rank,
   };
 });

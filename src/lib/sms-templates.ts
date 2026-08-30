@@ -459,6 +459,24 @@ export function callerVoicePostCallFollowupText(input: {
   );
 }
 
+export function adWalletRefillText(input: {
+  businessName: string;
+  refillDollars: string;
+  newBalanceDollars: string;
+  previousBalanceDollars: string;
+}): string {
+  return `Hi ${input.businessName}, your Let's Get Quoted Ad Wallet balance dropped to $${input.previousBalanceDollars}. We auto-refilled $${input.refillDollars} (new balance: $${input.newBalanceDollars}) to keep your Google Search ads continuously live.`;
+}
+
+export function upcomingAdPaymentAlertText(input: {
+  businessName: string;
+  amountDollars: number;
+  renewalDateStr: string;
+}): string {
+  return `Hi ${input.businessName}, reminder that your Let's Get Quoted AI Ads renewal of $${input.amountDollars} will process in 24 hours (${input.renewalDateStr}) to keep your Google search ads active. Manage or pause anytime in your dashboard.`;
+}
+
+
 // -- the ones that live with their own logic ---------------------------------
 
 /**

@@ -46,7 +46,7 @@ describe('billing entitlement catalog compiler', () => {
         office_users: 15,
         crew_users: 50,
         storage_gb: 250,
-        voice_concurrent_calls: 10,
+        voice_concurrent_calls: 3,
         voice_history_days: 90,
         voice_included_minutes: 100,
       },

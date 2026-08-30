@@ -790,15 +790,18 @@ export async function executeWalletRefillCharge(params: {
             const businessName = (account?.business_name as string) || 'there';
             const refillDollars = (actualRefillAdSpendCents / 100).toFixed(2);
             const balanceDollars = (newBalance / 100).toFixed(2);
-            const body = `Hi ${businessName}, your Let's Get Quoted Ad Wallet balance dropped to $${(balance / 100).toFixed(2)}. We auto-refilled $${refillDollars} (new balance: $${balanceDollars}) to keep your Google Search ads continuously live.`;
+            const previousDollars = (balance / 100).toFixed(2);
 
-            const { sendProviderMessage, isSmsProviderConfigured } = await import('@/lib/sms-provider');
-            if (isSmsProviderConfigured()) {
-              await sendProviderMessage(phone, body, {
-                accountId: null, // System billing notification: NEVER deducts contractor text credits
-                category: 'payment_message',
-              });
-            }
+            const { sendAdWalletRefillSms } = await import('@/lib/sms');
+            await sendAdWalletRefillSms({
+              accountId,
+              phone,
+              businessName,
+              refillDollars,
+              newBalanceDollars: balanceDollars,
+              previousBalanceDollars: previousDollars,
+              idempotencyKey: `ad-wallet-refill:${paymentIntent.id}`,
+            });
           }
         } catch (smsErr) {
           console.warn('Could not dispatch wallet auto-refill SMS alert:', smsErr);
@@ -1204,15 +1207,9 @@ export async function cancelAdCampaign(
   const adState = (content.adCampaign as AdBudgetWalletState) || DEFAULT_AD_WALLET_STATE;
 
   if (adState.stripeSubscriptionId) {
-    const stripe = getStripeClient();
     try {
-      if (cancelImmediately) {
-        await stripe.subscriptions.cancel(adState.stripeSubscriptionId);
-      } else {
-        await stripe.subscriptions.update(adState.stripeSubscriptionId, {
-          cancel_at_period_end: true,
-        });
-      }
+      const { cancelAdCampaignSubscription } = await import('@/lib/billing/subscription-cancellation');
+      await cancelAdCampaignSubscription(adState.stripeSubscriptionId, cancelImmediately);
     } catch (err) {
       console.warn('Could not update Stripe subscription cancellation:', err);
     }
@@ -1302,17 +1299,17 @@ export async function sendUpcomingPaymentSmsAlert(params: {
     .maybeSingle();
 
   const businessName = (account?.business_name as string) || 'there';
-  const body = `Hi ${businessName}, reminder that your Let's Get Quoted AI Ads renewal of $${amountDollars} will process in 24 hours (${renewalDateStr}) to keep your Google search ads active. Manage or pause anytime in your dashboard.`;
 
   try {
-    const { sendProviderMessage, isSmsProviderConfigured } = await import('@/lib/sms-provider');
-    if (isSmsProviderConfigured()) {
-      await sendProviderMessage(phone, body, {
-        accountId: null, // System billing notification: NEVER deducts contractor text credits
-        category: 'payment_message',
-      });
-    }
-    return true;
+    const { sendUpcomingAdPaymentSms } = await import('@/lib/sms');
+    return await sendUpcomingAdPaymentSms({
+      accountId,
+      phone,
+      businessName,
+      amountDollars,
+      renewalDateStr,
+      idempotencyKey: `ad-upcoming-payment-alert:${accountId}:${renewalDateStr}`,
+    });
   } catch (err) {
     console.warn('Failed to send upcoming payment SMS alert:', err);
     return false;

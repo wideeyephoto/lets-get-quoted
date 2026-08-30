@@ -1,5 +1,6 @@
 import type { AutomationKey } from '@/lib/automations';
 import {
+  adWalletRefillText,
   appointmentReminderText,
   arrivalTimeChangedText,
   buildArrivalMessage,
@@ -38,6 +39,7 @@ import {
   subcontractorCancelledText,
   subcontractorCoveredText,
   subcontractorWonText,
+  upcomingAdPaymentAlertText,
   verificationCodeText,
   withOptOut,
 } from '@/lib/sms-templates';
@@ -687,10 +689,36 @@ export const SMS_CATALOGUE: SmsCatalogueEntry[] = [
       city: 'Austin',
     }),
   },
+  {
+    id: 'ad-wallet-refill',
+    title: 'Ad wallet auto-refill alert',
+    trigger: 'Sent to account owner when advertising balance drops below threshold and auto-refills',
+    audience: 'owner',
+    control: always('Triggered on ad wallet auto-refill'),
+    body: adWalletRefillText({
+      businessName: SAMPLE.business,
+      refillDollars: '250.00',
+      newBalanceDollars: '300.00',
+      previousBalanceDollars: '50.00',
+    }),
+  },
+  {
+    id: 'ad-upcoming-payment-alert',
+    title: 'Ad campaign upcoming renewal notice',
+    trigger: 'Sent to account owner 24 hours before weekly or monthly advertising budget renewal',
+    audience: 'owner',
+    control: always('Triggered 24 hours before ad renewal'),
+    body: upcomingAdPaymentAlertText({
+      businessName: SAMPLE.business,
+      amountDollars: 185,
+      renewalDateStr: 'Sep 5',
+    }),
+  },
 ];
 
 /** Every sender this catalogue claims to cover, checked against lib/sms by test. */
 export const CATALOGUE_SENDERS = [
+  'sendAdWalletRefillSms',
   'sendAppointmentReminderSms',
   'sendArrivalSms',
   'sendArrivalTimeChangedSms',
@@ -733,6 +761,7 @@ export const CATALOGUE_SENDERS = [
   'sendReviewRequestSms',
   'sendSchedulingOptionsSms',
   'sendSelectionRequestSms',
+  'sendUpcomingAdPaymentSms',
   'sendVerificationCodeSms',
 ] as const;
 
