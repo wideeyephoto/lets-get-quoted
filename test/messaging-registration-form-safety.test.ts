@@ -30,8 +30,8 @@ describe('messaging registration form safety', () => {
     expect(ownerPage).toContain('Your EIN is encrypted and transmitted directly to mobile carrier registries');
     expect(ownerPage).toContain('LGQ stores only the verified last four digits');
     expect(ownerAction).toContain('rawEin.replace(/\\D/g,');
-    expect(ownerAction).toContain('recordMessagingComplianceVerification({');
-    expect(ownerAction).toContain('einLastFour: einDigits.slice(-4)');
+    expect(ownerAction).toContain('recordMessagingTaxIdentitySubmission({');
+    expect(ownerAction).toContain('einLastFour: hasEin ? einDigits.slice(-4) : null');
     expect(ownerAction).not.toContain('p_ein:');
   });
 

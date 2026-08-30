@@ -10,6 +10,7 @@
  * Pure: FormData in, a typed object out. No database, no auth.
  */
 
+import { scanForSensitiveIdentifiers } from '@/lib/dlp';
 import {
   normalizeAgreementStatus,
   normalizeRatePreference,
@@ -164,6 +165,9 @@ export function subcontractorProblem(values: SubcontractorFormValues): string | 
   }
   if (values.trades.length === 0) {
     return 'Pick at least one trade. It is what decides which jobs they get offered.';
+  }
+  if (values.internalNotes && scanForSensitiveIdentifiers(values.internalNotes).length > 0) {
+    return 'Internal notes must not contain sensitive taxpayer identifiers (SSN/EIN) or card numbers. For W-9 records, use secure tax identity management.';
   }
   return null;
 }

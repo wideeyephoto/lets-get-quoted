@@ -204,11 +204,50 @@ export function buildScheduleCWorksheet(pl: ProfitAndLoss): ScheduleCLine[] {
 }
 
 // -- 1099-NEC prep -----------------------------------------------------------
-// Flags subcontractors paid $600+ in the tax year, since the IRS requires a
-// 1099-NEC for each. We only track a free-text supplier name today (no
-// TIN/W-9 on file), so this is a prep list to work from — not a filed form.
+// Flags subcontractors whose logged costs meet or exceed the IRS 1099-NEC filing
+// threshold for the given tax year ($600 for tax years <= 2025; $2,000 for 2026;
+// indexed for inflation in subsequent years).
+//
+// NOTE ON CASH VS COST: We currently aggregate from logged job costs (costs table),
+// not a settled cash disbursement ledger. This is an estimate / prep list to help
+// contractors identify payees requiring Form 1099-NEC and collect signed W-9s
+// (legal name, address, tax classification, and TIN) ahead of filing.
 
-export type SubcontractorPayout = { supplier: string; total: number; needs1099: boolean };
+export type SubcontractorCostRow = {
+  supplier: string | null;
+  amount: number | string | null;
+  crew_id?: string | null;
+  crew_name?: string | null;
+};
+
+export type SubcontractorPayout = {
+  supplier: string;
+  crewId?: string | null;
+  total: number;
+  needs1099: boolean;
+};
+
+/**
+ * Resolves the IRS 1099-NEC nonemployee compensation filing threshold for a given tax year.
+ * - Tax years <= 2025: $600 statutory threshold
+ * - Tax year 2026: $2,000 statutory threshold (updated under IRS rules)
+ * - Tax years > 2026: Base $2,000 threshold subject to statutory IRS annual inflation adjustments
+ */
+export function irs1099NecThresholdForYear(year: number): number {
+  if (!Number.isFinite(year) || year <= 2025) {
+    return 600;
+  }
+  if (year === 2026) {
+    return 2000;
+  }
+  // Future years are subject to annual IRS inflation adjustments based on the $2,000 baseline.
+  // Until specific future inflation index tables are codified, return the $2,000 statutory baseline.
+  return 2000;
+}
+
+// Retained for backward-compatibility with legacy references.
+export const IRS_1099_NEC_LEGACY_THRESHOLD = 600;
+export const IRS_1099_NEC_THRESHOLD = 600;
 
 export async function build1099PrepList(
   supabase: SupabaseClient,
@@ -216,12 +255,13 @@ export async function build1099PrepList(
   year: number,
 ): Promise<SubcontractorPayout[]> {
   const { start, end } = yearRange(year);
+  const threshold = irs1099NecThresholdForYear(year);
 
   // Paginated retrieval of all subcontractor costs
   const rows = await fetchAllPages<SubcontractorCostRow>((from, to) =>
     supabase
       .from('costs')
-      .select('supplier, amount')
+      .select('supplier, amount, crew_id, crew_name')
       .eq('account_id', accountId)
       .eq('type', 'sub')
       .gte('created_at', start)
@@ -230,30 +270,52 @@ export async function build1099PrepList(
       .range(from, to),
   );
 
-  return aggregateSubcontractorPayouts(rows);
+  return aggregateSubcontractorPayouts(rows, threshold);
 }
 
-// The IRS 1099-NEC filing threshold: a 1099 is required for each nonemployee paid
-// $600 OR MORE in the year (>= 600, not > 600).
-export const IRS_1099_NEC_THRESHOLD = 600;
-
-// Pure aggregation for the 1099 prep list: sum by supplier name and flag anyone at
-// or above the threshold. Caveat (documented for the contractor): names are
-// free-text, so two spellings of the same sub are counted separately.
+// Pure aggregation for the 1099 prep list: sums by stable crew_id (if present) or
+// supplier name, eliminating name fragmentation for assigned subcontractors.
 export function aggregateSubcontractorPayouts(
   rows: SubcontractorCostRow[],
   threshold: number = IRS_1099_NEC_THRESHOLD,
 ): SubcontractorPayout[] {
-  const totals = new Map<string, number>();
+  type Grouping = { supplier: string; crewId: string | null; total: number };
+  const groups = new Map<string, Grouping>();
+
   for (const row of rows) {
-    const name = (row.supplier ?? '').trim() || 'Unnamed subcontractor';
-    totals.set(name, (totals.get(name) ?? 0) + (Number(row.amount) || 0));
+    const rawSupplier = (row.supplier ?? '').trim();
+    const crewName = (row.crew_name ?? '').trim();
+    const crewId = row.crew_id ? String(row.crew_id).trim() : null;
+
+    const displayName = crewName || rawSupplier || 'Unnamed subcontractor';
+    const groupKey = crewId ? `crew:${crewId}` : `name:${displayName.toLowerCase()}`;
+
+    const existing = groups.get(groupKey);
+    const amount = Number(row.amount) || 0;
+
+    if (existing) {
+      existing.total += amount;
+      if (!existing.supplier || existing.supplier === 'Unnamed subcontractor') {
+        existing.supplier = displayName;
+      }
+    } else {
+      groups.set(groupKey, {
+        supplier: displayName,
+        crewId,
+        total: amount,
+      });
+    }
   }
 
-  return Array.from(totals.entries())
-    .map(([supplier, sum]) => {
-      const total = round2(sum);
-      return { supplier, total, needs1099: total >= threshold };
+  return Array.from(groups.values())
+    .map((g) => {
+      const total = round2(g.total);
+      return {
+        supplier: g.supplier,
+        crewId: g.crewId,
+        total,
+        needs1099: total >= threshold,
+      };
     })
     .sort((a, b) => b.total - a.total);
 }
@@ -278,15 +340,16 @@ export function buildScheduleCCsv(lines: ScheduleCLine[]): string {
 }
 
 export function build1099Csv(list: SubcontractorPayout[], year?: number): string {
-  const rows: string[][] = [['Subcontractor', 'Total Paid', 'May Need 1099-NEC', 'IRS Threshold', 'Tax Year']];
-  const yr = year ? String(year) : new Date().getFullYear().toString();
+  const yr = year ? year : new Date().getFullYear();
+  const threshold = irs1099NecThresholdForYear(yr);
+  const rows: string[][] = [['Subcontractor', 'Total Estimated Cost', 'May Need 1099-NEC', 'IRS Threshold', 'Tax Year']];
   for (const s of list) {
     rows.push([
       csvEscape(s.supplier),
       s.total.toFixed(2),
       s.needs1099 ? 'Yes' : 'No',
-      `$${IRS_1099_NEC_THRESHOLD}.00`,
-      yr,
+      `$${threshold.toFixed(2)}`,
+      String(yr),
     ]);
   }
   return rows.map((row) => row.join(',')).join('\n');

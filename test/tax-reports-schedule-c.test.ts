@@ -81,7 +81,7 @@ describe('buildScheduleCWorksheet', () => {
 });
 
 describe('aggregateSubcontractorPayouts (1099-NEC)', () => {
-  it('flags subcontractors at or above the $600 IRS threshold', () => {
+  it('flags subcontractors at or above the $600 IRS legacy threshold or custom threshold', () => {
     const rows: SubcontractorCostRow[] = [
       { supplier: 'Apex Electrical LLC', amount: 450 },
       { supplier: 'Apex Electrical LLC', amount: 200 }, // Total: 650 >= 600 => Needs 1099
@@ -89,11 +89,11 @@ describe('aggregateSubcontractorPayouts (1099-NEC)', () => {
       { supplier: 'Summit Framing', amount: 1200 }, // Total: 1200 >= 600 => Needs 1099
     ];
 
-    const result = aggregateSubcontractorPayouts(rows);
+    const result = aggregateSubcontractorPayouts(rows, 600);
 
     expect(result).toHaveLength(3);
-    expect(result[0]).toEqual({ supplier: 'Summit Framing', total: 1200, needs1099: true });
-    expect(result[1]).toEqual({ supplier: 'Apex Electrical LLC', total: 650, needs1099: true });
-    expect(result[2]).toEqual({ supplier: 'Quick Drywall', total: 599.99, needs1099: false });
+    expect(result[0]).toEqual({ supplier: 'Summit Framing', crewId: null, total: 1200, needs1099: true });
+    expect(result[1]).toEqual({ supplier: 'Apex Electrical LLC', crewId: null, total: 650, needs1099: true });
+    expect(result[2]).toEqual({ supplier: 'Quick Drywall', crewId: null, total: 599.99, needs1099: false });
   });
 });

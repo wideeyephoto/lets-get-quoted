@@ -1000,11 +1000,37 @@ describe('dedicated-number provisioning orchestration', () => {
       actorReference: 'ops@example.com',
       admin,
     });
-    expect(rpc).toHaveBeenCalledWith('record_messaging_compliance_verification', {
+    expect(rpc).toHaveBeenCalledWith('record_messaging_compliance_verification_v2', {
       p_application_id: APPLICATION,
+      p_verification_method: 'ein',
       p_ein_last_four: '6789',
       p_verification_reference: 'signalwire-case-alpha',
+      p_otp_reference: null,
+      p_actor_reference: 'ops@example.com',
+    });
+  });
+
+  it('supports sole proprietor OTP verification method in compliance recorder', async () => {
+    const rpc = vi.fn(async () => ({ data: true, error: null }));
+    const admin = { rpc } as never;
+
+    await recordMessagingComplianceVerification({
+      applicationId: APPLICATION,
+      verificationMethod: 'sole_proprietor_otp',
+      verificationReference: 'signalwire-sole-prop-case-1',
+      otpReference: 'otp-session-xyz',
+      actorReference: 'ops@example.com',
+      admin,
+    });
+
+    expect(rpc).toHaveBeenCalledWith('record_messaging_compliance_verification_v2', {
+      p_application_id: APPLICATION,
+      p_verification_method: 'sole_proprietor_otp',
+      p_ein_last_four: null,
+      p_verification_reference: 'signalwire-sole-prop-case-1',
+      p_otp_reference: 'otp-session-xyz',
       p_actor_reference: 'ops@example.com',
     });
   });
 });
+

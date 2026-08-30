@@ -6,6 +6,7 @@ import {
   buildProfitAndLossCsv,
   buildScheduleCCsv,
   build1099Csv,
+  irs1099NecThresholdForYear,
   IRS_1099_NEC_THRESHOLD,
   type PaidPaymentRow,
   type CostRow,
@@ -115,43 +116,85 @@ describe('buildScheduleCWorksheet', () => {
   });
 });
 
+describe('irs1099NecThresholdForYear', () => {
+  it('returns $600 for tax years <= 2025', () => {
+    expect(irs1099NecThresholdForYear(2020)).toBe(600);
+    expect(irs1099NecThresholdForYear(2024)).toBe(600);
+    expect(irs1099NecThresholdForYear(2025)).toBe(600);
+  });
+
+  it('returns $2,000 for tax year 2026', () => {
+    expect(irs1099NecThresholdForYear(2026)).toBe(2000);
+  });
+
+  it('returns $2,000 base for future years subject to inflation index adjustments', () => {
+    expect(irs1099NecThresholdForYear(2027)).toBe(2000);
+    expect(irs1099NecThresholdForYear(2030)).toBe(2000);
+  });
+
+  it('handles invalid year safely with fallback to $600', () => {
+    expect(irs1099NecThresholdForYear(NaN)).toBe(600);
+  });
+});
+
 describe('aggregateSubcontractorPayouts', () => {
   const rows = [
     { supplier: 'Ace Electric', amount: 300 },
     { supplier: 'Ace Electric', amount: 300 }, // aggregates to 600 across two costs
-    { supplier: 'Bob Plumbing', amount: 599.99 }, // just under the threshold
-    { supplier: '  Cid Concrete  ', amount: 600 }, // trimmed, exactly at threshold
+    { supplier: 'Bob Plumbing', amount: 599.99 }, // just under 600
+    { supplier: '  Cid Concrete  ', amount: 600 }, // trimmed, exactly 600
+    { supplier: 'Delta Framing', amount: 1999.99 }, // under 2026 threshold
+    { supplier: 'Echo HVAC', amount: 2000 }, // exactly at 2026 threshold
     { supplier: null, amount: 50 },
     { supplier: '', amount: 25 }, // null + '' both fold into "Unnamed subcontractor"
   ];
-  const result = aggregateSubcontractorPayouts(rows);
-  const find = (name: string) => result.find((r) => r.supplier === name);
 
-  it('flags a subcontractor at or above $600 (>=, not >)', () => {
-    expect(find('Ace Electric')).toEqual({ supplier: 'Ace Electric', total: 600, needs1099: true });
-    expect(find('Cid Concrete')).toEqual({ supplier: 'Cid Concrete', total: 600, needs1099: true });
+  it('flags subcontractors using default or 2025 $600 threshold (>=, not >)', () => {
+    const result2025 = aggregateSubcontractorPayouts(rows, irs1099NecThresholdForYear(2025));
+    const find = (name: string) => result2025.find((r) => r.supplier === name);
+
+    expect(find('Ace Electric')).toEqual({ supplier: 'Ace Electric', crewId: null, total: 600, needs1099: true });
+    expect(find('Cid Concrete')).toEqual({ supplier: 'Cid Concrete', crewId: null, total: 600, needs1099: true });
+    expect(find('Bob Plumbing')).toEqual({ supplier: 'Bob Plumbing', crewId: null, total: 599.99, needs1099: false });
+    expect(find('Delta Framing')).toEqual({ supplier: 'Delta Framing', crewId: null, total: 1999.99, needs1099: true });
+    expect(find('Echo HVAC')).toEqual({ supplier: 'Echo HVAC', crewId: null, total: 2000, needs1099: true });
   });
 
-  it('does not flag a subcontractor just under $600', () => {
-    expect(find('Bob Plumbing')).toEqual({ supplier: 'Bob Plumbing', total: 599.99, needs1099: false });
+  it('flags subcontractors accurately under 2026 $2,000 threshold', () => {
+    const result2026 = aggregateSubcontractorPayouts(rows, irs1099NecThresholdForYear(2026));
+    const find = (name: string) => result2026.find((r) => r.supplier === name);
+
+    expect(find('Ace Electric')).toEqual({ supplier: 'Ace Electric', crewId: null, total: 600, needs1099: false });
+    expect(find('Cid Concrete')).toEqual({ supplier: 'Cid Concrete', crewId: null, total: 600, needs1099: false });
+    expect(find('Delta Framing')).toEqual({ supplier: 'Delta Framing', crewId: null, total: 1999.99, needs1099: false });
+    expect(find('Echo HVAC')).toEqual({ supplier: 'Echo HVAC', crewId: null, total: 2000, needs1099: true });
   });
 
   it('folds null/blank supplier names into one "Unnamed subcontractor" bucket', () => {
-    expect(find('Unnamed subcontractor')).toEqual({ supplier: 'Unnamed subcontractor', total: 75, needs1099: false });
+    const result = aggregateSubcontractorPayouts(rows, 600);
+    const unnamed = result.find((r) => r.supplier === 'Unnamed subcontractor');
+    expect(unnamed).toEqual({ supplier: 'Unnamed subcontractor', crewId: null, total: 75, needs1099: false });
+  });
+
+  it('groups by stable crew_id even across differing supplier spellings', () => {
+    const crewRows = [
+      { crew_id: 'crew-1', supplier: 'Ace Electric', amount: 400 },
+      { crew_id: 'crew-1', supplier: 'Ace Electrical Services', crew_name: 'Ace Electric', amount: 300 },
+      { crew_id: 'crew-2', supplier: 'Bob Plumbing', amount: 200 },
+    ];
+    const result = aggregateSubcontractorPayouts(crewRows, 600);
+    const ace = result.find((r) => r.crewId === 'crew-1');
+    expect(ace).toEqual({ supplier: 'Ace Electric', crewId: 'crew-1', total: 700, needs1099: true });
   });
 
   it('sorts by total paid, descending', () => {
+    const result = aggregateSubcontractorPayouts(rows, 600);
     const totals = result.map((r) => r.total);
     expect([...totals]).toEqual([...totals].sort((a, b) => b - a));
   });
 
-  it('uses $600 as the documented IRS 1099-NEC threshold', () => {
+  it('retains backward compatibility constant', () => {
     expect(IRS_1099_NEC_THRESHOLD).toBe(600);
-  });
-
-  it('respects a custom threshold', () => {
-    const low = aggregateSubcontractorPayouts([{ supplier: 'X', amount: 100 }], 100);
-    expect(low[0].needs1099).toBe(true);
   });
 });
 
@@ -164,11 +207,15 @@ describe('CSV exports', () => {
     expect(rows[13]).toBe('Total,1750.25,1105.00,645.25');
   });
 
-  it('escapes commas and quotes in supplier names', () => {
-    const csv = build1099Csv([{ supplier: 'Smith, "Bob" & Sons', total: 1200, needs1099: true }]);
-    const rows = csv.split('\n');
-    expect(rows[0]).toBe('Subcontractor,Total Paid,May Need 1099-NEC,IRS Threshold,Tax Year');
-    expect(rows[1]).toContain('"Smith, ""Bob"" & Sons",1200.00,Yes');
+  it('escapes commas and quotes in supplier names and uses year-aware threshold in 1099 CSV', () => {
+    const csv2026 = build1099Csv([{ supplier: 'Smith, "Bob" & Sons', total: 2200, needs1099: true }], 2026);
+    const rows2026 = csv2026.split('\n');
+    expect(rows2026[0]).toBe('Subcontractor,Total Estimated Cost,May Need 1099-NEC,IRS Threshold,Tax Year');
+    expect(rows2026[1]).toContain('"Smith, ""Bob"" & Sons",2200.00,Yes,$2000.00,2026');
+
+    const csv2025 = build1099Csv([{ supplier: 'Smith, "Bob" & Sons', total: 800, needs1099: true }], 2025);
+    const rows2025 = csv2025.split('\n');
+    expect(rows2025[1]).toContain('"Smith, ""Bob"" & Sons",800.00,Yes,$600.00,2025');
   });
 
   it('escapes the Schedule C category labels (they contain commas)', () => {

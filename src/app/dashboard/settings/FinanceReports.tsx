@@ -1,6 +1,11 @@
 import Link from 'next/link';
 import { formatMoney } from '@/lib/jobs';
-import type { ProfitAndLoss, ScheduleCLine, SubcontractorPayout } from '@/lib/tax-reports';
+import {
+  irs1099NecThresholdForYear,
+  type ProfitAndLoss,
+  type ScheduleCLine,
+  type SubcontractorPayout,
+} from '@/lib/tax-reports';
 
 type Props = {
   year: number;
@@ -12,6 +17,7 @@ type Props = {
 
 export default function FinanceReports({ year, availableYears, pl, scheduleC, subPrep }: Props) {
   const needing1099 = subPrep.filter((s) => s.needs1099);
+  const threshold = irs1099NecThresholdForYear(year);
 
   return (
     <div className="settings-sections">
@@ -118,7 +124,7 @@ export default function FinanceReports({ year, availableYears, pl, scheduleC, su
         <summary className="report-summary">
           <div className="section-heading workspace-section-heading compact-heading">
             <p className="eyebrow">1099-NEC prep</p>
-            <h2>Subcontractors paid — {year}</h2>
+            <h2>Subcontractor costs — {year}</h2>
           </div>
         </summary>
         {subPrep.length === 0 ? (
@@ -127,11 +133,14 @@ export default function FinanceReports({ year, availableYears, pl, scheduleC, su
           <>
             {needing1099.length > 0 ? (
               <p className="workspace-details-copy" style={{ marginBottom: '0.75rem' }}>
-                {needing1099.length} subcontractor{needing1099.length === 1 ? '' : 's'} crossed $600 —
-                you&apos;ll likely need to file a 1099-NEC for each. Collect a signed W-9 from them
-                (their legal name, address, and TIN) before filing.
+                {needing1099.length} subcontractor{needing1099.length === 1 ? '' : 's'} reached or exceeded the {year} IRS threshold of ${threshold.toLocaleString('en-US')} in logged costs —
+                you&apos;ll likely need to file a 1099-NEC for each. Note: These figures are estimated from logged job costs; official 1099-NEC filings require actual cash disbursements. Collect a signed W-9 (legal name, address, tax classification, and TIN) from each subcontractor before filing.
               </p>
-            ) : null}
+            ) : (
+              <p className="workspace-details-copy" style={{ marginBottom: '0.75rem' }}>
+                No subcontractors have reached the {year} IRS filing threshold of ${threshold.toLocaleString('en-US')} in logged costs yet. Note: These figures are estimated from logged job costs.
+              </p>
+            )}
             <div className="report-list">
               {subPrep.map((s) => (
                 <div className="report-row" key={s.supplier}>

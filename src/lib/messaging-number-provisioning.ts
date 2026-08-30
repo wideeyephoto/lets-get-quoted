@@ -424,8 +424,10 @@ export type MessagingComplianceVerification = Readonly<{
   applicationId: string;
   accountId: string;
   applicationRevision: number;
-  einLastFour: string;
+  verificationMethod: 'ein' | 'sole_proprietor_otp';
+  einLastFour: string | null;
   verificationReference: string;
+  otpReference: string | null;
   verifiedAt: string;
   verifiedBy: string;
   updatedAt: string;
@@ -436,14 +438,19 @@ function normalizeComplianceVerification(row: Record<string, unknown>): Messagin
   if (!Number.isSafeInteger(applicationRevision) || applicationRevision < 1) {
     throw new Error('Messaging compliance verification revision is invalid.');
   }
-  const einLastFour = requiredString(row.ein_last_four, 'EIN last four');
-  if (!/^[0-9]{4}$/.test(einLastFour)) throw new Error('Messaging compliance EIN suffix is invalid.');
+  const verificationMethod = (row.verification_method as 'ein' | 'sole_proprietor_otp') || 'ein';
+  const einLastFour = optionalString(row.ein_last_four);
+  if (verificationMethod === 'ein' && (!einLastFour || !/^[0-9]{4}$/.test(einLastFour))) {
+    throw new Error('Messaging compliance EIN suffix is invalid.');
+  }
   return {
     applicationId: requiredString(row.application_id, 'Messaging compliance application'),
     accountId: requiredString(row.account_id, 'Messaging compliance account'),
     applicationRevision,
+    verificationMethod,
     einLastFour,
     verificationReference: requiredString(row.verification_reference, 'Messaging compliance reference'),
+    otpReference: optionalString(row.otp_reference),
     verifiedAt: requiredString(row.verified_at, 'Messaging compliance verification time'),
     verifiedBy: requiredString(row.verified_by, 'Messaging compliance verifier'),
     updatedAt: requiredString(row.updated_at, 'Messaging compliance update time'),
@@ -457,36 +464,76 @@ export async function loadMessagingComplianceVerification(
   if (!UUID.test(applicationId)) throw new Error('Messaging application ID is invalid.');
   const { data, error } = await admin
     .from('messaging_compliance_verifications')
-    .select('application_id, account_id, application_revision, ein_last_four, verification_reference, verified_at, verified_by, updated_at')
+    .select('application_id, account_id, application_revision, verification_method, ein_last_four, verification_reference, otp_reference, verified_at, verified_by, updated_at')
     .eq('application_id', applicationId)
     .maybeSingle();
   if (error) throw rpcFailure('Unable to load messaging compliance verification', error);
   return data ? normalizeComplianceVerification(data as unknown as Record<string, unknown>) : null;
 }
 
-export async function recordMessagingComplianceVerification(input: Readonly<{
+export async function recordMessagingTaxIdentitySubmission(input: Readonly<{
   applicationId: string;
-  einLastFour: string;
-  verificationReference: string;
+  verificationMethod?: 'ein' | 'sole_proprietor_otp';
+  einLastFour?: string | null;
   actorReference: string;
   admin?: ReturnType<typeof createAdminClient>;
 }>): Promise<void> {
   if (!UUID.test(input.applicationId)) throw new Error('Messaging application ID is invalid.');
-  const einLastFour = input.einLastFour.trim();
-  const verificationReference = clean(input.verificationReference, 255);
+  const method = input.verificationMethod ?? (input.einLastFour ? 'ein' : 'sole_proprietor_otp');
+  const einLastFour = input.einLastFour ? input.einLastFour.trim() : null;
   const actorReference = input.actorReference.trim().slice(0, 320);
-  if (!/^[0-9]{4}$/.test(einLastFour)) throw new Error('Enter exactly the last four EIN digits.');
+
+  if (method === 'ein' && (!einLastFour || !/^[0-9]{4}$/.test(einLastFour))) {
+    throw new Error('Enter exactly the last four EIN digits for standard registration.');
+  }
+  if (actorReference.length < 3) throw new Error('Messaging compliance actor is invalid.');
+
+  const admin = input.admin ?? createAdminClient();
+  const { error } = await admin.rpc('record_messaging_tax_identity_submission', {
+    p_application_id: input.applicationId,
+    p_verification_method: method,
+    p_ein_last_four: einLastFour,
+    p_actor_reference: actorReference,
+  });
+  if (error) throw rpcFailure('Unable to record tax identity submission', error);
+}
+
+export async function recordMessagingComplianceVerification(input: Readonly<{
+  applicationId: string;
+  verificationMethod?: 'ein' | 'sole_proprietor_otp';
+  einLastFour?: string | null;
+  verificationReference: string;
+  otpReference?: string | null;
+  actorReference: string;
+  admin?: ReturnType<typeof createAdminClient>;
+}>): Promise<void> {
+  if (!UUID.test(input.applicationId)) throw new Error('Messaging application ID is invalid.');
+  const method = input.verificationMethod ?? (input.einLastFour ? 'ein' : 'sole_proprietor_otp');
+  const einLastFour = input.einLastFour ? input.einLastFour.trim() : null;
+  const verificationReference = clean(input.verificationReference, 255);
+  const otpReference = input.otpReference ? clean(input.otpReference, 255) : null;
+  const actorReference = input.actorReference.trim().slice(0, 320);
+
+  if (method === 'ein' && (!einLastFour || !/^[0-9]{4}$/.test(einLastFour))) {
+    throw new Error('Enter exactly the last four EIN digits.');
+  }
+  if (method === 'sole_proprietor_otp' && einLastFour) {
+    throw new Error('EIN suffix must be empty for no-EIN sole proprietor OTP verification.');
+  }
   if (verificationReference.length < 4) throw new Error('Enter the nonsecret provider or case reference.');
   if (verificationReference.replace(/\D/g, '').length === 9
       || /(?:^|\D)[0-9]{2}-?[0-9]{7}(?:\D|$)/.test(verificationReference)) {
     throw new Error('The verification reference must not contain a full EIN.');
   }
   if (actorReference.length < 3) throw new Error('Messaging compliance verifier is invalid.');
+
   const admin = input.admin ?? createAdminClient();
-  const { error } = await admin.rpc('record_messaging_compliance_verification', {
+  const { error } = await admin.rpc('record_messaging_compliance_verification_v2', {
     p_application_id: input.applicationId,
+    p_verification_method: method,
     p_ein_last_four: einLastFour,
     p_verification_reference: verificationReference,
+    p_otp_reference: otpReference,
     p_actor_reference: actorReference,
   });
   if (error) throw rpcFailure('Unable to record messaging compliance verification', error);
@@ -800,7 +847,7 @@ export type SignalWireCampaignSnapshot = Readonly<{
   verifiedLegalBusinessName: string;
   verifiedDbaName: string | null;
   verifiedWebsiteHost: string;
-  verifiedEinLastFour: string;
+  verifiedEinLastFour: string | null;
   verifiedAt: string;
 }>;
 
@@ -815,7 +862,9 @@ export type SignalWireCampaignBindingExpectation = Readonly<{
   legalBusinessName: string;
   dbaName: string | null;
   websiteUrl: string;
-  einLastFour: string;
+  verificationMethod?: 'ein' | 'sole_proprietor_otp';
+  einLastFour?: string | null;
+  otpReference?: string | null;
 }>;
 
 function comparableBusinessName(value: string): string {
@@ -850,7 +899,12 @@ export async function inspectSignalWireCampaignBinding(
   if (!UUID.test(input.brandId) || !UUID.test(input.campaignId)) {
     throw new Error('SignalWire brand and campaign IDs must both be UUIDs.');
   }
-  if (!/^[0-9]{4}$/.test(input.einLastFour)) throw new Error('A verified EIN suffix is required.');
+
+  const isSolePropOtp = input.verificationMethod === 'sole_proprietor_otp';
+  if (!isSolePropOtp && (!input.einLastFour || !/^[0-9]{4}$/.test(input.einLastFour))) {
+    throw new Error('A verified EIN suffix is required for standard registrations.');
+  }
+
   const client = input.client ?? SignalWireNumberProvisioningClient.fromEnvironment();
   const [brand, campaign, belongs] = await Promise.all([
     client.getBrand(input.brandId),
@@ -870,10 +924,19 @@ export async function inspectSignalWireCampaignBinding(
   if (!expectedHost || providerHost !== expectedHost) {
     throw new Error('SignalWire brand website does not match this application.');
   }
-  const providerEinDigits = brand.ein.replace(/\D/g, '');
-  if (providerEinDigits.length < 4 || providerEinDigits.slice(-4) !== input.einLastFour) {
-    throw new Error('SignalWire brand tax identity does not match the verified EIN suffix.');
+
+  if (isSolePropOtp) {
+    // TCR Sole Proprietorship brand verification
+    if (brand.entityType && brand.entityType !== 'SOLE_PROPRIETORSHIP' && brand.entityType !== 'PRIVATE_PROFIT') {
+      throw new Error('SignalWire brand entity type must be Sole Proprietorship for OTP verification.');
+    }
+  } else {
+    const providerEinDigits = brand.ein.replace(/\D/g, '');
+    if (providerEinDigits.length < 4 || providerEinDigits.slice(-4) !== input.einLastFour) {
+      throw new Error('SignalWire brand tax identity does not match the verified EIN suffix.');
+    }
   }
+
   return {
     brandId: brand.id,
     campaignId: campaign.id,
@@ -883,7 +946,7 @@ export async function inspectSignalWireCampaignBinding(
     verifiedLegalBusinessName: input.legalBusinessName,
     verifiedDbaName: input.dbaName,
     verifiedWebsiteHost: expectedHost,
-    verifiedEinLastFour: input.einLastFour,
+    verifiedEinLastFour: isSolePropOtp ? null : input.einLastFour!,
     verifiedAt: new Date().toISOString(),
   };
 }

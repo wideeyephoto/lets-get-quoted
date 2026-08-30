@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation';
 import { requireOwnerContext } from '@/lib/auth';
 import { buildStandardContractorCampaignPayload } from '@/lib/messaging-contractor-campaign-template';
 import {
-  recordMessagingComplianceVerification,
+  recordMessagingTaxIdentitySubmission,
   submitMessagingRegistrationApplication,
   validateMessagingApplication,
 } from '@/lib/messaging-number-provisioning';
@@ -121,14 +121,12 @@ export async function submitDedicatedNumberApplicationAction(formData: FormData)
       value: validation.value,
     });
 
-    if (einDigits.length === 9) {
-      await recordMessagingComplianceVerification({
-        applicationId: result.applicationId,
-        einLastFour: einDigits.slice(-4),
-        verificationReference: 'Owner-submitted 10DLC registration',
-        actorReference: userEmail || userId,
-      });
-    }
+    await recordMessagingTaxIdentitySubmission({
+      applicationId: result.applicationId,
+      verificationMethod: isSoleProp && !hasEin ? 'sole_proprietor_otp' : 'ein',
+      einLastFour: hasEin ? einDigits.slice(-4) : null,
+      actorReference: userEmail || userId,
+    });
 
     // Fire dual notifications (Admin / Founder alert + Contractor receipt)
     sendFounderMessagingApplicationAlert({

@@ -2,6 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { findOrCreateClientId } from '@/lib/clients';
 import { normalizeUsPhone } from '@/lib/phone';
 import { loadedLabourCost, normalizeCostSource, type CostSource } from '@/lib/cost-truth';
+import { assertNoSensitiveIdentifiers } from '@/lib/dlp';
 
 export type JobStatus = 'new_lead' | 'in_progress' | 'complete' | 'archived';
 export type CostType = 'material' | 'labor' | 'sub' | 'receipt' | 'other';
@@ -1148,6 +1149,9 @@ export async function createCost(
   jobId: string,
   input: CostInput
 ): Promise<Cost> {
+  assertNoSensitiveIdentifiers(input.description, 'Cost description');
+  assertNoSensitiveIdentifiers(input.supplier, 'Cost supplier / payee');
+
   // Verify the job actually belongs to this account before attaching a cost to
   // it. RLS on `costs` only checks costs.account_id, not job_id/account_id
   // consistency, so without this check a caller could attach a cost row to a

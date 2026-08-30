@@ -435,29 +435,43 @@ export default async function MessagingRegistrationsPage({
             <div>
               {/* Stage 1: Tax Identity Verification */}
               <section className={styles.panel}>
-                <h2 className={styles.panelTitle}>Stage 1: Restricted Tax Identity Verification</h2>
+                <h2 className={styles.panelTitle}>Stage 1: Restricted Tax &amp; Identity Compliance</h2>
                 <p>
-                  LGQ intentionally never stores a full EIN in the owner-readable application. Verify it out of band, then retain only
-                  the last four digits and a nonsecret provider or case reference in service-only storage. Every edit requires MFA and is audited.
+                  LGQ intentionally never stores a full EIN in the owner-readable application. Verify tax identity or sole-proprietor
+                  mobile OTP out of band, then retain only the last four digits (or OTP reference) and a nonsecret provider reference
+                  in restricted compliance storage. Every edit requires MFA and is audited.
                 </p>
                 {complianceVerification ? (
                   <dl className={styles.kv}>
                     <dt>Status</dt><dd>{complianceCurrent ? 'Current for this revision' : `Stale — verified revision ${complianceVerification.applicationRevision}`}</dd>
-                    <dt>EIN retained</dt><dd>•••••{complianceVerification.einLastFour}</dd>
+                    <dt>Method</dt><dd>{complianceVerification.verificationMethod === 'sole_proprietor_otp' ? 'TCR Sole Proprietor (Mobile OTP)' : 'Standard Business (EIN Suffix)'}</dd>
+                    <dt>Identity retained</dt><dd>{complianceVerification.einLastFour ? `•••••${complianceVerification.einLastFour}` : 'No EIN (Sole Proprietor OTP Track)'}</dd>
+                    {complianceVerification.otpReference ? <><dt>OTP Reference</dt><dd><code>{complianceVerification.otpReference}</code></dd></> : null}
                     <dt>Reference</dt><dd><code>{complianceVerification.verificationReference}</code></dd>
                     <dt>Verified</dt><dd>{when(complianceVerification.verifiedAt)} by {complianceVerification.verifiedBy}</dd>
                   </dl>
-                ) : <p className={styles.muted}>No tax-identity verification is recorded. Approval will fail closed.</p>}
+                ) : <p className={styles.muted}>No compliance verification is recorded. Approval will fail closed.</p>}
                 {mayManage && reviewable ? (
                   <form action={recordMessagingComplianceVerificationAction} style={{ display: 'grid', gap: '.7rem', marginTop: '1rem' }}>
                     <input type="hidden" name="applicationId" value={selected.id} />
                     <label>
-                      EIN last four only
-                      <input className={styles.input} name="einLastFour" inputMode="numeric" pattern="[0-9]{4}" maxLength={4} autoComplete="off" required />
+                      Verification track
+                      <select className={styles.input} name="verificationMethod" defaultValue={selected.businessType === 'sole_proprietor' ? 'sole_proprietor_otp' : 'ein'}>
+                        <option value="ein">Standard Business (EIN last 4 digits)</option>
+                        <option value="sole_proprietor_otp">Sole Proprietor (No EIN — Carrier Mobile OTP)</option>
+                      </select>
+                    </label>
+                    <label>
+                      EIN last four (if using EIN track)
+                      <input className={styles.input} name="einLastFour" inputMode="numeric" pattern="[0-9]{4}" maxLength={4} autoComplete="off" placeholder="1234" />
+                    </label>
+                    <label>
+                      Carrier OTP / Session reference (if using Sole Prop track)
+                      <input className={styles.input} name="otpReference" maxLength={255} placeholder="SignalWire / TCR OTP session reference" />
                     </label>
                     <label>
                       Nonsecret verification reference
-                      <input className={styles.input} name="verificationReference" maxLength={255} placeholder="SignalWire/TCR case or internal verification ID — never the EIN" required />
+                      <input className={styles.input} name="verificationReference" maxLength={255} placeholder="SignalWire/TCR case or internal verification ID — never a full TIN" required />
                     </label>
                     <button className="btn secondary" type="submit">Record verification for revision {selected.revision}</button>
                   </form>

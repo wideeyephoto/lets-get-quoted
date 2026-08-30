@@ -129,7 +129,9 @@ async function campaignBinding(
     legalBusinessName: application.legalBusinessName,
     dbaName: application.dbaName,
     websiteUrl: application.websiteUrl,
+    verificationMethod: compliance.verificationMethod,
     einLastFour: compliance.einLastFour,
+    otpReference: compliance.otpReference,
   };
 }
 
@@ -179,7 +181,9 @@ export async function reviewMessagingApplicationAction(formData: FormData): Prom
         legalBusinessName: before.legalBusinessName,
         dbaName: before.dbaName,
         websiteUrl: before.websiteUrl,
+        verificationMethod: compliance.verificationMethod,
         einLastFour: compliance.einLastFour,
+        otpReference: compliance.otpReference,
         client: SignalWireNumberProvisioningClient.fromEnvironment(),
       });
     }
@@ -234,10 +238,17 @@ export async function recordMessagingComplianceVerificationAction(formData: Form
   ) {
     failed(id, action, 'immutable_approved_identity', 'Approved registration identity is immutable. Start a new reviewed revision to change tax evidence.');
   }
+  const verificationMethod = (String(formData.get('verificationMethod') ?? 'ein') as 'ein' | 'sole_proprietor_otp');
   const einLastFour = String(formData.get('einLastFour') ?? '').trim();
   const verificationReference = String(formData.get('verificationReference') ?? '').trim().slice(0, 255);
-  if (!/^[0-9]{4}$/.test(einLastFour)) failed(id, action, 'invalid_ein_last_four', 'Enter exactly the last four EIN digits.');
-  if (verificationReference.length < 4) failed(id, action, 'verification_reference_required', 'Enter the nonsecret provider or case reference.');
+  const otpReference = String(formData.get('otpReference') ?? '').trim().slice(0, 255);
+
+  if (verificationMethod === 'ein' && !/^[0-9]{4}$/.test(einLastFour)) {
+    failed(id, action, 'invalid_ein_last_four', 'Enter exactly the last four EIN digits.');
+  }
+  if (verificationReference.length < 4) {
+    failed(id, action, 'verification_reference_required', 'Enter the nonsecret provider or case reference.');
+  }
   if (verificationReference.replace(/\D/g, '').length === 9
       || /(?:^|\D)[0-9]{2}-?[0-9]{7}(?:\D|$)/.test(verificationReference)) {
     failed(id, action, 'full_ein_refused', 'Do not put a full EIN in the verification reference.');
@@ -245,8 +256,10 @@ export async function recordMessagingComplianceVerificationAction(formData: Form
   try {
     await recordMessagingComplianceVerification({
       applicationId: id,
-      einLastFour,
+      verificationMethod,
+      einLastFour: verificationMethod === 'ein' ? einLastFour : null,
       verificationReference,
+      otpReference: otpReference || null,
       actorReference: ctx.adminEmail,
       admin: ctx.admin,
     });
@@ -258,7 +271,8 @@ export async function recordMessagingComplianceVerificationAction(formData: Form
       reason: verificationReference,
       after: {
         applicationRevision: application.revision,
-        einLastFourStored: true,
+        verificationMethod,
+        einLastFourStored: verificationMethod === 'ein',
         verificationReference,
       },
     });
