@@ -1,4 +1,4 @@
-export type CompanionId = 'sparky' | 'diesel' | 'nova';
+export type CompanionId = 'sparky' | 'diesel' | 'echo' | 'assistant' | 'nova';
 
 export interface CompanionTradeOption {
   id: string;
@@ -61,24 +61,38 @@ export const COMPANIONS: CompanionProfile[] = [
       "Diesel here. Let's get down to business. I'll track your punch lists, calculate material overages, manage job change orders, and keep your crews organized. What job are we tackling?",
   },
   {
-    id: 'nova',
-    name: 'Nova',
-    role: 'Alive Energy Orb',
-    species: 'Neural Plasma Orb',
-    tagline: 'Fluid, living iridescent energy orb pulsing with real-time intelligence.',
-    avatarSrc: '/brand/companions/nova.jpg',
-    thinkingSrc: '/brand/companions/nova.jpg',
-    accentColor: '#a855f7',
-    badgeLabel: 'Energy Orb',
+    id: 'echo',
+    name: 'Echo',
+    role: 'Lead Code & Safety Auditor',
+    species: 'Great Horned Owl',
+    tagline: 'Eagle-eyed inspector who catches permit requirements, code compliance & safety fine print.',
+    avatarSrc: '/brand/companions/echo.jpg',
+    thinkingSrc: '/brand/companions/echo.jpg',
+    accentColor: '#0284c7',
+    badgeLabel: 'Safety Inspector',
     introMessage:
-      "Nova active. Fluid intelligence linked. I'm ready to calculate job scopes, track punch lists, process receipts, or look up your schedule. What are we working on?",
+      "Echo on site. Inspection clipboard ready. I'll verify building codes, check jurisdiction permits, audit safety checklists, and review contract fine print before you sign off. What project are we reviewing?",
+  },
+  {
+    id: 'assistant',
+    name: 'AI Assistant',
+    role: 'Core AI Copilot',
+    species: 'Energy Spark',
+    tagline: 'Focused, modern energy spark delivering instant estimates, specs, and schedule intelligence.',
+    avatarSrc: '/brand/companions/spark.jpg',
+    thinkingSrc: '/brand/companions/spark.jpg',
+    accentColor: '#38bdf8',
+    badgeLabel: 'Energy Spark',
+    introMessage:
+      "AI Assistant online. Energy spark synchronized. I'm ready to calculate job scopes, draft instant quotes, analyze receipts, and coordinate your schedule. What are we tackling?",
   },
 ];
 
 export const DEFAULT_COMPANION_ID: CompanionId = 'sparky';
 
 export function getCompanion(id?: string | null, trade?: string | null): CompanionProfile {
-  const match = COMPANIONS.find((c) => c.id === id) || COMPANIONS[0];
+  const normalizedId = id === 'nova' ? 'assistant' : id;
+  const match = COMPANIONS.find((c) => c.id === normalizedId) || COMPANIONS[0];
   
   if (match.id === 'sparky' && trade && match.tradeOptions) {
     const tradeOption = match.tradeOptions.find((t) => t.id === trade.toLowerCase());
