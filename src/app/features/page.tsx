@@ -503,6 +503,19 @@ export default function FeaturesPage() {
           </p>
         </div>
         <div className="feature-link-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', marginTop: '2rem' }}>
+          <Link href="/features/ai-ads" id="ai-ads-spotlight">
+            <span style={{ fontSize: '1.25rem', color: '#f97316' }}>🚀</span>
+            <small>GOOGLE &amp; META ADS AUTOPILOT</small>
+            <h3>AI Search &amp; Social Ads</h3>
+            <p>Launch profitable Google Search, Meta, and Retargeting campaigns in 60s. Zero agency markups with 15% transparent platform fee.</p>
+            <ul className="feature-produces" aria-label="What AI Ads gives you">
+              <li>1-Click Smart Bundles ($395–$1,395)</li>
+              <li>⚡ Sub-60s Speed-to-Lead Auto-SMS</li>
+              <li>⛈️ Weather Surge &amp; Capacity Guard</li>
+            </ul>
+            <b>Explore AI Ads <span aria-hidden="true">→</span></b>
+          </Link>
+
           <Link href="/features/sparky" id="sparky-spotlight">
             <span style={{ fontSize: '1.25rem', color: '#f59e0b' }}>⚡</span>
             <small>AI CONTRACTOR SIDEKICK &amp; COPILOT</small>

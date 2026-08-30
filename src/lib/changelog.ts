@@ -6,6 +6,7 @@
 export type ChangelogCategory =
   | 'All'
   | 'AI & Receptionist'
+  | 'Advertising & Growth'
   | 'Scheduling & Field'
   | 'Pricing & Permits'
   | 'Theme & Design';
@@ -38,12 +39,63 @@ export interface ChangelogRelease {
 export const CHANGELOG_CATEGORIES: ChangelogCategory[] = [
   'All',
   'AI & Receptionist',
+  'Advertising & Growth',
   'Scheduling & Field',
   'Pricing & Permits',
   'Theme & Design',
 ];
 
 export const CHANGELOG_RELEASES: ChangelogRelease[] = [
+  {
+    id: 'release-2026-08-ai-advertising-autopilot',
+    version: 'v2.5.0',
+    title: 'AI Advertising Autopilot, Speed-to-Lead SMS & Multi-Channel Smart Bundles',
+    date: '2026-08-30',
+    category: 'Advertising & Growth',
+    badge: 'Major Release',
+    summary:
+      'Launch profitable Google Search, Meta Social Feed, and Display Retargeting campaigns in 60 seconds. Zero agency markups, 15% transparent platform fee, sub-60-second Speed-to-Lead auto-SMS, weather surge boosts, and closed-loop offline won-job revenue tracking.',
+    highlights: [
+      {
+        badge: 'New',
+        title: '1-Click Multi-Channel Smart Bundles ($395 Starter, $695 Growth, $1,395 Dominate)',
+        description:
+          'Zero agency retainers. 100% of nominal budget goes straight to ad network clicks (Google / Meta) with a transparent 15% platform management fee. Pre-configured RSA copy, keywords, and 24 negative waste exclusions.',
+      },
+      {
+        badge: 'New',
+        title: '⚡ 60-Second AI Speed-to-Lead Auto-SMS',
+        description:
+          'AI engages incoming ad leads within 60 seconds with a personalized, trade-specific text message on behalf of the contractor, doubling appointment booking rates.',
+      },
+      {
+        badge: 'New',
+        title: '🎯 AI Dynamic Message-Match Landing Page Hero',
+        description:
+          'Dynamically customizes website headlines to match homeowner Google search terms (e.g. emergency leak repair vs roof replacement), maximizing Google Quality Score and lowering CPC.',
+      },
+      {
+        badge: 'New',
+        title: '⛈️ Zero-Config Smart Shield: Weather Surge & Capacity Guard',
+        description:
+          'Automatically boosts ad budget pacing +25% during storms/freezes, auto-pauses when your schedule is marked Fully Booked, and blocks local competitor name searches.',
+      },
+      {
+        badge: 'New',
+        title: '🔄 Closed-Loop Offline Won Revenue Sync',
+        description:
+          'Homeowner gclid is captured on lead submission; when you mark the estimate won, signed quote revenue automatically feeds Google Ads Smart Bidding to target higher-value jobs.',
+      },
+    ],
+    primaryAction: {
+      label: 'Explore AI Ads Feature',
+      href: '/features/ai-ads',
+    },
+    secondaryAction: {
+      label: 'Launch in Dashboard',
+      href: '/dashboard/marketing/ads',
+    },
+  },
   {
     id: 'release-2026-08-schedule-themes-receptionist',
     version: 'v2.4.0',
