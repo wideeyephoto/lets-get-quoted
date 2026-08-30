@@ -12,9 +12,11 @@ describe('enterprise closure & RLS suspension hardening', () => {
     expect(MIGRATION).toContain('drop policy if exists quick_stop_priority_zones_owner on public.quick_stop_priority_zones;');
   });
 
-  it('adds deactivated_at to memberships with active index', () => {
+  it('adds deactivated_at to memberships and legal_hold to accounts', () => {
     expect(MIGRATION).toContain('alter table public.memberships');
     expect(MIGRATION).toContain('add column if not exists deactivated_at timestamptz default null;');
+    expect(MIGRATION).toContain('alter table public.accounts');
+    expect(MIGRATION).toContain('add column if not exists legal_hold boolean not null default false;');
     expect(MIGRATION).toContain('create index if not exists memberships_user_active_idx');
   });
 
@@ -24,11 +26,15 @@ describe('enterprise closure & RLS suspension hardening', () => {
     expect(SCHEMA).toContain('a.suspended_at is null and m.deactivated_at is null');
   });
 
-  it('creates audit.account_closure_jobs with partial unique index for single active job', () => {
-    expect(MIGRATION).toContain('create schema if not exists audit;');
-    expect(MIGRATION).toContain('create table if not exists audit.account_closure_jobs');
+  it('creates public.account_closure_jobs with partial unique index for single active job', () => {
+    expect(MIGRATION).toContain('create table if not exists public.account_closure_jobs');
     expect(MIGRATION).toContain('create unique index if not exists account_closure_jobs_one_active');
     expect(MIGRATION).toContain('where completed_at is null;');
+  });
+
+  it('enforces outbound messaging freeze on suspended accounts', () => {
+    expect(MIGRATION).toContain('account_suspended_closed');
+    expect(MIGRATION).toContain('a.suspended_at is null');
   });
 
   it('defines multi-tenant safe check_user_active_memberships RPC with advisory locking', () => {

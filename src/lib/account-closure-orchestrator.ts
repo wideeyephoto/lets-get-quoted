@@ -51,7 +51,7 @@ export interface RequestClosureParams {
 
 /**
  * Stage 1: Request account closure atomically via PostgreSQL RPC.
- * Atomically suspends the account, deactivates memberships, and registers the closure job.
+ * Atomically suspends the account, deactivates memberships, cancels queued SMS, and registers the closure job.
  */
 export async function requestAccountClosure(
   admin: SupabaseClient,
@@ -83,7 +83,7 @@ export async function claimClosureJob(
   admin: SupabaseClient,
   leaseToken: string,
   leaseDurationSeconds = 300,
-): Promise<Record<string, unknown> | null> {
+): Promise<any | null> {
   const { data, error } = await admin.rpc('claim_account_closure_job', {
     p_lease_token: leaseToken,
     p_lease_duration_seconds: leaseDurationSeconds,
@@ -109,90 +109,99 @@ export async function processClosureJob(
   admin: SupabaseClient,
   jobId: string,
   adapters?: ClosureAdapters,
-): Promise<{ success: boolean; errors: string[] }> {
+  existingClaimToken?: string,
+): Promise<{ success: boolean; completed: boolean; errors: string[] }> {
   const errors: string[] = [];
-  const now = new Date().toISOString();
-  const leaseToken = crypto.randomUUID();
+  const leaseToken = existingClaimToken || crypto.randomUUID();
 
-  // 1. Fetch & verify job record
+  // 1. Fetch current job record
   const { data: job, error: fetchError } = await admin
-    .schema('audit')
     .from('account_closure_jobs')
     .select('*')
     .eq('id', jobId)
     .single();
 
   if (fetchError || !job) {
-    return { success: false, errors: [`Closure job ${jobId} not found`] };
+    return { success: false, completed: false, errors: [`Closure job ${jobId} not found`] };
   }
 
+  let currentVersion = job.version;
   const accountId = job.closure_subject_id;
-  const handles = decryptVendorHandles(job.encrypted_vendor_handles);
+  let handles = decryptVendorHandles(job.encrypted_vendor_handles);
 
-  // 2. Track A: Local Data Disposal (Independent of vendor status)
+  // 2. Track A: Local Data Disposal
   if (job.local_disposal_state !== 'completed') {
     try {
-      const { error: startError } = await admin
-        .schema('audit')
-        .from('account_closure_jobs')
-        .update({
-          local_disposal_state: 'in_progress',
-          lease_token: leaseToken,
-          version: job.version + 1,
-          updated_at: now,
-        })
-        .eq('id', jobId)
-        .eq('version', job.version);
-
-      if (startError) throw new Error(`Failed to claim disposal step: ${startError.message}`);
-
-      // Check legal hold on account
-      const { data: acct } = await admin
+      // Check legal hold on account (Fail-Closed)
+      const { data: acct, error: acctErr } = await admin
         .from('accounts')
         .select('legal_hold')
         .eq('id', accountId)
-        .maybeSingle();
+        .single();
 
-      const isLegalHold = Boolean((acct as { legal_hold?: boolean })?.legal_hold);
+      if (acctErr) {
+        throw new Error(`Failed to check account legal_hold status: ${acctErr.message}`);
+      }
 
-      if (!isLegalHold) {
-        // Execute disposal using disposition registry
-        for (const [table, disposition] of Object.entries(DATA_DISPOSITION_REGISTRY)) {
-          if (disposition.localAction === 'delete') {
-            if (disposition.relationship === 'direct_account_id') {
-              const { error: delErr } = await admin.from(table).delete().eq('account_id', accountId);
-              if (delErr && delErr.code !== '42P01') {
-                console.warn(`Disposal delete on ${table} failed:`, delErr.message);
-              }
+      const isLegalHold = Boolean(acct?.legal_hold);
+      if (isLegalHold) {
+        throw new Error(`Account ${accountId} is under active legal hold; local disposal suspended.`);
+      }
+
+      // Execute disposal using schema-verified disposition registry
+      for (const [table, disposition] of Object.entries(DATA_DISPOSITION_REGISTRY)) {
+        if (disposition.localAction === 'delete') {
+          if (disposition.relationship === 'direct_account_id') {
+            const { error: delErr } = await admin.from(table).delete().eq('account_id', accountId);
+            if (delErr && delErr.code !== '42P01') {
+              throw new Error(`Disposal delete on ${table} failed: ${delErr.message}`);
             }
-          } else if (disposition.localAction === 'anonymize_columns' && disposition.targetColumns?.length) {
-            if (disposition.relationship === 'direct_account_id') {
-              const anonymizedFields: Record<string, unknown> = {};
-              for (const col of disposition.targetColumns) {
-                anonymizedFields[col] = '[REDACTED_CLOSED_ACCOUNT]';
-              }
-              const { error: updErr } = await admin.from(table).update(anonymizedFields).eq('account_id', accountId);
-              if (updErr && updErr.code !== '42P01') {
-                console.warn(`Disposal anonymize on ${table} failed:`, updErr.message);
-              }
-            }
+          }
+        } else if (disposition.localAction === 'anonymize_columns' && disposition.targetColumns?.length) {
+          const anonymizedFields: Record<string, unknown> = {};
+          for (const col of disposition.targetColumns) {
+            anonymizedFields[col] = '[REDACTED_CLOSED_ACCOUNT]';
+          }
+
+          let query = admin.from(table).update(anonymizedFields);
+          if (disposition.relationship === 'account_primary_key') {
+            query = query.eq(disposition.primaryKeyColumn || 'id', accountId);
+          } else {
+            query = query.eq('account_id', accountId);
+          }
+
+          const { error: updErr } = await query;
+          if (updErr && updErr.code !== '42P01') {
+            throw new Error(`Disposal anonymize on ${table} failed: ${updErr.message}`);
           }
         }
       }
 
-      await admin
-        .schema('audit')
-        .from('account_closure_jobs')
-        .update({ local_disposal_state: 'completed', updated_at: new Date().toISOString() })
-        .eq('id', jobId);
+      // Fenced stage update for local disposal
+      const { data: ok, error: stageErr } = await admin.rpc('update_closure_job_stage', {
+        p_job_id: jobId,
+        p_lease_token: leaseToken,
+        p_expected_version: currentVersion,
+        p_stage: 'local_disposal',
+        p_status: 'completed',
+      });
+
+      if (stageErr || !ok) {
+        throw new Error(`Fenced update failed for local disposal: ${stageErr?.message}`);
+      }
+      currentVersion += 1;
     } catch (err) {
       const msg = `Local data disposal failed: ${err instanceof Error ? err.message : String(err)}`;
       errors.push(msg);
-      await admin
-        .schema('audit')
-        .from('account_closure_jobs')
-        .update({ local_disposal_state: 'failed', last_error: msg })
-        .eq('id', jobId);
+      await admin.rpc('update_closure_job_stage', {
+        p_job_id: jobId,
+        p_lease_token: leaseToken,
+        p_expected_version: currentVersion,
+        p_stage: 'local_disposal',
+        p_status: 'failed',
+        p_last_error: msg,
+      });
+      currentVersion += 1;
     }
   }
 
@@ -203,22 +212,31 @@ export async function processClosureJob(
       if (ok) {
         handles.stripeCustomerId = null;
         handles.stripeSubscriptionId = null;
-        await admin
-          .schema('audit')
-          .from('account_closure_jobs')
-          .update({
-            stripe_state: 'success',
-            encrypted_vendor_handles: encryptVendorHandles(handles),
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', jobId);
+        const { data: stageOk, error: stageErr } = await admin.rpc('update_closure_job_stage', {
+          p_job_id: jobId,
+          p_lease_token: leaseToken,
+          p_expected_version: currentVersion,
+          p_stage: 'stripe',
+          p_status: 'success',
+          p_encrypted_handles: encryptVendorHandles(handles),
+        });
+        if (stageErr || !stageOk) throw new Error(`Fenced update failed for Stripe: ${stageErr?.message}`);
+        currentVersion += 1;
       } else {
         throw new Error('Stripe cleanup adapter returned false');
       }
     } catch (err) {
       const msg = `Stripe cleanup error: ${err instanceof Error ? err.message : String(err)}`;
       errors.push(msg);
-      await admin.schema('audit').from('account_closure_jobs').update({ stripe_state: 'retry', last_error: msg }).eq('id', jobId);
+      await admin.rpc('update_closure_job_stage', {
+        p_job_id: jobId,
+        p_lease_token: leaseToken,
+        p_expected_version: currentVersion,
+        p_stage: 'stripe',
+        p_status: 'retry',
+        p_last_error: msg,
+      });
+      currentVersion += 1;
     }
   }
 
@@ -227,22 +245,31 @@ export async function processClosureJob(
       const ok = adapters?.quickbooksRevoke ? await adapters.quickbooksRevoke(handles.quickbooksRealmId) : true;
       if (ok) {
         handles.quickbooksRealmId = null;
-        await admin
-          .schema('audit')
-          .from('account_closure_jobs')
-          .update({
-            quickbooks_state: 'success',
-            encrypted_vendor_handles: encryptVendorHandles(handles),
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', jobId);
+        const { data: stageOk, error: stageErr } = await admin.rpc('update_closure_job_stage', {
+          p_job_id: jobId,
+          p_lease_token: leaseToken,
+          p_expected_version: currentVersion,
+          p_stage: 'quickbooks',
+          p_status: 'success',
+          p_encrypted_handles: encryptVendorHandles(handles),
+        });
+        if (stageErr || !stageOk) throw new Error(`Fenced update failed for QuickBooks: ${stageErr?.message}`);
+        currentVersion += 1;
       } else {
         throw new Error('QuickBooks revokeToken returned false');
       }
     } catch (err) {
       const msg = `QuickBooks cleanup error: ${err instanceof Error ? err.message : String(err)}`;
       errors.push(msg);
-      await admin.schema('audit').from('account_closure_jobs').update({ quickbooks_state: 'retry', last_error: msg }).eq('id', jobId);
+      await admin.rpc('update_closure_job_stage', {
+        p_job_id: jobId,
+        p_lease_token: leaseToken,
+        p_expected_version: currentVersion,
+        p_stage: 'quickbooks',
+        p_status: 'retry',
+        p_last_error: msg,
+      });
+      currentVersion += 1;
     }
   }
 
@@ -251,22 +278,31 @@ export async function processClosureJob(
       const ok = adapters?.storageDelete ? await adapters.storageDelete(handles.storageFolderPrefix) : true;
       if (ok) {
         handles.storageFolderPrefix = null;
-        await admin
-          .schema('audit')
-          .from('account_closure_jobs')
-          .update({
-            storage_state: 'success',
-            encrypted_vendor_handles: encryptVendorHandles(handles),
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', jobId);
+        const { data: stageOk, error: stageErr } = await admin.rpc('update_closure_job_stage', {
+          p_job_id: jobId,
+          p_lease_token: leaseToken,
+          p_expected_version: currentVersion,
+          p_stage: 'storage',
+          p_status: 'success',
+          p_encrypted_handles: encryptVendorHandles(handles),
+        });
+        if (stageErr || !stageOk) throw new Error(`Fenced update failed for Storage: ${stageErr?.message}`);
+        currentVersion += 1;
       } else {
         throw new Error('Storage deletion returned false');
       }
     } catch (err) {
       const msg = `Storage cleanup error: ${err instanceof Error ? err.message : String(err)}`;
       errors.push(msg);
-      await admin.schema('audit').from('account_closure_jobs').update({ storage_state: 'retry', last_error: msg }).eq('id', jobId);
+      await admin.rpc('update_closure_job_stage', {
+        p_job_id: jobId,
+        p_lease_token: leaseToken,
+        p_expected_version: currentVersion,
+        p_stage: 'storage',
+        p_status: 'retry',
+        p_last_error: msg,
+      });
+      currentVersion += 1;
     }
   }
 
@@ -275,7 +311,6 @@ export async function processClosureJob(
     try {
       const ownerUserIds = handles?.ownerUserIds ?? [];
       for (const userId of ownerUserIds) {
-        // Call RPC with advisory lock to count active memberships in other workspaces
         const { data: otherCount, error: rpcError } = await admin.rpc('check_user_active_memberships', {
           p_user_id: userId,
           p_closing_account_id: accountId,
@@ -286,32 +321,39 @@ export async function processClosureJob(
         }
 
         if (Number(otherCount) === 0) {
-          // Zero other active workspaces -> safe to delete user identity
           const { error: delErr } = await admin.auth.admin.deleteUser(userId);
           if (delErr) {
             throw new Error(`Failed to delete Auth identity for ${userId}: ${delErr.message}`);
           }
-        } else {
-          // User has other active workspaces -> preserve Auth user
-          console.info(`Preserving auth user ${userId} with ${otherCount} other active workspaces`);
         }
       }
 
-      await admin
-        .schema('audit')
-        .from('account_closure_jobs')
-        .update({ auth_cleanup_state: 'success', updated_at: new Date().toISOString() })
-        .eq('id', jobId);
+      const { data: stageOk, error: stageErr } = await admin.rpc('update_closure_job_stage', {
+        p_job_id: jobId,
+        p_lease_token: leaseToken,
+        p_expected_version: currentVersion,
+        p_stage: 'auth_cleanup',
+        p_status: 'success',
+      });
+      if (stageErr || !stageOk) throw new Error(`Fenced update failed for Auth: ${stageErr?.message}`);
+      currentVersion += 1;
     } catch (err) {
       const msg = `Auth cleanup error: ${err instanceof Error ? err.message : String(err)}`;
       errors.push(msg);
-      await admin.schema('audit').from('account_closure_jobs').update({ auth_cleanup_state: 'retry', last_error: msg }).eq('id', jobId);
+      await admin.rpc('update_closure_job_stage', {
+        p_job_id: jobId,
+        p_lease_token: leaseToken,
+        p_expected_version: currentVersion,
+        p_stage: 'auth_cleanup',
+        p_status: 'retry',
+        p_last_error: msg,
+      });
+      currentVersion += 1;
     }
   }
 
   // 5. Final Terminal Completion Gate
   const { data: latestJob } = await admin
-    .schema('audit')
     .from('account_closure_jobs')
     .select('*')
     .eq('id', jobId)
@@ -323,23 +365,22 @@ export async function processClosureJob(
     ['success', 'not_applicable'].includes(latestJob?.storage_state) &&
     ['success', 'not_applicable'].includes(latestJob?.auth_cleanup_state);
 
+  let completed = false;
   if (latestJob?.local_disposal_state === 'completed' && allVendorsResolved) {
-    await admin
-      .schema('audit')
-      .from('account_closure_jobs')
-      .update({
+    const { data: compOk } = await admin.rpc('complete_closure_job', {
+      p_job_id: jobId,
+      p_lease_token: leaseToken,
+      p_expected_version: currentVersion,
+      p_manifest: {
+        closure_subject_id: accountId,
         completed_at: new Date().toISOString(),
-        encrypted_vendor_handles: null, // Purge all operational handles
-        manifest: {
-          closure_subject_id: accountId,
-          completed_at: new Date().toISOString(),
-          status: 'verified_completed',
-        },
-      })
-      .eq('id', jobId);
+        status: 'verified_completed',
+      },
+    });
+    completed = Boolean(compOk);
   }
 
-  return { success: errors.length === 0, errors };
+  return { success: errors.length === 0, completed, errors };
 }
 
 export function buildProductionClosureAdapters(admin: SupabaseClient): ClosureAdapters {

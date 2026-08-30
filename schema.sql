@@ -101,6 +101,7 @@ create table if not exists accounts (
 alter table accounts add column if not exists account_number bigint generated always as identity (start with 100001);
 alter table accounts add column if not exists schedule_day_hours numeric(5,2) not null default 8;
 alter table accounts add column if not exists connect_disabled_at timestamptz;
+alter table accounts add column if not exists legal_hold boolean not null default false;
 -- When on, marking a job complete auto-texts (email fallback) the client a
 -- Google review request. Opt-in, default off, so no client is texted by
 -- surprise. The one-tap button on the job page works regardless of this flag.

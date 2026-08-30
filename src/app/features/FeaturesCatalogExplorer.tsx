@@ -16,7 +16,7 @@ const CATEGORY_MAP_TO_SLUG: Record<string, string> = {
   recurring: '/features/recurring',
   clients: '/features/client-portal',
   reviews: '/features/reviews',
-  marketing: '/features/client-portal',
+  marketing: '/features/ai-ads',
   insights: '/features/cash-flow',
 };
 
@@ -26,6 +26,11 @@ const FEATURE_DEEP_LINKS: Record<string, string> = {
   'ai-smart-intake': '/features/ai-intake',
   'video-sections': '/features/website-builder',
   'quick-stops': '/features/quick-stops',
+  'ai-ads-autopilot': '/features/ai-ads',
+  'speed-to-lead-sms': '/features/ai-ads',
+  'message-match-hero': '/features/ai-ads',
+  'weather-ad-surge': '/features/ai-ads',
+  'closed-loop-conversions': '/features/ai-ads',
 };
 
 export default function FeaturesCatalogExplorer() {

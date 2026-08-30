@@ -198,9 +198,14 @@ export const FEATURE_CATEGORIES: FeatureCategory[] = [
   {
     num: '11',
     slug: 'marketing',
-    title: 'Marketing & messaging',
-    intro: 'Bring past customers back and keep every conversation in one place.',
+    title: 'Marketing & advertising',
+    intro: 'Run AI search campaigns with zero agency markups and bring past customers back.',
     features: [
+      { id: 'ai-ads-autopilot', name: 'AI Ads Autopilot & Smart Bundles', desc: '1-click Google Search, Meta and Retargeting campaigns with zero agency markups and 15% transparent management.', favorite: true },
+      { id: 'speed-to-lead-sms', name: 'Instant Speed-to-Lead SMS', desc: 'Personalized sub-60-second text messages sent to ad leads to double booking rates.', favorite: true },
+      { id: 'message-match-hero', name: 'Dynamic Message-Match Hero', desc: 'Auto-customizes website headlines to match homeowner Google search terms for max Quality Score.' },
+      { id: 'weather-ad-surge', name: 'Weather Surge Demand Boost', desc: 'Auto-detects storms, freezes, and heatwaves and boosts ad budgets +25% during peak search demand.' },
+      { id: 'closed-loop-conversions', name: 'Closed-Loop Conversion Sync', desc: 'Syncs gclid and signed quote revenue back to Google for AI Smart Bidding optimization.' },
       { id: 'campaigns', name: 'Campaigns', desc: 'Email/SMS blasts to all / past / repeat / lapsed, personalized, with live reach counts.' },
       { id: 'rebook', name: 'Rebook invites', desc: 'Remind customers due for their next visit; one tap or batch.' },
       { id: 'daily-digest', name: 'Daily digest', desc: 'One opt-in morning email of what matters — only on days with real news.' },

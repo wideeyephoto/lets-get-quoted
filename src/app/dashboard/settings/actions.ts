@@ -969,7 +969,7 @@ export async function deleteAccountAction() {
 
   const { data: acct } = await admin
     .from('accounts')
-    .select('stripe_customer_id, qbo_realm_id')
+    .select('stripe_customer_id, quickbooks_realm_id')
     .eq('id', accountId)
     .maybeSingle();
 
@@ -984,7 +984,7 @@ export async function deleteAccountAction() {
     requestedByRole: 'owner',
     vendorHandles: {
       stripeCustomerId: (acct as { stripe_customer_id?: string })?.stripe_customer_id ?? null,
-      quickbooksRealmId: (acct as { qbo_realm_id?: string })?.qbo_realm_id ?? null,
+      quickbooksRealmId: (acct as { quickbooks_realm_id?: string })?.quickbooks_realm_id ?? null,
       storageFolderPrefix: accountId,
       ownerUserIds: [userId],
     },

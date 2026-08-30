@@ -1,62 +1,88 @@
 import { describe, it, expect, vi } from 'vitest';
+import { NextRequest } from 'next/server';
 
-describe('export route real-schema and primary key ordering', () => {
-  it('correctly orders messaging_registrations by account_id and other tables by their true primary keys', async () => {
-    const executedQueries: { table: string; orderCols: string[] }[] = [];
-
-    const mockAdmin = {
-      from: vi.fn((table: string) => {
-        const orderCols: string[] = [];
-        const queryObj: any = {
-          select: vi.fn().mockReturnThis(),
-          eq: vi.fn().mockReturnThis(),
-          order: vi.fn((col: string) => {
-            orderCols.push(col);
-            return queryObj;
-          }),
-          range: vi.fn().mockImplementation(() => {
-            executedQueries.push({ table, orderCols: [...orderCols] });
-            return Promise.resolve({ data: [], error: null });
+const { mockAdmin } = vi.hoisted(() => {
+  const admin = {
+    from: vi.fn((table: string) => {
+      if (table === 'accounts') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              single: vi.fn().mockResolvedValue({
+                data: { id: 'acc-123', business_name: 'Test Contractor' },
+                error: null,
+              }),
+            }),
           }),
         };
-        return queryObj;
-      }),
-    } as any;
-
-    // Simulate export route table iteration logic
-    const ACCOUNT_DIRECT_TABLES = [
-      'accounts',
-      'messaging_registrations',
-      'sms_consent_scopes',
-      'invoices',
-      'payments',
-    ];
-
-    const TABLE_PRIMARY_KEYS: Record<string, string[]> = {
-      messaging_registrations: ['account_id'],
-      quickbooks_connections: ['account_id'],
-      sms_consent_scopes: ['phone_number', 'consent_scope'],
-    };
-
-    for (const table of ACCOUNT_DIRECT_TABLES) {
-      let query = mockAdmin.from(table).select('*').eq('account_id', 'acc-123');
-      const sortCols = TABLE_PRIMARY_KEYS[table] ?? ['id'];
-      for (const col of sortCols) {
-        query = query.order(col, { ascending: true });
       }
-      await query.range(0, 499);
-    }
+      if (table === 'messaging_registrations') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({
+              data: [{ account_id: 'acc-123', status: 'approved' }],
+              error: null,
+            }),
+          }),
+        };
+      }
+      if (table === 'sms_consent_scopes') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              order: vi.fn().mockReturnValue({
+                order: vi.fn().mockReturnValue({
+                  range: vi.fn().mockResolvedValue({
+                    data: [{ phone_number: '+15551234567', consent_scope: 'customer' }],
+                    error: null,
+                  }),
+                }),
+              }),
+            }),
+          }),
+        };
+      }
+      return {
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            order: vi.fn().mockReturnValue({
+              limit: vi.fn().mockResolvedValue({
+                data: [{ id: 'row-1', name: 'Sample Item' }],
+                error: null,
+              }),
+            }),
+          }),
+          in: vi.fn().mockReturnValue({
+            order: vi.fn().mockReturnValue({
+              limit: vi.fn().mockResolvedValue({
+                data: [{ id: 'item-1', invoice_id: 'row-1', description: 'Item 1', amount: 100 }],
+                error: null,
+              }),
+            }),
+          }),
+        }),
+      };
+    }),
+  };
+  return { mockAdmin: admin };
+});
 
-    const messagingQuery = executedQueries.find((q) => q.table === 'messaging_registrations');
-    expect(messagingQuery).toBeDefined();
-    expect(messagingQuery?.orderCols).toEqual(['account_id']); // Not 'id'
+vi.mock('@/lib/auth', () => ({
+  createAdminClient: () => mockAdmin,
+}));
 
-    const scopesQuery = executedQueries.find((q) => q.table === 'sms_consent_scopes');
-    expect(scopesQuery).toBeDefined();
-    expect(scopesQuery?.orderCols).toEqual(['phone_number', 'consent_scope']);
+import { GET } from '../src/app/admin/accounts/[id]/export/route';
 
-    const invoicesQuery = executedQueries.find((q) => q.table === 'invoices');
-    expect(invoicesQuery).toBeDefined();
-    expect(invoicesQuery?.orderCols).toEqual(['id']);
+describe('account export keyset pagination and tables', () => {
+  it('correctly exports records across single-key, account_id PK, and composite PK tables', async () => {
+    const req = new NextRequest('http://localhost/admin/accounts/acc-123/export');
+    const res = await GET(req, { params: Promise.resolve({ id: 'acc-123' }) });
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.export_metadata.account_id).toBe('acc-123');
+    expect(body.account.business_name).toBe('Test Contractor');
+    expect(body.messaging_registrations).toHaveLength(1);
+    expect(body.sms_consent_scopes).toHaveLength(1);
   });
 });

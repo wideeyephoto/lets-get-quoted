@@ -65,14 +65,14 @@ export async function createAdBudgetCheckoutSession(params: {
   city: string;
   returnUrl: string;
 }): Promise<{ url: string; sessionId: string }> {
-  const stripe = getStripeClient();
-  const admin = createAdminClient();
-
   const { accountId, monthlyBudgetDollars, platformFeeDollars, businessName, trade, city, returnUrl } = params;
 
   if (monthlyBudgetDollars < 100) {
     throw new Error('Minimum monthly ad budget is $100.');
   }
+
+  const stripe = getStripeClient();
+  const admin = createAdminClient();
 
   const breakdown = calculateAdBudgetBreakdown(monthlyBudgetDollars);
   const feeDollars = platformFeeDollars !== undefined ? platformFeeDollars : breakdown.platformFeeDollars;
@@ -184,7 +184,7 @@ export async function createAdBudgetBillingPortalSession(params: {
  */
 export async function handleAdBudgetWebhookEvent(
   event: Stripe.Event,
-  admin = createAdminClient()
+  adminClient?: any
 ): Promise<boolean> {
   if (
     event.type !== 'checkout.session.completed' &&
@@ -195,6 +195,8 @@ export async function handleAdBudgetWebhookEvent(
   ) {
     return false;
   }
+
+  const admin = adminClient ?? createAdminClient();
 
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object as Stripe.Checkout.Session;
@@ -228,7 +230,7 @@ export async function handleAdBudgetWebhookEvent(
       services,
       monthlyBudgetDollars: Math.round(budgetCents / 100),
       landingPageUrl: `https://${accountId}.letsgetquoted.com/estimate`,
-    }).catch((err) => {
+    }).catch((err: unknown) => {
       console.warn('Google Ads MCC campaign auto-provisioning log:', err);
     });
 
