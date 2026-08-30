@@ -5,16 +5,21 @@ export async function loadSystemStatus(
   supabase: SupabaseClient,
   accountId: string,
   basePath = '/dashboard',
+  accountRow?: { connect_disabled_at?: string | null } | null,
 ): Promise<Loadable<SystemAlertsSummary>> {
   try {
     const alerts: SystemAlert[] = [];
 
+    const accountPromise = accountRow !== undefined
+      ? Promise.resolve({ data: accountRow })
+      : supabase
+          .from('accounts')
+          .select('connect_onboarded, connect_disabled_at, twilio_status, signalwire_space_url')
+          .eq('id', accountId)
+          .maybeSingle();
+
     const [{ data: account }, { data: failedPayments }, { data: failedMessages }] = await Promise.all([
-      supabase
-        .from('accounts')
-        .select('connect_onboarded, connect_disabled_at, twilio_status, signalwire_space_url')
-        .eq('id', accountId)
-        .maybeSingle(),
+      accountPromise,
       supabase
         .from('payments')
         .select('id, amount, client_id, job_id, created_at')

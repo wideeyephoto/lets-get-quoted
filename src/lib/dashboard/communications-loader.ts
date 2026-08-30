@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { listConversations } from '@/lib/messages';
+import { loadConversations, type ContactIdentity } from '@/lib/messages';
 import { ready, unavailable, type CommunicationSummary, type Loadable, type WaitingThread } from '@/lib/dashboard-types';
 
 function formatElapsed(iso: string): string {
@@ -17,9 +17,11 @@ export async function loadCommunications(
   supabase: SupabaseClient,
   accountId: string,
   basePath = '/dashboard',
+  identities?: Map<string, ContactIdentity>,
 ): Promise<Loadable<CommunicationSummary>> {
   try {
-    const conversations = await listConversations(supabase, accountId);
+    const result = await loadConversations(supabase, accountId, identities);
+    const conversations = result.data;
 
     // Threads where the customer is waiting on us: last direction is inbound
     const waitingList = conversations.filter((c) => c.lastDirection === 'inbound');

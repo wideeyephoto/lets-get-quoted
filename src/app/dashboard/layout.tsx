@@ -42,19 +42,13 @@ export default async function DashboardLayout({ children }: { children: ReactNod
   // that an office user is not bounced off a page they are allowed to open --
   // every page still runs its own, and all but the deliberately converted ones
   // still run requireOwnerContext. See requireDashboardShellContext.
-  const { supabase, userId, accountId, role, capabilities } = await requireDashboardShellContext();
-
-  const { data: account } = await supabase
-    .from('accounts')
-    .select('connect_onboarded')
-    .eq('id', accountId)
-    .maybeSingle();
+  const { supabase, userId, accountId, role, capabilities, account } = await requireDashboardShellContext();
 
   // Owners only. An office user cannot connect the business's Stripe account,
   // so the banner would be an instruction they cannot follow about money that
   // is not theirs -- and its action is owner-gated anyway, so pressing it
   // would simply fail.
-  const onboarded = role !== 'owner' || (account?.connect_onboarded ?? false);
+  const onboarded = role !== 'owner' || ((account as { connect_onboarded?: boolean | null } | null)?.connect_onboarded ?? false);
 
   // Resolve product tour enablement and progress
   // Server-controlled rollout flag (enabled by default unless explicitly disabled)

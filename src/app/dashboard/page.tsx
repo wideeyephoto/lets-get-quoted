@@ -12,13 +12,19 @@ export const metadata = { title: 'Dashboard' };
  * DashboardHomeScreen, which the logged-out demo renders too.
  */
 export default async function DashboardPage() {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId, account } = await requireOwnerContext();
   // Kept here rather than in the builder: it WRITES, and the demo runs that
   // builder against fixtures with nothing to write to.
-  await expireStaleLeads(supabase, accountId);
+  // Passing days from the cached account row avoids querying accounts again.
+  await expireStaleLeads(
+    supabase,
+    accountId,
+    (account as { lead_lost_after_days?: number | null } | null)?.lead_lost_after_days ?? undefined,
+  );
 
   const home = await buildDashboardHome(supabase, accountId, {
     rootDomain: process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'letsgetquoted.com',
+    account,
   });
 
   return <DashboardHomeScreen home={home} />;

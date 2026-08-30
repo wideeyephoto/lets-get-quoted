@@ -355,16 +355,11 @@ export function contactLabel(
  * the owner curates and the one the pane already shows, so it wins and the two
  * halves of the screen agree.
  */
-export async function buildContactIdentityMap(
-  supabase: SupabaseClient,
-  accountId: string,
-): Promise<Map<string, ContactIdentity>> {
-  const [{ data: jobs }, { data: leads }, { data: clients }] = await Promise.all([
-    supabase.from('jobs').select('client_name, client_phone, address').eq('account_id', accountId).not('client_phone', 'is', null),
-    supabase.from('leads').select('name, phone, address').eq('account_id', accountId).not('phone', 'is', null),
-    supabase.from('clients').select('name, phone, address').eq('account_id', accountId).not('phone', 'is', null),
-  ]);
-
+export function buildContactIdentityMapFromRows(
+  jobs: Array<{ client_name?: unknown; client_phone?: unknown; address?: unknown }> = [],
+  leads: Array<{ name?: unknown; phone?: unknown; address?: unknown }> = [],
+  clients: Array<{ name?: unknown; phone?: unknown; address?: unknown }> = [],
+): Map<string, ContactIdentity> {
   const map = new Map<string, ContactIdentity>();
   // Merged field by field rather than row by row: a job with an address but no
   // usable name should not erase the name a lead supplied, and vice versa.
@@ -380,10 +375,23 @@ export async function buildContactIdentityMap(
     });
   };
 
-  for (const lead of leads ?? []) absorb(lead.phone, lead.name, lead.address);
-  for (const job of jobs ?? []) absorb(job.client_phone, job.client_name, job.address);
-  for (const client of clients ?? []) absorb(client.phone, client.name, client.address);
+  for (const lead of leads) absorb(lead.phone, lead.name, lead.address);
+  for (const job of jobs) absorb(job.client_phone, job.client_name, job.address);
+  for (const client of clients) absorb(client.phone, client.name, client.address);
   return map;
+}
+
+export async function buildContactIdentityMap(
+  supabase: SupabaseClient,
+  accountId: string,
+): Promise<Map<string, ContactIdentity>> {
+  const [{ data: jobs }, { data: leads }, { data: clients }] = await Promise.all([
+    supabase.from('jobs').select('client_name, client_phone, address').eq('account_id', accountId).not('client_phone', 'is', null),
+    supabase.from('leads').select('name, phone, address').eq('account_id', accountId).not('phone', 'is', null),
+    supabase.from('clients').select('name, phone, address').eq('account_id', accountId).not('phone', 'is', null),
+  ]);
+
+  return buildContactIdentityMapFromRows(jobs ?? [], leads ?? [], clients ?? []);
 }
 
 /**

@@ -947,6 +947,7 @@ async function resolveOfficeCapableMember() {
     accountTimeZone: (acct as { timezone?: string | null } | null)?.timezone || 'America/New_York',
     role,
     capabilities: held,
+    account: acct,
   };
 }
 
@@ -966,8 +967,8 @@ async function resolveOfficeCapableMember() {
  * the decision.
  */
 export async function requireDashboardShellContext() {
-  const { supabase, userId, userEmail, accountId, role, capabilities, accountTimeZone } = await resolveOfficeCapableMember();
-  return { supabase, userId, userEmail, accountId, role, capabilities, accountTimeZone };
+  const { supabase, userId, userEmail, accountId, role, capabilities, accountTimeZone, account } = await resolveOfficeCapableMember();
+  return { supabase, userId, userEmail, accountId, role, capabilities, accountTimeZone, account };
 }
 
 /**
