@@ -15,6 +15,7 @@ import {
   crewPhoneVerificationCodeText,
   crewScheduleSelectedText,
   inboxReplyText,
+  intakeConfirmationText,
   jobUpdateText,
   leadDeclineText,
   leadQuoteVisitOptionsText,
@@ -1790,6 +1791,46 @@ export async function sendUpcomingAdPaymentSms(params: {
     return true;
   } catch (error) {
     console.error('Failed to send upcoming payment SMS alert:', error instanceof Error ? error.message : error);
+    return false;
+  }
+}
+
+/**
+ * Instant SMS confirmation sent to the homeowner upon completing an intake request.
+ * Metered under 'customer_message' (costs 1 text message credit).
+ */
+export async function sendIntakeConfirmationSms(params: {
+  accountId: string;
+  phone: string;
+  businessName: string;
+  leadName?: string | null;
+  projectType?: string | null;
+  estimate?: { min: number; max: number } | null;
+  idempotencyKey?: string;
+}): Promise<boolean> {
+  try {
+    const to = normalizeUsPhone(params.phone);
+    if (!to) return false;
+    if (await isPhoneOptedOut(params.accountId, to)) return false;
+
+    const body = intakeConfirmationText({
+      businessName: params.businessName,
+      leadName: params.leadName,
+      projectType: params.projectType,
+      estimate: params.estimate,
+    });
+
+    await queueAccountSms({
+      accountId: params.accountId,
+      phone: to,
+      body,
+      messageKind: 'intake-confirmation',
+      category: 'customer_message',
+      idempotencyKey: params.idempotencyKey,
+    });
+    return true;
+  } catch (error) {
+    console.error('Intake confirmation SMS failed:', error instanceof Error ? error.message : error);
     return false;
   }
 }

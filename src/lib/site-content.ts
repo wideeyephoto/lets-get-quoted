@@ -1517,6 +1517,8 @@ export type SiteLeadFiltersContent = {
   fullyBooked: { enabled: boolean; until: string; message: string };
   // Text a one-time code to verify the phone before the intake submits.
   phoneVerification: boolean;
+  // Text the homeowner an instant confirmation upon completing the intake form (costs 1 text credit).
+  instantConfirmationSms: boolean;
 };
 
 export const DEFAULT_FULLY_BOOKED_MESSAGE = 'We’re currently booked up — send your request and we’ll reach out as soon as a spot opens.';
@@ -2269,6 +2271,7 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
         message: toString(fullyBooked.message).slice(0, 140),
       },
       phoneVerification: toBoolean(leadFilters.phoneVerification),
+      instantConfirmationSms: toBoolean(leadFilters.instantConfirmationSms),
     },
     trustBadges: {
       enabled: toBoolean(trustBadges.enabled),

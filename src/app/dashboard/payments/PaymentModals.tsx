@@ -151,9 +151,9 @@ export default function PaymentModals({
   // Client Statement state
   const [statementClient, setStatementClient] = useState('');
   const [statementData, setStatementData] = useState<{
-    jobs: any[];
-    invoices: any[];
-    payments: any[];
+    jobs: Array<{ id: string; ref?: string; status?: string; address?: string }>;
+    invoices: Array<{ id: string; ref?: string; status?: string; total?: number }>;
+    payments: Array<{ id: string; label?: string; status?: string; amount?: number }>;
   } | null>(null);
 
   // Payment Plan state
@@ -376,7 +376,7 @@ export default function PaymentModals({
             <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: '0.3rem' }}>
               Select Job <span style={{ color: 'red' }}>*</span>
             </label>
-            <select name="jobId" required className="input" style={{ width: '100%' }}>
+            <select aria-label="Select Job" name="jobId" required className="input" style={{ width: '100%' }}>
               <option value="">-- Choose Job --</option>
               {jobs.map((j) => (
                 <option key={j.id} value={j.id}>
@@ -406,7 +406,7 @@ export default function PaymentModals({
               <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: '0.3rem' }}>
                 Payment Method
               </label>
-              <select name="method" className="input" style={{ width: '100%' }}>
+              <select aria-label="Payment Method" name="method" className="input" style={{ width: '100%' }}>
                 <option value="Check">Check</option>
                 <option value="Cash">Cash</option>
                 <option value="Zelle">Zelle</option>
@@ -421,7 +421,7 @@ export default function PaymentModals({
             <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: '0.3rem' }}>
               Payment Stage
             </label>
-            <select name="kind" className="input" style={{ width: '100%' }}>
+            <select aria-label="Payment Stage" name="kind" className="input" style={{ width: '100%' }}>
               <option value="final">Final Balance / Paid in Full</option>
               <option value="deposit">Initial Deposit</option>
               <option value="stage">Progress Milestone</option>
@@ -514,7 +514,7 @@ export default function PaymentModals({
             <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: '0.3rem' }}>
               Reason for Refund
             </label>
-            <select name="reason" className="input" style={{ width: '100%' }}>
+            <select aria-label="Reason for Refund" name="reason" className="input" style={{ width: '100%' }}>
               <option value="Customer request">Customer Request</option>
               <option value="Job scope reduction">Job Scope Reduction</option>
               <option value="Duplicate payment">Duplicate Payment</option>
@@ -634,7 +634,7 @@ export default function PaymentModals({
               <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: '0.3rem' }}>
                 Select Job <span style={{ color: 'red' }}>*</span>
               </label>
-              <select name="jobId" required className="input" style={{ width: '100%' }}>
+              <select aria-label="Select Job" name="jobId" required className="input" style={{ width: '100%' }}>
                 <option value="">-- Choose Job --</option>
                 {jobs.map((j) => (
                   <option key={j.id} value={j.id}>
@@ -664,7 +664,7 @@ export default function PaymentModals({
                 <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: '0.3rem' }}>
                   Payment Type
                 </label>
-                <select name="kind" className="input" style={{ width: '100%' }}>
+                <select aria-label="Payment Type" name="kind" className="input" style={{ width: '100%' }}>
                   <option value="deposit">Deposit</option>
                   <option value="stage">Stage / Milestone</option>
                   <option value="final">Final Balance</option>
@@ -924,7 +924,7 @@ export default function PaymentModals({
             <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{selectedPayment.clientName} ({selectedPayment.jobRef})</div>
           </div>
           <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-            Point customer's smartphone camera at the QR code to open checkout instantly.
+            Point customer&apos;s smartphone camera at the QR code to open checkout instantly.
           </p>
           <div style={{ display: 'flex', gap: '0.5rem', width: '100%' }}>
             <button
@@ -966,7 +966,7 @@ export default function PaymentModals({
           style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}
         >
           <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-muted)' }}>
-            Charge a customer's authorized card on file for approved change orders, additional materials, or remaining balances.
+            Charge a customer&apos;s authorized card on file for approved change orders, additional materials, or remaining balances.
           </p>
 
           {error && (
@@ -979,7 +979,7 @@ export default function PaymentModals({
             <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: '0.3rem' }}>
               Select Customer &amp; Job <span style={{ color: 'red' }}>*</span>
             </label>
-            <select name="jobId" required className="input" style={{ width: '100%' }}>
+            <select aria-label="Select Customer & Job" name="jobId" required className="input" style={{ width: '100%' }}>
               <option value="">-- Choose Job --</option>
               {jobs.map((j) => (
                 <option key={j.id} value={j.id}>
@@ -1100,6 +1100,7 @@ export default function PaymentModals({
               Select Job <span style={{ color: 'red' }}>*</span>
             </label>
             <select
+              aria-label="Select Job"
               value={planJobId}
               onChange={(e) => setPlanJobId(e.target.value)}
               required
@@ -1137,8 +1138,9 @@ export default function PaymentModals({
                 Plan Structure Preset
               </label>
               <select
+                aria-label="Plan Structure Preset"
                 value={planPreset}
-                onChange={(e) => setPlanPreset(e.target.value as any)}
+                onChange={(e) => setPlanPreset(e.target.value as '50_50' | '33_33_34' | 'custom')}
                 className="input"
                 style={{ width: '100%' }}
               >
@@ -1423,6 +1425,7 @@ export default function PaymentModals({
               Select Job <span style={{ color: 'red' }}>*</span>
             </label>
             <select
+              aria-label="Select Job"
               value={batchJobId}
               onChange={(e) => setBatchJobId(e.target.value)}
               required
@@ -1444,6 +1447,7 @@ export default function PaymentModals({
                 Payment Method
               </label>
               <select
+                aria-label="Payment Method"
                 value={batchMethod}
                 onChange={(e) => setBatchMethod(e.target.value)}
                 className="input"
@@ -1570,7 +1574,7 @@ export default function PaymentModals({
                       {statementData.invoices.length === 0 ? (
                         <tr><td colSpan={3} style={{ padding: '0.6rem', textAlign: 'center' }}>No invoices billed.</td></tr>
                       ) : (
-                        statementData.invoices.map((inv: any) => (
+                        statementData.invoices.map((inv) => (
                           <tr key={inv.id} style={{ borderTop: '1px solid var(--border-subtle, #e2e8f0)' }}>
                             <td style={{ padding: '0.4rem 0.6rem' }}>{inv.ref}</td>
                             <td style={{ padding: '0.4rem 0.6rem', textTransform: 'capitalize' }}>{inv.status}</td>
@@ -1599,7 +1603,7 @@ export default function PaymentModals({
                       {statementData.payments.length === 0 ? (
                         <tr><td colSpan={3} style={{ padding: '0.6rem', textAlign: 'center' }}>No payments recorded.</td></tr>
                       ) : (
-                        statementData.payments.map((p: any) => (
+                        statementData.payments.map((p) => (
                           <tr key={p.id} style={{ borderTop: '1px solid var(--border-subtle, #e2e8f0)' }}>
                             <td style={{ padding: '0.4rem 0.6rem' }}>{p.label}</td>
                             <td style={{ padding: '0.4rem 0.6rem', textTransform: 'capitalize' }}>{p.status}</td>

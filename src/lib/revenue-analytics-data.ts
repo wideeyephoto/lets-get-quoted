@@ -61,7 +61,7 @@ export async function loadRevenueAnalyticsData(
     oneYearAgo.setUTCHours(0, 0, 0, 0);
 
     const [payments, jobsRes] = await Promise.all([
-      fetchAllPages<any>((from, to) =>
+      fetchAllPages<Record<string, unknown>>((from, to) =>
         supabase
           .from('payments')
           .select('id, job_id, kind, label, amount, status, platform_fee, refunded_amount, charge_model, paid_at, requested_at')
@@ -71,7 +71,7 @@ export async function loadRevenueAnalyticsData(
           .order('paid_at', { ascending: true })
           .range(from, to),
       ),
-      fetchAllPages<any>((from, to) =>
+      fetchAllPages<Record<string, unknown>>((from, to) =>
         supabase
           .from('jobs')
           .select('id, client_name')

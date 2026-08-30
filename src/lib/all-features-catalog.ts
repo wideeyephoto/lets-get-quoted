@@ -1478,6 +1478,80 @@ export const ALL_FEATURES_CATALOG: FeatureCatalogCategory[] = [
       },
     ],
   },
+  {
+    num: '23',
+    slug: 'ai-advertising-neighborhood-halo',
+    title: 'AI Advertising Autopilot, Neighborhood Halo & Satellite Sizing',
+    icon: '📍',
+    intro: 'Automated 1-mile geofenced micro-campaigns, instant aerial satellite property sizing, street cluster pricing, and closed-loop Meta & Google conversion sync.',
+    features: [
+      {
+        id: 'neighborhood-halo-ads',
+        name: 'Neighborhood Halo 1-Mile Geofenced Micro-Ads',
+        desc: 'Automatically launches 1-mile hyper-local ad campaigns around completed job sites using site photos and privacy-sanitized street copy.',
+        tags: ['AI Advertising', 'Geofencing', 'Lead Gen'],
+        subBullets: [
+          'Automatic geofence calculation targeting homeowners within a tight 1.0-mile radius of recently completed projects.',
+          'Strips exact house numbers to protect customer privacy while maintaining powerful street recognition (e.g., "Just completed on Maple Ave").',
+          'Allocates an automated $25 / 5-day micro-budget capped at $250/mo with daily pacing and 72-hour auto-kill protection.',
+        ],
+      },
+      {
+        id: 'satellite-property-sizing',
+        name: 'Instant Satellite Property Sizing Engine',
+        desc: 'Calculates true roof squares, pitch multipliers, siding wall area, gutter linear footage, and HVAC tonnage directly from aerial footprint data.',
+        tags: ['Satellite', 'AI Estimating', 'Computer Vision'],
+        subBullets: [
+          'Calculates roof pitch multipliers (flat to 10/12) and true roof surface area in squares (100 sq ft) with standard overhang and waste factors.',
+          'Estimates perimeter linear footage for seamless gutters and net wall area for siding replacement.',
+          'Provides instant low-to-high price brackets for homeowners before booking.',
+        ],
+      },
+      {
+        id: 'neighbor-cluster-discount-engine',
+        name: 'Street Cluster Group Pricing & Viral Link Generator',
+        desc: 'Unlocks tiered group discounts when neighbors on the same street book estimates, coordinating same-day batching for estimators.',
+        tags: ['Group Discounts', 'Viral Growth', 'Route Density'],
+        subBullets: [
+          'Tiered street discounts: $100 off (2 homes), $250 off (3+ homes), and $500 off (5+ homes / HOA rate).',
+          'Generates custom viral share links with pre-drafted copy for homeowners to post in their neighborhood SMS threads or HOA Facebook groups.',
+          'Coordinates same-day appointment batching windows, allowing estimators to visit 3–5 homes in a single afternoon.',
+        ],
+      },
+      {
+        id: 'halo-speed-to-lead-sms',
+        name: 'Halo-Aware Speed-to-Lead SMS with TCPA Quiet Hours',
+        desc: 'Dispatches personalized sub-60-second text messages referencing the neighbor\'s street, with 9 PM–8 AM quiet hours protection.',
+        tags: ['SMS', 'Speed-to-Lead', 'TCPA Compliance'],
+        subBullets: [
+          'Sub-60s automated SMS response referencing the specific street and active cluster discounts.',
+          'Built-in TCPA quiet hours protection queues overnight inquiries for compliant 8:01 AM local time morning dispatch.',
+          '15-minute idempotency lock prevents duplicate text blasts if a homeowner submits multiple forms.',
+        ],
+      },
+      {
+        id: 'closed-loop-conversion-sync',
+        name: 'Closed-Loop Conversion Revenue Sync (Meta CAPI & Google)',
+        desc: 'Syncs verified signed quote values and Stripe invoice revenue back to Google Ads and Meta Conversions API for AI Smart Bidding.',
+        tags: ['Meta CAPI', 'Google Ads', 'ROAS Optimization'],
+        subBullets: [
+          'SHA-256 hashes customer emails and E.164-normalized phone numbers for high-match-rate audience optimization.',
+          'Uploads offline click conversions (gclid) and Meta Purchase events with order IDs for zero-leakage deduplication.',
+          'Calculates verified ROAS and CAC from real Stripe settlement data instead of estimated clicks.',
+        ],
+      },
+      {
+        id: 'storm-damage-halo-surge',
+        name: 'Dynamic Storm Damage Halo Mode',
+        desc: 'Automatically upgrades active halos to emergency restoration and insurance inspection angles during severe hail and storm events.',
+        tags: ['Weather Surge', 'Storm Damage', 'Insurance Claims'],
+        subBullets: [
+          'Detects severe weather events (hail, 50+ mph winds, freeze alerts) and boosts halo budgets by +25%–35%.',
+          'Automatically updates ad copy and headlines to free drone storm damage inspection and insurance claim assistance angles.',
+        ],
+      },
+    ],
+  },
 ];
 
 export const TOTAL_CATALOG_FEATURE_COUNT = ALL_FEATURES_CATALOG.reduce(

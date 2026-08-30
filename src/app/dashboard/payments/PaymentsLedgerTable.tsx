@@ -138,7 +138,7 @@ function StatusGlowPill({ status }: { status: string }) {
   }
 }
 
-export default function PaymentsLedgerTable({ initialRows, summary, onOpenModal }: Props) {
+export default function PaymentsLedgerTable({ initialRows, summary: _summary, onOpenModal }: Props) {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [methodFilter, setMethodFilter] = useState('all');
@@ -156,7 +156,7 @@ export default function PaymentsLedgerTable({ initialRows, summary, onOpenModal 
   }
 
   const filteredAndSortedRows = useMemo(() => {
-    let result = initialRows.filter((p) => {
+    const result = initialRows.filter((p) => {
       if (statusFilter !== 'all' && p.status !== statusFilter) return false;
       if (typeFilter !== 'all' && p.kind !== typeFilter) return false;
       if (methodFilter !== 'all') {
@@ -224,6 +224,7 @@ export default function PaymentsLedgerTable({ initialRows, summary, onOpenModal 
 
         <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
           <select
+            aria-label="Filter by payment status"
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
             className="input"
@@ -238,6 +239,7 @@ export default function PaymentsLedgerTable({ initialRows, summary, onOpenModal 
           </select>
 
           <select
+            aria-label="Filter by payment method"
             value={methodFilter}
             onChange={(e) => setMethodFilter(e.target.value)}
             className="input"
@@ -250,6 +252,7 @@ export default function PaymentsLedgerTable({ initialRows, summary, onOpenModal 
           </select>
 
           <select
+            aria-label="Filter by payment stage"
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value)}
             className="input"

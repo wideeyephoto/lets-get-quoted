@@ -22,7 +22,7 @@ export type MultiChannelBudget = {
   totalAdSpendDollars: number;
   platformFeeDollars: number;
   totalMonthlyDollars: number;
-  activeChannels: ('google_search' | 'google_retargeting' | 'meta_social')[];
+  activeChannels: ('google_search' | 'google_retargeting' | 'meta_social' | 'neighborhood_halo')[];
 };
 
 export type SmartBundleId = 'launch' | 'growth' | 'scale' | 'starter' | 'dominate';
@@ -47,7 +47,7 @@ export type SmartBundle = {
   leadMin: number;
   leadMax: number;
   features: string[];
-  channels: ('google_search' | 'google_retargeting' | 'meta_social')[];
+  channels: ('google_search' | 'google_retargeting' | 'meta_social' | 'neighborhood_halo')[];
 };
 
 export const SMART_BUNDLES: SmartBundle[] = [
@@ -101,9 +101,10 @@ export const SMART_BUNDLES: SmartBundle[] = [
       'Lost Visitor Retargeting (Display)',
       '$250 Off Re-engagement Offer',
       'Weather Surge Radar Protection',
+      'Neighborhood Halo 1-Mile Micro-Ads',
       'Speed-to-Lead Auto-SMS',
     ],
-    channels: ['google_search', 'google_retargeting'],
+    channels: ['google_search', 'google_retargeting', 'neighborhood_halo'],
   },
   {
     id: 'scale',
@@ -128,10 +129,11 @@ export const SMART_BUNDLES: SmartBundle[] = [
       'Google Search Ads (PPC)',
       'Facebook & Instagram Feed Ads',
       'Lost Visitor Retargeting',
+      'Neighborhood Halo 1-Mile Micro-Ads',
       'Priority Multi-Channel Bidding',
       'Closed-Loop Offline Revenue Sync',
     ],
-    channels: ['google_search', 'google_retargeting', 'meta_social'],
+    channels: ['google_search', 'google_retargeting', 'meta_social', 'neighborhood_halo'],
   },
 ];
 

@@ -1,5 +1,5 @@
 import { getStripeClient, toCents } from '@/lib/stripe';
-import { provisionManagedSearchCampaign } from '@/lib/google-ads-api';
+import { provisionManagedSearchCampaign, isGoogleAdsConfigured } from '@/lib/google-ads-api';
 import { siteOrigin } from '@/lib/seo/site-pages';
 import type Stripe from 'stripe';
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -207,12 +207,28 @@ export async function createAdBudgetCheckoutSession(params: {
     returnUrl,
   } = params;
 
-  if (monthlyBudgetDollars !== undefined && monthlyBudgetDollars < 100) {
-    throw new Error('Minimum monthly ad budget is $100.');
+  if (process.env.VERCEL_ENV === 'production' && !isGoogleAdsConfigured()) {
+    throw new Error('Google Ads automated provisioning is currently undergoing configuration in this environment. Please contact support.');
   }
 
-  if (weeklyAmountDollars !== undefined && weeklyAmountDollars < 50) {
-    throw new Error('Minimum weekly ad budget is $50.');
+  if (monthlyBudgetDollars !== undefined) {
+    if (monthlyBudgetDollars < 100) throw new Error('Minimum monthly ad budget is $100.');
+    if (monthlyBudgetDollars > 50000) throw new Error('Maximum monthly ad budget is $50,000.');
+  }
+
+  if (weeklyAmountDollars !== undefined) {
+    if (weeklyAmountDollars < 50) throw new Error('Minimum weekly ad budget is $50.');
+    if (weeklyAmountDollars > 15000) throw new Error('Maximum weekly ad budget is $15,000.');
+  }
+
+  if (depositAmountDollars !== undefined) {
+    if (depositAmountDollars < 50) throw new Error('Minimum deposit amount is $50.');
+    if (depositAmountDollars > 10000) throw new Error('Maximum deposit amount is $10,000.');
+  }
+
+  if (maxMonthlySpendDollars !== undefined) {
+    if (maxMonthlySpendDollars < 100) throw new Error('Minimum monthly spend cap is $100.');
+    if (maxMonthlySpendDollars > 50000) throw new Error('Maximum monthly spend cap is $50,000.');
   }
 
   const isWallet = fundingModel === 'auto_refill_wallet';

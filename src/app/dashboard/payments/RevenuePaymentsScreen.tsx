@@ -468,7 +468,7 @@ export default function RevenuePaymentsScreen({
           <ReceivablesAgingBoard
             receivables={receivables}
             summary={receivablesSummary}
-            onOpenManualPayment={(jobId, invoiceId, amount) => {
+            onOpenManualPayment={(_jobId, _invoiceId, _amount) => {
               setSelectedPayment(null);
               setActiveModal('manual_payment');
             }}
@@ -483,7 +483,7 @@ export default function RevenuePaymentsScreen({
         {activeTab === 'recovery' && (
           <FailedPaymentsRecoveryPanel
             failedPayments={failedPayments}
-            onOpenManualPayment={(jobId, invoiceId, amount) => {
+            onOpenManualPayment={(_jobId, _invoiceId, _amount) => {
               setSelectedPayment(null);
               setActiveModal('manual_payment');
             }}

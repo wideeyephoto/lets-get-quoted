@@ -476,6 +476,26 @@ export function upcomingAdPaymentAlertText(input: {
   return `Hi ${input.businessName}, reminder that your Let's Get Quoted AI Ads renewal of $${input.amountDollars} will process in 24 hours (${input.renewalDateStr}) to keep your Google search ads active. Manage or pause anytime in your dashboard.`;
 }
 
+/**
+ * Instant SMS confirmation sent to the homeowner upon completing the website intake form.
+ */
+export function intakeConfirmationText(input: {
+  businessName: string;
+  leadName?: string | null;
+  projectType?: string | null;
+  estimate?: { min: number; max: number } | null;
+}): string {
+  const firstName = (input.leadName || '').trim().split(' ')[0] || 'there';
+  const cleanService = (input.projectType || 'estimate request').trim();
+  const estimateClause = input.estimate
+    ? ` Your estimated range: $${input.estimate.min.toLocaleString('en-US')}-$${input.estimate.max.toLocaleString('en-US')}.`
+    : '';
+  return withOptOut(
+    `Hi ${firstName}, thanks for reaching out to ${input.businessName}! We received your ${cleanService}.${estimateClause} Our team is reviewing the details and will follow up shortly.`
+  );
+}
+
+
 
 // -- the ones that live with their own logic ---------------------------------
 

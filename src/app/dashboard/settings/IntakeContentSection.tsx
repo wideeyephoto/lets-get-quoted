@@ -208,10 +208,10 @@ export default function IntakeContentSection({
           <section className="iq-group">
             <header>
               <span className="iq-num" aria-hidden="true">1</span>
-              <h4>What the intake asks</h4>
+              <h4>What the intake asks &amp; confirms</h4>
               <span className="iq-badge is-ok">{status.asks} ✓</span>
             </header>
-            <p className="iq-group-lede">Collect the right info up front.</p>
+            <p className="iq-group-lede">Collect the right info up front and confirm receipt.</p>
 
             <Row
               checked={emailField !== 'off'}
@@ -242,13 +242,48 @@ export default function IntakeContentSection({
               }
             />
 
-            {/* The "Instant Estimate" / "Instant Quote" wording picker was here.
-                It let one product call the same tool two things, and the second
-                name was the wrong one: a quote is the document that follows
-                approval, so promising a "quote" on the spot promises a firm
-                price nobody has committed to. getEstimateButtonLabel now always
-                says Instant Estimate; sites still storing the old value simply
-                render the accurate wording. */}
+            <Row
+              checked={Boolean(filters.instantConfirmationSms)}
+              onChange={(next) => patchFilters({ instantConfirmationSms: next })}
+              title="Instant text confirmation to homeowner"
+              hint={
+                customerTextingReady === false
+                  ? 'Configured, but inactive — an active dedicated texting number is required for homeowner texts.'
+                  : 'Texts the homeowner right after they submit so they know their request was received. Costs 1 text credit per confirmation.'
+              }
+              detail={
+                <div className="iq-effect">
+                  <div className="iq-effect-head">
+                    <strong>Automatic homeowner SMS confirmation</strong>
+                  </div>
+                  <p style={{ margin: 0 }}>
+                    Homeowners who submit via your website form or Smart Intake receive an instant SMS confirmation:
+                  </p>
+                  <div
+                    style={{
+                      background: 'rgba(0, 0, 0, 0.03)',
+                      border: '1px solid rgba(0, 0, 0, 0.08)',
+                      borderRadius: '8px',
+                      padding: '0.65rem 0.8rem',
+                      fontSize: '0.85rem',
+                      color: 'inherit',
+                      lineHeight: 1.45,
+                    }}
+                  >
+                    <em>&ldquo;Hi [Name], thanks for reaching out to [Business Name]! We received your estimate request. Our team is reviewing the details and will follow up shortly. Reply STOP to opt out.&rdquo;</em>
+                  </div>
+                  <p style={{ margin: 0, fontSize: '0.8rem', opacity: 0.85 }}>
+                    💳 <strong>Cost:</strong> Uses 1 text message credit per sent confirmation. Respects TCPA quiet hours (9 PM – 8 AM local time).
+                  </p>
+                  {customerTextingReady === false ? (
+                    <p style={{ margin: 0 }}>
+                      Confirmation texts cannot be delivered until customer texting is active.{' '}
+                      <Link href="/dashboard/messages?setup=1#texting-setup">Open Texting setup →</Link>
+                    </p>
+                  ) : null}
+                </div>
+              }
+            />
           </section>
 
           <section className="iq-group">

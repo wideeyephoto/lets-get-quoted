@@ -13,7 +13,7 @@ import {
   type SeasonalAdAngle,
   type AdDayOfWeek,
 } from '@/lib/google-ads-generator';
-import { AD_PLATFORM_FEE_RATE, type AdBudgetWalletState } from '@/lib/ad-billing';
+import { AD_PLATFORM_FEE_RATE, type AdBudgetWalletState } from '@/lib/ad-billing-shared';
 import {
   SMART_BUNDLES,
   getSmartBundle,
@@ -161,7 +161,7 @@ export default function ManagedAdsScreen({
   const [previewPlatform, setPreviewPlatform] = useState<
     'mobile' | 'desktop' | 'meta' | 'retargeting' | 'sms' | 'keywords'
   >('mobile');
-  const [managementTab, setManagementTab] = useState<'overview' | 'targeting' | 'creative' | 'billing'>('overview');
+  const [managementTab, setManagementTab] = useState<'overview' | 'targeting' | 'creative' | 'billing' | 'halo'>('overview');
   const [showManagementConsole, setShowManagementConsole] = useState<boolean>(Boolean(initialWalletState?.status === 'active' || initialWalletState?.status === 'paused'));
   const [currentStatus, setCurrentStatus] = useState<string>(initialWalletState?.status || 'inactive');
   const [isCancelScheduled, setIsCancelScheduled] = useState<boolean>(Boolean(initialWalletState?.cancelAtPeriodEnd));
@@ -940,6 +940,22 @@ export default function ManagedAdsScreen({
             >
               💳 Budget &amp; Billing
             </button>
+            <button
+              type="button"
+              onClick={() => setManagementTab('halo')}
+              style={{
+                padding: '0.45rem 0.95rem',
+                fontSize: '0.82rem',
+                fontWeight: 700,
+                borderRadius: '7px',
+                background: managementTab === 'halo' ? 'var(--accent, #f97316)' : 'transparent',
+                color: managementTab === 'halo' ? '#ffffff' : 'var(--muted)',
+                border: 'none',
+                cursor: 'pointer',
+              }}
+            >
+              📍 Neighborhood Halo
+            </button>
           </div>
 
           {/* Tab 1: Overview */}
@@ -1180,6 +1196,124 @@ export default function ManagedAdsScreen({
                 >
                   {portalLoading ? 'Opening Portal...' : '⚙️ Manage Payment in Stripe Portal'}
                 </button>
+              </div>
+            </div>
+          ) : null}
+
+          {/* Tab 5: Neighborhood Halo */}
+          {managementTab === 'halo' ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div className="panel workspace-section-card">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '0.75rem' }}>
+                  <div>
+                    <h3 style={{ fontSize: '1rem', margin: 0 }}>📍 Neighborhood Halo 1-Mile Micro-Ads</h3>
+                    <p style={{ fontSize: '0.82rem', color: 'var(--muted)', margin: '0.25rem 0 0' }}>
+                      Automatically surrounds completed job sites with hyper-local geofenced ads on Facebook, Instagram, and Google.
+                    </p>
+                  </div>
+                  <span style={{ fontSize: '0.75rem', color: '#10b981', background: 'rgba(16, 185, 129, 0.15)', padding: '0.25rem 0.65rem', borderRadius: '12px', fontWeight: 700 }}>
+                    ⚡ Autopilot Ready ($25 / 5 days)
+                  </span>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '0.75rem', marginBottom: '1.25rem' }}>
+                  <div style={{ background: 'rgba(255, 255, 255, 0.03)', padding: '0.75rem', borderRadius: '8px', border: '1px solid rgba(255, 255, 255, 0.06)' }}>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--muted)', display: 'block' }}>Default Radius</span>
+                    <strong style={{ fontSize: '1rem' }}>1.0 Mile Radius</strong>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--muted)', display: 'block', marginTop: '0.2rem' }}>Covers immediate neighborhood &amp; adjacent streets</span>
+                  </div>
+
+                  <div style={{ background: 'rgba(255, 255, 255, 0.03)', padding: '0.75rem', borderRadius: '8px', border: '1px solid rgba(255, 255, 255, 0.06)' }}>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--muted)', display: 'block' }}>Per-Job Micro-Budget</span>
+                    <strong style={{ fontSize: '1rem', color: '#10b981' }}>$25.00 / Completed Job</strong>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--muted)', display: 'block', marginTop: '0.2rem' }}>Paced over 5 active days</span>
+                  </div>
+
+                  <div style={{ background: 'rgba(255, 255, 255, 0.03)', padding: '0.75rem', borderRadius: '8px', border: '1px solid rgba(255, 255, 255, 0.06)' }}>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--muted)', display: 'block' }}>Privacy Safeguard</span>
+                    <strong style={{ fontSize: '1rem', color: '#38bdf8' }}>🔒 Street-Level Only</strong>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--muted)', display: 'block', marginTop: '0.2rem' }}>Exact house numbers are scrubbed from public ads</span>
+                  </div>
+                </div>
+
+                {/* Example Active / Simulated Halo Zone */}
+                <div style={{ background: 'rgba(249, 115, 22, 0.06)', border: '1px solid rgba(249, 115, 22, 0.25)', borderRadius: '8px', padding: '0.85rem', marginBottom: '1rem' }}>
+                  <strong style={{ fontSize: '0.86rem', color: 'var(--accent, #f97316)', display: 'block', marginBottom: '0.4rem' }}>
+                    🎨 Live Creative &amp; Dynamic Copy Preview
+                  </strong>
+                  <div style={{ background: 'rgba(0, 0, 0, 0.3)', borderRadius: '6px', padding: '0.75rem', fontSize: '0.82rem', fontFamily: 'monospace' }}>
+                    <div style={{ color: '#38bdf8', marginBottom: '0.3rem' }}>
+                      📍 Just Completed on Maple Ave in {city}!
+                    </div>
+                    <div style={{ color: 'var(--foreground)', lineHeight: 1.4 }}>
+                      &ldquo;Our team at {businessName} just finished a full {trade.toLowerCase()} installation. While our trucks and crews are in the area this week, neighbors can claim priority scheduling and a free estimate.&rdquo;
+                    </div>
+                    <div style={{ marginTop: '0.5rem', color: '#10b981', fontWeight: 700 }}>
+                      👉 Button: Claim Neighbor Offer (Links to localized Before &amp; After Showcase)
+                    </div>
+                  </div>
+                </div>
+
+                {/* Street Cluster Group Pricing & Satellite Sizing Settings */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' }}>
+                  {/* Card 1: Street Cluster Group Pricing */}
+                  <div style={{ background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '8px', padding: '0.85rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                      <strong style={{ fontSize: '0.88rem' }}>🏘️ Active Street Cluster Pricing</strong>
+                      <span style={{ fontSize: '0.7rem', color: '#10b981', background: 'rgba(16, 185, 129, 0.15)', padding: '0.15rem 0.5rem', borderRadius: '8px', fontWeight: 600 }}>Active</span>
+                    </div>
+                    <p style={{ fontSize: '0.78rem', color: 'var(--muted)', margin: '0 0 0.75rem' }}>
+                      Unlocks tiered group discounts for neighbors on the same street and enables same-day estimate batching.
+                    </p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', fontSize: '0.78rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.3rem 0.5rem', background: 'rgba(255, 255, 255, 0.03)', borderRadius: '4px' }}>
+                        <span>2 Homes (Duo):</span>
+                        <strong style={{ color: '#10b981' }}>$100 Off Each</strong>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.3rem 0.5rem', background: 'rgba(255, 255, 255, 0.03)', borderRadius: '4px' }}>
+                        <span>3+ Homes (Street Cluster):</span>
+                        <strong style={{ color: '#10b981' }}>$250 Off Each</strong>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.3rem 0.5rem', background: 'rgba(255, 255, 255, 0.03)', borderRadius: '4px' }}>
+                        <span>5+ Homes (HOA Rate):</span>
+                        <strong style={{ color: '#10b981' }}>$500 Off Each</strong>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.3rem 0.5rem', background: 'rgba(56, 189, 248, 0.08)', borderRadius: '4px', marginTop: '0.2rem' }}>
+                        <span style={{ color: '#38bdf8' }}>Margin Floor Guard:</span>
+                        <span style={{ color: '#38bdf8', fontWeight: 600 }}>Max 10% of Quote</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Card 2: Instant Satellite Property Sizing */}
+                  <div style={{ background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '8px', padding: '0.85rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                      <strong style={{ fontSize: '0.88rem' }}>🛰️ Instant Satellite Property Sizing</strong>
+                      <span style={{ fontSize: '0.7rem', color: '#38bdf8', background: 'rgba(56, 189, 248, 0.15)', padding: '0.15rem 0.5rem', borderRadius: '8px', fontWeight: 600 }}>Enabled</span>
+                    </div>
+                    <p style={{ fontSize: '0.78rem', color: 'var(--muted)', margin: '0 0 0.75rem' }}>
+                      Pulls aerial building footprints to calculate true roof squares, pitch multipliers, siding area, and HVAC tonnage.
+                    </p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', fontSize: '0.78rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.3rem 0.5rem', background: 'rgba(255, 255, 255, 0.03)', borderRadius: '4px' }}>
+                        <span>Roof Pitch Support:</span>
+                        <span>Flat to 10/12</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.3rem 0.5rem', background: 'rgba(255, 255, 255, 0.03)', borderRadius: '4px' }}>
+                        <span>Waste Factor Buffer:</span>
+                        <span>+12% Industry Standard</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.3rem 0.5rem', background: 'rgba(255, 255, 255, 0.03)', borderRadius: '4px' }}>
+                        <span>HVAC Tonnage Ratio:</span>
+                        <span>1 Ton / 550 sq ft</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.3rem 0.5rem', background: 'rgba(16, 185, 129, 0.08)', borderRadius: '4px', marginTop: '0.2rem' }}>
+                        <span style={{ color: '#10b981' }}>Batch Route Booking:</span>
+                        <span style={{ color: '#10b981', fontWeight: 600 }}>Same-Day Slots Active</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           ) : null}

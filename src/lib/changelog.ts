@@ -47,6 +47,56 @@ export const CHANGELOG_CATEGORIES: ChangelogCategory[] = [
 
 export const CHANGELOG_RELEASES: ChangelogRelease[] = [
   {
+    id: 'release-2026-08-street-cluster-satellite-halo',
+    version: 'v2.6.0',
+    title: 'Active Street Cluster Group Pricing, Satellite Property Sizing & 1-Mile Halo Ads',
+    date: '2026-08-30',
+    category: 'Advertising & Growth',
+    badge: 'Major Release',
+    summary:
+      'Turn completed jobs into multi-home street batches. Instant aerial satellite property sizing, automated $100–$500 Street Cluster Group Pricing with viral neighbor booking links, and 1-mile geofenced Neighborhood Halo micro-ads.',
+    highlights: [
+      {
+        badge: 'New',
+        title: '🏘️ Active Street Cluster Group Pricing & Viral Link Generator',
+        description:
+          'AI automatically detects active jobs on a street and announces tiered group discounts ($100 off for 2 homes, $250 for 3 homes, $500 for 5+ homes). Homeowners receive a private street booking link and pre-drafted copy to invite neighbors, unlocking same-day estimate batching for estimators.',
+      },
+      {
+        badge: 'New',
+        title: '🛰️ Instant Aerial Satellite Property Sizing',
+        description:
+          'AI pulls building footprint dimensions and roof pitch factors (4/12 to 10/12) to calculate true roof squares, siding wall square footage, gutter linear footage, and HVAC tonnage for precision instant estimate brackets.',
+      },
+      {
+        badge: 'New',
+        title: '📍 Neighborhood Halo 1-Mile Micro-Ad Campaigns',
+        description:
+          'Automatically triggers 1.0-mile radius geofenced ads on Facebook, Instagram, and Google around recently completed jobs ($25 / 5 days) using real site photos and sanitized street copy.',
+      },
+      {
+        badge: 'New',
+        title: '🎬 15-Second Video Reel Storyboards & Split-Screen Sliders',
+        description:
+          'Generates timed 4-phase video scripts (Hook, Problem, Craftsmanship, Neighbor CTA) for Instagram Reels & TikTok, plus interactive before/after drag sliders for showcase landing pages.',
+      },
+      {
+        badge: 'New',
+        title: '🛡️ TCPA Quiet Hours & Closed-Loop Meta CAPI / Google Revenue Sync',
+        description:
+          'Queues overnight leads for compliant 8:01 AM local time text dispatch, 15-minute duplicate submission locking, and SHA-256 revenue conversion sync back to Meta CAPI & Google Ads.',
+      },
+    ],
+    primaryAction: {
+      label: 'Explore Neighborhood Halo',
+      href: '/features/ai-ads',
+    },
+    secondaryAction: {
+      label: 'View Ads Dashboard',
+      href: '/dashboard/marketing/ads',
+    },
+  },
+  {
     id: 'release-2026-08-ai-advertising-autopilot',
     version: 'v2.5.0',
     title: 'AI Advertising Autopilot, Speed-to-Lead SMS & Multi-Channel Smart Bundles',

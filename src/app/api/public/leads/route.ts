@@ -15,7 +15,7 @@ import { isLeadVerificationValid } from '@/lib/lead-verification';
 import { loadLeadPhoneVerificationReadiness } from '@/lib/lead-phone-verification-readiness';
 import { normalizeUsPhone } from '@/lib/phone';
 import { getSiteContent, isFullyBookedActive } from '@/lib/site-content';
-import { sendOwnerHighValueLeadSms } from '@/lib/sms';
+import { sendIntakeConfirmationSms, sendOwnerHighValueLeadSms } from '@/lib/sms';
 import { checkRateLimitStrict, clientIpFrom } from '@/lib/rate-limit';
 import { serviceAreaVerdict } from '@/lib/service-area-match';
 import { resolveJurisdiction } from '@/lib/location-context/jurisdiction-resolver';
@@ -422,7 +422,8 @@ export async function POST(request: NextRequest) {
       }).catch((err) => console.warn('Offline conversion upload skipped:', err));
     }
 
-    if (phone && (attribution?.clickId || attribution?.medium === 'cpc')) {
+    const isAdLead = Boolean(phone && (attribution?.clickId || attribution?.medium === 'cpc'));
+    if (isAdLead) {
       dispatchSpeedToLeadSms({
         admin,
         accountId: site.account_id,
@@ -433,6 +434,16 @@ export async function POST(request: NextRequest) {
         city: text(data, 'address', 240),
         urgency: isHighValue ? 'emergency' : 'standard',
       }).catch((err) => console.warn('Speed-to-lead SMS dispatch skipped:', err));
+    } else if (phone && filters.instantConfirmationSms) {
+      sendIntakeConfirmationSms({
+        accountId: site.account_id,
+        phone,
+        businessName: site.company_name,
+        leadName: name,
+        projectType: text(data, 'projectType', 100),
+        estimate,
+        idempotencyKey: `intake-confirmation:${lead.id}`,
+      }).catch((err) => console.warn('Intake confirmation SMS dispatch skipped:', err));
     }
 
     await notifyOwner(admin, site, lead, request, { highValue: isHighValue, muteLow, smsEnabled, alertPhone });

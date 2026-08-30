@@ -5,14 +5,14 @@ import { requireOfficeContext, requireOwnerContext } from '@/lib/auth';
 import { refundPayment } from '@/lib/payments';
 import { markInvoicePaidForPayment } from '@/lib/invoices';
 import { sendPaymentSmsEvent } from '@/lib/sms';
-import { assembleDisputeEvidence } from '@/lib/dispute-evidence';
-import { calculateFinancingOptions } from '@/lib/financing-calculator';
+import { assembleDisputeEvidence, type DisputeEvidenceBundle } from '@/lib/dispute-evidence';
+import { calculateFinancingOptions, type FinancingTermOption } from '@/lib/financing-calculator';
 
-export type ActionState = {
+export type ActionState<T = unknown> = {
   success: boolean;
   message?: string;
   error?: string;
-  data?: any;
+  data?: T;
 };
 
 /**
@@ -155,7 +155,7 @@ export async function recordBatchInvoiceSettlementAction(
  */
 export async function sendPaymentReminderAction(formData: FormData): Promise<ActionState> {
   try {
-    const { accountId } = await requireOfficeContext('messages.send');
+    await requireOfficeContext('messages.send');
     const paymentId = String(formData.get('paymentId') || '').trim();
     const channel = String(formData.get('channel') || 'sms').trim();
 
@@ -186,7 +186,7 @@ export async function sendPaymentReminderAction(formData: FormData): Promise<Act
 /**
  * Batch broadcast SMS reminders to all overdue invoice recipients
  */
-export async function batchSendOverdueRemindersAction(formData: FormData): Promise<ActionState> {
+export async function batchSendOverdueRemindersAction(_formData?: FormData): Promise<ActionState> {
   try {
     const { supabase, accountId } = await requireOfficeContext('messages.send');
 
@@ -381,7 +381,7 @@ export async function createPaymentPlanScheduleAction(
 /**
  * Assemble evidence bundle for a disputed payment
  */
-export async function assembleDisputeEvidenceAction(paymentId: string): Promise<ActionState> {
+export async function assembleDisputeEvidenceAction(paymentId: string): Promise<ActionState<DisputeEvidenceBundle>> {
   try {
     const { supabase, accountId } = await requireOfficeContext('payments.write');
     const bundle = await assembleDisputeEvidence(supabase, accountId, paymentId);
@@ -401,7 +401,7 @@ export async function assembleDisputeEvidenceAction(paymentId: string): Promise<
 /**
  * Generate homeowner financing calculation quote
  */
-export async function generateFinancingQuoteAction(principal: number, customApr?: number): Promise<ActionState> {
+export async function generateFinancingQuoteAction(principal: number, customApr?: number): Promise<ActionState<FinancingTermOption[]>> {
   try {
     if (!principal || principal <= 0) {
       return { success: false, error: 'Enter a valid project amount.' };

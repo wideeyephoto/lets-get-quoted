@@ -58,7 +58,7 @@ export async function loadReceivablesData(
 
     // 1. Fetch all unpaid/open invoices for this account
     const [invoices, pendingPayments, jobsRes] = await Promise.all([
-      fetchAllPages<any>((from, to) =>
+      fetchAllPages<Record<string, unknown>>((from, to) =>
         supabase
           .from('invoices')
           .select('id, ref, job_id, status, total, discount_percent, tax_rate, created_at')
@@ -68,7 +68,7 @@ export async function loadReceivablesData(
           .order('created_at', { ascending: false })
           .range(from, to),
       ),
-      fetchAllPages<any>((from, to) =>
+      fetchAllPages<Record<string, unknown>>((from, to) =>
         supabase
           .from('payments')
           .select('id, job_id, invoice_id, kind, label, amount, status, requested_at, homeowner_phone, due_date')
@@ -78,7 +78,7 @@ export async function loadReceivablesData(
           .order('requested_at', { ascending: false })
           .range(from, to),
       ),
-      fetchAllPages<any>((from, to) =>
+      fetchAllPages<Record<string, unknown>>((from, to) =>
         supabase
           .from('jobs')
           .select('id, ref, client_name, client_phone, client_email')

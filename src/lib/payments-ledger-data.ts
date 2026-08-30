@@ -101,7 +101,7 @@ export async function loadPaymentsLedgerData(
     const { start } = resolveLedgerDateWindow(options.range || '30d');
 
     // Fetch all payments for this account to guarantee accurate metrics & client-side instant filtering
-    const paymentRows = await fetchAllPages<any>((from, to) => {
+    const paymentRows = await fetchAllPages<Record<string, unknown>>((from, to) => {
       let query = supabase
         .from('payments')
         .select(`
@@ -183,7 +183,6 @@ export async function loadPaymentsLedgerData(
       const net = Math.max(0, amount - fee - refunded);
 
       const isPaid = row.status === 'paid';
-      const isRefunded = row.status === 'refunded' || row.status === 'partially_refunded';
       const isFailed = row.status === 'failed';
       const isDisputed = row.status === 'disputed' || Boolean(row.disputed_at);
       const isProcessing = row.status === 'processing';

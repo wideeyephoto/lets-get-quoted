@@ -28,7 +28,7 @@ describe('calculateAdProjections', () => {
   });
 });
 
-describe('generateTradeKeywords', () => {
+describe('generateTradeKeywords & Negative Keyword Shields', () => {
   it('generates phrase and exact match keywords with local intent', () => {
     const { keywordGroups, allKeywords, negativeKeywords } = generateTradeKeywords(
       ['Emergency Pipe Repair', 'Water Heater Install'],
@@ -44,6 +44,9 @@ describe('generateTradeKeywords', () => {
     expect(negativeKeywords).toContain('diy');
     expect(negativeKeywords).toContain('jobs');
     expect(negativeKeywords).toContain('home depot');
+    expect(negativeKeywords).toContain('building code');
+    expect(negativeKeywords).toContain('drain snake rental');
+    expect(negativeKeywords.length).toBeGreaterThan(70);
   });
 });
 

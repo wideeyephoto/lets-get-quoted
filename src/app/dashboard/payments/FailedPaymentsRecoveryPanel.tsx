@@ -90,7 +90,7 @@ export default function FailedPaymentsRecoveryPanel({
           <div style={{ fontSize: '2.5rem' }}>🛡️</div>
           <strong style={{ fontSize: '1.1rem', color: 'var(--text-color, #0f172a)' }}>No Failed Payments to Recover</strong>
           <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--text-muted)', maxWidth: '440px' }}>
-            When a customer's card is declined or expires, it will automatically appear here with automated 1-click recovery tools.
+            When a customer&apos;s card is declined or expires, it will automatically appear here with automated 1-click recovery tools.
           </p>
         </div>
       ) : (

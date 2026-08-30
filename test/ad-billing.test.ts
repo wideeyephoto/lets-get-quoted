@@ -36,7 +36,7 @@ describe('Ad Billing Module', () => {
     expect(DEFAULT_AD_WALLET_STATE.totalMonthlyCents).toBe(60000);
   });
 
-  it('rejects monthly budgets below $100', async () => {
+  it('rejects monthly budgets below $100 or above $50,000', async () => {
     await expect(
       createAdBudgetCheckoutSession({
         accountId: 'acc_123',
@@ -47,6 +47,60 @@ describe('Ad Billing Module', () => {
         returnUrl: '/dashboard/marketing/ads',
       })
     ).rejects.toThrow('Minimum monthly ad budget is $100.');
+
+    await expect(
+      createAdBudgetCheckoutSession({
+        accountId: 'acc_123',
+        monthlyBudgetDollars: 60000,
+        businessName: 'Apex Roofing',
+        trade: 'Roofing',
+        city: 'Austin, TX',
+        returnUrl: '/dashboard/marketing/ads',
+      })
+    ).rejects.toThrow('Maximum monthly ad budget is $50,000.');
+  });
+
+  it('rejects weekly budgets below $50 or above $15,000', async () => {
+    await expect(
+      createAdBudgetCheckoutSession({
+        accountId: 'acc_123',
+        weeklyAmountDollars: 25,
+        businessName: 'Apex Roofing',
+        trade: 'Roofing',
+        city: 'Austin, TX',
+        returnUrl: '/dashboard/marketing/ads',
+      })
+    ).rejects.toThrow('Minimum weekly ad budget is $50.');
+
+    await expect(
+      createAdBudgetCheckoutSession({
+        accountId: 'acc_123',
+        weeklyAmountDollars: 20000,
+        businessName: 'Apex Roofing',
+        trade: 'Roofing',
+        city: 'Austin, TX',
+        returnUrl: '/dashboard/marketing/ads',
+      })
+    ).rejects.toThrow('Maximum weekly ad budget is $15,000.');
+  });
+
+  it('refuses to create checkout session in production when Google Ads is unconfigured', async () => {
+    const originalVercelEnv = process.env.VERCEL_ENV;
+    process.env.VERCEL_ENV = 'production';
+    try {
+      await expect(
+        createAdBudgetCheckoutSession({
+          accountId: 'acc_123',
+          weeklyAmountDollars: 330,
+          businessName: 'Apex Roofing',
+          trade: 'Roofing',
+          city: 'Austin, TX',
+          returnUrl: '/dashboard/marketing/ads',
+        })
+      ).rejects.toThrow('Google Ads automated provisioning is currently undergoing configuration in this environment.');
+    } finally {
+      process.env.VERCEL_ENV = originalVercelEnv;
+    }
   });
 
   it('ignores unrelated Stripe webhook events', async () => {

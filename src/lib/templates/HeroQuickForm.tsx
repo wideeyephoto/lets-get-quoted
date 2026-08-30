@@ -13,6 +13,7 @@ import type { Site } from '@/lib/sites';
 import { getOrCreateAiIntakeThread } from '@/lib/ai-intake-thread';
 import { trackQuoteFunnelStep } from '@/lib/analytics';
 import { getOrCaptureAttribution } from '@/lib/attribution';
+import { resolveMessageMatchHero, type MessageMatchResult } from '@/lib/ad-message-match';
 import IntroVideo from './IntroVideo';
 import styles from './themes.module.css';
 
@@ -200,6 +201,46 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
   const [chatAnswer, setChatAnswer] = useState('');
   const [chatResponseId, setChatResponseId] = useState('');
   const [chatTurn, setChatTurn] = useState(0);
+  const [messageMatch, setMessageMatch] = useState<MessageMatchResult | null>(null);
+
+  // Resolve dynamic message-match hero and promo cues from ad click parameters
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const urlParams = new URLSearchParams(window.location.search);
+    const utmTerm = urlParams.get('utm_term') || urlParams.get('keyword') || null;
+    const utmCampaign = urlParams.get('utm_campaign') || null;
+    const utmContent = urlParams.get('utm_content') || null;
+    const utmSource = urlParams.get('utm_source') || null;
+    const focus = urlParams.get('focus') || null;
+    const intent = urlParams.get('intent') || null;
+    const promo = urlParams.get('promo') || null;
+    const service = urlParams.get('service') || null;
+    const offer = urlParams.get('offer') || null;
+    const gclid = urlParams.get('gclid') || null;
+
+    const matched = resolveMessageMatchHero({
+      trade: siteContent.trade || site.headline || 'Contractor',
+      city: site.service_area || primaryServedCity,
+      businessName: site.company_name || 'Contractor',
+      utmTerm,
+      utmCampaign,
+      utmContent,
+      utmSource,
+      keyword: utmTerm,
+      focus,
+      intent,
+      promo,
+      service,
+      offer,
+      gclid,
+      defaultHeadline: quoteForm.formHeading?.trim() || estimateLabel,
+      defaultCtaLabel: formButtonText.trim() || (smartIntakeActive ? 'Start my estimate' : 'Continue'),
+    });
+
+    if (matched.isMatch) {
+      setMessageMatch(matched);
+    }
+  }, [site.company_name, site.headline, site.service_area, siteContent.trade, primaryServedCity, quoteForm.formHeading, estimateLabel, formButtonText, smartIntakeActive]);
 
   // Track form impression on mount
   useEffect(() => {
@@ -837,8 +878,9 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
   }
 
   const isEmergency = Boolean(
-    description &&
-    /\b(burst\s*pipe|pipe\s*burst|flooding|water\s*pouring|leak(?:ing)?\s*everywhere|spraying\s*water|gushing|sewage\s*backup|smell\s*gas|gas\s*leak|no\s*heat|furnace\s*out)\b/i.test(description)
+    (description &&
+    /\b(burst\s*pipe|pipe\s*burst|flooding|water\s*pouring|leak(?:ing)?\s*everywhere|spraying\s*water|gushing|sewage\s*backup|smell\s*gas|gas\s*leak|no\s*heat|furnace\s*out)\b/i.test(description)) ||
+    messageMatch?.detectedIntent === 'emergency'
   );
 
   const thinkingLabel = description.toLowerCase().includes('drain')
@@ -944,6 +986,33 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
           <h2 className={styles.heroFormTitle}>
             {smartIntakeActive ? (quoteForm.formHeading?.trim() || 'Get a ballpark estimate') : estimateLabel}
           </h2>
+          {messageMatch?.isMatch && (
+            <div
+              className={styles.heroFormMatchBanner}
+              style={{
+                background: 'linear-gradient(135deg, rgba(249, 115, 22, 0.12) 0%, rgba(59, 130, 246, 0.08) 100%)',
+                border: '1px solid rgba(249, 115, 22, 0.3)',
+                borderRadius: '8px',
+                padding: '0.55rem 0.8rem',
+                margin: '0.4rem 0 0.75rem',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.2rem',
+              }}
+            >
+              <span style={{ fontSize: '0.72rem', fontWeight: 800, color: 'var(--accent, #f97316)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                {messageMatch.trustBadge}
+              </span>
+              <strong style={{ fontSize: '0.88rem', color: 'var(--foreground)' }}>
+                {messageMatch.headline}
+              </strong>
+              {messageMatch.offerHighlight && (
+                <span style={{ fontSize: '0.75rem', color: '#10b981', fontWeight: 700 }}>
+                  ✓ {messageMatch.offerHighlight}
+                </span>
+              )}
+            </div>
+          )}
           {isEmergency && (
             <div className={styles.heroFormEmergencyAlert} role="alert">
               <span aria-hidden="true">🚨</span>
@@ -1021,7 +1090,17 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
           )}
 
           <button type="submit" disabled={isClassifying}>
-            <span>{isClassifying ? thinking : formButtonText.trim() ? formButtonText.trim() : (smartIntakeActive ? 'Start my estimate' : 'Continue')}</span>
+            <span>
+              {isClassifying
+                ? thinking
+                : formButtonText.trim()
+                  ? formButtonText.trim()
+                  : messageMatch?.isMatch && messageMatch.ctaLabel
+                    ? messageMatch.ctaLabel
+                    : smartIntakeActive
+                      ? 'Start my estimate'
+                      : 'Continue'}
+            </span>
             {!isClassifying && <span className={styles.heroFormBtnArrow} aria-hidden="true">→</span>}
           </button>
 

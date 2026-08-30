@@ -1,6 +1,6 @@
 import { requireOfficeContext } from '@/lib/auth';
 import { listJobs } from '@/lib/jobs';
-import { loadPaymentsLedgerData } from '@/lib/payments-ledger-data';
+import { loadPaymentsLedgerData, type LedgerFilterOptions } from '@/lib/payments-ledger-data';
 import { loadReceivablesData } from '@/lib/receivables-data';
 import { loadStripePayoutsOverview } from '@/lib/payouts-data';
 import { loadRevenueAnalyticsData } from '@/lib/revenue-analytics-data';
@@ -19,10 +19,10 @@ export default async function PaymentsRevenuePage({
 }) {
   const { supabase, accountId } = await requireOfficeContext('reports.read');
 
-  const selectedRange = searchParams.range || '30d';
+  const selectedRange = (searchParams.range || '30d') as NonNullable<LedgerFilterOptions['range']>;
 
   const [ledgerRes, receivablesRes, payoutsRes, analyticsRes, jobsRes] = await Promise.all([
-    loadPaymentsLedgerData(supabase, accountId, { range: selectedRange as any }),
+    loadPaymentsLedgerData(supabase, accountId, { range: selectedRange }),
     loadReceivablesData(supabase, accountId),
     loadStripePayoutsOverview(supabase, accountId),
     loadRevenueAnalyticsData(supabase, accountId),

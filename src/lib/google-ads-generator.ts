@@ -74,31 +74,164 @@ export const TRADE_BENCHMARKS: Record<string, TradeAdBenchmark> = {
   },
 };
 
-export const DEFAULT_NEGATIVE_KEYWORDS: string[] = [
+export const DIY_AND_TUTORIAL_NEGATIVES: string[] = [
   'diy',
   'how to',
   'tutorial',
-  'jobs',
-  'hiring',
-  'salary',
-  'training',
-  'apprentice',
-  'classes',
-  'license requirements',
-  'exam',
-  'free',
-  'cheap',
-  'wholesale',
+  'step by step',
+  'make your own',
+  'do it yourself',
+  'youtube',
+  'reddit',
+  'pinterest',
+  'tiktok',
+  'wiring diagram',
+  'schematic',
+  'repair guide',
   'home depot',
   'lowes',
   'harbor freight',
+  'ace hardware',
   'amazon',
-  'youtube',
-  'reddit',
-  'craigslist',
-  'volunteer',
-  'scam',
 ];
+
+export const JOBS_AND_CAREER_NEGATIVES: string[] = [
+  'jobs',
+  'hiring',
+  'salary',
+  'careers',
+  'apprentice',
+  'apprenticeship',
+  'hourly wage',
+  'pay scale',
+  'resume',
+  'application',
+  'job opening',
+  'glassdoor',
+  'indeed',
+  'ziprecruiter',
+  'union scale',
+];
+
+export const SUPPLIES_WHOLESALE_NEGATIVES: string[] = [
+  'wholesale',
+  'distributor',
+  'supply house',
+  'parts catalog',
+  'ferguson',
+  'grainger',
+  'bulk',
+  'manufacturer',
+  'spec sheet',
+  'parts warehouse',
+  'surplus',
+  'salvage',
+  'replacement parts only',
+];
+
+export const PERMITS_AND_CODE_NEGATIVES: string[] = [
+  'building code',
+  'permit fee',
+  'how to pull permit',
+  'license lookup',
+  'code compliance',
+  'board of contractors',
+  'city inspection checklist',
+  'ordinance',
+  'complaint',
+  'lawsuit',
+  'scam',
+  'bbb complaint',
+];
+
+export const BARGAIN_FREE_CHEAP_NEGATIVES: string[] = [
+  'free',
+  'cheap',
+  'cheapest',
+  'craigslist',
+  'used',
+  'salvage',
+  'scrap',
+  'discount code',
+  'coupon',
+  'pro bono',
+  'grant money',
+  'government grant',
+  'volunteer',
+];
+
+export const ACADEMIC_STUDY_NEGATIVES: string[] = [
+  'classes',
+  'course',
+  'school',
+  'certification',
+  'exam',
+  'license requirements',
+  'training',
+  'practice test',
+  'pdf download',
+  'textbook',
+  'online course',
+];
+
+export const TRADE_SPECIFIC_NEGATIVES: Record<string, string[]> = {
+  roofing: ['roof rake', 'tar paper roll', 'roof patch kit', 'metal roof paint', 'ladder rental', 'shingle nail gun'],
+  plumbing: ['drain snake rental', 'plumbing tools', 'pvc cement', 'plumber putty', 'unclog drain yourself', 'pipe threader rental'],
+  hvac: ['freon recharge kit', 'r410a refrigerant buy', 'ac capacitor test multimeter', 'furnace filter bulk', 'nest thermostat wiring diy'],
+  electrical: ['wire stripper', 'breaker panel schematic', 'outlet tester', 'romex roll', 'conduit bender rental', 'electrical code book'],
+  painting: ['paint sprayer rental', 'paint swatches free', 'drop cloths bulk', 'spray paint can', 'roller extension pole'],
+  landscaping: ['lawn mower repair diy', 'weed eater string bulk', 'topsoil free pickup', 'wood chips free drop'],
+  cleaning: ['cleaning supplies wholesale', 'mop bucket commercial', 'vacuum cleaner parts', 'cleaning chemical sds'],
+};
+
+export const DEFAULT_NEGATIVE_KEYWORDS: string[] = [
+  ...DIY_AND_TUTORIAL_NEGATIVES,
+  ...JOBS_AND_CAREER_NEGATIVES,
+  ...SUPPLIES_WHOLESALE_NEGATIVES,
+  ...PERMITS_AND_CODE_NEGATIVES,
+  ...BARGAIN_FREE_CHEAP_NEGATIVES,
+  ...ACADEMIC_STUDY_NEGATIVES,
+];
+
+/**
+ * Returns a comprehensive, deduped negative keyword list customized for a contractor trade
+ * with competitor brand exclusions, eliminating low-intent clicks and preserving 100% budget.
+ */
+export function getTradeNegativeKeywords(
+  tradeSlug = 'general',
+  competitorExclusions: string[] = []
+): string[] {
+  const normTrade = (tradeSlug || '').toLowerCase().trim();
+  const tradeSpecific =
+    Object.entries(TRADE_SPECIFIC_NEGATIVES).find(([key]) => {
+      const stem = key.slice(0, 4); // 'roof', 'plum', 'hvac', 'elec', 'pain', 'land', 'clea'
+      return normTrade.includes(key) || normTrade.includes(stem);
+    })?.[1] || [];
+
+  const competitorNegatives: string[] = [];
+  for (const comp of competitorExclusions) {
+    const cleanComp = comp.toLowerCase().trim();
+    if (cleanComp) {
+      competitorNegatives.push(
+        cleanComp,
+        `${cleanComp} reviews`,
+        `${cleanComp} phone`,
+        `${cleanComp} customer service`,
+        `${cleanComp} login`,
+        `${cleanComp} hours`,
+        `${cleanComp} careers`
+      );
+    }
+  }
+
+  return Array.from(
+    new Set([
+      ...DEFAULT_NEGATIVE_KEYWORDS,
+      ...tradeSpecific,
+      ...competitorNegatives,
+    ])
+  );
+}
 
 export type AdProjections = {
   monthlyBudget: number;
@@ -207,23 +340,12 @@ export function generateTradeKeywords(
     allKeywords.push(...tradePhrase);
   }
 
-  const competitorNegatives: string[] = [];
-  for (const comp of competitorExclusions) {
-    const cleanComp = comp.toLowerCase().trim();
-    if (cleanComp) {
-      competitorNegatives.push(
-        cleanComp,
-        `${cleanComp} reviews`,
-        `${cleanComp} phone`,
-        `${cleanComp} customer service`,
-      );
-    }
-  }
+  const negativeKeywords = getTradeNegativeKeywords(tradeName, competitorExclusions);
 
   return {
     keywordGroups,
     allKeywords,
-    negativeKeywords: [...DEFAULT_NEGATIVE_KEYWORDS, ...competitorNegatives],
+    negativeKeywords,
   };
 }
 
