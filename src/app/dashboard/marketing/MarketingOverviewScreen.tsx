@@ -141,6 +141,7 @@ export default function MarketingOverviewScreen({
                 onClick={() => setCreateMenuOpen((prev) => !prev)}
                 style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontWeight: 700 }}
                 aria-expanded={createMenuOpen}
+                aria-controls="marketing-create-menu"
                 aria-haspopup="true"
               >
                 <span>+ Create</span>
@@ -154,6 +155,7 @@ export default function MarketingOverviewScreen({
                     onClick={() => setCreateMenuOpen(false)}
                   />
                   <div
+                    id="marketing-create-menu"
                     style={{
                       position: 'absolute',
                       right: 0,
