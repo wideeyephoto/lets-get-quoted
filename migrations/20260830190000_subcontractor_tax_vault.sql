@@ -1,5 +1,23 @@
 -- Migration: 20260830190000_subcontractor_tax_vault.sql
 -- Description: Creates isolated private schema tax_vault unexposed to browser clients, with encrypted TIN storage.
+--
+-- REACHABILITY, read before wiring a caller: PostgREST serves only the schemas
+-- in its exposed list, and tax_vault is deliberately NOT in it. The consumer
+-- module (src/lib/subcontractor-tax-identity.ts, zero importers today) reaches
+-- this table via supabase-js .schema('tax_vault'), which returns PGRST106
+-- "Invalid schema" until tax_vault is added to the project's exposed schemas
+-- (Supabase Dashboard -> Settings -> API -> Exposed schemas -- a Codex job)
+-- and PostgREST reloads. The revokes below are what make that exposure safe:
+-- anon/authenticated fail the schema USAGE check with 42501.
+--
+-- Do NOT resolve unreachability by moving this table into schema public: the
+-- default ACL there grants anon INSERT/SELECT/UPDATE/DELETE on every new table
+-- the instant it is created, and these rows are encrypted SSNs/EINs.
+--
+-- Wrapped in an explicit transaction so the table and its revokes land
+-- atomically under any applier -- a mid-file failure must not leave a TIN
+-- table sitting on default ACLs.
+begin;
 
 -- 1. Private schema creation
 create schema if not exists tax_vault;
@@ -50,3 +68,5 @@ create index if not exists idx_tax_vault_subcontractor_crew on tax_vault.subcont
 
 revoke all on table tax_vault.subcontractor_tax_identities from public, anon, authenticated;
 grant all on table tax_vault.subcontractor_tax_identities to service_role;
+
+commit;

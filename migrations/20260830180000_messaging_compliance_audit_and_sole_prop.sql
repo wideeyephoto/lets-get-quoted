@@ -1,6 +1,12 @@
 -- Migration: 20260830180000_messaging_compliance_audit_and_sole_prop.sql
 -- Description: Supports No-EIN Sole Proprietor TCR OTP verification track and separates owner self-attestation audit events from staff MFA compliance verification.
 
+-- Wrapped in an explicit transaction so the DROP NOT NULL, the constraint swap
+-- and the two new SECURITY DEFINER functions (whose anon-EXECUTE default-ACL
+-- grant is only closed by the revokes at the bottom) land atomically under any
+-- applier, not just one that sends the file as a single implicit transaction.
+begin;
+
 -- 1. Extend messaging_compliance_verifications for TCR sole proprietor OTP track
 alter table public.messaging_compliance_verifications
   add column if not exists verification_method text not null default 'ein',
@@ -17,7 +23,13 @@ alter table public.messaging_compliance_verifications
   add constraint messaging_compliance_verifications_method_check check (
     verification_method in ('ein', 'sole_proprietor_otp')
     and (
-      (verification_method = 'ein' and ein_last_four ~ '^[0-9]{4}$')
+      -- coalesce is load-bearing: without it, method='ein' with a NULL suffix
+      -- makes this arm NULL, the OR chain NULL, and a NULL CHECK passes -- so
+      -- dropping the column's NOT NULL above would have removed the "EIN track
+      -- must carry a suffix" guarantee without replacing it. The pre-existing
+      -- ein_last_four format check stays NULL-permissive on purpose; that is
+      -- what lets the sole_proprietor_otp arm insert a NULL suffix at all.
+      (verification_method = 'ein' and coalesce(ein_last_four, '') ~ '^[0-9]{4}$')
       or
       (verification_method = 'sole_proprietor_otp' and ein_last_four is null)
     )
@@ -190,3 +202,5 @@ grant execute on function public.record_messaging_tax_identity_submission(uuid,t
 
 revoke all on function public.record_messaging_compliance_verification_v2(uuid,text,text,text,text,text) from public, anon, authenticated;
 grant execute on function public.record_messaging_compliance_verification_v2(uuid,text,text,text,text,text) to service_role;
+
+commit;

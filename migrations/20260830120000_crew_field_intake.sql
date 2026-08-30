@@ -359,6 +359,23 @@ begin
             end,
             updated_at = excluded.updated_at;
 
+      -- Restored from the live body: a START from a number with no prior
+      -- consent row is an opt-in with no recorded prior consent, and an
+      -- operator should see it. The account_events row below is an addition,
+      -- not a replacement -- an earlier draft swapped one evidence surface for
+      -- the other and lost this review item.
+      if p_keyword = 'start' and not v_existing_consent then
+        insert into public.sms_operator_review_items (
+          webhook_receipt_id, reason, severity, provider, account_id,
+          sender_number_id, provider_event_id, from_number, to_number,
+          message_body
+        ) values (
+          v_receipt.id, 'restart_without_consent', 'info', p_provider,
+          v_routed_account_id, v_sender.id, p_provider_event_id,
+          p_from_number, p_to_number, pg_catalog.left(p_message_body, 5000)
+        );
+      end if;
+
       insert into public.account_events (
         account_id, kind, summary, meta
       ) values (
@@ -372,6 +389,24 @@ begin
           'sender_number_id', v_sender.id,
           'webhook_receipt_id', v_receipt.id
         )
+      );
+    elsif v_sender.purpose = 'lgq_dispatch' then
+      -- Restored from the live body. STOP remains safe without guessing an
+      -- account: the exact sender is blocked above, the account ledger is
+      -- untouched, and review work records whether current roster authority
+      -- was absent or cross-account ambiguous.
+      v_reason := case
+        when v_routed_account_count > 1 then 'ambiguous_destination'
+        else 'shared_destination_unroutable'
+      end;
+      insert into public.sms_operator_review_items (
+        webhook_receipt_id, reason, severity, provider, sender_number_id,
+        provider_event_id, from_number, to_number, message_body, media_urls
+      ) values (
+        v_receipt.id, v_reason,
+        case when v_reason = 'ambiguous_destination' then 'critical' else 'warning' end,
+        p_provider, v_sender.id, p_provider_event_id, p_from_number, p_to_number,
+        pg_catalog.left(p_message_body, 5000), p_media_urls
       );
     end if;
 
@@ -421,21 +456,21 @@ begin
     public.sms_inbound_recipient_lock_key(v_routed_account_id, p_from_number)
   );
 
+  -- Column list matches the LIVE table exactly. An earlier draft wrote
+  -- sender_purpose and raw_payload here; neither column exists on
+  -- public.sms_messages, and plpgsql only syntax-parses bodies at CREATE, so it
+  -- applied cleanly and would have thrown 42703 on the first routed inbound
+  -- text -- aborting the whole webhook transaction, rolling back the
+  -- sms_webhook_receipts dedupe row with it, and putting the provider into an
+  -- infinite redelivery loop on the one lane that works today. The payload
+  -- provenance those columns wanted already lives on the receipt row.
   insert into public.sms_messages (
-    account_id, phone_number, direction, body, media_urls,
-    provider_id, sender_number_id, sender_purpose, raw_payload
+    account_id, phone_number, direction, body, provider_id, media_urls,
+    provider, sender_number_id, read_at, created_at
   ) values (
     v_routed_account_id, p_from_number, 'inbound',
-    pg_catalog.left(coalesce(p_message_body, ''), 5000),
-    p_media_urls, p_provider_event_id, v_sender.id, v_sender.purpose,
-    jsonb_build_object(
-      'provider', p_provider,
-      'provider_event_id', p_provider_event_id,
-      'receipt_key', p_receipt_key,
-      'content_type', p_content_type,
-      'request_url', p_request_url,
-      'body_sha256', p_body_sha256
-    )
+    coalesce(p_message_body, ''), p_provider_event_id,
+    p_media_urls, p_provider, v_sender.id, null, v_now
   ) returning id into v_message_id;
 
   update public.sms_webhook_receipts
@@ -492,6 +527,7 @@ declare
   v_is_owner boolean := false;
   v_crew public.crew%rowtype;
   v_author text;
+  v_unsupported boolean := false;
 begin
   -- 1. Claim verification and locking
   select t.* into v_task
@@ -688,8 +724,10 @@ begin
     v_target_id := v_job.id;
 
     if v_task_title <> '' then
+      -- job_tasks has no updated_at column; completion is recorded on
+      -- done_at/done_by (both nullable, done_by text).
       update public.job_tasks
-         set done = true, updated_at = v_now
+         set done = true, done_at = v_now, done_by = v_author
        where account_id = v_task.account_id
          and job_id = v_job.id
          and not done
@@ -727,8 +765,29 @@ begin
 
   elsif p_intent in ('report_ambiguity', 'no_action') then
     v_target_id := null;
+
+  elsif p_intent in ('reschedule_job', 'update_client', 'assign_crew',
+                     'add_quote_line_item', 'send_client_quote_link') then
+    -- Known worker intents this rail does not implement yet. The worker's tool
+    -- list offers all five, and the owner-only guard above authorises three of
+    -- them, so raising here would be self-contradictory -- and an exception
+    -- retries the task 8 times into the dead-letter queue while the sender
+    -- hears nothing. Completing with an honest reply is the only ending that
+    -- neither lies nor goes silent: no domain write happens, and the
+    -- confirmation the worker composed (which claims success) is REPLACED
+    -- below with the truth. Implementing these for real is feature work that
+    -- belongs to the worker's owner, not a side effect of this migration.
+    v_target_id := null;
+    v_unsupported := true;
+
   else
     raise exception 'Unrecognized field intent: %', p_intent using errcode = '22023';
+  end if;
+
+  if v_unsupported then
+    p_confirmation_text :=
+      'Sorry - I can''t make that change by text yet. Please use the dashboard, '
+      || 'or reply with a note and I''ll save it to the job.';
   end if;
 
   -- 6. Enqueue confirmation SMS back to the sender
@@ -739,9 +798,15 @@ begin
         p_phone_number => v_receipt.from_number,
         p_body => pg_catalog.btrim(p_confirmation_text),
         p_message_kind => case when v_crew.id is not null then 'crew-field-confirm' else 'owner-field-confirm' end,
-        p_billing_category => case when v_crew.id is not null then 'crew_message'::public.sms_billing_category else 'owner_alert'::public.sms_billing_category end,
-        p_sender_purpose => 'lgq_shared'::public.sms_sender_purpose,
-        p_context => case when v_crew.id is not null then 'subcontractor'::public.sms_delivery_context else 'owner'::public.sms_delivery_context end,
+        -- Bare text literals: enqueue_sms_delivery declares these parameters as
+        -- plain text, and the enum types an earlier draft cast to
+        -- (public.sms_billing_category / sms_sender_purpose / sms_delivery_context)
+        -- do not exist in this database -- the casts resolve at first execution,
+        -- not at CREATE, so they applied cleanly and threw 42704 on the first
+        -- field action.
+        p_billing_category => case when v_crew.id is not null then 'crew_message' else 'owner_alert' end,
+        p_sender_purpose => 'lgq_shared',
+        p_context => case when v_crew.id is not null then 'subcontractor' else 'owner' end,
         p_event_type => case when v_crew.id is not null then 'crew_field_confirm' else 'owner_field_confirm' end,
         p_idempotency_key => 'field-confirm:' || v_receipt.id::text,
         p_payment_id => null::uuid,
@@ -753,6 +818,7 @@ begin
   -- 7. Complete task atomically
   v_outcome := jsonb_build_object(
     'intent', p_intent,
+    'unsupported_intent', v_unsupported,
     'target_id', v_target_id,
     'confirmation_text', p_confirmation_text,
     'sms_event_id', v_sms_event_id,
@@ -761,8 +827,14 @@ begin
     'is_owner', coalesce(v_is_owner, false)
   );
 
+  -- claim_token and lease_expires_at MUST be cleared here:
+  -- sms_inbound_action_tasks_claim_shape requires them null for every state
+  -- except 'processing', so leaving them set makes every successful action
+  -- abort with 23514 at its final statement, rolling back the work it just did.
   update public.sms_inbound_action_tasks
      set task_state = 'completed',
+         claim_token = null,
+         lease_expires_at = null,
          effect_applied_at = v_now,
          completed_at = v_now,
          outcome = v_outcome,
