@@ -161,7 +161,6 @@ export default function ManagedAdsScreen({
   const [previewPlatform, setPreviewPlatform] = useState<
     'mobile' | 'desktop' | 'meta' | 'retargeting' | 'sms' | 'keywords'
   >('mobile');
-  const [showAdvanced, setShowAdvanced] = useState(false);
   const [managementTab, setManagementTab] = useState<'overview' | 'targeting' | 'creative' | 'billing'>('overview');
   const [showManagementConsole, setShowManagementConsole] = useState<boolean>(Boolean(initialWalletState?.status === 'active' || initialWalletState?.status === 'paused'));
   const [currentStatus, setCurrentStatus] = useState<string>(initialWalletState?.status || 'inactive');
@@ -247,6 +246,15 @@ export default function ManagedAdsScreen({
     () => analyzeCustomAdFocus({ customFocus, trade, city, businessName }),
     [customFocus, trade, city, businessName]
   );
+
+  // Segmented Cockpit Configuration Tab State (Step 1, 2, 3)
+  const [configTab, setConfigTab] = useState<'plan' | 'schedule' | 'focus_roi'>('plan');
+
+  // Compartmentalized Knowledge Hub Tab State
+  const [knowledgeTab, setKnowledgeTab] = useState<'pipeline' | 'comparison' | 'timeline' | 'shields' | 'faq'>('pipeline');
+
+  // Collapsible Strategy Briefing State
+  const [showAiBriefing, setShowAiBriefing] = useState<boolean>(false);
 
   // Auto-Refill Advertising Wallet Configuration
   const [walletDepositDollars, setWalletDepositDollars] = useState<number>(250);
@@ -763,15 +771,14 @@ export default function ManagedAdsScreen({
 
       <MarketingNav basePath={basePath} />
 
-      {/* Trust & Guarantee Chips Bar */}
+      {/* Streamlined Trust & Guarantees Bar */}
       <div className={styles.trustChipsBar}>
-        <span className={styles.trustChip}>💧 Weekly Drip ($185–$645/wk) or Auto-Refill Wallet ($250 Deposit)</span>
+        <span className={styles.trustChip}>💧 Weekly Drip ($185–$645/wk) or Auto-Refill Wallet</span>
         <span className={styles.trustChip}>🛡️ Zero Agency Retainers ($0 vs $2,500/mo)</span>
-        <span className={styles.trustChip}>⚡ 60s Speed-to-Lead Auto-SMS</span>
-        <span className={styles.trustChip}>🌦️ Weather Surge Protection</span>
-        <span className={styles.trustChip}>🛑 Fully-Booked Capacity Guard</span>
+        <span className={styles.trustChip}>⚡ &lt;60s Speed-to-Lead AI SMS</span>
+        <span className={styles.trustChip}>🌦️ Weather Surge &amp; Capacity Guard</span>
         <span className={styles.trustChip}>🔄 Closed-Loop Revenue Sync</span>
-        <span className={styles.trustChip}>💳 Cancel or Pause Anytime</span>
+        <span className={styles.trustChip}>💳 Cancel Anytime</span>
       </div>
 
       {/* Active vs Purchase View Switcher */}
@@ -845,12 +852,6 @@ export default function ManagedAdsScreen({
               <span className="mkt-tile-label">Attributed Leads</span>
               <strong className="mkt-tile-value">{roiMetrics.effectiveLeads}</strong>
               <span className="mkt-tile-note">Inbound calls &amp; quote forms</span>
-            </article>
-
-            <article className="panel mkt-tile">
-              <span className="mkt-tile-label">Cost Per Lead (CPL)</span>
-              <strong className="mkt-tile-value">${Math.round(currentBundle.totalMonthlyDollars / Math.max(1, roiMetrics.effectiveLeads))}</strong>
-              <span className="mkt-tile-note">{trade} benchmark average</span>
             </article>
 
             <article className="panel mkt-tile">
@@ -1184,17 +1185,32 @@ export default function ManagedAdsScreen({
         </div>
       ) : null}
 
-      {/* AI Recommendation Hero Banner */}
-      <div className={styles.aiRecCard}>
-        <span className={styles.aiRecIcon}>🤖</span>
-        <div style={{ flex: 1 }}>
-          <div className={styles.aiRecTitle}>
-            AI Growth Strategy for {trade} in {city}
+      {/* Collapsible AI Strategy Briefing */}
+      <div className={styles.strategyBriefingCard}>
+        <div
+          className={styles.strategyBriefingHeader}
+          onClick={() => setShowAiBriefing(!showAiBriefing)}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+            <span style={{ fontSize: '1.35rem' }}>🤖</span>
+            <div>
+              <strong style={{ fontSize: '0.88rem', color: 'var(--foreground)' }}>
+                AI Growth Strategy for {trade} in {city.split(',')[0]}
+              </strong>
+              <span style={{ display: 'block', fontSize: '0.72rem', color: 'var(--muted)', marginTop: '0.1rem' }}>
+                Pre-configured Google Search &amp; Retargeting with 3 AI Safety Shields.
+              </span>
+            </div>
           </div>
-          <p className={styles.aiRecBody}>
-            We pre-built your Google Search and Social Retargeting campaigns with verified local buyer keywords. All safety shields (Weather Surge Radar, Fully-Booked Capacity Pause, and Competitor Waste Scrubbing) are configured. Choose your weekly growth tier below to turn on client traffic.
-          </p>
+          <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--accent, #f97316)' }}>
+            {showAiBriefing ? 'Hide Briefing ▲' : 'Read Briefing ▼'}
+          </span>
         </div>
+        {showAiBriefing && (
+          <p style={{ fontSize: '0.82rem', color: 'var(--muted)', marginTop: '0.65rem', marginBottom: '0', lineHeight: 1.45 }}>
+            We pre-built your Google Search and Social Retargeting campaigns with verified local buyer keywords in {city}. All safety shields (Weather Surge Radar, Fully-Booked Capacity Pause, and Competitor Waste Scrubbing) are configured. Choose your plan below to launch.
+          </p>
+        )}
       </div>
 
       {capacityGuard.shouldPauseBidding ? (
@@ -1205,783 +1221,392 @@ export default function ManagedAdsScreen({
       ) : null}
 
       <div className={styles.cockpitLayout}>
-        {/* Left Column: 1-Click Bundle Selector, Cost Breakdown & ROI Calculator */}
+        {/* Left Column: Segmented 3-Step Configuration Cockpit */}
         <div className="panel workspace-section-card">
-          {/* Step 1: Pick Your Funding Model & Growth Plan */}
-          <div>
-            <div className="section-heading workspace-section-heading compact-heading">
-              <div>
-                <p className="eyebrow">Step 1 · Choose Funding Model</p>
-                <h2 style={{ fontSize: '1.25rem' }}>Select Your Funding &amp; Growth Plan</h2>
-              </div>
-              <span
-                style={{
-                  fontSize: '0.75rem',
-                  padding: '0.2rem 0.55rem',
-                  borderRadius: '20px',
-                  fontWeight: 700,
-                  textTransform: 'uppercase',
-                  background: isLiveActive ? 'rgba(16, 185, 129, 0.15)' : 'rgba(255, 255, 255, 0.08)',
-                  color: isLiveActive ? '#10b981' : 'var(--muted)',
-                  border: isLiveActive ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(255, 255, 255, 0.15)',
-                }}
-              >
-                {isLiveActive ? '● Autopilot Active' : '○ Ready to Launch'}
-              </span>
-            </div>
-
-            {/* Funding Model Switcher */}
-            <div className={styles.fundingModelToggleRow}>
-              <button
-                type="button"
-                className={`${styles.fundingModelBtn} ${fundingModel === 'weekly_drip' ? styles.fundingModelActive : ''}`}
-                onClick={() => setFundingModel('weekly_drip')}
-              >
-                <span className={styles.fundingModelIcon}>💧</span>
-                <div style={{ textAlign: 'left' }}>
-                  <strong style={{ display: 'block', fontSize: '0.85rem' }}>Weekly Drip Funding</strong>
-                  <small style={{ fontSize: '0.72rem', color: 'var(--muted)' }}>
-                    Predictable all-in weekly plans ($185–$645/wk)
-                  </small>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                className={`${styles.fundingModelBtn} ${fundingModel === 'auto_refill_wallet' ? styles.fundingModelActive : ''}`}
-                onClick={() => setFundingModel('auto_refill_wallet')}
-              >
-                <span className={styles.fundingModelIcon}>💳</span>
-                <div style={{ textAlign: 'left' }}>
-                  <strong style={{ display: 'block', fontSize: '0.85rem' }}>Auto-Refill Wallet</strong>
-                  <small style={{ fontSize: '0.72rem', color: 'var(--muted)' }}>
-                    Deposit $250 today · Re-adds &lt;$75 · Max monthly cap
-                  </small>
-                </div>
-              </button>
-            </div>
-
-            {fundingModel === 'weekly_drip' ? (
-              <>
-                <p style={{ fontSize: '0.82rem', color: 'var(--muted)', margin: '0 0 0.85rem', lineHeight: 1.45 }}>
-                  Weekly all-in funding lowers your first charge without starving the campaign. We deploy your click budget daily into Google &amp; Meta, but bill your card only once every 7 days.
-                </p>
-
-                <div className={styles.bundleGrid}>
-                  {SMART_BUNDLES.map((bundle) => {
-                    const isSelected = selectedBundleId === bundle.id;
-                    return (
-                      <button
-                        key={bundle.id}
-                        type="button"
-                        className={`${styles.bundleCard} ${isSelected ? styles.selected : ''}`}
-                        onClick={() => setSelectedBundleId(bundle.id)}
-                      >
-                        {bundle.badge ? <span className={styles.popularBadge}>{bundle.badge}</span> : null}
-                        <span className={styles.bundleName}>{bundle.name}</span>
-                        <strong className={styles.bundlePrice}>
-                          ${bundle.weeklyAmountDollars}
-                          <span className={styles.bundlePeriod}>/ wk</span>
-                        </strong>
-                        <span className={styles.bundleMonthlySub}>
-                          ~${bundle.monthlyAverageDollars}/mo avg
-                        </span>
-                        <span className={styles.bundleAllocationPill}>
-                          ~${bundle.weeklyAdSpendDollars} ads + ${bundle.weeklyFeeDollars ? `$${bundle.weeklyFeeDollars}` : '$0'} fee
-                        </span>
-                        <span className={styles.bundleLeads}>~{bundle.estimatedLeadsRange}</span>
-
-                        <ul className={styles.bundleFeatures}>
-                          {bundle.features.map((feat) => (
-                            <li key={feat} className={styles.bundleCheckItem}>
-                              <span style={{ color: '#10b981', fontWeight: 800 }}>✓</span>
-                              <span>{feat}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* Smart Shield Bar */}
-                <div className={styles.smartShieldBar}>
-                  <div className={styles.smartShieldHeader}>
-                    <span>🛡️</span>
-                    <span>AI Smart Shield Active &amp; Protecting Your Budget</span>
-                  </div>
-                  <p className={styles.smartShieldDesc}>
-                    Includes automatic Weather Surge Boosts (+25% during storms/freezes), Fully-Booked Auto-Pause Guard, and Competitor Search Exclusion filters.
-                  </p>
-                </div>
-
-                {/* Transparent Weekly Cost Breakdown */}
-                <div className={styles.costBreakdown}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.45rem' }}>
-                    <strong style={{ fontSize: '0.82rem', color: 'var(--foreground)' }}>
-                      Weekly Drip Allocation
-                    </strong>
-                    <span style={{ fontSize: '0.72rem', color: '#10b981', fontWeight: 700 }}>
-                      Billed once every 7 days
-                    </span>
-                  </div>
-                  <div className={styles.breakdownRow}>
-                    <span>Direct Ad Click Spend (deployed daily to Google/Meta)</span>
-                    <strong>${currentBundle.weeklyAdSpendDollars} / wk <span style={{ fontWeight: 400, opacity: 0.8 }}>(~${currentBundle.monthlyAdSpendDollars}/mo)</span></strong>
-                  </div>
-                  <div className={styles.breakdownRow}>
-                    <span>AI Campaign Autopilot &amp; Smart Bidding Management</span>
-                    <span>${currentBundle.weeklyFeeDollars} / wk <span style={{ fontWeight: 400, opacity: 0.8 }}>(~${currentBundle.monthlyFeeDollars}/mo)</span></span>
-                  </div>
-                  <div className={styles.breakdownTotal}>
-                    <span>Total Weekly Funding</span>
-                    <span style={{ color: 'var(--accent, #f97316)', textAlign: 'right' }}>
-                      ${currentBundle.weeklyAmountDollars} / week
-                      <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--muted)', display: 'block' }}>
-                        (~${currentBundle.monthlyAverageDollars}/mo monthly average)
-                      </span>
-                    </span>
-                  </div>
-                  <div className={styles.weeklyAdvantageNote}>
-                    💡 <strong>Why Weekly Drip Billing?</strong> Lowers your upfront cost by over 75% compared to paying a massive monthly invoice all at once. Your ad spend is deployed smoothly into Google/Meta every day, but your card is only billed once every 7 days (no individual daily charges).
-                  </div>
-                </div>
-              </>
-            ) : (
-              /* Auto-Refill Advertising Wallet UI */
-              <div className={styles.walletConfigContainer}>
-                <p style={{ fontSize: '0.82rem', color: 'var(--muted)', margin: '0 0 0.85rem', lineHeight: 1.45 }}>
-                  Start with a smaller deposit today ($250). When your advertising balance falls below $75, your wallet automatically tops up by another $250. You set a hard <strong>MAX Monthly Spend</strong> ceiling so you never exceed your budget.
-                </p>
-
-                {/* 1. Deposit Presets */}
-                <div className={styles.walletFieldGroup}>
-                  <div className={styles.walletFieldHeader}>
-                    <label htmlFor="wallet-deposit-250" style={{ fontSize: '0.82rem', fontWeight: 800, color: 'var(--foreground)' }}>
-                      1. Starting Deposit &amp; Auto-Refill Amount
-                    </label>
-                    <span style={{ fontSize: '0.74rem', color: '#10b981', fontWeight: 700 }}>
-                      Deposit ${walletDepositDollars} today
-                    </span>
-                  </div>
-                  <div className={styles.depositPresetsGrid}>
-                    {[
-                      { amt: 250, label: 'Recommended (Start Small)' },
-                      { amt: 500, label: 'Medium Volume' },
-                      { amt: 1000, label: 'High Volume' },
-                    ].map(({ amt, label }) => (
-                      <button
-                        key={amt}
-                        id={`wallet-deposit-${amt}`}
-                        type="button"
-                        className={`${styles.depositPresetBtn} ${walletDepositDollars === amt ? styles.depositActive : ''}`}
-                        onClick={() => {
-                          setWalletDepositDollars(amt);
-                          setWalletRefillAmountDollars(amt);
-                          setWalletRefillThresholdDollars(Math.round(amt * 0.3));
-                        }}
-                      >
-                        <span style={{ fontSize: '1.15rem', fontWeight: 900 }}>${amt}</span>
-                        <small style={{ fontSize: '0.7rem', color: 'var(--muted)', marginTop: '0.15rem' }}>
-                          {label}
-                        </small>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* 2. Refill Threshold & 3. Max Monthly Spend */}
-                <div className={styles.walletTwoCol}>
-                  <div className={styles.walletFieldGroup}>
-                    <label
-                      htmlFor="wallet-threshold-select"
-                      style={{ fontSize: '0.78rem', fontWeight: 800, color: 'var(--foreground)', display: 'block', marginBottom: '0.2rem' }}
-                    >
-                      2. Auto-Refill Trigger
-                    </label>
-                    <p style={{ fontSize: '0.72rem', color: 'var(--muted)', margin: '0 0 0.4rem' }}>
-                      Re-adds ${walletRefillAmountDollars} when ad balance drops below:
-                    </p>
-                    <select
-                      id="wallet-threshold-select"
-                      aria-label="Auto-refill trigger threshold"
-                      value={walletRefillThresholdDollars}
-                      onChange={(e) => setWalletRefillThresholdDollars(Number(e.target.value))}
-                      className={styles.walletSelect}
-                    >
-                      <option value={50}>Below $50.00</option>
-                      <option value={75}>Below $75.00 (Recommended)</option>
-                      <option value={100}>Below $100.00</option>
-                      <option value={150}>Below $150.00</option>
-                      <option value={300}>Below $300.00</option>
-                    </select>
-                  </div>
-
-                  <div className={styles.walletFieldGroup}>
-                    <label
-                      htmlFor="wallet-max-spend-select"
-                      style={{ fontSize: '0.78rem', fontWeight: 800, color: 'var(--foreground)', display: 'block', marginBottom: '0.2rem' }}
-                    >
-                      3. MAX Monthly Spend Cap
-                    </label>
-                    <p style={{ fontSize: '0.72rem', color: 'var(--muted)', margin: '0 0 0.4rem' }}>
-                      Hard stop: Auto-pauses if monthly spend reaches:
-                    </p>
-                    <select
-                      id="wallet-max-spend-select"
-                      aria-label="Max monthly spend cap"
-                      value={walletMaxMonthlySpendDollars}
-                      onChange={(e) => setWalletMaxMonthlySpendDollars(Number(e.target.value))}
-                      className={styles.walletSelect}
-                    >
-                      <option value={750}>$750 / month</option>
-                      <option value={1000}>$1,000 / month (Recommended)</option>
-                      <option value={1500}>$1,500 / month</option>
-                      <option value={2500}>$2,500 / month</option>
-                      <option value={5000}>$5,000 / month</option>
-                    </select>
-                  </div>
-                </div>
-
-                {/* Visual Wallet Lifecycle Diagram Card */}
-                <div className={styles.walletFlowCard}>
-                  <div className={styles.walletFlowHeader}>
-                    <span>💳</span>
-                    <strong style={{ fontSize: '0.85rem' }}>Auto-Refill Wallet Lifecycle &amp; Safeguards</strong>
-                  </div>
-
-                  <div className={styles.walletStepsRow}>
-                    <div className={styles.walletStepBox}>
-                      <span className={styles.walletStepNum}>1</span>
-                      <strong style={{ color: '#10b981', display: 'block', fontSize: '0.85rem' }}>
-                        ${walletDepositDollars} Deposit
-                      </strong>
-                      <span style={{ fontSize: '0.72rem', color: 'var(--muted)' }}>
-                        Funded today to launch ad traffic
-                      </span>
-                    </div>
-
-                    <span className={styles.walletArrow}>➔</span>
-
-                    <div className={styles.walletStepBox}>
-                      <span className={styles.walletStepNum}>2</span>
-                      <strong style={{ color: '#f59e0b', display: 'block', fontSize: '0.85rem' }}>
-                        &lt; ${walletRefillThresholdDollars} Trigger
-                      </strong>
-                      <span style={{ fontSize: '0.72rem', color: 'var(--muted)' }}>
-                        Auto-adds ${walletRefillAmountDollars} as clicks happen
-                      </span>
-                    </div>
-
-                    <span className={styles.walletArrow}>➔</span>
-
-                    <div className={styles.walletStepBox}>
-                      <span className={styles.walletStepNum}>3</span>
-                      <strong style={{ color: '#ef4444', display: 'block', fontSize: '0.85rem' }}>
-                        ${walletMaxMonthlySpendDollars}/mo Max
-                      </strong>
-                      <span style={{ fontSize: '0.72rem', color: 'var(--muted)' }}>
-                        Hard cap prevents runaway spend
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className={styles.walletBreakdownBox}>
-                    <div className={styles.breakdownRow}>
-                      <span>Direct Ad Click Balance (100% applied to clicks)</span>
-                      <strong>${walletDepositDollars}.00</strong>
-                    </div>
-                    <div className={styles.breakdownRow}>
-                      <span>AI Platform Management &amp; Smart Bidding (15%)</span>
-                      <span>${walletFeeDollars}.00</span>
-                    </div>
-                    <div className={styles.breakdownTotal}>
-                      <span>Initial Total Deposit Today</span>
-                      <span style={{ color: 'var(--accent, #f97316)' }}>${walletTotalDepositDollars}.00</span>
-                    </div>
-                    <p className={styles.walletAdvantageText}>
-                      🛡️ <strong>Zero Risk Guarantee:</strong> Unused wallet funds never expire. If demand slows down, clicks pause and you are never charged on arbitrary calendar dates.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Smart Campaign Focus & Custom Offer (AI Smart Field) */}
-          <div className={styles.customFocusSectionCard}>
-            <div className="section-heading workspace-section-heading compact-heading" style={{ marginBottom: '0.5rem' }}>
-              <div>
-                <p className="eyebrow">AI Smart Field · Custom Targeting</p>
-                <h2 style={{ fontSize: '1.25rem' }}>Advertise a Specific Service, Brand or Offer</h2>
-              </div>
-              <span
-                style={{
-                  fontSize: '0.72rem',
-                  padding: '0.2rem 0.55rem',
-                  borderRadius: '20px',
-                  fontWeight: 700,
-                  background: customFocus ? 'rgba(16, 185, 129, 0.15)' : 'rgba(255, 255, 255, 0.08)',
-                  color: customFocus ? '#10b981' : 'var(--muted)',
-                  border: customFocus ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(255, 255, 255, 0.12)',
-                }}
-              >
-                {customFocus ? '✨ Custom Focus Active' : '○ Optional'}
-              </span>
-            </div>
-
-            <p style={{ fontSize: '0.82rem', color: 'var(--muted)', margin: '0 0 0.75rem', lineHeight: 1.45 }}>
-              Want to advertise something specific? Type a high-margin specialty, brand, or promotion below. Our AI comprehension engine verifies the exact intent before bidding to ensure your budget targets only relevant buyers.
-            </p>
-
-            <div className={styles.focusInputWrap}>
-              <input
-                id="custom-focus-input"
-                aria-label="Specific service, brand, or promotion to advertise"
-                type="text"
-                className={styles.focusInput}
-                placeholder={`e.g. Tankless Water Heater $500 Rebate, Generac Generators, $1,500 Off Full Roof...`}
-                value={customFocus}
-                onChange={(e) => setCustomFocus(e.target.value)}
-              />
-              {customFocus ? (
-                <button
-                  type="button"
-                  className={styles.clearFocusBtn}
-                  onClick={() => setCustomFocus('')}
-                  aria-label="Clear custom focus"
-                >
-                  ✕
-                </button>
-              ) : null}
-            </div>
-
-            {/* Quick Inspiration Pills */}
-            <div className={styles.focusPillsRow}>
-              <span style={{ fontSize: '0.72rem', color: 'var(--muted)', fontWeight: 600 }}>Quick Ideas:</span>
-              {[
-                '$1,500 Off Full Replacement',
-                'Emergency Same-Day Service',
-                'Generac Whole-Home Generators',
-                'Tankless Water Heater Rebate',
-                'Epoxy Floor Coating',
-              ].map((idea) => (
-                <button
-                  key={idea}
-                  type="button"
-                  className={styles.focusIdeaBtn}
-                  onClick={() => setCustomFocus(idea)}
-                >
-                  ✨ {idea}
-                </button>
-              ))}
-            </div>
-
-            {/* AI Real-Time Comprehension Confirmation Card */}
-            {customFocus ? (
-              <div className={styles.aiComprehensionBox}>
-                <div className={styles.aiComprehensionHeader}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                    <span>🧠</span>
-                    <strong style={{ fontSize: '0.82rem', color: 'var(--foreground)' }}>
-                      AI Comprehension &amp; Search Verification
-                    </strong>
-                  </div>
-                  <span
-                    style={{
-                      fontSize: '0.7rem',
-                      fontWeight: 700,
-                      padding: '0.15rem 0.5rem',
-                      borderRadius: '12px',
-                      background:
-                        customFocusAnalysis.clarityVerdict === 'ready'
-                          ? 'rgba(16, 185, 129, 0.2)'
-                          : 'rgba(245, 158, 11, 0.2)',
-                      color: customFocusAnalysis.clarityVerdict === 'ready' ? '#10b981' : '#f59e0b',
-                    }}
-                  >
-                    {customFocusAnalysis.clarityVerdict === 'ready'
-                      ? '✓ AI Verified · Ready to Bid'
-                      : '⚠️ Refine Query'}
-                  </span>
-                </div>
-
-                <p className={styles.aiSummaryText}>{customFocusAnalysis.aiUnderstandingSummary}</p>
-
-                {/* Search Term & Waste Filter Verification Grid */}
-                <div className={styles.aiKeywordsVerificationGrid}>
-                  <div className={styles.aiKwColumn}>
-                    <span
-                      style={{
-                        fontSize: '0.72rem',
-                        fontWeight: 700,
-                        color: '#10b981',
-                        display: 'block',
-                        marginBottom: '0.35rem',
-                      }}
-                    >
-                      🟢 Exact Buyer Searches We Will Bid On:
-                    </span>
-                    <div className={styles.kwPillsWrap}>
-                      {customFocusAnalysis.targetBuyerSearches.slice(0, 4).map((kw) => (
-                        <span key={kw} className={styles.kwPillTarget} style={{ fontSize: '0.72rem' }}>
-                          {kw}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className={styles.aiKwColumn}>
-                    <span
-                      style={{
-                        fontSize: '0.72rem',
-                        fontWeight: 700,
-                        color: '#ef4444',
-                        display: 'block',
-                        marginBottom: '0.35rem',
-                      }}
-                    >
-                      🔴 Negative Keywords Filtered Out (Zero Waste):
-                    </span>
-                    <div className={styles.kwPillsWrap}>
-                      {customFocusAnalysis.customNegativeFilters.slice(0, 4).map((neg) => (
-                        <span key={neg} className={styles.kwPillNegative} style={{ fontSize: '0.72rem' }}>
-                          - {neg}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                {customFocusAnalysis.aiSuggestions.length > 0 &&
-                customFocusAnalysis.clarityVerdict !== 'ready' ? (
-                  <div className={styles.aiSuggestionAlert}>
-                    <span>💡</span>
-                    <span>{customFocusAnalysis.aiSuggestions[0]}</span>
-                  </div>
-                ) : null}
-              </div>
-            ) : null}
-          </div>
-
-          {/* Step 2: Campaign Schedule & Active Days (Dayparting) */}
-          <div className={styles.scheduleSectionCard}>
-            <div className="section-heading workspace-section-heading compact-heading" style={{ marginBottom: '0.6rem' }}>
-              <div>
-                <p className="eyebrow">Step 2</p>
-                <h2 style={{ fontSize: '1.25rem' }}>Active Days &amp; Hours (Dayparting)</h2>
-              </div>
-              <span className={styles.activeHoursBadge}>
-                {totalWeeklyHours} hrs / week active
-              </span>
-            </div>
-
-            <p style={{ fontSize: '0.82rem', color: 'var(--muted)', margin: '0 0 0.85rem', lineHeight: 1.45 }}>
-              Choose which days and hours your ads should run. Ads automatically pause overnight or on weekends so you never pay for clicks when no one is available to answer the phone.
-            </p>
-
-            {/* Quick Presets */}
-            <div className={styles.schedulePresetsRow}>
-              <button
-                type="button"
-                className={`${styles.schedulePresetBtn} ${
-                  selectedDays.length === 5 &&
-                  !selectedDays.includes('SATURDAY') &&
-                  !selectedDays.includes('SUNDAY') &&
-                  !allHours &&
-                  startHour === 7 &&
-                  endHour === 18
-                    ? styles.presetActive
-                    : ''
-                }`}
-                onClick={() => {
-                  setSelectedDays(['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY']);
-                  setStartHour(7);
-                  setEndHour(18);
-                  setAllHours(false);
-                }}
-              >
-                ⚡ Weekdays (Mon–Fri · 7 AM–6 PM)
-              </button>
-              <button
-                type="button"
-                className={`${styles.schedulePresetBtn} ${
-                  selectedDays.length === 6 &&
-                  !selectedDays.includes('SUNDAY') &&
-                  !allHours &&
-                  startHour === 7 &&
-                  endHour === 18
-                    ? styles.presetActive
-                    : ''
-                }`}
-                onClick={() => {
-                  setSelectedDays(['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY']);
-                  setStartHour(7);
-                  setEndHour(18);
-                  setAllHours(false);
-                }}
-              >
-                🏢 Mon–Sat (7 AM–6 PM)
-              </button>
-              <button
-                type="button"
-                className={`${styles.schedulePresetBtn} ${
-                  selectedDays.length === 7 && allHours ? styles.presetActive : ''
-                }`}
-                onClick={() => {
-                  setSelectedDays(['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY']);
-                  setStartHour(0);
-                  setEndHour(24);
-                  setAllHours(true);
-                }}
-              >
-                🌟 24/7 Always On (All Week)
-              </button>
-            </div>
-
-            {/* Interactive Day-of-Week Pills */}
-            <div style={{ marginBottom: '1rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.45rem' }}>
-                <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--foreground)' }}>
-                  Active Days of the Week ({activeDaysCount} of 7 Selected)
-                </label>
-                <div style={{ display: 'flex', gap: '0.4rem' }}>
-                  <button
-                    type="button"
-                    onClick={selectAllDays}
-                    className={styles.quickDayLink}
-                  >
-                    All 7 Days
-                  </button>
-                  <span style={{ color: 'var(--muted)', fontSize: '0.7rem' }}>·</span>
-                  <button
-                    type="button"
-                    onClick={selectWeekdays}
-                    className={styles.quickDayLink}
-                  >
-                    Mon–Fri
-                  </button>
-                </div>
-              </div>
-
-              <div className={styles.daysGrid}>
-                {DAY_LABELS.map((day) => {
-                  const isSel = selectedDays.includes(day.key);
-                  return (
-                    <button
-                      key={day.key}
-                      type="button"
-                      onClick={() => toggleDay(day.key)}
-                      className={`${styles.dayBtn} ${isSel ? styles.dayBtnActive : ''}`}
-                      title={`Toggle ${day.label}`}
-                    >
-                      <span className={styles.dayShort}>{day.short}</span>
-                      <span className={styles.dayState}>{isSel ? '✓' : '−'}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Active Hours Configuration */}
-            <div className={styles.hoursConfigBox}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.65rem' }}>
-                <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--foreground)' }}>
-                  Active Ad Hours
-                </label>
-                <label className={styles.allHoursToggleLabel}>
-                  <input
-                    type="checkbox"
-                    checked={allHours}
-                    onChange={(e) => setAllHours(e.target.checked)}
-                    style={{ accentColor: 'var(--accent, #f97316)', cursor: 'pointer' }}
-                  />
-                  <span>Run 24 Hours on Active Days</span>
-                </label>
-              </div>
-
-              {!allHours ? (
-                <div className={styles.timeRangeGrid}>
-                  <div>
-                    <label
-                      htmlFor="start-bidding-hour"
-                      style={{ fontSize: '0.72rem', color: 'var(--muted)', display: 'block', marginBottom: '0.25rem' }}
-                    >
-                      Start Bidding At:
-                    </label>
-                    <select
-                      id="start-bidding-hour"
-                      aria-label="Start bidding hour"
-                      value={startHour}
-                      onChange={(e) => {
-                        const val = Number(e.target.value);
-                        setStartHour(val);
-                        if (val >= endHour) setEndHour(Math.min(24, val + 1));
-                      }}
-                      className={styles.timeSelect}
-                    >
-                      {Array.from({ length: 24 }, (_, i) => i).map((h) => (
-                        <option key={h} value={h}>
-                          {formatHourLabel(h)}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label
-                      htmlFor="stop-bidding-hour"
-                      style={{ fontSize: '0.72rem', color: 'var(--muted)', display: 'block', marginBottom: '0.25rem' }}
-                    >
-                      Stop Bidding At:
-                    </label>
-                    <select
-                      id="stop-bidding-hour"
-                      aria-label="Stop bidding hour"
-                      value={endHour}
-                      onChange={(e) => {
-                        const val = Number(e.target.value);
-                        setEndHour(val);
-                        if (val <= startHour) setStartHour(Math.max(0, val - 1));
-                      }}
-                      className={styles.timeSelect}
-                    >
-                      {Array.from({ length: 24 }, (_, i) => i + 1).map((h) => (
-                        <option key={h} value={h}>
-                          {formatHourLabel(h)}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              ) : null}
-
-              {/* Schedule Pacing Summary */}
-              <div className={styles.schedulePacingSummary}>
-                <div className={styles.pacingRow}>
-                  <span>🗓️ Active Schedule:</span>
-                  <strong>
-                    {activeDaysCount === 7
-                      ? 'Every Day (Mon–Sun)'
-                      : selectedDays.map((d) => DAY_LABELS.find((l) => l.key === d)?.short).join(', ')}
-                    {' · '}
-                    {allHours ? '24 Hours' : `${formatHourLabel(startHour)} – ${formatHourLabel(endHour)}`}
-                  </strong>
-                </div>
-                <div className={styles.pacingRow}>
-                  <span>⚡ Concentrated Daily Pace:</span>
-                  <strong style={{ color: 'var(--accent, #f97316)' }}>
-                    ~${activeDaysPaceDaily.toFixed(2)} / active day
-                  </strong>
-                </div>
-                <p className={styles.pacingNote}>
-                  🛡️ Bidding automatically sleeps outside your selected hours, concentrating 100% of your click budget when you can answer calls.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Interactive ROI & Revenue Potential Calculator */}
-          <div className={styles.roiCalcCard}>
-            <div className={styles.roiHeader}>
-              <div>
-                <span className="eyebrow" style={{ color: 'var(--accent, #f97316)' }}>
-                  Interactive Revenue Model
-                </span>
-                <h3 style={{ margin: '0.2rem 0', fontSize: '1.1rem' }}>
-                  Projected Return on Ad Spend (ROAS)
-                </h3>
-              </div>
-              <button
-                type="button"
-                className={styles.weatherToggleBtn}
-                onClick={() => setWeatherSurgeSim(!weatherSurgeSim)}
-                title="Simulate high-demand weather surge"
-              >
-                {weatherSurgeSim ? '⛈️ Weather Surge (+25%)' : '☀️ Normal Weather'}
-              </button>
-            </div>
-
-            <p style={{ fontSize: '0.8rem', color: 'var(--muted)', margin: '0 0 0.85rem' }}>
-              Adjust your typical project size and closing percentage. Projections use conservative local trade CPC benchmarks for verified, screened homeowners (excluding spam and unqualified clicks).
-            </p>
-
-            <div className={styles.roiSliders}>
-              <div className={styles.sliderBox}>
-                <div className={styles.sliderLabelRow}>
-                  <span>Average Job Revenue</span>
-                  <strong>${avgTicketDollars.toLocaleString()}</strong>
-                </div>
-                <input
-                  type="range"
-                  min={500}
-                  max={20000}
-                  step={250}
-                  value={avgTicketDollars}
-                  onChange={(e) => setAvgTicketDollars(Number(e.target.value))}
-                  className={styles.rangeInput}
-                />
-              </div>
-
-              <div className={styles.sliderBox}>
-                <div className={styles.sliderLabelRow}>
-                  <span>Estimate Close Rate</span>
-                  <strong>{closeRatePct}%</strong>
-                </div>
-                <input
-                  type="range"
-                  min={10}
-                  max={50}
-                  step={5}
-                  value={closeRatePct}
-                  onChange={(e) => setCloseRatePct(Number(e.target.value))}
-                  className={styles.rangeInput}
-                />
-              </div>
-            </div>
-
-            <div className={styles.roiResultsGrid}>
-              <div className={styles.roiResultBox}>
-                <span className={styles.roiResultLabel}>Est. Monthly Leads</span>
-                <strong className={styles.roiResultValue}>{roiMetrics.effectiveLeads}</strong>
-                <span className={styles.roiResultSub}>Pre-qualified local calls/forms</span>
-              </div>
-              <div className={styles.roiResultBox}>
-                <span className={styles.roiResultLabel}>Est. Closed Jobs</span>
-                <strong className={styles.roiResultValue} style={{ color: '#10b981' }}>
-                  {roiMetrics.wonJobs} Jobs
-                </strong>
-                <span className={styles.roiResultSub}>@ {closeRatePct}% close rate</span>
-              </div>
-              <div className={styles.roiResultBox}>
-                <span className={styles.roiResultLabel}>Projected Revenue</span>
-                <strong className={styles.roiResultValue} style={{ color: 'var(--accent, #f97316)' }}>
-                  ${roiMetrics.grossRevenue.toLocaleString()}
-                </strong>
-                <span className={styles.roiResultSub}>Monthly pipeline value</span>
-              </div>
-              <div className={styles.roiResultBox}>
-                <span className={styles.roiResultLabel}>Projected ROAS</span>
-                <strong className={styles.roiResultValue} style={{ color: '#38bdf8' }}>
-                  {roiMetrics.roas}x
-                </strong>
-                <span className={styles.roiResultSub}>Return on Ad Spend</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Advanced Drawer */}
-          <div className={styles.advancedDrawer}>
+          {/* Segmented Cockpit Configuration Navigation Tabs */}
+          <div className={styles.cockpitTabsNav} role="tablist">
             <button
               type="button"
-              className={styles.advancedToggleBtn}
-              onClick={() => setShowAdvanced(!showAdvanced)}
+              role="tab"
+              aria-selected={configTab === 'plan'}
+              className={`${styles.cockpitTab} ${configTab === 'plan' ? styles.cockpitTabActive : ''}`}
+              onClick={() => setConfigTab('plan')}
             >
-              <span>{showAdvanced ? '▲' : '▼'}</span>
-              <span>Advanced Customization &amp; Export Blueprint ({showAdvanced ? 'Hide' : 'Show'})</span>
+              <div className={styles.cockpitTabTitle}>
+                <span>1. 💳</span>
+                <span>Plan &amp; Budget</span>
+              </div>
+              <span className={styles.cockpitTabBadge}>
+                {fundingModel === 'weekly_drip' ? `$${currentBundle.weeklyAmountDollars}/wk` : `$${walletDepositDollars} Wallet`}
+              </span>
             </button>
 
-            {showAdvanced ? (
-              <div className={styles.advancedContent}>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={configTab === 'schedule'}
+              className={`${styles.cockpitTab} ${configTab === 'schedule' ? styles.cockpitTabActive : ''}`}
+              onClick={() => setConfigTab('schedule')}
+            >
+              <div className={styles.cockpitTabTitle}>
+                <span>2. 📍</span>
+                <span>Location &amp; Schedule</span>
+              </div>
+              <span className={styles.cockpitTabBadge}>
+                {city.split(',')[0]} · {activeDaysCount}d/wk
+              </span>
+            </button>
+
+            <button
+              type="button"
+              role="tab"
+              aria-selected={configTab === 'focus_roi'}
+              className={`${styles.cockpitTab} ${configTab === 'focus_roi' ? styles.cockpitTabActive : ''}`}
+              onClick={() => setConfigTab('focus_roi')}
+            >
+              <div className={styles.cockpitTabTitle}>
+                <span>3. 🎯</span>
+                <span>Focus &amp; ROI</span>
+              </div>
+              <span className={styles.cockpitTabBadge}>
+                {customFocus ? '✨ Custom' : `${roiMetrics.roas}x ROAS`}
+              </span>
+            </button>
+          </div>
+
+          {/* TAB 1: PLAN & BUDGET */}
+          {configTab === 'plan' && (
+            <div>
+              <div className="section-heading workspace-section-heading compact-heading" style={{ marginBottom: '0.75rem' }}>
+                <div>
+                  <p className="eyebrow">Step 1 · Budget Model</p>
+                  <h2 style={{ fontSize: '1.25rem' }}>Select Your Funding &amp; Growth Plan</h2>
+                </div>
+                <span
+                  style={{
+                    fontSize: '0.75rem',
+                    padding: '0.2rem 0.55rem',
+                    borderRadius: '20px',
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    background: isLiveActive ? 'rgba(16, 185, 129, 0.15)' : 'rgba(255, 255, 255, 0.08)',
+                    color: isLiveActive ? '#10b981' : 'var(--muted)',
+                    border: isLiveActive ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(255, 255, 255, 0.15)',
+                  }}
+                >
+                  {isLiveActive ? '● Autopilot Active' : '○ Ready to Launch'}
+                </span>
+              </div>
+
+              {/* Funding Model Switcher */}
+              <div className={styles.fundingModelToggleRow}>
+                <button
+                  type="button"
+                  className={`${styles.fundingModelBtn} ${fundingModel === 'weekly_drip' ? styles.fundingModelActive : ''}`}
+                  onClick={() => setFundingModel('weekly_drip')}
+                >
+                  <span className={styles.fundingModelIcon}>💧</span>
+                  <div style={{ textAlign: 'left' }}>
+                    <strong style={{ display: 'block', fontSize: '0.85rem' }}>Weekly Drip Funding</strong>
+                    <small style={{ fontSize: '0.72rem', color: 'var(--muted)' }}>
+                      Predictable all-in weekly plans ($185–$645/wk)
+                    </small>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  className={`${styles.fundingModelBtn} ${fundingModel === 'auto_refill_wallet' ? styles.fundingModelActive : ''}`}
+                  onClick={() => setFundingModel('auto_refill_wallet')}
+                >
+                  <span className={styles.fundingModelIcon}>💳</span>
+                  <div style={{ textAlign: 'left' }}>
+                    <strong style={{ display: 'block', fontSize: '0.85rem' }}>Auto-Refill Wallet</strong>
+                    <small style={{ fontSize: '0.72rem', color: 'var(--muted)' }}>
+                      Deposit $250 today · Re-adds &lt;$75 · Max monthly cap
+                    </small>
+                  </div>
+                </button>
+              </div>
+
+              {fundingModel === 'weekly_drip' ? (
+                <>
+                  <p style={{ fontSize: '0.82rem', color: 'var(--muted)', margin: '0 0 0.85rem', lineHeight: 1.45 }}>
+                    Weekly all-in funding lowers your first charge without starving the campaign. We deploy your click budget daily into Google &amp; Meta, but bill your card only once every 7 days.
+                  </p>
+
+                  <div className={styles.bundleGrid}>
+                    {SMART_BUNDLES.map((bundle) => {
+                      const isSelected = selectedBundleId === bundle.id;
+                      return (
+                        <button
+                          key={bundle.id}
+                          type="button"
+                          className={`${styles.bundleCard} ${isSelected ? styles.selected : ''}`}
+                          onClick={() => setSelectedBundleId(bundle.id)}
+                        >
+                          {bundle.badge ? <span className={styles.popularBadge}>{bundle.badge}</span> : null}
+                          <span className={styles.bundleName}>{bundle.name}</span>
+                          <strong className={styles.bundlePrice}>
+                            ${bundle.weeklyAmountDollars}
+                            <span className={styles.bundlePeriod}>/ wk</span>
+                          </strong>
+                          <span className={styles.bundleMonthlySub}>
+                            ~${bundle.monthlyAverageDollars}/mo avg
+                          </span>
+                          <span className={styles.bundleAllocationPill}>
+                            ~${bundle.weeklyAdSpendDollars} ads + ${bundle.weeklyFeeDollars ? `$${bundle.weeklyFeeDollars}` : '$0'} fee
+                          </span>
+                          <span className={styles.bundleLeads}>~{bundle.estimatedLeadsRange}</span>
+
+                          <ul className={styles.bundleFeatures}>
+                            {bundle.features.map((feat) => (
+                              <li key={feat} className={styles.bundleCheckItem}>
+                                <span style={{ color: '#10b981', fontWeight: 800 }}>✓</span>
+                                <span>{feat}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Smart Shield Bar */}
+                  <div className={styles.smartShieldBar}>
+                    <div className={styles.smartShieldHeader}>
+                      <span>🛡️</span>
+                      <span>AI Smart Shield Active &amp; Protecting Your Budget</span>
+                    </div>
+                    <p className={styles.smartShieldDesc}>
+                      Includes automatic Weather Surge Boosts (+25% during storms/freezes), Fully-Booked Auto-Pause Guard, and Competitor Search Exclusion filters.
+                    </p>
+                  </div>
+
+                  {/* Transparent Weekly Cost Breakdown */}
+                  <div className={styles.costBreakdown}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.45rem' }}>
+                      <strong style={{ fontSize: '0.82rem', color: 'var(--foreground)' }}>
+                        Weekly Drip Allocation
+                      </strong>
+                      <span style={{ fontSize: '0.72rem', color: '#10b981', fontWeight: 700 }}>
+                        Billed once every 7 days
+                      </span>
+                    </div>
+                    <div className={styles.breakdownRow}>
+                      <span>Direct Ad Click Spend (deployed daily to Google/Meta)</span>
+                      <strong>${currentBundle.weeklyAdSpendDollars} / wk <span style={{ fontWeight: 400, opacity: 0.8 }}>(~${currentBundle.monthlyAdSpendDollars}/mo)</span></strong>
+                    </div>
+                    <div className={styles.breakdownRow}>
+                      <span>AI Campaign Autopilot &amp; Smart Bidding Management</span>
+                      <span>${currentBundle.weeklyFeeDollars} / wk <span style={{ fontWeight: 400, opacity: 0.8 }}>(~${currentBundle.monthlyFeeDollars}/mo)</span></span>
+                    </div>
+                    <div className={styles.breakdownTotal}>
+                      <span>Total Weekly Funding</span>
+                      <span style={{ color: 'var(--accent, #f97316)', textAlign: 'right' }}>
+                        ${currentBundle.weeklyAmountDollars} / week
+                        <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--muted)', display: 'block' }}>
+                          (~${currentBundle.monthlyAverageDollars}/mo monthly average)
+                        </span>
+                      </span>
+                    </div>
+                    <div className={styles.weeklyAdvantageNote}>
+                      💡 <strong>Why Weekly Drip Billing?</strong> Lowers your upfront cost by over 75% compared to paying a massive monthly invoice all at once. Your ad spend is deployed smoothly into Google/Meta every day, but your card is only billed once every 7 days (no individual daily charges).
+                    </div>
+                  </div>
+                </>
+              ) : (
+                /* Auto-Refill Advertising Wallet UI */
+                <div className={styles.walletConfigContainer}>
+                  <p style={{ fontSize: '0.82rem', color: 'var(--muted)', margin: '0 0 0.85rem', lineHeight: 1.45 }}>
+                    Start with a smaller deposit today ($250). When your advertising balance falls below $75, your wallet automatically tops up by another $250. You set a hard <strong>MAX Monthly Spend</strong> ceiling so you never exceed your budget.
+                  </p>
+
+                  {/* 1. Deposit Presets */}
+                  <div className={styles.walletFieldGroup}>
+                    <div className={styles.walletFieldHeader}>
+                      <label htmlFor="wallet-deposit-250" style={{ fontSize: '0.82rem', fontWeight: 800, color: 'var(--foreground)' }}>
+                        1. Starting Deposit &amp; Auto-Refill Amount
+                      </label>
+                      <span style={{ fontSize: '0.74rem', color: '#10b981', fontWeight: 700 }}>
+                        Deposit ${walletDepositDollars} today
+                      </span>
+                    </div>
+                    <div className={styles.depositPresetsGrid}>
+                      {[
+                        { amt: 250, label: 'Recommended (Start Small)' },
+                        { amt: 500, label: 'Medium Volume' },
+                        { amt: 1000, label: 'High Volume' },
+                      ].map(({ amt, label }) => (
+                        <button
+                          key={amt}
+                          id={`wallet-deposit-${amt}`}
+                          type="button"
+                          className={`${styles.depositPresetBtn} ${walletDepositDollars === amt ? styles.depositActive : ''}`}
+                          onClick={() => {
+                            setWalletDepositDollars(amt);
+                            setWalletRefillAmountDollars(amt);
+                            setWalletRefillThresholdDollars(Math.round(amt * 0.3));
+                          }}
+                        >
+                          <span style={{ fontSize: '1.15rem', fontWeight: 900 }}>${amt}</span>
+                          <small style={{ fontSize: '0.7rem', color: 'var(--muted)', marginTop: '0.15rem' }}>
+                            {label}
+                          </small>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 2. Refill Threshold & 3. Max Monthly Spend */}
+                  <div className={styles.walletTwoCol}>
+                    <div className={styles.walletFieldGroup}>
+                      <label
+                        htmlFor="wallet-threshold-select"
+                        style={{ fontSize: '0.78rem', fontWeight: 800, color: 'var(--foreground)', display: 'block', marginBottom: '0.2rem' }}
+                      >
+                        2. Auto-Refill Trigger
+                      </label>
+                      <p style={{ fontSize: '0.72rem', color: 'var(--muted)', margin: '0 0 0.4rem' }}>
+                        Re-adds ${walletRefillAmountDollars} when ad balance drops below:
+                      </p>
+                      <select
+                        id="wallet-threshold-select"
+                        aria-label="Auto-refill trigger threshold"
+                        value={walletRefillThresholdDollars}
+                        onChange={(e) => setWalletRefillThresholdDollars(Number(e.target.value))}
+                        className={styles.walletSelect}
+                      >
+                        <option value={50}>Below $50.00</option>
+                        <option value={75}>Below $75.00 (Recommended)</option>
+                        <option value={100}>Below $100.00</option>
+                        <option value={150}>Below $150.00</option>
+                        <option value={300}>Below $300.00</option>
+                      </select>
+                    </div>
+
+                    <div className={styles.walletFieldGroup}>
+                      <label
+                        htmlFor="wallet-max-spend-select"
+                        style={{ fontSize: '0.78rem', fontWeight: 800, color: 'var(--foreground)', display: 'block', marginBottom: '0.2rem' }}
+                      >
+                        3. MAX Monthly Spend Cap
+                      </label>
+                      <p style={{ fontSize: '0.72rem', color: 'var(--muted)', margin: '0 0 0.4rem' }}>
+                        Hard stop: Auto-pauses if monthly spend reaches:
+                      </p>
+                      <select
+                        id="wallet-max-spend-select"
+                        aria-label="Max monthly spend cap"
+                        value={walletMaxMonthlySpendDollars}
+                        onChange={(e) => setWalletMaxMonthlySpendDollars(Number(e.target.value))}
+                        className={styles.walletSelect}
+                      >
+                        <option value={750}>$750 / month</option>
+                        <option value={1000}>$1,000 / month (Recommended)</option>
+                        <option value={1500}>$1,500 / month</option>
+                        <option value={2500}>$2,500 / month</option>
+                        <option value={5000}>$5,000 / month</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Visual Wallet Lifecycle Diagram Card */}
+                  <div className={styles.walletFlowCard}>
+                    <div className={styles.walletFlowHeader}>
+                      <span>💳</span>
+                      <strong style={{ fontSize: '0.85rem' }}>Auto-Refill Wallet Lifecycle &amp; Safeguards</strong>
+                    </div>
+
+                    <div className={styles.walletStepsRow}>
+                      <div className={styles.walletStepBox}>
+                        <span className={styles.walletStepNum}>1</span>
+                        <strong style={{ color: '#10b981', display: 'block', fontSize: '0.85rem' }}>
+                          ${walletDepositDollars} Deposit
+                        </strong>
+                        <span style={{ fontSize: '0.72rem', color: 'var(--muted)' }}>
+                          Funded today to launch ad traffic
+                        </span>
+                      </div>
+
+                      <span className={styles.walletArrow}>➔</span>
+
+                      <div className={styles.walletStepBox}>
+                        <span className={styles.walletStepNum}>2</span>
+                        <strong style={{ color: '#f59e0b', display: 'block', fontSize: '0.85rem' }}>
+                          &lt; ${walletRefillThresholdDollars} Trigger
+                        </strong>
+                        <span style={{ fontSize: '0.72rem', color: 'var(--muted)' }}>
+                          Auto-adds ${walletRefillAmountDollars} as clicks happen
+                        </span>
+                      </div>
+
+                      <span className={styles.walletArrow}>➔</span>
+
+                      <div className={styles.walletStepBox}>
+                        <span className={styles.walletStepNum}>3</span>
+                        <strong style={{ color: '#ef4444', display: 'block', fontSize: '0.85rem' }}>
+                          ${walletMaxMonthlySpendDollars}/mo Max
+                        </strong>
+                        <span style={{ fontSize: '0.72rem', color: 'var(--muted)' }}>
+                          Hard cap prevents runaway spend
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className={styles.walletBreakdownBox}>
+                      <div className={styles.breakdownRow}>
+                        <span>Direct Ad Click Balance (100% applied to clicks)</span>
+                        <strong>${walletDepositDollars}.00</strong>
+                      </div>
+                      <div className={styles.breakdownRow}>
+                        <span>AI Platform Management &amp; Smart Bidding (15%)</span>
+                        <span>${walletFeeDollars}.00</span>
+                      </div>
+                      <div className={styles.breakdownTotal}>
+                        <span>Initial Total Deposit Today</span>
+                        <span style={{ color: 'var(--accent, #f97316)' }}>${walletTotalDepositDollars}.00</span>
+                      </div>
+                      <p className={styles.walletAdvantageText}>
+                        🛡️ <strong>Zero Risk Guarantee:</strong> Unused wallet funds never expire. If demand slows down, clicks pause and you are never charged on arbitrary calendar dates.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Step 1 Completion Navigation */}
+              <div className={styles.tabStepperRow}>
+                <span style={{ fontSize: '0.74rem', color: 'var(--muted)' }}>
+                  Step 1 of 3 · Budget plan selected
+                </span>
+                <button
+                  type="button"
+                  className="btn primary"
+                  onClick={() => setConfigTab('schedule')}
+                  style={{ fontSize: '0.8rem', padding: '0.45rem 1rem' }}
+                >
+                  Continue to Location &amp; Schedule ➔
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 2: LOCATION & SCHEDULE */}
+          {configTab === 'schedule' && (
+            <div>
+              <div className="section-heading workspace-section-heading compact-heading" style={{ marginBottom: '0.75rem' }}>
+                <div>
+                  <p className="eyebrow">Step 2 · Geo &amp; Hours</p>
+                  <h2 style={{ fontSize: '1.25rem' }}>Service Area &amp; Active Hours</h2>
+                </div>
+                <span className={styles.activeHoursBadge}>
+                  {totalWeeklyHours} hrs / week active
+                </span>
+              </div>
+
+              {/* Location & Radius Card */}
+              <div style={{ background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '8px', padding: '0.9rem', marginBottom: '1rem' }}>
                 <div
                   style={{
                     display: 'grid',
@@ -1994,9 +1619,10 @@ export default function ManagedAdsScreen({
                     <label
                       style={{
                         fontSize: '0.75rem',
-                        color: 'var(--muted)',
+                        fontWeight: 700,
+                        color: 'var(--foreground)',
                         display: 'block',
-                        marginBottom: '0.2rem',
+                        marginBottom: '0.3rem',
                       }}
                     >
                       Target City
@@ -2013,9 +1639,10 @@ export default function ManagedAdsScreen({
                     <label
                       style={{
                         fontSize: '0.75rem',
-                        color: 'var(--muted)',
+                        fontWeight: 700,
+                        color: 'var(--foreground)',
                         display: 'block',
-                        marginBottom: '0.2rem',
+                        marginBottom: '0.3rem',
                       }}
                     >
                       Service Radius: {radius} miles
@@ -2027,21 +1654,22 @@ export default function ManagedAdsScreen({
                       step={5}
                       value={radius}
                       onChange={(e) => setRadius(Number(e.target.value))}
-                      style={{ width: '100%' }}
+                      style={{ width: '100%', marginTop: '0.25rem' }}
                     />
                   </div>
                 </div>
 
-                <div style={{ marginBottom: '0.85rem' }}>
+                <div>
                   <label
                     style={{
                       fontSize: '0.75rem',
-                      color: 'var(--muted)',
+                      fontWeight: 700,
+                      color: 'var(--foreground)',
                       display: 'block',
-                      marginBottom: '0.3rem',
+                      marginBottom: '0.35rem',
                     }}
                   >
-                    Active Services ({selectedServices.length})
+                    Active Trade Specialties ({selectedServices.length} Selected)
                   </label>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
                     {availableServices.map((service) => {
@@ -2068,7 +1696,494 @@ export default function ManagedAdsScreen({
                     })}
                   </div>
                 </div>
+              </div>
 
+              {/* Dayparting Schedule */}
+              <div className={styles.scheduleSectionCard}>
+                <p style={{ fontSize: '0.82rem', color: 'var(--muted)', margin: '0 0 0.85rem', lineHeight: 1.45 }}>
+                  Choose which days and hours your ads should run. Ads automatically pause overnight or on weekends so you never pay for clicks when no one is available to answer the phone.
+                </p>
+
+                {/* Quick Presets */}
+                <div className={styles.schedulePresetsRow}>
+                  <button
+                    type="button"
+                    className={`${styles.schedulePresetBtn} ${
+                      selectedDays.length === 5 &&
+                      !selectedDays.includes('SATURDAY') &&
+                      !selectedDays.includes('SUNDAY') &&
+                      !allHours &&
+                      startHour === 7 &&
+                      endHour === 18
+                        ? styles.presetActive
+                        : ''
+                    }`}
+                    onClick={() => {
+                      setSelectedDays(['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY']);
+                      setStartHour(7);
+                      setEndHour(18);
+                      setAllHours(false);
+                    }}
+                  >
+                    ⚡ Weekdays (Mon–Fri · 7 AM–6 PM)
+                  </button>
+                  <button
+                    type="button"
+                    className={`${styles.schedulePresetBtn} ${
+                      selectedDays.length === 6 &&
+                      !selectedDays.includes('SUNDAY') &&
+                      !allHours &&
+                      startHour === 7 &&
+                      endHour === 18
+                        ? styles.presetActive
+                        : ''
+                    }`}
+                    onClick={() => {
+                      setSelectedDays(['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY']);
+                      setStartHour(7);
+                      setEndHour(18);
+                      setAllHours(false);
+                    }}
+                  >
+                    🏢 Mon–Sat (7 AM–6 PM)
+                  </button>
+                  <button
+                    type="button"
+                    className={`${styles.schedulePresetBtn} ${
+                      selectedDays.length === 7 && allHours ? styles.presetActive : ''
+                    }`}
+                    onClick={() => {
+                      setSelectedDays(['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY']);
+                      setStartHour(0);
+                      setEndHour(24);
+                      setAllHours(true);
+                    }}
+                  >
+                    🌟 24/7 Always On (All Week)
+                  </button>
+                </div>
+
+                {/* Interactive Day-of-Week Pills */}
+                <div style={{ marginBottom: '1rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.45rem' }}>
+                    <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--foreground)' }}>
+                      Active Days of the Week ({activeDaysCount} of 7 Selected)
+                    </label>
+                    <div style={{ display: 'flex', gap: '0.4rem' }}>
+                      <button
+                        type="button"
+                        onClick={selectAllDays}
+                        className={styles.quickDayLink}
+                      >
+                        All 7 Days
+                      </button>
+                      <span style={{ color: 'var(--muted)', fontSize: '0.7rem' }}>·</span>
+                      <button
+                        type="button"
+                        onClick={selectWeekdays}
+                        className={styles.quickDayLink}
+                      >
+                        Mon–Fri
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className={styles.daysGrid}>
+                    {DAY_LABELS.map((day) => {
+                      const isSel = selectedDays.includes(day.key);
+                      return (
+                        <button
+                          key={day.key}
+                          type="button"
+                          onClick={() => toggleDay(day.key)}
+                          className={`${styles.dayBtn} ${isSel ? styles.dayBtnActive : ''}`}
+                          title={`Toggle ${day.label}`}
+                        >
+                          <span className={styles.dayShort}>{day.short}</span>
+                          <span className={styles.dayState}>{isSel ? '✓' : '−'}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Active Hours Configuration */}
+                <div className={styles.hoursConfigBox}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.65rem' }}>
+                    <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--foreground)' }}>
+                      Active Ad Hours
+                    </label>
+                    <label className={styles.allHoursToggleLabel}>
+                      <input
+                        type="checkbox"
+                        checked={allHours}
+                        onChange={(e) => setAllHours(e.target.checked)}
+                        style={{ accentColor: 'var(--accent, #f97316)', cursor: 'pointer' }}
+                      />
+                      <span>Run 24 Hours on Active Days</span>
+                    </label>
+                  </div>
+
+                  {!allHours ? (
+                    <div className={styles.timeRangeGrid}>
+                      <div>
+                        <label
+                          htmlFor="start-bidding-hour"
+                          style={{ fontSize: '0.72rem', color: 'var(--muted)', display: 'block', marginBottom: '0.25rem' }}
+                        >
+                          Start Bidding At:
+                        </label>
+                        <select
+                          id="start-bidding-hour"
+                          aria-label="Start bidding hour"
+                          value={startHour}
+                          onChange={(e) => {
+                            const val = Number(e.target.value);
+                            setStartHour(val);
+                            if (val >= endHour) setEndHour(Math.min(24, val + 1));
+                          }}
+                          className={styles.timeSelect}
+                        >
+                          {Array.from({ length: 24 }, (_, i) => i).map((h) => (
+                            <option key={h} value={h}>
+                              {formatHourLabel(h)}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label
+                          htmlFor="stop-bidding-hour"
+                          style={{ fontSize: '0.72rem', color: 'var(--muted)', display: 'block', marginBottom: '0.25rem' }}
+                        >
+                          Stop Bidding At:
+                        </label>
+                        <select
+                          id="stop-bidding-hour"
+                          aria-label="Stop bidding hour"
+                          value={endHour}
+                          onChange={(e) => {
+                            const val = Number(e.target.value);
+                            setEndHour(val);
+                            if (val <= startHour) setStartHour(Math.max(0, val - 1));
+                          }}
+                          className={styles.timeSelect}
+                        >
+                          {Array.from({ length: 24 }, (_, i) => i + 1).map((h) => (
+                            <option key={h} value={h}>
+                              {formatHourLabel(h)}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {/* Schedule Pacing Summary */}
+                  <div className={styles.schedulePacingSummary}>
+                    <div className={styles.pacingRow}>
+                      <span>🗓️ Active Schedule:</span>
+                      <strong>
+                        {activeDaysCount === 7
+                          ? 'Every Day (Mon–Sun)'
+                          : selectedDays.map((d) => DAY_LABELS.find((l) => l.key === d)?.short).join(', ')}
+                        {' · '}
+                        {allHours ? '24 Hours' : `${formatHourLabel(startHour)} – ${formatHourLabel(endHour)}`}
+                      </strong>
+                    </div>
+                    <div className={styles.pacingRow}>
+                      <span>⚡ Concentrated Daily Pace:</span>
+                      <strong style={{ color: 'var(--accent, #f97316)' }}>
+                        ~${activeDaysPaceDaily.toFixed(2)} / active day
+                      </strong>
+                    </div>
+                    <p className={styles.pacingNote}>
+                      🛡️ Bidding automatically sleeps outside your selected hours, concentrating 100% of your click budget when you can answer calls.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Step 2 Stepper Row */}
+              <div className={styles.tabStepperRow}>
+                <button
+                  type="button"
+                  className="btn ghost"
+                  onClick={() => setConfigTab('plan')}
+                  style={{ fontSize: '0.8rem', padding: '0.45rem 0.85rem' }}
+                >
+                  ← Back to Plan
+                </button>
+                <button
+                  type="button"
+                  className="btn primary"
+                  onClick={() => setConfigTab('focus_roi')}
+                  style={{ fontSize: '0.8rem', padding: '0.45rem 1rem' }}
+                >
+                  Next: Focus &amp; ROI ➔
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 3: FOCUS & ROI */}
+          {configTab === 'focus_roi' && (
+            <div>
+              <div className="section-heading workspace-section-heading compact-heading" style={{ marginBottom: '0.75rem' }}>
+                <div>
+                  <p className="eyebrow">Step 3 · Customization &amp; ROI</p>
+                  <h2 style={{ fontSize: '1.25rem' }}>Campaign Focus &amp; Return Projections</h2>
+                </div>
+                <span
+                  style={{
+                    fontSize: '0.72rem',
+                    padding: '0.2rem 0.55rem',
+                    borderRadius: '20px',
+                    fontWeight: 700,
+                    background: customFocus ? 'rgba(16, 185, 129, 0.15)' : 'rgba(255, 255, 255, 0.08)',
+                    color: customFocus ? '#10b981' : 'var(--muted)',
+                    border: customFocus ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(255, 255, 255, 0.12)',
+                  }}
+                >
+                  {customFocus ? '✨ Custom Focus Active' : '○ Standard Target'}
+                </span>
+              </div>
+
+              {/* Smart Campaign Focus & Custom Offer (AI Smart Field) */}
+              <div className={styles.customFocusSectionCard}>
+                <p style={{ fontSize: '0.82rem', color: 'var(--muted)', margin: '0 0 0.75rem', lineHeight: 1.45 }}>
+                  Want to advertise something specific? Type a high-margin specialty, brand, or promotion below. Our AI comprehension engine verifies the exact intent before bidding to ensure your budget targets only relevant buyers.
+                </p>
+
+                <div className={styles.focusInputWrap}>
+                  <input
+                    id="custom-focus-input"
+                    aria-label="Specific service, brand, or promotion to advertise"
+                    type="text"
+                    className={styles.focusInput}
+                    placeholder={`e.g. Tankless Water Heater $500 Rebate, Generac Generators, $1,500 Off Full Roof...`}
+                    value={customFocus}
+                    onChange={(e) => setCustomFocus(e.target.value)}
+                  />
+                  {customFocus ? (
+                    <button
+                      type="button"
+                      className={styles.clearFocusBtn}
+                      onClick={() => setCustomFocus('')}
+                      aria-label="Clear custom focus"
+                    >
+                      ✕
+                    </button>
+                  ) : null}
+                </div>
+
+                {/* Quick Inspiration Pills */}
+                <div className={styles.focusPillsRow}>
+                  <span style={{ fontSize: '0.72rem', color: 'var(--muted)', fontWeight: 600 }}>Quick Ideas:</span>
+                  {[
+                    '$1,500 Off Full Replacement',
+                    'Emergency Same-Day Service',
+                    'Generac Whole-Home Generators',
+                    'Tankless Water Heater Rebate',
+                    'Epoxy Floor Coating',
+                  ].map((idea) => (
+                    <button
+                      key={idea}
+                      type="button"
+                      className={styles.focusIdeaBtn}
+                      onClick={() => setCustomFocus(idea)}
+                    >
+                      ✨ {idea}
+                    </button>
+                  ))}
+                </div>
+
+                {/* AI Real-Time Comprehension Confirmation Card */}
+                {customFocus ? (
+                  <div className={styles.aiComprehensionBox}>
+                    <div className={styles.aiComprehensionHeader}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                        <span>🧠</span>
+                        <strong style={{ fontSize: '0.82rem', color: 'var(--foreground)' }}>
+                          AI Comprehension &amp; Search Verification
+                        </strong>
+                      </div>
+                      <span
+                        style={{
+                          fontSize: '0.7rem',
+                          fontWeight: 700,
+                          padding: '0.15rem 0.5rem',
+                          borderRadius: '12px',
+                          background:
+                            customFocusAnalysis.clarityVerdict === 'ready'
+                              ? 'rgba(16, 185, 129, 0.2)'
+                              : 'rgba(245, 158, 11, 0.2)',
+                          color: customFocusAnalysis.clarityVerdict === 'ready' ? '#10b981' : '#f59e0b',
+                        }}
+                      >
+                        {customFocusAnalysis.clarityVerdict === 'ready'
+                          ? '✓ AI Verified · Ready to Bid'
+                          : '⚠️ Refine Query'}
+                      </span>
+                    </div>
+
+                    <p className={styles.aiSummaryText}>{customFocusAnalysis.aiUnderstandingSummary}</p>
+
+                    {/* Search Term & Waste Filter Verification Grid */}
+                    <div className={styles.aiKeywordsVerificationGrid}>
+                      <div className={styles.aiKwColumn}>
+                        <span
+                          style={{
+                            fontSize: '0.72rem',
+                            fontWeight: 700,
+                            color: '#10b981',
+                            display: 'block',
+                            marginBottom: '0.35rem',
+                          }}
+                        >
+                          🟢 Exact Buyer Searches We Will Bid On:
+                        </span>
+                        <div className={styles.kwPillsWrap}>
+                          {customFocusAnalysis.targetBuyerSearches.slice(0, 4).map((kw) => (
+                            <span key={kw} className={styles.kwPillTarget} style={{ fontSize: '0.72rem' }}>
+                              {kw}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className={styles.aiKwColumn}>
+                        <span
+                          style={{
+                            fontSize: '0.72rem',
+                            fontWeight: 700,
+                            color: '#ef4444',
+                            display: 'block',
+                            marginBottom: '0.35rem',
+                          }}
+                        >
+                          🔴 Negative Keywords Filtered Out (Zero Waste):
+                        </span>
+                        <div className={styles.kwPillsWrap}>
+                          {customFocusAnalysis.customNegativeFilters.slice(0, 4).map((neg) => (
+                            <span key={neg} className={styles.kwPillNegative} style={{ fontSize: '0.72rem' }}>
+                              - {neg}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {customFocusAnalysis.aiSuggestions.length > 0 &&
+                    customFocusAnalysis.clarityVerdict !== 'ready' ? (
+                      <div className={styles.aiSuggestionAlert}>
+                        <span>💡</span>
+                        <span>{customFocusAnalysis.aiSuggestions[0]}</span>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
+
+              {/* Interactive ROI & Revenue Potential Calculator */}
+              <div className={styles.roiCalcCard}>
+                <div className={styles.roiHeader}>
+                  <div>
+                    <span className="eyebrow" style={{ color: 'var(--accent, #f97316)' }}>
+                      Interactive Revenue Model
+                    </span>
+                    <h3 style={{ margin: '0.2rem 0', fontSize: '1.1rem' }}>
+                      Projected Return on Ad Spend (ROAS)
+                    </h3>
+                  </div>
+                  <button
+                    type="button"
+                    className={styles.weatherToggleBtn}
+                    onClick={() => setWeatherSurgeSim(!weatherSurgeSim)}
+                    title="Simulate high-demand weather surge"
+                  >
+                    {weatherSurgeSim ? '⛈️ Weather Surge (+25%)' : '☀️ Normal Weather'}
+                  </button>
+                </div>
+
+                <p style={{ fontSize: '0.8rem', color: 'var(--muted)', margin: '0 0 0.85rem' }}>
+                  Adjust your typical project size and closing percentage. Projections use conservative local trade CPC benchmarks for verified, screened homeowners.
+                </p>
+
+                <div className={styles.roiSliders}>
+                  <div className={styles.sliderBox}>
+                    <div className={styles.sliderLabelRow}>
+                      <span>Average Job Revenue</span>
+                      <strong>${avgTicketDollars.toLocaleString()}</strong>
+                    </div>
+                    <input
+                      type="range"
+                      min={500}
+                      max={20000}
+                      step={250}
+                      value={avgTicketDollars}
+                      onChange={(e) => setAvgTicketDollars(Number(e.target.value))}
+                      className={styles.rangeInput}
+                    />
+                  </div>
+
+                  <div className={styles.sliderBox}>
+                    <div className={styles.sliderLabelRow}>
+                      <span>Estimate Close Rate</span>
+                      <strong>{closeRatePct}%</strong>
+                    </div>
+                    <input
+                      type="range"
+                      min={10}
+                      max={50}
+                      step={5}
+                      value={closeRatePct}
+                      onChange={(e) => setCloseRatePct(Number(e.target.value))}
+                      className={styles.rangeInput}
+                    />
+                  </div>
+                </div>
+
+                <div className={styles.roiResultsGrid}>
+                  <div className={styles.roiResultBox}>
+                    <span className={styles.roiResultLabel}>Est. Monthly Leads</span>
+                    <strong className={styles.roiResultValue}>{roiMetrics.effectiveLeads}</strong>
+                    <span className={styles.roiResultSub}>Pre-qualified local calls/forms</span>
+                  </div>
+                  <div className={styles.roiResultBox}>
+                    <span className={styles.roiResultLabel}>Est. Closed Jobs</span>
+                    <strong className={styles.roiResultValue} style={{ color: '#10b981' }}>
+                      {roiMetrics.wonJobs} Jobs
+                    </strong>
+                    <span className={styles.roiResultSub}>@ {closeRatePct}% close rate</span>
+                  </div>
+                  <div className={styles.roiResultBox}>
+                    <span className={styles.roiResultLabel}>Projected Revenue</span>
+                    <strong className={styles.roiResultValue} style={{ color: 'var(--accent, #f97316)' }}>
+                      ${roiMetrics.grossRevenue.toLocaleString()}
+                    </strong>
+                    <span className={styles.roiResultSub}>Monthly pipeline value</span>
+                  </div>
+                  <div className={styles.roiResultBox}>
+                    <span className={styles.roiResultLabel}>Projected ROAS</span>
+                    <strong className={styles.roiResultValue} style={{ color: '#38bdf8' }}>
+                      {roiMetrics.roas}x
+                    </strong>
+                    <span className={styles.roiResultSub}>Return on Ad Spend</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Export Blueprint & CSV Drawer */}
+              <div style={{ marginTop: '1rem', background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '8px', padding: '0.85rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.65rem' }}>
+                  <strong style={{ fontSize: '0.8rem', color: 'var(--foreground)' }}>
+                    Export Campaign Assets
+                  </strong>
+                  <span style={{ fontSize: '0.72rem', color: 'var(--muted)' }}>
+                    Google Ads MCC Ready
+                  </span>
+                </div>
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
                   <button
                     type="button"
@@ -2088,8 +2203,23 @@ export default function ManagedAdsScreen({
                   </button>
                 </div>
               </div>
-            ) : null}
-          </div>
+
+              {/* Step 3 Stepper Row */}
+              <div className={styles.tabStepperRow}>
+                <button
+                  type="button"
+                  className="btn ghost"
+                  onClick={() => setConfigTab('schedule')}
+                  style={{ fontSize: '0.8rem', padding: '0.45rem 0.85rem' }}
+                >
+                  ← Back to Location &amp; Schedule
+                </button>
+                <span style={{ fontSize: '0.74rem', color: '#10b981', fontWeight: 600 }}>
+                  ✓ Ready to Launch on Right
+                </span>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Right Column: Live Previews & 1-Click Launch */}
@@ -2504,215 +2634,244 @@ export default function ManagedAdsScreen({
         </div>
       </div>
 
-      {/* FULL-WIDTH DEEP DIVE SECTIONS */}
-
-      {/* Section 1: The 4-Stage AI Launch Engine */}
-      <section className={styles.deepSection}>
-        <div className="section-heading workspace-section-heading">
+      {/* COMPARTMENTALIZED KNOWLEDGE HUB */}
+      <section className={styles.knowledgeHubCard}>
+        <div className={styles.knowledgeHubHeader}>
           <div>
-            <p className="eyebrow">The 4-Stage Engine</p>
-            <h2 className="section-title">What Happens Behind the Scenes When You Launch</h2>
-            <p className="page-intro">
+            <p className="eyebrow" style={{ color: 'var(--accent, #f97316)', marginBottom: '0.2rem' }}>
+              Advertising Intelligence &amp; Blueprint
+            </p>
+            <h2 style={{ fontSize: '1.25rem', margin: 0 }}>
+              {knowledgeTab === 'pipeline' && 'The 4-Stage Closed-Loop Customer Acquisition Engine'}
+              {knowledgeTab === 'comparison' && 'Let’s Get Quoted Autopilot vs. Traditional Agencies'}
+              {knowledgeTab === 'timeline' && 'Campaign Maturity: What to Expect Over Your First 90 Days'}
+              {knowledgeTab === 'shields' && 'AI Smart Shield Trio: Zero Wasted Dollars'}
+              {knowledgeTab === 'faq' && 'Frequently Asked Questions (FAQs)'}
+            </h2>
+          </div>
+
+          <div className={styles.knowledgeHubNav} role="tablist">
+            <button
+              type="button"
+              className={`${styles.knowledgeHubTabBtn} ${knowledgeTab === 'pipeline' ? styles.knowledgeHubTabBtnActive : ''}`}
+              onClick={() => setKnowledgeTab('pipeline')}
+            >
+              🚀 4-Stage Engine
+            </button>
+            <button
+              type="button"
+              className={`${styles.knowledgeHubTabBtn} ${knowledgeTab === 'comparison' ? styles.knowledgeHubTabBtnActive : ''}`}
+              onClick={() => setKnowledgeTab('comparison')}
+            >
+              📊 Agency Comparison
+            </button>
+            <button
+              type="button"
+              className={`${styles.knowledgeHubTabBtn} ${knowledgeTab === 'timeline' ? styles.knowledgeHubTabBtnActive : ''}`}
+              onClick={() => setKnowledgeTab('timeline')}
+            >
+              🗓️ 90-Day Timeline
+            </button>
+            <button
+              type="button"
+              className={`${styles.knowledgeHubTabBtn} ${knowledgeTab === 'shields' ? styles.knowledgeHubTabBtnActive : ''}`}
+              onClick={() => setKnowledgeTab('shields')}
+            >
+              🛡️ Smart Shields
+            </button>
+            <button
+              type="button"
+              className={`${styles.knowledgeHubTabBtn} ${knowledgeTab === 'faq' ? styles.knowledgeHubTabBtnActive : ''}`}
+              onClick={() => setKnowledgeTab('faq')}
+            >
+              ❓ FAQs
+            </button>
+          </div>
+        </div>
+
+        {/* Panel 1: The 4-Stage AI Launch Engine */}
+        {knowledgeTab === 'pipeline' && (
+          <div>
+            <p className="page-intro" style={{ marginBottom: '1.25rem' }}>
               From the instant you activate your budget, our automated pipeline executes a closed-loop customer acquisition cycle.
             </p>
-          </div>
-        </div>
+            <div className={styles.stepsGrid}>
+              <div className={styles.stepCard}>
+                <div className={styles.stepNumber}>01</div>
+                <h3 className={styles.stepTitle}>Hour 0: Instant Google MCC Provisioning</h3>
+                <p className={styles.stepDesc}>
+                  Campaigns, exact radius geo-fencing, Responsive Search Ads, sitelinks, and 100+ negative keyword waste shields are programmatically generated and deployed to our Master Google Ads MCC.
+                </p>
+              </div>
 
-        <div className={styles.stepsGrid}>
-          <div className={styles.stepCard}>
-            <div className={styles.stepNumber}>01</div>
-            <h3 className={styles.stepTitle}>Hour 0: Instant Google MCC Provisioning</h3>
-            <p className={styles.stepDesc}>
-              Campaigns, exact radius geo-fencing, Responsive Search Ads, sitelinks, and 100+ negative keyword waste shields are programmatically generated and deployed to our Master Google Ads MCC.
-            </p>
-          </div>
+              <div className={styles.stepCard}>
+                <div className={styles.stepNumber}>02</div>
+                <h3 className={styles.stepTitle}>Hour 1: Dynamic Message-Match Intake</h3>
+                <p className={styles.stepDesc}>
+                  When a local homeowner clicks your ad, your website dynamically matches their exact search query (e.g., “Emergency {selectedServices[0] || trade} in {city.split(',')[0]}”), increasing booking conversion rates by up to 40%.
+                </p>
+              </div>
 
-          <div className={styles.stepCard}>
-            <div className={styles.stepNumber}>02</div>
-            <h3 className={styles.stepTitle}>Hour 1: Dynamic Message-Match Intake</h3>
-            <p className={styles.stepDesc}>
-              When a local homeowner clicks your ad, your website dynamically matches their exact search query (e.g., “Emergency {selectedServices[0] || trade} in {city.split(',')[0]}”), increasing booking conversion rates by up to 40%.
-            </p>
-          </div>
+              <div className={styles.stepCard}>
+                <div className={styles.stepNumber}>03</div>
+                <h3 className={styles.stepTitle}>Instant: Sub-60s Speed-to-Lead Auto-SMS</h3>
+                <p className={styles.stepDesc}>
+                  The moment an ad inquiry arrives, AI texts the lead in under 60 seconds with trade-specific questions, locking in estimate appointments on your calendar before competitors even check their voicemail.
+                </p>
+              </div>
 
-          <div className={styles.stepCard}>
-            <div className={styles.stepNumber}>03</div>
-            <h3 className={styles.stepTitle}>Instant: Sub-60s Speed-to-Lead Auto-SMS</h3>
-            <p className={styles.stepDesc}>
-              The moment an ad inquiry arrives, AI texts the lead in under 60 seconds with trade-specific questions, locking in estimate appointments on your calendar before competitors even check their voicemail.
-            </p>
+              <div className={styles.stepCard}>
+                <div className={styles.stepNumber}>04</div>
+                <h3 className={styles.stepTitle}>Ongoing: Closed-Loop Revenue Sync</h3>
+                <p className={styles.stepDesc}>
+                  When you mark a quote signed in Let’s Get Quoted CRM, the actual dollar contract value feeds back into Google Smart Bidding algorithms to train Google’s AI to target higher-ticket homeowners.
+                </p>
+              </div>
+            </div>
           </div>
+        )}
 
-          <div className={styles.stepCard}>
-            <div className={styles.stepNumber}>04</div>
-            <h3 className={styles.stepTitle}>Ongoing: Closed-Loop Revenue Sync</h3>
-            <p className={styles.stepDesc}>
-              When you mark a quote signed in Let’s Get Quoted CRM, the actual dollar contract value feeds back into Google Smart Bidding algorithms to train Google’s AI to target higher-ticket homeowners.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* Section 2: AI Smart Shield Trio */}
-      <section className={styles.deepSection}>
-        <div className="section-heading workspace-section-heading">
+        {/* Panel 2: Head-to-Head Agency Comparison */}
+        {knowledgeTab === 'comparison' && (
           <div>
-            <p className="eyebrow">Budget Protection</p>
-            <h2 className="section-title">AI Smart Shield Trio: Zero Wasted Dollars</h2>
-            <p className="page-intro">
-              Three autonomous safeguards constantly monitor your environment to protect your budget and maximize every click.
-            </p>
-          </div>
-        </div>
-
-        <div className={styles.shieldCardsGrid}>
-          <div className={styles.shieldFeatureCard}>
-            <div className={styles.shieldIconLarge}>🌦️</div>
-            <h3 className={styles.shieldTitle}>Weather Surge Radar</h3>
-            <p className={styles.shieldText}>
-              Continuously monitors local radar for storms, high winds, and freezes in {city.split(',')[0]}. Automatically surges search bidding +25% during peak emergency demand when homeowner search volume explodes.
-            </p>
-          </div>
-
-          <div className={styles.shieldFeatureCard}>
-            <div className={styles.shieldIconLarge}>🛑</div>
-            <h3 className={styles.shieldTitle}>Fully-Booked Capacity Guard</h3>
-            <p className={styles.shieldText}>
-              Integrates directly with your dispatch calendar. The second your team is booked solid for the week, ad bidding automatically pauses so you never spend a dime on leads you can’t service.
-            </p>
-          </div>
-
-          <div className={styles.shieldFeatureCard}>
-            <div className={styles.shieldIconLarge}>🛡️</div>
-            <h3 className={styles.shieldTitle}>Negative Waste Filter</h3>
-            <p className={styles.shieldText}>
-              Over 100+ negative search terms continuously scrubbed to block DIY searchers, job applicants, wholesale shoppers, and competitor name lookups, preserving 100% of your budget for paying homeowners.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* Section 3: Head-to-Head Agency Comparison */}
-      <section className={styles.deepSection}>
-        <div className="section-heading workspace-section-heading">
-          <div>
-            <p className="eyebrow">Cost &amp; Performance Comparison</p>
-            <h2 className="section-title">Let’s Get Quoted Autopilot vs. Traditional Agencies</h2>
-            <p className="page-intro">
+            <p className="page-intro" style={{ marginBottom: '1.25rem' }}>
               See why contractors are replacing expensive marketing retainers with automated AI campaigns.
             </p>
+            <div className={styles.tableWrap}>
+              <table className={styles.compTable}>
+                <thead>
+                  <tr>
+                    <th>Deliverable / Cost Factor</th>
+                    <th>Traditional Marketing Agency</th>
+                    <th style={{ color: 'var(--accent, #f97316)' }}>Let’s Get Quoted AI Autopilot</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {COMPARISON_ROWS.map((row) => (
+                    <tr key={row.metric}>
+                      <td>
+                        <strong>{row.metric}</strong>
+                      </td>
+                      <td className={styles.agencyCell}>{row.agency}</td>
+                      <td className={styles.lgqCell}>
+                        <span style={{ color: '#10b981', marginRight: '0.35rem' }}>✓</span>
+                        <strong>{row.lgq}</strong>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
+        )}
 
-        <div className={styles.tableWrap}>
-          <table className={styles.compTable}>
-            <thead>
-              <tr>
-                <th>Deliverable / Cost Factor</th>
-                <th>Traditional Marketing Agency</th>
-                <th style={{ color: 'var(--accent, #f97316)' }}>Let’s Get Quoted AI Autopilot</th>
-              </tr>
-            </thead>
-            <tbody>
-              {COMPARISON_ROWS.map((row) => (
-                <tr key={row.metric}>
-                  <td>
-                    <strong>{row.metric}</strong>
-                  </td>
-                  <td className={styles.agencyCell}>{row.agency}</td>
-                  <td className={styles.lgqCell}>
-                    <span style={{ color: '#10b981', marginRight: '0.35rem' }}>✓</span>
-                    <strong>{row.lgq}</strong>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      {/* Section 4: Expected Campaign Milestones */}
-      <section className={styles.deepSection}>
-        <div className="section-heading workspace-section-heading">
+        {/* Panel 3: Expected Campaign Milestones */}
+        {knowledgeTab === 'timeline' && (
           <div>
-            <p className="eyebrow">Timeline &amp; Milestones</p>
-            <h2 className="section-title">What to Expect Over Your First 90 Days</h2>
-            <p className="page-intro">
+            <p className="page-intro" style={{ marginBottom: '1.25rem' }}>
               Advertising compounding is real. Here is how your campaign matures over time.
             </p>
-          </div>
-        </div>
+            <div className={styles.milestonesGrid}>
+              <div className={styles.milestoneCard}>
+                <span className={styles.milestonePill}>Month 1 · Weeks 1–4</span>
+                <h3 className={styles.milestoneTitle}>Calibration &amp; Ingestion</h3>
+                <ul className={styles.milestoneList}>
+                  <li>Google AI maps local high-intent search queries in {city.split(',')[0]}</li>
+                  <li>Negative search term scrubbing filters low-intent clicks</li>
+                  <li>First wave of inbound phone calls and estimate form submissions</li>
+                  <li>Baseline Cost Per Lead (CPL) established for your trade</li>
+                </ul>
+              </div>
 
-        <div className={styles.milestonesGrid}>
-          <div className={styles.milestoneCard}>
-            <span className={styles.milestonePill}>Month 1 · Weeks 1–4</span>
-            <h3 className={styles.milestoneTitle}>Calibration &amp; Ingestion</h3>
-            <ul className={styles.milestoneList}>
-              <li>Google AI maps local high-intent search queries in {city.split(',')[0]}</li>
-              <li>Negative search term scrubbing filters low-intent clicks</li>
-              <li>First wave of inbound phone calls and estimate form submissions</li>
-              <li>Baseline Cost Per Lead (CPL) established for your trade</li>
-            </ul>
-          </div>
+              <div className={styles.milestoneCard}>
+                <span className={styles.milestonePill} style={{ background: 'rgba(59, 130, 246, 0.15)', color: '#38bdf8' }}>
+                  Month 2 · Weeks 5–8
+                </span>
+                <h3 className={styles.milestoneTitle}>Conversion Acceleration</h3>
+                <ul className={styles.milestoneList}>
+                  <li>Speed-to-Lead SMS accelerates appointment confirmation rate by 2x</li>
+                  <li>Lost visitor retargeting banners re-engage bounced homeowners</li>
+                  <li>Automated review collection boosts Google Quality Score</li>
+                  <li>Average Cost Per Lead drops as CTR improves</li>
+                </ul>
+              </div>
 
-          <div className={styles.milestoneCard}>
-            <span className={styles.milestonePill} style={{ background: 'rgba(59, 130, 246, 0.15)', color: '#38bdf8' }}>
-              Month 2 · Weeks 5–8
-            </span>
-            <h3 className={styles.milestoneTitle}>Conversion Acceleration</h3>
-            <ul className={styles.milestoneList}>
-              <li>Speed-to-Lead SMS accelerates appointment confirmation rate by 2x</li>
-              <li>Lost visitor retargeting banners re-engage bounced homeowners</li>
-              <li>Automated review collection boosts Google Quality Score</li>
-              <li>Average Cost Per Lead drops as CTR improves</li>
-            </ul>
+              <div className={styles.milestoneCard}>
+                <span className={styles.milestonePill} style={{ background: 'rgba(249, 115, 22, 0.15)', color: 'var(--accent, #f97316)' }}>
+                  Month 3+ · Ongoing
+                </span>
+                <h3 className={styles.milestoneTitle}>Offline Revenue Scaling</h3>
+                <ul className={styles.milestoneList}>
+                  <li>Signed contract revenue feeds Google Smart Bidding algorithms</li>
+                  <li>Google AI actively targets high-ticket remodel &amp; replacement jobs</li>
+                  <li>Predictable weekly job pipeline and consistent crew utilization</li>
+                  <li>Scale budget up or down with 1 click based on crew capacity</li>
+                </ul>
+              </div>
+            </div>
           </div>
+        )}
 
-          <div className={styles.milestoneCard}>
-            <span className={styles.milestonePill} style={{ background: 'rgba(249, 115, 22, 0.15)', color: 'var(--accent, #f97316)' }}>
-              Month 3+ · Ongoing
-            </span>
-            <h3 className={styles.milestoneTitle}>Offline Revenue Scaling</h3>
-            <ul className={styles.milestoneList}>
-              <li>Signed contract revenue feeds Google Smart Bidding algorithms</li>
-              <li>Google AI actively targets high-ticket remodel &amp; replacement jobs</li>
-              <li>Predictable weekly job pipeline and consistent crew utilization</li>
-              <li>Scale budget up or down with 1 click based on crew capacity</li>
-            </ul>
-          </div>
-        </div>
-      </section>
-
-      {/* Section 5: Frequently Asked Questions Accordion */}
-      <section className={styles.deepSection} style={{ marginBottom: '3rem' }}>
-        <div className="section-heading workspace-section-heading">
+        {/* Panel 4: AI Smart Shield Trio */}
+        {knowledgeTab === 'shields' && (
           <div>
-            <p className="eyebrow">Frequently Asked Questions</p>
-            <h2 className="section-title">Everything You Need to Know Before Launching</h2>
-            <p className="page-intro">
+            <p className="page-intro" style={{ marginBottom: '1.25rem' }}>
+              Three autonomous safeguards constantly monitor your environment to protect your budget and maximize every click.
+            </p>
+            <div className={styles.shieldCardsGrid}>
+              <div className={styles.shieldFeatureCard}>
+                <div className={styles.shieldIconLarge}>🌦️</div>
+                <h3 className={styles.shieldTitle}>Weather Surge Radar</h3>
+                <p className={styles.shieldText}>
+                  Continuously monitors local radar for storms, high winds, and freezes in {city.split(',')[0]}. Automatically surges search bidding +25% during peak emergency demand when homeowner search volume explodes.
+                </p>
+              </div>
+
+              <div className={styles.shieldFeatureCard}>
+                <div className={styles.shieldIconLarge}>🛑</div>
+                <h3 className={styles.shieldTitle}>Fully-Booked Capacity Guard</h3>
+                <p className={styles.shieldText}>
+                  Integrates directly with your dispatch calendar. The second your team is booked solid for the week, ad bidding automatically pauses so you never spend a dime on leads you can’t service.
+                </p>
+              </div>
+
+              <div className={styles.shieldFeatureCard}>
+                <div className={styles.shieldIconLarge}>🛡️</div>
+                <h3 className={styles.shieldTitle}>Negative Waste Filter</h3>
+                <p className={styles.shieldText}>
+                  Over 100+ negative search terms continuously scrubbed to block DIY searchers, job applicants, wholesale shoppers, and competitor name lookups, preserving 100% of your budget for paying homeowners.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Panel 5: Frequently Asked Questions Accordion */}
+        {knowledgeTab === 'faq' && (
+          <div>
+            <p className="page-intro" style={{ marginBottom: '1.25rem' }}>
               Clear answers to the most common questions contractors have about our advertising autopilot.
             </p>
+            <div className={styles.faqList}>
+              {FAQS.map((faq, idx) => {
+                const isOpen = openFaqIndex === idx;
+                return (
+                  <div key={faq.q} className={`${styles.faqItem} ${isOpen ? styles.faqOpen : ''}`}>
+                    <button
+                      type="button"
+                      className={styles.faqHeaderBtn}
+                      onClick={() => setOpenFaqIndex(isOpen ? null : idx)}
+                    >
+                      <span className={styles.faqQuestion}>{faq.q}</span>
+                      <span className={styles.faqToggleIcon}>{isOpen ? '−' : '+'}</span>
+                    </button>
+                    {isOpen ? <div className={styles.faqBody}>{faq.a}</div> : null}
+                  </div>
+                );
+              })}
+            </div>
           </div>
-        </div>
-
-        <div className={styles.faqList}>
-          {FAQS.map((faq, idx) => {
-            const isOpen = openFaqIndex === idx;
-            return (
-              <div key={faq.q} className={`${styles.faqItem} ${isOpen ? styles.faqOpen : ''}`}>
-                <button
-                  type="button"
-                  className={styles.faqHeaderBtn}
-                  onClick={() => setOpenFaqIndex(isOpen ? null : idx)}
-                >
-                  <span className={styles.faqQuestion}>{faq.q}</span>
-                  <span className={styles.faqToggleIcon}>{isOpen ? '−' : '+'}</span>
-                </button>
-                {isOpen ? <div className={styles.faqBody}>{faq.a}</div> : null}
-              </div>
-            );
-          })}
-        </div>
+        )}
       </section>
     </main>
   );

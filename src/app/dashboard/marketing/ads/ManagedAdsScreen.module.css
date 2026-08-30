@@ -1724,3 +1724,167 @@
   color: #fbbf24;
 }
 
+/* =========================================================================
+   COMPARTMENTALIZED SEGMENTED COCKPIT TABS & KNOWLEDGE HUB STYLES
+   ========================================================================= */
+
+.cockpitTabsNav {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.35rem;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 0.3rem;
+  margin-bottom: 1.25rem;
+}
+
+@media (max-width: 640px) {
+  .cockpitTabsNav {
+    grid-template-columns: 1fr;
+  }
+}
+
+.cockpitTab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  padding: 0.55rem 0.5rem;
+  border-radius: 7px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--muted, #9ca3af);
+  cursor: pointer;
+  transition: all 0.15s ease-in-out;
+  text-align: center;
+}
+
+.cockpitTab:hover {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--foreground);
+}
+
+.cockpitTabActive {
+  background: rgba(249, 115, 22, 0.14) !important;
+  border-color: rgba(249, 115, 22, 0.4) !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 12px rgba(249, 115, 22, 0.15);
+}
+
+.cockpitTabTitle {
+  font-size: 0.82rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.cockpitTabBadge {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  padding: 0.1rem 0.4rem;
+  border-radius: 10px;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tabStepperRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.tabStepBtn {
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 0.45rem 0.95rem;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition: all 0.15s ease;
+}
+
+/* Knowledge Hub Segmented Navigation */
+.knowledgeHubCard {
+  background: var(--surface, rgba(17, 24, 39, 0.7));
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-top: 2rem;
+  margin-bottom: 2.5rem;
+}
+
+.knowledgeHubHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.knowledgeHubNav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 0.3rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.knowledgeHubTabBtn {
+  padding: 0.4rem 0.75rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: var(--muted, #9ca3af);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.knowledgeHubTabBtn:hover {
+  color: var(--foreground);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.knowledgeHubTabBtnActive {
+  background: var(--accent, #f97316) !important;
+  color: #ffffff !important;
+}
+
+.strategyBriefingCard {
+  background: linear-gradient(135deg, rgba(249, 115, 22, 0.08) 0%, rgba(59, 130, 246, 0.05) 100%);
+  border: 1px solid rgba(249, 115, 22, 0.22);
+  border-radius: 10px;
+  padding: 0.85rem 1.15rem;
+  margin-bottom: 1.25rem;
+}
+
+.strategyBriefingHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+}
+
+
