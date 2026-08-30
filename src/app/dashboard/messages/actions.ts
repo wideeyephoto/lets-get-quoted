@@ -95,6 +95,10 @@ export type SendVerificationCodeResult =
   | { status: 'sent'; token: string; expiresAt: number; phone: string }
   | { status: 'error'; message: string };
 
+export type VerifyCodeResult =
+  | { status: 'verified'; phone: string }
+  | { status: 'error'; message: string };
+
 /**
  * Sends a 6-digit OTP SMS verification code to confirm ownership of the contractor's mobile number.
  */
@@ -107,7 +111,7 @@ export async function sendOwnerPhoneVerificationCodeAction(
   }
 
   try {
-    const { accountId } = await requireOwnerContext();
+    const { accountId } = await requireOfficeContext('settings.write');
     const code = generateOwnerVerificationCode();
     const expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes
     const token = ownerPhoneVerificationToken(accountId, normalized, code, expiresAt);
@@ -122,6 +126,41 @@ export async function sendOwnerPhoneVerificationCodeAction(
   } catch (err) {
     console.error('Failed to send owner verification code:', err);
     return { status: 'error', message: 'Could not send verification text. Please try again.' };
+  }
+}
+
+/**
+ * Validates the 6-digit OTP SMS code against the HMAC token and records SMS consent upon success.
+ */
+export async function verifyOwnerPhoneVerificationCodeAction(
+  phone: string,
+  code: string,
+  token: string,
+  expiresAt: number,
+): Promise<VerifyCodeResult> {
+  const normalized = normalizeUsPhone(phone);
+  if (!normalized) {
+    return { status: 'error', message: 'Enter a valid 10-digit US mobile number.' };
+  }
+  const cleanCode = code.trim().replace(/\D/g, '');
+  if (cleanCode.length !== 6) {
+    return { status: 'error', message: 'Please enter the full 6-digit confirmation code.' };
+  }
+
+  try {
+    const { accountId } = await requireOfficeContext('settings.write');
+    const isValid = isOwnerPhoneVerificationValid(accountId, normalized, cleanCode, expiresAt, token);
+    if (!isValid) {
+      return { status: 'error', message: 'The 6-digit code is incorrect or has expired. Please request a new code.' };
+    }
+
+    // Record verified consent for this number on the account
+    await recordOwnerSmsConsent(accountId, normalized, OWNER_SMS_DISCLOSURE_VERSION);
+
+    return { status: 'verified', phone: normalized };
+  } catch (err) {
+    console.error('Failed to verify owner phone code:', err);
+    return { status: 'error', message: 'Failed to verify code. Please try again.' };
   }
 }
 

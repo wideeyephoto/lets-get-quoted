@@ -24,6 +24,10 @@ import {
 import { detectWeatherSurgeOpportunity } from '@/lib/weather-ad-surge';
 import { analyzeCustomAdFocus } from '@/lib/ad-custom-focus-ai';
 import CityAutocomplete from '@/components/city-autocomplete';
+import {
+  sendOwnerPhoneVerificationCodeAction,
+  verifyOwnerPhoneVerificationCodeAction,
+} from '@/app/dashboard/messages/actions';
 import styles from './ManagedAdsScreen.module.css';
 
 type Props = {
@@ -167,6 +171,75 @@ export default function ManagedAdsScreen({
   const [smsAlertsEnabled, setSmsAlertsEnabled] = useState<boolean>(initialWalletState?.smsAlertsEnabled !== false);
   const [smsAlertPhone, setSmsAlertPhone] = useState<string>(initialWalletState?.smsAlertPhone || initialPhone || '');
   const [updatingSms, setUpdatingSms] = useState<boolean>(false);
+
+  // 2FA Phone Verification State for SMS Billing Alerts
+  const initialVerifiedPhone = useMemo(() => {
+    return initialWalletState?.smsAlertPhone || initialPhone || '';
+  }, [initialWalletState?.smsAlertPhone, initialPhone]);
+
+  const [sms2faStatus, setSms2faStatus] = useState<'idle' | 'sending' | 'sent' | 'verified'>(
+    initialVerifiedPhone ? 'verified' : 'idle'
+  );
+  const [sms2faToken, setSms2faToken] = useState<{ token: string; expiresAt: number; phone: string } | null>(null);
+  const [sms2faCode, setSms2faCode] = useState<string>('');
+  const [sms2faError, setSms2faError] = useState<string | null>(null);
+  const [sms2faCountdown, setSms2faCountdown] = useState<number>(0);
+  const [verifying2fa, setVerifying2fa] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (sms2faCountdown <= 0) return;
+    const timer = setInterval(() => setSms2faCountdown((c) => Math.max(0, c - 1)), 1000);
+    return () => clearInterval(timer);
+  }, [sms2faCountdown]);
+
+  const isPhoneVerified =
+    sms2faStatus === 'verified' ||
+    (Boolean(initialVerifiedPhone) && smsAlertPhone.trim() === initialVerifiedPhone);
+
+  const handleSend2faCode = async () => {
+    if (!smsAlertPhone.trim()) return;
+    setSms2faStatus('sending');
+    setSms2faError(null);
+    try {
+      const res = await sendOwnerPhoneVerificationCodeAction(smsAlertPhone.trim());
+      if (res.status === 'sent') {
+        setSms2faToken({ token: res.token, expiresAt: res.expiresAt, phone: res.phone });
+        setSms2faStatus('sent');
+        setSms2faCountdown(60);
+      } else {
+        setSms2faStatus('idle');
+        setSms2faError(res.message);
+      }
+    } catch {
+      setSms2faStatus('idle');
+      setSms2faError('Failed to send verification text. Please check your number.');
+    }
+  };
+
+  const handleVerify2faCode = async (overrideCode?: string) => {
+    const codeToVerify = (overrideCode || sms2faCode).trim().replace(/\D/g, '');
+    if (!sms2faToken || codeToVerify.length !== 6) return;
+    setVerifying2fa(true);
+    setSms2faError(null);
+    try {
+      const res = await verifyOwnerPhoneVerificationCodeAction(
+        smsAlertPhone.trim(),
+        codeToVerify,
+        sms2faToken.token,
+        sms2faToken.expiresAt
+      );
+      if (res.status === 'verified') {
+        setSms2faStatus('verified');
+        setSms2faCode('');
+      } else {
+        setSms2faError(res.message);
+      }
+    } catch {
+      setSms2faError('Failed to verify code.');
+    } finally {
+      setVerifying2fa(false);
+    }
+  };
 
   // Custom Specific Campaign Focus / Promotion (AI Smart Field)
   const [customFocus, setCustomFocus] = useState<string>('');
@@ -394,6 +467,14 @@ export default function ManagedAdsScreen({
   }, [currentBundle, weatherSurgeSim, weatherSurge.surgeActive, closeRatePct, avgTicketDollars]);
 
   const handleLaunchAutopilot = async () => {
+    if (smsAlertsEnabled && smsAlertPhone.trim() && !isPhoneVerified) {
+      alert('Please complete 2FA phone verification for your SMS billing alert number before proceeding to launch.');
+      if (sms2faStatus === 'idle') {
+        void handleSend2faCode();
+      }
+      return;
+    }
+
     setCheckoutLoading(true);
     try {
       const payload =
@@ -2233,7 +2314,7 @@ export default function ManagedAdsScreen({
             </div>
           )}
 
-          {/* SMS Billing Alerts Opt-In Card */}
+          {/* SMS Billing Alerts Opt-In Card with 2FA Phone Verification */}
           <div style={{ background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '8px', padding: '0.75rem', marginBottom: '1rem', textAlign: 'left' }}>
             <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem', cursor: 'pointer' }}>
               <input
@@ -2250,23 +2331,147 @@ export default function ManagedAdsScreen({
               </div>
             </label>
             {smsAlertsEnabled && (
-              <div style={{ marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <span style={{ fontSize: '0.74rem', color: 'var(--muted)' }}>Alert Phone:</span>
-                <input
-                  type="tel"
-                  value={smsAlertPhone}
-                  onChange={(e) => setSmsAlertPhone(e.target.value)}
-                  placeholder="(555) 000-0000"
-                  style={{
-                    fontSize: '0.75rem',
-                    padding: '0.25rem 0.5rem',
-                    background: 'rgba(0,0,0,0.3)',
-                    border: '1px solid rgba(255,255,255,0.15)',
-                    borderRadius: '4px',
-                    color: 'var(--foreground)',
-                    width: '140px',
-                  }}
-                />
+              <div style={{ marginTop: '0.6rem', paddingLeft: '1.6rem' }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem' }}>
+                  <span style={{ fontSize: '0.74rem', color: 'var(--muted)' }}>Alert Phone:</span>
+                  <input
+                    type="tel"
+                    value={smsAlertPhone}
+                    onChange={(e) => {
+                      setSmsAlertPhone(e.target.value);
+                      if (sms2faStatus === 'verified') {
+                        setSms2faStatus('idle');
+                      }
+                    }}
+                    placeholder="(555) 000-0000"
+                    style={{
+                      fontSize: '0.75rem',
+                      padding: '0.25rem 0.5rem',
+                      background: 'rgba(0,0,0,0.3)',
+                      border: '1px solid rgba(255,255,255,0.15)',
+                      borderRadius: '4px',
+                      color: 'var(--foreground)',
+                      width: '140px',
+                    }}
+                  />
+                  {isPhoneVerified ? (
+                    <span
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.25rem',
+                        fontSize: '0.72rem',
+                        fontWeight: 700,
+                        color: '#10b981',
+                        background: 'rgba(16, 185, 129, 0.15)',
+                        border: '1px solid rgba(16, 185, 129, 0.35)',
+                        padding: '0.2rem 0.5rem',
+                        borderRadius: '12px',
+                      }}
+                      title="Number verified via 2FA OTP"
+                    >
+                      ✓ 2FA Verified
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleSend2faCode}
+                      disabled={sms2faStatus === 'sending' || sms2faCountdown > 0 || !smsAlertPhone.trim()}
+                      style={{
+                        fontSize: '0.72rem',
+                        fontWeight: 600,
+                        padding: '0.25rem 0.6rem',
+                        borderRadius: '4px',
+                        background: 'rgba(249, 115, 22, 0.2)',
+                        border: '1px solid rgba(249, 115, 22, 0.4)',
+                        color: '#f97316',
+                        cursor: sms2faStatus === 'sending' || sms2faCountdown > 0 || !smsAlertPhone.trim() ? 'not-allowed' : 'pointer',
+                      }}
+                    >
+                      {sms2faStatus === 'sending'
+                        ? 'Sending code…'
+                        : sms2faStatus === 'sent'
+                        ? sms2faCountdown > 0
+                          ? `Resend in ${sms2faCountdown}s`
+                          : 'Resend 2FA code'
+                        : 'Verify # (2FA)'}
+                    </button>
+                  )}
+                </div>
+
+                {/* 2FA 6-Digit Verification Box */}
+                {sms2faStatus === 'sent' && (
+                  <div
+                    style={{
+                      marginTop: '0.5rem',
+                      background: 'rgba(0,0,0,0.3)',
+                      border: '1px solid rgba(249, 115, 22, 0.35)',
+                      borderRadius: '6px',
+                      padding: '0.55rem 0.75rem',
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                      <span style={{ fontSize: '0.74rem', fontWeight: 600, color: 'var(--foreground)' }}>
+                        🔒 Enter 6-digit SMS verification code:
+                      </span>
+                      <small style={{ color: 'var(--muted)', fontSize: '0.68rem' }}>
+                        Sent to {sms2faToken?.phone || smsAlertPhone}
+                      </small>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        maxLength={6}
+                        value={sms2faCode}
+                        onChange={(e) => {
+                          const digits = e.target.value.replace(/\D/g, '').slice(0, 6);
+                          setSms2faCode(digits);
+                          if (digits.length === 6 && sms2faToken) {
+                            void handleVerify2faCode(digits);
+                          }
+                        }}
+                        placeholder="123456"
+                        autoFocus
+                        style={{
+                          fontSize: '0.88rem',
+                          fontWeight: 700,
+                          letterSpacing: '0.12em',
+                          textAlign: 'center',
+                          width: '95px',
+                          padding: '0.25rem 0.4rem',
+                          background: 'rgba(0,0,0,0.5)',
+                          border: '1px solid rgba(255,255,255,0.2)',
+                          borderRadius: '4px',
+                          color: '#ffffff',
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleVerify2faCode()}
+                        disabled={sms2faCode.length !== 6 || verifying2fa}
+                        style={{
+                          fontSize: '0.72rem',
+                          fontWeight: 600,
+                          padding: '0.28rem 0.65rem',
+                          background: sms2faCode.length === 6 ? '#10b981' : 'rgba(255,255,255,0.1)',
+                          color: '#ffffff',
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: sms2faCode.length === 6 ? 'pointer' : 'not-allowed',
+                        }}
+                      >
+                        {verifying2fa ? 'Verifying…' : 'Confirm 2FA'}
+                      </button>
+                    </div>
+                    {sms2faError && (
+                      <p style={{ color: '#ef4444', fontSize: '0.7rem', margin: '0.3rem 0 0' }}>
+                        {sms2faError}
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </div>

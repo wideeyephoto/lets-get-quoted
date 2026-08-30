@@ -84,29 +84,19 @@ describe('parseThemeChoice', () => {
   });
 });
 
-describe('THEME_CHOICES palette and order', () => {
-  it('begins with DARK -> WORKBENCH -> LIGHT -> DIM in exact order', () => {
+describe('THEME_CHOICES palette and order in settings', () => {
+  it('contains DARK -> WORKBENCH -> LIGHT -> DIM in exact order', () => {
     expect(THEME_CHOICES.map((c) => c.value)).toEqual([
       'dark',
       'light',
       'sunlight',
       'dim',
-      'system',
-      'onyx',
-      'clarity',
-      'monochrome',
-      'parchment',
     ]);
     expect(THEME_CHOICES.map((c) => c.word)).toEqual([
       'Dark',
       'Workbench',
       'Light',
       'Dim',
-      'Auto',
-      'Onyx',
-      'Clarity',
-      'Mono',
-      'Parchment',
     ]);
     for (const c of THEME_CHOICES) expect(themeChoiceLabel(c.value)).toBe(c.label);
   });

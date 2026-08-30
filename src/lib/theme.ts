@@ -119,19 +119,14 @@ export function themeColor(theme: Theme): string {
 }
 
 /**
- * The options, in the exact order requested:
- * DARK -> WORKBENCH -> LIGHT -> DIM, followed by Auto and specialty themes.
+ * The options in settings, in exact order:
+ * DARK -> WORKBENCH -> LIGHT -> DIM
  */
 export const THEME_CHOICES: { value: ThemeChoice; word: string; label: string }[] = [
   { value: 'dark', word: 'Dark', label: 'Deep midnight ink' },
   { value: 'light', word: 'Workbench', label: 'Dark shell, soft cards (workbench)' },
   { value: 'sunlight', word: 'Light', label: 'High-contrast daylight' },
   { value: 'dim', word: 'Dim', label: 'Warm graphite, easy on the eyes' },
-  { value: 'system', word: 'Auto', label: 'Match my device' },
-  { value: 'onyx', word: 'Onyx', label: 'OLED pure black (AAA)' },
-  { value: 'clarity', word: 'Clarity', label: 'Color vision safe (CVD)' },
-  { value: 'monochrome', word: 'Mono', label: 'Pure luminance & shape' },
-  { value: 'parchment', word: 'Parchment', label: 'Warm paper light mode' },
 ];
 
 /** The accessible name for a control that is currently on `choice`. */
