@@ -297,7 +297,7 @@
   margin-top: 0.4rem;
   font-size: 0.74rem;
   font-weight: 700;
-  color: rgba(247, 245, 239, 0.6);
+  color: #cbd5e1;
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
@@ -802,7 +802,7 @@
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: rgba(247, 245, 239, 0.5);
+  color: #cbd5e1;
   padding: 0.5rem 0.7rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   white-space: nowrap;
@@ -814,7 +814,7 @@
 }
 .table tbody tr:hover { background: rgba(255, 255, 255, 0.025); }
 .table td.num { text-align: right; font-variant-numeric: tabular-nums; }
-.muted { color: rgba(247, 245, 239, 0.55); }
+.muted { color: #cbd5e1; }
 .srOnly {
   position: absolute;
   width: 1px;
@@ -869,7 +869,7 @@
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: rgba(247, 245, 239, 0.52);
+  color: #cbd5e1;
   line-height: 1.4;
 }
 .kv dd {
@@ -907,7 +907,7 @@
 }
 .timeline time {
   font-size: 0.7rem;
-  color: rgba(247, 245, 239, 0.45);
+  color: #cbd5e1;
   font-variant-numeric: tabular-nums;
 }
 .timelineActor {

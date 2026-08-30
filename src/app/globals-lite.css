@@ -31858,3 +31858,110 @@ select optgroup {
 :root[data-theme='parchment'] aside.quote-request-alert span {
   color: #241e17;
 }
+
+/* ============================================================================
+   DARK THEME PALETTE & CONTRAST REFINEMENTS
+   ============================================================================ */
+:root[data-theme='dark'] .sidenav-new,
+:root:not([data-theme]) .sidenav-new {
+  background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%);
+  color: #ffffff;
+  border-color: #9a3412;
+}
+
+:root[data-theme='dark'] .action-btn--plan,
+:root:not([data-theme]) .action-btn--plan {
+  background: linear-gradient(180deg, #7c3aed 0%, #5b21b6 100%);
+  color: #ffffff;
+  border-color: #5b21b6;
+  box-shadow: 0 10px 24px -10px rgba(91, 33, 182, 0.5);
+}
+
+:root[data-theme='dark'] [class*='assistant_triggerBadge'],
+:root[data-theme='dark'] .assistant_triggerBadge,
+:root:not([data-theme]) [class*='assistant_triggerBadge'],
+:root:not([data-theme]) .assistant_triggerBadge {
+  background: #4338ca !important;
+  color: #ffffff !important;
+}
+
+:root[data-theme='dark'] a.website-nav-badge.sidenav-website,
+:root:not([data-theme]) a.website-nav-badge.sidenav-website {
+  background: rgba(124, 58, 237, 0.2);
+  border-color: rgba(124, 58, 237, 0.45);
+  color: #f8fafc !important;
+}
+
+:root[data-theme='dark'] a.website-nav-badge.sidenav-website span,
+:root:not([data-theme]) a.website-nav-badge.sidenav-website span {
+  color: #f8fafc !important;
+}
+
+:root[data-theme='dark'] a.website-nav-badge.sidenav-website .website-nav-live-label,
+:root:not([data-theme]) a.website-nav-badge.sidenav-website .website-nav-live-label {
+  color: #34d399 !important;
+  font-weight: 750;
+}
+
+:root[data-theme='dark'] a.website-nav-badge.sidenav-website .website-nav-live-edit,
+:root:not([data-theme]) a.website-nav-badge.sidenav-website .website-nav-live-edit {
+  color: #c4b5fd !important;
+}
+
+:root[data-theme='dark'] [class*='admin_muted'],
+:root[data-theme='dark'] .admin-muted,
+:root[data-theme='dark'] td.admin_muted,
+:root[data-theme='dark'] span.admin_muted,
+:root:not([data-theme]) [class*='admin_muted'],
+:root:not([data-theme]) .admin-muted,
+:root:not([data-theme]) td.admin_muted,
+:root:not([data-theme]) span.admin_muted {
+  color: #94a3b8 !important;
+}
+
+:root[data-theme='dark'] .admin-table th,
+:root[data-theme='dark'] table th,
+:root:not([data-theme]) .admin-table th,
+:root:not([data-theme]) table th {
+  color: #cbd5e1 !important;
+  font-weight: 700;
+}
+
+:root[data-theme='dark'] [class*='admin_rowLink'],
+:root[data-theme='dark'] .admin_rowLink,
+:root:not([data-theme]) [class*='admin_rowLink'],
+:root:not([data-theme]) .admin_rowLink {
+  color: #f97316 !important;
+  font-weight: 600;
+}
+
+:root[data-theme='dark'] aside.quote-request-alert,
+:root:not([data-theme]) aside.quote-request-alert {
+  background: rgba(255, 122, 33, 0.15);
+  border-color: rgba(255, 122, 33, 0.4);
+  color: #f8fafc;
+}
+
+:root[data-theme='dark'] aside.quote-request-alert span,
+:root:not([data-theme]) aside.quote-request-alert span {
+  color: #f8fafc;
+}
+
+:root[data-theme='dark'] .sidenav-foot .stripe-status-pill.sidenav-stripe .stripe-status-tile,
+:root[data-theme='dark'] a.stripe-status-pill.sidenav-stripe .stripe-status-tile,
+:root:not([data-theme]) .sidenav-foot .stripe-status-pill.sidenav-stripe .stripe-status-tile,
+:root:not([data-theme]) a.stripe-status-pill.sidenav-stripe .stripe-status-tile {
+  color: #34d399;
+  font-weight: 800;
+}
+
+:root[data-theme='dark'] .form-grid label > span,
+:root[data-theme='dark'] label.field > span,
+:root[data-theme='dark'] .field-hint,
+:root[data-theme='dark'] .field-sub,
+:root:not([data-theme]) .form-grid label > span,
+:root:not([data-theme]) label.field > span,
+:root:not([data-theme]) .field-hint,
+:root:not([data-theme]) .field-sub {
+  color: #94a3b8;
+}
