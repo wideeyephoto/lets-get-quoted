@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { sendSpeedToLeadSms } from '@/lib/sms';
+import { withOptOut } from '@/lib/sms-templates';
 
 export type SpeedToLeadParams = {
   businessName: string;
@@ -20,10 +21,14 @@ export function generateSpeedToLeadSms(params: SpeedToLeadParams): string {
   const locationSuffix = cleanCity ? ` in ${cleanCity}` : '';
 
   if (urgency === 'emergency' || urgency === 'high') {
-    return `Hi ${firstName}, this is ${businessName}. We received your urgent request for ${cleanService}${locationSuffix}. Our dispatch team is on standby — are you available for a quick 2-minute call to confirm details?`;
+    return withOptOut(
+      `Hi ${firstName}, this is ${businessName}. We received your urgent request for ${cleanService}${locationSuffix}. Our dispatch team is on standby — are you available for a quick 2-minute call to confirm details?`,
+    );
   }
 
-  return `Hi ${firstName}, thanks for reaching out to ${businessName} regarding your ${cleanService}${locationSuffix}! When is the best time for our estimator to take a quick look — tomorrow morning or afternoon?`;
+  return withOptOut(
+    `Hi ${firstName}, thanks for reaching out to ${businessName} regarding your ${cleanService}${locationSuffix}! When is the best time for our estimator to take a quick look — tomorrow morning or afternoon?`,
+  );
 }
 
 /**

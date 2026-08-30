@@ -105,10 +105,39 @@ describe('generateGoogleAdsEditorCsv', () => {
 
     const lines = csv.split('\n');
     expect(lines[0]).toContain('Campaign,Ad Group,Keyword,Criterion Type');
+    expect(lines[0]).toContain('Ad Schedule');
     expect(csv).toContain('Austin Roofing - Search Ads');
     expect(csv).toContain('"roof repair near me"');
     expect(csv).toContain('Phrase');
     expect(csv).toContain('Exact');
     expect(csv).toContain('Negative Phrase');
+  });
+
+  it('supports custom ad schedule in CSV export', () => {
+    const rsa = generateResponsiveSearchAd({
+      businessName: 'Evergreen Roofing',
+      trade: 'Roofing',
+      city: 'Austin, TX',
+      services: ['Roof Repair'],
+      landingPageUrl: 'https://evergreen.com',
+    });
+
+    const csv = generateGoogleAdsEditorCsv({
+      campaignName: 'Austin Roofing - Weekday Search Ads',
+      monthlyBudget: 600,
+      dailyBudget: 27.7,
+      targetCity: 'Austin, TX',
+      targetRadiusMiles: 25,
+      rsa,
+      keywords: ['"roof repair near me"'],
+      negativeKeywords: ['diy'],
+      schedule: {
+        days: ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY'],
+        startHour: 8,
+        endHour: 18,
+      },
+    });
+
+    expect(csv).toContain('MONDAY;TUESDAY;WEDNESDAY;THURSDAY;FRIDAY:8:00-18:00');
   });
 });

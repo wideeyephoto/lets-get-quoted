@@ -19,11 +19,11 @@ import { usePathname } from 'next/navigation';
 
 const SECTIONS = [
   { path: '', label: 'Overview' },
-  { path: '/campaigns', label: 'Campaigns' },
-  { path: '/ads', label: 'Google Ads' },
-  { path: '/links', label: 'Link & QR Builder' },
-  { path: '/blog', label: 'Blog' },
-  { path: '/performance', label: 'Performance & ROI' },
+  { path: '/campaigns', label: 'Email & Text' },
+  { path: '/ads', label: 'Paid Ads' },
+  { path: '/blog', label: 'Blog & SEO' },
+  { path: '/links', label: 'Tracking' },
+  { path: '/performance', label: 'Results' },
 ];
 
 export default function MarketingNav({

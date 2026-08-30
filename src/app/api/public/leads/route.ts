@@ -403,11 +403,22 @@ export async function POST(request: NextRequest) {
       triage,
     });
 
-    if (attribution?.clickId && attribution.clickIdType === 'gclid') {
+    if ((attribution?.clickId && attribution.clickIdType === 'gclid') || email || phone) {
+      const nameParts = name.trim().split(/\s+/);
+      const firstName = nameParts[0] || '';
+      const lastName = nameParts.slice(1).join(' ') || '';
+
       uploadOfflineConversion({
-        gclid: attribution.clickId,
+        gclid: attribution?.clickIdType === 'gclid' ? attribution.clickId : undefined,
         conversionActionName: 'Lead Submitted',
+        conversionValueDollars: estimate?.max ? Math.round(estimate.max * 0.05) : 50,
+        currencyCode: 'USD',
         orderId: lead.id,
+        email: email || undefined,
+        phone: phone || undefined,
+        firstName: firstName || undefined,
+        lastName: lastName || undefined,
+        postalCode: location.match(/\b\d{5}\b/)?.[0] || undefined,
       }).catch((err) => console.warn('Offline conversion upload skipped:', err));
     }
 

@@ -274,7 +274,7 @@ describe('the SKU is sellable, and every reason it was not is closed', () => {
   it('makes crew_user sellable once the cancel path and account deletion cleanup exist', () => {
     expect(TOP_UPS_WITHHELD).not.toHaveProperty('crew_user');
     expect(SELLABLE_TOP_UP_IDS).toContain('crew_user');
-    expect(SELLABLE_TOP_UP_IDS).toHaveLength(10);
+    expect(SELLABLE_TOP_UP_IDS).toHaveLength(6);
   });
 
   it('still withholds the other two capacity SKUs, each for its own reason', () => {

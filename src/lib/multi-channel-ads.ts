@@ -25,12 +25,18 @@ export type MultiChannelBudget = {
   activeChannels: ('google_search' | 'google_retargeting' | 'meta_social')[];
 };
 
-export type SmartBundleId = 'starter' | 'growth' | 'dominate';
+export type SmartBundleId = 'launch' | 'growth' | 'scale' | 'starter' | 'dominate';
 
 export type SmartBundle = {
   id: SmartBundleId;
   name: string;
   badge?: string;
+  weeklyAmountDollars: number;
+  weeklyAdSpendDollars: number;
+  weeklyFeeDollars: number;
+  monthlyAverageDollars: number;
+  monthlyAdSpendDollars: number;
+  monthlyFeeDollars: number;
   totalMonthlyDollars: number;
   adSpendDollars: number;
   platformFeeDollars: number;
@@ -46,65 +52,92 @@ export type SmartBundle = {
 
 export const SMART_BUNDLES: SmartBundle[] = [
   {
-    id: 'starter',
-    name: 'Starter Pack',
-    totalMonthlyDollars: 395,
-    adSpendDollars: 345,
-    platformFeeDollars: 50,
-    searchSpendDollars: 345,
+    id: 'launch',
+    name: 'Launch Plan',
+    weeklyAmountDollars: 185,
+    weeklyAdSpendDollars: 160,
+    weeklyFeeDollars: 25,
+    monthlyAverageDollars: 802,
+    monthlyAdSpendDollars: 693,
+    monthlyFeeDollars: 109,
+    totalMonthlyDollars: 802,
+    adSpendDollars: 693,
+    platformFeeDollars: 109,
+    searchSpendDollars: 693,
     retargetingSpendDollars: 0,
     metaSpendDollars: 0,
-    estimatedLeadsRange: '12–18 Leads / mo',
-    leadMin: 12,
-    leadMax: 18,
-    features: ['Google Search Ads (PPC)', 'Negative Waste Filtering', 'AI Smart Bidding'],
+    estimatedLeadsRange: '4–8 Qualified Leads / mo (~1–2 / wk)',
+    leadMin: 4,
+    leadMax: 8,
+    features: [
+      'Google Search Ads (PPC)',
+      '100+ Negative Waste Filters',
+      'AI Smart Bidding & Geofencing',
+      'Speed-to-Lead Auto-SMS',
+    ],
     channels: ['google_search'],
   },
   {
     id: 'growth',
     name: 'Growth Engine',
     badge: '⭐ Most Popular',
-    totalMonthlyDollars: 695,
-    adSpendDollars: 600,
-    platformFeeDollars: 95,
-    searchSpendDollars: 500,
-    retargetingSpendDollars: 100,
+    weeklyAmountDollars: 345,
+    weeklyAdSpendDollars: 300,
+    weeklyFeeDollars: 45,
+    monthlyAverageDollars: 1495,
+    monthlyAdSpendDollars: 1300,
+    monthlyFeeDollars: 195,
+    totalMonthlyDollars: 1495,
+    adSpendDollars: 1300,
+    platformFeeDollars: 195,
+    searchSpendDollars: 1100,
+    retargetingSpendDollars: 200,
     metaSpendDollars: 0,
-    estimatedLeadsRange: '25–40 Leads / mo',
-    leadMin: 25,
-    leadMax: 40,
+    estimatedLeadsRange: '10–18 Qualified Leads / mo (~2–4 / wk)',
+    leadMin: 10,
+    leadMax: 18,
     features: [
       'Google Search Ads (PPC)',
       'Lost Visitor Retargeting (Display)',
       '$250 Off Re-engagement Offer',
-      'Weather Surge Protection',
+      'Weather Surge Radar Protection',
+      'Speed-to-Lead Auto-SMS',
     ],
     channels: ['google_search', 'google_retargeting'],
   },
   {
-    id: 'dominate',
-    name: 'Total Domination',
-    badge: '🚀 Max Scale',
-    totalMonthlyDollars: 1395,
-    adSpendDollars: 1200,
-    platformFeeDollars: 195,
-    searchSpendDollars: 900,
-    retargetingSpendDollars: 100,
-    metaSpendDollars: 200,
-    estimatedLeadsRange: '55–85 Leads / mo',
-    leadMin: 55,
-    leadMax: 85,
+    id: 'scale',
+    name: 'Scale & Dominate',
+    badge: '🚀 Max Volume',
+    weeklyAmountDollars: 645,
+    weeklyAdSpendDollars: 560,
+    weeklyFeeDollars: 85,
+    monthlyAverageDollars: 2795,
+    monthlyAdSpendDollars: 2427,
+    monthlyFeeDollars: 368,
+    totalMonthlyDollars: 2795,
+    adSpendDollars: 2427,
+    platformFeeDollars: 368,
+    searchSpendDollars: 1800,
+    retargetingSpendDollars: 200,
+    metaSpendDollars: 427,
+    estimatedLeadsRange: '22–38 Qualified Leads / mo (~5–9 / wk)',
+    leadMin: 22,
+    leadMax: 38,
     features: [
       'Google Search Ads (PPC)',
       'Facebook & Instagram Feed Ads',
       'Lost Visitor Retargeting',
       'Priority Multi-Channel Bidding',
+      'Closed-Loop Offline Revenue Sync',
     ],
     channels: ['google_search', 'google_retargeting', 'meta_social'],
   },
 ];
 
-export function getSmartBundle(bundleId: SmartBundleId): SmartBundle {
+export function getSmartBundle(bundleId: string): SmartBundle {
+  if (bundleId === 'starter' || bundleId === 'launch') return SMART_BUNDLES[0];
+  if (bundleId === 'dominate' || bundleId === 'scale') return SMART_BUNDLES[2];
   return SMART_BUNDLES.find((b) => b.id === bundleId) || SMART_BUNDLES[1];
 }
 

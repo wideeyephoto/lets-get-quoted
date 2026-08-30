@@ -390,9 +390,11 @@ export function buildProductionClosureAdapters(admin: SupabaseClient): ClosureAd
         const { getStripeClient } = await import('@/lib/stripe');
         const stripe = getStripeClient();
         if (!stripe) return true;
-        const subs = await stripe.subscriptions.list({ customer: customerId, status: 'active' });
+        const subs = await stripe.subscriptions.list({ customer: customerId, status: 'all', limit: 100 });
         for (const sub of subs.data) {
-          await stripe.subscriptions.cancel(sub.id);
+          if (sub.status !== 'canceled') {
+            await stripe.subscriptions.cancel(sub.id);
+          }
         }
         return true;
       } catch (err) {

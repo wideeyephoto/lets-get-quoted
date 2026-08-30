@@ -121,7 +121,12 @@ export default function AiAdsSimulator() {
             >
               {b.badge && <span className={styles.popularBadge}>{b.badge}</span>}
               <h4 className={styles.bundleTitle}>{b.name}</h4>
-              <div className={styles.bundlePrice}>${b.totalMonthlyDollars}/mo</div>
+              <div className={styles.bundlePrice}>
+                ${b.weeklyAmountDollars}<span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--muted, #94a3b8)' }}>/wk</span>
+              </div>
+              <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '-0.15rem', marginBottom: '0.35rem' }}>
+                ~${b.monthlyAverageDollars}/mo avg · ${b.weeklyAdSpendDollars} ads + ${b.weeklyFeeDollars} fee
+              </div>
               <p className={styles.bundleChannels}>{b.estimatedLeadsRange} · {b.features[0]}</p>
             </div>
           );

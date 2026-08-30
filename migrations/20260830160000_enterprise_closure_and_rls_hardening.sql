@@ -569,8 +569,7 @@ declare
 begin
   -- 1. Suspend account
   update public.accounts
-     set suspended_at = v_now,
-         updated_at = v_now
+     set suspended_at = v_now
    where id = p_account_id;
 
   if not found then
@@ -579,8 +578,7 @@ begin
 
   -- 2. Deactivate all memberships for this account
   update public.memberships
-     set deactivated_at = v_now,
-         updated_at = v_now
+     set deactivated_at = v_now
    where account_id = p_account_id
      and deactivated_at is null;
 

@@ -235,7 +235,7 @@ export type ResponsiveSearchAd = {
   finalUrl: string;
 };
 
-function clampText(text: string, maxLen: number): string {
+export function clampText(text: string, maxLen: number): string {
   const clean = text.trim();
   if (clean.length <= maxLen) return clean;
   return clean.slice(0, maxLen - 1).trim() + '…';
@@ -319,6 +319,206 @@ export function generateResponsiveSearchAd(params: {
   };
 }
 
+export type StructuredAdGroup = {
+  name: string;
+  theme: 'emergency' | 'replacement' | 'maintenance';
+  bidModifierMobile: number; // e.g. 1.25 for +25% on mobile
+  rsa: ResponsiveSearchAd;
+  keywords: string[];
+};
+
+export type CallOnlyAd = {
+  businessName: string;
+  phoneNumber: string;
+  headline1: string;
+  headline2: string;
+  description1: string;
+  description2: string;
+  verificationUrl: string;
+};
+
+/**
+ * Generates high-converting Single-Theme Ad Groups (STAGs) segmented by urgency & job ticket value.
+ */
+export function generateStructuredAdGroups(params: {
+  businessName: string;
+  trade: string;
+  city: string;
+  services: string[];
+  phone?: string;
+  landingPageUrl: string;
+}): StructuredAdGroup[] {
+  const { businessName, trade, city, services, phone, landingPageUrl } = params;
+  const cleanCity = (city || '').replace(/,\s*[A-Z]{2}$/i, '').trim();
+
+  // 1. Emergency & Same-Day Repairs (High urgency, high mobile bid adjustment)
+  const emergencyRsa: ResponsiveSearchAd = {
+    headlines: [
+      clampText(`24/7 Emergency ${trade}`, 30),
+      clampText(`Fast Same-Day Dispatch`, 30),
+      clampText(`On-Call Now in ${cleanCity}`, 30),
+      clampText(businessName || `${trade} Pros`, 30),
+      clampText('Fast 60-Minute Arrival', 30),
+      clampText('Licensed & Insured Pros', 30),
+      clampText('Upfront Honest Pricing', 30),
+      clampText('No Overtime Surprise Fees', 30),
+    ],
+    descriptions: [
+      clampText(`Urgent ${trade.toLowerCase()} issue in ${cleanCity}? Fast dispatch & expert repairs. Call or book online now!`, 90),
+      clampText(`24/7 emergency service with transparent upfront pricing. 5-star local pros on call today.`, 90),
+    ],
+    sitelinks: [
+      { title: clampText('Emergency Dispatch', 25), desc: clampText('Direct crew dispatch line', 35), url: `${landingPageUrl}?intent=emergency` },
+      { title: clampText('Instant Estimate', 25), desc: clampText('Get quoted online in 60s', 35), url: landingPageUrl },
+    ],
+    callExtension: phone?.trim(),
+    finalUrl: `${landingPageUrl}${landingPageUrl.includes('?') ? '&' : '?'}intent=emergency&utm_content=emergency_adgroup`,
+  };
+
+  const emergencyKeywords = [
+    `"emergency ${trade.toLowerCase()} in ${cleanCity.toLowerCase()}"`,
+    `"24/7 ${trade.toLowerCase()} repair"`,
+    `"same day ${trade.toLowerCase()} service"`,
+    `[emergency ${trade.toLowerCase()} repair ${cleanCity.toLowerCase()}]`,
+    `"urgent ${trade.toLowerCase()} help"`,
+    ...services.slice(0, 3).map((s) => `"emergency ${s.toLowerCase()}"`),
+  ];
+
+  // 2. Full Replacements & Major Installations (High ticket, Target ROAS)
+  const replacementRsa: ResponsiveSearchAd = {
+    headlines: [
+      clampText(`${trade} Replacement Experts`, 30),
+      clampText(`Complete System Installation`, 30),
+      clampText(`Free In-Home Assessment`, 30),
+      clampText(`Top-Rated ${cleanCity} Pros`, 30),
+      clampText(`Financing Available $0 Down`, 30),
+      clampText(`Backed by 10-Yr Warranty`, 30),
+      clampText(businessName || `${trade} Specialists`, 30),
+      clampText(`Transparent Project Quote`, 30),
+    ],
+    descriptions: [
+      clampText(`Upgrading or replacing your ${trade.toLowerCase()} in ${cleanCity}? Premium materials & guaranteed warranty.`, 90),
+      clampText(`Get a detailed, transparent proposal with flexible financing options. Schedule free estimate!`, 90),
+    ],
+    sitelinks: [
+      { title: clampText('Free Replacement Quote', 25), desc: clampText('Custom scope & transparent pricing', 35), url: `${landingPageUrl}?intent=replacement` },
+      { title: clampText('Financing Options', 25), desc: clampText('Low monthly payments available', 35), url: `${landingPageUrl}#financing` },
+    ],
+    callExtension: phone?.trim(),
+    finalUrl: `${landingPageUrl}${landingPageUrl.includes('?') ? '&' : '?'}intent=replacement&utm_content=replacement_adgroup`,
+  };
+
+  const replacementKeywords = [
+    `"${trade.toLowerCase()} replacement ${cleanCity.toLowerCase()}"`,
+    `"new ${trade.toLowerCase()} installation"`,
+    `"cost of ${trade.toLowerCase()} replacement"`,
+    `[${trade.toLowerCase()} installation near me]`,
+    ...services.slice(0, 3).map((s) => `"${s.toLowerCase()} installation ${cleanCity.toLowerCase()}"`),
+  ];
+
+  // 3. Maintenance & Seasonal Inspections (Low-friction entry offers)
+  const maintenanceRsa: ResponsiveSearchAd = {
+    headlines: [
+      clampText(`${trade} Tune-Up & Check`, 30),
+      clampText(`Comprehensive Inspection`, 30),
+      clampText(`Prevent Costly Breakdowns`, 30),
+      clampText(`Local ${cleanCity} Experts`, 30),
+      clampText(`Top-Rated Maintenance Pros`, 30),
+      clampText(businessName || `${trade} Service`, 30),
+    ],
+    descriptions: [
+      clampText(`Keep your ${trade.toLowerCase()} running at peak performance. Multi-point inspection & tune-up specials.`, 90),
+      clampText(`Trusted local technicians. Prevent unexpected system failures with regular maintenance.`, 90),
+    ],
+    sitelinks: [
+      { title: clampText('Schedule Tune-Up', 25), desc: clampText('Quick 45-minute inspection', 35), url: `${landingPageUrl}?intent=tuneup` },
+    ],
+    callExtension: phone?.trim(),
+    finalUrl: `${landingPageUrl}${landingPageUrl.includes('?') ? '&' : '?'}intent=maintenance&utm_content=maintenance_adgroup`,
+  };
+
+  const maintenanceKeywords = [
+    `"${trade.toLowerCase()} inspection ${cleanCity.toLowerCase()}"`,
+    `"${trade.toLowerCase()} maintenance service"`,
+    `"annual ${trade.toLowerCase()} tune up"`,
+    `[${trade.toLowerCase()} checkup near me]`,
+  ];
+
+  return [
+    {
+      name: '01 - Emergency & Same-Day Repairs',
+      theme: 'emergency',
+      bidModifierMobile: 1.3, // +30% on mobile searches
+      rsa: emergencyRsa,
+      keywords: emergencyKeywords,
+    },
+    {
+      name: '02 - Full Replacements & Installations',
+      theme: 'replacement',
+      bidModifierMobile: 1.0,
+      rsa: replacementRsa,
+      keywords: replacementKeywords,
+    },
+    {
+      name: '03 - Maintenance & Seasonal Inspections',
+      theme: 'maintenance',
+      bidModifierMobile: 1.0,
+      rsa: maintenanceRsa,
+      keywords: maintenanceKeywords,
+    },
+  ];
+}
+
+/**
+ * Generates a mobile Call-Only ad variation for immediate phone inquiries.
+ */
+export function generateCallOnlyAd(params: {
+  businessName: string;
+  phone: string;
+  trade: string;
+  city: string;
+  landingPageUrl: string;
+}): CallOnlyAd {
+  const { businessName, phone, trade, city, landingPageUrl } = params;
+  const cleanCity = (city || '').replace(/,\s*[A-Z]{2}$/i, '').trim();
+
+  return {
+    businessName: clampText(businessName || `${trade} Pros`, 25),
+    phoneNumber: phone,
+    headline1: clampText(`24/7 ${trade} in ${cleanCity}`, 30),
+    headline2: clampText('Fast Local Dispatch · Call Now', 30),
+    description1: clampText(`Speak directly with a local licensed ${trade.toLowerCase()} technician. Fast upfront estimates.`, 90),
+    description2: clampText(`Top-rated 5-star quality. No waiting on hold—call our dispatch line directly today!`, 90),
+    verificationUrl: landingPageUrl,
+  };
+}
+
+export type AdDayOfWeek = 'MONDAY' | 'TUESDAY' | 'WEDNESDAY' | 'THURSDAY' | 'FRIDAY' | 'SATURDAY' | 'SUNDAY';
+
+export type AdScheduleConfig = {
+  days: AdDayOfWeek[];
+  startHour: number; // 0-23
+  endHour: number;   // 1-24
+};
+
+export const ALL_DAYS_OF_WEEK: AdDayOfWeek[] = [
+  'MONDAY',
+  'TUESDAY',
+  'WEDNESDAY',
+  'THURSDAY',
+  'FRIDAY',
+  'SATURDAY',
+  'SUNDAY',
+];
+
+export const WEEKDAYS: AdDayOfWeek[] = [
+  'MONDAY',
+  'TUESDAY',
+  'WEDNESDAY',
+  'THURSDAY',
+  'FRIDAY',
+];
+
 export type GoogleAdsCampaignSpec = {
   campaignName: string;
   monthlyBudget: number;
@@ -328,6 +528,7 @@ export type GoogleAdsCampaignSpec = {
   rsa: ResponsiveSearchAd;
   keywords: string[];
   negativeKeywords: string[];
+  schedule?: AdScheduleConfig;
 };
 
 /**
@@ -338,7 +539,7 @@ export function generateGoogleAdsEditorCsv(spec: GoogleAdsCampaignSpec): string 
 
   // CSV Header
   rows.push(
-    'Campaign,Ad Group,Keyword,Criterion Type,Headline 1,Headline 2,Headline 3,Headline 4,Headline 5,Description 1,Description 2,Description 3,Description 4,Final URL,Campaign Daily Budget'
+    'Campaign,Ad Group,Keyword,Criterion Type,Headline 1,Headline 2,Headline 3,Headline 4,Headline 5,Description 1,Description 2,Description 3,Description 4,Final URL,Campaign Daily Budget,Ad Schedule'
   );
 
   const escape = (str: string) => `"${(str || '').replace(/"/g, '""')}"`;
@@ -346,6 +547,10 @@ export function generateGoogleAdsEditorCsv(spec: GoogleAdsCampaignSpec): string 
   const adGroupName = 'Local Search - High Intent';
   const h = spec.rsa.headlines;
   const d = spec.rsa.descriptions;
+
+  const scheduleStr = spec.schedule
+    ? `${spec.schedule.days.join(';')}:${spec.schedule.startHour}:00-${spec.schedule.endHour}:00`
+    : 'ALL_DAYS:00:00-24:00';
 
   // Add the Ad row
   rows.push(
@@ -365,6 +570,7 @@ export function generateGoogleAdsEditorCsv(spec: GoogleAdsCampaignSpec): string 
       escape(d[3] || ''),
       escape(spec.rsa.finalUrl),
       spec.dailyBudget.toFixed(2),
+      escape(scheduleStr),
     ].join(',')
   );
 
@@ -397,6 +603,7 @@ export function generateGoogleAdsEditorCsv(spec: GoogleAdsCampaignSpec): string 
         '',
         '',
         '',
+        '',
       ].join(',')
     );
   }
@@ -409,6 +616,7 @@ export function generateGoogleAdsEditorCsv(spec: GoogleAdsCampaignSpec): string 
         escape(adGroupName),
         escape(neg),
         escape('Negative Phrase'),
+        '',
         '',
         '',
         '',

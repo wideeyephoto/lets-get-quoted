@@ -1,5 +1,5 @@
 import { requireOfficeContext } from '@/lib/auth';
-import { loadRecipients, loadSentBeats } from '@/lib/campaigns';
+import { listCampaigns, loadRecipients, loadSentBeats } from '@/lib/campaigns';
 import { resolveMarketingMailingAddress } from '@/lib/email-suppression';
 import { loadBlogWorkspace } from '@/lib/site-blog';
 import { listRebookCandidates, DEFAULT_REBOOK_DAYS } from '@/lib/rebook';
@@ -29,6 +29,7 @@ export default async function MarketingPage() {
     { data: userData },
     leads,
     jobs,
+    campaigns,
   ] = await Promise.all([
     loadRecipients(supabase, accountId),
     supabase.from('accounts').select('business_name, mailing_address, reply_to_email').eq('id', accountId).maybeSingle(),
@@ -44,6 +45,7 @@ export default async function MarketingPage() {
     supabase.auth.getUser(),
     listLeads(supabase, accountId),
     listJobs(supabase, accountId),
+    listCampaigns(supabase, accountId),
   ]);
 
   const jobLookup: JobFinancialLookup = {};
@@ -121,6 +123,7 @@ export default async function MarketingPage() {
         currentTheme: (siteRow?.email_theme as string | null) ?? null,
       }}
       roiSummary={roiSummary}
+      campaigns={campaigns}
     />
   );
 }

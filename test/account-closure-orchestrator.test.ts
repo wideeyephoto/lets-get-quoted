@@ -64,7 +64,7 @@ describe('account closure orchestrator & encryption', () => {
 
     const job = await claimClosureJob(mockAdmin, 'lease-token-123', 300);
     expect(job).toBeDefined();
-    expect(job.id).toBe('job-claimed');
+    expect(job!.id).toBe('job-claimed');
     expect(mockClaimRpc).toHaveBeenCalledWith('claim_account_closure_job', {
       p_lease_token: 'lease-token-123',
       p_lease_duration_seconds: 300,

@@ -25,9 +25,14 @@ describe('generateInvoicePdf', () => {
     // Check for PDF magic header '%PDF-'
     const magicHeader = pdfBuffer.subarray(0, 5).toString('ascii');
     expect(magicHeader).toBe('%PDF-');
+
+    // Standard 2-item invoice should fit on exactly 1 page
+    const rawPdf = pdfBuffer.toString('latin1');
+    const pageMatches = rawPdf.match(/\/Type\s*\/Page\b/g) || [];
+    expect(pageMatches.length).toBe(1);
   });
 
-  it('handles simple invoice without tax or discount', async () => {
+  it('handles simple invoice without tax or discount and fits on 1 page', async () => {
     const pdfBuffer = await generateInvoicePdf({
       businessName: 'Precision Plumbing LLC',
       invoiceRef: 'INV-552',
@@ -40,6 +45,10 @@ describe('generateInvoicePdf', () => {
     expect(pdfBuffer).toBeInstanceOf(Buffer);
     expect(pdfBuffer.length).toBeGreaterThan(500);
     expect(pdfBuffer.subarray(0, 5).toString('ascii')).toBe('%PDF-');
+
+    const rawPdf = pdfBuffer.toString('latin1');
+    const pageMatches = rawPdf.match(/\/Type\s*\/Page\b/g) || [];
+    expect(pageMatches.length).toBe(1);
   });
 
   it('renders multi-item long invoice without throwing', async () => {

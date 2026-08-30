@@ -31,17 +31,31 @@ export default function BlogScreen({
     <main className="wide-shell workspace-shell">
       <MarketingNav basePath={basePath} only={navOnly} />
 
-      <section className="workspace-hero panel">
-        <div className="workspace-hero-copy">
-          <p className="eyebrow">Marketing · Blog</p>
-          <h1 className="workspace-title">Posts for your website</h1>
-          <p className="workspace-lead">
-            Useful articles for homeowners — maintenance tips, seasonal advice, what to know before hiring. They give
-            Google more local pages to rank and give past customers a reason to come back.{' '}
+      <section className="workspace-hero panel" style={{ marginBottom: '1.25rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', width: '100%' }}>
+          <div className="workspace-hero-copy" style={{ margin: 0 }}>
+            <p className="eyebrow">Search Engine Optimization</p>
+            <h1 className="workspace-title" style={{ fontSize: '1.75rem', marginBottom: '0.35rem' }}>
+              Blog &amp; SEO
+            </h1>
+            <p className="workspace-lead" style={{ margin: 0, fontSize: '0.9rem' }}>
+              Publish helpful homeowner guides to build trust, earn local Google rankings, and fuel your email newsletters.
+            </p>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', flexWrap: 'wrap' }}>
             {blog?.publicBase ? (
-              <a href={blog.publicBase} target="_blank" rel="noopener noreferrer">See them on your site ↗</a>
+              <a
+                href={blog.publicBase}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn secondary"
+                style={{ fontSize: '0.82rem' }}
+              >
+                View live blog ↗
+              </a>
             ) : null}
-          </p>
+          </div>
         </div>
       </section>
 

@@ -44,6 +44,7 @@ export type SignalWireBrand = Readonly<{
   companyName: string;
   ein: string;
   companyWebsite: string;
+  entityType?: string | null;
 }>;
 
 export type SignalWireCampaign = Readonly<{
@@ -715,6 +716,7 @@ export class SignalWireNumberProvisioningClient {
       companyName: requireText(row.company_name, 'Brand legal company name'),
       ein: requireText(row.ein, 'Brand EIN'),
       companyWebsite: requireText(row.company_website, 'Brand website'),
+      entityType: optionalText(row.entity_type),
     };
   }
 

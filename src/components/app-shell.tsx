@@ -70,8 +70,7 @@ const baseNavItems: { href: string; label: string; hint?: string }[] = [
   { href: '/dashboard/cash-flow', label: 'Cash Flow', hint: 'Upcoming bills, payroll & projected balance' },
   { href: '/dashboard/expenses', label: 'Expenses Ledger', hint: 'Cross-job supplier receipts, labor & costs' },
   { href: '/dashboard/automations', label: 'Automations', hint: 'The follow-ups, reminders and review asks that run without you' },
-  { href: '/dashboard/marketing', label: 'Marketing', hint: 'Seasonal topics, email & text campaigns' },
-  { href: '/dashboard/marketing/blog', label: 'Blog', hint: 'Posts for your website' },
+  { href: '/dashboard/marketing', label: 'Marketing', hint: 'Overview, campaigns, paid ads, SEO & tracking' },
   { href: '/dashboard/reviews', label: 'Reviews', hint: 'Ratings & private feedback' },
   { href: '/dashboard/sites', label: 'Website' },
   { href: '/dashboard/settings', label: 'Account' },
@@ -151,7 +150,6 @@ const NAV_GROUPS: { label: string; accent: string; hrefs: string[] }[] = [
     hrefs: [
       '/dashboard/automations',
       '/dashboard/marketing',
-      '/dashboard/marketing/blog',
       '/dashboard/reviews',
     ],
   },

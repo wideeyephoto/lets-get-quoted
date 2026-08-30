@@ -169,7 +169,7 @@ export function generateInvoicePdf(params: {
       y += 44;
 
       // Payment Notice / Authorization
-      const noticeY = Math.max(y, 650);
+      const noticeY = Math.max(y, 635);
       doc.roundedRect(PAGE_MARGIN, noticeY, CONTENT_WIDTH, 42, 6)
         .fillColor('#f8fafc')
         .fillAndStroke('#e2e8f0');
@@ -187,7 +187,7 @@ export function generateInvoicePdf(params: {
         .font('Helvetica')
         .fontSize(8)
         .fillColor('#94a3b8')
-        .text(`Official Invoice • Generated via Let's Get Quoted • ${params.invoiceRef}`, PAGE_MARGIN, 740, {
+        .text(`Official Invoice • Generated via Let's Get Quoted • ${params.invoiceRef}`, PAGE_MARGIN, 705, {
           width: CONTENT_WIDTH,
           align: 'center',
         });

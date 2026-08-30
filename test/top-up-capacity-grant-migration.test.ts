@@ -144,7 +144,6 @@ describe('what this migration deliberately does not do', () => {
       expect(SELLABLE_TOP_UP_IDS).not.toContain(id);
     }
     expect(SELLABLE_TOP_UP_IDS).toContain('crew_user');
-    expect(SELLABLE_TOP_UP_IDS).toContain('ai_voice_flex');
   });
 
   it('says so in the file, so the next reader is not surprised', () => {

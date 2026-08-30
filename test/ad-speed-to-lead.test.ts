@@ -15,6 +15,7 @@ describe('AI Speed-to-Lead SMS Engine', () => {
     expect(text).toContain('Apex Roofing');
     expect(text).toContain('Roof Replacement in Austin');
     expect(text).toContain('tomorrow morning or afternoon');
+    expect(text).toContain('Reply STOP to opt out.');
   });
 
   it('generates high-urgency dispatch SMS for emergency leads', () => {
@@ -29,5 +30,6 @@ describe('AI Speed-to-Lead SMS Engine', () => {
     expect(text).toContain('Hi David');
     expect(text).toContain('urgent request for Burst Pipe Leak in Dallas');
     expect(text).toContain('dispatch team is on standby');
+    expect(text).toContain('Reply STOP to opt out.');
   });
 });

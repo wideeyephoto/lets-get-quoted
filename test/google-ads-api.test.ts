@@ -4,6 +4,9 @@ import {
   provisionManagedSearchCampaign,
   uploadOfflineConversion,
   fetchLiveCampaignStats,
+  GOOGLE_ADS_API_VERSION,
+  GOOGLE_ADS_API_BASE_URL,
+  buildGoogleAdsHeaders,
 } from '@/lib/google-ads-api';
 
 describe('Google Ads API Module', () => {
@@ -52,6 +55,24 @@ describe('Google Ads API Module', () => {
     expect(validResult.success).toBe(true);
     expect(validResult.gclid).toBe('CjwKCAjw123456_fake_gclid');
     expect(validResult.conversionValueDollars).toBe(8500);
+  });
+
+  it('uses Google Ads API v19 and constructs login-customer-id header', () => {
+    expect(GOOGLE_ADS_API_VERSION).toBe('v19');
+    expect(GOOGLE_ADS_API_BASE_URL).toBe('https://googleads.googleapis.com/v19');
+
+    const headers = buildGoogleAdsHeaders(
+      {
+        developerToken: 'dev_token_123',
+        mccCustomerId: '123-456-7890',
+      },
+      'test_access_token'
+    );
+
+    expect(headers['Authorization']).toBe('Bearer test_access_token');
+    expect(headers['developer-token']).toBe('dev_token_123');
+    expect(headers['login-customer-id']).toBe('1234567890');
+    expect(headers['Content-Type']).toBe('application/json');
   });
 
   it('fetches live campaign stats with consistent CTR and CPC', async () => {

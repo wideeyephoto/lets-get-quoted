@@ -272,6 +272,13 @@ export const CRON_JOBS: CronJobSpec[] = [
     importance: 'money',
     consequence: 'Credits held by requests that died mid-flight are never released, so a workspace permanently loses balance it paid for.',
   },
+  {
+    job: 'account-closure',
+    label: 'Account closure outbox drain',
+    schedule: '*/15 * * * *',
+    importance: 'housekeeping',
+    consequence: 'Requested enterprise account closures stop draining their Stripe, QuickBooks, and storage disposal tasks.',
+  },
 ];
 
 export function cronJob(job: string): CronJobSpec | undefined {

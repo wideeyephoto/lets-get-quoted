@@ -55,27 +55,39 @@ function TemplateRail({
  * being hidden, so a contractor can see what unlocks them.
  */
 export default function CampaignTemplateBrowser({
-  quickWins,
-  grow,
   all,
   onSelect,
 }: {
-  quickWins: TemplateCard[];
-  grow: TemplateCard[];
+  quickWins?: TemplateCard[];
+  grow?: TemplateCard[];
   all: TemplateCard[];
   onSelect: (draft: CampaignDraft) => void;
 }) {
+  const fillScheduleCards = all.filter((c) => c.id === 'fill-next-week' || c.id === 'seasonal-promotion');
+  const winQuotesCards = all.filter((c) => c.id === 'follow-up-quotes' || c.id === 'reward-repeat');
+  const bringBackCards = all.filter((c) => c.id === 'we-miss-you' || c.id === 'reconnect');
+  const promoteServiceCards = all.filter((c) => c.id === 'announce-service' || c.id === 'maintenance-reminder');
+  const requestReviewsCards = all.filter((c) => c.id === 'request-reviews' || c.id === 'referral');
+  const seasonalPrepCards = all.filter((c) => c.id === 'seasonal-promotion' || c.id === 'maintenance-reminder');
+
   return (
-    <section className="panel workspace-section-card" aria-label="Browse campaign templates">
+    <section className="panel workspace-section-card" aria-label="Browse campaign templates by goal">
       <div className="section-heading workspace-section-heading compact-heading">
-        <h2>Browse templates</h2>
+        <div>
+          <p className="eyebrow">Goal-Based Starters</p>
+          <h2>Campaign Templates by Objective</h2>
+        </div>
       </div>
 
-      <TemplateRail title="Quick Wins" cards={quickWins} onSelect={onSelect} />
-      <TemplateRail title="Grow Your Business" cards={grow} onSelect={onSelect} />
+      <TemplateRail title="⚡ Fill the Schedule" cards={fillScheduleCards} onSelect={onSelect} />
+      <TemplateRail title="🎯 Win Open Quotes" cards={winQuotesCards} onSelect={onSelect} />
+      <TemplateRail title="🔄 Bring Customers Back" cards={bringBackCards} onSelect={onSelect} />
+      <TemplateRail title="⭐ Promote a Service" cards={promoteServiceCards} onSelect={onSelect} />
+      <TemplateRail title="💬 Request Reviews &amp; Referrals" cards={requestReviewsCards} onSelect={onSelect} />
+      <TemplateRail title="🛡️ Seasonal Preparation" cards={seasonalPrepCards} onSelect={onSelect} />
 
-      <details className="workspace-details">
-        <summary className="workspace-details-summary">View all templates</summary>
+      <details className="workspace-details" style={{ marginTop: '1rem' }}>
+        <summary className="workspace-details-summary">View all {all.length} templates</summary>
         <div className="template-grid">
           {all.map((card) => (
             <TemplateTile key={card.id} card={card} onSelect={onSelect} />

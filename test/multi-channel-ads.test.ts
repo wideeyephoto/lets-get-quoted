@@ -8,24 +8,33 @@ import {
 } from '@/lib/multi-channel-ads';
 
 describe('Multi-Channel Ads Engine', () => {
-  it('provides 3 high-converting Smart Growth Bundles', () => {
+  it('provides 3 high-converting Weekly Drip Smart Growth Bundles', () => {
     expect(SMART_BUNDLES).toHaveLength(3);
 
-    const starter = getSmartBundle('starter');
-    expect(starter.name).toBe('Starter Pack');
-    expect(starter.totalMonthlyDollars).toBe(395);
-    expect(starter.channels).toContain('google_search');
+    const launch = getSmartBundle('launch');
+    expect(launch.name).toBe('Launch Plan');
+    expect(launch.weeklyAmountDollars).toBe(185);
+    expect(launch.weeklyAdSpendDollars).toBe(160);
+    expect(launch.weeklyFeeDollars).toBe(25);
+    expect(launch.monthlyAverageDollars).toBe(802);
+    expect(launch.channels).toContain('google_search');
 
     const growth = getSmartBundle('growth');
     expect(growth.name).toBe('Growth Engine');
-    expect(growth.totalMonthlyDollars).toBe(695);
+    expect(growth.weeklyAmountDollars).toBe(345);
+    expect(growth.weeklyAdSpendDollars).toBe(300);
+    expect(growth.weeklyFeeDollars).toBe(45);
+    expect(growth.monthlyAverageDollars).toBe(1495);
     expect(growth.channels).toContain('google_search');
     expect(growth.channels).toContain('google_retargeting');
 
-    const dominate = getSmartBundle('dominate');
-    expect(dominate.name).toBe('Total Domination');
-    expect(dominate.totalMonthlyDollars).toBe(1395);
-    expect(dominate.channels).toContain('meta_social');
+    const scale = getSmartBundle('scale');
+    expect(scale.name).toBe('Scale & Dominate');
+    expect(scale.weeklyAmountDollars).toBe(645);
+    expect(scale.weeklyAdSpendDollars).toBe(560);
+    expect(scale.weeklyFeeDollars).toBe(85);
+    expect(scale.monthlyAverageDollars).toBe(2795);
+    expect(scale.channels).toContain('meta_social');
   });
 
   it('generates high-converting Meta feed ad copy for contractors', () => {

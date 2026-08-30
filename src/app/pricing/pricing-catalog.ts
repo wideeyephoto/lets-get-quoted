@@ -177,7 +177,7 @@ export const PLANS: readonly PricingPlan[] = [
   },
 ] as const;
 
-export const VOICE_PURCHASABLE = true;
+export const VOICE_PURCHASABLE = false;
 
 export const VOICE_PLANNED_PRICE_LABEL = 'Planned launch pricing from $55/month';
 
@@ -228,7 +228,7 @@ export const PRICING_FAQS = [
   },
   {
     q: 'Is AI Voice Receptionist available?',
-    a: 'AI Voice Receptionist is available and requires dedicated business number setup, carrier compliance, and voice activation before handling live calls.',
+    a: 'AI Voice Receptionist is currently in private beta. It requires dedicated business number setup, carrier compliance, and voice activation before handling live calls.',
   },
   {
     q: 'How does Flex starter usage work?',

@@ -33,6 +33,8 @@ const BLANK_DRAFT: CampaignDraft = {
  * in the box would not be the words the contractor had just read. Handing the
  * draft across in the browser removes the querystring there was to distrust.
  */
+type CampaignTab = 'create' | 'calendar' | 'templates' | 'sent';
+
 export default function CampaignWorkspace({
   composer,
   campaigns,
@@ -48,13 +50,9 @@ export default function CampaignWorkspace({
   recommendations: CampaignRecommendations | null;
   view: CalendarView;
 }) {
+  const [activeTab, setActiveTab] = useState<CampaignTab>('create');
   const [handedOver, setHandedOver] = useState<CampaignDraft | null>(null);
-  // Bumped on every handoff. The composer keeps its own state for the subject
-  // and body, so a new draft has to REMOUNT it — pushing new props at a live
-  // component would leave the old text in the box.
   const [fill, setFill] = useState(0);
-  // Mirrors whether the composer currently has typed subject/body text, so a
-  // second card or "reuse" click can confirm before replacing it.
   const [dirty, setDirty] = useState(false);
   const composerRef = useRef<HTMLElement | null>(null);
 
@@ -65,6 +63,7 @@ export default function CampaignWorkspace({
       }
       setHandedOver(draft);
       setFill((current) => current + 1);
+      setActiveTab('create');
       requestAnimationFrame(() => {
         composerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       });
@@ -72,13 +71,8 @@ export default function CampaignWorkspace({
     [dirty],
   );
 
-  // A draft carried over from the Calendar screen. Read in an effect rather than
-  // in an initialiser: sessionStorage does not exist on the server, and seeding
-  // state from it during render would make the first client render disagree with
-  // the HTML and throw a hydration mismatch.
   useEffect(() => {
     const carried = takeCampaignDraft();
-    // Nothing can be dirty yet at mount, so there's nothing to confirm over.
     if (carried) applyDraft(carried, { skipConfirm: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -90,7 +84,6 @@ export default function CampaignWorkspace({
         subject: handedOver.subject,
         subjectOptions: handedOver.subjectOptions,
         body: handedOver.body,
-        // An empty topic means "not from a topic" — see CampaignHistory.
         beatId: handedOver.beatId || undefined,
         templateName: handedOver.templateName,
         templateExplanation: handedOver.templateExplanation,
@@ -99,53 +92,168 @@ export default function CampaignWorkspace({
     : composer.initial;
 
   return (
-    <>
-      {hasRecipients && recommendations ? (
-        <RecommendedCampaigns cards={recommendations.recommended} onSelect={applyDraft} />
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+      {/* 4 Internal Views Sub-Nav */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.4rem',
+          background: 'rgba(255, 255, 255, 0.04)',
+          border: '1px solid rgba(255, 255, 255, 0.08)',
+          borderRadius: '10px',
+          padding: '0.3rem',
+          width: 'fit-content',
+          flexWrap: 'wrap',
+        }}
+      >
+        <button
+          type="button"
+          onClick={() => setActiveTab('create')}
+          style={{
+            padding: '0.45rem 0.95rem',
+            fontSize: '0.82rem',
+            fontWeight: 700,
+            borderRadius: '7px',
+            background: activeTab === 'create' ? 'var(--accent, #f97316)' : 'transparent',
+            color: activeTab === 'create' ? '#ffffff' : 'var(--muted)',
+            border: 'none',
+            cursor: 'pointer',
+            transition: 'all 0.15s ease',
+          }}
+        >
+          ✍️ Create
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('calendar')}
+          style={{
+            padding: '0.45rem 0.95rem',
+            fontSize: '0.82rem',
+            fontWeight: 700,
+            borderRadius: '7px',
+            background: activeTab === 'calendar' ? 'var(--accent, #f97316)' : 'transparent',
+            color: activeTab === 'calendar' ? '#ffffff' : 'var(--muted)',
+            border: 'none',
+            cursor: 'pointer',
+            transition: 'all 0.15s ease',
+          }}
+        >
+          📅 Calendar
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('templates')}
+          style={{
+            padding: '0.45rem 0.95rem',
+            fontSize: '0.82rem',
+            fontWeight: 700,
+            borderRadius: '7px',
+            background: activeTab === 'templates' ? 'var(--accent, #f97316)' : 'transparent',
+            color: activeTab === 'templates' ? '#ffffff' : 'var(--muted)',
+            border: 'none',
+            cursor: 'pointer',
+            transition: 'all 0.15s ease',
+          }}
+        >
+          📋 Templates
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('sent')}
+          style={{
+            padding: '0.45rem 0.95rem',
+            fontSize: '0.82rem',
+            fontWeight: 700,
+            borderRadius: '7px',
+            background: activeTab === 'sent' ? 'var(--accent, #f97316)' : 'transparent',
+            color: activeTab === 'sent' ? '#ffffff' : 'var(--muted)',
+            border: 'none',
+            cursor: 'pointer',
+            transition: 'all 0.15s ease',
+          }}
+        >
+          📨 Sent ({campaigns.length})
+        </button>
+      </div>
+
+      {/* 1. Create View */}
+      {activeTab === 'create' ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          {hasRecipients && recommendations ? (
+            <RecommendedCampaigns cards={recommendations.recommended} onSelect={applyDraft} />
+          ) : null}
+
+          <section className="panel workspace-section-card" id="new-campaign" ref={composerRef}>
+            <div className="section-heading workspace-section-heading compact-heading">
+              <div>
+                <p className="eyebrow">Message Composer</p>
+                <h2>New Campaign</h2>
+              </div>
+            </div>
+            {hasRecipients ? (
+              <CampaignComposer key={fill} {...composer} initial={initial} onDirtyChange={setDirty} />
+            ) : (
+              <p className="empty-state">
+                No clients yet. Once you&apos;ve created jobs or taken leads, your customers show up here and you can
+                reach them in a couple of taps. <Link href="/dashboard/clients">See your clients →</Link>
+              </p>
+            )}
+          </section>
+        </div>
       ) : null}
 
-      <section className="panel workspace-section-card" id="seasonal">
-        <div className="section-heading workspace-section-heading compact-heading">
-          <h2>Seasonal Campaigns</h2>
-        </div>
-        <MarketingCalendar view={view} onUseDraft={hasRecipients ? applyDraft : undefined} />
-      </section>
-
-      {hasRecipients && recommendations ? (
-        <>
-          <CampaignTemplateBrowser
-            quickWins={recommendations.quickWins}
-            grow={recommendations.grow}
-            all={recommendations.all}
-            onSelect={applyDraft}
-          />
-          <div className="workspace-scratch-row">
-            <button type="button" className="btn ghost" onClick={() => applyDraft(BLANK_DRAFT)}>
-              Start from scratch
-            </button>
+      {/* 2. Calendar View */}
+      {activeTab === 'calendar' ? (
+        <section className="panel workspace-section-card" id="seasonal">
+          <div className="section-heading workspace-section-heading compact-heading">
+            <div>
+              <p className="eyebrow">Yearly Timeline</p>
+              <h2>Seasonal Recommendations &amp; Send Dates</h2>
+            </div>
           </div>
-        </>
+          <MarketingCalendar view={view} onUseDraft={hasRecipients ? applyDraft : undefined} />
+        </section>
       ) : null}
 
-      <section className="panel workspace-section-card" id="new-campaign" ref={composerRef}>
-        <div className="section-heading workspace-section-heading compact-heading">
-          <h2>New campaign</h2>
+      {/* 3. Templates View */}
+      {activeTab === 'templates' ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          {hasRecipients && recommendations ? (
+            <>
+              <CampaignTemplateBrowser
+                all={recommendations.all}
+                onSelect={applyDraft}
+              />
+              <div className="workspace-scratch-row">
+                <button type="button" className="btn ghost" onClick={() => applyDraft(BLANK_DRAFT)}>
+                  Start from scratch
+                </button>
+              </div>
+            </>
+          ) : (
+            <section className="panel workspace-section-card">
+              <p className="empty-state">Add customers to unlock goal-based campaign templates.</p>
+            </section>
+          )}
         </div>
-        {hasRecipients ? (
-          <CampaignComposer key={fill} {...composer} initial={initial} onDirtyChange={setDirty} />
-        ) : (
-          <p className="empty-state">
-            No clients yet. Once you&apos;ve created jobs or taken leads, your customers show up here and you can
-            reach them in a couple of taps. <Link href="/dashboard/clients">See your clients →</Link>
-          </p>
-        )}
-      </section>
-
-      {/* Only once there IS a history. An empty panel saying its own name and
-          "nothing here yet" is a row of furniture explaining that it is empty. */}
-      {campaigns.length > 0 ? (
-        <CampaignHistory campaigns={campaigns} onReuse={hasRecipients ? applyDraft : undefined} />
       ) : null}
-    </>
+
+      {/* 4. Sent View */}
+      {activeTab === 'sent' ? (
+        <div>
+          {campaigns.length > 0 ? (
+            <CampaignHistory campaigns={campaigns} onReuse={hasRecipients ? applyDraft : undefined} />
+          ) : (
+            <section className="panel workspace-section-card">
+              <p className="empty-state">No sent campaigns yet. When you send emails or texts, full delivery and conversion stats appear here.</p>
+            </section>
+          )}
+        </div>
+      ) : null}
+    </div>
   );
 }

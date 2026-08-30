@@ -46,6 +46,7 @@ import {
 // on the request it belongs to. Imported here so this page shows the real
 // string and not a retyped one.
 import { LINK_PLACEHOLDER, draftOfferMessage } from '@/lib/subcontractor-dispatch';
+import { generateSpeedToLeadSms } from '@/lib/ad-speed-to-lead';
 
 /**
  * Every text message this app can send, in one list, with the real words.
@@ -679,9 +680,12 @@ export const SMS_CATALOGUE: SmsCatalogueEntry[] = [
     trigger: 'Instant SMS response sent to paid advertising leads within 60 seconds of form submission',
     audience: 'lead',
     control: always('Triggered on paid ad lead intake'),
-    body: withOptOut(
-      `Hi ${SAMPLE.first}, this is ${SAMPLE.business}. We received your inquiry and are reviewing your project details. We will be in touch shortly!`,
-    ),
+    body: generateSpeedToLeadSms({
+      businessName: SAMPLE.business,
+      leadName: SAMPLE.first,
+      projectType: 'project request',
+      city: 'Austin',
+    }),
   },
 ];
 

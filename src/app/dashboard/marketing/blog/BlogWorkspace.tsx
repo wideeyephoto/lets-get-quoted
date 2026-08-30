@@ -139,80 +139,37 @@ export default function BlogWorkspace({
         </p>
       ) : null}
 
-      {readOnly ? null : (
-      <section className="panel workspace-section-card">
-        <div className="section-heading workspace-section-heading compact-heading mkt-section-head">
-          <h2>New blog post</h2>
-        </div>
-        <label className="cash-bill-field wide">
-          <span>What should it be about?</span>
-          <input
-            id="blog-topic"
-            value={topic}
-            maxLength={200}
-            onChange={(event) => setTopic(event.target.value)}
-            placeholder="e.g. Fall gutter maintenance checklist — leave blank and AI picks a seasonal topic"
-          />
-        </label>
-        <div className="marketing-actions">
-          <button
-            type="button"
-            className="btn primary"
-            disabled={pending && (busy === 'generate' || busy === 'generate-publish')}
-            onClick={() =>
-              run('generate', async () => {
-                const result = await generateBlogPostAction(topic);
-                if (!result.ok) {
-                  setMessage({ tone: 'bad', text: result.message });
-                  return;
-                }
-                setTopic('');
-                openNewest(result.posts);
-              })
-            }
-          >
-            {pending && busy === 'generate' ? 'Writing your draft…' : '✨ Draft it with AI'}
-          </button>
-          <button
-            type="button"
-            className="btn secondary"
-            disabled={pending && (busy === 'generate' || busy === 'generate-publish')}
-            onClick={() =>
-              run('generate-publish', async () => {
-                const result = await generateBlogPostAction(topic, true);
-                if (!result.ok) {
-                  setMessage({ tone: 'bad', text: result.message });
-                  return;
-                }
-                setTopic('');
-                setPosts(result.posts);
-                setMessage({
-                  tone: 'ok',
-                  text: `Generated and published "${result.title}" to your website!`,
-                });
-              })
-            }
-          >
-            {pending && busy === 'generate-publish' ? 'Publishing…' : '🚀 Draft & publish now'}
-          </button>
-          <button
-            type="button"
-            className="btn secondary"
-            disabled={pending && busy === 'blank'}
-            onClick={() => run('blank', async () => openNewest(await createBlogPostAction()))}
-          >
-            Write one myself
-          </button>
-        </div>
-        <p className="field-note">
-          Drafts stay hidden until published. &ldquo;Draft &amp; publish now&rdquo; makes the article live immediately.
-        </p>
-      </section>
-      )}
+      {/* 1. Status Summary Strip */}
+      <div className="mkt-tiles" style={{ marginBottom: '1.25rem' }}>
+        <article className="panel mkt-tile">
+          <span className="mkt-tile-label">Drafts</span>
+          <strong className="mkt-tile-value">{counts.draft}</strong>
+          <span className="mkt-tile-note">In progress</span>
+        </article>
+        <article className="panel mkt-tile">
+          <span className="mkt-tile-label">Ready</span>
+          <strong className="mkt-tile-value">{counts.ready}</strong>
+          <span className="mkt-tile-note">Ready to schedule</span>
+        </article>
+        <article className="panel mkt-tile">
+          <span className="mkt-tile-label">Scheduled</span>
+          <strong className="mkt-tile-value">{counts.scheduled}</strong>
+          <span className="mkt-tile-note">Upcoming release</span>
+        </article>
+        <article className="panel mkt-tile">
+          <span className="mkt-tile-label">Published</span>
+          <strong className="mkt-tile-value">{counts.published}</strong>
+          <span className="mkt-tile-note">Live on your website</span>
+        </article>
+      </div>
 
-      <section className="panel workspace-section-card">
+      {/* 2. Post Library First */}
+      <section className="panel workspace-section-card" style={{ marginBottom: '1.25rem' }}>
         <div className="section-heading workspace-section-heading compact-heading mkt-section-head">
-          <h2>Your posts</h2>
+          <div>
+            <p className="eyebrow">Post Library</p>
+            <h2>Published &amp; Staged Articles</h2>
+          </div>
           <p className="job-meta">
             {counts.all === 0
               ? 'None yet'
@@ -220,8 +177,7 @@ export default function BlogWorkspace({
           </p>
         </div>
 
-        {/* Filters, with their counts on them. A chip that says "Archived" and
-            hides everything when pressed is a chip you press once. */}
+        {/* Filters, with their counts on them. */}
         <div className="mkt-filters" role="group" aria-label="Filter posts by status">
           {FILTERS.map((entry) => {
             const count = entry.id === 'all' ? counts.all : counts[entry.id];
@@ -242,8 +198,7 @@ export default function BlogWorkspace({
 
         {counts.all === 0 ? (
           <p className="empty-state">
-            No posts yet. Draft one above — a few genuinely useful articles give Google more local pages to rank
-            and give past customers a reason to come back.
+            No posts yet. Generate an article with AI below — a few genuinely useful guides give Google local search authority and boost your SEO rankings.
           </p>
         ) : shown.length === 0 ? (
           <p className="empty-state">
@@ -274,8 +229,6 @@ export default function BlogWorkspace({
                     </Link>
 
                     <div className="mkt-post-actions">
-                      {/* The word itself carries the state — the color only
-                          repeats it, so this reads the same in greyscale. */}
                       <span className={`mkt-state mkt-state-${state}`}>{POST_STATE_LABEL[state]}</span>
 
                       <Link
@@ -318,34 +271,142 @@ export default function BlogWorkspace({
         )}
       </section>
 
+      {/* 3. Content Ideas & AI Generator (Second Section) */}
       {readOnly ? null : (
-      <section className="panel workspace-section-card">
-        <div className="section-heading workspace-section-heading compact-heading mkt-section-head">
-          <h2>Reminders</h2>
-        </div>
-        <label className="cash-bill-field">
-          <span>Publishing reminders</span>
-          <select
-            value={reminder}
-            onChange={(event) => {
-              const weeks = Number(event.target.value);
-              setReminder(weeks);
-              run('reminder', async () => {
-                await setBlogReminderAction(weeks);
-              });
-            }}
-          >
-            <option value={0}>Off</option>
-            <option value={2}>Every 2 weeks</option>
-            <option value={4}>Every 4 weeks</option>
-            <option value={8}>Every 8 weeks</option>
-          </select>
-          <small className="cash-bill-note">
-            We&apos;ll remind you on your dashboard when it&apos;s been this long since you last published. Keeping a
-            blog current is one of the slowest and most reliable SEO moves there is.
-          </small>
-        </label>
-      </section>
+        <section className="panel workspace-section-card" style={{ marginBottom: '1.25rem' }}>
+          <div className="section-heading workspace-section-heading compact-heading mkt-section-head">
+            <div>
+              <p className="eyebrow">AI Content Generator</p>
+              <h2>Content Ideas &amp; Search Topics</h2>
+            </div>
+          </div>
+
+          {/* Quick Idea Starters */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginBottom: '0.85rem' }}>
+            <button
+              type="button"
+              className="btn ghost"
+              style={{ fontSize: '0.76rem', background: 'rgba(255, 255, 255, 0.04)', borderRadius: '6px' }}
+              onClick={() => setTopic(`Seasonal Maintenance Checklist for ${trade || 'Homeowners'}`)}
+            >
+              🍁 Seasonal Maintenance Checklist
+            </button>
+            <button
+              type="button"
+              className="btn ghost"
+              style={{ fontSize: '0.76rem', background: 'rgba(255, 255, 255, 0.04)', borderRadius: '6px' }}
+              onClick={() => setTopic(`What Homeowners Should Know Before Hiring a ${trade || 'Contractor'}`)}
+            >
+              ⭐ Homeowner Hiring Guide
+            </button>
+            <button
+              type="button"
+              className="btn ghost"
+              style={{ fontSize: '0.76rem', background: 'rgba(255, 255, 255, 0.04)', borderRadius: '6px' }}
+              onClick={() => setTopic(`Signs Your Home Needs Urgent ${trade || 'Repair & Replacement'}`)}
+            >
+              ❓ Warning Signs FAQ
+            </button>
+          </div>
+
+          <label className="cash-bill-field wide">
+            <span>What should it be about?</span>
+            <input
+              id="blog-topic"
+              value={topic}
+              maxLength={200}
+              onChange={(event) => setTopic(event.target.value)}
+              placeholder="e.g. Fall gutter maintenance checklist — leave blank and AI picks a seasonal topic"
+            />
+          </label>
+          <div className="marketing-actions">
+            <button
+              type="button"
+              className="btn primary"
+              disabled={pending && (busy === 'generate' || busy === 'generate-publish')}
+              onClick={() =>
+                run('generate', async () => {
+                  const result = await generateBlogPostAction(topic);
+                  if (!result.ok) {
+                    setMessage({ tone: 'bad', text: result.message });
+                    return;
+                  }
+                  setTopic('');
+                  openNewest(result.posts);
+                })
+              }
+            >
+              {pending && busy === 'generate' ? 'Writing your draft…' : '✨ Draft it with AI'}
+            </button>
+            <button
+              type="button"
+              className="btn secondary"
+              disabled={pending && (busy === 'generate' || busy === 'generate-publish')}
+              onClick={() =>
+                run('generate-publish', async () => {
+                  const result = await generateBlogPostAction(topic, true);
+                  if (!result.ok) {
+                    setMessage({ tone: 'bad', text: result.message });
+                    return;
+                  }
+                  setTopic('');
+                  setPosts(result.posts);
+                  setMessage({
+                    tone: 'ok',
+                    text: `Generated and published "${result.title}" to your website!`,
+                  });
+                })
+              }
+            >
+              {pending && busy === 'generate-publish' ? 'Publishing…' : '🚀 Draft & publish now'}
+            </button>
+            <button
+              type="button"
+              className="btn secondary"
+              disabled={pending && busy === 'blank'}
+              onClick={() => run('blank', async () => openNewest(await createBlogPostAction()))}
+            >
+              Write one myself
+            </button>
+          </div>
+          <p className="field-note">
+            Drafts stay hidden until published. &ldquo;Draft &amp; publish now&rdquo; makes the article live immediately.
+          </p>
+        </section>
+      )}
+
+      {/* 4. Publishing Reminders & Settings (Bottom) */}
+      {readOnly ? null : (
+        <section className="panel workspace-section-card">
+          <div className="section-heading workspace-section-heading compact-heading mkt-section-head">
+            <div>
+              <p className="eyebrow">Publication Settings</p>
+              <h2>Publishing Reminders</h2>
+            </div>
+          </div>
+          <label className="cash-bill-field">
+            <span>Publishing frequency reminder</span>
+            <select
+              value={reminder}
+              onChange={(event) => {
+                const weeks = Number(event.target.value);
+                setReminder(weeks);
+                run('reminder', async () => {
+                  await setBlogReminderAction(weeks);
+                });
+              }}
+            >
+              <option value={0}>Off</option>
+              <option value={2}>Every 2 weeks</option>
+              <option value={4}>Every 4 weeks</option>
+              <option value={8}>Every 8 weeks</option>
+            </select>
+            <small className="cash-bill-note">
+              We&apos;ll remind you on your dashboard when it&apos;s been this long since you last published. Keeping a
+              blog current is one of the most reliable organic SEO signals for local ranking.
+            </small>
+          </label>
+        </section>
       )}
     </>
   );

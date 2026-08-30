@@ -59,8 +59,9 @@ export default function CampaignsScreen({
       <MarketingNav basePath={basePath} only={navOnly} />
 
       <section className="workspace-header-compact">
-        <h1 className="workspace-title">Campaigns</h1>
-        <p className="workspace-lead">Stay in touch with customers and keep your schedule full.</p>
+        <p className="eyebrow">Direct Messaging</p>
+        <h1 className="workspace-title">Email &amp; Text</h1>
+        <p className="workspace-lead">Stay in touch with customers, fill schedule gaps, and win back past quotes.</p>
       </section>
 
       {searchParams.test === '1' ? (
@@ -78,25 +79,6 @@ export default function CampaignsScreen({
             {smsQueued === 1 ? 'text queued' : 'texts queued'}.
             {Number(searchParams.skipped) > 0 ? ` ${searchParams.skipped} skipped (not reachable).` : ''}
             {Number(searchParams.failed) > 0 ? ` ${searchParams.failed} failed before acceptance.` : ''}
-          </p>
-        </section>
-      ) : null}
-
-      {!mailingAddress ? (
-        <section className="panel workspace-section-card flash-banner flash-warn">
-          <p>
-            Marketing email needs a physical postal address by law, and you don&apos;t have one on file — anything
-            you write here can&apos;t be emailed until you add it.{' '}
-            <Link href={`${basePath}/settings`}>Add your mailing address →</Link>
-          </p>
-        </section>
-      ) : null}
-
-      {replyEmailReady === false ? (
-        <section className="panel workspace-section-card flash-banner flash-warn">
-          <p>
-            You don&apos;t have a customer reply email on file — customer responses to your marketing won&apos;t reach you.{' '}
-            <Link href={`${basePath}/settings#business-basics`}>Add your customer reply email →</Link>
           </p>
         </section>
       ) : null}

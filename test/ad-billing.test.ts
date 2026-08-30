@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_AD_WALLET_STATE,
+  DEFAULT_AUTO_REFILL_CONFIG,
   createAdBudgetCheckoutSession,
   handleAdBudgetWebhookEvent,
   calculateAdBudgetBreakdown,
+  checkAutoRefillTrigger,
   AD_PLATFORM_FEE_RATE,
 } from '@/lib/ad-billing';
 
@@ -67,5 +69,51 @@ describe('Ad Billing Module', () => {
     };
     const handled = await handleAdBudgetWebhookEvent(fakeEvent);
     expect(handled).toBe(false);
+  });
+
+  it('correctly evaluates auto-refill triggers with low balance and monthly spend caps', () => {
+    const config = {
+      depositAmountDollars: 250,
+      refillThresholdDollars: 75,
+      refillAmountDollars: 250,
+      maxMonthlySpendDollars: 1000,
+    };
+
+    // 1. Balance above threshold -> no refill
+    const aboveThreshold = checkAutoRefillTrigger({
+      currentBalanceDollars: 120,
+      spentThisMonthDollars: 250,
+      config,
+    });
+    expect(aboveThreshold.shouldRefill).toBe(false);
+    expect(aboveThreshold.refillAmountDollars).toBe(0);
+
+    // 2. Balance at or below threshold ($75) and within monthly cap -> triggers $250 refill
+    const belowThreshold = checkAutoRefillTrigger({
+      currentBalanceDollars: 45,
+      spentThisMonthDollars: 250,
+      config,
+    });
+    expect(belowThreshold.shouldRefill).toBe(true);
+    expect(belowThreshold.refillAmountDollars).toBe(250);
+
+    // 3. Balance below threshold but monthly spend reached $1,000 -> hard stop (no refill)
+    const atMonthlyCap = checkAutoRefillTrigger({
+      currentBalanceDollars: 30,
+      spentThisMonthDollars: 1000,
+      config,
+    });
+    expect(atMonthlyCap.shouldRefill).toBe(false);
+    expect(atMonthlyCap.refillAmountDollars).toBe(0);
+    expect(atMonthlyCap.reason).toContain('Max monthly spend cap');
+
+    // 4. Balance below threshold with partial remaining monthly allowance ($150 left) -> capped refill ($150)
+    const partialAllowance = checkAutoRefillTrigger({
+      currentBalanceDollars: 50,
+      spentThisMonthDollars: 850,
+      config,
+    });
+    expect(partialAllowance.shouldRefill).toBe(true);
+    expect(partialAllowance.refillAmountDollars).toBe(150);
   });
 });

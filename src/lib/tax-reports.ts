@@ -43,7 +43,6 @@ export type PaidPaymentRow = {
   refunded_amount?: number | string | null;
 };
 export type CostRow = { type: string | null; amount: number | string | null; created_at: string };
-export type SubcontractorCostRow = { supplier: string | null; amount: number | string | null };
 
 function yearRange(year: number): { start: string; end: string } {
   return { start: `${year}-01-01T00:00:00.000Z`, end: `${year + 1}-01-01T00:00:00.000Z` };
