@@ -1,10 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import nextConfig from '../next.config.mjs';
 import fs from 'fs';
 import path from 'path';
 
 describe('Security Hardening & Remediations', () => {
-  it('next.config.mjs does not allow AVIF in image optimization formats', () => {
+  it('next.config.mjs does not allow AVIF in image optimization formats', async () => {
+    const configPath = path.resolve(__dirname, '../next.config.mjs');
+    const nextConfig = (await import(configPath)).default;
     expect(nextConfig.images?.formats).toBeDefined();
     expect(nextConfig.images?.formats).not.toContain('image/avif');
     expect(nextConfig.images?.formats).toContain('image/webp');

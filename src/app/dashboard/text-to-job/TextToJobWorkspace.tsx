@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import SparkyAvatar from '@/components/mascot/SparkyAvatar';
+import { useAssistant } from '@/components/ai-assistant/AssistantProvider';
 import styles from './text-to-job.module.css';
 
 export type ExtractedItem = {
@@ -298,6 +299,7 @@ export default function TextToJobWorkspace({
   leadCount,
   crewCount,
 }: TextToJobWorkspaceProps) {
+  const { companion, companionId, companionTrade } = useAssistant();
   const [feedFilter, setFeedFilter] = useState<'all' | 'voice' | 'sms' | 'leads' | 'crew'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [messages, setMessages] = useState<InboundMessage[]>(
@@ -514,7 +516,7 @@ export default function TextToJobWorkspace({
     </div>
     <div class="footer">
       <div>↺ <strong>15-Min SMS Undo:</strong> Reply <code>UNDO</code> to revert any change.</div>
-      <div class="footer-right">Sparky Field Hotline &bull; Let's Get Quoted</div>
+      <div class="footer-right">${companion.name} Field Hotline &bull; Let's Get Quoted</div>
     </div>
   </div>
   <script>
@@ -892,10 +894,15 @@ export default function TextToJobWorkspace({
       <div className={styles.header}>
         <div className={styles.headerLeft}>
           <div className={styles.sparkyHeaderRow}>
-            <SparkyAvatar size="lg" status="online" trade={account?.trade || 'general'} />
+            <SparkyAvatar
+              companionId={companionId}
+              trade={companionTrade || account?.trade || 'general'}
+              size="lg"
+              status="online"
+            />
             <div>
               <div className={styles.sparkyBadgeRow}>
-                <span className={styles.badge}>✦ Sparky · Smart AI Contractor Assistant</span>
+                <span className={styles.badge}>✦ {companion.name} · {companion.badgeLabel}</span>
               </div>
               <div className={styles.headerTitleRow}>
                 <h1 className={styles.title}>Text-to-Job Dashboard</h1>
@@ -909,7 +916,7 @@ export default function TextToJobWorkspace({
                 </button>
               </div>
               <p className={styles.subtitle}>
-                Text or dictate notes from the road—Sparky updates quotes, punch lists, and schedules instantly.
+                Text or dictate notes from the road—{companion.name} updates quotes, punch lists, and schedules instantly.
               </p>
             </div>
           </div>
@@ -1188,7 +1195,7 @@ export default function TextToJobWorkspace({
         <div className={styles.setupAdvancedHeader}>
           <div className={styles.setupAdvancedTitleGroup}>
             <span className={styles.badge}>⚙️ Team Access &amp; Voice Setup</span>
-            <h2 className={styles.setupAdvancedTitle}>Who Can Text Sparky &amp; Driving Voice Setup</h2>
+            <h2 className={styles.setupAdvancedTitle}>Who Can Text {companion.name} &amp; Driving Voice Setup</h2>
             <p className={styles.setupAdvancedSubtitle}>
               Manage authorized crew phone numbers, or view 1-minute Siri &amp; Google Assistant steering wheel dictation setup.
             </p>
@@ -1209,10 +1216,10 @@ export default function TextToJobWorkspace({
                 <span className={styles.accordionIcon}>👥</span>
                 <div>
                   <strong className={styles.accordionTitle}>
-                    Who Can Text Sparky (Team Phone Access)
+                    Who Can Text {companion.name} (Team Phone Access)
                   </strong>
                   <p className={styles.accordionSubtitle}>
-                    {totalAuthorizedDevices} {totalAuthorizedDevices === 1 ? 'phone' : 'phones'} configured to send job updates directly to Sparky
+                    {totalAuthorizedDevices} {totalAuthorizedDevices === 1 ? 'phone' : 'phones'} configured to send job updates directly to {companion.name}
                   </p>
                 </div>
               </div>
@@ -1232,7 +1239,7 @@ export default function TextToJobWorkspace({
                         Connect Your Cell Phone to Start Texting
                       </strong>
                       <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#cbd5e1', lineHeight: 1.4 }}>
-                        Add your mobile number so Sparky recognizes you when you text from the job site.
+                        Add your mobile number so {companion.name} recognizes you when you text from the job site.
                       </p>
                     </div>
                     <Link href="/dashboard/automations#urgent-lead-sms" className={styles.verifyBtn}>
@@ -1246,7 +1253,7 @@ export default function TextToJobWorkspace({
                     <div className={styles.sendersTitleGroup}>
                       <h3 className={styles.sendersTitle}>Authorized Phone Numbers</h3>
                       <p className={styles.sendersSubtitle}>
-                        When these phone numbers text <strong>{fieldPhoneNumber}</strong>, Sparky automatically links updates to the correct technician.
+                        When these phone numbers text <strong>{fieldPhoneNumber}</strong>, {companion.name} automatically links updates to the correct technician.
                       </p>
                     </div>
                     <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
@@ -1513,7 +1520,7 @@ export default function TextToJobWorkspace({
                 <span className={styles.badge}>⚡ Test Sandbox</span>
                 <h3 className={styles.modalTitle}>Test a Field Note</h3>
                 <p className={styles.modalSubtitle}>
-                  Type or dictate a note to see how Sparky creates change orders, punch list tasks, and schedule slots.
+                  Type or dictate a note to see how {companion.name} creates change orders, punch list tasks, and schedule slots.
                 </p>
               </div>
               <button
@@ -1726,7 +1733,7 @@ export default function TextToJobWorkspace({
 
               <div className={styles.cardFooterRules}>
                 <span>↺ <strong>15-Min SMS Undo:</strong> Reply <code>UNDO</code> to revert any change.</span>
-                <span className={styles.cardPoweredBy}>Sparky Field Hotline &bull; Let&apos;s Get Quoted</span>
+                <span className={styles.cardPoweredBy}>{companion.name} Field Hotline &bull; Let&apos;s Get Quoted</span>
               </div>
             </div>
 

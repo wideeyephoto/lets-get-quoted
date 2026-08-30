@@ -75,6 +75,6 @@ describe('light palette inheritance', () => {
   it('uses the darker Sunlight tab ink required for normal-size text', () => {
     const start = GLOBALS.indexOf(":root[data-theme='sunlight'] .settings-tab.active {");
     const rule = GLOBALS.slice(start, GLOBALS.indexOf('\n}', start));
-    expect(rule).toContain('color: #c2410c;');
+    expect(rule).toContain('color: #b43403;');
   });
 });

@@ -40,8 +40,8 @@ export default function PrivacyPolicyPage() {
               photos, and customer correspondence submitted by or on behalf of contractors.
             </li>
             <li>
-              <strong>Sparky Text, Photo &amp; Voice Memo Data:</strong> Text messages, voice recordings, material receipts, and site
-              photos transmitted to Sparky via SMS, MMS, or in-app voice to update job files, sort photos, and draft quotes.
+              <strong>AI Copilot Text, Photo &amp; Voice Memo Data:</strong> Text messages, voice recordings, material receipts, and site
+              photos transmitted to the AI Copilot via SMS, MMS, or in-app voice to update job files, sort photos, and draft quotes.
               <em>Users must not transmit unencrypted credit card numbers, CVVs, or Social Security numbers via SMS.</em>
             </li>
             <li>
@@ -69,8 +69,8 @@ export default function PrivacyPolicyPage() {
             <li>Provide, operate, and maintain contractor workspaces, scheduling tools, and published websites.</li>
             <li>Process customer inquiries, quote requests, appointment bookings, and Quick Stop priority reservations.</li>
             <li>
-              Power Sparky and generative AI features (including automated quote drafting, estimate calculations, photo tagging, call transcription, and inquiry
-              triage) through secure enterprise API endpoints with zero-data-retention for model training.
+              Power AI Copilot and generative AI features (including automated quote drafting, estimate calculations, photo tagging, call transcription, and inquiry
+              triage) through secure API endpoints with provider commitments not to train public models on customer business data.
             </li>
             <li>Deliver automated and transactional SMS/MMS messages, voice calls, and transactional/marketing emails.</li>
             <li>Verify business identity and register messaging brand profiles with carrier 10DLC registries.</li>
@@ -107,12 +107,14 @@ export default function PrivacyPolicyPage() {
             contractual instructions to help us deliver the Service, including:
           </p>
           <ul>
-            <li>Cloud hosting and database infrastructure providers (e.g., Supabase / AWS).</li>
-            <li>Payment processors (Stripe, Inc. under Stripe Connect).</li>
-            <li>Telephony and SMS communication carriers (e.g., SignalWire).</li>
-            <li>Artificial intelligence inference platforms (e.g., OpenAI, Google GenAI) operating under zero-data-retention or
-              no-training enterprise agreements for business data.</li>
-            <li>Transactional email delivery providers (e.g., Resend).</li>
+            <li>Hosting and serverless compute platforms (Vercel, Inc.).</li>
+            <li>Cloud hosting and database infrastructure providers (Supabase, Inc. / AWS).</li>
+            <li>Payment processors (Stripe, Inc. for subscriptions and merchant payouts under Stripe Connect).</li>
+            <li>Telephony, SMS, and voice communication carriers (SignalWire, Inc.).</li>
+            <li>Accounting integration services (Intuit Inc. for QuickBooks, where connected).</li>
+            <li>Artificial intelligence inference platforms (OpenAI, LLC and Google GenAI) operating under commitments not to train public foundation models on customer business data.</li>
+            <li>Email delivery providers (Resend, Inc.).</li>
+            <li>Mapping, geocoding, and conversion analytics providers (Google LLC, operating with Consent Mode controls).</li>
           </ul>
           <p>
             For contractors processing personal data subject to state privacy regulations (such as the CCPA), our{' '}

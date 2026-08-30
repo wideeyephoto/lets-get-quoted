@@ -147,7 +147,7 @@ export const FEATURE_CATEGORIES: FeatureCategory[] = [
     intro: 'Run the work and see real margin — from the office or the truck.',
     features: [
       { id: 'job-pipeline', name: 'Job pipeline', desc: 'New → in progress → complete, with refs, scope, and photos.' },
-      { id: 'sparky-ai', name: 'Sparky AI Contractor Sidekick', desc: 'In-app AI assistant with live screen awareness. Text Sparky site photos, notes, and voice memos—he sorts them to the right job and reminds you later.', favorite: true },
+      { id: 'sparky-ai', name: 'AI Contractor Sidekick & Copilot', desc: 'In-app AI assistant with live screen awareness. Text your AI copilot site photos, notes, and voice memos—it sorts them to the right job and reminds you later.', favorite: true },
       { id: 'text-to-job', name: 'Text-to-Job & Voice Intake', desc: 'Update quotes, append voice notes, and add punch lists simply by texting or sending voice memos to your platform number.', favorite: true },
       { id: 'job-costing', name: 'Job costing & margin', desc: 'Log materials and labor; see profit before you invoice.' },
       { id: 'activity-timeline', name: 'Activity timeline', desc: 'Per-job feed with client-visible and internal events.' },

@@ -200,12 +200,12 @@ describe('placeholder and schedule theme contrast', () => {
 
   it('ensures sunlight is daylight with a hairline border, not fog with a rule', () => {
     const SUN = ":root[data-theme='sunlight'] {";
-    expect(token(SUN, 'bg')).toBe('#f4f6fa');
+    expect(token(SUN, 'bg')).toBe('#eaeef4');
     expect(token(SUN, 'bg-2')).toBe('#ffffff');
-    expect(token(SUN, 'text')).toBe('#0b0e14');
-    expect(token(SUN, 'muted')).toBe('#48505e');
-    expect(token(SUN, 'line')).toBe('#e6e9f0');
-    expect(token(SUN, 'accent')).toBe('#cb4a07');
+    expect(token(SUN, 'text')).toBe('#090d16');
+    expect(token(SUN, 'muted')).toBe('#1e293b');
+    expect(token(SUN, 'line')).toBe('#090d16');
+    expect(token(SUN, 'accent')).toBe('#b43403');
     expect(GLOBALS).toContain('--accent-gradient: linear-gradient(180deg, var(--accent), var(--accent-end));');
     expect(GLOBALS).toContain('--ink-neutral-1: #0f1a28;');
     expect(GLOBALS).toContain(':root[data-theme=\'sunlight\'] .sidenav-wordmark');

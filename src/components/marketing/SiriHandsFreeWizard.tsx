@@ -11,12 +11,12 @@ export default function SiriHandsFreeWizard() {
 
   function handleDownloadShortcut() {
     // Generate a downloadable iOS shortcut file / config trigger
-    const shortcutText = `BEGIN:SHORTCUT\nNAME:Text Sparky\nTRIGGER:Hey Siri, Text Sparky\nACTION:DICTATE_AND_SEND_SMS\nRECIPIENT:(248) 555-0199\nEND:SHORTCUT`;
+    const shortcutText = `BEGIN:SHORTCUT\nNAME:Text Copilot\nTRIGGER:Hey Siri, Text Copilot\nACTION:DICTATE_AND_SEND_SMS\nRECIPIENT:(248) 555-0199\nEND:SHORTCUT`;
     const blob = new Blob([shortcutText], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = 'Text-Sparky-Siri-Shortcut.txt';
+    link.download = 'Text-Copilot-Siri-Shortcut.txt';
     link.click();
     URL.revokeObjectURL(url);
     setCopied(true);
@@ -64,7 +64,7 @@ export default function SiriHandsFreeWizard() {
               </h4>
               <p className={styles.stepDesc}>
                 Add your dedicated platform number (e.g. <code>(248) 555-0199</code>) to your phone
-                contacts under the name <strong>“Sparky”</strong>.
+                contacts under the name <strong>“AI Copilot”</strong> (or your chosen companion name).
               </p>
             </div>
           </div>
@@ -77,13 +77,13 @@ export default function SiriHandsFreeWizard() {
               </h4>
               <p className={styles.stepDesc}>
                 {isIos
-                  ? 'Press the steering wheel voice button or say "Hey Siri, text Sparky".'
-                  : 'Press your steering wheel mic or say "Hey Google, text Sparky".'}
+                  ? 'Press the steering wheel voice button or say "Hey Siri, text Copilot".'
+                  : 'Press your steering wheel mic or say "Hey Google, text Copilot".'}
               </p>
               <div className={styles.voiceSample}>
                 {isIos
-                  ? '“Hey Siri, text Sparky: Add $450 to Miller for pantry GFCI line”'
-                  : '“Hey Google, text Sparky: Rough plumbing passed inspection at 124 Main”'}
+                  ? '“Hey Siri, text Copilot: Add $450 to Miller for pantry GFCI line”'
+                  : '“Hey Google, text Copilot: Rough plumbing passed inspection at 124 Main”'}
               </div>
             </div>
           </div>
@@ -93,7 +93,7 @@ export default function SiriHandsFreeWizard() {
             <div className={styles.stepContent}>
               <h4 className={styles.stepTitle}>Instant AI Confirmation</h4>
               <p className={styles.stepDesc}>
-                Sparky processes the speech audio in 1.4 seconds and reads back your confirmation:
+                Your AI Copilot processes the speech audio in 1.4 seconds and reads back your confirmation:
                 <em> “Added $450 electrical line item to Job J-104 (Miller).”</em>
               </p>
             </div>

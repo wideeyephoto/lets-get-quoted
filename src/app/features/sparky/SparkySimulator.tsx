@@ -28,7 +28,7 @@ const SCENARIOS: Scenario[] = [
     id: 'walkup_estimate',
     tabLabel: '🚶 Walk-Up Estimate Brain Dump',
     contextLabel: 'Context: Estimate Walkthrough · On-Site Voice Intake',
-    userPrompt: "🎙️ [Walking the job site]: \"Hey Sparky, starting an estimate for Miller at 84 Pine St. He wants a 12x16 paver patio, 4 inches of crushed gravel base, polymeric sand, plus ask if he wants low-voltage pathway lighting for $450. Labor is 2 days with 2 guys.\"",
+    userPrompt: "🎙️ [Walking the job site]: \"Starting an estimate for Miller at 84 Pine St. He wants a 12x16 paver patio, 4 inches of crushed gravel base, polymeric sand, plus ask if he wants low-voltage pathway lighting for $450. Labor is 2 days with 2 guys.\"",
     sparkyThought: "Listening to on-site brain dump -> Calculating materials (192 sq ft pavers, 3 tons gravel base, sand) -> Calculating labor (32 man-hours @ $65/hr) -> Structuring $450 lighting upsell...",
     sparkyResponse: "I sorted it all out for you! Created Quote #1049 for Miller at 84 Pine St. Itemized by Paver & Base Materials ($1,380), Masonry Labor ($2,080), and an optional $450 Low-Voltage Pathway Lighting Add-on. Total base quote: $3,460.00.",
     cardTitle: "Quote #1049 · Miller (84 Pine St)",
@@ -234,8 +234,8 @@ export default function SparkySimulator() {
           <div className={styles.sparkyAvatar}>⚡</div>
           <div>
             <div className={styles.botTitle}>
-              <span>Sparky</span>
-              <span className={styles.botBadge}>AI Contractor Sidekick</span>
+              <span>AI Copilot</span>
+              <span className={styles.botBadge}>24/7 Field Sidekick</span>
             </div>
           </div>
         </div>
@@ -270,7 +270,7 @@ export default function SparkySimulator() {
       </div>
 
       {/* Preset Tab Selectors */}
-      <div className={styles.tabsContainer} role="tablist" aria-label="Sparky Test Commands">
+      <div className={styles.tabsContainer} role="tablist" aria-label="AI Copilot Test Commands">
         {SCENARIOS.map((scenario) => {
           const isActive = scenario.id === selectedId;
           return (

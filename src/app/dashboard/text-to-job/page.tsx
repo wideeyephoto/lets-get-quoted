@@ -6,7 +6,7 @@ import TextToJobWorkspace, { type InboundMessage, type CrewRow } from './TextToJ
 export const metadata: Metadata = {
   title: 'Text-to-Job Dashboard | SMS & Voice Memo Field Intake',
   description:
-    'Send messages by voice or text to Sparky, your smart assistant, and he will organize things, submit and update job records, change orders, punch lists, and schedule slots automatically.',
+    'Send messages by voice or text to your smart AI Copilot, and it will organize notes, update job records, calculate change orders, log punch lists, and manage schedule slots automatically.',
 };
 
 export default async function TextToJobDashboardPage() {

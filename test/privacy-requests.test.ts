@@ -20,3 +20,57 @@ describe('isPrivacyRequestKind', () => {
     expect(isPrivacyRequestKind(null)).toBe(false);
   });
 });
+
+describe('privacy request error handling', () => {
+  it('throws when logPrivacyRequest encounters database error', async () => {
+    const { logPrivacyRequest } = await import('@/lib/privacy-requests');
+    const mockAdmin = {
+      from: () => ({
+        insert: () => ({
+          select: () => ({
+            single: async () => ({ data: null, error: { message: 'DB connection error' } }),
+          }),
+        }),
+      }),
+    } as any;
+
+    const actor = { adminEmail: 'admin@test.com' } as any;
+    await expect(logPrivacyRequest(mockAdmin, actor, 'acct-123', 'access', 'details')).rejects.toThrow(
+      'DB connection error',
+    );
+  });
+
+  it('throws when resolvePrivacyRequest encounters database error or nonexistent ID', async () => {
+    const { resolvePrivacyRequest } = await import('@/lib/privacy-requests');
+    const mockAdmin = {
+      from: () => ({
+        update: () => ({
+          eq: () => ({
+            select: () => ({
+              single: async () => ({ data: null, error: { message: 'Update failed' } }),
+            }),
+          }),
+        }),
+      }),
+    } as any;
+
+    const actor = { adminEmail: 'admin@test.com' } as any;
+    await expect(resolvePrivacyRequest(mockAdmin, actor, 'req-123')).rejects.toThrow('Update failed');
+
+    const mockAdminNotFound = {
+      from: () => ({
+        update: () => ({
+          eq: () => ({
+            select: () => ({
+              single: async () => ({ data: null, error: null }),
+            }),
+          }),
+        }),
+      }),
+    } as any;
+
+    await expect(resolvePrivacyRequest(mockAdminNotFound, actor, 'req-404')).rejects.toThrow(
+      'Privacy request not found or resolution failed',
+    );
+  });
+});

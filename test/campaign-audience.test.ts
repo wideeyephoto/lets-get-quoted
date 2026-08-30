@@ -77,3 +77,20 @@ describe('matchesAudience', () => {
     expect(match(oneRecentJob, 'lapsed')).toBe(false);
   });
 });
+
+describe('affirmative marketing SMS consent sources', () => {
+  it('accepts only affirmative marketing sources and rejects transactional/backfill/unknown sources', async () => {
+    const { AFFIRMATIVE_MARKETING_SOURCES } = await import('@/lib/campaigns');
+    expect(AFFIRMATIVE_MARKETING_SOURCES.has('marketing_opt_in')).toBe(true);
+    expect(AFFIRMATIVE_MARKETING_SOURCES.has('campaign_opt_in')).toBe(true);
+    expect(AFFIRMATIVE_MARKETING_SOURCES.has('promo_opt_in')).toBe(true);
+    expect(AFFIRMATIVE_MARKETING_SOURCES.has('web_form_marketing_opt_in')).toBe(true);
+
+    // Fail-closed checks:
+    expect(AFFIRMATIVE_MARKETING_SOURCES.has('crew_backfill')).toBe(false);
+    expect(AFFIRMATIVE_MARKETING_SOURCES.has('payment_request')).toBe(false);
+    expect(AFFIRMATIVE_MARKETING_SOURCES.has('arrival_time_changed')).toBe(false);
+    expect(AFFIRMATIVE_MARKETING_SOURCES.has('unknown_source')).toBe(false);
+    expect(AFFIRMATIVE_MARKETING_SOURCES.has('')).toBe(false);
+  });
+});

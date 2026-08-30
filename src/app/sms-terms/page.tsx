@@ -87,8 +87,8 @@ export default function SmsTermsPage() {
             added to a contractor&apos;s account by that contractor.
           </p>
           <p>
-            <strong>Sparky AI Sidekick &amp; Text-to-Job</strong> &mdash; inbound and outbound operational messages between
-            authenticated contractors and Sparky (field voice memos, site photo attachments, punch list additions, change orders,
+            <strong>AI Copilot &amp; Text-to-Job</strong> &mdash; inbound and outbound operational messages between
+            authenticated contractors and the AI Copilot (field voice memos, site photo attachments, punch list additions, change orders,
             estimate brain dumps, scheduled follow-up alerts, and transactional confirmation receipts). Standard carrier SMS/MMS is
             unencrypted; users must never send credit card numbers, CVVs, or Social Security numbers via text.
           </p>

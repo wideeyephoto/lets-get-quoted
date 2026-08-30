@@ -102,10 +102,11 @@ async function callOpenAiEndpoint(
   }
 
   try {
+    const payload = endpoint === 'responses' ? { ...body, store: false } : body;
     const response = await fetch(`https://api.openai.com/v1/${endpoint}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify(body),
+      body: JSON.stringify(payload),
     });
 
     // A draft is spent when the model produced one. An HTTP error produced

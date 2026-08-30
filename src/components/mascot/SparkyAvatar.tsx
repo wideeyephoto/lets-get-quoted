@@ -103,17 +103,20 @@ export default function SparkyAvatar({
     }
   }
 
+  const activeCompanion = getCompanion(companionId, trade);
+  const companionName = activeCompanion?.name || 'AI Copilot';
+
   return (
     <div
       className={`${styles.container} ${bordered ? styles.bordered : ''} ${className}`}
       style={{ width: pixelSize, height: pixelSize }}
       role="img"
-      aria-label={alt}
+      aria-label={alt || `${companionName} - Contractor AI Sidekick`}
     >
       <div className={styles.imageWrapper}>
         <Image
           src={imageSrc}
-          alt={alt}
+          alt={alt || `${companionName} avatar`}
           width={pixelSize * 2} // 2x for sharp retina rendering
           height={pixelSize * 2}
           priority={priority}
@@ -126,13 +129,13 @@ export default function SparkyAvatar({
       {status === 'online' && (
         <span
           className={`${styles.statusDot} ${styles.statusOnline}`}
-          title="Sparky is online"
+          title={`${companionName} is online`}
         />
       )}
       {status === 'thinking' && (
         <span
           className={`${styles.statusDot} ${styles.statusThinking}`}
-          title="Sparky is calculating..."
+          title={`${companionName} is calculating...`}
         />
       )}
 

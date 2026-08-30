@@ -351,7 +351,7 @@ export function SmartSearch({
               aria-modal="true"
               role="dialog"
             >
-              <div className={styles.dialog} ref={dialogRef}>
+              <div className={`${styles.dialog} smart-search-palette`} data-smart-search="true" ref={dialogRef}>
                 {/* Header / Search Input */}
                 <div className={styles.searchHeader}>
                   <svg className={styles.searchIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true">
@@ -362,6 +362,16 @@ export function SmartSearch({
                     ref={inputRef}
                     type="text"
                     className={styles.searchInput}
+                    style={{
+                      background: 'transparent',
+                      backgroundColor: 'transparent',
+                      border: 'none',
+                      outline: 'none',
+                      boxShadow: 'none',
+                      color: '#f8fafc',
+                      fontSize: '1.05rem',
+                      width: '100%',
+                    }}
                     placeholder="Search jobs, clients, addresses, team, actions..."
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}

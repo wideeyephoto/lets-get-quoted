@@ -119,13 +119,13 @@ export default function CompanionPhotoScopeDemo() {
         <div>
           <span className={styles.photoDemoEyebrow}>
             <span className={styles.pulseDot} aria-hidden="true" />
-            ⚡ INTERACTIVE SPARKY VISION SCOPE SCANNER
+            ⚡ INTERACTIVE AI VISION SCOPE SCANNER
           </span>
           <h3 className={styles.photoDemoTitle}>
             See what happens when a homeowner uploads a jobsite photo
           </h3>
           <p className={styles.photoDemoSub}>
-            Select a trade example below to watch Sparky extract rating plates via OCR, spot hidden site risks, and generate an itemized quote draft in 2 seconds.
+            Select a trade example below to watch your AI Copilot extract rating plates via OCR, spot hidden site risks, and generate an itemized quote draft in 2 seconds.
           </p>
         </div>
       </div>
@@ -170,7 +170,7 @@ export default function CompanionPhotoScopeDemo() {
               <span>⚡</span>
             </div>
             <div className={styles.photoCompanionSpeech}>
-              <strong className={styles.photoCompanionName}>Sparky · Field Vision OCR</strong>
+              <strong className={styles.photoCompanionName}>AI Copilot · Field Vision OCR</strong>
               <p>{scenario.companionTip}</p>
             </div>
           </div>
@@ -230,7 +230,7 @@ export default function CompanionPhotoScopeDemo() {
               href="https://app.letsgetquoted.com/start?goal=build_site&source=feature_photo_demo"
               className={styles.photoActionButton}
             >
-              Start Quoting with Sparky Vision <span aria-hidden="true">→</span>
+              Start Quoting with AI Vision <span aria-hidden="true">→</span>
             </a>
             <span className={styles.photoActionNote}>Included on all plans · Free to test</span>
           </div>

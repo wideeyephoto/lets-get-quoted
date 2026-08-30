@@ -40,10 +40,10 @@ const SPARKY_FEATURES: SparkyFeature[] = [
     tabSummary: 'Run change orders & quotes straight via text',
     badgeStyle: styles.badgeCyan,
     cardStyle: styles.testimonialMicroCardCyan,
-    eyebrow: 'TEXT-TO-JOB™ WITH SPARKY · RUN YOUR DAY VIA SMS',
-    title: 'Text Sparky change orders, quote tweaks & reminders.',
+    eyebrow: 'TEXT-TO-JOB™ WITH YOUR AI COPILOT · RUN YOUR DAY VIA SMS',
+    title: 'Text your AI Copilot change orders, quote tweaks & reminders.',
     blurb:
-      'You don’t even need to open an app. Text Sparky from Apple iMessage or Android Messages—he calculates line items, updates customer invoices, matches active job files, and texts back instant confirmation.',
+      'You don’t even need to open an app. Text your AI Copilot from Apple iMessage or Android Messages—it calculates line items, updates customer invoices, matches active job files, and texts back instant confirmation.',
     bullets: [
       'Zero app fatigue — execute entire jobs through native SMS & iMessage',
       'Zero Destructive Guesses — verifies ambiguous customer names with safety checks',
@@ -52,13 +52,13 @@ const SPARKY_FEATURES: SparkyFeature[] = [
     ],
     testimonial: {
       quote:
-        '“I haven’t opened a laptop to write a change order in 6 months. I just text Sparky from the top of the ladder and the customer gets an updated invoice in 10 seconds.”',
+        '“I haven’t opened a laptop to write a change order in 6 months. I just text my AI Copilot from the top of the ladder and the customer gets an updated invoice in 10 seconds.”',
       author: 'Dave M.',
       tradeLocation: 'Master Electrician · Detroit, MI',
       avatar: '⚡',
       verifiedProof: '✓ Verified Master Electrician · 480+ SMS Jobs Synced',
     },
-    primaryCtaText: 'Meet Sparky & Text-to-Job',
+    primaryCtaText: 'Meet Your AI Copilot & Text-to-Job',
     primaryHref: '/features/sparky',
     secondaryCtaText: 'Explore Text-to-Job Docs →',
     secondaryHref: '/features/text-to-job',
@@ -72,9 +72,9 @@ const SPARKY_FEATURES: SparkyFeature[] = [
     badgeStyle: styles.badgePurple,
     cardStyle: styles.testimonialMicroCardPurple,
     eyebrow: 'MULTIMODAL PHOTO SCOPE · COMPUTER VISION & OCR',
-    title: 'Text job photos & receipts—Sparky extracts OCR & files them.',
+    title: 'Text job photos & receipts—your AI Copilot extracts OCR & files them.',
     blurb:
-      'Snap a photo of equipment rating plates, subfloor rot, or supply house receipts and text it to Sparky. Computer Vision reads model/serial numbers via OCR, assesses damage dimensions, and files photos to the right job.',
+      'Snap a photo of equipment rating plates, subfloor rot, or supply house receipts and text it to your AI Copilot. Computer Vision reads model/serial numbers via OCR, assesses damage dimensions, and files photos to the right job.',
     bullets: [
       'Automated equipment rating plate OCR (model, serial, BTU, tonnage)',
       'Pre-visit damage detection (dry rot, non-compliant wiring, pipe corrosion)',
@@ -83,7 +83,7 @@ const SPARKY_FEATURES: SparkyFeature[] = [
     ],
     testimonial: {
       quote:
-        '“I snapped a photo of a rusted 1998 boiler plate in a dark basement. Sparky read the serial number via OCR, matched the 80k BTU specs, and drafted the quote before I got back to my van.”',
+        '“I snapped a photo of a rusted 1998 boiler plate in a dark basement. My Copilot read the serial number via OCR, matched the 80k BTU specs, and drafted the quote before I got back to my van.”',
       author: 'Marcus R.',
       tradeLocation: 'HVAC & Hydronics Pro · Dallas, TX',
       avatar: '❄️',
@@ -105,7 +105,7 @@ const SPARKY_FEATURES: SparkyFeature[] = [
     eyebrow: 'MULTIMODAL VIDEO STUDIO & WALKTHROUGH SCOPE',
     title: 'Process video site walkthroughs & publish high-speed reels.',
     blurb:
-      'Send a video walkthrough of a job site for automated scope notes, or upload your footage for your contractor website. Sparky verifies video codecs, checks file sizes, and generates trade video sections.',
+      'Send a video walkthrough of a job site for automated scope notes, or upload your footage for your contractor website. Your AI Copilot verifies video codecs, checks file sizes, and generates trade video sections.',
     bullets: [
       'Site walkthrough video analysis for comprehensive job scope notes',
       '6 toggleable video website layouts (hero loops, project stories, testimonial reels)',
@@ -114,7 +114,7 @@ const SPARKY_FEATURES: SparkyFeature[] = [
     ],
     testimonial: {
       quote:
-        '“I take a 45-second phone video walking through the job site. Sparky turns it into itemized line items, and our website hero video reel brought in 6 new high-ticket remodels last month alone.”',
+        '“I take a 45-second phone video walking through the job site. My AI Copilot turns it into itemized line items, and our website hero video reel brought in 6 new high-ticket remodels last month alone.”',
       author: 'Sarah T.',
       tradeLocation: 'Design-Build Contractor · Seattle, WA',
       avatar: '🪵',
@@ -134,9 +134,9 @@ const SPARKY_FEATURES: SparkyFeature[] = [
     badgeStyle: styles.badgeEmerald,
     cardStyle: styles.testimonialMicroCardEmerald,
     eyebrow: 'WALK-UP ESTIMATE BRAIN DUMP & HANDS-FREE VOICE',
-    title: 'Speak your raw thoughts—Sparky builds the quote.',
+    title: 'Speak your raw thoughts—your AI Copilot builds the quote.',
     blurb:
-      'Walk up to a job site, tap Create Quote, and just talk. Tell Sparky the measurements, materials, and labor—he calculates quantities, structures line items, and gives you a send-ready quote before you leave the driveway.',
+      'Walk up to a job site, tap Create Quote, and just talk. Tell your AI Copilot the measurements, materials, and labor—it calculates quantities, structures line items, and gives you a send-ready quote before you leave the driveway.',
     bullets: [
       'Walk-up driveway brain dump turned into professional itemized quotes',
       'Hands-free steering wheel dictation with Apple Siri & Google Assistant shortcuts',
@@ -169,7 +169,7 @@ const TRADES_PRESETS = [
 ];
 
 const LIVE_TICKER_ITEMS = [
-  '🟢 Royal Oak, MI · Electrician texted panel photo → Sparky extracted Zinsco 100A OCR (14s ago)',
+  '🟢 Royal Oak, MI · Electrician texted panel photo → AI Copilot extracted Zinsco 100A OCR (14s ago)',
   '🟢 Austin, TX · Roofer dictated quote via Siri while driving → $4,200 quote sent (38s ago)',
   '🟢 Scottsdale, AZ · Plumber captured Quick Stop detour → $149 pre-paid via Stripe (1m ago)',
   '🟢 Denver, CO · HVAC contractor walk-up brain dump → 3-ton heat pump quote ready (2m ago)',
@@ -291,7 +291,7 @@ const VOICE_SCENARIOS = [
   {
     id: 'driveway-brain-dump',
     label: '🚶 Walk-Up Driveway Brain Dump',
-    transcript: '"Hey Sparky, starting an estimate for Miller at 84 Pine St. 12x16 paver patio, 4 inches crushed gravel, polymeric sand, plus $450 low-voltage lighting add-on. 2 days with 2 guys."',
+    transcript: '"Starting an estimate for Miller at 84 Pine St. 12x16 paver patio, 4 inches crushed gravel, polymeric sand, plus $450 low-voltage lighting add-on. 2 days with 2 guys."',
     sparkyThought: 'Calculating materials (192 sq ft pavers, 3 tons gravel) -> Labor (32 hrs @ $65/hr) -> Structuring $450 lighting upsell...',
     quoteTitle: 'Quote #1049 · Alex Miller',
     lineItems: [
@@ -305,7 +305,7 @@ const VOICE_SCENARIOS = [
   {
     id: 'siri-steering-wheel',
     label: '🚗 Steering-Wheel Siri Dictation',
-    transcript: '"Siri, tell Sparky to add emergency shutoff valve replacement for $380 on today\'s 2pm visit."',
+    transcript: '"Siri, text my Copilot to add emergency shutoff valve replacement for $380 on today\'s 2pm visit."',
     sparkyThought: 'Voice command authenticated -> Matched to 2:00 PM visit (David Vance #1055) -> Generating change order...',
     quoteTitle: 'Job #1055 · Emergency Shutoff Valve',
     lineItems: [
@@ -389,7 +389,7 @@ export default function HighTechShowcase() {
 
     setTimeout(() => {
       setIsTyping(false);
-      let reply = `Done! Sparky identified your request: "${text}". Reconciled into active job records and notified customer.`;
+      let reply = `Done! Your AI Copilot identified your request: "${text}". Reconciled into active job records and notified customer.`;
       let diffTitle = 'Custom Field Update';
       let diffAmount = 'Applied';
 
@@ -400,11 +400,11 @@ export default function HighTechShowcase() {
         diffTitle = `Custom Line Item (${amount})`;
         diffAmount = '+$' + (amount.replace('$', '') || '350.00');
       } else if (text.toLowerCase().includes('remind')) {
-        reply = `Reminder scheduled! Sparky logged an alert for your request: "${text}". Task attached to matching customer file.`;
+        reply = `Reminder scheduled! Your AI Copilot logged an alert for your request: "${text}". Task attached to matching customer file.`;
         diffTitle = 'Scheduled Task Alert';
         diffAmount = 'Alert Queued';
       } else if (text.toLowerCase().includes('reschedule')) {
-        reply = `Schedule updated! Sparky moved the job slot and synced your crew truck calendar.`;
+        reply = `Schedule updated! Your AI Copilot moved the job slot and synced your crew truck calendar.`;
         diffTitle = 'Calendar Re-booking';
         diffAmount = 'Slot Synced';
       }
@@ -450,14 +450,14 @@ export default function HighTechShowcase() {
         {/* Header */}
         <header className={styles.header}>
           <div className={styles.eyebrow}>
-            <span className={styles.sparkyAvatarBadge}>⚡ SPARKY</span>
-            <span>MEET YOUR AI CONTRACTOR SIDEKICK</span>
+            <span className={styles.sparkyAvatarBadge}>⚡ AI COPILOT</span>
+            <span>MEET YOUR 24/7 AI CONTRACTOR SIDEKICK</span>
           </div>
           <h2 className={styles.title} id="showcase-heading">
             Run your business via <em>Texts, Images, Videos &amp; Voice.</em>
           </h2>
           <p className={styles.description}>
-            You don’t even need to open an app. Meet <strong>Sparky</strong>—your multimodal AI contractor sidekick that processes text messages, job site photos, video walkthroughs, and driveway voice notes directly into your live job files.
+            You don’t even need to open an app. Meet your <strong>AI Copilot</strong>—the multimodal AI contractor sidekick that processes text messages, job site photos, video walkthroughs, and driveway voice notes directly into your live job files.
           </p>
 
           {/* LIVE ACTIVITY PULSE TICKER */}
@@ -581,7 +581,7 @@ export default function HighTechShowcase() {
                 </div>
                 <span className={styles.canvasStatusPill}>
                   <span className={styles.pulseDot} aria-hidden="true" />
-                  SPARKY MULTIMODAL SIMULATOR
+                  AI COPILOT MULTIMODAL SIMULATOR
                 </span>
               </div>
 
@@ -613,8 +613,8 @@ export default function HighTechShowcase() {
                       <div className={styles.phoneHeader}>
                         <div className={styles.phoneAvatar}>⚡</div>
                         <div>
-                          <p className={styles.phoneHeaderTitle}>Sparky · Let’s Get Quoted</p>
-                          <p className={styles.phoneHeaderSub}>● Active Now · SMS AI Sidekick</p>
+                          <p className={styles.phoneHeaderTitle}>AI Copilot · Let’s Get Quoted</p>
+                          <p className={styles.phoneHeaderSub}>● Active Now · SMS Field Copilot</p>
                         </div>
                       </div>
 
@@ -653,7 +653,7 @@ export default function HighTechShowcase() {
                             placeholder="Type any test command (e.g. Add $500 for lighting to Miller)..."
                             value={customInput}
                             onChange={(e) => setCustomInput(e.target.value)}
-                            aria-label="Text Sparky simulator input"
+                            aria-label="Text AI Copilot simulator input"
                           />
                           <button type="submit" className={styles.chatSendBtn}>
                             Send SMS ↗
@@ -874,7 +874,7 @@ export default function HighTechShowcase() {
 
                       <div className={styles.videoScopeTimestamps}>
                         <span style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 700 }}>
-                          SPARKY EXTRACTED SCOPE TIMESTAMPS:
+                          AI COPILOT EXTRACTED SCOPE TIMESTAMPS:
                         </span>
                         {VIDEO_SCENARIOS[activeVideoScenario]?.timestamps.map((ts) => (
                           <div key={ts.time} className={styles.timestampRow}>

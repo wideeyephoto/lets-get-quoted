@@ -87,7 +87,7 @@ const SCENARIOS: Scenario[] = [
     badge: 'Change Order Auto-Calculated',
     badgeType: 'quote',
     description:
-      'Spotted extra work on-site? Text your platform number with the price and description. Sparky updates the job estimate and lets you text the customer approval link with 1 tap.',
+      'Spotted extra work on-site? Text your platform number with the price and description. Your AI Copilot updates the job estimate and lets you text the customer approval link with 1 tap.',
     contractorSender: 'You (Alert Phone)',
     contractorInputType: 'text',
     contractorText: 'Add $450 to Miller job for extra 12/2 Romex line and GFCI outlet in pantry',
@@ -149,7 +149,7 @@ const SCENARIOS: Scenario[] = [
     badge: 'MMS Multimodal Audio AI',
     badgeType: 'voice',
     description:
-      'Send a quick 10-second voice memo while driving. Sparky transcribes the audio, extracts milestone updates, and attaches the recording to the job feed.',
+      'Send a quick 10-second voice memo while driving. Your AI Copilot transcribes the audio, extracts milestone updates, and attaches the recording to the job feed.',
     contractorSender: 'You (Voice Memo MMS)',
     contractorInputType: 'voice',
     voiceAudioDuration: '0:09',
@@ -204,7 +204,7 @@ const SCENARIOS: Scenario[] = [
     badge: 'Real-Time Spanish AI Audio Translation',
     badgeType: 'voice',
     description:
-      'Crew members send voice memos in Spanish. Sparky transcribes, translates to clean English on the job record, and replies in Spanish with an instant SMS confirmation.',
+      'Crew members send voice memos in Spanish. Your AI Copilot transcribes, translates to clean English on the job record, and replies in Spanish with an instant SMS confirmation.',
     contractorSender: 'Carlos (Crew Van #3)',
     contractorInputType: 'voice',
     voiceAudioDuration: '0:11',
@@ -263,7 +263,7 @@ const SCENARIOS: Scenario[] = [
     badge: 'MMS Vision OCR & Auto-Margin',
     badgeType: 'quote',
     description:
-      'Snap a picture of your Home Depot or supply receipt at the register. Sparky OCR extracts every item, matches the active job, and updates your real-time profit margin.',
+      'Snap a picture of your Home Depot or supply receipt at the register. AI Copilot OCR extracts every item, matches the active job, and updates your real-time profit margin.',
     contractorSender: 'You (Receipt Photo MMS)',
     contractorInputType: 'receipt',
     contractorText: 'Home Depot receipt for Miller - 124 Main',
@@ -331,7 +331,7 @@ const SCENARIOS: Scenario[] = [
     badge: 'Auto-Task Extraction',
     badgeType: 'task',
     description:
-      'Walk the job site and text to-do items. Sparky breaks down multi-item punch lists into discrete tasks assigned directly to your field crew.',
+      'Walk the job site and text to-do items. Your AI Copilot breaks down multi-item punch lists into discrete tasks assigned directly to your field crew.',
     contractorSender: 'You (Alert Phone)',
     contractorInputType: 'text',
     contractorText:
@@ -390,7 +390,7 @@ const SCENARIOS: Scenario[] = [
     badge: 'Disambiguation Safety',
     badgeType: 'safety',
     description:
-      'If two active jobs share a name, Sparky never guesses. He texts back clarifying options so you never accidentally modify or close the wrong job.',
+      'If two active jobs share a name, your AI Copilot never guesses. It texts back clarifying options so you never accidentally modify or close the wrong job.',
     contractorSender: 'You (Alert Phone)',
     contractorInputType: 'text',
     contractorText: 'Mark Smith job complete',
@@ -429,7 +429,7 @@ const SCENARIOS: Scenario[] = [
       status: 'Completed (Ready to Invoice)',
       statusColor: '#10b981',
       badgeText: 'Safe Disambiguation Verified',
-      safetyNotice: 'Sparky resolved target job via prompt disambiguation before status mutation.',
+      safetyNotice: 'AI Copilot resolved target job via prompt disambiguation before status mutation.',
       totalAmount: '$1,200.00',
     },
   },
@@ -441,7 +441,7 @@ const SCENARIOS: Scenario[] = [
     badge: 'Instant Lead Creation',
     badgeType: 'lead',
     description:
-      'Got a quick referral or saw a neighbor while packing up? Text their name, number, and note. Sparky creates the lead and stages the estimate.',
+      'Got a quick referral or saw a neighbor while packing up? Text their name, number, and note. Your AI Copilot creates the lead and stages the estimate.',
     contractorSender: 'You (Alert Phone)',
     contractorInputType: 'text',
     contractorText:
@@ -639,7 +639,7 @@ export default function TextToRecordSimulator() {
               perspective === 'contractor' ? styles.perspectiveBtnActive : ''
             }`}
           >
-            📱 Contractor View (SMS to Sparky)
+            📱 Contractor View (SMS to AI Copilot)
           </button>
           <button
             type="button"
@@ -694,7 +694,7 @@ export default function TextToRecordSimulator() {
               <div className={styles.chatInfo}>
                 <div className={styles.chatTitle}>
                   {perspective === 'contractor'
-                    ? 'Sparky ⚡ · AI Sidekick'
+                    ? 'AI Copilot ⚡ · 24/7 Sidekick'
                     : 'Apex Electric & Plumbing'}
                 </div>
                 <div className={styles.chatSub}>
@@ -838,11 +838,11 @@ export default function TextToRecordSimulator() {
                     </div>
                   )}
 
-                  {/* Sparky AI Platform Response */}
+                  {/* AI Platform Response */}
                   <div className={styles.aiBubble}>
                     <div className={styles.aiSenderTag}>
                       <span className={styles.aiGlowDot}></span>
-                      Sparky AI Sidekick (1.4s)
+                      AI Copilot (1.4s)
                     </div>
                     <p className={styles.aiResponseText}>{scenario.aiResponse}</p>
                   </div>
@@ -857,7 +857,7 @@ export default function TextToRecordSimulator() {
                       <div className={styles.aiBubble}>
                         <div className={styles.aiSenderTag}>
                           <span className={styles.aiGlowDot}></span>
-                          Sparky AI Sidekick (1.1s)
+                          AI Copilot (1.1s)
                         </div>
                         <p className={styles.aiResponseText}>{scenario.aiFollowUpResponse}</p>
                       </div>

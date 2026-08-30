@@ -1624,7 +1624,8 @@ create or replace function is_member(acc uuid)
 returns boolean language sql stable security definer set search_path = public as $$
   select exists (
     select 1 from memberships m
-    where m.account_id = acc and m.user_id = auth.uid()
+    join accounts a on a.id = m.account_id
+    where m.account_id = acc and m.user_id = auth.uid() and a.suspended_at is null
   );
 $$;
 
@@ -1632,7 +1633,8 @@ create or replace function is_owner(acc uuid)
 returns boolean language sql stable security definer set search_path = public as $$
   select exists (
     select 1 from memberships m
-    where m.account_id = acc and m.user_id = auth.uid() and m.role = 'owner'
+    join accounts a on a.id = m.account_id
+    where m.account_id = acc and m.user_id = auth.uid() and m.role = 'owner' and a.suspended_at is null
   );
 $$;
 
@@ -1646,7 +1648,8 @@ create or replace function is_crew(acc uuid)
 returns boolean language sql stable security definer set search_path = public as $$
   select exists (
     select 1 from memberships m
-    where m.account_id = acc and m.user_id = auth.uid() and m.role = 'crew'
+    join accounts a on a.id = m.account_id
+    where m.account_id = acc and m.user_id = auth.uid() and m.role = 'crew' and a.suspended_at is null
   );
 $$;
 
@@ -1659,7 +1662,9 @@ returns boolean language sql stable security definer set search_path = public as
     select 1
     from crew_assignments ca
     join crew c on c.id = ca.crew_id
-    where ca.job_id = j and c.user_id = auth.uid()
+    join jobs jb on jb.id = ca.job_id
+    join accounts a on a.id = jb.account_id
+    where ca.job_id = j and c.user_id = auth.uid() and a.suspended_at is null
   );
 $$;
 
@@ -1669,7 +1674,9 @@ $$;
 create or replace function crew_owns_crew_row(cid uuid)
 returns boolean language sql stable security definer set search_path = public as $$
   select exists (
-    select 1 from crew c where c.id = cid and c.user_id = auth.uid()
+    select 1 from crew c
+    join accounts a on a.id = c.account_id
+    where c.id = cid and c.user_id = auth.uid() and a.suspended_at is null
   );
 $$;
 
@@ -1887,7 +1894,7 @@ create policy mem_manage on memberships for all    using ( is_owner(account_id) 
 -- CREW roster: owners manage everyone; a crew member may read ONLY their own row
 -- (so createCost can snapshot their name/rate) — never a coworker's pay rate.
 create policy crew_owner     on crew for all    using ( is_owner(account_id) );
-create policy crew_self_read on crew for select using ( user_id = auth.uid() );
+create policy crew_self_read on crew for select using ( user_id = auth.uid() and exists (select 1 from accounts a where a.id = account_id and a.suspended_at is null) );
 
 -- SITES: owner-only. The published website config isn't something crew edit or
 -- need (branding comes from requireCrewContext).
@@ -2072,7 +2079,7 @@ create policy lead_all   on leads            for all using ( is_owner(account_id
 -- Delivery history is provider/worker evidence, not owner-authored data. Owners
 -- may read their ledger; service-role RPCs are the only mutation boundary.
 create policy sms_event_owner_read on sms_events for select using ( is_owner(account_id) );
-create policy sms_consent_all on sms_consent  for all using ( is_owner(account_id) );
+create policy sms_consent_owner_read on sms_consent for select using ( is_owner(account_id) );
 -- SELECT ONLY, and the only account-scoped table in this file that is. The rest
 -- hold things the owner creates; this holds a provider's decision about them,
 -- applied by staff through the service role. An owner who could write their own
@@ -2096,10 +2103,11 @@ create policy job_tasks_crew_read    on job_tasks for select using ( crew_on_job
 create policy job_tasks_crew_insert  on job_tasks for insert with check ( crew_on_job(job_id) and account_id = job_account_id(job_id) );
 create policy job_tasks_crew_update  on job_tasks for update using ( crew_on_job(job_id) ) with check ( crew_on_job(job_id) and account_id = job_account_id(job_id) );
 
--- Owner-only: only owners send/manage marketing email, so only owners read/write
--- the opt-out list. Public unsubscribe writes go through the service-role client
--- (which bypasses RLS), so no anon policy is needed here.
-create policy email_suppression_all on email_suppression for all using ( is_owner(account_id) );
+-- Owner-only SELECT: only owners inspect opt-out lists in the dashboard. Mutations
+-- are strictly append-only / service-role governed (via webhook receivers, unsubscribe
+-- routes, or verified administrative RPCs). Authenticated browser sessions cannot
+-- delete or alter suppression records.
+create policy email_suppression_owner_read on email_suppression for select using ( is_owner(account_id) );
 
 alter table invoice_items enable row level security;
 create policy invitem_all on invoice_items for all using (

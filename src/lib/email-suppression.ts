@@ -69,20 +69,22 @@ export function buildUnsubscribeOneClickUrl(accountId: string, email: string): s
 }
 
 // The set of opted-out addresses (lowercased) for an account, for gating a batch
-// send. Defensive: an un-migrated DB (no email_suppression table) degrades to an
-// empty set so marketing sends still work instead of 500-ing.
+// send. Fail-closed: an un-migrated DB or query error throws so marketing sends
+// never proceed with an empty suppression list by mistake.
 export async function loadSuppressedEmails(supabase: SupabaseClient, accountId: string): Promise<Set<string>> {
   const { data, error } = await supabase
     .from('email_suppression')
     .select('email')
     .eq('account_id', accountId);
-  if (error) return new Set();
+  if (error) {
+    console.error('Failed to load email suppression list (failing closed):', error.message);
+    throw new Error(`Failed to load email suppression list: ${error.message}`);
+  }
   return new Set((data ?? []).map((row) => String(row.email).trim().toLowerCase()));
 }
 
-// Single-address opt-out check for the one-off send paths (rebook, review). Same
-// defensive contract: on error, returns false (not suppressed) so a missing table
-// never blocks a legitimate send.
+// Single-address opt-out check for the one-off send paths (rebook, review). Fail-closed
+// on database error to protect recipient opt-out preferences.
 export async function isEmailSuppressed(supabase: SupabaseClient, accountId: string, email: string | null | undefined): Promise<boolean> {
   if (!email) return false;
   // Exact match on the lowercased address (how suppressEmail stores it, and what
@@ -96,7 +98,10 @@ export async function isEmailSuppressed(supabase: SupabaseClient, accountId: str
     .eq('email', email.trim().toLowerCase())
     .limit(1)
     .maybeSingle();
-  if (error) return false;
+  if (error) {
+    console.error('Failed to check email suppression status (failing closed):', error.message);
+    throw new Error(`Email suppression lookup failed: ${error.message}`);
+  }
   return Boolean(data);
 }
 

@@ -8,6 +8,7 @@ import { AppShellProvider } from '@/components/app-shell-provider';
 import SpeculationRules from '@/components/speculation-rules';
 import GoogleTag from '@/components/google-tag';
 import { ThemeProvider } from '@/components/use-theme';
+import ThemeTuner from '@/components/ThemeTuner';
 import { cspNonce } from '@/lib/csp-nonce';
 import {
   parseThemeChoice,
@@ -197,6 +198,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           </AppShellProvider>
         </ThemeProvider>
         {isStandaloneSite ? null : <GoogleTag />}
+        <ThemeTuner />
       </body>
     </html>
   );

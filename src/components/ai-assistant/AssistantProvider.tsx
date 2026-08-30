@@ -32,22 +32,35 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
   const [companionTrade, setCompanionTradeState] = useState<string>('general');
   const [isCompanionPickerOpen, setIsCompanionPickerOpen] = useState(false);
 
-  // Initialize from localStorage on mount
+  // Initialize from localStorage on mount and listen to cross-tab updates
   useEffect(() => {
-    try {
-      const savedId = localStorage.getItem(STORAGE_KEY_ID) as CompanionId | null;
-      const savedTrade = localStorage.getItem(STORAGE_KEY_TRADE);
-      if (savedId && COMPANIONS.some((c) => c.id === savedId)) {
-        setCompanionIdState(savedId);
-      } else {
-        setCompanionIdState(DEFAULT_COMPANION_ID);
+    const syncFromStorage = () => {
+      try {
+        const savedId = localStorage.getItem(STORAGE_KEY_ID) as CompanionId | null;
+        const savedTrade = localStorage.getItem(STORAGE_KEY_TRADE);
+        if (savedId && COMPANIONS.some((c) => c.id === savedId)) {
+          setCompanionIdState(savedId);
+        } else {
+          setCompanionIdState(DEFAULT_COMPANION_ID);
+        }
+        if (savedTrade) {
+          setCompanionTradeState(savedTrade);
+        }
+      } catch {
+        // ignore storage access errors
       }
-      if (savedTrade) {
-        setCompanionTradeState(savedTrade);
+    };
+
+    syncFromStorage();
+
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === STORAGE_KEY_ID || e.key === STORAGE_KEY_TRADE) {
+        syncFromStorage();
       }
-    } catch {
-      // ignore storage access errors
-    }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
   const setCompanion = useCallback((id: CompanionId, trade?: string) => {

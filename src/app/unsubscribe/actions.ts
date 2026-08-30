@@ -15,7 +15,10 @@ export async function unsubscribeAction(formData: FormData) {
   }
 
   const admin = createAdminClient();
-  await suppressEmail(admin, decoded.accountId, decoded.email, 'unsubscribe_link');
+  const ok = await suppressEmail(admin, decoded.accountId, decoded.email, 'unsubscribe_link');
+  if (!ok) {
+    redirect(`/unsubscribe?token=${encodeURIComponent(token)}&error=1`);
+  }
 
   redirect(`/unsubscribe?token=${encodeURIComponent(token)}&done=1`);
 }

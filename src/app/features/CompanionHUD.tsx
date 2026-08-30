@@ -19,8 +19,8 @@ const SECTION_CONTEXTS: SectionContext[] = [
     id: 'hero',
     selector: '#main-content',
     name: 'Single Connected Job Record',
-    badge: '⚡ 24/7 SPARKY CO-PILOT',
-    speech: "Hey! I'm Sparky, your 24/7 contractor sidekick & field co-pilot. While you're driving, on the ladder, or walking up to an estimate, I capture inquiries, draft quotes from voice or text, extract photo OCR, and keep your schedule moving.",
+    badge: '⚡ 24/7 AI COPILOT',
+    speech: "Hey! I'm your 24/7 AI contractor copilot. While you're driving, on the ladder, or walking up to an estimate, I capture inquiries, draft quotes from voice or text, extract photo OCR, and keep your schedule moving.",
     actionLabel: 'Watch one job move →',
     actionHref: '#tour',
   },
@@ -37,7 +37,7 @@ const SECTION_CONTEXTS: SectionContext[] = [
     id: 'smart-intake',
     selector: '#smart-intake',
     name: 'Smart Intake & Vision',
-    badge: '⚡ SPARKY VISION OCR',
+    badge: '⚡ AI VISION OCR',
     speech: 'When homeowners upload photos, I scan equipment rating plates, extract model specs via OCR, calculate footage, and flag hazards before you leave the truck.',
     actionLabel: 'Try the live photo scanner →',
     actionHref: '#companion-photo-demo',
@@ -254,7 +254,7 @@ export default function CompanionHUD() {
   };
 
   return (
-    <aside className={styles.companionHUD} aria-label="Sparky AI Contractor Field Companion">
+    <aside className={styles.companionHUD} aria-label="AI Contractor Field Copilot">
       {/* Floating Mini Speech Bubble (when collapsed and not dismissed) */}
       {!isExpanded && !hasDismissedSpeech && (
         <div className={styles.companionMiniBubble}>
@@ -281,7 +281,7 @@ export default function CompanionHUD() {
               className={styles.companionOpenBtn}
               onClick={() => setIsExpanded(true)}
             >
-              Ask Sparky ⚡
+              Ask Copilot ⚡
             </button>
           </div>
         </div>
@@ -297,7 +297,7 @@ export default function CompanionHUD() {
                 <span className={styles.companionOnlineDot} aria-hidden="true" />
               </div>
               <div>
-                <strong className={styles.companionName}>Sparky · 24/7 Field Co-Pilot</strong>
+                <strong className={styles.companionName}>AI Copilot · 24/7 Field Assistant</strong>
                 <small className={styles.companionLocationNote}>
                   Active Context: {activeSection.name}
                 </small>
@@ -367,7 +367,7 @@ export default function CompanionHUD() {
                     🗺️ Route Detour Demo
                   </a>
                   <Link href="/features/sparky" className={styles.companionChip}>
-                    ⚡ Meet Sparky
+                    ⚡ AI Companions
                   </Link>
                   <a href="#sprawl-calculator" className={styles.companionChip}>
                     💰 Calculate Savings
@@ -377,7 +377,7 @@ export default function CompanionHUD() {
                     onClick={() => setShowQAPanel(true)}
                     className={styles.companionChip}
                   >
-                    💡 Ask Sparky FAQs
+                    💡 Ask Copilot FAQs
                   </button>
                 </div>
               </div>
@@ -388,7 +388,7 @@ export default function CompanionHUD() {
           {showQAPanel && !isTouring && (
             <div className={styles.companionQABody}>
               <div className={styles.companionQAHead}>
-                <span>SPARKY &amp; PLATFORM FAQS</span>
+                <span>AI COPILOT &amp; PLATFORM FAQS</span>
                 <button
                   type="button"
                   className={styles.companionBackBtn}

@@ -1,33 +1,175 @@
+import { createHash } from 'node:crypto';
 import { NextResponse } from 'next/server';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { requirePermission } from '@/lib/auth';
 import { logAdminAction } from '@/lib/admin';
 
 export const dynamic = 'force-dynamic';
 
-// Full JSON export of an account's data — for honoring a contractor's data-export
-// request. Admin-gated (requireAdmin 404s non-staff) and audited. Read-only.
-const TABLES = ['accounts', 'sites', 'clients', 'leads', 'jobs', 'invoices', 'payments', 'extra_stop_requests', 'account_credits'] as const;
+// Comprehensive category registry of account-keyed tables for data portability / GDPR Article 15/20 & CCPA access requests.
+// Excludes internal platform secrets, raw auth credentials, and platform infrastructure keys.
+const ACCOUNT_DIRECT_TABLES = [
+  'accounts',
+  'sites',
+  'clients',
+  'leads',
+  'jobs',
+  'job_tasks',
+  'job_milestones',
+  'change_orders',
+  'warranties',
+  'services',
+  'crew',
+  'time_entries',
+  'invoices',
+  'payments',
+  'scheduled_payments',
+  'payment_plans',
+  'extra_stop_requests',
+  'account_credits',
+  'sms_messages',
+  'sms_consent',
+  'sms_consent_scopes',
+  'review_invites',
+  'email_suppression',
+] as const;
+
+async function fetchAllRows(admin: SupabaseClient, table: string, column: string, value: string): Promise<unknown[]> {
+  const rows: unknown[] = [];
+  const BATCH = 500;
+  let offset = 0;
+  let hasMore = true;
+
+  while (hasMore) {
+    let query = admin
+      .from(table)
+      .select('*')
+      .eq(column, value);
+
+    // Apply deterministic ordering for stable range pagination
+    if (table === 'sms_consent_scopes') {
+      query = query.order('phone_number', { ascending: true });
+    } else {
+      query = query.order('id', { ascending: true });
+    }
+
+    const { data, error } = await query.range(offset, offset + BATCH - 1);
+
+    if (error) {
+      // If a table is not present or migrated in this specific environment, log and continue safely.
+      if (error.code === '42P01') {
+        console.warn(`Export table ${table} not found in database, skipping.`);
+        return [];
+      }
+      console.error(`Export table ${table} failed at offset ${offset}:`, error.message);
+      throw new Error(`Export failed on table ${table}: ${error.message}`);
+    }
+
+    if (data && data.length > 0) {
+      rows.push(...data);
+      if (data.length < BATCH) {
+        hasMore = false;
+      } else {
+        offset += BATCH;
+      }
+    } else {
+      hasMore = false;
+    }
+  }
+
+  return rows;
+}
+
+async function fetchInvoiceItemsForInvoices(admin: SupabaseClient, invoiceIds: string[]): Promise<unknown[]> {
+  if (invoiceIds.length === 0) return [];
+  const rows: unknown[] = [];
+  const BATCH_SIZE = 100;
+
+  for (let i = 0; i < invoiceIds.length; i += BATCH_SIZE) {
+    const chunk = invoiceIds.slice(i, i + BATCH_SIZE);
+    const { data, error } = await admin
+      .from('invoice_items')
+      .select('*')
+      .in('invoice_id', chunk)
+      .order('id', { ascending: true });
+
+    if (error) {
+      if (error.code === '42P01') return [];
+      console.error('Export invoice_items failed:', error.message);
+      throw new Error(`Export failed on table invoice_items: ${error.message}`);
+    }
+
+    if (data) rows.push(...data);
+  }
+
+  return rows;
+}
 
 export async function GET(_request: Request, { params }: { params: { id: string } }) {
-  // The widest PII surface in the product: every row this account owns, in one
-  // file. Its own permission, and audited with the request id so the download
-  // can be tied to whatever prompted it.
   const ctx = await requirePermission('account.export');
   const { admin } = ctx;
   const accountId = params.id;
 
-  const { data: account } = await admin.from('accounts').select('id, account_number').eq('id', accountId).maybeSingle();
-  if (!account) return NextResponse.json({ error: 'Account not found' }, { status: 404 });
+  const { data: account, error: accountError } = await admin
+    .from('accounts')
+    .select('id, account_number, business_name')
+    .eq('id', accountId)
+    .maybeSingle();
 
-  const bundle: Record<string, unknown> = { exportedAt: new Date().toISOString(), accountId };
-  for (const table of TABLES) {
-    const column = table === 'accounts' ? 'id' : 'account_id';
-    const value = table === 'accounts' ? accountId : accountId;
-    const { data } = await admin.from(table).select('*').eq(column, value);
-    bundle[table] = data ?? [];
+  if (accountError) {
+    console.error('Account export lookup failed:', accountError);
+    return NextResponse.json({ error: 'Database query failed' }, { status: 500 });
   }
 
-  await logAdminAction(admin, ctx, { action: 'account_export', accountId, targetType: 'account', targetId: accountId });
+  if (!account) {
+    return NextResponse.json({ error: 'Account not found' }, { status: 404 });
+  }
+
+  const tableCounts: Record<string, number> = {};
+  const dataBundle: Record<string, unknown[]> = {};
+
+  try {
+    for (const table of ACCOUNT_DIRECT_TABLES) {
+      const column = table === 'accounts' ? 'id' : 'account_id';
+      const rows = await fetchAllRows(admin, table, column, accountId);
+      dataBundle[table] = rows;
+      tableCounts[table] = rows.length;
+    }
+
+    // invoice_items has no direct account_id; query via parent invoices
+    const invoiceRows = (dataBundle['invoices'] ?? []) as Array<{ id: string }>;
+    const invoiceIds = invoiceRows.map((inv) => inv.id).filter(Boolean);
+    const invoiceItemRows = await fetchInvoiceItemsForInvoices(admin, invoiceIds);
+    dataBundle['invoice_items'] = invoiceItemRows;
+    tableCounts['invoice_items'] = invoiceItemRows.length;
+  } catch (error) {
+    console.error('Export data collection failed:', error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Failed to collect full data export' },
+      { status: 500 },
+    );
+  }
+
+  const rawJson = JSON.stringify(dataBundle);
+  const checksumSha256 = createHash('sha256').update(rawJson).digest('hex');
+
+  const bundle = {
+    exportedAt: new Date().toISOString(),
+    accountId,
+    accountNumber: (account as { account_number: number }).account_number ?? null,
+    businessName: (account as { business_name: string }).business_name ?? null,
+    tableCounts,
+    checksumSha256,
+    data: dataBundle,
+  };
+
+  await logAdminAction(admin, ctx, {
+    action: 'account_export',
+    accountId,
+    targetType: 'account',
+    targetId: accountId,
+    meta: { tableCounts, checksumSha256 },
+  });
 
   const filename = `account-${(account as { account_number: number }).account_number ?? accountId}-export.json`;
   return new NextResponse(JSON.stringify(bundle, null, 2), {

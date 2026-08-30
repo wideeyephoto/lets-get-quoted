@@ -28,6 +28,8 @@ export async function POST(req: Request) {
       currentPath: body.currentPath,
       activeRecord: body.activeRecord,
       capabilities: Array.from(capabilities),
+      companionId: body.companionId,
+      companionTrade: body.companionTrade,
     };
 
     const toolCtx: ToolExecutionContext = {

@@ -220,10 +220,23 @@ export default function SchedulePanel({
     // than a column that says what it is for.
     return docked ? (
       <aside className="sched-detail is-empty" aria-label="Job details">
-        <p className="sched-detail-hint">
+        <div className="sched-detail-hint">
+          <div className="sched-detail-empty-icon" aria-hidden="true">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+              <line x1="16" y1="2" x2="16" y2="6" />
+              <line x1="8" y1="2" x2="8" y2="6" />
+              <line x1="3" y1="10" x2="21" y2="10" />
+              <path d="M8 14h.01" />
+              <path d="M12 14h.01" />
+              <path d="M16 14h.01" />
+              <path d="M8 18h.01" />
+              <path d="M12 18h.01" />
+            </svg>
+          </div>
           <strong>Pick a job</strong>
           <span>Choose one from the list and its dates, crew and confirmation appear here.</span>
-        </p>
+        </div>
       </aside>
     ) : null;
   }

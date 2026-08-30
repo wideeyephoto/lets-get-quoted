@@ -164,15 +164,21 @@ export default function AssistantWidget() {
       setIsLoading(true);
 
       try {
-        const response = await fetch('/api/ai-assistant/chat', {
+        const response = await fetch('/api/dashboard/ai-assistant', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             messages: [...messages, userMsg],
-            context: {
-              pathname,
-              screenContext: activeContext,
-            },
+            currentPath: pathname,
+            companionId,
+            companionTrade,
+            activeRecord: activeContext.id
+              ? {
+                  type: activeContext.type,
+                  id: activeContext.id,
+                  title: activeContext.label,
+                }
+              : undefined,
             image: imgPayload
               ? {
                   data: imgPayload.data,
@@ -188,10 +194,10 @@ export default function AssistantWidget() {
 
         const data = await response.json();
         const assistantMsg: AssistantMessage = {
-          id: `assistant-${Date.now()}`,
+          id: data.message?.id || `assistant-${Date.now()}`,
           role: 'assistant',
-          content: data.reply || "I couldn't process that command right now. Could you try rephrasing?",
-          actionCards: data.actionCards,
+          content: data.message?.content || data.reply || "I couldn't process that command right now. Could you try rephrasing?",
+          actionCards: data.actionCards || data.message?.actionCards,
           createdAt: new Date().toISOString(),
         };
 

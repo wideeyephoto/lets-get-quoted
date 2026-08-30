@@ -62,16 +62,34 @@ export type CampaignRecipient = {
   emailUndeliverable: boolean;
 };
 
-// The set of phone numbers this account has explicit SMS consent for. Marketing
-// texts go ONLY to opted-in numbers — stricter than transactional sends, which
-// merely skip opt-outs. Stored normalized, matching how consent rows are keyed.
+// The set of phone numbers this account has explicit, affirmative SMS marketing consent for.
+// Marketing broadcasts fail closed: ONLY numbers with verified affirmative marketing opt-in
+// evidence (and not transactional touchpoints or unverified backfills like crew_backfill) are eligible.
+export const AFFIRMATIVE_MARKETING_SOURCES = new Set([
+  'marketing_opt_in',
+  'campaign_opt_in',
+  'promo_opt_in',
+  'web_form_marketing_opt_in',
+  'broadcast_marketing_consent',
+]);
+
 async function loadOptedInPhones(supabase: SupabaseClient, accountId: string): Promise<Set<string>> {
   const { data } = await supabase
     .from('sms_consent')
-    .select('phone_number')
+    .select('phone_number, source')
     .eq('account_id', accountId)
     .eq('status', 'opted_in');
-  return new Set((data ?? []).map((row) => row.phone_number as string));
+
+  if (!data) return new Set();
+
+  const marketingPhones = data
+    .filter((row) => {
+      const src = (row.source || '').toLowerCase().trim();
+      return AFFIRMATIVE_MARKETING_SOURCES.has(src);
+    })
+    .map((row) => row.phone_number as string);
+
+  return new Set(marketingPhones);
 }
 
 export async function loadRecipients(supabase: SupabaseClient, accountId: string): Promise<CampaignRecipient[]> {

@@ -359,7 +359,12 @@ export async function logPrivacyRequestAction(accountId: string, formData: FormD
   const kind = String(formData.get('kind') ?? '').trim();
   const details = String(formData.get('details') ?? '').trim() || null;
   if (!isPrivacyRequestKind(kind)) backTo(accountId, 'error=privacy_kind');
-  await logPrivacyRequest(admin, ctx, accountId, kind, details);
+  try {
+    await logPrivacyRequest(admin, ctx, accountId, kind, details);
+  } catch (error) {
+    console.error('logPrivacyRequestAction failed:', error);
+    backTo(accountId, 'error=update_failed');
+  }
   revalidatePath(`/admin/accounts/${accountId}`);
   backTo(accountId, 'done=privacy_logged');
 }
@@ -368,7 +373,13 @@ export async function resolvePrivacyRequestAction(accountId: string, formData: F
   const ctx = await requirePermission('privacy.manage');
   const { admin } = ctx;
   const requestId = String(formData.get('request_id') ?? '').trim();
-  if (requestId) await resolvePrivacyRequest(admin, ctx, requestId);
+  if (!requestId) backTo(accountId, 'error=request_id_required');
+  try {
+    await resolvePrivacyRequest(admin, ctx, requestId);
+  } catch (error) {
+    console.error('resolvePrivacyRequestAction failed:', error);
+    backTo(accountId, 'error=update_failed');
+  }
   revalidatePath(`/admin/accounts/${accountId}`);
   backTo(accountId, 'done=privacy_resolved');
 }
@@ -435,6 +446,39 @@ export async function deleteAccountAction(accountId: string, formData: FormData)
       console.error('deleteAccount owner cleanup failed:', error instanceof Error ? error.message : error);
     }
   }
+
+  redirect('/admin/accounts?deleted=1');
+}
+
+export async function closeAndAnonymizeAccountAction(accountId: string, formData: FormData) {
+  const ctx = await requireMfaPermission('account.delete');
+  const { admin } = ctx;
+  const typed = String(formData.get('confirm') ?? '').trim();
+
+  const { data: acct } = await admin.from('accounts').select('account_number').eq('id', accountId).maybeSingle();
+  const expected = acct ? String((acct as { account_number: number }).account_number ?? '') : '';
+  if (!expected || typed !== expected) backTo(accountId, 'error=confirm');
+
+  const { executeAccountClosureSaga } = await import('@/lib/account-deletion-saga');
+  const result = await executeAccountClosureSaga(admin, accountId, ctx.adminEmail);
+
+  if (!result.success) {
+    console.error('closeAndAnonymizeAccountAction failed with errors:', result.errors);
+    backTo(accountId, 'error=delete_failed');
+  }
+
+  await logAdminAction(admin, ctx, {
+    action: 'account_delete',
+    accountId,
+    targetType: 'account',
+    targetId: accountId,
+    meta: {
+      accountNumber: expected,
+      anonymized: result.anonymized,
+      retainedLedger: result.retainedLedger,
+      cleanedStorageFiles: result.cleanedStorageFiles,
+    },
+  });
 
   redirect('/admin/accounts?deleted=1');
 }

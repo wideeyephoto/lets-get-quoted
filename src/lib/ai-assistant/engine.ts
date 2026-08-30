@@ -3,6 +3,7 @@ import { getJob, listCosts, computeMargin, parseQuoteItems } from '@/lib/jobs';
 import { listJobTasks } from '@/lib/job-tasks';
 import { ASSISTANT_TOOLS_DECLARATION, executeAssistantTool, type ToolExecutionContext } from './tools';
 import type { ActionCard, ActiveRecordContext, AssistantContext, AssistantMessage, AssistantToolCall } from './types';
+import { getCompanion } from './companions';
 
 function getErrorMessage(error: unknown, fallback: string): string {
   return error instanceof Error && error.message ? error.message : fallback;
@@ -130,9 +131,12 @@ CONTEXTUAL INSTRUCTIONS FOR ACTIVE RECORD:
 `;
   }
 
-  return `You are Sparky (⚡), the witty, sharp, and highly capable in-app AI contractor sidekick for the contractor platform "Let's Get Quoted".
+  const companion = getCompanion(ctx.companionId, ctx.companionTrade);
+
+  return `You are ${companion.name} (${companion.badgeLabel}), ${companion.tagline} for the contractor platform "Let's Get Quoted".
 You are assisting an authenticated contractor / business operator inside their live dashboard.
-Introduce yourself as Sparky if asked.
+Introduce yourself as ${companion.name} if asked.
+Role & Tone: ${companion.role}. ${companion.species ? `Persona Species/Vibe: ${companion.species}.` : ''}
 
 Current Workspace Context:
 - Business Name: "${ctx.businessName || 'Contractor Workspace'}"
@@ -191,18 +195,19 @@ export async function runAssistantConversation(
   };
 
   if (!apiKey) {
+    const companion = getCompanion(ctx.companionId, ctx.companionTrade);
     // Fallback if no Gemini key is set: return a helpful configuration response
     return {
       message: {
         id: `msg-${Date.now()}`,
         role: 'assistant',
-        content: `I'm Sparky, your contractor AI sidekick! To enable live natural-language and photo actions (like analyzing receipts, creating quotes, and looking up clients), please configure \`GEMINI_API_KEY\` in your \`.env.local\` file.`,
+        content: `I'm ${companion.name}, your contractor AI sidekick! To enable live natural-language and photo actions (like analyzing receipts, creating quotes, and looking up clients), please configure \`GEMINI_API_KEY\` in your \`.env.local\` file.`,
         createdAt: new Date().toISOString(),
       },
       actionCards: [
         {
           type: 'navigation',
-          title: 'Configure Sparky (AI Assistant)',
+          title: `Configure ${companion.name} (AI Assistant)`,
           description: 'Add GEMINI_API_KEY to your environment variables to enable live agentic tools.',
           linkUrl: '/dashboard/settings',
           linkLabel: 'Open Settings',

@@ -66,6 +66,8 @@ export interface AssistantContext {
   activeRecord?: ActiveRecordContext;
   timezone?: string;
   capabilities?: string[];
+  companionId?: string;
+  companionTrade?: string;
 }
 
 export interface AssistantRequestBody {
@@ -77,6 +79,8 @@ export interface AssistantRequestBody {
   }>;
   currentPath?: string;
   activeRecord?: ActiveRecordContext;
+  companionId?: string;
+  companionTrade?: string;
 }
 
 export interface AssistantResponseBody {

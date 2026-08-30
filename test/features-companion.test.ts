@@ -17,18 +17,18 @@ describe('features companion and live interactivity with sparky', () => {
     expect(PAGE).toContain('<CompanionRouteDemo />');
   });
 
-  it('provides Sparky section-aware contextual commentary in CompanionHUD', () => {
-    expect(HUD).toContain('⚡ 24/7 SPARKY CO-PILOT');
-    expect(HUD).toContain('⚡ SPARKY VISION OCR');
+  it('provides AI Copilot section-aware contextual commentary in CompanionHUD', () => {
+    expect(HUD).toContain('⚡ 24/7 AI COPILOT');
+    expect(HUD).toContain('⚡ AI VISION OCR');
     expect(HUD).toContain('QUICK ACTIONS');
     expect(HUD).toContain('PRESET_QUESTIONS');
     expect(HUD).toContain('60s Guided Tour');
-    expect(HUD).toContain('Sparky · 24/7 Field Co-Pilot');
-    expect(HUD).toContain('Ask Sparky ⚡');
+    expect(HUD).toContain('AI Copilot · 24/7 Field Assistant');
+    expect(HUD).toContain('Ask Copilot ⚡');
     expect(HUD).toContain('/features/sparky');
   });
 
-  it('streams realistic multi-trade events in LiveFieldPulse with Sparky', () => {
+  it('streams realistic multi-trade events in LiveFieldPulse with AI Copilot', () => {
     expect(PULSE).toContain('⚡ LIVE SPARKY FIELD PULSE');
     expect(PULSE).toContain('Royal Oak, MI');
     expect(PULSE).toContain('Austin, TX');
@@ -43,7 +43,7 @@ describe('features companion and live interactivity with sparky', () => {
     expect(PHOTO_DEMO).toContain('billOfMaterials');
     expect(PHOTO_DEMO).toContain('detectedSpecs');
     expect(PHOTO_DEMO).toContain('risksDetected');
-    expect(PHOTO_DEMO).toContain('Sparky · Field Vision OCR');
+    expect(PHOTO_DEMO).toContain('AI Copilot · Field Vision OCR');
   });
 
   it('supports interactive route detour slider and priority fee settings in CompanionRouteDemo', () => {

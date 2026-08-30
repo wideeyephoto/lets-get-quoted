@@ -360,9 +360,10 @@ begin
             updated_at = excluded.updated_at;
 
       insert into public.account_events (
-        account_id, kind, meta
+        account_id, kind, summary, meta
       ) values (
         v_routed_account_id, 'compliance_toggled',
+        'SMS compliance preference updated via inbound ' || p_keyword,
         jsonb_build_object(
           'source', 'inbound_sms',
           'provider', p_provider,
@@ -375,7 +376,7 @@ begin
     end if;
 
     update public.sms_webhook_receipts
-       set processing_state = 'applied', disposition = 'keyword_' || p_keyword,
+       set processing_state = 'processed', disposition = 'keyword_' || p_keyword,
            processed_at = v_now
      where id = v_receipt.id;
     return query select ('keyword_' || p_keyword)::text, v_receipt.id,
@@ -385,7 +386,7 @@ begin
 
   if p_keyword = 'help' then
     update public.sms_webhook_receipts
-       set processing_state = 'applied', disposition = 'keyword_help',
+       set processing_state = 'processed', disposition = 'keyword_help',
            processed_at = v_now
      where id = v_receipt.id;
     return query select 'keyword_help'::text, v_receipt.id,
@@ -438,7 +439,7 @@ begin
   ) returning id into v_message_id;
 
   update public.sms_webhook_receipts
-     set processing_state = 'applied', disposition = 'routed',
+     set processing_state = 'processed', disposition = 'routed',
          account_id = v_routed_account_id, sms_message_id = v_message_id,
          processed_at = v_now
    where id = v_receipt.id;

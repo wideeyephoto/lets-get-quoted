@@ -167,24 +167,27 @@ const FOLLOW_UP_MAP: Record<string, string[]> = {
 
 const KNOWLEDGE_BASE: FaqItem[] = [
   {
-    id: 'sparky',
-    title: 'Who is Sparky and how does he work?',
+    id: 'copilot',
+    title: 'How does your AI Copilot & customizable trade companions work?',
     keywords: [
+      'copilot',
+      'ai copilot',
       'sparky',
+      'diesel',
+      'echo',
       'sidekick',
       'assistant',
-      'copilot',
       'ai assistant',
       'brain dump',
-      'text sparky',
-      'call sparky',
+      'text copilot',
+      'call copilot',
       'photo sorting',
       'reminders',
       'no app',
     ],
     answer:
-      'Sparky is your AI contractor sidekick! You don’t even need to open an app—text or call Sparky to draft quotes, file site photos, reschedule jobs, check unpaid invoices, and set reminders. When you walk up to an estimate, just brain-dump your thoughts to Sparky and he’ll sort it out for you.',
-    ctaText: 'Meet Sparky & See Live Demo',
+      'Your AI Copilot is your 24/7 contractor sidekick—with customizable companions for your trade (including Sparky, Diesel, Echo, and modern AI Spark). You don’t even need to open an app: text or call your Copilot to draft quotes, file site photos, reschedule jobs, check unpaid invoices, and set reminders.',
+    ctaText: 'Explore AI Copilot & Demos',
     ctaHref: '/features/sparky',
   },
   {
@@ -627,18 +630,18 @@ export default function MarketingAiAssistant() {
   // Contextual page guidance
   const pageGreeting = useMemo(() => {
     if (pathname?.startsWith('/pricing')) {
-      return '⚡ Hi, I\'m Sparky! Looking for the right plan? Calculate your card volume fees below or compare your annual savings on Flex ($0/mo).';
+      return '⚡ Hi! I\'m your AI Copilot. Looking for the right plan? Calculate your card volume fees below or compare your annual savings on Flex ($0/mo).';
     }
     if (pathname?.startsWith('/compare')) {
-      return '⚡ Hi, I\'m Sparky! Switching from Jobber or Housecall Pro takes under 10 minutes via CSV with zero contracts and $0 upfront setup.';
+      return '⚡ Hi! I\'m your AI Copilot. Switching from Jobber or Housecall Pro takes under 10 minutes via CSV with zero contracts and $0 upfront setup.';
     }
     if (pathname?.startsWith('/features/website-builder')) {
-      return '⚡ Hi, I\'m Sparky! Choose from 20 trade-tested website templates with custom domain connection, Google Reviews, and SSL included.';
+      return '⚡ Hi! I\'m your AI Copilot. Choose from 20 trade-tested website templates with custom domain connection, Google Reviews, and SSL included.';
     }
     if (pathname?.startsWith('/features/ai-intake') || pathname?.startsWith('/features/quick-stops')) {
-      return '⚡ Hi, I\'m Sparky! Quick Stops match small emergency leads directly to your crew’s live route so you book extra revenue on the way home.';
+      return '⚡ Hi! I\'m your AI Copilot. Quick Stops match small emergency leads directly to your crew’s live route so you book extra revenue on the way home.';
     }
-    return '⚡ Hi, I\'m Sparky! Ask me anything about plans, instant quotes, QuickBooks sync, or switching. Tap a quick question or use the tools below:';
+    return '⚡ Hi! I\'m your AI Copilot. Ask me anything about plans, instant quotes, QuickBooks sync, or switching. Tap a quick question or use the tools below:';
   }, [pathname]);
 
   // Plan recommendation logic derived directly from product truth catalog
@@ -759,13 +762,13 @@ export default function MarketingAiAssistant() {
             type="button"
             onClick={() => setIsOpen(true)}
             className={styles.floatingTrigger}
-            aria-label="Open Sparky AI Product Assistant"
+            aria-label="Open AI Copilot Assistant"
             aria-expanded={isOpen}
             aria-controls="marketing-ai-assistant-drawer"
           >
             <span className={styles.sparkleIcon}>✦</span>
             <div className={styles.triggerText}>
-              <span className={styles.triggerTitle}>Ask Sparky</span>
+              <span className={styles.triggerTitle}>AI Copilot</span>
             </div>
           </button>
         )}
@@ -777,14 +780,14 @@ export default function MarketingAiAssistant() {
             ref={drawerRef}
             className={styles.drawer}
             role="dialog"
-            aria-label="Sparky - Let’s Get Quoted AI Assistant"
+            aria-label="AI Copilot - Let’s Get Quoted"
           >
           {/* Header */}
           <div className={styles.drawerHeader}>
             <div className={styles.headerLeft}>
               <div className={styles.avatar}>✦</div>
               <div className={styles.botInfo}>
-                <span className={styles.botName}>Sparky · Let’s Get Quoted AI</span>
+                <span className={styles.botName}>AI Copilot · Let’s Get Quoted</span>
                 <span className={styles.botStatus}>
                   <span className={styles.statusDot} /> Online · Instant Answers
                 </span>

@@ -47,7 +47,7 @@ export async function logPrivacyRequest(
   accountId: string,
   kind: PrivacyRequestKind,
   details?: string | null,
-): Promise<void> {
+): Promise<{ id: string }> {
   const { data, error } = await admin
     .from('privacy_requests')
     .insert({ account_id: accountId, kind, details: details ?? null, created_by: actor.adminEmail })
@@ -55,7 +55,7 @@ export async function logPrivacyRequest(
     .single();
   if (error || !data) {
     console.error('logPrivacyRequest failed:', error);
-    return;
+    throw new Error(error?.message || 'Failed to log privacy request');
   }
   await logAdminAction(admin, actor, {
     action: 'privacy_request_log',
@@ -64,16 +64,19 @@ export async function logPrivacyRequest(
     targetId: data.id,
     meta: { kind },
   });
+  return { id: data.id };
 }
 
 export async function resolvePrivacyRequest(admin: SupabaseClient, actor: AuditActor, requestId: string): Promise<void> {
-  const { error } = await admin
+  const { data, error } = await admin
     .from('privacy_requests')
     .update({ resolved_at: new Date().toISOString(), resolved_by: actor.adminEmail, status: 'resolved' })
-    .eq('id', requestId);
-  if (error) {
+    .eq('id', requestId)
+    .select('id')
+    .single();
+  if (error || !data) {
     console.error('resolvePrivacyRequest failed:', error);
-    return;
+    throw new Error(error?.message || 'Privacy request not found or resolution failed');
   }
   await logAdminAction(admin, actor, { action: 'privacy_request_resolve', targetType: 'privacy_request', targetId: requestId });
 }

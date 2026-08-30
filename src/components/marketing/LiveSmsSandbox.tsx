@@ -69,11 +69,11 @@ export default function LiveSmsSandbox() {
             <span className={styles.pulsingDot} aria-hidden="true" />
             LIVE SMS SANDBOX
           </span>
-          <span className={styles.phoneLabel}>Sparky Dispatch Line: {DISPLAY_HOTLINE}</span>
+          <span className={styles.phoneLabel}>AI Copilot Dispatch Line: {DISPLAY_HOTLINE}</span>
         </div>
-        <h3 className={styles.title}>Test texting Sparky from your own phone right now.</h3>
+        <h3 className={styles.title}>Test texting your AI Copilot from your own phone right now.</h3>
         <p className={styles.subtitle}>
-          Tap any trade scenario below. On mobile, tap <strong>Open in Messages</strong> to send a pre-filled test to Sparky. On desktop, scan or copy the number to try it.
+          Tap any trade scenario below. On mobile, tap <strong>Open in Messages</strong> to send a pre-filled test to your AI Copilot. On desktop, scan or copy the number to try it.
         </p>
       </div>
 
@@ -95,7 +95,7 @@ export default function LiveSmsSandbox() {
       {/* Interactive Command Preview */}
       <div className={styles.previewBox}>
         <div className={styles.previewHead}>
-          <span className={styles.previewTo}>To: <strong>Sparky ⚡ ({DISPLAY_HOTLINE})</strong></span>
+          <span className={styles.previewTo}>To: <strong>AI Copilot ⚡ ({DISPLAY_HOTLINE})</strong></span>
           <span className={styles.previewType}>SMS / iMessage</span>
         </div>
         <div className={styles.commandContent}>

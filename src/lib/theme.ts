@@ -111,7 +111,7 @@ export const THEME_COLORS: Readonly<Record<Theme, string>> = {
   dark: '#070a11',
   dim: '#1c1a17',
   light: '#141519',
-  sunlight: '#f4f6fa',
+  sunlight: '#eaeef4',
   clarity: '#0b0c0e',
   monochrome: '#0a0a0b',
   parchment: '#f5f0e7',

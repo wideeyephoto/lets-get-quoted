@@ -247,6 +247,7 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({
         model: 'gpt-4o-mini',
         temperature: 0,
+        store: false,
         instructions,
         // OpenAI requires the word "json" to appear in the input when using
         // text.format: json_object — the instructions alone don't count.
@@ -304,6 +305,7 @@ export async function POST(request: NextRequest) {
         body: JSON.stringify({
           model: 'gpt-4o-mini',
           temperature: 0,
+          store: false,
           instructions: 'No more questions. Using everything discussed, give your best-judgment price range for the most common version of this job, priced toward the cheaper outcome. Respond with strict json only: {"type":"estimate","min":<number>,"max":<number>,"in_area":true|false|null,"excluded":true|false}.',
           input: 'Respond with the final estimate json now.',
           previous_response_id: payload.id,
