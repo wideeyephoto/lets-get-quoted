@@ -372,7 +372,7 @@ describe('Ad Billing Synchronous Provisioning & Fulfillment', () => {
 
     expect(refillResult.success).toBe(true);
     expect(refillResult.refilled).toBe(true);
-    expect(refillResult.chargedCents).toBe(28750); // $250 ad spend + 15% platform fee ($37.50)
+    expect(refillResult.chargedCents).toBe(27500); // $250 ad spend + 10% platform fee ($25.00)
     expect(updatedAdCampaign).not.toBeNull();
     const campaignState = updatedAdCampaign as unknown as Record<string, unknown>;
     expect(campaignState.walletBalanceCents).toBe(30000); // $50 + $250 = $300

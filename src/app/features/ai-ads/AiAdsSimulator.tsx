@@ -420,7 +420,7 @@ export default function AiAdsSimulator() {
           <tr>
             <td><strong>Platform Management Fee</strong></td>
             <td style={{ color: '#f87171' }}>$2,000 – $3,500/mo Retainer</td>
-            <td style={{ color: '#34d399', fontWeight: 700 }}>Flat 15% Platform Fee (${bundle.weeklyFeeDollars}/wk · ~${bundle.monthlyFeeDollars}/mo)</td>
+            <td style={{ color: '#34d399', fontWeight: 700 }}>Flat 10% Platform Fee (${bundle.weeklyFeeDollars}/wk · ~${bundle.monthlyFeeDollars}/mo)</td>
           </tr>
           <tr>
             <td><strong>Direct Click Ad Spend</strong></td>

@@ -241,6 +241,11 @@ export function clampText(text: string, maxLen: number): string {
   return clean.slice(0, maxLen - 1).trim() + '…';
 }
 
+export function toTitleCase(str: string): string {
+  if (!str) return '';
+  return str.replace(/\b[a-z]/g, (letter) => letter.toUpperCase());
+}
+
 /**
  * Generates compliant Responsive Search Ad (RSA) copy with strict Google character limits:
  * - Headlines: max 30 characters
@@ -256,10 +261,11 @@ export function generateResponsiveSearchAd(params: {
 }): ResponsiveSearchAd {
   const { businessName, trade, city, services, phone, landingPageUrl } = params;
   const cleanCity = (city || '').replace(/,\s*[A-Z]{2}$/i, '').trim();
+  const titleTrade = toTitleCase(trade);
 
   const rawHeadlines: string[] = [
-    clampText(`${trade} in ${cleanCity}`, 30),
-    clampText(businessName || `${trade} Pros`, 30),
+    clampText(`${titleTrade} in ${cleanCity}`, 30),
+    clampText(businessName || `${titleTrade} Pros`, 30),
     clampText('Fast Free Estimates', 30),
     clampText('Licensed & Insured', 30),
     clampText('Instant Online Quote', 30),
@@ -268,7 +274,7 @@ export function generateResponsiveSearchAd(params: {
     clampText('5-Star Customer Reviews', 30),
     clampText('Book Online in 2 Mins', 30),
     clampText('Fair & Upfront Pricing', 30),
-    ...services.slice(0, 5).map((s) => clampText(`${s} Experts`, 30)),
+    ...services.slice(0, 5).map((s) => clampText(`${toTitleCase(s)} Experts`, 30)),
   ];
 
   // Dedup and take up to 15 headlines (Google RSA limit)
@@ -350,21 +356,22 @@ export function generateStructuredAdGroups(params: {
 }): StructuredAdGroup[] {
   const { businessName, trade, city, services, phone, landingPageUrl } = params;
   const cleanCity = (city || '').replace(/,\s*[A-Z]{2}$/i, '').trim();
+  const titleTrade = toTitleCase(trade);
 
   // 1. Emergency & Same-Day Repairs (High urgency, high mobile bid adjustment)
   const emergencyRsa: ResponsiveSearchAd = {
     headlines: [
-      clampText(`24/7 Emergency ${trade}`, 30),
+      clampText(`24/7 Emergency ${titleTrade}`, 30),
       clampText(`Fast Same-Day Dispatch`, 30),
       clampText(`On-Call Now in ${cleanCity}`, 30),
-      clampText(businessName || `${trade} Pros`, 30),
+      clampText(businessName || `${titleTrade} Pros`, 30),
       clampText('Fast 60-Minute Arrival', 30),
       clampText('Licensed & Insured Pros', 30),
       clampText('Upfront Honest Pricing', 30),
       clampText('No Overtime Surprise Fees', 30),
     ],
     descriptions: [
-      clampText(`Urgent ${trade.toLowerCase()} issue in ${cleanCity}? Fast dispatch & expert repairs. Call or book online now!`, 90),
+      clampText(`Urgent ${titleTrade.toLowerCase()} issue in ${cleanCity}? Fast dispatch & expert repairs. Call or book online now!`, 90),
       clampText(`24/7 emergency service with transparent upfront pricing. 5-star local pros on call today.`, 90),
     ],
     sitelinks: [
@@ -387,17 +394,17 @@ export function generateStructuredAdGroups(params: {
   // 2. Full Replacements & Major Installations (High ticket, Target ROAS)
   const replacementRsa: ResponsiveSearchAd = {
     headlines: [
-      clampText(`${trade} Replacement Experts`, 30),
+      clampText(`${titleTrade} Replacement Experts`, 30),
       clampText(`Complete System Installation`, 30),
       clampText(`Free In-Home Assessment`, 30),
       clampText(`Top-Rated ${cleanCity} Pros`, 30),
       clampText(`Financing Available $0 Down`, 30),
       clampText(`Backed by 10-Yr Warranty`, 30),
-      clampText(businessName || `${trade} Specialists`, 30),
+      clampText(businessName || `${titleTrade} Specialists`, 30),
       clampText(`Transparent Project Quote`, 30),
     ],
     descriptions: [
-      clampText(`Upgrading or replacing your ${trade.toLowerCase()} in ${cleanCity}? Premium materials & guaranteed warranty.`, 90),
+      clampText(`Upgrading or replacing your ${titleTrade.toLowerCase()} in ${cleanCity}? Premium materials & guaranteed warranty.`, 90),
       clampText(`Get a detailed, transparent proposal with flexible financing options. Schedule free estimate!`, 90),
     ],
     sitelinks: [
@@ -419,15 +426,15 @@ export function generateStructuredAdGroups(params: {
   // 3. Maintenance & Seasonal Inspections (Low-friction entry offers)
   const maintenanceRsa: ResponsiveSearchAd = {
     headlines: [
-      clampText(`${trade} Tune-Up & Check`, 30),
+      clampText(`${titleTrade} Tune-Up & Check`, 30),
       clampText(`Comprehensive Inspection`, 30),
       clampText(`Prevent Costly Breakdowns`, 30),
       clampText(`Local ${cleanCity} Experts`, 30),
       clampText(`Top-Rated Maintenance Pros`, 30),
-      clampText(businessName || `${trade} Service`, 30),
+      clampText(businessName || `${titleTrade} Service`, 30),
     ],
     descriptions: [
-      clampText(`Keep your ${trade.toLowerCase()} running at peak performance. Multi-point inspection & tune-up specials.`, 90),
+      clampText(`Keep your ${titleTrade.toLowerCase()} running at peak performance. Multi-point inspection & tune-up specials.`, 90),
       clampText(`Trusted local technicians. Prevent unexpected system failures with regular maintenance.`, 90),
     ],
     sitelinks: [
@@ -481,13 +488,14 @@ export function generateCallOnlyAd(params: {
 }): CallOnlyAd {
   const { businessName, phone, trade, city, landingPageUrl } = params;
   const cleanCity = (city || '').replace(/,\s*[A-Z]{2}$/i, '').trim();
+  const titleTrade = toTitleCase(trade);
 
   return {
-    businessName: clampText(businessName || `${trade} Pros`, 25),
+    businessName: clampText(businessName || `${titleTrade} Pros`, 25),
     phoneNumber: phone,
-    headline1: clampText(`24/7 ${trade} in ${cleanCity}`, 30),
+    headline1: clampText(`24/7 ${titleTrade} in ${cleanCity}`, 30),
     headline2: clampText('Fast Local Dispatch · Call Now', 30),
-    description1: clampText(`Speak directly with a local licensed ${trade.toLowerCase()} technician. Fast upfront estimates.`, 90),
+    description1: clampText(`Speak directly with a local licensed ${titleTrade.toLowerCase()} technician. Fast upfront estimates.`, 90),
     description2: clampText(`Top-rated 5-star quality. No waiting on hold—call our dispatch line directly today!`, 90),
     verificationUrl: landingPageUrl,
   };
@@ -649,16 +657,17 @@ export function generateSeasonalAdCopy(
   descriptionHook: string;
 } {
   const cleanCity = (city || '').replace(/,\s*[A-Z]{2}$/i, '').trim();
+  const titleTrade = toTitleCase(trade);
 
   if (angle === 'emergency') {
     return {
       headlineHooks: [
         clampText(`24/7 Fast Emergency Response`, 30),
-        clampText(`Immediate ${trade} Dispatch`, 30),
+        clampText(`Immediate ${titleTrade} Dispatch`, 30),
         clampText(`On-Call Today in ${cleanCity}`, 30),
       ],
       descriptionHook: clampText(
-        `Urgent ${trade.toLowerCase()} emergency? We are on call 24/7 across ${cleanCity}. Fast dispatch and upfront pricing.`,
+        `Urgent ${titleTrade.toLowerCase()} emergency? We are on call 24/7 across ${cleanCity}. Fast dispatch and upfront pricing.`,
         90
       ),
     };
@@ -695,11 +704,11 @@ export function generateSeasonalAdCopy(
   return {
     headlineHooks: [
       clampText(`Fast Free Estimates`, 30),
-      clampText(`Top-Rated Local ${trade}`, 30),
+      clampText(`Top-Rated Local ${titleTrade}`, 30),
       clampText(`Licensed & Insured`, 30),
     ],
     descriptionHook: clampText(
-      `Top-rated ${trade.toLowerCase()} in ${cleanCity}. Transparent pricing and instant online quotes.`,
+      `Top-rated ${titleTrade.toLowerCase()} in ${cleanCity}. Transparent pricing and instant online quotes.`,
       90
     ),
   };

@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { shortDate } from '@/lib/marketing-status';
 import type { PostCounts } from '@/lib/marketing-status';
@@ -52,6 +53,42 @@ export default function MarketingOverviewScreen({
 }: Props) {
   const [dateRange, setDateRange] = useState<'month' | '30d'>('month');
   const [createMenuOpen, setCreateMenuOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const [menuCoords, setMenuCoords] = useState<{ top: number; right: number }>({ top: 0, right: 0 });
+  const triggerRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const updateCoords = useCallback(() => {
+    if (triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect();
+      setMenuCoords({
+        top: rect.bottom + 6,
+        right: window.innerWidth - rect.right,
+      });
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!createMenuOpen) return;
+    updateCoords();
+
+    const handleScrollOrResize = () => updateCoords();
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setCreateMenuOpen(false);
+    };
+
+    window.addEventListener('scroll', handleScrollOrResize, true);
+    window.addEventListener('resize', handleScrollOrResize);
+    window.addEventListener('keydown', handleKey);
+    return () => {
+      window.removeEventListener('scroll', handleScrollOrResize, true);
+      window.removeEventListener('resize', handleScrollOrResize);
+      window.removeEventListener('keydown', handleKey);
+    };
+  }, [createMenuOpen, updateCoords]);
 
   const isDemo = basePath !== '/dashboard';
   const at = (href: string) => (isDemo ? href.replace(/^\/dashboard/, basePath) : href);
@@ -136,6 +173,7 @@ export default function MarketingOverviewScreen({
             {/* Primary Action: Create Dropdown */}
             <div style={{ position: 'relative' }}>
               <button
+                ref={triggerRef}
                 type="button"
                 className="btn primary"
                 onClick={() => setCreateMenuOpen((prev) => !prev)}
@@ -148,65 +186,74 @@ export default function MarketingOverviewScreen({
                 <span style={{ fontSize: '0.65rem', transform: createMenuOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s ease' }}>▼</span>
               </button>
 
-              {createMenuOpen ? (
-                <>
-                  <div
-                    style={{ position: 'fixed', inset: 0, zIndex: 90 }}
-                    onClick={() => setCreateMenuOpen(false)}
-                  />
-                  <div
-                    id="marketing-create-menu"
-                    style={{
-                      position: 'absolute',
-                      right: 0,
-                      top: 'calc(100% + 6px)',
-                      background: 'var(--panel-bg, #18181b)',
-                      border: '1px solid rgba(255, 255, 255, 0.15)',
-                      borderRadius: '10px',
-                      padding: '0.4rem',
-                      width: '220px',
-                      boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
-                      zIndex: 100,
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '0.2rem',
-                    }}
-                  >
-                    <Link
-                      href={at('/dashboard/marketing/campaigns?tab=create&channel=email')}
-                      className="btn ghost"
-                      style={{ justifyContent: 'flex-start', fontSize: '0.82rem', padding: '0.45rem 0.65rem', textAlign: 'left' }}
-                      onClick={() => setCreateMenuOpen(false)}
-                    >
-                      ✉️ Email campaign
-                    </Link>
-                    <Link
-                      href={at('/dashboard/marketing/campaigns?tab=create&channel=sms')}
-                      className="btn ghost"
-                      style={{ justifyContent: 'flex-start', fontSize: '0.82rem', padding: '0.45rem 0.65rem', textAlign: 'left' }}
-                      onClick={() => setCreateMenuOpen(false)}
-                    >
-                      💬 Text campaign
-                    </Link>
-                    <Link
-                      href={at('/dashboard/marketing/blog')}
-                      className="btn ghost"
-                      style={{ justifyContent: 'flex-start', fontSize: '0.82rem', padding: '0.45rem 0.65rem', textAlign: 'left' }}
-                      onClick={() => setCreateMenuOpen(false)}
-                    >
-                      ✍️ Blog &amp; SEO article
-                    </Link>
-                    <Link
-                      href={at('/dashboard/marketing/links')}
-                      className="btn ghost"
-                      style={{ justifyContent: 'flex-start', fontSize: '0.82rem', padding: '0.45rem 0.65rem', textAlign: 'left' }}
-                      onClick={() => setCreateMenuOpen(false)}
-                    >
-                      🔗 Tracking link or QR
-                    </Link>
-                  </div>
-                </>
-              ) : null}
+              {mounted && createMenuOpen
+                ? createPortal(
+                    <>
+                      <div
+                        style={{ position: 'fixed', inset: 0, zIndex: 9998 }}
+                        onClick={() => setCreateMenuOpen(false)}
+                      />
+                      <div
+                        id="marketing-create-menu"
+                        role="menu"
+                        style={{
+                          position: 'fixed',
+                          top: `${menuCoords.top}px`,
+                          right: `${menuCoords.right}px`,
+                          background: 'var(--panel-bg, #18181b)',
+                          border: '1px solid rgba(255, 255, 255, 0.15)',
+                          borderRadius: '10px',
+                          padding: '0.4rem',
+                          width: '220px',
+                          boxShadow: '0 10px 30px rgba(0,0,0,0.6)',
+                          zIndex: 9999,
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '0.2rem',
+                          backdropFilter: 'blur(16px)',
+                        }}
+                      >
+                        <Link
+                          href={at('/dashboard/marketing/campaigns?tab=create&channel=email')}
+                          className="btn ghost"
+                          role="menuitem"
+                          style={{ justifyContent: 'flex-start', fontSize: '0.82rem', padding: '0.45rem 0.65rem', textAlign: 'left' }}
+                          onClick={() => setCreateMenuOpen(false)}
+                        >
+                          ✉️ Email campaign
+                        </Link>
+                        <Link
+                          href={at('/dashboard/marketing/campaigns?tab=create&channel=sms')}
+                          className="btn ghost"
+                          role="menuitem"
+                          style={{ justifyContent: 'flex-start', fontSize: '0.82rem', padding: '0.45rem 0.65rem', textAlign: 'left' }}
+                          onClick={() => setCreateMenuOpen(false)}
+                        >
+                          💬 Text campaign
+                        </Link>
+                        <Link
+                          href={at('/dashboard/marketing/blog')}
+                          className="btn ghost"
+                          role="menuitem"
+                          style={{ justifyContent: 'flex-start', fontSize: '0.82rem', padding: '0.45rem 0.65rem', textAlign: 'left' }}
+                          onClick={() => setCreateMenuOpen(false)}
+                        >
+                          ✍️ Blog &amp; SEO article
+                        </Link>
+                        <Link
+                          href={at('/dashboard/marketing/links')}
+                          className="btn ghost"
+                          role="menuitem"
+                          style={{ justifyContent: 'flex-start', fontSize: '0.82rem', padding: '0.45rem 0.65rem', textAlign: 'left' }}
+                          onClick={() => setCreateMenuOpen(false)}
+                        >
+                          🔗 Tracking link or QR
+                        </Link>
+                      </div>
+                    </>,
+                    document.body,
+                  )
+                : null}
             </div>
           </div>
         </div>

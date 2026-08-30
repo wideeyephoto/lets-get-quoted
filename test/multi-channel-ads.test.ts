@@ -13,27 +13,27 @@ describe('Multi-Channel Ads Engine', () => {
 
     const launch = getSmartBundle('launch');
     expect(launch.name).toBe('Launch Plan');
-    expect(launch.weeklyAmountDollars).toBe(185);
+    expect(launch.weeklyAmountDollars).toBe(176);
     expect(launch.weeklyAdSpendDollars).toBe(160);
-    expect(launch.weeklyFeeDollars).toBe(25);
-    expect(launch.monthlyAverageDollars).toBe(802);
+    expect(launch.weeklyFeeDollars).toBe(16);
+    expect(launch.monthlyAverageDollars).toBe(763);
     expect(launch.channels).toContain('google_search');
 
     const growth = getSmartBundle('growth');
     expect(growth.name).toBe('Growth Engine');
-    expect(growth.weeklyAmountDollars).toBe(345);
+    expect(growth.weeklyAmountDollars).toBe(330);
     expect(growth.weeklyAdSpendDollars).toBe(300);
-    expect(growth.weeklyFeeDollars).toBe(45);
-    expect(growth.monthlyAverageDollars).toBe(1495);
+    expect(growth.weeklyFeeDollars).toBe(30);
+    expect(growth.monthlyAverageDollars).toBe(1430);
     expect(growth.channels).toContain('google_search');
     expect(growth.channels).toContain('google_retargeting');
 
     const scale = getSmartBundle('scale');
     expect(scale.name).toBe('Scale & Dominate');
-    expect(scale.weeklyAmountDollars).toBe(645);
+    expect(scale.weeklyAmountDollars).toBe(616);
     expect(scale.weeklyAdSpendDollars).toBe(560);
-    expect(scale.weeklyFeeDollars).toBe(85);
-    expect(scale.monthlyAverageDollars).toBe(2795);
+    expect(scale.weeklyFeeDollars).toBe(56);
+    expect(scale.monthlyAverageDollars).toBe(2669);
     expect(scale.channels).toContain('meta_social');
   });
 
@@ -77,13 +77,13 @@ describe('Multi-Channel Ads Engine', () => {
     expect(retargeting.cta).toBe('Claim Your Estimate');
   });
 
-  it('calculates multi-channel budgets with 15% platform management fee', () => {
+  it('calculates multi-channel budgets with 10% platform management fee', () => {
     const searchOnly = calculateMultiChannelBudget({
       searchSpendDollars: 600,
     });
     expect(searchOnly.totalAdSpendDollars).toBe(600);
-    expect(searchOnly.platformFeeDollars).toBe(90);
-    expect(searchOnly.totalMonthlyDollars).toBe(690);
+    expect(searchOnly.platformFeeDollars).toBe(60);
+    expect(searchOnly.totalMonthlyDollars).toBe(660);
     expect(searchOnly.activeChannels).toEqual(['google_search']);
 
     const multi = calculateMultiChannelBudget({
@@ -94,8 +94,8 @@ describe('Multi-Channel Ads Engine', () => {
       metaSpendDollars: 200,
     });
     expect(multi.totalAdSpendDollars).toBe(900);
-    expect(multi.platformFeeDollars).toBe(135);
-    expect(multi.totalMonthlyDollars).toBe(1035);
+    expect(multi.platformFeeDollars).toBe(90);
+    expect(multi.totalMonthlyDollars).toBe(990);
     expect(multi.activeChannels).toEqual(['google_search', 'google_retargeting', 'meta_social']);
   });
 });

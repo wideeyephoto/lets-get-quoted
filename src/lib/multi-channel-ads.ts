@@ -1,4 +1,4 @@
-export const AD_PLATFORM_FEE_RATE = 0.15; // 15% Platform Management Fee
+export const AD_PLATFORM_FEE_RATE = 0.10; // 10% Platform Management Fee
 
 export type MetaAdCopy = {
   primaryText: string;
@@ -54,15 +54,15 @@ export const SMART_BUNDLES: SmartBundle[] = [
   {
     id: 'launch',
     name: 'Launch Plan',
-    weeklyAmountDollars: 185,
+    weeklyAmountDollars: 176,
     weeklyAdSpendDollars: 160,
-    weeklyFeeDollars: 25,
-    monthlyAverageDollars: 802,
+    weeklyFeeDollars: 16,
+    monthlyAverageDollars: 763,
     monthlyAdSpendDollars: 693,
-    monthlyFeeDollars: 109,
-    totalMonthlyDollars: 802,
+    monthlyFeeDollars: 69,
+    totalMonthlyDollars: 763,
     adSpendDollars: 693,
-    platformFeeDollars: 109,
+    platformFeeDollars: 69,
     searchSpendDollars: 693,
     retargetingSpendDollars: 0,
     metaSpendDollars: 0,
@@ -81,15 +81,15 @@ export const SMART_BUNDLES: SmartBundle[] = [
     id: 'growth',
     name: 'Growth Engine',
     badge: '⭐ Most Popular',
-    weeklyAmountDollars: 345,
+    weeklyAmountDollars: 330,
     weeklyAdSpendDollars: 300,
-    weeklyFeeDollars: 45,
-    monthlyAverageDollars: 1495,
+    weeklyFeeDollars: 30,
+    monthlyAverageDollars: 1430,
     monthlyAdSpendDollars: 1300,
-    monthlyFeeDollars: 195,
-    totalMonthlyDollars: 1495,
+    monthlyFeeDollars: 130,
+    totalMonthlyDollars: 1430,
     adSpendDollars: 1300,
-    platformFeeDollars: 195,
+    platformFeeDollars: 130,
     searchSpendDollars: 1100,
     retargetingSpendDollars: 200,
     metaSpendDollars: 0,
@@ -109,15 +109,15 @@ export const SMART_BUNDLES: SmartBundle[] = [
     id: 'scale',
     name: 'Scale & Dominate',
     badge: '🚀 Max Volume',
-    weeklyAmountDollars: 645,
+    weeklyAmountDollars: 616,
     weeklyAdSpendDollars: 560,
-    weeklyFeeDollars: 85,
-    monthlyAverageDollars: 2795,
+    weeklyFeeDollars: 56,
+    monthlyAverageDollars: 2669,
     monthlyAdSpendDollars: 2427,
-    monthlyFeeDollars: 368,
-    totalMonthlyDollars: 2795,
+    monthlyFeeDollars: 243,
+    totalMonthlyDollars: 2669,
     adSpendDollars: 2427,
-    platformFeeDollars: 368,
+    platformFeeDollars: 243,
     searchSpendDollars: 1800,
     retargetingSpendDollars: 200,
     metaSpendDollars: 427,
@@ -141,6 +141,11 @@ export function getSmartBundle(bundleId: string): SmartBundle {
   return SMART_BUNDLES.find((b) => b.id === bundleId) || SMART_BUNDLES[1];
 }
 
+function toTitleCase(str: string): string {
+  if (!str) return '';
+  return str.replace(/\b[a-z]/g, (letter) => letter.toUpperCase());
+}
+
 /**
  * Generates high-converting Meta (Facebook & Instagram) Feed ad copy for trade contractors.
  */
@@ -148,17 +153,18 @@ export function generateMetaAdCopy(params: {
   businessName: string;
   trade: string;
   city: string;
-  services: string[];
+  services?: string[];
   seasonalAngle?: 'standard' | 'emergency' | 'storm_seasonal' | 'peak_renovation';
 }): MetaAdCopy {
   const { businessName, trade, city, services = [], seasonalAngle = 'standard' } = params;
   const cleanCity = (city || 'your area').replace(/,\s*[A-Z]{2}$/i, '').trim();
-  const primaryService = services[0] || `${trade} service`;
+  const titleTrade = toTitleCase(trade);
+  const primaryService = services[0] ? toTitleCase(services[0]) : `${titleTrade} service`;
 
   if (seasonalAngle === 'storm_seasonal') {
     return {
       primaryText: `⛈️ Severe weather in ${cleanCity}? Don't wait for minor storm damage to turn into costly structural leaks. ${businessName} provides fast, comprehensive storm assessments and direct insurance claim assistance.`,
-      headline: `Storm Damage ${trade} in ${cleanCity} · Free Inspection`,
+      headline: `Storm Damage ${titleTrade} in ${cleanCity} · Free Inspection`,
       description: `Locally Owned · 5-Star Rated · Fast Same-Day Dispatch`,
       callToAction: 'Claim Offer',
       visualHook: 'Before & After Storm Restoration Photos',
@@ -167,8 +173,8 @@ export function generateMetaAdCopy(params: {
 
   if (seasonalAngle === 'emergency') {
     return {
-      primaryText: `🚨 Need urgent ${trade.toLowerCase()} assistance in ${cleanCity}? ${businessName} is on standby with 24/7 emergency dispatch. Upfront pricing, licensed technicians, and zero hidden fees.`,
-      headline: `24/7 Emergency ${trade} · Fast Local Response`,
+      primaryText: `🚨 Need urgent ${titleTrade.toLowerCase()} assistance in ${cleanCity}? ${businessName} is on standby with 24/7 emergency dispatch. Upfront pricing, licensed technicians, and zero hidden fees.`,
+      headline: `24/7 Emergency ${titleTrade} · Fast Local Response`,
       description: `Immediate Dispatch in ${cleanCity} & Surrounding Areas`,
       callToAction: 'Get Quote',
       visualHook: 'Rapid Dispatch Van & Verified Credentials',
@@ -177,7 +183,7 @@ export function generateMetaAdCopy(params: {
 
   if (seasonalAngle === 'peak_renovation') {
     return {
-      primaryText: `✨ Upgrade your home with ${cleanCity}'s premier ${trade.toLowerCase()} team. From initial design to final walkthrough, ${businessName} delivers craftsmanship backed by industry-leading warranties.`,
+      primaryText: `✨ Upgrade your home with ${cleanCity}'s premier ${titleTrade.toLowerCase()} team. From initial design to final walkthrough, ${businessName} delivers craftsmanship backed by industry-leading warranties.`,
       headline: `Transform Your Home with ${businessName}`,
       description: `Free 3D Design & Transparent Estimate · Flexible Financing`,
       callToAction: 'Get Quote',
@@ -188,7 +194,7 @@ export function generateMetaAdCopy(params: {
   // Default Standard Local Trust Angle
   return {
     primaryText: `Looking for reliable, top-rated ${primaryService.toLowerCase()} in ${cleanCity}? ${businessName} has served hundreds of local homeowners with quality craftsmanship, upfront pricing, and 5-star customer service. Tap below for your instant free quote!`,
-    headline: `Top-Rated ${trade} in ${cleanCity} | Free Estimates`,
+    headline: `Top-Rated ${titleTrade} in ${cleanCity} | Free Estimates`,
     description: `★★★★★ 4.9 Stars · Licensed, Insured & Locally Owned`,
     callToAction: 'Get Quote',
     visualHook: 'Recent Verified Project in Your Neighborhood',
@@ -205,9 +211,10 @@ export function generateRetargetingAdCopy(params: {
 }): RetargetingAdCopy {
   const { businessName, trade, city } = params;
   const cleanCity = (city || 'your area').replace(/,\s*[A-Z]{2}$/i, '').trim();
+  const titleTrade = toTitleCase(trade);
 
   return {
-    headline: `Still Need ${trade} in ${cleanCity}?`,
+    headline: `Still Need ${titleTrade} in ${cleanCity}?`,
     description: `Complete your estimate with ${businessName} this week and save. Guaranteed upfront pricing.`,
     offerBadge: '$250 Off Signed Estimate',
     cta: 'Claim Your Estimate',
@@ -215,7 +222,7 @@ export function generateRetargetingAdCopy(params: {
 }
 
 /**
- * Calculates total multi-channel budget with 15% platform management fee.
+ * Calculates total multi-channel budget with 10% platform management fee.
  */
 export function calculateMultiChannelBudget(params: {
   searchSpendDollars: number;

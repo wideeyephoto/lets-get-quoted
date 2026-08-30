@@ -12,7 +12,7 @@ export type AdCampaignBillingStatus =
   | 'pending_provisioning'
   | 'failed';
 
-export const AD_PLATFORM_FEE_RATE = 0.15; // 15% Platform Management Fee
+export const AD_PLATFORM_FEE_RATE = 0.10; // 10% Platform Management Fee
 
 export type AdBudgetBreakdown = {
   adSpendDollars: number;
@@ -28,7 +28,7 @@ export function calculateAdBudgetBreakdown(adSpendDollars: number): AdBudgetBrea
     adSpendDollars: adSpend,
     platformFeeDollars,
     totalMonthlyDollars: adSpend + platformFeeDollars,
-    feeRatePct: 15,
+    feeRatePct: 10,
   };
 }
 
@@ -133,7 +133,7 @@ export const DEFAULT_AD_WALLET_STATE: AdBudgetWalletState = {
   platformFeeCents: 0, // Zero fee default
   totalMonthlyCents: 60000,
   weeklyBudgetCents: 16000,
-  weeklyAmountCents: 18500,
+  weeklyAmountCents: 17600,
   walletBalanceCents: 25000,
   refillThresholdCents: 7500,
   refillAmountCents: 25000,
@@ -248,9 +248,9 @@ export async function createAdBudgetCheckoutSession(params: {
       totalDollars = adSpendDollars + feeDollars;
     } else {
       // Default to standard Growth bundle weekly
-      totalDollars = 345;
+      totalDollars = 330;
       adSpendDollars = 300;
-      feeDollars = 45;
+      feeDollars = 30;
     }
 
     // Convert weekly ad spend to true monthly rate (52 weeks / 12 months = 4.333x)
@@ -503,7 +503,7 @@ export async function handleAdBudgetWebhookEvent(
       };
     } else if (fundingModel === 'weekly_drip') {
       const weeklyBudgetCents = Number(session.metadata.weekly_ad_spend_cents) || 16000;
-      const weeklyAmountCents = Number(session.metadata.weekly_amount_cents) || 18500;
+      const weeklyAmountCents = Number(session.metadata.weekly_amount_cents) || 17600;
       const monthlyBudgetCents = Number(session.metadata.monthly_budget_cents) || Math.round(weeklyBudgetCents * (52 / 12));
       const platformFeeCents = Number(session.metadata.platform_fee_cents) || Math.round(monthlyBudgetCents * AD_PLATFORM_FEE_RATE);
       const totalMonthlyCents = Number(session.metadata.monthly_total_cents) || (monthlyBudgetCents + platformFeeCents);

@@ -9,7 +9,7 @@ const AI_ADS_URL = 'https://letsgetquoted.com/features/ai-ads';
 export const metadata: Metadata = {
   title: 'AI Advertising Autopilot for Contractors',
   description:
-    'Launch Google Search, Meta, and Retargeting campaigns in 60 seconds. Zero agency markups, 15% transparent management fee, and closed-loop offline conversion feedback.',
+    'Launch Google Search, Meta, and Retargeting campaigns in 60 seconds. Zero agency markups, 10% transparent management fee, and closed-loop offline conversion feedback.',
   alternates: { canonical: AI_ADS_URL },
   openGraph: {
     type: 'website',
@@ -32,7 +32,7 @@ export const metadata: Metadata = {
 const PROOF = [
   {
     title: '100% Direct Ad Spend',
-    body: '100% of your nominal ad budget goes straight to ad network clicks (Google / Meta). We itemize a flat 15% platform management fee with zero agency markups.',
+    body: '100% of your nominal ad budget goes straight to ad network clicks (Google / Meta). We itemize a flat 10% platform management fee with zero agency markups.',
   },
   {
     title: '⚡ 60s Speed-to-Lead Auto-SMS',
@@ -51,7 +51,7 @@ const PROOF = [
 const STEPS = [
   {
     title: 'Pick Your Trade & Smart Bundle',
-    body: 'Choose Launch ($185/wk), Growth ($345/wk), or Scale & Dominate ($645/wk)—or start with a $250 Auto-Refill Wallet. All keywords, negatives, and character-compliant copy are pre-configured.',
+    body: 'Choose Launch ($176/wk), Growth ($330/wk), or Scale & Dominate ($616/wk)—or start with a $250 Auto-Refill Wallet. All keywords, negatives, and character-compliant copy are pre-configured.',
   },
   {
     title: '1-Click Launch on Stripe',
@@ -70,11 +70,11 @@ const STEPS = [
 const FAQS = [
   {
     q: 'Why do you use Weekly Drip Billing and Auto-Refill Wallets?',
-    a: 'Weekly drip billing ($185–$645/week) lowers your upfront cash commitment by over 75% without starving your campaign momentum. We deploy your ad spend into Google & Meta daily, billing your card once every 7 days. Alternatively, our Auto-Refill Wallet lets you start with a $250 deposit and strict monthly ceiling.',
+    a: 'Weekly drip billing ($176–$616/week) lowers your upfront cash commitment by over 75% without starving your campaign momentum. We deploy your ad spend into Google & Meta daily, billing your card once every 7 days. Alternatively, our Auto-Refill Wallet lets you start with a $250 deposit and strict monthly ceiling.',
   },
   {
     q: 'How is this different from hiring a local marketing agency?',
-    a: 'Traditional marketing agencies charge $2,000 to $3,500/month in fixed management retainers and take weeks to launch. Let’s Get Quoted provides fully automated multi-channel campaigns for a transparent 15% platform fee with zero long-term commitments.',
+    a: 'Traditional marketing agencies charge $2,000 to $3,500/month in fixed management retainers and take weeks to launch. Let’s Get Quoted provides fully automated multi-channel campaigns for a transparent 10% platform fee with zero long-term commitments.',
   },
   {
     q: 'Do I need my own Google Ads or Meta Ads manager account?',
@@ -100,10 +100,10 @@ export default function AiAdsFeaturePage() {
       breadcrumb={{ name: 'AI Ads Autopilot', path: '/features/ai-ads' }}
       eyebrow="✦ AI ADVERTISING AUTOPILOT"
       title="Google & Meta search ads that win high-ticket jobs. Zero agency markups."
-      lede="Launch profitable Google Search, Meta Feed, and Retargeting campaigns in 60 seconds. Our AI handles keyword research, negative scrubbing, compliant copy, and real-time offline conversion feedback — for a transparent 15% management fee."
+      lede="Launch profitable Google Search, Meta Feed, and Retargeting campaigns in 60 seconds. Our AI handles keyword research, negative scrubbing, compliant copy, and real-time offline conversion feedback — for a transparent 10% management fee."
       heroChips={[
         'Zero Agency Retainers',
-        '15% Transparent Fee',
+        '10% Transparent Fee',
         'Speed-to-Lead Auto-SMS',
         'Weather Surge Included',
       ]}
@@ -121,7 +121,7 @@ export default function AiAdsFeaturePage() {
       steps={STEPS}
       cta={{
         title: 'Put AI Advertising Autopilot to work for your business.',
-        note: 'Zero long-term contracts. 100% direct ad network spend with a flat 15% management fee. Upgrade, pause, or cancel anytime.',
+        note: 'Zero long-term contracts. 100% direct ad network spend with a flat 10% management fee. Upgrade, pause, or cancel anytime.',
       }}
     >
       <ClosedLoopFlywheel />

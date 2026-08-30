@@ -730,6 +730,12 @@
   color: #202124;
 }
 
+.serpDot {
+  font-size: 0.72rem;
+  color: #5f6368;
+  font-weight: 700;
+}
+
 .serpDomain {
   font-size: 0.75rem;
   color: #4d5156;

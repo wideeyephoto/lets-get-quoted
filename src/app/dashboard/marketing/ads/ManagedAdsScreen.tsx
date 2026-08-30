@@ -13,7 +13,7 @@ import {
   type SeasonalAdAngle,
   type AdDayOfWeek,
 } from '@/lib/google-ads-generator';
-import type { AdBudgetWalletState } from '@/lib/ad-billing';
+import { AD_PLATFORM_FEE_RATE, type AdBudgetWalletState } from '@/lib/ad-billing';
 import {
   SMART_BUNDLES,
   getSmartBundle,
@@ -47,7 +47,7 @@ const COMPARISON_ROWS = [
   {
     metric: 'Billing Structure & Cash Flow',
     agency: '$2,000 – $3,500 / mo up-front retainer',
-    lgq: '💧 Weekly Drip Funding ($185 – $645 / week)',
+    lgq: '💧 Weekly Drip Funding ($176 – $616 / week)',
   },
   {
     metric: 'Direct Ad Click Spend',
@@ -84,7 +84,7 @@ const COMPARISON_ROWS = [
 const FAQS = [
   {
     q: 'Why do you use Weekly Drip Billing instead of a monthly invoice?',
-    a: 'Weekly drip billing lowers your initial out-of-pocket cash commitment by over 75% (starting at just $185 to get live) without starving your campaign momentum. We deploy your ad spend into Google & Meta daily, but bill your card once every 7 days so you avoid dozens of separate daily credit card transactions.',
+    a: 'Weekly drip billing lowers your initial out-of-pocket cash commitment by over 75% (starting at just $176 to get live) without starving your campaign momentum. We deploy your ad spend into Google & Meta daily, but bill your card once every 7 days so you avoid dozens of separate daily credit card transactions.',
   },
   {
     q: 'How is this different from hiring a local marketing agency?',
@@ -333,7 +333,7 @@ export default function ManagedAdsScreen({
   const currentBundle = useMemo(() => getSmartBundle(selectedBundleId), [selectedBundleId]);
 
   // Wallet Fee & Deposit Calculations
-  const walletFeeDollars = Math.round(walletDepositDollars * 0.15);
+  const walletFeeDollars = Math.round(walletDepositDollars * AD_PLATFORM_FEE_RATE);
   const walletTotalDepositDollars = walletDepositDollars + walletFeeDollars;
 
   // Schedule & Pacing Calculations
@@ -1310,7 +1310,7 @@ export default function ManagedAdsScreen({
                   <div style={{ textAlign: 'left' }}>
                     <strong style={{ display: 'block', fontSize: '0.85rem' }}>Weekly Drip Funding</strong>
                     <small style={{ fontSize: '0.72rem', color: 'var(--muted)' }}>
-                      Predictable all-in weekly plans ($185–$645/wk)
+                      Predictable all-in weekly plans ($176–$616/wk)
                     </small>
                   </div>
                 </button>
@@ -1580,7 +1580,7 @@ export default function ManagedAdsScreen({
                         <strong>${walletDepositDollars}.00</strong>
                       </div>
                       <div className={styles.breakdownRow}>
-                        <span>AI Platform Management &amp; Smart Bidding (15%)</span>
+                        <span>AI Platform Management &amp; Smart Bidding (10%)</span>
                         <span>${walletFeeDollars}.00</span>
                       </div>
                       <div className={styles.breakdownTotal}>
@@ -2334,6 +2334,7 @@ export default function ManagedAdsScreen({
               <div className={styles.serpCard}>
                 <div className={styles.serpHeader}>
                   <span className={styles.sponsoredBadge}>Sponsored</span>
+                  <span className={styles.serpDot}>·</span>
                   <span className={styles.serpDomain}>{domain || 'yourbusiness.com'}</span>
                 </div>
 

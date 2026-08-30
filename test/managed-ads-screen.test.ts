@@ -64,7 +64,7 @@ describe('Enhanced Managed Ads Dashboard Screen (/dashboard/marketing/ads)', () 
   });
 
   it('includes deep-dive sections for the 4-Stage Engine, Smart Shield Trio, Agency Comparison, Milestones, and FAQs', () => {
-    expect(SCREEN_SRC).toContain('The 4-Stage Engine');
+    expect(SCREEN_SRC).toContain('The 4-Stage Closed-Loop Customer Acquisition Engine');
     expect(SCREEN_SRC).toContain('Hour 0: Instant Google MCC Provisioning');
     expect(SCREEN_SRC).toContain('Hour 1: Dynamic Message-Match Intake');
     expect(SCREEN_SRC).toContain('Instant: Sub-60s Speed-to-Lead Auto-SMS');
@@ -83,13 +83,13 @@ describe('Enhanced Managed Ads Dashboard Screen (/dashboard/marketing/ads)', () 
     expect(SCREEN_SRC).toContain('Conversion Acceleration');
     expect(SCREEN_SRC).toContain('Offline Revenue Scaling');
 
-    expect(SCREEN_SRC).toContain('Everything You Need to Know Before Launching');
+    expect(SCREEN_SRC).toContain('Frequently Asked Questions (FAQs)');
     expect(SCREEN_SRC).toContain('faqList');
   });
 
   it('supports interactive campaign dayparting and schedule customization', () => {
     expect(SCREEN_SRC).toContain('scheduleSectionCard');
-    expect(SCREEN_SRC).toContain('Active Days &amp; Hours (Dayparting)');
+    expect(SCREEN_SRC).toContain('Active Days &amp; Hours');
     expect(SCREEN_SRC).toContain('⚡ Weekdays (Mon–Fri · 7 AM–6 PM)');
     expect(SCREEN_SRC).toContain('🌟 24/7 Always On (All Week)');
     expect(SCREEN_SRC).toContain('daysGrid');
@@ -111,7 +111,7 @@ describe('Enhanced Managed Ads Dashboard Screen (/dashboard/marketing/ads)', () 
 
   it('supports AI Smart Field for custom campaign focus and verified buyer search terms', () => {
     expect(SCREEN_SRC).toContain('customFocusSectionCard');
-    expect(SCREEN_SRC).toContain('AI Smart Field · Custom Targeting');
+    expect(SCREEN_SRC).toContain('Customization &amp; ROI');
     expect(SCREEN_SRC).toContain('custom-focus-input');
     expect(SCREEN_SRC).toContain('focusPillsRow');
     expect(SCREEN_SRC).toContain('$1,500 Off Full Replacement');

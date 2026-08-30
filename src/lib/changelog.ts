@@ -54,13 +54,13 @@ export const CHANGELOG_RELEASES: ChangelogRelease[] = [
     category: 'Advertising & Growth',
     badge: 'Major Release',
     summary:
-      'Launch profitable Google Search, Meta Social Feed, and Display Retargeting campaigns in 60 seconds. Zero agency markups, 15% transparent platform fee, sub-60-second Speed-to-Lead auto-SMS, weather surge boosts, and closed-loop offline won-job revenue tracking.',
+      'Launch profitable Google Search, Meta Social Feed, and Display Retargeting campaigns in 60 seconds. Zero agency markups, 10% transparent platform fee, sub-60-second Speed-to-Lead auto-SMS, weather surge boosts, and closed-loop offline won-job revenue tracking.',
     highlights: [
       {
         badge: 'New',
-        title: '1-Click Multi-Channel Smart Bundles ($185/wk Launch, $345/wk Growth, $645/wk Scale & Dominate)',
+        title: '1-Click Multi-Channel Smart Bundles ($176/wk Launch, $330/wk Growth, $616/wk Scale & Dominate)',
         description:
-          'Zero agency retainers. 100% of nominal budget goes straight to ad network clicks (Google / Meta) with a transparent 15% platform management fee. Pre-configured RSA copy, keywords, and 24 negative waste exclusions.',
+          'Zero agency retainers. 100% of nominal budget goes straight to ad network clicks (Google / Meta) with a transparent 10% platform management fee. Pre-configured RSA copy, keywords, and 24 negative waste exclusions.',
       },
       {
         badge: 'New',
