@@ -87,8 +87,7 @@ describe('the calendar stopped fetching what it no longer shows', () => {
  *  the foot of a 700px calendar are navigations off the page. */
 describe('the way out is a target you can hit', () => {
   it('gives the foot links a 44px floor', () => {
-    const block = CSS.slice(CSS.indexOf('.schedule-panel-foot-links > a {'));
-    expect(block.slice(0, block.indexOf('}'))).toContain('min-height: 44px;');
+    expect(CSS).toMatch(/\.schedule-panel-foot-links\s*>\s*a\s*\{[^}]*min-height:\s*44px;/);
   });
 
   /** It used to be "Schedule settings ↓", which was honest when the settings

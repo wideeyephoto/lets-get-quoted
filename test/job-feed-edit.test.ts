@@ -74,7 +74,7 @@ describe('only an update somebody typed can be rewritten', () => {
     const badges = jobPage.slice(jobPage.indexOf('<div className="feed-badge-row">'), jobPage.indexOf('</div>', jobPage.indexOf('status-badge status-new_lead')));
     expect(badges).toContain('feed-edit');
     expect(badges).toContain('Undo');
-    expect(css).toContain('.feed-edit[open] { flex: 1 0 100%; }');
+    expect(css).toMatch(/\.feed-edit\[open\]\s*\{\s*flex:\s*1 0 100%;/);
   });
 });
 

@@ -145,7 +145,7 @@ describe('the calendar is exactly as tall as the hours it holds', () => {
   });
 
   it('and the body it holds is that same height, so nothing overflows', () => {
-    expect(CSS).toContain('.sched-tl-body { min-height: calc(var(--tl-hours) * var(--tl-hour-h)); }');
+    expect(CSS).toMatch(/\.sched-tl-body\s*\{\s*min-height:\s*calc\(var\(--tl-hours\)\s*\*\s*var\(--tl-hour-h\)\);/);
   });
 
   it('the tablet breakpoint does not put the cap back', () => {
@@ -229,7 +229,7 @@ describe('every band still fits the shortest job in it', () => {
    * hidden inside it, which left the status badge on a fourth row.
    */
   it('sm draws three lines, not four', () => {
-    expect(CSS).toContain(".sched-tl-job[data-size='sm'] .sched-tl-job-foot,\n.sched-tl-job[data-size='sm'] .sched-tl-job-span { display: none; }");
+    expect(CSS).toMatch(/\.sched-tl-job\[data-size='sm'\] \.sched-tl-job-foot,\s*\.sched-tl-job\[data-size='sm'\] \.sched-tl-job-span\s*\{\s*display:\s*none;/);
     // The status is not lost with the badge: it is what the block's colour
     // encodes, and CalendarLegend names all four.
     expect(CSS).toContain('.calendar-legend-dot');

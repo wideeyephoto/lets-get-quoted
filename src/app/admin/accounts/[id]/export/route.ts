@@ -36,7 +36,7 @@ const ACCOUNT_DIRECT_TABLES = [
   'office_invitations',
 ] as const;
 
-const TABLE_PRIMARY_KEYS: Record<string, string[]> = {
+const _TABLE_PRIMARY_KEYS: Record<string, string[]> = {
   messaging_registrations: ['account_id'],
   quickbooks_connections: ['account_id'],
   sms_consent_scopes: ['phone_number', 'consent_scope'],

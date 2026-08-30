@@ -207,16 +207,17 @@ async function maybeSuppress(
   // email_suppression is account-scoped, so an untagged send has nowhere to
   // record this. Say so out loud — silently skipping would mean the one send
   // that most needs suppressing is the one that never gets it.
+  const maskedRecipient = input.recipient.replace(/^(.)(.*)(@.*)$/, (_, a, b, c) => `${a}***${c}`);
   if (!input.accountId) {
     console.error(
-      `Resend ${input.status} for ${input.recipient} carried no account_id tag — cannot suppress. Tag the send.`,
+      `Resend ${input.status} for ${maskedRecipient} carried no account_id tag — cannot suppress. Tag the send.`,
     );
     return;
   }
 
   try {
     const ok = await suppressEmail(admin, input.accountId, input.recipient, reason);
-    if (!ok) console.error(`suppressEmail returned false for ${input.recipient} on account ${input.accountId}`);
+    if (!ok) console.error(`suppressEmail returned false for ${maskedRecipient} on account ${input.accountId}`);
   } catch (err) {
     console.error('suppressEmail threw from the Resend webhook:', err);
   }

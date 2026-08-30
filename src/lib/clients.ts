@@ -47,7 +47,7 @@ export async function findOrCreateClientId(
   input: { name?: string | null; phone?: string | null; email?: string | null; address?: string | null },
 ): Promise<string | null> {
   const name = (input.name ?? '').trim();
-  const phone = input.phone ? normalizeUsPhone(input.phone) : null;
+  const phone = input.phone ? (normalizeUsPhone(input.phone) ?? input.phone.trim()) : null;
   const email = cleanEmail(input.email);
   if (!name && !phone && !email) return null;
 
@@ -272,7 +272,7 @@ export async function updateClient(
     .from('clients')
     .update({
       name: input.name.trim() || 'Client',
-      phone: input.phone ? normalizeUsPhone(input.phone) : null,
+      phone: input.phone ? (normalizeUsPhone(input.phone) ?? input.phone.trim()) : null,
       email: cleanEmail(input.email),
       address: input.address?.trim() || null,
       notes: input.notes?.trim() || null,

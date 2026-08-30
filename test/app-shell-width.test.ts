@@ -98,7 +98,7 @@ describe('the reading measure that came with it', () => {
     ]) {
       expect(GLOBALS, `${selector} lost its reading measure`).toContain(selector);
     }
-    expect(GLOBALS).toMatch(/\.mkt-rec-why \{ max-width: var\(--read-note\); \}/);
+    expect(GLOBALS).toMatch(/\.mkt-rec-why\s*\{\s*max-width:\s*var\(--read-note\);/);
   });
 
   /**

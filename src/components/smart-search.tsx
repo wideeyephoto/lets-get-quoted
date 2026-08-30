@@ -362,16 +362,6 @@ export function SmartSearch({
                     ref={inputRef}
                     type="text"
                     className={styles.searchInput}
-                    style={{
-                      background: 'transparent',
-                      backgroundColor: 'transparent',
-                      border: 'none',
-                      outline: 'none',
-                      boxShadow: 'none',
-                      color: '#f8fafc',
-                      fontSize: '1.05rem',
-                      width: '100%',
-                    }}
                     placeholder="Search jobs, clients, addresses, team, actions..."
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}

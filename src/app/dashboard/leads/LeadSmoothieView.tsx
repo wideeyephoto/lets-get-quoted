@@ -101,6 +101,7 @@ export default function LeadSmoothieView({
   // both columns and ignores this.
   const [onDetailScreen, setOnDetailScreen] = useState(false);
   const [tab, setTab] = useState<LeadTabId>('overview');
+  const [channel, setChannel] = useState<string>('all');
   // Roving tabindex needs somewhere to send focus when an arrow moves the
   // selection — see nextTabIndex.
   const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
@@ -109,14 +110,25 @@ export default function LeadSmoothieView({
   const backRef = useRef<HTMLButtonElement | null>(null);
   const queueRef = useRef<HTMLDivElement | null>(null);
 
-  const counts = useMemo(() => stageCounts(leads), [leads]);
+  const counts = useMemo(
+    () =>
+      stageCounts(
+        channel === 'all'
+          ? leads
+          : leads.filter((l) => (l.attributionChannel || 'direct') === channel),
+      ),
+    [leads, channel],
+  );
 
   const shown = useMemo(() => {
     const filtered = leads.filter(
-      (lead) => matchesStage(lead, stage) && matchesQuery(lead, query),
+      (lead) =>
+        matchesStage(lead, stage) &&
+        matchesQuery(lead, query) &&
+        (channel === 'all' || (lead.attributionChannel || 'direct') === channel),
     );
     return sortQueue(filtered, sort);
-  }, [leads, stage, query, sort]);
+  }, [leads, stage, query, sort, channel]);
 
   // This is the geographic version of the queue, so it always receives the
   // currently shown lead IDs and never the jobs carried by the shared query.
@@ -271,6 +283,25 @@ export default function LeadSmoothieView({
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Search leads"
           />
+        </div>
+
+        <div className={styles.sortWrap}>
+          <label className={styles.sortLabel} htmlFor="smoothie-channel">Source</label>
+          <select
+            id="smoothie-channel"
+            className={styles.sort}
+            value={channel}
+            onChange={(event) => setChannel(event.target.value)}
+          >
+            <option value="all">All sources</option>
+            <option value="google">🎯 Google Ads</option>
+            <option value="meta">📱 Meta / Instagram</option>
+            <option value="tiktok">🎵 TikTok Ads</option>
+            <option value="local">🏡 Nextdoor & Local</option>
+            <option value="print_qr">🪧 Print & QR Signs</option>
+            <option value="promo">🏷️ Website Promos</option>
+            <option value="direct">🌐 Direct / Organic</option>
+          </select>
         </div>
 
         <div className={styles.sortWrap}>

@@ -51,7 +51,7 @@ describe('touch targets on the schedule and the shell', () => {
     expect(block(GLOBALS, '.sidenav-actions .sidenav-plan,')).toContain('min-height: 44px;');
     // 40px here was overriding the Account card's own 44 and quietly making it
     // the second-smallest target in the nav.
-    expect(GLOBALS).toContain(".sidenav-foot > .sidenav-account { min-height: 44px; }");
+    expect(GLOBALS).toMatch(/\.sidenav-foot\s*>\s*\.sidenav-account\s*\{[^}]*min-height:\s*44px;/);
   });
 
   it('sizes the status pill, the website badge and the view gear', () => {
@@ -62,7 +62,7 @@ describe('touch targets on the schedule and the shell', () => {
 
   /** 17px of underlined text, and the only way out of that panel. */
   it('sizes the queue\u2019s link to the jobs list', () => {
-    expect(GLOBALS).toContain('.sched-rows-foot a { display: inline-flex; align-items: center; min-height: 44px;');
+    expect(block(GLOBALS, '.sched-rows-foot a {')).toContain('min-height: 44px;');
   });
 });
 
@@ -81,24 +81,24 @@ describe('text contrast on the schedule', () => {
   /** --accent on that white row measured 2.39:1 at 22px, where 3 is the floor.
    *  The inset bar underneath is what marks today; the colour agrees with it. */
   it('marks today with the ink token rather than the raw brand orange', () => {
-    expect(GLOBALS).toContain('.sched-tl-day-head.today strong { color: var(--accent-ink); }');
+    expect(block(GLOBALS, '.sched-tl-day-head.today strong {')).toContain('color: var(--accent-ink);');
   });
 
   /** The token is for text on a PANEL, and this is text on a colour. */
   it('writes on the website badge in white, not in panel ink', () => {
-    expect(GLOBALS).toContain('.website-nav-live-edit { font-size: 0.62rem; font-weight: 600; color: rgba(255, 255, 255, 0.82); }');
+    expect(block(GLOBALS, '.website-nav-live-edit {')).toContain('color: rgba(255, 255, 255, 0.82);');
   });
 
   /** "No duration" is the row's most consequential fact and was its quietest
    *  thing at 3.82:1. */
   it('strengthens the unmeasured-job line in the queue', () => {
-    expect(GLOBALS).toContain('.sched-row-missing { color: var(--mute-i62); font-style: italic; }');
+    expect(block(GLOBALS, '.sched-row-missing {')).toContain('color: var(--mute-i62);');
   });
 
   /** 9px text needs the full 4.5:1, and the two orange inks measured 4.49 and
    *  4.48 — near enough to look fixed and not be. */
   it('uses an ink dark enough for the 9px Full flag', () => {
-    expect(GLOBALS).toContain(".sched-tl-head-flag.full { background: rgba(255,138,61,.18); color: var(--ink-amber-1); }");
+    expect(block(GLOBALS, '.sched-tl-head-flag.full {')).toContain('color: var(--ink-amber-1);');
   });
 });
 

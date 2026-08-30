@@ -13,6 +13,7 @@ import { rescheduleDunningAfterCardUpdate } from '@/lib/dunning';
 import { markInvoicePaidForPayment } from '@/lib/invoices';
 import { handlePlanPaymentSettled, handlePlanPaymentFailed } from '@/lib/payment-plans';
 import { confirmQuickStopPayment } from '@/lib/quick-stop-payments';
+import { handleAdBudgetWebhookEvent } from '@/lib/ad-billing';
 import {
   coordinateLegacyDestinationPaymentProjection,
   legacyPaymentPlanProjectionEnabled,
@@ -605,6 +606,10 @@ async function dispatchStripeEvent(
   event: Stripe.Event,
   stripe: ReturnType<typeof getStripeClient>,
 ) {
+  // Handle managed ad budget subscriptions & charges
+  const handledAdEvent = await handleAdBudgetWebhookEvent(event, admin);
+  if (handledAdEvent) return;
+
   // Checkout session completed — a one-off payment succeeded, OR a recurring
   // plan's card-setup session finished (mode='setup', no charge).
   if (event.type === 'checkout.session.completed') {

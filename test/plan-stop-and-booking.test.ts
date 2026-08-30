@@ -60,7 +60,7 @@ describe('the stop card fits the phone it is read on', () => {
   });
 
   it('wraps the buttons rather than letting them overflow the card', () => {
-    expect(mediaBlock("'num actions'")).toContain('.plan-stop-actions { align-self: center; flex-wrap: wrap; }');
+    expect(mediaBlock("'num actions'")).toMatch(/\.plan-stop-actions\s*\{\s*align-self:\s*center;\s*flex-wrap:\s*wrap;/);
   });
 });
 
@@ -91,7 +91,7 @@ describe('route insights link to the setting they are about', () => {
   });
 
   it('lands the panel clear of the fixed bar', () => {
-    expect(CSS).toContain('#working-hours { scroll-margin-top: calc(var(--appbar-h) + 1rem); }');
+    expect(CSS).toMatch(/#working-hours\s*\{\s*scroll-margin-top:\s*calc\(var\(--appbar-h\)\s*\+\s*1rem\);/);
   });
 });
 

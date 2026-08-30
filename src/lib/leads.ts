@@ -4,7 +4,7 @@ import { findOrCreateClientId } from '@/lib/clients';
 import { normalizeClientChannelPreference } from '@/lib/client-channel';
 import { applyTestRecordFilter, type TestRecordOptions } from '@/lib/test-records';
 import type { LeadVisualAnalysis } from '@/lib/lead-photo-ai';
-import { formatLeadAttribution, sanitizeAttribution, type LeadAttribution } from '@/lib/attribution';
+import { sanitizeAttribution, type LeadAttribution } from '@/lib/attribution';
 export { formatLeadAttribution, type LeadAttribution } from '@/lib/attribution';
 
 export type LeadSource = 'website_form' | 'missed_call' | 'manual' | 'referral' | 'ai_voice';

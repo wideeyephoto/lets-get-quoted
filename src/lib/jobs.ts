@@ -149,6 +149,7 @@ export type JobInput = {
 
 export type ListJobsOptions = {
   includeLeadQuotes?: boolean;
+  fetchAll?: boolean;
 };
 
 export type CostInput =
@@ -544,13 +545,17 @@ export async function listJobs(
     query = query.eq('status', statusFilter);
   }
 
-  const { data, error } = await query;
-
-  if (error) {
-    throw error;
+  let jobs: Job[];
+  if (options.fetchAll) {
+    const { fetchAllPages } = await import('@/lib/pagination');
+    jobs = await fetchAllPages<Job>((from, to) => query.range(from, to));
+  } else {
+    const { data, error } = await query;
+    if (error) {
+      throw error;
+    }
+    jobs = (data ?? []) as Job[];
   }
-
-  let jobs = (data ?? []) as Job[];
 
   if (!options.includeLeadQuotes && jobs.length > 0) {
     const { data: quoteLeads, error: quoteLeadError } = await supabase

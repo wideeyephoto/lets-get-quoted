@@ -70,7 +70,7 @@ describe('the calendar toolbar is one row', () => {
    * exactly the widths where the row was breaking.
    */
   it('measures itself against the column, not the window', () => {
-    expect(GLOBALS).toContain('.calendar-toolbar-wrap { container: caltoolbar / inline-size; }');
+    expect(GLOBALS).toMatch(/\.calendar-toolbar-wrap\s*\{\s*container:\s*caltoolbar \/ inline-size;/);
     expect(GLOBALS).toContain('@container caltoolbar (max-width: 720px)');
     expect(CALENDAR).toContain('<div className="calendar-toolbar-wrap">');
     // The old window-width version has to be gone, or it fires as well and the
@@ -93,7 +93,7 @@ describe('the calendar toolbar is one row', () => {
    *  leaving the row was how the phone ended up showing two weekend chips and
    *  nothing else — measured 308px wide at 390. */
   it('does not render on a phone at all', () => {
-    expect(GLOBALS).toContain('.calendar-toolbar-wrap { display: none; }');
+    expect(GLOBALS).toMatch(/\.calendar-toolbar-wrap\s*\{\s*display:\s*none;/);
     expect(GLOBALS).not.toContain('.calendar-toolbar .calendar-view-menu { display: none; }');
   });
 

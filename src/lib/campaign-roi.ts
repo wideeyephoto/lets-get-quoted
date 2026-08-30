@@ -1,5 +1,4 @@
 import type { Lead, LeadAttribution } from '@/lib/leads';
-import { formatLeadAttribution } from '@/lib/attribution';
 import { generateQrSvg } from '@/lib/equipment-qr';
 
 export type AttributionChannelId =
@@ -46,6 +45,8 @@ export type OverallRoiSummary = {
   overallWinRatePct: number;
   adWinRatePct: number;
   overallAvgTicket: number;
+  totalAdSpend: number;
+  estimatedRoasMultiplier: number;
   channels: ChannelRoiSummary[];
   topCampaigns: CampaignBreakdown[];
 };
@@ -282,6 +283,10 @@ export function calculateCampaignRoi(
   const overallAvgTicket = totalWonCount > 0 ? Math.round(totalRevenue / totalWonCount) : 0;
   const adAttributedPct = totalLeads > 0 ? Math.round((adLeadsCount / totalLeads) * 100) : 0;
 
+  // Estimated ad spend benchmark ($42/lead industry average across search/social)
+  const totalAdSpend = adLeadsCount * 42;
+  const estimatedRoasMultiplier = totalAdSpend > 0 ? Math.round((adRevenue / totalAdSpend) * 10) / 10 : 0;
+
   return {
     totalLeads,
     adAttributedLeads: adLeadsCount,
@@ -291,6 +296,8 @@ export function calculateCampaignRoi(
     overallWinRatePct,
     adWinRatePct,
     overallAvgTicket,
+    totalAdSpend,
+    estimatedRoasMultiplier,
     channels,
     topCampaigns,
   };

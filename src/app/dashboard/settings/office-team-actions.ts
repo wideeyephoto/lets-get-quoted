@@ -173,8 +173,9 @@ export async function inviteOfficeUserAction(input: { email: string }): Promise<
     });
     emailed = true;
   } catch (error) {
-    // The recipient, never the link.
-    console.error(`Office invitation email failed for ${email}:`, error instanceof Error ? error.message : error);
+    // The recipient (masked), never the link.
+    const masked = email.replace(/^(.)(.*)(@.*)$/, (_, a, b, c) => `${a}***${c}`);
+    console.error(`Office invitation email failed for ${masked}:`, error instanceof Error ? error.message : error);
   }
 
   revalidatePath('/dashboard/automations');

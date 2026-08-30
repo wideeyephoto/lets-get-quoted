@@ -16,8 +16,8 @@ describe('booking request setup language and hierarchy', () => {
     expect(SETUP.match(/bset-summary-item/g)).toHaveLength(3);
     expect(SETUP).not.toContain('className="bset-cards"');
     expect(SETUP).toContain('className={`bset-mobile-summary');
-    expect(CSS).toContain('.bset-summary { display: none; }');
-    expect(CSS).toContain('.bset-mobile-summary { display: block; }');
+    expect(CSS).toMatch(/\.bset-summary\s*\{\s*display:\s*none;/);
+    expect(CSS).toMatch(/\.bset-mobile-summary\s*\{\s*display:\s*block;/);
   });
 
   it('labels the preview as the time-selection step rather than the whole flow', () => {
@@ -36,10 +36,10 @@ describe('booking request setup explains rules in owner language', () => {
   });
 
   it('keeps warning icons compact and the preview free of a native date scrollbar', () => {
-    expect(CSS).toContain('.bset-window-warn > svg { width: 1rem; height: 1rem; flex: none;');
+    expect(CSS).toMatch(/\.bset-window-warn\s*>\s*svg\s*\{\s*width:\s*1rem;\s*height:\s*1rem;\s*flex:\s*none;/);
     expect(SETUP).toContain('bookableDays.slice(0, 4)');
-    expect(CSS).toContain('grid-template-columns: repeat(4, minmax(0, 1fr))');
-    expect(CSS).not.toContain('.bset-phone-days { display: flex;');
+    expect(CSS).toMatch(/grid-template-columns:\s*repeat\(4,\s*minmax\(0,\s*1fr\)\)/);
+    expect(CSS).not.toMatch(/\.bset-phone-days\s*\{\s*display:\s*flex;/);
   });
 
   it('explains the immediate master switch and the manual schedule save', () => {

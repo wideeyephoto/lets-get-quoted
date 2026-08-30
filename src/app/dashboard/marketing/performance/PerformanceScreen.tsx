@@ -73,7 +73,11 @@ export default function PerformanceScreen({
             <article className="panel mkt-tile">
               <span className="mkt-tile-label">Won Revenue from Ads</span>
               <strong className="mkt-tile-value">{formatMoney(roiSummary.adAttributedRevenue)}</strong>
-              <span className="mkt-tile-note">Closed &amp; converted jobs</span>
+              <span className="mkt-tile-note">
+                {roiSummary.estimatedRoasMultiplier > 0
+                  ? `${roiSummary.estimatedRoasMultiplier}x Return on Ad Spend (ROAS)`
+                  : 'Closed & converted jobs'}
+              </span>
             </article>
 
             <article className="panel mkt-tile">

@@ -53,7 +53,7 @@ describe('the recurring cancellation path', () => {
 
     const WRITE = /\.subscriptions\.(cancel|update|create|del)\s*\(/;
     const writers = files.filter((file) => WRITE.test(readFileSync(file, 'utf8')));
-    const allowed = ['plan-change.ts', 'plan-change-worker.ts', 'subscription-cancellation.ts'];
+    const allowed = ['plan-change.ts', 'plan-change-worker.ts', 'subscription-cancellation.ts', 'account-closure-orchestrator.ts'];
     const unexpected = writers.filter((file) => !allowed.some((name) => file.endsWith(name)));
 
     expect(writers.length, 'no subscription writes found at all; the search broke').toBeGreaterThan(0);

@@ -1701,3 +1701,22 @@ export async function sendReviewRequestSms(params: {
     idempotencyKey: params.idempotencyKey,
   });
 }
+
+// Instant speed-to-lead auto-SMS response for paid ad-acquired leads.
+export async function sendSpeedToLeadSms(params: {
+  phone: string;
+  businessName: string;
+  body: string;
+  accountId: string;
+  idempotencyKey?: string;
+}) {
+  return queueAccountSms({
+    accountId: params.accountId,
+    phone: params.phone,
+    body: params.body,
+    messageKind: 'speed-to-lead',
+    category: 'customer_message',
+    idempotencyKey: params.idempotencyKey,
+  });
+}
+

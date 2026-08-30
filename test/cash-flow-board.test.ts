@@ -43,8 +43,8 @@ const ruleFor = (selector: string) => {
 
 /** The @media condition a declaration sits under, in a 29,000-line stylesheet
  *  where indexOf('@media (max-width: 720px)') finds somebody else's block. */
-const mediaAround = (needle: string) => {
-  const at = CSS.indexOf(needle);
+const mediaAround = (needle: string | RegExp) => {
+  const at = typeof needle === 'string' ? CSS.indexOf(needle) : CSS.search(needle);
   expect(at, `not found: ${needle}`).toBeGreaterThan(-1);
   const opens = [...CSS.slice(0, at).matchAll(/@media ([^{]+)\{/g)];
   return opens.length ? opens[opens.length - 1][1].trim() : null;
@@ -289,7 +289,7 @@ describe('the decision comes before the picture of it', () => {
 
   it('stacks the facts on a phone rather than crushing three columns', () => {
     const phone = CSS.slice(CSS.indexOf('@media (max-width: 700px)'));
-    expect(phone).toContain('.cash-decision-facts { grid-template-columns: 1fr;');
+    expect(phone).toMatch(/\.cash-decision-facts\s*\{\s*grid-template-columns:\s*1fr;/);
   });
 });
 
@@ -405,8 +405,8 @@ describe('the page is a week, not a quarter of rows', () => {
   it('keeps a disclosure marker on the summary', () => {
     // `display` on a summary drops the UA triangle, and without it a control
     // reads as a heading.
-    expect(CSS).toContain('.cash-collapse > summary::after');
-    expect(CSS).toContain('.cash-collapse[open] > summary::after');
+    expect(CSS).toMatch(/\.cash-collapse\s*>\s*summary::after/);
+    expect(CSS).toMatch(/\.cash-collapse\[open\]\s*>\s*summary::after/);
   });
 });
 
@@ -430,7 +430,7 @@ describe('every control is reachable with a thumb', () => {
       expect(phone, selector).toContain(selector);
     }
     expect(mediaAround('.cash-window-row .insight-window-tab,')).toBe('(max-width: 760px)');
-    expect(mediaAround('.cash-range { height: 44px; }')).toBe('(max-width: 760px)');
+    expect(mediaAround(/\.cash-range\s*\{\s*height:\s*44px;/)).toBe('(max-width: 760px)');
     // Scoped, not global: .insight-window-tab is shared with Insights, and that
     // is not a page this audit looked at.
     expect(CSS).not.toMatch(/\n\.insight-window-tab \{[^}]*min-height:\s*44px/);
@@ -439,8 +439,8 @@ describe('every control is reachable with a thumb', () => {
   it('stops the bill cards being 16rem of nothing on a phone', () => {
     // `flex: 1 1 16rem` is a width in the desktop row and a HEIGHT once the
     // mobile rule flips the container to a column.
-    expect(CSS).toContain('.cash-bill-main { flex: 0 0 auto; }');
-    expect(mediaAround('.cash-bill-main { flex: 0 0 auto; }')).toBe('(max-width: 720px)');
+    expect(CSS).toMatch(/\.cash-bill-main\s*\{\s*flex:\s*0 0 auto;/);
+    expect(mediaAround(/\.cash-bill-main\s*\{\s*flex:\s*0 0 auto;/)).toBe('(max-width: 720px)');
   });
 });
 

@@ -285,7 +285,7 @@ export async function mergeClientsAction(formData: FormData): Promise<void> {
   // already landed, and a client whose jobs moved but whose leads did not is
   // recoverable by merging again; a partially-applied concurrent batch with the
   // delete already through is not.
-  for (const table of ['jobs', 'leads', 'recurring_plans', 'extra_stop_requests'] as const) {
+  for (const table of ['jobs', 'leads', 'recurring_plans', 'extra_stop_requests', 'warranties'] as const) {
     const { error } = await supabase
       .from(table)
       .update({ client_id: survivorId })

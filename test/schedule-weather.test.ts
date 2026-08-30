@@ -81,8 +81,8 @@ describe('weather on the Day view', () => {
  */
 describe('the narrow-screen grid collapses actually fire', () => {
   it('collapses .form-grid below the rule that sets two columns', () => {
-    const base = GLOBALS.indexOf('.form-grid { display: grid; grid-template-columns: 1fr 1fr;');
-    const collapse = GLOBALS.indexOf('.form-grid { grid-template-columns: minmax(0, 1fr); }');
+    const base = GLOBALS.search(/\.form-grid\s*\{\s*display:\s*grid;\s*grid-template-columns:\s*1fr 1fr;/);
+    const collapse = GLOBALS.search(/\.form-grid\s*\{\s*grid-template-columns:\s*minmax\(0,\s*1fr\);/);
     expect(base).toBeGreaterThan(0);
     expect(collapse).toBeGreaterThan(base);
   });
@@ -90,12 +90,12 @@ describe('the narrow-screen grid collapses actually fire', () => {
   /** `1fr` is `minmax(auto, 1fr)`, so the track cannot go under its content's
    *  min-content — and a bare <input> will not shrink below 20 characters. */
   it('lets the fields inside it actually shrink', () => {
-    expect(GLOBALS).toContain('.form-grid > * { min-width: 0; }');
+    expect(GLOBALS).toMatch(/\.form-grid\s*>\s*\*\s*\{\s*min-width:\s*0;/);
   });
 
   it('collapses the job intake schedule grid too', () => {
-    const base = GLOBALS.indexOf('.job-intake-schedule-grid { display: grid;');
-    const collapse = GLOBALS.indexOf('.job-intake-schedule-grid { grid-template-columns: minmax(0, 1fr); }');
+    const base = GLOBALS.search(/\.job-intake-schedule-grid\s*\{\s*display:\s*grid;/);
+    const collapse = GLOBALS.search(/\.job-intake-schedule-grid\s*\{\s*grid-template-columns:\s*minmax\(0,\s*1fr\);/);
     expect(base).toBeGreaterThan(0);
     expect(collapse).toBeGreaterThan(base);
   });

@@ -171,7 +171,7 @@ describe('the overflow marker is a control only where it leads somewhere', () =>
     const CSS = readFileSync(join(process.cwd(), 'src', 'app', 'globals.css'), 'utf8')
       .replace(/\r\n/g, '\n')
       .replace(/\/\*[\s\S]*?\*\//g, '');
-    expect(CSS).toContain('.sched-tl-overflow.is-static { cursor: default;');
+    expect(CSS).toMatch(/\.sched-tl-overflow\.is-static\s*\{\s*cursor:\s*default;/);
     expect(CSS).toContain('.sched-tl-overflow.is-static:hover');
   });
 });

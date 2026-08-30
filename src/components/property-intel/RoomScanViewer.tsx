@@ -742,6 +742,7 @@ export function RoomScanViewer({
           className={styles.supplyToggleBtn}
           onClick={() => setShowSupplyHouse((prev) => !prev)}
           aria-expanded={showSupplyHouse}
+          aria-controls="supply-house-materials-drawer"
         >
           <span>
             📦 Supply House Materials Pick-List ({supplyHouseItems.length} items with 10–15% waste)
@@ -751,7 +752,7 @@ export function RoomScanViewer({
       </div>
 
       {showSupplyHouse && (
-        <div className={styles.supplyHouseContent}>
+        <div id="supply-house-materials-drawer" className={styles.supplyHouseContent}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem', flexWrap: 'wrap', gap: '0.4rem' }}>
             <span style={{ fontSize: '0.74rem', color: 'var(--muted, #94a3b8)' }}>
               Vendor-ready packaging quantities with automated pattern cut &amp; miter waste factors.

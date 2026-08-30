@@ -3,7 +3,7 @@ import { createAdminClient } from '@/lib/auth';
 import { quickStopSettingsFromAccount, QUICK_STOP_SETTINGS_COLUMNS } from '@/lib/quick-stop';
 import { qualifyQuickStop, qualifyOptionsFromSettings, quickStopFollowUps } from '@/lib/quick-stop-qualify';
 import { makeQuickStopVerdictToken } from '@/lib/quick-stop-verdict';
-import { checkRateLimit, clientIpFrom } from '@/lib/rate-limit';
+import { checkRateLimitStrict, clientIpFrom } from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
 
@@ -16,8 +16,8 @@ const str = (v: unknown, max: number) => (typeof v === 'string' ? v.trim().slice
 export async function POST(request: NextRequest) {
   const admin = createAdminClient();
   const ip = clientIpFrom(request.headers);
-  // Durable cross-instance limit on a paid-OpenAI endpoint (15/min per IP).
-  if (!(await checkRateLimit(admin, `esqualify:ip:${ip}`, 15, 60))) {
+  // Durable cross-instance limit on a paid-OpenAI endpoint (15/min per IP, fail-closed).
+  if (!(await checkRateLimitStrict(admin, `esqualify:ip:${ip}`, 15, 60))) {
     return NextResponse.json({ error: 'Too many requests.' }, { status: 429 });
   }
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Theme, THEME_CHOICES, themeCookieString, THEME_COOKIE } from '@/lib/theme';
+import { Theme, themeCookieString, THEME_COOKIE } from '@/lib/theme';
 
 interface ThemePalette {
   canvasBg: string;
@@ -777,7 +777,7 @@ export default function ThemeTuner() {
               <button
                 key={tab.id}
                 type="button"
-                onClick={() => setActiveTab(tab.id as any)}
+                onClick={() => setActiveTab(tab.id as 'surfaces' | 'borders' | 'typography' | 'accents' | 'navigation')}
                 style={{
                   flex: 1,
                   padding: '5px 2px',

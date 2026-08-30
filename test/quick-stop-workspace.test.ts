@@ -231,7 +231,7 @@ describe('the save bar', () => {
    */
   it('hides itself on a clean form, by the attribute and not by display', () => {
     const css = read('src', 'app', 'globals.css');
-    expect(css).toContain('.qs-savebar:not(:has(button:not([hidden]))) { display: none; }');
+    expect(css).toMatch(/\.qs-savebar:not\(:has\(button:not\(\[hidden\]\)\)\)\s*\{\s*display:\s*none;/);
     const save = readFileSync(join(process.cwd(), 'src', 'components', 'save-button.tsx'), 'utf8');
     expect(save).toContain('hidden={!visible}');
   });

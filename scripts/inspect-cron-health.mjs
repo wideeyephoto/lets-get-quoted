@@ -150,6 +150,12 @@ try {
     console.log('A SILENT worker is not a passing worker -- it recorded nothing at all,');
     console.log('and its own schedule says it should have.');
   }
+
+  const failingCount = rows.filter((r) => r.failures > 0).length;
+  if (process.argv.includes('--strict') && (silent.length > 0 || failingCount > 0)) {
+    console.error(`\nCRON HEALTH AUDIT FAILED: ${silent.length} silent, ${failingCount} failing.`);
+    process.exitCode = 1;
+  }
 } finally {
   await client.end();
 }

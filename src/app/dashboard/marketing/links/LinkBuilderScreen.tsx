@@ -1,7 +1,6 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import Link from 'next/link';
 import MarketingNav from '../MarketingNav';
 import {
   CAMPAIGN_LINK_PRESETS,

@@ -420,8 +420,8 @@ describe('the strip, in the inbox', () => {
      branched in the markup, so there is one source of truth for which exists. */
   it('swaps two chips for the aggregate below 720', () => {
     const narrow = CSS.slice(CSS.indexOf('@media (max-width: 720px)', CSS.indexOf('.msg-setup')));
-    expect(narrow).toContain('.msg-setup-chips { display: none; }');
-    expect(narrow).toContain('.msg-setup-chips.is-compact { display: flex; }');
+    expect(narrow).toMatch(/\.msg-setup-chips\s*\{\s*display:\s*none;/);
+    expect(narrow).toMatch(/\.msg-setup-chips\.is-compact\s*\{\s*display:\s*flex;/);
     expect(STRIP).toContain('aggregateChip');
   });
 
@@ -473,7 +473,7 @@ describe('the dialog', () => {
     const base = CSS.slice(at, CSS.indexOf('}', at));
     // One column by default; two only where there is room.
     expect(base).not.toContain('grid-template-columns');
-    expect(CSS).toContain('.msg-setup-sections { grid-template-columns: repeat(2, minmax(0, 1fr))');
+    expect(CSS).toMatch(/\.msg-setup-sections\s*\{\s*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
   });
 });
 

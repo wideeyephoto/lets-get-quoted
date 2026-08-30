@@ -3,13 +3,20 @@ import { createAdminClient } from '@/lib/auth';
 import { loadBusinessName } from '@/lib/business-name';
 import { computeInvoiceTotals, getPublicInvoice } from '@/lib/invoices';
 import { generateInvoicePdf } from '@/emails/InvoicePdf';
+import { checkRateLimit, clientIpFrom } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
 // Streams the invoice as a PDF. Public by the same reasoning as /invoice/[id]:
 // the client has no login, and the invoice is already viewable by id. Used by
 // the "Download PDF" buttons on both the owner and client invoice pages.
-export async function GET(_request: Request, { params }: { params: { id: string } }) {
+export async function GET(request: Request, { params }: { params: { id: string } }) {
+  const admin = createAdminClient();
+  const ip = clientIpFrom(request.headers);
+  if (!(await checkRateLimit(admin, `invpdf:ip:${ip}`, 60, 60))) {
+    return NextResponse.json({ error: 'Too many requests.' }, { status: 429 });
+  }
+
   const record = await getPublicInvoice(params.id);
   if (!record) {
     return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });

@@ -285,9 +285,9 @@ describe('the feed is laid out, not printed', () => {
    *  that stops at the fold reads as the end of the list. */
   it('draws one continuous rail and terminates it at the last node', () => {
     expect(CSS).toContain('.cfeed-item::before');
-    expect(CSS).toContain('.cfeed-more > summary::before');
-    expect(CSS).toContain('.cfeed:last-child > .cfeed-item:last-child::before');
-    expect(CSS).toContain('.cfeed-more:not([open]) > summary::before');
+    expect(CSS).toMatch(/\.cfeed-more\s*>\s*summary::before/);
+    expect(CSS).toMatch(/\.cfeed:last-child\s*>\s*\.cfeed-item:last-child::before/);
+    expect(CSS).toMatch(/\.cfeed-more:not\(\[open\]\)\s*>\s*summary::before/);
   });
 
   /**
@@ -300,9 +300,7 @@ describe('the feed is laid out, not printed', () => {
     expect(block).not.toContain('border:');
     expect(block).not.toContain('border-radius');
 
-    const divider = CSS.slice(CSS.indexOf('.cfeed-item + .cfeed-item::after'), CSS.indexOf('.cfeed-node {'));
-    expect(divider).toContain('left: calc(30px + 0.8rem)');
-    expect(divider).toContain('height: 1px');
+    expect(CSS).toMatch(/\.cfeed-item\s*\+\s*\.cfeed-item::after[\s\S]*?left:\s*calc\(30px \+ 0\.8rem\);[\s\S]*?height:\s*1px;/);
   });
 
   /**

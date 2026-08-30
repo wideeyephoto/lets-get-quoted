@@ -82,6 +82,6 @@ describe('the job page sections stack in one column', () => {
     expect(quote).toContain('quote-deck-rail');
     expect(GLOBALS).toMatch(/\.quote-deck \{[^}]*grid-template-columns: minmax\(0, 1fr\) 22rem/);
     // And it collapses, rather than staying two columns on a phone.
-    expect(GLOBALS).toMatch(/@media \(max-width: 1023px\) \{\s*\.quote-deck \{ grid-template-columns: minmax\(0, 1fr\); \}/);
+    expect(GLOBALS).toMatch(/@media \(max-width: 1023px\)[\s\S]*?\.quote-deck\s*\{\s*grid-template-columns:\s*minmax\(0,\s*1fr\);/);
   });
 });

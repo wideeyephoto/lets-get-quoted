@@ -75,7 +75,7 @@ export async function buildServicesCsv(supabase: SupabaseClient, accountId: stri
 }
 
 export async function buildJobsCsv(supabase: SupabaseClient, accountId: string): Promise<string> {
-  const jobs = await listJobs(supabase, accountId);
+  const jobs = await listJobs(supabase, accountId, undefined, { fetchAll: true });
   const grid: string[][] = [
     ['Ref', 'Customer', 'Phone', 'Email', 'Address', 'Job / scope', 'Status', 'Date', 'Est. hours', 'Amount'],
   ];
@@ -106,7 +106,7 @@ export async function buildInvoicesCsv(supabase: SupabaseClient, accountId: stri
         .order('created_at', { ascending: false })
         .range(from, to),
     ),
-    listJobs(supabase, accountId),
+    listJobs(supabase, accountId, undefined, { fetchAll: true }),
   ]);
   const jobById = new Map<string, Job>(jobs.map((job) => [job.id, job]));
   const grid: string[][] = [

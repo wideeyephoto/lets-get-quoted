@@ -1,6 +1,21 @@
 import Script from 'next/script';
+import { headers } from 'next/headers';
 import { cspNonce } from '@/lib/csp-nonce';
 import { getGoogleTagId } from '@/lib/google-tag';
+
+const SENSITIVE_PREFIXES = [
+  '/auth',
+  '/track',
+  '/review',
+  '/schedule',
+  '/sub',
+  '/client',
+  '/portal',
+  '/office-invite',
+  '/pay',
+  '/invoice',
+  '/account-suspended',
+];
 
 /**
  * Global Google Tag (gtag.js) for Let's Get Quoted.
@@ -10,6 +25,11 @@ import { getGoogleTagId } from '@/lib/google-tag';
  * warning when browsers hide a server-rendered script's nonce attribute.
  */
 export default function GoogleTag() {
+  const pathname = headers().get('x-pathname') || '';
+  if (SENSITIVE_PREFIXES.some((prefix) => pathname.startsWith(prefix))) {
+    return null;
+  }
+
   const tagId = getGoogleTagId();
   const nonce = cspNonce();
 

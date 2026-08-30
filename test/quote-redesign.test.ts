@@ -399,7 +399,7 @@ describe('a closed options window looks closed', () => {
   });
 
   it('takes the pointer and the hover off the row', () => {
-    expect(css).toContain('.quote-doc-addon.is-locked .quote-doc-addon-hit { cursor: default; }');
+    expect(css).toMatch(/\.quote-doc-addon\.is-locked \.quote-doc-addon-hit\s*\{\s*cursor:\s*default;/);
     expect(css).toMatch(/\.quote-doc-addon\.is-locked:hover \{[^}]*transform: none/);
   });
 
@@ -522,7 +522,7 @@ describe('the whole page is painted in the contractor’s color', () => {
 describe('it works on a phone and on paper', () => {
   it('the rail becomes a stacked panel and a pinned bar below the two-column breakpoint', () => {
     const tablet = css.slice(css.indexOf('@media (max-width: 1023px) {', css.indexOf('THE CUSTOMER\'S QUOTE PAGE')));
-    expect(tablet).toContain('.quote-rail-sticky { position: static; }');
+    expect(tablet).toMatch(/\.quote-rail-sticky\s*\{\s*position:\s*static;/);
     expect(tablet).toContain('.quote-bottom-bar {');
     expect(tablet).toContain('position: fixed');
     // Room for the bar, or it covers the last section.

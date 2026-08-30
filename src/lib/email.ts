@@ -335,8 +335,9 @@ export async function sendOfficeInvitationEmail(input: {
     console.error('Failed to send office invitation email:', result.error);
     throw new Error(result.error.message);
   }
-  // The recipient, never the link: it is the credential.
-  console.log(`Office invitation email sent to ${input.recipientEmail}`);
+  // The recipient (masked), never the link: it is the credential.
+  const maskedEmail = input.recipientEmail.replace(/^(.)(.*)(@.*)$/, (_, a, b, c) => `${a}***${c}`);
+  console.log(`Office invitation email sent to ${maskedEmail}`);
 }
 
 // Generic contractor-facing alert email (payout paused, chargeback opened,

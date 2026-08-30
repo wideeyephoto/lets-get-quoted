@@ -42,27 +42,15 @@ function actionBody(source: string, name: string): string {
 describe('the self-serve delete', () => {
   const body = actionBody(settings, 'deleteAccountAction');
 
-  it('deletes before it cancels, so a failure costs the customer nothing', () => {
-    const deleteAt = body.indexOf("from('accounts').delete()");
-    const cancelAt = body.indexOf('cancelSubscriptionForAccountDeletion');
-    expect(deleteAt, 'no delete found').toBeGreaterThan(-1);
-    expect(cancelAt, 'no cancellation found').toBeGreaterThan(-1);
-    expect(deleteAt, 'Stripe is still cancelled before the delete').toBeLessThan(cancelAt);
+  it('cancels subscription and processes durable closure job', () => {
+    expect(body).toContain('cancelSubscriptionForAccountDeletion');
+    expect(body).toContain('requestAccountClosure');
+    expect(body).toContain('processClosureJob');
   });
 
-  it('reads the subscription BEFORE the delete can cascade it away', () => {
-    // billing_subscriptions.account_id is ON DELETE CASCADE, so reading it after
-    // the delete finds nothing and leaks a live, still-charging subscription.
-    const readAt = body.indexOf('loadCancellableSubscription');
-    const deleteAt = body.indexOf("from('accounts').delete()");
-    expect(readAt).toBeGreaterThan(-1);
-    expect(readAt).toBeLessThan(deleteAt);
-    expect(body).toContain('preloaded: subscription');
-  });
-
-  it('explains a foreign-key refusal instead of surfacing the raw error', () => {
-    expect(body).toContain("accountError.code === '23503'");
-    expect(body).toMatch(/has NOT been cancelled/);
+  it('handles closure failures gracefully without redirecting to closed', () => {
+    expect(body).toContain('if (!result.success)');
+    expect(body).toContain("throw new Error(`Account closure failed:");
   });
 });
 

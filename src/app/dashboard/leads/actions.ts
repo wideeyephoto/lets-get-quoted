@@ -11,6 +11,7 @@ import { computeQuoteTotal, formatJobQuoteSummary, parseQuoteItems, saveQuoteIte
 import { createDepositRequest } from '@/lib/payments';
 import { createPaymentPlan } from '@/lib/payment-plans';
 import { clearLeadQuoteVisit, convertLeadToJob, createLead, getLead, getLeadTriage, LEAD_DECLINE_REASONS, LEAD_LAYOUT_COOKIE, LEADS_VIEW_COOKIE, normalizeLeadLostAfterDays, normalizeLeadsView, scheduleLeadQuoteVisit, unconvertLeadFromJob, updateLeadDetails, updateLeadStatus, type LeadQuoteDraft, type LeadsView, type LeadStatus, type LeadTriage } from '@/lib/leads';
+import { uploadOfflineConversion } from '@/lib/google-ads-api';
 import { normalizeClientChannelPreference, resolveClientChannel, smsFailureFallback } from '@/lib/client-channel';
 import { deleteLeadPhotos, uploadLeadPhoto } from '@/lib/lead-photo-storage';
 import { normalizeUsPhone } from '@/lib/phone';
@@ -134,6 +135,20 @@ export async function updateLeadStatusAction(leadId: string, status: LeadStatus)
   await updateLeadStatus(supabase, accountId, leadId, status);
 
   const jobId = lead?.converted_job as string | null | undefined;
+  if (status === 'won') {
+    const triage = lead ? getLeadTriage(lead) : null;
+    const attr = triage?.attribution;
+    if (attr?.clickId && attr.clickIdType === 'gclid') {
+      const wonValue = triage?.estimate?.max || 0;
+      uploadOfflineConversion({
+        gclid: attr.clickId,
+        conversionActionName: 'Job Won',
+        conversionValueDollars: wonValue,
+        orderId: leadId,
+      }).catch((err) => console.warn('Offline conversion upload on mark won skipped:', err));
+    }
+  }
+
   if (status === 'won' && jobId) {
     // Best-effort: the lead move is what the owner pressed, and it must not be
     // undone because a downstream write failed. A failure here leaves exactly

@@ -709,7 +709,8 @@ async function resolveStaff(
   allowProvision = true,
 ): Promise<StaffRecord> {
   const columns = 'id, email, role, active, display_name';
-  const { data: existing } = await admin.from('staff').select(columns).ilike('email', email).maybeSingle();
+  const sanitizedEmail = email.trim().toLowerCase().replace(/[%_\\]/g, '\\$&');
+  const { data: existing } = await admin.from('staff').select(columns).ilike('email', sanitizedEmail).maybeSingle();
   if (existing) {
     const row = existing as StaffRecord;
     // Best-effort presence, for access reviews ("nobody has used this in a
@@ -734,7 +735,7 @@ async function resolveStaff(
   // Lost a race against a concurrent first sign-in: the unique index rejected
   // the insert and the row now exists. Read it rather than failing.
   console.error('staff auto-provision insert failed, re-reading:', error);
-  const { data: raced } = await admin.from('staff').select(columns).ilike('email', email).maybeSingle();
+  const { data: raced } = await admin.from('staff').select(columns).ilike('email', sanitizedEmail).maybeSingle();
   if (raced) return { ...(raced as StaffRecord), role: parseStaffRole((raced as StaffRecord).role, 'read_only') };
 
   // The table is unreachable. Fail CLOSED with a role that can do nothing

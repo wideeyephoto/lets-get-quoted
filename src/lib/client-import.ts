@@ -141,7 +141,10 @@ export async function importClients(
   accountId: string,
   parsed: ParsedClientRow[],
 ): Promise<ImportResult> {
-  const { data: existing } = await supabase.from('clients').select('phone, email').eq('account_id', accountId);
+  const { fetchAllPages } = await import('@/lib/pagination');
+  const existing = await fetchAllPages<{ phone: string | null; email: string | null }>((from, to) =>
+    supabase.from('clients').select('phone, email').eq('account_id', accountId).range(from, to)
+  );
   const seen = new Set<string>();
   for (const client of existing ?? []) {
     if (client.phone) seen.add(`p:${client.phone}`);

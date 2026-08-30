@@ -205,6 +205,20 @@ export default function InteractiveQuoteUpsellDemo() {
     );
   };
 
+  const handleScenarioChange = (idx: number) => {
+    setScenarioIndex(idx);
+    setSelectedTierId('premium');
+    setCheckedAddonIds(['warranty']);
+    setIsSigned(false);
+  };
+
+  const handleSign = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (signName.trim()) {
+      setIsSigned(true);
+    }
+  };
+
   const handleTradeTabKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>, idx: number) => {
     const total = SCENARIOS.length;
     let nextIdx = idx;

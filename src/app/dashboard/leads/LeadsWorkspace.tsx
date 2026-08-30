@@ -81,7 +81,24 @@ export type LeadViewItem = {
   photoCount: number;
   /** Short warning shown only during the final week before automatic closure. */
   autoCloseLabel?: string | null;
+  /** Campaign acquisition channel (google, meta, tiktok, local, print_qr, promo, direct) */
+  attributionChannel?: string | null;
+  /** Campaign name */
+  campaignName?: string | null;
 };
+
+export type ChannelFilter = 'all' | 'google' | 'meta' | 'tiktok' | 'local' | 'print_qr' | 'promo' | 'direct';
+
+export const CHANNEL_FILTER_OPTIONS: { id: ChannelFilter; label: string }[] = [
+  { id: 'all', label: 'All sources' },
+  { id: 'google', label: '🎯 Google Ads' },
+  { id: 'meta', label: '📱 Meta / Instagram' },
+  { id: 'tiktok', label: '🎵 TikTok Ads' },
+  { id: 'local', label: '🏡 Nextdoor & Local' },
+  { id: 'print_qr', label: '🪧 Print & QR Signs' },
+  { id: 'promo', label: '🏷️ Website Promos' },
+  { id: 'direct', label: '🌐 Direct / Organic' },
+];
 
 // Three layouts with distinct jobs. The legacy Focus, Split and Priority views
 // remain in the file for one migration window, but are no longer choices; old
@@ -202,7 +219,20 @@ export default function LeadsWorkspace({
   // Local map color, so the demo's picker works with no cookie behind it.
   const [localMapTheme, setLocalMapTheme] = useState<MapTheme>(mapTheme);
   const effectiveMapTheme = readOnly ? localMapTheme : mapTheme;
-  const visibleLeadIds = useMemo(() => new Set(leads.map((lead) => lead.id)), [leads]);
+
+  const [channelFilter, setChannelFilter] = useState<ChannelFilter>('all');
+
+  const filteredLeads = useMemo(() => {
+    if (channelFilter === 'all') return leads;
+    return leads.filter((lead) => (lead.attributionChannel || 'direct') === channelFilter);
+  }, [leads, channelFilter]);
+
+  const filteredSnoozedLeads = useMemo(() => {
+    if (channelFilter === 'all') return snoozedLeads;
+    return snoozedLeads.filter((lead) => (lead.attributionChannel || 'direct') === channelFilter);
+  }, [snoozedLeads, channelFilter]);
+
+  const visibleLeadIds = useMemo(() => new Set(filteredLeads.map((lead) => lead.id)), [filteredLeads]);
   // A Leads map maps leads. The global pin query also carries jobs for other
   // workspaces; letting those through made the toggle disagree with the queue.
   const leadPins = useMemo(
@@ -373,10 +403,30 @@ export default function LeadsWorkspace({
 
   return (
     <div className={pending ? styles.workspaceBusy : undefined}>
-      {/* One toolbar for every view: which layout, and whether the map is on.
+      {/* One toolbar for every view: which layout, channel filter, and whether the map is on.
           Two independent choices that used to be one control. */}
       <div className={styles.viewBar}>
         {gear}
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+          <label htmlFor="leads-channel-filter" style={{ fontSize: '0.8rem', color: 'var(--muted)', fontWeight: 600 }}>Source</label>
+          <select
+            id="leads-channel-filter"
+            style={{
+              padding: '0.35rem 0.6rem',
+              fontSize: '0.82rem',
+              borderRadius: '8px',
+              border: '1px solid var(--border-subtle, rgba(255,255,255,0.15))',
+              background: 'var(--surface-subtle, rgba(0,0,0,0.2))',
+              color: 'var(--foreground)',
+            }}
+            value={channelFilter}
+            onChange={(e) => setChannelFilter(e.target.value as ChannelFilter)}
+          >
+            {CHANNEL_FILTER_OPTIONS.map((opt) => (
+              <option key={opt.id} value={opt.id}>{opt.label}</option>
+            ))}
+          </select>
+        </div>
         <button
           type="button"
           className={styles.mapToggle}
@@ -413,11 +463,11 @@ export default function LeadsWorkspace({
         </div>
       ) : null}
 
-      {view === 'board' && <LeadBoardView leads={leads} run={run} ownerControls={ownerControls} />}
-      {view === 'inbox' && <LeadPriorityView leads={leads} snoozed={snoozedLeads} run={run} ownerControls={ownerControls} />}
-      {view === 'table' && <LeadTableView leads={leads} run={run} onOpenQuickAdd={() => setQuickAddOpen(true)} />}
-      {view === 'split' && <SplitView leads={leads} run={run} openRequest={pinRequest} ownerControls={ownerControls} />}
-      {view === 'focus' && <LeadFocusView leads={leads} run={run} onSelect={onFocusSelect} openRequest={pinRequest} details={details} initialLeadId={initialLeadId} basePath={basePath} ownerControls={ownerControls} />}
+      {view === 'board' && <LeadBoardView leads={filteredLeads} run={run} ownerControls={ownerControls} />}
+      {view === 'inbox' && <LeadPriorityView leads={filteredLeads} snoozed={filteredSnoozedLeads} run={run} ownerControls={ownerControls} />}
+      {view === 'table' && <LeadTableView leads={filteredLeads} run={run} onOpenQuickAdd={() => setQuickAddOpen(true)} />}
+      {view === 'split' && <SplitView leads={filteredLeads} run={run} openRequest={pinRequest} ownerControls={ownerControls} />}
+      {view === 'focus' && <LeadFocusView leads={filteredLeads} run={run} onSelect={onFocusSelect} openRequest={pinRequest} details={details} initialLeadId={initialLeadId} basePath={basePath} ownerControls={ownerControls} />}
 
       <ScoreLegend />
       <QuickAddLeadModal open={quickAddOpen} onClose={() => setQuickAddOpen(false)} />

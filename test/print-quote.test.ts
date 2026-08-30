@@ -55,7 +55,7 @@ describe('nothing hides every page on the way to the printer', () => {
   });
 
   it('its isolation is scoped to a page that actually has a board', () => {
-    expect(css).toContain('body:has(.selection-board) * { visibility: hidden; }');
+    expect(css).toMatch(/body:has\(\.selection-board\)\s*\*\s*\{\s*visibility:\s*hidden;/);
   });
 
   it('found at least one print block to check, so the matcher is not vacuous', () => {

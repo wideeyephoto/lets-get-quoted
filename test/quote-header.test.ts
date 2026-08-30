@@ -76,7 +76,7 @@ describe('the quote header is a heading and a toolbar', () => {
 
   it('stays thumb-sized where it wraps', () => {
     const phone = CSS.slice(CSS.indexOf('@media (max-width: 560px) {', CSS.indexOf('.quote-print {')));
-    expect(phone.slice(0, 220)).toContain('.quote-tool, .quote-print { min-height: 42px; }');
+    expect(phone.slice(0, 220)).toMatch(/\.quote-tool,\s*\.quote-print\s*\{\s*min-height:\s*42px;/);
   });
 
   /** The lead form renders the same builder with no job to print yet. */

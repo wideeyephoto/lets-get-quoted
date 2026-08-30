@@ -77,7 +77,7 @@ describe('a line item restacks before its description runs out of room', () => {
   });
 
   it('the arrows and the remove button stay together on the right', () => {
-    expect(CSS).toContain('.quote-builder-controls .quote-builder-move { margin-left: auto; }');
+    expect(CSS).toMatch(/\.quote-builder-controls \.quote-builder-move\s*\{\s*margin-left:\s*auto;/);
   });
 
   /**

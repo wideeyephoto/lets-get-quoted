@@ -16,6 +16,7 @@ create policy crew_self_read on public.crew
   );
 
 -- 2. quick stop priority zones owner policy
+drop policy if exists quick_stop_priority_zone_owner on public.quick_stop_priority_zones;
 drop policy if exists quick_stop_priority_zones_owner on public.quick_stop_priority_zones;
 create policy quick_stop_priority_zones_owner on public.quick_stop_priority_zones
   for all using (

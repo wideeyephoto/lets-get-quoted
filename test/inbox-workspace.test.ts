@@ -198,7 +198,7 @@ describe('the inbox is framed by the viewport', () => {
   });
 
   it('and the composer is not one of them', () => {
-    expect(WORKSPACE).toContain('.inbox-slate .inbox-thread-head,\n.inbox-slate .inbox-reply-area { flex: none; }');
+    expect(WORKSPACE).toMatch(/\.inbox-slate \.inbox-thread-head,\s*\.inbox-slate \.inbox-reply-area\s*\{\s*flex:\s*none;/);
   });
 
   it('the conversation list scrolls inside its own panel', () => {
@@ -212,7 +212,7 @@ describe('the inbox is framed by the viewport', () => {
    * built from it hides its last row — here, the reply box — until you scroll.
    */
   it('uses the live viewport height on a phone', () => {
-    expect(CSS).toContain('.app-main-sidenav .inbox-slate.wide-shell { min-height: calc(100dvh - 4.4rem); }');
+    expect(CSS).toMatch(/\.app-main-sidenav \.inbox-slate\.wide-shell\s*\{\s*min-height:\s*calc\(100dvh - 4\.4rem\);/);
   });
 });
 
@@ -234,8 +234,8 @@ describe('the customer column is really hidden when it is meant to be', () => {
    * width. It wrapped instead: three children, two tracks, third on a new row.
    */
   it('out-specifies the base rule instead of merely coming before it', () => {
-    expect(block).toContain('.inbox-layout > .inbox-context { display: none; }');
-    expect(block).not.toMatch(/^\s*\.inbox-context \{ display: none; \}/m);
+    expect(block).toMatch(/\.inbox-layout\s*>\s*\.inbox-context\s*\{\s*display:\s*none;/);
+    expect(block).not.toMatch(/^\s*\.inbox-context\s*\{\s*display:\s*none;\s*\}/m);
   });
 
   /**
@@ -250,7 +250,7 @@ describe('the customer column is really hidden when it is meant to be', () => {
   it('the base rule that beat it is still there, and still later in the file', () => {
     // If this ever stops being true the fix above is load-bearing for nothing,
     // and somebody should be told rather than left with a mystery selector.
-    expect(CSS.indexOf('.inbox-context { display: grid;')).toBeGreaterThan(CSS.indexOf('@media (max-width: 1180px)'));
+    expect(CSS.search(/\.inbox-context\s*\{\s*display:\s*grid;/)).toBeGreaterThan(CSS.indexOf('@media (max-width: 1180px)'));
   });
 });
 

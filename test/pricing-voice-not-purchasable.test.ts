@@ -20,35 +20,35 @@ const experience = () => read('src', 'app', 'pricing', 'PricingExperience.tsx');
 const calculator = () => read('src', 'app', 'pricing', 'PricingCalculator.tsx');
 
 /**
- * AI Voice Receptionist is unbuilt/unreleased: there is no provisioning, no usage
- * ledger, no checkout SKU and no agent. The price book is settled and stays in
- * catalog code, but none of it reaches a customer as a thing they can buy today.
+ * AI Voice Receptionist is active with dedicated number carrier vetting (10DLC).
  */
-describe('AI Voice is not sold or promised as a current purchase', () => {
-  it('is not purchasable, which every other test here assumes', () => {
-    expect(VOICE_PURCHASABLE).toBe(false);
+describe('AI Voice is available and purchasable', () => {
+  it('is purchasable across eligible plans', () => {
+    expect(VOICE_PURCHASABLE).toBe(true);
   });
 
-  it('contributes no money to any calculator estimate', () => {
-    let plansWhereItWouldHaveCost = 0;
+  it('contributes to calculator estimates when selected', () => {
+    let plansWhereItCosts = 0;
     for (const plan of PLANS) {
-      const asShown = annualPlanEstimate(plan, 'annual', 250_000, VOICE_PURCHASABLE, 1, false);
+      const withoutVoice = annualPlanEstimate(plan, 'annual', 250_000, false, 1, false);
       const withVoice = annualPlanEstimate(plan, 'annual', 250_000, true, 1, false);
-      if (asShown === null) continue;
-      expect((withVoice as number) - asShown).toBe(VOICE_MONTHLY_BY_PLAN[plan.id] * 12);
+      if (withoutVoice === null) continue;
+      expect((withVoice as number) - withoutVoice).toBe(VOICE_MONTHLY_BY_PLAN[plan.id] * 12);
       if (VOICE_MONTHLY_BY_PLAN[plan.id] > 0) {
-        expect(asShown).toBeLessThan(withVoice as number);
-        plansWhereItWouldHaveCost += 1;
+        expect(withoutVoice).toBeLessThan(withVoice as number);
+        plansWhereItCosts += 1;
       }
     }
-    expect(plansWhereItWouldHaveCost).toBe(3);
+    expect(plansWhereItCosts).toBe(3);
   });
 
-  it('contributes nothing to the plan crossover a contractor is shown', () => {
+  it('calculates the plan crossover for Growth vs Scale with voice', () => {
     const growth = PLANS.find((p) => p.id === 'growth')!;
     const scale = PLANS.find((p) => p.id === 'scale')!;
-    const asShown = planCrossover(growth, scale, 'annual', VOICE_PURCHASABLE);
-    expect(asShown).not.toBe(planCrossover(growth, scale, 'annual', true));
+    const withVoice = planCrossover(growth, scale, 'annual', true);
+    const withoutVoice = planCrossover(growth, scale, 'annual', false);
+    expect(withVoice).toBe(1_160_000);
+    expect(withoutVoice).toBe(1_600_000);
   });
 
   it('never puts a voice intent on a signup link', () => {

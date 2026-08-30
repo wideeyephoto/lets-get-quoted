@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { createAdminClient, requireOfficeContext, requireOwnerContext } from '@/lib/auth';
-import { cancelSubscriptionForAccountDeletion, loadCancellableSubscription } from '@/lib/billing/subscription-cancellation';
+import { cancelSubscriptionForAccountDeletion } from '@/lib/billing/subscription-cancellation';
 import { updateSite } from '@/lib/sites';
 import {
   DEFAULT_PORTAL_NAV_LABEL,

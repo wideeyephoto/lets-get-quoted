@@ -7,6 +7,8 @@ import { getAccountOwnerEmail, sendLeadNotificationEmail } from '@/lib/email';
 import { classifyEmail } from '@/lib/email-quality';
 import { createLead, getLeadTriage, LEAD_PRUNE_FLAGS, type Lead, type LeadTriage } from '@/lib/leads';
 import { parseAttribution, sanitizeAttribution } from '@/lib/attribution';
+import { uploadOfflineConversion } from '@/lib/google-ads-api';
+import { dispatchSpeedToLeadSms } from '@/lib/ad-speed-to-lead';
 import { deleteLeadPhotos, uploadLeadPhoto, createLeadPhotoUrls } from '@/lib/lead-photo-storage';
 import { analyzeLeadPhotos } from '@/lib/lead-photo-ai';
 import { isLeadVerificationValid } from '@/lib/lead-verification';
@@ -400,6 +402,27 @@ export async function POST(request: NextRequest) {
       sourcePage: request.headers.get('referer'),
       triage,
     });
+
+    if (attribution?.clickId && attribution.clickIdType === 'gclid') {
+      uploadOfflineConversion({
+        gclid: attribution.clickId,
+        conversionActionName: 'Lead Submitted',
+        orderId: lead.id,
+      }).catch((err) => console.warn('Offline conversion upload skipped:', err));
+    }
+
+    if (phone && (attribution?.clickId || attribution?.medium === 'cpc')) {
+      dispatchSpeedToLeadSms({
+        admin,
+        accountId: site.account_id,
+        recipientPhone: phone,
+        businessName: site.company_name,
+        leadName: name,
+        projectType: text(data, 'projectType', 100),
+        city: text(data, 'address', 240),
+        urgency: isHighValue ? 'emergency' : 'standard',
+      }).catch((err) => console.warn('Speed-to-lead SMS dispatch skipped:', err));
+    }
 
     await notifyOwner(admin, site, lead, request, { highValue: isHighValue, muteLow, smsEnabled, alertPhone });
 

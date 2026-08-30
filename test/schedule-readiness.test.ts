@@ -310,7 +310,7 @@ describe('the desktop queue collapses', () => {
     // Below 1024 the queue is an overlay and "collapse" is what Back does.
     expect(QUEUE).toContain('const showCollapseToggle = !isOverlay;');
     expect(ruleFor('.sched-queue-collapse')).toContain('display: none');
-    expect(CSS).toMatch(/@media \(min-width: 1024px\)[\s\S]{0,200}\.sched-queue-collapse \{ display: inline-flex; \}/);
+    expect(CSS).toMatch(/@media \(min-width: 1024px\)[\s\S]{0,200}\.sched-queue-collapse\s*\{\s*display:\s*inline-flex;/);
   });
 
   it('carries the count, so a closed rail says what is behind it', () => {

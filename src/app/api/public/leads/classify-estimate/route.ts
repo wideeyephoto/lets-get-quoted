@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/auth';
 import { getSiteContent } from '@/lib/site-content';
 import { estimatePostureBias } from '@/lib/estimate-posture';
-import { checkRateLimit, checkRateLimitStrict, clientIpFrom } from '@/lib/rate-limit';
+import { checkRateLimitStrict, clientIpFrom } from '@/lib/rate-limit';
 import {
   aiIntakeUsageGateEnabled,
   allowAiIntakeProviderAttempt,
@@ -14,7 +14,7 @@ import {
 import { isAiIntakeFlowKind } from '@/lib/ai-intake-thread';
 import { applyEstimateGuardrails } from '@/lib/estimate-guardrails';
 import { matchTradePreset } from '@/lib/trade-intake-presets';
-import { createContinuationToken, verifyContinuationToken, type EstimateContinuationTurn } from '@/lib/estimate-continuation-token';
+import { createContinuationToken, verifyContinuationToken } from '@/lib/estimate-continuation-token';
 
 export const runtime = 'nodejs';
 
@@ -49,8 +49,8 @@ function extractOutputText(payload: unknown): string {
 export async function POST(request: NextRequest) {
   const admin = createAdminClient();
   const ip = clientIpFrom(request.headers);
-  // Durable cross-instance limit on a paid-OpenAI endpoint (15/min per IP).
-  if (!(await checkRateLimit(admin, `classify:ip:${ip}`, 15, 60))) {
+  // Durable cross-instance limit on a paid-OpenAI endpoint (15/min per IP, fail-closed).
+  if (!(await checkRateLimitStrict(admin, `classify:ip:${ip}`, 15, 60))) {
     return NextResponse.json({ error: 'Too many requests.' }, { status: 429 });
   }
 

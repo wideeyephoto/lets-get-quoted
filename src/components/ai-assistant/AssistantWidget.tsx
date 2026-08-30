@@ -217,7 +217,7 @@ export default function AssistantWidget() {
         setIsLoading(false);
       }
     },
-    [input, attachedImage, messages, pathname, activeContext]
+    [input, attachedImage, messages, pathname, activeContext, companionId, companionTrade]
   );
 
   useEffect(() => {

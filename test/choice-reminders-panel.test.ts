@@ -180,8 +180,8 @@ describe('loading, success and failure', () => {
   });
 
   it('colours success green and failure red, and neither is the resting state', () => {
-    expect(GLOBALS).toContain('.choice-card .choice-save-saved { color: var(--good); }');
-    expect(GLOBALS).toContain('.choice-card .choice-save-error { color: var(--bad); }');
+    expect(GLOBALS).toMatch(/\.choice-card \.choice-save-saved\s*\{\s*color:\s*var\(--good\);/);
+    expect(GLOBALS).toMatch(/\.choice-card \.choice-save-error\s*\{\s*color:\s*var\(--bad\);/);
   });
 });
 
@@ -242,7 +242,7 @@ describe('accessibility', () => {
     // an author rule on the very element carrying the attribute, and an author
     // rule always beats the UA stylesheet's `[hidden] { display: none }` — so
     // without this the editor is permanently open and aria-expanded lies.
-    expect(GLOBALS).toContain('.choice-card .choice-editor[hidden] { display: none; }');
+    expect(GLOBALS).toMatch(/\.choice-card \.choice-editor\[hidden\]\s*\{\s*display:\s*none;/);
   });
 
   it('gives everything focusable a visible focus ring', () => {
@@ -265,7 +265,7 @@ describe('accessibility', () => {
   it('leaves the disabled fade to the theme, which cares about paper', () => {
     // `:root[data-theme='light'] .btn:disabled` raises opacity to 0.72 because
     // 0.45 is unreadable printed. A rule here at (0,5,0) would beat it.
-    expect(GLOBALS).toContain('.choice-card .choice-foot .btn.primary:disabled { cursor: not-allowed; }');
+    expect(GLOBALS).toMatch(/\.choice-card \.choice-foot \.btn\.primary:disabled\s*\{\s*cursor:\s*not-allowed;/);
   });
 
   it('uses real buttons rather than clickable spans', () => {
@@ -281,13 +281,13 @@ describe('accessibility', () => {
 describe('the layout', () => {
   it('is two columns', () => {
     expect(PANEL).toContain('className="choice-grid"');
-    expect(GLOBALS).toMatch(/\.choice-card \.choice-grid \{ display: grid; grid-template-columns: 1fr 1fr;/);
+    expect(GLOBALS).toMatch(/\.choice-card \.choice-grid\s*\{\s*display:\s*grid;\s*grid-template-columns:\s*1fr 1fr;/);
   });
 
   it('stacks on a narrow screen, at the same breakpoint as its neighbours', () => {
     // The whole tab reflows as one thing rather than card by card.
-    expect(GLOBALS).toMatch(/@media \(max-width: 900px\) \{\s*\.choice-card \.choice-grid \{ grid-template-columns: 1fr;/);
-    expect(GLOBALS).toMatch(/@media \(max-width: 900px\) \{\s*\.followup-card \.followup-grid \{ grid-template-columns: 1fr;/);
+    expect(GLOBALS).toMatch(/@media \(max-width: 900px\)[\s\S]*?\.choice-card \.choice-grid\s*\{\s*grid-template-columns:\s*1fr;/);
+    expect(GLOBALS).toMatch(/@media \(max-width: 900px\)[\s\S]*?\.followup-card \.followup-grid\s*\{\s*grid-template-columns:\s*1fr;/);
   });
 
   it('wraps its footer rather than overflowing it', () => {
@@ -312,11 +312,11 @@ describe('the look', () => {
     // An automation you have not switched on is a choice, not a fault. Painting
     // it as a fault trains people to stop reading the colour.
     expect(GLOBALS).toMatch(/\.choice-card \.choice-state \{[\s\S]*?color: var\(--good\);/);
-    expect(GLOBALS).toContain('.choice-card.is-paused .choice-state { color: var(--mute-t60); }');
+    expect(GLOBALS).toMatch(/\.choice-card\.is-paused \.choice-state\s*\{\s*color:\s*var\(--mute-t60\);/);
   });
 
   it('uses the app’s own muted-text and border tokens rather than new colours', () => {
-    expect(GLOBALS).toMatch(/\.choice-card \.choice-fact > span \{[^}]*color: var\(--mute-t50\);/);
+    expect(GLOBALS).toMatch(/\.choice-card \.choice-fact\s*>\s*span\s*\{[^}]*color:\s*var\(--mute-t50\);/);
     expect(GLOBALS).toMatch(/\.choice-card \.choice-fact \{[\s\S]*?border: 1px solid var\(--edge-t12\);/);
   });
 
@@ -324,18 +324,18 @@ describe('the look', () => {
     // `.choice-card .choice-fact > span` is (0,2,1). A bare `.choice-fact-note`
     // class is (0,2,0) and loses both declarations to it, so the note has to
     // qualify the type selector to win.
-    expect(GLOBALS).toContain('.choice-card .choice-fact > span.choice-fact-note');
+    expect(GLOBALS).toMatch(/\.choice-card \.choice-fact\s*>\s*span\.choice-fact-note/);
   });
 
   it('puts the orange on the actions', () => {
-    expect(GLOBALS).toMatch(/\.choice-card \.choice-edit > summary \{[\s\S]*?color: var\(--accent-ink\);/);
+    expect(GLOBALS).toMatch(/\.choice-card \.choice-edit\s*>\s*summary\s*\{[\s\S]*?color:\s*var\(--accent-ink\);/);
     expect(GLOBALS).toMatch(/\.choice-card \.choice-edit-message \{[\s\S]*?color: var\(--accent-ink\);/);
     expect(PANEL).toContain('className="btn primary"');
     // The secondary variant that actually has a base rule. `.btn.ghost`, which
     // the other cards' test buttons wear, is styled only inside
     // `.selection-chosen` and renders as a plain `.btn` everywhere else.
     expect(PANEL).toContain('className="btn secondary"');
-    expect(GLOBALS).toContain('.btn.secondary {');
+    expect(GLOBALS).toMatch(/\.btn\.secondary\s*\{/);
   });
 
   it('introduces no new colour literals — every value is a token', () => {

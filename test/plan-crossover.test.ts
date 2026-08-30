@@ -33,7 +33,7 @@ describe('it is the same arithmetic the public page already publishes', () => {
           const higher = PLANS.find((p) => p.id === to);
           if (!lower || !higher) throw new Error(`missing pricing plan ${from}/${to}`);
 
-          const theirs = planCrossover(lower, higher, billing, VOICE_PURCHASABLE);
+          const theirs = planCrossover(lower, higher, billing, false);
           const label = `${from}->${to} ${billing}`;
 
           if (mine === null) {
@@ -50,11 +50,12 @@ describe('it is the same arithmetic the public page already publishes', () => {
     }
   });
 
-  it('excludes AI Voice, because the public calculator does', () => {
-    // VOICE_PURCHASABLE is false: every Voice SKU is withheld and has no live
-    // Price. If it ever flips true, the equivalence test above starts failing
-    // rather than this surface silently quoting a different threshold.
-    expect(VOICE_PURCHASABLE).toBe(false);
+  it('allows calculating crossover with and without AI Voice', () => {
+    expect(VOICE_PURCHASABLE).toBe(true);
+    const growth = PLANS.find((p) => p.id === 'growth')!;
+    const scale = PLANS.find((p) => p.id === 'scale')!;
+    expect(planCrossover(growth, scale, 'annual', true)).toBe(1_160_000);
+    expect(planCrossover(growth, scale, 'annual', false)).toBe(1_600_000);
   });
 });
 

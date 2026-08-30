@@ -143,9 +143,7 @@ describe('the slot targets', () => {
     expect(CSS.slice(at, CSS.indexOf('}', at))).toContain('opacity: 0');
     expect(CSS).toContain('.sched-tl-slot:hover,\n.sched-tl-slot:focus-visible');
     expect(CSS).toContain('.sched-tl-col.armable .sched-tl-slot {');
-    // Hover does not exist on a touchscreen, where the first tap would be the
-    // one that books something.
-    expect(CSS).toContain('@media (hover: none) {\n  .sched-tl-slot { opacity: 0.5;');
+    expect(CSS).toMatch(/@media \(hover: none\)\s*\{\s*\.sched-tl-slot\s*\{\s*opacity:\s*0\.5;/);
   });
 });
 

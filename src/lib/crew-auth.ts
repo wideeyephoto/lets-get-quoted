@@ -143,11 +143,12 @@ export async function revokeCrewAccess(admin: SupabaseClient, accountId: string,
 export async function linkCrewUserByEmail(userId: string, email: string): Promise<string[]> {
   const admin = createAdminClient();
   const normalized = email.trim().toLowerCase();
+  const sanitized = normalized.replace(/[%_\\]/g, '\\$&');
 
   const { data: crewRows } = await admin
     .from('crew')
     .select('id, account_id, user_id, access_revoked_at')
-    .ilike('email', normalized)
+    .ilike('email', sanitized)
     .is('deleted_at', null)
     .eq('active', true);
 
@@ -236,15 +237,15 @@ async function loadBusinessNames(admin: SupabaseClient, accountIds: string[]): P
 async function loadFieldAccountRow(
   admin: SupabaseClient,
   accountId: string,
-): Promise<{ business_name?: string | null; time_clock_mode?: unknown } | null> {
-  const full = await admin.from('accounts').select('business_name, time_clock_mode').eq('id', accountId).maybeSingle();
-  if (!full.error) return full.data as { business_name?: string | null; time_clock_mode?: unknown } | null;
+): Promise<{ business_name?: string | null; time_clock_mode?: unknown; suspended_at?: string | null } | null> {
+  const full = await admin.from('accounts').select('business_name, time_clock_mode, suspended_at').eq('id', accountId).maybeSingle();
+  if (!full.error) return full.data as { business_name?: string | null; time_clock_mode?: unknown; suspended_at?: string | null } | null;
   const legacy = await admin.from('accounts').select('business_name').eq('id', accountId).maybeSingle();
   return (legacy.data as { business_name?: string | null } | null) ?? null;
 }
 
 /** Why a crew session couldn't be resolved. Each maps to a different answer. */
-export type CrewContextRefusal = 'no-session' | 'not-crew' | 'choose-business';
+export type CrewContextRefusal = 'no-session' | 'not-crew' | 'choose-business' | 'suspended';
 
 export type CrewContextResult = { ok: true; context: CrewContext } | { ok: false; reason: CrewContextRefusal };
 
@@ -287,6 +288,11 @@ export async function loadCrewContext(): Promise<CrewContextResult> {
     admin.from('sites').select('company_name').eq('account_id', crew.account_id).limit(1).maybeSingle(),
     loadFieldAccountRow(admin, crew.account_id),
   ]);
+
+  if (accountRow?.suspended_at) {
+    return { ok: false, reason: 'suspended' };
+  }
+
   // pickBusinessName, not `site || account`: sites.company_name is itself
   // seeded to the "My Business" placeholder, so preferring the site is not
   // enough — the placeholder has to be treated as absent wherever it appears.
@@ -327,6 +333,7 @@ export async function requireCrewContext(): Promise<CrewContext> {
   if (resolved.ok) return resolved.context;
   if (resolved.reason === 'no-session') redirect('/field/login');
   if (resolved.reason === 'not-crew') redirect('/field/login?error=not-crew');
+  if (resolved.reason === 'suspended') redirect('/account-suspended');
   redirect('/field/choose');
 }
 

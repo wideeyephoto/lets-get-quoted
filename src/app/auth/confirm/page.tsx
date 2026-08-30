@@ -32,12 +32,11 @@ function ConfirmPageInner() {
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? ''
     );
 
-    supabase.auth.verifyOtp({ token_hash: tokenHash, type }).then(({ error, data }) => {
+    supabase.auth.verifyOtp({ token_hash: tokenHash, type }).then(({ error }) => {
       if (error) {
         console.error('verifyOtp error:', error);
         setErrorMessage(error.message);
       } else {
-        console.log('verifyOtp success:', data);
         router.replace('/dashboard');
       }
     }).catch((err) => {

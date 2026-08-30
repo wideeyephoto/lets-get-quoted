@@ -192,18 +192,19 @@ describe('seven columns at tablet width', () => {
    * `@media (max-width: 900px)` blocks; indexOf returns the first one, which
    * belongs to somebody else entirely and quietly tests nothing.
    */
-  function mediaAround(needle: string): { query: string; upTo: string } {
-    const at = CSS.indexOf(needle);
+  function mediaAround(needle: RegExp | string): { query: string; upTo: string } {
+    const at = typeof needle === 'string' ? CSS.indexOf(needle) : CSS.search(needle);
     expect(at, `${needle} is not in the stylesheet`).toBeGreaterThan(-1);
     const open = CSS.lastIndexOf('@media', at);
     expect(open, `${needle} is not inside a media query at all`).toBeGreaterThan(-1);
+    const matchLen = typeof needle === 'string' ? needle.length : (CSS.slice(at).match(needle)?.[0].length ?? 0);
     return {
       query: CSS.slice(open, CSS.indexOf('{', open)).replace(/\s+/g, ' ').trim(),
-      upTo: CSS.slice(open, at + needle.length),
+      upTo: CSS.slice(open, at + matchLen),
     };
   }
 
-  const SHRUNK = '.sched-tl-day-head strong { font-size: 1.15rem; }';
+  const SHRUNK = /\.sched-tl-day-head strong\s*\{\s*font-size:\s*1\.15rem;/;
   const tablet = mediaAround(SHRUNK);
 
   it('shrinks the date rather than rewrapping the header', () => {
@@ -214,7 +215,7 @@ describe('seven columns at tablet width', () => {
   });
 
   it('and the date stays clearly larger than the weekday', () => {
-    const shrunk = Number(/([\d.]+)rem/.exec(SHRUNK)?.[1]);
+    const shrunk = 1.15;
     expect(shrunk / rem(ruleFor('.sched-tl-day-head small'), 'font-size')).toBeGreaterThan(1.5);
   });
 });

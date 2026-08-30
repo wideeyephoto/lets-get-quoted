@@ -207,7 +207,7 @@ export function sanitizeAttribution(raw: unknown): LeadAttribution | null {
   const term = sanitizeString(obj.term, 100);
   const content = sanitizeString(obj.content, 100);
   const clickId = sanitizeString(obj.clickId, 150);
-  const clickIdType = (['fbclid', 'gclid', 'ttclid', 'msclkid', 'other'] as const).includes(obj.clickIdType as any)
+  const clickIdType = (['fbclid', 'gclid', 'ttclid', 'msclkid', 'other'] as const).includes(obj.clickIdType as 'fbclid' | 'gclid' | 'ttclid' | 'msclkid' | 'other')
     ? (obj.clickIdType as LeadAttribution['clickIdType'])
     : undefined;
   const referrer = sanitizeString(obj.referrer, 300);

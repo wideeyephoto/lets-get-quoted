@@ -99,6 +99,7 @@ export async function middleware(request: NextRequest) {
   if (request.nextUrl.pathname === '/dashboard/sites/preview') {
     requestHeaders.set('x-lgq-bare-preview', '1');
   }
+  requestHeaders.set('x-pathname', request.nextUrl.pathname);
   requestHeaders.set(cspHeader, csp);
 
   let response = applyCsp(NextResponse.next({ request: { headers: requestHeaders } }));

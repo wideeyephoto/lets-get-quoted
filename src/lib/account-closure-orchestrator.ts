@@ -83,7 +83,7 @@ export async function claimClosureJob(
   admin: SupabaseClient,
   leaseToken: string,
   leaseDurationSeconds = 300,
-): Promise<any | null> {
+): Promise<Record<string, unknown> | null> {
   const { data, error } = await admin.rpc('claim_account_closure_job', {
     p_lease_token: leaseToken,
     p_lease_duration_seconds: leaseDurationSeconds,
@@ -127,7 +127,7 @@ export async function processClosureJob(
   }
 
   const accountId = job.closure_subject_id;
-  let handles = decryptVendorHandles(job.encrypted_vendor_handles);
+  const handles = decryptVendorHandles(job.encrypted_vendor_handles);
 
   // 2. Track A: Local Data Disposal (Independent of vendor status)
   if (job.local_disposal_state !== 'completed') {

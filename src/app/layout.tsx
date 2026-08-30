@@ -201,7 +201,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           </AppShellProvider>
         </ThemeProvider>
         {isStandaloneSite ? null : <GoogleTag />}
-        <ThemeTuner />
+        {process.env.NODE_ENV === 'development' ? <ThemeTuner /> : null}
       </body>
     </html>
   );

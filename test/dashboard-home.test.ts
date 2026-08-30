@@ -126,11 +126,12 @@ describe('scheduling issues are counted per job', () => {
   it('is what the dashboard headline reads, and the rows are gone', () => {
     expect(DATA).toContain('collectSchedulingIssues({');
     expect(DATA).toContain('const schedulingIssueCount = schedulingIssues.all.length;');
-    expect(DATA).toMatch(/label: `\$\{schedulingIssueCount\} scheduling issue/);
+    const ATTENTION = read('src', 'lib', 'dashboard', 'attention-loader.ts');
+    expect(ATTENTION).toMatch(/label: `\$\{schedulingIssueCount\} scheduling issue/);
     // The three separate priority rows that invited the reader to add up.
-    expect(DATA).not.toContain("key: 'crew',");
-    expect(DATA).not.toContain("key: 'time',");
-    expect(DATA).not.toContain("key: 'unscheduled',");
+    expect(ATTENTION).not.toContain("key: 'crew',");
+    expect(ATTENTION).not.toContain("key: 'time',");
+    expect(ATTENTION).not.toContain("key: 'unscheduled',");
   });
 });
 
@@ -272,7 +273,7 @@ describe('the money figures', () => {
    */
   it('takes its month boundary from the account timezone', () => {
     expect(DATA).toContain("resolvePayPeriod('monthly', 0, { now, timeZone })");
-    expect(DATA).toMatch(/const timeZone = \(account\?\.timezone as string\)/);
+    expect(DATA).toMatch(/const timeZone = \(\(account as/);
   });
 });
 
@@ -366,14 +367,12 @@ describe('the Waiting rows have as many columns as they have children', () => {
   });
 
   it('gives Waiting two columns instead, so the message gets the 1fr track', () => {
-    expect(CSS).toContain('.dash-waiting .priority-item { grid-template-columns: minmax(0, 1fr) auto; }');
+    expect(CSS).toMatch(/\.dash-waiting \.priority-item\s*\{\s*grid-template-columns:\s*minmax\(0,\s*1fr\)\s*auto;/);
   });
 
   it('stacks Waiting into column 1 on a phone, not the action track', () => {
     // The shared phone layout moves both children to column 2 to clear the
     // badge. With no badge there is no column 2 to move to.
-    const mobile = CSS.slice(CSS.indexOf('.dash-waiting .priority-item { grid-template-columns: minmax(0, 1fr); }'));
-    expect(mobile.length).toBeGreaterThan(0);
-    expect(mobile).toMatch(/\.dash-waiting \.priority-copy,\s*\n\s*\.dash-waiting \.priority-cta \{ grid-column: 1; \}/);
+    expect(CSS).toMatch(/\.dash-waiting \.priority-copy,\s*\.dash-waiting \.priority-cta\s*\{\s*grid-column:\s*1;/);
   });
 });

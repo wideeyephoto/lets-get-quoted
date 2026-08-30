@@ -20,6 +20,7 @@ import { usePathname } from 'next/navigation';
 const SECTIONS = [
   { path: '', label: 'Overview' },
   { path: '/campaigns', label: 'Campaigns' },
+  { path: '/ads', label: 'Google Ads' },
   { path: '/links', label: 'Link & QR Builder' },
   { path: '/blog', label: 'Blog' },
   { path: '/performance', label: 'Performance & ROI' },

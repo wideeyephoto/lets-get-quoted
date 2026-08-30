@@ -673,6 +673,16 @@ export const SMS_CATALOGUE: SmsCatalogueEntry[] = [
       issueSummary: 'Water heater maintenance and inspection',
     }),
   },
+  {
+    id: 'speed-to-lead',
+    title: 'Ad lead instant response',
+    trigger: 'Instant SMS response sent to paid advertising leads within 60 seconds of form submission',
+    audience: 'lead',
+    control: always('Triggered on paid ad lead intake'),
+    body: withOptOut(
+      `Hi ${SAMPLE.first}, this is ${SAMPLE.business}. We received your inquiry and are reviewing your project details. We will be in touch shortly!`,
+    ),
+  },
 ];
 
 /** Every sender this catalogue claims to cover, checked against lib/sms by test. */
@@ -709,6 +719,7 @@ export const CATALOGUE_SENDERS = [
   'sendQuickStopOfferSms',
   'sendQuickStopStatusSms',
   'sendQuoteFollowupSms',
+  'sendSpeedToLeadSms',
   // One sender, four messages: the offer, the confirmation, the covered notice
   // and the withdrawal. They differ by event_type in the sms_events ledger, and
   // all four are listed above.

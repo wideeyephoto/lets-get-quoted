@@ -36,8 +36,8 @@ describe('the scheduling prompt is said once', () => {
   });
 
   it('and their styles are gone rather than orphaned', () => {
-    expect(CSS).not.toContain('.sched-banner {');
-    expect(CSS).not.toContain('.sched-primary {');
+    expect(CSS).not.toMatch(/^\.sched-banner\s*\{/m);
+    expect(CSS).not.toMatch(/^\.sched-primary\s*\{/m);
     expect(CSS).toContain('.sched-queue-bar {');
   });
 

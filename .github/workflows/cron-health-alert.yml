@@ -1,0 +1,26 @@
+name: Cron Health Monitor & Alerting
+
+on:
+  schedule:
+    # Run every 30 minutes to ensure automated alerting on silent or failing cron workers
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+
+jobs:
+  cron-health:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Inspect Cron Health (90-minute window)
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: node scripts/inspect-cron-health.mjs 90 --strict

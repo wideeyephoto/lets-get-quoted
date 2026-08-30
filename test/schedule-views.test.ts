@@ -110,7 +110,7 @@ describe('closed days and busy days are not the same day', () => {
  */
 describe('the toolbar container queries', () => {
   it('sit after the rules they override', () => {
-    const base = GLOBALS.indexOf('.calendar-view-trigger-text { display: flex;');
+    const base = GLOBALS.search(/\.calendar-view-trigger-text\s*\{\s*display:\s*flex;/);
     const query = GLOBALS.indexOf('@container caltoolbar (max-width: 780px)');
     expect(base).toBeGreaterThan(0);
     expect(query).toBeGreaterThan(base);

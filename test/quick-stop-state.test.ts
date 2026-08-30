@@ -342,11 +342,11 @@ describe('the three tabs', () => {
     const phone = css.slice(css.indexOf('@media (max-width: 640px)', css.indexOf('.qs-tabpanel')));
     // min-width: 0 is what lets `flex: 1 1 0` actually divide the row.
     expect(phone).toContain('min-width: 0');
-    expect(phone).toContain('.qs-tab small { display: none; }');
+    expect(phone).toMatch(/\.qs-tab small\s*\{\s*display:\s*none;/);
 
     /* The app header is fixed, so a deep link put the section's own heading
        underneath it and landed on the first field. */
-    expect(css).toContain('.qs-tabpanel [id] { scroll-margin-top:');
+    expect(css).toMatch(/\.qs-tabpanel \[id\]\s*\{\s*scroll-margin-top:/);
   });
 
   it('moved the pitch and the past-work panel off Today', () => {

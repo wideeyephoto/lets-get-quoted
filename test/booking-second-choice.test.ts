@@ -331,8 +331,8 @@ describe('the contractor answering it', () => {
 
 describe('the two windows do not read as one range', () => {
   it('stacks and numbers them instead of running them together', () => {
-    expect(CSS).toContain('.booking-request-choices { display: grid;');
-    expect(CSS).toContain('.booking-request-who:has(.booking-request-choices) { display: grid;');
+    expect(CSS).toMatch(/\.booking-request-choices\s*\{\s*display:\s*grid;/);
+    expect(CSS).toMatch(/\.booking-request-who:has\(\.booking-request-choices\)\s*\{\s*display:\s*grid;/);
     expect(PANEL).toContain('<em>1st</em>');
     expect(PANEL).toContain('<em>2nd</em>');
   });
@@ -347,16 +347,16 @@ describe('the two windows do not read as one range', () => {
   });
 
   it('gives the disclosure a real tap target', () => {
-    const at = CSS.indexOf('.book-backup-disclose > summary {');
+    const at = CSS.search(/\.book-backup-disclose\s*>\s*summary\s*\{/);
     expect(at).toBeGreaterThan(-1);
     const rule = CSS.slice(at, CSS.indexOf('}', at));
     expect(rule).toContain('min-height: 44px');
     // …and a focus ring, since summary is in the tab order.
-    expect(CSS).toContain('.book-backup-disclose > summary:focus-visible');
+    expect(CSS).toMatch(/\.book-backup-disclose\s*>\s*summary:focus-visible/);
   });
 
   it('does not animate the chevron for somebody who asked it not to', () => {
     const at = CSS.lastIndexOf('@media (prefers-reduced-motion: reduce)', CSS.indexOf('.book-done-when-or'));
-    expect(CSS.slice(at, CSS.indexOf('}', CSS.indexOf('}', at) + 1))).toContain('.book-backup-disclose > summary::after');
+    expect(CSS.slice(at, CSS.indexOf('}', CSS.indexOf('}', at) + 1))).toMatch(/\.book-backup-disclose\s*>\s*summary::after/);
   });
 });

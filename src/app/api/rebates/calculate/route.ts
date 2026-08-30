@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { calculateCleanEnergyRebates, type CleanEnergyWorkCategory } from '@/lib/rebates/clean-energy-rebate-engine';
+import { checkRateLimit, clientIpFrom } from '@/lib/rate-limit';
+import { createAdminClient } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -8,6 +10,11 @@ export const dynamic = 'force-dynamic';
  * Calculates Federal Inflation Reduction Act (IRA) tax credits and local utility rebates for quotes & estimates.
  */
 export async function POST(request: Request) {
+  const admin = createAdminClient();
+  const ip = clientIpFrom(request.headers);
+  if (!(await checkRateLimit(admin, `rebatecalc:ip:${ip}`, 30, 60))) {
+    return NextResponse.json({ error: 'Too many requests.' }, { status: 429 });
+  }
   let body: {
     category?: CleanEnergyWorkCategory;
     state?: string;

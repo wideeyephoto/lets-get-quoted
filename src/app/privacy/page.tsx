@@ -114,7 +114,8 @@ export default function PrivacyPolicyPage() {
             <li>Accounting integration services (Intuit Inc. for QuickBooks, where connected).</li>
             <li>Artificial intelligence inference platforms (OpenAI, LLC and Google GenAI) operating under commitments not to train public foundation models on customer business data.</li>
             <li>Email delivery providers (Resend, Inc.).</li>
-            <li>Mapping, geocoding, and conversion analytics providers (Google LLC, operating with Consent Mode controls).</li>
+            <li>Property intelligence and market valuation providers (RentCast, Inc., for address-based structural estimates).</li>
+            <li>Mapping, geocoding, and conversion analytics providers (Google LLC, operating with Consent Mode controls, and optional Meta Platforms, Inc. pixels configured by contractors).</li>
           </ul>
           <p>
             For contractors processing personal data subject to state privacy regulations (such as the CCPA), our{' '}
