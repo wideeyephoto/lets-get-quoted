@@ -1660,17 +1660,34 @@ export default function ManagedAdsScreen({
                 </div>
 
                 <div>
-                  <label
-                    style={{
-                      fontSize: '0.75rem',
-                      fontWeight: 700,
-                      color: 'var(--foreground)',
-                      display: 'block',
-                      marginBottom: '0.35rem',
-                    }}
-                  >
-                    Active Trade Specialties ({selectedServices.length} Selected)
-                  </label>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                    <label
+                      style={{
+                        fontSize: '0.75rem',
+                        fontWeight: 700,
+                        color: 'var(--foreground)',
+                      }}
+                    >
+                      Active Trade Specialties ({selectedServices.length} Selected)
+                    </label>
+                    <div style={{ display: 'flex', gap: '0.35rem' }}>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedServices(availableServices)}
+                        className={styles.quickDayLink}
+                      >
+                        Select All
+                      </button>
+                      <span style={{ color: 'var(--muted)', fontSize: '0.7rem' }}>·</span>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedServices([])}
+                        className={styles.quickDayLink}
+                      >
+                        Clear
+                      </button>
+                    </div>
+                  </div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
                     {availableServices.map((service) => {
                       const isSel = selectedServices.includes(service);
@@ -2443,6 +2460,48 @@ export default function ManagedAdsScreen({
               </div>
             </div>
           )}
+
+          {/* Dynamic Campaign Launch Configuration Summary Deck */}
+          <div className={styles.launchSummaryCard}>
+            <div className={styles.launchSummaryHeader}>
+              <span className={styles.launchSummaryTitle}>⚡ Campaign Launch Blueprint</span>
+              <span style={{ fontSize: '0.68rem', color: '#10b981', fontWeight: 700 }}>
+                ● Configured &amp; Ready
+              </span>
+            </div>
+
+            <div className={styles.launchSummaryGrid}>
+              <div className={styles.launchSummaryPill}>
+                <span className={styles.launchSummaryPillLabel}>Selected Plan</span>
+                <strong className={styles.launchSummaryPillValue}>
+                  {fundingModel === 'weekly_drip'
+                    ? `${currentBundle.name} · $${currentBundle.weeklyAmountDollars}/wk`
+                    : `Wallet · $${walletDepositDollars} Dep`}
+                </strong>
+              </div>
+
+              <div className={styles.launchSummaryPill}>
+                <span className={styles.launchSummaryPillLabel}>Target Geo</span>
+                <strong className={styles.launchSummaryPillValue}>
+                  📍 {city.split(',')[0]} (±{radius}m)
+                </strong>
+              </div>
+
+              <div className={styles.launchSummaryPill}>
+                <span className={styles.launchSummaryPillLabel}>Active Days &amp; Hours</span>
+                <strong className={styles.launchSummaryPillValue}>
+                  🗓️ {activeDaysCount}d · {allHours ? '24h' : `${formatHourLabel(startHour)}–${formatHourLabel(endHour)}`}
+                </strong>
+              </div>
+
+              <div className={styles.launchSummaryPill}>
+                <span className={styles.launchSummaryPillLabel}>Projected Pipeline</span>
+                <strong className={styles.launchSummaryPillValue} style={{ color: '#10b981' }}>
+                  📈 ~{roiMetrics.effectiveLeads} Leads ({roiMetrics.roas}x ROAS)
+                </strong>
+              </div>
+            </div>
+          </div>
 
           {/* SMS Billing Alerts Opt-In Card with 2FA Phone Verification */}
           <div style={{ background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '8px', padding: '0.75rem', marginBottom: '1rem', textAlign: 'left' }}>

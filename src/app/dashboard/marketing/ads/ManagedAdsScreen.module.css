@@ -1887,4 +1887,63 @@
   user-select: none;
 }
 
+/* Campaign Launch Summary Deck */
+.launchSummaryCard {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 0.75rem 0.85rem;
+  margin-top: 1rem;
+  margin-bottom: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.launchSummaryHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.launchSummaryTitle {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--muted, #9ca3af);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.launchSummaryGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.45rem;
+}
+
+.launchSummaryPill {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  padding: 0.35rem 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.launchSummaryPillLabel {
+  font-size: 0.65rem;
+  color: var(--muted, #9ca3af);
+  font-weight: 600;
+}
+
+.launchSummaryPillValue {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--foreground);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+
 
