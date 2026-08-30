@@ -301,8 +301,8 @@ export default function AiAdsSimulator() {
               </strong>
               <div>
                 {allKeywords.slice(0, 8).map((kw) => (
-                  <span key={kw.keyword} className={styles.keywordPillTarget}>
-                    [{kw.keyword}]
+                  <span key={kw} className={styles.keywordPillTarget}>
+                    [{kw}]
                   </span>
                 ))}
               </div>
