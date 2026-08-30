@@ -263,293 +263,103 @@ create policy quick_stop_priority_zones_owner on public.quick_stop_priority_zone
 -- ----------------------------------------------------------------------------
 -- 5. Outbound SMS Freeze on Suspended Accounts
 -- ----------------------------------------------------------------------------
-create or replace function public.claim_sms_delivery_tasks(p_batch_size integer)
-returns table (
-  work_claim_token uuid,
-  sms_event_id uuid,
-  account_id uuid,
-  phone_number text,
-  body text,
-  message_kind text,
-  billing_category text,
-  sender_purpose text,
-  attempt_number integer,
-  lease_expires_at timestamptz
-)
-language plpgsql
-security definer
-set search_path = pg_catalog, pg_temp
-set timezone to 'UTC'
-as $$
+-- SOURCE-PATCH, not a rewrite. An earlier draft re-authored both
+-- claim_sms_delivery_tasks and stage_sms_delivery from scratch and was refused
+-- in review: the stage rewrite selected sms_sender_numbers columns that do not
+-- exist (sender_purpose / status / e164 -- the live names are purpose,
+-- provisioning_status + assignment_state + inbound_ready + suspended_at, and
+-- e164_number), dropped the shared-number branch (the only production sender
+-- has account_id IS NULL, so every send would have returned blocked_sender),
+-- dropped the STOP/keyword opt-out gate, and dropped the sms_events
+-- provider + sender_number_id pin write. The claim rewrite dropped its three
+-- fail-closed stale-lease guards. plpgsql bodies are only syntax-parsed at
+-- CREATE, so all of that would have applied cleanly and detonated on the first
+-- outbound text.
+--
+-- claim_sms_delivery_tasks is deliberately NOT touched: the freeze does not
+-- need a claim-time filter. request_account_closure_atomic (section 6) cancels
+-- everything queued at closure time, and the stage-time guard below catches
+-- anything enqueued afterwards.
+--
+-- The patch reads the installed body, inserts ONE guard after the lease
+-- validation, and refuses on drift -- the same idiom as the payment-rail
+-- patch migrations. The inserted cancel block is a copy of the consent-cancel
+-- shape the live body already uses three times, so it satisfies
+-- sms_delivery_tasks_state_shape by construction, and
+-- 'account_suspended_closed' matches sms_delivery_tasks_last_error_code_check
+-- ('^[a-z][a-z0-9_]{2,99}$').
+do $patch$
 declare
-  v_now timestamptz := pg_catalog.clock_timestamp();
-  v_task public.sms_delivery_tasks%rowtype;
-  v_token uuid;
-  v_lease timestamptz;
+  v_def text;
+  v_needle text;
+  v_guard text;
 begin
-  if p_batch_size is null or p_batch_size not between 1 and 25 then
-    raise exception 'SMS delivery batch size must be between 1 and 25'
-      using errcode = '22023';
-  end if;
+  select pg_get_functiondef(p.oid) into v_def
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+   where n.nspname = 'public'
+     and p.proname = 'stage_sms_delivery'
+     and pg_get_function_identity_arguments(p.oid)
+         = 'p_sms_event_id uuid, p_claim_token uuid, p_provider text';
 
-  -- Recover stale leases
-  for v_task in
-    select t.*
-      from public.sms_delivery_tasks t
-     where t.task_state = 'leased'
-       and t.lease_expires_at <= v_now
-     order by t.lease_expires_at, t.sms_event_id
-     for update skip locked
-  loop
-    if v_task.request_started_at is not null then
-      update public.sms_events e
-         set status = 'indeterminate',
-             error_reason = 'sms_delivery_unknown_after_lease_expiry',
-             indeterminate_at = v_now,
-             updated_at = v_now
-       where e.id = v_task.sms_event_id
-         and e.status = 'sending';
-      update public.sms_delivery_attempts a
-         set outcome = 'indeterminate',
-             error_code = 'sms_delivery_unknown_after_lease_expiry',
-             finished_at = v_now
-       where a.claim_token = v_task.claim_token
-         and a.outcome is null;
-      update public.sms_delivery_tasks t
-         set task_state = 'indeterminate',
-             claim_token = null,
-             lease_expires_at = null,
-             last_error_code = 'sms_delivery_unknown_after_lease_expiry',
-             indeterminate_at = v_now,
-             updated_at = v_now
-       where t.sms_event_id = v_task.sms_event_id;
-    elsif v_task.attempt_count >= 8 then
-      update public.sms_events e
-         set status = 'failed',
-             error_reason = 'sms_delivery_attempt_limit_reached',
-             failed_at = v_now,
-             updated_at = v_now
-       where e.id = v_task.sms_event_id
-         and e.status = 'queued';
-      update public.sms_delivery_attempts a
-         set outcome = 'terminal_failure',
-             error_code = 'sms_delivery_attempt_limit_reached',
-             finished_at = v_now
-       where a.claim_token = v_task.claim_token
-         and a.outcome is null;
-      update public.sms_delivery_tasks t
-         set task_state = 'failed', claim_token = null,
-             lease_expires_at = null,
-             last_error_code = 'sms_delivery_attempt_limit_reached',
-             failed_at = v_now, updated_at = v_now
-       where t.sms_event_id = v_task.sms_event_id;
-    else
-      update public.sms_delivery_attempts a
-         set outcome = 'lease_expired',
-             error_code = 'sms_delivery_pre_request_lease_expired',
-             finished_at = v_now
-       where a.claim_token = v_task.claim_token
-         and a.outcome is null;
-      update public.sms_delivery_tasks t
-         set task_state = 'queued', claim_token = null,
-             lease_expires_at = null, available_at = v_now,
-             last_error_code = 'sms_delivery_pre_request_lease_expired',
-             updated_at = v_now
-       where t.sms_event_id = v_task.sms_event_id;
-    end if;
-  end loop;
-
-  -- Select queued work only for ACTIVE (non-suspended) accounts
-  for v_task in
-    select t.*
-      from public.sms_delivery_tasks t
-      join public.sms_events e on e.id = t.sms_event_id
-      join public.accounts a on a.id = e.account_id
-     where t.task_state = 'queued'
-       and t.available_at <= v_now
-       and t.attempt_count < 8
-       and a.suspended_at is null
-     order by t.available_at, t.sms_event_id
-     limit p_batch_size
-     for update of t skip locked
-  loop
-    v_token := pg_catalog.gen_random_uuid();
-    v_lease := v_now + interval '5 minutes';
-
-    update public.sms_delivery_tasks t
-       set task_state = 'leased',
-           claim_token = v_token,
-           lease_expires_at = v_lease,
-           attempt_count = t.attempt_count + 1,
-           request_started_at = null,
-           last_error_code = null,
-           updated_at = v_now
-     where t.sms_event_id = v_task.sms_event_id;
-
-    insert into public.sms_delivery_attempts (
-      sms_event_id, claim_token, attempt_number,
-      leased_at, lease_expires_at, created_at
-    ) values (
-      v_task.sms_event_id, v_token, v_task.attempt_count + 1,
-      v_now, v_lease, v_now
-    );
-
-    return query
-    select v_token, e.id, e.account_id, e.phone_number, e.body,
-           e.message_kind, e.billing_category, e.sender_purpose,
-           v_task.attempt_count + 1, v_lease
-      from public.sms_events e
-     where e.id = v_task.sms_event_id
-       and e.status = 'queued';
-  end loop;
-end;
-$$;
-
-create or replace function public.stage_sms_delivery(
-  p_sms_event_id uuid,
-  p_claim_token uuid,
-  p_provider text
-)
-returns table (
-  dispatch_status text,
-  sender_number_id uuid,
-  sender_e164 text,
-  provider_number_id text
-)
-language plpgsql
-security definer
-set search_path = pg_catalog, pg_temp
-set timezone to 'UTC'
-as $$
-declare
-  v_now timestamptz := pg_catalog.clock_timestamp();
-  v_task public.sms_delivery_tasks%rowtype;
-  v_event public.sms_events%rowtype;
-  v_sender public.sms_sender_numbers%rowtype;
-  v_required_scope text;
-begin
-  if p_provider is null or p_provider not in ('twilio', 'signalwire') then
-    raise exception 'SMS provider is invalid'
-      using errcode = '22023';
-  end if;
-
-  select t.* into v_task
-    from public.sms_delivery_tasks t
-   where t.sms_event_id = p_sms_event_id
-   for update;
-
-  select e.* into v_event
-    from public.sms_events e
-   where e.id = p_sms_event_id
-   for update;
-
-  if v_task.sms_event_id is null or v_event.id is null
-     or v_task.task_state <> 'leased'
-     or v_task.claim_token is distinct from p_claim_token
-     or v_task.lease_expires_at <= v_now
-     or v_task.request_started_at is not null
-     or v_event.status <> 'queued' then
-    raise exception 'SMS delivery lease is stale or invalid'
+  if v_def is null then
+    raise exception 'stage_sms_delivery(uuid, uuid, text) is not installed'
       using errcode = '55000';
   end if;
 
-  -- Outbound messaging freeze: cancel immediately if account is suspended
-  if exists (
-    select 1 from public.accounts a
-     where a.id = v_event.account_id
-       and a.suspended_at is not null
-  ) then
-    update public.sms_events e
-       set status = 'cancelled', error_reason = 'account_suspended_closed',
-           cancelled_at = v_now, updated_at = v_now
-     where e.id = v_event.id;
-    update public.sms_delivery_tasks t
-       set task_state = 'cancelled', claim_token = null,
-           lease_expires_at = null, last_error_code = 'account_suspended_closed',
-           cancelled_at = v_now, updated_at = v_now
-     where t.sms_event_id = v_event.id;
-    update public.sms_delivery_attempts a
-       set outcome = 'cancelled', error_code = 'account_suspended_closed',
-           finished_at = v_now
-     where a.claim_token = p_claim_token and a.outcome is null;
-    return query select 'cancelled'::text, null::uuid, null::text, null::text;
+  -- Idempotency: the marker is this patch's own proof it ran.
+  if strpos(v_def, 'account_suspended_closed') > 0 then
+    raise notice 'stage_sms_delivery already carries the suspension freeze; skipping';
     return;
   end if;
 
-  if not exists (
-    select 1 from public.sms_consent c
-     where c.account_id = v_event.account_id
-       and c.phone_number = v_event.phone_number
-       and c.status = 'opted_in'
-       and c.consented_at is not null
-       and c.opted_out_at is null
-  ) then
-    update public.sms_events e
-       set status = 'cancelled', error_reason = 'sms_consent_not_current',
-           cancelled_at = v_now, updated_at = v_now
-     where e.id = v_event.id;
-    update public.sms_delivery_tasks t
-       set task_state = 'cancelled', claim_token = null,
-           lease_expires_at = null, last_error_code = 'sms_consent_not_current',
-           cancelled_at = v_now, updated_at = v_now
-     where t.sms_event_id = v_event.id;
-    update public.sms_delivery_attempts a
-       set outcome = 'cancelled', error_code = 'sms_consent_not_current',
-           finished_at = v_now
-     where a.claim_token = p_claim_token and a.outcome is null;
-    return query select 'cancelled'::text, null::uuid, null::text, null::text;
-    return;
+  -- The live body stores CRLF line endings (verified 2026-08-30). Normalise
+  -- before matching, and prove the rewrite is whitespace-only first: every CR
+  -- must be half of a CRLF pair.
+  if strpos(replace(v_def, chr(13) || chr(10), ''), chr(13)) > 0 then
+    raise exception 'stage_sms_delivery body contains a lone CR; refusing to normalise'
+      using errcode = '55000';
+  end if;
+  v_def := replace(v_def, chr(13) || chr(10), chr(10));
+
+  -- Anchor: the tail of the lease-validation block. '55000' appears exactly
+  -- once in the body; asserted below rather than assumed.
+  v_needle := 'raise exception ''SMS delivery lease is stale or invalid'''
+    || chr(10) || '      using errcode = ''55000'';'
+    || chr(10) || '  end if;';
+
+  if (length(v_def) - length(replace(v_def, v_needle, ''))) / length(v_needle) <> 1 then
+    raise exception 'stage_sms_delivery source contract drifted: lease-validation anchor not found exactly once'
+      using errcode = '55000';
   end if;
 
-  v_required_scope := case v_event.billing_category
-    when 'customer_message' then 'customer'
-    when 'payment_message' then 'customer'
-    when 'verification' then 'customer'
-    when 'crew_message' then 'crew'
-    when 'owner_alert' then 'owner'
-    else null
-  end;
+  v_guard := chr(10) || chr(10)
+    || '  -- Outbound messaging freeze: a suspended or closing account sends nothing.' || chr(10)
+    || '  if exists (' || chr(10)
+    || '    select 1 from public.accounts a' || chr(10)
+    || '     where a.id = v_event.account_id' || chr(10)
+    || '       and a.suspended_at is not null' || chr(10)
+    || '  ) then' || chr(10)
+    || '    update public.sms_events e' || chr(10)
+    || '       set status = ''cancelled'', error_reason = ''account_suspended_closed'',' || chr(10)
+    || '           cancelled_at = v_now, updated_at = v_now' || chr(10)
+    || '     where e.id = v_event.id;' || chr(10)
+    || '    update public.sms_delivery_tasks t' || chr(10)
+    || '       set task_state = ''cancelled'', claim_token = null,' || chr(10)
+    || '           lease_expires_at = null, last_error_code = ''account_suspended_closed'',' || chr(10)
+    || '           cancelled_at = v_now, updated_at = v_now' || chr(10)
+    || '     where t.sms_event_id = v_event.id;' || chr(10)
+    || '    update public.sms_delivery_attempts a' || chr(10)
+    || '       set outcome = ''cancelled'', error_code = ''account_suspended_closed'',' || chr(10)
+    || '           finished_at = v_now' || chr(10)
+    || '     where a.claim_token = p_claim_token and a.outcome is null;' || chr(10)
+    || '    return query select ''cancelled''::text, null::uuid, null::text, null::text;' || chr(10)
+    || '    return;' || chr(10)
+    || '  end if;';
 
-  if v_required_scope is null or not exists (
-    select 1 from public.sms_consent_scopes s
-     where s.account_id = v_event.account_id
-       and s.phone_number = v_event.phone_number
-       and s.consent_scope = v_required_scope
-  ) then
-    update public.sms_events e
-       set status = 'cancelled', error_reason = 'sms_consent_scope_not_current',
-           cancelled_at = v_now, updated_at = v_now
-     where e.id = v_event.id;
-    update public.sms_delivery_tasks t
-       set task_state = 'cancelled', claim_token = null,
-           lease_expires_at = null, last_error_code = 'sms_consent_scope_not_current',
-           cancelled_at = v_now, updated_at = v_now
-     where t.sms_event_id = v_event.id;
-    update public.sms_delivery_attempts a
-       set outcome = 'cancelled', error_code = 'sms_consent_scope_not_current',
-           finished_at = v_now
-     where a.claim_token = p_claim_token and a.outcome is null;
-    return query select 'cancelled'::text, null::uuid, null::text, null::text;
-    return;
-  end if;
-
-  -- Select eligible active sender number
-  select sn.* into v_sender
-    from public.sms_sender_numbers sn
-   where sn.account_id = v_event.account_id
-     and sn.sender_purpose = v_event.sender_purpose
-     and sn.provider = p_provider
-     and sn.status = 'active'
-   limit 1;
-
-  if v_sender.id is null then
-    return query select 'blocked_sender'::text, null::uuid, null::text, null::text;
-    return;
-  end if;
-
-  return query select 'ready'::text, v_sender.id, v_sender.e164, v_sender.provider_number_id;
+  execute replace(v_def, v_needle, v_needle || v_guard);
 end;
-$$;
+$patch$;
 
 revoke all on function public.claim_sms_delivery_tasks(integer) from public, anon, authenticated;
 grant execute on function public.claim_sms_delivery_tasks(integer) to service_role;
