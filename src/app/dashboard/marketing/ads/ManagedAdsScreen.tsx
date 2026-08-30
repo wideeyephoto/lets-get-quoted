@@ -170,6 +170,7 @@ export default function ManagedAdsScreen({
   const [smsAlertsEnabled, setSmsAlertsEnabled] = useState<boolean>(initialWalletState?.smsAlertsEnabled !== false);
   const [smsAlertPhone, setSmsAlertPhone] = useState<string>(initialWalletState?.smsAlertPhone || initialPhone || '');
   const [updatingSms, setUpdatingSms] = useState<boolean>(false);
+  const [showWeeklyCostDetails, setShowWeeklyCostDetails] = useState<boolean>(false);
 
   // 2FA Phone Verification State for SMS Billing Alerts
   const initialVerifiedPhone = useMemo(() => {
@@ -1383,36 +1384,55 @@ export default function ManagedAdsScreen({
                     </p>
                   </div>
 
-                  {/* Transparent Weekly Cost Breakdown */}
+                  {/* Transparent Weekly Cost Breakdown Accordion */}
                   <div className={styles.costBreakdown}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.45rem' }}>
-                      <strong style={{ fontSize: '0.82rem', color: 'var(--foreground)' }}>
-                        Weekly Drip Allocation
-                      </strong>
-                      <span style={{ fontSize: '0.72rem', color: '#10b981', fontWeight: 700 }}>
-                        Billed once every 7 days
-                      </span>
-                    </div>
-                    <div className={styles.breakdownRow}>
-                      <span>Direct Ad Click Spend (deployed daily to Google/Meta)</span>
-                      <strong>${currentBundle.weeklyAdSpendDollars} / wk <span style={{ fontWeight: 400, opacity: 0.8 }}>(~${currentBundle.monthlyAdSpendDollars}/mo)</span></strong>
-                    </div>
-                    <div className={styles.breakdownRow}>
-                      <span>AI Campaign Autopilot &amp; Smart Bidding Management</span>
-                      <span>${currentBundle.weeklyFeeDollars} / wk <span style={{ fontWeight: 400, opacity: 0.8 }}>(~${currentBundle.monthlyFeeDollars}/mo)</span></span>
-                    </div>
-                    <div className={styles.breakdownTotal}>
-                      <span>Total Weekly Funding</span>
-                      <span style={{ color: 'var(--accent, #f97316)', textAlign: 'right' }}>
-                        ${currentBundle.weeklyAmountDollars} / week
-                        <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--muted)', display: 'block' }}>
-                          (~${currentBundle.monthlyAverageDollars}/mo monthly average)
+                    <div
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        cursor: 'pointer',
+                        userSelect: 'none',
+                      }}
+                      onClick={() => setShowWeeklyCostDetails(!showWeeklyCostDetails)}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap' }}>
+                        <strong style={{ fontSize: '0.82rem', color: 'var(--foreground)' }}>
+                          Weekly Drip Allocation &amp; Math
+                        </strong>
+                        <span style={{ fontSize: '0.68rem', color: '#10b981', background: 'rgba(16, 185, 129, 0.15)', padding: '0.1rem 0.4rem', borderRadius: '10px', fontWeight: 600 }}>
+                          ${currentBundle.weeklyAdSpendDollars} Ads + ${currentBundle.weeklyFeeDollars ? `$${currentBundle.weeklyFeeDollars}` : '$0'} Fee
                         </span>
+                      </div>
+                      <span style={{ fontSize: '0.74rem', color: 'var(--accent, #f97316)', fontWeight: 600 }}>
+                        {showWeeklyCostDetails ? 'Hide Details ▲' : 'View Breakdown ▼'}
                       </span>
                     </div>
-                    <div className={styles.weeklyAdvantageNote}>
-                      💡 <strong>Why Weekly Drip Billing?</strong> Lowers your upfront cost by over 75% compared to paying a massive monthly invoice all at once. Your ad spend is deployed smoothly into Google/Meta every day, but your card is only billed once every 7 days (no individual daily charges).
-                    </div>
+
+                    {showWeeklyCostDetails && (
+                      <div style={{ marginTop: '0.65rem' }}>
+                        <div className={styles.breakdownRow}>
+                          <span>Direct Ad Click Spend (deployed daily to Google/Meta)</span>
+                          <strong>${currentBundle.weeklyAdSpendDollars} / wk <span style={{ fontWeight: 400, opacity: 0.8 }}>(~${currentBundle.monthlyAdSpendDollars}/mo)</span></strong>
+                        </div>
+                        <div className={styles.breakdownRow}>
+                          <span>AI Campaign Autopilot &amp; Smart Bidding Management</span>
+                          <span>${currentBundle.weeklyFeeDollars} / wk <span style={{ fontWeight: 400, opacity: 0.8 }}>(~${currentBundle.monthlyFeeDollars}/mo)</span></span>
+                        </div>
+                        <div className={styles.breakdownTotal}>
+                          <span>Total Weekly Funding</span>
+                          <span style={{ color: 'var(--accent, #f97316)', textAlign: 'right' }}>
+                            ${currentBundle.weeklyAmountDollars} / week
+                            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--muted)', display: 'block' }}>
+                              (~${currentBundle.monthlyAverageDollars}/mo monthly average)
+                            </span>
+                          </span>
+                        </div>
+                        <div className={styles.weeklyAdvantageNote}>
+                          💡 <strong>Why Weekly Drip Billing?</strong> Lowers your upfront cost by over 75% compared to paying a massive monthly invoice all at once. Your ad spend is deployed smoothly into Google/Meta every day, but your card is only billed once every 7 days (no individual daily charges).
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </>
               ) : (
@@ -1636,17 +1656,20 @@ export default function ManagedAdsScreen({
                     />
                   </div>
                   <div>
-                    <label
-                      style={{
-                        fontSize: '0.75rem',
-                        fontWeight: 700,
-                        color: 'var(--foreground)',
-                        display: 'block',
-                        marginBottom: '0.3rem',
-                      }}
-                    >
-                      Service Radius: {radius} miles
-                    </label>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.3rem' }}>
+                      <label
+                        style={{
+                          fontSize: '0.75rem',
+                          fontWeight: 700,
+                          color: 'var(--foreground)',
+                        }}
+                      >
+                        Service Radius: {radius} miles
+                      </label>
+                      <span style={{ fontSize: '0.68rem', color: 'var(--muted)' }}>
+                        ~{Math.round(Math.PI * radius * radius).toLocaleString()} sq mi
+                      </span>
+                    </div>
                     <input
                       type="range"
                       min={10}
@@ -2159,6 +2182,16 @@ export default function ManagedAdsScreen({
                       className={styles.rangeInput}
                     />
                   </div>
+                </div>
+
+                {/* Net Estimated Monthly Profit Banner */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.25)', borderRadius: '6px', padding: '0.45rem 0.75rem', marginBottom: '0.85rem' }}>
+                  <span style={{ fontSize: '0.74rem', color: 'var(--foreground)', fontWeight: 600 }}>
+                    💰 Est. Net Revenue (Pipeline - Ad Budget):
+                  </span>
+                  <strong style={{ fontSize: '0.86rem', color: '#10b981' }}>
+                    +${Math.max(0, roiMetrics.grossRevenue - (fundingModel === 'weekly_drip' ? currentBundle.monthlyAverageDollars : walletMaxMonthlySpendDollars)).toLocaleString()} / mo
+                  </strong>
                 </div>
 
                 <div className={styles.roiResultsGrid}>
