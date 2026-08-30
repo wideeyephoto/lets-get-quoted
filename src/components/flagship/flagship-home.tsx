@@ -17,11 +17,39 @@ import styles from './flagship.module.css';
 import LaunchBanner from '@/components/marketing/launch-banner';
 import ThemeFab from '@/components/theme-fab';
 import IntegrationTrustStrip from '@/components/marketing/IntegrationTrustStrip';
-import InteractiveQuoteUpsellDemo from '@/components/marketing/InteractiveQuoteUpsellDemo';
-import HighTechShowcase from '@/components/marketing/HighTechShowcase';
 
-const TradeOrbit = dynamic(() => import('./trade-orbit'), { ssr: true });
-const CommandCenterDeck = dynamic(() => import('@/components/command-center-deck'), { ssr: true });
+const TradeOrbit = dynamic(() => import('./trade-orbit'), { ssr: false });
+const CommandCenterDeck = dynamic(() => import('@/components/command-center-deck'), { ssr: false });
+const HighTechShowcase = dynamic(() => import('@/components/marketing/HighTechShowcase'), {
+  ssr: false,
+  loading: () => (
+    <div
+      style={{
+        minHeight: '680px',
+        background: 'rgba(10, 25, 41, 0.4)',
+        borderRadius: '24px',
+        margin: '40px auto',
+        maxWidth: '1360px',
+      }}
+      aria-hidden="true"
+    />
+  ),
+});
+const InteractiveQuoteUpsellDemo = dynamic(() => import('@/components/marketing/InteractiveQuoteUpsellDemo'), {
+  ssr: false,
+  loading: () => (
+    <div
+      style={{
+        minHeight: '520px',
+        background: 'rgba(10, 25, 41, 0.4)',
+        borderRadius: '24px',
+        margin: '40px auto',
+        maxWidth: '1360px',
+      }}
+      aria-hidden="true"
+    />
+  ),
+});
 
 /* The URL and the words both come from site-chrome, which is where the header,
    the phone bar and the closing band already read them. This page used to
@@ -553,7 +581,11 @@ export default function FlagshipHome() {
 
     window.addEventListener('scroll', tick, { passive: true });
     window.addEventListener('resize', tick);
-    paint();
+    if ('requestIdleCallback' in window) {
+      window.requestIdleCallback(() => paint());
+    } else {
+      setTimeout(paint, 50);
+    }
 
     return () => {
       window.removeEventListener('scroll', tick);

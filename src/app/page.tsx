@@ -2,6 +2,9 @@ import FlagshipHome from '@/components/flagship/flagship-home';
 import { HOME_FAQS } from '@/lib/home-faqs';
 import { cspNonce } from '@/lib/csp-nonce';
 
+export const dynamic = 'force-static';
+export const revalidate = 86400;
+
 /**
  * The homepage.
  *

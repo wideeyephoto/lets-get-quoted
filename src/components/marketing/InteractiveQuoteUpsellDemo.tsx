@@ -205,17 +205,55 @@ export default function InteractiveQuoteUpsellDemo() {
     );
   };
 
-  const handleScenarioChange = (idx: number) => {
-    setScenarioIndex(idx);
-    setSelectedTierId('premium');
-    setCheckedAddonIds([SCENARIOS[idx].addons[0].id]);
-    setIsSigned(false);
+  const handleTradeTabKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>, idx: number) => {
+    const total = SCENARIOS.length;
+    let nextIdx = idx;
+    if (e.key === 'ArrowRight') {
+      nextIdx = (idx + 1) % total;
+    } else if (e.key === 'ArrowLeft') {
+      nextIdx = (idx - 1 + total) % total;
+    } else if (e.key === 'Home') {
+      nextIdx = 0;
+    } else if (e.key === 'End') {
+      nextIdx = total - 1;
+    } else {
+      return;
+    }
+    e.preventDefault();
+    handleScenarioChange(nextIdx);
+    document.getElementById(`quote-tab-${SCENARIOS[nextIdx].id}`)?.focus();
   };
 
-  const handleSign = (e: React.FormEvent) => {
+  const handleTierKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>, tierIdx: number) => {
+    const total = activeScenario.tiers.length;
+    let nextIdx = tierIdx;
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+      nextIdx = (tierIdx + 1) % total;
+    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+      nextIdx = (tierIdx - 1 + total) % total;
+    } else if (e.key === 'Home') {
+      nextIdx = 0;
+    } else if (e.key === 'End') {
+      nextIdx = total - 1;
+    } else {
+      return;
+    }
     e.preventDefault();
-    if (!signName.trim()) return;
-    setIsSigned(true);
+    const nextTier = activeScenario.tiers[nextIdx];
+    if (nextTier) {
+      setSelectedTierId(nextTier.id);
+      setIsSigned(false);
+      document.getElementById(`tier-radio-${nextTier.id}`)?.focus();
+    }
+  };
+
+  const handlePaymentModeKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>, currentMode: 'full' | 'plan') => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowLeft' || e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+      e.preventDefault();
+      const nextMode = currentMode === 'full' ? 'plan' : 'full';
+      setPaymentMode(nextMode);
+      document.getElementById(`pay-tab-${nextMode}`)?.focus();
+    }
   };
 
   return (
@@ -238,11 +276,15 @@ export default function InteractiveQuoteUpsellDemo() {
           {SCENARIOS.map((sc, idx) => (
             <button
               key={sc.id}
+              id={`quote-tab-${sc.id}`}
               type="button"
               role="tab"
               aria-selected={scenarioIndex === idx}
+              aria-controls={`quote-panel-${sc.id}`}
+              tabIndex={scenarioIndex === idx ? 0 : -1}
               className={`${styles.tradeTab} ${scenarioIndex === idx ? styles.active : ''}`}
               onClick={() => handleScenarioChange(idx)}
+              onKeyDown={(e) => handleTradeTabKeyDown(e, idx)}
             >
               {sc.tabLabel}
             </button>
@@ -250,7 +292,13 @@ export default function InteractiveQuoteUpsellDemo() {
         </div>
 
         {/* Main 2-Column Showcase */}
-        <div className={styles.layout}>
+        <div
+          className={styles.layout}
+          id={`quote-panel-${activeScenario.id}`}
+          role="tabpanel"
+          aria-labelledby={`quote-tab-${activeScenario.id}`}
+          tabIndex={0}
+        >
           {/* Left Column: Interactive Phone Quote */}
           <div className={styles.quotePhone} role="region" aria-label="Interactive customer quote view">
             <div className={styles.phoneHeader}>
@@ -269,21 +317,24 @@ export default function InteractiveQuoteUpsellDemo() {
             </div>
 
             {/* Step 1: Tier Choice */}
-            <p className={styles.tierLabel}>Step 1: Choose Your Package</p>
-            <div className={styles.tiersGrid} role="radiogroup" aria-label="Package tiers">
-              {activeScenario.tiers.map((tier) => {
+            <p className={styles.tierLabel} id="package-tiers-label">Step 1: Choose Your Package</p>
+            <div className={styles.tiersGrid} role="radiogroup" aria-labelledby="package-tiers-label">
+              {activeScenario.tiers.map((tier, tIdx) => {
                 const isSelected = tier.id === selectedTierId;
                 return (
                   <button
                     key={tier.id}
+                    id={`tier-radio-${tier.id}`}
                     type="button"
                     role="radio"
                     aria-checked={isSelected}
+                    tabIndex={isSelected ? 0 : -1}
                     className={`${styles.tierCard} ${isSelected ? styles.selectedTier : ''}`}
                     onClick={() => {
                       setSelectedTierId(tier.id);
                       setIsSigned(false);
                     }}
+                    onKeyDown={(e) => handleTierKeyDown(e, tIdx)}
                   >
                     {tier.isPopular && <span className={styles.popularBadge}>Most Popular</span>}
                     <div className={styles.tierName}>{tier.name}</div>
@@ -297,15 +348,16 @@ export default function InteractiveQuoteUpsellDemo() {
             {/* Step 2: Interactive Optional Add-ons */}
             <div className={styles.addonsSection}>
               <div className={styles.addonsHead}>
-                <h3 className={styles.addonsTitle}>Step 2: Optional Upgrades &amp; Add-ons</h3>
+                <h3 className={styles.addonsTitle} id="addons-section-heading">Step 2: Optional Upgrades &amp; Add-ons</h3>
                 <span className={styles.addonsHint}>+ Click to toggle</span>
               </div>
-              <div className={styles.addonList}>
+              <div className={styles.addonList} role="group" aria-labelledby="addons-section-heading">
                 {activeScenario.addons.map((addon) => {
                   const isChecked = checkedAddonIds.includes(addon.id);
                   return (
-                    <div
+                    <button
                       key={addon.id}
+                      type="button"
                       className={`${styles.addonItem} ${isChecked ? styles.checked : ''}`}
                       onClick={() => {
                         toggleAddon(addon.id);
@@ -313,14 +365,7 @@ export default function InteractiveQuoteUpsellDemo() {
                       }}
                       role="checkbox"
                       aria-checked={isChecked}
-                      tabIndex={0}
-                      onKeyDown={(e) => {
-                        if (e.key === ' ' || e.key === 'Enter') {
-                          e.preventDefault();
-                          toggleAddon(addon.id);
-                          setIsSigned(false);
-                        }
-                      }}
+                      aria-label={`${addon.name} for ${addon.price} dollars`}
                     >
                       <div className={styles.addonLeft}>
                         <span className={styles.customCheckbox} aria-hidden="true">
@@ -332,7 +377,7 @@ export default function InteractiveQuoteUpsellDemo() {
                         </div>
                       </div>
                       <span className={styles.addonPrice}>+${addon.price.toLocaleString()}</span>
-                    </div>
+                    </button>
                   );
                 })}
               </div>
@@ -345,18 +390,28 @@ export default function InteractiveQuoteUpsellDemo() {
                 <span className={styles.totalAmount}>${grandTotal.toLocaleString()}</span>
               </div>
 
-              <div className={styles.paymentModeTabs}>
+              <div className={styles.paymentModeTabs} role="radiogroup" aria-label="Payment options">
                 <button
                   type="button"
+                  id="pay-tab-full"
+                  role="radio"
+                  aria-checked={paymentMode === 'full'}
+                  tabIndex={paymentMode === 'full' ? 0 : -1}
                   className={`${styles.payTab} ${paymentMode === 'full' ? styles.activePayTab : ''}`}
                   onClick={() => setPaymentMode('full')}
+                  onKeyDown={(e) => handlePaymentModeKeyDown(e, 'full')}
                 >
                   Pay in Full (${grandTotal.toLocaleString()})
                 </button>
                 <button
                   type="button"
+                  id="pay-tab-plan"
+                  role="radio"
+                  aria-checked={paymentMode === 'plan'}
+                  tabIndex={paymentMode === 'plan' ? 0 : -1}
                   className={`${styles.payTab} ${paymentMode === 'plan' ? styles.activePayTab : ''}`}
                   onClick={() => setPaymentMode('plan')}
+                  onKeyDown={(e) => handlePaymentModeKeyDown(e, 'plan')}
                 >
                   Payment Plan (0% APR)
                 </button>
@@ -377,7 +432,9 @@ export default function InteractiveQuoteUpsellDemo() {
             <div className={styles.eSignArea}>
               {!isSigned ? (
                 <form onSubmit={handleSign} className={styles.signInputRow}>
+                  <label htmlFor="esign-input-name" className="sr-only">Homeowner electronic signature name</label>
                   <input
+                    id="esign-input-name"
                     type="text"
                     className={styles.signInput}
                     placeholder="Type name to sign..."
@@ -386,13 +443,13 @@ export default function InteractiveQuoteUpsellDemo() {
                     aria-label="Homeowner electronic signature name"
                   />
                   <button type="submit" className={styles.signBtn}>
-                    Approve &amp; E-Sign <span>→</span>
+                    Approve &amp; E-Sign <span aria-hidden="true">→</span>
                   </button>
                 </form>
               ) : (
-                <div className={styles.signedConfirmation}>
+                <div className={styles.signedConfirmation} aria-live="polite" aria-atomic="true">
                   <div className={styles.signedLeft}>
-                    <span className={styles.signedCheck}>✓</span>
+                    <span className={styles.signedCheck} aria-hidden="true">✓</span>
                     <div>
                       <div className={styles.signedTitle}>Quote {activeScenario.quoteNumber} Approved by {signName}</div>
                       <div className={styles.signedTime}>Locked with legal timestamp · ${depositAmount.toLocaleString()} deposit ready</div>
@@ -402,6 +459,7 @@ export default function InteractiveQuoteUpsellDemo() {
                     type="button"
                     className={styles.resetBtn}
                     onClick={() => setIsSigned(false)}
+                    aria-label="Edit options or re-sign quote"
                   >
                     Edit / Re-sign
                   </button>

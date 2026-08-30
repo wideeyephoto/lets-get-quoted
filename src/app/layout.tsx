@@ -51,18 +51,21 @@ const bodyFont = IBM_Plex_Sans({
   subsets: ['latin'],
   variable: '--font-body',
   weight: ['400', '500', '600', '700'],
+  display: 'swap',
 });
 
 const displayFont = Space_Grotesk({
   subsets: ['latin'],
   variable: '--font-display',
   weight: ['500', '700'],
+  display: 'swap',
 });
 
 const monoFont = JetBrains_Mono({
   subsets: ['latin'],
   variable: '--font-mono',
   weight: ['400', '500', '700'],
+  display: 'swap',
 });
 
 /**

@@ -419,6 +419,28 @@ export default function HighTechShowcase() {
     }, 750);
   };
 
+  const handleTradeFilterKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>, index: number) => {
+    const total = TRADES_PRESETS.length;
+    let nextIndex = index;
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+      nextIndex = (index + 1) % total;
+    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+      nextIndex = (index - 1 + total) % total;
+    } else if (e.key === 'Home') {
+      nextIndex = 0;
+    } else if (e.key === 'End') {
+      nextIndex = total - 1;
+    } else {
+      return;
+    }
+    e.preventDefault();
+    const nextTrade = TRADES_PRESETS[nextIndex];
+    if (nextTrade) {
+      setActiveTrade(nextTrade);
+      document.getElementById(`trade-chip-${nextTrade.toLowerCase().replace(/[^a-z0-9]/g, '-')}`)?.focus();
+    }
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>, index: number) => {
     const total = SPARKY_FEATURES.length;
     let nextIndex = index;
@@ -448,15 +470,20 @@ export default function HighTechShowcase() {
 
       <div className={styles.container}>
         {/* Header */}
-        <header className={styles.header}>
-          <div className={styles.eyebrow}>
-            <span className={styles.sparkyAvatarBadge}>⚡ AI COPILOT</span>
-            <span>MEET YOUR 24/7 AI CONTRACTOR SIDEKICK</span>
+        <header className={styles.showcaseHeader}>
+          <div className={styles.badgeRow}>
+            <span className={styles.badgeSpark}>
+              <span className={styles.sparkIcon}>⚡</span> NEXT-GEN AI ARCHITECTURE
+            </span>
+            <span className={styles.badgeSub}>2026 Live Multi-Modal Engine</span>
           </div>
-          <h2 className={styles.title} id="showcase-heading">
-            Run your business via <em>Texts, Images, Videos &amp; Voice.</em>
+
+          <h2 className={styles.mainTitle} id="showcase-heading">
+            Run your contracting business from your truck.<br />
+            <em>No laptops. No typing. Just text, photo &amp; voice.</em>
           </h2>
-          <p className={styles.description}>
+
+          <p className={styles.mainSubtitle}>
             You don’t even need to open an app. Meet your <strong>AI Copilot</strong>—the multimodal AI contractor sidekick that processes text messages, job site photos, video walkthroughs, and driveway voice notes directly into your live job files.
           </p>
 
@@ -468,18 +495,26 @@ export default function HighTechShowcase() {
           </div>
 
           {/* Trade Filter Switcher */}
-          <div className={styles.tradeFilterBar} role="group" aria-label="Filter by Trade">
-            <span className={styles.tradeFilterLabel}>Preview for Trade:</span>
-            {TRADES_PRESETS.map((trade) => (
-              <button
-                key={trade}
-                type="button"
-                className={`${styles.tradeChip} ${activeTrade === trade ? styles.tradeChipActive : ''}`}
-                onClick={() => setActiveTrade(trade)}
-              >
-                {trade}
-              </button>
-            ))}
+          <div className={styles.tradeFilterBar} role="radiogroup" aria-label="Preview for Trade">
+            <span className={styles.tradeFilterLabel} id="trade-filter-label">Preview for Trade:</span>
+            {TRADES_PRESETS.map((trade, tIdx) => {
+              const isSelected = activeTrade === trade;
+              return (
+                <button
+                  key={trade}
+                  id={`trade-chip-${trade.toLowerCase().replace(/[^a-z0-9]/g, '-')}`}
+                  type="button"
+                  role="radio"
+                  aria-checked={isSelected}
+                  tabIndex={isSelected ? 0 : -1}
+                  className={`${styles.tradeChip} ${isSelected ? styles.tradeChipActive : ''}`}
+                  onClick={() => setActiveTrade(trade)}
+                  onKeyDown={(e) => handleTradeFilterKeyDown(e, tIdx)}
+                >
+                  {trade}
+                </button>
+              );
+            })}
           </div>
         </header>
 
@@ -588,20 +623,26 @@ export default function HighTechShowcase() {
               {/* SIMULATOR 1: TEXTS (LIVE INPUT CHAT SANDBOX & IOS SHELL) */}
               {activeTab === 'texts' && (
                 <>
-                  <div className={styles.canvasScenarioBar} role="group" aria-label="Select Text Scenario">
-                    {TEXT_SCENARIOS.map((sc, idx) => (
-                      <button
-                        key={sc.id}
-                        type="button"
-                        className={`${styles.scenarioChip} ${activeTextScenario === idx && !userChatHistory ? styles.scenarioChipActive : ''}`}
-                        onClick={() => {
-                          setActiveTextScenario(idx);
-                          setUserChatHistory(null);
-                        }}
-                      >
-                        {sc.label}
-                      </button>
-                    ))}
+                  <div className={styles.canvasScenarioBar} role="radiogroup" aria-label="Select Text Scenario">
+                    {TEXT_SCENARIOS.map((sc, idx) => {
+                      const isSelected = activeTextScenario === idx && !userChatHistory;
+                      return (
+                        <button
+                          key={sc.id}
+                          type="button"
+                          role="radio"
+                          aria-checked={isSelected}
+                          tabIndex={isSelected ? 0 : -1}
+                          className={`${styles.scenarioChip} ${isSelected ? styles.scenarioChipActive : ''}`}
+                          onClick={() => {
+                            setActiveTextScenario(idx);
+                            setUserChatHistory(null);
+                          }}
+                        >
+                          {sc.label}
+                        </button>
+                      );
+                    })}
                   </div>
 
                   <div className={styles.canvasBody}>
@@ -618,7 +659,7 @@ export default function HighTechShowcase() {
                         </div>
                       </div>
 
-                      <div className={styles.chatStream}>
+                      <div className={styles.chatStream} aria-live="polite" aria-atomic="false">
                         <div className={styles.chatBubbleUser}>
                           {userChatHistory ? userChatHistory.userText : TEXT_SCENARIOS[activeTextScenario]?.userText}
                           <div style={{ fontSize: '0.65rem', opacity: 0.75, textAlign: 'right', marginTop: '2px' }}>
@@ -720,17 +761,23 @@ export default function HighTechShowcase() {
               {/* SIMULATOR 2: IMAGES (BEFORE/AFTER SLIDER & AR VISION HUD) */}
               {activeTab === 'images' && (
                 <>
-                  <div className={styles.canvasScenarioBar} role="group" aria-label="Select Image Inspection">
-                    {IMAGE_SCENARIOS.map((sc, idx) => (
-                      <button
-                        key={sc.id}
-                        type="button"
-                        className={`${styles.scenarioChip} ${activeImageScenario === idx ? styles.scenarioChipActive : ''}`}
-                        onClick={() => setActiveImageScenario(idx)}
-                      >
-                        {sc.label}
-                      </button>
-                    ))}
+                  <div className={styles.canvasScenarioBar} role="radiogroup" aria-label="Select Image Inspection">
+                    {IMAGE_SCENARIOS.map((sc, idx) => {
+                      const isSelected = activeImageScenario === idx;
+                      return (
+                        <button
+                          key={sc.id}
+                          type="button"
+                          role="radio"
+                          aria-checked={isSelected}
+                          tabIndex={isSelected ? 0 : -1}
+                          className={`${styles.scenarioChip} ${isSelected ? styles.scenarioChipActive : ''}`}
+                          onClick={() => setActiveImageScenario(idx)}
+                        >
+                          {sc.label}
+                        </button>
+                      );
+                    })}
                   </div>
 
                   <div className={styles.canvasBody}>
@@ -761,7 +808,7 @@ export default function HighTechShowcase() {
                                 <small style={{ color: '#c084fc', display: 'block' }}>OCR DETECTED</small>
                                 <b>{IMAGE_SCENARIOS[activeImageScenario]?.plateOcr}</b>
                                 <span style={{ color: '#38bdf8', fontSize: '0.72rem', display: 'block' }}>
-                                  {IMAGE_SCENARIOS[activeImageScenario]?.techSpecs}
+                                   {IMAGE_SCENARIOS[activeImageScenario]?.techSpecs}
                                 </span>
                               </div>
                               <div>
@@ -794,10 +841,13 @@ export default function HighTechShowcase() {
                       </div>
 
                       <div className={styles.visionLayerToggle}>
-                        <span style={{ color: '#94a3b8' }}>Optical Inspection Layer:</span>
-                        <div className={styles.visionLayerPills}>
+                        <span style={{ color: '#94a3b8' }} id="vision-layer-label">Optical Inspection Layer:</span>
+                        <div className={styles.visionLayerPills} role="radiogroup" aria-labelledby="vision-layer-label">
                           <button
                             type="button"
+                            role="radio"
+                            aria-checked={activeVisionLayer === 'ocr'}
+                            tabIndex={activeVisionLayer === 'ocr' ? 0 : -1}
                             className={`${styles.layerPill} ${activeVisionLayer === 'ocr' ? styles.layerPillActive : ''}`}
                             onClick={() => setActiveVisionLayer('ocr')}
                           >
@@ -805,6 +855,9 @@ export default function HighTechShowcase() {
                           </button>
                           <button
                             type="button"
+                            role="radio"
+                            aria-checked={activeVisionLayer === 'heatmap'}
+                            tabIndex={activeVisionLayer === 'heatmap' ? 0 : -1}
                             className={`${styles.layerPill} ${activeVisionLayer === 'heatmap' ? styles.layerPillActive : ''}`}
                             onClick={() => setActiveVisionLayer('heatmap')}
                           >
@@ -812,6 +865,9 @@ export default function HighTechShowcase() {
                           </button>
                           <button
                             type="button"
+                            role="radio"
+                            aria-checked={activeVisionLayer === 'picklist'}
+                            tabIndex={activeVisionLayer === 'picklist' ? 0 : -1}
                             className={`${styles.layerPill} ${activeVisionLayer === 'picklist' ? styles.layerPillActive : ''}`}
                             onClick={() => setActiveVisionLayer('picklist')}
                           >
@@ -842,17 +898,88 @@ export default function HighTechShowcase() {
               {/* SIMULATOR 3: VIDEOS (INTERACTIVE REEL STUDIO & WALKTHROUGH SCOPE) */}
               {activeTab === 'videos' && (
                 <>
-                  <div className={styles.canvasScenarioBar} role="group" aria-label="Select Video Reel Scenario">
-                    {VIDEO_SCENARIOS.map((sc, idx) => (
-                      <button
-                        key={sc.id}
-                        type="button"
-                        className={`${styles.scenarioChip} ${activeVideoScenario === idx ? styles.scenarioChipActive : ''}`}
-                        onClick={() => setActiveVideoScenario(idx)}
-                      >
-                        {sc.label}
-                      </button>
-                    ))}
+                  <div className={styles.canvasScenarioBar} role="radiogroup" aria-label="Select Video Reel Scenario">
+                    {VIDEO_SCENARIOS.map((sc, idx) => {
+                      const isSelected = activeVideoScenario === idx;
+                      return (
+                        <button
+                          key={sc.id}
+                          type="button"
+                          role="radio"
+                          aria-checked={isSelected}
+                          tabIndex={isSelected ? 0 : -1}
+                          className={`${styles.scenarioChip} ${isSelected ? styles.scenarioChipActive : ''}`}
+                          onClick={() => setActiveVideoScenario(idx)}
+                        >
+                          {sc.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className={styles.canvasBody}>
+                    <div className={styles.videoStudioPlayer}>
+                      <div className={styles.videoViewport}>
+                        <button type="button" className={styles.videoPlayButton} aria-label="Play video simulation">
+                          ▶
+                        </button>
+                        <b style={{ color: '#ffffff', fontSize: '0.92rem' }}>
+                          {VIDEO_SCENARIOS[activeVideoScenario]?.videoTitle}
+                        </b>
+                        <small style={{ color: '#94a3b8' }}>
+                          {VIDEO_SCENARIOS[activeVideoScenario]?.specs} · 4K 60FPS
+                        </small>
+                        <div className={styles.videoScrubberBar}>
+                          <div className={styles.videoScrubberProgress} />
+                        </div>
+                      </div>
+
+                      <div className={styles.videoScopeTimestamps}>
+                        <span style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 700 }}>
+                          AI COPILOT EXTRACTED SCOPE TIMESTAMPS:
+                        </span>
+                        {VIDEO_SCENARIOS[activeVideoScenario]?.timestamps.map((ts) => (
+                          <div key={ts.time} className={styles.timestampRow}>
+                            <span className={styles.timestampTag}>{ts.time}</span>
+                            <span>{ts.note}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className={styles.liveJobPreviewCard} style={{ borderColor: 'rgba(245, 158, 11, 0.35)' }}>
+                      <div className={styles.liveJobHead}>
+                        <span>MOBILE VIDEO SPEED &amp; CODEC COMPLIANCE</span>
+                        <span style={{ color: '#34d399' }}>HARDWARE ACCELERATED</span>
+                      </div>
+                      <p style={{ color: '#f8fafc', margin: '4px 0 0', fontSize: '0.86rem', fontWeight: 600 }}>
+                        {VIDEO_SCENARIOS[activeVideoScenario]?.compliance}
+                      </p>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* SIMULATOR 4: VOICE (18-BAR EQUALIZER & DRIVEWAY-TO-QUOTE CONVERTER) */}
+              {activeTab === 'voice' && (
+                <>
+                  <div className={styles.canvasScenarioBar} role="radiogroup" aria-label="Select Voice Scenario">
+                    {VOICE_SCENARIOS.map((sc, idx) => {
+                      const isSelected = activeVoiceScenario === idx;
+                      return (
+                        <button
+                          key={sc.id}
+                          type="button"
+                          role="radio"
+                          aria-checked={isSelected}
+                          tabIndex={isSelected ? 0 : -1}
+                          className={`${styles.scenarioChip} ${isSelected ? styles.scenarioChipActive : ''}`}
+                          onClick={() => setActiveVoiceScenario(idx)}
+                        >
+                          {sc.label}
+                        </button>
+                      );
+                    })}
                   </div>
 
                   <div className={styles.canvasBody}>
