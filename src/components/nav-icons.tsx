@@ -33,6 +33,7 @@ export const NAV_ICON_PATHS: Record<string, string> = {
   // that the loop still closes around it. Recurring is two rows down and also
   // cycles, but it is a flat racetrack with nothing inside it — the $ is what
   // keeps these two apart at a glance.
+  '/dashboard/payments': '<rect x="2" y="4" width="20" height="16" rx="2.5"/><path d="M2 9.5h20"/><path d="M6 14.5h4"/><circle cx="16.5" cy="14.5" r="1"/>',
   '/dashboard/cash-flow': '<path d="M4.93 8.7A7.8 7.8 0 0 1 19.07 8.7"/><path d="M19.87 5.7 19.07 8.7 16.26 7.39"/><path d="M19.07 15.3A7.8 7.8 0 0 1 4.93 15.3"/><path d="M4.13 18.3 4.93 15.3 7.74 16.61"/><path d="M15 9h-4.5a1.5 1.5 0 1 0 0 3h3a1.5 1.5 0 1 1 0 3H9"/><path d="M12 16.5V7.5"/>',
   '/dashboard/expenses': '<rect x="2.5" y="5" width="19" height="14" rx="2"/><path d="M2.5 10h19"/><path d="M6 14.5h3"/><circle cx="16.5" cy="14.5" r="1.2"/>',
   // A book, because the page is called the Price book. With the ribbon: a plain

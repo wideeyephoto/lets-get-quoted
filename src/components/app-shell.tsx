@@ -66,6 +66,7 @@ const baseNavItems: { href: string; label: string; hint?: string }[] = [
   { href: '/dashboard/voice-calls', label: '24/7 AI Receptionist', hint: '24/7 AI receptionist, live booking & call log' },
   { href: '/dashboard/insights', label: 'Reports & Insights', hint: 'Sales activity & revenue trends' },
   { href: '/dashboard/recurring', label: 'Recurring Jobs', hint: 'Repeating jobs & auto-billing' },
+  { href: '/dashboard/payments', label: 'Revenue & Payments', hint: 'Collected revenue, client payments, invoices & payouts' },
   { href: '/dashboard/services', label: 'Price Book', hint: 'Saved services & prices' },
   { href: '/dashboard/cash-flow', label: 'Cash Flow', hint: 'Upcoming bills, payroll & projected balance' },
   { href: '/dashboard/expenses', label: 'Expenses Ledger', hint: 'Cross-job supplier receipts, labor & costs' },
@@ -138,6 +139,7 @@ const NAV_GROUPS: { label: string; accent: string; hrefs: string[] }[] = [
     accent: 'money',
     hrefs: [
       '/dashboard/insights',
+      '/dashboard/payments',
       '/dashboard/recurring',
       '/dashboard/services',
       '/dashboard/cash-flow',
