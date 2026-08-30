@@ -25,8 +25,6 @@ export default function PerformanceScreen({
   navOnly?: string[];
 }) {
   const [dateRange, setDateRange] = useState<'month' | '30d' | '90d' | 'year' | 'all'>('month');
-  const [selectedChannel, setSelectedChannel] = useState<string>('all');
-  const [metricView, setMetricView] = useState<'revenue' | 'leads' | 'jobs' | 'roas'>('revenue');
 
   const totalLeads = roiSummary?.totalLeads ?? 12;
   const adLeads = roiSummary?.adAttributedLeads ?? 8;

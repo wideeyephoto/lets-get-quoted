@@ -65,8 +65,6 @@ export function analyzeCustomAdFocus(params: {
     };
   }
 
-  const lower = input.toLowerCase();
-
   // Detect discount / dollar / percentage promo
   const hasPromo = /\$\d+|\d+%\s*off|discount|rebate|special|coupon|save\s*\$/i.test(input);
   // Detect emergency niche

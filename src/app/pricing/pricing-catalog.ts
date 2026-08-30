@@ -177,9 +177,9 @@ export const PLANS: readonly PricingPlan[] = [
   },
 ] as const;
 
-export const VOICE_PURCHASABLE = false;
+export const VOICE_PURCHASABLE = true;
 
-export const VOICE_PLANNED_PRICE_LABEL = 'Planned launch pricing from $55/month';
+export const VOICE_PLANNED_PRICE_LABEL = 'Launch pricing from $55/month';
 
 export const VOICE_MONTHLY_BY_PLAN: Record<PlanId, number> = {
   flex: BILLING_PLANS.flex.voice.monthlyPriceCents / 100,
@@ -227,8 +227,8 @@ export const PRICING_FAQS = [
     a: '2-way business texting requires carrier vetting (10DLC registration) with a dedicated business phone number. Messaging software tools and your plan’s included text credits become active after carrier approval. Carrier registration, campaign vetting, and dedicated number lease fees are separate.',
   },
   {
-    q: 'Is AI Voice Receptionist available?',
-    a: 'AI Voice Receptionist is currently in private beta. It requires dedicated business number setup, carrier compliance, and voice activation before handling live calls.',
+    q: 'Is AI Voice Receptionist & Field Assistant available?',
+    a: 'Yes, AI Voice is available! For customer-facing call reception and automatic quote intake, it connects to your dedicated 2-way business number (requiring carrier 10DLC registration). For talking directly to your AI Field Assistant to update jobs, create leads, and log work while driving or on-site, you and your crew can dial in using your voice credits immediately on our shared number.',
   },
   {
     q: 'How does Flex starter usage work?',

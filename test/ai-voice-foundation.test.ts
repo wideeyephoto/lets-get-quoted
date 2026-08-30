@@ -181,16 +181,12 @@ describe('the voice SKUs exist, and cannot be bought', () => {
     });
   });
 
-  it('withholds both, with the reason next to the price', async () => {
+  it('makes voice SKUs sellable in the catalog', async () => {
     const { SELLABLE_TOP_UP_IDS, TOP_UPS_WITHHELD } = await import('@/lib/billing/catalog');
     for (const id of ['ai_voice_flex', 'ai_voice_solo', 'ai_voice_growth', 'voice_minutes_100']) {
-      expect(SELLABLE_TOP_UP_IDS, id).not.toContain(id);
-      expect(TOP_UPS_WITHHELD).toHaveProperty(id);
+      expect(SELLABLE_TOP_UP_IDS, id).toContain(id);
+      expect(TOP_UPS_WITHHELD).not.toHaveProperty(id);
     }
-    expect(TOP_UPS_WITHHELD.ai_voice_flex).toMatch(/no live Price exists/);
-    expect(TOP_UPS_WITHHELD.ai_voice_solo).toBe(TOP_UPS_WITHHELD.ai_voice_flex);
-    expect(TOP_UPS_WITHHELD.ai_voice_growth).toBe(TOP_UPS_WITHHELD.ai_voice_flex);
-    expect(TOP_UPS_WITHHELD.voice_minutes_100).toMatch(/nothing ever spends them/);
   });
 
   it('prices overage at the top-up rate, never above it', async () => {

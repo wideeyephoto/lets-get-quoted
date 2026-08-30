@@ -197,7 +197,7 @@ export default function ManagedAdsScreen({
     });
   };
 
-  const selectOnlyDay = (day: AdDayOfWeek) => {
+  const _selectOnlyDay = (day: AdDayOfWeek) => {
     setSelectedDays([day]);
   };
 
@@ -259,7 +259,7 @@ export default function ManagedAdsScreen({
   }, [fundingModel, walletMaxMonthlySpendDollars, currentBundle.weeklyAdSpendDollars, activeDaysCount]);
 
   // Projections for Google Search
-  const projections = useMemo(
+  const _projections = useMemo(
     () => calculateAdProjections(currentBundle.searchSpendDollars, tradeSlug || trade),
     [currentBundle.searchSpendDollars, tradeSlug, trade]
   );
