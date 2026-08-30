@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import FeatureDetailLayout from '@/components/marketing/feature-detail-layout';
 import AiAdsSimulator from './AiAdsSimulator';
+import ClosedLoopFlywheel from './ClosedLoopFlywheel';
+import MultiChannelShieldGrid from './MultiChannelShieldGrid';
 
 const AI_ADS_URL = 'https://letsgetquoted.com/features/ai-ads';
 
@@ -49,11 +51,11 @@ const PROOF = [
 const STEPS = [
   {
     title: 'Pick Your Trade & Smart Bundle',
-    body: 'Choose Starter ($395/mo), Growth ($695/mo), or Dominate ($1,395/mo). All keyword research, negative scrubbing, and character-compliant copy are pre-configured.',
+    body: 'Choose Launch ($185/wk), Growth ($345/wk), or Scale & Dominate ($645/wk)—or start with a $250 Auto-Refill Wallet. All keywords, negatives, and character-compliant copy are pre-configured.',
   },
   {
     title: '1-Click Launch on Stripe',
-    body: 'Activate with a single click. Your monthly ad budget and 15% management fee are bundled into one clean subscription with no long-term contracts.',
+    body: 'Activate with a single click. Weekly drip funding or auto-refill billing keeps your upfront cash outlay low with zero long-term contracts.',
   },
   {
     title: 'Dynamic Message-Match Intake',
@@ -61,11 +63,15 @@ const STEPS = [
   },
   {
     title: 'Closed-Loop Revenue Reporting',
-    body: 'Track your live ROAS (Return On Ad Spend) multiplier in real-time. Review weekly performance digests and watch signed job revenue feed Google’s bidding engine.',
+    body: 'Track your live ROAS multiplier in real-time. Daily spend syncs from Google Ads API and won job revenue feeds Google’s bidding engine.',
   },
 ];
 
 const FAQS = [
+  {
+    q: 'Why do you use Weekly Drip Billing and Auto-Refill Wallets?',
+    a: 'Weekly drip billing ($185–$645/week) lowers your upfront cash commitment by over 75% without starving your campaign momentum. We deploy your ad spend into Google & Meta daily, billing your card once every 7 days. Alternatively, our Auto-Refill Wallet lets you start with a $250 deposit and strict monthly ceiling.',
+  },
   {
     q: 'How is this different from hiring a local marketing agency?',
     a: 'Traditional marketing agencies charge $2,000 to $3,500/month in fixed management retainers and take weeks to launch. Let’s Get Quoted provides fully automated multi-channel campaigns for a transparent 15% platform fee with zero long-term commitments.',
@@ -73,6 +79,10 @@ const FAQS = [
   {
     q: 'Do I need my own Google Ads or Meta Ads manager account?',
     a: 'No. Everything is programmatically provisioned and managed under our Master MCC architecture. You never have to log into Google Ads Manager or navigate complex ad dashboards.',
+  },
+  {
+    q: 'How does closed-loop revenue optimization work?',
+    a: 'When you mark an estimate won or collect payment in Let’s Get Quoted, our system automatically uploads the offline conversion with the signed dollar amount and visitor gclid back to Google Ads, training Smart Bidding algorithms to target your most profitable jobs.',
   },
   {
     q: 'What happens when our crews are booked out with work?',
@@ -114,6 +124,9 @@ export default function AiAdsFeaturePage() {
         note: 'Zero long-term contracts. 100% direct ad network spend with a flat 15% management fee. Upgrade, pause, or cancel anytime.',
       }}
     >
+      <ClosedLoopFlywheel />
+      <MultiChannelShieldGrid />
+
       <section className="section-block" aria-labelledby="ads-faq-title" style={{ margin: '48px 0' }}>
         <div>
           <p className="eyebrow">Before you launch</p>

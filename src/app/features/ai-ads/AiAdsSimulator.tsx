@@ -23,7 +23,7 @@ export default function AiAdsSimulator() {
 
   // Dynamic calculations
   const projectedLeads = useMemo(() => {
-    const base = selectedBundleId === 'starter' ? 14 : selectedBundleId === 'growth' ? 20 : 38;
+    const base = (selectedBundleId === 'starter' || selectedBundleId === 'launch') ? 14 : selectedBundleId === 'growth' ? 20 : 38;
     return weatherSurgeActive ? Math.round(base * 1.25) : base;
   }, [selectedBundleId, weatherSurgeActive]);
 
@@ -418,9 +418,9 @@ export default function AiAdsSimulator() {
         </thead>
         <tbody>
           <tr>
-            <td><strong>Monthly Management Fee</strong></td>
+            <td><strong>Platform Management Fee</strong></td>
             <td style={{ color: '#f87171' }}>$2,000 – $3,500/mo Retainer</td>
-            <td style={{ color: '#34d399', fontWeight: 700 }}>Flat 15% Platform Fee (${bundle.platformFeeDollars}/mo)</td>
+            <td style={{ color: '#34d399', fontWeight: 700 }}>Flat 15% Platform Fee (${bundle.weeklyFeeDollars}/wk · ~${bundle.monthlyFeeDollars}/mo)</td>
           </tr>
           <tr>
             <td><strong>Direct Click Ad Spend</strong></td>

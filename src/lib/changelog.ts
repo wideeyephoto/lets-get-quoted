@@ -58,7 +58,7 @@ export const CHANGELOG_RELEASES: ChangelogRelease[] = [
     highlights: [
       {
         badge: 'New',
-        title: '1-Click Multi-Channel Smart Bundles ($395 Starter, $695 Growth, $1,395 Dominate)',
+        title: '1-Click Multi-Channel Smart Bundles ($185/wk Launch, $345/wk Growth, $645/wk Scale & Dominate)',
         description:
           'Zero agency retainers. 100% of nominal budget goes straight to ad network clicks (Google / Meta) with a transparent 15% platform management fee. Pre-configured RSA copy, keywords, and 24 negative waste exclusions.',
       },
