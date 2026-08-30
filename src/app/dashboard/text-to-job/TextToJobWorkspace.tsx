@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import SparkyAvatar from '@/components/mascot/SparkyAvatar';
 import { useAssistant } from '@/components/ai-assistant/AssistantProvider';
+import { evaluateFieldNoteConfidence, type FieldConfidenceVerdict } from '@/lib/field-intake-quality';
 import styles from './text-to-job.module.css';
 
 export type ExtractedItem = {
@@ -23,10 +24,21 @@ export type InboundMessage = {
   time: string;
   rawText: string;
   audioDuration?: string;
-  confidence: number;
+  confidence?: number;
+  qualityVerdict?: FieldConfidenceVerdict;
   matchedJobRef?: string;
   extractedItems: ExtractedItem[];
 };
+
+export function getMessageVerdict(msg: InboundMessage): FieldConfidenceVerdict {
+  if (msg.qualityVerdict) return msg.qualityVerdict;
+  return evaluateFieldNoteConfidence(msg.rawText, {
+    type: msg.type,
+    matchedJobRef: msg.matchedJobRef,
+    extractedItemsCount: msg.extractedItems?.length,
+    isLead: msg.extractedItems?.some((i) => i.pillar === 'leads'),
+  });
+}
 
 export type CrewRow = {
   id: string;
@@ -47,7 +59,6 @@ const SAMPLE_INBOUND_MESSAGES: InboundMessage[] = [
     rawText:
       '“Rough plumbing passed inspection at 124 Main. Need Mike and drywall crew Thursday 8am. Added $450 extra PEX lines to Miller quote.”',
     audioDuration: '0:14',
-    confidence: 99.6,
     matchedJobRef: 'Job J-104 (Miller)',
     extractedItems: [
       {
@@ -95,7 +106,6 @@ const SAMPLE_INBOUND_MESSAGES: InboundMessage[] = [
     time: 'Yesterday · 4:15 PM',
     rawText:
       'Met Dave Miller 248-555-0812 oak limb removal estimate Tuesday 9am. High urgency near roofline.',
-    confidence: 98.9,
     matchedJobRef: 'New Lead: Dave Miller',
     extractedItems: [
       {
@@ -134,7 +144,6 @@ const SAMPLE_INBOUND_MESSAGES: InboundMessage[] = [
     time: 'Aug 27 · 2:10 PM',
     rawText:
       'Johnson punch list done: 1) caulked exterior siding trim 2) painted baseboards in hallway. Ready for final walkthrough.',
-    confidence: 99.7,
     matchedJobRef: 'Job J-92 (Johnson)',
     extractedItems: [
       {
@@ -173,7 +182,6 @@ const SAMPLE_INBOUND_MESSAGES: InboundMessage[] = [
     time: 'Aug 26 · 11:20 AM',
     rawText:
       'Supply House receipt $184.50 — 2x Romex 250ft 12/2 wire rolls for Miller electrical rough-in.',
-    confidence: 99.4,
     matchedJobRef: 'Job J-104 (Miller)',
     extractedItems: [
       {
@@ -850,13 +858,21 @@ export default function TextToJobWorkspace({
       ];
     }
 
+    const simVerdict = evaluateFieldNoteConfidence(simText, {
+      type: 'sms',
+      matchedJobRef: matchedRef,
+      extractedItemsCount: newExtractedItems.length,
+      isLead,
+    });
+
     const newSimMsg: InboundMessage = {
       id: `sim-${Date.now()}`,
       sender: `Alert Phone (${alertPhone})`,
       type: 'sms',
       time: 'Just now (Simulator)',
       rawText: `“${simText}”`,
-      confidence: 99.4,
+      confidence: simVerdict.score,
+      qualityVerdict: simVerdict,
       matchedJobRef: matchedRef,
       extractedItems: newExtractedItems,
     };
@@ -864,7 +880,9 @@ export default function TextToJobWorkspace({
     setMessages([newSimMsg, ...messages]);
     setSelectedMsgId(newSimMsg.id);
     setShowSimModal(false);
-    setNotification(`⚡ Field note test added to feed! Created ${newExtractedItems.length} verified updates.`);
+    setNotification(
+      `⚡ Field note parsed (${simVerdict.score}% quality · ${simVerdict.label})! Created ${newExtractedItems.length} updates.`
+    );
     setTimeout(() => setNotification(null), 4000);
   }
 
@@ -1021,9 +1039,22 @@ export default function TextToJobWorkspace({
                             {msg.matchedJobRef}
                           </span>
                         )}
-                        <span className={styles.feedConfidenceBadge}>
-                          ✓ {msg.confidence}% Confidence
-                        </span>
+                        {(() => {
+                          const msgVerdict = getMessageVerdict(msg);
+                          return (
+                            <span
+                              className={`${styles.feedConfidenceBadge} ${
+                                msgVerdict.level === 'ready'
+                                  ? styles.feedConfidenceBadgeReady
+                                  : msgVerdict.level === 'review'
+                                  ? styles.feedConfidenceBadgeReview
+                                  : styles.feedConfidenceBadgeLow
+                              }`}
+                            >
+                              {msgVerdict.badgeText}
+                            </span>
+                          );
+                        })()}
                       </div>
                     </div>
                   );
@@ -1049,9 +1080,22 @@ export default function TextToJobWorkspace({
                   <Link href="/dashboard/jobs" className={styles.openJobLink}>
                     Open Job ↗
                   </Link>
-                  <div className={styles.receiptConfidencePill}>
-                    ✓ {selectedMessage.confidence}% Verified
-                  </div>
+                  {(() => {
+                    const selectedVerdict = getMessageVerdict(selectedMessage);
+                    return (
+                      <div
+                        className={`${styles.receiptConfidencePill} ${
+                          selectedVerdict.level === 'ready'
+                            ? styles.receiptConfidencePillReady
+                            : selectedVerdict.level === 'review'
+                            ? styles.receiptConfidencePillReview
+                            : styles.receiptConfidencePillLow
+                        }`}
+                      >
+                        {selectedVerdict.badgeText} &bull; {selectedVerdict.score}% Quality
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
 
@@ -1081,6 +1125,43 @@ export default function TextToJobWorkspace({
                   </div>
                 )}
               </div>
+
+              {/* Quality & Confidence Breakdown */}
+              {(() => {
+                const selectedVerdict = getMessageVerdict(selectedMessage);
+                return (
+                  <div className={styles.receiptQualityBox}>
+                    <div className={styles.receiptQualityTitle}>
+                      <span>Extraction Quality Breakdown</span>
+                      <span
+                        className={`${styles.receiptQualityScoreTag} ${
+                          selectedVerdict.level === 'ready'
+                            ? styles.receiptQualityScoreTagReady
+                            : selectedVerdict.level === 'review'
+                            ? styles.receiptQualityScoreTagReview
+                            : styles.receiptQualityScoreTagLow
+                        }`}
+                      >
+                        {selectedVerdict.score}% Quality &bull; {selectedVerdict.label}
+                      </span>
+                    </div>
+                    <ul className={styles.receiptQualityReasons}>
+                      {selectedVerdict.reasons.map((reason, idx) => (
+                        <li key={idx} className={styles.receiptQualityReasonItem}>
+                          <span>
+                            {selectedVerdict.level === 'ready'
+                              ? '✓'
+                              : selectedVerdict.level === 'review'
+                              ? '•'
+                              : '⚠️'}
+                          </span>
+                          <span>{reason}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                );
+              })()}
 
               {/* Itemized Job Receipt Lines */}
               <div className={styles.receiptLinesSection}>

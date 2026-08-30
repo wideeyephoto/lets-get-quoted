@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { requireOfficeContext } from '@/lib/auth';
 import { isCrewPhoneVerified, resolveCrewPhoneVerification } from '@/lib/crew-verification';
+import { evaluateFieldNoteConfidence } from '@/lib/field-intake-quality';
 import TextToJobWorkspace, { type InboundMessage, type CrewRow } from './TextToJobWorkspace';
 
 export const metadata: Metadata = {
@@ -67,16 +68,24 @@ export default async function TextToJobDashboardPage() {
     const isCost = row.kind === 'cost_added';
     const createdDate = new Date(row.created_at);
     const timeFormatted = createdDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    const rawText = row.body || row.title || 'Field update logged';
+    const matchedRef = jobTitle ? `Job: ${jobTitle}` : undefined;
+    const verdict = evaluateFieldNoteConfidence(rawText, {
+      type: isVoice ? 'voice' : isCost ? 'receipt' : 'sms',
+      matchedJobRef: matchedRef,
+      extractedItemsCount: 1,
+    });
 
     return {
       id: row.id,
       sender: row.author || (account?.alert_phone ? `Owner (${account.alert_phone})` : 'Field Note'),
       type: isVoice ? 'voice' : isCost ? 'receipt' : 'sms',
       time: timeFormatted,
-      rawText: row.body || row.title || 'Field update logged',
+      rawText,
       audioDuration: isVoice ? '0:15' : undefined,
-      confidence: 99.8,
-      matchedJobRef: jobTitle ? `Job: ${jobTitle}` : undefined,
+      confidence: verdict.score,
+      qualityVerdict: verdict,
+      matchedJobRef: matchedRef,
       extractedItems: [
         {
           id: `item-${row.id}`,
