@@ -23,6 +23,13 @@ import type { DisputeEvidenceBundle } from '@/lib/dispute-evidence';
 import type { FinancingTermOption } from '@/lib/financing-calculator';
 import { calculateEarlyPayDiscount } from '@/lib/financing-calculator';
 import type { NoiDocumentData } from '@/lib/noi-generator';
+import {
+  allocateMilestoneCents,
+  calculateCashChangeCents,
+  calculateSurchargeCents,
+  toIntegerCents,
+  fromIntegerCents,
+} from '@/lib/financial-precision';
 
 export type ModalType =
   | 'collect_chooser'
@@ -2004,10 +2011,12 @@ export default function PaymentModals({
           {/* Step 1: Pick Job & Amount */}
           <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '0.75rem' }}>
             <div>
-              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.3rem' }}>
+              <label htmlFor="field-job-select" style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.3rem' }}>
                 Customer &amp; Job *
               </label>
               <select
+                id="field-job-select"
+                aria-label="Customer and Job"
                 required
                 value={fieldJobId}
                 onChange={(e) => setFieldJobId(e.target.value)}
@@ -2788,22 +2797,19 @@ export default function PaymentModals({
     const selectedJob = jobs.find((j) => j.id === authJobId) || jobs[0];
     const totalAmt = Number.parseFloat(authContractTotal) || 15000;
 
-    const stages = authMilestonePlan === '40_30_30'
-      ? [
-          { name: 'Deposit (Materials)', pct: 40, amt: totalAmt * 0.4 },
-          { name: 'Rough-in Approval', pct: 30, amt: totalAmt * 0.3 },
-          { name: 'Final Sign-off', pct: 30, amt: totalAmt * 0.3 },
-        ]
+    const percentages = authMilestonePlan === '40_30_30' ? [40, 30, 30] : authMilestonePlan === '50_50' ? [50, 50] : [33, 33, 34];
+    const names = authMilestonePlan === '40_30_30'
+      ? ['Deposit (Materials)', 'Rough-in Approval', 'Final Sign-off']
       : authMilestonePlan === '50_50'
-      ? [
-          { name: 'Initial Deposit', pct: 50, amt: totalAmt * 0.5 },
-          { name: 'Completion Sign-off', pct: 50, amt: totalAmt * 0.5 },
-        ]
-      : [
-          { name: 'Milestone 1', pct: 33, amt: totalAmt * 0.33 },
-          { name: 'Milestone 2', pct: 33, amt: totalAmt * 0.33 },
-          { name: 'Final Milestone', pct: 34, amt: totalAmt * 0.34 },
-        ];
+      ? ['Initial Deposit', 'Completion Sign-off']
+      : ['Milestone 1', 'Milestone 2', 'Final Milestone'];
+
+    const allocations = allocateMilestoneCents(totalAmt, percentages);
+    const stages = allocations.map((al, idx) => ({
+      name: names[idx],
+      pct: al.percentage,
+      amt: al.dollars,
+    }));
 
     return (
       <ControlledModal title="Card-on-File Milestone Pre-Authorization" onClose={onClose} maxWidth="600px">
@@ -2817,8 +2823,10 @@ export default function PaymentModals({
 
           <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '0.85rem' }}>
             <div>
-              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.3rem' }}>Select Project</label>
+              <label htmlFor="auth-job-select" style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.3rem' }}>Select Project</label>
               <select
+                id="auth-job-select"
+                aria-label="Select Project"
                 value={authJobId || (selectedJob?.id ?? '')}
                 onChange={(e) => setAuthJobId(e.target.value)}
                 style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-subtle, #e2e8f0)', borderRadius: '6px' }}

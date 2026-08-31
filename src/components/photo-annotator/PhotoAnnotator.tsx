@@ -47,6 +47,9 @@ export function PhotoAnnotator({
   const [isSaving, setIsSaving] = useState(false);
   const [isAiAnalyzing, setIsAiAnalyzing] = useState(false);
 
+  // Resolved safe image source (Blob URL or CORS-clean URL to avoid canvas tainting)
+  const [resolvedSrc, setResolvedSrc] = useState<string>(photoUrl);
+
   // Selected stamp ID
   const [selectedStamp, setSelectedStamp] = useState<string>('defect');
   const [showStampMenu, setShowStampMenu] = useState(false);
@@ -78,6 +81,62 @@ export function PhotoAnnotator({
     width: 800,
     height: 600,
   });
+
+  // Convert remote or cross-origin photos into local Blob URLs to eliminate canvas tainting
+  useEffect(() => {
+    let isMounted = true;
+    let objectUrlToRevoke: string | null = null;
+
+    async function resolveImageSource() {
+      if (photoUrl.startsWith('data:') || photoUrl.startsWith('blob:')) {
+        setResolvedSrc(photoUrl);
+        return;
+      }
+
+      try {
+        // Attempt 1: Direct fetch -> Blob
+        const res = await fetch(photoUrl, { mode: 'cors' });
+        if (res.ok) {
+          const blob = await res.blob();
+          const objUrl = URL.createObjectURL(blob);
+          objectUrlToRevoke = objUrl;
+          if (isMounted) {
+            setResolvedSrc(objUrl);
+            return;
+          }
+        }
+      } catch {
+        // Attempt 2: If direct CORS is blocked, fetch via local backend proxy
+        try {
+          const proxyRes = await fetch(`/api/lead-photos/proxy?url=${encodeURIComponent(photoUrl)}`);
+          if (proxyRes.ok) {
+            const blob = await proxyRes.blob();
+            const objUrl = URL.createObjectURL(blob);
+            objectUrlToRevoke = objUrl;
+            if (isMounted) {
+              setResolvedSrc(objUrl);
+              return;
+            }
+          }
+        } catch {
+          // Fallback to original url
+        }
+      }
+
+      if (isMounted) {
+        setResolvedSrc(photoUrl);
+      }
+    }
+
+    resolveImageSource();
+
+    return () => {
+      isMounted = false;
+      if (objectUrlToRevoke) {
+        URL.revokeObjectURL(objectUrlToRevoke);
+      }
+    };
+  }, [photoUrl]);
 
   const syncHistoryState = useCallback(() => {
     setShapes([...historyRef.current.current]);
@@ -345,15 +404,27 @@ export function PhotoAnnotator({
     setRotation((prev) => (prev + 90) % 360);
   };
 
-  // Generate Export Canvas at full resolution
+  // Generate Export Canvas at full resolution using CORS-safe image
   const renderExportCanvas = async (): Promise<HTMLCanvasElement> => {
-    const img = imgRef.current;
-    if (!img) throw new Error('Image reference missing');
+    const cleanImg = new Image();
+    cleanImg.crossOrigin = 'anonymous';
+
+    await new Promise<void>((resolve, reject) => {
+      cleanImg.onload = () => resolve();
+      cleanImg.onerror = () => {
+        // Fallback without crossOrigin if needed
+        cleanImg.removeAttribute('crossOrigin');
+        cleanImg.onload = () => resolve();
+        cleanImg.onerror = reject;
+        cleanImg.src = resolvedSrc;
+      };
+      cleanImg.src = resolvedSrc;
+    });
 
     const exportCanvas = document.createElement('canvas');
     const isQuarterRot = rotation === 90 || rotation === 270;
-    const naturalW = img.naturalWidth || 800;
-    const naturalH = img.naturalHeight || 600;
+    const naturalW = cleanImg.naturalWidth || imageDimensions.width || 800;
+    const naturalH = cleanImg.naturalHeight || imageDimensions.height || 600;
 
     exportCanvas.width = isQuarterRot ? naturalH : naturalW;
     exportCanvas.height = isQuarterRot ? naturalW : naturalH;
@@ -365,9 +436,9 @@ export function PhotoAnnotator({
     if (rotation !== 0) {
       ctx.translate(exportCanvas.width / 2, exportCanvas.height / 2);
       ctx.rotate((rotation * Math.PI) / 180);
-      ctx.drawImage(img, -naturalW / 2, -naturalH / 2, naturalW, naturalH);
+      ctx.drawImage(cleanImg, -naturalW / 2, -naturalH / 2, naturalW, naturalH);
     } else {
-      ctx.drawImage(img, 0, 0, naturalW, naturalH);
+      ctx.drawImage(cleanImg, 0, 0, naturalW, naturalH);
     }
     ctx.restore();
 
@@ -576,7 +647,8 @@ export function PhotoAnnotator({
         <div className={styles.canvasContainer}>
           <img
             ref={imgRef}
-            src={photoUrl}
+            src={resolvedSrc}
+            crossOrigin="anonymous"
             alt="Site Inspection"
             className={styles.baseImage}
             onLoad={handleImageLoad}

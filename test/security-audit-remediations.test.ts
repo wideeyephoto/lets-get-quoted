@@ -5,10 +5,9 @@ import { join } from 'node:path';
 describe('Security and Audit Remediations Regression Suite', () => {
   const rootDir = process.cwd();
 
-  it('verifies ThemeTuner is strictly gated to development in root layout', () => {
+  it('verifies ThemeTuner is completely removed from root layout', () => {
     const layoutContent = readFileSync(join(rootDir, 'src/app/layout.tsx'), 'utf8');
-    expect(layoutContent).toContain("process.env.NODE_ENV === 'development' ? <ThemeTuner /> : null");
-    expect(layoutContent).not.toMatch(/<ThemeTuner\s*\/>\s*<\/body>/);
+    expect(layoutContent).not.toContain('ThemeTuner');
   });
 
   it('verifies migrations 150000 and 160000 drop both singular and plural quick_stop_priority_zone policies', () => {

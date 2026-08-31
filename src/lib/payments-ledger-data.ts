@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { fetchAllPages } from '@/lib/pagination';
 import type { PaymentKind, PaymentStatus } from '@/lib/payments';
+import { toCents, fromCents } from '@/lib/stripe';
 
 export type PaymentLedgerItem = {
   id: string;
@@ -190,24 +191,29 @@ export async function loadPaymentsLedgerData(
       invoiceMap.set(inv.id, inv.ref ?? '—');
     }
 
-    let grossRevenue = 0;
-    let netRevenue = 0;
-    let totalFees = 0;
-    let totalRefunds = 0;
+    let grossRevenueCents = 0;
+    let netRevenueCents = 0;
+    let totalFeesCents = 0;
+    let totalRefundsCents = 0;
     let paidCount = 0;
     let processingCount = 0;
     let pendingAchCount = 0;
     let failedCount = 0;
     let disputedCount = 0;
-    let achSavingsEstimated = 0;
+    let achSavingsEstimatedCents = 0;
 
     const mappedItems: PaymentLedgerItem[] = paymentRows.map((row) => {
       const job = jobMap.get(row.job_id);
       const invoiceRef = row.invoice_id ? invoiceMap.get(row.invoice_id) ?? null : null;
-      const amount = Number(row.amount) || 0;
-      const fee = Number(row.platform_fee) || 0;
-      const refunded = Number(row.refunded_amount) || 0;
-      const net = Math.max(0, amount - fee - refunded);
+      const amountCents = toCents(Number(row.amount) || 0);
+      const feeCents = toCents(Number(row.platform_fee) || 0);
+      const refundedCents = toCents(Number(row.refunded_amount) || 0);
+      const netCents = Math.max(0, amountCents - feeCents - refundedCents);
+
+      const amount = fromCents(amountCents);
+      const fee = fromCents(feeCents);
+      const refunded = fromCents(refundedCents);
+      const net = fromCents(netCents);
 
       const isPaid = row.status === 'paid';
       const isFailed = row.status === 'failed';
@@ -216,16 +222,16 @@ export async function loadPaymentsLedgerData(
       const isPendingAch = Boolean(row.async_payment_pending_at);
 
       if (isPaid) {
-        grossRevenue += amount;
-        totalFees += fee;
-        netRevenue += net;
-        totalRefunds += refunded;
+        grossRevenueCents += amountCents;
+        totalFeesCents += feeCents;
+        netRevenueCents += netCents;
+        totalRefundsCents += refundedCents;
         paidCount++;
 
         // Estimate ACH savings if transaction >= $500: Card fee would be ~2.9% + 30c ($14.80+), ACH fee is flat $5.
         if (row.charge_model === 'ach' || (amount >= 500 && row.charge_model !== 'card')) {
-          const estimatedCardFee = amount * 0.029 + 0.30;
-          achSavingsEstimated += Math.max(0, estimatedCardFee - 5.00);
+          const estimatedCardFeeCents = Math.round(amountCents * 0.029) + 30;
+          achSavingsEstimatedCents += Math.max(0, estimatedCardFeeCents - 500);
         }
       }
 
@@ -273,20 +279,20 @@ export async function loadPaymentsLedgerData(
       };
     });
 
-    const averageTransaction = paidCount > 0 ? round2(grossRevenue / paidCount) : 0;
+    const averageTransaction = paidCount > 0 ? fromCents(Math.round(grossRevenueCents / paidCount)) : 0;
 
     const summary: PaymentsLedgerSummary = {
-      grossRevenue: round2(grossRevenue),
-      netRevenue: round2(netRevenue),
-      totalFees: round2(totalFees),
-      totalRefunds: round2(totalRefunds),
+      grossRevenue: fromCents(grossRevenueCents),
+      netRevenue: fromCents(netRevenueCents),
+      totalFees: fromCents(totalFeesCents),
+      totalRefunds: fromCents(totalRefundsCents),
       paidCount,
       processingCount,
       pendingAchCount,
       failedCount,
       disputedCount,
       averageTransaction,
-      achSavingsEstimated: round2(achSavingsEstimated),
+      achSavingsEstimated: fromCents(achSavingsEstimatedCents),
     };
 
     return {

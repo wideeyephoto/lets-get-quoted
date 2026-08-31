@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { fetchAllPages } from '@/lib/pagination';
+import { toCents, fromCents } from '@/lib/stripe';
 
 export type AgingBucket = 'current' | '1_15' | '16_30' | '31_60' | '60_plus';
 export type ReliabilityTier = 'A' | 'B' | 'C';
@@ -225,54 +226,48 @@ export async function loadReceivablesData(
     }
 
     // Compute Aging Bucket totals
-    let currentBucketTotal = 0;
-    let overdue1_15Total = 0;
-    let overdue16_30Total = 0;
-    let overdue31_60Total = 0;
-    let overdue60PlusTotal = 0;
+    let currentBucketTotalCents = 0;
+    let overdue1_15TotalCents = 0;
+    let overdue16_30TotalCents = 0;
+    let overdue31_60TotalCents = 0;
+    let overdue60PlusTotalCents = 0;
     let overdueCount = 0;
 
     for (const item of items) {
+      const dueCents = toCents(item.amountDue);
       if (item.agingBucket === 'current') {
-        currentBucketTotal += item.amountDue;
+        currentBucketTotalCents += dueCents;
       } else if (item.agingBucket === '1_15') {
-        overdue1_15Total += item.amountDue;
+        overdue1_15TotalCents += dueCents;
         overdueCount++;
       } else if (item.agingBucket === '16_30') {
-        overdue16_30Total += item.amountDue;
+        overdue16_30TotalCents += dueCents;
         overdueCount++;
       } else if (item.agingBucket === '31_60') {
-        overdue31_60Total += item.amountDue;
+        overdue31_60TotalCents += dueCents;
         overdueCount++;
       } else if (item.agingBucket === '60_plus') {
-        overdue60PlusTotal += item.amountDue;
+        overdue60PlusTotalCents += dueCents;
         overdueCount++;
       }
     }
 
-    const totalOutstanding = round2(
-      currentBucketTotal +
-      overdue1_15Total +
-      overdue16_30Total +
-      overdue31_60Total +
-      overdue60PlusTotal,
-    );
+    const totalOverdueCents =
+      overdue1_15TotalCents +
+      overdue16_30TotalCents +
+      overdue31_60TotalCents +
+      overdue60PlusTotalCents;
 
-    const totalOverdue = round2(
-      overdue1_15Total +
-      overdue16_30Total +
-      overdue31_60Total +
-      overdue60PlusTotal,
-    );
+    const totalOutstandingCents = currentBucketTotalCents + totalOverdueCents;
 
     const summary: ReceivablesSummary = {
-      totalOutstanding,
-      totalOverdue,
-      currentBucketTotal: round2(currentBucketTotal),
-      overdue1_15Total: round2(overdue1_15Total),
-      overdue16_30Total: round2(overdue16_30Total),
-      overdue31_60Total: round2(overdue31_60Total),
-      overdue60PlusTotal: round2(overdue60PlusTotal),
+      totalOutstanding: fromCents(totalOutstandingCents),
+      totalOverdue: fromCents(totalOverdueCents),
+      currentBucketTotal: fromCents(currentBucketTotalCents),
+      overdue1_15Total: fromCents(overdue1_15TotalCents),
+      overdue16_30Total: fromCents(overdue16_30TotalCents),
+      overdue31_60Total: fromCents(overdue31_60TotalCents),
+      overdue60PlusTotal: fromCents(overdue60PlusTotalCents),
       totalReceivablesCount: items.length,
       overdueCount,
     };

@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { fetchAllPages } from '@/lib/pagination';
+import { toCents, fromCents } from '@/lib/stripe';
 
 export type RevenueDataPoint = {
   dateKey: string;
@@ -104,101 +105,91 @@ export async function loadRevenueAnalyticsData(
       jobClientMap.set(j.id, j.client_name ?? 'Customer');
     }
 
-    let totalGross = 0;
-    let totalNet = 0;
-    let totalFees = 0;
-    let achSavings = 0;
+    let totalGrossCents = 0;
+    let totalNetCents = 0;
+    let totalFeesCents = 0;
+    let achSavingsCents = 0;
 
-    // Buckets
-    const dailyMap = new Map<string, { gross: number; net: number; fees: number; count: number }>();
-    const monthlyMap = new Map<string, { gross: number; net: number; fees: number; count: number }>();
+    const dailyMap = new Map<string, { grossCents: number; netCents: number; feesCents: number; count: number }>();
+    const monthlyMap = new Map<string, { grossCents: number; netCents: number; feesCents: number; count: number }>();
 
-    // Streams
-    const streamBuckets: Record<string, { name: string; amount: number; count: number; color: string }> = {
-      deposit: { name: 'Initial Deposits', amount: 0, count: 0, color: '#3b82f6' },
-      stage: { name: 'Progress Milestones', amount: 0, count: 0, color: '#8b5cf6' },
-      final: { name: 'Final Balances', amount: 0, count: 0, color: '#10b981' },
-      plan_installment: { name: 'Payment Plans', amount: 0, count: 0, color: '#f59e0b' },
-      quick_stop: { name: 'Quick Stops', amount: 0, count: 0, color: '#ec4899' },
-      other: { name: 'Standard Invoices & Other', amount: 0, count: 0, color: '#64748b' },
+    const streamBuckets: Record<string, { name: string; amountCents: number; count: number; color: string }> = {
+      deposit: { name: 'Initial Deposits', amountCents: 0, count: 0, color: '#3b82f6' },
+      milestone: { name: 'Milestone Draws', amountCents: 0, count: 0, color: '#10b981' },
+      final: { name: 'Final Invoices', amountCents: 0, count: 0, color: '#8b5cf6' },
+      quick_stop: { name: 'Quick Stop / Service', amountCents: 0, count: 0, color: '#f59e0b' },
+      manual: { name: 'Offline / Manual', amountCents: 0, count: 0, color: '#64748b' },
+      other: { name: 'Other Payments', amountCents: 0, count: 0, color: '#06b6d4' },
     };
 
-    // Methods
-    const methodBuckets: Record<string, { label: string; amount: number; count: number }> = {
-      card: { label: 'Credit & Debit Card', amount: 0, count: 0 },
-      ach: { label: 'ACH Bank Transfer', amount: 0, count: 0 },
-      apple_pay: { label: 'Apple Pay', amount: 0, count: 0 },
-      google_pay: { label: 'Google Pay', amount: 0, count: 0 },
-      manual: { label: 'Manual (Cash / Check)', amount: 0, count: 0 },
+    const methodBuckets: Record<string, { label: string; amountCents: number; count: number }> = {
+      card: { label: 'Credit / Debit Card', amountCents: 0, count: 0 },
+      ach: { label: 'ACH Bank Transfer', amountCents: 0, count: 0 },
+      apple_pay: { label: 'Apple Pay', amountCents: 0, count: 0 },
+      google_pay: { label: 'Google Pay', amountCents: 0, count: 0 },
+      manual: { label: 'Manual (Cash / Check)', amountCents: 0, count: 0 },
     };
 
-    const clientTotalsMap = new Map<string, { totalPaid: number; jobIds: Set<string> }>();
+    const clientTotalsMap = new Map<string, { totalPaidCents: number; jobIds: Set<string> }>();
 
     const thirtyDaysAgoMs = Date.now() - 30 * 86400000;
 
     for (const p of payments) {
-      const gross = Number(p.amount) || 0;
-      const fee = Number(p.platform_fee) || 0;
-      const refunded = Number(p.refunded_amount) || 0;
-      const net = Math.max(0, gross - fee - refunded);
+      const grossCents = toCents(Number(p.amount) || 0);
+      const feeCents = toCents(Number(p.platform_fee) || 0);
+      const refundedCents = toCents(Number(p.refunded_amount) || 0);
+      const netCents = Math.max(0, grossCents - feeCents - refundedCents);
       const paidDate = p.paid_at ? new Date(p.paid_at) : new Date(p.requested_at);
       const paidMs = paidDate.getTime();
 
-      totalGross += gross;
-      totalNet += net;
-      totalFees += fee;
+      totalGrossCents += grossCents;
+      totalNetCents += netCents;
+      totalFeesCents += feeCents;
 
-      // Estimate ACH savings on payments >= $500: Card fee would be 2.9% + 30c, ACH is $5
-      if (p.charge_model === 'ach' || (gross >= 500 && p.charge_model !== 'card')) {
-        const estCardFee = gross * 0.029 + 0.30;
-        achSavings += Math.max(0, estCardFee - 5.00);
+      if (p.charge_model === 'ach' || (grossCents >= 50000 && p.charge_model !== 'card')) {
+        const estCardFeeCents = Math.round(grossCents * 0.029) + 30;
+        achSavingsCents += Math.max(0, estCardFeeCents - 500);
       }
 
-      // Stream categorization
       const kindKey = p.kind in streamBuckets ? p.kind : 'other';
-      streamBuckets[kindKey].amount += gross;
+      streamBuckets[kindKey].amountCents += grossCents;
       streamBuckets[kindKey].count++;
 
-      // Method categorization
       let mKey = 'card';
       if (p.charge_model === 'manual') mKey = 'manual';
       else if (p.charge_model === 'ach') mKey = 'ach';
       else if (p.charge_model === 'apple_pay') mKey = 'apple_pay';
       else if (p.charge_model === 'google_pay') mKey = 'google_pay';
-      methodBuckets[mKey].amount += gross;
+      methodBuckets[mKey].amountCents += grossCents;
       methodBuckets[mKey].count++;
 
-      // Daily trends (last 30 days)
       if (paidMs >= thirtyDaysAgoMs) {
         const dayKey = paidDate.toISOString().slice(0, 10);
-        const existingDay = dailyMap.get(dayKey) || { gross: 0, net: 0, fees: 0, count: 0 };
-        existingDay.gross += gross;
-        existingDay.net += net;
-        existingDay.fees += fee;
+        const existingDay = dailyMap.get(dayKey) || { grossCents: 0, netCents: 0, feesCents: 0, count: 0 };
+        existingDay.grossCents += grossCents;
+        existingDay.netCents += netCents;
+        existingDay.feesCents += feeCents;
         existingDay.count++;
         dailyMap.set(dayKey, existingDay);
       }
 
-      // Monthly trends (last 12 months)
       const monthKey = paidDate.toISOString().slice(0, 7);
-      const existingMonth = monthlyMap.get(monthKey) || { gross: 0, net: 0, fees: 0, count: 0 };
-      existingMonth.gross += gross;
-      existingMonth.net += net;
-      existingMonth.fees += fee;
+      const existingMonth = monthlyMap.get(monthKey) || { grossCents: 0, netCents: 0, feesCents: 0, count: 0 };
+      existingMonth.grossCents += grossCents;
+      existingMonth.netCents += netCents;
+      existingMonth.feesCents += feeCents;
       existingMonth.count++;
       monthlyMap.set(monthKey, existingMonth);
 
-      // Top clients
       if (p.job_id) {
         const clientName = jobClientMap.get(p.job_id) || 'Direct Customer';
-        const clientStat = clientTotalsMap.get(clientName) || { totalPaid: 0, jobIds: new Set<string>() };
-        clientStat.totalPaid += gross;
+        const clientStat = clientTotalsMap.get(clientName) || { totalPaidCents: 0, jobIds: new Set<string>() };
+        clientStat.totalPaidCents += grossCents;
         clientStat.jobIds.add(p.job_id);
         clientTotalsMap.set(clientName, clientStat);
       }
     }
 
-    // Build trendDaily sorted by date
     const trendDaily: RevenueDataPoint[] = [];
     const sortedDays = [...dailyMap.keys()].sort();
     for (const dKey of sortedDays) {
@@ -208,14 +199,13 @@ export async function loadRevenueAnalyticsData(
       trendDaily.push({
         dateKey: dKey,
         label,
-        gross: round2(val.gross),
-        net: round2(val.net),
-        fees: round2(val.fees),
+        gross: fromCents(val.grossCents),
+        net: fromCents(val.netCents),
+        fees: fromCents(val.feesCents),
         count: val.count,
       });
     }
 
-    // Build trendMonthly sorted
     const trendMonthly: RevenueDataPoint[] = [];
     const sortedMonths = [...monthlyMap.keys()].sort();
     for (const mKey of sortedMonths) {
@@ -226,44 +216,41 @@ export async function loadRevenueAnalyticsData(
       trendMonthly.push({
         dateKey: mKey,
         label,
-        gross: round2(val.gross),
-        net: round2(val.net),
-        fees: round2(val.fees),
+        gross: fromCents(val.grossCents),
+        net: fromCents(val.netCents),
+        fees: fromCents(val.feesCents),
         count: val.count,
       });
     }
 
-    // Build streams array
     const streams: RevenueStreamBreakdown[] = Object.entries(streamBuckets)
-      .filter(([_, b]) => b.amount > 0)
+      .filter(([_, b]) => b.amountCents > 0)
       .map(([key, b]) => ({
         key,
         name: b.name,
-        amount: round2(b.amount),
-        percentage: totalGross > 0 ? round2((b.amount / totalGross) * 100) : 0,
+        amount: fromCents(b.amountCents),
+        percentage: totalGrossCents > 0 ? round2((b.amountCents / totalGrossCents) * 100) : 0,
         count: b.count,
         color: b.color,
       }))
       .sort((a, b) => b.amount - a.amount);
 
-    // Build methods array
     const methods: PaymentMethodDistribution[] = Object.entries(methodBuckets)
-      .filter(([_, m]) => m.amount > 0)
+      .filter(([_, m]) => m.amountCents > 0)
       .map(([method, m]) => ({
         method,
         label: m.label,
-        amount: round2(m.amount),
-        percentage: totalGross > 0 ? round2((m.amount / totalGross) * 100) : 0,
+        amount: fromCents(m.amountCents),
+        percentage: totalGrossCents > 0 ? round2((m.amountCents / totalGrossCents) * 100) : 0,
         count: m.count,
         feePercent: method === 'ach' ? 0.5 : method === 'manual' ? 0 : 2.9,
       }))
       .sort((a, b) => b.amount - a.amount);
 
-    // Build top clients array
     const topClients: TopClientRevenue[] = [...clientTotalsMap.entries()]
       .map(([clientName, stat]) => ({
         clientName,
-        totalPaid: round2(stat.totalPaid),
+        totalPaid: fromCents(stat.totalPaidCents),
         jobCount: stat.jobIds.size,
       }))
       .sort((a, b) => b.totalPaid - a.totalPaid)
@@ -275,10 +262,10 @@ export async function loadRevenueAnalyticsData(
       streams,
       methods,
       topClients,
-      totalGross: round2(totalGross),
-      totalNet: round2(totalNet),
-      totalFees: round2(totalFees),
-      achSavings: round2(achSavings),
+      totalGross: fromCents(totalGrossCents),
+      totalNet: fromCents(totalNetCents),
+      totalFees: fromCents(totalFeesCents),
+      achSavings: fromCents(achSavingsCents),
       available: true,
     };
   } catch (error) {

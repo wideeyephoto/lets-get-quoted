@@ -280,14 +280,18 @@ export function generateGeneralLedgerJournalEntries(
     const dateStr = tx.paidAt ? tx.paidAt.slice(0, 10) : new Date().toISOString().slice(0, 10);
     const ref = tx.jobRef || tx.id.slice(0, 8);
 
+    const grossCents = Math.round(tx.gross * 100);
+    const feeCents = Math.round(tx.fee * 100);
+    const netCents = Math.max(0, grossCents - feeCents);
+
     // 1. Debit Cash / Undeposited Funds for Net Amount
-    if (tx.net > 0) {
+    if (netCents > 0) {
       entries.push({
         entryNumber: entryNum,
         date: dateStr,
         accountNumber: '1000',
         accountName: 'Undeposited Funds / Cash Clearing',
-        debit: Math.round(tx.net * 100) / 100,
+        debit: netCents / 100,
         credit: 0,
         description: `Net settlement for ${tx.clientName} (${tx.paymentMethod || 'Payment'})`,
         clientName: tx.clientName,
@@ -296,13 +300,13 @@ export function generateGeneralLedgerJournalEntries(
     }
 
     // 2. Debit Processing Fees for Merchant Fee
-    if (tx.fee > 0) {
+    if (feeCents > 0) {
       entries.push({
         entryNumber: entryNum,
         date: dateStr,
         accountNumber: '6100',
         accountName: 'Merchant Processing Fees (Stripe/ACH)',
-        debit: Math.round(tx.fee * 100) / 100,
+        debit: feeCents / 100,
         credit: 0,
         description: `Processing fee on ${tx.clientName} transaction`,
         clientName: tx.clientName,
@@ -311,14 +315,14 @@ export function generateGeneralLedgerJournalEntries(
     }
 
     // 3. Credit Revenue / Sales for Gross Amount
-    if (tx.gross > 0) {
+    if (grossCents > 0) {
       entries.push({
         entryNumber: entryNum,
         date: dateStr,
         accountNumber: '4000',
         accountName: 'Trade Contracting Revenue',
         debit: 0,
-        credit: Math.round(tx.gross * 100) / 100,
+        credit: grossCents / 100,
         description: `Gross revenue earned from ${tx.clientName}`,
         clientName: tx.clientName,
         ref,
