@@ -135,6 +135,10 @@
     {
       "path": "/api/cron/ad-wallet-refill",
       "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/cron/contractor-lifecycle",
+      "schedule": "0 14 * * *"
     }
   ]
 }

@@ -343,7 +343,7 @@ export default function AdminCampaignComposer({
                 <option value="hello@letsgetquoted.com">hello@letsgetquoted.com</option>
                 <option value="support@letsgetquoted.com">support@letsgetquoted.com</option>
                 <option value="updates@letsgetquoted.com">updates@letsgetquoted.com</option>
-                <option value="brett@letsgetquoted.com">brett@letsgetquoted.com</option>
+                <option value="hello@letsgetquoted.com">hello@letsgetquoted.com</option>
               </select>
             </div>
           </div>

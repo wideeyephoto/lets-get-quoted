@@ -18,6 +18,7 @@ import {
 
 import { resolveDestination, type SignupGoal, type SignupFeature } from '@/lib/signup-intent';
 import { sendFounderSignupAlert } from '@/lib/founder-alerts';
+import { sendContractorWelcomeEmail } from '@/lib/contractor-lifecycle-emails';
 
 export type FirstRunResult =
   | { ok: true; destinationPath: string; planCheckoutPath: string | null }
@@ -111,6 +112,14 @@ export async function completeFirstRunAction(input: {
     postalCode: input.postalCode,
     plan: input.plan || null,
     billing: input.billing || null,
+  });
+
+  // Asynchronously dispatch Day 0 Welcome Email to the newly registered contractor
+  void sendContractorWelcomeEmail({
+    accountId,
+    businessName: input.businessName,
+    trade: requested || 'General',
+    postalCode: input.postalCode,
   });
 
   const intent = resolvePlanIntent(input);

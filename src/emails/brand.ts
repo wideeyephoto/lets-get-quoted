@@ -80,10 +80,12 @@ export function normalizeEmailTheme(value: unknown): EmailThemeId {
   return EMAIL_THEMES.some((theme) => theme.id === value) ? (value as EmailThemeId) : 'studio';
 }
 
+export const FONT_STACK = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif";
+
 export const NAVY = '#172033';
 export const INK = '#1c2230';
-export const MUTED = '#6b7280';
-export const HAIRLINE = '#e6e9ef';
+export const MUTED = '#64748b';
+export const HAIRLINE = '#e2e8f0';
 
 export function escapeHtml(value: string | null | undefined): string {
   return String(value ?? '')
@@ -178,11 +180,6 @@ export function contractorFrom(businessName: string): string {
 /**
  * The masthead: their uploaded logo if they have one, otherwise their name set
  * in their own color.
- *
- * Deliberately NOT the SVG brand mark the site and favicon use. Gmail refuses
- * data: URIs on images and several clients don't render SVG at all, so it would
- * be an empty box for most recipients — worse than a wordmark, which always
- * works and still carries the color.
  */
 export function brandLockup(
   brand: EmailBrand,
@@ -191,13 +188,12 @@ export function brandLockup(
   const accent = safeAccent(brand.accent);
   const name = escapeHtml(brand.businessName || 'Your contractor');
   if (brand.logoUrl) {
-    const image = `<img src="${escapeHtml(brand.logoUrl)}" alt="${name}" width="150" style="display:block;max-width:150px;height:auto;border:0;outline:none;text-decoration:none" />`;
-    // A clean white plate ensures transparent light or dark logos never vanish against colored or dark theme headers
+    const image = `<img src="${escapeHtml(brand.logoUrl)}" alt="${name}" width="160" style="display:block;max-width:160px;height:auto;border:0;outline:none;text-decoration:none" />`;
     return options.logoPlate
       ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="display:inline-block"><tr><td bgcolor="#ffffff" style="padding:8px 14px;background:#ffffff;border-radius:8px;border:1px solid #e2e8f0">${image}</td></tr></table>`
       : image;
   }
-  return `<span style="font-size:20px;font-weight:700;color:${options.textColor ?? accent};letter-spacing:-0.01em">${name}</span>`;
+  return `<span style="font-family:${FONT_STACK};font-size:21px;font-weight:800;color:${options.textColor ?? accent};letter-spacing:-0.02em">${name}</span>`;
 }
 
 /**
@@ -282,27 +278,27 @@ export function themePaint(theme: EmailThemeId, accent: string): ThemePaint {
       accessibleAccent: darkAcc,
       page: '#ffffff',
       card: '#ffffff',
-      cardStyle: 'border:1px solid #dfe3e8;border-radius:4px',
-      cardRadius: '4px',
+      cardStyle: 'border:1px solid #cbd5e1;border-radius:6px;box-shadow:0 4px 12px -2px rgba(0,0,0,0.06)',
+      cardRadius: '6px',
       subtleBg: '#f8fafc',
-      border: '#dfe3e8',
+      border: '#e2e8f0',
       header: '#ffffff',
-      headerStyle: `padding:26px 32px 22px;border-bottom:5px solid ${acc}`,
+      headerStyle: `padding:28px 34px 22px;border-bottom:4px solid ${acc}`,
       headerText: darkAcc,
       logoPlate: true,
-      bodyStyle: 'padding:28px 32px 10px',
+      bodyStyle: 'padding:28px 34px 14px',
       footer: '#f8fafc',
-      footerStyle: 'padding:22px 32px 26px;border-top:1px solid #e6e9ef',
+      footerStyle: 'padding:24px 34px 28px;border-top:1px solid #e2e8f0',
       eyebrow: darkAcc,
-      headingFont: 'Arial,sans-serif',
-      headingSize: '23px',
+      headingFont: FONT_STACK,
+      headingSize: '24px',
       tableHeaderBg: '#f1f5f9',
       tableHeaderBorder: '#cbd5e1',
       badgeBg: NAVY,
       badgeText: '#ffffff',
       highlightBg: '#f8fafc',
       highlightBorder: `border-left:4px solid ${acc}`,
-      ctaRadius: '3px',
+      ctaRadius: '4px',
       ctaBackground: NAVY,
       ctaText: '#ffffff',
     };
@@ -315,21 +311,21 @@ export function themePaint(theme: EmailThemeId, accent: string): ThemePaint {
       theme: 'neighborly',
       accent: acc,
       accessibleAccent: darkOnWarm,
-      page: '#f5f0e8',
+      page: '#f6f1e8',
       card: cardBg,
-      cardStyle: `border:1px solid #ebd5be;border-left:8px solid ${acc};border-radius:8px`,
-      cardRadius: '8px',
+      cardStyle: `border:1px solid #ebd5be;border-left:8px solid ${acc};border-radius:14px;box-shadow:0 10px 20px -5px rgba(120,53,15,0.07)`,
+      cardRadius: '14px',
       subtleBg: '#faf4eb',
       border: '#ebd5be',
       header: cardBg,
-      headerStyle: 'padding:30px 34px 0',
+      headerStyle: 'padding:30px 34px 20px',
       headerText: darkOnWarm,
       logoPlate: true,
-      bodyStyle: 'padding:24px 34px 10px',
-      footer: cardBg,
+      bodyStyle: 'padding:24px 34px 12px',
+      footer: '#fffaf3',
       footerStyle: 'padding:24px 34px 30px;border-top:1px solid #ebd5be',
       eyebrow: darkOnWarm,
-      headingFont: 'Georgia,Times,serif',
+      headingFont: `Georgia, Cambria, 'Times New Roman', Times, serif`,
       headingSize: '25px',
       tableHeaderBg: '#f4ece0',
       tableHeaderBorder: '#dfcfb9',
@@ -348,29 +344,29 @@ export function themePaint(theme: EmailThemeId, accent: string): ThemePaint {
       theme: 'blueprint',
       accent: acc,
       accessibleAccent: darkAcc,
-      page: '#111827',
+      page: '#0b1329',
       card: '#ffffff',
-      cardStyle: 'border:1px solid #374151;border-radius:4px',
-      cardRadius: '4px',
-      subtleBg: '#f1f5f9',
+      cardStyle: 'border:1px solid #1e293b;border-radius:12px;box-shadow:0 20px 25px -5px rgba(0,0,0,0.4)',
+      cardRadius: '12px',
+      subtleBg: '#f8fafc',
       border: '#cbd5e1',
-      header: NAVY,
-      headerStyle: `padding:27px 32px 24px;border-top:5px solid ${acc}`,
+      header: '#0f172a',
+      headerStyle: `padding:28px 34px 24px;border-top:5px solid ${acc}`,
       headerText: '#ffffff',
       logoPlate: true,
-      bodyStyle: 'padding:28px 32px 10px',
-      footer: '#f3f5f8',
-      footerStyle: 'padding:22px 32px 27px;border-top:1px solid #dfe3e8',
+      bodyStyle: 'padding:30px 34px 14px',
+      footer: '#f8fafc',
+      footerStyle: 'padding:24px 34px 28px;border-top:1px solid #e2e8f0',
       eyebrow: darkAcc,
-      headingFont: 'Trebuchet MS,Arial,sans-serif',
-      headingSize: '24px',
+      headingFont: `'Trebuchet MS', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`,
+      headingSize: '25px',
       tableHeaderBg: '#1e293b',
       tableHeaderBorder: '#0f172a',
-      badgeBg: NAVY,
+      badgeBg: '#0f172a',
       badgeText: '#ffffff',
-      highlightBg: '#f8fafc',
+      highlightBg: '#f1f5f9',
       highlightBorder: `border-left:4px solid ${acc}`,
-      ctaRadius: '4px',
+      ctaRadius: '6px',
       ctaBackground: acc,
       ctaText: onAccent(acc),
     };
@@ -384,19 +380,19 @@ export function themePaint(theme: EmailThemeId, accent: string): ThemePaint {
       accessibleAccent: darkAcc,
       page: pageBg,
       card: '#ffffff',
-      cardStyle: 'border:1px solid #e2e8f0;border-radius:16px',
+      cardStyle: 'border:1px solid #fed7aa;border-radius:16px;box-shadow:0 20px 25px -5px rgba(255,122,33,0.1),0 8px 10px -6px rgba(0,0,0,0.05)',
       cardRadius: '16px',
       subtleBg: tint(acc, 0.96),
       border: tint(acc, 0.8),
       header: acc,
-      headerStyle: 'padding:30px 34px 27px',
+      headerStyle: 'padding:32px 34px 28px',
       headerText: onAccent(acc),
       logoPlate: true,
-      bodyStyle: 'padding:30px 34px 12px',
+      bodyStyle: 'padding:32px 34px 16px',
       footer: '#ffffff',
-      footerStyle: 'padding:24px 34px 30px;border-top:1px solid #f0f2f5',
+      footerStyle: 'padding:24px 34px 30px;border-top:1px solid #f1f5f9',
       eyebrow: darkAcc,
-      headingFont: 'Arial,sans-serif',
+      headingFont: FONT_STACK,
       headingSize: '27px',
       tableHeaderBg: tint(acc, 0.9),
       tableHeaderBorder: tint(acc, 0.75),
@@ -404,7 +400,7 @@ export function themePaint(theme: EmailThemeId, accent: string): ThemePaint {
       badgeText: onAccent(acc),
       highlightBg: tint(acc, 0.95),
       highlightBorder: `border-left:4px solid ${acc}`,
-      ctaRadius: '10px',
+      ctaRadius: '12px',
       ctaBackground: acc,
       ctaText: onAccent(acc),
     };
@@ -415,32 +411,146 @@ export function themePaint(theme: EmailThemeId, accent: string): ThemePaint {
     theme: 'studio',
     accent: acc,
     accessibleAccent: darkAcc,
-    page: '#f4f6f9',
+    page: '#f1f5f9',
     card: '#ffffff',
-    cardStyle: 'border:1px solid #e6e9ef;border-radius:12px',
-    cardRadius: '12px',
+    cardStyle: 'border:1px solid #e2e8f0;border-radius:14px;box-shadow:0 10px 25px -5px rgba(0,0,0,0.05),0 8px 10px -6px rgba(0,0,0,0.05)',
+    cardRadius: '14px',
     subtleBg: '#f8fafc',
     border: '#e2e8f0',
     header: '#ffffff',
-    headerStyle: `padding:28px 32px 0;border-top:4px solid ${acc}`,
+    headerStyle: `padding:28px 34px 22px;border-bottom:1px solid #edf2f7;border-top:4px solid ${acc}`,
     headerText: darkAcc,
     logoPlate: true,
-    bodyStyle: 'padding:24px 32px 8px',
-    footer: '#ffffff',
-    footerStyle: 'padding:24px 32px 28px;border-top:1px solid #f1f5f9',
+    bodyStyle: 'padding:30px 34px 14px',
+    footer: '#f8fafc',
+    footerStyle: 'padding:24px 34px 28px;border-top:1px solid #edf2f7',
     eyebrow: darkAcc,
-    headingFont: 'Arial,sans-serif',
-    headingSize: '22px',
+    headingFont: FONT_STACK,
+    headingSize: '24px',
     tableHeaderBg: '#f8fafc',
     tableHeaderBorder: '#e2e8f0',
     badgeBg: '#e2e8f0',
     badgeText: '#1e293b',
     highlightBg: '#f8fafc',
     highlightBorder: `border-left:4px solid ${acc}`,
-    ctaRadius: '6px',
+    ctaRadius: '8px',
     ctaBackground: acc,
     ctaText: onAccent(acc),
   };
+}
+
+/**
+ * Renders rich, interactive visual cards for campaign bodies.
+ * Automatically transforms:
+ *  - Numbered lists (1. Title: Description) -> styled step cards with round colored step pills
+ *  - Bullet checklists (• Title: Description) -> styled feature cards with checkmarks
+ *  - Quotes / Callouts (> ... or Tip:) -> highlighted callout boxes
+ *  - Regular paragraphs -> readable, nicely spaced text blocks
+ */
+export function renderRichCampaignBodyHtml(body: string, paint: ThemePaint): string {
+  if (!body) return '';
+
+  return body
+    .split(/\n{2,}/)
+    .map((block) => block.trim())
+    .filter(Boolean)
+    .map((block) => {
+      const lines = block.split('\n').map((l) => l.trim()).filter(Boolean);
+
+      // Check for Numbered List
+      const isNumberedList = lines.length > 0 && lines.every((line) => /^\d+\.\s+/.test(line));
+      if (isNumberedList) {
+        const items = lines
+          .map((line) => {
+            const match = line.match(/^(\d+)\.\s+(.*)$/);
+            if (!match) return '';
+            const num = match[1];
+            const content = match[2];
+            const colonIdx = content.indexOf(':');
+            let title = '';
+            let desc = content;
+            if (colonIdx > 0 && colonIdx < 60) {
+              title = content.slice(0, colonIdx).trim();
+              desc = content.slice(colonIdx + 1).trim();
+            }
+
+            return `
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 10px;background:${paint.subtleBg};border:1px solid ${paint.border};border-radius:${paint.cardRadius};overflow:hidden">
+              <tr>
+                <td width="48" valign="top" style="padding:14px 0 14px 14px">
+                  <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                    <tr>
+                      <td align="center" bgcolor="${paint.accent}" style="width:28px;height:28px;border-radius:50%;font-family:${FONT_STACK};font-size:13px;font-weight:800;color:${onAccent(paint.accent)};text-align:center;line-height:28px">
+                        ${num}
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+                <td valign="top" style="padding:14px 16px 14px 8px;font-family:${FONT_STACK}">
+                  ${title ? `<div style="font-size:14px;font-weight:700;color:${INK};margin-bottom:3px">${escapeHtml(title)}</div>` : ''}
+                  <div style="font-size:14px;line-height:1.55;color:#475569">${escapeHtml(desc)}</div>
+                </td>
+              </tr>
+            </table>`;
+          })
+          .join('');
+        return `<div style="margin:0 0 16px">${items}</div>`;
+      }
+
+      // Check for Bullet Checklist
+      const isBulletList = lines.length > 0 && lines.every((line) => line.startsWith('•') || line.startsWith('-'));
+      if (isBulletList) {
+        const items = lines
+          .map((line) => {
+            const rawContent = line.replace(/^[•\-]\s*/, '').trim();
+            const colonIdx = rawContent.indexOf(':');
+            let title = '';
+            let desc = rawContent;
+            if (colonIdx > 0 && colonIdx < 60) {
+              title = rawContent.slice(0, colonIdx).trim();
+              desc = rawContent.slice(colonIdx + 1).trim();
+            }
+
+            return `
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 8px;background:${paint.subtleBg};border:1px solid ${paint.border};border-radius:8px;overflow:hidden">
+              <tr>
+                <td width="38" valign="top" style="padding:12px 0 12px 14px">
+                  <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                    <tr>
+                      <td align="center" bgcolor="#e0f2fe" style="width:22px;height:22px;border-radius:50%;font-family:${FONT_STACK};font-size:12px;font-weight:800;color:#0284c7;text-align:center;line-height:22px">
+                        ✓
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+                <td valign="top" style="padding:12px 14px 12px 6px;font-family:${FONT_STACK}">
+                  ${title ? `<strong style="font-size:14px;font-weight:700;color:${INK}">${escapeHtml(title)}: </strong>` : ''}
+                  <span style="font-size:14px;line-height:1.55;color:#475569">${escapeHtml(desc)}</span>
+                </td>
+              </tr>
+            </table>`;
+          })
+          .join('');
+        return `<div style="margin:0 0 16px">${items}</div>`;
+      }
+
+      // Check for Callout/Tip (> Quote or Tip:)
+      if (block.startsWith('>') || /^tip:/i.test(block) || /^note:/i.test(block) || /^important:/i.test(block)) {
+        const cleanText = block.replace(/^>\s*/, '');
+        return `
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:14px 0 18px;background:${paint.highlightBg};${paint.highlightBorder};border-radius:8px;overflow:hidden">
+          <tr>
+            <td style="padding:14px 18px;font-family:${FONT_STACK};font-size:14px;line-height:1.6;color:#334155">
+              ${escapeHtml(cleanText)}
+            </td>
+          </tr>
+        </table>`;
+      }
+
+      // Standard Paragraph
+      return `<p style="margin:0 0 16px;font-family:${FONT_STACK};font-size:15px;line-height:1.65;color:${INK}">${escapeHtml(block).replace(/\n/g, '<br/>')}</p>`;
+    })
+    .join('');
 }
 
 export function renderBrandedEmail(input: BrandedEmail): string {
@@ -451,25 +561,35 @@ export function renderBrandedEmail(input: BrandedEmail): string {
   const paint = themePaint(theme, accent);
 
   const eyebrow = input.eyebrow
-    ? `<p style="margin:0 0 10px;font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:${paint.eyebrow}">${escapeHtml(input.eyebrow)}</p>`
+    ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 14px">
+         <tr>
+           <td bgcolor="${paint.theme === 'spotlight' ? 'rgba(255, 122, 33, 0.14)' : paint.subtleBg}" style="padding:4px 12px;border-radius:6px;border:1px solid ${paint.border}">
+             <span style="font-family:${FONT_STACK};font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:${paint.eyebrow}">${escapeHtml(input.eyebrow)}</span>
+           </td>
+         </tr>
+       </table>`
     : '';
 
   const paragraphs = (input.paragraphs ?? [])
-    .map((text) => `<p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:${INK}">${escapeHtml(text)}</p>`)
+    .map((text) => `<p style="margin:0 0 16px;font-family:${FONT_STACK};font-size:15px;line-height:1.65;color:${INK}">${escapeHtml(text)}</p>`)
     .join('');
 
   // A table, not a styled <a>: Outlook ignores padding on inline anchors, so a
   // plain button collapses to a bare link exactly where it matters most.
   const cta = input.cta
-    ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:16px 0 8px">
-         <tr><td align="center" bgcolor="${paint.ctaBackground}" style="border-radius:${paint.ctaRadius}">
-           <a href="${escapeHtml(input.cta.url)}" style="display:inline-block;padding:13px 26px;font-size:15px;font-weight:700;color:${paint.ctaText};text-decoration:none;border-radius:${paint.ctaRadius}">${escapeHtml(input.cta.label)}</a>
-         </td></tr>
+    ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:22px 0 14px">
+         <tr>
+           <td align="center" bgcolor="${paint.ctaBackground}" style="border-radius:${paint.ctaRadius};box-shadow:0 4px 14px rgba(0,0,0,0.12)">
+             <a href="${escapeHtml(input.cta.url)}" style="display:inline-block;padding:14px 28px;font-family:${FONT_STACK};font-size:15px;font-weight:700;color:${paint.ctaText};text-decoration:none;border-radius:${paint.ctaRadius};letter-spacing:-0.01em">
+               ${escapeHtml(input.cta.label)} &nbsp;→
+             </a>
+           </td>
+         </tr>
        </table>`
     : '';
 
   const contactCallout = input.contactCallout
-    ? `<p style="margin:16px 0 8px;font-size:14px;line-height:1.5;color:${MUTED}">${input.contactCallout}</p>`
+    ? `<div style="margin:18px 0 10px;font-family:${FONT_STACK};font-size:14px;line-height:1.55;color:${MUTED}">${input.contactCallout}</div>`
     : '';
 
   const contactBits = [
@@ -493,22 +613,22 @@ export function renderBrandedEmail(input: BrandedEmail): string {
 
   return `<!DOCTYPE html>
 <html><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" /><title>${name}</title></head>
-<body style="margin:0;padding:0;background:${paint.page};font-family:Arial,sans-serif">
+<body style="margin:0;padding:0;background:${paint.page};font-family:${FONT_STACK}">
 ${preheaderBlock(input.preheader ?? '')}
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${paint.page}">
-  <tr><td align="center" style="padding:24px 12px">
+  <tr><td align="center" style="padding:28px 12px">
     <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;background:${paint.card};${paint.cardStyle};overflow:hidden">
       <tr><td bgcolor="${paint.header}" style="${paint.headerStyle}">${brandLockup(brand, { textColor: paint.headerText, logoPlate: paint.logoPlate })}</td></tr>
       <tr><td style="${paint.bodyStyle}">
         ${eyebrow}
-        <h1 style="margin:0 0 14px;font-family:${paint.headingFont};font-size:${paint.headingSize};line-height:1.25;font-weight:700;color:${INK}">${escapeHtml(input.heading)}</h1>
+        <h1 style="margin:0 0 16px;font-family:${paint.headingFont};font-size:${paint.headingSize};line-height:1.25;font-weight:800;color:${INK};letter-spacing:-0.02em">${escapeHtml(input.heading)}</h1>
         ${paragraphs}
         ${input.bodyHtml ?? ''}
         ${cta}
         ${contactCallout}
       </td></tr>
       <tr><td bgcolor="${paint.footer}" style="${paint.footerStyle}">
-        <div style="border-top:1px solid ${HAIRLINE};padding-top:16px">
+        <div style="border-top:1px solid ${HAIRLINE};padding-top:16px;font-family:${FONT_STACK}">
           <p style="margin:0;font-size:12px;line-height:1.6;color:${MUTED}">
              ${senderLine}
           </p>
@@ -520,7 +640,7 @@ ${preheaderBlock(input.preheader ?? '')}
         </div>
       </td></tr>
     </table>
-    <p style="margin:14px 0 0;font-family:Arial,sans-serif;font-size:11px;color:#9099a6">Powered by Let&#39;s Get Quoted</p>
+    <p style="margin:16px 0 0;font-family:${FONT_STACK};font-size:11px;color:#9099a6;letter-spacing:0.02em">Powered by Let&#39;s Get Quoted</p>
   </td></tr>
 </table>
 </body></html>`;

@@ -717,9 +717,6 @@ export default function FlagshipHome() {
       {/* VERIFIED PLATFORM INTEGRATIONS & TRUST */}
       <IntegrationTrustStrip />
 
-      {/* 2026 NEXT-GEN HIGH-TECH & AI INNOVATIONS SHOWCASE */}
-      <HighTechShowcase />
-
       {/* DEDICATED PRODUCT EXPERIENCE SECTION: AI PHOTO INTAKE & SCOPE SCANNER */}
       <section
         id="product-demo"
@@ -764,6 +761,9 @@ export default function FlagshipHome() {
           </a>
         </div>
       </section>
+
+      {/* 2026 NEXT-GEN HIGH-TECH & AI INNOVATIONS SHOWCASE */}
+      <HighTechShowcase />
 
       <section className="flagships" id="flagships" data-track>
         <Glare />

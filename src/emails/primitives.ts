@@ -2,6 +2,7 @@ import {
   escapeHtml,
   type EmailBrand,
   type ThemePaint,
+  FONT_STACK,
   INK,
   MUTED,
 } from './brand';
@@ -24,7 +25,7 @@ export function detailCard(
   options: { title?: string; subtitle?: string; borderLeft?: boolean } = {},
 ): string {
   const titleHtml = options.title
-    ? `<div style="padding:10px 16px;background:${paint.tableHeaderBg};border-bottom:${paint.tableHeaderBorder};font-size:12px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:${paint.accessibleAccent}">
+    ? `<div style="padding:10px 16px;background:${paint.tableHeaderBg};border-bottom:${paint.tableHeaderBorder};font-family:${FONT_STACK};font-size:12px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:${paint.accessibleAccent}">
         ${escapeHtml(options.title)}
         ${options.subtitle ? `<span style="font-weight:400;color:${MUTED};margin-left:6px;text-transform:none">· ${escapeHtml(options.subtitle)}</span>` : ''}
        </div>`
@@ -34,7 +35,7 @@ export function detailCard(
 
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:14px 0 18px;background:${paint.subtleBg};border:1px solid ${paint.border};${leftBorder}border-radius:${paint.cardRadius};overflow:hidden">
     ${titleHtml ? `<tr><td>${titleHtml}</td></tr>` : ''}
-    <tr><td style="padding:16px 18px">${contentHtml}</td></tr>
+    <tr><td style="padding:16px 18px;font-family:${FONT_STACK}">${contentHtml}</td></tr>
   </table>`;
 }
 
@@ -54,21 +55,21 @@ export function moneySummary(
       const size = r.strong ? '14px' : '13px';
       const padding = r.strong ? '8px 0 4px' : '6px 0';
       return `<tr>
-        <td style="padding:${padding};font-size:${size};font-weight:${weight};color:${color}">${escapeHtml(r.label)}</td>
-        <td align="right" style="padding:${padding};font-size:${size};font-weight:${weight};color:${color};white-space:nowrap">${escapeHtml(r.value)}</td>
+        <td style="padding:${padding};font-family:${FONT_STACK};font-size:${size};font-weight:${weight};color:${color}">${escapeHtml(r.label)}</td>
+        <td align="right" style="padding:${padding};font-family:${FONT_STACK};font-size:${size};font-weight:${weight};color:${color};white-space:nowrap">${escapeHtml(r.value)}</td>
       </tr>`;
     })
     .join('');
 
   const dueHtml = options.dueNotice
-    ? `<div style="margin-top:10px;font-size:12px;color:${MUTED};text-align:right">${escapeHtml(options.dueNotice)}</div>`
+    ? `<div style="margin-top:10px;font-family:${FONT_STACK};font-size:12px;color:${MUTED};text-align:right">${escapeHtml(options.dueNotice)}</div>`
     : '';
 
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:16px 0 20px;border-top:1px solid ${paint.border}">
     ${rowHtml}
     <tr>
-      <td style="padding:12px 0 6px;border-top:2px solid ${paint.border};font-size:16px;font-weight:700;color:${INK}">${escapeHtml(totalRow.label)}</td>
-      <td align="right" style="padding:12px 0 6px;border-top:2px solid ${paint.border};font-size:20px;font-weight:700;color:${paint.accessibleAccent};white-space:nowrap">${escapeHtml(totalRow.value)}</td>
+      <td style="padding:12px 0 6px;border-top:2px solid ${paint.border};font-family:${FONT_STACK};font-size:16px;font-weight:700;color:${INK}">${escapeHtml(totalRow.label)}</td>
+      <td align="right" style="padding:12px 0 6px;border-top:2px solid ${paint.border};font-family:${FONT_STACK};font-size:20px;font-weight:800;color:${paint.accessibleAccent};white-space:nowrap">${escapeHtml(totalRow.value)}</td>
     </tr>
   </table>
   ${dueHtml}`;
@@ -89,32 +90,32 @@ export function appointmentBlock(
   },
 ): string {
   const serviceHtml = options.serviceName
-    ? `<p style="margin:0 0 6px;font-size:15px;font-weight:700;color:${INK}">Service: ${escapeHtml(options.serviceName)}</p>`
+    ? `<p style="margin:0 0 6px;font-family:${FONT_STACK};font-size:15px;font-weight:700;color:${INK}">Service: ${escapeHtml(options.serviceName)}</p>`
     : '';
 
   const addressHtml = options.address
-    ? `<p style="margin:0 0 6px;font-size:14px;color:${MUTED}">📍 <strong>Where:</strong> ${escapeHtml(options.address)}</p>`
+    ? `<p style="margin:0 0 6px;font-family:${FONT_STACK};font-size:14px;color:${MUTED}">📍 <strong>Where:</strong> ${escapeHtml(options.address)}</p>`
     : '';
 
   const notesHtml = options.notes
-    ? `<p style="margin:6px 0 0;font-size:13px;line-height:1.5;color:${MUTED}">${escapeHtml(options.notes)}</p>`
+    ? `<p style="margin:6px 0 0;font-family:${FONT_STACK};font-size:13px;line-height:1.55;color:${MUTED}">${escapeHtml(options.notes)}</p>`
     : '';
 
   const rescheduleHtml = options.rescheduleText
-    ? `<div style="margin-top:12px;padding-top:10px;border-top:1px dashed ${paint.border};font-size:12px;color:${MUTED}">
+    ? `<div style="margin-top:12px;padding-top:10px;border-top:1px dashed ${paint.border};font-family:${FONT_STACK};font-size:12px;color:${MUTED}">
         ${escapeHtml(options.rescheduleText)}
        </div>`
     : '';
 
   const badgeContent = `
-    <div style="display:inline-block;padding:6px 14px;background:${paint.badgeBg};color:${paint.badgeText};border-radius:6px;font-weight:700;font-size:14px;letter-spacing:0.02em">
+    <div style="display:inline-block;padding:6px 14px;background:${paint.badgeBg};color:${paint.badgeText};border-radius:6px;font-family:${FONT_STACK};font-weight:700;font-size:14px;letter-spacing:0.02em">
       🗓️ ${escapeHtml(options.whenLabel)}
     </div>
   `;
 
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:16px 0 20px;background:${paint.subtleBg};border:1px solid ${paint.border};border-left:5px solid ${paint.accent};border-radius:${paint.cardRadius};overflow:hidden">
     <tr>
-      <td style="padding:18px 20px">
+      <td style="padding:18px 20px;font-family:${FONT_STACK}">
         <div style="margin-bottom:12px">${badgeContent}</div>
         ${serviceHtml}
         ${addressHtml}
@@ -155,12 +156,12 @@ export function statusBanner(
   }
 
   const titleHtml = options.title
-    ? `<div style="font-weight:700;font-size:14px;margin-bottom:4px;color:${text}">${icon} ${escapeHtml(options.title)}</div>`
+    ? `<div style="font-family:${FONT_STACK};font-weight:700;font-size:14px;margin-bottom:4px;color:${text}">${icon} ${escapeHtml(options.title)}</div>`
     : '';
 
-  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:14px 0 16px;background:${bg};border:1px solid ${border};border-left:4px solid ${border};border-radius:${paint.cardRadius}">
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:14px 0 16px;background:${bg};border:1px solid ${border};border-left:4px solid ${border};border-radius:${paint.cardRadius};overflow:hidden">
     <tr>
-      <td style="padding:12px 16px;font-size:14px;line-height:1.5;color:${text}">
+      <td style="padding:12px 16px;font-family:${FONT_STACK};font-size:14px;line-height:1.55;color:${text}">
         ${titleHtml}
         <div>${escapeHtml(options.message)}</div>
       </td>
@@ -178,12 +179,12 @@ export function contactBlock(
 ): string {
   const prompt = options.prompt || 'Questions? Reach us directly:';
   const phone = brand.phone
-    ? `<a href="tel:${escapeHtml(brand.phone)}" style="display:inline-block;padding:6px 12px;margin:4px 6px 4px 0;background:${paint.subtleBg};border:1px solid ${paint.border};border-radius:6px;font-size:13px;font-weight:700;color:${paint.accessibleAccent};text-decoration:none">📞 ${escapeHtml(brand.phone)}</a>`
+    ? `<a href="tel:${escapeHtml(brand.phone)}" style="display:inline-block;padding:6px 12px;margin:4px 6px 4px 0;background:${paint.subtleBg};border:1px solid ${paint.border};border-radius:6px;font-family:${FONT_STACK};font-size:13px;font-weight:700;color:${paint.accessibleAccent};text-decoration:none">📞 ${escapeHtml(brand.phone)}</a>`
     : '';
-  const replyNote = `<span style="font-size:13px;color:${MUTED}">or reply to this email</span>`;
+  const replyNote = `<span style="font-family:${FONT_STACK};font-size:13px;color:${MUTED}">or reply to this email</span>`;
 
   return `<div style="margin:16px 0 8px;padding-top:12px;border-top:1px solid ${paint.border}">
-    <p style="margin:0 0 6px;font-size:12px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:${MUTED}">${escapeHtml(prompt)}</p>
+    <p style="margin:0 0 6px;font-family:${FONT_STACK};font-size:12px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:${MUTED}">${escapeHtml(prompt)}</p>
     <div>${phone}${replyNote}</div>
   </div>`;
 }

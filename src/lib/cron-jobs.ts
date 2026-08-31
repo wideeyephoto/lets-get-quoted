@@ -293,6 +293,13 @@ export const CRON_JOBS: CronJobSpec[] = [
     importance: 'money',
     consequence: 'Depleted ad wallet balances below threshold stop automatically charging Stripe and refilling ad spend.',
   },
+  {
+    job: 'contractor-lifecycle',
+    label: 'Contractor onboarding lifecycle',
+    schedule: '0 14 * * *',
+    importance: 'customer',
+    consequence: 'New trade contractors stop receiving automated onboarding guidance, quote activation playbooks, and Stripe payout reminders.',
+  },
 ];
 
 export function cronJob(job: string): CronJobSpec | undefined {

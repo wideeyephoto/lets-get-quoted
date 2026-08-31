@@ -87,8 +87,8 @@ describe('Admin Platform Campaigns Engine', () => {
       expect(html).toContain('https://letsgetquoted.com/dashboard');
       expect(html).toContain('Unsubscribe from platform announcements');
       expect(html).toContain('Let&#39;s Get Quoted');
-      expect(html).toContain('ul'); // Bullet list converted
-      expect(html).toContain('li');
+      expect(html).toContain('Faster deposits');
+      expect(html).toContain('Direct customer receipt links');
     });
 
     it('renders across different email themes without throwing', () => {

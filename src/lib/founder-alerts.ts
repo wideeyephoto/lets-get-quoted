@@ -27,7 +27,7 @@ export type FounderSignupAlertInput = {
  * issue never blocks the contractor from entering their dashboard.
  */
 export async function sendFounderSignupAlert(input: FounderSignupAlertInput): Promise<void> {
-  const recipient = process.env.FOUNDER_ALERT_EMAIL || 'brett@letsgetquoted.com';
+  const recipient = process.env.FOUNDER_ALERT_EMAIL || 'hello@letsgetquoted.com';
 
   const resend = getResend();
   if (!resend || !process.env.RESEND_API_KEY) {
@@ -112,7 +112,7 @@ export type FounderMessagingApplicationAlertInput = {
 export async function sendFounderMessagingApplicationAlert(
   input: FounderMessagingApplicationAlertInput,
 ): Promise<void> {
-  const recipient = process.env.FOUNDER_ALERT_EMAIL || 'brett@letsgetquoted.com';
+  const recipient = process.env.FOUNDER_ALERT_EMAIL || 'hello@letsgetquoted.com';
 
   const resend = getResend();
   if (!resend || !process.env.RESEND_API_KEY) {
@@ -178,4 +178,3 @@ export async function sendFounderMessagingApplicationAlert(
     console.error('[founder-alerts] Failed to send founder messaging application alert email:', err);
   }
 }
-

@@ -57,7 +57,9 @@ export type AccountEventKind =
   // which carries the digest of the words they agreed to; this is the same fact
   // in the human-readable activity feed, written only when something actually
   // changed so the two cannot disagree about how many times it did.
-  | 'overage_authorization_changed';
+  | 'overage_authorization_changed'
+  // Automated contractor onboarding & lifecycle drip email delivered by the platform
+  | 'contractor_lifecycle_email_sent';
 
 export async function recordAccountEvent(input: {
   accountId: string;

@@ -5,6 +5,8 @@ import {
   escapeHtml,
   normalizeEmailTheme,
   renderBrandedEmail,
+  renderRichCampaignBodyHtml,
+  themePaint,
   type EmailBrand,
 } from '@/emails/brand';
 import { buildUnsubscribePageUrl, buildUnsubscribeOneClickUrl } from '@/lib/email-suppression';
@@ -107,7 +109,7 @@ export function renderPlatformCampaignEmailHtml(
     preheader: interpolatedPreheader,
     eyebrow: interpolatedEyebrow,
     heading: interpolatedHeading,
-    bodyHtml: campaignParagraphs(interpolatedBody),
+    bodyHtml: renderRichCampaignBodyHtml(interpolatedBody, themePaint(theme, '#ff7a21')),
     cta: input.ctaLabel && input.ctaUrl
       ? {
           label: interpolateTokens(input.ctaLabel, recipient),
