@@ -1,4 +1,4 @@
-import { TRADES, getTrade } from '@/lib/trades';
+import { getTrade } from '@/lib/trades';
 import { ogCard, OG_SIZE, OG_CONTENT_TYPE } from '@/lib/og-card';
 
 // Forty-nine of the fifty-six pages that unfurled with no image. See the note

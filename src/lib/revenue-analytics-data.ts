@@ -137,7 +137,7 @@ export async function loadRevenueAnalyticsData(
     for (const p of payments) {
       const grossCents = toCents(Number(p.amount) || 0);
       const feeCents = toCents(Number(p.platform_fee) || 0);
-      const refundedCents = toCents(Number(p.refunded_amount) || 0);
+      const refundedCents = toCents(Number(p.refunded_amount) || (p.status === 'refunded' ? Number(p.amount) || 0 : 0));
       const netCents = Math.max(0, grossCents - feeCents - refundedCents);
       const paidDate = p.paid_at ? new Date(p.paid_at) : new Date(p.requested_at);
       const paidMs = paidDate.getTime();

@@ -1,4 +1,4 @@
-import { ARTICLES, getArticle } from '@/lib/resources';
+import { getArticle } from '@/lib/resources';
 import { ogCard, OG_SIZE, OG_CONTENT_TYPE } from '@/lib/og-card';
 
 /* EDGE, NOT NODE — and this is not a preference.
