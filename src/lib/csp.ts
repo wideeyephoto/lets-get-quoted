@@ -105,7 +105,7 @@ export type CspOptions = {
 // IF SOMETHING BREAKS: set this back to true. That is the whole revert — the
 // header name is derived from it, nothing else changes, and the reports keep
 // flowing to /api/csp-report either way.
-export const CSP_REPORT_ONLY = false;
+export const CSP_REPORT_ONLY = true;
 export const CSP_REPORT_PATH = '/api/csp-report';
 
 export function cspHeaderName(): string {

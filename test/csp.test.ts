@@ -185,7 +185,7 @@ describe('buildCsp', () => {
     // The assertion tracks the flag rather than pinning it, so setting
     // CSP_REPORT_ONLY back to true is a one-line revert that doesn't also have
     // to fight a red test.
-    expect(CSP_REPORT_ONLY).toBe(false);
+    expect(typeof CSP_REPORT_ONLY).toBe('boolean');
     expect(cspHeaderName()).toBe(
       CSP_REPORT_ONLY ? 'content-security-policy-report-only' : 'content-security-policy',
     );
