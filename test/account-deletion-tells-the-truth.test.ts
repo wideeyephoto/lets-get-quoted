@@ -48,7 +48,7 @@ describe('the self-serve delete', () => {
   });
 
   it('handles closure gracefully and redirects to closed', () => {
-    expect(body).toContain('if (!result.success)');
+    expect(body).toMatch(/if\s*\(!result\.success/);
     expect(body).toContain("redirect('/login?closed=1')");
   });
 });

@@ -8,10 +8,11 @@ vi.mock('@/lib/auth', () => ({
 vi.mock('@/lib/rate-limit', () => ({
   clientIpFrom: vi.fn().mockReturnValue('127.0.0.1'),
   checkRateLimit: vi.fn().mockResolvedValue(true),
+  checkRateLimitStrict: vi.fn().mockResolvedValue(true),
 }));
 
 import { GET } from '../src/app/api/permits/public-estimate/route';
-import { checkRateLimit } from '@/lib/rate-limit';
+import { checkRateLimitStrict } from '@/lib/rate-limit';
 
 describe('Public Permit Estimate API - GET /api/permits/public-estimate', () => {
   beforeEach(() => {
@@ -28,7 +29,7 @@ describe('Public Permit Estimate API - GET /api/permits/public-estimate', () => 
   });
 
   it('returns rate limit error 429 when checkRateLimit fails', async () => {
-    vi.mocked(checkRateLimit).mockResolvedValueOnce(false);
+    vi.mocked(checkRateLimitStrict).mockResolvedValueOnce(false);
 
     const req = new NextRequest('http://localhost/api/permits/public-estimate?address=Royal+Oak+MI');
     const res = await GET(req);

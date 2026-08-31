@@ -31,7 +31,7 @@ $$;
 revoke execute on function public.job_account_id(uuid) from public, anon;
 grant execute on function public.job_account_id(uuid) to authenticated, service_role;
 
--- Harden voice_transcript_retention_interval: prevent anonymous caller information oracle
+-- Harden voice_transcript_retention_interval: prevent anonymous and cross-tenant information oracle
 create or replace function public.voice_transcript_retention_interval(
   p_account_id uuid
 )
@@ -48,6 +48,16 @@ begin
   -- Block anonymous execution oracle
   if auth.role() = 'anon' then
     return pg_catalog.make_interval(days => 30);
+  end if;
+
+  -- Ensure authenticated callers only resolve custom retention for accounts they belong to
+  if auth.role() = 'authenticated' then
+    if not (public.is_owner(p_account_id) or exists (
+      select 1 from public.account_memberships
+      where account_id = p_account_id and user_id = auth.uid() and active = true
+    )) then
+      return pg_catalog.make_interval(days => 30);
+    end if;
   end if;
 
   select public.voice_history_retention_days(w.feature_limits)

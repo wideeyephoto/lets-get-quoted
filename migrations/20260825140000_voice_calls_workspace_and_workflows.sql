@@ -48,20 +48,41 @@ create or replace function public.voice_transcript_retention_interval(
   p_account_id uuid
 )
 returns interval
-language sql
+language plpgsql
 stable
 security definer
 set search_path = pg_catalog, pg_temp
 set timezone to 'UTC'
-as $fn$
-  select pg_catalog.make_interval(
-    days => coalesce((
-      select public.voice_history_retention_days(w.feature_limits)
-        from public.workspace_entitlements w
-       where w.account_id = p_account_id
-    ), 30)
-  )
-$fn$;
+as $$
+declare
+  v_days integer;
+begin
+  -- Block anonymous execution oracle
+  if auth.role() = 'anon' then
+    return pg_catalog.make_interval(days => 30);
+  end if;
+
+  -- Ensure authenticated callers only resolve custom retention for accounts they belong to
+  if auth.role() = 'authenticated' then
+    if not (public.is_owner(p_account_id) or exists (
+      select 1 from public.account_memberships
+      where account_id = p_account_id and user_id = auth.uid() and active = true
+    )) then
+      return pg_catalog.make_interval(days => 30);
+    end if;
+  end if;
+
+  select public.voice_history_retention_days(w.feature_limits)
+    into v_days
+    from public.workspace_entitlements w
+   where w.account_id = p_account_id;
+
+  return pg_catalog.make_interval(days => coalesce(v_days, 30));
+end;
+$$;
+
+revoke execute on function public.voice_transcript_retention_interval(uuid) from public, anon;
+grant execute on function public.voice_transcript_retention_interval(uuid) to authenticated, service_role;
 
 drop policy if exists voice_calls_owner_read on public.voice_calls;
 drop policy if exists voice_calls_office_read on public.voice_calls;
