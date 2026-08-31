@@ -217,15 +217,27 @@ export default function RevenuePaymentsScreen({
         </div>
       </header>
 
-      {/* Interactive Micro-Hover KPI Cards */}
-      <section className="workspace-metric-grid" style={{ marginBottom: '1.25rem' }}>
-        {/* 1. Gross Revenue with Mini Goal Progress Bar */}
+      {/* Clean 4-Column Balanced KPI Ribbon */}
+      <section
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+          gap: '1rem',
+          marginBottom: '1.25rem',
+        }}
+      >
+        {/* 1. Gross Revenue with Goal Pacing */}
         <article
           className="workspace-metric-card accent"
           style={{
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'space-between',
+            padding: '1.1rem 1.25rem',
+            background: 'var(--card-bg, #ffffff)',
+            borderRadius: '10px',
+            border: '1px solid var(--border-subtle, #e2e8f0)',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
             transition: 'transform 0.15s ease, box-shadow 0.15s ease',
           }}
           onMouseEnter={(e) => {
@@ -234,12 +246,14 @@ export default function RevenuePaymentsScreen({
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.transform = 'translateY(0)';
-            e.currentTarget.style.boxShadow = 'none';
+            e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.02)';
           }}
         >
           <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <span className="workspace-metric-label">Gross Revenue</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+              <span className="workspace-metric-label" style={{ fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)' }}>
+                Gross Revenue
+              </span>
               {editingGoal ? (
                 <div style={{ display: 'flex', gap: '0.2rem', alignItems: 'center' }}>
                   <input
@@ -247,7 +261,7 @@ export default function RevenuePaymentsScreen({
                     value={goalInput}
                     onChange={(e) => setGoalInput(e.target.value)}
                     className="input"
-                    style={{ width: '80px', padding: '0.1rem 0.3rem', fontSize: '0.75rem' }}
+                    style={{ width: '75px', padding: '0.1rem 0.3rem', fontSize: '0.74rem' }}
                   />
                   <button
                     type="button"
@@ -266,17 +280,19 @@ export default function RevenuePaymentsScreen({
                 <button
                   type="button"
                   onClick={() => setEditingGoal(true)}
-                  style={{ background: 'none', border: 'none', fontSize: '0.72rem', color: 'var(--text-muted)', cursor: 'pointer' }}
+                  style={{ background: 'none', border: 'none', fontSize: '0.72rem', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.2rem' }}
                   title="Edit monthly goal"
                 >
                   🎯 {goalProgressPct}% of {formatUsd(monthlyGoal)} ✏️
                 </button>
               )}
             </div>
-            <strong className="workspace-metric-value">{formatUsd(ledgerSummary.grossRevenue)}</strong>
+            <strong className="workspace-metric-value" style={{ fontSize: '1.65rem', fontWeight: 700, letterSpacing: '-0.02em', display: 'block' }}>
+              {formatUsd(ledgerSummary.grossRevenue)}
+            </strong>
           </div>
 
-          <div style={{ marginTop: '0.5rem' }}>
+          <div style={{ marginTop: '0.65rem' }}>
             <div style={{ height: '5px', background: 'rgba(0,0,0,0.06)', borderRadius: '999px', overflow: 'hidden' }}>
               <div
                 style={{
@@ -287,166 +303,208 @@ export default function RevenuePaymentsScreen({
                 }}
               />
             </div>
-            <p className="workspace-metric-note" style={{ marginTop: '0.35rem' }}>
+            <p className="workspace-metric-note" style={{ marginTop: '0.35rem', fontSize: '0.74rem', color: 'var(--text-muted)', margin: '0.35rem 0 0' }}>
               {ledgerSummary.paidCount} settled {ledgerSummary.paidCount === 1 ? 'transaction' : 'transactions'}
             </p>
           </div>
         </article>
 
-        {/* 2. Net Reconciled Cash */}
+        {/* 2. Net Reconciled Cash with Inline ACH Savings Tag */}
         <article
           className="workspace-metric-card"
-          style={{ transition: 'transform 0.15s ease, box-shadow 0.15s ease' }}
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            padding: '1.1rem 1.25rem',
+            background: 'var(--card-bg, #ffffff)',
+            borderRadius: '10px',
+            border: '1px solid var(--border-subtle, #e2e8f0)',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
+            transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+          }}
           onMouseEnter={(e) => {
             e.currentTarget.style.transform = 'translateY(-2px)';
             e.currentTarget.style.boxShadow = '0 8px 20px rgba(0,0,0,0.06)';
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.transform = 'translateY(0)';
-            e.currentTarget.style.boxShadow = 'none';
+            e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.02)';
           }}
         >
-          <span className="workspace-metric-label">Net Reconciled Cash</span>
-          <strong className="workspace-metric-value" style={{ color: 'var(--primary, #10b981)' }}>
-            {formatUsd(ledgerSummary.netRevenue)}
-          </strong>
-          <p className="workspace-metric-note">
-            After {formatUsd(ledgerSummary.totalFees)} in fees
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+              <span className="workspace-metric-label" style={{ fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)' }}>
+                Net Reconciled Cash
+              </span>
+              {ledgerSummary.achSavingsEstimated > 0 && (
+                <span
+                  style={{
+                    fontSize: '0.7rem',
+                    padding: '0.12rem 0.45rem',
+                    borderRadius: '999px',
+                    background: 'rgba(16, 185, 129, 0.1)',
+                    color: '#059669',
+                    fontWeight: 600,
+                  }}
+                  title="Total processing fee savings achieved through $5 capped ACH vs 2.9% cards"
+                >
+                  +{formatUsd(ledgerSummary.achSavingsEstimated)} ACH saved
+                </span>
+              )}
+            </div>
+            <strong className="workspace-metric-value" style={{ fontSize: '1.65rem', fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--primary, #10b981)', display: 'block' }}>
+              {formatUsd(ledgerSummary.netRevenue)}
+            </strong>
+          </div>
+          <p className="workspace-metric-note" style={{ fontSize: '0.74rem', color: 'var(--text-muted)', margin: '0.65rem 0 0' }}>
+            After {formatUsd(ledgerSummary.totalFees)} in merchant fees
           </p>
         </article>
 
-        {/* 3. Outstanding Receivables */}
+        {/* 3. Outstanding Aging Receivables */}
         <article
           className="workspace-metric-card"
-          style={{ transition: 'transform 0.15s ease, box-shadow 0.15s ease' }}
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            padding: '1.1rem 1.25rem',
+            background: 'var(--card-bg, #ffffff)',
+            borderRadius: '10px',
+            border: '1px solid var(--border-subtle, #e2e8f0)',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
+            transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+          }}
           onMouseEnter={(e) => {
             e.currentTarget.style.transform = 'translateY(-2px)';
             e.currentTarget.style.boxShadow = '0 8px 20px rgba(0,0,0,0.06)';
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.transform = 'translateY(0)';
-            e.currentTarget.style.boxShadow = 'none';
+            e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.02)';
           }}
         >
-          <span className="workspace-metric-label">Aging Receivables</span>
-          <strong className="workspace-metric-value" style={{ color: receivablesSummary.totalOverdue > 0 ? '#ef4444' : undefined }}>
-            {formatUsd(receivablesSummary.totalOutstanding)}
-          </strong>
-          <p className="workspace-metric-note">
-            {receivablesSummary.overdueCount > 0 ? (
-              <span style={{ color: '#ef4444' }}>{receivablesSummary.overdueCount} invoices past due</span>
-            ) : (
-              'All invoices on terms'
-            )}
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+              <span className="workspace-metric-label" style={{ fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)' }}>
+                Aging Receivables
+              </span>
+              {receivablesSummary.overdueCount > 0 ? (
+                <span style={{ fontSize: '0.7rem', padding: '0.12rem 0.45rem', borderRadius: '999px', background: 'rgba(239, 68, 68, 0.1)', color: '#dc2626', fontWeight: 600 }}>
+                  {receivablesSummary.overdueCount} overdue
+                </span>
+              ) : (
+                <span style={{ fontSize: '0.7rem', padding: '0.12rem 0.45rem', borderRadius: '999px', background: 'rgba(16, 185, 129, 0.1)', color: '#059669', fontWeight: 600 }}>
+                  On Terms
+                </span>
+              )}
+            </div>
+            <strong className="workspace-metric-value" style={{ fontSize: '1.65rem', fontWeight: 700, letterSpacing: '-0.02em', color: receivablesSummary.totalOverdue > 0 ? '#ef4444' : undefined, display: 'block' }}>
+              {formatUsd(receivablesSummary.totalOutstanding)}
+            </strong>
+          </div>
+          <p className="workspace-metric-note" style={{ fontSize: '0.74rem', color: 'var(--text-muted)', margin: '0.65rem 0 0' }}>
+            Across {receivablesSummary.totalReceivablesCount} active client invoices
           </p>
         </article>
 
         {/* 4. In-Transit Bank Payouts */}
         <article
           className="workspace-metric-card"
-          style={{ transition: 'transform 0.15s ease, box-shadow 0.15s ease' }}
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            padding: '1.1rem 1.25rem',
+            background: 'var(--card-bg, #ffffff)',
+            borderRadius: '10px',
+            border: '1px solid var(--border-subtle, #e2e8f0)',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
+            transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+          }}
           onMouseEnter={(e) => {
             e.currentTarget.style.transform = 'translateY(-2px)';
             e.currentTarget.style.boxShadow = '0 8px 20px rgba(0,0,0,0.06)';
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.transform = 'translateY(0)';
-            e.currentTarget.style.boxShadow = 'none';
+            e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.02)';
           }}
         >
-          <span className="workspace-metric-label">In-Transit to Bank</span>
-          <strong className="workspace-metric-value">
-            {formatUsd(payouts.availableBalanceDollars + payouts.pendingBalanceDollars)}
-          </strong>
-          <p className="workspace-metric-note">
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+              <span className="workspace-metric-label" style={{ fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)' }}>
+                In-Transit to Bank
+              </span>
+              <span style={{ fontSize: '0.7rem', padding: '0.12rem 0.45rem', borderRadius: '999px', background: 'rgba(59, 130, 246, 0.1)', color: '#2563eb', fontWeight: 600 }}>
+                {payouts.payoutsPaused ? 'Paused' : 'Auto-Transfer'}
+              </span>
+            </div>
+            <strong className="workspace-metric-value" style={{ fontSize: '1.65rem', fontWeight: 700, letterSpacing: '-0.02em', display: 'block' }}>
+              {formatUsd(payouts.availableBalanceDollars + payouts.pendingBalanceDollars)}
+            </strong>
+          </div>
+          <p className="workspace-metric-note" style={{ fontSize: '0.74rem', color: 'var(--text-muted)', margin: '0.65rem 0 0' }}>
             {payouts.payoutsPaused ? (
-              <span style={{ color: '#dc2626' }}>⚠️ Payouts paused</span>
+              <span style={{ color: '#dc2626' }}>⚠️ Action required on Stripe</span>
             ) : (
-              'Stripe automatic payout'
+              'Next transfer arriving in 1–2 business days'
             )}
-          </p>
-        </article>
-
-        {/* 5. ACH Fee Savings */}
-        <article
-          className="workspace-metric-card"
-          style={{ transition: 'transform 0.15s ease, box-shadow 0.15s ease' }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.transform = 'translateY(-2px)';
-            e.currentTarget.style.boxShadow = '0 8px 20px rgba(0,0,0,0.06)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.transform = 'translateY(0)';
-            e.currentTarget.style.boxShadow = 'none';
-          }}
-        >
-          <span className="workspace-metric-label">ACH Savings</span>
-          <strong className="workspace-metric-value" style={{ color: '#10b981' }}>
-            +{formatUsd(ledgerSummary.achSavingsEstimated)}
-          </strong>
-          <p className="workspace-metric-note">
-            Saved on $5 capped ACH
           </p>
         </article>
       </section>
 
       {/* Main Workspace Interactive Tab Navigation */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid var(--border-subtle, #e2e8f0)', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-        <div className="tabs" style={{ margin: 0, border: 'none' }}>
-          {TABS.map((t) => (
-            <button
-              key={t.key}
-              type="button"
-              className={`tab ${activeTab === t.key ? 'active' : ''}`}
-              style={{ fontSize: '0.9rem', fontWeight: 600, padding: '0.65rem 1rem' }}
-              onClick={() => handleTabSelect(t.key)}
-            >
-              <span style={{ marginRight: '0.35rem' }}>{t.icon}</span>
-              {t.label}
-              {t.key === 'receivables' && receivablesSummary.overdueCount > 0 && (
-                <span
-                  style={{
-                    marginLeft: '0.4rem',
-                    padding: '0.1rem 0.4rem',
-                    borderRadius: '999px',
-                    background: '#ef4444',
-                    color: '#fff',
-                    fontSize: '0.7rem',
-                  }}
-                >
-                  {receivablesSummary.overdueCount}
-                </span>
-              )}
-              {t.key === 'recovery' && failedPayments.length > 0 && (
-                <span
-                  style={{
-                    marginLeft: '0.4rem',
-                    padding: '0.1rem 0.4rem',
-                    borderRadius: '999px',
-                    background: '#dc2626',
-                    color: '#fff',
-                    fontSize: '0.7rem',
-                  }}
-                >
-                  {failedPayments.length}
-                </span>
-              )}
-              {t.key === 'disputes' && disputedPayments.length > 0 && (
-                <span
-                  style={{
-                    marginLeft: '0.4rem',
-                    padding: '0.1rem 0.4rem',
-                    borderRadius: '999px',
-                    background: '#ef4444',
-                    color: '#fff',
-                    fontSize: '0.7rem',
-                  }}
-                >
-                  {disputedPayments.length}
-                </span>
-              )}
-            </button>
-          ))}
+        <div className="tabs" style={{ margin: 0, border: 'none', display: 'flex', gap: '0.25rem' }}>
+          {TABS.map((t) => {
+            const count =
+              t.key === 'ledger' ? initialPayments.length :
+              t.key === 'receivables' ? receivables.length :
+              t.key === 'recovery' ? failedPayments.length :
+              t.key === 'disputes' ? disputedPayments.length :
+              null;
+
+            const isAlert =
+              (t.key === 'receivables' && receivablesSummary.overdueCount > 0) ||
+              (t.key === 'recovery' && failedPayments.length > 0) ||
+              (t.key === 'disputes' && disputedPayments.length > 0);
+
+            return (
+              <button
+                key={t.key}
+                type="button"
+                className={`tab ${activeTab === t.key ? 'active' : ''}`}
+                style={{
+                  fontSize: '0.86rem',
+                  fontWeight: activeTab === t.key ? 700 : 500,
+                  padding: '0.6rem 0.9rem',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.4rem',
+                }}
+                onClick={() => handleTabSelect(t.key)}
+              >
+                <span>{t.icon}</span>
+                <span>{t.label}</span>
+                {count !== null && (
+                  <span
+                    style={{
+                      padding: '0.1rem 0.45rem',
+                      borderRadius: '999px',
+                      fontSize: '0.7rem',
+                      fontWeight: 700,
+                      background: isAlert ? '#ef4444' : activeTab === t.key ? 'rgba(59, 130, 246, 0.15)' : 'var(--panel-subtle, #f1f5f9)',
+                      color: isAlert ? '#ffffff' : activeTab === t.key ? 'var(--primary, #2563eb)' : 'var(--text-muted, #64748b)',
+                    }}
+                  >
+                    {count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
 
         {/* Compact Range Pills */}

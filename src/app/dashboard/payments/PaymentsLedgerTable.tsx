@@ -259,94 +259,72 @@ export default function PaymentsLedgerTable({ initialRows, summary: _summary, on
   const filteredGross = filteredAndSortedRows.reduce((sum, r) => sum + r.amount, 0);
   const filteredNet = filteredAndSortedRows.reduce((sum, r) => sum + r.netAmount, 0);
 
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+
+  // Close overflow menu when clicking elsewhere
+  function handleToggleMenu(id: string, e: React.MouseEvent) {
+    e.stopPropagation();
+    setOpenMenuId((prev) => (prev === id ? null : id));
+  }
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-      {/* Sleek Compact Filter Toolbar */}
-      <div
-        style={{
-          display: 'flex',
-          gap: '0.5rem',
-          flexWrap: 'wrap',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          background: 'var(--panel-subtle, rgba(0,0,0,0.015))',
-          padding: '0.65rem 0.85rem',
-          borderRadius: '8px',
-          border: '1px solid var(--border-subtle, #e2e8f0)',
-        }}
-      >
-        <div style={{ display: 'flex', gap: '0.45rem', flex: 1, minWidth: '220px', maxWidth: '380px' }}>
+    <div
+      className="panel"
+      style={{ padding: '1.25rem' }}
+      onClick={() => {
+        if (openMenuId) setOpenMenuId(null);
+      }}
+    >
+      {/* Search & Quick Filter Controls */}
+      <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center', marginBottom: '1rem', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', gap: '0.5rem', flex: 1, minWidth: '260px' }}>
           <input
             type="text"
-            placeholder="🔍 Search client, job ref, invoice…"
+            className="input"
+            placeholder="Search by client, job ref, invoice #, amount…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="input"
-            style={{ width: '100%', fontSize: '0.82rem', padding: '0.35rem 0.65rem' }}
+            style={{ fontSize: '0.85rem' }}
           />
         </div>
 
-        <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
           <select
+            id="status-filter-select"
             aria-label="Filter by payment status"
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
             className="input"
-            style={{ fontSize: '0.8rem', padding: '0.35rem 0.5rem' }}
+            style={{ fontSize: '0.82rem', padding: '0.35rem 0.6rem' }}
           >
-            <option value="all">All Statuses ({initialRows.length})</option>
-            <option value="paid">Paid</option>
-            <option value="requested">Pending</option>
-            <option value="failed">Failed</option>
-            <option value="refunded">Refunded</option>
-            <option value="disputed">Disputed</option>
+            <option value="all">All Statuses</option>
+            <option value="paid">✓ Paid</option>
+            <option value="requested">⏳ Pending / Sent</option>
+            <option value="failed">✕ Failed</option>
+            <option value="refunded">↩ Refunded</option>
+            <option value="disputed">🛡️ Disputed</option>
           </select>
 
           <select
-            aria-label="Filter by payment method"
-            value={methodFilter}
-            onChange={(e) => setMethodFilter(e.target.value)}
-            className="input"
-            style={{ fontSize: '0.8rem', padding: '0.35rem 0.5rem' }}
-          >
-            <option value="all">All Methods</option>
-            <option value="card">Cards</option>
-            <option value="ach">ACH Bank Debit</option>
-            <option value="cash">Cash</option>
-            <option value="check">Check</option>
-            <option value="zelle">Zelle</option>
-            <option value="manual">All Offline</option>
-          </select>
-
-          <select
-            aria-label="Filter by payment stage"
+            id="type-filter-select"
+            aria-label="Filter by payment category"
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value)}
             className="input"
-            style={{ fontSize: '0.8rem', padding: '0.35rem 0.5rem' }}
+            style={{ fontSize: '0.82rem', padding: '0.35rem 0.6rem' }}
           >
-            <option value="all">All Stages</option>
-            <option value="deposit">Deposit</option>
-            <option value="stage">Milestone</option>
-            <option value="final">Final Balance</option>
+            <option value="all">All Categories</option>
+            <option value="deposit">Deposits</option>
+            <option value="progress">Progress Draws</option>
+            <option value="final">Final Balances</option>
           </select>
-
-          <button
-            type="button"
-            className="btn secondary"
-            style={{ fontSize: '0.8rem', padding: '0.35rem 0.65rem' }}
-            onClick={() => exportRowsToCsv(filteredAndSortedRows, `payments_ledger_${Date.now()}.csv`)}
-            title="Download CSV of current view"
-          >
-            📥 Export CSV
-          </button>
         </div>
       </div>
 
-      {/* Dynamic Summary Bar & Method Chips */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', fontSize: '0.8rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-          <span style={{ color: 'var(--text-muted)' }}>
+      {/* Filter Stats & Method Chips */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.75rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <span>
             Showing <strong>{filteredAndSortedRows.length}</strong> of {initialRows.length} transactions
           </span>
           <span style={{ color: 'var(--border-subtle, #cbd5e1)' }}>•</span>
@@ -401,6 +379,7 @@ export default function PaymentsLedgerTable({ initialRows, summary: _summary, on
             borderRadius: '8px',
             boxShadow: '0 4px 12px rgba(0,0,0,0.03)',
             animation: 'fadeIn 0.15s ease-out',
+            marginBottom: '0.75rem',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '0.86rem' }}>
@@ -433,12 +412,12 @@ export default function PaymentsLedgerTable({ initialRows, summary: _summary, on
         </div>
       )}
 
-      {/* Transactions Table with Micro-Hover & Monograms */}
+      {/* Streamlined Transactions Table */}
       <div className="table-responsive" style={{ overflowX: 'auto', border: '1px solid var(--border-subtle, #e2e8f0)', borderRadius: '8px' }}>
         <table className="data-table" style={{ width: '100%', fontSize: '0.84rem', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ background: 'var(--panel-subtle, rgba(0,0,0,0.02))' }}>
-              <th style={{ padding: '0.6rem 0.5rem', width: '32px', textAlign: 'center' }}>
+              <th style={{ padding: '0.65rem 0.5rem', width: '32px', textAlign: 'center' }}>
                 <input
                   type="checkbox"
                   aria-label="Select all transactions"
@@ -447,29 +426,27 @@ export default function PaymentsLedgerTable({ initialRows, summary: _summary, on
                   style={{ cursor: 'pointer' }}
                 />
               </th>
-              <th style={{ padding: '0.6rem 0.8rem', textAlign: 'left', cursor: 'pointer' }} onClick={() => handleSort('date')}>
+              <th style={{ padding: '0.65rem 0.8rem', textAlign: 'left', cursor: 'pointer' }} onClick={() => handleSort('date')}>
                 Date {sortField === 'date' ? (sortOrder === 'asc' ? '↑' : '↓') : ''}
               </th>
-              <th style={{ padding: '0.6rem 0.8rem', textAlign: 'left', cursor: 'pointer' }} onClick={() => handleSort('client')}>
+              <th style={{ padding: '0.65rem 0.8rem', textAlign: 'left', cursor: 'pointer' }} onClick={() => handleSort('client')}>
                 Customer &amp; Job {sortField === 'client' ? (sortOrder === 'asc' ? '↑' : '↓') : ''}
               </th>
-              <th style={{ padding: '0.6rem 0.8rem', textAlign: 'left' }}>Description &amp; Stage</th>
-              <th style={{ padding: '0.6rem 0.8rem', textAlign: 'left' }}>Method</th>
-              <th style={{ padding: '0.6rem 0.8rem', textAlign: 'right', cursor: 'pointer' }} onClick={() => handleSort('amount')}>
-                Gross {sortField === 'amount' ? (sortOrder === 'asc' ? '↑' : '↓') : ''}
+              <th style={{ padding: '0.65rem 0.8rem', textAlign: 'left' }}>Description &amp; Stage</th>
+              <th style={{ padding: '0.65rem 0.8rem', textAlign: 'left' }}>Method</th>
+              <th style={{ padding: '0.65rem 0.8rem', textAlign: 'right', cursor: 'pointer' }} onClick={() => handleSort('amount')}>
+                Amount {sortField === 'amount' ? (sortOrder === 'asc' ? '↑' : '↓') : ''}
               </th>
-              <th style={{ padding: '0.6rem 0.8rem', textAlign: 'right' }}>Fee</th>
-              <th style={{ padding: '0.6rem 0.8rem', textAlign: 'right' }}>Net</th>
-              <th style={{ padding: '0.6rem 0.8rem', textAlign: 'center', cursor: 'pointer' }} onClick={() => handleSort('status')}>
+              <th style={{ padding: '0.65rem 0.8rem', textAlign: 'center', cursor: 'pointer' }} onClick={() => handleSort('status')}>
                 Status {sortField === 'status' ? (sortOrder === 'asc' ? '↑' : '↓') : ''}
               </th>
-              <th style={{ padding: '0.6rem 0.8rem', textAlign: 'right' }}>Actions</th>
+              <th style={{ padding: '0.65rem 0.8rem', textAlign: 'right', width: '130px' }}>Actions</th>
             </tr>
           </thead>
           <tbody>
             {filteredAndSortedRows.length === 0 ? (
               <tr>
-                <td colSpan={10} style={{ textAlign: 'center', padding: '2.5rem 1rem', color: 'var(--text-muted)' }}>
+                <td colSpan={8} style={{ textAlign: 'center', padding: '2.5rem 1rem', color: 'var(--text-muted)' }}>
                   <div style={{ fontSize: '1.75rem', marginBottom: '0.4rem' }}>🔍</div>
                   <strong>No transactions match your filter</strong>
                   <p style={{ margin: '0.25rem 0 0', fontSize: '0.8rem' }}>Try clearing filters or search query.</p>
@@ -483,6 +460,7 @@ export default function PaymentsLedgerTable({ initialRows, summary: _summary, on
                   : new Date(p.requestedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
                 const avatar = getAvatarColor(p.clientName);
                 const initials = getClientInitials(p.clientName);
+                const isMenuOpen = openMenuId === p.id;
 
                 return (
                   <tr
@@ -559,19 +537,14 @@ export default function PaymentsLedgerTable({ initialRows, summary: _summary, on
                       </span>
                     </td>
 
-                    {/* Gross */}
-                    <td style={{ padding: '0.6rem 0.8rem', textAlign: 'right', fontWeight: 600 }}>
-                      {formatUsd(p.amount)}
-                    </td>
-
-                    {/* Fee */}
-                    <td style={{ padding: '0.6rem 0.8rem', textAlign: 'right', color: 'var(--text-muted)', fontSize: '0.78rem' }}>
-                      {p.platformFee > 0 ? `-${formatUsd(p.platformFee)}` : '$0.00'}
-                    </td>
-
-                    {/* Net */}
-                    <td style={{ padding: '0.6rem 0.8rem', textAlign: 'right', fontWeight: 600, color: 'var(--primary, #10b981)' }}>
-                      {formatUsd(p.netAmount)}
+                    {/* Streamlined Amount with Net Cash & Fee Breakdown */}
+                    <td style={{ padding: '0.6rem 0.8rem', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                      <strong style={{ fontSize: '0.9rem', display: 'block', color: 'var(--text-color, #0f172a)' }}>
+                        {formatUsd(p.amount)}
+                      </strong>
+                      <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                        Net {formatUsd(p.netAmount)} {p.platformFee > 0 ? `· Fee -${formatUsd(p.platformFee)}` : '· $0 Fee'}
+                      </span>
                     </td>
 
                     {/* Status Glow Pill */}
@@ -579,47 +552,164 @@ export default function PaymentsLedgerTable({ initialRows, summary: _summary, on
                       <StatusGlowPill status={p.status} />
                     </td>
 
-                    {/* Actions */}
-                    <td style={{ padding: '0.6rem 0.8rem', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                      <div style={{ display: 'flex', gap: '0.3rem', justifyContent: 'flex-end' }}>
-                        {p.status === 'paid' && (
+                    {/* Decluttered Actions with Context Overflow */}
+                    <td style={{ padding: '0.6rem 0.8rem', textAlign: 'right', whiteSpace: 'nowrap', position: 'relative' }}>
+                      <div style={{ display: 'flex', gap: '0.35rem', justifyContent: 'flex-end', alignItems: 'center' }}>
+                        {p.status === 'paid' ? (
                           <button
                             type="button"
                             className="btn secondary"
-                            style={{ padding: '0.2rem 0.45rem', fontSize: '0.74rem', fontWeight: 600, color: '#059669' }}
+                            style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem', fontWeight: 600, color: '#059669' }}
                             title="View & Print Official Receipt"
                             onClick={() => onOpenModal('payment_receipt', p)}
                           >
                             🧾 Receipt
                           </button>
-                        )}
-                        <button
-                          type="button"
-                          className="btn secondary"
-                          style={{ padding: '0.2rem 0.45rem', fontSize: '0.74rem' }}
-                          title="View on-screen QR code"
-                          onClick={() => onOpenModal('qr_code', p)}
-                        >
-                          📱 QR
-                        </button>
-                        <button
-                          type="button"
-                          className="btn secondary"
-                          style={{ padding: '0.2rem 0.45rem', fontSize: '0.74rem' }}
-                          onClick={() => onOpenModal('payment_detail', p)}
-                        >
-                          Details
-                        </button>
-                        {p.status === 'paid' && (
+                        ) : (
                           <button
                             type="button"
                             className="btn secondary"
-                            style={{ padding: '0.2rem 0.45rem', fontSize: '0.74rem' }}
-                            onClick={() => onOpenModal('refund', p)}
+                            style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem', fontWeight: 600 }}
+                            title="View QR code"
+                            onClick={() => onOpenModal('qr_code', p)}
                           >
-                            Refund
+                            📱 QR
                           </button>
                         )}
+
+                        {/* Overflow Action Trigger */}
+                        <div style={{ position: 'relative' }}>
+                          <button
+                            type="button"
+                            className="btn secondary"
+                            style={{
+                              padding: '0.2rem 0.45rem',
+                              fontSize: '0.8rem',
+                              fontWeight: 700,
+                              lineHeight: 1,
+                            }}
+                            title="More options"
+                            onClick={(e) => handleToggleMenu(p.id, e)}
+                          >
+                            •••
+                          </button>
+
+                          {/* Popup Menu */}
+                          {isMenuOpen && (
+                            <div
+                              style={{
+                                position: 'absolute',
+                                right: 0,
+                                top: '100%',
+                                marginTop: '4px',
+                                background: '#ffffff',
+                                border: '1px solid var(--border-subtle, #e2e8f0)',
+                                borderRadius: '8px',
+                                boxShadow: '0 10px 25px rgba(0,0,0,0.12)',
+                                zIndex: 100,
+                                minWidth: '150px',
+                                padding: '0.3rem 0',
+                                textAlign: 'left',
+                              }}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <button
+                                type="button"
+                                style={{
+                                  display: 'block',
+                                  width: '100%',
+                                  padding: '0.45rem 0.85rem',
+                                  background: 'none',
+                                  border: 'none',
+                                  textAlign: 'left',
+                                  fontSize: '0.78rem',
+                                  cursor: 'pointer',
+                                  color: 'var(--text-color)',
+                                }}
+                                onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--panel-subtle, #f8fafc)')}
+                                onMouseLeave={(e) => (e.currentTarget.style.background = 'none')}
+                                onClick={() => {
+                                  setOpenMenuId(null);
+                                  onOpenModal('payment_detail', p);
+                                }}
+                              >
+                                📋 Full Details
+                              </button>
+
+                              <button
+                                type="button"
+                                style={{
+                                  display: 'block',
+                                  width: '100%',
+                                  padding: '0.45rem 0.85rem',
+                                  background: 'none',
+                                  border: 'none',
+                                  textAlign: 'left',
+                                  fontSize: '0.78rem',
+                                  cursor: 'pointer',
+                                  color: 'var(--text-color)',
+                                }}
+                                onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--panel-subtle, #f8fafc)')}
+                                onMouseLeave={(e) => (e.currentTarget.style.background = 'none')}
+                                onClick={() => {
+                                  setOpenMenuId(null);
+                                  onOpenModal('qr_code', p);
+                                }}
+                              >
+                                📱 QR Code
+                              </button>
+
+                              <button
+                                type="button"
+                                style={{
+                                  display: 'block',
+                                  width: '100%',
+                                  padding: '0.45rem 0.85rem',
+                                  background: 'none',
+                                  border: 'none',
+                                  textAlign: 'left',
+                                  fontSize: '0.78rem',
+                                  cursor: 'pointer',
+                                  color: '#059669',
+                                  fontWeight: 600,
+                                }}
+                                onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--panel-subtle, #f8fafc)')}
+                                onMouseLeave={(e) => (e.currentTarget.style.background = 'none')}
+                                onClick={() => {
+                                  setOpenMenuId(null);
+                                  onOpenModal('lien_waiver', p);
+                                }}
+                              >
+                                📄 Lien Waiver
+                              </button>
+
+                              {p.status === 'paid' && (
+                                <button
+                                  type="button"
+                                  style={{
+                                    display: 'block',
+                                    width: '100%',
+                                    padding: '0.45rem 0.85rem',
+                                    background: 'none',
+                                    border: 'none',
+                                    textAlign: 'left',
+                                    fontSize: '0.78rem',
+                                    cursor: 'pointer',
+                                    color: '#dc2626',
+                                  }}
+                                  onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--panel-subtle, #f8fafc)')}
+                                  onMouseLeave={(e) => (e.currentTarget.style.background = 'none')}
+                                  onClick={() => {
+                                    setOpenMenuId(null);
+                                    onOpenModal('refund', p);
+                                  }}
+                                >
+                                  ↩ Issue Refund
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </td>
                   </tr>

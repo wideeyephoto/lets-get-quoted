@@ -304,61 +304,12 @@ export default function ReceivablesAgingBoard({
                           </div>
                         )}
 
-                        {/* Card Quick Utility Shortcuts */}
-                        <div style={{ display: 'flex', gap: '0.25rem', justifyContent: 'space-between', fontSize: '0.7rem' }}>
-                          {item.clientPhone && (
-                            <a
-                              href={`tel:${item.clientPhone}`}
-                              style={{ color: 'var(--primary, #3b82f6)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.15rem' }}
-                              title={`Call ${item.clientPhone}`}
-                            >
-                              📞 Call
-                            </a>
-                          )}
-                          <button
-                            type="button"
-                            onClick={() => handleCopyPayLink(item.id)}
-                            style={{ background: 'none', border: 'none', padding: 0, color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.7rem' }}
-                          >
-                            {copiedId === item.id ? '✓ Copied' : '🔗 Link'}
-                          </button>
-                          {onOpenPromiseToPay && (
-                            <button
-                              type="button"
-                              onClick={() => onOpenPromiseToPay({ id: item.id, clientName: item.clientName, amount: item.amountDue })}
-                              style={{ background: 'none', border: 'none', padding: 0, color: '#2563eb', cursor: 'pointer', fontSize: '0.7rem', fontWeight: 600 }}
-                            >
-                              📅 Promise
-                            </button>
-                          )}
-                          {onOpenLienWaiver && (
-                            <button
-                              type="button"
-                              onClick={() => onOpenLienWaiver({ id: item.id, clientName: item.clientName, amount: item.amountDue, jobId: item.jobId })}
-                              style={{ background: 'none', border: 'none', padding: 0, color: '#059669', cursor: 'pointer', fontSize: '0.7rem', fontWeight: 600 }}
-                              title="Generate Statutory Lien Waiver"
-                            >
-                              📄 Waiver
-                            </button>
-                          )}
-                          {onOpenNoiGenerator && item.daysOverdue >= 30 && (
-                            <button
-                              type="button"
-                              onClick={() => onOpenNoiGenerator({ id: item.id, clientName: item.clientName, amount: item.amountDue })}
-                              style={{ background: 'none', border: 'none', padding: 0, color: '#dc2626', cursor: 'pointer', fontSize: '0.7rem', fontWeight: 700 }}
-                              title="Generate Statutory Notice of Intent to Lien"
-                            >
-                              🛡️ NOI
-                            </button>
-                          )}
-                        </div>
-
-                        {/* Card Actions */}
-                        <div style={{ display: 'flex', gap: '0.3rem', marginTop: '0.1rem', paddingTop: '0.35rem', borderTop: '1px solid var(--border-subtle, #f1f5f9)' }}>
+                        {/* Streamlined Card Quick Actions */}
+                        <div style={{ display: 'flex', gap: '0.35rem', marginTop: '0.1rem', paddingTop: '0.35rem', borderTop: '1px solid var(--border-subtle, #f1f5f9)', alignItems: 'center' }}>
                           <button
                             type="button"
                             className="btn primary"
-                            style={{ flex: 1, padding: '0.15rem 0.35rem', fontSize: '0.7rem' }}
+                            style={{ flex: 1, padding: '0.2rem 0.4rem', fontSize: '0.74rem', fontWeight: 600 }}
                             disabled={loadingId === item.id}
                             onClick={() => handleSendReminder(item.id)}
                           >
@@ -367,11 +318,54 @@ export default function ReceivablesAgingBoard({
                           <button
                             type="button"
                             className="btn secondary"
-                            style={{ padding: '0.15rem 0.35rem', fontSize: '0.7rem' }}
+                            style={{ padding: '0.2rem 0.45rem', fontSize: '0.74rem' }}
+                            title="Record manual offline payment"
                             onClick={() => onOpenManualPayment(item.jobId, item.source === 'invoice' ? item.id : undefined, item.amountDue)}
                           >
-                            💵 Record
+                            💵 Settle
                           </button>
+                          <button
+                            type="button"
+                            className="btn secondary"
+                            style={{ padding: '0.2rem 0.35rem', fontSize: '0.7rem', color: 'var(--text-muted)' }}
+                            title="Copy payment link"
+                            onClick={() => handleCopyPayLink(item.id)}
+                          >
+                            {copiedId === item.id ? '✓' : '🔗'}
+                          </button>
+                          {onOpenLienWaiver && (
+                            <button
+                              type="button"
+                              className="btn secondary"
+                              style={{ padding: '0.2rem 0.35rem', fontSize: '0.7rem', color: '#059669' }}
+                              title="Generate Statutory Lien Waiver"
+                              onClick={() => onOpenLienWaiver({ id: item.id, clientName: item.clientName, amount: item.amountDue, jobId: item.jobId })}
+                            >
+                              📄
+                            </button>
+                          )}
+                          {onOpenPromiseToPay && (
+                            <button
+                              type="button"
+                              className="btn secondary"
+                              style={{ padding: '0.2rem 0.35rem', fontSize: '0.7rem', color: '#2563eb' }}
+                              title="Record Promise to Pay"
+                              onClick={() => onOpenPromiseToPay({ id: item.id, clientName: item.clientName, amount: item.amountDue })}
+                            >
+                              📅
+                            </button>
+                          )}
+                          {onOpenNoiGenerator && item.daysOverdue >= 30 && (
+                            <button
+                              type="button"
+                              className="btn secondary"
+                              style={{ padding: '0.2rem 0.35rem', fontSize: '0.7rem', color: '#dc2626', fontWeight: 700 }}
+                              title="Generate Statutory Notice of Intent to Lien"
+                              onClick={() => onOpenNoiGenerator({ id: item.id, clientName: item.clientName, amount: item.amountDue })}
+                            >
+                              🛡️
+                            </button>
+                          )}
                         </div>
                       </div>
                     );
