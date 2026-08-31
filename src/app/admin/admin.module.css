@@ -26,22 +26,28 @@
 }
 
 .brand {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 0.6rem;
-  padding: 0.2rem 0.4rem 0.4rem;
+  gap: 0.55rem;
+  padding: 0.15rem 0.2rem 0.35rem;
+  text-decoration: none;
+  color: inherit;
+  transition: opacity 0.15s ease;
 }
-.brandMark {
-  font-weight: 800;
-  font-size: 1.05rem;
-  letter-spacing: -0.02em;
-  color: var(--text, #f7f5ef);
+.brand:hover {
+  opacity: 0.92;
 }
-.brandMark span {
-  color: var(--accent, #ff7a21);
-  background: linear-gradient(135deg, #ff9447 0%, #ff6805 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+.brandLogo {
+  display: block;
+  line-height: 0;
+  flex: none;
+}
+.brandLogoImg {
+  display: block;
+  height: 38px;
+  width: auto;
+  max-width: 142px;
+  object-fit: contain;
 }
 .staffTag {
   font-size: 0.6rem;
@@ -50,10 +56,11 @@
   text-transform: uppercase;
   color: #06131f;
   background: linear-gradient(135deg, #ffd166 0%, #ffb703 100%);
-  padding: 0.15rem 0.45rem;
+  padding: 0.16rem 0.46rem;
   border-radius: 999px;
   box-shadow: 0 0 10px rgba(255, 209, 102, 0.25);
   line-height: 1;
+  flex: none;
 }
 
 .nav {

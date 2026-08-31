@@ -1,7 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { usePathname } from 'next/navigation';
+import Link from 'next/link';
 import type { StaffRole } from '@/lib/staff';
 import AdminNav from './AdminNav';
 import SearchBox from './SearchBox';
@@ -21,31 +20,26 @@ function roleDisplay(role: string): string {
 }
 
 export default function AdminChrome({ adminEmail, role }: { adminEmail: string; role: StaffRole }) {
-  const pathname = usePathname();
-  const [open, setOpen] = useState(false);
-
-  useEffect(() => setOpen(false), [pathname]);
-
   const initials = getInitials(adminEmail);
 
   return (
     <aside className={styles.sidebar}>
       <div className={styles.sidebarTop}>
-        <div className={styles.brand}>
-          <span className={styles.brandMark}>Let&rsquo;s Get <span>Quoted</span></span>
+        <Link href="/admin" className={styles.brand} aria-label="Let's Get Quoted Admin">
+          <picture className={styles.brandLogo}>
+            <source srcSet="/lets-get-quoted-logo.webp" type="image/webp" />
+            <img
+              src="/lets-get-quoted-logo.png"
+              alt="Let’s Get Quoted"
+              className={styles.brandLogoImg}
+              width={140}
+              height={49}
+            />
+          </picture>
           <span className={styles.staffTag}>Staff</span>
-        </div>
-        <button
-          type="button"
-          className={styles.mobileMenuButton}
-          aria-expanded={open}
-          aria-controls="admin-navigation"
-          onClick={() => setOpen((value) => !value)}
-        >
-          {open ? 'Close' : 'Menu'}
-        </button>
+        </Link>
       </div>
-      <div id="admin-navigation" className={`${styles.sidebarContents} ${open ? styles.sidebarContentsOpen : ''}`}>
+      <div className={styles.sidebarContents}>
         <SearchBox />
         <AdminNav role={role} />
         <div className={styles.sidebarFoot}>
@@ -64,3 +58,4 @@ export default function AdminChrome({ adminEmail, role }: { adminEmail: string; 
     </aside>
   );
 }
+
