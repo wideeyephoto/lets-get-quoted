@@ -132,7 +132,7 @@ export default function PayoutsTransfersPanel({ payouts }: Props) {
             </span>
           </div>
           <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-            Federal IRS Form 1099-K reporting applies to accounts processing over $20,000 and 200 transactions in a calendar year. Stripe Connect automatically generates and delivers official year-end tax forms to eligible contractor accounts.
+            Under IRS rules, payment card transactions have no minimum reporting threshold, while third-party network (TPSO) transactions are subject to federal thresholds ($20,000 and 200 transactions) or applicable state limits. Stripe Connect automatically generates and delivers official year-end tax forms to eligible contractor accounts.
           </p>
         </div>
       </div>

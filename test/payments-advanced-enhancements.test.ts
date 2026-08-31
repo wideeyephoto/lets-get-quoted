@@ -176,4 +176,20 @@ describe('Advanced Revenue & Payments Enhancements', () => {
       expect(netSavings).toBeGreaterThan(0);
     });
   });
+
+  describe('5. IRS Form 1099-K Reporting Scope & Threshold Accuracy', () => {
+    it('ensures 1099-K informational copy accurately distinguishes payment card reporting from TPSO network thresholds', async () => {
+      const { readFileSync } = await import('node:fs');
+      const { join } = await import('node:path');
+      const panelCode = readFileSync(join(process.cwd(), 'src/app/dashboard/payments/PayoutsTransfersPanel.tsx'), 'utf8');
+
+      // The copy must not categorically state that 1099-K only applies over $20k / 200 tx,
+      // because payment card transactions have no de minimis threshold.
+      expect(panelCode).not.toContain('Federal IRS Form 1099-K reporting applies to accounts processing over $20,000');
+      expect(panelCode).toContain('payment card transactions have no minimum reporting threshold');
+      expect(panelCode).toContain('third-party network (TPSO) transactions are subject to federal thresholds ($20,000 and 200 transactions)');
+      expect(panelCode).toContain('Stripe Connect automatically generates and delivers official year-end tax forms');
+    });
+  });
 });
+
