@@ -306,7 +306,10 @@ Local authenticated CSS and Inventory-page patches now exist, but no current fou
   - Hardened `job_account_id(uuid)`: blocks `anon` and restricts `authenticated` callers strictly to job owners or assigned crew.
   - Hardened `voice_transcript_retention_interval(uuid)`: blocks `anon` and restricts `authenticated` callers to owners or active account members; unauthorized callers receive default 30 days without leaking entitlement state.
   - Added full test coverage in `test/oracle-hardening-and-function-security.test.ts`.
-- [ ] **Fix Production Crew RPC Schema Drift**: local edits reference `workspace_entitlements`, `crew_users`, and purchased capacity, but only modify an already-applied historical migration. Add/apply a forward replacement and run live owner/office/create/reactivate/limit/concurrency tests.
+- [x] **Fix Production Crew RPC Schema Drift & Synchronize Canonical Schema (Remediated 2026-08-31)**:
+  - Added canonical `create_crew_member_with_seat_entitlement`, `reactivate_crew_member_with_seat_entitlement`, and `workspace_purchased_capacity_units` definitions to `schema.sql`.
+  - Reconciled RBAC office permissions (`office_can(..., 'crew.write')`), purchased capacity summation, and seat limit enforcement.
+  - Verified with `node scripts/check-schema-order.mjs` and added unit test coverage in `test/crew-rpc-canonical-schema.test.ts`.
 - [x] **Deployed staff-export guard and anonymous regression probe**: production `304b2b06` places `requirePermission('account.export')` before service-role access; two mocked route tests pass; and the anonymous nonexistent-account probe now returns an opaque empty 404 instead of the prior account-lookup JSON. Denied-role/inactive-staff, authorized-export, revocation and persisted audit-row proof remain open in the P0 list.
 - [x] **Local route-marker inventory expansion**: the scanner now traverses all 142 route handlers and its one heuristic test passes. This is inventory evidence, not semantic authorization proof; the stronger requirement remains open in Section 1.
 
