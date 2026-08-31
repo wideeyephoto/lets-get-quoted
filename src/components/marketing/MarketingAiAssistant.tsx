@@ -494,7 +494,7 @@ const KNOWLEDGE_BASE: FaqItem[] = [
       'reach out',
     ],
     answer:
-      'Our team is available at support@letsgetquoted.com and through our contact form. Real human support specialists answer all questions regarding setup, migrations, and billing.',
+      'Our team is available through the contact form. Real human support specialists answer all questions regarding setup, migrations, and billing.',
     ctaText: 'Contact Our Support Team',
     ctaHref: '/contact',
   },
@@ -1179,5 +1179,4 @@ export default function MarketingAiAssistant() {
     </>
   );
 }
-
 

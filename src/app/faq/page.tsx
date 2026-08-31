@@ -150,7 +150,7 @@ const FAQ_GROUPS: FaqGroup[] = [
       {
         id: 'how-do-i-get-help',
         q: 'How do I get help if something goes wrong?',
-        a: 'Email support@letsgetquoted.com for anything about your account or a payment, or use the contact form for everything else. A person reads and answers every message — there is no ticket robot in between. Never send a card number, bank details or a password by email; nobody here will ever ask you for them.',
+        a: 'Use the contact form for account, payment, or product help. A person reads and answers every message — there is no ticket robot in between. Never send a card number, bank details, or a password; nobody here will ever ask you for them.',
       },
       {
         id: 'how-is-this-different',

@@ -246,8 +246,8 @@ export default function TermsOfServicePage() {
             <strong>DMCA / Copyright Infringement:</strong> We respect intellectual property rights and comply with the Digital
             Millennium Copyright Act (DMCA). If you believe material hosted on a contractor website published via our platform
             infringes your copyright, you may submit a takedown notice to our designated copyright agent at{' '}
-            <Link href="/contact">our contact page</Link> (or by email to dmca@letsgetquoted.com) providing the statutory DMCA
-            information. We maintain a policy of terminating accounts of repeat infringers in appropriate circumstances.
+            <Link href="/contact">our contact page</Link> with &ldquo;DMCA notice&rdquo; in the subject and the statutory DMCA information.
+            We maintain a policy of terminating accounts of repeat infringers in appropriate circumstances.
           </p>
           <p>
             <strong>Feedback:</strong> If you submit feedback, suggestions, or feature requests, we may use and incorporate them

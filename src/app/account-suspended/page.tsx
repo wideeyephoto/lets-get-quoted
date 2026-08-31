@@ -1,3 +1,5 @@
+import Link from 'next/link';
+
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Account suspended' };
 
@@ -15,7 +17,7 @@ export default function AccountSuspendedPage() {
             support and we&rsquo;ll help get you back up and running.
           </p>
           <p className="workspace-lead" style={{ marginTop: '.75rem' }}>
-            Email <a href="mailto:support@letsgetquoted.com"><strong>support@letsgetquoted.com</strong></a>.
+            Send us a note through the <Link href="/contact"><strong>contact form</strong></Link>.
           </p>
         </div>
       </section>

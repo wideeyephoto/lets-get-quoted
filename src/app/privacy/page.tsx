@@ -163,8 +163,8 @@ export default function PrivacyPolicyPage() {
         <section>
           <h2>7. Contact Us</h2>
           <p>
-            If you have questions about this Privacy Policy or wish to submit a privacy inquiry, please reach out via our{' '}
-            <Link href="/contact">contact page</Link> or email privacy@letsgetquoted.com.
+            If you have questions about this Privacy Policy or wish to submit a privacy inquiry, please use our{' '}
+            <Link href="/contact">contact page</Link> and include &ldquo;Privacy request&rdquo; in the subject.
           </p>
         </section>
       </div>
