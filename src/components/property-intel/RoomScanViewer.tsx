@@ -719,10 +719,10 @@ export function RoomScanViewer({
             type="button"
             className={styles.btnSecondary}
             onClick={() => setShowQrModal(true)}
-            title="Scan room on site with iPhone/iPad LiDAR"
+            title="How to capture room on site with smartphone video or iPhone LiDAR"
             style={{ fontSize: '0.72rem', padding: '0.24rem 0.55rem' }}
           >
-            📲 Phone Scan
+            📲 Mobile Capture Guide
           </button>
           <button
             type="button"
@@ -731,7 +731,7 @@ export function RoomScanViewer({
             title="Upload custom Apple RoomPlan JSON or 3D scan"
             style={{ fontSize: '0.72rem', padding: '0.24rem 0.55rem' }}
           >
-            📁 Upload
+            📁 Upload Scan
           </button>
 
           {/* Style Mode (Neon / Blueprint / Studio) */}
@@ -1227,35 +1227,62 @@ export function RoomScanViewer({
         </div>
       </div>
 
-      {/* QR Code Modal */}
+      {/* Mobile 3D Room Capture & LiDAR Guide Modal */}
       {showQrModal && (
         <div className={styles.modalBackdrop} onClick={() => setShowQrModal(false)}>
-          <div className={styles.modalCard} onClick={(e) => e.stopPropagation()}>
+          <div className={styles.modalCard} onClick={(e) => e.stopPropagation()} style={{ maxWidth: '640px' }}>
             <div className={styles.modalHeader}>
-              <span className={styles.modalTitle}>📲 Scan on Site with iPhone / iPad Pro</span>
+              <span className={styles.modalTitle}>📲 How to Capture 3D Measurements on Site</span>
               <button type="button" className={styles.modalClose} onClick={() => setShowQrModal(false)}>✕</button>
             </div>
-            <div className={styles.qrContainer}>
-              <div className={styles.qrBox}>
-                <svg viewBox="0 0 100 100" width="100%" height="100%" fill="#0f172a">
-                  <rect x="10" y="10" width="25" height="25" fill="#0f172a" />
-                  <rect x="15" y="15" width="15" height="15" fill="#ffffff" />
-                  <rect x="19" y="19" width="7" height="7" fill="#0f172a" />
-                  <rect x="65" y="10" width="25" height="25" fill="#0f172a" />
-                  <rect x="70" y="15" width="15" height="15" fill="#ffffff" />
-                  <rect x="74" y="19" width="7" height="7" fill="#0f172a" />
-                  <rect x="10" y="65" width="25" height="25" fill="#0f172a" />
-                  <rect x="15" y="70" width="15" height="15" fill="#ffffff" />
-                  <rect x="19" y="74" width="7" height="7" fill="#0f172a" />
-                  <rect x="42" y="15" width="8" height="8" fill="#0f172a" />
-                  <rect x="42" y="42" width="16" height="16" fill="#0f172a" />
-                  <rect x="65" y="65" width="10" height="10" fill="#0f172a" />
-                  <rect x="80" y="80" width="10" height="10" fill="#0f172a" />
-                </svg>
+
+            <div className={styles.guideAlert}>
+              <span>💡 <strong>Why websites can&apos;t fire iPhone LiDAR directly:</strong> Apple security restricts web browsers (Safari &amp; Chrome) from accessing raw hardware LiDAR sensors. Use either method below to capture and calculate dimensions:</span>
+            </div>
+
+            <div className={styles.guideGrid}>
+              {/* Method 1: AI Video / Photo Intake */}
+              <div className={styles.guideCard}>
+                <div className={styles.guideBadge}>Method 1 · Any Smartphone</div>
+                <h4 className={styles.guideCardTitle}>📹 AI Video / Photo Walkthrough</h4>
+                <p className={styles.guideCardDesc}>
+                  No app download needed. Open the intake link on your iPhone or Android, record a 15-second walk-around video of the room, and our AI Vision engine extracts boundaries, fixtures, and clearances automatically.
+                </p>
+                <button
+                  type="button"
+                  className={styles.guideActionBtn}
+                  onClick={() => {
+                    if (typeof window !== 'undefined') {
+                      navigator.clipboard.writeText(window.location.href);
+                      setToastMessage('✓ Mobile Link copied to clipboard!');
+                      setTimeout(() => setToastMessage(null), 3000);
+                    }
+                  }}
+                >
+                  📋 Copy Mobile Job Link
+                </button>
               </div>
-              <p className={styles.qrHelp}>
-                Point your iPhone Pro or iPad Pro camera at this QR code to open Apple RoomPlan capture. The 3D LiDAR point cloud and room geometry will automatically link directly to this job.
-              </p>
+
+              {/* Method 2: iPhone Pro Hardware LiDAR */}
+              <div className={styles.guideCard}>
+                <div className={styles.guideBadge} style={{ background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8', borderColor: 'rgba(56, 189, 248, 0.4)' }}>
+                  Method 2 · iPhone 12–16 Pro / iPad Pro
+                </div>
+                <h4 className={styles.guideCardTitle}>🎯 Hardware LiDAR / CAD Scans</h4>
+                <p className={styles.guideCardDesc}>
+                  Open <strong>Apple Measure</strong>, <strong>Polycam</strong>, or <strong>Canvas 3D</strong> on your iPhone Pro. Walk the room to capture laser point clouds, then tap <em>Export (USDZ, JSON, or CAD PDF)</em>.
+                </p>
+                <button
+                  type="button"
+                  className={styles.guideActionBtnSecondary}
+                  onClick={() => {
+                    setShowQrModal(false);
+                    setShowUploadModal(true);
+                  }}
+                >
+                  📁 Open 3D Scan Uploader
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -1264,11 +1291,12 @@ export function RoomScanViewer({
       {/* Upload Custom Scan Modal */}
       {showUploadModal && (
         <div className={styles.modalBackdrop} onClick={() => setShowUploadModal(false)}>
-          <div className={styles.modalCard} onClick={(e) => e.stopPropagation()}>
+          <div className={styles.modalCard} onClick={(e) => e.stopPropagation()} style={{ maxWidth: '580px' }}>
             <div className={styles.modalHeader}>
-              <span className={styles.modalTitle}>📁 Attach Custom 3D LiDAR Scan</span>
+              <span className={styles.modalTitle}>📁 Attach Custom 3D LiDAR / CAD Scan</span>
               <button type="button" className={styles.modalClose} onClick={() => setShowUploadModal(false)}>✕</button>
             </div>
+            
             <div
               className={`${styles.dropzone} ${isDraggingFile ? styles.dropzoneActive : ''}`}
               onDragOver={(e) => { e.preventDefault(); setIsDraggingFile(true); }}
@@ -1277,7 +1305,7 @@ export function RoomScanViewer({
               onClick={() => {
                 const input = document.createElement('input');
                 input.type = 'file';
-                input.accept = '.json,.usdz';
+                input.accept = '.json,.usdz,.obj,.pdf';
                 input.onchange = (e: Event) => {
                   const target = e.target as HTMLInputElement;
                   if (target.files && target.files.length > 0) {
@@ -1294,7 +1322,7 @@ export function RoomScanViewer({
                         setTimeout(() => setToastMessage(null), 3000);
                       } catch (err: unknown) {
                         const msg = err instanceof Error ? err.message : 'Invalid format';
-                        alert(`Could not parse JSON: ${msg}`);
+                        alert(`Could not parse JSON: ${msg}. Try dropping an Apple RoomPlan or sample JSON export.`);
                       }
                     };
                     reader.readAsText(file);
@@ -1304,7 +1332,32 @@ export function RoomScanViewer({
               }}
             >
               <div className={styles.dropzoneText}>Drag &amp; Drop RoomPlan / LiDAR JSON file</div>
-              <div className={styles.dropzoneSubtext}>Or click to browse from your computer (.json)</div>
+              <div className={styles.dropzoneSubtext}>Supports Apple RoomPlan (.json), Polycam, Canvas 3D, and USDZ exports</div>
+            </div>
+
+            {/* Quick Test Preset Buttons */}
+            <div style={{ marginTop: '1.2rem', paddingTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+              <div style={{ fontSize: '0.74rem', color: 'var(--muted, #94a3b8)', marginBottom: '0.5rem', fontWeight: 600 }}>
+                Or test with a pre-loaded sample room scan:
+              </div>
+              <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                {SAMPLE_ROOM_SCANS.map((s) => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    className={styles.btnSecondary}
+                    style={{ fontSize: '0.72rem', padding: '0.3rem 0.6rem' }}
+                    onClick={() => {
+                      setSelectedScanId(s.id);
+                      setShowUploadModal(false);
+                      setToastMessage(`✓ Switched to: ${s.title}`);
+                      setTimeout(() => setToastMessage(null), 3000);
+                    }}
+                  >
+                    {s.title}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </div>

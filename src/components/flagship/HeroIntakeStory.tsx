@@ -204,7 +204,7 @@ export default function HeroIntakeStory() {
           {beat === 2 && (
             <div className={styles.hudStatus}>
               <i aria-hidden="true" />
-              <span>LiDAR 3D SCAN · 120k PTS/SEC</span>
+              <span>AI SPATIAL VISION · 3D ROOM MESH</span>
             </div>
           )}
 

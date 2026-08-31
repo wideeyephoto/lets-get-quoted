@@ -82,12 +82,12 @@ function VisionSlide() {
     <section className={`${styles.slide} ${styles.visionSlide}`}>
       <div className={styles.visionPhoto}>
         <Image
-          alt="Bath-to-shower lead video frame analyzed by AI with simulated LiDAR 3D spatial scan"
+          alt="Bath-to-shower lead video frame analyzed by AI with spatial 3D room mesh"
           fill
           sizes="(max-width: 700px) 92vw, 430px"
           src="/demo/bath-to-shower/before.png"
         />
-        {/* Simulated LiDAR 3D Spatial Scan Overlay */}
+        {/* Simulated Spatial 3D Room Mesh Overlay */}
         <div aria-hidden="true" className={styles.lidarOverlay}>
           <div className={styles.lidarGrid} />
           <div className={styles.lidarPointCloud}>
@@ -115,7 +115,7 @@ function VisionSlide() {
           </div>
           <div className={styles.lidarBadge}>
             <i className={styles.lidarDot} />
-            <span>LiDAR 3D MESH · 120k PTS/SEC</span>
+            <span>AI SPATIAL VISION · 3D ROOM MESH</span>
           </div>
         </div>
         <span>VIDEO FRAME 2 / 3</span>

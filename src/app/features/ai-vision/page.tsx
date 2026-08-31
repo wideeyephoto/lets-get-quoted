@@ -115,8 +115,16 @@ function VisionInspectorSimulator() {
 
 const FAQ = [
   {
-    q: 'How does AI Vision analyze customer photos?',
-    a: 'When homeowners submit photos or videos via your smart intake form, or when your crew takes photos on site, our multimodal vision model identifies key elements: equipment brand and model plates, dimensions, physical damage, and clearance hazards.',
+    q: 'How does AI Vision analyze customer photos and videos?',
+    a: 'When homeowners submit photos or videos via your smart intake form, or when your crew takes photos on site, our multimodal vision model identifies key elements: equipment brand and model plates, spatial dimensions, physical damage, and clearance hazards.',
+  },
+  {
+    q: 'Do I or my customers need an iPhone with LiDAR to get 3D measurements?',
+    a: 'No. Our AI Vision engine calculates 3D room boundaries, alcove spans, and ceiling clearances from standard video or photos on ANY smartphone (iPhone or Android) with zero app download. If you or your field crew happen to use an iPhone 12–16 Pro or iPad Pro with hardware LiDAR, you can also upload native CAD point clouds (Apple RoomPlan, Polycam, Canvas 3D) for instant millimeter-precision takeoffs.',
+  },
+  {
+    q: 'How do roof and exterior 3D measurements work?',
+    a: 'Roof and exterior measurements are calculated automatically using high-resolution aerial satellite LiDAR via Google Solar API. The moment you enter a job address, the system maps roof pitch, facets, and square counts without requiring you to climb a ladder or fly a drone.',
   },
   {
     q: 'Can it read serial numbers and equipment rating plates?',
