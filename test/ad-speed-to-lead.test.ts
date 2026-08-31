@@ -1,5 +1,9 @@
-import { describe, expect, it } from 'vitest';
-import { generateSpeedToLeadSms } from '@/lib/ad-speed-to-lead';
+import { describe, expect, it, vi } from 'vitest';
+import {
+  generateSpeedToLeadSms,
+  dispatchSpeedToLeadSms,
+  resolveRecipientTimeZone,
+} from '@/lib/ad-speed-to-lead';
 
 describe('AI Speed-to-Lead SMS Engine', () => {
   it('generates a warm, natural SMS response for standard ad leads', () => {
@@ -31,5 +35,49 @@ describe('AI Speed-to-Lead SMS Engine', () => {
     expect(text).toContain('urgent request for Burst Pipe Leak in Dallas');
     expect(text).toContain('dispatch team is on standby');
     expect(text).toContain('Reply STOP to opt out.');
+  });
+
+  it('resolves recipient local time zone from phone area code and location', () => {
+    // California phone (415)
+    expect(
+      resolveRecipientTimeZone({
+        phone: '(415) 555-0199',
+        accountTimeZone: 'America/New_York',
+      })
+    ).toBe('America/Los_Angeles');
+
+    // Texas phone (512)
+    expect(
+      resolveRecipientTimeZone({
+        phone: '512-555-0100',
+        accountTimeZone: 'America/New_York',
+      })
+    ).toBe('America/Chicago');
+
+    // Location string (Austin, TX)
+    expect(
+      resolveRecipientTimeZone({
+        city: 'Austin, TX',
+        accountTimeZone: 'America/New_York',
+      })
+    ).toBe('America/Chicago');
+  });
+
+  it('evaluates quiet hours against called party local time during speed-to-lead dispatch', async () => {
+    const fakeAdmin = {} as any;
+
+    const result = await dispatchSpeedToLeadSms({
+      admin: fakeAdmin,
+      accountId: 'acc_test_123',
+      recipientPhone: '(415) 555-0199', // Pacific time zone
+      businessName: 'Apex Roofing',
+      leadName: 'Alex Smith',
+      projectType: 'Roof Inspection',
+      city: 'San Francisco, CA',
+      accountTimeZone: 'America/New_York', // Contractor in Eastern Time
+    });
+
+    expect(result.resolvedTimeZone).toBe('America/Los_Angeles');
+    expect(result.message).toBeTruthy();
   });
 });
