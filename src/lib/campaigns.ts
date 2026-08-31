@@ -223,9 +223,16 @@ export async function sendCampaign(
   accountId: string,
   input: { channel: CampaignChannel; audience: CampaignAudience; subject: string; body: string; businessName: string; mailingAddress: string | null; beatId?: string | null },
 ): Promise<CampaignSendResult> {
-  const now = Date.now();
   const wantEmail = input.channel === 'email' || input.channel === 'both';
   const wantSms = input.channel === 'sms' || input.channel === 'both';
+
+  if (wantSms) {
+    const { requireActiveDedicatedMessagingSender } = await import('@/lib/messaging-number-provisioning');
+    const { createAdminClient } = await import('@/lib/auth');
+    await requireActiveDedicatedMessagingSender(accountId, createAdminClient());
+  }
+
+  const now = Date.now();
 
   const targets = (await loadRecipients(supabase, accountId))
     .filter((recipient) => matchesAudience(recipient, input.audience, now))

@@ -14,6 +14,7 @@ import { AiDraftsExhaustedError } from '@/lib/ai-model-call';
 import { campaignDraftForBeat, type CampaignDraft } from '@/lib/marketing-draft-data';
 import { sendCampaign } from '@/lib/campaigns';
 import { type CampaignAudience, type CampaignChannel } from '@/lib/campaign-audiences';
+import { requireActiveDedicatedMessagingSender } from '@/lib/messaging-number-provisioning';
 
 import { sendCampaignEmail, renderCampaignEmailHtml } from '@/lib/email';
 import { resolveMarketingMailingAddress } from '@/lib/email-suppression';
@@ -346,6 +347,9 @@ export async function sendCampaignAction(formData: FormData) {
   }
   if ((channel === 'email' || channel === 'both') && !brand.replyTo) {
     throw new Error('Add a customer reply email in Settings before sending marketing emails so customer replies reach you.');
+  }
+  if (channel === 'sms' || channel === 'both') {
+    await requireActiveDedicatedMessagingSender(accountId);
   }
   const result = await sendCampaign(supabase, accountId, { channel, audience, subject, body, businessName, mailingAddress, beatId });
 

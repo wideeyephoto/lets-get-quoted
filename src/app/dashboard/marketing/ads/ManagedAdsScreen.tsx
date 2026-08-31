@@ -1370,6 +1370,7 @@ export default function ManagedAdsScreen({
               <div className={styles.cockpitTabTitle}>
                 <span>1. 💳</span>
                 <span>Plan &amp; Budget</span>
+                <span style={{ color: '#10b981', fontSize: '0.75rem', fontWeight: 800 }}>✓</span>
               </div>
               <span className={styles.cockpitTabBadge}>
                 {fundingModel === 'weekly_drip' ? `$${currentBundle.weeklyAmountDollars}/wk` : `$${walletDepositDollars} Wallet`}
@@ -1386,6 +1387,7 @@ export default function ManagedAdsScreen({
               <div className={styles.cockpitTabTitle}>
                 <span>2. 📍</span>
                 <span>Location &amp; Schedule</span>
+                <span style={{ color: '#10b981', fontSize: '0.75rem', fontWeight: 800 }}>✓</span>
               </div>
               <span className={styles.cockpitTabBadge}>
                 {city.split(',')[0]} · {activeDaysCount}d/wk
@@ -1402,6 +1404,7 @@ export default function ManagedAdsScreen({
               <div className={styles.cockpitTabTitle}>
                 <span>3. 🎯</span>
                 <span>Focus &amp; ROI</span>
+                <span style={{ color: '#10b981', fontSize: '0.75rem', fontWeight: 800 }}>✓</span>
               </div>
               <span className={styles.cockpitTabBadge}>
                 {customFocus ? '✨ Custom' : `${roiMetrics.roas}x ROAS`}

@@ -21,6 +21,7 @@ type Props = {
   reach: Record<CampaignAudience, Reach>;
   mailingAddress: string | null;
   replyEmailReady?: boolean;
+  customerTextingReady?: boolean;
   daysSinceLastSend: number | null;
   unsubscribesSinceLastSend: number;
   availableEmailCredits?: number | null;
@@ -40,6 +41,7 @@ export default function CampaignsScreen({
   reach,
   mailingAddress,
   replyEmailReady = true,
+  customerTextingReady = true,
   daysSinceLastSend,
   unsubscribesSinceLastSend,
   availableEmailCredits,
@@ -93,6 +95,7 @@ export default function CampaignsScreen({
           initial: draft,
           mailingAddress,
           replyEmailReady,
+          customerTextingReady,
           daysSinceLastSend,
           unsubscribesSinceLastSend,
           availableEmailCredits,

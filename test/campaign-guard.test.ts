@@ -117,6 +117,13 @@ describe('checkCampaign', () => {
     expect(ids({ ...clean, channel: 'sms', replyEmailReady: false })).not.toContain('no-reply-email');
   });
 
+  it('blocks a text or email+text campaign when dedicated texting is not ready', () => {
+    expect(ids({ ...clean, channel: 'sms', customerTextingReady: false })).toContain('no-dedicated-number');
+    expect(ids({ ...clean, channel: 'both', customerTextingReady: false })).toContain('no-dedicated-number');
+    expect(ids({ ...clean, channel: 'email', customerTextingReady: false })).not.toContain('no-dedicated-number');
+    expect(ids({ ...clean, channel: 'sms', customerTextingReady: true })).not.toContain('no-dedicated-number');
+  });
+
   it('flags sending again within a week of the last one', () => {
     const found = checkCampaign({ ...clean, daysSinceLastSend: 3 });
     const crowding = found.find((f) => f.id === 'sent-recently');

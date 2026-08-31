@@ -15,6 +15,7 @@ import { buildQuickStopPitch } from '@/lib/quick-stop-pitch';
 import { campaignDraftForBeat } from '@/lib/marketing-draft-data';
 import { buildCampaignRecommendations } from '@/lib/campaign-recommendations';
 import { buildCalendarView } from '@/lib/marketing-calendar-data';
+import { loadDedicatedMessagingReadiness } from '@/lib/messaging-number-provisioning';
 import CampaignsScreen from './CampaignsScreen';
 
 export const dynamic = 'force-dynamic';
@@ -38,10 +39,11 @@ export default async function CampaignsPage({
 }) {
   const { supabase, accountId } = await requireOfficeContext('settings.write');
 
-  const [recipients, campaigns, listHealth, { data: accountRow }, { data: siteRow }, { data: serviceRows }, sentBeats, { data: balanceRows }, { data: userData }] = await Promise.all([
+  const [recipients, campaigns, listHealth, messagingReadiness, { data: accountRow }, { data: siteRow }, { data: serviceRows }, sentBeats, { data: balanceRows }, { data: userData }] = await Promise.all([
     loadRecipients(supabase, accountId),
     listCampaigns(supabase, accountId),
     loadListHealth(supabase, accountId),
+    loadDedicatedMessagingReadiness(accountId),
     supabase.from('accounts').select('business_name, mailing_address, reply_to_email').eq('id', accountId).maybeSingle(),
     supabase.from('sites').select('company_name, published, subdomain, content, service_area').eq('account_id', accountId).maybeSingle(),
     supabase.from('services').select('id, name, created_at, active').eq('account_id', accountId).eq('active', true),
@@ -49,6 +51,8 @@ export default async function CampaignsPage({
     supabase.from('workspace_usage_credit_balances').select('resource_code, available_units').eq('account_id', accountId),
     supabase.auth.getUser(),
   ]);
+
+  const customerTextingReady = messagingReadiness.kind === 'ready';
 
   const emailUnits = balanceRows?.find((r) => r.resource_code === 'marketing_email_sends')?.available_units;
   const smsUnits = balanceRows?.find((r) => r.resource_code === 'text_segments')?.available_units;
@@ -133,6 +137,7 @@ export default async function CampaignsPage({
       reach={reach}
       mailingAddress={mailingAddress}
       replyEmailReady={replyEmailReady}
+      customerTextingReady={customerTextingReady}
       daysSinceLastSend={listHealth.daysSinceLastSend}
       unsubscribesSinceLastSend={listHealth.unsubscribesSinceLastSend}
       availableEmailCredits={availableEmailCredits}

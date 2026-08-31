@@ -10,9 +10,9 @@
   gap: 0.4rem;
   padding: 0.35rem 0.65rem;
   border-radius: 9999px;
-  background: rgba(147, 51, 234, 0.08);
-  border: 1px solid rgba(147, 51, 234, 0.25);
-  color: #7e22ce;
+  background: rgba(147, 51, 234, 0.12);
+  border: 1px solid rgba(168, 85, 247, 0.35);
+  color: #c084fc;
   font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;
@@ -21,9 +21,9 @@
 }
 
 .hintPill:hover {
-  background: rgba(147, 51, 234, 0.14);
-  border-color: rgba(147, 51, 234, 0.4);
-  color: #6b21a8;
+  background: rgba(147, 51, 234, 0.2);
+  border-color: rgba(168, 85, 247, 0.55);
+  color: #e9d5ff;
   transform: translateY(-1px);
 }
 

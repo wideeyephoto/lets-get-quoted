@@ -48,6 +48,8 @@ type Props = {
   mailingAddress: string | null;
   /** Whether the contractor has a reply email (custom or auth email) on file. */
   replyEmailReady?: boolean;
+  /** Whether the workspace has an approved, active dedicated number and active campaign. */
+  customerTextingReady?: boolean;
   daysSinceLastSend: number | null;
   unsubscribesSinceLastSend: number;
   availableEmailCredits?: number | null;
@@ -80,13 +82,17 @@ export default function CampaignComposer({
   initial,
   mailingAddress,
   replyEmailReady = true,
+  customerTextingReady = true,
   daysSinceLastSend,
   unsubscribesSinceLastSend,
   availableEmailCredits,
   availableSmsCredits,
   onDirtyChange,
 }: Props) {
-  const [channel, setChannel] = useState<'email' | 'sms' | 'both'>(initial?.channel ?? 'email');
+  const initialChannel = (!customerTextingReady && initial?.channel && initial.channel !== 'email')
+    ? 'email'
+    : (initial?.channel ?? 'email');
+  const [channel, setChannel] = useState<'email' | 'sms' | 'both'>(initialChannel);
   const [audience, setAudience] = useState(initial?.audience ?? audiences[0]?.id ?? 'past');
   const [subject, setSubject] = useState(initial?.subject ?? '');
   const [body, setBody] = useState(initial?.body ?? '');
@@ -150,17 +156,18 @@ export default function CampaignComposer({
         reachCount,
         mailingAddress,
         replyEmailReady,
+        customerTextingReady,
         daysSinceLastSend,
         unsubscribesSinceLastSend,
       }),
-    [channel, subject, body, reachCount, mailingAddress, replyEmailReady, daysSinceLastSend, unsubscribesSinceLastSend],
+    [channel, subject, body, reachCount, mailingAddress, replyEmailReady, customerTextingReady, daysSinceLastSend, unsubscribesSinceLastSend],
   );
 
   const findings = useMemo(() => rankFindings([...checks, ...(aiFindings ?? [])]), [checks, aiFindings]);
   const serious = hasBlockingFinding(findings);
 
   /**
-   * The same four rules sendCampaignAction enforces, said before the press.
+   * The same rules sendCampaignAction enforces, said before the press.
    *
    * Order matters: name the thing they are most likely to be able to fix right
    * now. An empty message is a keystroke away; a missing mailing address is a
@@ -175,9 +182,11 @@ export default function CampaignComposer({
           ? 'Marketing emails have to carry a postal address by law. Add yours in Settings first.'
           : wantEmail && replyEmailReady === false
             ? 'Add a customer reply email in Settings so customer replies reach you.'
-            : reachCount === 0
-              ? 'Nobody in this audience can be reached on the channel you picked.'
-              : null;
+            : wantSms && customerTextingReady === false
+              ? 'Marketing texts require an approved, active dedicated number and active campaign. Set up texting in Messages first.'
+              : reachCount === 0
+                ? 'Nobody in this audience can be reached on the channel you picked.'
+                : null;
   const canSend = sendBlockedReason === null;
 
   function runRead() {
@@ -236,19 +245,61 @@ export default function CampaignComposer({
       <div className="field">
         <label>Reach them by</label>
         <div className="channel-toggle" role="radiogroup" aria-label="Channel">
-          {CHANNELS.map((option) => (
-            <label key={option.id} className={`channel-option${channel === option.id ? ' is-active' : ''}`}>
-              <input
-                type="radio"
-                name="channel"
-                value={option.id}
-                checked={channel === option.id}
-                onChange={() => setChannel(option.id)}
-              />
-              {option.label}
-            </label>
-          ))}
+          {CHANNELS.map((option) => {
+            const isSmsOption = option.id === 'sms' || option.id === 'both';
+            const setupNeeded = isSmsOption && customerTextingReady === false;
+            return (
+              <label
+                key={option.id}
+                className={`channel-option${channel === option.id ? ' is-active' : ''}${setupNeeded ? ' needs-setup' : ''}`}
+                title={setupNeeded ? 'Dedicated texting number and active campaign required' : undefined}
+              >
+                <input
+                  type="radio"
+                  name="channel"
+                  value={option.id}
+                  checked={channel === option.id}
+                  onChange={() => setChannel(option.id)}
+                />
+                {option.label}
+                {setupNeeded ? (
+                  <span style={{ fontSize: '0.72rem', opacity: 0.8, marginLeft: '0.35rem', fontWeight: 500 }}>
+                    (Setup required)
+                  </span>
+                ) : null}
+              </label>
+            );
+          })}
         </div>
+        {wantSms && customerTextingReady === false ? (
+          <div
+            style={{
+              marginTop: '0.75rem',
+              padding: '0.75rem 1rem',
+              background: 'rgba(239, 68, 68, 0.08)',
+              border: '1px solid rgba(239, 68, 68, 0.25)',
+              borderRadius: '8px',
+              fontSize: '0.85rem',
+              color: 'var(--text)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+            }}
+            role="status"
+          >
+            <span aria-hidden="true">📱</span>
+            <span>
+              <strong>Dedicated number &amp; active campaign required:</strong> Marketing texts cannot be sent until
+              this workspace has an approved, active dedicated number and active 10DLC campaign.{' '}
+              <Link
+                href="/dashboard/messages?setup=1#texting-setup"
+                style={{ color: 'var(--accent, #f97316)', textDecoration: 'underline', fontWeight: 600 }}
+              >
+                Open Texting setup &rarr;
+              </Link>
+            </span>
+          </div>
+        ) : null}
       </div>
 
       <div className="field">

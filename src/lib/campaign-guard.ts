@@ -36,6 +36,8 @@ export type GuardInput = {
   mailingAddress: string | null;
   /** Whether the contractor has a reply email (custom or auth email) on file. */
   replyEmailReady?: boolean;
+  /** Whether the workspace has an approved, active dedicated number and active campaign. */
+  customerTextingReady?: boolean;
   /** Days since the last campaign to this account's list, null if never. */
   daysSinceLastSend: number | null;
   /** Unsubscribes recorded since the last campaign went out. */
@@ -149,6 +151,16 @@ export function checkCampaign(input: GuardInput): CampaignFinding[] {
       severity: 'high',
       title: 'No customer reply email configured',
       detail: 'Add your business email in Settings so homeowners can reply to your campaign.',
+      source: 'check',
+    });
+  }
+
+  if (wantSms && input.customerTextingReady === false) {
+    findings.push({
+      id: 'no-dedicated-number',
+      severity: 'high',
+      title: 'Dedicated texting number required',
+      detail: 'Marketing texts require an approved dedicated business number and active campaign registration. Set up texting in Messages before sending text campaigns.',
       source: 'check',
     });
   }

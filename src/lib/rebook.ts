@@ -109,8 +109,12 @@ async function deliverRebookInvite(
   const phone = client.phone ? normalizeUsPhone(client.phone) : null;
   let canText = false;
   if (phone) {
-    const { data: consent } = await supabase.from('sms_consent').select('status').eq('account_id', accountId).eq('phone_number', phone).maybeSingle();
-    canText = consent?.status === 'opted_in';
+    const { loadDedicatedMessagingReadiness } = await import('@/lib/messaging-number-provisioning');
+    const sender = await loadDedicatedMessagingReadiness(accountId);
+    if (sender.kind === 'ready') {
+      const { data: consent } = await supabase.from('sms_consent').select('status').eq('account_id', accountId).eq('phone_number', phone).maybeSingle();
+      canText = consent?.status === 'opted_in';
+    }
   }
 
   let channel: 'sms' | 'email';
