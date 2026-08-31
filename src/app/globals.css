@@ -51,11 +51,11 @@
   --accent-paper: var(--accent);
   --accent-ink: #ff9d5c;
   --accent-gradient: linear-gradient(180deg, var(--accent), var(--accent-end));
-  --ambient-glow: radial-gradient(circle at top, rgba(255, 122, 33, var(--glow-a, 0.18)), transparent 30%), radial-gradient(circle at 80% 20%, rgba(255, 209, 102, var(--glow-b, 0.12)), transparent 18%);
-  --bg-gradient-canvas: radial-gradient(circle at 50% -20%, rgba(255, 122, 33, 0.14), transparent 45%), radial-gradient(circle at 85% 15%, rgba(83, 177, 253, 0.08), transparent 35%), radial-gradient(circle at 15% 85%, rgba(124, 58, 237, 0.06), transparent 40%), linear-gradient(180deg, #070a11 0%, #0a0e17 60%, #05070c 100%);
-  --bg-gradient-card: linear-gradient(180deg, rgba(25, 30, 42, 0.8) 0%, rgba(14, 18, 25, 0.95) 100%);
-  --bg-gradient-sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.01) 100%);
-  --bg-ambient-cone: radial-gradient(circle at top, rgba(255, 122, 33, 0.18) 0%, transparent 70%);
+  --ambient-glow: radial-gradient(circle at top, rgba(255, 122, 33, var(--glow-a, 0.22)), transparent 35%), radial-gradient(circle at 85% 20%, rgba(255, 209, 102, var(--glow-b, 0.14)), transparent 22%);
+  --bg-gradient-canvas: radial-gradient(ellipse 90% 60% at 50% -15%, rgba(255, 122, 33, 0.22), transparent 60%), radial-gradient(ellipse 70% 50% at 90% 25%, rgba(56, 189, 248, 0.12), transparent 55%), radial-gradient(ellipse 60% 45% at 10% 85%, rgba(124, 58, 237, 0.10), transparent 50%), linear-gradient(180deg, #090c14 0%, #0d121d 45%, #05070d 100%);
+  --bg-gradient-card: linear-gradient(180deg, rgba(26, 33, 48, 0.86) 0%, rgba(13, 17, 26, 0.95) 100%);
+  --bg-gradient-sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.01) 100%);
+  --bg-ambient-cone: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(255, 122, 33, 0.22) 0%, transparent 65%);
   --planning: #7c3aed;
   --planning-end: #4f169f;
   --planning-gradient: linear-gradient(180deg, #7c3aed 0%, #6320c9 55%, #4f169f 100%);
@@ -63,8 +63,8 @@
   --planning-shadow: 0 0 9px rgba(180, 120, 255, 0.6), 0 0 24px rgba(147, 51, 234, 0.42), 0 0 62px rgba(124, 40, 220, 0.3), 0 14px 46px -14px rgba(120, 40, 210, 0.5), inset 0 1px 0 rgba(233, 219, 255, 0.5), inset 0 -20px 38px -24px rgba(214, 186, 255, 0.5);
   --assistant-accent: linear-gradient(135deg, #7c3aed 0%, #ec4899 55%, #f59e0b 100%);
   --assistant-shadow: 0 4px 14px rgba(124, 58, 237, 0.32);
-  --glow-a: 0.08;
-  --glow-b: 0.05;
+  --glow-a: 0.10;
+  --glow-b: 0.06;
   --fresh: #3dd68c;
   --shade: 2, 4, 9;
   --good: #3dd68c;
@@ -123,11 +123,11 @@
   --accent-paper: var(--accent);
   --accent-ink: #fdba74;
   --accent-gradient: linear-gradient(180deg, var(--accent), var(--accent-end));
-  --ambient-glow: radial-gradient(circle at top, rgba(249, 115, 22, var(--glow-a, 0.08)), transparent 30%), radial-gradient(circle at 80% 20%, rgba(253, 186, 116, var(--glow-b, 0.05)), transparent 18%);
-  --bg-gradient-canvas: radial-gradient(ellipse at 50% 0%, rgba(249, 115, 22, 0.09), transparent 50%), radial-gradient(ellipse at 100% 50%, rgba(253, 186, 116, 0.04), transparent 40%), linear-gradient(180deg, #141519 0%, #17191f 50%, #0f1013 100%);
+  --ambient-glow: radial-gradient(circle at top, rgba(249, 115, 22, var(--glow-a, 0.12)), transparent 30%), radial-gradient(circle at 80% 20%, rgba(253, 186, 116, var(--glow-b, 0.08)), transparent 18%);
+  --bg-gradient-canvas: radial-gradient(ellipse 80% 50% at 50% -10%, rgba(249, 115, 22, 0.16), transparent 55%), radial-gradient(circle at 90% 60%, rgba(56, 189, 248, 0.08), transparent 45%), linear-gradient(180deg, #13151a 0%, #191c24 50%, #0f1014 100%);
   --bg-gradient-card: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
-  --bg-gradient-sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.06) 0%, rgba(0, 0, 0, 0.12) 100%);
-  --bg-ambient-cone: radial-gradient(circle at 50% 0%, rgba(249, 115, 22, 0.1) 0%, transparent 60%);
+  --bg-gradient-sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.95) 0%, rgba(241, 245, 249, 0.3) 100%);
+  --bg-ambient-cone: radial-gradient(circle at 50% 0%, rgba(249, 115, 22, 0.14) 0%, transparent 60%);
   --planning: #7c3aed;
   --planning-end: #6d28d9;
   --planning-gradient: linear-gradient(180deg, #8b5cf6 0%, #6d28d9 100%);
@@ -198,11 +198,11 @@
   --accent-paper: var(--accent);
   --accent-ink: #fba36b;
   --accent-gradient: linear-gradient(180deg, var(--accent), var(--accent-end));
-  --ambient-glow: radial-gradient(circle at top, rgba(233, 120, 48, var(--glow-a, 0.12)), transparent 30%), radial-gradient(circle at 80% 20%, rgba(245, 158, 102, var(--glow-b, 0.08)), transparent 18%);
-  --bg-gradient-canvas: radial-gradient(ellipse at 50% -10%, rgba(249, 125, 52, 0.12), transparent 45%), radial-gradient(circle at 90% 40%, rgba(245, 181, 68, 0.06), transparent 35%), radial-gradient(circle at 10% 80%, rgba(180, 83, 9, 0.05), transparent 40%), linear-gradient(180deg, #1c1a17 0%, #221f1b 50%, #151310 100%);
-  --bg-gradient-card: linear-gradient(180deg, #27241f 0%, #1f1d19 100%);
-  --bg-gradient-sheen: linear-gradient(180deg, rgba(255, 246, 235, 0.07) 0%, rgba(255, 246, 235, 0.01) 100%);
-  --bg-ambient-cone: radial-gradient(circle at top, rgba(233, 120, 48, 0.12) 0%, transparent 60%);
+  --ambient-glow: radial-gradient(circle at top, rgba(233, 120, 48, var(--glow-a, 0.16)), transparent 35%), radial-gradient(circle at 80% 20%, rgba(245, 158, 102, var(--glow-b, 0.12)), transparent 22%);
+  --bg-gradient-canvas: radial-gradient(ellipse 85% 55% at 50% -10%, rgba(249, 125, 52, 0.20), transparent 60%), radial-gradient(circle at 90% 40%, rgba(245, 181, 68, 0.12), transparent 45%), radial-gradient(circle at 10% 80%, rgba(180, 83, 9, 0.08), transparent 40%), linear-gradient(180deg, #1c1a17 0%, #24211c 50%, #151310 100%);
+  --bg-gradient-card: linear-gradient(180deg, rgba(46, 42, 36, 0.90) 0%, rgba(28, 25, 22, 0.96) 100%);
+  --bg-gradient-sheen: linear-gradient(180deg, rgba(255, 246, 235, 0.14) 0%, rgba(255, 246, 235, 0.01) 100%);
+  --bg-ambient-cone: radial-gradient(circle at top, rgba(233, 120, 48, 0.18) 0%, transparent 60%);
   --planning: #7c3aed;
   --planning-end: #6d28d9;
   --planning-gradient: linear-gradient(180deg, #8b5cf6 0%, #6d28d9 100%);
@@ -221,8 +221,8 @@
   --chrome: rgba(23, 21, 18, 0.92);
   --chrome-soft: rgba(23, 21, 18, 0.82);
   --chrome-solid: #171512;
-  --glow-a: 0.05;
-  --glow-b: 0.04;
+  --glow-a: 0.08;
+  --glow-b: 0.06;
   --good: #4acb92;
   --warn: #f5b544;
   --bad: #f98a78;
@@ -275,19 +275,19 @@
   --chrome: rgba(0, 0, 0, 0.96);
   --chrome-soft: rgba(0, 0, 0, 0.88);
   --chrome-solid: #000000;
-  --glow-a: 0.06;
-  --glow-b: 0.04;
+  --glow-a: 0.09;
+  --glow-b: 0.06;
   --accent: #ff8a3d;
   --accent-2: #ffb066;
   --accent-end: #ffb066;
   --accent-paper: var(--accent);
   --accent-ink: #ffa33a;
   --accent-gradient: linear-gradient(180deg, var(--accent), var(--accent-end));
-  --ambient-glow: radial-gradient(circle at top, rgba(255, 136, 0, var(--glow-a, 0.08)), transparent 30%);
-  --bg-gradient-canvas: radial-gradient(circle at 50% 0%, rgba(255, 138, 61, 0.08), transparent 40%), radial-gradient(circle at 100% 100%, rgba(139, 92, 246, 0.05), transparent 35%), linear-gradient(180deg, #000000 0%, #050507 100%);
-  --bg-gradient-card: linear-gradient(180deg, #121215 0%, #08080a 100%);
-  --bg-gradient-sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0) 100%);
-  --bg-ambient-cone: radial-gradient(circle at top, rgba(255, 136, 0, 0.09) 0%, transparent 35%);
+  --ambient-glow: radial-gradient(circle at top, rgba(255, 136, 0, var(--glow-a, 0.12)), transparent 30%);
+  --bg-gradient-canvas: radial-gradient(ellipse 80% 50% at 50% -10%, rgba(255, 138, 61, 0.18), transparent 55%), radial-gradient(circle at 85% 85%, rgba(139, 92, 246, 0.12), transparent 45%), linear-gradient(180deg, #010203 0%, #07070a 50%, #000000 100%);
+  --bg-gradient-card: linear-gradient(180deg, rgba(24, 24, 29, 0.94) 0%, rgba(10, 10, 13, 0.98) 100%);
+  --bg-gradient-sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0.01) 100%);
+  --bg-ambient-cone: radial-gradient(circle at top, rgba(255, 136, 0, 0.15) 0%, transparent 40%);
   --planning: #8b5cf6;
   --planning-end: #5b21b6;
   --planning-gradient: linear-gradient(180deg, #8b5cf6 0%, #5b21b6 100%);
@@ -346,11 +346,11 @@
   --accent-paper: #b43403;
   --accent-ink: #9a3412;
   --accent-gradient: linear-gradient(180deg, var(--accent), var(--accent-end));
-  --ambient-glow: radial-gradient(circle at top, rgba(194, 65, 12, var(--glow-a, 0.06)), transparent 30%);
-  --bg-gradient-canvas: radial-gradient(circle at 75% 0%, rgba(180, 52, 3, 0.05), transparent 35%), radial-gradient(circle at 10% 20%, rgba(37, 99, 235, 0.06), transparent 45%), linear-gradient(180deg, #f4f6fa 0%, #eaeef4 40%, #e1e7f0 100%);
+  --ambient-glow: radial-gradient(circle at top, rgba(194, 65, 12, var(--glow-a, 0.08)), transparent 30%);
+  --bg-gradient-canvas: radial-gradient(ellipse 80% 50% at 85% 0%, rgba(37, 99, 235, 0.09), transparent 50%), radial-gradient(ellipse 80% 60% at 15% 10%, rgba(245, 158, 11, 0.08), transparent 45%), linear-gradient(180deg, #f8fafc 0%, #eef2f7 50%, #e2e8f0 100%);
   --bg-gradient-card: linear-gradient(180deg, #ffffff 0%, #fbfcfe 100%);
-  --bg-gradient-sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.9) 0%, rgba(241, 245, 249, 0.4) 100%);
-  --bg-ambient-cone: radial-gradient(circle at top, rgba(180, 52, 3, 0.06) 0%, transparent 40%);
+  --bg-gradient-sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(241, 245, 249, 0.4) 100%);
+  --bg-ambient-cone: radial-gradient(circle at top, rgba(180, 52, 3, 0.08) 0%, transparent 40%);
   --planning: #5b21b6;
   --planning-end: #4c1d95;
   --planning-gradient: linear-gradient(180deg, #6d28d9 0%, #5b21b6 100%);
@@ -685,11 +685,11 @@
   --accent-paper: var(--accent);
   --accent-ink: #8ecdf0;
   --accent-gradient: linear-gradient(180deg, var(--accent), var(--accent-end));
-  --ambient-glow: radial-gradient(circle at top, rgba(86, 180, 233, var(--glow-a, 0.14)), transparent 30%), radial-gradient(circle at 80% 20%, rgba(240, 228, 66, var(--glow-b, 0.08)), transparent 18%);
-  --bg-gradient-canvas: radial-gradient(circle at 50% -10%, rgba(86, 180, 233, 0.15), transparent 45%), radial-gradient(circle at 85% 85%, rgba(240, 228, 66, 0.05), transparent 30%), linear-gradient(180deg, #0b0c0e 0%, #101216 50%, #060708 100%);
-  --bg-gradient-card: linear-gradient(180deg, #16181d 0%, #101114 100%);
-  --bg-gradient-sheen: linear-gradient(180deg, rgba(86, 180, 233, 0.12) 0%, transparent 100%);
-  --bg-ambient-cone: radial-gradient(circle at top, rgba(86, 180, 233, 0.16) 0%, transparent 50%);
+  --ambient-glow: radial-gradient(circle at top, rgba(86, 180, 233, var(--glow-a, 0.18)), transparent 35%), radial-gradient(circle at 80% 20%, rgba(240, 228, 66, var(--glow-b, 0.12)), transparent 22%);
+  --bg-gradient-canvas: radial-gradient(ellipse 85% 55% at 50% -10%, rgba(86, 180, 233, 0.22), transparent 55%), radial-gradient(circle at 85% 85%, rgba(240, 228, 66, 0.10), transparent 40%), linear-gradient(180deg, #090a0d 0%, #12141a 50%, #050608 100%);
+  --bg-gradient-card: linear-gradient(180deg, rgba(28, 31, 38, 0.94) 0%, rgba(14, 16, 20, 0.98) 100%);
+  --bg-gradient-sheen: linear-gradient(180deg, rgba(86, 180, 233, 0.18) 0%, rgba(86, 180, 233, 0.01) 100%);
+  --bg-ambient-cone: radial-gradient(circle at top, rgba(86, 180, 233, 0.20) 0%, transparent 50%);
   --planning: #cc79a7;
   --planning-end: #7a315d;
   --planning-gradient: linear-gradient(180deg, #cc79a7 0%, #9e4b7b 55%, #7a315d 100%);
@@ -751,19 +751,19 @@
   --chrome: rgba(5, 5, 6, 0.95);
   --chrome-soft: rgba(5, 5, 6, 0.85);
   --chrome-solid: #050506;
-  --glow-a: 0.05;
-  --glow-b: 0.03;
+  --glow-a: 0.08;
+  --glow-b: 0.05;
   --accent: #fafafa;
   --accent-2: #a1a1aa;
   --accent-end: #a1a1aa;
   --accent-paper: #ffffff;
   --accent-ink: #ffffff;
   --accent-gradient: linear-gradient(180deg, var(--accent), var(--accent-end));
-  --ambient-glow: radial-gradient(circle at top, rgba(255, 255, 255, var(--glow-a, 0.05)), transparent 30%);
-  --bg-gradient-canvas: radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.09), transparent 45%), linear-gradient(180deg, #0a0a0b 0%, #111113 50%, #050506 100%);
-  --bg-gradient-card: linear-gradient(180deg, #18181b 0%, #0f0f11 100%);
-  --bg-gradient-sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.02) 100%);
-  --bg-ambient-cone: radial-gradient(circle at top, rgba(255, 255, 255, 0.1) 0%, transparent 40%);
+  --ambient-glow: radial-gradient(circle at top, rgba(255, 255, 255, var(--glow-a, 0.08)), transparent 30%);
+  --bg-gradient-canvas: radial-gradient(ellipse 80% 50% at 50% -10%, rgba(255, 255, 255, 0.16), transparent 55%), linear-gradient(180deg, #09090b 0%, #121215 50%, #050506 100%);
+  --bg-gradient-card: linear-gradient(180deg, rgba(30, 30, 34, 0.94) 0%, rgba(14, 14, 16, 0.98) 100%);
+  --bg-gradient-sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0.02) 100%);
+  --bg-ambient-cone: radial-gradient(circle at top, rgba(255, 255, 255, 0.14) 0%, transparent 40%);
   --planning: #71717a;
   --planning-end: #3f3f46;
   --planning-gradient: linear-gradient(180deg, #71717a 0%, #52525b 55%, #3f3f46 100%);
@@ -824,19 +824,19 @@
   --chrome: rgba(255, 253, 249, 0.94);
   --chrome-soft: rgba(255, 253, 249, 0.85);
   --chrome-solid: #fffdf9;
-  --glow-a: 0.04;
-  --glow-b: 0.03;
+  --glow-a: 0.06;
+  --glow-b: 0.04;
   --accent: #b4530a;
   --accent-2: #d97706;
   --accent-end: #d97706;
   --accent-paper: #b4530a;
   --accent-ink: #8a3f08;
   --accent-gradient: linear-gradient(180deg, var(--accent), var(--accent-end));
-  --ambient-glow: radial-gradient(circle at top, rgba(168, 76, 0, var(--glow-a, 0.04)), transparent 30%);
-  --bg-gradient-canvas: radial-gradient(circle at 70% 0%, rgba(194, 65, 12, 0.06), transparent 40%), radial-gradient(circle at 20% 40%, rgba(217, 119, 6, 0.05), transparent 35%), linear-gradient(180deg, #faf7f2 0%, #f5f0e7 45%, #ebe2d3 100%);
+  --ambient-glow: radial-gradient(circle at top, rgba(168, 76, 0, var(--glow-a, 0.06)), transparent 30%);
+  --bg-gradient-canvas: radial-gradient(ellipse 85% 55% at 70% -10%, rgba(194, 65, 12, 0.12), transparent 50%), radial-gradient(circle at 15% 40%, rgba(217, 119, 6, 0.09), transparent 45%), linear-gradient(180deg, #faf7f2 0%, #f3ece0 50%, #e8dec9 100%);
   --bg-gradient-card: linear-gradient(180deg, #ffffff 0%, #fdfbf7 100%);
-  --bg-gradient-sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.95) 0%, rgba(245, 240, 231, 0.4) 100%);
-  --bg-ambient-cone: radial-gradient(circle at top, rgba(194, 65, 12, 0.08) 0%, transparent 50%);
+  --bg-gradient-sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(245, 240, 231, 0.4) 100%);
+  --bg-ambient-cone: radial-gradient(circle at top, rgba(194, 65, 12, 0.12) 0%, transparent 50%);
   --planning: #6d28d9;
   --planning-end: #5b21b6;
   --planning-gradient: linear-gradient(180deg, #7c3aed 0%, #5b21b6 100%);
@@ -2948,6 +2948,19 @@ body {
       linear-gradient(180deg, var(--ground-1) 0%, var(--ground-2) 48%, var(--ground-1) 100%)
     );
   background-attachment: fixed;
+  position: relative;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image: radial-gradient(circle, rgba(var(--tint), 0.04) 1px, transparent 1px);
+  background-size: 24px 24px;
+  -webkit-mask-image: radial-gradient(ellipse 90% 80% at 50% 20%, #000 40%, transparent 95%);
+  mask-image: radial-gradient(ellipse 90% 80% at 50% 20%, #000 40%, transparent 95%);
 }
 
 a {
@@ -2960,6 +2973,7 @@ input,
 select,
 textarea {
   font: inherit;
+  color: inherit;
 }
 
 /* …and colour, which `font: inherit` does not cover.
@@ -2981,6 +2995,8 @@ button {
 
 .chrome-shell {
   min-height: 100vh;
+  position: relative;
+  z-index: 1;
 }
 
 .app-main {
@@ -3251,9 +3267,10 @@ h3 {
      list owns its own scroll, so the footer still stays pinned. */
   overflow: visible;
   border-right: 1px solid var(--line);
-  background: var(--chrome);
-  -webkit-backdrop-filter: blur(20px);
-  backdrop-filter: blur(20px);
+  background: linear-gradient(180deg, rgba(var(--chrome-rgb), 0.94) 0%, rgba(var(--chrome-rgb), 0.88) 100%);
+  -webkit-backdrop-filter: blur(24px);
+  backdrop-filter: blur(24px);
+  box-shadow: 4px 0 32px -8px rgba(0, 0, 0, 0.45);
   /* Clicking nav items shouldn't select their text (the blue drag-highlight). */
   -webkit-user-select: none;
   user-select: none;
@@ -3899,8 +3916,9 @@ h3 {
      just width taken off every label inside it. */
   padding: 0.4rem 0.32rem 0.45rem;
   border-radius: 14px;
-  background: rgba(var(--tint), 0.02);
-  border: 1px solid var(--edge-t05);
+  background: linear-gradient(180deg, rgba(var(--tint), 0.038) 0%, rgba(var(--tint), 0.015) 100%);
+  border: 1px solid rgba(var(--tint), 0.07);
+  box-shadow: inset 0 1px 0 rgba(var(--tint), 0.04);
 }
 
 .sidenav-glabel {
@@ -4355,9 +4373,34 @@ h3 {
 /* Two-class selector so this beats the base `.app-main { padding-top }` rule
    regardless of source order. */
 .app-main.app-main-sidenav {
+  position: relative;
   padding-top: 1.6rem;
   padding-left: calc(var(--sidenav-w) + 1.4rem);
   padding-right: 1.4rem;
+}
+
+.app-main.app-main-sidenav::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: var(--sidenav-w);
+  right: 0;
+  height: 280px;
+  pointer-events: none;
+  z-index: 0;
+  background: radial-gradient(ellipse 65% 45% at 50% -10%, rgba(255, 122, 33, 0.12), transparent 75%);
+  opacity: 0.85;
+}
+
+@keyframes workspaceFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* The shared page wrappers size themselves to fill the viewport minus the
@@ -4368,6 +4411,14 @@ h3 {
 .app-main-sidenav .page-shell,
 .app-main-sidenav .wide-shell {
   min-height: calc(100vh - 1.6rem);
+  animation: workspaceFadeIn 0.28s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-main-sidenav .page-shell,
+  .app-main-sidenav .wide-shell {
+    animation: none;
+  }
 }
 
 /* THE APP FILLS THE SCREEN. A DOCUMENT DOESN'T.
@@ -9474,28 +9525,43 @@ h3 {
   flex-direction: column;
   align-items: center;
   text-align: center;
-  gap: 0.7rem;
+  gap: 0.75rem;
   padding: 2.6rem 1rem 2.2rem;
   margin-top: 1rem;
 }
 
 .quick-stop-empty-mark {
-  font-size: 1.9rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 3.4rem;
+  height: 3.4rem;
+  border-radius: 50%;
+  background: rgba(255, 122, 33, 0.12);
+  border: 1px solid rgba(255, 122, 33, 0.28);
+  box-shadow: 0 4px 20px rgba(255, 122, 33, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  font-size: 1.6rem;
   line-height: 1;
-  opacity: 0.9;
+  margin-bottom: 0.25rem;
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
 }
 
 .quick-stop-empty h3 {
   margin: 0;
-  font-size: 1.15rem;
+  font-size: 1.22rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
   text-wrap: balance;
+  color: var(--text);
 }
 
 .quick-stop-empty p {
   margin: 0;
-  max-width: 54ch;
-  color: rgba(var(--grey-2), 0.8);
-  line-height: 1.5;
+  max-width: 56ch;
+  color: var(--muted, rgba(var(--grey-2), 0.8));
+  line-height: 1.55;
+  font-size: 0.92rem;
 }
 
 .quick-stop-empty .btn {
@@ -9980,11 +10046,12 @@ h3 {
 .hero-panel,
 .panel,
 .feature-card {
-  background: var(--bg-elevated);
+  background: var(--bg-gradient-card, var(--bg-elevated));
   border: 1px solid var(--line);
   border-radius: 24px;
-  box-shadow: 0 20px 70px rgba(0, 0, 0, 0.24);
-  backdrop-filter: blur(20px);
+  box-shadow: 0 18px 50px -12px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(var(--tint), 0.12);
+  -webkit-backdrop-filter: blur(24px);
+  backdrop-filter: blur(24px);
 }
 
 .hero-card,
@@ -23373,6 +23440,9 @@ button.inbox-thread-item {
 
 .workspace-section-card {
   background: var(--bg-elevated);
+  box-shadow: 0 18px 50px -12px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(var(--tint), 0.12);
+  -webkit-backdrop-filter: blur(24px);
+  backdrop-filter: blur(24px);
 }
 
 /* THE CARD THAT PAINTED ITSELF OFF THE SHEET.
@@ -40204,7 +40274,7 @@ button.plan-badge.warn.is-action:focus-visible {
 }
 
 .bset {
-  --bset-card: rgba(10, 20, 33, 0.92);
+  --bset-card: var(--bg-gradient-card, rgba(16, 24, 38, 0.92));
   --bset-inner: rgba(var(--tint), 0.028);
   --bset-line: rgba(var(--grey-1), 0.16);
   --bset-line-strong: rgba(var(--grey-1), 0.26);
@@ -40306,9 +40376,12 @@ button.plan-badge.warn.is-action:focus-visible {
   gap: 1.25rem;
   flex-wrap: wrap;
   padding: 1.15rem 1.35rem;
-  border: 2px solid var(--bset-line-strong);
+  border: 1.5px solid var(--bset-line-strong);
   border-radius: 18px;
   background: var(--bset-card);
+  box-shadow: 0 18px 50px -12px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(var(--tint), 0.12);
+  -webkit-backdrop-filter: blur(24px);
+  backdrop-filter: blur(24px);
 }
 
 .bset-master-switch {
@@ -40446,9 +40519,25 @@ button.plan-badge.warn.is-action:focus-visible {
   background: var(--muted, var(--muted-2));
 }
 
+@keyframes liveDotPulse {
+  0%, 100% {
+    box-shadow: 0 0 0 3px rgba(52, 199, 123, 0.18), 0 0 10px rgba(52, 199, 123, 0.35);
+  }
+  50% {
+    box-shadow: 0 0 0 5px rgba(52, 199, 123, 0.32), 0 0 16px rgba(52, 199, 123, 0.55);
+  }
+}
+
 .bset-master-status.live .bset-dot {
   background: #34c77b;
-  box-shadow: 0 0 0 3px rgba(52, 199, 123, 0.18);
+  box-shadow: 0 0 0 3px rgba(52, 199, 123, 0.18), 0 0 10px rgba(52, 199, 123, 0.35);
+  animation: liveDotPulse 2.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bset-master-status.live .bset-dot {
+    animation: none;
+  }
 }
 
 .bset-master-status.live p {
@@ -40562,14 +40651,18 @@ button.plan-badge.warn.is-action:focus-visible {
   border: 1px solid var(--bset-line);
   border-radius: 16px;
   background: var(--bset-card);
+  box-shadow: 0 12px 36px -10px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(var(--tint), 0.1);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
   text-align: left;
   cursor: pointer;
-  transition: border-color 0.16s ease, transform 0.16s ease;
+  transition: border-color 0.2s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .bset-card:hover {
-  border-color: var(--bset-line-strong);
-  transform: translateY(-1px);
+  border-color: rgba(var(--tint), 0.26);
+  transform: translateY(-2px);
+  box-shadow: 0 18px 48px -8px rgba(0, 0, 0, 0.55), 0 0 20px -4px rgba(255, 122, 33, 0.16), inset 0 1px 0 rgba(var(--tint), 0.2);
 }
 
 .bset-card:focus-visible {
@@ -40585,6 +40678,12 @@ button.plan-badge.warn.is-action:focus-visible {
   margin-bottom: 0.55rem;
   border-radius: 12px;
   background: rgba(var(--tint), 0.05);
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.bset-card:hover .bset-card-icon {
+  transform: scale(1.06);
+  background: rgba(var(--tint), 0.09);
 }
 
 .bset-card-icon svg {
@@ -44285,9 +44384,14 @@ a.bset-card {
 
 /* The empty queue now sits in a panel of its own rather than under a heading,
    so it no longer needs to clear one — the panel padding is the only padding. */
+.quick-stop-empty-panel {
+  background: radial-gradient(circle at 50% 30%, rgba(255, 122, 33, 0.08), transparent 60%), var(--bg-gradient-card, var(--bg-elevated));
+  border: 1px dashed rgba(var(--tint), 0.18);
+}
+
 .quick-stop-empty-panel .quick-stop-empty {
   margin-top: 0;
-  padding: 1.2rem 1rem;
+  padding: 1.6rem 1rem;
 }
 
 /* Crew & Labor Focus theme — the page-level furniture that is not in the crew
@@ -44794,6 +44898,19 @@ a.bset-card {
   .es-how-chev {
     transition: none;
   }
+}
+
+/* Quick Stops summary configuration chips */
+.qs-chip {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.qs-chip:not(.is-static):hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.18);
 }
 
 /* The right-hand end of the toolbar: the hidden-days warning when there is one,
