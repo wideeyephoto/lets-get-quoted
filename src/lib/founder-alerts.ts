@@ -189,3 +189,109 @@ export async function sendFounderMessagingApplicationAlert(
     console.error('[founder-alerts] Failed to send founder messaging application alert email:', err);
   }
 }
+
+export type OperationalEmergencyAlertInput = {
+  incidentType:
+    | 'uptime'
+    | 'runtime_exception'
+    | 'cron_failure'
+    | 'webhook_dead_letter'
+    | 'billing_reconciliation'
+    | 'sms_queue_stall'
+    | 'provider_outage';
+  severity: 'critical' | 'high' | 'warning';
+  title: string;
+  summary: string;
+  details?: Record<string, unknown> | null;
+  affectedAccountsCount?: number | null;
+  actionRequired?: string | null;
+};
+
+/**
+ * Dispatch an emergency operational / SRE alert email to the platform founder
+ * or on-call engineer for critical incidents, dead-letter accumulation, cron failures,
+ * or provider outages.
+ */
+export async function sendOperationalEmergencyAlert(
+  input: OperationalEmergencyAlertInput,
+): Promise<{ dispatched: boolean; recipient: string }> {
+  const recipient = process.env.FOUNDER_ALERT_EMAIL || 'hello@letsgetquoted.com';
+  const resend = getResend();
+
+  if (!resend || !process.env.RESEND_API_KEY) {
+    console.warn('[founder-alerts] Resend API key not configured; operational alert logged to console:', {
+      incidentType: input.incidentType,
+      severity: input.severity,
+      title: input.title,
+      summary: input.summary,
+      details: input.details,
+    });
+    return { dispatched: false, recipient };
+  }
+
+  try {
+    const adminLink = `${APP_ORIGIN}/admin/system`;
+    const timestamp = new Date().toLocaleString('en-US', { timeZone: 'America/New_York' });
+    const severityBadge = input.severity === 'critical' ? '🔴 CRITICAL' : input.severity === 'high' ? '🟠 HIGH' : '🟡 WARNING';
+
+    const tableRows = [
+      alertRow('Incident Type', input.incidentType.toUpperCase().replace(/_/g, ' '), true),
+      alertRow('Severity', severityBadge, true),
+      alertRow('Summary', input.summary),
+      input.affectedAccountsCount !== undefined && input.affectedAccountsCount !== null
+        ? alertRow('Affected Accounts', String(input.affectedAccountsCount), true)
+        : '',
+      input.actionRequired ? alertRow('Action Required', input.actionRequired, true) : '',
+      alertRow('Alert Timestamp (ET)', timestamp),
+    ].filter(Boolean).join('');
+
+    let detailsHtml = '';
+    if (input.details && Object.keys(input.details).length > 0) {
+      detailsHtml = `
+        <div style="margin-top:16px;padding:12px;background:#0f172a;color:#f8fafc;border-radius:8px;font-family:monospace;font-size:12px;overflow-x:auto;">
+          <pre style="margin:0;white-space:pre-wrap;">${escapeHtml(JSON.stringify(input.details, null, 2))}</pre>
+        </div>
+      `;
+    }
+
+    const bodyHtml = `
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 16px;background:#f8fafc;border:1px solid #cbd5e1;border-radius:10px;overflow:hidden">
+        ${tableRows}
+      </table>
+      ${detailsHtml}
+    `;
+
+    await resend.emails.send({
+      from: process.env.SYSTEM_EMAIL_FROM || "Let's Get Quoted Ops <system@letsgetquoted.com>",
+      to: recipient,
+      subject: `🚨 [${severityBadge}] SRE Alert: ${input.title}`,
+      html: renderBrandedEmail({
+        brand: {
+          businessName: "Let's Get Quoted SRE Ops",
+          accent: input.severity === 'critical' ? '#dc2626' : '#ea580c',
+          theme: 'spotlight',
+          logoUrl: null,
+          phone: null,
+          siteUrl: APP_ORIGIN,
+          replyTo: null,
+        },
+        preheader: `SRE Incident Alert [${input.severity}]: ${input.title}`,
+        eyebrow: 'Platform SRE Incident Alert',
+        heading: input.title,
+        bodyHtml,
+        cta: {
+          label: 'Open Platform SRE Console',
+          url: adminLink,
+        },
+        footerHtml: `<p style="margin:10px 0 0;font-family:${FONT_STACK};font-size:12px;line-height:1.6;color:#64748b">Critical Operational Alert · Let's Get Quoted Incident Management</p>`,
+      }),
+    });
+
+    console.info(`[founder-alerts] Successfully dispatched operational emergency alert: ${input.title}`);
+    return { dispatched: true, recipient };
+  } catch (err) {
+    console.error('[founder-alerts] Failed to send operational emergency alert email:', err);
+    return { dispatched: false, recipient };
+  }
+}
+
