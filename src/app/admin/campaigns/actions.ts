@@ -1,6 +1,6 @@
 'use server';
 
-import { requireAdmin } from '@/lib/auth';
+import { requireAdmin, requirePermission } from '@/lib/auth';
 import {
   renderPlatformCampaignEmailHtml,
   resolvePlatformCampaignRecipients,
@@ -86,7 +86,7 @@ export async function sendPlatformCampaignBlastAction(
   error?: string;
 }> {
   try {
-    const context = await requireAdmin();
+    const context = await requirePermission('ops.manage');
     const result = await sendPlatformCampaignBlast(context.admin, context, input);
     return {
       success: true,
@@ -103,3 +103,4 @@ export async function sendPlatformCampaignBlastAction(
     };
   }
 }
+
