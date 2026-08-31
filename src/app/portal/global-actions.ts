@@ -17,7 +17,7 @@ import { parsePortalIdentifier, PORTAL_REQUEST_ACK } from '@/lib/client-portal';
 export async function requestGlobalPortalLinkAction(formData: FormData): Promise<{ message: string }> {
   const admin = createAdminClient();
   const identifier = parsePortalIdentifier(String(formData.get('contact') ?? ''));
-  const ip = clientIpFrom(headers());
+  const ip = clientIpFrom(await headers());
 
   if (!(await checkRateLimit(admin, `portal:ip:${ip}`, 8, 60))) return { message: PORTAL_REQUEST_ACK };
   if (!identifier) return { message: PORTAL_REQUEST_ACK };

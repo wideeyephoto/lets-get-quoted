@@ -52,8 +52,8 @@ describe('Permit Submission API Route - POST /api/jobs/:id/permits/submit', () =
     } as any);
 
     const res = await POST(new Request('http://localhost/api/jobs/foo/permits/submit'), {
-      params: { id: validJobId },
-    });
+  params: Promise.resolve({ id: validJobId }),
+});
 
     expect(res.status).toBe(401);
   });
@@ -71,8 +71,8 @@ describe('Permit Submission API Route - POST /api/jobs/:id/permits/submit', () =
     });
 
     const res = await POST(new Request('http://localhost/api/jobs/foo/permits/submit'), {
-      params: { id: validJobId },
-    });
+  params: Promise.resolve({ id: validJobId }),
+});
 
     expect(res.status).toBe(403);
   });
@@ -98,7 +98,7 @@ describe('Permit Submission API Route - POST /api/jobs/:id/permits/submit', () =
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ contractorAuthorized: false }),
       }),
-      { params: { id: validJobId } },
+      { params: Promise.resolve({ id: validJobId }) },
     );
 
     expect(res.status).toBe(400);
@@ -132,7 +132,7 @@ describe('Permit Submission API Route - POST /api/jobs/:id/permits/submit', () =
           qualifyingLicenseNumber: '2101234567',
         }),
       }),
-      { params: { id: validJobId } },
+      { params: Promise.resolve({ id: validJobId }) },
     );
 
     expect(res.status).toBe(200);

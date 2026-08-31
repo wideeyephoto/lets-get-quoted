@@ -80,8 +80,8 @@ function SuiteContractAssertions(_props: {
   return null;
 }
 
-export default function WebsiteBuilderPage() {
-  const nonce = cspNonce();
+export default async function WebsiteBuilderPage() {
+  const nonce = await cspNonce();
   const breadcrumb = { name: 'Website builder', path: '/features/website-builder' };
 
   return (

@@ -11,9 +11,10 @@ export const dynamic = 'force-dynamic';
  */
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } },
+  { params: paramsPromise }: { params: Promise<{ id: string }> },
 ) {
-  const supabase = createSupabaseServerClient();
+  const params = await paramsPromise;
+  const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

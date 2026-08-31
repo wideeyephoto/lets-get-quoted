@@ -52,8 +52,8 @@ describe('Customer Permit Summary API Route - GET /api/jobs/:id/permits/customer
     } as any);
 
     const res = await GET(new Request('http://localhost/api/jobs/1/permits/customer'), {
-      params: { id: validJobId },
-    });
+  params: Promise.resolve({ id: validJobId }),
+});
 
     expect(res.status).toBe(401);
   });
@@ -73,8 +73,8 @@ describe('Customer Permit Summary API Route - GET /api/jobs/:id/permits/customer
     vi.mocked(loadHeldCapabilities).mockResolvedValue(new Set(['jobs.read']));
 
     const res = await GET(new Request('http://localhost/api/jobs/1/permits/customer'), {
-      params: { id: validJobId },
-    });
+  params: Promise.resolve({ id: validJobId }),
+});
 
     expect(res.status).toBe(200);
     const body = await res.json();

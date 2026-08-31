@@ -53,26 +53,27 @@ const FLASH_MESSAGES: Record<string, { tone: 'success' | 'info' | 'warn'; text: 
 export default async function RecurringPage({
   searchParams,
 }: {
-  searchParams: { flash?: string; job?: string; on?: string; then?: string; plan?: string };
+  searchParams: Promise<{ flash?: string; job?: string; on?: string; then?: string; plan?: string }>;
 }) {
+  const resolvedSearchParams = (await searchParams) || {};
   const { supabase, accountId } = await requireOfficeContext('jobs.read', 'clients.read');
-  const mode = normalizeRecurringView(cookies().get(RECURRING_VIEW_COOKIE)?.value);
+  const mode = normalizeRecurringView((await cookies()).get(RECURRING_VIEW_COOKIE)?.value);
   const today = todayDateKey();
 
   const view = await buildRecurringView(supabase, accountId, today);
 
-  const baseFlash = searchParams.flash ? FLASH_MESSAGES[searchParams.flash] : null;
+  const baseFlash = resolvedSearchParams.flash ? FLASH_MESSAGES[resolvedSearchParams.flash] : null;
   // A skip is about two specific days, and naming them is the difference between
   // "a visit was skipped" and knowing which one, and when they're next due.
   const flash =
-    baseFlash && searchParams.flash === 'skipped' && searchParams.on && searchParams.then
+    baseFlash && resolvedSearchParams.flash === 'skipped' && resolvedSearchParams.on && resolvedSearchParams.then
       ? {
           ...baseFlash,
-          text: `${shortDate(searchParams.on)} skipped and taken off the calendar — the next visit is ${shortDate(searchParams.then)}. A fixed term didn’t lose a visit.`,
+          text: `${shortDate(resolvedSearchParams.on)} skipped and taken off the calendar — the next visit is ${shortDate(resolvedSearchParams.then)}. A fixed term didn’t lose a visit.`,
         }
       : baseFlash;
   // Creating a visit early passes the created job id so we can link straight to it.
-  const flashJobId = flash && searchParams.flash?.startsWith('ran-') ? searchParams.job ?? null : null;
+  const flashJobId = flash && resolvedSearchParams.flash?.startsWith('ran-') ? resolvedSearchParams.job ?? null : null;
 
   const planActions: PlanActionsRenderer = (plan, context) => ({
     resendLink: (
@@ -162,7 +163,7 @@ export default async function RecurringPage({
       }
       flash={flash}
       flashJobId={flashJobId}
-      focusPlanId={searchParams.plan ?? null}
+      focusPlanId={resolvedSearchParams.plan ?? null}
     />
   );
 }

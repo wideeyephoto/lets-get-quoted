@@ -24,7 +24,7 @@ export async function homeownerReplyAction(token: string, formData: FormData) {
   if (!homeownerReply(replyId)) redirect(`/track/${token}`);
 
   const admin = createAdminClient();
-  const ip = clientIpFrom(headers());
+  const ip = clientIpFrom(await headers());
 
   // Two buckets: one stops a single link being hammered, the other stops one
   // source walking through many. Fails open — a limiter outage must not stop a

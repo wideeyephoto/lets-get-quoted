@@ -4,8 +4,9 @@ import { isTrustedVoiceMediaUrl } from '@/lib/voice/auth';
 
 export async function GET(
   req: Request,
-  { params }: { params: { recordingId: string } },
+  { params: paramsPromise }: { params: Promise<{ recordingId: string }> },
 ) {
+  const params = await paramsPromise;
   try {
     const { supabase, accountId } = await requireOfficeContext('leads.read');
     const recordingId = params.recordingId;

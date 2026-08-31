@@ -30,15 +30,16 @@ export const metadata = {
 };
 
 export default async function QuickBooksDisconnectedPage({
-  searchParams,
+  searchParams: searchParamsPromise,
 }: {
-  searchParams: Record<string, string | string[] | undefined>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  const searchParams = (await searchParamsPromise) || {};
   const claimedRealmId = realmFromQuery(searchParams);
 
   // Soft read of the session. A visitor with no cookie is the expected case, not
   // an error, so this must not redirect the way requireOwnerContext would.
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
   const accountId = user ? (await getCurrentMembership(user.id)).accountId : null;
 

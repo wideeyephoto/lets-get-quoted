@@ -55,6 +55,27 @@ export const metadata: Metadata = {
  * computes per-lead distance: the service-area question checks the answer
  * against the cities the owner listed and flags it. A number like "3.2 mi"
  * would be an invented precision. */
+const ATTACHED_PHOTOS = [
+  {
+    name: 'heater-base.jpg',
+    size: '1.4 MB',
+    src: '/features/intake-heater-base.jpg',
+    alt: 'Standing water leak at base of 40-gallon gas water heater',
+  },
+  {
+    name: 'pilot-assembly.jpg',
+    size: '2.1 MB',
+    src: '/features/intake-pilot-assembly.jpg',
+    alt: 'Gas water heater pilot burner assembly and thermocouple',
+  },
+  {
+    name: 'rating-plate.jpg',
+    size: '980 KB',
+    src: '/features/intake-rating-plate.jpg',
+    alt: 'Bradford White water heater rating plate with serial and BTU specs',
+  },
+];
+
 function ArrivingLead() {
   return (
     <div className={styles.leadCard}>
@@ -89,23 +110,23 @@ function ArrivingLead() {
         Phone verified.
       </p>
 
-      <ul className={styles.leadPhotos} aria-label="Photos the homeowner attached">
-        <li className={styles.photo}>
-          <span className={styles.photoIcon} aria-hidden="true">📷</span>
-          <span className={styles.photoName}>heater-base.jpg</span>
-          <span className={styles.photoSize}>1.4 MB</span>
-        </li>
-        <li className={styles.photo}>
-          <span className={styles.photoIcon} aria-hidden="true">📷</span>
-          <span className={styles.photoName}>pilot-assembly.jpg</span>
-          <span className={styles.photoSize}>2.1 MB</span>
-        </li>
-        <li className={styles.photo}>
-          <span className={styles.photoIcon} aria-hidden="true">📷</span>
-          <span className={styles.photoName}>rating-plate.jpg</span>
-          <span className={styles.photoSize}>980 KB</span>
-        </li>
-      </ul>
+      <div className={styles.photosSection}>
+        <div className={styles.photosHeader}>
+          <span className={styles.photosCount}>📷 3 Photos Attached by Homeowner</span>
+          <span className={styles.photosVerified}>✓ Visual Diagnosis Ready</span>
+        </div>
+        <ul className={styles.leadPhotoGrid} aria-label="Photos the homeowner attached">
+          {ATTACHED_PHOTOS.map((photo) => (
+            <li key={photo.name} className={styles.photoCard}>
+              <img src={photo.src} alt={photo.alt} className={styles.photoImg} />
+              <div className={styles.photoMetaOverlay}>
+                <span className={styles.photoMetaName}>{photo.name}</span>
+                <span className={styles.photoMetaSize}>{photo.size}</span>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
     </div>
   );
 }

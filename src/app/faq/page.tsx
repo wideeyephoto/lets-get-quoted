@@ -173,10 +173,10 @@ const faqJsonLd = {
   ),
 };
 
-export default function FaqPage() {
+export default async function FaqPage() {
   return (
     <main className="marketing-shell" id="main-content">
-      <script type="application/ld+json" nonce={cspNonce()} dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
+      <script type="application/ld+json" nonce={await cspNonce()} dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
       <FaqDeepLink />
       <div className="ambient-glow ambient-glow-a" aria-hidden="true" />
 

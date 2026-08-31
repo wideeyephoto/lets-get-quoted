@@ -25,7 +25,7 @@ export async function raiseWarrantyClaimAction(
   formData: FormData,
 ): Promise<{ ok: boolean; message?: string }> {
   const admin = createAdminClient();
-  const ip = clientIpFrom(headers());
+  const ip = clientIpFrom(await headers());
   if (!(await checkRateLimit(admin, `warranty-claim:ip:${ip}`, 10, 60))) {
     return { ok: false, message: 'Too many requests — wait a minute and try again.' };
   }

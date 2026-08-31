@@ -32,7 +32,8 @@ function ResultTable({ rows }: { rows: SearchResult[] }) {
   );
 }
 
-export default async function AdminSearchPage({ searchParams }: { searchParams: { q?: string } }) {
+export default async function AdminSearchPage({ searchParams: searchParamsPromise }: { searchParams: Promise<{ q?: string }> }) {
+  const searchParams = (await searchParamsPromise) || {};
   const { admin } = await requireAdmin();
   const query = searchParams.q?.trim() ?? '';
   const results = query ? await searchEverything(admin, query, { limit: 25 }) : null;

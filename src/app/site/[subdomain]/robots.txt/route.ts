@@ -10,9 +10,12 @@ export const dynamic = 'force-dynamic';
 // Supabase's fetch being served from the data cache.
 export const fetchCache = 'force-no-store';
 
-type Props = { params: { subdomain: string } };
+type Props = {
+  params: Promise<{ subdomain: string }>;
+};
 
-export async function GET(_request: Request, { params }: Props) {
+export async function GET(_request: Request, { params: paramsPromise }: Props) {
+  const params = await paramsPromise;
   const site = await getPublicSiteBySubdomain(createAdminClient(), params.subdomain);
   const origin = site ? siteOrigin(site) : null;
   if (!site || !origin) {

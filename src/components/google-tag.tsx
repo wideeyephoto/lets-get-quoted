@@ -48,14 +48,14 @@ export function isSensitivePath(pathname: string | null | undefined): boolean {
  * Suppressed on all token-bearing, sensitive, or authenticated routes.
  * Fails closed when pathname headers are unavailable or when NEXT_PUBLIC_GOOGLE_TAG_ID is unset.
  */
-export default function GoogleTag() {
-  const pathname = headers().get('x-pathname');
+export default async function GoogleTag() {
+  const pathname = (await headers()).get('x-pathname');
   if (isSensitivePath(pathname)) {
     return null;
   }
 
   const tagId = getGoogleTagId();
-  const nonce = cspNonce();
+  const nonce = await cspNonce();
 
   if (!tagId) return null;
 

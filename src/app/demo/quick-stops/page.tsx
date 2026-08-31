@@ -43,7 +43,7 @@ export default async function DemoQuickStopsPage() {
   // cannot prove they're signed in — show it, which is the harmless direction.
   let isLoggedIn = false;
   try {
-    const { data } = await createSupabaseServerClient().auth.getUser();
+    const { data } = await (await createSupabaseServerClient()).auth.getUser();
     isLoggedIn = Boolean(data.user);
   } catch {
     isLoggedIn = false;

@@ -2,8 +2,8 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { normalizeSupabaseUrl } from './supabase-url';
 
-export function createSupabaseServerClient() {
-  const cookieStore = cookies();
+export async function createSupabaseServerClient() {
+  const cookieStore = await cookies();
 
   return createServerClient(
     normalizeSupabaseUrl(process.env.NEXT_PUBLIC_SUPABASE_URL),
@@ -28,3 +28,5 @@ export function createSupabaseServerClient() {
     }
   );
 }
+
+export type SupabaseServerClient = Awaited<ReturnType<typeof createSupabaseServerClient>>;

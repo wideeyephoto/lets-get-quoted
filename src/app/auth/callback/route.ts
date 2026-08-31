@@ -18,7 +18,7 @@ export async function GET(request: Request) {
   const redirectUrl = new URL(safeNextPath(requestUrl.searchParams.get('next')), requestUrl.origin);
 
   if (code) {
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
 
     const supabase = createServerClient(
       normalizeSupabaseUrl(process.env.NEXT_PUBLIC_SUPABASE_URL),

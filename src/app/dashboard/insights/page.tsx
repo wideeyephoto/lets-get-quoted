@@ -18,10 +18,11 @@ export const metadata = {
  * for why that split exists.
  */
 export default async function InsightsPage({
-  searchParams,
+  searchParams: searchParamsPromise,
 }: {
-  searchParams: { window?: string; from?: string; to?: string; compare?: string };
+  searchParams: Promise<{ window?: string; from?: string; to?: string; compare?: string }>;
 }) {
+  const searchParams = (await searchParamsPromise) || {};
   const { supabase, accountId } = await requireOfficeContext('reports.read');
   const period = resolvePeriod(searchParams);
   const showDelta = searchParams.compare === 'prev';

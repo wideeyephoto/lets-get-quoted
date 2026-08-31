@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic';
  * Returns workspace-level permit analytics, turnaround metrics, and regional benchmarks.
  */
 export async function GET() {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

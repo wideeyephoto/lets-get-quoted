@@ -46,7 +46,8 @@ function FactorList({ factors, kind }: { factors: RiskFactor[]; kind: RiskFactor
   );
 }
 
-export default async function AdminRiskPage({ searchParams }: { searchParams: { status?: string; done?: string; error?: string } }) {
+export default async function AdminRiskPage({ searchParams: searchParamsPromise }: { searchParams: Promise<{ status?: string; done?: string; error?: string }> }) {
+  const searchParams = (await searchParamsPromise) || {};
   const ctx = await requireAdmin();
   const queue = await buildRiskQueue(ctx.admin);
   const latest = await latestRiskReviews(ctx.admin, queue.rows.map((row) => row.accountId));

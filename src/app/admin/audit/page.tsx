@@ -42,7 +42,8 @@ function dateBoundary(value: string | undefined, endOfDay = false): string | und
   return Number.isFinite(date.getTime()) ? date.toISOString() : undefined;
 }
 
-export default async function AdminAuditPage({ searchParams }: { searchParams: { actor?: string; action?: string; from?: string; to?: string; page?: string } }) {
+export default async function AdminAuditPage({ searchParams: searchParamsPromise }: { searchParams: Promise<{ actor?: string; action?: string; from?: string; to?: string; page?: string }> }) {
+  const searchParams = (await searchParamsPromise) || {};
   const { admin } = await requireAdmin();
   const actor = searchParams.actor?.trim() ?? '';
   const action = searchParams.action?.trim() ?? '';

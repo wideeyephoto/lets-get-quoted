@@ -372,9 +372,11 @@ export function drawShapeToCanvas(
     ctx.shadowBlur = 10 * scale;
     ctx.fillStyle = shape.backgroundColor || 'rgba(15, 23, 42, 0.94)';
     ctx.beginPath();
-    ctx.roundRect
-      ? ctx.roundRect(px - boxW / 2, py - boxH / 2, boxW, boxH, 6 * scale)
-      : ctx.rect(px - boxW / 2, py - boxH / 2, boxW, boxH);
+    if (ctx.roundRect) {
+      ctx.roundRect(px - boxW / 2, py - boxH / 2, boxW, boxH, 6 * scale);
+    } else {
+      ctx.rect(px - boxW / 2, py - boxH / 2, boxW, boxH);
+    }
     ctx.fill();
 
     ctx.shadowColor = 'transparent';

@@ -41,7 +41,8 @@ function shortCity(address: string | null): string | null {
  * `readOnly` keeps the view and weekend-day pickers working locally while
  * withholding crew assignment, which texts the person assigned.
  */
-export default async function DemoSchedulePage({ searchParams }: { searchParams: { month?: string } }) {
+export default async function DemoSchedulePage({ searchParams: searchParamsPromise }: { searchParams: Promise<{ month?: string }> }) {
+  const searchParams = (await searchParamsPromise) || {};
   const [jobs, crew] = await Promise.all([
     listJobs(demoSupabase, DEMO_ACCOUNT_ID),
     listCrew(demoSupabase, DEMO_ACCOUNT_ID, { activeOnly: true }),

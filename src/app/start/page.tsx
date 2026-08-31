@@ -22,10 +22,11 @@ export const dynamic = 'force-dynamic';
  * - Paid Plan Selection → checkout (when live) or dashboard settings
  */
 export default async function StartPage({
-  searchParams,
+  searchParams: searchParamsPromise,
 }: {
-  searchParams: Record<string, string | string[] | undefined>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  const searchParams = (await searchParamsPromise) || {};
   // Normalize searchParams into Record<string, string | null>
   const flatParams: Record<string, string | null> = {};
   for (const [key, value] of Object.entries(searchParams)) {
@@ -37,7 +38,7 @@ export default async function StartPage({
   }
 
   const intent = parseSignupIntent(flatParams);
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
 
   const {
     data: { session },

@@ -18,10 +18,11 @@ export const metadata: Metadata = {
 };
 
 export default async function WelcomePage({
-  searchParams,
+  searchParams: searchParamsPromise,
 }: {
-  searchParams: Record<string, string | string[] | undefined>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  const searchParams = (await searchParamsPromise) || {};
   const { supabase, accountId } = await requireOwnerContext({ skipFirstRunGate: true });
 
   const flatParams: Record<string, string | null> = {};

@@ -10,13 +10,16 @@ export const dynamic = 'force-dynamic';
 
 // The custom-domain twin of site/[subdomain]/portal. Change one, change both.
 
-type Props = { params: { domain: string } };
+type Props = {
+  params: Promise<{ domain: string }>;
+};
 
 async function loadSite(domain: string) {
   return getPublicSiteByCustomDomain(createAdminClient(), decodeURIComponent(domain).toLowerCase());
 }
 
-export default async function CustomDomainPortalPage({ params }: Props) {
+export default async function CustomDomainPortalPage({ params: paramsPromise }: Props) {
+  const params = await paramsPromise;
   const site = await loadSite(params.domain);
   if (!site || !site.custom_domain_verified_at) notFound();
 
@@ -44,7 +47,8 @@ export default async function CustomDomainPortalPage({ params }: Props) {
   );
 }
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
+export async function generateMetadata({ params: paramsPromise }: Props): Promise<Metadata> {
+  const params = await paramsPromise;
   const site = await loadSite(params.domain);
   if (!site) return { title: 'Not found' };
   return {

@@ -56,8 +56,8 @@ describe('first paint and browser chrome', () => {
   });
 
   it('sets the initial theme-color dynamically and updates it on client changes', () => {
-    expect(LAYOUT).toContain('export function generateViewport(): Viewport');
-    expect(LAYOUT).toContain('themeColor(readServerTheme().theme)');
+    expect(LAYOUT).toMatch(/export (?:async )?function generateViewport\(\): (?:Promise<)?Viewport/);
+    expect(LAYOUT).toMatch(/themeColor\((?:readServerTheme\(\)|serverTheme)\.theme\)/);
     expect(USE_THEME).toContain("meta[name=\"theme-color\"]");
     expect(USE_THEME).toContain('themeColor(theme)');
   });

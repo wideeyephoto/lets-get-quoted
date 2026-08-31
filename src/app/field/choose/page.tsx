@@ -13,7 +13,8 @@ import { chooseFieldBusinessAction } from './actions';
 
 export const dynamic = 'force-dynamic';
 
-export default async function ChooseBusinessPage({ searchParams }: { searchParams: { error?: string } }) {
+export default async function ChooseBusinessPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
+  const resolvedSearchParams = await searchParams;
   const session = await listFieldBusinesses();
   if (!session) redirect('/field/login');
   if (session.businesses.length === 0) redirect('/field/login?error=not-crew');
@@ -21,7 +22,7 @@ export default async function ChooseBusinessPage({ searchParams }: { searchParam
   // the same reason this page isn't in the navigation.
   if (session.businesses.length === 1) redirect('/field');
 
-  const current = readFieldAccount();
+  const current = await readFieldAccount();
 
   return (
     <main className="field-main field-choose">
@@ -31,7 +32,7 @@ export default async function ChooseBusinessPage({ searchParams }: { searchParam
         whenever you need to.
       </p>
 
-      {searchParams.error === 'not-yours' ? (
+      {resolvedSearchParams.error === 'not-yours' ? (
         <div className="field-flash is-error">You&apos;re not on that crew. Pick one of these.</div>
       ) : null}
 

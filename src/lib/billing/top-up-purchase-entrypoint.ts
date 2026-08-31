@@ -77,7 +77,9 @@ export type TopUpPurchaseEntrypointDependencies = Readonly<{
   requireOwner(): Promise<OwnerContext>;
   allowAttempt(owner: Pick<OwnerContext, 'accountId' | 'userId'>): Promise<boolean>;
   loadPlan(owner: Pick<OwnerContext, 'supabase' | 'accountId'>): Promise<WorkspaceTopUpPlanRead>;
-  resolveRedirectUrls(): Readonly<{ successUrl: string; cancelUrl: string }>;
+  resolveRedirectUrls():
+    | Promise<Readonly<{ successUrl: string; cancelUrl: string }>>
+    | Readonly<{ successUrl: string; cancelUrl: string }>;
   orchestrate(input: {
     workspaceId: string;
     operationId: string;
@@ -229,7 +231,7 @@ const DEFAULT_DEPENDENCIES: TopUpPurchaseEntrypointDependencies = Object.freeze(
     }
   },
   loadPlan: loadDefaultPlan,
-  resolveRedirectUrls: () => buildTopUpPurchaseRedirectUrls(requestOriginFromHeaders(headers())),
+  resolveRedirectUrls: async () => buildTopUpPurchaseRedirectUrls(requestOriginFromHeaders(await headers())),
   orchestrate: orchestrateTopUpPurchaseCheckout,
 });
 
@@ -376,7 +378,7 @@ export async function executeTopUpPurchaseCheckout(
   let redirects: Readonly<{ successUrl: string; cancelUrl: string }>;
   try {
     livemode = configuredBillingLivemode(env);
-    redirects = dependencies.resolveRedirectUrls();
+    redirects = await dependencies.resolveRedirectUrls();
   } catch {
     return failure(
       'configuration_unavailable',

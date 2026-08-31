@@ -33,7 +33,7 @@ export const metadata: Metadata = {
 
 async function tenantSite() {
   const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'letsgetquoted.com';
-  const headerList = headers();
+  const headerList = await headers();
   const tenant = resolveTenantHost(
     headerList.get('x-forwarded-host') || headerList.get('host'),
     rootDomain,

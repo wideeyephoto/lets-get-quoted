@@ -135,13 +135,15 @@ import {
 export const metadata = { title: 'Job' };
 
 export default async function JobDetailPage({
-  params,
-  searchParams,
+  params: paramsPromise,
+  searchParams: searchParamsPromise,
 }: {
-  params: { id: string };
-  searchParams: { tab?: string; view?: string; clientToken?: string; edit?: string; open?: string; delivery?: string; arrival?: string; sms?: string };
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ tab?: string; view?: string; clientToken?: string; edit?: string; open?: string; delivery?: string; arrival?: string; sms?: string }>;
 }) {
-  const cookieStore = cookies();
+  const params = await paramsPromise;
+  const searchParams = (await searchParamsPromise) || {};
+  const cookieStore = await cookies();
   const layoutCookie = cookieStore.get(JOB_DETAIL_LAYOUT_COOKIE)?.value;
   const layout = normalizeJobDetailLayout(searchParams.view || layoutCookie);
 

@@ -26,7 +26,8 @@ const POPULAR_GUIDE_SLUGS = [
   'more-google-reviews',
 ];
 
-export default async function HelpPage({ searchParams }: { searchParams: { error?: string; done?: string } }) {
+export default async function HelpPage({ searchParams: searchParamsPromise }: { searchParams: Promise<{ error?: string; done?: string }> }) {
+  const searchParams = (await searchParamsPromise) || {};
   const { accountId } = await requireOfficeContext('leads.read');
   const admin = createAdminClient();
 

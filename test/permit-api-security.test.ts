@@ -35,8 +35,8 @@ describe('Permits API Route Security & Authorization - GET /api/jobs/:id/permits
     } as any);
 
     const res = await GET(new Request('http://localhost/api/jobs/foo/permits'), {
-      params: { id: validJobId },
-    });
+  params: Promise.resolve({ id: validJobId }),
+});
 
     expect(res.status).toBe(401);
     const body = await res.json();
@@ -56,8 +56,8 @@ describe('Permits API Route Security & Authorization - GET /api/jobs/:id/permits
     });
 
     const res = await GET(new Request('http://localhost/api/jobs/foo/permits'), {
-      params: { id: validJobId },
-    });
+  params: Promise.resolve({ id: validJobId }),
+});
 
     expect(res.status).toBe(403);
     const body = await res.json();
@@ -77,8 +77,8 @@ describe('Permits API Route Security & Authorization - GET /api/jobs/:id/permits
     });
 
     const res = await GET(new Request('http://localhost/api/jobs/foo/permits'), {
-      params: { id: validJobId },
-    });
+  params: Promise.resolve({ id: validJobId }),
+});
 
     expect(res.status).toBe(403);
     const body = await res.json();
@@ -100,8 +100,8 @@ describe('Permits API Route Security & Authorization - GET /api/jobs/:id/permits
     vi.mocked(loadHeldCapabilities).mockResolvedValue(new Set(['leads.read']));
 
     const res = await GET(new Request('http://localhost/api/jobs/foo/permits'), {
-      params: { id: validJobId },
-    });
+  params: Promise.resolve({ id: validJobId }),
+});
 
     expect(res.status).toBe(403);
     const body = await res.json();
@@ -123,8 +123,8 @@ describe('Permits API Route Security & Authorization - GET /api/jobs/:id/permits
     vi.mocked(loadHeldCapabilities).mockResolvedValue(new Set());
 
     const res = await GET(new Request('http://localhost/api/jobs/foo/permits'), {
-      params: { id: 'invalid-job-id-123' },
-    });
+  params: Promise.resolve({ id: 'invalid-job-id-123' }),
+});
 
     expect(res.status).toBe(400);
     const body = await res.json();
@@ -147,8 +147,8 @@ describe('Permits API Route Security & Authorization - GET /api/jobs/:id/permits
     vi.mocked(getJob).mockResolvedValue(null);
 
     const res = await GET(new Request('http://localhost/api/jobs/foo/permits'), {
-      params: { id: validJobId },
-    });
+  params: Promise.resolve({ id: validJobId }),
+});
 
     expect(res.status).toBe(404);
     const body = await res.json();
@@ -200,8 +200,8 @@ describe('Permits API Route Security & Authorization - GET /api/jobs/:id/permits
     } as any);
 
     const res = await GET(new Request('http://localhost/api/jobs/foo/permits'), {
-      params: { id: validJobId },
-    });
+  params: Promise.resolve({ id: validJobId }),
+});
 
     expect(res.status).toBe(200);
     const body = await res.json();

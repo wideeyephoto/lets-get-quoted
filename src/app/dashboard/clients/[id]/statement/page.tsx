@@ -48,7 +48,8 @@ const STATUS_LABEL: Record<string, string> = {
   canceled: 'Cancelled',
 };
 
-export default async function ClientStatementPage({ params }: { params: { id: string } }) {
+export default async function ClientStatementPage({ params: paramsPromise }: { params: Promise<{ id: string }> }) {
+  const params = await paramsPromise;
   const { supabase, accountId } = await requireOwnerContext();
   const client = await getClient(supabase, accountId, params.id);
 

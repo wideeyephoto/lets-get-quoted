@@ -64,12 +64,14 @@ function timeOf(value: string | null): string {
 }
 
 export default async function SubcontractorRequestPage({
-  params,
-  searchParams,
+  params: paramsPromise,
+  searchParams: searchParamsPromise,
 }: {
-  params: { id: string };
-  searchParams: { queued?: string };
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ queued?: string }>;
 }) {
+  const params = await paramsPromise;
+  const searchParams = (await searchParamsPromise) || {};
   const { supabase, accountId } = await requireOfficeContext('crew.read');
   const detail = await getSubcontractorRequest(supabase, accountId, params.id);
   if (!detail) notFound();

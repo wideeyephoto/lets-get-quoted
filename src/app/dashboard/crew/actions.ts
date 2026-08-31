@@ -551,7 +551,7 @@ export async function closeOpenShiftAction(entryId: string, formData: FormData) 
     .eq('id', entry.crew_id)
     .maybeSingle();
 
-  const settings = normalizeLaborSettings(cookies().get(LABOR_SETTINGS_COOKIE)?.value);
+  const settings = normalizeLaborSettings((await cookies()).get(LABOR_SETTINGS_COOKIE)?.value);
   await clockOut(supabase, accountId, entry, {
     endedAt: endedAt.toISOString(),
     crewName: (member?.name as string) || 'Crew member',

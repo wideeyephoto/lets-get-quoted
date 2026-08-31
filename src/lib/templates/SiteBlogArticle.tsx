@@ -28,7 +28,7 @@ function formatBlogDate(iso: string): string {
   return parsed.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
-export default function SiteBlogArticle({ site, post }: { site: Site; post: SiteBlogPost }) {
+export default async function SiteBlogArticle({ site, post }: { site: Site; post: SiteBlogPost }) {
   const paragraphs = post.body.split(/\n{2,}/).map((block) => block.trim()).filter(Boolean);
   const content = getSiteContent(site.content);
   const scheme = getColorScheme(content.colorScheme);
@@ -101,7 +101,7 @@ export default function SiteBlogArticle({ site, post }: { site: Site; post: Site
 
   return (
     <main className={`${templateFontVars} ${styles.site} ${styles[themeClass] || ''}`} style={themeStyle} data-mode={scheme ? undefined : site.portal_mode} data-logo-style={content.logoStyle}>
-      <script type="application/ld+json" nonce={cspNonce()} dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <script type="application/ld+json" nonce={await cspNonce()} dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <BlogReadingProgress />
       <header className={styles.blogChromeHeader}>
         <a className={styles.blogChromeBrand} href="/" aria-label={`${site.company_name} home`}>

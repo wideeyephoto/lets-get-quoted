@@ -13,7 +13,8 @@ export const metadata = { title: 'Financial reports' };
  * a preference, it is all output — and they were being built on every render of
  * a page people open to change a phone number.
  */
-export default async function ReportsPage({ searchParams }: { searchParams: { year?: string } }) {
+export default async function ReportsPage({ searchParams: searchParamsPromise }: { searchParams: Promise<{ year?: string }> }) {
+  const searchParams = (await searchParamsPromise) || {};
   const { supabase, accountId } = await requireOfficeContext('reports.read');
 
   const availableYears = await getAvailableTaxYears(supabase, accountId);

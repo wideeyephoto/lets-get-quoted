@@ -91,10 +91,11 @@ function stalledCell(row: AdminAccountRow, now: Date) {
 }
 
 export default async function AdminAccountsPage({
-  searchParams,
+  searchParams: searchParamsPromise,
 }: {
-  searchParams: { q?: string; filter?: string; joined?: string; include_test?: string; done?: string; error?: string; deleted?: string };
+  searchParams: Promise<{ q?: string; filter?: string; joined?: string; include_test?: string; done?: string; error?: string; deleted?: string }>;
 }) {
+  const searchParams = (await searchParamsPromise) || {};
   const ctx = await requireAdmin();
   const query = searchParams.q?.trim() ?? '';
   const filter: AccountFilter | undefined = isAccountFilter(searchParams.filter) ? searchParams.filter : undefined;

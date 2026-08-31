@@ -87,12 +87,14 @@ const FLASH: Record<string, { tone: 'good' | 'bad'; text: string }> = {
 };
 
 export default async function ClientJobDashboardPage({
-  params,
-  searchParams,
+  params: paramsPromise,
+  searchParams: searchParamsPromise,
 }: {
-  params: { token: string };
-  searchParams?: Record<string, string | string[] | undefined>;
+  params: Promise<{ token: string }>;
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  const params = await paramsPromise;
+  const searchParams = (await searchParamsPromise) || {};
   const dashboard = await getClientJobDashboard(params.token);
 
   // Loaded from the token independently of the dashboard so an un-migrated

@@ -117,12 +117,14 @@ function PaymentStatusPill({ status }: { status: string | null }) {
 }
 
 export default async function AdminAccountDetailPage({
-  params,
-  searchParams,
+  params: paramsPromise,
+  searchParams: searchParamsPromise,
 }: {
-  params: { id: string };
-  searchParams: { done?: string; error?: string };
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ done?: string; error?: string }>;
 }) {
+  const params = await paramsPromise;
+  const searchParams = (await searchParamsPromise) || {};
   const ctx = await requireAdmin();
   const { admin, role } = ctx;
   const canFlag = staffCan(ctx.staff, 'account.support');

@@ -22,8 +22,8 @@ export const metadata: Metadata = {
   },
 };
 
-export default function FounderPage() {
-  const nonce = cspNonce();
+export default async function FounderPage() {
+  const nonce = await cspNonce();
   const founderJsonLd = {
     '@context': 'https://schema.org',
     '@type': 'AboutPage',

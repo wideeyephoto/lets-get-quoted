@@ -220,8 +220,9 @@ const IMAGE_SCENARIOS = [
   {
     id: 'plate-ocr',
     label: '🏷️ Water Heater Rating Plate',
+    imageSrc: '/features/water-heater-plate.jpg',
     imageFile: 'water-heater-plate.jpg (2.4 MB)',
-    plateOcr: 'Model: GUR-50-400 · Serial: 2148A09',
+    plateOcr: 'Bradford White · MI-50-40T-CX-A',
     techSpecs: '40,000 BTU · 50 Gallon Natural Gas',
     diagnosedIssue: 'Heavy sediment scale & corroded T&P valve',
     materialsGenerated: 'Bradford White 50-Gal Gas Unit + 3/4" Brass Relief Valve ($940.00)',
@@ -230,6 +231,7 @@ const IMAGE_SCENARIOS = [
   {
     id: 'subfloor-photo',
     label: '🪵 Subfloor Moisture Damage',
+    imageSrc: '/features/subfloor-rot-bathroom.jpg',
     imageFile: 'subfloor-rot-bathroom.jpg (1.8 MB)',
     plateOcr: 'Visual Defect: 24 sq ft Subfloor Moisture Rot',
     techSpecs: 'Compromised 2x10 joist edge beneath tub',
@@ -240,11 +242,12 @@ const IMAGE_SCENARIOS = [
   {
     id: 'receipt-photo',
     label: '🧾 Supply House Receipt Scan',
+    imageSrc: '/features/home-depot-receipt.jpg',
     imageFile: 'home-depot-receipt-j1039.jpg (980 KB)',
-    plateOcr: 'Home Depot Store #2710 · Tax Invoice',
-    techSpecs: '2x 3/4" Plywood ($108.00) · 1x Fasteners ($32.00)',
+    plateOcr: 'Home Depot Store #4732 · Tax Invoice',
+    techSpecs: '10x 3/4" Plywood ($419.80) · 1x Screws ($18.99)',
     diagnosedIssue: 'Verified against Job #1039 active material budget',
-    materialsGenerated: 'Auto-reconciled $140.00 material cost into job ledger',
+    materialsGenerated: 'Auto-reconciled $484.04 material cost into job ledger',
     confidence: '99.1% Expense Auto-Logged',
   },
 ];
@@ -788,31 +791,44 @@ export default function HighTechShowcase() {
                       <div className={styles.beforeAfterContainer}>
                         {/* Raw Unaltered Photo Side (Background) */}
                         <div className={styles.rawSide}>
-                          <span style={{ fontSize: '0.68rem', color: '#94a3b8', fontWeight: 700 }}>
-                            📷 RAW TEXTED PHOTO
-                          </span>
-                          <b style={{ color: '#ffffff', fontSize: '0.88rem', marginTop: '4px' }}>
-                            {IMAGE_SCENARIOS[activeImageScenario]?.imageFile}
-                          </b>
-                          <small style={{ color: '#64748b' }}>Unprocessed camera upload</small>
+                          <img
+                            src={IMAGE_SCENARIOS[activeImageScenario]?.imageSrc}
+                            alt={IMAGE_SCENARIOS[activeImageScenario]?.label}
+                            className={styles.visionBgImage}
+                          />
+                          <div className={styles.rawSideOverlay}>
+                            <span className={styles.rawPhotoBadge}>
+                              📷 RAW TEXTED PHOTO
+                            </span>
+                            <b className={styles.rawPhotoTitle}>
+                              {IMAGE_SCENARIOS[activeImageScenario]?.imageFile}
+                            </b>
+                            <small className={styles.rawPhotoSub}>Unprocessed camera upload</small>
+                          </div>
                         </div>
 
                         {/* AI Vision Layer (Clipped by slider position) */}
                         <div className={styles.arSide} style={{ width: `${sliderPos}%` }}>
+                          <img
+                            src={IMAGE_SCENARIOS[activeImageScenario]?.imageSrc}
+                            alt={IMAGE_SCENARIOS[activeImageScenario]?.label}
+                            className={styles.visionBgImageAr}
+                          />
+                          <div className={styles.arMeshOverlay} aria-hidden="true" />
                           <div className={styles.arReticleBox}>
                             <span className={styles.arTagHeader}>
                               ✦ AI VISION · {IMAGE_SCENARIOS[activeImageScenario]?.confidence}
                             </span>
                             <div className={styles.arMetadataRow}>
                               <div>
-                                <small style={{ color: '#c084fc', display: 'block' }}>OCR DETECTED</small>
+                                <small style={{ color: '#c084fc', display: 'block', fontWeight: 750 }}>OCR DETECTED</small>
                                 <b>{IMAGE_SCENARIOS[activeImageScenario]?.plateOcr}</b>
-                                <span style={{ color: '#38bdf8', fontSize: '0.72rem', display: 'block' }}>
+                                <span style={{ color: '#38bdf8', fontSize: '0.72rem', display: 'block', marginTop: '2px' }}>
                                    {IMAGE_SCENARIOS[activeImageScenario]?.techSpecs}
                                 </span>
                               </div>
                               <div>
-                                <small style={{ color: '#c084fc', display: 'block' }}>RISK SEGMENTATION</small>
+                                <small style={{ color: '#c084fc', display: 'block', fontWeight: 750 }}>RISK SEGMENTATION</small>
                                 <span style={{ color: '#fbbf24', fontWeight: 600 }}>
                                   {IMAGE_SCENARIOS[activeImageScenario]?.diagnosedIssue}
                                 </span>

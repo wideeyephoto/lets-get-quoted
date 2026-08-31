@@ -20,7 +20,7 @@ export async function respondToChangeOrderAction(
   formData: FormData,
 ): Promise<{ ok: boolean; message?: string }> {
   const admin = createAdminClient();
-  const ip = clientIpFrom(headers());
+  const ip = clientIpFrom(await headers());
   if (!(await checkRateLimit(admin, `co-respond:ip:${ip}`, 30, 60))) {
     return { ok: false, message: 'Too many attempts — wait a minute and try again.' };
   }

@@ -65,9 +65,9 @@ function formatDate(value: string): string {
 }
 
 export default async function SettingsPage({
-  searchParams,
+  searchParams: searchParamsPromise,
 }: {
-  searchParams: {
+  searchParams: Promise<{
     year?: string;
     quickbooks?: string;
     merchant_onboarding?: string;
@@ -76,8 +76,9 @@ export default async function SettingsPage({
     // below rather than making someone re-answer a question they already did.
     plan?: string;
     billing?: string;
-  };
+  }>;
 }) {
+  const searchParams = (await searchParamsPromise) || {};
   const { supabase, accountId } = await requireOfficeContext('settings.write');
   const pricingDashboardEnabled = planUsageDashboardEnabled();
   const subscriptionCheckoutEnabled = basePlanSubscriptionCheckoutEnabled();

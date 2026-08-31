@@ -13,7 +13,7 @@ export const dynamic = 'force-dynamic';
  * Lists all trade licenses, municipal registration PINs, and insurance policies in the vault.
  */
 export async function GET() {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -55,7 +55,7 @@ export async function GET() {
  * Saves or updates a credential in the vault.
  */
 export async function POST(request: Request) {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

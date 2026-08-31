@@ -27,9 +27,9 @@ import { marketingHostFor, marketingOrigin } from '@/lib/tenant-host';
  */
 export const dynamic = 'force-dynamic';
 
-export default function robots(): MetadataRoute.Robots {
+export default async function robots(): Promise<MetadataRoute.Robots> {
   const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'letsgetquoted.com';
-  const host = headers().get('x-forwarded-host') || headers().get('host');
+  const host = (await headers()).get('x-forwarded-host') || (await headers()).get('host');
   // Non-null exactly when this request is on a host that is NOT the apex —
   // www or app. On the apex itself it is null, which is when the sitemap
   // belongs here.

@@ -107,7 +107,9 @@ function nextScheduledJobLabel(jobs: ScheduledJobOccurrence<Job>[]) {
   return `${nextJob.client_name}${time ? ` at ${time}` : ''}`;
 }
 
-export default async function LeadDetailPage({ params, searchParams }: { params: { leadId: string }; searchParams: { edit?: string; details?: string; availabilityStart?: string; quoteStartStart?: string; added?: string } }) {
+export default async function LeadDetailPage({ params: paramsPromise, searchParams: searchParamsPromise }: { params: Promise<{ leadId: string }>; searchParams: Promise<{ edit?: string; details?: string; availabilityStart?: string; quoteStartStart?: string; added?: string }> }) {
+  const params = await paramsPromise;
+  const searchParams = (await searchParamsPromise) || {};
   // Reading one lead is leads.read. Every write this page offers asks for
   // itself, and the whole action panel is owner-only -- see the aside below.
   const { supabase, accountId, role } = await requireOfficeContext('leads.read');
@@ -166,7 +168,7 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
   const markLeadContacted = reopenLeadAction.bind(null, lead.id);
   const markLeadWon = updateLeadStatusAction.bind(null, lead.id, 'won');
   const markLeadLost = updateLeadStatusAction.bind(null, lead.id, 'lost');
-  const leadLayout = cookies().get(LEAD_LAYOUT_COOKIE)?.value === 'primary' ? 'primary' : 'guided';
+  const leadLayout = (await cookies()).get(LEAD_LAYOUT_COOKIE)?.value === 'primary' ? 'primary' : 'guided';
   const convertedJobLabel = lead.status === 'won' ? 'Open job' : 'Open quote';
   const visitLabel = formatVisit(lead.quote_visit);
   // Mirror convertLeadAction's channel logic exactly (normalizable phone -> text,

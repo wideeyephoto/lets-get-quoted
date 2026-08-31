@@ -79,7 +79,7 @@ describe('Permit Workflow API Routes - Security & Execution', () => {
         method: 'POST',
         body: JSON.stringify({ action: 'update_status', applicationStatus: 'issued' }),
       }),
-      { params: { id: validJobId } },
+      { params: Promise.resolve({ id: validJobId }) },
     );
 
     expect(res.status).toBe(403);
@@ -112,7 +112,7 @@ describe('Permit Workflow API Routes - Security & Execution', () => {
           externalPermitNumber: 'PB-2026-101',
         }),
       }),
-      { params: { id: validJobId } },
+      { params: Promise.resolve({ id: validJobId }) },
     );
 
     expect(res.status).toBe(200);
@@ -147,7 +147,7 @@ describe('Permit Workflow API Routes - Security & Execution', () => {
           inspections: ['Final Inspection'],
         }),
       }),
-      { params: { id: validJobId } },
+      { params: Promise.resolve({ id: validJobId }) },
     );
 
     expect(res.status).toBe(200);
@@ -181,7 +181,7 @@ describe('Permit Workflow API Routes - Security & Execution', () => {
           authorityName: 'City of Royal Oak',
         }),
       }),
-      { params: { id: validJobId } },
+      { params: Promise.resolve({ id: validJobId }) },
     );
 
     expect(res.status).toBe(200);
@@ -206,8 +206,8 @@ describe('Permit Workflow API Routes - Security & Execution', () => {
     vi.mocked(getJob).mockResolvedValue({ id: validJobId, account_id: mockAccountId } as any);
 
     const getRes = await docsGET(new Request('http://localhost/api/jobs/foo/permits/documents'), {
-      params: { id: validJobId },
-    });
+  params: Promise.resolve({ id: validJobId }),
+});
     expect(getRes.status).toBe(200);
 
     const postRes = await docsPOST(
@@ -219,7 +219,7 @@ describe('Permit Workflow API Routes - Security & Execution', () => {
           storagePath: 'acc-1/job-1/permit-plan.pdf',
         }),
       }),
-      { params: { id: validJobId } },
+      { params: Promise.resolve({ id: validJobId }) },
     );
     expect(postRes.status).toBe(200);
   });

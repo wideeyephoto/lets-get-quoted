@@ -6,7 +6,7 @@ import type { AnnotationShape } from '@/lib/photo-annotation-engine';
 export const runtime = 'nodejs';
 
 async function requireOwnerMembership() {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: NextResponse.json({ error: 'Sign in to analyze photos.' }, { status: 401 }) };
 

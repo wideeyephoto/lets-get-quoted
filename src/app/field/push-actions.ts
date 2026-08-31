@@ -9,7 +9,7 @@ import { savePushSubscription, deletePushSubscription, type PushSubscriptionJson
 // tied to the crew member who created it.
 export async function subscribeToPushAction(sub: PushSubscriptionJson): Promise<void> {
   const { accountId, crew } = await requireCrewContext();
-  const userAgent = headers().get('user-agent');
+  const userAgent = (await headers()).get('user-agent');
   await savePushSubscription(accountId, crew.id, sub, userAgent);
 }
 

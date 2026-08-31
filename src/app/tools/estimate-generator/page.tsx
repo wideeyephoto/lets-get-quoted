@@ -26,8 +26,8 @@ export const metadata: Metadata = {
   },
 };
 
-export default function EstimateGeneratorPage() {
-  const nonce = cspNonce();
+export default async function EstimateGeneratorPage() {
+  const nonce = await cspNonce();
 
   const jsonLd = {
     '@context': 'https://schema.org',

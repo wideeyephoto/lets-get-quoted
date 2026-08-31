@@ -51,8 +51,8 @@ describe('Permit Sync API Route - POST /api/jobs/:id/permits/sync', () => {
     } as any);
 
     const res = await POST(new Request('http://localhost/api/jobs/foo/permits/sync'), {
-      params: { id: validJobId },
-    });
+  params: Promise.resolve({ id: validJobId }),
+});
 
     expect(res.status).toBe(401);
   });
@@ -70,8 +70,8 @@ describe('Permit Sync API Route - POST /api/jobs/:id/permits/sync', () => {
     });
 
     const res = await POST(new Request('http://localhost/api/jobs/foo/permits/sync'), {
-      params: { id: validJobId },
-    });
+  params: Promise.resolve({ id: validJobId }),
+});
 
     expect(res.status).toBe(403);
   });
@@ -92,8 +92,8 @@ describe('Permit Sync API Route - POST /api/jobs/:id/permits/sync', () => {
     vi.mocked(getJob).mockResolvedValue({ id: validJobId, account_id: mockAccountId } as any);
 
     const res = await POST(new Request('http://localhost/api/jobs/foo/permits/sync'), {
-      params: { id: validJobId },
-    });
+  params: Promise.resolve({ id: validJobId }),
+});
 
     expect(res.status).toBe(200);
     const body = await res.json();

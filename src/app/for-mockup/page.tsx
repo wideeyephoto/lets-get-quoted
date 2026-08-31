@@ -22,8 +22,8 @@ export const metadata: Metadata = {
   },
 };
 
-export default function ForMockupPage() {
-  const nonce = cspNonce();
+export default async function ForMockupPage() {
+  const nonce = await cspNonce();
 
   const tradeHubJsonLd = {
     '@context': 'https://schema.org',

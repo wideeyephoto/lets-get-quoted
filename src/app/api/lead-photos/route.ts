@@ -7,7 +7,7 @@ import { createSupabaseServerClient } from '@/lib/supabase-server';
 export const runtime = 'nodejs';
 
 async function requireOwnerMembership() {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: NextResponse.json({ error: 'Sign in to manage photos.' }, { status: 401 }) };
 

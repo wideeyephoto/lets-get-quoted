@@ -28,7 +28,7 @@ export const dynamic = 'force-dynamic';
  * cannot live behind it.
  */
 export default async function OfficeAccessPage() {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 

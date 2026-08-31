@@ -16,8 +16,9 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 //
 // The session client is used for the queries so row-level security still
 // applies; accountId is a second gate, not the only one.
-export async function GET(_request: Request, { params }: { params: { id: string } }) {
-  const supabase = createSupabaseServerClient();
+export async function GET(_request: Request, { params: paramsPromise }: { params: Promise<{ id: string }> }) {
+  const params = await paramsPromise;
+  const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

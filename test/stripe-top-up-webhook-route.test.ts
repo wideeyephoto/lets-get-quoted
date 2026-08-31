@@ -248,7 +248,7 @@ describe('dedicated Stripe top-up webhook route', () => {
 
     expect(route).toContain("export const dynamic = 'force-dynamic'");
     expect(route).toContain("export const runtime = 'nodejs'");
-    expect(route).toContain('export const POST = handleStripeTopUpWebhook');
+    expect(route).toContain('handleStripeTopUpWebhook(request)');
     expect(boundary).toContain("expectedScope: 'platform_top_up'");
     expect(boundary).toContain('STRIPE_TOP_UP_WEBHOOK_SECRET');
     expect(boundary).toContain('STRIPE_BILLING_WEBHOOK_SECRET');

@@ -18,10 +18,11 @@ import {
 export const metadata = { title: 'Price book' };
 
 export default async function ServicesPage({
-  searchParams,
+  searchParams: searchParamsPromise,
 }: {
-  searchParams: { status?: string; q?: string };
+  searchParams: Promise<{ status?: string; q?: string }>;
 }) {
+  const searchParams = (await searchParamsPromise) || {};
   const { supabase, accountId } = await requireOfficeContext('jobs.read');
   const services = await listServices(supabase, accountId);
   const starterCatalogs = listTradeStarterCatalogs();

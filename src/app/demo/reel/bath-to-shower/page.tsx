@@ -8,17 +8,18 @@ export const metadata: Metadata = {
 };
 
 type ReelPageProps = {
-  searchParams?: {
+  searchParams?: Promise<{
     autoplay?: string | string[];
     scene?: string | string[];
-  };
+  }>;
 };
 
 function firstValue(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
 }
 
-export default function BathToShowerReelPage({ searchParams }: ReelPageProps) {
+export default async function BathToShowerReelPage({ searchParams: searchParamsPromise }: ReelPageProps) {
+  const searchParams = (await searchParamsPromise) || {};
   const requestedScene = Number.parseInt(firstValue(searchParams?.scene) ?? '0', 10);
   const initialScene = Number.isFinite(requestedScene)
     ? Math.min(Math.max(requestedScene, 0), 4)

@@ -61,7 +61,7 @@ function initialsFor(name: string) {
 export default async function CrewLaborPage({
   searchParams,
 }: {
-  searchParams: {
+  searchParams: Promise<{
     tab?: string;
     status?: string;
     period?: string;
@@ -72,19 +72,20 @@ export default async function CrewLaborPage({
     worker?: string;
     risk?: string;
     add?: string;
-  };
+  }>;
 }) {
+  const resolvedSearchParams = (await searchParams) || {};
   // Operational features moved to Schedule
-  if (searchParams.tab === 'map') {
+  if (resolvedSearchParams.tab === 'map') {
     redirect('/dashboard/schedule/dispatch');
   }
-  if (searchParams.tab === 'requests') {
+  if (resolvedSearchParams.tab === 'requests') {
     redirect('/dashboard/schedule/requests');
   }
 
   const { supabase, accountId, capabilities, role } = await requireOfficeContext('crew.read');
   const canViewPay = role === 'owner' || capabilities.has('crew_pay.read');
-  const tab = normalizeTab(searchParams.tab);
+  const tab = normalizeTab(resolvedSearchParams.tab);
 
   const { data: accountRules } = await supabase
     .from('accounts')
@@ -94,14 +95,14 @@ export default async function CrewLaborPage({
   const timeZone = ((accountRules as { timezone?: string } | null)?.timezone) || 'America/New_York';
   const settings = laborRulesFromAccount(
     accountRules as Parameters<typeof laborRulesFromAccount>[0],
-    normalizeLaborSettings(cookies().get(LABOR_SETTINGS_COOKIE)?.value),
+    normalizeLaborSettings((await cookies()).get(LABOR_SETTINGS_COOKIE)?.value),
   );
   const requireSeparatePayer = (accountRules as { require_separate_payer?: boolean } | null)?.require_separate_payer === true;
 
   const period = resolvePayPeriod(
-    searchParams.period ? normalizePeriodMode(searchParams.period) : settings.periodMode,
-    normalizeOffset(searchParams.offset),
-    { from: searchParams.from, to: searchParams.to, timeZone },
+    resolvedSearchParams.period ? normalizePeriodMode(resolvedSearchParams.period) : settings.periodMode,
+    normalizeOffset(resolvedSearchParams.offset),
+    { from: resolvedSearchParams.from, to: resolvedSearchParams.to, timeZone },
   );
 
   const [crew, jobs] = await Promise.all([listCrew(supabase, accountId), listJobs(supabase, accountId)]);
@@ -209,10 +210,11 @@ export default async function CrewLaborPage({
       : [];
   const jobRows = tab === 'jobs' ? summarizeJobLabor(laborEntries, jobs) : [];
 
-  const crewView = normalizeCrewView(cookies().get(CREW_VIEW_COOKIE)?.value);
-  const rosterView = normalizeRosterView(cookies().get(CREW_ROSTER_VIEW_COOKIE)?.value);
-  const crewTheme = normalizeCrewTheme(cookies().get(CREW_THEME_COOKIE)?.value);
-  const crewSkin = normalizeCrewSkin(cookies().get(CREW_SKIN_COOKIE)?.value);
+  const cookieStore = await cookies();
+  const crewView = normalizeCrewView(cookieStore.get(CREW_VIEW_COOKIE)?.value);
+  const rosterView = normalizeRosterView(cookieStore.get(CREW_ROSTER_VIEW_COOKIE)?.value);
+  const crewTheme = normalizeCrewTheme(cookieStore.get(CREW_THEME_COOKIE)?.value);
+  const crewSkin = normalizeCrewSkin(cookieStore.get(CREW_SKIN_COOKIE)?.value);
 
   const payView =
     tab === 'timecards'
@@ -221,9 +223,9 @@ export default async function CrewLaborPage({
           settings,
           timeZone,
           crew,
-          crewId: searchParams.crew ?? null,
+          crewId: resolvedSearchParams.crew ?? null,
           withComparison: crewView === 'grouped',
-          searchParams,
+          searchParams: resolvedSearchParams,
         })
       : null;
 
@@ -232,10 +234,10 @@ export default async function CrewLaborPage({
   const tabHref = (next: TabId) => {
     const query = new URLSearchParams();
     query.set('tab', next);
-    if (searchParams.period) query.set('period', searchParams.period);
-    if (searchParams.offset) query.set('offset', searchParams.offset);
-    if (searchParams.from) query.set('from', searchParams.from);
-    if (searchParams.to) query.set('to', searchParams.to);
+    if (resolvedSearchParams.period) query.set('period', resolvedSearchParams.period);
+    if (resolvedSearchParams.offset) query.set('offset', resolvedSearchParams.offset);
+    if (resolvedSearchParams.from) query.set('from', resolvedSearchParams.from);
+    if (resolvedSearchParams.to) query.set('to', resolvedSearchParams.to);
     return `/dashboard/crew?${query.toString()}`;
   };
 
@@ -314,8 +316,8 @@ export default async function CrewLaborPage({
             tab={tab}
             basePath="/dashboard/crew"
             extraParams={{
-              crew: searchParams.crew,
-              risk: searchParams.risk,
+              crew: resolvedSearchParams.crew,
+              risk: resolvedSearchParams.risk,
             }}
           />
         ) : null}
@@ -352,8 +354,8 @@ export default async function CrewLaborPage({
               rows={crewRows}
               assignableJobs={assignableJobs.map((job) => ({ id: job.id, ref: job.ref, clientName: job.client_name }))}
               periodLabel={period.rangeLabel}
-              initialStatus={searchParams.status === 'archived' ? 'archived' : 'active'}
-              initialWorkerType={searchParams.worker === 'subcontractor' || searchParams.worker === 'employee' ? searchParams.worker : 'all'}
+              initialStatus={resolvedSearchParams.status === 'archived' ? 'archived' : 'active'}
+              initialWorkerType={resolvedSearchParams.worker === 'subcontractor' || resolvedSearchParams.worker === 'employee' ? resolvedSearchParams.worker : 'all'}
               initialView={rosterView === 'table' ? 'table' : 'rows'}
               initialOverview={crewTheme === 'overview'}
             />
@@ -374,7 +376,7 @@ export default async function CrewLaborPage({
             events={payView.events}
             payAvailable={payView.payAvailable}
             exportBlocked={payView.exportBlocked}
-            crewFilter={searchParams.crew ?? null}
+            crewFilter={resolvedSearchParams.crew ?? null}
             crewOptions={activeCrew.map((member) => ({ id: member.id, name: member.name }))}
             assignableJobs={assignableJobs.map((job) => ({ id: job.id, ref: job.ref, clientName: job.client_name }))}
             jobLookup={Object.fromEntries(jobs.map((job) => [job.id, `${job.ref} · ${job.client_name}`]))}

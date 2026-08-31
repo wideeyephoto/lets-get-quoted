@@ -59,8 +59,8 @@ describe('Permit Application API Route - GET & POST /api/jobs/:id/permits/applic
     } as any);
 
     const res = await GET(new Request('http://localhost/api/jobs/foo/permits/application'), {
-      params: { id: validJobId },
-    });
+  params: Promise.resolve({ id: validJobId }),
+});
 
     expect(res.status).toBe(401);
   });
@@ -85,8 +85,8 @@ describe('Permit Application API Route - GET & POST /api/jobs/:id/permits/applic
     } as any);
 
     const res = await GET(new Request('http://localhost/api/jobs/foo/permits/application'), {
-      params: { id: validJobId },
-    });
+  params: Promise.resolve({ id: validJobId }),
+});
 
     expect(res.status).toBe(200);
     const body = await res.json();
@@ -119,7 +119,7 @@ describe('Permit Application API Route - GET & POST /api/jobs/:id/permits/applic
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ html: '<html><body>Application</body></html>' }),
       }),
-      { params: { id: validJobId } },
+      { params: Promise.resolve({ id: validJobId }) },
     );
 
     expect(res.status).toBe(200);

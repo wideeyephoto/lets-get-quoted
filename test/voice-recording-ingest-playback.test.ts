@@ -164,7 +164,7 @@ describe('authenticated voice recording playback endpoint (/api/voice/recordings
     });
 
     const req = new Request(`http://localhost/api/voice/recordings/${CALL_ID}`);
-    const res = await recordingPlaybackHandler(req, { params: { recordingId: CALL_ID } });
+    const res = await recordingPlaybackHandler(req, { params: Promise.resolve({ recordingId: CALL_ID }) });
 
     expect(res.status).toBe(404);
   });
@@ -194,7 +194,7 @@ describe('authenticated voice recording playback endpoint (/api/voice/recordings
     });
 
     const req = new Request(`http://localhost/api/voice/recordings/${CALL_ID}`);
-    const res = await recordingPlaybackHandler(req, { params: { recordingId: CALL_ID } });
+    const res = await recordingPlaybackHandler(req, { params: Promise.resolve({ recordingId: CALL_ID }) });
 
     expect(res.status).toBe(403);
     const data = await res.json();
@@ -226,7 +226,7 @@ describe('authenticated voice recording playback endpoint (/api/voice/recordings
     });
 
     const req = new Request(`http://localhost/api/voice/recordings/${CALL_ID}`);
-    const res = await recordingPlaybackHandler(req, { params: { recordingId: CALL_ID } });
+    const res = await recordingPlaybackHandler(req, { params: Promise.resolve({ recordingId: CALL_ID }) });
 
     expect(res.status).toBe(307);
     expect(res.headers.get('location')).toBe('https://cdn.signalwire.com/recordings/audio123.mp3');

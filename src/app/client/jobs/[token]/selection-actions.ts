@@ -26,7 +26,7 @@ export async function chooseSelectionAction(
   formData: FormData,
 ): Promise<{ ok: boolean; message?: string }> {
   const admin = createAdminClient();
-  const ip = clientIpFrom(headers());
+  const ip = clientIpFrom(await headers());
   if (!(await checkRateLimit(admin, `selection:ip:${ip}`, 30, 60))) {
     return { ok: false, message: 'Too many attempts — wait a minute and try again.' };
   }
@@ -85,7 +85,7 @@ export async function askAboutSelectionAction(
   formData: FormData,
 ): Promise<{ ok: boolean; message?: string }> {
   const admin = createAdminClient();
-  const ip = clientIpFrom(headers());
+  const ip = clientIpFrom(await headers());
   // Tighter than choosing: this one writes free text somebody else reads.
   if (!(await checkRateLimit(admin, `selection-ask:ip:${ip}`, 10, 300))) {
     return { ok: false, message: 'That is a lot of questions at once — give it a few minutes.' };

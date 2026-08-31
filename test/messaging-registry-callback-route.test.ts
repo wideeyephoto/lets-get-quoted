@@ -30,7 +30,7 @@ function callback(
 
 async function post(token: string, request: Request) {
   const { POST } = await import('@/app/api/sms/registry-status/[token]/route');
-  return POST(request, { params: { token } });
+  return POST(request, { params: Promise.resolve({ token }) });
 }
 
 const FAILED_BODY = JSON.stringify({

@@ -13,10 +13,11 @@ export const metadata = {
 };
 
 export default async function PaymentsRevenuePage({
-  searchParams,
+  searchParams: searchParamsPromise,
 }: {
-  searchParams: { range?: string };
+  searchParams: Promise<{ range?: string }>;
 }) {
+  const searchParams = (await searchParamsPromise) || {};
   const { supabase, accountId } = await requireOfficeContext('reports.read');
 
   const selectedRange = (searchParams.range || '30d') as NonNullable<LedgerFilterOptions['range']>;

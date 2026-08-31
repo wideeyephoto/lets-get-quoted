@@ -376,7 +376,7 @@ describe('the return origin, which is taken from the request', () => {
     const source = readFileSync('src/lib/billing/top-up-purchase-entrypoint.ts', 'utf8');
     expect(source).toContain("requestHeaders.get('x-forwarded-proto')");
     expect(source).toContain("requestHeaders.get('host')");
-    expect(source).toContain('requestOriginFromHeaders(headers())');
+    expect(source).toMatch(/requestOriginFromHeaders\((?:await )?headers\(\)\)/);
     // APP_ORIGIN appears only in the comment explaining why it is not used.
     expect(source).not.toContain('@/lib/app-origin');
     expect(source.replace(/\/\*[\s\S]*?\*\//g, '')).not.toContain('APP_ORIGIN');

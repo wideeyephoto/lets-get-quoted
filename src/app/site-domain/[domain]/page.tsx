@@ -13,13 +13,16 @@ import { siteIconsMetadata } from '@/lib/brand-mark';
 
 export const dynamic = 'force-dynamic';
 
-type Props = { params: { domain: string } };
+type Props = {
+  params: Promise<{ domain: string }>;
+};
 
 const loadSite = cache(async (domain: string) => {
   return getPublicSiteByCustomDomain(createAdminClient(), decodeURIComponent(domain).toLowerCase());
 });
 
-export default async function CustomDomainSitePage({ params }: Props) {
+export default async function CustomDomainSitePage({ params: paramsPromise }: Props) {
+  const params = await paramsPromise;
   const site = await loadSite(params.domain);
   if (!site || !site.custom_domain_verified_at) notFound();
   const Template = getTemplate(site.template);
@@ -32,7 +35,8 @@ export default async function CustomDomainSitePage({ params }: Props) {
   );
 }
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
+export async function generateMetadata({ params: paramsPromise }: Props): Promise<Metadata> {
+  const params = await paramsPromise;
   const site = await loadSite(params.domain);
   if (!site) return { title: 'Site not found', robots: { index: false, follow: false } };
   const { title, description } = resolveSiteSeo(site);

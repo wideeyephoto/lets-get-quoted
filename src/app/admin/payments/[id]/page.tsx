@@ -54,12 +54,14 @@ function statusPill(status: string | null) {
 }
 
 export default async function AdminPaymentPage({
-  params,
-  searchParams,
+  params: paramsPromise,
+  searchParams: searchParamsPromise,
 }: {
-  params: { id: string };
-  searchParams: { done?: string; error?: string; detail?: string };
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ done?: string; error?: string; detail?: string }>;
 }) {
+  const params = await paramsPromise;
+  const searchParams = (await searchParamsPromise) || {};
   const ctx = await requireAdmin();
   const renderedAt = new Date();
   const payment = await getPaymentForAdmin(ctx.admin, params.id);

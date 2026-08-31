@@ -12,8 +12,9 @@ export const dynamic = 'force-dynamic';
  */
 export async function POST(
   request: Request,
-  { params }: { params: { provider: string } },
+  { params: paramsPromise }: { params: Promise<{ provider: string }> },
 ) {
+  const params = await paramsPromise;
   const secretHeader = request.headers.get('x-permit-webhook-secret');
   const admin = createAdminClient();
 

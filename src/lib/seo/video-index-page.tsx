@@ -17,7 +17,7 @@ import SiteVideoIndex from '@/lib/templates/SiteVideoIndex';
 // Shared rather than duplicated because the structured data below is the entire
 // point of the page, and two copies of it would be two chances to drift.
 
-export function renderSiteVideoIndex(site: Site | null) {
+export async function renderSiteVideoIndex(site: Site | null) {
   if (!site) notFound();
   const entries = getAllPublishedVideos(site.content);
   if (entries.length === 0) notFound();
@@ -39,7 +39,7 @@ export function renderSiteVideoIndex(site: Site | null) {
       {videoJsonLd && (
         <script
           type="application/ld+json"
-          nonce={cspNonce()}
+          nonce={await cspNonce()}
           dangerouslySetInnerHTML={{ __html: JSON.stringify(videoJsonLd).replace(/</g, '\\u003c') }}
         />
       )}

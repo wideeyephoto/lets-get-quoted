@@ -50,7 +50,8 @@ const DEMO_SERVICES: Service[] = [
   demoService('svc-11', 'Fertilization treatment', 75, 'visit', 'Season-appropriate granular feed with spot weed control.', 11),
 ];
 
-export default function DemoServicesPage({ searchParams }: { searchParams?: { filter?: string } }) {
+export default async function DemoServicesPage({ searchParams: searchParamsPromise }: { searchParams?: Promise<{ filter?: string }> }) {
+  const searchParams = (await searchParamsPromise) || {};
   const filter = searchParams?.filter === 'archived' ? 'archived' : 'active';
   const services = filter === 'active' ? DEMO_SERVICES.filter((s) => s.active) : DEMO_SERVICES.filter((s) => !s.active);
   const activeCount = DEMO_SERVICES.filter((s) => s.active).length;

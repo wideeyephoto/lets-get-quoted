@@ -33,10 +33,11 @@ const RESULT_COPY = {
 } as const;
 
 export default async function DedicatedNumberApplicationPage({
-  searchParams,
+  searchParams: searchParamsPromise,
 }: {
-  searchParams: { done?: string; error?: string };
+  searchParams: Promise<{ done?: string; error?: string }>;
 }) {
+  const searchParams = (await searchParamsPromise) || {};
   const { supabase, accountId, userEmail } = await requireOwnerContext();
   const [application, accountResult, siteResult] = await Promise.all([
     loadMessagingRegistrationApplication(supabase, accountId),

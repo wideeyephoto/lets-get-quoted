@@ -33,10 +33,11 @@ function formatCallTime(iso: string | null, timeZone: string): string {
 }
 
 export default async function VoiceCallDetailPage({
-  params,
+  params: paramsPromise,
 }: {
-  params: { callId: string };
+  params: Promise<{ callId: string }>;
 }) {
+  const params = await paramsPromise;
   const { supabase, accountId } = await requireOfficeContext('leads.read');
 
   const { data: account } = await supabase

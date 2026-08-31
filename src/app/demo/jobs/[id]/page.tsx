@@ -23,7 +23,8 @@ const COST_TYPE_LABEL: Record<string, string> = {
   other: 'Other',
 };
 
-export default function DemoJobDetailPage({ params }: { params: { id: string } }) {
+export default async function DemoJobDetailPage({ params: paramsPromise }: { params: Promise<{ id: string }> }) {
+  const params = await paramsPromise;
   const job = DEMO_JOBS.find((j) => j.id === params.id);
   if (!job) notFound();
 

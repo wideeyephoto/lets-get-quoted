@@ -23,7 +23,8 @@ const UNIT_SUFFIX: Record<string, string> = { hour: ' / hr', sqft: ' / sq ft', v
 // their favicon. `noindex` because the canonical place to find this business is
 // their own site — an identical booking page on OUR domain would compete with
 // them for their own name in search.
-export async function generateMetadata({ params }: { params: { subdomain: string } }): Promise<Metadata> {
+export async function generateMetadata({ params: paramsPromise }: { params: Promise<{ subdomain: string }> }): Promise<Metadata> {
+  const params = await paramsPromise;
   const site = await getPublicSiteBySubdomain(createAdminClient(), params.subdomain);
   if (!site) return { title: { absolute: 'Booking unavailable' }, robots: { index: false, follow: false } };
   const businessName = site.company_name || 'your contractor';
@@ -40,12 +41,14 @@ export async function generateMetadata({ params }: { params: { subdomain: string
 }
 
 export default async function BookingPage({
-  params,
-  searchParams,
+  params: paramsPromise,
+  searchParams: searchParamsPromise,
 }: {
-  params: { subdomain: string };
-  searchParams: { booked?: string; requested?: string; error?: string; ref?: string };
+  params: Promise<{ subdomain: string }>;
+  searchParams: Promise<{ booked?: string; requested?: string; error?: string; ref?: string }>;
 }) {
+  const params = await paramsPromise;
+  const searchParams = (await searchParamsPromise) || {};
   const admin = createAdminClient();
   const site = await getPublicSiteBySubdomain(admin, params.subdomain);
 

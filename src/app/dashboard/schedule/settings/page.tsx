@@ -30,13 +30,14 @@ export const metadata = { title: 'Schedule settings' };
  * already booked, and it belongs beside the calendar it annotates.
  */
 export default async function ScheduleSettingsPage({
-  searchParams,
+  searchParams: searchParamsPromise,
 }: {
   /* `?weather=on` is set by updateWeatherSettingsAction's redirect and means
      "they pressed Turn it on a moment ago", which is the one moment the panel
      fetches a forecast without being asked. */
-  searchParams?: { weather?: string };
+  searchParams?: Promise<{ weather?: string }>;
 }) {
+  const searchParams = (await searchParamsPromise) || {};
   const { supabase, accountId } = await requireOfficeContext('jobs.read', 'schedule.write');
 
   const now = new Date();

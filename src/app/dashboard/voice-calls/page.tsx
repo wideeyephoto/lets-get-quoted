@@ -34,17 +34,18 @@ function formatCallTime(iso: string | null, timeZone: string): string {
 }
 
 export default async function VoiceCallsPage({
-  searchParams,
+  searchParams: searchParamsPromise,
 }: {
-  searchParams: {
+  searchParams: Promise<{
     view?: string;
     tab?: string;
     dateRange?: string;
     q?: string;
     disposition?: string;
     outcome?: string;
-  };
+  }>;
 }) {
+  const searchParams = (await searchParamsPromise) || {};
   const { supabase, accountId } = await requireOfficeContext('leads.read');
   const admin = createAdminClient();
 

@@ -35,12 +35,14 @@ function Shell({ accent, children }: { accent: string | null; children: ReactNod
 }
 
 export default async function TrackPage({
-  params,
-  searchParams,
+  params: paramsPromise,
+  searchParams: searchParamsPromise,
 }: {
-  params: { token: string };
-  searchParams: { said?: string };
+  params: Promise<{ token: string }>;
+  searchParams: Promise<{ said?: string }>;
 }) {
+  const params = await paramsPromise;
+  const searchParams = (await searchParamsPromise) || {};
   const admin = createAdminClient();
   const visit = await getTrackingByToken(admin, params.token);
 

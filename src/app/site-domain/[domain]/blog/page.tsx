@@ -8,13 +8,16 @@ import SiteBlogIndex from '@/lib/templates/SiteBlogIndex';
 
 export const dynamic = 'force-dynamic';
 
-type Props = { params: { domain: string } };
+type Props = {
+  params: Promise<{ domain: string }>;
+};
 
 async function loadSite(domain: string) {
   return getPublicSiteByCustomDomain(createAdminClient(), decodeURIComponent(domain).toLowerCase());
 }
 
-export default async function CustomDomainBlogIndexPage({ params }: Props) {
+export default async function CustomDomainBlogIndexPage({ params: paramsPromise }: Props) {
+  const params = await paramsPromise;
   const site = await loadSite(params.domain);
   if (!site || !site.custom_domain_verified_at) notFound();
   const blog = getPublishedBlog(site.content);
@@ -22,7 +25,8 @@ export default async function CustomDomainBlogIndexPage({ params }: Props) {
   return <SiteBlogIndex site={site} title={blog.title} intro={blog.intro} posts={blog.posts} layout={blog.layout} />;
 }
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
+export async function generateMetadata({ params: paramsPromise }: Props): Promise<Metadata> {
+  const params = await paramsPromise;
   const site = await loadSite(params.domain);
   if (!site) return { title: 'Not found' };
   const blog = getPublishedBlog(site.content);

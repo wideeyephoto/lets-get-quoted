@@ -16,9 +16,10 @@ const VALID_WAIVER_TYPES: ReadonlySet<LienWaiverType> = new Set([
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } },
+  { params: paramsPromise }: { params: Promise<{ id: string }> },
 ) {
-  const supabase = createSupabaseServerClient();
+  const params = await paramsPromise;
+  const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

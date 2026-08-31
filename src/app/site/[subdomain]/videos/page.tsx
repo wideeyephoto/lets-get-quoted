@@ -5,16 +5,20 @@ import { renderSiteVideoIndex, siteVideoIndexMetadata } from '@/lib/seo/video-in
 
 export const dynamic = 'force-dynamic';
 
-type Props = { params: { subdomain: string } };
+type Props = { params: Promise<{ subdomain: string }> };
 
 async function loadSite(subdomain: string) {
   return getPublicSiteBySubdomain(createAdminClient(), subdomain);
 }
 
-export default async function PublicVideoIndexPage({ params }: Props) {
-  return renderSiteVideoIndex(await loadSite(params.subdomain));
+export default async function PublicVideoIndexPage({ params: paramsPromise }: Props) {
+  const params = await paramsPromise;
+  const { subdomain } = await params;
+  return await renderSiteVideoIndex(await loadSite(subdomain));
 }
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  return siteVideoIndexMetadata(await loadSite(params.subdomain));
+export async function generateMetadata({ params: paramsPromise }: Props): Promise<Metadata> {
+  const params = await paramsPromise;
+  const { subdomain } = await params;
+  return siteVideoIndexMetadata(await loadSite(subdomain));
 }

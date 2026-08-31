@@ -70,7 +70,7 @@ export async function evaluateBookingAction(
   input: { estimateMax: number | null; inArea: boolean | null; excluded: boolean; address: string | null },
 ): Promise<BookingEvaluation | null> {
   const admin = createAdminClient();
-  const ip = clientIpFrom(headers());
+  const ip = clientIpFrom(await headers());
   // A flood guard on the action itself, and no more than that. This is a server
   // action, so it is reachable by anyone who can load the page — but everything
   // above rankNearby is three indexed reads, which makes this a question of
@@ -260,7 +260,7 @@ export async function submitBookingAction(subdomain: string, formData: FormData)
   // echoed back into a query string, never trusted; referrerFromCode is what
   // decides whether it means anything.
   const back = bounceBack(subdomain, formData);
-  const ip = clientIpFrom(headers());
+  const ip = clientIpFrom(await headers());
   if (!(await checkRateLimit(admin, `book:ip:${ip}`, 10, 60))) {
     redirect(back('error=busy'));
   }
@@ -401,7 +401,7 @@ export async function submitBookingAction(subdomain: string, formData: FormData)
 export async function submitQuickStopRequestAction(formData: FormData): Promise<QuickStopSubmitResult> {
   try {
     const admin = createAdminClient();
-    const ip = clientIpFrom(headers());
+    const ip = clientIpFrom(await headers());
     // Burns paid AI + geocoding + accepts photo uploads — cap per IP.
     if (!(await checkRateLimit(admin, `extrastop:ip:${ip}`, 8, 60))) {
       return { ok: false, error: 'Too many requests — please wait a minute and try again.' };
@@ -557,7 +557,7 @@ export async function submitQuickStopRequestAction(formData: FormData): Promise<
 export async function submitCallbackAction(subdomain: string, formData: FormData) {
   const admin = createAdminClient();
   const back = bounceBack(subdomain, formData);
-  const ip = clientIpFrom(headers());
+  const ip = clientIpFrom(await headers());
   if (!(await checkRateLimit(admin, `callback:ip:${ip}`, 10, 60))) {
     redirect(back('error=busy'));
   }

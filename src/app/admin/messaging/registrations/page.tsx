@@ -99,10 +99,11 @@ function getApplicationStage(app: MessagingRegistrationApplication | null): {
 }
 
 export default async function MessagingRegistrationsPage({
-  searchParams,
+  searchParams: searchParamsPromise,
 }: {
-  searchParams: { application?: string; filter?: string; done?: string; error?: string; correlation?: string };
+  searchParams: Promise<{ application?: string; filter?: string; done?: string; error?: string; correlation?: string }>;
 }) {
+  const searchParams = (await searchParamsPromise) || {};
   const ctx = await requireAdmin();
   const mayManage = staffCan(ctx.staff, 'ops.manage');
   const allApplications = await listMessagingRegistrationApplications(ctx.admin);

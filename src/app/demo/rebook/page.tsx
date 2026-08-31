@@ -12,7 +12,8 @@ export const metadata = { title: 'Book again — Live Demo' };
  * decided by how long each customer has actually been quiet in the demo's own
  * job history. The day-window tabs work, because they are links.
  */
-export default async function DemoRebookPage({ searchParams }: { searchParams: { days?: string } }) {
+export default async function DemoRebookPage({ searchParams: searchParamsPromise }: { searchParams: Promise<{ days?: string }> }) {
+  const searchParams = (await searchParamsPromise) || {};
   const requested = Number(searchParams.days);
   const days = REBOOK_DAY_OPTIONS.includes(requested) ? requested : DEFAULT_REBOOK_DAYS;
 

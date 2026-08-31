@@ -16,9 +16,9 @@ import { COMPARISONS, type CompetitorDetail } from '../compare-data';
 import styles from '../compare.module.css';
 
 type Props = {
-  params: {
+  params: Promise<{
     competitor: string;
-  };
+  }>;
 };
 
 export async function generateStaticParams() {
@@ -27,8 +27,10 @@ export async function generateStaticParams() {
   }));
 }
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const data = COMPARISONS[params.competitor];
+export async function generateMetadata({ params: paramsPromise }: Props): Promise<Metadata> {
+  const params = await paramsPromise;
+  const { competitor } = await params;
+  const data = COMPARISONS[competitor];
   if (!data) {
     return {
       title: 'Compare Contractor Software',
@@ -48,13 +50,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default function CompetitorDetailPage({ params }: Props) {
-  const data: CompetitorDetail | undefined = COMPARISONS[params.competitor];
+export default async function CompetitorDetailPage({ params: paramsPromise }: Props) {
+  const params = await paramsPromise;
+  const { competitor } = await params;
+  const data: CompetitorDetail | undefined = COMPARISONS[competitor];
   if (!data) {
     notFound();
   }
 
-  const nonce = cspNonce();
+  const nonce = await cspNonce();
 
   const jsonLd = [
     {

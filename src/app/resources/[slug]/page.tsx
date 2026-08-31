@@ -25,8 +25,9 @@ export function generateStaticParams() {
   return ARTICLES.map((article) => ({ slug: article.slug }));
 }
 
-export function generateMetadata({ params }: { params: { slug: string } }): Metadata {
-  const article = getArticle(params.slug);
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params;
+  const article = getArticle(slug);
   if (!article) return {};
   return {
     title: `${article.title} · Let’s Get Quoted`,
@@ -53,8 +54,9 @@ function slugify(text: string): string {
     .replace(/\s+/g, '-');
 }
 
-export default function ArticlePage({ params }: { params: { slug: string } }) {
-  const article = getArticle(params.slug);
+export default async function ArticlePage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const article = getArticle(slug);
   if (!article) notFound();
 
   const url = `https://letsgetquoted.com/resources/${article.slug}`;
@@ -99,17 +101,19 @@ export default function ArticlePage({ params }: { params: { slug: string } }) {
       text: b.text,
     }));
 
+  const nonce = await cspNonce();
+
   return (
     <div className={guideStyles.articlePage}>
       <ReadingProgressBar />
       <script
         type="application/ld+json"
-        nonce={cspNonce()}
+        nonce={nonce}
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
       <script
         type="application/ld+json"
-        nonce={cspNonce()}
+        nonce={nonce}
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbs) }}
       />
 

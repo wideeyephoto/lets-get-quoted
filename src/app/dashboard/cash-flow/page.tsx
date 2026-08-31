@@ -23,7 +23,8 @@ const PERIOD_WORD: Record<string, string> = {
   custom: 'weekly',
 };
 
-export default async function CashFlowPage({ searchParams }: { searchParams: { window?: string } }) {
+export default async function CashFlowPage({ searchParams: searchParamsPromise }: { searchParams: Promise<{ window?: string }> }) {
+  const searchParams = (await searchParamsPromise) || {};
   const { supabase, accountId } = await requireOfficeContext('reports.read');
 
   const selected = WINDOWS.find((option) => option.key === searchParams.window) ?? WINDOWS[0];

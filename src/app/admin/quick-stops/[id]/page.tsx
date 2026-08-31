@@ -42,12 +42,14 @@ const ERR: Record<string, string> = {
 };
 
 export default async function AdminQuickStopDetailPage({
-  params,
-  searchParams,
+  params: paramsPromise,
+  searchParams: searchParamsPromise,
 }: {
-  params: { id: string };
-  searchParams: { done?: string; error?: string };
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ done?: string; error?: string }>;
 }) {
+  const params = await paramsPromise;
+  const searchParams = (await searchParamsPromise) || {};
   const { admin, role } = await requireAdmin();
   const detail = await getQuickStopAdminDetail(admin, params.id);
   if (!detail) notFound();

@@ -52,15 +52,15 @@ export async function GET(request: Request) {
     // person is genuinely on: the parameter arrives from a URL, and a URL is
     // something anybody can edit.
     if (invitedAccount && linked.includes(invitedAccount)) {
-      writeFieldAccount(invitedAccount);
+      await writeFieldAccount(invitedAccount);
     } else if (linked.length === 1) {
       // Exactly one business: there is nothing to choose, and pinning it here
       // means a previous employer's stale cookie can't survive the new link.
-      writeFieldAccount(linked[0]);
+      await writeFieldAccount(linked[0]);
     } else {
       // Two or more and no invitation naming one. Clear whatever was remembered
       // and let them say — /field/choose is where requireCrewContext sends them.
-      clearFieldAccount();
+      await clearFieldAccount();
       return NextResponse.redirect(new URL('/field/choose', requestUrl.origin));
     }
 

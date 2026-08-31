@@ -8,7 +8,7 @@ import { getSignupConversionSendTo } from '@/lib/google-tag';
  * Placed on conversion landing pages (e.g. /welcome) to measure sign-up goals.
  * Uses the request's CSP nonce to ensure seamless execution.
  */
-export default function GoogleTagConversion({
+export default async function GoogleTagConversion({
   sendTo,
   value = 1.0,
   currency = 'USD',
@@ -20,7 +20,7 @@ export default function GoogleTagConversion({
   transactionId?: string;
 }) {
   const targetSendTo = sendTo || getSignupConversionSendTo();
-  const nonce = cspNonce();
+  const nonce = await cspNonce();
 
   if (!targetSendTo) return null;
 

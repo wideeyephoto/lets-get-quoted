@@ -6,29 +6,34 @@ import { CALENDAR_VIEW_COOKIE, CALENDAR_WEEKEND_COOKIE, CLIENTS_VIEW_COOKIE, CRE
 
 const YEAR = 60 * 60 * 24 * 365;
 
+const write = async (name: string, value: string) => {
+  const jar = await cookies();
+  jar.set(name, value, { path: '/', maxAge: YEAR, sameSite: 'lax' });
+};
+
 // Remember the owner's chosen Job Details layout (Tabs / Classic).
 export async function setJobDetailLayoutAction(layout: JobDetailLayout) {
   await requireOwnerContext();
-  cookies().set(JOB_DETAIL_LAYOUT_COOKIE, normalizeJobDetailLayout(layout), { path: '/', maxAge: YEAR, sameSite: 'lax' });
+  await write(JOB_DETAIL_LAYOUT_COOKIE, normalizeJobDetailLayout(layout));
 }
 
 // Remember whether the map is shown — PER PAGE (leads / jobs / schedule each
 // keep their own cookie), toggled from that page's view gear.
 export async function setMapViewAction(view: MapView, surface: MapSurface) {
   await requireOwnerContext();
-  cookies().set(mapViewCookie(surface), normalizeMapView(view), { path: '/', maxAge: YEAR, sameSite: 'lax' });
+  await write(mapViewCookie(surface), normalizeMapView(view));
 }
 
 // Remember the map color scheme (dark / light).
 export async function setMapThemeAction(theme: MapTheme) {
   await requireOwnerContext();
-  cookies().set(MAP_THEME_COOKIE, normalizeMapTheme(theme), { path: '/', maxAge: YEAR, sameSite: 'lax' });
+  await write(MAP_THEME_COOKIE, normalizeMapTheme(theme));
 }
 
 // Remember the owner's chosen Jobs layout (List / Board / Table).
 export async function setJobsViewAction(view: JobsView) {
   await requireOwnerContext();
-  cookies().set(JOBS_VIEW_COOKIE, normalizeJobsView(view), { path: '/', maxAge: YEAR, sameSite: 'lax' });
+  await write(JOBS_VIEW_COOKIE, normalizeJobsView(view));
 }
 
 // Remember the calendar's shape (Month / Week / Year / Agenda / Timeline).
@@ -36,25 +41,25 @@ export async function setJobsViewAction(view: JobsView) {
 // Month every time the owner steps a month forward.
 export async function setCalendarViewAction(view: CalendarView) {
   await requireOwnerContext();
-  cookies().set(CALENDAR_VIEW_COOKIE, normalizeCalendarView(view), { path: '/', maxAge: YEAR, sameSite: 'lax' });
+  await write(CALENDAR_VIEW_COOKIE, normalizeCalendarView(view));
 }
 
 // Remember whether the schedule calendar shows Saturday and Sunday columns.
 export async function setCalendarWeekendAction(days: WeekendDays) {
   await requireOwnerContext();
-  cookies().set(CALENDAR_WEEKEND_COOKIE, serializeWeekendDays(days), { path: '/', maxAge: YEAR, sameSite: 'lax' });
+  await write(CALENDAR_WEEKEND_COOKIE, serializeWeekendDays(days));
 }
 
 // Remember the owner's chosen Clients layout (List / Cards / Table / Focus).
 export async function setClientsViewAction(view: ClientsView) {
   await requireOwnerContext();
-  cookies().set(CLIENTS_VIEW_COOKIE, normalizeClientsView(view), { path: '/', maxAge: YEAR, sameSite: 'lax' });
+  await write(CLIENTS_VIEW_COOKIE, normalizeClientsView(view));
 }
 
 // Remember how the Recurring page is dressed (Cards / Operations).
 export async function setRecurringViewAction(view: RecurringView) {
   await requireOwnerContext();
-  cookies().set(RECURRING_VIEW_COOKIE, normalizeRecurringView(view), { path: '/', maxAge: YEAR, sameSite: 'lax' });
+  await write(RECURRING_VIEW_COOKIE, normalizeRecurringView(view));
 }
 
 // Focus is ONE page-level mode for Crew & Labor, not a layout each tab picks
@@ -65,13 +70,10 @@ export async function setRecurringViewAction(view: RecurringView) {
 //
 // The theme lives in its own cookie so Labor by job — which has no picker —
 // still knows which way the page is dressed.
-const jar = () => cookies();
-const write = (name: string, value: string) => jar().set(name, value, { path: '/', maxAge: YEAR, sameSite: 'lax' });
-
-function syncCrewFocus(focus: boolean, keep: 'hours' | 'roster'): void {
-  write(CREW_THEME_COOKIE, normalizeCrewTheme(focus ? 'focus' : 'standard'));
-  if (keep !== 'hours') write(CREW_VIEW_COOKIE, focus ? 'focus' : 'table');
-  if (keep !== 'roster') write(CREW_ROSTER_VIEW_COOKIE, focus ? 'focus' : 'rows');
+async function syncCrewFocus(focus: boolean, keep: 'hours' | 'roster'): Promise<void> {
+  await write(CREW_THEME_COOKIE, normalizeCrewTheme(focus ? 'focus' : 'standard'));
+  if (keep !== 'hours') await write(CREW_VIEW_COOKIE, focus ? 'focus' : 'table');
+  if (keep !== 'roster') await write(CREW_ROSTER_VIEW_COOKIE, focus ? 'focus' : 'rows');
 }
 
 /**
@@ -89,23 +91,23 @@ function syncCrewFocus(focus: boolean, keep: 'hours' | 'roster'): void {
  */
 export async function setCrewOverviewAction(on: boolean) {
   await requireOwnerContext();
-  write(CREW_THEME_COOKIE, on ? 'overview' : 'standard');
+  await write(CREW_THEME_COOKIE, on ? 'overview' : 'standard');
 }
 
 // Remember the owner's chosen Hours & pay layout (Table / Grouped / Rail / Focus).
 export async function setCrewViewAction(view: CrewView) {
   await requireOwnerContext();
   const next = normalizeCrewView(view);
-  write(CREW_VIEW_COOKIE, next);
-  syncCrewFocus(next === 'focus', 'hours');
+  await write(CREW_VIEW_COOKIE, next);
+  await syncCrewFocus(next === 'focus', 'hours');
 }
 
 // Remember the owner's chosen Crew members layout (Rows / Cards / Board / Table / Focus).
 export async function setRosterViewAction(view: RosterView) {
   await requireOwnerContext();
   const next = normalizeRosterView(view);
-  write(CREW_ROSTER_VIEW_COOKIE, next);
-  syncCrewFocus(next === 'focus', 'roster');
+  await write(CREW_ROSTER_VIEW_COOKIE, next);
+  await syncCrewFocus(next === 'focus', 'roster');
 }
 
 // Remember the Crew & Labor skin (Standard / Daylight / Blueprint).
@@ -115,5 +117,5 @@ export async function setRosterViewAction(view: RosterView) {
 // the owner is in exactly where it was.
 export async function setCrewSkinAction(skin: CrewSkin) {
   await requireOwnerContext();
-  write(CREW_SKIN_COOKIE, normalizeCrewSkin(skin));
+  await write(CREW_SKIN_COOKIE, normalizeCrewSkin(skin));
 }

@@ -11,17 +11,21 @@ import { renderSiteVideoIndex, siteVideoIndexMetadata } from '@/lib/seo/video-in
 // contractor has verified a domain yet; it would have broken for the first one.
 export const dynamic = 'force-dynamic';
 
-type Props = { params: { domain: string } };
+type Props = { params: Promise<{ domain: string }> };
 
 async function loadSite(domain: string) {
   const site = await getPublicSiteByCustomDomain(createAdminClient(), decodeURIComponent(domain).toLowerCase());
   return site && site.custom_domain_verified_at ? site : null;
 }
 
-export default async function CustomDomainVideoIndexPage({ params }: Props) {
-  return renderSiteVideoIndex(await loadSite(params.domain));
+export default async function CustomDomainVideoIndexPage({ params: paramsPromise }: Props) {
+  const params = await paramsPromise;
+  const { domain } = await params;
+  return await renderSiteVideoIndex(await loadSite(domain));
 }
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  return siteVideoIndexMetadata(await loadSite(params.domain));
+export async function generateMetadata({ params: paramsPromise }: Props): Promise<Metadata> {
+  const params = await paramsPromise;
+  const { domain } = await params;
+  return siteVideoIndexMetadata(await loadSite(domain));
 }

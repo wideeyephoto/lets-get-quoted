@@ -39,7 +39,8 @@ function fmt(v: string | null): string {
   return v ? new Date(v).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }) : '—';
 }
 
-export default async function AdminStaffPage({ searchParams }: { searchParams: { done?: string; error?: string } }) {
+export default async function AdminStaffPage({ searchParams: searchParamsPromise }: { searchParams: Promise<{ done?: string; error?: string }> }) {
+  const searchParams = (await searchParamsPromise) || {};
   const ctx = await requirePermission('staff.manage');
   let directoryAvailable = true;
   let historyAvailable = true;

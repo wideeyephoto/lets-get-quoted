@@ -23,9 +23,12 @@ export const dynamic = 'force-dynamic';
 // like it works: every blog post published after the first crawl is missing.
 export const fetchCache = 'force-no-store';
 
-type Props = { params: { subdomain: string } };
+type Props = {
+  params: Promise<{ subdomain: string }>;
+};
 
-export async function GET(_request: Request, { params }: Props) {
+export async function GET(_request: Request, { params: paramsPromise }: Props) {
+  const params = await paramsPromise;
   const site = await getPublicSiteBySubdomain(createAdminClient(), params.subdomain);
   const origin = site ? siteOrigin(site) : null;
   if (!site || !origin) {
