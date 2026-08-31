@@ -411,7 +411,7 @@ export async function submitQuickStopRequestAction(formData: FormData): Promise<
     const propertyType = (formData.get('propertyType') ?? '').toString().trim() || null;
     const availability = (formData.get('availability') ?? '').toString().trim() || null;
 
-    if (!name || (!phone && !email)) return { ok: false, error: 'Add your name and a phone or email so we can reach you.' };
+    if (!name || !phone) return { ok: false, error: 'Add your name and mobile phone number so we can text you the priority visit offer.' };
     // A Quick Stop is a request to be slotted into a route that is already
     // running. Without an address there is no route position to work out, so
     // the screener cannot answer the one question it exists to answer.

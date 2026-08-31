@@ -140,6 +140,10 @@ export default function QuickStopFlow({
   async function submit() {
     setError(null);
     setRefused(null);
+    if (!phone.trim()) {
+      setError('Add your mobile number — the contractor texts your arrival window and offer directly.');
+      return;
+    }
     // This one submits through JS, not a form submit, so the `required` on the
     // input never fires — the browser only enforces it on a real submit event.
     // Without this check the button silently posted a Quick Stop with nowhere
@@ -404,14 +408,14 @@ export default function QuickStopFlow({
               <input id="es-name" value={name} onChange={(e) => setName(e.target.value)} required placeholder="Jane Homeowner" />
             </div>
             <div className="field">
-              <label htmlFor="es-phone">Mobile</label>
-              <input id="es-phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder={PHONE_EXAMPLE} />
+              <label htmlFor="es-phone">Mobile <span className="book-req">Required for SMS offer</span></label>
+              <input id="es-phone" type="tel" required value={phone} onChange={(e) => setPhone(e.target.value)} placeholder={PHONE_EXAMPLE} />
             </div>
             <div className="field">
-              <label htmlFor="es-email">Email</label>
+              <label htmlFor="es-email">Email <span className="book-opt">Optional</span></label>
               <input id="es-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="jane@email.com" />
             </div>
-            <p className="field-hint booking-contact-hint">Add a mobile <strong>or</strong> an email &mdash; {businessName} needs one to get back to you.</p>
+            <p className="field-hint booking-contact-hint">We will text your arrival window, priority fee, and payment link directly to your mobile phone.</p>
             <div className="field full">
               <label htmlFor="es-address">Address</label>
               <input id="es-address" required value={address} onChange={(e) => setAddress(e.target.value)} placeholder={addressExample(serviceArea)} />
