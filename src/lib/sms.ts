@@ -102,6 +102,7 @@ type QueueAccountSmsInput = Readonly<{
   crewId?: string;
   senderPurpose?: SmsSenderPurpose;
   senderNumberId?: string;
+  availableAt?: Date | string | null;
 }>;
 
 const SMS_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -122,7 +123,9 @@ async function queueAccountSms(input: QueueAccountSmsInput): Promise<string> {
     crewId: input.crewId,
     senderPurpose: input.senderPurpose,
     senderNumberId: input.senderNumberId,
+    availableAt: input.availableAt,
   });
+
   return queued.eventId;
 }
 
@@ -1727,6 +1730,7 @@ export async function sendSpeedToLeadSms(params: {
   body: string;
   accountId: string;
   idempotencyKey?: string;
+  availableAt?: Date | string | null;
 }) {
   return queueAccountSms({
     accountId: params.accountId,
@@ -1735,8 +1739,10 @@ export async function sendSpeedToLeadSms(params: {
     messageKind: 'speed-to-lead',
     category: 'customer_message',
     idempotencyKey: params.idempotencyKey,
+    availableAt: params.availableAt,
   });
 }
+
 
 /**
  * Dispatches an SMS alert when an advertising wallet balance auto-refills.

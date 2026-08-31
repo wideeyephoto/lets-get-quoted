@@ -166,19 +166,14 @@ export async function dispatchSpeedToLeadSms(params: {
 
   if (quietHoursCheck.isDelayed) {
     try {
-      const eventId = await sendSpeedToLeadSms({
+      await sendSpeedToLeadSms({
         accountId,
         phone: recipientPhone,
         businessName,
         body: message,
         idempotencyKey,
+        availableAt: quietHoursCheck.sendAt,
       });
-      if (eventId && quietHoursCheck.sendAt && _admin && typeof _admin.from === 'function') {
-        await _admin
-          .from('sms_delivery_tasks')
-          .update({ available_at: quietHoursCheck.sendAt.toISOString() })
-          .eq('sms_event_id', eventId);
-      }
     } catch (err) {
       console.warn('Quiet-hours speed-to-lead delayed enqueue warning:', err instanceof Error ? err.message : err);
     }
@@ -190,6 +185,7 @@ export async function dispatchSpeedToLeadSms(params: {
       sendAt: quietHoursCheck.sendAt,
     };
   }
+
 
 
   try {

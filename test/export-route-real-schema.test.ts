@@ -111,5 +111,30 @@ describe('account export keyset pagination and tables', () => {
     const req = new NextRequest('http://localhost/admin/accounts/acc-123/export');
     await expect(GET(req, { params: Promise.resolve({ id: 'acc-123' }) })).rejects.toThrow('Unauthorized');
   });
+
+  it('rejects inactive staff members when requirePermission throws inactive error', async () => {
+    const { requirePermission } = await import('@/lib/auth');
+    vi.mocked(requirePermission).mockRejectedValueOnce(new Error('Forbidden: staff account is deactivated'));
+
+    const req = new NextRequest('http://localhost/admin/accounts/acc-123/export');
+    await expect(GET(req, { params: Promise.resolve({ id: 'acc-123' }) })).rejects.toThrow('deactivated');
+  });
+
+  it('rejects staff lacking account.export permission', async () => {
+    const { requirePermission } = await import('@/lib/auth');
+    vi.mocked(requirePermission).mockRejectedValueOnce(new Error('Forbidden: missing account.export'));
+
+    const req = new NextRequest('http://localhost/admin/accounts/acc-123/export');
+    await expect(GET(req, { params: Promise.resolve({ id: 'acc-123' }) })).rejects.toThrow('missing account.export');
+  });
+
+  it('records an audit trail entry in admin_actions on successful export', async () => {
+    const req = new NextRequest('http://localhost/admin/accounts/acc-123/export');
+    const res = await GET(req, { params: Promise.resolve({ id: 'acc-123' }) });
+    expect(res.status).toBe(200);
+
+    expect(mockAdmin.from).toHaveBeenCalledWith('admin_actions');
+  });
 });
+
 

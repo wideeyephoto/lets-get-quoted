@@ -39,6 +39,7 @@ export type EnqueueSmsDeliveryInput = Readonly<{
   paymentId?: string | null;
   crewId?: string | null;
   senderNumberId?: string | null;
+  availableAt?: Date | string | null;
 }>;
 
 export type EnqueuedSmsDelivery = Readonly<{
@@ -113,7 +114,13 @@ export async function enqueueSmsDelivery(
     p_payment_id: nullableUuid(input.paymentId, 'SMS payment id'),
     p_crew_id: nullableUuid(input.crewId, 'SMS crew id'),
     p_sender_number_id: nullableUuid(input.senderNumberId, 'SMS sender number id'),
+    p_available_at: input.availableAt
+      ? typeof input.availableAt === 'string'
+        ? input.availableAt
+        : input.availableAt.toISOString()
+      : null,
   });
+
   if (error) throw new Error(`SMS enqueue failed (${error.code || 'unknown'}).`);
   const result = row(data);
   const eventId = typeof result.sms_event_id === 'string'

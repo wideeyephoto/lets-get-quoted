@@ -69,13 +69,10 @@ describe('AI Speed-to-Lead SMS Engine', () => {
   });
 
   it('evaluates quiet hours against called party local time during speed-to-lead dispatch', async () => {
-    const fakeAdmin = {
-      from: vi.fn().mockReturnValue({
-        update: vi.fn().mockReturnValue({
-          eq: vi.fn().mockResolvedValue({ error: null }),
-        }),
-      }),
-    } as any;
+    const { sendSpeedToLeadSms } = await import('@/lib/sms');
+    vi.mocked(sendSpeedToLeadSms).mockClear();
+
+    const fakeAdmin = {} as any;
 
     const result = await dispatchSpeedToLeadSms({
       admin: fakeAdmin,
@@ -90,6 +87,14 @@ describe('AI Speed-to-Lead SMS Engine', () => {
 
     expect(result.resolvedTimeZone).toBe('America/Los_Angeles');
     expect(result.message).toBeTruthy();
+    expect(sendSpeedToLeadSms).toHaveBeenCalledWith(
+      expect.objectContaining({
+        accountId: '10000000-0000-4000-8000-000000000001',
+        phone: '+14155550199',
+        businessName: 'Apex Roofing',
+      })
+    );
   });
 });
+
 

@@ -676,5 +676,49 @@ describe('30-day money-back guarantee for annual base plans', () => {
     // Scheduled cancel at period end
     expect(stripe.update).toHaveBeenCalledTimes(1);
   });
+
+  it('correctly extracts payment sources across legacy invoices and Stripe Dahlia Invoice Payments', async () => {
+    const { extractPaymentSourceFromInvoice } = await import('@/lib/billing/subscription-cancellation');
+
+    // 1. Legacy string payment_intent
+    expect(extractPaymentSourceFromInvoice({ payment_intent: 'pi_legacy_1' })).toEqual({
+      paymentIntentId: 'pi_legacy_1',
+      chargeId: null,
+    });
+
+    // 2. Legacy expanded payment_intent object
+    expect(extractPaymentSourceFromInvoice({ payment_intent: { id: 'pi_legacy_expanded' } })).toEqual({
+      paymentIntentId: 'pi_legacy_expanded',
+      chargeId: null,
+    });
+
+    // 3. Legacy string charge
+    expect(extractPaymentSourceFromInvoice({ charge: 'ch_legacy_1' })).toEqual({
+      paymentIntentId: null,
+      chargeId: 'ch_legacy_1',
+    });
+
+    // 4. Stripe Dahlia 2026-06-24 Invoice Payments structure
+    const dahliaInvoice = {
+      id: 'in_dahlia_1',
+      payments: {
+        object: 'list',
+        data: [
+          {
+            id: 'ip_1',
+            payment: {
+              payment_intent: 'pi_dahlia_123',
+              charge: 'ch_dahlia_123',
+            },
+          },
+        ],
+      },
+    };
+    expect(extractPaymentSourceFromInvoice(dahliaInvoice)).toEqual({
+      paymentIntentId: 'pi_dahlia_123',
+      chargeId: 'ch_dahlia_123',
+    });
+  });
 });
+
 

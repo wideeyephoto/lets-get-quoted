@@ -86,8 +86,52 @@ export type AnnualGuaranteeRefundCalculation = {
   reason?: string;
 };
 
+export function extractPaymentSourceFromInvoice(
+  invoice: unknown,
+): { paymentIntentId: string | null; chargeId: string | null } {
+  if (!invoice || typeof invoice !== 'object') return { paymentIntentId: null, chargeId: null };
+  const inv = invoice as Record<string, unknown>;
+
+  let paymentIntentId: string | null = null;
+  let chargeId: string | null = null;
+
+  // 1. Direct payment_intent or charge property (standard / legacy invoice objects)
+  if (inv.payment_intent) {
+    paymentIntentId = typeof inv.payment_intent === 'string'
+      ? inv.payment_intent
+      : (inv.payment_intent as { id?: string })?.id ?? null;
+  }
+  if (inv.charge) {
+    chargeId = typeof inv.charge === 'string'
+      ? inv.charge
+      : (inv.charge as { id?: string })?.id ?? null;
+  }
+
+  // 2. Stripe Dahlia Invoice Payments (inv.payments / inv.invoice_payments)
+  if (!paymentIntentId && !chargeId && inv.payments && typeof inv.payments === 'object') {
+    const paymentsObj = inv.payments as { data?: Array<Record<string, unknown>> };
+    if (Array.isArray(paymentsObj.data) && paymentsObj.data.length > 0) {
+      const firstPayment = paymentsObj.data[0];
+      const paymentRef = (firstPayment.payment ?? firstPayment) as Record<string, unknown>;
+      if (paymentRef.payment_intent) {
+        paymentIntentId = typeof paymentRef.payment_intent === 'string'
+          ? paymentRef.payment_intent
+          : (paymentRef.payment_intent as { id?: string })?.id ?? null;
+      }
+      if (paymentRef.charge) {
+        chargeId = typeof paymentRef.charge === 'string'
+          ? paymentRef.charge
+          : (paymentRef.charge as { id?: string })?.id ?? null;
+      }
+    }
+  }
+
+  return { paymentIntentId, chargeId };
+}
+
 /**
  * Calculates the exact 30-day money-back guarantee refund for an annual base plan.
+
  * Refund = Annual Prepayment - 1 Month of normal base plan service.
  * Solo: $420 - $39 = $381 (38,100 cents)
  * Growth: $1,188 - $129 = $1,059 (105,900 cents)
@@ -369,37 +413,20 @@ export async function cancelBasePlanSubscriptionAtPeriodEnd(input: {
         subscription: subscription.providerSubscriptionId,
         status: 'paid',
         limit: 1,
-        expand: ['data.payment_intent', 'data.charge'],
+        expand: ['data.payment_intent', 'data.charge', 'data.payments'],
       });
-      const latestInvoice = invoices.data?.[0] as unknown as {
-        payment_intent?: string | { id: string } | null;
-        charge?: string | { id: string } | null;
-      } | undefined;
-      if (latestInvoice?.payment_intent) {
-        paymentIntentId = typeof latestInvoice.payment_intent === 'string'
-          ? latestInvoice.payment_intent
-          : latestInvoice.payment_intent.id;
-      }
-      if (latestInvoice?.charge) {
-        latestChargeId = typeof latestInvoice.charge === 'string'
-          ? latestInvoice.charge
-          : latestInvoice.charge.id;
-      }
+      const latestInvoice = invoices.data?.[0];
+      const invoiceSource = extractPaymentSourceFromInvoice(latestInvoice);
+      paymentIntentId = invoiceSource.paymentIntentId;
+      latestChargeId = invoiceSource.chargeId;
 
       if (!paymentIntentId && !latestChargeId) {
         const sub = await stripe.subscriptions.retrieve(subscription.providerSubscriptionId, {
-          expand: ['latest_invoice.payment_intent'],
+          expand: ['latest_invoice.payment_intent', 'latest_invoice.payments'],
         });
-        const inv = sub.latest_invoice as unknown as {
-          payment_intent?: string | { id: string } | null;
-          charge?: string | { id: string } | null;
-        } | undefined;
-        if (inv?.payment_intent) {
-          paymentIntentId = typeof inv.payment_intent === 'string' ? inv.payment_intent : inv.payment_intent.id;
-        }
-        if (inv?.charge) {
-          latestChargeId = typeof inv.charge === 'string' ? inv.charge : inv.charge.id;
-        }
+        const subInvoiceSource = extractPaymentSourceFromInvoice(sub.latest_invoice);
+        paymentIntentId = subInvoiceSource.paymentIntentId;
+        latestChargeId = subInvoiceSource.chargeId;
       }
     } catch (invErr) {
       console.warn(`Could not resolve payment source for subscription ${subscription.providerSubscriptionId}:`, invErr);
@@ -412,6 +439,7 @@ export async function cancelBasePlanSubscriptionAtPeriodEnd(input: {
         error: 'Unable to locate the original payment to refund automatically. Please contact support to process your 30-day guarantee.',
       };
     }
+
 
     let stripeRefundId: string | null = null;
     try {
