@@ -50,8 +50,14 @@ async function listAllBucketFilesRecursively(
       });
 
       if (error) {
-        // If bucket is missing or unconfigured in local test/dev environment, safely stop
-        break;
+        const isNotFound = error.message?.toLowerCase().includes('not found') ||
+          (error as { statusCode?: string | number })?.statusCode === 404 ||
+          (error as { status?: number })?.status === 404;
+        if (isNotFound) {
+          hasMore = false;
+          break;
+        }
+        throw new Error(`Storage list error on bucket ${bucket} (prefix: ${currentPrefix}): ${error.message}`);
       }
 
       if (!data || data.length === 0) {

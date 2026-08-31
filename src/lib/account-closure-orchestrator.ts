@@ -156,6 +156,26 @@ export async function processClosureJob(
             if (delErr && delErr.code !== '42P01') {
               throw new Error(`Disposal delete on ${table} failed: ${delErr.message}`);
             }
+          } else if (disposition.relationship === 'fk_chain' && disposition.fkPath && disposition.fkPath.length >= 2) {
+            const [foreignKey, parentPath] = disposition.fkPath;
+            const [parentTable, parentAccountIdCol] = parentPath.split('.');
+            try {
+              const { data: parentRows } = await admin
+                .from(parentTable)
+                .select('id')
+                .eq(parentAccountIdCol || 'account_id', accountId);
+              const parentIds = (parentRows ?? []).map((r: { id: string }) => r.id).filter(Boolean);
+              if (parentIds.length > 0) {
+                const { error: delErr } = await admin.from(table).delete().in(foreignKey, parentIds);
+                if (delErr && delErr.code !== '42P01') {
+                  throw new Error(`Disposal delete on ${table} failed: ${delErr.message}`);
+                }
+              }
+            } catch (fkErr) {
+              if (fkErr instanceof Error && !fkErr.message.includes('42P01')) {
+                throw fkErr;
+              }
+            }
           }
         } else if (disposition.localAction === 'anonymize_columns' && disposition.targetColumns?.length) {
           const anonymizedFields: Record<string, unknown> = {};

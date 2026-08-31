@@ -478,7 +478,7 @@ export async function closeAndAnonymizeAccountAction(accountId: string, formData
   const adapters = buildProductionClosureAdapters(admin);
   const result = await processClosureJob(admin, jobId, adapters);
 
-  if (!result.success) {
+  if (!result.success || !result.completed) {
     console.error('closeAndAnonymizeAccountAction completed with errors:', result.errors);
     backTo(accountId, 'error=delete_failed');
   }

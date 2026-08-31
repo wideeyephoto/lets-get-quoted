@@ -24,7 +24,7 @@ describe('multidimensional data disposition registry', () => {
   it('enforces valid multidimensional attributes on all entries', () => {
     for (const [name, entry] of Object.entries(DATA_DISPOSITION_REGISTRY)) {
       expect(entry.tableName).toBe(name);
-      expect(['direct_account_id', 'account_primary_key', 'fk_chain', 'storage_path']).toContain(entry.relationship);
+      expect(['direct_account_id', 'account_primary_key', 'fk_chain', 'storage_path', 'system_global']).toContain(entry.relationship);
       expect(['delete', 'anonymize_columns', 'retain_immutable']).toContain(entry.localAction);
       expect(['full', 'redacted', 'exempt', 'internal_system']).toContain(entry.portability);
       expect(entry.retention).toBeDefined();
