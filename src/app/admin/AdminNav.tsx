@@ -7,6 +7,7 @@ import styles from './admin.module.css';
 
 const ICONS: Record<string, string> = {
   '/admin': '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/>',
+  '/admin/operator': '<path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/><path d="M5 3v4M3 5h4M19 17v4M17 19h4"/>',
   '/admin/search': '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
   '/admin/accounts': '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
   '/admin/cases': '<polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>',
@@ -27,6 +28,7 @@ const ICONS: Record<string, string> = {
 
 const ITEMS: { href: string; label: string; permission?: Permission }[] = [
   { href: '/admin', label: 'Command Center' },
+  { href: '/admin/operator', label: 'AI Operator ⚡' },
   { href: '/admin/search', label: 'Search' },
   { href: '/admin/accounts', label: 'Accounts' },
   { href: '/admin/cases', label: 'Cases' },
