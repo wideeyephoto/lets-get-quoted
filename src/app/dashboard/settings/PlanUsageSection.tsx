@@ -39,6 +39,8 @@ import TopUpPurchaseCheckout from './TopUpPurchaseCheckout';
 import PurchasedCapacityList from './PurchasedCapacityList';
 import SettingsHashLink from './SettingsHashLink';
 import ProcessingVolumeRoiCalculator from './ProcessingVolumeRoiCalculator';
+import Link from 'next/link';
+import type { AdBudgetWalletState } from '@/lib/ad-billing-shared';
 import PlanSubnav from './PlanSubnav';
 import type { OfficeTeam } from '@/lib/office-team';
 import OfficeTeamSection from './OfficeTeamSection';
@@ -506,6 +508,13 @@ function ResourceIcon({ label }: { label: string }) {
       </svg>
     );
   }
+  if (norm.includes('ad') || norm.includes('advertising') || norm.includes('campaign') || norm.includes('google')) {
+    return (
+      <svg viewBox="0 0 24 24" className="plan-usage-resource-ic" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+      </svg>
+    );
+  }
   return (
     <svg viewBox="0 0 24 24" className="plan-usage-resource-ic" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" />
@@ -658,6 +667,113 @@ function CreditBalance({ resource }: { resource: CreditLotSplit }) {
       {(resource.label.includes('AI') || resource.resourceCode === 'ai_intake_threads' || resource.resourceCode === 'ai_writing_drafts') ? (
         <small className="plan-usage-shared-pool-tag">⚡ Powers Smart Intake lead qualification, AI quotes, &amp; marketing copy</small>
       ) : null}
+    </article>
+  );
+}
+
+function AdBalanceCard({ adWallet }: { adWallet?: AdBudgetWalletState | null }) {
+  const isConfigured = Boolean(adWallet && adWallet.status && adWallet.status !== 'inactive');
+  const balanceCents = adWallet?.walletBalanceCents ?? 0;
+  const status = adWallet?.status ?? 'inactive';
+  const fundingModel = adWallet?.fundingModel ?? 'weekly_drip';
+  const refillThresholdCents = adWallet?.refillThresholdCents ?? 7500;
+  const maxMonthlySpendCents = adWallet?.maxMonthlySpendCents ?? 100000;
+  const spendThisMonthCents = adWallet?.spendThisMonthCents ?? 0;
+  const weeklyBudgetCents = adWallet?.weeklyBudgetCents ?? 16000;
+  const monthlyBudgetCents = adWallet?.monthlyBudgetCents ?? 60000;
+
+  const tone: Tone = !isConfigured
+    ? 'neutral'
+    : status === 'past_due' || status === 'failed'
+      ? 'danger'
+      : status === 'paused'
+        ? 'warn'
+        : balanceCents <= refillThresholdCents
+          ? 'warn'
+          : 'healthy';
+
+  let percentUsed: number | null = null;
+  let meterAriaLabel = '';
+
+  if (isConfigured && status === 'active') {
+    if (fundingModel === 'auto_refill_wallet' && maxMonthlySpendCents > 0) {
+      percentUsed = Math.min(100, Math.round((spendThisMonthCents / maxMonthlySpendCents) * 100));
+      meterAriaLabel = `${percentUsed}% of this month's ad spend cap used`;
+    } else if (fundingModel === 'weekly_drip') {
+      const monthlyTarget = monthlyBudgetCents > 0 ? monthlyBudgetCents : Math.round(weeklyBudgetCents * (52 / 12));
+      percentUsed = monthlyTarget > 0 ? Math.min(100, Math.round((spendThisMonthCents / monthlyTarget) * 100)) : null;
+      meterAriaLabel = percentUsed !== null ? `${percentUsed}% of monthly ad spend pace used` : '';
+    } else if (fundingModel === 'monthly_fixed' && monthlyBudgetCents > 0) {
+      percentUsed = Math.min(100, Math.round((spendThisMonthCents / monthlyBudgetCents) * 100));
+      meterAriaLabel = `${percentUsed}% of monthly ad budget used`;
+    }
+  }
+
+  return (
+    <article className="plan-usage-balance" data-tone={tone}>
+      <div className="plan-usage-resource-header">
+        <div className="plan-usage-resource-title">
+          <span className={`plan-usage-status-dot ${tone}`} aria-hidden="true" />
+          <ResourceIcon label="Ad spend balance" />
+          <span>Ad Spend Balance</span>
+        </div>
+        <Link
+          href="/dashboard/marketing/ads"
+          className="plan-usage-refill-chip"
+          aria-label="Manage Google & Meta ad campaigns"
+        >
+          {isConfigured ? 'Manage Ads ↗' : '+ Launch Ads'}
+        </Link>
+      </div>
+
+      <strong>
+        {isConfigured || balanceCents > 0
+          ? `$${(balanceCents / 100).toFixed(2)} available`
+          : 'Not configured'}
+      </strong>
+
+      {percentUsed !== null ? (
+        <div
+          className="plan-usage-storage-meter"
+          role="img"
+          aria-label={meterAriaLabel}
+        >
+          <div
+            className={`plan-usage-storage-meter-fill${percentUsed >= 90 ? ' nearly' : ''}`}
+            style={{ width: `${Math.max(percentUsed, 2)}%` }}
+          />
+        </div>
+      ) : null}
+
+      {isConfigured ? (
+        <>
+          {fundingModel === 'auto_refill_wallet' ? (
+            <>
+              <small>Auto-refills when balance drops below ${(refillThresholdCents / 100).toFixed(2)}</small>
+              <small>Spent this month: ${(spendThisMonthCents / 100).toFixed(2)} of ${(maxMonthlySpendCents / 100).toFixed(2)} cap</small>
+            </>
+          ) : fundingModel === 'weekly_drip' ? (
+            <>
+              <small>Weekly drip: ${(weeklyBudgetCents / 100).toFixed(2)}/wk deployed daily</small>
+              <small>Spent this month: ${(spendThisMonthCents / 100).toFixed(2)}</small>
+            </>
+          ) : (
+            <>
+              <small>Monthly budget: ${(monthlyBudgetCents / 100).toFixed(2)}/mo</small>
+              <small>Spent this month: ${(spendThisMonthCents / 100).toFixed(2)}</small>
+            </>
+          )}
+          {status === 'paused' ? (
+            <small style={{ color: 'var(--amber-11, #f59e0b)' }}>Campaign paused — bidding suspended</small>
+          ) : status === 'past_due' ? (
+            <small style={{ color: 'var(--red-11, #ef4444)' }}>Payment past due — click Manage to update card</small>
+          ) : null}
+        </>
+      ) : (
+        <small>Continuous Google Search Ads Autopilot &amp; Meta clicks</small>
+      )}
+
+      <small className="plan-usage-shared-pool-tag">🎯 Deployed to Google Search &amp; Meta clicks on autopilot</small>
     </article>
   );
 }
@@ -878,6 +994,7 @@ export default function PlanUsageSection({
   lots = null,
   officeTeam = null,
   overageSelfServe = false,
+  adWallet = null,
 }: {
   data: WorkspacePlanUsage;
   officeTeam?: OfficeTeam | null;
@@ -909,6 +1026,7 @@ export default function PlanUsageSection({
    * decisions, and the read half shipped first on purpose.
    */
   overageSelfServe?: boolean;
+  adWallet?: AdBudgetWalletState | null;
 }) {
   const storageState = storageView(storage);
   const limits = data.plan.kind === 'ready' ? includedLimits(data.plan.limits, purchasedSeats) : [];
@@ -969,15 +1087,21 @@ export default function PlanUsageSection({
     && data.plan.billingInterval === 'none'
     && data.plan.billingStatus === 'free'
     && data.plan.entitlementState === 'active';
+  const adSummary = adWallet && adWallet.status && adWallet.status !== 'inactive'
+    ? `Ads: $${((adWallet.walletBalanceCents ?? 0) / 100).toFixed(2)}`
+    : (adWallet?.walletBalanceCents ?? 0) > 0
+      ? `Ads: $${((adWallet!.walletBalanceCents!) / 100).toFixed(2)}`
+      : 'Ads: Standby';
+
   const creditSummary = lots?.kind === 'ready'
     ? consolidateCreditResources(lots.resources).map((resource) => {
       const available = (resource.periodRemaining ?? 0) + resource.nonExpiring;
       return `${resource.label.replace(/ credits$/i, '')}: ${available.toLocaleString('en-US')}`;
-    }).join(' · ')
+    }).concat(adSummary).join(' · ')
     : data.balances.kind === 'ready'
       ? consolidateUsageBalances(data.balances.balances).map((balance) => (
         `${balance.label.replace(/ credits$/i, '')}: ${balance.availableUnits?.toLocaleString('en-US') ?? '—'}`
-      )).join(' · ')
+      )).concat(adSummary).join(' · ')
       : 'Unavailable';
   const creditNeedsAttention = lots?.kind !== 'ready' && data.balances.kind !== 'ready';
 
@@ -1061,8 +1185,8 @@ export default function PlanUsageSection({
             <details className="plan-usage-limit-row workspace-fold plan-usage-credit-row" open={creditNeedsAttention}>
               <summary>
                 <span className="section-heading workspace-section-heading compact-heading">
-                  <span className="eyebrow">Communications &amp; AI</span>
-                  <span className="workspace-fold-title"><SectionIcon name="credits" />Credit balances</span>
+                  <span className="eyebrow">Communications &amp; Marketing</span>
+                  <span className="workspace-fold-title"><SectionIcon name="credits" />Credit &amp; ad balances</span>
                 </span>
                 <em className={`workspace-fold-note${creditNeedsAttention ? '' : ' neutral'} plan-usage-limit-summary`}>
                   {creditSummary}
@@ -1073,6 +1197,7 @@ export default function PlanUsageSection({
                   {consolidateCreditResources(lots.resources).map((resource) => (
                     <CreditBalance key={resource.label} resource={resource} />
                   ))}
+                  <AdBalanceCard adWallet={adWallet} />
                 </div>
               ) : data.balances.kind === 'ready' ? (
                 <div className="plan-usage-balance-grid">
@@ -1087,6 +1212,7 @@ export default function PlanUsageSection({
                       <small>{balanceNote(balance)}</small>
                     </article>
                   ))}
+                  <AdBalanceCard adWallet={adWallet} />
                 </div>
               ) : (
                 <div className="plan-usage-unavailable" role="status">
@@ -1098,7 +1224,8 @@ export default function PlanUsageSection({
                 <summary>How these balances work</summary>
                 <p className="workspace-details-copy plan-usage-intro">
                   Plan credits refresh each period. Purchased credits and starter balances are counted separately,
-                  never expire, and are used only after refreshing credits run out.
+                  never expire, and are used only after refreshing credits run out. Ad balances are continuously
+                  applied to live Google and Meta ad clicks and auto-refill or drip based on your campaign settings.
                 </p>
               </details>
             </details>

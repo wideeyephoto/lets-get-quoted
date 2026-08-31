@@ -1,6 +1,6 @@
 /* GENERATED — do not edit. Source: src/app/globals.css
    Run: node scripts/build-css-subset.mjs
-   source-sha256: 19157e01d081db71
+   source-sha256: 2c6adf96eb863a7e
 
    globals.css with the rules that can only match inside /dashboard, /admin and
    /demo removed. Every route except those three imports this file; they import
@@ -10410,6 +10410,37 @@ li+li {
   background: rgba(220, 38, 38, .85);
 }
 
+.photo-thumb-annotate {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  border: none;
+  background: rgba(0, 0, 0, .65);
+  color: #38bdf8;
+  font-size: 0.72rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 2;
+  transition: all .15s ease;
+}
+
+.photo-thumb-annotate::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+}
+
+.photo-thumb-annotate:hover {
+  background: rgba(2, 132, 199, .9);
+  color: #fff;
+  transform: scale(1.1);
+}
+
 .photo-lightbox-backdrop {
   position: fixed;
   inset: 0;
@@ -10419,6 +10450,31 @@ li+li {
   align-items: center;
   justify-content: center;
   padding: 3rem;
+}
+
+.photo-lightbox-annotate {
+  position: absolute;
+  top: 1.25rem;
+  right: 4.5rem;
+  padding: 0.5rem 0.9rem;
+  border-radius: 999px;
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  background: rgba(56, 189, 248, 0.15);
+  color: #38bdf8;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  transition: all .15s ease;
+  z-index: 10;
+}
+
+.photo-lightbox-annotate:hover {
+  background: #0284c7;
+  color: #ffffff;
+  border-color: #0284c7;
 }
 
 .photo-lightbox-image {

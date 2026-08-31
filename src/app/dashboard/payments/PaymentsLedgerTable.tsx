@@ -145,6 +145,7 @@ export default function PaymentsLedgerTable({ initialRows, summary: _summary, on
   const [typeFilter, setTypeFilter] = useState('all');
   const [sortField, setSortField] = useState<SortField>('date');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   function handleSort(field: SortField) {
     if (sortField === field) {
@@ -155,6 +156,56 @@ export default function PaymentsLedgerTable({ initialRows, summary: _summary, on
     }
   }
 
+  function handleToggleRow(id: string) {
+    const next = new Set(selectedIds);
+    if (next.has(id)) {
+      next.delete(id);
+    } else {
+      next.add(id);
+    }
+    setSelectedIds(next);
+  }
+
+  function handleSelectAll(rows: PaymentLedgerItem[]) {
+    if (selectedIds.size === rows.length && rows.length > 0) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(rows.map((r) => r.id)));
+    }
+  }
+
+  function exportRowsToCsv(rows: PaymentLedgerItem[], filename = 'payments_export.csv') {
+    const headers = ['Date', 'Customer', 'Job Ref', 'Invoice Ref', 'Description', 'Method', 'Gross', 'Fee', 'Net', 'Status', 'Transaction ID'];
+    const csvRows = [headers.join(',')];
+
+    for (const r of rows) {
+      const dateStr = r.paidAt ? r.paidAt.slice(0, 10) : r.requestedAt.slice(0, 10);
+      const values = [
+        `"${dateStr}"`,
+        `"${r.clientName.replace(/"/g, '""')}"`,
+        `"${r.jobRef}"`,
+        `"${r.invoiceRef || ''}"`,
+        `"${r.label.replace(/"/g, '""')}"`,
+        `"${r.paymentMethod}"`,
+        r.amount.toFixed(2),
+        r.platformFee.toFixed(2),
+        r.netAmount.toFixed(2),
+        `"${r.status}"`,
+        `"${r.id}"`,
+      ];
+      csvRows.push(values.join(','));
+    }
+
+    const blob = new Blob([csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
   const filteredAndSortedRows = useMemo(() => {
     const result = initialRows.filter((p) => {
       if (statusFilter !== 'all' && p.status !== statusFilter) return false;
@@ -163,6 +214,9 @@ export default function PaymentsLedgerTable({ initialRows, summary: _summary, on
         const m = p.paymentMethod.toLowerCase();
         if (methodFilter === 'card' && !m.includes('card')) return false;
         if (methodFilter === 'ach' && !m.includes('ach')) return false;
+        if (methodFilter === 'cash' && !m.includes('cash')) return false;
+        if (methodFilter === 'check' && !m.includes('check')) return false;
+        if (methodFilter === 'zelle' && !m.includes('zelle')) return false;
         if (methodFilter === 'manual' && (m.includes('card') || m.includes('ach'))) return false;
       }
       if (search.trim()) {
@@ -195,6 +249,16 @@ export default function PaymentsLedgerTable({ initialRows, summary: _summary, on
     return result;
   }, [initialRows, search, statusFilter, methodFilter, typeFilter, sortField, sortOrder]);
 
+  const selectedRows = useMemo(() => {
+    return initialRows.filter((r) => selectedIds.has(r.id));
+  }, [initialRows, selectedIds]);
+
+  const selectedGross = selectedRows.reduce((sum, r) => sum + r.amount, 0);
+  const selectedNet = selectedRows.reduce((sum, r) => sum + r.netAmount, 0);
+
+  const filteredGross = filteredAndSortedRows.reduce((sum, r) => sum + r.amount, 0);
+  const filteredNet = filteredAndSortedRows.reduce((sum, r) => sum + r.netAmount, 0);
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
       {/* Sleek Compact Filter Toolbar */}
@@ -222,7 +286,7 @@ export default function PaymentsLedgerTable({ initialRows, summary: _summary, on
           />
         </div>
 
-        <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }}>
           <select
             aria-label="Filter by payment status"
             value={statusFilter}
@@ -248,7 +312,10 @@ export default function PaymentsLedgerTable({ initialRows, summary: _summary, on
             <option value="all">All Methods</option>
             <option value="card">Cards</option>
             <option value="ach">ACH Bank Debit</option>
-            <option value="manual">Offline (Cash/Check/Zelle)</option>
+            <option value="cash">Cash</option>
+            <option value="check">Check</option>
+            <option value="zelle">Zelle</option>
+            <option value="manual">All Offline</option>
           </select>
 
           <select
@@ -263,14 +330,123 @@ export default function PaymentsLedgerTable({ initialRows, summary: _summary, on
             <option value="stage">Milestone</option>
             <option value="final">Final Balance</option>
           </select>
+
+          <button
+            type="button"
+            className="btn secondary"
+            style={{ fontSize: '0.8rem', padding: '0.35rem 0.65rem' }}
+            onClick={() => exportRowsToCsv(filteredAndSortedRows, `payments_ledger_${Date.now()}.csv`)}
+            title="Download CSV of current view"
+          >
+            📥 Export CSV
+          </button>
         </div>
       </div>
+
+      {/* Dynamic Summary Bar & Method Chips */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', fontSize: '0.8rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+          <span style={{ color: 'var(--text-muted)' }}>
+            Showing <strong>{filteredAndSortedRows.length}</strong> of {initialRows.length} transactions
+          </span>
+          <span style={{ color: 'var(--border-subtle, #cbd5e1)' }}>•</span>
+          <span>Filtered Gross: <strong>{formatUsd(filteredGross)}</strong></span>
+          <span style={{ color: 'var(--border-subtle, #cbd5e1)' }}>•</span>
+          <span style={{ color: '#059669', fontWeight: 600 }}>Net Cash: <strong>{formatUsd(filteredNet)}</strong></span>
+        </div>
+
+        {/* Quick Filter Chips */}
+        <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}>
+          {[
+            { key: 'all', label: 'All' },
+            { key: 'card', label: '💳 Cards' },
+            { key: 'ach', label: '🏦 ACH' },
+            { key: 'cash', label: '💵 Cash' },
+            { key: 'check', label: '📜 Checks' },
+            { key: 'zelle', label: '📱 Zelle' },
+          ].map((chip) => (
+            <button
+              key={chip.key}
+              type="button"
+              onClick={() => setMethodFilter(chip.key)}
+              style={{
+                fontSize: '0.74rem',
+                padding: '0.15rem 0.5rem',
+                borderRadius: '999px',
+                border: methodFilter === chip.key ? '1px solid var(--primary, #3b82f6)' : '1px solid var(--border-subtle, #e2e8f0)',
+                background: methodFilter === chip.key ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
+                color: methodFilter === chip.key ? 'var(--primary, #3b82f6)' : 'var(--text-muted)',
+                fontWeight: methodFilter === chip.key ? 700 : 500,
+                cursor: 'pointer',
+              }}
+            >
+              {chip.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Floating Multi-Select Batch Action Bar */}
+      {selectedIds.size > 0 && (
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '0.75rem',
+            padding: '0.65rem 1rem',
+            background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.08) 0%, rgba(16, 185, 129, 0.08) 100%)',
+            border: '1px solid rgba(59, 130, 246, 0.3)',
+            borderRadius: '8px',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.03)',
+            animation: 'fadeIn 0.15s ease-out',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '0.86rem' }}>
+            <span style={{ padding: '0.15rem 0.5rem', borderRadius: '999px', background: 'var(--primary, #3b82f6)', color: '#fff', fontWeight: 700, fontSize: '0.78rem' }}>
+              {selectedIds.size} Selected
+            </span>
+            <span>
+              Total: <strong>{formatUsd(selectedGross)}</strong> gross (<strong>{formatUsd(selectedNet)}</strong> net)
+            </span>
+          </div>
+
+          <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+            <button
+              type="button"
+              className="btn primary"
+              style={{ fontSize: '0.8rem', padding: '0.35rem 0.75rem' }}
+              onClick={() => exportRowsToCsv(selectedRows, `selected_payments_${selectedIds.size}.csv`)}
+            >
+              📥 Export {selectedIds.size} Selected to CSV
+            </button>
+            <button
+              type="button"
+              className="btn secondary"
+              style={{ fontSize: '0.8rem', padding: '0.35rem 0.65rem' }}
+              onClick={() => setSelectedIds(new Set())}
+            >
+              Clear
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Transactions Table with Micro-Hover & Monograms */}
       <div className="table-responsive" style={{ overflowX: 'auto', border: '1px solid var(--border-subtle, #e2e8f0)', borderRadius: '8px' }}>
         <table className="data-table" style={{ width: '100%', fontSize: '0.84rem', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ background: 'var(--panel-subtle, rgba(0,0,0,0.02))' }}>
+              <th style={{ padding: '0.6rem 0.5rem', width: '32px', textAlign: 'center' }}>
+                <input
+                  type="checkbox"
+                  aria-label="Select all transactions"
+                  checked={filteredAndSortedRows.length > 0 && selectedIds.size === filteredAndSortedRows.length}
+                  onChange={() => handleSelectAll(filteredAndSortedRows)}
+                  style={{ cursor: 'pointer' }}
+                />
+              </th>
               <th style={{ padding: '0.6rem 0.8rem', textAlign: 'left', cursor: 'pointer' }} onClick={() => handleSort('date')}>
                 Date {sortField === 'date' ? (sortOrder === 'asc' ? '↑' : '↓') : ''}
               </th>
@@ -293,7 +469,7 @@ export default function PaymentsLedgerTable({ initialRows, summary: _summary, on
           <tbody>
             {filteredAndSortedRows.length === 0 ? (
               <tr>
-                <td colSpan={9} style={{ textAlign: 'center', padding: '2.5rem 1rem', color: 'var(--text-muted)' }}>
+                <td colSpan={10} style={{ textAlign: 'center', padding: '2.5rem 1rem', color: 'var(--text-muted)' }}>
                   <div style={{ fontSize: '1.75rem', marginBottom: '0.4rem' }}>🔍</div>
                   <strong>No transactions match your filter</strong>
                   <p style={{ margin: '0.25rem 0 0', fontSize: '0.8rem' }}>Try clearing filters or search query.</p>
@@ -301,6 +477,7 @@ export default function PaymentsLedgerTable({ initialRows, summary: _summary, on
               </tr>
             ) : (
               filteredAndSortedRows.map((p) => {
+                const isSelected = selectedIds.has(p.id);
                 const dateStr = p.paidAt
                   ? new Date(p.paidAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
                   : new Date(p.requestedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
@@ -312,11 +489,27 @@ export default function PaymentsLedgerTable({ initialRows, summary: _summary, on
                     key={p.id}
                     style={{
                       borderTop: '1px solid var(--border-subtle, #e2e8f0)',
+                      background: isSelected ? 'rgba(59, 130, 246, 0.05)' : 'transparent',
                       transition: 'background 0.15s ease',
                     }}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(59, 130, 246, 0.03)')}
-                    onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                    onMouseEnter={(e) => {
+                      if (!isSelected) e.currentTarget.style.background = 'rgba(59, 130, 246, 0.03)';
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!isSelected) e.currentTarget.style.background = 'transparent';
+                    }}
                   >
+                    {/* Checkbox */}
+                    <td style={{ padding: '0.6rem 0.5rem', textAlign: 'center' }}>
+                      <input
+                        type="checkbox"
+                        aria-label={`Select transaction ${p.label}`}
+                        checked={isSelected}
+                        onChange={() => handleToggleRow(p.id)}
+                        style={{ cursor: 'pointer' }}
+                      />
+                    </td>
+
                     {/* Date */}
                     <td style={{ padding: '0.6rem 0.8rem', whiteSpace: 'nowrap', color: 'var(--text-muted)' }}>
                       {dateStr}
@@ -389,6 +582,17 @@ export default function PaymentsLedgerTable({ initialRows, summary: _summary, on
                     {/* Actions */}
                     <td style={{ padding: '0.6rem 0.8rem', textAlign: 'right', whiteSpace: 'nowrap' }}>
                       <div style={{ display: 'flex', gap: '0.3rem', justifyContent: 'flex-end' }}>
+                        {p.status === 'paid' && (
+                          <button
+                            type="button"
+                            className="btn secondary"
+                            style={{ padding: '0.2rem 0.45rem', fontSize: '0.74rem', fontWeight: 600, color: '#059669' }}
+                            title="View & Print Official Receipt"
+                            onClick={() => onOpenModal('payment_receipt', p)}
+                          >
+                            🧾 Receipt
+                          </button>
+                        )}
                         <button
                           type="button"
                           className="btn secondary"
@@ -428,3 +632,4 @@ export default function PaymentsLedgerTable({ initialRows, summary: _summary, on
     </div>
   );
 }
+

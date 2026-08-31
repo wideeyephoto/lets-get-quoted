@@ -12,6 +12,7 @@ import SiteFooter from '@/components/site-footer';
 import TradeRoiCalculator from './TradeRoiCalculator';
 import TradeTopicCluster from './TradeTopicCluster';
 import TradeDefinitiveSuite from './TradeDefinitiveSuite';
+import TradeInsuranceClaimsShowcase from './TradeInsuranceClaimsShowcase';
 import { getTradeTopicCluster } from '@/lib/trade-clusters';
 import { getDefinitiveTradeData } from '@/lib/trade-deep-data';
 
@@ -118,6 +119,9 @@ export default function TradePage({ params }: { params: { trade: string } }) {
       <TradeRoiCalculator trade={trade} />
 
       <TradeDefinitiveSuite trade={trade} />
+
+      {/* Insurance Claims & Supplement Studio Showcase (Gated to insurance-eligible trades) */}
+      <TradeInsuranceClaimsShowcase trade={trade} />
 
       <section className="section-block">
         <div className="section-heading">

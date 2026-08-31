@@ -506,9 +506,19 @@ export function formatSubcontractorSlip(
   trade: SubcontractorTrade,
   scan: RoomSpatialScan,
   summary: RoomDimensionsSummary,
-  items: SupplyHouseItem[]
+  items: SupplyHouseItem[],
+  annotatedPhotoUrls?: string[]
 ): string {
   const dateStr = scan.scannedAt;
+  const photoSection =
+    annotatedPhotoUrls && annotatedPhotoUrls.length > 0
+      ? [
+          ``,
+          `SITE MARKUP & INSPECTION PHOTOS:`,
+          ...annotatedPhotoUrls.map((url, idx) => ` • Inspection Markup #${idx + 1}: ${url}`),
+        ]
+      : [];
+
   if (trade === 'tile') {
     const tileItems = items.filter(
       (i) => i.category === 'Flooring & Tile' || i.category === 'Wet Wall & Waterproofing'
@@ -534,6 +544,7 @@ export function formatSubcontractorSlip(
       lines.push(` • ${it.quantity} ${it.unit} — ${it.name} (${it.wasteFactor})`);
       if (it.notes) lines.push(`     Spec: ${it.notes}`);
     }
+    lines.push(...photoSection);
     lines.push(`══════════════════════════════════════════════════════`);
     return lines.join('\n');
   }
@@ -561,6 +572,7 @@ export function formatSubcontractorSlip(
       lines.push(` • ${it.quantity} ${it.unit} — ${it.name} (${it.wasteFactor})`);
       if (it.notes) lines.push(`     Spec: ${it.notes}`);
     }
+    lines.push(...photoSection);
     lines.push(`══════════════════════════════════════════════════════`);
     return lines.join('\n');
   }
@@ -586,6 +598,7 @@ export function formatSubcontractorSlip(
     lines.push(` • ${it.quantity} ${it.unit} — ${it.name} (${it.wasteFactor})`);
     if (it.notes) lines.push(`     Spec: ${it.notes}`);
   }
+  lines.push(...photoSection);
   lines.push(`══════════════════════════════════════════════════════`);
   return lines.join('\n');
 }

@@ -176,6 +176,19 @@ export default function RevenuePaymentsScreen({
           <button
             type="button"
             className="btn secondary"
+            style={{ fontWeight: 600, fontSize: '0.88rem' }}
+            onClick={() => {
+              setSelectedPayment(null);
+              setActiveModal('field_collect');
+            }}
+            title="Open Touch-First Jobsite Field Terminal"
+          >
+            📲 Field Mode
+          </button>
+
+          <button
+            type="button"
+            className="btn secondary"
             style={{ fontWeight: 500 }}
             onClick={() => {
               setSelectedPayment(null);
@@ -475,6 +488,30 @@ export default function RevenuePaymentsScreen({
             onOpenBatchSettle={() => {
               setSelectedPayment(null);
               setActiveModal('batch_settle');
+            }}
+            onOpenPromiseToPay={(item) => {
+              setSelectedPayment({
+                id: item.id,
+                amount: item.amount,
+                clientName: item.clientName,
+                jobRef: '',
+                label: 'Payment Request',
+              } as PaymentLedgerItem);
+              setActiveModal('promise_to_pay');
+            }}
+            onOpenNoiGenerator={(item) => {
+              setSelectedPayment({
+                id: item.id,
+                amount: item.amount,
+                clientName: item.clientName,
+                jobRef: '',
+                label: 'Payment Request',
+              } as PaymentLedgerItem);
+              setActiveModal('noi_generator');
+            }}
+            onOpenDrawCalendar={() => {
+              setSelectedPayment(null);
+              setActiveModal('draw_calendar');
             }}
             onSuccess={handleShowToast}
           />

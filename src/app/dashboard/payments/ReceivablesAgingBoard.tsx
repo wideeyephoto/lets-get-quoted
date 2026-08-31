@@ -10,6 +10,9 @@ interface Props {
   summary: ReceivablesSummary;
   onOpenManualPayment: (jobId: string, invoiceId?: string, amount?: number) => void;
   onOpenBatchSettle?: () => void;
+  onOpenPromiseToPay?: (payment: { id: string; clientName: string; amount: number }) => void;
+  onOpenNoiGenerator?: (payment: { id: string; clientName: string; amount: number }) => void;
+  onOpenDrawCalendar?: () => void;
   onSuccess: (message: string) => void;
 }
 
@@ -22,10 +25,14 @@ export default function ReceivablesAgingBoard({
   summary,
   onOpenManualPayment,
   onOpenBatchSettle,
+  onOpenPromiseToPay,
+  onOpenNoiGenerator,
+  onOpenDrawCalendar,
   onSuccess,
 }: Props) {
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [batchLoading, setBatchLoading] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   async function handleSendReminder(paymentId: string) {
     setLoadingId(paymentId);
@@ -53,6 +60,13 @@ export default function ReceivablesAgingBoard({
     } else {
       alert(res.error || 'Failed to broadcast reminders.');
     }
+  }
+
+  function handleCopyPayLink(paymentId: string) {
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://app.letsgetquoted.com';
+    navigator.clipboard.writeText(`${origin}/pay/${paymentId}`);
+    setCopiedId(paymentId);
+    setTimeout(() => setCopiedId(null), 2500);
   }
 
   const columns = [
@@ -102,6 +116,18 @@ export default function ReceivablesAgingBoard({
               onClick={onOpenBatchSettle}
             >
               🧾 Settle Multiple Invoices
+            </button>
+          )}
+
+          {onOpenDrawCalendar && (
+            <button
+              type="button"
+              className="btn secondary"
+              style={{ fontSize: '0.82rem', padding: '0.35rem 0.75rem' }}
+              onClick={onOpenDrawCalendar}
+              title="Open 30-Day Draw Forecast Calendar"
+            >
+              📅 Draw Horizon Calendar
             </button>
           )}
 
@@ -177,6 +203,7 @@ export default function ReceivablesAgingBoard({
                   col.items.map((item) => {
                     const avatar = getAvatarColor(item.clientName);
                     const initials = getClientInitials(item.clientName);
+                    const hasPromiseDate = Boolean(item.dueDate);
 
                     return (
                       <div
@@ -214,7 +241,7 @@ export default function ReceivablesAgingBoard({
                                 fontWeight: 700,
                                 display: 'flex',
                                 alignItems: 'center',
-                                justifyContent: 'center',
+                                justifySelf: 'center',
                                 flexShrink: 0,
                               }}
                             >
@@ -230,7 +257,7 @@ export default function ReceivablesAgingBoard({
                           </strong>
                         </div>
 
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.72rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.72rem', flexWrap: 'wrap', gap: '0.2rem' }}>
                           <span style={{ color: item.daysOverdue > 0 ? col.color : 'var(--text-muted)', fontWeight: item.daysOverdue > 0 ? 600 : 400 }}>
                             {item.daysOverdue > 0 ? `${item.daysOverdue}d overdue` : 'Due on receipt'}
                           </span>
@@ -239,8 +266,55 @@ export default function ReceivablesAgingBoard({
                           </span>
                         </div>
 
+                        {/* Promise to Pay Badge */}
+                        {hasPromiseDate && (
+                          <div style={{ fontSize: '0.72rem', padding: '0.2rem 0.4rem', background: 'rgba(59, 130, 246, 0.08)', color: '#2563eb', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                            <span>📅 Promised:</span>
+                            <strong>{new Date(item.dueDate!).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</strong>
+                          </div>
+                        )}
+
+                        {/* Card Quick Utility Shortcuts */}
+                        <div style={{ display: 'flex', gap: '0.25rem', justifyContent: 'space-between', fontSize: '0.7rem' }}>
+                          {item.clientPhone && (
+                            <a
+                              href={`tel:${item.clientPhone}`}
+                              style={{ color: 'var(--primary, #3b82f6)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.15rem' }}
+                              title={`Call ${item.clientPhone}`}
+                            >
+                              📞 Call
+                            </a>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleCopyPayLink(item.id)}
+                            style={{ background: 'none', border: 'none', padding: 0, color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.7rem' }}
+                          >
+                            {copiedId === item.id ? '✓ Copied' : '🔗 Link'}
+                          </button>
+                          {onOpenPromiseToPay && (
+                            <button
+                              type="button"
+                              onClick={() => onOpenPromiseToPay({ id: item.id, clientName: item.clientName, amount: item.amountDue })}
+                              style={{ background: 'none', border: 'none', padding: 0, color: '#2563eb', cursor: 'pointer', fontSize: '0.7rem', fontWeight: 600 }}
+                            >
+                              📅 Promise
+                            </button>
+                          )}
+                          {onOpenNoiGenerator && item.daysOverdue >= 30 && (
+                            <button
+                              type="button"
+                              onClick={() => onOpenNoiGenerator({ id: item.id, clientName: item.clientName, amount: item.amountDue })}
+                              style={{ background: 'none', border: 'none', padding: 0, color: '#dc2626', cursor: 'pointer', fontSize: '0.7rem', fontWeight: 700 }}
+                              title="Generate Statutory Notice of Intent to Lien"
+                            >
+                              🛡️ NOI
+                            </button>
+                          )}
+                        </div>
+
                         {/* Card Actions */}
-                        <div style={{ display: 'flex', gap: '0.3rem', marginTop: '0.2rem', paddingTop: '0.35rem', borderTop: '1px solid var(--border-subtle, #f1f5f9)' }}>
+                        <div style={{ display: 'flex', gap: '0.3rem', marginTop: '0.1rem', paddingTop: '0.35rem', borderTop: '1px solid var(--border-subtle, #f1f5f9)' }}>
                           <button
                             type="button"
                             className="btn primary"
@@ -248,7 +322,7 @@ export default function ReceivablesAgingBoard({
                             disabled={loadingId === item.id}
                             onClick={() => handleSendReminder(item.id)}
                           >
-                            {loadingId === item.id ? 'Sending…' : '💬 Send SMS'}
+                            {loadingId === item.id ? 'Sending…' : '💬 SMS'}
                           </button>
                           <button
                             type="button"

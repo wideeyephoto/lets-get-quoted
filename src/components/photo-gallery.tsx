@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { compressImage } from '@/lib/client-images';
+import { PhotoAnnotator } from './photo-annotator/PhotoAnnotator';
+import { BeforeAfterSlider } from './photo-annotator/BeforeAfterSlider';
 
 export type GalleryPhoto = {
   path: string;
@@ -17,6 +19,7 @@ type PhotoGalleryProps = {
   deleteConfirmMessage?: string;
   uploadLabel?: string;
   helperText?: string;
+  scope?: string;
   coverMode?: boolean;
   reorderEnabled?: boolean;
   /**
@@ -37,6 +40,7 @@ export default function PhotoGallery({
   deleteConfirmMessage,
   uploadLabel = '+ Add photos',
   helperText,
+  scope = '',
   coverMode = false,
   reorderEnabled = false,
   onPhotosChange,
@@ -48,6 +52,8 @@ export default function PhotoGallery({
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [zoomed, setZoomed] = useState(false);
   const [draggedPath, setDraggedPath] = useState<string | null>(null);
+  const [annotatingPhoto, setAnnotatingPhoto] = useState<GalleryPhoto | null>(null);
+  const [comparingPhotos, setComparingPhotos] = useState<{ before: GalleryPhoto; after: GalleryPhoto } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const dragOriginalPhotosRef = useRef<GalleryPhoto[] | null>(null);
   const didDropRef = useRef(false);
@@ -201,6 +207,22 @@ export default function PhotoGallery({
             onChange={(event) => handleFiles(event.target.files)}
           />
         </label>
+
+        {photos.length >= 2 ? (
+          <button
+            type="button"
+            className="btn secondary"
+            onClick={() => {
+              const beforePhoto = photos[1] || photos[0];
+              const afterPhoto = photos[0];
+              setComparingPhotos({ before: beforePhoto, after: afterPhoto });
+            }}
+            title="Compare Before & After photos with interactive split slider"
+          >
+            🔀 Compare
+          </button>
+        ) : null}
+
         {helperText ? <span className="photo-gallery-helper">{helperText}</span> : null}
         {message ? <span className="photo-gallery-message">{message}</span> : null}
       </div>
@@ -247,6 +269,18 @@ export default function PhotoGallery({
             >
               {coverMode && index === 0 ? <span className="photo-default-badge">Default image</span> : null}
               {reorderEnabled ? <span className="photo-drag-handle" aria-hidden="true">Drag</span> : null}
+              <button
+                type="button"
+                className="photo-thumb-annotate"
+                aria-label="Annotate photo"
+                title="Annotate & Markup"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setAnnotatingPhoto(photo);
+                }}
+              >
+                ✏️
+              </button>
               <button type="button" className="photo-thumb-open" onClick={() => { setLightboxIndex(index); setZoomed(false); }}>
                 <img src={photo.url} alt={`Photo ${index + 1}`} />
               </button>
@@ -270,6 +304,17 @@ export default function PhotoGallery({
 
       {activePhoto ? (
         <div className="photo-lightbox-backdrop" onClick={() => setLightboxIndex(null)}>
+          <button
+            type="button"
+            className="photo-lightbox-annotate"
+            onClick={(event) => {
+              event.stopPropagation();
+              setAnnotatingPhoto(activePhoto);
+            }}
+            title="Annotate & Markup this Photo"
+          >
+            ✏️ Markup
+          </button>
           <button type="button" className="photo-lightbox-close" aria-label="Close" onClick={() => setLightboxIndex(null)}>
             ×
           </button>
@@ -314,6 +359,42 @@ export default function PhotoGallery({
             <span className="photo-lightbox-count">{(lightboxIndex ?? 0) + 1} / {photos.length}</span>
           ) : null}
         </div>
+      ) : null}
+
+      {/* Photo Annotator / Markup Modal */}
+      {annotatingPhoto ? (
+        <PhotoAnnotator
+          photoUrl={annotatingPhoto.url}
+          photoPath={annotatingPhoto.path}
+          scope={scope}
+          onClose={() => setAnnotatingPhoto(null)}
+          onSave={async (file) => {
+            setIsUploading(true);
+            setMessage('Saving marked-up photo...');
+            try {
+              const newPhoto = await uploadOne(file);
+              setPhotos((current) => [newPhoto, ...current]);
+              setMessage('✓ Marked-up photo saved to gallery!');
+              setTimeout(() => setMessage(null), 3500);
+            } catch (err: any) {
+              setMessage(err?.message || 'Failed to save marked-up photo.');
+            } finally {
+              setIsUploading(false);
+              setAnnotatingPhoto(null);
+            }
+          }}
+        />
+      ) : null}
+
+      {/* Before & After Comparison Modal */}
+      {comparingPhotos ? (
+        <BeforeAfterSlider
+          beforeUrl={comparingPhotos.before.url}
+          afterUrl={comparingPhotos.after.url}
+          beforeLabel="Inspection Photo (Before)"
+          afterLabel="Marked-Up / Complete (After)"
+          onClose={() => setComparingPhotos(null)}
+        />
       ) : null}
     </div>
   );

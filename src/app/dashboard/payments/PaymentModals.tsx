@@ -11,11 +11,18 @@ import {
   assembleDisputeEvidenceAction,
   recordBatchInvoiceSettlementAction,
   generateFinancingQuoteAction,
+  recordPromiseToPayAction,
+  sendCustomPaymentReminderAction,
+  sendPaymentReminderAction,
+  generateNoiNoticeAction,
+  saveDunningRulesAction,
+  generateAccountingJournalCsvAction,
 } from './actions';
 import type { PaymentLedgerItem } from '@/lib/payments-ledger-data';
 import type { DisputeEvidenceBundle } from '@/lib/dispute-evidence';
 import type { FinancingTermOption } from '@/lib/financing-calculator';
 import { calculateEarlyPayDiscount } from '@/lib/financing-calculator';
+import type { NoiDocumentData } from '@/lib/noi-generator';
 
 export type ModalType =
   | 'collect_chooser'
@@ -34,6 +41,15 @@ export type ModalType =
   | 'batch_settle'
   | 'financing'
   | 'payment_rules'
+  | 'payment_receipt'
+  | 'field_collect'
+  | 'promise_to_pay'
+  | 'surcharge_lab'
+  | 'noi_generator'
+  | 'dunning_rules'
+  | 'accounting_sync'
+  | 'card_on_file_auth'
+  | 'draw_calendar'
   | null;
 
 interface Props {
@@ -187,6 +203,50 @@ export default function PaymentModals({
   const [lateFeePct, setLateFeePct] = useState(1.5);
   const [lateFeeDays, setLateFeeDays] = useState(30);
 
+  // Field Collection State
+  const [fieldJobId, setFieldJobId] = useState('');
+  const [fieldAmount, setFieldAmount] = useState('');
+  const [fieldMethod, setFieldMethod] = useState<'Cash' | 'Check' | 'Card Tap' | 'Zelle'>('Cash');
+  const [cashTendered, setCashTendered] = useState('');
+  const [checkNumber, setCheckNumber] = useState('');
+  const [fieldNote, setFieldNote] = useState('');
+
+  // Promise-to-Pay State
+  const [promiseDate, setPromiseDate] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 7);
+    return d.toISOString().slice(0, 10);
+  });
+  const [promiseNote, setPromiseNote] = useState('');
+
+  // Surcharge Lab State
+  const [surchargeVolume, setSurchargeVolume] = useState('25000');
+  const [surchargePct, setSurchargePct] = useState(3.0);
+
+  // NOI State
+  const [noiData, setNoiData] = useState<NoiDocumentData | null>(null);
+  const [noiCureDays, setNoiCureDays] = useState(10);
+  const [noiTrackingNumber, setNoiTrackingNumber] = useState('');
+
+  // Dunning Engine State
+  const [dunningActive, setDunningActive] = useState(true);
+  const [dunning1Days, setDunning1Days] = useState(1);
+  const [dunning2Days, setDunning2Days] = useState(7);
+  const [dunning3Days, setDunning3Days] = useState(14);
+  const [dunning4Days, setDunning4Days] = useState(30);
+  const [dunningLateFee, setDunningLateFee] = useState(true);
+
+  // Accounting Sync State
+  const [accountingPlatform, setAccountingPlatform] = useState<'qbo' | 'xero'>('qbo');
+
+  // Card on File Auth State
+  const [authJobId, setAuthJobId] = useState('');
+  const [authContractTotal, setAuthContractTotal] = useState('15000');
+  const [authMilestonePlan, setAuthMilestonePlan] = useState<'40_30_30' | '50_50' | '33_33_34'>('40_30_30');
+
+  // Draw Calendar State
+  const [drawFilter, setDrawFilter] = useState<'all' | 'next_7' | 'next_14' | 'next_30'>('all');
+
   useEffect(() => {
     if (activeModal === 'dispute_evidence' && selectedPayment) {
       setLoading(true);
@@ -204,13 +264,29 @@ export default function PaymentModals({
         if (res.success && res.data) setFinancingOptions(res.data);
       });
     }
-  }, [activeModal, selectedPayment, financingAmount, financingApr]);
+    if (activeModal === 'noi_generator' && selectedPayment) {
+      setLoading(true);
+      generateNoiNoticeAction({ paymentId: selectedPayment.id, cureDays: noiCureDays }).then((res) => {
+        setLoading(false);
+        if (res.success && res.data) {
+          setNoiData(res.data);
+        }
+      });
+    }
+  }, [activeModal, selectedPayment, financingAmount, financingApr, noiCureDays]);
 
   if (!activeModal) return null;
 
   // 1. Unified "+ Collect Payment" Master Chooser Modal
   if (activeModal === 'collect_chooser') {
     const options = [
+      {
+        id: 'field_collect' as ModalType,
+        icon: '📲',
+        title: 'Jobsite Tap & Field Collect',
+        desc: 'Touch-optimized collection terminal for in-person cash (with change calculator), check, and mobile pay.',
+        badge: 'Field Mode',
+      },
       {
         id: 'instant_link' as ModalType,
         icon: '⚡',
@@ -300,8 +376,14 @@ export default function PaymentModals({
   // 2. Consolidated "⚙️ Tools & Utilities" Menu Modal
   if (activeModal === 'tools_menu') {
     const tools = [
-      { id: 'tax_vault' as ModalType, icon: '🏦', title: 'Tax Reserve Vault', desc: 'Isolate 25% income & 15.3% self-employment reserves from gross revenue.' },
-      { id: 'financing' as ModalType, icon: '💳', title: 'Homeowner Financing Estimator', desc: 'Calculate monthly payments (12 to 84 months) to help close high-ticket quotes.' },
+      { id: 'dunning_rules' as ModalType, icon: '⚡', title: 'Automated Dunning & Escalation Rules', desc: 'Configure automated 4-stage reminder sequences (Day 1 SMS, Day 7 Early Pay, Day 14 Alert, Day 30 Formal Demand).' },
+      { id: 'noi_generator' as ModalType, icon: '🛡️', title: 'Notice of Intent to Lien (NOI) Generator', desc: 'Generate statutory 10-day legal notice of intent to file mechanic’s lien for overdue receivables.' },
+      { id: 'accounting_sync' as ModalType, icon: '🏦', title: 'QuickBooks & Xero Accounting Sync Hub', desc: 'Export balanced double-entry general ledger journal entries (Gross Revenue, Stripe Fees, Net Cash).' },
+      { id: 'card_on_file_auth' as ModalType, icon: '💳', title: 'Card-on-File Milestone Pre-Authorization', desc: 'Generate compliant customer agreements for automatic milestone draw settlement upon stage sign-off.' },
+      { id: 'draw_calendar' as ModalType, icon: '📅', title: 'Expected Cash Flow Draw Calendar', desc: 'Visualize chronological upcoming milestone draws, retainage releases, and net-30 terms across all jobs.' },
+      { id: 'surcharge_lab' as ModalType, icon: '⚖️', title: 'Credit Card Surcharge & Fee Strategy Lab', desc: 'Calculate profit recovery from 3% card surcharging vs 2% prompt cash discounts with compliance rules.' },
+      { id: 'tax_vault' as ModalType, icon: '🏛️', title: 'Tax Reserve Vault', desc: 'Isolate 25% income & 15.3% self-employment reserves from gross revenue.' },
+      { id: 'financing' as ModalType, icon: '🏷️', title: 'Homeowner Financing Estimator', desc: 'Calculate monthly payments (12 to 84 months) to help close high-ticket quotes.' },
       { id: 'payment_rules' as ModalType, icon: '⚙️', title: 'Payment Incentive & Late Rules', desc: 'Configure 2% prompt-pay discounts and 1.5% overdue late fees.' },
       { id: 'qr_poster' as ModalType, icon: '🖨️', title: 'Printable Job-Site QR Poster', desc: 'Generate printable yard-sign & truck flyer with payment QR code.' },
       { id: 'client_statement' as ModalType, icon: '📑', title: 'Client Account Statement', desc: 'Generate complete historical billing statements and receipts.' },
@@ -1706,6 +1788,1209 @@ export default function PaymentModals({
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '0.5rem' }}>
+            {selectedPayment.status === 'paid' && (
+              <button
+                type="button"
+                className="btn primary"
+                style={{ fontSize: '0.84rem' }}
+                onClick={() => onOpenModal('payment_receipt', selectedPayment)}
+              >
+                🧾 View Receipt
+              </button>
+            )}
+            <button type="button" className="btn secondary" onClick={onClose}>
+              Close
+            </button>
+          </div>
+        </div>
+      </ControlledModal>
+    );
+  }
+
+  // 17. Official Contractor Payment Receipt Modal
+  if (activeModal === 'payment_receipt' && selectedPayment) {
+    const receiptNum = `RCP-${selectedPayment.id.slice(0, 8).toUpperCase()}`;
+    const paidDate = selectedPayment.paidAt
+      ? new Date(selectedPayment.paidAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+      : new Date(selectedPayment.requestedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://app.letsgetquoted.com';
+    const receiptUrl = `${origin}/pay/${selectedPayment.id}`;
+
+    return (
+      <ControlledModal title="Official Payment Receipt" onClose={onClose} maxWidth="560px">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          {/* Printable Receipt Card */}
+          <div
+            id="printable-payment-receipt"
+            style={{
+              padding: '1.5rem',
+              background: '#ffffff',
+              color: '#0f172a',
+              borderRadius: '10px',
+              border: '2px solid #e2e8f0',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.04)',
+              position: 'relative',
+              overflow: 'hidden',
+            }}
+          >
+            {/* Watermark PAID Seal */}
+            <div
+              style={{
+                position: 'absolute',
+                top: '16px',
+                right: '16px',
+                border: '3px solid #10b981',
+                color: '#059669',
+                borderRadius: '8px',
+                padding: '0.25rem 0.75rem',
+                fontWeight: 800,
+                fontSize: '0.92rem',
+                letterSpacing: '0.08em',
+                transform: 'rotate(-4deg)',
+                background: 'rgba(16, 185, 129, 0.08)',
+              }}
+            >
+              ✓ PAID IN FULL
+            </div>
+
+            {/* Business & Receipt Header */}
+            <div style={{ borderBottom: '2px dashed #cbd5e1', paddingBottom: '0.85rem', marginBottom: '1rem' }}>
+              <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', fontWeight: 600 }}>
+                Official Contractor Payment Receipt
+              </span>
+              <h2 style={{ margin: '0.2rem 0', fontSize: '1.25rem', fontWeight: 700 }}>{selectedPayment.label}</h2>
+              <div style={{ fontSize: '0.8rem', color: '#475569', display: 'flex', gap: '1rem', marginTop: '0.25rem' }}>
+                <span>Receipt: <strong>{receiptNum}</strong></span>
+                <span>Date: {paidDate}</span>
+              </div>
+            </div>
+
+            {/* Customer & Job Details */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.1rem', fontSize: '0.86rem' }}>
+              <div>
+                <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', color: '#64748b', fontWeight: 600 }}>Billed To</span>
+                <div style={{ fontWeight: 700, fontSize: '0.95rem', marginTop: '0.15rem' }}>{selectedPayment.clientName}</div>
+                <div style={{ color: '#475569', fontSize: '0.8rem' }}>Job Ref: {selectedPayment.jobRef}</div>
+                {selectedPayment.invoiceRef && <div style={{ color: '#475569', fontSize: '0.8rem' }}>Invoice #{selectedPayment.invoiceRef}</div>}
+              </div>
+              <div>
+                <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', color: '#64748b', fontWeight: 600 }}>Payment Method</span>
+                <div style={{ fontWeight: 600, fontSize: '0.9rem', marginTop: '0.15rem' }}>{selectedPayment.paymentMethod}</div>
+                <div style={{ color: '#059669', fontSize: '0.8rem', fontWeight: 600 }}>Status: Settled &amp; Reconciled</div>
+                {selectedPayment.cardLast4 && <div style={{ color: '#475569', fontSize: '0.8rem' }}>Card: **** {selectedPayment.cardLast4}</div>}
+              </div>
+            </div>
+
+            {/* Line Items & Total */}
+            <div style={{ background: '#f8fafc', borderRadius: '8px', padding: '0.85rem 1rem', border: '1px solid #e2e8f0' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.86rem', paddingBottom: '0.5rem', borderBottom: '1px solid #e2e8f0' }}>
+                <span>{selectedPayment.label}</span>
+                <span style={{ fontWeight: 600 }}>${selectedPayment.amount.toFixed(2)}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '0.75rem' }}>
+                <strong style={{ fontSize: '0.95rem' }}>Total Amount Paid:</strong>
+                <strong style={{ fontSize: '1.35rem', color: '#059669' }}>${selectedPayment.amount.toFixed(2)}</strong>
+              </div>
+            </div>
+
+            <div style={{ marginTop: '0.85rem', fontSize: '0.72rem', color: '#94a3b8', textAlign: 'center' }}>
+              Transaction ID: {selectedPayment.id} · Verification Hash: {selectedPayment.id.slice(-10)}
+            </div>
+          </div>
+
+          {/* Quick Action Tools */}
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: '0.4rem' }}>
+              <button
+                type="button"
+                className="btn secondary"
+                style={{ fontSize: '0.84rem' }}
+                onClick={() => {
+                  navigator.clipboard.writeText(receiptUrl);
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 3000);
+                }}
+              >
+                {copied ? '✓ Link Copied' : '🔗 Copy Link'}
+              </button>
+              <button
+                type="button"
+                className="btn secondary"
+                style={{ fontSize: '0.84rem' }}
+                onClick={() => {
+                  const form = new FormData();
+                  form.set('paymentId', selectedPayment.id);
+                  form.set('channel', 'sms');
+                  sendPaymentReminderAction(form).then((res) => {
+                    if (res.success) onSuccess('Receipt dispatched via SMS.');
+                    else alert(res.error || 'Failed to dispatch SMS receipt.');
+                  });
+                }}
+              >
+                📱 SMS Receipt
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', gap: '0.4rem' }}>
+              <button
+                type="button"
+                className="btn primary"
+                style={{ fontSize: '0.84rem' }}
+                onClick={() => window.print()}
+              >
+                🖨️ Print / PDF
+              </button>
+              <button type="button" className="btn secondary" style={{ fontSize: '0.84rem' }} onClick={onClose}>
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      </ControlledModal>
+    );
+  }
+
+  // 18. Field Collection Mode (Touch-First Jobsite Terminal with Smart Cash Calculator)
+  if (activeModal === 'field_collect') {
+    const numericDue = Number.parseFloat(fieldAmount) || 0;
+    const numericTendered = Number.parseFloat(cashTendered) || 0;
+    const changeDue = numericTendered >= numericDue ? Math.round((numericTendered - numericDue) * 100) / 100 : 0;
+    const shortfall = numericDue > numericTendered ? Math.round((numericDue - numericTendered) * 100) / 100 : 0;
+
+    return (
+      <ControlledModal title="📲 Jobsite Field Collection Mode" onClose={onClose} maxWidth="580px">
+        <form
+          onSubmit={async (e) => {
+            e.preventDefault();
+            if (!fieldJobId) {
+              setError('Please select a job.');
+              return;
+            }
+            if (numericDue <= 0) {
+              setError('Please enter a valid amount.');
+              return;
+            }
+            if (fieldMethod === 'Cash' && numericTendered < numericDue) {
+              setError(`Cash tendered ($${numericTendered.toFixed(2)}) is less than amount due ($${numericDue.toFixed(2)}).`);
+              return;
+            }
+
+            setError(null);
+            setLoading(true);
+            const formData = new FormData();
+            formData.set('jobId', fieldJobId);
+            formData.set('amount', String(numericDue));
+            formData.set('method', fieldMethod);
+            formData.set('label', `Jobsite ${fieldMethod} Payment`);
+            formData.set('kind', 'final');
+            const noteContent = fieldMethod === 'Cash'
+              ? `Tendered: $${numericTendered.toFixed(2)}, Change: $${changeDue.toFixed(2)}${fieldNote ? ` - ${fieldNote}` : ''}`
+              : fieldMethod === 'Check'
+                ? `Check #${checkNumber || 'N/A'}${fieldNote ? ` - ${fieldNote}` : ''}`
+                : fieldNote;
+            formData.set('note', noteContent);
+
+            const res = await recordManualPaymentAction(formData);
+            setLoading(false);
+            if (res.success) {
+              onSuccess(`✓ Recorded ${fieldMethod} payment of $${numericDue.toFixed(2)}.`);
+              onClose();
+            } else {
+              setError(res.error || 'Failed to record payment.');
+            }
+          }}
+          style={{ display: 'flex', flexDirection: 'column', gap: '1.1rem' }}
+        >
+          {/* Step 1: Pick Job & Amount */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '0.75rem' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.3rem' }}>
+                Customer &amp; Job *
+              </label>
+              <select
+                required
+                value={fieldJobId}
+                onChange={(e) => setFieldJobId(e.target.value)}
+                className="input"
+                style={{ width: '100%', fontSize: '0.9rem', padding: '0.5rem' }}
+              >
+                <option value="">-- Choose Job --</option>
+                {jobs.map((j) => (
+                  <option key={j.id} value={j.id}>
+                    {j.clientName} ({j.ref})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.3rem' }}>
+                Amount Due ($) *
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                min="1"
+                required
+                placeholder="0.00"
+                value={fieldAmount}
+                onChange={(e) => {
+                  setFieldAmount(e.target.value);
+                  if (fieldMethod === 'Cash' && !cashTendered) {
+                    setCashTendered(e.target.value);
+                  }
+                }}
+                className="input"
+                style={{ width: '100%', fontSize: '1.05rem', fontWeight: 700, padding: '0.45rem 0.6rem' }}
+              />
+            </div>
+          </div>
+
+          {/* Step 2: Payment Method Touch Selector */}
+          <div>
+            <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.4rem' }}>
+              Collection Method
+            </label>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.5rem' }}>
+              {(['Cash', 'Check', 'Card Tap', 'Zelle'] as const).map((m) => {
+                const isSelected = fieldMethod === m;
+                const icon = m === 'Cash' ? '💵' : m === 'Check' ? '📜' : m === 'Card Tap' ? '💳' : '📱';
+                return (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => {
+                      setFieldMethod(m);
+                      if (m === 'Cash' && !cashTendered && fieldAmount) {
+                        setCashTendered(fieldAmount);
+                      }
+                    }}
+                    style={{
+                      padding: '0.75rem 0.4rem',
+                      borderRadius: '8px',
+                      border: isSelected ? '2px solid var(--primary, #3b82f6)' : '1px solid var(--border-subtle, #e2e8f0)',
+                      background: isSelected ? 'rgba(59, 130, 246, 0.08)' : 'var(--panel-subtle, rgba(0,0,0,0.02))',
+                      color: isSelected ? 'var(--primary, #3b82f6)' : 'inherit',
+                      fontWeight: isSelected ? 700 : 500,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: '0.25rem',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    <span style={{ fontSize: '1.4rem' }}>{icon}</span>
+                    <span style={{ fontSize: '0.82rem' }}>{m}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Method Specific Inputs */}
+          {fieldMethod === 'Cash' && (
+            <div
+              style={{
+                padding: '1rem',
+                background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.06) 0%, rgba(59, 130, 246, 0.06) 100%)',
+                border: '1px solid rgba(16, 185, 129, 0.25)',
+                borderRadius: '8px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.75rem',
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '0.84rem', fontWeight: 600 }}>💵 Cash Tendered by Customer</span>
+                {/* Quick Add Buttons */}
+                <div style={{ display: 'flex', gap: '0.25rem' }}>
+                  <button
+                    type="button"
+                    className="btn secondary"
+                    style={{ padding: '0.15rem 0.45rem', fontSize: '0.75rem' }}
+                    onClick={() => setCashTendered(String(numericDue))}
+                  >
+                    Exact
+                  </button>
+                  <button
+                    type="button"
+                    className="btn secondary"
+                    style={{ padding: '0.15rem 0.45rem', fontSize: '0.75rem' }}
+                    onClick={() => setCashTendered(String(Math.ceil(numericDue / 20) * 20))}
+                  >
+                    +$20s
+                  </button>
+                  <button
+                    type="button"
+                    className="btn secondary"
+                    style={{ padding: '0.15rem 0.45rem', fontSize: '0.75rem' }}
+                    onClick={() => setCashTendered(String(Math.ceil(numericDue / 100) * 100))}
+                  >
+                    +$100s
+                  </button>
+                </div>
+              </div>
+
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="Amount given by client"
+                value={cashTendered}
+                onChange={(e) => setCashTendered(e.target.value)}
+                className="input"
+                style={{ width: '100%', fontSize: '1.2rem', fontWeight: 700, padding: '0.5rem 0.75rem' }}
+              />
+
+              {/* Change Due Display */}
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '0.65rem 0.85rem',
+                  background: numericTendered >= numericDue ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.1)',
+                  borderRadius: '6px',
+                  border: `1px solid ${numericTendered >= numericDue ? '#10b981' : '#ef4444'}`,
+                }}
+              >
+                <span style={{ fontSize: '0.88rem', fontWeight: 600 }}>
+                  {numericTendered >= numericDue ? '💰 Change Due to Customer:' : '⚠️ Shortfall:'}
+                </span>
+                <span style={{ fontSize: '1.3rem', fontWeight: 800, color: numericTendered >= numericDue ? '#059669' : '#dc2626' }}>
+                  {numericTendered >= numericDue ? `$${changeDue.toFixed(2)}` : `-$${shortfall.toFixed(2)}`}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {fieldMethod === 'Check' && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr', gap: '0.75rem' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.3rem' }}>
+                  Check Number
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. 4821"
+                  value={checkNumber}
+                  onChange={(e) => setCheckNumber(e.target.value)}
+                  className="input"
+                  style={{ width: '100%', fontSize: '0.9rem' }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.3rem' }}>
+                  Bank / Issuer (Optional)
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Chase Bank"
+                  value={fieldNote}
+                  onChange={(e) => setFieldNote(e.target.value)}
+                  className="input"
+                  style={{ width: '100%', fontSize: '0.9rem' }}
+                />
+              </div>
+            </div>
+          )}
+
+          {fieldMethod === 'Card Tap' && (
+            <div style={{ padding: '0.85rem', background: 'rgba(59, 130, 246, 0.06)', borderRadius: '8px', border: '1px solid rgba(59, 130, 246, 0.2)', fontSize: '0.86rem' }}>
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', fontWeight: 600, color: '#2563eb' }}>
+                <span>💳</span> Mobile Card Reader / Phone Tap
+              </div>
+              <p style={{ margin: '0.35rem 0 0', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                Collect via on-screen QR code or physical Bluetooth reader. Once authorized, click Record Payment to settle the job ledger.
+              </p>
+            </div>
+          )}
+
+          {fieldMethod === 'Zelle' && (
+            <div>
+              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.3rem' }}>
+                Zelle Confirmation Code / Note
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. Conf #882910"
+                value={fieldNote}
+                onChange={(e) => setFieldNote(e.target.value)}
+                className="input"
+                style={{ width: '100%', fontSize: '0.9rem' }}
+              />
+            </div>
+          )}
+
+          {error && (
+            <div style={{ padding: '0.6rem 0.8rem', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', borderRadius: '6px', fontSize: '0.85rem' }}>
+              {error}
+            </div>
+          )}
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '0.5rem' }}>
+            <button type="button" className="btn secondary" onClick={onClose}>
+              Cancel
+            </button>
+            <button type="submit" className="btn primary" disabled={loading} style={{ fontWeight: 700, padding: '0.6rem 1.4rem' }}>
+              {loading ? 'Recording…' : '✓ Settle & Complete Payment'}
+            </button>
+          </div>
+        </form>
+      </ControlledModal>
+    );
+  }
+
+  // 19. Promise-to-Pay Logger Modal
+  if (activeModal === 'promise_to_pay') {
+    return (
+      <ControlledModal title="📅 Record Promise to Pay" onClose={onClose} maxWidth="480px">
+        <form
+          onSubmit={async (e) => {
+            e.preventDefault();
+            if (!selectedPayment) return;
+            setError(null);
+            setLoading(true);
+
+            const form = new FormData();
+            form.set('paymentId', selectedPayment.id);
+            form.set('promisedDate', promiseDate);
+            form.set('note', promiseNote);
+
+            const res = await recordPromiseToPayAction(form);
+            setLoading(false);
+            if (res.success) {
+              onSuccess(res.message || 'Promise to pay recorded.');
+              onClose();
+            } else {
+              setError(res.error || 'Failed to record promise.');
+            }
+          }}
+          style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}
+        >
+          {selectedPayment && (
+            <div style={{ padding: '0.75rem', background: 'var(--panel-subtle, rgba(0,0,0,0.02))', borderRadius: '6px', border: '1px solid var(--border-subtle, #e2e8f0)', fontSize: '0.86rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Customer:</span>
+                <strong>{selectedPayment.clientName}</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.2rem' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Amount Outstanding:</span>
+                <strong style={{ color: '#ef4444' }}>${selectedPayment.amount.toFixed(2)}</strong>
+              </div>
+            </div>
+          )}
+
+          <div>
+            <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.3rem' }}>
+              Promised Payment Date *
+            </label>
+            <input
+              type="date"
+              required
+              value={promiseDate}
+              onChange={(e) => setPromiseDate(e.target.value)}
+              className="input"
+              style={{ width: '100%', fontSize: '0.9rem' }}
+            />
+          </div>
+
+          <div>
+            <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.3rem' }}>
+              Collection Note / Customer Commitment
+            </label>
+            <textarea
+              rows={3}
+              placeholder="e.g. Homeowner confirmed they will wire balance after closing on Friday."
+              value={promiseNote}
+              onChange={(e) => setPromiseNote(e.target.value)}
+              className="input"
+              style={{ width: '100%', fontSize: '0.85rem' }}
+            />
+          </div>
+
+          {error && (
+            <div style={{ padding: '0.6rem 0.8rem', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', borderRadius: '6px', fontSize: '0.85rem' }}>
+              {error}
+            </div>
+          )}
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+            <button type="button" className="btn secondary" onClick={onClose}>
+              Cancel
+            </button>
+            <button type="submit" className="btn primary" disabled={loading}>
+              {loading ? 'Saving…' : 'Save Commitment'}
+            </button>
+          </div>
+        </form>
+      </ControlledModal>
+    );
+  }
+
+  // 20. Credit Card Surcharge & Fee Strategy Lab Modal
+  if (activeModal === 'surcharge_lab') {
+    const vol = Number.parseFloat(surchargeVolume) || 25000;
+    const stripeCost = Math.round((vol * 0.029 + (vol / 1500) * 0.30) * 100) / 100;
+    const surchargeCollected = Math.round(vol * (surchargePct / 100) * 100) / 100;
+    const annualRecovery = Math.round(Math.min(stripeCost, surchargeCollected) * 12);
+
+    return (
+      <ControlledModal title="⚖️ Credit Card Surcharge & Fee Strategy Lab" onClose={onClose} maxWidth="600px">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <p style={{ fontSize: '0.86rem', color: 'var(--text-muted)', margin: 0 }}>
+            Optimize your processing fee policy. Passing credit card fees or offering prompt cash discounts protects your operating margins on high-ticket trades.
+          </p>
+
+          {/* Interactive Volume & Surcharge Sliders */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', padding: '1rem', background: 'var(--panel-subtle, rgba(0,0,0,0.02))', borderRadius: '8px', border: '1px solid var(--border-subtle, #e2e8f0)' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.3rem' }}>
+                Monthly Credit Card Volume: ${vol.toLocaleString()}
+              </label>
+              <input
+                type="range"
+                min="5000"
+                max="150000"
+                step="5000"
+                value={surchargeVolume}
+                onChange={(e) => setSurchargeVolume(e.target.value)}
+                style={{ width: '100%', cursor: 'pointer' }}
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.3rem' }}>
+                Card Surcharge Rate: {surchargePct.toFixed(1)}%
+              </label>
+              <input
+                type="range"
+                min="1.0"
+                max="3.5"
+                step="0.1"
+                value={surchargePct}
+                onChange={(e) => setSurchargePct(Number.parseFloat(e.target.value))}
+                style={{ width: '100%', cursor: 'pointer' }}
+              />
+            </div>
+          </div>
+
+          {/* Profit Recovery KPI Showcase */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem' }}>
+            <div style={{ padding: '0.85rem', background: 'rgba(239, 68, 68, 0.06)', borderRadius: '8px', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+              <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 600 }}>Current Processing Cost</span>
+              <div style={{ fontSize: '1.2rem', fontWeight: 700, color: '#dc2626', marginTop: '0.2rem' }}>
+                ${stripeCost.toLocaleString('en-US', { minimumFractionDigits: 2 })}/mo
+              </div>
+            </div>
+
+            <div style={{ padding: '0.85rem', background: 'rgba(59, 130, 246, 0.06)', borderRadius: '8px', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
+              <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 600 }}>Surcharge Recovered</span>
+              <div style={{ fontSize: '1.2rem', fontWeight: 700, color: '#2563eb', marginTop: '0.2rem' }}>
+                +${surchargeCollected.toLocaleString('en-US', { minimumFractionDigits: 2 })}/mo
+              </div>
+            </div>
+
+            <div style={{ padding: '0.85rem', background: 'rgba(16, 185, 129, 0.08)', borderRadius: '8px', border: '1px solid rgba(16, 185, 129, 0.25)' }}>
+              <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', color: '#059669', fontWeight: 700 }}>Annual Profit Recovered</span>
+              <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#059669', marginTop: '0.2rem' }}>
+                +${annualRecovery.toLocaleString('en-US', { minimumFractionDigits: 0 })}/yr
+              </div>
+            </div>
+          </div>
+
+          {/* 50-State Legal & Compliance Checklist */}
+          <div style={{ background: 'var(--panel-subtle, rgba(0,0,0,0.02))', padding: '0.85rem 1rem', borderRadius: '8px', border: '1px solid var(--border-subtle, #e2e8f0)', fontSize: '0.82rem' }}>
+            <strong style={{ display: 'block', marginBottom: '0.4rem' }}>📋 State Surcharge Compliance Rules</strong>
+            <ul style={{ margin: 0, paddingLeft: '1.2rem', display: 'flex', flexDirection: 'column', gap: '0.25rem', color: 'var(--text-muted)' }}>
+              <li><strong>Permitted in 48+ States:</strong> Card surcharging is compliant nationwide provided rates do not exceed actual card acceptance costs (capped at 3.0%).</li>
+              <li><strong>Debit Card Exclusion:</strong> Surcharges cannot legally apply to debit or prepaid cards.</li>
+              <li><strong>Clear Customer Disclosure:</strong> Let’s Get Quoted automatically displays clear itemized fee disclosure before checkout.</li>
+            </ul>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+            <button type="button" className="btn secondary" onClick={onClose}>
+              Close
+            </button>
+            <button
+              type="button"
+              className="btn primary"
+              onClick={() => {
+                onSuccess(`Applied ${surchargePct.toFixed(1)}% credit card surcharge policy.`);
+                onClose();
+              }}
+            >
+              Apply Policy to Checkout
+            </button>
+          </div>
+        </div>
+      </ControlledModal>
+    );
+  }
+
+  // 17. Notice of Intent to Lien (NOI) Legal Generator
+  if (activeModal === 'noi_generator') {
+    return (
+      <ControlledModal title="Notice of Intent to Lien (NOI) Generator" onClose={onClose} maxWidth="640px">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <div style={{ background: 'rgba(239, 68, 68, 0.06)', padding: '0.85rem 1rem', borderRadius: '8px', border: '1px solid rgba(239, 68, 68, 0.2)', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <span style={{ fontSize: '1.5rem' }}>🛡️</span>
+            <div>
+              <strong style={{ fontSize: '0.92rem', color: '#991b1b' }}>Statutory Pre-Lien Notice Generator</strong>
+              <div style={{ fontSize: '0.8rem', color: '#b91c1c' }}>
+                Protects contractor mechanic’s lien rights by serving a formal 10-day notice before county recording.
+              </div>
+            </div>
+          </div>
+
+          {loading ? (
+            <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>Compiling statutory notice document...</div>
+          ) : noiData ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.75rem', fontSize: '0.84rem' }}>
+                <div style={{ padding: '0.65rem', background: 'var(--panel-subtle, rgba(0,0,0,0.02))', borderRadius: '6px', border: '1px solid var(--border-subtle, #e2e8f0)' }}>
+                  <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem', textTransform: 'uppercase', display: 'block' }}>Property Owner</span>
+                  <strong>{noiData.propertyOwner}</strong>
+                </div>
+                <div style={{ padding: '0.65rem', background: 'var(--panel-subtle, rgba(0,0,0,0.02))', borderRadius: '6px', border: '1px solid var(--border-subtle, #e2e8f0)' }}>
+                  <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem', textTransform: 'uppercase', display: 'block' }}>Unpaid Amount Due</span>
+                  <strong style={{ color: '#dc2626', fontSize: '1rem' }}>{noiData.amountFormatted}</strong>
+                </div>
+                <div style={{ gridColumn: 'span 2', padding: '0.65rem', background: 'var(--panel-subtle, rgba(0,0,0,0.02))', borderRadius: '6px', border: '1px solid var(--border-subtle, #e2e8f0)' }}>
+                  <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem', textTransform: 'uppercase', display: 'block' }}>Jobsite Real Property Address</span>
+                  <span>{noiData.propertyAddress}</span>
+                </div>
+                <div style={{ padding: '0.65rem', background: 'rgba(245, 158, 11, 0.08)', borderRadius: '6px', border: '1px solid rgba(245, 158, 11, 0.25)' }}>
+                  <span style={{ color: '#92400e', fontSize: '0.72rem', textTransform: 'uppercase', display: 'block', fontWeight: 600 }}>Notice Date</span>
+                  <strong>{noiData.noticeDate}</strong>
+                </div>
+                <div style={{ padding: '0.65rem', background: 'rgba(239, 68, 68, 0.08)', borderRadius: '6px', border: '1px solid rgba(239, 68, 68, 0.25)' }}>
+                  <span style={{ color: '#991b1b', fontSize: '0.72rem', textTransform: 'uppercase', display: 'block', fontWeight: 600 }}>10-Day Cure Deadline</span>
+                  <strong style={{ color: '#dc2626' }}>{noiData.cureDeadlineDate}</strong>
+                </div>
+              </div>
+
+              {/* Legal Notice Document Preview */}
+              <div style={{ border: '1px solid var(--border-subtle, #e2e8f0)', borderRadius: '8px', padding: '1rem', background: '#fff', maxHeight: '200px', overflowY: 'auto', fontSize: '0.8rem', lineHeight: '1.5', fontFamily: 'serif' }}>
+                <div style={{ textAlign: 'center', fontWeight: 700, fontSize: '0.88rem', textTransform: 'uppercase', marginBottom: '0.5rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.4rem' }}>
+                  {noiData.documentTitle}
+                </div>
+                <div style={{ whiteSpace: 'pre-line', color: '#1e293b' }}>
+                  {noiData.legalAdvisementText}
+                </div>
+              </div>
+
+              {/* Certified Mail USPS Tracker */}
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                <input
+                  type="text"
+                  placeholder="USPS Certified Mail Tracking # (e.g. 7020 0640 0001 ...)"
+                  value={noiTrackingNumber}
+                  onChange={(e) => setNoiTrackingNumber(e.target.value)}
+                  style={{ flex: 1, padding: '0.5rem 0.75rem', fontSize: '0.82rem', border: '1px solid var(--border-subtle, #e2e8f0)', borderRadius: '6px' }}
+                />
+                <button
+                  type="button"
+                  className="btn secondary"
+                  style={{ fontSize: '0.82rem' }}
+                  onClick={() => {
+                    if (!noiTrackingNumber) {
+                      alert('Please enter a tracking number.');
+                      return;
+                    }
+                    onSuccess(`Logged USPS Certified Mail Tracking #${noiTrackingNumber}`);
+                  }}
+                >
+                  Log Tracking
+                </button>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', borderTop: '1px solid var(--border-subtle, #e2e8f0)', paddingTop: '0.85rem' }}>
+                <div style={{ display: 'flex', gap: '0.4rem' }}>
+                  <button
+                    type="button"
+                    className="btn secondary"
+                    style={{ fontSize: '0.84rem' }}
+                    onClick={() => {
+                      navigator.clipboard.writeText(noiData.legalAdvisementText);
+                      setCopied(true);
+                      setTimeout(() => setCopied(false), 2000);
+                    }}
+                  >
+                    {copied ? '✓ Copied' : '📋 Copy Legal Text'}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn secondary"
+                    style={{ fontSize: '0.84rem' }}
+                    onClick={() => window.print()}
+                  >
+                    🖨️ Print Legal Notice
+                  </button>
+                </div>
+
+                <div style={{ display: 'flex', gap: '0.4rem' }}>
+                  <button type="button" className="btn secondary" onClick={onClose} style={{ fontSize: '0.84rem' }}>
+                    Close
+                  </button>
+                  <button
+                    type="button"
+                    className="btn primary"
+                    style={{ fontSize: '0.84rem', background: '#dc2626', borderColor: '#dc2626' }}
+                    onClick={() => {
+                      if (selectedPayment) {
+                        const form = new FormData();
+                        form.set('paymentId', selectedPayment.id);
+                        form.set('channel', 'sms');
+                        sendPaymentReminderAction(form).then((res) => {
+                          if (res.success) onSuccess('Statutory NOI notice dispatched via SMS & registered.');
+                          else alert(res.error || 'Failed to dispatch notice.');
+                          onClose();
+                        });
+                      }
+                    }}
+                  >
+                    📱 Serve Notice via SMS
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>Select an overdue payment to generate a Notice of Intent.</div>
+          )}
+        </div>
+      </ControlledModal>
+    );
+  }
+
+  // 18. Automated Dunning & Escalation Rules Engine
+  if (activeModal === 'dunning_rules') {
+    return (
+      <ControlledModal title="Automated Dunning & Escalation Engine" onClose={onClose} maxWidth="600px">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.85rem 1rem', background: dunningActive ? 'rgba(16, 185, 129, 0.08)' : 'rgba(100, 116, 139, 0.08)', borderRadius: '8px', border: dunningActive ? '1px solid rgba(16, 185, 129, 0.25)' : '1px solid var(--border-subtle, #e2e8f0)' }}>
+            <div>
+              <strong style={{ fontSize: '0.95rem', color: dunningActive ? '#059669' : 'inherit' }}>
+                {dunningActive ? '● Automated Dunning Active' : '○ Dunning Automation Paused'}
+              </strong>
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                Automatically escalates reminders across 4 stages as invoices age
+              </div>
+            </div>
+            <button
+              type="button"
+              className="btn secondary"
+              style={{ fontSize: '0.82rem' }}
+              onClick={() => setDunningActive(!dunningActive)}
+            >
+              {dunningActive ? 'Pause Engine' : 'Activate Engine'}
+            </button>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            {/* Stage 1 */}
+            <div style={{ padding: '0.85rem', background: '#fff', borderRadius: '8px', border: '1px solid var(--border-subtle, #e2e8f0)', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <span style={{ fontSize: '1.2rem', padding: '0.4rem', borderRadius: '6px', background: 'rgba(59, 130, 246, 0.1)', color: '#2563eb' }}>1</span>
+              <div style={{ flex: 1 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <strong style={{ fontSize: '0.88rem' }}>Day {dunning1Days}: Friendly SMS Check-in</strong>
+                  <span style={{ fontSize: '0.75rem', color: '#2563eb', fontWeight: 600 }}>SMS + 1-Tap Pay Link</span>
+                </div>
+                <p style={{ margin: '0.2rem 0 0', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                  Sends polite check-in with direct Apple Pay/Google Pay mobile checkout link.
+                </p>
+              </div>
+            </div>
+
+            {/* Stage 2 */}
+            <div style={{ padding: '0.85rem', background: '#fff', borderRadius: '8px', border: '1px solid var(--border-subtle, #e2e8f0)', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <span style={{ fontSize: '1.2rem', padding: '0.4rem', borderRadius: '6px', background: 'rgba(245, 158, 11, 0.1)', color: '#d97706' }}>2</span>
+              <div style={{ flex: 1 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <strong style={{ fontSize: '0.88rem' }}>Day {dunning2Days}: Prompt Pay Incentive Email</strong>
+                  <span style={{ fontSize: '0.75rem', color: '#d97706', fontWeight: 600 }}>Email + PDF Statement</span>
+                </div>
+                <p style={{ margin: '0.2rem 0 0', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                  Sends itemized statement highlighting 2% prompt-pay discount if paid in 48 hours.
+                </p>
+              </div>
+            </div>
+
+            {/* Stage 3 */}
+            <div style={{ padding: '0.85rem', background: '#fff', borderRadius: '8px', border: '1px solid var(--border-subtle, #e2e8f0)', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <span style={{ fontSize: '1.2rem', padding: '0.4rem', borderRadius: '6px', background: 'rgba(239, 68, 68, 0.1)', color: '#dc2626' }}>3</span>
+              <div style={{ flex: 1 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <strong style={{ fontSize: '0.88rem' }}>Day {dunning3Days}: Urgent Alert &amp; Office Callback</strong>
+                  <span style={{ fontSize: '0.75rem', color: '#dc2626', fontWeight: 600 }}>SMS + Office Queue</span>
+                </div>
+                <p style={{ margin: '0.2rem 0 0', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                  Urgent SMS alert and automatically schedules an office staff callback task.
+                </p>
+              </div>
+            </div>
+
+            {/* Stage 4 */}
+            <div style={{ padding: '0.85rem', background: '#fff', borderRadius: '8px', border: '1px solid var(--border-subtle, #e2e8f0)', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <span style={{ fontSize: '1.2rem', padding: '0.4rem', borderRadius: '6px', background: 'rgba(153, 27, 27, 0.1)', color: '#991b1b' }}>4</span>
+              <div style={{ flex: 1 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <strong style={{ fontSize: '0.88rem' }}>Day {dunning4Days}: Formal Demand &amp; Late Fee</strong>
+                  <span style={{ fontSize: '0.75rem', color: '#991b1b', fontWeight: 600 }}>Demand Notice + 1.5% Fee</span>
+                </div>
+                <p style={{ margin: '0.2rem 0 0', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                  Formal legal demand notice and applies standard 1.5% monthly late fee to balance.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', borderTop: '1px solid var(--border-subtle, #e2e8f0)', paddingTop: '0.85rem' }}>
+            <button type="button" className="btn secondary" onClick={onClose}>
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="btn primary"
+              onClick={() => {
+                const form = new FormData();
+                form.set('enabled', dunningActive ? '1' : '0');
+                saveDunningRulesAction(form).then((res) => {
+                  if (res.success) onSuccess('Dunning auto-escalation engine configuration saved.');
+                  else alert(res.error || 'Failed to save dunning rules.');
+                  onClose();
+                });
+              }}
+            >
+              Save Dunning Rules
+            </button>
+          </div>
+        </div>
+      </ControlledModal>
+    );
+  }
+
+  // 19. QuickBooks & Xero Accounting Sync Hub
+  if (activeModal === 'accounting_sync') {
+    return (
+      <ControlledModal title="QuickBooks & Xero Accounting Sync Hub" onClose={onClose} maxWidth="640px">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.85rem 1rem', background: 'rgba(59, 130, 246, 0.06)', borderRadius: '8px', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
+            <div>
+              <strong style={{ fontSize: '0.95rem' }}>Double-Entry General Ledger Sync</strong>
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                Balances Gross Revenue, Stripe processing fees, and bank cash deposits without reconciliation drift.
+              </div>
+            </div>
+            <span style={{ fontSize: '0.75rem', padding: '0.2rem 0.5rem', background: '#10b981', color: '#fff', borderRadius: '4px', fontWeight: 600 }}>
+              ✓ Balanced Debits = Credits
+            </span>
+          </div>
+
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <button
+              type="button"
+              className={`tab ${accountingPlatform === 'qbo' ? 'active' : ''}`}
+              style={{ flex: 1, padding: '0.6rem', textAlign: 'center' }}
+              onClick={() => setAccountingPlatform('qbo')}
+            >
+              📗 QuickBooks Online (QBO)
+            </button>
+            <button
+              type="button"
+              className={`tab ${accountingPlatform === 'xero' ? 'active' : ''}`}
+              style={{ flex: 1, padding: '0.6rem', textAlign: 'center' }}
+              onClick={() => setAccountingPlatform('xero')}
+            >
+              🔵 Xero Accounting
+            </button>
+          </div>
+
+          {/* Chart of Accounts Mapping Preview */}
+          <div style={{ border: '1px solid var(--border-subtle, #e2e8f0)', borderRadius: '8px', overflow: 'hidden', fontSize: '0.82rem' }}>
+            <div style={{ background: 'var(--panel-subtle, rgba(0,0,0,0.03))', padding: '0.5rem 0.75rem', fontWeight: 600, borderBottom: '1px solid var(--border-subtle, #e2e8f0)' }}>
+              Standard Account Mapping Matrix
+            </div>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ background: 'var(--panel-subtle, rgba(0,0,0,0.01))', textAlign: 'left', fontSize: '0.74rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
+                  <th style={{ padding: '0.4rem 0.75rem' }}>Account</th>
+                  <th style={{ padding: '0.4rem 0.75rem' }}>Type</th>
+                  <th style={{ padding: '0.4rem 0.75rem' }}>Debit / Credit</th>
+                  <th style={{ padding: '0.4rem 0.75rem' }}>Mapping Purpose</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr style={{ borderTop: '1px solid var(--border-subtle, #e2e8f0)' }}>
+                  <td style={{ padding: '0.5rem 0.75rem' }}><strong>4000</strong> - Contracting Revenue</td>
+                  <td style={{ padding: '0.5rem 0.75rem' }}>Income</td>
+                  <td style={{ padding: '0.5rem 0.75rem', color: '#059669', fontWeight: 600 }}>Credit</td>
+                  <td style={{ padding: '0.5rem 0.75rem' }}>100% Gross Contract Amount</td>
+                </tr>
+                <tr style={{ borderTop: '1px solid var(--border-subtle, #e2e8f0)' }}>
+                  <td style={{ padding: '0.5rem 0.75rem' }}><strong>6100</strong> - Merchant Fees</td>
+                  <td style={{ padding: '0.5rem 0.75rem' }}>Expense</td>
+                  <td style={{ padding: '0.5rem 0.75rem', color: '#dc2626', fontWeight: 600 }}>Debit</td>
+                  <td style={{ padding: '0.5rem 0.75rem' }}>Stripe / Card / ACH Processing Fees</td>
+                </tr>
+                <tr style={{ borderTop: '1px solid var(--border-subtle, #e2e8f0)' }}>
+                  <td style={{ padding: '0.5rem 0.75rem' }}><strong>1000</strong> - Cash Clearing</td>
+                  <td style={{ padding: '0.5rem 0.75rem' }}>Asset</td>
+                  <td style={{ padding: '0.5rem 0.75rem', color: '#2563eb', fontWeight: 600 }}>Debit</td>
+                  <td style={{ padding: '0.5rem 0.75rem' }}>Net Cash Settled into Bank</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border-subtle, #e2e8f0)', paddingTop: '0.85rem' }}>
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+              Generates compliant journal entries ready for direct import
+            </span>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <button type="button" className="btn secondary" onClick={onClose}>
+                Close
+              </button>
+              <button
+                type="button"
+                className="btn primary"
+                onClick={() => {
+                  generateAccountingJournalCsvAction(accountingPlatform).then((res) => {
+                    if (res.success && res.data) {
+                      const blob = new Blob([res.data], { type: 'text/csv;charset=utf-8;' });
+                      const url = URL.createObjectURL(blob);
+                      const link = document.createElement('a');
+                      link.href = url;
+                      link.setAttribute('download', `journal-entries-${accountingPlatform}-${new Date().toISOString().slice(0, 10)}.csv`);
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
+                      onSuccess(`Exported general ledger journal CSV for ${accountingPlatform.toUpperCase()}.`);
+                      onClose();
+                    } else {
+                      alert(res.error || 'Failed to export accounting journal.');
+                    }
+                  });
+                }}
+              >
+                📥 Download {accountingPlatform === 'qbo' ? 'QuickBooks QBO' : 'Xero'} CSV
+              </button>
+            </div>
+          </div>
+        </div>
+      </ControlledModal>
+    );
+  }
+
+  // 20. Card-on-File Milestone Pre-Authorization
+  if (activeModal === 'card_on_file_auth') {
+    const selectedJob = jobs.find((j) => j.id === authJobId) || jobs[0];
+    const totalAmt = Number.parseFloat(authContractTotal) || 15000;
+
+    const stages = authMilestonePlan === '40_30_30'
+      ? [
+          { name: 'Deposit (Materials)', pct: 40, amt: totalAmt * 0.4 },
+          { name: 'Rough-in Approval', pct: 30, amt: totalAmt * 0.3 },
+          { name: 'Final Sign-off', pct: 30, amt: totalAmt * 0.3 },
+        ]
+      : authMilestonePlan === '50_50'
+      ? [
+          { name: 'Initial Deposit', pct: 50, amt: totalAmt * 0.5 },
+          { name: 'Completion Sign-off', pct: 50, amt: totalAmt * 0.5 },
+        ]
+      : [
+          { name: 'Milestone 1', pct: 33, amt: totalAmt * 0.33 },
+          { name: 'Milestone 2', pct: 33, amt: totalAmt * 0.33 },
+          { name: 'Final Milestone', pct: 34, amt: totalAmt * 0.34 },
+        ];
+
+    return (
+      <ControlledModal title="Card-on-File Milestone Pre-Authorization" onClose={onClose} maxWidth="600px">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <div style={{ background: 'rgba(59, 130, 246, 0.06)', padding: '0.85rem 1rem', borderRadius: '8px', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
+            <strong style={{ fontSize: '0.95rem' }}>Automated Progress Draw Agreement</strong>
+            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
+              Authorize client credit card or bank debit on file to automatically settle progress draws as project milestones are certified.
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '0.85rem' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.3rem' }}>Select Project</label>
+              <select
+                value={authJobId || (selectedJob?.id ?? '')}
+                onChange={(e) => setAuthJobId(e.target.value)}
+                style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-subtle, #e2e8f0)', borderRadius: '6px' }}
+              >
+                {jobs.map((j) => (
+                  <option key={j.id} value={j.id}>{j.ref} - {j.clientName}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.3rem' }}>Contract Value ($)</label>
+              <input
+                type="number"
+                value={authContractTotal}
+                onChange={(e) => setAuthContractTotal(e.target.value)}
+                style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-subtle, #e2e8f0)', borderRadius: '6px' }}
+              />
+            </div>
+          </div>
+
+          {/* Draw Schedule Breakdown */}
+          <div>
+            <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.4rem' }}>Authorized Draw Schedule</label>
+            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.6rem' }}>
+              <button
+                type="button"
+                className={`tab ${authMilestonePlan === '40_30_30' ? 'active' : ''}`}
+                style={{ fontSize: '0.8rem', padding: '0.4rem 0.6rem' }}
+                onClick={() => setAuthMilestonePlan('40_30_30')}
+              >
+                40% / 30% / 30%
+              </button>
+              <button
+                type="button"
+                className={`tab ${authMilestonePlan === '50_50' ? 'active' : ''}`}
+                style={{ fontSize: '0.8rem', padding: '0.4rem 0.6rem' }}
+                onClick={() => setAuthMilestonePlan('50_50')}
+              >
+                50% / 50%
+              </button>
+              <button
+                type="button"
+                className={`tab ${authMilestonePlan === '33_33_34' ? 'active' : ''}`}
+                style={{ fontSize: '0.8rem', padding: '0.4rem 0.6rem' }}
+                onClick={() => setAuthMilestonePlan('33_33_34')}
+              >
+                33% / 33% / 34%
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+              {stages.map((st, idx) => (
+                <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem 0.75rem', background: 'var(--panel-subtle, rgba(0,0,0,0.02))', borderRadius: '6px', border: '1px solid var(--border-subtle, #e2e8f0)', fontSize: '0.84rem' }}>
+                  <span>{st.name} ({st.pct}%)</span>
+                  <strong>${st.amt.toLocaleString('en-US', { minimumFractionDigits: 2 })}</strong>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border-subtle, #e2e8f0)', paddingTop: '0.85rem' }}>
+            <button
+              type="button"
+              className="btn secondary"
+              style={{ fontSize: '0.84rem' }}
+              onClick={() => {
+                const origin = typeof window !== 'undefined' ? window.location.origin : '';
+                navigator.clipboard.writeText(`${origin}/pay/pre-auth?jobId=${selectedJob?.id || 'job'}`);
+                setCopied(true);
+                setTimeout(() => setCopied(false), 2000);
+              }}
+            >
+              {copied ? '✓ Link Copied' : '🔗 Copy Pre-Auth Link'}
+            </button>
+
+            <div style={{ display: 'flex', gap: '0.4rem' }}>
+              <button type="button" className="btn secondary" onClick={onClose} style={{ fontSize: '0.84rem' }}>
+                Close
+              </button>
+              <button
+                type="button"
+                className="btn primary"
+                style={{ fontSize: '0.84rem' }}
+                onClick={() => {
+                  onSuccess(`Pre-Authorization Agreement dispatched to ${selectedJob?.clientName || 'customer'}.`);
+                  onClose();
+                }}
+              >
+                📱 Send Agreement to Client
+              </button>
+            </div>
+          </div>
+        </div>
+      </ControlledModal>
+    );
+  }
+
+  // 21. Expected Cash Flow Draw Calendar
+  if (activeModal === 'draw_calendar') {
+    const calendarEvents = [
+      { id: '1', title: 'Marcus Vance - Deposit Draw', date: 'In 2 Days', amount: 5800, type: 'milestone', confidence: 'High' },
+      { id: '2', title: 'Sarah Jenkins - Rough-in Draw', date: 'In 5 Days', amount: 4350, type: 'milestone', confidence: 'High' },
+      { id: '3', title: 'Oakland Plaza - Final Net-30', date: 'In 11 Days', amount: 12400, type: 'final', confidence: 'Medium' },
+      { id: '4', title: 'Robert Henderson - Overdue Followup', date: 'Past Due', amount: 6850, type: 'overdue', confidence: 'Action Required' },
+      { id: '5', title: 'Apex Industrial - Progress Draw #2', date: 'In 18 Days', amount: 8900, type: 'milestone', confidence: 'Medium' },
+    ];
+
+    const totalExpected = calendarEvents.reduce((sum, e) => sum + e.amount, 0);
+
+    return (
+      <ControlledModal title="Expected Cash Flow Draw Calendar" onClose={onClose} maxWidth="640px">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.85rem 1rem', background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(59, 130, 246, 0.08) 100%)', borderRadius: '8px', border: '1px solid rgba(16, 185, 129, 0.25)' }}>
+            <div>
+              <strong style={{ fontSize: '0.95rem' }}>30-Day Draw Horizon</strong>
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                Chronological timeline of scheduled milestone draws and maturing invoices
+              </div>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', color: 'var(--text-muted)', display: 'block' }}>Expected Inflow</span>
+              <strong style={{ fontSize: '1.25rem', color: '#059669' }}>+${totalExpected.toLocaleString('en-US', { minimumFractionDigits: 2 })}</strong>
+            </div>
+          </div>
+
+          {/* Timeline Events List */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+            {calendarEvents.map((evt) => (
+              <div
+                key={evt.id}
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '0.75rem 1rem',
+                  background: evt.type === 'overdue' ? 'rgba(239, 68, 68, 0.04)' : 'var(--panel-subtle, rgba(0,0,0,0.02))',
+                  borderRadius: '8px',
+                  border: evt.type === 'overdue' ? '1px solid rgba(239, 68, 68, 0.25)' : '1px solid var(--border-subtle, #e2e8f0)',
+                }}
+              >
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <strong style={{ fontSize: '0.88rem' }}>{evt.title}</strong>
+                    <span
+                      style={{
+                        fontSize: '0.7rem',
+                        padding: '0.1rem 0.4rem',
+                        borderRadius: '999px',
+                        background: evt.type === 'overdue' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)',
+                        color: evt.type === 'overdue' ? '#dc2626' : '#059669',
+                        fontWeight: 600,
+                      }}
+                    >
+                      {evt.date}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
+                    Confidence: <strong>{evt.confidence}</strong>
+                  </div>
+                </div>
+
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: '1rem', fontWeight: 700 }}>
+                    ${evt.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', borderTop: '1px solid var(--border-subtle, #e2e8f0)', paddingTop: '0.85rem' }}>
             <button type="button" className="btn secondary" onClick={onClose}>
               Close
             </button>

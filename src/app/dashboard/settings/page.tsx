@@ -53,6 +53,7 @@ import {
 } from '@/lib/billing/merchant-onboarding-entrypoint';
 import { topUpPurchaseEnabled } from '@/lib/billing/top-up-purchase-entrypoint';
 import { PUBLIC_PRICING_SUMMARY } from '@/lib/pricing';
+import type { AdBudgetWalletState } from '@/lib/ad-billing-shared';
 import PlanUsageSection from './PlanUsageSection';
 import OfficeTeamSection from './OfficeTeamSection';
 import MerchantOnboardingSection from './MerchantOnboardingSection';
@@ -480,6 +481,7 @@ export default async function SettingsPage({
                 showSubscriptionCheckout={showSubscriptionCheckout}
                 showTopUpPurchase={showTopUpPurchase}
                 topUpCheckoutStatus={topUpCheckoutStatus}
+                adWallet={(site?.content as Record<string, unknown> | null | undefined)?.adCampaign as AdBudgetWalletState | undefined ?? null}
               />
             ),
           }] : []),

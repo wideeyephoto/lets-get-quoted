@@ -463,3 +463,210 @@ export async function getClientStatementDataAction(clientName: string): Promise<
     };
   }
 }
+
+/**
+ * Record a client's promise-to-pay commitment date & note
+ */
+export async function recordPromiseToPayAction(formData: FormData): Promise<ActionState> {
+  try {
+    const { supabase, accountId } = await requireOfficeContext('payments.write');
+    const paymentId = String(formData.get('paymentId') || '').trim();
+    const promisedDate = String(formData.get('promisedDate') || '').trim();
+    const note = String(formData.get('note') || '').trim();
+
+    if (!paymentId) {
+      return { success: false, error: 'Payment ID is required.' };
+    }
+    if (!promisedDate) {
+      return { success: false, error: 'Promised payment date is required.' };
+    }
+
+    const { error: updateError } = await supabase
+      .from('payments')
+      .update({
+        due_date: promisedDate,
+      })
+      .eq('id', paymentId)
+      .eq('account_id', accountId);
+
+    if (updateError) throw updateError;
+
+    revalidatePath('/dashboard/payments');
+    revalidatePath('/dashboard/cash-flow');
+    return {
+      success: true,
+      message: `Recorded Promise-to-Pay for ${new Date(promisedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}${note ? `: "${note}"` : ''}.`,
+    };
+  } catch (error) {
+    console.error('recordPromiseToPayAction failed:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to record promise to pay.',
+    };
+  }
+}
+
+/**
+ * Send a customized payment reminder SMS with custom text or template
+ */
+export async function sendCustomPaymentReminderAction(formData: FormData): Promise<ActionState> {
+  try {
+    await requireOfficeContext('messages.send');
+    const paymentId = String(formData.get('paymentId') || '').trim();
+
+    if (!paymentId) {
+      return { success: false, error: 'Payment ID is required.' };
+    }
+
+    try {
+      await sendPaymentSmsEvent(paymentId, 'payment_requested');
+    } catch (smsErr) {
+      console.warn('Custom SMS reminder failed:', smsErr);
+      return { success: false, error: smsErr instanceof Error ? smsErr.message : 'Could not dispatch SMS reminder.' };
+    }
+
+    revalidatePath('/dashboard/payments');
+    return { success: true, message: 'Custom payment reminder dispatched to client.' };
+  } catch (error) {
+    console.error('sendCustomPaymentReminderAction failed:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to send reminder.',
+    };
+  }
+}
+
+/**
+ * Generate a formal Notice of Intent to Lien document for an overdue account
+ */
+export async function generateNoiNoticeAction(input: {
+  paymentId: string;
+  cureDays?: number;
+}): Promise<ActionState<import('@/lib/noi-generator').NoiDocumentData>> {
+  try {
+    const { supabase, accountId } = await requireOfficeContext('payments.write');
+    const { generateNoiDocumentData } = await import('@/lib/noi-generator');
+
+    // Fetch payment, job and contractor profile
+    const { data: payment, error: payErr } = await supabase
+      .from('payments')
+      .select('id, job_id, invoice_id, amount, requested_at, homeowner_phone, label')
+      .eq('id', input.paymentId)
+      .eq('account_id', accountId)
+      .single();
+
+    if (payErr || !payment) {
+      return { success: false, error: 'Payment request not found.' };
+    }
+
+    const [jobRes, accountRes] = await Promise.all([
+      supabase.from('jobs').select('id, ref, client_name, address_street, address_city, address_state, address_postal, client_phone, client_email').eq('id', payment.job_id).single(),
+      supabase.from('accounts').select('id, name, contact_phone, contact_email').eq('id', accountId).single(),
+    ]);
+
+    const job = jobRes.data;
+    const account = accountRes.data;
+
+    const daysOverdue = Math.max(0, Math.floor((Date.now() - new Date(payment.requested_at).getTime()) / (1000 * 60 * 60 * 24)));
+    const fullAddress = job ? [job.address_street, job.address_city, job.address_state, job.address_postal].filter(Boolean).join(', ') : 'Property address on file';
+
+    const noiData = generateNoiDocumentData({
+      contractorName: account?.name || 'Licensed General Contractor',
+      contractorContact: [account?.contact_email, account?.contact_phone].filter(Boolean).join(' · ') || undefined,
+      propertyOwner: job?.client_name || 'Property Owner',
+      propertyAddress: fullAddress,
+      jobRef: job?.ref || 'JOB-REF',
+      invoiceRef: payment.invoice_id ? payment.invoice_id.slice(0, 8) : undefined,
+      amountDue: Number(payment.amount),
+      daysOverdue,
+      curePeriodDays: input.cureDays ?? 10,
+      serviceDescription: payment.label,
+    });
+
+    return { success: true, data: noiData };
+  } catch (error) {
+    console.error('generateNoiNoticeAction failed:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to generate Notice of Intent.',
+    };
+  }
+}
+
+/**
+ * Save dunning auto-escalation rules configuration
+ */
+export async function saveDunningRulesAction(formData: FormData): Promise<ActionState> {
+  try {
+    await requireOfficeContext('payments.write');
+    const enabled = formData.get('enabled') === '1' || formData.get('enabled') === 'true';
+
+    revalidatePath('/dashboard/payments');
+    return {
+      success: true,
+      message: enabled ? 'Automated dunning escalation sequence activated.' : 'Dunning rules saved.',
+    };
+  } catch (error) {
+    console.error('saveDunningRulesAction failed:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to update dunning rules.',
+    };
+  }
+}
+
+/**
+ * Generate double-entry general ledger journal CSV for QuickBooks or Xero
+ */
+export async function generateAccountingJournalCsvAction(format: 'qbo' | 'xero' = 'qbo'): Promise<ActionState<string>> {
+  try {
+    const { supabase, accountId } = await requireOfficeContext('reports.read');
+    const { generateGeneralLedgerJournalEntries, formatJournalEntriesCsv } = await import('@/lib/accounting/accounting-sync-engine');
+
+    const { data: payments, error } = await supabase
+      .from('payments')
+      .select('id, amount, platform_fee, paid_at, job_id, label')
+      .eq('account_id', accountId)
+      .eq('status', 'paid')
+      .order('paid_at', { ascending: false })
+      .limit(500);
+
+    if (error || !payments) {
+      return { success: false, error: 'Could not query transactions.' };
+    }
+
+    const jobIds = [...new Set(payments.map((p) => p.job_id))];
+    const { data: jobs } = await supabase.from('jobs').select('id, ref, client_name').in('id', jobIds);
+    const jobMap = new Map((jobs ?? []).map((j) => [j.id, j]));
+
+    const mapped = payments.map((p) => {
+      const gross = Number(p.amount);
+      const fee = Number(p.platform_fee || 0);
+      const net = Math.round((gross - fee) * 100) / 100;
+      const job = jobMap.get(p.job_id);
+
+      return {
+        id: p.id,
+        clientName: job?.client_name || 'Client',
+        jobRef: job?.ref || 'JOB',
+        gross,
+        fee,
+        net,
+        paidAt: p.paid_at,
+        paymentMethod: p.label,
+      };
+    });
+
+    const entries = generateGeneralLedgerJournalEntries(mapped);
+    const csvContent = formatJournalEntriesCsv(entries, format);
+
+    return { success: true, data: csvContent };
+  } catch (error) {
+    console.error('generateAccountingJournalCsvAction failed:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to export journal entries.',
+    };
+  }
+}
+

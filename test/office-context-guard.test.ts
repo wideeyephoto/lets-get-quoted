@@ -420,6 +420,7 @@ describe('the wiring, as source', () => {
       'src/app/dashboard/automations/page.tsx',
       'src/app/dashboard/cash-flow/actions.ts',
       'src/app/dashboard/cash-flow/page.tsx',
+      'src/app/dashboard/claims/page.tsx',
       'src/app/dashboard/clients/[id]/page.tsx',
       'src/app/dashboard/clients/actions.ts',
       'src/app/dashboard/clients/page.tsx',

@@ -243,3 +243,129 @@ export function calculateJobFinancialLedger(input: {
     platform: input.platform || 'quickbooks_online',
   };
 }
+
+export type JournalEntryLine = {
+  entryNumber: string;
+  date: string;
+  accountNumber: string;
+  accountName: string;
+  debit: number;
+  credit: number;
+  description: string;
+  clientName: string;
+  ref: string;
+};
+
+/**
+ * Generates double-entry general ledger journal lines for settled transactions.
+ * Balances: Gross Revenue (Credit) = Net Cash (Debit) + Processing Fees (Debit)
+ */
+export function generateGeneralLedgerJournalEntries(
+  transactions: Array<{
+    id: string;
+    clientName: string;
+    gross: number;
+    fee: number;
+    net: number;
+    paidAt?: string | null;
+    jobRef?: string;
+    paymentMethod?: string;
+  }>,
+): JournalEntryLine[] {
+  const entries: JournalEntryLine[] = [];
+
+  for (let i = 0; i < transactions.length; i++) {
+    const tx = transactions[i];
+    const entryNum = `JE-${String(i + 1).padStart(4, '0')}`;
+    const dateStr = tx.paidAt ? tx.paidAt.slice(0, 10) : new Date().toISOString().slice(0, 10);
+    const ref = tx.jobRef || tx.id.slice(0, 8);
+
+    // 1. Debit Cash / Undeposited Funds for Net Amount
+    if (tx.net > 0) {
+      entries.push({
+        entryNumber: entryNum,
+        date: dateStr,
+        accountNumber: '1000',
+        accountName: 'Undeposited Funds / Cash Clearing',
+        debit: Math.round(tx.net * 100) / 100,
+        credit: 0,
+        description: `Net settlement for ${tx.clientName} (${tx.paymentMethod || 'Payment'})`,
+        clientName: tx.clientName,
+        ref,
+      });
+    }
+
+    // 2. Debit Processing Fees for Merchant Fee
+    if (tx.fee > 0) {
+      entries.push({
+        entryNumber: entryNum,
+        date: dateStr,
+        accountNumber: '6100',
+        accountName: 'Merchant Processing Fees (Stripe/ACH)',
+        debit: Math.round(tx.fee * 100) / 100,
+        credit: 0,
+        description: `Processing fee on ${tx.clientName} transaction`,
+        clientName: tx.clientName,
+        ref,
+      });
+    }
+
+    // 3. Credit Revenue / Sales for Gross Amount
+    if (tx.gross > 0) {
+      entries.push({
+        entryNumber: entryNum,
+        date: dateStr,
+        accountNumber: '4000',
+        accountName: 'Trade Contracting Revenue',
+        debit: 0,
+        credit: Math.round(tx.gross * 100) / 100,
+        description: `Gross revenue earned from ${tx.clientName}`,
+        clientName: tx.clientName,
+        ref,
+      });
+    }
+  }
+
+  return entries;
+}
+
+/**
+ * Formats journal entry lines into QuickBooks Online (QBO) and Xero compatible CSV.
+ */
+export function formatJournalEntriesCsv(entries: JournalEntryLine[], format: 'qbo' | 'xero' = 'qbo'): string {
+  if (format === 'xero') {
+    const headers = ['*JournalNumber', '*Date', '*AccountCode', '*Description', '*Debit', '*Credit', 'Reference'];
+    const rows = [headers.join(',')];
+    for (const e of entries) {
+      rows.push([
+        `"${e.entryNumber}"`,
+        `"${e.date}"`,
+        `"${e.accountNumber}"`,
+        `"${e.description.replace(/"/g, '""')}"`,
+        e.debit > 0 ? e.debit.toFixed(2) : '',
+        e.credit > 0 ? e.credit.toFixed(2) : '',
+        `"${e.clientName} - ${e.ref}"`,
+      ].join(','));
+    }
+    return rows.join('\n');
+  }
+
+  // QuickBooks Online Format
+  const headers = ['JournalNo', 'Date', 'AccountNo', 'AccountName', 'Debit', 'Credit', 'Description', 'Customer', 'JobRef'];
+  const rows = [headers.join(',')];
+  for (const e of entries) {
+    rows.push([
+      `"${e.entryNumber}"`,
+      `"${e.date}"`,
+      `"${e.accountNumber}"`,
+      `"${e.accountName}"`,
+      e.debit > 0 ? e.debit.toFixed(2) : '',
+      e.credit > 0 ? e.credit.toFixed(2) : '',
+      `"${e.description.replace(/"/g, '""')}"`,
+      `"${e.clientName.replace(/"/g, '""')}"`,
+      `"${e.ref}"`,
+    ].join(','));
+  }
+  return rows.join('\n');
+}
+

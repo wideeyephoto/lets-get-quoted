@@ -56,6 +56,8 @@ export type AiWritingKind =
   | 'showcase_case_study'
   /** Parsing contractor spoken voice dictations for leads and jobs. */
   | 'contractor_voice_assist'
+  /** Generating an insurance adjuster supplement justification or scope analysis. */
+  | 'insurance_claim_assist'
   /**
    * LGQ's own blog content.
    *
@@ -76,6 +78,7 @@ const BILLABLE: Readonly<Record<AiWritingKind, boolean>> = Object.freeze({
   change_order_draft: true,
   marketing_draft: true,
   showcase_case_study: true,
+  insurance_claim_assist: true,
   contractor_voice_assist: false,
   import_assist: false, // UNDECIDED - see the kind doc above
   site_copy: false, // UNDECIDED - see the kind doc above
