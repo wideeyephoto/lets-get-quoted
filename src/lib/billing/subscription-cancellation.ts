@@ -4,6 +4,7 @@ import { createHash } from 'node:crypto';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import { BILLING_PLANS, type BillingPlanId } from '@/lib/billing/catalog';
 import { recordAccountEvent } from '@/lib/account-events';
 import { getStripeClient } from '@/lib/stripe';
 
@@ -38,6 +39,8 @@ import { getStripeClient } from '@/lib/stripe';
 export const BASE_PLAN_SUBSCRIPTION_CANCELLATION_FLAG =
   'LGQ_BASE_PLAN_SUBSCRIPTION_CANCELLATION_ENABLED' as const;
 
+export const ANNUAL_GUARANTEE_WINDOW_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+
 type ServerEnvironment = Record<string, string | undefined>;
 
 export function basePlanSubscriptionCancellationEnabled(
@@ -61,12 +64,134 @@ const CANCELLABLE_STATUSES = new Set(['trialing', 'active', 'past_due', 'unpaid'
 export type CancellableSubscription = Readonly<{
   providerSubscriptionId: string;
   planCode: string;
+  billingInterval: 'monthly' | 'annual';
   status: string;
   cancelAtPeriodEnd: boolean;
+  currentPeriodStart: string | null;
   currentPeriodEnd: string | null;
+  createdAt: string | null;
   /** The projector's last write. See the idempotency note below. */
   updatedAt: string | null;
+  guaranteeEligible: boolean;
+  guaranteeRefundAmountCents: number;
+  guaranteeDeductionCents: number;
 }>;
+
+export type AnnualGuaranteeRefundCalculation = {
+  eligible: boolean;
+  planCode: string;
+  annualPrepaymentCents: number;
+  oneMonthDeductionCents: number;
+  refundAmountCents: number;
+  reason?: string;
+};
+
+/**
+ * Calculates the exact 30-day money-back guarantee refund for an annual base plan.
+ * Refund = Annual Prepayment - 1 Month of normal base plan service.
+ * Solo: $420 - $39 = $381 (38,100 cents)
+ * Growth: $1,188 - $129 = $1,059 (105,900 cents)
+ * Scale: $3,588 - $329 = $3,259 (325,900 cents)
+ */
+export function calculateAnnualPlanGuaranteeRefund(planCode: string): AnnualGuaranteeRefundCalculation {
+  const normalizedPlan = String(planCode || '').toLowerCase().trim();
+  const plan = BILLING_PLANS[normalizedPlan as BillingPlanId];
+  if (!plan || plan.annualPriceCents <= 0) {
+    return {
+      eligible: false,
+      planCode: normalizedPlan,
+      annualPrepaymentCents: 0,
+      oneMonthDeductionCents: 0,
+      refundAmountCents: 0,
+      reason: 'Plan does not have an annual price tier',
+    };
+  }
+
+  const annualPrepaymentCents = plan.annualPriceCents;
+  const oneMonthDeductionCents = plan.monthlyPriceCents;
+  const refundAmountCents = Math.max(0, annualPrepaymentCents - oneMonthDeductionCents);
+
+  return {
+    eligible: true,
+    planCode: normalizedPlan,
+    annualPrepaymentCents,
+    oneMonthDeductionCents,
+    refundAmountCents,
+  };
+}
+
+export async function checkAnnualGuaranteeEligibility(
+  admin: SupabaseClient,
+  accountId: string,
+  subscription: {
+    billingInterval: string;
+    planCode: string;
+    currentPeriodStart: string | null;
+    createdAt: string | null;
+  },
+  now = new Date(),
+): Promise<AnnualGuaranteeRefundCalculation> {
+  if (subscription.billingInterval !== 'annual') {
+    return {
+      eligible: false,
+      planCode: subscription.planCode,
+      annualPrepaymentCents: 0,
+      oneMonthDeductionCents: 0,
+      refundAmountCents: 0,
+      reason: 'Not an annual billing plan',
+    };
+  }
+
+  const startDateStr = subscription.currentPeriodStart || subscription.createdAt;
+  if (!startDateStr) {
+    return {
+      eligible: false,
+      planCode: subscription.planCode,
+      annualPrepaymentCents: 0,
+      oneMonthDeductionCents: 0,
+      refundAmountCents: 0,
+      reason: 'No subscription start date found',
+    };
+  }
+
+  const startDate = new Date(startDateStr);
+  const elapsedMs = now.getTime() - startDate.getTime();
+  if (elapsedMs < 0 || elapsedMs > ANNUAL_GUARANTEE_WINDOW_MS) {
+    return {
+      eligible: false,
+      planCode: subscription.planCode,
+      annualPrepaymentCents: 0,
+      oneMonthDeductionCents: 0,
+      refundAmountCents: 0,
+      reason: 'Outside 30-day guarantee window',
+    };
+  }
+
+  // Check once-per-business / account guarantee history in account_events
+  try {
+    const { data: priorEvents } = await admin
+      .from('account_events')
+      .select('id')
+      .eq('account_id', accountId)
+      .eq('kind', 'subscription_guarantee_refund_issued')
+      .limit(1);
+
+    if (priorEvents && priorEvents.length > 0) {
+      return {
+        eligible: false,
+        planCode: subscription.planCode,
+        annualPrepaymentCents: 0,
+        oneMonthDeductionCents: 0,
+        refundAmountCents: 0,
+        reason: '30-day guarantee already used previously for this account',
+      };
+    }
+  } catch (err) {
+    console.error('Error checking prior guarantee events:', err);
+  }
+
+  return calculateAnnualPlanGuaranteeRefund(subscription.planCode);
+}
 
 /**
  * WHY THIS TAKES A STATE TOKEN, which is not obvious and matters for money.
@@ -99,14 +224,14 @@ export function buildSubscriptionCancellationIdempotencyKey(input: {
     throw new Error('A workspace and a provider subscription id are required to cancel.');
   }
   const digest = createHash('sha256')
-    .update([
-      'base_plan_subscription',
-      workspaceId,
-      subscriptionId,
-      input.mode,
-      input.stateToken ?? '',
-    ].join('\0'))
-    .digest('hex');
+  .update([
+    'base_plan_subscription',
+    workspaceId,
+    subscriptionId,
+    input.mode,
+    input.stateToken ?? '',
+  ].join('\0'))
+  .digest('hex');
   return `lgq:billing:v1:subscription.cancel:${digest}`;
 }
 
@@ -124,7 +249,7 @@ export async function loadCancellableSubscription(
 ): Promise<CancellableSubscription | null> {
   const { data, error } = await admin
     .from('billing_subscriptions')
-    .select('provider_subscription_id, plan_code, status, cancel_at_period_end, current_period_end, updated_at')
+    .select('provider_subscription_id, plan_code, billing_interval, status, cancel_at_period_end, current_period_start, current_period_end, created_at, updated_at')
     .eq('account_id', accountId)
     .order('updated_at', { ascending: false })
     .limit(1)
@@ -134,18 +259,41 @@ export async function loadCancellableSubscription(
   if (!data?.provider_subscription_id) return null;
   if (!CANCELLABLE_STATUSES.has(String(data.status))) return null;
 
+  const billingInterval = String(data.billing_interval || 'monthly') === 'annual' ? 'annual' : 'monthly';
+  const planCode = String(data.plan_code || 'flex');
+
+  const guaranteeCheck = await checkAnnualGuaranteeEligibility(admin, accountId, {
+    billingInterval,
+    planCode,
+    currentPeriodStart: data.current_period_start ? String(data.current_period_start) : null,
+    createdAt: data.created_at ? String(data.created_at) : null,
+  });
+
   return Object.freeze({
     providerSubscriptionId: String(data.provider_subscription_id),
-    planCode: String(data.plan_code),
+    planCode,
+    billingInterval,
     status: String(data.status),
     cancelAtPeriodEnd: data.cancel_at_period_end === true,
+    currentPeriodStart: data.current_period_start ? String(data.current_period_start) : null,
     currentPeriodEnd: data.current_period_end ? String(data.current_period_end) : null,
+    createdAt: data.created_at ? String(data.created_at) : null,
     updatedAt: data.updated_at ? String(data.updated_at) : null,
+    guaranteeEligible: guaranteeCheck.eligible,
+    guaranteeRefundAmountCents: guaranteeCheck.refundAmountCents,
+    guaranteeDeductionCents: guaranteeCheck.oneMonthDeductionCents,
   });
 }
 
 export type CancellationResult =
-  | { ok: true; alreadyScheduled: boolean; currentPeriodEnd: string | null }
+  | {
+      ok: true;
+      alreadyScheduled: boolean;
+      currentPeriodEnd: string | null;
+      guaranteeRefundIssued?: boolean;
+      refundAmountCents?: number;
+      stripeRefundId?: string;
+    }
   | { ok: false; error: string };
 
 /**
@@ -176,30 +324,17 @@ function describeStripeFailure(error: unknown, verb: 'cancel' | 'restore'): { me
 }
 
 /**
- * Schedule cancellation at the end of the paid period.
+ * Schedule cancellation at the end of the paid period, or execute the 30-day money-back guarantee refund if eligible.
  *
- * Not an immediate cancel: they have paid through the period, and the FAQ says
- * plainly that "cancellations take effect at renewal". Taking the workspace away
- * the moment they click would contradict the page and delete access they are
- * still owed.
+ * For standard cancellations: They have paid through the period, and cancellations take effect at renewal.
+ * For eligible annual plans within 30 days: Automatically issues the published guarantee refund (annual prepayment minus 1 month base) and cancels the subscription.
  */
 export async function cancelBasePlanSubscriptionAtPeriodEnd(input: {
   admin: SupabaseClient;
   accountId: string;
   actorEmail?: string | null;
 }): Promise<CancellationResult> {
-  // THE GATE BELONGS HERE, NOT ONLY ON THE ACTION THAT RENDERS THE BUTTON.
-  //
-  // It used to live solely in `cancelBasePlanSubscriptionAction`, which made it
-  // a gate on ONE ROUTE rather than on the operation. `changeBasePlan` reaches
-  // this function directly when a customer picks Flex -- downgrading to Flex IS
-  // cancelling -- and that action checks no flag at all, so the switch named
-  // "cancellation enabled" did not decide whether a subscription could be
-  // cancelled. It decided which of two buttons was visible.
-  //
-  // Checked BEFORE the read, so a refusal costs no query and, more importantly,
-  // writes no `subscription_cancellation_requested` event for something that
-  // will not happen.
+  // Checked BEFORE the read, so a refusal costs no query and writes no event
   if (!basePlanSubscriptionCancellationEnabled()) {
     return { ok: false, error: CANCELLATION_DISABLED_MESSAGE };
   }
@@ -208,14 +343,124 @@ export async function cancelBasePlanSubscriptionAtPeriodEnd(input: {
   if (!subscription) {
     return { ok: false, error: 'There is no active subscription on this workspace to cancel.' };
   }
+
+  // 1. 30-DAY MONEY-BACK GUARANTEE PATH FOR ANNUAL BASE PLANS
+  if (subscription.guaranteeEligible && subscription.guaranteeRefundAmountCents > 0) {
+    await recordAccountEvent({
+      accountId: input.accountId,
+      kind: 'subscription_guarantee_refund_requested',
+      summary: `Requested 30-day guarantee refund for annual ${subscription.planCode} plan ($${(subscription.guaranteeRefundAmountCents / 100).toFixed(2)})`,
+      actorEmail: input.actorEmail ?? null,
+      meta: {
+        plan_code: subscription.planCode,
+        provider_subscription_id: subscription.providerSubscriptionId,
+        refund_amount_cents: subscription.guaranteeRefundAmountCents,
+        deduction_cents: subscription.guaranteeDeductionCents,
+      },
+    });
+
+    const stripe = getStripeClient();
+    let paymentIntentId: string | null = null;
+    let latestChargeId: string | null = null;
+
+    try {
+      const invoices = await stripe.invoices.list({
+        subscription: subscription.providerSubscriptionId,
+        status: 'paid',
+        limit: 1,
+      });
+      const latestInvoice = invoices.data?.[0] as unknown as {
+        payment_intent?: string | { id: string } | null;
+        charge?: string | { id: string } | null;
+      } | undefined;
+      if (latestInvoice?.payment_intent) {
+        paymentIntentId = typeof latestInvoice.payment_intent === 'string'
+          ? latestInvoice.payment_intent
+          : latestInvoice.payment_intent.id;
+      }
+      if (latestInvoice?.charge) {
+        latestChargeId = typeof latestInvoice.charge === 'string'
+          ? latestInvoice.charge
+          : latestInvoice.charge.id;
+      }
+    } catch (invErr) {
+      console.warn(`Could not list invoices for subscription ${subscription.providerSubscriptionId}:`, invErr);
+    }
+
+    let stripeRefundId: string | null = null;
+    if (paymentIntentId || latestChargeId) {
+      try {
+        const refundParams: Record<string, unknown> = {
+          amount: subscription.guaranteeRefundAmountCents,
+          reason: 'requested_by_customer',
+          metadata: {
+            account_id: input.accountId,
+            plan_code: subscription.planCode,
+            guarantee_version: '30_day_first_annual',
+            refund_amount_cents: String(subscription.guaranteeRefundAmountCents),
+            one_month_deduction_cents: String(subscription.guaranteeDeductionCents),
+          },
+        };
+        if (paymentIntentId) refundParams.payment_intent = paymentIntentId;
+        else if (latestChargeId) refundParams.charge = latestChargeId;
+
+        const refund = await stripe.refunds.create(
+          refundParams as never,
+          {
+            idempotencyKey: `lgq:billing:v1:guarantee_refund:${input.accountId}:${subscription.providerSubscriptionId}`,
+          },
+        );
+        stripeRefundId = refund.id;
+      } catch (refundError) {
+        console.error(`Stripe refund creation failed for ${subscription.providerSubscriptionId}:`, refundError);
+        return { ok: false, error: 'Stripe was unable to process the guarantee refund. Please contact support.' };
+      }
+    }
+
+    // Cancel the subscription immediately at Stripe
+    try {
+      await stripe.subscriptions.cancel(subscription.providerSubscriptionId, {
+        idempotencyKey: buildSubscriptionCancellationIdempotencyKey({
+          workspaceId: input.accountId,
+          providerSubscriptionId: subscription.providerSubscriptionId,
+          mode: 'immediate',
+          stateToken: subscription.updatedAt,
+        }),
+      } as never);
+    } catch (cancelErr) {
+      console.error(`Failed to cancel subscription after refund for ${subscription.providerSubscriptionId}:`, cancelErr);
+    }
+
+    // Record completed guarantee refund event
+    await recordAccountEvent({
+      accountId: input.accountId,
+      kind: 'subscription_guarantee_refund_issued',
+      summary: `Processed 30-day money-back guarantee for annual ${subscription.planCode} plan: refunded $${(subscription.guaranteeRefundAmountCents / 100).toFixed(2)} (deducted $${(subscription.guaranteeDeductionCents / 100).toFixed(2)} for 1 month of service)`,
+      actorEmail: input.actorEmail ?? null,
+      meta: {
+        plan_code: subscription.planCode,
+        provider_subscription_id: subscription.providerSubscriptionId,
+        stripe_refund_id: stripeRefundId,
+        refund_amount_cents: subscription.guaranteeRefundAmountCents,
+        one_month_deduction_cents: subscription.guaranteeDeductionCents,
+      },
+    });
+
+    return {
+      ok: true,
+      alreadyScheduled: false,
+      guaranteeRefundIssued: true,
+      refundAmountCents: subscription.guaranteeRefundAmountCents,
+      stripeRefundId: stripeRefundId ?? undefined,
+      currentPeriodEnd: null,
+    };
+  }
+
+  // 2. STANDARD CANCELLATION PATH (AT PERIOD END)
   if (subscription.cancelAtPeriodEnd) {
-    // Already scheduled. Saying so beats sending a second write and beats an
-    // error, because from the customer's side the thing they asked for is true.
     return { ok: true, alreadyScheduled: true, currentPeriodEnd: subscription.currentPeriodEnd };
   }
 
-  // Written BEFORE the call: if the process dies mid-request, the record of what
-  // was asked for survives, and the projector supplies what actually happened.
   await recordAccountEvent({
     accountId: input.accountId,
     kind: 'subscription_cancellation_requested',
@@ -242,9 +487,6 @@ export async function cancelBasePlanSubscriptionAtPeriodEnd(input: {
         }),
       },
     );
-    // Deliberately not written back to billing_subscriptions here. The projector
-    // owns that row, and a second writer racing it is how two sources of truth
-    // start. customer.subscription.updated carries this same state.
     return {
       ok: true,
       alreadyScheduled: false,

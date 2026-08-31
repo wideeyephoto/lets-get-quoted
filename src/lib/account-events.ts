@@ -58,6 +58,8 @@ export type AccountEventKind =
   // in the human-readable activity feed, written only when something actually
   // changed so the two cannot disagree about how many times it did.
   | 'overage_authorization_changed'
+  | 'subscription_guarantee_refund_requested'
+  | 'subscription_guarantee_refund_issued'
   // Automated contractor onboarding & lifecycle drip email delivered by the platform
   | 'contractor_lifecycle_email_sent';
 

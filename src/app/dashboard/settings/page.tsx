@@ -158,6 +158,8 @@ export default async function SettingsPage({
           planName: BILLING_PLANS[resolveBillingPlanId(subscription.planCode)].name,
           currentPeriodEnd: subscription.currentPeriodEnd,
           alreadyScheduled: subscription.cancelAtPeriodEnd,
+          guaranteeEligible: subscription.guaranteeEligible,
+          guaranteeRefundAmountCents: subscription.guaranteeRefundAmountCents,
         }
         : null))
       .catch(() => null)

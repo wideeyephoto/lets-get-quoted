@@ -25,11 +25,28 @@ const stripe = {
     { cancel_at: 1_800_000_000 }
   )),
   cancel: vi.fn(async (_id: string, _options?: Record<string, unknown>) => ({ status: 'canceled' })),
+  invoices: {
+    list: vi.fn(async () => ({
+      data: [{ payment_intent: 'pi_test_123', charge: 'ch_test_123' }],
+    })),
+  },
+  refunds: {
+    create: vi.fn(async (_params: Record<string, unknown>, _options?: Record<string, unknown>) => ({
+      id: 're_test_123',
+      status: 'succeeded',
+    })),
+  },
+  get subscriptions() {
+    return {
+      update: stripe.update,
+      cancel: stripe.cancel,
+    };
+  },
 };
 const events: Array<Record<string, unknown>> = [];
 
 vi.mock('@/lib/stripe', () => ({
-  getStripeClient: () => ({ subscriptions: stripe }),
+  getStripeClient: () => stripe,
 }));
 vi.mock('@/lib/account-events', () => ({
   recordAccountEvent: vi.fn(async (input: Record<string, unknown>) => { events.push(input); }),
@@ -37,16 +54,19 @@ vi.mock('@/lib/account-events', () => ({
 
 const {
   buildSubscriptionCancellationIdempotencyKey,
+  calculateAnnualPlanGuaranteeRefund,
+  checkAnnualGuaranteeEligibility,
   cancelBasePlanSubscriptionAtPeriodEnd,
   cancelPurchasedCapacitySubscriptionAtPeriodEnd,
   cancelSubscriptionForAccountDeletion,
   resumeBasePlanSubscription,
   basePlanSubscriptionCancellationEnabled,
+  loadCancellableSubscription,
 } = await import('@/lib/billing/subscription-cancellation');
 
 type Row = Record<string, unknown> | null;
 
-function adminWith(row: Row, error: { message: string } | null = null, capacityRows: Record<string, unknown>[] = []) {
+function adminWith(row: Row, error: { message: string } | null = null, capacityRows: Record<string, unknown>[] = [], priorGuaranteeEvents: Record<string, unknown>[] = []) {
   const chain = {
     select: () => chain,
     eq: () => chain,
@@ -54,9 +74,25 @@ function adminWith(row: Row, error: { message: string } | null = null, capacityR
     order: () => chain,
     limit: () => chain,
     maybeSingle: async () => ({ data: row, error }),
-    then: (resolve: (arg: unknown) => unknown) => resolve({ data: capacityRows, error }),
+    then: (resolve: (arg: unknown) => unknown) => {
+      // If table is account_events, resolve priorGuaranteeEvents
+      resolve({ data: priorGuaranteeEvents.length > 0 ? priorGuaranteeEvents : capacityRows, error });
+    },
   };
-  return { from: () => chain } as never;
+  return {
+    from: (table: string) => {
+      if (table === 'account_events') {
+        const eventChain = {
+          select: () => eventChain,
+          eq: () => eventChain,
+          limit: () => eventChain,
+          then: (resolve: (arg: unknown) => unknown) => resolve({ data: priorGuaranteeEvents, error: null }),
+        };
+        return eventChain;
+      }
+      return chain;
+    },
+  } as never;
 }
 
 const ACTIVE = {
@@ -425,5 +461,152 @@ describe('the pages that promise cancellation say where it is', () => {
     const consent = read('src', 'lib', 'billing', 'subscription-consent.ts');
     expect(consent).toContain('f39aeedb379d397f941d3c5fc48357703b4cc97148d8b1bb3c2f55b04e449c75');
     expect(read('src', 'app', 'terms', 'page.tsx')).toContain('cancellation takes effect at the end of the current paid billing period');
+  });
+});
+
+describe('30-day money-back guarantee for annual base plans', () => {
+  it('correctly calculates the published deduction and refund for all plan tiers', () => {
+    // Solo Annual: $420 - $39 = $381 ($38,100 cents)
+    const solo = calculateAnnualPlanGuaranteeRefund('solo');
+    expect(solo.eligible).toBe(true);
+    expect(solo.annualPrepaymentCents).toBe(42_000);
+    expect(solo.oneMonthDeductionCents).toBe(3_900);
+    expect(solo.refundAmountCents).toBe(38_100);
+
+    // Growth Annual: $1,188 - $129 = $1,059 ($105,900 cents)
+    const growth = calculateAnnualPlanGuaranteeRefund('growth');
+    expect(growth.eligible).toBe(true);
+    expect(growth.annualPrepaymentCents).toBe(118_800);
+    expect(growth.oneMonthDeductionCents).toBe(12_900);
+    expect(growth.refundAmountCents).toBe(105_900);
+
+    // Scale Annual: $3,588 - $329 = $3,259 ($325,900 cents)
+    const scale = calculateAnnualPlanGuaranteeRefund('scale');
+    expect(scale.eligible).toBe(true);
+    expect(scale.annualPrepaymentCents).toBe(358_800);
+    expect(scale.oneMonthDeductionCents).toBe(32_900);
+    expect(scale.refundAmountCents).toBe(325_900);
+  });
+
+  it('determines eligibility within the 30-day window for annual plans', async () => {
+    const recentDate = new Date(Date.now() - 5 * 86_400_000).toISOString(); // 5 days ago
+    const oldDate = new Date(Date.now() - 45 * 86_400_000).toISOString(); // 45 days ago
+
+    // Eligible: Annual + 5 days old + no prior guarantee refund
+    const eligible = await checkAnnualGuaranteeEligibility(adminWith(null), 'acct_1', {
+      billingInterval: 'annual',
+      planCode: 'growth',
+      currentPeriodStart: recentDate,
+      createdAt: recentDate,
+    });
+    expect(eligible.eligible).toBe(true);
+    expect(eligible.refundAmountCents).toBe(105_900);
+
+    // Ineligible: Monthly plan
+    const monthly = await checkAnnualGuaranteeEligibility(adminWith(null), 'acct_1', {
+      billingInterval: 'monthly',
+      planCode: 'growth',
+      currentPeriodStart: recentDate,
+      createdAt: recentDate,
+    });
+    expect(monthly.eligible).toBe(false);
+
+    // Ineligible: Outside 30 days
+    const expired = await checkAnnualGuaranteeEligibility(adminWith(null), 'acct_1', {
+      billingInterval: 'annual',
+      planCode: 'growth',
+      currentPeriodStart: oldDate,
+      createdAt: oldDate,
+    });
+    expect(expired.eligible).toBe(false);
+
+    // Ineligible: Prior guarantee already claimed
+    const alreadyClaimed = await checkAnnualGuaranteeEligibility(
+      adminWith(null, null, [], [{ id: 'evt_prior_1' }]),
+      'acct_1',
+      {
+        billingInterval: 'annual',
+        planCode: 'growth',
+        currentPeriodStart: recentDate,
+        createdAt: recentDate,
+      },
+    );
+    expect(alreadyClaimed.eligible).toBe(false);
+  });
+
+  it('automatically executes guarantee refund and cancels subscription when eligible', async () => {
+    const recentDate = new Date(Date.now() - 5 * 86_400_000).toISOString();
+    const annualActive = {
+      provider_subscription_id: 'sub_annual_1',
+      plan_code: 'growth',
+      billing_interval: 'annual',
+      status: 'active',
+      cancel_at_period_end: false,
+      current_period_start: recentDate,
+      current_period_end: new Date(Date.now() + 360 * 86_400_000).toISOString(),
+      created_at: recentDate,
+      updated_at: '2026-08-25T10:00:00Z',
+    };
+
+    const result = await cancelBasePlanSubscriptionAtPeriodEnd({
+      admin: adminWith(annualActive),
+      accountId: 'acct_annual_1',
+      actorEmail: 'owner@example.com',
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.guaranteeRefundIssued).toBe(true);
+      expect(result.refundAmountCents).toBe(105_900); // $1,059
+      expect(result.stripeRefundId).toBe('re_test_123');
+    }
+
+    // Stripe refunds and cancellation invoked
+    expect(stripe.refunds.create).toHaveBeenCalledTimes(1);
+    expect(stripe.cancel).toHaveBeenCalledTimes(1);
+
+    // Account events recorded
+    const requestedEvent = events.find((e) => e.kind === 'subscription_guarantee_refund_requested');
+    const issuedEvent = events.find((e) => e.kind === 'subscription_guarantee_refund_issued');
+    expect(requestedEvent).toBeDefined();
+    expect(issuedEvent).toBeDefined();
+    expect(issuedEvent?.meta).toMatchObject({
+      plan_code: 'growth',
+      provider_subscription_id: 'sub_annual_1',
+      refund_amount_cents: 105_900,
+    });
+  });
+
+  it('falls back to standard cancel_at_period_end when outside 30-day guarantee', async () => {
+    const oldDate = new Date(Date.now() - 60 * 86_400_000).toISOString(); // 60 days ago
+    const annualExpiredGuarantee = {
+      provider_subscription_id: 'sub_annual_old',
+      plan_code: 'growth',
+      billing_interval: 'annual',
+      status: 'active',
+      cancel_at_period_end: false,
+      current_period_start: oldDate,
+      current_period_end: new Date(Date.now() + 300 * 86_400_000).toISOString(),
+      created_at: oldDate,
+      updated_at: '2026-06-25T10:00:00Z',
+    };
+
+    stripe.refunds.create.mockClear();
+    stripe.cancel.mockClear();
+    stripe.update.mockClear();
+
+    const result = await cancelBasePlanSubscriptionAtPeriodEnd({
+      admin: adminWith(annualExpiredGuarantee),
+      accountId: 'acct_annual_old',
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.guaranteeRefundIssued).toBeUndefined();
+    }
+
+    // Standard cancel at period end
+    expect(stripe.update).toHaveBeenCalledTimes(1);
+    expect(stripe.refunds.create).not.toHaveBeenCalled();
   });
 });

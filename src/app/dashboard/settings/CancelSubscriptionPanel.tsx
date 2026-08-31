@@ -13,34 +13,27 @@ import {
  * The cancel affordance the Terms, the checkout consent box, the homepage and
  * the FAQ have all been promising while it did not exist.
  *
- * Two steps, because this is the one control on the page that ends a paid
- * relationship and a stray click should not. It is not a destructive-sounding
- * confirm dialog either: cancelling is a thing a customer is entitled to do, and
- * making it feel dangerous is a dark pattern.
- *
- * Restoring is ONE step, deliberately. The asymmetry is the point: the click
- * that costs someone their plan deserves a confirmation, and the click that
- * gives it back does not. This panel used to tell them to "contact support" --
- * a promise with no mechanism behind it, which is the same defect the cancel
- * button itself was built to retire.
+ * Supports both standard end-of-period cancellation and the automated 30-day
+ * money-back guarantee refund for annual base plans.
  */
 export default function CancelSubscriptionPanel({
   planName,
   currentPeriodEnd,
   alreadyScheduled,
+  guaranteeEligible = false,
+  guaranteeRefundAmountCents = 0,
 }: {
   planName: string;
   currentPeriodEnd: string | null;
   alreadyScheduled: boolean;
+  guaranteeEligible?: boolean;
+  guaranteeRefundAmountCents?: number;
 }) {
   const [confirming, setConfirming] = useState(false);
   const [state, setState] = useState<CancelSubscriptionActionState>(null);
   const [resumeState, setResumeState] = useState<ResumeSubscriptionActionState>(null);
   const [pending, startTransition] = useTransition();
 
-  // null defers to the server-rendered prop. revalidatePath will bring that prop
-  // into line on the next render, but the override makes the switch immediate
-  // rather than leaving the old panel on screen until the page catches up.
   const [scheduledOverride, setScheduledOverride] = useState<boolean | null>(null);
   const scheduled = scheduledOverride ?? alreadyScheduled;
 
@@ -55,11 +48,23 @@ export default function CancelSubscriptionPanel({
   const endDate = endsOn(state?.ok === true ? state.currentPeriodEnd : currentPeriodEnd);
   const error = state?.ok === false ? state.error : resumeState?.ok === false ? resumeState.error : null;
 
+  const refundDollars = (guaranteeRefundAmountCents / 100).toLocaleString('en-US', {
+    style: 'currency',
+    currency: 'USD',
+  });
+
   const runCancel = () => startTransition(async () => {
     const result = await cancelBasePlanSubscriptionAction();
     setState(result);
     setResumeState(null);
-    if (result?.ok) setScheduledOverride(true);
+    if (result?.ok) {
+      if (result.guaranteeRefundIssued) {
+        setScheduledOverride(false);
+        setConfirming(false);
+      } else {
+        setScheduledOverride(true);
+      }
+    }
   });
 
   const runResume = () => startTransition(async () => {
@@ -71,6 +76,40 @@ export default function CancelSubscriptionPanel({
       setConfirming(false);
     }
   });
+
+  // Guarantee refund success banner
+  if (state?.ok === true && state.guaranteeRefundIssued) {
+    const refundFormatted = ((state.refundAmountCents ?? guaranteeRefundAmountCents) / 100).toLocaleString('en-US', {
+      style: 'currency',
+      currency: 'USD',
+    });
+    return (
+      <section className="panel workspace-section-card plan-cancel-panel" id="cancel-plan">
+        <div className="workspace-section-headrow">
+          <div className="section-heading workspace-section-heading compact-heading">
+            <p className="eyebrow">30-Day Guarantee</p>
+            <div className="plan-cancel-title-row">
+              <div className="plan-cancel-header-icon-wrap" style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#10b981' }} aria-hidden="true">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M20 6L9 17l-5-5" />
+                </svg>
+              </div>
+              <h3>Guarantee Refund Issued</h3>
+            </div>
+          </div>
+        </div>
+
+        <div className="plan-cancel-status-banner" style={{ borderColor: 'rgba(16, 185, 129, 0.3)', background: 'rgba(16, 185, 129, 0.05)' }}>
+          <p className="plan-cancel-status-main" style={{ color: '#10b981', fontWeight: 600 }}>
+            Your annual {planName} plan has been canceled and a refund of {refundFormatted} has been issued to your payment method.
+          </p>
+          <p className="plan-cancel-status-sub">
+            Your workspace has transitioned to the free Flex plan. Your customers, jobs, quotes, and records remain completely intact.
+          </p>
+        </div>
+      </section>
+    );
+  }
 
   if (scheduled) {
     return (
@@ -116,7 +155,7 @@ export default function CancelSubscriptionPanel({
     <section className="panel workspace-section-card plan-cancel-panel" id="cancel-plan">
       <div className="workspace-section-headrow">
         <div className="section-heading workspace-section-heading compact-heading">
-          <p className="eyebrow">Manage subscription</p>
+          <p className="eyebrow">{guaranteeEligible ? '30-Day Guarantee' : 'Manage subscription'}</p>
           <div className="plan-cancel-title-row">
             <div className="plan-cancel-header-icon-wrap" aria-hidden="true">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
@@ -124,22 +163,35 @@ export default function CancelSubscriptionPanel({
                 <line x1="12" y1="2" x2="12" y2="12" />
               </svg>
             </div>
-            <h3>Cancel your plan</h3>
+            <h3>{guaranteeEligible ? '30-Day Money-Back Guarantee' : 'Cancel your plan'}</h3>
           </div>
         </div>
       </div>
 
       <div className="plan-cancel-info-box">
-        <p className="plan-cancel-info-lead">
-          {endDate
-            ? `Cancelling keeps ${planName} open until ${endDate}, the end of the period you have already paid for. It will not renew after that.`
-            : `Cancelling keeps ${planName} open until the end of the period you have already paid for. It will not renew after that.`}
-        </p>
-        <p className="plan-cancel-info-details">
-          Your jobs, invoices and customers stay exactly where they are. The workspace moves to the free Flex plan when
-          the period ends, and its platform fee rate goes back to 1.25%. You can undo this any time before it takes
-          effect.
-        </p>
+        {guaranteeEligible ? (
+          <>
+            <p className="plan-cancel-info-lead" style={{ color: '#10b981', fontWeight: 600 }}>
+              You are within the 30-day guarantee window for your annual {planName} plan.
+            </p>
+            <p className="plan-cancel-info-details">
+              Canceling will immediately issue an automated refund of <strong>{refundDollars}</strong> (annual prepayment minus 1 month of base plan service) to your payment method. Your workspace will move to the free Flex plan.
+            </p>
+          </>
+        ) : (
+          <>
+            <p className="plan-cancel-info-lead">
+              {endDate
+                ? `Cancelling keeps ${planName} open until ${endDate}, the end of the period you have already paid for. It will not renew after that.`
+                : `Cancelling keeps ${planName} open until the end of the period you have already paid for. It will not renew after that.`}
+            </p>
+            <p className="plan-cancel-info-details">
+              Your jobs, invoices and customers stay exactly where they are. The workspace moves to the free Flex plan when
+              the period ends, and its platform fee rate goes back to 1.25%. You can undo this any time before it takes
+              effect.
+            </p>
+          </>
+        )}
       </div>
 
       {error ? <p className="form-error" role="alert">{error}</p> : null}
@@ -147,11 +199,13 @@ export default function CancelSubscriptionPanel({
       {confirming ? (
         <div className="plan-cancel-confirm-drawer">
           <p className="plan-cancel-confirm-prompt">
-            Are you sure you want to schedule cancellation for {planName}?
+            {guaranteeEligible
+              ? `Confirm cancellation and ${refundDollars} guarantee refund for ${planName}?`
+              : `Are you sure you want to schedule cancellation for ${planName}?`}
           </p>
           <div className="button-row plan-cancel-button-row">
             <button className="btn subtle plan-cancel-confirm-action" type="button" disabled={pending} aria-busy={pending} onClick={runCancel}>
-              {pending ? 'Cancelling…' : `Yes, cancel ${planName}`}
+              {pending ? 'Processing…' : guaranteeEligible ? `Yes, cancel & refund ${refundDollars}` : `Yes, cancel ${planName}`}
             </button>
             <button className="btn primary plan-cancel-keep-action" type="button" disabled={pending} onClick={() => setConfirming(false)}>
               Keep my plan
@@ -160,7 +214,7 @@ export default function CancelSubscriptionPanel({
         </div>
       ) : (
         <button className="btn subtle plan-cancel-init-btn" type="button" onClick={() => setConfirming(true)}>
-          Cancel plan
+          {guaranteeEligible ? 'Cancel plan & claim guarantee' : 'Cancel plan'}
         </button>
       )}
     </section>

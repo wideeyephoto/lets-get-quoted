@@ -12,7 +12,14 @@ import {
 import { checkRateLimitStrict } from '@/lib/rate-limit';
 
 export type CancelSubscriptionActionState =
-  | { ok: true; alreadyScheduled: boolean; currentPeriodEnd: string | null }
+  | {
+      ok: true;
+      alreadyScheduled: boolean;
+      currentPeriodEnd: string | null;
+      guaranteeRefundIssued?: boolean;
+      refundAmountCents?: number;
+      stripeRefundId?: string;
+    }
   | { ok: false; error: string }
   | null;
 

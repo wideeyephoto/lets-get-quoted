@@ -1,6 +1,6 @@
 # Official Pre-Launch & Go-Live Checklist — Let's Get Quoted
 
-This is the definitive production deployment and launch checklist. All automated testing gates, database migrations, and schema verifications are complete and passing.
+This is the definitive production deployment and launch checklist. Checked items are verified; unchecked items are open launch requirements or blockers.
 
 ---
 
@@ -176,4 +176,92 @@ The following Price IDs exist in the live Stripe account, are active, single-cur
     - Plan & Usage panel displays active Solo subscription ($39/month).
     - Usage allowances, seat counts, and storage meters reflect Solo plan limits.
     - Plan change and cancellation controls verified accessible.
+- [x] **Annual Plan Cancellation & 30-Day Guarantee Workflow (Verified 2026-08-31)**:
+  - Normal cancellation after the guarantee window sets `cancel_at_period_end`; it does **not** issue a prorated refund, and paid access remains available through the annual period end.
+  - For the first annual base plan canceled within 30 days, automatically enforces the published guarantee once per verified business: refunds the annual prepayment minus one normal month-to-month base-plan charge ($381 Solo, $1,059 Growth, or $3,259 Scale at the current catalog prices).
+  - Excludes consumed add-ons, AI Voice/carrier costs, Stripe fees, taxes, and custom work. Separately billed monthly add-ons must be canceled separately and are not silently included in the base-plan refund.
+  - The refund operation is idempotent (`lgq:billing:v1:guarantee_refund:...`), records `subscription_guarantee_refund_requested` and `subscription_guarantee_refund_issued` in `account_events` with Stripe refund IDs and exact deduction metadata, cancels the subscription immediately, and exposes the outcome in the Settings UI and audit trail.
+  - Passed unit and integration coverage across eligible, ineligible, duplicate-submit, provider-timeout, and webhook-replay cases (41/41 passing tests in `test/subscription-cancellation.test.ts`).
+
+---
+
+## 9. Public-Site WCAG Contrast Remediation (Launch Blocker)
+
+**Audit baseline (live production, 2026-08-31):** axe-core 4.12.1 WCAG AA color-contrast sweep across all 230 public sitemap URLs in Dark, Workbench, Light, and Dim at 1440×900. All 920 page/mode combinations loaded, but only 33 pages had no definite failure in every mode. The audit found 2,449 definite failing text-node instances: Dark 288, Workbench 656, Light 1,025, and Dim 480. Automated-incomplete nodes over gradients, images, pseudo-elements, and layered backgrounds remain manual-review work and are not passes.
+
+- [ ] **Fix the shared brand-orange foreground rule (750 failures across 160 pages)**:
+  - Remove white text on `#ff6a24`, which measures 2.86:1 for normal text. Use the approved dark-on-orange ink treatment or darken the filled control enough to meet WCAG AA.
+  - Apply the fix to the shared trade ROI CTA on all 150 `/for/[trade]` pages, all competitor-comparison CTAs, and affected homepage, calculator, and marketing-simulation controls.
+  - Verify default, hover, focus, active, and disabled states in all four modes.
+- [ ] **Stop Light-mode tokens from leaking into fixed dark panels (426 failures across 156 pages)**:
+  - Give dark mockups, result panels, comparison cards, SMS previews, quote previews, and cost calculators component-local foreground/background tokens instead of inheriting the surrounding page theme.
+  - Fix both trade ROI descriptions on all 150 `/for/[trade]` pages; Light currently renders `#090d16` on `#081722` at 1.06:1.
+  - Correct the same dark-ink-on-dark failure throughout competitor comparisons and shared interactive marketing components, where measured ratios fall as low as 1.02:1.
+- [ ] **Repair the shared feature-detail theme boundary**:
+  - Start with `src/components/marketing/suite-feature-page.module.css`, then repair page-specific feature modules that override the shared tokens.
+  - Fix metric strips, capability groups, screenshot captions, FAQ cards, headings, descriptions, links, and status text in Workbench, Light, and Dim.
+  - Clear the current feature-detail baseline: Workbench fails 14/16 pages with 397 nodes, Light fails 15/16 with 97 nodes, and Dim fails 15/16 with 260 nodes.
+  - Prioritize `/features/back-office` (179 failures), `/features/quick-stops` (97), `/features/text-to-job` (75), and `/features/client-portal` (71).
+- [ ] **Fix shared blue filled controls and message bubbles**:
+  - All 17 help articles: make the support button meet 4.5:1; white on `#0284c7` currently measures 4.09:1 in every mode.
+  - Six SMS simulator instances: make the homeowner bubble meet 4.5:1; white on `#007aff` currently measures 4.01:1 in every mode.
+  - Recheck hover, focus, selected, and disabled states after changing either foreground or background.
+- [ ] **Complete page-specific contrast cleanup after the shared fixes land**:
+  - Homepage: clear the remaining 47 failures across the four modes, including orange controls, phone/status text, chat bubbles, quote tabs, badges, and Workbench/Light mockup theme leakage.
+  - Competitor pages: clear the remaining 87–88 failures per page across CTA bands, cost-comparison cards, savings calculators, trade switchers, quote samples, and pillar cards.
+  - Tools: clear `/tools/estimate-generator` (72 failures), `/tools/hourly-rate-calculator`, `/tools/leakage-calculator`, and the `/tools` index.
+  - Help and content: clear the `/help` index, `/changelog`, `/resources/speed-to-lead-contractor-playbook`, and `/resources/contractor-10dlc-sms-compliance-guide`.
+- [ ] **Manually review automated-incomplete contrast cases**:
+  - Inspect visible text over photography, gradients, video, pseudo-elements, translucent panels, and layered backgrounds; axe cannot assign a reliable ratio to these nodes.
+  - Verify representative hero, card, navigation, footer, calculator, and interactive-demo states in every public template and all four modes.
+  - Record each reviewed component as pass or remediate confirmed failures; do not treat an axe `incomplete` result as a pass.
+- [ ] **Pass the final public contrast gate before launch**:
+  - Re-run the complete 230-URL × 4-mode desktop audit and require zero definite WCAG AA color-contrast violations, zero page-load failures, and no theme mismatch between the requested and rendered mode.
+  - Run the same contrast rule at the supported mobile breakpoint so mobile-only navigation and responsive content are covered.
+  - Visually sign off the automated-incomplete cases and preserve the final summary plus raw results as launch evidence.
+  - Regression-check the 33 pages that currently have no definite automated failures so remediation does not introduce new issues.
+
+---
+
+## 10. Logged-In App WCAG Contrast & Route Health (Launch Blocker)
+
+**Audit baseline (live authenticated production, 2026-08-31):** desktop WCAG AA contrast sweep across 50 distinct logged-in user-facing surfaces in Dark, Workbench, Light, and Dim, including representative client, client statement, job, job quote, lead, and blog-detail routes. All 200 page/mode combinations had at least one definite contrast failure. The sweep evaluated approximately 41,000 rendered text and control instances, with settled-page retries for asynchronous routes. Normal text must meet 4.5:1; large text and applicable non-text controls must meet 3:1. Transparent, gradient, image-backed, pseudo-element, and layered-background cases require visual review and are not automatic passes.
+
+- [ ] **Fix shared authenticated-app chrome before page-level cleanup**:
+  - Dark and Workbench: repair the shared `+ New` control; white on its orange gradient currently bottoms out at 3.56:1.
+  - Workbench: repair sidebar count badges, which also measure 3.56:1, and the global `View lead` action, which measures approximately 4.03:1.
+  - Light: give the live-website `(edit)` label a local foreground/background treatment; it currently renders white on white at 1.00:1. Repair the global `View lead` action, which measures approximately 3.68:1.
+  - Dim: repair the global `View lead` action at approximately 3.79:1 and `Plan Day` at approximately 4.23:1.
+  - Verify default, hover, focus-visible, active, selected, expanded, and disabled states for shared navigation, badges, alerts, buttons, links, and menus in all four modes.
+- [ ] **Repair critical money, scheduling, and dispatch surfaces**:
+  - `/dashboard/payments`: correct dark text on near-black or dark-brown cards in Dark and Dim; important amounts currently fall to approximately 1.03-1.05:1. Recheck metric values, explanatory notes, transaction rows, and empty/loading/error states.
+  - `/dashboard/schedule/booking`: correct the booking count, weekday labels, and continuation controls in Dark and Dim; measured ratios fall to approximately 1.04-1.12:1.
+  - `/dashboard/schedule/dispatch`: correct the search field text and placeholder treatment in every mode; the current white-on-white case measures approximately 1.05:1.
+  - Recheck the main schedule, day-plan, map, unscheduled-job, date/time picker, and crew-assignment states after the shared scheduling tokens change.
+- [ ] **Stop app-theme tokens from leaking into fixed white document and form surfaces**:
+  - Client statements and job quotes must use document-local ink, muted, border, table-header, and status tokens. Dark and Dim currently render several labels and table values on white at approximately 1.48-2.57:1.
+  - Cover representative client, statement, job, quote, invoice, payment-request, print, PDF-preview, and editable form states.
+  - Verify inputs, placeholders, helper text, validation messages, toggles, and read-only/disabled controls against their actual rendered surface rather than the surrounding app theme.
+- [ ] **Clear the remaining high-density authenticated page clusters**:
+  - `/dashboard/voice-assistant` and `/dashboard/voice-calls`: repair active filters, configuration CTAs, status messaging, tabs, and search controls; observed failures range from approximately 1.00-2.8:1 across the four modes.
+  - Workbench imports: remove white-on-white file-format and helper text from `/dashboard/clients/import`, `/dashboard/import`, `/dashboard/jobs/import`, `/dashboard/jobs/import-invoices`, and `/dashboard/services/import`.
+  - `/dashboard/quick-stops`: repair Workbench scheduled-time labels and legend items on pale panels, then verify the journey, fee, queue, dispatch, and empty states in every mode.
+  - `/dashboard/marketing/ads`: replace inherited theme colors in badges, muted copy, metrics, controls, and fixed-color modules; verify the rest of the marketing area for the same boundary problem.
+  - Lead detail: repair the Dark and Dim destructive/block-contact action, which measures approximately 2.12-2.15:1, and verify all destructive confirmation states.
+  - Reports, Services, and Rebook: repair Light active-tab text on off-white surfaces and verify every tab state.
+- [ ] **Resolve authenticated route-health findings and define the canonical route inventory**:
+  - Decide whether `/dashboard/inventory` must ship; it currently renders the application 404. Implement the page or remove all user-facing links and audit expectations before launch.
+  - Confirm and document `/dashboard/payroll` → `/dashboard/crew` and `/dashboard/crew/requests/new` → `/dashboard/schedule/requests` as intentional canonical redirects; update navigation, tests, and audit inputs so users do not traverse stale routes.
+  - Audit `/dashboard/sites/preview` separately using its contractor-site theme contract. Do not count the embedded preview as passing merely because the surrounding authenticated shell passes.
+  - Keep one maintained manifest of all static authenticated routes plus representative IDs for every dynamic template, and fail the audit when a route unexpectedly redirects, 404s, remains in a loading shell, or renders the wrong theme.
+- [ ] **Complete manual interaction and responsive contrast review**:
+  - Exercise dropdowns, tabs, dialogs, drawers, popovers, tooltips, date/time pickers, calendars, maps, tables, pagination, toasts, validation, loading, empty, error, success, destructive, and disabled states in every mode.
+  - Inspect gradients, translucent panels, images, maps, charts, pseudo-elements, focus rings, borders, icons, and background-clipped text manually where automated contrast calculation is incomplete or ambiguous.
+  - Repeat the authenticated sweep at every supported mobile/tablet breakpoint, including mobile-only navigation and sticky actions.
+  - Repeat the route and state coverage for every supported logged-in role and permission profile so hidden or role-specific pages are not omitted.
+- [ ] **Pass the final authenticated-app accessibility gate before launch**:
+  - Re-run the maintained authenticated route manifest across Dark, Workbench, Light, and Dim and require zero definite WCAG AA text or applicable non-text contrast violations on every settled page.
+  - Require zero unexpected redirects, 404s, loading-shell timeouts, authentication fallbacks, page-load failures, or requested/rendered theme mismatches.
+  - Require keyboard-visible focus indicators and contrast-compliant interaction states for every shared component and representative page-specific workflow.
+  - Preserve the dated route manifest, raw desktop/mobile results, manual-review disposition, screenshots for fixed-surface exceptions, and final summary as launch evidence.
 

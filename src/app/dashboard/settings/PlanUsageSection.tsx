@@ -92,6 +92,8 @@ export type CancellableProps = Readonly<{
   planName: string;
   currentPeriodEnd: string | null;
   alreadyScheduled: boolean;
+  guaranteeEligible?: boolean;
+  guaranteeRefundAmountCents?: number;
 }>;
 
 export type PlanChangeProps = Readonly<{
@@ -1510,6 +1512,8 @@ export default function PlanUsageSection({
             planName={cancellable.planName}
             currentPeriodEnd={cancellable.currentPeriodEnd}
             alreadyScheduled={cancellable.alreadyScheduled}
+            guaranteeEligible={cancellable.guaranteeEligible}
+            guaranteeRefundAmountCents={cancellable.guaranteeRefundAmountCents}
           />
         ) : null}
       </div>
