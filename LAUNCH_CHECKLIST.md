@@ -12,9 +12,9 @@ This is the definitive production deployment and launch checklist. A checked ite
 - [ ] **P0 — Repair the production crew create/reactivate RPCs**: local source edits the already-applied `20260824140000` migration, which does not update installed production functions. Add a forward `CREATE OR REPLACE` migration, apply it, and prove owner/office create, reactivate, seat-limit, purchased-capacity, and concurrency behavior.
 - [ ] **P0 — Make Managed Ads money movement replay-, price-, and concurrency-safe**: local guards and 14 mocked tests are partial. Client-controlled charge/spend values remain unbound; payment status is not fail-closed; webhook/refill state uses non-atomic capped JSON; and ambiguous provider outcomes, return URLs, phone verification, cancellation, and reconciliation remain unsafe.
 - [ ] **P0 — Repair account deletion and prove data disposition**: recursive enumeration for seven real buckets is local, but Storage list errors and missing Stripe configuration can still report success, and the customer is signed out/redirected after cleanup errors. Fail closed and complete a disposable-account export/delete/Storage/vendor/retry drill against all 111 tables.
-- [ ] **Restore the release gate, not only local checks**: the current local tree passes lint, typecheck, 856/856 Vitest files (11,476/11,476 tests), and an isolated 386-page build, but GitHub CI has not passed and none of the ten local commits is deployed or smoke-tested as one exact release SHA.
+- [ ] **Restore the release gate, not only local checks**: committed source HEAD `1d95b16e` passes lint, typecheck, 856/856 Vitest files (11,476/11,476 tests), schema ordering, the production-dependency audit, and an isolated 386-page build. It is still 17 commits ahead of production, GitHub CI has not passed it, and that exact SHA has not been deployed or smoke-tested.
 - [ ] **Repair and prove the first-annual-plan 30-day guarantee money path**: three local behaviors improved, but Stripe Dahlia Invoice Payments compatibility, eligibility, atomic once-per-entity claiming, cancellation/refund failure handling, reconciliation, and provider-backed E2E proof remain open in Section 8.
-- [ ] **Clear the public and authenticated WCAG gates**: the current public 72-combination rerun still has 683 definite contrast failures, 12,609 incomplete cases, 32 other serious nodes, six theme mismatches, and hydration errors in 56 combinations; the authenticated production baseline remains red.
+- [ ] **Clear the public and authenticated WCAG gates**: the latest recorded public 72-combination rerun at `3f48eafa` plus regenerated lite CSS has 683 definite contrast failures, 12,609 incomplete cases, 32 other serious nodes, six theme mismatches, and hydration errors in 56 combinations; later public-component changes at `1d95b16e` have not been rerun, and the authenticated production baseline remains red.
 - [ ] **Reconcile the SMS quiet-hours legal promise with atomic delayed delivery**: the local implementation creates an immediately due task and separately updates `available_at`, ignores update failure, and can race the worker. Make delayed enqueue atomic and prove later send, expiry, retry, and opt-out behavior.
 
 
@@ -23,13 +23,13 @@ This is the definitive production deployment and launch checklist. A checked ite
 ## 1. Automated Quality, Deployment & Data-Boundary Evidence
 
 - [x] **Current Production Revision**: Vercel deployment `dpl_A22GLRVuyC4GUiu1Vius8Wk2Dsne` is READY on commit `e3550f58`, matches `origin/main`, and completed at `2026-08-31 20:36:34Z` with apex, wildcard, and project aliases.
-- [ ] **Source/Deployment Parity**: audited local HEAD is `3f48eafa`, ten commits ahead of `origin/main`/production `e3550f58`, with the regenerated lite-CSS hash and this checklist/config cleanup still uncommitted. Freeze the intended tree and re-audit its exact SHA before deployment.
-- [x] **Production/Local Build Evidence**: production `e3550f58` built successfully on Vercel. An isolated local Next.js `15.5.24` build also completed with 386 of 386 static pages; one non-failing edge-runtime/static-generation warning remains. This does not replace CI or exact-deployed-SHA verification.
-- [x] **TypeScript Typecheck Snapshot**: the settled local tree exited `0` under `tsc --noEmit -p tsconfig.test.json`; deployed `e3550f58` also passed under TypeScript `5.9.3`.
-- [x] **ESLint**: the settled local tree's `npm run lint` exited `0` with 0 warnings and 0 errors.
+- [ ] **Source/Deployment Parity**: audited committed source HEAD is `1d95b16e`, 17 commits ahead of `origin/main`/production `e3550f58`. Its exact-head local gates are green, but this checklist update is not part of that SHA and the source SHA has no green CI or deployment. Freeze the final tree, rerun the standing gate, and deploy/smoke exactly that commit.
+- [x] **Production/Local Build Evidence**: production `e3550f58` built successfully on Vercel. An isolated local Next.js `15.5.24` build against exact source HEAD `1d95b16e` completed with 386 of 386 static pages; one non-failing edge-runtime/static-generation warning remains. This does not replace CI or exact-deployed-SHA verification.
+- [x] **TypeScript Typecheck Snapshot**: exact source HEAD `1d95b16e` exited `0` under `tsc --noEmit -p tsconfig.test.json`; deployed `e3550f58` also passed under TypeScript `5.9.3`.
+- [x] **ESLint**: exact source HEAD `1d95b16e` exited `0` with 0 warnings and 0 errors under `npm run lint`.
 
-- [x] **Production Dependency Audit**: `npm audit --omit=dev` exited `0` with 0 vulnerabilities across 187 production dependencies.
-- [x] **Full Local Vitest Gate**: the settled current tree passed 856 of 856 files and 11,476 of 11,476 tests on 2026-08-31. This is local code evidence; provider mocks do not prove live money, carrier, email, tenant-role, or recovery journeys.
+- [x] **Production Dependency Audit**: exact source HEAD `1d95b16e` exited `0` under `npm audit --omit=dev`, with 0 vulnerabilities across 187 production dependencies.
+- [x] **Full Local Vitest Gate**: exact source HEAD `1d95b16e` passed 856 of 856 files and 11,476 of 11,476 tests on 2026-08-31. This is local code evidence; provider mocks do not prove live money, carrier, email, tenant-role, or recovery journeys.
 - [ ] **GitHub CI Gate**: run `33436652279` for production/origin commit `e3550f58` failed in Unit tests; later SEO, typecheck, lint, and build steps were skipped. No CI run exists for the local commits.
 - [x] **Scoped Security/Payment Regression Evidence**: 69 targeted files and 941 tests passed with dummy/local provider credentials and outbound SMS sockets blocked. Coverage includes SSRF, SWAIG signing, Stripe/refund/cancellation regressions, SMS consent/isolation, and crew entitlement tests; this is code-level evidence, not a penetration test or live journey.
 - [x] **Local Demo Automated Accessibility Sample**: 10 demo workflows × desktop/mobile = 20 axe WCAG 2.0/2.1/2.2 combinations loaded with 0 definite rule violations.
@@ -42,6 +42,7 @@ This is the definitive production deployment and launch checklist. A checked ite
 - [x] **Live Owner Read Isolation Sample**: seven production owners saw exactly their own rows across clients, leads, jobs, message templates, SMS consent/scopes/events/messages and were blind to non-vacuous rows owned elsewhere.
 - [ ] **All-Role and Mutation Isolation**: production has no office membership and no linked crew identity available for a live matrix. Office/crew reads and cross-tenant writes/sends remain unproven in production.
 - [ ] **Semantic Route-Authorization Coverage**: the local marker inventory now traverses all 142 `src/app/**/route.{ts,js}` handlers, but its single passing test is substring/prefix based and can accept a marker anywhere or blanket-exempt broad route families. Add method-, role-, tenant-, order-, and service-role-aware tests; deploy the export guard; and prove inactive/missing-permission denials.
+- [ ] **Route, Server-Action & Service-Role Authorization Manifest**: inventory every route handler and exported server action; prove the relevant guard executes before service-role access; and exercise anonymous, inactive, wrong-role, wrong-method, cross-tenant, replay, and direct-call denials rather than relying on source markers.
 
 
 ---
@@ -64,12 +65,12 @@ This is the definitive production deployment and launch checklist. A checked ite
 
 ### Top-Up Add-Ons (Live Contract Audit: 2026-08-31)
 
-- [x] **Sellable Top-Ups**: all 6 are `contract-ok` against their live Stripe Price:
-  - `flex_text_250`: `price_1U5tXzGqh5LFKuTCXUPxSJY7` ($15/mo)
-  - `text_1000`: `price_1U5tXzGqh5LFKuTCyqyMSkQ7` ($45/mo)
-  - `marketing_email_5000`: `price_1U5tY0Gqh5LFKuTCITQbEhEK` ($20/mo)
-  - `ai_intake_100`: `price_1U5tY1Gqh5LFKuTCzgsuPkbj` ($25/mo)
-  - `ai_writing_250`: `price_1U5tY2Gqh5LFKuTCNgbygfUp` ($15/mo)
+- [x] **Sellable Top-Ups**: all 6 are `contract-ok` against their live Stripe Price in the read-only `2026-08-18-preview` catalog audit:
+  - `flex_text_250`: `price_1U5tXzGqh5LFKuTCXUPxSJY7` ($12 one-time)
+  - `text_1000`: `price_1U5tXzGqh5LFKuTCyqyMSkQ7` ($42 one-time)
+  - `marketing_email_5000`: `price_1U5tY0Gqh5LFKuTCITQbEhEK` ($17 one-time)
+  - `ai_intake_100`: `price_1U5tY1Gqh5LFKuTCzgsuPkbj` ($15 one-time)
+  - `ai_writing_250`: `price_1U5tY2Gqh5LFKuTCNgbygfUp` ($19 one-time)
   - `crew_user`: `price_1U6gVfGqh5LFKuTC9wFCN28D` ($5/mo)
 - [x] **Withheld Top-Ups**: `storage_100gb`, `office_user`, `ai_voice_flex`, `ai_voice_solo`, `ai_voice_growth`, and `voice_minutes_100` have no live Price and remain excluded from sale.
 
@@ -111,7 +112,7 @@ This is the definitive production deployment and launch checklist. A checked ite
 
 ## 4. Transactional Email & Deliverability (Resend)
 
-- [x] **DNS Records**: Verified 2026-08-31. Resend reports `letsgetquoted.com` ready to send with DKIM and SPF verified. Public DNS publishes DMARC at `_dmarc.letsgetquoted.com` with monitoring policy `p=none`.
+- [x] **Resend Sending-Domain DNS Readiness**: verified 2026-08-31; Resend reports its DKIM, SPF/MAIL-FROM records ready. Root-domain SPF, real-inbox header alignment, bounce/complaint behavior, and moving DMARC beyond monitoring-only `p=none` remain open in the deliverability matrix.
 - [x] **API Key**: `RESEND_API_KEY` is present in Vercel Production (verified 2026-08-31), and production requests reach Resend without an authentication error.
 - [ ] **Deliverability & Recovery Matrix**: exercise magic links, quotes, invoices/PDFs, reminders, support, bounce, complaint, suppression, webhook retry, and provider outage through controlled Gmail, Outlook, and Yahoo inboxes; then define the path from DMARC monitoring to enforcement.
 
@@ -147,6 +148,8 @@ This is the definitive production deployment and launch checklist. A checked ite
   - `/for/roofers` and `/for/gutters` in `trade-clusters.ts` updated to link to `/features/ai-vision`.
 - [ ] **Deploy and production-recrawl local SEO fixes**: production `e3550f58` still serves the broken links and wrong login metadata. Deploy the audited SHA, repeat the 298-destination crawl, and verify the live login canonical/robots response.
 - [ ] **Harden CSP Before Enforcement**: the enforced policy currently protects only `frame-ancestors`; the full policy remains report-only. The homepage nonce did not appear on any of 39 script tags, and Contact left 33 of 35 scripts without it, so enforcing the present full policy would block first-party Next.js scripts. Decide COOP/CORP policy as part of the same review.
+- [ ] **CSP Reporting Pipeline & Enforcement Exit Criteria**: prove reports are authenticated/rate-limited, retained, deduplicated, alerted, and reviewable; define acceptable violation budgets and run a staged report-only → canary-enforced → fully enforced rollout without breaking first-party scripts.
+- [ ] **Next.js Render/Cache & Served-Edge Security Matrix**: compare static, ISR, dynamic, RSC, and Router Cache behavior across host classes; verify nonce/theme/tag request context, session-cookie flags, middleware matcher coverage, security headers, and built-client/RSC output for secret leakage. Make cache lifetimes and invalidation explicit.
 - [x] **Local app-login metadata patch (2026-08-31)**: `src/app/login/layout.tsx` adds `robots: { index: false, follow: false }` and canonical `https://app.letsgetquoted.com/login`; deployment verification remains open above.
 - [ ] **Minimize or protect diagnostic health endpoints**: local `/api/health` removes raw database error text and the exact region, but remains public/unlimited and exposes provider/config/topology details while using service-role access. `/api/permits/health` still exposes implementation, secret-state, storage, and jurisdiction diagnostics. Make both opaque or authenticated/rate-limited and verify live behavior.
 - [ ] **Repair production mobile clipping**: `/features` is visibly clipped at 390 px in the production viewport sample; fix and re-run representative real-device/responsive checks.
@@ -154,6 +157,7 @@ This is the definitive production deployment and launch checklist. A checked ite
 
 - [x] **Cron Authentication & Configuration**: `CRON_SECRET` is present in Vercel Production and Preview and 35 cron endpoints are configured. This does not prove successful execution.
 - [ ] **Cron Execution Health**: 33 jobs are healthy in the strict 24-hour audit; appointment reminders have three demo-recipient delivery failures, and contractor lifecycle is pending its first scheduled run on 2026-09-01.
+- [ ] **Contractor-Lifecycle First-Run Dry Run**: before enabling delivery, enumerate every production recipient, computed lifecycle age/step/subject, CTA and suppression result without sending; exclude test/demo recipients and prevent mid-sequence contacts from receiving an incorrect first message.
 - [ ] **Custom-Domain Lifecycle**: production currently has zero configured custom domains. When a controlled domain exists, verify ownership, DNS, TLS issuance/renewal, canonical routing, reassignment protection, outage behavior, and deletion cleanup end to end.
 
 ---
@@ -162,7 +166,7 @@ This is the definitive production deployment and launch checklist. A checked ite
 
 This table is an inventory, not proof of a deployed value. `.env.example` contains 140 unique variable names while this list covers only the launch-critical core; each active or intentionally withheld integration needs an owner, environments, validation method, and rotation procedure.
 
-- [ ] **Complete Direct Vercel Parity Audit**: verify required variable names by Production/Preview without revealing values, reconcile all 139 documented variables by active/withheld feature, and remove stale aliases.
+- [ ] **Complete Direct Vercel Parity Audit**: verify required variable names by Production/Preview without revealing values, reconcile all 140 unique documented variables by active/withheld feature, and remove stale aliases.
 - [ ] **Complete Secret-Rotation Drill**: inventory Stripe (platform/connected/top-up), Resend webhook, SignalWire signing/callback, QuickBooks, Turnstile, VAPID, AI, Google Ads, closure/tax/permit encryption, and Supabase credentials; scan full Git history; rotate any exposed credential; prove old credentials fail.
 
 | Environment Variable | Production Value / Note |
@@ -211,7 +215,7 @@ This table is an inventory, not proof of a deployed value. `.env.example` contai
 ## 8. Final Go-Live Verification Step
 
 - [x] **Current Production Deployment Identified and Smoked**: `e3550f58` / `dpl_A22GLRVuyC4GUiu1Vius8Wk2Dsne` is READY with apex/subdomain routing, current asset tags, and no runtime-error cluster observed after its deployment during the audit window.
-- [ ] **Deploy an Audited Green Revision**: audited local HEAD is `3f48eafa`, ten commits ahead of `origin/main`/production `e3550f58`, with the regenerated lite-CSS hash and checklist/config cleanup still uncommitted. Local lint, typecheck, 11,476 tests, and the isolated build are green, but GitHub CI and exact-SHA deployment are not. Freeze, obtain green CI, deploy that SHA, then repeat edge, accessibility, billing, webhook, and cron smoke checks.
+- [ ] **Deploy an Audited Green Revision**: audited committed source HEAD `1d95b16e` is 17 commits ahead of `origin/main`/production `e3550f58`. Exact-head lint, typecheck, 11,476 tests, dependency/schema checks, and the isolated 386-page build are green, but this checklist update is not in that SHA, GitHub CI is red/absent for the candidate, and no exact-SHA deployment exists. Freeze the final commit, rerun the standing gate, obtain green CI, deploy it, then repeat edge, accessibility, billing, webhook, and cron smoke checks.
 - [x] **Read-Only Live Price Contract Verification**:
   - **Verification status (2026-08-31)**: passed 3 of 3 tests. All 6 local Price bindings were checked against Stripe Live catalog `2026-08-18-preview` for currency, interval, exact unit amount, active state, and `loadVerifiedStripePlanPrices` compatibility:
     - `STRIPE_PRICE_SOLO_MONTHLY` (`price_1U5n8eGqh5LFKuTCh9KIQFws` - $39/mo) — `ok`
@@ -221,8 +225,8 @@ This table is an inventory, not proof of a deployed value. `.env.example` contai
     - `STRIPE_PRICE_SCALE_MONTHLY` (`price_1U5n8fGqh5LFKuTCUBcPBlFY` - $329/mo) — `ok`
     - `STRIPE_PRICE_SCALE_ANNUAL` (`price_1U5n8fGqh5LFKuTCOEm7ACLn` - $3,588/yr) — `ok`
 - [ ] **Vercel Production Price-Binding Verification**: directly verify all six environment bindings in Vercel Production; the live object audit used local bindings and does not prove deployment parity.
-- [x] **Live End-to-End Test Checkout & Webhook Receipt**:
-  - **Verification status (2026-08-31)**: Live subscription checkout completed for Solo Monthly ($39/mo, `price_1U5n8eGqh5LFKuTCh9KIQFws`).
+- [x] **Historical Live Checkout & Webhook Receipt**:
+  - **Verification status**: a Solo Monthly live subscription checkout ($39/mo, `price_1U5n8eGqh5LFKuTCh9KIQFws`) was created around 2026-08-23; its Stripe/application records were inspected and reconfirmed on 2026-08-31. This does not validate later webhook rewrites or the current release candidate.
   - Webhook endpoint `https://letsgetquoted.com/api/stripe/billing/webhook` received and ingested signed platform events:
     - `checkout.session.completed` (`evt_1U7kt4Gqh5LFKuTCQjW6tbbo`)
     - `invoice.created` (`evt_1U7kt4Gqh5LFKuTCWo2lxx6j`)
@@ -244,6 +248,9 @@ This table is an inventory, not proof of a deployed value. `.env.example` contai
   - Refund status is ignored; cancellation failure after a refund is swallowed and can still return success; no durable operation, atomic once-per-entity claim, webhook reconciliation, or timeout recovery exists.
   - Eligibility uses `current_period_start` and best-effort account events rather than the first successful annual charge and verified business identity. Source/amount validation does not prove charge identity, refundable balance, prior manual refunds, price, currency, livemode, tax, discounts, or billing reason.
   - The focused billing/projector set passed 116 of 116 mocked tests; only six guarantee-filtered tests ran. Complete a controlled Stripe test-mode annual purchase → refund → cancellation → webhook/projector journey plus concurrency, replay, partial-failure, and reconciliation tests before checking this item.
+- [ ] **Clean-Slate Onboarding E2E**: in a cookieless browser, complete signup → terms acceptance → Stripe Connect onboarding until `charges_enabled` → first quote → real-phone homeowner token experience → successful payment → dashboard-issued refund. Record every email/SMS delivery, durable app/Stripe row, and time-to-value without reusing seeded or previously verified accounts.
+- [ ] **Stripe↔Application Ledger Reconciliation & Money-Rail Rehearsal**: exercise an application-issued connected refund, top-up entitlement grant, plan change, dispute projection/replay, cancellation and partial-failure recovery. Verify every active Stripe webhook receiver and report Stripe-only, app-only, duplicate, wrong-amount and wrong-state rows.
+- [ ] **Support Reachability & Chargeback-Evidence Drill**: prove `support@letsgetquoted.com` and `hello@letsgetquoted.com` reach a monitored human, publish/verify a logged-out homeowner support path, assemble a complete dispute-evidence package, and record acknowledgement/escalation SLAs.
 
 
 ---
@@ -252,7 +259,7 @@ This table is an inventory, not proof of a deployed value. `.env.example` contai
 
 **Production baseline (`e3550f58`, 2026-08-31):** all 230 sitemap URLs loaded, but the full 920-combination contrast audit found 2,449 definite failing nodes. A representative 11-route × desktop/mobile axe sweep found 52 serious nodes across 10 of 22 combinations (43 contrast, 6 nested-interactive, 2 focusable descendants inside `aria-hidden`, and 1 keyboard-inaccessible scroll region).
 
-**Current local re-audit (`3f48eafa` plus regenerated lite CSS, 2026-08-31):** 9 high-risk routes × 4 themes × desktop/mobile = 72 combinations. All returned 200 with no blank page, overlay, page exception, or horizontal overflow, but the gate failed with 683 definite contrast nodes in 33 combinations, 12,609 incomplete nodes, 32 other serious nodes, six homepage theme mismatches, and nonce hydration console errors in 56 combinations.
+**Latest recorded local re-audit (`3f48eafa` plus regenerated lite CSS, 2026-08-31; later `1d95b16e` public-component changes not rerun):** 9 high-risk routes × 4 themes × desktop/mobile = 72 combinations. All returned 200 with no blank page, overlay, page exception, or horizontal overflow, but the gate failed with 683 definite contrast nodes in 33 combinations, 12,609 incomplete nodes, 32 other serious nodes, six homepage theme mismatches, and nonce hydration console errors in 56 combinations.
 
 - [ ] **Finish the shared brand-orange foreground remediation**: local selector changes are incomplete. Current examples include homepage white/orange at 2.61–2.86:1 and AI Intake Dim `.simBtn` foreground/background at 1.01:1. Inventory and test every default, hover, focus, active, selected, and disabled state.
 - [ ] **Stop Light-mode tokens from leaking into fixed dark panels**: Back Office still has 318 definite failures across the matrix, including 82 per Light viewport; sampled foreground/background pairs measure as low as 1.64:1.
@@ -307,6 +314,10 @@ Local authenticated CSS and Inventory-page patches now exist, but no current fou
   - Reconcile the 25-entry registry against all 111 schema tables and run a real disposable-account export/delete drill covering relational rows, nested Storage, Stripe/vendor cleanup, audit evidence, retries, partial failures, and recovery.
 - [ ] **Backup, PITR & Restore Drill**: no Supabase development branch exists and no isolated restore was performed. Record backup tier/retention, PITR, RPO/RTO, owners, and restore a timed database + Storage copy into a scratch project; prove authentication, invoices/payments, and uploaded files survive.
 - [ ] **Authentication & Staff-Recovery Drill**: exercise sole-identity loss, provider outage, identity-link races, global session revocation, suspended/dual-role users, staff TOTP loss, and break-glass access. Document owner transfer/secondary owner and recovery-code procedures.
+- [ ] **Realtime Tenancy Matrix**: prove crew-GPS subscribe, broadcast and presence authorization for owner, permitted staff, inactive/revoked staff and a second tenant; verify denied clients cannot infer locations through channel names, payloads or reconnects.
+- [ ] **Storage Tenancy Matrix**: for all seven buckets, verify object-path ownership for upload, list, read, signed URL, replace and delete; prove anonymous, inactive-user and cross-account denial, including guessed paths and replayed signed URLs.
+- [ ] **Service-Role Scoping Sweep**: inventory every `createAdminClient`/service-role call in routes, server actions, libraries, jobs and cron handlers. Prove authentication/role/tenant checks execute first and every query is account-scoped or explicitly reviewed as global.
+- [ ] **Token-Surface Security Inventory**: inventory homeowner, portal, unsubscribe, invite, referral and similar bearer links; verify entropy, expiry, single use where required, revocation, replay resistance, tenant binding, secret rotation, safe logging and referrer-leakage controls.
 
 ---
 
@@ -316,7 +327,9 @@ Local authenticated CSS and Inventory-page patches now exist, but no current fou
 - [x] **Local briefing/diagnostic implementation**: executive roll-up, webhook/dunning/SMS-dead-letter diagnostics, and HITL guards have mocked unit coverage.
 - [ ] **Failure-to-Human Alert Drill**: safely manufacture one failure each for uptime, runtime exception, cron, webhook/dead letter, billing reconciliation, SMS queue, and provider outage; prove actual delivery, acknowledgement time, escalation, and resolution evidence. The local briefing test does not prove a human was alerted.
 - [ ] **Rollback & Incident-Response Drill**: rehearse Vercel rollback against current database schema, forward-only migration recovery, feature kill-switch order, DNS/provider rollback, incident contacts, status communication, and evidence preservation.
-- [x] **Third-Party Failure Matrix & Egress Inventory Hardening (Remediated 2026-08-31)**: Finished the complete egress inventory and hardened with fail-fast `AbortSignal.timeout` across all provider paths: SignalWire SMS (10s), OpenAI inference (30s) and OpenAI public-lead classification (20s), Google Ads REST API (10-12s), Google Maps & Geocoding (8s), Google Solar & StreetView (5-6s), Vercel Domains API (10s), Pexels Stock Photos (8s), QuickBooks API & company queries (10-12s), photo proxy guard (8s), NWS Weather (8s), Census Geocoder (4s), and RentCast Property API (6s).
+- [x] **Local Egress Timeout Patches (2026-08-31)**: fail-fast timeouts were added on enumerated SignalWire, OpenAI, Google Ads/Maps/Solar/StreetView, Vercel Domains, Pexels, QuickBooks API, photo-proxy, NWS, Census and RentCast paths. This is implementation evidence, not a complete inventory or failure-behavior audit.
+- [ ] **Complete Egress Inventory & Third-Party Failure Matrix**: unbounded or unreviewed paths still include Turnstile, the QuickBooks callback company lookup, remote change-order photos and the global Supabase fetch wrapper. Enforce one operation-wide deadline or documented exemption; the photo proxy currently resets its 8-second timer per redirect and may surface a slow-body abort as a generic 500. Inject DNS failure, connect/header/body timeout, 429, 5xx, malformed data, ambiguous success, duplicate/out-of-order callbacks and retry exhaustion; prove bounded latency, idempotency, durable state, alerts and user-visible recovery.
+- [ ] **OpenAI Timeout Accounting & Observability**: fault-inject primary and forced-retry timeouts in public lead classification; prove the correct legacy/classic fallback, usage lease release exactly once with no commit, bounded attempts, no hang, and an operator-visible metric/log for potentially billed ambiguous attempts.
 - [x] **Local owner-phone OTP rate limits**: send and verify use strict distributed buckets.
 - [ ] **Abuse & Cost-DoS Audit**: public health/permit diagnostics and ad-budget checkout still lack complete rate/cost controls, and the ad route accepts client-controlled money/spend inputs. Exercise fail-closed distributed limits for OTP, SMS, AI, PDF, uploads, diagnostics, and Stripe-session creation under concurrency and provider failure.
 
@@ -324,7 +337,21 @@ Local authenticated CSS and Inventory-page patches now exist, but no current fou
 - [ ] **Performance & Capacity Gate**:
   - Current production mobile synthetic sample (1.6 Mbps, 150 ms latency, 4× CPU) measured homepage median LCP 5.95s, Pricing 7.41s, and AI Voice 4.07s; target ≤2.5s and verify with Lighthouse plus field Web Vitals.
   - Load-test large tenants, simultaneous webhooks/crons, database pool saturation, exports, uploads/PDFs, queues, and dashboard/API P50/P95/P99 without using production customer data.
+- [ ] **Changed-Image Cold-Cache Browser Audit**: at 390×844, capture request waterfall, bytes, LCP and CLS for `/`, `/pricing`, `/features/ai-intake` and `/features/website-builder`; prove below-fold images defer before scroll, decode after scroll, and changed orbit/lightbox/simulator/slider interactions work. Run three throttled LCP samples against the pre-change baseline; review whether `quality={80}` increases bytes/cache variants.
+- [ ] **Cron Replay-Safety Inventory**: for every scheduled handler, record schedule, flag, authentication, `maxDuration`, batch/page limits, lock/lease, crash windows, durable cursor, idempotency and replay procedure; exercise duplicate, overlapping and mid-batch-crash runs.
+- [ ] **Large-Tenant Capacity Gate**: seed a representative 2,000-row workspace and test the Supabase 1,000-row response ceiling, pagination/export completeness, dashboard latency, cron completion, Realtime load and database connection-pool headroom against explicit budgets.
+- [ ] **Standing Release Regression Gates**: for every candidate require a clean frozen SHA; lint, typecheck, full unit suite and production build; green CI; route/action/service-role authorization manifest; Storage/Realtime tenancy tests; Stripe SKU↔live Price↔entitlement reconciliation; money formatting across page/email/PDF; claims/compliance-copy register; dead-feature detection; and exact-deployed-SHA smoke verification.
 - [ ] **CI & Repository Controls**: confirm branch protection/required checks externally; remove `continue-on-error` from the production dependency gate; add PG17, migration, tenant-isolation, browser, and preflight jobs; configure CODEOWNERS, dependency updates, and repository secret scanning. Branch-protection API access was unavailable during this audit.
 - [ ] **Real Device, Browser & Role Matrix**: current automation is Chromium-only. Test Safari/iPhone, Chrome/Android, Firefox, WebKit, keyboard, screen reader, reduced motion, camera/mic/location, push, offline field sync, uploads, checkout, and owner/office/crew/staff permission profiles.
 - [ ] **Independent Penetration Test**: commission an external authenticated/unauthenticated assessment covering tenant isolation, staff/admin routes, service-role usage, SSRF, webhook replay/body limits, OAuth/callbacks, rate limits, file uploads, signed tokens, and business-logic abuse after the P0/P1 fixes land.
+
+---
+
+## 13. Claims, Communications & Legal Compliance
+
+- [ ] **Sold-vs-Built Claim Sweep**: reconcile public pages, pricing, comparison tables, changelog, lifecycle email/SMS and in-app usage UI against functionality actually enabled in production; remove, qualify or feature-gate unsupported claims.
+- [ ] **Advertising/FTC Substantiation Register**: record evidence, owner, scope and expiration for every percentage, multiplier, savings, guarantee, `100%`, `compliant`, `proven`, testimonial and outcome claim; block publication where substantiation is absent.
+- [ ] **Outbound-Email Compliance Invariant**: at every send site, verify applicable `List-Unsubscribe`/one-click headers, legal-entity name, postal address, preference/unsubscribe route, fail-closed suppression and hard-bounce/complaint handling.
+- [ ] **Privacy-Egress Reconciliation**: reconcile every outbound host/provider and data category with the privacy policy, processor terms, retention/deletion behavior and user-rights workflow; document AI/Gemini training/no-training tier and homeowner-photo handling.
+- [ ] **Recording, Monitoring & State-Law Review**: verify call-recording disclosure occurs before recording and crew-GPS/employee-monitoring notice/consent is captured; obtain jurisdiction-specific review for liens/NOI, public-adjuster exposure, payment surcharges, privacy rights, Terms versioning and ADA claims.
 
