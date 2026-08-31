@@ -172,7 +172,10 @@ export async function POST(request: NextRequest) {
     ))) {
       throw new Error('AI Intake provider attempt budget reached.');
     }
-    return fetch('https://api.openai.com/v1/responses', init);
+    return fetch('https://api.openai.com/v1/responses', {
+      ...init,
+      signal: AbortSignal.timeout(20000),
+    });
   };
 
   const questionsRemaining = maxQuestions - turn;

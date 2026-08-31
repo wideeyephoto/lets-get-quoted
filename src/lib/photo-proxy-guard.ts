@@ -120,6 +120,7 @@ export async function fetchProxyImage(initialUrl: URL): Promise<{
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
           'Accept': 'image/jpeg,image/png,image/webp,image/*;q=0.8',
         },
+        signal: AbortSignal.timeout(8000),
       });
     } catch (fetchErr) {
       const msg = fetchErr instanceof Error ? fetchErr.message : 'Network error';
