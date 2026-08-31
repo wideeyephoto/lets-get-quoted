@@ -23,8 +23,9 @@ export async function driveDistances(origin: LatLng, destinations: LatLng[]): Pr
     const url =
       `https://maps.googleapis.com/maps/api/distancematrix/json` +
       `?origins=${origin.lat},${origin.lng}&destinations=${encodeURIComponent(destParam)}&units=imperial&key=${key}`;
-    const res = await fetch(url);
+    const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
     if (!res.ok) return null;
+
     const data = (await res.json()) as {
       status?: string;
       rows?: Array<{ elements?: Array<{ status?: string; distance?: { value?: number }; duration?: { value?: number } }> }>;
@@ -62,8 +63,9 @@ export async function driveMatrix(
     const url =
       `https://maps.googleapis.com/maps/api/distancematrix/json` +
       `?origins=${encodeURIComponent(param)}&destinations=${encodeURIComponent(param)}&units=imperial&key=${key}`;
-    const res = await fetch(url);
+    const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
     if (!res.ok) return null;
+
     const data = (await res.json()) as {
       status?: string;
       rows?: Array<{ elements?: Array<{ status?: string; distance?: { value?: number }; duration?: { value?: number } }> }>;

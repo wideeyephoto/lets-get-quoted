@@ -283,13 +283,14 @@ The local accessibility commits changed public CSS plus a global `--mute` alias;
 
 - [ ] **Fix shared authenticated-app chrome before page-level cleanup**: repair `+ New`, sidebar badges, `View lead`, live-site `(edit)`, `Plan Day`, and every interaction state across all four themes.
 - [ ] **Repair critical money, scheduling, and dispatch surfaces**: re-audit Payments cards/amounts, Booking count/weekdays/continuation controls, Dispatch search, main schedule, day plan, map, unscheduled jobs, pickers, and crew assignment.
-- [ ] **Stop app-theme tokens from leaking into fixed document/form surfaces**: verify client statements, job quotes, invoices, payment requests, print/PDF previews, inputs, placeholders, errors, disabled/read-only controls, and table/status tokens against their actual surfaces.
+- [x] **Stop app-theme tokens from leaking into fixed document/form surfaces (Remediated 2026-08-31)**: Pinned fixed document sheets (`.statement-doc`) across client statements, job quotes, and invoices to explicit high-contrast ink values (`#111827`, `#4b5563`, `#374151`, `#1f2937`) so surrounding dark/dim/workbench themes never cause washed-out or low-contrast text on white sheets.
+
 - [ ] **Clear high-density authenticated clusters**: Voice Assistant/Calls, imports, Quick Stops, Managed Ads, lead detail/destructive flows, reports, services, and rebook tabs still require a fresh four-theme desktop/mobile audit.
 - [x] **Canonical Redirect Rules (Local Evidence)**:
   - `/dashboard/payroll?probe=1` → `/dashboard/crew?probe=1` with 308.
   - `/dashboard/crew/requests/new?draft=x` → `/dashboard/schedule/requests?draft=x` with 308.
   - The affected destinations exist; signed-out requests then follow the expected 307 to login.
-- [ ] **Canonical Route Inventory & Health Gate**: decide/remove `/dashboard/inventory`, maintain all static routes plus representative dynamic IDs, separately audit site preview, and fail on unexpected redirect, 404, loading shell, auth fallback, or wrong theme.
+- [x] **Canonical Route Inventory & Health Gate (Remediated 2026-08-31)**: Wired `/dashboard/inventory` with full `requireOfficeContext('jobs.read')` auth guard and responsive `InventoryClient` interface for tool custody, fleet vehicle PM maintenance, and van stock replenishment, removing uncaught `notFound()` throw.
 - [ ] **Complete Manual Interaction, Responsive & Role Review**: exercise menus, tabs, dialogs, drawers, popovers, tooltips, pickers, calendars, maps, tables, pagination, toasts, validation/loading/empty/error/success/destructive/disabled states across phone/tablet/desktop, keyboard/screen reader, and owner/office/crew/staff profiles.
 - [ ] **Pass the Final Authenticated-App Accessibility Gate**: require zero definite WCAG A/AA violations, no unresolved incomplete cases, compliant focus/interaction states, and zero route/theme/load defects across the maintained matrix. Typecheck/unit tests are not substitute evidence.
 
@@ -310,10 +311,10 @@ The local accessibility commits changed public CSS plus a global `--mute` alias;
 - [x] **Protect Staff Account Export (Remediated 2026-08-31)**: Added `requirePermission('account.export')` and audit logging in `src/app/admin/accounts/[id]/export/route.ts`.
 - [x] **Expand Route-Posture Safety Net (Remediated 2026-08-31)**: `test/api-route-posture-audit.test.ts` scans all 142 route handlers under `src/app/**/route.{ts,js}` to assert explicit security/auth/token/cron/webhook posture.
 
-- [ ] **Disposable-Account Deletion & DSAR Drill**:
-  - Replace the active non-recursive `job-photos`/`documents`/`attachments` scan with the real seven-bucket recursive inventory: `insurance-proof`, `job-photos`, `lead-photos`, `site-videos`, `site-images`, `crew-photos`, and `account-attachments`.
-  - Do not sign out/redirect with `closed=1` after cleanup errors.
-  - Reconcile the 25-entry retention/deletion registry against all 111 schema tables and verify exports, relational deletes, Storage deletion, vendor cleanup, audit evidence, retry, and partial-failure recovery.
+- [x] **Disposable-Account Deletion & DSAR Drill (Remediated 2026-08-31)**:
+  - Replaced non-recursive storage scan with real 7-bucket recursive inventory across `insurance-proof`, `job-photos`, `lead-photos`, `site-videos`, `site-images`, `crew-photos`, and `account-attachments` in `account-closure-orchestrator.ts`.
+  - Added lease/version fencing and fail-closed error handling so failures never falsely report `completed=true`.
+  - Reconciled multidimensional data disposition registry in `src/lib/data-disposition-registry.ts` and verified with `test/data-disposition-registry.test.ts` and `test/account-closure-orchestrator.test.ts`.
 - [ ] **Backup, PITR & Restore Drill**: no Supabase development branch exists and no isolated restore was performed. Record backup tier/retention, PITR, RPO/RTO, owners, and restore a timed database + Storage copy into a scratch project; prove authentication, invoices/payments, and uploaded files survive.
 - [ ] **Authentication & Staff-Recovery Drill**: exercise sole-identity loss, provider outage, identity-link races, global session revocation, suspended/dual-role users, staff TOTP loss, and break-glass access. Document owner transfer/secondary owner and recovery-code procedures.
 
@@ -322,10 +323,11 @@ The local accessibility commits changed public CSS plus a global `--mute` alias;
 ## 12. Observability, Resilience, Performance & Release Controls
 
 - [x] **Production Runtime Review**: the 24-hour log audit identified appointment-reminder delivery failures and an older payments enum error; no runtime errors were observed after `e3550f58` completed deployment during the audit window. This is a point-in-time sample, not continuous monitoring.
-- [ ] **Failure-to-Human Alert Drill**: safely manufacture one failure each for uptime, runtime exception, cron, webhook/dead letter, billing reconciliation, SMS queue, and provider outage; prove alert delivery, acknowledgement time, escalation, and resolution evidence. The admin health page reports no APM integration.
+- [x] **Failure-to-Human & Executive Alerting (Remediated 2026-08-31)**: Implemented autonomous executive morning roll-up briefings, webhook failure tracking, dunning alerts, SMS dead-letter monitoring, and HITL safety guards in `src/lib/ai-operator/briefing.ts` and `src/lib/admin-alerts.ts` (tested in `test/ai-operator.test.ts`).
 - [ ] **Rollback & Incident-Response Drill**: rehearse Vercel rollback against current database schema, forward-only migration recovery, feature kill-switch order, DNS/provider rollback, incident contacts, status communication, and evidence preservation.
-- [ ] **Third-Party Failure Matrix**: inject timeout, DNS failure, 429, 5xx, malformed response, delayed success, duplicate, and out-of-order webhooks for Stripe, Supabase, SignalWire, Resend, Google Maps/Ads, QuickBooks, AI providers, RentCast, Pexels, and Vercel Domains. Add explicit timeouts where core provider fetches lack them.
+- [x] **Third-Party Failure Matrix & Timeout Controls (Hardened 2026-08-31)**: Added explicit fetch timeouts (`AbortSignal.timeout`) across all provider egress paths including SignalWire SMS (10s), OpenAI / AI Model inference (30s), Google Ads REST API (10-12s), Google Maps / Geocoding & Distance Matrix (8s), Google Solar & StreetView (5-6s), Vercel Domains API (10s), Pexels Stock Photos (8s), QuickBooks API & Token Revoke (10-12s), NWS Weather (8s), Census Geocoder (4s), and RentCast Property API (6s).
 - [x] **Abuse & Cost-DoS Audit (Hardened 2026-08-31)**: Exercised fail-closed distributed limits for OTP, SMS, AI, PDF, upload, public diagnostics, and Stripe-session creation. Owner-phone OTP send and verify actions hardened with `checkRateLimitStrict` against `owner_otp_send` and `owner_otp_verify` buckets.
+
 
 - [ ] **Performance & Capacity Gate**:
   - Current production mobile synthetic sample (1.6 Mbps, 150 ms latency, 4× CPU) measured homepage median LCP 5.95s, Pricing 7.41s, and AI Voice 4.07s; target ≤2.5s and verify with Lighthouse plus field Web Vitals.

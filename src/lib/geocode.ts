@@ -29,8 +29,9 @@ export async function geocodeAddress(address: string | null | undefined): Promis
 
   try {
     const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(query)}&key=${key}`;
-    const res = await fetch(url);
+    const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
     if (!res.ok) return null;
+
     const data = (await res.json()) as {
       status?: string;
       results?: Array<{ geometry?: { location?: { lat?: number; lng?: number }; location_type?: string } }>;
@@ -170,8 +171,9 @@ export async function geocodeArea(query: string | null | undefined): Promise<Are
     const url =
       `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(text)}` +
       `&components=country:US&key=${key}`;
-    const res = await fetch(url);
+    const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
     if (!res.ok) return { ok: false, reason: 'not-found' };
+
     const data = (await res.json()) as {
       status?: string;
       results?: Array<{

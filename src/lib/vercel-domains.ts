@@ -83,6 +83,7 @@ export async function addDomainToVercel(domain: string): Promise<VercelDomainRes
       },
       body: JSON.stringify({ name: domain }),
       cache: 'no-store',
+      signal: AbortSignal.timeout(10000),
     });
 
     const json = (await res.json()) as VercelDomainResponse;
@@ -109,6 +110,7 @@ export async function verifyVercelDomain(domain: string): Promise<VercelDomainRe
         'Content-Type': 'application/json',
       },
       cache: 'no-store',
+      signal: AbortSignal.timeout(10000),
     });
 
     const json = (await res.json()) as VercelDomainResponse;
@@ -131,6 +133,7 @@ export async function getVercelDomainConfig(domain: string): Promise<VercelDomai
     const res = await fetch(url, {
       headers: { Authorization: `Bearer ${token}` },
       cache: 'no-store',
+      signal: AbortSignal.timeout(10000),
     });
 
     if (!res.ok) return null;
@@ -171,6 +174,7 @@ export async function getProjectDomain(domain: string): Promise<VercelDomainResp
     const res = await fetch(url, {
       headers: { Authorization: `Bearer ${token}` },
       cache: 'no-store',
+      signal: AbortSignal.timeout(10000),
     });
 
     if (!res.ok) return null;
@@ -194,6 +198,7 @@ export async function removeDomainFromVercel(domain: string): Promise<boolean> {
       method: 'DELETE',
       headers: { Authorization: `Bearer ${token}` },
       cache: 'no-store',
+      signal: AbortSignal.timeout(10000),
     });
 
     return res.ok;

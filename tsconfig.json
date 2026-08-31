@@ -33,6 +33,7 @@
     ]
   },
   "include": [
+    ".next-audit-public-current/types/**/*.ts",
     ".next-verify/types/**/*.ts",
     ".next/types/**/*.ts",
     "next-env.d.ts",

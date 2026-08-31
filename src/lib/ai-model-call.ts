@@ -107,7 +107,9 @@ async function callOpenAiEndpoint(
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
       body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(30000),
     });
+
 
     // A draft is spent when the model produced one. An HTTP error produced
     // nothing, and the caller is about to treat it as a failure, so it must not

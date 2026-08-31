@@ -108,7 +108,9 @@ async function requestTokens(body: URLSearchParams): Promise<QuickBooksTokens> {
     body: body.toString(),
     // Never cache a credential exchange.
     cache: 'no-store',
+    signal: AbortSignal.timeout(10000),
   });
+
 
   const payload = (await response.json().catch(() => ({}))) as IntuitTokenResponse;
   if (!response.ok || !payload.access_token || !payload.refresh_token) {
@@ -162,7 +164,9 @@ export async function revokeToken(token: string): Promise<boolean> {
       },
       body: JSON.stringify({ token }),
       cache: 'no-store',
+      signal: AbortSignal.timeout(10000),
     });
+
     return response.ok;
   } catch {
     return false;

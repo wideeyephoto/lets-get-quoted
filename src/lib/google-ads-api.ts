@@ -134,6 +134,7 @@ export async function provisionManagedSearchCampaign(
         {
           method: 'POST',
           headers,
+          signal: AbortSignal.timeout(12000),
           body: JSON.stringify({
             operations: [
               {
@@ -176,6 +177,7 @@ export async function provisionManagedSearchCampaign(
         {
           method: 'POST',
           headers,
+          signal: AbortSignal.timeout(12000),
           body: JSON.stringify({
             operations: [
               {
@@ -437,6 +439,7 @@ export async function uploadOfflineConversion(
         {
           method: 'POST',
           headers: buildGoogleAdsHeaders(config, token),
+          signal: AbortSignal.timeout(12000),
           body: JSON.stringify(payload),
         }
       );
@@ -489,6 +492,7 @@ export async function updateCampaignBidModifier(params: {
         {
           method: 'POST',
           headers: buildGoogleAdsHeaders(config, token),
+          signal: AbortSignal.timeout(12000),
           body: JSON.stringify({
             operations: [
               {
@@ -540,6 +544,7 @@ export async function toggleCampaignStatus(
         {
           method: 'POST',
           headers: buildGoogleAdsHeaders(config, token),
+          signal: AbortSignal.timeout(12000),
           body: JSON.stringify({
             operations: [
               {
@@ -645,6 +650,7 @@ async function fetchGoogleAdsAccessToken(config: GoogleAdsConfig): Promise<strin
   const res = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    signal: AbortSignal.timeout(10000),
     body: new URLSearchParams({
       client_id: config.clientId,
       client_secret: config.clientSecret,
@@ -714,6 +720,7 @@ export async function fetchGoogleAdsCampaignDailySpend(
     const res = await fetch(`${GOOGLE_ADS_API_BASE_URL}/customers/${customerId}/googleAds:search`, {
       method: 'POST',
       headers,
+      signal: AbortSignal.timeout(12000),
       body: JSON.stringify({ query }),
     });
 
@@ -774,6 +781,7 @@ export async function updateGoogleAdsCampaignStatus(
     const res = await fetch(`${GOOGLE_ADS_API_BASE_URL}/customers/${customerId}/campaigns:mutate`, {
       method: 'POST',
       headers,
+      signal: AbortSignal.timeout(12000),
       body: JSON.stringify({
         operations: [
           {

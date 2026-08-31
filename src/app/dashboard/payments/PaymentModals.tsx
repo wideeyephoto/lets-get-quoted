@@ -1762,7 +1762,7 @@ export default function PaymentModals({
                           <tr key={p.id} style={{ borderTop: '1px solid var(--border-subtle, #e2e8f0)' }}>
                             <td style={{ padding: '0.4rem 0.6rem' }}>{p.label}</td>
                             <td style={{ padding: '0.4rem 0.6rem', textTransform: 'capitalize' }}>{p.status}</td>
-                            <td style={{ padding: '0.4rem 0.6rem', textAlign: 'right', fontWeight: 600, color: '#10b981' }}>${Number(p.amount || 0).toFixed(2)}</td>
+                            <td style={{ padding: '0.4rem 0.6rem', textAlign: 'right', fontWeight: 700, color: 'var(--success-text, #047857)' }}>${Number(p.amount || 0).toFixed(2)}</td>
                           </tr>
                         ))
                       )}
@@ -1784,7 +1784,7 @@ export default function PaymentModals({
           )}
 
           {error && (
-            <div style={{ padding: '0.6rem 0.8rem', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', borderRadius: '6px', fontSize: '0.85rem' }}>
+            <div style={{ padding: '0.6rem 0.8rem', background: 'rgba(239, 68, 68, 0.1)', color: '#b91c1c', borderRadius: '6px', fontSize: '0.85rem', fontWeight: 600 }}>
               {error}
             </div>
           )}
@@ -1806,17 +1806,17 @@ export default function PaymentModals({
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', padding: '0.85rem', background: 'var(--panel-subtle, rgba(0,0,0,0.03))', borderRadius: '6px' }}>
             <div>
-              <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Gross Amount</span>
+              <span style={{ fontSize: '0.78rem', color: 'var(--text-muted, #475569)', textTransform: 'uppercase', fontWeight: 600 }}>Gross Amount</span>
               <div style={{ fontSize: '1.25rem', fontWeight: 700 }}>${selectedPayment.amount.toFixed(2)}</div>
             </div>
             <div>
-              <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Net Received</span>
-              <div style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--primary, #10b981)' }}>
+              <span style={{ fontSize: '0.78rem', color: 'var(--text-muted, #475569)', textTransform: 'uppercase', fontWeight: 600 }}>Net Received</span>
+              <div style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--success-text, #047857)' }}>
                 ${selectedPayment.netAmount.toFixed(2)}
               </div>
             </div>
             <div>
-              <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Platform Fee</span>
+              <span style={{ fontSize: '0.78rem', color: 'var(--text-muted, #475569)', textTransform: 'uppercase', fontWeight: 600 }}>Platform Fee</span>
               <div style={{ fontSize: '0.95rem', fontWeight: 600 }}>${selectedPayment.platformFee.toFixed(2)}</div>
             </div>
             <div>

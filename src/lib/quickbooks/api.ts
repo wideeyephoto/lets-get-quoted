@@ -78,8 +78,13 @@ export async function qboQuery<T = Record<string, unknown>>(
   statement: string,
 ): Promise<T[]> {
   const url = `${base(connection)}/query?minorversion=${MINOR_VERSION}&query=${encodeURIComponent(statement)}`;
-  const response = await fetch(url, { headers: headers(connection), cache: 'no-store' });
+  const response = await fetch(url, {
+    headers: headers(connection),
+    cache: 'no-store',
+    signal: AbortSignal.timeout(12000),
+  });
   const body = await parseOrThrow(response);
+
   const query = (body.QueryResponse ?? {}) as Record<string, unknown>;
   // The result key is the entity name — Customer, Item, Invoice — and is simply
   // absent when nothing matched, rather than an empty array.
@@ -108,8 +113,10 @@ export async function qboCreate(
     headers: headers(connection),
     body: JSON.stringify(payload),
     cache: 'no-store',
+    signal: AbortSignal.timeout(12000),
   });
   const body = await parseOrThrow(response);
+
   const created = body[entity] as Record<string, unknown> | undefined;
   if (!created?.Id) throw new QuickBooksApiError(`QuickBooks created no ${entity}.`, response.status, null);
   return created;

@@ -552,8 +552,14 @@ export async function sendProviderMessage(
         : Object.freeze({ kind: 'unmetered' as const });
     if (options.beforeRequest) await options.beforeRequest(usage);
     requestAttempted = true;
-    const response = await fetch(request.url, { method: 'POST', headers: request.headers, body: request.body });
+    const response = await fetch(request.url, {
+      method: 'POST',
+      headers: request.headers,
+      body: request.body,
+      signal: AbortSignal.timeout(10000),
+    });
     // Read as text, once. Reading as JSON is what threw on non-JSON bodies, and a
+
     // Response body can only be consumed one time — so there was no second chance
     // to see what actually came back.
     let raw: string;

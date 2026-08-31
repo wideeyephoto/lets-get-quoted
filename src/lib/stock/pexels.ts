@@ -69,6 +69,7 @@ async function searchPexels(query: string, orientation?: ImageOrientation, perPa
   try {
     const response = await fetch(`${PEXELS_ENDPOINT}?${params.toString()}`, {
       headers: { Authorization: apiKey },
+      signal: AbortSignal.timeout(8000),
       // Let Next cache at the fetch layer too; our Map is the primary cache.
       next: { revalidate: 60 * 60 * 24 },
     });
