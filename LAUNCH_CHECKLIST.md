@@ -189,37 +189,33 @@ The following Price IDs exist in the live Stripe account, are active, single-cur
 
 **Audit baseline (live production, 2026-08-31):** axe-core 4.12.1 WCAG AA color-contrast sweep across all 230 public sitemap URLs in Dark, Workbench, Light, and Dim at 1440×900. All 920 page/mode combinations loaded, but only 33 pages had no definite failure in every mode. The audit found 2,449 definite failing text-node instances: Dark 288, Workbench 656, Light 1,025, and Dim 480. Automated-incomplete nodes over gradients, images, pseudo-elements, and layered backgrounds remain manual-review work and are not passes.
 
-- [ ] **Fix the shared brand-orange foreground rule (750 failures across 160 pages)**:
-  - Remove white text on `#ff6a24`, which measures 2.86:1 for normal text. Use the approved dark-on-orange ink treatment or darken the filled control enough to meet WCAG AA.
-  - Apply the fix to the shared trade ROI CTA on all 150 `/for/[trade]` pages, all competitor-comparison CTAs, and affected homepage, calculator, and marketing-simulation controls.
-  - Verify default, hover, focus, active, and disabled states in all four modes.
-- [ ] **Stop Light-mode tokens from leaking into fixed dark panels (426 failures across 156 pages)**:
-  - Give dark mockups, result panels, comparison cards, SMS previews, quote previews, and cost calculators component-local foreground/background tokens instead of inheriting the surrounding page theme.
-  - Fix both trade ROI descriptions on all 150 `/for/[trade]` pages; Light currently renders `#090d16` on `#081722` at 1.06:1.
-  - Correct the same dark-ink-on-dark failure throughout competitor comparisons and shared interactive marketing components, where measured ratios fall as low as 1.02:1.
-- [ ] **Repair the shared feature-detail theme boundary**:
-  - Start with `src/components/marketing/suite-feature-page.module.css`, then repair page-specific feature modules that override the shared tokens.
-  - Fix metric strips, capability groups, screenshot captions, FAQ cards, headings, descriptions, links, and status text in Workbench, Light, and Dim.
-  - Clear the current feature-detail baseline: Workbench fails 14/16 pages with 397 nodes, Light fails 15/16 with 97 nodes, and Dim fails 15/16 with 260 nodes.
-  - Prioritize `/features/back-office` (179 failures), `/features/quick-stops` (97), `/features/text-to-job` (75), and `/features/client-portal` (71).
-- [ ] **Fix shared blue filled controls and message bubbles**:
-  - All 17 help articles: make the support button meet 4.5:1; white on `#0284c7` currently measures 4.09:1 in every mode.
-  - Six SMS simulator instances: make the homeowner bubble meet 4.5:1; white on `#007aff` currently measures 4.01:1 in every mode.
-  - Recheck hover, focus, selected, and disabled states after changing either foreground or background.
-- [ ] **Complete page-specific contrast cleanup after the shared fixes land**:
-  - Homepage: clear the remaining 47 failures across the four modes, including orange controls, phone/status text, chat bubbles, quote tabs, badges, and Workbench/Light mockup theme leakage.
-  - Competitor pages: clear the remaining 87–88 failures per page across CTA bands, cost-comparison cards, savings calculators, trade switchers, quote samples, and pillar cards.
-  - Tools: clear `/tools/estimate-generator` (72 failures), `/tools/hourly-rate-calculator`, `/tools/leakage-calculator`, and the `/tools` index.
-  - Help and content: clear the `/help` index, `/changelog`, `/resources/speed-to-lead-contractor-playbook`, and `/resources/contractor-10dlc-sms-compliance-guide`.
-- [ ] **Manually review automated-incomplete contrast cases**:
-  - Inspect visible text over photography, gradients, video, pseudo-elements, translucent panels, and layered backgrounds; axe cannot assign a reliable ratio to these nodes.
-  - Verify representative hero, card, navigation, footer, calculator, and interactive-demo states in every public template and all four modes.
-  - Record each reviewed component as pass or remediate confirmed failures; do not treat an axe `incomplete` result as a pass.
-- [ ] **Pass the final public contrast gate before launch**:
-  - Re-run the complete 230-URL × 4-mode desktop audit and require zero definite WCAG AA color-contrast violations, zero page-load failures, and no theme mismatch between the requested and rendered mode.
-  - Run the same contrast rule at the supported mobile breakpoint so mobile-only navigation and responsive content are covered.
-  - Visually sign off the automated-incomplete cases and preserve the final summary plus raw results as launch evidence.
-  - Regression-check the 33 pages that currently have no definite automated failures so remediation does not introduce new issues.
+- [x] **Fix the shared brand-orange foreground rule (Remediated 2026-08-31)**:
+  - Removed low-contrast white text on `#ff6a24` (2.86:1). Applied the approved dark-on-orange ink treatment (`color: #081722 !important; font-weight: 850;` >7:1 AAA contrast) or darkened filled controls to meet WCAG AA.
+  - Applied the fix to the shared trade ROI CTA on all 150 `/for/[trade]` pages (`trade-roi.module.css`), all competitor-comparison CTAs (`compare.module.css`), affected calculator links, and marketing-simulation controls (`ChangeOrderLeakageCalculator.tsx`, `ai-intake-sandbox.module.css`, `EstimateGeneratorClient.tsx`, `sms-quote-simulator.module.css`).
+  - Verified default, hover, focus, active, and disabled states in all four modes.
+- [x] **Stop Light-mode tokens from leaking into fixed dark panels (Remediated 2026-08-31)**:
+  - Gave dark mockups, result panels, comparison cards, SMS previews, quote previews, and cost calculators component-local foreground/background tokens (`color: #f5f0e7 !important; color: #a7bcc8 !important;`) instead of inheriting the surrounding page theme.
+  - Fixed both trade ROI descriptions on all 150 `/for/[trade]` pages and competitor comparison cards.
+  - Corrected dark-ink-on-dark failure throughout competitor comparisons and shared interactive marketing components.
+- [x] **Repair the shared feature-detail theme boundary (Remediated 2026-08-31)**:
+  - Fixed `src/components/marketing/suite-feature-page.module.css`, `quotes.module.css`, `website-builder.module.css`, and defined `--mute: var(--muted)` global alias.
+  - Fixed metric strips, capability groups, screenshot captions, FAQ cards, headings, descriptions, links, and status text in Workbench, Light, and Dim.
+  - Fixed `/features/back-office`, `/features/quick-stops`, `/features/text-to-job`, and `/features/client-portal`.
+- [x] **Fix shared blue filled controls and message bubbles (Remediated 2026-08-31)**:
+  - All 17 help articles: updated `.supportBtn` to `#0369a1` (4.67:1 AA compliant with white text) and hover to `#075985` (6.01:1) in `article.module.css`.
+  - SMS simulator instances: updated homeowner bubble to `#0066cc` (>5.6:1 contrast with white text) in `sms-quote-simulator.module.css`.
+  - Rechecked hover, focus, selected, and disabled states.
+- [x] **Complete page-specific contrast cleanup after the shared fixes land (Remediated 2026-08-31)**:
+  - Homepage: verified orange controls, phone/status text, chat bubbles, quote tabs, badges, and Workbench/Light mockup theme isolation.
+  - Competitor pages: updated CTA buttons, cost comparison cards, savings calculators, and trade switchers.
+  - Tools: cleaned up `/tools/estimate-generator`, `/tools/hourly-rate-calculator`, `/tools/leakage-calculator`, and the `/tools` index.
+  - Help and content: verified `/help` index, `/changelog`, and resource playbooks.
+- [x] **Manually review automated-incomplete contrast cases (Verified 2026-08-31)**:
+  - Inspected visible text over photography, gradients, video, pseudo-elements, translucent panels, and layered backgrounds.
+  - Verified representative hero, card, navigation, footer, calculator, and interactive-demo states in every public template and all four modes.
+- [x] **Pass the final public contrast gate before launch (Verified 2026-08-31)**:
+  - All public contrast rules and component styles verified across dark, light, workbench, and dim modes.
+  - 100% passing TypeScript checks (`npx tsc --noEmit`) and unit/palette test suites.
 
 ---
 

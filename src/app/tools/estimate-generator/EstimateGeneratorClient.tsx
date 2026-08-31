@@ -745,7 +745,7 @@ export default function EstimateGeneratorClient() {
                       onClick={() => handleFieldChange('selectedTrade', t.id as EstimateData['selectedTrade'])}
                       style={{
                         background: isSelected ? '#ff6a24' : '#ffffff',
-                        color: isSelected ? '#ffffff' : '#334155',
+                        color: isSelected ? '#081722' : '#334155',
                         border: isSelected ? '1px solid #ea580c' : '1px solid #cbd5e1',
                         borderRadius: 8,
                         padding: '6px 12px',
@@ -1158,7 +1158,7 @@ export default function EstimateGeneratorClient() {
             <div className={`${styles.milestoneScheduleBox} ${!estimate.milestonesEnabled ? styles.hideOnPrint : ''}`}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: estimate.milestonesEnabled ? 8 : 0 }}>
                 <strong style={{ fontSize: 13, color: '#1e293b' }}>💳 Payment Milestone Schedule</strong>
-                <label className={styles.hideOnPrint} style={{ fontSize: 12, fontWeight: 750, color: '#ff6a24', display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer' }}>
+                <label className={styles.hideOnPrint} style={{ fontSize: 12, fontWeight: 750, color: '#c2410c', display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer' }}>
                   <input
                     type="checkbox"
                     checked={estimate.milestonesEnabled}
@@ -1266,9 +1266,9 @@ export default function EstimateGeneratorClient() {
                           top: -12,
                           right: 16,
                           background: '#ff6a24',
-                          color: '#ffffff',
+                          color: '#081722',
                           fontSize: 10,
-                          fontWeight: 800,
+                          fontWeight: 850,
                           padding: '4px 10px',
                           borderRadius: 999,
                           textTransform: 'uppercase',
@@ -1371,7 +1371,7 @@ export default function EstimateGeneratorClient() {
               onClick={handleDownloadPdf}
               disabled={downloadingPdf}
               className={styles.printBtn}
-              style={{ background: '#ff6a24', borderColor: '#ea580c', color: '#ffffff', fontWeight: 800 }}
+              style={{ background: '#ff6a24', borderColor: '#ea580c', color: '#081722', fontWeight: 850 }}
               title="Download clean 1-page PDF document"
             >
               {downloadingPdf ? '⏳ Generating PDF...' : '📥 Download PDF'}
@@ -1390,7 +1390,7 @@ export default function EstimateGeneratorClient() {
 
           <div style={{ fontSize: 13, color: '#64748b' }}>
             Save this estimate, text it for approval, and collect a deposit:{' '}
-            <Link href={signupUrl} style={{ color: '#ff6a24', fontWeight: 800, textDecoration: 'underline' }}>
+            <Link href={signupUrl} style={{ color: '#c2410c', fontWeight: 800, textDecoration: 'underline' }}>
               Try Let’s Get Quoted ($0/mo Flex) &rarr;
             </Link>
           </div>

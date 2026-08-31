@@ -337,7 +337,7 @@
   margin: 0;
   font-size: 0.86rem;
   line-height: 1.55;
-  color: var(--mute);
+  color: var(--muted);
 }
 
 /* ---- what a form hands you, and what this does --------------------------
@@ -368,7 +368,7 @@
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--mute-t55, var(--mute));
+  color: var(--muted);
 }
 
 .compare strong {
@@ -384,7 +384,7 @@
   display: block;
   margin-top: 0.35rem;
   font-size: 0.82rem;
-  color: var(--mute);
+  color: var(--muted);
 }
 
 .compareGood {
@@ -472,7 +472,7 @@
   max-width: 62ch;
   font-size: 0.92rem;
   line-height: 1.65;
-  color: var(--mute);
+  color: var(--muted);
 }
 
 @media (prefers-reduced-motion: reduce) {

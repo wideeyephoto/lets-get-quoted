@@ -1184,3 +1184,42 @@ textarea.input {
   padding-bottom: 0.5rem;
   margin: 0;
 }
+
+/* Skeleton Loading States */
+.skeletonPulse {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.04) 0%,
+    rgba(255, 255, 255, 0.09) 50%,
+    rgba(255, 255, 255, 0.04) 100%
+  );
+  background-size: 200% 100%;
+  animation: adminSkelShimmer 1.6s infinite ease-in-out;
+  border-radius: 0.4rem;
+}
+
+@keyframes adminSkelShimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.skelLine {
+  height: 0.85rem;
+  border-radius: 0.35rem;
+}
+.skelStatValue {
+  height: 2rem;
+  width: 6rem;
+  border-radius: 0.45rem;
+}
+.skelCard {
+  min-height: 140px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+

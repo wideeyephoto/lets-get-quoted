@@ -146,7 +146,8 @@
 
 .stepNumberActive {
   background: #ff6a24;
-  color: #ffffff;
+  color: #081722;
+  font-weight: 850;
   box-shadow: 0 0 10px rgba(255, 106, 36, 0.5);
 }
 
@@ -160,9 +161,9 @@
   align-items: center;
   gap: 8px;
   background: var(--cedge-orange-2, #ff6a24);
-  color: #ffffff;
+  color: #081722 !important;
   font-size: 14px;
-  font-weight: 800;
+  font-weight: 850;
   padding: 12px 22px;
   border-radius: 10px;
   text-decoration: none;
@@ -172,6 +173,7 @@
 
 .ctaButton:hover {
   background: #ff7d3e;
+  color: #040d14 !important;
   transform: translateY(-1px);
   box-shadow: 0 6px 20px rgba(255, 106, 36, 0.45);
 }
@@ -240,7 +242,7 @@
 
 .smsBubbleHomeowner {
   align-self: flex-end;
-  background: #007aff;
+  background: #0066cc;
   color: #ffffff;
   border-radius: 16px 16px 4px 16px;
   padding: 10px 12px;

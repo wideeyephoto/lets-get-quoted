@@ -114,7 +114,7 @@ export default function ChangeOrderLeakageCalculator() {
 
           <Link href={APP_SIGNUP_URL} style={{
             background: '#ff6a24',
-            color: '#fff',
+            color: '#081722',
             textDecoration: 'none',
             fontSize: '13px',
             fontWeight: 850,

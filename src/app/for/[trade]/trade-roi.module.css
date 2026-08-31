@@ -170,7 +170,8 @@
 
 /* Results Side */
 .resultsSide {
-  background: #081722;
+  background: #081722 !important;
+  color: #f5f0e7 !important;
   border: 1px solid rgba(80, 227, 189, 0.25);
   border-radius: 16px;
   padding: 28px;
@@ -201,14 +202,14 @@
 .totalAmount {
   font-size: clamp(32px, 3.8vw, 44px);
   font-weight: 900;
-  color: #f5f0e7;
+  color: #f5f0e7 !important;
   line-height: 1.1;
   display: block;
 }
 
 .totalSub {
   font-size: 12px;
-  color: #8fa6b5;
+  color: #a7bcc8 !important;
   font-weight: 600;
   margin-top: 4px;
   display: block;
@@ -225,7 +226,7 @@
   justify-content: space-between;
   align-items: center;
   font-size: 13px;
-  color: #f5f0e7;
+  color: #f5f0e7 !important;
 }
 
 .breakdownHead {
@@ -233,6 +234,7 @@
   align-items: center;
   gap: 6px;
   font-weight: 750;
+  color: #f5f0e7 !important;
 }
 
 .checkIcon {
@@ -243,7 +245,7 @@
 .breakdownDesc {
   font-size: 12px;
   line-height: 1.45;
-  color: #8fa6b5;
+  color: #a7bcc8 !important;
   margin: -6px 0 0 20px;
 }
 
@@ -256,10 +258,10 @@
 
 .primaryCta {
   background: #ff6a24;
-  color: #ffffff;
+  color: #081722 !important;
   padding: 13px 20px;
   border-radius: 8px;
-  font-weight: 800;
+  font-weight: 850;
   font-size: 14px;
   text-align: center;
   text-decoration: none;
@@ -269,13 +271,14 @@
 
 .primaryCta:hover {
   background: #ff7d3e;
+  color: #040d14 !important;
   transform: translateY(-2px);
   box-shadow: 0 12px 30px rgba(255, 106, 36, 0.45);
 }
 
 .ctaNote {
   font-size: 11px;
-  color: #7b94a5;
+  color: #a7bcc8 !important;
   text-align: center;
 }
 

@@ -384,7 +384,7 @@
   min-height: 44px;
   padding: 0.65rem 1.25rem;
   border-radius: 8px;
-  background: #0284c7;
+  background: #0369a1;
   color: #ffffff;
   text-decoration: none;
   font-size: 0.9375rem;
@@ -399,7 +399,7 @@
 }
 
 .supportBtn:hover {
-  background: #0369a1;
+  background: #075985;
 }
 
 /* Related Articles Deck */

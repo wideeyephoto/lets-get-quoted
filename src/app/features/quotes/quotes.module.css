@@ -29,7 +29,7 @@
 :global(.section-block) .shotsHead > p:last-child {
   margin: 0.9rem 0 0;
   max-width: 60ch;
-  color: var(--mute);
+  color: var(--muted);
   font-size: 0.95rem;
   line-height: 1.65;
 }
@@ -87,7 +87,7 @@
 
 :global(.section-block) .shotBody {
   margin: 0 0 0.35rem;
-  color: var(--mute);
+  color: var(--muted);
   font-size: 0.87rem;
   line-height: 1.6;
 }
@@ -120,7 +120,7 @@
 
 :global(.section-block) .shotNote {
   margin: clamp(20px, 2.4vw, 28px) 0 0;
-  color: var(--mute);
+  color: var(--muted);
   font-size: 0.82rem;
   line-height: 1.6;
 }

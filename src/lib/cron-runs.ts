@@ -154,8 +154,10 @@ export function cronRoute(job: string, run: () => Promise<unknown>) {
  * WEEKLY job's cadence, and service-reminders would report "never seen" between
  * every run. A monitoring page that invents an outage is worse than none.
  *
- * Each query is a one-row lookup on (job, started_at desc), and they all go out
- * together.
+ * Each latest run is queried in parallel. In steady state (where jobs succeed),
+ * `started_at` from the latest run directly provides `lastSuccessAt`, avoiding
+ * 14 redundant secondary queries on every page load. The second query for
+ * `ok = true` is dispatched only for jobs whose latest run failed or produced no row.
  */
 export async function loadCronStatus(
   admin: SupabaseClient,
@@ -166,35 +168,64 @@ export async function loadCronStatus(
   const failedJobs: string[] = [];
   if (!jobs.length) return { last, lastSuccessAt, failedJobs };
 
-  const results = await Promise.all(
+  const lastResults = await Promise.all(
     jobs.map(async (job) => {
-      const [lastRes, successRes] = await Promise.all([
-        admin.from('cron_runs').select(COLUMNS).eq('job', job).order('started_at', { ascending: false }).limit(1).maybeSingle(),
-        admin
+      const res = await admin
+        .from('cron_runs')
+        .select(COLUMNS)
+        .eq('job', job)
+        .order('started_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (res.error) console.error(`loadCronStatus (${job} last) failed:`, res.error);
+      return {
+        job,
+        failed: Boolean(res.error),
+        row: (res.data as CronRunRow | null) ?? null,
+      };
+    }),
+  );
+
+  const needsSuccessLookup: string[] = [];
+
+  for (const item of lastResults) {
+    if (item.failed) failedJobs.push(item.job);
+    if (item.row) {
+      last.set(item.job, item.row);
+      if (item.row.ok) {
+        lastSuccessAt.set(item.job, item.row.started_at);
+      } else {
+        needsSuccessLookup.push(item.job);
+      }
+    }
+  }
+
+  if (needsSuccessLookup.length > 0) {
+    const successResults = await Promise.all(
+      needsSuccessLookup.map(async (job) => {
+        const res = await admin
           .from('cron_runs')
           .select('started_at')
           .eq('job', job)
           .eq('ok', true)
           .order('started_at', { ascending: false })
           .limit(1)
-          .maybeSingle(),
-      ]);
-      if (lastRes.error) console.error(`loadCronStatus (${job} last) failed:`, lastRes.error);
-      if (successRes.error) console.error(`loadCronStatus (${job} success) failed:`, successRes.error);
-      return {
-        job,
-        failed: Boolean(lastRes.error || successRes.error),
-        last: (lastRes.data as CronRunRow | null) ?? null,
-        successAt: (successRes.data as { started_at: string } | null)?.started_at ?? null,
-      };
-    }),
-  );
+          .maybeSingle();
+        if (res.error) console.error(`loadCronStatus (${job} success) failed:`, res.error);
+        return {
+          job,
+          failed: Boolean(res.error),
+          successAt: (res.data as { started_at: string } | null)?.started_at ?? null,
+        };
+      }),
+    );
 
-  for (const row of results) {
-    if (row.failed) failedJobs.push(row.job);
-    if (row.last) last.set(row.job, row.last);
-    if (row.successAt) lastSuccessAt.set(row.job, row.successAt);
+    for (const item of successResults) {
+      if (item.failed && !failedJobs.includes(item.job)) failedJobs.push(item.job);
+      if (item.successAt) lastSuccessAt.set(item.job, item.successAt);
+    }
   }
+
   return { last, lastSuccessAt, failedJobs };
 }
 

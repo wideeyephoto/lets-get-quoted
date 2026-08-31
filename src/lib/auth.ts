@@ -744,37 +744,56 @@ async function resolveStaff(
   return { id: '', email, role: 'read_only', active: false, display_name: null };
 }
 
-// Guard for every /admin route. Requires a logged-in user whose email has an
-// active staff row or is allowed to bootstrap one; everyone else gets a 404
-// so the console never reveals it exists. Returns the service-role client (the
-// console works across all accounts) plus who is acting, for the audit trail.
-export async function requireAdmin(): Promise<AdminContext> {
+/**
+ * Resolves the authenticated admin user and active staff record once per request.
+ *
+ * Every /admin page sits inside a layout that calls requireAdmin() to render the
+ * shell and navigation, and the page server component calls requireAdmin() to
+ * obtain the staff context. Wrapping this lookup in perRequest ensures that the
+ * Supabase Auth API call and the staff table database query run only once per
+ * request lifecycle rather than being executed twice in parallel/sequence.
+ */
+const loadAdminStaff = perRequest(async () => {
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
   if (!user?.email) {
-    notFound();
+    return null;
   }
 
-  const adminEmail = user.email!.toLowerCase();
+  const adminEmail = user.email.toLowerCase();
   const admin = createAdminClient();
   const staff = await resolveStaff(admin, adminEmail, isAdminEmail(adminEmail));
 
-  // A deactivated staff member gets the same 404 as a stranger. Letting them in
-  // to a read-only console would confirm the console exists and tell them their
-  // access was removed rather than expired, which is information a leaver does
-  // not need.
-  if (!staff.active) notFound();
+  if (!staff.active) return null;
 
-  const h = await headers();
   return {
     admin,
     adminEmail,
     userId: user.id,
     role: staff.role,
     staff,
+  };
+});
+
+// Guard for every /admin route. Requires a logged-in user whose email has an
+// active staff row or is allowed to bootstrap one; everyone else gets a 404
+// so the console never reveals it exists. Returns the service-role client (the
+// console works across all accounts) plus who is acting, for the audit trail.
+export async function requireAdmin(): Promise<AdminContext> {
+  const resolved = await loadAdminStaff();
+
+  // A deactivated staff member or missing user gets the same 404 as a stranger.
+  // Letting them in to a read-only console would confirm the console exists and
+  // tell them their access was removed rather than expired, which is information
+  // a leaver does not need.
+  if (!resolved) notFound();
+
+  const h = await headers();
+  return {
+    ...resolved,
     ip: clientIpFrom(h),
     requestId: randomUUID(),
   };
