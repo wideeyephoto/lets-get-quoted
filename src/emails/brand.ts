@@ -440,11 +440,22 @@ export function themePaint(theme: EmailThemeId, accent: string): ThemePaint {
 }
 
 /**
+ * Clean inline formatting: bold (**text**), italics (_text_), and safe HTML escaping.
+ */
+function formatCampaignInline(text: string): string {
+  return escapeHtml(text)
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/_([^_]+)_/g, '<em>$1</em>');
+}
+
+/**
  * Renders rich, interactive visual cards for campaign bodies.
  * Automatically transforms:
- *  - Numbered lists (1. Title: Description) -> styled step cards with round colored step pills
- *  - Bullet checklists (• Title: Description) -> styled feature cards with checkmarks
- *  - Quotes / Callouts (> ... or Tip:) -> highlighted callout boxes
+ *  - Stat metric blocks: [STAT: 2.8x | Win Rate | Quotes sent within 2 hours...]
+ *  - Sub-headings: ## Section Title or ### Section Title
+ *  - Numbered lists: (1. Title: Description or • 1. Title: Description) -> styled step cards with colored badges
+ *  - Bullet checklists: (• Title: Description or - Title: Description) -> styled feature cards with checkmarks
+ *  - Highlight callouts: (Tip:, Warning:, Important:, > Quotes) -> thematic callout boxes with icons
  *  - Regular paragraphs -> readable, nicely spaced text blocks
  */
 export function renderRichCampaignBodyHtml(body: string, paint: ThemePaint): string {
@@ -455,14 +466,43 @@ export function renderRichCampaignBodyHtml(body: string, paint: ThemePaint): str
     .map((block) => block.trim())
     .filter(Boolean)
     .map((block) => {
+      // 1. Sub-Headings (## or ###)
+      if (block.startsWith('## ') || block.startsWith('### ')) {
+        const cleanHeading = block.replace(/^#{2,3}\s*/, '').trim();
+        return `<h2 style="margin:24px 0 10px;font-family:${paint.headingFont};font-size:15px;font-weight:800;letter-spacing:0.04em;text-transform:uppercase;color:${paint.accessibleAccent};border-bottom:1px solid ${paint.border};padding-bottom:6px">${escapeHtml(cleanHeading)}</h2>`;
+      }
+
+      // 2. Stat / Metric Blocks [STAT: value | label | description]
+      const statMatch = block.match(/^\[(STAT|METRIC):\s*([^|]+)\|\s*([^|]+)\|\s*([^\]]+)\]$/i);
+      if (statMatch) {
+        const statVal = statMatch[2].trim();
+        const statLabel = statMatch[3].trim();
+        const statDesc = statMatch[4].trim();
+        return `
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:16px 0 20px;background:${paint.subtleBg};border:1px solid ${paint.border};border-radius:${paint.cardRadius};overflow:hidden">
+          <tr>
+            <td width="95" align="center" bgcolor="${paint.accent}" style="padding:16px 10px;font-family:${FONT_STACK};color:${onAccent(paint.accent)};text-align:center">
+              <div style="font-size:24px;font-weight:900;line-height:1;letter-spacing:-0.03em">${escapeHtml(statVal)}</div>
+              <div style="font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;margin-top:4px;opacity:0.95">${escapeHtml(statLabel)}</div>
+            </td>
+            <td style="padding:14px 18px;font-family:${FONT_STACK};font-size:14px;line-height:1.55;color:${INK}">
+              ${formatCampaignInline(statDesc)}
+            </td>
+          </tr>
+        </table>`;
+      }
+
       const lines = block.split('\n').map((l) => l.trim()).filter(Boolean);
 
-      // Check for Numbered List
-      const isNumberedList = lines.length > 0 && lines.every((line) => /^\d+\.\s+/.test(line));
+      // 3. Numbered Step List (1. ... or • 1. ...)
+      const isNumberedList =
+        lines.length > 0 &&
+        lines.every((line) => /^\d+\.\s+/.test(line) || /^[•\-]\s*\d+\.\s+/.test(line));
       if (isNumberedList) {
         const items = lines
           .map((line) => {
-            const match = line.match(/^(\d+)\.\s+(.*)$/);
+            const clean = line.replace(/^[•\-]\s*/, '');
+            const match = clean.match(/^(\d+)\.\s+(.*)$/);
             if (!match) return '';
             const num = match[1];
             const content = match[2];
@@ -487,8 +527,8 @@ export function renderRichCampaignBodyHtml(body: string, paint: ThemePaint): str
                   </table>
                 </td>
                 <td valign="top" style="padding:14px 16px 14px 8px;font-family:${FONT_STACK}">
-                  ${title ? `<div style="font-size:14px;font-weight:700;color:${INK};margin-bottom:3px">${escapeHtml(title)}</div>` : ''}
-                  <div style="font-size:14px;line-height:1.55;color:#475569">${escapeHtml(desc)}</div>
+                  ${title ? `<div style="font-size:14px;font-weight:700;color:${INK};margin-bottom:3px">${formatCampaignInline(title)}</div>` : ''}
+                  <div style="font-size:14px;line-height:1.55;color:#475569">${formatCampaignInline(desc)}</div>
                 </td>
               </tr>
             </table>`;
@@ -497,12 +537,14 @@ export function renderRichCampaignBodyHtml(body: string, paint: ThemePaint): str
         return `<div style="margin:0 0 16px">${items}</div>`;
       }
 
-      // Check for Bullet Checklist
-      const isBulletList = lines.length > 0 && lines.every((line) => line.startsWith('•') || line.startsWith('-'));
+      // 4. Bullet Checklist (• ... or - ... or ✓ ...)
+      const isBulletList =
+        lines.length > 0 &&
+        lines.every((line) => line.startsWith('•') || line.startsWith('-') || line.startsWith('✓'));
       if (isBulletList) {
         const items = lines
           .map((line) => {
-            const rawContent = line.replace(/^[•\-]\s*/, '').trim();
+            const rawContent = line.replace(/^[•\-✓]\s*/, '').trim();
             const colonIdx = rawContent.indexOf(':');
             let title = '';
             let desc = rawContent;
@@ -524,8 +566,8 @@ export function renderRichCampaignBodyHtml(body: string, paint: ThemePaint): str
                   </table>
                 </td>
                 <td valign="top" style="padding:12px 14px 12px 6px;font-family:${FONT_STACK}">
-                  ${title ? `<strong style="font-size:14px;font-weight:700;color:${INK}">${escapeHtml(title)}: </strong>` : ''}
-                  <span style="font-size:14px;line-height:1.55;color:#475569">${escapeHtml(desc)}</span>
+                  ${title ? `<strong style="font-size:14px;font-weight:700;color:${INK}">${formatCampaignInline(title)}: </strong>` : ''}
+                  <span style="font-size:14px;line-height:1.55;color:#475569">${formatCampaignInline(desc)}</span>
                 </td>
               </tr>
             </table>`;
@@ -534,21 +576,64 @@ export function renderRichCampaignBodyHtml(body: string, paint: ThemePaint): str
         return `<div style="margin:0 0 16px">${items}</div>`;
       }
 
-      // Check for Callout/Tip (> Quote or Tip:)
-      if (block.startsWith('>') || /^tip:/i.test(block) || /^note:/i.test(block) || /^important:/i.test(block)) {
+      // 5. Callouts & Notes
+      // Tip / Pro Tip / Lightbulb
+      if (/^(tip|pro tip|💡):?/i.test(block)) {
+        const cleanText = block.replace(/^(tip|pro tip|💡):?\s*/i, '');
+        return `
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:16px 0 20px;background:#f0fdf4;border:1px solid #bbf7d0;border-left:5px solid #22c55e;border-radius:8px;overflow:hidden">
+          <tr>
+            <td width="36" valign="top" style="padding:14px 0 14px 16px;font-size:18px">💡</td>
+            <td style="padding:14px 18px 14px 8px;font-family:${FONT_STACK};font-size:14px;line-height:1.6;color:#166534">
+              <strong>Pro Tip: </strong>${formatCampaignInline(cleanText)}
+            </td>
+          </tr>
+        </table>`;
+      }
+
+      // Warning / Alert / ⚠️
+      if (/^(warning|alert|⚠️):?/i.test(block)) {
+        const cleanText = block.replace(/^(warning|alert|⚠️):?\s*/i, '');
+        return `
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:16px 0 20px;background:#fff7ed;border:1px solid #fed7aa;border-left:5px solid #ea580c;border-radius:8px;overflow:hidden">
+          <tr>
+            <td width="36" valign="top" style="padding:14px 0 14px 16px;font-size:18px">⚠️</td>
+            <td style="padding:14px 18px 14px 8px;font-family:${FONT_STACK};font-size:14px;line-height:1.6;color:#9a3412">
+              <strong>Important: </strong>${formatCampaignInline(cleanText)}
+            </td>
+          </tr>
+        </table>`;
+      }
+
+      // Important / Note / 📌
+      if (/^(important|note|📌):?/i.test(block)) {
+        const cleanText = block.replace(/^(important|note|📌):?\s*/i, '');
+        return `
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:16px 0 20px;background:#f8fafc;border:1px solid #cbd5e1;border-left:5px solid ${paint.accent};border-radius:8px;overflow:hidden">
+          <tr>
+            <td width="36" valign="top" style="padding:14px 0 14px 16px;font-size:18px">📌</td>
+            <td style="padding:14px 18px 14px 8px;font-family:${FONT_STACK};font-size:14px;line-height:1.6;color:#334155">
+              <strong>Note: </strong>${formatCampaignInline(cleanText)}
+            </td>
+          </tr>
+        </table>`;
+      }
+
+      // Blockquotes (>)
+      if (block.startsWith('>')) {
         const cleanText = block.replace(/^>\s*/, '');
         return `
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:14px 0 18px;background:${paint.highlightBg};${paint.highlightBorder};border-radius:8px;overflow:hidden">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:16px 0 20px;background:${paint.subtleBg};border-left:4px solid ${paint.accent};border-radius:4px;overflow:hidden">
           <tr>
-            <td style="padding:14px 18px;font-family:${FONT_STACK};font-size:14px;line-height:1.6;color:#334155">
-              ${escapeHtml(cleanText)}
+            <td style="padding:14px 18px;font-family:${FONT_STACK};font-size:14px;font-style:italic;line-height:1.65;color:#475569">
+              ${formatCampaignInline(cleanText)}
             </td>
           </tr>
         </table>`;
       }
 
       // Standard Paragraph
-      return `<p style="margin:0 0 16px;font-family:${FONT_STACK};font-size:15px;line-height:1.65;color:${INK}">${escapeHtml(block).replace(/\n/g, '<br/>')}</p>`;
+      return `<p style="margin:0 0 16px;font-family:${FONT_STACK};font-size:15px;line-height:1.65;color:${INK}">${formatCampaignInline(block).replace(/\n/g, '<br/>')}</p>`;
     })
     .join('');
 }

@@ -1,5 +1,6 @@
 import { Resend } from 'resend';
 import { APP_ORIGIN } from '@/lib/app-origin';
+import { escapeHtml, renderBrandedEmail, FONT_STACK } from '@/emails/brand';
 
 let resendClient: Resend | null = null;
 function getResend() {
@@ -7,6 +8,15 @@ function getResend() {
     resendClient = new Resend(process.env.RESEND_API_KEY);
   }
   return resendClient;
+}
+
+function alertRow(label: string, value: string, highlight?: boolean) {
+  return `
+    <tr>
+      <td style="padding:9px 12px;font-family:${FONT_STACK};font-size:13px;color:#64748b;border-bottom:1px solid #e2e8f0">${escapeHtml(label)}</td>
+      <td align="right" style="padding:9px 12px;font-family:${FONT_STACK};font-size:13px;font-weight:700;color:${highlight ? '#0f172a' : '#334155'};border-bottom:1px solid #e2e8f0">${escapeHtml(value)}</td>
+    </tr>
+  `;
 }
 
 export type FounderSignupAlertInput = {
@@ -44,45 +54,45 @@ export async function sendFounderSignupAlert(input: FounderSignupAlertInput): Pr
     const planDisplay = input.plan ? `${input.plan} (${input.billing || 'monthly'})` : 'Free / Flex';
     const timestamp = new Date().toLocaleString('en-US', { timeZone: 'America/New_York' });
 
+    const tableRows = [
+      alertRow('Trade / Specialty', input.trade || 'General Trade', true),
+      alertRow('ZIP / Postal Code', input.postalCode, true),
+      alertRow('Plan Selection', planDisplay, true),
+      input.ownerEmail ? alertRow('Owner Email', input.ownerEmail) : '',
+      alertRow('Account ID', input.accountId),
+      alertRow('Activation Time (ET)', timestamp),
+    ].filter(Boolean).join('');
+
+    const bodyHtml = `
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 16px;background:#f8fafc;border:1px solid #cbd5e1;border-radius:10px;overflow:hidden">
+        ${tableRows}
+      </table>
+    `;
+
     await resend.emails.send({
-      from: process.env.SYSTEM_EMAIL_FROM || 'Let\'s Get Quoted <system@letsgetquoted.com>',
+      from: process.env.SYSTEM_EMAIL_FROM || "Let's Get Quoted <system@letsgetquoted.com>",
       to: recipient,
       subject: `🚀 New Contractor Signup: ${input.businessName} (${input.trade || 'General'} · ${input.postalCode})`,
-      html: `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="utf-8">
-          <style>
-            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0c1822; color: #f5f0e7; padding: 24px; }
-            .card { background: #132433; border: 1px solid #1e3950; border-radius: 12px; padding: 24px; max-width: 560px; margin: 0 auto; }
-            .badge { display: inline-block; background: rgba(255, 106, 36, 0.15); color: #ff6a24; border: 1px solid rgba(255, 106, 36, 0.35); padding: 4px 10px; border-radius: 6px; font-weight: 700; font-size: 12px; margin-bottom: 16px; text-transform: uppercase; letter-spacing: 0.5px; }
-            h1 { font-size: 20px; font-weight: 800; margin: 0 0 16px; color: #fff; }
-            .row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 14px; }
-            .label { color: #8fa0b0; font-weight: 500; }
-            .value { color: #f5f0e7; font-weight: 700; text-align: right; }
-            .btn { display: inline-block; background: #ff6a24; color: #fff; text-decoration: none; font-weight: 700; font-size: 14px; padding: 12px 20px; border-radius: 8px; margin-top: 20px; text-align: center; }
-            .footer { font-size: 12px; color: #5a7285; margin-top: 20px; text-align: center; }
-          </style>
-        </head>
-        <body>
-          <div class="card">
-            <span class="badge">New Contractor Activation</span>
-            <h1>${input.businessName}</h1>
-            <div class="row"><span class="label">Trade</span><span class="value">${input.trade || 'Not specified'}</span></div>
-            <div class="row"><span class="label">Zip Code</span><span class="value">${input.postalCode}</span></div>
-            <div class="row"><span class="label">Plan Selection</span><span class="value">${planDisplay}</span></div>
-            ${input.ownerEmail ? `<div class="row"><span class="label">Owner Email</span><span class="value">${input.ownerEmail}</span></div>` : ''}
-            <div class="row"><span class="label">Account ID</span><span class="value" style="font-family: monospace; font-size: 12px;">${input.accountId}</span></div>
-            <div class="row"><span class="label">Signup Time (ET)</span><span class="value">${timestamp}</span></div>
-            <div style="text-align: center;">
-              <a href="${adminLink}" class="btn">Open Admin Console →</a>
-            </div>
-            <p class="footer">Let's Get Quoted Automated Founder Notification</p>
-          </div>
-        </body>
-        </html>
-      `,
+      html: renderBrandedEmail({
+        brand: {
+          businessName: "Let's Get Quoted Admin",
+          accent: '#0284c7',
+          theme: 'spotlight',
+          logoUrl: null,
+          phone: null,
+          siteUrl: APP_ORIGIN,
+          replyTo: null,
+        },
+        preheader: `New contractor activation: ${input.businessName} · ${input.trade || 'General'}`,
+        eyebrow: 'New Contractor Activation',
+        heading: input.businessName,
+        bodyHtml,
+        cta: {
+          label: 'Open Admin Console',
+          url: adminLink,
+        },
+        footerHtml: `<p style="margin:10px 0 0;font-family:${FONT_STACK};font-size:12px;line-height:1.6;color:#64748b">Automated Founder Alert · Let's Get Quoted Platform System</p>`,
+      }),
     });
     console.info(`[founder-alerts] Successfully dispatched new contractor signup alert for ${input.businessName}`);
   } catch (err) {
@@ -129,49 +139,50 @@ export async function sendFounderMessagingApplicationAlert(
     const feeDisplay = input.setupFeePaid || '$49.99 (Paid)';
     const timestamp = new Date().toLocaleString('en-US', { timeZone: 'America/New_York' });
 
+    const tableRows = [
+      alertRow('Business Name', `${input.businessName}${input.dbaName ? ` (DBA: ${input.dbaName})` : ''}`, true),
+      alertRow('Setup Fee', feeDisplay, true),
+      alertRow('Desired Area Code', `(${input.desiredAreaCode})`, true),
+      alertRow('Business Type', input.businessType.toUpperCase()),
+      alertRow('Contact Person', input.contactName),
+      alertRow('Contact Email', input.contactEmail),
+      alertRow('Contact Phone', input.contactPhone),
+      input.einLastFour ? alertRow('Tax ID / EIN', `XX-XXX${input.einLastFour}`) : '',
+      input.websiteUrl ? alertRow('Website URL', input.websiteUrl) : '',
+      alertRow('Account ID', input.accountId),
+      alertRow('Submitted Time (ET)', timestamp),
+    ].filter(Boolean).join('');
+
+    const bodyHtml = `
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 16px;background:#f8fafc;border:1px solid #cbd5e1;border-radius:10px;overflow:hidden">
+        ${tableRows}
+      </table>
+    `;
+
     await resend.emails.send({
-      from: process.env.SYSTEM_EMAIL_FROM || 'Let\'s Get Quoted <system@letsgetquoted.com>',
+      from: process.env.SYSTEM_EMAIL_FROM || "Let's Get Quoted <system@letsgetquoted.com>",
       to: recipient,
       subject: `📱 Dedicated Number Application: ${input.businessName} (Area code ${input.desiredAreaCode} · ${feeDisplay})`,
-      html: `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="utf-8">
-          <style>
-            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0c1822; color: #f5f0e7; padding: 24px; }
-            .card { background: #132433; border: 1px solid #1e3950; border-radius: 12px; padding: 24px; max-width: 560px; margin: 0 auto; }
-            .badge { display: inline-block; background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.35); padding: 4px 10px; border-radius: 6px; font-weight: 700; font-size: 12px; margin-bottom: 16px; text-transform: uppercase; letter-spacing: 0.5px; }
-            h1 { font-size: 20px; font-weight: 800; margin: 0 0 16px; color: #fff; }
-            .row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 14px; }
-            .label { color: #8fa0b0; font-weight: 500; }
-            .value { color: #f5f0e7; font-weight: 700; text-align: right; }
-            .btn { display: inline-block; background: #ff6a24; color: #fff; text-decoration: none; font-weight: 700; font-size: 14px; padding: 12px 20px; border-radius: 8px; margin-top: 20px; text-align: center; }
-            .footer { font-size: 12px; color: #5a7285; margin-top: 20px; text-align: center; }
-          </style>
-        </head>
-        <body>
-          <div class="card">
-            <span class="badge">2-Way Number &amp; 10DLC Application</span>
-            <h1>${input.businessName}${input.dbaName ? ` (DBA: ${input.dbaName})` : ''}</h1>
-            <div class="row"><span class="label">Setup Fee</span><span class="value" style="color: #4ade80;">${feeDisplay}</span></div>
-            <div class="row"><span class="label">Desired Area Code</span><span class="value">(${input.desiredAreaCode})</span></div>
-            <div class="row"><span class="label">Business Type</span><span class="value">${input.businessType.toUpperCase()}</span></div>
-            <div class="row"><span class="label">Contact Person</span><span class="value">${input.contactName}</span></div>
-            <div class="row"><span class="label">Contact Email</span><span class="value">${input.contactEmail}</span></div>
-            <div class="row"><span class="label">Contact Phone</span><span class="value">${input.contactPhone}</span></div>
-            ${input.einLastFour ? `<div class="row"><span class="label">Tax ID / EIN</span><span class="value">XX-XXX${input.einLastFour}</span></div>` : ''}
-            ${input.websiteUrl ? `<div class="row"><span class="label">Website</span><span class="value">${input.websiteUrl}</span></div>` : ''}
-            <div class="row"><span class="label">Account ID</span><span class="value" style="font-family: monospace; font-size: 12px;">${input.accountId}</span></div>
-            <div class="row"><span class="label">Submitted Time (ET)</span><span class="value">${timestamp}</span></div>
-            <div style="text-align: center;">
-              <a href="${adminLink}" class="btn">Review in Admin Console →</a>
-            </div>
-            <p class="footer">Let's Get Quoted Automated Founder Notification</p>
-          </div>
-        </body>
-        </html>
-      `,
+      html: renderBrandedEmail({
+        brand: {
+          businessName: "Let's Get Quoted Admin",
+          accent: '#0284c7',
+          theme: 'spotlight',
+          logoUrl: null,
+          phone: null,
+          siteUrl: APP_ORIGIN,
+          replyTo: null,
+        },
+        preheader: `Dedicated Number Application: ${input.businessName} · Area (${input.desiredAreaCode})`,
+        eyebrow: '2-Way Number & 10DLC Application',
+        heading: input.businessName,
+        bodyHtml,
+        cta: {
+          label: 'Review in Admin Console',
+          url: adminLink,
+        },
+        footerHtml: `<p style="margin:10px 0 0;font-family:${FONT_STACK};font-size:12px;line-height:1.6;color:#64748b">Automated Founder Alert · Let's Get Quoted Platform System</p>`,
+      }),
     });
     console.info(`[founder-alerts] Successfully dispatched messaging application alert for ${input.businessName}`);
   } catch (err) {

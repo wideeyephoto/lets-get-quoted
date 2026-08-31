@@ -48,7 +48,7 @@ export default function AdminCampaignComposer({
     'Exciting new features are now live in your account',
   );
   const [body, setBody] = useState<string>(
-    `Hi {{first_name}},\n\nWe have just released a series of updates designed to help {{business_name}} close jobs faster and save hours on administration each week.\n\nHere is what is new:\n\n• One-Click Quote Approvals: Homeowners can now approve and sign estimates directly from their phone in seconds.\n• Live Arrival Tracking: Automated SMS notifications let your customers see when your crew is on their way.\n• Instant Payment Receipts: Clean, branded PDFs automatically delivered when deposits and invoices are cleared.\n\nThese updates are already available in your workspace — no setup required.`,
+    `Hi {{first_name}},\n\nWe have just released a series of platform updates designed to help {{business_name}} close jobs faster and save hours on administration each week.\n\n[STAT: 3 Updates | Platform Launch | Instant quote approvals, live arrival tracking, and PDF receipts are live.]\n\n## What Is New in Your Workspace:\n\n• One-Click Quote Approvals: Homeowners can approve and sign estimates directly from their phone in seconds.\n• Live Arrival Tracking: Automated SMS notifications let your customers see when your crew is on their way.\n• Instant Payment Receipts: Clean, branded PDFs automatically delivered when deposits and invoices are cleared.\n\nTip: You can enable or customize all new features directly in your Settings tab.`,
   );
   const [ctaLabel, setCtaLabel] = useState<string>('Open your dashboard & explore');
   const [ctaUrl, setCtaUrl] = useState<string>('https://letsgetquoted.com/dashboard');

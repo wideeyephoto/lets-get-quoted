@@ -9,6 +9,7 @@ import { readFieldAccount } from '@/lib/field-account';
 import { INVITE_EXPIRY_MINUTES } from '@/lib/crew-invite';
 import { normalizeTimeClockMode, type TimeClockMode } from '@/lib/time-clock';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { renderBrandedEmail, FONT_STACK } from '@/emails/brand';
 
 const TOKEN_EXPIRY_MINUTES = INVITE_EXPIRY_MINUTES;
 
@@ -53,10 +54,32 @@ export async function sendCrewMagicLink(email: string, businessName: string, acc
 
   const resend = new Resend(process.env.RESEND_API_KEY);
   const { error: emailError } = await resend.emails.send({
-    from: "Let's Get Quoted <hello@letsgetquoted.com>",
+    from: `${businessName} via Let's Get Quoted <hello@letsgetquoted.com>`,
     to: email,
     subject: `Sign in to the ${businessName} field app`,
-    html: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;color:#172033"><p style="color:#b45309;font-weight:700;letter-spacing:0.04em">FIELD APP</p><h2 style="font-size:22px;margin:0 0 12px">Sign in to ${escapeHtml(businessName)}</h2><p style="margin:0 0 18px;line-height:1.5">Tap below to open your jobs, see the schedule, and update work from your phone.</p><p style="margin:0 0 22px"><a href="${verifyUrl.toString()}" style="display:inline-block;padding:12px 22px;background:#172033;color:#fff;text-decoration:none;font-weight:700;border-radius:6px">Open my jobs</a></p><p style="color:#6b7280;font-size:13px;line-height:1.5">Or paste this link into your browser:<br/><span style="word-break:break-all">${verifyUrl.toString()}</span></p><p style="color:#9ca3af;font-size:12px;margin-top:22px">This link expires in ${TOKEN_EXPIRY_MINUTES} minutes. If you didn't expect it, you can ignore this email.</p></div>`,
+    html: renderBrandedEmail({
+      brand: {
+        businessName,
+        accent: '#0284c7',
+        theme: 'blueprint',
+        logoUrl: null,
+        phone: null,
+        siteUrl: APP_ORIGIN,
+        replyTo: null,
+      },
+      preheader: `Access your dispatched jobs and schedule for ${businessName}`,
+      eyebrow: 'Field Crew App',
+      heading: `Welcome to ${businessName}`,
+      paragraphs: [
+        'Tap the secure button below to open your assigned jobs, view site schedules, and update job status directly from your phone.',
+      ],
+      cta: {
+        label: 'Open my assigned jobs',
+        url: verifyUrl.toString(),
+      },
+      footerHtml: `<p style="margin:10px 0 0;font-family:${FONT_STACK};font-size:12px;line-height:1.6;color:#64748b">This secure link expires in ${TOKEN_EXPIRY_MINUTES} minutes. If you did not expect this invite, you can safely ignore this email.</p>`,
+    }),
+    tags: [{ name: 'kind', value: 'crew_magic_link' }],
   });
   if (emailError) {
     console.error('Crew magic link email error:', emailError);

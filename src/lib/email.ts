@@ -22,7 +22,7 @@ import type { Lead } from './leads';
 import { formatMoney, formatMoneyExact } from './jobs';
 import { APP_ORIGIN } from '@/lib/app-origin';
 import { buildUnsubscribePageUrl, buildUnsubscribeOneClickUrl } from './email-suppression';
-import { contractorFrom, normalizeEmailTheme, renderBrandedEmail, themePaint, type EmailBrand } from '@/emails/brand';
+import { contractorFrom, escapeHtml, normalizeEmailTheme, renderBrandedEmail, renderRichCampaignBodyHtml, themePaint, type EmailBrand, FONT_STACK } from '@/emails/brand';
 import { detailCard, statusBanner } from '@/emails/primitives';
 import {
   renderClientQuoteEmailHtml,
@@ -668,8 +668,21 @@ export async function sendReviewRequestEmail(input: {
   }
 
   const brand = await brandFor(input);
+  const theme = normalizeEmailTheme(brand.theme);
+  const paint = themePaint(theme, brand.accent);
   const unsubscribeUrl = buildUnsubscribePageUrl(input.accountId, input.recipientEmail);
   const oneClickUrl = buildUnsubscribeOneClickUrl(input.accountId, input.recipientEmail);
+  const reviewCardHtml = `
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:14px 0 16px;background:${paint.subtleBg};border:1px solid ${paint.border};border-radius:8px;overflow:hidden">
+      <tr>
+        <td style="padding:16px 18px;font-family:${FONT_STACK};font-size:14px;line-height:1.55;color:#334155;text-align:center">
+          <div style="font-size:24px;letter-spacing:3px;margin-bottom:6px">⭐⭐⭐⭐⭐</div>
+          <strong style="color:#0f172a;display:block;font-size:14px">Your feedback helps local homeowners find trusted trade service.</strong>
+        </td>
+      </tr>
+    </table>
+  `;
+
   const result = await resend.emails.send({
     from: contractorFrom(brand.businessName),
     to: input.recipientEmail,
@@ -679,8 +692,9 @@ export async function sendReviewRequestEmail(input: {
       preheader: `A quick review for ${input.businessName}`,
       eyebrow: 'Thank you',
       heading: `${input.clientName}, thanks for choosing ${input.businessName}`,
-      paragraphs: ['Would you take a moment to leave an honest review? For a small business, a few words from a real customer makes all the difference.'],
-      cta: { label: 'Leave a review', url: input.reviewUrl },
+      paragraphs: ['Would you take a moment to leave an honest review? For a local independent business, a few words from a real customer makes all the difference.'],
+      bodyHtml: reviewCardHtml,
+      cta: { label: 'Leave a 5-star review', url: input.reviewUrl },
       footerHtml: marketingFooter(input.businessName, input.mailingAddress, unsubscribeUrl),
     }),
     reply_to: replyAddress(brand),
@@ -840,20 +854,26 @@ export async function sendBookingConfirmationEmail(input: {
   }
 
   const brand = await brandFor(input);
-  // "First choice" only once there is a second one to be first of. On a request
-  // with a single window, labelling it that way invites the reader to look for
-  // the other one.
+  const theme = normalizeEmailTheme(brand.theme);
+  const paint = themePaint(theme, brand.accent);
+
+  const firstChoiceLabel = input.altWhenLabel ? `First choice: ${input.whenLabel}` : `Requested time: ${input.whenLabel}`;
+  const secondChoiceLabel = input.altWhenLabel ? `Second choice: ${input.altWhenLabel}` : '';
+  const apptDetails = `
+    <p style="margin:0 0 6px;font-family:${FONT_STACK};font-size:15px;font-weight:700;color:#0f172a">
+      🗓️ ${escapeHtml(firstChoiceLabel)}
+    </p>
+    ${secondChoiceLabel ? `<p style="margin:0 0 6px;font-family:${FONT_STACK};font-size:14px;color:#64748b">🗓️ ${escapeHtml(secondChoiceLabel)}</p>` : ''}
+    ${input.serviceName ? `<p style="margin:0 0 6px;font-family:${FONT_STACK};font-size:14px;color:#64748b">🔧 <strong>Service:</strong> ${escapeHtml(input.serviceName)}</p>` : ''}
+    ${input.address ? `<p style="margin:0 0 6px;font-family:${FONT_STACK};font-size:14px;color:#64748b">📍 <strong>Where:</strong> ${escapeHtml(input.address)}</p>` : ''}
+  `;
+  const detailCardHtml = detailCard(paint, apptDetails, { title: 'Requested Booking Details', borderLeft: true });
+
   const paragraphs = [
-    input.altWhenLabel ? `First choice: ${input.whenLabel}` : `Requested time: ${input.whenLabel}`,
-  ];
-  if (input.altWhenLabel) paragraphs.push(`Second choice: ${input.altWhenLabel}`);
-  if (input.serviceName) paragraphs.push(`Service: ${input.serviceName}`);
-  if (input.address) paragraphs.push(`Where: ${input.address}`);
-  paragraphs.push(
     input.altWhenLabel
       ? `${input.businessName} will reach out shortly to confirm ONE of these two times. Neither is locked in until they do — if anything changes, just reply to this email.`
       : `${input.businessName} will reach out shortly to confirm. This time is not locked in until they do — if anything changes, just reply to this email.`,
-  );
+  ];
 
   const result = await resend.emails.send({
     from: contractorFrom(brand.businessName),
@@ -865,6 +885,7 @@ export async function sendBookingConfirmationEmail(input: {
       eyebrow: 'Booking requested',
       heading: `${input.clientName}, we got your request`,
       paragraphs,
+      bodyHtml: detailCardHtml,
     }),
     reply_to: replyAddress(brand),
     tags: defaultTags('booking_confirmation', brand, input.accountId),
@@ -1032,11 +1053,13 @@ export async function renderCampaignEmailHtml(input: {
   mailingAddress: string | null;
 }): Promise<string> {
   const brand = await brandFor(input);
+  const theme = normalizeEmailTheme(brand.theme);
+  const paint = themePaint(theme, brand.accent);
   const unsubscribeUrl = buildUnsubscribePageUrl(input.accountId, input.recipientEmail);
   return renderBrandedEmail({
     brand,
     heading: input.subject,
-    bodyHtml: campaignParagraphs(input.body),
+    bodyHtml: renderRichCampaignBodyHtml(input.body, paint),
     footerHtml: marketingFooter(input.businessName, input.mailingAddress, unsubscribeUrl),
   });
 }
@@ -1069,12 +1092,6 @@ export async function sendCampaignEmail(input: {
     console.error('Failed to send campaign email:', result.error);
     throw new Error(result.error.message);
   }
-}
-
-function escapeHtml(value: string | null) {
-  return (value || '').replace(/[&<>'"]/g, (character) => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;',
-  })[character] || character);
 }
 
 // The owner's "here's your business today" digest, separated from delivery so
@@ -1281,7 +1298,28 @@ export async function sendContactMessageEmail(input: {
     from: "Let's Get Quoted Contact <hello@letsgetquoted.com>",
     to: 'hello@letsgetquoted.com',
     subject: `[Contact] ${subjectLine} — ${input.fromName}`,
-    html: `<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;color:#172033"><p style="color:#b45309;font-weight:700;letter-spacing:0.04em">CONTACT FORM</p><h1 style="font-size:22px;margin:0 0 12px">${escapeHtml(input.fromName)} sent a message</h1><p style="margin:0 0 6px"><strong>Email:</strong> ${escapeHtml(input.fromEmail)}</p>${input.subject ? `<p style="margin:0 0 6px"><strong>Subject:</strong> ${escapeHtml(input.subject)}</p>` : ''}<div style="padding:16px;margin-top:12px;background:#f4f5f7;border-left:4px solid #f59e0b;line-height:1.6">${escapeHtml(input.message).replace(/\n/g, '<br/>')}</div></div>`,
+    html: renderBrandedEmail({
+      brand: {
+        businessName: "Let's Get Quoted",
+        accent: '#0284c7',
+        theme: 'spotlight',
+        logoUrl: null,
+        phone: null,
+        siteUrl: APP_ORIGIN,
+        replyTo: null,
+      },
+      preheader: `Inbound message from ${input.fromName}`,
+      eyebrow: 'Inbound Contact Message',
+      heading: `${input.fromName} sent a message`,
+      accountReplyText: 'Reply directly to this email to respond to the sender.',
+      bodyHtml: `
+        <p style="margin:0 0 8px;font-family:${FONT_STACK};font-size:14px;color:#64748b"><strong>From:</strong> ${escapeHtml(input.fromName)} &lt;${escapeHtml(input.fromEmail)}&gt;</p>
+        ${input.subject ? `<p style="margin:0 0 12px;font-family:${FONT_STACK};font-size:14px;color:#64748b"><strong>Subject:</strong> ${escapeHtml(input.subject)}</p>` : ''}
+        <div style="padding:16px 18px;margin-top:12px;background:#f8fafc;border:1px solid #cbd5e1;border-left:4px solid #0284c7;border-radius:8px;line-height:1.6;font-family:${FONT_STACK};font-size:14px;color:#1e293b">
+          ${escapeHtml(input.message).replace(/\n/g, '<br/>')}
+        </div>
+      `,
+    }),
     reply_to: input.fromEmail,
     tags: [{ name: 'kind', value: 'contact_message' }],
   });
@@ -1314,7 +1352,32 @@ export async function sendSupportCaseStaffEmail(input: {
     from: "Let's Get Quoted Support <hello@letsgetquoted.com>",
     to: 'hello@letsgetquoted.com',
     subject: `[Support] ${input.subject} — ${who}`,
-    html: `<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;color:#172033"><p style="color:#b45309;font-weight:700;letter-spacing:0.04em">SUPPORT REQUEST</p><h1 style="font-size:22px;margin:0 0 12px">${escapeHtml(headline)}</h1><p style="margin:0 0 6px"><strong>From:</strong> ${escapeHtml(input.requesterEmail)}</p><p style="margin:0 0 6px"><strong>Subject:</strong> ${escapeHtml(input.subject)}</p><div style="padding:16px;margin-top:12px;background:#f4f5f7;border-left:4px solid #f59e0b;line-height:1.6">${escapeHtml(input.body).replace(/\n/g, '<br/>')}</div><p style="margin:18px 0 0"><a href="${APP_ORIGIN}/admin/cases/${input.caseId}" style="color:#b45309;font-weight:700">Open the case →</a></p><p style="margin:8px 0 0;color:#6b7280;font-size:13px">Replying here does not reach the customer — answer on the case so it lands in their thread.</p></div>`,
+    html: renderBrandedEmail({
+      brand: {
+        businessName: "Let's Get Quoted Support",
+        accent: '#0284c7',
+        theme: 'spotlight',
+        logoUrl: null,
+        phone: null,
+        siteUrl: APP_ORIGIN,
+        replyTo: null,
+      },
+      preheader: `${headline}: ${input.subject}`,
+      eyebrow: 'Support Ticket',
+      heading: headline,
+      bodyHtml: `
+        <p style="margin:0 0 6px;font-family:${FONT_STACK};font-size:14px;color:#64748b"><strong>Requester:</strong> ${escapeHtml(input.requesterEmail)}</p>
+        <p style="margin:0 0 12px;font-family:${FONT_STACK};font-size:14px;color:#64748b"><strong>Topic:</strong> ${escapeHtml(input.subject)}</p>
+        <div style="padding:16px 18px;margin-top:12px;background:#f8fafc;border:1px solid #cbd5e1;border-left:4px solid #0284c7;border-radius:8px;line-height:1.6;font-family:${FONT_STACK};font-size:14px;color:#1e293b">
+          ${escapeHtml(input.body).replace(/\n/g, '<br/>')}
+        </div>
+      `,
+      cta: {
+        label: 'Open support ticket',
+        url: `${APP_ORIGIN}/admin/cases/${input.caseId}`,
+      },
+      footerHtml: `<p style="margin:10px 0 0;font-family:${FONT_STACK};font-size:12px;line-height:1.6;color:#64748b">Replying here does not reach the customer — answer on the case so it lands in their thread.</p>`,
+    }),
     reply_to: input.requesterEmail,
     tags: [{ name: 'kind', value: 'support_case_staff' }],
   });
@@ -1335,18 +1398,44 @@ export async function sendSupportCaseCustomerEmail(input: {
 }): Promise<void> {
   if (!process.env.RESEND_API_KEY) throw new Error('Email provider is not configured.');
   const received = input.kind === 'received';
-  const headline = received ? 'We have got your request' : 'Support replied to your request';
+  const headline = received ? 'We have received your support request' : 'Support replied to your request';
   const lead = received
-    ? 'A real person will read this and come back to you. You can follow it here at any time.'
-    : 'Here is what we said. Carry on the conversation on the same page.';
+    ? 'A member of our team will review your request and get back to you shortly.'
+    : 'Here is the latest update on your request:';
   const quote = input.body
-    ? `<div style="padding:16px;margin-top:12px;background:#f4f5f7;border-left:4px solid #f59e0b;line-height:1.6">${escapeHtml(input.body).replace(/\n/g, '<br/>')}</div>`
+    ? `
+      <div style="padding:16px 18px;margin-top:14px;background:#f8fafc;border:1px solid #cbd5e1;border-left:4px solid #0284c7;border-radius:8px;line-height:1.6;font-family:${FONT_STACK};font-size:14px;color:#1e293b">
+        ${escapeHtml(input.body).replace(/\n/g, '<br/>')}
+      </div>`
     : '';
   const result = await resend.emails.send({
     from: "Let's Get Quoted Support <hello@letsgetquoted.com>",
     to: input.to,
     subject: received ? `We have your request: ${input.subject}` : `Re: ${input.subject}`,
-    html: `<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;color:#172033"><h1 style="font-size:22px;margin:0 0 10px">${escapeHtml(headline)}</h1><p style="margin:0 0 6px;color:#4b5563">${escapeHtml(lead)}</p><p style="margin:12px 0 0"><strong>${escapeHtml(input.subject)}</strong></p>${quote}<p style="margin:18px 0 0"><a href="${APP_ORIGIN}/dashboard/help/${input.caseId}" style="color:#b45309;font-weight:700">Open your request →</a></p></div>`,
+    html: renderBrandedEmail({
+      brand: {
+        businessName: "Let's Get Quoted Support",
+        accent: '#0284c7',
+        theme: 'spotlight',
+        logoUrl: null,
+        phone: null,
+        siteUrl: APP_ORIGIN,
+        replyTo: null,
+      },
+      preheader: headline,
+      eyebrow: 'Customer Support',
+      heading: headline,
+      paragraphs: [lead],
+      bodyHtml: `
+        <p style="margin:0 0 8px;font-family:${FONT_STACK};font-size:14px;color:#64748b"><strong>Case Subject:</strong> ${escapeHtml(input.subject)}</p>
+        ${quote}
+      `,
+      cta: {
+        label: 'View support thread',
+        url: `${APP_ORIGIN}/dashboard/help/${input.caseId}`,
+      },
+      footerHtml: `<p style="margin:10px 0 0;font-family:${FONT_STACK};font-size:12px;line-height:1.6;color:#64748b">You can follow this request and post additional replies directly from your dashboard help center.</p>`,
+    }),
     tags: [{ name: 'kind', value: 'support_case_customer' }],
   });
   if (result.error) {

@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/auth';
 import { Resend } from 'resend';
 import { APP_ORIGIN, safeNextPath } from '@/lib/app-origin';
+import { renderBrandedEmail, FONT_STACK } from '@/emails/brand';
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
 const TOKEN_EXPIRY_MINUTES = 60;
@@ -39,27 +40,31 @@ export async function sendMagicLinkEmail(email: string, next = '/dashboard'): Pr
   const resend = new Resend(RESEND_API_KEY);
   
   const { error: emailError } = await resend.emails.send({
-    from: 'hello@letsgetquoted.com',
+    from: "Let's Get Quoted <hello@letsgetquoted.com>",
     to: email,
-    subject: 'Your magic link to Let\'s Get Quoted',
-    html: `
-      <div style="font-family: system-ui, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2>Welcome to Let's Get Quoted</h2>
-        <p>Click the link below to sign in to your contractor workspace:</p>
-        <p style="margin: 2rem 0;">
-          <a href="${verifyUrl.toString()}" style="background-color: #1f2937; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; display: inline-block; font-weight: bold;">
-            Sign In to Your Account
-          </a>
-        </p>
-        <p style="color: #666; font-size: 14px;">
-          Or copy and paste this link in your browser:<br/>
-          <code style="background: #f3f4f6; padding: 8px; border-radius: 4px; display: inline-block;">${verifyUrl.toString()}</code>
-        </p>
-        <p style="color: #999; font-size: 12px; margin-top: 2rem;">
-          This link expires in ${TOKEN_EXPIRY_MINUTES} minutes. If you didn't request this email, you can safely ignore it.
-        </p>
-      </div>
-    `,
+    subject: "Your magic link to Let's Get Quoted",
+    html: renderBrandedEmail({
+      brand: {
+        businessName: "Let's Get Quoted",
+        accent: '#0284c7',
+        theme: 'spotlight',
+        logoUrl: null,
+        phone: null,
+        siteUrl: APP_ORIGIN,
+        replyTo: null,
+      },
+      preheader: 'Click to securely sign in to your contractor workspace',
+      eyebrow: 'Contractor Login',
+      heading: 'Sign in to your workspace',
+      paragraphs: [
+        'Tap the secure button below to sign in to your Let\'s Get Quoted account. No password needed.',
+      ],
+      cta: {
+        label: 'Sign in to your dashboard',
+        url: verifyUrl.toString(),
+      },
+      footerHtml: `<p style="margin:10px 0 0;font-family:${FONT_STACK};font-size:12px;line-height:1.6;color:#64748b">This link expires in ${TOKEN_EXPIRY_MINUTES} minutes. If you did not request this sign-in link, you can safely ignore this email.</p>`,
+    }),
     tags: [{ name: 'kind', value: 'magic_link' }],
   });
 

@@ -3,9 +3,11 @@ import {
   escapeHtml,
   normalizeEmailTheme,
   renderBrandedEmail,
+  renderRichCampaignBodyHtml,
   themePaint,
   type EmailBrand,
   type EmailThemeId,
+  FONT_STACK,
 } from './brand';
 import { generateInvoiceHtml } from './InvoiceEmail';
 import { appointmentBlock, contactBlock, moneySummary, statusBanner } from './primitives';
@@ -49,13 +51,23 @@ export function renderClientQuoteEmailHtml(input: SendClientQuoteEmailInput & { 
     prompt: `Questions about quote ${escapeHtml(input.jobRef)}?`,
   });
 
+  const approvalTrustBadge = `
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:14px 0 10px;background:${paint.subtleBg};border:1px solid ${paint.border};border-radius:8px;overflow:hidden">
+      <tr>
+        <td style="padding:10px 14px;font-family:${FONT_STACK};font-size:12px;color:#64748b;text-align:center">
+          ⚡ <strong>One-Click Mobile Approval</strong> &nbsp;·&nbsp; Lock in your project schedule online
+        </td>
+      </tr>
+    </table>
+  `;
+
   return renderBrandedEmail({
     brand,
     preheader: `${formatUsdExact(input.quotedAmount)} · Quote ${input.jobRef} from ${input.businessName}`,
     eyebrow: `Quote ${input.jobRef}`,
     heading: `${input.clientName}, here is your quote`,
     paragraphs,
-    bodyHtml: quoteSummary,
+    bodyHtml: `${quoteSummary}${approvalTrustBadge}`,
     cta: { label: 'View & approve your quote', url: input.quoteUrl },
     contactCallout: contactHtml,
   });
@@ -198,6 +210,7 @@ export function renderSampleEmailPreviewSync(
 
   const from = contractorFrom(brand.businessName);
   const replyTo = brand.replyTo || 'hello@letsgetquoted.com';
+  const paint = themePaint(themeNormalized, brand.accent);
 
   switch (kind) {
     case 'quote': {
@@ -279,14 +292,16 @@ export function renderSampleEmailPreviewSync(
     }
 
     case 'campaign': {
-      const subject = 'Fall HVAC preparation & priority booking for existing clients';
-      const body = `Hi neighbors,\n\nBefore cold weather arrives, we are opening our early-bird tune-up schedule for our repeat customers.\n\nA 45-minute heating check now prevents mid-winter emergency outages and keeps your manufacturer warranty active.\n\nReply directly to this email or visit our website to claim your preferred slot before our calendar fills.`;
-      const preheader = 'Fall HVAC preparation & priority booking for existing clients';
+      const subject = '🍂 Fall HVAC preparation & priority booking for existing clients';
+      const body = `Hi neighbors,\n\nBefore cold weather arrives across our service area, we are opening our early-bird seasonal maintenance calendar exclusively for our repeat customers.\n\n[STAT: 45 Min | Tune-Up | Prevent mid-winter heating outages and keep your system operating at peak efficiency.]\n\n## What is Included in Your Fall Inspection:\n\n• Full Heat Exchanger & Burner Cleaning: Complete safety inspection and carbon monoxide calibration.\n• Blower Motor & Electrical Check: Maximize energy efficiency to lower winter electric bills.\n• Airflow Balance & Filter Check: Clean, healthy indoor air for the cold season ahead.\n\nTip: Booking this week locks in our $89 early-bird rate (regularly $149) and gives your home priority dispatch during unexpected cold snaps.\n\nClick below or reply directly to this email to claim your preferred morning or afternoon arrival window.`;
+      const preheader = 'Lock in your $89 early-bird fall heating inspection before our calendar fills.';
       const footerHtml = `<p style="margin:12px 0 0;color:#6b7280;font-size:12px;line-height:1.6">${escapeHtml(brand.businessName)} · ${escapeHtml(brand.mailingAddress || '100 Industrial Parkway, Austin, TX')} · <a href="#" style="color:#6b7280">Unsubscribe</a></p>`;
       const html = renderBrandedEmail({
         brand,
+        eyebrow: 'Seasonal Client Special',
         heading: subject,
-        bodyHtml: campaignParagraphs(body),
+        bodyHtml: renderRichCampaignBodyHtml(body, paint),
+        cta: { label: 'Claim your early-bird slot', url: 'https://letsgetquoted.com' },
         footerHtml,
       });
       return {

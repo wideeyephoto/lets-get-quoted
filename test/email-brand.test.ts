@@ -2,13 +2,15 @@ import { describe, it, expect } from 'vitest';
 import {
   EMAIL_THEMES,
   accessibleAccent,
+  brandLockup,
   contractorFrom,
   contrastRatio,
   escapeHtml,
   normalizeEmailTheme,
   onAccent,
-  relativeLuminance,
+  recommendEmailTheme,
   renderBrandedEmail,
+  renderRichCampaignBodyHtml,
   safeAccent,
   themePaint,
   type EmailBrand,
@@ -299,6 +301,88 @@ describe('Production email renderers across scenarios', () => {
     expect(html).toContain('Action Needed');
     expect(html).toContain('Action required on your account');
     expect(html).toContain('Open Settings');
+  });
+
+  it('renders quote approval and payment trust badges in transactional emails', () => {
+    const quoteHtml = renderClientQuoteEmailHtml({
+      brand: brand(),
+      recipientEmail: 'client@example.com',
+      businessName: 'BrokePipes',
+      clientName: 'Sarah Jenkins',
+      jobRef: '#Q-100',
+      quotedAmount: 1850,
+      quoteUrl: 'https://letsgetquoted.com/quotes/token',
+    });
+    expect(quoteHtml).toContain('One-Click Mobile Approval');
+
+    const invoiceHtml = generateInvoiceHtml({
+      brand: brand(),
+      businessName: 'BrokePipes',
+      invoiceRef: 'INV-500',
+      clientName: 'Tom Vance',
+      jobRef: 'JOB-201',
+      total: 950,
+      invoiceLink: 'https://letsgetquoted.com/invoices/token',
+      items: [{ description: 'Tankless unit install', amount: 950 }],
+    });
+    expect(invoiceHtml).toContain('Secure Online Payment');
+    expect(invoiceHtml).toContain('Apple Pay');
+  });
+});
+
+describe('renderRichCampaignBodyHtml visual component transformations', () => {
+  const paint = themePaint('blueprint', '#0284c7');
+
+  it('transforms [STAT: ...] blocks into high-impact metric cards', () => {
+    const raw = 'Hello team,\n\n[STAT: 2.8x | Win Rate | Fast quotes close 2.8x more jobs.]\n\nKeep crushing it!';
+    const html = renderRichCampaignBodyHtml(raw, paint);
+    expect(html).toContain('2.8x');
+    expect(html).toContain('Win Rate');
+    expect(html).toContain('Fast quotes close 2.8x more jobs.');
+  });
+
+  it('transforms section headers (## Title) into uppercase headers with dividers', () => {
+    const raw = '## 3 Ways to Close More Jobs\n\nFollow up fast.';
+    const html = renderRichCampaignBodyHtml(raw, paint);
+    expect(html).toContain('3 Ways to Close More Jobs');
+    expect(html).toContain('border-bottom');
+  });
+
+  it('transforms numbered steps (1. Title: Description) into step cards with badges', () => {
+    const raw = '1. Step One: Connect your bank.\n2. Step Two: Send your quote.';
+    const html = renderRichCampaignBodyHtml(raw, paint);
+    expect(html).toContain('Step One');
+    expect(html).toContain('Connect your bank.');
+    expect(html).toContain('Step Two');
+    expect(html).toContain('Send your quote.');
+  });
+
+  it('transforms bullet checklists (• Title: Description) into cards with checkmarks', () => {
+    const raw = '• Tiered Pricing: Offer Good, Better, Best options.';
+    const html = renderRichCampaignBodyHtml(raw, paint);
+    expect(html).toContain('✓');
+    expect(html).toContain('Tiered Pricing');
+    expect(html).toContain('Offer Good, Better, Best options.');
+  });
+
+  it('transforms pro tips and notes into semantic callout containers', () => {
+    const tipRaw = 'Tip: Always call the customer within 15 minutes.';
+    const tipHtml = renderRichCampaignBodyHtml(tipRaw, paint);
+    expect(tipHtml).toContain('💡');
+    expect(tipHtml).toContain('Pro Tip:');
+    expect(tipHtml).toContain('Always call the customer within 15 minutes.');
+
+    const noteRaw = 'Important: Connect your Stripe account to receive payouts.';
+    const noteHtml = renderRichCampaignBodyHtml(noteRaw, paint);
+    expect(noteHtml).toContain('📌');
+    expect(noteHtml).toContain('Note:');
+  });
+
+  it('transforms blockquotes into editorial quote cards', () => {
+    const quoteRaw = '> "Our mission is to empower independent contractors."';
+    const html = renderRichCampaignBodyHtml(quoteRaw, paint);
+    expect(html).toContain('Our mission is to empower independent contractors.');
+    expect(html).toContain('font-style:italic');
   });
 });
 
