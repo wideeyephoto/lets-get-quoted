@@ -1521,11 +1521,11 @@ export const ALL_FEATURES_CATALOG: FeatureCatalogCategory[] = [
       {
         id: 'halo-speed-to-lead-sms',
         name: 'Halo-Aware Speed-to-Lead SMS with TCPA Quiet Hours',
-        desc: 'Dispatches personalized sub-60-second text messages referencing the neighbor\'s street, with 9 PM–8 AM quiet hours protection.',
+        desc: 'Dispatches personalized sub-60-second text messages referencing the neighbor\'s street, with 9 PM–8 AM recipient-local quiet hours protection.',
         tags: ['SMS', 'Speed-to-Lead', 'TCPA Compliance'],
         subBullets: [
           'Sub-60s automated SMS response referencing the specific street and active cluster discounts.',
-          'Built-in TCPA quiet hours protection queues overnight inquiries for compliant 8:01 AM local time morning dispatch.',
+          'Built-in TCPA quiet hours protection evaluates the called party\'s local time zone and queues overnight inquiries for compliant 8:01 AM recipient-local dispatch.',
           '15-minute idempotency lock prevents duplicate text blasts if a homeowner submits multiple forms.',
         ],
       },

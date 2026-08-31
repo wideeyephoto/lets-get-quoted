@@ -150,7 +150,7 @@ export async function POST(request: NextRequest) {
   // Defensive reads so a pre-migration DB degrades to sensible defaults.
   const { data: accountSettings } = await admin
     .from('accounts')
-    .select('high_value_lead_amount, mute_low_quality_leads, high_value_sms_enabled, alert_phone')
+    .select('high_value_lead_amount, mute_low_quality_leads, high_value_sms_enabled, alert_phone, timezone')
     .eq('id', site.account_id)
     .maybeSingle();
   const highValueThreshold = Number(accountSettings?.high_value_lead_amount) || 0;
@@ -432,6 +432,9 @@ export async function POST(request: NextRequest) {
     });
 
     const isAdLead = Boolean(phone && (attribution?.clickId || attribution?.medium === 'cpc'));
+    const leadAddress = text(data, 'address', 240);
+    const accountTz = (accountSettings as { timezone?: string } | null)?.timezone || null;
+
     if (isAdLead) {
       dispatchSpeedToLeadSms({
         admin,
@@ -440,8 +443,10 @@ export async function POST(request: NextRequest) {
         businessName: site.company_name,
         leadName: name,
         projectType: text(data, 'projectType', 100),
-        city: text(data, 'address', 240),
+        city: leadAddress,
+        address: leadAddress,
         urgency: isHighValue ? 'emergency' : 'standard',
+        accountTimeZone: accountTz,
       }).catch((err) => console.warn('Speed-to-lead SMS dispatch skipped:', err));
     } else if (phone && filters.instantConfirmationSms) {
       sendIntakeConfirmationSms({
@@ -450,8 +455,10 @@ export async function POST(request: NextRequest) {
         businessName: site.company_name,
         leadName: name,
         projectType: text(data, 'projectType', 100),
+        address: leadAddress,
         estimate,
         idempotencyKey: `intake-confirmation:${lead.id}`,
+        accountTimeZone: accountTz,
       }).catch((err) => console.warn('Intake confirmation SMS dispatch skipped:', err));
     }
 

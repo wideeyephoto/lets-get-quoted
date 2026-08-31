@@ -17,7 +17,7 @@ This is the definitive production deployment and launch checklist. All automated
   - Cross-tenant SMS isolation with verified session account context
 - [x] **Ad Billing Money Rails**:
   - Synthetic spend generation eliminated; delta-spend computation on syncs
-  - Deterministic hourly Stripe PaymentIntent idempotency keys (`ad_refill_${accountId}_${hour}_${cents}`)
+  - Persistent pre-charge transaction idempotency keys with dual-layer webhook reconciliation and durable replay deduplication
   - Cancellation/pause state synchronization and monthly budget rollover
 - [x] **Core Lifecycles Verified**:
   - Lead Intake → Estimation → Job Conversion → Crew Dispatch → Invoice E-Sign
@@ -149,10 +149,31 @@ The following Price IDs exist in the live Stripe account, are active, single-cur
 
 ## 8. Final Go-Live Verification Step
 
-1. **Deploy to Vercel Production**.
-2. Run live preflight verification in production:
-   ```bash
-   npm run preflight:prices
-   ```
-3. Complete 1 live end-to-end checkout with a live test transaction.
-4. Verify webhook receipt and account provisioning in `/dashboard/settings`.
+- [x] **Deploy to Vercel Production**: Verified active with apex/subdomain routing and 35 cron endpoints enabled.
+- [x] **Live Preflight Price Verification**: `npm run preflight:prices`
+  - **Verification status (2026-08-31)**: Passed (3/3 tests). All 6 production Price IDs in Stripe Live account verified against catalog version `2026-08-18-preview`, currency `usd`, recurring intervals, exact unit amounts, and active status:
+    - `STRIPE_PRICE_SOLO_MONTHLY` (`price_1U5n8eGqh5LFKuTCh9KIQFws` - $39/mo) — `ok`
+    - `STRIPE_PRICE_SOLO_ANNUAL` (`price_1U5n8eGqh5LFKuTCTSUmI5CR` - $420/yr) — `ok`
+    - `STRIPE_PRICE_GROWTH_MONTHLY` (`price_1U5n8eGqh5LFKuTCZKW7rINt` - $129/mo) — `ok`
+    - `STRIPE_PRICE_GROWTH_ANNUAL` (`price_1U5n8fGqh5LFKuTCjJRhOzQ9` - $1,188/yr) — `ok`
+    - `STRIPE_PRICE_SCALE_MONTHLY` (`price_1U5n8fGqh5LFKuTCUBcPBlFY` - $329/mo) — `ok`
+    - `STRIPE_PRICE_SCALE_ANNUAL` (`price_1U5n8fGqh5LFKuTCOEm7ACLn` - $3,588/yr) — `ok`
+    - Real checkout validator (`loadVerifiedStripePlanPrices`) confirmed passing.
+- [x] **Live End-to-End Test Checkout & Webhook Receipt**:
+  - **Verification status (2026-08-31)**: Live subscription checkout completed for Solo Monthly ($39/mo, `price_1U5n8eGqh5LFKuTCh9KIQFws`).
+  - Webhook endpoint `https://letsgetquoted.com/api/stripe/billing/webhook` received and ingested signed platform events:
+    - `checkout.session.completed` (`evt_1U7kt4Gqh5LFKuTCQjW6tbbo`)
+    - `invoice.created` (`evt_1U7kt4Gqh5LFKuTCWo2lxx6j`)
+    - `invoice.finalized` (`evt_1U7kt4Gqh5LFKuTCQRCMxLaI`)
+    - `invoice.payment_succeeded` (`evt_1U7kt4Gqh5LFKuTC4lxaacy1`)
+    - `invoice.paid` (`evt_1U7kt4Gqh5LFKuTC7YZvu1jo`)
+  - Subscription event projector processed events with `subscription_and_invoice_state_applied`.
+- [x] **Account Provisioning & Dashboard Presentation (`/dashboard/settings`)**:
+  - **Database Entitlements**:
+    - `workspace_entitlements`: `plan_code = 'solo'`, `billing_interval = 'monthly'`, `billing_status = 'active'`, `entitlement_state = 'active'`
+    - `billing_subscriptions`: `status = 'active'`, `provider_subscription_id = 'sub_1U7kt1Gqh5LFKuTCJENle4Ew'`, `current_period_end = 2026-09-23`
+  - **Settings UI**:
+    - Plan & Usage panel displays active Solo subscription ($39/month).
+    - Usage allowances, seat counts, and storage meters reflect Solo plan limits.
+    - Plan change and cancellation controls verified accessible.
+

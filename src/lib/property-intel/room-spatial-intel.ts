@@ -42,6 +42,7 @@ export type RoomSpatialScan = {
   objects: RoomObject3D[];
   rawUsdzUrl?: string;
   rawJsonUrl?: string;
+  isSample?: boolean;
 };
 
 export type RoomDimensionsSummary = {
@@ -437,9 +438,10 @@ export function formatSpatialTakeoffReport(
   summary: RoomDimensionsSummary,
   costs?: MaterialCostBreakdown
 ): string {
+  const isSample = Boolean(scan.isSample);
   const lines = [
     `══════════════════════════════════════════════════════`,
-    `  3D LiDAR SPATIAL TAKEOFF REPORT — ${scan.title.toUpperCase()}`,
+    `  3D LiDAR SPATIAL TAKEOFF REPORT — ${scan.title.toUpperCase()}${isSample ? ' [SAMPLE DEMO]' : ''}`,
     `══════════════════════════════════════════════════════`,
     `Device: ${scan.device}`,
     `Scan Precision: ${scan.confidenceScore}% (${scan.pointCount.toLocaleString()} points)`,
@@ -471,6 +473,13 @@ export function formatSpatialTakeoffReport(
     );
   }
 
+  if (isSample) {
+    lines.push(
+      ``,
+      `*Notice & Verification: Generated from a sample CAD template for interactive demonstration. All dimensions must be physically verified on site before ordering materials or finalizing contracts.*`
+    );
+  }
+
   lines.push(`══════════════════════════════════════════════════════`);
   return lines.join('\n');
 }
@@ -490,7 +499,7 @@ export function generateSupplyHouseCsv(
     `"${it.unit.replace(/"/g, '""')}"`,
     `"${it.wasteFactor.replace(/"/g, '""')}"`,
     `"${(it.notes ?? '').replace(/"/g, '""')}"`,
-    `"${scan.title.replace(/"/g, '""')}"`,
+    `"${scan.title.replace(/"/g, '""')}${scan.isSample ? ' (Sample Template)' : ''}"`,
     `"${scan.device.replace(/"/g, '""')}"`,
   ]);
 
@@ -510,6 +519,7 @@ export function formatSubcontractorSlip(
   annotatedPhotoUrls?: string[]
 ): string {
   const dateStr = scan.scannedAt;
+  const isSample = Boolean(scan.isSample);
   const photoSection =
     annotatedPhotoUrls && annotatedPhotoUrls.length > 0
       ? [
@@ -525,7 +535,7 @@ export function formatSubcontractorSlip(
     );
     const lines = [
       `══════════════════════════════════════════════════════`,
-      `  TILE & WATERPROOFING SUBCONTRACTOR WORK SLIP`,
+      `  TILE & WATERPROOFING SUBCONTRACTOR WORK SLIP${isSample ? ' [SAMPLE DEMO]' : ''}`,
       `══════════════════════════════════════════════════════`,
       `Job / Room: ${scan.title}`,
       `Scan Source: ${scan.device} · Precision: ${scan.confidenceScore}%`,
@@ -545,6 +555,9 @@ export function formatSubcontractorSlip(
       if (it.notes) lines.push(`     Spec: ${it.notes}`);
     }
     lines.push(...photoSection);
+    if (isSample) {
+      lines.push(``, `*Notice: Generated from sample CAD reference template. Verify on-site before performing work.*`);
+    }
     lines.push(`══════════════════════════════════════════════════════`);
     return lines.join('\n');
   }
@@ -553,7 +566,7 @@ export function formatSubcontractorSlip(
     const paintItems = items.filter((i) => i.category === 'Paint & Drywall');
     const lines = [
       `══════════════════════════════════════════════════════`,
-      `  DRYWALL & PAINT SUBCONTRACTOR WORK SLIP`,
+      `  DRYWALL & PAINT SUBCONTRACTOR WORK SLIP${isSample ? ' [SAMPLE DEMO]' : ''}`,
       `══════════════════════════════════════════════════════`,
       `Job / Room: ${scan.title}`,
       `Scan Source: ${scan.device} · Precision: ${scan.confidenceScore}%`,
@@ -573,6 +586,9 @@ export function formatSubcontractorSlip(
       if (it.notes) lines.push(`     Spec: ${it.notes}`);
     }
     lines.push(...photoSection);
+    if (isSample) {
+      lines.push(``, `*Notice: Generated from sample CAD reference template. Verify on-site before performing work.*`);
+    }
     lines.push(`══════════════════════════════════════════════════════`);
     return lines.join('\n');
   }
@@ -581,7 +597,7 @@ export function formatSubcontractorSlip(
   const trimItems = items.filter((i) => i.category === 'Trim & Finish Carpentry');
   const lines = [
     `══════════════════════════════════════════════════════`,
-    `  TRIM & FINISH CARPENTRY SUBCONTRACTOR WORK SLIP`,
+    `  TRIM & FINISH CARPENTRY SUBCONTRACTOR WORK SLIP${isSample ? ' [SAMPLE DEMO]' : ''}`,
     `══════════════════════════════════════════════════════`,
     `Job / Room: ${scan.title}`,
     `Scan Source: ${scan.device} · Precision: ${scan.confidenceScore}%`,
@@ -599,6 +615,9 @@ export function formatSubcontractorSlip(
     if (it.notes) lines.push(`     Spec: ${it.notes}`);
   }
   lines.push(...photoSection);
+  if (isSample) {
+    lines.push(``, `*Notice: Generated from sample CAD reference template. Verify on-site before performing work.*`);
+  }
   lines.push(`══════════════════════════════════════════════════════`);
   return lines.join('\n');
 }
@@ -654,76 +673,94 @@ export function getWallElevations(scan: RoomSpatialScan): WallElevation[] {
 /**
  * Validates and parses uploaded Apple RoomPlan / LiDAR JSON scan files into a RoomSpatialScan.
  */
-export function parseCustomScanJson(jsonString: string): RoomSpatialScan {
-  const parsed = JSON.parse(jsonString);
-  if (!parsed || typeof parsed !== 'object') {
-    throw new Error('Invalid JSON format for 3D room spatial scan');
+export function parseCustomScanJson(rawJsonText: string): RoomSpatialScan {
+  let parsed: Record<string, unknown>;
+  try {
+    parsed = JSON.parse(rawJsonText);
+  } catch {
+    throw new Error('Invalid JSON format: Uploaded file is not valid JSON.');
   }
 
-  const title = typeof parsed.title === 'string' && parsed.title.trim() ? parsed.title : 'Custom Uploaded Scan';
-  const roomType = ['bathroom', 'kitchen', 'bedroom', 'living', 'basement', 'garage'].includes(parsed.roomType)
-    ? parsed.roomType
-    : 'bathroom';
+  if (!parsed || typeof parsed !== 'object') {
+    throw new Error('Invalid JSON structure: Root element must be a scan object.');
+  }
+
+  const wallsRaw = Array.isArray(parsed.walls) ? parsed.walls : [];
+  if (wallsRaw.length === 0) {
+    throw new Error('Invalid scan data: Room must contain at least 3 walls.');
+  }
+
   const ceilingHeightInches = Number(parsed.ceilingHeightInches) > 0 ? Number(parsed.ceilingHeightInches) : 96;
 
-  if (!Array.isArray(parsed.walls) || parsed.walls.length < 3) {
-    throw new Error('3D room scan must contain at least 3 wall segments');
-  }
-
-  const walls: WallSegment[] = parsed.walls.map((w: Record<string, unknown>, idx: number) => ({
-    id: typeof w.id === 'string' ? w.id : `w${idx + 1}`,
+  const walls: WallSegment[] = wallsRaw.map((w: Record<string, unknown>, idx: number) => ({
+    id: typeof w.id === 'string' ? w.id : `w-${idx + 1}`,
     label: typeof w.label === 'string' ? w.label : `Wall ${idx + 1}`,
     lengthInches: Number(w.lengthInches) > 0 ? Number(w.lengthInches) : 120,
     heightInches: Number(w.heightInches) > 0 ? Number(w.heightInches) : ceilingHeightInches,
+    isExterior: Boolean(w.isExterior),
   }));
 
-  const openings: RoomOpening[] = Array.isArray(parsed.openings)
-    ? parsed.openings.map((op: Record<string, unknown>, idx: number) => ({
-        id: typeof op.id === 'string' ? op.id : `op-${idx + 1}`,
-        type: typeof op.type === 'string' && ['door', 'window', 'opening'].includes(op.type) ? (op.type as 'door' | 'window' | 'opening') : 'door',
-        wallIndex: Number(op.wallIndex) >= 0 && Number(op.wallIndex) < walls.length ? Number(op.wallIndex) : 0,
-        widthInches: Number(op.widthInches) > 0 ? Number(op.widthInches) : 32,
-        heightInches: Number(op.heightInches) > 0 ? Number(op.heightInches) : 80,
-        offsetInches: Number(op.offsetInches) >= 0 ? Number(op.offsetInches) : 12,
-      }))
-    : [];
+  const openingsRaw = Array.isArray(parsed.openings) ? parsed.openings : [];
+  const openings: RoomOpening[] = openingsRaw.map((op: Record<string, unknown>, idx: number) => ({
+    id: typeof op.id === 'string' ? op.id : `op-${idx + 1}`,
+    type: op.type === 'window' ? 'window' : op.type === 'opening' ? 'opening' : 'door',
+    wallIndex: Number(op.wallIndex) >= 0 ? Number(op.wallIndex) : 0,
+    widthInches: Number(op.widthInches) > 0 ? Number(op.widthInches) : 32,
+    heightInches: Number(op.heightInches) > 0 ? Number(op.heightInches) : 80,
+    offsetInches: Number(op.offsetInches) >= 0 ? Number(op.offsetInches) : 12,
+  }));
 
-  const objects: RoomObject3D[] = Array.isArray(parsed.objects)
-    ? parsed.objects.map((obj: Record<string, unknown>, idx: number) => {
-        const dim = (obj.dimensionsInches && typeof obj.dimensionsInches === 'object') ? (obj.dimensionsInches as Record<string, unknown>) : {};
-        const pos = (obj.position && typeof obj.position === 'object') ? (obj.position as Record<string, unknown>) : {};
-        return {
-          id: typeof obj.id === 'string' ? obj.id : `obj-${idx + 1}`,
-          category: typeof obj.category === 'string' && ['bathtub', 'shower', 'vanity', 'toilet', 'cabinet', 'appliance', 'closet'].includes(obj.category)
-            ? (obj.category as RoomObject3D['category'])
-            : 'cabinet',
-          label: typeof obj.label === 'string' ? obj.label : `Object ${idx + 1}`,
-          dimensionsInches: {
-            width: Number(dim.width) > 0 ? Number(dim.width) : 36,
-            depth: Number(dim.depth) > 0 ? Number(dim.depth) : 24,
-            height: Number(dim.height) > 0 ? Number(dim.height) : 34,
-          },
-          position: {
-            x: Number(pos.x) || 0,
-            y: Number(pos.y) || 0,
-            z: Number(pos.z) || 0,
-          },
-        };
-      })
-    : [];
+  const objectsRaw = Array.isArray(parsed.objects) ? parsed.objects : [];
+  const objects: RoomObject3D[] = objectsRaw.map((obj: Record<string, unknown>, idx: number) => ({
+    id: typeof obj.id === 'string' ? obj.id : `obj-${idx + 1}`,
+    category:
+      obj.category === 'shower' ||
+      obj.category === 'vanity' ||
+      obj.category === 'toilet' ||
+      obj.category === 'cabinet' ||
+      obj.category === 'appliance' ||
+      obj.category === 'closet'
+        ? obj.category
+        : 'bathtub',
+    label: typeof obj.label === 'string' ? obj.label : `Fixture ${idx + 1}`,
+    dimensionsInches:
+      typeof obj.dimensionsInches === 'object' && obj.dimensionsInches !== null
+        ? {
+            width: Number((obj.dimensionsInches as Record<string, unknown>).width) || 36,
+            depth: Number((obj.dimensionsInches as Record<string, unknown>).depth) || 24,
+            height: Number((obj.dimensionsInches as Record<string, unknown>).height) || 30,
+          }
+        : { width: 36, depth: 24, height: 30 },
+    position:
+      typeof obj.position === 'object' && obj.position !== null
+        ? {
+            x: Number((obj.position as Record<string, unknown>).x) || 0,
+            y: Number((obj.position as Record<string, unknown>).y) || 0,
+            z: Number((obj.position as Record<string, unknown>).z) || 0,
+          }
+        : { x: 0, y: 0, z: 0 },
+  }));
 
   return {
     id: `custom-scan-${Date.now()}`,
-    title,
-    roomType,
-    scannedAt: 'Custom Upload',
-    device: typeof parsed.device === 'string' ? parsed.device : 'Custom LiDAR Export',
+    title: typeof parsed.title === 'string' ? parsed.title : 'Uploaded Room Scan',
+    roomType:
+      parsed.roomType === 'kitchen' ||
+      parsed.roomType === 'bedroom' ||
+      parsed.roomType === 'living' ||
+      parsed.roomType === 'basement' ||
+      parsed.roomType === 'garage'
+        ? parsed.roomType
+        : 'bathroom',
+    scannedAt: 'Uploaded On-Site Scan',
+    device: typeof parsed.device === 'string' ? parsed.device : 'Custom LiDAR / CAD Export',
     pointCount: Number(parsed.pointCount) > 0 ? Number(parsed.pointCount) : 125000,
     confidenceScore: Number(parsed.confidenceScore) > 0 ? Number(parsed.confidenceScore) : 98.5,
     ceilingHeightInches,
     walls,
     openings,
     objects,
+    isSample: false,
   };
 }
 
@@ -735,11 +772,12 @@ export const SAMPLE_ROOM_SCANS: RoomSpatialScan[] = [
     id: 'scan-master-bath-alcove',
     title: 'Master Bathroom (Tub-to-Shower Alcove)',
     roomType: 'bathroom',
-    scannedAt: 'Today, 2:15 PM',
-    device: 'iPhone 15 Pro · Apple RoomPlan LiDAR',
+    scannedAt: 'Sample Reference Model',
+    device: 'Sample Demo CAD Model (iPhone 15 Pro RoomPlan Profile)',
     pointCount: 148500,
     confidenceScore: 99.4,
     ceilingHeightInches: 108, // 9ft ceiling
+    isSample: true,
     walls: [
       { id: 'w1', label: 'North Wall (Vanity & Mirror)', lengthInches: 120, heightInches: 108 },
       { id: 'w2', label: 'East Wall (Shower Alcove)', lengthInches: 60, heightInches: 108 },
@@ -771,11 +809,12 @@ export const SAMPLE_ROOM_SCANS: RoomSpatialScan[] = [
     id: 'scan-kitchen-alcove',
     title: 'Kitchen & Island Remodel',
     roomType: 'kitchen',
-    scannedAt: 'Yesterday, 10:45 AM',
-    device: 'iPad Pro M4 LiDAR · Spatial Scan',
+    scannedAt: 'Sample Reference Model',
+    device: 'Sample Demo CAD Model (iPad Pro M4 Profile)',
     pointCount: 286000,
     confidenceScore: 98.8,
     ceilingHeightInches: 120, // 10ft ceiling
+    isSample: true,
     walls: [
       { id: 'w1', label: 'North Wall (Range & Hood)', lengthInches: 180, heightInches: 120 },
       { id: 'w2', label: 'East Wall (Pantry & Fridge)', lengthInches: 144, heightInches: 120 },
@@ -800,11 +839,12 @@ export const SAMPLE_ROOM_SCANS: RoomSpatialScan[] = [
     id: 'scan-primary-bed',
     title: 'Primary Bedroom (Hardwood Flooring Takeoff)',
     roomType: 'bedroom',
-    scannedAt: '3 days ago',
-    device: 'iPhone 14 Pro · Apple RoomPlan LiDAR',
+    scannedAt: 'Sample Reference Model',
+    device: 'Sample Demo CAD Model (iPhone 14 Pro Profile)',
     pointCount: 195000,
     confidenceScore: 99.1,
     ceilingHeightInches: 96, // 8ft ceiling
+    isSample: true,
     walls: [
       { id: 'w1', label: 'North Wall', lengthInches: 168, heightInches: 96 },
       { id: 'w2', label: 'East Wall (Closet)', lengthInches: 144, heightInches: 96 },

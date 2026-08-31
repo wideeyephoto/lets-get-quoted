@@ -140,8 +140,12 @@ export function detectScopeDiscrepancies(
   scopeText: string,
   tradeSlug = 'roofers'
 ): ScopeDiscrepancy[] {
+  if (!scopeText || !scopeText.trim()) {
+    return [];
+  }
+
   const profile: InsuranceTradeProfile = getInsuranceTradeProfile(tradeSlug);
-  const lowerScope = (scopeText || '').toLowerCase();
+  const lowerScope = scopeText.toLowerCase();
   const discrepancies: ScopeDiscrepancy[] = [];
 
   for (let i = 0; i < profile.standardSupplements.length; i++) {
@@ -151,7 +155,7 @@ export function detectScopeDiscrepancies(
     // Check if the item appears in the scope text
     const isPresent = itemWords.some((word) => lowerScope.includes(word));
 
-    // If omitted, flag as a potential supplement
+    // If omitted from the provided scope, flag as a potential supplement
     if (!isPresent) {
       discrepancies.push({
         id: `supp-${i + 1}`,
@@ -177,6 +181,18 @@ export function buildSupplementAnalysis(
   scopeText: string,
   tradeSlug = 'roofers'
 ): SupplementAnalysisResult {
+  if (!scopeText || !scopeText.trim()) {
+    return {
+      tradeSlug,
+      parsedFigures: { rcv: null, acv: null, depreciation: null, deductible: null, netClaim: null },
+      rawScopeSummary: 'No scope text provided.',
+      discrepancies: [],
+      totalEstimatedSupplement: 0,
+      adjustedTotalRcv: null,
+      justificationDraft: 'No scope text provided. Paste an adjuster estimate to identify code omissions and generate a justification draft.',
+    };
+  }
+
   const parsedFigures = extractClaimFiguresFromText(scopeText);
   const discrepancies = detectScopeDiscrepancies(scopeText, tradeSlug);
   const totalEstimatedSupplement = discrepancies
@@ -185,9 +201,7 @@ export function buildSupplementAnalysis(
 
   const adjustedTotalRcv = parsedFigures.rcv ? parsedFigures.rcv + totalEstimatedSupplement : null;
 
-  const rawScopeSummary = scopeText.trim()
-    ? `Analyzed ${scopeText.split('\n').length} lines of adjuster scope.`
-    : 'No scope text provided.';
+  const rawScopeSummary = `Analyzed ${scopeText.split('\n').length} lines of adjuster scope.`;
 
   const justificationDraft = generateAdjusterLetterDraft({
     tradeSlug,
@@ -238,12 +252,25 @@ export function generateAdjusterLetterDraft(params: {
     initialRcv = null,
   } = params;
 
-  const profile = getInsuranceTradeProfile(tradeSlug);
   const activeDiscrepancies = discrepancies.filter((d) => d.selected);
+  if (activeDiscrepancies.length === 0) {
+    return [
+      `RE: Desk Scope Review & Contractor Construction Estimate — Building Code Supplements`,
+      `Policyholder: ${policyholderName}`,
+      `Risk Location: ${propertyAddress}`,
+      ``,
+      `No omitted items or supplement discrepancies identified. Paste an insurance adjuster scope or select items above to generate a contractor scope clarification letter draft.`,
+      ``,
+      `---`,
+      `*Notice & Contractor Scope Disclaimer: This scope clarification and supplement estimate is prepared solely as a contractor desk review for construction, material specifications, and labor in accordance with applicable building codes and manufacturer requirements. It does not assert completed physical on-site inspection findings and does not constitute legal advice, insurance adjusting, or public insurance adjuster representation. All scope items and physical dimensions must be verified on site prior to execution.*`,
+    ].join('\n');
+  }
+
+  const profile = getInsuranceTradeProfile(tradeSlug);
   const supplementTotal = activeDiscrepancies.reduce((sum, d) => sum + d.estimatedCost, 0);
 
   const lines: string[] = [
-    `RE: Supplement Request & Physical Scope Clarification`,
+    `RE: Desk Scope Review & Contractor Construction Estimate — Building Code Supplements`,
     `Policyholder: ${policyholderName}`,
     `Claim Number: ${claimNumber}`,
     `Date of Loss: ${dateOfLoss}`,
@@ -253,8 +280,7 @@ export function generateAdjusterLetterDraft(params: {
     ``,
     `Dear ${adjusterName},`,
     ``,
-    `We have conducted a thorough physical inspection of the property located at ${propertyAddress} following the covered loss event.`,
-    `Upon reviewing your initial scope of loss${initialRcv ? ` (Initial RCV: $${initialRcv.toLocaleString()})` : ''}, we identified several mandatory building code items and manufacturer-specified materials omitted from the estimate that are required to complete a code-compliant, workmanlike restoration.`,
+    `We have completed a preliminary contractor desk review of the initial scope of loss for the property at ${propertyAddress}. Based on applicable building codes and manufacturer installation specifications, we have identified several required line items omitted from the initial estimate that are necessary for a code-compliant, workmanlike restoration${initialRcv ? ` (Initial RCV: $${initialRcv.toLocaleString()})` : ''}.`,
     ``,
     `### Itemized Scope Adjustments & Code Justifications:`,
     ``,
@@ -279,7 +305,10 @@ export function generateAdjusterLetterDraft(params: {
     `Sincerely,`,
     `Project Estimator & Field Team`,
     `${profile.name}`,
-    `[Phone & Direct Email]`
+    `[Phone & Direct Email]`,
+    ``,
+    `---`,
+    `*Notice & Contractor Scope Disclaimer: This scope clarification and supplement request is prepared solely as a contractor estimate for construction, material specifications, and labor in accordance with applicable building codes and manufacturer requirements. It does not constitute legal advice, insurance adjusting, or public insurance adjuster representation. Scope items must be verified against actual physical property conditions prior to execution.*`
   );
 
   return lines.filter(Boolean).join('\n');

@@ -97,7 +97,18 @@ async function catalog() {
     for (const entry of withheldBlock[1].split(/^  (?=[a-z])/m)) {
       const id = entry.match(/^([a-z0-9_]+):/)?.[1];
       if (!id) continue;
-      withheld[id] = [...entry.matchAll(/'([^']*)'/g)].map((m) => m[1]).join('');
+      const direct = [...entry.matchAll(/'([^']*)'/g)].map((m) => m[1]).join('');
+      if (direct) {
+        withheld[id] = direct;
+      } else {
+        const varMatch = entry.match(/^([a-z0-9_]+):\s*([A-Za-z0-9_]+)/m)?.[2];
+        if (varMatch) {
+          const varBlock = source.match(new RegExp(`const ${varMatch} =([\\s\\S]*?);`));
+          if (varBlock) {
+            withheld[id] = [...varBlock[1].matchAll(/'([^']*)'/g)].map((m) => m[1]).join('');
+          }
+        }
+      }
     }
   }
 

@@ -58,7 +58,7 @@ describe('insurance-claims.ts', () => {
       expect(analysis.parsedFigures.rcv).toBe(12450);
       expect(analysis.totalEstimatedSupplement).toBeGreaterThan(1000);
       expect(analysis.adjustedTotalRcv).toBe(12450 + analysis.totalEstimatedSupplement);
-      expect(analysis.justificationDraft).toContain('Supplement Request');
+      expect(analysis.justificationDraft).toContain('Building Code Supplements');
       expect(analysis.justificationDraft).toContain('IRC');
     });
   });

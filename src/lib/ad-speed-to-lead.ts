@@ -1,6 +1,23 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { sendSpeedToLeadSms } from '@/lib/sms';
 import { withOptOut } from '@/lib/sms-templates';
+import {
+  resolveRecipientTimeZone,
+  isWithinTcpaQuietHours,
+  getTcpaCompliantSendTime,
+  getTimeZoneFromPhone,
+  getTimeZoneFromLocation,
+  isValidTimeZone,
+} from '@/lib/phone-timezone';
+
+export {
+  resolveRecipientTimeZone,
+  isWithinTcpaQuietHours,
+  getTcpaCompliantSendTime,
+  getTimeZoneFromPhone,
+  getTimeZoneFromLocation,
+  isValidTimeZone,
+};
 
 export type HaloLeadContext = {
   isNeighborLead?: boolean;
@@ -51,55 +68,6 @@ export function generateSpeedToLeadSms(params: SpeedToLeadParams): string {
 }
 
 /**
- * Checks whether a given timestamp falls within TCPA quiet hours (9:00 PM to 8:00 AM local time).
- */
-export function isWithinTcpaQuietHours(date = new Date(), timeZone = 'America/New_York'): boolean {
-  try {
-    const formatter = new Intl.DateTimeFormat('en-US', {
-      timeZone,
-      hour: 'numeric',
-      hour12: false,
-    });
-    const localHour = parseInt(formatter.format(date), 10);
-    // Quiet hours: 9:00 PM (21:00) to 8:00 AM (07:59)
-    return localHour >= 21 || localHour < 8;
-  } catch {
-    // Fallback using UTC-5 if timezone is invalid
-    const hour = date.getUTCHours() - 5;
-    const normalizedHour = (hour + 24) % 24;
-    return normalizedHour >= 21 || normalizedHour < 8;
-  }
-}
-
-/**
- * Calculates compliant delivery time for messages received during TCPA quiet hours.
- * If received overnight, rolls forward to 8:01 AM local time the next morning.
- */
-export function getTcpaCompliantSendTime(date = new Date(), timeZone = 'America/New_York'): {
-  isDelayed: boolean;
-  sendAt: Date;
-  reason?: string;
-} {
-  const isQuiet = isWithinTcpaQuietHours(date, timeZone);
-  if (!isQuiet) {
-    return {
-      isDelayed: false,
-      sendAt: date,
-    };
-  }
-
-  // Next morning 8:01 AM in target timezone
-  const targetDate = new Date(date);
-  targetDate.setHours(targetDate.getHours() + 8); // approximate advance to next morning
-
-  return {
-    isDelayed: true,
-    sendAt: targetDate,
-    reason: `Queued for 8:01 AM delivery to comply with TCPA quiet hours (9:00 PM – 8:00 AM ${timeZone}).`,
-  };
-}
-
-/**
  * Generates an idempotency key with time-window deduplication (default 15 minutes)
  * to prevent duplicate SMS blasts if a lead submits multiple forms.
  */
@@ -118,6 +86,15 @@ export function generateSpeedToLeadIdempotencyKey(
 
 /**
  * Automatically dispatches the speed-to-lead text message when an ad lead arrives.
+ *
+ * Under FCC TCPA rules (47 C.F.R. § 64.1200(c)(1)), quiet hours are evaluated
+ * at the called party's (recipient's) local time (8:00 AM - 9:00 PM).
+ * The recipient's local time zone is resolved hierarchically:
+ * 1. Explicit recipient time zone
+ * 2. Recipient phone number area code (NPA)
+ * 3. Recipient address / city / state
+ * 4. Account local operating time zone
+ * 5. Default fallback to America/New_York
  */
 export async function dispatchSpeedToLeadSms(params: {
   admin: SupabaseClient;
@@ -127,17 +104,55 @@ export async function dispatchSpeedToLeadSms(params: {
   leadName?: string | null;
   projectType?: string | null;
   city?: string | null;
+  address?: string | null;
+  state?: string | null;
+  postalCode?: string | null;
   urgency?: 'emergency' | 'high' | 'standard';
   haloContext?: HaloLeadContext | null;
   timeZone?: string;
-}): Promise<{ sent: boolean; message: string; queuedForQuietHours?: boolean }> {
-  const { admin: _admin, accountId, recipientPhone, businessName, leadName, projectType, city, urgency, haloContext, timeZone = 'America/New_York' } = params;
+  recipientTimeZone?: string | null;
+  accountTimeZone?: string | null;
+}): Promise<{
+  sent: boolean;
+  message: string;
+  queuedForQuietHours?: boolean;
+  resolvedTimeZone?: string;
+  sendAt?: Date;
+}> {
+  const {
+    admin: _admin,
+    accountId,
+    recipientPhone,
+    businessName,
+    leadName,
+    projectType,
+    city,
+    address,
+    state,
+    postalCode,
+    urgency,
+    haloContext,
+    timeZone,
+    recipientTimeZone,
+    accountTimeZone,
+  } = params;
 
   if (!recipientPhone || recipientPhone.length < 10) {
     return { sent: false, message: 'Invalid phone number' };
   }
 
-  const quietHoursCheck = getTcpaCompliantSendTime(new Date(), timeZone);
+  // Resolve recipient's / called party's local time zone
+  const resolvedTimeZone = resolveRecipientTimeZone({
+    phone: recipientPhone,
+    address: address || city,
+    city,
+    state,
+    postalCode,
+    explicitTimeZone: recipientTimeZone || timeZone,
+    accountTimeZone,
+  });
+
+  const quietHoursCheck = getTcpaCompliantSendTime(new Date(), resolvedTimeZone);
   const idempotencyKey = generateSpeedToLeadIdempotencyKey(accountId, recipientPhone);
 
   const message = generateSpeedToLeadSms({
@@ -152,8 +167,10 @@ export async function dispatchSpeedToLeadSms(params: {
   if (quietHoursCheck.isDelayed) {
     return {
       sent: false,
-      message: quietHoursCheck.reason || 'Message held during TCPA quiet hours.',
+      message: quietHoursCheck.reason || `Message held during FCC TCPA quiet hours (${resolvedTimeZone}).`,
       queuedForQuietHours: true,
+      resolvedTimeZone,
+      sendAt: quietHoursCheck.sendAt,
     };
   }
 
@@ -165,11 +182,15 @@ export async function dispatchSpeedToLeadSms(params: {
       body: message,
       idempotencyKey,
     });
-    return { sent: Boolean(eventId), message, queuedForQuietHours: false };
+    return {
+      sent: Boolean(eventId),
+      message,
+      queuedForQuietHours: false,
+      resolvedTimeZone,
+      sendAt: quietHoursCheck.sendAt,
+    };
   } catch (error) {
     console.warn('Speed-to-lead SMS dispatch skipped:', error instanceof Error ? error.message : error);
-    return { sent: false, message };
+    return { sent: false, message, resolvedTimeZone };
   }
 }
-
-

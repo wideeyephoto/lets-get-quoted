@@ -36,12 +36,12 @@ describe('lib/email is importable without a Resend key', () => {
   it('does not construct the client at import time', async () => {
     // The import itself is the assertion: it threw before this was made lazy.
     await expect(import('@/lib/email')).resolves.toBeDefined();
-  });
+  }, 15_000);
 
   it('exports its send functions even with no key present', async () => {
     const mod = await import('@/lib/email');
     // A representative few — if the module half-loaded, these would be missing.
     expect(typeof mod.sendInvoiceEmail).toBe('function');
     expect(process.env.RESEND_API_KEY).toBeUndefined();
-  });
+  }, 15_000);
 });

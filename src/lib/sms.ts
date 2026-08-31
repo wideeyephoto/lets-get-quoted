@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/auth';
 import { loadBusinessName } from '@/lib/business-name';
 import { normalizeUsPhone } from '@/lib/phone';
+import { resolveRecipientTimeZone, isWithinTcpaQuietHours } from '@/lib/phone-timezone';
 import {
   adWalletRefillText,
   appointmentReminderText,
@@ -1821,11 +1822,24 @@ export async function sendIntakeConfirmationSms(params: {
   projectType?: string | null;
   estimate?: { min: number; max: number } | null;
   idempotencyKey?: string;
+  address?: string | null;
+  accountTimeZone?: string | null;
 }): Promise<boolean> {
   try {
     const to = normalizeUsPhone(params.phone);
     if (!to) return false;
     if (await isPhoneOptedOut(params.accountId, to)) return false;
+
+    // Check FCC TCPA quiet hours in recipient's local time zone
+    const recipientTz = resolveRecipientTimeZone({
+      phone: to,
+      address: params.address,
+      accountTimeZone: params.accountTimeZone,
+    });
+    if (isWithinTcpaQuietHours(new Date(), recipientTz)) {
+      console.log(`Intake confirmation SMS held during TCPA quiet hours for recipient (${recipientTz})`);
+      return false;
+    }
 
     const body = intakeConfirmationText({
       businessName: params.businessName,

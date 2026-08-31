@@ -58,7 +58,7 @@ describe('the top-up SKU seeder', () => {
     // which is the confusion the appendix status key exists to prevent.
     expect(SCRIPT).toContain('WITHHELD -');
     expect(Object.keys(TOP_UPS_WITHHELD).sort()).toEqual([
-      'office_user', 'storage_100gb',
+      'ai_voice_flex', 'ai_voice_growth', 'ai_voice_solo', 'office_user', 'storage_100gb', 'voice_minutes_100',
     ]);
     // Both remain in the price book; what is withheld is the sale.
     expect(TOP_UPS.office_user).toBeTruthy();

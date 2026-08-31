@@ -513,6 +513,8 @@ export function PhotoAnnotator({
       if (Array.isArray(data.suggestions) && data.suggestions.length > 0) {
         historyRef.current.push([...shapes, ...data.suggestions]);
         syncHistoryState();
+      } else {
+        alert(data.summary || 'AI visual inspection complete: No severe visual defects or structural damage detected.');
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Error';

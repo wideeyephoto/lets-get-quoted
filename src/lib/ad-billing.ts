@@ -124,6 +124,12 @@ export type AdBudgetWalletState = {
   provisioningStatus?: 'active' | 'paused' | 'simulated' | 'pending' | 'failed' | 'unconfigured';
   provisioningMessage?: string | null;
   landingPageUrl?: string | null;
+  pendingRefillIdempotencyKey?: string | null;
+  pendingRefillAmountCents?: number | null;
+  pendingRefillFeeCents?: number | null;
+  pendingRefillCreatedAt?: string | null;
+  lastRefillPaymentIntentId?: string | null;
+  processedRefillPaymentIntentIds?: string[];
 };
 
 export const DEFAULT_AD_WALLET_STATE: AdBudgetWalletState = {
@@ -156,6 +162,12 @@ export const DEFAULT_AD_WALLET_STATE: AdBudgetWalletState = {
   provisioningStatus: 'pending',
   provisioningMessage: null,
   landingPageUrl: null,
+  pendingRefillIdempotencyKey: null,
+  pendingRefillAmountCents: null,
+  pendingRefillFeeCents: null,
+  pendingRefillCreatedAt: null,
+  lastRefillPaymentIntentId: null,
+  processedRefillPaymentIntentIds: [],
 };
 
 /**
@@ -459,15 +471,92 @@ export async function handleAdBudgetWebhookEvent(
     event.type !== 'invoice.paid' &&
     event.type !== 'invoice.payment_failed' &&
     event.type !== 'customer.subscription.updated' &&
-    event.type !== 'customer.subscription.deleted'
+    event.type !== 'customer.subscription.deleted' &&
+    event.type !== 'payment_intent.succeeded' &&
+    event.type !== 'payment_intent.payment_failed'
   ) {
     return false;
+  }
+
+  // Fast metadata kind guard for payment intents
+  if (event.type === 'payment_intent.succeeded' || event.type === 'payment_intent.payment_failed') {
+    const paymentIntent = event.data.object as Stripe.PaymentIntent;
+    if (paymentIntent.metadata?.kind !== 'ad_wallet_refill') {
+      return false;
+    }
+  }
+
+  // Fast metadata kind guard for checkout sessions
+  if (event.type === 'checkout.session.completed') {
+    const session = event.data.object as Stripe.Checkout.Session;
+    if (session.metadata?.kind !== 'ad_budget') {
+      return false;
+    }
   }
 
   let admin = adminClient;
   if (!admin) {
     const { createAdminClient } = await import('@/lib/auth');
     admin = createAdminClient();
+  }
+
+  // Cross-Rail Webhook Isolation for Ad Wallet Refill Payment Intents
+  if (event.type === 'payment_intent.succeeded' || event.type === 'payment_intent.payment_failed') {
+    const paymentIntent = event.data.object as Stripe.PaymentIntent;
+    if (paymentIntent.metadata?.kind !== 'ad_wallet_refill') {
+      return false;
+    }
+
+    const accountId = paymentIntent.metadata.account_id;
+    if (!accountId) return false;
+
+    const { data: site } = await admin
+      .from('sites')
+      .select('id, content')
+      .eq('account_id', accountId)
+      .maybeSingle();
+
+    if (!site) return false;
+
+    const content = (site.content as Record<string, unknown>) || {};
+    const adState = (content.adCampaign as AdBudgetWalletState) || DEFAULT_AD_WALLET_STATE;
+
+    if (event.type === 'payment_intent.succeeded') {
+      const processedIds = adState.processedRefillPaymentIntentIds || [];
+      const alreadyCredited = processedIds.includes(paymentIntent.id) || adState.lastRefillPaymentIntentId === paymentIntent.id;
+
+      const refillAdSpendCents = Number(paymentIntent.metadata.refill_ad_spend_cents) || 0;
+      const currentBalance = adState.walletBalanceCents ?? 25000;
+      const newBalance = alreadyCredited ? currentBalance : (currentBalance + refillAdSpendCents);
+
+      await updateAccountAdBudgetState(admin, accountId, {
+        status: 'active',
+        walletBalanceCents: newBalance,
+        lastPaymentAt: new Date().toISOString(),
+        lastPaymentError: null,
+        pendingRefillIdempotencyKey: null,
+        pendingRefillAmountCents: null,
+        pendingRefillFeeCents: null,
+        pendingRefillCreatedAt: null,
+        lastRefillPaymentIntentId: paymentIntent.id,
+        processedRefillPaymentIntentIds: [...processedIds.filter((id) => id !== paymentIntent.id), paymentIntent.id].slice(-20),
+      });
+
+      return true;
+    }
+
+    if (event.type === 'payment_intent.payment_failed') {
+      await updateAccountAdBudgetState(admin, accountId, {
+        status: 'past_due',
+        lastPaymentError: paymentIntent.last_payment_error?.message || 'Latest ad wallet refill payment failed.',
+        pendingRefillIdempotencyKey: null,
+        pendingRefillAmountCents: null,
+        pendingRefillFeeCents: null,
+        pendingRefillCreatedAt: null,
+      });
+
+      return true;
+    }
   }
 
   if (event.type === 'checkout.session.completed') {
@@ -768,8 +857,19 @@ export async function executeWalletRefillCharge(params: {
       return { success: false, refilled: false, message: 'No saved payment method found.' };
     }
 
-    const dateHourBucket = new Date().toISOString().slice(0, 13);
-    const idempotencyKey = `ad_refill_${accountId}_${dateHourBucket}_${totalChargeCents}`;
+    // Reuse persistent pending idempotency key if one is already recorded for this refill attempt,
+    // otherwise generate a stable unique idempotency key and persist it BEFORE charging Stripe.
+    let idempotencyKey = adState.pendingRefillIdempotencyKey;
+    if (!idempotencyKey) {
+      const nowTs = Date.now();
+      idempotencyKey = `ad_refill_${accountId}_${nowTs}_${totalChargeCents}`;
+      await updateAccountAdBudgetState(admin, accountId, {
+        pendingRefillIdempotencyKey: idempotencyKey,
+        pendingRefillAmountCents: actualRefillAdSpendCents,
+        pendingRefillFeeCents: feeCents,
+        pendingRefillCreatedAt: new Date(nowTs).toISOString(),
+      });
+    }
 
     const paymentIntent = await stripe.paymentIntents.create({
       amount: totalChargeCents,
@@ -791,16 +891,26 @@ export async function executeWalletRefillCharge(params: {
     });
 
     if (paymentIntent.status === 'succeeded') {
-      const newBalance = balance + actualRefillAdSpendCents;
+      // Check if this payment intent was already processed/credited (e.g. by webhook or prior run)
+      const processedIds = adState.processedRefillPaymentIntentIds || [];
+      const alreadyCredited = processedIds.includes(paymentIntent.id) || adState.lastRefillPaymentIntentId === paymentIntent.id;
+
+      const newBalance = alreadyCredited ? balance : (balance + actualRefillAdSpendCents);
 
       await updateAccountAdBudgetState(admin, accountId, {
         status: 'active',
         walletBalanceCents: newBalance,
         lastPaymentAt: new Date().toISOString(),
         lastPaymentError: null,
+        pendingRefillIdempotencyKey: null,
+        pendingRefillAmountCents: null,
+        pendingRefillFeeCents: null,
+        pendingRefillCreatedAt: null,
+        lastRefillPaymentIntentId: paymentIntent.id,
+        processedRefillPaymentIntentIds: [...processedIds.filter((id) => id !== paymentIntent.id), paymentIntent.id].slice(-20),
       });
 
-      if (adState.smsAlertsEnabled !== false) {
+      if (!alreadyCredited && adState.smsAlertsEnabled !== false) {
         try {
           const phone = await resolveContractorSmsPhone(admin, accountId, adState);
           if (phone) {
@@ -843,6 +953,10 @@ export async function executeWalletRefillCharge(params: {
     await updateAccountAdBudgetState(admin, accountId, {
       status: 'past_due',
       lastPaymentError: `Payment intent status: ${paymentIntent.status}`,
+      pendingRefillIdempotencyKey: null,
+      pendingRefillAmountCents: null,
+      pendingRefillFeeCents: null,
+      pendingRefillCreatedAt: null,
     });
 
     return {
@@ -855,6 +969,10 @@ export async function executeWalletRefillCharge(params: {
     await updateAccountAdBudgetState(admin, accountId, {
       status: 'past_due',
       lastPaymentError: errMsg,
+      pendingRefillIdempotencyKey: null,
+      pendingRefillAmountCents: null,
+      pendingRefillFeeCents: null,
+      pendingRefillCreatedAt: null,
     });
     return { success: false, refilled: false, message: errMsg };
   }

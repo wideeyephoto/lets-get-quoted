@@ -410,6 +410,13 @@ export const TOP_UPS: Readonly<Record<TopUpId, TopUpDefinition>> = {
  * disagree about which SKUs are live -- and a reader is told why rather than
  * finding a SKU quietly missing from a list.
  */
+/** One reason, three SKUs. Repeating it would let two of them drift. */
+const AI_VOICE_WITHHELD =
+  'the whole call rail is built and dark - admission, agent, receipt, settlement, '
+  + 'lead, configuration and history - but no live Price exists, no number is '
+  + 'pointed at the route, and nothing grants voice_minutes, so a subscriber '
+  + 'would be charged monthly for an allowance that never arrives';
+
 export const TOP_UPS_WITHHELD: Readonly<Partial<Record<TopUpId, string>>> = Object.freeze({
   storage_100gb:
     'the whole rail works - payment writes the capacity ledger, the lifecycle '
@@ -430,6 +437,13 @@ export const TOP_UPS_WITHHELD: Readonly<Partial<Record<TopUpId, string>>> = Obje
     + 'as a fact when payments is owner-only, jobs because its detail page '
     + 'builds an admin client while rendering and reads two dozen owner-only '
     + 'tables. So the seat buys a lead queue today, not a back office',
+  ai_voice_flex: AI_VOICE_WITHHELD,
+  ai_voice_solo: AI_VOICE_WITHHELD,
+  ai_voice_growth: AI_VOICE_WITHHELD,
+  voice_minutes_100:
+    'the ledger accepts voice_minutes and the top-up path would grant them '
+    + 'correctly, but with the meter dark nothing ever spends them - selling 100 '
+    + 'minutes today takes $35 for a balance that cannot be drawn down',
 });
 
 /** SKUs that may be sold today. */

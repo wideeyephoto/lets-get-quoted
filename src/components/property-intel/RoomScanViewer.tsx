@@ -562,13 +562,18 @@ export function RoomScanViewer({
     if (onApplyDimensions) {
       onApplyDimensions(summary);
     }
+    const isSample = Boolean(activeScan.isSample);
     const label =
       metric === 'floor'
         ? `${summary.floorAreaSqFt} sq ft flooring`
         : metric === 'wall'
         ? `${summary.netPaintableWallSqFt} sq ft wall area`
         : `All 3D Dimensions (${summary.floorAreaSqFt} sq ft)`;
-    setToastMessage(`✓ Applied ${label} to AI Quote`);
+    setToastMessage(
+      isSample
+        ? `⚠️ Synced sample template dimensions (${label}) — verify on site`
+        : `✓ Applied ${label} to AI Quote`
+    );
     setTimeout(() => setToastMessage(null), 3000);
   };
 
@@ -677,6 +682,8 @@ export function RoomScanViewer({
     );
   }
 
+  const isSample = Boolean(activeScan.isSample);
+
   const mainContent = (
     <div className={`${styles.container} ${className} ${isFullscreen ? styles.fullscreenModal : ''}`}>
       {/* Header Bar */}
@@ -684,13 +691,19 @@ export function RoomScanViewer({
         <div className={styles.headerLeft}>
           <span className={styles.headerTitle}>
             <span className={styles.pulseDot} />
-            3D LiDAR Room Spatial Scan
+            3D Room Spatial Intel &amp; LiDAR Takeoffs
           </span>
-          <span className={styles.badgeLidar}>
-            {activeScan.device.includes('LiDAR') ? 'Apple RoomPlan LiDAR' : 'Spatial Scan'}
-          </span>
+          {isSample ? (
+            <span className={styles.badgeSample}>
+              📋 Sample CAD Template (Demo)
+            </span>
+          ) : (
+            <span className={styles.badgeVerified}>
+              ✅ Verified LiDAR / CAD Scan
+            </span>
+          )}
           <span className={styles.badgeConfidence}>
-            {activeScan.confidenceScore}% CAD Precision
+            {isSample ? 'Sample Reference Model' : `${activeScan.confidenceScore}% CAD Precision`}
           </span>
         </div>
 
@@ -709,7 +722,7 @@ export function RoomScanViewer({
           >
             {allAvailableScans.map((s) => (
               <option key={s.id} value={s.id}>
-                {s.title}
+                {s.isSample ? `[Sample] ${s.title}` : s.title}
               </option>
             ))}
           </select>
@@ -810,6 +823,23 @@ export function RoomScanViewer({
           )}
         </div>
       </div>
+
+      {/* Sample Template Notice Banner */}
+      {isSample && (
+        <div className={styles.sampleBanner}>
+          <div>
+            📐 <strong>Sample Reference Model:</strong> You are viewing an interactive sample CAD template. Attach a jobsite Apple RoomPlan LiDAR export or custom 3D scan to compute verified takeoffs for this property.
+          </div>
+          <button
+            type="button"
+            className={styles.btnSecondary}
+            onClick={() => setShowUploadModal(true)}
+            style={{ fontSize: '0.7rem', padding: '0.2rem 0.5rem', whiteSpace: 'nowrap' }}
+          >
+            📁 Upload On-Site Scan
+          </button>
+        </div>
+      )}
 
       {/* Layer Visibility Controls Bar */}
       <div className={styles.layerBar}>
@@ -1194,7 +1224,9 @@ export function RoomScanViewer({
       <div className={styles.actionsBar}>
         <div className={styles.actionsLeft}>
           <span>
-            Scanned {activeScan.scannedAt} via {activeScan.device}
+            {isSample
+              ? 'Sample Reference Model · Upload on-site scan for verified takeoffs'
+              : `Scanned ${activeScan.scannedAt} via ${activeScan.device}`}
           </span>
           {toastMessage && <span className={styles.toast}>{toastMessage}</span>}
         </div>

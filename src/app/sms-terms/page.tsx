@@ -130,10 +130,11 @@ export default function SmsTermsPage() {
             contractor chooses to send them.
           </p>
           <p>
-            <strong>Time restrictions &amp; Quiet hours:</strong> Automated, reminder, and promotional text messages are
-            restricted to permissible daytime hours (between 8:00 AM and 8:00 PM or 9:00 PM in the recipient&apos;s local
-            time zone, or the contractor&apos;s configured operating time zone). Any automated messages queued outside
-            these hours are held and delivered once permissible daytime hours resume in that time zone.
+            <strong>Time restrictions &amp; Quiet hours:</strong> In compliance with FCC TCPA regulations (47 C.F.R. § 64.1200(c)(1)),
+            automated, reminder, and promotional text messages are restricted to permissible daytime hours (between 8:00 AM and
+            9:00 PM local time at the called party&apos;s / recipient&apos;s location, evaluated via recipient phone number area code
+            or address, with the contractor&apos;s operating time zone as fallback). Any automated messages queued outside
+            these hours are held and delivered once permissible daytime hours resume in that recipient-local time zone.
           </p>
           <p>
             <strong>Message and data rates may apply.</strong> Contact your wireless carrier for details about your

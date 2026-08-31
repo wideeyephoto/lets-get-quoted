@@ -33,6 +33,7 @@ import type { ReceivableItem } from '@/lib/receivables-data';
 import {
   allocateMilestoneCents,
 } from '@/lib/financial-precision';
+import { QRCodeSvg } from '@/components/ui/QRCodeSvg';
 
 export type ModalType =
   | 'collect_chooser'
@@ -706,12 +707,9 @@ export default function PaymentModals({
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', padding: '1rem', background: '#fff', border: '1px solid var(--border-subtle, #e2e8f0)', borderRadius: '8px' }}>
-              <img
-                src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(generatedLink)}`}
-                alt="Scan to pay on mobile"
-                width={180}
-                height={180}
-                style={{ borderRadius: '6px' }}
+              <QRCodeSvg
+                value={generatedLink}
+                size={180}
               />
               <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-color, #0f172a)' }}>
                 📱 Have customer scan with phone camera to pay on site
@@ -1070,12 +1068,9 @@ export default function PaymentModals({
       <ControlledModal title={`Job-Site QR Code · ${selectedPayment.label}`} onClose={onClose}>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.25rem', textAlign: 'center' }}>
           <div style={{ padding: '1rem', background: '#fff', border: '1px solid var(--border-subtle, #e2e8f0)', borderRadius: '8px' }}>
-            <img
-              src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(payUrl)}`}
-              alt="Scan to Pay"
-              width={200}
-              height={200}
-              style={{ borderRadius: '6px' }}
+            <QRCodeSvg
+              value={payUrl}
+              size={200}
             />
           </div>
           <div>
@@ -1512,12 +1507,9 @@ export default function PaymentModals({
             <p style={{ margin: 0, fontSize: '0.9rem', color: '#64748b' }}>
               Scan to view invoice, deposit, or complete final project payment
             </p>
-            <img
-              src={`https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(generalPayUrl)}`}
-              alt="Scan to pay"
-              width={220}
-              height={220}
-              style={{ borderRadius: '8px' }}
+            <QRCodeSvg
+              value={generalPayUrl}
+              size={220}
             />
             <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#3b82f6' }}>
               Accepts Apple Pay · Google Pay · Visa / MC / Amex · Bank Transfer
@@ -3001,13 +2993,17 @@ export default function PaymentModals({
 
   // 21. Expected Cash Flow Draw Calendar
   if (activeModal === 'draw_calendar') {
-    const calendarEvents = [
-      { id: '1', title: 'Marcus Vance - Deposit Draw', date: 'In 2 Days', amount: 5800, type: 'milestone', confidence: 'High' },
-      { id: '2', title: 'Sarah Jenkins - Rough-in Draw', date: 'In 5 Days', amount: 4350, type: 'milestone', confidence: 'High' },
-      { id: '3', title: 'Oakland Plaza - Final Net-30', date: 'In 11 Days', amount: 12400, type: 'final', confidence: 'Medium' },
-      { id: '4', title: 'Robert Henderson - Overdue Followup', date: 'Past Due', amount: 6850, type: 'overdue', confidence: 'Action Required' },
-      { id: '5', title: 'Apex Industrial - Progress Draw #2', date: 'In 18 Days', amount: 8900, type: 'milestone', confidence: 'Medium' },
-    ];
+    const rawReceivables = receivables || [];
+    const calendarEvents = rawReceivables
+      .filter((r) => r.amountDue > 0)
+      .map((r, idx) => ({
+        id: r.id || `draw-${idx}`,
+        title: `${r.clientName || 'Customer'} · ${r.title || r.ref || r.jobRef || 'Invoice'}`,
+        date: r.daysOverdue > 0 ? `${r.daysOverdue}d Past Due` : r.daysOverdue === 0 ? 'Due Today' : `Due in ${Math.abs(r.daysOverdue)}d`,
+        amount: r.amountDue,
+        type: r.daysOverdue > 0 ? 'overdue' : 'milestone',
+        confidence: r.daysOverdue > 0 ? 'Action Required' : r.status === 'overdue' ? 'High Risk' : 'Scheduled',
+      }));
 
     const totalExpected = calendarEvents.reduce((sum, e) => sum + e.amount, 0);
 
@@ -3029,47 +3025,57 @@ export default function PaymentModals({
 
           {/* Timeline Events List */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
-            {calendarEvents.map((evt) => (
-              <div
-                key={evt.id}
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  padding: '0.75rem 1rem',
-                  background: evt.type === 'overdue' ? 'rgba(239, 68, 68, 0.04)' : 'var(--panel-subtle, rgba(0,0,0,0.02))',
-                  borderRadius: '8px',
-                  border: evt.type === 'overdue' ? '1px solid rgba(239, 68, 68, 0.25)' : '1px solid var(--border-subtle, #e2e8f0)',
-                }}
-              >
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <strong style={{ fontSize: '0.88rem' }}>{evt.title}</strong>
-                    <span
-                      style={{
-                        fontSize: '0.7rem',
-                        padding: '0.1rem 0.4rem',
-                        borderRadius: '999px',
-                        background: evt.type === 'overdue' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)',
-                        color: evt.type === 'overdue' ? '#dc2626' : '#059669',
-                        fontWeight: 600,
-                      }}
-                    >
-                      {evt.date}
-                    </span>
-                  </div>
-                  <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
-                    Confidence: <strong>{evt.confidence}</strong>
-                  </div>
-                </div>
-
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: '1rem', fontWeight: 700 }}>
-                    ${evt.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                  </div>
-                </div>
+            {calendarEvents.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '2.5rem 1rem', background: 'var(--panel-subtle, rgba(0,0,0,0.02))', borderRadius: '8px', border: '1px dashed var(--border-subtle, #e2e8f0)' }}>
+                <div style={{ fontSize: '1.75rem', marginBottom: '0.5rem' }}>📅</div>
+                <strong style={{ fontSize: '0.95rem', display: 'block', marginBottom: '0.3rem' }}>No Scheduled Draws or Maturing Invoices</strong>
+                <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', maxWidth: '420px', margin: '0 auto' }}>
+                  When invoices with milestone schedules or net payment terms are issued, your 30-day chronological cash flow horizon will appear here.
+                </p>
               </div>
-            ))}
+            ) : (
+              calendarEvents.map((evt) => (
+                <div
+                  key={evt.id}
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    padding: '0.75rem 1rem',
+                    background: evt.type === 'overdue' ? 'rgba(239, 68, 68, 0.04)' : 'var(--panel-subtle, rgba(0,0,0,0.02))',
+                    borderRadius: '8px',
+                    border: evt.type === 'overdue' ? '1px solid rgba(239, 68, 68, 0.25)' : '1px solid var(--border-subtle, #e2e8f0)',
+                  }}
+                >
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <strong style={{ fontSize: '0.88rem' }}>{evt.title}</strong>
+                      <span
+                        style={{
+                          fontSize: '0.7rem',
+                          padding: '0.1rem 0.4rem',
+                          borderRadius: '999px',
+                          background: evt.type === 'overdue' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)',
+                          color: evt.type === 'overdue' ? '#dc2626' : '#059669',
+                          fontWeight: 600,
+                        }}
+                      >
+                        {evt.date}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
+                      Confidence: <strong>{evt.confidence}</strong>
+                    </div>
+                  </div>
+
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: '1rem', fontWeight: 700 }}>
+                      ${evt.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', borderTop: '1px solid var(--border-subtle, #e2e8f0)', paddingTop: '0.85rem' }}>
@@ -3214,19 +3220,7 @@ export default function PaymentModals({
   if (activeModal === 'consolidated_statement') {
     const rawReceivables = receivables || [];
     const clientGroups = groupReceivablesByClient(rawReceivables);
-    const activeGroup = clientGroups.find((g) => g.clientName === selectedClientGroupName) || clientGroups[0] || {
-      clientName: 'Austin Real Estate Holdings LLC',
-      formattedTotalDue: '$18,450.00',
-      totalDue: 18450,
-      jobCount: 3,
-      invoiceCount: 4,
-      jobsSummary: [
-        { jobId: '1', jobRef: 'JOB-201', jobTitle: 'Main Street Commercial Roof', amountDue: 8200, invoiceCount: 2 },
-        { jobId: '2', jobRef: 'JOB-204', jobTitle: 'Elm Plaza Suite 400 HVAC', amountDue: 5850, invoiceCount: 1 },
-        { jobId: '3', jobRef: 'JOB-209', jobTitle: 'West Oak Siding Replacement', amountDue: 4400, invoiceCount: 1 },
-      ],
-      items: [],
-    };
+    const activeGroup = clientGroups.find((g) => g.clientName === selectedClientGroupName) || clientGroups[0];
 
     return (
       <ControlledModal title="Consolidated Multi-Job Statement Billing" onClose={onClose} maxWidth="640px">
@@ -3238,98 +3232,110 @@ export default function PaymentModals({
                 Consolidate outstanding invoices across multiple job locations into a single master payment statement.
               </div>
             </div>
-            <div style={{ textAlign: 'right' }}>
-              <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', color: 'var(--text-muted)', display: 'block' }}>Total Account Balance</span>
-              <strong style={{ fontSize: '1.2rem', color: '#059669' }}>{activeGroup.formattedTotalDue}</strong>
-            </div>
-          </div>
-
-          {/* Client Account Selector */}
-          <div>
-            <label htmlFor="consolidated-client-select" style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.3rem' }}>
-              Select Client / Property Group
-            </label>
-            <select
-              id="consolidated-client-select"
-              aria-label="Select Client / Property Group"
-              value={selectedClientGroupName || activeGroup.clientName}
-              onChange={(e) => setSelectedClientGroupName(e.target.value)}
-              style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-subtle, #e2e8f0)', borderRadius: '6px', fontSize: '0.85rem' }}
-            >
-              {clientGroups.length > 0 ? (
-                clientGroups.map((g) => (
-                  <option key={g.clientName} value={g.clientName}>
-                    {g.clientName} — {g.formattedTotalDue} ({g.jobCount} jobs, {g.invoiceCount} invoices)
-                  </option>
-                ))
-              ) : (
-                <option value="Austin Real Estate Holdings LLC">Austin Real Estate Holdings LLC — $18,450.00 (3 jobs)</option>
-              )}
-            </select>
-          </div>
-
-          {/* Per-Job Multi-Location Breakdown */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            <label style={{ fontSize: '0.8rem', fontWeight: 600 }}>Active Jobsite Invoices Breakdown</label>
-            {activeGroup.jobsSummary.map((job) => (
-              <div
-                key={job.jobId}
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  padding: '0.65rem 0.85rem',
-                  background: 'var(--panel-subtle, rgba(0,0,0,0.02))',
-                  borderRadius: '6px',
-                  border: '1px solid var(--border-subtle, #e2e8f0)',
-                  fontSize: '0.84rem',
-                }}
-              >
-                <div>
-                  <strong>{job.jobRef}</strong> — <span style={{ color: 'var(--text-muted)' }}>{job.jobTitle}</span>
-                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{job.invoiceCount} open invoice(s)</div>
-                </div>
-                <strong style={{ fontSize: '0.92rem' }}>${job.amountDue.toLocaleString('en-US', { minimumFractionDigits: 2 })}</strong>
+            {activeGroup && (
+              <div style={{ textAlign: 'right' }}>
+                <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', color: 'var(--text-muted)', display: 'block' }}>Total Account Balance</span>
+                <strong style={{ fontSize: '1.2rem', color: '#059669' }}>{activeGroup.formattedTotalDue}</strong>
               </div>
-            ))}
+            )}
           </div>
 
-          {/* Master 1-Click Payment Link Box */}
-          <div style={{ padding: '0.75rem', background: 'rgba(59, 130, 246, 0.05)', borderRadius: '6px', border: '1px dashed rgba(59, 130, 246, 0.3)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>
-              <div style={{ fontSize: '0.76rem', color: '#1e40af', fontWeight: 600 }}>Master Consolidated Payment Link</div>
-              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Allows client to settle all {activeGroup.invoiceCount} invoices simultaneously via ACH or Card</div>
+          {!activeGroup ? (
+            <div style={{ textAlign: 'center', padding: '2.5rem 1rem', background: 'var(--panel-subtle, rgba(0,0,0,0.02))', borderRadius: '8px', border: '1px dashed var(--border-subtle, #e2e8f0)' }}>
+              <div style={{ fontSize: '1.75rem', marginBottom: '0.5rem' }}>🏢</div>
+              <strong style={{ fontSize: '0.95rem', display: 'block', marginBottom: '0.3rem' }}>No Multi-Job Client Balances</strong>
+              <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', maxWidth: '420px', margin: '0 auto' }}>
+                When commercial accounts or property managers have outstanding invoices across multiple job locations, they will automatically consolidate here into master statements.
+              </p>
             </div>
-            <button
-              type="button"
-              className="btn secondary"
-              style={{ fontSize: '0.78rem' }}
-              onClick={() => {
-                const origin = typeof window !== 'undefined' ? window.location.origin : '';
-                navigator.clipboard.writeText(`${origin}/pay/consolidated?client=${encodeURIComponent(activeGroup.clientName)}`);
-                setCopied(true);
-                setTimeout(() => setCopied(false), 2000);
-              }}
-            >
-              {copied ? '✓ Copied' : '🔗 Copy Master Link'}
-            </button>
-          </div>
+          ) : (
+            <>
+              {/* Client Account Selector */}
+              <div>
+                <label htmlFor="consolidated-client-select" style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.3rem' }}>
+                  Select Client / Property Group
+                </label>
+                <select
+                  id="consolidated-client-select"
+                  aria-label="Select Client / Property Group"
+                  value={selectedClientGroupName || activeGroup.clientName}
+                  onChange={(e) => setSelectedClientGroupName(e.target.value)}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-subtle, #e2e8f0)', borderRadius: '6px', fontSize: '0.85rem' }}
+                >
+                  {clientGroups.map((g) => (
+                    <option key={g.clientName} value={g.clientName}>
+                      {g.clientName} — {g.formattedTotalDue} ({g.jobCount} jobs, {g.invoiceCount} invoices)
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Per-Job Multi-Location Breakdown */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <label style={{ fontSize: '0.8rem', fontWeight: 600 }}>Active Jobsite Invoices Breakdown</label>
+                {activeGroup.jobsSummary.map((job) => (
+                  <div
+                    key={job.jobId}
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      padding: '0.65rem 0.85rem',
+                      background: 'var(--panel-subtle, rgba(0,0,0,0.02))',
+                      borderRadius: '6px',
+                      border: '1px solid var(--border-subtle, #e2e8f0)',
+                      fontSize: '0.84rem',
+                    }}
+                  >
+                    <div>
+                      <strong>{job.jobRef}</strong> — <span style={{ color: 'var(--text-muted)' }}>{job.jobTitle}</span>
+                      <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{job.invoiceCount} open invoice(s)</div>
+                    </div>
+                    <strong style={{ fontSize: '0.92rem' }}>${job.amountDue.toLocaleString('en-US', { minimumFractionDigits: 2 })}</strong>
+                  </div>
+                ))}
+              </div>
+
+              {/* Master 1-Click Payment Link Box */}
+              <div style={{ padding: '0.75rem', background: 'rgba(59, 130, 246, 0.05)', borderRadius: '6px', border: '1px dashed rgba(59, 130, 246, 0.3)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <div style={{ fontSize: '0.76rem', color: '#1e40af', fontWeight: 600 }}>Master Consolidated Payment Link</div>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Allows client to settle all {activeGroup.invoiceCount} invoices simultaneously via ACH or Card</div>
+                </div>
+                <button
+                  type="button"
+                  className="btn secondary"
+                  style={{ fontSize: '0.78rem' }}
+                  onClick={() => {
+                    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+                    navigator.clipboard.writeText(`${origin}/pay/consolidated?client=${encodeURIComponent(activeGroup.clientName)}`);
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 2000);
+                  }}
+                >
+                  {copied ? '✓ Copied' : '🔗 Copy Master Link'}
+                </button>
+              </div>
+            </>
+          )}
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', borderTop: '1px solid var(--border-subtle, #e2e8f0)', paddingTop: '0.85rem' }}>
             <button type="button" className="btn secondary" onClick={onClose} style={{ fontSize: '0.82rem' }}>
               Close
             </button>
-            <button
-              type="button"
-              className="btn primary"
-              style={{ fontSize: '0.82rem' }}
-              onClick={() => {
-                onSuccess(`Consolidated Master Statement dispatched to ${activeGroup.clientName}.`);
-                onClose();
-              }}
-            >
-              📧 Send Master Statement to Client
-            </button>
+            {activeGroup && (
+              <button
+                type="button"
+                className="btn primary"
+                style={{ fontSize: '0.82rem' }}
+                onClick={() => {
+                  onSuccess(`Consolidated Master Statement dispatched to ${activeGroup.clientName}.`);
+                  onClose();
+                }}
+              >
+                📧 Send Master Statement to Client
+              </button>
+            )}
           </div>
         </div>
       </ControlledModal>
@@ -3338,11 +3344,20 @@ export default function PaymentModals({
 
   // 24. Retainage & Punch List Escrow Tracker
   if (activeModal === 'retainage_tracker') {
-    const retainageJobs = [
-      { id: '1', ref: 'JOB-412', client: 'Highland Park Lofts', address: '450 Highland Ave', total: 65000, rate: 10, withheld: 6500, daysPast: 45, status: 'Overdue Release' },
-      { id: '2', ref: 'JOB-389', client: 'Crestview Commercial', address: '1200 Crestview Blvd', total: 42000, rate: 10, withheld: 4200, daysPast: 22, status: 'In Grace Period' },
-      { id: '3', ref: 'JOB-431', client: 'Summit Medical Clinic', address: '80 Summit Dr', total: 38000, rate: 5, withheld: 1900, daysPast: 12, status: 'In Grace Period' },
-    ];
+    const rawReceivables = receivables || [];
+    const retainageJobs = rawReceivables
+      .filter((r) => r.title?.toLowerCase().includes('retainage'))
+      .map((r, idx) => ({
+        id: r.id || `ret-${idx}`,
+        ref: r.jobRef || 'JOB',
+        client: r.clientName || 'Customer',
+        address: 'Jobsite',
+        total: r.amountTotal || r.amountDue,
+        rate: 10,
+        withheld: r.amountDue,
+        daysPast: r.daysOverdue > 0 ? r.daysOverdue : 0,
+        status: r.daysOverdue > 30 ? 'Overdue Release' : 'In Grace Period',
+      }));
 
     const totalRetainage = retainageJobs.reduce((sum, j) => sum + j.withheld, 0);
 
@@ -3362,69 +3377,79 @@ export default function PaymentModals({
             </div>
           </div>
 
-          {/* Retainage List */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
-            {retainageJobs.map((j) => (
-              <div
-                key={j.id}
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  padding: '0.85rem',
-                  background: 'var(--panel-subtle, rgba(0,0,0,0.02))',
-                  borderRadius: '8px',
-                  border: '1px solid var(--border-subtle, #e2e8f0)',
-                  fontSize: '0.85rem',
-                }}
-              >
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <strong>{j.ref}</strong> — <span>{j.client}</span>
-                    <span
-                      style={{
-                        fontSize: '0.7rem',
-                        padding: '0.1rem 0.4rem',
-                        borderRadius: '999px',
-                        background: j.daysPast >= 30 ? 'rgba(239, 68, 68, 0.1)' : 'rgba(245, 158, 11, 0.1)',
-                        color: j.daysPast >= 30 ? '#dc2626' : '#d97706',
-                        fontWeight: 600,
+          {/* Retainage List or Zero State */}
+          {retainageJobs.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '2.5rem 1rem', background: 'var(--panel-subtle, rgba(0,0,0,0.02))', borderRadius: '8px', border: '1px dashed var(--border-subtle, #e2e8f0)' }}>
+              <div style={{ fontSize: '1.75rem', marginBottom: '0.5rem' }}>🏗️</div>
+              <strong style={{ fontSize: '0.95rem', display: 'block', marginBottom: '0.3rem' }}>No Active Retainage Holdbacks</strong>
+              <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', maxWidth: '420px', margin: '0 auto' }}>
+                When commercial contracts withhold 5%–10% retainage in escrow, track completion deadlines and dispatch statutory prompt-payment release demands here.
+              </p>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+              {retainageJobs.map((j) => (
+                <div
+                  key={j.id}
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    padding: '0.85rem',
+                    background: 'var(--panel-subtle, rgba(0,0,0,0.02))',
+                    borderRadius: '8px',
+                    border: '1px solid var(--border-subtle, #e2e8f0)',
+                    fontSize: '0.85rem',
+                  }}
+                >
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <strong>{j.ref}</strong> — <span>{j.client}</span>
+                      <span
+                        style={{
+                          fontSize: '0.7rem',
+                          padding: '0.1rem 0.4rem',
+                          borderRadius: '999px',
+                          background: j.daysPast >= 30 ? 'rgba(239, 68, 68, 0.1)' : 'rgba(245, 158, 11, 0.1)',
+                          color: j.daysPast >= 30 ? '#dc2626' : '#d97706',
+                          fontWeight: 600,
+                        }}
+                      >
+                        {j.daysPast} days post-completion
+                      </span>
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
+                      Contract: ${j.total.toLocaleString()} ({j.rate}% Retainage Rate)
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <div style={{ textAlign: 'right' }}>
+                      <strong style={{ fontSize: '0.98rem', color: '#b45309' }}>
+                        ${j.withheld.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                      </strong>
+                    </div>
+                    <button
+                      type="button"
+                      className="btn primary"
+                      style={{ fontSize: '0.75rem', padding: '0.3rem 0.6rem' }}
+                      onClick={async () => {
+                        await sendRetainageReleaseRequestAction({
+                          jobId: j.id,
+                          retainageAmount: j.withheld,
+                          contractTotal: j.total,
+                          substantialCompletionDate: new Date().toISOString().slice(0, 10),
+                        });
+                        onSuccess(`Formal Demand for Release of Retainage dispatched for ${j.client} ($${j.withheld.toLocaleString()}).`);
                       }}
                     >
-                      {j.daysPast} days post-completion
-                    </span>
-                  </div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
-                    Contract: ${j.total.toLocaleString()} ({j.rate}% Retainage Rate)
+                      ⚡ Demand Release
+                    </button>
                   </div>
                 </div>
-
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                  <div style={{ textAlign: 'right' }}>
-                    <strong style={{ fontSize: '0.98rem', color: '#b45309' }}>
-                      ${j.withheld.toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                    </strong>
-                  </div>
-                  <button
-                    type="button"
-                    className="btn primary"
-                    style={{ fontSize: '0.75rem', padding: '0.3rem 0.6rem' }}
-                    onClick={async () => {
-                      await sendRetainageReleaseRequestAction({
-                        jobId: j.id,
-                        retainageAmount: j.withheld,
-                        contractTotal: j.total,
-                        substantialCompletionDate: '2026-07-15',
-                      });
-                      onSuccess(`Formal Demand for Release of Retainage dispatched for ${j.client} ($${j.withheld.toLocaleString()}).`);
-                    }}
-                  >
-                    ⚡ Demand Release
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid var(--border-subtle, #e2e8f0)', paddingTop: '0.85rem' }}>
             <button type="button" className="btn secondary" onClick={onClose} style={{ fontSize: '0.82rem' }}>

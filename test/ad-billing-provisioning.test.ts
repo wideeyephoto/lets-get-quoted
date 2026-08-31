@@ -2,6 +2,11 @@ import { describe, expect, it, vi } from 'vitest';
 import { handleAdBudgetWebhookEvent } from '@/lib/ad-billing';
 import type Stripe from 'stripe';
 
+vi.mock('@/lib/sms', () => ({
+  sendUpcomingAdPaymentSms: vi.fn().mockResolvedValue(true),
+  sendAdWalletRefillSms: vi.fn().mockResolvedValue(true),
+}));
+
 vi.mock('@/lib/auth', () => ({
   createAdminClient: () => ({
     from: () => ({
@@ -629,5 +634,234 @@ describe('Ad Billing Synchronous Provisioning & Fulfillment', () => {
     expect(calledArgs.phone).toBe('+15551234567');
     expect(calledArgs.amountDollars).toBe(185);
     expect(calledArgs.accountId).toBe('acc_sms_user');
+  });
+
+  it('persists durable pending refill idempotency key before charge and reuses it across retries', async () => {
+    const { executeWalletRefillCharge } = await import('@/lib/ad-billing');
+    const { getStripeClient } = await import('@/lib/stripe');
+    const stripe = getStripeClient();
+
+    let siteState: Record<string, unknown> = {
+      fundingModel: 'auto_refill_wallet',
+      status: 'active',
+      walletBalanceCents: 4000,
+      refillThresholdCents: 7500,
+      refillAmountCents: 25000,
+      maxMonthlySpendCents: 100000,
+      spendThisMonthCents: 10000,
+      stripeCustomerId: 'cus_wallet_idemp_user',
+      pendingRefillIdempotencyKey: 'ad_refill_acc_idemp_123_custom_key',
+    };
+
+    const updateCalls: Record<string, unknown>[] = [];
+
+    const mockAdmin: any = {
+      from: (table: string) => {
+        if (table === 'sites') {
+          return {
+            select: () => ({
+              eq: () => ({
+                maybeSingle: async () => ({
+                  data: {
+                    id: 'site_idemp_user',
+                    account_id: 'acc_idemp_user',
+                    content: { adCampaign: { ...siteState } },
+                  },
+                }),
+              }),
+            }),
+            update: (payload: any) => ({
+              eq: async () => {
+                siteState = { ...payload.content?.adCampaign };
+                updateCalls.push({ ...siteState });
+                return { error: null };
+              },
+            }),
+          };
+        }
+        return {
+          select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null }) }) }),
+        };
+      },
+    };
+
+    vi.spyOn(stripe.paymentMethods, 'list').mockResolvedValue({
+      data: [{ id: 'pm_card_valid_123' }],
+    } as any);
+
+    let usedIdempotencyKey: string | undefined;
+    vi.spyOn(stripe.paymentIntents, 'create').mockImplementation(async (params: any, options?: any) => {
+      usedIdempotencyKey = options?.idempotencyKey;
+      return {
+        id: 'pi_refill_reused_key_123',
+        status: 'succeeded',
+      } as any;
+    });
+
+    const res = await executeWalletRefillCharge({
+      admin: mockAdmin,
+      accountId: 'acc_idemp_user',
+      reason: 'retry_after_failed_db_write',
+    });
+
+    expect(res.success).toBe(true);
+    expect(res.refilled).toBe(true);
+    // Verified that existing pendingRefillIdempotencyKey was reused!
+    expect(usedIdempotencyKey).toBe('ad_refill_acc_idemp_123_custom_key');
+    // Cleared pending key and stored processed intent ID
+    expect(siteState.pendingRefillIdempotencyKey).toBeNull();
+    expect(siteState.lastRefillPaymentIntentId).toBe('pi_refill_reused_key_123');
+    expect((siteState.processedRefillPaymentIntentIds as string[])).toContain('pi_refill_reused_key_123');
+    expect(siteState.walletBalanceCents).toBe(29000); // 4000 + 25000 = 29000
+  });
+
+  it('reconciles lost DB write via out-of-band payment_intent.succeeded webhook without double crediting', async () => {
+    let siteState: Record<string, unknown> = {
+      fundingModel: 'auto_refill_wallet',
+      status: 'active',
+      walletBalanceCents: 5000,
+      refillThresholdCents: 7500,
+      refillAmountCents: 25000,
+      maxMonthlySpendCents: 100000,
+      spendThisMonthCents: 10000,
+      stripeCustomerId: 'cus_wallet_webhook_user',
+      pendingRefillIdempotencyKey: 'ad_refill_pending_key_999',
+      processedRefillPaymentIntentIds: [],
+    };
+
+    const mockAdmin: any = {
+      from: (table: string) => {
+        if (table === 'sites') {
+          return {
+            select: () => ({
+              eq: () => ({
+                maybeSingle: async () => ({
+                  data: {
+                    id: 'site_webhook_user',
+                    account_id: 'acc_webhook_user',
+                    content: { adCampaign: { ...siteState } },
+                  },
+                }),
+              }),
+            }),
+            update: (payload: any) => ({
+              eq: async () => {
+                siteState = { ...payload.content?.adCampaign };
+                return { error: null };
+              },
+            }),
+          };
+        }
+        return {
+          select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null }) }) }),
+        };
+      },
+    };
+
+    const paymentIntentEvent: Stripe.Event = {
+      id: 'evt_pi_succeeded_test',
+      object: 'event',
+      api_version: '2023-10-16',
+      created: Date.now(),
+      type: 'payment_intent.succeeded',
+      data: {
+        object: {
+          id: 'pi_recovered_by_webhook_999',
+          status: 'succeeded',
+          metadata: {
+            kind: 'ad_wallet_refill',
+            account_id: 'acc_webhook_user',
+            refill_ad_spend_cents: '25000',
+            fee_cents: '2500',
+          },
+        } as unknown as Stripe.PaymentIntent,
+      },
+      livemode: false,
+      pending_webhooks: 0,
+      request: null,
+    };
+
+    // First webhook delivery credits wallet
+    const handledFirst = await handleAdBudgetWebhookEvent(paymentIntentEvent, mockAdmin);
+    expect(handledFirst).toBe(true);
+    expect(siteState.walletBalanceCents).toBe(30000); // 5000 + 25000 = 30000
+    expect(siteState.pendingRefillIdempotencyKey).toBeNull();
+    expect(siteState.lastRefillPaymentIntentId).toBe('pi_recovered_by_webhook_999');
+
+    // Duplicate webhook delivery replay does NOT double-credit
+    const handledReplay = await handleAdBudgetWebhookEvent(paymentIntentEvent, mockAdmin);
+    expect(handledReplay).toBe(true);
+    expect(siteState.walletBalanceCents).toBe(30000); // Still 30000!
+  });
+
+  it('marks campaign past_due on payment_intent.payment_failed webhook', async () => {
+    let siteState: Record<string, unknown> = {
+      fundingModel: 'auto_refill_wallet',
+      status: 'active',
+      walletBalanceCents: 5000,
+      refillThresholdCents: 7500,
+      refillAmountCents: 25000,
+      stripeCustomerId: 'cus_wallet_failed_user',
+      pendingRefillIdempotencyKey: 'ad_refill_pending_key_fail',
+    };
+
+    const mockAdmin: any = {
+      from: (table: string) => {
+        if (table === 'sites') {
+          return {
+            select: () => ({
+              eq: () => ({
+                maybeSingle: async () => ({
+                  data: {
+                    id: 'site_failed_user',
+                    account_id: 'acc_failed_user',
+                    content: { adCampaign: { ...siteState } },
+                  },
+                }),
+              }),
+            }),
+            update: (payload: any) => ({
+              eq: async () => {
+                siteState = { ...payload.content?.adCampaign };
+                return { error: null };
+              },
+            }),
+          };
+        }
+        return {
+          select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null }) }) }),
+        };
+      },
+    };
+
+    const failedPaymentIntentEvent: Stripe.Event = {
+      id: 'evt_pi_failed_test',
+      object: 'event',
+      api_version: '2023-10-16',
+      created: Date.now(),
+      type: 'payment_intent.payment_failed',
+      data: {
+        object: {
+          id: 'pi_declined_123',
+          status: 'requires_payment_method',
+          last_payment_error: {
+            message: 'Card was declined by issuing bank.',
+          },
+          metadata: {
+            kind: 'ad_wallet_refill',
+            account_id: 'acc_failed_user',
+          },
+        } as unknown as Stripe.PaymentIntent,
+      },
+      livemode: false,
+      pending_webhooks: 0,
+      request: null,
+    };
+
+    const handled = await handleAdBudgetWebhookEvent(failedPaymentIntentEvent, mockAdmin);
+    expect(handled).toBe(true);
+    expect(siteState.status).toBe('past_due');
+    expect(siteState.lastPaymentError).toBe('Card was declined by issuing bank.');
+    expect(siteState.pendingRefillIdempotencyKey).toBeNull();
   });
 });

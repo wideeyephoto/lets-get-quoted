@@ -84,7 +84,7 @@ export const CHANGELOG_RELEASES: ChangelogRelease[] = [
         badge: 'New',
         title: '🛡️ TCPA Quiet Hours & Closed-Loop Meta CAPI / Google Revenue Sync',
         description:
-          'Queues overnight leads for compliant 8:01 AM local time text dispatch, 15-minute duplicate submission locking, and SHA-256 revenue conversion sync back to Meta CAPI & Google Ads.',
+          'Queues overnight leads for compliant 8:01 AM recipient-local time text dispatch (evaluating called party local time via phone area code and address pursuant to FCC TCPA rules), 15-minute duplicate submission locking, and SHA-256 revenue conversion sync back to Meta CAPI & Google Ads.',
       },
     ],
     primaryAction: {

@@ -118,6 +118,12 @@ export type AdBudgetWalletState = {
   provisioningStatus?: 'active' | 'paused' | 'simulated' | 'pending' | 'failed' | 'unconfigured';
   provisioningMessage?: string | null;
   landingPageUrl?: string | null;
+  pendingRefillIdempotencyKey?: string | null;
+  pendingRefillAmountCents?: number | null;
+  pendingRefillFeeCents?: number | null;
+  pendingRefillCreatedAt?: string | null;
+  lastRefillPaymentIntentId?: string | null;
+  processedRefillPaymentIntentIds?: string[];
 };
 
 export const DEFAULT_AD_WALLET_STATE: AdBudgetWalletState = {
@@ -150,4 +156,10 @@ export const DEFAULT_AD_WALLET_STATE: AdBudgetWalletState = {
   provisioningStatus: 'pending',
   provisioningMessage: null,
   landingPageUrl: null,
+  pendingRefillIdempotencyKey: null,
+  pendingRefillAmountCents: null,
+  pendingRefillFeeCents: null,
+  pendingRefillCreatedAt: null,
+  lastRefillPaymentIntentId: null,
+  processedRefillPaymentIntentIds: [],
 };
