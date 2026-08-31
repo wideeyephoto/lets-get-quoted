@@ -8843,3 +8843,81 @@
     animation: none;
   }
 }
+
+/* ---- 8. Homepage & Flagship Typography & Hero Eyebrow Refinements ------- */
+.root :global(.eyebrow) {
+  font-size: 13px;
+  line-height: 1.45;
+  letter-spacing: 0.08em;
+  font-weight: 800;
+  margin: 0 0 20px;
+}
+
+.root :global(.hero .eyebrow),
+.root :global(.hero-copy .eyebrow) {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 14px 6px 11px;
+  border-radius: 999px;
+  background: rgba(255, 106, 36, 0.08);
+  border: 1px solid rgba(255, 106, 36, 0.28);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: var(--orange, #ff6a24);
+  font-size: clamp(13px, 1.15vw, 14.5px);
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  line-height: 1.35;
+  margin: 0 0 22px;
+  width: fit-content;
+}
+
+:root[data-theme='light'] .root :global(.hero-copy .eyebrow),
+:root[data-theme='light'] .root :global(.hero .eyebrow) {
+  background: rgba(255, 106, 36, 0.08);
+  border-color: rgba(255, 106, 36, 0.32);
+  color: #c9430a;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.05);
+}
+
+.root :global(.pulse-dot) {
+  position: relative;
+  width: 8px;
+  height: 8px;
+  flex: 0 0 8px;
+  border-radius: 50%;
+  background: var(--mint, #50e3bd);
+  box-shadow: 0 0 14px var(--mint, #50e3bd);
+  display: inline-block;
+  margin-right: 2px;
+  vertical-align: middle;
+}
+
+.root :global(.assurances) {
+  font-size: 14.5px;
+}
+
+.root :global(.feature-kicker) {
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  font-weight: 800;
+}
+
+.root :global(.section-kicker) {
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  font-weight: 800;
+}
+
+@media (max-width: 560px) {
+  .root :global(.hero .eyebrow),
+  .root :global(.hero-copy .eyebrow) {
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    padding: 5px 12px 5px 9px;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+}
