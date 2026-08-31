@@ -1521,6 +1521,26 @@ export default function ManagedAdsScreen({
                     </p>
                   </div>
 
+                  {/* Transparent Fee Callout */}
+                  <div className={styles.transparentFeeCallout}>
+                    <div className={styles.transparentFeeLeft}>
+                      <span style={{ fontSize: '1.25rem' }}>🛡️</span>
+                      <div>
+                        <span className={styles.transparentFeeTitle}>100% Direct Ad Click Transparency</span>
+                        <span className={styles.transparentFeeSub}>Zero agency retainer markups or hidden click arbitrage</span>
+                      </div>
+                    </div>
+                    <div className={styles.transparentFeePills}>
+                      <span className={styles.transparentFeeTag}>
+                        ${currentBundle.weeklyAdSpendDollars}/wk (100% clicks)
+                      </span>
+                      <span style={{ color: 'var(--muted)' }}>+</span>
+                      <span className={styles.transparentFeeTag} style={{ color: '#38bdf8', borderColor: 'rgba(56, 189, 248, 0.35)', background: 'rgba(56, 189, 248, 0.12)' }}>
+                        ${currentBundle.weeklyFeeDollars}/wk (AI Platform)
+                      </span>
+                    </div>
+                  </div>
+
                   {/* Transparent Weekly Cost Breakdown Accordion */}
                   <div className={styles.costBreakdown}>
                     <div
@@ -1741,9 +1761,10 @@ export default function ManagedAdsScreen({
                   type="button"
                   className="btn primary"
                   onClick={() => setConfigTab('schedule')}
-                  style={{ fontSize: '0.8rem', padding: '0.45rem 1rem' }}
+                  style={{ fontSize: '0.82rem', padding: '0.5rem 1.15rem', display: 'inline-flex', alignItems: 'center', gap: '0.45rem' }}
                 >
-                  Continue to Location &amp; Schedule ➔
+                  <span>Continue to Location &amp; Schedule</span>
+                  <span style={{ fontWeight: 800 }}>➔</span>
                 </button>
               </div>
             </div>
@@ -2087,17 +2108,18 @@ export default function ManagedAdsScreen({
                   type="button"
                   className="btn ghost"
                   onClick={() => setConfigTab('plan')}
-                  style={{ fontSize: '0.8rem', padding: '0.45rem 0.85rem' }}
+                  style={{ fontSize: '0.82rem', padding: '0.5rem 0.95rem', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
                 >
-                  ← Back to Plan
+                  <span>← Back to Plan &amp; Budget</span>
                 </button>
                 <button
                   type="button"
                   className="btn primary"
                   onClick={() => setConfigTab('focus_roi')}
-                  style={{ fontSize: '0.8rem', padding: '0.45rem 1rem' }}
+                  style={{ fontSize: '0.82rem', padding: '0.5rem 1.15rem', display: 'inline-flex', alignItems: 'center', gap: '0.45rem' }}
                 >
-                  Next: Focus &amp; ROI ➔
+                  <span>Continue to Focus &amp; ROI</span>
+                  <span style={{ fontWeight: 800 }}>➔</span>
                 </button>
               </div>
             </div>
@@ -2397,13 +2419,24 @@ export default function ManagedAdsScreen({
                   type="button"
                   className="btn ghost"
                   onClick={() => setConfigTab('schedule')}
-                  style={{ fontSize: '0.8rem', padding: '0.45rem 0.85rem' }}
+                  style={{ fontSize: '0.82rem', padding: '0.5rem 0.95rem', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
                 >
-                  ← Back to Location &amp; Schedule
+                  <span>← Back to Location &amp; Schedule</span>
                 </button>
-                <span style={{ fontSize: '0.74rem', color: '#10b981', fontWeight: 600 }}>
-                  ✓ Ready to Launch on Right
-                </span>
+                <button
+                  type="button"
+                  className="btn primary"
+                  onClick={() => {
+                    const el = document.getElementById('campaign-launch-deck');
+                    if (el) {
+                      el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    }
+                  }}
+                  style={{ fontSize: '0.82rem', padding: '0.5rem 1.15rem', display: 'inline-flex', alignItems: 'center', gap: '0.45rem', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', borderColor: 'rgba(16, 185, 129, 0.4)' }}
+                >
+                  <span>Review &amp; Launch Campaign</span>
+                  <span style={{ fontWeight: 800 }}>➔</span>
+                </button>
               </div>
             </div>
           )}
@@ -2411,6 +2444,17 @@ export default function ManagedAdsScreen({
 
         {/* Right Column: Live Previews & 1-Click Launch */}
         <div style={{ position: 'sticky', top: '1rem' }}>
+          {/* Live Preview Header Bar */}
+          <div className={styles.livePreviewHeaderBar}>
+            <span style={{ fontSize: '0.74rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--muted)' }}>
+              Multi-Channel Live Preview
+            </span>
+            <span className={styles.livePreviewPulsePill}>
+              <span className={styles.livePreviewDot} />
+              <span>Real-Time Updates Active</span>
+            </span>
+          </div>
+
           {/* Multi-Channel Preview Switcher */}
           <div className={styles.deviceSwitcher}>
             <button
