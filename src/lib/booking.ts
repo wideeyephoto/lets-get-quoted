@@ -351,9 +351,14 @@ export type BookingInput = {
    */
   alt?: BookingWindow | null;
   /** "Gate code is 1234, dog in the back" — for the person at the door, not for sales. */
-  note: string | null;
   /** Campaign, referral, or ad attribution */
   attribution?: LeadAttribution | null;
+  /**
+   * The client who referred them, already verified against the account's
+   * signing key by the caller — see @/lib/referral. A clients.id or nothing;
+   * the raw ?ref code never reaches this module.
+   */
+  referredBy?: string | null;
 };
 
 // A self-serve booking becomes a warm, pre-scheduled lead the owner confirms —
@@ -391,6 +396,7 @@ export async function createBooking(admin: SupabaseClient, accountId: string, in
       ...(requestedAlt ? { timelineAlt: requestedAlt } : {}),
       ...(input.attribution ? { attribution: input.attribution } : {}),
       contactPreference: 'any',
+      ...(input.referredBy ? { referredBy: input.referredBy } : {}),
     },
   });
 
@@ -545,7 +551,16 @@ export async function createBooking(admin: SupabaseClient, accountId: string, in
 export async function createBookingRequestLead(
   admin: SupabaseClient,
   accountId: string,
-  input: { name: string; phone: string | null; email: string | null; address: string | null; description: string | null; note?: string | null },
+  input: {
+    name: string;
+    phone: string | null;
+    email: string | null;
+    address: string | null;
+    description: string | null;
+    note?: string | null;
+    /** Verified clients.id of the referrer, when they arrived on a referral link. */
+    referredBy?: string | null;
+  },
 ): Promise<Lead> {
   const message = `📋 Booking request — needs scheduling.${input.description ? `\n${input.description}` : ''}${
     input.note ? `\n\nThey added: ${input.note}` : ''
@@ -559,7 +574,7 @@ export async function createBookingRequestLead(
     projectType: 'Booking request',
     message,
     sourcePage: '/book',
-    triage: { score: 'warm', flags: [], contactPreference: 'any' },
+    triage: { score: 'warm', flags: [], contactPreference: 'any', ...(input.referredBy ? { referredBy: input.referredBy } : {}) },
   });
 
   try {

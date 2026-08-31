@@ -14,6 +14,7 @@ import { sendCampaignSms } from '@/lib/sms';
 import { sendCampaignEmail } from '@/lib/email';
 import { loadSuppressedEmails } from '@/lib/email-suppression';
 import { isMailable } from '@/lib/email-quality';
+import { isReferralConfigured, mintReferralCode, referralLink } from '@/lib/referral';
 
 // The audience vocabulary and the Campaign shape live in campaign-audiences.ts
 // so a client component can read a label without pulling this module — and with
@@ -43,6 +44,14 @@ const DAY = 24 * 60 * 60 * 1000;
 // `emailReady` means the client has an email that has NOT unsubscribed (marketing
 // opt-out), mirroring how SMS gates on consent.
 export type CampaignRecipient = {
+  /**
+   * clients.id.
+   *
+   * Two things need it now. The SMS path keys its per-recipient idempotency on
+   * it, and a send mints this customer's own referral link from it. It never
+   * reaches the browser: the composer's live reach counts are computed on the
+   * server and only the totals cross over.
+   */
   id: string;
   name: string | null;
   phone: string | null;
@@ -196,9 +205,35 @@ export function summarizeReach(matched: CampaignRecipient[]): Reach {
   };
 }
 
-function personalize(text: string, recipient: CampaignRecipient): string {
+/**
+ * The second substituted token. See personalize, and campaign-guard's allow set.
+ *
+ * TWO REGEXES, DELIBERATELY. .test() on a /g regex advances lastIndex and picks
+ * up from there on the next call — and this constant is module-level, shared by
+ * every concurrent send in the process. The detection one is therefore NOT
+ * global: a stale lastIndex would make a body that plainly contains the token
+ * read as though it did not, and a couple of hundred customers would get a
+ * referral email with no link in it, with nothing logged and nothing to see.
+ *
+ * The substitution one has to be global (replace every occurrence) and is safe
+ * to share, because String.prototype.replace resets lastIndex itself.
+ */
+// WHITESPACE-TOLERANT, TO MATCH THE GUARD. unknownPlaceholders trims the token
+// it captures, so the composer tells the owner that "{ referral_link }" and
+// "{ name }" are fine — while the sender matched neither and posted the braces
+// to the customer. The guard is the promise; these are what keep it.
+const NAME_TOKEN = /\{\s*name\s*\}/gi;
+const REFERRAL_TOKEN_PRESENT = /\{\s*referral_link\s*\}/i;
+const REFERRAL_TOKEN = /\{\s*referral_link\s*\}/gi;
+
+function personalize(text: string, recipient: CampaignRecipient, referral: string | null): string {
   const firstName = (recipient.name || 'there').trim().split(/\s+/)[0] || 'there';
-  return text.replace(/\{name\}/gi, firstName);
+  const named = text.replace(NAME_TOKEN, firstName);
+  // Never left in braces. A customer receiving a literal {referral_link} is the
+  // exact failure the campaign guard exists to prevent, and by this point the
+  // guard is long past — so the worst case here is a missing link, never a
+  // visible token.
+  return named.replace(REFERRAL_TOKEN, referral ?? '');
 }
 
 function chunk<T>(items: T[], size: number): T[][] {
@@ -221,7 +256,35 @@ export type CampaignSendResult = {
 export async function sendCampaign(
   supabase: SupabaseClient,
   accountId: string,
-  input: { channel: CampaignChannel; audience: CampaignAudience; subject: string; body: string; businessName: string; mailingAddress: string | null; beatId?: string | null },
+  input: {
+    channel: CampaignChannel;
+    audience: CampaignAudience;
+    subject: string;
+    body: string;
+    businessName: string;
+    mailingAddress: string | null;
+    beatId?: string | null;
+    /**
+     * Where a referral link should point, when the message asks for one.
+     *
+     * The BASE only — each recipient's own code is minted below. Null when the
+     * account has no published booking page, in which case {referral_link}
+     * resolves to nothing rather than to somebody else's page.
+     */
+    referralBookingUrl?: string | null;
+    /**
+     * Whether this account is actually running referrals — i.e. the owner has
+     * saved a thank-you offer.
+     *
+     * THE OFF-SWITCH, and it has to be enforced HERE. The Referrals screen tells
+     * the owner that clearing their offer stops referral links going out. The
+     * template stops offering the token, but a body they had already written (or
+     * edited) still carries it, and this is the only place that can refuse to
+     * mint. False falls back to the plain booking link rather than a dangling
+     * sentence.
+     */
+    referralTracked: boolean;
+  },
 ): Promise<CampaignSendResult> {
   const wantEmail = input.channel === 'email' || input.channel === 'both';
   const wantSms = input.channel === 'sms' || input.channel === 'both';
@@ -233,6 +296,24 @@ export async function sendCampaign(
   }
 
   const now = Date.now();
+
+  // Resolved ONCE, before the batch loop. Minting is pure and cheap, but
+  // deciding whether to mint at all is a couple of environment reads, and this
+  // runs 250 times otherwise.
+  const wantsReferral = REFERRAL_TOKEN_PRESENT.test(input.body) || REFERRAL_TOKEN_PRESENT.test(input.subject);
+  const referralBase = input.referralBookingUrl ?? null;
+  const canMint = wantsReferral && referralBase !== null && input.referralTracked && isReferralConfigured();
+  const referralFor = (recipient: CampaignRecipient): string | null => {
+    if (!wantsReferral) return null;
+    if (!canMint) return referralBase;
+    try {
+      return referralLink(referralBase as string, mintReferralCode(accountId, recipient.id));
+    } catch (error) {
+      // A code that cannot be minted must cost the attribution, never the send.
+      console.error('Referral code mint failed:', error instanceof Error ? error.message : error);
+      return referralBase;
+    }
+  };
 
   const targets = (await loadRecipients(supabase, accountId))
     .filter((recipient) => matchesAudience(recipient, input.audience, now))
@@ -294,6 +375,7 @@ export async function sendCampaign(
           skipped++;
           return;
         }
+        const referral = referralFor(recipient);
         if (canEmail) {
           // Hold a credit before the send, spend it once the provider accepts,
           // give it back on anything else. One reservation per recipient because
@@ -328,8 +410,8 @@ export async function sendCampaign(
               await sendCampaignEmail({
                 recipientEmail: recipient.email as string,
                 businessName: input.businessName,
-                subject: personalize(input.subject, recipient),
-                body: personalize(input.body, recipient),
+                subject: personalize(input.subject, recipient, referral),
+                body: personalize(input.body, recipient, referral),
                 accountId,
                 mailingAddress: input.mailingAddress,
               });
@@ -350,7 +432,7 @@ export async function sendCampaign(
             await sendCampaignSms({
               phone: recipient.phone as string,
               businessName: input.businessName,
-              body: personalize(input.body, recipient),
+              body: personalize(input.body, recipient, referral),
               accountId,
               idempotencyKey: `campaign:${runId}:${recipient.id}:sms`,
             });

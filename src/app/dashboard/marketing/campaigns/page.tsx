@@ -1,4 +1,5 @@
 import { requireOfficeContext } from '@/lib/auth';
+import { isReferralConfigured } from '@/lib/referral';
 import {
   AUDIENCE_DEFS,
   listCampaigns,
@@ -82,6 +83,18 @@ export default async function CampaignsPage({
   const services = (serviceRows ?? []) as Array<{ name: string; created_at: string; active?: boolean }>;
   const serviceNames = services.map((s) => s.name);
 
+  // Its own query, and allowed to come back empty. referral_reward arrives with
+  // migrations/2026-08-25-referrals.sql, and a select naming a column that does
+  // not exist errors rather than degrading — folding it into the account read
+  // above would take the whole campaigns page down on a database that has not
+  // had the migration yet. Same pattern, same reason, as mailing_address.
+  const { data: referralRow } = await supabase.from('accounts').select('referral_reward').eq('id', accountId).maybeSingle();
+  // AND the environment can actually sign. With no key nothing can be minted,
+  // so the tracked copy would promise "we'll know it came from you" over a bare
+  // booking URL that attributes nobody — worse than the untracked ask, because
+  // the owner believes it is working.
+  const referralReward = isReferralConfigured() ? ((referralRow?.referral_reward as string | null) ?? null) || null : null;
+
   const [view, recommendations] = await Promise.all([
     buildCalendarView(supabase, accountId, 4, {
       recipients,
@@ -96,6 +109,7 @@ export default async function CampaignsPage({
           reach,
           businessName,
           bookingUrl,
+          referralReward,
           siteContent: (siteRow?.content as Record<string, unknown> | null) ?? null,
           serviceArea: (siteRow?.service_area as string | null) ?? null,
           mailingAddress: (accountRow?.mailing_address as string | null) ?? null,

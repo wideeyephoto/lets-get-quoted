@@ -304,7 +304,38 @@ export function buildAnnounceServiceCopy(input: { businessName: string; serviceN
   };
 }
 
-export function buildReferralCopy(input: { businessName: string; bookingUrl: string | null }): TemplateCopy {
+export function buildReferralCopy(input: { businessName: string; bookingUrl: string | null; reward?: string | null }): TemplateCopy {
+  const reward = input.reward?.trim() || null;
+
+  // THE TRACKED VARIANT, and the only thing that separates a referral campaign
+  // from a blast asking for referrals. {referral_link} is replaced per recipient
+  // with that customer's own signed link, so the lead it produces knows who sent
+  // it. Offered only when the owner has set a thank-you — with none set this
+  // returns byte-identical copy to what it has always sent.
+  //
+  // AND ONLY WHEN THERE IS SOMEWHERE FOR THE LINK TO POINT. With no published
+  // booking page the token resolves to an empty string, and this copy would go
+  // to the whole list reading "...we'll know it came from you:" and then
+  // nothing — a sentence cut off mid-air, which the campaign guard cannot
+  // catch because referral_link is on its allow list. The untracked copy below
+  // already handles a missing booking page properly, so fall through to it.
+  if (reward && input.bookingUrl) {
+    return {
+      subject: 'Know someone who could use us?',
+      body: [
+        'Hi {name},',
+        '',
+        `If you know anyone who could use ${input.businessName} — a neighbor, a friend, family — we'd really appreciate the introduction.`,
+        '',
+        `As a thank-you from us: ${reward}.`,
+        '',
+        "Send them this link and we'll know it came from you: {referral_link}",
+        '',
+        `— ${input.businessName}`,
+      ].join('\n'),
+    };
+  }
+
   const cta = input.bookingUrl ? `Send them here to get started: ${input.bookingUrl}` : 'Just have them reply to this or give us a call.';
   return {
     subject: 'Know someone who could use us?',

@@ -49,6 +49,8 @@ type Props = {
    * component only decides whether it is the path being shown.
    */
   quickStop: { siteId: string; serviceArea: string | null; days: QuickStopDayOption[] } | null;
+  /** The raw ?ref from the URL, posted back for the server action to verify. */
+  referralCode: string | null;
 };
 
 type Errors = Partial<Record<'slot' | 'name' | 'contact' | 'address', string>>;
@@ -62,6 +64,7 @@ const STEPS = [
 export default function RequestVisitFlow({
   subdomain,
   businessName,
+  referralCode,
   days,
   services,
   addressExample,
@@ -145,6 +148,7 @@ export default function RequestVisitFlow({
           businessName={businessName}
           serviceArea={quickStop.serviceArea}
           days={quickStop.days}
+          referralCode={referralCode}
           // Chosen, not stumbled upon: the teaser card has already been read as
           // one of two options, so a second press to open it buys nothing.
           startOpen
@@ -180,6 +184,7 @@ export default function RequestVisitFlow({
         <input type="hidden" name="address" value={address} />
         <input type="hidden" name="description" value={description} />
         <input type="hidden" name="note" value={note} />
+        <input type="hidden" name="ref" value={referralCode ?? ''} />
 
         {step === 1 ? (
           <>
