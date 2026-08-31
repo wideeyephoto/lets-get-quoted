@@ -121,28 +121,19 @@ export default function PayoutsTransfersPanel({ payouts }: Props) {
           </div>
         </div>
 
-        {/* 1099-K Annual Tax Compliance Radar */}
+        {/* 1099-K Annual Tax Compliance Info */}
         <div style={{ padding: '1rem 1.25rem', background: 'var(--panel-bg, #fff)', borderRadius: '8px', border: '1px solid var(--border-subtle, #e2e8f0)', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <strong style={{ fontSize: '0.92rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-              <span>📋</span> IRS Form 1099-K Gross Tracking
+              <span>📋</span> IRS Form 1099-K Information
             </strong>
-            <span style={{ fontSize: '0.75rem', fontWeight: 600, background: 'rgba(16, 185, 129, 0.12)', color: '#059669', padding: '0.15rem 0.5rem', borderRadius: '999px' }}>
-              Compliant
+            <span style={{ fontSize: '0.75rem', fontWeight: 600, background: 'rgba(59, 130, 246, 0.12)', color: '#2563eb', padding: '0.15rem 0.5rem', borderRadius: '999px' }}>
+              Stripe Connect Auto-Issue
             </span>
           </div>
           <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-            Track your gross payment settlement volume against federal Form 1099-K reporting thresholds. Stripe automatically generates official year-end tax forms.
+            Federal IRS Form 1099-K reporting applies to accounts processing over $20,000 and 200 transactions in a calendar year. Stripe Connect automatically generates and delivers official year-end tax forms to eligible contractor accounts.
           </p>
-          <div style={{ marginTop: '0.25rem', display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-              <span>Gross Volume Settled</span>
-              <span>Threshold: $5,000+</span>
-            </div>
-            <div style={{ width: '100%', height: '6px', background: '#f1f5f9', borderRadius: '999px', overflow: 'hidden' }}>
-              <div style={{ width: '100%', height: '100%', background: 'linear-gradient(90deg, #3b82f6 0%, #10b981 100%)', borderRadius: '999px' }} />
-            </div>
-          </div>
         </div>
       </div>
 

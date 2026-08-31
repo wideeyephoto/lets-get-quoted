@@ -151,8 +151,8 @@ export async function dispatchSpeedToLeadSms(params: {
 
   if (quietHoursCheck.isDelayed) {
     return {
-      sent: true,
-      message,
+      sent: false,
+      message: quietHoursCheck.reason || 'Message held during TCPA quiet hours.',
       queuedForQuietHours: true,
     };
   }

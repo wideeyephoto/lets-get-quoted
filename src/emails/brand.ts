@@ -578,8 +578,8 @@ export function renderRichCampaignBodyHtml(body: string, paint: ThemePaint): str
 
       // 5. Callouts & Notes
       // Tip / Pro Tip / Lightbulb
-      if (/^(tip|pro tip|💡):?/i.test(block)) {
-        const cleanText = block.replace(/^(tip|pro tip|💡):?\s*/i, '');
+      if (/^(?:(?:tip|pro tip)\s*:|(?:tip|pro tip)\s+|💡\s*:?)/i.test(block)) {
+        const cleanText = block.replace(/^(?:(?:tip|pro tip)\s*:|(?:tip|pro tip)\s+|💡\s*:?)\s*/i, '');
         return `
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:16px 0 20px;background:#f0fdf4;border:1px solid #bbf7d0;border-left:5px solid #22c55e;border-radius:8px;overflow:hidden">
           <tr>
@@ -592,8 +592,8 @@ export function renderRichCampaignBodyHtml(body: string, paint: ThemePaint): str
       }
 
       // Warning / Alert / ⚠️
-      if (/^(warning|alert|⚠️):?/i.test(block)) {
-        const cleanText = block.replace(/^(warning|alert|⚠️):?\s*/i, '');
+      if (/^(?:(?:warning|alert)\s*:|(?:warning|alert)\s+|⚠️\s*:?)/i.test(block)) {
+        const cleanText = block.replace(/^(?:(?:warning|alert)\s*:|(?:warning|alert)\s+|⚠️\s*:?)\s*/i, '');
         return `
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:16px 0 20px;background:#fff7ed;border:1px solid #fed7aa;border-left:5px solid #ea580c;border-radius:8px;overflow:hidden">
           <tr>
@@ -606,8 +606,8 @@ export function renderRichCampaignBodyHtml(body: string, paint: ThemePaint): str
       }
 
       // Important / Note / 📌
-      if (/^(important|note|📌):?/i.test(block)) {
-        const cleanText = block.replace(/^(important|note|📌):?\s*/i, '');
+      if (/^(?:(?:important|note)\s*:|(?:important|note)\s+|📌\s*:?)/i.test(block)) {
+        const cleanText = block.replace(/^(?:(?:important|note)\s*:|(?:important|note)\s+|📌\s*:?)\s*/i, '');
         return `
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:16px 0 20px;background:#f8fafc;border:1px solid #cbd5e1;border-left:5px solid ${paint.accent};border-radius:8px;overflow:hidden">
           <tr>

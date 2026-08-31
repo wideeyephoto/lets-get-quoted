@@ -67,6 +67,14 @@ export type LeadTriage = {
   contactLog?: LeadContactEntry[];
   /** Marketing campaign, social source, or ad click attribution */
   attribution?: LeadAttribution | null;
+  /** Immutable consent record captured at intake */
+  consent?: {
+    channel: 'phone_text_email' | 'text_email';
+    disclosureVersion: string;
+    consentedAt: string;
+    sourcePage?: string | null;
+  } | null;
+  /**
   /**
    * The quote as it was last sent, so undoing it is an edit rather than a
    * retype. See LeadQuoteDraft.
@@ -205,6 +213,18 @@ export function getLeadTriage(lead: Pick<Lead, 'triage'>): LeadTriage {
           .map((entry) => ({ at: entry.at, label: entry.label, ...(typeof entry.note === 'string' && entry.note ? { note: entry.note } : {}) }))
       : undefined,
     attribution: sanitizeAttribution(triage.attribution) || undefined,
+    consent: triage.consent && typeof triage.consent === 'object' ? {
+      channel: (triage.consent as { channel?: unknown }).channel === 'text_email' ? 'text_email' : 'phone_text_email',
+      disclosureVersion: typeof (triage.consent as { disclosureVersion?: unknown }).disclosureVersion === 'string'
+        ? (triage.consent as { disclosureVersion: string }).disclosureVersion
+        : 'intake_v1',
+      consentedAt: typeof (triage.consent as { consentedAt?: unknown }).consentedAt === 'string'
+        ? (triage.consent as { consentedAt: string }).consentedAt
+        : new Date().toISOString(),
+      sourcePage: typeof (triage.consent as { sourcePage?: unknown }).sourcePage === 'string'
+        ? (triage.consent as { sourcePage: string }).sourcePage
+        : undefined,
+    } : undefined,
     /* PARSED HERE OR LOST EVERYWHERE.
        This function does not read the blob, it rebuilds it — and every triage
        write in the app is `{ ...getLeadTriage(lead), ...change }`. A field this

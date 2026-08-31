@@ -139,25 +139,15 @@ export async function updateLeadStatusAction(leadId: string, status: LeadStatus)
     const triage = lead ? getLeadTriage(lead) : null;
     const attr = triage?.attribution;
     const hasGclid = attr?.clickId && attr.clickIdType === 'gclid';
-    const hasCustomerData = Boolean(lead?.email || lead?.phone);
 
-    if (hasGclid || hasCustomerData) {
+    if (hasGclid) {
       const wonValue = triage?.estimate?.max || 0;
-      const nameParts = (lead?.name || '').trim().split(/\s+/);
-      const firstName = nameParts[0] || undefined;
-      const lastName = nameParts.slice(1).join(' ') || undefined;
-
       uploadOfflineConversion({
-        gclid: hasGclid ? attr.clickId : undefined,
+        gclid: attr.clickId,
         conversionActionName: 'Job Won',
         conversionValueDollars: wonValue,
         currencyCode: 'USD',
         orderId: leadId,
-        email: lead?.email || undefined,
-        phone: lead?.phone || undefined,
-        firstName,
-        lastName,
-        postalCode: lead?.address ? lead.address.match(/\b\d{5}\b/)?.[0] : undefined,
       }).catch((err) => console.warn('Offline conversion upload on mark won skipped:', err));
     }
   }

@@ -1044,14 +1044,28 @@ export async function sendSubcontractorSms(params: {
   }
 }
 
-export async function sendPaymentSmsEvent(paymentId: string, eventType: PaymentSmsEvent) {
+export async function sendPaymentSmsEvent(
+  paymentId: string,
+  eventType: PaymentSmsEvent,
+  expectedAccountId?: string
+) {
   const admin = createAdminClient();
-  const { data, error } = await admin
+  let query = admin
     .from('payments')
     .select('id, account_id, amount, label, homeowner_phone, sms_consent, account:accounts!payments_account_id_fkey(business_name)')
-    .eq('id', paymentId)
-    .maybeSingle();
-  if (error || !data) throw error ?? new Error('Payment not found for SMS.');
+    .eq('id', paymentId);
+
+  if (expectedAccountId) {
+    query = query.eq('account_id', expectedAccountId);
+  }
+
+  const { data, error } = await query.maybeSingle();
+  if (error || !data) {
+    if (expectedAccountId && !data) {
+      throw new Error('Payment not found or does not belong to the authorized account.');
+    }
+    throw error ?? new Error('Payment not found for SMS.');
+  }
   const payment = data as unknown as SmsPayment;
   if (!payment.sms_consent || !payment.homeowner_phone) return { status: 'skipped' as const };
   const phoneNumber = normalizeUsPhone(payment.homeowner_phone);

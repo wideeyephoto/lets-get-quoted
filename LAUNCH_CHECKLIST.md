@@ -17,7 +17,7 @@ This is the definitive production deployment and launch checklist. All automated
   - Stripe Checkout Webhook Idempotency, E-Signature Preservation, Charge Failure, Disputes, and Refunds
   - Outbox SMS Delivery, 10DLC Consent Ledgers, and White-Label Invariants
   - 1-Page PDF Generation (Invoices, Estimates, Lien Waivers)
-  - 34 of 34 Scheduled Vercel Background Crons
+  - 35 of 35 Scheduled Vercel Background Crons
 
 ---
 

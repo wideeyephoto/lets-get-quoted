@@ -17,7 +17,6 @@
     "src",
     "test",
     "test-staging",
-    "test-pg17", "test-preflight",
-    ".next/types/**/*.ts"
+    "test-pg17", "test-preflight"
   ]
 }

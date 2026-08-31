@@ -174,15 +174,6 @@ export const EMAIL_PREVIEW_TABS: Array<{ id: EmailPreviewKind; label: string; re
   { id: 'alert', label: 'Contractor alert', recipientType: 'Contractor' },
 ];
 
-function campaignParagraphs(body: string): string {
-  return body
-    .split(/\n{2,}/)
-    .map((block) => block.trim())
-    .filter(Boolean)
-    .map((block) => `<p style="margin:0 0 14px;line-height:1.6">${escapeHtml(block).replace(/\n/g, '<br/>')}</p>`)
-    .join('');
-}
-
 /**
  * Pure synchronous renderer for sample email previews.
  * Executes in client and server components with 0ms latency and 0 network roundtrips.

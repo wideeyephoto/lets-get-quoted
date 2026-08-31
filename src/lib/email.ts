@@ -1020,21 +1020,6 @@ export async function sendCardSetupEmail(input: {
   }
 }
 
-// One-off broadcast email to a past client. The owner writes plain text; we
-// render it into the same branded shell as the other transactional emails
-// (blank lines become paragraphs, single newlines become line breaks). Throws
-// on provider rejection so the caller can count it as a failed send.
-// The owner's plain text as email HTML: blank lines become paragraphs, single
-// newlines become line breaks.
-function campaignParagraphs(body: string): string {
-  return body
-    .split(/\n{2,}/)
-    .map((block) => block.trim())
-    .filter(Boolean)
-    .map((block) => `<p style="margin:0 0 14px;line-height:1.6">${escapeHtml(block).replace(/\n/g, '<br/>')}</p>`)
-    .join('');
-}
-
 /**
  * The exact HTML a campaign email is sent as.
  *

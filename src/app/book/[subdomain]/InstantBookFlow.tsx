@@ -235,6 +235,9 @@ export default function InstantBookFlow({ subdomain, siteId, businessName, servi
           </div>
           <div className="field full">
             <button type="submit" className="btn primary book-submit">Get my estimate</button>
+            <small style={{ display: 'block', marginTop: '0.45rem', fontSize: '0.75rem', opacity: 0.8, textAlign: 'center', lineHeight: 1.4 }}>
+              ⚡ Job details are evaluated with AI assistance to generate estimate ranges. See our <a href="/privacy" style={{ textDecoration: 'underline', color: 'inherit' }}>Privacy Policy</a>.
+            </small>
           </div>
         </div>
         {callOut}

@@ -59,18 +59,22 @@ export function generatePrivacyPolicy(rawInput: Partial<LegalInput>): string {
     `## How we use your information\n\n` +
     `We use the information you provide to:\n\n` +
     `- Respond to your request and give you a quote or estimate\n` +
+    `- Analyze job descriptions and photos with AI assistance to evaluate scope, materials, and preliminary pricing\n` +
     `- Schedule and carry out the work you ask about\n` +
     `- Contact you about your request and send updates about your job\n` +
     `- Keep records, prevent fraud, and improve our service\n\n` +
-    `We do not sell your personal information.\n\n` +
+    `We do not sell your personal information, and we never share or broadcast your inquiry to competing contractors or third-party lead brokers.\n\n` +
 
     `## Text messages and calls\n\n` +
     `If you give us your phone number, you agree that we (and the ${PLATFORM} platform on our behalf) may contact you by phone call or text message about your request and your job. Message and data rates may apply, and message frequency varies. You can opt out of text messages at any time by replying STOP, or ask us to stop calling by telling us directly. Opting out of messages will not affect work already scheduled.\n\n` +
 
     `## How we share your information\n\n` +
-    `We share your information only as needed to run our business:\n\n` +
+    `We share your information only as needed to operate our business and fulfill your request:\n\n` +
     `- With ${PLATFORM}, our website and customer-management platform, which stores your request and helps us respond, message you, and process payments\n` +
-    `- With service providers that send text messages, process payments, or host our site, only so they can perform those services for us\n` +
+    `- With AI processing providers (OpenAI) to analyze project descriptions and photos for scope and estimate generation, strictly for processing without using your content for AI model training\n` +
+    `- With email and messaging delivery services (such as Resend and telecom carriers) to route quotes, estimates, receipts, and appointment notifications\n` +
+    `- With payment processors (such as Stripe) to securely process deposits or invoice payments\n` +
+    `- With hosting and infrastructure providers solely to operate our website and services\n` +
     `- When required by law, or to protect our rights, safety, or property\n\n` +
 
     `## Payments\n\n` +

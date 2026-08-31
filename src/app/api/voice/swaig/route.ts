@@ -39,23 +39,18 @@ export async function POST(request: Request) {
 
   const url = new URL(request.url);
   const token = url.searchParams.get('token');
-  let accountId = url.searchParams.get('account_id');
-  let verifiedCallerPhone: string | null = null;
-  let verifiedProviderCallId: string | null = null;
-
-  if (token) {
-    const tokenCheck = verifyVoiceToolToken(token);
-    if (!tokenCheck.ok) {
-      return NextResponse.json({ error: `Invalid tool token: ${tokenCheck.reason}` }, { status: 403 });
-    }
-    accountId = tokenCheck.payload.accountId;
-    verifiedCallerPhone = tokenCheck.payload.callerPhone;
-    verifiedProviderCallId = tokenCheck.payload.providerCallId;
+  if (!token) {
+    return NextResponse.json({ error: 'Missing signed tool token' }, { status: 403 });
   }
 
-  if (!accountId) {
-    return NextResponse.json({ error: 'Missing account_id or token' }, { status: 400 });
+  const tokenCheck = verifyVoiceToolToken(token);
+  if (!tokenCheck.ok) {
+    return NextResponse.json({ error: `Invalid tool token: ${tokenCheck.reason}` }, { status: 403 });
   }
+
+  const accountId = tokenCheck.payload.accountId;
+  const verifiedCallerPhone = tokenCheck.payload.callerPhone;
+  const verifiedProviderCallId = tokenCheck.payload.providerCallId;
 
   let body: Record<string, unknown> = {};
   try {

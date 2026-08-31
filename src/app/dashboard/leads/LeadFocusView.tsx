@@ -249,8 +249,8 @@ export default function LeadFocusView({
                       contextTitle={selected.name}
                       label="🎙️ Voice Update"
                     />
-                    {selected.phone && (
-                      <a className={`btn ${selected.textOnly ? 'secondary' : 'primary'}`} href={`tel:${selected.phone}`}>
+                    {selected.phone && !selected.textOnly && (
+                      <a className="btn primary" href={`tel:${selected.phone}`}>
                         📞 Call
                       </a>
                     )}

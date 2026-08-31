@@ -30,7 +30,7 @@ import {
   renderContractorAlertEmailHtml,
   renderDailyDigestEmailHtml,
 } from '../src/lib/email';
-import { loadEmailBrand, recommendEmailTheme } from '../src/lib/email-brand';
+import { loadEmailBrand } from '../src/lib/email-brand';
 import {
   EMAIL_PREVIEW_TABS,
   renderSampleEmailPreviewSync,

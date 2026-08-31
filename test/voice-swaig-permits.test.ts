@@ -9,6 +9,10 @@ vi.mock('@/lib/voice/auth', () => ({
     username: 'test-user',
     password: 'test-password',
   }),
+  verifyVoiceToolToken: vi.fn().mockReturnValue({
+    ok: true,
+    payload: { accountId: 'acc-1', callerPhone: '+13135550100', providerCallId: 'call-1' },
+  }),
 }));
 
 import { createAdminClient } from '@/lib/auth';
@@ -22,7 +26,7 @@ describe('Voice SWAIG Permitting Tools - POST /api/voice/swaig', () => {
   const authHeader = 'Basic ' + Buffer.from('test-user:test-password').toString('base64');
 
   it('handles check_permit_requirement with city and trade', async () => {
-    const req = new Request('http://localhost/api/voice/swaig?account_id=acc-1', {
+    const req = new Request('http://localhost/api/voice/swaig?account_id=acc-1&token=valid-token', {
       method: 'POST',
       headers: {
         authorization: authHeader,
@@ -125,7 +129,7 @@ describe('Voice SWAIG Permitting Tools - POST /api/voice/swaig', () => {
       }),
     } as any);
 
-    const req = new Request('http://localhost/api/voice/swaig?account_id=acc-1', {
+    const req = new Request('http://localhost/api/voice/swaig?account_id=acc-1&token=valid-token', {
       method: 'POST',
       headers: {
         authorization: authHeader,

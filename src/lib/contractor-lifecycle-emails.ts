@@ -206,27 +206,6 @@ export const CONTRACTOR_LIFECYCLE_STEPS: ContractorLifecycleStep[] = [
   },
 ];
 
-function campaignParagraphs(body: string): string {
-  return body
-    .split(/\n{2,}/)
-    .map((block) => block.trim())
-    .filter(Boolean)
-    .map((block) => {
-      const lines = block.split('\n');
-      const isBulletList = lines.every((line) => line.trim().startsWith('•') || line.trim().startsWith('-') || /^\d+\./.test(line.trim()));
-      if (isBulletList) {
-        const items = lines
-          .map((line) => line.replace(/^[•\-]\s*/, '').replace(/^\d+\.\s*/, '').trim())
-          .filter(Boolean)
-          .map((item) => `<li style="margin-bottom:8px;line-height:1.6">${escapeHtml(item)}</li>`)
-          .join('');
-        return `<ul style="margin:0 0 16px;padding-left:22px;color:#1c2230;font-size:15px;line-height:1.6">${items}</ul>`;
-      }
-      return `<p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#1c2230">${escapeHtml(block).replace(/\n/g, '<br/>')}</p>`;
-    })
-    .join('');
-}
-
 function marketingFooter(businessName: string, mailingAddress: string | null, unsubscribeUrl: string): string {
   const addressLine = mailingAddress
     ? `<br/><span style="color:#9099a6">${escapeHtml(mailingAddress)}</span>`

@@ -7,6 +7,7 @@ import type { Site } from '@/lib/sites';
 import AddressAutocomplete from '@/components/address-autocomplete';
 import { HoneypotField } from '@/components/honeypot-field';
 import { getOrCaptureAttribution } from '@/lib/attribution';
+import ContactPreferenceControl, { type ContactPreferenceValue } from '@/components/ContactPreferenceControl';
 import HeroQuickForm from '@/lib/templates/HeroQuickForm';
 import IntroVideo from '@/lib/templates/IntroVideo';
 import styles from './quote-request-form.module.css';
@@ -46,6 +47,9 @@ function QuoteRequestFormFull({ site }: QuoteRequestFormProps) {
   const [step, setStep] = useState(0);
   const [progress, setProgress] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
+  const [contactPref, setContactPref] = useState<ContactPreferenceValue | null>(null);
   const [selectedPhotos, setSelectedPhotos] = useState<File[]>([]);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const startedAt = useRef(Date.now());
@@ -143,10 +147,14 @@ function QuoteRequestFormFull({ site }: QuoteRequestFormProps) {
       return;
     }
     const form = event.currentTarget;
-    const phoneValue = (form.elements.namedItem('phone') as HTMLInputElement | null)?.value.trim() ?? '';
-    const emailValue = (form.elements.namedItem('email') as HTMLInputElement | null)?.value.trim() ?? '';
+    const phoneValue = (form.elements.namedItem('phone') as HTMLInputElement | null)?.value.trim() ?? phone.trim();
+    const emailValue = (form.elements.namedItem('email') as HTMLInputElement | null)?.value.trim() ?? email.trim();
     if (!phoneValue && !emailValue) {
       setMessage({ type: 'error', text: 'Add a phone number or email so we can reach you.' });
+      return;
+    }
+    if (phoneValue && !contactPref) {
+      setMessage({ type: 'error', text: `Please choose how ${site.company_name || 'we'} may follow up about your request.` });
       return;
     }
     if (!site.published || window.self !== window.top) {
@@ -162,6 +170,9 @@ function QuoteRequestFormFull({ site }: QuoteRequestFormProps) {
       const data = new FormData(form);
       data.set('siteId', site.id);
       data.set('startedAt', String(startedAt.current));
+      if (contactPref) {
+        data.set('contactPreference', contactPref);
+      }
       data.delete('photos');
       const photos = selectedPhotos.slice(0, MAX_PHOTOS);
       for (const photo of photos) data.append('photos', await compressImage(photo, 1600, 0.8));
@@ -194,6 +205,9 @@ function QuoteRequestFormFull({ site }: QuoteRequestFormProps) {
       setMessage({ type: 'success', text: "Your request was sent — we'll call you back within about an hour." });
       formRef.current?.reset();
       setSelectedPhotos([]);
+      setPhone('');
+      setEmail('');
+      setContactPref(null);
       setStep(0);
       if (photoInputRef.current) photoInputRef.current.value = '';
       startedAt.current = Date.now();
@@ -255,9 +269,53 @@ function QuoteRequestFormFull({ site }: QuoteRequestFormProps) {
 
       <div ref={contactStepRef} className={styles.step} hidden={step !== 1} role="group" aria-label="Your contact info">
         <label className={styles.field}><span>Name</span><input name="name" autoComplete="name" maxLength={100} required /></label>
-        <label className={styles.field}><span>Phone</span><input name="phone" type="tel" autoComplete="tel" maxLength={40} /></label>
-        <label className={`${styles.field} ${styles.wide}`}><span>Email {emailRequired ? '(required)' : '(optional)'}</span><input name="email" type="email" autoComplete="email" maxLength={160} required={emailRequired} /></label>
-        <p className={styles.reassure}>Free &amp; no obligation — we reply within about an hour.</p>
+        <label className={styles.field}>
+          <span>Phone</span>
+          <input
+            name="phone"
+            type="tel"
+            autoComplete="tel"
+            maxLength={40}
+            value={phone}
+            onChange={(event) => setPhone(event.target.value)}
+          />
+        </label>
+        <label className={`${styles.field} ${styles.wide}`}>
+          <span>Email {emailRequired ? '(required)' : '(optional)'}</span>
+          <input
+            name="email"
+            type="email"
+            autoComplete="email"
+            maxLength={160}
+            required={emailRequired}
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+          />
+        </label>
+        {phone.trim() ? (
+          <div className={styles.wide}>
+            <ContactPreferenceControl
+              companyName={site.company_name}
+              value={contactPref}
+              onChange={setContactPref}
+              className={styles.prefGroup}
+              labelClassName={styles.prefLabel}
+              rowClassName={styles.prefRow}
+              chipClassName={styles.prefChip}
+            />
+          </div>
+        ) : email.trim() ? (
+          <p className={`${styles.reassure} ${styles.wide}`}>
+            No phone provided — {site.company_name || 'we'}&apos;ll follow up by email.
+          </p>
+        ) : (
+          <p className={`${styles.reassure} ${styles.wide}`}>
+            Free &amp; no obligation — we reply within about an hour.
+          </p>
+        )}
+        <small style={{ display: 'block', gridColumn: '1 / -1', fontSize: '0.78rem', opacity: 0.8, marginTop: '0.5rem', lineHeight: 1.4 }}>
+          By submitting, you agree to be contacted {contactPref === 'text' ? 'by text or email' : 'by phone, text, or email'} about your request. Message &amp; data rates may apply. See our <a href="/privacy" style={{ textDecoration: 'underline', color: 'inherit' }}>Privacy Policy</a>.
+        </small>
       </div>
 
       <HoneypotField />

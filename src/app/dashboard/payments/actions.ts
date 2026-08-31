@@ -155,7 +155,7 @@ export async function recordBatchInvoiceSettlementAction(
  */
 export async function sendPaymentReminderAction(formData: FormData): Promise<ActionState> {
   try {
-    await requireOfficeContext('messages.send');
+    const { accountId } = await requireOfficeContext('messages.send');
     const paymentId = String(formData.get('paymentId') || '').trim();
     const channel = String(formData.get('channel') || 'sms').trim();
 
@@ -165,7 +165,7 @@ export async function sendPaymentReminderAction(formData: FormData): Promise<Act
 
     if (channel === 'sms') {
       try {
-        await sendPaymentSmsEvent(paymentId, 'payment_requested');
+        await sendPaymentSmsEvent(paymentId, 'payment_requested', accountId);
       } catch (smsErr) {
         console.warn('SMS reminder failed:', smsErr);
         return { success: false, error: smsErr instanceof Error ? smsErr.message : 'Could not send SMS reminder.' };
@@ -206,7 +206,7 @@ export async function batchSendOverdueRemindersAction(_formData?: FormData): Pro
     for (const pay of pendingPayments) {
       if (pay.homeowner_phone) {
         try {
-          await sendPaymentSmsEvent(pay.id, 'payment_requested');
+          await sendPaymentSmsEvent(pay.id, 'payment_requested', accountId);
           sentCount++;
         } catch (smsErr) {
           console.warn(`Batch SMS failed for payment ${pay.id}:`, smsErr);
@@ -307,7 +307,7 @@ export async function createInstantPayLinkAction(formData: FormData): Promise<Ac
 
     if (sendSms && phone) {
       try {
-        await sendPaymentSmsEvent(payment.id, 'payment_requested');
+        await sendPaymentSmsEvent(payment.id, 'payment_requested', accountId);
       } catch (smsErr) {
         console.warn('Could not send initial SMS:', smsErr);
       }
@@ -511,7 +511,7 @@ export async function recordPromiseToPayAction(formData: FormData): Promise<Acti
  */
 export async function sendCustomPaymentReminderAction(formData: FormData): Promise<ActionState> {
   try {
-    await requireOfficeContext('messages.send');
+    const { accountId } = await requireOfficeContext('messages.send');
     const paymentId = String(formData.get('paymentId') || '').trim();
 
     if (!paymentId) {
@@ -519,7 +519,7 @@ export async function sendCustomPaymentReminderAction(formData: FormData): Promi
     }
 
     try {
-      await sendPaymentSmsEvent(paymentId, 'payment_requested');
+      await sendPaymentSmsEvent(paymentId, 'payment_requested', accountId);
     } catch (smsErr) {
       console.warn('Custom SMS reminder failed:', smsErr);
       return { success: false, error: smsErr instanceof Error ? smsErr.message : 'Could not dispatch SMS reminder.' };

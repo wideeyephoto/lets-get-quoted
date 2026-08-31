@@ -14,6 +14,7 @@ import { getOrCreateAiIntakeThread } from '@/lib/ai-intake-thread';
 import { trackQuoteFunnelStep } from '@/lib/analytics';
 import { getOrCaptureAttribution } from '@/lib/attribution';
 import { resolveMessageMatchHero, type MessageMatchResult } from '@/lib/ad-message-match';
+import ContactPreferenceControl, { type ContactPreferenceValue } from '@/components/ContactPreferenceControl';
 import IntroVideo from './IntroVideo';
 import styles from './themes.module.css';
 
@@ -331,6 +332,9 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
   const [estimate, setEstimate] = useState<EstimateRange | null>(null);
   const [timeline, setTimeline] = useState<'asap' | 'month' | 'researching' | null>(null);
   const [location, setLocation] = useState('');
+  // How the homeowner wants the follow-up: mandatory choice when phone is provided.
+  const [contactPref, setContactPref] = useState<ContactPreferenceValue | null>(null);
+  const contactIsPhone = smartIntakeActive || (!emailRequired && !contact.includes('@') && Boolean(contact.trim()));
   // Everything the submit will actually insist on. Drives the button's lit
   // state only — never a disabled attribute, so the real check still runs and
   // still says which field is wrong. In the preview it is always lit, because
@@ -338,12 +342,11 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
   const contactReady = demo || Boolean(
     name.trim() &&
     contact.trim() &&
+    (!contactIsPhone || contactPref !== null) &&
     (!askLocation || location.trim()) &&
     (!askTimeline || timeline) &&
     (!smartIntakeActive || wizardEmailField !== 'required' || classifyEmail(email.trim()).valid),
   );
-  // How the homeowner wants the follow-up: some people never answer calls.
-  const [contactPref, setContactPref] = useState<'any' | 'text'>('any');
   // Soft fit signals from the AI (out-of-area / excluded work) — shown as
   // notes and passed along as lead flags, never used to block submission.
   const [fit, setFit] = useState<{ inArea: boolean | null; excluded: boolean }>({ inArea: null, excluded: false });
@@ -669,6 +672,7 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
     setEstimate(null);
     setFit({ inArea: null, excluded: false });
     setTimeline(null);
+    setContactPref(null);
     setStatus(null);
     setVisualObservation(null);
     setPhotoQualityWarning(null);
@@ -704,6 +708,10 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
         setStatus({ tone: 'error', text: 'Enter a valid phone number so we can text or call you with your quote.' });
         return;
       }
+      if (!contactPref) {
+        setStatus({ tone: 'error', text: `Please choose how ${site.company_name || 'we'} may follow up about your request.` });
+        return;
+      }
       if (askLocation && !location.trim()) {
         setStatus({ tone: 'error', text: 'Add the town or city where the work is so we can confirm we serve your area.' });
         return;
@@ -734,6 +742,10 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
     const valid = isEmail ? classifyEmail(trimmedContact).valid : Boolean(normalizeUsPhone(trimmedContact));
     if (!valid) {
       setStatus({ tone: 'error', text: isEmail ? 'Enter a valid email address.' : 'Enter a valid phone number.' });
+      return;
+    }
+    if (!isEmail && !contactPref) {
+      setStatus({ tone: 'error', text: `Please choose how ${site.company_name || 'we'} may follow up about your request.` });
       return;
     }
 
@@ -817,12 +829,15 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
         }
         if (fit.excluded) data.set('excluded', 'true');
         data.set('wizard', '1');
-        data.set('contactPreference', contactPref);
         if (verify && verifyCode.trim()) {
           data.set('verifyToken', verify.token);
           data.set('verifyExpires', String(verify.expiresAt));
           data.set('verifyCode', verifyCode.trim());
         }
+      }
+
+      if (contactPref) {
+        data.set('contactPreference', contactPref);
       }
 
       data.delete('photos');
@@ -859,13 +874,16 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
         setStatus({
           tone: 'success',
           text: details && !details.classicFallback
-            ? `Thanks! Your request is in — one of our experts will ${contactPref === 'text' ? 'text' : 'text or call'} you ${avgReplyMs ? `typically within ${formatReplyTime(avgReplyMs)}` : 'as soon as possible'} to confirm the details and next steps.`
-            : `Thanks! Your request is in — ${avgReplyMs ? `we typically reply within ${formatReplyTime(avgReplyMs)}` : 'we\u2019ll follow up as soon as possible'} to confirm the details and next steps.`,
+            ? `Thanks! Your request is in — one of our experts will ${contactPref === 'text' ? 'text' : 'call or text'} you ${avgReplyMs ? `typically within ${formatReplyTime(avgReplyMs)}` : 'as soon as possible'} to confirm the details and next steps.`
+            : contactPref === 'text'
+              ? `Thanks! Your request is in — one of our experts will text you ${avgReplyMs ? `typically within ${formatReplyTime(avgReplyMs)}` : 'as soon as possible'} to confirm the details and next steps.`
+              : `Thanks! Your request is in — ${avgReplyMs ? `we typically reply within ${formatReplyTime(avgReplyMs)}` : 'we\u2019ll follow up as soon as possible'} to confirm the details and next steps.`,
         });
         formRef.current?.reset();
         setName('');
         setContact('');
         setEmail('');
+        setContactPref(null);
         startedAt.current = Date.now();
       }
       setSelectedPhotos([]);
@@ -1103,6 +1121,12 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
             </span>
             {!isClassifying && <span className={styles.heroFormBtnArrow} aria-hidden="true">→</span>}
           </button>
+
+          {smartIntakeActive && (
+            <small style={{ display: 'block', marginTop: '0.45rem', fontSize: '0.73rem', opacity: 0.8, textAlign: 'center', lineHeight: 1.4 }}>
+              ⚡ Project details and photos are analyzed with AI assistance to generate estimate ranges. See our <a href="/privacy" style={{ textDecoration: 'underline', color: 'inherit' }}>Privacy Policy</a>.
+            </small>
+          )}
 
           {trustCues.length > 0 && (
             <div className={styles.heroFormTrustStrip}>
@@ -1350,27 +1374,21 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
               )}
             </div>
           )}
-          {smartIntakeActive && (
-            <div className={styles.heroFormChoice} role="group" aria-label="Best way to reach you">
-              <span className={styles.heroFormChoiceLabel}>Best way to reach you?</span>
-              <div className={styles.heroFormChipRow}>
-                {([
-                  { key: 'any', label: 'Call or text' },
-                  { key: 'text', label: 'Text only' },
-                ] as const).map((option) => (
-                  <button
-                    type="button"
-                    key={option.key}
-                    className={styles.heroFormChip}
-                    data-selected={contactPref === option.key}
-                    aria-pressed={contactPref === option.key}
-                    onClick={() => setContactPref(option.key)}
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
-            </div>
+          {contactIsPhone && (
+            <ContactPreferenceControl
+              companyName={site.company_name}
+              value={contactPref}
+              onChange={setContactPref}
+              className={styles.heroFormChoice}
+              labelClassName={styles.heroFormChoiceLabel}
+              rowClassName={styles.heroFormChipRow}
+              chipClassName={styles.heroFormChip}
+            />
+          )}
+          {!smartIntakeActive && !contactIsPhone && Boolean(contact.trim()) && (
+            <p className={styles.heroFormNote}>
+              We&apos;ll email you to follow up on your request.
+            </p>
           )}
           {smartIntakeActive && wizardEmailField !== 'off' && (
             <>
@@ -1405,9 +1423,9 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
               )}
             </>
           )}
-          <small className={styles.heroFormPrivacy}><span aria-hidden="true">🔒</span> Your request goes only to {site.company_name} — never sold or shared.</small>
+          <small className={styles.heroFormPrivacy}><span aria-hidden="true">🔒</span> Your request goes directly to {site.company_name} — never sold to lead brokers or competitors.</small>
           <div className={styles.heroFormPhotoRow}>
-            <p className={styles.heroFormPhotoPrompt}><span aria-hidden="true">📷</span> Add a job photo for a more accurate follow-up (optional).</p>
+            <p className={styles.heroFormPhotoPrompt}><span aria-hidden="true">📷</span> Add a job photo (e.g. equipment, work area). Please do not include IDs or financial documents.</p>
             <input
               ref={photoInputRef}
               className={styles.heroFormPhotoInput}
@@ -1441,7 +1459,7 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
             return notes.length ? <p className={styles.heroFormFitNote}>Heads up: {notes.join('; ')} — send your request and we&apos;ll confirm when we reach out.</p> : null;
           })()}
           <small className={styles.heroFormConsent}>
-            By submitting, you agree to be contacted {smartIntakeActive && contactPref === 'text' ? 'by text or email' : 'by phone, text, or email'} about your request. Message &amp; data rates may apply.{siteContent.legal.privacyEnabled && <> See our <a href="/privacy">Privacy Policy</a>.</>}
+            By submitting, you agree to be contacted {contactPref === 'text' ? 'by text or email' : 'by phone, text, or email'} about your request. Message &amp; data rates may apply. See our <a href="/privacy">Privacy Policy</a>.
           </small>
           {/* Lights up once everything required is in. The button is never
               disabled — a dead button explains nothing and the real validation
@@ -1496,7 +1514,7 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
           )}
           <ol className={styles.heroFormSteps}>
             <li><strong>Request sent</strong><span>{demo ? 'What a real customer sees here — yours wasn’t sent.' : 'We got your details.'}</span></li>
-            <li><strong>We {contactPref === 'text' ? 'text' : 'reach'} you</strong><span>{responseTiming}</span></li>
+            <li><strong>We {contactPref === 'text' ? 'text' : 'call or text'} you</strong><span>{responseTiming}</span></li>
             <li><strong>Book your job</strong><span>Or a free in-person estimate — your call.</span></li>
           </ol>
           {site.subdomain && (

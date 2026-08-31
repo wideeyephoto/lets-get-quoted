@@ -609,9 +609,13 @@ export async function handleAdBudgetWebhookEvent(
       return false;
     }
 
+    const content = (matchingSite.content as Record<string, unknown>) || {};
+    const adCampaign = (content.adCampaign as Partial<AdBudgetWalletState>) || {};
+
     if (event.type === 'invoice.paid') {
+      const shouldActivate = adCampaign.provisioningStatus === 'active' && adCampaign.status !== 'paused' && adCampaign.status !== 'inactive';
       await updateAccountAdBudgetState(admin, matchingSite.account_id, {
-        status: 'active',
+        ...(shouldActivate ? { status: 'active' } : {}),
         lastPaymentAt: new Date().toISOString(),
         lastPaymentError: null,
       });
@@ -764,6 +768,9 @@ export async function executeWalletRefillCharge(params: {
       return { success: false, refilled: false, message: 'No saved payment method found.' };
     }
 
+    const dateHourBucket = new Date().toISOString().slice(0, 13);
+    const idempotencyKey = `ad_refill_${accountId}_${dateHourBucket}_${totalChargeCents}`;
+
     const paymentIntent = await stripe.paymentIntents.create({
       amount: totalChargeCents,
       currency: 'usd',
@@ -779,16 +786,16 @@ export async function executeWalletRefillCharge(params: {
         fee_cents: String(feeCents),
         trigger_reason: reason || 'balance_threshold_drop',
       },
+    }, {
+      idempotencyKey,
     });
 
     if (paymentIntent.status === 'succeeded') {
       const newBalance = balance + actualRefillAdSpendCents;
-      const newSpentThisMonth = spentThisMonth + actualRefillAdSpendCents;
 
       await updateAccountAdBudgetState(admin, accountId, {
         status: 'active',
         walletBalanceCents: newBalance,
-        spendThisMonthCents: newSpentThisMonth,
         lastPaymentAt: new Date().toISOString(),
         lastPaymentError: null,
       });
@@ -944,23 +951,23 @@ export async function recordAdSpendUsage(params: {
   }
 
   const currentBalance = adState.walletBalanceCents ?? 25000;
-  const newBalance = Math.max(0, currentBalance - spendCents);
-  const newSpentThisMonth = (adState.spendThisMonthCents ?? 0) + spendCents;
-  const newTotalSpend = (adState.totalSpendAllTimeCents ?? 0) + spendCents;
-
   const currentHistory = adState.dailySpendHistory || [];
   const existingEntryIndex = currentHistory.findIndex((e) => e.date === date);
 
+  let deltaSpend = spendCents;
   let updatedHistory: AdSpendDailyEntry[];
+
   if (existingEntryIndex >= 0) {
     const existing = currentHistory[existingEntryIndex];
+    deltaSpend = Math.max(0, spendCents - (existing.spendCents || 0));
     updatedHistory = [...currentHistory];
     updatedHistory[existingEntryIndex] = {
       ...existing,
-      spendCents: existing.spendCents + spendCents,
-      clicks: existing.clicks + clicks,
-      impressions: existing.impressions + impressions,
-      conversions: existing.conversions + conversions,
+      spendCents: Math.max(existing.spendCents, spendCents),
+      clicks: Math.max(existing.clicks, clicks),
+      impressions: Math.max(existing.impressions, impressions),
+      conversions: Math.max(existing.conversions, conversions),
+      source,
       recordedAt: new Date().toISOString(),
     };
   } else {
@@ -975,6 +982,14 @@ export async function recordAdSpendUsage(params: {
     };
     updatedHistory = [newEntry, ...currentHistory].slice(0, 90); // Retain last 90 days
   }
+
+  const newBalance = Math.max(0, currentBalance - deltaSpend);
+  const currentMonth = date.slice(0, 7);
+  const lastSyncMonth = (adState.lastSpendSyncAt || '').slice(0, 7);
+  const isNewMonth = Boolean(lastSyncMonth && lastSyncMonth !== currentMonth);
+  const baseMonthlySpend = isNewMonth ? 0 : (adState.spendThisMonthCents ?? 0);
+  const newSpentThisMonth = baseMonthlySpend + deltaSpend;
+  const newTotalSpend = (adState.totalSpendAllTimeCents ?? 0) + deltaSpend;
 
   await updateAccountAdBudgetState(admin, accountId, {
     walletBalanceCents: newBalance,
@@ -1004,8 +1019,7 @@ export async function recordAdSpendUsage(params: {
 }
 
 /**
- * Synchronizes ad spend usage for an account by querying live Google Ads metrics
- * or calculating scheduled daily pacing.
+ * Synchronizes ad spend usage for an account by querying live Google Ads metrics.
  */
 export async function syncAccountAdSpendUsage(
   admin: SupabaseClient,
@@ -1026,9 +1040,8 @@ export async function syncAccountAdSpendUsage(
     return { success: true, spendRecordedCents: 0, message: 'Campaign is inactive.' };
   }
 
-  const { fetchGoogleAdsCampaignDailySpend } = await import('@/lib/google-ads-api');
-
   if (adState.googleCampaignId) {
+    const { fetchGoogleAdsCampaignDailySpend } = await import('@/lib/google-ads-api');
     const googleRes = await fetchGoogleAdsCampaignDailySpend(adState.googleCampaignId);
     if (googleRes.success && googleRes.data.length > 0) {
       const todayStr = new Date().toISOString().slice(0, 10);
@@ -1047,25 +1060,10 @@ export async function syncAccountAdSpendUsage(
         return { success: true, spendRecordedCents: latest.spendCents, message: res.message };
       }
     }
+    return { success: true, spendRecordedCents: 0, message: 'No new ad spend reported by Google Ads.' };
   }
 
-  // Fallback to scheduled pacing model
-  const dailySpendRateCents = Math.round((adState.monthlyBudgetCents || 60000) / 30.4);
-  const estimatedClicks = Math.max(1, Math.round((dailySpendRateCents / 100) / 8.5));
-  const estimatedImpressions = Math.max(20, Math.round(estimatedClicks * 21));
-
-  const res = await recordAdSpendUsage({
-    admin,
-    accountId,
-    spendCents: dailySpendRateCents,
-    clicks: estimatedClicks,
-    impressions: estimatedImpressions,
-    conversions: Math.max(0, Math.round(estimatedClicks * 0.14)),
-    date: new Date().toISOString().slice(0, 10),
-    source: 'scheduled_pacing',
-  });
-
-  return { success: true, spendRecordedCents: dailySpendRateCents, message: res.message };
+  return { success: true, spendRecordedCents: 0, message: 'No configured Google Ads campaign to sync.' };
 }
 
 /**
@@ -1227,24 +1225,32 @@ export async function cancelAdCampaign(
       const { cancelAdCampaignSubscription } = await import('@/lib/billing/subscription-cancellation');
       await cancelAdCampaignSubscription(adState.stripeSubscriptionId, cancelImmediately);
     } catch (err) {
-      console.warn('Could not update Stripe subscription cancellation:', err);
+      console.error('Could not update Stripe subscription cancellation:', err);
+      return {
+        success: false,
+        message: `Failed to cancel subscription with billing provider: ${err instanceof Error ? err.message : 'Stripe error'}`,
+      };
     }
   }
 
   if (adState.googleCampaignId) {
-    const { updateGoogleAdsCampaignStatus } = await import('@/lib/google-ads-api');
-    await updateGoogleAdsCampaignStatus(adState.googleCampaignId, 'PAUSED');
+    try {
+      const { updateGoogleAdsCampaignStatus } = await import('@/lib/google-ads-api');
+      await updateGoogleAdsCampaignStatus(adState.googleCampaignId, 'PAUSED');
+    } catch (err) {
+      console.warn('Could not pause Google Ads campaign:', err);
+    }
   }
 
-  if (cancelImmediately) {
+  if (cancelImmediately || !adState.stripeSubscriptionId) {
     await updateAccountAdBudgetState(admin, accountId, {
       status: 'inactive',
       stripeSubscriptionId: null,
       cancelAtPeriodEnd: false,
       provisioningStatus: 'unconfigured',
-      provisioningMessage: 'Subscription cancelled.',
+      provisioningMessage: 'Campaign cancelled.',
     });
-    return { success: true, message: 'Campaign subscription cancelled immediately.' };
+    return { success: true, message: 'Campaign cancelled successfully.' };
   } else {
     await updateAccountAdBudgetState(admin, accountId, {
       cancelAtPeriodEnd: true,

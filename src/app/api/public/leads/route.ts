@@ -7,7 +7,6 @@ import { getAccountOwnerEmail, sendLeadNotificationEmail } from '@/lib/email';
 import { classifyEmail } from '@/lib/email-quality';
 import { createLead, getLeadTriage, LEAD_PRUNE_FLAGS, type Lead, type LeadTriage } from '@/lib/leads';
 import { parseAttribution, sanitizeAttribution } from '@/lib/attribution';
-import { uploadOfflineConversion } from '@/lib/google-ads-api';
 import { dispatchSpeedToLeadSms } from '@/lib/ad-speed-to-lead';
 import { deleteLeadPhotos, uploadLeadPhoto, createLeadPhotoUrls } from '@/lib/lead-photo-storage';
 import { analyzeLeadPhotos } from '@/lib/lead-photo-ai';
@@ -15,7 +14,7 @@ import { isLeadVerificationValid } from '@/lib/lead-verification';
 import { loadLeadPhoneVerificationReadiness } from '@/lib/lead-phone-verification-readiness';
 import { normalizeUsPhone } from '@/lib/phone';
 import { getSiteContent, isFullyBookedActive } from '@/lib/site-content';
-import { sendIntakeConfirmationSms, sendOwnerHighValueLeadSms } from '@/lib/sms';
+import { sendIntakeConfirmationSms, sendOwnerHighValueLeadSms, ensureSmsConsentBaseline } from '@/lib/sms';
 import { checkRateLimitStrict, clientIpFrom } from '@/lib/rate-limit';
 import { serviceAreaVerdict } from '@/lib/service-area-match';
 import { resolveJurisdiction } from '@/lib/location-context/jurisdiction-resolver';
@@ -178,6 +177,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Add a valid phone number or email so the contractor can follow up.' }, { status: 400 });
   }
 
+  const rawContactPref = text(data, 'contactPreference', 20);
+  if (phone) {
+    if (!rawContactPref || !['any', 'call_or_text', 'text', 'text_only'].includes(rawContactPref)) {
+      return NextResponse.json({ error: 'Please choose how we may follow up about your request.' }, { status: 400 });
+    }
+  }
+
   const normalizedPhone = phone ? normalizeUsPhone(phone) : null;
 
   // Blocked contacts are silently dropped — the visitor sees success, the
@@ -296,6 +302,8 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  const contactPreference = (rawContactPref === 'text' || rawContactPref === 'text_only') ? 'text_only' : 'any';
+
   const triage: LeadTriage = {
     score: hasPruneFlag ? 'low' : isHighValue || (normalizedPhone && estimate) ? 'hot' : 'warm',
     flags,
@@ -303,7 +311,7 @@ export async function POST(request: NextRequest) {
     ...(location ? { location } : {}),
     ...(permitTriage ? { permit: permitTriage } : {}),
     estimate,
-    contactPreference: text(data, 'contactPreference', 10) === 'text' ? 'text_only' : 'any',
+    contactPreference,
   };
 
   // Repeat submitter with an open lead? Merge into it instead of stacking a
@@ -325,8 +333,13 @@ export async function POST(request: NextRequest) {
       const stamp = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
       const mergedMessage = `${duplicate.message || ''}\n\n— Repeat request (${stamp}): ${message || '(no new details)'}`.trim().slice(0, 6000);
       const existingTriage = getLeadTriage({ triage: duplicate.triage as LeadTriage | null });
-      // A repeat request signals intent: unsnooze the lead so it resurfaces.
-      const mergedTriage = { ...existingTriage, flags: [...new Set([...existingTriage.flags, ...flags, 'repeat'])], snoozedUntil: null };
+      // A repeat request signals intent: unsnooze the lead so it resurfaces, and update to their newest contact preference.
+      const mergedTriage: LeadTriage = {
+        ...existingTriage,
+        contactPreference: triage.contactPreference,
+        flags: [...new Set([...existingTriage.flags, ...flags, 'repeat'])],
+        snoozedUntil: null,
+      };
       await admin
         .from('leads')
         .update({
@@ -391,6 +404,21 @@ export async function POST(request: NextRequest) {
       triage.attribution = attribution;
     }
 
+    triage.consent = {
+      channel: text(data, 'contactPreference', 10) === 'text' ? 'text_email' : 'phone_text_email',
+      disclosureVersion: 'intake_v1_2026',
+      consentedAt: new Date().toISOString(),
+      sourcePage: request.headers.get('referer') || undefined,
+    };
+
+    if (normalizedPhone) {
+      try {
+        await ensureSmsConsentBaseline(site.account_id, normalizedPhone, 'portal_link_request');
+      } catch (consentErr) {
+        console.warn('SMS baseline consent registration skipped:', consentErr);
+      }
+    }
+
     const lead = await createLead(admin, site.account_id, {
       name,
       phone,
@@ -402,25 +430,6 @@ export async function POST(request: NextRequest) {
       sourcePage: request.headers.get('referer'),
       triage,
     });
-
-    if ((attribution?.clickId && attribution.clickIdType === 'gclid') || email || phone) {
-      const nameParts = name.trim().split(/\s+/);
-      const firstName = nameParts[0] || '';
-      const lastName = nameParts.slice(1).join(' ') || '';
-
-      uploadOfflineConversion({
-        gclid: attribution?.clickIdType === 'gclid' ? attribution.clickId : undefined,
-        conversionActionName: 'Lead Submitted',
-        conversionValueDollars: estimate?.max ? Math.round(estimate.max * 0.05) : 50,
-        currencyCode: 'USD',
-        orderId: lead.id,
-        email: email || undefined,
-        phone: phone || undefined,
-        firstName: firstName || undefined,
-        lastName: lastName || undefined,
-        postalCode: location.match(/\b\d{5}\b/)?.[0] || undefined,
-      }).catch((err) => console.warn('Offline conversion upload skipped:', err));
-    }
 
     const isAdLead = Boolean(phone && (attribution?.clickId || attribution?.medium === 'cpc'));
     if (isAdLead) {

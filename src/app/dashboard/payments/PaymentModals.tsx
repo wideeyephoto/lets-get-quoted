@@ -1116,16 +1116,20 @@ export default function PaymentModals({
             e.preventDefault();
             setError(null);
             setLoading(true);
-            setTimeout(() => {
-              setLoading(false);
-              onSuccess('Card charged successfully via Virtual Terminal.');
-              onClose();
-            }, 1000);
+            const formData = new FormData(e.currentTarget);
+            const res = await createInstantPayLinkAction(formData);
+            setLoading(false);
+            if (!res.success) {
+              setError(res.error || 'Failed to create payment link.');
+              return;
+            }
+            onSuccess(`Payment request created: ${res.data?.payUrl || 'Ready for client'}`);
+            onClose();
           }}
           style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}
         >
           <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-muted)' }}>
-            Charge a customer&apos;s authorized card on file for approved change orders, additional materials, or remaining balances.
+            Create a secure, encrypted payment link or invoice payment request for approved change orders or balances.
           </p>
 
           {error && (
@@ -3499,28 +3503,21 @@ export default function PaymentModals({
                   justifyContent: 'center',
                   fontSize: '2.5rem',
                   boxShadow: '0 0 25px rgba(59, 130, 246, 0.4)',
-                  animation: 'pulse 1.5s infinite',
                 }}
               >
                 📲
               </div>
 
-              <div>
-                <strong style={{ fontSize: '1.2rem', display: 'block' }}>Hold Card or Phone to Device</strong>
+              <div style={{ textAlign: 'center' }}>
+                <strong style={{ fontSize: '1.2rem', display: 'block' }}>Stripe Terminal Hardware Required</strong>
                 <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                  Ready to collect ${Number.parseFloat(terminalAmount || '0').toFixed(2)}
+                  In-person contactless card taps require a physical Stripe Reader (M2/WisePOS) or the Let&apos;s Get Quoted native mobile app with NFC Tap to Pay enabled.
                 </span>
               </div>
 
-              {/* Tap Simulator Trigger */}
-              <button
-                type="button"
-                className="btn primary"
-                style={{ background: '#059669', borderColor: '#059669', padding: '0.65rem 1.25rem', fontSize: '0.9rem' }}
-                onClick={() => setTerminalStep('approved')}
-              >
-                ✨ Simulate Contactless Card Tap
-              </button>
+              <div style={{ background: 'var(--panel-subtle, rgba(0,0,0,0.02))', padding: '0.85rem', borderRadius: '8px', border: '1px solid var(--border-subtle, #e2e8f0)', fontSize: '0.82rem', color: 'var(--text-muted)', width: '100%' }}>
+                💡 <strong>Alternative:</strong> Use <em>Instant Pay Link</em> to text or email a checkout link directly to your customer for immediate Apple Pay / credit card settlement on their phone.
+              </div>
 
               <button
                 type="button"
@@ -3528,7 +3525,7 @@ export default function PaymentModals({
                 style={{ fontSize: '0.8rem' }}
                 onClick={() => setTerminalStep('keypad')}
               >
-                Cancel / Edit Amount
+                Back to Keypad
               </button>
             </div>
           )}

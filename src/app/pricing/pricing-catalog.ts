@@ -68,7 +68,7 @@ export const PLANS: readonly PricingPlan[] = [
     voiceConcurrentCalls: BILLING_PLANS.flex.voice.concurrentCalls,
     features: [
       'Unlimited core records and standard quote forms',
-      '2 office users + 2 crew users',
+      '1 office user + 2 crew users',
       '1 custom-domain connection',
       '2-way business texting (requires carrier registration & number)',
       'QuickBooks Online connection included',
@@ -177,7 +177,7 @@ export const PLANS: readonly PricingPlan[] = [
   },
 ] as const;
 
-export const VOICE_PURCHASABLE = true;
+export const VOICE_PURCHASABLE = false;
 
 export const VOICE_PLANNED_PRICE_LABEL = 'Launch pricing from $55/month';
 

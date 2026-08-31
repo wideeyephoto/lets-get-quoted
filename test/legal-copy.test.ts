@@ -11,11 +11,14 @@ describe('generatePrivacyPolicy', () => {
     expect(doc).toContain('Stumps n Humps');
     expect(doc).toContain('Metro Detroit');
   });
-  it('discloses the platform and required disclosures (SMS, payments, rights)', () => {
+  it('discloses the platform and required disclosures (SMS, payments, rights, AI, email)', () => {
     expect(doc).toContain("Let's Get Quoted");
     expect(doc).toMatch(/text message|STOP/i);
     expect(doc).toMatch(/Stripe|payment/i);
     expect(doc).toMatch(/access, correct, or delete/i);
+    expect(doc).toMatch(/OpenAI|AI assistance/i);
+    expect(doc).toMatch(/Resend|email/i);
+    expect(doc).toMatch(/competing contractors|lead brokers/i);
   });
   it('includes the phone in the contact section when provided, omits the effective date when blank', () => {
     expect(doc).toContain('(313) 555-0142');
