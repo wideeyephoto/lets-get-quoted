@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
 import { getCurrentMembership } from '@/lib/auth';
 import type { AnnotationShape } from '@/lib/photo-annotation-engine';
+import { fetchProxyImage } from '@/lib/photo-proxy-guard';
 import { GoogleGenAI, Type } from '@google/genai';
 
 export const runtime = 'nodejs';
@@ -17,42 +18,6 @@ async function requireAuthenticatedMembership() {
   }
 
   return { accountId: membership.accountId };
-}
-
-function isAllowedPhotoHost(targetUrl: URL): boolean {
-  const hostname = targetUrl.hostname.toLowerCase();
-
-  // Reject loopback, private IPs, and cloud metadata
-  if (
-    hostname === 'localhost' ||
-    hostname === '127.0.0.1' ||
-    hostname === '0.0.0.0' ||
-    hostname === '::1' ||
-    hostname === '169.254.169.254' ||
-    hostname === 'metadata.google.internal' ||
-    hostname.endsWith('.internal') ||
-    hostname.endsWith('.local') ||
-    /^10\./.test(hostname) ||
-    /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(hostname) ||
-    /^192\.168\./.test(hostname)
-  ) {
-    return false;
-  }
-
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  if (supabaseUrl) {
-    try {
-      if (hostname === new URL(supabaseUrl).hostname.toLowerCase()) return true;
-    } catch {
-      // ignore parse error
-    }
-  }
-
-  if (hostname.endsWith('.supabase.co') || hostname.endsWith('.supabase.in') || hostname.endsWith('.letsgetquoted.com')) {
-    return true;
-  }
-
-  return false;
 }
 
 export async function POST(req: NextRequest) {
@@ -90,31 +55,23 @@ export async function POST(req: NextRequest) {
         imageBuffer = Buffer.from(match[2], 'base64');
       }
     } else {
-      const parsedUrl = new URL(photoUrl);
-      if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
-        return NextResponse.json({ error: 'Invalid photo URL protocol' }, { status: 400 });
+      let parsedUrl: URL;
+      try {
+        parsedUrl = new URL(photoUrl);
+      } catch {
+        return NextResponse.json({ error: 'Invalid photo URL format' }, { status: 400 });
       }
 
-      if (!isAllowedPhotoHost(parsedUrl)) {
-        return NextResponse.json({ error: 'Host is not permitted for photo analysis' }, { status: 403 });
+      const proxyResult = await fetchProxyImage(parsedUrl);
+      if (!proxyResult.ok || !proxyResult.buffer) {
+        return NextResponse.json(
+          { error: proxyResult.error || 'Unable to retrieve photo for analysis' },
+          { status: proxyResult.status || 422 }
+        );
       }
 
-      const imgRes = await fetch(photoUrl, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        },
-      });
-
-      if (!imgRes.ok) {
-        return NextResponse.json({ error: 'Unable to retrieve photo for analysis' }, { status: 422 });
-      }
-
-      const ct = imgRes.headers.get('content-type') || '';
-      if (ct.startsWith('image/')) {
-        mimeType = ct.split(';')[0];
-      }
-      const arrayBuf = await imgRes.arrayBuffer();
-      imageBuffer = Buffer.from(arrayBuf);
+      mimeType = proxyResult.contentType || 'image/jpeg';
+      imageBuffer = Buffer.from(proxyResult.buffer);
     }
 
     if (!imageBuffer || imageBuffer.length === 0) {

@@ -3,7 +3,7 @@ import {
   getConfiguredAllowedHosts,
   isAllowedProxyUrl,
   fetchProxyImage,
-} from '@/app/api/lead-photos/proxy/route';
+} from '@/lib/photo-proxy-guard';
 
 describe('Lead Photo Proxy SSRF Hardening & Redirect Validation', () => {
   const originalSupabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
