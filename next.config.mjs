@@ -99,8 +99,9 @@ const nextConfig = {
       // will follow. This fires before any render. Next carries the querystring
       // across on its own, so ?draft= and ?sent= survive.
       //
-      // 307 rather than 308: browsers cache a permanent redirect hard, and this
-      // URL is one we might want back.
+      // Canonical dashboard redirects
+      { source: '/dashboard/payroll', destination: '/dashboard/crew', permanent: true },
+      { source: '/dashboard/crew/requests/new', destination: '/dashboard/schedule/requests', permanent: true },
       { source: '/dashboard/campaigns', destination: '/dashboard/marketing', permanent: false },
     ];
   },

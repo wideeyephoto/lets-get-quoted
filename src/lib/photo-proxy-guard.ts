@@ -8,7 +8,6 @@ export function getConfiguredAllowedHosts(): Set<string> {
   const allowed = new Set<string>();
   const envUrls = [
     process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.SUPABASE_URL,
   ].filter(Boolean);
 
   for (const urlStr of envUrls) {

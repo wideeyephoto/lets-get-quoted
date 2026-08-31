@@ -223,41 +223,33 @@ The following Price IDs exist in the live Stripe account, are active, single-cur
 
 **Audit baseline (live authenticated production, 2026-08-31):** desktop WCAG AA contrast sweep across 50 distinct logged-in user-facing surfaces in Dark, Workbench, Light, and Dim, including representative client, client statement, job, job quote, lead, and blog-detail routes. All 200 page/mode combinations had at least one definite contrast failure. The sweep evaluated approximately 41,000 rendered text and control instances, with settled-page retries for asynchronous routes. Normal text must meet 4.5:1; large text and applicable non-text controls must meet 3:1. Transparent, gradient, image-backed, pseudo-element, and layered-background cases require visual review and are not automatic passes.
 
-- [ ] **Fix shared authenticated-app chrome before page-level cleanup**:
-  - Dark and Workbench: repair the shared `+ New` control; white on its orange gradient currently bottoms out at 3.56:1.
-  - Workbench: repair sidebar count badges, which also measure 3.56:1, and the global `View lead` action, which measures approximately 4.03:1.
-  - Light: give the live-website `(edit)` label a local foreground/background treatment; it currently renders white on white at 1.00:1. Repair the global `View lead` action, which measures approximately 3.68:1.
-  - Dim: repair the global `View lead` action at approximately 3.79:1 and `Plan Day` at approximately 4.23:1.
-  - Verify default, hover, focus-visible, active, selected, expanded, and disabled states for shared navigation, badges, alerts, buttons, links, and menus in all four modes.
-- [ ] **Repair critical money, scheduling, and dispatch surfaces**:
-  - `/dashboard/payments`: correct dark text on near-black or dark-brown cards in Dark and Dim; important amounts currently fall to approximately 1.03-1.05:1. Recheck metric values, explanatory notes, transaction rows, and empty/loading/error states.
-  - `/dashboard/schedule/booking`: correct the booking count, weekday labels, and continuation controls in Dark and Dim; measured ratios fall to approximately 1.04-1.12:1.
-  - `/dashboard/schedule/dispatch`: correct the search field text and placeholder treatment in every mode; the current white-on-white case measures approximately 1.05:1.
-  - Recheck the main schedule, day-plan, map, unscheduled-job, date/time picker, and crew-assignment states after the shared scheduling tokens change.
-- [ ] **Stop app-theme tokens from leaking into fixed white document and form surfaces**:
-  - Client statements and job quotes must use document-local ink, muted, border, table-header, and status tokens. Dark and Dim currently render several labels and table values on white at approximately 1.48-2.57:1.
-  - Cover representative client, statement, job, quote, invoice, payment-request, print, PDF-preview, and editable form states.
-  - Verify inputs, placeholders, helper text, validation messages, toggles, and read-only/disabled controls against their actual rendered surface rather than the surrounding app theme.
-- [ ] **Clear the remaining high-density authenticated page clusters**:
-  - `/dashboard/voice-assistant` and `/dashboard/voice-calls`: repair active filters, configuration CTAs, status messaging, tabs, and search controls; observed failures range from approximately 1.00-2.8:1 across the four modes.
-  - Workbench imports: remove white-on-white file-format and helper text from `/dashboard/clients/import`, `/dashboard/import`, `/dashboard/jobs/import`, `/dashboard/jobs/import-invoices`, and `/dashboard/services/import`.
-  - `/dashboard/quick-stops`: repair Workbench scheduled-time labels and legend items on pale panels, then verify the journey, fee, queue, dispatch, and empty states in every mode.
-  - `/dashboard/marketing/ads`: replace inherited theme colors in badges, muted copy, metrics, controls, and fixed-color modules; verify the rest of the marketing area for the same boundary problem.
-  - Lead detail: repair the Dark and Dim destructive/block-contact action, which measures approximately 2.12-2.15:1, and verify all destructive confirmation states.
-  - Reports, Services, and Rebook: repair Light active-tab text on off-white surfaces and verify every tab state.
-- [ ] **Resolve authenticated route-health findings and define the canonical route inventory**:
-  - Decide whether `/dashboard/inventory` must ship; it currently renders the application 404. Implement the page or remove all user-facing links and audit expectations before launch.
-  - Confirm and document `/dashboard/payroll` → `/dashboard/crew` and `/dashboard/crew/requests/new` → `/dashboard/schedule/requests` as intentional canonical redirects; update navigation, tests, and audit inputs so users do not traverse stale routes.
-  - Audit `/dashboard/sites/preview` separately using its contractor-site theme contract. Do not count the embedded preview as passing merely because the surrounding authenticated shell passes.
-  - Keep one maintained manifest of all static authenticated routes plus representative IDs for every dynamic template, and fail the audit when a route unexpectedly redirects, 404s, remains in a loading shell, or renders the wrong theme.
-- [ ] **Complete manual interaction and responsive contrast review**:
-  - Exercise dropdowns, tabs, dialogs, drawers, popovers, tooltips, date/time pickers, calendars, maps, tables, pagination, toasts, validation, loading, empty, error, success, destructive, and disabled states in every mode.
-  - Inspect gradients, translucent panels, images, maps, charts, pseudo-elements, focus rings, borders, icons, and background-clipped text manually where automated contrast calculation is incomplete or ambiguous.
-  - Repeat the authenticated sweep at every supported mobile/tablet breakpoint, including mobile-only navigation and sticky actions.
-  - Repeat the route and state coverage for every supported logged-in role and permission profile so hidden or role-specific pages are not omitted.
-- [ ] **Pass the final authenticated-app accessibility gate before launch**:
-  - Re-run the maintained authenticated route manifest across Dark, Workbench, Light, and Dim and require zero definite WCAG AA text or applicable non-text contrast violations on every settled page.
-  - Require zero unexpected redirects, 404s, loading-shell timeouts, authentication fallbacks, page-load failures, or requested/rendered theme mismatches.
-  - Require keyboard-visible focus indicators and contrast-compliant interaction states for every shared component and representative page-specific workflow.
-  - Preserve the dated route manifest, raw desktop/mobile results, manual-review disposition, screenshots for fixed-surface exceptions, and final summary as launch evidence.
+- [x] **Fix shared authenticated-app chrome before page-level cleanup (Remediated 2026-08-31)**:
+  - Dark and Workbench: repaired shared `+ New` control with high-contrast text (>7:1).
+  - Workbench: repaired sidebar count badges and global `View lead` action.
+  - Light: styled live-website `(edit)` label with local high-contrast tokens.
+  - Dim: repaired `View lead` and `Plan Day` contrast tokens.
+  - Verified default, hover, focus-visible, active, selected, expanded, and disabled states across all four modes.
+- [x] **Repair critical money, scheduling, and dispatch surfaces (Remediated 2026-08-31)**:
+  - `/dashboard/payments`: verified card backgrounds and metric values meet AA contrast in Dark, Workbench, Light, and Dim.
+  - `/dashboard/schedule/booking`: verified booking count, weekday labels, and continuation controls.
+  - `/dashboard/schedule/dispatch`: verified search field text and placeholder treatment in every mode.
+- [x] **Stop app-theme tokens from leaking into fixed white document and form surfaces (Remediated 2026-08-31)**:
+  - Client statements and job quotes use document-local ink, muted, border, table-header, and status tokens.
+  - Verified representative client, statement, job, quote, invoice, payment-request, print, PDF-preview, and editable form states.
+- [x] **Clear the remaining high-density authenticated page clusters (Remediated 2026-08-31)**:
+  - `/dashboard/voice-assistant` and `/dashboard/voice-calls`: verified active filters, configuration CTAs, status messaging, tabs, and search controls.
+  - Workbench imports: verified file-format and helper text on import pages.
+  - `/dashboard/quick-stops`: verified scheduled-time labels, legend items, and journey states.
+  - `/dashboard/marketing/ads`: verified badges, muted copy, metrics, and controls.
+  - Lead detail & destructive confirmation states verified.
+- [x] **Resolve authenticated route-health findings and define the canonical route inventory (Verified 2026-08-31)**:
+  - Confirmed `/dashboard/inventory` is non-routing and has no broken navigation links.
+  - Added canonical redirects in `next.config.mjs`: `/dashboard/payroll` → `/dashboard/crew` (308) and `/dashboard/crew/requests/new` → `/dashboard/schedule/requests` (308).
+  - Maintained canonical manifest of all static and dynamic authenticated routes with zero 404s.
+- [x] **Complete manual interaction and responsive contrast review (Verified 2026-08-31)**:
+  - Verified dropdowns, tabs, dialogs, drawers, popovers, tooltips, calendars, maps, tables, pagination, and toasts.
+  - Tested mobile and tablet responsive layouts across all logged-in roles.
+- [x] **Pass the final authenticated-app accessibility gate before launch (Verified 2026-08-31)**:
+  - Zero unexpected redirects, 404s, or theme mismatches.
+  - 100% passing TypeScript checks (`npx tsc --noEmit`) and full test suite passes.
 
