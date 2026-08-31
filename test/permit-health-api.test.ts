@@ -1,9 +1,10 @@
 import { describe, it, expect } from 'vitest';
+import { NextRequest } from 'next/server';
 import { GET } from '../src/app/api/permits/health/route';
 
 describe('Permit System Health & Diagnostics API - GET /api/permits/health', () => {
   it('returns healthy status with all subsystems, code catalogs, and providers reporting ready', async () => {
-    const res = await GET();
+    const res = await GET(new NextRequest('http://localhost:3010/api/permits/health'));
     expect(res.status).toBe(200);
 
     const data = await res.json();

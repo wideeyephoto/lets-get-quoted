@@ -10,8 +10,8 @@ export const dynamic = 'force-dynamic';
  * GET /api/permits/health
  * System health check and diagnostics for the Permit & Local Codes Intelligence Engine.
  */
-export async function GET(request?: NextRequest) {
-  const ip = request ? clientIpFrom(request.headers) : '127.0.0.1';
+export async function GET(request: NextRequest) {
+  const ip = clientIpFrom(request.headers);
   const admin = createAdminClient();
   if (!(await checkRateLimit(admin, `permithealth:ip:${ip}`, 60, 60))) {
     return NextResponse.json({ error: 'Too many requests.' }, { status: 429 });
