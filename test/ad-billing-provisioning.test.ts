@@ -864,4 +864,123 @@ describe('Ad Billing Synchronous Provisioning & Fulfillment', () => {
     expect(siteState.lastPaymentError).toBe('Card was declined by issuing bank.');
     expect(siteState.pendingRefillIdempotencyKey).toBeNull();
   });
+
+  it('refuses wallet refill charges when campaign is paused or scheduled for cancellation', async () => {
+    const { executeWalletRefillCharge } = await import('@/lib/ad-billing');
+
+    let siteState: any = {
+      fundingModel: 'auto_refill_wallet',
+      status: 'paused',
+      walletBalanceCents: 5000,
+      refillThresholdCents: 7500,
+      refillAmountCents: 25000,
+      stripeCustomerId: 'cus_paused_user',
+    };
+
+    const mockAdmin: any = {
+      from: (table: string) => {
+        if (table === 'sites') {
+          return {
+            select: () => ({
+              eq: () => ({
+                maybeSingle: async () => ({
+                  data: {
+                    id: 'site_paused_user',
+                    account_id: 'acc_paused_user',
+                    content: { adCampaign: { ...siteState } },
+                  },
+                }),
+              }),
+            }),
+            update: (payload: any) => ({
+              eq: async () => {
+                siteState = { ...payload.content?.adCampaign };
+                return { error: null };
+              },
+            }),
+          };
+        }
+        return { select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null }) }) }) };
+      },
+    };
+
+    const pausedRes = await executeWalletRefillCharge({
+      admin: mockAdmin,
+      accountId: 'acc_paused_user',
+    });
+    expect(pausedRes.success).toBe(false);
+    expect(pausedRes.refilled).toBe(false);
+    expect(pausedRes.message).toContain('Campaign is not active');
+
+    // Test cancelAtPeriodEnd refusal
+    siteState.status = 'active';
+    siteState.cancelAtPeriodEnd = true;
+    const cancelRes = await executeWalletRefillCharge({
+      admin: mockAdmin,
+      accountId: 'acc_paused_user',
+    });
+    expect(cancelRes.success).toBe(false);
+    expect(cancelRes.refilled).toBe(false);
+    expect(cancelRes.message).toContain('Campaign is scheduled for cancellation');
+  });
+
+  it('deduplicates duplicate checkout.session.completed webhook deliveries', async () => {
+    let siteState: any = {
+      fundingModel: 'weekly_drip',
+      status: 'active',
+      lastRefillPaymentIntentId: 'cs_already_processed_123',
+      processedRefillPaymentIntentIds: ['cs_already_processed_123'],
+    };
+
+    const mockAdmin: any = {
+      from: (table: string) => {
+        if (table === 'sites') {
+          return {
+            select: () => ({
+              eq: () => ({
+                maybeSingle: async () => ({
+                  data: {
+                    id: 'site_dup_test',
+                    account_id: 'acc_dup_test',
+                    content: { adCampaign: { ...siteState } },
+                  },
+                }),
+              }),
+            }),
+            update: (payload: any) => ({
+              eq: async () => {
+                siteState = { ...payload.content?.adCampaign };
+                return { error: null };
+              },
+            }),
+          };
+        }
+        return { select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null }) }) }) };
+      },
+    };
+
+    const dupEvent: Stripe.Event = {
+      id: 'evt_dup_checkout',
+      object: 'event',
+      api_version: '2023-10-16',
+      created: Date.now(),
+      type: 'checkout.session.completed',
+      data: {
+        object: {
+          id: 'cs_already_processed_123',
+          payment_status: 'paid',
+          metadata: {
+            kind: 'ad_budget',
+            account_id: 'acc_dup_test',
+          },
+        } as unknown as Stripe.Checkout.Session,
+      },
+      livemode: false,
+      pending_webhooks: 0,
+      request: null,
+    };
+
+    const handled = await handleAdBudgetWebhookEvent(dupEvent, mockAdmin);
+    expect(handled).toBe(true);
+  });
 });

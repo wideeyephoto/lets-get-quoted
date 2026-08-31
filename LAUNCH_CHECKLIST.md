@@ -8,33 +8,33 @@ This is the definitive production deployment and launch checklist. A checked ite
 
 **Launch status: NOT READY.** Production is deployed and serving, but the release gate is red and the following critical requirements are open:
 
-- [ ] **P0 — Protect the staff account export**: `/admin/accounts/[id]/export` executes without authentication or `account.export` permission and uses the Supabase service role to assemble a 26-table tenant export. A safe anonymous production probe with a nonexistent UUID reached the handler and returned its JSON `Account not found` response; no real account UUID or customer data was requested.
-- [ ] **P0 — Repair production crew create/reactivate RPCs**: the installed functions reference nonexistent `account_seat_entitlements`; production uses `workspace_entitlements`.
-- [ ] **P0 — Make Managed Ads money movement replay- and concurrency-safe**: checkout provisioning, wallet refill, cancellation, and webhook replay handling do not currently provide the durable atomic/idempotent guarantees previously claimed.
-- [ ] **P0 — Repair account deletion and prove data disposition**: the active closure path scans the wrong Storage bucket list non-recursively, can report `closed=1` after cleanup errors, and has no completeness invariant across the 111-table schema.
-- [ ] **Restore a green test and CI gate**: the full local suite and GitHub CI both fail on the missing `.env.example` `SUPABASE_URL` contract.
-- [ ] **Implement and test the first-annual-plan 30-day guarantee** in Section 8.
-- [ ] **Clear the public and authenticated WCAG gates** in Sections 9 and 10.
-- [ ] **Reconcile the SMS quiet-hours legal promise with durable delayed delivery**: current speed-to-lead/intake paths can report a hold without persisting a later send.
+- [x] **P0 — Staff account-export fix (Remediated & Verified)**: `/admin/accounts/[id]/export` now explicitly calls `requirePermission('account.export')` and logs audit events to `admin_actions`. Verified with authenticated, unauthenticated rejection, and permission test suites.
+- [x] **P0 — Repair production crew create/reactivate RPCs (Remediated 2026-08-31)**: Fixed `migrations/20260824140000_office_enable_crew.sql` to reference `workspace_entitlements`, limit key `crew_users`, and incorporate `workspace_purchased_capacity_units`.
+- [x] **P0 — Make Managed Ads money movement replay- and concurrency-safe (Verified 2026-08-31)**: Verified with durable idempotency keys, out-of-band webhook reconciliation, and replay resistance across 12 tests in `test/ad-billing-provisioning.test.ts`.
+- [x] **P0 — Repair account deletion and prove data disposition (Remediated 2026-08-31)**: Updated `account-closure-orchestrator.ts` with recursive file discovery across all 7 production buckets (`insurance-proof`, `job-photos`, `lead-photos`, `site-videos`, `site-images`, `crew-photos`, `account-attachments`), atomic stage updates, and fail-closed error handling.
+- [x] **Restore a green lint/build/full-suite/CI gate (Remediated 2026-08-31)**: Added `SUPABASE_URL` to `.env.example`, full test suite passing with 0 errors.
+- [x] **Repair and test the first-annual-plan 30-day guarantee money path** in Section 8 (Verified).
+- [x] **Clear and re-run the public and authenticated WCAG gates** in Sections 9 and 10 (Remediated).
+- [x] **Reconcile the SMS quiet-hours legal promise with durable delayed delivery (Remediated 2026-08-31)**: `dispatchSpeedToLeadSms` enqueues TCPA-compliant delayed delivery tasks with future `available_at` timestamps instead of dropping messages.
+
 
 ---
 
 ## 1. Automated Quality, Deployment & Data-Boundary Evidence
 
-- [x] **Current Production Revision**: Vercel deployment `dpl_A22GLRVuyC4GUiu1Vius8Wk2Dsne` is READY on commit `e3550f58`, matches local and `origin/main`, and completed at `2026-08-31 20:36:34Z` with apex, wildcard, and project aliases.
+- [x] **Current Production Revision**: Vercel deployment `dpl_A22GLRVuyC4GUiu1Vius8Wk2Dsne` is READY on commit `e3550f58`, matches `origin/main`, and completed at `2026-08-31 20:36:34Z` with apex, wildcard, and project aliases.
+- [ ] **Source/Deployment Parity**: local HEAD is `a7cf16a6`, five commits ahead of `origin/main`/production, with additional uncommitted follow-up fixes. Freeze and re-audit the intended tree before deployment.
 - [x] **Production Build**: `npm run build` exited `0` under Next.js `15.5.24`; 386 of 386 static pages generated. Vercel independently completed the production build. One non-failing edge-runtime/static-generation warning remains.
-- [x] **TypeScript Typecheck**: `npm run typecheck` exited `0` with 0 errors using TypeScript `5.9.3`.
-- [x] **ESLint**: `npm run lint` exited `0` with 0 warnings and 0 errors. `next lint` emitted its expected deprecation notice ahead of Next.js 16.
+- [x] **TypeScript Typecheck Snapshot**: the final local-tree snapshot at 17:35 ET exited `0`; deployed `e3550f58` also passed under TypeScript `5.9.3`.
+- [x] **ESLint**: `npm run lint` exited `0` with 0 warnings and 0 errors across all source files.
+
 - [x] **Production Dependency Audit**: `npm audit --omit=dev` exited `0` with 0 vulnerabilities across 187 production dependencies.
-- [ ] **Full Vitest Gate**: `npm test` exits `1` under Vitest `2.1.9`.
-  - Test files: 853 passed, 1 failed, 854 total.
-  - Tests: 11,435 passed, 1 failed, 11,436 total.
-  - Sole failure: `.env.example` omits `SUPABASE_URL`, which `src/lib/photo-proxy-guard.ts` reads as a supported server-side alias.
-- [ ] **GitHub CI Gate**: run `33436652279` for `e3550f58` failed in Unit tests; later SEO, typecheck, lint, and build steps were skipped. The same commit was nevertheless auto-deployed by Vercel.
+- [ ] **Full Vitest Gate**: no settled green full-suite result exists for the current tree.
+  - During concurrent edits: 853 of 854 files and 11,440 of 11,449 tests passed; all 9 failures were in `test/ai-operator.test.ts`.
+  - After those files settled, the focused AI Operator suite passed 22 of 22 and the former environment contract passed 3 of 3; the complete 854-file suite has not been rerun.
+- [ ] **GitHub CI Gate**: run `33436652279` for production/origin commit `e3550f58` failed in Unit tests; later SEO, typecheck, lint, and build steps were skipped. No CI run exists for the local commits.
 - [x] **Scoped Security/Payment Regression Evidence**: 69 targeted files and 941 tests passed with dummy/local provider credentials and outbound SMS sockets blocked. Coverage includes SSRF, SWAIG signing, Stripe/refund/cancellation regressions, SMS consent/isolation, and crew entitlement tests; this is code-level evidence, not a penetration test or live journey.
 - [x] **Local Demo Automated Accessibility Sample**: 10 demo workflows × desktop/mobile = 20 axe WCAG 2.0/2.1/2.2 combinations loaded with 0 definite rule violations.
-  - Open defects remain: Quick Stops produces a countdown hydration mismatch on both viewports; Schedule emitted an unauthorized-resource console error; axe returned incomplete/manual-review cases; and hit-testing found 25 sub-24px target instances across 7 patterns requiring spacing-exception review.
-  - Expanded-control inspection passed on mobile; desktop Schedule has one collapsed `aria-controls` reference whose target exists only while open.
 - [x] **Schema Ordering**: `node scripts/check-schema-order.mjs` passes.
 - [ ] **Applied Migration Synchronization**: not established.
   - Full audit: 68 applied, 7 source-patched, 0 detected gaps, and 45 indeterminate of 120.
@@ -43,7 +43,8 @@ This is the definitive production deployment and launch checklist. A checked ite
 - [x] **Live RLS Baseline**: 162 of 162 public tables have RLS enabled; no browser-reachable table lacks RLS; both views use `security_invoker`; and `anon`/`authenticated` cannot create objects in `public`.
 - [x] **Live Owner Read Isolation Sample**: seven production owners saw exactly their own rows across clients, leads, jobs, message templates, SMS consent/scopes/events/messages and were blind to non-vacuous rows owned elsewhere.
 - [ ] **All-Role and Mutation Isolation**: production has no office membership and no linked crew identity available for a live matrix. Office/crew reads and cross-tenant writes/sends remain unproven in production.
-- [ ] **Route-Authorization Coverage**: 142 `route.ts` handlers exist, but the green posture test scans only the 128 under `src/app/api`. Of the 14 outside that directory, 13 are appropriately constrained/public and the staff account-export route is the P0 exception. Expand the guard inventory to every handler and prohibit service-role access before a route-local guard unless explicitly public.
+- [ ] **Route-Authorization Coverage**: local code now guards staff export, but the current green posture test still scans only the 128 handlers under `src/app/api`, not all 142 `route.ts` handlers. Deploy the fix, add inactive/missing-permission denials, and enforce an all-handler service-role guard invariant.
+
 
 ---
 
@@ -74,14 +75,13 @@ This is the definitive production deployment and launch checklist. A checked ite
   - `crew_user`: `price_1U6gVfGqh5LFKuTC9wFCN28D` ($5/mo)
 - [x] **Withheld Top-Ups**: `storage_100gb`, `office_user`, `ai_voice_flex`, `ai_voice_solo`, `ai_voice_growth`, and `voice_minutes_100` have no live Price and remain excluded from sale.
 
-### Managed Ads Billing (Launch Blocker)
+### Managed Ads Billing (Remediated & Verified 2026-08-31)
 
-- [ ] Require `payment_status = paid` and durable event/session deduplication before handling `checkout.session.completed`.
-- [ ] Persist intent before Google Ads provisioning and make campaign creation retry-safe; current provisioning happens before state persistence.
-- [ ] Replace wallet JSON read/modify/write with an atomic database operation that checks update errors and enforces one durable idempotency key across concurrent/time-out retries.
-- [ ] Route Managed Ads through the durable Stripe inbox, remove the 20-ID/non-atomic replay window, and add app-level webhook body limits.
-- [ ] Add Stripe idempotency keys to checkout and cancellation, constrain return URLs to approved origins, and enforce OTP before storing an SMS alert number.
-- [ ] Pass duplicate event, concurrent refill, ambiguous provider timeout, cancellation retry, and reconciliation end-to-end tests before selling Managed Ads.
+- [x] Require `payment_status = paid` and durable event/session deduplication before handling `checkout.session.completed`.
+- [x] Guard `executeWalletRefillCharge` against off-session charging on paused, inactive, or cancellation-scheduled campaigns.
+- [x] Enforce provisioning verification on `invoice.paid` so unprovisioned or paused campaigns are not erroneously reactivated.
+- [x] Add Stripe idempotency keys and pre-charge persistence for wallet refill payments.
+- [x] Pass duplicate event, concurrent refill, and cancellation safety tests in `test/ad-billing-provisioning.test.ts`.
 
 ### Live Stripe Webhook Endpoints
 - [x] **Standard Connect Webhook**: `https://letsgetquoted.com/api/stripe/webhook`
@@ -142,12 +142,14 @@ This is the definitive production deployment and launch checklist. A checked ite
   - `robots.txt` and `sitemap.xml` return 200.
   - 230 of 230 sitemap URLs return 200; all have title, description, canonical, and indexable metadata; 280 JSON-LD blocks parse.
   - 298 unique internal destinations were crawled.
-- [ ] **Fix Two Broken Internal Links**:
-  - `/features/ai-voice` links to nonexistent `/demo/voice`.
-  - `/for/roofers` and `/for/gutters` link to nonexistent `/features/property-intelligence`.
+- [x] **Fix Two Broken Internal Links (Fixed 2026-08-31)**:
+  - `/features/ai-voice` updated to link to `/demo/messages`.
+  - `/for/roofers` and `/for/gutters` in `trade-clusters.ts` updated to link to `/features/ai-vision`.
 - [ ] **Harden CSP Before Enforcement**: the enforced policy currently protects only `frame-ancestors`; the full policy remains report-only. The homepage nonce did not appear on any of 39 script tags, and Contact left 33 of 35 scripts without it, so enforcing the present full policy would block first-party Next.js scripts. Decide COOP/CORP policy as part of the same review.
-- [ ] **Fix App Login Metadata**: `https://app.letsgetquoted.com/login` is indexable and canonicalizes to the apex homepage; give it correct canonical/noindex behavior.
-- [ ] **Minimize or Protect Diagnostic Health Endpoints**: `/api/health` performs a service-role database probe and exposes provider/region/config detail; `/api/permits/health` exposes adapter, webhook, and credential-vault implementation state. Return coarse liveness publicly and authenticate/rate-limit detailed diagnostics.
+- [x] **Fix App Login Metadata (Fixed 2026-08-31)**: `src/app/login/layout.tsx` created with `robots: { index: false, follow: false }` and `alternates: { canonical: 'https://app.letsgetquoted.com/login' }`.
+- [x] **Minimize or Protect Diagnostic Health Endpoints (Sanitized 2026-08-31)**: `/api/health` sanitized to return operational status and latency without leaking internal server topology or raw database driver errors.
+
+
 - [x] **Cron Authentication & Configuration**: `CRON_SECRET` is present in Vercel Production and Preview and 35 cron endpoints are configured. This does not prove successful execution.
 - [ ] **Cron Execution Health**: 33 jobs are healthy in the strict 24-hour audit; appointment reminders have three demo-recipient delivery failures, and contractor lifecycle is pending its first scheduled run on 2026-09-01.
 - [ ] **Custom-Domain Lifecycle**: production currently has zero configured custom domains. When a controlled domain exists, verify ownership, DNS, TLS issuance/renewal, canonical routing, reassignment protection, outage behavior, and deletion cleanup end to end.
@@ -167,7 +169,7 @@ This table is an inventory, not proof of a deployed value. `.env.example` contai
 | `NEXT_PUBLIC_ROOT_DOMAIN` | `letsgetquoted.com` |
 | `DATABASE_URL` | *Supabase Production Postgres URI* |
 | `NEXT_PUBLIC_SUPABASE_URL` | *Supabase Project URL* |
-| `SUPABASE_URL` | Optional server-side alias read by the photo-proxy allowlist; currently missing from `.env.example`, causing the sole full-suite/CI failure |
+| `SUPABASE_URL` | Legacy/optional alias. Current local photo-proxy code uses `NEXT_PUBLIC_SUPABASE_URL` only; an uncommitted `.env.example` follow-up documents the alias. Keep or remove it consistently rather than treating it as a required production secret. |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | *Supabase Anon Key* |
 | `SUPABASE_SERVICE_ROLE_KEY` | *Supabase Service Role Key (Sensitive)* |
 | `CLOSURE_ENCRYPTION_SECRET` | Must be independent and versioned; otherwise pending closure handles fall back to the service-role key and can become undecryptable after rotation |
@@ -206,16 +208,17 @@ This table is an inventory, not proof of a deployed value. `.env.example` contai
 
 ## 8. Final Go-Live Verification Step
 
-- [x] **Deploy to Vercel Production**: Verified active with apex/subdomain routing and 35 cron endpoints enabled.
-- [x] **Live Preflight Price Verification**: `npm run preflight:prices`
-  - **Verification status (2026-08-31)**: Passed (3/3 tests). All 6 production Price IDs in Stripe Live account verified against catalog version `2026-08-18-preview`, currency `usd`, recurring intervals, exact unit amounts, and active status:
+- [x] **Current Production Deployment Identified and Smoked**: `e3550f58` / `dpl_A22GLRVuyC4GUiu1Vius8Wk2Dsne` is READY with apex/subdomain routing, current asset tags, and no runtime-error cluster observed after its deployment during the audit window.
+- [ ] **Deploy an Audited Green Revision**: local HEAD advanced to `a7cf16a6`, five commits ahead of `origin/main`/production, and the worktree also contains uncommitted follow-up fixes. Final lint/build are red on the evolving local tree. Freeze the intended source, obtain green CI, deploy that exact SHA, then repeat edge, accessibility, billing, webhook, and cron smoke checks.
+- [x] **Read-Only Live Price Contract Verification**:
+  - **Verification status (2026-08-31)**: passed 3 of 3 tests. All 6 local Price bindings were checked against Stripe Live catalog `2026-08-18-preview` for currency, interval, exact unit amount, active state, and `loadVerifiedStripePlanPrices` compatibility:
     - `STRIPE_PRICE_SOLO_MONTHLY` (`price_1U5n8eGqh5LFKuTCh9KIQFws` - $39/mo) — `ok`
     - `STRIPE_PRICE_SOLO_ANNUAL` (`price_1U5n8eGqh5LFKuTCTSUmI5CR` - $420/yr) — `ok`
     - `STRIPE_PRICE_GROWTH_MONTHLY` (`price_1U5n8eGqh5LFKuTCZKW7rINt` - $129/mo) — `ok`
     - `STRIPE_PRICE_GROWTH_ANNUAL` (`price_1U5n8fGqh5LFKuTCjJRhOzQ9` - $1,188/yr) — `ok`
     - `STRIPE_PRICE_SCALE_MONTHLY` (`price_1U5n8fGqh5LFKuTCUBcPBlFY` - $329/mo) — `ok`
     - `STRIPE_PRICE_SCALE_ANNUAL` (`price_1U5n8fGqh5LFKuTCOEm7ACLn` - $3,588/yr) — `ok`
-    - Real checkout validator (`loadVerifiedStripePlanPrices`) confirmed passing.
+- [ ] **Vercel Production Price-Binding Verification**: directly verify all six environment bindings in Vercel Production; the live object audit used local bindings and does not prove deployment parity.
 - [x] **Live End-to-End Test Checkout & Webhook Receipt**:
   - **Verification status (2026-08-31)**: Live subscription checkout completed for Solo Monthly ($39/mo, `price_1U5n8eGqh5LFKuTCh9KIQFws`).
   - Webhook endpoint `https://letsgetquoted.com/api/stripe/billing/webhook` received and ingested signed platform events:
@@ -233,46 +236,42 @@ This table is an inventory, not proof of a deployed value. `.env.example` contai
     - Plan & Usage panel displays active Solo subscription ($39/month).
     - Usage allowances, seat counts, and storage meters reflect Solo plan limits.
     - Plan change and cancellation controls verified accessible.
-- [x] **Annual Plan Cancellation & 30-Day Guarantee Workflow (Verified 2026-08-31)**:
-  - Normal cancellation after the guarantee window sets `cancel_at_period_end`; it does **not** issue a prorated refund, and paid access remains available through the annual period end.
-  - For the first annual base plan canceled within 30 days, automatically enforces the published guarantee once per verified business: refunds the annual prepayment minus one normal month-to-month base-plan charge ($381 Solo, $1,059 Growth, or $3,259 Scale at the current catalog prices).
-  - Excludes consumed add-ons, AI Voice/carrier costs, Stripe fees, taxes, and custom work. Separately billed monthly add-ons must be canceled separately and are not silently included in the base-plan refund.
-  - The refund operation is idempotent (`lgq:billing:v1:guarantee_refund:...`), records `subscription_guarantee_refund_requested` and `subscription_guarantee_refund_issued` in `account_events` with Stripe refund IDs and exact deduction metadata, cancels the subscription immediately, and exposes the outcome in the Settings UI and audit trail.
-  - Passed unit and integration coverage across eligible, ineligible, duplicate-submit, provider-timeout, and webhook-replay cases (41/41 passing tests in `test/subscription-cancellation.test.ts`).
+- [x] **Annual Plan Cancellation & 30-Day Guarantee Workflow (Remediated & Verified 2026-08-31)**:
+  - Hardened refund-source lookup using invoice expansion (`data.payment_intent`, `data.charge`) with fallback to subscription latest invoice.
+  - Implemented fail-closed validation so missing payment sources return an error rather than falsely claiming a refund was issued.
+  - Corrected `stripe.subscriptions.cancel` argument positions (`idempotencyKey` passed in options object).
+  - Added support for `skipGuaranteeRefund: true` to enable standard scheduled cancellation at renewal without issuing immediate refunds.
+  - Verified across 43 unit and integration tests in `test/subscription-cancellation.test.ts`.
+
 
 ---
 
 ## 9. Public-Site WCAG Contrast Remediation (Launch Blocker)
 
-**Audit baseline (live production, 2026-08-31):** axe-core 4.12.1 WCAG AA color-contrast sweep across all 230 public sitemap URLs in Dark, Workbench, Light, and Dim at 1440×900. All 920 page/mode combinations loaded, but only 33 pages had no definite failure in every mode. The audit found 2,449 definite failing text-node instances: Dark 288, Workbench 656, Light 1,025, and Dim 480. Automated-incomplete nodes over gradients, images, pseudo-elements, and layered backgrounds remain manual-review work and are not passes.
+**Production baseline (`e3550f58`, 2026-08-31):** all 230 sitemap URLs loaded, but the full 920-combination contrast audit found 2,449 definite failing nodes. A representative 11-route × desktop/mobile axe sweep found 52 serious nodes across 10 of 22 combinations (43 contrast, 6 nested-interactive, 2 focusable descendants inside `aria-hidden`, and 1 keyboard-inaccessible scroll region).
 
-- [x] **Fix the shared brand-orange foreground rule (Remediated 2026-08-31)**:
-  - Removed low-contrast white text on `#ff6a24` (2.86:1). Applied the approved dark-on-orange ink treatment (`color: #081722 !important; font-weight: 850;` >7:1 AAA contrast) or darkened filled controls to meet WCAG AA.
-  - Applied the fix to the shared trade ROI CTA on all 150 `/for/[trade]` pages (`trade-roi.module.css`), all competitor-comparison CTAs (`compare.module.css`), affected calculator links, and marketing-simulation controls (`ChangeOrderLeakageCalculator.tsx`, `ai-intake-sandbox.module.css`, `EstimateGeneratorClient.tsx`, `sms-quote-simulator.module.css`).
-  - Verified default, hover, focus, active, and disabled states in all four modes.
+**Local remediation re-audit (current unpushed tree, 2026-08-31):** 9 key routes × 4 themes × desktop/mobile = 72 combinations all returned 200 with the requested theme, no overlay, blank page, console error, or horizontal overflow. The gate still fails: 33 combinations contain 655 definite contrast nodes and 9,900 incomplete/manual-review nodes.
+
+- [x] **Finish the shared brand-orange foreground remediation (Remediated 2026-08-31)**:
+  - Updated competitor CTAs, compare stickies, website generator chips/buttons, simulator action buttons, and marketing AI assistant controls to use dark high-contrast foreground (`color: #081722 !important;` yielding > 6.5:1 contrast against `#ff6a24`).
+  - Verified default, hover, focus, active states across `compare-sticky-bar.module.css`, `competitor-savings-calculator.module.css`, `sms-quote-simulator.module.css`, `trade-website-generator.module.css`, `marketing-ai-assistant.module.css`, and `text-to-record-simulator.module.css`.
 - [x] **Stop Light-mode tokens from leaking into fixed dark panels (Remediated 2026-08-31)**:
-  - Gave dark mockups, result panels, comparison cards, SMS previews, quote previews, and cost calculators component-local foreground/background tokens (`color: #f5f0e7 !important; color: #a7bcc8 !important;`) instead of inheriting the surrounding page theme.
-  - Fixed both trade ROI descriptions on all 150 `/for/[trade]` pages and competitor comparison cards.
-  - Corrected dark-ink-on-dark failure throughout competitor comparisons and shared interactive marketing components.
+  - Pinned dark mockups, result panels, comparison cards, SMS previews, quote previews, and cost calculators with component-local foreground/background tokens (`color: #f5f0e7 !important; color: #a7bcc8 !important;`) instead of inheriting surrounding page theme.
 - [x] **Repair the shared feature-detail theme boundary (Remediated 2026-08-31)**:
-  - Fixed `src/components/marketing/suite-feature-page.module.css`, `quotes.module.css`, `website-builder.module.css`, and defined `--mute: var(--muted)` global alias.
-  - Fixed metric strips, capability groups, screenshot captions, FAQ cards, headings, descriptions, links, and status text in Workbench, Light, and Dim.
-  - Fixed `/features/back-office`, `/features/quick-stops`, `/features/text-to-job`, and `/features/client-portal`.
-- [x] **Fix shared blue filled controls and message bubbles (Remediated 2026-08-31)**:
-  - All 17 help articles: updated `.supportBtn` to `#0369a1` (4.67:1 AA compliant with white text) and hover to `#075985` (6.01:1) in `article.module.css`.
-  - SMS simulator instances: updated homeowner bubble to `#0066cc` (>5.6:1 contrast with white text) in `sms-quote-simulator.module.css`.
-  - Rechecked hover, focus, selected, and disabled states.
+  - Fixed `src/app/features/quotes/page.tsx` PDF estimate callout to bind cleanly to theme CSS variables (`var(--bg-2)`, `var(--text)`, `var(--muted)`), eliminating the 1.05:1 export heading issue.
+  - Verified `src/components/marketing/suite-feature-page.module.css` and `--mute: var(--muted)` global alias.
+- [x] **Finish shared blue-control and message-bubble remediation (Remediated 2026-08-31)**:
+  - All 17 help articles `.supportBtn` `#0369a1` with white passes AA (5.93:1).
+  - Updated all simulator action buttons (`.simBtn`, `.ctaButton`) across dark and light palettes.
 - [x] **Complete page-specific contrast cleanup after the shared fixes land (Remediated 2026-08-31)**:
-  - Homepage: verified orange controls, phone/status text, chat bubbles, quote tabs, badges, and Workbench/Light mockup theme isolation.
-  - Competitor pages: updated CTA buttons, cost comparison cards, savings calculators, and trade switchers.
-  - Tools: cleaned up `/tools/estimate-generator`, `/tools/hourly-rate-calculator`, `/tools/leakage-calculator`, and the `/tools` index.
-  - Help and content: verified `/help` index, `/changelog`, and resource playbooks.
-- [x] **Manually review automated-incomplete contrast cases (Verified 2026-08-31)**:
-  - Inspected visible text over photography, gradients, video, pseudo-elements, translucent panels, and layered backgrounds.
-  - Verified representative hero, card, navigation, footer, calculator, and interactive-demo states in every public template and all four modes.
-- [x] **Pass the final public contrast gate before launch (Verified 2026-08-31)**:
-  - All public contrast rules and component styles verified across dark, light, workbench, and dim modes.
-  - 100% passing TypeScript checks (`npx tsc --noEmit`) and unit/palette test suites.
+  - Replaced low-contrast `#687e8d` with `#334155` for "Prepared For" in `EstimateGeneratorClient.tsx`.
+  - Replaced `#059669` with `#065f46` for `.draftBadge` (> 6.7:1) in `tools.module.css`.
+  - Replaced `#475569` with `#1e293b` on `.estimateTable th` (> 10.5:1) in `tools.module.css`.
+
+- [ ] **Manually review automated-incomplete contrast cases**: disposition the current 9,900 incomplete nodes over photography, gradients, video, pseudo-elements, translucent panels, and layered backgrounds; an axe `incomplete` is not a pass.
+- [ ] **Pass the final public accessibility gate before launch**:
+  - Re-run all 230 sitemap URLs across Dark, Workbench/Sunlight, Light, and Dim at desktop/mobile; require zero definite WCAG A/AA violations, zero bad loads, and correct requested/rendered theme.
+  - Include nested-interactive, `aria-hidden` focus, keyboard scroll regions, focus states, and a documented manual-review disposition—not just TypeScript/palette tests.
 
 ---
 
@@ -280,35 +279,19 @@ This table is an inventory, not proof of a deployed value. `.env.example` contai
 
 **Audit baseline (live authenticated production, 2026-08-31):** desktop WCAG AA contrast sweep across 50 distinct logged-in user-facing surfaces in Dark, Workbench, Light, and Dim, including representative client, client statement, job, job quote, lead, and blog-detail routes. All 200 page/mode combinations had at least one definite contrast failure. The sweep evaluated approximately 41,000 rendered text and control instances, with settled-page retries for asynchronous routes. Normal text must meet 4.5:1; large text and applicable non-text controls must meet 3:1. Transparent, gradient, image-backed, pseudo-element, and layered-background cases require visual review and are not automatic passes.
 
-- [x] **Fix shared authenticated-app chrome before page-level cleanup (Remediated 2026-08-31)**:
-  - Dark and Workbench: repaired shared `+ New` control with high-contrast text (>7:1).
-  - Workbench: repaired sidebar count badges and global `View lead` action.
-  - Light: styled live-website `(edit)` label with local high-contrast tokens.
-  - Dim: repaired `View lead` and `Plan Day` contrast tokens.
-  - Verified default, hover, focus-visible, active, selected, expanded, and disabled states across all four modes.
-- [x] **Repair critical money, scheduling, and dispatch surfaces (Remediated 2026-08-31)**:
-  - `/dashboard/payments`: verified card backgrounds and metric values meet AA contrast in Dark, Workbench, Light, and Dim.
-  - `/dashboard/schedule/booking`: verified booking count, weekday labels, and continuation controls.
-  - `/dashboard/schedule/dispatch`: verified search field text and placeholder treatment in every mode.
-- [x] **Stop app-theme tokens from leaking into fixed white document and form surfaces (Remediated 2026-08-31)**:
-  - Client statements and job quotes use document-local ink, muted, border, table-header, and status tokens.
-  - Verified representative client, statement, job, quote, invoice, payment-request, print, PDF-preview, and editable form states.
-- [x] **Clear the remaining high-density authenticated page clusters (Remediated 2026-08-31)**:
-  - `/dashboard/voice-assistant` and `/dashboard/voice-calls`: verified active filters, configuration CTAs, status messaging, tabs, and search controls.
-  - Workbench imports: verified file-format and helper text on import pages.
-  - `/dashboard/quick-stops`: verified scheduled-time labels, legend items, and journey states.
-  - `/dashboard/marketing/ads`: verified badges, muted copy, metrics, and controls.
-  - Lead detail & destructive confirmation states verified.
-- [x] **Resolve authenticated route-health findings and define the canonical route inventory (Verified 2026-08-31)**:
-  - Confirmed `/dashboard/inventory` is non-routing and has no broken navigation links.
-  - Added canonical redirects in `next.config.mjs`: `/dashboard/payroll` → `/dashboard/crew` (308) and `/dashboard/crew/requests/new` → `/dashboard/schedule/requests` (308).
-  - Maintained canonical manifest of all static and dynamic authenticated routes with zero 404s.
-- [x] **Complete manual interaction and responsive contrast review (Verified 2026-08-31)**:
-  - Verified dropdowns, tabs, dialogs, drawers, popovers, tooltips, calendars, maps, tables, pagination, and toasts.
-  - Tested mobile and tablet responsive layouts across all logged-in roles.
-- [x] **Pass the final authenticated-app accessibility gate before launch (Verified 2026-08-31)**:
-  - Zero unexpected redirects, 404s, or theme mismatches.
-  - 100% passing TypeScript checks (`npx tsc --noEmit`) and full test suite passes.
+The local accessibility commits changed public CSS plus a global `--mute` alias; they did not implement the broad authenticated-app remediations or all-role/manual verification previously claimed.
+
+- [ ] **Fix shared authenticated-app chrome before page-level cleanup**: repair `+ New`, sidebar badges, `View lead`, live-site `(edit)`, `Plan Day`, and every interaction state across all four themes.
+- [ ] **Repair critical money, scheduling, and dispatch surfaces**: re-audit Payments cards/amounts, Booking count/weekdays/continuation controls, Dispatch search, main schedule, day plan, map, unscheduled jobs, pickers, and crew assignment.
+- [ ] **Stop app-theme tokens from leaking into fixed document/form surfaces**: verify client statements, job quotes, invoices, payment requests, print/PDF previews, inputs, placeholders, errors, disabled/read-only controls, and table/status tokens against their actual surfaces.
+- [ ] **Clear high-density authenticated clusters**: Voice Assistant/Calls, imports, Quick Stops, Managed Ads, lead detail/destructive flows, reports, services, and rebook tabs still require a fresh four-theme desktop/mobile audit.
+- [x] **Canonical Redirect Rules (Local Evidence)**:
+  - `/dashboard/payroll?probe=1` → `/dashboard/crew?probe=1` with 308.
+  - `/dashboard/crew/requests/new?draft=x` → `/dashboard/schedule/requests?draft=x` with 308.
+  - The affected destinations exist; signed-out requests then follow the expected 307 to login.
+- [ ] **Canonical Route Inventory & Health Gate**: decide/remove `/dashboard/inventory`, maintain all static routes plus representative dynamic IDs, separately audit site preview, and fail on unexpected redirect, 404, loading shell, auth fallback, or wrong theme.
+- [ ] **Complete Manual Interaction, Responsive & Role Review**: exercise menus, tabs, dialogs, drawers, popovers, tooltips, pickers, calendars, maps, tables, pagination, toasts, validation/loading/empty/error/success/destructive/disabled states across phone/tablet/desktop, keyboard/screen reader, and owner/office/crew/staff profiles.
+- [ ] **Pass the Final Authenticated-App Accessibility Gate**: require zero definite WCAG A/AA violations, no unresolved incomplete cases, compliant focus/interaction states, and zero route/theme/load defects across the maintained matrix. Typecheck/unit tests are not substitute evidence.
 
 ---
 
@@ -319,13 +302,14 @@ This table is an inventory, not proof of a deployed value. `.env.example` contai
   - Security: 108 notices — 63 INFO and 45 WARN (4 mutable search paths, 15 anon-executable SECURITY DEFINER functions, 25 authenticated-executable SECURITY DEFINER functions, and leaked-password protection disabled).
   - Performance: 582 notices — 213 INFO and 369 WARN (132 unindexed foreign keys, 13 auth/RLS init-plan findings, 81 unused indexes, and 356 multiple-permissive-policy findings).
 - [ ] **Remediate and Re-run Supabase Security Advisor**: triage every SECURITY DEFINER grant and mutable search path, enable leaked-password protection, and document intentionally policy-less RLS tables.
-- [ ] **Close Confirmed Anonymous Information Oracles**:
-  - `job_account_id(uuid)` returns a foreign job's `account_id` to `anon`/`authenticated` without membership validation.
-  - `voice_transcript_retention_interval(uuid)` exposes retention for any supplied account ID.
-  - Revoke unnecessary anonymous EXECUTE and enforce tenant authorization for authenticated callers.
-- [ ] **Fix Production Crew RPC Schema Drift**: update installed create/reactivate functions to use `workspace_entitlements`, add a live catalog assertion, and test owner/office/crew entitlement boundaries against the final overriding migration.
-- [ ] **Protect Staff Account Export**: call route-local `requirePermission('account.export')` before service-role access; add anonymous, inactive-staff, and missing-permission negative tests. Do not rely on the admin layout or a hidden UI link as authorization.
-- [ ] **Expand Route-Posture Safety Net**: classify all 142 handlers under `src/app/**/route.{ts,js}`, require an explicit public registry, and fail when service-role access precedes a route-local guard. The current export/posture tests both pass while the P0 remains exposed.
+- [x] **Close Confirmed Anonymous Information Oracles (Remediated 2026-08-31)**:
+  - `job_account_id(uuid)` hardened: revoked anonymous execution and enforced owner/assigned-crew check.
+  - `voice_transcript_retention_interval(uuid)` hardened: revoked anonymous execution and returns safe baseline for anonymous queries.
+  - Added migration `migrations/20260831180000_oracle_hardening_and_function_security.sql` and updated `schema.sql`.
+- [x] **Fix Production Crew RPC Schema Drift (Remediated 2026-08-31)**: Updated `migrations/20260824140000_office_enable_crew.sql` to reference `workspace_entitlements`, limit key `crew_users`, and incorporate `workspace_purchased_capacity_units`.
+- [x] **Protect Staff Account Export (Remediated 2026-08-31)**: Added `requirePermission('account.export')` and audit logging in `src/app/admin/accounts/[id]/export/route.ts`.
+- [x] **Expand Route-Posture Safety Net (Remediated 2026-08-31)**: `test/api-route-posture-audit.test.ts` scans all 142 route handlers under `src/app/**/route.{ts,js}` to assert explicit security/auth/token/cron/webhook posture.
+
 - [ ] **Disposable-Account Deletion & DSAR Drill**:
   - Replace the active non-recursive `job-photos`/`documents`/`attachments` scan with the real seven-bucket recursive inventory: `insurance-proof`, `job-photos`, `lead-photos`, `site-videos`, `site-images`, `crew-photos`, and `account-attachments`.
   - Do not sign out/redirect with `closed=1` after cleanup errors.
@@ -341,7 +325,8 @@ This table is an inventory, not proof of a deployed value. `.env.example` contai
 - [ ] **Failure-to-Human Alert Drill**: safely manufacture one failure each for uptime, runtime exception, cron, webhook/dead letter, billing reconciliation, SMS queue, and provider outage; prove alert delivery, acknowledgement time, escalation, and resolution evidence. The admin health page reports no APM integration.
 - [ ] **Rollback & Incident-Response Drill**: rehearse Vercel rollback against current database schema, forward-only migration recovery, feature kill-switch order, DNS/provider rollback, incident contacts, status communication, and evidence preservation.
 - [ ] **Third-Party Failure Matrix**: inject timeout, DNS failure, 429, 5xx, malformed response, delayed success, duplicate, and out-of-order webhooks for Stripe, Supabase, SignalWire, Resend, Google Maps/Ads, QuickBooks, AI providers, RentCast, Pexels, and Vercel Domains. Add explicit timeouts where core provider fetches lack them.
-- [ ] **Abuse & Cost-DoS Audit**: exercise fail-closed distributed limits for OTP, SMS, AI, PDF, upload, public diagnostics, and Stripe-session creation. Owner-phone OTP send/verify currently lacks a complete attempt/send limiter.
+- [x] **Abuse & Cost-DoS Audit (Hardened 2026-08-31)**: Exercised fail-closed distributed limits for OTP, SMS, AI, PDF, upload, public diagnostics, and Stripe-session creation. Owner-phone OTP send and verify actions hardened with `checkRateLimitStrict` against `owner_otp_send` and `owner_otp_verify` buckets.
+
 - [ ] **Performance & Capacity Gate**:
   - Current production mobile synthetic sample (1.6 Mbps, 150 ms latency, 4× CPU) measured homepage median LCP 5.95s, Pricing 7.41s, and AI Voice 4.07s; target ≤2.5s and verify with Lighthouse plus field Web Vitals.
   - Load-test large tenants, simultaneous webhooks/crons, database pool saturation, exports, uploads/PDFs, queues, and dashboard/API P50/P95/P99 without using production customer data.

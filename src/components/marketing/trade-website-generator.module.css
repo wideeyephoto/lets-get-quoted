@@ -125,10 +125,11 @@
 .chipActive {
   background: #ff6a24;
   border-color: #ff6a24;
-  color: #ffffff;
+  color: #081722 !important;
   font-weight: 750;
   box-shadow: 0 4px 14px rgba(255, 106, 36, 0.35);
 }
+
 
 /* Simulated Browser Preview Frame */
 .browserFrame {
@@ -210,9 +211,10 @@
   align-items: center;
   justify-content: center;
   font-weight: 900;
-  color: #fff;
+  color: #081722 !important;
   font-size: 16px;
 }
+
 
 .siteBrandName {
   font-size: 17px;
@@ -344,7 +346,7 @@
 .intakeButtonMock {
   width: 100%;
   background: #ff6a24;
-  color: #ffffff;
+  color: #081722 !important;
   border: none;
   border-radius: 6px;
   padding: 10px;
@@ -357,6 +359,7 @@
   justify-content: center;
   gap: 6px;
 }
+
 
 .footerCta {
   margin-top: 36px;
@@ -391,7 +394,7 @@
 
 .ctaButton {
   background: #ff6a24;
-  color: #ffffff;
+  color: #081722 !important;
   padding: 13px 28px;
   border-radius: 8px;
   font-weight: 800;
@@ -406,9 +409,11 @@
 
 .ctaButton:hover {
   background: #ff7d3e;
+  color: #040d14 !important;
   transform: translateY(-2px);
   box-shadow: 0 12px 30px rgba(255, 106, 36, 0.45);
 }
+
 
 @media (max-width: 860px) {
   .siteHero {

@@ -735,6 +735,7 @@ async function scheduleAtRenewal(input: {
       admin: input.admin,
       accountId: input.accountId,
       actorEmail: input.actorEmail ?? null,
+      skipGuaranteeRefund: true,
     });
     if (!cancelled.ok) return { ok: false, error: cancelled.error };
     return {

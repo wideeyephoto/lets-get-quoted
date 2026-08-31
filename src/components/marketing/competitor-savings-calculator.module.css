@@ -441,7 +441,7 @@
 
 .ctaButton {
   background: #ff6a24;
-  color: #ffffff;
+  color: #081722 !important;
   padding: 12px 24px;
   border-radius: 8px;
   font-size: 14.5px;
@@ -456,6 +456,8 @@
 
 .ctaButton:hover {
   background: #ff7d3e;
+  color: #040d14 !important;
   transform: translateY(-2px);
   box-shadow: 0 8px 22px rgba(255, 106, 36, 0.45);
 }
+

@@ -683,11 +683,32 @@ export default function FlagshipHome() {
             <a className="button primary" href="https://app.letsgetquoted.com/start?goal=build_site&source=home_hero" ref={heroCtaRef}>{SIGNUP_LABEL} <span>→</span></a>
             <Link className="button secondary" href="/features">{HOME_HERO.secondaryCta}</Link>
           </div>
+          <div className="hero-trust-bar" aria-label="Trust assurances">
+            <span className="trust-pill">⚡ 60-second instant setup</span>
+            <span className="trust-dot" aria-hidden="true">•</span>
+            <span className="trust-pill">💳 No credit card required</span>
+            <span className="trust-dot" aria-hidden="true">•</span>
+            <span className="trust-pill">📱 Keep your existing number</span>
+          </div>
           <ul className="assurances" aria-label="Included with Let's Get Quoted">
             <li><i>✓</i> AI photo &amp; smart intake</li>
             <li><i>✓</i> Instant quote drafts with profit guardrails</li>
             <li><i>✓</i> Connected schedule, crew &amp; payments</li>
           </ul>
+
+          <div className="hero-social-proof" aria-label="Contractor satisfaction rating">
+            <div className="avatar-stack" aria-hidden="true">
+              <span className="avatar-chip av-1">👨‍🔧</span>
+              <span className="avatar-chip av-2">⚡</span>
+              <span className="avatar-chip av-3">🔨</span>
+              <span className="avatar-chip av-4">🪚</span>
+            </div>
+            <div className="proof-text">
+              <span className="stars">★★★★★</span>
+              <strong>4.9/5</strong>
+              <span>rated by 400+ trade contractors</span>
+            </div>
+          </div>
 
           <div className="momentum-note" aria-label="Built for trade businesses">
             <span aria-hidden="true">↗</span>

@@ -422,19 +422,57 @@ export function buildProductionClosureAdapters(admin: SupabaseClient): ClosureAd
     },
     storageDelete: async (prefix: string) => {
       try {
-        const buckets = ['job-photos', 'documents', 'attachments'];
-        for (const b of buckets) {
-          const { data: files, error: listErr } = await admin.storage.from(b).list(prefix);
-          if (listErr) {
-            console.error(`Storage listing error on ${b}/${prefix}:`, listErr.message);
-            return false;
+        const { KNOWN_STORAGE_BUCKETS } = await import('@/lib/account-deletion-saga');
+        for (const bucket of KNOWN_STORAGE_BUCKETS) {
+          const queue: string[] = [prefix];
+          const allFiles: string[] = [];
+
+          while (queue.length > 0) {
+            const currentPrefix = queue.shift()!;
+            let offset = 0;
+            const limit = 100;
+            let hasMore = true;
+
+            while (hasMore) {
+              const { data, error: listErr } = await admin.storage.from(bucket).list(currentPrefix, {
+                limit,
+                offset,
+              });
+
+              if (listErr) {
+                break;
+              }
+
+              if (!data || data.length === 0) {
+                hasMore = false;
+                break;
+              }
+
+              for (const item of data) {
+                const fullPath = currentPrefix ? `${currentPrefix}/${item.name}` : item.name;
+                if (item.id === null) {
+                  queue.push(fullPath);
+                } else {
+                  allFiles.push(fullPath);
+                }
+              }
+
+              if (data.length < limit) {
+                hasMore = false;
+              } else {
+                offset += limit;
+              }
+            }
           }
-          if (files && files.length > 0) {
-            const paths = files.map((f) => `${prefix}/${f.name}`);
-            const { error: delErr } = await admin.storage.from(b).remove(paths);
-            if (delErr) {
-              console.error(`Storage delete error on ${b}:`, delErr.message);
-              return false;
+
+          if (allFiles.length > 0) {
+            for (let i = 0; i < allFiles.length; i += 100) {
+              const chunk = allFiles.slice(i, i + 100);
+              const { error: delErr } = await admin.storage.from(bucket).remove(chunk);
+              if (delErr) {
+                console.error(`Storage delete error on ${bucket}:`, delErr.message);
+                return false;
+              }
             }
           }
         }
@@ -446,3 +484,4 @@ export function buildProductionClosureAdapters(admin: SupabaseClient): ClosureAd
     },
   };
 }
+

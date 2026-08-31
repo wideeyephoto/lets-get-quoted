@@ -40,7 +40,12 @@ vi.mock('@/lib/auth', () => ({
       }),
     },
   }),
+  createAdminClient: vi.fn().mockReturnValue({
+    rpc: vi.fn().mockResolvedValue({ data: true, error: null }),
+  }),
 }));
+
+
 
 vi.mock('@/lib/sms', () => ({
   sendOwnerPhoneVerificationSms: vi.fn().mockResolvedValue('msg_otp_123'),
@@ -110,4 +115,32 @@ describe('Ad Billing SMS Alert 2FA Phone Verification', () => {
       expect(result.message).toContain('incorrect or has expired');
     }
   });
+
+  it('sendOwnerPhoneVerificationCodeAction enforces rate limit when exceeded', async () => {
+
+    const { createAdminClient } = await import('@/lib/auth');
+    (createAdminClient as any).mockReturnValueOnce({
+      rpc: vi.fn().mockResolvedValue({ data: false, error: null }),
+    });
+
+    const result = await sendOwnerPhoneVerificationCodeAction('(248) 555-0100');
+    expect(result.status).toBe('error');
+    if (result.status === 'error') {
+      expect(result.message).toContain('Too many verification code requests');
+    }
+  });
+
+  it('verifyOwnerPhoneVerificationCodeAction enforces rate limit when exceeded', async () => {
+    const { createAdminClient } = await import('@/lib/auth');
+    (createAdminClient as any).mockReturnValueOnce({
+      rpc: vi.fn().mockResolvedValue({ data: false, error: null }),
+    });
+
+    const result = await verifyOwnerPhoneVerificationCodeAction('(248) 555-0100', '123456', 'tok', Date.now() + 60000);
+    expect(result.status).toBe('error');
+    if (result.status === 'error') {
+      expect(result.message).toContain('Too many verification attempts');
+    }
+  });
 });
+

@@ -250,4 +250,106 @@ describe('account closure orchestrator & encryption', () => {
     expect(workerResult.claimed).toBe(1);
     expect(workerResult.completed).toBe(1);
   });
+
+  it('buildProductionClosureAdapters cleans files recursively across all 7 storage buckets', async () => {
+    const { buildProductionClosureAdapters } = await import('../src/lib/account-closure-orchestrator');
+    const removedBuckets: string[] = [];
+    const removedFiles: string[][] = [];
+
+    const mockAdmin = {
+      storage: {
+        from: vi.fn((bucket: string) => ({
+          list: vi.fn((prefix: string) => {
+            if (bucket === 'job-photos' && prefix === 'acc-123') {
+              return Promise.resolve({
+                data: [
+                  { name: 'photo1.jpg', id: 'f-1' },
+                  { name: 'nested', id: null }, // nested folder
+                ],
+                error: null,
+              });
+            }
+            if (bucket === 'job-photos' && prefix === 'acc-123/nested') {
+              return Promise.resolve({
+                data: [{ name: 'subphoto.png', id: 'f-2' }],
+                error: null,
+              });
+            }
+            if (bucket === 'crew-photos' && prefix === 'acc-123') {
+              return Promise.resolve({
+                data: [{ name: 'avatar.jpg', id: 'f-3' }],
+                error: null,
+              });
+            }
+            return Promise.resolve({ data: [], error: null });
+          }),
+          remove: vi.fn((paths: string[]) => {
+            removedBuckets.push(bucket);
+            removedFiles.push(paths);
+            return Promise.resolve({ data: paths, error: null });
+          }),
+        })),
+      },
+    } as any;
+
+    const adapters = buildProductionClosureAdapters(mockAdmin);
+    const result = await adapters.storageDelete!('acc-123');
+
+    expect(result).toBe(true);
+    expect(removedBuckets).toContain('job-photos');
+    expect(removedBuckets).toContain('crew-photos');
+    expect(removedFiles.flat()).toEqual(
+      expect.arrayContaining(['acc-123/photo1.jpg', 'acc-123/nested/subphoto.png', 'acc-123/avatar.jpg'])
+    );
+  });
+
+  it('processClosureJob transitions failed storage adapter to retry and does not report terminal completion', async () => {
+    const jobRecord = {
+      id: 'job-storage-fail',
+      closure_subject_id: 'acc-storage-fail',
+      local_disposal_state: 'completed',
+      stripe_state: 'not_applicable',
+      quickbooks_state: 'not_applicable',
+      storage_state: 'pending',
+      auth_cleanup_state: 'not_applicable',
+      version: 1,
+      encrypted_vendor_handles: encryptVendorHandles({
+        storageFolderPrefix: 'acc-storage-fail',
+      }),
+    };
+
+    let updatedStage: string | null = null;
+    let updatedStatus: string | null = null;
+
+    const mockAdmin = {
+      from: vi.fn(() => ({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            single: vi.fn().mockResolvedValue({ data: jobRecord, error: null }),
+          }),
+        }),
+      })),
+      rpc: vi.fn((fnName: string, args: any) => {
+        if (fnName === 'update_closure_job_stage') {
+          updatedStage = args.p_stage;
+          updatedStatus = args.p_status;
+          return Promise.resolve({ data: true, error: null });
+        }
+        return Promise.resolve({ data: null, error: null });
+      }),
+    } as any;
+
+    const mockStorageDelete = vi.fn().mockRejectedValue(new Error('Storage S3 Timeout'));
+
+    const result = await processClosureJob(mockAdmin, 'job-storage-fail', {
+      storageDelete: mockStorageDelete,
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.completed).toBe(false);
+    expect(result.errors.some((e) => e.includes('Storage S3 Timeout'))).toBe(true);
+    expect(updatedStage).toBe('storage');
+    expect(updatedStatus).toBe('retry');
+  });
 });
+

@@ -40,9 +40,12 @@ const stripe = {
     return {
       update: stripe.update,
       cancel: stripe.cancel,
+      retrieve: stripe.retrieve,
     };
   },
+  retrieve: vi.fn(async (_id: string, _options?: Record<string, unknown>) => ({ latest_invoice: null })),
 };
+
 const events: Array<Record<string, unknown>> = [];
 
 vi.mock('@/lib/stripe', () => ({
@@ -607,6 +610,71 @@ describe('30-day money-back guarantee for annual base plans', () => {
 
     // Standard cancel at period end
     expect(stripe.update).toHaveBeenCalledTimes(1);
+  });
+
+  it('fails closed when payment source cannot be resolved for guarantee refund', async () => {
+
+    const recentDate = new Date(Date.now() - 5 * 86_400_000).toISOString();
+    const annualNoInvoice = {
+      provider_subscription_id: 'sub_annual_no_inv',
+      plan_code: 'growth',
+      billing_interval: 'annual',
+      status: 'active',
+      cancel_at_period_end: false,
+      current_period_start: recentDate,
+      current_period_end: new Date(Date.now() + 360 * 86_400_000).toISOString(),
+      created_at: recentDate,
+      updated_at: '2026-08-25T10:00:00Z',
+    };
+
+    stripe.invoices.list.mockResolvedValueOnce({ data: [] } as never);
+    stripe.subscriptions.retrieve = vi.fn().mockResolvedValueOnce({ latest_invoice: null } as never);
+
+    const result = await cancelBasePlanSubscriptionAtPeriodEnd({
+      admin: adminWith(annualNoInvoice),
+      accountId: 'acct_annual_no_inv',
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error).toContain('Unable to locate the original payment');
+    }
+  });
+
+  it('respects skipGuaranteeRefund: true to schedule at renewal without issuing immediate refund', async () => {
+    const recentDate = new Date(Date.now() - 5 * 86_400_000).toISOString();
+    const annualActive = {
+      provider_subscription_id: 'sub_annual_skip',
+      plan_code: 'growth',
+      billing_interval: 'annual',
+      status: 'active',
+      cancel_at_period_end: false,
+      current_period_start: recentDate,
+      current_period_end: new Date(Date.now() + 360 * 86_400_000).toISOString(),
+      created_at: recentDate,
+      updated_at: '2026-08-25T10:00:00Z',
+    };
+
+    stripe.refunds.create.mockClear();
+    stripe.cancel.mockClear();
+    stripe.update.mockClear();
+
+    const result = await cancelBasePlanSubscriptionAtPeriodEnd({
+      admin: adminWith(annualActive),
+      accountId: 'acct_annual_skip',
+      skipGuaranteeRefund: true,
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.guaranteeRefundIssued).toBeUndefined();
+    }
+
+    // Did not issue refund or immediate cancel
     expect(stripe.refunds.create).not.toHaveBeenCalled();
+    expect(stripe.cancel).not.toHaveBeenCalled();
+    // Scheduled cancel at period end
+    expect(stripe.update).toHaveBeenCalledTimes(1);
   });
 });
+

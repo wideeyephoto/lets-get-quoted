@@ -5,6 +5,11 @@ import {
   resolveRecipientTimeZone,
 } from '@/lib/ad-speed-to-lead';
 
+vi.mock('@/lib/sms', () => ({
+  sendSpeedToLeadSms: vi.fn().mockResolvedValue('11111111-2222-4000-8000-333333333333'),
+}));
+
+
 describe('AI Speed-to-Lead SMS Engine', () => {
   it('generates a warm, natural SMS response for standard ad leads', () => {
     const text = generateSpeedToLeadSms({
@@ -64,12 +69,18 @@ describe('AI Speed-to-Lead SMS Engine', () => {
   });
 
   it('evaluates quiet hours against called party local time during speed-to-lead dispatch', async () => {
-    const fakeAdmin = {} as any;
+    const fakeAdmin = {
+      from: vi.fn().mockReturnValue({
+        update: vi.fn().mockReturnValue({
+          eq: vi.fn().mockResolvedValue({ error: null }),
+        }),
+      }),
+    } as any;
 
     const result = await dispatchSpeedToLeadSms({
       admin: fakeAdmin,
-      accountId: 'acc_test_123',
-      recipientPhone: '(415) 555-0199', // Pacific time zone
+      accountId: '10000000-0000-4000-8000-000000000001',
+      recipientPhone: '+14155550199', // Pacific time zone
       businessName: 'Apex Roofing',
       leadName: 'Alex Smith',
       projectType: 'Roof Inspection',
@@ -81,3 +92,4 @@ describe('AI Speed-to-Lead SMS Engine', () => {
     expect(result.message).toBeTruthy();
   });
 });
+

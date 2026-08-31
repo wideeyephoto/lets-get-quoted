@@ -405,7 +405,7 @@
   background: #ff6a24;
   border: none;
   border-radius: 8px;
-  color: #ffffff;
+  color: #081722 !important;
   font-size: 12px;
   font-weight: 800;
   padding: 8px 10px;
@@ -415,7 +415,9 @@
 
 .simBtn:hover {
   background: #ff7d3e;
+  color: #040d14 !important;
 }
+
 
 .resetBtn {
   background: #1f2937;

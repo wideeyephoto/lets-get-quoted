@@ -271,7 +271,7 @@
   height: 34px;
   border-radius: 50%;
   background: linear-gradient(135deg, #ff6a24 0%, #ff8b4d 100%);
-  color: #ffffff;
+  color: #081722 !important;
   font-weight: 900;
   font-size: 15px;
   display: flex;
@@ -280,6 +280,7 @@
   box-shadow: 0 2px 8px rgba(255, 106, 36, 0.4);
   flex-shrink: 0;
 }
+
 
 .chatInfo {
   display: flex;
@@ -599,7 +600,7 @@
   height: 26px;
   border-radius: 50%;
   background: #ff6a24;
-  color: #fff;
+  color: #081722 !important;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -607,6 +608,7 @@
   font-weight: 900;
   flex-shrink: 0;
 }
+
 
 /* Right Column: Dominant Result & Outcome Card */
 .recordColumn {

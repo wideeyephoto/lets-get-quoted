@@ -29765,13 +29765,13 @@ a.ropsrow-fact:hover {
 
 .statement-date {
   font-size: 0.85rem;
-  color: #6b7280;
+  color: #4b5563;
 }
 
 .statement-sub {
   margin: 0.2rem 0 0;
   font-size: 0.85rem;
-  color: #6b7280;
+  color: #4b5563;
 }
 
 .statement-billto {
@@ -29783,13 +29783,14 @@ a.ropsrow-fact:hover {
   font-size: 0.72rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: var(--ink-neutral-3);
+  color: #4b5563;
 }
 
 .statement-client {
   margin: 0.15rem 0 0.1rem;
   font-size: 1.15rem;
   font-weight: 700;
+  color: #111827;
 }
 
 .statement-totals {
@@ -29810,7 +29811,7 @@ a.ropsrow-fact:hover {
   font-size: 0.72rem;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: var(--ink-neutral-3);
+  color: #4b5563;
 }
 
 .statement-total-box strong {
@@ -29854,7 +29855,7 @@ a.ropsrow-fact:hover {
   text-align: left;
   padding: 0.5rem 0.6rem;
   border-bottom: 1.5px solid #d1d5db;
-  color: #6b7280;
+  color: #374151;
   font-size: 0.72rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -29863,6 +29864,7 @@ a.ropsrow-fact:hover {
 .statement-table td {
   padding: 0.55rem 0.6rem;
   border-bottom: 1px solid #eceef1;
+  color: #1f2937;
 }
 
 .statement-table .num {
@@ -29875,10 +29877,11 @@ a.ropsrow-fact:hover {
   border-bottom: none;
   font-weight: 700;
   padding-top: 0.6rem;
+  color: #111827;
 }
 
 .statement-table .muted-row td {
-  color: var(--ink-neutral-3);
+  color: #4b5563;
 }
 
 .statement-foot {
@@ -29886,8 +29889,9 @@ a.ropsrow-fact:hover {
   padding-top: 1rem;
   border-top: 1px solid #eceef1;
   font-size: 0.82rem;
-  color: #6b7280;
+  color: #4b5563;
 }
+
 
 .quote-scope {
   margin: 1.1rem 0;

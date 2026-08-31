@@ -79,60 +79,72 @@ declare
 begin
   if v_actor_id is null or not (
     public.is_owner(p_account_id)
-    or (
-      public.is_office(p_account_id)
-      and exists (
-        select 1 from public.office_capabilities c
-        where c.capability = 'crew.write' and c.enabled
-      )
-    )
+    or public.office_can(p_account_id, 'crew.write')
   ) then
     raise exception 'crew_seat_forbidden' using errcode = 'P0001';
   end if;
 
   select e.feature_limits, e.entitlement_state
     into v_limits, v_entitlement_state
-  from public.account_seat_entitlements e
+  from public.workspace_entitlements e
   where e.account_id = p_account_id
   for update;
 
-  if not found then
-    raise exception 'crew_entitlement_missing' using errcode = 'P0001';
+  if not found or v_entitlement_state = 'archived' then
+    raise exception 'crew_seat_entitlement_unavailable'
+      using errcode = 'P0001';
   end if;
 
-  if v_entitlement_state <> 'active' then
-    raise exception 'crew_entitlement_inactive' using errcode = 'P0001';
+  v_limit_json := v_limits -> 'crew_users';
+  v_limit_text := v_limit_json #>> '{}';
+  if pg_catalog.jsonb_typeof(v_limit_json) <> 'number'
+     or v_limit_text is null then
+    raise exception 'crew_seat_entitlement_unavailable'
+      using errcode = 'P0001';
   end if;
 
-  v_limit_json := v_limits->'crew_seats';
-  if v_limit_json is null or pg_catalog.jsonb_typeof(v_limit_json) = 'null' then
-    v_limit := 2;
-  else
-    v_limit_text := trim(both '"' from v_limit_json::text);
-    v_limit_numeric := null;
-    begin
-      v_limit_numeric := v_limit_text::numeric;
-    exception when others then
-      v_limit_numeric := null;
-    end;
+  begin
+    v_limit_numeric := v_limit_text::numeric;
+  exception when numeric_value_out_of_range then
+    raise exception 'crew_seat_entitlement_unavailable'
+      using errcode = 'P0001';
+  end;
 
-    if v_limit_numeric is null or v_limit_numeric <= 0 then
-      v_limit := 2;
-    else
-      v_limit := trunc(v_limit_numeric)::bigint;
-    end if;
+  if v_limit_numeric < 0
+     or pg_catalog.trunc(v_limit_numeric) <> v_limit_numeric
+     or v_limit_numeric > 9223372036854775807::numeric then
+    raise exception 'crew_seat_entitlement_unavailable'
+      using errcode = 'P0001';
   end if;
+  v_limit := v_limit_numeric::bigint
+    + public.workspace_purchased_capacity_units(p_account_id, 'crew_users');
 
-  select count(*)
+  select pg_catalog.count(*)
     into v_active_count
   from public.crew c
   where c.account_id = p_account_id
     and c.active = true
     and c.deleted_at is null
-    and (c.worker_type is null or c.worker_type = 'employee');
+    and c.worker_type = 'employee';
 
-  if v_active_count >= v_limit then
-    raise exception 'crew_seat_limit_reached' using errcode = 'P0001';
+  if v_active_count > v_limit then
+    raise exception 'crew_seat_remediation_required'
+      using errcode = 'P0001',
+            detail = pg_catalog.jsonb_build_object(
+              'code', 'crew_seat_remediation_required',
+              'active_count', v_active_count,
+              'crew_limit', v_limit
+            )::text;
+  end if;
+
+  if v_active_count = v_limit then
+    raise exception 'crew_seat_limit_reached'
+      using errcode = 'P0001',
+            detail = pg_catalog.jsonb_build_object(
+              'code', 'crew_seat_limit_reached',
+              'active_count', v_active_count,
+              'crew_limit', v_limit
+            )::text;
   end if;
 
   insert into public.crew as c (
@@ -194,13 +206,7 @@ declare
 begin
   if v_actor_id is null or not (
     public.is_owner(p_account_id)
-    or (
-      public.is_office(p_account_id)
-      and exists (
-        select 1 from public.office_capabilities c
-        where c.capability = 'crew.write' and c.enabled
-      )
-    )
+    or public.office_can(p_account_id, 'crew.write')
   ) then
     raise exception 'crew_seat_forbidden' using errcode = 'P0001';
   end if;
@@ -216,59 +222,108 @@ begin
     raise exception 'crew_member_not_found' using errcode = 'P0001';
   end if;
 
+  if v_member.active then
+    return true;
+  end if;
+
   v_worker_type := coalesce(v_member.worker_type, 'employee');
-  if v_worker_type = 'subcontractor' then
-    update public.crew
-      set active = true,
-          updated_at = pg_catalog.now()
-    where id = p_crew_id
-      and account_id = p_account_id;
+  if v_worker_type <> 'employee' then
+    update public.crew as c
+    set active = true
+    where c.account_id = p_account_id
+      and c.id = p_crew_id
+      and c.deleted_at is null
+    returning c.* into v_member;
+    if not found then
+      raise exception 'crew_member_not_found' using errcode = 'P0001';
+    end if;
     return true;
   end if;
 
   select e.feature_limits, e.entitlement_state
     into v_limits, v_entitlement_state
-  from public.account_seat_entitlements e
+  from public.workspace_entitlements e
   where e.account_id = p_account_id
   for update;
 
+  if not found or v_entitlement_state = 'archived' then
+    raise exception 'crew_seat_entitlement_unavailable'
+      using errcode = 'P0001';
+  end if;
+
+  v_limit_json := v_limits -> 'crew_users';
+  v_limit_text := v_limit_json #>> '{}';
+  if pg_catalog.jsonb_typeof(v_limit_json) <> 'number'
+     or v_limit_text is null then
+    raise exception 'crew_seat_entitlement_unavailable'
+      using errcode = 'P0001';
+  end if;
+
+  begin
+    v_limit_numeric := v_limit_text::numeric;
+  exception when numeric_value_out_of_range then
+    raise exception 'crew_seat_entitlement_unavailable'
+      using errcode = 'P0001';
+  end;
+
+  if v_limit_numeric < 0
+     or pg_catalog.trunc(v_limit_numeric) <> v_limit_numeric
+     or v_limit_numeric > 9223372036854775807::numeric then
+    raise exception 'crew_seat_entitlement_unavailable'
+      using errcode = 'P0001';
+  end if;
+  v_limit := v_limit_numeric::bigint
+    + public.workspace_purchased_capacity_units(p_account_id, 'crew_users');
+
+  select c.*
+    into v_member
+  from public.crew c
+  where c.account_id = p_account_id
+    and c.id = p_crew_id
+    and c.deleted_at is null
+  for update;
+
   if not found then
-    raise exception 'crew_entitlement_missing' using errcode = 'P0001';
+    raise exception 'crew_member_not_found' using errcode = 'P0001';
+  end if;
+  if v_member.active then
+    return true;
+  end if;
+  if coalesce(v_member.worker_type, 'employee') <> 'employee' then
+    update public.crew
+    set active = true
+    where account_id = p_account_id
+      and id = p_crew_id
+      and active = false;
+    return true;
   end if;
 
-  if v_entitlement_state <> 'active' then
-    raise exception 'crew_entitlement_inactive' using errcode = 'P0001';
-  end if;
-
-  v_limit_json := v_limits->'crew_seats';
-  if v_limit_json is null or pg_catalog.jsonb_typeof(v_limit_json) = 'null' then
-    v_limit := 2;
-  else
-    v_limit_text := trim(both '"' from v_limit_json::text);
-    v_limit_numeric := null;
-    begin
-      v_limit_numeric := v_limit_text::numeric;
-    exception when others then
-      v_limit_numeric := null;
-    end;
-
-    if v_limit_numeric is null or v_limit_numeric <= 0 then
-      v_limit := 2;
-    else
-      v_limit := trunc(v_limit_numeric)::bigint;
-    end if;
-  end if;
-
-  select count(*)
+  select pg_catalog.count(*)
     into v_active_count
   from public.crew c
   where c.account_id = p_account_id
     and c.active = true
     and c.deleted_at is null
-    and (c.worker_type is null or c.worker_type = 'employee');
+    and c.worker_type = 'employee';
 
-  if v_active_count >= v_limit then
-    raise exception 'crew_seat_limit_reached' using errcode = 'P0001';
+  if v_active_count > v_limit then
+    raise exception 'crew_seat_remediation_required'
+      using errcode = 'P0001',
+            detail = pg_catalog.jsonb_build_object(
+              'code', 'crew_seat_remediation_required',
+              'active_count', v_active_count,
+              'crew_limit', v_limit
+            )::text;
+  end if;
+
+  if v_active_count = v_limit then
+    raise exception 'crew_seat_limit_reached'
+      using errcode = 'P0001',
+            detail = pg_catalog.jsonb_build_object(
+              'code', 'crew_seat_limit_reached',
+              'active_count', v_active_count,
+              'crew_limit', v_limit
+            )::text;
   end if;
 
   update public.crew
@@ -280,6 +335,7 @@ begin
   return true;
 end;
 $$;
+
 
 -- 4. subcontractor tables RLS
 alter table if exists subcontractor_requests enable row level security;

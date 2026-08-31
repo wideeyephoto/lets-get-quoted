@@ -563,6 +563,11 @@ export async function handleAdBudgetWebhookEvent(
     const session = event.data.object as Stripe.Checkout.Session;
     if (session.metadata?.kind !== 'ad_budget') return false;
 
+    // Enforce verified payment status before provisioning or crediting
+    if (session.payment_status && session.payment_status === 'unpaid') {
+      return false;
+    }
+
     const accountId = session.metadata.account_id;
     const fundingModel = (session.metadata.funding_model as AdFundingModel) || 'weekly_drip';
     const subscriptionId = typeof session.subscription === 'string' ? session.subscription : session.subscription?.id || null;
@@ -571,9 +576,16 @@ export async function handleAdBudgetWebhookEvent(
     // Query site to resolve real public domain/subdomain
     const { data: siteRow } = await admin
       .from('sites')
-      .select('id, subdomain, custom_domain, custom_domain_verified_at')
+      .select('id, subdomain, custom_domain, custom_domain_verified_at, content')
       .eq('account_id', accountId)
       .maybeSingle();
+
+    const currentContent = (siteRow?.content as Record<string, unknown>) || {};
+    const currentAdState = (currentContent.adCampaign as Partial<AdBudgetWalletState>) || {};
+    const processedCheckoutSessions = currentAdState.processedRefillPaymentIntentIds || [];
+    if (currentAdState.lastRefillPaymentIntentId === session.id || processedCheckoutSessions.includes(session.id)) {
+      return true; // Durable replay deduplication: already processed
+    }
 
     const origin = siteRow ? siteOrigin(siteRow) : null;
     const landingPageUrl = origin ? `${origin}/estimate` : 'https://app.letsgetquoted.com/estimate';
@@ -669,6 +681,8 @@ export async function handleAdBudgetWebhookEvent(
       provisioningStatus: provisioningResult.status,
       provisioningMessage: provisioningResult.message,
       landingPageUrl,
+      lastRefillPaymentIntentId: session.id,
+      processedRefillPaymentIntentIds: [...processedCheckoutSessions.filter((id) => id !== session.id), session.id].slice(-20),
     });
 
     return true;
@@ -801,6 +815,22 @@ export async function executeWalletRefillCharge(params: {
 
   if (adState.fundingModel !== 'auto_refill_wallet') {
     return { success: false, refilled: false, message: 'Account is not using the Auto-Refill Wallet funding model.' };
+  }
+
+  if (adState.status !== 'active') {
+    return {
+      success: false,
+      refilled: false,
+      message: `Campaign is not active (status: ${adState.status}). Automated off-session wallet refills are suspended.`,
+    };
+  }
+
+  if (adState.cancelAtPeriodEnd) {
+    return {
+      success: false,
+      refilled: false,
+      message: 'Campaign is scheduled for cancellation. Automated wallet refills are disabled.',
+    };
   }
 
   const balance = adState.walletBalanceCents ?? 25000;

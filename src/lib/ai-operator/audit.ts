@@ -8,8 +8,9 @@ import type {
 
 // In-memory runtime stores for audit trails and HITL queues
 // (Can be backed by Supabase `ai_operator_logs` / `ai_operator_action_requests` tables)
-var auditLogsStore: OperatorAuditLogEntry[] = [];
-var hitlActionStore: Map<string, OperatorHitlActionRequest> = new Map();
+const auditLogsStore: OperatorAuditLogEntry[] = [];
+const hitlActionStore: Map<string, OperatorHitlActionRequest> = new Map();
+
 
 /**
  * Strict action safety classifications

@@ -164,7 +164,7 @@ export async function triageSupportCase(
   let urgency: SupportCaseTriageResult['urgency'] = 'normal';
   let reply = '';
   let internalAction = 'Review ticket and follow up.';
-  let requiresFounderReview = false;
+
 
   // Topic classification & diagnostic drafting
   if (

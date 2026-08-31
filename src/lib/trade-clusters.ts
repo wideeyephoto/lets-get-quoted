@@ -184,12 +184,12 @@ export function getTradeTopicCluster(trade: Trade): TradeTopicCluster {
     ].includes(slug)
   ) {
     bestFeature = {
-      href: '/features/property-intelligence',
-      title: 'Property Intelligence & Roof Geometry',
-      blurb: `Instantly inspect parcel square footage, roof pitch, living area, and electrical specs before estimating.`,
-      anchorText: `See how Property Intelligence decodes building specs for ${name}`,
+      href: '/features/ai-vision',
+      title: 'AI Vision & Aerial Roof Estimator',
+      blurb: `Instantly inspect parcel square footage, aerial roof pitch, living area, and equipment specs before estimating.`,
+      anchorText: `See how AI Vision decodes building specs and roof pitch for ${name}`,
       category: 'feature',
-      badge: 'Platform Feature',
+      badge: 'AI Vision Feature',
     };
   } else if (
     [

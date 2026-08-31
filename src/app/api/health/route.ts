@@ -26,28 +26,29 @@ export async function GET() {
   // 1. Quoting Engine & Database
   const dbStart = performance.now();
   let dbStatus: HealthServiceStatus = 'operational';
-  let dbDetail = 'Google Cloud Run (us-east1) · PostgreSQL connected';
+  let dbDetail = 'PostgreSQL database connected';
   try {
     const admin = createAdminClient();
     const probePromise = admin.from('sites').select('id').limit(1);
     const timeoutPromise = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error('Database probe timed out after 2000ms')), 2000)
+      setTimeout(() => reject(new Error('Database probe timed out')), 2000)
     );
     const { error } = (await Promise.race([probePromise, timeoutPromise])) as { error: { message: string } | null };
     const dbElapsed = Math.round(performance.now() - dbStart);
     if (error) {
       dbStatus = 'outage';
-      dbDetail = `Database query error: ${error.message}`;
+      dbDetail = 'Database service query error';
     } else if (dbElapsed > 1500) {
       dbStatus = 'degraded';
       dbDetail = `High database latency (${dbElapsed}ms)`;
     } else {
-      dbDetail = `Google Cloud Run (us-east1) · PostgreSQL connected (${dbElapsed}ms)`;
+      dbDetail = `PostgreSQL database operational (${dbElapsed}ms)`;
     }
-  } catch (err) {
+  } catch {
     dbStatus = 'outage';
-    dbDetail = `Database unreachable: ${err instanceof Error ? err.message : String(err)}`;
+    dbDetail = 'Database service unreachable';
   }
+
 
   services.push({
     id: 'quoting-engine',

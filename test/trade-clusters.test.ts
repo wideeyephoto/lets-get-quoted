@@ -14,7 +14,7 @@ describe('trade topic clusters and internal linking', () => {
       '/tools/leakage-calculator',
     ]);
     const validFeatureHrefs = new Set([
-      '/features/property-intelligence',
+      '/features/ai-vision',
       '/features/quick-stops',
       '/features/payments',
       '/features/ai-intake',

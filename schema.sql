@@ -1688,9 +1688,29 @@ $$;
 -- so a crew member can't insert a cost/feed/task carrying a foreign account_id
 -- (cross-tenant write / margin injection) while pointing job_id at their own job.
 create or replace function job_account_id(j uuid)
-returns uuid language sql stable security definer set search_path = public as $$
-  select account_id from jobs where id = j;
+returns uuid language plpgsql stable security definer set search_path = public as $$
+declare
+  v_account_id uuid;
+begin
+  select account_id into v_account_id from public.jobs where id = j;
+  if v_account_id is null then
+    return null;
+  end if;
+
+  if auth.role() = 'authenticated' then
+    if not (public.is_owner(v_account_id) or public.crew_on_job(j)) then
+      return null;
+    end if;
+  elsif auth.role() = 'anon' then
+    return null;
+  end if;
+
+  return v_account_id;
+end;
 $$;
+revoke execute on function public.job_account_id(uuid) from public, anon;
+grant execute on function public.job_account_id(uuid) to authenticated, service_role;
+
 
 -- Column-level guard for crew job UPDATEs, kept as defence in depth now that
 -- crew hold no UPDATE policy on jobs at all (see below). RLS can't restrict

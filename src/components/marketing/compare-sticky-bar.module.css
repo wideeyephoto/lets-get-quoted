@@ -70,7 +70,7 @@
 
 .ctaBtn {
   background: #ff6a24;
-  color: #ffffff;
+  color: #081722 !important;
   padding: 8px 18px;
   border-radius: 6px;
   font-size: 13px;
@@ -83,8 +83,10 @@
 
 .ctaBtn:hover {
   background: #ff7d3e;
+  color: #040d14 !important;
   transform: translateY(-1px);
 }
+
 
 .closeBtn {
   background: transparent;

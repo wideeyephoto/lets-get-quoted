@@ -2,7 +2,8 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { requireOfficeContext, requireOwnerContext } from '@/lib/auth';
+import { requireOfficeContext, requireOwnerContext, createAdminClient } from '@/lib/auth';
+import { checkRateLimitStrict } from '@/lib/rate-limit';
 import { normalizeUsPhone } from '@/lib/phone';
 import {
   hasCurrentSmsConsent,
@@ -25,6 +26,7 @@ import { requireActiveDedicatedMessagingSender } from '@/lib/messaging-number-pr
 
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 
 function messageIntent(formData: FormData): string {
   const value = String(formData.get('intentId') ?? '').trim().toLowerCase();
@@ -100,6 +102,7 @@ export type VerifyCodeResult =
   | { status: 'error'; message: string };
 
 /**
+
  * Sends a 6-digit OTP SMS verification code to confirm ownership of the contractor's mobile number.
  */
 export async function sendOwnerPhoneVerificationCodeAction(
@@ -112,6 +115,12 @@ export async function sendOwnerPhoneVerificationCodeAction(
 
   try {
     const { accountId } = await requireOfficeContext('settings.write');
+    const admin = createAdminClient();
+    const isAllowed = await checkRateLimitStrict(admin, `owner_otp_send:${accountId}`, 5, 600);
+    if (!isAllowed) {
+      return { status: 'error', message: 'Too many verification code requests. Please wait a few minutes before trying again.' };
+    }
+
     const code = generateOwnerVerificationCode();
     const expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes
     const token = ownerPhoneVerificationToken(accountId, normalized, code, expiresAt);
@@ -149,6 +158,12 @@ export async function verifyOwnerPhoneVerificationCodeAction(
 
   try {
     const { accountId } = await requireOfficeContext('settings.write');
+    const admin = createAdminClient();
+    const isAllowed = await checkRateLimitStrict(admin, `owner_otp_verify:${accountId}`, 5, 600);
+    if (!isAllowed) {
+      return { status: 'error', message: 'Too many verification attempts. Please request a new code and try again.' };
+    }
+
     const isValid = isOwnerPhoneVerificationValid(accountId, normalized, cleanCode, expiresAt, token);
     if (!isValid) {
       return { status: 'error', message: 'The 6-digit code is incorrect or has expired. Please request a new code.' };
@@ -163,6 +178,7 @@ export async function verifyOwnerPhoneVerificationCodeAction(
     return { status: 'error', message: 'Failed to verify code. Please try again.' };
   }
 }
+
 
 export async function saveOwnerAlertsAction(
   _previous: OwnerAlertsState,

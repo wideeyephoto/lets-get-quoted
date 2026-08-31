@@ -201,7 +201,8 @@ export async function generateExecutiveBriefing(
   }
 
   const troubleCount = Array.isArray(cronTrouble) ? cronTrouble.length : 0;
-  const activeIncidents = Array.isArray(incidents) ? incidents.filter((i: any) => !i.resolved_at) : [];
+  const activeIncidents = Array.isArray(incidents) ? incidents.filter((i: { resolved_at?: string | null }) => !i.resolved_at) : [];
+
 
   const hasCriticalIncidents =
     activeIncidents.length > 0 ||

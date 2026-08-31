@@ -145,6 +145,7 @@ export default function HeroConnectedWorkflow() {
   const [isAutoPlayEnabled, setIsAutoPlayEnabled] = useState(true);
   const [isHovered, setIsHovered] = useState(false);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
+  const [tilt, setTilt] = useState({ x: 0, y: 0 });
 
   const containerRef = useRef<HTMLDivElement>(null);
   const autoPlayTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -162,6 +163,24 @@ export default function HeroConnectedWorkflow() {
     setActiveStep(idx);
     replayWorkflow();
   }, [replayWorkflow]);
+
+  // Dynamic 3D mouse tracking tilt
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!containerRef.current) return;
+    if (typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const nx = (e.clientX - rect.left) / rect.width - 0.5;  // -0.5 to 0.5
+    const ny = (e.clientY - rect.top) / rect.height - 0.5; // -0.5 to 0.5
+    setTilt({
+      x: -(ny * 5), // rotateX degrees
+      y: nx * 6,   // rotateY degrees
+    });
+  };
+
+  const handleMouseLeave = () => {
+    setIsHovered(false);
+    setTilt({ x: 0, y: 0 });
+  };
 
   // Autoplay progression loop (pauses on hover, focus, or when autoplay is paused)
   useEffect(() => {
@@ -190,6 +209,29 @@ export default function HeroConnectedWorkflow() {
     };
   }, [isAutoPlayEnabled, isHovered, replayWorkflow]);
 
+  // Web Audio 2-tone radio dispatch chirp
+  const playRadioChirp = () => {
+    try {
+      if (typeof window === 'undefined') return;
+      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(940, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(1880, ctx.currentTime + 0.07);
+      gain.gain.setValueAtTime(0.06, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.11);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.11);
+    } catch {
+      // Audio playback is purely decorative; fail silently if context unavailable
+    }
+  };
+
   // Handle Voice Memo Speech Audio
   const toggleVoicePlayback = () => {
     if (typeof window === 'undefined') return;
@@ -202,6 +244,7 @@ export default function HeroConnectedWorkflow() {
       return;
     }
 
+    playRadioChirp();
     setIsPlayingAudio(true);
     if ('speechSynthesis' in window) {
       window.speechSynthesis.cancel();
@@ -221,8 +264,14 @@ export default function HeroConnectedWorkflow() {
       ref={containerRef}
       className={styles.pricingVisual}
       aria-label="Interactive contractor workflow showcase"
+      style={{
+        transform: isHovered
+          ? `perspective(1200px) rotateX(${tilt.x}deg) rotateY(${tilt.y}deg) translateY(-6px)`
+          : undefined,
+      }}
       onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
       onFocus={() => setIsHovered(true)}
       onBlur={() => setIsHovered(false)}
     >

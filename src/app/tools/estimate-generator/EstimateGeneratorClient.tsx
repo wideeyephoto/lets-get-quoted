@@ -676,9 +676,10 @@ export default function EstimateGeneratorClient() {
 
         {/* Bill To Section (Screen) */}
         <div className={`${styles.estimateBillTo} ${styles.screenOnly}`}>
-          <span style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', color: '#687e8d' }}>
+          <span style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', color: '#334155' }}>
             Prepared For:
           </span>
+
           <div className={styles.billToGrid}>
             <input
               type="text"

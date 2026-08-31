@@ -165,14 +165,32 @@ export async function dispatchSpeedToLeadSms(params: {
   });
 
   if (quietHoursCheck.isDelayed) {
+    try {
+      const eventId = await sendSpeedToLeadSms({
+        accountId,
+        phone: recipientPhone,
+        businessName,
+        body: message,
+        idempotencyKey,
+      });
+      if (eventId && quietHoursCheck.sendAt && _admin && typeof _admin.from === 'function') {
+        await _admin
+          .from('sms_delivery_tasks')
+          .update({ available_at: quietHoursCheck.sendAt.toISOString() })
+          .eq('sms_event_id', eventId);
+      }
+    } catch (err) {
+      console.warn('Quiet-hours speed-to-lead delayed enqueue warning:', err instanceof Error ? err.message : err);
+    }
     return {
       sent: false,
-      message: quietHoursCheck.reason || `Message held during FCC TCPA quiet hours (${resolvedTimeZone}).`,
+      message: quietHoursCheck.reason || `Message queued for TCPA-compliant delayed delivery (${resolvedTimeZone}).`,
       queuedForQuietHours: true,
       resolvedTimeZone,
       sendAt: quietHoursCheck.sendAt,
     };
   }
+
 
   try {
     const eventId = await sendSpeedToLeadSms({

@@ -333,6 +333,7 @@ export async function cancelBasePlanSubscriptionAtPeriodEnd(input: {
   admin: SupabaseClient;
   accountId: string;
   actorEmail?: string | null;
+  skipGuaranteeRefund?: boolean;
 }): Promise<CancellationResult> {
   // Checked BEFORE the read, so a refusal costs no query and writes no event
   if (!basePlanSubscriptionCancellationEnabled()) {
@@ -345,7 +346,7 @@ export async function cancelBasePlanSubscriptionAtPeriodEnd(input: {
   }
 
   // 1. 30-DAY MONEY-BACK GUARANTEE PATH FOR ANNUAL BASE PLANS
-  if (subscription.guaranteeEligible && subscription.guaranteeRefundAmountCents > 0) {
+  if (!input.skipGuaranteeRefund && subscription.guaranteeEligible && subscription.guaranteeRefundAmountCents > 0) {
     await recordAccountEvent({
       accountId: input.accountId,
       kind: 'subscription_guarantee_refund_requested',
@@ -368,6 +369,7 @@ export async function cancelBasePlanSubscriptionAtPeriodEnd(input: {
         subscription: subscription.providerSubscriptionId,
         status: 'paid',
         limit: 1,
+        expand: ['data.payment_intent', 'data.charge'],
       });
       const latestInvoice = invoices.data?.[0] as unknown as {
         payment_intent?: string | { id: string } | null;
@@ -383,53 +385,80 @@ export async function cancelBasePlanSubscriptionAtPeriodEnd(input: {
           ? latestInvoice.charge
           : latestInvoice.charge.id;
       }
+
+      if (!paymentIntentId && !latestChargeId) {
+        const sub = await stripe.subscriptions.retrieve(subscription.providerSubscriptionId, {
+          expand: ['latest_invoice.payment_intent'],
+        });
+        const inv = sub.latest_invoice as unknown as {
+          payment_intent?: string | { id: string } | null;
+          charge?: string | { id: string } | null;
+        } | undefined;
+        if (inv?.payment_intent) {
+          paymentIntentId = typeof inv.payment_intent === 'string' ? inv.payment_intent : inv.payment_intent.id;
+        }
+        if (inv?.charge) {
+          latestChargeId = typeof inv.charge === 'string' ? inv.charge : inv.charge.id;
+        }
+      }
     } catch (invErr) {
-      console.warn(`Could not list invoices for subscription ${subscription.providerSubscriptionId}:`, invErr);
+      console.warn(`Could not resolve payment source for subscription ${subscription.providerSubscriptionId}:`, invErr);
+    }
+
+    if (!paymentIntentId && !latestChargeId) {
+      console.error(`Could not locate payment source for subscription guarantee refund ${subscription.providerSubscriptionId}`);
+      return {
+        ok: false,
+        error: 'Unable to locate the original payment to refund automatically. Please contact support to process your 30-day guarantee.',
+      };
     }
 
     let stripeRefundId: string | null = null;
-    if (paymentIntentId || latestChargeId) {
-      try {
-        const refundParams: Record<string, unknown> = {
-          amount: subscription.guaranteeRefundAmountCents,
-          reason: 'requested_by_customer',
-          metadata: {
-            account_id: input.accountId,
-            plan_code: subscription.planCode,
-            guarantee_version: '30_day_first_annual',
-            refund_amount_cents: String(subscription.guaranteeRefundAmountCents),
-            one_month_deduction_cents: String(subscription.guaranteeDeductionCents),
-          },
-        };
-        if (paymentIntentId) refundParams.payment_intent = paymentIntentId;
-        else if (latestChargeId) refundParams.charge = latestChargeId;
+    try {
+      const refundParams: Record<string, unknown> = {
+        amount: subscription.guaranteeRefundAmountCents,
+        reason: 'requested_by_customer',
+        metadata: {
+          account_id: input.accountId,
+          plan_code: subscription.planCode,
+          guarantee_version: '30_day_first_annual',
+          refund_amount_cents: String(subscription.guaranteeRefundAmountCents),
+          one_month_deduction_cents: String(subscription.guaranteeDeductionCents),
+        },
+      };
+      if (paymentIntentId) refundParams.payment_intent = paymentIntentId;
+      else if (latestChargeId) refundParams.charge = latestChargeId;
 
-        const refund = await stripe.refunds.create(
-          refundParams as never,
-          {
-            idempotencyKey: `lgq:billing:v1:guarantee_refund:${input.accountId}:${subscription.providerSubscriptionId}`,
-          },
-        );
-        stripeRefundId = refund.id;
-      } catch (refundError) {
-        console.error(`Stripe refund creation failed for ${subscription.providerSubscriptionId}:`, refundError);
-        return { ok: false, error: 'Stripe was unable to process the guarantee refund. Please contact support.' };
-      }
+      const refund = await stripe.refunds.create(
+        refundParams as never,
+        {
+          idempotencyKey: `lgq:billing:v1:guarantee_refund:${input.accountId}:${subscription.providerSubscriptionId}`,
+        },
+      );
+      stripeRefundId = refund.id;
+    } catch (refundError) {
+      console.error(`Stripe refund creation failed for ${subscription.providerSubscriptionId}:`, refundError);
+      return { ok: false, error: 'Stripe was unable to process the guarantee refund. Please contact support.' };
     }
 
     // Cancel the subscription immediately at Stripe
     try {
-      await stripe.subscriptions.cancel(subscription.providerSubscriptionId, {
-        idempotencyKey: buildSubscriptionCancellationIdempotencyKey({
-          workspaceId: input.accountId,
-          providerSubscriptionId: subscription.providerSubscriptionId,
-          mode: 'immediate',
-          stateToken: subscription.updatedAt,
-        }),
-      } as never);
+      await stripe.subscriptions.cancel(
+        subscription.providerSubscriptionId,
+        {},
+        {
+          idempotencyKey: buildSubscriptionCancellationIdempotencyKey({
+            workspaceId: input.accountId,
+            providerSubscriptionId: subscription.providerSubscriptionId,
+            mode: 'immediate',
+            stateToken: subscription.updatedAt,
+          }),
+        },
+      );
     } catch (cancelErr) {
       console.error(`Failed to cancel subscription after refund for ${subscription.providerSubscriptionId}:`, cancelErr);
     }
+
 
     // Record completed guarantee refund event
     await recordAccountEvent({
