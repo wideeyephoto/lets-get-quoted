@@ -17,12 +17,6 @@ export const alt = 'Let’s Get Quoted — websites and quoting software built f
 export const size = OG_SIZE;
 export const contentType = OG_CONTENT_TYPE;
 
-// Mirrors the page's own generateStaticParams. Without it these render on the
-// first request for each card instead of at build, which for an image a crawler
-// fetches once means the crawler is the one waiting.
-export function generateStaticParams() {
-  return TRADES.map((trade) => ({ trade: trade.slug }));
-}
 
 export default function Image({ params }: { params: { trade: string } }) {
   const trade = getTrade(params.trade);

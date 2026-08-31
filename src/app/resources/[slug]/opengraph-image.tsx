@@ -15,9 +15,6 @@ export const alt = 'A Let’s Get Quoted guide for contractors';
 export const size = OG_SIZE;
 export const contentType = OG_CONTENT_TYPE;
 
-export function generateStaticParams() {
-  return ARTICLES.map((article) => ({ slug: article.slug }));
-}
 
 export default function Image({ params }: { params: { slug: string } }) {
   const article = getArticle(params.slug);
