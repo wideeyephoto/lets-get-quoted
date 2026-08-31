@@ -92,6 +92,60 @@ export default function PayoutsTransfersPanel({ payouts }: Props) {
         </div>
       </div>
 
+      {/* Instant Payout & Tax 1099-K Hub */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '0.85rem' }}>
+        {/* Instant Payout Liquidity Card */}
+        <div style={{ padding: '1rem 1.25rem', background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, rgba(16, 185, 129, 0.05) 100%)', borderRadius: '8px', border: '1px solid rgba(59, 130, 246, 0.2)', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <strong style={{ fontSize: '0.92rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              <span>⚡</span> Instant Payout (Emergency Liquidity)
+            </strong>
+            <span style={{ fontSize: '0.75rem', fontWeight: 600, background: 'rgba(59, 130, 246, 0.15)', color: '#2563eb', padding: '0.15rem 0.5rem', borderRadius: '999px' }}>
+              Within 30 Mins
+            </span>
+          </div>
+          <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+            Need material funds on Friday afternoon before banks open Monday? Transfer available funds immediately to your debit card.
+          </p>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.25rem', padding: '0.5rem 0.75rem', background: '#fff', borderRadius: '6px', border: '1px solid var(--border-subtle, #e2e8f0)', fontSize: '0.84rem' }}>
+            <div>
+              <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.72rem' }}>Available to Transfer</span>
+              <strong>{formatUsd(payouts.availableBalanceDollars)}</strong>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.72rem' }}>Net After 1.5% Fee</span>
+              <strong style={{ color: '#059669' }}>
+                {formatUsd(Math.max(0, payouts.availableBalanceDollars * 0.985))}
+              </strong>
+            </div>
+          </div>
+        </div>
+
+        {/* 1099-K Annual Tax Compliance Radar */}
+        <div style={{ padding: '1rem 1.25rem', background: 'var(--panel-bg, #fff)', borderRadius: '8px', border: '1px solid var(--border-subtle, #e2e8f0)', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <strong style={{ fontSize: '0.92rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              <span>📋</span> IRS Form 1099-K Gross Tracking
+            </strong>
+            <span style={{ fontSize: '0.75rem', fontWeight: 600, background: 'rgba(16, 185, 129, 0.12)', color: '#059669', padding: '0.15rem 0.5rem', borderRadius: '999px' }}>
+              Compliant
+            </span>
+          </div>
+          <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+            Track your gross payment settlement volume against federal Form 1099-K reporting thresholds. Stripe automatically generates official year-end tax forms.
+          </p>
+          <div style={{ marginTop: '0.25rem', display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+              <span>Gross Volume Settled</span>
+              <span>Threshold: $5,000+</span>
+            </div>
+            <div style={{ width: '100%', height: '6px', background: '#f1f5f9', borderRadius: '999px', overflow: 'hidden' }}>
+              <div style={{ width: '100%', height: '100%', background: 'linear-gradient(90deg, #3b82f6 0%, #10b981 100%)', borderRadius: '999px' }} />
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Payouts Table */}
       <div style={{ background: 'var(--panel-bg, #ffffff)', borderRadius: '8px', border: '1px solid var(--border-subtle, #e2e8f0)', overflow: 'hidden' }}>
         <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--border-subtle, #e2e8f0)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
