@@ -275,8 +275,12 @@ export default function HeroConnectedWorkflow() {
       onFocus={() => setIsHovered(true)}
       onBlur={() => setIsHovered(false)}
     >
-      <div className={`${styles.visualOrbit} ${styles.orbitOne}`} aria-hidden="true" />
-      <div className={`${styles.visualOrbit} ${styles.orbitTwo}`} aria-hidden="true" />
+      <div className={`${styles.visualOrbit} ${styles.orbitOne}`} aria-hidden="true">
+        <span className={styles.orbitBead} />
+      </div>
+      <div className={`${styles.visualOrbit} ${styles.orbitTwo}`} aria-hidden="true">
+        <span className={styles.orbitBead} />
+      </div>
 
       {/* Card Header & Kicker */}
       <div className={styles.visualHeading}>

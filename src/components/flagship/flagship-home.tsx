@@ -9,6 +9,7 @@ import { SiteFooter, SiteHeader } from './site-chrome';
 import { COMMAND_CENTER_SCREENS } from '@/components/command-center-deck';
 import HeroAiIntakeShowcase from './hero-ai-intake-showcase';
 import HeroConnectedWorkflow from './HeroConnectedWorkflow';
+import HeroAmbientGlow from './HeroAmbientGlow';
 import { HOME_FAQS } from '@/lib/home-faqs';
 import { BRAND_POSITIONING } from '@/lib/brand-messaging';
 import { STRIPE_PROCESSING_NOTE } from '@/lib/pricing';
@@ -664,6 +665,7 @@ export default function FlagshipHome() {
           would now be sitting on top of real UI rather than beside a drawing
           of it. */}
       <section className="hero hero-split" id="main-content">
+        <HeroAmbientGlow />
         <Glare />
         {/* Five trade objects on a 68-second orbit around the copy. After the
             glare so it sits above it — both are z-index:-1 children of a section

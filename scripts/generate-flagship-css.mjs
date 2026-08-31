@@ -6873,7 +6873,171 @@ const TWEAKS = `
   transform: translateY(-3px);
 }
 
-/* ---- 7. Dynamic Background Motion & Radiance Halos ----------------------- */
+/* ---- 7. Dynamic Background Motion, Hero Aurora & Radiance Halos --------- */
+.root :global(.hero) {
+  min-height: 900px;
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 70% 55% at 20% 28%, rgba(255, 106, 36, 0.16) 0%, transparent 68%),
+    radial-gradient(ellipse 65% 55% at 80% 32%, rgba(78, 224, 188, 0.14) 0%, transparent 68%),
+    radial-gradient(ellipse 50% 40% at 50% 75%, rgba(255, 196, 77, 0.07) 0%, transparent 65%),
+    linear-gradient(180deg, #07131d 0%, #081722 100%);
+}
+
+.root :global(.hero-ambient-glow) {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Primary Warm Amber Nebula — behind headline & CTA */
+.root :global(.hero-glow-orb-primary) {
+  position: absolute;
+  top: 2%;
+  left: 2%;
+  width: clamp(420px, 40vw, 680px);
+  height: clamp(420px, 40vw, 680px);
+  border-radius: 50%;
+  background: radial-gradient(circle at 45% 45%, rgba(255, 106, 36, 0.22) 0%, rgba(255, 180, 50, 0.12) 40%, rgba(255, 106, 36, 0.03) 65%, transparent 70%);
+  filter: blur(48px);
+  animation: heroGlowFloatLeft 16s ease-in-out infinite alternate;
+  will-change: transform, opacity;
+}
+
+/* Secondary Vibrant Cyan/Teal Nebula — behind workflow card */
+.root :global(.hero-glow-orb-secondary) {
+  position: absolute;
+  top: 8%;
+  right: 2%;
+  width: clamp(460px, 44vw, 740px);
+  height: clamp(460px, 44vw, 740px);
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 50%, rgba(78, 224, 188, 0.18) 0%, rgba(56, 189, 248, 0.12) 40%, rgba(14, 165, 233, 0.03) 65%, transparent 72%);
+  filter: blur(52px);
+  animation: heroGlowFloatRight 20s ease-in-out infinite alternate;
+  will-change: transform, opacity;
+}
+
+/* Center Solar Bridge — warm golden energy connecting left & right */
+.root :global(.hero-glow-orb-center) {
+  position: absolute;
+  top: 38%;
+  left: 35%;
+  width: clamp(340px, 32vw, 540px);
+  height: clamp(340px, 32vw, 540px);
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 50%, rgba(255, 196, 77, 0.13) 0%, rgba(255, 106, 36, 0.06) 42%, transparent 68%);
+  filter: blur(42px);
+  animation: heroGlowFloatCenter 22s ease-in-out infinite alternate;
+  will-change: transform, opacity;
+}
+
+/* Deep Sapphire Base Atmosphere */
+.root :global(.hero-glow-orb-deep) {
+  position: absolute;
+  bottom: -10%;
+  left: 20%;
+  width: clamp(520px, 50vw, 860px);
+  height: 380px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at 50% 50%, rgba(30, 64, 175, 0.14) 0%, rgba(6, 78, 59, 0.08) 45%, transparent 70%);
+  filter: blur(55px);
+  animation: heroGlowFloatDeep 26s ease-in-out infinite alternate;
+  will-change: transform, opacity;
+}
+
+/* Kinetic Diagonal Light Ray / Shimmer Stream */
+.root :global(.hero-glow-ray) {
+  position: absolute;
+  top: -30%;
+  left: 20%;
+  width: 180px;
+  height: 160%;
+  transform: rotate(-35deg);
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 196, 77, 0.025) 35%, rgba(255, 255, 255, 0.05) 50%, rgba(78, 224, 188, 0.03) 65%, transparent 100%);
+  filter: blur(28px);
+  animation: heroRayTravel 22s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  pointer-events: none;
+}
+
+.root :global(.hero h1 em) {
+  background: linear-gradient(135deg, #ff8c42 0%, #ff6a24 50%, #ffa726 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0 28px rgba(255, 106, 36, 0.25));
+}
+
+@keyframes heroGlowFloatLeft {
+  0% { transform: translate3d(0, 0, 0) scale(1); opacity: 0.85; }
+  35% { transform: translate3d(30px, 20px, 0) scale(1.06); opacity: 1; }
+  70% { transform: translate3d(-15px, 35px, 0) scale(0.96); opacity: 0.9; }
+  100% { transform: translate3d(10px, -10px, 0) scale(1.03); opacity: 0.95; }
+}
+
+@keyframes heroGlowFloatRight {
+  0% { transform: translate3d(0, 0, 0) scale(1); opacity: 0.8; }
+  40% { transform: translate3d(-30px, -15px, 0) scale(1.08); opacity: 1; }
+  75% { transform: translate3d(20px, 25px, 0) scale(0.95); opacity: 0.85; }
+  100% { transform: translate3d(-10px, 10px, 0) scale(1.04); opacity: 0.9; }
+}
+
+@keyframes heroGlowFloatCenter {
+  0% { transform: translate3d(0, 0, 0) scale(0.94); opacity: 0.7; }
+  50% { transform: translate3d(-20px, 15px, 0) scale(1.1); opacity: 1; }
+  100% { transform: translate3d(15px, -10px, 0) scale(0.96); opacity: 0.75; }
+}
+
+@keyframes heroGlowFloatDeep {
+  0% { transform: translate3d(0, 0, 0) scale(1); opacity: 0.75; }
+  50% { transform: translate3d(25px, -20px, 0) scale(1.06); opacity: 0.95; }
+  100% { transform: translate3d(-20px, 10px, 0) scale(0.96); opacity: 0.8; }
+}
+
+@keyframes heroRayTravel {
+  0% { transform: translate3d(-120%, -30%, 0) rotate(-35deg); opacity: 0; }
+  15% { opacity: 0.85; }
+  85% { opacity: 0.85; }
+  100% { transform: translate3d(280%, 30%, 0) rotate(-35deg); opacity: 0; }
+}
+
+/* Enhanced Living Trade Orbit */
+.root :global(.trade-orbit-ring) {
+  border: 1.5px solid rgba(255, 113, 55, 0.28);
+  box-shadow:
+    0 0 28px rgba(255, 106, 36, 0.18),
+    0 0 60px rgba(255, 196, 77, 0.08),
+    inset 0 0 22px rgba(255, 106, 36, 0.1);
+  animation: orbitRingPulse 8s ease-in-out infinite alternate;
+}
+
+@keyframes orbitRingPulse {
+  0% {
+    border-color: rgba(255, 113, 55, 0.22);
+    box-shadow: 0 0 20px rgba(255, 106, 36, 0.14), inset 0 0 15px rgba(255, 106, 36, 0.06);
+  }
+  50% {
+    border-color: rgba(255, 180, 50, 0.42);
+    box-shadow: 0 0 38px rgba(255, 106, 36, 0.28), 0 0 75px rgba(255, 196, 77, 0.14), inset 0 0 28px rgba(255, 180, 50, 0.16);
+  }
+  100% {
+    border-color: rgba(255, 113, 55, 0.25);
+    box-shadow: 0 0 24px rgba(255, 106, 36, 0.18), inset 0 0 18px rgba(255, 106, 36, 0.08);
+  }
+}
+
+.root :global(.trade-orbit-item) {
+  filter: drop-shadow(0 18px 26px rgba(0, 0, 0, 0.65)) drop-shadow(0 0 16px rgba(255, 106, 36, 0.28));
+  transition: filter 0.3s ease;
+}
+
+.root :global(.trade-orbit-item:hover) {
+  filter: drop-shadow(0 22px 32px rgba(0, 0, 0, 0.75)) drop-shadow(0 0 24px rgba(255, 106, 36, 0.55));
+}
+
 .root :global(.glare)::before {
   background: linear-gradient(
     105deg,
@@ -6932,7 +7096,13 @@ const TWEAKS = `
 
 @media (prefers-reduced-motion: reduce) {
   .root :global(.visual-stage::before),
-  .root :global(.hero)::after {
+  .root :global(.hero)::after,
+  .root :global(.hero-glow-orb-primary),
+  .root :global(.hero-glow-orb-secondary),
+  .root :global(.hero-glow-orb-center),
+  .root :global(.hero-glow-orb-deep),
+  .root :global(.hero-glow-ray),
+  .root :global(.trade-orbit-ring) {
     animation: none;
   }
 }
