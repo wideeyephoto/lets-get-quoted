@@ -351,6 +351,7 @@ export type BookingInput = {
    */
   alt?: BookingWindow | null;
   /** "Gate code is 1234, dog in the back" — for the person at the door, not for sales. */
+  note?: string | null;
   /** Campaign, referral, or ad attribution */
   attribution?: LeadAttribution | null;
   /**

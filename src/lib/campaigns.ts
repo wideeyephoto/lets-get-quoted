@@ -283,7 +283,7 @@ export async function sendCampaign(
      * mint. False falls back to the plain booking link rather than a dangling
      * sentence.
      */
-    referralTracked: boolean;
+    referralTracked?: boolean;
   },
 ): Promise<CampaignSendResult> {
   const wantEmail = input.channel === 'email' || input.channel === 'both';
@@ -302,7 +302,7 @@ export async function sendCampaign(
   // runs 250 times otherwise.
   const wantsReferral = REFERRAL_TOKEN_PRESENT.test(input.body) || REFERRAL_TOKEN_PRESENT.test(input.subject);
   const referralBase = input.referralBookingUrl ?? null;
-  const canMint = wantsReferral && referralBase !== null && input.referralTracked && isReferralConfigured();
+  const canMint = wantsReferral && referralBase !== null && Boolean(input.referralTracked) && isReferralConfigured();
   const referralFor = (recipient: CampaignRecipient): string | null => {
     if (!wantsReferral) return null;
     if (!canMint) return referralBase;
