@@ -186,7 +186,7 @@ try {
   // --- Test F: charge.refunded transitions a paid payment to refunded ---
   const f = await makeJobAndPayment({ withInvoice: false });
   await admin.from('payments').update({ status: 'paid', paid_at: new Date().toISOString(), stripe_payment_intent: `pi_test_f_${suffix}` }).eq('id', f.paymentId);
-  res = await postWebhook(makeEvent('charge.refunded', { id: `ch_test_f_${suffix}`, object: 'charge', amount_refunded: 50000, metadata: { payment_id: f.paymentId } }));
+  res = await postWebhook(makeEvent('charge.refunded', { id: `ch_test_f_${suffix}`, object: 'charge', amount: 50000, amount_refunded: 50000, metadata: { payment_id: f.paymentId } }));
   assert(res.status === 200, `webhook POST F should 200, got ${res.status}`);
   const { data: paymentF } = await admin.from('payments').select('status').eq('id', f.paymentId).single();
   assert(paymentF.status === 'refunded', `payment F should be refunded, got ${paymentF.status}`);

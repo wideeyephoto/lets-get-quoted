@@ -935,7 +935,6 @@ async function dispatchStripeEvent(
     if (paymentId) {
       console.log(`Charge refunded for payment ${paymentId}: ${charge.amount_refunded}/${charge.amount} cents`);
       const refundedTotal = fromCents(charge.amount_refunded);
-      const isFull = charge.amount_refunded >= charge.amount;
 
       const refundPaymentColumns = 'id, invoice_id, status, refunded_amount, amount, platform_fee';
       const refundRail = await inspectLegacyDestinationPaymentRail(admin, paymentId);
@@ -963,6 +962,10 @@ async function dispatchStripeEvent(
         };
       const { data: payment, error: paymentError } = refundRead;
       if (paymentError) throw paymentError;
+
+      const isFull = typeof charge.amount === 'number'
+        ? charge.amount_refunded >= charge.amount
+        : payment ? toCents(refundedTotal) >= toCents(payment.amount) : false;
 
       // Reconcile only a collected payment; never resurrect a disputed one, and
       // never walk the refunded total backwards. Acting only on NEW progress makes

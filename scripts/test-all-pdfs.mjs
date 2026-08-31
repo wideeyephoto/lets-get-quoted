@@ -179,7 +179,7 @@ async function main() {
         topOpportunities: [
           { id: 'collect-outstanding', icon: 'unpaid-invoices', title: 'Collect $2,450 in unpaid invoices', detail: '2 invoices are pending client walkthrough.', value: 2450, count: 2, priority: 'high', href: '/dashboard/jobs', cta: 'Open jobs' },
         ],
-      } as any,
+      },
       {
         businessName: 'Apex Trade Solutions',
         generatedLabel: 'Aug 27, 2026 at 12:20 PM EDT',
