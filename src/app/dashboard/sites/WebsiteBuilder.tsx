@@ -1716,7 +1716,13 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, mess
         if (result.verified) {
           setDomainStatus('verified');
           setIsDirty(false);
-          setMessage({ type: 'success', text: 'Custom domain verified and connected.' });
+          if (result.sslStatus === 'issued') {
+            setMessage({ type: 'success', text: 'Custom domain verified and connected with active SSL.' });
+          } else if (result.sslStatus === 'pending') {
+            setMessage({ type: 'success', text: 'DNS verified. SSL certificate provisioning is in progress (usually takes 1–5 minutes).' });
+          } else {
+            setMessage({ type: 'success', text: 'Custom domain verified and connected.' });
+          }
         } else {
           setDomainStatus('unverified');
           setMessage({ type: 'error', text: result.records.length ? `DNS currently points to ${result.records.join(', ')}.` : 'No matching DNS record found yet. DNS changes can take up to 48 hours.' });

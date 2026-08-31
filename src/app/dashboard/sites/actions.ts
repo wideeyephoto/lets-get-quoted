@@ -10,6 +10,7 @@ import { callImageModel, callModel } from '@/lib/ai-model-call';
 import { buildAiLogoPrompt, isAiLogoDirection, type AiLogoDirection } from '@/lib/logo-image-prompt';
 import { SERVICE_ICON_GLYPHS } from '@/lib/templates/service-icons.data';
 import { normalizeDomain, verifyDomain } from '@/lib/domains';
+import { removeDomainFromVercel } from '@/lib/vercel-domains';
 import { geocodeArea } from '@/lib/geocode';
 import { anchorServiceArea } from '@/lib/site-area';
 import { draftBlogPost, type GeneratedBlogPost } from '@/lib/blog-generate';
@@ -114,7 +115,16 @@ export async function updateSiteAction(updates: SiteEditableInput) {
     }
   }
 
-  const domainChanged = editableUpdates.custom_domain !== (sites[0].custom_domain || null);
+  const oldDomain = sites[0].custom_domain || null;
+  const domainChanged = editableUpdates.custom_domain !== oldDomain;
+  if (domainChanged && oldDomain) {
+    try {
+      await removeDomainFromVercel(oldDomain);
+    } catch {
+      // Best-effort cleanup on Vercel
+    }
+  }
+
   const site = await updateSite(supabase, accountId, siteId, {
     ...editableUpdates,
     ...(domainChanged ? { custom_domain_verified_at: null } : {}),

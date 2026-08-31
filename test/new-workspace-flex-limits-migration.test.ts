@@ -41,11 +41,22 @@ function patchPair(): { needle: Record<string, number>; replacement: Record<stri
   };
 }
 
-const FLEX = workspaceEntitlementCatalogSnapshot('flex', 'none').featureLimits;
+const FLEX: Record<string, number> = workspaceEntitlementCatalogSnapshot('flex', 'none').featureLimits;
+
+const HISTORICAL_DELTA: Record<string, number> = {
+  // 20260831110000 gave Flex a second office seat; at the time 20260819060000
+  // was written, Flex carried 1 office user.
+  office_users: 1,
+};
+
+const FLEX_HISTORICAL: Record<string, number> = {
+  ...FLEX,
+  ...HISTORICAL_DELTA,
+};
 
 describe('the map a new workspace is provisioned with', () => {
   it('is exactly what the catalog produces for Flex', () => {
-    expect(patchPair().replacement).toEqual({ ...FLEX });
+    expect(patchPair().replacement).toEqual(FLEX_HISTORICAL);
   });
 
   it('replaces exactly the eight-key map, the current one minus the two added keys', () => {
@@ -53,7 +64,11 @@ describe('the map a new workspace is provisioned with', () => {
     // needle were anything else the source patch would silently match nothing,
     // and the exactly-once assertion in the migration would refuse it -- but this
     // says so at review time rather than at apply time.
-    const { forwarding_minutes: _f, voice_included_minutes: _v, ...withoutAdded } = FLEX;
+    const { forwarding_minutes: _f, voice_included_minutes: _v, ...withoutAdded } = FLEX_HISTORICAL as {
+      forwarding_minutes: number;
+      voice_included_minutes: number;
+      [key: string]: number;
+    };
     expect(patchPair().needle).toEqual(withoutAdded);
     expect(Object.keys(patchPair().needle)).toHaveLength(8);
     expect(Object.keys(patchPair().replacement)).toHaveLength(10);
@@ -62,8 +77,8 @@ describe('the map a new workspace is provisioned with', () => {
   it('repairs already-provisioned rows to the same two keys at the same values', () => {
     // The repair supplies defaults; they must be the catalog's, not zero by habit.
     expect(sql).toContain(
-      `'{"forwarding_minutes":${FLEX.forwarding_minutes},`
-      + `"voice_included_minutes":${FLEX.voice_included_minutes}}'::jsonb || e.feature_limits`,
+      `'{"forwarding_minutes":${FLEX['forwarding_minutes']},`
+      + `"voice_included_minutes":${FLEX['voice_included_minutes']}}'::jsonb || e.feature_limits`,
     );
   });
 });

@@ -57,20 +57,26 @@ export async function verifyDomain(domainValue: string): Promise<DomainVerificat
     try {
       // Auto-register with Vercel if needed
       await addDomainToVercel(domain);
+      let vercelVerified = false;
       if (dnsVerified) {
-        await verifyVercelDomain(domain);
+        const verifyRes = await verifyVercelDomain(domain);
+        vercelVerified = Boolean(verifyRes?.verified);
       }
       const config = await getVercelDomainConfig(domain);
       if (config?.ssl?.status && config.ssl.status !== 'none') {
         sslStatus = config.ssl.status;
+      } else if (vercelVerified && config?.configured && !config?.misconfigured) {
+        sslStatus = 'issued';
       } else {
-        sslStatus = dnsVerified ? 'issued' : 'pending';
+        sslStatus = dnsVerified ? 'pending' : 'unconfigured';
       }
     } catch {
-      sslStatus = dnsVerified ? 'issued' : 'pending';
+      sslStatus = dnsVerified ? 'pending' : 'unconfigured';
     }
-  } else if (dnsVerified) {
-    sslStatus = 'issued';
+  } else {
+    // When Vercel credentials are unset, we cannot provision edge certs or guarantee TLS.
+    // DNS may be matched, but SSL remains pending provisioning until Vercel is configured.
+    sslStatus = dnsVerified ? 'pending' : 'unconfigured';
   }
 
   return {

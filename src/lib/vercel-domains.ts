@@ -141,15 +141,42 @@ export async function getVercelDomainConfig(domain: string): Promise<VercelDomai
       ssl?: { status?: string };
     };
 
+    const sslStatus: 'issued' | 'pending' | 'error' =
+      json.ssl?.status === 'issued' || json.ssl?.status === 'pending' || json.ssl?.status === 'error'
+        ? json.ssl.status
+        : 'pending';
+
     return {
       configured: !json.misconfigured,
       misconfigured: Boolean(json.misconfigured),
       ssl: {
-        status: (json.ssl?.status as 'issued' | 'pending' | 'error') || (json.misconfigured ? 'pending' : 'issued'),
+        status: sslStatus,
       },
     };
   } catch (err) {
     console.error('Failed to get domain config from Vercel:', err);
+    return null;
+  }
+}
+
+/**
+ * Retrieves project domain details from Vercel.
+ */
+export async function getProjectDomain(domain: string): Promise<VercelDomainResponse | null> {
+  const { token, projectId, teamId } = getVercelConfig();
+  if (!token || !projectId) return null;
+
+  try {
+    const url = buildUrl(`/v9/projects/${encodeURIComponent(projectId)}/domains/${encodeURIComponent(domain)}`, teamId);
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: 'no-store',
+    });
+
+    if (!res.ok) return null;
+    return (await res.json()) as VercelDomainResponse;
+  } catch (err) {
+    console.error('Failed to get project domain from Vercel:', err);
     return null;
   }
 }
@@ -175,3 +202,4 @@ export async function removeDomainFromVercel(domain: string): Promise<boolean> {
     return false;
   }
 }
+
