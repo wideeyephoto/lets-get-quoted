@@ -1,6 +1,6 @@
 /* GENERATED — do not edit. Source: src/app/globals.css
    Run: node scripts/build-css-subset.mjs
-   source-sha256: 7073b7fa73673683
+   source-sha256: e4f83b8e0535a40b
 
    globals.css with the rules that can only match inside /dashboard, /admin and
    /demo removed. Every route except those three imports this file; they import
@@ -62,6 +62,10 @@
   --accent-ink: #ff9d5c;
   --accent-gradient: linear-gradient(180deg, var(--accent), var(--accent-end));
   --ambient-glow: radial-gradient(circle at top, rgba(255, 122, 33, var(--glow-a, 0.18)), transparent 30%), radial-gradient(circle at 80% 20%, rgba(255, 209, 102, var(--glow-b, 0.12)), transparent 18%);
+  --bg-gradient-canvas: radial-gradient(circle at 50% -20%, rgba(255, 122, 33, 0.14), transparent 45%), radial-gradient(circle at 85% 15%, rgba(83, 177, 253, 0.08), transparent 35%), radial-gradient(circle at 15% 85%, rgba(124, 58, 237, 0.06), transparent 40%), linear-gradient(180deg, #070a11 0%, #0a0e17 60%, #05070c 100%);
+  --bg-gradient-card: linear-gradient(180deg, rgba(25, 30, 42, 0.8) 0%, rgba(14, 18, 25, 0.95) 100%);
+  --bg-gradient-sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.01) 100%);
+  --bg-ambient-cone: radial-gradient(circle at top, rgba(255, 122, 33, 0.18) 0%, transparent 70%);
   --planning: #7c3aed;
   --planning-end: #4f169f;
   --planning-gradient: linear-gradient(180deg, #7c3aed 0%, #6320c9 55%, #4f169f 100%);
@@ -130,6 +134,10 @@
   --accent-ink: #fdba74;
   --accent-gradient: linear-gradient(180deg, var(--accent), var(--accent-end));
   --ambient-glow: radial-gradient(circle at top, rgba(249, 115, 22, var(--glow-a, 0.08)), transparent 30%), radial-gradient(circle at 80% 20%, rgba(253, 186, 116, var(--glow-b, 0.05)), transparent 18%);
+  --bg-gradient-canvas: radial-gradient(ellipse at 50% 0%, rgba(249, 115, 22, 0.09), transparent 50%), radial-gradient(ellipse at 100% 50%, rgba(253, 186, 116, 0.04), transparent 40%), linear-gradient(180deg, #141519 0%, #17191f 50%, #0f1013 100%);
+  --bg-gradient-card: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  --bg-gradient-sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.06) 0%, rgba(0, 0, 0, 0.12) 100%);
+  --bg-ambient-cone: radial-gradient(circle at 50% 0%, rgba(249, 115, 22, 0.1) 0%, transparent 60%);
   --planning: #7c3aed;
   --planning-end: #6d28d9;
   --planning-gradient: linear-gradient(180deg, #8b5cf6 0%, #6d28d9 100%);
@@ -201,6 +209,10 @@
   --accent-ink: #fba36b;
   --accent-gradient: linear-gradient(180deg, var(--accent), var(--accent-end));
   --ambient-glow: radial-gradient(circle at top, rgba(233, 120, 48, var(--glow-a, 0.12)), transparent 30%), radial-gradient(circle at 80% 20%, rgba(245, 158, 102, var(--glow-b, 0.08)), transparent 18%);
+  --bg-gradient-canvas: radial-gradient(ellipse at 50% -10%, rgba(249, 125, 52, 0.12), transparent 45%), radial-gradient(circle at 90% 40%, rgba(245, 181, 68, 0.06), transparent 35%), radial-gradient(circle at 10% 80%, rgba(180, 83, 9, 0.05), transparent 40%), linear-gradient(180deg, #1c1a17 0%, #221f1b 50%, #151310 100%);
+  --bg-gradient-card: linear-gradient(180deg, #27241f 0%, #1f1d19 100%);
+  --bg-gradient-sheen: linear-gradient(180deg, rgba(255, 246, 235, 0.07) 0%, rgba(255, 246, 235, 0.01) 100%);
+  --bg-ambient-cone: radial-gradient(circle at top, rgba(233, 120, 48, 0.12) 0%, transparent 60%);
   --planning: #7c3aed;
   --planning-end: #6d28d9;
   --planning-gradient: linear-gradient(180deg, #8b5cf6 0%, #6d28d9 100%);
@@ -282,6 +294,10 @@
   --accent-ink: #ffa33a;
   --accent-gradient: linear-gradient(180deg, var(--accent), var(--accent-end));
   --ambient-glow: radial-gradient(circle at top, rgba(255, 136, 0, var(--glow-a, 0.08)), transparent 30%);
+  --bg-gradient-canvas: radial-gradient(circle at 50% 0%, rgba(255, 138, 61, 0.08), transparent 40%), radial-gradient(circle at 100% 100%, rgba(139, 92, 246, 0.05), transparent 35%), linear-gradient(180deg, #000000 0%, #050507 100%);
+  --bg-gradient-card: linear-gradient(180deg, #121215 0%, #08080a 100%);
+  --bg-gradient-sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0) 100%);
+  --bg-ambient-cone: radial-gradient(circle at top, rgba(255, 136, 0, 0.09) 0%, transparent 35%);
   --planning: #8b5cf6;
   --planning-end: #5b21b6;
   --planning-gradient: linear-gradient(180deg, #8b5cf6 0%, #5b21b6 100%);
@@ -341,6 +357,10 @@
   --accent-ink: #9a3412;
   --accent-gradient: linear-gradient(180deg, var(--accent), var(--accent-end));
   --ambient-glow: radial-gradient(circle at top, rgba(194, 65, 12, var(--glow-a, 0.06)), transparent 30%);
+  --bg-gradient-canvas: radial-gradient(circle at 75% 0%, rgba(180, 52, 3, 0.05), transparent 35%), radial-gradient(circle at 10% 20%, rgba(37, 99, 235, 0.06), transparent 45%), linear-gradient(180deg, #f4f6fa 0%, #eaeef4 40%, #e1e7f0 100%);
+  --bg-gradient-card: linear-gradient(180deg, #ffffff 0%, #fbfcfe 100%);
+  --bg-gradient-sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.9) 0%, rgba(241, 245, 249, 0.4) 100%);
+  --bg-ambient-cone: radial-gradient(circle at top, rgba(180, 52, 3, 0.06) 0%, transparent 40%);
   --planning: #5b21b6;
   --planning-end: #4c1d95;
   --planning-gradient: linear-gradient(180deg, #6d28d9 0%, #5b21b6 100%);
@@ -676,6 +696,10 @@
   --accent-ink: #8ecdf0;
   --accent-gradient: linear-gradient(180deg, var(--accent), var(--accent-end));
   --ambient-glow: radial-gradient(circle at top, rgba(86, 180, 233, var(--glow-a, 0.14)), transparent 30%), radial-gradient(circle at 80% 20%, rgba(240, 228, 66, var(--glow-b, 0.08)), transparent 18%);
+  --bg-gradient-canvas: radial-gradient(circle at 50% -10%, rgba(86, 180, 233, 0.15), transparent 45%), radial-gradient(circle at 85% 85%, rgba(240, 228, 66, 0.05), transparent 30%), linear-gradient(180deg, #0b0c0e 0%, #101216 50%, #060708 100%);
+  --bg-gradient-card: linear-gradient(180deg, #16181d 0%, #101114 100%);
+  --bg-gradient-sheen: linear-gradient(180deg, rgba(86, 180, 233, 0.12) 0%, transparent 100%);
+  --bg-ambient-cone: radial-gradient(circle at top, rgba(86, 180, 233, 0.16) 0%, transparent 50%);
   --planning: #cc79a7;
   --planning-end: #7a315d;
   --planning-gradient: linear-gradient(180deg, #cc79a7 0%, #9e4b7b 55%, #7a315d 100%);
@@ -746,6 +770,10 @@
   --accent-ink: #ffffff;
   --accent-gradient: linear-gradient(180deg, var(--accent), var(--accent-end));
   --ambient-glow: radial-gradient(circle at top, rgba(255, 255, 255, var(--glow-a, 0.05)), transparent 30%);
+  --bg-gradient-canvas: radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.09), transparent 45%), linear-gradient(180deg, #0a0a0b 0%, #111113 50%, #050506 100%);
+  --bg-gradient-card: linear-gradient(180deg, #18181b 0%, #0f0f11 100%);
+  --bg-gradient-sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.02) 100%);
+  --bg-ambient-cone: radial-gradient(circle at top, rgba(255, 255, 255, 0.1) 0%, transparent 40%);
   --planning: #71717a;
   --planning-end: #3f3f46;
   --planning-gradient: linear-gradient(180deg, #71717a 0%, #52525b 55%, #3f3f46 100%);
@@ -815,6 +843,10 @@
   --accent-ink: #8a3f08;
   --accent-gradient: linear-gradient(180deg, var(--accent), var(--accent-end));
   --ambient-glow: radial-gradient(circle at top, rgba(168, 76, 0, var(--glow-a, 0.04)), transparent 30%);
+  --bg-gradient-canvas: radial-gradient(circle at 70% 0%, rgba(194, 65, 12, 0.06), transparent 40%), radial-gradient(circle at 20% 40%, rgba(217, 119, 6, 0.05), transparent 35%), linear-gradient(180deg, #faf7f2 0%, #f5f0e7 45%, #ebe2d3 100%);
+  --bg-gradient-card: linear-gradient(180deg, #ffffff 0%, #fdfbf7 100%);
+  --bg-gradient-sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.95) 0%, rgba(245, 240, 231, 0.4) 100%);
+  --bg-ambient-cone: radial-gradient(circle at top, rgba(194, 65, 12, 0.08) 0%, transparent 50%);
   --planning: #6d28d9;
   --planning-end: #5b21b6;
   --planning-gradient: linear-gradient(180deg, #7c3aed 0%, #5b21b6 100%);
@@ -2882,13 +2914,15 @@ body {
 
 body {
   font-family: var(--font-body);
-  /* The ambient glow radial gradients are defined per-theme via --ambient-glow,
-     neutralized in Mono and mapped to CVD-safe hues in Clarity. */
+  /* The ambient glow radial gradients and rich multi-stop canvas depth are defined per-theme. */
   background:
-    var(--ambient-glow,
-      radial-gradient(circle at top, rgba(255, 122, 33, var(--glow-a, 0.18)), transparent 30%),
-      radial-gradient(circle at 80% 20%, rgba(255, 209, 102, var(--glow-b, 0.12)), transparent 18%)),
-    linear-gradient(180deg, var(--ground-1) 0%, var(--ground-2) 48%, var(--ground-1) 100%);
+    var(--bg-gradient-canvas,
+      var(--ambient-glow,
+        radial-gradient(circle at top, rgba(255, 122, 33, var(--glow-a, 0.18)), transparent 30%),
+        radial-gradient(circle at 80% 20%, rgba(255, 209, 102, var(--glow-b, 0.12)), transparent 18%)),
+      linear-gradient(180deg, var(--ground-1) 0%, var(--ground-2) 48%, var(--ground-1) 100%)
+    );
+  background-attachment: fixed;
 }
 
 a {
