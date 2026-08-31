@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/auth';
-import { checkRateLimit, clientIpFrom } from '@/lib/rate-limit';
+import { checkRateLimitStrict, clientIpFrom } from '@/lib/rate-limit';
 import { resolveJurisdiction } from '@/lib/location-context/jurisdiction-resolver';
 import { normalizeAddress } from '@/lib/location-context/normalize-address';
 import { evaluatePermitRequirement } from '@/lib/permit-intel/requirement-engine';
@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
   const ip = clientIpFrom(request.headers);
   const rateKey = `permit-public-estimate:${ip || 'anon'}`;
   const admin = createAdminClient();
-  const allowed = await checkRateLimit(admin, rateKey, 30, 60);
+  const allowed = await checkRateLimitStrict(admin, rateKey, 30, 60);
 
   if (!allowed) {
     return NextResponse.json(

@@ -440,7 +440,15 @@ export function buildProductionClosureAdapters(admin: SupabaseClient): ClosureAd
               });
 
               if (listErr) {
-                break;
+                const isNotFound = listErr.message?.toLowerCase().includes('not found') ||
+                  (listErr as { statusCode?: string | number })?.statusCode === 404 ||
+                  (listErr as { status?: number })?.status === 404;
+                if (isNotFound) {
+                  hasMore = false;
+                  break;
+                }
+                console.error(`Storage list error on bucket ${bucket}:`, listErr.message);
+                return false;
               }
 
               if (!data || data.length === 0) {

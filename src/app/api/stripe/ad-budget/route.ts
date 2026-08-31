@@ -1,10 +1,16 @@
 import { NextResponse } from 'next/server';
-import { requireOfficeContext } from '@/lib/auth';
+import { requireOfficeContext, createAdminClient } from '@/lib/auth';
 import { createAdBudgetCheckoutSession } from '@/lib/ad-billing';
+import { checkRateLimitStrict } from '@/lib/rate-limit';
 
 export async function POST(request: Request) {
   try {
     const { accountId, supabase } = await requireOfficeContext('settings.write');
+    const admin = createAdminClient();
+    if (!(await checkRateLimitStrict(admin, `adcheckout:account:${accountId}`, 10, 60))) {
+      return NextResponse.json({ error: 'Too many ad checkout requests. Please try again in a minute.' }, { status: 429 });
+    }
+
     const body = await request.json();
 
     const fundingModel = (body.fundingModel as 'weekly_drip' | 'auto_refill_wallet') || 'weekly_drip';

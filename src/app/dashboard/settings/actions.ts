@@ -988,8 +988,9 @@ export async function deleteAccountAction() {
 
   const adapters = buildProductionClosureAdapters(admin);
   const result = await processClosureJob(admin, jobId, adapters);
-  if (!result.success) {
-    console.error('Customer deleteAccountAction closure saga completed with errors:', result.errors);
+  if (!result.success || !result.completed) {
+    console.error('Customer deleteAccountAction closure saga incomplete or errored:', result.errors);
+    throw new Error(`Account deletion could not be fully finalized (${result.errors.join('; ') || 'in-progress'}). Please try again or contact support.`);
   }
 
   // Clear session locally and redirect to login

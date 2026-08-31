@@ -207,8 +207,8 @@ export async function createAdBudgetCheckoutSession(params: {
     monthlyBudgetDollars,
     weeklyAmountDollars,
     weeklyAdSpendDollars,
-    weeklyFeeDollars,
-    platformFeeDollars,
+    weeklyFeeDollars: _weeklyFeeDollars,
+    platformFeeDollars: _platformFeeDollars,
     interval = 'week',
     businessName,
     trade,
@@ -257,7 +257,7 @@ export async function createAdBudgetCheckoutSession(params: {
     // Auto-Refill Wallet funding model
     const deposit = depositAmountDollars || DEFAULT_AUTO_REFILL_CONFIG.depositAmountDollars;
     adSpendDollars = deposit;
-    feeDollars = platformFeeDollars !== undefined ? platformFeeDollars : Math.round(deposit * AD_PLATFORM_FEE_RATE);
+    feeDollars = Math.round(deposit * AD_PLATFORM_FEE_RATE);
     totalDollars = adSpendDollars + feeDollars;
 
     const maxCap = maxMonthlySpendDollars || DEFAULT_AUTO_REFILL_CONFIG.maxMonthlySpendDollars;
@@ -268,17 +268,17 @@ export async function createAdBudgetCheckoutSession(params: {
     // Weekly drip funding model
     if (weeklyAmountDollars) {
       totalDollars = weeklyAmountDollars;
-      adSpendDollars = weeklyAdSpendDollars || Math.round(totalDollars * (1 - AD_PLATFORM_FEE_RATE));
-      feeDollars = weeklyFeeDollars !== undefined ? weeklyFeeDollars : totalDollars - adSpendDollars;
+      adSpendDollars = weeklyAdSpendDollars || Math.round(totalDollars / (1 + AD_PLATFORM_FEE_RATE));
+      feeDollars = totalDollars - adSpendDollars;
     } else if (weeklyAdSpendDollars) {
       adSpendDollars = weeklyAdSpendDollars;
-      feeDollars = weeklyFeeDollars !== undefined ? weeklyFeeDollars : Math.round(adSpendDollars * AD_PLATFORM_FEE_RATE);
+      feeDollars = Math.round(adSpendDollars * AD_PLATFORM_FEE_RATE);
       totalDollars = adSpendDollars + feeDollars;
     } else {
       // Default to standard Growth bundle weekly
-      totalDollars = 330;
       adSpendDollars = 300;
-      feeDollars = 30;
+      feeDollars = Math.round(300 * AD_PLATFORM_FEE_RATE);
+      totalDollars = adSpendDollars + feeDollars;
     }
 
     // Convert weekly ad spend to true monthly rate (52 weeks / 12 months = 4.333x)
@@ -288,9 +288,8 @@ export async function createAdBudgetCheckoutSession(params: {
   } else {
     // Monthly billing fallback
     const nominalMonthly = monthlyBudgetDollars || 600;
-    const breakdown = calculateAdBudgetBreakdown(nominalMonthly);
     adSpendDollars = nominalMonthly;
-    feeDollars = platformFeeDollars !== undefined ? platformFeeDollars : breakdown.platformFeeDollars;
+    feeDollars = Math.round(nominalMonthly * AD_PLATFORM_FEE_RATE);
     totalDollars = adSpendDollars + feeDollars;
     trueMonthlyAdSpendDollars = adSpendDollars;
     trueMonthlyFeeDollars = feeDollars;

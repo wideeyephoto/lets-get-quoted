@@ -1,6 +1,8 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { resolveJurisdiction } from '@/lib/location-context/jurisdiction-resolver';
 import { getApplicableCodes } from '@/lib/permit-intel/code-catalog';
+import { checkRateLimit, clientIpFrom } from '@/lib/rate-limit';
+import { createAdminClient } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -8,7 +10,13 @@ export const dynamic = 'force-dynamic';
  * GET /api/permits/health
  * System health check and diagnostics for the Permit & Local Codes Intelligence Engine.
  */
-export async function GET() {
+export async function GET(request?: NextRequest) {
+  const ip = request ? clientIpFrom(request.headers) : '127.0.0.1';
+  const admin = createAdminClient();
+  if (!(await checkRateLimit(admin, `permithealth:ip:${ip}`, 60, 60))) {
+    return NextResponse.json({ error: 'Too many requests.' }, { status: 429 });
+  }
+
   const timestamp = new Date().toISOString();
 
   // Test jurisdiction resolver
