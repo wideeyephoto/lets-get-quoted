@@ -32,6 +32,7 @@ type ConnectedPaymentInboxIngest = (
 export type StripeConnectedPaymentWebhookDependencies = Readonly<{
   env?: ConnectedPaymentWebhookEnvironment;
   ingest?: ConnectedPaymentInboxIngest;
+  params?: Promise<Record<string, string | string[]>>;
 }>;
 
 export function stripeConnectedPaymentWebhookEnabled(

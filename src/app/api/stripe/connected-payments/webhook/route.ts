@@ -5,6 +5,4 @@ import { handleStripeConnectedPaymentWebhook } from '@/lib/billing/stripe-connec
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-export async function POST(request: Request) {
-  return handleStripeConnectedPaymentWebhook(request);
-}
+export const POST = handleStripeConnectedPaymentWebhook;
