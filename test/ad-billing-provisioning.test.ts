@@ -76,6 +76,7 @@ describe('Ad Billing Synchronous Provisioning & Fulfillment', () => {
         object: {
           id: 'cs_test_123',
           object: 'checkout.session',
+          payment_status: 'paid',
           subscription: 'sub_test_123',
           customer: 'cus_test_123',
           metadata: {
@@ -120,11 +121,11 @@ describe('Ad Billing Synchronous Provisioning & Fulfillment', () => {
     const result = await createAdBudgetCheckoutSession({
       accountId: 'acc_test_weekly',
       fundingModel: 'weekly_drip',
-      weeklyAmountDollars: 185,
+      weeklyAmountDollars: 176,
       weeklyAdSpendDollars: 160,
-      weeklyFeeDollars: 25,
-      monthlyBudgetDollars: 696,
-      platformFeeDollars: 106,
+      weeklyFeeDollars: 16,
+      monthlyBudgetDollars: 693,
+      platformFeeDollars: 69,
       interval: 'week',
       businessName: 'Apex Roofing',
       trade: 'Roofing',
@@ -135,9 +136,9 @@ describe('Ad Billing Synchronous Provisioning & Fulfillment', () => {
     expect(result.url).toBe('https://checkout.stripe.com/mock');
     expect(createdSessionConfig).not.toBeNull();
     expect(createdSessionConfig.mode).toBe('subscription');
-    expect(createdSessionConfig.line_items[0].price_data.unit_amount).toBe(18500);
+    expect(createdSessionConfig.line_items[0].price_data.unit_amount).toBe(17600);
     expect(createdSessionConfig.line_items[0].price_data.recurring.interval).toBe('week');
-    expect(createdSessionConfig.metadata.weekly_amount_cents).toBe('18500');
+    expect(createdSessionConfig.metadata.weekly_amount_cents).toBe('17600');
     expect(createdSessionConfig.metadata.weekly_ad_spend_cents).toBe('16000');
     expect(createdSessionConfig.metadata.monthly_budget_cents).toBe('69300'); // True monthly Google Ads rate ($693)
   });
@@ -225,6 +226,7 @@ describe('Ad Billing Synchronous Provisioning & Fulfillment', () => {
         object: {
           id: 'cs_test_weekly_123',
           object: 'checkout.session',
+          payment_status: 'paid',
           subscription: 'sub_test_weekly_123',
           customer: 'cus_test_123',
           metadata: {
@@ -272,6 +274,7 @@ describe('Ad Billing Synchronous Provisioning & Fulfillment', () => {
                       adCampaign: {
                         stripeSubscriptionId: 'sub_actual_ad_campaign_123',
                         status: 'active',
+                        provisioningStatus: 'active',
                       },
                     },
                   },
@@ -286,6 +289,7 @@ describe('Ad Billing Synchronous Provisioning & Fulfillment', () => {
                       adCampaign: {
                         stripeSubscriptionId: 'sub_actual_ad_campaign_123',
                         status: 'active',
+                        provisioningStatus: 'active',
                       },
                     },
                   },
@@ -315,6 +319,8 @@ describe('Ad Billing Synchronous Provisioning & Fulfillment', () => {
           id: 'in_saas_monthly_123',
           subscription: 'sub_unrelated_saas_plan_789',
           customer: 'cus_saas_customer',
+          paid: true,
+          status: 'paid',
         } as unknown as Stripe.Invoice,
       },
       livemode: false,
@@ -337,6 +343,8 @@ describe('Ad Billing Synchronous Provisioning & Fulfillment', () => {
           id: 'in_ad_monthly_123',
           subscription: 'sub_actual_ad_campaign_123',
           customer: 'cus_ad_customer',
+          paid: true,
+          status: 'paid',
         } as unknown as Stripe.Invoice,
       },
       livemode: false,

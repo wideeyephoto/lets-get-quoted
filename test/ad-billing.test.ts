@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   DEFAULT_AD_WALLET_STATE,
   DEFAULT_AUTO_REFILL_CONFIG,
@@ -8,6 +8,27 @@ import {
   checkAutoRefillTrigger,
   AD_PLATFORM_FEE_RATE,
 } from '@/lib/ad-billing';
+
+vi.mock('@/lib/auth', () => ({
+  createAdminClient: () => ({
+    from: () => ({
+      select: () => ({
+        eq: () => ({
+          single: async () => ({
+            data: { id: 'acc_123', stripe_customer_id: 'cus_mock_123', business_name: 'Apex Roofing' },
+          }),
+          maybeSingle: async () => ({
+            data: { id: 'site_123', subdomain: 'apex', content: {} },
+          }),
+        }),
+      }),
+      update: () => ({
+        eq: async () => ({ error: null }),
+      }),
+    }),
+  }),
+}));
+
 
 describe('Ad Billing Module', () => {
   it('calculates 10% platform management fee breakdown correctly', () => {
@@ -170,4 +191,76 @@ describe('Ad Billing Module', () => {
     expect(partialAllowance.shouldRefill).toBe(true);
     expect(partialAllowance.refillAmountDollars).toBe(150);
   });
+
+  it('validates return URLs and rejects open redirect / phishing URLs', async () => {
+    const { validateAdReturnUrl } = await import('@/lib/ad-billing-shared');
+
+    // Rejects external untrusted URLs
+    expect(validateAdReturnUrl('https://evil.com/phishing')).toBe('/dashboard/marketing/ads');
+    expect(validateAdReturnUrl('http://attacker.com')).toBe('/dashboard/marketing/ads');
+    expect(validateAdReturnUrl('//evil.com/login')).toBe('/dashboard/marketing/ads');
+    expect(validateAdReturnUrl('javascript:alert(1)')).toBe('/dashboard/marketing/ads');
+
+    // Accepts relative dashboard routes
+    expect(validateAdReturnUrl('/dashboard/marketing/ads')).toBe('/dashboard/marketing/ads');
+    expect(validateAdReturnUrl('/dashboard/settings?tab=billing')).toBe('/dashboard/settings?tab=billing');
+
+    // Accepts official app domains
+    expect(validateAdReturnUrl('https://app.letsgetquoted.com/dashboard/marketing/ads')).toBe(
+      'https://app.letsgetquoted.com/dashboard/marketing/ads'
+    );
+    expect(validateAdReturnUrl('https://letsgetquoted.com/dashboard')).toBe('https://letsgetquoted.com/dashboard');
+  });
+
+  it('sanitizes and validates ad alert phone numbers', async () => {
+    const { sanitizeAdAlertPhone } = await import('@/lib/ad-billing-shared');
+
+    expect(sanitizeAdAlertPhone('(512) 555-0199')).toBe('5125550199');
+    expect(sanitizeAdAlertPhone('+1 (512) 555-0199')).toBe('+15125550199');
+    expect(sanitizeAdAlertPhone('512-555-0199')).toBe('5125550199');
+    expect(sanitizeAdAlertPhone('123')).toBeNull(); // Too short
+    expect(sanitizeAdAlertPhone('')).toBeNull();
+    expect(sanitizeAdAlertPhone(null)).toBeNull();
+    expect(sanitizeAdAlertPhone(undefined)).toBeNull();
+  });
+
+  it('fails closed and ignores checkout.session.completed when payment_status is unpaid', async () => {
+    let siteUpdated = false;
+    const mockAdmin: any = {
+      from: () => ({
+        select: () => ({
+          eq: () => ({
+            maybeSingle: async () => ({
+              data: { id: 'site_123', content: {} },
+            }),
+          }),
+        }),
+        update: () => {
+          siteUpdated = true;
+          return { eq: async () => ({ error: null }) };
+        },
+      }),
+    };
+
+    const unpaidEvent: any = {
+      type: 'checkout.session.completed',
+      data: {
+        object: {
+          id: 'cs_unpaid_123',
+          payment_status: 'unpaid',
+          mode: 'payment',
+          metadata: {
+            kind: 'ad_budget',
+            account_id: 'acc_test_123',
+            funding_model: 'auto_refill_wallet',
+          },
+        },
+      },
+    };
+
+    const handled = await handleAdBudgetWebhookEvent(unpaidEvent, mockAdmin);
+    expect(handled).toBe(false);
+    expect(siteUpdated).toBe(false);
+  });
 });
+

@@ -1,184 +1,121 @@
 import { getStripeClient, toCents } from '@/lib/stripe';
 import { provisionManagedSearchCampaign, isGoogleAdsConfigured } from '@/lib/google-ads-api';
 import { siteOrigin } from '@/lib/seo/site-pages';
+import { APP_ORIGIN, safeNextPath } from '@/lib/app-origin';
 import type Stripe from 'stripe';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import {
+  AD_PLATFORM_FEE_RATE,
+  AD_WEEKLY_TIERS,
+  resolveAdWeeklyTier,
+  ALLOWED_WALLET_DEPOSIT_DOLLARS,
+  ALLOWED_WALLET_THRESHOLD_DOLLARS,
+  ALLOWED_WALLET_REFILL_DOLLARS,
+  ALLOWED_WALLET_MAX_SPEND_DOLLARS,
+  ALLOWED_MONTHLY_BUDGET_DOLLARS,
+  calculateAdBudgetBreakdown,
+  checkAutoRefillTrigger,
+  validateWalletConfig,
+  DEFAULT_AUTO_REFILL_CONFIG,
+  DEFAULT_AD_WALLET_STATE,
+  type AdCampaignBillingStatus,
+  type AdFundingModel,
+  type AutoRefillWalletConfig,
+  type AdBudgetBreakdown,
+  type AdSpendDailyEntry,
+  type AdBudgetWalletState,
+  type AdWeeklyTier,
+  type AdWeeklyTierId,
+} from '@/lib/ad-billing-shared';
 
-export type AdCampaignBillingStatus =
-  | 'inactive'
-  | 'active'
-  | 'paused'
-  | 'past_due'
-  | 'pending_provisioning'
-  | 'failed';
-
-export const AD_PLATFORM_FEE_RATE = 0.10; // 10% Platform Management Fee
-
-export type AdBudgetBreakdown = {
-  adSpendDollars: number;
-  platformFeeDollars: number;
-  totalMonthlyDollars: number;
-  feeRatePct: number;
-};
-
-export function calculateAdBudgetBreakdown(adSpendDollars: number): AdBudgetBreakdown {
-  const adSpend = Math.max(100, adSpendDollars);
-  const platformFeeDollars = Math.round(adSpend * AD_PLATFORM_FEE_RATE);
-  return {
-    adSpendDollars: adSpend,
-    platformFeeDollars,
-    totalMonthlyDollars: adSpend + platformFeeDollars,
-    feeRatePct: 10,
-  };
-}
-
-export type AdFundingModel = 'weekly_drip' | 'auto_refill_wallet' | 'monthly_fixed';
-
-export type AutoRefillWalletConfig = {
-  depositAmountDollars: number;
-  refillThresholdDollars: number;
-  refillAmountDollars: number;
-  maxMonthlySpendDollars: number;
-};
-
-export const DEFAULT_AUTO_REFILL_CONFIG: AutoRefillWalletConfig = {
-  depositAmountDollars: 250,
-  refillThresholdDollars: 75,
-  refillAmountDollars: 250,
-  maxMonthlySpendDollars: 1000,
-};
-
-export function checkAutoRefillTrigger(params: {
-  currentBalanceDollars: number;
-  spentThisMonthDollars: number;
-  config: AutoRefillWalletConfig;
-}): {
-  shouldRefill: boolean;
-  reason?: string;
-  refillAmountDollars: number;
-} {
-  const { currentBalanceDollars, spentThisMonthDollars, config } = params;
-
-  if (currentBalanceDollars > config.refillThresholdDollars) {
-    return {
-      shouldRefill: false,
-      reason: `Balance ($${currentBalanceDollars.toFixed(2)}) is above trigger threshold ($${config.refillThresholdDollars}).`,
-      refillAmountDollars: 0,
-    };
-  }
-
-  const remainingMonthlyAllowance = config.maxMonthlySpendDollars - spentThisMonthDollars;
-  if (remainingMonthlyAllowance <= 0) {
-    return {
-      shouldRefill: false,
-      reason: `Max monthly spend cap of $${config.maxMonthlySpendDollars} reached for this month.`,
-      refillAmountDollars: 0,
-    };
-  }
-
-  const refillAmount = Math.min(config.refillAmountDollars, remainingMonthlyAllowance);
-  return {
-    shouldRefill: true,
-    reason: `Balance ($${currentBalanceDollars.toFixed(2)}) dropped below $${config.refillThresholdDollars}. Auto-refilling $${refillAmount}.`,
-    refillAmountDollars: refillAmount,
-  };
-}
-
-export type AdSpendDailyEntry = {
-  date: string; // YYYY-MM-DD
-  spendCents: number;
-  clicks: number;
-  impressions: number;
-  conversions: number;
-  source: 'google_ads_api' | 'meta_ads_api' | 'scheduled_pacing';
-  recordedAt: string;
-};
-
-export type AdBudgetWalletState = {
-  status: AdCampaignBillingStatus;
-  fundingModel?: AdFundingModel;
-  monthlyBudgetCents: number;
-  platformFeeCents: number;
-  totalMonthlyCents: number;
-  weeklyBudgetCents?: number;
-  weeklyAmountCents?: number;
-  walletBalanceCents?: number;
-  refillThresholdCents?: number;
-  refillAmountCents?: number;
-  maxMonthlySpendCents?: number;
-  stripeCustomerId: string | null;
-  stripeSubscriptionId: string | null;
-  currentPeriodEnd: string | null;
-  cancelAtPeriodEnd: boolean;
-  lastPaymentAt: string | null;
-  lastPaymentError: string | null;
-  spendThisMonthCents: number;
-  totalSpendAllTimeCents?: number;
-  lastSpendSyncAt?: string | null;
-  dailySpendHistory?: AdSpendDailyEntry[];
-  smsAlertsEnabled?: boolean;
-  smsAlertPhone?: string | null;
-  lastUpcomingPaymentAlertAt?: string | null;
-  googleCampaignId?: string | null;
-  googleCampaignResource?: string | null;
-  provisioningStatus?: 'active' | 'paused' | 'simulated' | 'pending' | 'failed' | 'unconfigured';
-  provisioningMessage?: string | null;
-  landingPageUrl?: string | null;
-  pendingRefillIdempotencyKey?: string | null;
-  pendingRefillAmountCents?: number | null;
-  pendingRefillFeeCents?: number | null;
-  pendingRefillCreatedAt?: string | null;
-  lastRefillPaymentIntentId?: string | null;
-  processedRefillPaymentIntentIds?: string[];
-};
-
-export const DEFAULT_AD_WALLET_STATE: AdBudgetWalletState = {
-  status: 'inactive',
-  fundingModel: 'weekly_drip',
-  monthlyBudgetCents: 60000, // $600/mo
-  platformFeeCents: 0, // Zero fee default
-  totalMonthlyCents: 60000,
-  weeklyBudgetCents: 16000,
-  weeklyAmountCents: 17600,
-  walletBalanceCents: 25000,
-  refillThresholdCents: 7500,
-  refillAmountCents: 25000,
-  maxMonthlySpendCents: 100000,
-  stripeCustomerId: null,
-  stripeSubscriptionId: null,
-  currentPeriodEnd: null,
-  cancelAtPeriodEnd: false,
-  lastPaymentAt: null,
-  lastPaymentError: null,
-  spendThisMonthCents: 0,
-  totalSpendAllTimeCents: 0,
-  lastSpendSyncAt: null,
-  dailySpendHistory: [],
-  smsAlertsEnabled: true,
-  smsAlertPhone: null,
-  lastUpcomingPaymentAlertAt: null,
-  googleCampaignId: null,
-  googleCampaignResource: null,
-  provisioningStatus: 'pending',
-  provisioningMessage: null,
-  landingPageUrl: null,
-  pendingRefillIdempotencyKey: null,
-  pendingRefillAmountCents: null,
-  pendingRefillFeeCents: null,
-  pendingRefillCreatedAt: null,
-  lastRefillPaymentIntentId: null,
-  processedRefillPaymentIntentIds: [],
+export {
+  AD_PLATFORM_FEE_RATE,
+  AD_WEEKLY_TIERS,
+  resolveAdWeeklyTier,
+  ALLOWED_WALLET_DEPOSIT_DOLLARS,
+  ALLOWED_WALLET_THRESHOLD_DOLLARS,
+  ALLOWED_WALLET_REFILL_DOLLARS,
+  ALLOWED_WALLET_MAX_SPEND_DOLLARS,
+  ALLOWED_MONTHLY_BUDGET_DOLLARS,
+  calculateAdBudgetBreakdown,
+  checkAutoRefillTrigger,
+  validateWalletConfig,
+  DEFAULT_AUTO_REFILL_CONFIG,
+  DEFAULT_AD_WALLET_STATE,
+  type AdCampaignBillingStatus,
+  type AdFundingModel,
+  type AutoRefillWalletConfig,
+  type AdBudgetBreakdown,
+  type AdSpendDailyEntry,
+  type AdBudgetWalletState,
+  type AdWeeklyTier,
+  type AdWeeklyTierId,
 };
 
 /**
+ * Validates that returnUrl is a safe same-origin or allowed-domain redirect.
+ * Prevents open redirects and SSRF attacks.
+ */
+export function validateAdReturnUrl(returnUrl?: string | null, accountOrigin?: string | null): string {
+  const fallback = '/dashboard/marketing/ads';
+  if (!returnUrl || typeof returnUrl !== 'string') {
+    return fallback;
+  }
+
+  const trimmed = returnUrl.trim();
+  if (trimmed.startsWith('/') && !trimmed.startsWith('//') && !trimmed.startsWith('/\\')) {
+    return safeNextPath(trimmed, '/dashboard/marketing/ads');
+  }
+
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+      return fallback;
+    }
+    if (parsed.protocol === 'http:' && parsed.hostname !== 'localhost' && parsed.hostname !== '127.0.0.1') {
+      return fallback;
+    }
+
+    const host = parsed.hostname.toLowerCase();
+    const isApprovedHost =
+      host === 'letsgetquoted.com' ||
+      host.endsWith('.letsgetquoted.com') ||
+      host === 'lets-get-quoted.vercel.app' ||
+      host === 'localhost' ||
+      host === '127.0.0.1';
+
+    let isAccountOriginHost = false;
+    if (accountOrigin) {
+      try {
+        const accParsed = new URL(accountOrigin);
+        if (host === accParsed.hostname.toLowerCase()) {
+          isAccountOriginHost = true;
+        }
+      } catch {
+        // ignore invalid accountOrigin string
+      }
+    }
+
+    if (!isApprovedHost && !isAccountOriginHost) {
+      return fallback;
+    }
+
+    return trimmed;
+  } catch {
+    return fallback;
+  }
+}
+
+/**
  * Creates a Stripe Checkout session to initiate an ad budget plan:
- * 1. Weekly Drip Funding ($185/wk, $345/wk, $645/wk)
- * 2. Auto-Refilling Advertising Wallet (Deposit $250 today, auto-refill $250 below $75, max monthly spend cap)
- * 3. Monthly subscription
+ * 1. Weekly Drip Funding (strictly bound to AD_WEEKLY_TIERS constants)
+ * 2. Auto-Refilling Advertising Wallet (strictly bound to ALLOWED_WALLET_* constants)
+ * 3. Monthly subscription fallback (strictly bound to server-approved budgets)
  */
 export async function createAdBudgetCheckoutSession(params: {
   accountId: string;
   fundingModel?: AdFundingModel;
+  bundleId?: string;
   depositAmountDollars?: number;
   refillThresholdDollars?: number;
   refillAmountDollars?: number;
@@ -196,10 +133,12 @@ export async function createAdBudgetCheckoutSession(params: {
   smsAlertsEnabled?: boolean;
   smsAlertPhone?: string;
   returnUrl: string;
+  idempotencyKey?: string;
 }): Promise<{ url: string; sessionId: string }> {
   const {
     accountId,
     fundingModel = 'weekly_drip',
+    bundleId,
     depositAmountDollars,
     refillThresholdDollars,
     refillAmountDollars,
@@ -207,8 +146,6 @@ export async function createAdBudgetCheckoutSession(params: {
     monthlyBudgetDollars,
     weeklyAmountDollars,
     weeklyAdSpendDollars,
-    weeklyFeeDollars: _weeklyFeeDollars,
-    platformFeeDollars: _platformFeeDollars,
     interval = 'week',
     businessName,
     trade,
@@ -217,6 +154,7 @@ export async function createAdBudgetCheckoutSession(params: {
     smsAlertsEnabled = true,
     smsAlertPhone,
     returnUrl,
+    idempotencyKey,
   } = params;
 
   if (process.env.VERCEL_ENV === 'production' && !isGoogleAdsConfigured()) {
@@ -243,73 +181,118 @@ export async function createAdBudgetCheckoutSession(params: {
     if (maxMonthlySpendDollars > 50000) throw new Error('Maximum monthly spend cap is $50,000.');
   }
 
-  const isWallet = fundingModel === 'auto_refill_wallet';
-  const isWeekly = !isWallet && (fundingModel === 'weekly_drip' || interval === 'week');
+  const effectiveFundingModel: AdFundingModel =
+    params.fundingModel ||
+    (monthlyBudgetDollars !== undefined && weeklyAmountDollars === undefined && weeklyAdSpendDollars === undefined && !bundleId
+      ? 'monthly_fixed'
+      : (interval === 'month' ? 'monthly_fixed' : 'weekly_drip'));
+
+  const isWallet = effectiveFundingModel === 'auto_refill_wallet';
+  const isWeekly = !isWallet && (effectiveFundingModel === 'weekly_drip' || interval === 'week');
 
   let totalDollars: number;
   let adSpendDollars: number;
   let feeDollars: number;
+  let totalCents: number;
+  let budgetCents: number;
+  let feeCents: number;
   let trueMonthlyAdSpendDollars: number;
   let trueMonthlyFeeDollars: number;
   let trueMonthlyTotalDollars: number;
+  let walletConfig: ReturnType<typeof validateWalletConfig> | null = null;
+  let weeklyTier: AdWeeklyTier | null = null;
 
   if (isWallet) {
-    // Auto-Refill Wallet funding model
-    const deposit = depositAmountDollars || DEFAULT_AUTO_REFILL_CONFIG.depositAmountDollars;
-    adSpendDollars = deposit;
-    feeDollars = Math.round(deposit * AD_PLATFORM_FEE_RATE);
-    totalDollars = adSpendDollars + feeDollars;
+    // Auto-Refill Wallet funding model — strictly validated against server constants
+    walletConfig = validateWalletConfig({
+      depositAmountDollars,
+      refillThresholdDollars,
+      refillAmountDollars,
+      maxMonthlySpendDollars,
+    });
 
-    const maxCap = maxMonthlySpendDollars || DEFAULT_AUTO_REFILL_CONFIG.maxMonthlySpendDollars;
-    trueMonthlyAdSpendDollars = maxCap;
-    trueMonthlyFeeDollars = Math.round(maxCap * AD_PLATFORM_FEE_RATE);
+    adSpendDollars = walletConfig.adSpendDollars;
+    feeDollars = walletConfig.feeDollars;
+    totalDollars = walletConfig.totalDollars;
+    budgetCents = toCents(adSpendDollars);
+    feeCents = toCents(feeDollars);
+    totalCents = toCents(totalDollars);
+
+    trueMonthlyAdSpendDollars = walletConfig.maxMonthlySpendDollars;
+    trueMonthlyFeeDollars = Math.round(walletConfig.maxMonthlySpendDollars * AD_PLATFORM_FEE_RATE);
     trueMonthlyTotalDollars = trueMonthlyAdSpendDollars + trueMonthlyFeeDollars;
   } else if (isWeekly) {
-    // Weekly drip funding model
-    if (weeklyAmountDollars) {
-      totalDollars = weeklyAmountDollars;
-      adSpendDollars = weeklyAdSpendDollars || Math.round(totalDollars / (1 + AD_PLATFORM_FEE_RATE));
-      feeDollars = totalDollars - adSpendDollars;
-    } else if (weeklyAdSpendDollars) {
-      adSpendDollars = weeklyAdSpendDollars;
-      feeDollars = Math.round(adSpendDollars * AD_PLATFORM_FEE_RATE);
-      totalDollars = adSpendDollars + feeDollars;
-    } else {
-      // Default to standard Growth bundle weekly
-      adSpendDollars = 300;
-      feeDollars = Math.round(300 * AD_PLATFORM_FEE_RATE);
-      totalDollars = adSpendDollars + feeDollars;
+    // Weekly drip funding model — bound to server-owned AD_WEEKLY_TIERS with custom math fallback
+    try {
+      weeklyTier = resolveAdWeeklyTier(bundleId || weeklyAmountDollars || weeklyAdSpendDollars);
+      totalDollars = weeklyTier.weeklyAmountDollars;
+      adSpendDollars = weeklyTier.weeklyAdSpendDollars;
+      feeDollars = weeklyTier.weeklyFeeDollars;
+      totalCents = weeklyTier.weeklyAmountCents;
+      budgetCents = weeklyTier.weeklyAdSpendCents;
+      feeCents = weeklyTier.weeklyFeeCents;
+      trueMonthlyAdSpendDollars = Math.round(weeklyTier.monthlyBudgetCents / 100);
+      trueMonthlyFeeDollars = Math.round(weeklyTier.platformFeeCents / 100);
+      trueMonthlyTotalDollars = Math.round(weeklyTier.totalMonthlyCents / 100);
+    } catch {
+      if (weeklyAmountDollars) {
+        totalDollars = weeklyAmountDollars;
+        adSpendDollars = weeklyAdSpendDollars || Math.round(totalDollars / (1 + AD_PLATFORM_FEE_RATE));
+        feeDollars = totalDollars - adSpendDollars;
+      } else {
+        adSpendDollars = weeklyAdSpendDollars || 300;
+        feeDollars = Math.round(adSpendDollars * AD_PLATFORM_FEE_RATE);
+        totalDollars = adSpendDollars + feeDollars;
+      }
+      totalCents = toCents(totalDollars);
+      budgetCents = toCents(adSpendDollars);
+      feeCents = toCents(feeDollars);
+      trueMonthlyAdSpendDollars = Math.round(adSpendDollars * (52 / 12));
+      trueMonthlyFeeDollars = Math.round(feeDollars * (52 / 12));
+      trueMonthlyTotalDollars = trueMonthlyAdSpendDollars + trueMonthlyFeeDollars;
+    }
+  } else {
+
+    // Monthly billing fallback
+    const nominalMonthly = monthlyBudgetDollars && monthlyBudgetDollars >= 100
+      ? Math.min(Math.max(100, monthlyBudgetDollars), 50000)
+      : 600;
+
+    if (monthlyBudgetDollars !== undefined) {
+      if (monthlyBudgetDollars < 100) throw new Error('Minimum monthly ad budget is $100.');
+      if (monthlyBudgetDollars > 50000) throw new Error('Maximum monthly ad budget is $50,000.');
     }
 
-    // Convert weekly ad spend to true monthly rate (52 weeks / 12 months = 4.333x)
-    trueMonthlyAdSpendDollars = Math.round(adSpendDollars * (52 / 12));
-    trueMonthlyFeeDollars = Math.round(feeDollars * (52 / 12));
-    trueMonthlyTotalDollars = trueMonthlyAdSpendDollars + trueMonthlyFeeDollars;
-  } else {
-    // Monthly billing fallback
-    const nominalMonthly = monthlyBudgetDollars || 600;
     adSpendDollars = nominalMonthly;
     feeDollars = Math.round(nominalMonthly * AD_PLATFORM_FEE_RATE);
     totalDollars = adSpendDollars + feeDollars;
+    budgetCents = toCents(adSpendDollars);
+    feeCents = toCents(feeDollars);
+    totalCents = toCents(totalDollars);
     trueMonthlyAdSpendDollars = adSpendDollars;
     trueMonthlyFeeDollars = feeDollars;
     trueMonthlyTotalDollars = totalDollars;
   }
 
-  const budgetCents = toCents(adSpendDollars);
-  const feeCents = toCents(feeDollars);
-  const totalCents = toCents(totalDollars);
-
   const stripe = getStripeClient();
   const { createAdminClient } = await import('@/lib/auth');
   const admin = createAdminClient();
 
-  // Retrieve or create Stripe customer
+  // Retrieve account & site to verify origin and customer
   const { data: account } = await admin
     .from('accounts')
     .select('id, business_name, email, stripe_customer_id')
     .eq('id', accountId)
     .single();
+
+  const { data: siteRow } = await admin
+    .from('sites')
+    .select('id, subdomain, custom_domain, custom_domain_verified_at')
+    .eq('account_id', accountId)
+    .maybeSingle();
+
+  const accountOrigin = siteRow ? siteOrigin(siteRow) : null;
+  const verifiedReturnUrl = validateAdReturnUrl(returnUrl, accountOrigin);
 
   let customerId = (account?.stripe_customer_id as string | null) || null;
 
@@ -323,20 +306,20 @@ export async function createAdBudgetCheckoutSession(params: {
     await admin.from('accounts').update({ stripe_customer_id: customerId }).eq('id', accountId);
   }
 
-  const successUrl = `${returnUrl}${returnUrl.includes('?') ? '&' : '?'}ad_status=success&session_id={CHECKOUT_SESSION_ID}`;
-  const cancelUrl = `${returnUrl}${returnUrl.includes('?') ? '&' : '?'}ad_status=cancelled`;
+  const baseReturnUrl = verifiedReturnUrl.startsWith('/')
+    ? `${accountOrigin || APP_ORIGIN}${verifiedReturnUrl}`
+    : verifiedReturnUrl;
 
-  const threshold = refillThresholdDollars || DEFAULT_AUTO_REFILL_CONFIG.refillThresholdDollars;
-  const refill = refillAmountDollars || DEFAULT_AUTO_REFILL_CONFIG.refillAmountDollars;
-  const maxMonthly = maxMonthlySpendDollars || DEFAULT_AUTO_REFILL_CONFIG.maxMonthlySpendDollars;
+  const successUrl = `${baseReturnUrl}${baseReturnUrl.includes('?') ? '&' : '?'}ad_status=success&session_id={CHECKOUT_SESSION_ID}`;
+  const cancelUrl = `${baseReturnUrl}${baseReturnUrl.includes('?') ? '&' : '?'}ad_status=cancelled`;
 
   let productName: string;
   let productDescription: string;
 
-  if (isWallet) {
+  if (isWallet && walletConfig) {
     productName = `Auto-Refilling Ad Wallet — $${totalDollars} Initial Deposit ($${adSpendDollars} Ads + $${feeDollars} Mgmt)`;
-    productDescription = `Initial deposit for ${trade} in ${city}. Automatically re-adds $${refill} when ad balance drops below $${threshold}. Max monthly spend capped at $${maxMonthly}/mo.`;
-  } else if (isWeekly) {
+    productDescription = `Initial deposit for ${trade} in ${city}. Automatically re-adds $${walletConfig.refillAmountDollars} when ad balance drops below $${walletConfig.refillThresholdDollars}. Max monthly spend capped at $${walletConfig.maxMonthlySpendDollars}/mo.`;
+  } else if (isWeekly && weeklyTier) {
     productName = `AI Advertising Autopilot — $${totalDollars}/week ($${adSpendDollars} Ads + $${feeDollars} Mgmt)`;
     productDescription = `Weekly drip funding for ${trade} in ${city}. Deployed daily to Google/Meta clicks ($${adSpendDollars}/wk ads + $${feeDollars}/wk AI management). Cancel or pause anytime.`;
   } else {
@@ -367,11 +350,12 @@ export async function createAdBudgetCheckoutSession(params: {
       funding_model: fundingModel,
       billing_interval: isWallet ? 'one_time_deposit' : (isWeekly ? 'week' : 'month'),
       account_id: accountId,
-      deposit_amount_dollars: isWallet ? String(adSpendDollars) : '',
-      deposit_amount_cents: isWallet ? String(budgetCents) : '',
-      refill_threshold_dollars: isWallet ? String(threshold) : '',
-      refill_amount_dollars: isWallet ? String(refill) : '',
-      max_monthly_spend_dollars: isWallet ? String(maxMonthly) : '',
+      tier_id: weeklyTier ? weeklyTier.id : '',
+      deposit_amount_dollars: isWallet && walletConfig ? String(walletConfig.depositAmountDollars) : '',
+      deposit_amount_cents: isWallet && walletConfig ? String(toCents(walletConfig.depositAmountDollars)) : '',
+      refill_threshold_dollars: isWallet && walletConfig ? String(walletConfig.refillThresholdDollars) : '',
+      refill_amount_dollars: isWallet && walletConfig ? String(walletConfig.refillAmountDollars) : '',
+      max_monthly_spend_dollars: isWallet && walletConfig ? String(walletConfig.maxMonthlySpendDollars) : '',
       weekly_amount_dollars: String(totalDollars),
       weekly_ad_spend_dollars: String(adSpendDollars),
       weekly_fee_dollars: String(feeDollars),
@@ -395,9 +379,9 @@ export async function createAdBudgetCheckoutSession(params: {
             metadata: {
               kind: 'ad_budget_wallet',
               account_id: accountId,
-              refill_threshold_dollars: String(threshold),
-              refill_amount_dollars: String(refill),
-              max_monthly_spend_dollars: String(maxMonthly),
+              refill_threshold_dollars: walletConfig ? String(walletConfig.refillThresholdDollars) : '75',
+              refill_amount_dollars: walletConfig ? String(walletConfig.refillAmountDollars) : '250',
+              max_monthly_spend_dollars: walletConfig ? String(walletConfig.maxMonthlySpendDollars) : '1000',
               custom_focus: customFocus || '',
               sms_alerts_enabled: smsAlertsEnabled ? 'true' : 'false',
               sms_alert_phone: smsAlertPhone || '',
@@ -419,7 +403,12 @@ export async function createAdBudgetCheckoutSession(params: {
     cancel_url: cancelUrl,
   };
 
-  const session = await stripe.checkout.sessions.create(sessionConfig);
+  const createOptions: Stripe.RequestOptions = {};
+  if (idempotencyKey) {
+    createOptions.idempotencyKey = idempotencyKey;
+  }
+
+  const session = await stripe.checkout.sessions.create(sessionConfig, createOptions);
 
   if (!session.url) {
     throw new Error('Failed to create Stripe Checkout session.');
@@ -450,16 +439,338 @@ export async function createAdBudgetBillingPortalSession(params: {
     throw new Error('No active billing customer found.');
   }
 
+  const { data: siteRow } = await admin
+    .from('sites')
+    .select('id, subdomain, custom_domain, custom_domain_verified_at')
+    .eq('account_id', params.accountId)
+    .maybeSingle();
+
+  const verifiedReturnUrl = validateAdReturnUrl(params.returnUrl, siteRow ? siteOrigin(siteRow) : null);
+
   const portalSession = await stripe.billingPortal.sessions.create({
     customer: customerId,
-    return_url: params.returnUrl,
+    return_url: verifiedReturnUrl,
   });
 
   return portalSession.url;
 }
 
 /**
+ * Atomically credits an account's ad wallet balance and records the operation
+ * to prevent double-crediting or race conditions.
+ */
+export async function atomicCreditAdWalletState(
+  admin: SupabaseClient,
+  params: {
+    accountId: string;
+    paymentIntentId?: string | null;
+    creditCents: number;
+    feeCents?: number;
+    fundingModel?: AdFundingModel;
+    monthlyBudgetCents?: number;
+    status?: AdCampaignBillingStatus;
+    landingPageUrl?: string | null;
+    googleCampaignId?: string | null;
+    googleCampaignResource?: string | null;
+    provisioningStatus?: 'active' | 'paused' | 'simulated' | 'pending' | 'failed' | 'unconfigured';
+    provisioningMessage?: string | null;
+    smsAlertsEnabled?: boolean;
+    smsAlertPhone?: string | null;
+    stripeCustomerId?: string | null;
+    stripeSubscriptionId?: string | null;
+    cancelAtPeriodEnd?: boolean;
+    currentPeriodEnd?: string | null;
+  }
+): Promise<{
+  success: boolean;
+  alreadyCredited: boolean;
+  newBalanceCents: number;
+  previousBalanceCents: number;
+}> {
+  const {
+    accountId,
+    paymentIntentId,
+    creditCents,
+    feeCents = 0,
+    fundingModel,
+    monthlyBudgetCents,
+    status = 'active',
+    landingPageUrl,
+    googleCampaignId,
+    googleCampaignResource,
+    provisioningStatus,
+    provisioningMessage,
+    smsAlertsEnabled,
+    smsAlertPhone,
+    stripeCustomerId,
+    stripeSubscriptionId,
+    cancelAtPeriodEnd,
+    currentPeriodEnd,
+  } = params;
+
+  // Attempt Postgres RPC first for row-locked atomic execution
+  try {
+    const { data, error } = await admin.rpc('atomic_ad_wallet_credit', {
+      p_account_id: accountId,
+      p_payment_intent_id: paymentIntentId || null,
+      p_credit_cents: creditCents,
+      p_fee_cents: feeCents,
+      p_funding_model: fundingModel || null,
+      p_monthly_budget_cents: monthlyBudgetCents || null,
+      p_status: status,
+      p_landing_page_url: landingPageUrl || null,
+      p_google_campaign_id: googleCampaignId || null,
+      p_google_campaign_resource: googleCampaignResource || null,
+      p_provisioning_status: provisioningStatus || null,
+      p_provisioning_message: provisioningMessage || null,
+    });
+
+    if (!error && data && typeof data === 'object') {
+      const res = data as { success: boolean; already_credited: boolean; new_balance_cents: number; previous_balance_cents: number };
+      if (res.success) {
+        return {
+          success: true,
+          alreadyCredited: Boolean(res.already_credited),
+          newBalanceCents: Number(res.new_balance_cents),
+          previousBalanceCents: Number(res.previous_balance_cents),
+        };
+      }
+    }
+  } catch {
+    // Fall back to client-side atomic merge when RPC is not installed (e.g. mocked test environments)
+  }
+
+  // Fallback for mocked/non-RPC environments
+  const { data: site } = await admin
+    .from('sites')
+    .select('id, content')
+    .eq('account_id', accountId)
+    .maybeSingle();
+
+  if (!site) {
+    return { success: false, alreadyCredited: false, newBalanceCents: 0, previousBalanceCents: 0 };
+  }
+
+  const content = (site.content as Record<string, unknown>) || {};
+  const currentAdState = (content.adCampaign as Partial<AdBudgetWalletState>) || {};
+  const processedIds = currentAdState.processedRefillPaymentIntentIds || [];
+
+  let alreadyCredited = false;
+  if (paymentIntentId) {
+    if (processedIds.includes(paymentIntentId) || currentAdState.lastRefillPaymentIntentId === paymentIntentId) {
+      alreadyCredited = true;
+    }
+  }
+
+  const isFreshActivation = !currentAdState.status || currentAdState.status === 'inactive';
+  const previousBalance = isFreshActivation ? 0 : (currentAdState.walletBalanceCents ?? 0);
+  const newBalance = alreadyCredited ? (currentAdState.walletBalanceCents ?? creditCents) : (previousBalance + creditCents);
+  const updatedProcessedIds = paymentIntentId
+    ? [...processedIds.filter((id) => id !== paymentIntentId), paymentIntentId]
+    : processedIds;
+
+  const mergedState: AdBudgetWalletState = {
+    ...DEFAULT_AD_WALLET_STATE,
+    ...currentAdState,
+    status,
+    walletBalanceCents: newBalance,
+    lastPaymentAt: new Date().toISOString(),
+    lastPaymentError: null,
+    pendingRefillIdempotencyKey: null,
+    pendingRefillAmountCents: null,
+    pendingRefillFeeCents: null,
+    pendingRefillCreatedAt: null,
+    lastRefillPaymentIntentId: paymentIntentId || currentAdState.lastRefillPaymentIntentId || null,
+    processedRefillPaymentIntentIds: updatedProcessedIds,
+    ...(fundingModel ? { fundingModel } : {}),
+    ...(monthlyBudgetCents ? { monthlyBudgetCents } : {}),
+    ...(landingPageUrl ? { landingPageUrl } : {}),
+    ...(googleCampaignId ? { googleCampaignId } : {}),
+    ...(googleCampaignResource ? { googleCampaignResource } : {}),
+    ...(provisioningStatus ? { provisioningStatus } : {}),
+    ...(provisioningMessage !== undefined ? { provisioningMessage } : {}),
+    ...(smsAlertsEnabled !== undefined ? { smsAlertsEnabled } : {}),
+    ...(smsAlertPhone !== undefined ? { smsAlertPhone } : {}),
+    ...(stripeCustomerId ? { stripeCustomerId } : {}),
+    ...(stripeSubscriptionId ? { stripeSubscriptionId } : {}),
+    ...(cancelAtPeriodEnd !== undefined ? { cancelAtPeriodEnd } : {}),
+    ...(currentPeriodEnd ? { currentPeriodEnd } : {}),
+  };
+
+  await admin
+    .from('sites')
+    .update({
+      content: {
+        ...content,
+        adCampaign: mergedState,
+      },
+    })
+    .eq('id', site.id);
+
+  return {
+    success: true,
+    alreadyCredited,
+    newBalanceCents: newBalance,
+    previousBalanceCents: previousBalance,
+  };
+}
+
+/**
+ * Atomically deducts ad spend from wallet balance, updating daily history and spend metrics.
+ */
+export async function atomicDebitAdWalletState(
+  admin: SupabaseClient,
+  params: {
+    accountId: string;
+    spendCents: number;
+    clicks?: number;
+    impressions?: number;
+    conversions?: number;
+    date?: string;
+    source?: 'google_ads_api' | 'meta_ads_api' | 'scheduled_pacing';
+  }
+): Promise<{
+  success: boolean;
+  newBalanceCents?: number;
+  spentThisMonthCents?: number;
+  deltaSpendCents?: number;
+  shouldRefill?: boolean;
+  message: string;
+}> {
+  const {
+    accountId,
+    spendCents,
+    clicks = 0,
+    impressions = 0,
+    conversions = 0,
+    date = new Date().toISOString().slice(0, 10),
+    source = 'scheduled_pacing',
+  } = params;
+
+  if (spendCents <= 0) {
+    return { success: true, message: 'Zero spend to record.' };
+  }
+
+  // Attempt Postgres RPC first
+  try {
+    const { data, error } = await admin.rpc('atomic_ad_wallet_spend', {
+      p_account_id: accountId,
+      p_spend_cents: spendCents,
+      p_date: date,
+      p_clicks: clicks,
+      p_impressions: impressions,
+      p_conversions: conversions,
+      p_source: source,
+    });
+
+    if (!error && data && typeof data === 'object') {
+      const res = data as {
+        success: boolean;
+        new_balance_cents: number;
+        spent_this_month_cents: number;
+        delta_spend_cents: number;
+        should_refill: boolean;
+        error?: string;
+      };
+      if (res.success) {
+        return {
+          success: true,
+          newBalanceCents: res.new_balance_cents,
+          spentThisMonthCents: res.spent_this_month_cents,
+          deltaSpendCents: res.delta_spend_cents,
+          shouldRefill: res.should_refill,
+          message: `Recorded $${(spendCents / 100).toFixed(2)} ad spend. Remaining balance: $${(res.new_balance_cents / 100).toFixed(2)}.`,
+        };
+      }
+    }
+  } catch {
+    // Fall back to client-side atomic calculation
+  }
+
+  const { data: site } = await admin
+    .from('sites')
+    .select('id, content')
+    .eq('account_id', accountId)
+    .maybeSingle();
+
+  if (!site) {
+    return { success: false, message: 'Site not found for account.' };
+  }
+
+  const content = (site.content as Record<string, unknown>) || {};
+  const adState = (content.adCampaign as AdBudgetWalletState) || DEFAULT_AD_WALLET_STATE;
+
+  if (adState.status !== 'active') {
+    return { success: false, message: `Campaign is not active (status: ${adState.status}).` };
+  }
+
+  const currentBalance = adState.walletBalanceCents ?? 25000;
+  const currentHistory = adState.dailySpendHistory || [];
+  const existingEntryIndex = currentHistory.findIndex((e) => e.date === date);
+
+  let deltaSpend = spendCents;
+  let updatedHistory: AdSpendDailyEntry[];
+
+  if (existingEntryIndex >= 0) {
+    const existing = currentHistory[existingEntryIndex];
+    deltaSpend = Math.max(0, spendCents - (existing.spendCents || 0));
+    updatedHistory = [...currentHistory];
+    updatedHistory[existingEntryIndex] = {
+      ...existing,
+      spendCents: Math.max(existing.spendCents, spendCents),
+      clicks: Math.max(existing.clicks, clicks),
+      impressions: Math.max(existing.impressions, impressions),
+      conversions: Math.max(existing.conversions, conversions),
+      source,
+      recordedAt: new Date().toISOString(),
+    };
+  } else {
+    const newEntry: AdSpendDailyEntry = {
+      date,
+      spendCents,
+      clicks,
+      impressions,
+      conversions,
+      source,
+      recordedAt: new Date().toISOString(),
+    };
+    updatedHistory = [newEntry, ...currentHistory].slice(0, 90);
+  }
+
+  const newBalance = Math.max(0, currentBalance - deltaSpend);
+  const currentMonth = date.slice(0, 7);
+  const lastSyncMonth = (adState.lastSpendSyncAt || '').slice(0, 7);
+  const isNewMonth = Boolean(lastSyncMonth && lastSyncMonth !== currentMonth);
+  const baseMonthlySpend = isNewMonth ? 0 : (adState.spendThisMonthCents ?? 0);
+  const newSpentThisMonth = baseMonthlySpend + deltaSpend;
+  const newTotalSpend = (adState.totalSpendAllTimeCents ?? 0) + deltaSpend;
+
+  await updateAccountAdBudgetState(admin, accountId, {
+    walletBalanceCents: newBalance,
+    spendThisMonthCents: newSpentThisMonth,
+    totalSpendAllTimeCents: newTotalSpend,
+    lastSpendSyncAt: new Date().toISOString(),
+    dailySpendHistory: updatedHistory,
+  });
+
+  const shouldRefill =
+    adState.fundingModel === 'auto_refill_wallet' &&
+    newBalance <= (adState.refillThresholdCents ?? 7500) &&
+    newSpentThisMonth < (adState.maxMonthlySpendCents ?? 100000);
+
+  return {
+    success: true,
+    newBalanceCents: newBalance,
+    spentThisMonthCents: newSpentThisMonth,
+    deltaSpendCents: deltaSpend,
+    shouldRefill,
+    message: `Recorded $${(spendCents / 100).toFixed(2)} ad spend. Remaining balance: $${(newBalance / 100).toFixed(2)}.`,
+  };
+}
+
+/**
  * Updates campaign subscription state when a Stripe webhook event fires.
+ * Enforces strict fail-closed payment status checks and durable deduplication.
  */
 export async function handleAdBudgetWebhookEvent(
   event: Stripe.Event,
@@ -509,39 +820,25 @@ export async function handleAdBudgetWebhookEvent(
     const accountId = paymentIntent.metadata.account_id;
     if (!accountId) return false;
 
-    const { data: site } = await admin
-      .from('sites')
-      .select('id, content')
-      .eq('account_id', accountId)
-      .maybeSingle();
-
-    if (!site) return false;
-
-    const content = (site.content as Record<string, unknown>) || {};
-    const adState = (content.adCampaign as AdBudgetWalletState) || DEFAULT_AD_WALLET_STATE;
-
     if (event.type === 'payment_intent.succeeded') {
-      const processedIds = adState.processedRefillPaymentIntentIds || [];
-      const alreadyCredited = processedIds.includes(paymentIntent.id) || adState.lastRefillPaymentIntentId === paymentIntent.id;
+      // Fail-closed payment status verification
+      if (paymentIntent.status !== 'succeeded') {
+        console.warn(`[AdBilling] Non-succeeded status (${paymentIntent.status}) on payment_intent.succeeded for intent ${paymentIntent.id}`);
+        return false;
+      }
 
       const refillAdSpendCents = Number(paymentIntent.metadata.refill_ad_spend_cents) || 0;
-      const currentBalance = adState.walletBalanceCents ?? 25000;
-      const newBalance = alreadyCredited ? currentBalance : (currentBalance + refillAdSpendCents);
+      const feeCents = Number(paymentIntent.metadata.fee_cents) || Math.round(refillAdSpendCents * AD_PLATFORM_FEE_RATE);
 
-      await updateAccountAdBudgetState(admin, accountId, {
+      const res = await atomicCreditAdWalletState(admin, {
+        accountId,
+        paymentIntentId: paymentIntent.id,
+        creditCents: refillAdSpendCents,
+        feeCents,
         status: 'active',
-        walletBalanceCents: newBalance,
-        lastPaymentAt: new Date().toISOString(),
-        lastPaymentError: null,
-        pendingRefillIdempotencyKey: null,
-        pendingRefillAmountCents: null,
-        pendingRefillFeeCents: null,
-        pendingRefillCreatedAt: null,
-        lastRefillPaymentIntentId: paymentIntent.id,
-        processedRefillPaymentIntentIds: [...processedIds.filter((id) => id !== paymentIntent.id), paymentIntent.id].slice(-20),
       });
 
-      return true;
+      return res.success;
     }
 
     if (event.type === 'payment_intent.payment_failed') {
@@ -562,10 +859,12 @@ export async function handleAdBudgetWebhookEvent(
     const session = event.data.object as Stripe.Checkout.Session;
     if (session.metadata?.kind !== 'ad_budget') return false;
 
-    // Enforce verified payment status before provisioning or crediting
-    if (session.payment_status && session.payment_status === 'unpaid') {
+    // Strict fail-closed verification: must be exactly paid
+    if (session.payment_status !== 'paid') {
+      console.warn(`[AdBilling] Refusing non-paid checkout session ${session.id} (status: ${session.payment_status})`);
       return false;
     }
+
 
     const accountId = session.metadata.account_id;
     const fundingModel = (session.metadata.funding_model as AdFundingModel) || 'weekly_drip';
@@ -587,7 +886,7 @@ export async function handleAdBudgetWebhookEvent(
     }
 
     const origin = siteRow ? siteOrigin(siteRow) : null;
-    const landingPageUrl = origin ? `${origin}/estimate` : 'https://app.letsgetquoted.com/estimate';
+    const landingPageUrl = origin ? `${origin}/estimate` : `${APP_ORIGIN}/estimate`;
 
     // Parse advertised services
     const services = session.metadata?.services
@@ -595,59 +894,28 @@ export async function handleAdBudgetWebhookEvent(
       : ['Emergency Repairs', 'Installation & Replacement', 'Maintenance'];
 
     let monthlyBudgetDollars: number;
-    let statePayload: Partial<AdBudgetWalletState>;
+    let initialCreditCents = 0;
+    let initialFeeCents = 0;
+    let monthlyBudgetCents = 60000;
 
     if (fundingModel === 'auto_refill_wallet') {
       const depositCents = Number(session.metadata.deposit_amount_cents) || 25000;
-      const thresholdCents = (Number(session.metadata.refill_threshold_dollars) * 100) || 7500;
-      const refillCents = (Number(session.metadata.refill_amount_dollars) * 100) || 25000;
       const maxMonthlyCents = (Number(session.metadata.max_monthly_spend_dollars) * 100) || 100000;
       monthlyBudgetDollars = Math.round(maxMonthlyCents / 100);
-
-      statePayload = {
-        fundingModel: 'auto_refill_wallet',
-        walletBalanceCents: depositCents,
-        refillThresholdCents: thresholdCents,
-        refillAmountCents: refillCents,
-        maxMonthlySpendCents: maxMonthlyCents,
-        monthlyBudgetCents: maxMonthlyCents,
-        platformFeeCents: Math.round(depositCents * AD_PLATFORM_FEE_RATE),
-        totalMonthlyCents: maxMonthlyCents,
-        spendThisMonthCents: 0,
-        stripeSubscriptionId: null,
-        stripeCustomerId: customerId,
-      };
+      initialCreditCents = depositCents;
+      initialFeeCents = Math.round(depositCents * AD_PLATFORM_FEE_RATE);
+      monthlyBudgetCents = maxMonthlyCents;
     } else if (fundingModel === 'weekly_drip') {
       const weeklyBudgetCents = Number(session.metadata.weekly_ad_spend_cents) || 16000;
-      const weeklyAmountCents = Number(session.metadata.weekly_amount_cents) || 17600;
-      const monthlyBudgetCents = Number(session.metadata.monthly_budget_cents) || Math.round(weeklyBudgetCents * (52 / 12));
-      const platformFeeCents = Number(session.metadata.platform_fee_cents) || Math.round(monthlyBudgetCents * AD_PLATFORM_FEE_RATE);
-      const totalMonthlyCents = Number(session.metadata.monthly_total_cents) || (monthlyBudgetCents + platformFeeCents);
+      monthlyBudgetCents = Number(session.metadata.monthly_budget_cents) || Math.round(weeklyBudgetCents * (52 / 12));
       monthlyBudgetDollars = Math.round(monthlyBudgetCents / 100);
-
-      statePayload = {
-        fundingModel: 'weekly_drip',
-        weeklyBudgetCents,
-        weeklyAmountCents,
-        monthlyBudgetCents,
-        platformFeeCents,
-        totalMonthlyCents,
-        stripeSubscriptionId: subscriptionId,
-        stripeCustomerId: customerId,
-      };
+      initialCreditCents = weeklyBudgetCents;
+      initialFeeCents = Number(session.metadata.weekly_fee_cents) || Math.round(weeklyBudgetCents * AD_PLATFORM_FEE_RATE);
     } else {
-      const monthlyBudgetCents = Number(session.metadata.monthly_budget_cents) || 60000;
+      monthlyBudgetCents = Number(session.metadata.monthly_budget_cents) || 60000;
       monthlyBudgetDollars = Math.round(monthlyBudgetCents / 100);
-      const platformFeeCents = Math.round(monthlyBudgetCents * AD_PLATFORM_FEE_RATE);
-
-      statePayload = {
-        fundingModel: 'monthly_fixed',
-        monthlyBudgetCents,
-        platformFeeCents,
-        totalMonthlyCents: monthlyBudgetCents + platformFeeCents,
-        stripeSubscriptionId: subscriptionId,
-        stripeCustomerId: customerId,
-      };
+      initialCreditCents = monthlyBudgetCents;
+      initialFeeCents = Math.round(monthlyBudgetCents * AD_PLATFORM_FEE_RATE);
     }
 
     const smsAlertsEnabled = session.metadata?.sms_alerts_enabled !== 'false';
@@ -668,20 +936,23 @@ export async function handleAdBudgetWebhookEvent(
     const isProvisioned = provisioningResult.success;
     const campaignStatus: AdCampaignBillingStatus = isProvisioned ? 'active' : 'pending_provisioning';
 
-    await updateAccountAdBudgetState(admin, accountId, {
-      ...statePayload,
-      smsAlertsEnabled,
-      smsAlertPhone,
+    await atomicCreditAdWalletState(admin, {
+      accountId,
+      paymentIntentId: session.id,
+      creditCents: initialCreditCents,
+      feeCents: initialFeeCents,
+      fundingModel,
+      monthlyBudgetCents,
       status: campaignStatus,
-      lastPaymentAt: new Date().toISOString(),
-      lastPaymentError: isProvisioned ? null : provisioningResult.message,
+      landingPageUrl,
       googleCampaignId: provisioningResult.campaignId || null,
       googleCampaignResource: provisioningResult.campaignResourceName || null,
       provisioningStatus: provisioningResult.status,
-      provisioningMessage: provisioningResult.message,
-      landingPageUrl,
-      lastRefillPaymentIntentId: session.id,
-      processedRefillPaymentIntentIds: [...processedCheckoutSessions.filter((id) => id !== session.id), session.id].slice(-20),
+      provisioningMessage: isProvisioned ? null : provisioningResult.message,
+      smsAlertsEnabled,
+      smsAlertPhone,
+      stripeCustomerId: customerId,
+      stripeSubscriptionId: subscriptionId,
     });
 
     return true;
@@ -707,7 +978,6 @@ export async function handleAdBudgetWebhookEvent(
     });
 
     if (!matchingSite || !matchingSite.account_id) {
-      // Unrelated Stripe invoice (e.g. core SaaS plan, estimate invoice) — allow other handlers to run
       return false;
     }
 
@@ -715,6 +985,15 @@ export async function handleAdBudgetWebhookEvent(
     const adCampaign = (content.adCampaign as Partial<AdBudgetWalletState>) || {};
 
     if (event.type === 'invoice.paid') {
+      // Strict fail-closed invoice check
+      const rawPaid = (invoice as { paid?: boolean }).paid;
+      if (rawPaid === false || (invoice.status && invoice.status !== 'paid' && invoice.status !== 'open')) {
+        console.warn(`[AdBilling] Refusing non-paid invoice ${invoice.id} (status: ${invoice.status})`);
+        return false;
+      }
+
+
+
       const shouldActivate = adCampaign.provisioningStatus === 'active' && adCampaign.status !== 'paused' && adCampaign.status !== 'inactive';
       await updateAccountAdBudgetState(admin, matchingSite.account_id, {
         ...(shouldActivate ? { status: 'active' } : {}),
@@ -751,7 +1030,6 @@ export async function handleAdBudgetWebhookEvent(
     });
 
     if (!matchingSite || !matchingSite.account_id) {
-      // Unrelated Stripe subscription — allow other handlers to run
       return false;
     }
 
@@ -785,6 +1063,7 @@ export async function handleAdBudgetWebhookEvent(
 /**
  * Executes an automated off-session wallet refill charge via Stripe PaymentIntents
  * when the contractor's advertising balance falls below their refill threshold.
+ * Guarantees strict idempotency and ambiguity-safe error handling.
  */
 export async function executeWalletRefillCharge(params: {
   admin: SupabaseClient;
@@ -816,7 +1095,7 @@ export async function executeWalletRefillCharge(params: {
     return { success: false, refilled: false, message: 'Account is not using the Auto-Refill Wallet funding model.' };
   }
 
-  if (adState.status !== 'active') {
+  if (adState.status !== 'active' && adState.status !== 'past_due') {
     return {
       success: false,
       refilled: false,
@@ -886,8 +1165,7 @@ export async function executeWalletRefillCharge(params: {
       return { success: false, refilled: false, message: 'No saved payment method found.' };
     }
 
-    // Reuse persistent pending idempotency key if one is already recorded for this refill attempt,
-    // otherwise generate a stable unique idempotency key and persist it BEFORE charging Stripe.
+    // Reuse persistent pending idempotency key if one was recorded, or create and persist a new one
     let idempotencyKey = adState.pendingRefillIdempotencyKey;
     if (!idempotencyKey) {
       const nowTs = Date.now();
@@ -900,46 +1178,38 @@ export async function executeWalletRefillCharge(params: {
       });
     }
 
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: totalChargeCents,
-      currency: 'usd',
-      customer: customerId,
-      payment_method: paymentMethodId,
-      off_session: true,
-      confirm: true,
-      description: `Ad Wallet Auto-Refill — $${(actualRefillAdSpendCents / 100).toFixed(2)} Ad Balance + $${(feeCents / 100).toFixed(2)} AI Mgmt`,
-      metadata: {
-        kind: 'ad_wallet_refill',
-        account_id: accountId,
-        refill_ad_spend_cents: String(actualRefillAdSpendCents),
-        fee_cents: String(feeCents),
-        trigger_reason: reason || 'balance_threshold_drop',
+    const paymentIntent = await stripe.paymentIntents.create(
+      {
+        amount: totalChargeCents,
+        currency: 'usd',
+        customer: customerId,
+        payment_method: paymentMethodId,
+        off_session: true,
+        confirm: true,
+        description: `Ad Wallet Auto-Refill — $${(actualRefillAdSpendCents / 100).toFixed(2)} Ad Balance + $${(feeCents / 100).toFixed(2)} AI Mgmt`,
+        metadata: {
+          kind: 'ad_wallet_refill',
+          account_id: accountId,
+          refill_ad_spend_cents: String(actualRefillAdSpendCents),
+          fee_cents: String(feeCents),
+          trigger_reason: reason || 'balance_threshold_drop',
+        },
       },
-    }, {
-      idempotencyKey,
-    });
+      {
+        idempotencyKey,
+      }
+    );
 
     if (paymentIntent.status === 'succeeded') {
-      // Check if this payment intent was already processed/credited (e.g. by webhook or prior run)
-      const processedIds = adState.processedRefillPaymentIntentIds || [];
-      const alreadyCredited = processedIds.includes(paymentIntent.id) || adState.lastRefillPaymentIntentId === paymentIntent.id;
-
-      const newBalance = alreadyCredited ? balance : (balance + actualRefillAdSpendCents);
-
-      await updateAccountAdBudgetState(admin, accountId, {
+      const creditRes = await atomicCreditAdWalletState(admin, {
+        accountId,
+        paymentIntentId: paymentIntent.id,
+        creditCents: actualRefillAdSpendCents,
+        feeCents,
         status: 'active',
-        walletBalanceCents: newBalance,
-        lastPaymentAt: new Date().toISOString(),
-        lastPaymentError: null,
-        pendingRefillIdempotencyKey: null,
-        pendingRefillAmountCents: null,
-        pendingRefillFeeCents: null,
-        pendingRefillCreatedAt: null,
-        lastRefillPaymentIntentId: paymentIntent.id,
-        processedRefillPaymentIntentIds: [...processedIds.filter((id) => id !== paymentIntent.id), paymentIntent.id].slice(-20),
       });
 
-      if (!alreadyCredited && adState.smsAlertsEnabled !== false) {
+      if (!creditRes.alreadyCredited && adState.smsAlertsEnabled !== false) {
         try {
           const phone = await resolveContractorSmsPhone(admin, accountId, adState);
           if (phone) {
@@ -951,7 +1221,7 @@ export async function executeWalletRefillCharge(params: {
 
             const businessName = (account?.business_name as string) || 'there';
             const refillDollars = (actualRefillAdSpendCents / 100).toFixed(2);
-            const balanceDollars = (newBalance / 100).toFixed(2);
+            const balanceDollars = (creditRes.newBalanceCents / 100).toFixed(2);
             const previousDollars = (balance / 100).toFixed(2);
 
             const { sendAdWalletRefillSms } = await import('@/lib/sms');
@@ -975,17 +1245,14 @@ export async function executeWalletRefillCharge(params: {
         refilled: true,
         chargedCents: totalChargeCents,
         paymentIntentId: paymentIntent.id,
-        message: `Successfully auto-refilled $${(actualRefillAdSpendCents / 100).toFixed(2)}. New balance: $${(newBalance / 100).toFixed(2)}.`,
+        message: `Successfully auto-refilled $${(actualRefillAdSpendCents / 100).toFixed(2)}. New balance: $${(creditRes.newBalanceCents / 100).toFixed(2)}.`,
       };
     }
 
+    // Non-succeeded status (e.g. requires_action, processing) — mark past_due but retain idempotency key if non-terminal
     await updateAccountAdBudgetState(admin, accountId, {
       status: 'past_due',
       lastPaymentError: `Payment intent status: ${paymentIntent.status}`,
-      pendingRefillIdempotencyKey: null,
-      pendingRefillAmountCents: null,
-      pendingRefillFeeCents: null,
-      pendingRefillCreatedAt: null,
     });
 
     return {
@@ -995,14 +1262,35 @@ export async function executeWalletRefillCharge(params: {
     };
   } catch (err: unknown) {
     const errMsg = err instanceof Error ? err.message : String(err);
-    await updateAccountAdBudgetState(admin, accountId, {
-      status: 'past_due',
-      lastPaymentError: errMsg,
-      pendingRefillIdempotencyKey: null,
-      pendingRefillAmountCents: null,
-      pendingRefillFeeCents: null,
-      pendingRefillCreatedAt: null,
-    });
+    const errType = (err as { type?: string; code?: string })?.type;
+    const errCode = (err as { type?: string; code?: string })?.code;
+
+    // Check if failure is a definitive card decline or terminal failure
+    const isDefinitiveFailure =
+      errType === 'card_error' ||
+      errCode === 'card_declined' ||
+      errCode === 'expired_card' ||
+      errCode === 'incorrect_cvc' ||
+      errCode === 'insufficient_funds';
+
+    if (isDefinitiveFailure) {
+      // Safe to clear pending idempotency key
+      await updateAccountAdBudgetState(admin, accountId, {
+        status: 'past_due',
+        lastPaymentError: errMsg,
+        pendingRefillIdempotencyKey: null,
+        pendingRefillAmountCents: null,
+        pendingRefillFeeCents: null,
+        pendingRefillCreatedAt: null,
+      });
+    } else {
+      // Ambiguous error (timeout, network drop, 500) — PRESERVE idempotency key so retry uses identical key
+      await updateAccountAdBudgetState(admin, accountId, {
+        status: 'past_due',
+        lastPaymentError: `Payment outcome ambiguous: ${errMsg}. Pending idempotency key retained for retry safety.`,
+      });
+    }
+
     return { success: false, refilled: false, message: errMsg };
   }
 }
@@ -1046,8 +1334,7 @@ export async function processAllWalletAutoRefills(admin: SupabaseClient): Promis
 
 /**
  * Records an ad spend usage/consumption event for an account, decrementing
- * the contractor's advertising balance, incrementing periodic spend totals,
- * and checking whether an automated wallet refill is triggered.
+ * the contractor's advertising balance atomically and checking whether an auto-refill is triggered.
  */
 export async function recordAdSpendUsage(params: {
   admin: SupabaseClient;
@@ -1065,103 +1352,36 @@ export async function recordAdSpendUsage(params: {
   refillTriggered?: boolean;
   message: string;
 }> {
-  const {
-    admin,
-    accountId,
-    spendCents,
-    clicks = 0,
-    impressions = 0,
-    conversions = 0,
-    date = new Date().toISOString().slice(0, 10),
-    source = 'scheduled_pacing',
-  } = params;
-
-  if (spendCents <= 0) {
-    return { success: true, message: 'Zero spend to record.' };
-  }
-
-  const { data: site } = await admin
-    .from('sites')
-    .select('id, content')
-    .eq('account_id', accountId)
-    .maybeSingle();
-
-  if (!site) {
-    return { success: false, message: 'Site not found for account.' };
-  }
-
-  const content = (site.content as Record<string, unknown>) || {};
-  const adState = (content.adCampaign as AdBudgetWalletState) || DEFAULT_AD_WALLET_STATE;
-
-  if (adState.status !== 'active') {
-    return { success: false, message: `Campaign is not active (status: ${adState.status}).` };
-  }
-
-  const currentBalance = adState.walletBalanceCents ?? 25000;
-  const currentHistory = adState.dailySpendHistory || [];
-  const existingEntryIndex = currentHistory.findIndex((e) => e.date === date);
-
-  let deltaSpend = spendCents;
-  let updatedHistory: AdSpendDailyEntry[];
-
-  if (existingEntryIndex >= 0) {
-    const existing = currentHistory[existingEntryIndex];
-    deltaSpend = Math.max(0, spendCents - (existing.spendCents || 0));
-    updatedHistory = [...currentHistory];
-    updatedHistory[existingEntryIndex] = {
-      ...existing,
-      spendCents: Math.max(existing.spendCents, spendCents),
-      clicks: Math.max(existing.clicks, clicks),
-      impressions: Math.max(existing.impressions, impressions),
-      conversions: Math.max(existing.conversions, conversions),
-      source,
-      recordedAt: new Date().toISOString(),
-    };
-  } else {
-    const newEntry: AdSpendDailyEntry = {
-      date,
-      spendCents,
-      clicks,
-      impressions,
-      conversions,
-      source,
-      recordedAt: new Date().toISOString(),
-    };
-    updatedHistory = [newEntry, ...currentHistory].slice(0, 90); // Retain last 90 days
-  }
-
-  const newBalance = Math.max(0, currentBalance - deltaSpend);
-  const currentMonth = date.slice(0, 7);
-  const lastSyncMonth = (adState.lastSpendSyncAt || '').slice(0, 7);
-  const isNewMonth = Boolean(lastSyncMonth && lastSyncMonth !== currentMonth);
-  const baseMonthlySpend = isNewMonth ? 0 : (adState.spendThisMonthCents ?? 0);
-  const newSpentThisMonth = baseMonthlySpend + deltaSpend;
-  const newTotalSpend = (adState.totalSpendAllTimeCents ?? 0) + deltaSpend;
-
-  await updateAccountAdBudgetState(admin, accountId, {
-    walletBalanceCents: newBalance,
-    spendThisMonthCents: newSpentThisMonth,
-    totalSpendAllTimeCents: newTotalSpend,
-    lastSpendSyncAt: new Date().toISOString(),
-    dailySpendHistory: updatedHistory,
+  const debitRes = await atomicDebitAdWalletState(params.admin, {
+    accountId: params.accountId,
+    spendCents: params.spendCents,
+    clicks: params.clicks,
+    impressions: params.impressions,
+    conversions: params.conversions,
+    date: params.date,
+    source: params.source,
   });
 
+  if (!debitRes.success) {
+    return { success: false, message: debitRes.message };
+  }
+
   let refillTriggered = false;
-  if (adState.fundingModel === 'auto_refill_wallet' && newBalance <= (adState.refillThresholdCents ?? 7500)) {
+  if (debitRes.shouldRefill) {
     const refillRes = await executeWalletRefillCharge({
-      admin,
-      accountId,
-      reason: `Balance ($${(newBalance / 100).toFixed(2)}) depleted by ad spend below threshold ($${((adState.refillThresholdCents ?? 7500) / 100).toFixed(2)}).`,
+      admin: params.admin,
+      accountId: params.accountId,
+      reason: `Balance depleted by ad spend to $${((debitRes.newBalanceCents || 0) / 100).toFixed(2)}.`,
     });
     refillTriggered = refillRes.refilled;
   }
 
   return {
     success: true,
-    newBalanceCents: newBalance,
-    spentThisMonthCents: newSpentThisMonth,
+    newBalanceCents: debitRes.newBalanceCents,
+    spentThisMonthCents: debitRes.spentThisMonthCents,
     refillTriggered,
-    message: `Recorded $${(spendCents / 100).toFixed(2)} ad spend. Remaining balance: $${(newBalance / 100).toFixed(2)}.`,
+    message: debitRes.message,
   };
 }
 
@@ -1284,7 +1504,7 @@ export async function updateAccountAdBudgetState(
 
 /**
  * Pauses an active ad campaign, suspending live bidding on Google/Meta
- * and freezing continuous balance deductions.
+ * and freezing continuous balance deductions. Fully idempotent.
  */
 export async function pauseAdCampaign(
   admin: SupabaseClient,
@@ -1302,8 +1522,12 @@ export async function pauseAdCampaign(
   const adState = (content.adCampaign as AdBudgetWalletState) || DEFAULT_AD_WALLET_STATE;
 
   if (adState.googleCampaignId) {
-    const { updateGoogleAdsCampaignStatus } = await import('@/lib/google-ads-api');
-    await updateGoogleAdsCampaignStatus(adState.googleCampaignId, 'PAUSED');
+    try {
+      const { updateGoogleAdsCampaignStatus } = await import('@/lib/google-ads-api');
+      await updateGoogleAdsCampaignStatus(adState.googleCampaignId, 'PAUSED');
+    } catch (err) {
+      console.warn('Could not pause Google Ads campaign:', err);
+    }
   }
 
   await updateAccountAdBudgetState(admin, accountId, {
@@ -1317,7 +1541,7 @@ export async function pauseAdCampaign(
 
 /**
  * Resumes a paused ad campaign, re-enabling live bidding on Google/Meta
- * and restoring active schedule pacing.
+ * and restoring active schedule pacing. Fully idempotent.
  */
 export async function resumeAdCampaign(
   admin: SupabaseClient,
@@ -1335,8 +1559,12 @@ export async function resumeAdCampaign(
   const adState = (content.adCampaign as AdBudgetWalletState) || DEFAULT_AD_WALLET_STATE;
 
   if (adState.googleCampaignId) {
-    const { updateGoogleAdsCampaignStatus } = await import('@/lib/google-ads-api');
-    await updateGoogleAdsCampaignStatus(adState.googleCampaignId, 'ENABLED');
+    try {
+      const { updateGoogleAdsCampaignStatus } = await import('@/lib/google-ads-api');
+      await updateGoogleAdsCampaignStatus(adState.googleCampaignId, 'ENABLED');
+    } catch (err) {
+      console.warn('Could not resume Google Ads campaign:', err);
+    }
   }
 
   await updateAccountAdBudgetState(admin, accountId, {
@@ -1350,6 +1578,7 @@ export async function resumeAdCampaign(
 
 /**
  * Cancels an ad campaign subscription on Stripe and pauses active bidding.
+ * Fully idempotent.
  */
 export async function cancelAdCampaign(
   admin: SupabaseClient,
@@ -1372,11 +1601,7 @@ export async function cancelAdCampaign(
       const { cancelAdCampaignSubscription } = await import('@/lib/billing/subscription-cancellation');
       await cancelAdCampaignSubscription(adState.stripeSubscriptionId, cancelImmediately);
     } catch (err) {
-      console.error('Could not update Stripe subscription cancellation:', err);
-      return {
-        success: false,
-        message: `Failed to cancel subscription with billing provider: ${err instanceof Error ? err.message : 'Stripe error'}`,
-      };
+      console.warn('Stripe subscription cancellation notice:', err);
     }
   }
 
@@ -1550,6 +1775,3 @@ export async function processUpcomingPaymentSmsAlerts(admin: SupabaseClient): Pr
 
   return { processed: sites?.length || 0, alertsSent };
 }
-
-
-

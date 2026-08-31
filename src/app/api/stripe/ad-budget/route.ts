@@ -14,6 +14,7 @@ export async function POST(request: Request) {
     const body = await request.json();
 
     const fundingModel = (body.fundingModel as 'weekly_drip' | 'auto_refill_wallet') || 'weekly_drip';
+    const bundleId = typeof body.bundleId === 'string' && body.bundleId.trim() ? body.bundleId.trim() : undefined;
     const depositAmountDollars = Number(body.depositAmountDollars) || undefined;
     const refillThresholdDollars = Number(body.refillThresholdDollars) || undefined;
     const refillAmountDollars = Number(body.refillAmountDollars) || undefined;
@@ -26,7 +27,9 @@ export async function POST(request: Request) {
     const interval = body.interval === 'month' ? 'month' : 'week';
     const trade = String(body.trade || 'Home Services').trim();
     const city = String(body.city || 'Local Area').trim();
-    const returnUrl = String(body.returnUrl || '/dashboard/marketing/ads').trim();
+    const idempotencyKey = typeof body.idempotencyKey === 'string' && body.idempotencyKey.trim() ? body.idempotencyKey.trim() : undefined;
+    const { validateAdReturnUrl, sanitizeAdAlertPhone } = await import('@/lib/ad-billing-shared');
+    const returnUrl = validateAdReturnUrl(typeof body.returnUrl === 'string' ? body.returnUrl : undefined);
 
     if (body.action === 'portal') {
       const { createAdBudgetBillingPortalSession } = await import('@/lib/ad-billing');
@@ -58,7 +61,7 @@ export async function POST(request: Request) {
 
     if (body.action === 'update_sms_alerts') {
       const smsAlertsEnabled = Boolean(body.smsAlertsEnabled);
-      const smsAlertPhone = typeof body.smsAlertPhone === 'string' ? body.smsAlertPhone.trim() : null;
+      const smsAlertPhone = sanitizeAdAlertPhone(typeof body.smsAlertPhone === 'string' ? body.smsAlertPhone : null);
       const { updateAccountAdBudgetState } = await import('@/lib/ad-billing');
       await updateAccountAdBudgetState(supabase, accountId, {
         smsAlertsEnabled,
@@ -66,6 +69,7 @@ export async function POST(request: Request) {
       });
       return NextResponse.json({ success: true, smsAlertsEnabled, smsAlertPhone });
     }
+
 
     const { data: account } = await supabase
       .from('accounts')
@@ -82,6 +86,7 @@ export async function POST(request: Request) {
     const result = await createAdBudgetCheckoutSession({
       accountId,
       fundingModel,
+      bundleId,
       depositAmountDollars,
       refillThresholdDollars,
       refillAmountDollars,
@@ -98,6 +103,7 @@ export async function POST(request: Request) {
       smsAlertsEnabled,
       smsAlertPhone,
       returnUrl,
+      idempotencyKey,
     });
 
     return NextResponse.json({ url: result.url, sessionId: result.sessionId });
