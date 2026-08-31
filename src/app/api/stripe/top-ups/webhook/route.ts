@@ -5,4 +5,6 @@ import { handleStripeTopUpWebhook } from '@/lib/billing/stripe-top-up-webhook';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-export const POST = handleStripeTopUpWebhook;
+export async function POST(request: Request) {
+  return handleStripeTopUpWebhook(request);
+}

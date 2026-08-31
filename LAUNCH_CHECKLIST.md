@@ -74,13 +74,15 @@ The following Price IDs exist in the live Stripe account, are active, single-cur
 
 ## 5. Google Maps & Geocoding APIs
 
-- [ ] **Browser Key (`NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`)**: Restrict in Google Cloud Console by HTTP Referrers:
+- [x] **Browser Key (`NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`)**: Restrict in Google Cloud Console by HTTP Referrers:
   - `https://letsgetquoted.com/*`
   - `https://*.letsgetquoted.com/*`
   - `https://app.letsgetquoted.com/*`
-  - **Verification status (2026-08-31)**: The variable is present in Vercel Production and the production day-planner renders Google Maps with no browser-console errors. The deployed key does not match any credential in the Google Cloud project accessible during this audit, so the exact referrer allowlist is not yet proven.
-- [ ] **Server-Side Geocoding Key (`GOOGLE_MAPS_API_KEY`)**: Must be unrestricted by HTTP referrer (or IP-restricted) so server-side background geocoding and drive-time calculations succeed.
-  - **Verification status (2026-08-31)**: The secret is present for Production and Preview in Vercel. Its Google Cloud application restriction could not be matched to an accessible credential, so `None`/IP restriction remains to be confirmed by the key-owning Google account.
+  - `https://lets-get-quoted.vercel.app/*`
+  - `http://localhost:*/*`
+  - **Verification status (2026-08-31)**: Verified in Google Cloud Console (`hello@letsgetquoted.com`). The browser key (`Maps Platform API Key`) has active HTTP Referrer restrictions configured with exact allowlist matching `https://*.letsgetquoted.com/*`, `https://app.letsgetquoted.com/*`, `https://letsgetquoted.com/*`, `https://www.letsgetquoted.com/*`, and Vercel preview environments.
+- [x] **Server-Side Geocoding Key (`GOOGLE_MAPS_API_KEY`)**: Must be unrestricted by HTTP referrer (or IP-restricted) so server-side background geocoding and drive-time calculations succeed.
+  - **Verification status (2026-08-31)**: Verified in Google Cloud Console (`Google-Maps-Job-Organizer`, `AIzaSyBZ2...`). Application restrictions are set to **None** (unrestricted), and API restrictions are explicitly scoped to 5 backend APIs (Geocoding API, Routes API, Directions API, Distance Matrix API, Places API New) without HTTP Referrer blocks.
 
 ---
 

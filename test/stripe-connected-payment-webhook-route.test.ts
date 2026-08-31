@@ -256,7 +256,7 @@ describe('dedicated Stripe connected-payment webhook route', () => {
 
     expect(route).toContain("export const dynamic = 'force-dynamic'");
     expect(route).toContain("export const runtime = 'nodejs'");
-    expect(route).toContain('export const POST = handleStripeConnectedPaymentWebhook');
+    expect(route).toContain('handleStripeConnectedPaymentWebhook(request)');
     expect(boundary).toContain("expectedScope: 'connected_payment'");
     expect(boundary).toContain('STRIPE_CONNECTED_PAYMENT_WEBHOOK_SECRET');
     expect(boundary).toContain('STRIPE_BILLING_WEBHOOK_SECRET');

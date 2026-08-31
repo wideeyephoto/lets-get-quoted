@@ -44,7 +44,6 @@ type TopUpInboxIngest = (delivery: StripeEventInboxDelivery) => Promise<StripeEv
 export type StripeTopUpWebhookDependencies = Readonly<{
   env?: TopUpWebhookEnvironment;
   ingest?: TopUpInboxIngest;
-  params?: Promise<Record<string, string | string[]>>;
 }>;
 
 export function stripeTopUpWebhookEnabled(

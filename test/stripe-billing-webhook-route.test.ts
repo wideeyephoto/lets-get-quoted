@@ -233,7 +233,7 @@ describe('dedicated Stripe Billing webhook route', () => {
 
     expect(route).toContain("export const dynamic = 'force-dynamic'");
     expect(route).toContain("export const runtime = 'nodejs'");
-    expect(route).toContain('export const POST = handleStripeBillingWebhook');
+    expect(route).toContain('handleStripeBillingWebhook(request)');
     expect(boundary).toContain("expectedScope: 'platform_subscription'");
     expect(boundary).toContain('STRIPE_BILLING_WEBHOOK_SECRET');
     expect(boundary).toContain('webhookSecret === legacyWebhookSecret');
