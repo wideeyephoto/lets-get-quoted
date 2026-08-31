@@ -2677,7 +2677,7 @@ export default function ManagedAdsScreen({
           )}
 
           {/* Dynamic Campaign Launch Configuration Summary Deck */}
-          <div className={styles.launchSummaryCard}>
+          <div id="campaign-launch-deck" className={styles.launchSummaryCard}>
             <div className={styles.launchSummaryHeader}>
               <span className={styles.launchSummaryTitle}>⚡ Campaign Launch Blueprint</span>
               <span style={{ fontSize: '0.68rem', color: '#10b981', fontWeight: 700 }}>
