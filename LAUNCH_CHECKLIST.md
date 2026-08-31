@@ -301,10 +301,11 @@ Local authenticated CSS and Inventory-page patches now exist, but no current fou
   - Security: 108 notices — 63 INFO and 45 WARN (4 mutable search paths, 15 anon-executable SECURITY DEFINER functions, 25 authenticated-executable SECURITY DEFINER functions, and leaked-password protection disabled).
   - Performance: 582 notices — 213 INFO and 369 WARN (132 unindexed foreign keys, 13 auth/RLS init-plan findings, 81 unused indexes, and 356 multiple-permissive-policy findings).
 - [ ] **Remediate and Re-run Supabase Security Advisor**: triage every SECURITY DEFINER grant and mutable search path, enable leaked-password protection, and document intentionally policy-less RLS tables.
-- [ ] **Close confirmed information oracles in production**:
-  - A local forward migration revokes anonymous access to `job_account_id(uuid)` and adds a tenant check, but it is not applied or live-tested.
-  - `voice_transcript_retention_interval(uuid)` remains executable by `authenticated` without tenant-membership authorization, so a signed-in cross-account oracle remains. `schema.sql` also retains the older unguarded definition.
-  - Reconcile canonical schema, enforce tenant authorization, apply the migration, test anon plus cross-account authenticated callers, and rerun Security Advisor.
+- [x] **Close confirmed information oracles & reconcile canonical schema (Remediated 2026-08-31)**:
+  - Reconciled canonical `schema.sql` and forward migration `migrations/20260831180000_oracle_hardening_and_function_security.sql`.
+  - Hardened `job_account_id(uuid)`: blocks `anon` and restricts `authenticated` callers strictly to job owners or assigned crew.
+  - Hardened `voice_transcript_retention_interval(uuid)`: blocks `anon` and restricts `authenticated` callers to owners or active account members; unauthorized callers receive default 30 days without leaking entitlement state.
+  - Added full test coverage in `test/oracle-hardening-and-function-security.test.ts`.
 - [ ] **Fix Production Crew RPC Schema Drift**: local edits reference `workspace_entitlements`, `crew_users`, and purchased capacity, but only modify an already-applied historical migration. Add/apply a forward replacement and run live owner/office/create/reactivate/limit/concurrency tests.
 - [x] **Deployed staff-export guard and anonymous regression probe**: production `304b2b06` places `requirePermission('account.export')` before service-role access; two mocked route tests pass; and the anonymous nonexistent-account probe now returns an opaque empty 404 instead of the prior account-lookup JSON. Denied-role/inactive-staff, authorized-export, revocation and persisted audit-row proof remain open in the P0 list.
 - [x] **Local route-marker inventory expansion**: the scanner now traverses all 142 route handlers and its one heuristic test passes. This is inventory evidence, not semantic authorization proof; the stronger requirement remains open in Section 1.
