@@ -411,7 +411,7 @@ describe('Ad Billing Synchronous Provisioning & Fulfillment', () => {
     expect(updatedAdCampaign).not.toBeNull();
     const campaignState = updatedAdCampaign as unknown as Record<string, unknown>;
     expect(campaignState.walletBalanceCents).toBe(30000); // $50 + $250 = $300
-    expect(campaignState.spendThisMonthCents).toBe(50000); // $250 + $250 = $500
+    expect(campaignState.spendThisMonthCents).toBe(25000); // Refill credits balance; spend is only incremented by recorded ad usage
   });
 
   it('records continuous ad spend usage, decrements wallet balance, logs history, and triggers refill on threshold drop', async () => {
