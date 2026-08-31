@@ -593,9 +593,15 @@ begin
     raise exception 'Sender consent is missing or revoked' using errcode = '28000';
   end if;
 
-  -- Enforce intent authorization: administrative intents are strictly owner-only
-  if not coalesce(v_is_owner, false)
-     and p_intent in ('create_lead', 'reschedule_job', 'assign_crew', 'update_client') then
+  -- Enforce intent authorization: administrative intents are strictly owner-only.
+  -- Only create_lead is listed: it is the sole owner-only intent this rail
+  -- actually implements. reschedule_job/assign_crew/update_client fall through
+  -- to the graceful unsupported branch below, which answers BOTH roles with an
+  -- honest "can't do that by text yet" -- raising 42501 for crew here would
+  -- retry the task into the dead-letter queue while the sender hears nothing,
+  -- the exact failure mode that branch exists to prevent. Reinstate them in
+  -- this guard the day they are implemented.
+  if not coalesce(v_is_owner, false) and p_intent = 'create_lead' then
     raise exception 'Intent % is restricted to account owner', p_intent using errcode = '42501';
   end if;
 
@@ -604,11 +610,18 @@ begin
     public.sms_inbound_recipient_lock_key(v_task.account_id, v_receipt.from_number)
   );
 
-  v_feed_kind := case
-    when coalesce(pg_catalog.array_length(v_receipt.media_urls, 1), 0) > 0
+  -- Media provenance lives on sms_messages, NOT on the receipt --
+  -- sms_webhook_receipts has no media_urls column, and because this runs
+  -- unconditionally before intent dispatch, reading v_receipt.media_urls made
+  -- EVERY field action throw 42703 at first call.
+  select case
+    when coalesce(pg_catalog.array_length(m.media_urls, 1), 0) > 0
       then 'field_voice_note'
     else 'field_sms_update'
-  end;
+  end into v_feed_kind
+    from public.sms_messages m
+   where m.id = v_task.sms_message_id;
+  v_feed_kind := coalesce(v_feed_kind, 'field_sms_update');
 
   v_author := case
     when coalesce(v_is_owner, false)
@@ -660,7 +673,10 @@ begin
     insert into public.costs (
       account_id, job_id, type, category, description, amount
     ) values (
-      v_task.account_id, v_job.id, v_cost_type::cost_type,
+      -- schema-qualified: search_path is pinned to pg_catalog, so an
+      -- unqualified ::cost_type resolves to nothing and throws 42704 at the
+      -- first log_cost action (runtime, not CREATE time)
+      v_task.account_id, v_job.id, v_cost_type::public.cost_type,
       v_cost_type, v_label, v_amount
     ) returning id into v_cost_id;
 
@@ -757,7 +773,8 @@ begin
     insert into public.leads (
       account_id, source, status, name, phone, address, message
     ) values (
-      v_task.account_id, 'manual'::lead_source, 'new'::lead_status,
+      -- schema-qualified for the same pinned-search_path reason as cost_type
+      v_task.account_id, 'manual'::public.lead_source, 'new'::public.lead_status,
       v_client_name, v_client_phone, v_address, v_note
     ) returning id into v_lead_id;
 

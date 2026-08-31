@@ -43,16 +43,37 @@ create policy milestone_photos_crew_insert on public.milestone_photos
     )
   );
 
+-- The READ policies carry the same tenant tie as the INSERT above, for the
+-- same reason: crew_on_job() matches on job_id alone, and nothing forces a
+-- row's account_id to equal the job's account, so the bare helper would let a
+-- crew session read rows carrying another tenant's account_id. job_milestones
+-- is payment-gating (payment_id FK -> payments) -- keep reads account-tied.
 drop policy if exists milestone_photos_crew_read on public.milestone_photos;
 create policy milestone_photos_crew_read on public.milestone_photos
   for select using (
     public.crew_on_job(job_id)
+    and exists (
+      select 1
+        from public.crew_assignments ca
+        join public.crew c on c.id = ca.crew_id
+       where ca.account_id = milestone_photos.account_id
+         and ca.job_id = milestone_photos.job_id
+         and c.user_id = auth.uid()
+    )
   );
 
 drop policy if exists job_milestones_crew_read on public.job_milestones;
 create policy job_milestones_crew_read on public.job_milestones
   for select using (
     public.crew_on_job(job_id)
+    and exists (
+      select 1
+        from public.crew_assignments ca
+        join public.crew c on c.id = ca.crew_id
+       where ca.account_id = job_milestones.account_id
+         and ca.job_id = job_milestones.job_id
+         and c.user_id = auth.uid()
+    )
   );
 
 -- 4. change_orders crew policies
