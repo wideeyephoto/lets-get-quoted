@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import styles from './hero-connected-workflow.module.css';
 
@@ -136,29 +136,117 @@ export const TRADES_DATA: Record<TradeId, TradeData> = {
   },
 };
 
+const STEP_DWELL_MS = 4600;
+
 export default function HeroConnectedWorkflow() {
   const [selectedTrade, setSelectedTrade] = useState<TradeId>('plumbing');
   const [activeStep, setActiveStep] = useState<number>(0);
   const [isWorkflowReplaying, setIsWorkflowReplaying] = useState(true);
+  const [isAutoPlayEnabled, setIsAutoPlayEnabled] = useState(true);
+  const [isHovered, setIsHovered] = useState(false);
+  const [isPlayingAudio, setIsPlayingAudio] = useState(false);
+
+  const containerRef = useRef<HTMLDivElement>(null);
+  const autoPlayTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const trade = TRADES_DATA[selectedTrade];
 
-  const replayWorkflow = () => {
+  const replayWorkflow = useCallback(() => {
     setIsWorkflowReplaying(false);
     requestAnimationFrame(() => {
       setIsWorkflowReplaying(true);
     });
+  }, []);
+
+  const handleSelectStep = useCallback((idx: number) => {
+    setActiveStep(idx);
+    replayWorkflow();
+  }, [replayWorkflow]);
+
+  // Autoplay progression loop (pauses on hover, focus, or when autoplay is paused)
+  useEffect(() => {
+    if (!isAutoPlayEnabled || isHovered) {
+      if (autoPlayTimerRef.current) {
+        clearInterval(autoPlayTimerRef.current);
+        autoPlayTimerRef.current = null;
+      }
+      return;
+    }
+
+    if (typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      return;
+    }
+
+    autoPlayTimerRef.current = setInterval(() => {
+      setActiveStep((prev) => (prev + 1) % 4);
+      replayWorkflow();
+    }, STEP_DWELL_MS);
+
+    return () => {
+      if (autoPlayTimerRef.current) {
+        clearInterval(autoPlayTimerRef.current);
+        autoPlayTimerRef.current = null;
+      }
+    };
+  }, [isAutoPlayEnabled, isHovered, replayWorkflow]);
+
+  // Handle Voice Memo Speech Audio
+  const toggleVoicePlayback = () => {
+    if (typeof window === 'undefined') return;
+
+    if (isPlayingAudio) {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+      setIsPlayingAudio(false);
+      return;
+    }
+
+    setIsPlayingAudio(true);
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(trade.fieldVoiceMemo.replace(/"/g, ''));
+      utterance.rate = 1.0;
+      utterance.pitch = 0.95;
+      utterance.onend = () => setIsPlayingAudio(false);
+      utterance.onerror = () => setIsPlayingAudio(false);
+      window.speechSynthesis.speak(utterance);
+    } else {
+      setTimeout(() => setIsPlayingAudio(false), 3500);
+    }
   };
 
   return (
-    <div className={styles.pricingVisual} aria-label="Interactive contractor workflow showcase">
+    <div
+      ref={containerRef}
+      className={styles.pricingVisual}
+      aria-label="Interactive contractor workflow showcase"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      onFocus={() => setIsHovered(true)}
+      onBlur={() => setIsHovered(false)}
+    >
       <div className={`${styles.visualOrbit} ${styles.orbitOne}`} aria-hidden="true" />
       <div className={`${styles.visualOrbit} ${styles.orbitTwo}`} aria-hidden="true" />
 
       {/* Card Header & Kicker */}
       <div className={styles.visualHeading}>
         <div>
-          <span className={styles.visualKicker}><i aria-hidden="true" /> LIVE CONTRACTOR WORKFLOW</span>
+          <div className={styles.kickerRow}>
+            <span className={styles.visualKicker}>
+              <i aria-hidden="true" /> LIVE CONTRACTOR WORKFLOW
+            </span>
+            <button
+              type="button"
+              onClick={() => setIsAutoPlayEnabled((prev) => !prev)}
+              className={`${styles.autoPlayBadge} ${isAutoPlayEnabled && !isHovered ? styles.autoPlayActive : styles.autoPlayPaused}`}
+              title={isAutoPlayEnabled ? 'Auto-play is active. Click to pause.' : 'Auto-play is paused. Click to play.'}
+              aria-label={isAutoPlayEnabled ? 'Pause automated workflow tour' : 'Play automated workflow tour'}
+            >
+              <span className={styles.playDot} aria-hidden="true" />
+              <span>{isHovered ? 'PAUSED ON HOVER' : isAutoPlayEnabled ? 'AUTO-PLAY ON' : 'PAUSED'}</span>
+            </button>
+          </div>
           <h2 className={styles.visualTitle}>
             From homeowner photo to money in your bank.
           </h2>
@@ -170,101 +258,130 @@ export default function HeroConnectedWorkflow() {
       </div>
 
       {/* Trade Filter Tabs */}
-      <div className={styles.tradeFilterBar}>
-        {(Object.keys(TRADES_DATA) as TradeId[]).map((tId) => (
-          <button
-            key={tId}
-            type="button"
-            onClick={() => setSelectedTrade(tId)}
-            className={`${styles.tradePill} ${selectedTrade === tId ? styles.tradePillActive : ''}`}
-          >
-            {TRADES_DATA[tId].name}
-          </button>
-        ))}
+      <div className={styles.tradeFilterBar} role="tablist" aria-label="Select Contractor Trade">
+        {(Object.keys(TRADES_DATA) as TradeId[]).map((tId) => {
+          const isSelected = selectedTrade === tId;
+          return (
+            <button
+              key={tId}
+              type="button"
+              role="tab"
+              aria-selected={isSelected}
+              onClick={() => {
+                setSelectedTrade(tId);
+                replayWorkflow();
+              }}
+              className={`${styles.tradePill} ${isSelected ? styles.tradePillActive : ''}`}
+            >
+              {TRADES_DATA[tId].name}
+            </button>
+          );
+        })}
       </div>
 
-      {/* 4-Step Milestone Ticker */}
+      {/* 4-Step Milestone Ticker (Interactive Milestone Cards) */}
       <div
-        className={`${styles.activityStrip} ${isWorkflowReplaying ? 'workflow-animating' : 'workflow-settled'}`}
-        role="button"
-        tabIndex={0}
-        onClick={replayWorkflow}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            replayWorkflow();
-          }
-        }}
-        aria-label="Workflow demonstration. Click to replay animation."
+        className={`${styles.activityStrip} ${isWorkflowReplaying ? styles.stripAnimating : ''}`}
+        aria-label="Workflow milestones. Click any step to inspect."
       >
-        <div className={`${styles.activityEvent} ${styles.toneOrange}`}>
+        <button
+          type="button"
+          onClick={() => handleSelectStep(0)}
+          className={`${styles.activityEvent} ${styles.toneOrange} ${activeStep === 0 ? styles.activityEventActive : ''}`}
+          aria-label="Milestone 1: AI Photo Intake"
+        >
           <span className={styles.activityMark}>01</span>
           <div className={styles.activityContent}>
             <small>AI Photo Intake</small>
             <strong>{trade.leadValue}</strong>
           </div>
-        </div>
-        <div className={`${styles.activityEvent} ${styles.toneYellow}`}>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => handleSelectStep(1)}
+          className={`${styles.activityEvent} ${styles.toneYellow} ${activeStep === 1 ? styles.activityEventActive : ''}`}
+          aria-label="Milestone 2: Quote Accepted & Deposit Paid"
+        >
           <span className={styles.activityMark}>02</span>
           <div className={styles.activityContent}>
             <small>Quote Accepted</small>
             <strong>{trade.depositAmount} Paid</strong>
           </div>
-        </div>
-        <div className={`${styles.activityEvent} ${styles.toneTeal}`}>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => handleSelectStep(2)}
+          className={`${styles.activityEvent} ${styles.toneTeal} ${activeStep === 2 ? styles.activityEventActive : ''}`}
+          aria-label="Milestone 3: Text-to-Job Field Memo"
+        >
           <span className={styles.activityMark}>03</span>
           <div className={styles.activityContent}>
             <small>Text-to-Job</small>
             <strong>{trade.quoteTotal}</strong>
           </div>
-        </div>
-        <div className={`${styles.activityEvent} ${styles.toneMint}`}>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => handleSelectStep(3)}
+          className={`${styles.activityEvent} ${styles.toneMint} ${activeStep === 3 ? styles.activityEventActive : ''}`}
+          aria-label="Milestone 4: Stripe Payout & QuickBooks Sync"
+        >
           <span className={styles.activityMark}>04</span>
           <div className={styles.activityContent}>
             <small>Stripe &amp; QBO</small>
             <strong>{trade.payoutAmount}</strong>
           </div>
-        </div>
+        </button>
       </div>
 
       {/* Step Switcher Buttons */}
-      <div className={styles.stepSwitcher}>
+      <div className={styles.stepSwitcher} role="tablist" aria-label="Workflow Stages">
         {[
           { idx: 0, num: '01', title: 'Smart Intake', sub: 'Photo AI & Scope' },
           { idx: 1, num: '02', title: 'Instant Quote', sub: 'E-Sign & Deposit' },
           { idx: 2, num: '03', title: 'Text-to-Job', sub: 'Voice Memo & SMS' },
           { idx: 3, num: '04', title: 'Dispatch & Pay', sub: 'Route & Stripe Sync' },
-        ].map((step) => (
-          <button
-            key={step.idx}
-            type="button"
-            onClick={() => {
-              setActiveStep(step.idx);
-              replayWorkflow();
-            }}
-            className={`${styles.stepButton} ${activeStep === step.idx ? styles.stepButtonActive : ''}`}
-          >
-            <div className={styles.stepButtonHeader}>
-              <span className={`${styles.stepNumber} ${activeStep === step.idx ? styles.stepNumberActive : ''}`}>
-                {step.num}
-              </span>
-              {activeStep === step.idx && <span className={styles.activeDot} />}
-            </div>
-            <div className={styles.stepButtonTitle}>
-              {step.title}
-            </div>
-            <div className={styles.stepButtonSub}>
-              {step.sub}
-            </div>
-          </button>
-        ))}
+        ].map((step) => {
+          const isActive = activeStep === step.idx;
+          return (
+            <button
+              key={step.idx}
+              type="button"
+              role="tab"
+              aria-selected={isActive}
+              onClick={() => handleSelectStep(step.idx)}
+              className={`${styles.stepButton} ${isActive ? styles.stepButtonActive : ''}`}
+            >
+              {isActive && isAutoPlayEnabled && !isHovered && (
+                <span className={styles.dwellProgressTrack} aria-hidden="true">
+                  <span className={styles.dwellProgressBar} style={{ animationDuration: `${STEP_DWELL_MS}ms` }} />
+                </span>
+              )}
+              <div className={styles.stepButtonHeader}>
+                <span className={`${styles.stepNumber} ${isActive ? styles.stepNumberActive : ''}`}>
+                  {step.num}
+                </span>
+                {isActive && <span className={styles.activeDot} />}
+              </div>
+              <div className={styles.stepButtonTitle}>
+                {step.title}
+              </div>
+              <div className={styles.stepButtonSub}>
+                {step.sub}
+              </div>
+            </button>
+          );
+        })}
       </div>
 
-      {/* Simulated Live Product Viewport */}
-      <div className={styles.viewportStage}>
+      {/* Simulated Live Product Viewport Stage */}
+      <div className={styles.viewportStage} role="region" aria-live="polite">
         {/* STAGE 1: AI INTAKE */}
         {activeStep === 0 && (
-          <div>
+          <div className={styles.stageContentFade}>
             <div className={styles.stageRowTop}>
               <span className={styles.leadBadge}>
                 ✦ {trade.badge}
@@ -297,7 +414,7 @@ export default function HeroConnectedWorkflow() {
                 <button
                   type="button"
                   className={styles.actionBtnNext}
-                  onClick={() => setActiveStep(1)}
+                  onClick={() => handleSelectStep(1)}
                   aria-label="Next Step: Draft Quote"
                 >
                   <span className={styles.btnPulseDot} aria-hidden="true" />
@@ -311,7 +428,7 @@ export default function HeroConnectedWorkflow() {
 
         {/* STAGE 2: QUOTE & E-SIGN */}
         {activeStep === 1 && (
-          <div>
+          <div className={styles.stageContentFade}>
             <div className={styles.stageRowTop}>
               <span className={styles.proposalBadge}>
                 ✓ PROPOSAL SIGNED ON MOBILE
@@ -345,7 +462,7 @@ export default function HeroConnectedWorkflow() {
                 <button
                   type="button"
                   className={styles.actionBtnNext}
-                  onClick={() => setActiveStep(2)}
+                  onClick={() => handleSelectStep(2)}
                   aria-label="Next Step: Field Update"
                 >
                   <span className={styles.btnPulseDot} aria-hidden="true" />
@@ -359,7 +476,7 @@ export default function HeroConnectedWorkflow() {
 
         {/* STAGE 3: TEXT-TO-JOB (VOICE & SMS FIELD INTAKE) */}
         {activeStep === 2 && (
-          <div>
+          <div className={styles.stageContentFade}>
             <div className={styles.stageRowTop}>
               <span className={styles.fieldActionBadge}>
                 {trade.fieldBadge}
@@ -375,7 +492,21 @@ export default function HeroConnectedWorkflow() {
 
             <div className={styles.infoBoxField}>
               <div className={styles.fieldVoiceSnippet}>
-                <span className={styles.waveformDot} />
+                <button
+                  type="button"
+                  onClick={toggleVoicePlayback}
+                  className={styles.voicePlayBtn}
+                  aria-label={isPlayingAudio ? 'Stop voice memo audio' : 'Play voice memo audio'}
+                >
+                  {isPlayingAudio ? '⏹' : '▶'}
+                </button>
+                <div className={styles.voiceWaveTrack}>
+                  <span className={`${styles.waveformBar} ${isPlayingAudio ? styles.waveBarActive : ''}`} style={{ height: '55%' }} />
+                  <span className={`${styles.waveformBar} ${isPlayingAudio ? styles.waveBarActive : ''}`} style={{ height: '90%', animationDelay: '0.15s' }} />
+                  <span className={`${styles.waveformBar} ${isPlayingAudio ? styles.waveBarActive : ''}`} style={{ height: '40%', animationDelay: '0.3s' }} />
+                  <span className={`${styles.waveformBar} ${isPlayingAudio ? styles.waveBarActive : ''}`} style={{ height: '100%', animationDelay: '0.45s' }} />
+                  <span className={`${styles.waveformBar} ${isPlayingAudio ? styles.waveBarActive : ''}`} style={{ height: '65%', animationDelay: '0.6s' }} />
+                </div>
                 <span className={styles.voiceText}>{trade.fieldVoiceMemo}</span>
               </div>
               <div className={styles.fieldAiResponse}>
@@ -392,7 +523,7 @@ export default function HeroConnectedWorkflow() {
                 <button
                   type="button"
                   className={styles.actionBtnNext}
-                  onClick={() => setActiveStep(3)}
+                  onClick={() => handleSelectStep(3)}
                   aria-label="Next Step: Dispatch & Pay"
                 >
                   <span className={styles.btnPulseDot} aria-hidden="true" />
@@ -406,7 +537,7 @@ export default function HeroConnectedWorkflow() {
 
         {/* STAGE 4: DISPATCH & STRIPE PAYOUT */}
         {activeStep === 3 && (
-          <div>
+          <div className={styles.stageContentFade}>
             <div className={styles.stageRowTop}>
               <span className={styles.paidBadge}>
                 ✓ JOB COMPLETE &amp; INVOICE PAID
@@ -439,8 +570,8 @@ export default function HeroConnectedWorkflow() {
                 <button
                   type="button"
                   className={styles.replayBtn}
-                  onClick={() => setActiveStep(0)}
-                  aria-label="Replay interactive tour"
+                  onClick={() => handleSelectStep(0)}
+                  aria-label="Replay interactive tour from step 1"
                 >
                   <span className={styles.btnPulseDotMint} aria-hidden="true" />
                   <span className={styles.btnText}>Replay Tour</span>

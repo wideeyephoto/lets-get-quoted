@@ -141,8 +141,9 @@ export default function FounderExperience() {
 
   return (
     <main className={`${MARKETING_PAGE_CLASS} ${styles.page}`} id={MARKETING_MAIN_ID}>
-      <div className="ambient-glow ambient-glow-a" aria-hidden="true" />
-      <div className="ambient-glow ambient-glow-b" aria-hidden="true" />
+      <div className={styles.ambientOne} aria-hidden="true" />
+      <div className={styles.ambientTwo} aria-hidden="true" />
+      <div className={styles.ambientThree} aria-hidden="true" />
 
       <div className="marketing-shell">
         {/* ========================================================================= */}
@@ -196,6 +197,8 @@ export default function FounderExperience() {
 
           {/* Right Visual: Founder Portrait Card with Glassmorphic Elements */}
           <div className={styles.heroVisual}>
+            <div className={styles.visualOrbitOne} aria-hidden="true" />
+            <div className={styles.visualOrbitTwo} aria-hidden="true" />
             <div className={styles.portraitGlowBack} aria-hidden="true" />
 
             <div className={styles.portraitEnclosure}>

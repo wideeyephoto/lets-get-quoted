@@ -2905,6 +2905,33 @@ export default function ManagedAdsScreen({
             <span>⚡ Certified Google MCC</span>
             <span>🛡️ No Long-Term Contracts</span>
           </div>
+
+          {/* 3-Point Onboarding Assurance Roadmap */}
+          <div className={styles.onboardingTimelineCard}>
+            <div className={styles.onboardingTimelineTitle}>
+              <span>✨ What Happens After Launching</span>
+            </div>
+            <div className={styles.onboardingStepsList}>
+              <div className={styles.onboardingStepItem}>
+                <span className={styles.onboardingStepNum}>1</span>
+                <div className={styles.onboardingStepText}>
+                  <strong>Instant Stripe Checkout:</strong> 100% secure checkout with 1-click pause or cancel anytime.
+                </div>
+              </div>
+              <div className={styles.onboardingStepItem}>
+                <span className={styles.onboardingStepNum}>2</span>
+                <div className={styles.onboardingStepText}>
+                  <strong>24h Master Google MCC Setup:</strong> Geo-targeted Responsive Search Ads, sitelinks &amp; 100+ negative keyword shields deployed.
+                </div>
+              </div>
+              <div className={styles.onboardingStepItem}>
+                <span className={styles.onboardingStepNum}>3</span>
+                <div className={styles.onboardingStepText}>
+                  <strong>Sub-60s AI Speed-to-Lead:</strong> Incoming inquiries are texted within 12s to book appointments before competitors wake up.
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -3000,6 +3027,39 @@ export default function ManagedAdsScreen({
                 <p className={styles.stepDesc}>
                   When you mark a quote signed in Let’s Get Quoted CRM, the actual dollar contract value feeds back into Google Smart Bidding algorithms to train Google’s AI to target higher-ticket homeowners.
                 </p>
+              </div>
+            </div>
+
+            {/* Closed-Loop Revenue Synchronization Workflow */}
+            <div className={styles.revenueLoopFlow}>
+              <div className={styles.revenueLoopStep}>
+                <span className={styles.revenueLoopIcon}>🔍</span>
+                <span className={styles.revenueLoopTitle}>1. Local Search</span>
+                <span className={styles.revenueLoopSub}>High-intent homeowner clicks Google ad</span>
+              </div>
+              <span className={styles.revenueLoopArrow}>➔</span>
+              <div className={styles.revenueLoopStep}>
+                <span className={styles.revenueLoopIcon}>🌐</span>
+                <span className={styles.revenueLoopTitle}>2. Instant Match</span>
+                <span className={styles.revenueLoopSub}>Website dynamically matches exact query</span>
+              </div>
+              <span className={styles.revenueLoopArrow}>➔</span>
+              <div className={styles.revenueLoopStep}>
+                <span className={styles.revenueLoopIcon}>⚡</span>
+                <span className={styles.revenueLoopTitle}>3. AI Speed-to-Lead</span>
+                <span className={styles.revenueLoopSub}>Lead texted in &lt;12s to lock appointment</span>
+              </div>
+              <span className={styles.revenueLoopArrow}>➔</span>
+              <div className={styles.revenueLoopStep}>
+                <span className={styles.revenueLoopIcon}>📝</span>
+                <span className={styles.revenueLoopTitle}>4. Signed Quote</span>
+                <span className={styles.revenueLoopSub}>Homeowner signs high-ticket contract</span>
+              </div>
+              <span className={styles.revenueLoopArrow}>➔</span>
+              <div className={styles.revenueLoopStep}>
+                <span className={styles.revenueLoopIcon}>🔄</span>
+                <span className={styles.revenueLoopTitle}>5. Closed-Loop Sync</span>
+                <span className={styles.revenueLoopSub}>Revenue value trains Google Smart Bidding</span>
               </div>
             </div>
           </div>
