@@ -42,10 +42,6 @@ export type ReceivablesSummary = {
   overdueCount: number;
 };
 
-function round2(n: number): number {
-  return Math.round(n * 100) / 100;
-}
-
 type DbInvoiceRow = {
   id: string;
   ref: string | null;

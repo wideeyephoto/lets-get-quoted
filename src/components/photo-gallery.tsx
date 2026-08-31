@@ -376,8 +376,9 @@ export default function PhotoGallery({
               setPhotos((current) => [newPhoto, ...current]);
               setMessage('✓ Marked-up photo saved to gallery!');
               setTimeout(() => setMessage(null), 3500);
-            } catch (err: any) {
-              setMessage(err?.message || 'Failed to save marked-up photo.');
+            } catch (err: unknown) {
+              const msg = err instanceof Error ? err.message : 'Failed to save marked-up photo.';
+              setMessage(msg);
             } finally {
               setIsUploading(false);
               setAnnotatingPhoto(null);

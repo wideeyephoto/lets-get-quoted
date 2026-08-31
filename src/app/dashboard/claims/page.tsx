@@ -10,7 +10,7 @@ export const metadata = {
 };
 
 export default async function InsuranceClaimsPage() {
-  const { accountId, supabase } = await requireOfficeContext();
+  const { accountId } = await requireOfficeContext();
   const admin = createAdminClient();
 
   const [trade, { data: account }, { data: site }] = await Promise.all([

@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { APP_SIGNUP_URL } from '@/components/marketing/links';
 import styles from './text-to-record-simulator.module.css';
 
-type ExtractedPillarItem = {
+export type ExtractedPillarItem = {
   id: string;
   pillar: 'Jobs' | 'Leads' | 'Schedule' | 'Crew';
   title: string;
@@ -13,9 +13,10 @@ type ExtractedPillarItem = {
   table: string;
 };
 
-type Scenario = {
+export type Scenario = {
   id: string;
   tabLabel: string;
+  shortChip: string;
   icon: string;
   title: string;
   badge: string;
@@ -55,7 +56,7 @@ type Scenario = {
     totalAmount?: string;
     previousAmount?: string;
     lineItems?: { label: string; amount: string; isNew?: boolean }[];
-    tasks?: { text: string; done: boolean }[];
+    tasks?: { text: string; done?: boolean }[];
     costsSummary?: {
       totalRevenue: string;
       totalCosts: string;
@@ -81,7 +82,8 @@ type Scenario = {
 const SCENARIOS: Scenario[] = [
   {
     id: 'change-order',
-    tabLabel: 'Quote Change Order',
+    tabLabel: 'Quote Change Order (+$450)',
+    shortChip: '$450 Romex Change Order',
     icon: '💰',
     title: 'Add Quote Line Items & Recalculate Totals',
     badge: 'Change Order Auto-Calculated',
@@ -143,7 +145,8 @@ const SCENARIOS: Scenario[] = [
   },
   {
     id: 'voice-memo',
-    tabLabel: 'Voice Memo MMS',
+    tabLabel: 'Voice Memo MMS (Noise Filtered)',
+    shortChip: 'Voice Memo: Rough Inspection Passed',
     icon: '🎙️',
     title: 'Log Audio Memos & Progress Notes',
     badge: 'MMS Multimodal Audio AI',
@@ -199,6 +202,7 @@ const SCENARIOS: Scenario[] = [
   {
     id: 'bilingual-spanish',
     tabLabel: 'Bilingual Spanish Voice',
+    shortChip: 'Spanish Voice Memo to English File',
     icon: '🌐',
     title: 'Spanish Voice Memo to English Job File',
     badge: 'Real-Time Spanish AI Audio Translation',
@@ -257,7 +261,8 @@ const SCENARIOS: Scenario[] = [
   },
   {
     id: 'receipt-ocr',
-    tabLabel: 'Receipt & Expense OCR',
+    tabLabel: 'Receipt OCR & Auto-Margin',
+    shortChip: 'Home Depot Receipt Photo OCR',
     icon: '🧾',
     title: 'Text Receipt Photos & Track Margin',
     badge: 'MMS Vision OCR & Auto-Margin',
@@ -326,6 +331,7 @@ const SCENARIOS: Scenario[] = [
   {
     id: 'punch-list',
     tabLabel: 'Punch List & Tasks',
+    shortChip: '3-Item Punch List to Crew',
     icon: '📋',
     title: 'Dictate Crew Checklist Tasks',
     badge: 'Auto-Task Extraction',
@@ -384,7 +390,8 @@ const SCENARIOS: Scenario[] = [
   },
   {
     id: 'safety-handling',
-    tabLabel: 'Ambiguity Guard',
+    tabLabel: 'Ambiguity Guard (Zero-Guess)',
+    shortChip: 'Safety Guard: Disambiguate Smith',
     icon: '🛡️',
     title: 'Zero Destructive Guesses Safety Invariant',
     badge: 'Disambiguation Safety',
@@ -436,6 +443,7 @@ const SCENARIOS: Scenario[] = [
   {
     id: 'quick-lead',
     tabLabel: 'Quick Lead on the Fly',
+    shortChip: 'New Lead: Dave Miller Roof Leak',
     icon: '🚀',
     title: 'Capture Leads While Driving',
     badge: 'Instant Lead Creation',
@@ -497,6 +505,7 @@ export default function TextToRecordSimulator() {
   const [isRecordingLive, setIsRecordingLive] = useState(false);
   const [liveTranscript, setLiveTranscript] = useState<string>('');
   const [homeownerApproved, setHomeownerApproved] = useState(false);
+  const [completedTasks, setCompletedTasks] = useState<Record<number, boolean>>({});
 
   const scenario = SCENARIOS.find((s) => s.id === activeScenarioId) || SCENARIOS[0];
 
@@ -508,6 +517,7 @@ export default function TextToRecordSimulator() {
     setIsPlayingVoice(false);
     setVoiceSeconds(9);
     setHomeownerApproved(false);
+    setCompletedTasks({});
   }, [activeScenarioId]);
 
   function toggleVoicePlayback() {
@@ -520,7 +530,8 @@ export default function TextToRecordSimulator() {
     }
 
     setIsPlayingVoice(true);
-    setVoiceSeconds(scenario.id === 'bilingual-spanish' ? 11 : 9);
+    const initialSecs = scenario.id === 'bilingual-spanish' ? 11 : 9;
+    setVoiceSeconds(initialSecs);
 
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       window.speechSynthesis.cancel();
@@ -593,7 +604,7 @@ export default function TextToRecordSimulator() {
 
       recognition.onstart = () => {
         setIsRecordingLive(true);
-        setLiveTranscript('Listening to your mic...');
+        setLiveTranscript('Listening to your voice...');
       };
 
       recognition.onresult = (event) => {
@@ -624,13 +635,24 @@ export default function TextToRecordSimulator() {
     }));
   }
 
+  function toggleTaskComplete(idx: number) {
+    setCompletedTasks((prev) => ({
+      ...prev,
+      [idx]: !prev[idx],
+    }));
+  }
+
   const activePillarCount = scenario.pillars.filter((p) => !disabledItemIds[p.id]).length;
 
   return (
     <div className={styles.simulatorWrapper}>
-      {/* Perspective Bar */}
+      {/* Perspective & Control Bar */}
       <div className={styles.perspectiveBar}>
-        <span className={styles.perspectiveLabel}>Live Interaction View:</span>
+        <div className={styles.perspectiveLabelGroup}>
+          <span className={styles.livePulseDot}></span>
+          <span className={styles.perspectiveLabel}>Live Field Simulator</span>
+          <span className={styles.carrierVerifiedBadge}>10DLC Carrier-Verified</span>
+        </div>
         <div className={styles.perspectiveToggleGroup}>
           <button
             type="button"
@@ -639,7 +661,7 @@ export default function TextToRecordSimulator() {
               perspective === 'contractor' ? styles.perspectiveBtnActive : ''
             }`}
           >
-            📱 Contractor View (SMS to AI Copilot)
+            📱 Contractor View (SMS to Copilot)
           </button>
           <button
             type="button"
@@ -653,9 +675,12 @@ export default function TextToRecordSimulator() {
         </div>
       </div>
 
-      {/* Tab Navigation */}
+      {/* Scenario Tabs Container */}
       <div className={styles.tabBarContainer}>
-        <span className={styles.tabBarLabel}>Select Contractor Field Scenario:</span>
+        <div className={styles.tabBarHeader}>
+          <span className={styles.tabBarLabel}>Select Real Field Scenario:</span>
+          <span className={styles.tabSubhint}>Instant mutation without opening an app</span>
+        </div>
         <div className={styles.tabBar}>
           {SCENARIOS.map((sc) => {
             const isActive = sc.id === activeScenarioId;
@@ -674,16 +699,32 @@ export default function TextToRecordSimulator() {
         </div>
       </div>
 
-      {/* Main Workspace Frame */}
+      {/* Main Dual Workspace Frame */}
       <div className={styles.workspaceFrame}>
         {/* Left Column: Phone / SMS Interface */}
         <div className={styles.phoneColumn}>
           <div className={styles.phoneDevice}>
             {/* Phone Top Notch / Status Bar */}
             <div className={styles.phoneTopBar}>
-              <span>9:41</span>
-              <div className={styles.phoneIsland}></div>
-              <div className={styles.phoneSignals}>LTE 5G</div>
+              <span className={styles.phoneTime}>9:41</span>
+              <div
+                className={`${styles.phoneIsland} ${
+                  isPlayingVoice || isRecordingLive ? styles.phoneIslandActive : ''
+                }`}
+              >
+                {isPlayingVoice && (
+                  <span className={styles.islandEq}>
+                    <i></i>
+                    <i></i>
+                    <i></i>
+                  </span>
+                )}
+                {isRecordingLive && <span className={styles.islandRecDot}></span>}
+              </div>
+              <div className={styles.phoneSignals}>
+                <span>5G</span>
+                <span className={styles.signalIcon}>●●●●</span>
+              </div>
             </div>
 
             {/* Recipient Header */}
@@ -703,6 +744,10 @@ export default function TextToRecordSimulator() {
                     : 'Dave Miller (Homeowner)'}
                 </div>
               </div>
+              <div className={styles.headerIndicator}>
+                <span className={styles.onlineDot}></span>
+                <span className={styles.onlineText}>Online</span>
+              </div>
             </div>
 
             {/* Chat Messages Stream */}
@@ -711,36 +756,39 @@ export default function TextToRecordSimulator() {
               {perspective === 'homeowner' ? (
                 /* Homeowner Perspective View */
                 <div className={styles.bubbleHomeowner}>
-                  <div style={{ fontSize: '11px', fontWeight: 800, color: '#93c5fd' }}>
-                    Apex Electric &middot; Quote Change Order Notice
+                  <div className={styles.homeownerHeaderTag}>
+                    <span>Apex Electric &middot; Change Order Notice</span>
+                    <span className={styles.homeownerPill}>1-Tap Link</span>
                   </div>
-                  <p style={{ margin: 0, fontSize: '12px', lineHeight: 1.45 }}>
+                  <p className={styles.homeownerMessage}>
                     {scenario.homeownerSms?.messageText ||
                       'Hi Dave, Apex Electric added Change Order #1 ($450.00 for pantry 12/2 Romex line & GFCI outlet). Tap below to authorize:'}
                   </p>
 
-                  <div style={{ background: '#0f172a', padding: '8px 10px', borderRadius: '8px', marginTop: '2px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontWeight: 800 }}>
-                      <span>Change Order Total:</span>
-                      <span style={{ color: '#50e3bd' }}>
+                  <div className={styles.homeownerActionBox}>
+                    <div className={styles.homeownerPriceRow}>
+                      <span>Change Order Authorization:</span>
+                      <strong className={styles.homeownerAmount}>
                         {scenario.homeownerSms?.approvalAmount || '$450.00'}
-                      </span>
+                      </strong>
                     </div>
 
                     <button
                       type="button"
-                      onClick={() => {
-                        setHomeownerApproved(true);
-                      }}
-                      className={styles.applePayBtn}
+                      onClick={() => setHomeownerApproved(true)}
+                      className={`${styles.applePayBtn} ${
+                        homeownerApproved ? styles.applePayBtnApproved : ''
+                      }`}
                     >
-                      {homeownerApproved ? '✓ Authorized & Paid via Apple Pay' : 'Pay 1-Tap Authorize & Pay Deposit'}
+                      {homeownerApproved
+                        ? '✓ Authorized & Paid via Apple Pay'
+                        : 'Pay 1-Tap Authorize & Pay Deposit'}
                     </button>
                   </div>
 
                   {homeownerApproved && (
-                    <div style={{ fontSize: '10.5px', color: '#86efac', fontWeight: 800, textAlign: 'center', marginTop: '2px' }}>
-                      ⚡ Instant confirmation alert sent to contractor steering wheel!
+                    <div className={styles.homeownerSuccessAlert}>
+                      ⚡ Instant confirmation alert sent to contractor truck steering wheel!
                     </div>
                   )}
                 </div>
@@ -755,20 +803,22 @@ export default function TextToRecordSimulator() {
                         <button
                           type="button"
                           onClick={toggleVoicePlayback}
-                          className={`${styles.voicePlayBtn} ${isPlayingVoice ? styles.voicePlaying : ''}`}
+                          className={`${styles.voicePlayBtn} ${
+                            isPlayingVoice ? styles.voicePlaying : ''
+                          }`}
                           aria-label="Play Voice Memo"
                         >
                           {isPlayingVoice ? '⏸' : '▶'}
                         </button>
                         <div className={styles.waveformBars}>
-                          <span style={{ height: '40%' }}></span>
-                          <span style={{ height: '70%' }}></span>
+                          <span style={{ height: '45%' }}></span>
+                          <span style={{ height: '75%' }}></span>
                           <span style={{ height: '100%' }}></span>
-                          <span style={{ height: '60%' }}></span>
-                          <span style={{ height: '85%' }}></span>
-                          <span style={{ height: '35%' }}></span>
+                          <span style={{ height: '65%' }}></span>
                           <span style={{ height: '90%' }}></span>
-                          <span style={{ height: '50%' }}></span>
+                          <span style={{ height: '40%' }}></span>
+                          <span style={{ height: '95%' }}></span>
+                          <span style={{ height: '55%' }}></span>
                         </div>
                         <span className={styles.voiceDuration}>
                           {isPlayingVoice ? `0:0${voiceSeconds}` : scenario.voiceAudioDuration}
@@ -779,19 +829,38 @@ export default function TextToRecordSimulator() {
                       <div className={styles.noiseFilterBox}>
                         <div className={styles.noiseFilterTitle}>
                           <span>🔇 Gemini Noise Filter</span>
-                          <span>{isPlayingVoice ? 'Filter: ON' : 'Floor: -42dB'}</span>
+                          <span>{isPlayingVoice ? 'Filter: ACTIVE' : 'Floor: -42dB'}</span>
                         </div>
                         <div className={styles.noiseEqTrack}>
-                          <div className={styles.noiseBarClean} style={{ height: isPlayingVoice ? '80%' : '30%' }} />
-                          <div className={styles.noiseBarClean} style={{ height: isPlayingVoice ? '95%' : '40%' }} />
-                          <div className={styles.noiseBarRaw} style={{ height: isPlayingVoice ? '20%' : '75%' }} title="Filtered Truck Idle" />
-                          <div className={styles.noiseBarClean} style={{ height: isPlayingVoice ? '85%' : '35%' }} />
-                          <div className={styles.noiseBarRaw} style={{ height: isPlayingVoice ? '15%' : '60%' }} title="Filtered Wind Noise" />
+                          <div
+                            className={styles.noiseBarClean}
+                            style={{ height: isPlayingVoice ? '80%' : '35%' }}
+                          />
+                          <div
+                            className={styles.noiseBarClean}
+                            style={{ height: isPlayingVoice ? '95%' : '45%' }}
+                          />
+                          <div
+                            className={styles.noiseBarRaw}
+                            style={{ height: isPlayingVoice ? '15%' : '70%' }}
+                            title="Filtered Diesel Engine Idle"
+                          />
+                          <div
+                            className={styles.noiseBarClean}
+                            style={{ height: isPlayingVoice ? '85%' : '40%' }}
+                          />
+                          <div
+                            className={styles.noiseBarRaw}
+                            style={{ height: isPlayingVoice ? '10%' : '60%' }}
+                            title="Filtered Highway Wind"
+                          />
                         </div>
                       </div>
 
                       <small className={styles.audioHint}>
-                        {isPlayingVoice ? '🔊 Playing voice memo...' : 'Tap ▶ to listen to voice memo'}
+                        {isPlayingVoice
+                          ? '🔊 Playing voice note transcript...'
+                          : 'Tap ▶ to hear voice memo'}
                       </small>
                     </div>
                   )}
@@ -803,7 +872,9 @@ export default function TextToRecordSimulator() {
                       <div className={styles.receiptCard}>
                         <div className={styles.receiptBanner}>
                           <strong>{scenario.receiptDetails.vendor}</strong>
-                          <span className={styles.receiptDate}>{scenario.receiptDetails.date}</span>
+                          <span className={styles.receiptDate}>
+                            {scenario.receiptDetails.date}
+                          </span>
                         </div>
                         <div className={styles.receiptItemsList}>
                           {scenario.receiptDetails.items.map((item, idx) => (
@@ -842,7 +913,7 @@ export default function TextToRecordSimulator() {
                   <div className={styles.aiBubble}>
                     <div className={styles.aiSenderTag}>
                       <span className={styles.aiGlowDot}></span>
-                      AI Copilot (1.4s)
+                      AI Copilot (1.2s instant mutation)
                     </div>
                     <p className={styles.aiResponseText}>{scenario.aiResponse}</p>
                   </div>
@@ -857,9 +928,11 @@ export default function TextToRecordSimulator() {
                       <div className={styles.aiBubble}>
                         <div className={styles.aiSenderTag}>
                           <span className={styles.aiGlowDot}></span>
-                          AI Copilot (1.1s)
+                          AI Copilot (0.9s)
                         </div>
-                        <p className={styles.aiResponseText}>{scenario.aiFollowUpResponse}</p>
+                        <p className={styles.aiResponseText}>
+                          {scenario.aiFollowUpResponse}
+                        </p>
                       </div>
                     </>
                   )}
@@ -867,13 +940,50 @@ export default function TextToRecordSimulator() {
               )}
             </div>
 
+            {/* Quick Action Test Chips */}
+            <div className={styles.quickPromptChips}>
+              <span className={styles.quickPromptLabel}>Try preset:</span>
+              <button
+                type="button"
+                className={styles.quickChip}
+                onClick={() => setActiveScenarioId('change-order')}
+              >
+                +$450 Romex
+              </button>
+              <button
+                type="button"
+                className={styles.quickChip}
+                onClick={() => setActiveScenarioId('voice-memo')}
+              >
+                🎙️ Rough Passed
+              </button>
+              <button
+                type="button"
+                className={styles.quickChip}
+                onClick={() => setActiveScenarioId('receipt-ocr')}
+              >
+                🧾 Home Depot
+              </button>
+              <button
+                type="button"
+                className={styles.quickChip}
+                onClick={() => setActiveScenarioId('safety-handling')}
+              >
+                🛡️ Smith
+              </button>
+            </div>
+
             {/* Phone Input Bar with Real Mic Recording */}
             <div className={styles.chatInputBar}>
-              <span className={styles.attachBtn}>📷</span>
+              <span className={styles.attachBtn} title="Attach site photo or receipt">
+                📷
+              </span>
               <button
                 type="button"
                 onClick={toggleLiveMic}
-                className={`${styles.micBtn} ${isRecordingLive ? styles.micBtnActive : ''}`}
+                className={`${styles.micBtn} ${
+                  isRecordingLive ? styles.micBtnActive : ''
+                }`}
                 title="Tap to speak live with your microphone"
               >
                 🎙️
@@ -893,11 +1003,17 @@ export default function TextToRecordSimulator() {
           <div className={styles.recordCard}>
             <div className={styles.recordHeader}>
               <div className={styles.recordMain}>
-                <span className={styles.jobIdTag}>{scenario.jobRecord.jobNumber}</span>
+                <div className={styles.jobIdRow}>
+                  <span className={styles.jobIdTag}>{scenario.jobRecord.jobNumber}</span>
+                  <span className={styles.cloudSyncPill}>⚡ Live Sync Active</span>
+                </div>
                 <h4 className={styles.recordTitle}>{scenario.jobRecord.clientName}</h4>
                 <span className={styles.recordAddress}>{scenario.jobRecord.address}</span>
               </div>
-              <div className={styles.recordStatusBadge} style={{ color: scenario.jobRecord.statusColor }}>
+              <div
+                className={styles.recordStatusBadge}
+                style={{ color: scenario.jobRecord.statusColor }}
+              >
                 <span
                   className={styles.statusDot}
                   style={{ background: scenario.jobRecord.statusColor }}
@@ -911,7 +1027,7 @@ export default function TextToRecordSimulator() {
               <span>{scenario.jobRecord.badgeText}</span>
             </div>
 
-            {/* Interactive 4-Pillar Extraction Checklist (Uncheck to Exclude) */}
+            {/* Interactive 4-Pillar Extraction Checklist */}
             {scenario.pillars && scenario.pillars.length > 0 && (
               <div className={styles.pillarChecklistSection}>
                 <div className={styles.pillarChecklistHeader}>
@@ -919,7 +1035,7 @@ export default function TextToRecordSimulator() {
                     ⚡ 4-Pillar Database Sync
                   </span>
                   <span className={styles.pillarChecklistCounter}>
-                    ✓ {activePillarCount} of {scenario.pillars.length} syncing
+                    ✓ {activePillarCount} of {scenario.pillars.length} syncing in real-time
                   </span>
                 </div>
 
@@ -930,7 +1046,10 @@ export default function TextToRecordSimulator() {
                       <div
                         key={p.id}
                         onClick={() => togglePillarItem(p.id)}
-                        className={`${styles.pillarRow} ${isExcluded ? styles.pillarRowDisabled : ''}`}
+                        className={`${styles.pillarRow} ${
+                          isExcluded ? styles.pillarRowDisabled : ''
+                        }`}
+                        title="Click to toggle sync for this table"
                       >
                         <div
                           className={`${styles.pillarCheckbox} ${
@@ -940,13 +1059,7 @@ export default function TextToRecordSimulator() {
                           {!isExcluded ? '✓' : ''}
                         </div>
                         <div className={styles.pillarContent}>
-                          <div
-                            style={{
-                              display: 'flex',
-                              justifyContent: 'space-between',
-                              alignItems: 'center',
-                            }}
-                          >
+                          <div className={styles.pillarItemHead}>
                             <span className={styles.pillarItemTitle}>
                               [{p.pillar}] {p.title}
                             </span>
@@ -969,10 +1082,12 @@ export default function TextToRecordSimulator() {
                   {scenario.jobRecord.lineItems.map((item, idx) => (
                     <div
                       key={idx}
-                      className={`${styles.lineItemRow} ${item.isNew ? styles.newItemGlow : ''}`}
+                      className={`${styles.lineItemRow} ${
+                        item.isNew ? styles.newItemGlow : ''
+                      }`}
                     >
                       <span className={styles.itemLabel}>
-                        {item.isNew && <span className={styles.newTag}>+ NEW</span>}
+                        {item.isNew && <span className={styles.newTag}>+ NEW LINE ITEM</span>}
                         {item.label}
                       </span>
                       <span className={styles.itemAmount}>{item.amount}</span>
@@ -996,12 +1111,16 @@ export default function TextToRecordSimulator() {
             {/* Real-time Material Costs & Gross Margin Tracker */}
             {scenario.jobRecord.costsSummary && (
               <div className={styles.costsSection}>
-                <div className={styles.sectionHeading}>Job Material Expenses & Margin</div>
+                <div className={styles.sectionHeading}>
+                  Job Material Expenses & Margin
+                </div>
                 <div className={styles.lineItemsList}>
                   {scenario.jobRecord.costsSummary.items.map((item, idx) => (
                     <div
                       key={idx}
-                      className={`${styles.lineItemRow} ${item.isNew ? styles.newItemGlow : ''}`}
+                      className={`${styles.lineItemRow} ${
+                        item.isNew ? styles.newItemGlow : ''
+                      }`}
                     >
                       <span className={styles.itemLabel}>
                         {item.isNew && <span className={styles.newTag}>+ NEW OCR</span>}
@@ -1022,11 +1141,13 @@ export default function TextToRecordSimulator() {
                   <div className={styles.marginTrack}>
                     <div
                       className={styles.marginFill}
-                      style={{ width: `${scenario.jobRecord.costsSummary.marginPercent}%` }}
+                      style={{
+                        width: `${scenario.jobRecord.costsSummary.marginPercent}%`,
+                      }}
                     />
                   </div>
                   <div className={styles.marginSub}>
-                    <span>Revenue: {scenario.jobRecord.costsSummary.totalRevenue}</span>
+                    <span>Rev: {scenario.jobRecord.costsSummary.totalRevenue}</span>
                     <span>Costs: {scenario.jobRecord.costsSummary.totalCosts}</span>
                     <span className={styles.profitHighlight}>
                       Profit: {scenario.jobRecord.costsSummary.grossProfit}
@@ -1039,11 +1160,17 @@ export default function TextToRecordSimulator() {
             {/* Voice Memo Activity Feed */}
             {scenario.jobRecord.voiceFeed && (
               <div className={styles.voiceFeedSection}>
-                <div className={styles.sectionHeading}>Job Activity Feed (Audit Log)</div>
+                <div className={styles.sectionHeading}>
+                  Job Activity Feed (Audit Log)
+                </div>
                 <div className={styles.feedCard}>
                   <div className={styles.feedHead}>
-                    <span className={styles.audioBadge}>🎙️ {scenario.jobRecord.voiceFeed.duration}</span>
-                    <span className={styles.feedTime}>{scenario.jobRecord.voiceFeed.timestamp}</span>
+                    <span className={styles.audioBadge}>
+                      🎙️ {scenario.jobRecord.voiceFeed.duration}
+                    </span>
+                    <span className={styles.feedTime}>
+                      {scenario.jobRecord.voiceFeed.timestamp}
+                    </span>
                   </div>
                   <p className={styles.feedTranscript}>
                     {scenario.jobRecord.voiceFeed.transcript}
@@ -1055,14 +1182,32 @@ export default function TextToRecordSimulator() {
             {/* Tasks / Punch List */}
             {scenario.jobRecord.tasks && (
               <div className={styles.tasksSection}>
-                <div className={styles.sectionHeading}>Punch List & Tasks</div>
+                <div className={styles.sectionHeading}>
+                  Punch List & Tasks (Interactive)
+                </div>
                 <ul className={styles.tasksList}>
-                  {scenario.jobRecord.tasks.map((task, idx) => (
-                    <li key={idx} className={styles.taskItem}>
-                      <span className={styles.checkboxMock}>{task.done ? '✓' : ''}</span>
-                      <span className={styles.taskText}>{task.text}</span>
-                    </li>
-                  ))}
+                  {scenario.jobRecord.tasks.map((task, idx) => {
+                    const isDone = Boolean(completedTasks[idx] ?? task.done);
+                    return (
+                      <li
+                        key={idx}
+                        className={`${styles.taskItem} ${
+                          isDone ? styles.taskItemDone : ''
+                        }`}
+                        onClick={() => toggleTaskComplete(idx)}
+                      >
+                        <span
+                          className={`${styles.checkboxMock} ${
+                            isDone ? styles.checkboxMockDone : ''
+                          }`}
+                        >
+                          {isDone ? '✓' : ''}
+                        </span>
+                        <span className={styles.taskText}>{task.text}</span>
+                        {isDone && <span className={styles.taskDoneTag}>Done</span>}
+                      </li>
+                    );
+                  })}
                 </ul>
               </div>
             )}
@@ -1074,19 +1219,27 @@ export default function TextToRecordSimulator() {
                 <div className={styles.leadGrid}>
                   <div className={styles.leadFact}>
                     <span className={styles.leadFactLabel}>Phone</span>
-                    <span className={styles.leadFactVal}>{scenario.jobRecord.leadDetails.phone}</span>
+                    <span className={styles.leadFactVal}>
+                      {scenario.jobRecord.leadDetails.phone}
+                    </span>
                   </div>
                   <div className={styles.leadFact}>
                     <span className={styles.leadFactLabel}>Service</span>
-                    <span className={styles.leadFactVal}>{scenario.jobRecord.leadDetails.service}</span>
+                    <span className={styles.leadFactVal}>
+                      {scenario.jobRecord.leadDetails.service}
+                    </span>
                   </div>
                   <div className={styles.leadFact}>
                     <span className={styles.leadFactLabel}>Requested Time</span>
-                    <span className={styles.leadFactVal}>{scenario.jobRecord.leadDetails.requestedDate}</span>
+                    <span className={styles.leadFactVal}>
+                      {scenario.jobRecord.leadDetails.requestedDate}
+                    </span>
                   </div>
                   <div className={styles.leadFact}>
                     <span className={styles.leadFactLabel}>Priority Triage</span>
-                    <span className={styles.leadFactValHot}>{scenario.jobRecord.leadDetails.score}</span>
+                    <span className={styles.leadFactValHot}>
+                      {scenario.jobRecord.leadDetails.score}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -1096,14 +1249,16 @@ export default function TextToRecordSimulator() {
             {scenario.jobRecord.safetyNotice && (
               <div className={styles.safetyNoticeBox}>
                 <span className={styles.safetyIcon}>🛡️</span>
-                <span className={styles.safetyText}>{scenario.jobRecord.safetyNotice}</span>
+                <span className={styles.safetyText}>
+                  {scenario.jobRecord.safetyNotice}
+                </span>
               </div>
             )}
 
             {/* Action Bar */}
             <div className={styles.recordFooter}>
               <span className={styles.footerNote}>
-                Syncs to Invoices, Client Portal & Crew
+                ⚡ Instant sync to Invoices, Client Portal & Crew
               </span>
               <Link href={APP_SIGNUP_URL} className={styles.recordActionBtn}>
                 Try on your phone →

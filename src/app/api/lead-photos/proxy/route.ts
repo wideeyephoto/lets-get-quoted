@@ -48,7 +48,8 @@ export async function GET(req: NextRequest) {
         'Cache-Control': 'public, max-age=3600',
       },
     });
-  } catch (err: any) {
-    return NextResponse.json({ error: err?.message || 'Proxy error' }, { status: 500 });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Proxy error';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

@@ -296,7 +296,7 @@ export function evaluateDamageClaimFeasibilityHeuristic(input: {
   knownDeductible?: number;
 }): ClaimFeasibilityAssessment {
   const {
-    tradeSlug = 'roofers',
+    tradeSlug: _tradeSlug = 'roofers',
     damageDescription = '',
     reportedPeril = 'storm',
     approxAgeYears = 10,

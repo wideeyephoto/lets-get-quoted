@@ -12,7 +12,6 @@ import {
   recordBatchInvoiceSettlementAction,
   generateFinancingQuoteAction,
   recordPromiseToPayAction,
-  sendCustomPaymentReminderAction,
   sendPaymentReminderAction,
   generateNoiNoticeAction,
   saveDunningRulesAction,
@@ -29,15 +28,10 @@ import { calculateEarlyPayDiscount } from '@/lib/financing-calculator';
 import type { NoiDocumentData } from '@/lib/noi-generator';
 import type { LienWaiverDocument, LienWaiverType } from '@/lib/lien-waiver';
 import { LIEN_WAIVER_TITLES } from '@/lib/lien-waiver';
-import { groupReceivablesByClient, formatConsolidatedStatementText, type ConsolidatedClientGroup } from '@/lib/consolidated-billing';
-import { calculateRetainageCents, type RetainageRecord } from '@/lib/retainage-tracker';
+import { groupReceivablesByClient } from '@/lib/consolidated-billing';
 import type { ReceivableItem } from '@/lib/receivables-data';
 import {
   allocateMilestoneCents,
-  calculateCashChangeCents,
-  calculateSurchargeCents,
-  toIntegerCents,
-  fromIntegerCents,
 } from '@/lib/financial-precision';
 
 export type ModalType =
@@ -248,16 +242,16 @@ export default function PaymentModals({
 
   // NOI State
   const [noiData, setNoiData] = useState<NoiDocumentData | null>(null);
-  const [noiCureDays, setNoiCureDays] = useState(10);
+  const [noiCureDays, _setNoiCureDays] = useState(10);
   const [noiTrackingNumber, setNoiTrackingNumber] = useState('');
 
   // Dunning Engine State
   const [dunningActive, setDunningActive] = useState(true);
-  const [dunning1Days, setDunning1Days] = useState(1);
-  const [dunning2Days, setDunning2Days] = useState(7);
-  const [dunning3Days, setDunning3Days] = useState(14);
-  const [dunning4Days, setDunning4Days] = useState(30);
-  const [dunningLateFee, setDunningLateFee] = useState(true);
+  const [dunning1Days, _setDunning1Days] = useState(1);
+  const [dunning2Days, _setDunning2Days] = useState(7);
+  const [dunning3Days, _setDunning3Days] = useState(14);
+  const [dunning4Days, _setDunning4Days] = useState(30);
+  const [_dunningLateFee, _setDunningLateFee] = useState(true);
 
   // Accounting Sync State
   const [accountingPlatform, setAccountingPlatform] = useState<'qbo' | 'xero'>('qbo');
@@ -268,22 +262,22 @@ export default function PaymentModals({
   const [authMilestonePlan, setAuthMilestonePlan] = useState<'40_30_30' | '50_50' | '33_33_34'>('40_30_30');
 
   // Draw Calendar State
-  const [drawFilter, setDrawFilter] = useState<'all' | 'next_7' | 'next_14' | 'next_30'>('all');
+  const [_drawFilter, _setDrawFilter] = useState<'all' | 'next_7' | 'next_14' | 'next_30'>('all');
 
   // 1. Lien Waiver State
   const [waiverType, setWaiverType] = useState<LienWaiverType>('unconditional_progress');
   const [waiverJobId, setWaiverJobId] = useState('');
   const [waiverAmount, setWaiverAmount] = useState('5200.00');
   const [waiverDoc, setWaiverDoc] = useState<LienWaiverDocument | null>(null);
-  const [waiverPhone, setWaiverPhone] = useState('');
+  const [_waiverPhone, _setWaiverPhone] = useState('');
 
   // 2. Consolidated Billing State
   const [selectedClientGroupName, setSelectedClientGroupName] = useState('');
 
   // 3. Retainage Tracker State
-  const [retainageJobId, setRetainageJobId] = useState('');
-  const [retainageRatePct, setRetainageRatePct] = useState(10);
-  const [retainageDemandText, setRetainageDemandText] = useState<string | null>(null);
+  const [_retainageJobId, _setRetainageJobId] = useState('');
+  const [_retainageRatePct, _setRetainageRatePct] = useState(10);
+  const [_retainageDemandText, _setRetainageDemandText] = useState<string | null>(null);
 
   // 4. Tap to Pay Terminal State
   const [terminalAmount, setTerminalAmount] = useState('350.00');
@@ -293,7 +287,7 @@ export default function PaymentModals({
   const [achIncentiveEnabled, setAchIncentiveEnabled] = useState(true);
   const [achIncentiveType, setAchIncentiveType] = useState<'percentage' | 'fixed'>('percentage');
   const [achIncentiveValue, setAchIncentiveValue] = useState(1.5);
-  const [achIncentiveMin, setAchIncentiveMin] = useState(500);
+  const [achIncentiveMin, _setAchIncentiveMin] = useState(500);
 
   useEffect(() => {
     if (activeModal === 'dispute_evidence' && selectedPayment) {

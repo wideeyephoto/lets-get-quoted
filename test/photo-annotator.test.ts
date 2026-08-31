@@ -176,14 +176,14 @@ describe('Photo Annotation & Site Markup Engine', () => {
       id: 'scan-1',
       title: 'Master Bathroom',
       roomType: 'bathroom',
-      dimensions: { widthFeet: 10, lengthFeet: 12, areaSqFt: 120 },
       confidenceScore: 94,
       device: 'iPhone 15 Pro LiDAR',
       scannedAt: '2026-08-31',
+      pointCount: 142000,
       ceilingHeightInches: 108,
       walls: [],
       openings: [],
-      fixtures: [],
+      objects: [],
     };
 
     const dummySummary: RoomDimensionsSummary = {

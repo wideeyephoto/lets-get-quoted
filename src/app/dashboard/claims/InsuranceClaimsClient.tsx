@@ -7,7 +7,6 @@ import {
   generateAdjusterLetterDraft,
   HOMEOWNER_CLAIM_FAQS,
   type ClaimFeasibilityAssessment,
-  type ScopeDiscrepancy,
   type SupplementAnalysisResult,
 } from '@/lib/insurance-claims';
 import {
@@ -44,8 +43,8 @@ NET PAYMENT ISSUED: $4,899.70`;
 
 export default function InsuranceClaimsClient({
   tradeSlug = 'roofers',
-  businessName = 'Our Company',
-  initialSiteClaimsEnabled = true,
+  businessName: _businessName = 'Our Company',
+  initialSiteClaimsEnabled: _initialSiteClaimsEnabled = true,
 }: Props) {
   const profile: InsuranceTradeProfile = getInsuranceTradeProfile(tradeSlug);
   const eligible = isInsuranceEligibleTrade(tradeSlug);
@@ -60,7 +59,7 @@ export default function InsuranceClaimsClient({
   );
   const [claimNumber, setClaimNumber] = useState('49-8821-X01');
   const [policyholder, setPolicyholder] = useState('Robert & Sarah Jenkins');
-  const [propertyAddress, setPropertyAddress] = useState('1422 Meadowbrook Lane');
+  const [propertyAddress, _setPropertyAddress] = useState('1422 Meadowbrook Lane');
   const [adjusterName, setAdjusterName] = useState('Adjuster Team');
   const [carrierName, setCarrierName] = useState('State Farm');
   const [copiedLetter, setCopiedLetter] = useState(false);

@@ -109,7 +109,7 @@ export function recommendJobProfitabilityGoals(params: {
   }
 
   // 3. Labor Hours & Crew Sizing Heuristics
-  let targetLaborHours = estimatedHours && estimatedHours > 0 ? estimatedHours : 8;
+  const targetLaborHours = estimatedHours && estimatedHours > 0 ? estimatedHours : 8;
   let recommendedCrewSize = 1;
 
   if (isCompleteRemodel || targetLaborHours > 24) {

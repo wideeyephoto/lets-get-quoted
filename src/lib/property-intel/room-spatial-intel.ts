@@ -670,7 +670,7 @@ export function parseCustomScanJson(jsonString: string): RoomSpatialScan {
     throw new Error('3D room scan must contain at least 3 wall segments');
   }
 
-  const walls: WallSegment[] = parsed.walls.map((w: any, idx: number) => ({
+  const walls: WallSegment[] = parsed.walls.map((w: Record<string, unknown>, idx: number) => ({
     id: typeof w.id === 'string' ? w.id : `w${idx + 1}`,
     label: typeof w.label === 'string' ? w.label : `Wall ${idx + 1}`,
     lengthInches: Number(w.lengthInches) > 0 ? Number(w.lengthInches) : 120,
@@ -678,9 +678,9 @@ export function parseCustomScanJson(jsonString: string): RoomSpatialScan {
   }));
 
   const openings: RoomOpening[] = Array.isArray(parsed.openings)
-    ? parsed.openings.map((op: any, idx: number) => ({
+    ? parsed.openings.map((op: Record<string, unknown>, idx: number) => ({
         id: typeof op.id === 'string' ? op.id : `op-${idx + 1}`,
-        type: ['door', 'window', 'opening'].includes(op.type) ? op.type : 'door',
+        type: typeof op.type === 'string' && ['door', 'window', 'opening'].includes(op.type) ? (op.type as 'door' | 'window' | 'opening') : 'door',
         wallIndex: Number(op.wallIndex) >= 0 && Number(op.wallIndex) < walls.length ? Number(op.wallIndex) : 0,
         widthInches: Number(op.widthInches) > 0 ? Number(op.widthInches) : 32,
         heightInches: Number(op.heightInches) > 0 ? Number(op.heightInches) : 80,
@@ -689,23 +689,27 @@ export function parseCustomScanJson(jsonString: string): RoomSpatialScan {
     : [];
 
   const objects: RoomObject3D[] = Array.isArray(parsed.objects)
-    ? parsed.objects.map((obj: any, idx: number) => ({
-        id: typeof obj.id === 'string' ? obj.id : `obj-${idx + 1}`,
-        category: ['bathtub', 'shower', 'vanity', 'toilet', 'cabinet', 'appliance', 'closet'].includes(obj.category)
-          ? obj.category
-          : 'cabinet',
-        label: typeof obj.label === 'string' ? obj.label : `Object ${idx + 1}`,
-        dimensionsInches: {
-          width: Number(obj.dimensionsInches?.width) > 0 ? Number(obj.dimensionsInches.width) : 36,
-          depth: Number(obj.dimensionsInches?.depth) > 0 ? Number(obj.dimensionsInches.depth) : 24,
-          height: Number(obj.dimensionsInches?.height) > 0 ? Number(obj.dimensionsInches.height) : 34,
-        },
-        position: {
-          x: Number(obj.position?.x) || 0,
-          y: Number(obj.position?.y) || 0,
-          z: Number(obj.position?.z) || 0,
-        },
-      }))
+    ? parsed.objects.map((obj: Record<string, unknown>, idx: number) => {
+        const dim = (obj.dimensionsInches && typeof obj.dimensionsInches === 'object') ? (obj.dimensionsInches as Record<string, unknown>) : {};
+        const pos = (obj.position && typeof obj.position === 'object') ? (obj.position as Record<string, unknown>) : {};
+        return {
+          id: typeof obj.id === 'string' ? obj.id : `obj-${idx + 1}`,
+          category: typeof obj.category === 'string' && ['bathtub', 'shower', 'vanity', 'toilet', 'cabinet', 'appliance', 'closet'].includes(obj.category)
+            ? (obj.category as RoomObject3D['category'])
+            : 'cabinet',
+          label: typeof obj.label === 'string' ? obj.label : `Object ${idx + 1}`,
+          dimensionsInches: {
+            width: Number(dim.width) > 0 ? Number(dim.width) : 36,
+            depth: Number(dim.depth) > 0 ? Number(dim.depth) : 24,
+            height: Number(dim.height) > 0 ? Number(dim.height) : 34,
+          },
+          position: {
+            x: Number(pos.x) || 0,
+            y: Number(pos.y) || 0,
+            z: Number(pos.z) || 0,
+          },
+        };
+      })
     : [];
 
   return {

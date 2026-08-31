@@ -513,7 +513,7 @@
 
 .root :global(.suite-grid p) {color:#6a706f;font-size:12px;line-height:1.6;margin:0}
 
-.root :global(.difference) { padding: 130px clamp(24px,6vw,100px); background: #fdfbf6; color: var(--ink); display: grid; grid-template-columns: .82fr 1.18fr; gap: clamp(55px,7vw,120px); align-items: center; border-top: 1px solid #ded7cc; content-visibility: auto; contain-intrinsic-size: auto 700px; }
+.root :global(.difference) { padding: 130px clamp(24px,6vw,100px); background: #fdfbf6; color: var(--ink); display: grid; grid-template-columns: .82fr 1.18fr; gap: clamp(55px,7vw,120px); align-items: center; border-top: 1px solid #ded7cc; }
 
 .root :global(.difference-copy > p:not(.eyebrow)) { color: #626c6f; font-size: 16px; line-height: 1.75; margin: 25px 0 34px; max-width: 580px; }
 
@@ -557,7 +557,7 @@
 
 .root :global(.versus) { width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; z-index: 2; background: var(--orange); color: white; font-size: 8px; font-weight: 850; box-shadow: 0 8px 22px rgba(255,106,36,.3); }
 
-.root :global(.pricing-band) {padding:120px clamp(24px,7vw,115px);background:#102430;display:grid;grid-template-columns:.72fr 1.28fr;gap:80px;align-items:center;overflow:hidden;content-visibility:auto;contain-intrinsic-size:auto 650px}
+.root :global(.pricing-band) {padding:120px clamp(24px,7vw,115px);background:#102430;display:grid;grid-template-columns:.72fr 1.28fr;gap:80px;align-items:center;overflow:hidden}
 
 .root :global(.price-zero) {height:460px;border:1px solid #2a4553;border-radius:50%;display:flex;align-items:center;justify-content:center;position:relative;background:radial-gradient(circle,rgba(255,106,36,.14),transparent 63%)}
 
@@ -586,7 +586,7 @@
 
 .root :global(.pricing-fineprint) { display: block; margin-top: 25px; color: #6f8794; font-size: 9px; }
 
-.root :global(.final-cta) {min-height:690px;padding:135px 24px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;position:relative;overflow:hidden;background:var(--orange);color:white;content-visibility:auto;contain-intrinsic-size:auto 690px}
+.root :global(.final-cta) {min-height:690px;padding:135px 24px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;position:relative;overflow:hidden;background:var(--orange);color:white}
 
 .root :global(.final-cta .eyebrow) {color:#582006;position:relative;z-index:1}
 
@@ -2172,7 +2172,7 @@
   --font-geist-mono: var(--font-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
-/* ---- the H1's tracking -----------------------------------------------------
+/* ---- the H1's tracking & contrast -------------------------------------------
 
    The source sets `letter-spacing: -5px` on a `clamp(52px, 5.4vw, 88px)`
    headline, and -3px on the 51px mobile one. Tracking in px against a fluid
@@ -2182,9 +2182,17 @@
 
    One em value fixes both the requested loosening and that inversion, and it
    overrides the mobile rule too (same specificity, later in the file) while
-   leaving its font-size alone. */
-.root :global(.hero h1) {
+   leaving its font-size alone. Also ensure the text is crisp, luxurious #f5f0e7 cream. */
+.root :global(.hero h1),
+.root :global(.detail-hero h1) {
   letter-spacing: -0.025em;
+  color: #f5f0e7;
+}
+
+.root :global(.hero h1 em),
+.root :global(.detail-hero h1 em) {
+  color: var(--orange, #ff6a24);
+  font-style: normal;
 }
 
 /* ---- the pipeline, put into space -----------------------------------------

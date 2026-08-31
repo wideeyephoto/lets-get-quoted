@@ -58,10 +58,6 @@ export type LedgerFilterOptions = {
   pageSize?: number;
 };
 
-function round2(val: number): number {
-  return Math.round(val * 100) / 100;
-}
-
 export function resolveLedgerDateWindow(range: string = '30d'): { start: string | null; end: string } {
   const now = new Date();
   const end = now.toISOString();

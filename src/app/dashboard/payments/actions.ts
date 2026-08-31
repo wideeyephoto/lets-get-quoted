@@ -723,7 +723,7 @@ export async function generateLienWaiverAction(params: {
 /**
  * Sends a signed statutory lien waiver document link to the homeowner via SMS.
  */
-export async function sendLienWaiverSmsAction(params: {
+export async function sendLienWaiverSmsAction(_params: {
   waiverId: string;
   phone: string;
   customerName: string;
@@ -794,7 +794,7 @@ export async function sendRetainageReleaseRequestAction(params: {
 /**
  * Saves homeowner ACH Early-Pay Incentive discount settings.
  */
-export async function saveAchIncentiveSettingsAction(params: {
+export async function saveAchIncentiveSettingsAction(_params: {
   enabled: boolean;
   discountType: 'percentage' | 'fixed';
   discountValue: number;

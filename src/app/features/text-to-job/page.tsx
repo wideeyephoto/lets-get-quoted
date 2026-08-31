@@ -110,6 +110,7 @@ export default function TextToJobPage() {
       secondary={{ label: 'See All Features', href: '/features' }}
       demo={
         <ExampleFrame
+          variant="plain"
           label="Live SMS & Voice Memo Field Intake with AI Copilot"
           note="Simulate real contractor field messages to your AI Copilot: change orders, audio progress notes, punch lists, safety disambiguation, and quick lead intake."
         >

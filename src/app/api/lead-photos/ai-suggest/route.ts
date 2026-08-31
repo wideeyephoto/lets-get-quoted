@@ -88,9 +88,10 @@ export async function POST(req: NextRequest) {
       suggestions,
       summary: 'AI detected 1 primary defect zone, 1 dimension span, and 1 status callout.',
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Failed to analyze photo';
     return NextResponse.json(
-      { error: error?.message || 'Failed to analyze photo' },
+      { error: message },
       { status: 500 }
     );
   }

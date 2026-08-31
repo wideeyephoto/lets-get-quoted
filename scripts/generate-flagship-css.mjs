@@ -163,7 +163,7 @@ const TWEAKS = `
   --font-geist-mono: var(--font-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
-/* ---- the H1's tracking -----------------------------------------------------
+/* ---- the H1's tracking & contrast -------------------------------------------
 
    The source sets \`letter-spacing: -5px\` on a \`clamp(52px, 5.4vw, 88px)\`
    headline, and -3px on the 51px mobile one. Tracking in px against a fluid
@@ -173,9 +173,17 @@ const TWEAKS = `
 
    One em value fixes both the requested loosening and that inversion, and it
    overrides the mobile rule too (same specificity, later in the file) while
-   leaving its font-size alone. */
-.root :global(.hero h1) {
+   leaving its font-size alone. Also ensure the text is crisp, luxurious #f5f0e7 cream. */
+.root :global(.hero h1),
+.root :global(.detail-hero h1) {
   letter-spacing: -0.025em;
+  color: #f5f0e7;
+}
+
+.root :global(.hero h1 em),
+.root :global(.detail-hero h1 em) {
+  color: var(--orange, #ff6a24);
+  font-style: normal;
 }
 
 /* ---- the pipeline, put into space -----------------------------------------

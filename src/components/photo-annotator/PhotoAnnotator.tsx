@@ -351,9 +351,9 @@ export function PhotoAnnotator({
           setMeasurePromptShape(currentDraft);
           setMeasurePromptValue('');
         }
-      } else if (currentDraft.type !== 'pen') {
-        const dx = (currentDraft as any).end.x - (currentDraft as any).start.x;
-        const dy = (currentDraft as any).end.y - (currentDraft as any).start.y;
+      } else if (currentDraft.type !== 'pen' && 'start' in currentDraft && 'end' in currentDraft) {
+        const dx = currentDraft.end.x - currentDraft.start.x;
+        const dy = currentDraft.end.y - currentDraft.start.y;
         if (Math.sqrt(dx * dx + dy * dy) > 8) {
           historyRef.current.push([...shapes, currentDraft]);
           syncHistoryState();
@@ -468,8 +468,9 @@ export function PhotoAnnotator({
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-    } catch (err: any) {
-      alert(`Could not download image: ${err?.message || 'Error'}`);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Error';
+      alert(`Could not download image: ${msg}`);
     }
   };
 
@@ -480,14 +481,15 @@ export function PhotoAnnotator({
       const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
       if (!blob) return;
 
-      if (navigator.clipboard && (window as any).ClipboardItem) {
+      if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
         await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
         alert('✓ Marked-up photo copied to clipboard! (Ready to paste in SMS/chat)');
       } else {
         alert('Clipboard image copy not supported in this browser; please use Download.');
       }
-    } catch (err: any) {
-      alert(`Could not copy to clipboard: ${err?.message || 'Error'}`);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Error';
+      alert(`Could not copy to clipboard: ${msg}`);
     }
   };
 
@@ -512,8 +514,9 @@ export function PhotoAnnotator({
         historyRef.current.push([...shapes, ...data.suggestions]);
         syncHistoryState();
       }
-    } catch (err: any) {
-      alert(`AI analysis unavailable: ${err?.message || 'Error'}`);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Error';
+      alert(`AI analysis unavailable: ${msg}`);
     } finally {
       setIsAiAnalyzing(false);
     }
@@ -535,8 +538,9 @@ export function PhotoAnnotator({
 
       await onSave(annotatedFile);
       onClose();
-    } catch (err: any) {
-      alert(`Unable to save annotated photo: ${err?.message || 'Unknown error'}`);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Unknown error';
+      alert(`Unable to save annotated photo: ${msg}`);
     } finally {
       setIsSaving(false);
     }

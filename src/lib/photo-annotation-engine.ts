@@ -305,7 +305,6 @@ export function drawShapeToCanvas(
 
     const textMetrics = ctx.measureText(labelText);
     const padX = 6 * scale;
-    const padY = 3 * scale;
     const boxW = textMetrics.width + padX * 2;
     const boxH = 18 * scale;
 

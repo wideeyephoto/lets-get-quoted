@@ -39,7 +39,7 @@ export function RoomScanViewer({
   scan: initialScan,
   className = '',
   scope,
-  trade,
+  trade: _trade,
   customRates,
   collapsible = false,
   defaultCollapsed = false,
@@ -629,8 +629,9 @@ export function RoomScanViewer({
           setShowUploadModal(false);
           setToastMessage(`✓ Loaded 3D Scan: ${parsed.title}`);
           setTimeout(() => setToastMessage(null), 3000);
-        } catch (err: any) {
-          alert(`Could not parse 3D room scan JSON: ${err?.message || 'Invalid format'}`);
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : 'Invalid format';
+          alert(`Could not parse 3D room scan JSON: ${msg}`);
         }
       };
       reader.readAsText(file);
@@ -1277,9 +1278,10 @@ export function RoomScanViewer({
                 const input = document.createElement('input');
                 input.type = 'file';
                 input.accept = '.json,.usdz';
-                input.onchange = (e: any) => {
-                  if (e.target.files && e.target.files.length > 0) {
-                    const file = e.target.files[0];
+                input.onchange = (e: Event) => {
+                  const target = e.target as HTMLInputElement;
+                  if (target.files && target.files.length > 0) {
+                    const file = target.files[0];
                     const reader = new FileReader();
                     reader.onload = (event) => {
                       try {
@@ -1290,8 +1292,9 @@ export function RoomScanViewer({
                         setShowUploadModal(false);
                         setToastMessage(`✓ Loaded 3D Scan: ${parsed.title}`);
                         setTimeout(() => setToastMessage(null), 3000);
-                      } catch (err: any) {
-                        alert(`Could not parse JSON: ${err?.message || 'Invalid format'}`);
+                      } catch (err: unknown) {
+                        const msg = err instanceof Error ? err.message : 'Invalid format';
+                        alert(`Could not parse JSON: ${msg}`);
                       }
                     };
                     reader.readAsText(file);
