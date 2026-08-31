@@ -302,10 +302,12 @@ export default function FeaturesPage() {
       />
       <div className={themeStyles.featuresTheme}>
         <div className={themeStyles.siteShell}>
-          <div className={`${themeStyles.ambient} ${themeStyles.ambientOne}`} />
-          <div className={`${themeStyles.ambient} ${themeStyles.ambientTwo}`} />
-          <div className={`${themeStyles.ambient} ${themeStyles.ambientThree}`} />
-          <div className={`${themeStyles.ambient} ${themeStyles.ambientFour}`} />
+          {/* Ambient atmospheric backdrop glows matching website-builder */}
+          <div className={`${themeStyles.ambient} ${themeStyles.ambientOne}`} aria-hidden="true" />
+          <div className={`${themeStyles.ambient} ${themeStyles.ambientTwo}`} aria-hidden="true" />
+          <div className={`${themeStyles.ambient} ${themeStyles.ambientThree}`} aria-hidden="true" />
+          <div className={`${themeStyles.ambient} ${themeStyles.ambientFour}`} aria-hidden="true" />
+          <div className={`${themeStyles.ambient} ${themeStyles.ambientFive}`} aria-hidden="true" />
           <main className={`${styles.root} inner-site feature-index-page`}>
           <a className="skip-link" href="#main-content">
             Skip to content

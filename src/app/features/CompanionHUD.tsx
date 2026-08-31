@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import MiniFusionReactor from '@/components/mascot/MiniFusionReactor';
 import styles from './features-theme.module.css';
 
 interface SectionContext {
@@ -259,7 +260,10 @@ export default function CompanionHUD() {
       {!isExpanded && !hasDismissedSpeech && (
         <div className={styles.companionMiniBubble}>
           <div className={styles.companionBubbleHeader}>
-            <span className={styles.companionBadge}>{activeSection.badge}</span>
+            <div className={styles.companionBubbleBadgeWrap}>
+              <MiniFusionReactor size={22} interactive={false} alt="AI Copilot Energy Orbit" />
+              <span className={styles.companionBadge}>{activeSection.badge}</span>
+            </div>
             <button
               type="button"
               className={styles.companionDismissBtn}
@@ -293,7 +297,7 @@ export default function CompanionHUD() {
           <div className={styles.companionPanelHead}>
             <div className={styles.companionPanelTitleWrap}>
               <div className={styles.companionAvatarLarge}>
-                <span>⚡</span>
+                <MiniFusionReactor size={38} interactive={true} isThinking={isTouring} alt="AI Copilot Energy Orbit" />
                 <span className={styles.companionOnlineDot} aria-hidden="true" />
               </div>
               <div>
@@ -439,12 +443,14 @@ export default function CompanionHUD() {
         type="button"
         className={`${styles.companionDockBtn} ${isExpanded ? styles.companionDockActive : ''}`}
         onClick={() => setIsExpanded(!isExpanded)}
-        aria-label={isExpanded ? 'Close Sparky companion' : 'Open Sparky field companion'}
+        aria-label={isExpanded ? 'Minimize AI Copilot' : 'Open AI Copilot'}
       >
         <span className={styles.companionDockPulseRing} aria-hidden="true" />
-        <span className={styles.companionDockIcon} aria-hidden="true">⚡</span>
+        <span className={styles.companionDockIcon} aria-hidden="true">
+          <MiniFusionReactor size={32} interactive={true} isThinking={isExpanded} alt="AI Copilot Energy Orbit" />
+        </span>
         <span className={styles.companionDockLabel}>
-          {isExpanded ? 'Minimize Sparky' : '⚡ Sparky Active'}
+          {isExpanded ? 'Minimize Copilot' : 'AI Copilot ⚡'}
         </span>
       </button>
     </aside>

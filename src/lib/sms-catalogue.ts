@@ -604,6 +604,14 @@ export const SMS_CATALOGUE: SmsCatalogueEntry[] = [
     control: always('Their service stops without it'),
     body: cardUpdateText({ businessName: SAMPLE.business, url: SAMPLE.link }),
   },
+  {
+    id: 'lien-waiver',
+    title: 'Lien waiver delivered',
+    trigger: 'You send an executed lien waiver to a customer or general contractor',
+    audience: 'customer',
+    control: manual('Sent when you generate and text the waiver'),
+    body: withOptOut(`${SAMPLE.business}: Here is your signed lien waiver for ${SAMPLE.jobRef}. View and download your copy: ${SAMPLE.link}`),
+  },
 
   // -- after the work --------------------------------------------------------
   {
@@ -756,6 +764,7 @@ export const CATALOGUE_SENDERS = [
   'sendLeadDeclineSms',
   'sendLeadQuoteVisitOptionsSms',
   'sendLeadQuoteVisitSms',
+  'sendLienWaiverSms',
   'sendMissedCallTextBack',
   'sendOwnerEstimateAcceptedSms',
   'sendOwnerHighValueLeadSms',

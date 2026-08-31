@@ -1835,4 +1835,28 @@ export async function sendIntakeConfirmationSms(params: {
   }
 }
 
+export async function sendLienWaiverSms(params: {
+  accountId: string;
+  phone: string;
+  body: string;
+  idempotencyKey?: string;
+}): Promise<boolean> {
+  try {
+    const to = normalizeUsPhone(params.phone);
+    if (!to) return false;
+    if (await isPhoneOptedOut(params.accountId, to)) return false;
 
+    await queueAccountSms({
+      accountId: params.accountId,
+      phone: to,
+      body: params.body,
+      messageKind: 'lien-waiver-delivery',
+      category: 'customer_message',
+      idempotencyKey: params.idempotencyKey,
+    });
+    return true;
+  } catch (error) {
+    console.error('Lien waiver SMS failed:', error instanceof Error ? error.message : error);
+    return false;
+  }
+}

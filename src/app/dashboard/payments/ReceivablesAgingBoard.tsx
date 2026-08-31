@@ -12,6 +12,9 @@ interface Props {
   onOpenBatchSettle?: () => void;
   onOpenPromiseToPay?: (payment: { id: string; clientName: string; amount: number }) => void;
   onOpenNoiGenerator?: (payment: { id: string; clientName: string; amount: number }) => void;
+  onOpenLienWaiver?: (payment: { id: string; clientName: string; amount: number; jobId?: string }) => void;
+  onOpenConsolidatedBilling?: () => void;
+  onOpenRetainageTracker?: () => void;
   onOpenDrawCalendar?: () => void;
   onSuccess: (message: string) => void;
 }
@@ -27,6 +30,9 @@ export default function ReceivablesAgingBoard({
   onOpenBatchSettle,
   onOpenPromiseToPay,
   onOpenNoiGenerator,
+  onOpenLienWaiver,
+  onOpenConsolidatedBilling,
+  onOpenRetainageTracker,
   onOpenDrawCalendar,
   onSuccess,
 }: Props) {
@@ -108,6 +114,30 @@ export default function ReceivablesAgingBoard({
         </div>
 
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+          {onOpenConsolidatedBilling && (
+            <button
+              type="button"
+              className="btn secondary"
+              style={{ fontSize: '0.82rem', padding: '0.35rem 0.75rem' }}
+              onClick={onOpenConsolidatedBilling}
+              title="Consolidate multi-job accounts for property managers"
+            >
+              🏢 Consolidated Billing
+            </button>
+          )}
+
+          {onOpenRetainageTracker && (
+            <button
+              type="button"
+              className="btn secondary"
+              style={{ fontSize: '0.82rem', padding: '0.35rem 0.75rem' }}
+              onClick={onOpenRetainageTracker}
+              title="Track commercial escrow retainage withholdings"
+            >
+              🏗️ Retainage Tracker
+            </button>
+          )}
+
           {onOpenBatchSettle && (
             <button
               type="button"
@@ -299,6 +329,16 @@ export default function ReceivablesAgingBoard({
                               style={{ background: 'none', border: 'none', padding: 0, color: '#2563eb', cursor: 'pointer', fontSize: '0.7rem', fontWeight: 600 }}
                             >
                               📅 Promise
+                            </button>
+                          )}
+                          {onOpenLienWaiver && (
+                            <button
+                              type="button"
+                              onClick={() => onOpenLienWaiver({ id: item.id, clientName: item.clientName, amount: item.amountDue, jobId: item.jobId })}
+                              style={{ background: 'none', border: 'none', padding: 0, color: '#059669', cursor: 'pointer', fontSize: '0.7rem', fontWeight: 600 }}
+                              title="Generate Statutory Lien Waiver"
+                            >
+                              📄 Waiver
                             </button>
                           )}
                           {onOpenNoiGenerator && item.daysOverdue >= 30 && (

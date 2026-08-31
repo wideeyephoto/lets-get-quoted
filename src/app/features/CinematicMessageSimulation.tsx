@@ -15,6 +15,7 @@ import {
   TradePresetId,
   WORKFLOW_STAGES,
 } from './hero-thread';
+import MiniFusionReactor from '@/components/mascot/MiniFusionReactor';
 import styles from './cinematic-message-simulation.module.css';
 
 /**
@@ -433,6 +434,25 @@ export default function CinematicMessageSimulation() {
               >
                 {playing ? '⏸' : '▶'}
               </button>
+            </div>
+          </div>
+
+          {/* Real-time AI Copilot Field Intelligence Banner */}
+          <div className={styles.copilotInsightBar}>
+            <div className={styles.copilotInsightLeft}>
+              <MiniFusionReactor size={20} interactive={false} alt="AI Copilot Energy Orbit" />
+              <span className={styles.copilotInsightBadge}>AI COPILOT</span>
+            </div>
+            <div className={styles.copilotInsightText}>
+              {frame.completedStages <= 2 ? (
+                <span>✦ Photo OCR parsed · Scope specs &amp; fit scored</span>
+              ) : frame.completedStages === 3 ? (
+                <span>✓ Quote approved on mobile · Deposit pending</span>
+              ) : frame.completedStages === 4 ? (
+                <span>📍 Dispatch confirmed · Morning route mapped</span>
+              ) : (
+                <span>💳 ${activeTrade.deposit.toLocaleString('en-US')} deposit cleared via Stripe</span>
+              )}
             </div>
           </div>
 

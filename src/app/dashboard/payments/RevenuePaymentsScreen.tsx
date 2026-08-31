@@ -509,6 +509,25 @@ export default function RevenuePaymentsScreen({
               } as PaymentLedgerItem);
               setActiveModal('noi_generator');
             }}
+            onOpenLienWaiver={(item) => {
+              setSelectedPayment({
+                id: item.id,
+                amount: item.amount,
+                clientName: item.clientName,
+                jobId: item.jobId || '',
+                jobRef: '',
+                label: 'Lien Release',
+              } as PaymentLedgerItem);
+              setActiveModal('lien_waiver');
+            }}
+            onOpenConsolidatedBilling={() => {
+              setSelectedPayment(null);
+              setActiveModal('consolidated_statement');
+            }}
+            onOpenRetainageTracker={() => {
+              setSelectedPayment(null);
+              setActiveModal('retainage_tracker');
+            }}
             onOpenDrawCalendar={() => {
               setSelectedPayment(null);
               setActiveModal('draw_calendar');
@@ -553,6 +572,7 @@ export default function RevenuePaymentsScreen({
         selectedPayment={selectedPayment}
         jobs={jobs}
         grossRevenue={ledgerSummary.grossRevenue}
+        receivables={receivables}
         onOpenModal={(type, payment) => {
           setSelectedPayment(payment || null);
           setActiveModal(type);
