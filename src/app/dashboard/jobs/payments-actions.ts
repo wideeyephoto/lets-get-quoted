@@ -179,7 +179,7 @@ export async function retryPaymentAction(paymentId: string) {
   const payment = await getPaymentDetails(supabase, accountId, paymentId);
   if (!payment) throw new Error('Payment not found for this account.');
 
-  const h = headers();
+  const h = await headers();
   const proto = h.get('x-forwarded-proto') ?? 'http';
   const host = h.get('host');
   const origin = `${proto}://${host}`;

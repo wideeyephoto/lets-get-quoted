@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import FeatureDetailLayout from '@/components/marketing/feature-detail-layout';
 import ExampleFrame from '@/components/marketing/example-frame';
 import TextToRecordSimulator from '@/components/marketing/TextToRecordSimulator';
+import AdditionalFieldWorkflows from '@/components/marketing/AdditionalFieldWorkflows';
 import TextToJobDataBeams from '@/components/marketing/TextToJobDataBeams';
 import ScrapLumberComparison from '@/components/marketing/ScrapLumberComparison';
 import ChangeOrderLeakageCalculator from '@/components/marketing/ChangeOrderLeakageCalculator';
@@ -111,8 +112,8 @@ export default function TextToJobPage() {
       demo={
         <ExampleFrame
           variant="plain"
-          label="Live SMS & Voice Memo Field Intake with AI Copilot"
-          note="Simulate real contractor field messages to your AI Copilot: change orders, audio progress notes, punch lists, safety disambiguation, and quick lead intake."
+          label="Live Field Intake with AI Copilot"
+          note="Contractor texts change → quote increases by $450 → customer approval is ready."
         >
           <div id="simulator-frame">
             <TextToRecordSimulator />
@@ -166,6 +167,11 @@ export default function TextToJobPage() {
       ]}
       afterBenefits={
         <>
+          {/* Below-the-fold Specialized Field Workflows */}
+          <section className={styles.customSection}>
+            <AdditionalFieldWorkflows />
+          </section>
+
           {/* Live Interactive 4-Pillar Data Beams Neural Conduit */}
           <section className={styles.customSection}>
             <TextToJobDataBeams />

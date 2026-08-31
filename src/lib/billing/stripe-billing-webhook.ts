@@ -29,6 +29,7 @@ type BillingInboxIngest = (
 export type StripeBillingWebhookDependencies = Readonly<{
   env?: BillingWebhookEnvironment;
   ingest?: BillingInboxIngest;
+  params?: Promise<Record<string, string | string[]>>;
 }>;
 
 export function stripeBillingWebhookEnabled(

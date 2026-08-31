@@ -24,7 +24,8 @@ const RANGE_TABS: { key: DateRange; label: string }[] = [
   { key: '90d', label: '90 days' },
 ];
 
-export default async function AdminMoneyPage({ searchParams }: { searchParams: { range?: string; account?: string } }) {
+export default async function AdminMoneyPage({ searchParams: searchParamsPromise }: { searchParams: Promise<{ range?: string; account?: string }> }) {
+  const searchParams = (await searchParamsPromise) || {};
   const { admin } = await requireAdmin();
   // Set when an account page's dispute count sends you here. Only the disputes
   // table narrows — the fee and refund totals stay platform-wide, because a

@@ -39,7 +39,9 @@ function formatTime(value: string): string {
 }
 
 
-export default async function FieldJobPage({ params, searchParams }: { params: { id: string }; searchParams: { logged?: string; clocked?: string; clock?: string; hours?: string; arrival?: string; sms?: string } }) {
+export default async function FieldJobPage({ params: paramsPromise, searchParams: searchParamsPromise }: { params: Promise<{ id: string }>; searchParams: Promise<{ logged?: string; clocked?: string; clock?: string; hours?: string; arrival?: string; sms?: string }> }) {
+  const params = await paramsPromise;
+  const searchParams = (await searchParamsPromise) || {};
   const { supabase, accountId, crew, businessName, timeClockMode, businesses } = await requireCrewContext();
 
   if (!(await isJobAssignedToCrew(supabase, accountId, params.id, crew.id))) {

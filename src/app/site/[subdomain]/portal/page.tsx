@@ -14,9 +14,12 @@ export const dynamic = 'force-dynamic';
 // Must stay in lockstep with site-domain/[domain]/portal — a route in one tree
 // and not the other is a live 404 on custom domains only, which nothing catches.
 
-type Props = { params: { subdomain: string } };
+type Props = {
+  params: Promise<{ subdomain: string }>;
+};
 
-export default async function PublicPortalPage({ params }: Props) {
+export default async function PublicPortalPage({ params: paramsPromise }: Props) {
+  const params = await paramsPromise;
   const admin = createAdminClient();
   const site = await getPublicSiteBySubdomain(admin, params.subdomain);
   if (!site) notFound();
@@ -43,7 +46,8 @@ export default async function PublicPortalPage({ params }: Props) {
   );
 }
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
+export async function generateMetadata({ params: paramsPromise }: Props): Promise<Metadata> {
+  const params = await paramsPromise;
   const site = await getPublicSiteBySubdomain(createAdminClient(), params.subdomain);
   if (!site) return { title: 'Not found' };
   return {

@@ -292,12 +292,12 @@ const WORKFLOW_FEATURES: WorkflowFeature[] = [
  * the component that draws it, in ./job-record-stages.
  */
 
-export default function FeaturesPage() {
+export default async function FeaturesPage() {
   return (
     <>
       <script
         type="application/ld+json"
-        nonce={cspNonce()}
+        nonce={await cspNonce()}
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
       <div className={themeStyles.featuresTheme}>

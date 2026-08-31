@@ -18,15 +18,17 @@ const PRESETS = [
   {
     id: 'solo-remodeler',
     name: 'Solo Remodeler / Builder',
+    icon: '🔨',
     revenue: 350000,
-    unbilledScopePct: 6, // 6% scope creep unbilled
-    supplyHouseHours: 4, // 4 hrs/wk at supply house
+    unbilledScopePct: 6,
+    supplyHouseHours: 4,
     hourlyBillingRate: 95,
-    checkTripsPerMonth: 6, // 6 trips to pick up paper checks
+    checkTripsPerMonth: 6,
   },
   {
     id: 'two-truck-service',
     name: '2-Truck Plumber / Electrician',
+    icon: '⚡',
     revenue: 550000,
     unbilledScopePct: 4,
     supplyHouseHours: 6,
@@ -36,6 +38,7 @@ const PRESETS = [
   {
     id: 'roofing-crew',
     name: 'Roofing Contractor (3-Man)',
+    icon: '🏠',
     revenue: 850000,
     unbilledScopePct: 5,
     supplyHouseHours: 3,
@@ -45,6 +48,7 @@ const PRESETS = [
   {
     id: 'solo-handyman',
     name: 'Solo Handyman / Painter',
+    icon: '🎨',
     revenue: 140000,
     unbilledScopePct: 8,
     supplyHouseHours: 3,
@@ -53,7 +57,7 @@ const PRESETS = [
   },
 ];
 
-const STORAGE_KEY = 'lgq_leakage_calc_v1';
+const STORAGE_KEY = 'lgq_leakage_calc_v2';
 
 export default function LeakageCalculatorPage() {
   const [revenue, setRevenue] = useState(350000);
@@ -61,6 +65,9 @@ export default function LeakageCalculatorPage() {
   const [supplyHouseHours, setSupplyHouseHours] = useState(4);
   const [hourlyBillingRate, setHourlyBillingRate] = useState(95);
   const [checkTripsPerMonth, setCheckTripsPerMonth] = useState(6);
+  const [activePresetId, setActivePresetId] = useState<string>('solo-remodeler');
+
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [copied, setCopied] = useState(false);
   const [emailAddress, setEmailAddress] = useState('');
   const [emailSending, setEmailSending] = useState(false);
@@ -77,6 +84,7 @@ export default function LeakageCalculatorPage() {
         if (typeof parsed.supplyHouseHours === 'number') setSupplyHouseHours(parsed.supplyHouseHours);
         if (typeof parsed.hourlyBillingRate === 'number') setHourlyBillingRate(parsed.hourlyBillingRate);
         if (typeof parsed.checkTripsPerMonth === 'number') setCheckTripsPerMonth(parsed.checkTripsPerMonth);
+        if (typeof parsed.activePresetId === 'string') setActivePresetId(parsed.activePresetId);
       }
     } catch {
       // quiet fallback
@@ -94,12 +102,13 @@ export default function LeakageCalculatorPage() {
           supplyHouseHours,
           hourlyBillingRate,
           checkTripsPerMonth,
+          activePresetId,
         }),
       );
     } catch {
       // quiet fallback
     }
-  }, [revenue, unbilledScopePct, supplyHouseHours, hourlyBillingRate, checkTripsPerMonth]);
+  }, [revenue, unbilledScopePct, supplyHouseHours, hourlyBillingRate, checkTripsPerMonth, activePresetId]);
 
   const calculations = useMemo(() => {
     // 1. Unbilled Scope Creep & Change Orders
@@ -122,6 +131,16 @@ export default function LeakageCalculatorPage() {
     // Estimated recovery on Let's Get Quoted (automated digital change orders + upfront deposits + Apple Pay)
     const recoverableWithLGQ = totalAnnualLeakage * 0.85;
 
+    // Percentage of revenue leaked
+    const leakagePercentOfGross = revenue > 0 ? (totalAnnualLeakage / revenue) * 100 : 0;
+
+    // Proportional breakdown percentages for distribution bar
+    const total = Math.max(1, totalAnnualLeakage);
+    const scopePct = (annualScopeLoss / total) * 100;
+    const supplyPct = (annualSupplyHouseLoss / total) * 100;
+    const checkPct = (annualCheckChasingLoss / total) * 100;
+    const floatPct = (annualCashFlowCost / total) * 100;
+
     return {
       annualScopeLoss,
       annualSupplyHouseLoss,
@@ -129,10 +148,16 @@ export default function LeakageCalculatorPage() {
       annualCashFlowCost,
       totalAnnualLeakage,
       recoverableWithLGQ,
+      leakagePercentOfGross,
+      scopePct,
+      supplyPct,
+      checkPct,
+      floatPct,
     };
   }, [revenue, unbilledScopePct, supplyHouseHours, hourlyBillingRate, checkTripsPerMonth]);
 
   const handlePreset = (preset: (typeof PRESETS)[number]) => {
+    setActivePresetId(preset.id);
     setRevenue(preset.revenue);
     setUnbilledScopePct(preset.unbilledScopePct);
     setSupplyHouseHours(preset.supplyHouseHours);
@@ -140,17 +165,67 @@ export default function LeakageCalculatorPage() {
     setCheckTripsPerMonth(preset.checkTripsPerMonth);
   };
 
+  const handleCustomAdjustment = () => {
+    setActivePresetId('custom');
+  };
+
+  const handleDownloadPdf = async () => {
+    try {
+      setDownloadingPdf(true);
+      const res = await fetch('/api/tools/leakage-pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          data: {
+            revenue,
+            unbilledScopePct,
+            supplyHouseHours,
+            hourlyBillingRate,
+            checkTripsPerMonth,
+            referenceNumber: 'AUD-2026-LEAK',
+            reportDate: new Date().toLocaleDateString('en-US', {
+              month: 'short',
+              day: 'numeric',
+              year: 'numeric',
+            }),
+          },
+          calculations,
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error('Server error generating PDF');
+      }
+
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Contractor-Profit-Leakage-Audit.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch {
+      // Fallback to browser print if server generation fails
+      window.print();
+    } finally {
+      setDownloadingPdf(false);
+    }
+  };
+
   const handleCopySummary = () => {
-    const text = `=== CONTRACTOR CASH FLOW & LEAKAGE AUDIT ===
+    const text = `=== CONTRACTOR CASH FLOW & PROFIT LEAKAGE AUDIT ===
 Gross Annual Revenue: ${formatCurrency(revenue)}
-Estimated Annual Scope Creep Loss: ${formatCurrency(calculations.annualScopeLoss)}
-Unbilled Parts / Supply Runs Loss: ${formatCurrency(calculations.annualSupplyHouseLoss)}
-Paper Check Pickups & Drive Cost: ${formatCurrency(calculations.annualCheckChasingLoss)}
-Cashflow Float & Late Invoice Cost: ${formatCurrency(calculations.annualCashFlowCost)}
----------------------------------------------
-TOTAL ESTIMATED LEAKAGE: ${formatCurrency(calculations.totalAnnualLeakage)} / yr
+--------------------------------------------------
+1. Unbilled Scope Creep & Extra Materials: -${formatCurrency(calculations.annualScopeLoss)}/yr (${unbilledScopePct}% of projects)
+2. Supply House Windshield Hours: -${formatCurrency(calculations.annualSupplyHouseLoss)}/yr (${supplyHouseHours} hrs/wk @ $${hourlyBillingRate}/hr)
+3. Paper Check Pickups & Drive Costs: -${formatCurrency(calculations.annualCheckChasingLoss)}/yr (${checkTripsPerMonth} trips/mo)
+4. Net-30 Float & Delayed Invoicing: -${formatCurrency(calculations.annualCashFlowCost)}/yr
+--------------------------------------------------
+TOTAL ESTIMATED ANNUAL PROFIT LEAKAGE: ${formatCurrency(calculations.totalAnnualLeakage)} / yr (${calculations.leakagePercentOfGross.toFixed(1)}% of Revenue)
 RECOVERABLE WITH LET'S GET QUOTED: +${formatCurrency(calculations.recoverableWithLGQ)} / yr
-Audit URL: https://letsgetquoted.com/tools/leakage-calculator`;
+Audit Report Link: https://letsgetquoted.com/tools/leakage-calculator`;
 
     navigator.clipboard.writeText(text);
     setCopied(true);
@@ -167,7 +242,7 @@ Audit URL: https://letsgetquoted.com/tools/leakage-calculator`;
         body: JSON.stringify({
           email: emailAddress,
           toolName: 'Profit Leakage & Cash Flow Audit',
-          summary: `Gross: ${formatCurrency(revenue)}, Leakage: ${formatCurrency(calculations.totalAnnualLeakage)}/yr, Recoverable: ${formatCurrency(calculations.recoverableWithLGQ)}/yr`,
+          summary: `Gross: ${formatCurrency(revenue)}, Leakage: ${formatCurrency(calculations.totalAnnualLeakage)}/yr (${calculations.leakagePercentOfGross.toFixed(1)}%), Recoverable: ${formatCurrency(calculations.recoverableWithLGQ)}/yr`,
           calculations,
         }),
       }).catch(() => null);
@@ -176,6 +251,12 @@ Audit URL: https://letsgetquoted.com/tools/leakage-calculator`;
       setEmailSending(false);
     }
   };
+
+  const formattedCurrentDate = new Date().toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
 
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -188,6 +269,8 @@ Audit URL: https://letsgetquoted.com/tools/leakage-calculator`;
       price: '0.00',
       priceCurrency: 'USD',
     },
+    description:
+      'Free contractor profit leakage calculator that measures bottom-line losses from unbilled scope creep, supply house trips, paper check chasing, and late invoicing float.',
   };
 
   return (
@@ -199,24 +282,27 @@ Audit URL: https://letsgetquoted.com/tools/leakage-calculator`;
 
       <section className={styles.hero}>
         <div className={styles.heroInner}>
-          <div className={styles.heroEyebrow}>
+          <div className={styles.kicker}>
             <span>💸</span> Free Contractor Financial Diagnostic
           </div>
-          <h1 className={styles.heroTitle}>
-            Contractor Cash Flow & <em>Profit Leakage</em> Audit.
+          <h1 className={styles.headline}>
+            Contractor Cash Flow &amp; <em>Profit Leakage</em> Audit.
           </h1>
-          <p className={styles.heroSubtitle}>
-            Unbilled change orders, supply house traffic, and chasing paper checks drain thousands from your bottom line every year. See exactly how much you can reclaim.
+          <p className={styles.subhead}>
+            Unbilled change orders, supply house traffic, and chasing paper checks drain thousands from your bottom line every year.
+            Calculate your exact profit erosion and see how much you can reclaim.
           </p>
         </div>
       </section>
 
       <section className={styles.calculatorSection}>
-        {/* Print-Only Executive Report Sheet */}
+        {/* ==========================================================================
+            Print-Only Executive Report Sheet (Rendered during window.print() / PDF export)
+            ========================================================================== */}
         <div className={styles.printOnlyReport}>
           <div className={styles.printReportHeader}>
             <div>
-              <h1 className={styles.printReportTitle}>Contractor Cash Flow & Profit Leakage Audit</h1>
+              <h1 className={styles.printReportTitle}>Contractor Cash Flow &amp; Profit Leakage Audit</h1>
               <div className={styles.printReportSub}>
                 Executive Financial Diagnostic &amp; Profit Recovery Analysis
               </div>
@@ -230,7 +316,7 @@ Audit URL: https://letsgetquoted.com/tools/leakage-calculator`;
                 </div>
                 <div className={styles.printMetaRow}>
                   <span className={styles.printMetaKey}>DATE:</span>
-                  <span className={styles.printMetaVal}>Aug 27, 2026</span>
+                  <span className={styles.printMetaVal}>{formattedCurrentDate}</span>
                 </div>
               </div>
             </div>
@@ -252,7 +338,7 @@ Audit URL: https://letsgetquoted.com/tools/leakage-calculator`;
 
           {/* Baseline Operating Profile */}
           <div className={styles.printSectionBlock}>
-            <h3 className={styles.printBlockTitle}>I. BASELINE OPERATIONAL PROFILE</h3>
+            <div className={styles.printBlockTitle}>I. BASELINE OPERATIONAL PROFILE</div>
             <table className={styles.printDataTable}>
               <thead>
                 <tr>
@@ -265,7 +351,7 @@ Audit URL: https://letsgetquoted.com/tools/leakage-calculator`;
                 <tr>
                   <td>Annual Gross Revenue</td>
                   <td style={{ textAlign: 'right', fontWeight: 700 }}>{formatCurrency(revenue)}</td>
-                  <td style={{ textAlign: 'right', color: '#64748b' }}>100% Volume</td>
+                  <td style={{ textAlign: 'right', color: '#64748b' }}>100% Volume Base</td>
                 </tr>
                 <tr>
                   <td>Unbilled Scope Creep / Extras Rate</td>
@@ -293,12 +379,12 @@ Audit URL: https://letsgetquoted.com/tools/leakage-calculator`;
 
           {/* Itemized Loss Breakdown */}
           <div className={styles.printSectionBlock}>
-            <h3 className={styles.printBlockTitle}>II. ITEMIZED PROFIT LEAKAGE ANALYSIS</h3>
+            <div className={styles.printBlockTitle}>II. ITEMIZED PROFIT LEAKAGE ANALYSIS</div>
             <table className={styles.printDataTable}>
               <thead>
                 <tr>
-                  <th style={{ width: '50%' }}>Leakage Category</th>
-                  <th style={{ width: '30%' }}>Root Cause</th>
+                  <th style={{ width: '45%' }}>Leakage Category</th>
+                  <th style={{ width: '35%' }}>Root Cause Mechanism</th>
                   <th style={{ width: '20%', textAlign: 'right' }}>Annual Loss</th>
                 </tr>
               </thead>
@@ -306,27 +392,27 @@ Audit URL: https://letsgetquoted.com/tools/leakage-calculator`;
                 <tr>
                   <td><strong>Unbilled Scope Creep &amp; Modifications</strong></td>
                   <td>Unsigned verbal requests, framing/fixture tweaks</td>
-                  <td style={{ textAlign: 'right', fontWeight: 800, color: '#0f172a' }}>{formatCurrency(calculations.annualScopeLoss)}</td>
+                  <td style={{ textAlign: 'right', fontWeight: 800, color: '#b91c1c' }}>{formatCurrency(calculations.annualScopeLoss)}</td>
                 </tr>
                 <tr>
                   <td><strong>Supply House Traffic &amp; Travel</strong></td>
                   <td>Unbilled windshield hours &amp; technician downtime</td>
-                  <td style={{ textAlign: 'right', fontWeight: 800, color: '#0f172a' }}>{formatCurrency(calculations.annualSupplyHouseLoss)}</td>
+                  <td style={{ textAlign: 'right', fontWeight: 800, color: '#b91c1c' }}>{formatCurrency(calculations.annualSupplyHouseLoss)}</td>
                 </tr>
                 <tr>
                   <td><strong>Paper Check Chasing &amp; Deposit Drives</strong></td>
-                  <td>Vehicle gas, return trips, delayed deposit clearance</td>
-                  <td style={{ textAlign: 'right', fontWeight: 800, color: '#0f172a' }}>{formatCurrency(calculations.annualCheckChasingLoss)}</td>
+                  <td>Vehicle fuel, return site visits, delayed check clearance</td>
+                  <td style={{ textAlign: 'right', fontWeight: 800, color: '#b91c1c' }}>{formatCurrency(calculations.annualCheckChasingLoss)}</td>
                 </tr>
                 <tr>
                   <td><strong>Net-30 Cash Flow Float &amp; Delayed Invoicing</strong></td>
                   <td>Carrying material expenses before final settlement</td>
-                  <td style={{ textAlign: 'right', fontWeight: 800, color: '#0f172a' }}>{formatCurrency(calculations.annualCashFlowCost)}</td>
+                  <td style={{ textAlign: 'right', fontWeight: 800, color: '#b91c1c' }}>{formatCurrency(calculations.annualCashFlowCost)}</td>
                 </tr>
-                <tr style={{ background: '#f8fafc', borderTop: '2px solid #0f172a' }}>
+                <tr style={{ background: '#fef2f2', borderTop: '2px solid #0f172a' }}>
                   <td><strong>TOTAL ANNUAL PROFIT EROSION</strong></td>
                   <td><strong>Combined Bottom-Line Impact</strong></td>
-                  <td style={{ textAlign: 'right', fontWeight: 900, fontSize: 13, color: '#b91c1c' }}>{formatCurrency(calculations.totalAnnualLeakage)}/yr</td>
+                  <td style={{ textAlign: 'right', fontWeight: 900, fontSize: '12px', color: '#b91c1c' }}>{formatCurrency(calculations.totalAnnualLeakage)}/yr</td>
                 </tr>
               </tbody>
             </table>
@@ -334,13 +420,13 @@ Audit URL: https://letsgetquoted.com/tools/leakage-calculator`;
 
           {/* Strategic Action Plan */}
           <div className={styles.printSectionBlock}>
-            <h3 className={styles.printBlockTitle}>III. STRATEGIC REVENUE RECOVERY PLAN</h3>
+            <div className={styles.printBlockTitle}>III. STRATEGIC REVENUE RECOVERY PLAN (POWERED BY LET’S GET QUOTED)</div>
             <div className={styles.printActionGrid}>
               <div className={styles.printActionItem}>
-                <strong>1. 1-Tap Digital Change Orders:</strong> Require homeowner digital signature before performing extra work. Captures 100% of out-of-scope labor.
+                <strong>1. 1-Tap Digital Change Orders:</strong> Require homeowner digital signature from mobile before performing extra work. Captures 100% of out-of-scope labor.
               </div>
               <div className={styles.printActionItem}>
-                <strong>2. Automated Upfront Deposits:</strong> Lock in 30%–50% materials deposit directly via Apple Pay/credit card before crew scheduling.
+                <strong>2. Automated Upfront Deposits:</strong> Lock in 30%–50% materials deposit directly via Apple Pay/credit card before crew scheduling to eliminate out-of-pocket cash float.
               </div>
               <div className={styles.printActionItem}>
                 <strong>3. Instant Text-to-Pay Settlement:</strong> Text signable invoices upon final walkthrough to eliminate paper check pickup drives and 30-day float.
@@ -355,360 +441,543 @@ Audit URL: https://letsgetquoted.com/tools/leakage-calculator`;
           </div>
         </div>
 
-        {/* Interactive Screen View */}
-        <div className={`${styles.calcGrid} ${styles.screenOnly}`}>
+        {/* ==========================================================================
+            Interactive Screen View
+            ========================================================================== */}
+        <div className={`${styles.leakGrid} ${styles.screenOnly}`}>
           {/* Controls Column */}
-          <div className={styles.controlsCol}>
-            {/* Presets */}
-            <div className={styles.card}>
-              <span className={styles.label}>Quick Presets</span>
-              <div className={styles.presetGrid}>
-                {PRESETS.map((p) => (
-                  <button
-                    key={p.id}
-                    type="button"
-                    onClick={() => handlePreset(p)}
-                    className={styles.presetBtn}
-                  >
-                    {p.name}
-                  </button>
-                ))}
+          <div className={styles.controlsStack}>
+            {/* Presets Card */}
+            <div className={styles.presetsContainer}>
+              <div className={styles.presetsHeader}>
+                <span className={styles.presetsTitle}>
+                  <span>⚡</span> Quick Trade Presets
+                </span>
+                <span className={styles.presetsBadge}>
+                  {activePresetId === 'custom' ? 'Customized Inputs' : 'Preset Loaded'}
+                </span>
+              </div>
+              <div className={styles.presetChipsList}>
+                {PRESETS.map((p) => {
+                  const isActive = activePresetId === p.id;
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => handlePreset(p)}
+                      className={`${styles.presetChip} ${isActive ? styles.presetChipActive : ''}`}
+                    >
+                      <span>{p.icon}</span> {p.name}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
-            {/* Input Sliders */}
-            <div className={styles.card}>
-              {/* Gross Revenue */}
-              <div className={styles.inputGroup}>
-                <div className={styles.inputHeader}>
-                  <label htmlFor="leak-revenue" className={styles.label}>
-                    Annual Gross Revenue
-                  </label>
-                  <span className={styles.valueDisplay}>{formatCurrency(revenue)}</span>
-                </div>
-                <input
-                  id="leak-revenue"
-                  type="range"
-                  min={80000}
-                  max={1500000}
-                  step={10000}
-                  value={revenue}
-                  onChange={(e) => setRevenue(Number(e.target.value))}
-                  className={styles.slider}
-                  aria-label="Annual Gross Revenue slider"
-                />
-                <div className={styles.stepperRow}>
-                  <button
-                    type="button"
-                    onClick={() => setRevenue((r) => Math.max(80000, r - 10000))}
-                    className={styles.stepperBtn}
-                    aria-label="Decrease revenue by 10k"
-                  >
-                    −
-                  </button>
+            {/* Input Controls */}
+            {/* 1. Annual Gross Revenue */}
+            <div className={styles.controlCard}>
+              <div className={styles.controlHeader}>
+                <label htmlFor="leak-revenue" className={styles.controlLabel}>
+                  <span className={styles.controlIcon}>💼</span> Annual Gross Revenue
+                </label>
+                <span className={styles.controlValueBadge}>{formatCurrency(revenue)}</span>
+              </div>
+              <input
+                id="leak-revenue"
+                type="range"
+                min={80000}
+                max={1500000}
+                step={10000}
+                value={revenue}
+                onChange={(e) => {
+                  setRevenue(Number(e.target.value));
+                  handleCustomAdjustment();
+                }}
+                className={styles.controlSlider}
+                aria-label="Annual Gross Revenue slider"
+              />
+              <div className={styles.stepperContainer}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRevenue((r) => Math.max(80000, r - 10000));
+                    handleCustomAdjustment();
+                  }}
+                  className={styles.stepperBtnModern}
+                  aria-label="Decrease revenue by 10k"
+                >
+                  −
+                </button>
+                <div className={styles.stepperInputWrapper}>
                   <input
                     type="number"
                     min={80000}
                     max={1500000}
                     step={10000}
                     value={revenue}
-                    onChange={(e) => setRevenue(Math.max(0, Number(e.target.value) || 0))}
-                    className={styles.stepperInput}
+                    onChange={(e) => {
+                      setRevenue(Math.max(0, Number(e.target.value) || 0));
+                      handleCustomAdjustment();
+                    }}
+                    className={styles.stepperInputModern}
                     aria-label="Annual Gross Revenue direct numeric entry"
                   />
-                  <button
-                    type="button"
-                    onClick={() => setRevenue((r) => Math.min(1500000, r + 10000))}
-                    className={styles.stepperBtn}
-                    aria-label="Increase revenue by 10k"
-                  >
-                    +
-                  </button>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRevenue((r) => Math.min(1500000, r + 10000));
+                    handleCustomAdjustment();
+                  }}
+                  className={styles.stepperBtnModern}
+                  aria-label="Increase revenue by 10k"
+                >
+                  +
+                </button>
               </div>
+              <span className={styles.controlHint}>
+                Total annual top-line contracting sales volume before overhead and expenses.
+              </span>
+            </div>
 
-              {/* Unbilled Scope Creep */}
-              <div className={styles.inputGroup}>
-                <div className={styles.inputHeader}>
-                  <label htmlFor="leak-scope" className={styles.label}>
-                    Unbilled Scope Creep &amp; Extra Materials
-                  </label>
-                  <span className={styles.valueDisplay}>{unbilledScopePct}% of jobs</span>
-                </div>
-                <input
-                  id="leak-scope"
-                  type="range"
-                  min={1}
-                  max={15}
-                  step={1}
-                  value={unbilledScopePct}
-                  onChange={(e) => setUnbilledScopePct(Number(e.target.value))}
-                  className={styles.slider}
-                  aria-label="Unbilled Scope Creep slider"
-                />
-                <div className={styles.stepperRow}>
-                  <button
-                    type="button"
-                    onClick={() => setUnbilledScopePct((s) => Math.max(1, s - 1))}
-                    className={styles.stepperBtn}
-                    aria-label="Decrease scope creep percentage"
-                  >
-                    −
-                  </button>
+            {/* 2. Unbilled Scope Creep */}
+            <div className={styles.controlCard}>
+              <div className={styles.controlHeader}>
+                <label htmlFor="leak-scope" className={styles.controlLabel}>
+                  <span className={styles.controlIcon}>📐</span> Unbilled Scope Creep &amp; Extras
+                </label>
+                <span className={styles.controlValueBadge}>{unbilledScopePct}% of projects</span>
+              </div>
+              <input
+                id="leak-scope"
+                type="range"
+                min={1}
+                max={15}
+                step={1}
+                value={unbilledScopePct}
+                onChange={(e) => {
+                  setUnbilledScopePct(Number(e.target.value));
+                  handleCustomAdjustment();
+                }}
+                className={styles.controlSlider}
+                aria-label="Unbilled Scope Creep slider"
+              />
+              <div className={styles.stepperContainer}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUnbilledScopePct((s) => Math.max(1, s - 1));
+                    handleCustomAdjustment();
+                  }}
+                  className={styles.stepperBtnModern}
+                  aria-label="Decrease scope creep percentage"
+                >
+                  −
+                </button>
+                <div className={styles.stepperInputWrapper}>
                   <input
                     type="number"
                     min={1}
                     max={15}
                     step={1}
                     value={unbilledScopePct}
-                    onChange={(e) => setUnbilledScopePct(Math.min(15, Math.max(1, Number(e.target.value) || 1)))}
-                    className={styles.stepperInput}
+                    onChange={(e) => {
+                      setUnbilledScopePct(Math.min(15, Math.max(1, Number(e.target.value) || 1)));
+                      handleCustomAdjustment();
+                    }}
+                    className={styles.stepperInputModern}
                     aria-label="Scope creep percentage entry"
                   />
-                  <button
-                    type="button"
-                    onClick={() => setUnbilledScopePct((s) => Math.min(15, s + 1))}
-                    className={styles.stepperBtn}
-                    aria-label="Increase scope creep percentage"
-                  >
-                    +
-                  </button>
                 </div>
-                <span className={styles.microHint}>
-                  Extra fixtures, framing tweaks, or extra coats done without a formal signed change order.
-                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUnbilledScopePct((s) => Math.min(15, s + 1));
+                    handleCustomAdjustment();
+                  }}
+                  className={styles.stepperBtnModern}
+                  aria-label="Increase scope creep percentage"
+                >
+                  +
+                </button>
               </div>
+              <span className={styles.controlHint}>
+                Extra framing tweaks, added fixtures, or extra paint coats done verbally without a signed change order.
+              </span>
+            </div>
 
-              {/* Supply House Hours */}
-              <div className={styles.inputGroup}>
-                <div className={styles.inputHeader}>
-                  <label htmlFor="leak-supply" className={styles.label}>
-                    Unbilled Supply House / Parts Runs
-                  </label>
-                  <span className={styles.valueDisplay}>{supplyHouseHours} hrs/week</span>
-                </div>
-                <input
-                  id="leak-supply"
-                  type="range"
-                  min={1}
-                  max={12}
-                  step={1}
-                  value={supplyHouseHours}
-                  onChange={(e) => setSupplyHouseHours(Number(e.target.value))}
-                  className={styles.slider}
-                  aria-label="Supply house hours slider"
-                />
-                <div className={styles.stepperRow}>
-                  <button
-                    type="button"
-                    onClick={() => setSupplyHouseHours((h) => Math.max(1, h - 1))}
-                    className={styles.stepperBtn}
-                    aria-label="Decrease supply house hours"
-                  >
-                    −
-                  </button>
+            {/* 3. Supply House Hours */}
+            <div className={styles.controlCard}>
+              <div className={styles.controlHeader}>
+                <label htmlFor="leak-supply" className={styles.controlLabel}>
+                  <span className={styles.controlIcon}>🚚</span> Supply House &amp; Parts Runs
+                </label>
+                <span className={styles.controlValueBadge}>{supplyHouseHours} hrs / week</span>
+              </div>
+              <input
+                id="leak-supply"
+                type="range"
+                min={1}
+                max={12}
+                step={1}
+                value={supplyHouseHours}
+                onChange={(e) => {
+                  setSupplyHouseHours(Number(e.target.value));
+                  handleCustomAdjustment();
+                }}
+                className={styles.controlSlider}
+                aria-label="Supply house hours slider"
+              />
+              <div className={styles.stepperContainer}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSupplyHouseHours((h) => Math.max(1, h - 1));
+                    handleCustomAdjustment();
+                  }}
+                  className={styles.stepperBtnModern}
+                  aria-label="Decrease supply house hours"
+                >
+                  −
+                </button>
+                <div className={styles.stepperInputWrapper}>
                   <input
                     type="number"
                     min={1}
                     max={12}
                     step={1}
                     value={supplyHouseHours}
-                    onChange={(e) => setSupplyHouseHours(Math.min(12, Math.max(1, Number(e.target.value) || 1)))}
-                    className={styles.stepperInput}
+                    onChange={(e) => {
+                      setSupplyHouseHours(Math.min(12, Math.max(1, Number(e.target.value) || 1)));
+                      handleCustomAdjustment();
+                    }}
+                    className={styles.stepperInputModern}
                     aria-label="Supply house hours entry"
                   />
-                  <button
-                    type="button"
-                    onClick={() => setSupplyHouseHours((h) => Math.min(12, h + 1))}
-                    className={styles.stepperBtn}
-                    aria-label="Increase supply house hours"
-                  >
-                    +
-                  </button>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSupplyHouseHours((h) => Math.min(12, h + 1));
+                    handleCustomAdjustment();
+                  }}
+                  className={styles.stepperBtnModern}
+                  aria-label="Increase supply house hours"
+                >
+                  +
+                </button>
               </div>
+              <span className={styles.controlHint}>
+                Windshield driving time to pickup materials and parts that are never billed directly to client invoices.
+              </span>
+            </div>
 
-              {/* Hourly Billing Rate */}
-              <div className={styles.inputGroup}>
-                <div className={styles.inputHeader}>
-                  <label htmlFor="leak-rate" className={styles.label}>
-                    Target Hourly Labor Rate
-                  </label>
-                  <span className={styles.valueDisplay}>${hourlyBillingRate}/hr</span>
-                </div>
-                <input
-                  id="leak-rate"
-                  type="range"
-                  min={45}
-                  max={200}
-                  step={5}
-                  value={hourlyBillingRate}
-                  onChange={(e) => setHourlyBillingRate(Number(e.target.value))}
-                  className={styles.slider}
-                  aria-label="Hourly billing rate slider"
-                />
-                <div className={styles.stepperRow}>
-                  <button
-                    type="button"
-                    onClick={() => setHourlyBillingRate((r) => Math.max(45, r - 5))}
-                    className={styles.stepperBtn}
-                    aria-label="Decrease hourly rate"
-                  >
-                    −
-                  </button>
+            {/* 4. Hourly Billing Rate */}
+            <div className={styles.controlCard}>
+              <div className={styles.controlHeader}>
+                <label htmlFor="leak-rate" className={styles.controlLabel}>
+                  <span className={styles.controlIcon}>⏱️</span> Target Hourly Labor Rate
+                </label>
+                <span className={styles.controlValueBadge}>${hourlyBillingRate} / hr</span>
+              </div>
+              <input
+                id="leak-rate"
+                type="range"
+                min={45}
+                max={200}
+                step={5}
+                value={hourlyBillingRate}
+                onChange={(e) => {
+                  setHourlyBillingRate(Number(e.target.value));
+                  handleCustomAdjustment();
+                }}
+                className={styles.controlSlider}
+                aria-label="Hourly billing rate slider"
+              />
+              <div className={styles.stepperContainer}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setHourlyBillingRate((r) => Math.max(45, r - 5));
+                    handleCustomAdjustment();
+                  }}
+                  className={styles.stepperBtnModern}
+                  aria-label="Decrease hourly rate"
+                >
+                  −
+                </button>
+                <div className={styles.stepperInputWrapper}>
                   <input
                     type="number"
                     min={45}
                     max={200}
                     step={5}
                     value={hourlyBillingRate}
-                    onChange={(e) => setHourlyBillingRate(Math.min(200, Math.max(45, Number(e.target.value) || 45)))}
-                    className={styles.stepperInput}
+                    onChange={(e) => {
+                      setHourlyBillingRate(Math.min(200, Math.max(45, Number(e.target.value) || 45)));
+                      handleCustomAdjustment();
+                    }}
+                    className={styles.stepperInputModern}
                     aria-label="Hourly billing rate entry"
                   />
-                  <button
-                    type="button"
-                    onClick={() => setHourlyBillingRate((r) => Math.min(200, r + 5))}
-                    className={styles.stepperBtn}
-                    aria-label="Increase hourly rate"
-                  >
-                    +
-                  </button>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setHourlyBillingRate((r) => Math.min(200, r + 5));
+                    handleCustomAdjustment();
+                  }}
+                  className={styles.stepperBtnModern}
+                  aria-label="Increase hourly rate"
+                >
+                  +
+                </button>
               </div>
+              <span className={styles.controlHint}>
+                Your standard billable rate used to calculate lost technician opportunity cost.
+              </span>
+            </div>
 
-              {/* Check Chasing Trips */}
-              <div className={styles.inputGroup}>
-                <div className={styles.inputHeader}>
-                  <label htmlFor="leak-trips" className={styles.label}>
-                    In-Person Check Collection Trips
-                  </label>
-                  <span className={styles.valueDisplay}>{checkTripsPerMonth} trips/month</span>
-                </div>
-                <input
-                  id="leak-trips"
-                  type="range"
-                  min={0}
-                  max={20}
-                  step={1}
-                  value={checkTripsPerMonth}
-                  onChange={(e) => setCheckTripsPerMonth(Number(e.target.value))}
-                  className={styles.slider}
-                  aria-label="Check collection trips slider"
-                />
-                <div className={styles.stepperRow}>
-                  <button
-                    type="button"
-                    onClick={() => setCheckTripsPerMonth((t) => Math.max(0, t - 1))}
-                    className={styles.stepperBtn}
-                    aria-label="Decrease check collection trips"
-                  >
-                    −
-                  </button>
+            {/* 5. Check Chasing Trips */}
+            <div className={styles.controlCard}>
+              <div className={styles.controlHeader}>
+                <label htmlFor="leak-trips" className={styles.controlLabel}>
+                  <span className={styles.controlIcon}>🚙</span> In-Person Check Collection Trips
+                </label>
+                <span className={styles.controlValueBadge}>{checkTripsPerMonth} trips / month</span>
+              </div>
+              <input
+                id="leak-trips"
+                type="range"
+                min={0}
+                max={20}
+                step={1}
+                value={checkTripsPerMonth}
+                onChange={(e) => {
+                  setCheckTripsPerMonth(Number(e.target.value));
+                  handleCustomAdjustment();
+                }}
+                className={styles.controlSlider}
+                aria-label="Check collection trips slider"
+              />
+              <div className={styles.stepperContainer}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCheckTripsPerMonth((t) => Math.max(0, t - 1));
+                    handleCustomAdjustment();
+                  }}
+                  className={styles.stepperBtnModern}
+                  aria-label="Decrease check collection trips"
+                >
+                  −
+                </button>
+                <div className={styles.stepperInputWrapper}>
                   <input
                     type="number"
                     min={0}
                     max={20}
                     step={1}
                     value={checkTripsPerMonth}
-                    onChange={(e) => setCheckTripsPerMonth(Math.min(20, Math.max(0, Number(e.target.value) || 0)))}
-                    className={styles.stepperInput}
+                    onChange={(e) => {
+                      setCheckTripsPerMonth(Math.min(20, Math.max(0, Number(e.target.value) || 0)));
+                      handleCustomAdjustment();
+                    }}
+                    className={styles.stepperInputModern}
                     aria-label="Check collection trips entry"
                   />
-                  <button
-                    type="button"
-                    onClick={() => setCheckTripsPerMonth((t) => Math.min(20, t + 1))}
-                    className={styles.stepperBtn}
-                    aria-label="Increase check collection trips"
-                  >
-                    +
-                  </button>
                 </div>
-                <span className={styles.microHint}>
-                  Driving back to finished jobsites to pick up paper checks or deposits.
-                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCheckTripsPerMonth((t) => Math.min(20, t + 1));
+                    handleCustomAdjustment();
+                  }}
+                  className={styles.stepperBtnModern}
+                  aria-label="Increase check collection trips"
+                >
+                  +
+                </button>
               </div>
+              <span className={styles.controlHint}>
+                Driving back to finished jobsites to pick up paper checks or deposits in person.
+              </span>
             </div>
           </div>
 
           {/* Results Output Column */}
           <div className={styles.resultsCol}>
-            <div className={styles.resultsCard}>
-              {/* Primary Output */}
-              <div className={styles.primaryMetric}>
-                <span className={styles.metricLabel} style={{ color: '#ff6a24' }}>
+            <div className={styles.leakResultsCard}>
+              {/* Status Ribbon */}
+              <div className={styles.resultsStatusBadge}>
+                <span className={styles.statusDot} />
+                <span>Audit Complete • High Profit Recovery Potential</span>
+              </div>
+
+              {/* Primary Output Hero */}
+              <div className={styles.primaryLeakHero}>
+                <span className={styles.primaryLeakLabel}>
                   🚨 Estimated Annual Profit Leakage
                 </span>
-                <span className={styles.metricBig} style={{ color: '#ff6a24' }}>
+                <span className={styles.primaryLeakVal}>
                   {formatCurrency(calculations.totalAnnualLeakage)}
                 </span>
-                <span className={styles.metricSub}>
-                  Slipping away every year in unbilled labor, scope creep, and payment friction
+                <span className={styles.primaryLeakSub}>
+                  Slipping away every year in unbilled labor, scope creep, and payment friction ({calculations.leakagePercentOfGross.toFixed(1)}% of Gross Revenue).
                 </span>
               </div>
 
-              {/* Recovery Callout */}
-              <div
-                style={{
-                  background: 'rgba(80, 227, 189, 0.08)',
-                  border: '1px solid rgba(80, 227, 189, 0.25)',
-                  borderRadius: 12,
-                  padding: 16,
-                  textAlign: 'center',
-                }}
-              >
-                <div style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', color: '#50e3bd' }}>
-                  💰 Recoverable Profit With Let’s Get Quoted
+              {/* Recovery Callout Hero */}
+              <div className={styles.recoverableHero}>
+                <div className={styles.recoverableTopRow}>
+                  <span>💰 Recoverable With Let’s Get Quoted</span>
                 </div>
-                <div style={{ fontSize: 26, fontWeight: 900, color: '#f5f0e7', marginTop: 4 }}>
-                  +{formatCurrency(calculations.recoverableWithLGQ)}/yr
+                <div className={styles.recoverableVal}>
+                  +{formatCurrency(calculations.recoverableWithLGQ)} / yr
                 </div>
-                <div style={{ fontSize: 12, color: '#8fa6b5', marginTop: 4 }}>
-                  Upfront deposit locking, 1-tap change orders, and instant Apple Pay checkout plug the leaks.
+                <div className={styles.recoverableSub}>
+                  Plug 85%+ of leakage instantly through automated workflows.
+                </div>
+                <div className={styles.recoverableBullets}>
+                  <span className={styles.recoverableBullet}>✓ 1-Tap Mobile Change Orders</span>
+                  <span className={styles.recoverableBullet}>✓ Upfront Deposit Locking</span>
+                  <span className={styles.recoverableBullet}>✓ Instant Apple Pay Settlement</span>
+                </div>
+              </div>
+
+              {/* Proportional Distribution Bar */}
+              <div className={styles.leakDistSection}>
+                <div className={styles.leakDistHeader}>
+                  <span>Profit Erosion Breakdown</span>
+                  <span>100% Total Loss</span>
+                </div>
+                <div className={styles.leakDistBar}>
+                  <div
+                    className={styles.distSegmentScope}
+                    style={{ width: `${calculations.scopePct}%` }}
+                    title={`Scope Creep: ${Math.round(calculations.scopePct)}%`}
+                  />
+                  <div
+                    className={styles.distSegmentSupply}
+                    style={{ width: `${calculations.supplyPct}%` }}
+                    title={`Supply Runs: ${Math.round(calculations.supplyPct)}%`}
+                  />
+                  <div
+                    className={styles.distSegmentCheck}
+                    style={{ width: `${calculations.checkPct}%` }}
+                    title={`Check Trips: ${Math.round(calculations.checkPct)}%`}
+                  />
+                  <div
+                    className={styles.distSegmentFloat}
+                    style={{ width: `${calculations.floatPct}%` }}
+                    title={`Net-30 Float: ${Math.round(calculations.floatPct)}%`}
+                  />
+                </div>
+                <div className={styles.distLegendGrid}>
+                  <div className={styles.distLegendItem}>
+                    <span className={styles.distDotScope} />
+                    <span>Scope Creep ({Math.round(calculations.scopePct)}%)</span>
+                  </div>
+                  <div className={styles.distLegendItem}>
+                    <span className={styles.distDotSupply} />
+                    <span>Supply Runs ({Math.round(calculations.supplyPct)}%)</span>
+                  </div>
+                  <div className={styles.distLegendItem}>
+                    <span className={styles.distDotCheck} />
+                    <span>Check Pickups ({Math.round(calculations.checkPct)}%)</span>
+                  </div>
+                  <div className={styles.distLegendItem}>
+                    <span className={styles.distDotFloat} />
+                    <span>Cash Float ({Math.round(calculations.floatPct)}%)</span>
+                  </div>
                 </div>
               </div>
 
               {/* Itemized Leakage Breakdown */}
-              <div className={styles.summaryList}>
-                <div className={styles.summaryItem}>
-                  <span>Unbilled Scope Creep</span>
-                  <span className={styles.summaryValue}>{formatCurrency(calculations.annualScopeLoss)}/yr</span>
+              <div className={styles.itemizedLossList}>
+                <div className={styles.itemizedLossRow}>
+                  <div className={styles.itemizedLeft}>
+                    <span className={styles.itemizedIcon}>📐</span>
+                    <div>
+                      <span className={styles.itemizedTitle}>Unbilled Scope Creep</span>
+                      <span className={styles.itemizedDesc}>Unsigned verbal extras &amp; mods</span>
+                    </div>
+                  </div>
+                  <span className={styles.itemizedLossVal}>
+                    -{formatCurrency(calculations.annualScopeLoss)}/yr
+                  </span>
                 </div>
-                <div className={styles.summaryItem}>
-                  <span>Unbilled Supply House Runs</span>
-                  <span className={styles.summaryValue}>{formatCurrency(calculations.annualSupplyHouseLoss)}/yr</span>
+
+                <div className={styles.itemizedLossRow}>
+                  <div className={styles.itemizedLeft}>
+                    <span className={styles.itemizedIcon}>🚚</span>
+                    <div>
+                      <span className={styles.itemizedTitle}>Supply House Runs</span>
+                      <span className={styles.itemizedDesc}>Unbilled windshield travel</span>
+                    </div>
+                  </div>
+                  <span className={styles.itemizedLossVal}>
+                    -{formatCurrency(calculations.annualSupplyHouseLoss)}/yr
+                  </span>
                 </div>
-                <div className={styles.summaryItem}>
-                  <span>Paper Check Chasing &amp; Trips</span>
-                  <span className={styles.summaryValue}>{formatCurrency(calculations.annualCheckChasingLoss)}/yr</span>
+
+                <div className={styles.itemizedLossRow}>
+                  <div className={styles.itemizedLeft}>
+                    <span className={styles.itemizedIcon}>🚙</span>
+                    <div>
+                      <span className={styles.itemizedTitle}>Paper Check Chasing</span>
+                      <span className={styles.itemizedDesc}>Drive time, gas &amp; return visits</span>
+                    </div>
+                  </div>
+                  <span className={styles.itemizedLossVal}>
+                    -{formatCurrency(calculations.annualCheckChasingLoss)}/yr
+                  </span>
                 </div>
-                <div className={styles.summaryItem}>
-                  <span>Cash Flow Float &amp; Delayed Invoicing</span>
-                  <span className={styles.summaryValue}>{formatCurrency(calculations.annualCashFlowCost)}/yr</span>
+
+                <div className={styles.itemizedLossRow}>
+                  <div className={styles.itemizedLeft}>
+                    <span className={styles.itemizedIcon}>⏳</span>
+                    <div>
+                      <span className={styles.itemizedTitle}>Net-30 Carrying Float</span>
+                      <span className={styles.itemizedDesc}>Uncollected deposits &amp; lag</span>
+                    </div>
+                  </div>
+                  <span className={styles.itemizedLossVal}>
+                    -{formatCurrency(calculations.annualCashFlowCost)}/yr
+                  </span>
                 </div>
               </div>
 
-              {/* Utility Actions */}
-              <div style={{ display: 'flex', gap: 10 }}>
+              {/* Action Buttons Stack */}
+              <div className={styles.actionBtnsStack}>
                 <button
                   type="button"
-                  onClick={() => window.print()}
-                  className={styles.toolActionBtn}
-                  style={{ flex: 1, padding: 12 }}
+                  onClick={handleDownloadPdf}
+                  disabled={downloadingPdf}
+                  className={styles.btnDownloadPdf}
                 >
-                  🖨️ Print / Save PDF
+                  <span>📥</span> {downloadingPdf ? 'Generating PDF...' : 'Download Official PDF Audit Report'}
                 </button>
-                <button
-                  type="button"
-                  onClick={handleCopySummary}
-                  className={styles.toolActionBtn}
-                  style={{ flex: 1, padding: 12 }}
-                >
-                  {copied ? '✓ Report Copied!' : '📋 Copy Report'}
-                </button>
+                <div className={styles.secondaryBtnsRow}>
+                  <button
+                    type="button"
+                    onClick={() => window.print()}
+                    className={styles.btnSecondaryAction}
+                  >
+                    <span>🖨️</span> Print / Save PDF
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCopySummary}
+                    className={styles.btnSecondaryAction}
+                  >
+                    <span>{copied ? '✓' : '📋'}</span> {copied ? 'Report Copied!' : 'Copy Summary'}
+                  </button>
+                </div>
               </div>
 
-              {/* Optional Un-gated Email Audit Report */}
+              {/* Email Audit Report Section */}
               <div className={styles.emailReportBox}>
                 <label htmlFor="leak-email" className={styles.emailReportLabel}>
                   <span>📧</span> Email full diagnostic audit to yourself:
@@ -734,7 +1003,7 @@ Audit URL: https://letsgetquoted.com/tools/leakage-calculator`;
                 </div>
                 {emailSent ? (
                   <span className={styles.emailReportSuccess}>
-                    ✓ Diagnostic report summary dispatched to {emailAddress}!
+                    ✓ Diagnostic audit dispatched to {emailAddress}!
                   </span>
                 ) : null}
               </div>
@@ -744,8 +1013,8 @@ Audit URL: https://letsgetquoted.com/tools/leakage-calculator`;
                 <a href={APP_SIGNUP_URL} className={styles.primaryCta}>
                   Plug The Leaks on Flex ($0/mo) &rarr;
                 </a>
-                <div className={styles.microHint} style={{ textAlign: 'center', marginTop: 6 }}>
-                  No monthly fee · Automated deposits &amp; digital change orders included
+                <div className={styles.microHint} style={{ textAlign: 'center', marginTop: 8 }}>
+                  No monthly software fee · Automated deposit locking &amp; digital change orders included
                 </div>
               </div>
             </div>
@@ -753,9 +1022,68 @@ Audit URL: https://letsgetquoted.com/tools/leakage-calculator`;
         </div>
       </section>
 
+      {/* Educational Deep Dive Section */}
+      <section className={styles.eduDeepDive}>
+        <h2 className={styles.eduTitle}>Where Contractors Lose $50,000+ Every Year</h2>
+        <p className={styles.eduSubtitle}>
+          Profit leakage doesn&apos;t happen from major catastrophes—it drains slowly from daily operational habits.
+          Here is how modern trade contractors eliminate each leak.
+        </p>
+
+        <div className={styles.eduGrid}>
+          <div className={styles.eduCard}>
+            <span className={styles.eduIcon}>📐</span>
+            <h3 className={styles.eduCardHeading}>1. Unbilled Scope Creep</h3>
+            <p className={styles.eduCardText}>
+              A homeowner asks for &ldquo;one quick change&rdquo; while you are on site. Without a formal change order signed on the spot,
+              contractors forget to bill or eat the cost to avoid conflict.
+            </p>
+            <div className={styles.eduCardSolution}>
+              ✓ Fix: Send 1-tap change orders via SMS before swinging a hammer.
+            </div>
+          </div>
+
+          <div className={styles.eduCard}>
+            <span className={styles.eduIcon}>🚚</span>
+            <h3 className={styles.eduCardHeading}>2. Supply House Windshield Time</h3>
+            <p className={styles.eduCardText}>
+              Spending 4–6 hours every week sitting in traffic and waiting at parts counters drains hundreds of billable hours each year
+              that never appear on customer invoices.
+            </p>
+            <div className={styles.eduCardSolution}>
+              ✓ Fix: Factor procurement allowance into initial quote templates.
+            </div>
+          </div>
+
+          <div className={styles.eduCard}>
+            <span className={styles.eduIcon}>🚙</span>
+            <h3 className={styles.eduCardHeading}>3. Paper Check Pickups</h3>
+            <p className={styles.eduCardText}>
+              Driving 30 minutes across town just to pick up a paper check or deposit burns gasoline, vehicle depreciation, and billable time
+              while adding days of deposit float.
+            </p>
+            <div className={styles.eduCardSolution}>
+              ✓ Fix: Text instant payment links with Apple Pay &amp; credit cards.
+            </div>
+          </div>
+
+          <div className={styles.eduCard}>
+            <span className={styles.eduIcon}>⏳</span>
+            <h3 className={styles.eduCardHeading}>4. Net-30 Float &amp; Late Invoices</h3>
+            <p className={styles.eduCardText}>
+              Fronting thousands in materials out-of-pocket before receiving a deposit puts your cash flow at extreme risk and drains 2%–3% in
+              carrying costs and credit interest.
+            </p>
+            <div className={styles.eduCardSolution}>
+              ✓ Fix: Enforce required 30%–50% upfront deposits upon quote acceptance.
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Cross-Link Hub */}
-      <section style={{ maxWidth: 1000, margin: '40px auto 80px', padding: '0 16px', textAlign: 'center' }}>
-        <h3 style={{ fontSize: 20, color: '#f5f0e7', marginBottom: 12 }}>Explore More Free Contractor Tools</h3>
+      <section className={styles.hideOnPrint} style={{ maxWidth: 1000, margin: '60px auto 80px', padding: '0 20px', textAlign: 'center' }}>
+        <h3 style={{ fontSize: 20, color: '#f5f0e7', marginBottom: 16 }}>Explore More Free Contractor Tools</h3>
         <div style={{ display: 'flex', justifyContent: 'center', gap: 16, flexWrap: 'wrap' }}>
           <Link href="/tools/hourly-rate-calculator" className={styles.toolActionBtn}>
             🧮 Contractor True Hourly Rate Calculator &rarr;

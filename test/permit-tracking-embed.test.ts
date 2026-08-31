@@ -53,8 +53,8 @@ describe('Homeowner Live Tracking Page - Permit Trust Embed', () => {
     });
 
     const jsx = await TrackPage({
-      params: { token: 'valid-token' },
-      searchParams: {},
+      params: Promise.resolve({ token: 'valid-token' }),
+      searchParams: Promise.resolve({}),
     });
 
     expect(getCustomerPermitSummary).toHaveBeenCalledWith(expect.anything(), 'acc-1', 'job-1');

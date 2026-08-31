@@ -74,10 +74,11 @@ function MessageBody({ body }: { body: string }) {
 }
 
 export default async function MessagesPage({
-  searchParams,
+  searchParams: searchParamsPromise,
 }: {
-  searchParams: { thread?: string; q?: string; filter?: string; setup?: string; sent?: string; queued?: string };
+  searchParams: Promise<{ thread?: string; q?: string; filter?: string; setup?: string; sent?: string; queued?: string }>;
 }) {
+  const searchParams = (await searchParamsPromise) || {};
   const { supabase, accountId } = await requireOfficeContext('messages.read');
   // Built ONCE and shared. Both loadConversations and this page need it, and
   // letting each build its own meant six table reads per inbox load.

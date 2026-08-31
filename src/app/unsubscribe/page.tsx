@@ -19,10 +19,11 @@ async function resolveBusinessName(accountId: string): Promise<string> {
 }
 
 export default async function UnsubscribePage({
-  searchParams,
+  searchParams: searchParamsPromise,
 }: {
-  searchParams: { token?: string; done?: string; error?: string };
+  searchParams: Promise<{ token?: string; done?: string; error?: string }>;
 }) {
+  const searchParams = (await searchParamsPromise) || {};
   const decoded = parseUnsubscribeToken(searchParams.token);
 
   if (searchParams.error || !decoded) {

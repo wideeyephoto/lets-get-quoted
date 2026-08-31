@@ -31,8 +31,8 @@ export const metadata: Metadata = {
   },
 };
 
-export default function ResourcesPage() {
-  const nonce = cspNonce();
+export default async function ResourcesPage() {
+  const nonce = await cspNonce();
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'CollectionPage',

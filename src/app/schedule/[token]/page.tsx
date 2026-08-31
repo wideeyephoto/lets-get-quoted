@@ -6,10 +6,11 @@ import { requestDifferentScheduleOptionsAction, selectScheduleOptionAction } fro
 export const dynamic = 'force-dynamic';
 
 export default async function PublicScheduleRequestPage({
-  params,
+  params: paramsPromise,
 }: {
-  params: { token: string };
+  params: Promise<{ token: string }>;
 }) {
+  const params = await paramsPromise;
   const request = await getPublicScheduleRequest(params.token);
 
   if (!request) {

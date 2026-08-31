@@ -184,7 +184,7 @@ describe('features metadata and acquisition attribution', () => {
     expect(CODE).toContain("'@type': 'SoftwareApplication'");
     expect(CODE).toContain("'@type': 'FAQPage'");
     expect(CODE).toContain('mainEntity: FAQ.map');
-    expect(CODE).toContain('nonce={cspNonce()}');
+    expect(CODE).toMatch(/nonce=\{(?:await )?cspNonce\(\)|nonce=\{nonce\}/);
   });
 
   it('attributes conversion CTAs to the feature page and avoids stale catalog counts', () => {

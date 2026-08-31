@@ -2,7 +2,8 @@ import CrewLoginForm from './CrewLoginForm';
 
 export const dynamic = 'force-dynamic';
 
-export default function CrewLoginPage({ searchParams }: { searchParams: { error?: string } }) {
+export default async function CrewLoginPage({ searchParams: searchParamsPromise }: { searchParams: Promise<{ error?: string }> }) {
+  const searchParams = (await searchParamsPromise) || {};
   const error =
     searchParams.error === 'not-crew'
       ? "That email isn't on a crew roster yet. Ask your manager to add you and send an invite."

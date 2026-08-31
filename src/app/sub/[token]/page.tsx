@@ -53,7 +53,8 @@ function Missing() {
   );
 }
 
-export default async function SubcontractorOfferPage({ params }: { params: { token: string } }) {
+export default async function SubcontractorOfferPage({ params: paramsPromise }: { params: Promise<{ token: string }> }) {
+  const params = await paramsPromise;
   const page = await loadPublicOffer(params.token);
   if (!page) return <Missing />;
 

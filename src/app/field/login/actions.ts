@@ -18,7 +18,7 @@ export async function sendCrewMagicLinkAction(email: string): Promise<void> {
   if (!clean || !clean.includes('@')) throw new Error('Enter a valid email address.');
 
   const admin = createAdminClient();
-  const ip = clientIpFrom(headers());
+  const ip = clientIpFrom(await headers());
   const withinEmailLimit = await checkRateLimitStrict(admin, `crewmagiclink:email:${clean}`, PER_EMAIL_LIMIT, PER_EMAIL_WINDOW_SECONDS);
   const withinIpLimit = await checkRateLimitStrict(admin, `crewmagiclink:ip:${ip}`, PER_IP_LIMIT, PER_IP_WINDOW_SECONDS);
   if (!withinEmailLimit || !withinIpLimit) {

@@ -30,7 +30,7 @@ export default async function OfficeInvitePage({
   params: Promise<{ token: string }>;
 }) {
   const { token } = await params;
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) {

@@ -139,7 +139,7 @@ describe('Permit Inspection Calendar & Reminder API Routes', () => {
         }),
       });
 
-      const res = await remindPost(req, { params: { id: mockPermitId } });
+      const res = await remindPost(req, { params: Promise.resolve({ id: mockPermitId }) });
       expect(res.status).toBe(200);
       const json = await res.json();
       expect(json.success).toBe(true);

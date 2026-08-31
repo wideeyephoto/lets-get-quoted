@@ -35,8 +35,8 @@ describe('Permit History API Route - GET /api/jobs/:id/permits/history', () => {
     } as any);
 
     const res = await GET(new Request('http://localhost/api/jobs/foo/permits/history'), {
-      params: { id: validJobId },
-    });
+  params: Promise.resolve({ id: validJobId }),
+});
 
     expect(res.status).toBe(401);
     const body = await res.json();
@@ -56,8 +56,8 @@ describe('Permit History API Route - GET /api/jobs/:id/permits/history', () => {
     });
 
     const res = await GET(new Request('http://localhost/api/jobs/foo/permits/history'), {
-      params: { id: validJobId },
-    });
+  params: Promise.resolve({ id: validJobId }),
+});
 
     expect(res.status).toBe(403);
     const body = await res.json();
@@ -84,8 +84,8 @@ describe('Permit History API Route - GET /api/jobs/:id/permits/history', () => {
     } as any);
 
     const res = await GET(new Request('http://localhost/api/jobs/foo/permits/history'), {
-      params: { id: validJobId },
-    });
+  params: Promise.resolve({ id: validJobId }),
+});
 
     expect(res.status).toBe(200);
     const body = await res.json();

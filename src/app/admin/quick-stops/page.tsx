@@ -43,7 +43,8 @@ function money(cents: number | null | undefined): string {
   return `$${centsToDollars(cents).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
 }
 
-export default async function AdminQuickStopsPage({ searchParams }: { searchParams: { f?: string; account?: string } }) {
+export default async function AdminQuickStopsPage({ searchParams: searchParamsPromise }: { searchParams: Promise<{ f?: string; account?: string }> }) {
+  const searchParams = (await searchParamsPromise) || {};
   const { admin } = await requireAdmin();
   const active = FILTERS.find((f) => f.key === searchParams.f) ?? FILTERS[0];
   // Scoping to one account is what makes the per-account "No-shows" count on

@@ -14,7 +14,8 @@ export const dynamic = 'force-dynamic';
 // Sibling routes site/[subdomain]/portal and site-domain/[domain]/portal serve
 // the SAME shell on the contractor's own host. Change one, change all three.
 
-export async function generateMetadata({ params }: { params: { subdomain: string } }): Promise<Metadata> {
+export async function generateMetadata({ params: paramsPromise }: { params: Promise<{ subdomain: string }> }): Promise<Metadata> {
+  const params = await paramsPromise;
   const site = await getPublicSiteBySubdomain(createAdminClient(), params.subdomain);
   const name = site?.company_name || 'Your contractor';
   return {
@@ -27,7 +28,8 @@ export async function generateMetadata({ params }: { params: { subdomain: string
   };
 }
 
-export default async function PortalRequestPage({ params }: { params: { subdomain: string } }) {
+export default async function PortalRequestPage({ params: paramsPromise }: { params: Promise<{ subdomain: string }> }) {
+  const params = await paramsPromise;
   const admin = createAdminClient();
   const site = await getPublicSiteBySubdomain(admin, params.subdomain);
 

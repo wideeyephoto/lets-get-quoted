@@ -29,12 +29,14 @@ function money(cents: number | null): string {
 }
 
 export default async function QuickStopStatusPage({
-  params,
-  searchParams,
+  params: paramsPromise,
+  searchParams: searchParamsPromise,
 }: {
-  params: { id: string };
-  searchParams: { done?: string; error?: string };
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ done?: string; error?: string }>;
 }) {
+  const params = await paramsPromise;
+  const searchParams = (await searchParamsPromise) || {};
   const admin = createAdminClient();
   const req = await getQuickStopRequestById(admin, params.id);
 

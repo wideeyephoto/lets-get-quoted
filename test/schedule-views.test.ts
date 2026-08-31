@@ -23,7 +23,7 @@ describe('the week the calendar opens on', () => {
   /** Only the default. A cookie wins in both directions, so anyone who has ever
    *  pressed one of these keeps exactly what they chose. */
   it('never overrides a choice already made', () => {
-    expect(PAGE).toContain('const weekendCookie = cookies().get(CALENDAR_WEEKEND_COOKIE)?.value;');
+    expect(PAGE).toMatch(/(?:cookies\(\)|cookieStore)\.get\(CALENDAR_WEEKEND_COOKIE\)\?\.value/);
     expect(PAGE).toMatch(/weekendCookie\s*\n?\s*\? normalizeWeekendDays\(weekendCookie\)/);
   });
 

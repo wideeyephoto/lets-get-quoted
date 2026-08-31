@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic';
  * Generates an official ACORD 25 Certificate of Insurance naming a specific municipal building authority as Certificate Holder.
  */
 export async function POST(request: Request) {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

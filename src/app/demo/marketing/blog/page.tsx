@@ -17,10 +17,11 @@ const FILTER_IDS = new Set(['all', 'draft', 'ready', 'scheduled', 'published', '
  * demo would have flattened into a coloured chip.
  */
 export default async function DemoMarketingBlogPage({
-  searchParams,
+  searchParams: searchParamsPromise,
 }: {
-  searchParams: { topic?: string; status?: string };
+  searchParams: Promise<{ topic?: string; status?: string }>;
 }) {
+  const searchParams = (await searchParamsPromise) || {};
   const blog = await loadBlogWorkspace(demoSupabase, DEMO_ACCOUNT_ID, DEMO_SITE_HOST.split('.').slice(1).join('.'));
 
   const requested = (searchParams.status ?? '').toLowerCase();

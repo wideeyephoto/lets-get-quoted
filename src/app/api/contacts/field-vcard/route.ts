@@ -14,7 +14,7 @@ export async function GET() {
     let businessName = 'Company';
 
     try {
-      const supabase = createSupabaseServerClient();
+      const supabase = await createSupabaseServerClient();
       const {
         data: { user },
       } = await supabase.auth.getUser();

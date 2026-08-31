@@ -30,7 +30,7 @@ describe('Permit PDF Download API Route - GET /api/jobs/:id/permits/pdf', () => 
     } as any);
 
     const req = new Request('http://localhost/api/jobs/11111111-1111-1111-1111-111111111111/permits/pdf');
-    const res = await GET(req, { params: { id: '11111111-1111-1111-1111-111111111111' } });
+    const res = await GET(req, { params: Promise.resolve({ id: '11111111-1111-1111-1111-111111111111' }) });
     expect(res.status).toBe(401);
   });
 
@@ -55,7 +55,7 @@ describe('Permit PDF Download API Route - GET /api/jobs/:id/permits/pdf', () => 
     vi.mocked(generatePermitApplicationPdf).mockResolvedValueOnce(fakePdfBuffer);
 
     const req = new Request('http://localhost/api/jobs/11111111-1111-1111-1111-111111111111/permits/pdf');
-    const res = await GET(req, { params: { id: '11111111-1111-1111-1111-111111111111' } });
+    const res = await GET(req, { params: Promise.resolve({ id: '11111111-1111-1111-1111-111111111111' }) });
 
     expect(res.status).toBe(200);
     expect(res.headers.get('Content-Type')).toBe('application/pdf');

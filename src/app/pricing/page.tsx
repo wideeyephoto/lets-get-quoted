@@ -23,8 +23,8 @@ export const metadata: Metadata = {
   },
 };
 
-export default function PricingPage() {
-  const nonce = cspNonce();
+export default async function PricingPage() {
+  const nonce = await cspNonce();
   const pricingJsonLd = [
     {
       '@context': 'https://schema.org',

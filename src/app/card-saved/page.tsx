@@ -92,10 +92,11 @@ async function readCardState(planId: string | undefined, cancelled: boolean): Pr
 }
 
 export default async function CardSavedPage({
-  searchParams,
+  searchParams: searchParamsPromise,
 }: {
-  searchParams: { status?: string; plan?: string };
+  searchParams: Promise<{ status?: string; plan?: string }>;
 }) {
+  const searchParams = (await searchParamsPromise) || {};
   const state = await readCardState(searchParams.plan, searchParams.status === 'cancelled');
 
   return (

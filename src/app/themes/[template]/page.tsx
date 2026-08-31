@@ -369,13 +369,18 @@ const DEMO_SITE: Site = {
 };
 
 type ThemeDemoPageProps = {
-  params: { template: string };
+  params: Promise<{ template: string }>;
   // The /demo/sites customizer drives these so a prospect can recolor the live
   // preview: accent = a hex; scheme = a COLOR_SCHEMES key ('' = theme default).
-  searchParams: { accent?: string; scheme?: string };
+  searchParams: Promise<{ accent?: string; scheme?: string }>;
 };
 
-export default function ThemeDemoPage({ params, searchParams }: ThemeDemoPageProps) {
+export default async function ThemeDemoPage({
+  params: paramsPromise,
+  searchParams: searchParamsPromise,
+}: ThemeDemoPageProps) {
+  const params = await paramsPromise;
+  const searchParams = (await searchParamsPromise) || {};
   const Template = getTemplate(params.template);
   if (!Template) notFound();
 
@@ -398,7 +403,8 @@ export default function ThemeDemoPage({ params, searchParams }: ThemeDemoPagePro
   return <Template site={site} galleryImages={demo.photos} />;
 }
 
-export function generateMetadata({ params }: ThemeDemoPageProps): Metadata {
+export async function generateMetadata({ params: paramsPromise }: ThemeDemoPageProps): Promise<Metadata> {
+  const params = await paramsPromise;
   // These are internal placeholder demos — keep them out of the index so they
   // don't compete with or dilute real client sites.
   const demo = THEME_DEMOS[params.template];

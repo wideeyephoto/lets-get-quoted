@@ -17,9 +17,10 @@ const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
  */
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string; inspectionId: string } },
+  { params: paramsPromise }: { params: Promise<{ id: string; inspectionId: string }> },
 ) {
-  const supabase = createSupabaseServerClient();
+  const params = await paramsPromise;
+  const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

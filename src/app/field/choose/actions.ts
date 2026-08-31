@@ -14,7 +14,7 @@ import { writeFieldAccount } from '@/lib/field-account';
  * this, choosing a business would be a matter of typing its uuid.
  */
 export async function chooseFieldBusinessAction(accountId: string): Promise<void> {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -25,6 +25,6 @@ export async function chooseFieldBusinessAction(accountId: string): Promise<void
     redirect('/field/choose?error=not-yours');
   }
 
-  writeFieldAccount(accountId);
+  await writeFieldAccount(accountId);
   redirect('/field');
 }

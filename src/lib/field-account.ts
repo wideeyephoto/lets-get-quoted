@@ -22,8 +22,9 @@ export const FIELD_ACCOUNT_COOKIE = 'field_account';
 // behavior this exists to remove.
 const MAX_AGE_SECONDS = 365 * 24 * 60 * 60;
 
-export function readFieldAccount(): string | null {
-  return cookies().get(FIELD_ACCOUNT_COOKIE)?.value?.trim() || null;
+export async function readFieldAccount(): Promise<string | null> {
+  const cookieStore = await cookies();
+  return cookieStore.get(FIELD_ACCOUNT_COOKIE)?.value?.trim() || null;
 }
 
 /**
@@ -36,8 +37,9 @@ export function readFieldAccount(): string | null {
  * Only callable from a Server Action or Route Handler — Next forbids setting a
  * cookie during a page render, which is why the picker is an action.
  */
-export function writeFieldAccount(accountId: string): void {
-  cookies().set(FIELD_ACCOUNT_COOKIE, accountId, {
+export async function writeFieldAccount(accountId: string): Promise<void> {
+  const cookieStore = await cookies();
+  cookieStore.set(FIELD_ACCOUNT_COOKIE, accountId, {
     httpOnly: true,
     sameSite: 'lax',
     secure: process.env.NODE_ENV === 'production',
@@ -46,6 +48,7 @@ export function writeFieldAccount(accountId: string): void {
   });
 }
 
-export function clearFieldAccount(): void {
-  cookies().delete(FIELD_ACCOUNT_COOKIE);
+export async function clearFieldAccount(): Promise<void> {
+  const cookieStore = await cookies();
+  cookieStore.delete(FIELD_ACCOUNT_COOKIE);
 }

@@ -34,10 +34,11 @@ export const metadata = { title: 'Campaigns' };
  * "Create email campaign" buttons point at.
  */
 export default async function CampaignsPage({
-  searchParams,
+  searchParams: searchParamsPromise,
 }: {
-  searchParams: { emailSent?: string; smsQueued?: string; recipients?: string; skipped?: string; failed?: string; test?: string; draft?: string };
+  searchParams: Promise<{ emailSent?: string; smsQueued?: string; recipients?: string; skipped?: string; failed?: string; test?: string; draft?: string }>;
 }) {
+  const searchParams = (await searchParamsPromise) || {};
   const { supabase, accountId } = await requireOfficeContext('settings.write');
 
   const [recipients, campaigns, listHealth, messagingReadiness, { data: accountRow }, { data: siteRow }, { data: serviceRows }, sentBeats, { data: balanceRows }, { data: userData }] = await Promise.all([

@@ -5,7 +5,8 @@ import styles from '../admin.module.css';
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Security' };
 
-export default async function AdminSecurityPage({ searchParams }: { searchParams: { step_up?: string; permission?: string } }) {
+export default async function AdminSecurityPage({ searchParams: searchParamsPromise }: { searchParams: Promise<{ step_up?: string; permission?: string }> }) {
+  const searchParams = (await searchParamsPromise) || {};
   await requireAdmin();
   return <>
     <header className={styles.pageHead}><p className={styles.eyebrow}>Access</p><h1 className={styles.title}>Security</h1><p className={styles.lead}>High-impact staff actions require an authenticator-verified session. Enrollment and verification happen directly with the authentication provider.</p></header>

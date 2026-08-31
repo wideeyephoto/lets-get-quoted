@@ -41,7 +41,8 @@ type TabId = (typeof TABS)[number]['id'];
  * loader extraction Recurring and Insights got. Pretending otherwise would mean
  * a hand-drawn replica, which is the thing this whole pass exists to remove.
  */
-export default async function DemoCrewPage({ searchParams }: { searchParams: { tab?: string } }) {
+export default async function DemoCrewPage({ searchParams: searchParamsPromise }: { searchParams: Promise<{ tab?: string }> }) {
+  const searchParams = (await searchParamsPromise) || {};
   const tab: TabId = TABS.some((item) => item.id === searchParams.tab) ? (searchParams.tab as TabId) : 'crew';
 
   // The demo's own zone, so the period is cut the way Evergreen's week is.

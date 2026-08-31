@@ -305,7 +305,7 @@ function applyAccountGates(
   }
 }
 
-type SupabaseServerClient = ReturnType<typeof createSupabaseServerClient>;
+type SupabaseServerClient = Awaited<ReturnType<typeof createSupabaseServerClient>>;
 
 /**
  * Who is asking, verified LOCALLY.
@@ -486,7 +486,7 @@ function embeddedAccount(row: MemberRow | null): Record<string, unknown> | null 
  * exactly as they did before.
  */
 const loadSessionMember = perRequest(async () => {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const user = await verifiedUser(supabase);
   if (!user) return null;
 
@@ -749,7 +749,7 @@ async function resolveStaff(
 // so the console never reveals it exists. Returns the service-role client (the
 // console works across all accounts) plus who is acting, for the audit trail.
 export async function requireAdmin(): Promise<AdminContext> {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -823,7 +823,7 @@ export async function requirePermissions(...permissions: Permission[]): Promise<
 }
 
 async function requireMfa(context: AdminContext): Promise<AdminContext> {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
   if (error || data.currentLevel !== 'aal2') {
     redirect(`/admin/security?step_up=1&permission=${encodeURIComponent(context.permission ?? '')}`);

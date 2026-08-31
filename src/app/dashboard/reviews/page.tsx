@@ -21,10 +21,11 @@ export const metadata = { title: 'Reviews' };
 export const dynamic = 'force-dynamic';
 
 export default async function ReviewsPage({
-  searchParams,
+  searchParams: searchParamsPromise,
 }: {
-  searchParams: Record<string, string | string[] | undefined>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  const searchParams = (await searchParamsPromise) || {};
   const { supabase, accountId } = await requireOfficeContext('jobs.read');
 
   const [rows, { data: account }, { data: site }] = await Promise.all([

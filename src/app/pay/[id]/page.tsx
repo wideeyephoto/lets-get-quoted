@@ -176,12 +176,14 @@ function formatFeeRate(rate: number): string {
 }
 
 export default async function PublicPaymentPage({
-  params,
-  searchParams,
+  params: paramsPromise,
+  searchParams: searchParamsPromise,
 }: {
-  params: { id: string };
-  searchParams: { status?: string };
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ status?: string }>;
 }) {
+  const params = await paramsPromise;
+  const searchParams = (await searchParamsPromise) || {};
   if (params.id === 'example') {
     return (
       <main className="wide-shell workspace-shell payment-shell">

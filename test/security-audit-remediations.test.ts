@@ -28,7 +28,7 @@ describe('Security and Audit Remediations Regression Suite', () => {
 
   it('verifies GoogleTag suppresses execution on sensitive token and credential routes', () => {
     const googleTagContent = readFileSync(join(rootDir, 'src/components/google-tag.tsx'), 'utf8');
-    expect(googleTagContent).toContain("headers().get('x-pathname')");
+    expect(googleTagContent).toMatch(/(?:\(await headers\(\)\)|headerList)\.get\('x-pathname'\)/);
     expect(googleTagContent).toContain("'/track'");
     expect(googleTagContent).toContain("'/office-invite'");
     expect(googleTagContent).toContain("'/portal'");

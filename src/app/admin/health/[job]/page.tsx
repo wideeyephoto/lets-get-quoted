@@ -12,7 +12,8 @@ function fmt(value: string | null): string {
   return value ? new Date(value).toLocaleString('en-US', { dateStyle: 'short', timeStyle: 'medium' }) : '—';
 }
 
-export default async function CronJobHistoryPage({ params }: { params: { job: string } }) {
+export default async function CronJobHistoryPage({ params: paramsPromise }: { params: Promise<{ job: string }> }) {
+  const params = await paramsPromise;
   const spec = cronJob(params.job);
   if (!spec) notFound();
   const { admin } = await requireAdmin();

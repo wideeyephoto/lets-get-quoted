@@ -45,10 +45,12 @@ The following Price IDs exist in the live Stripe account, are active, single-cur
 - [x] Withheld from sale: `storage_100gb`, `office_user`, AI Voice SKUs
 
 ### Live Stripe Webhook Endpoints
-- [ ] **Standard Connect Webhook**: `https://app.letsgetquoted.com/api/stripe/webhook`
+- [x] **Standard Connect Webhook**: `https://letsgetquoted.com/api/stripe/webhook`
+  - Verified 2026-08-31 in Stripe Live Workbench: active, 11 subscribed events, 4 deliveries this week, 0 failed; `STRIPE_WEBHOOK_SECRET` is present in Vercel Production.
   - Events: `checkout.session.completed`, `checkout.session.expired`, `charge.failed`, `charge.refunded`, `charge.dispute.created`, `charge.dispute.closed`, `account.updated`
   - Variable: `STRIPE_WEBHOOK_SECRET=whsec_...`
-- [ ] **Platform Billing Webhook**: `https://app.letsgetquoted.com/api/stripe/billing-webhook`
+- [x] **Platform Billing Webhook**: `https://letsgetquoted.com/api/stripe/billing/webhook`
+  - Verified 2026-08-31 in Stripe Live Workbench: active, 18 subscribed events, 1 delivery this week, 0 failed; the signing secret is present in Vercel Production and the production flag resolves to `1`.
   - Events: `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.payment_succeeded`, `invoice.payment_failed`
   - Variable: `STRIPE_BILLING_WEBHOOK_SECRET=whsec_...`
   - Flag: `LGQ_STRIPE_BILLING_WEBHOOK_ENABLED=1`
@@ -57,16 +59,16 @@ The following Price IDs exist in the live Stripe account, are active, single-cur
 
 ## 3. Telephony, SMS & Carrier 10DLC Approval
 
-- [ ] **10DLC Brand & Campaign Registration**: Ensure Brand and Campaign registrations are active in Twilio/SignalWire Console so transactional homeowner messages are not filtered by Tier 1 US mobile carriers.
-- [ ] **Shared & Dedicated Numbers**: Verify `SIGNALWIRE_FROM_NUMBER=+19479412323` and `SIGNALWIRE_SPACE_URL=lets-get-quoted.signalwire.com`.
+- [x] **10DLC Brand & Campaign Registration**: Verified 2026-08-31 against SignalWire: the Let's Get Quoted brand is completed, the Account & Support Notifications campaign is active, and its number assignment is completed. Two non-primary campaigns remain pending/inactive and do not carry the verified transactional lane.
+- [x] **Shared Number & SignalWire Space**: Verified 2026-08-31 that `+19479412323` exists in `lets-get-quoted.signalwire.com`, uses the expected LaML handler, and routes inbound SMS to `https://app.letsgetquoted.com/api/sms/inbound`. Both production variables are present in Vercel.
 - [x] **White-Labeling Invariant**: Ensure no internal persona names appear in homeowner-facing SMS payloads.
 
 ---
 
 ## 4. Transactional Email & Deliverability (Resend)
 
-- [ ] **DNS Records**: Verify DKIM, SPF, and DMARC records for `letsgetquoted.com` in [Resend](https://resend.com) to maintain 99%+ deliverability for invoices, estimate links, and login emails.
-- [ ] **API Key**: Ensure `RESEND_API_KEY=re_...` is set in Vercel Production.
+- [x] **DNS Records**: Verified 2026-08-31. Resend reports `letsgetquoted.com` ready to send with DKIM and SPF verified. Public DNS publishes DMARC at `_dmarc.letsgetquoted.com` with monitoring policy `p=none`.
+- [x] **API Key**: `RESEND_API_KEY` is present in Vercel Production (verified 2026-08-31), and production requests reach Resend without an authentication error.
 
 ---
 
@@ -76,18 +78,19 @@ The following Price IDs exist in the live Stripe account, are active, single-cur
   - `https://letsgetquoted.com/*`
   - `https://*.letsgetquoted.com/*`
   - `https://app.letsgetquoted.com/*`
+  - **Verification status (2026-08-31)**: The variable is present in Vercel Production and the production day-planner renders Google Maps with no browser-console errors. The deployed key does not match any credential in the Google Cloud project accessible during this audit, so the exact referrer allowlist is not yet proven.
 - [ ] **Server-Side Geocoding Key (`GOOGLE_MAPS_API_KEY`)**: Must be unrestricted by HTTP referrer (or IP-restricted) so server-side background geocoding and drive-time calculations succeed.
+  - **Verification status (2026-08-31)**: The secret is present for Production and Preview in Vercel. Its Google Cloud application restriction could not be matched to an accessible credential, so `None`/IP restriction remains to be confirmed by the key-owning Google account.
 
 ---
 
 ## 6. DNS, Domains & Routing (Vercel)
 
-- [ ] **Apex & Application Domains**:
+- [x] **Apex & Application Domains** (verified 2026-08-31 in Vercel and by live browser routing):
   - `letsgetquoted.com` → Vercel
   - `app.letsgetquoted.com` → Vercel
-- [ ] **Wildcard Contractor Websites & Portals**:
-  - `*.letsgetquoted.com` CNAME record pointing to `cname.vercel-dns.com`.
-- [ ] **Cron Security**: Set `CRON_SECRET` in Vercel Production to secure the 34 background cron endpoints.
+- [x] **Wildcard Contractor Websites & Portals**: `*.letsgetquoted.com` is assigned to the Vercel project. Public DNS resolves arbitrary subdomains to Vercel-managed edge addresses, and HTTPS wildcard routing reaches the application's branded not-found surface.
+- [x] **Cron Security**: `CRON_SECRET` is present in Vercel Production and Preview (verified 2026-08-31) and protects the 35 configured background cron endpoints.
 
 ---
 

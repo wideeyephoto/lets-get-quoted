@@ -100,8 +100,9 @@ function captureHeaders(request: Request): {
 
 export async function POST(
   request: Request,
-  context: { params: { token: string } },
+  context: { params: Promise<{ token: string }> },
 ) {
+  const params = await context.params;
   const expected = (process.env[CALLBACK_TOKEN_ENV] ?? '').trim();
 
   // NOT CONFIGURED IS NOT THE SAME AS NOT AUTHORIZED. Collapsing them makes
@@ -119,7 +120,7 @@ export async function POST(
 
   // Compare BEFORE reading the body: an unauthenticated caller must never make
   // the server parse input on their behalf.
-  const supplied = context.params?.token ?? '';
+  const supplied = params?.token ?? '';
   if (!constantTimeEquals(supplied, expected)) {
     // A fixed reason code only. The supplied value is a probe and a near-miss
     // would disclose how close an attacker is.

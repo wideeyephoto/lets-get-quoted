@@ -70,7 +70,8 @@ export const dynamic = 'force-dynamic';
    this page was named after the homepage. */
 export const metadata = { title: 'Quick Stops' };
 
-export default async function QuickStopsPage({ searchParams }: { searchParams: { tab?: string } }) {
+export default async function QuickStopsPage({ searchParams: searchParamsPromise }: { searchParams: Promise<{ tab?: string }> }) {
+  const searchParams = (await searchParamsPromise) || {};
   const { supabase, accountId } = await requireOfficeContext('schedule.write');
 
   // Lazy expiry so the queue is current even between cron runs (releases lapsed

@@ -86,8 +86,8 @@ describe('Customer Payment & Quote Proposal Page - Permit Trust Embed', () => {
     });
 
     const jsx = await PaymentPage({
-      params: { id: 'pay-1' },
-      searchParams: {},
+      params: Promise.resolve({ id: 'pay-1' }),
+      searchParams: Promise.resolve({}),
     });
 
     expect(getCustomerPermitSummary).toHaveBeenCalledWith(expect.anything(), 'acc-1', 'job-1');

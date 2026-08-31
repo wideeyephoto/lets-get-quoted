@@ -18,7 +18,8 @@ export const dynamic = 'force-dynamic';
 // land on whole dollars once tax is on them. See formatMoneyExact.
 const formatMoney = formatMoneyExact;
 
-export default async function PublicInvoicePage({ params }: { params: { id: string } }) {
+export default async function PublicInvoicePage({ params: paramsPromise }: { params: Promise<{ id: string }> }) {
+  const params = await paramsPromise;
   const record = await getPublicInvoice(params.id);
 
   if (!record) {

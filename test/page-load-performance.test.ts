@@ -6,8 +6,8 @@ import React from 'react';
 
 describe('Page Load Performance Optimizations', () => {
   describe('SpeculationRules', () => {
-    it('renders valid speculation rules JSON structure', () => {
-      const element = SpeculationRules();
+    it('renders valid speculation rules JSON structure', async () => {
+      const element = await SpeculationRules();
       expect(element).toBeDefined();
       expect(element.type).toBe('script');
       expect(element.props.type).toBe('speculationrules');

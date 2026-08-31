@@ -67,7 +67,7 @@ describe('Permit Inspection Photo Affidavit API Route - POST /api/permits/inspec
       }),
     });
 
-    const res = await POST(req, { params: { id: mockPermitId } });
+    const res = await POST(req, { params: Promise.resolve({ id: mockPermitId }) });
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.success).toBe(true);

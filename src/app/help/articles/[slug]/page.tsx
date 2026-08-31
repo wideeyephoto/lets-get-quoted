@@ -7,9 +7,9 @@ import SiteFooter from '@/components/site-footer';
 import styles from './article.module.css';
 
 interface ArticlePageProps {
-  params: {
+  params: Promise<{
     slug: string;
-  };
+  }>;
 }
 
 export function generateStaticParams() {
@@ -19,7 +19,8 @@ export function generateStaticParams() {
   }));
 }
 
-export function generateMetadata({ params }: ArticlePageProps): Metadata {
+export async function generateMetadata({ params: paramsPromise }: ArticlePageProps): Promise<Metadata> {
+  const params = await paramsPromise;
   const article = findArticleBySlugOrId(params.slug);
   if (!article) {
     return {
@@ -68,7 +69,8 @@ export function generateMetadata({ params }: ArticlePageProps): Metadata {
   };
 }
 
-export default function HelpArticlePage({ params }: ArticlePageProps) {
+export default async function HelpArticlePage({ params: paramsPromise }: ArticlePageProps) {
+  const params = await paramsPromise;
   const article = findArticleBySlugOrId(params.slug);
   if (!article) {
     notFound();

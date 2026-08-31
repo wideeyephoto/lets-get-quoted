@@ -71,11 +71,12 @@ function rangeLabel(startIso: string, endIso: string): string {
   return `${fmt(start)} – ${fmt(end)}`;
 }
 
-export default function DemoPayrollPage({
-  searchParams,
+export default async function DemoPayrollPage({
+  searchParams: searchParamsPromise,
 }: {
-  searchParams?: { period?: string };
+  searchParams?: Promise<{ period?: string }>;
 }) {
+  const searchParams = (await searchParamsPromise) || {};
   const validPeriods = PAYROLL_PERIODS.map((p) => p.id);
   const period: PayrollPeriod = (validPeriods.includes(searchParams?.period as PayrollPeriod)
     ? searchParams?.period

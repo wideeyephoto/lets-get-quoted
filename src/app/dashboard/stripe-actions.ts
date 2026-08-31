@@ -5,8 +5,8 @@ import { headers } from 'next/headers';
 import { requireOwnerContext } from '@/lib/auth';
 import { createOnboardingLink, createOrGetRecipientAccount, refreshAccountOnboardingStatus } from '@/lib/stripe-connect';
 
-function getOrigin() {
-  const h = headers();
+async function getOrigin() {
+  const h = await headers();
   const proto = h.get('x-forwarded-proto') ?? 'http';
   const host = h.get('host');
   return `${proto}://${host}`;
@@ -35,7 +35,7 @@ async function createStripeOnboardingUrl(): Promise<string> {
 
   const stripeAccountId = await createOrGetRecipientAccount(supabase, accountId, account.business_name, contactEmail);
 
-  const origin = getOrigin();
+  const origin = await getOrigin();
   return createOnboardingLink(
     stripeAccountId,
     `${origin}/dashboard/stripe-return`,

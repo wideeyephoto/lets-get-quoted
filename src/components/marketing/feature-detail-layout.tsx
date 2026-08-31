@@ -175,7 +175,7 @@ const DEFAULT_BACK_LINK = { href: FEATURES_URL, label: 'All features' };
  * Chrome is the shared flagship header and footer; AppShell renders none for
  * these routes (OWN_CHROME_MARKETING_ROUTES).
  */
-export default function FeatureDetailLayout({
+export default async function FeatureDetailLayout({
   breadcrumb,
   eyebrow,
   title,
@@ -211,6 +211,8 @@ export default function FeatureDetailLayout({
   const secondarySpec =
     secondary === null ? null : (secondary ?? { label: SECONDARY_SIGNUP_LABEL, href: APP_SIGNUP_URL });
 
+  const nonce = await cspNonce();
+
   return (
     <main className={`${styles.root} inner-site`}>
       {/* Home › Features › this page, so a result for one of these twelve
@@ -218,7 +220,7 @@ export default function FeatureDetailLayout({
       {breadcrumb ? (
         <script
           type="application/ld+json"
-          nonce={cspNonce()}
+          nonce={nonce}
           dangerouslySetInnerHTML={{
             __html: JSON.stringify(
               breadcrumbJsonLd([HOME_CRUMB, { name: 'Features', path: FEATURES_URL }, breadcrumb]),

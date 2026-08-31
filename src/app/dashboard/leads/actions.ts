@@ -733,7 +733,7 @@ async function patchLeadTriage(leadId: string, patch: Partial<LeadTriage>) {
 // DB column — no migration, and it survives sessions.
 export async function setLeadLayoutAction(layout: 'guided' | 'primary') {
   await requireOwnerContext();
-  cookies().set(LEAD_LAYOUT_COOKIE, layout === 'primary' ? 'primary' : 'guided', {
+  (await cookies()).set(LEAD_LAYOUT_COOKIE, layout === 'primary' ? 'primary' : 'guided', {
     path: '/',
     maxAge: 60 * 60 * 24 * 365,
     sameSite: 'lax',
@@ -748,7 +748,7 @@ export async function setLeadsViewAction(view: LeadsView) {
   // requirement: it names the page this belongs to rather than claiming a
   // permission it never uses.
   await requireOfficeContext('leads.read');
-  cookies().set(LEADS_VIEW_COOKIE, normalizeLeadsView(view), {
+  (await cookies()).set(LEADS_VIEW_COOKIE, normalizeLeadsView(view), {
     path: '/',
     maxAge: 60 * 60 * 24 * 365,
     sameSite: 'lax',

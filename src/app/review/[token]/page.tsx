@@ -47,12 +47,14 @@ function ReviewRoutes({ token, googleUrl, businessName }: { token: string; googl
 }
 
 export default async function ReviewPage({
-  params,
-  searchParams,
+  params: paramsPromise,
+  searchParams: searchParamsPromise,
 }: {
-  params: { token: string };
-  searchParams: { step?: string; done?: string };
+  params: Promise<{ token: string }>;
+  searchParams: Promise<{ step?: string; done?: string }>;
 }) {
+  const params = await paramsPromise;
+  const searchParams = (await searchParamsPromise) || {};
   const admin = createAdminClient();
   const invite = await getReviewInviteByToken(admin, params.token);
 

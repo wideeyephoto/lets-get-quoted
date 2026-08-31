@@ -20,7 +20,8 @@ export function generateStaticParams() {
   return TRADES.map((trade) => ({ trade: trade.slug }));
 }
 
-export function generateMetadata({ params }: { params: { trade: string } }): Metadata {
+export async function generateMetadata({ params: paramsPromise }: { params: Promise<{ trade: string }> }): Promise<Metadata> {
+  const params = await paramsPromise;
   const trade = getTrade(params.trade);
   if (!trade) return {};
   return {
@@ -39,8 +40,9 @@ export function generateMetadata({ params }: { params: { trade: string } }): Met
   };
 }
 
-export default function TradePage({ params }: { params: { trade: string } }) {
-  const trade = getTrade(params.trade);
+export default async function TradePage({ params }: { params: Promise<{ trade: string }> }) {
+  const { trade: tradeParam } = await params;
+  const trade = getTrade(tradeParam);
   if (!trade) notFound();
 
   const templates = trade.templateIds
@@ -77,11 +79,13 @@ export default function TradePage({ params }: { params: { trade: string } }) {
       }
     : null;
 
+  const nonce = await cspNonce();
+
   return (
     <main className="marketing-shell" id="main-content">
-      <script type="application/ld+json" nonce={cspNonce()} dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbs) }} />
+      <script type="application/ld+json" nonce={nonce} dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbs) }} />
       {faqJsonLd ? (
-        <script type="application/ld+json" nonce={cspNonce()} dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
+        <script type="application/ld+json" nonce={nonce} dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
       ) : null}
       <div className="ambient-glow ambient-glow-a" aria-hidden="true" />
 

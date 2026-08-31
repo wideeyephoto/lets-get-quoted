@@ -136,8 +136,8 @@ describe('Contractor Credentials Vault API Routes', () => {
     vi.mocked(loadHeldCapabilities).mockResolvedValue(new Set());
 
     const res = await DELETE(new Request('http://localhost/api/contractor/credentials/foo'), {
-      params: { id: validCredId },
-    });
+  params: Promise.resolve({ id: validCredId }),
+});
 
     expect(res.status).toBe(200);
     const body = await res.json();

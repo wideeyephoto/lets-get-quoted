@@ -31,7 +31,8 @@ function formatDay(value: string | null): string {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
-export default async function PortalViewPage({ params }: { params: { token: string } }) {
+export default async function PortalViewPage({ params: paramsPromise }: { params: Promise<{ token: string }> }) {
+  const params = await paramsPromise;
   const admin = createAdminClient();
   const access = await resolvePortalAccess(admin, params.token);
   const portal = access ? await loadPortal(admin, access.accountId, access.clientId) : null;

@@ -8,9 +8,12 @@ import SiteBlogArticle from '@/lib/templates/SiteBlogArticle';
 
 export const dynamic = 'force-dynamic';
 
-type Props = { params: { subdomain: string; slug: string } };
+type Props = {
+  params: Promise<{ subdomain: string; slug: string }>;
+};
 
-export default async function PublicBlogPostPage({ params }: Props) {
+export default async function PublicBlogPostPage({ params: paramsPromise }: Props) {
+  const params = await paramsPromise;
   const site = await getPublicSiteBySubdomain(createAdminClient(), params.subdomain);
   if (!site) notFound();
   const post = getPublishedBlogPost(site.content, params.slug);
@@ -18,7 +21,8 @@ export default async function PublicBlogPostPage({ params }: Props) {
   return <SiteBlogArticle site={site} post={post} />;
 }
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
+export async function generateMetadata({ params: paramsPromise }: Props): Promise<Metadata> {
+  const params = await paramsPromise;
   const site = await getPublicSiteBySubdomain(createAdminClient(), params.subdomain);
   if (!site) return { title: 'Not found' };
   const post = getPublishedBlogPost(site.content, params.slug);

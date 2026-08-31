@@ -22,7 +22,8 @@ function formatDate(value: string): string {
   return new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
-export default async function ClientDetailPage({ params }: { params: { id: string } }) {
+export default async function ClientDetailPage({ params: paramsPromise }: { params: Promise<{ id: string }> }) {
+  const params = await paramsPromise;
   const { supabase, accountId, role } = await requireOfficeContext('clients.read');
   const client = await getClient(supabase, accountId, params.id);
 

@@ -46,10 +46,11 @@ const DEMO_ARRIVALS: ArrivalAnalytics = {
 };
 
 export default async function DemoInsightsPage({
-  searchParams,
+  searchParams: searchParamsPromise,
 }: {
-  searchParams: { window?: string; from?: string; to?: string; compare?: string };
+  searchParams: Promise<{ window?: string; from?: string; to?: string; compare?: string }>;
 }) {
+  const searchParams = (await searchParamsPromise) || {};
   const period = resolvePeriod(searchParams);
   const showDelta = searchParams.compare === 'prev';
 

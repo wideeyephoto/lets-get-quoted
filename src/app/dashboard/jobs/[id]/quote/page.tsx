@@ -7,7 +7,8 @@ import PrintButton from '@/components/print-button';
 
 export const metadata = { title: 'Quote' };
 
-export default async function QuotePrintPage({ params }: { params: { id: string } }) {
+export default async function QuotePrintPage({ params: paramsPromise }: { params: Promise<{ id: string }> }) {
+  const params = await paramsPromise;
   const { supabase, accountId } = await requireOfficeContext('jobs.read', 'clients.read');
   const job = await getJob(supabase, accountId, params.id);
 

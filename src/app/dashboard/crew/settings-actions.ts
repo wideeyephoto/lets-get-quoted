@@ -93,7 +93,7 @@ export async function saveLaborSettingsAction(formData: FormData) {
     }),
   );
 
-  cookies().set(LABOR_SETTINGS_COOKIE, serializeLaborSettings(settings), {
+  (await cookies()).set(LABOR_SETTINGS_COOKIE, serializeLaborSettings(settings), {
     path: '/',
     maxAge: 60 * 60 * 24 * 365,
     sameSite: 'lax',

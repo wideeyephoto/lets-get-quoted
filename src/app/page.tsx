@@ -63,12 +63,12 @@ const jsonLd = {
   ],
 };
 
-export default function HomePage() {
+export default async function HomePage() {
   return (
     <>
       <script
         type="application/ld+json"
-        nonce={cspNonce()}
+        nonce={await cspNonce()}
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
       <FlagshipHome />

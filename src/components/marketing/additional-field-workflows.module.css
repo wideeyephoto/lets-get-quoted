@@ -1,0 +1,275 @@
+/* Below-the-fold Specialized Field Workflows Section */
+
+.sectionWrapper {
+  margin-top: 48px;
+  padding: 36px 24px;
+  background: radial-gradient(circle at 50% 0%, rgba(14, 116, 144, 0.12) 0%, rgba(5, 13, 20, 0.95) 75%);
+  border: 1px solid rgba(174, 199, 211, 0.18);
+  border-radius: 20px;
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.45);
+}
+
+.header {
+  text-align: center;
+  max-width: 720px;
+  margin: 0 auto 32px;
+}
+
+.eyebrow {
+  display: inline-block;
+  font-size: 11.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #50e3bd;
+  margin-bottom: 8px;
+}
+
+.title {
+  font-size: 28px;
+  font-weight: 850;
+  color: #f8fafc;
+  line-height: 1.25;
+  margin: 0 0 12px;
+  letter-spacing: -0.02em;
+}
+
+.lede {
+  font-size: 15px;
+  line-height: 1.55;
+  color: #94a3b8;
+  margin: 0;
+}
+
+/* Tabs */
+.tabsContainer {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+}
+
+.tabBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 16px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #cbd5e1;
+  font-size: 13.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tabBtn:hover {
+  background: rgba(80, 227, 189, 0.1);
+  border-color: rgba(80, 227, 189, 0.35);
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
+.tabBtnActive {
+  background: linear-gradient(135deg, rgba(80, 227, 189, 0.2) 0%, rgba(14, 116, 144, 0.25) 100%) !important;
+  border-color: #50e3bd !important;
+  color: #50e3bd !important;
+  box-shadow: 0 4px 16px rgba(80, 227, 189, 0.2);
+}
+
+.tabIcon {
+  font-size: 16px;
+}
+
+/* Content Grid */
+.workflowCard {
+  display: grid;
+  grid-template-columns: minmax(300px, 380px) minmax(320px, 1fr);
+  gap: 20px;
+  background: #081722;
+  border: 1px solid rgba(174, 199, 211, 0.18);
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+
+@media (max-width: 860px) {
+  .workflowCard {
+    grid-template-columns: 1fr;
+    padding: 18px;
+  }
+}
+
+/* Left: Field Inbound Message */
+.inboundSide {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.cardSideHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: 10px;
+}
+
+.sideLabel {
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #94a3b8;
+}
+
+.sourceBadge {
+  font-size: 11.5px;
+  font-weight: 750;
+  color: #50e3bd;
+  background: rgba(80, 227, 189, 0.12);
+  padding: 2px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(80, 227, 189, 0.25);
+}
+
+.messageBubble {
+  background: linear-gradient(135deg, #1084d0 0%, #0c69aa 100%);
+  border-radius: 14px;
+  border-bottom-right-radius: 4px;
+  padding: 14px 16px;
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(16, 132, 208, 0.25);
+}
+
+.messageSender {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  opacity: 0.85;
+  margin-bottom: 6px;
+}
+
+.messageText {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  font-weight: 500;
+}
+
+.aiResponseBubble {
+  background: #142a38;
+  border: 1px solid rgba(80, 227, 189, 0.25);
+  border-radius: 14px;
+  border-bottom-left-radius: 4px;
+  padding: 14px 16px;
+  color: #f1f5f9;
+}
+
+.aiSenderTag {
+  font-size: 11px;
+  font-weight: 850;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #50e3bd;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.aiDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #50e3bd;
+  box-shadow: 0 0 6px #50e3bd;
+}
+
+.aiResponseText {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.5;
+  white-space: pre-line;
+}
+
+/* Right: Impact & Outcome */
+.outcomeSide {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  background: rgba(12, 32, 45, 0.6);
+  border: 1px solid rgba(174, 199, 211, 0.15);
+  border-radius: 12px;
+  padding: 18px;
+}
+
+.outcomeTitle {
+  font-size: 17px;
+  font-weight: 800;
+  color: #f8fafc;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.outcomeDesc {
+  font-size: 14px;
+  line-height: 1.55;
+  color: #cbd5e1;
+  margin: 0;
+}
+
+.resultList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.resultItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.resultCheck {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(80, 227, 189, 0.2);
+  color: #50e3bd;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 900;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.resultContent {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.resultItemTitle {
+  font-size: 13.5px;
+  font-weight: 750;
+  color: #f1f5f9;
+}
+
+.resultItemDetail {
+  font-size: 12.5px;
+  color: #94a3b8;
+  line-height: 1.4;
+}

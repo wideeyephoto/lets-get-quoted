@@ -22,7 +22,7 @@ import { applyTestRecordFilter } from '@/lib/test-records';
 const ATTENTION_LEAD_SCAN_LIMIT = 500;
 
 export async function GET() {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

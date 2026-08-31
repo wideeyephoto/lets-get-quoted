@@ -13,13 +13,16 @@ import { getManualFieldNotes } from '@/lib/help/manual-field-notes';
 import { ManualArticleActions } from './ManualArticleActions';
 import styles from '../manual.module.css';
 
-type ManualArticlePageProps = { params: { slug: string } };
+type ManualArticlePageProps = {
+  params: Promise<{ slug: string }>;
+};
 
 export function generateStaticParams() {
   return MANUAL_ARTICLES.map((article) => ({ slug: article.slug }));
 }
 
-export function generateMetadata({ params }: ManualArticlePageProps): Metadata {
+export async function generateMetadata({ params: paramsPromise }: ManualArticlePageProps): Promise<Metadata> {
+  const params = await paramsPromise;
   const article = getManualArticle(params.slug);
   if (!article) return { title: 'Guide not found' };
   return {
@@ -29,7 +32,8 @@ export function generateMetadata({ params }: ManualArticlePageProps): Metadata {
   };
 }
 
-export default function ManualArticlePage({ params }: ManualArticlePageProps) {
+export default async function ManualArticlePage({ params: paramsPromise }: ManualArticlePageProps) {
+  const params = await paramsPromise;
   const article = getManualArticle(params.slug);
   if (!article) notFound();
 

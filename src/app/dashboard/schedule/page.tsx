@@ -160,13 +160,14 @@ function StatIcon({ shape }: { shape: keyof typeof STAT_PATHS }) {
 }
 
 export default async function SchedulePage({
-  searchParams,
+  searchParams: searchParamsPromise,
 }: {
   /** `day` is read only by the mobile agenda — stepping off the end of a month
       has to carry the day as well as the month, or coming back lands on the
       1st. The desktop calendar ignores it. */
-  searchParams: { month?: string; day?: string };
+  searchParams: Promise<{ month?: string; day?: string }>;
 }) {
+  const searchParams = (await searchParamsPromise) || {};
   const { supabase, accountId } = await requireOfficeContext('jobs.read', 'schedule.write');
   const [{ data: account }, jobs, { data: site }] = await Promise.all([
     supabase.from('accounts').select('schedule_day_hours, appointment_reminders_enabled, job_buffer_minutes, booking_weekdays, workday_start, workday_end, weather_alerts_enabled, service_center_lat, service_center_lng').eq('id', accountId).single(),
@@ -656,9 +657,10 @@ export default async function SchedulePage({
      markers under it on every load — the single largest thing left on a phone
      once the settings moved off. An explicit choice still persists both ways;
      only the meaning of "never chose" changes. */
-  const mapCookie = cookies().get(mapViewCookie('schedule'))?.value;
+  const cookieStore = await cookies();
+  const mapCookie = cookieStore.get(mapViewCookie('schedule'))?.value;
   const mapView = mapCookie ? normalizeMapView(mapCookie) : 'off';
-  const mapTheme = normalizeMapTheme(cookies().get(MAP_THEME_COOKIE)?.value);
+  const mapTheme = normalizeMapTheme(cookieStore.get(MAP_THEME_COOKIE)?.value);
   /* THE DEFAULT WEEK IS THE WEEK THIS BUSINESS WORKS.
      Both weekend columns were on until somebody turned them off, so a Mon–Fri
      landscaper opened a seven-column week and paid for two columns of nothing
@@ -673,13 +675,13 @@ export default async function SchedulePage({
      this could get wrong — a business that works Saturdays without having said
      so — is the one the hidden-days notice was built for: it names the work on
      the missing column and puts it back in one press. */
-  const weekendCookie = cookies().get(CALENDAR_WEEKEND_COOKIE)?.value;
+  const weekendCookie = cookieStore.get(CALENDAR_WEEKEND_COOKIE)?.value;
   const weekendDays = weekendCookie
     ? normalizeWeekendDays(weekendCookie)
     : { sat: workingWeekdays.includes(6), sun: workingWeekdays.includes(0) };
   // Read server-side so the calendar renders in the right shape on the first
   // paint — and, more to the point, so stepping a month doesn't reset it.
-  const calendarView = normalizeCalendarView(cookies().get(CALENDAR_VIEW_COOKIE)?.value);
+  const calendarView = normalizeCalendarView(cookieStore.get(CALENDAR_VIEW_COOKIE)?.value);
   /* Map and list are two presentations of the SAME month now. The map used to
      show every active lead and job at any date while the adjacent list showed
      only scheduled work in the selected month. A tab switch silently changed

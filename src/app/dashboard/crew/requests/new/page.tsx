@@ -43,10 +43,11 @@ function defaultExpiry(now: Date): string {
 }
 
 export default async function NewSubcontractorRequestPage({
-  searchParams,
+  searchParams: searchParamsPromise,
 }: {
-  searchParams: { job?: string };
+  searchParams: Promise<{ job?: string }>;
 }) {
+  const searchParams = (await searchParamsPromise) || {};
   const { supabase, accountId } = await requireOfficeContext('crew.write');
   const [jobs, subs] = await Promise.all([
     listJobs(supabase, accountId),

@@ -59,7 +59,7 @@ describe('Permit Workflow API - Fee Markup Action', () => {
       }),
     });
 
-    const res = await POST(req, { params: { id: '11111111-1111-1111-1111-111111111111' } });
+    const res = await POST(req, { params: Promise.resolve({ id: '11111111-1111-1111-1111-111111111111' }) });
     expect(res.status).toBe(200);
 
     const data = await res.json();

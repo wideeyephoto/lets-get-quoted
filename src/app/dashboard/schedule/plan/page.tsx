@@ -77,9 +77,9 @@ function currentOrderOf(stops: PlanStop[]): string[] {
 }
 
 export default async function PlanDayPage({
-  searchParams,
+  searchParams: searchParamsPromise,
 }: {
-  searchParams: {
+  searchParams: Promise<{
     date?: string;
     crew?: string;
     applied?: string;
@@ -96,8 +96,9 @@ export default async function PlanDayPage({
     scheduled?: string;
     skippedNoPhone?: string;
     skippedNoJobs?: string;
-  };
+  }>;
 }) {
+  const searchParams = (await searchParamsPromise) || {};
   const { supabase, accountId } = await requireOfficeContext('jobs.read', 'schedule.write');
 
   const crew = await listCrew(supabase, accountId, { activeOnly: true });

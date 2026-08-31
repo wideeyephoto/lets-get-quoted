@@ -22,8 +22,8 @@ export const metadata: Metadata = {
   },
 };
 
-export default function WebsiteBuilderMockupPage() {
-  const nonce = cspNonce();
+export default async function WebsiteBuilderMockupPage() {
+  const nonce = await cspNonce();
 
   const websiteJsonLd = {
     '@context': 'https://schema.org',

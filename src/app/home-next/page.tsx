@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, use } from 'react';
 import SiteFooter from '@/components/site-footer';
 import HeroDashboard from '@/components/hero-dashboard';
 import StickyCta from '@/components/sticky-cta';
@@ -549,11 +549,12 @@ function Flagships() {
   );
 }
 
-export default function HomeNextPage({ searchParams }: { searchParams: { frame?: string } }) {
+export default function HomeNextPage({ searchParams }: { searchParams: Promise<{ frame?: string }> }) {
   // The compare view frames this page beside the live one, and a draft banner
   // inside the frame would make the two columns different heights for a reason
   // that has nothing to do with the design being judged.
-  const framed = searchParams?.frame === '1';
+  const resolvedSearchParams = use(searchParams);
+  const framed = resolvedSearchParams?.frame === '1';
 
   return (
     <main className="fx-page">

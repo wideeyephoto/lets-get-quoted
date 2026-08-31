@@ -14,6 +14,7 @@ export const metadata = { title: 'Lead — Live Demo' };
 // It used to import ../page and call it with a prop. That made the sibling
 // page's default export take something other than PageProps, which is what
 // Next's generated type check rejected — see DemoLeadsScreen.
-export default function DemoLeadDetailPage({ params }: { params: { leadId: string } }) {
+export default async function DemoLeadDetailPage({ params: paramsPromise }: { params: Promise<{ leadId: string }> }) {
+  const params = await paramsPromise;
   return <DemoLeadsScreen initialLeadId={params.leadId} />;
 }

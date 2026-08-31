@@ -143,7 +143,8 @@ function boardCard(spec: CardSpec): BoardCard {
   };
 }
 
-export default async function AdminCommandCenterPage({ searchParams }: { searchParams: { range?: string } }) {
+export default async function AdminCommandCenterPage({ searchParams: searchParamsPromise }: { searchParams: Promise<{ range?: string }> }) {
+  const searchParams = (await searchParamsPromise) || {};
   const { admin, adminEmail, role } = await requireAdmin();
   const range: DateRange = isDateRange(searchParams.range) ? searchParams.range : '30d';
   const now = new Date();

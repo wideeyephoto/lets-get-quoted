@@ -10,7 +10,8 @@ export const dynamic = 'force-dynamic';
 // Streams the invoice as a PDF. Public by the same reasoning as /invoice/[id]:
 // the client has no login, and the invoice is already viewable by id. Used by
 // the "Download PDF" buttons on both the owner and client invoice pages.
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(request: Request, { params: paramsPromise }: { params: Promise<{ id: string }> }) {
+  const params = await paramsPromise;
   const admin = createAdminClient();
   const ip = clientIpFrom(request.headers);
   if (!(await checkRateLimit(admin, `invpdf:ip:${ip}`, 60, 60))) {

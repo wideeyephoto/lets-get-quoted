@@ -36,12 +36,14 @@ const DONE_MESSAGE: Record<string, string> = {
 };
 
 export default async function HelpCasePage({
-  params,
-  searchParams,
+  params: paramsPromise,
+  searchParams: searchParamsPromise,
 }: {
-  params: { caseId: string };
-  searchParams: { error?: string; done?: string };
+  params: Promise<{ caseId: string }>;
+  searchParams: Promise<{ error?: string; done?: string }>;
 }) {
+  const params = await paramsPromise;
+  const searchParams = (await searchParamsPromise) || {};
   const { accountId, userEmail } = await requireOfficeContext('leads.read');
   const admin = createAdminClient();
 

@@ -35,7 +35,7 @@ export async function requestPortalLinkAction(subdomain: string, formData: FormD
   // One field. Asking somebody to classify their own contact details before
   // typing them is asking them to do the computer's job.
   const identifier = parsePortalIdentifier(String(formData.get('contact') ?? ''));
-  const ip = clientIpFrom(headers());
+  const ip = clientIpFrom(await headers());
 
   // Always return the same words, even when refusing. Saying "too many
   // attempts" only for addresses that exist would leak the same fact.

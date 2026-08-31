@@ -61,8 +61,8 @@ describe('Permit Inspections API Routes - Security & Execution', () => {
     } as any);
 
     const res = await listGET(new Request('http://localhost/api/jobs/foo/permits/inspections'), {
-      params: { id: validJobId },
-    });
+  params: Promise.resolve({ id: validJobId }),
+});
 
     expect(res.status).toBe(401);
   });
@@ -83,8 +83,8 @@ describe('Permit Inspections API Routes - Security & Execution', () => {
     vi.mocked(getJob).mockResolvedValue({ id: validJobId, account_id: mockAccountId } as any);
 
     const res = await listGET(new Request('http://localhost/api/jobs/foo/permits/inspections'), {
-      params: { id: validJobId },
-    });
+  params: Promise.resolve({ id: validJobId }),
+});
 
     expect(res.status).toBe(200);
     const body = await res.json();
@@ -113,7 +113,7 @@ describe('Permit Inspections API Routes - Security & Execution', () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ requiredTitles: ['Mid-Roof', 'Final'] }),
       }),
-      { params: { id: validJobId } },
+      { params: Promise.resolve({ id: validJobId }) },
     );
 
     expect(res.status).toBe(200);
@@ -147,7 +147,7 @@ describe('Permit Inspections API Routes - Security & Execution', () => {
           inspectorName: 'Bob',
         }),
       }),
-      { params: { id: validJobId, inspectionId: validInspId } },
+      { params: Promise.resolve({ id: validJobId, inspectionId: validInspId }) },
     );
 
     expect(res.status).toBe(200);
@@ -181,7 +181,7 @@ describe('Permit Inspections API Routes - Security & Execution', () => {
           inspectorName: 'Bob',
         }),
       }),
-      { params: { id: validJobId, inspectionId: validInspId } },
+      { params: Promise.resolve({ id: validJobId, inspectionId: validInspId }) },
     );
 
     expect(res.status).toBe(200);

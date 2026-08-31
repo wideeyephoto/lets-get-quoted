@@ -97,7 +97,7 @@ async function context(formData: FormData) {
   // set of rules on a laptop and a different set on a phone.
   const settings = laborRulesFromAccount(
     accountRow as Parameters<typeof laborRulesFromAccount>[0],
-    normalizeLaborSettings(cookies().get(LABOR_SETTINGS_COOKIE)?.value),
+    normalizeLaborSettings((await cookies()).get(LABOR_SETTINGS_COOKIE)?.value),
   );
   const requireSeparatePayer = (accountRow as { require_separate_payer?: boolean } | null)?.require_separate_payer === true;
   const state = await loadCrewPayContext(supabase, accountId, { period, settings, includeOpenShifts: true });

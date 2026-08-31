@@ -4,7 +4,8 @@ import { redirect } from 'next/navigation';
 // this path is in browser histories, bookmarks and the odd emailed link, and a
 // 404 on the page someone opens to pay their crew is a bad way to find out the
 // navigation changed.
-export default function PayrollRedirect({ searchParams }: { searchParams: { period?: string } }) {
+export default async function PayrollRedirect({ searchParams: searchParamsPromise }: { searchParams: Promise<{ period?: string }> }) {
+  const searchParams = (await searchParamsPromise) || {};
   // The old page's four periods were quick filters, and two of them were
   // months. Map them onto the new mode+offset so an old link lands on the same
   // range rather than on whatever "this week" happens to be.

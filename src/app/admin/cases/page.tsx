@@ -22,7 +22,8 @@ function priorityPill(priority: string) {
   return <span className={`${styles.pill} ${cls}`}>{priority}</span>;
 }
 
-export default async function AdminCasesPage({ searchParams }: { searchParams: { f?: string } }) {
+export default async function AdminCasesPage({ searchParams: searchParamsPromise }: { searchParams: Promise<{ f?: string }> }) {
+  const searchParams = (await searchParamsPromise) || {};
   const { admin } = await requireAdmin();
   const active = FILTERS.find((f) => f.key === searchParams.f) ?? FILTERS[0];
   let available = true;

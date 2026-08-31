@@ -18,8 +18,8 @@ export const metadata: Metadata = {
   },
 };
 
-export default function ToolsHubPage() {
-  const nonce = cspNonce();
+export default async function ToolsHubPage() {
+  const nonce = await cspNonce();
 
   const jsonLd = {
     '@context': 'https://schema.org',

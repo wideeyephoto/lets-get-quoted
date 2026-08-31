@@ -33,7 +33,7 @@ describe('Permit Notification API Route - POST /api/jobs/:id/permits/notify', ()
       body: JSON.stringify({ eventType: 'submitted' }),
     });
 
-    const res = await POST(req, { params: { id: '22222222-2222-2222-2222-222222222222' } });
+    const res = await POST(req, { params: Promise.resolve({ id: '22222222-2222-2222-2222-222222222222' }) });
     expect(res.status).toBe(401);
   });
 
@@ -65,7 +65,7 @@ describe('Permit Notification API Route - POST /api/jobs/:id/permits/notify', ()
       }),
     });
 
-    const res = await POST(req, { params: { id: '22222222-2222-2222-2222-222222222222' } });
+    const res = await POST(req, { params: Promise.resolve({ id: '22222222-2222-2222-2222-222222222222' }) });
     expect(res.status).toBe(200);
 
     const data = await res.json();

@@ -316,10 +316,11 @@ const jsonLd = {
   ],
 };
 
-export default function HomePage() {
+export default async function HomePage() {
+  const nonce = await cspNonce();
   return (
     <main className="fx-page">
-      <script type="application/ld+json" nonce={cspNonce()} dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <script type="application/ld+json" nonce={nonce} dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <div className="ambient-glow ambient-glow-a" aria-hidden="true" />
       <div className="ambient-glow ambient-glow-b" aria-hidden="true" />
 

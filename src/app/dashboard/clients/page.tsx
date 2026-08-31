@@ -18,7 +18,8 @@ export const metadata = { title: 'Clients' };
  * The read only — the screen itself is in ClientsScreen so the logged-out demo
  * renders the same one.
  */
-export default async function ClientsPage({ searchParams }: { searchParams: { created?: string; existing?: string; add?: string; merged?: string; dismissed?: string; dismissError?: string } }) {
+export default async function ClientsPage({ searchParams }: { searchParams: Promise<{ created?: string; existing?: string; add?: string; merged?: string; dismissed?: string; dismissError?: string }> }) {
+  const resolvedSearchParams = (await searchParams) || {};
   const { supabase, accountId, accountTimeZone } = await requireOfficeContext('clients.read');
   const todayKey = todayIn(accountTimeZone);
   // One query for the whole book's coordinates, not one per customer.
@@ -57,16 +58,16 @@ export default async function ClientsPage({ searchParams }: { searchParams: { cr
       duplicateGroups={duplicateGroups}
       mergeAction={mergeClientsAction}
       dismissDuplicateAction={dismissDuplicateGroupAction}
-      dismissError={searchParams.dismissError === 'schema'}
-      mergedCount={Number(searchParams.merged) || 0}
+      dismissError={resolvedSearchParams.dismissError === 'schema'}
+      mergedCount={Number(resolvedSearchParams.merged) || 0}
       pins={[...pinsByClient.values()].map((pin) => ({ clientId: pin.clientId, lat: pin.lat, lng: pin.lng }))}
       // One account-local day for the stats and the follow-up bands, so neither
       // changes at the deployment server's midnight.
       todayKey={todayKey}
-      view={normalizeClientsView(cookies().get(CLIENTS_VIEW_COOKIE)?.value)}
+      view={normalizeClientsView((await cookies()).get(CLIENTS_VIEW_COOKIE)?.value)}
       repeatCount={clients.filter((client) => client.jobCount > 1).length}
-      showExistingFlash={Boolean(searchParams.existing)}
-      openAdd={searchParams.add === '1'}
+      showExistingFlash={Boolean(resolvedSearchParams.existing)}
+      openAdd={resolvedSearchParams.add === '1'}
     />
   );
 }

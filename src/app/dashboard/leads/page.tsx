@@ -22,7 +22,8 @@ import styles from './leads.module.css';
 export const metadata = { title: 'Leads' };
 
 
-export default async function LeadsPage({ searchParams }: { searchParams: { add?: string } }) {
+export default async function LeadsPage({ searchParams: searchParamsPromise }: { searchParams: Promise<{ add?: string }> }) {
+  const searchParams = (await searchParamsPromise) || {};
   // Reading the board is leads.read. Every write it offers asks for itself.
   const { supabase, accountId, role } = await requireOfficeContext('leads.read');
 
@@ -76,13 +77,14 @@ export default async function LeadsPage({ searchParams }: { searchParams: { add?
   // total underneath a board that no longer shows it.
   const openRequests = leads.filter((lead) => !['won', 'lost'].includes(lead.status)).length;
   const averageResponse = formatDuration(getAverageRequestResponseMs(allLeads));
-  const mapView = normalizeMapView(cookies().get(mapViewCookie('leads'))?.value);
-  const mapTheme = normalizeMapTheme(cookies().get(MAP_THEME_COOKIE)?.value);
+  const cookieStore = await cookies();
+  const mapView = normalizeMapView(cookieStore.get(mapViewCookie('leads'))?.value);
+  const mapTheme = normalizeMapTheme(cookieStore.get(MAP_THEME_COOKIE)?.value);
 
   // Serialize the active leads into a display-ready shape for the client view
   // switcher (Smoothie / Focus / Board / Priority inbox / Table / Split), so it
   // never has to import the server-only leads module.
-  const initialView = normalizeLeadsView(cookies().get(LEADS_VIEW_COOKIE)?.value);
+  const initialView = normalizeLeadsView(cookieStore.get(LEADS_VIEW_COOKIE)?.value);
 
   // Always fetched now that the map is a toolbar TOGGLE rather than a band
   // welded above one view. Opening it has to be instant and local — a round

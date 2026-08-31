@@ -25,7 +25,8 @@ function uncached(response: NextResponse): NextResponse {
  * best-effort inside recordGoogleClick. A failed analytics write must never
  * become a closed door — that would be the gate coming back by accident.
  */
-export async function GET(request: Request, { params }: { params: { token: string } }) {
+export async function GET(request: Request, { params: paramsPromise }: { params: Promise<{ token: string }> }) {
+  const params = await paramsPromise;
   const back = new URL(`/review/${params.token}`, request.url);
 
   let googleUrl: string | null = null;

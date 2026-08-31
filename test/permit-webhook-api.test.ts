@@ -41,7 +41,7 @@ describe('Permit Inbound Webhook API Route - POST /api/webhooks/permits/:provide
         },
         body: JSON.stringify({ jobId: 'job-1', status: 'issued' }),
       }),
-      { params: { provider: 'bsa' } },
+      { params: Promise.resolve({ provider: 'bsa' }) },
     );
 
     expect(res.status).toBe(401);
@@ -60,7 +60,7 @@ describe('Permit Inbound Webhook API Route - POST /api/webhooks/permits/:provide
         },
         body: JSON.stringify({ jobId: 'job-1', permitNumber: 'PB26-0899', status: 'issued' }),
       }),
-      { params: { provider: 'bsa' } },
+      { params: Promise.resolve({ provider: 'bsa' }) },
     );
 
     expect(res.status).toBe(200);

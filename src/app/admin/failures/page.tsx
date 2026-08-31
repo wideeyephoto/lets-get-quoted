@@ -13,7 +13,8 @@ function fmt(value: string): string {
   return new Date(value).toLocaleString('en-US', { dateStyle: 'short', timeStyle: 'short' });
 }
 
-export default async function AdminFailuresPage({ searchParams }: { searchParams: { done?: string; error?: string } }) {
+export default async function AdminFailuresPage({ searchParams: searchParamsPromise }: { searchParams: Promise<{ done?: string; error?: string }> }) {
+  const searchParams = (await searchParamsPromise) || {};
   const ctx = await requireAdmin();
   const diagnostics = createAdminSignalDiagnostics();
   const [webhooks, sms, emails] = await Promise.all([

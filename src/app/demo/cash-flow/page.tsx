@@ -110,7 +110,8 @@ function DemoBillsPanel({ todayKey }: { todayKey: string }) {
 // the whole demo. Unknown values fall back to 30 rather than rendering nothing.
 const HORIZONS: Record<string, number> = { '30': 30, '60': 60, '90': 90 };
 
-export default function DemoCashFlowPage({ searchParams }: { searchParams: { window?: string } }) {
+export default async function DemoCashFlowPage({ searchParams: searchParamsPromise }: { searchParams: Promise<{ window?: string }> }) {
+  const searchParams = (await searchParamsPromise) || {};
   const todayKey = dateKeyFromNow(0);
   const windowKey = searchParams.window && HORIZONS[searchParams.window] ? searchParams.window : '30';
 

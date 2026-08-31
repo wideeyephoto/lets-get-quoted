@@ -11,10 +11,11 @@ export const metadata = { title: 'Rebook' };
  * one.
  */
 export default async function RebookPage({
-  searchParams,
+  searchParams: searchParamsPromise,
 }: {
-  searchParams: { days?: string; flash?: string; msg?: string; sent?: string; skipped?: string; failed?: string };
+  searchParams: Promise<{ days?: string; flash?: string; msg?: string; sent?: string; skipped?: string; failed?: string }>;
 }) {
+  const searchParams = (await searchParamsPromise) || {};
   const { supabase, accountId } = await requireOfficeContext('jobs.read', 'clients.read');
 
   const requested = Number(searchParams.days);

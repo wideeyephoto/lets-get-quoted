@@ -20,10 +20,11 @@ const FILTER_IDS = new Set(['all', 'draft', 'ready', 'scheduled', 'published', '
  * The screen itself is in BlogScreen so the demo renders the same one.
  */
 export default async function MarketingBlogPage({
-  searchParams,
+  searchParams: searchParamsPromise,
 }: {
-  searchParams: { topic?: string; status?: string };
+  searchParams: Promise<{ topic?: string; status?: string }>;
 }) {
+  const searchParams = (await searchParamsPromise) || {};
   // The legacy ?post=<id> shape is forwarded to the post's own route by the
   // middleware, before anything here renders — see the note there for why it
   // cannot be a redirect() from inside this component.

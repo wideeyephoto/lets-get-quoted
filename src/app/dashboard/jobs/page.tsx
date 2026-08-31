@@ -133,10 +133,11 @@ function groupByJobId<T extends { job_id: string }>(rows: T[]): Record<string, T
 }
 
 export default async function JobsPage({
-  searchParams,
+  searchParams: searchParamsPromise,
 }: {
-  searchParams: { status?: string; new?: string; owing?: string };
+  searchParams: Promise<{ status?: string; new?: string; owing?: string }>;
 }) {
+  const searchParams = (await searchParamsPromise) || {};
   const { supabase, accountId } = await requireOfficeContext('jobs.read', 'clients.read');
 
   const [allJobs, leads] = await Promise.all([
@@ -218,9 +219,10 @@ export default async function JobsPage({
 
   const totalQuoted = allJobs.reduce((sum, job) => sum + job.quoted_amount, 0);
   const activeJobs = allJobs.filter((job) => job.status === 'in_progress').length;
-  const mapView = normalizeMapView(cookies().get(mapViewCookie('jobs'))?.value);
-  const mapTheme = normalizeMapTheme(cookies().get(MAP_THEME_COOKIE)?.value);
-  const jobsView = normalizeJobsView(cookies().get(JOBS_VIEW_COOKIE)?.value);
+  const cookieStore = await cookies();
+  const mapView = normalizeMapView(cookieStore.get(mapViewCookie('jobs'))?.value);
+  const mapTheme = normalizeMapTheme(cookieStore.get(MAP_THEME_COOKIE)?.value);
+  const jobsView = normalizeJobsView(cookieStore.get(JOBS_VIEW_COOKIE)?.value);
   // Always fetched, not only when the embedded map is on: Smoothie's Map pane
   // is a switch inside the view, and a switch that needs a round trip to the
   // server before it can draw anything is a page refresh wearing a button.

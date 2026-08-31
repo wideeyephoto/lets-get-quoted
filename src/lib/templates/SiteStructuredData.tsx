@@ -18,7 +18,7 @@ function jsonLdSafe(data: unknown): string {
 // verified third-party source. The node is built by the shared, tested
 // buildLocalBusinessJsonLd so it stays consistent with the page's <title>/meta.
 // Rendered once from the public routes, so it covers every template.
-export default function SiteStructuredData({ site }: { site: Site }) {
+export default async function SiteStructuredData({ site }: { site: Site }) {
   const data = buildLocalBusinessJsonLd(site);
 
   // Videos embedded on this page get their own nodes. Only the clips a band
@@ -30,7 +30,7 @@ export default function SiteStructuredData({ site }: { site: Site }) {
   // A separate <script> rather than folded into the LocalBusiness node: these
   // are individual videos that share a page, not a gallery the page is about,
   // and neither should pretend to contain the other.
-  const nonce = cspNonce();
+  const nonce = await cspNonce();
   const videos = buildVideoGraphJsonLd(
     getPublishedVideoSections(site.content).flatMap((section) => section.videos.map((item) => ({ item, section }))),
     {

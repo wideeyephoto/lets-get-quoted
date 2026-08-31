@@ -5,7 +5,7 @@ import { headers } from 'next/headers';
 import { createCheckoutSessionForPayment } from '@/lib/payments';
 
 export async function startCheckoutAction(paymentId: string) {
-  const h = headers();
+  const h = await headers();
   const proto = h.get('x-forwarded-proto') ?? 'http';
   const host = h.get('host');
   const origin = `${proto}://${host}`;

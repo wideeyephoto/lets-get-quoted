@@ -21,7 +21,7 @@ describe('dashboard audit repairs', () => {
     const page = read('src', 'app', 'dashboard', 'recurring', 'page.tsx');
     const screen = read('src', 'app', 'dashboard', 'recurring', 'RecurringScreen.tsx');
     const workspace = read('src', 'app', 'dashboard', 'recurring', 'RecurringWorkspace.tsx');
-    expect(page).toContain('focusPlanId={searchParams.plan ?? null}');
+    expect(page).toMatch(/focusPlanId=\{(?:resolvedSearchParams|searchParams)\.plan \?\? null\}/);
     expect(screen).toContain('focusPlanId={focusPlanId}');
     expect(workspace).toContain('focusPlanId && rows.some((row) => row.id === focusPlanId) ? focusPlanId : null');
   });

@@ -8,9 +8,12 @@ import SiteBlogIndex from '@/lib/templates/SiteBlogIndex';
 
 export const dynamic = 'force-dynamic';
 
-type Props = { params: { subdomain: string } };
+type Props = {
+  params: Promise<{ subdomain: string }>;
+};
 
-export default async function PublicBlogIndexPage({ params }: Props) {
+export default async function PublicBlogIndexPage({ params: paramsPromise }: Props) {
+  const params = await paramsPromise;
   const site = await getPublicSiteBySubdomain(createAdminClient(), params.subdomain);
   if (!site) notFound();
   const blog = getPublishedBlog(site.content);
@@ -18,7 +21,8 @@ export default async function PublicBlogIndexPage({ params }: Props) {
   return <SiteBlogIndex site={site} title={blog.title} intro={blog.intro} posts={blog.posts} layout={blog.layout} />;
 }
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
+export async function generateMetadata({ params: paramsPromise }: Props): Promise<Metadata> {
+  const params = await paramsPromise;
   const site = await getPublicSiteBySubdomain(createAdminClient(), params.subdomain);
   if (!site) return { title: 'Not found' };
   const blog = getPublishedBlog(site.content);

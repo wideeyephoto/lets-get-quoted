@@ -32,7 +32,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
   // The site builder's bare preview route renders the raw public template
   // with no dashboard chrome (embedded in an iframe) — never inject the
   // banner there, it would corrupt the "what visitors actually see" preview.
-  const isBarePreview = headers().get('x-lgq-bare-preview') === '1';
+  const isBarePreview = (await headers()).get('x-lgq-bare-preview') === '1';
 
   if (isBarePreview) {
     return <>{children}</>;

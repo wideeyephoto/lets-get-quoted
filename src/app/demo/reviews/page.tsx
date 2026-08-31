@@ -22,10 +22,11 @@ export const metadata = { title: 'Reviews — Live Demo' };
  * switch into a state badge. It changes no number.
  */
 export default async function DemoReviewsPage({
-  searchParams,
+  searchParams: searchParamsPromise,
 }: {
-  searchParams: Record<string, string | string[] | undefined>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  const searchParams = (await searchParamsPromise) || {};
   const rows = await loadReviewActivity(demoSupabase, DEMO_ACCOUNT_ID);
   const nowIso = new Date().toISOString();
   const view = buildActivityView(rows, { ...searchParams, range: 'all' }, nowIso);

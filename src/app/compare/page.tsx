@@ -20,8 +20,8 @@ export const metadata: Metadata = {
   },
 };
 
-export default function CompareHubPage() {
-  const nonce = cspNonce();
+export default async function CompareHubPage() {
+  const nonce = await cspNonce();
 
   const hubJsonLd = {
     '@context': 'https://schema.org',

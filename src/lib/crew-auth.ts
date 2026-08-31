@@ -225,7 +225,7 @@ export async function linkCrewUserByEmail(userId: string, email: string): Promis
 export type FieldBusiness = { accountId: string; crewId: string; name: string };
 
 export type CrewContext = {
-  supabase: ReturnType<typeof createSupabaseServerClient>;
+  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>;
   userId: string;
   accountId: string;
   crew: CrewMember;
@@ -306,7 +306,7 @@ export type CrewContextResult = { ok: true; context: CrewContext } | { ok: false
  * dropped as "delivered".
  */
 export async function loadCrewContext(): Promise<CrewContextResult> {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -319,7 +319,7 @@ export async function loadCrewContext(): Promise<CrewContextResult> {
   // The remembered business, or the only one there is. Somebody on two rosters
   // with no choice recorded is sent to make one rather than being handed a
   // stranger's jobs — see /field/choose.
-  const chosen = readFieldAccount();
+  const chosen = await readFieldAccount();
   const crew =
     (chosen ? rosters.find((member) => member.account_id === chosen) : null) ??
     (rosters.length === 1 ? rosters[0] : null);
@@ -390,7 +390,7 @@ export async function requireCrewContext(): Promise<CrewContext> {
  * there IS no choice recorded yet — requireCrewContext would bounce back here.
  */
 export async function listFieldBusinesses(): Promise<{ userId: string; businesses: FieldBusiness[] } | null> {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

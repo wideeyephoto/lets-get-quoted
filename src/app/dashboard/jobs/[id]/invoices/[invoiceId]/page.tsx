@@ -29,10 +29,11 @@ const INVOICE_STATUS_LABEL: Record<InvoiceStatus, string> = {
 };
 
 export default async function InvoiceDetailPage({
-  params,
+  params: paramsPromise,
 }: {
-  params: { id: string; invoiceId: string };
+  params: Promise<{ id: string; invoiceId: string }>;
 }) {
+  const params = await paramsPromise;
   const { supabase, accountId } = await requireOfficeContext('invoices.read');
 
   const result = await getInvoiceWithItems(supabase, accountId, params.invoiceId, params.id);

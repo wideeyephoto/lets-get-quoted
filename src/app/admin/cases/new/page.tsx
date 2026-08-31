@@ -15,7 +15,8 @@ const ERROR_MESSAGES: Record<string, string> = {
   failed: 'The case could not be created. Try again.',
 };
 
-export default async function NewCasePage({ searchParams }: { searchParams: { account_id?: string; error?: string } }) {
+export default async function NewCasePage({ searchParams: searchParamsPromise }: { searchParams: Promise<{ account_id?: string; error?: string }> }) {
+  const searchParams = (await searchParamsPromise) || {};
   const ctx = await requireAdmin();
   let accountsAvailable = true;
   let staffAvailable = true;

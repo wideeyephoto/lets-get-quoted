@@ -14,14 +14,15 @@ import { siteIconsMetadata } from '@/lib/brand-mark';
 export const dynamic = 'force-dynamic';
 
 type PublicSitePageProps = {
-  params: { subdomain: string };
+  params: Promise<{ subdomain: string }>;
 };
 
 const loadPublicSite = cache(async (subdomain: string) => {
   return getPublicSiteBySubdomain(createAdminClient(), subdomain);
 });
 
-export default async function PublicSitePage({ params }: PublicSitePageProps) {
+export default async function PublicSitePage({ params: paramsPromise }: PublicSitePageProps) {
+  const params = await paramsPromise;
   const site = await loadPublicSite(params.subdomain);
   if (!site) notFound();
 
@@ -36,7 +37,8 @@ export default async function PublicSitePage({ params }: PublicSitePageProps) {
   );
 }
 
-export async function generateMetadata({ params }: PublicSitePageProps): Promise<Metadata> {
+export async function generateMetadata({ params: paramsPromise }: PublicSitePageProps): Promise<Metadata> {
+  const params = await paramsPromise;
   const site = await loadPublicSite(params.subdomain);
   if (!site) return { title: 'Site not found', robots: { index: false, follow: false } };
 

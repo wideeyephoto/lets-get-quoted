@@ -29,10 +29,11 @@ export const metadata = { title: 'Campaigns — Live Demo' };
  * all, so nobody browsing the demo could tell Marketing has four sections.
  */
 export default async function DemoCampaignsPage({
-  searchParams,
+  searchParams: searchParamsPromise,
 }: {
-  searchParams: { emailSent?: string; smsQueued?: string; recipients?: string; skipped?: string; failed?: string; test?: string; draft?: string };
+  searchParams: Promise<{ emailSent?: string; smsQueued?: string; recipients?: string; skipped?: string; failed?: string; test?: string; draft?: string }>;
 }) {
+  const searchParams = (await searchParamsPromise) || {};
   const [recipients, campaigns, listHealth] = await Promise.all([
     loadRecipients(demoSupabase, DEMO_ACCOUNT_ID),
     listCampaigns(demoSupabase, DEMO_ACCOUNT_ID),

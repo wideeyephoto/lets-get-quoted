@@ -27,7 +27,8 @@ function fmt(value: string | null): string {
   return value ? new Date(value).toLocaleString('en-US', { dateStyle: 'short', timeStyle: 'short' }) : '—';
 }
 
-export default async function AdminPaymentsPage({ searchParams }: { searchParams: { range?: string; status?: string; account?: string; q?: string; page?: string } }) {
+export default async function AdminPaymentsPage({ searchParams: searchParamsPromise }: { searchParams: Promise<{ range?: string; status?: string; account?: string; q?: string; page?: string }> }) {
+  const searchParams = (await searchParamsPromise) || {};
   const { admin } = await requireAdmin();
   const range: DateRange = isDateRange(searchParams.range) ? searchParams.range : '30d';
   const status = isPaymentLedgerStatus(searchParams.status) ? searchParams.status : undefined;

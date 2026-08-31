@@ -33,8 +33,8 @@ const SPECULATION_RULES = {
   ],
 };
 
-export default function SpeculationRules() {
-  const nonce = cspNonce();
+export default async function SpeculationRules() {
+  const nonce = await cspNonce();
   return (
     <script
       type="speculationrules"

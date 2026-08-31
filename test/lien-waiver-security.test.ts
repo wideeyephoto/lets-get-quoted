@@ -73,7 +73,7 @@ describe('Lien Waiver API Security & Authorization', () => {
   it('rejects unauthenticated requests with 401', async () => {
     mockUser = null;
     const req = new Request('https://app.letsgetquoted.com/api/jobs/job-100/lien-waiver');
-    const res = await GET(req, { params: { id: 'job-100' } });
+    const res = await GET(req, { params: Promise.resolve({ id: 'job-100' }) });
     expect(res.status).toBe(401);
     const json = await res.json();
     expect(json.error).toBe('Unauthorized');
@@ -82,7 +82,7 @@ describe('Lien Waiver API Security & Authorization', () => {
   it('rejects users without active workspace with 403', async () => {
     mockMembership = { accountId: null, role: 'owner' };
     const req = new Request('https://app.letsgetquoted.com/api/jobs/job-100/lien-waiver');
-    const res = await GET(req, { params: { id: 'job-100' } });
+    const res = await GET(req, { params: Promise.resolve({ id: 'job-100' }) });
     expect(res.status).toBe(403);
     const json = await res.json();
     expect(json.error).toBe('No active workspace');
@@ -91,7 +91,7 @@ describe('Lien Waiver API Security & Authorization', () => {
   it('rejects unauthorized office members lacking jobs.read or invoices.read with 403', async () => {
     mockMembership = { accountId: 'acc-1', role: 'office' };
     const req = new Request('https://app.letsgetquoted.com/api/jobs/job-100/lien-waiver');
-    const res = await GET(req, { params: { id: 'job-100' } });
+    const res = await GET(req, { params: Promise.resolve({ id: 'job-100' }) });
     expect(res.status).toBe(403);
     const json = await res.json();
     expect(json.error).toBe('Forbidden');
@@ -100,7 +100,7 @@ describe('Lien Waiver API Security & Authorization', () => {
   it('rejects cross-tenant access with 404 (job belongs to different account)', async () => {
     mockMembership = { accountId: 'acc-2', role: 'owner' };
     const req = new Request('https://app.letsgetquoted.com/api/jobs/job-100/lien-waiver');
-    const res = await GET(req, { params: { id: 'job-100' } });
+    const res = await GET(req, { params: Promise.resolve({ id: 'job-100' }) });
     expect(res.status).toBe(404);
     const json = await res.json();
     expect(json.error).toBe('Job not found');
@@ -108,7 +108,7 @@ describe('Lien Waiver API Security & Authorization', () => {
 
   it('rejects invalid waiver type with 400', async () => {
     const req = new Request('https://app.letsgetquoted.com/api/jobs/job-100/lien-waiver?type=invalid_type');
-    const res = await GET(req, { params: { id: 'job-100' } });
+    const res = await GET(req, { params: Promise.resolve({ id: 'job-100' }) });
     expect(res.status).toBe(400);
     const json = await res.json();
     expect(json.error).toBe('Invalid lien waiver type');
@@ -116,7 +116,7 @@ describe('Lien Waiver API Security & Authorization', () => {
 
   it('rejects invalid amount with 400', async () => {
     const req = new Request('https://app.letsgetquoted.com/api/jobs/job-100/lien-waiver?amount=-500');
-    const res = await GET(req, { params: { id: 'job-100' } });
+    const res = await GET(req, { params: Promise.resolve({ id: 'job-100' }) });
     expect(res.status).toBe(400);
     const json = await res.json();
     expect(json.error).toBe('Invalid payment amount');
@@ -126,7 +126,7 @@ describe('Lien Waiver API Security & Authorization', () => {
     const req = new Request(
       'https://app.letsgetquoted.com/api/jobs/job-100/lien-waiver?type=conditional_progress&amount=1500',
     );
-    const res = await GET(req, { params: { id: 'job-100' } });
+    const res = await GET(req, { params: Promise.resolve({ id: 'job-100' }) });
     expect(res.status).toBe(200);
     expect(res.headers.get('Content-Type')).toBe('application/pdf');
     expect(res.headers.get('Cache-Control')).toBe('private, no-store');

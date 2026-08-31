@@ -142,22 +142,23 @@ const THEME_INIT_SCRIPT = `
   })();
 `;
 
-function readServerTheme() {
-  const isStandaloneSite = headers().get('x-lgq-standalone-site') === '1';
-  const jar = cookies();
+async function readServerTheme() {
+  const isStandaloneSite = (await headers()).get('x-lgq-standalone-site') === '1';
+  const jar = await cookies();
   const choice = parseThemeChoice(jar.get(THEME_COOKIE)?.value) ?? 'dark';
   const systemPrefersLight = jar.get(THEME_SYSTEM_COOKIE)?.value === 'light';
   const theme = isStandaloneSite ? 'dark' : resolveTheme(choice, systemPrefersLight);
   return { choice, isStandaloneSite, theme } as const;
 }
 
-export function generateViewport(): Viewport {
-  return { themeColor: themeColor(readServerTheme().theme) };
+export async function generateViewport(): Promise<Viewport> {
+  const serverTheme = await readServerTheme();
+  return { themeColor: themeColor(serverTheme.theme) };
 }
 
-export default function RootLayout({ children }: { children: ReactNode }) {
-  const { choice, isStandaloneSite, theme } = readServerTheme();
-  const nonce = cspNonce();
+export default async function RootLayout({ children }: { children: ReactNode }) {
+  const { choice, isStandaloneSite, theme } = await readServerTheme();
+  const nonce = await cspNonce();
   // Explicit choices and known system preferences are stamped during the
   // server render. On a first-ever visit there is no system mirror cookie yet,
   // so THEME_INIT_SCRIPT corrects that one unknowable guess synchronously,
