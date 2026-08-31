@@ -7,10 +7,18 @@ This is the definitive production deployment and launch checklist. All automated
 ## 1. Verified System Readiness (Gates at 100%)
 
 - [x] **TypeScript Strict Typecheck**: `npm run typecheck` (0 errors)
-- [x] **Vitest Unit & Integration Suite**: `npm test` (838 test files, 11,243 tests passed, 0 failures)
-- [x] **Production Compilation**: `npm run build` (Clean SSR/SSG compilation across all routes and contractor templates)
+- [x] **Vitest Unit & Integration Suite**: `npm test` (851 test files, 11,379 tests passed, 0 failures)
+- [x] **Framework Security & Compilation**: Next.js `15.5.24` (LTS) upgraded; `npm audit --omit=dev` reports 0 vulnerabilities; `npm run build` passes with clean SSR/SSG compilation across all routes, subdomains, and contractor templates
 - [x] **Database Schema & Migrations**: Schema dependency ordering and runtime migrations synchronized
 - [x] **Row-Level Security & Multi-Tenancy**: Tenant boundary isolation confirmed across all account roles
+- [x] **Security & Integrity Hardening**:
+  - SSRF protection on photo proxy with strict Supabase storage allowlist and loopback/metadata IP blocking
+  - SWAIG voice webhook strict cryptographic tool token validation (`verifyVoiceToolToken`)
+  - Cross-tenant SMS isolation with verified session account context
+- [x] **Ad Billing Money Rails**:
+  - Synthetic spend generation eliminated; delta-spend computation on syncs
+  - Deterministic hourly Stripe PaymentIntent idempotency keys (`ad_refill_${accountId}_${hour}_${cents}`)
+  - Cancellation/pause state synchronization and monthly budget rollover
 - [x] **Core Lifecycles Verified**:
   - Lead Intake → Estimation → Job Conversion → Crew Dispatch → Invoice E-Sign
   - Schedule Day Planning & Route Geographic Optimization
