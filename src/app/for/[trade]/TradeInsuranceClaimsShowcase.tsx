@@ -23,7 +23,7 @@ export default function TradeInsuranceClaimsShowcase({ trade }: { trade: Trade }
             Turn lowball adjuster scopes into <em>full, code-compliant approvals</em>.
           </h2>
           <p className={styles.subtitle}>
-            Built specifically for {trade.name} handling storm damage, emergency restorations, and insurance claims. Scan Xactimate scopes in seconds, uncover omitted building codes, and generate formal UPPA-compliant justification letters that get paid.
+            Built specifically for {trade.name} handling storm damage, emergency restorations, and insurance claims. Scan Xactimate scopes in seconds, identify omitted building code requirements, and draft UPPA-compliant contractor justification letters.
           </p>
         </div>
 
@@ -40,10 +40,10 @@ export default function TradeInsuranceClaimsShowcase({ trade }: { trade: Trade }
                 </span>
               </div>
               <h3 className={styles.projectTitle}>
-                Automated Building Code Audits for {trade.name}
+                Building Code & Scope Review Engine for {trade.name}
               </h3>
               <p className={styles.scopeSummary}>
-                Adjusters routinely omit critical code items and safety rigging. Our AI cross-references local building codes (IRC, IICRC, ANSI) to find every dollar you are owed.
+                Adjuster estimates frequently omit code-required components. Cross-reference local building codes (IRC, IICRC, ANSI) to generate accurate contractor estimates.
               </p>
             </div>
 
@@ -54,11 +54,11 @@ export default function TradeInsuranceClaimsShowcase({ trade }: { trade: Trade }
                 <span className="text-lg font-bold text-stone-300">$8,799</span>
               </div>
               <div className="text-left border-l border-stone-700 pl-4">
-                <span className="block text-[11px] font-semibold text-emerald-400 uppercase tracking-wider">Missed Supplements</span>
+                <span className="block text-[11px] font-semibold text-emerald-400 uppercase tracking-wider">Identified Supplements</span>
                 <span className="text-lg font-bold text-emerald-400">+${sampleTotal.toLocaleString()}</span>
               </div>
               <div className="text-left border-l border-stone-700 pl-4">
-                <span className="block text-[11px] font-semibold text-blue-400 uppercase tracking-wider">Approved Scope</span>
+                <span className="block text-[11px] font-semibold text-blue-400 uppercase tracking-wider">Revised Total Estimate</span>
                 <span className="text-lg font-bold text-blue-300">${(8799 + sampleTotal).toLocaleString()}</span>
               </div>
             </div>
@@ -67,7 +67,7 @@ export default function TradeInsuranceClaimsShowcase({ trade }: { trade: Trade }
           {/* Omitted Items Grid for this Trade */}
           <div className="mb-6">
             <h4 className="text-sm font-bold text-stone-200 uppercase tracking-wider mb-3">
-              Standard Code-Required Supplements Automatically Flagged for {trade.name}:
+              Standard Code-Required Supplements Flagged for {trade.name}:
             </h4>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {sampleSupplements.map((item, i) => (
@@ -104,9 +104,9 @@ export default function TradeInsuranceClaimsShowcase({ trade }: { trade: Trade }
             </div>
             <div className="space-y-1.5">
               <span className="text-lg">📄</span>
-              <h4 className="text-sm font-bold text-stone-100">1-Click Justification Letters</h4>
+              <h4 className="text-sm font-bold text-stone-100">1-Click Scope Clarifications</h4>
               <p className="text-xs text-stone-400 leading-relaxed">
-                Generate formal, professional dispute letters citing specific IRC/IICRC building codes, ready to email directly to desk adjusters.
+                Generate itemized contractor construction estimates and scope clarification drafts citing specific building codes, ready to review with adjusters.
               </p>
             </div>
             <div className="space-y-1.5">

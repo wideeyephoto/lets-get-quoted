@@ -755,7 +755,6 @@ export default function InsuranceClaimsClient({
               )}
             </div>
           </div>
-          </div>
 
           {/* UPPA Legal Guidelines Card */}
           <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-5 shadow-sm">
