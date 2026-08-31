@@ -9,6 +9,7 @@ import {
   createHitlAction,
   listPendingHitlActions,
   resolveHitlAction as resolveHitlActionAudit,
+  validateActionExecutionSafety,
 } from './audit';
 import {
   getOpenDisputes,
@@ -20,6 +21,10 @@ import {
   getRecentIncidents,
 } from '@/lib/admin-alerts';
 import { getCronTrouble } from '@/lib/cron-runs';
+import {
+  diagnoseContractorOnboarding,
+  triageSupportCase,
+} from './support-copilot';
 
 type OperatorFunctionDeclaration = Omit<FunctionDeclaration, 'parameters'> & {
   parameters: NonNullable<FunctionDeclaration['parameters']>;
@@ -31,7 +36,8 @@ type OperatorFunctionDeclaration = Omit<FunctionDeclaration, 'parameters'> & {
 export const OPERATOR_TOOLS_DECLARATION: OperatorFunctionDeclaration[] = [
   {
     name: 'get_system_health',
-    description: 'Retrieves holistic SRE health metrics, including SMS queue errors, webhook failures, cron trouble, and open incidents.',
+    description:
+      'Retrieves holistic SRE health metrics, including SMS queue errors, webhook failures, cron trouble, and open incidents.',
     parameters: {
       type: Type.OBJECT,
       properties: {},
@@ -39,7 +45,8 @@ export const OPERATOR_TOOLS_DECLARATION: OperatorFunctionDeclaration[] = [
   },
   {
     name: 'get_sms_queue_diagnostics',
-    description: 'Queries delivery statistics for application SMS traffic, carrier delivery rates, stuck tasks, and provider errors.',
+    description:
+      'Queries delivery statistics for application SMS traffic, carrier delivery rates, stuck tasks, and provider errors.',
     parameters: {
       type: Type.OBJECT,
       properties: {
@@ -52,7 +59,8 @@ export const OPERATOR_TOOLS_DECLARATION: OperatorFunctionDeclaration[] = [
   },
   {
     name: 'get_revenue_and_billing_summary',
-    description: 'Summarizes active subscriptions, estimated MRR, paused payouts, dunning payments, and open Stripe disputes.',
+    description:
+      'Summarizes active subscriptions, estimated MRR, paused payouts, dunning payments, and open Stripe disputes.',
     parameters: {
       type: Type.OBJECT,
       properties: {
@@ -65,7 +73,8 @@ export const OPERATOR_TOOLS_DECLARATION: OperatorFunctionDeclaration[] = [
   },
   {
     name: 'get_contractor_account_360',
-    description: 'Retrieves a complete 360-degree context of a contractor account including subscription status, SMS registration, team size, and support cases.',
+    description:
+      'Retrieves a complete 360-degree context of a contractor account including subscription status, SMS registration, team size, onboarding diagnostics, and support cases.',
     parameters: {
       type: Type.OBJECT,
       properties: {
@@ -78,14 +87,58 @@ export const OPERATOR_TOOLS_DECLARATION: OperatorFunctionDeclaration[] = [
     },
   },
   {
+    name: 'diagnose_contractor_onboarding',
+    description:
+      'Performs deep diagnostic analysis on contractor onboarding blockers (Stripe Connect setup, SMS hotline provisioning, first quote creation) and returns step-by-step remediation guidance.',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        accountId: {
+          type: Type.STRING,
+          description: 'The contractor account ID to diagnose',
+        },
+      },
+      required: ['accountId'],
+    },
+  },
+  {
+    name: 'triage_support_case',
+    description:
+      'Triages an incoming contractor support case, detects topic (payouts, SMS hotline, quote creation, billing), assigns urgency, and drafts an intelligent response.',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        caseId: {
+          type: Type.STRING,
+          description: 'The support case or ticket ID',
+        },
+        subject: {
+          type: Type.STRING,
+          description: 'The support ticket subject line',
+        },
+        body: {
+          type: Type.STRING,
+          description: 'The support ticket message body',
+        },
+        accountId: {
+          type: Type.STRING,
+          description: 'Optional associated contractor account ID',
+        },
+      },
+      required: ['caseId', 'subject'],
+    },
+  },
+  {
     name: 'create_hitl_action_request',
-    description: 'Proposes a high-impact operational action (such as issuing a refund, extending a trial, or reassigning a sender) that requires 1-click founder approval.',
+    description:
+      'Proposes a high-impact operational action (such as issuing a refund, extending a trial, or reassigning a sender) that requires 1-click founder approval.',
     parameters: {
       type: Type.OBJECT,
       properties: {
         category: {
           type: Type.STRING,
-          description: 'Category: "sre_platform", "billing_revops", "customer_support", "growth_lifecycle", or "executive"',
+          description:
+            'Category: "sre_platform", "billing_revops", "customer_support", "growth_lifecycle", or "executive"',
         },
         title: {
           type: Type.STRING,
@@ -97,7 +150,8 @@ export const OPERATOR_TOOLS_DECLARATION: OperatorFunctionDeclaration[] = [
         },
         actionType: {
           type: Type.STRING,
-          description: 'The action identifier (e.g. "extend_contractor_trial", "issue_subscription_refund")',
+          description:
+            'The action identifier (e.g. "extend_contractor_trial", "issue_subscription_refund", "trigger_dunning_escalation")',
         },
         payloadJson: {
           type: Type.STRING,
@@ -139,7 +193,8 @@ export const OPERATOR_TOOLS_DECLARATION: OperatorFunctionDeclaration[] = [
   },
   {
     name: 'trigger_contractor_lifecycle_nudge',
-    description: 'Sends an automated onboarding or re-engagement nudge email/SMS to an inactive contractor.',
+    description:
+      'Sends an automated onboarding or re-engagement nudge email/SMS to an inactive contractor.',
     parameters: {
       type: Type.OBJECT,
       properties: {
@@ -149,7 +204,8 @@ export const OPERATOR_TOOLS_DECLARATION: OperatorFunctionDeclaration[] = [
         },
         campaignType: {
           type: Type.STRING,
-          description: 'Type of nudge: "onboarding_welcome", "first_quote_reminder", "phone_setup_help", or "winback"',
+          description:
+            'Type of nudge: "onboarding_welcome", "first_quote_reminder", "phone_setup_help", "stripe_connect_reminder", or "winback"',
         },
       },
       required: ['accountId', 'campaignType'],
@@ -191,7 +247,7 @@ export async function executeOperatorTool(
         const cronIssuesCount = Array.isArray(cronTrouble) ? cronTrouble.length : 0;
         const health = {
           status:
-            (incidents.length > 0 || cronIssuesCount > 0)
+            incidents.length > 0 || cronIssuesCount > 0 || unresolvedWebhooks.length > 0
               ? 'degraded'
               : 'healthy',
           failedSmsEvents24h: failedSms.length,
@@ -210,7 +266,7 @@ export async function executeOperatorTool(
           severity: 'info',
           toolName: 'get_system_health',
           outputResult: health,
-          reasoningSummary: `System health checked: status=${health.status}, incidents=${health.activeIncidentsCount}, failedSms=${health.failedSmsEvents24h}.`,
+          reasoningSummary: `System health checked: status=${health.status}, incidents=${health.activeIncidentsCount}, failedSms=${health.failedSmsEvents24h}, webhooks=${health.unresolvedWebhooksCount}.`,
           status: 'success',
         });
 
@@ -245,11 +301,17 @@ export async function executeOperatorTool(
           getPaymentsNeedingAttention(supabase).catch(() => []),
         ]);
 
+        let dunningTotalAmountCents = 0;
+        for (const d of dunning) {
+          dunningTotalAmountCents += Math.round((d.amount ?? 0) * 100);
+        }
+
         const summary = {
           openDisputesCount: disputes.length,
           disputes: args.includeDisputes ? disputes : undefined,
           pausedPayoutsCount: pausedPayouts.length,
           dunningCount: dunning.length,
+          dunningTotalAmountCents,
           dunningSummary: dunning.slice(0, 5),
           checkedAt: new Date().toISOString(),
         };
@@ -267,11 +329,12 @@ export async function executeOperatorTool(
       }
 
       try {
-        const [accountRes, staffRes, numbersRes, supportRes] = await Promise.all([
+        const [accountRes, staffRes, numbersRes, supportRes, diagnosis] = await Promise.all([
           supabase.from('accounts').select('*').eq('id', accountId).maybeSingle(),
           supabase.from('account_staff').select('id, user_id, role').eq('account_id', accountId),
           supabase.from('sms_sender_numbers').select('*').eq('account_id', accountId),
           supabase.from('support_cases').select('*').eq('account_id', accountId).limit(5),
+          diagnoseContractorOnboarding(supabase, accountId).catch(() => null),
         ]);
 
         const account = accountRes.data;
@@ -288,9 +351,47 @@ export async function executeOperatorTool(
           staffCount: staffRes.data?.length ?? 0,
           senderNumbersCount: numbersRes.data?.length ?? 0,
           recentSupportCasesCount: supportRes.data?.length ?? 0,
+          onboardingDiagnosis: diagnosis,
         };
 
         return { data: details };
+      } catch (err: unknown) {
+        return { data: { error: err instanceof Error ? err.message : String(err) } };
+      }
+    }
+
+    case 'diagnose_contractor_onboarding': {
+      const accountId = String(args.accountId || '');
+      if (!accountId) {
+        return { data: { error: 'accountId is required' } };
+      }
+
+      try {
+        const diagnosis = await diagnoseContractorOnboarding(supabase, accountId);
+        return { data: diagnosis };
+      } catch (err: unknown) {
+        return { data: { error: err instanceof Error ? err.message : String(err) } };
+      }
+    }
+
+    case 'triage_support_case': {
+      const caseId = String(args.caseId || '');
+      const subject = String(args.subject || '');
+      const body = args.body ? String(args.body) : undefined;
+      const accountId = args.accountId ? String(args.accountId) : undefined;
+
+      if (!caseId || !subject) {
+        return { data: { error: 'caseId and subject are required' } };
+      }
+
+      try {
+        const triage = await triageSupportCase(supabase, {
+          id: caseId,
+          subject,
+          body,
+          account_id: accountId,
+        });
+        return { data: triage };
       } catch (err: unknown) {
         return { data: { error: err instanceof Error ? err.message : String(err) } };
       }
@@ -347,6 +448,12 @@ export async function executeOperatorTool(
     case 'trigger_contractor_lifecycle_nudge': {
       const accountId = String(args.accountId || '');
       const campaignType = String(args.campaignType || 'onboarding_welcome');
+
+      // Safety policy check
+      const safetyCheck = validateActionExecutionSafety('trigger_contractor_lifecycle_nudge');
+      if (!safetyCheck.allowed) {
+        return { data: { error: safetyCheck.reason, success: false } };
+      }
 
       recordOperatorAudit({
         category: 'growth_lifecycle',

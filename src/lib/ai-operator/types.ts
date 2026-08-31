@@ -33,6 +33,8 @@ export interface OperatorHitlActionRequest {
   resolvedAt?: string;
   resolvedBy?: string;
   resolutionReason?: string;
+  isFinancialMutation?: boolean;
+  requiredRole?: 'founder' | 'admin' | 'staff';
 }
 
 export interface OperatorAuditLogEntry {
@@ -56,8 +58,10 @@ export interface OperatorHealthMetrics {
   unresolvedWebhookFailures: number;
   cronTroubleCount: number;
   dunningPaymentsCount: number;
+  dunningTotalAmountCents: number;
   pausedPayoutsCount: number;
   notOnboardedCount: number;
+  casesNearSlaCount: number;
 }
 
 export interface ExecutiveBriefing {
@@ -67,23 +71,84 @@ export interface ExecutiveBriefing {
   revenue: {
     mrrEstimated: number;
     activeSubscriptions: number;
+    paidPlanCounts: {
+      solo: number;
+      growth: number;
+      scale: number;
+    };
     dunningCount: number;
+    dunningTotalAmountCents: number;
     pendingPayouts: number;
   };
   operations: {
     smsDeliverabilityPct: number;
     queueHealth: 'healthy' | 'degraded' | 'critical';
     cronStatus: 'ok' | 'issues_detected';
+    cronTroubledCount: number;
+    unresolvedWebhooksCount: number;
+    activeIncidentsCount: number;
   };
   contractors: {
     totalActive: number;
     onboardedInPeriod: number;
     atRiskChurn: number;
+    unactivatedCount: number;
+  };
+  escalations: {
+    openDisputesCount: number;
+    casesNearSlaCount: number;
+    casesWithoutSlaCount: number;
+    pendingHitlApprovalsCount: number;
   };
   actionsTaken: string[];
   pendingApprovals: OperatorHitlActionRequest[];
   markdownSummary: string;
 }
+
+export interface OnboardingBlockerDetail {
+  code: 'stripe_connect_missing' | 'sms_hotline_missing' | 'first_quote_missing' | string;
+  title: string;
+  description: string;
+  remediationSteps: string[];
+  severity: 'high' | 'medium' | 'low';
+}
+
+export interface ContractorBlockerAnalysis {
+  accountId: string;
+  accountName: string;
+  isStripeConnected: boolean;
+  hasSmsSenderNumber: boolean;
+  quotesCount: number;
+  jobsCount: number;
+  status: 'fully_activated' | 'partially_blocked' | 'critically_blocked';
+  blockers: string[];
+  blockerDetails: OnboardingBlockerDetail[];
+  recommendedAction: string;
+  automatedNudgeSent: boolean;
+  suggestedNudgeCampaign?: 'onboarding_welcome' | 'stripe_connect_reminder' | 'phone_setup_help' | 'first_quote_reminder';
+}
+
+export interface SupportCaseTriageResult {
+  caseId: string;
+  subject: string;
+  urgency: 'low' | 'normal' | 'high' | 'urgent';
+  identifiedTopic:
+    | 'stripe_payouts'
+    | 'stripe_connect_onboarding'
+    | 'sms_phone'
+    | 'quote_creation'
+    | 'crew_scheduling'
+    | 'website_domain'
+    | 'billing'
+    | 'features'
+    | 'bug'
+    | 'general';
+  suggestedCustomerReply: string;
+  suggestedInternalAction: string;
+  requiresFounderReview: boolean;
+  onboardingDiagnosis?: ContractorBlockerAnalysis;
+}
+
 
 export interface OperatorExecutionContext {
   supabase: SupabaseClient;
@@ -96,3 +161,4 @@ export interface OperatorToolResult {
   auditEntry?: Partial<OperatorAuditLogEntry>;
   hitlAction?: OperatorHitlActionRequest;
 }
+

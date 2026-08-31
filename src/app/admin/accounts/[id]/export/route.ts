@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createAdminClient } from '@/lib/auth';
+import { createAdminClient, requirePermission } from '@/lib/auth';
+import { logAdminAction } from '@/lib/admin';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 export const dynamic = 'force-dynamic';
@@ -169,6 +170,9 @@ export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  // Enforce staff authentication and account.export permission
+  const actor = await requirePermission('account.export');
+
   const { id: accountId } = await params;
   if (!accountId) {
     return NextResponse.json({ error: 'Missing account ID' }, { status: 400 });
@@ -190,6 +194,7 @@ export async function GET(
     export_metadata: {
       account_id: accountId,
       exported_at: new Date().toISOString(),
+      exported_by: actor.adminEmail,
       format_version: '2026-08-30',
     },
     account,
@@ -204,6 +209,15 @@ export async function GET(
     const invoices = (exportPayload.invoices as Array<{ id: string }>) ?? [];
     const invoiceIds = invoices.map((inv) => inv.id).filter(Boolean);
     exportPayload.invoice_items = await fetchInvoiceItemsForInvoices(admin, invoiceIds);
+
+    // Record audit trail
+    await logAdminAction(admin, actor, {
+      action: 'account.export',
+      accountId,
+      targetType: 'account',
+      targetId: accountId,
+      reason: 'Staff full account export download',
+    });
 
     const filename = `account-export-${accountId}-${new Date().toISOString().slice(0, 10)}.json`;
 
@@ -223,3 +237,4 @@ export async function GET(
     );
   }
 }
+

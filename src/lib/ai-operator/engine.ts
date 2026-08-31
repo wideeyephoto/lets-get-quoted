@@ -16,7 +16,7 @@ import {
   getOperatorAuditLogs,
 } from './audit';
 import { generateExecutiveBriefing } from './briefing';
-import { runRevOpsGrowthScan, type RevOpsScanResult } from './revops-growth';
+import { runRevOpsGrowthScan, type RevOpsScanResult } from './revops';
 
 export interface AutonomousCycleReport {
   cycleId: string;
@@ -89,8 +89,17 @@ export async function askAiOperator(
   const toolCallsExecuted: string[] = [];
 
   if (!apiKey) {
-    // Intelligent deterministic fallback if API key is not configured
-    if (query.toLowerCase().includes('health') || query.toLowerCase().includes('status')) {
+    const q = query.toLowerCase();
+    if (q.includes('billing') || q.includes('revenue') || q.includes('dunning') || q.includes('dispute') || q.includes('payout')) {
+      const billing = await executeOperatorTool('get_revenue_and_billing_summary', { includeDisputes: true }, ctx);
+      return {
+        answer: `**Billing & Revenue Summary**: ${JSON.stringify(billing.data, null, 2)}`,
+        toolCallsExecuted: ['get_revenue_and_billing_summary'],
+        pendingHitlActions: listPendingHitlActions(),
+      };
+    }
+
+    if (q.includes('health') || q.includes('status') || q.includes('sre') || q.includes('incident') || q.includes('system')) {
       const health = await executeOperatorTool('get_system_health', {}, ctx);
       return {
         answer: `**System Health Status**: ${JSON.stringify(health.data, null, 2)}`,
@@ -99,11 +108,11 @@ export async function askAiOperator(
       };
     }
 
-    if (query.toLowerCase().includes('billing') || query.toLowerCase().includes('revenue') || query.toLowerCase().includes('dunning')) {
-      const billing = await executeOperatorTool('get_revenue_and_billing_summary', { includeDisputes: true }, ctx);
+    if (q.includes('onboarding') || q.includes('blocker') || q.includes('connect')) {
+      const diagnosis = await executeOperatorTool('diagnose_contractor_onboarding', { accountId: 'acc-test-123' }, ctx);
       return {
-        answer: `**Billing & Revenue Summary**: ${JSON.stringify(billing.data, null, 2)}`,
-        toolCallsExecuted: ['get_revenue_and_billing_summary'],
+        answer: `**Onboarding Diagnostics**: ${JSON.stringify(diagnosis.data, null, 2)}`,
+        toolCallsExecuted: ['diagnose_contractor_onboarding'],
         pendingHitlActions: listPendingHitlActions(),
       };
     }
@@ -118,13 +127,15 @@ export async function askAiOperator(
 
   const ai = new GoogleGenAI({ apiKey });
   const systemInstruction = `You are the Autonomous AI Operations Manager and Virtual COO for "Let's Get Quoted" (LGQ) SaaS.
-You assist the founder by monitoring platform health, triaging contractor support cases, managing revenue dunning, reviewing SMS queue deliverability, and drafting or executing operations.
+You assist the founder by monitoring platform health, triaging contractor support cases, managing revenue dunning, reviewing SMS queue deliverability, diagnosing onboarding blockers, and drafting or executing operations.
 
 Available Tools:
 - get_system_health: Check SMS errors, webhook failures, and cron job status.
 - get_sms_queue_diagnostics: Detailed delivery diagnostics on SMS tasks.
 - get_revenue_and_billing_summary: Summarize MRR, dunning accounts, and open Stripe disputes.
 - get_contractor_account_360: Detailed 360 view of a contractor account.
+- diagnose_contractor_onboarding: Deep diagnostics on onboarding blockers (Stripe, SMS, Quote).
+- triage_support_case: Triage incoming contractor support tickets.
 - create_hitl_action_request: Propose a high-impact operation requiring 1-click founder approval.
 - resolve_hitl_action: Approve or reject an existing pending action request.
 - list_pending_action_requests: View all active action cards awaiting approval.

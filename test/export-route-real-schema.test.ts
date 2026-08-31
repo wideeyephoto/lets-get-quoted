@@ -42,6 +42,11 @@ const { mockAdmin } = vi.hoisted(() => {
           }),
         };
       }
+      if (table === 'admin_actions') {
+        return {
+          insert: vi.fn().mockResolvedValue({ data: null, error: null }),
+        };
+      }
       return {
         select: vi.fn().mockReturnValue({
           eq: vi.fn().mockReturnValue({
@@ -62,6 +67,7 @@ const { mockAdmin } = vi.hoisted(() => {
           }),
         }),
       };
+
     }),
   };
   return { mockAdmin: admin };
@@ -69,20 +75,41 @@ const { mockAdmin } = vi.hoisted(() => {
 
 vi.mock('@/lib/auth', () => ({
   createAdminClient: () => mockAdmin,
+  requirePermission: vi.fn((permission: string) => {
+    if (permission !== 'account.export') {
+      throw new Error(`Forbidden: missing ${permission}`);
+    }
+    return Promise.resolve({
+      adminEmail: 'founder@letsgetquoted.com',
+      role: 'super_admin',
+      staff: { id: 'staff-1', role: 'super_admin', active: true },
+      permission: 'account.export',
+    });
+  }),
 }));
 
 import { GET } from '../src/app/admin/accounts/[id]/export/route';
 
 describe('account export keyset pagination and tables', () => {
-  it('correctly exports records across single-key, account_id PK, and composite PK tables', async () => {
+  it('correctly exports records across single-key, account_id PK, and composite PK tables with staff authentication', async () => {
     const req = new NextRequest('http://localhost/admin/accounts/acc-123/export');
     const res = await GET(req, { params: Promise.resolve({ id: 'acc-123' }) });
 
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.export_metadata.account_id).toBe('acc-123');
+    expect(body.export_metadata.exported_by).toBe('founder@letsgetquoted.com');
     expect(body.account.business_name).toBe('Test Contractor');
     expect(body.messaging_registrations).toHaveLength(1);
     expect(body.sms_consent_scopes).toHaveLength(1);
   });
+
+  it('rejects unauthenticated callers when requirePermission throws', async () => {
+    const { requirePermission } = await import('@/lib/auth');
+    vi.mocked(requirePermission).mockRejectedValueOnce(new Error('Unauthorized: No active staff session'));
+
+    const req = new NextRequest('http://localhost/admin/accounts/acc-123/export');
+    await expect(GET(req, { params: Promise.resolve({ id: 'acc-123' }) })).rejects.toThrow('Unauthorized');
+  });
 });
+

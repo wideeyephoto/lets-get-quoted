@@ -8,8 +8,84 @@ import type {
 
 // In-memory runtime stores for audit trails and HITL queues
 // (Can be backed by Supabase `ai_operator_logs` / `ai_operator_action_requests` tables)
-const auditLogsStore: OperatorAuditLogEntry[] = [];
-const hitlActionStore: Map<string, OperatorHitlActionRequest> = new Map();
+var auditLogsStore: OperatorAuditLogEntry[] = [];
+var hitlActionStore: Map<string, OperatorHitlActionRequest> = new Map();
+
+/**
+ * Strict action safety classifications
+ */
+export const SAFE_AUTO_REMEDIATION_ACTION_TYPES = new Set([
+  'trigger_contractor_lifecycle_nudge',
+  'send_onboarding_reminder',
+  'system_health_probe',
+  'triage_support_case',
+  'generate_executive_briefing',
+  'run_revops_scan',
+  'refresh_dashboard_metrics',
+  'log_operator_audit',
+]);
+
+export const REQUIRES_APPROVAL_ACTION_TYPES = new Set([
+  'issue_subscription_refund',
+  'trigger_dunning_escalation',
+  'extend_contractor_trial',
+  'modify_account_tier',
+  'suspend_account_access',
+  'reassign_sms_number',
+  'waive_platform_fee',
+  'force_payout_settlement',
+  'replay_failed_webhook',
+  'execute_database_mutation',
+]);
+
+/**
+ * Checks whether an operational action is safe for autonomous zero-touch execution
+ */
+export function isActionSafeForAutoRemediation(actionType: string): boolean {
+  if (REQUIRES_APPROVAL_ACTION_TYPES.has(actionType)) {
+    return false;
+  }
+  return SAFE_AUTO_REMEDIATION_ACTION_TYPES.has(actionType);
+}
+
+/**
+ * Validates whether an action execution is permitted according to HITL safety policy
+ */
+export function validateActionExecutionSafety(
+  actionType: string,
+  options?: { isFounderApproved?: boolean; payload?: Record<string, unknown> },
+): { allowed: boolean; reason?: string; requiresHitl: boolean } {
+  if (REQUIRES_APPROVAL_ACTION_TYPES.has(actionType)) {
+    if (!options?.isFounderApproved) {
+      return {
+        allowed: false,
+        requiresHitl: true,
+        reason: `Action "${actionType}" is a high-impact operation requiring explicit founder HITL approval.`,
+      };
+    }
+  }
+
+  // Check if financial payload exceeds threshold
+  if (options?.payload && typeof options.payload.amountDollars === 'number') {
+    if (options.payload.amountDollars > 500 && !options.isFounderApproved) {
+      return {
+        allowed: false,
+        requiresHitl: true,
+        reason: `Financial action exceeding $500 threshold requires founder approval.`,
+      };
+    }
+  }
+
+  return { allowed: true, requiresHitl: false };
+}
+
+/**
+ * Checks if a HITL action has expired based on expiresAt timestamp
+ */
+export function isHitlActionExpired(action: OperatorHitlActionRequest, now = new Date()): boolean {
+  if (!action.expiresAt) return false;
+  return new Date(action.expiresAt).getTime() <= now.getTime();
+}
 
 /**
  * Records an autonomous operator action in the audit trail
@@ -105,10 +181,33 @@ export function createHitlAction(
 }
 
 /**
- * Lists all pending HITL action requests
+ * Retrieves a HITL action by its ID
  */
-export function listPendingHitlActions(): OperatorHitlActionRequest[] {
-  return Array.from(hitlActionStore.values())
+export function getHitlActionById(actionId: string): OperatorHitlActionRequest | undefined {
+  return hitlActionStore.get(actionId);
+}
+
+/**
+ * Lists all pending HITL action requests, updating any expired items
+ */
+export function listPendingHitlActions(now = new Date()): OperatorHitlActionRequest[] {
+  const actions = Array.from(hitlActionStore.values());
+  
+  // Sweep for expired pending items
+  for (const action of actions) {
+    if (action.status === 'pending' && isHitlActionExpired(action, now)) {
+      action.status = 'expired';
+      recordOperatorAudit({
+        category: action.category,
+        actionName: `HITL Action EXPIRED: ${action.title}`,
+        severity: 'info',
+        reasoningSummary: `Action ${action.id} expired past ${action.expiresAt}.`,
+        status: 'failure',
+      });
+    }
+  }
+
+  return actions
     .filter((a) => a.status === 'pending')
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
@@ -121,10 +220,19 @@ export function resolveHitlAction(
   decision: 'approved' | 'rejected',
   resolver: string,
   reason?: string,
+  now = new Date(),
 ): { success: boolean; action?: OperatorHitlActionRequest; error?: string } {
   const action = hitlActionStore.get(actionId);
   if (!action) {
     return { success: false, error: `Action request "${actionId}" not found.` };
+  }
+
+  if (action.status === 'pending' && isHitlActionExpired(action, now)) {
+    action.status = 'expired';
+    return {
+      success: false,
+      error: `Action "${actionId}" has expired and can no longer be resolved.`,
+    };
   }
 
   if (action.status !== 'pending') {
@@ -135,7 +243,7 @@ export function resolveHitlAction(
   }
 
   action.status = decision;
-  action.resolvedAt = new Date().toISOString();
+  action.resolvedAt = now.toISOString();
   action.resolvedBy = resolver;
   action.resolutionReason = reason;
 
@@ -158,3 +266,4 @@ export function clearOperatorMemory(): void {
   auditLogsStore.length = 0;
   hitlActionStore.clear();
 }
+
