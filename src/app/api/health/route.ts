@@ -29,12 +29,16 @@ export async function GET() {
   let dbDetail = 'Google Cloud Run (us-east1) · PostgreSQL connected';
   try {
     const admin = createAdminClient();
-    const { error } = await admin.from('sites').select('id').limit(1);
+    const probePromise = admin.from('sites').select('id').limit(1);
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('Database probe timed out after 2000ms')), 2000)
+    );
+    const { error } = (await Promise.race([probePromise, timeoutPromise])) as { error: { message: string } | null };
     const dbElapsed = Math.round(performance.now() - dbStart);
     if (error) {
       dbStatus = 'outage';
       dbDetail = `Database query error: ${error.message}`;
-    } else if (dbElapsed > 2000) {
+    } else if (dbElapsed > 1500) {
       dbStatus = 'degraded';
       dbDetail = `High database latency (${dbElapsed}ms)`;
     } else {
