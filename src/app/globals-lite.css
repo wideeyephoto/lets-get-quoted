@@ -1,6 +1,6 @@
 /* GENERATED — do not edit. Source: src/app/globals.css
    Run: node scripts/build-css-subset.mjs
-   source-sha256: 2c6adf96eb863a7e
+   source-sha256: e3559dc9ab2db26e
 
    globals.css with the rules that can only match inside /dashboard, /admin and
    /demo removed. Every route except those three imports this file; they import
@@ -50,6 +50,7 @@
   --line: rgba(var(--tint), 0.07);
   --text: #eef1f6;
   --muted: #99a2b2;
+  --mute: var(--muted);
   /* The dimmer of the two secondary greys, used for captions and hints. */
   --muted-2: #6c7688;
   /* Ink that sits ON the accent. The accent doesn't change between themes, so
@@ -4632,27 +4633,6 @@ h3 {
   }
 }
 
-.settings-tabnav {
-  position: sticky;
-  top: 0.6rem;
-  z-index: 5;
-  display: flex;
-  gap: 0.4rem;
-  margin: 0 0 1.4rem;
-  padding: 0.35rem;
-  border-radius: 14px;
-  border: 1px solid var(--line);
-  background: var(--bg-elevated);
-  -webkit-backdrop-filter: blur(14px);
-  backdrop-filter: blur(14px);
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-
-.settings-tabnav::-webkit-scrollbar {
-  display: none;
-}
-
 .settings-tab {
   flex: 1 0 auto;
   display: inline-flex;
@@ -5263,87 +5243,6 @@ h3 {
   --tone-ink: var(--mute-g270);
 }
 
-/* AT A GLANCE, as one bar rather than separate cards.
-   Repeated bordered cards with display-sized numbers made the top of this tab
-   heavier than the plan it describes. This is the mockup's shape: one surface,
-   hairline dividers, an icon per cell, and type small enough that the sections
-   below stay the point. The status line stays -- a tone is never allowed to
-   carry meaning without a word beside it, and that rule outranks the layout. */
-.plan-glancebar {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  margin: 1.15rem 0 0;
-  border: 1px solid var(--rule-t12);
-  border-radius: 1.1rem;
-  background: rgba(var(--tint), 0.025);
-  box-shadow: 0 2px 10px -2px rgba(0, 0, 0, 0.2);
-  overflow: hidden;
-}
-
-.plan-glancebar-cell {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.75rem;
-  min-width: 0;
-  padding: 1rem 1.25rem;
-  border-left: 1px solid var(--rule-t12);
-  transition: background 0.2s ease;
-}
-
-.plan-glancebar-cell:hover {
-  background: rgba(var(--tint), 0.035);
-}
-
-.plan-glancebar-cell:first-child {
-  border-left: 0;
-}
-
-@media (max-width: 900px) {
-  .plan-glancebar {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .plan-glancebar-cell:nth-child(odd) {
-    border-left: 0;
-  }
-
-  .plan-glancebar-cell:nth-child(n + 3) {
-    border-top: 1px solid var(--rule-t12);
-  }
-}
-
-@media (max-width: 480px) {
-  .plan-glancebar {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .plan-glancebar-cell {
-    border-left: 0;
-  }
-
-  .plan-glancebar-cell+.plan-glancebar-cell {
-    border-top: 1px solid var(--rule-t12);
-  }
-}
-
-/* ==========================================================================
-   Plan Sub-Navigation Tabs (Model A)
-   ========================================================================== */
-
-.plan-subnav-bar {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  margin: 0 0 1.25rem;
-  padding: 0.35rem;
-  border-radius: 9999px;
-  background: rgba(var(--tint), 0.04);
-  border: 1px solid var(--rule-t12);
-  backdrop-filter: blur(12px);
-  width: fit-content;
-  max-width: 100%;
-}
-
 @keyframes planFadeIn {
   from {
     opacity: 0;
@@ -5354,38 +5253,6 @@ h3 {
     opacity: 1;
     transform: translateY(0);
   }
-}
-
-.plan-jump-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.35rem 0.75rem;
-  border-radius: 9999px;
-  background: rgba(var(--tint), 0.035);
-  border: 1px solid var(--rule-t12);
-  color: var(--text);
-  font-size: 0.8rem;
-  font-weight: 700;
-  text-decoration: none;
-  transition: all 0.15s ease;
-}
-
-.plan-jump-pill:hover {
-  background: rgba(var(--tint), 0.08);
-  border-color: rgba(var(--ink-rgb), 0.25);
-  transform: translateY(-1px);
-}
-
-.plan-jump-pill.highlight {
-  background: rgba(255, 138, 61, 0.1);
-  border-color: var(--cedge-orange-12);
-  color: var(--accent);
-}
-
-.plan-jump-pill.highlight:hover {
-  background: rgba(255, 138, 61, 0.2);
-  border-color: var(--accent);
 }
 
 .plan-change-subtitle {
@@ -8936,31 +8803,6 @@ li+li {
   margin: 1.2rem 0 0;
   color: var(--mute-t40);
   font-size: .74rem;
-}
-
-.sign-in-method-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: .9rem 1rem;
-  border: 1px solid var(--edge-t12);
-  border-radius: 10px;
-  background: rgba(var(--tint), .025);
-  transition: border-color .15s ease, background .15s ease;
-}
-
-/* "Phone number / Not linked / Link" is a 40px disc, two lines of text and a
-   button, and it was one unbreakable row: measured 288px of content in a 198px
-   box at 320px, which widened the layout viewport to 349 and let the whole page
-   pan sideways. The action drops under the name; nothing is hidden. */
-.sign-in-method-row {
-  flex-wrap: wrap;
-}
-
-.sign-in-method-row:hover {
-  border-color: var(--edge-t22);
-  background: rgba(var(--tint), .045);
 }
 
 .schedule-crew-initials {
@@ -21355,21 +21197,6 @@ button.plan-badge.warn.is-action:focus-visible {
   --bset-accent-ink: #a54f1b;
 }
 
-/* --- master switch --- */
-.bset-master {
-  display: flex;
-  align-items: center;
-  gap: 1.25rem;
-  flex-wrap: wrap;
-  padding: 1.15rem 1.35rem;
-  border: 1.5px solid var(--bset-line-strong);
-  border-radius: 18px;
-  background: var(--bset-card);
-  box-shadow: 0 18px 50px -12px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(var(--tint), 0.12);
-  -webkit-backdrop-filter: blur(24px);
-  backdrop-filter: blur(24px);
-}
-
 @keyframes liveDotPulse {
   0%, 100% {
     box-shadow: 0 0 0 3px rgba(52, 199, 123, 0.18), 0 0 10px rgba(52, 199, 123, 0.35);
@@ -21498,15 +21325,6 @@ button.plan-badge.warn.is-action:focus-visible {
   font-weight: 700;
 }
 
-/* --- sections --- */
-.bset-section {
-  border: 2px solid var(--bset-line-strong);
-  border-radius: 18px;
-  background: var(--bset-card);
-  /* NOT overflow:hidden — it clipped the three-dot menu in Time off. The
-     header carries the radius itself so the corners still look right. */
-}
-
 .bset-window-copy strong em.is-warning {
   border-color: var(--cedge-amber-11);
   color: var(--gold-ink);
@@ -21593,70 +21411,6 @@ button.plan-badge.warn.is-action:focus-visible {
 .bset-recurring-link svg {
   width: 0.85rem;
   height: 0.85rem;
-}
-
-@media (max-width: 640px) {
-  .bset-summary {
-    display: none;
-  }
-
-  .bset-mobile-summary {
-    display: block;
-  }
-
-  .bset-daygrid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  .bset-master {
-    gap: 0.9rem;
-  }
-
-  .bset-master-status {
-    padding-left: 0;
-    border-left: 0;
-    border-top: 1px solid var(--bset-line);
-    padding-top: 0.75rem;
-  }
-
-  .bset-section-head {
-    padding: 0.9rem 1rem;
-  }
-
-  .bset-section-badge {
-    padding: 0.18rem 0.4rem;
-    font-size: 0.6rem;
-  }
-
-  .bset-section-body {
-    padding: 0.25rem 1rem 1.1rem;
-  }
-
-  .bset-workhours {
-    align-items: flex-start;
-    flex-wrap: wrap;
-  }
-
-  .bset-workhours a {
-    flex-basis: 100%;
-    padding-left: 2.7rem;
-  }
-
-  .bset-savebar {
-    position: fixed;
-    left: 0.75rem;
-    right: 0.75rem;
-    bottom: 0.75rem;
-  }
-
-  .bset-savebar>div {
-    flex: 1 1 100%;
-  }
-
-  .bset-savebar>div .btn {
-    flex: 1;
-    justify-content: center;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -21992,50 +21746,6 @@ button.plan-badge.warn.is-action:focus-visible {
   to {
     opacity: 1;
   }
-}
-
-.client-modal {
-  width: min(34rem, 100%);
-  max-height: calc(100vh - 2rem);
-  overflow-y: auto;
-  border: 1px solid var(--cedge-orange-34);
-  border-radius: 18px;
-  background: #0d1a29;
-  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6);
-  animation: client-focus-in 0.2s cubic-bezier(0.2, 0.9, 0.3, 1.05);
-}
-
-.client-modal>header {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.8rem;
-  padding: 1rem 1.15rem 0.7rem;
-  border-bottom: 1px solid var(--rule-t10);
-}
-
-.client-modal>header h3 {
-  margin: 0;
-  font-size: 1.1rem;
-}
-
-.client-modal>header p {
-  margin: 0.25rem 0 0;
-  font-size: 0.8rem;
-  color: var(--mute-i60);
-  line-height: 1.45;
-}
-
-.client-modal>header button {
-  margin-left: auto;
-  flex: none;
-  width: 2rem;
-  height: 2rem;
-  border-radius: 50%;
-  border: 1px solid var(--edge-t18);
-  background: rgba(var(--tint), 0.05);
-  color: var(--ink-neutral-15);
-  font: inherit;
-  cursor: pointer;
 }
 
 @media (max-width: 620px) {
@@ -26526,10 +26236,6 @@ body:not(:has(.app-main-sidenav)) .theme-fab {
   background: rgba(248, 113, 113, 0.12);
 }
 
-.mkt-perf-muted {
-  color: var(--mute-t58);
-}
-
 .mkt-perf-miss {
   color: var(--gold-ink);
   font-weight: 700;
@@ -30348,42 +30054,10 @@ select optgroup {
   margin-top: 0.75rem;
 }
 
-#settings-panel-plan .plan-glancebar-cell {
-  padding: 0.7rem 0.85rem;
-}
-
 @media (max-width: 640px) {
   #settings-panel-plan .panel.workspace-section-card {
     padding: 0.9rem 0.95rem;
   }
-}
-
-/* ---------------------------------------------------------------------------
-   ACCOUNT / PLAN COLOR SYSTEM.
-
-   The active tab and hero already carried the brand orange, but every surface
-   below them resolved to the same navy card with the same grey edge. The page
-   was therefore colourful at the top and visually flat everywhere a decision
-   was made. These accents identify sections by purpose while leaving copy,
-   forms, checkout behavior and status semantics unchanged.
-
-   Theme-aware ink tokens supply every accent. They deliberately become darker
-   on the light theme, so borders and glyphs do not wash out on white.
-   --------------------------------------------------------------------------- */
-.settings-shell {
-  position: relative;
-  isolation: isolate;
-}
-
-.settings-shell {
-  position: relative;
-}
-
-.settings-shell .settings-tabnav {
-  border-color: var(--rule-t12);
-  background: var(--bg-elevated);
-  backdrop-filter: blur(12px);
-  box-shadow: 0 16px 40px -32px rgba(0, 0, 0, 0.5);
 }
 
 :root[data-theme] #settings-panel-plan>.panel.workspace-section-card {
@@ -30401,11 +30075,6 @@ select optgroup {
    directly instead of landing on a closed wrapper that needs a second click. */
 #settings-panel-plan details#buy-credits>summary {
   min-height: 2.5rem;
-}
-
-#settings-panel-plan .plan-glancebar-cell {
-  background: transparent;
-  box-shadow: none;
 }
 
 .brief-copy-btn.is-copied {
@@ -30531,60 +30200,6 @@ select optgroup {
   font-weight: 700;
   border: 2px solid #090d16;
   box-shadow: 0 1px 4px 0 rgba(0, 0, 0, 0.15), 0 1px 2px -1px rgba(0, 0, 0, 0.08);
-}
-
-:root[data-theme='sunlight'] .plan-subnav-bar {
-  background: #eef2f6;
-  border: 2px solid #090d16;
-}
-
-:root[data-theme='sunlight'] .plan-glancebar {
-  background: #f8fafc;
-  border: 2px solid #090d16;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-}
-
-:root[data-theme='sunlight'] .plan-glancebar-cell {
-  border-left: 2px solid #090d16;
-}
-
-:root[data-theme='sunlight'] .plan-glancebar-cell:hover {
-  background: #f1f5f9;
-}
-
-:root[data-theme='sunlight'] .plan-jump-pill {
-  background: #ffffff;
-  border: 1.5px solid #090d16;
-  color: #090d16;
-  font-weight: 650;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
-}
-
-:root[data-theme='sunlight'] .plan-jump-pill:hover {
-  background: #f1f5f9;
-  border-color: #090d16;
-  color: #000000;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
-}
-
-:root[data-theme='sunlight'] .plan-jump-pill.highlight {
-  background: #fff7ed;
-  border-color: #b43403;
-  color: #b43403;
-  font-weight: 700;
-}
-
-:root[data-theme='sunlight'] .sign-in-method-row {
-  background: #f8fafc;
-  border: 1.5px solid #090d16;
-  border-color: #090d16;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
-}
-
-:root[data-theme='sunlight'] .sign-in-method-row:hover {
-  background: #f1f5f9;
-  border-color: #090d16;
-  box-shadow: 0 2px 6px 0 rgba(0, 0, 0, 0.08);
 }
 
 :root[data-theme='sunlight'] .btn.secondary,
@@ -31197,17 +30812,6 @@ select optgroup {
   border-radius: 14px !important;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25), 0 1px 3px rgba(0, 0, 0, 0.15) !important;
   padding: 1.5rem !important;
-}
-
-:root[data-theme='light'] .sign-in-method-row {
-  background: #f8fafc;
-  border: 1.5px solid #cbd5e1;
-  border-radius: 12px;
-}
-
-:root[data-theme='light'] .sign-in-method-row:hover {
-  background: #f1f5f9;
-  border-color: #94a3b8;
 }
 
 /* WORKBENCH THEME TEXT INBOX / MESSAGES STYLES */
@@ -32349,20 +31953,6 @@ select optgroup {
   color: #94a3b8;
 }
 
-/* ============================================================================
-   SETTINGS TABS MULTI-THEME REFINEMENTS (ALL THEMES)
-   ============================================================================ */
-:root[data-theme='dark'] .settings-shell .settings-tabnav,
-:root[data-theme='dark'] .settings-tabnav,
-:root[data-theme='onyx'] .settings-shell .settings-tabnav,
-:root[data-theme='onyx'] .settings-tabnav,
-:root:not([data-theme]) .settings-shell .settings-tabnav,
-:root:not([data-theme]) .settings-tabnav {
-  background: #0e1219;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.4);
-}
-
 :root[data-theme='dark'] .settings-tab,
 :root[data-theme='onyx'] .settings-tab,
 :root:not([data-theme]) .settings-tab {
@@ -32401,13 +31991,6 @@ select optgroup {
   fill: none !important;
 }
 
-:root[data-theme='dim'] .settings-shell .settings-tabnav,
-:root[data-theme='dim'] .settings-tabnav {
-  background: #24211d;
-  border: 1px solid rgba(255, 246, 235, 0.14);
-  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.4);
-}
-
 :root[data-theme='dim'] .settings-tab {
   color: #d1cbc1;
   font-weight: 600;
@@ -32432,13 +32015,6 @@ select optgroup {
   color: #ffffff !important;
   stroke: #ffffff !important;
   fill: none !important;
-}
-
-:root[data-theme='light'] .settings-shell .settings-tabnav,
-:root[data-theme='light'] .settings-tabnav {
-  background: #1a1d26;
-  border: 1.5px solid #2e3446;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 :root[data-theme='light'] .settings-tab {
@@ -32467,13 +32043,6 @@ select optgroup {
   fill: none !important;
 }
 
-:root[data-theme='sunlight'] .settings-shell .settings-tabnav,
-:root[data-theme='sunlight'] .settings-tabnav {
-  background: #eef2f6;
-  border: 2px solid #090d16;
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.06);
-}
-
 :root[data-theme='sunlight'] .settings-tab {
   color: #1e293b;
   font-weight: 650;
@@ -32498,13 +32067,6 @@ select optgroup {
   color: #b43403 !important;
   stroke: #b43403 !important;
   fill: none !important;
-}
-
-:root[data-theme='parchment'] .settings-shell .settings-tabnav,
-:root[data-theme='parchment'] .settings-tabnav {
-  background: #ede7dc;
-  border: 1px solid rgba(74, 58, 38, 0.25);
-  box-shadow: inset 0 1px 2px rgba(74, 58, 38, 0.06);
 }
 
 :root[data-theme='parchment'] .settings-tab {
@@ -32533,13 +32095,6 @@ select optgroup {
   fill: none !important;
 }
 
-:root[data-theme='clarity'] .settings-shell .settings-tabnav,
-:root[data-theme='clarity'] .settings-tabnav {
-  background: #ffffff;
-  border: 2px solid #0f172a;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
 :root[data-theme='clarity'] .settings-tab {
   color: #334155;
   font-weight: 700;
@@ -32564,13 +32119,6 @@ select optgroup {
   color: #ffffff !important;
   stroke: #ffffff !important;
   fill: none !important;
-}
-
-:root[data-theme='monochrome'] .settings-shell .settings-tabnav,
-:root[data-theme='monochrome'] .settings-tabnav {
-  background: #18181b;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
 }
 
 :root[data-theme='monochrome'] .settings-tab {
