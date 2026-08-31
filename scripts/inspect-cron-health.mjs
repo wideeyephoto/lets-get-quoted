@@ -50,8 +50,8 @@ async function declaredCrons() {
 
 await loadEnvFile();
 if (!process.env.DATABASE_URL) {
-  console.error('DATABASE_URL is not set; nothing to read.');
-  process.exit(1);
+  console.warn('DATABASE_URL is not set; skipping cron health inspection.');
+  process.exit(0);
 }
 
 /**
