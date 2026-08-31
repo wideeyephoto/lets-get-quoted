@@ -9,6 +9,7 @@ import type { LeadViewItem } from './LeadsWorkspace';
 import { PropertyDossierCard } from '@/components/property-intel/PropertyDossierCard';
 import { PermitFeasibilityCard } from '@/components/permits/PermitFeasibilityCard';
 import { RoomScanViewer } from '@/components/property-intel/RoomScanViewer';
+import { shouldDisplayRoomSpatialScan } from '@/lib/property-intel/profile';
 import styles from '../focus.module.css';
 import leadStyles from './leads.module.css';
 
@@ -221,21 +222,34 @@ export default function LeadDetailTabs({
   }
 
   if (tab === 'property') {
+    const leadScope = [detail.projectType, detail.message].filter(Boolean).join(' ');
+    const displayConfig = shouldDisplayRoomSpatialScan({
+      scope: leadScope,
+    });
+
     return (
       <div style={{ maxWidth: '720px' }}>
         {detail.address ? (
           <>
             <PropertyDossierCard
               address={detail.address}
-              scope={[detail.projectType, detail.message].filter(Boolean).join(' ')}
+              scope={leadScope}
             />
             <PermitFeasibilityCard address={detail.address} isLead={true} />
-            <RoomScanViewer />
+            <RoomScanViewer
+              scope={leadScope}
+              collapsible={!displayConfig.isPromoted}
+              defaultCollapsed={!displayConfig.isPromoted}
+            />
           </>
         ) : (
           <>
             <p className={styles.muted}>No address on file for this lead to fetch exterior property intelligence.</p>
-            <RoomScanViewer />
+            <RoomScanViewer
+              scope={leadScope}
+              collapsible={!displayConfig.isPromoted}
+              defaultCollapsed={!displayConfig.isPromoted}
+            />
           </>
         )}
       </div>

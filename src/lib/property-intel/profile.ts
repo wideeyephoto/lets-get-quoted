@@ -92,6 +92,121 @@ const SCOPE_PATTERNS = {
   disturbs_paint: /\b(?:paint(?:ing)?|drywall|sheetrock|sand(?:ing)?|scrap(?:ing)?|window(?:s)?|siding|demo(?:lition)?|remodel(?:ing)?|renovat(?:ion|e)?)\b/i,
 };
 
+export const INTERIOR_SPATIAL_TRADES = new Set<TradeFamily>([
+  'general',
+  'finishing',
+  'flooring',
+  'plumbing',
+  'window_installation',
+]);
+
+export const EXTERIOR_ONLY_TRADES = new Set<TradeFamily>([
+  'roofing',
+  'siding',
+  'solar',
+  'outdoor_maintenance',
+  'landscaping',
+]);
+
+export const INTERIOR_SCOPE_PATTERNS =
+  /\b(?:bath(?:room|rooms)?|tub|shower|alcove|kitchen(?:s)?|island(?:s)?|cabinet(?:s)?|bedroom(?:s)?|living(?: room)?|basement(?:s)?|dining(?: room)?|closet(?:s)?|floor(?:ing|s)?|tile|tiling|hardwood|lvp|vinyl plank|carpet(?:ing)?|paint(?:ing|er)?|drywall|sheetrock|plaster|trim|baseboard(?:s)?|casing|molding|crown|remodel(?:ing|er)?|renovat(?:ion|e|or)?|interior)\b/i;
+
+export type RoomSpatialDisplayConfig = {
+  /** Whether the LiDAR / 3D room spatial tool should be displayed */
+  shouldDisplay: boolean;
+  /** Whether it should be expanded as a primary takeoff tool (true) or collapsed as optional (false) */
+  isPromoted: boolean;
+  /** The recommended room preset based on scope analysis */
+  recommendedRoomType: 'bathroom' | 'kitchen' | 'bedroom' | 'general';
+  /** Reason for the display decision */
+  reason: string;
+};
+
+export function inferRoomTypeFromScope(
+  scope?: string | null
+): 'bathroom' | 'kitchen' | 'bedroom' | 'general' {
+  const text = (scope ?? '').toLowerCase();
+  if (/\b(?:kitchen|island|cook|countertop|range|cabinet|pantry|fridge|sink|hood)\b/i.test(text)) {
+    return 'kitchen';
+  }
+  if (/\b(?:bed|bedroom|master bed|guest room|hardwood|carpet|closet)\b/i.test(text)) {
+    return 'bedroom';
+  }
+  if (/\b(?:bath|bathroom|tub|shower|alcove|vanity|toilet|wet wall|tile|tiling)\b/i.test(text)) {
+    return 'bathroom';
+  }
+  return 'bathroom';
+}
+
+/**
+ * Determines whether a job or lead should display the 3D Room LiDAR Spatial Scan
+ * prominently (promoted) vs collapsed as an optional tool (exterior trades),
+ * and automatically infers the most relevant room scan preset.
+ */
+export function shouldDisplayRoomSpatialScan(input: {
+  trade?: string | null;
+  scope?: string | null;
+  hasCustomScan?: boolean;
+}): RoomSpatialDisplayConfig {
+  const families = matchTradeFamilies(input.trade);
+  const scopeText = (input.scope ?? '').trim();
+
+  // If a custom scan is explicitly attached, always promote it
+  if (input.hasCustomScan) {
+    return {
+      shouldDisplay: true,
+      isPromoted: true,
+      recommendedRoomType: inferRoomTypeFromScope(scopeText),
+      reason: 'Custom 3D scan attached to job',
+    };
+  }
+
+  const hasInteriorScope = INTERIOR_SCOPE_PATTERNS.test(scopeText);
+  const hasInteriorTrade = families.some((f) => INTERIOR_SPATIAL_TRADES.has(f));
+  const isPurelyExteriorTrade =
+    families.length > 0 &&
+    !families.includes('unknown') &&
+    families.every((f) => EXTERIOR_ONLY_TRADES.has(f));
+
+  // If the scope explicitly describes an interior room or renovation, promote it
+  if (hasInteriorScope) {
+    return {
+      shouldDisplay: true,
+      isPromoted: true,
+      recommendedRoomType: inferRoomTypeFromScope(scopeText),
+      reason: 'Interior scope keywords detected in job description',
+    };
+  }
+
+  // If the contractor is an interior trade (e.g. painter, flooring, remodeler), promote it
+  if (hasInteriorTrade) {
+    return {
+      shouldDisplay: true,
+      isPromoted: true,
+      recommendedRoomType: inferRoomTypeFromScope(scopeText),
+      reason: 'Contractor trade benefits directly from interior spatial takeoffs',
+    };
+  }
+
+  // If purely exterior trade with no interior scope, collapse as optional
+  if (isPurelyExteriorTrade) {
+    return {
+      shouldDisplay: true,
+      isPromoted: false,
+      recommendedRoomType: 'general',
+      reason: 'Exterior trade — interior spatial tool available optionally',
+    };
+  }
+
+  // General or unknown trade
+  return {
+    shouldDisplay: true,
+    isPromoted: true,
+    recommendedRoomType: inferRoomTypeFromScope(scopeText),
+    reason: 'Standard spatial takeoff tool',
+  };
+}
+
 export type ResolvedPropertyProfile = {
   matchedFamilies: TradeFamily[];
   primarySections: PropertySection[];

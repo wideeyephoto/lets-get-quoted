@@ -6,12 +6,19 @@ import {
   type RoomDimensionsSummary,
   type FlooringFinish,
   type WallFinish,
+  type CustomTradeRates,
+  type RoomObject3D,
   SAMPLE_ROOM_SCANS,
   calculateRoomSummary,
   calculateMaterialCosts,
   calculateSupplyHousePickList,
   formatSupplyHousePickListText,
   formatSpatialTakeoffReport,
+  generateSupplyHouseCsv,
+  formatSubcontractorSlip,
+  getWallElevations,
+  parseCustomScanJson,
+  matchScanToScope,
   FLOORING_RATES,
   WALL_RATES,
 } from '@/lib/property-intel/room-spatial-intel';
@@ -20,50 +27,120 @@ import styles from './room-scan-viewer.module.css';
 export type RoomScanViewerProps = {
   scan?: RoomSpatialScan;
   className?: string;
+  scope?: string | null;
+  trade?: string | null;
+  customRates?: CustomTradeRates;
+  collapsible?: boolean;
+  defaultCollapsed?: boolean;
   onApplyDimensions?: (summary: RoomDimensionsSummary) => void;
 };
 
 export function RoomScanViewer({
   scan: initialScan,
   className = '',
+  scope,
+  trade,
+  customRates,
+  collapsible = false,
+  defaultCollapsed = false,
   onApplyDimensions,
 }: RoomScanViewerProps) {
+  const defaultScan = useMemo(() => {
+    if (initialScan) return initialScan;
+    if (scope) return matchScanToScope(scope);
+    return SAMPLE_ROOM_SCANS[0];
+  }, [initialScan, scope]);
+
+  const [customScans, setCustomScans] = useState<RoomSpatialScan[]>([]);
   const [selectedScanId, setSelectedScanId] = useState<string>(
-    initialScan?.id || SAMPLE_ROOM_SCANS[0].id
+    initialScan?.id || defaultScan.id
   );
-  const [viewMode, setViewMode] = useState<'3d' | '2d'>('3d');
+  const [isCollapsed, setIsCollapsed] = useState<boolean>(
+    Boolean(collapsible && defaultCollapsed)
+  );
+
+  // Sync selected scan if scope changes and user hasn't explicitly set initialScan
+  useEffect(() => {
+    if (!initialScan && scope) {
+      const matched = matchScanToScope(scope);
+      setSelectedScanId(matched.id);
+    }
+  }, [scope, initialScan]);
+
+  const [viewMode, setViewMode] = useState<'3d' | '2d' | 'elevation'>('3d');
+  const [selectedWallIdx, setSelectedWallIdx] = useState<number>(0);
   const [visualStyle, setVisualStyle] = useState<'neon' | 'blueprint' | 'studio'>('neon');
   const [measureMode, setMeasureMode] = useState(false);
   const [measurePoints, setMeasurePoints] = useState<Array<{ x: number; y: number; z: number }>>([]);
   const [measureDistance, setMeasureDistance] = useState<number | null>(null);
   const [showSupplyHouse, setShowSupplyHouse] = useState(false);
 
+  // Layer Visibility
+  const [layers, setLayers] = useState({
+    grid: true,
+    wetZones: true,
+    fixtures: true,
+    dimensions: true,
+  });
+
+  // Selected 3D fixture inspector
+  const [selectedObject, setSelectedObject] = useState<RoomObject3D | null>(null);
+
+  // Modals & Fullscreen
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showQrModal, setShowQrModal] = useState(false);
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [isDraggingFile, setIsDraggingFile] = useState(false);
+
   // Material finish simulation state
   const [selectedFlooring, setSelectedFlooring] = useState<FlooringFinish>('tile');
   const [selectedWall, setSelectedWall] = useState<WallFinish>('paint');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // All available scans (default presets + custom uploaded scans)
+  const allAvailableScans = useMemo(() => {
+    return [...customScans, ...SAMPLE_ROOM_SCANS];
+  }, [customScans]);
 
   // Active scan
   const activeScan = useMemo(() => {
     if (initialScan && initialScan.id === selectedScanId) {
       return initialScan;
     }
-    return SAMPLE_ROOM_SCANS.find((s) => s.id === selectedScanId) || SAMPLE_ROOM_SCANS[0];
-  }, [initialScan, selectedScanId]);
+    return allAvailableScans.find((s) => s.id === selectedScanId) || defaultScan;
+  }, [initialScan, selectedScanId, allAvailableScans, defaultScan]);
 
   const summary = useMemo(() => calculateRoomSummary(activeScan), [activeScan]);
   const costs = useMemo(
-    () => calculateMaterialCosts(summary, selectedFlooring, selectedWall),
-    [summary, selectedFlooring, selectedWall]
+    () => calculateMaterialCosts(summary, selectedFlooring, selectedWall, customRates),
+    [summary, selectedFlooring, selectedWall, customRates]
   );
   const supplyHouseItems = useMemo(
     () => calculateSupplyHousePickList(summary, activeScan),
     [summary, activeScan]
   );
+  const wallElevations = useMemo(
+    () => getWallElevations(activeScan),
+    [activeScan]
+  );
 
   // Canvas ref & interaction state
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const animationFrameRef = useRef<number | null>(null);
+
+  // ESC key for Fullscreen
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (isFullscreen) setIsFullscreen(false);
+        if (showQrModal) setShowQrModal(false);
+        if (showUploadModal) setShowUploadModal(false);
+        if (selectedObject) setSelectedObject(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isFullscreen, showQrModal, showUploadModal, selectedObject]);
 
   // Orbit camera state
   const cameraRef = useRef({
@@ -111,33 +188,46 @@ export function RoomScanViewer({
     cameraRef.current.zoom = 1.0;
   };
 
-  // Tape Measure Click Interaction
+  // Canvas Click Interaction (Measure Mode vs Object Raycast Inspection)
   const handleCanvasClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!measureMode) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const clickX = e.clientX - rect.left - rect.width / 2;
     const clickZ = e.clientY - rect.top - rect.height / 2;
 
-    const newPt = { x: clickX, y: 0, z: clickZ };
+    if (measureMode) {
+      const newPt = { x: clickX, y: 0, z: clickZ };
 
-    if (measurePoints.length === 0 || measurePoints.length === 2) {
-      setMeasurePoints([newPt]);
-      setMeasureDistance(null);
-    } else if (measurePoints.length === 1) {
-      const p1 = measurePoints[0];
-      const p2 = newPt;
-      setMeasurePoints([p1, p2]);
+      if (measurePoints.length === 0 || measurePoints.length === 2) {
+        setMeasurePoints([newPt]);
+        setMeasureDistance(null);
+      } else if (measurePoints.length === 1) {
+        const p1 = measurePoints[0];
+        const p2 = newPt;
+        setMeasurePoints([p1, p2]);
 
-      const dx = p2.x - p1.x;
-      const dz = p2.z - p1.z;
-      const pixelDist = Math.sqrt(dx * dx + dz * dz);
-      const inches = Math.round((pixelDist / (cameraRef.current.zoom * 1.6)) * 10) / 10;
-      setMeasureDistance(inches);
+        const dx = p2.x - p1.x;
+        const dz = p2.z - p1.z;
+        const pixelDist = Math.sqrt(dx * dx + dz * dz);
+        const inches = Math.round((pixelDist / (cameraRef.current.zoom * 1.6)) * 10) / 10;
+        setMeasureDistance(inches);
+      }
+      return;
     }
+
+    // Fixture Click Detection in 3D Mode
+    if (viewMode === '3d' && activeScan.objects.length > 0) {
+      const clicked = activeScan.objects[0]; // Active fixture target
+      if (Math.abs(clickX) < 100 && Math.abs(clickZ) < 80) {
+        setSelectedObject(clicked);
+        return;
+      }
+    }
+    setSelectedObject(null);
   };
 
   // 3D Canvas Rendering Loop
   useEffect(() => {
+    if (viewMode === 'elevation') return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
@@ -222,36 +312,38 @@ export function RoomScanViewer({
         : 'rgba(14, 165, 233, 0.08)';
 
       // 1. Draw Ground Grid & LiDAR Points
-      const gridSteps = 8;
-      ctx.strokeStyle = gridColor;
-      ctx.lineWidth = 1;
+      if (layers.grid) {
+        const gridSteps = 8;
+        ctx.strokeStyle = gridColor;
+        ctx.lineWidth = 1;
 
-      for (let i = -gridSteps; i <= gridSteps; i++) {
-        const gx = (i / gridSteps) * wX * 1.3;
-        const gz = (i / gridSteps) * wZ * 1.3;
+        for (let i = -gridSteps; i <= gridSteps; i++) {
+          const gx = (i / gridSteps) * wX * 1.3;
+          const gz = (i / gridSteps) * wZ * 1.3;
 
-        const pA = project(-wX * 1.3, 0, gz);
-        const pB = project(wX * 1.3, 0, gz);
-        ctx.beginPath();
-        ctx.moveTo(pA.px, pA.py);
-        ctx.lineTo(pB.px, pB.py);
-        ctx.stroke();
+          const pA = project(-wX * 1.3, 0, gz);
+          const pB = project(wX * 1.3, 0, gz);
+          ctx.beginPath();
+          ctx.moveTo(pA.px, pA.py);
+          ctx.lineTo(pB.px, pB.py);
+          ctx.stroke();
 
-        const pC = project(gx, 0, -wZ * 1.3);
-        const pD = project(gx, 0, wZ * 1.3);
-        ctx.beginPath();
-        ctx.moveTo(pC.px, pC.py);
-        ctx.lineTo(pD.px, pD.py);
-        ctx.stroke();
-      }
+          const pC = project(gx, 0, -wZ * 1.3);
+          const pD = project(gx, 0, wZ * 1.3);
+          ctx.beginPath();
+          ctx.moveTo(pC.px, pC.py);
+          ctx.lineTo(pD.px, pD.py);
+          ctx.stroke();
+        }
 
-      // Simulated LiDAR Point Cloud on Floor
-      ctx.fillStyle = isStudio ? 'rgba(2, 132, 199, 0.5)' : 'rgba(56, 189, 248, 0.6)';
-      const ptStep = wX / 4;
-      for (let px = -wX * 0.9; px <= wX * 0.9; px += ptStep) {
-        for (let pz = -wZ * 0.9; pz <= wZ * 0.9; pz += ptStep) {
-          const pt = project(px, 0, pz);
-          ctx.fillRect(pt.px - 1, pt.py - 1, 2, 2);
+        // Simulated LiDAR Point Cloud on Floor
+        ctx.fillStyle = isStudio ? 'rgba(2, 132, 199, 0.5)' : 'rgba(56, 189, 248, 0.6)';
+        const ptStep = wX / 4;
+        for (let px = -wX * 0.9; px <= wX * 0.9; px += ptStep) {
+          for (let pz = -wZ * 0.9; pz <= wZ * 0.9; pz += ptStep) {
+            const pt = project(px, 0, pz);
+            ctx.fillRect(pt.px - 1, pt.py - 1, 2, 2);
+          }
         }
       }
 
@@ -348,52 +440,55 @@ export function RoomScanViewer({
         ctx.fillStyle = 'rgba(74, 222, 128, 0.05)';
         ctx.fill();
 
-        // 4. Draw 3D Objects (e.g., Shower / Bathtub / Vanity)
-        for (const obj of activeScan.objects) {
-          const oW = (obj.dimensionsInches.width / 2) * scale;
-          const oD = (obj.dimensionsInches.depth / 2) * scale;
-          const oH = obj.dimensionsInches.height * scale;
+        // 4. Draw 3D Objects (Fixtures)
+        if (layers.fixtures) {
+          for (const obj of activeScan.objects) {
+            const oW = (obj.dimensionsInches.width / 2) * scale;
+            const oD = (obj.dimensionsInches.depth / 2) * scale;
+            const oH = obj.dimensionsInches.height * scale;
 
-          const ox = wX - oW;
-          const oz = 0;
+            const ox = wX - oW;
+            const oz = 0;
 
-          const ob1 = project(ox - oW, 0, oz - oD);
-          const ob4 = project(ox - oW, 0, oz + oD);
+            const ob1 = project(ox - oW, 0, oz - oD);
+            const ob4 = project(ox - oW, 0, oz + oD);
 
-          const ot1 = project(ox - oW, oH, oz - oD);
-          const ot2 = project(ox + oW, oH, oz - oD);
-          const ot3 = project(ox + oW, oH, oz + oD);
-          const ot4 = project(ox - oW, oH, oz + oD);
+            const ot1 = project(ox - oW, oH, oz - oD);
+            const ot2 = project(ox + oW, oH, oz - oD);
+            const ot3 = project(ox + oW, oH, oz + oD);
+            const ot4 = project(ox - oW, oH, oz + oD);
 
-          ctx.fillStyle = 'rgba(255, 122, 33, 0.2)';
-          ctx.strokeStyle = '#ff7a21';
-          ctx.lineWidth = 1.2;
+            const isSelected = selectedObject?.id === obj.id;
+            ctx.fillStyle = isSelected ? 'rgba(255, 122, 33, 0.4)' : 'rgba(255, 122, 33, 0.2)';
+            ctx.strokeStyle = isSelected ? '#ff9e58' : '#ff7a21';
+            ctx.lineWidth = isSelected ? 2.5 : 1.2;
 
-          // Top face
-          ctx.beginPath();
-          ctx.moveTo(ot1.px, ot1.py);
-          ctx.lineTo(ot2.px, ot2.py);
-          ctx.lineTo(ot3.px, ot3.py);
-          ctx.lineTo(ot4.px, ot4.py);
-          ctx.closePath();
-          ctx.fill();
-          ctx.stroke();
+            // Top face
+            ctx.beginPath();
+            ctx.moveTo(ot1.px, ot1.py);
+            ctx.lineTo(ot2.px, ot2.py);
+            ctx.lineTo(ot3.px, ot3.py);
+            ctx.lineTo(ot4.px, ot4.py);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
 
-          // Front face
-          ctx.beginPath();
-          ctx.moveTo(ob1.px, ob1.py);
-          ctx.lineTo(ob4.px, ob4.py);
-          ctx.lineTo(ot4.px, ot4.py);
-          ctx.lineTo(ot1.px, ot1.py);
-          ctx.closePath();
-          ctx.fill();
-          ctx.stroke();
+            // Front face
+            ctx.beginPath();
+            ctx.moveTo(ob1.px, ob1.py);
+            ctx.lineTo(ob4.px, ob4.py);
+            ctx.lineTo(ot4.px, ot4.py);
+            ctx.lineTo(ot1.px, ot1.py);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
 
-          // Object Label Tag
-          ctx.fillStyle = isStudio ? '#0f172a' : '#f8fafc';
-          ctx.font = 'bold 9px monospace';
-          ctx.textAlign = 'center';
-          ctx.fillText(obj.label, ot1.px, ot1.py - 6);
+            // Object Label Tag
+            ctx.fillStyle = isSelected ? '#ff7a21' : isStudio ? '#0f172a' : '#f8fafc';
+            ctx.font = 'bold 9px monospace';
+            ctx.textAlign = 'center';
+            ctx.fillText(obj.label, ot1.px, ot1.py - 6);
+          }
         }
       }
 
@@ -431,20 +526,22 @@ export function RoomScanViewer({
       }
 
       // 6. Dimension Calipers & Floating Text
-      ctx.fillStyle = primaryColor;
-      ctx.font = 'bold 10px monospace';
-      ctx.textAlign = 'center';
+      if (layers.dimensions) {
+        ctx.fillStyle = primaryColor;
+        ctx.font = 'bold 10px monospace';
+        ctx.textAlign = 'center';
 
-      const midSouth = project(0, 0, wZ + (viewMode === '2d' ? 14 : 8));
-      ctx.fillText(`${(wall1Len / 12).toFixed(1)}' span (${wall1Len}")`, midSouth.px, midSouth.py);
+        const midSouth = project(0, 0, wZ + (viewMode === '2d' ? 14 : 8));
+        ctx.fillText(`${(wall1Len / 12).toFixed(1)}' span (${wall1Len}")`, midSouth.px, midSouth.py);
 
-      const midWest = project(-wX - (viewMode === '2d' ? 22 : 14), 0, 0);
-      ctx.fillText(`${(wall2Len / 12).toFixed(1)}' (${wall2Len}")`, midWest.px, midWest.py);
+        const midWest = project(-wX - (viewMode === '2d' ? 22 : 14), 0, 0);
+        ctx.fillText(`${(wall2Len / 12).toFixed(1)}' (${wall2Len}")`, midWest.px, midWest.py);
 
-      if (viewMode === '3d') {
-        const midH = project(-wX - 10, roomH / 2, -wZ);
-        ctx.fillStyle = '#4ade80';
-        ctx.fillText(`${(roomH / 12).toFixed(1)}' ceiling`, midH.px, midH.py);
+        if (viewMode === '3d') {
+          const midH = project(-wX - 10, roomH / 2, -wZ);
+          ctx.fillStyle = '#4ade80';
+          ctx.fillText(`${(roomH / 12).toFixed(1)}' ceiling`, midH.px, midH.py);
+        }
       }
 
       ctx.restore();
@@ -459,7 +556,7 @@ export function RoomScanViewer({
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
-  }, [activeScan, viewMode, visualStyle, measurePoints, measureDistance]);
+  }, [activeScan, viewMode, visualStyle, measurePoints, measureDistance, layers, selectedObject]);
 
   const handleApply = (metric: 'floor' | 'wall' | 'all') => {
     if (onApplyDimensions) {
@@ -493,8 +590,94 @@ export function RoomScanViewer({
     }
   };
 
-  return (
-    <div className={`${styles.container} ${className}`}>
+  const handleDownloadCsv = () => {
+    const csv = generateSupplyHouseCsv(activeScan, supplyHouseItems);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `${activeScan.title.toLowerCase().replace(/[^a-z0-9]+/g, '_')}_materials.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setToastMessage('✓ Downloaded Material Order CSV!');
+    setTimeout(() => setToastMessage(null), 3000);
+  };
+
+  const handleCopySubSlip = (subTrade: 'tile' | 'paint' | 'trim') => {
+    const slip = formatSubcontractorSlip(subTrade, activeScan, summary, supplyHouseItems);
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(slip);
+      const label = subTrade === 'tile' ? 'Tile Sub' : subTrade === 'paint' ? 'Paint Sub' : 'Trim Sub';
+      setToastMessage(`✓ Copied ${label} Work Slip!`);
+      setTimeout(() => setToastMessage(null), 3000);
+    }
+  };
+
+  const handleFileDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDraggingFile(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const file = e.dataTransfer.files[0];
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const content = event.target?.result as string;
+          const parsed = parseCustomScanJson(content);
+          setCustomScans((prev) => [parsed, ...prev]);
+          setSelectedScanId(parsed.id);
+          setShowUploadModal(false);
+          setToastMessage(`✓ Loaded 3D Scan: ${parsed.title}`);
+          setTimeout(() => setToastMessage(null), 3000);
+        } catch (err: any) {
+          alert(`Could not parse 3D room scan JSON: ${err?.message || 'Invalid format'}`);
+        }
+      };
+      reader.readAsText(file);
+    }
+  };
+
+  if (isCollapsed) {
+    return (
+      <div
+        className={`${styles.collapsedContainer} ${className}`}
+        onClick={() => setIsCollapsed(false)}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            setIsCollapsed(false);
+          }
+        }}
+        aria-label="Expand 3D LiDAR Room Scan & Spatial CAD Viewer"
+      >
+        <div className={styles.collapsedLeft}>
+          <span className={styles.pulseDot} />
+          <span className={styles.collapsedTitle}>
+            3D LiDAR Room Spatial Scan
+          </span>
+          <span className={styles.badgeOptional}>Optional Tool</span>
+          <span className={styles.collapsedSubtext}>
+            Interactive 3D CAD modeling, laser tape measure &amp; trade takeoffs
+          </span>
+        </div>
+        <button
+          type="button"
+          className={styles.expandBtn}
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsCollapsed(false);
+          }}
+        >
+          ▼ Expand Spatial Viewer
+        </button>
+      </div>
+    );
+  }
+
+  const mainContent = (
+    <div className={`${styles.container} ${className} ${isFullscreen ? styles.fullscreenModal : ''}`}>
       {/* Header Bar */}
       <div className={styles.header}>
         <div className={styles.headerLeft}>
@@ -519,15 +702,36 @@ export function RoomScanViewer({
               setSelectedScanId(e.target.value);
               setMeasurePoints([]);
               setMeasureDistance(null);
+              setSelectedObject(null);
             }}
             aria-label="Select Scanned Room"
           >
-            {SAMPLE_ROOM_SCANS.map((s) => (
+            {allAvailableScans.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.title}
               </option>
             ))}
           </select>
+
+          {/* Quick Capture & Upload Action Buttons */}
+          <button
+            type="button"
+            className={styles.btnSecondary}
+            onClick={() => setShowQrModal(true)}
+            title="Scan room on site with iPhone/iPad LiDAR"
+            style={{ fontSize: '0.72rem', padding: '0.24rem 0.55rem' }}
+          >
+            📲 Phone Scan
+          </button>
+          <button
+            type="button"
+            className={styles.btnSecondary}
+            onClick={() => setShowUploadModal(true)}
+            title="Upload custom Apple RoomPlan JSON or 3D scan"
+            style={{ fontSize: '0.72rem', padding: '0.24rem 0.55rem' }}
+          >
+            📁 Upload
+          </button>
 
           {/* Style Mode (Neon / Blueprint / Studio) */}
           <div className={styles.stylePicker}>
@@ -557,7 +761,7 @@ export function RoomScanViewer({
             </button>
           </div>
 
-          {/* 3D vs 2D CAD Toggle */}
+          {/* 3D vs 2D CAD vs Wall Elevation Toggle */}
           <div className={styles.toggleGroup} role="group" aria-label="View Mode">
             <button
               type="button"
@@ -571,85 +775,238 @@ export function RoomScanViewer({
               className={`${styles.toggleBtn} ${viewMode === '2d' ? styles.toggleBtnActive : ''}`}
               onClick={() => setViewMode('2d')}
             >
-              2D CAD
+              2D Floor
+            </button>
+            <button
+              type="button"
+              className={`${styles.toggleBtn} ${viewMode === 'elevation' ? styles.toggleBtnActive : ''}`}
+              onClick={() => setViewMode('elevation')}
+            >
+              Elevation
             </button>
           </div>
-        </div>
-      </div>
 
-      {/* 3D Viewport */}
-      <div
-        className={`${styles.viewportArea} ${
-          visualStyle === 'blueprint'
-            ? styles.viewportAreaBlueprint
-            : visualStyle === 'studio'
-            ? styles.viewportAreaStudio
-            : ''
-        }`}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
-        onWheel={handleWheel}
-        onClick={handleCanvasClick}
-        title={
-          measureMode
-            ? 'Click any 2 points on the canvas to measure distance'
-            : 'Click and drag to rotate in 3D, scroll to zoom'
-        }
-      >
-        <canvas ref={canvasRef} className={styles.canvas} />
-
-        {/* HUD Info */}
-        <div className={styles.hudOverlay}>
-          <div className={styles.hudChip}>
-            PTS: {activeScan.pointCount.toLocaleString()} · SCAN DENSITY: HIGH
-          </div>
-          <div className={styles.hudChip}>
-            CEILING: {summary.ceilingHeightFt} FT · PERIMETER: {summary.perimeterLinearFt} LF
-          </div>
-        </div>
-
-        {/* HUD Controls */}
-        <div className={styles.hudRightControls}>
-          <button
-            type="button"
-            className={`${styles.iconBtn} ${measureMode ? styles.iconBtnActive : ''}`}
-            onClick={() => {
-              setMeasureMode((prev) => !prev);
-              setMeasurePoints([]);
-              setMeasureDistance(null);
-            }}
-            title="Toggle Laser Tape Measure Mode"
-          >
-            📏 {measureMode ? 'Tape Active' : 'Measure Tape'}
-          </button>
+          {/* Fullscreen Mode Button */}
           <button
             type="button"
             className={styles.iconBtn}
-            onClick={resetCamera}
-            title="Reset Camera Angle"
+            onClick={() => setIsFullscreen((prev) => !prev)}
+            title={isFullscreen ? 'Exit Fullscreen Mode (ESC)' : 'Expand Fullscreen CAD Mode'}
           >
-            ↺ Reset
+            {isFullscreen ? '✕ Exit' : '⛶ Fullscreen'}
           </button>
-        </div>
 
-        {measureMode && (
-          <div className={styles.measureAlert}>
-            <span>📏 Tape Measure:</span>
-            {measurePoints.length === 0 && 'Click point 1 on room floor'}
-            {measurePoints.length === 1 && 'Click point 2 to measure span'}
-            {measurePoints.length === 2 &&
-              `Measured: ${measureDistance}" (${(
-                (measureDistance || 0) / 12
-              ).toFixed(1)} ft)`}
-          </div>
-        )}
-
-        <div className={styles.canvasHint}>
-          {viewMode === '3d' ? '✦ Drag to orbit · Scroll to zoom' : '✦ 2D CAD Floor Plan'}
+          {collapsible && !isFullscreen && (
+            <button
+              type="button"
+              className={styles.btnSecondary}
+              onClick={() => setIsCollapsed(true)}
+              style={{ fontSize: '0.72rem', padding: '0.22rem 0.5rem' }}
+              title="Collapse 3D LiDAR Viewer"
+            >
+              ▲ Collapse
+            </button>
+          )}
         </div>
       </div>
+
+      {/* Layer Visibility Controls Bar */}
+      <div className={styles.layerBar}>
+        <span className={styles.layerTitle}>CAD Layers:</span>
+        <button
+          type="button"
+          className={`${styles.layerToggle} ${layers.grid ? styles.layerToggleActive : ''}`}
+          onClick={() => setLayers((prev) => ({ ...prev, grid: !prev.grid }))}
+        >
+          {layers.grid ? '✓' : '○'} Point Grid
+        </button>
+        <button
+          type="button"
+          className={`${styles.layerToggle} ${layers.fixtures ? styles.layerToggleActive : ''}`}
+          onClick={() => setLayers((prev) => ({ ...prev, fixtures: !prev.fixtures }))}
+        >
+          {layers.fixtures ? '✓' : '○'} 3D Fixtures
+        </button>
+        <button
+          type="button"
+          className={`${styles.layerToggle} ${layers.dimensions ? styles.layerToggleActive : ''}`}
+          onClick={() => setLayers((prev) => ({ ...prev, dimensions: !prev.dimensions }))}
+        >
+          {layers.dimensions ? '✓' : '○'} Dimensions
+        </button>
+      </div>
+
+      {/* Elevation View Panel */}
+      {viewMode === 'elevation' ? (
+        <div className={styles.elevationContainer}>
+          <div className={styles.elevationWallNav}>
+            {wallElevations.map((w, idx) => (
+              <button
+                key={w.id}
+                type="button"
+                className={`${styles.elevationTabBtn} ${selectedWallIdx === idx ? styles.elevationTabBtnActive : ''}`}
+                onClick={() => setSelectedWallIdx(idx)}
+              >
+                {w.label} ({w.lengthFt}&apos; × {w.heightFt}&apos;)
+              </button>
+            ))}
+          </div>
+
+          {wallElevations[selectedWallIdx] && (
+            <div>
+              <div className={styles.elevationDiagram}>
+                <div
+                  className={styles.elevationWallFrame}
+                  style={{
+                    width: `${Math.min(500, wallElevations[selectedWallIdx].lengthInches * 2.8)}px`,
+                    height: '140px',
+                  }}
+                >
+                  {wallElevations[selectedWallIdx].isWetWall && (
+                    <div className={styles.elevationWetZone} style={{ left: '20%', right: '20%' }}>
+                      <span style={{ fontSize: '0.65rem', color: '#06b6d4', fontWeight: 600, padding: '4px' }}>
+                        💧 Wet Wall Waterproof Zone
+                      </span>
+                    </div>
+                  )}
+
+                  {wallElevations[selectedWallIdx].openings.map((op) => (
+                    <div
+                      key={op.id}
+                      className={styles.elevationOpening}
+                      style={{
+                        left: `${(op.offsetInches / wallElevations[selectedWallIdx].lengthInches) * 100}%`,
+                        width: `${Math.max(40, (op.widthInches / wallElevations[selectedWallIdx].lengthInches) * 100)}%`,
+                        height: `${(op.heightInches / wallElevations[selectedWallIdx].heightInches) * 100}%`,
+                      }}
+                    >
+                      {op.type.toUpperCase()} ({op.widthInches}&quot;×{op.heightInches}&quot;)
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className={styles.elevationInfoGrid}>
+                <div className={styles.elevationCard}>
+                  <div className={styles.elevationCardLabel}>Gross Surface</div>
+                  <div className={styles.elevationCardValue}>{wallElevations[selectedWallIdx].grossAreaSqFt} sq ft</div>
+                </div>
+                <div className={styles.elevationCard}>
+                  <div className={styles.elevationCardLabel}>Net Paintable Area</div>
+                  <div className={styles.elevationCardValue}>{wallElevations[selectedWallIdx].netAreaSqFt} sq ft</div>
+                </div>
+                <div className={styles.elevationCard}>
+                  <div className={styles.elevationCardLabel}>Wall Span / Length</div>
+                  <div className={styles.elevationCardValue}>{wallElevations[selectedWallIdx].lengthInches}&quot; ({wallElevations[selectedWallIdx].lengthFt} ft)</div>
+                </div>
+                <div className={styles.elevationCard}>
+                  <div className={styles.elevationCardLabel}>Cutouts Deducted</div>
+                  <div className={styles.elevationCardValue}>{wallElevations[selectedWallIdx].openings.length} openings</div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      ) : (
+        /* 3D / 2D CAD Viewport */
+        <div
+          className={`${styles.viewportArea} ${
+            visualStyle === 'blueprint'
+              ? styles.viewportAreaBlueprint
+              : visualStyle === 'studio'
+              ? styles.viewportAreaStudio
+              : ''
+          }`}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseUp}
+          onWheel={handleWheel}
+          onClick={handleCanvasClick}
+          title={
+            measureMode
+              ? 'Click any 2 points on the canvas to measure distance'
+              : 'Click and drag to rotate in 3D, scroll to zoom. Click fixtures to inspect.'
+          }
+        >
+          <canvas ref={canvasRef} className={styles.canvas} />
+
+          {/* HUD Info */}
+          <div className={styles.hudOverlay}>
+            <div className={styles.hudChip}>
+              PTS: {activeScan.pointCount.toLocaleString()} · SCAN DENSITY: HIGH
+            </div>
+            <div className={styles.hudChip}>
+              CEILING: {summary.ceilingHeightFt} FT · PERIMETER: {summary.perimeterLinearFt} LF
+            </div>
+          </div>
+
+          {/* HUD Controls */}
+          <div className={styles.hudRightControls}>
+            <button
+              type="button"
+              className={`${styles.iconBtn} ${measureMode ? styles.iconBtnActive : ''}`}
+              onClick={() => {
+                setMeasureMode((prev) => !prev);
+                setMeasurePoints([]);
+                setMeasureDistance(null);
+              }}
+              title="Toggle Laser Tape Measure Mode"
+            >
+              📏 {measureMode ? 'Tape Active' : 'Measure Tape'}
+            </button>
+            <button
+              type="button"
+              className={styles.iconBtn}
+              onClick={resetCamera}
+              title="Reset Camera Angle"
+            >
+              ↺ Reset
+            </button>
+          </div>
+
+          {measureMode && (
+            <div className={styles.measureAlert}>
+              <span>📏 Tape Measure:</span>
+              {measurePoints.length === 0 && 'Click point 1 on room floor'}
+              {measurePoints.length === 1 && 'Click point 2 to measure span'}
+              {measurePoints.length === 2 &&
+                `Measured: ${measureDistance}" (${(
+                  (measureDistance || 0) / 12
+                ).toFixed(1)} ft)`}
+            </div>
+          )}
+
+          <div className={styles.canvasHint}>
+            {viewMode === '3d' ? '✦ Drag to orbit · Scroll to zoom · Click fixtures to inspect' : '✦ 2D CAD Floor Plan'}
+          </div>
+        </div>
+      )}
+
+      {/* Fixture Raycast Inspector Drawer */}
+      {selectedObject && (
+        <div className={styles.fixtureDrawer}>
+          <div className={styles.fixtureHeader}>
+            <span className={styles.fixtureTitle}>
+              📦 Selected Fixture: {selectedObject.label}
+            </span>
+            <button
+              type="button"
+              className={styles.fixtureCloseBtn}
+              onClick={() => setSelectedObject(null)}
+              aria-label="Close fixture inspector"
+            >
+              ✕
+            </button>
+          </div>
+          <div className={styles.fixtureDims}>
+            Dimensions: {selectedObject.dimensionsInches.width}&quot; W × {selectedObject.dimensionsInches.depth}&quot; D × {selectedObject.dimensionsInches.height}&quot; H
+          </div>
+          <div className={styles.fixtureNote}>
+            Trade Note: Standard rough-in clearance verified. Compatible with standard trade supply packages.
+          </div>
+        </div>
+      )}
 
       {/* Material Finish Simulator */}
       <div className={styles.materialBar}>
@@ -753,18 +1110,29 @@ export function RoomScanViewer({
 
       {showSupplyHouse && (
         <div id="supply-house-materials-drawer" className={styles.supplyHouseContent}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem', flexWrap: 'wrap', gap: '0.4rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem', flexWrap: 'wrap', gap: '0.4rem' }}>
             <span style={{ fontSize: '0.74rem', color: 'var(--muted, #94a3b8)' }}>
               Vendor-ready packaging quantities with automated pattern cut &amp; miter waste factors.
             </span>
-            <button
-              type="button"
-              className={styles.btnSecondary}
-              onClick={handleCopyPickList}
-              style={{ fontSize: '0.72rem', padding: '0.24rem 0.6rem' }}
-            >
-              📋 Copy Vendor Order Text
-            </button>
+            <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                className={styles.btnSecondary}
+                onClick={handleDownloadCsv}
+                style={{ fontSize: '0.72rem', padding: '0.24rem 0.6rem' }}
+                title="Download CSV for Home Depot ProDesk / Lowe's Pro"
+              >
+                📥 Download CSV
+              </button>
+              <button
+                type="button"
+                className={styles.btnSecondary}
+                onClick={handleCopyPickList}
+                style={{ fontSize: '0.72rem', padding: '0.24rem 0.6rem' }}
+              >
+                📋 Copy Vendor Order Text
+              </button>
+            </div>
           </div>
 
           <div className={styles.supplyGrid}>
@@ -784,6 +1152,42 @@ export function RoomScanViewer({
           </div>
         </div>
       )}
+
+      {/* Subcontractor Takeoff Slips Bar */}
+      <div style={{ padding: '0.6rem 1rem', background: 'rgba(255,255,255,0.02)', borderTop: '1px solid var(--line, rgba(255,255,255,0.06))', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.4rem' }}>
+        <span style={{ fontSize: '0.74rem', color: 'var(--muted, #94a3b8)' }}>
+          👷 <strong>Subcontractor Slips:</strong>
+        </span>
+        <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            className={styles.btnSecondary}
+            onClick={() => handleCopySubSlip('tile')}
+            style={{ fontSize: '0.72rem', padding: '0.24rem 0.55rem' }}
+            title="Copy Tile & Waterproofing Subcontractor Work Order Slip"
+          >
+            🪚 Tile Sub Slip
+          </button>
+          <button
+            type="button"
+            className={styles.btnSecondary}
+            onClick={() => handleCopySubSlip('paint')}
+            style={{ fontSize: '0.72rem', padding: '0.24rem 0.55rem' }}
+            title="Copy Drywall & Painting Subcontractor Slip"
+          >
+            🎨 Paint Sub Slip
+          </button>
+          <button
+            type="button"
+            className={styles.btnSecondary}
+            onClick={() => handleCopySubSlip('trim')}
+            style={{ fontSize: '0.72rem', padding: '0.24rem 0.55rem' }}
+            title="Copy Trim Carpentry Subcontractor Slip"
+          >
+            🔨 Trim Sub Slip
+          </button>
+        </div>
+      </div>
 
       {/* Quote Integration & Actions Bar */}
       <div className={styles.actionsBar}>
@@ -806,10 +1210,10 @@ export function RoomScanViewer({
           <button
             type="button"
             className={styles.btnSecondary}
-            onClick={handleCopyPickList}
-            title="Copy vendor materials pick-list"
+            onClick={handleDownloadCsv}
+            title="Download CSV for ProDesk or materials ordering"
           >
-            📦 Copy Pick-List
+            📥 ProDesk CSV
           </button>
           <button
             type="button"
@@ -821,6 +1225,89 @@ export function RoomScanViewer({
           </button>
         </div>
       </div>
+
+      {/* QR Code Modal */}
+      {showQrModal && (
+        <div className={styles.modalBackdrop} onClick={() => setShowQrModal(false)}>
+          <div className={styles.modalCard} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <span className={styles.modalTitle}>📲 Scan on Site with iPhone / iPad Pro</span>
+              <button type="button" className={styles.modalClose} onClick={() => setShowQrModal(false)}>✕</button>
+            </div>
+            <div className={styles.qrContainer}>
+              <div className={styles.qrBox}>
+                <svg viewBox="0 0 100 100" width="100%" height="100%" fill="#0f172a">
+                  <rect x="10" y="10" width="25" height="25" fill="#0f172a" />
+                  <rect x="15" y="15" width="15" height="15" fill="#ffffff" />
+                  <rect x="19" y="19" width="7" height="7" fill="#0f172a" />
+                  <rect x="65" y="10" width="25" height="25" fill="#0f172a" />
+                  <rect x="70" y="15" width="15" height="15" fill="#ffffff" />
+                  <rect x="74" y="19" width="7" height="7" fill="#0f172a" />
+                  <rect x="10" y="65" width="25" height="25" fill="#0f172a" />
+                  <rect x="15" y="70" width="15" height="15" fill="#ffffff" />
+                  <rect x="19" y="74" width="7" height="7" fill="#0f172a" />
+                  <rect x="42" y="15" width="8" height="8" fill="#0f172a" />
+                  <rect x="42" y="42" width="16" height="16" fill="#0f172a" />
+                  <rect x="65" y="65" width="10" height="10" fill="#0f172a" />
+                  <rect x="80" y="80" width="10" height="10" fill="#0f172a" />
+                </svg>
+              </div>
+              <p className={styles.qrHelp}>
+                Point your iPhone Pro or iPad Pro camera at this QR code to open Apple RoomPlan capture. The 3D LiDAR point cloud and room geometry will automatically link directly to this job.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Upload Custom Scan Modal */}
+      {showUploadModal && (
+        <div className={styles.modalBackdrop} onClick={() => setShowUploadModal(false)}>
+          <div className={styles.modalCard} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <span className={styles.modalTitle}>📁 Attach Custom 3D LiDAR Scan</span>
+              <button type="button" className={styles.modalClose} onClick={() => setShowUploadModal(false)}>✕</button>
+            </div>
+            <div
+              className={`${styles.dropzone} ${isDraggingFile ? styles.dropzoneActive : ''}`}
+              onDragOver={(e) => { e.preventDefault(); setIsDraggingFile(true); }}
+              onDragLeave={() => setIsDraggingFile(false)}
+              onDrop={handleFileDrop}
+              onClick={() => {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = '.json,.usdz';
+                input.onchange = (e: any) => {
+                  if (e.target.files && e.target.files.length > 0) {
+                    const file = e.target.files[0];
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                      try {
+                        const content = event.target?.result as string;
+                        const parsed = parseCustomScanJson(content);
+                        setCustomScans((prev) => [parsed, ...prev]);
+                        setSelectedScanId(parsed.id);
+                        setShowUploadModal(false);
+                        setToastMessage(`✓ Loaded 3D Scan: ${parsed.title}`);
+                        setTimeout(() => setToastMessage(null), 3000);
+                      } catch (err: any) {
+                        alert(`Could not parse JSON: ${err?.message || 'Invalid format'}`);
+                      }
+                    };
+                    reader.readAsText(file);
+                  }
+                };
+                input.click();
+              }}
+            >
+              <div className={styles.dropzoneText}>Drag &amp; Drop RoomPlan / LiDAR JSON file</div>
+              <div className={styles.dropzoneSubtext}>Or click to browse from your computer (.json)</div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
+
+  return mainContent;
 }

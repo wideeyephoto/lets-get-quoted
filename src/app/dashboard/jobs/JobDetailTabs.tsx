@@ -7,6 +7,7 @@ import { PropertyDossierCard } from '@/components/property-intel/PropertyDossier
 import { PermitWorkspace } from '@/components/permits/PermitWorkspace';
 import { PermitFeasibilityCard } from '@/components/permits/PermitFeasibilityCard';
 import { RoomScanViewer } from '@/components/property-intel/RoomScanViewer';
+import { shouldDisplayRoomSpatialScan } from '@/lib/property-intel/profile';
 import styles from '../focus.module.css';
 
 /**
@@ -113,6 +114,10 @@ export default function JobDetailTabs({
   }
 
   if (tab === 'property') {
+    const displayConfig = shouldDisplayRoomSpatialScan({
+      scope: detail.scope,
+    });
+
     return (
       <div style={{ maxWidth: '720px' }}>
         {detail.address ? (
@@ -122,12 +127,20 @@ export default function JobDetailTabs({
               scope={detail.scope}
             />
             <PermitFeasibilityCard address={detail.address} />
-            <RoomScanViewer />
+            <RoomScanViewer
+              scope={detail.scope}
+              collapsible={!displayConfig.isPromoted}
+              defaultCollapsed={!displayConfig.isPromoted}
+            />
           </>
         ) : (
           <>
             <p className={styles.muted}>No address on file for this job to fetch exterior property intelligence.</p>
-            <RoomScanViewer />
+            <RoomScanViewer
+              scope={detail.scope}
+              collapsible={!displayConfig.isPromoted}
+              defaultCollapsed={!displayConfig.isPromoted}
+            />
           </>
         )}
       </div>

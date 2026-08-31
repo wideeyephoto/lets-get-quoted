@@ -5,8 +5,17 @@ import {
   calculateSupplyHousePickList,
   formatSupplyHousePickListText,
   formatSpatialTakeoffReport,
+  generateSupplyHouseCsv,
+  formatSubcontractorSlip,
+  getWallElevations,
+  parseCustomScanJson,
+  matchScanToScope,
   SAMPLE_ROOM_SCANS,
 } from '@/lib/property-intel/room-spatial-intel';
+import {
+  shouldDisplayRoomSpatialScan,
+  inferRoomTypeFromScope,
+} from '@/lib/property-intel/profile';
 
 describe('3D LiDAR Room Spatial Intelligence Takeoffs', () => {
   it('accurately calculates square footage and linear perimeter from a 4-wall scan', () => {
@@ -65,6 +74,88 @@ describe('3D LiDAR Room Spatial Intelligence Takeoffs', () => {
     expect(costs.totalEstimatedTakeoff).toBe(700 + 451 + 177);
   });
 
+  it('supports custom price book rate overrides for material and labor estimates', () => {
+    const scan = SAMPLE_ROOM_SCANS[0];
+    const summary = calculateRoomSummary(scan);
+    const costs = calculateMaterialCosts(summary, 'tile', 'paint', {
+      flooringRatePerSqFt: 22,
+      wallRatePerSqFt: 3.5,
+      trimRatePerLf: 9,
+    });
+
+    // 50 * 22 = 1100
+    expect(costs.flooringCost).toBe(1100);
+    expect(costs.flooringLabel).toContain('$22/sq ft Custom');
+    // 244 * 3.5 = 854
+    expect(costs.wallCost).toBe(854);
+    expect(costs.wallLabel).toContain('$3.5/sq ft Custom');
+    // 27.3 * 9 = 246
+    expect(costs.trimCost).toBe(246);
+    expect(costs.totalEstimatedTakeoff).toBe(1100 + 854 + 246);
+  });
+
+  it('accurately auto-matches room scan presets based on scope keywords', () => {
+    const kitchenScan = matchScanToScope('Full kitchen remodel with center island cabinets and quartz');
+    expect(kitchenScan.roomType).toBe('kitchen');
+    expect(kitchenScan.id).toBe('scan-kitchen-alcove');
+
+    const bedroomScan = matchScanToScope('Primary bedroom hardwood flooring takeoff and closet trim');
+    expect(bedroomScan.roomType).toBe('bedroom');
+    expect(bedroomScan.id).toBe('scan-primary-bed');
+
+    const bathScan = matchScanToScope('Master bath tub-to-shower conversion with porcelain tile');
+    expect(bathScan.roomType).toBe('bathroom');
+    expect(bathScan.id).toBe('scan-master-bath-alcove');
+
+    const fallbackScan = matchScanToScope('Unspecified general repair');
+    expect(fallbackScan.id).toBe(SAMPLE_ROOM_SCANS[0].id);
+  });
+
+  it('intelligently targets LiDAR display: promoted for interior trades, collapsed for exterior trades', () => {
+    // 1. Exterior trade with exterior scope -> collapsed optional
+    const roofingResult = shouldDisplayRoomSpatialScan({
+      trade: 'Roofing Contractor',
+      scope: 'Tear off architectural shingles and install flashing',
+    });
+    expect(roofingResult.shouldDisplay).toBe(true);
+    expect(roofingResult.isPromoted).toBe(false);
+
+    const landscapingResult = shouldDisplayRoomSpatialScan({
+      trade: 'Landscaping & Tree Service',
+      scope: 'Sod installation and mulch beds',
+    });
+    expect(landscapingResult.isPromoted).toBe(false);
+
+    // 2. Exterior trade taking on an interior scope -> promoted!
+    const roofingInteriorResult = shouldDisplayRoomSpatialScan({
+      trade: 'Roofing Contractor',
+      scope: 'Attic drywall repair and master bedroom ceiling paint',
+    });
+    expect(roofingInteriorResult.isPromoted).toBe(true);
+    expect(roofingInteriorResult.recommendedRoomType).toBe('bedroom');
+
+    // 3. Interior trades -> promoted!
+    const painterResult = shouldDisplayRoomSpatialScan({
+      trade: 'Painting & Drywall LLC',
+      scope: 'Interior wall paint',
+    });
+    expect(painterResult.isPromoted).toBe(true);
+
+    const flooringResult = shouldDisplayRoomSpatialScan({
+      trade: 'Hardwood & Tile Flooring',
+      scope: 'Tile installation',
+    });
+    expect(flooringResult.isPromoted).toBe(true);
+
+    // 4. Custom scan attached -> always promoted
+    const customScanResult = shouldDisplayRoomSpatialScan({
+      trade: 'Roofing',
+      scope: 'Roof repair',
+      hasCustomScan: true,
+    });
+    expect(customScanResult.isPromoted).toBe(true);
+  });
+
   it('calculates vendor-ready supply house materials pick-list with waste factors', () => {
     const scan = SAMPLE_ROOM_SCANS[0];
     const summary = calculateRoomSummary(scan);
@@ -117,4 +208,83 @@ describe('3D LiDAR Room Spatial Intelligence Takeoffs', () => {
     expect(report).toContain('Floor Surface Area:      50 sq ft');
     expect(report).toContain('TOTAL ESTIMATED TAKEOFF: $1,328');
   });
+
+  it('generates standard RFC-compliant CSV for ProDesk / supply house purchasing', () => {
+    const scan = SAMPLE_ROOM_SCANS[0];
+    const summary = calculateRoomSummary(scan);
+    const items = calculateSupplyHousePickList(summary, scan);
+    const csv = generateSupplyHouseCsv(scan, items);
+
+    expect(csv).toContain('Category,Item Description,Quantity,Unit,Waste Factor,Notes,Room,Device');
+    expect(csv).toContain('Flooring & Tile');
+    expect(csv).toContain('Floor Tile / Planks');
+    expect(csv).toContain('Trim & Finish Carpentry');
+  });
+
+  it('formats trade-specific subcontractor slips for Tile, Paint, and Trim subs', () => {
+    const scan = SAMPLE_ROOM_SCANS[0];
+    const summary = calculateRoomSummary(scan);
+    const items = calculateSupplyHousePickList(summary, scan);
+
+    const tileSlip = formatSubcontractorSlip('tile', scan, summary, items);
+    expect(tileSlip).toContain('TILE & WATERPROOFING SUBCONTRACTOR WORK SLIP');
+    expect(tileSlip).toContain('Floor Tile Area:         50 sq ft');
+    expect(tileSlip).toContain('Wet Wall Alcove Area:');
+
+    const paintSlip = formatSubcontractorSlip('paint', scan, summary, items);
+    expect(paintSlip).toContain('DRYWALL & PAINT SUBCONTRACTOR WORK SLIP');
+    expect(paintSlip).toContain('Net Paintable Walls:     244 sq ft');
+
+    const trimSlip = formatSubcontractorSlip('trim', scan, summary, items);
+    expect(trimSlip).toContain('TRIM & FINISH CARPENTRY SUBCONTRACTOR WORK SLIP');
+    expect(trimSlip).toContain('Net Baseboard Perimeter: 27.3 lin ft');
+  });
+
+  it('computes 2D wall elevation cutouts and net surface areas', () => {
+    const scan = SAMPLE_ROOM_SCANS[0]; // 4 walls, door on wall 2, window on wall 3
+    const elevations = getWallElevations(scan);
+
+    expect(elevations).toHaveLength(4);
+    expect(elevations[0].label).toBe('North Wall (Vanity & Mirror)');
+    expect(elevations[0].openings).toHaveLength(0);
+
+    expect(elevations[2].label).toBe('South Wall (Entry Door)');
+    expect(elevations[2].openings).toHaveLength(1);
+    expect(elevations[2].openings[0].type).toBe('door');
+    expect(elevations[2].netAreaSqFt).toBeLessThan(elevations[2].grossAreaSqFt);
+
+    expect(elevations[3].label).toBe('West Wall (Window & Toilet)');
+    expect(elevations[3].openings).toHaveLength(1);
+    expect(elevations[3].openings[0].type).toBe('window');
+
+    // Wet wall check for bathroom shower alcove
+    expect(elevations[1].isWetWall).toBe(true);
+  });
+
+  it('parses valid custom Apple RoomPlan / LiDAR JSON data', () => {
+    const rawJson = JSON.stringify({
+      title: 'Custom Guest Suite Scan',
+      roomType: 'bedroom',
+      ceilingHeightInches: 100,
+      walls: [
+        { id: 'w1', lengthInches: 140, heightInches: 100 },
+        { id: 'w2', lengthInches: 120, heightInches: 100 },
+        { id: 'w3', lengthInches: 140, heightInches: 100 },
+        { id: 'w4', lengthInches: 120, heightInches: 100 },
+      ],
+      openings: [],
+      objects: [],
+    });
+
+    const parsed = parseCustomScanJson(rawJson);
+    expect(parsed.title).toBe('Custom Guest Suite Scan');
+    expect(parsed.roomType).toBe('bedroom');
+    expect(parsed.walls).toHaveLength(4);
+    expect(parsed.ceilingHeightInches).toBe(100);
+
+    // Throws error on invalid format
+    expect(() => parseCustomScanJson('{ invalid json')).toThrow();
+    expect(() => parseCustomScanJson('{"title": "Missing walls"}')).toThrow();
+  });
 });
+

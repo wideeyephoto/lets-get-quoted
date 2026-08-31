@@ -542,3 +542,413 @@
   from { opacity: 0; transform: translateY(2px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+.collapsedContainer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.85rem 1.1rem;
+  background: var(--bg-2, #181d28);
+  border: 1px solid var(--line, rgba(255, 255, 255, 0.1));
+  border-radius: 12px;
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.collapsedContainer:hover {
+  border-color: rgba(56, 189, 248, 0.4);
+  background: rgba(56, 189, 248, 0.04);
+}
+
+.collapsedLeft {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.collapsedTitle {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text, #f8fafc);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.collapsedSubtext {
+  font-size: 0.74rem;
+  color: var(--muted, #94a3b8);
+}
+
+.badgeOptional {
+  font-size: 0.68rem;
+  font-weight: 500;
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  background: rgba(148, 163, 184, 0.12);
+  color: var(--muted, #94a3b8);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+}
+
+.expandBtn {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #38bdf8;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+/* Layer Visibility Bar */
+.layerBar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 1rem;
+  background: rgba(15, 23, 42, 0.6);
+  border-top: 1px solid var(--line, rgba(255, 255, 255, 0.06));
+  flex-wrap: wrap;
+  font-size: 0.72rem;
+}
+
+.layerTitle {
+  font-weight: 600;
+  color: var(--muted, #94a3b8);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-right: 0.2rem;
+}
+
+.layerToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--line, rgba(255, 255, 255, 0.1));
+  border-radius: 4px;
+  padding: 0.2rem 0.5rem;
+  color: var(--muted, #94a3b8);
+  font-size: 0.72rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.layerToggle:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text, #f8fafc);
+}
+
+.layerToggleActive {
+  background: rgba(56, 189, 248, 0.12);
+  border-color: rgba(56, 189, 248, 0.4);
+  color: #38bdf8;
+}
+
+/* Elevation View Layout */
+.elevationContainer {
+  padding: 1rem;
+  background: rgba(15, 23, 42, 0.4);
+  border-bottom: 1px solid var(--line, rgba(255, 255, 255, 0.08));
+}
+
+.elevationWallNav {
+  display: flex;
+  gap: 0.4rem;
+  margin-bottom: 0.8rem;
+  flex-wrap: wrap;
+}
+
+.elevationTabBtn {
+  font-size: 0.74rem;
+  font-weight: 600;
+  padding: 0.3rem 0.65rem;
+  border-radius: 6px;
+  border: 1px solid var(--line, rgba(255, 255, 255, 0.12));
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--muted, #94a3b8);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.elevationTabBtnActive {
+  background: rgba(56, 189, 248, 0.15);
+  border-color: #38bdf8;
+  color: #38bdf8;
+}
+
+.elevationDiagram {
+  background: #090d16;
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  border-radius: 8px;
+  padding: 1.5rem 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  min-height: 180px;
+  justify-content: center;
+}
+
+.elevationWallFrame {
+  border: 2px solid #38bdf8;
+  background: rgba(56, 189, 248, 0.06);
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  border-radius: 4px;
+}
+
+.elevationOpening {
+  position: absolute;
+  bottom: 0;
+  border: 1.5px dashed #f59e0b;
+  background: rgba(245, 158, 11, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.65rem;
+  color: #f59e0b;
+  font-weight: 600;
+}
+
+.elevationWetZone {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: rgba(6, 182, 212, 0.18);
+  border-left: 2px solid #06b6d4;
+  border-right: 2px solid #06b6d4;
+  pointer-events: none;
+}
+
+.elevationInfoGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 0.6rem;
+  margin-top: 0.8rem;
+}
+
+.elevationCard {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--line, rgba(255, 255, 255, 0.08));
+  border-radius: 6px;
+  padding: 0.5rem 0.7rem;
+}
+
+.elevationCardLabel {
+  font-size: 0.68rem;
+  color: var(--muted, #94a3b8);
+  text-transform: uppercase;
+}
+
+.elevationCardValue {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text, #f8fafc);
+  margin-top: 0.1rem;
+}
+
+/* Fixture Raycast Inspector Drawer */
+.fixtureDrawer {
+  margin: 0.8rem 1rem;
+  padding: 0.8rem 1rem;
+  background: rgba(255, 122, 33, 0.08);
+  border: 1px solid rgba(255, 122, 33, 0.3);
+  border-radius: 8px;
+  animation: fadeIn 0.2s ease-in;
+}
+
+.fixtureHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.4rem;
+}
+
+.fixtureTitle {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #ff7a21;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.fixtureCloseBtn {
+  background: transparent;
+  border: none;
+  color: var(--muted, #94a3b8);
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.fixtureCloseBtn:hover {
+  color: var(--text, #f8fafc);
+}
+
+.fixtureDims {
+  font-size: 0.76rem;
+  color: var(--text, #f8fafc);
+  font-family: monospace;
+}
+
+.fixtureNote {
+  font-size: 0.72rem;
+  color: var(--muted, #94a3b8);
+  margin-top: 0.3rem;
+}
+
+/* Modal Popup Styles (QR Code & Upload Dropzone) */
+.modalBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 1rem;
+  animation: fadeIn 0.15s ease-out;
+}
+
+.modalCard {
+  background: var(--bg-2, #181d28);
+  border: 1px solid var(--line, rgba(255, 255, 255, 0.15));
+  border-radius: 12px;
+  max-width: 480px;
+  width: 100%;
+  padding: 1.4rem;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5);
+  position: relative;
+}
+
+.modalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.modalTitle {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text, #f8fafc);
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.modalClose {
+  background: transparent;
+  border: none;
+  color: var(--muted, #94a3b8);
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+
+.modalClose:hover {
+  color: var(--text, #f8fafc);
+}
+
+.qrContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.qrBox {
+  width: 180px;
+  height: 180px;
+  background: #ffffff;
+  border-radius: 8px;
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  margin-bottom: 1rem;
+}
+
+.qrHelp {
+  font-size: 0.78rem;
+  color: var(--muted, #94a3b8);
+  line-height: 1.4;
+}
+
+.dropzone {
+  border: 2px dashed rgba(56, 189, 248, 0.4);
+  background: rgba(56, 189, 248, 0.03);
+  border-radius: 8px;
+  padding: 1.6rem 1rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-top: 1rem;
+}
+
+.dropzone:hover, .dropzoneActive {
+  border-color: #38bdf8;
+  background: rgba(56, 189, 248, 0.08);
+}
+
+.dropzoneText {
+  font-size: 0.82rem;
+  color: var(--text, #f8fafc);
+  font-weight: 500;
+}
+
+.dropzoneSubtext {
+  font-size: 0.72rem;
+  color: var(--muted, #94a3b8);
+  margin-top: 0.3rem;
+}
+
+/* Fullscreen Mode */
+.fullscreenModal {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  background: #090d16;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+  padding: 1rem;
+}
+
+.fullscreenTopBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.8rem;
+  padding-bottom: 0.6rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.fullscreenExitBtn {
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 0.4rem 0.9rem;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.fullscreenExitBtn:hover {
+  background: rgba(255, 255, 255, 0.18);
+}

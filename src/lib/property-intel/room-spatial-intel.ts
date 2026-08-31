@@ -187,28 +187,78 @@ export function calculateRoomSummary(scan: RoomSpatialScan): RoomDimensionsSumma
   };
 }
 
+export type CustomTradeRates = {
+  flooringRatePerSqFt?: number;
+  wallRatePerSqFt?: number;
+  trimRatePerLf?: number;
+};
+
+/**
+ * Matches a job or lead scope text to the best fitting sample room scan preset.
+ */
+export function matchScanToScope(
+  scope?: string | null,
+  scans: RoomSpatialScan[] = SAMPLE_ROOM_SCANS
+): RoomSpatialScan {
+  if (!scans || scans.length === 0) return SAMPLE_ROOM_SCANS[0];
+  const text = (scope ?? '').toLowerCase();
+
+  if (/\b(?:kitchen|island|cook|countertop|range|cabinet|pantry|fridge|sink|hood)\b/i.test(text)) {
+    const kitchenScan = scans.find((s) => s.roomType === 'kitchen');
+    if (kitchenScan) return kitchenScan;
+  }
+
+  if (/\b(?:bed|bedroom|master bed|guest room|hardwood|carpet|closet)\b/i.test(text)) {
+    const bedScan = scans.find((s) => s.roomType === 'bedroom');
+    if (bedScan) return bedScan;
+  }
+
+  if (/\b(?:bath|bathroom|tub|shower|alcove|vanity|toilet|wet wall|tile|tiling)\b/i.test(text)) {
+    const bathScan = scans.find((s) => s.roomType === 'bathroom');
+    if (bathScan) return bathScan;
+  }
+
+  return scans[0];
+}
+
 /**
  * Calculates estimated trade material/labor cost from 3D room takeoffs.
+ * Supports custom rate overrides from a contractor's price book.
  */
 export function calculateMaterialCosts(
   summary: RoomDimensionsSummary,
   flooring: FlooringFinish = 'tile',
-  wall: WallFinish = 'paint'
+  wall: WallFinish = 'paint',
+  customRates?: CustomTradeRates
 ): MaterialCostBreakdown {
   const fRate = FLOORING_RATES[flooring];
   const wRate = WALL_RATES[wall];
 
-  const flooringCost = Math.round(summary.floorAreaSqFt * fRate.ratePerSqFt);
+  const flooringUnitRate = customRates?.flooringRatePerSqFt ?? fRate.ratePerSqFt;
+  const wallUnitRate = customRates?.wallRatePerSqFt ?? wRate.ratePerSqFt;
+  const trimUnitRate = customRates?.trimRatePerLf ?? TRIM_RATE_PER_LF;
+
+  const flooringCost = Math.round(summary.floorAreaSqFt * flooringUnitRate);
   const wallTargetSqFt =
     wall === 'tile_surround' ? summary.tileAreaSqFt : summary.netPaintableWallSqFt;
-  const wallCost = Math.round(wallTargetSqFt * wRate.ratePerSqFt);
-  const trimCost = Math.round(summary.baseboardLinearFt * TRIM_RATE_PER_LF);
+  const wallCost = Math.round(wallTargetSqFt * wallUnitRate);
+  const trimCost = Math.round(summary.baseboardLinearFt * trimUnitRate);
+
+  const flooringLabel =
+    customRates?.flooringRatePerSqFt != null
+      ? `${fRate.label.split(' (')[0]} ($${flooringUnitRate}/sq ft Custom)`
+      : fRate.label;
+
+  const wallLabel =
+    customRates?.wallRatePerSqFt != null
+      ? `${wRate.label.split(' (')[0]} ($${wallUnitRate}/sq ft Custom)`
+      : wRate.label;
 
   return {
     flooringCost,
-    flooringLabel: fRate.label,
+    flooringLabel,
     wallCost,
-    wallLabel: wRate.label,
+    wallLabel,
     trimCost,
     totalEstimatedTakeoff: flooringCost + wallCost + trimCost,
   };
@@ -423,6 +473,241 @@ export function formatSpatialTakeoffReport(
 
   lines.push(`══════════════════════════════════════════════════════`);
   return lines.join('\n');
+}
+
+/**
+ * Generates an RFC-compliant CSV formatted for direct upload into ProDesk / supply house carts.
+ */
+export function generateSupplyHouseCsv(
+  scan: RoomSpatialScan,
+  items: SupplyHouseItem[]
+): string {
+  const headers = ['Category', 'Item Description', 'Quantity', 'Unit', 'Waste Factor', 'Notes', 'Room', 'Device'];
+  const rows = items.map((it) => [
+    `"${it.category.replace(/"/g, '""')}"`,
+    `"${it.name.replace(/"/g, '""')}"`,
+    it.quantity,
+    `"${it.unit.replace(/"/g, '""')}"`,
+    `"${it.wasteFactor.replace(/"/g, '""')}"`,
+    `"${(it.notes ?? '').replace(/"/g, '""')}"`,
+    `"${scan.title.replace(/"/g, '""')}"`,
+    `"${scan.device.replace(/"/g, '""')}"`,
+  ]);
+
+  return [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+}
+
+export type SubcontractorTrade = 'tile' | 'paint' | 'trim';
+
+/**
+ * Formats a trade-specific work order / takeoff slip for individual subcontractors.
+ */
+export function formatSubcontractorSlip(
+  trade: SubcontractorTrade,
+  scan: RoomSpatialScan,
+  summary: RoomDimensionsSummary,
+  items: SupplyHouseItem[]
+): string {
+  const dateStr = scan.scannedAt;
+  if (trade === 'tile') {
+    const tileItems = items.filter(
+      (i) => i.category === 'Flooring & Tile' || i.category === 'Wet Wall & Waterproofing'
+    );
+    const lines = [
+      `══════════════════════════════════════════════════════`,
+      `  TILE & WATERPROOFING SUBCONTRACTOR WORK SLIP`,
+      `══════════════════════════════════════════════════════`,
+      `Job / Room: ${scan.title}`,
+      `Scan Source: ${scan.device} · Precision: ${scan.confidenceScore}%`,
+      `Date: ${dateStr}`,
+      ``,
+      `SCOPE & TAKEOFF QUANTITIES:`,
+      ` • Floor Tile Area:         ${summary.floorAreaSqFt} sq ft`,
+      ` • Wet Wall Alcove Area:    ${summary.tileAreaSqFt - summary.floorAreaSqFt} sq ft`,
+      ` • Total Tile Surface:      ${summary.tileAreaSqFt} sq ft`,
+    ];
+    if (summary.primaryAlcoveSpanInches) {
+      lines.push(` • Shower / Alcove Span:    ${summary.primaryAlcoveSpanInches.toFixed(1)}"`);
+    }
+    lines.push(``, `ORDERED MATERIALS SCHEDULE:`);
+    for (const it of tileItems) {
+      lines.push(` • ${it.quantity} ${it.unit} — ${it.name} (${it.wasteFactor})`);
+      if (it.notes) lines.push(`     Spec: ${it.notes}`);
+    }
+    lines.push(`══════════════════════════════════════════════════════`);
+    return lines.join('\n');
+  }
+
+  if (trade === 'paint') {
+    const paintItems = items.filter((i) => i.category === 'Paint & Drywall');
+    const lines = [
+      `══════════════════════════════════════════════════════`,
+      `  DRYWALL & PAINT SUBCONTRACTOR WORK SLIP`,
+      `══════════════════════════════════════════════════════`,
+      `Job / Room: ${scan.title}`,
+      `Scan Source: ${scan.device} · Precision: ${scan.confidenceScore}%`,
+      `Date: ${dateStr}`,
+      ``,
+      `SCOPE & TAKEOFF QUANTITIES:`,
+      ` • Net Paintable Walls:     ${summary.netPaintableWallSqFt} sq ft`,
+      ` • Gross Wall Surface:      ${summary.grossWallAreaSqFt} sq ft`,
+      ` • Cutouts Deducted:        ${summary.openingsAreaSqFt} sq ft (${summary.doorsCount} doors, ${summary.windowsCount} windows)`,
+      ` • Ceiling Height:          ${summary.ceilingHeightFt} ft (${scan.ceilingHeightInches}")`,
+      ` • Room Perimeter:          ${summary.perimeterLinearFt} lin ft`,
+      ``,
+      `ORDERED MATERIALS SCHEDULE:`,
+    ];
+    for (const it of paintItems) {
+      lines.push(` • ${it.quantity} ${it.unit} — ${it.name} (${it.wasteFactor})`);
+      if (it.notes) lines.push(`     Spec: ${it.notes}`);
+    }
+    lines.push(`══════════════════════════════════════════════════════`);
+    return lines.join('\n');
+  }
+
+  // Trim carpentry
+  const trimItems = items.filter((i) => i.category === 'Trim & Finish Carpentry');
+  const lines = [
+    `══════════════════════════════════════════════════════`,
+    `  TRIM & FINISH CARPENTRY SUBCONTRACTOR WORK SLIP`,
+    `══════════════════════════════════════════════════════`,
+    `Job / Room: ${scan.title}`,
+    `Scan Source: ${scan.device} · Precision: ${scan.confidenceScore}%`,
+    `Date: ${dateStr}`,
+    ``,
+    `SCOPE & TAKEOFF QUANTITIES:`,
+    ` • Net Baseboard Perimeter: ${summary.baseboardLinearFt} lin ft`,
+    ` • Gross Room Perimeter:    ${summary.perimeterLinearFt} lin ft`,
+    ` • Door Openings Deducted:  ${summary.doorsCount} doors`,
+    ``,
+    `ORDERED MATERIALS SCHEDULE:`,
+  ];
+  for (const it of trimItems) {
+    lines.push(` • ${it.quantity} ${it.unit} — ${it.name} (${it.wasteFactor})`);
+    if (it.notes) lines.push(`     Spec: ${it.notes}`);
+  }
+  lines.push(`══════════════════════════════════════════════════════`);
+  return lines.join('\n');
+}
+
+export type WallElevation = {
+  wallIndex: number;
+  id: string;
+  label: string;
+  lengthInches: number;
+  heightInches: number;
+  lengthFt: number;
+  heightFt: number;
+  openings: RoomOpening[];
+  grossAreaSqFt: number;
+  netAreaSqFt: number;
+  isWetWall: boolean;
+};
+
+/**
+ * Computes individual 2D elevation profiles for each wall in the room.
+ */
+export function getWallElevations(scan: RoomSpatialScan): WallElevation[] {
+  const hasTubOrShower = scan.objects.some(
+    (o) => o.category === 'bathtub' || o.category === 'shower'
+  );
+
+  return scan.walls.map((w, idx) => {
+    const wallOpenings = scan.openings.filter((op) => op.wallIndex === idx);
+    const grossAreaSqFt = Math.round((w.lengthInches * w.heightInches) / 144);
+    const openingsArea = wallOpenings.reduce(
+      (sum, op) => sum + (op.widthInches * op.heightInches) / 144,
+      0
+    );
+    const netAreaSqFt = Math.max(0, Math.round(grossAreaSqFt - openingsArea));
+    const isWetWall = hasTubOrShower && (idx === 1 || /shower|alcove|tub|bath/i.test(w.label));
+
+    return {
+      wallIndex: idx,
+      id: w.id,
+      label: w.label,
+      lengthInches: w.lengthInches,
+      heightInches: w.heightInches,
+      lengthFt: Math.round((w.lengthInches / 12) * 10) / 10,
+      heightFt: Math.round((w.heightInches / 12) * 10) / 10,
+      openings: wallOpenings,
+      grossAreaSqFt,
+      netAreaSqFt,
+      isWetWall,
+    };
+  });
+}
+
+/**
+ * Validates and parses uploaded Apple RoomPlan / LiDAR JSON scan files into a RoomSpatialScan.
+ */
+export function parseCustomScanJson(jsonString: string): RoomSpatialScan {
+  const parsed = JSON.parse(jsonString);
+  if (!parsed || typeof parsed !== 'object') {
+    throw new Error('Invalid JSON format for 3D room spatial scan');
+  }
+
+  const title = typeof parsed.title === 'string' && parsed.title.trim() ? parsed.title : 'Custom Uploaded Scan';
+  const roomType = ['bathroom', 'kitchen', 'bedroom', 'living', 'basement', 'garage'].includes(parsed.roomType)
+    ? parsed.roomType
+    : 'bathroom';
+  const ceilingHeightInches = Number(parsed.ceilingHeightInches) > 0 ? Number(parsed.ceilingHeightInches) : 96;
+
+  if (!Array.isArray(parsed.walls) || parsed.walls.length < 3) {
+    throw new Error('3D room scan must contain at least 3 wall segments');
+  }
+
+  const walls: WallSegment[] = parsed.walls.map((w: any, idx: number) => ({
+    id: typeof w.id === 'string' ? w.id : `w${idx + 1}`,
+    label: typeof w.label === 'string' ? w.label : `Wall ${idx + 1}`,
+    lengthInches: Number(w.lengthInches) > 0 ? Number(w.lengthInches) : 120,
+    heightInches: Number(w.heightInches) > 0 ? Number(w.heightInches) : ceilingHeightInches,
+  }));
+
+  const openings: RoomOpening[] = Array.isArray(parsed.openings)
+    ? parsed.openings.map((op: any, idx: number) => ({
+        id: typeof op.id === 'string' ? op.id : `op-${idx + 1}`,
+        type: ['door', 'window', 'opening'].includes(op.type) ? op.type : 'door',
+        wallIndex: Number(op.wallIndex) >= 0 && Number(op.wallIndex) < walls.length ? Number(op.wallIndex) : 0,
+        widthInches: Number(op.widthInches) > 0 ? Number(op.widthInches) : 32,
+        heightInches: Number(op.heightInches) > 0 ? Number(op.heightInches) : 80,
+        offsetInches: Number(op.offsetInches) >= 0 ? Number(op.offsetInches) : 12,
+      }))
+    : [];
+
+  const objects: RoomObject3D[] = Array.isArray(parsed.objects)
+    ? parsed.objects.map((obj: any, idx: number) => ({
+        id: typeof obj.id === 'string' ? obj.id : `obj-${idx + 1}`,
+        category: ['bathtub', 'shower', 'vanity', 'toilet', 'cabinet', 'appliance', 'closet'].includes(obj.category)
+          ? obj.category
+          : 'cabinet',
+        label: typeof obj.label === 'string' ? obj.label : `Object ${idx + 1}`,
+        dimensionsInches: {
+          width: Number(obj.dimensionsInches?.width) > 0 ? Number(obj.dimensionsInches.width) : 36,
+          depth: Number(obj.dimensionsInches?.depth) > 0 ? Number(obj.dimensionsInches.depth) : 24,
+          height: Number(obj.dimensionsInches?.height) > 0 ? Number(obj.dimensionsInches.height) : 34,
+        },
+        position: {
+          x: Number(obj.position?.x) || 0,
+          y: Number(obj.position?.y) || 0,
+          z: Number(obj.position?.z) || 0,
+        },
+      }))
+    : [];
+
+  return {
+    id: `custom-scan-${Date.now()}`,
+    title,
+    roomType,
+    scannedAt: 'Custom Upload',
+    device: typeof parsed.device === 'string' ? parsed.device : 'Custom LiDAR Export',
+    pointCount: Number(parsed.pointCount) > 0 ? Number(parsed.pointCount) : 125000,
+    confidenceScore: Number(parsed.confidenceScore) > 0 ? Number(parsed.confidenceScore) : 98.5,
+    ceilingHeightInches,
+    walls,
+    openings,
+    objects,
+  };
 }
 
 /**
