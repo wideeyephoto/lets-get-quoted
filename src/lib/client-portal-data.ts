@@ -19,7 +19,7 @@ async function findClientByEmail(admin: SupabaseClient, accountId: string, email
     .from('clients')
     .select('id')
     .eq('account_id', accountId)
-    .ilike('email', email)
+    .eq('email', email)
     .limit(1)
     .maybeSingle();
   return data ?? null;

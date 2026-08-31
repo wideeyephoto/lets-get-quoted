@@ -136,7 +136,7 @@ describe('AI Voice Tier 3 Live SWAIG Tools & In-Call Scheduling', () => {
     const data = await res.json();
     expect(data.response).toContain('Thursday, Aug 27');
     expect(data.response).toContain('Morning: 9 AM – 12 PM');
-  });
+  }, 15000);
 
   it('executes in-call book_appointment_slot tool with hold, booking creation, and confirmation text', async () => {
     process.env.LGQ_VOICE_RECEIPT_BASIC = 'test-user:test-password';

@@ -1,18 +1,9 @@
-/**
- * Google Tag & Google Ads Conversion Tracking for Let's Get Quoted.
- *
- * Configured for tag ID AW-18400954668 and the Sign-up conversion action.
- */
-
-export const DEFAULT_GOOGLE_TAG_ID = 'AW-18400954668';
-export const DEFAULT_SIGNUP_CONVERSION_SEND_TO = 'AW-18400954668/lyRGCLLH6-QcEKySocZE';
-
 export function getGoogleTagId(): string {
-  return process.env.NEXT_PUBLIC_GOOGLE_TAG_ID || DEFAULT_GOOGLE_TAG_ID;
+  return process.env.NEXT_PUBLIC_GOOGLE_TAG_ID?.trim() || '';
 }
 
 export function getSignupConversionSendTo(): string {
-  return process.env.NEXT_PUBLIC_GOOGLE_ADS_SIGNUP_CONVERSION_ID || DEFAULT_SIGNUP_CONVERSION_SEND_TO;
+  return process.env.NEXT_PUBLIC_GOOGLE_ADS_SIGNUP_CONVERSION_ID?.trim() || '';
 }
 
 export type GoogleAdsConversionPayload = {
@@ -39,6 +30,8 @@ export function trackGoogleAdsConversion(payload?: Partial<GoogleAdsConversionPa
   if (typeof window === 'undefined') return false;
 
   const sendTo = payload?.send_to || getSignupConversionSendTo();
+  if (!sendTo) return false;
+
   const value = payload?.value ?? 1.0;
   const currency = payload?.currency || 'USD';
 

@@ -3,30 +3,54 @@ import { headers } from 'next/headers';
 import { cspNonce } from '@/lib/csp-nonce';
 import { getGoogleTagId } from '@/lib/google-tag';
 
-const SENSITIVE_PREFIXES = [
+export const SENSITIVE_PREFIXES = [
+  '/account-suspended',
+  '/admin',
   '/auth',
-  '/track',
-  '/review',
-  '/schedule',
-  '/sub',
+  '/book',
+  '/card-saved',
   '/client',
-  '/portal',
+  '/dashboard',
+  '/field',
+  '/invoice',
+  '/login',
+  '/office-access',
   '/office-invite',
   '/pay',
-  '/invoice',
-  '/account-suspended',
-];
+  '/portal',
+  '/quick-stop',
+  '/quickbooks',
+  '/review',
+  '/schedule',
+  '/site-preview-frame',
+  '/sub',
+  '/track',
+  '/unsubscribe',
+] as const;
+
+/**
+ * Checks if a pathname represents a sensitive, token-bearing, or authenticated route.
+ * Fails closed (returns true) if pathname is absent or invalid.
+ */
+export function isSensitivePath(pathname: string | null | undefined): boolean {
+  if (!pathname || typeof pathname !== 'string') return true; // Fail closed
+  const normalized = pathname.trim().toLowerCase();
+  if (!normalized.startsWith('/')) return true; // Fail closed
+  return SENSITIVE_PREFIXES.some(
+    (prefix) => normalized === prefix || normalized.startsWith(`${prefix}/`) || normalized.startsWith(`${prefix}?`)
+  );
+}
 
 /**
  * Global Google Tag (gtag.js) for Let's Get Quoted.
  *
- * Loads after hydration so analytics never blocks the application. next/script
- * also creates these elements client-side, avoiding React's false hydration
- * warning when browsers hide a server-rendered script's nonce attribute.
+ * Loads after hydration on public marketing pages only.
+ * Suppressed on all token-bearing, sensitive, or authenticated routes.
+ * Fails closed when pathname headers are unavailable or when NEXT_PUBLIC_GOOGLE_TAG_ID is unset.
  */
 export default function GoogleTag() {
-  const pathname = headers().get('x-pathname') || '';
-  if (SENSITIVE_PREFIXES.some((prefix) => pathname.startsWith(prefix))) {
+  const pathname = headers().get('x-pathname');
+  if (isSensitivePath(pathname)) {
     return null;
   }
 

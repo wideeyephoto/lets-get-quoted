@@ -33,6 +33,9 @@ describe('Security and Audit Remediations Regression Suite', () => {
     expect(googleTagContent).toContain("'/office-invite'");
     expect(googleTagContent).toContain("'/portal'");
     expect(googleTagContent).toContain("'/auth'");
+    expect(googleTagContent).toContain("'/quick-stop'");
+    expect(googleTagContent).toContain("'/unsubscribe'");
+    expect(googleTagContent).toContain("isSensitivePath");
   });
 
   it('verifies staff and crew auth sanitize wildcard characters on .ilike lookups', () => {

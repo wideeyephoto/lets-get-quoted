@@ -39,10 +39,12 @@ export async function sendCrewMagicLinkAction(email: string): Promise<void> {
   let businessName = 'your team';
   if (crew?.account_id) {
     const [{ data: account }, { data: site }] = await Promise.all([
-      admin.from('accounts').select('business_name').eq('id', crew.account_id).maybeSingle(),
+      admin.from('accounts').select('business_name, suspended_at').eq('id', crew.account_id).maybeSingle(),
       admin.from('sites').select('company_name').eq('account_id', crew.account_id).maybeSingle(),
     ]);
-    businessName = site?.company_name || account?.business_name || 'your team';
+    if (!account?.suspended_at) {
+      businessName = site?.company_name || account?.business_name || 'your team';
+    }
   }
 
   await sendCrewMagicLink(clean, businessName);

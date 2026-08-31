@@ -71,7 +71,7 @@ describe('the embedded feature limits are the catalog', () => {
     for (const [planCode, delta] of Object.entries(HISTORICAL_DELTA)) {
       const current = workspaceEntitlementCatalogSnapshot(
         planCode as (typeof BILLING_PLAN_IDS)[number],
-        'monthly',
+        planCode === 'flex' ? 'none' : 'monthly',
       ).featureLimits as unknown as Record<string, number>;
       for (const [field, historical] of Object.entries(delta)) {
         expect(current[field], `${planCode}.${field} no longer differs; drop it from HISTORICAL_DELTA`)

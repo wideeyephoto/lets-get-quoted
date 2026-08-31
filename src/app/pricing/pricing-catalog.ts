@@ -68,7 +68,7 @@ export const PLANS: readonly PricingPlan[] = [
     voiceConcurrentCalls: BILLING_PLANS.flex.voice.concurrentCalls,
     features: [
       'Unlimited core records and standard quote forms',
-      '1 office user + 2 crew users',
+      '2 office users + 2 crew users',
       '1 custom-domain connection',
       '2-way business texting (requires carrier registration & number)',
       'QuickBooks Online connection included',
@@ -193,7 +193,7 @@ export const COMPARISON_ROWS = [
   ['Leads, clients, quotes, jobs & invoices', 'Unlimited', 'Unlimited', 'Unlimited', 'Unlimited'],
   ['Standard quote-form submissions', 'Unlimited', 'Unlimited', 'Unlimited', 'Unlimited'],
   ['Lead capture after AI limit', 'Automatic standard form', 'Automatic standard form', 'Automatic standard form', 'Automatic standard form'],
-  ['Office / admin users', '1', '2', '5', '15'],
+  ['Office / admin users', '2', '2', '5', '15'],
   ['Crew-only users', '2', '2', '10', '50'],
   ['Operating locations for one legal business', 'Unlimited', 'Unlimited', 'Unlimited', 'Unlimited'],
   ['Custom-domain connections', '1', '1', '1', '1'],

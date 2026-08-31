@@ -13,7 +13,7 @@ describe('computeProfitAndLoss', () => {
   it('correctly calculates gross revenue, refunds, net revenue, platform fees, and category expenses', () => {
     const payments: PaidPaymentRow[] = [
       { amount: 5000, platform_fee: 145.3, paid_at: '2026-03-15T10:00:00.000Z', status: 'paid' },
-      { amount: 2000, platform_fee: 58.0, paid_at: '2026-05-10T14:00:00.000Z', status: 'partially_refunded', refunded_amount: 500 },
+      { amount: 2000, platform_fee: 58.0, paid_at: '2026-05-10T14:00:00.000Z', status: 'paid', refunded_amount: 500 },
       { amount: 1000, platform_fee: 29.0, paid_at: '2026-06-01T12:00:00.000Z', status: 'refunded' },
     ];
 
@@ -54,7 +54,7 @@ describe('buildScheduleCWorksheet', () => {
     const pl = computeProfitAndLoss(
       2026,
       [
-        { amount: 10000, platform_fee: 290, paid_at: '2026-04-10T12:00:00.000Z', status: 'partially_refunded', refunded_amount: 1000 },
+        { amount: 10000, platform_fee: 290, paid_at: '2026-04-10T12:00:00.000Z', status: 'paid', refunded_amount: 1000 },
       ],
       [
         { type: 'sub', amount: 2500, created_at: '2026-04-12T12:00:00.000Z' },

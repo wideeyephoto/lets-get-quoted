@@ -33,6 +33,14 @@ export async function sendCrewMagicLink(email: string, businessName: string, acc
   }
 
   const admin = createAdminClient();
+
+  if (accountId) {
+    const { data: acct } = await admin.from('accounts').select('suspended_at').eq('id', accountId).maybeSingle();
+    if (acct?.suspended_at) {
+      throw new Error('Account is suspended.');
+    }
+  }
+
   const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({ type: 'magiclink', email });
   if (linkError || !linkData.properties.hashed_token) {
     console.error('Crew magic link generation error:', linkError);
@@ -156,9 +164,25 @@ export async function linkCrewUserByEmail(userId: string, email: string): Promis
   // 42703 on a database that hasn't taken the migration and lock every crew
   // member out of the field app rather than one.
   const rows = (crewRows ?? []).filter((row) => !row.access_revoked_at);
+  if (rows.length === 0) return [];
+
+  // Filter out suspended accounts so we never link or grant memberships for suspended workspaces
+  const accountIds = Array.from(new Set(rows.map((r) => r.account_id as string)));
+  const { data: accounts } = await admin
+    .from('accounts')
+    .select('id, suspended_at')
+    .in('id', accountIds);
+
+  const suspendedSet = new Set(
+    (accounts ?? []).filter((a) => a.suspended_at).map((a) => a.id as string),
+  );
+
+  const eligibleRows = rows.filter((row) => !suspendedSet.has(row.account_id as string));
+  if (eligibleRows.length === 0) return [];
+
   const signedInAt = new Date().toISOString();
 
-  for (const row of rows) {
+  for (const row of eligibleRows) {
     const patch: Record<string, unknown> = { last_signed_in_at: signedInAt };
     if (!row.user_id) patch.user_id = userId;
     const { error } = await admin.from('crew').update(patch).eq('id', row.id);
@@ -172,7 +196,7 @@ export async function linkCrewUserByEmail(userId: string, email: string): Promis
       .from('memberships')
       .upsert({ account_id: row.account_id, user_id: userId, role: 'crew' }, { onConflict: 'account_id,user_id', ignoreDuplicates: true });
   }
-  return rows.map((row) => row.account_id as string);
+  return eligibleRows.map((row) => row.account_id as string);
 }
 
 export type FieldBusiness = { accountId: string; crewId: string; name: string };
@@ -240,8 +264,8 @@ async function loadFieldAccountRow(
 ): Promise<{ business_name?: string | null; time_clock_mode?: unknown; suspended_at?: string | null } | null> {
   const full = await admin.from('accounts').select('business_name, time_clock_mode, suspended_at').eq('id', accountId).maybeSingle();
   if (!full.error) return full.data as { business_name?: string | null; time_clock_mode?: unknown; suspended_at?: string | null } | null;
-  const legacy = await admin.from('accounts').select('business_name').eq('id', accountId).maybeSingle();
-  return (legacy.data as { business_name?: string | null } | null) ?? null;
+  const legacy = await admin.from('accounts').select('business_name, suspended_at').eq('id', accountId).maybeSingle();
+  return (legacy.data as { business_name?: string | null; suspended_at?: string | null } | null) ?? null;
 }
 
 /** Why a crew session couldn't be resolved. Each maps to a different answer. */
@@ -353,10 +377,23 @@ export async function listFieldBusinesses(): Promise<{ userId: string; businesse
   const rosters = await listCrewForUser(admin, user.id);
   if (rosters.length === 0) return { userId: user.id, businesses: [] };
 
-  const names = await loadBusinessNames(admin, rosters.map((member) => member.account_id));
+  const accountIds = Array.from(new Set(rosters.map((member) => member.account_id)));
+  const { data: accounts } = await admin
+    .from('accounts')
+    .select('id, suspended_at')
+    .in('id', accountIds);
+
+  const suspendedSet = new Set(
+    (accounts ?? []).filter((a) => a.suspended_at).map((a) => a.id as string),
+  );
+
+  const eligibleRosters = rosters.filter((member) => !suspendedSet.has(member.account_id));
+  if (eligibleRosters.length === 0) return { userId: user.id, businesses: [] };
+
+  const names = await loadBusinessNames(admin, eligibleRosters.map((member) => member.account_id));
   return {
     userId: user.id,
-    businesses: rosters.map((member) => ({
+    businesses: eligibleRosters.map((member) => ({
       accountId: member.account_id,
       crewId: member.id,
       name: names.get(member.account_id) ?? 'My crew',

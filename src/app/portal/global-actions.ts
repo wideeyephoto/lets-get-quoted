@@ -30,7 +30,7 @@ export async function requestGlobalPortalLinkAction(formData: FormData): Promise
       .limit(10);
 
     if (identifier.kind === 'email') {
-      clientQuery = clientQuery.ilike('email', identifier.value);
+      clientQuery = clientQuery.eq('email', identifier.value);
     } else {
       clientQuery = clientQuery.eq('phone', identifier.value);
     }

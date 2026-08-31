@@ -2,6 +2,7 @@
 //
 //   node scripts/inspect-cron-health.mjs            (last 24 hours)
 //   node scripts/inspect-cron-health.mjs 60         (last 60 minutes)
+//   node scripts/inspect-cron-health.mjs 90 --strict
 //
 // WHY THIS EXISTS. A flag-gated cron route returns 404 before it reads anything,
 // which means a dark worker writes NO cron_runs row at all -- so "zero failures"
@@ -13,14 +14,13 @@
 
 import { readFile } from 'node:fs/promises';
 import { resolve, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { Client } from 'pg';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = resolve(__dirname, '..');
-const windowMinutes = Number.parseInt(process.argv[2] ?? '', 10) || 1440;
 
-async function loadEnvFile() {
+export async function loadEnvFile() {
   for (const fileName of ['.env.local', '.env']) {
     try {
       const contents = await readFile(resolve(root, fileName), 'utf8');
@@ -39,7 +39,7 @@ async function loadEnvFile() {
   }
 }
 
-async function declaredCrons() {
+export async function declaredCrons() {
   const raw = await readFile(resolve(root, 'vercel.json'), 'utf8');
   const parsed = JSON.parse(raw);
   return (parsed.crons ?? []).map((entry) => ({
@@ -48,16 +48,10 @@ async function declaredCrons() {
   }));
 }
 
-await loadEnvFile();
-if (!process.env.DATABASE_URL) {
-  console.warn('DATABASE_URL is not set; skipping cron health inspection.');
-  process.exit(0);
-}
-
 /**
  * The LONGEST gap this schedule can leave, in minutes, or null if unreadable.
  *
- * Deliberately coarse and deliberately conservative. It exists only to answer
+ * Deliberately coarse and conservative. It exists to answer
  * "could this possibly have fired inside the window?" — anything it cannot parse
  * returns null and is treated as due, because the failure that matters is a dead
  * worker reported as fine, never the reverse.
@@ -69,93 +63,253 @@ export function maxIntervalMinutes(schedule) {
   if (month !== '*') return 366 * 1440;
   if (dom !== '*') return 31 * 1440;
   if (dow !== '*') return 7 * 1440;
-  if (hour === '*') return minute === '*' ? 1 : 60;
-  const step = /^\*\/(\d+)$/.exec(hour);
-  if (step) return Number(step[1]) * 60;
-  // A single hour, or a list of them: the widest gap is still under a day.
+
+  if (hour === '*') {
+    if (minute === '*') return 1;
+    const minStep = /^\*\/(\d+)$/.exec(minute);
+    if (minStep) {
+      const n = Number(minStep[1]);
+      return n > 0 && n < 60 ? n : null;
+    }
+    if (/^\d+$/.test(minute)) return 60;
+    return 60;
+  }
+
+  const hourStep = /^\*\/(\d+)$/.exec(hour);
+  if (hourStep) return Number(hourStep[1]) * 60;
+
+  if (/^\d+$/.test(hour)) {
+    return 1440; // fires once a day
+  }
+
   return 1440;
 }
 
-const client = new Client({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
-});
-await client.connect();
+/**
+ * Grace period beyond one full interval before a job counts as overdue.
+ *
+ * A whole extra interval is too lax for daily money jobs (a full day late
+ * is not "a bit late") and too strict for fast sweeps. One interval or 60 minutes,
+ * whichever is smaller: 15-minute sweeps get 15 minutes of slack, and everything
+ * slower gets an hour.
+ */
+export function graceMinutesFor(periodMinutes) {
+  if (typeof periodMinutes !== 'number' || !Number.isFinite(periodMinutes) || periodMinutes <= 0) {
+    return 60;
+  }
+  return Math.min(periodMinutes, 60);
+}
 
-try {
-  const declared = await declaredCrons();
-  const { rows } = await client.query(
-    `select job,
-            count(*)::int as runs,
-            count(*) filter (where not ok)::int as failures,
-            max(started_at) as last_run
-       from public.cron_runs
-      where started_at > now() - ($1::int * interval '1 minute')
-      group by job`,
-    [windowMinutes],
-  );
-
-  // ALL-TIME, no window. Without this the "not due yet" branch below is a blind
-  // spot: a weekly cron that has been dead since the day it was declared looks
-  // exactly like one that simply has not come round in the last 24 hours. Never
-  // having run in the whole history is not "not due".
-  const { rows: everRows } = await client.query(
-    'select job, max(started_at) as last_run from public.cron_runs group by job',
-  );
-  const ever = new Map(everRows.map((row) => [row.job, row.last_run]));
-
-  const seen = new Map(rows.map((row) => [row.job, row]));
-
-  console.log(`cron_runs over the last ${windowMinutes} minute(s)`);
-  console.log(`${declared.length} crons declared in vercel.json\n`);
-
-  const silent = [];
-  const idle = [];
-  for (const { job, schedule } of declared.slice().sort((a, b) => a.job.localeCompare(b.job))) {
-    const row = seen.get(job);
-    if (!row) {
-      // A weekly cron is not broken on a Saturday. Reporting it as SILENT beside a
-      // genuinely dead every-minute worker is a permanent false alarm, and a report
-      // that always shows two problems teaches people to read neither.
-      const period = maxIntervalMinutes(schedule);
-      const lastEver = ever.get(job);
-      // Only excusable if it has genuinely run at some point. A cron that has
-      // NEVER recorded a run is silent no matter how rare its schedule is.
-      if (period !== null && period > windowMinutes && lastEver) {
-        idle.push({ job, schedule });
-        console.log(`idle     ${job.padEnd(34)} ${schedule} -- outside this ${windowMinutes}min window; last ran ${lastEver.toISOString()}`);
-        continue;
-      }
-      silent.push({ job, schedule });
-      console.log(`SILENT   ${job.padEnd(34)} ${schedule}`);
-      continue;
+/**
+ * Evaluates the status of a single declared cron job.
+ */
+export function classifyJobStatus({
+  job,
+  schedule,
+  windowMinutes,
+  seenRow,
+  everRow,
+  now = new Date(),
+}) {
+  if (seenRow) {
+    if (seenRow.failures > 0) {
+      return {
+        status: 'failing',
+        detail: `${seenRow.runs} run(s), ${seenRow.failures} failure(s), last ${new Date(seenRow.last_run).toISOString()}`,
+      };
     }
-    const mark = row.failures > 0 ? 'FAILING ' : 'ok      ';
-    const detail = `${row.runs} run(s), ${row.failures} failure(s), last ${row.last_run.toISOString()}`;
-    console.log(`${mark} ${job.padEnd(34)} ${detail}`);
+    return {
+      status: 'ok',
+      detail: `${seenRow.runs} run(s), 0 failure(s), last ${new Date(seenRow.last_run).toISOString()}`,
+    };
   }
 
-  const undeclared = rows.filter((row) => !declared.some((d) => d.job === row.job));
-  if (undeclared.length) {
-    console.log('\nRan but not declared in vercel.json:');
-    for (const row of undeclared) console.log(`  ${row.job} (${row.runs} runs)`);
+  if (!everRow || !everRow.last_run) {
+    return {
+      status: 'silent',
+      reason: 'never_ran',
+      detail: `${schedule} -- never recorded a run`,
+    };
   }
 
-  console.log(`\n${declared.length - silent.length - idle.length} of ${declared.length - idle.length} DUE crons recorded a run.`);
-  if (idle.length) {
-    console.log(`${idle.length} not due in this window: ${idle.map((i) => i.job).join(', ')}.`);
-    console.log('Widen it to reach them: node scripts/inspect-cron-health.mjs 10140');
-  }
-  if (silent.length) {
-    console.log('A SILENT worker is not a passing worker -- it recorded nothing at all,');
-    console.log('and its own schedule says it should have.');
+  const period = maxIntervalMinutes(schedule);
+  if (period === null) {
+    return {
+      status: 'silent',
+      reason: 'unparseable_schedule',
+      detail: `${schedule} -- unrecognized schedule cadence`,
+    };
   }
 
-  const failingCount = rows.filter((r) => r.failures > 0).length;
-  if (process.argv.includes('--strict') && (silent.length > 0 || failingCount > 0)) {
-    console.error(`\nCRON HEALTH AUDIT FAILED: ${silent.length} silent, ${failingCount} failing.`);
-    process.exitCode = 1;
+  const lastRunDate = new Date(everRow.last_run);
+  const elapsedMinutes = (now.getTime() - lastRunDate.getTime()) / 60000;
+
+  // If the scheduled period is within the inspection window, it was due inside the window!
+  if (period <= windowMinutes) {
+    return {
+      status: 'silent',
+      reason: 'missed_window',
+      detail: `${schedule} -- no run in last ${windowMinutes}min (last ran ${lastRunDate.toISOString()})`,
+    };
   }
-} finally {
-  await client.end();
+
+  // The scheduled period is wider than the inspection window (e.g. daily, weekly).
+  // A daily cron outside a 90m window is only 'idle' if it ran within its expected period + grace!
+  const grace = graceMinutesFor(period);
+  const maxAllowedMinutes = period + grace;
+
+  if (elapsedMinutes > maxAllowedMinutes) {
+    const overdueMinutes = Math.round(elapsedMinutes - period);
+    return {
+      status: 'stale',
+      reason: 'overdue',
+      detail: `${schedule} -- overdue by ${overdueMinutes}m (last ran ${lastRunDate.toISOString()}; interval ${period}m + ${grace}m grace)`,
+    };
+  }
+
+  if (everRow.latest_ok === false) {
+    return {
+      status: 'failing',
+      reason: 'last_run_failed',
+      detail: `${schedule} -- last run outside window failed: ${everRow.last_error || 'unknown error'}`,
+    };
+  }
+
+  return {
+    status: 'idle',
+    reason: 'not_due',
+    detail: `${schedule} -- outside this ${windowMinutes}min window; last ran ${lastRunDate.toISOString()}`,
+  };
+}
+
+export async function runCronInspection({
+  windowMinutes = 1440,
+  strict = false,
+  now = new Date(),
+} = {}) {
+  await loadEnvFile();
+
+  if (!process.env.DATABASE_URL) {
+    if (strict) {
+      console.error('DATABASE_URL is not set; failing in --strict mode.');
+      process.exitCode = 1;
+      return { silent: [], stale: [], failing: [], idle: [], ok: [], error: 'DATABASE_URL missing' };
+    }
+    console.warn('DATABASE_URL is not set; skipping cron health inspection.');
+    return { silent: [], stale: [], failing: [], idle: [], ok: [], skipped: true };
+  }
+
+  const client = new Client({
+    connectionString: process.env.DATABASE_URL,
+    ssl: { rejectUnauthorized: false },
+  });
+  await client.connect();
+
+  try {
+    const declared = await declaredCrons();
+    const { rows } = await client.query(
+      `select job,
+              count(*)::int as runs,
+              count(*) filter (where not ok)::int as failures,
+              max(started_at) as last_run
+         from public.cron_runs
+        where started_at > now() - ($1::int * interval '1 minute')
+        group by job`,
+      [windowMinutes],
+    );
+
+    const { rows: everRows } = await client.query(
+      `select distinct on (job)
+              job,
+              started_at as last_run,
+              ok as latest_ok,
+              error as last_error
+         from public.cron_runs
+        order by job, started_at desc`,
+    );
+
+    const { rows: successRows } = await client.query(
+      `select job,
+              max(started_at) as last_success
+         from public.cron_runs
+        where ok = true
+        group by job`,
+    );
+
+    const successMap = new Map(successRows.map((row) => [row.job, row.last_success]));
+    const seen = new Map(rows.map((row) => [row.job, row]));
+    const ever = new Map(everRows.map((row) => [row.job, { ...row, last_success: successMap.get(row.job) ?? null }]));
+
+    console.log(`cron_runs over the last ${windowMinutes} minute(s)`);
+    console.log(`${declared.length} crons declared in vercel.json\n`);
+
+    const silent = [];
+    const stale = [];
+    const failing = [];
+    const idle = [];
+    const ok = [];
+
+    for (const { job, schedule } of declared.slice().sort((a, b) => a.job.localeCompare(b.job))) {
+      const seenRow = seen.get(job);
+      const everRow = ever.get(job);
+      const verdict = classifyJobStatus({
+        job,
+        schedule,
+        windowMinutes,
+        seenRow,
+        everRow,
+        now,
+      });
+
+      const mark = verdict.status.toUpperCase().padEnd(8);
+      console.log(`${mark} ${job.padEnd(34)} ${verdict.detail}`);
+
+      if (verdict.status === 'ok') ok.push({ job, schedule, ...verdict });
+      else if (verdict.status === 'idle') idle.push({ job, schedule, ...verdict });
+      else if (verdict.status === 'stale') stale.push({ job, schedule, ...verdict });
+      else if (verdict.status === 'silent') silent.push({ job, schedule, ...verdict });
+      else if (verdict.status === 'failing') failing.push({ job, schedule, ...verdict });
+    }
+
+    const undeclared = rows.filter((row) => !declared.some((d) => d.job === row.job));
+    if (undeclared.length) {
+      console.log('\nRan but not declared in vercel.json:');
+      for (const row of undeclared) console.log(`  ${row.job} (${row.runs} runs)`);
+    }
+
+    console.log(`\nSummary: ${ok.length} OK, ${idle.length} idle (not due), ${stale.length} stale, ${silent.length} silent, ${failing.length} failing.`);
+
+    if (idle.length) {
+      console.log(`${idle.length} not due in this window: ${idle.map((i) => i.job).join(', ')}.`);
+    }
+    if (stale.length) {
+      console.log(`${stale.length} STALE (overdue for execution): ${stale.map((s) => s.job).join(', ')}.`);
+    }
+    if (silent.length) {
+      console.log(`${silent.length} SILENT (never ran or missed window): ${silent.map((s) => s.job).join(', ')}.`);
+    }
+
+    if (strict && (silent.length > 0 || stale.length > 0 || failing.length > 0)) {
+      console.error(`\nCRON HEALTH AUDIT FAILED: ${silent.length} silent, ${stale.length} stale, ${failing.length} failing.`);
+      process.exitCode = 1;
+    }
+
+    return { silent, stale, failing, idle, ok, undeclared };
+  } finally {
+    await client.end();
+  }
+}
+
+// Execute if run directly from CLI:
+const isDirectRun =
+  process.argv[1] &&
+  pathToFileURL(resolve(process.argv[1])).href === import.meta.url;
+
+if (isDirectRun) {
+  const windowMinutes = Number.parseInt(process.argv[2] ?? '', 10) || 1440;
+  const strict = process.argv.includes('--strict');
+  runCronInspection({ windowMinutes, strict }).catch((err) => {
+    console.error('Fatal inspection error:', err);
+    process.exit(1);
+  });
 }

@@ -71,7 +71,7 @@ export async function buildProfitAndLoss(
         .from('payments')
         .select('amount, platform_fee, paid_at, status, refunded_amount')
         .eq('account_id', accountId)
-        .in('status', ['paid', 'refunded', 'partially_refunded'])
+        .in('status', ['paid', 'refunded'])
         .gte('paid_at', start)
         .lt('paid_at', end)
         .order('paid_at', { ascending: true })

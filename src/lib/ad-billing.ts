@@ -330,7 +330,7 @@ export async function createAdBudgetCheckoutSession(params: {
     productDescription = `Weekly drip funding for ${trade} in ${city}. Deployed daily to Google/Meta clicks ($${adSpendDollars}/wk ads + $${feeDollars}/wk AI management). Cancel or pause anytime.`;
   } else {
     productName = `AI Advertising Autopilot — $${totalDollars}/mo ($${adSpendDollars} Ads + $${feeDollars} Mgmt)`;
-    productDescription = `Automated search ad campaigns in ${city} for ${trade}. 100% applied to Google search clicks. Cancel or pause anytime.`;
+    productDescription = `Automated search ad campaigns in ${city} for ${trade} ($${adSpendDollars}/mo ads + $${feeDollars}/mo AI management). Cancel or pause anytime.`;
   }
 
   const sessionConfig: Stripe.Checkout.SessionCreateParams = {

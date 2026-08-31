@@ -137,6 +137,41 @@ describe('Ad Billing Synchronous Provisioning & Fulfillment', () => {
     expect(createdSessionConfig.metadata.monthly_budget_cents).toBe('69300'); // True monthly Google Ads rate ($693)
   });
 
+  it('accurately itemizes ad spend and management fee in product description for monthly fixed billing', async () => {
+    const { createAdBudgetCheckoutSession } = await import('@/lib/ad-billing');
+    const { getStripeClient } = await import('@/lib/stripe');
+    const stripe = getStripeClient();
+
+    let createdSessionConfig: any = null;
+    vi.spyOn(stripe.checkout.sessions, 'create').mockImplementationOnce(async (config: any) => {
+      createdSessionConfig = config;
+      return { id: 'cs_mock_monthly', url: 'https://checkout.stripe.com/mock-monthly' } as any;
+    });
+
+    const result = await createAdBudgetCheckoutSession({
+      accountId: 'acc_test_monthly',
+      fundingModel: 'monthly_fixed',
+      monthlyBudgetDollars: 600,
+      interval: 'month',
+      businessName: 'Apex Roofing',
+      trade: 'Roofing',
+      city: 'Austin',
+      returnUrl: 'https://example.com',
+    });
+
+    expect(result.url).toBe('https://checkout.stripe.com/mock-monthly');
+    expect(createdSessionConfig).not.toBeNull();
+    expect(createdSessionConfig.mode).toBe('subscription');
+    expect(createdSessionConfig.line_items[0].price_data.unit_amount).toBe(66000); // $600 + $60 fee
+    expect(createdSessionConfig.line_items[0].price_data.recurring.interval).toBe('month');
+    expect(createdSessionConfig.line_items[0].price_data.product_data.description).toBe(
+      'Automated search ad campaigns in Austin for Roofing ($600/mo ads + $60/mo AI management). Cancel or pause anytime.'
+    );
+    expect(createdSessionConfig.line_items[0].price_data.product_data.description).not.toContain(
+      '100% applied to Google search clicks'
+    );
+  });
+
   it('translates weekly ad spend to true monthly Google Ads budget during webhook provisioning', async () => {
     let updatedContent: Record<string, unknown> | null = null;
 

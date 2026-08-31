@@ -12,6 +12,7 @@ const stripComments = (source: string) =>
     .replace(/\/\*[\s\S]*?\*\//g, '')
     .replace(/^\s*\/\/.*$/gm, '');
 const ACTION = read('src', 'app', 'portal', '[subdomain]', 'actions.ts');
+const GLOBAL_ACTION = read('src', 'app', 'portal', 'global-actions.ts');
 const FORM = stripComments(read('src', 'app', 'portal', '[subdomain]', 'PortalRequestForm.tsx'));
 const DATA = read('src', 'lib', 'client-portal-data.ts');
 
@@ -99,5 +100,14 @@ describe('finding the customer by number', () => {
       const body = DATA.slice(DATA.indexOf(`async function ${fn}`), DATA.indexOf(`async function ${fn}`) + 900);
       expect(body, fn).toContain('.limit(1)');
     }
+  });
+
+  it('matches emails with exact equality rather than wildcards', () => {
+    const fn = DATA.slice(DATA.indexOf('async function findClientByEmail'), DATA.indexOf('async function findClientByEmail') + 900);
+    expect(fn).toContain(".eq('email', email)");
+    expect(fn).not.toContain(".ilike('email'");
+
+    expect(GLOBAL_ACTION).toContain(".eq('email', identifier.value)");
+    expect(GLOBAL_ACTION).not.toContain(".ilike('email'");
   });
 });

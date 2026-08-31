@@ -86,7 +86,7 @@ export async function loadRevenueAnalyticsData(
           .from('payments')
           .select('id, job_id, kind, label, amount, status, platform_fee, refunded_amount, charge_model, paid_at, requested_at')
           .eq('account_id', accountId)
-          .in('status', ['paid', 'refunded', 'partially_refunded'])
+          .in('status', ['paid', 'refunded'])
           .gte('paid_at', oneYearAgo.toISOString())
           .order('paid_at', { ascending: true })
           .range(from, to),
