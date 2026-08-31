@@ -247,6 +247,7 @@ export default function TradeOrbit() {
             width={icon.w * 2}
             height={icon.h * 2}
             decoding="async"
+            loading="lazy"
             fetchPriority="low"
           />
         </picture>

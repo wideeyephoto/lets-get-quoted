@@ -242,7 +242,8 @@ export default function SmsQuoteSimulator() {
                         width={1456}
                         height={1092}
                         sizes="280px"
-                        priority
+                        loading="lazy"
+                        quality={80}
                       />
                       <figcaption>Existing bathroom · 1 photo</figcaption>
                     </figure>
@@ -266,7 +267,8 @@ export default function SmsQuoteSimulator() {
                           width={1456}
                           height={1092}
                           sizes="280px"
-                          priority
+                          loading="lazy"
+                          quality={80}
                         />
                         <figcaption>Proposed finish · same footprint</figcaption>
                       </figure>

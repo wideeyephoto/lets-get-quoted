@@ -962,6 +962,8 @@ export default function PricingExperience() {
               width={1000}
               height={684}
               sizes="(max-width: 680px) 100vw, 60vw"
+              loading="lazy"
+              quality={80}
               alt="Let's Get Quoted back-office Insights dashboard showing revenue, cash position and job performance"
             />
             <span className="screenshot-zoom-badge" aria-hidden="true">

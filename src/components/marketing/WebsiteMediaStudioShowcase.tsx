@@ -555,6 +555,8 @@ export default function WebsiteMediaStudioShowcase() {
               className={styles.baImgLayer}
               fill
               sizes="(max-width: 900px) 100vw, 42vw"
+              loading="lazy"
+              quality={80}
               draggable={false}
             />
 
@@ -569,6 +571,8 @@ export default function WebsiteMediaStudioShowcase() {
                 className={styles.baImgLayer}
                 fill
                 sizes="(max-width: 900px) 100vw, 42vw"
+                loading="lazy"
+                quality={80}
                 draggable={false}
               />
             </div>

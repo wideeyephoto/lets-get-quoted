@@ -78,6 +78,8 @@ export default function RealProof({
           width={width}
           height={height}
           sizes="(max-width: 900px) 100vw, 60vw"
+          loading="lazy"
+          quality={80}
           className={styles.img}
         />
       </figure>
