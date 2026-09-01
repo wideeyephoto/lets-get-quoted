@@ -727,7 +727,7 @@ export const MANUAL_ARTICLES: ManualArticle[] = [
     title: 'Manage insurance claims, adjuster evidence, and restoration packets',
     summary: 'Document storm damage and emergency losses with timestamped photo evidence, generate adjuster packets, and bill supplemental scopes.',
     outcome: 'You will accelerate insurance claim approvals and secure full reimbursement for homeowner storm, fire, or water damage restoration.',
-    audiences: ['Owner', 'Office staff', 'Estimators'],
+    audiences: ['Owner', 'Office staff', 'Crew'],
     readMinutes: 6,
     routes: [
       { label: 'Claims', href: '/dashboard/claims' },
