@@ -439,7 +439,7 @@ export default function HeroConnectedWorkflow() {
               <span className={styles.leadBadge}>
                 ✦ {trade.badge}
               </span>
-              <span style={{ color: '#4ee0bc', fontSize: '11px', fontWeight: 700 }}>
+              <span style={{ color: '#4ee0bc', fontSize: '14.5px', fontWeight: 750 }}>
                 Est. Value: {trade.leadValue}
               </span>
             </div>
@@ -452,7 +452,7 @@ export default function HeroConnectedWorkflow() {
             </div>
 
             <div className={styles.infoBox}>
-              <div style={{ color: '#4ee0bc', fontWeight: 700, fontSize: '11px', marginBottom: '3px' }}>
+              <div style={{ color: '#4ee0bc', fontWeight: 750, fontSize: '13.5px', marginBottom: '4px' }}>
                 📸 {trade.leadPhotoBadge}
               </div>
               {trade.leadSummary}
@@ -486,7 +486,7 @@ export default function HeroConnectedWorkflow() {
               <span className={styles.proposalBadge}>
                 ✓ PROPOSAL SIGNED ON MOBILE
               </span>
-              <span style={{ color: '#f7f7f4', fontSize: '13px', fontWeight: 800 }}>
+              <span style={{ color: '#f7f7f4', fontSize: '15.5px', fontWeight: 800 }}>
                 Total: {trade.quoteTotal}
               </span>
             </div>
@@ -595,7 +595,7 @@ export default function HeroConnectedWorkflow() {
               <span className={styles.paidBadge}>
                 ✓ JOB COMPLETE &amp; INVOICE PAID
               </span>
-              <span style={{ color: '#4ee0bc', fontSize: '14px', fontWeight: 800 }}>
+              <span style={{ color: '#4ee0bc', fontSize: '17px', fontWeight: 800 }}>
                 {trade.payoutAmount}
               </span>
             </div>
