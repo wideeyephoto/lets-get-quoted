@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { requireOfficeContext } from '@/lib/auth';
 import { isCrewPhoneVerified, resolveCrewPhoneVerification } from '@/lib/crew-verification';
 import { evaluateFieldNoteConfidence } from '@/lib/field-intake-quality';
+import { isOwnerFieldLineReady, loadOwnerAlerts } from '@/lib/owner-sms';
 import TextToJobWorkspace, { type InboundMessage, type CrewRow } from './TextToJobWorkspace';
 
 export const metadata: Metadata = {
@@ -11,23 +12,25 @@ export const metadata: Metadata = {
 };
 
 export default async function TextToJobDashboardPage() {
-  const { supabase, accountId } = await requireOfficeContext('leads.read');
+  const { supabase, accountId, capabilities } = await requireOfficeContext('leads.read');
+  const canManageOwnerPhone = capabilities.has('settings.write');
 
   const [
-    { data: account },
-    { data: crewRows },
+    { data: account, error: accountError },
+    { data: crewRows, error: crewError },
     { count: jobCount },
     { count: leadCount },
     { data: feedRows },
+    ownerAlerts,
   ] = await Promise.all([
     supabase
       .from('accounts')
-      .select('company_name, business_name, trade, phone, alert_phone, call_tracking_number')
+      .select('business_name, trade, call_tracking_number')
       .eq('id', accountId)
       .maybeSingle(),
     supabase
       .from('crew')
-      .select('id, name, phone, role_label, active, user_id, last_signed_in_at, phone_verified_at, phone_verified')
+      .select('id, name, phone, role_label, active, user_id, last_signed_in_at')
       .eq('account_id', accountId)
       .order('name'),
     supabase
@@ -46,7 +49,20 @@ export default async function TextToJobDashboardPage() {
       .in('kind', ['field_voice_note', 'field_sms_update', 'cost_added', 'task_created'])
       .order('created_at', { ascending: false })
       .limit(20),
+    loadOwnerAlerts(accountId),
   ]);
+
+  if (accountError) {
+    // Do not silently turn a database read failure into a false "phone setup
+    // required" state. The owner-alert loader below has its own explicit
+    // unavailable state, so the page can distinguish an outage from no setup.
+    console.error('Text-to-Job account details unreadable:', accountError);
+  }
+  if (crewError) {
+    console.error('Text-to-Job crew phone status unreadable:', crewError);
+  }
+
+  const ownerAlertPhone = ownerAlerts.kind === 'ok' ? ownerAlerts.phone : null;
 
   const mappedCrew: CrewRow[] = (crewRows || []).map((c) => {
     const verified = isCrewPhoneVerified(c);
@@ -78,7 +94,7 @@ export default async function TextToJobDashboardPage() {
 
     return {
       id: row.id,
-      sender: row.author || (account?.alert_phone ? `Owner (${account.alert_phone})` : 'Field Note'),
+      sender: row.author || (ownerAlertPhone ? `Owner (${ownerAlertPhone})` : 'Field Note'),
       type: isVoice ? 'voice' : isCost ? 'receipt' : 'sms',
       time: timeFormatted,
       rawText,
@@ -101,15 +117,47 @@ export default async function TextToJobDashboardPage() {
   });
 
   const rawSharedNumber = process.env.SIGNALWIRE_FROM_NUMBER || '+19479412323';
-  const isQualified = Boolean(account?.alert_phone && account.alert_phone.replace(/\D/g, '').length >= 10);
+  // Match the owner lane used by inbound field routing: a normalized phone on
+  // file, owner alerts enabled, and affirmative consent that has not been
+  // stopped. A phone-shaped string alone is not a verified sender.
+  const isQualified = isOwnerFieldLineReady(ownerAlerts);
+  const workspaceAccount = {
+    business_name: account?.business_name ?? null,
+    alert_phone: ownerAlertPhone,
+    trade: account?.trade ?? null,
+    call_tracking_number: account?.call_tracking_number ?? null,
+  };
+  const ownerPhoneSetup = ownerAlerts.kind === 'ok'
+    ? {
+        phone: ownerAlerts.phone,
+        enabled: ownerAlerts.enabled,
+        consent: ownerAlerts.consent,
+        consentedAt: ownerAlerts.consentedAt,
+        consentVersion: ownerAlerts.consentVersion,
+        disabled: !canManageOwnerPhone,
+        disabledReason: canManageOwnerPhone
+          ? null
+          : 'Only the account owner or someone with Settings access can manage this phone.',
+      }
+    : {
+        phone: null,
+        enabled: false,
+        consent: 'none' as const,
+        consentedAt: null,
+        consentVersion: null,
+        disabled: true,
+        disabledReason: 'Phone setup is unavailable until the saved settings can be checked.',
+      };
 
   return (
     <TextToJobWorkspace
-      account={account}
+      account={workspaceAccount}
       crewMembers={mappedCrew}
       initialMessages={realMessages.length > 0 ? realMessages : undefined}
       sharedPhoneNumber={rawSharedNumber}
       isQualified={isQualified}
+      qualificationUnavailable={ownerAlerts.kind === 'unavailable'}
+      ownerPhoneSetup={ownerPhoneSetup}
       activeJobCount={jobCount ?? 0}
       leadCount={leadCount ?? 0}
       crewCount={crewRows?.length ?? 0}

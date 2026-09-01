@@ -75,9 +75,12 @@
 .topQualificationBtn {
   background: #f59e0b;
   color: #0b1520;
+  border: 0;
   font-size: 13px;
   font-weight: 800;
+  font-family: inherit;
   padding: 9px 16px;
+  min-height: 44px;
   border-radius: 8px;
   text-decoration: none;
   white-space: nowrap;
@@ -87,11 +90,21 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  cursor: pointer;
 }
 
-.topQualificationBtn:hover {
+.topQualificationBtn:hover:not(:disabled) {
   background: #fbbf24;
   transform: translateY(-1px);
+}
+
+.topQualificationBtn:disabled,
+.verifyBtn:disabled,
+.resetBtn:disabled,
+.senderVerifyLink:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+  transform: none;
 }
 
 @media (max-width: 768px) {
@@ -249,12 +262,43 @@
   transition: all 0.18s ease;
   text-decoration: none;
   font-family: inherit;
+  border: 0;
+  min-height: 44px;
   background: #f59e0b;
   color: #0b1520;
   box-shadow: 0 4px 14px rgba(245, 158, 11, 0.28);
 }
 
-.verifyBtn:hover {
+.inlinePhoneSetupBtn {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin: -10px 2px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #fbbf24;
+  font: inherit;
+  font-weight: 800;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.inlinePhoneSetupBtn:hover {
+  color: #fde68a;
+}
+
+.inlinePhoneSetupBtn:focus-visible,
+.topQualificationBtn:focus-visible,
+.verifyBtn:focus-visible,
+.resetBtn:focus-visible,
+.senderVerifyLink:focus-visible {
+  outline: 2px solid #38bdf8;
+  outline-offset: 3px;
+}
+
+.verifyBtn:hover:not(:disabled) {
   background: #fbbf24;
   transform: translateY(-1px);
 }
@@ -1473,11 +1517,23 @@
   align-items: center;
   gap: 4px;
   transition: opacity 0.15s ease;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-family: inherit;
+  cursor: pointer;
 }
 
-.senderVerifyLink:hover {
+.senderVerifyLink:hover:not(:disabled) {
   text-decoration: underline;
   opacity: 0.85;
+}
+
+.senderStatusUnavailable {
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .senderSecurityNotice {
@@ -1505,9 +1561,10 @@
   text-decoration: none;
   font-family: inherit;
   transition: all 0.15s ease;
+  min-height: 44px;
 }
 
-.resetBtn:hover {
+.resetBtn:hover:not(:disabled) {
   color: var(--text, #f5f0e7);
   border-color: rgba(255, 255, 255, 0.25);
 }

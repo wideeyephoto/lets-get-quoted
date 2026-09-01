@@ -6,6 +6,7 @@ import SparkyAvatar from '@/components/mascot/SparkyAvatar';
 import SaveFieldContactButton from '@/components/SaveFieldContactButton';
 import { useAssistant } from '@/components/ai-assistant/AssistantProvider';
 import { evaluateFieldNoteConfidence, type FieldConfidenceVerdict } from '@/lib/field-intake-quality';
+import OwnerPhoneSetupModal, { type OwnerPhoneSetupData } from './OwnerPhoneSetupModal';
 import styles from './text-to-job.module.css';
 
 export type ExtractedItem = {
@@ -213,9 +214,7 @@ function formatUsPhone(phone?: string | null): string {
 export interface TextToJobWorkspaceProps {
   account: {
     business_name: string | null;
-    company_name: string | null;
     alert_phone: string | null;
-    phone: string | null;
     trade: string | null;
     call_tracking_number: string | null;
   } | null;
@@ -223,6 +222,8 @@ export interface TextToJobWorkspaceProps {
   initialMessages?: InboundMessage[];
   sharedPhoneNumber?: string;
   isQualified?: boolean;
+  qualificationUnavailable?: boolean;
+  ownerPhoneSetup: OwnerPhoneSetupData;
   activeJobCount: number;
   leadCount: number;
   crewCount: number;
@@ -295,6 +296,8 @@ export default function TextToJobWorkspace({
   initialMessages,
   sharedPhoneNumber,
   isQualified = true,
+  qualificationUnavailable = false,
+  ownerPhoneSetup,
   activeJobCount,
   leadCount,
   crewCount,
@@ -320,7 +323,7 @@ export default function TextToJobWorkspace({
 
   // Visor Card Customizer State
   const [printBizName, setPrintBizName] = useState(
-    account?.company_name || 'Apex Contracting & Trade Pro'
+    account?.business_name || 'Apex Contracting & Trade Pro'
   );
   const [printTrade, setPrintTrade] = useState(
     account?.trade && AVAILABLE_TRADES.includes(account.trade) ? account.trade : 'Electrical'
@@ -621,39 +624,20 @@ export default function TextToJobWorkspace({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [showPrintModal, showSimModal, filteredMessages, selectedMsgId]);
 
-  const fieldPhoneNumber = isQualified
-    ? formatUsPhone(sharedPhoneNumber || '+19479412323')
-    : '🔒 Setup Alert Phone to Unlock';
+  const fieldPhoneNumber = qualificationUnavailable
+    ? 'Phone status unavailable'
+    : isQualified
+      ? formatUsPhone(sharedPhoneNumber || '+19479412323')
+      : '🔒 Setup Alert Phone to Unlock';
 
   const rawCallableNumber = isQualified
     ? sharedPhoneNumber || '+19479412323'
     : '';
 
   const alertPhone = account?.alert_phone ? formatUsPhone(account.alert_phone) : '(No cell phone set)';
-  const businessTitle = account?.business_name || account?.company_name || 'Your Company';
+  const businessTitle = account?.business_name || 'Your Company';
 
-  const defaultCrew: CrewRow[] = [
-    {
-      id: 'default-crew-1',
-      name: 'Carlos M.',
-      phone: '(248) 555-0188',
-      role_label: 'Lead Tech (Van #1)',
-      active: true,
-      phoneVerified: true,
-      verificationReason: 'verified_sms',
-    },
-    {
-      id: 'default-crew-2',
-      name: 'Mike T.',
-      phone: '(248) 555-0192',
-      role_label: 'Drywall & Framing Tech',
-      active: true,
-      phoneVerified: true,
-      verificationReason: 'owner_verified',
-    },
-  ];
-
-  const activeCrewList = crewMembers.length > 0 ? crewMembers : defaultCrew;
+  const activeCrewList = crewMembers;
   const verifiedCrewCount = activeCrewList.filter((c) => c.active && Boolean(c.phone) && c.phoneVerified).length;
   const totalAuthorizedDevices = (isQualified ? 1 : 0) + verifiedCrewCount;
 
@@ -878,11 +862,23 @@ export default function TextToJobWorkspace({
 
   return (
     <div className={styles.container}>
-      {/* 0. Top Alert Banner When Unqualified or AI Copilot Field Line Ready Banner When Qualified */}
-      {!isQualified ? (
+      {/* 0. Keep a read failure distinct from a phone that genuinely needs setup. */}
+      {qualificationUnavailable ? (
+        <div className={styles.topQualificationBanner} role="status">
+          <div className={styles.topQualificationLeft}>
+            <span className={styles.topQualificationIcon} aria-hidden="true">⚠️</span>
+            <div>
+              <strong className={styles.topQualificationTitle}>We could not confirm your phone status</strong>
+              <p className={styles.topQualificationText}>
+                Your saved number has not been changed. Refresh this page in a moment to check it again.
+              </p>
+            </div>
+          </div>
+        </div>
+      ) : !isQualified ? (
         <div className={styles.topQualificationBanner}>
           <div className={styles.topQualificationLeft}>
-            <span className={styles.topQualificationIcon}>🔒</span>
+            <span className={styles.topQualificationIcon} aria-hidden="true">🔒</span>
             <div>
               <strong className={styles.topQualificationTitle}>
                 Field Hotline Locked — Cell Phone Setup Required
@@ -892,9 +888,12 @@ export default function TextToJobWorkspace({
               </p>
             </div>
           </div>
-          <Link href="/dashboard/messages?setup=1" className={styles.topQualificationBtn}>
-            📱 Connect Cell Phone &rarr;
-          </Link>
+          <OwnerPhoneSetupModal
+            setup={ownerPhoneSetup}
+            sharedPhoneNumber={sharedPhoneNumber}
+            triggerClassName={styles.topQualificationBtn}
+            triggerLabel={<>📱 Connect Cell Phone <span aria-hidden="true">&rarr;</span></>}
+          />
         </div>
       ) : (
         <div className="msg-setup-copilot-card" style={{ marginBottom: '1.25rem' }}>
@@ -951,7 +950,19 @@ export default function TextToJobWorkspace({
                 </button>
               </div>
               <p className={styles.subtitle}>
-                Text, send voice memos, or call {fieldPhoneNumber} hands-free (using Voice credits)—your AI Copilot (Currently: {companion.name}) updates quotes, punch lists, and schedules instantly.
+                Text, send voice memos, or call{' '}
+                {!isQualified && !qualificationUnavailable ? (
+                  <OwnerPhoneSetupModal
+                    setup={ownerPhoneSetup}
+                    sharedPhoneNumber={sharedPhoneNumber}
+                    triggerClassName={styles.inlinePhoneSetupBtn}
+                    triggerLabel="Setup Alert Phone to Unlock"
+                  />
+                ) : (
+                  fieldPhoneNumber
+                )}{' '}
+                hands-free (using Voice credits)—your AI Copilot (Currently: {companion.name}) updates quotes,
+                punch lists, and schedules instantly.
               </p>
             </div>
           </div>
@@ -1329,7 +1340,7 @@ export default function TextToJobWorkspace({
             {showWhitelistAccordion && (
               <div id="whitelist-accordion-body" className={styles.accordionBody}>
                 {/* Simple alert if unverified */}
-                {!isQualified && (
+                {!isQualified && !qualificationUnavailable && (
                   <div className={styles.qualificationWarningCard}>
                     <span style={{ fontSize: '24px' }}>📱</span>
                     <div style={{ flex: 1 }}>
@@ -1340,9 +1351,12 @@ export default function TextToJobWorkspace({
                         Add your mobile number so your AI Copilot (Currently: {companion.name}) recognizes you when you text from the job site.
                       </p>
                     </div>
-                    <Link href="/dashboard/messages?setup=1" className={styles.verifyBtn}>
-                      📱 Connect Mobile Phone &rarr;
-                    </Link>
+                    <OwnerPhoneSetupModal
+                      setup={ownerPhoneSetup}
+                      sharedPhoneNumber={sharedPhoneNumber}
+                      triggerClassName={styles.verifyBtn}
+                      triggerLabel={<>📱 Connect Mobile Phone <span aria-hidden="true">&rarr;</span></>}
+                    />
                   </div>
                 )}
 
@@ -1358,9 +1372,12 @@ export default function TextToJobWorkspace({
                       <Link href="/dashboard/crew?tab=people&add=1" className={styles.vcardBtn}>
                         + Add Crew Member
                       </Link>
-                      <Link href="/dashboard/messages?setup=1" className={styles.resetBtn}>
-                        Manage My Phone
-                      </Link>
+                      <OwnerPhoneSetupModal
+                        setup={ownerPhoneSetup}
+                        sharedPhoneNumber={sharedPhoneNumber}
+                        triggerClassName={styles.resetBtn}
+                        triggerLabel="Manage My Phone"
+                      />
                     </div>
                   </div>
 
@@ -1403,10 +1420,15 @@ export default function TextToJobWorkspace({
                               <span className={styles.senderStatusActive} title="Verified primary account phone">
                                 <span className={styles.liveDot} /> Active
                               </span>
+                            ) : qualificationUnavailable ? (
+                              <span className={styles.senderStatusUnavailable}>Status unavailable</span>
                             ) : (
-                              <Link href="/dashboard/messages?setup=1" style={{ color: '#f59e0b', fontSize: '12px', fontWeight: 700, textDecoration: 'none' }}>
-                                ⚠️ Connect &rarr;
-                              </Link>
+                              <OwnerPhoneSetupModal
+                                setup={ownerPhoneSetup}
+                                sharedPhoneNumber={sharedPhoneNumber}
+                                triggerClassName={styles.senderVerifyLink}
+                                triggerLabel={<>⚠️ Connect <span aria-hidden="true">&rarr;</span></>}
+                              />
                             )}
                           </td>
                         </tr>
@@ -1523,10 +1545,15 @@ export default function TextToJobWorkspace({
                         >
                           📱 Download .vcf Card
                         </a>
+                      ) : qualificationUnavailable ? (
+                        <span className={styles.senderStatusUnavailable}>Phone status unavailable</span>
                       ) : (
-                        <Link href="/dashboard/messages?setup=1" className={styles.verifyBtn}>
-                          📱 Setup Alert Phone to Download
-                        </Link>
+                        <OwnerPhoneSetupModal
+                          setup={ownerPhoneSetup}
+                          sharedPhoneNumber={sharedPhoneNumber}
+                          triggerClassName={styles.verifyBtn}
+                          triggerLabel="📱 Setup Alert Phone to Download"
+                        />
                       )}
                       <button
                         type="button"

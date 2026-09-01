@@ -1,12 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, useEffect } from 'react';
-import { useFormState } from 'react-dom';
+import { useActionState, useEffect, useState } from 'react';
 import SaveButton from '@/components/save-button';
 import SaveFieldContactButton from '@/components/SaveFieldContactButton';
 import { useAssistant } from '@/components/ai-assistant/AssistantProvider';
-import { formatUsPhone } from '@/lib/phone';
+import { formatUsPhone, normalizeUsPhone } from '@/lib/phone';
 import { saveOwnerAlertsAction, sendOwnerPhoneVerificationCodeAction } from './actions';
 // The idle state comes from the pure module, not from the action file: a
 // 'use server' file may only export async functions, and lib/owner-sms imports
@@ -48,6 +47,8 @@ export default function OwnerAlertsForm({
   consentVersion,
   disabled,
   sharedPhoneNumber,
+  showTextToJobLink = true,
+  fieldLineSetup = false,
 }: {
   phone: string | null;
   enabled: boolean;
@@ -59,8 +60,11 @@ export default function OwnerAlertsForm({
   /** True when the settings could not be read — see the note on the fieldset. */
   disabled: boolean;
   sharedPhoneNumber?: string;
+  showTextToJobLink?: boolean;
+  /** Opens this form specifically to unlock Text-to-Job, so field routing starts enabled. */
+  fieldLineSetup?: boolean;
 }) {
-  const [state, action] = useFormState(saveOwnerAlertsAction, OWNER_ALERTS_IDLE);
+  const [state, action] = useActionState(saveOwnerAlertsAction, OWNER_ALERTS_IDLE);
   const errors = state.status === 'error' ? state.errors : [];
   const errorFor = (field: 'phone' | 'consent' | 'form') => errors.find((one) => one.field === field)?.message ?? null;
 
@@ -75,7 +79,8 @@ export default function OwnerAlertsForm({
   }
 
   const [currentPhone, setCurrentPhone] = useState(phone ?? '');
-  const [otpState, setOtpState] = useState<'idle' | 'sending' | 'sent' | 'verified'>('idle');
+  const [currentEnabled, setCurrentEnabled] = useState(fieldLineSetup ? true : enabled);
+  const [otpState, setOtpState] = useState<'idle' | 'sending' | 'sent' | 'ready'>('idle');
   const [verificationData, setVerificationData] = useState<{ token: string; expiresAt: number; phone: string } | null>(null);
   const [otpCode, setOtpCode] = useState('');
   const [otpError, setOtpError] = useState<string | null>(null);
@@ -87,8 +92,18 @@ export default function OwnerAlertsForm({
     return () => clearInterval(timer);
   }, [countdown]);
 
-  const isStoredPhone = Boolean(phone && currentPhone.trim() === phone);
-  const phoneHasChanged = Boolean(currentPhone.trim() && currentPhone.trim() !== (phone ?? ''));
+  const storedPhone = normalizeUsPhone(phone ?? '');
+  const enteredPhone = normalizeUsPhone(currentPhone);
+  const phoneHasChanged = Boolean(currentPhone.trim() && enteredPhone !== storedPhone);
+  const phoneNeedsVerification = Boolean(
+    enteredPhone && (enteredPhone !== storedPhone || consent === 'none'),
+  );
+  const isStoredPhone = Boolean(
+    storedPhone && enteredPhone === storedPhone && consent === 'opted_in',
+  );
+  const savedStateMatches = state.status === 'saved'
+    && enteredPhone === state.phone
+    && currentEnabled === state.enabled;
 
   async function handleSendVerification() {
     if (!currentPhone.trim() || disabled) return;
@@ -129,14 +144,14 @@ export default function OwnerAlertsForm({
         <div className="field full msg-setup-phone-field">
           <div className="msg-setup-phone-header">
             <label htmlFor="alertPhone">YOUR MOBILE NUMBER</label>
-            {isStoredPhone || otpState === 'verified' ? (
-              <span className="msg-setup-verified-badge" title="Phone verified via 2FA">
+            {isStoredPhone || (savedStateMatches && Boolean(enteredPhone)) ? (
+              <span className="msg-setup-verified-badge" title="Phone verified and saved">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                   <polyline points="20 6 9 17 4 12" />
                 </svg>
                 Verified number
               </span>
-            ) : phoneHasChanged ? (
+            ) : phoneNeedsVerification ? (
               <span className="msg-setup-unverified-badge">2FA verification available</span>
             ) : null}
           </div>
@@ -154,17 +169,21 @@ export default function OwnerAlertsForm({
               inputMode="tel"
               autoComplete="tel"
               placeholder="(248) 555-0100"
-              defaultValue={phone ?? ''}
               value={currentPhone}
               onChange={(e) => {
                 setCurrentPhone(e.target.value);
-                if (otpState === 'verified') setOtpState('idle');
+                if (otpState !== 'idle') {
+                  setOtpState('idle');
+                  setVerificationData(null);
+                  setOtpCode('');
+                  setOtpError(null);
+                }
               }}
               aria-describedby="alertPhone-hint"
               aria-invalid={errorFor('phone') ? true : undefined}
             />
 
-            {phoneHasChanged && otpState !== 'verified' ? (
+            {phoneNeedsVerification && otpState !== 'ready' ? (
               <button
                 type="button"
                 className="msg-setup-verify-trigger"
@@ -190,7 +209,7 @@ export default function OwnerAlertsForm({
         </div>
 
         {/* 6-Digit Verification Code Prompt */}
-        {otpState === 'sent' ? (
+        {otpState === 'sent' || otpState === 'ready' ? (
           <div className="msg-setup-otp-card">
             <div className="msg-setup-otp-head">
               <span className="msg-setup-otp-title">Enter 6-digit confirmation code</span>
@@ -211,14 +230,20 @@ export default function OwnerAlertsForm({
                   const digits = e.target.value.replace(/\D/g, '').slice(0, 6);
                   setOtpCode(digits);
                   if (digits.length === 6) {
-                    setOtpState('verified');
+                    setOtpState('ready');
                     setOtpError(null);
+                  } else {
+                    setOtpState('sent');
                   }
                 }}
+                aria-label="Six-digit phone verification code"
+                autoComplete="one-time-code"
                 autoFocus
               />
               {otpCode.length === 6 ? (
-                <span className="msg-setup-otp-ready-badge">✓ Code entered</span>
+                <span className="msg-setup-otp-ready-badge" role="status">
+                  Code entered — save to verify
+                </span>
               ) : null}
             </div>
           </div>
@@ -226,10 +251,24 @@ export default function OwnerAlertsForm({
 
         <div className="msg-setup-toggle-card">
           <label className="checkbox-row" htmlFor="alertsEnabled">
-            <input id="alertsEnabled" name="alertsEnabled" type="checkbox" defaultChecked={enabled} />
+            <input
+              id="alertsEnabled"
+              name="alertsEnabled"
+              type="checkbox"
+              checked={currentEnabled}
+              onChange={(event) => setCurrentEnabled(event.target.checked)}
+            />
             <span className="msg-setup-toggle-text">
-              <b>Text me when a high-value lead comes in</b>
-              <small>Instant notification when a homeowner submits a quote request or accepts an estimate</small>
+              <b>
+                {fieldLineSetup
+                  ? 'Enable Text-to-Job field access and high-value lead alerts'
+                  : 'Text me when a high-value lead comes in'}
+              </b>
+              <small>
+                {fieldLineSetup
+                  ? 'Keep this on to authorize your number for the field line. Turning it off locks Text-to-Job.'
+                  : 'Instant notification when a homeowner submits a quote request or accepts an estimate'}
+              </small>
             </span>
           </label>
         </div>
@@ -301,10 +340,13 @@ export default function OwnerAlertsForm({
 
 
         {errorFor('form') ? <p className="field-error" role="alert">{errorFor('form')}</p> : null}
-        {state.status === 'saved' ? <p className="msg-setup-note is-ready" role="status">{state.message}</p> : null}
+        {state.status === 'saved' && savedStateMatches ? (
+          <p className="msg-setup-note is-ready" role="status">{state.message}</p>
+        ) : null}
 
         {/* Confirmed Phone -> AI Copilot Field Line Callout */}
-        {(isAlreadyOptedIn && (phone || currentPhone)) || otpState === 'verified' || state.status === 'saved' ? (
+        {(isAlreadyOptedIn && enabled && currentEnabled && (phone || currentPhone))
+          || (savedStateMatches && state.status === 'saved' && state.ready) ? (
           <div className="msg-setup-copilot-card">
             <div className="msg-setup-copilot-head">
               <span className="msg-setup-copilot-badge">🎙️ AI Copilot Field Line Ready</span>
@@ -321,15 +363,19 @@ export default function OwnerAlertsForm({
               <a href={`sms:${(sharedPhoneNumber || '+19479412323').replace(/[^\d+]/g, '')}`} className="btn secondary sm msg-setup-copilot-btn">
                 💬 Text Copilot
               </a>
-              <Link href="/dashboard/text-to-job" className="btn quiet sm msg-setup-copilot-link">
-                Open Text-to-Job →
-              </Link>
+              {showTextToJobLink ? (
+                <Link href="/dashboard/text-to-job" className="btn quiet sm msg-setup-copilot-link">
+                  Open Text-to-Job →
+                </Link>
+              ) : null}
             </div>
           </div>
         ) : null}
 
         <div className="msg-setup-save">
-          <SaveButton className="btn primary msg-setup-submit">Save notification settings</SaveButton>
+          <SaveButton className="btn primary msg-setup-submit">
+            {phoneNeedsVerification ? 'Verify & save phone' : 'Save notification settings'}
+          </SaveButton>
         </div>
       </fieldset>
 
@@ -343,5 +389,3 @@ export default function OwnerAlertsForm({
     </form>
   );
 }
-
-

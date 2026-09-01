@@ -87,6 +87,23 @@ export type OwnerAlerts =
     }
   | { readonly kind: 'unavailable' };
 
+/**
+ * The exact owner lane required by the inbound field-routing SQL.
+ *
+ * Keep this predicate shared by the server page and its tests. A phone-shaped
+ * string alone is not enough: the saved alert switch and an affirmative,
+ * non-STOP consent row are both part of the routing contract.
+ */
+export function isOwnerFieldLineReady(alerts: OwnerAlerts): boolean {
+  return Boolean(
+    alerts.kind === 'ok'
+      && alerts.phone
+      && normalizeUsPhone(alerts.phone)
+      && alerts.enabled
+      && alerts.consent === 'opted_in',
+  );
+}
+
 /* -------------------------------------------------------------------------
    What the strip says
    ---------------------------------------------------------------------- */

@@ -8,6 +8,7 @@ import {
   sendOwnerPhoneVerificationCodeAction,
   verifyOwnerPhoneVerificationCodeAction,
 } from '@/app/dashboard/messages/actions';
+import { recordOwnerSmsConsent } from '@/lib/sms';
 
 // Mock dependencies
 vi.mock('@/lib/auth', () => ({
@@ -49,7 +50,7 @@ vi.mock('@/lib/auth', () => ({
 
 vi.mock('@/lib/sms', () => ({
   sendOwnerPhoneVerificationSms: vi.fn().mockResolvedValue('msg_otp_123'),
-  recordOwnerSmsConsent: vi.fn().mockResolvedValue({ ok: true }),
+  recordOwnerSmsConsent: vi.fn().mockResolvedValue('recorded'),
 }));
 
 describe('Ad Billing SMS Alert 2FA Phone Verification', () => {
@@ -116,6 +117,34 @@ describe('Ad Billing SMS Alert 2FA Phone Verification', () => {
     }
   });
 
+  it('does not report verification when the durable consent write fails', async () => {
+    (recordOwnerSmsConsent as any).mockResolvedValueOnce('failed');
+    const accountId = 'acc_test_ad_billing_2fa';
+    const phone = '+12485550100';
+    const code = '789123';
+    const expiresAt = Date.now() + 600000;
+    const token = ownerPhoneVerificationToken(accountId, phone, code, expiresAt);
+
+    const result = await verifyOwnerPhoneVerificationCodeAction(phone, code, token, expiresAt);
+
+    expect(result.status).toBe('error');
+    if (result.status === 'error') expect(result.message).toContain('could not save');
+  });
+
+  it('preserves a prior STOP instead of reporting the phone as verified', async () => {
+    (recordOwnerSmsConsent as any).mockResolvedValueOnce('suppressed');
+    const accountId = 'acc_test_ad_billing_2fa';
+    const phone = '+12485550100';
+    const code = '789123';
+    const expiresAt = Date.now() + 600000;
+    const token = ownerPhoneVerificationToken(accountId, phone, code, expiresAt);
+
+    const result = await verifyOwnerPhoneVerificationCodeAction(phone, code, token, expiresAt);
+
+    expect(result.status).toBe('error');
+    if (result.status === 'error') expect(result.message).toContain('STOP');
+  });
+
   it('sendOwnerPhoneVerificationCodeAction enforces rate limit when exceeded', async () => {
 
     const { createAdminClient } = await import('@/lib/auth');
@@ -143,4 +172,3 @@ describe('Ad Billing SMS Alert 2FA Phone Verification', () => {
     }
   });
 });
-

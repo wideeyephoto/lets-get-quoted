@@ -169,8 +169,19 @@ export async function verifyOwnerPhoneVerificationCodeAction(
       return { status: 'error', message: 'The 6-digit code is incorrect or has expired. Please request a new code.' };
     }
 
-    // Record verified consent for this number on the account
-    await recordOwnerSmsConsent(accountId, normalized, OWNER_SMS_DISCLOSURE_VERSION);
+    // Verification is not durable until the consent ledger confirms the write.
+    // A prior STOP remains authoritative and a failed write must never be
+    // presented to the client as a verified number.
+    const outcome = await recordOwnerSmsConsent(accountId, normalized, OWNER_SMS_DISCLOSURE_VERSION);
+    if (outcome === 'suppressed') {
+      return {
+        status: 'error',
+        message: 'This number previously replied STOP. Text START from that phone before verifying it again.',
+      };
+    }
+    if (outcome === 'failed') {
+      return { status: 'error', message: 'We verified the code but could not save the phone verification. Please try again.' };
+    }
 
     return { status: 'verified', phone: normalized };
   } catch (err) {
@@ -209,12 +220,31 @@ export async function saveOwnerAlertsAction(
 
     const normalized = phone.trim() ? normalizeUsPhone(phone.trim()) : null;
 
-    // If verification token and code are provided, validate them before saving
+    // A new, changed, or legacy number with no consent evidence cannot become
+    // the field hotline whitelist merely by being typed into this form. It
+    // must carry a valid, phone-bound OTP.
     const verificationCode = (formData.get('verificationCode') ?? '').toString().trim();
     const verificationToken = (formData.get('verificationToken') ?? '').toString().trim();
     const verificationExpiresAt = Number(formData.get('verificationExpiresAt') ?? 0);
+    const phoneNeedsVerification = Boolean(
+      normalized && (normalized !== current.phone || current.consent === 'none'),
+    );
 
-    if (normalized && verificationCode && verificationToken) {
+    if (normalized && phoneNeedsVerification) {
+      if (!verificationCode || !verificationToken || !Number.isFinite(verificationExpiresAt) || verificationExpiresAt <= 0) {
+        return {
+          status: 'error',
+          errors: [{ field: 'phone', message: 'Verify this number with the 6-digit text code before saving it.' }],
+        };
+      }
+      const admin = createAdminClient();
+      const isAllowed = await checkRateLimitStrict(admin, `owner_otp_verify:${accountId}`, 5, 600);
+      if (!isAllowed) {
+        return {
+          status: 'error',
+          errors: [{ field: 'phone', message: 'Too many verification attempts. Request a new code and try again.' }],
+        };
+      }
       const isValid = isOwnerPhoneVerificationValid(
         accountId,
         normalized,
@@ -230,12 +260,6 @@ export async function saveOwnerAlertsAction(
       }
     }
 
-    const { error } = await supabase
-      .from('accounts')
-      .update({ alert_phone: normalized, high_value_sms_enabled: enabled })
-      .eq('id', accountId);
-    if (error) return { status: 'error', errors: [{ field: 'form', message: 'Could not save your notification settings.' }] };
-
     /**
      * The tick is what gets recorded, and it is recorded WITH THE WORDING.
      *
@@ -249,35 +273,55 @@ export async function saveOwnerAlertsAction(
      * the box, and this line is the only thing in the app that writes an
      * owner_alerts consent row.
      */
-    let suppressed = false;
     if (normalized && consented) {
       const outcome = await recordOwnerSmsConsent(accountId, normalized, OWNER_SMS_DISCLOSURE_VERSION);
       // A STOP outranks a tick in our own UI. Say so instead of reporting a
       // success that did not happen — they would otherwise sit waiting for
       // texts that are correctly being suppressed.
-      if (outcome === 'suppressed') suppressed = true;
+      if (outcome === 'suppressed') {
+        return {
+          status: 'error',
+          errors: [{
+            field: 'consent',
+            message: `${normalized} replied STOP to one of our texts, so nothing was saved. Text START from that phone before trying again.`,
+          }],
+        };
+      }
       if (outcome === 'failed') {
         return {
           status: 'error',
-          errors: [{ field: 'consent', message: 'Your settings saved, but we could not record your consent. Try saving again.' }],
+          errors: [{ field: 'consent', message: 'We could not record your consent, so nothing was saved. Try again.' }],
         };
       }
     }
 
-    revalidatePath('/dashboard/messages');
-    revalidatePath('/dashboard/automations');
-    if (suppressed) {
+    const { error } = await supabase
+      .from('accounts')
+      .update({ alert_phone: normalized, high_value_sms_enabled: enabled })
+      .eq('id', accountId);
+    if (error) {
       return {
         status: 'error',
         errors: [{
-          field: 'consent',
-          message: `Saved, but ${normalized} replied STOP to one of our texts. Text START from that phone to start them again — ticking this box cannot.`,
+          field: 'form',
+          message: 'Your phone settings were not updated. The verification record may have saved; try again.',
         }],
       };
     }
+
+    revalidatePath('/dashboard/messages');
+    revalidatePath('/dashboard/automations');
+    revalidatePath('/dashboard/text-to-job');
     return {
       status: 'saved',
-      message: enabled && normalized ? `Alerts will text ${normalized}.` : 'Saved. Nothing will be texted to you.',
+      message: enabled && normalized
+        ? `Alerts will text ${normalized}.`
+        : normalized
+          ? 'Saved. Text-to-Job remains locked while field alerts are off.'
+          : 'Saved. Nothing will be texted to you.',
+      ready: Boolean(enabled && normalized && consented),
+      phone: normalized,
+      enabled,
     };
   } catch {
     return { status: 'error', errors: [{ field: 'form', message: 'Could not save your notification settings.' }] };

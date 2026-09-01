@@ -22,6 +22,15 @@ export type OwnerAlertsState =
    * reports itself somewhere else is how somebody ends up believing they saved.
    */
   | { status: 'error'; errors: { field: 'phone' | 'consent' | 'form'; message: string }[] }
-  | { status: 'saved'; message: string };
+  | {
+      status: 'saved';
+      message: string;
+      /** True only when the persisted settings can actually route Text-to-Job. */
+      ready: boolean;
+      /** Normalized value written by this submission, used to avoid stale success UI. */
+      phone: string | null;
+      /** Switch value written by this submission, used to avoid stale readiness UI. */
+      enabled: boolean;
+    };
 
 export const OWNER_ALERTS_IDLE: OwnerAlertsState = { status: 'idle' };

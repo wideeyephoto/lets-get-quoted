@@ -47,6 +47,7 @@ vi.mock('@/lib/auth', () => ({
 const {
   aggregateChip,
   canSaveOwnerAlerts,
+  isOwnerFieldLineReady,
   loadOwnerAlerts,
   loadRegistration,
   ownerAlertChip,
@@ -63,6 +64,27 @@ const {
 } = await import('@/lib/owner-sms-disclosure');
 
 beforeEach(() => replies.clear());
+
+describe('owner Text-to-Job field-line readiness', () => {
+  const base = {
+    kind: 'ok' as const,
+    phone: '+12485550100',
+    enabled: true,
+    consent: 'opted_in' as const,
+    consentedAt: '2026-08-01T00:00:00Z',
+    consentVersion: OWNER_SMS_DISCLOSURE_VERSION,
+  };
+
+  it('is ready only when phone, alert switch, and affirmative consent all match routing', () => {
+    expect(isOwnerFieldLineReady(base)).toBe(true);
+    expect(isOwnerFieldLineReady({ ...base, phone: null })).toBe(false);
+    expect(isOwnerFieldLineReady({ ...base, phone: 'not-a-phone' })).toBe(false);
+    expect(isOwnerFieldLineReady({ ...base, enabled: false })).toBe(false);
+    expect(isOwnerFieldLineReady({ ...base, consent: 'none' })).toBe(false);
+    expect(isOwnerFieldLineReady({ ...base, consent: 'opted_out' })).toBe(false);
+    expect(isOwnerFieldLineReady({ kind: 'unavailable' })).toBe(false);
+  });
+});
 
 describe('reading the owner’s notification settings', () => {
   it('reports the number, the switch and the consent together', async () => {
@@ -463,7 +485,7 @@ describe('the dialog', () => {
    */
   it('does not close itself on the pending edge', () => {
     expect(FORM).not.toContain('CloseOnSuccess');
-    expect(FORM).toContain('useFormState');
+    expect(FORM).toContain('useActionState');
   });
 
   it('keeps the two sections apart, and stacks them on a phone', () => {
