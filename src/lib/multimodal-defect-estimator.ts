@@ -79,11 +79,11 @@ Provide structured defect items with estimated labor hours, material costs, and 
       contents: prompt,
     });
 
-    const text = response.text || '';
+    const summaryText = response.text ? response.text.slice(0, 120) : (notes || '');
     // If AI responded, format result
     return {
       trade,
-      overallDamageSummary: `AI inspection complete for ${trade}. ${notes || ''}`,
+      overallDamageSummary: `AI inspection complete for ${trade}. ${summaryText}`,
       defects: [
         {
           defectName: `${trade} Visual Repair Assessment`,

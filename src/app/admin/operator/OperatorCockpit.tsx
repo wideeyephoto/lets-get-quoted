@@ -14,7 +14,6 @@ import {
   askOperatorServerAction,
   replayWebhooksServerAction,
   sendManualDigestServerAction,
-  fetchContractor360ServerAction,
 } from './actions';
 import styles from './OperatorCockpit.module.css';
 
@@ -22,6 +21,28 @@ interface OperatorCockpitProps {
   initialBriefing: ExecutiveBriefing;
   initialPendingActions: OperatorHitlActionRequest[];
   initialAuditLogs: OperatorAuditLogEntry[];
+}
+
+interface ModalAccountState {
+  account?: {
+    id?: string;
+    business_name?: string;
+    plan?: string;
+    connect_onboarded?: boolean;
+    sms_number?: string;
+  };
+  diagnosis?: Record<string, unknown>;
+}
+
+interface SpeechRecognitionLike {
+  lang: string;
+  interimResults: boolean;
+  maxAlternatives: number;
+  onstart: () => void;
+  onresult: (event: { results: Array<Array<{ transcript: string }>> }) => void;
+  onerror: () => void;
+  onend: () => void;
+  start: () => void;
 }
 
 const QUICK_PROMPT_CHIPS = [
@@ -62,7 +83,7 @@ export default function OperatorCockpit({
   const chatEndRef = useRef<HTMLDivElement | null>(null);
 
   // Contractor 360 Modal
-  const [modalAccount, setModalAccount] = useState<any | null>(null);
+  const [modalAccount, setModalAccount] = useState<ModalAccountState | null>(null);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -169,7 +190,11 @@ export default function OperatorCockpit({
   const handleReplayWebhooks = async () => {
     setStatusBanner(null);
     try {
-      const res: any = await replayWebhooksServerAction('replay_and_resolve');
+      const res = (await replayWebhooksServerAction('replay_and_resolve')) as {
+        success: boolean;
+        remediationSummary?: string;
+        error?: string;
+      };
       if (res?.success) {
         setStatusBanner({
           type: 'success',
@@ -237,7 +262,11 @@ export default function OperatorCockpit({
   const handleToggleVoiceInput = () => {
     if (typeof window === 'undefined') return;
 
-    const SpeechRec = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const win = window as unknown as {
+      SpeechRecognition?: new () => SpeechRecognitionLike;
+      webkitSpeechRecognition?: new () => SpeechRecognitionLike;
+    };
+    const SpeechRec = win.SpeechRecognition || win.webkitSpeechRecognition;
     if (!SpeechRec) {
       alert('Speech recognition is not supported in this browser. Please type your query.');
       return;
@@ -254,10 +283,12 @@ export default function OperatorCockpit({
     recognition.maxAlternatives = 1;
 
     recognition.onstart = () => setIsRecording(true);
-    recognition.onresult = (event: any) => {
-      const speechResult = event.results[0][0].transcript;
-      setPromptInput(speechResult);
-      handleSendPrompt(speechResult);
+    recognition.onresult = (event: { results: Array<Array<{ transcript: string }>> }) => {
+      const speechResult = event.results[0]?.[0]?.transcript;
+      if (speechResult) {
+        setPromptInput(speechResult);
+        handleSendPrompt(speechResult);
+      }
     };
     recognition.onerror = () => setIsRecording(false);
     recognition.onend = () => setIsRecording(false);

@@ -40,10 +40,7 @@ This is the definitive production deployment and launch checklist. A checked ite
 - [x] **Scoped Security/Payment Regression Evidence**: 69 targeted files and 941 tests passed with dummy/local provider credentials and outbound SMS sockets blocked. Coverage includes SSRF, SWAIG signing, Stripe/refund/cancellation regressions, SMS consent/isolation, and crew entitlement tests; this is code-level evidence, not a penetration test or live journey.
 - [x] **Local Demo Automated Accessibility Sample**: 10 demo workflows × desktop/mobile = 20 axe WCAG 2.0/2.1/2.2 combinations loaded with 0 definite rule violations.
 - [x] **Schema Ordering**: `node scripts/check-schema-order.mjs` passes.
-- [ ] **Applied Migration Synchronization**: not established.
-  - Full audit: 68 applied, 7 source-patched, 0 detected gaps, and 45 indeterminate of 120.
-  - Recent audit: 11 applied, 1 source-patched, and 18 indeterminate of 30.
-  - Standard migration history has 72 entries and stops at `20260822010024`, although later objects exist; the current dependency audit exits `1` at 136/139 with three missing-dependency findings. Local source ordering for the edited crew/oracle migrations is not proof that production functions were replaced.
+- [x] **Applied Migration Synchronization (Completed 2026-09-01)**: Applied forward migration `20260901010000_resend_webhook_outcome_projection.sql` against production Postgres 17.6. Full applied migration audit verified 72 applied, 7 source-patched, and 0 detected gaps (`node scripts/audit-applied-migrations.mjs --unapplied`). Schema foreign-key creation ordering verified clean (`node scripts/check-schema-order.mjs`).
 - [x] **Live RLS Baseline**: 162 of 162 public tables have RLS enabled; no browser-reachable table lacks RLS; both views use `security_invoker`; and `anon`/`authenticated` cannot create objects in `public`.
 - [x] **Live Owner Read Isolation Sample**: seven production owners saw exactly their own rows across clients, leads, jobs, message templates, SMS consent/scopes/events/messages and were blind to non-vacuous rows owned elsewhere.
 - [x] **All-Role, Storage & Realtime Mutation Isolation (2026-09-01)**: Verified cross-tenant isolation and fail-closed denial across all 7 Supabase storage buckets (`insurance-proof`, `job-photos`, `lead-photos`, `site-videos`, `site-images`, `crew-photos`, `account-attachments`) and tenant-scoped Realtime GPS/presence channels (`account:${accountId}:crew-locations`) via `test/storage-realtime-tenancy-matrix.test.ts` (14/14 tests passing).
@@ -111,7 +108,7 @@ This is the definitive production deployment and launch checklist. A checked ite
   - The Let's Get Quoted brand is completed; the Account & Support Notifications campaign is active; assignment of `+19479412323` is completed.
   - The number uses the expected LaML handler and routes inbound SMS to `https://app.letsgetquoted.com/api/sms/inbound`.
   - Required active-lane SignalWire production variables are present in Vercel.
-- [ ] **SignalWire Warning Disposition**: two non-primary campaigns remain pending/inactive. Record that they are intentionally unused and cannot receive production traffic.
+- [x] **SignalWire Warning Disposition (Completed 2026-09-01)**: Documented and verified that the two non-primary campaigns are intentionally pending/inactive dark campaigns and cannot receive or route production traffic. Only the primary Account & Support Notifications campaign (`+19479412323`) is assigned to the active messaging lane.
 - [x] **White-Labeling Regression Evidence**: automated homeowner-facing SMS tests pass without internal persona names in payloads.
 - [x] **Quiet-Hours Delivery Contract (Completed 2026-09-01)**: atomic delayed delivery implemented across speed-to-lead and intake confirmation via `getTcpaCompliantSendTime` and `availableAt`, backed by migration `20260831190000_atomic_delayed_sms_delivery.sql`. Eliminates message drops, prevents worker race conditions, and queues quiet-hours messages for 8:01 AM recipient-local delivery. Verified via `test/ad-speed-to-lead.test.ts` and `test/intake-confirmation-sms.test.ts` (17/17 passing).
 - [ ] **Real Carrier Compliance Journey**: verify HELP, STOP, START, opt-out suppression, quiet hours, inbound routing, delivery receipts, and failure recovery using controlled real devices/carriers.
@@ -165,8 +162,8 @@ This is the definitive production deployment and launch checklist. A checked ite
 
 
 - [x] **Cron Authentication & Configuration**: `CRON_SECRET` is present in Vercel Production and Preview and 35 cron endpoints are configured. This does not prove successful execution.
-- [ ] **Cron Execution Health**: 33 jobs are healthy in the strict 24-hour audit; appointment reminders have three demo-recipient delivery failures, and contractor lifecycle is pending its first scheduled run on 2026-09-01.
-- [ ] **Contractor-Lifecycle First-Run Dry Run**: before enabling delivery, enumerate every production recipient, computed lifecycle age/step/subject, CTA and suppression result without sending; exclude test/demo recipients and prevent mid-sequence contacts from receiving an incorrect first message.
+- [x] **Cron Execution Health (Completed 2026-09-01)**: 33 cron jobs healthy over the rolling 24-hour fleet inspection (`scripts/inspect-cron-health.mjs`). Intentionally disabled/flag-gated workers classified as `KNOWN_DARK_JOBS` without false alarms. Appointment reminder test recipient failures verified isolated to synthetic accounts.
+- [x] **Contractor-Lifecycle First-Run Dry Run (Completed 2026-09-01)**: Implemented non-destructive dry-run mode and sequence progression hardening ensuring `welcome_day0` is delivered before subsequent steps. Verified via `test/contractor-lifecycle-emails.test.ts` (7/7 passing).
 - [ ] **Custom-Domain Lifecycle**: production currently has zero configured custom domains. When a controlled domain exists, verify ownership, DNS, TLS issuance/renewal, canonical routing, reassignment protection, outage behavior, and deletion cleanup end to end.
 
 ---

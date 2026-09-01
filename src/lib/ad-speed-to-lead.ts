@@ -256,7 +256,7 @@ export type SpeedToLeadTelemetry = {
  * quiet hours are evaluated at the called party's local time (8:00 AM - 8:00/9:00 PM).
  */
 export async function dispatchSpeedToLeadSms(params: {
-  admin: SupabaseClient;
+  admin?: SupabaseClient;
   accountId: string;
   recipientPhone: string;
   businessName: string;
@@ -485,11 +485,16 @@ export async function dispatchMultiChannelSpeedToLead(params: {
 }): Promise<MultiChannelCascadeResult> {
   const start = Date.now();
   let smsSent = false;
-
   try {
     const smsResult = await dispatchSpeedToLeadSms({
       admin: params.admin as any,
-      ...params,
+      accountId: params.accountId,
+      recipientPhone: params.recipientPhone,
+      businessName: params.businessName,
+      leadName: params.leadName,
+      projectType: params.projectType,
+      city: params.city,
+      contractorAlertPhone: params.contractorAlertPhone,
     });
     smsSent = Boolean(smsResult?.sent);
   } catch {

@@ -112,7 +112,7 @@ export async function initiateSpeedToLeadCallBridge(
       };
     }
 
-    const data: any = await response.json();
+    const data = (await response.json()) as { sid?: string; status?: string };
     return {
       bridgeId: data.sid || bridgeId,
       status: 'connected',

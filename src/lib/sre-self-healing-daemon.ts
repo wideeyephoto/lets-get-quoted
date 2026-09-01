@@ -32,7 +32,7 @@ export async function runSreSelfHealingSweep(
 
   let anomaliesDetected = 0;
   let anomaliesHealed = 0;
-  let escalatedIncidents = 0;
+  const escalatedIncidents = 0;
 
   try {
     // 1. Scan for unhandled webhook failures

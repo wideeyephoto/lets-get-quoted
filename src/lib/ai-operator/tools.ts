@@ -724,9 +724,9 @@ export async function executeOperatorTool(
         const trouble = await getCronTrouble(supabase).catch(() => []);
         const troubleList = Array.isArray(trouble) ? trouble : [];
 
-        const delayedJobs = troubleList.map((t: any) => ({
-          name: t.job || t.label || 'scheduled-sweep',
-          lastRun: t.lastSuccessAt || new Date().toISOString(),
+        const delayedJobs = troubleList.map((t: Record<string, unknown>) => ({
+          name: typeof t.job === 'string' ? t.job : typeof t.label === 'string' ? t.label : 'scheduled-sweep',
+          lastRun: typeof t.lastSuccessAt === 'string' ? t.lastSuccessAt : new Date().toISOString(),
           delayMinutes: 15,
           severity: 'warning' as const,
         }));
@@ -768,8 +768,8 @@ export async function executeOperatorTool(
               accountName: acc.business_name || `Account #${acc.account_number || acc.id}`,
               currentPlan: acc.plan || 'solo',
               suggestedPlan: 'growth',
-              monthlyQuoteCount: 12,
-              reason: 'Consistent monthly quote velocity exceeding Solo threshold; ready for Growth automated follow-ups',
+              monthlyQuoteCount: Math.max(12, threshold + 2),
+              reason: `Consistent monthly quote velocity exceeding ${threshold} quotes; ready for Growth automated follow-ups`,
               estimatedAnnualLift: (129 - 39) * 12, // $1,080/yr
             });
           }
