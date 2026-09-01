@@ -12,6 +12,7 @@ import { SmartSearch } from './smart-search';
 import { supabase } from '@/lib/supabase';
 import { isOwnChromeRoute } from '@/lib/marketing-chrome';
 import { APP_LOGIN_URL, APP_SIGNUP_URL } from '@/components/marketing/links';
+import PublicGridBackground from '@/components/marketing/PublicGridBackground';
 import { isSectionNew, markNavSeen, navAttentionLabel, parseNavSeen, NAV_SEEN_STORAGE_KEY, type NavSeenMap } from '@/lib/nav-helpers';
 import { attentionBadgeLabel } from '@/lib/lead-queue';
 
@@ -745,7 +746,12 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
   // The /demo experience renders its own sidebar chrome (see demo/layout.tsx),
   // so the app shell stays out of its way — no marketing top bar wrapping it.
   if (pathname.startsWith('/demo')) {
-    return <>{children}</>;
+    return (
+      <>
+        <PublicGridBackground />
+        {children}
+      </>
+    );
   }
 
   // /features (+ its five sub-pages), /how-it-works and /founder each render a
@@ -755,7 +761,12 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
   // an indexed marketing page in the dashboard rail, live lead counts and all,
   // underneath the header the page already drew.
   if (isOwnChromeMarketing) {
-    return <>{children}</>;
+    return (
+      <>
+        <PublicGridBackground />
+        {children}
+      </>
+    );
   }
 
   // First run is a WALL, not a page inside the app, so it gets no chrome at all.
@@ -1238,6 +1249,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
          The signed-in dashboard rail (the branch above) is untouched. That one
          is a tool somebody uses all day and it earns its width. */
       <div className="chrome-shell chrome-shell-public">
+        <PublicGridBackground />
         {/* THE FIRST TAB STOP, AND IT HAS TO LIVE HERE.
             The page can't supply this one: the rail is rendered by the shell
             and comes before {children} in the DOM, so a skip link written into

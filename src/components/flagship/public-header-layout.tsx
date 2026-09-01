@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import LaunchBanner from '@/components/marketing/launch-banner';
 import ThemeFab from '@/components/theme-fab';
+import PublicGridBackground from '@/components/marketing/PublicGridBackground';
 import { SiteHeaderSlot } from './site-chrome';
 
 /**
@@ -34,6 +35,7 @@ import { SiteHeaderSlot } from './site-chrome';
 export default function PublicHeaderLayout({ children }: { children: ReactNode }) {
   return (
     <>
+      <PublicGridBackground />
       <SiteHeaderSlot />
       {/* AFTER the slot, never inside it: .root[data-chrome='slot'] is a fixed
           82px spacer standing in for the fixed header, and anything put inside

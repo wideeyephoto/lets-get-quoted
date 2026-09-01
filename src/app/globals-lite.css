@@ -1,6 +1,6 @@
 /* GENERATED — do not edit. Source: src/app/globals.css
    Run: node scripts/build-css-subset.mjs
-   source-sha256: 445ac33933492ab2
+   source-sha256: f1a2e67c2c3125d5
 
    globals.css with the rules that can only match inside /dashboard, /admin and
    /demo removed. Every route except those three imports this file; they import
@@ -32144,4 +32144,51 @@ select optgroup {
   color: #000000 !important;
   stroke: #000000 !important;
   fill: none !important;
+}
+
+/* ===========================================================================
+   PUBLIC PULSATING GRID BACKGROUND
+   Ambient technical blueprint grid for all main public marketing pages.
+   =========================================================================== */
+.public-grid-background {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  user-select: none;
+  z-index: 0;
+  opacity: 0.22;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 52px 52px;
+  animation: publicGridBreathe 10s ease-in-out infinite alternate;
+  will-change: opacity;
+}
+
+:root[data-theme='light'] .public-grid-background,
+:root[data-theme='sunlight'] .public-grid-background,
+:root[data-theme='parchment'] .public-grid-background {
+  background-image:
+    linear-gradient(rgba(0, 0, 0, 0.038) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.038) 1px, transparent 1px);
+  opacity: 0.25;
+}
+
+@keyframes publicGridBreathe {
+  0% {
+    opacity: 0.16;
+  }
+  50% {
+    opacity: 0.36;
+  }
+  100% {
+    opacity: 0.22;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .public-grid-background {
+    animation: none;
+    opacity: 0.22;
+  }
 }

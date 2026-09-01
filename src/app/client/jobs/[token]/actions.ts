@@ -2,8 +2,15 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
+import { headers } from 'next/headers';
+import { createAdminClient } from '@/lib/auth';
+import { checkRateLimit, clientIpFrom } from '@/lib/rate-limit';
+import { requestJobFollowup, type FollowupCategory } from '@/lib/client-followup-request';
 import { requestDifferentClientJobScheduleOptions, selectClientJobScheduleOption } from '@/lib/scheduling';
-import { approveClientJobQuote } from '@/lib/job-feed';
+import { resolveJobAccess } from '@/lib/change-order-client';
+import { createJobFeedEvent, approveClientJobQuote } from '@/lib/job-feed';
+import { getAccountOwnerEmail, sendContractorAlertEmail } from '@/lib/email';
+import { loadBusinessName } from '@/lib/business-name';
 import { askQuoteQuestion } from '@/lib/client-question';
 import { updateClientQuoteOptions } from '@/lib/quote-options-data';
 import { startSubscriptionSignup, type SubscriptionSignupMode } from '@/lib/subscription-signup';
@@ -12,6 +19,103 @@ import { authorizePlanAndGetDepositUrl, startPlanPayoff } from '@/lib/payment-pl
 function optionalText(value: FormDataEntryValue | null): string | null {
   const text = (value ?? '').toString().trim();
   return text.length > 0 ? text : null;
+}
+
+export async function requestJobFollowupAction(
+  token: string,
+  formData: FormData,
+): Promise<{ ok: boolean; message?: string }> {
+  const admin = createAdminClient();
+  const ip = clientIpFrom(await headers());
+  if (!(await checkRateLimit(admin, `job-followup:ip:${ip}`, 10, 60))) {
+    return { ok: false, message: 'Too many requests — wait a minute and try again.' };
+  }
+
+  const category = (formData.get('category') ?? 'followup') as FollowupCategory;
+  const description = String(formData.get('description') ?? '');
+  const rawPhotos = formData.getAll('photos');
+  const files: File[] = [];
+  for (const item of rawPhotos) {
+    if (item instanceof File && item.size > 0) {
+      files.push(item);
+    }
+  }
+
+  const result = await requestJobFollowup(token, { category, description, files });
+  if (result.ok) {
+    revalidatePath(`/client/jobs/${token}`);
+  }
+  return result;
+}
+
+export async function submitJobFeedbackAction(
+  token: string,
+  formData: FormData,
+): Promise<{ ok: boolean; message?: string }> {
+  const admin = createAdminClient();
+  const ip = clientIpFrom(await headers());
+  if (!(await checkRateLimit(admin, `job-feedback:ip:${ip}`, 10, 60))) {
+    return { ok: false, message: 'Too many requests — wait a minute and try again.' };
+  }
+
+  const access = await resolveJobAccess(token);
+  if (!access) return { ok: false, message: 'This link is no longer valid. Please call your contractor directly.' };
+
+  const feedback = String(formData.get('feedback') ?? '').trim().slice(0, 2000);
+  if (!feedback) return { ok: false, message: 'Please enter your feedback first.' };
+
+  const rawRating = Number(formData.get('rating'));
+  const rating = Number.isInteger(rawRating) && rawRating >= 1 && rawRating <= 5 ? rawRating : null;
+
+  const { data: job } = await admin
+    .from('jobs')
+    .select('ref, client_name')
+    .eq('account_id', access.accountId)
+    .eq('id', access.jobId)
+    .maybeSingle();
+
+  const clientName = (job?.client_name as string) || 'A customer';
+
+  try {
+    await createJobFeedEvent(admin, access.accountId, access.jobId, {
+      kind: 'review_feedback',
+      title: `Private feedback${rating ? ` (${rating}★)` : ''}`,
+      body: feedback,
+      visibility: 'internal',
+    });
+  } catch (error) {
+    console.error('Job feedback feed event failed:', error instanceof Error ? error.message : error);
+  }
+
+  try {
+    const [ownerEmail, businessName] = await Promise.all([
+      getAccountOwnerEmail(admin, access.accountId),
+      loadBusinessName(admin, access.accountId),
+    ]);
+    if (ownerEmail) {
+      const APP_ORIGIN = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
+      await sendContractorAlertEmail({
+        accountId: access.accountId,
+        recipientEmail: ownerEmail,
+        businessName,
+        subject: `New private feedback${rating ? ` (${rating}★)` : ''} for ${job?.ref ?? 'job'}`,
+        heading: `${clientName} left you private feedback`,
+        bodyLines: [
+          `Rating: ${rating ? `${rating} of 5 stars` : 'Not rated'}`,
+          feedback,
+          'Sent privately from their completed job dashboard.',
+        ],
+        ctaLabel: 'Open the job',
+        ctaUrl: `${APP_ORIGIN}/dashboard/jobs/${access.jobId}`,
+        tone: rating && rating >= 4 ? 'info' : 'warning',
+      });
+    }
+  } catch (error) {
+    console.error('Job feedback email alert failed:', error instanceof Error ? error.message : error);
+  }
+
+  revalidatePath(`/client/jobs/${token}`);
+  return { ok: true };
 }
 
 export async function selectClientJobScheduleOptionAction(token: string, formData: FormData) {

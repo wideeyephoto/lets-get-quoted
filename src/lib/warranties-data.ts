@@ -273,3 +273,32 @@ export async function updateClaim(
   if (!data) return { ok: false, message: 'That claim could not be found — it may have been changed or removed. Reload the job.' };
   return { ok: true };
 }
+
+/**
+ * Generate signed URLs for warranty manufacturer and specification documents.
+ */
+export async function signedWarrantyDocUrls(
+  supabase: SupabaseClient,
+  accountId: string,
+  paths: string[],
+): Promise<Array<{ name: string; url: string }>> {
+  if (!paths || paths.length === 0) return [];
+  const ownedPaths = paths.filter((p) => typeof p === 'string' && (p.startsWith(`${accountId}/`) || !p.includes('/')));
+  if (ownedPaths.length === 0) return [];
+
+  const results: Array<{ name: string; url: string }> = [];
+  for (const path of ownedPaths) {
+    try {
+      const { data } = await supabase.storage.from('account-attachments').createSignedUrl(path, 60 * 60);
+      if (data?.signedUrl) {
+        const rawName = path.split('/').pop() || 'Document';
+        // Clean uuid if prefixed
+        const cleanName = rawName.replace(/^[0-9a-fA-F-]{36}\./, 'Warranty Document.');
+        results.push({ name: cleanName, url: data.signedUrl });
+      }
+    } catch {
+      // Ignore individual missing file sign errors
+    }
+  }
+  return results;
+}

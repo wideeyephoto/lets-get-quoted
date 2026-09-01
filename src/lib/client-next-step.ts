@@ -65,10 +65,12 @@ export type NextStepInput = {
   jobStatus: string | null;
   /** The first still-open payment request, if any. */
   openPayment: { id: string; amount: number } | null;
+  /** Where a customer books more work, if available. */
+  bookingPath?: string | null;
 };
 
 export function clientNextStep(input: NextStepInput): NextStep {
-  const { businessName, depositPayment, planStatus, scheduleOpen, scheduledLabel, scheduledPast, jobStatus, openPayment } = input;
+  const { businessName, depositPayment, planStatus, scheduleOpen, scheduledLabel, scheduledPast, jobStatus, openPayment, bookingPath } = input;
 
   const candidates: (NextStep | null)[] = [
     depositPayment
@@ -105,7 +107,9 @@ export function clientNextStep(input: NextStepInput): NextStep {
     // you on Jul 28" to somebody whose job had been finished for two weeks,
     // because a confirmed date was the last thing in this list that matched.
     jobStatus === 'complete'
-      ? { copy: 'This job is complete. Your invoices and receipts are below.', href: null, label: null }
+      ? bookingPath
+        ? { copy: 'This job is complete. Request your next project or follow-up anytime.', href: bookingPath, label: 'Book next project' }
+        : { copy: 'This job is complete. Your invoices and receipts are below.', href: null, label: null }
       : null,
     // Only while it is still ahead of them. Behind, it is not news, it is a
     // date they already lived through.

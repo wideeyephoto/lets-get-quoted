@@ -59,7 +59,29 @@ export default function Warranties({ token, warranties }: { token: string; warra
               </p>
             ) : null}
             {warranty.serviceDueLabel ? <p className="client-warranty-service">{warranty.serviceDueLabel}</p> : null}
-            {warranty.documentCount > 0 ? (
+
+            {warranty.documentUrls && warranty.documentUrls.length > 0 ? (
+              <div className="client-warranty-docs-section" style={{ marginTop: '0.65rem' }}>
+                <p className="client-warranty-docs" style={{ marginBottom: '0.35rem' }}>
+                  <strong>Manufacturer & warranty documents on file:</strong>
+                </p>
+                <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                  {warranty.documentUrls.map((doc, idx) => (
+                    <li key={idx}>
+                      <a
+                        href={doc.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="btn secondary"
+                        style={{ fontSize: '0.8rem', padding: '0.3rem 0.65rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+                      >
+                        📄 Download {doc.name.length > 28 ? `${doc.name.slice(0, 25)}…` : doc.name}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : warranty.documentCount > 0 ? (
               <p className="client-warranty-docs">
                 {warranty.documentCount} manufacturer document{warranty.documentCount === 1 ? '' : 's'} on file — ask us
                 for a copy any time.
@@ -95,7 +117,22 @@ export default function Warranties({ token, warranties }: { token: string; warra
                   maxLength={2000}
                   placeholder="There's a damp patch on the ceiling under the new roof, about a foot across, worse after rain."
                 />
-                <div className="client-warranty-actions">
+
+                <div style={{ marginTop: '0.65rem' }}>
+                  <label htmlFor={`claim-photos-${warranty.id}`} style={{ fontSize: '0.85rem', fontWeight: 600, display: 'block', marginBottom: '0.25rem' }}>
+                    Attach photos of the issue (optional, up to 3 files)
+                  </label>
+                  <input
+                    id={`claim-photos-${warranty.id}`}
+                    name="photos"
+                    type="file"
+                    accept="image/*,video/*"
+                    multiple
+                    style={{ fontSize: '0.85rem' }}
+                  />
+                </div>
+
+                <div className="client-warranty-actions" style={{ marginTop: '1rem' }}>
                   <button type="submit" className="btn primary" disabled={pending}>
                     {pending ? 'Sending…' : 'Send to your contractor'}
                   </button>

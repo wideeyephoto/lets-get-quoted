@@ -33,10 +33,28 @@ export async function raiseWarrantyClaimAction(
   const access = await resolveJobAccess(token);
   if (!access) return { ok: false, message: 'This link is no longer valid. Give us a call instead.' };
 
+  const rawFiles = formData.getAll('photos');
+  const photoPaths: string[] = [];
+  for (const entry of rawFiles.slice(0, 3)) {
+    if (entry instanceof File && entry.size > 0 && entry.size <= 10 * 1024 * 1024) {
+      const ext = entry.type.includes('/') ? entry.type.split('/')[1].replace('quicktime', 'mov') : 'jpg';
+      const path = `${access.accountId}/${crypto.randomUUID()}.${ext}`;
+      const { error } = await admin.storage.from('job-photos').upload(path, Buffer.from(await entry.arrayBuffer()), {
+        contentType: entry.type || 'image/jpeg',
+        cacheControl: '31536000',
+        upsert: false,
+      });
+      if (!error) {
+        photoPaths.push(path);
+      }
+    }
+  }
+
   const result = await raiseClaim(admin, access.accountId, {
     warrantyId,
     jobId: access.jobId,
     description: String(formData.get('description') ?? ''),
+    photoPaths,
   });
   if (!result.ok || !result.claim) return { ok: false, message: result.message };
 
@@ -50,6 +68,7 @@ export async function raiseWarrantyClaimAction(
       visibility: 'client',
       sourceTable: 'warranty_claims',
       sourceId: claim.id,
+      meta: photoPaths.length > 0 ? { photo_paths: photoPaths } : null,
     });
   } catch (error) {
     console.error('Warranty claim feed event failed:', error instanceof Error ? error.message : error);
@@ -61,18 +80,23 @@ export async function raiseWarrantyClaimAction(
       loadBusinessName(admin, access.accountId),
     ]);
     if (ownerEmail) {
+      const bodyLines = [
+        claim.description,
+        claim.inWarrantyAtClaim
+          ? 'This was inside the warranty on the day they reported it.'
+          : 'Their cover had already ended when they reported this. Still worth a look — it is your call, and they asked you first.',
+      ];
+      if (photoPaths.length > 0) {
+        bodyLines.push(`Attached ${photoPaths.length} photo/video file${photoPaths.length === 1 ? '' : 's'}.`);
+      }
+
       await sendContractorAlertEmail({
         accountId: access.accountId,
         recipientEmail: ownerEmail,
         businessName,
         subject: claim.inWarrantyAtClaim ? 'Warranty request — in warranty' : 'Warranty request — cover has ended',
         heading: 'A past customer has asked for help',
-        bodyLines: [
-          claim.description,
-          claim.inWarrantyAtClaim
-            ? 'This was inside the warranty on the day they reported it.'
-            : 'Their cover had already ended when they reported this. Still worth a look — it is your call, and they asked you first.',
-        ],
+        bodyLines,
         ctaLabel: 'Open the job',
         ctaUrl: `${APP_ORIGIN}/dashboard/jobs/${access.jobId}`,
         tone: claim.inWarrantyAtClaim ? 'warning' : 'info',

@@ -36,8 +36,12 @@ import { toClientChangeOrders } from '@/lib/change-orders';
 import { resolveJobAccess } from '@/lib/change-order-client';
 import { clientInsuranceFor } from '@/lib/insurance-client';
 import Warranties from './Warranties';
-import { listWarranties } from '@/lib/warranties-data';
+import FollowupRequest from './FollowupRequest';
+import ClientReviewCard from './ClientReviewCard';
+import { listWarranties, signedWarrantyDocUrls } from '@/lib/warranties-data';
 import { toClientWarranties } from '@/lib/warranties';
+import { getSiteContent } from '@/lib/site-content';
+import { googleReviewUrl } from '@/lib/review-routing';
 import Selections from './Selections';
 import { loadClientSelections, toSignedClientSelections } from '@/lib/selections-data';
 import { ContractorBrandBar, ContractorBrandFoot } from '@/components/contractor-brand';
@@ -105,9 +109,31 @@ export default async function ClientJobDashboardPage({
   const clientChangeOrders = access
     ? toClientChangeOrders(await loadClientChangeOrders(admin, access.accountId, access.jobId))
     : [];
-  const clientWarranties = access
-    ? toClientWarranties(await listWarranties(admin, access.accountId, access.jobId))
+  const rawWarranties = access
+    ? await listWarranties(admin, access.accountId, access.jobId)
     : [];
+  const docUrlsMap: Record<string, Array<{ name: string; url: string }>> = {};
+  if (access && rawWarranties.length > 0) {
+    await Promise.all(
+      rawWarranties.map(async (w) => {
+        if (w.documentPaths && w.documentPaths.length > 0) {
+          docUrlsMap[w.id] = await signedWarrantyDocUrls(admin, access.accountId, w.documentPaths);
+        }
+      })
+    );
+  }
+  const clientWarranties = access
+    ? toClientWarranties(rawWarranties, undefined, docUrlsMap)
+    : [];
+
+  const { data: siteRow } = access
+    ? await admin.from('sites').select('content').eq('account_id', access.accountId).maybeSingle()
+    : { data: null };
+  const siteContent = getSiteContent(siteRow?.content ?? null);
+  const googleReviewDeepUrl = googleReviewUrl({
+    placeId: siteContent.testimonials.googlePlaceId,
+    listingUrl: siteContent.testimonials.googleUrl,
+  });
   const clientSelections = access
     ? await toSignedClientSelections(admin, access.accountId, await loadClientSelections(admin, access.accountId, access.jobId))
     : [];
@@ -312,6 +338,7 @@ export default async function ClientJobDashboardPage({
     scheduledPast,
     jobStatus: dashboard.job.status ?? null,
     openPayment: payableNow[0] ? { id: payableNow[0].id, amount: Number(payableNow[0].amount) } : null,
+    bookingPath: dashboard.brand.bookingPath ?? null,
   });
   const { copy: nextStep, href: nextHref, label: nextLabel } = next;
 
@@ -721,6 +748,20 @@ export default async function ClientJobDashboardPage({
                   is the link a homeowner still has in their inbox two years
                   later. */}
               <Warranties token={params.token} warranties={clientWarranties} />
+              <ClientReviewCard
+                token={params.token}
+                businessName={dashboard.businessName}
+                googleUrl={googleReviewDeepUrl}
+                isComplete={dashboard.job.status === 'complete' || dashboard.job.status === 'archived'}
+              />
+              <FollowupRequest
+                token={params.token}
+                businessName={dashboard.businessName}
+                bookingPath={dashboard.brand.bookingPath}
+                phone={dashboard.brand.phone}
+                hasWarranties={clientWarranties.length > 0}
+                isComplete={dashboard.job.status === 'complete' || dashboard.job.status === 'archived'}
+              />
 
               {/* Proof-to-Pay stages. Above the general checklist because a stage
                   carries its own evidence AND the amount attached to it — this is

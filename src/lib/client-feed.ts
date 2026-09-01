@@ -166,6 +166,8 @@ export const CLIENT_FEED_KINDS: Record<string, Rendering> = {
   job_completed: { title: 'Work finished', body: 'pass', icon: 'check', tone: 'good', status: 'Completed' },
   job_update: { title: 'Update from your contractor', body: 'pass', icon: 'message', tone: 'info' },
   client_question: { title: 'You asked a question', body: 'pass', icon: 'message', tone: 'info', status: 'Sent' },
+  client_followup: { title: 'You requested a follow-up', body: 'pass', icon: 'message', tone: 'info', status: 'Sent' },
+  rebook_requested: { title: 'You requested more work', body: 'pass', icon: 'tools', tone: 'info', status: 'Sent' },
 
   milestone_submitted: { title: 'A stage was completed', body: 'pass', icon: 'tools', tone: 'good', status: 'Completed' },
 

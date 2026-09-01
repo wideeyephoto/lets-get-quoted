@@ -178,6 +178,7 @@ export type ClientWarranty = {
   remainingLabel: string;
   maintenanceNotes: string;
   documentCount: number;
+  documentUrls?: Array<{ name: string; url: string }>;
   serviceDueLabel: string;
   /** They can still ask even when it's expired — the contractor decides. */
   canClaim: boolean;
@@ -191,7 +192,11 @@ export type ClientWarranty = {
  * the work, or who knows it's a genuine defect, will often say yes. Hiding the
  * button decides on their behalf and loses both of them the conversation.
  */
-export function toClientWarranties(warranties: Warranty[], today = todayKey()): ClientWarranty[] {
+export function toClientWarranties(
+  warranties: Warranty[],
+  today = todayKey(),
+  docUrlsMap: Record<string, Array<{ name: string; url: string }>> = {},
+): ClientWarranty[] {
   return warranties.map((warranty) => {
     const status = warrantyStatus(warranty, today);
     const service = serviceDue(warranty, today);
@@ -207,6 +212,7 @@ export function toClientWarranties(warranties: Warranty[], today = todayKey()): 
       remainingLabel: warrantyRemainingLabel(warranty, today),
       maintenanceNotes: warranty.maintenanceNotes,
       documentCount: warranty.documentPaths.length,
+      documentUrls: docUrlsMap[warranty.id] ?? [],
       serviceDueLabel: service.label,
       canClaim: true,
     };

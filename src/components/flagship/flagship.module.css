@@ -9193,3 +9193,47 @@
     margin-bottom: 16px;
   }
 }
+
+/* ---- 9. Global Public Pulsating Grid Background ------------------------ */
+.root :global(.public-grid-background) {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  user-select: none;
+  z-index: 0;
+  opacity: 0.22;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 52px 52px;
+  animation: publicGridBreathe 10s ease-in-out infinite alternate;
+  will-change: opacity;
+}
+
+:root[data-theme='light'] .root :global(.public-grid-background),
+:root[data-theme='sunlight'] .root :global(.public-grid-background),
+:root[data-theme='parchment'] .root :global(.public-grid-background) {
+  background-image:
+    linear-gradient(rgba(0, 0, 0, 0.038) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.038) 1px, transparent 1px);
+  opacity: 0.25;
+}
+
+@keyframes publicGridBreathe {
+  0% {
+    opacity: 0.16;
+  }
+  50% {
+    opacity: 0.36;
+  }
+  100% {
+    opacity: 0.22;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .root :global(.public-grid-background) {
+    animation: none;
+    opacity: 0.22;
+  }
+}
