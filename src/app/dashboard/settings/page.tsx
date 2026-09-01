@@ -127,6 +127,10 @@ export default async function SettingsPage({
       .order('created_at', { ascending: false })
       .limit(20),
   ]);
+
+  const webhookSubscriptions = ((webhookSubsResult?.data ?? []) as unknown[]) as WebhookSubscriptionView[];
+  const webhookDeliveries = ((webhookDeliveriesResult?.data ?? []) as unknown[]) as WebhookDeliveryView[];
+
   // than throwing. A Settings page that 500s because one card cannot load is a
   // worse failure than a card that says nobody is here.
   const officeTeam = await loadOfficeTeam(createAdminClient(), accountId);
@@ -923,3 +927,4 @@ export default async function SettingsPage({
     </main>
   );
 }
+

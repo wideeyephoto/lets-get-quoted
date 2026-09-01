@@ -19,6 +19,7 @@ const TAB_ICONS: Record<string, string> = {
   payments: '<rect x="2.5" y="5" width="19" height="14" rx="2.5"/><path d="M2.5 9.5h19"/><path d="M6 15h4"/>',
   automations: '<path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>',
   business: '<path d="M3.5 20.5h17"/><path d="M5 20.5V6.5l7-3.5 7 3.5v14"/><path d="M9.5 20.5v-4h5v4"/><path d="M9 10h1.5M13.5 10H15M9 13.2h1.5M13.5 13.2H15"/>',
+  developers: '<polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>',
 };
 
 // A tabbed sub-nav ("submenu") over the settings sections. All panels stay
